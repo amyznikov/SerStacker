@@ -1,0 +1,237 @@
+/*
+ * stackproc.cc
+ *
+ *  Created on: Jul 11, 2021
+ *      Author: amyznikov
+ */
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/ximgproc.hpp>
+#include <core/readdir.h>
+#include <core/io/save_image.h>
+#include <core/improc/c_image_processor.h>
+#include <tbb/tbb.h>
+#include <core/get_time.h>
+#include <core/debug.h>
+
+static bool convertTofp32(const cv::Mat & src, cv::Mat & dst)
+{
+  constexpr int ddepth = CV_32F;
+  switch (src.depth()) {
+    case CV_8S:
+      src.convertTo(dst, ddepth, 1./INT8_MAX, 0.5);
+      break;
+    case CV_8U:
+      src.convertTo(dst, ddepth, 1./UINT8_MAX, 0);
+      break;
+    case CV_16S:
+      src.convertTo(dst, ddepth, 1./INT16_MAX, 0.5);
+      break;
+    case CV_16U:
+      src.convertTo(dst, ddepth, 1./UINT16_MAX, 0);
+      break;
+    case CV_32S:
+      src.convertTo(dst, ddepth, 1./INT32_MAX, 0.5);
+      break;
+    case CV_32F:
+      if ( src.data != dst.data ) {
+        src.copyTo(dst);
+      }
+      break;
+    case CV_64F:
+      src.convertTo(dst, ddepth);
+      break;
+    default:
+      return  false;;
+  }
+
+  return true;
+}
+
+
+int main(int argc, char *argv[])
+{
+  std::string input_file_name, output_file_name, output_suffix;
+  cv::Mat image;
+  cv::Mat mask;
+  bool overwrite_confirmed = false;
+  double min, max;
+
+  c_image_processor_chain chain;
+
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
+
+  for ( int i = 1; i < argc; ++i ) {
+    if ( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
+      printf("Usage:\n"
+          "  stack-postproc input_image [-o output_image] \n"
+          "   [-overwrite]                    confirm overwrite input image if output file name is the same\n"
+          "   [-unsharp sigma:amount]         apply usharp_mask(sigma, amout=(0..1))\n"
+
+          "   [-a <T|E|A|H|Q>:rho:eps:rc]     align color channels\n"
+          "   [-wb]                           apply lsbc white balance\n"
+          "   [-wbm]                          apply meanstdev white balance\n"
+          "   [-wbh  <low:high>]              apply histogram based white balance\n"
+          "   [-wbc  <r:g:b>]                 apply avg color balance\n"
+          "   [-g gamma]                      apply pow(image, gamma)\n"
+          "   [-cs a:b]                       scale color saturation: s = a + b * s\n"
+          "   [-ct T]                         adjust color temperature\n"
+          "   [-ul sigma:amount]              apply usharp_mask(sigma, amout) to luminance channel only\n"
+          "   [-ulog sigma:amount]            apply usharp_mask_log(sigma, amout)\n"
+          "   [-sob sigma:lambda]             apply SOB sharpen\n"
+          "   [-wiener sigma:noise]           apply wiener deconvolution with gaussian psf\n"
+          "   [-upoly v1:v2:..]               apply fft poly hpass\n"
+          "   [-fft-profile out_file_name]    save fft radial profile\n"
+          "   [-rl sigma:max-iterations]      apply richardson-lucy deconvolution with gaussian psf\n"
+          "   [-blind lambda:ksize:maxiters]  apply blind_deconv\n"
+          "   [-gf sigma:eps]                 apply (auto) guided filter\n"
+          "   [-gb sigma]                     apply gaussian blur\n"
+          "   [-mb r]                         apply median blur\n"
+          "   [-wmb r:sigma]                  apply weighted median filter\n"
+          "   [-nr iterations]                apply GIMP noise reduction\n"
+          "   [-hs low:high]                  apply histogram strecth with clipping\n"
+          "   [-clip min:mx]                  apply min/max clip\n"
+          "   [-normalize min:mx]             apply cv::normalize(min, max)\n"
+          "   [-csmooth mb:gs]                smooth colors with median and / or gaussian blur\n"
+          "   [-pyrdown]                      apply pyrDonw()\n"
+          "   [-resize <fx:fy>]               apply cv::resize()\n"
+
+          "\n"
+          );
+
+      return 0;
+    }
+
+
+    if ( strcmp(argv[i], "-o") == 0 ) {
+      if ( ++i >= argc ) {
+        fprintf(stderr, "Command line error: No output image specified\n");
+        return 1;
+      }
+      output_file_name = argv[i];
+    }
+
+    else if ( strcmp(argv[i], "-overwrite") == 0 ) {
+      overwrite_confirmed = true;
+    }
+
+    else if ( strcmp(argv[i], "-unsharp") == 0 ) {
+
+      if ( ++i >= argc ) {
+        fprintf(stderr, "Command line error: No unsharp mask sharpen parameters specified\n");
+        return 1;
+      }
+
+      double sigma = 0, amount = 0;
+
+      if ( sscanf(argv[i], "%lf:%lf", &sigma, &amount) != 2 || sigma <= 0 || amount <= 0 ) {
+        fprintf(stderr, "Command line error: invalid unsharp mask parameters specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      chain.emplace_back(c_unsharp_mask_image_processor::create(
+              sigma, amount));
+
+    }
+
+
+
+    else if ( input_file_name.empty() ) {
+      input_file_name = argv[i];
+    }
+
+    else {
+      fprintf(stderr, "Command line error: invalid argument '%s'\n", argv[i]);
+      return 1;
+    }
+  }
+
+  if ( input_file_name.empty() ) {
+    fprintf(stderr, "Command line error: No input image specified\n");
+    return 1;
+  }
+
+  if ( !output_file_name.empty() && output_file_name == input_file_name && !overwrite_confirmed ) {
+    fprintf(stderr, "Input and output file names are the same. Use -overwrite option to confirm overwriting\n");
+    return 1;
+  }
+
+  if ( output_file_name.empty() ) {
+    set_file_suffix(output_file_name =
+        get_file_name(input_file_name),
+        "-PP.tiff");
+  }
+
+  output_suffix =
+      get_file_suffix(output_file_name);
+
+
+  if ( !(image = cv::imread(input_file_name, cv::IMREAD_UNCHANGED)).data ) {
+    CF_FATAL("cv::imread(%s) fails", input_file_name.c_str());
+    return 1;
+  }
+
+  cv::minMaxLoc(image, &min, &max);
+
+  CF_DEBUG("input: %dx%d channels=%d depth=%d min=%g max=%g",
+        image.cols, image.rows,
+        image.channels(), image.depth(),
+        min, max);
+
+  switch ( image.channels() ) {
+  case 1 :
+    break;
+    // Not clear how to interpret. Consider to add command line parameter.
+    //  case 2 :
+    //    break;
+  case 3 :
+    break;
+  case 4 : // Assuming BGRA
+    cv::extractChannel(image, mask, 3);
+    cv::cvtColor(image, image, cv::COLOR_BGRA2BGR);
+    break;
+  default :
+    CF_FATAL("Invalid input: RGB or grayscale image expected, image.channels()=%d rgb_image.depth()=%d",
+        image.channels(), image.depth());
+    return 1;
+    break;
+  }
+
+  convertTofp32(image,
+      image);
+
+  if ( !mask.empty() ) {
+    save_image(mask, "mask.tiff");
+    mask.release();
+    //cv::compare(mask, 0, cv::CMP_GT);
+  }
+
+
+  chain.process(image, mask);
+
+  cv::minMaxLoc(image, &min, &max);
+  CF_DEBUG("Output range: min=%f max=%f", min, max);
+
+  if ( strcasecmp(output_suffix.c_str(), ".tiff") != 0 && strcasecmp(output_suffix.c_str(), ".tif") != 0 ) {
+
+    // clip_range();
+    cv::max(image, 0, image);
+    cv::min(image, 1, image);
+
+    if ( strcasecmp(output_suffix.c_str(), "png") == 0 ) {
+      image.convertTo(image, CV_16U, UINT16_MAX);
+    }
+    else {
+      image.convertTo(image, CV_8U, UINT8_MAX);
+    }
+  }
+
+
+  if ( !save_image(image, output_file_name) ) {
+    CF_ERROR("save_image('%s') fails", output_file_name.c_str());
+    return 1;
+  }
+
+  return 0;
+}

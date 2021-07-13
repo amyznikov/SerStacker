@@ -1,0 +1,189 @@
+/*
+ * QStackingSettingsWidget.cc
+ *
+ *  Created on: Feb 8, 2021
+ *      Author: amyznikov
+ */
+
+#include "QStackOptions.h"
+#include <gui/qstackingthread/QStackingThread.h>
+#include <gui/widgets/addctrl.h>
+
+#define ICON_close          "close"
+#define ICON_check_all      "check_all"
+
+static QIcon getIcon(const QString & name)
+{
+  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+}
+
+
+QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
+  : Base("QStackingSettingsWidget", parent)
+{
+  Q_INIT_RESOURCE(qstackingoptions_resources);
+
+  stackName_ctl =
+      add_editbox(form, "* Stack Name:",
+          [this]() {
+            if ( stack_ && !updatingControls() ) {
+              const QString & text = stackName_ctl->text();
+              if ( !text.isEmpty() ) {
+                LOCK(); stack_->set_name(text.toStdString()); UNLOCK();
+                emit stackNameChanged(stack_);
+              }
+            }
+          });
+
+
+  add_expandable_groupbox(form, "* Master Frame Options",
+      masterFrameSettings_ctl =
+          new QMasterFrameOptions(this));
+
+
+  add_expandable_groupbox(form, "* Frame accumulation options",
+      frameAccumulationSettings_ctl =
+          new QFrameAccumulationSettings(this));
+
+  add_expandable_groupbox(form,
+      "* Frame Registration Options",
+      frameRegistrationSettings_ctl =
+          new QFrameRegistrationOptions(this));
+
+  add_expandable_groupbox(form,
+      "* Output Options",
+      outputOptions_ctl =
+          new QStackOutputOptions(this));
+
+  connect(outputOptions_ctl, &QStackOutputOptions::applyOutputSettingsToAllRequested,
+      this, &ThisClass::applyOutputSettingsToAllRequested);
+
+  connect(masterFrameSettings_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
+      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
+
+  updateControls();
+}
+
+void QStackingSettingsWidget::setCurrentStack(const c_image_stacking_options::ptr & options)
+{
+  stack_ = options;
+  updateControls();
+}
+
+const c_image_stacking_options::ptr & QStackingSettingsWidget::currentStack() const
+{
+  return stack_;
+}
+
+void QStackingSettingsWidget::onupdatecontrols()
+{
+  if ( !stack_ ) {
+    setEnabled(false);
+  }
+  else {
+
+    stackName_ctl->setText(stack_->name().c_str());
+    masterFrameSettings_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
+    frameAccumulationSettings_ctl->set_accumulation_options(&stack_->accumulation_options());
+    frameRegistrationSettings_ctl->set_registration_options(&stack_->frame_registration_options());
+    outputOptions_ctl->set_debug_options(&stack_->output_options());
+
+    if ( QStackingThread::isRunning() && stack_ == QStackingThread::currentStack() ) {
+      setEnabled(false);
+    }
+    else {
+      setEnabled(true);
+    }
+  }
+}
+
+
+
+QStackOptions::QStackOptions(QWidget * parent)
+  : Base(parent)
+{
+
+  QAction * action;
+
+  Q_INIT_RESOURCE(qstackingoptions_resources);
+
+  static const auto createScrollableWrap =
+      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea *
+  {
+    QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidget(w);
+    return scrollArea;
+  };
+
+  static const auto addSpacer =
+      [](QToolBar * toolBar) -> QWidget *
+  {
+    QWidget * spacer = new QWidget();
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    toolBar->addWidget(spacer);
+    return spacer;
+  };
+
+
+  layout_ = new QVBoxLayout(this);
+  toolbar_ = new QToolBar(this);
+  toolbar_->setIconSize(QSize(16, 16));
+  toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  toolbar_->setOrientation(Qt::Horizontal);
+
+  toolbar_->addWidget(new QLabel("<strong>Stacking options</strong>"));
+
+  addSpacer(toolbar_);
+
+  toolbar_->addAction(action = new QAction(getIcon(ICON_check_all), "Apply to all..."));
+  action->setToolTip("Set these parameters to all selected stacks");
+  connect(action, &QAction::triggered,
+      [this]() {
+        if ( stackSettings_ctl->currentStack() ) {
+          emit applyRegistrationSettingsToAllRequested(stackSettings_ctl->currentStack());
+        }
+      });
+
+
+  toolbar_->addAction(action = new QAction(getIcon(ICON_close), "Close"));
+  action->setShortcut(QKeySequence::Cancel);
+  action->setToolTip("Close window");
+  connect(action, &QAction::triggered, this,
+      &ThisClass::closeWindowRequested);
+
+
+
+  stackSettings_ctl =  new QStackingSettingsWidget(this);
+  scrollArea_ = createScrollableWrap(stackSettings_ctl);
+
+
+  layout_->addWidget(toolbar_, 1, Qt::AlignTop);
+  layout_->addWidget(scrollArea_, 100);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyOutputSettingsToAllRequested,
+      this, &ThisClass::applyOutputSettingsToAllRequested);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameSettingsToAllRequested,
+      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
+
+}
+
+void QStackOptions::setCurrentStack(const c_image_stacking_options::ptr & options)
+{
+  stackSettings_ctl->setCurrentStack(options);
+}
+
+const c_image_stacking_options::ptr & QStackOptions::currentStack() const
+{
+  return stackSettings_ctl->currentStack();
+}
+
+
+void QStackOptions::updateControls()
+{
+  return stackSettings_ctl->updateControls();
+}
+

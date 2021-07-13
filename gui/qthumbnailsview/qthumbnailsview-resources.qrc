@@ -1,0 +1,12 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qthumbnailsview">
+	<file>icons/dirtree.png</file>
+	<file>icons/delete.png</file>
+	<file>icons/reload.png</file>
+	<file>icons/filter.png</file>
+	<file>icons/filter-clear.png</file>
+	<file>icons/hourglass.png</file>
+	<file>icons/hourglass2.png</file>
+	<file>icons/badimage.png</file>
+</qresource>
+</RCC>

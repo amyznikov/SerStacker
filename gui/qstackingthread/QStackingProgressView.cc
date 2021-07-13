@@ -1,0 +1,162 @@
+/*
+ * QStackingProgressView.cc
+ *
+ *  Created on: Feb 19, 2021
+ *      Author: amyznikov
+ */
+
+#include "QStackingProgressView.h"
+#include "QStackingThread.h"
+#include <gui/widgets/QWaitCursor.h>
+//#include <core/io/save_image.h>
+#include <core/debug.h>
+
+QStackingProgressView::QStackingProgressView(QWidget * parent)
+  : Base(parent)
+{
+  layout_ = new QVBoxLayout(this);
+
+  progressLabel_ = new QLabel("Starting...");
+  layout_->addWidget(progressLabel_);
+
+
+  //
+  connect(QStackingThread::singleton(), &QStackingThread::started,
+      this, &ThisClass::onStackingThreadStarted,
+      Qt::QueuedConnection);
+
+  connect(QStackingThread::singleton(), &QStackingThread::finished,
+      this, &ThisClass::onStackingThreadFinished,
+      Qt::QueuedConnection);
+
+  connect(QStackingThread::singleton(), &QStackingThread::finishing,
+      this, &ThisClass::onStackingThreadFinishing,
+      Qt::QueuedConnection);
+  //
+
+  connect(QStackingThread::singleton(), &QStackingThread::frameProcessed,
+      this, &ThisClass::onFrameProcessed,
+      Qt::QueuedConnection);
+
+  connect(QStackingThread::singleton(), &QStackingThread::frameAccumulated,
+      this, &ThisClass::onArameAccumulated,
+      Qt::QueuedConnection);
+
+  if ( QStackingThread::isRunning() ) {
+    onStackingThreadStarted();
+  }
+}
+
+void QStackingProgressView::setImageViewer(QImageEditor * imageViewer)
+{
+  this->imageViewer_ = imageViewer;
+  updateAccumulatedImageDisplay(true);
+}
+
+QImageEditor * QStackingProgressView::imageViewer() const
+{
+  return imageViewer_;
+}
+
+void QStackingProgressView::onStackingThreadStarted()
+{
+  hasCurrentImageUpdates_ = false;
+  timerId = startTimer(1000, Qt::VeryCoarseTimer);
+
+}
+
+void QStackingProgressView::onStackingThreadFinishing()
+{
+  killTimer(timerId);
+  timerId = 0;
+
+  QApplication::setOverrideCursor(Qt::WaitCursor);
+}
+
+
+void QStackingProgressView::onStackingThreadFinished()
+{
+  if ( timerId > 0 ) {
+    killTimer(timerId);
+    timerId = 0;
+  }
+
+  updateAccumulatedImageDisplay();
+
+  QApplication::restoreOverrideCursor();
+}
+
+void QStackingProgressView::onFrameProcessed()
+{
+  hasCurrentStatisticsUpdates_ = true;
+}
+
+void QStackingProgressView::onArameAccumulated()
+{
+  hasCurrentImageUpdates_ = true;
+}
+
+void QStackingProgressView::showEvent(QShowEvent *e)
+{
+  Base::showEvent(e);
+  updateAccumulatedImageDisplay();
+}
+
+void QStackingProgressView::timerEvent(QTimerEvent *event)
+{
+  if ( !updatingDisplay_ ) {
+    updateAccumulatedImageDisplay();
+  }
+}
+
+void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
+{
+  if ( !force && !hasCurrentStatisticsUpdates_ && !hasCurrentImageUpdates_ ) {
+    return;
+  }
+
+  c_image_stacking_pipeline * pipeline =
+          QStackingThread::pipeline();
+
+  if ( !pipeline ) {
+    return;
+  }
+
+  if ( force || hasCurrentStatisticsUpdates_ ) {
+
+    progressLabel_->setText(QString("F %1 / %2 / %3").
+        arg(pipeline->num_frames_accumulated()).
+        arg(pipeline->num_frames_processed()).
+            arg(pipeline->num_frames_total()));
+
+  }
+
+  if ( (force || hasCurrentImageUpdates_) && imageViewer_ && imageViewer_->isVisible() ) {
+
+    updatingDisplay_ = true;
+
+    QWaitCursor wait(this, pipeline->current_image().size().area() > 3e6);
+    cv::Mat currentImage, currentMask;
+    bool computed;
+
+    pipeline->lock();
+      computed = pipeline->compute_accumulated_image(currentImage, currentMask);
+    pipeline->unlock();
+
+    if ( computed ) {
+      imageViewer_->editImage(currentImage, currentMask);
+    }
+  }
+
+  hasCurrentStatisticsUpdates_ = false;
+  hasCurrentImageUpdates_ = false;
+  updatingDisplay_ = false;
+}
+
+//void QStackingProgressView::updateCurrentImage()
+//{
+//  if ( imageViewer_->isVisible() ) {
+//    hasCurrentImageUpdates_ = true;
+//    updateAccumulatedImageDisplay();
+//  }
+//}

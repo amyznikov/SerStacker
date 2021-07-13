@@ -1,0 +1,82 @@
+# temp files
+*~
+CMakeLists.txt.user
+CMakeCache.txt
+.DS_Store
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Python cache
+__pycache__
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Eclipse project files
+.project
+.cproject
+.settings/*
+.idea/*
+
+# Qt moc files
+moc_*.cpp
+moc_*.h
+*.h.moc.cc
+*.h.moc.cc_parameters
+.qmake.stash
+*.swp
+
+# QTCreator temp files
+*.orig
+
+# log files
+*.log
+
+# image files
+#*.png
+#*.jpg
+*.tiff
+
+# spreadsheet files
+*.csv
+*.tsv
+
+# Build
+build*
+
+# video demos
+videos/*
+
+# YouCompleteMe
+compile_commands.json
+
+# Tags
+tags
+
+# Git
+.gitreview

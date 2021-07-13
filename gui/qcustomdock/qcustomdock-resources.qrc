@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qcustomdock">
+	<file>icons/dock.png</file>
+	<file>icons/close.png</file>
+</qresource>
+</RCC>

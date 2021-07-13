@@ -1,0 +1,1477 @@
+/*
+ * QStackingSequencesTree.cc
+ *
+ *  Created on: Jan 12, 2021
+ *      Author: amyznikov
+ */
+
+#include "QStackSequencesTree.h"
+#include <gui/qstackingthread/QStackingThread.h>
+
+#include <core/debug.h>
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define ICON_stack          "stack"
+#define ICON_add_stack      "add-stack"
+#define ICON_add_frames     "add-frames"
+#define ICON_add_items      "add-items"
+#define ICON_delete_item    "delete-item"
+#define ICON_options        "options"
+#define ICON_start          "start"
+#define ICON_start_all      "start-all"
+#define ICON_stop           "stop"
+#define ICON_pause          "pause"
+
+
+static QIcon getIcon(const QString & name)
+{
+  return QIcon(QString(":/qstacktree/icons/%1").arg(name));
+}
+
+//static QString getResource(const QString & name)
+//{
+//  return QString(":/qstacktree/%1").arg(name);
+//}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+  enum TreeItemType {
+    ItemType_Stack = QTreeWidgetItem::UserType + 1,
+    ItemType_InputSource = QTreeWidgetItem::UserType + 2,
+  };
+
+}
+
+
+
+
+class QStackListTreeView::QImageStackItem
+    : public QTreeWidgetItem
+{
+public:
+  typedef QImageStackItem ThisClass;
+  typedef QTreeWidgetItem Base;
+
+  QImageStackItem(QTreeWidget * treeview, const c_image_stacking_options::ptr & ppline);
+  void refreshInputSources();
+
+  const c_image_stacking_options::ptr & stack() const;
+  void setStack(const c_image_stacking_options::ptr & options);
+
+protected:
+  c_image_stacking_options::ptr stack_;
+};
+
+class QStackListTreeView::QInputSourceItem
+    : public QTreeWidgetItem
+{
+public:
+  typedef QInputSourceItem ThisClass;
+  typedef QTreeWidgetItem Base;
+
+  QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent = Q_NULLPTR );
+  const c_input_source::ptr & inputSource() const;
+  void setInputSource(const c_input_source::ptr & input_source ) ;
+
+protected:
+  c_input_source::ptr input_source_;
+};
+
+
+typedef QStackListTreeView::QImageStackItem QStackOptionsItem;
+typedef QStackListTreeView::QInputSourceItem QInputSourceItem;
+
+
+QStackListTreeView::QImageStackItem::QImageStackItem(QTreeWidget * treeview, const c_image_stacking_options::ptr & ppline)
+  : Base(treeview, (int)ItemType_Stack)
+{
+  setStack(ppline);
+}
+
+void QStackListTreeView::QImageStackItem::refreshInputSources()
+{
+  QTreeWidgetItem * childItem;
+
+  while ( (childItem = takeChild(0)) ) {
+    delete childItem;
+  }
+
+  if ( stack_ && stack_->input_sequence() ) {
+    for ( const c_input_source::ptr & input_source : stack_->input_sources() ) {
+      new QInputSourceItem(input_source, this);
+    }
+  }
+}
+
+const c_image_stacking_options::ptr & QStackListTreeView::QImageStackItem::stack() const
+{
+  return stack_;
+}
+
+void QStackListTreeView::QImageStackItem::setStack(const c_image_stacking_options::ptr & options)
+{
+  if ( (stack_ = options) ) {
+    setFlags(flags() | Qt::ItemIsEditable | Qt::ItemIsUserCheckable|Qt::ItemIsSelectable);
+    setText(0, stack_->name().c_str());
+    setCheckState(0, Qt::Checked);
+    refreshInputSources();
+  }
+}
+
+
+QStackListTreeView::QInputSourceItem::QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent)
+  : Base(parent, (int) ItemType_InputSource)
+{
+  setInputSource(input_source);
+}
+
+const c_input_source::ptr & QStackListTreeView::QInputSourceItem::inputSource() const
+{
+  return input_source_;
+}
+
+void QStackListTreeView::QInputSourceItem::setInputSource(const c_input_source::ptr & input_source)
+{
+  if ( (input_source_ = input_source) ) {
+    setText(0, QFileInfo(input_source->filename().c_str()).fileName());
+    setWhatsThis(0, input_source->filename().c_str());
+    setToolTip(0, input_source->filename().c_str());
+    setFlags(flags() & ~Qt::ItemIsEditable);
+  }
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QStackListTreeView::QStackListTreeView(QWidget * parent)
+  : Base(parent)
+{
+
+  setHeaderHidden(true);
+  //setRootIsDecorated(false);
+  setSelectionMode(QAbstractItemView::ExtendedSelection);
+  setSortingEnabled(false);
+  setContextMenuPolicy(Qt::CustomContextMenu);
+
+  viewport()->setAcceptDrops(true);
+  setDefaultDropAction(Qt::CopyAction);
+  setDragDropMode(QAbstractItemView::DropOnly);
+  setDropIndicatorShown(true);
+
+  setEditTriggers(QAbstractItemView::EditKeyPressed |
+      QAbstractItemView::SelectedClicked);
+
+  setExpandsOnDoubleClick(false);
+
+
+//  connect(this, &QTreeWidget::customContextMenuRequested,
+//      this, &ThisClass::onCustomContextMenuRequested);
+//
+//  connect(this, &QTreeWidget::itemChanged,
+//      this, &ThisClass::onItemChanged);
+//
+//  connect(this, &QTreeWidget::currentItemChanged,
+//      this, &ThisClass::onCurrentItemChanged);
+//
+//  connect(this, &QTreeWidget::itemDoubleClicked,
+//      this, &ThisClass::onItemDoubleClicked);
+
+  setEnabled(false);
+}
+
+void QStackListTreeView::set_stacklist(const c_image_stacks_collection::ptr & stacklist)
+{
+  setEnabled((this->stacklist_ = stacklist) != nullptr);
+  populateTreeView();
+}
+
+const c_image_stacks_collection::ptr & QStackListTreeView::stacklist() const
+{
+  return this->stacklist_;
+}
+
+void QStackListTreeView::populateTreeView()
+{
+  QTreeWidgetItem * item;
+  while ( (item = takeTopLevelItem(0)) ) {
+    delete item;
+  }
+
+  if ( stacklist_ ) {
+    for ( uint i = 0, n = stacklist_->size(); i < n; ++i ) {
+      addStackingOptionsItem(stacklist_->item(i));
+    }
+  }
+}
+
+QTreeWidgetItem * QStackListTreeView::addStackingOptionsItem(const c_image_stacking_options::ptr & options)
+{
+  return new QImageStackItem(this, options);
+}
+
+QTreeWidgetItem * QStackListTreeView::addNewStackingOptions(const QString & name)
+{
+  QTreeWidgetItem * item = Q_NULLPTR;
+
+  if ( stacklist_ ) {
+
+    std::string ppname = name.toStdString();
+
+    /* generate new name for new stacking pipeline */
+    if ( ppname.empty() ) {
+
+      char tmp[256];
+      for ( int i = 0; i < 1000; ++i ) {
+        sprintf(tmp, "stack%03d", i);
+        if ( stacklist_->indexof(tmp) < 0 ) {
+          ppname = tmp;
+          break;
+        }
+      }
+    }
+
+    /* add new stack to colection */
+    const c_image_stacking_options::ptr options =
+        c_image_stacking_options::create(ppname);
+
+    if ( options ) {
+
+      options->set_input_sequence(c_input_sequence::create());
+      stacklist_->add(options);
+
+      /* add stack item to tree widget */
+      item = addStackingOptionsItem(options);
+    }
+  }
+
+  return item;
+}
+
+
+void QStackListTreeView::updateStackName(const c_image_stacking_options::ptr & pipeline)
+{
+  for ( int i = 0, n = this->topLevelItemCount(); i < n; ++i ) {
+
+    QImageStackItem * item =
+        dynamic_cast<QImageStackItem *>(this->
+            topLevelItem(i));
+
+    if ( item && item->stack() == pipeline ) {
+      item->setText(0, pipeline->name().c_str());
+      return;
+    }
+  }
+}
+
+
+void QStackListTreeView::onAddNewStackingOptions()
+{
+  QTreeWidgetItem * item = addNewStackingOptions();
+  if ( item ) {
+    setCurrentItem(item);
+  }
+}
+
+void QStackListTreeView::onAddSourcesToCurrentStackingOptions()
+{
+  QImageStackItem * ppitem = dynamic_cast<QImageStackItem *>(currentItem());
+  if ( ppitem ) {
+
+    static QString filter;
+
+    if ( filter.isEmpty() ) {
+
+      filter.append("SER files (");
+      for ( const std::string & s : c_ser_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+
+
+      filter.append("FITS files (");
+      for ( const std::string & s : c_fits_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+
+
+      filter.append("Regular images (");
+      for ( const std::string & s : c_regular_image_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+
+      filter.append("RAW/DSLR images (");
+      for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+
+      filter.append("Movies (");
+      for ( const std::string & s : c_movie_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+
+      filter.append("All Files (*.*);;");
+    }
+
+    static const QString lastSourcesDirectoryKeyName =
+        "lastSourcesDirectory";
+
+    static const QString lastSelectedFilterKeyName =
+        "lastSelectedFilter";
+
+    QSettings settings;
+
+
+    QString selectedFilter =
+        settings.value(lastSelectedFilterKeyName).toString();
+
+    QStringList selectedFiles = QFileDialog::getOpenFileNames(this,
+        "Select input sources",
+        settings.value(lastSourcesDirectoryKeyName).toString(),
+        filter,
+        &selectedFilter);
+
+    if ( !selectedFiles.empty() ) {
+
+      settings.setValue(lastSourcesDirectoryKeyName,
+          QFileInfo(selectedFiles.back()).absolutePath());
+
+      settings.setValue(lastSelectedFilterKeyName,
+          selectedFilter);
+
+      std::vector<std::string> cfilenames;
+      cfilenames.reserve(selectedFiles.size());
+      for ( const QString & s: selectedFiles ) {
+        cfilenames.emplace_back(s.toStdString());
+      }
+
+      if ( ppitem->stack()->input_sequence()->add_sources(cfilenames) ) {
+        ppitem->refreshInputSources();
+        expandItem(ppitem);
+      }
+
+    }
+
+  }
+}
+
+void QStackListTreeView::onDeleteSelectedItems()
+{
+  QList<QTreeWidgetItem*> cursel = selectedItems();
+  if ( !cursel.empty() ) {
+    deleteItems(cursel);
+  }
+}
+
+void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
+{
+  QImageStackItem * stackingOptionsItem;
+  QInputSourceItem * inpuSourceItem;
+
+//  QSet<c_stacking_options::ptr> deletedStacks;
+//  QSet<c_stacking_options::ptr> changedStacks;
+
+  for ( QTreeWidgetItem * item : items ) {
+
+    switch ( item->type() ) {
+
+    case ItemType_Stack :
+      if ( (stackingOptionsItem = dynamic_cast<QImageStackItem *>(item)) ) {
+
+        c_image_stacking_options::ptr options =
+            stackingOptionsItem->stack();
+
+        //deletedStacks.insert(options);
+
+        for ( int i = 0, n = item->childCount(); i < n; ++i ) {
+          if ( (inpuSourceItem = dynamic_cast<QInputSourceItem *>(item->child(i))) ) {
+
+            if ( options ) {
+              options->remove_input_source(inpuSourceItem->inputSource());
+            }
+
+            inpuSourceItem->setInputSource(nullptr);
+          }
+        }
+
+        if ( options ) {
+          stackingOptionsItem->setStack(nullptr);
+          stacklist_->remove(options);
+        }
+
+      }
+      break;
+
+    case ItemType_InputSource :
+      if ( (inpuSourceItem = dynamic_cast<QInputSourceItem *>(item)) ) {
+
+        c_input_source::ptr input_source =
+            inpuSourceItem->inputSource();
+
+        if ( input_source ) {
+          inpuSourceItem->setInputSource(nullptr);
+
+          if ( (stackingOptionsItem = dynamic_cast<QImageStackItem *>(item->parent())) ) {
+
+            if ( stackingOptionsItem->stack() ) {
+
+              stackingOptionsItem->stack()->remove_input_source(input_source);
+            }
+
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  for ( int i = 0; i < items.size(); ++i ) {
+    QTreeWidgetItem * item = items[i];
+    if ( item->type() == ItemType_InputSource ) {
+      items.removeAt(i--);
+      delete item;
+    }
+  }
+
+  qDeleteAll(items);
+
+
+
+}
+
+//void QStackListTreeView::onStartStopStackingActionClicked()
+//{
+//  QImageStackItem * item =
+//      dynamic_cast<QImageStackItem *>(this->
+//          currentItem());
+//  if ( item )  {
+//
+//    if ( !QStackingThread::isRunning() ) {
+//      CF_DEBUG("QStackingThread::start(item->pipeline())");
+//      QStackingThread::start(item->stacking_options());
+//    }
+//    else if ( item->stacking_options() == QStackingThread::options() ) {
+//      CF_DEBUG("QStackingThread::cancel()");
+//      QStackingThread::cancel();
+//    }
+//  }
+//}
+
+
+void QStackListTreeView::keyPressEvent(QKeyEvent *e)
+{
+  switch ( e->key() ) {
+  case Qt::Key_Delete :
+    onDeleteSelectedItems();
+    return;
+  }
+
+  Base::keyPressEvent(e);
+}
+
+
+void QStackListTreeView::mouseMoveEvent(QMouseEvent *e)
+{
+  if ( !(e->buttons() & Qt::LeftButton) ) {
+    return Base::mouseMoveEvent(e);
+  }
+
+  if ( QStackingThread::isRunning() ) {
+    return Base::mouseMoveEvent(e);
+  }
+
+
+  QList<QTreeWidgetItem*> selection = selectedItems();
+  if ( selection.count() < 1 ) {
+    return Base::mouseMoveEvent(e);
+  }
+
+  bool all_selected_items_are_frame_sources = true;
+  for ( const QTreeWidgetItem * item : selection ) {
+    if ( item->type() != ItemType_InputSource ) {
+      all_selected_items_are_frame_sources = false;
+      break;
+    }
+  }
+
+  if ( !all_selected_items_are_frame_sources ) {
+    return Base::mouseMoveEvent(e);
+  }
+
+  QList<QUrl> list;
+  for ( const QTreeWidgetItem * item : selection ) {
+
+    const QInputSourceItem * inputSourceItem =
+        dynamic_cast<const QInputSourceItem*>(item);
+
+    const QImageStackItem * parentItem =
+        dynamic_cast<const QImageStackItem*>(inputSourceItem->parent());
+
+    const c_input_source::ptr & input_source =
+        inputSourceItem->inputSource();
+
+    const c_image_stacking_options::ptr & stacking_options =
+        parentItem->stack();
+
+
+    list.append(QUrl(QString("cinputsource://%1@%2").
+        arg(stacking_options->name().c_str()).
+        arg(input_source->filename().c_str())));
+  }
+  //CF_DEBUG("mouseMoveEvent: selection.count = %d", selection.count());
+
+
+  // mime stuff && start drag
+  QMimeData *mimeData = new QMimeData;
+  mimeData->setUrls(list);
+
+  QDrag * drag = new QDrag(this);
+  drag->setMimeData(mimeData);
+
+  drag->exec(Qt::MoveAction);
+}
+
+
+
+Qt::DropActions QStackListTreeView::supportedDropActions() const
+{
+  return Qt::CopyAction | Qt::MoveAction;
+}
+
+void QStackListTreeView::dragEnterEvent(QDragEnterEvent *event)
+{
+  if ( event->mimeData()->hasUrls() ) {
+    event->acceptProposedAction();
+  }
+  else {
+    Base::dragEnterEvent(event);
+  }
+}
+
+void QStackListTreeView::dragMoveEvent(QDragMoveEvent *event)
+{
+  if ( event->mimeData()->hasUrls() ) {
+    event->setDropAction(Qt::DropAction::CopyAction);
+    event->accept();
+    return;
+  }
+  event->setDropAction(Qt::DropAction::IgnoreAction);
+}
+
+
+void QStackListTreeView::dropEvent(QDropEvent *e)
+{
+  QTreeWidgetItem * selectedItem = Q_NULLPTR;
+  QImageStackItem * stackItem = Q_NULLPTR;
+  bool newStackItemCreated = false;
+  Qt::DropAction action = Qt::IgnoreAction;
+
+
+  if ( !e->mimeData()->hasUrls() ) {
+    return;
+  }
+
+  if ( (selectedItem = Base::itemAt(e->pos())) ) {
+    switch ( selectedItem->type() ) {
+    case ItemType_Stack :
+      stackItem = dynamic_cast<QImageStackItem *>(selectedItem);
+      break;
+    case ItemType_InputSource :
+      stackItem = dynamic_cast<QImageStackItem *>(selectedItem->parent());
+      break;
+    default :
+      CF_DEBUG("selectedItem->type()=%d", selectedItem->type());
+      break;
+    }
+  }
+
+
+  if ( stackItem || (e->keyboardModifiers() & Qt::ControlModifier) ) {
+    //
+    // Add dropped items to single stack
+    //
+
+    if ( !stackItem ) {
+      if ( (stackItem = dynamic_cast<QImageStackItem *>(addNewStackingOptions())) ) {
+        newStackItemCreated = true;
+      }
+    }
+
+    if ( stackItem ) {
+
+      if ( !dropSources(e, stackItem, selectedItem) ) {
+        if ( newStackItemCreated ) {
+          delete stackItem;
+        }
+      }
+      else {
+
+        action = Qt::CopyAction;
+
+        if ( newStackItemCreated ) {
+
+          const QFileInfo fileInfo(stackItem->stack()->input_sequence()->source(0)->filename().c_str());
+          const std::string name = fileInfo.completeBaseName().toStdString();
+
+          if ( stacklist_->indexof(name) < 0 ) {
+            stackItem->stack()->set_name(name);
+            stackItem->setText(0, name.c_str());
+          }
+
+          setCurrentItem(stackItem);
+        }
+      }
+    }
+
+  }
+  else {
+    //
+    // Add dropped items each to separate stacks
+    //
+
+    const QList<QUrl> urls = e->mimeData()->urls();
+
+    for ( const QUrl & url : urls ) {
+      if ( (stackItem = dynamic_cast<QImageStackItem *>(addNewStackingOptions())) ) {
+        if ( !dropSource(e, url, stackItem, selectedItem) ) {
+          delete stackItem;
+        }
+        else {
+
+          action = Qt::CopyAction;
+
+          const QFileInfo fileInfo(stackItem->stack()->input_sequence()->source(0)->filename().c_str());
+          const std::string name = fileInfo.completeBaseName().toStdString();
+
+          if ( stacklist_->indexof(name) < 0 ) {
+            stackItem->stack()->set_name(name);
+            stackItem->setText(0, name.c_str());
+          }
+
+          setCurrentItem(stackItem);
+        }
+      }
+    }
+  }
+
+
+  e->setDropAction(action);
+  e->accept();
+
+  setFocus();
+
+}
+
+
+bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStackItem * targetStackItem, QTreeWidgetItem * selectedItem)
+{
+
+  bool dropped = false;
+
+  const c_input_sequence::ptr & target_sequence =
+      targetStackItem->stack()->input_sequence();
+
+  QInputSourceItem * targetSourceItem = Q_NULLPTR;
+
+  if ( selectedItem && selectedItem->type() == ItemType_InputSource ) {
+    targetSourceItem = dynamic_cast<QInputSourceItem * >(selectedItem);
+  }
+
+  if ( url.scheme() != "cinputsource" ) {
+
+
+    QFileInfo fileInfo(url.toLocalFile());
+
+    if ( !fileInfo.isDir() ) {
+
+      const std::string pathfilename =
+          fileInfo.absoluteFilePath().toStdString();
+
+      if ( target_sequence->indexof(pathfilename) < 0 ) {
+
+        const int targetIndex = (!targetSourceItem) ? -1 :
+            target_sequence->indexof(targetSourceItem->inputSource());
+
+        c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
+        if (  input_source ) {
+
+          targetStackItem->insertChild(target_sequence->indexof(input_source),
+              new QInputSourceItem(input_source));
+
+          dropped = true;
+        }
+      }
+    }
+  }
+
+  else  {
+    QImageStackItem * sourceStackItem;
+    QInputSourceItem * inputSourceItem;
+
+    if ( (sourceStackItem = findStackItem(url.userName())) ) {
+      if ( (inputSourceItem = findInputSourceItem(sourceStackItem, url.path())) ) {
+
+        const std::string source_file_name = url.path().toStdString();
+        const c_input_sequence::ptr & source_sequence = sourceStackItem->stack()->input_sequence();
+        const int sourceIndex = source_sequence->indexof(source_file_name);
+        const int targetIndex = (!targetSourceItem) ? -1 : target_sequence->indexof(targetSourceItem->inputSource());
+
+        if ( sourceIndex >= 0 ) {
+
+          if ( sourceStackItem == targetStackItem ) {
+
+            if ( targetIndex != sourceIndex ) {
+
+              sourceStackItem->removeChild(inputSourceItem);
+              source_sequence->remove_source(sourceIndex);
+              delete inputSourceItem;
+
+              c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+              if (  input_source ) {
+
+                targetStackItem->insertChild(target_sequence->indexof(input_source),
+                    new QInputSourceItem(input_source));
+
+                dropped = true;
+              }
+            }
+          }
+          else if ( target_sequence->indexof(source_file_name) < 0 ) {
+
+            if ( !(e->keyboardModifiers() & Qt::ControlModifier) ) {
+              sourceStackItem->removeChild(inputSourceItem);
+              source_sequence->remove_source(sourceIndex);
+              delete inputSourceItem;
+            }
+
+            c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+            if (  input_source ) {
+
+              targetStackItem->insertChild(target_sequence->indexof(input_source),
+                  new QInputSourceItem(input_source));
+
+              dropped = true;
+            }
+
+          }
+
+        }
+
+      }
+    }
+  }
+
+  return dropped;
+
+}
+
+int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStackItem, QTreeWidgetItem * targetItem)
+{
+
+  int num_sourcess_added = 0;
+
+  const c_input_sequence::ptr & target_sequence =
+      targetStackItem->stack()->input_sequence();
+
+  QInputSourceItem * targetSourceItem = Q_NULLPTR;
+
+  if ( targetItem && targetItem->type() == ItemType_InputSource ) {
+    targetSourceItem = dynamic_cast<QInputSourceItem * >(targetItem);
+  }
+
+
+  const QList<QUrl> urls = e->mimeData()->urls();
+  const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
+
+  for ( const QUrl & url : urls ) {
+
+    if ( url.scheme() != "cinputsource" ) {
+
+
+      QFileInfo fileInfo(url.toLocalFile());
+
+      if ( !fileInfo.isDir() ) {
+
+        const std::string pathfilename =
+            fileInfo.absoluteFilePath().toStdString();
+
+        if ( target_sequence->indexof(pathfilename) < 0 ) {
+
+          const int targetIndex = (!targetSourceItem) ? -1 :
+              target_sequence->indexof(targetSourceItem->inputSource());
+
+          c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
+          if (  input_source ) {
+
+            targetStackItem->insertChild(target_sequence->indexof(input_source),
+                new QInputSourceItem(input_source));
+
+            ++ num_sourcess_added;
+          }
+        }
+      }
+    }
+
+    else  {
+      QImageStackItem * sourceStackItem;
+      QInputSourceItem * inputSourceItem;
+
+      if ( (sourceStackItem = findStackItem(url.userName())) ) {
+        if ( (inputSourceItem = findInputSourceItem(sourceStackItem, url.path())) ) {
+
+          const std::string source_file_name = url.path().toStdString();
+          const c_input_sequence::ptr & source_sequence = sourceStackItem->stack()->input_sequence();
+          const int sourceIndex = source_sequence->indexof(source_file_name);
+          const int targetIndex = (!targetSourceItem) ? -1 : target_sequence->indexof(targetSourceItem->inputSource());
+
+          if ( sourceIndex >= 0 ) {
+
+            if ( sourceStackItem == targetStackItem ) {
+
+              if ( targetIndex != sourceIndex ) {
+
+                sourceStackItem->removeChild(inputSourceItem);
+                source_sequence->remove_source(sourceIndex);
+                delete inputSourceItem;
+
+                c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+                if (  input_source ) {
+
+                  targetStackItem->insertChild(target_sequence->indexof(input_source),
+                      new QInputSourceItem(input_source));
+
+                  ++ num_sourcess_added;
+                }
+              }
+            }
+            else if ( target_sequence->indexof(source_file_name) < 0 ) {
+
+              if ( !(keyboardModifiers & Qt::ControlModifier) ) {
+                sourceStackItem->removeChild(inputSourceItem);
+                source_sequence->remove_source(sourceIndex);
+                delete inputSourceItem;
+              }
+
+              c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+              if (  input_source ) {
+
+                targetStackItem->insertChild(target_sequence->indexof(input_source),
+                    new QInputSourceItem(input_source));
+
+                ++ num_sourcess_added;
+              }
+
+            }
+
+          }
+
+        }
+      }
+    }
+  }
+
+  return num_sourcess_added;
+}
+
+QStackOptionsItem * QStackListTreeView::findStackItem(const QString & name) const
+{
+  if ( !name.isEmpty() ) {
+
+    const std::string cname = name.toStdString();
+
+    for ( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
+      QImageStackItem * item = dynamic_cast<QImageStackItem * >(topLevelItem(i));
+      if ( item && item->stack()->name() == cname ) {
+        return item;
+      }
+    }
+  }
+
+  return Q_NULLPTR;
+}
+
+QStackOptionsItem * QStackListTreeView::findStackItem(const c_image_stacking_options::ptr & stack) const
+{
+  if ( stack ) {
+    for ( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
+      QImageStackItem * item = dynamic_cast<QImageStackItem * >(topLevelItem(i));
+      if ( item && stack == item->stack() ) {
+        return item;
+      }
+    }
+  }
+  return Q_NULLPTR;
+}
+
+
+QInputSourceItem * QStackListTreeView::findInputSourceItem(QImageStackItem * stackItem, const QString & filename) const
+{
+  if( stackItem && !filename.isEmpty() ) {
+
+    const std::string cfilename = filename.toStdString();
+
+    for ( int i = 0, n = stackItem->childCount(); i < n; ++i ) {
+      QInputSourceItem * item = dynamic_cast<QInputSourceItem * >(stackItem->child(i));
+      if ( item && item->inputSource()->filename() == cfilename ) {
+        return item;
+      }
+    }
+  }
+
+  return Q_NULLPTR;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QStackSequencesTree::QStackSequencesTree(QWidget * parent)
+  : Base(parent)
+{
+  Q_INIT_RESOURCE(qstacktree_resources);
+
+  //
+  toolbarActions_.append(addStackAction =
+      new QAction(getIcon(ICON_add_stack),
+          "Add stack"));
+  addStackAction->setToolTip(
+      "Add new image stack...");
+
+
+  //
+  toolbarActions_.append(addSourcesAction =
+      new QAction(getIcon(ICON_add_frames),
+          "Add sources"));
+  addSourcesAction->setToolTip(
+      "Add sources to selected stack...");
+  addSourcesAction->setEnabled(false);
+
+
+
+  //
+  toolbarActions_.append(deleteItemAction =
+      new QAction(getIcon(ICON_delete_item),
+          "Delete selected item"));
+  deleteItemAction->setToolTip(
+      "Delete selecteted item...");
+  deleteItemAction->setEnabled(false);
+
+
+  //
+  toolbarActions_.append(showStackOptionsAction =
+      new QAction(getIcon(ICON_options),
+          "Stack options"));
+  showStackOptionsAction->setToolTip(
+      "Show stacking options");
+  showStackOptionsAction->setEnabled(false);
+
+
+  //
+  toolbarActions_.append(startStackingMenuAction = new QAction("Start"));
+  startStackingMenuAction->setMenu(startStacking = new QMenu());
+  startStacking->addAction(startAction = new QAction(getIcon(ICON_start), "Start"));
+  startStacking->addAction(startAllAction = new QAction(getIcon(ICON_start_all), "Start all"));
+  startStacking->setDefaultAction(startAction);
+  //startStackingMenu->setEnabled(false);
+  startStackingMenuAction->setEnabled(false);
+
+
+  //
+  toolbarActions_.append(stopStacking =
+      new QAction(getIcon(ICON_stop),
+          "Stop"));
+  stopStacking->setToolTip(
+      "Cancel current stacking");
+  stopStacking->setEnabled(false);
+
+//  toolbarActions_.append(startStopStackingAction =
+//      new QAction(getIcon(ICON_start),
+//          "Start / Stop stacking"));
+//  startStopStackingAction->setToolTip(
+//      "Start / Stop staking this sequence");
+//  startStopStackingAction->setEnabled(false);
+
+
+
+
+
+  /* Setup Treeview */
+  treeView_ = new QStackListTreeView(this);
+
+  /* Setup layout */
+  vbox_ = new QVBoxLayout(this);
+//  vbox_->addWidget(toolbar_);
+  vbox_->addWidget(treeView_);
+
+
+  /* Setup event handlers */
+
+  treeView_->installEventFilter(this);
+
+  connect(addStackAction, &QAction::triggered,
+      treeView_, &QStackListTreeView::onAddNewStackingOptions);
+
+  connect(addSourcesAction, &QAction::triggered,
+      treeView_, &QStackListTreeView::onAddSourcesToCurrentStackingOptions);
+
+  connect(deleteItemAction, &QAction::triggered,
+      treeView_, &QStackListTreeView::onDeleteSelectedItems);
+
+//  connect(startStopStackingAction, &QAction::triggered,
+//      treeView_, &QStackListTreeView::onStartStopStackingActionClicked);
+
+  connect(stopStacking, &QAction::triggered,
+      this, &ThisClass::onStopStackingClicked);
+
+  connect(startAction, &QAction::triggered,
+      this, &ThisClass::onStartStackingClicked);
+
+  connect(startAllAction, &QAction::triggered,
+      this, &ThisClass::onStartAllStackingClicked);
+
+  connect(showStackOptionsAction, &QAction::triggered,
+      this, &ThisClass::onShowStackOptionsClicked);
+
+  connect(treeView_, &QTreeWidget::customContextMenuRequested,
+      this, &ThisClass::onCustomContextMenuRequested);
+
+  connect(treeView_, &QTreeWidget::itemChanged,
+      this, &ThisClass::onItemChanged);
+
+  connect(treeView_, &QTreeWidget::currentItemChanged,
+      this, &ThisClass::onCurrentItemChanged);
+
+  connect(treeView_, &QTreeWidget::itemDoubleClicked,
+      this, &ThisClass::onItemDoubleClicked);
+
+//  connect(treeView_, &QTreeWidget::itemPressed,
+//      this, &ThisClass::onItemDoubleClicked);
+
+  connect(QStackingThread::singleton(), &QThread::started,
+      this, &ThisClass::onStackingThreadStarted);
+
+  connect(QStackingThread::singleton(), &QStackingThread::finishing,
+      this, &ThisClass::onStackingThreadFinishing);
+
+  connect(QStackingThread::singleton(), &QThread::finished,
+      this, &ThisClass::onStackingThreadFinished);
+
+
+
+//  connect(treeView_, &QStackSequencesTreeView::batchItemSelected,
+//      this, &ThisClass::batchItemSelected);
+//
+//  connect(treeView_, &QStackSequencesTreeView::batchItemDoubleClicked,
+//      this, &ThisClass::batchItemDoubleClicked);
+//
+//  connect(treeView_, &QStackSequencesTreeView::stackItemSelected,
+//      this, &ThisClass::stackItemSelected);
+//
+//  connect(treeView_, &QStackSequencesTreeView::stackItemDoubleClicked,
+//      this, &ThisClass::stackItemDoubleClicked);
+//
+//  connect(treeView_, &QStackSequencesTreeView::stackSourceItemSelected,
+//      this, &ThisClass::stackSourceItemSelected);
+//
+//  connect(treeView_, &QStackSequencesTreeView::stackSourceItemDoubleClicked,
+//      this, &ThisClass::stackSourceItemDoubleClicked);
+//
+//  connect(treeView_, &QStackSequencesTreeView::startStackingRequested,
+//      this, &ThisClass::startStackingRequested);
+
+}
+
+void QStackSequencesTree::set_stacklist(const c_image_stacks_collection::ptr & pipelines)
+{
+  treeView_->set_stacklist(pipelines);
+  updateControls();
+}
+
+const c_image_stacks_collection::ptr & QStackSequencesTree::stacklist() const
+{
+  return treeView_->stacklist();
+}
+
+const QList<QAction *> & QStackSequencesTree::toolbarActions() const
+{
+  return toolbarActions_;
+}
+
+
+void QStackSequencesTree::applyRegistrationSettingsToAll(const c_image_stacking_options::ptr & fromStack)
+{
+  if ( fromStack ) {
+
+    const int n = treeView_->topLevelItemCount();
+    for ( int i = 0; i < n; ++i ) {
+
+      QStackOptionsItem * stackItem =
+          dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+
+      if ( !stackItem || !stackItem->isSelected() ) {
+        continue;
+      }
+
+      const c_image_stacking_options::ptr & stack = stackItem->stack();
+      if ( !stack || stack == fromStack ) {
+        continue;
+      }
+
+      if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+        continue;
+      }
+
+      // copy here
+      stack->frame_registration_options() = fromStack->frame_registration_options();
+      stack->accumulation_options() = fromStack->accumulation_options();
+    }
+  }
+
+}
+
+void QStackSequencesTree::applyOutputSettingsToAll(const c_image_stacking_output_options & options)
+{
+  const int n = treeView_->topLevelItemCount();
+
+  for ( int i = 0; i < n; ++i ) {
+
+    QStackOptionsItem * stackItem =
+        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
+    }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->output_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->output_options() = options;
+  }
+}
+
+void QStackSequencesTree::applyMasterFrameSettingsToAll(const c_stacking_master_frame_options & options)
+{
+  const int n = treeView_->topLevelItemCount();
+
+  for ( int i = 0; i < n; ++i ) {
+
+    QStackOptionsItem * stackItem =
+        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
+    }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->master_frame_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->master_frame_options() = options;
+  }
+}
+
+
+void QStackSequencesTree::updateControls()
+{
+}
+
+
+void QStackSequencesTree::updateStackName(const c_image_stacking_options::ptr & ppline)
+{
+  treeView_->updateStackName(ppline);
+}
+
+void QStackSequencesTree::addNewStack()
+{
+  treeView_->onAddNewStackingOptions();
+}
+
+void QStackSequencesTree::addSourcesToCurrentStack()
+{
+  treeView_->onAddSourcesToCurrentStackingOptions();
+}
+
+void QStackSequencesTree::deleteSelectedItems()
+{
+  treeView_->onDeleteSelectedItems();
+}
+
+bool QStackSequencesTree::eventFilter(QObject *watched, QEvent *event)
+{
+  if ( watched == treeView_ && event->type() == QEvent::KeyPress ) {
+
+    const QKeyEvent * e = (const QKeyEvent*) event;
+    if ( e->key() == Qt::Key_Return && treeView_ ->state() != QAbstractItemView::EditingState ) {
+
+      QTreeWidgetItem * item = treeView_->currentItem();
+      if ( item ) {
+
+        QStackOptionsItem * stackItem = Q_NULLPTR;
+        QInputSourceItem * inputSourceItem = Q_NULLPTR;
+
+        switch ( item->type() ) {
+
+        case ItemType_Stack :
+          stackItem = dynamic_cast<QStackOptionsItem*>(item);
+          break;
+
+        case ItemType_InputSource :
+          inputSourceItem = dynamic_cast<QInputSourceItem *>(item);
+          stackItem = dynamic_cast<QStackOptionsItem*>(item->parent());
+          break;
+        }
+
+        emit itemDoubleClicked(stackItem ? stackItem->stack() : nullptr,
+            inputSourceItem ? inputSourceItem->inputSource() :nullptr);
+
+        return true;
+      }
+
+    }
+  }
+
+  return false;
+}
+
+void QStackSequencesTree::onItemChanged(QTreeWidgetItem *item, int column)
+{
+  if ( item ) {
+    switch ( item->type() ) {
+
+    case ItemType_Stack : {
+
+      QStackOptionsItem * ppItem =
+          dynamic_cast<QStackOptionsItem *>(item);
+
+      if ( ppItem->text(0).isEmpty() ) {
+        ppItem->setText(0, ppItem->stack()->name().c_str());
+      }
+      else {
+        ppItem->stack()->set_name(ppItem->text(0).toStdString());
+      }
+
+      emit stackNameChanged(ppItem->stack());
+
+      //ppItem->stacking_options()->set_enabled(ppItem->checkState(0) == Qt::Checked);
+
+      break;
+    }
+
+    case ItemType_InputSource :
+      break;
+
+    default :
+      break;
+    }
+  }
+
+}
+
+void QStackSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
+{
+
+  if ( !current ) {
+    deleteItemAction->setEnabled(false);
+    startStackingMenuAction->setEnabled(false);
+    stopStacking->setEnabled(false);
+    showStackOptionsAction->setEnabled(false);
+  }
+  else {
+
+    QStackOptionsItem * stackItem = Q_NULLPTR;
+    QInputSourceItem * inputSourceItem = Q_NULLPTR;
+
+    deleteItemAction->setEnabled(true);
+    showStackOptionsAction->setEnabled(true);
+
+    switch ( current->type() ) {
+
+    case ItemType_Stack :
+      stackItem = dynamic_cast<QStackOptionsItem*>(current);
+      addSourcesAction->setEnabled(true);
+      startStackingMenuAction->setEnabled(!QStackingThread::isRunning());
+      break;
+
+    case ItemType_InputSource :
+      inputSourceItem = dynamic_cast<QInputSourceItem *>(current);
+      stackItem = dynamic_cast<QStackOptionsItem*>(current->parent());
+      startStackingMenuAction->setEnabled(false);
+      break;
+
+    default :
+      addSourcesAction->setEnabled(false);
+      startStackingMenuAction->setEnabled(!QStackingThread::isRunning());
+      break;
+    }
+
+    emit currentItemChanged(stackItem ? stackItem->stack() : nullptr,
+        inputSourceItem ? inputSourceItem->inputSource() :nullptr);
+  }
+}
+
+void QStackSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*column*/)
+{
+  QStackOptionsItem * stackItem = Q_NULLPTR;
+  QInputSourceItem * inputSourceItem = Q_NULLPTR;
+
+  switch ( item->type() ) {
+
+  case ItemType_Stack :
+    stackItem = dynamic_cast<QStackOptionsItem*>(item);
+    break;
+
+  case ItemType_InputSource :
+    inputSourceItem = dynamic_cast<QInputSourceItem *>(item);
+    stackItem = dynamic_cast<QStackOptionsItem*>(item->parent());
+    break;
+  }
+
+  emit itemDoubleClicked(stackItem ? stackItem->stack() : nullptr,
+      inputSourceItem ? inputSourceItem->inputSource() :nullptr);
+}
+
+void QStackSequencesTree::onCustomContextMenuRequested(const QPoint &pos)
+{
+}
+
+void QStackSequencesTree::onShowStackOptionsClicked()
+{
+  QStackOptionsItem * item =
+      dynamic_cast<QStackOptionsItem *>(treeView_->
+          currentItem());
+
+  if ( item ) {
+    emit showStackOptionsClicked(item->stack());
+  }
+}
+
+void QStackSequencesTree::onStartStackingClicked()
+{
+  if ( !QStackingThread::isRunning() ) {
+
+    QStackListTreeView::QImageStackItem * item =
+        dynamic_cast<QStackListTreeView::QImageStackItem *>(
+            treeView_-> currentItem());
+
+    if ( item ) {
+      currentProcessingMode_ = ProcessSingleStack;
+      QStackingThread::start(item->stack());
+    }
+  }
+}
+
+void QStackSequencesTree::onStartAllStackingClicked()
+{
+//  QImageStackItem * item =
+//      dynamic_cast<QImageStackItem *>(this->
+//          currentItem());
+//  if ( item )  {
+//
+//    if ( !QStackingThread::isRunning() ) {
+//      CF_DEBUG("QStackingThread::start(item->pipeline())");
+//      QStackingThread::start(item->stacking_options());
+//    }
+//    else if ( item->stacking_options() == QStackingThread::options() ) {
+//      CF_DEBUG("QStackingThread::cancel()");
+//      QStackingThread::cancel();
+//    }
+//  }
+
+  if ( !QStackingThread::isRunning() ) {
+    currentProcessingMode_ = ProcessBatch;
+    if ( !startNextStacking() ) {
+      currentProcessingMode_ = ProcessIdle;
+    }
+  }
+}
+
+void QStackSequencesTree::onStopStackingClicked()
+{
+  if ( QStackingThread::isRunning() ) {
+    currentProcessingMode_ = ProcessIdle;
+    QStackingThread::cancel();
+  }
+
+}
+
+
+
+bool QStackSequencesTree::startNextStacking()
+{
+  if ( !QStackingThread::isRunning() && currentProcessingMode_ == ProcessBatch ) {
+
+    for ( int i = 0, n = treeView_->topLevelItemCount(); i < n; ++i ) {
+
+      QStackOptionsItem * item =
+          dynamic_cast<QStackOptionsItem *>(
+              treeView_->topLevelItem(i));
+
+      if ( item && item->checkState(0) == Qt::Checked ) {
+
+        QStackingThread::start(item->stack());
+
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+
+void QStackSequencesTree::onStackingThreadStarted()
+{
+  startStacking->setEnabled(false);
+  stopStacking->setEnabled(true);
+  //startStopStackingAction->setIcon(getIcon(ICON_stop));
+}
+
+void QStackSequencesTree::onStackingThreadFinishing()
+{
+  stopStacking->setEnabled(false);
+}
+
+void QStackSequencesTree::onStackingThreadFinished()
+{
+  //startStopStackingAction->setIcon(getIcon(ICON_start));
+
+  if ( currentProcessingMode_ == ProcessBatch ) {
+
+    QStackOptionsItem * item =
+        treeView_->findStackItem(QStackingThread::currentStack());
+
+    if ( item ) {
+      item->setCheckState(0, Qt::Unchecked);
+    }
+  }
+
+
+  if ( currentProcessingMode_ != ProcessBatch || !startNextStacking() ) {
+    currentProcessingMode_ = ProcessIdle;
+    startStacking->setEnabled(true);
+    stopStacking->setEnabled(true);
+  }
+
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

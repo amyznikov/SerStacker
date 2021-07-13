@@ -1,0 +1,14 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qstacktree">
+	<file>icons/stack.png</file>
+	<file>icons/add-stack.png</file>
+	<file>icons/add-frames.png</file>
+	<file>icons/add-items.png</file>
+	<file>icons/delete-item.png</file>
+	<file>icons/options.png</file>
+	<file>icons/start.png</file>
+	<file>icons/start-all.png</file>
+	<file>icons/stop.png</file>
+	<file>icons/pause.png</file>
+</qresource>
+</RCC>

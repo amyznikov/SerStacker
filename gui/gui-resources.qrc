@@ -1,0 +1,18 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/gui">
+	<file>icons/close.png</file>
+	<file>icons/copy.png</file>
+	<file>icons/delete.png</file>
+	<file>icons/dislike.png</file>
+	<file>icons/like.png</file>
+	<file>icons/next.png</file>
+	<file>icons/prev.png</file>
+	<file>icons/reload.png</file>
+	<file>icons/histogram.png</file>
+	<file>icons/double-arrow-down.png</file>
+	<file>icons/double-arrow-left.png</file>
+	<file>icons/double-arrow-right.png</file>
+	<file>icons/double-arrow-up.png</file>
+    <file>icons/marker-blue.png</file>
+</qresource>
+</RCC>

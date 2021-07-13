@@ -1,0 +1,7 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qstackingoptions">
+	<file>icons/dock.png</file>
+	<file>icons/close.png</file>
+	<file>icons/check_all.png</file>	
+</qresource>
+</RCC>

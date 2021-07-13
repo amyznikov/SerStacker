@@ -1,0 +1,10 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qfilesystemtreeview">
+	<file>icons/closed.png</file>
+	<file>icons/copy.png</file>
+	<file>icons/delete.png</file>
+	<file>icons/edit.png</file>
+	<file>icons/open.png</file>
+	<file>icons/reload.png</file>
+</qresource>
+</RCC>

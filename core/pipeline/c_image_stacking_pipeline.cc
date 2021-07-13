@@ -519,7 +519,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   CF_DEBUG("Started '%s'", options->name().c_str());
 
   cv::Mat tmp;
-
   c_video_writer output_aligned_video;
   std::string output_file_name;
   std::string output_directory;
@@ -529,6 +528,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   const c_input_sequence::ptr input_sequence =
       options->input_sequence();
+
   if ( !input_sequence || input_sequence->empty() ) {
     CF_FATAL("empty input sequence specified");
     return false;
@@ -551,6 +551,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   c_frame_registration::ptr frame_registration =
       options->create_frame_registration();
+
   if ( !frame_registration ) {
     CF_FATAL("create_frame_registration() fails");
     return false;
@@ -558,6 +559,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   frame_accumulation_ =
       options->create_frame_accumulation();
+
   if ( !frame_accumulation_ ) {
     CF_FATAL("create_frame_accumulation() fails");
     return false;
@@ -885,10 +887,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     input_sequence->close();
   }
 
-  CF_DEBUG("H");
   compute_accumulated_image(current_frame_, current_mask_);
-
-  CF_DEBUG("H");
 
   if ( output_file_name.empty() ) {
 
@@ -915,7 +914,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
       clip_range(SF, 0, 1);
 
-      CF_DEBUG("H");
       std::string output_name =
           output_file_name;
 
@@ -950,9 +948,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     if ( wbmask.channels() > 1 ) {
       cv::cvtColor(wbmask, wbmask, cv::COLOR_BGR2GRAY);
-      cv::compare(wbmask, 0, wbmask, cv::CMP_GT);
+      cv::compare(wbmask, 255, wbmask, cv::CMP_GE);
     }
-
 
     cv::bitwise_and(current_mask_, wbmask, wbmask);
 
@@ -967,7 +964,9 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
           current_mask_,
           true);
 
-      set_file_suffix(outname = output_file_name, "-WBH.tiff");
+      set_file_suffix(outname = output_file_name,
+          "-WBH.tiff");
+
       CF_DEBUG("Saving '%s'", outname.c_str());
       if ( !save_image(wbimage, outname) ) {
         CF_ERROR("save_image('%s') fails", outname.c_str());
@@ -986,7 +985,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
           current_mask_,
           true);
 
-      set_file_suffix(output_file_name, "-WBH.tiff");
+      set_file_suffix(output_file_name,
+          "-WBH.tiff");
 
       CF_DEBUG("Saving '%s'", output_file_name.c_str());
       if ( !save_image(current_frame_, output_file_name) ) {

@@ -66,7 +66,7 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
 
   case 4 :
     photometric_tag = PHOTOMETRIC_RGB;
-    cv::cvtColor(src, image, cv::COLOR_BGR2RGBA);
+    cv::cvtColor(src, image, cv::COLOR_BGRA2RGBA);
     break;
 
   default:

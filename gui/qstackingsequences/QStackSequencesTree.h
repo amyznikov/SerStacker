@@ -26,9 +26,15 @@ public:
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
 
-  void applyRegistrationSettingsToAll(const c_image_stacking_options::ptr & copyFrom);
-  void applyOutputSettingsToAll(const c_image_stacking_output_options & options);
-  void applyMasterFrameSettingsToAll(const c_stacking_master_frame_options & options);
+  void applyMasterFrameOptionsToAll(const c_stacking_master_frame_options & options);
+  void applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options);
+  void applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options);
+  void applyOutputOptionsToAll(const c_image_stacking_output_options & options);
+  void applyAllStackOptionsToAll(const c_image_stacking_options::ptr & currentStack);
+
+  //void applyRegistrationSettingsToAll(const c_image_stacking_options::ptr & copyFrom);
+//  void applyOutputSettingsToAll(const c_image_stacking_output_options & options);
+//  void applyMasterFrameSettingsToAll(const c_stacking_master_frame_options & options);
 
   const QList<QAction * > & toolbarActions() const;
 

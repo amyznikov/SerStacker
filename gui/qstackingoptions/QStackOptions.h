@@ -10,6 +10,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QLineEditBox.h>
+#include "QFrameAccumulationOptions.h"
 #include "QFrameRegistrationOptions.h"
 #include "QMasterFrameOptions.h"
 #include "QStackOutputOptions.h"
@@ -31,8 +32,10 @@ public:
 
 signals:
   void stackNameChanged(const c_image_stacking_options::ptr & pipeline);
-  void applyOutputSettingsToAllRequested(const c_image_stacking_output_options & options);
-  void applyMasterFrameSettingsToAllRequested(const c_stacking_master_frame_options & options);
+  void applyMasterFrameOptionsToAllRequested(const c_stacking_master_frame_options & options);
+  void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
+  void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);
+  void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);
 
 protected:
   void onupdatecontrols() override;
@@ -41,9 +44,9 @@ protected:
   c_image_stacking_options::ptr stack_;
 
   QLineEditBox * stackName_ctl = Q_NULLPTR;
-  QMasterFrameOptions * masterFrameSettings_ctl = Q_NULLPTR;
-  QFrameAccumulationSettings * frameAccumulationSettings_ctl = Q_NULLPTR;
-  QFrameRegistrationOptions * frameRegistrationSettings_ctl = Q_NULLPTR;
+  QMasterFrameOptions * masterFrame_ctl = Q_NULLPTR;
+  QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
+  QFrameRegistrationOptions * frameRegistration_ctl = Q_NULLPTR;
   QStackOutputOptions * outputOptions_ctl = Q_NULLPTR;
 };
 
@@ -66,9 +69,12 @@ public:
 signals:
   void stackNameChanged(const c_image_stacking_options::ptr & stack);
   void closeWindowRequested();
-  void applyRegistrationSettingsToAllRequested(const c_image_stacking_options::ptr & currentStack);
-  void applyOutputSettingsToAllRequested(const c_image_stacking_output_options & options);
-  void applyMasterFrameSettingsToAllRequested(const c_stacking_master_frame_options & options);
+
+  void applyMasterFrameOptionsToAllRequested(const c_stacking_master_frame_options & options);
+  void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
+  void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);
+  void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);
+  void applyAllStackOptionsToAllRequested(const c_image_stacking_options::ptr & currentStack);
 
 protected:
   QVBoxLayout * layout_ = Q_NULLPTR;

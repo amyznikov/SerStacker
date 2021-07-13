@@ -11,6 +11,19 @@
 #include <gui/widgets/settings.h>
 #include <core/debug.h>
 
+#define ICON_check_all      "check_all"
+
+static const char borderless_style[] = ""
+    "QToolButton { border: none; } "
+    "QToolButton::menu-indicator { image: none; }"
+    "";
+
+static QIcon getIcon(const QString & name)
+{
+  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+}
+
+
 QString toString(enum frame_registration_method m)
 {
   return toStdString(m).c_str();
@@ -32,25 +45,6 @@ enum ECC_MOTION_TYPE fromString(const QString & s, enum ECC_MOTION_TYPE defval)
   return fromStdString(s.toStdString(), defval);
 }
 
-QString toString(enum frame_upscale_option v)
-{
-  return toStdString(v).c_str();
-}
-
-enum frame_upscale_option fromString(const QString  & s, enum frame_upscale_option defval )
-{
-  return fromStdString(s.toStdString(), defval);
-}
-
-QString toString(enum frame_accumulation_method v)
-{
-  return toStdString(v).c_str();
-}
-
-enum frame_accumulation_method fromString(const QString  & s, enum frame_accumulation_method defval)
-{
-  return fromStdString(s.toStdString(), defval);
-}
 
 QString toString(enum color_channel_type v)
 {
@@ -540,8 +534,12 @@ void QStarFieldRegistrationSettings::onupdatecontrols()
 }
 
 QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
-    : Base("QFrameRegistrationSettings", parent)
+    : Base("QFrameRegistrationOptions", parent)
 {
+  Q_INIT_RESOURCE(qstackingoptions_resources);
+
+
+
   add_combobox(form, "Registration method:",
       frameRegistrationMethod_ctl = new QFrameRegistrationMethodCombo(this),
       [this]() {
@@ -550,19 +548,30 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
         }
       });
 
-//  stackWidget = new QStackedWidget(this);
-//  stackWidget->addWidget(featureBasedRegistrationSettings_ctl = new QFeatureBasedRegistrationSettings(this));
-//  stackWidget->addWidget(planetaryDiskRegistrationSettings_ctl = new QPlanetaryDiskRegistrationSettings(this));
-//  stackWidget->addWidget(starFieldRegistrationSettings_ctl = new QStarFieldRegistrationSettings(this));
-//  form->addRow(stackWidget);
 
   form->addRow(featureBasedRegistrationSettings_ctl = new QFeatureBasedRegistrationSettings(this));
   form->addRow(planetaryDiskRegistrationSettings_ctl = new QPlanetaryDiskRegistrationSettings(this));
   form->addRow(starFieldRegistrationSettings_ctl = new QStarFieldRegistrationSettings(this));
-
   form->addRow(frameRegistrationBaseSettings_ctl = new QFrameRegistrationBaseSettings(this));
 
+
+  applyToAll_ctl = new QToolButton(this);
+  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  applyToAll_ctl->setIconSize(QSize(16,16));
+  applyToAll_ctl->setStyleSheet(borderless_style);
+  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
+  applyToAll_ctl->setText("Apply to all currently selected in treeview");
+  connect(applyToAll_ctl, &QToolButton::clicked,
+      [this]() {
+        if ( options_ ) {
+          emit applyFrameRegistrationOptionsToAllRequested(*options_);
+        }
+      });
+
+  form->addRow(applyToAll_ctl);
+
   updatemethodspecificpage();
+  setEnabled(false);
 }
 
 void QFrameRegistrationOptions::set_registration_options(c_frame_registration_options * options)
@@ -652,57 +661,5 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
 
 
 
-QFrameAccumulationSettings::QFrameAccumulationSettings(QWidget * parent)
-  : Base("QFrameAccumulationSettings", parent)
-{
-
-  add_combobox(form, "Accumulation Method:",
-      accumulation_method_ctl = new QFrameAccumulationMethodCombo(this),
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( accumulation_method_ctl->currentItem() != options_->accumulation_method ) {
-            options_->accumulation_method = accumulation_method_ctl->currentItem();
-            emit parameterChanged();
-          }
-        }
-      });
-
-  add_combobox(form, "Upscale:",
-      upscale_option_ctl = new QFrameUpscaleOptionCombo(this),
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( upscale_option_ctl->currentItem() != options_->upscale_option ) {
-            options_->upscale_option = upscale_option_ctl->currentItem();
-            emit parameterChanged();
-          }
-        }
-      });
-}
-
-void QFrameAccumulationSettings::set_accumulation_options(c_frame_accumulation_options * options)
-{
-  this->options_ = options;
-  updateControls();
-}
-
-const c_frame_accumulation_options * QFrameAccumulationSettings::accumulation_options() const
-{
-  return this->options_;
-}
-
-void QFrameAccumulationSettings::onupdatecontrols()
-{
-  if ( !options_ ) {
-    setEnabled(false);
-  }
-  else {
-
-    accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
-    upscale_option_ctl->setCurrentItem(options_->upscale_option);
-
-    setEnabled(true);
-  }
-
-}
 
 

@@ -83,7 +83,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   connect(applyToAll_ctl, &QToolButton::clicked,
       [this]() {
         if ( options_ ) {
-          emit applyOutputSettingsToAllRequested(*options_);
+          emit applyOutputOptionsToAllRequested(*options_);
         }
       });
 

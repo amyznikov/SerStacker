@@ -19,9 +19,7 @@ static QIcon getIcon(const QString & name)
 ///////////////////////////////////////////////////////////////////////////////
 
 QFileSystemTreeView::QFileSystemTreeView(QWidget * parent /*= 0*/)
-    : Base(parent),
-        model(0),
-        treeView(0)
+    : Base(parent)
 {
 
   Q_INIT_RESOURCE(qfilesystemtreeview_resources);

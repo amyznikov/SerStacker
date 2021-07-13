@@ -36,6 +36,19 @@ static QIcon getIcon(const QString & name)
 
 MainWindow::MainWindow()
 {
+
+  static const auto createScrollableWrap =
+      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea *
+  {
+    QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidget(w);
+    return scrollArea;
+  };
+
+
   setWindowIcon(QIcon(":/icons/jup.png"));
   updateWindowTittle();
 
@@ -102,7 +115,7 @@ MainWindow::MainWindow()
       Qt::LeftDockWidgetArea,
       "imageProcessorSettingsDock",
       "Image Processing",
-      imageProcessorSettings = new QImageProcessorChainSettings(),
+      createScrollableWrap(imageProcessorSettings = new QImageProcessorChainSettings(this)),
       viewMenu);
 
   tabifyDockWidget(fileSystemTreeDock, stackTreeDock);
@@ -202,15 +215,21 @@ MainWindow::MainWindow()
         }
       });
 
-  connect(stackOptionsView, &QStackOptions::applyRegistrationSettingsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyRegistrationSettingsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyOutputSettingsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyOutputSettingsToAll);
+  connect(stackOptionsView, &QStackOptions::applyMasterFrameOptionsToAllRequested,
+      stackTreeView, & QStackSequencesTree::applyMasterFrameOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyMasterFrameSettingsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyMasterFrameSettingsToAll);
+  connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
+      stackTreeView, & QStackSequencesTree::applyFrameAccumulationOptionsToAll);
 
+  connect(stackOptionsView, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
+      stackTreeView, & QStackSequencesTree::applyFrameRegistrationOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyOutputOptionsToAllRequested,
+      stackTreeView, & QStackSequencesTree::applyOutputOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyAllStackOptionsToAllRequested,
+      stackTreeView, & QStackSequencesTree::applyAllStackOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::stackNameChanged,
       stackTreeView, &QStackSequencesTree::updateStackName);

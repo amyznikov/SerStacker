@@ -60,8 +60,8 @@ private slots:
   void onItemPressed(const QModelIndex &index);
 
 private:
-  QFileSystemModel * model;
-  QFileSystemCustomTreeView * treeView;
+  QFileSystemModel * model = Q_NULLPTR;
+  QFileSystemCustomTreeView * treeView = Q_NULLPTR;
 };
 
 

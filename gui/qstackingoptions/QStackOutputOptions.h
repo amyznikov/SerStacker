@@ -28,7 +28,7 @@ public:
   const c_image_stacking_output_options * debug_options() const;
 
 signals:
-  void applyOutputSettingsToAllRequested(const c_image_stacking_output_options & options);
+  void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);
 
 
 protected:

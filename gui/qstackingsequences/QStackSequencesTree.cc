@@ -1061,29 +1061,6 @@ QStackSequencesTree::QStackSequencesTree(QWidget * parent)
   connect(QStackingThread::singleton(), &QThread::finished,
       this, &ThisClass::onStackingThreadFinished);
 
-
-
-//  connect(treeView_, &QStackSequencesTreeView::batchItemSelected,
-//      this, &ThisClass::batchItemSelected);
-//
-//  connect(treeView_, &QStackSequencesTreeView::batchItemDoubleClicked,
-//      this, &ThisClass::batchItemDoubleClicked);
-//
-//  connect(treeView_, &QStackSequencesTreeView::stackItemSelected,
-//      this, &ThisClass::stackItemSelected);
-//
-//  connect(treeView_, &QStackSequencesTreeView::stackItemDoubleClicked,
-//      this, &ThisClass::stackItemDoubleClicked);
-//
-//  connect(treeView_, &QStackSequencesTreeView::stackSourceItemSelected,
-//      this, &ThisClass::stackSourceItemSelected);
-//
-//  connect(treeView_, &QStackSequencesTreeView::stackSourceItemDoubleClicked,
-//      this, &ThisClass::stackSourceItemDoubleClicked);
-//
-//  connect(treeView_, &QStackSequencesTreeView::startStackingRequested,
-//      this, &ThisClass::startStackingRequested);
-
 }
 
 void QStackSequencesTree::set_stacklist(const c_image_stacks_collection::ptr & pipelines)
@@ -1103,38 +1080,87 @@ const QList<QAction *> & QStackSequencesTree::toolbarActions() const
 }
 
 
-void QStackSequencesTree::applyRegistrationSettingsToAll(const c_image_stacking_options::ptr & fromStack)
+void QStackSequencesTree::applyMasterFrameOptionsToAll(const c_stacking_master_frame_options & options)
 {
-  if ( fromStack ) {
+  const int n = treeView_->topLevelItemCount();
 
-    const int n = treeView_->topLevelItemCount();
-    for ( int i = 0; i < n; ++i ) {
+  for ( int i = 0; i < n; ++i ) {
 
-      QStackOptionsItem * stackItem =
-          dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+    QStackOptionsItem * stackItem =
+        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
 
-      if ( !stackItem || !stackItem->isSelected() ) {
-        continue;
-      }
-
-      const c_image_stacking_options::ptr & stack = stackItem->stack();
-      if ( !stack || stack == fromStack ) {
-        continue;
-      }
-
-      if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
-        continue;
-      }
-
-      // copy here
-      stack->frame_registration_options() = fromStack->frame_registration_options();
-      stack->accumulation_options() = fromStack->accumulation_options();
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
     }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->master_frame_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->master_frame_options().use_ffts_from_master_path = options.use_ffts_from_master_path;
+ }
+}
+
+void QStackSequencesTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options)
+{
+  const int n = treeView_->topLevelItemCount();
+  for ( int i = 0; i < n; ++i ) {
+
+    QStackOptionsItem * stackItem =
+        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
+    }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->accumulation_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->accumulation_options() = options;
   }
 
 }
 
-void QStackSequencesTree::applyOutputSettingsToAll(const c_image_stacking_output_options & options)
+void QStackSequencesTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options)
+{
+  const int n = treeView_->topLevelItemCount();
+  for ( int i = 0; i < n; ++i ) {
+
+    QStackOptionsItem * stackItem =
+        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
+    }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->frame_registration_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->frame_registration_options() = options;
+  }
+}
+
+void QStackSequencesTree::applyOutputOptionsToAll(const c_image_stacking_output_options & options)
 {
   const int n = treeView_->topLevelItemCount();
 
@@ -1161,31 +1187,38 @@ void QStackSequencesTree::applyOutputSettingsToAll(const c_image_stacking_output
   }
 }
 
-void QStackSequencesTree::applyMasterFrameSettingsToAll(const c_stacking_master_frame_options & options)
+void QStackSequencesTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr & fromStack)
 {
-  const int n = treeView_->topLevelItemCount();
+  if ( fromStack ) {
+    const int n = treeView_->topLevelItemCount();
 
-  for ( int i = 0; i < n; ++i ) {
+    for ( int i = 0; i < n; ++i ) {
 
-    QStackOptionsItem * stackItem =
-        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+      QStackOptionsItem * stackItem =
+          dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
 
-    if ( !stackItem || !stackItem->isSelected() ) {
-      continue;
+      if ( !stackItem || !stackItem->isSelected() ) {
+        continue;
+      }
+
+      const c_image_stacking_options::ptr & stack = stackItem->stack();
+      if ( !stack || stack == fromStack ) {
+        continue;
+      }
+
+      if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+        continue;
+      }
+
+      // copy here
+      stack->master_frame_options().use_ffts_from_master_path = fromStack->master_frame_options().use_ffts_from_master_path;
+      stack->frame_registration_options() = fromStack->frame_registration_options();
+      stack->accumulation_options() = fromStack->accumulation_options();
+      stack->output_options() = fromStack->output_options();
     }
 
-    const c_image_stacking_options::ptr & stack = stackItem->stack();
-    if ( !stack || &stack->master_frame_options() == &options ) {
-      continue;
-    }
-
-    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
-      continue;
-    }
-
-    // copy here
-    stack->master_frame_options() = options;
   }
+
 }
 
 

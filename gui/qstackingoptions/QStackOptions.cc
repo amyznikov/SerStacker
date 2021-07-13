@@ -37,17 +37,17 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
 
 
   add_expandable_groupbox(form, "* Master Frame Options",
-      masterFrameSettings_ctl =
+      masterFrame_ctl =
           new QMasterFrameOptions(this));
 
 
   add_expandable_groupbox(form, "* Frame accumulation options",
-      frameAccumulationSettings_ctl =
-          new QFrameAccumulationSettings(this));
+      frameAccumulation_ctl =
+          new QFrameAccumulationOptions(this));
 
   add_expandable_groupbox(form,
       "* Frame Registration Options",
-      frameRegistrationSettings_ctl =
+      frameRegistration_ctl =
           new QFrameRegistrationOptions(this));
 
   add_expandable_groupbox(form,
@@ -55,11 +55,19 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
       outputOptions_ctl =
           new QStackOutputOptions(this));
 
-  connect(outputOptions_ctl, &QStackOutputOptions::applyOutputSettingsToAllRequested,
-      this, &ThisClass::applyOutputSettingsToAllRequested);
 
-  connect(masterFrameSettings_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
-      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
+  connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
+      this, &ThisClass::applyMasterFrameOptionsToAllRequested);
+
+  connect(frameAccumulation_ctl, &QFrameAccumulationOptions::applyFrameAccumulationOptionsToAllRequested,
+      this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
+
+  connect(frameRegistration_ctl, &QFrameRegistrationOptions::applyFrameRegistrationOptionsToAllRequested,
+      this, &ThisClass::applyFrameRegistrationOptionsToAllRequested);
+
+  connect(outputOptions_ctl, &QStackOutputOptions::applyOutputOptionsToAllRequested,
+      this, &ThisClass::applyOutputOptionsToAllRequested);
+
 
   updateControls();
 }
@@ -83,9 +91,9 @@ void QStackingSettingsWidget::onupdatecontrols()
   else {
 
     stackName_ctl->setText(stack_->name().c_str());
-    masterFrameSettings_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
-    frameAccumulationSettings_ctl->set_accumulation_options(&stack_->accumulation_options());
-    frameRegistrationSettings_ctl->set_registration_options(&stack_->frame_registration_options());
+    masterFrame_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
+    frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
+    frameRegistration_ctl->set_registration_options(&stack_->frame_registration_options());
     outputOptions_ctl->set_debug_options(&stack_->output_options());
 
     if ( QStackingThread::isRunning() && stack_ == QStackingThread::currentStack() ) {
@@ -143,7 +151,7 @@ QStackOptions::QStackOptions(QWidget * parent)
   connect(action, &QAction::triggered,
       [this]() {
         if ( stackSettings_ctl->currentStack() ) {
-          emit applyRegistrationSettingsToAllRequested(stackSettings_ctl->currentStack());
+          emit applyAllStackOptionsToAllRequested(stackSettings_ctl->currentStack());
         }
       });
 
@@ -163,11 +171,17 @@ QStackOptions::QStackOptions(QWidget * parent)
   layout_->addWidget(toolbar_, 1, Qt::AlignTop);
   layout_->addWidget(scrollArea_, 100);
 
-  connect(stackSettings_ctl, &QStackingSettingsWidget::applyOutputSettingsToAllRequested,
-      this, &ThisClass::applyOutputSettingsToAllRequested);
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameOptionsToAllRequested,
+      this, &ThisClass::applyMasterFrameOptionsToAllRequested);
 
-  connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameSettingsToAllRequested,
-      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyFrameAccumulationOptionsToAllRequested,
+      this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyFrameRegistrationOptionsToAllRequested,
+      this, &ThisClass::applyFrameRegistrationOptionsToAllRequested);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyOutputOptionsToAllRequested,
+      this, &ThisClass::applyOutputOptionsToAllRequested);
 
 }
 

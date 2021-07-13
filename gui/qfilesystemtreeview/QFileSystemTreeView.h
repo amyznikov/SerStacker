@@ -23,6 +23,7 @@ class QFileSystemTreeView
 {
   Q_OBJECT;
 public:
+  typedef QFileSystemTreeView ThisClass;
   typedef QWidget Base;
   QFileSystemTreeView(QWidget * parent = 0);
 

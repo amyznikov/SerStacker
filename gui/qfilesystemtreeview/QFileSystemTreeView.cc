@@ -33,10 +33,10 @@ QFileSystemTreeView::QFileSystemTreeView(QWidget * parent /*= 0*/)
   refresh();
 
   connect(treeView, &QFileSystemCustomTreeView::customContextMenuRequested,
-      this, &QFileSystemTreeView::onCustomContextMenu);
+      this, &ThisClass::onCustomContextMenu);
 
   connect(treeView, &QFileSystemCustomTreeView::pressed,
-      this, &QFileSystemTreeView::onItemPressed);
+      this, &ThisClass::onItemPressed);
 
 }
 
@@ -77,7 +77,7 @@ void QFileSystemTreeView::refresh()
   }
 
   connect(treeView->selectionModel(), &QItemSelectionModel::currentChanged,  // (const QModelIndex &, const QModelIndex &)
-      this, &QFileSystemTreeView::onCurrentDirectoryChanged,  // (const QModelIndex &, const QModelIndex &))
+      this, &ThisClass::onCurrentDirectoryChanged,  // (const QModelIndex &, const QModelIndex &))
       Qt::DirectConnection);
 }
 

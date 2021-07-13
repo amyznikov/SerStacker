@@ -162,8 +162,7 @@ QStackListTreeView::QStackListTreeView(QWidget * parent)
   setDragDropMode(QAbstractItemView::DropOnly);
   setDropIndicatorShown(true);
 
-  setEditTriggers(QAbstractItemView::EditKeyPressed |
-      QAbstractItemView::SelectedClicked);
+  setEditTriggers(QAbstractItemView::EditKeyPressed /*| QAbstractItemView::SelectedClicked*/);
 
   setExpandsOnDoubleClick(false);
 
@@ -1383,6 +1382,47 @@ void QStackSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*colu
 
 void QStackSequencesTree::onCustomContextMenuRequested(const QPoint &pos)
 {
+  QMenu menu;
+  QList<QTreeWidgetItem*> contextItems;
+  QAction * action;
+
+  if ( true ) {
+
+    QModelIndexList selectedIndexes =
+        treeView_->selectionModel()->selectedRows();
+
+    if ( !selectedIndexes.empty() ) {
+      for ( int i = 0, n = selectedIndexes.size(); i < n; ++i ) {
+        if ( selectedIndexes[i].isValid() ) {
+          contextItems.append(treeView_->itemFromIndex(selectedIndexes[i]));
+        }
+      }
+    }
+    else {
+      QModelIndex index = treeView_->indexAt(pos);
+      if ( index.isValid() ) {
+        contextItems.append(treeView_->itemFromIndex(index));
+      }
+    }
+  }
+
+  if ( contextItems.size() == 1 ) {
+
+    QTreeWidgetItem * item = contextItems[0];
+
+    if( item->type() == ItemType_Stack ) {
+
+      menu.addAction("Rename...",
+          [this, item]() {
+            treeView_->editItem(item);
+          });
+    }
+  }
+
+  if ( !menu.isEmpty() ) {
+    menu.exec(treeView_->mapToGlobal(pos));
+  }
+
 }
 
 void QStackSequencesTree::onShowStackOptionsClicked()

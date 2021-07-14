@@ -55,7 +55,8 @@ public:
   void close(bool clear = false);
   int size();
   bool seek(int pos);
-  bool read(cv::Mat & frame);
+  bool read(cv::Mat & output_frame,
+      cv::Mat * output_mask = nullptr);
 
   c_input_source::ptr current_source() const;
   int current_pos() const;
@@ -71,7 +72,7 @@ protected:
   bool open_source(int source_index);
   void close_source(int source_index);
   bool seek_current_source(int relative_pos);
-  bool read_current_source(cv::Mat & output_frame);
+  bool read_current_source(cv::Mat & output_frame, cv::Mat * output_mask);
 
 protected:
 

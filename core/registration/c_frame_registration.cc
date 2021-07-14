@@ -282,16 +282,19 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
 
   if ( feature_scale() > 0 ) {
 
+    CF_DEBUG("H");
     if ( !create_feature_image(src, srcmsk, reference_feature_image_, reference_feature_mask_) ) {
       CF_ERROR("extract_feature_image() fails");
       return false;
     }
 
+    CF_DEBUG("H");
     if ( !extract_reference_features(reference_feature_image_, reference_feature_mask_) ) {
       CF_ERROR("extract_reference_features() fails");
       return false;
     }
 
+    CF_DEBUG("H");
     if ( !reference_ROI_.empty() ) {
       current_ROI_ = reference_ROI_;
       src = src(reference_ROI_);
@@ -299,6 +302,7 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
         srcmsk = srcmsk(reference_ROI_);
       }
     }
+    CF_DEBUG("H");
   }
 
   if ( enable_ecc() && ecc_scale() > 0 ) {

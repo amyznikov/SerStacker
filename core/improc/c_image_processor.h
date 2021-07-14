@@ -13,6 +13,7 @@
 #include <core/histogram/c_pixinsight_midtones_transfer_function.h>
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/align_channels.h>
+#include <core/proc/normalize.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/smap.h>
 
@@ -174,7 +175,7 @@ public:
     unsharp_mask(image, image, sigma_, alpha_, outmin_, outmax_);
     if ( mask.needed() && !mask.empty() ) {
       const int ksize = 2 * std::max(2, (int) (sigma_ * 5)) + 3;
-      cv::erode(mask, mask, cv::Mat1b(ksize, ksize, 255), cv::Point(-1,-1), 1, cv::BORDER_CONSTANT, cv::Scalar::all(255));
+      cv::erode(mask, mask, cv::Mat1b(ksize, ksize, 255), cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
       image.getMatRef().setTo(0, ~mask.getMat());
     }
   }
@@ -296,6 +297,75 @@ protected:
   int reference_channel_ = 0;
 };
 
+
+class c_rangeclip_image_processor
+    : public c_image_processor
+{
+public:
+  typedef c_rangeclip_image_processor this_class;
+  typedef c_image_processor base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_rangeclip_image_processor(const std::string & name, const std::string & display_name)
+    : base(name, display_name)
+  {
+  }
+
+  static const char * default_name() {
+    return "rangeclip";
+  }
+
+  static const char * default_display_name() {
+    return "Clip";
+  }
+
+  static ptr create(bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  static ptr create(double min, double max, bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_min(min);
+    obj->set_max(max);
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  void set_min(double v)
+  {
+    min_ = v;
+  }
+
+  double min() const
+  {
+    return min_;
+  }
+
+  void set_max(double v)
+  {
+    max_ = v;
+  }
+
+  double max() const
+  {
+    return max_;
+  }
+
+  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    clip_range(image.getMatRef(), min_, max_, mask.getMat());
+  }
+
+  bool save_settings(c_config_setting settings) const override;
+  bool load_settings(c_config_setting settings) override;
+
+protected:
+  double min_ = 0.0;
+  double max_ = 1.0;
+};
+
 class c_autoclip_image_processor
     : public c_image_processor
 {
@@ -383,6 +453,76 @@ public:
 protected:
   double plo_ = 0.5;
   double phi_ = 99.5;
+};
+
+
+class c_range_normalize_image_processor
+    : public c_image_processor
+{
+public:
+  typedef c_range_normalize_image_processor this_class;
+  typedef c_image_processor base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_range_normalize_image_processor(const std::string & name, const std::string & display_name)
+    : base(name, display_name)
+  {
+  }
+
+  static const char * default_name() {
+    return "normalize";
+  }
+
+  static const char * default_display_name() {
+    return "Normalize";
+  }
+
+  static ptr create(bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  static ptr create(double outmin, double outmax, bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_outmin(outmin);
+    obj->set_outmax(outmax);
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  void set_outmin(double v)
+  {
+    outmin_ = v;
+  }
+
+  double outmin() const
+  {
+    return outmin_;
+  }
+
+  void set_outmax(double v)
+  {
+    outmax_ = v;
+  }
+
+  double outmax() const
+  {
+    return outmax_;
+  }
+
+  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    //clip_range(image.getMatRef(), min_, max_, mask.getMat());
+    normalize_minmax(image.getMatRef(), image.getMatRef(), outmin_, outmax_, mask, true);
+  }
+
+  bool save_settings(c_config_setting settings) const override;
+  bool load_settings(c_config_setting settings) override;
+
+protected:
+  double outmin_ = 0.0;
+  double outmax_ = 1.0;
 };
 
 

@@ -6,6 +6,7 @@
  */
 
 #include "c_feature_based_registration.h"
+#include <core/proc/normalize.h>
 #include <core/debug.h>
 
 
@@ -153,7 +154,7 @@ bool c_feature_based_registration::create_feature_image(cv::InputArray src, cv::
     cv::OutputArray dst, cv::OutputArray dstmsk) const
 {
   cv::Mat tmp;
-  cv::normalize(src, tmp, 0, 255, cv::NORM_MINMAX, -1, srcmsk);
+  normalize_minmax(src, tmp, 0, 255, srcmsk, true);
   if ( !extract_channel(tmp, dst, srcmsk, dstmsk, registration_channel(), base_options_.feature_scale, CV_8U, 1) ) {
     CF_ERROR("extract_channel(feature_channel_=%d) fails", registration_channel());
     return false;

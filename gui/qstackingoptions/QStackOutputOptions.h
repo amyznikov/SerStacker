@@ -38,6 +38,7 @@ protected:
   c_image_stacking_output_options * options_ = Q_NULLPTR;
 
   QBrowsePathCombo * output_directory_ctl = Q_NULLPTR;
+  QCheckBox * write_image_mask_as_alpha_channel_ctl = Q_NULLPTR;
   QCheckBox * write_aligned_video_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_aligned_video_filename_ctl = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;

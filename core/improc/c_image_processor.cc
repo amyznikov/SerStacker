@@ -271,6 +271,29 @@ bool c_mtf_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
+bool c_rangeclip_image_processor::save_settings(c_config_setting settings) const
+{
+  if ( !base::save_settings(settings) ) {
+    return false;
+  }
+
+  settings.set("min", min_);
+  settings.set("max", max_);
+  return true;
+}
+
+bool c_rangeclip_image_processor::load_settings(c_config_setting settings)
+{
+  if ( !base::load_settings(settings) ) {
+    return false;
+  }
+
+  settings.get("min", &min_);
+  settings.get("max", &max_);
+  return true;
+}
+
+
 bool c_autoclip_image_processor::save_settings(c_config_setting settings) const
 {
   if ( !base::save_settings(settings) ) {
@@ -291,6 +314,31 @@ bool c_autoclip_image_processor::load_settings(c_config_setting settings)
 
   settings.get("plo", &plo_);
   settings.get("phi", &phi_);
+
+  return true;
+}
+
+
+bool c_range_normalize_image_processor::save_settings(c_config_setting settings) const
+{
+  if ( !base::save_settings(settings) ) {
+    return false;
+  }
+
+  settings.set("outmin", outmin_);
+  settings.set("outmax", outmax_);
+
+  return true;
+}
+
+bool c_range_normalize_image_processor::load_settings(c_config_setting settings)
+{
+  if ( !base::load_settings(settings) ) {
+    return false;
+  }
+
+  settings.get("outmin", &outmin_);
+  settings.get("outmax", &outmax_);
 
   return true;
 }

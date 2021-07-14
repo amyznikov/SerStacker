@@ -16,6 +16,7 @@
 #include <core/proc/fft_transfer_spectrum_profile.h>
 #include <core/proc/smap.h>
 #include <core/io/save_image.h>
+#include <core/io/rgbamix.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/get_time.h>
@@ -26,7 +27,7 @@
 
 const struct frame_registration_method_desc frame_registration_methods[] = {
     { "Feature Based Registration (SURF)", frame_registration_method_surf },
-    { "Small Planetary Disk Registration", frame_registration_method_small_planetary_disk},
+    { "Planetary Disk Registration", frame_registration_method_planetary_disk},
     { "Star Field Registration", frame_registration_method_star_field},
     { "Skip", frame_registration_method_skip},
 
@@ -244,49 +245,49 @@ void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_al
 
 
 namespace {
-static bool write_image(cv::InputArray _image, cv::InputArray _mask, const std::string & fname)
-{
-  cv::Mat image_to_write;
-
-  if ( _mask.empty() || _image.channels() != 3 ) {
-    image_to_write = _image.getMat();
-  }
-  else {
-    cv::Mat alpha;
-
-    switch ( _image.depth() ) {
-    case CV_8U :
-      alpha = _mask.getMat();
-      break;
-    case CV_8S :
-      alpha = _mask.getMat();
-      break;
-    case CV_16U :
-      _mask.getMat().convertTo(alpha,  _image.depth(), UINT16_MAX / UINT8_MAX);
-      break;
-    case CV_16S :
-      _mask.getMat().convertTo(alpha, _image.depth(), INT16_MAX / (double) UINT8_MAX);
-      break;
-    case CV_32S :
-      _mask.getMat().convertTo(alpha, _image.depth(), INT32_MAX / (double) UINT8_MAX);
-      break;
-    case CV_32F :
-      _mask.getMat().convertTo(alpha, _image.depth(), 1.0 / UINT8_MAX);
-      break;
-    case CV_64F :
-      _mask.getMat().convertTo(alpha, _image.depth(), 1.0 / UINT8_MAX);
-      break;
-    }
-
-    image_to_write.create(_image.size(), CV_MAKETYPE(_image.depth(), _image.channels() + 1));
-
-    cv::Mat src[2] = {_image.getMat(), alpha };
-    const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
-    cv::mixChannels(src, 2, &image_to_write, 1, from_to, 4);
-  }
-
-  return save_image(image_to_write, fname);
-}
+//static bool write_image(cv::InputArray _image, cv::InputArray _mask, const std::string & fname)
+//{
+//  cv::Mat image_to_write;
+//
+//  if ( _mask.empty() || _image.channels() != 3 ) {
+//    image_to_write = _image.getMat();
+//  }
+//  else {
+//    cv::Mat alpha;
+//
+//    switch ( _image.depth() ) {
+//    case CV_8U :
+//      alpha = _mask.getMat();
+//      break;
+//    case CV_8S :
+//      alpha = _mask.getMat();
+//      break;
+//    case CV_16U :
+//      _mask.getMat().convertTo(alpha,  _image.depth(), UINT16_MAX / UINT8_MAX);
+//      break;
+//    case CV_16S :
+//      _mask.getMat().convertTo(alpha, _image.depth(), INT16_MAX / (double) UINT8_MAX);
+//      break;
+//    case CV_32S :
+//      _mask.getMat().convertTo(alpha, _image.depth(), INT32_MAX / (double) UINT8_MAX);
+//      break;
+//    case CV_32F :
+//      _mask.getMat().convertTo(alpha, _image.depth(), 1.0 / UINT8_MAX);
+//      break;
+//    case CV_64F :
+//      _mask.getMat().convertTo(alpha, _image.depth(), 1.0 / UINT8_MAX);
+//      break;
+//    }
+//
+//    image_to_write.create(_image.size(), CV_MAKETYPE(_image.depth(), _image.channels() + 1));
+//
+//    cv::Mat src[2] = {_image.getMat(), alpha };
+//    const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
+//    cv::mixChannels(src, 2, &image_to_write, 1, from_to, 4);
+//  }
+//
+//  return save_image(image_to_write, fname);
+//}
 
 }
 
@@ -383,7 +384,7 @@ c_frame_registration::ptr c_image_stacking_options::create_frame_registration()
       return c_feature_based_registration::create(frame_registration_options_.base_options,
           frame_registration_options_.feature_options);
 
-    case frame_registration_method_small_planetary_disk:
+    case frame_registration_method_planetary_disk:
       return c_planetary_disk_registration::create(frame_registration_options_.base_options,
           frame_registration_options_.planetary_disk_options);
 
@@ -562,6 +563,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   num_frames_total_ = 0;
   num_frames_processed_ = 0;
   num_frames_accumulated_ = 0;
+  current_mask_.release();
 
   CF_DEBUG("Started '%s'", options->name().c_str());
 
@@ -639,7 +641,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
 
   if ( options->accumulation_options().upscale_option == frame_upscale_before_align ) {
-    upscale(reference_frame_, reference_frame_);
+    upscale(reference_frame_, reference_mask_, reference_frame_, reference_mask_);
   }
 
   CF_DEBUG("Reference frame : %dx%d depth=%d channels=%d",
@@ -647,15 +649,23 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       reference_frame_.depth(),
       reference_frame_.channels());
 
-  if ( options->frame_registration_options().registration_method != frame_registration_method_unknown ) {
-    save_image(reference_frame_, "master_frame.tiff");
-  }
+  CF_DEBUG("Reference mask : %dx%d depth=%d channels=%d",
+      reference_mask_.cols, reference_mask_.rows,
+      reference_mask_.depth(),
+      reference_mask_.channels());
+
+//  if ( options->frame_registration_options().registration_method != frame_registration_method_unknown ) {
+//    save_image(reference_frame_,
+//        ssprintf("%s/%s-master_frame.tiff",
+//            output_directory.c_str(),
+//            options->name().c_str()));
+//  }
 
   if ( frame_registration->ecc_normalization_scale() > 0 ) {
     frame_registration->set_ecc_normalization_noise(ecc_normalization_noise_);
   }
 
-  if ( !(fOk = frame_registration->setup_referece_frame(reference_frame_)) ) {
+  if ( !(fOk = frame_registration->setup_referece_frame(reference_frame_, reference_mask_)) ) {
     CF_FATAL("ERROR: setup_referece_frame() fails");
   }
 
@@ -687,16 +697,21 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     const cv::Rect ROI = frame_registration->reference_ROI();
     const cv::Mat RF = ROI.empty() ? reference_frame_ : reference_frame_(ROI);
+    const cv::Mat RM = reference_mask_.empty() ? reference_mask_ : (ROI.empty() ? reference_mask_ : reference_mask_(ROI));
+
+    CF_DEBUG("ROI: %dx%d x=%d y=%d ", ROI.width, ROI.height, ROI.x, ROI.y);
+    CF_DEBUG("RF: %dx%d", RF.cols, RF.rows);
+    CF_DEBUG("RM: %dx%d", RM.cols, RM.rows);
 
     switch ( accumulation_options.accumulation_method ) {
     case frame_accumulation_average_masked :
 
       if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-        upscale(RF, current_frame_);
-        frame_accumulation_->add(current_frame_);
+        upscale(RF, RM, current_frame_, current_mask_);
+        frame_accumulation_->add(current_frame_, current_mask_);
       }
       else {
-        frame_accumulation_->add(RF);
+        frame_accumulation_->add(RF, RM);
       }
 
       ++num_frames_processed_;
@@ -705,11 +720,10 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     case frame_accumulation_average_weighted :
 
-      compute_weights(RF, current_weights_);
+      compute_weights(RF, RM, current_weights_);
 
       if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-        upscale(RF, current_frame_);
-        upscale(current_weights_, current_weights_);
+        upscale(RF, current_weights_, current_frame_, current_weights_);
         frame_accumulation_->add(current_frame_, current_weights_);
       }
       else {
@@ -721,7 +735,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
   }
-
 
 
   if ( !input_sequence->open() ) {
@@ -757,38 +770,27 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     t0 = start_time = get_realtime_ms();
 
-    if ( !read_input_frame(input_sequence, input_options, current_frame_) ) {
+    if ( !read_input_frame(input_sequence, input_options, current_frame_, current_mask_) ) {
       CF_ERROR("[F %6d] read_input_frame() fails\n", i);
       break;
     }
 
     time_read = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
-    if ( master_source_index_ >= 0 && input_sequence->current_pos() == master_frame_index_ ) {
-      if ( accumulation_options.upscale_option != frame_upscale_disabled ) {
-        upscale(current_frame_, current_frame_);
-      }
-      write_aligned_video(current_frame_, output_aligned_video, output_options, output_directory);
-      continue; // already accumulated, just continue read
+    if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
+      ++num_frames_processed_;
     }
 
-
-    ++num_frames_processed_;
-
     if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-      this->lock();
-      compute_weights(current_frame_, current_weights_);
-      this->unlock();
+      compute_weights(current_frame_, current_mask_, current_weights_);
     }
 
     time_compute_weights = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     if ( accumulation_options.upscale_option == frame_upscale_before_align ) {
-      upscale(current_frame_, current_frame_);
+      upscale(current_frame_, current_mask_, current_frame_, current_mask_);
       if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-        this->lock();
-        upscale(current_weights_, current_weights_);
-        this->unlock();
+        upscale(current_weights_, cv::noArray(), current_weights_, cv::noArray());
       }
     }
     time_upscale = (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -815,11 +817,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         const cv::Rect ROI = frame_registration->current_ROI();
 
-        upscale(frame_registration->current_remap(), tmp);
+        upscale(frame_registration->current_remap(), cv::noArray(), tmp, cv::noArray());
 
         switch ( accumulation_options.accumulation_method ) {
         case frame_accumulation_average_masked :
-          if ( !frame_registration->custom_remap(current_frame_, current_frame_, ROI, tmp, cv::noArray(), current_mask_) ) {
+          if ( !frame_registration->custom_remap(current_frame_, current_frame_, ROI, tmp, current_mask_, current_mask_) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_frame) fails\n", i);
             continue;
           }
@@ -830,14 +832,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
             CF_ERROR("[F %6d] reg->custom_remap(current_frame) fails\n", i);
             continue;
           }
-          this->lock();
           if ( !frame_registration->custom_remap(current_weights_, current_weights_, ROI, tmp,
               cv::noArray(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_weights) fails\n", i);
-            this->unlock();
             continue;
           }
-          this->unlock();
           break;
         }
 
@@ -846,7 +845,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         switch ( accumulation_options.accumulation_method ) {
         case frame_accumulation_average_masked :
-          if ( !frame_registration->remap(cv::noArray(), cv::noArray(), cv::noArray(), current_mask_) ) {
+          if ( !frame_registration->remap(cv::noArray(), cv::noArray(), current_mask_, current_mask_) ) {
             CF_ERROR("[F %6d] reg->remap(current_frame) fails\n", i);
             continue;
           }
@@ -880,21 +879,23 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     this->lock();
 
     if ( num_frames_accumulated_ > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
-      CF_ERROR("ERROR: current frae and accumulator sizes not match");
+      CF_ERROR("ERROR: current frame and accumulator sizes not match");
       break;
     }
 
-    switch ( accumulation_options.accumulation_method ) {
-    case frame_accumulation_average_masked :
-      frame_accumulation_->add(current_frame_, current_mask_);
-      break;
-    case frame_accumulation_average_weighted :
-      CF_DEBUG("current_frame_: %dx%d current_weights_=%dx%d", current_frame_.cols, current_frame_.rows, current_weights_.cols, current_weights_.rows);
-      frame_accumulation_->add(current_frame_, current_weights_);
-      break;
-    }
+    if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
+      switch ( accumulation_options.accumulation_method ) {
+      case frame_accumulation_average_masked :
+        frame_accumulation_->add(current_frame_, current_mask_);
+        break;
+      case frame_accumulation_average_weighted :
+        CF_DEBUG("current_frame_: %dx%d current_weights_=%dx%d", current_frame_.cols, current_frame_.rows, current_weights_.cols, current_weights_.rows);
+        frame_accumulation_->add(current_frame_, current_weights_);
+        break;
+      }
 
-    ++num_frames_accumulated_;
+      ++num_frames_accumulated_;
+    }
 
     this->unlock();
 
@@ -934,7 +935,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     input_sequence->close();
   }
 
-  compute_accumulated_image(current_frame_, current_mask_);
+  CF_DEBUG("compute_accumulated_image");
+  if ( !compute_accumulated_image(current_frame_, current_mask_) ) {
+    CF_ERROR("FATAL: compute_accumulated_image() fails");
+    return false;
+  }
 
   if ( output_file_name.empty() ) {
 
@@ -950,6 +955,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     const cv::Rect ROI = frame_registration->reference_ROI();
     const cv::Mat RF = ROI.empty() ? reference_frame_ : reference_frame_(ROI);
+    //const cv::Mat CM = ROI.empty() ? current_mask_ : current_mask_(ROI);
 
     if ( RF.size() == current_frame_.size() ) {
 
@@ -970,8 +976,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       CF_DEBUG("Saving '%s'",
           output_file_name.c_str());
 
-      if ( !save_image(SF, output_name) ) {
-        CF_ERROR("save_image('%s') fails", output_name.c_str());
+      if ( !write_image(output_name, output_options, SF, current_mask_) ) {
+        CF_ERROR("write_image('%s') fails", output_name.c_str());
       }
     }
   }
@@ -982,14 +988,18 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       true);
 
   CF_DEBUG("Saving '%s'",  output_file_name.c_str());
-  if ( !save_image(current_frame_, output_file_name) ) {
-    CF_ERROR("save_image('%s') fails", output_file_name.c_str());
+  if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
+    CF_ERROR("write_image('%s') fails", output_file_name.c_str());
   }
 
 
   if ( options->frame_registration_options().registration_method != frame_registration_method_star_field ) {
 
     cv::Mat wbmask, wbimage;
+    std::string outname;
+
+    set_file_suffix(outname = output_file_name,
+        "-WBH.tiff");
 
     cv::compare(current_frame_, 0.1, wbmask, cv::CMP_GT);
 
@@ -1002,30 +1012,19 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     if ( !histogram_white_balance(current_frame_, wbmask, wbimage, 5, 95) ) {
       CF_ERROR("histogram_white_balance(wbimage) fails");
+      wbimage = current_frame_;
     }
     else {
-      std::string outname;
 
-      normalize_minmax(current_frame_, current_frame_,
+      normalize_minmax(wbimage, wbimage,
           0.01, 0.99,
           current_mask_,
           true);
+    }
 
-      set_file_suffix(outname = output_file_name,
-          "-WBH.tiff");
-
-      CF_DEBUG("Saving '%s'", outname.c_str());
-
-      if ( false ) { // temporary disabled
-        if ( !write_image(current_frame_, current_mask_, outname) ) {
-          CF_ERROR("save_image('%s') fails", outname.c_str());
-        }
-      }
-      else {
-        if ( !save_image(wbimage, outname) ) {
-          CF_ERROR("save_image('%s') fails", outname.c_str());
-        }
-      }
+    CF_DEBUG("Saving '%s'", outname.c_str());
+    if ( !write_image(outname, output_options, wbimage, current_mask_) ) {
+      CF_ERROR("write_image('%s') fails", outname.c_str());
     }
   }
   else {
@@ -1044,8 +1043,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
           "-WBH.tiff");
 
       CF_DEBUG("Saving '%s'", output_file_name.c_str());
-      if ( !save_image(current_frame_, output_file_name) ) {
-        CF_ERROR("save_image('%s') fails", output_file_name.c_str());
+      if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
+        CF_ERROR("write_image('%s') fails", output_file_name.c_str());
       }
 
     }
@@ -1160,7 +1159,7 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
   }
 
 
-  if ( !read_input_frame(input_sequence, options->input_options(), reference_frame_) ) {
+  if ( !read_input_frame(input_sequence, options->input_options(), reference_frame_, reference_mask_) ) {
     CF_FATAL("read_input_frame(reference_frame) fails");
     input_sequence->close();
     return false;
@@ -1196,17 +1195,17 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
 
 bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & input_sequence,
     const c_image_stacking_input_options & input_options,
-    cv::Mat & output_image)
+    cv::Mat & output_image, cv::Mat & output_mask)
 {
   input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
 
-  if ( !input_sequence->read(output_image) ) {
+  if ( !input_sequence->read(output_image, &output_mask) ) {
     CF_FATAL("input_sequence->read() fails\n");
     return false;
   }
 
-  CF_DEBUG("input_sequence->read(): %dx%d %d channels pixel_depth=%d",
+  CF_DEBUG("input_sequence->read(): %dx%d channels=%d pixel_depth=%d",
       output_image.cols, output_image.rows,
       output_image.channels(),
       input_sequence->pixel_depth());
@@ -1246,6 +1245,54 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 }
 
 
+bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
+    const c_image_stacking_output_options & output_options,
+    const cv::Mat & output_image, const cv::Mat & output_mask)
+{
+  cv::Mat image_to_write;
+
+  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || output_image.channels() != 3  ) {
+    image_to_write = output_image;
+  }
+  else {
+    mergebgra(output_image, output_mask, image_to_write);
+    //    cv::Mat alpha;
+    //
+    //    switch ( output_image.depth() ) {
+    //    case CV_8U :
+    //      alpha = output_mask;
+    //      break;
+    //    case CV_8S :
+    //      alpha = output_mask;
+    //      break;
+    //    case CV_16U :
+    //      output_mask.convertTo(alpha,  output_image.depth(), UINT16_MAX / UINT8_MAX);
+    //      break;
+    //    case CV_16S :
+    //      output_mask.convertTo(alpha, output_image.depth(), INT16_MAX / (double) UINT8_MAX);
+    //      break;
+    //    case CV_32S :
+    //      output_mask.convertTo(alpha, output_image.depth(), INT32_MAX / (double) UINT8_MAX);
+    //      break;
+    //    case CV_32F :
+    //      output_mask.convertTo(alpha, output_image.depth(), 1.0 / UINT8_MAX);
+    //      break;
+    //    case CV_64F :
+    //      output_mask.convertTo(alpha, output_image.depth(), 1.0 / UINT8_MAX);
+    //      break;
+    //    }
+    //
+    //    image_to_write.create(output_image.size(),
+    //        CV_MAKETYPE(output_image.depth(), output_image.channels() + 1));
+    //
+    //    cv::Mat src[2] = {output_image, alpha };
+    //    const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
+    //    cv::mixChannels(src, 2, &image_to_write, 1, from_to, 4);
+  }
+
+  return save_image(image_to_write, output_file_name);
+}
+
 
 void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image)
 {
@@ -1263,14 +1310,28 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image)
 }
 
 
-void c_image_stacking_pipeline::upscale(cv::InputArray src, cv::OutputArray dst)
+void c_image_stacking_pipeline::upscale(cv::InputArray src, cv::InputArray srcmask, cv::OutputArray dst, cv::OutputArray dstmask)
 {
-  cv::pyrUp(src, dst);
+  if ( !src.empty() && dst.needed() ) {
+    cv::pyrUp(src, dst);
+  }
+
+  if ( !srcmask.empty() && dstmask.needed() ) {
+    cv::pyrUp(srcmask, dstmask);
+
+    if ( dstmask.depth() == CV_8U ) {
+      cv::compare(dstmask.getMatRef(), 255, dstmask.getGpuMatRef(), cv::CMP_GE);
+    }
+  }
+
 }
 
-void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, cv::Mat & dst)
+void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst)
 {
   compute_smap(src, dst, 0.01, 0);
+  if ( !srcmask.empty() ) {
+    dst.setTo(0, ~srcmask);
+  }
 }
 
 

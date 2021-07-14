@@ -6,6 +6,7 @@
  */
 
 #include "c_input_sequence.h"
+#include "rgbamix.h"
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -328,7 +329,7 @@ int c_input_sequence::global_pos(int source_index, int source_frame_index) const
 }
 
 
-bool c_input_sequence::read_current_source(cv::Mat & output_frame)
+bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * output_mask)
 {
   last_pixel_depth_ = 0;
   last_colorid_ = COLORID_UNKNOWN;
@@ -343,11 +344,25 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame)
     return false;
   }
 
-  if ( is_bayer_pattern(last_colorid_) && auto_debayer_ != DEBAYER_DISABLE ) {
-    if ( debayer(output_frame, output_frame, last_colorid_, auto_debayer_) ) {
+
+  if ( is_bayer_pattern(last_colorid_) ) {
+    if ( output_mask ) { // not clear the meaning of alpha maskk with bayer pattern
+      output_mask->release();
+    }
+    if ( auto_debayer_ != DEBAYER_DISABLE && debayer(output_frame, output_frame, last_colorid_, auto_debayer_) ) {
       last_colorid_ = COLORID_BGR;
     }
   }
+  else if ( output_mask ) {
+    if ( output_frame.channels() != 4 ) {
+      output_mask->release();
+    }
+    else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
+      return false;
+    }
+  }
+
+
 
   if ( (has_last_color_matrix_ = source->has_color_matrix()) ) {
     last_color_matrix_ = source->color_matrix();
@@ -357,14 +372,14 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame)
   return true;
 }
 
-bool c_input_sequence::read(cv::Mat & output_frame)
+bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
 {
   if ( current_source_ < 0 || current_source_ >= (int) sources_.size() ) {
     return false;
   }
 
   while ( current_source_ < (int) sources_.size() ) {
-    if ( read_current_source(output_frame) ) {
+    if ( read_current_source(output_frame, output_mask) ) {
       ++current_global_pos_;
       return true;
     }

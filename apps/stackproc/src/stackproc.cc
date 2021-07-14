@@ -9,6 +9,7 @@
 #include <opencv2/ximgproc.hpp>
 #include <core/readdir.h>
 #include <core/io/save_image.h>
+#include <core/io/rgbamix.h>
 #include <core/improc/c_image_processor.h>
 #include <tbb/tbb.h>
 #include <core/get_time.h>
@@ -68,6 +69,8 @@ int main(int argc, char *argv[])
           "  stack-postproc input_image [-o output_image] \n"
           "   [-overwrite]                    confirm overwrite input image if output file name is the same\n"
           "   [-unsharp sigma:amount]         apply usharp_mask(sigma, amout=(0..1))\n"
+          "   [-clip min:max]                 clip data range to [min..max]\n"
+          "   [-normalize min:max]            apply cv::normalize(min, max)\n"
 
           "   [-a <T|E|A|H|Q>:rho:eps:rc]     align color channels\n"
           "   [-wb]                           apply lsbc white balance\n"
@@ -91,8 +94,6 @@ int main(int argc, char *argv[])
           "   [-wmb r:sigma]                  apply weighted median filter\n"
           "   [-nr iterations]                apply GIMP noise reduction\n"
           "   [-hs low:high]                  apply histogram strecth with clipping\n"
-          "   [-clip min:mx]                  apply min/max clip\n"
-          "   [-normalize min:mx]             apply cv::normalize(min, max)\n"
           "   [-csmooth mb:gs]                smooth colors with median and / or gaussian blur\n"
           "   [-pyrdown]                      apply pyrDonw()\n"
           "   [-resize <fx:fy>]               apply cv::resize()\n"
@@ -132,6 +133,45 @@ int main(int argc, char *argv[])
 
       chain.emplace_back(c_unsharp_mask_image_processor::create(
               sigma, amount));
+
+    }
+
+    else if ( strcmp(argv[i], "-clip") == 0 ) {
+
+      if ( ++i >= argc ) {
+        fprintf(stderr, "Command line error: No min max range specified\n");
+        return 1;
+      }
+
+      double min = 0, max = 1;
+
+      if ( sscanf(argv[i], "%lf:%lf", &min, &max) != 2 ) {
+        fprintf(stderr, "Command line error: invalid min.max range specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      chain.emplace_back(c_rangeclip_image_processor::create(
+              min, max));
+
+    }
+
+
+    else if ( strcmp(argv[i], "-normalize") == 0 ) {
+
+      if ( ++i >= argc ) {
+        fprintf(stderr, "Command line error: No min max range specified\n");
+        return 1;
+      }
+
+      double min = 0, max = 1;
+
+      if ( sscanf(argv[i], "%lf:%lf", &min, &max) != 2 ) {
+        fprintf(stderr, "Command line error: invalid min.max range specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      chain.emplace_back(c_range_normalize_image_processor::create(
+              min, max));
 
     }
 
@@ -182,14 +222,16 @@ int main(int argc, char *argv[])
   switch ( image.channels() ) {
   case 1 :
     break;
-    // Not clear how to interpret. Consider to add command line parameter.
     //  case 2 :
+    //   Not clear how to interpret. Consider to add command line parameter.
     //    break;
   case 3 :
     break;
   case 4 : // Assuming BGRA
     cv::extractChannel(image, mask, 3);
+    cv::compare(mask, 0, mask, cv::CMP_GT);
     cv::cvtColor(image, image, cv::COLOR_BGRA2BGR);
+    CF_DEBUG("HAVE MASK");
     break;
   default :
     CF_FATAL("Invalid input: RGB or grayscale image expected, image.channels()=%d rgb_image.depth()=%d",
@@ -201,23 +243,13 @@ int main(int argc, char *argv[])
   convertTofp32(image,
       image);
 
-  if ( !mask.empty() ) {
-    save_image(mask, "mask.tiff");
-    mask.release();
-    //cv::compare(mask, 0, cv::CMP_GT);
-  }
-
-
   chain.process(image, mask);
-
   cv::minMaxLoc(image, &min, &max);
   CF_DEBUG("Output range: min=%f max=%f", min, max);
 
   if ( strcasecmp(output_suffix.c_str(), ".tiff") != 0 && strcasecmp(output_suffix.c_str(), ".tif") != 0 ) {
 
-    // clip_range();
-    cv::max(image, 0, image);
-    cv::min(image, 1, image);
+    clip_range(image, 0, 1, mask);
 
     if ( strcasecmp(output_suffix.c_str(), "png") == 0 ) {
       image.convertTo(image, CV_16U, UINT16_MAX);
@@ -227,6 +259,10 @@ int main(int argc, char *argv[])
     }
   }
 
+  if ( !mask.empty() ) {
+    image.setTo(0, ~mask);
+    mergebgra(image, mask, image);
+  }
 
   if ( !save_image(image, output_file_name) ) {
     CF_ERROR("save_image('%s') fails", output_file_name.c_str());

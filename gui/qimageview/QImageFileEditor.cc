@@ -127,8 +127,7 @@ void QImageFileEditor::loadNextFrame()
 
       QWaitCursor wait(this, current_source->size() == 1);
 
-      input_sequence_->read(inputImage_);
-      inputMask_.release();
+      input_sequence_->read(inputImage_, &inputMask_);
 
       Base::updateDisplay();
       emit currentImageChanged();

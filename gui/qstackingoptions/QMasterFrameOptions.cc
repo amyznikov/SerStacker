@@ -46,7 +46,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   applyToAll_ctl->setIconSize(QSize(16,16));
   applyToAll_ctl->setStyleSheet(borderless_style);
   applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-  applyToAll_ctl->setText("Apply to all currently selected in treeview");
+  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
   connect(applyToAll_ctl, &QToolButton::clicked,
       [this]() {
         if ( options_ ) {

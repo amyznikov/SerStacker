@@ -20,7 +20,7 @@
 enum frame_registration_method {
   frame_registration_method_unknown = -1,
   frame_registration_method_surf = 0,
-  frame_registration_method_small_planetary_disk = 1,
+  frame_registration_method_planetary_disk = 1,
   frame_registration_method_star_field = 2,
   frame_registration_method_skip = 3,
 };
@@ -102,7 +102,7 @@ struct c_image_stacking_output_options {
   std::string output_aligned_video_filename;
   bool write_aligned_video = false;
   bool write_registartion_reference_frames = false;
-
+  bool write_image_mask_as_alpha_channel = true;
 };
 
 
@@ -260,11 +260,17 @@ protected:
 
   static bool read_input_frame(const c_input_sequence::ptr & input_sequence,
       const c_image_stacking_input_options & input_options,
-      cv::Mat & output_image);
+      cv::Mat & output_reference_image, cv::Mat & output_reference_mask);
+
+  static bool write_image(const std::string output_file_name,
+      const c_image_stacking_output_options & output_options,
+      const cv::Mat & output_image,
+      const cv::Mat & output_mask);
+
 
   static void remove_bad_pixels(cv::Mat & image);
-  static void upscale(cv::InputArray src, cv::OutputArray dst);
-  static void compute_weights(const cv::Mat & src, cv::Mat & dst);
+  static void upscale(cv::InputArray src, cv::InputArray srcmask,  cv::OutputArray dst, cv::OutputArray dstmask);
+  static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
 
 
   virtual void on_frame_processed() {}
@@ -282,6 +288,7 @@ protected:
   int master_frame_index_ = -1;
   //int reference_channel_ = -1;
   cv::Mat reference_frame_;
+  cv::Mat reference_mask_;
   cv::Mat current_frame_;
   cv::Mat current_weights_;
   cv::Mat current_mask_;

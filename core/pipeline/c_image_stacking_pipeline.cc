@@ -243,6 +243,53 @@ void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_al
 }
 
 
+namespace {
+static bool write_image(cv::InputArray _image, cv::InputArray _mask, const std::string & fname)
+{
+  cv::Mat image_to_write;
+
+  if ( _mask.empty() || _image.channels() != 3 ) {
+    image_to_write = _image.getMat();
+  }
+  else {
+    cv::Mat alpha;
+
+    switch ( _image.depth() ) {
+    case CV_8U :
+      alpha = _mask.getMat();
+      break;
+    case CV_8S :
+      alpha = _mask.getMat();
+      break;
+    case CV_16U :
+      _mask.getMat().convertTo(alpha,  _image.depth(), UINT16_MAX / UINT8_MAX);
+      break;
+    case CV_16S :
+      _mask.getMat().convertTo(alpha, _image.depth(), INT16_MAX / (double) UINT8_MAX);
+      break;
+    case CV_32S :
+      _mask.getMat().convertTo(alpha, _image.depth(), INT32_MAX / (double) UINT8_MAX);
+      break;
+    case CV_32F :
+      _mask.getMat().convertTo(alpha, _image.depth(), 1.0 / UINT8_MAX);
+      break;
+    case CV_64F :
+      _mask.getMat().convertTo(alpha, _image.depth(), 1.0 / UINT8_MAX);
+      break;
+    }
+
+    image_to_write.create(_image.size(), CV_MAKETYPE(_image.depth(), _image.channels() + 1));
+
+    cv::Mat src[2] = {_image.getMat(), alpha };
+    const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
+    cv::mixChannels(src, 2, &image_to_write, 1, from_to, 4);
+  }
+
+  return save_image(image_to_write, fname);
+}
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_image_stacking_options::c_image_stacking_options(const std::string & name)
@@ -968,8 +1015,16 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
           "-WBH.tiff");
 
       CF_DEBUG("Saving '%s'", outname.c_str());
-      if ( !save_image(wbimage, outname) ) {
-        CF_ERROR("save_image('%s') fails", outname.c_str());
+
+      if ( false ) { // temporary disabled
+        if ( !write_image(current_frame_, current_mask_, outname) ) {
+          CF_ERROR("save_image('%s') fails", outname.c_str());
+        }
+      }
+      else {
+        if ( !save_image(wbimage, outname) ) {
+          CF_ERROR("save_image('%s') fails", outname.c_str());
+        }
       }
     }
   }
@@ -992,6 +1047,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       if ( !save_image(current_frame_, output_file_name) ) {
         CF_ERROR("save_image('%s') fails", output_file_name.c_str());
       }
+
     }
   }
 
@@ -1068,7 +1124,10 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
   }
 
 
-  if ( (master_frame_index_ = master_frame_options.master_frame_index) < 0 ) {
+  if ( master_frame_options.use_ffts_from_master_path ) {
+    master_frame_index_ = 0;
+  }
+  else if ( (master_frame_index_ = master_frame_options.master_frame_index) < 0 ) {
     master_frame_index_ = 0;
   }
   else if ( master_source_index_ >= 0 ) {

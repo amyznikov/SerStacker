@@ -36,7 +36,6 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
   TIFF * tiff;
   int photometric_tag = 0;
 
-
   if ( filename.empty() ) {
     CF_FATAL("Empty file name for tiff image to write");
     return false;
@@ -46,7 +45,6 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
     CF_FATAL("Unsupported image depth=%d in write_tiff()", src.depth());
     return false;
   }
-
 
   switch ( src.channels() ) {
   case 1 :
@@ -189,7 +187,6 @@ bool save_image(cv::InputArray _image, const std::string & fname,
     }
   }
 
-  //CF_DEBUG("imwrite('%s')", fname.c_str());
   if ( !write_image(fname, *imgptr, params) ) {
     CF_CRITICAL("write_image(%s) fails", fname.c_str());
     return false;

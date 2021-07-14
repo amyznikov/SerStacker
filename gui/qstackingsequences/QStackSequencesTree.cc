@@ -1103,6 +1103,9 @@ void QStackSequencesTree::applyMasterFrameOptionsToAll(const c_stacking_master_f
 
     // copy here
     stack->master_frame_options().use_ffts_from_master_path = options.use_ffts_from_master_path;
+    if ( options.use_ffts_from_master_path ) {
+      stack->master_frame_options().master_path = options.master_path;
+    }
  }
 }
 

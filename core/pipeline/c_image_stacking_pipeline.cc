@@ -1067,6 +1067,7 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
 
   master_source_index_ = -1;
   master_frame_index_ = -1;
+  master_file_name_.clear();
 
   CF_DEBUG("master_frame_options.use_ffts_from_master_path=%d", master_frame_options.use_ffts_from_master_path);
   if ( master_frame_options.use_ffts_from_master_path ) {
@@ -1109,6 +1110,8 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
       master_source_index_ = source_pos - options->input_sequence()->sources().begin();
     }
   }
+
+  CF_DEBUG("Use master_file_name_ = %s", master_file_name_.c_str());
 
   if ( master_source_index_ >= 0 ) {
     input_sequence = options->input_sequence();

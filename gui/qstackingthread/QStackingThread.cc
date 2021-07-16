@@ -6,6 +6,7 @@
  */
 
 #include "QStackingThread.h"
+#include <core/debug.h>
 
 QStackingThread::c_stacking_thread_impl::c_stacking_thread_impl(QStackingThread * _qobj)
   : qobj(_qobj)
@@ -30,12 +31,12 @@ QStackingThread * QStackingThread::singleton()
 
 void QStackingThread::lock()
 {
-  singleton()->pipeline_.lock();
+  //singleton()->pipeline_.lock();
 }
 
 void QStackingThread::unlock()
 {
-  singleton()->pipeline_.unlock();
+  //singleton()->pipeline_.unlock();
 }
 
 c_image_stacking_pipeline * QStackingThread::pipeline()
@@ -69,15 +70,13 @@ bool QStackingThread::start(const c_image_stacking_options::ptr pipeline)
 
 void QStackingThread::cancel()
 {
-  auto_lock lock;
-
   emit singleton()->finishing();
-  singleton()->pipeline_.cancel(false);
+  singleton()->pipeline_.set_canceled(true);
 
   while ( ((Base*) singleton())->isRunning() ) {
-    unlock();
     singleton()->msleep(100);
   }
+  CF_DEBUG("H");
 }
 
 

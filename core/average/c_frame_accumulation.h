@@ -22,6 +22,13 @@ public:
   virtual bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const = 0;
   virtual void release() = 0;
   virtual cv::Size accumulator_size() const = 0;
+
+  int accumulated_frames() const {
+    return number_of_accumulated_frames_;
+  }
+
+protected:
+  int number_of_accumulated_frames_ = 0;
 };
 
 class c_frame_accumulation_with_mask
@@ -41,11 +48,9 @@ public:
 
   const cv::Mat & accumulator() const;
   const cv::Mat & counter() const;
-  int nbframes() const;
 
 protected:
   cv::Mat accumulator_, counter_;
-  int nbframes_ = 0;
 };
 
 class c_frame_accumulation_with_weights
@@ -65,11 +70,9 @@ public:
 
   const cv::Mat & accumulator() const;
   const cv::Mat & weights() const;
-  int nbframes() const;
 
 protected:
   cv::Mat accumulator_, weights_, tmp_;
-  int nbframes_ = 0;
 };
 
 
@@ -88,7 +91,6 @@ public:
 
   const std::vector<cv::Mat> & accumulators() const;
   const std::vector<cv::Mat> & weights() const;
-  int nbframes() const;
 
 protected:
   static int countNaNs(const cv::Mat & image);
@@ -105,7 +107,6 @@ protected:
   int border_bottom_ = 0;
   int border_left_ = 0;
   int border_right_ = 0;
-  int nbframes_ = 0;
 };
 
 #endif /* __c_frame_stacking_h__ */

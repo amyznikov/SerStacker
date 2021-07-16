@@ -74,10 +74,17 @@ struct c_image_stacking_input_options {
   bool enable_color_maxtrix = false;
 };
 
+//enum master_frame_source_type {
+//  use_master_patch_as_source = 0,
+//  use_ffts_from_master_path = 1,
+//};
+
 struct c_stacking_master_frame_options {
-  std::string master_path;
+  std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
   bool use_ffts_from_master_path = false;
+  bool generate_master_frame = false;
+  int max_input_frames_to_generate_master_frame = 500;
 };
 
 struct c_frame_accumulation_options {
@@ -191,37 +198,21 @@ public:
   typedef c_image_stacking_pipeline this_class;
   typedef std::shared_ptr<this_class> ptr;
 
-  class auto_lock {
-    c_image_stacking_pipeline * t_ =  nullptr;
-  public:
-    auto_lock(c_image_stacking_pipeline * t) : t_(t) {
-      t->lock();
-    }
-    ~auto_lock() {
-      t_->unlock();
-    }
-  };
-
-
 public:
   c_image_stacking_pipeline()
-    : cancel_requested_(false)
   {
   }
 
   virtual ~c_image_stacking_pipeline()
   {
-    cancel(true);
+    set_canceled(true);
   }
 
   bool run(const c_image_stacking_options::ptr & stacking_options);
-  void cancel(bool lock);
-
-  void lock();
-  void unlock();
+  void set_canceled(bool canceled);
+  bool canceled() const;
 
   const c_image_stacking_options::ptr & stacking_options() const;
-
 
   const std::string & master_file_name() const {
     return master_file_name_;
@@ -239,24 +230,20 @@ public:
     return current_weights_;
   }
 
-  int num_frames_total() const {
-    return num_frames_total_;
-  }
-
-  int num_frames_processed() const {
-    return num_frames_processed_;
-  }
-
-  int num_frames_accumulated() const {
-    return num_frames_accumulated_;
-  }
+  int total_frames() const;
+  int processed_frames() const;
+  int accumulated_frames() const;
+  std::string status_message() const ;
 
   bool compute_accumulated_image(cv::OutputArray dst,
       cv::OutputArray dstmask=cv::noArray()) const ;
 
 protected:
 
-  bool select_and_load_reference_frame(const c_image_stacking_options::ptr & options);
+  void set_status_msg(const std::string & msg);
+  bool load_or_generate_reference_frame(const c_image_stacking_options::ptr & options);
+
+
 
   static bool read_input_frame(const c_input_sequence::ptr & input_sequence,
       const c_image_stacking_input_options & input_options,
@@ -271,22 +258,23 @@ protected:
   static void remove_bad_pixels(cv::Mat & image);
   static void upscale(cv::InputArray src, cv::InputArray srcmask,  cv::OutputArray dst, cv::OutputArray dstmask);
   static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
+  static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
 
-  virtual void on_frame_processed() {}
-  virtual void on_frame_accumulated() {}
+  virtual void emit_status_changed() {}
+  virtual void emit_accumulator_changed() {}
 
 
 protected:
-  std::mutex mtx;
-  //std::condition_variable condvar;
+
+  using lock_guard = std::lock_guard<std::mutex>;
+
   c_image_stacking_options::ptr stacking_options_;
-  /*volatile */std::atomic_bool cancel_requested_;
+  volatile bool canceled_ = false;
 
   std::string master_file_name_;
   int master_source_index_ = -1;
   int master_frame_index_ = -1;
-  //int reference_channel_ = -1;
   cv::Mat reference_frame_;
   cv::Mat reference_mask_;
   cv::Mat current_frame_;
@@ -294,11 +282,18 @@ protected:
   cv::Mat current_mask_;
   double ecc_normalization_noise_ = 0;
 
-  c_frame_accumulation::ptr frame_accumulation_;
+  int total_frames_ = 0;
+  int processed_frames_ = 0;
 
-  int num_frames_total_ = 0;
-  int num_frames_processed_ = 0;
-  int num_frames_accumulated_ = 0;
+  std::string statusmsg_;
+  mutable std::mutex status_lock_;
+
+  c_frame_registration::ptr frame_registration_;
+  mutable std::mutex registration_lock_;
+
+  c_frame_accumulation::ptr frame_accumulation_;
+  mutable std::mutex accumulator_lock_;
+
 };
 
 #endif /* __c_stacking_pipeline_h__ */

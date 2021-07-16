@@ -11,6 +11,7 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
+
 template<class T1, class T2>
 static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
     cv::OutputArray rdata, cv::OutputArray rmask,
@@ -730,6 +731,8 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
 
 bool c_frame_accumulation_with_mask::add(cv::InputArray src, cv::InputArray mask)
 {
+
+
   if ( accumulator_.empty() || counter_.empty() ) {
     accumulator_.create(src.size(), CV_MAKETYPE(accdepth, src.channels()));
     counter_.create(src.size(), accumulator_.depth());
@@ -740,19 +743,24 @@ bool c_frame_accumulation_with_mask::add(cv::InputArray src, cv::InputArray mask
   cv::add(accumulator_, src, accumulator_, mask, accumulator_.type());
   cv::add(counter_, 1, counter_, mask, counter_.type());
 
-  ++nbframes_;
+  ++number_of_accumulated_frames_;
 
   return true;
 }
 
 bool c_frame_accumulation_with_mask::compute(cv::OutputArray avg, cv::OutputArray mask, double scale, int ddepth) const
 {
-  if ( accumulator_.empty()  || counter_.empty() ) {
+  if ( accumulator_.empty() || counter_.empty() ) {
     CF_ERROR("c_frame_accumulation_with_mask: accuulator is empty");
     return false;
   }
 
-  return divide_accumulator(accumulator_, counter_, avg, mask, scale, ddepth);
+  if ( !divide_accumulator(accumulator_, counter_, avg, mask, scale, ddepth) ) {
+    CF_ERROR("c_frame_accumulation_with_mask: divide_accumulator() fails");
+    return false;
+  }
+
+  return true;
 }
 
 cv::Size c_frame_accumulation_with_mask::accumulator_size() const
@@ -770,24 +778,21 @@ const cv::Mat & c_frame_accumulation_with_mask::counter() const
   return counter_;
 }
 
-int c_frame_accumulation_with_mask::nbframes() const
-{
-  return nbframes_;
-}
-
 void c_frame_accumulation_with_mask::release()
 {
+
   accumulator_.release();
   counter_.release();
-  nbframes_ = 0;
+  number_of_accumulated_frames_ = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool c_frame_accumulation_with_weights::add(cv::InputArray src, cv::InputArray weights)
 {
+
   if ( accumulate_weighted(src, weights, accumulator_, weights_, accdepth) ) {
-    ++nbframes_;
+    ++number_of_accumulated_frames_;
     return true;
   }
   return false;
@@ -795,7 +800,12 @@ bool c_frame_accumulation_with_weights::add(cv::InputArray src, cv::InputArray w
 
 bool c_frame_accumulation_with_weights::compute(cv::OutputArray avg, cv::OutputArray mask, double scale, int ddepth) const
 {
-  return divide_accumulator(accumulator_, weights_, avg, mask, scale, ddepth);
+
+  if ( !divide_accumulator(accumulator_, weights_, avg, mask, scale, ddepth) ) {
+    CF_ERROR("c_frame_accumulation_with_weights: divide_accumulator() fails");
+    return false;
+  }
+  return true;
 }
 
 void c_frame_accumulation_with_weights::release()
@@ -803,7 +813,7 @@ void c_frame_accumulation_with_weights::release()
   accumulator_.release();
   weights_.release();
   tmp_.release();
-  nbframes_ = 0;
+  number_of_accumulated_frames_ = 0;
 }
 
 cv::Size c_frame_accumulation_with_weights::accumulator_size() const
@@ -821,17 +831,14 @@ const cv::Mat & c_frame_accumulation_with_weights::weights() const
   return weights_;
 }
 
-int c_frame_accumulation_with_weights::nbframes() const
-{
-  return nbframes_;
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
 {
   (void)(_w);
+
+
 
   const int nc = src.channels();
 
@@ -951,13 +958,14 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
   }
 
 
-  ++nbframes_;
+  ++number_of_accumulated_frames_;
 
   return true;
 }
 
 bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
 {
+
   const int nc = accumulators_.size();
   cv::Mat channels[nc];
 
@@ -999,11 +1007,12 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
     }
   }
 
-  return true;}
+  return true;
+}
 
 void c_frame_accumulation_with_fft::release()
 {
-  nbframes_ = 0;
+  number_of_accumulated_frames_ = 0;
   accumulators_.clear();
   weights_.clear();
   rc_.x = rc_.y = rc_.width = rc_.height = 0;
@@ -1027,11 +1036,6 @@ const std::vector<cv::Mat> & c_frame_accumulation_with_fft::accumulators() const
 const std::vector<cv::Mat> & c_frame_accumulation_with_fft::weights() const
 {
   return weights_;
-}
-
-int c_frame_accumulation_with_fft::nbframes() const
-{
-  return nbframes_;
 }
 
 int c_frame_accumulation_with_fft::countNaNs(const cv::Mat & image)

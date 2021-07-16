@@ -16,6 +16,8 @@
 std::string ssprintf(const char * format, ...)
   __attribute__ ((__format__ (printf, 1, 2)));
 
+std::string vssprintf(const char * format,
+    va_list arglist);
 
 ///////////////////////////////////////////////////////////////////////////////
 #endif /* __ssprintf_h__ */

@@ -42,8 +42,8 @@ public:
 
 
 signals:
-  void frameProcessed();
-  void frameAccumulated();
+  void accumulatorChanged();
+  void statusChanged();
   void finishing();
 
 protected:
@@ -57,11 +57,11 @@ protected:
     c_stacking_thread_impl(QStackingThread * qobj);
 
 protected:
-    void on_frame_processed() override {
-      emit qobj->frameProcessed();
+    void emit_status_changed() override {
+      emit qobj->statusChanged();
     }
-    void on_frame_accumulated() override {
-      emit qobj->frameAccumulated();
+    void emit_accumulator_changed() override {
+      emit qobj->accumulatorChanged();
     }
   };
 

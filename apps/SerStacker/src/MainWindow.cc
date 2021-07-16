@@ -732,7 +732,10 @@ void MainWindow::onStackingThreadStarted()
 
   imageEditor->editImage(cv::Mat());
   stackProgressView->setImageViewer(imageEditor);
-  stackProgressView->show();
+
+  if ( !stackProgressView->isVisible() ) {
+    stackProgressView->show();
+  }
 }
 
 void MainWindow::onStackingThreadFinished()

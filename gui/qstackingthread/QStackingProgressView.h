@@ -32,8 +32,8 @@ protected slots:
   void onStackingThreadStarted();
   void onStackingThreadFinishing();
   void onStackingThreadFinished();
-  void onFrameProcessed();
-  void onArameAccumulated();
+  void onStatusChanged();
+  void onAccumulatorChanged();
 
 protected:
   void showEvent(QShowEvent *event) override;
@@ -43,6 +43,7 @@ protected:
 
 protected:
   QVBoxLayout * layout_ = Q_NULLPTR;
+  QLabel * statusLabel_ = Q_NULLPTR;
   QLabel * progressLabel_ = Q_NULLPTR;
   QImageEditor * imageViewer_ = Q_NULLPTR;
   //  cv::Mat currentImage_;

@@ -375,9 +375,6 @@ const c_frame_registration_options & c_image_stacking_options::frame_registratio
 
 c_frame_registration::ptr c_image_stacking_options::create_frame_registration()
 {
-  CF_DEBUG("frame_registration_options_.registration_method=%d",
-      frame_registration_options_.registration_method);
-
   switch (frame_registration_options_.registration_method) {
 
     case frame_registration_method_surf:
@@ -519,53 +516,48 @@ const c_image_stacking_options::ptr & c_image_stacking_pipeline::stacking_option
   return stacking_options_;
 }
 
-void c_image_stacking_pipeline::lock()
+void c_image_stacking_pipeline::set_canceled(bool canceled)
 {
-  mtx.lock();
+  canceled_ = canceled;
 }
 
-void c_image_stacking_pipeline::unlock()
+bool c_image_stacking_pipeline::canceled() const
 {
-  mtx.unlock();
+  return canceled_;
 }
 
-void c_image_stacking_pipeline::cancel(bool _lock)
+int c_image_stacking_pipeline::total_frames() const
 {
-  if ( _lock ) {
-    lock();
-  }
-
-  cancel_requested_ = true;
-
-  if ( _lock ) {
-    unlock();
-  }
+  return total_frames_;
 }
+
+int c_image_stacking_pipeline::processed_frames() const
+{
+  return processed_frames_;
+}
+
+int c_image_stacking_pipeline::accumulated_frames() const
+{
+  lock_guard lock(accumulator_lock_);
+  return frame_accumulation_ ? frame_accumulation_->accumulated_frames() : 0;
+}
+
+std::string c_image_stacking_pipeline::status_message() const
+{
+  lock_guard lock(status_lock_);
+  return statusmsg_;
+}
+
+void c_image_stacking_pipeline::set_status_msg(const std::string & msg)
+{
+  lock_guard lock(status_lock_);
+  statusmsg_ = msg;
+  emit_status_changed();
+}
+
 
 bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & options)
 {
-  auto_lock lock(this);
-
-  struct c_auto_close_input_sequence {
-    const c_image_stacking_options::ptr & options_;
-    c_auto_close_input_sequence(const c_image_stacking_options::ptr & options)
-      : options_(options){
-    }
-    ~c_auto_close_input_sequence() {
-      if ( options_ ) {
-        options_->input_sequence()->close();
-      }
-    }
-  } auto_close_input_sequence(options);
-
-
-  cancel_requested_ = false;
-  num_frames_total_ = 0;
-  num_frames_processed_ = 0;
-  num_frames_accumulated_ = 0;
-  current_mask_.release();
-
-  CF_DEBUG("Started '%s'", options->name().c_str());
 
   cv::Mat tmp;
   c_video_writer output_aligned_video;
@@ -573,15 +565,35 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   std::string output_directory;
   bool fOk;
 
+  CF_DEBUG("Started '%s'", options->name().c_str());
+
+  total_frames_ = 0;
+  processed_frames_ = 0;
+  set_canceled(false);
+
+  set_status_msg("INITIALIZATION ...");
 
 
-  const c_input_sequence::ptr input_sequence =
+  c_input_sequence::ptr input_sequence =
       options->input_sequence();
 
   if ( !input_sequence || input_sequence->empty() ) {
-    CF_FATAL("empty input sequence specified");
+    set_status_msg("ERROR: empty input sequence specified");
     return false;
   }
+
+  set_status_msg("PREPARE REFERENCE FRAME ...");
+
+  if ( !load_or_generate_reference_frame(options) ) {
+    CF_DEBUG("load_or_generate_reference_frame() fails");
+    set_status_msg("ERROR: select_and_load_reference_frame() fails");
+    return false;
+  }
+
+  set_status_msg("PREPARE MAIN LOOP ...");
+
+  const c_auto_close_input_sequence auto_close_on_exit(
+      input_sequence);
 
   const c_image_stacking_input_options & input_options =
       options->input_options();
@@ -598,11 +610,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   const c_image_stacking_output_options & output_options =
       options->output_options();
 
-  c_frame_registration::ptr frame_registration =
+  frame_registration_ =
       options->create_frame_registration();
 
-  if ( !frame_registration ) {
-    CF_FATAL("create_frame_registration() fails");
+  if ( !frame_registration_ ) {
+    set_status_msg("ERROR: create_frame_registration() fails");
     return false;
   }
 
@@ -610,12 +622,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       options->create_frame_accumulation();
 
   if ( !frame_accumulation_ ) {
-    CF_FATAL("create_frame_accumulation() fails");
-    return false;
-  }
-
-  if ( !select_and_load_reference_frame(options) ) {
-    CF_FATAL("select_and_load_reference_frame() fails");
+    set_status_msg("ERROR: create_frame_accumulation() fails");
     return false;
   }
 
@@ -654,35 +661,28 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       reference_mask_.depth(),
       reference_mask_.channels());
 
-//  if ( options->frame_registration_options().registration_method != frame_registration_method_unknown ) {
-//    save_image(reference_frame_,
-//        ssprintf("%s/%s-master_frame.tiff",
-//            output_directory.c_str(),
-//            options->name().c_str()));
-//  }
-
-  if ( frame_registration->ecc_normalization_scale() > 0 ) {
-    frame_registration->set_ecc_normalization_noise(ecc_normalization_noise_);
+  if ( frame_registration_->ecc_normalization_scale() > 0 ) {
+    frame_registration_->set_ecc_normalization_noise(ecc_normalization_noise_);
   }
 
-  if ( !(fOk = frame_registration->setup_referece_frame(reference_frame_, reference_mask_)) ) {
-    CF_FATAL("ERROR: setup_referece_frame() fails");
+  if ( !(fOk = frame_registration_->setup_referece_frame(reference_frame_, reference_mask_)) ) {
+    set_status_msg("ERROR: setup_referece_frame() fails");
   }
 
   if ( !fOk || output_options.write_registartion_reference_frames ) {
 
-    if ( !frame_registration->reference_feature_image().empty() ) {
-      save_image(frame_registration->reference_feature_image(),
+    if ( !frame_registration_->reference_feature_image().empty() ) {
+      save_image(frame_registration_->reference_feature_image(),
           ssprintf("%s/%s-feature-reference.tiff", output_directory.c_str(),
               options->name().c_str() ));
     }
-    if ( !frame_registration->ecc().reference_image().empty() ) {
-      save_image(frame_registration->ecc().reference_image(),
+    if ( !frame_registration_->ecc().reference_image().empty() ) {
+      save_image(frame_registration_->ecc().reference_image(),
           ssprintf("%s/ecc-reference.tiff", output_directory.c_str(),
               options->name().c_str()));
     }
-    if ( !frame_registration->eccflow().reference_image().empty() ) {
-      save_image(frame_registration->eccflow().reference_image(),
+    if ( !frame_registration_->eccflow().reference_image().empty() ) {
+      save_image(frame_registration_->eccflow().reference_image(),
           ssprintf("%s/eccflow-reference.tiff", output_directory.c_str(),
               options->name().c_str()));
     }
@@ -695,7 +695,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   if ( master_source_index_ >= 0 ) {
 
-    const cv::Rect ROI = frame_registration->reference_ROI();
+    const cv::Rect ROI = frame_registration_->reference_ROI();
     const cv::Mat RF = ROI.empty() ? reference_frame_ : reference_frame_(ROI);
     const cv::Mat RM = reference_mask_.empty() ? reference_mask_ : (ROI.empty() ? reference_mask_ : reference_mask_(ROI));
 
@@ -703,58 +703,59 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     CF_DEBUG("RF: %dx%d", RF.cols, RF.rows);
     CF_DEBUG("RM: %dx%d", RM.cols, RM.rows);
 
-    switch ( accumulation_options.accumulation_method ) {
-    case frame_accumulation_average_masked :
+    if ( true ) {
+      lock_guard lock(accumulator_lock_);
 
-      if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-        upscale(RF, RM, current_frame_, current_mask_);
-        frame_accumulation_->add(current_frame_, current_mask_);
+      switch ( accumulation_options.accumulation_method ) {
+      case frame_accumulation_average_masked :
+
+        if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
+          upscale(RF, RM, current_frame_, current_mask_);
+          frame_accumulation_->add(current_frame_, current_mask_);
+        }
+        else {
+          frame_accumulation_->add(RF, RM);
+        }
+
+        ++processed_frames_;
+        break;
+
+      case frame_accumulation_average_weighted :
+
+        compute_weights(RF, RM, current_weights_);
+
+        if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
+          upscale(RF, current_weights_, current_frame_, current_weights_);
+          frame_accumulation_->add(current_frame_, current_weights_);
+        }
+        else {
+          frame_accumulation_->add(RF, current_weights_);
+        }
+
+        ++processed_frames_;
+        break;
       }
-      else {
-        frame_accumulation_->add(RF, RM);
-      }
-
-      ++num_frames_processed_;
-      ++num_frames_accumulated_;
-      break;
-
-    case frame_accumulation_average_weighted :
-
-      compute_weights(RF, RM, current_weights_);
-
-      if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-        upscale(RF, current_weights_, current_frame_, current_weights_);
-        frame_accumulation_->add(current_frame_, current_weights_);
-      }
-      else {
-        frame_accumulation_->add(RF, current_weights_);
-      }
-
-      ++num_frames_processed_;
-      ++num_frames_accumulated_;
-      break;
     }
+
+    emit_accumulator_changed();
   }
 
 
   if ( !input_sequence->open() ) {
-    CF_FATAL("input_sequence->open() fails");
+    set_status_msg("ERROR: input_sequence->open() fails");
     return false;
   }
 
 
   int n = input_sequence->size();
-  CF_DEBUG("Begin loop: input_sequence->size=%d", n);
-
-
-
-
   int start_frame_index = 0;
   input_sequence->seek(start_frame_index);
 
-  num_frames_total_ = n - input_sequence->current_pos();
+  processed_frames_ = 0;
+  total_frames_ = n - input_sequence->current_pos();
+  set_status_msg("RUNNING...");
 
-  for ( int i = 0; i < n && !cancel_requested_; ++i, on_frame_processed() ) {
+  for ( int i = 0; i < n; ++i, emit_status_changed() ) {
 
     double t0, t1, start_time, total_time;
     double time_read = 0;
@@ -764,21 +765,21 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     double time_average = 0;
     double time_compute_weights = 0;
 
-
-    this->unlock();
-
-
-    t0 = start_time = get_realtime_ms();
-
-    if ( !read_input_frame(input_sequence, input_options, current_frame_, current_mask_) ) {
-      CF_ERROR("[F %6d] read_input_frame() fails\n", i);
+    if ( canceled() ) {
       break;
     }
 
+    t0 = start_time = get_realtime_ms();
+    fOk = read_input_frame(input_sequence, input_options, current_frame_, current_mask_);
     time_read = (t1 = get_realtime_ms()) - t0, t0 = t1;
+    if ( !fOk || canceled() ) {
+      set_status_msg("read_input_frame() fails");
+      break;
+    }
+
 
     if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
-      ++num_frames_processed_;
+      ++processed_frames_;
     }
 
     if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
@@ -795,15 +796,15 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     }
     time_upscale = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
-    if ( frame_registration ) {
+    if ( frame_registration_ ) {
       if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-        if ( !frame_registration->register_frame(current_frame_, cv::noArray(), cv::noArray(), cv::noArray()) ) {
+        if ( !frame_registration_->register_frame(current_frame_, cv::noArray(), cv::noArray(), cv::noArray()) ) {
           CF_ERROR("[F %6d] reg->register_frame() fails\n", i);
           continue;
         }
       }
       else {
-        if ( !frame_registration->register_frame(current_frame_, current_frame_, cv::noArray(), cv::noArray()) ) {
+        if ( !frame_registration_->register_frame(current_frame_, current_frame_, cv::noArray(), cv::noArray()) ) {
           CF_ERROR("[F %6d] reg->register_frame() fails\n", i);
           continue;
         }
@@ -812,27 +813,27 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
-    if ( frame_registration ) {
+    if ( frame_registration_ ) {
       if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
 
-        const cv::Rect ROI = frame_registration->current_ROI();
+        const cv::Rect ROI = frame_registration_->current_ROI();
 
-        upscale(frame_registration->current_remap(), cv::noArray(), tmp, cv::noArray());
+        upscale(frame_registration_->current_remap(), cv::noArray(), tmp, cv::noArray());
 
         switch ( accumulation_options.accumulation_method ) {
         case frame_accumulation_average_masked :
-          if ( !frame_registration->custom_remap(current_frame_, current_frame_, ROI, tmp, current_mask_, current_mask_) ) {
+          if ( !frame_registration_->custom_remap(current_frame_, current_frame_, ROI, tmp, current_mask_, current_mask_) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_frame) fails\n", i);
             continue;
           }
           break;
 
         case frame_accumulation_average_weighted :
-          if ( !frame_registration->custom_remap(current_frame_, current_frame_, ROI, tmp) ) {
+          if ( !frame_registration_->custom_remap(current_frame_, current_frame_, ROI, tmp) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_frame) fails\n", i);
             continue;
           }
-          if ( !frame_registration->custom_remap(current_weights_, current_weights_, ROI, tmp,
+          if ( !frame_registration_->custom_remap(current_weights_, current_weights_, ROI, tmp,
               cv::noArray(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_weights) fails\n", i);
             continue;
@@ -845,21 +846,18 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         switch ( accumulation_options.accumulation_method ) {
         case frame_accumulation_average_masked :
-          if ( !frame_registration->remap(cv::noArray(), cv::noArray(), current_mask_, current_mask_) ) {
+          if ( !frame_registration_->remap(cv::noArray(), cv::noArray(), current_mask_, current_mask_) ) {
             CF_ERROR("[F %6d] reg->remap(current_frame) fails\n", i);
             continue;
           }
           break;
 
         case frame_accumulation_average_weighted :
-          this->lock();
-          if ( !frame_registration->remap(current_weights_, current_weights_,
+          if ( !frame_registration_->remap(current_weights_, current_weights_,
               cv::noArray(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT) ) {
             CF_ERROR("[F %6d] reg->remap(current_weights) fails\n", i);
-            this->unlock();
             continue;
           }
-          this->unlock();
           break;
 
         }
@@ -875,29 +873,25 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
         output_directory);
 
 
-
-    this->lock();
-
-    if ( num_frames_accumulated_ > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
+    if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
       CF_ERROR("ERROR: current frame and accumulator sizes not match");
       break;
     }
 
     if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
-      switch ( accumulation_options.accumulation_method ) {
-      case frame_accumulation_average_masked :
-        frame_accumulation_->add(current_frame_, current_mask_);
-        break;
-      case frame_accumulation_average_weighted :
-        CF_DEBUG("current_frame_: %dx%d current_weights_=%dx%d", current_frame_.cols, current_frame_.rows, current_weights_.cols, current_weights_.rows);
-        frame_accumulation_->add(current_frame_, current_weights_);
-        break;
+      if ( true ) {
+        lock_guard lock(accumulator_lock_);
+        switch ( accumulation_options.accumulation_method ) {
+        case frame_accumulation_average_masked :
+          frame_accumulation_->add(current_frame_, current_mask_);
+          break;
+        case frame_accumulation_average_weighted :
+          frame_accumulation_->add(current_frame_, current_weights_);
+          break;
+        }
       }
-
-      ++num_frames_accumulated_;
+      emit_accumulator_changed();
     }
-
-    this->unlock();
 
     time_average = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
@@ -912,7 +906,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
         "remap   : %g ms\n"
         "average : %g ms\n"
         "-----------\n\n\n",
-        i + start_frame_index, num_frames_processed_, n, total_time,
+        i + start_frame_index, processed_frames_, n, total_time,
 
         time_read,
         time_compute_weights,
@@ -921,21 +915,14 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
         time_remap,
         time_average);
 
-    on_frame_accumulated();
-
-    this->lock();
+    emit_accumulator_changed();
   }
 
 
   output_aligned_video.close();
 
-  CF_DEBUG("Finishing '%s'", options->name().c_str());
+  set_status_msg("FINISHING ...");
 
-  if ( input_sequence ) {
-    input_sequence->close();
-  }
-
-  CF_DEBUG("compute_accumulated_image");
   if ( !compute_accumulated_image(current_frame_, current_mask_) ) {
     CF_ERROR("FATAL: compute_accumulated_image() fails");
     return false;
@@ -953,7 +940,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   bool transfer_fft_spectrum_power = true;
   if ( transfer_fft_spectrum_power ) {
 
-    const cv::Rect ROI = frame_registration->reference_ROI();
+    const cv::Rect ROI = frame_registration_->reference_ROI();
     const cv::Mat RF = ROI.empty() ? reference_frame_ : reference_frame_(ROI);
     //const cv::Mat CM = ROI.empty() ? current_mask_ : current_mask_(ROI);
 
@@ -973,9 +960,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       set_file_suffix(output_name,
           "-FFTS.tiff");
 
-      CF_DEBUG("Saving '%s'",
-          output_file_name.c_str());
-
+      CF_DEBUG("Saving '%s'", output_file_name.c_str());
       if ( !write_image(output_name, output_options, SF, current_mask_) ) {
         CF_ERROR("write_image('%s') fails", output_name.c_str());
       }
@@ -1042,7 +1027,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       set_file_suffix(output_file_name,
           "-WBH.tiff");
 
-      CF_DEBUG("Saving '%s'", output_file_name.c_str());
+      CF_DEBUG("SAVING '%s'", output_file_name.c_str());
       if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
         CF_ERROR("write_image('%s') fails", output_file_name.c_str());
       }
@@ -1050,51 +1035,58 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     }
   }
 
-  CF_DEBUG("Finished '%s'", options->name().c_str());
+  set_status_msg("FINISHED");
 
   return true;
 }
 
 
-bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_stacking_options::ptr & options)
+bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_stacking_options::ptr & options)
 {
 
   const c_stacking_master_frame_options & master_frame_options =
       options->master_frame_options();
 
+  int num_source_frames = 0;
+
   c_input_sequence::ptr input_sequence;
+  c_auto_close_input_sequence auto_close(input_sequence);
+  bool fOk = false;
 
   master_source_index_ = -1;
   master_frame_index_ = -1;
   master_file_name_.clear();
 
-  CF_DEBUG("master_frame_options.use_ffts_from_master_path=%d", master_frame_options.use_ffts_from_master_path);
+
+
   if ( master_frame_options.use_ffts_from_master_path ) {
-    if ( master_frame_options.master_path.empty() ) {
-      CF_ERROR("Matser path is not specified for use_ffts_from_master_path=true");
+
+    if ( master_frame_options.master_source_path.empty() ) {
+      CF_ERROR("Master path is not specified for use_ffts_from_master_path=true");
       return false;
     }
-    else if ( is_absolute_path(master_frame_options.master_path) ) {
+
+    if ( is_absolute_path(master_frame_options.master_source_path) ) {
+
       master_file_name_ = ssprintf("%s/%s-32F-FFTS.tiff",
-          master_frame_options.master_path.c_str(),
+          master_frame_options.master_source_path.c_str(),
           options->name().c_str());
 
-      CF_DEBUG("USE master_file_name_=%s", master_file_name_.c_str());
     }
-    else if ( input_sequence->sources().size() > 0 )  {
+    else if ( input_sequence->sources().size() > 0 ) {
+
       master_file_name_ = ssprintf("%s/%s/%s-32F-FFTS.tiff",
           get_parent_directory(input_sequence->source(0)->filename()).c_str(),
-          master_frame_options.master_path.c_str(),
+          master_frame_options.master_source_path.c_str(),
           options->name().c_str());
 
-      CF_DEBUG("USE master_file_name_=%s", master_file_name_.c_str());
     }
     else {
       CF_ERROR("Can not generate master_file_name_ from given input");
       return false;
     }
   }
-  else if ( (master_file_name_ = master_frame_options.master_path).empty() ) {
+  else if ( (master_file_name_ = master_frame_options.master_source_path).empty() ) {
     master_file_name_ = options->input_sequence()->source(master_source_index_ = 0)->filename();
   }
   else {
@@ -1102,7 +1094,7 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
     std::vector<c_input_source::ptr>::const_iterator source_pos =
         std::find_if(options->input_sequence()->sources().begin(), options->input_sequence()->sources().end(),
             [master_frame_options](const c_input_source::ptr & s ) -> bool {
-              return s->filename() == master_frame_options.master_path;
+              return s->filename() == master_frame_options.master_source_path;
             });
 
     if ( source_pos != options->input_sequence()->sources().end() ) {
@@ -1110,12 +1102,13 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
     }
   }
 
-  CF_DEBUG("Use master_file_name_ = %s", master_file_name_.c_str());
+
+  CF_DEBUG("USE master_file_name_ = %s", master_file_name_.c_str());
 
   if ( master_source_index_ >= 0 ) {
     input_sequence = options->input_sequence();
   }
-  else if ( !(input_sequence = c_input_sequence::create(master_file_name_))) {
+  else if ( !(input_sequence = c_input_sequence::create(master_file_name_)) ) {
     CF_ERROR("ERROR: c_input_sequence::create(master_file_name_=%s) fails", master_file_name_.c_str());
     return false;
   }
@@ -1124,6 +1117,7 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
     CF_FATAL("ERROR: Can not open input source '%s'", master_file_name_.c_str());
     return false;
   }
+
 
 
   if ( master_frame_options.use_ffts_from_master_path ) {
@@ -1136,61 +1130,167 @@ bool c_image_stacking_pipeline::select_and_load_reference_frame(const c_image_st
     if ( master_frame_index_ >= input_sequence->source(master_source_index_)->size() ) {
       CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
           master_frame_index_, master_file_name_.c_str());
-      input_sequence->close();
       return false;
     }
   }
   else if ( master_frame_index_ >= input_sequence->source(0)->size() ) {
     CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
         master_frame_index_, master_file_name_.c_str());
-    input_sequence->close();
     return false;
   }
 
-  if ( master_source_index_ >= 0 ) {
+
+  if ( master_source_index_ < 0 ) {
+    num_source_frames = input_sequence->source(0)->size();
+  }
+  else {
+    num_source_frames = input_sequence->source(master_source_index_)->size();
     master_frame_index_ = input_sequence->global_pos(master_source_index_, master_frame_index_);
   }
 
   if ( !input_sequence->seek(master_frame_index_) ) {
     CF_ERROR("ERROR: input_sequence->seek(local pos=%d) fails",
         master_frame_index_);
-    input_sequence->close();
     return false;
   }
 
+  if ( !master_frame_options.generate_master_frame || num_source_frames < 2 ) {
 
-  if ( !read_input_frame(input_sequence, options->input_options(), reference_frame_, reference_mask_) ) {
-    CF_FATAL("read_input_frame(reference_frame) fails");
-    input_sequence->close();
-    return false;
-  }
-
-  input_sequence->close();
-
-  if ( reference_frame_.channels() == 1 ) {
-    ecc_normalization_noise_ = estimate_noise(reference_frame_, cv::noArray(), cv::noArray())[0];
-  }
-  else {
-
-    color_channel_type registration_channel = options->frame_registration_options().base_options.registration_channel;
-    if ( registration_channel < 0 ) {
-      CF_ERROR("Invalid parameter: registration_channel = %d is invalid");
+    if ( !read_input_frame(input_sequence, options->input_options(), reference_frame_, reference_mask_) ) {
+      CF_FATAL("read_input_frame(reference_frame) fails");
       return false;
     }
 
-    cv::Mat tmp;
-    extract_channel(reference_frame_, tmp, cv::noArray(), cv::noArray(), registration_channel);
-    ecc_normalization_noise_ = estimate_noise(tmp, cv::noArray(), cv::noArray())[0];
+    fOk = true;
   }
 
-  if ( master_source_index_ < 0 ) {
-    ecc_normalization_noise_ *= 10;
+  else { // Generate it !
+
+    if ( true )  {
+      lock_guard lock(accumulator_lock_);
+      frame_accumulation_.reset(new c_frame_accumulation_with_mask());
+    }
+
+    if ( true )  {
+      lock_guard lock(registration_lock_);
+      frame_registration_ = options->create_frame_registration();
+      // Forse disable some align features for reference frame generation
+      frame_registration_->set_enable_eccflow(false);
+      if ( frame_registration_->enable_ecc() ) {
+        frame_registration_->ecc().set_reference_smooth_sigma(frame_registration_->ecc().input_smooth_sigma());
+        if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN ) {
+          frame_registration_->set_motion_type(ECC_MOTION_EUCLIDEAN);
+        }
+      }
+    }
+
+    processed_frames_ = 0;
+    total_frames_ =  std::min(master_frame_options.max_input_frames_to_generate_master_frame, num_source_frames - master_frame_index_);
+    emit_status_changed();
+
+    fOk = true;
+    for ( ; processed_frames_ < total_frames_; ++processed_frames_, emit_status_changed() )  {
+
+      if ( canceled() ) {
+        break;
+      }
+
+      if ( !read_input_frame(input_sequence, options->input_options(), current_frame_, current_mask_) ) {
+        set_status_msg("read_input_frame() fails");
+        break;
+      }
+
+      if ( canceled() ) {
+        break;
+      }
+
+      if ( frame_accumulation_->accumulated_frames() < 1 ) {
+
+        if ( true ) {
+          lock_guard lock(registration_lock_);
+          if ( !(fOk = frame_registration_->setup_referece_frame(current_frame_, current_mask_)) ) {
+            set_status_msg("ERROR: frame_registration_->setup_referece_frame() fails");
+            break;
+          }
+        }
+
+      }
+      else if ( current_frame_.size() != frame_accumulation_->accumulator_size() ) {
+        fOk = false;
+        CF_ERROR("ERROR: input and accumulator frame sizes not match (input=%dx%d accumulator=%dx%d)",
+            current_frame_.cols, current_frame_.rows,
+            frame_accumulation_->accumulator_size().width, frame_accumulation_->accumulator_size().height);
+        break;
+      }
+
+      if ( canceled() ) {
+        break;
+      }
+
+
+      if ( true ) {
+        lock_guard lock(registration_lock_);
+        if ( !frame_registration_->register_frame(current_frame_,current_frame_, current_mask_, current_mask_) ) {
+          CF_WARNING("WARNING: frame_registration_->register_frame(i=%d) fails", processed_frames_);
+          continue;
+        }
+      }
+
+      if ( canceled() ) {
+        break;
+      }
+
+      if ( true )  {
+        lock_guard lock(accumulator_lock_);
+        if ( !(fOk = frame_accumulation_->add(current_frame_, current_mask_)) ) {
+          CF_ERROR("ERROR: frame_accumulation_->add(current_frame) fails");
+          break;
+        }
+      }
+
+      if ( canceled() ) {
+        break;
+      }
+
+      emit_accumulator_changed();
+    }
+
+    if ( fOk && !canceled() ) {
+      if ( frame_accumulation_->accumulated_frames() > 0 ) {
+        fOk = frame_accumulation_->compute(reference_frame_, reference_mask_);
+      }
+      else {
+        fOk = false;
+        set_status_msg("ERROR: No frames accumulated for reference frame");
+      }
+    }
+
+    if ( true )  {
+      lock_guard lock(registration_lock_);
+      frame_registration_.reset();
+    }
+
+    if ( true )  {
+      lock_guard lock(accumulator_lock_);
+      frame_accumulation_.reset();
+    }
   }
 
-  CF_DEBUG("Set ecc_noise=%g", ecc_normalization_noise_);
+  if ( fOk && !canceled()) {
+    ecc_normalization_noise_ =
+        compute_image_noise(reference_frame_, reference_mask_,
+            options->frame_registration_options().base_options.registration_channel);
 
-  return true;
+    if ( master_source_index_ < 0 ) {
+      ecc_normalization_noise_ *= 10;
+    }
+
+    CF_DEBUG("Set ecc_noise=%g", ecc_normalization_noise_);
+  }
+
+  return fOk && !canceled();
 }
+
 
 
 bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & input_sequence,
@@ -1256,38 +1356,6 @@ bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
   }
   else {
     mergebgra(output_image, output_mask, image_to_write);
-    //    cv::Mat alpha;
-    //
-    //    switch ( output_image.depth() ) {
-    //    case CV_8U :
-    //      alpha = output_mask;
-    //      break;
-    //    case CV_8S :
-    //      alpha = output_mask;
-    //      break;
-    //    case CV_16U :
-    //      output_mask.convertTo(alpha,  output_image.depth(), UINT16_MAX / UINT8_MAX);
-    //      break;
-    //    case CV_16S :
-    //      output_mask.convertTo(alpha, output_image.depth(), INT16_MAX / (double) UINT8_MAX);
-    //      break;
-    //    case CV_32S :
-    //      output_mask.convertTo(alpha, output_image.depth(), INT32_MAX / (double) UINT8_MAX);
-    //      break;
-    //    case CV_32F :
-    //      output_mask.convertTo(alpha, output_image.depth(), 1.0 / UINT8_MAX);
-    //      break;
-    //    case CV_64F :
-    //      output_mask.convertTo(alpha, output_image.depth(), 1.0 / UINT8_MAX);
-    //      break;
-    //    }
-    //
-    //    image_to_write.create(output_image.size(),
-    //        CV_MAKETYPE(output_image.depth(), output_image.channels() + 1));
-    //
-    //    cv::Mat src[2] = {output_image, alpha };
-    //    const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
-    //    cv::mixChannels(src, 2, &image_to_write, 1, from_to, 4);
   }
 
   return save_image(image_to_write, output_file_name);
@@ -1334,10 +1402,31 @@ void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::M
   }
 }
 
+double c_image_stacking_pipeline::compute_image_noise(const cv::Mat & image, const cv::Mat & mask,
+    color_channel_type channel)
+{
+  double estimated_noise_level;
+
+  if ( image.channels() == 1 ) {
+    estimated_noise_level = estimate_noise(image, cv::noArray(), mask)[0];
+  }
+  else {
+    cv::Mat tmp;
+    extract_channel(image, tmp, cv::noArray(), cv::noArray(), channel >= 0 ? channel : color_channel_gray);
+    estimated_noise_level = estimate_noise(tmp, cv::noArray(), mask)[0];
+  }
+
+  return estimated_noise_level;
+}
+
 
 bool c_image_stacking_pipeline::compute_accumulated_image(cv::OutputArray dst, cv::OutputArray dstmask) const
 {
-  return frame_accumulation_->compute(dst, dstmask);
+  lock_guard lock(accumulator_lock_);
+  if ( frame_accumulation_ ) {
+    return frame_accumulation_->compute(dst, dstmask);
+  }
+  return false;
 }
 
 

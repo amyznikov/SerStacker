@@ -1103,8 +1103,10 @@ void QStackSequencesTree::applyMasterFrameOptionsToAll(const c_stacking_master_f
 
     // copy here
     stack->master_frame_options().use_ffts_from_master_path = options.use_ffts_from_master_path;
+    stack->master_frame_options().generate_master_frame = options.generate_master_frame;
+    stack->master_frame_options().max_input_frames_to_generate_master_frame = options.max_input_frames_to_generate_master_frame;
     if ( options.use_ffts_from_master_path ) {
-      stack->master_frame_options().master_path = options.master_path;
+      stack->master_frame_options().master_source_path = options.master_source_path;
     }
  }
 }
@@ -1213,10 +1215,16 @@ void QStackSequencesTree::applyAllStackOptionsToAll(const c_image_stacking_optio
       }
 
       // copy here
-      stack->master_frame_options().use_ffts_from_master_path = fromStack->master_frame_options().use_ffts_from_master_path;
       stack->frame_registration_options() = fromStack->frame_registration_options();
       stack->accumulation_options() = fromStack->accumulation_options();
       stack->output_options() = fromStack->output_options();
+
+      stack->master_frame_options().use_ffts_from_master_path = fromStack->master_frame_options().use_ffts_from_master_path;
+      stack->master_frame_options().generate_master_frame = fromStack->master_frame_options().generate_master_frame;
+      stack->master_frame_options().max_input_frames_to_generate_master_frame = fromStack->master_frame_options().max_input_frames_to_generate_master_frame;
+      if ( fromStack->master_frame_options().use_ffts_from_master_path ) {
+        stack->master_frame_options().master_source_path = fromStack->master_frame_options().master_source_path;
+      }
     }
 
   }

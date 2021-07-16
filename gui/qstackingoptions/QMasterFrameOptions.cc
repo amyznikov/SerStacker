@@ -41,6 +41,16 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   connect(masterFrameIndex_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onSpinBoxValueChanged(int)));
 
+  generateMasterFrame_ctl = new QCheckBox(this);
+  connect(generateMasterFrame_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::onGenerateMasterFrameCheckboxStateChanged);
+
+
+  maxFramesForMasterFrameGeneration_ctl = new QNumberEditBox(this);
+  connect(maxFramesForMasterFrameGeneration_ctl, &QNumberEditBox::textChanged,
+      this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
+
+
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
@@ -55,7 +65,9 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       });
 
   form->addRow("Master file:", masterSource_ctl);
-  form->addRow("Frame Index:", masterFrameIndex_ctl);
+  form->addRow("Master frame Index:", masterFrameIndex_ctl);
+  form->addRow("Generate master frame:", generateMasterFrame_ctl);
+  form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
   form->addRow(applyToAll_ctl);
 
 
@@ -88,6 +100,10 @@ void QMasterFrameOptions::onupdatecontrols()
   }
   else {
 
+    generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
+    maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
+
+
     // Populate Master Source Combo
     masterSource_ctl->clear();
 
@@ -98,9 +114,9 @@ void QMasterFrameOptions::onupdatecontrols()
       }
     }
 
-    if ( !options_->master_path.empty() ) {
-      QString source_file_name = options_->master_path.c_str();
-      if ( !input_sequence_ || input_sequence_->indexof(options_->master_path) < 0 ) {
+    if ( !options_->master_source_path.empty() ) {
+      QString source_file_name = options_->master_source_path.c_str();
+      if ( !input_sequence_ || input_sequence_->indexof(options_->master_source_path) < 0 ) {
         masterSource_ctl->addItem(QString("* %1").arg(QFileInfo(source_file_name).fileName()), source_file_name);
       }
     }
@@ -109,14 +125,14 @@ void QMasterFrameOptions::onupdatecontrols()
     masterSource_ctl->addItem("Browse...");
 
     // Select Current Index In Master Source Combo
-    if ( options_->master_path.empty() ) {
+    if ( options_->master_source_path.empty() ) {
       masterSource_ctl->setCurrentIndex(0);
       if ( masterSource_ctl->count() > 1 ) {
-        options_->master_path = masterSource_ctl->itemData(0).toString().toStdString();
+        options_->master_source_path = masterSource_ctl->itemData(0).toString().toStdString();
       }
     }
     else {
-      masterSource_ctl->setCurrentIndex(masterSource_ctl->findData(options_->master_path.c_str()));
+      masterSource_ctl->setCurrentIndex(masterSource_ctl->findData(options_->master_source_path.c_str()));
     }
 
     updateMasterFrameIndex();
@@ -128,14 +144,14 @@ void QMasterFrameOptions::onupdatecontrols()
 
 void QMasterFrameOptions::updateMasterFrameIndex()
 {
-  if ( options_->master_path.empty() || options_->use_ffts_from_master_path ) {
+  if ( options_->master_source_path.empty() || options_->use_ffts_from_master_path ) {
     masterFrameIndex_ctl->setEnabled(false);
   }
   else {
 
     c_input_source::ptr source;
 
-    if ( input_sequence_ && (source = input_sequence_->source(options_->master_path)) ) {
+    if ( input_sequence_ && (source = input_sequence_->source(options_->master_source_path)) ) {
       if ( options_->master_frame_index < 0 || options_->master_frame_index >= source->size() ) {
         options_->master_frame_index = 0;
       }
@@ -143,8 +159,8 @@ void QMasterFrameOptions::updateMasterFrameIndex()
       masterFrameIndex_ctl->setValue(options_->master_frame_index);
       masterFrameIndex_ctl->setEnabled(true);
     }
-    else if ( !(source = c_input_source::create(options_->master_path)) ) {
-      CF_ERROR("c_input_source::create(pathfilename=%s) fails", options_->master_path.c_str());
+    else if ( !(source = c_input_source::create(options_->master_source_path)) ) {
+      CF_ERROR("c_input_source::create(pathfilename=%s) fails", options_->master_source_path.c_str());
       masterFrameIndex_ctl->setEnabled(false);
     }
     else {
@@ -174,7 +190,7 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
       }
       else {
         options_->use_ffts_from_master_path = false;
-        options_->master_path = selectedFileName.toStdString();
+        options_->master_source_path = selectedFileName.toStdString();
         masterSource_ctl->insertItem(masterSource_ctl->count()-2, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
         masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-3);
       }
@@ -187,7 +203,7 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
       }
       else {
         options_->use_ffts_from_master_path = true;
-        options_->master_path = selectedFileName.toStdString();
+        options_->master_source_path = selectedFileName.toStdString();
         masterSource_ctl->insertItem(masterSource_ctl->count()-2, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
         masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-3);
       }
@@ -199,7 +215,7 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
       }
       else {
         options_->use_ffts_from_master_path = false;
-        options_->master_path = selectedFileName.toStdString();
+        options_->master_source_path = selectedFileName.toStdString();
       }
     }
 
@@ -216,6 +232,27 @@ void QMasterFrameOptions::onSpinBoxValueChanged(int value)
     int currentComboboxIndex = masterSource_ctl->currentIndex();
     if ( currentComboboxIndex >= 0 && currentComboboxIndex < masterSource_ctl->count() - 1 ) {
       options_->master_frame_index = value;
+      emit parameterChanged();
+    }
+  }
+}
+
+
+void QMasterFrameOptions::onGenerateMasterFrameCheckboxStateChanged(int state)
+{
+  if ( options_ && !updatingControls() ) {
+    options_->generate_master_frame = state == Qt::Checked;
+    emit parameterChanged();
+  }
+}
+
+void QMasterFrameOptions::onMaxFramesForMasterFrameGenerationChanged()
+{
+  if ( options_ && !updatingControls() ) {
+    int v = 0;
+    if ( fromString(maxFramesForMasterFrameGeneration_ctl->text(), &v) &&
+        v != options_->max_input_frames_to_generate_master_frame ) {
+      options_->max_input_frames_to_generate_master_frame = v;
       emit parameterChanged();
     }
   }
@@ -283,7 +320,7 @@ QString QMasterFrameOptions::browseForMasterFFTSPath()
 {
   if ( options_ ) {
     return QFileDialog::getExistingDirectory(this, "Select directory",
-        options_->master_path.c_str(), QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
+        options_->master_source_path.c_str(), QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
   }
   return QString();
 }

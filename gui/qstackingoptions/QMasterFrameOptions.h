@@ -40,6 +40,8 @@ protected:
 protected slots:
   void onMasterSourceComboCurrentIndexChanged(int);
   void onSpinBoxValueChanged(int value);
+  void onGenerateMasterFrameCheckboxStateChanged(int);
+  void onMaxFramesForMasterFrameGenerationChanged();
 
 protected:
   c_stacking_master_frame_options * options_ = Q_NULLPTR;
@@ -47,6 +49,8 @@ protected:
 
   QComboBox * masterSource_ctl = Q_NULLPTR;
   QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
+  QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
+  QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
   int previousComboboxItemIndex = -1;
 

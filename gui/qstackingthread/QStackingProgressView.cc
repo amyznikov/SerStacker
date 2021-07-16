@@ -16,9 +16,11 @@ QStackingProgressView::QStackingProgressView(QWidget * parent)
 {
   layout_ = new QVBoxLayout(this);
 
-  progressLabel_ = new QLabel("Starting...");
-  layout_->addWidget(progressLabel_);
+  statusLabel_= new QLabel("INITIALIZATION...");
+  layout_->addWidget(statusLabel_);
 
+  progressLabel_ = new QLabel("INITIALIZATION...");
+  layout_->addWidget(progressLabel_);
 
   //
   connect(QStackingThread::singleton(), &QStackingThread::started,
@@ -32,14 +34,13 @@ QStackingProgressView::QStackingProgressView(QWidget * parent)
   connect(QStackingThread::singleton(), &QStackingThread::finishing,
       this, &ThisClass::onStackingThreadFinishing,
       Qt::QueuedConnection);
-  //
 
-  connect(QStackingThread::singleton(), &QStackingThread::frameProcessed,
-      this, &ThisClass::onFrameProcessed,
+  connect(QStackingThread::singleton(), &QStackingThread::statusChanged,
+      this, &ThisClass::onStatusChanged,
       Qt::QueuedConnection);
 
-  connect(QStackingThread::singleton(), &QStackingThread::frameAccumulated,
-      this, &ThisClass::onArameAccumulated,
+  connect(QStackingThread::singleton(), &QStackingThread::accumulatorChanged,
+      this, &ThisClass::onAccumulatorChanged,
       Qt::QueuedConnection);
 
   if ( QStackingThread::isRunning() ) {
@@ -86,12 +87,12 @@ void QStackingProgressView::onStackingThreadFinished()
   QApplication::restoreOverrideCursor();
 }
 
-void QStackingProgressView::onFrameProcessed()
+void QStackingProgressView::onStatusChanged()
 {
   hasCurrentStatisticsUpdates_ = true;
 }
 
-void QStackingProgressView::onArameAccumulated()
+void QStackingProgressView::onAccumulatorChanged()
 {
   hasCurrentImageUpdates_ = true;
 }
@@ -122,12 +123,15 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
     return;
   }
 
+  //pipeline->lock();
+
   if ( force || hasCurrentStatisticsUpdates_ ) {
 
+    statusLabel_->setText(pipeline->status_message().c_str());
     progressLabel_->setText(QString("F %1 / %2 / %3").
-        arg(pipeline->num_frames_accumulated()).
-        arg(pipeline->num_frames_processed()).
-            arg(pipeline->num_frames_total()));
+        arg(pipeline->accumulated_frames()).
+        arg(pipeline->processed_frames()).
+            arg(pipeline->total_frames()));
 
   }
 
@@ -139,9 +143,7 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
     cv::Mat currentImage, currentMask;
     bool computed;
 
-    pipeline->lock();
       computed = pipeline->compute_accumulated_image(currentImage, currentMask);
-    pipeline->unlock();
 
     if ( computed ) {
       CF_DEBUG("imageViewer_->editImage");
@@ -149,6 +151,8 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
       CF_DEBUG("imageViewer_->editImage OK");
     }
   }
+
+  //pipeline->unlock();
 
   hasCurrentStatisticsUpdates_ = false;
   hasCurrentImageUpdates_ = false;

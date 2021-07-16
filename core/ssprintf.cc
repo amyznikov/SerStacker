@@ -14,6 +14,20 @@
 
 
 // C-style string formating
+std::string vssprintf(const char * format, va_list arglist)
+{
+  char * s = NULL;
+  std::string ss;
+
+  if ( vasprintf(&s, format, arglist) > 0 ) {
+    ss = s;
+  }
+
+  free(s);
+  return ss;
+}
+
+// C-style string formating
 std::string ssprintf(const char * format, ...)
 {
   char * s = NULL;

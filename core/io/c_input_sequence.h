@@ -93,7 +93,18 @@ protected:
   bool has_last_color_matrix_ = false;
 };
 
-
+class c_auto_close_input_sequence {
+  const c_input_sequence::ptr & input_sequence_;
+public:
+  c_auto_close_input_sequence(const c_input_sequence::ptr & input_sequence)
+    : input_sequence_(input_sequence) {
+  }
+  ~c_auto_close_input_sequence() {
+    if ( input_sequence_ ) {
+      input_sequence_->close();
+    }
+  }
+};
 
 
 #endif /* __c_input_sequence_h__ */

@@ -1111,6 +1111,32 @@ void QStackSequencesTree::applyMasterFrameOptionsToAll(const c_stacking_master_f
  }
 }
 
+void QStackSequencesTree::applyROISelectionOptionsToAll(const c_roi_selection_options & options)
+{
+  const int n = treeView_->topLevelItemCount();
+  for ( int i = 0; i < n; ++i ) {
+
+    QStackOptionsItem * stackItem =
+        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
+    }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->roi_selection_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->roi_selection_options() = options;
+  }
+}
+
 void QStackSequencesTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options)
 {
   const int n = treeView_->topLevelItemCount();
@@ -1215,6 +1241,7 @@ void QStackSequencesTree::applyAllStackOptionsToAll(const c_image_stacking_optio
       }
 
       // copy here
+      stack->roi_selection_options() = fromStack->roi_selection_options();
       stack->frame_registration_options() = fromStack->frame_registration_options();
       stack->accumulation_options() = fromStack->accumulation_options();
       stack->output_options() = fromStack->output_options();

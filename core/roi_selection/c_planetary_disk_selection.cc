@@ -56,25 +56,19 @@ bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::Inp
     cv::Point2f & outputObjectLocation,
     cv::Rect & outputCropRect )
 {
-  cv::Rect rc;
-  cv::Size crop_size;
-
-  if ( !simple_small_planetary_disk_detector(image, &outputObjectLocation, 0, &rc) ) {
+  if ( !simple_small_planetary_disk_detector(image, &outputObjectLocation, 0, &outputCropRect) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }
 
-  if ( !this->crop_size_.empty() ) {
-    crop_size = this->crop_size_;
-  }
-  else {
-    crop_size = rc.size() * 2;
+  if ( crop_size_.empty() ) {
+    crop_size_ = outputCropRect.size() * 2;
   }
 
-  if ( crop_size == image.size() ) {
-    outputCropRect = cv::Rect(0,0, crop_size.width, crop_size.height);
+  if ( crop_size_ == image.size() ) {
+    outputCropRect = cv::Rect(0,0, crop_size_.width, crop_size_.height);
   }
-  else if ( !select_crop_rectangle(image.size(), crop_size, outputObjectLocation, &outputCropRect) ) {
+  else if ( !select_crop_rectangle(image.size(), crop_size_, outputObjectLocation, &outputCropRect) ) {
     CF_FATAL("select_crop_rectangle() fails");
     return false;
   }

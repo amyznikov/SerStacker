@@ -35,13 +35,15 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
             }
           });
 
-
   add_expandable_groupbox(form, "* Master Frame Options",
       masterFrame_ctl =
           new QMasterFrameOptions(this));
 
+  add_expandable_groupbox(form, "* ROI Selection",
+      roiSelection_ctl =
+          new QROISelectionOptions(this));
 
-  add_expandable_groupbox(form, "* Frame accumulation options",
+  add_expandable_groupbox(form, "* Frame Accumulation Options",
       frameAccumulation_ctl =
           new QFrameAccumulationOptions(this));
 
@@ -58,6 +60,9 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
 
   connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
       this, &ThisClass::applyMasterFrameOptionsToAllRequested);
+
+  connect(roiSelection_ctl, &QROISelectionOptions::applyROISelectionOptionsToAllRequested,
+      this, &ThisClass::applyROISelectionOptionsToAllRequested);
 
   connect(frameAccumulation_ctl, &QFrameAccumulationOptions::applyFrameAccumulationOptionsToAllRequested,
       this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
@@ -87,11 +92,20 @@ void QStackingSettingsWidget::onupdatecontrols()
 {
   if ( !stack_ ) {
     setEnabled(false);
+
+    stackName_ctl->setText("");
+    masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
+    roiSelection_ctl->set_roi_selection_options(nullptr);
+    frameAccumulation_ctl->set_accumulation_options(nullptr);
+    frameRegistration_ctl->set_registration_options(nullptr);
+    outputOptions_ctl->set_debug_options(nullptr);
+
   }
   else {
 
     stackName_ctl->setText(stack_->name().c_str());
     masterFrame_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
+    roiSelection_ctl->set_roi_selection_options(&stack_->roi_selection_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
     frameRegistration_ctl->set_registration_options(&stack_->frame_registration_options());
     outputOptions_ctl->set_debug_options(&stack_->output_options());
@@ -173,6 +187,9 @@ QStackOptions::QStackOptions(QWidget * parent)
 
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameOptionsToAllRequested,
       this, &ThisClass::applyMasterFrameOptionsToAllRequested);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyROISelectionOptionsToAllRequested,
+      this, &ThisClass::applyROISelectionOptionsToAllRequested);
 
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyFrameAccumulationOptionsToAllRequested,
       this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);

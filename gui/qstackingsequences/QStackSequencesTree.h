@@ -27,6 +27,7 @@ public:
   const c_image_stacks_collection::ptr & stacklist() const;
 
   void applyMasterFrameOptionsToAll(const c_stacking_master_frame_options & options);
+  void applyROISelectionOptionsToAll(const c_roi_selection_options & options);
   void applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options);
   void applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options);
   void applyOutputOptionsToAll(const c_image_stacking_output_options & options);

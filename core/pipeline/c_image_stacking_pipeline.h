@@ -9,6 +9,7 @@
 #define __c_stacking_pipeline_h__
 
 #include <core/io/c_input_sequence.h>
+#include <core/roi_selection/c_planetary_disk_selection.h>
 #include <core/registration/c_feature_based_registration.h>
 #include <core/registration/c_planetary_disk_registration.h>
 #include <core/registration/c_star_field_registration.h>
@@ -16,6 +17,11 @@
 #include <condition_variable>
 #include <atomic>
 
+
+enum roi_selection_method {
+  roi_selection_none = 0,
+  roi_selection_planetary_disk = 1
+};
 
 enum frame_registration_method {
   frame_registration_method_unknown = -1,
@@ -36,6 +42,16 @@ enum frame_upscale_option {
   frame_upscale_before_align = 1,
   frame_upscale_after_align = 2,
 };
+
+
+const extern struct roi_selection_method_desc {
+  const char * name;
+  enum roi_selection_method value;
+} roi_selection_methods[];
+
+std::string toStdString(enum roi_selection_method v);
+enum roi_selection_method fromStdString(const std::string  & s,
+    enum roi_selection_method defval );
 
 
 
@@ -74,10 +90,10 @@ struct c_image_stacking_input_options {
   bool enable_color_maxtrix = false;
 };
 
-//enum master_frame_source_type {
-//  use_master_patch_as_source = 0,
-//  use_ffts_from_master_path = 1,
-//};
+struct c_roi_selection_options {
+  enum roi_selection_method method = roi_selection_none;
+  cv::Size crop_size;
+};
 
 struct c_stacking_master_frame_options {
   std::string master_source_path;
@@ -135,12 +151,16 @@ public:
   c_image_stacking_input_options & input_options();
   const c_image_stacking_input_options & input_options() const;
 
+  c_roi_selection_options & roi_selection_options();
+  const c_roi_selection_options & roi_selection_options() const;
+  c_feature_based_roi_selection::ptr create_roi_selection() const;
+
   c_stacking_master_frame_options & master_frame_options();
   const c_stacking_master_frame_options & master_frame_options() const;
 
   c_frame_registration_options & frame_registration_options();
   const c_frame_registration_options & frame_registration_options() const;
-  c_frame_registration::ptr create_frame_registration();
+  c_frame_registration::ptr create_frame_registration() const;
 
   c_frame_accumulation_options & accumulation_options();
   const c_frame_accumulation_options & accumulation_options() const;
@@ -157,6 +177,7 @@ protected:
   std::string name_;
   c_input_sequence::ptr input_sequence_;
   c_image_stacking_input_options input_options_;
+  c_roi_selection_options roi_selection_options_;
   c_stacking_master_frame_options master_frame_options_;
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;

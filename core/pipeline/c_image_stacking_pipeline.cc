@@ -23,6 +23,41 @@
 #include <core/debug.h>
 
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//    roi_selection_none = 0,
+//    roi_selection_planetary_disk = 1
+
+const struct roi_selection_method_desc roi_selection_methods[] = {
+    {"none", roi_selection_none},
+    {"planetary_disk", roi_selection_planetary_disk},
+    {nullptr, roi_selection_none},
+};
+
+std::string toStdString(enum roi_selection_method v)
+{
+  for ( uint i = 0; roi_selection_methods[i].name; ++i ) {
+    if ( roi_selection_methods[i].value == v ) {
+      return roi_selection_methods[i].name;
+    }
+  }
+  return "";
+}
+
+enum roi_selection_method fromStdString(const std::string & s, enum roi_selection_method defval )
+{
+  const char * cstr = s.c_str();
+
+  for ( uint i = 0; roi_selection_methods[i].name; ++i ) {
+    if ( strcasecmp(roi_selection_methods[i].name, cstr) == 0 ) {
+      return roi_selection_methods[i].value;
+    }
+  }
+  return defval;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const struct frame_registration_method_desc frame_registration_methods[] = {
@@ -358,6 +393,29 @@ c_stacking_master_frame_options & c_image_stacking_options::master_frame_options
   return master_frame_options_;
 }
 
+c_roi_selection_options & c_image_stacking_options::roi_selection_options()
+{
+  return roi_selection_options_;
+}
+
+const c_roi_selection_options & c_image_stacking_options::roi_selection_options() const
+{
+  return roi_selection_options_;
+}
+
+c_feature_based_roi_selection::ptr c_image_stacking_options::create_roi_selection() const
+{
+  switch ( roi_selection_options_.method ) {
+  case roi_selection_planetary_disk:
+    return c_planetary_disk_selection::create(roi_selection_options_.crop_size);
+    break;
+  default :
+    break;
+  }
+  return nullptr;
+}
+
+
 const c_stacking_master_frame_options & c_image_stacking_options::master_frame_options() const
 {
   return master_frame_options_;
@@ -373,7 +431,7 @@ const c_frame_registration_options & c_image_stacking_options::frame_registratio
   return frame_registration_options_;
 }
 
-c_frame_registration::ptr c_image_stacking_options::create_frame_registration()
+c_frame_registration::ptr c_image_stacking_options::create_frame_registration() const
 {
   switch (frame_registration_options_.registration_method) {
 

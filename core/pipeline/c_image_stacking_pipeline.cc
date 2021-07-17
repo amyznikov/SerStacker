@@ -731,11 +731,9 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     frame_registration_->set_ecc_normalization_noise(ecc_normalization_noise_);
   }
 
-  CF_DEBUG("H:");
   if ( !(fOk = frame_registration_->setup_referece_frame(reference_frame_, reference_mask_)) ) {
     set_status_msg("ERROR: setup_referece_frame() fails");
   }
-  CF_DEBUG("H:");
 
   if ( !fOk || output_options.write_registartion_reference_frames ) {
 
@@ -760,9 +758,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     return false;
   }
 
-  CF_DEBUG("H:");
 
-  if ( master_source_index_ >= 0 ) {
+  if ( !master_frame_options.generate_master_frame && master_source_index_ >= 0 ) {
+
+    CF_DEBUG("\n\nATTENTION: ADDING MASTER TO ACCUMULATOR!!!!\n\n");
+
 
     //const cv::Rect ROI = frame_registration_->reference_ROI();
     const cv::Mat RF = reference_frame_; // ROI.empty() ? reference_frame_ : reference_frame_(ROI);
@@ -850,7 +850,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
-    if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
+    if ( !master_frame_options.generate_master_frame || master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
       ++processed_frames_;
     }
 
@@ -961,7 +961,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
-    if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
+    if ( !master_frame_options.generate_master_frame || master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
       if ( true ) {
         lock_guard lock(accumulator_lock_);
         switch ( accumulation_options.accumulation_method ) {

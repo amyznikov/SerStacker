@@ -37,7 +37,7 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent)
   : Base("QROISelectionOptions", parent)
 {
 
-  add_combobox(form, "Accumulation Method:",
+  add_combobox(form, "Detect feature:",
       selectionMethod_ctl = new QROISelectionMethodCombo(this),
       [this]() {
         if ( options_ && !updatingControls() ) {

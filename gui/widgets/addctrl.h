@@ -124,7 +124,6 @@ inline QGroupBox * add_expandable_groupbox(QFormLayout * form, const QString & t
   static const char style[] = __STYLE_TEXT(
       QCheckBox {
           spacing: 15px;
-          font: bold;
       }
       QCheckBox::indicator {
           width: 13px;

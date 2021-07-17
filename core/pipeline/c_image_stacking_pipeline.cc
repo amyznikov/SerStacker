@@ -640,10 +640,18 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     return false;
   }
 
+
+  if ( options->roi_selection_options().method == roi_selection_none ) {
+    roi_selection_.reset();
+  }
+  else if ( !(roi_selection_ = options->create_roi_selection()) ) {
+    set_status_msg("ERROR: create_roi_selection() fails");
+    return false;
+  }
+
   set_status_msg("PREPARE REFERENCE FRAME ...");
 
   if ( !load_or_generate_reference_frame(options) ) {
-    CF_DEBUG("load_or_generate_reference_frame() fails");
     set_status_msg("ERROR: select_and_load_reference_frame() fails");
     return false;
   }
@@ -723,9 +731,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     frame_registration_->set_ecc_normalization_noise(ecc_normalization_noise_);
   }
 
+  CF_DEBUG("H:");
   if ( !(fOk = frame_registration_->setup_referece_frame(reference_frame_, reference_mask_)) ) {
     set_status_msg("ERROR: setup_referece_frame() fails");
   }
+  CF_DEBUG("H:");
 
   if ( !fOk || output_options.write_registartion_reference_frames ) {
 
@@ -750,14 +760,15 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     return false;
   }
 
+  CF_DEBUG("H:");
 
   if ( master_source_index_ >= 0 ) {
 
-    const cv::Rect ROI = frame_registration_->reference_ROI();
-    const cv::Mat RF = ROI.empty() ? reference_frame_ : reference_frame_(ROI);
-    const cv::Mat RM = reference_mask_.empty() ? reference_mask_ : (ROI.empty() ? reference_mask_ : reference_mask_(ROI));
+    //const cv::Rect ROI = frame_registration_->reference_ROI();
+    const cv::Mat RF = reference_frame_; // ROI.empty() ? reference_frame_ : reference_frame_(ROI);
+    const cv::Mat RM = reference_mask_; // reference_mask_.empty() ? reference_mask_ : (ROI.empty() ? reference_mask_ : reference_mask_(ROI));
 
-    CF_DEBUG("ROI: %dx%d x=%d y=%d ", ROI.width, ROI.height, ROI.x, ROI.y);
+    //CF_DEBUG("ROI: %dx%d x=%d y=%d ", ROI.width, ROI.height, ROI.x, ROI.y);
     CF_DEBUG("RF: %dx%d", RF.cols, RF.rows);
     CF_DEBUG("RM: %dx%d", RM.cols, RM.rows);
 
@@ -835,9 +846,23 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
+    if ( canceled() ) {
+      break;
+    }
 
     if ( master_source_index_ < 0 || input_sequence->current_pos() != master_frame_index_ )  {
       ++processed_frames_;
+    }
+
+    CF_DEBUG("H:");
+    if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
+      CF_DEBUG("H:");
+      continue;
+    }
+    CF_DEBUG("H:");
+
+    if ( canceled() ) {
+      break;
     }
 
     if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
@@ -874,24 +899,24 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     if ( frame_registration_ ) {
       if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
 
-        const cv::Rect ROI = frame_registration_->current_ROI();
+        //const cv::Rect ROI = frame_registration_->current_ROI();
 
         upscale(frame_registration_->current_remap(), cv::noArray(), tmp, cv::noArray());
 
         switch ( accumulation_options.accumulation_method ) {
         case frame_accumulation_average_masked :
-          if ( !frame_registration_->custom_remap(current_frame_, current_frame_, ROI, tmp, current_mask_, current_mask_) ) {
+          if ( !frame_registration_->custom_remap(current_frame_, current_frame_, /*ROI, */tmp, current_mask_, current_mask_) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_frame) fails\n", i);
             continue;
           }
           break;
 
         case frame_accumulation_average_weighted :
-          if ( !frame_registration_->custom_remap(current_frame_, current_frame_, ROI, tmp) ) {
+          if ( !frame_registration_->custom_remap(current_frame_, current_frame_, /*ROI,*/ tmp) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_frame) fails\n", i);
             continue;
           }
-          if ( !frame_registration_->custom_remap(current_weights_, current_weights_, ROI, tmp,
+          if ( !frame_registration_->custom_remap(current_weights_, current_weights_, /*ROI,*/ tmp,
               cv::noArray(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT) ) {
             CF_ERROR("[F %6d] reg->custom_remap(current_weights) fails\n", i);
             continue;
@@ -998,8 +1023,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   bool transfer_fft_spectrum_power = true;
   if ( transfer_fft_spectrum_power ) {
 
-    const cv::Rect ROI = frame_registration_->reference_ROI();
-    const cv::Mat RF = ROI.empty() ? reference_frame_ : reference_frame_(ROI);
+    //const cv::Rect ROI = frame_registration_->reference_ROI();
+    const cv::Mat RF = reference_frame_;//ROI.empty() ? reference_frame_ : reference_frame_(ROI);
     //const cv::Mat CM = ROI.empty() ? current_mask_ : current_mask_(ROI);
 
     if ( RF.size() == current_frame_.size() ) {
@@ -1219,6 +1244,13 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
       return false;
     }
 
+    CF_DEBUG("H:");
+    if ( !select_image_roi(roi_selection_, reference_frame_, reference_mask_, reference_frame_, reference_mask_) ) {
+      CF_FATAL("select_image_roi(reference_frame) fails");
+      return false;
+    }
+    CF_DEBUG("H:");
+
     fOk = true;
   }
 
@@ -1257,6 +1289,17 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
         set_status_msg("read_input_frame() fails");
         break;
       }
+
+      if ( canceled() ) {
+        break;
+      }
+
+      CF_DEBUG("H:");
+      if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
+        CF_DEBUG("H:");
+        continue;
+      }
+      CF_DEBUG("H:");
 
       if ( canceled() ) {
         break;
@@ -1402,6 +1445,42 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
   return true;
 }
 
+bool c_image_stacking_pipeline::select_image_roi(const c_feature_based_roi_selection::ptr & roi_selection,
+    const cv::Mat & src, const cv::Mat & srcmask,
+    cv::Mat & dst, cv::Mat & dstmask)
+{
+  if ( !roi_selection ) {
+    if ( &src != &dst  ) {
+      dst = src;
+    }
+    if ( &srcmask != &dstmask ) {
+      dstmask = srcmask;
+    }
+    return true;
+  }
+
+
+  cv::Point2f feature_location;
+  cv::Rect ROI;
+
+  if ( !roi_selection->detect_object_roi(src, srcmask, feature_location, ROI) ) {
+    CF_ERROR("roi_selection->detect_object_roi() fails");
+    return false;
+  }
+
+
+  dst = src(ROI);
+
+  if ( !srcmask.empty() ) {
+    dstmask = srcmask(ROI);
+  }
+  else {
+    dstmask.release();
+  }
+
+  return true;
+}
+
 
 bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
     const c_image_stacking_output_options & output_options,
@@ -1446,7 +1525,7 @@ void c_image_stacking_pipeline::upscale(cv::InputArray src, cv::InputArray srcma
     cv::pyrUp(srcmask, dstmask);
 
     if ( dstmask.depth() == CV_8U ) {
-      cv::compare(dstmask.getMatRef(), 255, dstmask.getGpuMatRef(), cv::CMP_GE);
+      cv::compare(dstmask.getMatRef(), 255, dstmask.getMatRef(), cv::CMP_GE);
     }
   }
 

@@ -476,17 +476,17 @@ void QFeatureBasedRegistrationSettings::onupdatecontrols()
 QPlanetaryDiskRegistrationSettings::QPlanetaryDiskRegistrationSettings(QWidget * parent) :
     Base("QPlanetaryDiskRegistrationSettings", parent)
 {
-  crop_size_ctl =
-      add_numeric_box(form, "Crop size WxH:",
-          [this]() {
-            if (options_ && !updatingControls() ) {
-              cv::Size v;
-              if ( fromString(crop_size_ctl->text(), &v) && v != options_->crop_size ) {
-                options_->crop_size = v;
-                emit parameterChanged();
-              }
-            }
-          });
+//  crop_size_ctl =
+//      add_numeric_box(form, "Crop size WxH:",
+//          [this]() {
+//            if (options_ && !updatingControls() ) {
+//              cv::Size v;
+//              if ( fromString(crop_size_ctl->text(), &v) && v != options_->crop_size ) {
+//                options_->crop_size = v;
+//                emit parameterChanged();
+//              }
+//            }
+//          });
 
 }
 
@@ -507,7 +507,7 @@ void QPlanetaryDiskRegistrationSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    crop_size_ctl->setValue(options_->crop_size);
+    //crop_size_ctl->setValue(options_->crop_size);
     setEnabled(true);
   }
 }

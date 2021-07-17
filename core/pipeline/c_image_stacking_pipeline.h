@@ -270,6 +270,10 @@ protected:
       const c_image_stacking_input_options & input_options,
       cv::Mat & output_reference_image, cv::Mat & output_reference_mask);
 
+  static bool select_image_roi(const c_feature_based_roi_selection::ptr & roi_selection,
+      const cv::Mat & src, const cv::Mat & srcmask,
+      cv::Mat & dst, cv::Mat & dstmask);
+
   static bool write_image(const std::string output_file_name,
       const c_image_stacking_output_options & output_options,
       const cv::Mat & output_image,
@@ -309,6 +313,7 @@ protected:
   std::string statusmsg_;
   mutable std::mutex status_lock_;
 
+  c_feature_based_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
   mutable std::mutex registration_lock_;
 

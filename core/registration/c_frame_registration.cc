@@ -205,15 +205,15 @@ const cv::Mat & c_frame_registration::current_ecc_mask() const
   return ecc_.input_mask();
 }
 
-const cv::Rect & c_frame_registration::reference_ROI() const
-{
-  return reference_ROI_;
-}
-
-const cv::Rect & c_frame_registration::current_ROI() const
-{
-  return current_ROI_;
-}
+//const cv::Rect & c_frame_registration::reference_ROI() const
+//{
+//  return reference_ROI_;
+//}
+//
+//const cv::Rect & c_frame_registration::current_ROI() const
+//{
+//  return current_ROI_;
+//}
 
 
 const cv::Mat1f & c_frame_registration::current_transform() const
@@ -276,33 +276,29 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
   cv::Mat src = reference_image.getMat();
   cv::Mat srcmsk  = reference_mask.getMat();
 
-  current_input_frame_size_ = src.size();
+//  current_input_frame_size_ = src.size();
 
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
 
   if ( feature_scale() > 0 ) {
 
-    CF_DEBUG("H");
     if ( !create_feature_image(src, srcmsk, reference_feature_image_, reference_feature_mask_) ) {
       CF_ERROR("extract_feature_image() fails");
       return false;
     }
 
-    CF_DEBUG("H");
     if ( !extract_reference_features(reference_feature_image_, reference_feature_mask_) ) {
       CF_ERROR("extract_reference_features() fails");
       return false;
     }
 
-    CF_DEBUG("H");
-    if ( !reference_ROI_.empty() ) {
-      current_ROI_ = reference_ROI_;
-      src = src(reference_ROI_);
-      if ( !reference_feature_mask_.empty() ) {
-        srcmsk = srcmsk(reference_ROI_);
-      }
-    }
-    CF_DEBUG("H");
+//    if ( !reference_ROI_.empty() ) {
+//      current_ROI_ = reference_ROI_;
+//      src = src(reference_ROI_);
+//      if ( !reference_feature_mask_.empty() ) {
+//        srcmsk = srcmsk(reference_ROI_);
+//      }
+//    }
   }
 
   if ( enable_ecc() && ecc_scale() > 0 ) {
@@ -377,7 +373,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
   cv::Mat src = _src.getMat();
   cv::Mat srcmsk = _srcmsk.getMat();
 
-  current_input_frame_size_ = src.size();
+  //current_input_frame_size_ = src.size();
   current_transform_ = createEyeTransform(motion_type());
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
 
@@ -399,12 +395,12 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
       return false;
     }
 
-    if ( !current_ROI_.empty() ) {
-      src = src(current_ROI_);
-      if ( !srcmsk.empty() ) {
-        srcmsk = srcmsk(current_ROI_);
-      }
-    }
+//    if ( !current_ROI_.empty() ) {
+//      src = src(current_ROI_);
+//      if ( !srcmsk.empty() ) {
+//        srcmsk = srcmsk(current_ROI_);
+//      }
+//    }
 
     current_status_.timings.estimate_feature_transform =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -534,7 +530,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
 
 
 bool c_frame_registration::custom_remap(cv::InputArray _src, cv::OutputArray dst,
-    const cv::Rect & srcROI,
+//    const cv::Rect & srcROI,
     const cv::Mat2f & rmap,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
     int interpolation_flags,
@@ -547,14 +543,14 @@ bool c_frame_registration::custom_remap(cv::InputArray _src, cv::OutputArray dst
   cv::Size src_size;
   const cv::Scalar * border_value_ptr;
 
-  if ( !srcROI.empty() ) {
-    if ( !src.empty() ) {
-      src = src(srcROI);
-    }
-    if ( !src_mask.empty() ) {
-      src = src_mask(srcROI);
-    }
-  }
+//  if ( !srcROI.empty() ) {
+//    if ( !src.empty() ) {
+//      src = src(srcROI);
+//    }
+//    if ( !src_mask.empty() ) {
+//      src = src_mask(srcROI);
+//    }
+//  }
 
 
   if ( !src.empty() ) {
@@ -619,7 +615,7 @@ bool c_frame_registration::remap(cv::InputArray src, cv::OutputArray dst,
     int border_mode,
     const cv::Scalar & border_value) const
 {
-  return custom_remap(src, dst, current_ROI_, current_remap_,
+  return custom_remap(src, dst, /*current_ROI_, */current_remap_,
       src_mask, dst_mask,
       interpolation_flags,
       border_mode,

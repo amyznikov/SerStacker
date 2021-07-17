@@ -21,8 +21,8 @@ static bool select_crop_rectangle(const cv::Size & image_size, const cv::Size & 
       return false;
     }
 
-    int l = cv::max(0, (int) crop_center.x - crop_size.width / 2);
-    int t = cv::max(0, (int) crop_center.y - crop_size.height / 2);
+    int l = cv::max(0, cvRound(crop_center.x - crop_size.width / 2));
+    int t = cv::max(0, cvRound(crop_center.y - crop_size.height / 2));
     if ( l + crop_size.width > image_size.width ) {
       l = image_size.width - crop_size.width;
     }

@@ -11,7 +11,7 @@
 #include "c_frame_registration.h"
 
 struct c_planetary_disk_registration_options {
-  cv::Size crop_size;
+  //cv::Size crop_size;
 };
 
 class c_planetary_disk_registration
@@ -50,10 +50,10 @@ protected: // overrides
       cv::InputArray current_feature_mask,
       cv::Mat1f * current_transform) override;
 
-  bool select_crop_rectangle(const cv::Size & feature_image_size,
-      const cv::Size & crop_size,
-      const cv::Point2f & crop_center,
-      cv::Rect * ROI) const;
+//  bool select_crop_rectangle(const cv::Size & feature_image_size,
+//      const cv::Size & crop_size,
+//      const cv::Point2f & crop_center,
+//      cv::Rect * ROI) const;
 
 protected:
   c_planetary_disk_registration();

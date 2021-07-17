@@ -203,7 +203,7 @@ protected:
 
 protected:
   c_planetary_disk_registration_options * options_ = Q_NULLPTR;
-  QNumberEditBox * crop_size_ctl = Q_NULLPTR;
+  //QNumberEditBox * crop_size_ctl = Q_NULLPTR;
 };
 
 class QStarFieldRegistrationSettings

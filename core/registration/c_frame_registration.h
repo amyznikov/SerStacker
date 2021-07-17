@@ -143,7 +143,7 @@ public: // ops
       const cv::Scalar & border_value = cv::Scalar()) const;
 
   virtual bool custom_remap(cv::InputArray src, cv::OutputArray dst,
-      const cv::Rect & srcROI,
+      //      const cv::Rect & srcROI,
       const cv::Mat2f & rmap,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
@@ -162,8 +162,8 @@ public: // artifacts
   const cv::Mat & current_ecc_image() const;
   const cv::Mat & current_ecc_mask() const;
 
-  const cv::Rect & reference_ROI() const;
-  const cv::Rect & current_ROI() const;
+//  const cv::Rect & reference_ROI() const;
+//  const cv::Rect & current_ROI() const;
 
   const cv::Mat1f & current_transform() const;
   const cv::Mat2f & current_remap() const;
@@ -192,9 +192,9 @@ protected: // specs
 protected:
   c_frame_registration_base_options base_options_;
 
-  cv::Size current_input_frame_size_;
-  cv::Rect reference_ROI_;
-  cv::Rect current_ROI_;
+  //cv::Size current_input_frame_size_;
+  //cv::Rect reference_ROI_;
+  //cv::Rect current_ROI_;
 
   cv::Mat reference_feature_image_;
   cv::Mat reference_feature_mask_;

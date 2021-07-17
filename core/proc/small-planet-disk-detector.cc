@@ -61,7 +61,8 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc)
 
 bool simple_small_planetary_disk_detector( cv::InputArray frame,
     cv::Point2f * out_centrold,
-    double gbsigma)
+    double gbsigma,
+    cv::Rect * optional_output_component_rect)
 {
   Mat src, gray;
   Mat1b comp;
@@ -91,6 +92,10 @@ bool simple_small_planetary_disk_detector( cv::InputArray frame,
 
   if ( !get_maximal_connected_component(comp, &rc) ) {
     return false;
+  }
+
+  if ( optional_output_component_rect ) {
+    *optional_output_component_rect = rc;
   }
 
   const int w = rc.width, h = rc.height;

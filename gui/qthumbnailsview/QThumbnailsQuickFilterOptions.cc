@@ -6,6 +6,7 @@
  */
 
 #include "QThumbnailsQuickFilterOptions.h"
+#include <core/debug.h>
 
 
 const struct QtMatchingFlags_desc QtMatchingFlags[] = {
@@ -118,9 +119,17 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
         }
       };
 
-  searchText_ctl =
-      add_editbox(form, "Search text:",
-          emit_parameterChanged);
+  searchText_ctl = new QComboBox(this);
+  searchText_ctl->setEditable(true);
+  searchText_ctl->setAutoCompletion(true);
+  searchText_ctl->setMinimumContentsLength(32);
+  searchText_ctl->setInsertPolicy(QComboBox::InsertAtTop);
+
+  form->addRow("Search text:",
+      searchText_ctl);
+
+  connect(searchText_ctl, &QComboBox::currentTextChanged,
+      this, &ThisClass::onSearchTextChanged);
 
   add_combobox(form, "Matching type:",
       matchingFlags_ctl = new QThumbnailsQuickFilterMatchingFlagsCombo(this),
@@ -130,19 +139,25 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
       add_checkbox(form, "Case sensitive",
           emit_parameterChanged);
 
-  connect(searchText_ctl, &QLineEditBox::returnPressed,
-      emit_parameterChanged);
 }
 
 
+void QThumbnailsQuickFilterOptions::onSearchTextChanged(const QString & s)
+{
+  if ( !updatingControls() )  {
+    emit parameterChanged();
+  }
+
+}
+
 void QThumbnailsQuickFilterOptions::setSearchText(const QString & v)
 {
-  searchText_ctl->setText(v);
+  searchText_ctl->setCurrentText(v);
 }
 
 QString QThumbnailsQuickFilterOptions::searchText() const
 {
-  return searchText_ctl->text();
+  return searchText_ctl->currentText();
 }
 
 void QThumbnailsQuickFilterOptions::setMatchingFlags(Qt::MatchFlags v)

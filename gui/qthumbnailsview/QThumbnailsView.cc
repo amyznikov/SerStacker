@@ -7,6 +7,7 @@
 
 #include "QThumbnailsView.h"
 #include "QThumbnails.h"
+#include <gui/widgets/QWaitCursor.h>
 #include <core/debug.h>
 
 #define MAX_ICON_LOAD_SIZE 384
@@ -126,6 +127,8 @@ bool QThumbnailsListWidget::matchQuickFilter(const QString & text)
 
 void QThumbnailsListWidget::quickFilterUpdateItemsVisibility()
 {
+  QWaitCursor wait(this);
+
   if ( quickFilter_.isEmpty() ) {
     for ( int  i = 0, n = this->count(); i < n; ++i ) {
       this->item(i)->setHidden(false);

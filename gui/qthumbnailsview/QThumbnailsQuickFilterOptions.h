@@ -59,8 +59,10 @@ public:
   Qt::MatchFlags matchingFlags() const;
 
 
+protected slots:
+  void onSearchTextChanged(const QString & );
 protected:
-  QLineEditBox * searchText_ctl = Q_NULLPTR;
+  QComboBox * searchText_ctl = Q_NULLPTR;
   QThumbnailsQuickFilterMatchingFlagsCombo * matchingFlags_ctl = Q_NULLPTR;
   QCheckBox * caseSensitivity_ctl = Q_NULLPTR;
 };

@@ -136,6 +136,36 @@ int main(int argc, char *argv[])
 
     }
 
+    else if ( strcmp(argv[i], "-hwb") == 0 ) {
+
+      if ( ++i >= argc ) {
+        fprintf(stderr, "Command line error: No lclip hclip range specified\n");
+        return 1;
+      }
+
+      double lclip = 1, hclip = 99.9;
+
+      if ( sscanf(argv[i], "%lf:%lf", &lclip, &hclip) != 2 ) {
+        fprintf(stderr, "Command line error: invalid lclip hclip range specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      if ( lclip < 0 || lclip > 100 ) {
+        fprintf(stderr, "Command line error: invalid lclip value specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      if ( hclip < lclip || hclip > 100 ) {
+        fprintf(stderr, "Command line error: invalid hclip value specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      chain.emplace_back(c_histogram_white_balance_image_processor::create(
+              lclip, hclip));
+
+    }
+
+
     else if ( strcmp(argv[i], "-clip") == 0 ) {
 
       if ( ++i >= argc ) {

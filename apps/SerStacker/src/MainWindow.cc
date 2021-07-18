@@ -743,8 +743,17 @@ void MainWindow::onStackingThreadStarted()
 
 void MainWindow::onStackingThreadFinished()
 {
-  if ( stackProgressView ) {
-    stackProgressView->hide();
+  if( stackProgressView ) {
+
+    // it may be that there is next task in queue,
+    // don't blink with this dialog box
+    QTimer::singleShot(500,
+        [this]() {
+          if ( stackProgressView->isVisible() && !QStackingThread::isRunning() ) {
+            stackProgressView->hide();
+          }
+        });
+
   }
 }
 

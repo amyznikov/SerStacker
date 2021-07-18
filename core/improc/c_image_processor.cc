@@ -331,6 +331,32 @@ bool c_range_normalize_image_processor::save_settings(c_config_setting settings)
   return true;
 }
 
+
+bool c_histogram_white_balance_image_processor::load_settings(c_config_setting settings)
+{
+  if ( !base::load_settings(settings) ) {
+    return false;
+  }
+
+  settings.get("lclip", &lclip_);
+  settings.get("hclip", &hclip_);
+
+  return true;
+}
+
+bool c_histogram_white_balance_image_processor::save_settings(c_config_setting settings) const
+{
+  if ( !base::save_settings(settings) ) {
+    return false;
+  }
+
+  settings.set("lclip", lclip_);
+  settings.set("hclip", hclip_);
+
+  return true;
+}
+
+
 bool c_range_normalize_image_processor::load_settings(c_config_setting settings)
 {
   if ( !base::load_settings(settings) ) {

@@ -526,6 +526,82 @@ protected:
 };
 
 
+class c_histogram_white_balance_image_processor
+    : public c_image_processor
+{
+public:
+  typedef c_histogram_white_balance_image_processor this_class;
+  typedef c_image_processor base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_histogram_white_balance_image_processor(const std::string & name, const std::string & display_name)
+    : base(name, display_name)
+  {
+  }
+
+  static const char * default_name() {
+    return "smap";
+  }
+
+  static const char * default_display_name() {
+    return "SMAP";
+  }
+
+  static ptr create(bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  static ptr create(double lclip, double hclip, bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_lclip(lclip);
+    obj->set_hclip(hclip);
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  void set_lclip(double v)
+  {
+    lclip_ = v;
+  }
+
+  double lclip() const
+  {
+    return lclip_;
+  }
+
+  void set_hclip(double v)
+  {
+    hclip_ = v;
+  }
+
+  double hclip() const
+  {
+    return hclip_;
+  }
+
+  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    histogram_white_balance(image.getMatRef(),
+        mask,
+        image.getMatRef(),
+        lclip_,
+        hclip_);
+  }
+
+  bool save_settings(c_config_setting settings) const override;
+  bool load_settings(c_config_setting settings) override;
+
+protected:
+  double lclip_ = 1;
+  double hclip_ = 99;
+
+};
+
+
+
+
 class c_smap_image_processor
     : public c_image_processor
 {

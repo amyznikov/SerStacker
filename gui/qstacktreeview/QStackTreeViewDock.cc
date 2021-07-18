@@ -5,12 +5,12 @@
  *      Author: amyznikov
  */
 
-#include "QStackSequencesTreeDock.h"
+#include "QStackTreeViewDock.h"
 
-QStackSequencesTreeDock::QStackSequencesTreeDock(const QString &title, QWidget * parent)
+QStackTreeViewDock::QStackTreeViewDock(const QString &title, QWidget * parent)
     : Base(title, parent)
 {
-  Base::setWidget(sequencesView_ = new QStackSequencesTree(this));
+  Base::setWidget(sequencesView_ = new QStackTree(this));
 
 
   const QList<QAction *> actions = sequencesView_->toolbarActions();
@@ -21,7 +21,7 @@ QStackSequencesTreeDock::QStackSequencesTreeDock(const QString &title, QWidget *
 }
 
 
-QStackSequencesTree * QStackSequencesTreeDock::sequencesView() const
+QStackTree * QStackTreeViewDock::sequencesView() const
 {
   return sequencesView_;
 }
@@ -29,13 +29,13 @@ QStackSequencesTree * QStackSequencesTreeDock::sequencesView() const
 
 
 
-QStackSequencesTreeDock * addSequencesTreeDock(QMainWindow * parent,
+QStackTreeViewDock * addSequencesTreeDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,
     QMenu * viewMenu)
 {
-  QStackSequencesTreeDock * dock = new QStackSequencesTreeDock(title, parent);
+  QStackTreeViewDock * dock = new QStackTreeViewDock(title, parent);
   dock->setObjectName(dockName);
   parent->addDockWidget(area, dock);
 

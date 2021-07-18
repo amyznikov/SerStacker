@@ -5,7 +5,8 @@
  *      Author: amyznikov
  */
 
-#include "QStackSequencesTree.h"
+#include "QStackTree.h"
+
 #include <gui/qstackingthread/QStackingThread.h>
 
 #include <core/debug.h>
@@ -48,14 +49,14 @@ namespace {
 
 
 
-class QStackListTreeView::QImageStackItem
+class QStackTreeView::QStackItem
     : public QTreeWidgetItem
 {
 public:
-  typedef QImageStackItem ThisClass;
+  typedef QStackItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QImageStackItem(QTreeWidget * treeview, const c_image_stacking_options::ptr & ppline);
+  QStackItem(QTreeWidget * treeview, const c_image_stacking_options::ptr & ppline);
   void refreshInputSources();
 
   const c_image_stacking_options::ptr & stack() const;
@@ -65,11 +66,11 @@ protected:
   c_image_stacking_options::ptr stack_;
 };
 
-class QStackListTreeView::QInputSourceItem
+class QStackTreeView::QInputSourceItem
     : public QTreeWidgetItem
 {
 public:
-  typedef QInputSourceItem ThisClass;
+  typedef QStackTreeView::QInputSourceItem ThisClass;
   typedef QTreeWidgetItem Base;
 
   QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent = Q_NULLPTR );
@@ -81,17 +82,14 @@ protected:
 };
 
 
-typedef QStackListTreeView::QImageStackItem QStackOptionsItem;
-typedef QStackListTreeView::QInputSourceItem QInputSourceItem;
 
-
-QStackListTreeView::QImageStackItem::QImageStackItem(QTreeWidget * treeview, const c_image_stacking_options::ptr & ppline)
+QStackTreeView::QStackItem::QStackItem(QTreeWidget * treeview, const c_image_stacking_options::ptr & ppline)
   : Base(treeview, (int)ItemType_Stack)
 {
   setStack(ppline);
 }
 
-void QStackListTreeView::QImageStackItem::refreshInputSources()
+void QStackTreeView::QStackItem::refreshInputSources()
 {
   QTreeWidgetItem * childItem;
 
@@ -101,17 +99,17 @@ void QStackListTreeView::QImageStackItem::refreshInputSources()
 
   if ( stack_ && stack_->input_sequence() ) {
     for ( const c_input_source::ptr & input_source : stack_->input_sources() ) {
-      new QInputSourceItem(input_source, this);
+      new QStackTreeView::QInputSourceItem(input_source, this);
     }
   }
 }
 
-const c_image_stacking_options::ptr & QStackListTreeView::QImageStackItem::stack() const
+const c_image_stacking_options::ptr & QStackTreeView::QStackItem::stack() const
 {
   return stack_;
 }
 
-void QStackListTreeView::QImageStackItem::setStack(const c_image_stacking_options::ptr & options)
+void QStackTreeView::QStackItem::setStack(const c_image_stacking_options::ptr & options)
 {
   if ( (stack_ = options) ) {
     setFlags(flags() | Qt::ItemIsEditable | Qt::ItemIsUserCheckable|Qt::ItemIsSelectable);
@@ -122,18 +120,18 @@ void QStackListTreeView::QImageStackItem::setStack(const c_image_stacking_option
 }
 
 
-QStackListTreeView::QInputSourceItem::QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent)
+QStackTreeView::QInputSourceItem::QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent)
   : Base(parent, (int) ItemType_InputSource)
 {
   setInputSource(input_source);
 }
 
-const c_input_source::ptr & QStackListTreeView::QInputSourceItem::inputSource() const
+const c_input_source::ptr & QStackTreeView::QStackTreeView::QInputSourceItem::inputSource() const
 {
   return input_source_;
 }
 
-void QStackListTreeView::QInputSourceItem::setInputSource(const c_input_source::ptr & input_source)
+void QStackTreeView::QStackTreeView::QInputSourceItem::setInputSource(const c_input_source::ptr & input_source)
 {
   if ( (input_source_ = input_source) ) {
     setText(0, QFileInfo(input_source->filename().c_str()).fileName());
@@ -147,7 +145,7 @@ void QStackListTreeView::QInputSourceItem::setInputSource(const c_input_source::
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QStackListTreeView::QStackListTreeView(QWidget * parent)
+QStackTreeView::QStackTreeView(QWidget * parent)
   : Base(parent)
 {
 
@@ -182,18 +180,18 @@ QStackListTreeView::QStackListTreeView(QWidget * parent)
   setEnabled(false);
 }
 
-void QStackListTreeView::set_stacklist(const c_image_stacks_collection::ptr & stacklist)
+void QStackTreeView::set_stacklist(const c_image_stacks_collection::ptr & stacklist)
 {
   setEnabled((this->stacklist_ = stacklist) != nullptr);
   populateTreeView();
 }
 
-const c_image_stacks_collection::ptr & QStackListTreeView::stacklist() const
+const c_image_stacks_collection::ptr & QStackTreeView::stacklist() const
 {
   return this->stacklist_;
 }
 
-void QStackListTreeView::populateTreeView()
+void QStackTreeView::populateTreeView()
 {
   QTreeWidgetItem * item;
   while ( (item = takeTopLevelItem(0)) ) {
@@ -207,12 +205,12 @@ void QStackListTreeView::populateTreeView()
   }
 }
 
-QTreeWidgetItem * QStackListTreeView::addStackingOptionsItem(const c_image_stacking_options::ptr & options)
+QTreeWidgetItem * QStackTreeView::addStackingOptionsItem(const c_image_stacking_options::ptr & options)
 {
-  return new QImageStackItem(this, options);
+  return new QStackItem(this, options);
 }
 
-QTreeWidgetItem * QStackListTreeView::addNewStackingOptions(const QString & name)
+QTreeWidgetItem * QStackTreeView::addNewStackingOptions(const QString & name)
 {
   QTreeWidgetItem * item = Q_NULLPTR;
 
@@ -251,12 +249,12 @@ QTreeWidgetItem * QStackListTreeView::addNewStackingOptions(const QString & name
 }
 
 
-void QStackListTreeView::updateStackName(const c_image_stacking_options::ptr & pipeline)
+void QStackTreeView::updateStackName(const c_image_stacking_options::ptr & pipeline)
 {
   for ( int i = 0, n = this->topLevelItemCount(); i < n; ++i ) {
 
-    QImageStackItem * item =
-        dynamic_cast<QImageStackItem *>(this->
+    QStackItem * item =
+        dynamic_cast<QStackItem *>(this->
             topLevelItem(i));
 
     if ( item && item->stack() == pipeline ) {
@@ -267,7 +265,7 @@ void QStackListTreeView::updateStackName(const c_image_stacking_options::ptr & p
 }
 
 
-void QStackListTreeView::onAddNewStackingOptions()
+void QStackTreeView::onAddNewStackingOptions()
 {
   QTreeWidgetItem * item = addNewStackingOptions();
   if ( item ) {
@@ -275,9 +273,9 @@ void QStackListTreeView::onAddNewStackingOptions()
   }
 }
 
-void QStackListTreeView::onAddSourcesToCurrentStackingOptions()
+void QStackTreeView::onAddSourcesToCurrentStackingOptions()
 {
-  QImageStackItem * ppitem = dynamic_cast<QImageStackItem *>(currentItem());
+  QStackItem * ppitem = dynamic_cast<QStackItem *>(currentItem());
   if ( ppitem ) {
 
     static QString filter;
@@ -361,7 +359,7 @@ void QStackListTreeView::onAddSourcesToCurrentStackingOptions()
   }
 }
 
-void QStackListTreeView::onDeleteSelectedItems()
+void QStackTreeView::onDeleteSelectedItems()
 {
   QList<QTreeWidgetItem*> cursel = selectedItems();
   if ( !cursel.empty() ) {
@@ -369,10 +367,10 @@ void QStackListTreeView::onDeleteSelectedItems()
   }
 }
 
-void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
+void QStackTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 {
-  QImageStackItem * stackingOptionsItem;
-  QInputSourceItem * inpuSourceItem;
+  QStackItem * stackingOptionsItem;
+  QStackTreeView::QInputSourceItem * inpuSourceItem;
 
 //  QSet<c_stacking_options::ptr> deletedStacks;
 //  QSet<c_stacking_options::ptr> changedStacks;
@@ -382,7 +380,7 @@ void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
     switch ( item->type() ) {
 
     case ItemType_Stack :
-      if ( (stackingOptionsItem = dynamic_cast<QImageStackItem *>(item)) ) {
+      if ( (stackingOptionsItem = dynamic_cast<QStackItem *>(item)) ) {
 
         c_image_stacking_options::ptr options =
             stackingOptionsItem->stack();
@@ -390,7 +388,7 @@ void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
         //deletedStacks.insert(options);
 
         for ( int i = 0, n = item->childCount(); i < n; ++i ) {
-          if ( (inpuSourceItem = dynamic_cast<QInputSourceItem *>(item->child(i))) ) {
+          if ( (inpuSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item->child(i))) ) {
 
             if ( options ) {
               options->remove_input_source(inpuSourceItem->inputSource());
@@ -409,7 +407,7 @@ void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
       break;
 
     case ItemType_InputSource :
-      if ( (inpuSourceItem = dynamic_cast<QInputSourceItem *>(item)) ) {
+      if ( (inpuSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item)) ) {
 
         c_input_source::ptr input_source =
             inpuSourceItem->inputSource();
@@ -417,7 +415,7 @@ void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
         if ( input_source ) {
           inpuSourceItem->setInputSource(nullptr);
 
-          if ( (stackingOptionsItem = dynamic_cast<QImageStackItem *>(item->parent())) ) {
+          if ( (stackingOptionsItem = dynamic_cast<QStackItem *>(item->parent())) ) {
 
             if ( stackingOptionsItem->stack() ) {
 
@@ -464,7 +462,7 @@ void QStackListTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 //}
 
 
-void QStackListTreeView::keyPressEvent(QKeyEvent *e)
+void QStackTreeView::keyPressEvent(QKeyEvent *e)
 {
   switch ( e->key() ) {
   case Qt::Key_Delete :
@@ -476,7 +474,7 @@ void QStackListTreeView::keyPressEvent(QKeyEvent *e)
 }
 
 
-void QStackListTreeView::mouseMoveEvent(QMouseEvent *e)
+void QStackTreeView::mouseMoveEvent(QMouseEvent *e)
 {
   if ( !(e->buttons() & Qt::LeftButton) ) {
     return Base::mouseMoveEvent(e);
@@ -507,11 +505,11 @@ void QStackListTreeView::mouseMoveEvent(QMouseEvent *e)
   QList<QUrl> list;
   for ( const QTreeWidgetItem * item : selection ) {
 
-    const QInputSourceItem * inputSourceItem =
-        dynamic_cast<const QInputSourceItem*>(item);
+    const QStackTreeView::QInputSourceItem * inputSourceItem =
+        dynamic_cast<const QStackTreeView::QInputSourceItem*>(item);
 
-    const QImageStackItem * parentItem =
-        dynamic_cast<const QImageStackItem*>(inputSourceItem->parent());
+    const QStackItem * parentItem =
+        dynamic_cast<const QStackItem*>(inputSourceItem->parent());
 
     const c_input_source::ptr & input_source =
         inputSourceItem->inputSource();
@@ -539,12 +537,12 @@ void QStackListTreeView::mouseMoveEvent(QMouseEvent *e)
 
 
 
-Qt::DropActions QStackListTreeView::supportedDropActions() const
+Qt::DropActions QStackTreeView::supportedDropActions() const
 {
   return Qt::CopyAction | Qt::MoveAction;
 }
 
-void QStackListTreeView::dragEnterEvent(QDragEnterEvent *event)
+void QStackTreeView::dragEnterEvent(QDragEnterEvent *event)
 {
   if ( event->mimeData()->hasUrls() ) {
     event->acceptProposedAction();
@@ -554,7 +552,7 @@ void QStackListTreeView::dragEnterEvent(QDragEnterEvent *event)
   }
 }
 
-void QStackListTreeView::dragMoveEvent(QDragMoveEvent *event)
+void QStackTreeView::dragMoveEvent(QDragMoveEvent *event)
 {
   if ( event->mimeData()->hasUrls() ) {
     event->setDropAction(Qt::DropAction::CopyAction);
@@ -565,10 +563,10 @@ void QStackListTreeView::dragMoveEvent(QDragMoveEvent *event)
 }
 
 
-void QStackListTreeView::dropEvent(QDropEvent *e)
+void QStackTreeView::dropEvent(QDropEvent *e)
 {
   QTreeWidgetItem * selectedItem = Q_NULLPTR;
-  QImageStackItem * stackItem = Q_NULLPTR;
+  QStackItem * stackItem = Q_NULLPTR;
   bool newStackItemCreated = false;
   Qt::DropAction action = Qt::IgnoreAction;
 
@@ -580,10 +578,10 @@ void QStackListTreeView::dropEvent(QDropEvent *e)
   if ( (selectedItem = Base::itemAt(e->pos())) ) {
     switch ( selectedItem->type() ) {
     case ItemType_Stack :
-      stackItem = dynamic_cast<QImageStackItem *>(selectedItem);
+      stackItem = dynamic_cast<QStackItem *>(selectedItem);
       break;
     case ItemType_InputSource :
-      stackItem = dynamic_cast<QImageStackItem *>(selectedItem->parent());
+      stackItem = dynamic_cast<QStackItem *>(selectedItem->parent());
       break;
     default :
       CF_DEBUG("selectedItem->type()=%d", selectedItem->type());
@@ -598,7 +596,7 @@ void QStackListTreeView::dropEvent(QDropEvent *e)
     //
 
     if ( !stackItem ) {
-      if ( (stackItem = dynamic_cast<QImageStackItem *>(addNewStackingOptions())) ) {
+      if ( (stackItem = dynamic_cast<QStackItem *>(addNewStackingOptions())) ) {
         newStackItemCreated = true;
       }
     }
@@ -638,7 +636,7 @@ void QStackListTreeView::dropEvent(QDropEvent *e)
     const QList<QUrl> urls = e->mimeData()->urls();
 
     for ( const QUrl & url : urls ) {
-      if ( (stackItem = dynamic_cast<QImageStackItem *>(addNewStackingOptions())) ) {
+      if ( (stackItem = dynamic_cast<QStackItem *>(addNewStackingOptions())) ) {
         if ( !dropSource(e, url, stackItem, selectedItem) ) {
           delete stackItem;
         }
@@ -669,7 +667,7 @@ void QStackListTreeView::dropEvent(QDropEvent *e)
 }
 
 
-bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStackItem * targetStackItem, QTreeWidgetItem * selectedItem)
+bool QStackTreeView::dropSource(QDropEvent *e, const QUrl & url, QStackItem * targetStackItem, QTreeWidgetItem * selectedItem)
 {
 
   bool dropped = false;
@@ -677,10 +675,10 @@ bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStack
   const c_input_sequence::ptr & target_sequence =
       targetStackItem->stack()->input_sequence();
 
-  QInputSourceItem * targetSourceItem = Q_NULLPTR;
+  QStackTreeView::QInputSourceItem * targetSourceItem = Q_NULLPTR;
 
   if ( selectedItem && selectedItem->type() == ItemType_InputSource ) {
-    targetSourceItem = dynamic_cast<QInputSourceItem * >(selectedItem);
+    targetSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem * >(selectedItem);
   }
 
   if ( url.scheme() != "cinputsource" ) {
@@ -702,7 +700,7 @@ bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStack
         if (  input_source ) {
 
           targetStackItem->insertChild(target_sequence->indexof(input_source),
-              new QInputSourceItem(input_source));
+              new QStackTreeView::QInputSourceItem(input_source));
 
           dropped = true;
         }
@@ -711,8 +709,8 @@ bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStack
   }
 
   else  {
-    QImageStackItem * sourceStackItem;
-    QInputSourceItem * inputSourceItem;
+    QStackItem * sourceStackItem;
+    QStackTreeView::QInputSourceItem * inputSourceItem;
 
     if ( (sourceStackItem = findStackItem(url.userName())) ) {
       if ( (inputSourceItem = findInputSourceItem(sourceStackItem, url.path())) ) {
@@ -736,7 +734,7 @@ bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStack
               if (  input_source ) {
 
                 targetStackItem->insertChild(target_sequence->indexof(input_source),
-                    new QInputSourceItem(input_source));
+                    new QStackTreeView::QInputSourceItem(input_source));
 
                 dropped = true;
               }
@@ -754,7 +752,7 @@ bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStack
             if (  input_source ) {
 
               targetStackItem->insertChild(target_sequence->indexof(input_source),
-                  new QInputSourceItem(input_source));
+                  new QStackTreeView::QInputSourceItem(input_source));
 
               dropped = true;
             }
@@ -771,7 +769,7 @@ bool QStackListTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageStack
 
 }
 
-int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStackItem, QTreeWidgetItem * targetItem)
+int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTreeWidgetItem * targetItem)
 {
 
   int num_sourcess_added = 0;
@@ -779,10 +777,10 @@ int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStack
   const c_input_sequence::ptr & target_sequence =
       targetStackItem->stack()->input_sequence();
 
-  QInputSourceItem * targetSourceItem = Q_NULLPTR;
+  QStackTreeView::QInputSourceItem * targetSourceItem = Q_NULLPTR;
 
   if ( targetItem && targetItem->type() == ItemType_InputSource ) {
-    targetSourceItem = dynamic_cast<QInputSourceItem * >(targetItem);
+    targetSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem * >(targetItem);
   }
 
 
@@ -810,7 +808,7 @@ int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStack
           if (  input_source ) {
 
             targetStackItem->insertChild(target_sequence->indexof(input_source),
-                new QInputSourceItem(input_source));
+                new QStackTreeView::QInputSourceItem(input_source));
 
             ++ num_sourcess_added;
           }
@@ -819,8 +817,8 @@ int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStack
     }
 
     else  {
-      QImageStackItem * sourceStackItem;
-      QInputSourceItem * inputSourceItem;
+      QStackItem * sourceStackItem;
+      QStackTreeView::QInputSourceItem * inputSourceItem;
 
       if ( (sourceStackItem = findStackItem(url.userName())) ) {
         if ( (inputSourceItem = findInputSourceItem(sourceStackItem, url.path())) ) {
@@ -844,7 +842,7 @@ int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStack
                 if (  input_source ) {
 
                   targetStackItem->insertChild(target_sequence->indexof(input_source),
-                      new QInputSourceItem(input_source));
+                      new QStackTreeView::QInputSourceItem(input_source));
 
                   ++ num_sourcess_added;
                 }
@@ -862,7 +860,7 @@ int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStack
               if (  input_source ) {
 
                 targetStackItem->insertChild(target_sequence->indexof(input_source),
-                    new QInputSourceItem(input_source));
+                    new QStackTreeView::QInputSourceItem(input_source));
 
                 ++ num_sourcess_added;
               }
@@ -879,14 +877,14 @@ int QStackListTreeView::dropSources(QDropEvent *e, QImageStackItem * targetStack
   return num_sourcess_added;
 }
 
-QStackOptionsItem * QStackListTreeView::findStackItem(const QString & name) const
+QStackTreeView::QStackItem * QStackTreeView::findStackItem(const QString & name) const
 {
   if ( !name.isEmpty() ) {
 
     const std::string cname = name.toStdString();
 
     for ( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
-      QImageStackItem * item = dynamic_cast<QImageStackItem * >(topLevelItem(i));
+      QStackItem * item = dynamic_cast<QStackItem * >(topLevelItem(i));
       if ( item && item->stack()->name() == cname ) {
         return item;
       }
@@ -896,11 +894,11 @@ QStackOptionsItem * QStackListTreeView::findStackItem(const QString & name) cons
   return Q_NULLPTR;
 }
 
-QStackOptionsItem * QStackListTreeView::findStackItem(const c_image_stacking_options::ptr & stack) const
+QStackTreeView::QStackItem * QStackTreeView::findStackItem(const c_image_stacking_options::ptr & stack) const
 {
   if ( stack ) {
     for ( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
-      QImageStackItem * item = dynamic_cast<QImageStackItem * >(topLevelItem(i));
+      QStackItem * item = dynamic_cast<QStackItem * >(topLevelItem(i));
       if ( item && stack == item->stack() ) {
         return item;
       }
@@ -910,14 +908,14 @@ QStackOptionsItem * QStackListTreeView::findStackItem(const c_image_stacking_opt
 }
 
 
-QInputSourceItem * QStackListTreeView::findInputSourceItem(QImageStackItem * stackItem, const QString & filename) const
+QStackTreeView::QInputSourceItem * QStackTreeView::findInputSourceItem(QStackItem * stackItem, const QString & filename) const
 {
   if( stackItem && !filename.isEmpty() ) {
 
     const std::string cfilename = filename.toStdString();
 
     for ( int i = 0, n = stackItem->childCount(); i < n; ++i ) {
-      QInputSourceItem * item = dynamic_cast<QInputSourceItem * >(stackItem->child(i));
+      QStackTreeView::QInputSourceItem * item = dynamic_cast<QStackTreeView::QInputSourceItem * >(stackItem->child(i));
       if ( item && item->inputSource()->filename() == cfilename ) {
         return item;
       }
@@ -929,7 +927,7 @@ QInputSourceItem * QStackListTreeView::findInputSourceItem(QImageStackItem * sta
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QStackSequencesTree::QStackSequencesTree(QWidget * parent)
+QStackTree::QStackTree(QWidget * parent)
   : Base(parent)
 {
   Q_INIT_RESOURCE(qstacktree_resources);
@@ -1000,7 +998,7 @@ QStackSequencesTree::QStackSequencesTree(QWidget * parent)
 
 
   /* Setup Treeview */
-  treeView_ = new QStackListTreeView(this);
+  treeView_ = new QStackTreeView(this);
 
   /* Setup layout */
   vbox_ = new QVBoxLayout(this);
@@ -1013,13 +1011,13 @@ QStackSequencesTree::QStackSequencesTree(QWidget * parent)
   treeView_->installEventFilter(this);
 
   connect(addStackAction, &QAction::triggered,
-      treeView_, &QStackListTreeView::onAddNewStackingOptions);
+      treeView_, &QStackTreeView::onAddNewStackingOptions);
 
   connect(addSourcesAction, &QAction::triggered,
-      treeView_, &QStackListTreeView::onAddSourcesToCurrentStackingOptions);
+      treeView_, &QStackTreeView::onAddSourcesToCurrentStackingOptions);
 
   connect(deleteItemAction, &QAction::triggered,
-      treeView_, &QStackListTreeView::onDeleteSelectedItems);
+      treeView_, &QStackTreeView::onDeleteSelectedItems);
 
 //  connect(startStopStackingAction, &QAction::triggered,
 //      treeView_, &QStackListTreeView::onStartStopStackingActionClicked);
@@ -1062,31 +1060,31 @@ QStackSequencesTree::QStackSequencesTree(QWidget * parent)
 
 }
 
-void QStackSequencesTree::set_stacklist(const c_image_stacks_collection::ptr & pipelines)
+void QStackTree::set_stacklist(const c_image_stacks_collection::ptr & pipelines)
 {
   treeView_->set_stacklist(pipelines);
   updateControls();
 }
 
-const c_image_stacks_collection::ptr & QStackSequencesTree::stacklist() const
+const c_image_stacks_collection::ptr & QStackTree::stacklist() const
 {
   return treeView_->stacklist();
 }
 
-const QList<QAction *> & QStackSequencesTree::toolbarActions() const
+const QList<QAction *> & QStackTree::toolbarActions() const
 {
   return toolbarActions_;
 }
 
 
-void QStackSequencesTree::applyMasterFrameOptionsToAll(const c_stacking_master_frame_options & options)
+void QStackTree::applyMasterFrameOptionsToAll(const c_stacking_master_frame_options & options)
 {
   const int n = treeView_->topLevelItemCount();
 
   for ( int i = 0; i < n; ++i ) {
 
-    QStackOptionsItem * stackItem =
-        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
 
     if ( !stackItem || !stackItem->isSelected() ) {
       continue;
@@ -1111,13 +1109,13 @@ void QStackSequencesTree::applyMasterFrameOptionsToAll(const c_stacking_master_f
  }
 }
 
-void QStackSequencesTree::applyROISelectionOptionsToAll(const c_roi_selection_options & options)
+void QStackTree::applyROISelectionOptionsToAll(const c_roi_selection_options & options)
 {
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
-    QStackOptionsItem * stackItem =
-        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
 
     if ( !stackItem || !stackItem->isSelected() ) {
       continue;
@@ -1137,13 +1135,13 @@ void QStackSequencesTree::applyROISelectionOptionsToAll(const c_roi_selection_op
   }
 }
 
-void QStackSequencesTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options)
+void QStackTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options)
 {
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
-    QStackOptionsItem * stackItem =
-        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
 
     if ( !stackItem || !stackItem->isSelected() ) {
       continue;
@@ -1164,13 +1162,13 @@ void QStackSequencesTree::applyFrameAccumulationOptionsToAll(const c_frame_accum
 
 }
 
-void QStackSequencesTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options)
+void QStackTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options)
 {
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
-    QStackOptionsItem * stackItem =
-        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
 
     if ( !stackItem || !stackItem->isSelected() ) {
       continue;
@@ -1190,14 +1188,14 @@ void QStackSequencesTree::applyFrameRegistrationOptionsToAll(const c_frame_regis
   }
 }
 
-void QStackSequencesTree::applyOutputOptionsToAll(const c_image_stacking_output_options & options)
+void QStackTree::applyOutputOptionsToAll(const c_image_stacking_output_options & options)
 {
   const int n = treeView_->topLevelItemCount();
 
   for ( int i = 0; i < n; ++i ) {
 
-    QStackOptionsItem * stackItem =
-        dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
 
     if ( !stackItem || !stackItem->isSelected() ) {
       continue;
@@ -1217,15 +1215,15 @@ void QStackSequencesTree::applyOutputOptionsToAll(const c_image_stacking_output_
   }
 }
 
-void QStackSequencesTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr & fromStack)
+void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr & fromStack)
 {
   if ( fromStack ) {
     const int n = treeView_->topLevelItemCount();
 
     for ( int i = 0; i < n; ++i ) {
 
-      QStackOptionsItem * stackItem =
-          dynamic_cast<QStackOptionsItem*>(treeView_->topLevelItem(i));
+      QStackTreeView::QStackItem * stackItem =
+          dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
 
       if ( !stackItem || !stackItem->isSelected() ) {
         continue;
@@ -1259,32 +1257,32 @@ void QStackSequencesTree::applyAllStackOptionsToAll(const c_image_stacking_optio
 }
 
 
-void QStackSequencesTree::updateControls()
+void QStackTree::updateControls()
 {
 }
 
 
-void QStackSequencesTree::updateStackName(const c_image_stacking_options::ptr & ppline)
+void QStackTree::updateStackName(const c_image_stacking_options::ptr & ppline)
 {
   treeView_->updateStackName(ppline);
 }
 
-void QStackSequencesTree::addNewStack()
+void QStackTree::addNewStack()
 {
   treeView_->onAddNewStackingOptions();
 }
 
-void QStackSequencesTree::addSourcesToCurrentStack()
+void QStackTree::addSourcesToCurrentStack()
 {
   treeView_->onAddSourcesToCurrentStackingOptions();
 }
 
-void QStackSequencesTree::deleteSelectedItems()
+void QStackTree::deleteSelectedItems()
 {
   treeView_->onDeleteSelectedItems();
 }
 
-bool QStackSequencesTree::eventFilter(QObject *watched, QEvent *event)
+bool QStackTree::eventFilter(QObject *watched, QEvent *event)
 {
   if ( watched == treeView_ && event->type() == QEvent::KeyPress ) {
 
@@ -1294,18 +1292,18 @@ bool QStackSequencesTree::eventFilter(QObject *watched, QEvent *event)
       QTreeWidgetItem * item = treeView_->currentItem();
       if ( item ) {
 
-        QStackOptionsItem * stackItem = Q_NULLPTR;
-        QInputSourceItem * inputSourceItem = Q_NULLPTR;
+        QStackTreeView::QStackItem * stackItem = Q_NULLPTR;
+        QStackTreeView::QInputSourceItem * inputSourceItem = Q_NULLPTR;
 
         switch ( item->type() ) {
 
         case ItemType_Stack :
-          stackItem = dynamic_cast<QStackOptionsItem*>(item);
+          stackItem = dynamic_cast<QStackTreeView::QStackItem*>(item);
           break;
 
         case ItemType_InputSource :
-          inputSourceItem = dynamic_cast<QInputSourceItem *>(item);
-          stackItem = dynamic_cast<QStackOptionsItem*>(item->parent());
+          inputSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item);
+          stackItem = dynamic_cast<QStackTreeView::QStackItem*>(item->parent());
           break;
         }
 
@@ -1321,15 +1319,15 @@ bool QStackSequencesTree::eventFilter(QObject *watched, QEvent *event)
   return false;
 }
 
-void QStackSequencesTree::onItemChanged(QTreeWidgetItem *item, int column)
+void QStackTree::onItemChanged(QTreeWidgetItem *item, int column)
 {
   if ( item ) {
     switch ( item->type() ) {
 
     case ItemType_Stack : {
 
-      QStackOptionsItem * ppItem =
-          dynamic_cast<QStackOptionsItem *>(item);
+      QStackTreeView::QStackItem * ppItem =
+          dynamic_cast<QStackTreeView::QStackItem *>(item);
 
       if ( ppItem->text(0).isEmpty() ) {
         ppItem->setText(0, ppItem->stack()->name().c_str());
@@ -1355,7 +1353,7 @@ void QStackSequencesTree::onItemChanged(QTreeWidgetItem *item, int column)
 
 }
 
-void QStackSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
+void QStackTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
 {
 
   if ( !current ) {
@@ -1366,8 +1364,8 @@ void QStackSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
   }
   else {
 
-    QStackOptionsItem * stackItem = Q_NULLPTR;
-    QInputSourceItem * inputSourceItem = Q_NULLPTR;
+    QStackTreeView::QStackItem * stackItem = Q_NULLPTR;
+    QStackTreeView::QInputSourceItem * inputSourceItem = Q_NULLPTR;
 
     deleteItemAction->setEnabled(true);
     showStackOptionsAction->setEnabled(true);
@@ -1375,14 +1373,14 @@ void QStackSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
     switch ( current->type() ) {
 
     case ItemType_Stack :
-      stackItem = dynamic_cast<QStackOptionsItem*>(current);
+      stackItem = dynamic_cast<QStackTreeView::QStackItem*>(current);
       addSourcesAction->setEnabled(true);
       startStackingMenuAction->setEnabled(!QStackingThread::isRunning());
       break;
 
     case ItemType_InputSource :
-      inputSourceItem = dynamic_cast<QInputSourceItem *>(current);
-      stackItem = dynamic_cast<QStackOptionsItem*>(current->parent());
+      inputSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(current);
+      stackItem = dynamic_cast<QStackTreeView::QStackItem*>(current->parent());
       startStackingMenuAction->setEnabled(false);
       break;
 
@@ -1397,20 +1395,20 @@ void QStackSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
   }
 }
 
-void QStackSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*column*/)
+void QStackTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*column*/)
 {
-  QStackOptionsItem * stackItem = Q_NULLPTR;
-  QInputSourceItem * inputSourceItem = Q_NULLPTR;
+  QStackTreeView::QStackItem * stackItem = Q_NULLPTR;
+  QStackTreeView::QInputSourceItem * inputSourceItem = Q_NULLPTR;
 
   switch ( item->type() ) {
 
   case ItemType_Stack :
-    stackItem = dynamic_cast<QStackOptionsItem*>(item);
+    stackItem = dynamic_cast<QStackTreeView::QStackItem*>(item);
     break;
 
   case ItemType_InputSource :
-    inputSourceItem = dynamic_cast<QInputSourceItem *>(item);
-    stackItem = dynamic_cast<QStackOptionsItem*>(item->parent());
+    inputSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item);
+    stackItem = dynamic_cast<QStackTreeView::QStackItem*>(item->parent());
     break;
   }
 
@@ -1418,7 +1416,7 @@ void QStackSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*colu
       inputSourceItem ? inputSourceItem->inputSource() :nullptr);
 }
 
-void QStackSequencesTree::onCustomContextMenuRequested(const QPoint &pos)
+void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
 {
   QMenu menu;
   QList<QTreeWidgetItem*> contextItems;
@@ -1463,10 +1461,10 @@ void QStackSequencesTree::onCustomContextMenuRequested(const QPoint &pos)
 
 }
 
-void QStackSequencesTree::onShowStackOptionsClicked()
+void QStackTree::onShowStackOptionsClicked()
 {
-  QStackOptionsItem * item =
-      dynamic_cast<QStackOptionsItem *>(treeView_->
+  QStackTreeView::QStackItem * item =
+      dynamic_cast<QStackTreeView::QStackItem *>(treeView_->
           currentItem());
 
   if ( item ) {
@@ -1474,12 +1472,12 @@ void QStackSequencesTree::onShowStackOptionsClicked()
   }
 }
 
-void QStackSequencesTree::onStartStackingClicked()
+void QStackTree::onStartStackingClicked()
 {
   if ( !QStackingThread::isRunning() ) {
 
-    QStackListTreeView::QImageStackItem * item =
-        dynamic_cast<QStackListTreeView::QImageStackItem *>(
+    QStackTreeView::QStackItem * item =
+        dynamic_cast<QStackTreeView::QStackItem *>(
             treeView_-> currentItem());
 
     if ( item ) {
@@ -1489,7 +1487,7 @@ void QStackSequencesTree::onStartStackingClicked()
   }
 }
 
-void QStackSequencesTree::onStartAllStackingClicked()
+void QStackTree::onStartAllStackingClicked()
 {
 //  QImageStackItem * item =
 //      dynamic_cast<QImageStackItem *>(this->
@@ -1514,7 +1512,7 @@ void QStackSequencesTree::onStartAllStackingClicked()
   }
 }
 
-void QStackSequencesTree::onStopStackingClicked()
+void QStackTree::onStopStackingClicked()
 {
   if ( QStackingThread::isRunning() ) {
     currentProcessingMode_ = ProcessIdle;
@@ -1525,14 +1523,14 @@ void QStackSequencesTree::onStopStackingClicked()
 
 
 
-bool QStackSequencesTree::startNextStacking()
+bool QStackTree::startNextStacking()
 {
   if ( !QStackingThread::isRunning() && currentProcessingMode_ == ProcessBatch ) {
 
     for ( int i = 0, n = treeView_->topLevelItemCount(); i < n; ++i ) {
 
-      QStackOptionsItem * item =
-          dynamic_cast<QStackOptionsItem *>(
+      QStackTreeView::QStackItem * item =
+          dynamic_cast<QStackTreeView::QStackItem *>(
               treeView_->topLevelItem(i));
 
       if ( item && item->checkState(0) == Qt::Checked ) {
@@ -1548,25 +1546,25 @@ bool QStackSequencesTree::startNextStacking()
 }
 
 
-void QStackSequencesTree::onStackingThreadStarted()
+void QStackTree::onStackingThreadStarted()
 {
   startStacking->setEnabled(false);
   stopStacking->setEnabled(true);
   //startStopStackingAction->setIcon(getIcon(ICON_stop));
 }
 
-void QStackSequencesTree::onStackingThreadFinishing()
+void QStackTree::onStackingThreadFinishing()
 {
   stopStacking->setEnabled(false);
 }
 
-void QStackSequencesTree::onStackingThreadFinished()
+void QStackTree::onStackingThreadFinished()
 {
   //startStopStackingAction->setIcon(getIcon(ICON_start));
 
   if ( currentProcessingMode_ == ProcessBatch ) {
 
-    QStackOptionsItem * item =
+    QStackTreeView::QStackItem * item =
         treeView_->findStackItem(QStackingThread::currentStack());
 
     if ( item ) {

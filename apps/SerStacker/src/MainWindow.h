@@ -17,10 +17,10 @@
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qmtfcontrols/QMtfControlDialogBox.h>
-#include <gui/qstackingsequences/QStackSequencesTreeDock.h>
 #include <gui/qstackingthread/QStackingProgressView.h>
 #include <gui/qimproc/QImageProcessorChainSettings.h>
 #include <gui/qstackingoptions/QStackOptions.h>
+#include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include "c_display_function.h"
 
 //#include <gui/widgets/QMTFImageLevelsWidget.h>
@@ -99,8 +99,8 @@ private:
 
   QFileSystemTreeDock * fileSystemTreeDock = Q_NULLPTR;
 
-  QStackSequencesTreeDock * stackTreeDock = Q_NULLPTR;
-  QStackSequencesTree * stackTreeView = Q_NULLPTR;
+  QStackTreeViewDock * stackTreeDock = Q_NULLPTR;
+  QStackTree * stackTreeView = Q_NULLPTR;
 
   QCustomDockWidget * imageProcessorSettingsDock = Q_NULLPTR;
   QImageProcessorChainSettings * imageProcessorSettings = Q_NULLPTR;

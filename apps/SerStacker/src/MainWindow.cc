@@ -191,17 +191,17 @@ MainWindow::MainWindow()
   connect(thumbnailsView, &QThumbnailsView::customContextMenuRequested,
       this, &ThisClass::onThumbnailsViewCustomContextMenuRequested);
 
-  connect(stackTreeView, &QStackSequencesTree::currentItemChanged,
+  connect(stackTreeView, &QStackTree::currentItemChanged,
       this, &ThisClass::onStackTreeCurrentItemChanged);
 
-  connect(stackTreeView, &QStackSequencesTree::itemDoubleClicked,
+  connect(stackTreeView, &QStackTree::itemDoubleClicked,
       this, &ThisClass::onStackTreeItemDoubleClicked);
 
 
 //  connect(sequencesTree, &QStackSequencesTree::currentInputSourceChanged,
 //      this, &ThisClass::onCurrentInputSourceChanged);
 //
-  connect(stackTreeView, &QStackSequencesTree::showStackOptionsClicked,
+  connect(stackTreeView, &QStackTree::showStackOptionsClicked,
       this, &ThisClass::onShowStackOptionsClicked);
 
   connect(stackOptionsView, &QStackOptions::closeWindowRequested,
@@ -217,27 +217,27 @@ MainWindow::MainWindow()
 
 
   connect(stackOptionsView, &QStackOptions::applyMasterFrameOptionsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyMasterFrameOptionsToAll);
+      stackTreeView, & QStackTree::applyMasterFrameOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
-      stackTreeView, &QStackSequencesTree::applyROISelectionOptionsToAll);
+      stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyFrameAccumulationOptionsToAll);
+      stackTreeView, & QStackTree::applyFrameAccumulationOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyFrameRegistrationOptionsToAll);
+      stackTreeView, & QStackTree::applyFrameRegistrationOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyOutputOptionsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyOutputOptionsToAll);
+      stackTreeView, & QStackTree::applyOutputOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyAllStackOptionsToAllRequested,
-      stackTreeView, & QStackSequencesTree::applyAllStackOptionsToAll);
+      stackTreeView, & QStackTree::applyAllStackOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::stackNameChanged,
-      stackTreeView, &QStackSequencesTree::updateStackName);
+      stackTreeView, &QStackTree::updateStackName);
 
-  connect(stackTreeView, &QStackSequencesTree::stackNameChanged,
+  connect(stackTreeView, &QStackTree::stackNameChanged,
       [this] (const c_image_stacking_options::ptr & options) {
         if ( stackOptionsView->currentStack() == options ) {
           stackOptionsView->updateControls();

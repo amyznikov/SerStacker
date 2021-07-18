@@ -11,17 +11,17 @@
 #include <QtWidgets/QtWidgets>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
-class QStackListTreeView;
+class QStackTreeView;
 
-class QStackSequencesTree
+class QStackTree
   : public QWidget
 {
   Q_OBJECT;
 public:
-  typedef QStackSequencesTree ThisClass;
+  typedef QStackTree ThisClass;
   typedef QWidget Base;
 
-  QStackSequencesTree(QWidget * parent = Q_NULLPTR);
+  QStackTree(QWidget * parent = Q_NULLPTR);
 
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
@@ -32,10 +32,6 @@ public:
   void applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options);
   void applyOutputOptionsToAll(const c_image_stacking_output_options & options);
   void applyAllStackOptionsToAll(const c_image_stacking_options::ptr & currentStack);
-
-  //void applyRegistrationSettingsToAll(const c_image_stacking_options::ptr & copyFrom);
-//  void applyOutputSettingsToAll(const c_image_stacking_output_options & options);
-//  void applyMasterFrameSettingsToAll(const c_stacking_master_frame_options & options);
 
   const QList<QAction * > & toolbarActions() const;
 
@@ -73,7 +69,7 @@ protected:
 
 protected:
   QVBoxLayout * vbox_ = Q_NULLPTR;
-  QStackListTreeView * treeView_ = Q_NULLPTR;
+  QStackTreeView * treeView_ = Q_NULLPTR;
 
   QAction * addStackAction = Q_NULLPTR;
   QAction * addSourcesAction = Q_NULLPTR;
@@ -97,26 +93,26 @@ protected:
 
 };
 
-class QStackListTreeView
+class QStackTreeView
     : public QTreeWidget
 {
   Q_OBJECT;
 public:
-  typedef QStackListTreeView ThisClass;
+  typedef QStackTreeView ThisClass;
   typedef QTreeWidget Base;
-  friend class QStackSequencesTree;
+  friend class QStackTree;
 
-  class QImageStackItem;
+  class QStackItem;
   class QInputSourceItem;
 
-  QStackListTreeView(QWidget * parent = Q_NULLPTR);
+  QStackTreeView(QWidget * parent = Q_NULLPTR);
 
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
 
-  QImageStackItem * findStackItem(const QString & name) const;
-  QImageStackItem * findStackItem(const c_image_stacking_options::ptr & stack) const;
-  QInputSourceItem * findInputSourceItem(QImageStackItem * stackItem, const QString & name) const;
+  QStackItem * findStackItem(const QString & name) const;
+  QStackItem * findStackItem(const c_image_stacking_options::ptr & stack) const;
+  QInputSourceItem * findInputSourceItem(QStackItem * stackItem, const QString & name) const;
 
 protected slots:
   void updateStackName(const c_image_stacking_options::ptr & stack);
@@ -137,8 +133,8 @@ protected:
   void dragEnterEvent(QDragEnterEvent *event) override;
   void dragMoveEvent(QDragMoveEvent *event) override;
   void dropEvent(QDropEvent *event) override;
-  int dropSources(QDropEvent *e, QImageStackItem * targetStackItem, QTreeWidgetItem * targetItem);
-  bool dropSource(QDropEvent *e, const QUrl & url, QImageStackItem * targetStackItem, QTreeWidgetItem * targetItem);
+  int dropSources(QDropEvent *e, QStackItem * targetStackItem, QTreeWidgetItem * targetItem);
+  bool dropSource(QDropEvent *e, const QUrl & url, QStackItem * targetStackItem, QTreeWidgetItem * targetItem);
 
 
 protected:

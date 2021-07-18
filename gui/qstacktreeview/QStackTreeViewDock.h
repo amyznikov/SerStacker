@@ -10,28 +10,28 @@
 #define __QStackSequencesTreeDock_h__
 
 #include <gui/qcustomdock/QCustomDock.h>
-#include "QStackSequencesTree.h"
+#include "QStackTree.h"
 
-class QStackSequencesTreeDock
+class QStackTreeViewDock
     : public QCustomDockWidget
 {
   Q_OBJECT;
 public:
-  typedef QStackSequencesTreeDock ThisClass;
+  typedef QStackTreeViewDock ThisClass;
   typedef QCustomDockWidget Base;
 
-  QStackSequencesTreeDock(const QString &title,
+  QStackTreeViewDock(const QString &title,
       QWidget * parent = Q_NULLPTR);
 
 
-  QStackSequencesTree * sequencesView() const;
+  QStackTree * sequencesView() const;
 
 protected:
-  QStackSequencesTree * sequencesView_ = Q_NULLPTR;
+  QStackTree * sequencesView_ = Q_NULLPTR;
 };
 
 
-QStackSequencesTreeDock * addSequencesTreeDock(QMainWindow * parent,
+QStackTreeViewDock * addSequencesTreeDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,

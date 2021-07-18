@@ -608,8 +608,12 @@ std::string c_image_stacking_pipeline::status_message() const
 
 void c_image_stacking_pipeline::set_status_msg(const std::string & msg)
 {
-  lock_guard lock(status_lock_);
-  statusmsg_ = msg;
+  if ( true  ) {
+    lock_guard lock(status_lock_);
+    statusmsg_ = msg;
+  }
+
+  CF_DEBUG("STATUS: %s", msg.c_str());
   emit_status_changed();
 }
 
@@ -1130,7 +1134,7 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
   const c_stacking_master_frame_options & master_frame_options =
       options->master_frame_options();
 
-  int num_source_frames = 0;
+  int num_total_frames = 0;
 
   c_input_sequence::ptr input_sequence;
   c_auto_close_input_sequence auto_close(input_sequence);
@@ -1202,6 +1206,8 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
   }
 
 
+  CF_DEBUG("master_frame_options.master_frame_index=%d", master_frame_options.master_frame_index);
+
 
   if ( master_frame_options.use_ffts_from_master_path ) {
     master_frame_index_ = 0;
@@ -1222,14 +1228,28 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     return false;
   }
 
+  CF_DEBUG("master_frame_options.master_frame_index=%d master_frame_index_=%d",
+      master_frame_options.master_frame_index, master_frame_index_);
 
-  if ( master_source_index_ < 0 ) {
-    num_source_frames = input_sequence->source(0)->size();
-  }
-  else {
-    num_source_frames = input_sequence->source(master_source_index_)->size();
+
+  num_total_frames = input_sequence->size();
+  if ( master_source_index_ >= 0 ) {
     master_frame_index_ = input_sequence->global_pos(master_source_index_, master_frame_index_);
   }
+  else {
+    master_frame_index_ = input_sequence->global_pos(0, master_frame_index_);
+  }
+
+//  if ( master_source_index_ < 0 ) {
+//    num_total_frames = input_sequence->source(0)->size();
+//  }
+//  else {
+//    num_total_frames = input_sequence->source(master_source_index_)->size();
+//    master_frame_index_ = input_sequence->global_pos(master_source_index_, master_frame_index_);
+//  }
+
+  CF_DEBUG("master_frame_options.master_frame_index=%d master_frame_index_=%d",
+      master_frame_options.master_frame_index, master_frame_index_);
 
   if ( !input_sequence->seek(master_frame_index_) ) {
     CF_ERROR("ERROR: input_sequence->seek(local pos=%d) fails",
@@ -1237,7 +1257,7 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     return false;
   }
 
-  if ( !master_frame_options.generate_master_frame || num_source_frames < 2 ) {
+  if ( !master_frame_options.generate_master_frame || num_total_frames < 2 ) {
 
     if ( !read_input_frame(input_sequence, options->input_options(), reference_frame_, reference_mask_) ) {
       CF_FATAL("read_input_frame(reference_frame) fails");
@@ -1275,7 +1295,10 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     }
 
     processed_frames_ = 0;
-    total_frames_ =  std::min(master_frame_options.max_input_frames_to_generate_master_frame, num_source_frames - master_frame_index_);
+    total_frames_ =  std::min(master_frame_options.max_input_frames_to_generate_master_frame, num_total_frames - master_frame_index_);
+
+    CF_DEBUG("H: num_source_frames=%d master_frame_index_=%d total_frames_=%d", num_total_frames, master_frame_index_, total_frames_);
+
     emit_status_changed();
 
     fOk = true;

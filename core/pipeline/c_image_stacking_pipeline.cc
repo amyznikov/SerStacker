@@ -1240,17 +1240,6 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     master_frame_index_ = input_sequence->global_pos(0, master_frame_index_);
   }
 
-//  if ( master_source_index_ < 0 ) {
-//    num_total_frames = input_sequence->source(0)->size();
-//  }
-//  else {
-//    num_total_frames = input_sequence->source(master_source_index_)->size();
-//    master_frame_index_ = input_sequence->global_pos(master_source_index_, master_frame_index_);
-//  }
-
-  CF_DEBUG("master_frame_options.master_frame_index=%d master_frame_index_=%d",
-      master_frame_options.master_frame_index, master_frame_index_);
-
   if ( !input_sequence->seek(master_frame_index_) ) {
     CF_ERROR("ERROR: input_sequence->seek(local pos=%d) fails",
         master_frame_index_);
@@ -1264,12 +1253,10 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
       return false;
     }
 
-    CF_DEBUG("H:");
     if ( !select_image_roi(roi_selection_, reference_frame_, reference_mask_, reference_frame_, reference_mask_) ) {
       CF_FATAL("select_image_roi(reference_frame) fails");
       return false;
     }
-    CF_DEBUG("H:");
 
     fOk = true;
   }
@@ -1317,12 +1304,9 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
         break;
       }
 
-      CF_DEBUG("H:");
       if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
-        CF_DEBUG("H:");
         continue;
       }
-      CF_DEBUG("H:");
 
       if ( canceled() ) {
         break;
@@ -1511,7 +1495,7 @@ bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
 {
   cv::Mat image_to_write;
 
-  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || output_image.channels() != 3  ) {
+  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 || output_image.channels() != 1)  ) {
     image_to_write = output_image;
   }
   else {

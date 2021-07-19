@@ -99,7 +99,7 @@ void QStackTreeView::QStackItem::refreshInputSources()
 
   if ( stack_ && stack_->input_sequence() ) {
     for ( const c_input_source::ptr & input_source : stack_->input_sources() ) {
-      new QStackTreeView::QInputSourceItem(input_source, this);
+      new QInputSourceItem(input_source, this);
     }
   }
 }

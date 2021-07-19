@@ -84,8 +84,8 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
   TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, image.channels());   // number of channels per pixel
   TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
   TIFFSetField(tiff, TIFFTAG_PAGENUMBER, 0, 1);
-  if ( image.channels() == 4 ) {
-    static const uint16 extras[] = {EXTRASAMPLE_ASSOCALPHA};
+  if ( image.channels() == 4 || image.channels() == 2 ) {
+    static const uint16_t extras[] = {EXTRASAMPLE_ASSOCALPHA};
     TIFFSetField(tiff, TIFFTAG_EXTRASAMPLES, 1, extras);
   }
 

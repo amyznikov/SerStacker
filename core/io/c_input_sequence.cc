@@ -354,10 +354,11 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     }
   }
   else if ( output_mask ) {
-    if ( output_frame.channels() != 4 ) {
+    if ( output_frame.channels() != 4 && output_frame.channels() != 2 ) {
       output_mask->release();
     }
     else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
+      output_mask->release();
       return false;
     }
   }

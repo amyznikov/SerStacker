@@ -41,6 +41,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   connect(masterFrameIndex_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onSpinBoxValueChanged(int)));
 
+
   generateMasterFrame_ctl = new QCheckBox(this);
   connect(generateMasterFrame_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onGenerateMasterFrameCheckboxStateChanged);
@@ -49,6 +50,11 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   maxFramesForMasterFrameGeneration_ctl = new QNumberEditBox(this);
   connect(maxFramesForMasterFrameGeneration_ctl, &QNumberEditBox::textChanged,
       this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
+
+
+  accumulateMasterFlow_ctl = new QCheckBox(this);
+  connect(accumulateMasterFlow_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
 
 
   applyToAll_ctl = new QToolButton(this);
@@ -64,24 +70,26 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
         }
       });
 
+
   form->addRow("Master file:", masterSource_ctl);
   form->addRow("Master frame Index:", masterFrameIndex_ctl);
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
+  form->addRow("Accumulate master flow:", accumulateMasterFlow_ctl);
   form->addRow(applyToAll_ctl);
 
 
   setEnabled(false);
 }
 
-void QMasterFrameOptions::set_master_frame_options(c_stacking_master_frame_options * options, const c_input_sequence::ptr & input_sequence)
+void QMasterFrameOptions::set_master_frame_options(c_master_frame_options * options, const c_input_sequence::ptr & input_sequence)
 {
   options_ = options;
   input_sequence_ = input_sequence;
   updateControls();
 }
 
-const c_stacking_master_frame_options * QMasterFrameOptions::master_frame_options() const
+const c_master_frame_options * QMasterFrameOptions::master_frame_options() const
 {
   return options_;
 }
@@ -102,6 +110,8 @@ void QMasterFrameOptions::onupdatecontrols()
 
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
+    accumulateMasterFlow_ctl->setChecked(options_->accumulate_master_flow);
+
 
 
     // Populate Master Source Combo
@@ -256,6 +266,15 @@ void QMasterFrameOptions::onMaxFramesForMasterFrameGenerationChanged()
       emit parameterChanged();
     }
   }
+}
+
+void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
+{
+  if ( options_ && !updatingControls() ) {
+    options_->accumulate_master_flow = state == Qt::Checked;
+    emit parameterChanged();
+  }
+
 }
 
 

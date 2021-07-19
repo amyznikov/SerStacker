@@ -23,12 +23,12 @@ public:
 
   QMasterFrameOptions(QWidget * parent = Q_NULLPTR);
 
-  void set_master_frame_options(c_stacking_master_frame_options * options, const c_input_sequence::ptr & available_sources);
-  const c_stacking_master_frame_options * master_frame_options() const;
+  void set_master_frame_options(c_master_frame_options * options, const c_input_sequence::ptr & available_sources);
+  const c_master_frame_options * master_frame_options() const;
   const c_input_sequence::ptr & input_sequence() const;
 
 signals:
-  void applyMasterFrameSettingsToAllRequested(const c_stacking_master_frame_options & options);
+  void applyMasterFrameSettingsToAllRequested(const c_master_frame_options & options);
 
 protected:
   void onupdatecontrols() override;
@@ -41,16 +41,19 @@ protected slots:
   void onMasterSourceComboCurrentIndexChanged(int);
   void onSpinBoxValueChanged(int value);
   void onGenerateMasterFrameCheckboxStateChanged(int);
+  void onAccumulateMasterFlowCheckboxStateChanged(int);
   void onMaxFramesForMasterFrameGenerationChanged();
 
 protected:
-  c_stacking_master_frame_options * options_ = Q_NULLPTR;
+  c_master_frame_options * options_ = Q_NULLPTR;
   c_input_sequence::ptr input_sequence_;
 
   QComboBox * masterSource_ctl = Q_NULLPTR;
   QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
   QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
   QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
+  QCheckBox * accumulateMasterFlow_ctl = Q_NULLPTR;
+
   QToolButton * applyToAll_ctl = Q_NULLPTR;
   int previousComboboxItemIndex = -1;
 

@@ -54,14 +54,14 @@ void QImageEditor::updateImage()
     currentMask_.release();
     currentImageData_.release();
   }
-  else if ( processor_ && processor_->enabled() && !processor_->empty() ) {
+  else {
+
     inputImage_.copyTo(currentImage_);
     inputMask_.copyTo(currentMask_);
-    processor_->process(currentImage_, currentMask_);
-  }
-  else {
-    currentImage_ = inputImage_;
-    currentMask_ = inputMask_;
+
+    if ( processor_ && processor_->enabled() && !processor_->empty() ) {
+      processor_->process(currentImage_, currentMask_);
+    }
   }
 
   updateDisplay();

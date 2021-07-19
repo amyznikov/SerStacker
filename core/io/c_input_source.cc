@@ -359,6 +359,7 @@ const std::vector<std::string> & c_regular_image_input_source::suffixes()
       ".bmp", ".dib",
       ".ppm", ".pgm",
       ".webp",
+      ".flo",
   };
 
   return suffixes_;
@@ -394,21 +395,48 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( curpos_ != 0 || !(output_frame = cv::imread(filename_, cv::IMREAD_UNCHANGED)).data ) {
+  if ( curpos_ != 0 ) {
     return false;
   }
 
+  const std::string suffix =
+      get_file_suffix(filename_);
+
+  if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
+
+    if ( !(output_frame = cv::readOpticalFlow(filename_)).data ) {
+      return false;
+    }
+
+    if ( output_colorid ) {
+      *output_colorid = COLORID_OPTFLOW;
+    }
+
+    if ( output_bpc ) {
+      *output_bpc = suggest_bbp(
+          output_frame.depth());
+    }
+
+  }
+  else {
+
+    if ( !(output_frame = cv::imread(filename_, cv::IMREAD_UNCHANGED)).data ) {
+      return false;
+    }
+
+    if ( output_colorid ) {
+      *output_colorid = suggest_colorid(
+          output_frame.channels());
+    }
+
+    if ( output_bpc ) {
+      *output_bpc = suggest_bbp(
+          output_frame.depth());
+    }
+
+  }
+
   ++curpos_;
-
-  if ( output_colorid ) {
-    *output_colorid = suggest_colorid(
-        output_frame.channels());
-  }
-
-  if ( output_bpc ) {
-    *output_bpc = suggest_bbp(
-        output_frame.depth());
-  }
 
   return true;
 }

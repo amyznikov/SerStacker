@@ -80,7 +80,7 @@ void QImageFileEditor::startDisplay()
 {
   QWaitCursor wait(this);
 
-  Base::setImage(cv::noArray());
+  Base::setImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
 
   playControls->setState(QPlaySequenceControl::Stopped);
   playControls->hide();
@@ -129,7 +129,13 @@ void QImageFileEditor::loadNextFrame()
 
       input_sequence_->read(inputImage_, &inputMask_);
 
-      Base::updateDisplay();
+//      if ( inputImage_.channels() == 2 ) {
+//        CF_DEBUG("Optflow");
+//        cv::writeOpticalFlow("read_optflow.flo", inputImage_);
+//      }
+
+
+      updateImage();
       emit currentImageChanged();
     }
   }

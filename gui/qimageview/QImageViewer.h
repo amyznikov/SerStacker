@@ -31,8 +31,9 @@ public:
   void setDisplayFunction(const DisplayFunction & func);
   const DisplayFunction & displayFunction() const;
 
-  virtual void setImage(cv::InputArray image, cv::InputArray imageData = cv::noArray(), bool make_copy = true);
+  virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
   const cv::Mat & image() const;
+  const cv::Mat & mask() const;
   const cv::Mat & imageData() const;
 
   QString statusStringForPixel(const QPoint & viewpos);
@@ -73,7 +74,7 @@ protected:
   QStatusBar * statusbar_ = Q_NULLPTR;
   QGraphicsRectItem * selectionRect_ = Q_NULLPTR;
 
-  cv::Mat currentImage_;
+  cv::Mat currentImage_, currentMask_;
   cv::Mat currentImageData_;
   QImage qimage_;
   DisplayFunction displayFunction_;

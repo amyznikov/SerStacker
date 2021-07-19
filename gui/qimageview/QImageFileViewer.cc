@@ -81,7 +81,7 @@ void QImageFileViewer::startDisplay()
 {
   QWaitCursor wait(this);
 
-  Base::setImage(cv::noArray());
+  Base::setImage(cv::noArray(),cv::noArray(),cv::noArray(), false);
 
   playControls->setState(QPlaySequenceControl::Stopped);
   playControls->hide();
@@ -125,7 +125,7 @@ void QImageFileViewer::loadNextFrame()
 
       QWaitCursor wait(this, current_source->size() == 1);
 
-      input_sequence_->read(currentImage_);
+      input_sequence_->read(currentImage_, &currentMask_);
       Base::updateDisplay();
       emit currentImageChanged();
     }

@@ -90,10 +90,14 @@ const QImageViewer::DisplayFunction & QImageViewer::displayFunction() const
   return this->displayFunction_;
 }
 
-
 const cv::Mat & QImageViewer::image() const
 {
   return currentImage_;
+}
+
+const cv::Mat & QImageViewer::mask() const
+{
+  return currentMask_;
 }
 
 const cv::Mat & QImageViewer::imageData() const
@@ -101,10 +105,11 @@ const cv::Mat & QImageViewer::imageData() const
   return currentImageData_;
 }
 
-void QImageViewer::setImage(cv::InputArray image, cv::InputArray imageData, bool make_copy)
+void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
 {
   if ( image.empty() ) {
     currentImage_.release();
+    currentMask_.release();
     currentImageData_.release();
     qimage_ = QImage();
   }
@@ -112,21 +117,13 @@ void QImageViewer::setImage(cv::InputArray image, cv::InputArray imageData, bool
 
     if ( make_copy ) {
       image.getMat().copyTo(currentImage_);
+      mask.getMat().copyTo(currentMask_);
+      imageData.getMat().copyTo(currentImageData_);
     }
     else {
       currentImage_ = image.getMat();
-    }
-
-    if ( imageData.empty() ) {
-      currentImageData_.release();
-    }
-    else {
-      if ( make_copy ) {
-        imageData.getMat().copyTo(currentImageData_);
-      }
-      else {
-        currentImageData_ = imageData.getMat();
-      }
+      currentMask_ = mask.getMat();
+      currentImageData_ = imageData.getMat();
     }
   }
 
@@ -140,11 +137,16 @@ void QImageViewer::updateDisplay()
   }
   else {
     cv::Mat tmp;
-    if ( displayFunction_ ) {
-      displayFunction_(currentImage_, tmp, CV_8U);
-    }
-    else {
+
+    if ( !displayFunction_ ) {
       tmp = currentImage_;
+    }
+    else if ( currentImage_.channels() == 2  ) {
+      // asumme this is optical flow image
+      displayFunction_(currentImage_, tmp, currentImage_.depth());
+    }
+    else  {
+      displayFunction_(currentImage_, tmp, CV_8U);
     }
 
     cv2qt(tmp, &qimage_);

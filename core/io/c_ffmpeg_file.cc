@@ -346,12 +346,13 @@ int c_ffmpeg_reader::num_frames() const
   }
 
   int num_frames_estimated_from_duration = (int) floor(duration() * fps() + 0.5);
-
-  CF_DEBUG("stream->nb_frames=%lld num_frames_estimated_from_duration=%d", (long long ) stream->nb_frames, num_frames_estimated_from_duration);
   if ( stream->nb_frames > 0 ) {
     return stream->nb_frames;
   }
 
+  //  CF_DEBUG("stream->nb_frames=%lld num_frames_estimated_from_duration=%d",
+  //      (long long ) stream->nb_frames,
+  //      num_frames_estimated_from_duration);
 
   return num_frames_estimated_from_duration;
 }

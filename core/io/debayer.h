@@ -13,7 +13,8 @@
 /// @brief COLORID
 /// SER file color id.
 /// The numercal values are selected from paper "SER format description version 3",
-///     by Heiko Wilkens and Grischa Hahn, at 2014 Feb 06
+///     by Heiko Wilkens and Grischa Hahn, at 2014 Feb 06.
+/// Addidional special values starting from optical flow added by me.
 enum COLORID : int32_t {
   COLORID_UNKNOWN = -1,
   COLORID_MONO = 0,
@@ -28,6 +29,8 @@ enum COLORID : int32_t {
   COLORID_RGB = 100,
   COLORID_BGR = 101,
   COLORID_BGRA = 201,
+
+  COLORID_OPTFLOW = 501,
 };
 
 

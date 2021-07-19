@@ -5,8 +5,9 @@
  *      Author: amyznikov
  */
 
-#include "QThumbnails.h"
 #include <opencv2/opencv.hpp>
+//#include <core/proc/flow-color.h>
+#include "QThumbnails.h"
 
 // Temporary stubs until CMakelists.txt update
 #define HAVE_SER_FILE       1
@@ -121,6 +122,7 @@ QStringList getSupportedThumbnailsExtensions()
 
   suffixes.append("tiff");
   suffixes.append("tif");
+  suffixes.append("flo");
 
 #if HAVE_SER_FILE
   suffixes.append("ser");
@@ -206,10 +208,67 @@ static bool is_raw_file_suffix(const QString & suffix)
   return false;
 }
 
+/*
+ * Create flow BGR image using HSV color space
+ *  flow: 2-channel input flow matrix
+ *  dst : output BRG image
+ *
+ *  The code is extracted from OpenCV example dis_opticalflow.cpp
+ * */
+static bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool invert_y)
+{
+  if ( flow.channels() != 2 ) {
+    CF_FATAL("Unsupported number of channels: %d. 2-channel image expected", flow.channels());
+    return false;
+  }
+
+  cv::Mat uv[2], mag, ang;
+
+  cv::split(flow.getMat(), uv);
+
+  if ( flow.depth() == CV_32F || flow.depth() == CV_64F ) {
+    if ( invert_y ) {
+      cv::multiply(uv[1], -1, uv[1]);
+    }
+  }
+  else {
+    uv[0].convertTo(uv[0], CV_32F);
+    uv[1].convertTo(uv[1], CV_32F, invert_y ? -1 : 1);
+  }
+
+  cv::cartToPolar(uv[0], uv[1], mag, ang, true);
+
+  if ( maxmotion > 0 ) {
+    cv::threshold(mag, mag, maxmotion, maxmotion, cv::THRESH_TRUNC);
+  }
+
+  cv::normalize(mag, mag, 0, 1, cv::NORM_MINMAX);
+
+  const cv::Mat hsv[3] = {
+      ang,
+      mag,
+      cv::Mat::ones(ang.size(), ang.type())
+  };
+
+  cv::merge(hsv, 3, dst);
+  cv::cvtColor(dst, dst, cv::COLOR_HSV2RGB);
+  dst.convertTo(dst, CV_8U, 255);
+
+  return true;
+}
+
+
 static bool cv2qimage(const cv::Mat & _src, QImage * dst, bool rgbswap)
 {
   cv::Mat src;
-  if ( _src.depth() == CV_8U ) {
+
+  if (_src.channels() == 2 ) { // treat as optical flow marrix
+    cv::Scalar m, s;
+    cv::meanStdDev(_src, m, s);
+    flow2HSV(_src, src, std::max(m[0], m[1]) + std::max(0.1, 5 * sqrt(s[0] * s[0] + s[1] * s[1])), true);
+    rgbswap = false;
+  }
+  else if ( _src.depth() == CV_8U ) {
     src = _src;
   }
   else {
@@ -454,6 +513,28 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
     }
   }
 
+  if ( suffix.compare("flo", Qt::CaseInsensitive) == 0 ) {
+    if ( !(cvimage = cv::readOpticalFlow(pathFileName.toStdString())).empty() ) {
+
+      const QSize thumbSize =
+          compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
+              thumb_size);
+
+      if ( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+
+        cv::resize(cvimage, cvimage,
+            cv::Size(thumbSize.width(), thumbSize.height()),
+            0, 0,
+            cv::INTER_AREA);
+
+      }
+
+      cv2qimage(cvimage, &qimage, true);
+      return qimage;
+    }
+  }
+
+
   static QMimeDatabase g_mimedb;
   const QMimeType mime = g_mimedb.mimeTypeForFile(pathFileName);
 
@@ -486,7 +567,13 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       }
     }
 
-    if ( (cvimage = cv::imread(pathFileName.toStdString(), cv::IMREAD_UNCHANGED)).data ) {
+    if ( !(cvimage = cv::imread(pathFileName.toStdString(), cv::IMREAD_UNCHANGED)).empty() ) {
+
+      if ( cvimage.channels() ==  2 ) {
+        // interpret second channel as mask and ignore for preview,
+        // because 2-channel image is interpreted by cv2qimage() as optical flow
+        cv::extractChannel(cvimage, cvimage, 0);
+      }
 
       const QSize thumbSize =
           compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),

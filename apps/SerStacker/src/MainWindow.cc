@@ -255,7 +255,7 @@ MainWindow::MainWindow()
   connect(imageProcessorSettings, &QImageProcessorChainSettings::parameterChanged,
       [this]() {
         if ( currentImageEditor ) {
-          currentImageEditor->updateDisplay();
+          currentImageEditor->updateImage();
         }
       });
 

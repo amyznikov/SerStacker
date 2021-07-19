@@ -27,23 +27,24 @@ public:
 
   void set_processor(const c_image_processor_chain::ptr & processor) {
     processor_ = processor;
-    updateDisplay();
+    updateImage();
   }
 
   //void setImage(cv::InputArray image, cv::InputArray imageData = cv::noArray(), bool make_copy = true);
   void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
 
   const cv::Mat & inputImage() const;
-  const cv::Mat & editedImage() const;
+  //const cv::Mat & editedImage() const;
 
   const cv::Mat & inputMask() const;
-  const cv::Mat & editedMask() const;
+  //const cv::Mat & editedMask() const;
 
 signals:
   void currentImageChanged();
 
 public slots:
-  void updateDisplay() override;
+  //void updateDisplay() override;
+  void updateImage();
 
 protected:
 
@@ -52,7 +53,6 @@ protected:
 
   cv::Mat inputImage_;
   cv::Mat inputMask_;
-  cv::Mat editedMask_;
 
 };
 

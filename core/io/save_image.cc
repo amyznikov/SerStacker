@@ -125,8 +125,8 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
 
 
 
-static bool write_image(const std::string & filename, cv::InputArray src,
-    const std::vector<int>& _params = std::vector<int>())
+static bool write_image(const std::string & filename, cv::InputArray image,
+    const std::vector<int>& _params)
 {
   std::vector<int> params = _params;
 
@@ -137,19 +137,36 @@ static bool write_image(const std::string & filename, cv::InputArray src,
   }
 
   const std::string output_suffix = get_file_suffix(filename);
+
+  if ( strcasecmp(output_suffix.c_str(), ".flo") == 0 ) {
+
+    if ( image.channels() != 2 ) {
+      CF_ERROR("Invalid argument: optical flow image must have 2 channels");
+      return false;
+    }
+
+    if ( !cv::writeOpticalFlow(filename, image) ) {
+      CF_ERROR("cv::writeOpticalFlow('%s') fails", filename.c_str());
+      return false;
+    }
+
+    return  true;
+  }
+
   if ( strcasecmp(output_suffix.c_str(), ".tiff") == 0 || strcasecmp(output_suffix.c_str(), ".tif") == 0 ) {
-    if ( write_tiff(src, filename) ) {
+    if ( write_tiff(image, filename) ) {
       return true;
     }
-#if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(3,4,2) )
-      params.emplace_back(cv::IMWRITE_TIFF_COMPRESSION);
-      params.emplace_back(1);
+
+#if ( CV_VERSION_CURRRENT < CV_VERSION_INT(3,4,2) )
+    CF_ERROR("CRITICAL WARNING: This OpenCV version is too old to support tiff");
 #else
-      CF_ERROR("OpenCV is too old to support tiff");
+    params.emplace_back(cv::IMWRITE_TIFF_COMPRESSION);
+    params.emplace_back(1);
 #endif
   }
 
-  if ( !cv::imwrite(filename, src, params) ) {
+  if ( !cv::imwrite(filename, image, params) ) {
     CF_ERROR("cv::imwrite('%s') fails", filename.c_str());
     return false;
   }
@@ -160,30 +177,14 @@ static bool write_image(const std::string & filename, cv::InputArray src,
 
 
 
-bool save_image(cv::InputArray _image, const std::string & fname,
-    const std::vector<int>& params, int pixtype)
+bool save_image(cv::InputArray image, const std::string & fname,
+    const std::vector<int>& params)
 {
-  cv::Mat image, converted;
-  const cv::Mat * imgptr;
   std::string dirname;
 
-
-  image = _image.getMat();
   if ( image.empty() ) {
     CF_CRITICAL("empty image specified to save as '%s'", fname.c_str());
     return false;
-  }
-
-  if ( pixtype == -1 ) {
-    pixtype = image.type();
-  }
-
-  if ( CV_MAT_DEPTH(pixtype) == CV_MAT_DEPTH(image.type()) ) {
-    imgptr = &image;
-  }
-  else {
-    image.convertTo(converted, pixtype);
-    imgptr = &converted;
   }
 
   if ( !(dirname = get_parent_directory(fname)).empty() ) {
@@ -192,7 +193,7 @@ bool save_image(cv::InputArray _image, const std::string & fname,
     }
   }
 
-  if ( !write_image(fname, *imgptr, params) ) {
+  if ( !write_image(fname, image, params) ) {
     CF_CRITICAL("write_image(%s) fails", fname.c_str());
     return false;
   }

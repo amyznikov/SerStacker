@@ -353,8 +353,9 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
       last_colorid_ = COLORID_BGR;
     }
   }
-  else if ( output_mask ) {
-    if ( output_frame.channels() != 4 && output_frame.channels() != 2 ) {
+  else if ( output_mask  ) {
+
+    if ( last_colorid_ == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
       output_mask->release();
     }
     else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
@@ -362,7 +363,6 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
       return false;
     }
   }
-
 
 
   if ( (has_last_color_matrix_ = source->has_color_matrix()) ) {

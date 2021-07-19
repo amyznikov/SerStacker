@@ -11,8 +11,7 @@
 #include <opencv2/opencv.hpp>
 
 bool save_image(cv::InputArray _image, const std::string & fname,
-    const std::vector<int>& params = std::vector<int>(),
-    int pixtype = -1);
+    const std::vector<int>& params = std::vector<int>());
 
 
 

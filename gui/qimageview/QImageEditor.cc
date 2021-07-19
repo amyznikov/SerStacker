@@ -29,63 +29,36 @@ const cv::Mat & QImageEditor::inputImage() const
   return inputImage_;
 }
 
-const cv::Mat & QImageEditor::editedImage() const
-{
-  return currentImage_;
-}
-
 const cv::Mat & QImageEditor::inputMask() const
 {
   return inputMask_;
 }
 
-const cv::Mat & QImageEditor::editedMask() const
-{
-  return editedMask_;
-}
-
-//void QImageEditor::setImage(cv::InputArray image, cv::InputArray imageData = cv::noArray(), bool make_copy = true)
-//{
-//  inputImage_ = image.getMat();
-//  inputMask_ = mask.getMat();
-//  updateDisplay();
-//  emit currentImageChanged();
-//
-//}
-
 void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask)
 {
   inputImage_ = image.getMat();
   inputMask_ = mask.getMat();
-  updateDisplay();
+  updateImage();
   emit currentImageChanged();
 }
 
-void QImageEditor::updateDisplay()
+void QImageEditor::updateImage()
 {
-  if ( inputImage_.empty() || !processor_ || !processor_->enabled() || processor_->empty() ) {
-    currentImage_ = inputImage_;
-    Base::updateDisplay();
+  if ( inputImage_.empty() ) {
+    currentImage_.release();
+    currentMask_.release();
+    currentImageData_.release();
+  }
+  else if ( processor_ && processor_->enabled() && !processor_->empty() ) {
+    inputImage_.copyTo(currentImage_);
+    inputMask_.copyTo(currentMask_);
+    processor_->process(currentImage_, currentMask_);
   }
   else {
-
-    if ( currentImage_.data == inputImage_.data ) {
-      currentImage_ = cv::Mat();
-    }
-
-    inputImage_.copyTo(currentImage_);
-    inputMask_.copyTo(editedMask_);
-    processor_->process(currentImage_, editedMask_);
-
-    cv::Mat tmp;
-    if ( displayFunction_ ) {
-      displayFunction_(currentImage_, tmp, CV_8U);
-    }
-    else {
-      tmp = currentImage_;
-    }
-
-    cv2qt(tmp, &qimage_);
-    view_->scene()->setBackground(qimage_);
+    currentImage_ = inputImage_;
+    currentMask_ = inputMask_;
   }
+
+  updateDisplay();
 }
+

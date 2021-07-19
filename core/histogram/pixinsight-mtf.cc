@@ -208,8 +208,11 @@ bool apply_mtf_pixinsight(cv::InputArray src_image,
         &src_min, &src_max);
   }
 
-
-  if ( dst_min >= dst_max ) {
+  if ( src.channels() == 2  ) {
+    // assume this is optical flow, keep the input range for correct visualization
+    cv::minMaxLoc(src, &dst_min, &dst_max);
+  }
+  else if ( dst_min >= dst_max ) {
     suggest_levels_range(ddepth,
         &dst_min, &dst_max);
   }

@@ -420,11 +420,11 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
     goto end;
   }
 
-  CF_DEBUG("[%s] %d:%s %d/%d tbn %d/%d tbr", stream_name_.c_str(),
-      video_stream_index,
-      codec->name,
-      stream->time_base.num, stream->time_base.den,
-      cctx->time_base.num, cctx->time_base.den);
+  //  CF_DEBUG("[%s] %d:%s %d/%d tbn %d/%d tbr", stream_name_.c_str(),
+  //      video_stream_index,
+  //      codec->name,
+  //      stream->time_base.num, stream->time_base.den,
+  //      cctx->time_base.num, cctx->time_base.den);
 
 end:
 

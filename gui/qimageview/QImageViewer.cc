@@ -12,9 +12,9 @@
 QImageViewer::QImageViewer(QWidget * parent)
   : Base(parent)
 {
-  vbox_ = new QVBoxLayout(this);
-  vbox_->setContentsMargins(0,0,0,0);
-  vbox_->addWidget(view_ = new QImageSceneView(this), 100);
+  layout_ = new QVBoxLayout(this);
+  layout_->setContentsMargins(0,0,0,0);
+  layout_->addWidget(view_ = new QImageSceneView(this), 100);
 
   connect(view_, &QImageSceneView::onMouseMove,
       this, &ThisClass::onMouseMove);
@@ -35,7 +35,7 @@ QToolBar * QImageViewer::embedToolbar(QToolBar * toolbar)
     if ( toolbar == Q_NULLPTR ) {
       return this->toolbar_; // already embedded
     }
-    vbox_->removeWidget(this->toolbar_);
+    layout_->removeWidget(this->toolbar_);
   }
 
 
@@ -46,7 +46,7 @@ QToolBar * QImageViewer::embedToolbar(QToolBar * toolbar)
     this->toolbar_->setIconSize(QSize(16,16));
   }
 
-  vbox_->insertWidget(0, this->toolbar_, 1);
+  layout_->insertWidget(0, this->toolbar_, 1);
 
   return this->toolbar_;
 }
@@ -62,14 +62,14 @@ QStatusBar * QImageViewer::embedStatusbar(QStatusBar * statusBar)
     if ( statusBar == Q_NULLPTR ) {
       return this->statusbar_; // already embedded
     }
-    vbox_->removeWidget(this->statusbar_);
+    layout_->removeWidget(this->statusbar_);
   }
 
   if ( (this->statusbar_ = statusBar) == Q_NULLPTR ) {
     this->statusbar_ = new QStatusBar(this);
   }
 
-  vbox_->addWidget(this->statusbar_, 0);
+  layout_->addWidget(this->statusbar_, 0);
 
   return this->statusbar_;
 }

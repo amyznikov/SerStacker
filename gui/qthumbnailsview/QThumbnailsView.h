@@ -151,7 +151,6 @@ private:
   QAction * filerAction_ = Q_NULLPTR;
   QAction * clearFilterAction_ = Q_NULLPTR;
   QThumbnailsQuickFilterDialogBox * quickfilterDialogBox_ = Q_NULLPTR;
-  QCursor prevCursor_;
 };
 
 #endif /* __QThumbnailsView_h__ */

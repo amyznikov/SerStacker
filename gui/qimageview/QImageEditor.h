@@ -30,30 +30,22 @@ public:
     updateImage();
   }
 
-  //void setImage(cv::InputArray image, cv::InputArray imageData = cv::noArray(), bool make_copy = true);
   void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
+  void clear();
 
   const cv::Mat & inputImage() const;
-  //const cv::Mat & editedImage() const;
-
   const cv::Mat & inputMask() const;
-  //const cv::Mat & editedMask() const;
 
 signals:
   void currentImageChanged();
 
 public slots:
-  //void updateDisplay() override;
   void updateImage();
 
 protected:
-
   c_image_processor_chain::ptr processor_;
-    // = c_image_processor_chain::create();
-
   cv::Mat inputImage_;
   cv::Mat inputMask_;
-
 };
 
 #endif /* __QImageEditor_h__ */

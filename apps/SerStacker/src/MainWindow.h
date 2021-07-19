@@ -16,6 +16,7 @@
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qimageview/QImageFileEditor.h>
+#include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qmtfcontrols/QMtfControlDialogBox.h>
 #include <gui/qstackingthread/QStackingProgressView.h>
 #include <gui/qimproc/QImageProcessorChainSettings.h>
@@ -56,6 +57,7 @@ private:
   void saveState();
   void restoreState();
   void configureImageViewerToolbars();
+  void configureTextViewerToolbars();
 
 public slots:
 
@@ -91,6 +93,7 @@ private:
   QStackedWidget * centralStackedWidget = Q_NULLPTR;
   QThumbnailsView * thumbnailsView = Q_NULLPTR;
   QImageFileEditor * imageEditor = Q_NULLPTR;
+  QTextFileViewer * textViewer = Q_NULLPTR;
   QStackOptions * stackOptionsView = Q_NULLPTR;
   //QScrollArea * stackingOptionsScrollArea = Q_NULLPTR;
   QStackingProgressView * stackProgressView = Q_NULLPTR;

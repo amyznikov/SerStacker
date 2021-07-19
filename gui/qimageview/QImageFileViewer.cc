@@ -16,7 +16,7 @@ QImageFileViewer::QImageFileViewer(QWidget * parent)
   input_sequence_->set_auto_debayer(DEBAYER_GB);
   input_sequence_->set_auto_apply_color_matrix(true);
 
-  Base::vbox_->insertWidget(2, playControls =
+  Base::layout_->insertWidget(2, playControls =
       new QPlaySequenceControl(this));
 
   connect(playControls, &QPlaySequenceControl::onSeek,

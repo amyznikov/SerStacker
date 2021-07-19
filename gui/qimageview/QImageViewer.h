@@ -68,7 +68,7 @@ protected:
   void createSelectionRect(const QRectF & rc);
 
 protected:
-  QVBoxLayout * vbox_  = Q_NULLPTR;
+  QVBoxLayout * layout_  = Q_NULLPTR;
   QImageSceneView * view_ = Q_NULLPTR;
   QToolBar * toolbar_ = Q_NULLPTR;
   QStatusBar * statusbar_ = Q_NULLPTR;

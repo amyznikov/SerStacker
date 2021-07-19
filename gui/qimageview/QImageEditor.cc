@@ -34,6 +34,11 @@ const cv::Mat & QImageEditor::inputMask() const
   return inputMask_;
 }
 
+void QImageEditor::clear()
+{
+  editImage(cv::noArray(), cv::noArray());
+}
+
 void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask)
 {
   inputImage_ = image.getMat();

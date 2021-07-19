@@ -60,15 +60,13 @@ static bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool 
 bool cv2qt(cv::InputArray __src, QImage * dst, bool rgbswap)
 {
   cv::Mat src;
+
   if ( __src.channels() == 2 ) {  // treat as optical flow marrix
-    //    cv::Scalar m, s;
-    //    cv::meanStdDev(__src, m, s);
-    //    flow2HSV(__src, src, std::max(m[0], m[1]) + std::max(0.1, 5 * sqrt(s[0] * s[0] + s[1] * s[1])), true);
     flow2HSV(__src, src, 0, true);
     rgbswap = false;
   }
   else if ( __src.depth() == CV_8U ) {
-      src = __src.getMat();
+    src = __src.getMat();
   }
   else {
     cv::normalize(__src, src, 0, 255, cv::NORM_MINMAX);

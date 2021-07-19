@@ -483,14 +483,11 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
 void QThumbnailsView::updateProgressIndicator()
 {
   if ( thumbnailExtractor_.isRunning() || searchImageFiles_.isRunning() ) {
-    setCursor(Qt::WaitCursor);
+    listWidget_->setCursor(Qt::WaitCursor);
   }
   else {
-    setCursor(Qt::ArrowCursor);
+    listWidget_->setCursor(Qt::ArrowCursor);
   }
-
-
-  //prevCursor_ = this->cursor();
 }
 
 void QThumbnailsView::updateCurrentStackWidget()

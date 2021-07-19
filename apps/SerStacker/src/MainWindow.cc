@@ -33,6 +33,22 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/gui/icons/%1").arg(name));
 }
 
+static bool isTextFile(const QString & abspath)
+{
+  const QString suffix = QFileInfo(abspath).suffix();
+
+  static const char * textfiles[] = {
+      "txt", "doc", "xml", "md"
+  };
+
+  for (  uint i = 0; i < sizeof(textfiles)/sizeof(textfiles[0]); ++i ) {
+    if ( suffix.compare(textfiles[i], Qt::CaseInsensitive) == 0 ) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 MainWindow::MainWindow()
 {
@@ -55,6 +71,7 @@ MainWindow::MainWindow()
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
   centralStackedWidget->addWidget(imageEditor = new QImageFileEditor(this));
+  centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(stackOptionsView = new QStackOptions(this));
 
 
@@ -136,7 +153,8 @@ MainWindow::MainWindow()
           stackProgressView->setImageViewer(nullptr);
         }
 
-        imageEditor->editImage(cv::Mat());
+        imageEditor->clear();
+        textViewer->clear();
         centralStackedWidget->setCurrentWidget(thumbnailsView);
         thumbnailsView->displayPath(abspath);
       });
@@ -147,7 +165,8 @@ MainWindow::MainWindow()
         if ( stackProgressView ) {
           stackProgressView->setImageViewer(nullptr);
         }
-        imageEditor->editImage(cv::Mat());
+        imageEditor->clear();
+        textViewer->clear();
 
         if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
@@ -162,6 +181,8 @@ MainWindow::MainWindow()
         if ( stackProgressView ) {
           stackProgressView->setImageViewer(nullptr);
         }
+        imageEditor->clear();
+        textViewer->clear();
         fileSystemTreeDock->show(),
         fileSystemTreeDock->raise(),
         fileSystemTreeDock->displayPath(abspath);
@@ -176,11 +197,14 @@ MainWindow::MainWindow()
         if ( stackProgressView ) {
           stackProgressView->setImageViewer(nullptr);
         }
-        imageEditor->editImage(cv::Mat());
 
-        if ( imageEditor->isVisible() ) {
-          imageEditor->openImage(abspath);
-        }});
+        imageEditor->clear();
+        textViewer->clear();
+
+        if ( imageEditor->isVisible() || textViewer->isVisible() ) {
+          openImage(abspath);
+        }
+      });
 
   connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
       this, &ThisClass::openImage);
@@ -197,10 +221,6 @@ MainWindow::MainWindow()
   connect(stackTreeView, &QStackTree::itemDoubleClicked,
       this, &ThisClass::onStackTreeItemDoubleClicked);
 
-
-//  connect(sequencesTree, &QStackSequencesTree::currentInputSourceChanged,
-//      this, &ThisClass::onCurrentInputSourceChanged);
-//
   connect(stackTreeView, &QStackTree::showStackOptionsClicked,
       this, &ThisClass::onShowStackOptionsClicked);
 
@@ -313,6 +333,7 @@ MainWindow::MainWindow()
   restoreGeometry();
   restoreState();
   configureImageViewerToolbars();
+  configureTextViewerToolbars();
 
 }
 
@@ -354,6 +375,74 @@ void MainWindow::restoreState()
   fileSystemTreeDock->displayPath(settings.value(
       "fileSystemTree/absoluteFilePath").toString());
 }
+
+void MainWindow::configureTextViewerToolbars()
+{
+  QToolBar * toolbar;
+  QAction * action;
+  QLabel * imageNameLabel;
+  QLabel * imageSizeLabel;
+  QShortcut * shortcut;
+
+  toolbar = textViewer->toolbar();
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
+  action->setToolTip("Load previous image from list");
+  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
+  connect(action, &QAction::triggered, [this]() {
+    thumbnailsView->selectPrevIcon();
+  });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
+  action->setToolTip("Load next image from list");
+  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
+  connect(action, &QAction::triggered, [this]() {
+    thumbnailsView->selectNextIcon();
+  });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
+  action->setToolTip("Reaload current image from disk");
+  connect(action, &QAction::triggered, [this]() {
+    textViewer->showTextFile(textViewer->currentFileName());
+  });
+
+
+  toolbar->addSeparator();
+
+
+  toolbar->addWidget(imageNameLabel = new QLabel(""));
+  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  toolbar->addSeparator();
+
+  const auto onTextViewerCurrentSourceChanged =
+      [this, imageNameLabel] () {
+
+    const QString abspath = textViewer->currentFileName();
+    imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+
+  };
+
+  connect(textViewer, &QTextFileViewer::currentFileNameChanged,
+      onTextViewerCurrentSourceChanged);
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(new QToolbarSpacer());
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
+  action->setShortcut(QKeySequence::Cancel);
+  action->setToolTip("Close window");
+  connect(action, &QAction::triggered, [this]() {
+    textViewer->clear();
+    centralStackedWidget->setCurrentWidget(thumbnailsView);
+  });
+
+}
+
 
 void MainWindow::configureImageViewerToolbars()
 {
@@ -534,8 +623,18 @@ void MainWindow::openImage(const QString & abspath)
   if ( stackProgressView ) {
     stackProgressView->setImageViewer(nullptr);
   }
-  centralStackedWidget->setCurrentWidget(imageEditor);
-  imageEditor->openImage(abspath);
+
+  imageEditor->clear();
+  textViewer->clear();
+
+  if ( isTextFile(abspath) ) {
+    centralStackedWidget->setCurrentWidget(textViewer);
+    textViewer->showTextFile(abspath);
+  }
+  else {
+    centralStackedWidget->setCurrentWidget(imageEditor);
+    imageEditor->openImage(abspath);
+  }
 }
 
 
@@ -733,7 +832,7 @@ void MainWindow::onStackingThreadStarted()
     centralStackedWidget->setCurrentWidget(imageEditor);
   }
 
-  imageEditor->editImage(cv::Mat());
+  imageEditor->clear();
   stackProgressView->setImageViewer(imageEditor);
 
   if ( !stackProgressView->isVisible() ) {

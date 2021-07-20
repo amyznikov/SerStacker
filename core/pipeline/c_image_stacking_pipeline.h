@@ -101,6 +101,7 @@ struct c_master_frame_options {
   bool use_ffts_from_master_path = false;
   bool generate_master_frame = true;
   bool compensate_master_flow = true;
+  bool debug_dump_master_flow = false;
   int max_input_frames_to_generate_master_frame = 200;
 };
 

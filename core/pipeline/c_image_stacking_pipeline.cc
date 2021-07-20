@@ -757,9 +757,19 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   if ( master_frame_options.compensate_master_flow && !current_master_flow_.empty() ) {
 
-    //    save_image(current_master_flow_,
-    //        ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
-    //            options->name().c_str()));
+    if ( master_frame_options.debug_dump_master_flow ) {
+
+      if ( !use_iremap ) {
+        save_image(current_master_flow_,
+            ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
+                options->name().c_str()));
+      }
+      else {
+        save_image(remap2flow(current_master_flow_, reference_mask_),
+            ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
+                options->name().c_str()));
+      }
+    }
 
 
     if ( use_iremap ) {
@@ -1246,8 +1256,6 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
   }
 
 
-  CF_DEBUG("USE master_file_name_ = %s", master_file_name_.c_str());
-
   if ( master_source_index_ >= 0 ) {
     input_sequence = options->input_sequence();
   }
@@ -1260,10 +1268,6 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     CF_FATAL("ERROR: Can not open input source '%s'", master_file_name_.c_str());
     return false;
   }
-
-
-  CF_DEBUG("master_frame_options.master_frame_index=%d", master_frame_options.master_frame_index);
-
 
   if ( master_frame_options.use_ffts_from_master_path ) {
     master_frame_index_ = 0;
@@ -1327,7 +1331,6 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
       frame_registration_ = options->create_frame_registration();
 
       // Forse disable some align features for reference frame generation
-      // frame_registration_->set_enable_eccflow(false);
 
       if ( frame_registration_->enable_ecc() ) {
 
@@ -1350,7 +1353,7 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
     processed_frames_ = 0;
     total_frames_ = std::min(master_frame_options.max_input_frames_to_generate_master_frame,
-        num_total_frames - master_frame_index_);
+            num_total_frames - master_frame_index_);
 
     emit_status_changed();
 
@@ -1415,7 +1418,7 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
         if ( master_flow_accumulation_ ) {
 
-          if ( use_iremap ) {
+          if ( use_iremap ) { // Still not sure if remap2flow() has advandates on small accumulation amount
 
             master_flow_accumulation_->
                 add(frame_registration_->current_remap(), current_mask_);

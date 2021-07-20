@@ -56,6 +56,11 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   connect(compensateMasterFlow_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
 
+  dumpMasterFlow_ctl = new QCheckBox(this);
+  connect(dumpMasterFlow_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::onDumpMasterFlowCheckboxStateChanged);
+
+
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -76,6 +81,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
   form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
+  form->addRow("Dump master flow for debug:", dumpMasterFlow_ctl);
   form->addRow(applyToAll_ctl);
 
 
@@ -111,7 +117,7 @@ void QMasterFrameOptions::onupdatecontrols()
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
     compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
-
+    dumpMasterFlow_ctl->setChecked(options_->debug_dump_master_flow);
 
 
     // Populate Master Source Combo
@@ -274,7 +280,14 @@ void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
     options_->compensate_master_flow = state == Qt::Checked;
     emit parameterChanged();
   }
+}
 
+void QMasterFrameOptions::onDumpMasterFlowCheckboxStateChanged(int state)
+{
+  if ( options_ && !updatingControls() ) {
+    options_->debug_dump_master_flow = state == Qt::Checked;
+    emit parameterChanged();
+  }
 }
 
 

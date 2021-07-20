@@ -52,7 +52,7 @@ protected:
   QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
   QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
   QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
-  QCheckBox * accumulateMasterFlow_ctl = Q_NULLPTR;
+  QCheckBox * compensateMasterFlow_ctl = Q_NULLPTR;
 
   QToolButton * applyToAll_ctl = Q_NULLPTR;
   int previousComboboxItemIndex = -1;

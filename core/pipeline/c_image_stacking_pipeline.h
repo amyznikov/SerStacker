@@ -100,7 +100,7 @@ struct c_master_frame_options {
   int master_frame_index = 0; // relative, in master source
   bool use_ffts_from_master_path = false;
   bool generate_master_frame = true;
-  bool accumulate_master_flow = false;
+  bool compensate_master_flow = true;
   int max_input_frames_to_generate_master_frame = 200;
 };
 

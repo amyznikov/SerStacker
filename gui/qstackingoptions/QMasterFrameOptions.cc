@@ -52,8 +52,8 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
 
 
-  accumulateMasterFlow_ctl = new QCheckBox(this);
-  connect(accumulateMasterFlow_ctl, &QCheckBox::stateChanged,
+  compensateMasterFlow_ctl = new QCheckBox(this);
+  connect(compensateMasterFlow_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
 
 
@@ -75,7 +75,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Master frame Index:", masterFrameIndex_ctl);
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
-  form->addRow("Accumulate master flow:", accumulateMasterFlow_ctl);
+  form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
   form->addRow(applyToAll_ctl);
 
 
@@ -110,7 +110,7 @@ void QMasterFrameOptions::onupdatecontrols()
 
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
-    accumulateMasterFlow_ctl->setChecked(options_->accumulate_master_flow);
+    compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
 
 
 
@@ -271,7 +271,7 @@ void QMasterFrameOptions::onMaxFramesForMasterFrameGenerationChanged()
 void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
-    options_->accumulate_master_flow = state == Qt::Checked;
+    options_->compensate_master_flow = state == Qt::Checked;
     emit parameterChanged();
   }
 

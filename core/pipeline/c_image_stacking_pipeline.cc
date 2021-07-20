@@ -988,12 +988,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
         output_options,
         output_directory);
 
-    if ( frame_accumulation_ && accumulation_options.accumulation_method != frame_accumulation_fft ) {
-      if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
-        CF_ERROR("ERROR: current frame and accumulator sizes not match");
-        break;
-      }
-    }
 
     if ( canceled() ) {
       break;
@@ -1004,6 +998,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     if ( frame_accumulation_ ) {
 
+
       if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
 
         compute_relative_weights(current_weights_, current_mask_, reference_weights_, current_weights_);
@@ -1012,8 +1007,16 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
           upscale(current_frame_, current_weights_, current_frame_, current_weights_);
         }
 
+        if ( accumulation_options.accumulation_method != frame_accumulation_fft ) {
+          if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
+            CF_ERROR("ERROR: current frame and accumulator sizes not match");
+            break;
+          }
+        }
+
         if ( true ) {
           lock_guard lock(accumulator_lock_);
+
           frame_accumulation_->add(current_frame_, current_weights_);
         }
 
@@ -1022,6 +1025,13 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
           upscale(current_frame_, current_mask_, current_frame_, current_mask_);
+        }
+
+        if ( accumulation_options.accumulation_method != frame_accumulation_fft ) {
+          if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
+            CF_ERROR("ERROR: current frame and accumulator sizes not match");
+            break;
+          }
         }
 
         if ( true ) {

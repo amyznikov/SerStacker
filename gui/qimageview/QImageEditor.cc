@@ -19,6 +19,8 @@ QImageEditor::QImageEditor(QWidget * parent)
   processor_->emplace_back(c_unsharp_mask_image_processor::create(false));
  //processor_->emplace_back(c_test_image_processor::create(false));
   //processor_->emplace_back(c_smap_image_processor::create(false));
+  processor_->emplace_back(c_anscombe_image_processor::create(false));
+  processor_->emplace_back(c_noisemap_image_processor::create(false));
   processor_->emplace_back(c_autoclip_image_processor::create(false));
   //processor_->emplace_back(c_mtf_image_processor::create());
   processor_->set_enabled(false);
@@ -29,7 +31,17 @@ const cv::Mat & QImageEditor::inputImage() const
   return inputImage_;
 }
 
+cv::Mat & QImageEditor::inputImage()
+{
+  return inputImage_;
+}
+
 const cv::Mat & QImageEditor::inputMask() const
+{
+  return inputMask_;
+}
+
+cv::Mat & QImageEditor::inputMask()
 {
   return inputMask_;
 }
@@ -44,7 +56,6 @@ void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask)
   inputImage_ = image.getMat();
   inputMask_ = mask.getMat();
   updateImage();
-  emit currentImageChanged();
 }
 
 void QImageEditor::updateImage()
@@ -65,5 +76,6 @@ void QImageEditor::updateImage()
   }
 
   updateDisplay();
+  emit currentImageChanged();
 }
 

@@ -111,6 +111,25 @@ protected:
     return ctl;
   }
 
+  template<class ObjType, class PropType>
+  void add_combobox(const char * name, QEnumComboBox<PropType> * ctl, std::shared_ptr<ObjType> * obj,
+      PropType (ObjType::*getfn)() const, void (ObjType::*setfn)(PropType))
+  {
+    form->addRow(name, ctl);
+    QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+        [this, ctl, obj, getfn, setfn]() {
+          if ( *obj && !updatingControls() ) {
+            PropType value = ctl->currentItem();
+            if ( (obj->get()->*getfn)() != value ) {
+              LOCK();
+              (obj->get()->*setfn)(value);
+              UNLOCK();
+              emit parameterChanged();
+            }
+          }
+        });
+  }
+
 protected:
   ImageProcessor processor_;
   QCheckBox * enabled_ctl = Q_NULLPTR;
@@ -135,6 +154,64 @@ protected:
   QNumberEditBox * sigma_ctl = Q_NULLPTR;
   QNumberEditBox * alpha_ctl = Q_NULLPTR;
 };
+
+
+class QAnscombeSettigsWidget
+  : public QImageProcessorSettings<c_anscombe_image_processor>
+{
+  Q_OBJECT;
+public:
+  typedef QAnscombeSettigsWidget ThisClass;
+  typedef QImageProcessorSettings Base;
+
+  static QString toString(enum anscombe_method v) {
+    return QString::fromStdString(toStdString(v));
+  }
+
+  static enum anscombe_method fromString(const QString  & s, enum anscombe_method defval ) {
+    return fromStdString(s.toStdString(), defval);
+  }
+
+  class QAnscombeMethodCombo :
+      public QEnumComboBox<anscombe_method>
+  {
+  public:
+    typedef QEnumComboBox<anscombe_method> Base;
+    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR)
+        : Base(parent, anscombe_methods)
+      {}
+  };
+
+  QAnscombeSettigsWidget(const c_anscombe_image_processor::ptr & processor,
+      QWidget * parent = Q_NULLPTR);
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  QAnscombeMethodCombo * method_ctl = Q_NULLPTR;
+};
+
+
+class QNoiseMapSettigsWidget
+  : public QImageProcessorSettings<c_noisemap_image_processor>
+{
+  Q_OBJECT;
+public:
+  typedef QNoiseMapSettigsWidget ThisClass;
+  typedef QImageProcessorSettings Base;
+
+  QNoiseMapSettigsWidget(const c_noisemap_image_processor::ptr & processor,
+      QWidget * parent = Q_NULLPTR);
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+};
+
+
+
 
 class QAlignColorChannelsSettigsWidget
     : public QImageProcessorSettings<c_align_color_channels_image_processor>

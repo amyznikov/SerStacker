@@ -10,6 +10,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QLineEditBox.h>
+#include "QImageStackingInputOptions.h"
 #include "QMasterFrameOptions.h"
 #include "QROISelectionOptions.h"
 #include "QFrameRegistrationOptions.h"
@@ -33,6 +34,7 @@ public:
 
 signals:
   void stackNameChanged(const c_image_stacking_options::ptr & pipeline);
+  void applyInputOptionsToAllRequested(const c_input_options & options);
   void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
   void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
   void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
@@ -46,6 +48,7 @@ protected:
   c_image_stacking_options::ptr stack_;
 
   QLineEditBox * stackName_ctl = Q_NULLPTR;
+  QImageStackingInputOptions * inputOptions_ctl = Q_NULLPTR;
   QMasterFrameOptions * masterFrame_ctl = Q_NULLPTR;
   QROISelectionOptions * roiSelection_ctl = Q_NULLPTR;
   QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
@@ -73,6 +76,7 @@ signals:
   void stackNameChanged(const c_image_stacking_options::ptr & stack);
   void closeWindowRequested();
 
+  void applyInputOptionsToAllRequested(const c_input_options & options);
   void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
   void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
   void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);

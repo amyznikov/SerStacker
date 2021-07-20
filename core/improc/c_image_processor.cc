@@ -370,6 +370,33 @@ bool c_range_normalize_image_processor::load_settings(c_config_setting settings)
 }
 
 
+bool c_anscombe_image_processor::load_settings(c_config_setting settings)
+{
+  if ( !base::load_settings(settings) ) {
+    return false;
+  }
+
+  int v = anscombe_.method();
+  if ( settings.get("method", &v) ) {
+    anscombe_.set_method((anscombe_method) (v));
+  }
+
+  return true;
+}
+
+bool c_anscombe_image_processor::save_settings(c_config_setting settings) const
+{
+  if ( !base::save_settings(settings) ) {
+    return false;
+  }
+
+  settings.set("method", (int)anscombe_.method());
+
+  return true;
+}
+
+
+
 bool c_smap_image_processor::save_settings(c_config_setting settings) const
 {
   if ( !base::save_settings(settings) ) {

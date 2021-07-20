@@ -35,6 +35,11 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
             }
           });
 
+
+  add_expandable_groupbox(form, "* Input Options",
+      inputOptions_ctl =
+          new QImageStackingInputOptions(this));
+
   add_expandable_groupbox(form, "* Master Frame Options",
       masterFrame_ctl =
           new QMasterFrameOptions(this));
@@ -57,6 +62,9 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
       outputOptions_ctl =
           new QStackOutputOptions(this));
 
+
+  connect(inputOptions_ctl, &QImageStackingInputOptions::applyInputOptionsToAllRequested,
+      this, &ThisClass::applyInputOptionsToAllRequested);
 
   connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
       this, &ThisClass::applyMasterFrameOptionsToAllRequested);
@@ -94,6 +102,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     setEnabled(false);
 
     stackName_ctl->setText("");
+    inputOptions_ctl->set_input_options(nullptr);
     masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
     roiSelection_ctl->set_roi_selection_options(nullptr);
     frameAccumulation_ctl->set_accumulation_options(nullptr);
@@ -104,6 +113,7 @@ void QStackingSettingsWidget::onupdatecontrols()
   else {
 
     stackName_ctl->setText(stack_->name().c_str());
+    inputOptions_ctl->set_input_options(&stack_->input_options());
     masterFrame_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
     roiSelection_ctl->set_roi_selection_options(&stack_->roi_selection_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
@@ -184,6 +194,9 @@ QStackOptions::QStackOptions(QWidget * parent)
 
   layout_->addWidget(toolbar_, 1, Qt::AlignTop);
   layout_->addWidget(scrollArea_, 100);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyInputOptionsToAllRequested,
+      this, &ThisClass::applyInputOptionsToAllRequested);
 
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameOptionsToAllRequested,
       this, &ThisClass::applyMasterFrameOptionsToAllRequested);

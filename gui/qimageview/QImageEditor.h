@@ -33,7 +33,10 @@ public:
   void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void clear();
 
+  cv::Mat & inputImage();
   const cv::Mat & inputImage() const;
+
+  cv::Mat & inputMask();
   const cv::Mat & inputMask() const;
 
 signals:

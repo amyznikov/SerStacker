@@ -414,12 +414,12 @@ bool c_image_stacking_options::remove_input_source(const c_input_source::ptr & s
   return input_sequence_ ? input_sequence_->remove_source(source) : false;
 }
 
-c_image_stacking_input_options & c_image_stacking_options::input_options()
+c_input_options & c_image_stacking_options::input_options()
 {
   return input_options_;
 }
 
-const c_image_stacking_input_options & c_image_stacking_options::input_options() const
+const c_input_options & c_image_stacking_options::input_options() const
 {
   return input_options_;
 }
@@ -681,6 +681,21 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     return false;
   }
 
+  const c_input_options & input_options =
+      options->input_options();
+
+  const c_master_frame_options & master_frame_options =
+      options->master_frame_options();
+
+  const c_frame_accumulation_options & accumulation_options =
+      options->accumulation_options();
+
+  const c_frame_registration_options & registration_options =
+      options->frame_registration_options();
+
+  const c_image_stacking_output_options & output_options =
+      options->output_options();
+
 
   if ( options->roi_selection_options().method == roi_selection_none ) {
     roi_selection_.reset();
@@ -689,6 +704,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     set_status_msg("ERROR: create_roi_selection() fails");
     return false;
   }
+
+  anscombe_.set_method(input_options.anscombe);
 
   set_status_msg("PREPARE REFERENCE FRAME ...");
 
@@ -703,20 +720,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   const c_auto_close_input_sequence auto_close_on_exit(
       input_sequence);
 
-  const c_image_stacking_input_options & input_options =
-      options->input_options();
-
-  const c_master_frame_options & master_frame_options =
-      options->master_frame_options();
-
-  const c_frame_accumulation_options & accumulation_options =
-      options->accumulation_options();
-
-  const c_frame_registration_options & registration_options =
-      options->frame_registration_options();
-
-  const c_image_stacking_output_options & output_options =
-      options->output_options();
 
   frame_registration_ =
       options->create_frame_registration();
@@ -1081,6 +1084,11 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   if ( !compute_accumulated_image(current_frame_, current_mask_) ) {
     CF_ERROR("FATAL: compute_accumulated_image() fails");
     return false;
+  }
+
+  if ( anscombe_.method() != anscombe_none ) {
+    anscombe_.inverse(current_frame_,
+        current_frame_);
   }
 
   if ( output_file_name.empty() ) {
@@ -1496,8 +1504,8 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
 
 bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & input_sequence,
-    const c_image_stacking_input_options & input_options,
-    cv::Mat & output_image, cv::Mat & output_mask)
+    const c_input_options & input_options,
+    cv::Mat & output_image, cv::Mat & output_mask) const
 {
   input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
@@ -1520,6 +1528,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 
     output_image.convertTo(output_image, CV_32F,
         1. / ((1 << input_sequence->pixel_depth())));
+
   }
   else {
 
@@ -1541,6 +1550,10 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
   if ( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() ) {
     cv::transform(output_image, output_image,
         input_sequence->color_matrix());
+  }
+
+  if ( anscombe_.method() != anscombe_none ) {
+    anscombe_.apply(output_image, output_image);
   }
 
   return true;
@@ -1589,7 +1602,7 @@ bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
 {
   cv::Mat image_to_write;
 
-  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 || output_image.channels() != 1)  ) {
+  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
     image_to_write = output_image;
   }
   else {

@@ -236,6 +236,9 @@ MainWindow::MainWindow()
       });
 
 
+  connect(stackOptionsView, &QStackOptions::applyInputOptionsToAllRequested,
+      stackTreeView, & QStackTree::applyInputOptionsToAll);
+
   connect(stackOptionsView, &QStackOptions::applyMasterFrameOptionsToAllRequested,
       stackTreeView, & QStackTree::applyMasterFrameOptionsToAll);
 

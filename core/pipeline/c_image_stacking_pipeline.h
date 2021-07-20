@@ -14,6 +14,7 @@
 #include <core/registration/c_planetary_disk_registration.h>
 #include <core/registration/c_star_field_registration.h>
 #include <core/average/c_frame_accumulation.h>
+#include <core/proc/c_anscombe_transform.h>
 #include <condition_variable>
 #include <atomic>
 
@@ -85,9 +86,10 @@ enum frame_upscale_option fromStdString(const std::string  & s,
     enum frame_upscale_option defval );
 
 
-struct c_image_stacking_input_options {
+struct c_input_options {
   bool enable_remove_bad_pixels = true;
   bool enable_color_maxtrix = false;
+  enum anscombe_method anscombe = anscombe_none;
 };
 
 struct c_roi_selection_options {
@@ -150,8 +152,8 @@ public:
   bool add_input_sources(const std::vector<std::string> & pathfilenames);
   bool remove_input_source(const c_input_source::ptr & source);
 
-  c_image_stacking_input_options & input_options();
-  const c_image_stacking_input_options & input_options() const;
+  c_input_options & input_options();
+  const c_input_options & input_options() const;
 
   c_roi_selection_options & roi_selection_options();
   const c_roi_selection_options & roi_selection_options() const;
@@ -178,7 +180,7 @@ protected:
 
   std::string name_;
   c_input_sequence::ptr input_sequence_;
-  c_image_stacking_input_options input_options_;
+  c_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
   c_master_frame_options master_frame_options_;
   c_frame_registration_options frame_registration_options_;
@@ -253,6 +255,10 @@ public:
     return current_weights_;
   }
 
+  const c_anscombe_transform & anscombe() const {
+    return anscombe_;
+  }
+
   int total_frames() const;
   int processed_frames() const;
   int accumulated_frames() const;
@@ -268,9 +274,9 @@ protected:
 
 
 
-  static bool read_input_frame(const c_input_sequence::ptr & input_sequence,
-      const c_image_stacking_input_options & input_options,
-      cv::Mat & output_reference_image, cv::Mat & output_reference_mask);
+  bool read_input_frame(const c_input_sequence::ptr & input_sequence,
+      const c_input_options & input_options,
+      cv::Mat & output_reference_image, cv::Mat & output_reference_mask) const;
 
   static bool select_image_roi(const c_feature_based_roi_selection::ptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
@@ -324,6 +330,8 @@ protected:
   c_frame_accumulation::ptr frame_accumulation_;
   mutable std::mutex accumulator_lock_;
 
+
+  c_anscombe_transform anscombe_;
 
 };
 

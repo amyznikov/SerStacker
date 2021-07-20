@@ -12,6 +12,8 @@
 #include <core/settings.h>
 #include <core/histogram/c_pixinsight_midtones_transfer_function.h>
 #include <core/proc/unsharp_mask.h>
+#include <core/proc/estimate_noise.h>
+#include <core/proc/c_anscombe_transform.h>
 #include <core/proc/align_channels.h>
 #include <core/proc/normalize.h>
 #include <core/proc/autoclip.h>
@@ -107,6 +109,12 @@ public:
   {
     if ( enabled_ ) {
       for ( const c_image_processor::ptr & processor : *this ) {
+
+      //        CF_DEBUG("processor=%p name='%s' enabled='%d'",
+      //            processor.get(),
+      //            processor ? processor->name().c_str() : "",
+      //            processor ? processor->enabled() : 0);
+
         if ( processor && processor->enabled() ) {
           processor->process(image, mask);
         }
@@ -596,6 +604,96 @@ public:
 protected:
   double lclip_ = 1;
   double hclip_ = 99;
+
+};
+
+
+class c_anscombe_image_processor
+    : public c_image_processor
+{
+public:
+  typedef c_anscombe_image_processor this_class;
+  typedef c_image_processor base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_anscombe_image_processor(const std::string & name, const std::string & display_name)
+    : base(name, display_name)
+  {
+  }
+
+  static const char * default_name() {
+    return "anscombe";
+  }
+
+  static const char * default_display_name() {
+    return "Anscombe transform";
+  }
+
+  static ptr create(bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    anscombe_.apply(image.getMatRef(), image.getMatRef());
+  }
+
+  void set_method(enum anscombe_method v)
+  {
+    anscombe_.set_method(v);
+  }
+
+  enum anscombe_method method() const
+  {
+    return anscombe_.method();
+  }
+
+  bool save_settings(c_config_setting settings) const override;
+  bool load_settings(c_config_setting settings) override;
+
+protected:
+  c_anscombe_transform anscombe_;
+};
+
+
+
+
+class c_noisemap_image_processor
+    : public c_image_processor
+{
+public:
+  typedef c_noisemap_image_processor this_class;
+  typedef c_image_processor base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_noisemap_image_processor(const std::string & name, const std::string & display_name)
+    : base(name, display_name)
+  {
+  }
+
+  static const char * default_name() {
+    return "nosemap";
+  }
+
+  static const char * default_display_name() {
+    return "NOISE MAP";
+  }
+
+  static ptr create(bool enabled = true) {
+    ptr obj(new this_class(default_name(), default_display_name()));
+    obj->set_enabled(enabled);
+    return obj;
+  }
+
+  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    create_noise_map(image.getMatRef(), image.getMatRef(), mask);
+  }
+
+  bool save_settings(c_config_setting settings) const override { return true; }
+  bool load_settings(c_config_setting settings) override { return true; }
 
 };
 

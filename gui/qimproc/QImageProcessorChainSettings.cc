@@ -153,8 +153,16 @@ QSettingsWidget * QImageProcessorChainSettings::createProcessorSettingWidged(con
     return new QAlignColorChannelsSettigsWidget(std::dynamic_pointer_cast<c_align_color_channels_image_processor>(proc));
   }
 
+  if ( std::dynamic_pointer_cast<c_anscombe_image_processor>(proc) ) {
+    return new QAnscombeSettigsWidget (std::dynamic_pointer_cast<c_anscombe_image_processor>(proc));
+  }
 
-  QSettingsWidget * w = new QSettingsWidget(proc->name().c_str());
+  if ( std::dynamic_pointer_cast<c_noisemap_image_processor>(proc) ) {
+    return new QNoiseMapSettigsWidget(std::dynamic_pointer_cast<c_noisemap_image_processor>(proc));
+  }
+
+  QSettingsWidget * w = // empty widget
+      new QSettingsWidget(proc->name().c_str());
   return w;
 }
 
@@ -188,6 +196,57 @@ void QUnsharpmaskSettigsWidget::onupdatecontrols()
   }
   Base::onupdatecontrols();
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+QAnscombeSettigsWidget::QAnscombeSettigsWidget(const c_anscombe_image_processor::ptr & processor, QWidget * parent)
+  : Base(processor, parent)
+{
+
+  add_combobox("Method:",
+      method_ctl = new QAnscombeMethodCombo(this),
+      &processor_,
+      &c_anscombe_image_processor::method,
+      &c_anscombe_image_processor::set_method);
+
+  updateControls();
+}
+
+void QAnscombeSettigsWidget::onupdatecontrols()
+{
+  if ( !processor_ ) {
+    setEnabled(false);
+  }
+  else {
+    method_ctl->setCurrentItem(processor_->method());
+    setEnabled(true);
+  }
+
+  Base::onupdatecontrols();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+QNoiseMapSettigsWidget::QNoiseMapSettigsWidget(const c_noisemap_image_processor::ptr & processor, QWidget * parent)
+  : Base(processor, parent)
+{
+  updateControls();
+}
+
+void QNoiseMapSettigsWidget::onupdatecontrols()
+{
+  if ( !processor_ ) {
+    setEnabled(false);
+  }
+  else {
+    setEnabled(true);
+  }
+
+  Base::onupdatecontrols();
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

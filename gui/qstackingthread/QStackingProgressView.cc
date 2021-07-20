@@ -8,7 +8,6 @@
 #include "QStackingProgressView.h"
 #include "QStackingThread.h"
 #include <gui/widgets/QWaitCursor.h>
-//#include <core/io/save_image.h>
 #include <core/debug.h>
 
 QStackingProgressView::QStackingProgressView(QWidget * parent)
@@ -140,13 +139,19 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
     updatingDisplay_ = true;
 
     QWaitCursor wait(this, pipeline->current_image().size().area() > 3e6);
-    cv::Mat currentImage, currentMask;
-    bool computed;
 
-      computed = pipeline->compute_accumulated_image(currentImage, currentMask);
+    cv::Mat & currentImage = imageViewer_->inputImage();
+    cv::Mat & currentMask = imageViewer_->inputMask();
+
+    bool computed = pipeline->compute_accumulated_image(currentImage, currentMask);
 
     if ( computed ) {
-      imageViewer_->editImage(currentImage, currentMask);
+
+      if ( pipeline->anscombe().method() != anscombe_none ) {
+        pipeline->anscombe().inverse(currentImage, currentImage);
+      }
+
+      imageViewer_->updateImage();
     }
   }
 

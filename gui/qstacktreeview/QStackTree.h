@@ -26,6 +26,7 @@ public:
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
 
+  void applyInputOptionsToAll(const c_input_options & options);
   void applyMasterFrameOptionsToAll(const c_master_frame_options & options);
   void applyROISelectionOptionsToAll(const c_roi_selection_options & options);
   void applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options);

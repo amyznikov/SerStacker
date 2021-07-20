@@ -1339,14 +1339,14 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
         frame_registration_->eccflow().set_support_scale(5);
       }
 
+      if ( master_frame_options.compensate_master_flow ) {
+        if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
+          master_flow_accumulation_.reset(
+              new c_frame_accumulation_with_mask());
+        }
+      }
     }
 
-    if ( master_frame_options.compensate_master_flow ) {
-      lock_guard lock(registration_lock_);
-
-      master_flow_accumulation_.reset(
-          new c_frame_accumulation_with_mask());
-    }
 
     processed_frames_ = 0;
     total_frames_ = std::min(master_frame_options.max_input_frames_to_generate_master_frame,
@@ -1414,7 +1414,6 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
         }
 
         if ( master_flow_accumulation_ ) {
-
 
           if ( use_iremap ) {
 

@@ -743,7 +743,7 @@ bool c_frame_accumulation_with_mask::add(cv::InputArray src, cv::InputArray mask
   cv::add(accumulator_, src, accumulator_, mask, accumulator_.type());
   cv::add(counter_, 1, counter_, mask, counter_.type());
 
-  ++number_of_accumulated_frames_;
+  ++accumulated_frames_;
 
   return true;
 }
@@ -783,7 +783,7 @@ void c_frame_accumulation_with_mask::release()
 
   accumulator_.release();
   counter_.release();
-  number_of_accumulated_frames_ = 0;
+  accumulated_frames_ = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -792,7 +792,7 @@ bool c_frame_accumulation_with_weights::add(cv::InputArray src, cv::InputArray w
 {
 
   if ( accumulate_weighted(src, weights, accumulator_, weights_, accdepth) ) {
-    ++number_of_accumulated_frames_;
+    ++accumulated_frames_;
     return true;
   }
   return false;
@@ -813,7 +813,7 @@ void c_frame_accumulation_with_weights::release()
   accumulator_.release();
   weights_.release();
   tmp_.release();
-  number_of_accumulated_frames_ = 0;
+  accumulated_frames_ = 0;
 }
 
 cv::Size c_frame_accumulation_with_weights::accumulator_size() const
@@ -958,7 +958,7 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
   }
 
 
-  ++number_of_accumulated_frames_;
+  ++accumulated_frames_;
 
   return true;
 }
@@ -1007,12 +1007,18 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
     }
   }
 
+  if ( mask.needed() ) {
+    cv::Mat1b m(avg.size(), 255);
+    mask.move(m);
+  }
+
+
   return true;
 }
 
 void c_frame_accumulation_with_fft::release()
 {
-  number_of_accumulated_frames_ = 0;
+  accumulated_frames_ = 0;
   accumulators_.clear();
   weights_.clear();
   rc_.x = rc_.y = rc_.width = rc_.height = 0;

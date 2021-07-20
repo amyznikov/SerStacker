@@ -24,11 +24,11 @@ public:
   virtual cv::Size accumulator_size() const = 0;
 
   int accumulated_frames() const {
-    return number_of_accumulated_frames_;
+    return accumulated_frames_;
   }
 
 protected:
-  int number_of_accumulated_frames_ = 0;
+  int accumulated_frames_ = 0;
 };
 
 class c_frame_accumulation_with_mask

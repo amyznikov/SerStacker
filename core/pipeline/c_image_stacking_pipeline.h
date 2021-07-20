@@ -25,21 +25,21 @@ enum roi_selection_method {
 };
 
 enum frame_registration_method {
-  frame_registration_method_unknown = -1,
+  frame_registration_skip = -1,
   frame_registration_method_surf = 0,
   frame_registration_method_planetary_disk = 1,
   frame_registration_method_star_field = 2,
-  frame_registration_method_skip = 3,
 };
 
 enum frame_accumulation_method {
-  frame_accumulation_method_unknown = -1,
+  frame_accumulation_skip = -1,
   frame_accumulation_average_masked = 0,
   frame_accumulation_average_weighted = 1,
+  frame_accumulation_fft = 2,
 };
 
 enum frame_upscale_option {
-  frame_upscale_disabled = 0,
+  frame_upscale_none = 0,
   frame_upscale_before_align = 1,
   frame_upscale_after_align = 2,
 };
@@ -109,7 +109,7 @@ struct c_master_frame_options {
 
 struct c_frame_accumulation_options {
   enum frame_accumulation_method accumulation_method  = frame_accumulation_average_masked;
-  enum frame_upscale_option upscale_option = frame_upscale_disabled;
+  enum frame_upscale_option upscale_option = frame_upscale_none;
 };
 
 
@@ -270,7 +270,7 @@ public:
 protected:
 
   void set_status_msg(const std::string & msg);
-  bool load_or_generate_reference_frame(const c_image_stacking_options::ptr & options);
+  bool create_reference_frame(const c_image_stacking_options::ptr & options);
 
 
 
@@ -282,6 +282,7 @@ protected:
       const cv::Mat & src, const cv::Mat & srcmask,
       cv::Mat & dst, cv::Mat & dstmask);
 
+
   static bool write_image(const std::string output_file_name,
       const c_image_stacking_output_options & output_options,
       const cv::Mat & output_image,
@@ -291,6 +292,7 @@ protected:
   static void remove_bad_pixels(cv::Mat & image);
   static void upscale(cv::InputArray src, cv::InputArray srcmask,  cv::OutputArray dst, cv::OutputArray dstmask);
   static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
+  static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
 
@@ -310,9 +312,10 @@ protected:
   int master_frame_index_ = -1;
   cv::Mat reference_frame_;
   cv::Mat reference_mask_;
+  cv::Mat reference_weights_;
   cv::Mat current_frame_;
-  cv::Mat current_weights_;
   cv::Mat current_mask_;
+  cv::Mat current_weights_;
   cv::Mat current_master_flow_;
   double ecc_normalization_noise_ = 0;
 

@@ -213,7 +213,7 @@ public:
 
 
 protected:
-  double sigma_ = 1, alpha_ = 0.6;
+  double sigma_ = 1, alpha_ = 0.9;
   double outmin_ = -1, outmax_ = -1;
 };
 

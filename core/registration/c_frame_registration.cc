@@ -530,7 +530,6 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
 
 
 bool c_frame_registration::custom_remap(cv::InputArray _src, cv::OutputArray dst,
-//    const cv::Rect & srcROI,
     const cv::Mat2f & rmap,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
     int interpolation_flags,
@@ -542,16 +541,6 @@ bool c_frame_registration::custom_remap(cv::InputArray _src, cv::OutputArray dst
 
   cv::Size src_size;
   const cv::Scalar * border_value_ptr;
-
-//  if ( !srcROI.empty() ) {
-//    if ( !src.empty() ) {
-//      src = src(srcROI);
-//    }
-//    if ( !src_mask.empty() ) {
-//      src = src_mask(srcROI);
-//    }
-//  }
-
 
   if ( !src.empty() ) {
     src_size = src.size();
@@ -615,7 +604,7 @@ bool c_frame_registration::remap(cv::InputArray src, cv::OutputArray dst,
     int border_mode,
     const cv::Scalar & border_value) const
 {
-  return custom_remap(src, dst, /*current_ROI_, */current_remap_,
+  return custom_remap(src, dst, current_remap_,
       src_mask, dst_mask,
       interpolation_flags,
       border_mode,

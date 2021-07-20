@@ -1126,12 +1126,13 @@ void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & opt
     }
 
     // copy here
-    stack->master_frame_options().use_ffts_from_master_path = options.use_ffts_from_master_path;
-    stack->master_frame_options().generate_master_frame = options.generate_master_frame;
-    stack->master_frame_options().compensate_master_flow = options.compensate_master_flow;
-    stack->master_frame_options().max_input_frames_to_generate_master_frame = options.max_input_frames_to_generate_master_frame;
-    if ( options.use_ffts_from_master_path ) {
-      stack->master_frame_options().master_source_path = options.master_source_path;
+
+    const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
+    const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
+    stack->master_frame_options() = options;
+    if ( !options.use_ffts_from_master_path ) {
+      stack->master_frame_options().master_source_path = backup_master_source_path;
+      stack->master_frame_options().master_frame_index = backup_master_frame_index;
     }
  }
 }
@@ -1272,13 +1273,14 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
       stack->accumulation_options() = fromStack->accumulation_options();
       stack->output_options() = fromStack->output_options();
 
-      stack->master_frame_options().use_ffts_from_master_path = fromStack->master_frame_options().use_ffts_from_master_path;
-      stack->master_frame_options().generate_master_frame = fromStack->master_frame_options().generate_master_frame;
-      stack->master_frame_options().compensate_master_flow = fromStack->master_frame_options().compensate_master_flow;
-      stack->master_frame_options().max_input_frames_to_generate_master_frame = fromStack->master_frame_options().max_input_frames_to_generate_master_frame;
-      if ( fromStack->master_frame_options().use_ffts_from_master_path ) {
-        stack->master_frame_options().master_source_path = fromStack->master_frame_options().master_source_path;
+      const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
+      const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
+      stack->master_frame_options() = fromStack->master_frame_options();
+      if ( !stack->master_frame_options().use_ffts_from_master_path ) {
+        stack->master_frame_options().master_source_path = backup_master_source_path;
+        stack->master_frame_options().master_frame_index = backup_master_frame_index;
       }
+
     }
 
   }

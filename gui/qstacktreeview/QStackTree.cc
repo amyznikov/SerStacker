@@ -1077,7 +1077,7 @@ const QList<QAction *> & QStackTree::toolbarActions() const
 }
 
 
-void QStackTree::applyMasterFrameOptionsToAll(const c_stacking_master_frame_options & options)
+void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & options)
 {
   const int n = treeView_->topLevelItemCount();
 
@@ -1102,6 +1102,7 @@ void QStackTree::applyMasterFrameOptionsToAll(const c_stacking_master_frame_opti
     // copy here
     stack->master_frame_options().use_ffts_from_master_path = options.use_ffts_from_master_path;
     stack->master_frame_options().generate_master_frame = options.generate_master_frame;
+    stack->master_frame_options().accumulate_master_flow = options.accumulate_master_flow;
     stack->master_frame_options().max_input_frames_to_generate_master_frame = options.max_input_frames_to_generate_master_frame;
     if ( options.use_ffts_from_master_path ) {
       stack->master_frame_options().master_source_path = options.master_source_path;
@@ -1246,6 +1247,7 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
 
       stack->master_frame_options().use_ffts_from_master_path = fromStack->master_frame_options().use_ffts_from_master_path;
       stack->master_frame_options().generate_master_frame = fromStack->master_frame_options().generate_master_frame;
+      stack->master_frame_options().accumulate_master_flow = fromStack->master_frame_options().accumulate_master_flow;
       stack->master_frame_options().max_input_frames_to_generate_master_frame = fromStack->master_frame_options().max_input_frames_to_generate_master_frame;
       if ( fromStack->master_frame_options().use_ffts_from_master_path ) {
         stack->master_frame_options().master_source_path = fromStack->master_frame_options().master_source_path;

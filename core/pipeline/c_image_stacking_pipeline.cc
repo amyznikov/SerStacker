@@ -6,7 +6,7 @@
  */
 
 #include "c_image_stacking_pipeline.h"
-
+#include <tbb/tbb.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/extract_channel.h>
 #include <core/proc/unsharp_mask.h>
@@ -388,7 +388,7 @@ const c_image_stacking_input_options & c_image_stacking_options::input_options()
   return input_options_;
 }
 
-c_stacking_master_frame_options & c_image_stacking_options::master_frame_options()
+c_master_frame_options & c_image_stacking_options::master_frame_options()
 {
   return master_frame_options_;
 }
@@ -416,7 +416,7 @@ c_feature_based_roi_selection::ptr c_image_stacking_options::create_roi_selectio
 }
 
 
-const c_stacking_master_frame_options & c_image_stacking_options::master_frame_options() const
+const c_master_frame_options & c_image_stacking_options::master_frame_options() const
 {
   return master_frame_options_;
 }
@@ -631,6 +631,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   total_frames_ = 0;
   processed_frames_ = 0;
+  current_master_flow_.release();
   set_canceled(false);
 
   set_status_msg("INITIALIZATION ...");
@@ -660,6 +661,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     return false;
   }
 
+
   set_status_msg("PREPARE MAIN LOOP ...");
 
   const c_auto_close_input_sequence auto_close_on_exit(
@@ -668,7 +670,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   const c_image_stacking_input_options & input_options =
       options->input_options();
 
-  const c_stacking_master_frame_options & master_frame_options =
+  const c_master_frame_options & master_frame_options =
       options->master_frame_options();
 
   const c_frame_accumulation_options & accumulation_options =
@@ -714,6 +716,16 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       output_directory = ".";
     }
 
+  }
+
+
+  if ( master_frame_options.accumulate_master_flow && !current_master_flow_.empty() ) {
+
+    save_image(current_master_flow_,
+        ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
+            options->name().c_str()));
+
+    current_master_flow_.release();
   }
 
 
@@ -768,13 +780,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     CF_DEBUG("\n\nATTENTION: ADDING MASTER TO ACCUMULATOR!!!!\n\n");
 
 
-    //const cv::Rect ROI = frame_registration_->reference_ROI();
-    const cv::Mat RF = reference_frame_; // ROI.empty() ? reference_frame_ : reference_frame_(ROI);
-    const cv::Mat RM = reference_mask_; // reference_mask_.empty() ? reference_mask_ : (ROI.empty() ? reference_mask_ : reference_mask_(ROI));
-
-    //CF_DEBUG("ROI: %dx%d x=%d y=%d ", ROI.width, ROI.height, ROI.x, ROI.y);
-    CF_DEBUG("RF: %dx%d", RF.cols, RF.rows);
-    CF_DEBUG("RM: %dx%d", RM.cols, RM.rows);
+    const cv::Mat RF = reference_frame_;
+    const cv::Mat RM = reference_mask_;
 
     if ( true ) {
       lock_guard lock(accumulator_lock_);
@@ -858,12 +865,9 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       ++processed_frames_;
     }
 
-    CF_DEBUG("H:");
     if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
-      CF_DEBUG("H:");
       continue;
     }
-    CF_DEBUG("H:");
 
     if ( canceled() ) {
       break;
@@ -1131,7 +1135,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_stacking_options::ptr & options)
 {
 
-  const c_stacking_master_frame_options & master_frame_options =
+  const c_master_frame_options & master_frame_options =
       options->master_frame_options();
 
   int num_total_frames = 0;
@@ -1228,9 +1232,6 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     return false;
   }
 
-  CF_DEBUG("master_frame_options.master_frame_index=%d master_frame_index_=%d",
-      master_frame_options.master_frame_index, master_frame_index_);
-
 
   num_total_frames = input_sequence->size();
   if ( master_source_index_ >= 0 ) {
@@ -1270,9 +1271,12 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
     if ( true )  {
       lock_guard lock(registration_lock_);
+
       frame_registration_ = options->create_frame_registration();
+
       // Forse disable some align features for reference frame generation
       frame_registration_->set_enable_eccflow(false);
+
       if ( frame_registration_->enable_ecc() ) {
         frame_registration_->ecc().set_reference_smooth_sigma(frame_registration_->ecc().input_smooth_sigma());
         if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN ) {
@@ -1281,10 +1285,15 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
       }
     }
 
-    processed_frames_ = 0;
-    total_frames_ =  std::min(master_frame_options.max_input_frames_to_generate_master_frame, num_total_frames - master_frame_index_);
+    if ( master_frame_options.accumulate_master_flow ) {
+      lock_guard lock(registration_lock_);
 
-    CF_DEBUG("H: num_source_frames=%d master_frame_index_=%d total_frames_=%d", num_total_frames, master_frame_index_, total_frames_);
+      master_flow_accumulation_.reset(new c_frame_accumulation_with_mask());
+    }
+
+    processed_frames_ = 0;
+    total_frames_ =  std::min(master_frame_options.max_input_frames_to_generate_master_frame,
+        num_total_frames - master_frame_index_);
 
     emit_status_changed();
 
@@ -1316,6 +1325,7 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
         if ( true ) {
           lock_guard lock(registration_lock_);
+
           if ( !(fOk = frame_registration_->setup_referece_frame(current_frame_, current_mask_)) ) {
             set_status_msg("ERROR: frame_registration_->setup_referece_frame() fails");
             break;
@@ -1324,7 +1334,9 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
       }
       else if ( current_frame_.size() != frame_accumulation_->accumulator_size() ) {
+
         fOk = false;
+
         CF_ERROR("ERROR: input and accumulator frame sizes not match (input=%dx%d accumulator=%dx%d)",
             current_frame_.cols, current_frame_.rows,
             frame_accumulation_->accumulator_size().width, frame_accumulation_->accumulator_size().height);
@@ -1338,10 +1350,41 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
       if ( true ) {
         lock_guard lock(registration_lock_);
+
         if ( !frame_registration_->register_frame(current_frame_,current_frame_, current_mask_, current_mask_) ) {
           CF_WARNING("WARNING: frame_registration_->register_frame(i=%d) fails", processed_frames_);
           continue;
         }
+
+        if ( master_flow_accumulation_ ) {
+
+
+          static const auto remap2flow =
+              [](const cv::Mat2f & rmap)-> cv::Mat2f {
+
+                cv::Mat2f uv(rmap.size());
+
+                typedef tbb::blocked_range<int> range;
+                tbb::parallel_for(range(0, rmap.rows, 256),
+                    [&rmap, &uv] (const range & r ) {
+                      const int nx = rmap.cols;
+                      for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+                        for ( int x = 0; x < nx; ++x ) {
+                          uv[y][x][0] = rmap[y][x][0] - x;
+                          uv[y][x][1] = rmap[y][x][1] - y;
+                        }
+                      }
+                    });
+
+                return uv;
+              };
+
+          master_flow_accumulation_->
+              add(remap2flow(frame_registration_->current_remap()),
+                  current_mask_);
+
+        }
+
       }
 
       if ( canceled() ) {
@@ -1350,6 +1393,7 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
 
       if ( true )  {
         lock_guard lock(accumulator_lock_);
+
         if ( !(fOk = frame_accumulation_->add(current_frame_, current_mask_)) ) {
           CF_ERROR("ERROR: frame_accumulation_->add(current_frame) fails");
           break;
@@ -1364,12 +1408,15 @@ bool c_image_stacking_pipeline::load_or_generate_reference_frame(const c_image_s
     }
 
     if ( fOk && !canceled() ) {
-      if ( frame_accumulation_->accumulated_frames() > 0 ) {
-        fOk = frame_accumulation_->compute(reference_frame_, reference_mask_);
-      }
-      else {
+      if ( frame_accumulation_->accumulated_frames() < 1 ) {
         fOk = false;
         set_status_msg("ERROR: No frames accumulated for reference frame");
+      }
+      else if ( !(fOk = frame_accumulation_->compute(reference_frame_, reference_mask_)) ) {
+        set_status_msg("ERROR: frame_accumulation_->compute() fails");
+      }
+      else if ( master_flow_accumulation_ && master_flow_accumulation_->accumulated_frames() > 1 ) {
+        master_flow_accumulation_->compute(current_master_flow_);
       }
     }
 

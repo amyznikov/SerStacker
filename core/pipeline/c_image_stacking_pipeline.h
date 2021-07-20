@@ -95,11 +95,12 @@ struct c_roi_selection_options {
   cv::Size crop_size;
 };
 
-struct c_stacking_master_frame_options {
+struct c_master_frame_options {
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
   bool use_ffts_from_master_path = false;
   bool generate_master_frame = true;
+  bool accumulate_master_flow = false;
   int max_input_frames_to_generate_master_frame = 200;
 };
 
@@ -155,8 +156,8 @@ public:
   const c_roi_selection_options & roi_selection_options() const;
   c_feature_based_roi_selection::ptr create_roi_selection() const;
 
-  c_stacking_master_frame_options & master_frame_options();
-  const c_stacking_master_frame_options & master_frame_options() const;
+  c_master_frame_options & master_frame_options();
+  const c_master_frame_options & master_frame_options() const;
 
   c_frame_registration_options & frame_registration_options();
   const c_frame_registration_options & frame_registration_options() const;
@@ -178,7 +179,7 @@ protected:
   c_input_sequence::ptr input_sequence_;
   c_image_stacking_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
-  c_stacking_master_frame_options master_frame_options_;
+  c_master_frame_options master_frame_options_;
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
@@ -305,6 +306,7 @@ protected:
   cv::Mat current_frame_;
   cv::Mat current_weights_;
   cv::Mat current_mask_;
+  cv::Mat current_master_flow_;
   double ecc_normalization_noise_ = 0;
 
   int total_frames_ = 0;
@@ -315,10 +317,12 @@ protected:
 
   c_feature_based_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
+  c_frame_accumulation::ptr master_flow_accumulation_;
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
   mutable std::mutex accumulator_lock_;
+
 
 };
 

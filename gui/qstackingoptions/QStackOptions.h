@@ -33,7 +33,7 @@ public:
 
 signals:
   void stackNameChanged(const c_image_stacking_options::ptr & pipeline);
-  void applyMasterFrameOptionsToAllRequested(const c_stacking_master_frame_options & options);
+  void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
   void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
   void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
   void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);
@@ -73,7 +73,7 @@ signals:
   void stackNameChanged(const c_image_stacking_options::ptr & stack);
   void closeWindowRequested();
 
-  void applyMasterFrameOptionsToAllRequested(const c_stacking_master_frame_options & options);
+  void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
   void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
   void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
   void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);

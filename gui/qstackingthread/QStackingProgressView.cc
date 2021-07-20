@@ -146,9 +146,7 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
       computed = pipeline->compute_accumulated_image(currentImage, currentMask);
 
     if ( computed ) {
-      CF_DEBUG("imageViewer_->editImage");
       imageViewer_->editImage(currentImage, currentMask);
-      CF_DEBUG("imageViewer_->editImage OK");
     }
   }
 

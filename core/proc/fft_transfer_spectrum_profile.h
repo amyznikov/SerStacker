@@ -16,4 +16,8 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
     cv::OutputArray dst);
 
 
+bool accumulate_fft_spectrum_power(const cv::Mat & src, const cv::Mat & mask,
+    cv::Mat & acc, float & cnt);
+
+
 #endif /* __fft_transfer_spectrum_profile_h__ */

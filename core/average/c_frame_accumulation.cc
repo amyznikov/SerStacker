@@ -948,10 +948,9 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
 
   for ( int i = 0; i < nc; ++i ) {
 
-    double min, max;
-
-    cv::minMaxLoc(weights[i], &min, &max);
-    CF_DEBUG("weights      [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(weights[i]), min, max);
+    //double min, max;
+    //cv::minMaxLoc(weights[i], &min, &max);
+    //CF_DEBUG("weights      [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(weights[i]), min, max);
 
     cv::accumulateProduct(channels[i], weights[i], accumulators_[i]);
     cv::accumulate(weights[i], weights_[i]);
@@ -974,18 +973,16 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
   }
 
   for ( int i = 0; i < nc; ++i ) {
-    double min, max;
+    //double min, max;
 
     cv::divide(accumulators_[i], weights_[i], channels[i], dscale, ddepth);
 
-    cv::minMaxLoc(channels[i], &min, &max);
-    CF_DEBUG("channels     [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(channels[i]), min, max);
-
+    //cv::minMaxLoc(channels[i], &min, &max);
+    //CF_DEBUG("channels     [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(channels[i]), min, max);
 
     cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-    cv::minMaxLoc(channels[i], &min, &max);
-    CF_DEBUG("channels     [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(channels[i]), min, max);
-
+    //cv::minMaxLoc(channels[i], &min, &max);
+    //CF_DEBUG("channels     [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(channels[i]), min, max);
   }
 
   if ( rc_.empty() ) {

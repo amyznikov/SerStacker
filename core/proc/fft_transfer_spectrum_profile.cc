@@ -177,3 +177,66 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
 
   return true;
 }
+
+
+bool accumulate_fft_spectrum_power(const cv::Mat & src,  cv::Mat & acc, float & cnt)
+{
+  static const auto compute_magnitue =
+      [](cv::Mat & src) {
+
+        typedef std::complex<float> complex;
+
+        const cv::Mat_<complex> spec = src;
+        cv::Mat1f mag(spec.size());
+
+        for ( int y = 0; y < spec.rows; ++y ) {
+          for ( int x = 0; x < spec.cols; ++x ) {
+            mag[y][x] = std::abs(spec[y][x]);
+          }
+        }
+
+        src = std::move(mag);
+      };
+
+
+  cv::Size fft_size;
+  cv::Mat img, spec;
+
+  if ( !acc.empty() && cnt > 0 ) {
+    fft_size = acc.size();
+  }
+  else {
+    fft_size = getOptimalFFTSize(src.size());
+    acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
+    acc.setTo(0);
+    cnt = 0;
+  }
+
+  copyMakeFFTBorder(src, img, fft_size, nullptr);
+
+  const int cn = img.channels();
+  if ( cn == 1 ) {
+    cv::dft(img, img, cv::DFT_COMPLEX_OUTPUT);
+    compute_magnitue(img);
+  }
+  else {
+
+    cv::Mat channels[cn];
+
+    cv::split(img, channels);
+
+    for ( int i = 0; i < cn; ++i ) {
+
+      cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
+      compute_magnitue(img);
+    }
+
+    cv::merge(channels, cn, img);
+  }
+
+  cv::add(acc, img, acc);
+  ++cnt;
+
+  return true;
+
+}

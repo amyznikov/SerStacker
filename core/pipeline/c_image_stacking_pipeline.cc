@@ -282,6 +282,47 @@ void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_al
 
 namespace {
 
+
+static int countNaNs(const cv::Mat & image)
+{
+  int cnt = 0;
+
+  const int nc = image.channels();
+
+  for ( int y = 0; y < image.rows; ++y ) {
+
+    const float * p = image.ptr<const float>(y);
+
+    for ( int x = 0; x < image.cols * nc; ++x ) {
+      if ( isnan(p[x]) ) {
+        ++cnt;
+      }
+    }
+  }
+
+  return cnt;
+}
+
+static int countInfs(const cv::Mat & image)
+{
+  int cnt = 0;
+
+  const int nc = image.channels();
+
+  for ( int y = 0; y < image.rows; ++y ) {
+
+    const float * p = image.ptr<const float>(y);
+
+    for ( int x = 0; x < image.cols * nc; ++x ) {
+      if ( isinf(p[x]) ) {
+        ++cnt;
+      }
+    }
+  }
+
+  return cnt;
+}
+
 static cv::Mat2f remap2flow(const cv::Mat2f &rmap, const cv::Mat1b & mask)
 {
   cv::Mat2f uv(rmap.size());
@@ -1659,17 +1700,35 @@ void c_image_stacking_pipeline::upscale(cv::InputArray src, cv::InputArray srcma
 
 void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
-  cv::Mat w;
-  compute_smap(src, w, 0.01, 0);
-  if ( !srcmask.empty() ) {
-    w.setTo(0, ~srcmask);
-  }
-  dst = std::move(w);
+  compute_smap(src, dst, 0.01, 0);
+
+//  cv::Mat w;
+//  compute_smap(src, w, 0.01, 0);
+//  if ( !srcmask.empty() ) {
+//    w.setTo(0, ~srcmask);
+//  }
+//  dst = std::move(w);
 }
 
 void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel)
 {
   cv::divide(wc, wref, wrel);
+  if ( mc.size() == wrel.size() ) {
+    wrel.setTo(0, ~mc);
+  }
+
+//  int n;
+//
+//  if ( (n = countNaNs(wrel)) > 0 ) {
+//    CF_DEBUG(" ******* NANS DETECTED : n= %d", n);
+//    exit(1);
+//  }
+//  if ( (n = countInfs(wrel)) > 0 ) {
+//    CF_DEBUG(" ******* INFS DETECTED : n= %d", n);
+//    exit(1);
+//  }
+
+
 //  if ( mc.size() == wc.size() ) {
 //    wrel.setTo(0, ~mc);
 //  }

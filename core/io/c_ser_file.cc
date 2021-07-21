@@ -508,7 +508,7 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
   const cv::Mat image = _image.getMat();
 
   if ( image.cols != header_.image_width || image.rows != header_.image_height ) {
-    CF_ERROR("invalid image specified: %dx%dx%d depth:5d expected: %dx%d%d depth:%d",
+    CF_ERROR("invalid image specified: %dx%dx%d depth:%d expected: %dx%d%d depth:%d",
         image.cols, image.rows, image.channels(), image.depth(),
         header_.image_width, header_.image_height, channels(), cvdepth());
     errno = EINVAL;

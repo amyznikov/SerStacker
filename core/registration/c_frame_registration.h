@@ -192,9 +192,8 @@ protected: // specs
 protected:
   c_frame_registration_base_options base_options_;
 
-  //cv::Size current_input_frame_size_;
-  //cv::Rect reference_ROI_;
-  //cv::Rect current_ROI_;
+  cv::Size reference_frame_size_;
+  cv::Size current_frame_size_;
 
   cv::Mat reference_feature_image_;
   cv::Mat reference_feature_mask_;

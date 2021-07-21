@@ -276,7 +276,7 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
   cv::Mat src = reference_image.getMat();
   cv::Mat srcmsk  = reference_mask.getMat();
 
-//  current_input_frame_size_ = src.size();
+  reference_frame_size_ = src.size();
 
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
 
@@ -292,13 +292,6 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
       return false;
     }
 
-//    if ( !reference_ROI_.empty() ) {
-//      current_ROI_ = reference_ROI_;
-//      src = src(reference_ROI_);
-//      if ( !reference_feature_mask_.empty() ) {
-//        srcmsk = srcmsk(reference_ROI_);
-//      }
-//    }
   }
 
   if ( enable_ecc() && ecc_scale() > 0 ) {
@@ -373,7 +366,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
   cv::Mat src = _src.getMat();
   cv::Mat srcmsk = _srcmsk.getMat();
 
-  //current_input_frame_size_ = src.size();
+  current_frame_size_ = src.size();
   current_transform_ = createEyeTransform(motion_type());
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
 
@@ -458,7 +451,8 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
   /////////////////////////////////////////////////////////////////////////////
 
   t0 = get_realtime_ms();
-  createRemap(motion_type(), current_transform_, current_remap_, src.size());
+  //createRemap(motion_type(), current_transform_, current_remap_, src.size());
+  createRemap(motion_type(), current_transform_, current_remap_, reference_frame_size_);
   current_status_.timings.create_remap =
       get_realtime_ms() - t0;
 
@@ -556,7 +550,7 @@ bool c_frame_registration::custom_remap(cv::InputArray _src, cv::OutputArray dst
   if ( dst.needed() || dst_mask.needed()) {
     if ( current_remap_.size() != src_size ) {
       CF_ERROR("Invalid argument: invalid src / remap size");
-      return false;
+      //return false;
     }
   }
 

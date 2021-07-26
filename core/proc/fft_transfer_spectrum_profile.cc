@@ -60,7 +60,7 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
   cv::Size source_size, target_size, fft_size;
   std::vector<double> radial_profile;
 
-  cv::Mat1f mag, phase, ratio;
+  cv::Mat1f ratio;
 
   source_size = from_image.size();
   target_size = to_image.size();
@@ -201,6 +201,8 @@ bool accumulate_fft_spectrum_power(const cv::Mat & src,  cv::Mat & acc, float & 
 
   cv::Size fft_size;
   cv::Mat img, spec;
+  const int cn = src.channels();
+  cv::Mat channels[cn];
 
   if ( !acc.empty() && cnt > 0 ) {
     fft_size = acc.size();
@@ -214,23 +216,19 @@ bool accumulate_fft_spectrum_power(const cv::Mat & src,  cv::Mat & acc, float & 
 
   copyMakeFFTBorder(src, img, fft_size, nullptr);
 
-  const int cn = img.channels();
   if ( cn == 1 ) {
-    cv::dft(img, img, cv::DFT_COMPLEX_OUTPUT);
-    compute_magnitue(img);
+    channels[0] = img;
   }
   else {
-
-    cv::Mat channels[cn];
-
     cv::split(img, channels);
+  }
 
-    for ( int i = 0; i < cn; ++i ) {
+  for ( int i = 0; i < cn; ++i ) {
+    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
+    compute_magnitue(channels[i]);
+  }
 
-      cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
-      compute_magnitue(img);
-    }
-
+  if ( cn > 1 ) {
     cv::merge(channels, cn, img);
   }
 
@@ -238,5 +236,130 @@ bool accumulate_fft_spectrum_power(const cv::Mat & src,  cv::Mat & acc, float & 
   ++cnt;
 
   return true;
+}
 
+bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
+{
+  static const auto compute_magnitue =
+      [](cv::Mat & src) {
+
+        typedef std::complex<float> complex;
+
+        const cv::Mat_<complex> spec = src;
+        cv::Mat1f mag(spec.size());
+
+        for ( int y = 0; y < spec.rows; ++y ) {
+          for ( int x = 0; x < spec.cols; ++x ) {
+            mag[y][x] = std::abs(spec[y][x]);
+          }
+        }
+
+        src = std::move(mag);
+      };
+
+
+  cv::Size fft_size;
+  cv::Mat img, spec;
+
+  const int cn = src.channels();
+  cv::Mat channels[cn];
+
+  if ( !acc.empty() ) {
+    fft_size = acc.size();
+  }
+  else {
+    fft_size = getOptimalFFTSize(src.size());
+    acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
+    acc.setTo(0);
+  }
+
+  if ( !copyMakeFFTBorder(src, img, fft_size, nullptr) ) {
+    CF_ERROR("copyMakeFFTBorder(src=%dx%d, img, fft_size=%dx%d) fails", src.cols, src.rows, fft_size.width, fft_size.height);
+    return false;
+  }
+
+  if ( cn == 1 ) {
+    channels[0] = img;
+  }
+  else {
+    cv::split(img, channels);
+  }
+
+
+  for ( int i = 0; i < cn; ++i ) {
+    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
+    compute_magnitue(channels[i]);
+  }
+
+  if ( cn > 1 ) {
+    cv::merge(channels, cn, img);
+  }
+
+  cv::max(acc, img, acc);
+
+  return true;
+}
+
+
+bool swap_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat & dst)
+{
+  if ( acc.depth() != CV_32F ) {
+    CF_ERROR("Invalid argument: acc.depth()=CV_32F is expected");
+    return false;
+  }
+
+  if ( acc.channels() != src.channels() ) {
+    CF_ERROR("Invalid argument: number of channels in src and sp not match");
+    return false;
+  }
+
+  typedef std::complex<float> complex;
+
+  cv::Mat img, spec;
+  cv::Rect rc;
+  const cv::Size fft_size = acc.size();
+  const int cn = src.channels();
+  cv::Mat channels[cn];
+
+
+  if ( !copyMakeFFTBorder(src, img, fft_size, &rc) ) {
+    CF_ERROR("copyMakeFFTBorder() fails");
+    return false;
+  }
+
+  if ( cn == 1 ) {
+    channels[0] = img;
+  }
+  else {
+    cv::split(img, channels);
+  }
+
+
+  for ( int i = 0; i < cn; ++i ) {
+
+    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
+
+    cv::Mat_<complex> spec = channels[i];
+
+    for ( int y = 0; y < spec.rows; ++y ) {
+
+      const float * accp = acc.ptr<const float>(y);
+
+      for ( int x = 0; x < spec.cols; ++x ) {
+
+        spec[y][x] = std::polar(accp[x * cn + i], std::arg(spec[y][x]));
+
+      }
+    }
+
+    cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
+  }
+
+  if ( cn > 1 ) {
+    cv::merge(channels, cn, img);
+  }
+
+  img(rc).copyTo(dst);
+
+  return true;
 }

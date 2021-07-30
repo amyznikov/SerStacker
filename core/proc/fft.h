@@ -51,4 +51,15 @@ void fftMultiplyRadialPowerProfile(cv::Mat1f & magnitude,
 void fftSharpen(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs);
 
+bool accumulate_fft_spectrum_power(const cv::Mat & src,
+    cv::Mat & acc,
+    float & cnt);
+
+bool max_fft_spectrum_power(const cv::Mat & src,
+    cv::Mat & acc);
+
+bool swap_fft_power_spectrum(const cv::Mat & image,
+    const cv::Mat & sp,
+    cv::Mat & dst);
+
 #endif /* __fft_h__ */

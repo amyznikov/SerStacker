@@ -19,15 +19,67 @@
 #include <core/proc/autoclip.h>
 #include <core/proc/smap.h>
 
-class c_image_processor
+///////////////////////////////////////////////////////////////////////////////
+
+class c_image_processor_routine
 {
 public:
-  typedef c_image_processor this_class;
+  typedef c_image_processor_routine this_class;
   typedef std::shared_ptr<this_class> ptr;
+  typedef std::function<this_class::ptr()> factory;
 
-  c_image_processor(const std::string & name, const std::string & display_name )
-    : name_(name), display_name_(display_name), enabled_(true)
+  struct class_factory
   {
+    std::string class_name;
+    std::string display_name;
+    std::string tooltip;
+    std::function<c_image_processor_routine::ptr()> create_instance;
+
+    class_factory(const std::string & _class_name,
+        const std::string & _display_name,
+        const std::string & _tooltip,
+        const std::function<c_image_processor_routine::ptr()> & _create_instance);
+  };
+
+  struct class_list_guard_lock
+  {
+    class_list_guard_lock() {
+      mtx().lock();
+    }
+
+    ~class_list_guard_lock() {
+      mtx().unlock();
+    }
+
+    static std::mutex & mtx() {
+      static std::mutex mtx_;
+      return mtx_;
+    }
+  };
+
+  static const std::vector<const class_factory*> & class_list();
+
+  virtual ~c_image_processor_routine() = default;
+
+
+  static ptr create(const std::string & class_name);
+  static ptr create(c_config_setting settings);
+  virtual bool load(c_config_setting settings);
+  virtual bool save(c_config_setting settings) const;
+
+  const std::string & class_name() const
+  {
+    return class_factory_->class_name;
+  }
+
+  const std::string & display_name() const
+  {
+    return class_factory_->display_name;
+  }
+
+  const std::string & tooltip() const
+  {
+    return class_factory_->tooltip;
   }
 
   void set_enabled(bool v)
@@ -40,47 +92,42 @@ public:
     return enabled_;
   }
 
-  const std::string & name() const
-  {
-    return name_;
-  }
 
-  const std::string & display_name() const
-  {
-    return display_name_;
-  }
-
-
-  static ptr create(const std::string & name);
-  static ptr load(c_config_setting settings);
-
-  virtual ~c_image_processor() = default;
-  virtual void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) = 0;
-  virtual bool save_settings(c_config_setting settings) const;
-  virtual bool load_settings(c_config_setting settings);
+  virtual bool process(cv::InputOutputArray image,
+      cv::InputOutputArray mask = cv::noArray()) = 0;
 
 
 protected:
-  std::string name_;
-  std::string display_name_;
+  c_image_processor_routine(const class_factory * _class_factory, bool enabled = true)
+    : class_factory_(_class_factory), enabled_(enabled)
+  {
+  }
+
+protected:
+  const class_factory * class_factory_;
   bool enabled_;
 };
 
-class c_image_processor_chain :
-    public std::vector<c_image_processor::ptr>
+class c_image_processor :
+    public std::vector<c_image_processor_routine::ptr>
 {
   std::string name_;
   bool enabled_ = true;
 
 public:
-  typedef c_image_processor_chain this_class;
-  typedef std::vector<c_image_processor::ptr> base;
+  typedef c_image_processor this_class;
+  typedef std::vector<c_image_processor_routine::ptr> base;
   typedef std::shared_ptr<this_class> ptr;
 
-  static ptr create()
-  {
-    return ptr(new this_class());
-  }
+
+  c_image_processor(const std::string & objname);
+
+  static ptr create(const std::string & objname);
+  static ptr load(const std::string & filename);
+  static ptr load(c_config_setting settings);
+  bool save(const std::string & filename) const;
+  bool save(c_config_setting settings) const;
+
 
   void set_name(const std::string & v)
   {
@@ -102,35 +149,40 @@ public:
     return enabled_;
   }
 
-  bool save_settings(c_config_setting settings) const;
-  bool load_settings(c_config_setting settings);
-
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) const
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) const
   {
     if ( enabled_ ) {
-      for ( const c_image_processor::ptr & processor : *this ) {
-
-      //        CF_DEBUG("processor=%p name='%s' enabled='%d'",
-      //            processor.get(),
-      //            processor ? processor->name().c_str() : "",
-      //            processor ? processor->enabled() : 0);
-
+      for ( const c_image_processor_routine::ptr & processor : *this ) {
         if ( processor && processor->enabled() ) {
-          processor->process(image, mask);
+          if ( !processor->process(image, mask) ) {
+            return false;
+          }
         }
       }
     }
+    return true;
   }
 
 };
 
 
-class c_image_processor_chains :
-    public std::vector<c_image_processor_chain::ptr>
+inline bool save_settings(c_config_setting settings, const c_image_processor::ptr & obj)
+{
+  return obj->save(settings);
+}
+
+inline bool save_settings(c_config_setting settings, const c_image_processor & obj)
+{
+  return obj.save(settings);
+}
+
+
+class c_image_processor_collection :
+    public std::vector<c_image_processor::ptr>
 {
 public:
-  typedef c_image_processor_chains this_class;
-  typedef std::vector<c_image_processor_chain::ptr> base;
+  typedef c_image_processor_collection this_class;
+  typedef std::vector<c_image_processor::ptr> base;
   typedef std::shared_ptr<this_class> ptr;
 
   static ptr create()
@@ -138,47 +190,118 @@ public:
     return ptr(new this_class());
   }
 
-  bool save_settings(c_config_setting settings) const;
-  bool load_settings(c_config_setting settings);
+  static ptr create(c_config_setting settings)
+  {
+    ptr obj(new this_class());
+    if ( obj->load(settings) ) {
+      return obj;
+    }
+    return nullptr;
+  }
+
+  bool load(c_config_setting settings)
+  {
+    clear();
+
+    if ( !settings ) {
+      return false;
+    }
+
+    c_config_setting processors_list_item =
+        settings["processors"];
+
+    if ( !processors_list_item || !processors_list_item.isList() ) {
+      return false;
+    }
+
+    const int num_processors = processors_list_item.length();
+
+    reserve(num_processors);
+
+    for ( int i = 0; i < num_processors; ++i ) {
+
+      c_config_setting processor_item =
+          processors_list_item.get_element(i);
+
+      if ( processor_item && processor_item.isGroup() ) {
+        c_image_processor::ptr processor = c_image_processor::load(processor_item);
+        if ( processor ) {
+          emplace_back(processor);
+        }
+      }
+    }
+
+    return true;
+  }
+
+  bool save(c_config_setting settings) const
+  {
+    if ( !settings ) {
+      return false;
+    }
+
+    c_config_setting processors_list_item =
+        settings.add_list("processors");
+
+    for ( const c_image_processor::ptr & processor : *this ) {
+      if ( processor && !processor->save(processors_list_item.add_element(CONFIG_TYPE_GROUP)) ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
 };
 
 
-class c_unsharp_mask_image_processor
-    : public c_image_processor
+inline bool save_settings(c_config_setting settings, const c_image_processor_collection::ptr & obj)
+{
+  return obj->save(settings);
+}
+
+inline bool save_settings(c_config_setting settings, const c_image_processor_collection & obj)
+{
+  return obj.save(settings);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+class c_unsharp_mask_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_unsharp_mask_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_unsharp_mask_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_unsharp_mask_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("unsharp_mask", "unsharp mask", "unsharp mask",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_unsharp_mask_routine(bool enabled = true)
+    : base( &class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "unsharp_mask";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "Unsharp Mask";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  static ptr create(double sigma, double alpha = 0.9) {
-    ptr obj(new this_class(default_name(), default_display_name()));
+  static ptr create(double sigma, double alpha = 0.9, bool enabled = true) {
+    ptr obj(new this_class(enabled));
     obj->set_sigma(sigma);
     obj->set_alpha(alpha);
     return obj;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     unsharp_mask(image, image, sigma_, alpha_, outmin_, outmax_);
     if ( mask.needed() && !mask.empty() ) {
@@ -186,6 +309,7 @@ public:
       cv::erode(mask, mask, cv::Mat1b(ksize, ksize, 255), cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
       image.getMatRef().setTo(0, ~mask.getMat());
     }
+    return true;
   }
 
   void set_sigma(double v)
@@ -208,43 +332,42 @@ public:
     return alpha_;
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
-
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double sigma_ = 1, alpha_ = 0.9;
   double outmin_ = -1, outmax_ = -1;
 };
 
-class c_mtf_image_processor
-    : public c_image_processor
+class c_mtf_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_mtf_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_mtf_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_mtf_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("mtf", "mtf", "mtf",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_mtf_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "mtf";
-  }
-
-  static const char * default_display_name() {
-    return "MTF";
-  }
-
-  static ptr create() {
-    return ptr(new this_class(default_name(), default_display_name()));
-  }
-
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  static ptr create(bool enabled = true)
   {
-    mtf_->apply(image, image);
+    return ptr(new this_class(enabled));
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    return mtf_->apply(image, image);
   }
 
   const c_pixinsight_midtones_transfer_function::ptr & mtf() const
@@ -252,53 +375,55 @@ public:
     return mtf_;
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   c_pixinsight_midtones_transfer_function::ptr mtf_ =
       c_pixinsight_midtones_transfer_function::create();
 };
 
-class c_align_color_channels_image_processor
-    : public c_image_processor
+class c_align_color_channels_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_align_color_channels_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_align_color_channels_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_align_color_channels_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("align_color_channels", "align_color_channels", "align_color_channels",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+  c_align_color_channels_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "align_color_channels";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "Align Color Channels";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  void set_reference_channel(int v) {
+  void set_reference_channel(int v)
+  {
     reference_channel_ = v;
   }
 
-  int reference_channel() const {
+  int reference_channel() const
+  {
     return reference_channel_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    algorithm_.align(reference_channel_, image, image, mask, mask);
+    return algorithm_.align(reference_channel_, image, image, mask, mask);
   }
+
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   c_align_color_channels algorithm_;
@@ -306,38 +431,36 @@ protected:
 };
 
 
-class c_rangeclip_image_processor
-    : public c_image_processor
+class c_rangeclip_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_rangeclip_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_rangeclip_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_rangeclip_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("rangeclip", "rangeclip", "rangeclip",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_rangeclip_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "rangeclip";
+  static ptr create(bool enabled = true)
+  {
+    return ptr (new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "Clip";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  static ptr create(double min, double max, bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
+  static ptr create(double min, double max, bool enabled = true)
+  {
+    ptr obj(new this_class(enabled));
     obj->set_min(min);
     obj->set_max(max);
-    obj->set_enabled(enabled);
     return obj;
   }
 
@@ -361,51 +484,49 @@ public:
     return max_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    clip_range(image.getMatRef(), min_, max_, mask.getMat());
+    return clip_range(image.getMatRef(), min_, max_, mask.getMat());
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double min_ = 0.0;
   double max_ = 1.0;
 };
 
-class c_autoclip_image_processor
-    : public c_image_processor
+class c_autoclip_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_autoclip_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_autoclip_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_autoclip_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("autoclip", "autoclip", "autoclip",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_autoclip_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "autoclip";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "Auto Clip";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  static ptr create(double lclip, double hclip, bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
+  static ptr create(double lclip, double hclip, bool enabled = true)
+  {
+    ptr obj(new this_class(enabled));
     obj->set_lclip(lclip);
     obj->set_hclip(hclip);
-    obj->set_enabled(enabled);
     return obj;
   }
 
@@ -429,7 +550,7 @@ public:
     return phi_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     double omin = 0, omax = 1;
 
@@ -452,11 +573,11 @@ public:
       break;
     }
 
-    autoclip(image.getMatRef(), mask, plo_, phi_, omin, omax);
+    return autoclip(image.getMatRef(), mask, plo_, phi_, omin, omax);
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double plo_ = 0.5;
@@ -464,38 +585,36 @@ protected:
 };
 
 
-class c_range_normalize_image_processor
-    : public c_image_processor
+class c_range_normalize_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_range_normalize_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_range_normalize_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_range_normalize_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("normalize", "normalize", "normalize",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_range_normalize_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "normalize";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "Normalize";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  static ptr create(double outmin, double outmax, bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
+  static ptr create(double outmin, double outmax, bool enabled = true)
+  {
+    ptr obj(new this_class(enabled));
     obj->set_outmin(outmin);
     obj->set_outmax(outmax);
-    obj->set_enabled(enabled);
     return obj;
   }
 
@@ -519,14 +638,14 @@ public:
     return outmax_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     //clip_range(image.getMatRef(), min_, max_, mask.getMat());
-    normalize_minmax(image.getMatRef(), image.getMatRef(), outmin_, outmax_, mask, true);
+    return normalize_minmax(image.getMatRef(), image.getMatRef(), outmin_, outmax_, mask, true);
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double outmin_ = 0.0;
@@ -534,38 +653,36 @@ protected:
 };
 
 
-class c_histogram_white_balance_image_processor
-    : public c_image_processor
+class c_histogram_white_balance_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_histogram_white_balance_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_histogram_white_balance_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_histogram_white_balance_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("histogram_white_balance", "histogram_white_balance", "histogram_white_balance",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_histogram_white_balance_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "smap";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "SMAP";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  static ptr create(double lclip, double hclip, bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
+  static ptr create(double lclip, double hclip, bool enabled = true)
+  {
+    ptr obj(new this_class(enabled));
     obj->set_lclip(lclip);
     obj->set_hclip(hclip);
-    obj->set_enabled(enabled);
     return obj;
   }
 
@@ -589,17 +706,17 @@ public:
     return hclip_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    histogram_white_balance(image.getMatRef(),
+    return histogram_white_balance(image.getMatRef(),
         mask,
         image.getMatRef(),
         lclip_,
         hclip_);
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double lclip_ = 1;
@@ -608,36 +725,42 @@ protected:
 };
 
 
-class c_anscombe_image_processor
-    : public c_image_processor
+class c_anscombe_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_anscombe_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_anscombe_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_anscombe_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("anscombe", "anscombe transform", "anscombe transform",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+
+  c_anscombe_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "anscombe";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "Anscombe transform";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
+  static ptr create(enum anscombe_method m, bool enabled = true)
+  {
+    ptr obj(new this_class(enabled));
+    obj->set_method(m);
     return obj;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     anscombe_.apply(image.getMatRef(), image.getMatRef());
+    return true;
   }
 
   void set_method(enum anscombe_method v)
@@ -650,8 +773,8 @@ public:
     return anscombe_.method();
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   c_anscombe_transform anscombe_;
@@ -660,78 +783,72 @@ protected:
 
 
 
-class c_noisemap_image_processor
-    : public c_image_processor
+class c_noisemap_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_noisemap_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_noisemap_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_noisemap_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("noisemap", "noise map", "noise map",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+  c_noisemap_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "nosemap";
+  static ptr create(bool enabled = true)
+  {
+    return ptr(new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "NOISE MAP";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     create_noise_map(image.getMatRef(), image.getMatRef(), mask);
+    return true;
   }
 
-  bool save_settings(c_config_setting settings) const override { return true; }
-  bool load_settings(c_config_setting settings) override { return true; }
-
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 };
 
 
 
 
-class c_smap_image_processor
-    : public c_image_processor
+class c_smap_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_smap_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_smap_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_smap_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("smap", "smap", "smap",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+  c_smap_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "smap";
+  static ptr create(bool enabled = true)
+  {
+    return ptr (new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "SMAP";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  static ptr create(double minv, double scale = 1.0/16, bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
+  static ptr create(double minv, double scale = 1.0 / 16, bool enabled = true)
+  {
+    ptr obj(new this_class(enabled));
     obj->set_minv(minv);
     obj->set_scale(scale);
-    obj->set_enabled(enabled);
     return obj;
   }
 
@@ -755,15 +872,16 @@ public:
     return scale_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     cv::Mat1f smap;
     compute_smap(image, smap, minv_, scale_);
     image.move(smap);
+    return true;
   }
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double minv_ = 0;
@@ -771,53 +889,54 @@ protected:
 };
 
 
-class c_test_image_processor
-    : public c_image_processor
+class c_test_routine
+    : public c_image_processor_routine
 {
 public:
-  typedef c_test_image_processor this_class;
-  typedef c_image_processor base;
+  typedef c_test_routine this_class;
+  typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_test_image_processor(const std::string & name, const std::string & display_name)
-    : base(name, display_name)
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("test", "test", "test",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+  c_test_routine(bool enabled = true)
+    : base(&class_factory, enabled)
   {
   }
 
-  static const char * default_name() {
-    return "test";
+  static ptr create(bool enabled = true)
+  {
+    return ptr (new this_class(enabled));
   }
 
-  static const char * default_display_name() {
-    return "TEST";
-  }
-
-  static ptr create(bool enabled = true) {
-    ptr obj(new this_class(default_name(), default_display_name()));
-    obj->set_enabled(enabled);
-    return obj;
-  }
-
-  void set_scale(double v) {
+  void set_scale(double v)
+  {
     scale_ = v;
   }
 
-  double scale() const {
+  double scale() const
+  {
     return scale_;
   }
 
-  void set_level(int v) {
+  void set_level(int v)
+  {
     level_ = v;
   }
 
-  int level() const {
+  int level() const
+  {
     return level_;
   }
 
-  void process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  bool save_settings(c_config_setting settings) const override;
-  bool load_settings(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool load(c_config_setting settings) override;
 
 protected:
   double scale_ = 1;

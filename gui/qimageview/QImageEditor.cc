@@ -12,16 +12,16 @@
 QImageEditor::QImageEditor(QWidget * parent)
   : Base(parent)
 {
-  processor_ = c_image_processor_chain::create();
-  processor_->emplace_back(c_unsharp_mask_image_processor::create(true));
-  processor_->emplace_back(c_align_color_channels_image_processor::create(false));
-  processor_->emplace_back(c_unsharp_mask_image_processor::create(false));
-  processor_->emplace_back(c_unsharp_mask_image_processor::create(false));
+  processor_ = c_image_processor::create("processor");
+  processor_->emplace_back(c_unsharp_mask_routine::create(true));
+  processor_->emplace_back(c_align_color_channels_routine::create(false));
+  processor_->emplace_back(c_unsharp_mask_routine::create(false));
+  processor_->emplace_back(c_unsharp_mask_routine::create(false));
  //processor_->emplace_back(c_test_image_processor::create(false));
   //processor_->emplace_back(c_smap_image_processor::create(false));
-  processor_->emplace_back(c_anscombe_image_processor::create(false));
-  processor_->emplace_back(c_noisemap_image_processor::create(false));
-  processor_->emplace_back(c_autoclip_image_processor::create(false));
+  processor_->emplace_back(c_anscombe_routine::create(false));
+  processor_->emplace_back(c_noisemap_routine::create(false));
+  processor_->emplace_back(c_autoclip_routine::create(false));
   //processor_->emplace_back(c_mtf_image_processor::create());
   processor_->set_enabled(false);
 }

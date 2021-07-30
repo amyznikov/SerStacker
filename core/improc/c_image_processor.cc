@@ -5,74 +5,222 @@
  *      Author: amyznikov
  */
 
-#include "c_image_processor.h"
 #include <functional>
+#include "c_image_processor.h"
 
-// class factory items
-namespace {
+static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
-static const struct class_factory_item {
-  const char * processor_name;
-  std::function<c_image_processor::ptr()> create_instance;
-} class_factory_items[] = {
-    {
-        c_unsharp_mask_image_processor::default_name(),
-        []() {return c_unsharp_mask_image_processor::create();}
-    },
-    {
-        c_mtf_image_processor::default_name(),
-        []() {return c_mtf_image_processor::create();}
-    },
-    {
-        c_autoclip_image_processor::default_name(),
-        []() {return c_autoclip_image_processor::create();}
-    },
-    {
-        c_smap_image_processor::default_name(),
-        []() {return c_smap_image_processor::create();}
-    },
-};
-
+c_image_processor_routine::class_factory::class_factory(const std::string & _class_name,
+    const std::string & _display_name,
+    const std::string & _tooltip,
+    const std::function<c_image_processor_routine::ptr()> & _create_instance) :
+        class_name(_class_name), display_name(_display_name), tooltip(_tooltip), create_instance(_create_instance)
+{
+  class_list_guard_lock guard_lock;
+  c_image_processor_routine_class_list_.emplace_back(this);
 }
 
+
+const std::vector<const c_image_processor_routine::class_factory*> & c_image_processor_routine::class_list()
+{
+  return c_image_processor_routine_class_list_;
+}
+
+
+
+c_image_processor::c_image_processor(const std::string & objname) :
+    name_(objname)
+{
+}
+
+c_image_processor::ptr c_image_processor::create(const std::string & objname)
+{
+  return ptr(new this_class(objname));
+}
+
+c_image_processor::ptr c_image_processor::load(const std::string & filename)
+{
+  c_config cfg(filename);
+
+  if ( !cfg.read() ) {
+    CF_FATAL("cfg.read('%s') fails", filename.c_str());
+    return nullptr;
+  }
+
+
+  std::string object_class;
+  if ( !load_settings(cfg.root(), "object_class", &object_class) ) {
+    CF_FATAL("load_settings(object_class) fails", filename.c_str());
+    return nullptr;
+  }
+
+  if ( object_class != "c_image_processor" ) {
+    CF_FATAL("Incorect object_class='%s' from file '%s'",
+        object_class.c_str(), filename.c_str());
+    return nullptr;
+  }
+
+  c_config_setting root = cfg.root().get("c_image_processor");
+  if ( !root || !root.isGroup() ) {
+    CF_FATAL("group 'c_image_processor' is not found in file '%s''",
+        filename.c_str());
+    return nullptr;
+  }
+
+  return load(root);
+}
 
 c_image_processor::ptr c_image_processor::load(c_config_setting settings)
 {
-  if ( !settings ) {
+  std::string objname;
+
+  if ( !settings.get("name", &objname) || objname.empty() ) {
+    CF_ERROR("c_image_processor: settings.get('name') fails");
     return nullptr;
   }
 
-  std::string processor_name;
-  if ( !settings.get("name", &processor_name) || processor_name.empty() ) {
+  ptr obj = create(objname);
+  if ( !obj ) {
+    CF_ERROR("c_image_processor::create(objname=%s) fails", objname.c_str());
     return nullptr;
   }
 
-  c_image_processor::ptr processor =
-      c_image_processor::create(processor_name);
+  settings.get("enabled", &obj->enabled_);
 
-  if( !processor ) {
+  c_config_setting chain =
+      settings["chain"];
+
+  if ( chain && !chain.isList() ) {
+    CF_ERROR("c_image_processor::load(objname=%s): 'chain' item must be libconfig list", objname.c_str());
     return nullptr;
   }
 
-  if ( !processor->load_settings(settings) ) {
-    return nullptr;
+  if ( chain ) {
+
+    const int chain_length = chain.length();
+
+    obj->reserve(chain_length);
+
+    for ( int i = 0; i < chain_length; ++i ) {
+
+      c_config_setting group =
+          chain.get_element(i);
+
+      if ( !group || !group.isGroup() ) {
+        CF_ERROR("c_image_processor:  chain.get_element(objname=%s, index=%d, type=GROUP) fails", objname.c_str(), i);
+        return nullptr;
+      }
+
+      c_image_processor_routine::ptr routine =
+          c_image_processor_routine::create(group);
+
+      if ( !routine ) {
+        CF_ERROR("c_image_processor_routine::create(objname=%s, chain index=%d) fails", objname.c_str(), i);
+        return nullptr;
+      }
+
+      obj->emplace_back(routine);
+    }
   }
 
-  return processor;
+  return obj;
 }
 
-c_image_processor::ptr c_image_processor::create(const std::string & processor_name)
+
+bool c_image_processor::save(const std::string & filename) const
+{
+  c_config cfg(filename);
+
+  time_t t = time(0);
+
+  if ( !save_settings(cfg.root(), "object_class", std::string("c_image_processor")) ) {
+    CF_FATAL("save_settings() fails");
+    return false;
+  }
+
+  if ( !save_settings(cfg.root(), "created", asctime(localtime(&t))) ) {
+    CF_FATAL("save_settings() fails");
+    return false;
+  }
+
+  if ( !save(cfg.root().add_group("c_image_processor"))) {
+    CF_FATAL("save(c_image_processor) fails");
+    return false;
+  }
+
+  if ( !cfg.write() ) {
+    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
+    return false;
+  }
+
+  return true;
+}
+
+bool c_image_processor::save(c_config_setting settings) const
+{
+  if ( !settings ) {
+    CF_ERROR("c_image_processor::save() gets invalid argument: c_config_setting = null");
+    return false;
+  }
+
+  settings.set("name", name_);
+  settings.set("enabled", enabled_);
+
+  c_config_setting chain =
+      settings.add_list("chain");
+
+  for ( const c_image_processor_routine::ptr & routine : *this ) {
+    if ( routine && !routine->save(chain.add_element(CONFIG_TYPE_GROUP)) ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
+c_image_processor_routine::ptr c_image_processor_routine::create(c_config_setting settings)
+{
+  if ( !settings ) {
+    CF_ERROR("c_image_processor_routine::create(c_config_setting): settings is null");
+    return nullptr;
+  }
+
+  std::string objname;
+  if ( !settings.get("routine", &objname) || objname.empty() ) {
+    CF_ERROR("No 'routine' string found");
+    return nullptr;
+  }
+
+  c_image_processor_routine::ptr routine =
+      c_image_processor_routine::create(objname);
+
+  if( !routine ) {
+    CF_ERROR("c_image_processor_routine::create(routine=%s) fails", objname.c_str());
+    return nullptr;
+  }
+
+  if ( !routine->load(settings) ) {
+    CF_ERROR("routine->load(routine=%s, c_config_setting) fails", objname.c_str());
+    return nullptr;
+  }
+
+  return routine;
+}
+
+c_image_processor_routine::ptr c_image_processor_routine::create(const std::string & processor_name)
 {
   if ( processor_name.empty() ) {
     return nullptr;
   }
 
-  c_image_processor::ptr processor;
+  class_list_guard_lock lock;
+  c_image_processor_routine::ptr processor;
   const char * cname = processor_name.c_str();
 
-  for ( size_t i = 0; i < sizeof(class_factory_items) / sizeof(class_factory_items[0]); ++i ) {
-    if ( strcasecmp(cname, class_factory_items[i].processor_name) == 0 ) {
-      return class_factory_items[i].create_instance();
+  for ( const class_factory * f : c_image_processor_routine_class_list_ ) {
+    if ( strcasecmp(cname, f->class_name.c_str()) == 0 ) {
+      return f->create_instance();
     }
   }
 
@@ -80,170 +228,41 @@ c_image_processor::ptr c_image_processor::create(const std::string & processor_n
 }
 
 
-bool c_image_processor::save_settings(c_config_setting settings) const
+bool c_image_processor_routine::load(c_config_setting settings)
+{
+  if ( !settings ) {
+    CF_ERROR("c_image_processor_routine::load(c_config_setting) : settings is null");
+    return false;
+  }
+
+  settings.get("enabled", &enabled_);
+
+  return true;
+}
+
+bool c_image_processor_routine::save(c_config_setting settings) const
 {
   if ( !settings ) {
     return false;
   }
 
-  settings.set("name", this->name_);
-  settings.set("display_name", this->display_name_);
-  settings.set("enabled", this->enabled_);
+  settings.set("routine", class_name());
+  settings.set("display_name", display_name());
+  settings.set("tooltip", tooltip());
+  settings.set("enabled", enabled());
 
   return true;
 }
 
-bool c_image_processor::load_settings(c_config_setting settings)
-{
-  if ( !settings ) {
-    return false;
-  }
 
-  std::string processor_name;
-  if ( !settings.get("name", &name_) || processor_name != this->name_ ) {
-    return false;
-  }
-
-  settings.get("enabled", &this->enabled_);
-  settings.get("display_name", &this->display_name_);
-
-  return true;
-}
 
 //
 
-bool c_image_processor_chain::save_settings(c_config_setting settings) const
+c_unsharp_mask_routine::c_class_factory c_unsharp_mask_routine::class_factory;
+
+bool c_unsharp_mask_routine::load(c_config_setting settings)
 {
-  if ( !settings ) {
-    return false;
-  }
-
-  settings.set("name", this->name_);
-  settings.set("enabled", this->enabled_);
-
-  c_config_setting processors_item =
-      settings.add_list("processors");
-
-  for ( const c_image_processor::ptr & processor : *this ) {
-    if ( processor && !processor->save_settings(processors_item.add_group("processor") ) ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool c_image_processor_chain::load_settings(c_config_setting settings)
-{
-  if ( !settings ) {
-    return false;
-  }
-
-  if ( !settings.get("name", &this->name_) ) {
-    return false;
-  }
-
-  settings.get("enabled", &this->enabled_);
-
-  c_config_setting processors_item =
-      settings["processors"];
-
-  if ( processors_item ) {
-
-    if ( !processors_item.isList() ) {
-      return false;
-    }
-
-    const int num_processors = processors_item.length();
-
-    base::clear();
-    base::reserve(num_processors);
-
-    for ( int i = 0; i < num_processors; ++i ) {
-
-      c_image_processor::ptr processor =
-          c_image_processor::load(processors_item.get_element(i));
-
-      if ( processor ) {
-        base::emplace_back(processor);
-      }
-    }
-  }
-
-  return true;
-}
-
-//
-
-bool c_image_processor_chains::save_settings(c_config_setting settings) const
-{
-  if ( !settings ) {
-    return false;
-  }
-
-  c_config_setting chains_item =
-      settings.add_list("chains");
-
-  for ( const c_image_processor_chain::ptr & chain : *this ) {
-    if ( chain && !chain->save_settings(chains_item.add_group("chain")) ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool c_image_processor_chains::load_settings(c_config_setting settings)
-{
-  if ( !settings ) {
-    return false;
-  }
-
-  c_config_setting chains_item =
-      settings["chains"];
-
-  if ( !chains_item || !chains_item.isList() ) {
-    return false;
-  }
-
-  const int num_chains = chains_item.length();
-
-  base::clear();
-  base::reserve(num_chains);
-
-  for ( int i = 0; i < num_chains; ++i ) {
-
-    c_config_setting chain_item =
-        chain_item.get_element(i);
-
-    if ( chain_item && chain_item.isGroup() ) {
-      c_image_processor_chain::ptr chain = c_image_processor_chain::create();
-      if ( chain && chain->load_settings(chain_item) ) {
-        base::emplace_back(chain);
-      }
-    }
-  }
-
-  return true;
-}
-
-//
-
-bool c_unsharp_mask_image_processor::save_settings(c_config_setting settings) const
-{
-  if ( !base::save_settings(settings) ) {
-    return false;
-  }
-
-  settings.set("sigma", sigma_);
-  settings.set("alpha", alpha_);
-
-  return true;
-}
-
-bool c_unsharp_mask_image_processor::load_settings(c_config_setting settings)
-{
-  if ( !base::load_settings(settings) ) {
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -253,38 +272,62 @@ bool c_unsharp_mask_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
-bool c_mtf_image_processor::save_settings(c_config_setting settings) const
+bool c_unsharp_mask_routine::save(c_config_setting settings) const
 {
-  if ( !base::save_settings(settings) ) {
+  if ( !base::save(settings) ) {
+    return false;
+  }
+
+  settings.set("sigma", sigma_);
+  settings.set("alpha", alpha_);
+
+  return true;
+}
+
+//
+
+c_mtf_routine::c_class_factory c_mtf_routine::class_factory;
+
+bool c_mtf_routine::load(c_config_setting settings)
+{
+  if ( !base::load(settings) ) {
     return false;
   }
 
   return true;
 }
 
-bool c_mtf_image_processor::load_settings(c_config_setting settings)
+bool c_mtf_routine::save(c_config_setting settings) const
 {
-  if ( !base::load_settings(settings) ) {
+  if ( !base::save(settings) ) {
     return false;
   }
 
   return true;
 }
 
-bool c_rangeclip_image_processor::save_settings(c_config_setting settings) const
-{
-  if ( !base::save_settings(settings) ) {
-    return false;
-  }
 
-  settings.set("min", min_);
-  settings.set("max", max_);
-  return true;
+//
+
+c_align_color_channels_routine::c_class_factory c_align_color_channels_routine::class_factory;
+
+bool c_align_color_channels_routine::load(c_config_setting settings)
+{
+  return base::load(settings);
 }
 
-bool c_rangeclip_image_processor::load_settings(c_config_setting settings)
+bool c_align_color_channels_routine::save(c_config_setting settings) const
 {
-  if ( !base::load_settings(settings) ) {
+  return base::save(settings);
+}
+
+//
+
+c_rangeclip_routine::c_class_factory c_rangeclip_routine::class_factory;
+
+bool c_rangeclip_routine::load(c_config_setting settings)
+{
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -293,22 +336,24 @@ bool c_rangeclip_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
-
-bool c_autoclip_image_processor::save_settings(c_config_setting settings) const
+bool c_rangeclip_routine::save(c_config_setting settings) const
 {
-  if ( !base::save_settings(settings) ) {
+  if ( !base::save(settings) ) {
     return false;
   }
 
-  settings.set("plo", plo_);
-  settings.set("phi", phi_);
-
+  settings.set("min", min_);
+  settings.set("max", max_);
   return true;
 }
 
-bool c_autoclip_image_processor::load_settings(c_config_setting settings)
+//
+
+c_autoclip_routine::c_class_factory c_autoclip_routine::class_factory;
+
+bool c_autoclip_routine::load(c_config_setting settings)
 {
-  if ( !base::load_settings(settings) ) {
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -318,23 +363,25 @@ bool c_autoclip_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
-
-bool c_range_normalize_image_processor::save_settings(c_config_setting settings) const
+bool c_autoclip_routine::save(c_config_setting settings) const
 {
-  if ( !base::save_settings(settings) ) {
+  if ( !base::save(settings) ) {
     return false;
   }
 
-  settings.set("outmin", outmin_);
-  settings.set("outmax", outmax_);
+  settings.set("plo", plo_);
+  settings.set("phi", phi_);
 
   return true;
 }
 
+//
 
-bool c_histogram_white_balance_image_processor::load_settings(c_config_setting settings)
+c_histogram_white_balance_routine::c_class_factory c_histogram_white_balance_routine::class_factory;
+
+bool c_histogram_white_balance_routine::load(c_config_setting settings)
 {
-  if ( !base::load_settings(settings) ) {
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -344,9 +391,9 @@ bool c_histogram_white_balance_image_processor::load_settings(c_config_setting s
   return true;
 }
 
-bool c_histogram_white_balance_image_processor::save_settings(c_config_setting settings) const
+bool c_histogram_white_balance_routine::save(c_config_setting settings) const
 {
-  if ( !base::save_settings(settings) ) {
+  if ( !base::save(settings) ) {
     return false;
   }
 
@@ -357,9 +404,13 @@ bool c_histogram_white_balance_image_processor::save_settings(c_config_setting s
 }
 
 
-bool c_range_normalize_image_processor::load_settings(c_config_setting settings)
+//
+
+c_range_normalize_routine::c_class_factory c_range_normalize_routine::class_factory;
+
+bool c_range_normalize_routine::load(c_config_setting settings)
 {
-  if ( !base::load_settings(settings) ) {
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -369,10 +420,25 @@ bool c_range_normalize_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
-
-bool c_anscombe_image_processor::load_settings(c_config_setting settings)
+bool c_range_normalize_routine::save(c_config_setting settings) const
 {
-  if ( !base::load_settings(settings) ) {
+  if ( !base::save(settings) ) {
+    return false;
+  }
+
+  settings.set("outmin", outmin_);
+  settings.set("outmax", outmax_);
+
+  return true;
+}
+
+//
+
+c_anscombe_routine::c_class_factory c_anscombe_routine::class_factory;
+
+bool c_anscombe_routine::load(c_config_setting settings)
+{
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -384,9 +450,9 @@ bool c_anscombe_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
-bool c_anscombe_image_processor::save_settings(c_config_setting settings) const
+bool c_anscombe_routine::save(c_config_setting settings) const
 {
-  if ( !base::save_settings(settings) ) {
+  if ( !base::save(settings) ) {
     return false;
   }
 
@@ -396,22 +462,26 @@ bool c_anscombe_image_processor::save_settings(c_config_setting settings) const
 }
 
 
+//
 
-bool c_smap_image_processor::save_settings(c_config_setting settings) const
+c_noisemap_routine::c_class_factory c_noisemap_routine::class_factory;
+
+bool c_noisemap_routine::load(c_config_setting settings)
 {
-  if ( !base::save_settings(settings) ) {
-    return false;
-  }
-
-  settings.set("minv", minv_);
-  settings.set("scale", scale_);
-
-  return true;
+  return base::load(settings);
 }
 
-bool c_smap_image_processor::load_settings(c_config_setting settings)
+bool c_noisemap_routine::save(c_config_setting settings) const
 {
-  if ( !base::load_settings(settings) ) {
+  return base::save(settings);
+}
+
+//
+c_smap_routine::c_class_factory c_smap_routine::class_factory;
+
+bool c_smap_routine::load(c_config_setting settings)
+{
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -421,19 +491,37 @@ bool c_smap_image_processor::load_settings(c_config_setting settings)
   return true;
 }
 
+//
 
-bool c_test_image_processor::save_settings(c_config_setting settings) const
+bool c_smap_routine::save(c_config_setting settings) const
 {
-  if ( !base::save_settings(settings) ) {
+  if ( !base::save(settings) ) {
+    return false;
+  }
+
+  settings.set("minv", minv_);
+  settings.set("scale", scale_);
+
+  return true;
+}
+
+
+//
+
+c_test_routine::c_class_factory c_test_routine::class_factory;
+
+bool c_test_routine::save(c_config_setting settings) const
+{
+  if ( !base::save(settings) ) {
     return false;
   }
 
   return true;
 }
 
-bool c_test_image_processor::load_settings(c_config_setting settings)
+bool c_test_routine::load(c_config_setting settings)
 {
-  if ( !base::load_settings(settings) ) {
+  if ( !base::load(settings) ) {
     return false;
   }
 
@@ -488,7 +576,7 @@ bool c_test_image_processor::load_settings(c_config_setting settings)
 //}
 
 
-void c_test_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+bool c_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   cv::Mat & src = image.getMatRef();
   cv::Mat tmp;
@@ -542,5 +630,7 @@ void c_test_image_processor::process(cv::InputOutputArray image, cv::InputOutput
   CF_DEBUG("scale_/ (1 << level_): %g", scale_ / (1 << level_));
 
   cv::scaleAdd(tmp, scale_ / (1 << level_), src, src);
+
+  return true;
 }
 

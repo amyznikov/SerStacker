@@ -10,10 +10,10 @@
 #include <core/readdir.h>
 #include <core/io/save_image.h>
 #include <core/io/rgbamix.h>
-#include <core/improc/c_image_processor.h>
 #include <tbb/tbb.h>
 #include <core/get_time.h>
 #include <core/debug.h>
+#include "../../../core/improc/c_image_processor.h"
 
 static bool convertTofp32(const cv::Mat & src, cv::Mat & dst)
 {
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
   bool overwrite_confirmed = false;
   double min, max;
 
-  c_image_processor_chain chain;
+  c_image_processor processor("processor");
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      chain.emplace_back(c_unsharp_mask_image_processor::create(
+      processor.emplace_back(c_unsharp_mask_routine::create(
               sigma, amount));
 
     }
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      chain.emplace_back(c_histogram_white_balance_image_processor::create(
+      processor.emplace_back(c_histogram_white_balance_routine::create(
               lclip, hclip));
 
     }
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      chain.emplace_back(c_rangeclip_image_processor::create(
+      processor.emplace_back(c_rangeclip_routine::create(
               min, max));
 
     }
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      chain.emplace_back(c_range_normalize_image_processor::create(
+      processor.emplace_back(c_range_normalize_routine::create(
               min, max));
 
     }
@@ -252,9 +252,14 @@ int main(int argc, char *argv[])
   switch ( image.channels() ) {
   case 1 :
     break;
-    //  case 2 :
-    //   Not clear how to interpret. Consider to add command line parameter.
-    //    break;
+  case 2 : {
+    cv::Mat channels[2];
+    cv::split(image, channels);
+    image = channels[0];
+    cv::compare(channels[1], 0, mask, cv::CMP_GT);
+    CF_DEBUG("HAVE MASK");
+    break;
+  }
   case 3 :
     break;
   case 4 : // Assuming BGRA
@@ -273,7 +278,11 @@ int main(int argc, char *argv[])
   convertTofp32(image,
       image);
 
-  chain.process(image, mask);
+  cv::minMaxLoc(image, &min, &max);
+  CF_DEBUG("Output range: min=%f max=%f", min, max);
+
+  processor.process(image, mask);
+
   cv::minMaxLoc(image, &min, &max);
   CF_DEBUG("Output range: min=%f max=%f", min, max);
 

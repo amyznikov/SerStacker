@@ -100,11 +100,10 @@ struct c_roi_selection_options {
 struct c_master_frame_options {
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
-  bool use_ffts_from_master_path = false;
+  int max_input_frames_to_generate_master_frame = 200;
   bool generate_master_frame = true;
   bool compensate_master_flow = true;
   bool debug_dump_master_flow = false;
-  int max_input_frames_to_generate_master_frame = 200;
 };
 
 struct c_frame_accumulation_options {

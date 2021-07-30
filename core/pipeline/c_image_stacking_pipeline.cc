@@ -13,7 +13,7 @@
 #include <core/proc/autoclip.h>
 #include <core/proc/normalize.h>
 #include <core/proc/reduce_channels.h>
-#include <core/proc/fft_transfer_spectrum_profile.h>
+#include <core/proc/fft.h>
 #include <core/proc/smap.h>
 #include <core/io/save_image.h>
 #include <core/io/rgbamix.h>
@@ -1147,34 +1147,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
 
-  bool transfer_fft_spectrum_power = false;
-  if ( transfer_fft_spectrum_power ) {
-
-    const cv::Mat RF = reference_frame_;
-
-    if ( RF.size() == current_frame_.size() ) {
-
-      cv::Mat SF;
-
-      fft_transfer_spectrum_profile(RF,
-          current_frame_,
-          SF);
-
-      clip_range(SF, 0, 1);
-
-      std::string output_name =
-          output_file_name;
-
-      set_file_suffix(output_name,
-          "-FFTS.tiff");
-
-      CF_DEBUG("Saving '%s'", output_name.c_str());
-      if ( !write_image(output_name, output_options, SF, current_mask_) ) {
-        CF_ERROR("write_image('%s') fails", output_name.c_str());
-      }
-    }
-  }
-
   normalize_minmax(current_frame_, current_frame_,
       0.01, 0.99,
       current_mask_,
@@ -1267,34 +1239,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
 
 
 
-  if ( master_frame_options.use_ffts_from_master_path ) {
-
-    if ( master_frame_options.master_source_path.empty() ) {
-      CF_ERROR("Master path is not specified for use_ffts_from_master_path=true");
-      return false;
-    }
-
-    if ( is_absolute_path(master_frame_options.master_source_path) ) {
-
-      master_file_name_ = ssprintf("%s/%s-32F-FFTS.tiff",
-          master_frame_options.master_source_path.c_str(),
-          options->name().c_str());
-
-    }
-    else if ( input_sequence->sources().size() > 0 ) {
-
-      master_file_name_ = ssprintf("%s/%s/%s-32F-FFTS.tiff",
-          get_parent_directory(input_sequence->source(0)->filename()).c_str(),
-          master_frame_options.master_source_path.c_str(),
-          options->name().c_str());
-
-    }
-    else {
-      CF_ERROR("Can not generate master_file_name_ from given input");
-      return false;
-    }
-  }
-  else if ( (master_file_name_ = master_frame_options.master_source_path).empty() ) {
+  if ( (master_file_name_ = master_frame_options.master_source_path).empty() ) {
     master_file_name_ = options->input_sequence()->source(master_source_index_ = 0)->filename();
   }
   else {
@@ -1324,10 +1269,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
     return false;
   }
 
-  if ( master_frame_options.use_ffts_from_master_path ) {
-    master_frame_index_ = 0;
-  }
-  else if ( (master_frame_index_ = master_frame_options.master_frame_index) < 0 ) {
+  if ( (master_frame_index_ = master_frame_options.master_frame_index) < 0 ) {
     master_frame_index_ = 0;
   }
   else if ( master_source_index_ >= 0 ) {

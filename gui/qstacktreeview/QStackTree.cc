@@ -1130,10 +1130,8 @@ void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & opt
     const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
     const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
     stack->master_frame_options() = options;
-    if ( !options.use_ffts_from_master_path ) {
-      stack->master_frame_options().master_source_path = backup_master_source_path;
-      stack->master_frame_options().master_frame_index = backup_master_frame_index;
-    }
+    stack->master_frame_options().master_source_path = backup_master_source_path;
+    stack->master_frame_options().master_frame_index = backup_master_frame_index;
  }
 }
 
@@ -1276,10 +1274,8 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
       const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
       const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
       stack->master_frame_options() = fromStack->master_frame_options();
-      if ( !stack->master_frame_options().use_ffts_from_master_path ) {
-        stack->master_frame_options().master_source_path = backup_master_source_path;
-        stack->master_frame_options().master_frame_index = backup_master_frame_index;
-      }
+      stack->master_frame_options().master_source_path = backup_master_source_path;
+      stack->master_frame_options().master_frame_index = backup_master_frame_index;
 
     }
 

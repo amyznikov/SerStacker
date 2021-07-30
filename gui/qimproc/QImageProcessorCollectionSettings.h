@@ -1,12 +1,12 @@
 /*
- * QImageProcessorChainSettings.h
+ * QImageProcessorCollectionSettings.h
  *
  *  Created on: Feb 20, 2021
  *      Author: amyznikov
  */
 
-#ifndef __QImageProcessorChainSettings_h__
-#define __QImageProcessorChainSettings_h__
+#ifndef __QImageProcessorCollectionSettings_h__
+#define __QImageProcessorCollectionSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/addctrl.h>
@@ -15,45 +15,45 @@
 #include <core/debug.h>
 
 
-class QImageProcessorChainSettings
+class QImageProcessorCollectionSettings
     : public QSettingsWidget
 {
   Q_OBJECT;
 public:
-  typedef QImageProcessorChainSettings ThisClass;
+  typedef QImageProcessorCollectionSettings ThisClass;
   typedef QSettingsWidget Base;
 
-  QImageProcessorChainSettings(QWidget * parent = Q_NULLPTR);
+  QImageProcessorCollectionSettings(QWidget * parent = Q_NULLPTR);
 
-  void set_available_processors(const c_image_processor_chains::ptr & processors);
-  const c_image_processor_chains::ptr available_processors() const;
+  void set_available_processors(const c_image_processor_collection::ptr & processors);
+  const c_image_processor_collection::ptr available_processors() const;
 
-  void set_current_processor(const c_image_processor_chain::ptr & processor);
-  const c_image_processor_chain::ptr current_processor() const;
+  void set_current_processor(const c_image_processor::ptr & processor);
+  const c_image_processor::ptr current_processor() const;
 
 protected:
   void onupdatecontrols() override;
-  QSettingsWidget * createProcessorSettingWidged(const c_image_processor::ptr & proc) const;
+  QSettingsWidget * createProcessorSettingWidged(const c_image_processor_routine::ptr & proc) const;
 
 protected:
-  c_image_processor_chains::ptr available_processors_;
+  c_image_processor_collection::ptr available_processors_;
   //QComboBox * processor_selector_ctl = Q_NULLPTR;
 
-  c_image_processor_chain::ptr current_processor_;
+  c_image_processor::ptr current_processor_;
   QCheckBox * enabled_ctl = Q_NULLPTR;
 };
 
 
 template<class ImageProcessorType>
-class QImageProcessorSettings
+class QImageProcessorRoutineSettings
   : public QSettingsWidget
 {
 public:
-  typedef QImageProcessorSettings ThisClass;
+  typedef QImageProcessorRoutineSettings ThisClass;
   typedef QSettingsWidget Base;
   typedef std::shared_ptr<ImageProcessorType> ImageProcessor;
 
-  QImageProcessorSettings(const ImageProcessor & proc, QWidget * parent = Q_NULLPTR) :
+  QImageProcessorRoutineSettings(const ImageProcessor & proc, QWidget * parent = Q_NULLPTR) :
       Base("", parent)
   {
     enabled_ctl = add_checkbox(form, "Enabled",
@@ -136,15 +136,15 @@ protected:
 };
 
 
-class QUnsharpmaskSettigsWidget
-  : public QImageProcessorSettings<c_unsharp_mask_image_processor>
+class QUnsharpMaskSettings
+  : public QImageProcessorRoutineSettings<c_unsharp_mask_routine>
 {
   Q_OBJECT;
 public:
-  typedef QUnsharpmaskSettigsWidget ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QUnsharpMaskSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QUnsharpmaskSettigsWidget(const c_unsharp_mask_image_processor::ptr & processor,
+  QUnsharpMaskSettings(const c_unsharp_mask_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -156,13 +156,13 @@ protected:
 };
 
 
-class QAnscombeSettigsWidget
-  : public QImageProcessorSettings<c_anscombe_image_processor>
+class QAnscombeSettings
+  : public QImageProcessorRoutineSettings<c_anscombe_routine>
 {
   Q_OBJECT;
 public:
-  typedef QAnscombeSettigsWidget ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QAnscombeSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
   static QString toString(enum anscombe_method v) {
     return QString::fromStdString(toStdString(v));
@@ -182,7 +182,7 @@ public:
       {}
   };
 
-  QAnscombeSettigsWidget(const c_anscombe_image_processor::ptr & processor,
+  QAnscombeSettings(const c_anscombe_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -193,15 +193,15 @@ protected:
 };
 
 
-class QNoiseMapSettigsWidget
-  : public QImageProcessorSettings<c_noisemap_image_processor>
+class QNoiseMapSettings
+  : public QImageProcessorRoutineSettings<c_noisemap_routine>
 {
   Q_OBJECT;
 public:
-  typedef QNoiseMapSettigsWidget ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QNoiseMapSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QNoiseMapSettigsWidget(const c_noisemap_image_processor::ptr & processor,
+  QNoiseMapSettings(const c_noisemap_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -213,15 +213,15 @@ protected:
 
 
 
-class QAlignColorChannelsSettigsWidget
-    : public QImageProcessorSettings<c_align_color_channels_image_processor>
+class QAlignColorChannelsSettings
+    : public QImageProcessorRoutineSettings<c_align_color_channels_routine>
 {
   Q_OBJECT;
 public:
-  typedef QAlignColorChannelsSettigsWidget ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QAlignColorChannelsSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QAlignColorChannelsSettigsWidget(const c_align_color_channels_image_processor::ptr & processor,
+  QAlignColorChannelsSettings(const c_align_color_channels_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -231,15 +231,15 @@ protected:
   QNumberEditBox * reference_channel_ctl = Q_NULLPTR;
 };
 
-class QMtfSettigsWidget
-  : public QImageProcessorSettings<c_mtf_image_processor>
+class QMtfSettings
+  : public QImageProcessorRoutineSettings<c_mtf_routine>
 {
   Q_OBJECT;
 public:
-  typedef QImageProcessorChainSettings ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QImageProcessorCollectionSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QMtfSettigsWidget(const c_mtf_image_processor::ptr & processor,
+  QMtfSettings(const c_mtf_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -249,15 +249,15 @@ protected:
   QMtfControl * mtf_ctl = Q_NULLPTR;
 };
 
-class QAutoClipSettigsWidget
-  : public QImageProcessorSettings<c_autoclip_image_processor>
+class QAutoClipSettings
+  : public QImageProcessorRoutineSettings<c_autoclip_routine>
 {
   Q_OBJECT;
 public:
-  typedef QImageProcessorChainSettings ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QImageProcessorCollectionSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QAutoClipSettigsWidget(const c_autoclip_image_processor::ptr & processor,
+  QAutoClipSettings(const c_autoclip_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -269,15 +269,15 @@ protected:
 };
 
 
-class QSmapSettigsWidget
-  : public QImageProcessorSettings<c_smap_image_processor>
+class QSmapSettings
+  : public QImageProcessorRoutineSettings<c_smap_routine>
 {
   Q_OBJECT;
 public:
-  typedef QSmapSettigsWidget ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QSmapSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QSmapSettigsWidget(const c_smap_image_processor::ptr & processor,
+  QSmapSettings(const c_smap_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -289,15 +289,15 @@ protected:
 };
 
 
-class QTestImageProcessorSettigsWidget
-  : public QImageProcessorSettings<c_test_image_processor>
+class QTestSettings
+  : public QImageProcessorRoutineSettings<c_test_routine>
 {
   Q_OBJECT;
 public:
-  typedef QTestImageProcessorSettigsWidget ThisClass;
-  typedef QImageProcessorSettings Base;
+  typedef QTestSettings ThisClass;
+  typedef QImageProcessorRoutineSettings Base;
 
-  QTestImageProcessorSettigsWidget(const c_test_image_processor::ptr & processor,
+  QTestSettings(const c_test_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
@@ -310,4 +310,4 @@ protected:
 
 
 
-#endif /* __QImageProcessorChainSettings_h__ */
+#endif /* __QImageProcessorCollectionSettings_h__ */

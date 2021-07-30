@@ -19,9 +19,9 @@
 #include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qmtfcontrols/QMtfControlDialogBox.h>
 #include <gui/qstackingthread/QStackingProgressView.h>
-#include <gui/qimproc/QImageProcessorChainSettings.h>
 #include <gui/qstackingoptions/QStackOptions.h>
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
+#include "../../../gui/qimproc/QImageProcessorCollectionSettings.h"
 #include "c_display_function.h"
 
 //#include <gui/widgets/QMTFImageLevelsWidget.h>
@@ -106,7 +106,7 @@ private:
   QStackTree * stackTreeView = Q_NULLPTR;
 
   QCustomDockWidget * imageProcessorSettingsDock = Q_NULLPTR;
-  QImageProcessorChainSettings * imageProcessorSettings = Q_NULLPTR;
+  QImageProcessorCollectionSettings * imageProcessorSettings = Q_NULLPTR;
   QImageEditor * currentImageEditor = Q_NULLPTR;
 
   QMenu * fileMenu = Q_NULLPTR;

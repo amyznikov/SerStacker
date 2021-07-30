@@ -132,7 +132,7 @@ MainWindow::MainWindow()
       Qt::LeftDockWidgetArea,
       "imageProcessorSettingsDock",
       "Image Processing",
-      createScrollableWrap(imageProcessorSettings = new QImageProcessorChainSettings(this)),
+      createScrollableWrap(imageProcessorSettings = new QImageProcessorCollectionSettings(this)),
       viewMenu);
 
   tabifyDockWidget(fileSystemTreeDock, stackTreeDock);
@@ -275,7 +275,7 @@ MainWindow::MainWindow()
 //  connect(imageProcessorSettings, &QImageProcessorChainSettings::parameterChanged,
 //      stackProgressView, &QStackingProgressView::updateCurrentImage);
 
-  connect(imageProcessorSettings, &QImageProcessorChainSettings::parameterChanged,
+  connect(imageProcessorSettings, &QImageProcessorCollectionSettings::parameterChanged,
       [this]() {
         if ( currentImageEditor ) {
           currentImageEditor->updateImage();

@@ -137,7 +137,6 @@ void QMasterFrameOptions::onupdatecontrols()
       }
     }
 
-    masterSource_ctl->addItem("FFTS from given path...");
     masterSource_ctl->addItem("Browse...");
 
     // Select Current Index In Master Source Combo
@@ -160,7 +159,7 @@ void QMasterFrameOptions::onupdatecontrols()
 
 void QMasterFrameOptions::updateMasterFrameIndex()
 {
-  if ( options_->master_source_path.empty() || options_->use_ffts_from_master_path ) {
+  if ( options_->master_source_path.empty() ) {
     masterFrameIndex_ctl->setEnabled(false);
   }
   else {
@@ -205,22 +204,8 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
         masterSource_ctl->setCurrentIndex(previousComboboxItemIndex);
       }
       else {
-        options_->use_ffts_from_master_path = false;
         options_->master_source_path = selectedFileName.toStdString();
-        masterSource_ctl->insertItem(masterSource_ctl->count()-2, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
-        masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-3);
-      }
-    }
-    else if ( index == cn - 2 ) { //  "FFTS..."
-
-      QString selectedFileName = browseForMasterFFTSPath();
-      if ( selectedFileName.isEmpty() ) {
-        masterSource_ctl->setCurrentIndex(previousComboboxItemIndex);
-      }
-      else {
-        options_->use_ffts_from_master_path = true;
-        options_->master_source_path = selectedFileName.toStdString();
-        masterSource_ctl->insertItem(masterSource_ctl->count()-2, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
+        masterSource_ctl->insertItem(masterSource_ctl->count()-1, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
         masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-3);
       }
     }
@@ -230,7 +215,6 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
         masterSource_ctl->setCurrentIndex(previousComboboxItemIndex);
       }
       else {
-        options_->use_ffts_from_master_path = false;
         options_->master_source_path = selectedFileName.toStdString();
       }
     }

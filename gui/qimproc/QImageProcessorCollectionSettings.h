@@ -33,7 +33,7 @@ public:
 
 protected:
   void onupdatecontrols() override;
-  QSettingsWidget * createProcessorSettingWidged(const c_image_processor_routine::ptr & proc) const;
+  QSettingsWidget * createRoutineSettingWidged(const c_image_processor_routine::ptr & proc, QWidget * parent = Q_NULLPTR) const;
 
 protected:
   c_image_processor_collection::ptr available_processors_;
@@ -44,47 +44,95 @@ protected:
 };
 
 
-template<class ImageProcessorType>
-class QImageProcessorRoutineSettings
+class QImageProcessorRoutineSettingsBase
   : public QSettingsWidget
 {
 public:
-  typedef QImageProcessorRoutineSettings ThisClass;
+  typedef QImageProcessorRoutineSettingsBase ThisClass;
   typedef QSettingsWidget Base;
-  typedef std::shared_ptr<ImageProcessorType> ImageProcessor;
+  typedef std::function<ThisClass*(const c_image_processor_routine::ptr & routine, QWidget * parent)> SettingsWidgetFactory;
 
-  QImageProcessorRoutineSettings(const ImageProcessor & proc, QWidget * parent = Q_NULLPTR) :
-      Base("", parent)
+  struct ClassFactory {
+    const c_image_processor_routine::class_factory * const routine_factory;
+    const SettingsWidgetFactory create_widget_instance;
+    ClassFactory(const c_image_processor_routine::class_factory * _routine_factory,
+        const SettingsWidgetFactory & _create_widget_instance) :
+          routine_factory(_routine_factory),
+          create_widget_instance(_create_widget_instance)
+    {}
+  };
+
+  struct ClassFactoryGuardLock
+  {
+    ClassFactoryGuardLock() {
+      mtx().lock();
+    }
+
+    ~ClassFactoryGuardLock() {
+      mtx().unlock();
+    }
+
+    static QMutex & mtx() {
+      static QMutex mtx_;
+      return mtx_;
+    }
+  };
+
+  static void registrerClassFactory(const ClassFactory * classFactory);
+  static void registrerAllClassFactories();
+
+
+  static ThisClass * create(const c_image_processor_routine::ptr & routine, QWidget * parent = Q_NULLPTR);
+
+protected:
+  QImageProcessorRoutineSettingsBase(const ClassFactory * factory, QWidget * parent = Q_NULLPTR);
+  const ClassFactory * const class_factory_;
+};
+
+
+template<class ImageProcessorRoutine>
+class QImageProcessorRoutineSettings
+  : public QImageProcessorRoutineSettingsBase
+{
+public:
+  typedef QImageProcessorRoutineSettings ThisClass;
+  typedef QImageProcessorRoutineSettingsBase Base;
+  typedef ImageProcessorRoutine RoutineType;
+  typedef std::shared_ptr<RoutineType> RoutinePtr;
+
+
+  QImageProcessorRoutineSettings(const ClassFactory * classFactory, const RoutinePtr & routine, QWidget * parent = Q_NULLPTR) :
+      Base(classFactory, parent)
   {
     enabled_ctl = add_checkbox(form, "Enabled",
         [this]( int state) {
-          if ( processor_ && !updatingControls() ) {
+          if ( routine_ && !updatingControls() ) {
             bool enabled = state == Qt::Checked;
-            if ( enabled != processor_->enabled() ) {
+            if ( enabled != routine_->enabled() ) {
               LOCK();
-              processor_->set_enabled(enabled);
+              routine_->set_enabled(enabled);
               UNLOCK();
               emit parameterChanged();
             }
           }
         });
 
-    set_processor(proc);
+    set_routine(routine);
   }
 
-  void set_processor(const ImageProcessor & proc) {
-    processor_ = proc;
+  void set_routine(const RoutinePtr & routine) {
+    routine_ = routine;
     updateControls();
   }
-  const ImageProcessor & processor() const {
-    return processor_;
+  const RoutinePtr & routine() const {
+    return routine_;
   }
 
 
 protected:
   void onupdatecontrols() override {
-    if ( processor_ ) {
-      enabled_ctl->setChecked(processor_->enabled());
+    if ( routine_ ) {
+      enabled_ctl->setChecked(routine_->enabled());
     }
   }
 
@@ -131,181 +179,8 @@ protected:
   }
 
 protected:
-  ImageProcessor processor_;
+  RoutinePtr routine_;
   QCheckBox * enabled_ctl = Q_NULLPTR;
-};
-
-
-class QUnsharpMaskSettings
-  : public QImageProcessorRoutineSettings<c_unsharp_mask_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QUnsharpMaskSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QUnsharpMaskSettings(const c_unsharp_mask_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QNumberEditBox * sigma_ctl = Q_NULLPTR;
-  QNumberEditBox * alpha_ctl = Q_NULLPTR;
-};
-
-
-class QAnscombeSettings
-  : public QImageProcessorRoutineSettings<c_anscombe_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QAnscombeSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  static QString toString(enum anscombe_method v) {
-    return QString::fromStdString(toStdString(v));
-  }
-
-  static enum anscombe_method fromString(const QString  & s, enum anscombe_method defval ) {
-    return fromStdString(s.toStdString(), defval);
-  }
-
-  class QAnscombeMethodCombo :
-      public QEnumComboBox<anscombe_method>
-  {
-  public:
-    typedef QEnumComboBox<anscombe_method> Base;
-    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR)
-        : Base(parent, anscombe_methods)
-      {}
-  };
-
-  QAnscombeSettings(const c_anscombe_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QAnscombeMethodCombo * method_ctl = Q_NULLPTR;
-};
-
-
-class QNoiseMapSettings
-  : public QImageProcessorRoutineSettings<c_noisemap_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QNoiseMapSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QNoiseMapSettings(const c_noisemap_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-};
-
-
-
-
-class QAlignColorChannelsSettings
-    : public QImageProcessorRoutineSettings<c_align_color_channels_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QAlignColorChannelsSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QAlignColorChannelsSettings(const c_align_color_channels_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QNumberEditBox * reference_channel_ctl = Q_NULLPTR;
-};
-
-class QMtfSettings
-  : public QImageProcessorRoutineSettings<c_mtf_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QImageProcessorCollectionSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QMtfSettings(const c_mtf_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QMtfControl * mtf_ctl = Q_NULLPTR;
-};
-
-class QAutoClipSettings
-  : public QImageProcessorRoutineSettings<c_autoclip_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QImageProcessorCollectionSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QAutoClipSettings(const c_autoclip_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QNumberEditBox * lclip_ctl = Q_NULLPTR;
-  QNumberEditBox * hclip_ctl = Q_NULLPTR;
-};
-
-
-class QSmapSettings
-  : public QImageProcessorRoutineSettings<c_smap_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QSmapSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QSmapSettings(const c_smap_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QNumberEditBox * minv_ctl = Q_NULLPTR;
-  QNumberEditBox * scale_ctl = Q_NULLPTR;
-};
-
-
-class QTestSettings
-  : public QImageProcessorRoutineSettings<c_test_routine>
-{
-  Q_OBJECT;
-public:
-  typedef QTestSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
-  QTestSettings(const c_test_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  QNumberEditBox * level_ctl = Q_NULLPTR;
-  QNumberEditBox * scale_ctl = Q_NULLPTR;
 };
 
 

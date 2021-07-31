@@ -1,0 +1,44 @@
+/*
+ * c_align_color_channels_routine.h
+ *
+ *  Created on: Jul 30, 2021
+ *      Author: amyznikov
+ */
+
+#pragma once
+#ifndef __c_align_color_channels_routine_h__
+#define __c_align_color_channels_routine_h__
+
+#include "c_image_processor.h"
+#include <core/proc/align_channels.h>
+
+class c_align_color_channels_routine
+    : public c_image_processor_routine
+{
+public:
+  typedef c_align_color_channels_routine this_class;
+  typedef c_image_processor_routine base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  static struct c_class_factory : public base::class_factory {
+    c_class_factory() :
+        base::class_factory("align_color_channels", "align_color_channels", "align_color_channels",
+            factory([]() {return ptr(new this_class());})) {}
+  } class_factory;
+
+  c_align_color_channels_routine(bool enabled = true);
+
+  static ptr create(bool enabled = true);
+  bool load(c_config_setting settings) override;
+  bool save(c_config_setting settings) const override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+
+  void set_reference_channel(int v);
+  int reference_channel() const;
+
+protected:
+  c_align_color_channels algorithm_;
+  int reference_channel_ = 0;
+};
+
+#endif /* __c_align_color_channels_routine_h__ */

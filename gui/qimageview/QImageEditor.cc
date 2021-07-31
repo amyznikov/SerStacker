@@ -7,6 +7,11 @@
 
 #include "QImageEditor.h"
 #include "cv2qt.h"
+#include <core/improc/c_unsharp_mask_routine.h>
+#include <core/improc/c_anscombe_routine.h>
+#include <core/improc/c_autoclip_routine.h>
+#include <core/improc/c_noisemap_routine.h>
+#include <core/improc/c_align_color_channels_routine.h>
 #include <core/debug.h>
 
 QImageEditor::QImageEditor(QWidget * parent)

@@ -13,7 +13,12 @@
 #include <tbb/tbb.h>
 #include <core/get_time.h>
 #include <core/debug.h>
-#include "../../../core/improc/c_image_processor.h"
+#include <core/improc/c_image_processor.h>
+#include <core/improc/c_unsharp_mask_routine.h>
+#include <core/improc/c_align_color_channels_routine.h>
+#include <core/improc/c_histogram_white_balance_routine.h>
+#include <core/improc/c_rangeclip_routine.h>
+#include <core/improc/c_range_normalize_routine.h>
 
 static bool convertTofp32(const cv::Mat & src, cv::Mat & dst)
 {

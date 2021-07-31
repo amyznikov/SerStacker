@@ -6,11 +6,20 @@
  */
 
 #include "QImageProcessorCollectionSettings.h"
+#include "QUnsharpMaskSettings.h"
+#include "QSmapSettings.h"
+#include "QNoiseMapSettings.h"
+#include "QMtfSettings.h"
+#include "QAutoClipSettings.h"
+#include "QAnscombeSettings.h"
+#include "QAlignColorChannelsSettings.h"
 #include <core/debug.h>
 
 QImageProcessorCollectionSettings::QImageProcessorCollectionSettings(QWidget * parent)
   : Base("QImageProcessorChainSettings", parent)
 {
+
+  QImageProcessorRoutineSettingsBase::registrerAllClassFactories();
 
 //  processor_selector_ctl = add_combobox(form, "Image processing",
 //      [](int) {
@@ -66,7 +75,7 @@ void QImageProcessorCollectionSettings::set_current_processor(const c_image_proc
 
     for ( const c_image_processor_routine::ptr & proc : *current_processor_ ) {
 
-      QSettingsWidget * w = createProcessorSettingWidged(proc);
+      QSettingsWidget * w = createRoutineSettingWidged(proc);
       if ( w ) {
 
         add_expandable_groupbox(form, proc->display_name().c_str(), w);
@@ -127,265 +136,75 @@ void QImageProcessorCollectionSettings::onupdatecontrols()
   Base::onupdatecontrols();
 }
 
-QSettingsWidget * QImageProcessorCollectionSettings::createProcessorSettingWidged(const c_image_processor_routine::ptr & proc) const
+QSettingsWidget * QImageProcessorCollectionSettings::createRoutineSettingWidged(
+    const c_image_processor_routine::ptr & routine, QWidget * parent) const
 {
-  if ( std::dynamic_pointer_cast<c_unsharp_mask_routine>(proc) ) {
-    return new QUnsharpMaskSettings(std::dynamic_pointer_cast<c_unsharp_mask_routine>(proc));
+  QSettingsWidget * w = QImageProcessorRoutineSettingsBase::create(routine, parent);
+  if ( !w ) {  // create empty widget
+    w = new QSettingsWidget("", parent);
   }
-
-  if ( std::dynamic_pointer_cast<c_mtf_routine>(proc) ) {
-    return new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(proc));
-  }
-
-  if ( std::dynamic_pointer_cast<c_autoclip_routine>(proc) ) {
-    return new QAutoClipSettings(std::dynamic_pointer_cast<c_autoclip_routine>(proc));
-  }
-
-  if ( std::dynamic_pointer_cast<c_smap_routine>(proc) ) {
-    return new QSmapSettings(std::dynamic_pointer_cast<c_smap_routine>(proc));
-  }
-
-  if ( std::dynamic_pointer_cast<c_test_routine>(proc) ) {
-    return new QTestSettings(std::dynamic_pointer_cast<c_test_routine>(proc));
-  }
-
-  if ( std::dynamic_pointer_cast<c_align_color_channels_routine>(proc) ) {
-    return new QAlignColorChannelsSettings(std::dynamic_pointer_cast<c_align_color_channels_routine>(proc));
-  }
-
-  if ( std::dynamic_pointer_cast<c_anscombe_routine>(proc) ) {
-    return new QAnscombeSettings (std::dynamic_pointer_cast<c_anscombe_routine>(proc));
-  }
-
-  if ( std::dynamic_pointer_cast<c_noisemap_routine>(proc) ) {
-    return new QNoiseMapSettings(std::dynamic_pointer_cast<c_noisemap_routine>(proc));
-  }
-
-  QSettingsWidget * w = // empty widget
-      new QSettingsWidget(proc->class_name().c_str());
   return w;
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QUnsharpMaskSettings::QUnsharpMaskSettings(const c_unsharp_mask_routine::ptr & processor, QWidget * parent) :
-    Base(processor, parent)
-{
-  sigma_ctl = add_numeric_box("sigma", &processor_,
-      &c_unsharp_mask_routine::sigma,
-      &c_unsharp_mask_routine::set_sigma);
-
-  alpha_ctl = add_numeric_box("alpha", &processor_,
-      &c_unsharp_mask_routine::alpha,
-      &c_unsharp_mask_routine::set_alpha);
-
-  updateControls();
-}
-
-void QUnsharpMaskSettings::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    sigma_ctl->setValue(processor_->sigma());
-    alpha_ctl->setValue(processor_->alpha());
-
-    setEnabled(true);
-  }
-  Base::onupdatecontrols();
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-QAnscombeSettings::QAnscombeSettings(const c_anscombe_routine::ptr & processor, QWidget * parent)
-  : Base(processor, parent)
+static std::vector<const QImageProcessorRoutineSettingsBase::ClassFactory*> QImageProcessorRoutineSettingsClassList_;
+
+void QImageProcessorRoutineSettingsBase::registrerClassFactory(const ClassFactory * classFactory)
 {
+  ClassFactoryGuardLock lock;
 
-  add_combobox("Method:",
-      method_ctl = new QAnscombeMethodCombo(this),
-      &processor_,
-      &c_anscombe_routine::method,
-      &c_anscombe_routine::set_method);
+  std::vector<const QImageProcessorRoutineSettingsBase::ClassFactory*>::iterator ii =
+      std::find(QImageProcessorRoutineSettingsClassList_.begin(),
+          QImageProcessorRoutineSettingsClassList_.end(),
+          classFactory);
 
-  updateControls();
+  if ( ii == QImageProcessorRoutineSettingsClassList_.end() ) {
+    QImageProcessorRoutineSettingsClassList_.emplace_back(classFactory);
+  }
+
 }
 
-void QAnscombeSettings::onupdatecontrols()
+void QImageProcessorRoutineSettingsBase::registrerAllClassFactories()
 {
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    method_ctl->setCurrentItem(processor_->method());
-    setEnabled(true);
-  }
+  static bool registered = false;
+  if ( !registered ) {
+    registered = true;
 
-  Base::onupdatecontrols();
+    registrerClassFactory(&QUnsharpMaskSettings::classFactory);
+    registrerClassFactory(&QSmapSettings::classFactory);
+    registrerClassFactory(&QNoiseMapSettings::classFactory);
+    registrerClassFactory(&QMtfSettings::classFactory);
+    registrerClassFactory(&QAutoClipSettings::classFactory);
+    registrerClassFactory(&QAnscombeSettings::classFactory);
+    registrerClassFactory(&QAlignColorChannelsSettings::classFactory);
+
+  }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QNoiseMapSettings::QNoiseMapSettings(const c_noisemap_routine::ptr & processor, QWidget * parent)
-  : Base(processor, parent)
+QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const ClassFactory * factory, QWidget * parent)
+  : Base("", parent), class_factory_(factory)
 {
-  updateControls();
+
 }
 
-void QNoiseMapSettings::onupdatecontrols()
+QImageProcessorRoutineSettingsBase * QImageProcessorRoutineSettingsBase::create(const c_image_processor_routine::ptr & routine, QWidget * parent)
 {
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    setEnabled(true);
+  if ( !routine ) {
+    return nullptr;
   }
 
-  Base::onupdatecontrols();
-}
+  ClassFactoryGuardLock lock;
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QAlignColorChannelsSettings::QAlignColorChannelsSettings(const c_align_color_channels_routine::ptr & processor, QWidget * parent) :
-    Base(processor, parent)
-
-{
-  reference_channel_ctl = add_numeric_box("reference channel", &processor_,
-      &c_align_color_channels_routine::reference_channel,
-      &c_align_color_channels_routine::set_reference_channel);
-
-  updateControls();
-}
-
-void QAlignColorChannelsSettings::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    reference_channel_ctl->setValue(processor_->reference_channel());
-
-    setEnabled(true);
-  }
-  Base::onupdatecontrols();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & processor, QWidget * parent)
-  : Base(processor, parent)
-{
-  mtf_ctl = new QMtfControl(this);
-  form->addWidget(mtf_ctl);
-
-  updateControls();
-
-  connect(mtf_ctl, &QMtfControl::mtfChanged,
-      this, &ThisClass::parameterChanged);
-}
-
-void QMtfSettings::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-    mtf_ctl->setMtf(nullptr);
-  }
-  else {
-    mtf_ctl->setMtf(processor_->mtf());
-    setEnabled(true);
+  for ( const ClassFactory * f : QImageProcessorRoutineSettingsClassList_ ) {
+    if ( f->routine_factory == routine->classfactory() ) {
+      return f->create_widget_instance(routine, parent);
+    }
   }
 
-  Base::onupdatecontrols();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-QAutoClipSettings::QAutoClipSettings(const c_autoclip_routine::ptr & processor, QWidget * parent)
-  : Base(processor, parent)
-{
-  lclip_ctl = add_numeric_box("lclip [%]:", &processor_,
-      &c_autoclip_routine::lclip,
-      &c_autoclip_routine::set_lclip);
-
-  hclip_ctl = add_numeric_box("hclip [%]:", &processor_,
-      &c_autoclip_routine::hclip,
-      &c_autoclip_routine::set_hclip);
-
-  updateControls();
-}
-
-void QAutoClipSettings::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    lclip_ctl->setValue(processor_->lclip());
-    hclip_ctl->setValue(processor_->hclip());
-    setEnabled(true);
-  }
-  Base::onupdatecontrols();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QSmapSettings::QSmapSettings(const c_smap_routine::ptr & processor, QWidget * parent)
-  : Base(processor, parent)
-{
-  minv_ctl = add_numeric_box("Minv:", &processor_,
-      &c_smap_routine::minv,
-      &c_smap_routine::set_minv);
-
-  scale_ctl = add_numeric_box("Scale:", &processor_,
-      &c_smap_routine::scale,
-      &c_smap_routine::set_scale);
-
-  updateControls();
-}
-
-void QSmapSettings::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    minv_ctl->setValue(processor_->minv());
-    scale_ctl->setValue(processor_->scale());
-    setEnabled(true);
-  }
-  Base::onupdatecontrols();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QTestSettings::QTestSettings(const c_test_routine::ptr & processor, QWidget * parent)
-  : Base(processor, parent)
-{
-
-  level_ctl = add_numeric_box("Level:", &processor_,
-      &c_test_routine::level,
-      &c_test_routine::set_level);
-
-  scale_ctl = add_numeric_box("Scale:", &processor_,
-      &c_test_routine::scale,
-      &c_test_routine::set_scale);
-
-  updateControls();
-}
-
-void QTestSettings::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    level_ctl->setValue(processor_->level());
-    scale_ctl->setValue(processor_->scale());
-    setEnabled(true);
-  }
-  Base::onupdatecontrols();
+  return nullptr;
 }
 

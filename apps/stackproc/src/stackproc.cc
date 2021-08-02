@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
     }
 
-    else if ( strcmp(argv[i], "-hwb") == 0 ) {
+    else if ( strcmp(argv[i], "-wbh") == 0 ) {
 
       if ( ++i >= argc ) {
         fprintf(stderr, "Command line error: No lclip hclip range specified\n");

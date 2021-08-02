@@ -323,6 +323,7 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     eccflow_.set_update_multiplier(base_options_.eccflow.update_multiplier);
     eccflow_.set_max_iterations(base_options_.eccflow.max_iterations);
     eccflow_.set_support_scale(base_options_.eccflow.support_scale);
+    eccflow_.set_normalization_scale(base_options_.eccflow.normalization_scale);
 
     cv::Mat1f reference_image;
     cv::Mat1b reference_mask;

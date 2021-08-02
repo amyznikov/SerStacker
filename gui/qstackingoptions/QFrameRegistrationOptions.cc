@@ -255,6 +255,21 @@ QEccflowSettings::QEccflowSettings(QWidget * parent)
         }
       });
 
+
+
+  normalization_scale_ctl = add_numeric_box(form, "normalization_scale",
+      [this]() {
+        if ( options_ && !updatingControls() ) {
+          double value;
+          if ( fromString(normalization_scale_ctl->text(), &value) && value != options_->normalization_scale ) {
+            LOCK();
+            options_->normalization_scale = value;
+            UNLOCK();
+            emit parameterChanged();
+          }
+        }
+      });
+
 }
 
 void QEccflowSettings::set_registration_options(c_eccflow_options * options)
@@ -277,6 +292,7 @@ void QEccflowSettings::onupdatecontrols()
     support_scale_ctl->setValue(options_->support_scale);
     update_multiplier_ctl->setValue(options_->update_multiplier);
     max_iterations_ctl->setValue(options_->max_iterations);
+    normalization_scale_ctl->setValue(options_->normalization_scale);
 
     setEnabled(true);
   }

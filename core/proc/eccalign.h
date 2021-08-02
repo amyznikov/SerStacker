@@ -359,6 +359,9 @@ public:
   void set_update_multiplier(double v);
   double update_multiplier() const;
 
+  void set_normalization_scale(int v);
+  int normalization_scale() const;
+
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray());
 
@@ -410,6 +413,7 @@ protected:
   double update_multiplier_ = 1.5;
   int max_iterations_ = 1;
   int support_scale_ = 5;
+  int normalization_scale_ = 0;
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f cuv;

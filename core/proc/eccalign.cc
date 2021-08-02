@@ -2580,6 +2580,16 @@ double c_ecch_flow::update_multiplier() const
   return update_multiplier_;
 }
 
+void c_ecch_flow::set_normalization_scale(int v)
+{
+  normalization_scale_ = v;
+}
+
+int c_ecch_flow::normalization_scale() const
+{
+  return normalization_scale_;
+}
+
 void c_ecch_flow::flow2remap(const cv::Mat2f & uv, cv::Mat2f & rmap)
 {
   rmap.create(uv.size());
@@ -2688,22 +2698,28 @@ bool c_ecch_flow::convert_input_images(cv::InputArray src, cv::InputArray src_ma
 
 void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst) const
 {
-  cv::Mat src, mean, stdev;
-  double noise;
+  if ( normalization_scale_ < 1 ) {
+    _src.copyTo(dst);
+  }
+  else {
 
-  src = _src.getMat();
-  noise = std::max(1e-6, estimate_noise(src)[0]);
-  pdownscale(src, mean, support_scale_, cv::BORDER_REPLICATE);
-  pdownscale(src.mul(src), stdev, support_scale_, cv::BORDER_REPLICATE);
-  cv::absdiff(stdev, mean.mul(mean), stdev);
-  cv::add(stdev, noise * noise, stdev);
-  cv::sqrt(stdev, stdev);
+    cv::Mat src, mean, stdev;
+    double noise;
 
-  pupscale(mean, src.size());
-  pupscale(stdev, src.size());
+    src = _src.getMat();
+    noise = std::max(1e-6, estimate_noise(src)[0]);
+    pdownscale(src, mean, normalization_scale_, cv::BORDER_REPLICATE);
+    pdownscale(src.mul(src), stdev, normalization_scale_, cv::BORDER_REPLICATE);
+    cv::absdiff(stdev, mean.mul(mean), stdev);
+    cv::add(stdev, noise * noise, stdev);
+    cv::sqrt(stdev, stdev);
 
-  cv::subtract(src, mean, dst);
-  cv::divide(dst, stdev, dst);
+    pupscale(mean, src.size());
+    pupscale(stdev, src.size());
+
+    cv::subtract(src, mean, dst);
+    cv::divide(dst, stdev, dst);
+  }
 }
 
 
@@ -2919,7 +2935,6 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
   const int min_image_size = 1 << (support_scale_ + 1);
   //const int min_image_size = 32;
   const double Noise = pow(0.1 * estimate_noise(I, cv::noArray(), cv::noArray())[0], 4);
-  CF_DEBUG("DD normalizaion level: %g", Noise);
 
   while ( 42 ) {
 

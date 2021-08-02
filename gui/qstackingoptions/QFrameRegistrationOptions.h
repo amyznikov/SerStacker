@@ -118,6 +118,7 @@ protected:
   QNumberEditBox * support_scale_ctl = Q_NULLPTR;
   QNumberEditBox * update_multiplier_ctl = Q_NULLPTR;
   QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
+  QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
 };
 
 class QFrameRegistrationBaseSettings

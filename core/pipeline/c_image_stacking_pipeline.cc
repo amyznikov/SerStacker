@@ -790,7 +790,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
 
-  if ( output_options.dump_reference_frames ) {
+  if ( output_options.dump_reference_frames_for_debug ) {
     write_image(ssprintf("%s/%s-reference-frame.tiff", output_directory.c_str(),
         options->name().c_str()), output_options, reference_frame_, reference_mask_);
   }
@@ -903,7 +903,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       set_status_msg("ERROR: setup_referece_frame() fails");
     }
 
-    if ( !fOk || output_options.dump_reference_frames ) {
+    if ( !fOk || output_options.dump_reference_frames_for_debug ) {
 
       if ( !frame_registration_->reference_feature_image().empty() ) {
         save_image(frame_registration_->reference_feature_image(),
@@ -912,12 +912,12 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       }
       if ( !frame_registration_->ecc().reference_image().empty() ) {
         save_image(frame_registration_->ecc().reference_image(),
-            ssprintf("%s/ecc-reference.tiff", output_directory.c_str(),
+            ssprintf("%s/%s-ecc-reference.tiff", output_directory.c_str(),
                 options->name().c_str()));
       }
       if ( !frame_registration_->eccflow().reference_image().empty() ) {
         save_image(frame_registration_->eccflow().reference_image(),
-            ssprintf("%s/eccflow-reference.tiff", output_directory.c_str(),
+            ssprintf("%s/%s-eccflow-reference.tiff", output_directory.c_str(),
                 options->name().c_str()));
       }
     }

@@ -85,6 +85,18 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         }
       });
 
+  dump_reference_frames_for_debug_ctl = add_checkbox(form, "Dump reference frames for debug",
+      [this](int state) {
+        if ( options_ && !updatingControls() ) {
+          const bool status = state == Qt::Checked;
+          if ( status != options_->dump_reference_frames_for_debug ) {
+            options_->dump_reference_frames_for_debug = status;
+            emit parameterChanged();
+          }
+        }
+      });
+
+
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -126,6 +138,7 @@ void QStackOutputOptions::onupdatecontrols()
     write_aligned_video_ctl->setChecked(options_->write_aligned_video);
     output_aligned_video_filename_ctl->setCurrentPath(options_->output_aligned_video_filename.c_str());
     output_aligned_video_filename_ctl->setEnabled(options_->write_aligned_video);
+    dump_reference_frames_for_debug_ctl->setChecked(options_->dump_reference_frames_for_debug);
     setEnabled(true);
   }
 

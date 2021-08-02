@@ -127,7 +127,7 @@ struct c_image_stacking_output_options {
 
   std::string output_aligned_video_filename;
   bool write_aligned_video = false;
-  bool dump_reference_frames = true;
+  bool dump_reference_frames_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 };
 

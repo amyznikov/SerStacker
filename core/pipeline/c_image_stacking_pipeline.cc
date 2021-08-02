@@ -1381,12 +1381,6 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       break;
     }
 
-    if ( !(fOk = accumulate_fft_spectrum_power(current_frame_, fftacc, fftcnt)) ) {
-      CF_ERROR("max_fft_spectrum_power() fails");
-      set_status_msg("ERROR: max_fft_spectrum_power() fails");
-      break;
-    }
-
     if ( canceled() ) {
       break;
     }
@@ -1443,6 +1437,16 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
       }
 
+    }
+
+    if ( canceled() ) {
+      break;
+    }
+
+    if ( !(fOk = accumulate_fft_spectrum_power(current_frame_, fftacc, fftcnt)) ) {
+      CF_ERROR("max_fft_spectrum_power() fails");
+      set_status_msg("ERROR: max_fft_spectrum_power() fails");
+      break;
     }
 
     if ( canceled() ) {

@@ -269,9 +269,11 @@ public:
 protected:
 
   void set_status_msg(const std::string & msg);
-  bool create_reference_frame(const c_image_stacking_options::ptr & options);
+  bool create_reference_frame(const c_image_stacking_options::ptr & options,
+      const std::string & output_directory);
   bool generate_reference_frame(const c_input_sequence::ptr & input_sequence,
-      const c_image_stacking_options::ptr & options);
+      const c_image_stacking_options::ptr & options,
+      const std::string & output_directory);
 
 
 

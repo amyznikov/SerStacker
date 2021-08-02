@@ -39,10 +39,10 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc)
           return p.area > n.area;
         });
 
-    if ( cstats[0].area < 3 * cstats[1].area  ) {
-      CF_DEBUG("Bad second component");
-      return false;
-    }
+//    if ( cstats[0].area < 3 * cstats[1].area  ) {
+//      CF_DEBUG("Bad second component");
+//      return false;
+//    }
   }
 
   if ( cstats[0].area < 4 ) {

@@ -41,6 +41,7 @@ protected slots:
   void onMasterSourceComboCurrentIndexChanged(int);
   void onSpinBoxValueChanged(int value);
   void onGenerateMasterFrameCheckboxStateChanged(int);
+  void onAllowEccFlowCheckboxStateChanged(int);
   void onAccumulateMasterFlowCheckboxStateChanged(int);
   void onDumpMasterFlowCheckboxStateChanged(int);
   void onMaxFramesForMasterFrameGenerationChanged();
@@ -52,6 +53,7 @@ protected:
   QComboBox * masterSource_ctl = Q_NULLPTR;
   QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
   QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
+  QCheckBox * allowEccFlow_ctl = Q_NULLPTR;
   QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
   QCheckBox * compensateMasterFlow_ctl = Q_NULLPTR;
   QCheckBox * dumpMasterFlow_ctl = Q_NULLPTR;

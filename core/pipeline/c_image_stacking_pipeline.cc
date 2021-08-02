@@ -710,7 +710,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   total_frames_ = 0;
   processed_frames_ = 0;
-  current_master_flow_.release();
 
   current_frame_.release();
   reference_frame_.release();
@@ -790,10 +789,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
 
-  if ( output_options.dump_reference_frames_for_debug ) {
-    write_image(ssprintf("%s/%s-reference-frame.tiff", output_directory.c_str(),
-        options->name().c_str()), output_options, reference_frame_, reference_mask_);
-  }
 
   set_status_msg("PREPARE MAIN LOOP ...");
 
@@ -827,46 +822,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       return false;
     }
   }
-
-  ///
-
-
-  if ( master_frame_options.compensate_master_flow && !current_master_flow_.empty() ) {
-
-    if ( master_frame_options.debug_dump_master_flow ) {
-
-      if ( !use_iremap ) {
-        save_image(current_master_flow_,
-            ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
-                options->name().c_str()));
-      }
-      else {
-        save_image(remap2flow(current_master_flow_, reference_mask_),
-            ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
-                options->name().c_str()));
-      }
-    }
-
-    if ( use_iremap ) {
-      current_master_flow_ = iremap(current_master_flow_,
-          reference_mask_);
-    }
-    else {
-      current_master_flow_ = flow2remap(current_master_flow_,
-          reference_mask_);
-    }
-
-    cv::remap(reference_frame_, reference_frame_, current_master_flow_,
-        cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REFLECT101);
-
-    cv::remap(reference_mask_, reference_mask_, current_master_flow_,
-        cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-    cv::compare(reference_mask_, 255, reference_mask_, cv::CMP_GE);
-
-    current_master_flow_.release();
-  }
-
 
   ///
 
@@ -1336,6 +1291,14 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
     CF_DEBUG("Set ecc_noise=%g", ecc_normalization_noise_);
   }
 
+
+  if ( fOk && !canceled() ) {
+    if ( options->output_options().dump_reference_frames_for_debug ) {
+      write_image(ssprintf("%s/%s-reference-frame.tiff", output_directory.c_str(),
+          options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
+    }
+  }
+
   return fOk && !canceled();
 }
 
@@ -1346,6 +1309,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
   const int input_sequence_size = input_sequence->size();
   bool fOk = false;
 
+  cv::Mat masterflow;
   cv::Mat fftacc;
   float fftcnt = 0;
 
@@ -1372,11 +1336,11 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
           frame_registration_->ecc().input_smooth_sigma());
     }
 
-    frame_registration_->set_enable_eccflow(false);
 
-    //    if( frame_registration_->enable_eccflow() && frame_registration_->eccflow().support_scale() < 5 ) {
-    //      frame_registration_->eccflow().set_support_scale(5);
-    //    }
+    frame_registration_->set_enable_eccflow(options->master_frame_options().allow_eccflow);
+    if ( frame_registration_->enable_eccflow() && frame_registration_->eccflow().support_scale() < 5 ) {
+      frame_registration_->eccflow().set_support_scale(5);
+    }
 
     if ( options->master_frame_options().compensate_master_flow ) {
       if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
@@ -1416,12 +1380,6 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     if ( canceled() ) {
       break;
     }
-
-//    if ( !(fOk = max_fft_spectrum_power(current_frame_, fftacc)) ) {
-//      CF_ERROR("max_fft_spectrum_power() fails");
-//      set_status_msg("ERROR: max_fft_spectrum_power() fails");
-//      break;
-//    }
 
     if ( !(fOk = accumulate_fft_spectrum_power(current_frame_, fftacc, fftcnt)) ) {
       CF_ERROR("max_fft_spectrum_power() fails");
@@ -1491,16 +1449,6 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       break;
     }
 
-//    if ( !(fOk = max_fft_spectrum_power(current_frame_, fftacc)) ) {
-//      CF_ERROR("max_fft_spectrum_power() fails");
-//      set_status_msg("ERROR: max_fft_spectrum_power() fails");
-//      break;
-//    }
-//
-//    if ( canceled() ) {
-//      break;
-//    }
-
     if ( true )  {
       lock_guard lock(accumulator_lock_);
 
@@ -1525,7 +1473,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       set_status_msg("ERROR: frame_accumulation_->compute() fails");
     }
     else if ( master_flow_accumulation_ && master_flow_accumulation_->accumulated_frames() > 1 ) {
-      master_flow_accumulation_->compute(current_master_flow_);
+      master_flow_accumulation_->compute(masterflow);
     }
   }
 
@@ -1543,7 +1491,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
   if ( fOk ) {
 
 
-    if ( options->master_frame_options().debug_dump_master_flow && !output_directory.empty() )  {
+    if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() )  {
       write_image(ssprintf("%s/%s-initial-reference-frame.tiff", output_directory.c_str(),
               options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
     }
@@ -1556,6 +1504,44 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     else {
       clip_range(reference_frame_, 0, 1, reference_mask_);
     }
+
+
+    if ( options->master_frame_options().compensate_master_flow && !masterflow.empty() ) {
+
+      if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() ) {
+
+        if ( !use_iremap ) {
+          save_image(masterflow,
+              ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
+                  options->name().c_str()));
+        }
+        else {
+          save_image(remap2flow(masterflow, reference_mask_),
+              ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
+                  options->name().c_str()));
+        }
+      }
+
+      if ( use_iremap ) {
+        masterflow = iremap(masterflow,
+            reference_mask_);
+      }
+      else {
+        masterflow = flow2remap(masterflow,
+            reference_mask_);
+      }
+
+      cv::remap(reference_frame_, reference_frame_, masterflow,
+          cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REFLECT101);
+
+      cv::remap(reference_mask_, reference_mask_, masterflow,
+          cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+
+      cv::compare(reference_mask_, 255, reference_mask_, cv::CMP_GE);
+
+      masterflow.release();
+    }
+
   }
 
   return  fOk && !canceled();

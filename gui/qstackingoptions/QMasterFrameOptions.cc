@@ -52,6 +52,11 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
 
 
+  allowEccFlow_ctl = new QCheckBox(this);
+  connect(allowEccFlow_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::onAllowEccFlowCheckboxStateChanged);
+
+
   compensateMasterFlow_ctl = new QCheckBox(this);
   connect(compensateMasterFlow_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
@@ -80,6 +85,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Master frame Index:", masterFrameIndex_ctl);
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
+  form->addRow("Enable ECC Flow:", allowEccFlow_ctl);
   form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
   form->addRow("Dump master flow for debug:", dumpMasterFlow_ctl);
   form->addRow(applyToAll_ctl);
@@ -116,8 +122,9 @@ void QMasterFrameOptions::onupdatecontrols()
 
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
+    allowEccFlow_ctl->setChecked(options_->allow_eccflow);
     compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
-    dumpMasterFlow_ctl->setChecked(options_->debug_dump_master_flow);
+    dumpMasterFlow_ctl->setChecked(options_->dump_master_flow_for_debug);
 
 
     // Populate Master Source Combo
@@ -258,6 +265,14 @@ void QMasterFrameOptions::onMaxFramesForMasterFrameGenerationChanged()
   }
 }
 
+void QMasterFrameOptions::onAllowEccFlowCheckboxStateChanged(int state)
+{
+  if ( options_ && !updatingControls() ) {
+    options_->allow_eccflow = state == Qt::Checked;
+    emit parameterChanged();
+  }
+}
+
 void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
@@ -269,7 +284,7 @@ void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
 void QMasterFrameOptions::onDumpMasterFlowCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
-    options_->debug_dump_master_flow = state == Qt::Checked;
+    options_->dump_master_flow_for_debug = state == Qt::Checked;
     emit parameterChanged();
   }
 }

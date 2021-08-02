@@ -102,8 +102,9 @@ struct c_master_frame_options {
   int master_frame_index = 0; // relative, in master source
   int max_input_frames_to_generate_master_frame = 200;
   bool generate_master_frame = true;
+  bool allow_eccflow = false;
   bool compensate_master_flow = true;
-  bool debug_dump_master_flow = false;
+  bool dump_master_flow_for_debug = false;
 };
 
 struct c_frame_accumulation_options {
@@ -320,7 +321,7 @@ protected:
   cv::Mat current_frame_;
   cv::Mat current_mask_;
   cv::Mat current_weights_;
-  cv::Mat current_master_flow_;
+  //cv::Mat current_master_flow_;
   double ecc_normalization_noise_ = 0;
 
   int total_frames_ = 0;

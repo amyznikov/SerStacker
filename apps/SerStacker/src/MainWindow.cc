@@ -338,6 +338,10 @@ MainWindow::MainWindow()
   configureImageViewerToolbars();
   configureTextViewerToolbars();
 
+
+  image_processors_->load("~/.config/SerStacker/image_processors");
+  imageProcessorSettings->set_available_processors(image_processors_);
+
 }
 
 MainWindow::~MainWindow()

@@ -182,72 +182,14 @@ public:
   typedef std::vector<c_image_processor::ptr> base;
   typedef std::shared_ptr<this_class> ptr;
 
-  static ptr create()
-  {
-    return ptr(new this_class());
-  }
+  static ptr create();
+  static ptr create(c_config_setting settings);
 
-  static ptr create(c_config_setting settings)
-  {
-    ptr obj(new this_class());
-    if ( obj->load(settings) ) {
-      return obj;
-    }
-    return nullptr;
-  }
+  bool load(const std::string & input_directrory);
+  bool load(c_config_setting settings);
 
-  bool load(c_config_setting settings)
-  {
-    clear();
-
-    if ( !settings ) {
-      return false;
-    }
-
-    c_config_setting processors_list_item =
-        settings["processors"];
-
-    if ( !processors_list_item || !processors_list_item.isList() ) {
-      return false;
-    }
-
-    const int num_processors = processors_list_item.length();
-
-    reserve(num_processors);
-
-    for ( int i = 0; i < num_processors; ++i ) {
-
-      c_config_setting processor_item =
-          processors_list_item.get_element(i);
-
-      if ( processor_item && processor_item.isGroup() ) {
-        c_image_processor::ptr processor = c_image_processor::load(processor_item);
-        if ( processor ) {
-          emplace_back(processor);
-        }
-      }
-    }
-
-    return true;
-  }
-
-  bool save(c_config_setting settings) const
-  {
-    if ( !settings ) {
-      return false;
-    }
-
-    c_config_setting processors_list_item =
-        settings.add_list("processors");
-
-    for ( const c_image_processor::ptr & processor : *this ) {
-      if ( processor && !processor->save(processors_list_item.add_element(CONFIG_TYPE_GROUP)) ) {
-        return false;
-      }
-    }
-
-    return true;
-  }
+  bool save(const std::string & output_directrory) const;
+  bool save(c_config_setting settings) const;
 
 };
 

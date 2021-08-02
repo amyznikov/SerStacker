@@ -306,6 +306,7 @@ protected:
   using lock_guard = std::lock_guard<std::mutex>;
 
   c_image_stacking_options::ptr stacking_options_;
+
   volatile bool canceled_ = false;
 
   std::string master_file_name_;
@@ -326,6 +327,7 @@ protected:
   std::string statusmsg_;
   mutable std::mutex status_lock_;
 
+  c_anscombe_transform anscombe_;
   c_feature_based_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
   c_frame_accumulation::ptr master_flow_accumulation_;
@@ -334,8 +336,6 @@ protected:
   c_frame_accumulation::ptr frame_accumulation_;
   mutable std::mutex accumulator_lock_;
 
-
-  c_anscombe_transform anscombe_;
 
 };
 

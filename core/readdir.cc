@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <algorithm>
 
+
 #include "readdir.h"
 #include "ssprintf.h"
 #include "debug.h"
@@ -24,6 +25,8 @@
 
 #ifndef _WIN32
 # include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 # include <fnmatch.h>
 #else
 
@@ -338,6 +341,39 @@ std::string search_file(const std::string file_name,
 
 
 /**
+ * Get home directory of current user.
+ */
+std::string get_home_directory()
+{
+  const char * home;
+
+  if ( (home = getenv("HOME")) ) {
+    return home;
+  }
+
+
+  struct passwd pwd;
+  struct passwd * result;
+  char buf[PATH_MAX] = "";
+  int status;
+
+  status = getpwuid_r(getuid(), &pwd, buf, sizeof(buf), &result);
+
+  if ( result ) {
+    return result->pw_dir;
+  }
+
+  if ( status == 0 ) {
+    errno = ENOENT;
+  }
+  else {
+    errno = status;
+  }
+
+  return "";
+}
+
+/**
  *  readdir(std::vector<std::string> * filelist, const std::string & path,
  *     const std::string & filemask)
  *
@@ -354,7 +390,17 @@ int readdir(std::vector<std::string> * list, const std::string & _path,
   DIR * dir = 0;
   struct dirent * e = NULL;
   std::vector<std::string> masks;
-  const std::string path = _path.empty() ? "." : _path;
+  std::string path = _path.empty() ? "." : _path;
+
+  if ( path[0] == '~' ) {
+
+    std::string home = get_home_directory();
+    if ( home.empty() ) {
+      return -1;
+    }
+
+    path.replace(0, 1, home);
+  }
 
   split(filemask, &masks, '|');
 

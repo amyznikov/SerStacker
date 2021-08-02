@@ -10,6 +10,7 @@
 #define __QMtfSettings_h__
 
 #include "QImageProcessorCollectionSettings.h"
+#include <gui/qmtfcontrols/QMtfControl.h>
 #include <core/improc/c_mtf_routine.h>
 
 class QMtfSettings

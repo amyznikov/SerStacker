@@ -5,8 +5,10 @@
  *      Author: amyznikov
  */
 
-#include <functional>
+//#include <functional>
 #include "c_image_processor.h"
+#include <core/readdir.h>
+#include <core/ssprintf.h>
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -258,3 +260,132 @@ bool c_image_processor_routine::save(c_config_setting settings) const
   return true;
 }
 
+
+bool c_image_processor_collection::save(const std::string & output_directrory) const
+{
+  if ( !create_path(output_directrory) ) {
+    CF_ERROR("create_path(output_directrory=%s) fails: %s",
+        output_directrory.c_str(),
+        strerror(errno));
+    return  false;
+  }
+
+  for ( const c_image_processor::ptr & processor : *this ) {
+    if ( processor && !processor->name().empty() ) {
+
+      const std::string filename =
+          ssprintf("%s/%s.cfg", output_directrory.c_str(),
+              processor->name().c_str());
+
+      if ( !processor->save(filename) ) {
+        CF_ERROR("processor->save(filename=%s) fails", filename.c_str());
+      }
+    }
+  }
+
+  return true;
+}
+
+bool c_image_processor_collection::load(const std::string & input_directrory)
+{
+  std::vector<std::string> filenames;
+
+  if ( !readdir(&filenames, input_directrory, "*.cfg", true, DT_REG) ) {
+    CF_ERROR("readdir(%s) fails: %s", input_directrory.c_str(), strerror(errno));
+    return false;
+  }
+
+  for ( const std::string & filename : filenames ) {
+    c_image_processor::ptr processor = c_image_processor::load(filename);
+    if ( !processor ) {
+      CF_ERROR("c_image_processor::load(filename='%s') fails", filename.c_str());
+    }
+    else {
+      emplace_back(processor);
+    }
+  }
+
+  if ( size() > 1 ) {
+    std::sort(begin(), end(),
+        [](const c_image_processor::ptr & prev, const c_image_processor::ptr & next) {
+          return prev->name() < next->name();
+        });
+  }
+
+  return true;
+}
+
+
+c_image_processor_collection::ptr c_image_processor_collection::create()
+{
+  return ptr(new this_class());
+}
+
+c_image_processor_collection::ptr c_image_processor_collection::create(c_config_setting settings)
+{
+  ptr obj(new this_class());
+  if ( obj->load(settings) ) {
+    return obj;
+  }
+  return nullptr;
+}
+
+bool c_image_processor_collection::load(c_config_setting settings)
+{
+  clear();
+
+  if ( !settings ) {
+    return false;
+  }
+
+  c_config_setting processors_list_item =
+      settings["processors"];
+
+  if ( !processors_list_item || !processors_list_item.isList() ) {
+    return false;
+  }
+
+  const int num_processors = processors_list_item.length();
+
+  reserve(num_processors);
+
+  for ( int i = 0; i < num_processors; ++i ) {
+
+    c_config_setting processor_item =
+        processors_list_item.get_element(i);
+
+    if ( processor_item && processor_item.isGroup() ) {
+      c_image_processor::ptr processor = c_image_processor::load(processor_item);
+      if ( processor ) {
+        emplace_back(processor);
+      }
+    }
+  }
+
+  if ( size() > 1 ) {
+    std::sort(begin(), end(),
+        [](const c_image_processor::ptr & prev, const c_image_processor::ptr & next) {
+          return prev->name() < next->name();
+        });
+  }
+
+  return true;
+}
+
+bool c_image_processor_collection::save(c_config_setting settings) const
+{
+  if ( !settings ) {
+    return false;
+  }
+
+  c_config_setting processors_list_item =
+      settings.add_list("processors");
+
+  for ( const c_image_processor::ptr & processor : *this ) {
+    if ( processor && !processor->save(processors_list_item.add_element(CONFIG_TYPE_GROUP)) ) {
+      return false;
+    }
+  }
+
+  return true;
+}

@@ -88,6 +88,11 @@ void split_path(const std::string & fullpathname,
     bool prune_backslash_in_parrent_directory = true);
 
 
+/**
+ * Get home directory of current user.
+ */
+std::string get_home_directory();
+
 /* Time of last modification in nanosec */
 int64_t last_modification_timestamp(const std::string & abspath);
 
@@ -123,7 +128,6 @@ bool copy_file(const std::string & source_path_name,
  * */
 bool copy_path(const std::string & src, const std::string & dst,
     bool ignore_errors = false);
-
 
 
 

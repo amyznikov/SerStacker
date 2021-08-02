@@ -10,7 +10,6 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/addctrl.h>
-#include <gui/qmtfcontrols/QMtfControl.h>
 #include <core/improc/c_image_processor.h>
 #include <core/debug.h>
 

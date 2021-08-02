@@ -19,6 +19,20 @@ c_align_color_channels_routine::ptr c_align_color_channels_routine::create(bool 
   return ptr(new this_class(enabled));
 }
 
+c_align_color_channels_routine::ptr c_align_color_channels_routine::create(int ecc_reference_channel,
+    ECC_MOTION_TYPE ecc_motion_type, double ecc_eps, bool enabled)
+{
+  ptr obj(new this_class(enabled));
+  obj->set_reference_channel(ecc_reference_channel);
+
+  c_align_color_channels & algorithm = obj->algorithm();
+  algorithm.set_motion_type(ecc_motion_type);
+  algorithm.set_eps(ecc_eps);
+
+  return obj;
+}
+
+
 void c_align_color_channels_routine::set_reference_channel(int v)
 {
   reference_channel_ = v;
@@ -28,6 +42,17 @@ int c_align_color_channels_routine::reference_channel() const
 {
   return reference_channel_;
 }
+
+c_align_color_channels & c_align_color_channels_routine::algorithm()
+{
+  return algorithm_;
+}
+
+const c_align_color_channels & c_align_color_channels_routine::algorithm() const
+{
+  return algorithm_;
+}
+
 
 bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {

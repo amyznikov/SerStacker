@@ -7,18 +7,19 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/ximgproc.hpp>
+#include <tbb/tbb.h>
 #include <core/readdir.h>
 #include <core/io/save_image.h>
 #include <core/io/rgbamix.h>
-#include <tbb/tbb.h>
-#include <core/get_time.h>
-#include <core/debug.h>
+#include <core/strsplit.h>
 #include <core/improc/c_image_processor.h>
 #include <core/improc/c_unsharp_mask_routine.h>
 #include <core/improc/c_align_color_channels_routine.h>
 #include <core/improc/c_histogram_white_balance_routine.h>
 #include <core/improc/c_rangeclip_routine.h>
 #include <core/improc/c_range_normalize_routine.h>
+#include <core/get_time.h>
+#include <core/debug.h>
 
 static bool convertTofp32(const cv::Mat & src, cv::Mat & dst)
 {
@@ -76,8 +77,8 @@ int main(int argc, char *argv[])
           "   [-unsharp sigma:amount]         apply usharp_mask(sigma, amout=(0..1))\n"
           "   [-clip min:max]                 clip data range to [min..max]\n"
           "   [-normalize min:max]            apply cv::normalize(min, max)\n"
+          "   [-a <T|E|A|H|Q>:eps:rc]         align color channels\n"
 
-          "   [-a <T|E|A|H|Q>:rho:eps:rc]     align color channels\n"
           "   [-wb]                           apply lsbc white balance\n"
           "   [-wbm]                          apply meanstdev white balance\n"
           "   [-wbh  <low:high>]              apply histogram based white balance\n"
@@ -210,7 +211,66 @@ int main(int argc, char *argv[])
 
     }
 
+    else if ( strcmp(argv[i], "-a") == 0 ) {
 
+      if ( ++i >= argc ) {
+        fprintf(stderr, "Command line error: No align color channels args specified\n");
+        return 1;
+      }
+
+
+      int ecc_reference_channel = 0;
+      ECC_MOTION_TYPE ecc_motion_type = ECC_MOTION_TRANSLATION;
+      double ecc_eps = 0.1;
+
+      std::vector<std::string> tokens;
+      strsplit(argv[i], tokens, ":");
+
+      if ( tokens.size() < 1 ) {
+        fprintf(stderr, "Command line error: No align color channels args specified\n");
+        return 1;
+      }
+
+      // [-a <T|E|A|H|Q>:rho:eps:rc]
+
+      switch ( toupper(tokens[0][0]) ) {
+      case 'T' :
+        ecc_motion_type = ECC_MOTION_TRANSLATION;
+        break;
+      case 'E' :
+        ecc_motion_type = ECC_MOTION_EUCLIDEAN;
+        break;
+      case 'A' :
+        ecc_motion_type = ECC_MOTION_AFFINE;
+        break;
+      case 'H' :
+        ecc_motion_type = ECC_MOTION_HOMOGRAPHY;
+        break;
+      case 'Q' :
+        ecc_motion_type = ECC_MOTION_QUADRATIC;
+        break;
+      default :
+        fprintf(stderr, "Invalid ecc_motion specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      if ( tokens.size() >= 2 && sscanf(tokens[1].c_str(), "%lf", &ecc_eps) != 1 ) {
+        fprintf(stderr, "Invalid ecc_eps specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      if ( tokens.size() >= 3 && sscanf(tokens[2].c_str(), "%d", &ecc_reference_channel) != 1 ) {
+        fprintf(stderr, "Invalid ecc_reference_channel specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      processor.emplace_back(
+          c_align_color_channels_routine::create(
+              ecc_reference_channel,
+              ecc_motion_type,
+              ecc_eps));
+
+    }
 
     else if ( input_file_name.empty() ) {
       input_file_name = argv[i];

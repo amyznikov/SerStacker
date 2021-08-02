@@ -751,7 +751,7 @@ bool c_frame_accumulation_with_mask::add(cv::InputArray src, cv::InputArray mask
 bool c_frame_accumulation_with_mask::compute(cv::OutputArray avg, cv::OutputArray mask, double scale, int ddepth) const
 {
   if ( accumulator_.empty() || counter_.empty() ) {
-    CF_ERROR("c_frame_accumulation_with_mask: accuulator is empty");
+    CF_ERROR("c_frame_accumulation_with_mask: accumulator is empty");
     return false;
   }
 
@@ -800,6 +800,10 @@ bool c_frame_accumulation_with_weights::add(cv::InputArray src, cv::InputArray w
 
 bool c_frame_accumulation_with_weights::compute(cv::OutputArray avg, cv::OutputArray mask, double scale, int ddepth) const
 {
+  if ( accumulator_.empty() || weights_.empty() ) {
+    CF_ERROR("c_frame_accumulation_with_weights: accumulator is empty");
+    return false;
+  }
 
   if ( !divide_accumulator(accumulator_, weights_, avg, mask, scale, ddepth) ) {
     CF_ERROR("c_frame_accumulation_with_weights: divide_accumulator() fails");
@@ -966,6 +970,12 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
 {
 
   const int nc = accumulators_.size();
+  if ( nc < 1 || accumulators_[0].empty() ) {
+    CF_ERROR("c_frame_accumulation_with_fft: accumulator is empty");
+    return false;
+  }
+
+
   cv::Mat channels[nc];
 
   if ( ddepth < 0 ) {

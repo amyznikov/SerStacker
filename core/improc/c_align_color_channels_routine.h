@@ -29,12 +29,16 @@ public:
   c_align_color_channels_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
+  static ptr create(int ecc_reference_channel, ECC_MOTION_TYPE ecc_motion_type, double ecc_eps, bool enabled = true);
   bool load(c_config_setting settings) override;
   bool save(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   void set_reference_channel(int v);
   int reference_channel() const;
+
+  c_align_color_channels & algorithm();
+  const c_align_color_channels & algorithm() const;
 
 protected:
   c_align_color_channels algorithm_;

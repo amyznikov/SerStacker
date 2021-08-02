@@ -70,12 +70,19 @@ bool QStackingThread::start(const c_image_stacking_options::ptr pipeline)
 
 void QStackingThread::cancel()
 {
+  CF_DEBUG("H");
   emit singleton()->finishing();
+  CF_DEBUG("H");
   singleton()->pipeline_.set_canceled(true);
+  CF_DEBUG("H");
 
-  while ( ((Base*) singleton())->isRunning() ) {
-    singleton()->msleep(100);
-  }
+  CF_DEBUG("H");
+//  while ( ((Base*) singleton())->isRunning() ) {
+//    CF_DEBUG("H");
+//    qApp->processEvents();
+//    qApp->sendPostedEvents();
+//    msleep(1);
+//  }
   CF_DEBUG("H");
 }
 

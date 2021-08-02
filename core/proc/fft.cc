@@ -494,7 +494,7 @@ bool accumulate_fft_spectrum_power(const cv::Mat & src,  cv::Mat & acc, float & 
     fft_size = acc.size();
   }
   else {
-    fft_size = getOptimalFFTSize(src.size());
+    fft_size = getOptimalFFTSize(src.size(), cv::Size(32,32));
     acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
     acc.setTo(0);
     cnt = 0;
@@ -554,7 +554,7 @@ bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
     fft_size = acc.size();
   }
   else {
-    fft_size = getOptimalFFTSize(src.size());
+    fft_size = getOptimalFFTSize(src.size(), cv::Size(32, 32));
     acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
     acc.setTo(0);
   }

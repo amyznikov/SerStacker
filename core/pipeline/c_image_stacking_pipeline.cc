@@ -784,7 +784,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   set_status_msg("PREPARE REFERENCE FRAME ...");
 
-  if ( !create_reference_frame(options) ) {
+  if ( !create_reference_frame(options, output_directory) ) {
     set_status_msg("ERROR: create_reference_frame() fails");
     return false;
   }
@@ -1221,7 +1221,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 }
 
 
-bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_options::ptr & options)
+bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_options::ptr & options,
+    const std::string & output_directory)
 {
 
   const c_master_frame_options & master_frame_options =
@@ -1304,7 +1305,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
       options->accumulation_options().accumulation_method != frame_accumulation_skip ) {
 
     // Generate it !
-    fOk = generate_reference_frame(input_sequence, options);
+    fOk = generate_reference_frame(input_sequence, options, output_directory);
 
   }
 
@@ -1339,13 +1340,14 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
 }
 
 bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence::ptr & input_sequence,
-    const c_image_stacking_options::ptr & options)
+    const c_image_stacking_options::ptr & options,
+    const std::string & output_directory)
 {
   const int input_sequence_size = input_sequence->size();
   bool fOk = false;
 
   cv::Mat fftacc;
-  //float fftcnt = 0;
+  float fftcnt = 0;
 
   if ( true )  {
     lock_guard lock(accumulator_lock_);
@@ -1415,17 +1417,17 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       break;
     }
 
-    if ( !(fOk = max_fft_spectrum_power(current_frame_, fftacc)) ) {
+//    if ( !(fOk = max_fft_spectrum_power(current_frame_, fftacc)) ) {
+//      CF_ERROR("max_fft_spectrum_power() fails");
+//      set_status_msg("ERROR: max_fft_spectrum_power() fails");
+//      break;
+//    }
+
+    if ( !(fOk = accumulate_fft_spectrum_power(current_frame_, fftacc, fftcnt)) ) {
       CF_ERROR("max_fft_spectrum_power() fails");
       set_status_msg("ERROR: max_fft_spectrum_power() fails");
       break;
     }
-
-  //    if ( !(fOk = accumulate_fft_spectrum_power(current_frame_, fftacc, fftcnt)) ) {
-  //      CF_ERROR("max_fft_spectrum_power() fails");
-  //      set_status_msg("ERROR: max_fft_spectrum_power() fails");
-  //      break;
-  //    }
 
     if ( canceled() ) {
       break;
@@ -1539,10 +1541,20 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
 
   if ( fOk ) {
-    //   cv::multiply(fftacc, 1. / fftcnt, fftacc);
+
+
+    if ( options->master_frame_options().debug_dump_master_flow && !output_directory.empty() )  {
+      write_image(ssprintf("%s/%s-initial-reference-frame.tiff", output_directory.c_str(),
+              options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
+    }
+
+    cv::multiply(fftacc, 1. / fftcnt, fftacc);
 
     if ( !(fOk = swap_fft_power_spectrum(reference_frame_, fftacc, reference_frame_)) ) {
       CF_ERROR("ERROR: swap_power_spectrum() fails");
+    }
+    else {
+      clip_range(reference_frame_, 0, 1, reference_mask_);
     }
   }
 

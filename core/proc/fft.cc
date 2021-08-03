@@ -589,6 +589,11 @@ bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
 
 bool swap_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat & dst)
 {
+  if ( src.empty() ) {
+    CF_ERROR("Invalid argument: src is empty");
+    return false;
+  }
+
   if ( acc.depth() != CV_32F ) {
     CF_ERROR("Invalid argument: acc.depth()=CV_32F is expected");
     return false;

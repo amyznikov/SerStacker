@@ -1125,6 +1125,10 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
   output_aligned_video.close();
 
+  if ( !fOk  ) {
+    return false;
+  }
+
   set_status_msg("FINISHING ...");
 
   if ( !compute_accumulated_image(current_frame_, current_mask_) ) {
@@ -1553,27 +1557,39 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     frame_accumulation_.reset();
   }
 
+  if ( fOk && !canceled() && reference_frame_.empty() ) {
+    CF_ERROR("APP BUG IN frame_accumulation_->compute(): reference_frame_ is empty but status is OK");
+    fOk =  false;
+  }
 
-  if ( fOk ) {
 
+
+  if ( fOk && !canceled() ) {
+
+    CF_DEBUG("H");
 
     if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() )  {
       write_image(ssprintf("%s/%s-initial-reference-frame.tiff", output_directory.c_str(),
               options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
     }
 
+    CF_DEBUG("H");
     cv::multiply(fftacc, 1. / fftcnt, fftacc);
 
+    CF_DEBUG("H");
     if ( !(fOk = swap_fft_power_spectrum(reference_frame_, fftacc, reference_frame_)) ) {
       CF_ERROR("ERROR: swap_power_spectrum() fails");
     }
     else {
+      CF_DEBUG("H");
       clip_range(reference_frame_, 0, 1, reference_mask_);
     }
 
+    CF_DEBUG("H");
 
     if ( options->master_frame_options().compensate_master_flow && !masterflow.empty() ) {
 
+      CF_DEBUG("H");
       if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() ) {
 
         save_image(masterflow_accumulation_->counter(),

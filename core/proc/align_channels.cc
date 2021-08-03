@@ -231,7 +231,7 @@ bool c_align_color_channels::align(int reference_channel,
 
         cv::remap(channels[i], channels[i], ecc_.current_remap(), cv::noArray(),
             interpolation_flags(),
-            cv::BORDER_CONSTANT,
+            cv::BORDER_REPLICATE,
             border_value_[i]);
 
       }
@@ -240,18 +240,18 @@ bool c_align_color_channels::align(int reference_channel,
         if ( masks[i].empty() ) {
           cv::remap(cv::Mat1b(src.size(), 255), masks[i], ecc_.current_remap(), cv::noArray(),
               cv::INTER_AREA,
-              cv::BORDER_CONSTANT,
+              cv::BORDER_REPLICATE,
               0);
         }
         else {
           cv::remap(masks[i], masks[i], ecc_.current_remap(), cv::noArray(),
               cv::INTER_AREA,
-              cv::BORDER_CONSTANT,
+              cv::BORDER_REPLICATE,
               0);
         }
 
-        cv::compare(masks[i], 255, masks[i],
-            cv::CMP_EQ);
+        cv::compare(masks[i], 200, masks[i],
+            cv::CMP_GE);
 
       }
     }

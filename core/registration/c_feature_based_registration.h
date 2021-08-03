@@ -15,7 +15,7 @@
 struct c_feature_based_registration_options {
   // SURF parameters
   double hessianThreshold = 100;
-  int nOctaves = 4;
+  int nOctaves = 1; // set to > 1 if aligned frame scales are different !
   int nOctaveLayers = 1;
   bool extended = false;
   bool upright = true;

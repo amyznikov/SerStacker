@@ -465,7 +465,7 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
 }
 
 
-bool accumulate_fft_spectrum_power(const cv::Mat & src,  cv::Mat & acc, float & cnt)
+bool accumulate_fft_power_spectrum(const cv::Mat & src,  cv::Mat & acc, float & cnt)
 {
   static const auto compute_magnitue =
       [](cv::Mat & src) {

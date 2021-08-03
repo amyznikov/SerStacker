@@ -283,71 +283,71 @@ void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_al
 namespace {
 
 
-static int countNaNs(const cv::Mat & image)
-{
-  int cnt = 0;
+//static int countNaNs(const cv::Mat & image)
+//{
+//  int cnt = 0;
+//
+//  const int nc = image.channels();
+//
+//  for ( int y = 0; y < image.rows; ++y ) {
+//
+//    const float * p = image.ptr<const float>(y);
+//
+//    for ( int x = 0; x < image.cols * nc; ++x ) {
+//      if ( isnan(p[x]) ) {
+//        ++cnt;
+//      }
+//    }
+//  }
+//
+//  return cnt;
+//}
 
-  const int nc = image.channels();
+//static int countInfs(const cv::Mat & image)
+//{
+//  int cnt = 0;
+//
+//  const int nc = image.channels();
+//
+//  for ( int y = 0; y < image.rows; ++y ) {
+//
+//    const float * p = image.ptr<const float>(y);
+//
+//    for ( int x = 0; x < image.cols * nc; ++x ) {
+//      if ( isinf(p[x]) ) {
+//        ++cnt;
+//      }
+//    }
+//  }
+//
+//  return cnt;
+//}
 
-  for ( int y = 0; y < image.rows; ++y ) {
-
-    const float * p = image.ptr<const float>(y);
-
-    for ( int x = 0; x < image.cols * nc; ++x ) {
-      if ( isnan(p[x]) ) {
-        ++cnt;
-      }
-    }
-  }
-
-  return cnt;
-}
-
-static int countInfs(const cv::Mat & image)
-{
-  int cnt = 0;
-
-  const int nc = image.channels();
-
-  for ( int y = 0; y < image.rows; ++y ) {
-
-    const float * p = image.ptr<const float>(y);
-
-    for ( int x = 0; x < image.cols * nc; ++x ) {
-      if ( isinf(p[x]) ) {
-        ++cnt;
-      }
-    }
-  }
-
-  return cnt;
-}
-
-static cv::Mat2f remap2flow(const cv::Mat2f &rmap, const cv::Mat1b & mask)
-{
-  cv::Mat2f uv(rmap.size());
-
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, rmap.rows, 256),
-      [&rmap, &uv, &mask](const range &r) {
-        const int nx = rmap.cols;
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < nx; ++x ) {
-
-            if ( mask[y][x] ) {
-              uv[y][x][0] = rmap[y][x][0] - x;
-              uv[y][x][1] = rmap[y][x][1] - y;
-            }
-            else {
-              uv[y][x][0] = 0;
-              uv[y][x][1] = 0;
-            }
-          }
-        }
-      });
-
-  return uv;
-}
+//static cv::Mat2f remap2flow(const cv::Mat2f &rmap, const cv::Mat1b & mask)
+//{
+//  cv::Mat2f uv(rmap.size());
+//
+//  typedef tbb::blocked_range<int> range;
+//  tbb::parallel_for(range(0, rmap.rows, 256),
+//      [&rmap, &uv, &mask](const range &r) {
+//        const int nx = rmap.cols;
+//        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+//          for ( int x = 0; x < nx; ++x ) {
+//
+//            if ( mask[y][x] ) {
+//              uv[y][x][0] = rmap[y][x][0] - x;
+//              uv[y][x][1] = rmap[y][x][1] - y;
+//            }
+//            else {
+//              uv[y][x][0] = 0;
+//              uv[y][x][1] = 0;
+//            }
+//          }
+//        }
+//      });
+//
+//  return uv;
+//}
 
 static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
 {
@@ -374,34 +374,74 @@ static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
   return rmap;
 }
 
-static cv::Mat2f iremap(const cv::Mat2f &map, const cv::Mat1b & mask)
+//static cv::Mat2f iremap(const cv::Mat2f &map, const cv::Mat1b & mask)
+//{
+//  cv::Mat2f imap(map.size());
+//
+//  typedef tbb::blocked_range<int> range;
+//  tbb::parallel_for(range(0, map.rows, 256),
+//      [&map, &imap, &mask](const range &r) {
+//        const int nx = map.cols;
+//        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+//          for ( int x = 0; x < nx; ++x ) {
+//
+//            if ( mask[y][x] ) {
+//              imap[y][x][0] = 2 * x - map[y][x][0];
+//              imap[y][x][1] = 2 * y - map[y][x][1];
+//            }
+//            else {
+//              imap[y][x][0] = x;
+//              imap[y][x][1] = y;
+//            }
+//          }
+//        }
+//      });
+//
+//  return imap;
+//}
+
+
+static cv::Mat2f compute_turbulence_flow(
+    ECC_MOTION_TYPE current_motion_type,
+    const cv::Mat1f & current_transfrorm,
+    const cv::Mat2f & current_remap,
+    const cv::Mat1b & mask)
 {
-  cv::Mat2f imap(map.size());
+
+  cv::Mat2f uv;
+  double tx = 0, ty = 0;
+
+  // TODO: Extract also rotation component, because telescope mount sometimes could drift with FOV rotation as well.
+
+  if ( !getTranslationComponent(current_motion_type, current_transfrorm, &tx, &ty) ) {
+    CF_ERROR("getTranslationComponent(current_motion_type=%d) fails", current_motion_type);
+    return uv;
+  }
+
+  uv.create(current_remap.size());
 
   typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, map.rows, 256),
-      [&map, &imap, &mask](const range &r) {
-        const int nx = map.cols;
+  tbb::parallel_for(range(0, current_remap.rows, 256),
+      [&current_remap, &uv, &mask, tx, ty](const range &r) {
+        const int nx = current_remap.cols;
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
           for ( int x = 0; x < nx; ++x ) {
 
             if ( mask[y][x] ) {
-              imap[y][x][0] = 2 * x - map[y][x][0];
-              imap[y][x][1] = 2 * y - map[y][x][1];
+              uv[y][x][0] = current_remap[y][x][0] - x - tx;
+              uv[y][x][1] = current_remap[y][x][1] - y - ty;
             }
             else {
-              imap[y][x][0] = x;
-              imap[y][x][1] = y;
+              uv[y][x][0] = 0;
+              uv[y][x][1] = 0;
             }
           }
         }
       });
 
-  return imap;
+  return uv;
 }
 
-
-static constexpr bool use_iremap = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -682,8 +722,12 @@ int c_image_stacking_pipeline::accumulated_frames() const
 
 std::string c_image_stacking_pipeline::status_message() const
 {
-  lock_guard lock(status_lock_);
-  return statusmsg_;
+  std::string msg;
+  if ( true ) {
+    lock_guard lock(status_lock_);
+    msg = statusmsg_;
+  }
+  return msg;
 }
 
 void c_image_stacking_pipeline::set_status_msg(const std::string & msg)
@@ -1343,8 +1387,9 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     }
 
     if ( options->master_frame_options().compensate_master_flow ) {
-      if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
-        master_flow_accumulation_.reset(
+      //if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() )
+      {
+        masterflow_accumulation_.reset(
             new c_frame_accumulation_with_mask());
       }
     }
@@ -1371,6 +1416,22 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
     if ( canceled() ) {
       break;
+    }
+
+    if ( current_frame_.channels() > 1 ) {
+
+      fOk = extract_channel(current_frame_, current_frame_, cv::noArray(), cv::noArray(),
+          options->frame_registration_options().base_options.registration_channel);
+
+      if ( !fOk ) {
+        CF_ERROR("extract_channel(registration_channel=%d) fails",
+            options->frame_registration_options().base_options.registration_channel);
+        break;
+      }
+
+      if ( canceled() ) {
+        break;
+      }
     }
 
     if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
@@ -1421,20 +1482,21 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
         continue;
       }
 
-      if ( master_flow_accumulation_ ) {
+      if ( masterflow_accumulation_ ) {
 
-        if ( use_iremap ) { // Still not sure if remap2flow() has advantages on accumulation counts < 1e6
+        const cv::Mat2f turbulence = compute_turbulence_flow(
+            frame_registration_->motion_type(),
+            frame_registration_->current_transform(),
+            frame_registration_->current_remap(),
+            current_mask_);
 
-          master_flow_accumulation_->
-              add(frame_registration_->current_remap(), current_mask_);
+        if ( turbulence.empty() ) {
+          CF_ERROR("compute_turbulence_flow() fails");
+          set_status_msg("ERROR: compute_turbulence_flow() fails");
+          break;
         }
-        else {
 
-          master_flow_accumulation_->
-              add(remap2flow(frame_registration_->current_remap(), current_mask_),
-                  current_mask_);
-        }
-
+        masterflow_accumulation_->add(turbulence, current_mask_);
       }
 
     }
@@ -1443,9 +1505,9 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       break;
     }
 
-    if ( !(fOk = accumulate_fft_spectrum_power(current_frame_, fftacc, fftcnt)) ) {
-      CF_ERROR("max_fft_spectrum_power() fails");
-      set_status_msg("ERROR: max_fft_spectrum_power() fails");
+    if ( !(fOk = accumulate_fft_power_spectrum(current_frame_, fftacc, fftcnt)) ) {
+      CF_ERROR("accumulate_fft_power_spectrum() fails");
+      set_status_msg("ERROR: accumulate_fft_power_spectrum() fails");
       break;
     }
 
@@ -1476,8 +1538,8 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     else if ( !(fOk = frame_accumulation_->compute(reference_frame_, reference_mask_)) ) {
       set_status_msg("ERROR: frame_accumulation_->compute() fails");
     }
-    else if ( master_flow_accumulation_ && master_flow_accumulation_->accumulated_frames() > 1 ) {
-      master_flow_accumulation_->compute(masterflow);
+    else if ( masterflow_accumulation_ && masterflow_accumulation_->accumulated_frames() > 1 ) {
+      masterflow_accumulation_->compute(masterflow);
     }
   }
 
@@ -1514,34 +1576,26 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
       if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() ) {
 
-        if ( !use_iremap ) {
-          save_image(masterflow,
-              ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
-                  options->name().c_str()));
-        }
-        else {
-          save_image(remap2flow(masterflow, reference_mask_),
-              ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
-                  options->name().c_str()));
-        }
+        save_image(masterflow_accumulation_->counter(),
+            ssprintf("%s/%s-masterflow-counter.tiff", output_directory.c_str(),
+                options->name().c_str()));
+
+        save_image(masterflow,
+            ssprintf("%s/%s-masterflow.flo", output_directory.c_str(),
+                options->name().c_str()));
       }
 
-      if ( use_iremap ) {
-        masterflow = iremap(masterflow,
+      masterflow = flow2remap(masterflow,
             reference_mask_);
-      }
-      else {
-        masterflow = flow2remap(masterflow,
-            reference_mask_);
-      }
 
+      // FIXME: BORDER !!!
       cv::remap(reference_frame_, reference_frame_, masterflow,
-          cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REFLECT101);
+          cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REPLICATE);
 
       cv::remap(reference_mask_, reference_mask_, masterflow,
-          cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+          cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT);
 
-      cv::compare(reference_mask_, 255, reference_mask_, cv::CMP_GE);
+      cv::compare(reference_mask_, 200, reference_mask_, cv::CMP_GE);
 
       masterflow.release();
     }

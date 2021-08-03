@@ -252,45 +252,120 @@ bool c_feature_based_registration::estimate_feature_transform(cv::InputArray cur
   CF_DEBUG("current_matches_.size()=%zu",
       current_matches_.size());
 
-  if ( current_matches_.size() < 3 ) {
-    CF_ERROR("Too few key points matches found : %zu", current_matches_.size());
-    return false;
-  }
-
   extract_matched_positions(current_keypoints_, reference_keypoints_, current_matches_,
       &matched_current_positions_, &matched_reference_positions_);
 
+  if ( current_matches_.size() < 1 ) {
+    CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+    return false;
+  }
+
   switch ( motion_type() ) {
   case ECC_MOTION_TRANSLATION :
+    // TODO: mnove this code into to estimateTranslation2D()
+    if ( matched_reference_positions_.size() == 1 ) {
+      *current_transform = createTranslationTransform(
+          matched_current_positions_[0].x - matched_reference_positions_[0].x,
+          matched_current_positions_[0].y - matched_reference_positions_[0].y);
+    }
+    else if ( matched_reference_positions_.size() == 2 ) {
+      *current_transform = createTranslationTransform(
+          0.5 * (matched_current_positions_[0].x - matched_reference_positions_[0].x + matched_current_positions_[1].x - matched_reference_positions_[1].x),
+          0.5 * (matched_current_positions_[0].y - matched_reference_positions_[0].y + matched_current_positions_[1].y - matched_reference_positions_[1].y));
+    }
+    else {
+
+      const uint n = matched_current_positions_.size();
+
+      double tx = 0, ty = 0, mx = 0, my = 0, s2 = 0;
+      int c = 0;
+
+      for ( uint i = 0; i < n; ++i ) {
+        mx += matched_current_positions_[i].x - matched_reference_positions_[i].x;
+        my += matched_current_positions_[i].y - matched_reference_positions_[i].y;
+      }
+      mx /= n, my /= n;
+
+      for ( uint i = 0; i < n; ++i ) {
+        const double dx = matched_current_positions_[i].x - matched_reference_positions_[i].x;
+        const double dy = matched_current_positions_[i].y - matched_reference_positions_[i].y;
+        s2 += (dx - mx) * (dx - mx) + (dy - my) * (dy - my) ;
+      }
+      s2 /= n;
+
+      for ( uint i = 0; i < n; ++i ) {
+        const double dx = matched_current_positions_[i].x - matched_reference_positions_[i].x;
+        const double dy = matched_current_positions_[i].y - matched_reference_positions_[i].y;
+        const double r2 = (dx - mx) * (dx - mx) + (dy - my) * (dy - my);
+        if ( r2 <= 9 * s2 ) {
+          tx += dx;
+          ty += dy;
+          ++c;
+        }
+      }
+
+      if ( c < 1 ) {
+        CF_FATAL("APP BUG: c=%d", c);
+        exit(1);
+      }
+
+      *current_transform = createTranslationTransform(tx / c, ty / c);
+    }
+
+    break;
+
     case ECC_MOTION_EUCLIDEAN :
+      if ( current_matches_.size() < 2 ) {
+        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+        return false;
+      }
+
     *current_transform = cv::estimateAffinePartial2D(matched_reference_positions_, matched_current_positions_,
         cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
+
     if ( current_transform->empty() ) {
       CF_ERROR("estimateAffinePartial2D() fails");
       return false;
     }
+
     break;
 
   case ECC_MOTION_AFFINE :
-    case ECC_MOTION_QUADRATIC :
+  case ECC_MOTION_QUADRATIC :
+
+    if ( current_matches_.size() < 3 ) {
+      CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+      return false;
+    }
+
     *current_transform = cv::estimateAffine2D(matched_reference_positions_, matched_current_positions_,
         cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
+
     if ( current_transform->empty() ) {
       CF_ERROR("estimateAffine2D() fails");
       return false;
     }
+
     if ( motion_type() == ECC_MOTION_QUADRATIC ) {
       *current_transform = expandAffineTransform(*current_transform, motion_type());
     }
     break;
 
   case ECC_MOTION_HOMOGRAPHY :
+
+    if ( current_matches_.size() < 3 ) {
+      CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+      return false;
+    }
+
     *current_transform = cv::findHomography(matched_reference_positions_, matched_current_positions_,
         cv::LMEDS, 5, cv::noArray(), 2000, 0.95);
+
     if ( current_transform->empty() ) {
       CF_ERROR("findHomography() fails");
       return false;
     }
+
     break;
 
   default :

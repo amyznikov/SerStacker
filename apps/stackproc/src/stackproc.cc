@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
   double min, max;
 
   c_image_processor processor("processor");
+  processor.set_enable_debug_messages(true);
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
           "   [-unsharp sigma:amount]         apply usharp_mask(sigma, amout=(0..1))\n"
           "   [-clip min:max]                 clip data range to [min..max]\n"
           "   [-normalize min:max]            apply cv::normalize(min, max)\n"
-          "   [-a <T|E|A|H|Q>:eps:rc]         align color channels\n"
+          "   [-a <T|E|A|H|Q>:rc:eps]         align color channels\n"
 
           "   [-wb]                           apply lsbc white balance\n"
           "   [-wbm]                          apply meanstdev white balance\n"
@@ -231,7 +232,7 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      // [-a <T|E|A|H|Q>:rho:eps:rc]
+      // [-a <T|E|A|H|Q>:rc:eps]
 
       switch ( toupper(tokens[0][0]) ) {
       case 'T' :
@@ -254,15 +255,16 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      if ( tokens.size() >= 2 && sscanf(tokens[1].c_str(), "%lf", &ecc_eps) != 1 ) {
+      if ( tokens.size() >= 2 && sscanf(tokens[1].c_str(), "%d", &ecc_reference_channel) != 1 ) {
+        fprintf(stderr, "Invalid ecc_reference_channel specified: %s\n", argv[i]);
+        return 1;
+      }
+
+      if ( tokens.size() >= 3 && sscanf(tokens[2].c_str(), "%lf", &ecc_eps) != 1 ) {
         fprintf(stderr, "Invalid ecc_eps specified: %s\n", argv[i]);
         return 1;
       }
 
-      if ( tokens.size() >= 3 && sscanf(tokens[2].c_str(), "%d", &ecc_reference_channel) != 1 ) {
-        fprintf(stderr, "Invalid ecc_reference_channel specified: %s\n", argv[i]);
-        return 1;
-      }
 
       processor.emplace_back(
           c_align_color_channels_routine::create(

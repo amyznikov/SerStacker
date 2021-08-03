@@ -72,6 +72,9 @@ void scaleTransform(int ecc_motion_type,
 cv::Mat1f expandAffineTransform(const cv::Mat1f T,
     int ecc_motion_type);
 
+// Extract translation component from current transform
+bool getTranslationComponent(int ecc_motion_type, const cv::Mat1f & T,
+    double * tx, double * ty);
 
 
 // pyramide utils

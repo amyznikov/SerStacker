@@ -472,10 +472,10 @@ static bool fillTranslateRemap_(const cv::Mat_<T1> & a, cv::Mat_<cv::Vec<T2,2>> 
 
   float tx, ty;
 
-  if ( a.size() == cv::Size(1, 2) ) {
+  if ( a.rows == 1 && a.cols == 2 ) {
     tx = a[0][0], ty = a[0][1];
   }
-  else if ( a.size() == cv::Size(2, 1) ) {
+  else if ( a.rows == 2 && a.cols == 1 ) {
     tx = a[0][0], ty = a[1][0];
   }
   else if ( a.rows == 2 && a.cols >= 3 ) {
@@ -617,7 +617,7 @@ bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv
     if ( A.size() == cv::Size(1, 2) || A.size() == cv::Size(2, 1) || (A.rows() == 2 && A.cols() >= 3) ) {
       break;
     }
-    CF_ERROR("Invalid argument: warp matrix size must be 2x3");
+    CF_ERROR("Invalid argument: warp matrix size must be 2x1, 1x2 or 2x3");
     return false;
 
 
@@ -748,8 +748,9 @@ cv::Mat1f createEyeTransform(int ecc_motion_type)
 {
   switch ( ecc_motion_type ) {
   case ECC_MOTION_TRANSLATION :
-    case ECC_MOTION_EUCLIDEAN :
-    case ECC_MOTION_AFFINE :
+    return cv::Mat1f(2, 1, 0.f);
+  case ECC_MOTION_EUCLIDEAN :
+  case ECC_MOTION_AFFINE :
     return cv::Mat1f::eye(2, 3);
   case ECC_MOTION_HOMOGRAPHY :
     return cv::Mat1f::eye(3, 3);
@@ -766,9 +767,12 @@ cv::Mat1f createEyeTransform(int ecc_motion_type)
  */
 cv::Mat1f createTranslationTransform(double Tx, double Ty)
 {
-  cv::Mat1f T = cv::Mat1f::eye(2, 3);
-  T[0][2] = Tx;
-  T[1][2] = Ty;
+  //  cv::Mat1f T = cv::Mat1f::eye(2, 3);
+  //  T[0][2] = Tx;
+  //  T[1][2] = Ty;
+  cv::Mat1f T(2, 1);
+  T[0][0] = Tx;
+  T[1][0] = Ty;
   return T;
 }
 
@@ -779,11 +783,11 @@ void scaleTransform(int motion_type, cv::Mat1f & T, double scale)
 {
   switch ( motion_type ) {
   case ECC_MOTION_TRANSLATION :
-    if ( T.size() == cv::Size(1, 2) ) {
+    if ( T.rows == 1 && T.cols == 2 ) {
       T[0][0] *= scale;
       T[0][1] *= scale;
     }
-    else if ( T.size() == cv::Size(2, 1) ) {
+    else if ( T.rows == 2 && T.cols == 1 ) {
       T[0][0] *= scale;
       T[1][0] *= scale;
     }
@@ -842,15 +846,92 @@ void scaleTransform(int motion_type, const cv::Mat1f & src, cv::Mat1f & dst, dou
  * Convert the matrix of affine transform into other compatibe motion type,
  * filling new added elements as appropriate
  */
-cv::Mat1f expandAffineTransform(const cv::Mat1f T, int motion_type)
+cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 {
   cv::Mat1f TT;
 
-  if ( T.size() == cv::Size(3, 2) ) {
-    switch ( motion_type ) {
+  if ( (T.rows == 1 && T.cols == 2) ) { // T is translation matrix
+
+    switch ( target_motion_type ) {
     case ECC_MOTION_TRANSLATION :
-      case ECC_MOTION_AFFINE :
-      case ECC_MOTION_EUCLIDEAN :
+      TT.create(2, 1);
+      TT[0][0] = T[0][0];
+      TT[1][0] = T[0][1];
+      break;
+
+    case ECC_MOTION_AFFINE :
+    case ECC_MOTION_EUCLIDEAN :
+      TT = cv::Mat1f::eye(2, 3);
+      TT[0][2] = T[0][0];
+      TT[1][2] = T[0][1];
+      break;
+
+    case ECC_MOTION_QUADRATIC :
+      TT = cv::Mat1f::eye(2, 6);
+      TT[0][2] = T[0][0];
+      TT[1][2] = T[0][1];
+      break;
+
+    case ECC_MOTION_HOMOGRAPHY :
+      TT = cv::Mat1f::eye(3, 3);
+      TT[0][2] = T[0][0];
+      TT[1][2] = T[0][1];
+      break;
+
+    default:
+      CF_FATAL("App BUG: invalid target_motion_type=%d", target_motion_type);
+      return TT;
+    }
+
+  }
+  else if ( T.rows == 2 && T.cols == 1 ) {
+
+
+    switch ( target_motion_type ) {
+    case ECC_MOTION_TRANSLATION :
+      TT.create(2, 1);
+      TT[0][0] = T[0][0];
+      TT[1][0] = T[1][0];
+      break;
+
+    case ECC_MOTION_AFFINE :
+    case ECC_MOTION_EUCLIDEAN :
+      TT = cv::Mat1f::eye(2, 3);
+      TT[0][2] = T[0][0];
+      TT[1][2] = T[1][0];
+      break;
+
+    case ECC_MOTION_QUADRATIC :
+      TT = cv::Mat1f::eye(2, 6);
+      TT[0][2] = T[0][0];
+      TT[1][2] = T[1][0];
+      break;
+
+    case ECC_MOTION_HOMOGRAPHY :
+      TT = cv::Mat1f::eye(3, 3);
+      TT[0][2] = T[0][0];
+      TT[1][2] = T[1][0];
+      break;
+
+    default:
+      CF_FATAL("App BUG: invalid target_motion_type=%d", target_motion_type);
+      return TT;
+    }
+  }
+
+  else if ( T.rows == 2 && T.cols == 3 ) { // T is affine matrix
+
+    switch ( target_motion_type ) {
+
+    case ECC_MOTION_TRANSLATION :
+      TT.create(2, 1);
+      TT[0][0] = T[0][2];
+      TT[1][0] = T[1][2];
+      break;
+
+
+    case ECC_MOTION_AFFINE :
+    case ECC_MOTION_EUCLIDEAN :
       T.copyTo(TT);
       break;
 
@@ -871,10 +952,59 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int motion_type)
         }
       }
       break;
+
+    default:
+      CF_FATAL("App BUG: invalid target_motion_type=%d", target_motion_type);
+      return TT;
     }
+
   }
 
   return TT;
+}
+
+
+// Extract translation component from current transform
+bool getTranslationComponent(int motion_type, const cv::Mat1f & T,
+    double * tx, double * ty)
+{
+  switch ( motion_type ) {
+  case ECC_MOTION_TRANSLATION :
+    if ( T.rows == 1 && T.cols == 2 ) {
+      *tx = T[0][0], *ty = T[0][1];
+    }
+    else if ( T.rows == 2 && T.cols == 1 ) {
+      *tx = T[0][0], *ty = T[1][0];
+    }
+    else {
+      CF_ERROR("Invalid warp matrix size specified : %dx%d, can not extract translation components", T.rows, T.cols);
+      *tx = *ty = 0;
+      return false;
+    }
+    break;
+
+  case ECC_MOTION_EUCLIDEAN :
+  case ECC_MOTION_AFFINE :
+  case ECC_MOTION_HOMOGRAPHY :
+  case ECC_MOTION_QUADRATIC :
+    if ( T.rows == 2 && T.cols >= 3 ) {
+      *tx = T[0][2];
+      *ty = T[1][2];
+    }
+    else {
+      CF_ERROR("Invalid warp matrix size specified : %dx%d, can not extract translation components", T.rows, T.cols);
+      *tx = *ty = 0;
+      return false;
+    }
+    break;
+
+  default :
+    CF_ERROR("Invalid ecc_motion_type=%d", motion_type);
+    *tx = *ty = 0;
+    return false;
+  }
+
+  return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -888,37 +1018,47 @@ static int init_warp_matrix(int motion_type, cv::InputOutputArray warpMatrix)
     createEyeTransform(motion_type).copyTo(warpMatrix);
   }
   else if ( warpMatrix.type() != CV_32FC1 && warpMatrix.type() != CV_64FC1 ) {
-    CF_FATAL("Warp Matrix must be single-channel floating-point matrix");
+    CF_FATAL("Warp matrix must be single-channel floating-point matrix");
+    return -1;
+  }
+
+  if ( warpMatrix.channels() != 1 ) {
+    CF_FATAL("Warp matrix must be single-channel matrix");
     return -1;
   }
 
   switch ( motion_type ) {
-  case ECC_MOTION_TRANSLATION :
-    if ( warpMatrix.size() != cv::Size(3, 2) || warpMatrix.channels() != 1 ) {
-      CF_FATAL("Warp Matrix must be single-channel floating-point 2x3 matrix");
+  case ECC_MOTION_TRANSLATION : {
+    const int r =  warpMatrix.rows();
+    const int c =  warpMatrix.cols();
+
+    if ( !(r == 1 && c == 2) && !(r == 2 && c == 1) && !(r == 2 && c == 3) ) {
+      CF_FATAL("Warp matrix must be single-channel floating-point 2x1, 1x2 or 2x3 matrix");
       return -1;
     }
+
     numberOfParameters = 2;
+  }
     break;
 
   case ECC_MOTION_EUCLIDEAN :
-    if ( warpMatrix.size() != cv::Size(3, 2) || warpMatrix.channels() != 1 ) {
-      CF_FATAL("Warp Matrix must be single-channel floating-point 2x3 matrix");
+    if ( warpMatrix.size() != cv::Size(3, 2) ) {
+      CF_FATAL("Warp matrix must be single-channel floating-point 2x3 matrix");
       return -1;
     }
     numberOfParameters = 3;
     break;
 
   case ECC_MOTION_AFFINE :
-    if ( warpMatrix.size() != cv::Size(3, 2) || warpMatrix.channels() != 1 ) {
-      CF_FATAL("Warp Matrix must be single-channel floating-point 2x3 matrix");
+    if ( warpMatrix.size() != cv::Size(3, 2) ) {
+      CF_FATAL("Warp matrix must be single-channel floating-point 2x3 matrix");
       return -1;
     }
     numberOfParameters = 6;
     break;
 
   case ECC_MOTION_QUADRATIC :
-    if ( warpMatrix.size() != cv::Size(6, 2) || warpMatrix.channels() != 1 ) {
+    if ( warpMatrix.size() != cv::Size(6, 2) ) {
       CF_FATAL("Warp Matrix must be single-channel floating-point 2x6 matrix");
       return -1;
     }
@@ -926,8 +1066,8 @@ static int init_warp_matrix(int motion_type, cv::InputOutputArray warpMatrix)
     break;
 
   case ECC_MOTION_HOMOGRAPHY :
-    if ( warpMatrix.size() != cv::Size(3, 3) || warpMatrix.channels() != 1 ) {
-      CF_FATAL("Warp Matrix must be single-channel floating-point 3x3 matrix");
+    if ( warpMatrix.size() != cv::Size(3, 3) ) {
+      CF_FATAL("Warp matrix must be single-channel floating-point 3x3 matrix");
       return -1;
     }
     numberOfParameters = 8;
@@ -1088,14 +1228,23 @@ static bool compute_jacobian(int motion_type, const cv::Mat1f & gx, const cv::Ma
 static bool update_warp_matrix(int motion_type, cv::Mat1f & W, const cv::Mat1f & deltaP, double * e, double xmax, double ymax)
 {
   switch ( motion_type ) {
-  case ECC_MOTION_TRANSLATION : {
-    W(0, 2) += deltaP(0, 0);
-    W(1, 2) += deltaP(1, 0);
+  case ECC_MOTION_TRANSLATION :
+    if ( W.rows == 1 && W.cols == 2 ) {
+      W(0, 0) += deltaP(0, 0);
+      W(0, 1) += deltaP(1, 0);
+    }
+    else if ( W.rows == 2 && W.cols == 1 ) {
+      W(0, 0) += deltaP(0, 0);
+      W(1, 0) += deltaP(1, 0);
+    }
+    else {
+      W(0, 2) += deltaP(0, 0);
+      W(1, 2) += deltaP(1, 0);
+    }
     if ( e ) {
       *e = sqrt(square(deltaP(0, 0)) + square(deltaP(1, 0)));
     }
     break;
-  }
 
   case ECC_MOTION_EUCLIDEAN : {
     // https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html
@@ -1208,14 +1357,23 @@ static bool update_warp_matrix(int motion_type, cv::Mat1f & W, const cv::Mat1f &
 static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W, const cv::Mat1f & deltaP, double * e, double xmax, double ymax)
 {
   switch ( motion_type ) {
-  case ECC_MOTION_TRANSLATION : {
-    W(0, 2) -= deltaP(0, 0);
-    W(1, 2) -= deltaP(1, 0);
+  case ECC_MOTION_TRANSLATION :
+    if ( W.rows == 1 && W.cols == 2 ) {
+      W(0, 0) -= deltaP(0, 0);
+      W(0, 1) -= deltaP(1, 0);
+    }
+    else if ( W.rows == 2 && W.cols == 1 ) {
+      W(0, 0) -= deltaP(0, 0);
+      W(1, 0) -= deltaP(1, 0);
+    }
+    else {
+      W(0, 2) -= deltaP(0, 0);
+      W(1, 2) -= deltaP(1, 0);
+    }
     if ( e ) {
       *e = sqrt(deltaP(0, 0) * deltaP(0, 0) + deltaP(1, 0) * deltaP(1, 0));
     }
     return true;
-  }
 
   case ECC_MOTION_EUCLIDEAN : {
     // https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html

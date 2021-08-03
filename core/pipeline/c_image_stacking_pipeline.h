@@ -333,7 +333,7 @@ protected:
   c_anscombe_transform anscombe_;
   c_feature_based_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
-  c_frame_accumulation::ptr master_flow_accumulation_;
+  c_frame_accumulation_with_mask::ptr masterflow_accumulation_;
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;

@@ -257,7 +257,7 @@ bool c_star_field_registration::estimate_feature_transform(cv::InputArray curren
       CF_FATAL("too few  keypoints detected: %zu", current_keypoints_.size());
       return false;
     }
-    // spceial case
+    // spcecial case
   }
   else {
     build_triangles(current_keypoints_, current_triangles_, current_descriptors_);

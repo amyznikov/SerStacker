@@ -110,6 +110,7 @@ class c_image_processor :
 {
   std::string name_;
   bool enabled_ = true;
+  bool enable_debug_messages_ = false;
 
 public:
   typedef c_image_processor this_class;
@@ -146,12 +147,28 @@ public:
     return enabled_;
   }
 
+  void set_enable_debug_messages(bool v)
+  {
+    enable_debug_messages_ = v;
+  }
+
+  bool enable_debug_messages() const
+  {
+    return enable_debug_messages_;
+  }
+
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) const
   {
     if ( enabled_ ) {
       for ( const c_image_processor_routine::ptr & processor : *this ) {
         if ( processor && processor->enabled() ) {
+
+          if ( enable_debug_messages_ ) {
+            CF_DEBUG("[%s]", processor->class_name().c_str());
+          }
+
           if ( !processor->process(image, mask) ) {
+            CF_ERROR("[%s] processor->process() fails", processor->class_name().c_str());
             return false;
           }
         }

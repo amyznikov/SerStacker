@@ -10,6 +10,7 @@
 #include <tbb/tbb.h>
 #include <core/readdir.h>
 #include <core/io/save_image.h>
+#include <core/io/load_image.h>
 #include <core/io/rgbamix.h>
 #include <core/strsplit.h>
 #include <core/improc/c_image_processor.h>
@@ -304,7 +305,7 @@ int main(int argc, char *argv[])
       get_file_suffix(output_file_name);
 
 
-  if ( !(image = cv::imread(input_file_name, cv::IMREAD_UNCHANGED)).data ) {
+  if ( !load_image(image, input_file_name) ) {
     CF_FATAL("cv::imread(%s) fails", input_file_name.c_str());
     return 1;
   }

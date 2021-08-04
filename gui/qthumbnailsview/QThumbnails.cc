@@ -6,7 +6,7 @@
  */
 
 #include <opencv2/opencv.hpp>
-//#include <core/proc/flow-color.h>
+#include <core/io/load_image.h>
 #include "QThumbnails.h"
 
 // Temporary stubs until CMakelists.txt update
@@ -567,7 +567,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       }
     }
 
-    if ( !(cvimage = cv::imread(pathFileName.toStdString(), cv::IMREAD_UNCHANGED)).empty() ) {
+    if ( load_image(cvimage, pathFileName.toStdString()) ) {
 
       if ( cvimage.channels() ==  2 ) {
         // interpret second channel as mask and ignore for preview,

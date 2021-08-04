@@ -6,6 +6,7 @@
  */
 
 #include "c_input_source.h"
+#include "load_image.h"
 #include <core/readdir.h>
 #include <mutex>
 #include <core/debug.h>
@@ -420,7 +421,7 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
   }
   else {
 
-    if ( !(output_frame = cv::imread(filename_, cv::IMREAD_UNCHANGED)).data ) {
+    if ( !load_image(output_frame, filename_) ) {
       return false;
     }
 

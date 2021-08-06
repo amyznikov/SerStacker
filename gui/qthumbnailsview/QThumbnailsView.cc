@@ -229,11 +229,19 @@ void QThumbnailsListWidget::mouseMoveEvent(QMouseEvent *e)
     return Base::mouseMoveEvent(e);
   }
 
-  QList<QListWidgetItem*> selection = selectedItems();
+  //  QList<QListWidgetItem*> selection = selectedItems();
+
+  QList<QListWidgetItem*> selection;
+  for ( int i = 0, n = this->count(); i < n; ++i ) {
+    QListWidgetItem * item = this->item(i);
+    if ( item->isSelected() && !item->isHidden() ) {
+      selection.append(item);
+    }
+  }
+
   if ( selection.count() < 1 ) {
     return Base::mouseMoveEvent(e);
   }
-
 
   if ( selection.count() > 1 ) {
 
@@ -328,6 +336,13 @@ void QThumbnailsListWidget::keyPressEvent(QKeyEvent *e)
     break;
   }
 
+  case Qt::Key_A :
+    if ( e->modifiers() & Qt::ControlModifier ) {
+      selectAll();
+      return;
+    }
+    break;
+
   }
 
   Base::keyPressEvent(e);
@@ -356,6 +371,23 @@ bool QThumbnailsListWidget::deleteFiles(const QList<QListWidgetItem*> & selected
   }
 
   return true;
+}
+
+void QThumbnailsListWidget::selectAll(bool includeHiddenItems)
+{
+  if ( includeHiddenItems ) {
+    Base::selectAll();
+  }
+  else {
+    clearSelection();
+
+    for ( int i = 0, n = this->count(); i < n; ++i ) {
+      QListWidgetItem * item = this->item(i);
+      if ( !item->isHidden() ) {
+        item->setSelected(true);
+      }
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

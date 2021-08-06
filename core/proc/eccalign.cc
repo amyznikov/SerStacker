@@ -3092,7 +3092,7 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
 
   const int min_image_size = 1 << (support_scale_ + 1);
   //const int min_image_size = 32;
-  const double Noise = pow(0.1 * estimate_noise(I, cv::noArray(), cv::noArray())[0], 4);
+  const double Noise = pow(0.5 * estimate_noise(I, cv::noArray(), cv::noArray())[0], 4);
 
   while ( 42 ) {
 

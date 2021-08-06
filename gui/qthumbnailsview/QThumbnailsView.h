@@ -40,6 +40,7 @@ public:
   void selectPrevIcon();
 
   bool deleteFiles(const QList<QListWidgetItem*> & selectedItems, bool askConfirmation = true);
+  void selectAll(bool includeHiddenItems = false);
 
 signals:
   //void keyPressed(QKeyEvent * e);
@@ -52,6 +53,7 @@ protected:
   void mouseMoveEvent(QMouseEvent *event) override;
   void wheelEvent(QWheelEvent *e) override;
   void keyPressEvent(QKeyEvent *event) override;
+  //bool event(QEvent *e) override;
 
 protected:
   virtual void onZoomChanged(void);

@@ -9,9 +9,8 @@
 #ifndef __QAlignColorChannelsSettings_h__
 #define __QAlignColorChannelsSettings_h__
 
-#include "QImageProcessorCollectionSettings.h"
+#include "QImageProcessorChainEditor.h"
 #include <core/improc/c_align_color_channels_routine.h>
-#include <core/debug.h>
 
 class QAlignColorChannelsSettings
     : public QImageProcessorRoutineSettings<c_align_color_channels_routine>
@@ -31,7 +30,7 @@ public:
   } classFactory;
 
 
-  QAlignColorChannelsSettings(const c_align_color_channels_routine::ptr & processor,
+  QAlignColorChannelsSettings(const c_align_color_channels_routine::ptr & routine,
       QWidget * parent = Q_NULLPTR);
 
 protected:

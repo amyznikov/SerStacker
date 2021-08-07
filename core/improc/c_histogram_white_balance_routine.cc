@@ -7,6 +7,7 @@
 
 #include "c_histogram_white_balance_routine.h"
 #include <core/proc/autoclip.h>
+#include <core/proc/reduce_channels.h>
 
 c_histogram_white_balance_routine::c_class_factory c_histogram_white_balance_routine::class_factory;
 
@@ -48,19 +49,58 @@ double c_histogram_white_balance_routine::hclip() const
   return hclip_;
 }
 
-bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+void c_histogram_white_balance_routine::set_threshold(double v)
 {
-  return histogram_white_balance(image.getMatRef(),
-      mask,
-      image.getMatRef(),
-      lclip_,
-      hclip_);
+  threshold_ = v;
+}
+
+double c_histogram_white_balance_routine::threshold() const
+{
+  return threshold_;
+}
+
+void c_histogram_white_balance_routine::set_enable_threshold(bool v)
+{
+  enable_threshold_ = v;
+}
+
+bool c_histogram_white_balance_routine::enable_threshold() const
+{
+  return enable_threshold_;
 }
 
 
-bool c_histogram_white_balance_routine::load(c_config_setting settings)
+bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( !base::load(settings) ) {
+  cv::Mat objmask;
+
+  if ( !enable_threshold_ ) {
+    objmask = mask.getMat();
+  }
+  else {
+    cv::compare(image, threshold_, objmask, cv::CMP_GE);
+
+    if ( objmask.channels() > 1 ) {
+      reduce_color_channels(objmask, cv::REDUCE_MIN);
+    }
+
+    if ( !mask.empty() ) {
+      cv::bitwise_and(mask, objmask, objmask);
+    }
+  }
+
+  return histogram_white_balance(image.getMatRef(),
+      objmask,
+      image.getMatRef(),
+      lclip_,
+      hclip_);
+
+}
+
+
+bool c_histogram_white_balance_routine::deserialize(c_config_setting settings)
+{
+  if ( !base::deserialize(settings) ) {
     return false;
   }
 
@@ -70,9 +110,9 @@ bool c_histogram_white_balance_routine::load(c_config_setting settings)
   return true;
 }
 
-bool c_histogram_white_balance_routine::save(c_config_setting settings) const
+bool c_histogram_white_balance_routine::serialize(c_config_setting settings) const
 {
-  if ( !base::save(settings) ) {
+  if ( !base::serialize(settings) ) {
     return false;
   }
 

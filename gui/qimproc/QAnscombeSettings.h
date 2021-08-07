@@ -9,8 +9,8 @@
 #ifndef __QAnscombeSettings_h__
 #define __QAnscombeSettings_h__
 
-#include "QImageProcessorCollectionSettings.h"
 #include <core/improc/c_anscombe_routine.h>
+#include "QImageProcessorSelector.h"
 
 class QAnscombeSettings
   : public QImageProcessorRoutineSettings<c_anscombe_routine>

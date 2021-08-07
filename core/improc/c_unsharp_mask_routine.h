@@ -31,8 +31,8 @@ public:
 
   static ptr create(bool enabled = true);
   static ptr create(double sigma, double alpha = 0.9, bool enabled = true);
-  bool load(c_config_setting settings) override;
-  bool save(c_config_setting settings) const override;
+  bool deserialize(c_config_setting settings) override;
+  bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   double sigma() const;

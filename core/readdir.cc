@@ -53,21 +53,21 @@ static int fnmatch (const char *__pattern, const char *__name, int __flags) {
  * */
 bool file_exists(const std::string & path)
 {
-  return access(path.c_str(), F_OK) == 0;
+  return access(expand_path(path).c_str(), F_OK) == 0;
 }
 
 /* check for directory existence */
 bool is_directory(const std::string & path)
 {
   struct stat sb;
-  return stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode);
+  return stat(expand_path(path).c_str(), &sb) == 0 && S_ISDIR(sb.st_mode);
 }
 
 /* check for regular file existence */
 bool is_regular_file(const std::string & path)
 {
   struct stat sb;
-  return stat(path.c_str(), &sb) == 0 && S_ISREG(sb.st_mode);
+  return stat(expand_path(path).c_str(), &sb) == 0 && S_ISREG(sb.st_mode);
 }
 
 
@@ -75,7 +75,7 @@ bool is_regular_file(const std::string & path)
 bool is_link(const std::string & path)
 {
   struct stat sb;
-  return stat(path.c_str(), &sb) == 0 && S_ISLNK(sb.st_mode);
+  return stat(expand_path(path).c_str(), &sb) == 0 && S_ISLNK(sb.st_mode);
 }
 
 
@@ -84,7 +84,7 @@ bool is_link(const std::string & path)
  * */
 bool file_readable(const std::string & path)
 {
-  return access(path.c_str(), R_OK) == 0;
+  return access(expand_path(path).c_str(), R_OK) == 0;
 }
 
 /* get file name from full path name */
@@ -196,7 +196,7 @@ bool is_absolute_path(const std::string & fullpathname)
     return false;
   }
 
-  if ( fullpathname[0] == '/' ) {
+  if ( fullpathname[0] == '/' || fullpathname[0] == '~' ) {
     return true;
   }
 
@@ -374,6 +374,20 @@ std::string get_home_directory()
 }
 
 /**
+ * Expand home directory (~) symbol in path
+ */
+std::string expand_path(const std::string & path)
+{
+  if ( ~path.empty() && path[0] == '~' ) {
+    std::string abspath = path;
+    abspath.replace(0, 1, get_home_directory());
+    return abspath;
+  }
+
+  return path;
+}
+
+/**
  *  readdir(std::vector<std::string> * filelist, const std::string & path,
  *     const std::string & filemask)
  *
@@ -390,17 +404,8 @@ int readdir(std::vector<std::string> * list, const std::string & _path,
   DIR * dir = 0;
   struct dirent * e = NULL;
   std::vector<std::string> masks;
-  std::string path = _path.empty() ? "." : _path;
 
-  if ( path[0] == '~' ) {
-
-    std::string home = get_home_directory();
-    if ( home.empty() ) {
-      return -1;
-    }
-
-    path.replace(0, 1, home);
-  }
+  const std::string path = _path.empty() ? "." : expand_path(_path);
 
   split(filemask, &masks, '|');
 
@@ -729,9 +734,21 @@ bool create_path(const std::string & path, mode_t mode)
 
 #else
 
-bool create_path(const std::string & path, mode_t mode)
+bool create_path(const std::string & input_path, mode_t mode)
 {
   size_t size;
+  std::string path = input_path;
+
+  if ( path[0] == '~' ) {
+
+    std::string home = get_home_directory();
+    if ( home.empty() ) {
+      return -1;
+    }
+
+    path.replace(0, 1, home);
+  }
+
   char tmp[(size = path.size()) + 1];
 
   if ( strcpy(tmp, path.c_str())[size - 1] == '/' ) {

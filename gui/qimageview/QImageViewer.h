@@ -52,10 +52,11 @@ signals:
   void onMouseReleaseEvent(QMouseEvent * e);
   void onMouseDoubleClick(QMouseEvent * e);
   void onScaleChanged(int currentScale);
-  void onShowEvent(QShowEvent *e);
-  void onHideEvent(QHideEvent *e);
+//  void onShowEvent(QShowEvent *e);
+//  void onHideEvent(QHideEvent *e);
   void onFocusInEvent(QFocusEvent *e);
   void onFocusOutEvent(QFocusEvent *e);
+  void visibilityChanged(bool visible);
 
 public slots:
   virtual void updateDisplay();

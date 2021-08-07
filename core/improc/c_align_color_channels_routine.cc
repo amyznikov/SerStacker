@@ -59,12 +59,12 @@ bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::Inp
   return algorithm_.align(reference_channel_, image, image, mask, mask);
 }
 
-bool c_align_color_channels_routine::load(c_config_setting settings)
+bool c_align_color_channels_routine::deserialize(c_config_setting settings)
 {
-  return base::load(settings);
+  return base::deserialize(settings);
 }
 
-bool c_align_color_channels_routine::save(c_config_setting settings) const
+bool c_align_color_channels_routine::serialize(c_config_setting settings) const
 {
-  return base::save(settings);
+  return base::serialize(settings);
 }

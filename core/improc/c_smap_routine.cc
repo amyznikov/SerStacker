@@ -55,9 +55,9 @@ bool c_smap_routine::process(cv::InputOutputArray image, cv::InputOutputArray ma
   return true;
 }
 
-bool c_smap_routine::load(c_config_setting settings)
+bool c_smap_routine::deserialize(c_config_setting settings)
 {
-  if ( !base::load(settings) ) {
+  if ( !base::deserialize(settings) ) {
     return false;
   }
 
@@ -67,9 +67,9 @@ bool c_smap_routine::load(c_config_setting settings)
   return true;
 }
 
-bool c_smap_routine::save(c_config_setting settings) const
+bool c_smap_routine::serialize(c_config_setting settings) const
 {
-  if ( !base::save(settings) ) {
+  if ( !base::serialize(settings) ) {
     return false;
   }
 

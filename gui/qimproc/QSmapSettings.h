@@ -9,8 +9,8 @@
 #ifndef __QSmapSettings_h__
 #define __QSmapSettings_h__
 
-#include "QImageProcessorCollectionSettings.h"
 #include <core/improc/c_smap_routine.h>
+#include "QImageProcessorSelector.h"
 
 class QSmapSettings
   : public QImageProcessorRoutineSettings<c_smap_routine>

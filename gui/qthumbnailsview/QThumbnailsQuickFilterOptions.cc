@@ -114,9 +114,7 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
 
   const auto emit_parameterChanged =
       [this]() {
-        if ( !updatingControls() ) {
-          emit parameterChanged();
-        }
+        emit parameterChanged();
       };
 
   searchText_ctl = new QComboBox(this);
@@ -136,8 +134,10 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
       emit_parameterChanged);
 
   caseSensitivity_ctl =
-      add_checkbox(form, "Case sensitive",
-          emit_parameterChanged);
+      add_checkbox("Case sensitive",
+          [this] (int) {
+            emit parameterChanged();
+          });
 
 }
 

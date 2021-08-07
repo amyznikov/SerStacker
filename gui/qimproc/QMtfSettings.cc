@@ -12,8 +12,7 @@ const QMtfSettings::ClassFactory QMtfSettings::classFactory;
 QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)
 {
-  mtf_ctl = new QMtfControl(this);
-  form->addWidget(mtf_ctl);
+  mtf_ctl = add_widget("", new QMtfControl(this));
 
   updateControls();
 

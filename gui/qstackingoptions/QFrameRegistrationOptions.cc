@@ -337,12 +337,12 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-  enable_ecc_ctl = add_checkbox(form, "Enable ECC",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( enable_ecc_ctl->isChecked() != options_->enable_ecc ) {
-            options_->enable_ecc = enable_ecc_ctl->isChecked();
-            ecc_ctl->setVisible(options_->enable_ecc);
+  enable_ecc_ctl = add_checkbox("Enable ECC",
+      [this](int state) {
+        if ( options_ ) {
+          const bool checked = state == Qt::Checked;
+          if ( options_->enable_ecc != checked ) {
+            ecc_ctl->setVisible(options_->enable_ecc = checked);
             emit parameterChanged();
           }
         }
@@ -351,12 +351,12 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
   form->addRow(ecc_ctl = new QEccSettings(this));
 
 
-  enable_eccflow_ctl = add_checkbox(form, "Enable ECCFLOW",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( enable_eccflow_ctl->isChecked() != options_->enable_eccflow ) {
-            options_->enable_eccflow = enable_eccflow_ctl->isChecked();
-            eccflow_ctl->setVisible(options_->enable_eccflow);
+  enable_eccflow_ctl = add_checkbox("Enable ECCFLOW",
+      [this](int state ) {
+        if ( options_ ) {
+          const bool checked = state == Qt::Checked;
+          if ( options_->enable_eccflow != checked ) {
+            eccflow_ctl->setVisible(options_->enable_eccflow = checked);
             emit parameterChanged();
           }
         }
@@ -439,9 +439,9 @@ QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(QWidget * p
         }
       });
 
-  extended_ctl = add_checkbox(form, "Extended",
+  extended_ctl = add_checkbox("Extended",
       [this](int state) {
-        if (options_ && !updatingControls() ) {
+        if (options_ ) {
           bool checked = state == Qt::Checked;
           if ( checked != options_->extended ) {
             options_->extended = checked;
@@ -450,9 +450,9 @@ QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(QWidget * p
         }
       });
 
-  upright_ctl = add_checkbox(form, "Upright",
+  upright_ctl = add_checkbox("Upright",
       [this](int state) {
-        if (options_ && !updatingControls() ) {
+        if (options_ ) {
           bool checked = state == Qt::Checked;
           if ( checked != options_->upright ) {
             options_->upright = checked;

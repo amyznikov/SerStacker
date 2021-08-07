@@ -8,8 +8,8 @@
 #ifndef __QImageEditor_h__
 #define __QImageEditor_h__
 
-#include "../../core/improc/c_image_processor.h"
 #include "QImageViewer.h"
+#include <core/improc/c_image_processor.h>
 
 class QImageEditor
     : public QImageViewer
@@ -21,14 +21,8 @@ public:
 
   QImageEditor(QWidget * parent = Q_NULLPTR);
 
-  const c_image_processor::ptr & processor() const {
-    return processor_;
-  }
-
-  void set_processor(const c_image_processor::ptr & processor) {
-    processor_ = processor;
-    updateImage();
-  }
+  void set_current_processor(const c_image_processor::ptr & processor);
+  const c_image_processor::ptr & current_processor() const;
 
   void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void clear();
@@ -46,9 +40,13 @@ public slots:
   void updateImage();
 
 protected:
-  c_image_processor::ptr processor_;
+  void showEvent(QShowEvent *event) override;
+
+protected:
+  c_image_processor::ptr current_processor_;
   cv::Mat inputImage_;
   cv::Mat inputMask_;
+  bool hasPendingUpdates_ = false;
 };
 
 #endif /* __QImageEditor_h__ */

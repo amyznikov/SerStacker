@@ -93,6 +93,11 @@ void split_path(const std::string & fullpathname,
  */
 std::string get_home_directory();
 
+/**
+ * Expand home directory (~) symbol in path
+ */
+std::string expand_path(const std::string & path);
+
 /* Time of last modification in nanosec */
 int64_t last_modification_timestamp(const std::string & abspath);
 

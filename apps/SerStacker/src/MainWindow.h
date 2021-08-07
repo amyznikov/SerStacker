@@ -21,7 +21,7 @@
 #include <gui/qstackingthread/QStackingProgressView.h>
 #include <gui/qstackingoptions/QStackOptions.h>
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
-#include "../../../gui/qimproc/QImageProcessorCollectionSettings.h"
+#include <gui/qimproc/QImageProcessorSelector.h>
 #include "c_display_function.h"
 
 //#include <gui/widgets/QMTFImageLevelsWidget.h>
@@ -76,7 +76,6 @@ private slots:
   void onShowStackOptionsClicked(const c_image_stacking_options::ptr & ppline);
   void onStackingThreadStarted();
   void onStackingThreadFinished();
-  void updateImageProcessingOptions(QImageEditor * e);
 
   //void onPipelineTreeViewCurrentItemChanged();
 //  void onPipelineItemPressed(const QFrameStackingPipeline::ptr & ppline);
@@ -106,9 +105,9 @@ private:
   QStackTreeViewDock * stackTreeDock = Q_NULLPTR;
   QStackTree * stackTreeView = Q_NULLPTR;
 
-  QCustomDockWidget * imageProcessorSettingsDock = Q_NULLPTR;
-  QImageProcessorCollectionSettings * imageProcessorSettings = Q_NULLPTR;
-  QImageEditor * currentImageEditor = Q_NULLPTR;
+  QCustomDockWidget * imageProcessorSelectorDock = Q_NULLPTR;
+  QImageProcessorSelector * imageProcessorSelector = Q_NULLPTR;
+  //QImageEditor * currentImageEditor = Q_NULLPTR;
 
   QMenu * fileMenu = Q_NULLPTR;
   QMenu * viewMenu = Q_NULLPTR;

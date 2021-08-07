@@ -10,8 +10,8 @@
 #define __QNoiseMapSettings_h__
 
 
-#include "QImageProcessorCollectionSettings.h"
 #include <core/improc/c_noisemap_routine.h>
+#include "QImageProcessorSelector.h"
 
 
 class QNoiseMapSettings

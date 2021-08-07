@@ -30,8 +30,8 @@ public:
 
   static ptr create(bool enabled = true);
   static ptr create(double lclip, double hclip, bool enabled = true);
-  bool load(c_config_setting settings) override;
-  bool save(c_config_setting settings) const override;
+  bool deserialize(c_config_setting settings) override;
+  bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   void set_lclip(double v);
@@ -40,9 +40,17 @@ public:
   void set_hclip(double v);
   double hclip() const;
 
+  void set_threshold(double v);
+  double threshold() const;
+
+  void set_enable_threshold(bool v);
+  bool enable_threshold() const;
+
 protected:
   double lclip_ = 1;
   double hclip_ = 99;
+  double threshold_ = 0;
+  bool enable_threshold_ = false;
 };
 
 #endif /* __c_histogram_white_balance_routine_h__ */

@@ -29,8 +29,8 @@ public:
   c_autoclip_routine(bool enabled = true);
   static ptr create(bool enabled = true);
   static ptr create(double lclip, double hclip, bool enabled = true);
-  bool load(c_config_setting settings) override;
-  bool save(c_config_setting settings) const override;
+  bool deserialize(c_config_setting settings) override;
+  bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   void set_lclip(double v);

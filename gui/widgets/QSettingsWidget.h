@@ -55,6 +55,7 @@ public slots:
 signals:
   void parameterChanged();
 
+
 protected:
   virtual void onload(QSettings & settings);
   virtual void onupdatecontrols();
@@ -62,6 +63,29 @@ protected:
   virtual void setUpdatingControls(bool v);
   virtual void LOCK();
   virtual void UNLOCK();
+
+
+protected:
+  template<class _Calable>
+  QCheckBox * add_checkbox(QFormLayout * form, const char * name, const _Calable & slot)
+  {
+    QCheckBox * ctl = new QCheckBox(name);
+    form->addRow(ctl);
+    QObject::connect(ctl, &QCheckBox::stateChanged,
+        [this, slot](int state) {
+          if ( !updatingControls() ) {
+            LOCK();
+            slot(state);
+            UNLOCK();
+          }
+        });
+    return ctl;
+  }
+
+  template<class _Calable>
+  QCheckBox * add_checkbox(const char * name, const _Calable & slot) {
+    return add_checkbox(this->form, name, slot);
+  }
 
 protected:
   QString PREFIX;

@@ -128,15 +128,15 @@ MainWindow::MainWindow()
       set_stacklist(stacklist_);
 
 
-  imageProcessorSettingsDock = addCustomDock(this,
+  imageProcessorSelectorDock = addCustomDock(this,
       Qt::LeftDockWidgetArea,
       "imageProcessorSettingsDock",
       "Image Processing",
-      createScrollableWrap(imageProcessorSettings = new QImageProcessorCollectionSettings(this)),
+      createScrollableWrap(imageProcessorSelector = new QImageProcessorSelector(this)),
       viewMenu);
 
   tabifyDockWidget(fileSystemTreeDock, stackTreeDock);
-  tabifyDockWidget(stackTreeDock, imageProcessorSettingsDock);
+  tabifyDockWidget(stackTreeDock, imageProcessorSelectorDock);
   fileSystemTreeDock->raise();
 
 
@@ -272,36 +272,21 @@ MainWindow::MainWindow()
   connect(QStackingThread::singleton(), &QStackingThread::finished,
       this, &ThisClass::onStackingThreadFinished);
 
-//  connect(imageProcessorSettings, &QImageProcessorChainSettings::parameterChanged,
-//      stackProgressView, &QStackingProgressView::updateCurrentImage);
-
-  connect(imageProcessorSettings, &QImageProcessorCollectionSettings::parameterChanged,
+  connect(imageProcessorSelector, &QImageProcessorSelector::parameterChanged,
       [this]() {
-        if ( currentImageEditor ) {
-          currentImageEditor->updateImage();
-        }
+        imageEditor->set_current_processor(imageProcessorSelector->current_processor());
       });
 
-  connect(imageEditor, &QImageViewer::onShowEvent,
-      [this]() {
-        updateImageProcessingOptions(imageEditor);
-      });
-  connect(imageEditor, &QImageViewer::onHideEvent,
-      [this]() {
-        updateImageProcessingOptions(nullptr);
-      });
-  connect(imageEditor, &QImageViewer::onFocusInEvent,
-      [this]() {
-        updateImageProcessingOptions(imageEditor);
-      });
-//  connect(imageEditor, &QImageViewer::onFocusOutEvent,
+//  connect(imageProcessorSelector, &QImageProcessorSelector::currentImageProcessorChanged,
 //      [this]() {
-//        updateImageProcessingOptions(imageEditor);
+//        imageEditor->set_current_processor(imageProcessorSelector->current_processor());
+//      });
+//
+//  connect(imageProcessorSelector, &QImageProcessorSelector::imageProcessingEnableChanged,
+//      [this](bool) {
+//        imageEditor->set_current_processor(imageProcessorSelector->current_processor());
 //      });
 
-//  void inputSourceDoubleClicked(const c_input_source::ptr & input_source);
-
-//
 //  connect(pipelinesTreeView_ctl, &QStackListTree::currentItemChanged,
 //      this, &ThisClass::onPipelineTreeViewCurrentItemChanged);
 //  connect(pipelinesTreeView_ctl, &QStackListTree::pipelineItemPressed,
@@ -339,8 +324,9 @@ MainWindow::MainWindow()
   configureTextViewerToolbars();
 
 
-  image_processors_->load("~/.config/SerStacker/image_processors");
-  imageProcessorSettings->set_available_processors(image_processors_);
+  image_processors_->load(c_image_processor_collection::default_processor_collection_path());
+  imageProcessorSelector->set_available_processors(image_processors_);
+  imageEditor->set_current_processor(imageProcessorSelector->current_processor());
 
 }
 
@@ -860,16 +846,6 @@ void MainWindow::onStackingThreadFinished()
           }
         });
 
-  }
-}
-
-void MainWindow::updateImageProcessingOptions(QImageEditor * e)
-{
-  if ( (currentImageEditor = e) ) {
-    imageProcessorSettings->set_current_processor(e->processor());
-  }
-  else {
-    imageProcessorSettings->set_current_processor(nullptr);
   }
 }
 

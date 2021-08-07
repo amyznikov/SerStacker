@@ -1,51 +1,23 @@
 /*
- * QImageProcessorCollectionSettings.h
+ * QImageProcessorRoutineSettings.h
  *
- *  Created on: Feb 20, 2021
+ *  Created on: Aug 5, 2021
  *      Author: amyznikov
  */
 
-#ifndef __QImageProcessorCollectionSettings_h__
-#define __QImageProcessorCollectionSettings_h__
+#pragma once
+#ifndef __QImageProcessorRoutineSettings_h__
+#define __QImageProcessorRoutineSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/addctrl.h>
 #include <core/improc/c_image_processor.h>
-#include <core/debug.h>
-
-
-class QImageProcessorCollectionSettings
-    : public QSettingsWidget
-{
-  Q_OBJECT;
-public:
-  typedef QImageProcessorCollectionSettings ThisClass;
-  typedef QSettingsWidget Base;
-
-  QImageProcessorCollectionSettings(QWidget * parent = Q_NULLPTR);
-
-  void set_available_processors(const c_image_processor_collection::ptr & processors);
-  const c_image_processor_collection::ptr available_processors() const;
-
-  void set_current_processor(const c_image_processor::ptr & processor);
-  const c_image_processor::ptr current_processor() const;
-
-protected:
-  void onupdatecontrols() override;
-  QSettingsWidget * createRoutineSettingWidged(const c_image_processor_routine::ptr & proc, QWidget * parent = Q_NULLPTR) const;
-
-protected:
-  c_image_processor_collection::ptr available_processors_;
-  //QComboBox * processor_selector_ctl = Q_NULLPTR;
-
-  c_image_processor::ptr current_processor_;
-  QCheckBox * enabled_ctl = Q_NULLPTR;
-};
 
 
 class QImageProcessorRoutineSettingsBase
   : public QSettingsWidget
 {
+  Q_OBJECT;
 public:
   typedef QImageProcessorRoutineSettingsBase ThisClass;
   typedef QSettingsWidget Base;
@@ -54,11 +26,17 @@ public:
   struct ClassFactory {
     const c_image_processor_routine::class_factory * const routine_factory;
     const SettingsWidgetFactory create_widget_instance;
+
     ClassFactory(const c_image_processor_routine::class_factory * _routine_factory,
         const SettingsWidgetFactory & _create_widget_instance) :
           routine_factory(_routine_factory),
           create_widget_instance(_create_widget_instance)
     {}
+
+    QString routineClassName() const {
+      return routine_factory->class_name.c_str();
+    }
+
   };
 
   struct ClassFactoryGuardLock
@@ -78,14 +56,34 @@ public:
   };
 
   static void registrerClassFactory(const ClassFactory * classFactory);
-  static void registrerAllClassFactories();
-
-
+  static void registrerAllClasses();
   static ThisClass * create(const c_image_processor_routine::ptr & routine, QWidget * parent = Q_NULLPTR);
+
+  virtual c_image_processor_routine::ptr current_routine() const = 0;
+
+signals:
+  void moveUpRequested(QImageProcessorRoutineSettingsBase * _this);
+  void moveDownRequested(QImageProcessorRoutineSettingsBase * _this);
+  void addRoutineRequested(QImageProcessorRoutineSettingsBase * _this);
+  void removeRoutineRequested(QImageProcessorRoutineSettingsBase * _this);
 
 protected:
   QImageProcessorRoutineSettingsBase(const ClassFactory * factory, QWidget * parent = Q_NULLPTR);
   const ClassFactory * const class_factory_;
+
+protected:
+  void focusInEvent(QFocusEvent *event) override;
+
+protected:
+  QWidget * header_ctl = Q_NULLPTR;
+  QHBoxLayout * header_layout = Q_NULLPTR;
+  QCheckBox * expand_ctl = Q_NULLPTR;
+  QCheckBox * enable_ctl = Q_NULLPTR;
+  QWidget * routine_ctl = Q_NULLPTR;
+  QFormLayout * ctlform = Q_NULLPTR;
+
+  QToolButton * menu_ctl = Q_NULLPTR;
+
 };
 
 
@@ -103,14 +101,12 @@ public:
   QImageProcessorRoutineSettings(const ClassFactory * classFactory, const RoutinePtr & routine, QWidget * parent = Q_NULLPTR) :
       Base(classFactory, parent)
   {
-    enabled_ctl = add_checkbox(form, "Enabled",
-        [this]( int state) {
-          if ( routine_ && !updatingControls() ) {
+    connect(enable_ctl, &QCheckBox::stateChanged,
+        [this](int state) {
+          if ( routine_ ) {
             bool enabled = state == Qt::Checked;
             if ( enabled != routine_->enabled() ) {
-              LOCK();
               routine_->set_enabled(enabled);
-              UNLOCK();
               emit parameterChanged();
             }
           }
@@ -123,25 +119,52 @@ public:
     routine_ = routine;
     updateControls();
   }
+
   const RoutinePtr & routine() const {
     return routine_;
   }
 
+  c_image_processor_routine::ptr current_routine() const override {
+    return routine_;
+  }
 
 protected:
   void onupdatecontrols() override {
     if ( routine_ ) {
-      enabled_ctl->setChecked(routine_->enabled());
+      enable_ctl->setChecked(routine_->enabled());
     }
   }
 
 protected:
+
+  template<class ObjType>
+  QCheckBox * add_checkbox(const char * name, std::shared_ptr<ObjType> * obj,
+      bool (ObjType::*getfn)() const, void (ObjType::*setfn)(bool))
+  {
+    QCheckBox * ctl = new QCheckBox();
+    ctlform->addRow(name, ctl);
+    QObject::connect(ctl, &QCheckBox::stateChanged,
+        [this, ctl, obj, getfn, setfn](int state) {
+          if ( *obj && !updatingControls() ) {
+            const bool checked = state == Qt::Checked;
+            if ( (obj->get()->*getfn)() != checked ) {
+              LOCK();
+              (obj->get()->*setfn)(checked);
+              UNLOCK();
+              emit parameterChanged();
+            }
+          }
+        });
+
+    return ctl;
+  }
+
   template<class ObjType, class PropType>
   QNumberEditBox * add_numeric_box(const char * name, std::shared_ptr<ObjType> * obj,
       PropType (ObjType::*getfn)() const, void (ObjType::*setfn)(PropType))
   {
     QNumberEditBox * ctl = new QNumberEditBox();
-    form->addRow(name, ctl);
+    ctlform->addRow(name, ctl);
     QObject::connect(ctl, &QLineEditBox::textChanged,
         [this, ctl, obj, getfn, setfn]() {
           if ( *obj && !updatingControls() ) {
@@ -162,7 +185,7 @@ protected:
   void add_combobox(const char * name, QEnumComboBox<PropType> * ctl, std::shared_ptr<ObjType> * obj,
       PropType (ObjType::*getfn)() const, void (ObjType::*setfn)(PropType))
   {
-    form->addRow(name, ctl);
+    ctlform->addRow(name, ctl);
     QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
         [this, ctl, obj, getfn, setfn]() {
           if ( *obj && !updatingControls() ) {
@@ -177,11 +200,19 @@ protected:
         });
   }
 
+  template<class WidgetType>
+  WidgetType * add_widget(const QString & label, WidgetType * widget) {
+    if ( label.isEmpty() ) {
+      ctlform->addRow(widget);
+    }
+    else {
+      ctlform->addRow(label, widget);
+    }
+    return widget;
+  }
+
 protected:
   RoutinePtr routine_;
-  QCheckBox * enabled_ctl = Q_NULLPTR;
 };
 
-
-
-#endif /* __QImageProcessorCollectionSettings_h__ */
+#endif /* __QImageProcessorRoutineSettings_h__ */

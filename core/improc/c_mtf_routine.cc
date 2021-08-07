@@ -29,18 +29,18 @@ const c_pixinsight_midtones_transfer_function::ptr & c_mtf_routine::mtf() const
   return mtf_;
 }
 
-bool c_mtf_routine::load(c_config_setting settings)
+bool c_mtf_routine::deserialize(c_config_setting settings)
 {
-  if ( !base::load(settings) ) {
+  if ( !base::deserialize(settings) ) {
     return false;
   }
 
   return true;
 }
 
-bool c_mtf_routine::save(c_config_setting settings) const
+bool c_mtf_routine::serialize(c_config_setting settings) const
 {
-  if ( !base::save(settings) ) {
+  if ( !base::serialize(settings) ) {
     return false;
   }
 

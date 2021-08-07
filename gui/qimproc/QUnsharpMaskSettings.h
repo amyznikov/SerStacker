@@ -9,8 +9,8 @@
 #ifndef __QUnsharpMaskSettings_h__
 #define __QUnsharpMaskSettings_h__
 
-#include "QImageProcessorCollectionSettings.h"
 #include <core/improc/c_unsharp_mask_routine.h>
+#include "QImageProcessorSelector.h"
 
 class QUnsharpMaskSettings
   : public QImageProcessorRoutineSettings<c_unsharp_mask_routine>

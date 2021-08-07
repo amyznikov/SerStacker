@@ -29,19 +29,31 @@ public:
   c_range_normalize_routine(bool enabled = true);
   static ptr create(bool enabled = true);
   static ptr create(double outmin, double outmax, bool enabled = true);
-  bool load(c_config_setting settings) override;
-  bool save(c_config_setting settings) const override;
+  bool deserialize(c_config_setting settings) override;
+  bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  void set_outmin(double v);
-  double outmin() const;
+  void set_auto_input_range(bool v);
+  bool auto_input_range() const;
 
-  void set_outmax(double v);
-  double outmax() const;
+  void set_input_min(double  v);
+  double input_min() const;
+
+  void set_input_max(double  v);
+  double input_max() const;
+
+  void set_output_min(double v);
+  double output_min() const;
+
+  void set_output_max(double v);
+  double output_max() const;
 
 protected:
-  double outmin_ = 0.0;
-  double outmax_ = 1.0;
+  double  input_min_ = 0.0;
+  double  input_max_ = 1.0;
+  double  output_min_ = 0.0;
+  double  output_max_ = 1.0;
+  bool    auto_input_range_ = true;
 };
 
 #endif /* __c_range_normalize_routine_h__ */

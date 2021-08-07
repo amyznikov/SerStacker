@@ -22,5 +22,9 @@ void reduce_color_channels(const cv::Mat & src,
     enum cv::ReduceTypes rtype,
     int dtype = -1);
 
+void reduce_color_channels(cv::Mat & image,
+    enum cv::ReduceTypes rtype,
+    int dtype = -1);
+
 
 #endif /* __reduce_channels_h__ */

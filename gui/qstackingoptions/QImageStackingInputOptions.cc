@@ -25,10 +25,10 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
   : Base("QImageStackingInputOptions", parent)
 {
 
-  enable_remove_bad_pixels_ctl = add_checkbox(form, "Detect Bad Pixels",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          bool checked = enable_remove_bad_pixels_ctl->isChecked();
+  enable_remove_bad_pixels_ctl = add_checkbox("Detect Bad Pixels",
+      [this](int state) {
+        if ( options_ ) {
+          bool checked = state == Qt::Checked;
           if ( checked != options_->enable_remove_bad_pixels ) {
             options_->enable_remove_bad_pixels = checked;
             emit parameterChanged();
@@ -36,10 +36,10 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         }
       });
 
-  enable_color_maxtrix_ctl = add_checkbox(form, "Apply color matrix if available",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          bool checked = enable_color_maxtrix_ctl->isChecked();
+  enable_color_maxtrix_ctl = add_checkbox("Apply color matrix if available",
+      [this](int state) {
+        if ( options_ ) {
+          bool checked = state == Qt::Checked;
           if ( checked != options_->enable_color_maxtrix ) {
             options_->enable_color_maxtrix = checked;
             emit parameterChanged();

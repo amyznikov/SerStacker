@@ -52,6 +52,9 @@ public:
     }
   };
 
+  static void register_class_factory(const class_factory * class_factory);
+  static void register_all();
+
   static const std::vector<const class_factory*> & class_list();
 
   const class_factory * classfactory() const;
@@ -61,8 +64,8 @@ public:
 
   static ptr create(const std::string & class_name);
   static ptr create(c_config_setting settings);
-  virtual bool load(c_config_setting settings);
-  virtual bool save(c_config_setting settings) const;
+  virtual bool deserialize(c_config_setting settings);
+  virtual bool serialize(c_config_setting settings) const;
 
   const std::string & class_name() const
   {
@@ -109,7 +112,7 @@ class c_image_processor :
     public std::vector<c_image_processor_routine::ptr>
 {
   std::string name_;
-  bool enabled_ = true;
+  mutable std::string filename_;
   bool enable_debug_messages_ = false;
 
 public:
@@ -117,15 +120,18 @@ public:
   typedef std::vector<c_image_processor_routine::ptr> base;
   typedef std::shared_ptr<this_class> ptr;
 
-
-  c_image_processor(const std::string & objname);
+  c_image_processor(const std::string & objname, const std::string & filename = "");
 
   static ptr create(const std::string & objname);
   static ptr load(const std::string & filename);
-  static ptr load(c_config_setting settings);
-  bool save(const std::string & filename) const;
-  bool save(c_config_setting settings) const;
+  static ptr deserialize(c_config_setting settings);
+  bool save(const std::string & path_or_filename = "") const;
+  bool serialize(c_config_setting settings) const;
 
+  iterator find(const c_image_processor_routine::ptr & p);
+  const_iterator find(const c_image_processor_routine::ptr & p) const;
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) const;
 
   void set_name(const std::string & v)
   {
@@ -137,14 +143,24 @@ public:
     return name_;
   }
 
-  void set_enabled(bool v)
+  const char * cname() const
   {
-    enabled_ = v;
+    return name_.c_str();
   }
 
-  bool enabled() const
+  void set_filename(const std::string & v)
   {
-    return enabled_;
+    filename_ = v;
+  }
+
+  const std::string & filename() const
+  {
+    return filename_;
+  }
+
+  const char * cfilename() const
+  {
+    return filename_.c_str();
   }
 
   void set_enable_debug_messages(bool v)
@@ -157,38 +173,7 @@ public:
     return enable_debug_messages_;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) const
-  {
-    if ( enabled_ ) {
-      for ( const c_image_processor_routine::ptr & processor : *this ) {
-        if ( processor && processor->enabled() ) {
-
-          if ( enable_debug_messages_ ) {
-            CF_DEBUG("[%s]", processor->class_name().c_str());
-          }
-
-          if ( !processor->process(image, mask) ) {
-            CF_ERROR("[%s] processor->process() fails", processor->class_name().c_str());
-            return false;
-          }
-        }
-      }
-    }
-    return true;
-  }
-
 };
-
-
-inline bool save_settings(c_config_setting settings, const c_image_processor::ptr & obj)
-{
-  return obj->save(settings);
-}
-
-inline bool save_settings(c_config_setting settings, const c_image_processor & obj)
-{
-  return obj.save(settings);
-}
 
 
 class c_image_processor_collection :
@@ -203,24 +188,25 @@ public:
   static ptr create(c_config_setting settings);
 
   bool load(const std::string & input_directrory);
-  bool load(c_config_setting settings);
+  bool deserialize(c_config_setting settings);
 
   bool save(const std::string & output_directrory) const;
-  bool save(c_config_setting settings) const;
+  bool serialize(c_config_setting settings) const;
 
+  iterator find(const std::string & name);
+  const_iterator find(const std::string & name) const;
+
+  iterator find(const c_image_processor::ptr &);
+  const_iterator find(const c_image_processor::ptr &) const;
+
+  static const std::string & default_processor_collection_path();
+  static void set_default_processor_collection_path(const std::string & );
+
+
+protected:
+  static std::string default_processor_collection_path_;
 };
 
 
-inline bool save_settings(c_config_setting settings, const c_image_processor_collection::ptr & obj)
-{
-  return obj->save(settings);
-}
-
-inline bool save_settings(c_config_setting settings, const c_image_processor_collection & obj)
-{
-  return obj.save(settings);
-}
-
-
-
 #endif /* __c_image_processor_h__ */
+

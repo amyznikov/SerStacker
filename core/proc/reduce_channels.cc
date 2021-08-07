@@ -23,3 +23,10 @@ void reduce_color_channels(const cv::Mat & src, cv::Mat & dst, enum cv::ReduceTy
   cv::reduce(src.reshape(1, src.total()), dst, 1, rtype, dtype);
   dst = dst.reshape(0, src_rows);
 }
+
+void reduce_color_channels(cv::Mat & image, enum cv::ReduceTypes rtype, int dtype)
+{
+  const int src_rows = image.rows;
+  cv::reduce(image.reshape(1, image.total()), image, 1, rtype, dtype);
+  image = image.reshape(0, src_rows);
+}

@@ -111,7 +111,7 @@ static int cvMatDepth(uint tiff_sample_format, uint tiff_bps)
     break;
   }
 
-  CF_DEBUG("Unsupported combination for bps %u and sample format %u",
+  CF_ERROR("Unsupported combination for bps %u and sample format %u",
       tiff_bps, tiff_sample_format);
 
   return -1;
@@ -180,12 +180,12 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
   TIFFGetField(tif, TIFFTAG_EXTRASAMPLES, &EXTRA, &EXTRA_TYPES);
   TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &PLANAR_CONFIG);
 
-  CF_DEBUG("IMAGE SIZE        : %u x %u", IMAGE_WIDTH, IMAGE_HEIGHT);
-  CF_DEBUG("BITS_PER_SAMPLE   : %u", BITS_PER_SAMPLE);
-  CF_DEBUG("SAMPLES_PER_PIXEL : %u", SAMPLES_PER_PIXEL);
-  CF_DEBUG("SAMPLE_FORMAT     : %u", SAMPLE_FORMAT);
-  CF_DEBUG("PLANAR_CONFIG     : %u", PLANAR_CONFIG);
-  CF_DEBUG("EXTRA             : %u EXTRA_TYPES = %p", EXTRA, EXTRA_TYPES);
+//  CF_DEBUG("IMAGE SIZE        : %u x %u", IMAGE_WIDTH, IMAGE_HEIGHT);
+//  CF_DEBUG("BITS_PER_SAMPLE   : %u", BITS_PER_SAMPLE);
+//  CF_DEBUG("SAMPLES_PER_PIXEL : %u", SAMPLES_PER_PIXEL);
+//  CF_DEBUG("SAMPLE_FORMAT     : %u", SAMPLE_FORMAT);
+//  CF_DEBUG("PLANAR_CONFIG     : %u", PLANAR_CONFIG);
+//  CF_DEBUG("EXTRA             : %u EXTRA_TYPES = %p", EXTRA, EXTRA_TYPES);
 
 
   if ( BITS_PER_SAMPLE > 64 ) {
@@ -206,7 +206,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
   }
 
   if ( TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &PHOTOMETRIC) ) {
-    CF_DEBUG("PHOTOMETRIC  : %u", PHOTOMETRIC);
+    // CF_DEBUG("PHOTOMETRIC  : %u", PHOTOMETRIC);
   }
   else {
     uint16_t compression;
@@ -287,7 +287,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
     CF_WARNING("%u additional extrac channels are not handled");
   }
 
-  CF_DEBUG("[%s] worst_case=%d", cfilename, worst_case);
+  // CF_DEBUG("[%s] worst_case=%d", cfilename, worst_case);
 
   if ( worst_case ) {
 
@@ -334,20 +334,24 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
     const int channels = SAMPLES_PER_PIXEL;
 
     if ( PLANAR_CONFIG == PLANARCONFIG_CONTIG ) {
+      // CF_DEBUG("PLANAR_CONFIG == PLANARCONFIG_CONTIG");
 
       // load_contiguous
 
       image.create(IMAGE_HEIGHT, IMAGE_WIDTH, CV_MAKETYPE(ddepth, channels));
 
       if ( !TIFFIsTiled(tif) ) {
+
         for ( int y = 0; y < IMAGE_HEIGHT; ++y ) {
-          if ( TIFFReadScanline(tif, image.ptr<uint8_t>(y), y, 0) < 0 ) {
+          if ( TIFFReadScanline(tif, image.ptr<void>(y), y, 0) < 0 ) {
             CF_ERROR("TIFFReadScanline(y=%d) fails", y);
             return false;
           }
         }
+
       }
       else {
+
         cv::Mat tile;
         tile.create(tile_height, tile_width, image.type());
 
@@ -362,6 +366,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
             tile.copyTo(image(cv::Rect(x, y, tile_width, tile_height)));
           }
         }
+
       }
 
       switch ( image.channels() ) {
@@ -380,7 +385,6 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
     }
   }
 
-
   return true;
 }
 
@@ -397,10 +401,9 @@ bool load_image(cv::Mat & dst, const std::string & filename)
     return (dst = cv::readOpticalFlow(filename)).data != nullptr;
   }
 
-  CF_DEBUG("suffix='%s'", suffix.c_str());
-
   if ( strcasecmp(suffix.c_str(), ".tif") == 0 || strcasecmp(suffix.c_str(), ".tiff") == 0  ) {
     if ( load_tiff_image(dst, filename) ) {
+      // CF_DEBUG("[%s] loaded with load_tiff_image()", filename.c_str());
       return true;
     }
   }

@@ -25,13 +25,13 @@ bool c_noisemap_routine::process(cv::InputOutputArray image, cv::InputOutputArra
   return true;
 }
 
-bool c_noisemap_routine::load(c_config_setting settings)
+bool c_noisemap_routine::deserialize(c_config_setting settings)
 {
-  return base::load(settings);
+  return base::deserialize(settings);
 }
 
-bool c_noisemap_routine::save(c_config_setting settings) const
+bool c_noisemap_routine::serialize(c_config_setting settings) const
 {
-  return base::save(settings);
+  return base::serialize(settings);
 }
 

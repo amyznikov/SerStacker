@@ -180,64 +180,64 @@ static bool _do_normalize_mc(cv::Mat & dst,
 }
 
 
-static bool do_normalize(cv::Mat & dst,
+bool normalize_image(cv::Mat & image,
     double imin, double imax, double omin, double omax,
     const cv::Mat & mask,
     bool fillUnmaskedPixels,
     const cv::Scalar & unmaskedPixelsValue)
 {
-  if ( dst.channels() > 4 ) {
-    switch ( dst.depth() ) {
-    case CV_8U  : return _do_normalize_mc<uint8_t>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8S  : return _do_normalize_mc<int8_t>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16U : return _do_normalize_mc<uint16_t>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16S : return _do_normalize_mc<int8_t>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32S : return _do_normalize_mc<int32_t>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32F : return _do_normalize_mc<float>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_64F : return _do_normalize_mc<double>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+  if ( image.channels() > 4 ) {
+    switch ( image.depth() ) {
+    case CV_8U  : return _do_normalize_mc<uint8_t>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8S  : return _do_normalize_mc<int8_t>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16U : return _do_normalize_mc<uint16_t>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16S : return _do_normalize_mc<int8_t>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32S : return _do_normalize_mc<int32_t>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32F : return _do_normalize_mc<float>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_64F : return _do_normalize_mc<double>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
     }
   }
   else {
 
-    switch ( dst.type() ) {
-    case CV_8UC1 : return _do_normalize<uint8_t, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8UC2 : return _do_normalize<uint8_t, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8UC3 : return _do_normalize<uint8_t, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8UC4 : return _do_normalize<uint8_t, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    switch ( image.type() ) {
+    case CV_8UC1 : return _do_normalize<uint8_t, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8UC2 : return _do_normalize<uint8_t, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8UC3 : return _do_normalize<uint8_t, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8UC4 : return _do_normalize<uint8_t, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
 
-    case CV_8SC1 : return _do_normalize<int8_t, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8SC2 : return _do_normalize<int8_t, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8SC3 : return _do_normalize<int8_t, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_8SC4 : return _do_normalize<int8_t, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8SC1 : return _do_normalize<int8_t, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8SC2 : return _do_normalize<int8_t, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8SC3 : return _do_normalize<int8_t, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_8SC4 : return _do_normalize<int8_t, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
 
-    case CV_16UC1 : return _do_normalize<uint16_t, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16UC2 : return _do_normalize<uint16_t, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16UC3 : return _do_normalize<uint16_t, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16UC4 : return _do_normalize<uint16_t, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16UC1 : return _do_normalize<uint16_t, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16UC2 : return _do_normalize<uint16_t, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16UC3 : return _do_normalize<uint16_t, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16UC4 : return _do_normalize<uint16_t, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
 
-    case CV_16SC1 : return _do_normalize<int16_t, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16SC2 : return _do_normalize<int16_t, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16SC3 : return _do_normalize<int16_t, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_16SC4 : return _do_normalize<int16_t, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16SC1 : return _do_normalize<int16_t, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16SC2 : return _do_normalize<int16_t, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16SC3 : return _do_normalize<int16_t, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_16SC4 : return _do_normalize<int16_t, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
 
-    case CV_32SC1 : return _do_normalize<int32_t, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32SC2 : return _do_normalize<int32_t, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32SC3 : return _do_normalize<int32_t, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32SC4 : return _do_normalize<int32_t, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32SC1 : return _do_normalize<int32_t, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32SC2 : return _do_normalize<int32_t, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32SC3 : return _do_normalize<int32_t, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32SC4 : return _do_normalize<int32_t, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
 
-    case CV_32FC1 : return _do_normalize<float, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32FC2 : return _do_normalize<float, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32FC3 : return _do_normalize<float, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_32FC4 : return _do_normalize<float, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32FC1 : return _do_normalize<float, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32FC2 : return _do_normalize<float, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32FC3 : return _do_normalize<float, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_32FC4 : return _do_normalize<float, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
 
-    case CV_64FC1 : return _do_normalize<double, 1>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_64FC2 : return _do_normalize<double, 2>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_64FC3 : return _do_normalize<double, 3>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
-    case CV_64FC4 : return _do_normalize<double, 4>(dst, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_64FC1 : return _do_normalize<double, 1>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_64FC2 : return _do_normalize<double, 2>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_64FC3 : return _do_normalize<double, 3>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
+    case CV_64FC4 : return _do_normalize<double, 4>(image, imin, imax, omin, omax, mask, fillUnmaskedPixels, unmaskedPixelsValue);
     }
   }
 
-  CF_FATAL("Invalid arg: Unsupported image type: %d", dst.type());
+  CF_FATAL("Invalid arg: Unsupported image type: %d", image.type());
   return false;
 }
 
@@ -258,7 +258,7 @@ bool normalize_image(cv::InputArray src, cv::OutputArray dst,
 
   const cv::Mat msk = mask.getMat();
 
-  return do_normalize(dst.getMatRef(),
+  return normalize_image(dst.getMatRef(),
       imin, imax,
       omin, omax,
       msk,

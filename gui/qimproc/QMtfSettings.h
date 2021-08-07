@@ -9,9 +9,9 @@
 #ifndef __QMtfSettings_h__
 #define __QMtfSettings_h__
 
-#include "QImageProcessorCollectionSettings.h"
 #include <gui/qmtfcontrols/QMtfControl.h>
 #include <core/improc/c_mtf_routine.h>
+#include "QImageProcessorSelector.h"
 
 class QMtfSettings
   : public QImageProcessorRoutineSettings<c_mtf_routine>

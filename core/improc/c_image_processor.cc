@@ -7,8 +7,19 @@
 
 //#include <functional>
 #include "c_image_processor.h"
+#include <atomic>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
+#include "c_align_color_channels_routine.h"
+#include "c_anscombe_routine.h"
+#include "c_autoclip_routine.h"
+#include "c_histogram_white_balance_routine.h"
+#include "c_mtf_routine.h"
+#include "c_noisemap_routine.h"
+#include "c_range_normalize_routine.h"
+#include "c_rangeclip_routine.h"
+#include "c_smap_routine.h"
+#include "c_unsharp_mask_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -18,13 +29,12 @@ c_image_processor_routine::class_factory::class_factory(const std::string & _cla
     const std::function<c_image_processor_routine::ptr()> & _create_instance) :
         class_name(_class_name), display_name(_display_name), tooltip(_tooltip), create_instance(_create_instance)
 {
-  class_list_guard_lock guard_lock;
-  c_image_processor_routine_class_list_.emplace_back(this);
 }
 
 
 const std::vector<const c_image_processor_routine::class_factory*> & c_image_processor_routine::class_list()
 {
+  register_all();
   return c_image_processor_routine_class_list_;
 }
 
@@ -34,9 +44,43 @@ const c_image_processor_routine::class_factory * c_image_processor_routine::clas
   return class_factory_;
 }
 
+void c_image_processor_routine::register_class_factory(const class_factory * class_factory)
+{
+  class_list_guard_lock guard_lock;
 
-c_image_processor::c_image_processor(const std::string & objname) :
-    name_(objname)
+  std::vector<const c_image_processor_routine::class_factory*>::iterator ii =
+      std::find(c_image_processor_routine_class_list_.begin(),
+          c_image_processor_routine_class_list_.end(),
+          class_factory);
+
+  if ( ii == c_image_processor_routine_class_list_.end() ) {
+    c_image_processor_routine_class_list_.emplace_back(class_factory);
+  }
+}
+
+void c_image_processor_routine::register_all()
+{
+  static std::atomic<bool> registered(false);
+  if ( !registered ) {
+
+    registered = true;
+
+    register_class_factory(&c_align_color_channels_routine::class_factory);
+    register_class_factory(&c_anscombe_routine::class_factory);
+    register_class_factory(&c_autoclip_routine::class_factory);
+    register_class_factory(&c_histogram_white_balance_routine::class_factory);
+    register_class_factory(&c_mtf_routine::class_factory);
+    register_class_factory(&c_noisemap_routine::class_factory);
+    register_class_factory(&c_range_normalize_routine::class_factory);
+    register_class_factory(&c_rangeclip_routine::class_factory);
+    register_class_factory(&c_smap_routine::class_factory);
+    register_class_factory(&c_unsharp_mask_routine::class_factory);
+  }
+}
+
+
+c_image_processor::c_image_processor(const std::string & objname, const std::string & filename ):
+    name_(objname), filename_(filename)
 {
 }
 
@@ -56,7 +100,7 @@ c_image_processor::ptr c_image_processor::load(const std::string & filename)
 
 
   std::string object_class;
-  if ( !load_settings(cfg.root(), "object_class", &object_class) ) {
+  if ( !::load_settings(cfg.root(), "object_class", &object_class) ) {
     CF_FATAL("load_settings(object_class) fails", filename.c_str());
     return nullptr;
   }
@@ -74,10 +118,15 @@ c_image_processor::ptr c_image_processor::load(const std::string & filename)
     return nullptr;
   }
 
-  return load(root);
+  c_image_processor::ptr obj = deserialize(root);
+  if ( obj ) {
+    obj->filename_ = filename;
+  }
+
+  return obj;
 }
 
-c_image_processor::ptr c_image_processor::load(c_config_setting settings)
+c_image_processor::ptr c_image_processor::deserialize(c_config_setting settings)
 {
   std::string objname;
 
@@ -91,8 +140,6 @@ c_image_processor::ptr c_image_processor::load(c_config_setting settings)
     CF_ERROR("c_image_processor::create(objname=%s) fails", objname.c_str());
     return nullptr;
   }
-
-  settings.get("enabled", &obj->enabled_);
 
   c_config_setting chain =
       settings["chain"];
@@ -134,8 +181,41 @@ c_image_processor::ptr c_image_processor::load(c_config_setting settings)
 }
 
 
-bool c_image_processor::save(const std::string & filename) const
+bool c_image_processor::save(const std::string & path_or_filename) const
 {
+  std::string filename;
+
+  if ( path_or_filename.empty() ) {
+    if ( !filename_.empty() ) {
+      filename = filename_;
+    }
+    else {
+      filename = ssprintf("%s/%s.cfg",
+          c_image_processor_collection::default_processor_collection_path().c_str(),
+          name_.c_str());
+    }
+  }
+  else if ( path_or_filename[path_or_filename.length()-1] == '/' || is_directory(path_or_filename)) {
+    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), name_.c_str());
+  }
+  else if ( get_file_suffix(path_or_filename).empty() ) {
+    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), name_.c_str());
+  }
+  else {
+    filename = path_or_filename;
+  }
+
+  if ( filename.empty() ) {
+    CF_ERROR("can not decide file name to save config file for '%s'", name_.c_str());
+    return false;
+  }
+
+  if ( filename[0] == '~' ) {
+    filename.replace(0, 1, get_home_directory());
+  }
+
+  CF_DEBUG("Saving '%s' ...", filename.c_str());
+
   c_config cfg(filename);
 
   time_t t = time(0);
@@ -150,7 +230,7 @@ bool c_image_processor::save(const std::string & filename) const
     return false;
   }
 
-  if ( !save(cfg.root().add_group("c_image_processor"))) {
+  if ( !serialize(cfg.root().add_group("c_image_processor"))) {
     CF_FATAL("save(c_image_processor) fails");
     return false;
   }
@@ -160,10 +240,13 @@ bool c_image_processor::save(const std::string & filename) const
     return false;
   }
 
+  filename_ = filename;
+
+
   return true;
 }
 
-bool c_image_processor::save(c_config_setting settings) const
+bool c_image_processor::serialize(c_config_setting settings) const
 {
   if ( !settings ) {
     CF_ERROR("c_image_processor::save() gets invalid argument: c_config_setting = null");
@@ -171,19 +254,55 @@ bool c_image_processor::save(c_config_setting settings) const
   }
 
   settings.set("name", name_);
-  settings.set("enabled", enabled_);
 
   c_config_setting chain =
       settings.add_list("chain");
 
   for ( const c_image_processor_routine::ptr & routine : *this ) {
-    if ( routine && !routine->save(chain.add_element(CONFIG_TYPE_GROUP)) ) {
+    if ( routine && !routine->serialize(chain.add_element(CONFIG_TYPE_GROUP)) ) {
       return false;
     }
   }
 
   return true;
 }
+
+c_image_processor::iterator c_image_processor::find(const c_image_processor_routine::ptr & p)
+{
+  return std::find(begin(), end(), p);
+}
+
+c_image_processor::const_iterator c_image_processor::find(const c_image_processor_routine::ptr & p) const
+{
+  return std::find(begin(), end(), p);
+}
+
+bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray mask) const
+{
+  for ( const c_image_processor_routine::ptr & processor : *this ) {
+    if ( processor && processor->enabled() ) {
+
+      if ( enable_debug_messages_ ) {
+
+        double min, max;
+        cv::minMaxLoc(image, &min, &max);
+
+        CF_DEBUG(" [%s] input range: min=%g max=%g",
+            processor->class_name().c_str(),
+            min, max);
+      }
+
+      if ( !processor->process(image, mask) ) {
+        CF_ERROR("[%s] processor->process() fails", processor->class_name().c_str());
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+
 
 
 c_image_processor_routine::ptr c_image_processor_routine::create(c_config_setting settings)
@@ -207,7 +326,7 @@ c_image_processor_routine::ptr c_image_processor_routine::create(c_config_settin
     return nullptr;
   }
 
-  if ( !routine->load(settings) ) {
+  if ( !routine->deserialize(settings) ) {
     CF_ERROR("routine->load(routine=%s, c_config_setting) fails", objname.c_str());
     return nullptr;
   }
@@ -217,6 +336,8 @@ c_image_processor_routine::ptr c_image_processor_routine::create(c_config_settin
 
 c_image_processor_routine::ptr c_image_processor_routine::create(const std::string & processor_name)
 {
+  register_all();
+
   if ( processor_name.empty() ) {
     return nullptr;
   }
@@ -234,7 +355,7 @@ c_image_processor_routine::ptr c_image_processor_routine::create(const std::stri
 }
 
 
-bool c_image_processor_routine::load(c_config_setting settings)
+bool c_image_processor_routine::deserialize(c_config_setting settings)
 {
   if ( !settings ) {
     CF_ERROR("c_image_processor_routine::load(c_config_setting) : settings is null");
@@ -246,7 +367,7 @@ bool c_image_processor_routine::load(c_config_setting settings)
   return true;
 }
 
-bool c_image_processor_routine::save(c_config_setting settings) const
+bool c_image_processor_routine::serialize(c_config_setting settings) const
 {
   if ( !settings ) {
     return false;
@@ -316,6 +437,10 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
 }
 
 
+std::string c_image_processor_collection::default_processor_collection_path_ =
+    "~/.config/SerStacker/image_processors";
+
+
 c_image_processor_collection::ptr c_image_processor_collection::create()
 {
   return ptr(new this_class());
@@ -324,13 +449,13 @@ c_image_processor_collection::ptr c_image_processor_collection::create()
 c_image_processor_collection::ptr c_image_processor_collection::create(c_config_setting settings)
 {
   ptr obj(new this_class());
-  if ( obj->load(settings) ) {
+  if ( obj->deserialize(settings) ) {
     return obj;
   }
   return nullptr;
 }
 
-bool c_image_processor_collection::load(c_config_setting settings)
+bool c_image_processor_collection::deserialize(c_config_setting settings)
 {
   clear();
 
@@ -355,7 +480,7 @@ bool c_image_processor_collection::load(c_config_setting settings)
         processors_list_item.get_element(i);
 
     if ( processor_item && processor_item.isGroup() ) {
-      c_image_processor::ptr processor = c_image_processor::load(processor_item);
+      c_image_processor::ptr processor = c_image_processor::deserialize(processor_item);
       if ( processor ) {
         emplace_back(processor);
       }
@@ -372,7 +497,7 @@ bool c_image_processor_collection::load(c_config_setting settings)
   return true;
 }
 
-bool c_image_processor_collection::save(c_config_setting settings) const
+bool c_image_processor_collection::serialize(c_config_setting settings) const
 {
   if ( !settings ) {
     return false;
@@ -382,10 +507,48 @@ bool c_image_processor_collection::save(c_config_setting settings) const
       settings.add_list("processors");
 
   for ( const c_image_processor::ptr & processor : *this ) {
-    if ( processor && !processor->save(processors_list_item.add_element(CONFIG_TYPE_GROUP)) ) {
+    if ( processor && !processor->serialize(processors_list_item.add_element(CONFIG_TYPE_GROUP)) ) {
       return false;
     }
   }
 
   return true;
+}
+
+c_image_processor_collection::iterator c_image_processor_collection::find(const std::string & name)
+{
+  return std::find_if(begin(), end(),
+      [name]( const c_image_processor::ptr & p) {
+        return p->name() == name;
+      });
+}
+
+c_image_processor_collection::const_iterator c_image_processor_collection::find(const std::string & name) const
+{
+  return std::find_if(begin(), end(),
+      [name]( const c_image_processor::ptr & p) {
+        return p->name() == name;
+      });
+}
+
+c_image_processor_collection::iterator c_image_processor_collection::find(const c_image_processor::ptr & p)
+{
+  return std::find(begin(), end(), p);
+}
+
+c_image_processor_collection::const_iterator c_image_processor_collection::find(const c_image_processor::ptr & p)  const
+{
+  return std::find(begin(), end(), p);
+}
+
+
+
+const std::string & c_image_processor_collection::default_processor_collection_path()
+{
+  return default_processor_collection_path_;
+}
+
+void c_image_processor_collection::set_default_processor_collection_path(const std::string & v)
+{
+  default_processor_collection_path_ = v;
 }

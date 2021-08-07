@@ -10,8 +10,8 @@
 #define __QAutoClipSettings_h__
 
 
-#include "QImageProcessorCollectionSettings.h"
 #include <core/improc/c_autoclip_routine.h>
+#include "QImageProcessorSelector.h"
 
 class QAutoClipSettings
   : public QImageProcessorRoutineSettings<c_autoclip_routine>

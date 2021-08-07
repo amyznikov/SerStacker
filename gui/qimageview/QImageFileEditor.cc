@@ -38,7 +38,9 @@ void QImageFileEditor::openImage(const std::string & pathfilename)
 
 void QImageFileEditor::openImage(const QString & pathfilename)
 {
+  CF_DEBUG("H");
   openImage(pathfilename.toStdString());
+  CF_DEBUG("H");
 }
 
 void QImageFileEditor::openImages(const std::vector<std::string> & pathfilenames)

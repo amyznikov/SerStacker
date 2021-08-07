@@ -45,9 +45,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
 
 
-  write_image_mask_as_alpha_channel_ctl = add_checkbox(form, "Write image mask as alpha channel",
+  write_image_mask_as_alpha_channel_ctl = add_checkbox("Write image mask as alpha channel",
       [this](int state) {
-        if ( options_ && !updatingControls() ) {
+        if ( options_ ) {
           const bool status = state == Qt::Checked;
           if ( status != options_->write_image_mask_as_alpha_channel ) {
             options_->write_image_mask_as_alpha_channel = status;
@@ -58,9 +58,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
 
 
-  write_aligned_video_ctl = add_checkbox(form, "Write aligned video",
+  write_aligned_video_ctl = add_checkbox("Write aligned video",
       [this](int state) {
-        if ( options_ && !updatingControls() ) {
+        if ( options_ ) {
           const bool status = state == Qt::Checked;
           if ( status != options_->write_aligned_video ) {
             options_->write_aligned_video = status;
@@ -85,9 +85,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         }
       });
 
-  dump_reference_frames_for_debug_ctl = add_checkbox(form, "Dump reference frames for debug",
+  dump_reference_frames_for_debug_ctl = add_checkbox("Dump reference frames for debug",
       [this](int state) {
-        if ( options_ && !updatingControls() ) {
+        if ( options_ ) {
           const bool status = state == Qt::Checked;
           if ( status != options_->dump_reference_frames_for_debug ) {
             options_->dump_reference_frames_for_debug = status;

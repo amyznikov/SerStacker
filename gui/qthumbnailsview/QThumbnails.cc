@@ -108,6 +108,25 @@ static void add_libraw_file_suffixes(QStringList & suffixes)
 
 #endif
 
+QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
+{
+  if ( !srcSize.isEmpty() ) {
+
+    if ( max_thumb_size > 0 && (srcSize.width() > max_thumb_size || srcSize.height() > max_thumb_size) ) {
+      if ( srcSize.width() > srcSize.height() ) {
+        srcSize.setHeight(srcSize.height() * max_thumb_size / srcSize.width());
+        srcSize.setWidth(max_thumb_size);
+      }
+      else {
+        srcSize.setWidth(srcSize.width() * max_thumb_size / srcSize.height());
+        srcSize.setHeight(max_thumb_size);
+      }
+    }
+  }
+
+  return srcSize;
+}
+
 
 QStringList getSupportedThumbnailsExtensions()
 {
@@ -123,6 +142,13 @@ QStringList getSupportedThumbnailsExtensions()
   suffixes.append("tiff");
   suffixes.append("tif");
   suffixes.append("flo");
+  suffixes.append("txt");
+  suffixes.append("doc");
+  suffixes.append("md");
+  suffixes.append("xml");
+  suffixes.append("html");
+  suffixes.append("htm");
+  suffixes.append("rtf");
 
 #if HAVE_SER_FILE
   suffixes.append("ser");
@@ -159,24 +185,6 @@ QStringList getSupportedThumbnailsExtensions()
   return suffixes;
 }
 
-static QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
-{
-  if ( !srcSize.isEmpty() ) {
-
-    if ( max_thumb_size > 0 && (srcSize.width() > max_thumb_size || srcSize.height() > max_thumb_size) ) {
-      if ( srcSize.width() > srcSize.height() ) {
-        srcSize.setHeight(srcSize.height() * max_thumb_size / srcSize.width());
-        srcSize.setWidth(max_thumb_size);
-      }
-      else {
-        srcSize.setWidth(srcSize.width() * max_thumb_size / srcSize.height());
-        srcSize.setHeight(max_thumb_size);
-      }
-    }
-  }
-
-  return srcSize;
-}
 
 static bool is_raw_file_suffix(const QString & suffix)
 {

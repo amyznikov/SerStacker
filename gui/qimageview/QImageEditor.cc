@@ -53,7 +53,13 @@ const c_image_processor::ptr & QImageEditor::current_processor() const
 
 void QImageEditor::clear()
 {
-  editImage(cv::noArray(), cv::noArray());
+  inputImage_.release();
+  inputMask_.release();
+  currentImage_.release();
+  currentMask_.release();
+  currentImageData_.release();
+  view_->scene()->setBackground(QImage());
+  emit currentImageChanged();
 }
 
 void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask)

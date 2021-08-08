@@ -125,6 +125,76 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
 
 
 
+// Merge BGR and mask to to BGRA
+bool mergebgra(const cv::Mat & input_image, const cv::Mat & input_alpha_mask, cv::Mat & output_image)
+{
+  const int cn = input_image.channels();
+  if ( cn != 1 && cn != 3 ) {
+    return false;
+  }
+
+  if ( input_alpha_mask.empty() || input_alpha_mask.type() != CV_8UC1 || input_alpha_mask.size() != input_image.size() ) {
+    return false;
+  }
+
+
+  cv::Mat alpha;
+
+  switch ( input_image.depth() ) {
+  case CV_8U :
+    alpha = input_alpha_mask;
+    break;
+  case CV_8S :
+    alpha = input_alpha_mask;
+    break;
+  case CV_16U :
+    input_alpha_mask.convertTo(alpha, input_image.depth(), UINT16_MAX / UINT8_MAX);
+    break;
+  case CV_16S :
+    input_alpha_mask.convertTo(alpha, input_image.depth(), INT16_MAX / (double) UINT8_MAX);
+    break;
+  case CV_32S :
+    input_alpha_mask.convertTo(alpha, input_image.depth(), INT32_MAX / (double) UINT8_MAX);
+    break;
+  case CV_32F :
+    input_alpha_mask.convertTo(alpha, input_image.depth(), 1.0 / UINT8_MAX);
+    break;
+  case CV_64F :
+    input_alpha_mask.convertTo(alpha, input_image.depth(), 1.0 / UINT8_MAX);
+    break;
+  }
+
+  if ( cn == 1 ) {
+
+    cv::Mat src[2] = { input_image, alpha };
+    cv::merge(src, 2, output_image);
+  }
+  else { // if ( cn == 3 )
+
+    cv::Mat bgra;
+
+    cv::Mat & dst = (output_image.data == input_image.data ||
+        output_image.data == input_alpha_mask.data) ?
+        bgra : output_image;
+
+    cv::Mat src[2] = { input_image, alpha };
+
+    static constexpr int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
+
+    dst.create(input_image.size(),
+        CV_MAKETYPE(input_image.depth(), input_image.channels() + 1));
+
+    cv::mixChannels(src, 2, &dst, 1, from_to, 4);
+
+    if ( dst.data != output_image.data ) {
+      output_image = std::move(dst);
+    }
+
+  }
+
+
+  return true;
+}
 static bool write_image(const std::string & filename, cv::InputArray image,
     const std::vector<int>& _params)
 {
@@ -201,4 +271,19 @@ bool save_image(cv::InputArray image, const std::string & fname,
   return true;
 }
 
+bool save_image(cv::InputArray _image, cv::InputArray _mask, const std::string & fname,
+    const std::vector<int>& params)
+{
+  cv::Mat image_to_write;
+
+  if( _mask.empty() ) {
+    image_to_write = _image.getMat();
+  }
+  else if( !mergebgra(_image.getMat(), _mask.getMat(), image_to_write) ) {
+    CF_WARNING("mergebgra() fails, saving image with NO alpha mask");
+    image_to_write = _image.getMat();
+  }
+
+  return save_image(image_to_write, fname, params);
+}
 

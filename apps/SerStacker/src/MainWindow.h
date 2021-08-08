@@ -60,6 +60,7 @@ private:
   void configureTextViewerToolbars();
 
 public slots:
+  void onSaveCurrentImageAs();
 
 private slots:
   void updateWindowTittle();
@@ -111,6 +112,7 @@ private:
 
   QMenu * fileMenu = Q_NULLPTR;
   QMenu * viewMenu = Q_NULLPTR;
+  QAction * menuSaveImageAs_action = Q_NULLPTR;
 };
 
 

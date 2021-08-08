@@ -8,5 +8,6 @@
 	<file>icons/hourglass.png</file>
 	<file>icons/hourglass2.png</file>
 	<file>icons/badimage.png</file>
+	<file>icons/textfile.png</file>
 </qresource>
 </RCC>

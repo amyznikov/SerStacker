@@ -28,6 +28,11 @@ int QThumbnailExtractor::thumbnailSize() const
   return thumbSize_;
 }
 
+QSize QThumbnailExtractor::compute_thumbnail_size(const QSize & imageSize) const
+{
+  return ::compute_thumbnail_size(imageSize, thumbSize_);
+}
+
 int QThumbnailExtractor::start(const QString & imagePathFileName)
 {
   int rid;
@@ -65,6 +70,9 @@ void QThumbnailExtractor::run()
   const int rid = reqId_;
 
   if( !currentImagePathFileName_.isEmpty() ) {
+
+
+
 
     emit extracted(rid,
         loadThumbnailIcon(currentImagePathFileName_, thumbSize_),

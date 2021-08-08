@@ -392,6 +392,53 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
 
 
 
+// Split BGRA to BGR and mask
+bool splitbgra(const cv::Mat & input_image, cv::Mat & output_image, cv::Mat * output_alpha_mask)
+{
+  const int cn = input_image.channels();
+
+  if ( cn == 2 ) {
+
+    cv::Mat dst[2];
+
+    cv::split(input_image, dst);
+
+    output_image = std::move(dst[0]);
+
+    if ( output_alpha_mask ) {
+      cv::compare(dst[1], 0, *output_alpha_mask, cv::CMP_GT);
+    }
+
+    return true;
+  }
+
+  if ( cn == 4 ) {
+
+    cv::Mat dst[2];
+
+    dst[0].create(input_image.size(),
+        CV_MAKETYPE(input_image.depth(), cn - 1));
+
+    dst[1].create(input_image.size(),
+        CV_MAKETYPE(input_image.depth(), 1));
+
+    static const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
+
+    cv::mixChannels(&input_image, 1, dst, 2, from_to, 4);
+
+    output_image = std::move(dst[0]);
+
+    if ( output_alpha_mask ) {
+      cv::compare(dst[1], 0, *output_alpha_mask, cv::CMP_GT);
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+
 
 bool load_image(cv::Mat & dst, const std::string & filename)
 {

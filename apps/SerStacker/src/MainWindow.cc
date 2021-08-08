@@ -9,6 +9,7 @@
 #include <gui/widgets/QToolbarSpacer.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/qstackingthread/QStackingThread.h>
+#include <core/io/save_image.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -309,6 +310,19 @@ MainWindow::MainWindow()
 //      this, &ThisClass::onAddStack);
 //
 
+  fileMenu->addAction(menuSaveImageAs_action =
+      new QAction("Save current image as..."));
+  menuSaveImageAs_action->setEnabled(imageEditor->isVisible() && !imageEditor->image().empty());
+
+  connect(menuSaveImageAs_action, &QAction::triggered,
+      this, &ThisClass::onSaveCurrentImageAs);
+
+  connect(imageEditor, &QImageEditor::currentImageChanged,
+      [this]() {
+        menuSaveImageAs_action->setEnabled(imageEditor->isVisible() &&
+            !imageEditor->image().empty());
+      });
+
   fileMenu->addSeparator();
   fileMenu->addAction(action = new QAction("Quit"));
   connect(action, &QAction::triggered, []() {
@@ -500,15 +514,15 @@ void MainWindow::configureImageViewerToolbars()
   imageSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
   const auto onImageEditorCurrentImageChanged =
-      [this, imageNameLabel, imageSizeLabel] () {
+      [this, imageNameLabel, imageSizeLabel]() {
 
-    const QString abspath = imageEditor->currentFileName();
-    imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-    imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->image().cols).arg(imageEditor->image().rows));
+        const QString abspath = imageEditor->currentFileName();
+        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+        imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->image().cols).arg(imageEditor->image().rows));
 
-  };
+      };
 
-  connect(imageEditor, &QImageFileEditor::currentImageChanged,
+  connect(imageEditor, &QImageEditor::currentImageChanged,
       onImageEditorCurrentImageChanged);
 
   toolbar->addSeparator();
@@ -585,7 +599,7 @@ void MainWindow::configureImageViewerToolbars()
 
   });
 
-  connect(imageEditor, &QImageFileEditor::currentImageChanged,
+  connect(imageEditor, &QImageEditor::currentImageChanged,
       [this] () {
         if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
           imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
@@ -849,6 +863,104 @@ void MainWindow::onStackingThreadFinished()
   }
 }
 
+void MainWindow::onSaveCurrentImageAs()
+{
+  if ( !imageEditor->isVisible() ) {
+    return;
+  }
+
+  QSettings settings;
+
+  static const QString filter =
+      "Image files(*.tiff *.tif *.png *.jpg);;"
+      "All files (*)";
+
+  static const QString keyName =
+      "previousPathForSaveImageAs";
+
+  QString previousPathForSaveImageAs = settings.value(keyName,
+      imageEditor->currentFileName()).toString();
+
+  while ( 42 ) {
+
+    QString selectedFileName =
+        QFileDialog::getSaveFileName(this,
+            "Save image as...",
+            previousPathForSaveImageAs,
+            filter);
+
+
+    if ( selectedFileName.isEmpty() ) {
+      return;
+    }
+
+    //CF_DEBUG("Saving as '%s'...", selectedFileName.toStdString().c_str());
+
+    cv::Mat image;
+    bool must_convert = true;
+
+    if( imageEditor->image().depth() == CV_32F || imageEditor->image().depth() == CV_64F ) {
+
+      static const char *fpsuffix[] = {
+          ".tiff", ".tif", ".flo"
+      };
+
+      for( int i = 0, n = sizeof(fpsuffix) / sizeof(fpsuffix[0]); i < n; ++i ) {
+        if( selectedFileName.endsWith(fpsuffix[i], Qt::CaseInsensitive) ) {
+          must_convert = false;
+          break;
+        }
+      }
+    }
+
+    if ( !must_convert ) {
+      image = imageEditor->image();
+    }
+    else {
+
+      int ddepth;
+      int maxval;
+
+      if( selectedFileName.endsWith(".png", Qt::CaseInsensitive) ) {
+        ddepth = CV_16U;
+        maxval = UINT16_MAX;
+      }
+      else {
+        ddepth = CV_8U;
+        maxval = UINT8_MAX;
+      }
+
+      if ( imageEditor->mask().empty() ) {
+        cv::normalize(imageEditor->image(), image, 0, maxval, cv::NORM_MINMAX, ddepth, imageEditor->mask());
+      }
+      else {
+        imageEditor->image().copyTo(image);
+        image.setTo(0, ~imageEditor->mask());
+        cv::normalize(image, image, 0, maxval, cv::NORM_MINMAX, ddepth);
+      }
+    }
+
+    if( !save_image(image, imageEditor->mask(), selectedFileName.toStdString()) ) {
+      QMessageBox::critical(this, "ERROR", QString("save_image('%s') fails").arg(selectedFileName));
+      continue;
+    }
+
+
+    settings.setValue(keyName,
+        selectedFileName);
+
+    break;
+
+
+  }
+
+//
+//
+//  QMessageBox::information(this, "test",
+//      QString("selectedFileName='%1'\n")
+//      .arg(selectedFileName));
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 }  // namespace qskystacker

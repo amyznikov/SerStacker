@@ -57,6 +57,7 @@ signals:
   void onFocusInEvent(QFocusEvent *e);
   void onFocusOutEvent(QFocusEvent *e);
   void visibilityChanged(bool visible);
+  void currentImageChanged();
 
 public slots:
   virtual void updateDisplay();

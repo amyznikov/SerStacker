@@ -25,6 +25,8 @@ public:
   void setThumbnailSize(int thumb_size);
   int thumbnailSize() const;
 
+  QSize compute_thumbnail_size(const QSize & imageSize) const;
+
   int start(const QString & imagePathFileName);
   void cancel();
   bool canceled() const;

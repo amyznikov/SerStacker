@@ -10,6 +10,7 @@
 
 #include <QtGui/QtGui>
 
+QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size);
 QStringList getSupportedThumbnailsExtensions();
 QImage  loadThumbnailImage(const QString & pathFileName, int thumb_size);
 QIcon   loadThumbnailIcon(const QString & pathFileName, int maxSize);

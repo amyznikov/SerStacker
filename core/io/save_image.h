@@ -13,6 +13,12 @@
 bool save_image(cv::InputArray _image, const std::string & fname,
     const std::vector<int>& params = std::vector<int>());
 
+bool save_image(cv::InputArray _image, cv::InputArray _mask, const std::string & fname,
+    const std::vector<int>& params = std::vector<int>());
+
+// Merge BGR and mask to to BGRA
+bool mergebgra(const cv::Mat & input_bgr_image, const cv::Mat & input_alpha_mask,
+    cv::Mat & output_bgra_image);
 
 
 #endif /* __save_image_h__ */

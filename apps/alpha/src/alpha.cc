@@ -11,8 +11,8 @@
 #include <core/improc/c_rangeclip_routine.h>
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
+#include <core/proc/estimate_noise.h>
 #include <core/proc/downstrike.h>
-#include <core/proc/rgbamix.h>
 #include <core/proc/unsharp_mask.h>
 #include <core/settings.h>
 #include <core/ssprintf.h>
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
   }
 
 
-  cv::Mat sharp, sharpx, sharpy, gx, gy, smask;
+  cv::Mat sharp, sharpx, sharpy, gx, gy, g, smask;
 
   if ( image.channels() == 4 || image.channels() == 2 ) {
     CF_DEBUG("HAVE MASK");
@@ -154,39 +154,37 @@ int main(int argc, char *argv[])
   rmfiles("sharp/", "*");
   rmfiles("g/", "*");
 
-  cv::absdiff(image, 0, image);
-  cv::sqrt(image, image);
+//  cv::absdiff(image, 0, image);
+//  cv::sqrt(image, image);
 
-  differentiate(image, gx, gy);
-  save_image(gx, ssprintf("sharp/gx.tiff"));
-  save_image(gy, ssprintf("sharp/gy.tiff"));
+//  differentiate(image, gx, gy);
+//  save_image(gx, ssprintf("sharp/gx.tiff"));
+//  save_image(gy, ssprintf("sharp/gy.tiff"));
 
-  cv::GaussianBlur(image, image, cv::Size(0,0), 0.9);
-  differentiate(image, gx, gy);
+//  cv::GaussianBlur(image, image, cv::Size(0,0), 0.9);
+//  differentiate(image, gx, gy);
 
-  smask.release();
-  fprintf(stdout, "I\talpha\tL1\tL2\tRATIO\n");
+  //smask.release();
+  fprintf(stdout, "I\talpha\tmean\tstdev\teps\n");
   for ( int i = 0, n = sizeof(alpha)/sizeof(alpha[0]); i < n; ++i ) {
 
-    unsharp_mask(gx, sharpx, sigma, alpha[i]);
-    unsharp_mask(gy, sharpy, sigma, alpha[i]);
+    cv::Scalar ms, ss, es;
+    double mv, sv, ev;
 
-    if ( !smask.empty() ) {
-      //sharp.setTo(0, ~smask);
-      //g.setTo(0, ~smask);
-    }
+    unsharp_mask(image, sharp, sigma, alpha[i]);
 
-    const int N = smask.empty() ? image.size().area() : cv::countNonZero(smask);
+    cv::meanStdDev(sharp, ms, ss, smask);
+    es = (estimate_noise(sharp, cv::noArray(), smask));
 
-    l1 = (cv::norm(sharpx, cv::NORM_L1, smask) + cv::norm(sharpy, cv::NORM_L1, smask)) / N;
-    l2 = sqrt((cv::norm(sharpx, cv::NORM_L2SQR, smask) + cv::norm(sharpy, cv::NORM_L2SQR, smask)) / N);
+    mv = (ms[0] + ms[1] + ms[2]);
+    sv = (ss[0] + ss[1] + ss[2]);
+    ev = (es[0] + es[1] + es[2]);
 
     fprintf(stdout, "%6d\t%12.6f\t%15.6f\t%15.6f\t%15.6f\n",
-        i, alpha[i], l1, l2, l1 / l2);
+        i, alpha[i], mv, sv, ev);
 
-    save_image(sharpx, ssprintf("sharp/sharpx.%05d.tiff", i));
-    save_image(sharpy, ssprintf("sharp/sharpy.%05d.tiff", i));
-  }
+    save_image(sharp, ssprintf("sharp/sharp.%05d.tiff", i));
+   }
 
   return 0;
 }

@@ -239,16 +239,16 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
 
 void QImageViewer::showEvent(QShowEvent *e)
 {
-  emit visibilityChanged(true);
   //emit onShowEvent(e);
+  emit visibilityChanged(true);
   Base::showEvent(e);
 }
 
 void QImageViewer::hideEvent(QHideEvent *e)
 {
   //emit onHideEvent(e);
-  emit visibilityChanged(false);
   Base::hideEvent(e);
+  emit visibilityChanged(false);
 }
 
 void QImageViewer::focusInEvent(QFocusEvent *e)

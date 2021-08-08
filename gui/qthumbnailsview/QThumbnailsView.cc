@@ -23,16 +23,23 @@
 
 #define ICON_hourglass    "hourglass2"
 #define ICON_badimage     "badimage"
+#define ICON_textfile      "textfile"
 
 
 static QIcon hourglass_icon;
 static QIcon badimage_icon;
+static QIcon textfile_icon;
 
 
 static QIcon getIcon(const QString & name)
 {
   return QIcon(QString(":/qthumbnailsview/icons/%1").arg(name));
 }
+
+//static QPixmap getPixmap(const QString & name)
+//{
+//  return QPixmap(QString(":/qthumbnailsview/icons/%1").arg(name));
+//}
 
 static QWidget * addSpacer(QToolBar * toolBar)
 {
@@ -42,6 +49,23 @@ static QWidget * addSpacer(QToolBar * toolBar)
   return spacer;
 }
 
+static void init_thumbnailsview_resources()
+{
+  // MAX_ICON_LOAD_SIZE
+  Q_INIT_RESOURCE(qthumbnailsview_resources);
+
+  if ( hourglass_icon.isNull() ) {
+    hourglass_icon = getIcon(ICON_hourglass);
+  }
+  if ( badimage_icon.isNull() ) {
+    badimage_icon = getIcon(ICON_badimage);
+  }
+  if ( textfile_icon.isNull() ) {
+    textfile_icon = getIcon(ICON_textfile);
+  }
+
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 QThumbnailsListWidget::QThumbnailsListWidget(QWidget * parent)
@@ -49,13 +73,7 @@ QThumbnailsListWidget::QThumbnailsListWidget(QWidget * parent)
 {
   QAction * action;
 
-  Q_INIT_RESOURCE(qthumbnailsview_resources);
-  if ( hourglass_icon.isNull() ) {
-    hourglass_icon = getIcon(ICON_hourglass);
-  }
-  if ( badimage_icon.isNull() ) {
-    badimage_icon = getIcon(ICON_badimage);
-  }
+  init_thumbnailsview_resources();
 
 
   setViewMode(QListWidget::IconMode);
@@ -394,14 +412,7 @@ void QThumbnailsListWidget::selectAll(bool includeHiddenItems)
 QThumbnailsView::QThumbnailsView(QWidget * parent)
   : Base(parent)
 {
-  Q_INIT_RESOURCE(qthumbnailsview_resources);
-  if ( hourglass_icon.isNull() ) {
-    hourglass_icon = getIcon(ICON_hourglass);
-  }
-  if ( badimage_icon.isNull() ) {
-    badimage_icon = getIcon(ICON_badimage);
-  }
-
+  init_thumbnailsview_resources();
 
   layout_ = new QVBoxLayout(this);
   layout_->setContentsMargins(0,0,0,0);
@@ -562,11 +573,33 @@ void QThumbnailsView::onSearchImageFilesFinished()
 
 void QThumbnailsView::extractMissingThumbiails()
 {
+
   for ( int i = 0, n = listWidget_->count(); i < n; ++i ) {
     QListWidgetItem * item = listWidget_->item(i);
     if ( !item->data(Qt::UserRole).toBool() ) {
-      thumbnailExtractor_.start(item->whatsThis());
-      break;
+
+      static const char * textfile_suffixes[] = {
+          ".txt", ".doc", ".md", ".xml", ".html", ".htm", ".rtf", ".tex"
+      };
+
+      const QString filename = item->whatsThis();
+      bool is_textfle = false;
+      for ( uint i = 0; i < sizeof(textfile_suffixes)/sizeof(textfile_suffixes[0]); ++i ) {
+        if ( filename.endsWith(textfile_suffixes[i], Qt::CaseInsensitive) ) {
+          is_textfle = true;
+          break;
+        }
+      }
+
+      if ( is_textfle ){
+        item->setIcon(textfile_icon);
+        item->setData(Qt::UserRole, QVariant(true));
+        listWidget_->update();
+      }
+      else {
+        thumbnailExtractor_.start(filename);
+        break;
+      }
     }
   }
 }

@@ -33,8 +33,6 @@ public:
   cv::Mat & inputMask();
   const cv::Mat & inputMask() const;
 
-signals:
-  void currentImageChanged();
 
 public slots:
   void updateImage();

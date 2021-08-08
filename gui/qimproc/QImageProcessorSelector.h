@@ -21,8 +21,8 @@ public:
 
   QImageProcessorSelector(QWidget * parent = Q_NULLPTR);
 
-  void set_available_processors(const c_image_processor_collection::ptr & processors);
-  const c_image_processor_collection::ptr available_processors() const;
+//  void set_available_processors(const c_image_processor_collection::ptr & processors);
+//  const c_image_processor_collection::ptr available_processors() const;
 
   c_image_processor::ptr current_processor() const;
 
@@ -44,7 +44,7 @@ protected slots:
   void addCopyOfCurrentProcessor();
 
 protected:
-  c_image_processor_collection::ptr available_processors_;
+  //c_image_processor_collection::ptr available_processors_;
   c_image_processor::ptr current_processor_;
 
   QCheckBox * enabled_ctl = Q_NULLPTR;

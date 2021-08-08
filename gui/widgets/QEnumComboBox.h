@@ -35,9 +35,12 @@ template<class E>
 class QEnumComboBox
   : public QEnumComboBoxBase
 {
-  typedef QEnumComboBoxBase Base;
 
 public:
+  typedef QEnumComboBox ThisClass;
+  typedef QEnumComboBoxBase Base;
+  typedef E ItemType;
+
   QEnumComboBox(QWidget * parent)
     : Base(parent)
   {

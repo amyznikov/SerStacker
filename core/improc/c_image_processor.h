@@ -190,7 +190,7 @@ public:
   bool load(const std::string & input_directrory);
   bool deserialize(c_config_setting settings);
 
-  bool save(const std::string & output_directrory) const;
+  bool save(const std::string & output_directrory = "") const;
   bool serialize(c_config_setting settings) const;
 
   iterator find(const std::string & name);

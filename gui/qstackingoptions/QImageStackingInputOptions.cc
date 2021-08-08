@@ -47,15 +47,12 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         }
       });
 
-  add_combobox(form, "Anscombe Transform:",
-      anscombe_ctl = new QAnscombeMethodCombo(this),
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          anscombe_method v = anscombe_ctl->currentItem();
-          if ( v != options_->anscombe ) {
-            options_->anscombe = v;
-            emit parameterChanged();
-          }
+  anscombe_ctl = add_enum_combobox<QAnscombeMethodCombo>(
+      "Anscombe Transform:",
+      [this](anscombe_method v) {
+        if ( options_ && v != options_->anscombe ) {
+          options_->anscombe = v;
+          emit parameterChanged();
         }
       });
 

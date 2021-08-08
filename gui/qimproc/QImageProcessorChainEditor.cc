@@ -88,9 +88,6 @@ void QImageProcessorChainEditor::set_current_processor(const c_image_processor::
 
           form->addRow(ctl);
 
-          connect(ctl, &QSettingsWidget::parameterChanged,
-              this, &ThisClass::parameterChanged);
-
           connect(ctl, &QImageProcessorRoutineSettingsBase::addRoutineRequested,
               this, &ThisClass::addRoutine);
 
@@ -102,6 +99,14 @@ void QImageProcessorChainEditor::set_current_processor(const c_image_processor::
 
           connect(ctl, &QImageProcessorRoutineSettingsBase::moveDownRequested,
               this, &ThisClass::moveDownRoutine);
+
+          connect(ctl, &QSettingsWidget::parameterChanged,
+              [this]() {
+                if ( current_processor_ ) {
+                  current_processor_->save();
+                }
+                emit parameterChanged();
+          });
         }
       }
     }

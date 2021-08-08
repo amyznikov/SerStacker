@@ -6,6 +6,7 @@
  */
 
 #include "QStackOutputOptions.h"
+#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/widgets/addctrl.h>
 #include <gui/widgets/settings.h>
 #include <core/debug.h>
@@ -29,6 +30,32 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   : Base("QStackingDebugOptions", parent)
 {
   Q_INIT_RESOURCE(qstackingoptions_resources);
+
+  if ( QImageProcessorsCollection::empty() ) {
+    QImageProcessorsCollection::load();
+  }
+
+  connect(QImageProcessorsCollection::instance(), &QImageProcessorsCollection::collectionChanged,
+      this, &ThisClass::populateAvailableImageProcessors);
+
+
+  prostprocessor_selector_ctl =
+      add_combobox( "Post Processing:",
+          [this](int index) {
+            if ( options_ ) {
+              if ( index < 1 ||(index = QImageProcessorsCollection::indexof(
+                  prostprocessor_selector_ctl->currentText()) ) < 0 ) {
+                options_->postprocessor.reset();
+              }
+              else {
+                options_->postprocessor = QImageProcessorsCollection::item(index);
+              }
+            }
+      });
+
+  prostprocessor_selector_ctl->setEditable(false);
+  prostprocessor_selector_ctl->setMinimumContentsLength(12);
+  prostprocessor_selector_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
   form->addRow(output_directory_ctl =
       new QBrowsePathCombo("Output directory:",
@@ -97,7 +124,6 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
       });
 
 
-
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
@@ -113,16 +139,17 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
       });
 
 
+  populateAvailableImageProcessors();
   setEnabled(false);
 }
 
-void QStackOutputOptions::set_debug_options(c_image_stacking_output_options * options)
+void QStackOutputOptions::set_output_options(c_image_stacking_output_options * options)
 {
   this->options_ = options;
   updateControls();
 }
 
-const c_image_stacking_output_options * QStackOutputOptions::debug_options() const
+const c_image_stacking_output_options * QStackOutputOptions::output_options() const
 {
   return this->options_;
 }
@@ -139,7 +166,47 @@ void QStackOutputOptions::onupdatecontrols()
     output_aligned_video_filename_ctl->setCurrentPath(options_->output_aligned_video_filename.c_str());
     output_aligned_video_filename_ctl->setEnabled(options_->write_aligned_video);
     dump_reference_frames_for_debug_ctl->setChecked(options_->dump_reference_frames_for_debug);
+
+    //    c_image_processor::ptr potprocess;
+    //    std::string potprocessed_image_filename;
+
+
     setEnabled(true);
   }
 
+}
+
+void QStackOutputOptions::populateAvailableImageProcessors()
+{
+  const QString current_postprocessor_name =
+      prostprocessor_selector_ctl->currentText();
+
+  const bool oldUpdatingControlsFlag =
+      updatingControls();
+
+  setUpdatingControls(true);
+
+  prostprocessor_selector_ctl->clear();
+  prostprocessor_selector_ctl->addItem("None");
+
+  for ( int i = 0, n = QImageProcessorsCollection::size(); i < n; ++i ) {
+
+    const c_image_processor::ptr processor =
+        QImageProcessorsCollection::item(i);
+
+    if ( processor ) {
+      prostprocessor_selector_ctl->addItem(processor->cname(), processor->cfilename());
+    }
+  }
+
+  if ( !current_postprocessor_name.isEmpty() ) {
+    const int index =
+        prostprocessor_selector_ctl->findText(current_postprocessor_name);
+
+    if ( index >= 0 ) {
+      prostprocessor_selector_ctl->setCurrentIndex(index);
+    }
+  }
+
+  setUpdatingControls(oldUpdatingControlsFlag);
 }

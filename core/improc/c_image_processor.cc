@@ -382,11 +382,15 @@ bool c_image_processor_routine::serialize(c_config_setting settings) const
 }
 
 
-bool c_image_processor_collection::save(const std::string & output_directrory) const
+bool c_image_processor_collection::save(const std::string & output_path) const
 {
-  if ( !create_path(output_directrory) ) {
-    CF_ERROR("create_path(output_directrory=%s) fails: %s",
-        output_directrory.c_str(),
+  const std::string &output_directory = output_path.empty() ?
+      default_processor_collection_path_ :
+      output_path;
+
+  if ( !create_path(output_directory) ) {
+    CF_ERROR("create_path(output_directory=%s) fails: %s",
+        output_directory.c_str(),
         strerror(errno));
     return  false;
   }
@@ -395,7 +399,7 @@ bool c_image_processor_collection::save(const std::string & output_directrory) c
     if ( processor && !processor->name().empty() ) {
 
       const std::string filename =
-          ssprintf("%s/%s.cfg", output_directrory.c_str(),
+          ssprintf("%s/%s.cfg", output_directory.c_str(),
               processor->name().c_str());
 
       if ( !processor->save(filename) ) {

@@ -24,8 +24,8 @@ public:
 
   QStackOutputOptions(QWidget * parent = Q_NULLPTR);
 
-  void set_debug_options(c_image_stacking_output_options * options);
-  const c_image_stacking_output_options * debug_options() const;
+  void set_output_options(c_image_stacking_output_options * options);
+  const c_image_stacking_output_options * output_options() const;
 
 signals:
   void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);
@@ -33,6 +33,9 @@ signals:
 
 protected:
   void onupdatecontrols() override;
+
+protected slots:
+  void populateAvailableImageProcessors();
 
 protected:
   c_image_stacking_output_options * options_ = Q_NULLPTR;
@@ -42,6 +45,10 @@ protected:
   QCheckBox * write_aligned_video_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_aligned_video_filename_ctl = Q_NULLPTR;
   QCheckBox * dump_reference_frames_for_debug_ctl = Q_NULLPTR;
+
+  //QCheckBox * enable_postproc_ctl = Q_NULLPTR;
+  QComboBox * prostprocessor_selector_ctl = Q_NULLPTR;
+
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

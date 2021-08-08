@@ -304,26 +304,22 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
     : Base("QFrameRegistrationBaseSettings", parent)
 {
 
-  add_combobox(form, "Registration channel:", reference_channel_ctl = new QRegistrationColorChannelCombo(this),
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( reference_channel_ctl->currentItem() != options_->registration_channel ) {
-            options_->registration_channel = reference_channel_ctl->currentItem();
-            emit parameterChanged();
-          }
+  reference_channel_ctl = add_enum_combobox<QRegistrationColorChannelCombo>(
+      "Registration channel:",
+      [this](color_channel_type v) {
+        if ( options_ && v != options_->registration_channel ) {
+          options_->registration_channel = v;
+          emit parameterChanged();
         }
-
       });
 
-  add_combobox(form, "Motion type:", motion_type_ctl = new QEccMotionTypeCombo(this),
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( motion_type_ctl->currentItem() != options_->motion_type ) {
-            options_->motion_type = motion_type_ctl->currentItem();
-            emit parameterChanged();
-          }
+  motion_type_ctl = add_enum_combobox<QEccMotionTypeCombo>(
+      "Motion type:",
+      [this](ECC_MOTION_TYPE v) {
+        if ( options_ && v != options_->motion_type ) {
+          options_->motion_type = v;
+          emit parameterChanged();
         }
-
       });
 
   feature_scale_ctl = add_numeric_box(form, "Feature scale",
@@ -555,13 +551,10 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   Q_INIT_RESOURCE(qstackingoptions_resources);
 
 
-
-  add_combobox(form, "Registration method:",
-      frameRegistrationMethod_ctl = new QFrameRegistrationMethodCombo(this),
-      [this]() {
-        if ( !updatingControls() ) {
-          updatemethodspecificpage();
-        }
+  frameRegistrationMethod_ctl = add_enum_combobox<QFrameRegistrationMethodCombo>(
+      "Registration method:",
+      [this](frame_registration_method) {
+        updatemethodspecificpage();
       });
 
 

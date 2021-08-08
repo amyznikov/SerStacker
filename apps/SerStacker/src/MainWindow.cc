@@ -324,8 +324,8 @@ MainWindow::MainWindow()
   configureTextViewerToolbars();
 
 
-  image_processors_->load(c_image_processor_collection::default_processor_collection_path());
-  imageProcessorSelector->set_available_processors(image_processors_);
+  //  image_processors_->load(c_image_processor_collection::default_processor_collection_path());
+  //  imageProcessorSelector->set_available_processors(image_processors_);
   imageEditor->set_current_processor(imageProcessorSelector->current_processor());
 
 }

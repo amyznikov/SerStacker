@@ -15,7 +15,7 @@
 #include <core/registration/c_star_field_registration.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/c_anscombe_transform.h>
-#include <condition_variable>
+#include <core/improc/c_image_processor.h>
 #include <atomic>
 
 
@@ -127,6 +127,10 @@ struct c_image_stacking_output_options {
   std::string output_directory;
 
   std::string output_aligned_video_filename;
+
+  c_image_processor::ptr postprocessor;
+  std::string potprocessed_image_filename;
+
   bool write_aligned_video = false;
   bool dump_reference_frames_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;

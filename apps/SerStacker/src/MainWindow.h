@@ -87,7 +87,7 @@ private slots:
 
 private:
   c_image_stacks_collection::ptr stacklist_ = c_image_stacks_collection::create();
-  c_image_processor_collection::ptr image_processors_ = c_image_processor_collection::create();
+  //c_image_processor_collection::ptr image_processors_ = c_image_processor_collection::create();
   c_display_function image_display_function_;
 
   QStackedWidget * centralStackedWidget = Q_NULLPTR;

@@ -1161,62 +1161,81 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
 
-  if ( options->frame_registration_options().registration_method != frame_registration_method_star_field ) {
+  const c_image_processor::ptr postprocessor = options->output_options().postprocessor;
+  CF_DEBUG("postprocessor: %s", postprocessor ? postprocessor->cname(): "NONE");
+  if ( postprocessor ) {
 
-    cv::Mat wbmask, wbimage;
-    std::string outname;
+    std::string outname = output_file_name;
+    set_file_suffix(outname, "-PP.tiff");
 
-    set_file_suffix(outname = output_file_name,
-        "-WBH.tiff");
-
-    cv::compare(current_frame_, 0.1, wbmask, cv::CMP_GT);
-
-    if ( wbmask.channels() > 1 ) {
-      cv::cvtColor(wbmask, wbmask, cv::COLOR_BGR2GRAY);
-      cv::compare(wbmask, 255, wbmask, cv::CMP_GE);
+    CF_DEBUG("postprocessor->process()");
+    if ( !postprocessor->process(current_frame_, current_mask_) ) {
+      CF_ERROR("postprocessor %s : process() fails", postprocessor->cname());
     }
 
-    cv::bitwise_and(current_mask_, wbmask, wbmask);
-
-    if ( !histogram_white_balance(current_frame_, wbmask, wbimage, 1, 99) ) {
-      CF_ERROR("histogram_white_balance(wbimage) fails");
-      wbimage = current_frame_;
-    }
-    else {
-
-      normalize_minmax(wbimage, wbimage,
-          0.01, 0.99,
-          current_mask_,
-          true);
-    }
-
-    CF_DEBUG("Saving '%s'", outname.c_str());
-    if ( !write_image(outname, output_options, wbimage, current_mask_) ) {
-      CF_ERROR("write_image('%s') fails", outname.c_str());
+    CF_DEBUG("Saving '%s'",  outname.c_str());
+    if ( !write_image(outname, output_options, current_frame_, current_mask_) ) {
+      CF_ERROR("ERROR: write_image('%s') fails", outname.c_str());
     }
   }
-  else {
 
-    if ( !histogram_white_balance(current_frame_, current_mask_, current_frame_, 5, 95) ) {
-      CF_ERROR("histogram_white_balance() fails");
-    }
-    else {
-
-      normalize_minmax(current_frame_, current_frame_,
-          0.01, 0.99,
-          current_mask_,
-          true);
-
-      set_file_suffix(output_file_name,
-          "-WBH.tiff");
-
-      CF_DEBUG("SAVING '%s'", output_file_name.c_str());
-      if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
-        CF_ERROR("write_image('%s') fails", output_file_name.c_str());
-      }
-
-    }
-  }
+//
+//  if ( options->frame_registration_options().registration_method != frame_registration_method_star_field ) {
+//
+//    cv::Mat wbmask, wbimage;
+//    std::string outname;
+//
+//    set_file_suffix(outname = output_file_name,
+//        "-WBH.tiff");
+//
+//    cv::compare(current_frame_, 0.1, wbmask, cv::CMP_GT);
+//
+//    if ( wbmask.channels() > 1 ) {
+//      cv::cvtColor(wbmask, wbmask, cv::COLOR_BGR2GRAY);
+//      cv::compare(wbmask, 255, wbmask, cv::CMP_GE);
+//    }
+//
+//    cv::bitwise_and(current_mask_, wbmask, wbmask);
+//
+//    if ( !histogram_white_balance(current_frame_, wbmask, wbimage, 1, 99) ) {
+//      CF_ERROR("histogram_white_balance(wbimage) fails");
+//      wbimage = current_frame_;
+//    }
+//    else {
+//
+//      normalize_minmax(wbimage, wbimage,
+//          0.01, 0.99,
+//          current_mask_,
+//          true);
+//    }
+//
+//    CF_DEBUG("Saving '%s'", outname.c_str());
+//    if ( !write_image(outname, output_options, wbimage, current_mask_) ) {
+//      CF_ERROR("write_image('%s') fails", outname.c_str());
+//    }
+//  }
+//  else {
+//
+//    if ( !histogram_white_balance(current_frame_, current_mask_, current_frame_, 5, 95) ) {
+//      CF_ERROR("histogram_white_balance() fails");
+//    }
+//    else {
+//
+//      normalize_minmax(current_frame_, current_frame_,
+//          0.01, 0.99,
+//          current_mask_,
+//          true);
+//
+//      set_file_suffix(output_file_name,
+//          "-WBH.tiff");
+//
+//      CF_DEBUG("SAVING '%s'", output_file_name.c_str());
+//      if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
+//        CF_ERROR("write_image('%s') fails", output_file_name.c_str());
+//      }
+//
+//    }
+//  }
 
   set_status_msg("FINISHED");
 

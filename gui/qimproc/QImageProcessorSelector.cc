@@ -6,7 +6,9 @@
  */
 
 #include "QImageProcessorSelector.h"
+#include "QImageProcessorsCollection.h"
 #include <core/debug.h>
+
 
 #define ICON_double_arrow_down    "double-arrow-down"
 #define ICON_double_arrow_right   "double-arrow-right"
@@ -30,6 +32,10 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
 {
 
   Q_INIT_RESOURCE(qimproc_resources);
+
+  if ( QImageProcessorsCollection::empty() ) {
+    QImageProcessorsCollection::load();
+  }
 
   enabled_ctl = add_checkbox("Enabled",
       [this](int /*state*/) {
@@ -61,10 +67,6 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
 
   connect(selectorMenu_ctl, &QToolButton::clicked,
       [this] () {
-
-        if ( !available_processors_ ) {
-          return;
-        }
 
         QMenu menu;
         QAction * add_processor_action = Q_NULLPTR;
@@ -125,16 +127,16 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   updateControls();
 }
 
-void QImageProcessorSelector::set_available_processors(const c_image_processor_collection::ptr & processors)
-{
-  available_processors_ = processors;
-  updateControls();
-}
-
-const c_image_processor_collection::ptr QImageProcessorSelector::available_processors() const
-{
-  return available_processors_;
-}
+//void QImageProcessorSelector::set_available_processors(const c_image_processor_collection::ptr & processors)
+//{
+//  available_processors_ = processors;
+//  updateControls();
+//}
+//
+//const c_image_processor_collection::ptr QImageProcessorSelector::available_processors() const
+//{
+//  return available_processors_;
+//}
 
 c_image_processor::ptr QImageProcessorSelector::current_processor() const
 {
@@ -150,32 +152,26 @@ void QImageProcessorSelector::onupdatecontrols()
 {
   selector_ctl->clear();
 
-  if ( !available_processors_ ) {
-    setEnabled(false);
-  }
-  else {
-
-    for ( size_t i = 0, n = available_processors_->size(); i < n; ++i ) {
-      const c_image_processor::ptr & processor = available_processors_->at(i);
-      if ( processor ) {
-        selector_ctl->addItem(processor->cname(), QVariant((int) (i)));
-        selector_ctl->setItemData(i, processor->cfilename(), Qt::ToolTipRole);
-      }
+  for ( size_t i = 0, n = QImageProcessorsCollection::size(); i < n; ++i ) {
+    const c_image_processor::ptr & processor = QImageProcessorsCollection::item(i);
+    if ( processor ) {
+      selector_ctl->addItem(processor->cname(), QVariant((int) (i)));
+      selector_ctl->setItemData(i, processor->cfilename(), Qt::ToolTipRole);
     }
-
-    if ( selector_ctl->count() > 0 ) {
-
-      if ( !current_processor_ ) {
-        selector_ctl->setCurrentIndex(0);
-      }
-      else {
-        const int index = selector_ctl->findText(current_processor_->cname());
-        selector_ctl->setCurrentIndex(index >= 0 ? index : 0);
-      }
-    }
-
-    setEnabled(true);
   }
+
+  if ( selector_ctl->count() > 0 ) {
+
+    if ( !current_processor_ ) {
+      selector_ctl->setCurrentIndex(0);
+    }
+    else {
+      const int index = selector_ctl->findText(current_processor_->cname());
+      selector_ctl->setCurrentIndex(index >= 0 ? index : 0);
+    }
+  }
+
+  setEnabled(true);
 
   updatecurrentprocessor();
 
@@ -193,21 +189,13 @@ void QImageProcessorSelector::updatecurrentprocessor()
 {
   c_image_processor::ptr selected_processor;
 
-  if ( available_processors_ && !available_processors_->empty() ) {
+  if( !QImageProcessorsCollection::empty() ) {
 
     QString processorName = selector_ctl->currentText();
     if ( !processorName.isEmpty() ) {
-
-      const std::string stdname = processorName.toStdString();
-
-      const std::vector<c_image_processor::ptr>::iterator pos =
-          std::find_if(available_processors_->begin(), available_processors_->end(),
-              [stdname](const c_image_processor::ptr & obj) {
-                return obj && obj->name() == stdname;
-              });
-
-      if ( pos != available_processors_->end() ) {
-        selected_processor = *pos;
+      const int pos = QImageProcessorsCollection::indexof(processorName);
+      if ( pos >= 0 ) {
+        selected_processor = QImageProcessorsCollection::item(pos);
       }
     }
   }
@@ -223,10 +211,6 @@ void QImageProcessorSelector::updatecurrentprocessor()
 
 void QImageProcessorSelector::addProcessor()
 {
-  if ( !available_processors_ ) {
-    return;
-  }
-
   while ( 42 ) {
 
     const QString processorName =
@@ -240,7 +224,7 @@ void QImageProcessorSelector::addProcessor()
     }
 
 
-    if ( available_processors_->find(processorName.toStdString()) != available_processors_->end() ) {
+    if ( QImageProcessorsCollection::indexof(processorName) >=0 ) {
       QMessageBox::warning(this, "ERROR", "Processor with this name is already exists.\n"
           "Enter another name.");
       continue;
@@ -255,7 +239,7 @@ void QImageProcessorSelector::addProcessor()
       return;
     }
 
-    available_processors_->emplace_back(current_processor_ = processor);
+    QImageProcessorsCollection::add(current_processor_ = processor);
     current_processor_->save();
     updateControls();
 
@@ -266,7 +250,7 @@ void QImageProcessorSelector::addProcessor()
 
 void QImageProcessorSelector::deleteCurrentProcessor()
 {
-  if ( !available_processors_ || !current_processor_ ) {
+  if ( !current_processor_ ) {
     return;
   }
 
@@ -281,14 +265,12 @@ void QImageProcessorSelector::deleteCurrentProcessor()
     return;
   }
 
-  c_image_processor_collection::iterator pos =
-      available_processors_->find(current_processor_);
-
-  if ( pos == available_processors_->end() ) {
+  const int pos = QImageProcessorsCollection::indexof(current_processor_);
+  if( pos < 0 ) {
     return;
   }
 
-  available_processors_->erase(pos);
+  QImageProcessorsCollection::remove_at(pos);
 
   if ( !current_processor_->filename().empty() ) {
 
@@ -329,8 +311,8 @@ void QImageProcessorSelector::renameCurrentProcessor()
       return;
     }
 
-    if ( available_processors_ && !available_processors_->empty() ) {
-      if ( available_processors_->find(processorName.toStdString()) != available_processors_->end() ) {
+    if ( !QImageProcessorsCollection::empty() ) {
+      if ( QImageProcessorsCollection::indexof(processorName) >=0 ) {
         QMessageBox::warning(this, "ERROR", "Processor with this name is already exists.\n"
             "Enter another name.");
         continue;

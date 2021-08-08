@@ -112,10 +112,10 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
   : Base("QThumbnailsQuickFilterOptions", parent)
 {
 
-  const auto emit_parameterChanged =
-      [this]() {
-        emit parameterChanged();
-      };
+//  const auto emit_parameterChanged =
+//      [this]() {
+//        emit parameterChanged();
+//      };
 
   searchText_ctl = new QComboBox(this);
   searchText_ctl->setEditable(true);
@@ -129,9 +129,11 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
   connect(searchText_ctl, &QComboBox::currentTextChanged,
       this, &ThisClass::onSearchTextChanged);
 
-  add_combobox(form, "Matching type:",
-      matchingFlags_ctl = new QThumbnailsQuickFilterMatchingFlagsCombo(this),
-      emit_parameterChanged);
+  matchingFlags_ctl = add_enum_combobox<QThumbnailsQuickFilterMatchingFlagsCombo>(
+      "Matching type:",
+      [this](Qt::MatchFlags) {
+        emit parameterChanged();
+      });
 
   caseSensitivity_ctl =
       add_checkbox("Case sensitive",

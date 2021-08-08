@@ -10,8 +10,6 @@
 #define __QFrameAccumulationOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QEnumComboBox.h>
-#include <gui/widgets/QLineEditBox.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
 QString toString(enum frame_upscale_option v);

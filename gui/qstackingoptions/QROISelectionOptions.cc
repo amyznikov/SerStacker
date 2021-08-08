@@ -37,15 +37,12 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent)
   : Base("QROISelectionOptions", parent)
 {
 
-  add_combobox(form, "Detect feature:",
-      selectionMethod_ctl = new QROISelectionMethodCombo(this),
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          const roi_selection_method v = selectionMethod_ctl->currentItem();
-          if (  v != options_->method ) {
-            options_->method = v;
-            emit parameterChanged();
-          }
+  selectionMethod_ctl = add_enum_combobox<QROISelectionMethodCombo>(
+      "Detect feature:",
+      [this](roi_selection_method v) {
+        if ( options_ && v != options_->method ) {
+          options_->method = v;
+          emit parameterChanged();
         }
       });
 

@@ -107,7 +107,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     roiSelection_ctl->set_roi_selection_options(nullptr);
     frameAccumulation_ctl->set_accumulation_options(nullptr);
     frameRegistration_ctl->set_registration_options(nullptr);
-    outputOptions_ctl->set_debug_options(nullptr);
+    outputOptions_ctl->set_output_options(nullptr);
 
   }
   else {
@@ -118,7 +118,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     roiSelection_ctl->set_roi_selection_options(&stack_->roi_selection_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
     frameRegistration_ctl->set_registration_options(&stack_->frame_registration_options());
-    outputOptions_ctl->set_debug_options(&stack_->output_options());
+    outputOptions_ctl->set_output_options(&stack_->output_options());
 
     if ( QStackingThread::isRunning() && stack_ == QStackingThread::currentStack() ) {
       setEnabled(false);

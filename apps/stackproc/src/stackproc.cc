@@ -11,7 +11,7 @@
 #include <core/readdir.h>
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
-#include <core/io/rgbamix.h>
+#include <core/proc/rgbamix.h>
 #include <core/strsplit.h>
 #include <core/improc/c_image_processor.h>
 #include <core/improc/c_unsharp_mask_routine.h>

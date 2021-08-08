@@ -177,10 +177,14 @@ QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const Cla
     form->addRow(header_ctl);
 
 
-    ctlform = new QFormLayout(routine_ctl = new QWidget(this));
-    ctlform->setMargin(0);
-    ctlform->setContentsMargins(6, 0, 0, 0);
-    form->addWidget(routine_ctl);
+    QFrame * frame = new QFrame(this);
+    frame->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+    ctlform = new QFormLayout(routine_ctl = frame/*new QWidget(this)*/);
+    //ctlform->setMargin(4);
+    //ctlform->setContentsMargins(8, 8, 0, 0);
+    form->addRow(routine_ctl);
 
     connect(expand_ctl, &QCheckBox::stateChanged,
         [this](int state) {

@@ -15,8 +15,8 @@
 #include <core/proc/reduce_channels.h>
 #include <core/proc/fft.h>
 #include <core/proc/smap.h>
+#include <core/proc/rgbamix.h>
 #include <core/io/save_image.h>
-#include <core/io/rgbamix.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/get_time.h>

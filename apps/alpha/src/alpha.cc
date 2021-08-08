@@ -12,15 +12,58 @@
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
 #include <core/proc/downstrike.h>
+#include <core/proc/rgbamix.h>
+#include <core/proc/unsharp_mask.h>
 #include <core/settings.h>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <core/debug.h>
 
+extern void ecc_differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy);;
+
+static void differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy)
+{
+//  static thread_local const cv::Matx<float, 1, 3> K(
+//      (+1.f / 2),
+//        0.f,
+//      (-1.f / 2));
+
+//  static thread_local const cv::Matx<float, 1, 2> K(
+//      (+1.f),
+//      (-1.f));
+
+  static thread_local const cv::Matx<float, 1, 5> K(
+      (+1.f / 12),
+      (-8.f / 12),
+        0.f,
+      (+8.f / 12),
+      (-1.f / 12));
+
+  cv::filter2D(src, gx, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gy, CV_32F, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+}
+
+
+
+static void unsharp(cv::InputArray src, cv::OutputArray dst,
+    double sigma, double alpha)
+{
+  if ( sigma <= 0 || alpha <= 0 ) {
+    src.copyTo(dst);
+    return;
+  }
+
+  cv::Mat lpass, hpass;
+  cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
+  cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::subtract(src, lpass, hpass);
+  cv::scaleAdd(hpass, 1./alpha, lpass, dst);
+}
+
 
 int main(int argc, char *argv[])
 {
-  cv::Mat image;
+  cv::Mat image, mask;
   std::string filename;
 
   for ( int i = 1; i < argc; ++i ) {
@@ -51,9 +94,98 @@ int main(int argc, char *argv[])
   if ( !load_image(image, filename) ) {
     CF_ERROR("load_tiff_image() fails");
   }
+
+
+  cv::Mat sharp, sharpx, sharpy, gx, gy, smask;
+
+  if ( image.channels() == 4 || image.channels() == 2 ) {
+    CF_DEBUG("HAVE MASK");
+    splitbgra(image, image, &mask);
+    cv::erode(mask, smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+
+  }
   else {
-    CF_DEBUG("image: %dx%d channels=%d depth=%d", image.cols, image.rows, image.channels(), image.depth());
-    save_image(image, "load_tiff_image_result.tiff");
+    cv::erode(cv::Mat1b(image.size(), 255), smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_CONSTANT, 0);
+  }
+
+
+
+//  {
+//  double l1, l2, l2s;
+//    cv::Mat1f m(100,100, 2.f);
+//    l1 = cv::norm(m, cv::NORM_L1);
+//    l2 = cv::norm(m, cv::NORM_L2);
+//    l2s = cv::norm(m, cv::NORM_L2SQR);
+//
+//
+//    printf("\n"
+//        "M: L1=%g L2=%g L2SQR=%g"
+//        "\n",
+//        l1, l2, l2s);
+//
+//    return 0;
+//  }
+
+
+  if ( !smask.empty() ) {
+    cv::compare(image, 0.01, smask, cv::CMP_GT);
+    cv::cvtColor(smask, smask, cv::COLOR_BGR2GRAY);
+    save_image(smask, ssprintf("sharp/smask.png"));
+  }
+
+  double sigma = 0.5;
+  double l1, l2;
+
+  static const double alpha[] = {
+      0,
+      0.5, 0.75, 0.9,
+      0.95,
+      0.96,
+      0.970, 0.971, 0.972, 0.973, 0.974, 0.975, 0.976, 0.977, 0.978, 0.979,
+      0.980, 0.981, 0.982, 0.983, 0.984, 0.985, 0.986, 0.987, 0.988, 0.989,
+      0.990, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999,
+      0.9991, 0.9991, 0.9993, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9999,
+//      0.99995, 0.99999,
+//      0.999995, 0.999999,
+//      0.9999995, 0.9999999,
+  };
+
+
+  rmfiles("sharp/", "*");
+  rmfiles("g/", "*");
+
+  cv::absdiff(image, 0, image);
+  cv::sqrt(image, image);
+
+  differentiate(image, gx, gy);
+  save_image(gx, ssprintf("sharp/gx.tiff"));
+  save_image(gy, ssprintf("sharp/gy.tiff"));
+
+  cv::GaussianBlur(image, image, cv::Size(0,0), 0.9);
+  differentiate(image, gx, gy);
+
+  smask.release();
+  fprintf(stdout, "I\talpha\tL1\tL2\tRATIO\n");
+  for ( int i = 0, n = sizeof(alpha)/sizeof(alpha[0]); i < n; ++i ) {
+
+    unsharp_mask(gx, sharpx, sigma, alpha[i]);
+    unsharp_mask(gy, sharpy, sigma, alpha[i]);
+
+    if ( !smask.empty() ) {
+      //sharp.setTo(0, ~smask);
+      //g.setTo(0, ~smask);
+    }
+
+    const int N = smask.empty() ? image.size().area() : cv::countNonZero(smask);
+
+    l1 = (cv::norm(sharpx, cv::NORM_L1, smask) + cv::norm(sharpy, cv::NORM_L1, smask)) / N;
+    l2 = sqrt((cv::norm(sharpx, cv::NORM_L2SQR, smask) + cv::norm(sharpy, cv::NORM_L2SQR, smask)) / N);
+
+    fprintf(stdout, "%6d\t%12.6f\t%15.6f\t%15.6f\t%15.6f\n",
+        i, alpha[i], l1, l2, l1 / l2);
+
+    save_image(sharpx, ssprintf("sharp/sharpx.%05d.tiff", i));
+    save_image(sharpy, ssprintf("sharp/sharpy.%05d.tiff", i));
   }
 
   return 0;

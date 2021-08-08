@@ -6,7 +6,7 @@
  */
 
 #include "c_input_sequence.h"
-#include "rgbamix.h"
+#include <core/proc/rgbamix.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////

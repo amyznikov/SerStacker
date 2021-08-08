@@ -1585,30 +1585,23 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
   if ( fOk && !canceled() ) {
 
-    CF_DEBUG("H");
-
     if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() )  {
       write_image(ssprintf("%s/%s-initial-reference-frame.tiff", output_directory.c_str(),
               options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
     }
 
-    CF_DEBUG("H");
     cv::multiply(fftacc, 1. / fftcnt, fftacc);
 
-    CF_DEBUG("H");
     if ( !(fOk = swap_fft_power_spectrum(reference_frame_, fftacc, reference_frame_)) ) {
       CF_ERROR("ERROR: swap_power_spectrum() fails");
     }
     else {
-      CF_DEBUG("H");
       clip_range(reference_frame_, 0, 1, reference_mask_);
     }
 
-    CF_DEBUG("H");
 
     if ( options->master_frame_options().compensate_master_flow && !masterflow.empty() ) {
 
-      CF_DEBUG("H");
       if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() ) {
 
         save_image(masterflow_accumulation_->counter(),

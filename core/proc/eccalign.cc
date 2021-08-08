@@ -2862,14 +2862,13 @@ void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst) const
   else {
 
     cv::Mat src, mean, stdev;
-    double noise;
-
+    const int nscale = std::max(normalization_scale_, support_scale_);
+    const double noise = estimate_noise(_src)[0];
     src = _src.getMat();
-    noise = std::max(1e-6, estimate_noise(src)[0]);
-    pdownscale(src, mean, normalization_scale_, cv::BORDER_REPLICATE);
-    pdownscale(src.mul(src), stdev, normalization_scale_, cv::BORDER_REPLICATE);
+    pdownscale(src, mean, nscale, cv::BORDER_REPLICATE);
+    pdownscale(src.mul(src), stdev, nscale, cv::BORDER_REPLICATE);
     cv::absdiff(stdev, mean.mul(mean), stdev);
-    cv::add(stdev, noise * noise, stdev);
+    cv::add(stdev, std::max(noise, 1e-3), stdev); // FIXME: 1e-3 is dummy
     cv::sqrt(stdev, stdev);
 
     pupscale(mean, src.size());

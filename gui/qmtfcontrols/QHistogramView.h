@@ -18,6 +18,12 @@ public:
   typedef QHistogramView ThisClass;
   typedef QWidget Base;
 
+  enum ChartType {
+    ChartType_Lines,
+    ChartType_Bars,
+  };
+
+
   QHistogramView(QWidget * parent = Q_NULLPTR);
 
   void setLogScale(bool v);
@@ -28,6 +34,9 @@ public:
 
   void setForegroundColor(const QColor & v);
   const QColor & foregroundColor() const;
+
+  void setChartType(ChartType v);
+  ChartType chartType() const;
 
   void showHistogram(const cv::Mat1f & histogram, int channel,
       int first_bin, float first_level,
@@ -41,6 +50,8 @@ protected:
   void paintEvent(QPaintEvent *event) override;
   void drawMajorGrid(QPainter & p) const;
   void drawBorder(QPainter & p) const;
+  void drawBarChart(QPainter & p) const;
+  void drawLineChart(QPainter & p) const;
 
 protected:
   double scaled_count(double c) const;
@@ -49,6 +60,7 @@ protected:
 protected:
   QColor backgroundColor_ = Qt::white;
   QColor foregroundColor_ = Qt::lightGray;
+  ChartType chartType_ = ChartType_Lines;
 
   cv::Mat1f histogram_;
   std::vector<double> scaled_counts_;

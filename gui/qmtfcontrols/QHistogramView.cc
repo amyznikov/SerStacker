@@ -49,6 +49,19 @@ const QColor & QHistogramView::foregroundColor() const
   return foregroundColor_;
 }
 
+void QHistogramView::setChartType(ChartType v)
+{
+  chartType_ = v;
+  if ( isVisible() ) {
+    update();
+  }
+}
+
+QHistogramView::ChartType QHistogramView::chartType() const
+{
+  return chartType_;
+}
+
 
 void QHistogramView::showHistogram(const cv::Mat1f & histogram, int channel,
     int first_bin, float first_level,
@@ -148,24 +161,9 @@ void QHistogramView::drawBorder(QPainter & p) const
 }
 
 
-void QHistogramView::paintEvent(QPaintEvent *event)
+void QHistogramView::drawBarChart(QPainter & p) const
 {
   const QSize size = this->size();
-
-  QPainter p(this);
-
-  p.fillRect(0, 0, size.width(), size.height(),
-      backgroundColor_);
-
-  if ( size.width() <= 2 * MARGIN || size.height() <= 2 * MARGIN ) {
-    return;  // too small wiindow
-  }
-
-  if (  scaled_counts_.empty() ) {
-    return; // nothing to draw
-  }
-
-
   const int l = MARGIN;
   const int t = MARGIN;
   const int r = size.width() - MARGIN - 1;
@@ -201,6 +199,77 @@ void QHistogramView::paintEvent(QPaintEvent *event)
 
     cmax = scaled_counts_[i];
     prev_xpix = xpix;
+  }
+
+}
+
+void QHistogramView::drawLineChart(QPainter & p) const
+{
+  const QSize size = this->size();
+  const int l = MARGIN;
+  const int t = MARGIN;
+  const int r = size.width() - MARGIN - 1;
+  const int b = size.height() - MARGIN - 1;
+  const int w = r - l;
+  const int h = b - t;
+  const int bins = last_bin_ - first_bin_ + 1;
+
+  QPen pen;
+  pen.setColor(Qt::darkGray);
+  pen.setWidth(std::max(2., ceil((double) w / bins)));
+  p.setPen(pen);
+
+
+  double cmax = scaled_counts_[first_bin_];
+  int prev_xpix = l;
+  int prev_ypix = (int)(b - cmax * h);
+  for ( int i = first_bin_ + 1; i <= last_bin_; ++i ) {
+
+    const int xpix = (l + (i - first_bin_) * w / bins);
+    if ( xpix == prev_xpix ) {
+      if ( scaled_counts_[i] > cmax ) {
+        cmax = scaled_counts_[i];
+      }
+      if ( i < last_bin_ ) {
+        continue;
+      }
+    }
+
+    const int ypix = (int)(b - cmax * h);
+    if ( cmax > 0 ) {
+      p.drawLine(prev_xpix, prev_ypix, prev_xpix, ypix);
+    }
+
+    cmax = scaled_counts_[i];
+    prev_xpix = xpix;
+    prev_ypix = ypix;
+  }
+}
+
+void QHistogramView::paintEvent(QPaintEvent *event)
+{
+  const QSize size = this->size();
+
+  QPainter p(this);
+
+  p.fillRect(0, 0, size.width(), size.height(),
+      backgroundColor_);
+
+  if ( size.width() <= 2 * MARGIN || size.height() <= 2 * MARGIN ) {
+    return;  // too small wiindow
+  }
+
+  if (  scaled_counts_.empty() ) {
+    return; // nothing to draw
+  }
+
+  switch (chartType_) {
+    case ChartType_Lines:
+      drawLineChart(p);
+      break;
+    default:
+      drawBarChart(p);
+      break;
   }
 
   drawMajorGrid(p);

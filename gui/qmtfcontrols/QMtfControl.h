@@ -34,6 +34,7 @@ protected:
   void updateControls();
   void updateHistogramLevelsView();
   void findAutoMidtonesBalance();
+  void onChartTypeSelectorClicked();
 
 
 
@@ -44,6 +45,7 @@ protected:
   QToolBar * topToolbar_ = Q_NULLPTR;
   QAction * autoMtfAction_ = Q_NULLPTR;
   QAction * logScaleSelectionAction_ = Q_NULLPTR;
+  QToolButton * chartTypeSelectorButton_ = Q_NULLPTR;
 
   QHistogramView * levelsView_ = Q_NULLPTR;
   QMtfSlider * mtfSlider_ = Q_NULLPTR;

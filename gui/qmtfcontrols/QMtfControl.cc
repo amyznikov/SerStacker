@@ -8,12 +8,15 @@
 #include "QMtfControl.h"
 #include <gui/widgets/QWaitCursor.h>
 #include <core/histogram/create_image_histogram.h>
-//#include <core/debug.h>
+#include <core/debug.h>
 
 #define ICON_histogram                "histogram"
 #define ICON_histogram_linear_scale   "histogram-linear-scale"
 #define ICON_histogram_log_scale      "histogram-log-scale"
 #define ICON_histogram_automtf        "histogram-automtf"
+#define ICON_bar_chart                "bar_chart"
+#define ICON_line_chart               "line_chart"
+
 
 
 static QIcon getIcon(const QString & name)
@@ -26,6 +29,24 @@ static QPixmap getPixmap(const QString & name)
   return QPixmap(QString(":/qmtfcontrols/icons/%1").arg(name));
 }
 
+static QIcon log_scale_icon;
+static QIcon bar_chart_icon;
+static QIcon line_chart_icon;
+
+static const QIcon & selectChartTypeIcon(QHistogramView::ChartType chartType)
+{
+  switch ( chartType ) {
+  case QHistogramView::ChartType_Lines :
+    return line_chart_icon;
+  case QHistogramView::ChartType_Bars :
+    default :
+    break;
+  }
+  return bar_chart_icon;
+}
+
+
+
 static void addStretch(QToolBar * toolbar)
 {
   QWidget* empty = new QWidget();
@@ -33,10 +54,26 @@ static void addStretch(QToolBar * toolbar)
   toolbar->addWidget(empty);
 }
 
+static void intit_mtfcontrols_resources()
+{
+  Q_INIT_RESOURCE(qmtfcontrols_resources);
+
+  if ( bar_chart_icon.isNull() ) {
+    bar_chart_icon = getIcon(ICON_bar_chart);
+  }
+  if ( line_chart_icon.isNull() ) {
+    line_chart_icon = getIcon(ICON_line_chart);
+  }
+  if ( log_scale_icon.isNull() ) {
+    log_scale_icon.addPixmap(getPixmap(ICON_histogram_linear_scale), QIcon::Normal, QIcon::Off);
+    log_scale_icon.addPixmap(getPixmap(ICON_histogram_log_scale), QIcon::Normal, QIcon::On);
+  }
+}
+
 QMtfControl::QMtfControl(QWidget * parent)
     : Base(parent)
 {
-  Q_INIT_RESOURCE(qmtfcontrols_resources);
+  intit_mtfcontrols_resources();
 
   vbox_ = new QVBoxLayout(this);
 
@@ -48,23 +85,34 @@ QMtfControl::QMtfControl(QWidget * parent)
 
   addStretch(topToolbar_);
 
+
+  chartTypeSelectorButton_ = new QToolButton();
+  chartTypeSelectorButton_->setText("Chart type");
+  chartTypeSelectorButton_->setToolTip("Select chart type");
+  topToolbar_->addWidget(chartTypeSelectorButton_);
+
+  connect(chartTypeSelectorButton_, &QToolButton::clicked,
+      this, &ThisClass::onChartTypeSelectorClicked );
+
+
+
+  //
   autoMtfAction_ = topToolbar_->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
   autoMtfAction_->setToolTip("Find automatic midtones balance");
   connect(autoMtfAction_, &QAction::triggered,
       this, &ThisClass::findAutoMidtonesBalance);
 
+  //
 
 
-  QIcon logScaleIcon;
-  logScaleIcon.addPixmap(getPixmap(ICON_histogram_linear_scale), QIcon::Normal, QIcon::Off);
-  logScaleIcon.addPixmap(getPixmap(ICON_histogram_log_scale), QIcon::Normal, QIcon::On);
-  logScaleSelectionAction_ = topToolbar_->addAction(logScaleIcon, "Log scale");
+  logScaleSelectionAction_ = topToolbar_->addAction(log_scale_icon, "Log scale");
   logScaleSelectionAction_->setCheckable(true);
   logScaleSelectionAction_->setChecked(false);
 
   // configure gistogram view
   levelsView_ = new QHistogramView(this);
   levelsView_->setLogScale(logScaleSelectionAction_->isChecked());
+  chartTypeSelectorButton_->setIcon(selectChartTypeIcon(levelsView_->chartType()) );
 
   // configure mtf slider
   mtfSlider_ = new QMtfSlider(this);
@@ -243,4 +291,35 @@ void QMtfControl::findAutoMidtonesBalance()
     updateControls();
     emit mtfChanged();
   }
+}
+
+void QMtfControl::onChartTypeSelectorClicked()
+{
+  static QMenu chartTypesMenu;
+  static QAction * setLineChartAction = Q_NULLPTR;
+  static QAction * setBarChartAction = Q_NULLPTR;
+
+  if ( chartTypesMenu.isEmpty() ) {
+    chartTypesMenu.addAction(setLineChartAction = new QAction(line_chart_icon, "Lines"));
+    chartTypesMenu.addAction(setBarChartAction = new QAction(bar_chart_icon, "Bars"));
+  }
+
+  QAction * selectedAction =
+      chartTypesMenu.exec(chartTypeSelectorButton_->mapToGlobal(QPoint(
+          2 * chartTypeSelectorButton_->width() / 3,
+          chartTypeSelectorButton_->height() / 2)));
+
+  if ( selectedAction ) {
+
+    if ( selectedAction == setLineChartAction ) {
+      levelsView_->setChartType(QHistogramView::ChartType_Lines);
+    }
+    else if ( selectedAction == setBarChartAction ) {
+      levelsView_->setChartType(QHistogramView::ChartType_Bars);
+    }
+
+    chartTypeSelectorButton_->setIcon(selectChartTypeIcon(
+        levelsView_->chartType()));
+  }
+
 }

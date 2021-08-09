@@ -4,5 +4,7 @@
 	<file>icons/histogram-log-scale.png</file>
 	<file>icons/histogram-linear-scale.png</file>
 	<file>icons/histogram-automtf.png</file>
+	<file>icons/bar_chart.png</file>
+	<file>icons/line_chart.png</file>
 </qresource>
 </RCC>

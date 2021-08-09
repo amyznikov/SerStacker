@@ -17,13 +17,13 @@
 
 #define ICON_file_reload   "reload"
 #define ICON_file_delete   "delete"
-#define ICON_dirtree      "dirtree"
+#define ICON_dirtree       "dirtree"
 #define ICON_filter        "filter"
 #define ICON_filter_clear  "filter-clear"
 
 #define ICON_hourglass    "hourglass2"
 #define ICON_badimage     "badimage"
-#define ICON_textfile      "textfile"
+#define ICON_textfile     "textfile"
 
 
 static QIcon hourglass_icon;
@@ -753,15 +753,14 @@ void QThumbnailsView::populateContextMenu(QMenu * menu, const QPoint &pos)
     }
   }
 
-  if ( !selectedItems.empty() ) {
+  if ( selectedItems.size() > 1 ) {
     if ( clipboard ) {
       menu->addSeparator();
 
       menu->addAction("Copy file names", [clipboard, selectedItems]() {
         QString itemNames;
         for ( const QListWidgetItem * item : selectedItems ) {
-          itemNames.append(item->text());
-          itemNames.append('\n');
+          itemNames.append(QString("'%1' ").arg(item->text()));
         }
 
         clipboard->setText(itemNames);
@@ -770,8 +769,9 @@ void QThumbnailsView::populateContextMenu(QMenu * menu, const QPoint &pos)
       menu->addAction("Copy full path names", [clipboard, selectedItems]() {
         QString itemNames;
         for ( const QListWidgetItem * item : selectedItems ) {
-          itemNames.append(item->whatsThis());
-          itemNames.append('\n');
+          itemNames.append(QString("'%1' ").arg(item->whatsThis()));
+          //  itemNames.append(item->whatsThis());
+          //  itemNames.append('\n');
         }
         clipboard->setText(itemNames);
       });

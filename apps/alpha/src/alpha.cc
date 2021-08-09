@@ -165,7 +165,16 @@ int main(int argc, char *argv[])
 //  differentiate(image, gx, gy);
 
   //smask.release();
-  fprintf(stdout, "I\talpha\tmean\tstdev\teps\n");
+  fprintf(stdout, "I\talpha\tm\ts\te\tim\tis\tie\n");
+
+  cv::Scalar ims, iss, ies;
+  double imv, isv, iev;
+  cv::meanStdDev(image, ims, iss, smask);
+  ies = estimate_noise(image, cv::noArray(), smask);
+  imv = (ims[0] + ims[1] + ims[2]);
+  isv = (iss[0] + iss[1] + iss[2]);
+  iev = (ies[0] + ies[1] + ies[2]);
+
   for ( int i = 0, n = sizeof(alpha)/sizeof(alpha[0]); i < n; ++i ) {
 
     cv::Scalar ms, ss, es;
@@ -174,14 +183,14 @@ int main(int argc, char *argv[])
     unsharp_mask(image, sharp, sigma, alpha[i]);
 
     cv::meanStdDev(sharp, ms, ss, smask);
-    es = (estimate_noise(sharp, cv::noArray(), smask));
+    es = estimate_noise(sharp, cv::noArray(), smask);
 
     mv = (ms[0] + ms[1] + ms[2]);
     sv = (ss[0] + ss[1] + ss[2]);
     ev = (es[0] + es[1] + es[2]);
 
-    fprintf(stdout, "%6d\t%12.6f\t%15.6f\t%15.6f\t%15.6f\n",
-        i, alpha[i], mv, sv, ev);
+    fprintf(stdout, "%6d\t%12.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\n",
+        i, alpha[i], mv, sv, ev, imv, isv, iev);
 
     save_image(sharp, ssprintf("sharp/sharp.%05d.tiff", i));
    }

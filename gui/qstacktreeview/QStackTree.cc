@@ -808,6 +808,20 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
 
   bool drop_confirmed = false;
 
+  static const auto confirmThisDragDrop =
+      [](QStackTreeView * _this) -> bool {
+
+        const int reply = QMessageBox::question(_this,
+            "Confirmation required",
+            "Accept this Drag&Drop ?\n\n"
+            "This confirmation is requested to prevent unintentional random mouse drags.",
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+
+        return reply == QMessageBox::Yes;
+      };
+
+
   for ( const QUrl & url : urls ) {
 
     if ( url.scheme() != "cinputsource" ) {
@@ -839,20 +853,20 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
 
     else  {
 
-      if ( !drop_confirmed ) {
-
-        int reply = QMessageBox::question(this, "Confirmation required",
-            "Accept this Drag&Drop ?\n\n"
-            "This confirmation is requested to prevent unintentional random mouse drags.",
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No);
-
-        if ( reply != QMessageBox::Yes ) {
-          return false;
-        }
-
-        drop_confirmed = true;
-      }
+//      if ( !drop_confirmed ) {
+//
+//        int reply = QMessageBox::question(this, "Confirmation required",
+//            "Accept this Drag&Drop ?\n\n"
+//            "This confirmation is requested to prevent unintentional random mouse drags.",
+//            QMessageBox::Yes | QMessageBox::No,
+//            QMessageBox::No);
+//
+//        if ( reply != QMessageBox::Yes ) {
+//          return false;
+//        }
+//
+//        drop_confirmed = true;
+//      }
 
 
 
@@ -873,6 +887,10 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
 
               if ( targetIndex != sourceIndex ) {
 
+                if ( !drop_confirmed && !(drop_confirmed = confirmThisDragDrop(this)) ) {
+                  return false;
+                }
+
                 sourceStackItem->removeChild(inputSourceItem);
                 source_sequence->remove_source(sourceIndex);
                 delete inputSourceItem;
@@ -888,6 +906,10 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
               }
             }
             else if ( target_sequence->indexof(source_file_name) < 0 ) {
+
+              if ( !drop_confirmed && !(drop_confirmed = confirmThisDragDrop(this)) ) {
+                return false;
+              }
 
               if ( !(keyboardModifiers & Qt::ControlModifier) ) {
                 sourceStackItem->removeChild(inputSourceItem);

@@ -162,7 +162,7 @@ QMtfControl::QMtfControl(QWidget * parent)
           spins[SPIN_HIGHLIGHTS]->setValue(mtf_->highlights());
           spins[SPIN_MIDTONES]->setValue(mtf_->midtones());
 
-          updateHistogramLevelsView();
+          updateHistogramView();
           updatingControls_ = false;
 
           emit mtfChanged();
@@ -176,7 +176,7 @@ QMtfControl::QMtfControl(QWidget * parent)
           mtf_->set_shadows(v);
 
           mtfSlider_->setShadows(mtf_->shadows());
-          updateHistogramLevelsView();
+          updateHistogramView();
 
           updatingControls_ = false;
           emit mtfChanged();
@@ -190,7 +190,7 @@ QMtfControl::QMtfControl(QWidget * parent)
           mtf_->set_highlights(v);
 
           mtfSlider_->setHighlights(mtf_->highlights());
-          updateHistogramLevelsView();
+          updateHistogramView();
 
           updatingControls_ = false;
           emit mtfChanged();
@@ -204,7 +204,7 @@ QMtfControl::QMtfControl(QWidget * parent)
           mtf_->set_midtones(v);
 
           mtfSlider_->setMidtones(mtf_->midtones());
-          updateHistogramLevelsView();
+          updateHistogramView();
 
           updatingControls_ = false;
           emit mtfChanged();
@@ -248,7 +248,7 @@ void QMtfControl::updateControls()
 
 }
 
-void QMtfControl::updateHistogramLevelsView()
+void QMtfControl::updateHistogramView()
 {
   int first_bin, last_bin;
 
@@ -280,7 +280,7 @@ void QMtfControl::setImage(cv::InputArray input_image)
       nbins,
       -1);
 
-  updateHistogramLevelsView();
+  updateHistogramView();
 }
 
 void QMtfControl::findAutoMidtonesBalance()

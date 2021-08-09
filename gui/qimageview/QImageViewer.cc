@@ -90,19 +90,24 @@ const QImageViewer::DisplayFunction & QImageViewer::displayFunction() const
   return this->displayFunction_;
 }
 
-const cv::Mat & QImageViewer::image() const
+const cv::Mat & QImageViewer::currentImage() const
 {
   return currentImage_;
 }
 
-const cv::Mat & QImageViewer::mask() const
+const cv::Mat & QImageViewer::currentMask() const
 {
   return currentMask_;
 }
 
-const cv::Mat & QImageViewer::imageData() const
+const cv::Mat & QImageViewer::currentImageData() const
 {
   return currentImageData_;
+}
+
+const cv::Mat & QImageViewer::displayImage() const
+{
+  return displayImage_;
 }
 
 void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
@@ -133,26 +138,27 @@ void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::Input
 void QImageViewer::updateDisplay()
 {
   if ( currentImage_.empty() ) {
+    displayImage_.release();
     view_->scene()->setBackground(QImage());
   }
   else {
-    cv::Mat tmp;
-
     if ( !displayFunction_ ) {
-      tmp = currentImage_;
+      displayImage_ = currentImage_;
     }
     else if ( currentImage_.channels() == 2  ) {
       // asumme this is optical flow image
-      displayFunction_(currentImage_, tmp, currentImage_.depth());
+      displayImage_.release();
+      displayFunction_(currentImage_, displayImage_, currentImage_.depth());
     }
     else  {
-      displayFunction_(currentImage_, tmp, CV_8U);
+      displayImage_.release();
+      displayFunction_(currentImage_, displayImage_, CV_8U);
     }
 
-    cv2qt(tmp, &qimage_);
+    cv2qt(displayImage_, &qimage_);
     view_->scene()->setBackground(qimage_);
-
   }
+  emit currentDisplayImageChanged();
 }
 
 template<class T>

@@ -312,7 +312,7 @@ MainWindow::MainWindow()
 
   fileMenu->addAction(menuSaveImageAs_action =
       new QAction("Save current image as..."));
-  menuSaveImageAs_action->setEnabled(imageEditor->isVisible() && !imageEditor->image().empty());
+  menuSaveImageAs_action->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
 
   connect(menuSaveImageAs_action, &QAction::triggered,
       this, &ThisClass::onSaveCurrentImageAs);
@@ -320,7 +320,7 @@ MainWindow::MainWindow()
   connect(imageEditor, &QImageEditor::currentImageChanged,
       [this]() {
         menuSaveImageAs_action->setEnabled(imageEditor->isVisible() &&
-            !imageEditor->image().empty());
+            !imageEditor->currentImage().empty());
       });
 
   fileMenu->addSeparator();
@@ -518,7 +518,7 @@ void MainWindow::configureImageViewerToolbars()
 
         const QString abspath = imageEditor->currentFileName();
         imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-        imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->image().cols).arg(imageEditor->image().rows));
+        imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
 
       };
 
@@ -592,18 +592,18 @@ void MainWindow::configureImageViewerToolbars()
       }
       else {
         imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-        imageLevelsDialogBox->setImage(imageEditor->image());
+        imageLevelsDialogBox->setImage(imageEditor->displayImage());
         imageLevelsDialogBox->showNormal();
       }
     }
 
   });
 
-  connect(imageEditor, &QImageEditor::currentImageChanged,
+  connect(imageEditor, &QImageEditor::currentDisplayImageChanged,
       [this] () {
         if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
           imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-          imageLevelsDialogBox->setImage(imageEditor->image());
+          imageLevelsDialogBox->setImage(imageEditor->displayImage());
         }
       });
 
@@ -899,7 +899,7 @@ void MainWindow::onSaveCurrentImageAs()
     cv::Mat image;
     bool must_convert = true;
 
-    if( imageEditor->image().depth() == CV_32F || imageEditor->image().depth() == CV_64F ) {
+    if( imageEditor->currentImage().depth() == CV_32F || imageEditor->currentImage().depth() == CV_64F ) {
 
       static const char *fpsuffix[] = {
           ".tiff", ".tif", ".flo"
@@ -914,7 +914,7 @@ void MainWindow::onSaveCurrentImageAs()
     }
 
     if ( !must_convert ) {
-      image = imageEditor->image();
+      image = imageEditor->currentImage();
     }
     else {
 
@@ -930,17 +930,17 @@ void MainWindow::onSaveCurrentImageAs()
         maxval = UINT8_MAX;
       }
 
-      if ( imageEditor->mask().empty() ) {
-        cv::normalize(imageEditor->image(), image, 0, maxval, cv::NORM_MINMAX, ddepth, imageEditor->mask());
+      if ( imageEditor->currentMask().empty() ) {
+        cv::normalize(imageEditor->currentImage(), image, 0, maxval, cv::NORM_MINMAX, ddepth, imageEditor->currentMask());
       }
       else {
-        imageEditor->image().copyTo(image);
-        image.setTo(0, ~imageEditor->mask());
+        imageEditor->currentImage().copyTo(image);
+        image.setTo(0, ~imageEditor->currentMask());
         cv::normalize(image, image, 0, maxval, cv::NORM_MINMAX, ddepth);
       }
     }
 
-    if( !save_image(image, imageEditor->mask(), selectedFileName.toStdString()) ) {
+    if( !save_image(image, imageEditor->currentMask(), selectedFileName.toStdString()) ) {
       QMessageBox::critical(this, "ERROR", QString("save_image('%s') fails").arg(selectedFileName));
       continue;
     }

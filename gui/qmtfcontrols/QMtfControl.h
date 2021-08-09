@@ -32,7 +32,7 @@ signals:
 
 protected:
   void updateControls();
-  void updateHistogramLevelsView();
+  void updateHistogramView();
   void findAutoMidtonesBalance();
   void onChartTypeSelectorClicked();
 

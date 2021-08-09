@@ -32,9 +32,10 @@ public:
   const DisplayFunction & displayFunction() const;
 
   virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
-  const cv::Mat & image() const;
-  const cv::Mat & mask() const;
-  const cv::Mat & imageData() const;
+  const cv::Mat & currentImage() const;
+  const cv::Mat & currentMask() const;
+  const cv::Mat & currentImageData() const;
+  const cv::Mat & displayImage() const;
 
   QString statusStringForPixel(const QPoint & viewpos);
 
@@ -58,6 +59,7 @@ signals:
   void onFocusOutEvent(QFocusEvent *e);
   void visibilityChanged(bool visible);
   void currentImageChanged();
+  void currentDisplayImageChanged();
 
 public slots:
   virtual void updateDisplay();
@@ -78,6 +80,7 @@ protected:
 
   cv::Mat currentImage_, currentMask_;
   cv::Mat currentImageData_;
+  cv::Mat displayImage_;
   QImage qimage_;
   DisplayFunction displayFunction_;
 

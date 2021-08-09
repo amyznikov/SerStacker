@@ -216,34 +216,23 @@ void QHistogramView::drawLineChart(QPainter & p) const
 
   QPen pen;
   pen.setColor(Qt::darkGray);
-  pen.setWidth(std::max(2., ceil((double) w / bins)));
+  pen.setWidth(2);
   p.setPen(pen);
 
-
-  double cmax = scaled_counts_[first_bin_];
   int prev_xpix = l;
-  int prev_ypix = (int)(b - cmax * h);
+  int prev_ypix = (int)(b - scaled_counts_[first_bin_] * h);
   for ( int i = first_bin_ + 1; i <= last_bin_; ++i ) {
 
-    const int xpix = (l + (i - first_bin_) * w / bins);
-    if ( xpix == prev_xpix ) {
-      if ( scaled_counts_[i] > cmax ) {
-        cmax = scaled_counts_[i];
-      }
-      if ( i < last_bin_ ) {
-        continue;
-      }
-    }
+    const int xpix = (int)(l + (i - first_bin_) * w / bins);
+    const int ypix = (int)(b - scaled_counts_[i] * h);
 
-    const int ypix = (int)(b - cmax * h);
-    if ( cmax > 0 ) {
+    if ( xpix != prev_xpix || ypix != prev_ypix ) {
       p.drawLine(prev_xpix, prev_ypix, prev_xpix, ypix);
+      prev_xpix = xpix;
+      prev_ypix = ypix;
     }
-
-    cmax = scaled_counts_[i];
-    prev_xpix = xpix;
-    prev_ypix = ypix;
   }
+
 }
 
 void QHistogramView::paintEvent(QPaintEvent *event)

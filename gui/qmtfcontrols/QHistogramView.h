@@ -23,8 +23,15 @@ public:
     ChartType_Bars,
   };
 
+  enum DisplayChannel {
+    DisplayChannel_Value,
+    DisplayChannel_Grayscale,
+    DisplayChannel_RGB,
+  };
 
   QHistogramView(QWidget * parent = Q_NULLPTR);
+
+  void setImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
 
   void setLogScale(bool v);
   bool logScale() const;
@@ -38,9 +45,13 @@ public:
   void setChartType(ChartType v);
   ChartType chartType() const;
 
-  void showHistogram(const cv::Mat1f & histogram, int channel,
-      int first_bin, float first_level,
-      int last_bin, float last_level);
+  void setDisplayChannel(DisplayChannel v);
+  DisplayChannel displayChannel() const;
+
+
+//  void showHistogram(const cv::Mat1f & histogram, int channel,
+//      int first_bin, float first_level,
+//      int last_bin, float last_level);
 
   void clear();
 
@@ -54,21 +65,26 @@ protected:
   void drawLineChart(QPainter & p) const;
 
 protected:
-  double scaled_count(double c) const;
-  void update_scaled_counts();
+  void updateHistogram();
+  //  double scaled_count(double c) const;
+  //  void update_scaled_counts();
 
 protected:
   QColor backgroundColor_ = Qt::white;
   QColor foregroundColor_ = Qt::lightGray;
   ChartType chartType_ = ChartType_Lines;
+  DisplayChannel displayChannel_ = DisplayChannel_RGB;
 
-  cv::Mat1f histogram_;
-  std::vector<double> scaled_counts_;
-  int channel_ = 0;
-  int first_bin_ = 0;
-  float first_level_ = 0;
-  int last_bin_ = 0;
-  float last_level_ = 0;
+  cv::Mat image_, mask_;
+  cv::Mat1f H, LH;
+  double hmin = -1, hmax = -1;
+//  cv::Mat1f histogram_;
+//  std::vector<double> scaled_counts_;
+//  int channel_ = 0;
+//  int first_bin_ = 0;
+//  float first_level_ = 0;
+//  int last_bin_ = 0;
+//  float last_level_ = 0;
   bool logScale_ = true;
 };
 

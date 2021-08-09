@@ -48,10 +48,17 @@ void QMtfControlDialogBox::hideEvent(QHideEvent *e)
   emit visibilityChanged(isVisible());
 }
 
-void QMtfControlDialogBox::setImage(cv::InputArray image)
+void QMtfControlDialogBox::setInputImage(cv::InputArray image, cv::InputArray mask)
 {
-  imageLevelsConfigWidget_->setImage(image);
+  imageLevelsConfigWidget_->setInputImage(image, mask);
+
 }
+
+void QMtfControlDialogBox::setDisplayImage(cv::InputArray image, cv::InputArray mask)
+{
+  imageLevelsConfigWidget_->setDisplayImage(image, mask);
+}
+
 
 void QMtfControlDialogBox::setMtf(const c_pixinsight_midtones_transfer_function::ptr & mtf)
 {

@@ -6,9 +6,19 @@
  */
 
 #include "QHistogramView.h"
+#include <gui/widgets/QWaitCursor.h>
+#include <core/histogram/create_image_histogram.h>
 #include <core/debug.h>
 
 static constexpr int MARGIN = 2;
+
+static QColor defaultChannelColors [] = {
+    QColor(Qt::blue),
+    QColor(Qt::green),
+    QColor(Qt::red),
+    QColor(Qt::darkGray),
+};
+
 
 QHistogramView::QHistogramView(QWidget * parent)
   : Base(parent)
@@ -17,10 +27,21 @@ QHistogramView::QHistogramView(QWidget * parent)
   resize(256, (int)(256 / 1.62));
 }
 
+void QHistogramView::setImage(cv::InputArray image, cv::InputArray mask)
+{
+  image_ = image.getMat();
+  mask_ = mask.getMat();
+  updateHistogram();
+}
+
 void QHistogramView::setLogScale(bool v)
 {
-  logScale_ = v;
-  update_scaled_counts();
+  if ( logScale_ != v ) {
+    logScale_ = v;
+    if( isVisible() ) {
+      repaint();
+    }
+  }
 }
 
 bool QHistogramView::logScale() const
@@ -31,7 +52,12 @@ bool QHistogramView::logScale() const
 
 void QHistogramView::setBackgroundColor(const QColor & v)
 {
-  backgroundColor_ = v;
+  if ( backgroundColor_ != v ) {
+    backgroundColor_ = v;
+    if( isVisible() ) {
+      repaint();
+    }
+  }
 }
 
 const QColor & QHistogramView::backgroundColor() const
@@ -41,7 +67,12 @@ const QColor & QHistogramView::backgroundColor() const
 
 void QHistogramView::setForegroundColor(const QColor & v)
 {
-  foregroundColor_ = v;
+  if ( foregroundColor_ != v ) {
+    foregroundColor_ = v;
+    if( isVisible() ) {
+      repaint();
+    }
+  }
 }
 
 const QColor & QHistogramView::foregroundColor() const
@@ -51,9 +82,11 @@ const QColor & QHistogramView::foregroundColor() const
 
 void QHistogramView::setChartType(ChartType v)
 {
-  chartType_ = v;
-  if ( isVisible() ) {
-    update();
+  if ( chartType_ != v ) {
+    chartType_ = v;
+    if ( isVisible() ) {
+      repaint();
+    }
   }
 }
 
@@ -62,53 +95,58 @@ QHistogramView::ChartType QHistogramView::chartType() const
   return chartType_;
 }
 
-
-void QHistogramView::showHistogram(const cv::Mat1f & histogram, int channel,
-    int first_bin, float first_level,
-    int last_bin, float last_level)
+void QHistogramView::setDisplayChannel(DisplayChannel v)
 {
-  histogram.copyTo(this->histogram_);
-  this->channel_ = channel;
-  this->first_bin_ = std::max(0, first_bin);
-  this->last_bin_ = std::min(last_bin, histogram_.rows - 1);
-  this->first_level_ = first_level;
-  this->last_level_ = last_level;
-  update_scaled_counts();
-  update();
+  if ( displayChannel_ != v ) {
+    displayChannel_ = v;
+    if ( isVisible() ) {
+      repaint();
+    }
+  }
 }
 
-double QHistogramView::scaled_count(double c) const
+QHistogramView::DisplayChannel QHistogramView::displayChannel() const
 {
-  return c > 0 ? (logScale_ ? log(1 + c) : c) : 0;
+  return displayChannel_;
 }
 
-void QHistogramView::update_scaled_counts()
+void QHistogramView::updateHistogram()
 {
-  scaled_counts_.clear();
-  if ( histogram_.rows > 0 ) {
+  if ( image_.empty() ) {
+    H.release();
+    LH.release();
+  }
+  else {
 
-    scaled_counts_.resize(histogram_.rows);
-    double cmax = 0;
+    QWaitCursor wait(this);
 
-    for ( int i = 0; i < histogram_.rows; ++i ) {
+    hmin = hmax = -1;
 
-      if ( channel_ >= 0 && channel_ < histogram_.cols ) {
-        scaled_counts_[i] = scaled_count(histogram_[i][channel_]);
+    if ( !create_image_histogram(image_, H, -1, -1, &hmin, &hmax, true, false) ) {
+      CF_ERROR("create_image_histogram() fails");
+      H.release();
+      LH.release();
+    }
+    else {
+
+      double min = 0, max = 1;
+
+      cv::log(H + 1, LH);
+
+      cv::minMaxLoc(H, &min, &max);
+      if ( max > 0 ) {
+        cv::multiply(H, 0.8 / max, H);
       }
-      else {
-        double sum = 0;
-        for ( int j = 0; j < histogram_.cols; ++j ) {
-          sum += histogram_[i][j];
-        }
-        scaled_counts_[i] = scaled_count(sum);
+
+      cv::minMaxLoc(LH, &min, &max);
+      if ( max > 0 ) {
+        cv::multiply(LH, 0.8 / max, LH);
       }
 
-      if ( scaled_counts_[i] > cmax ) {
-        cmax = scaled_counts_[i];
+      if ( isVisible() ) {
+        repaint();
       }
     }
-
-    cv::multiply(scaled_counts_, 1. / cmax, scaled_counts_);
   }
 }
 
@@ -163,6 +201,10 @@ void QHistogramView::drawBorder(QPainter & p) const
 
 void QHistogramView::drawBarChart(QPainter & p) const
 {
+  if ( H.rows < 1 ) {
+    return;
+  }
+
   const QSize size = this->size();
   const int l = MARGIN;
   const int t = MARGIN;
@@ -170,41 +212,51 @@ void QHistogramView::drawBarChart(QPainter & p) const
   const int b = size.height() - MARGIN - 1;
   const int w = r - l;
   const int h = b - t;
-  const int bins = last_bin_ - first_bin_ + 1;
 
-  QPen pen;
-  pen.setColor(foregroundColor_);
-  pen.setWidth(std::max(5., ceil((double) w / bins)));
-  p.setPen(pen);
+  const cv::Mat1f levels =
+      logScale_ ? LH : H;
 
+  for ( int c = 0; c < levels.cols; ++c ) {
 
-  int prev_xpix = l;
-  double cmax = scaled_counts_[first_bin_];
-  for ( int i = first_bin_ + 1; i <= last_bin_; ++i ) {
+    QPen pen;
+    pen.setColor(defaultChannelColors[c % 4]);
+    pen.setWidth(std::max(3., ceil((double) w / H.rows)));
+    p.setPen(pen);
 
-    const int xpix = (l + (i - first_bin_) * w / bins);
-    if ( xpix == prev_xpix ) {
-      if ( scaled_counts_[i] > cmax ) {
-        cmax = scaled_counts_[i];
+    int prev_xpix = l;
+    double cmax = levels[0][c];
+
+    for ( int r = 1; r < levels.rows ; ++r ) {
+
+      const int xpix = (l + r ) * w / levels.rows;
+      if ( xpix == prev_xpix ) {
+        if ( levels[r][c] > cmax ) {
+          cmax = levels[r][c];
+        }
+        if ( r < levels.rows - 1 ) {
+          continue;
+        }
       }
-      if ( i < last_bin_ ) {
-        continue;
+
+      if ( cmax > 0 ) {
+        const int ypix = (int) (b - cmax * h);
+        p.drawLine(prev_xpix, b, prev_xpix, ypix);
       }
+
+      cmax = levels[r][c];
+      prev_xpix = xpix;
     }
 
-    if ( cmax > 0 ) {
-      const int ypix = (int)(b - cmax * h);
-      p.drawLine(prev_xpix, b, prev_xpix, ypix);
-    }
-
-    cmax = scaled_counts_[i];
-    prev_xpix = xpix;
   }
 
 }
 
 void QHistogramView::drawLineChart(QPainter & p) const
 {
+  if ( H.rows < 1 ) {
+    return;
+  }
+
   const QSize size = this->size();
   const int l = MARGIN;
   const int t = MARGIN;
@@ -212,27 +264,33 @@ void QHistogramView::drawLineChart(QPainter & p) const
   const int b = size.height() - MARGIN - 1;
   const int w = r - l;
   const int h = b - t;
-  const int bins = last_bin_ - first_bin_ + 1;
 
-  QPen pen;
-  pen.setColor(Qt::darkGray);
-  pen.setWidth(2);
-  p.setPen(pen);
 
-  int prev_xpix = l;
-  int prev_ypix = (int)(b - scaled_counts_[first_bin_] * h);
-  for ( int i = first_bin_ + 1; i <= last_bin_; ++i ) {
+  const cv::Mat1f levels =
+      logScale_ ? LH : H;
 
-    const int xpix = (int)(l + (i - first_bin_) * w / bins);
-    const int ypix = (int)(b - scaled_counts_[i] * h);
+  for ( int c = 0; c < levels.cols; ++c ) {
 
-    if ( xpix != prev_xpix || ypix != prev_ypix ) {
-      p.drawLine(prev_xpix, prev_ypix, prev_xpix, ypix);
-      prev_xpix = xpix;
-      prev_ypix = ypix;
+    QPen pen;
+    pen.setColor(defaultChannelColors[c % 4]);
+    pen.setWidth(2);
+    p.setPen(pen);
+
+    int prev_xpix = l;
+    int prev_ypix = (int)(b - levels[0][c] * h);
+
+    for ( int r = 1; r < levels.rows; ++r ) {
+
+      const int xpix = (int)(l + r ) * w / levels.rows;
+      const int ypix = (int)(b - levels[r][c] * h);
+
+      if ( xpix != prev_xpix || ypix != prev_ypix ) {
+        p.drawLine(prev_xpix, prev_ypix, xpix, ypix);
+        prev_xpix = xpix;
+        prev_ypix = ypix;
+      }
     }
   }
-
 }
 
 void QHistogramView::paintEvent(QPaintEvent *event)
@@ -248,17 +306,13 @@ void QHistogramView::paintEvent(QPaintEvent *event)
     return;  // too small wiindow
   }
 
-  if (  scaled_counts_.empty() ) {
-    return; // nothing to draw
-  }
-
-  switch (chartType_) {
-    case ChartType_Lines:
-      drawLineChart(p);
-      break;
-    default:
-      drawBarChart(p);
-      break;
+  switch ( chartType_ ) {
+  case ChartType_Lines :
+    drawLineChart(p);
+    break;
+  default :
+    drawBarChart(p);
+    break;
   }
 
   drawMajorGrid(p);
@@ -267,6 +321,7 @@ void QHistogramView::paintEvent(QPaintEvent *event)
 
 void QHistogramView::clear()
 {
-  histogram_.release();
-  update();
+  H.release();
+  LH.release();
+  repaint();
 }

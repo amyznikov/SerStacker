@@ -25,16 +25,17 @@ public:
   void setMtf(const c_pixinsight_midtones_transfer_function::ptr & mtf);
   const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
 
-  void setImage(cv::InputArray image);
+  void setInputImage(cv::InputArray image, cv::InputArray mask);
+  void setDisplayImage(cv::InputArray image, cv::InputArray mask);
 
 signals:
   void mtfChanged();
 
-protected:
+protected slots:
   void updateControls();
-  void updateHistogramView();
-  void findAutoMidtonesBalance();
+  void onFindAutoMidtonesBalanceClicked();
   void onChartTypeSelectorClicked();
+  void onDisplayChannelComboCurrentIndexChanged(int);
 
 
 
@@ -43,6 +44,8 @@ protected:
 
   QVBoxLayout * vbox_ = Q_NULLPTR;
   QToolBar * topToolbar_ = Q_NULLPTR;
+  QComboBox * displayChannel_ctl = Q_NULLPTR;
+
   QAction * autoMtfAction_ = Q_NULLPTR;
   QAction * logScaleSelectionAction_ = Q_NULLPTR;
   QToolButton * chartTypeSelectorButton_ = Q_NULLPTR;
@@ -61,7 +64,8 @@ protected:
   QDoubleSpinBox * spins[3] = {
       Q_NULLPTR };
 
-  cv::Mat1f imageHistogram;
+  cv::Mat inputImage_;
+  cv::Mat inputMask_;
 
   bool updatingControls_ = false;
 

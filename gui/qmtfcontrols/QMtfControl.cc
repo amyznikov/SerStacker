@@ -83,6 +83,17 @@ QMtfControl::QMtfControl(QWidget * parent)
   topToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
   topToolbar_->setIconSize(QSize(16, 16));
 
+
+  displayChannel_ctl = new QComboBox(this);
+  displayChannel_ctl->setEditable(false);
+  displayChannel_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  displayChannel_ctl->addItem("RGB", (int)QHistogramView::DisplayChannel_RGB);
+  displayChannel_ctl->addItem("Grayscale", (int)(QHistogramView::DisplayChannel_Grayscale));
+  displayChannel_ctl->addItem("Value", (int)(QHistogramView::DisplayChannel_Value));
+  connect(displayChannel_ctl, SIGNAL(currentIndexChanged(int)),
+      this, SLOT(onDisplayChannelComboCurrentIndexChanged(int)) );
+  topToolbar_->addWidget(displayChannel_ctl);
+
   addStretch(topToolbar_);
 
 
@@ -100,7 +111,7 @@ QMtfControl::QMtfControl(QWidget * parent)
   autoMtfAction_ = topToolbar_->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
   autoMtfAction_->setToolTip("Find automatic midtones balance");
   connect(autoMtfAction_, &QAction::triggered,
-      this, &ThisClass::findAutoMidtonesBalance);
+      this, &ThisClass::onFindAutoMidtonesBalanceClicked);
 
   //
 
@@ -113,6 +124,7 @@ QMtfControl::QMtfControl(QWidget * parent)
   levelsView_ = new QHistogramView(this);
   levelsView_->setLogScale(logScaleSelectionAction_->isChecked());
   chartTypeSelectorButton_->setIcon(selectChartTypeIcon(levelsView_->chartType()) );
+  displayChannel_ctl->setCurrentIndex(displayChannel_ctl->findData((int)levelsView_->displayChannel()));
 
   // configure mtf slider
   mtfSlider_ = new QMtfSlider(this);
@@ -143,10 +155,7 @@ QMtfControl::QMtfControl(QWidget * parent)
   // Configure event handles
 
   connect(logScaleSelectionAction_, &QAction::triggered,
-      [this]() {
-        levelsView_->setLogScale(logScaleSelectionAction_->isChecked());
-        levelsView_->update();
-      });
+      levelsView_, &QHistogramView::setLogScale);
 
   connect(mtfSlider_, &QMtfSlider::mtfChanged,
       [this]() {
@@ -162,7 +171,6 @@ QMtfControl::QMtfControl(QWidget * parent)
           spins[SPIN_HIGHLIGHTS]->setValue(mtf_->highlights());
           spins[SPIN_MIDTONES]->setValue(mtf_->midtones());
 
-          updateHistogramView();
           updatingControls_ = false;
 
           emit mtfChanged();
@@ -176,7 +184,6 @@ QMtfControl::QMtfControl(QWidget * parent)
           mtf_->set_shadows(v);
 
           mtfSlider_->setShadows(mtf_->shadows());
-          updateHistogramView();
 
           updatingControls_ = false;
           emit mtfChanged();
@@ -190,7 +197,6 @@ QMtfControl::QMtfControl(QWidget * parent)
           mtf_->set_highlights(v);
 
           mtfSlider_->setHighlights(mtf_->highlights());
-          updateHistogramView();
 
           updatingControls_ = false;
           emit mtfChanged();
@@ -204,7 +210,6 @@ QMtfControl::QMtfControl(QWidget * parent)
           mtf_->set_midtones(v);
 
           mtfSlider_->setMidtones(mtf_->midtones());
-          updateHistogramView();
 
           updatingControls_ = false;
           emit mtfChanged();
@@ -248,48 +253,35 @@ void QMtfControl::updateControls()
 
 }
 
-void QMtfControl::updateHistogramView()
+void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask)
 {
-  int first_bin, last_bin;
-
-  if ( mtf_ ) {
-    first_bin = imageHistogram.rows * mtf_->shadows();
-    last_bin = (imageHistogram.rows - 1) * mtf_->highlights();
-  }
-  else {
-    first_bin = 0;
-    last_bin = imageHistogram.rows - 1;
-  }
-
-  levelsView_->
-      showHistogram(imageHistogram, -1,
-          first_bin, 0,
-          last_bin, 0);
-
+  inputImage_ = image.getMat();
+  inputMask_ = image.getMat();
 }
 
-void QMtfControl::setImage(cv::InputArray input_image)
+void QMtfControl::setDisplayImage(cv::InputArray image, cv::InputArray mask)
 {
-  levelsView_->clear();
-
-  int nbins = input_image.depth() > CV_8S ? 65536 : 256;
-
-
-  create_image_histogram(input_image,
-      imageHistogram,
-      nbins,
-      -1);
-
-  updateHistogramView();
+  levelsView_->setImage(image, mask);
 }
 
-void QMtfControl::findAutoMidtonesBalance()
+
+void QMtfControl::onFindAutoMidtonesBalanceClicked()
 {
-  if ( mtf_ && !imageHistogram.empty() ) {
+  if ( mtf_ && !inputImage_.empty() ) {
+
     QWaitCursor wait(this);
-    mtf_->find_midtones_balance(imageHistogram);
-    updateControls();
-    emit mtfChanged();
+
+    cv::Mat1f H;
+    double hmin = -1, hmax = -1;
+
+    if ( !create_image_histogram(inputImage_, H, -1, -1, &hmin, &hmax, true, false) ) {
+      CF_ERROR("create_image_histogram() fails");
+    }
+    else {
+      mtf_->find_midtones_balance(H);
+      updateControls();
+      emit mtfChanged();
+    }
   }
 }
 
@@ -323,3 +315,10 @@ void QMtfControl::onChartTypeSelectorClicked()
   }
 
 }
+
+void QMtfControl::onDisplayChannelComboCurrentIndexChanged(int)
+{
+  levelsView_->setDisplayChannel((QHistogramView::DisplayChannel)
+      displayChannel_ctl->currentData().toInt());
+}
+

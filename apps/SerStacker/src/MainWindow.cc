@@ -592,7 +592,8 @@ void MainWindow::configureImageViewerToolbars()
       }
       else {
         imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-        imageLevelsDialogBox->setImage(imageEditor->displayImage());
+        imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
+        imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
         imageLevelsDialogBox->showNormal();
       }
     }
@@ -603,7 +604,7 @@ void MainWindow::configureImageViewerToolbars()
       [this] () {
         if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
           imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-          imageLevelsDialogBox->setImage(imageEditor->displayImage());
+          imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
         }
       });
 

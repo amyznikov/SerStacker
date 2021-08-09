@@ -137,21 +137,23 @@ protected:
 
 protected:
 
-  template<class ObjType>
-  QCheckBox * add_checkbox(const char * name, std::shared_ptr<ObjType> * obj,
-      bool (ObjType::*getfn)() const, void (ObjType::*setfn)(bool))
+  QCheckBox * add_checkbox(const char * name,
+      bool (RoutineType::*getfn)() const,
+      void (RoutineType::*setfn)(bool))
   {
     QCheckBox * ctl = new QCheckBox();
     ctlform->addRow(name, ctl);
     QObject::connect(ctl, &QCheckBox::stateChanged,
-        [this, ctl, obj, getfn, setfn](int state) {
-          if ( *obj && !updatingControls() ) {
+        [this, ctl, getfn, setfn](int state) {
+          if ( routine_ && !updatingControls() ) {
             const bool checked = state == Qt::Checked;
-            if ( (obj->get()->*getfn)() != checked ) {
+            if ( (routine_.get()->*getfn)() != checked ) {
               LOCK();
-              (obj->get()->*setfn)(checked);
+              (routine_.get()->*setfn)(checked);
               UNLOCK();
-              emit parameterChanged();
+              if ( routine_->enabled() ) {
+                emit parameterChanged();
+              }
             }
           }
         });
@@ -159,21 +161,24 @@ protected:
     return ctl;
   }
 
-  template<class ObjType, class PropType>
-  QNumberEditBox * add_numeric_box(const char * name, std::shared_ptr<ObjType> * obj,
-      PropType (ObjType::*getfn)() const, void (ObjType::*setfn)(PropType))
+  template<class PropType>
+  QNumberEditBox * add_numeric_box(const char * name,
+      PropType (RoutineType::*getfn)() const,
+      void (RoutineType::*setfn)(PropType))
   {
     QNumberEditBox * ctl = new QNumberEditBox();
     ctlform->addRow(name, ctl);
     QObject::connect(ctl, &QLineEditBox::textChanged,
-        [this, ctl, obj, getfn, setfn]() {
-          if ( *obj && !updatingControls() ) {
+        [this, ctl, getfn, setfn]() {
+          if ( routine_ && !updatingControls() ) {
             PropType value;
-            if ( fromString(ctl->text(), &value) && (obj->get()->*getfn)() != value ) {
+            if ( fromString(ctl->text(), &value) && (routine_.get()->*getfn)() != value ) {
               LOCK();
-              (obj->get()->*setfn)(value);
+              (routine_.get()->*setfn)(value);
               UNLOCK();
-              emit parameterChanged();
+              if ( routine_->enabled() ) {
+                emit parameterChanged();
+              }
             }
           }
         });
@@ -181,23 +186,29 @@ protected:
     return ctl;
   }
 
-  template<class ObjType, class PropType>
-  void add_combobox(const char * name, QEnumComboBox<PropType> * ctl, std::shared_ptr<ObjType> * obj,
-      PropType (ObjType::*getfn)() const, void (ObjType::*setfn)(PropType))
+  template<class ComboboxType, class PropType>
+  ComboboxType * add_combobox(const char * name,
+      PropType (RoutineType::*getfn)() const,
+      void (RoutineType::*setfn)(PropType))
   {
+    ComboboxType * ctl = new ComboboxType(this);
     ctlform->addRow(name, ctl);
     QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
-        [this, ctl, obj, getfn, setfn]() {
-          if ( *obj && !updatingControls() ) {
+        [this, ctl, getfn, setfn]() {
+          if ( routine_ && !updatingControls() ) {
             PropType value = ctl->currentItem();
-            if ( (obj->get()->*getfn)() != value ) {
+            if ( (routine_.get()->*getfn)() != value ) {
               LOCK();
-              (obj->get()->*setfn)(value);
+              (routine_.get()->*setfn)(value);
               UNLOCK();
-              emit parameterChanged();
+              if ( routine_->enabled() ) {
+                emit parameterChanged();
+              }
             }
           }
         });
+
+    return ctl;
   }
 
   template<class WidgetType>

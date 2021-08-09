@@ -29,12 +29,21 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
       [this](int state) {
         if ( options_ ) {
           bool checked = state == Qt::Checked;
-          if ( checked != options_->enable_remove_bad_pixels ) {
-            options_->enable_remove_bad_pixels = checked;
+          if ( checked != options_->remove_bad_pixels ) {
+            options_->remove_bad_pixels = checked;
             emit parameterChanged();
           }
         }
       });
+
+  bad_pixels_variation_threshold_ctl =
+      add_numeric_box<double>("Bad Pixels Variation Threshold",
+          [this](double v) {
+            if ( options_ && options_->bad_pixels_variation_threshold != v ) {
+              options_->bad_pixels_variation_threshold = v;
+              emit parameterChanged();
+            }
+          });
 
   enable_color_maxtrix_ctl = add_checkbox("Apply color matrix if available",
       [this](int state) {
@@ -55,7 +64,6 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           emit parameterChanged();
         }
       });
-
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -92,9 +100,11 @@ void QImageStackingInputOptions::onupdatecontrols()
   }
   else {
 
-    enable_remove_bad_pixels_ctl->setChecked(options_->enable_remove_bad_pixels);
+    enable_remove_bad_pixels_ctl->setChecked(options_->remove_bad_pixels);
+    bad_pixels_variation_threshold_ctl->setValue(options_->bad_pixels_variation_threshold);
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
+
     setEnabled(true);
   }
 

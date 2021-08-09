@@ -64,8 +64,8 @@ const struct frame_registration_method_desc frame_registration_methods[] = {
     { "Feature Based Registration (SURF)", frame_registration_method_surf },
     { "Planetary Disk Registration", frame_registration_method_planetary_disk},
     { "Star Field Registration", frame_registration_method_star_field},
-    { "Skip", frame_registration_skip},
-    { nullptr, frame_registration_skip }, // must be last
+    { "None", frame_registration_none},
+    { nullptr, frame_registration_none }, // must be last
 };
 
 std::string toStdString(enum frame_registration_method v)
@@ -96,8 +96,8 @@ const struct frame_accumulation_method_desc frame_accumulation_methods[] = {
     { "masked", frame_accumulation_average_masked },
     { "weigted", frame_accumulation_average_weighted },
     { "fft", frame_accumulation_fft },
-    { "skip", frame_accumulation_skip },
-    { nullptr, frame_accumulation_skip, },
+    { "None", frame_accumulation_none },
+    { nullptr, frame_accumulation_none, },
 };
 
 std::string toStdString(enum frame_accumulation_method v)
@@ -275,6 +275,7 @@ void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_al
     }
   }
 }
+
 
 
 }
@@ -825,13 +826,16 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
 
-  set_status_msg("PREPARE REFERENCE FRAME ...");
+  if( registration_options.registration_method != frame_registration_none ) {
 
-  if ( !create_reference_frame(options, output_directory) ) {
-    set_status_msg("ERROR: create_reference_frame() fails");
-    return false;
+    set_status_msg("PREPARE REFERENCE FRAME ...");
+
+    if( !create_reference_frame(options, output_directory) ) {
+      set_status_msg("ERROR: create_reference_frame() fails");
+      return false;
+    }
+
   }
-
 
 
   set_status_msg("PREPARE MAIN LOOP ...");
@@ -844,7 +848,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   if ( true ) {
     lock_guard lock(registration_lock_);
 
-    if ( registration_options.registration_method  == frame_registration_skip ) {
+    if ( registration_options.registration_method == frame_registration_none ) {
       frame_registration_.reset();
     }
     else if ( !(frame_registration_ = options->create_frame_registration()) ) {
@@ -858,7 +862,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   if ( true ) {
     lock_guard lock(accumulator_lock_);
 
-    if ( accumulation_options.accumulation_method == frame_accumulation_skip ) {
+    if ( accumulation_options.accumulation_method == frame_accumulation_none ) {
       frame_accumulation_.reset();
     }
     else if ( !(frame_accumulation_ = options->create_frame_accumulation()) ) {
@@ -902,7 +906,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       set_status_msg("ERROR: setup_referece_frame() fails");
     }
 
-    if ( !fOk || output_options.dump_reference_frames_for_debug ) {
+    if ( !fOk || output_options.dump_reference_data_for_debug ) {
 
       if ( !frame_registration_->reference_feature_image().empty() ) {
         save_image(frame_registration_->reference_feature_image(),
@@ -1041,11 +1045,21 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
+    if( output_options.frame_postprocessor ) {
+      output_options.frame_postprocessor->process(current_frame_, current_mask_);
+    }
+
+    if( output_options.save_processed_frames ) {
+
+      save_processed_frame(current_frame_, current_mask_,
+          output_options, output_directory,
+          options->name(),
+          input_sequence->current_pos() - 1);
+    }
 
     ///////////////
 
     if ( frame_accumulation_ ) {
-
 
       if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
 
@@ -1129,113 +1143,60 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     return false;
   }
 
-  set_status_msg("FINISHING ...");
 
-  if ( !compute_accumulated_image(current_frame_, current_mask_) ) {
-    CF_ERROR("FATAL: compute_accumulated_image() fails");
-    return false;
-  }
+  if( frame_accumulation_ ) {
 
-  if ( anscombe_.method() != anscombe_none ) {
-    anscombe_.inverse(current_frame_,
-        current_frame_);
-  }
+    set_status_msg("FINISHING ...");
 
-  if ( output_file_name.empty() ) {
-
-    output_file_name =
-        ssprintf("%s/%s-32F.tiff",
-            output_directory.c_str(),
-            options->name().c_str());
-  }
-
-
-  normalize_minmax(current_frame_, current_frame_,
-      0.01, 0.99,
-      current_mask_,
-      true);
-
-  CF_DEBUG("Saving '%s'",  output_file_name.c_str());
-  if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
-    CF_ERROR("write_image('%s') fails", output_file_name.c_str());
-  }
-
-
-  const c_image_processor::ptr postprocessor = options->output_options().postprocessor;
-  CF_DEBUG("postprocessor: %s", postprocessor ? postprocessor->cname(): "NONE");
-  if ( postprocessor ) {
-
-    std::string outname = output_file_name;
-    set_file_suffix(outname, "-PP.tiff");
-
-    CF_DEBUG("postprocessor->process()");
-    if ( !postprocessor->process(current_frame_, current_mask_) ) {
-      CF_ERROR("postprocessor %s : process() fails", postprocessor->cname());
+    if( !compute_accumulated_image(current_frame_, current_mask_) ) {
+      CF_ERROR("FATAL: compute_accumulated_image() fails");
+      return false;
     }
 
-    CF_DEBUG("Saving '%s'",  outname.c_str());
-    if ( !write_image(outname, output_options, current_frame_, current_mask_) ) {
-      CF_ERROR("ERROR: write_image('%s') fails", outname.c_str());
+    if( anscombe_.method() != anscombe_none ) {
+      anscombe_.inverse(current_frame_,
+          current_frame_);
     }
-  }
 
-//
-//  if ( options->frame_registration_options().registration_method != frame_registration_method_star_field ) {
-//
-//    cv::Mat wbmask, wbimage;
-//    std::string outname;
-//
-//    set_file_suffix(outname = output_file_name,
-//        "-WBH.tiff");
-//
-//    cv::compare(current_frame_, 0.1, wbmask, cv::CMP_GT);
-//
-//    if ( wbmask.channels() > 1 ) {
-//      cv::cvtColor(wbmask, wbmask, cv::COLOR_BGR2GRAY);
-//      cv::compare(wbmask, 255, wbmask, cv::CMP_GE);
-//    }
-//
-//    cv::bitwise_and(current_mask_, wbmask, wbmask);
-//
-//    if ( !histogram_white_balance(current_frame_, wbmask, wbimage, 1, 99) ) {
-//      CF_ERROR("histogram_white_balance(wbimage) fails");
-//      wbimage = current_frame_;
-//    }
-//    else {
-//
-//      normalize_minmax(wbimage, wbimage,
-//          0.01, 0.99,
-//          current_mask_,
-//          true);
-//    }
-//
-//    CF_DEBUG("Saving '%s'", outname.c_str());
-//    if ( !write_image(outname, output_options, wbimage, current_mask_) ) {
-//      CF_ERROR("write_image('%s') fails", outname.c_str());
-//    }
-//  }
-//  else {
-//
-//    if ( !histogram_white_balance(current_frame_, current_mask_, current_frame_, 5, 95) ) {
-//      CF_ERROR("histogram_white_balance() fails");
-//    }
-//    else {
-//
-//      normalize_minmax(current_frame_, current_frame_,
-//          0.01, 0.99,
-//          current_mask_,
-//          true);
-//
-//      set_file_suffix(output_file_name,
-//          "-WBH.tiff");
-//
-//      CF_DEBUG("SAVING '%s'", output_file_name.c_str());
-//      if ( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
-//        CF_ERROR("write_image('%s') fails", output_file_name.c_str());
-//      }
-//
-//    }
-//  }
+    if( output_file_name.empty() ) {
+
+      output_file_name =
+          ssprintf("%s/%s-32F.tiff",
+              output_directory.c_str(),
+              options->name().c_str());
+    }
+
+    normalize_minmax(current_frame_, current_frame_,
+        0.01, 0.99,
+        current_mask_,
+        true);
+
+    CF_DEBUG("Saving '%s'", output_file_name.c_str());
+    if( !write_image(output_file_name, output_options, current_frame_, current_mask_) ) {
+      CF_ERROR("write_image('%s') fails", output_file_name.c_str());
+    }
+
+    const c_image_processor::ptr postprocessor = options->output_options().accumuated_image_postprocessor;
+
+    CF_DEBUG("postprocessor: %s", postprocessor ?
+        postprocessor->cname() : "NONE");
+
+    if( postprocessor ) {
+
+      std::string outname = output_file_name;
+      set_file_suffix(outname, "-PP.tiff");
+
+      if( !postprocessor->process(current_frame_, current_mask_) ) {
+        CF_ERROR("postprocessor %s : process() fails", postprocessor->cname());
+      }
+
+      CF_DEBUG("Saving '%s'", outname.c_str());
+      if( !write_image(outname, output_options, current_frame_, current_mask_) ) {
+        CF_ERROR("ERROR: write_image('%s') fails", outname.c_str());
+      }
+    }
+
+  }
 
   set_status_msg("FINISHED");
 
@@ -1324,7 +1285,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
   }
 
   if ( master_frame_options.generate_master_frame && num_total_frames > 1 &&
-      options->accumulation_options().accumulation_method != frame_accumulation_skip ) {
+      options->accumulation_options().accumulation_method != frame_accumulation_none ) {
 
     // Generate it !
     fOk = generate_reference_frame(input_sequence, options, output_directory);
@@ -1360,7 +1321,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
 
 
   if ( fOk && !canceled() ) {
-    if ( options->output_options().dump_reference_frames_for_debug ) {
+    if ( options->output_options().dump_reference_data_for_debug ) {
       write_image(ssprintf("%s/%s-reference-frame.tiff", output_directory.c_str(),
           options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
     }
@@ -1385,7 +1346,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     frame_accumulation_.reset(new c_frame_accumulation_with_mask());
   }
 
-  if ( options->frame_registration_options().registration_method != frame_registration_skip ) {
+  if ( options->frame_registration_options().registration_method != frame_registration_none ) {
 
     lock_guard lock(registration_lock_);
 
@@ -1585,7 +1546,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
   if ( fOk && !canceled() ) {
 
-    if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() )  {
+    if ( options->output_options().dump_reference_data_for_debug && !output_directory.empty() )  {
       write_image(ssprintf("%s/%s-initial-reference-frame.tiff", output_directory.c_str(),
               options->name().c_str()), options->output_options(), reference_frame_, reference_mask_);
     }
@@ -1602,7 +1563,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
     if ( options->master_frame_options().compensate_master_flow && !masterflow.empty() ) {
 
-      if ( options->master_frame_options().dump_master_flow_for_debug && !output_directory.empty() ) {
+      if ( options->output_options().dump_reference_data_for_debug && !output_directory.empty() ) {
 
         save_image(masterflow_accumulation_->counter(),
             ssprintf("%s/%s-masterflow-counter.tiff", output_directory.c_str(),
@@ -1654,8 +1615,8 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
-    if ( input_options.enable_remove_bad_pixels ) {
-      remove_bad_pixels(output_image);
+    if ( input_options.remove_bad_pixels ) {
+      remove_bad_pixels(output_image, input_options);
     }
 
     output_image.convertTo(output_image, CV_32F,
@@ -1667,8 +1628,8 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     extract_bayer_planes(output_image, output_image,
         input_sequence->colorid());
 
-    if ( input_options.enable_remove_bad_pixels ) {
-      remove_bad_pixels(output_image);
+    if ( input_options.remove_bad_pixels ) {
+      remove_bad_pixels(output_image, input_options);
     }
 
     output_image.convertTo(output_image, CV_32F,
@@ -1730,7 +1691,7 @@ bool c_image_stacking_pipeline::select_image_roi(const c_feature_based_roi_selec
 
 
 
-bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
+bool c_image_stacking_pipeline::write_image(const std::string & output_file_name,
     const c_image_stacking_output_options & output_options,
     const cv::Mat & output_image, const cv::Mat & output_mask)
 {
@@ -1747,9 +1708,37 @@ bool c_image_stacking_pipeline::write_image(const std::string output_file_name,
 }
 
 
-void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image)
+bool c_image_stacking_pipeline::save_processed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
+    const c_image_stacking_output_options & output_options,
+    const std::string & output_directory,
+    const std::string & sequence_name,
+    int frame_index)
+{
+
+  const std::string output_file_name = ssprintf("%s/%s.%06d.tiff",
+      output_directory.c_str(),
+      sequence_name.c_str(),
+      frame_index);
+
+  return write_image(output_file_name, output_options,
+      current_frame, current_mask);
+}
+
+
+void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
+    const c_input_options & input_optons)
 {
   cv::Mat medianImage, variationImage, meanVariationImage;
+  double minimal_mean_variation_for_very_smooth_images;
+
+  // treshold = estimate_noise(image);
+  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
+    minimal_mean_variation_for_very_smooth_images = 1e-2;
+  }
+  else {
+    minimal_mean_variation_for_very_smooth_images = 2;
+  }
+
   cv::medianBlur(image, medianImage, 3);
   cv::absdiff(image, medianImage, variationImage);
 
@@ -1759,7 +1748,9 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image)
       1./8, 1./8, 1./8,
   };
   cv::filter2D(variationImage, meanVariationImage, -1, cv::Mat1f(3, 3, K));
-  medianImage.copyTo(image, variationImage > 5 * meanVariationImage);
+  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
+
+  medianImage.copyTo(image, variationImage > input_optons.bad_pixels_variation_threshold * meanVariationImage);
 }
 
 

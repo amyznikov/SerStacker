@@ -37,12 +37,21 @@ public:
   void set_reference_channel(int v);
   int reference_channel() const;
 
+  void set_enable_threshold(bool v);
+  bool enable_threshold() const;
+
+  void set_threshold(double v);
+  double threshold() const;
+
   c_align_color_channels & algorithm();
   const c_align_color_channels & algorithm() const;
+
 
 protected:
   c_align_color_channels algorithm_;
   int reference_channel_ = 0;
+  bool enable_threshold_ = false;
+  double threshold_ = 0;
 };
 
 #endif /* __c_align_color_channels_routine_h__ */

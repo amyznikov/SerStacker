@@ -12,11 +12,11 @@ const QAutoClipSettings::ClassFactory QAutoClipSettings::classFactory;
 QAutoClipSettings::QAutoClipSettings(const c_autoclip_routine::ptr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)
 {
-  lclip_ctl = add_numeric_box("lclip [%]:", &routine_,
+  lclip_ctl = add_numeric_box("lclip [%]:",
       &c_autoclip_routine::lclip,
       &c_autoclip_routine::set_lclip);
 
-  hclip_ctl = add_numeric_box("hclip [%]:", &routine_,
+  hclip_ctl = add_numeric_box("hclip [%]:",
       &c_autoclip_routine::hclip,
       &c_autoclip_routine::set_hclip);
 

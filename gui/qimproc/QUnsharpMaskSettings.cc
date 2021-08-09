@@ -15,11 +15,11 @@ QUnsharpMaskSettings::QUnsharpMaskSettings(const c_unsharp_mask_routine::ptr & r
     Base(&classFactory, routine, parent)
 {
 
-  sigma_ctl = add_numeric_box("sigma", &routine_,
+  sigma_ctl = add_numeric_box("sigma",
       &c_unsharp_mask_routine::sigma,
       &c_unsharp_mask_routine::set_sigma);
 
-  alpha_ctl = add_numeric_box("alpha", &routine_,
+  alpha_ctl = add_numeric_box("alpha",
       &c_unsharp_mask_routine::alpha,
       &c_unsharp_mask_routine::set_alpha);
 

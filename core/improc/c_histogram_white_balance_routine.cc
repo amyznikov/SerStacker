@@ -104,6 +104,8 @@ bool c_histogram_white_balance_routine::deserialize(c_config_setting settings)
     return false;
   }
 
+  settings.get("enable_threshold", &enable_threshold_);
+  settings.get("threshold", &threshold_);
   settings.get("lclip", &lclip_);
   settings.get("hclip", &hclip_);
 
@@ -116,6 +118,8 @@ bool c_histogram_white_balance_routine::serialize(c_config_setting settings) con
     return false;
   }
 
+  settings.set("enable_threshold", enable_threshold_);
+  settings.set("threshold", threshold_);
   settings.set("lclip", lclip_);
   settings.set("hclip", hclip_);
 

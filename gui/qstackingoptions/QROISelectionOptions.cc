@@ -47,14 +47,11 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent)
       });
 
   cropSize_ctl =
-      add_numeric_box(form, "Crop Size WxH:",
-          [this]() {
-            if ( options_ && !updatingControls() ) {
-              cv::Size v;
-              if ( fromString(cropSize_ctl->text(), &v) && v != options_->crop_size ) {
-                options_->crop_size = v;
-                emit parameterChanged();
-              }
+      add_numeric_box<cv::Size>("Crop Size WxH:",
+          [this](const cv::Size & v) {
+            if ( options_ && v != options_->crop_size ) {
+              options_->crop_size = v;
+              emit parameterChanged();
             }
           });
 

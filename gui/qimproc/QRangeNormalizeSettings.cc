@@ -13,23 +13,23 @@ const QRangeNormalizeSettings::ClassFactory QRangeNormalizeSettings::classFactor
 QRangeNormalizeSettings::QRangeNormalizeSettings(const c_range_normalize_routine::ptr & routine, QWidget * parent) :
     Base(&classFactory, routine, parent)
 {
-  auto_input_range_ctl = add_checkbox("Auto input range", &routine_,
+  auto_input_range_ctl = add_checkbox("Auto input range",
       &c_range_normalize_routine::auto_input_range,
       &c_range_normalize_routine::set_auto_input_range);
 
-  input_min_ctl = add_numeric_box("input min", &routine_,
+  input_min_ctl = add_numeric_box("input min",
       &c_range_normalize_routine::input_min,
       &c_range_normalize_routine::set_input_min);
 
-  input_max_ctl = add_numeric_box("input max", &routine_,
+  input_max_ctl = add_numeric_box("input max",
       &c_range_normalize_routine::input_max,
       &c_range_normalize_routine::set_input_max);
 
-  output_min_ctl = add_numeric_box("output min", &routine_,
+  output_min_ctl = add_numeric_box("output min",
       &c_range_normalize_routine::output_min,
       &c_range_normalize_routine::set_output_min);
 
-  output_max_ctl = add_numeric_box("output max", &routine_,
+  output_max_ctl = add_numeric_box("output max",
       &c_range_normalize_routine::output_max,
       &c_range_normalize_routine::set_output_max);
 

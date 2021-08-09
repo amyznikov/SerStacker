@@ -66,6 +66,33 @@ protected:
   virtual void UNLOCK();
 
 protected:
+
+  template<class ValueType, class _Calable>
+  QNumberEditBox* add_numeric_box(QFormLayout * form, const QString & name, const _Calable & slot)
+  {
+    QNumberEditBox *ctl = new QNumberEditBox(this);
+    form->addRow(name, ctl);
+    QObject::connect(ctl, &QNumberEditBox::textChanged,
+        [this, ctl, slot]() {
+          if ( !updatingControls() ) {
+            ValueType v;
+            if ( fromString(ctl->text(), &v) ) {
+              LOCK();
+              slot(v);
+              UNLOCK();
+            }
+          }
+        });
+    return ctl;
+  }
+
+  template<class ValueType, class _Calable>
+  QNumberEditBox* add_numeric_box(const QString & name, const _Calable & slot)
+  {
+    return add_numeric_box<ValueType>(this->form, name, slot);
+  }
+
+
   template<class _Calable>
   QCheckBox* add_checkbox(QFormLayout * form, const QString & name, const _Calable & slot)
   {
@@ -81,6 +108,7 @@ protected:
         });
     return ctl;
   }
+
 
   template<class _Calable>
   QCheckBox* add_checkbox(const QString & name, const _Calable & slot)

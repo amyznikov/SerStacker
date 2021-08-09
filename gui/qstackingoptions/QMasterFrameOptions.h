@@ -43,7 +43,6 @@ protected slots:
   void onGenerateMasterFrameCheckboxStateChanged(int);
   void onAllowEccFlowCheckboxStateChanged(int);
   void onAccumulateMasterFlowCheckboxStateChanged(int);
-  void onDumpMasterFlowCheckboxStateChanged(int);
   void onMaxFramesForMasterFrameGenerationChanged();
 
 protected:
@@ -56,7 +55,6 @@ protected:
   QCheckBox * allowEccFlow_ctl = Q_NULLPTR;
   QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
   QCheckBox * compensateMasterFlow_ctl = Q_NULLPTR;
-  QCheckBox * dumpMasterFlow_ctl = Q_NULLPTR;
 
   QToolButton * applyToAll_ctl = Q_NULLPTR;
   int previousComboboxItemIndex = -1;

@@ -12,11 +12,11 @@ const QSmapSettings::ClassFactory QSmapSettings::classFactory;
 QSmapSettings::QSmapSettings(const c_smap_routine::ptr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)
 {
-  minv_ctl = add_numeric_box("Minv:", &routine_,
+  minv_ctl = add_numeric_box("Minv:",
       &c_smap_routine::minv,
       &c_smap_routine::set_minv);
 
-  scale_ctl = add_numeric_box("Scale:", &routine_,
+  scale_ctl = add_numeric_box("Scale:",
       &c_smap_routine::scale,
       &c_smap_routine::set_scale);
 

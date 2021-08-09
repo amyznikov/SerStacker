@@ -634,8 +634,27 @@ void QStackTreeView::dropEvent(QDropEvent *e)
     //
 
     const QList<QUrl> urls = e->mimeData()->urls();
+    bool drop_confirmed = false;
 
     for ( const QUrl & url : urls ) {
+
+      if( !drop_confirmed && url.scheme() == "cinputsource" ) {
+
+        int reply = QMessageBox::question(this, "Confirmation required",
+            "Accept this Drag&Drop ?\n\n"
+            "This confirmation is requested to prevent unintentional random mouse drags.",
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+
+        if( reply != QMessageBox::Yes ) {
+          action = Qt::IgnoreAction;
+          break;
+        }
+
+        drop_confirmed = true;
+      }
+
+
       if ( (stackItem = dynamic_cast<QStackItem *>(addNewStackingOptions())) ) {
         if ( !dropSource(e, url, stackItem, selectedItem) ) {
           delete stackItem;
@@ -787,6 +806,8 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
   const QList<QUrl> urls = e->mimeData()->urls();
   const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
 
+  bool drop_confirmed = false;
+
   for ( const QUrl & url : urls ) {
 
     if ( url.scheme() != "cinputsource" ) {
@@ -817,6 +838,24 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
     }
 
     else  {
+
+      if ( !drop_confirmed ) {
+
+        int reply = QMessageBox::question(this, "Confirmation required",
+            "Accept this Drag&Drop ?\n\n"
+            "This confirmation is requested to prevent unintentional random mouse drags.",
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+
+        if ( reply != QMessageBox::Yes ) {
+          return false;
+        }
+
+        drop_confirmed = true;
+      }
+
+
+
       QStackItem * sourceStackItem;
       QStackTreeView::QInputSourceItem * inputSourceItem;
 
@@ -1490,12 +1529,21 @@ void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
 
 void QStackTree::onShowStackOptionsClicked()
 {
-  QStackTreeView::QStackItem * item =
-      dynamic_cast<QStackTreeView::QStackItem *>(treeView_->
-          currentItem());
+  QTreeWidgetItem * currentItem =
+      treeView_->currentItem();
 
-  if ( item ) {
-    emit showStackOptionsClicked(item->stack());
+  if ( currentItem ) {
+
+    if ( currentItem->type() == ItemType_InputSource ) {
+      currentItem = currentItem->parent();
+    }
+
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem *>(currentItem);
+
+    if ( stackItem ) {
+      emit showStackOptionsClicked(stackItem->stack());
+    }
   }
 }
 

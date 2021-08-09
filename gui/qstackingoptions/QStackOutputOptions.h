@@ -44,10 +44,13 @@ protected:
   QCheckBox * write_image_mask_as_alpha_channel_ctl = Q_NULLPTR;
   QCheckBox * write_aligned_video_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_aligned_video_filename_ctl = Q_NULLPTR;
-  QCheckBox * dump_reference_frames_for_debug_ctl = Q_NULLPTR;
+  QCheckBox * dump_reference_data_for_debug_ctl = Q_NULLPTR;
 
-  //QCheckBox * enable_postproc_ctl = Q_NULLPTR;
-  QComboBox * prostprocessor_selector_ctl = Q_NULLPTR;
+  QComboBox * accumulated_image_processor_selector_ctl = Q_NULLPTR;
+
+
+  QCheckBox * save_processed_frames_ctl = Q_NULLPTR;
+  QComboBox * frame_processor_selector_ctl = Q_NULLPTR;
 
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };

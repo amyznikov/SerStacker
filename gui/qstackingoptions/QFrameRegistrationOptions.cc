@@ -61,121 +61,75 @@ QEccSettings::QEccSettings(QWidget * parent)
   : Base("QEccSettings", parent)
 {
 
-  scale_ctl = add_numeric_box(form, "scale",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(scale_ctl->text(), &value) && value != options_->scale ) {
-            LOCK();
-            options_->scale = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  scale_ctl = add_numeric_box<double>("scale",
+      [this](double value) {
+        if ( options_ && value != options_->scale ) {
+          options_->scale = value;
+          emit parameterChanged();
         }
       });
 
-  eps_ctl = add_numeric_box(form, "eps",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(eps_ctl->text(), &value) && value != options_->eps ) {
-            LOCK();
-            options_->eps = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  eps_ctl = add_numeric_box<double>("eps",
+      [this](double value) {
+        if ( options_ && value != options_->eps ) {
+          options_->eps = value;
+          emit parameterChanged();
         }
       });
 
-  min_rho_ctl = add_numeric_box(form, "min_rho",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(min_rho_ctl->text(), &value) && value != options_->min_rho ) {
-            LOCK();
-            options_->min_rho = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  min_rho_ctl = add_numeric_box<double>("min_rho",
+      [this](double value) {
+        if ( options_ && value != options_->min_rho ) {
+          options_->min_rho = value;
+          emit parameterChanged();
         }
       });
 
-  input_smooth_sigma_ctl = add_numeric_box(form, "input_smooth_sigma",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(input_smooth_sigma_ctl->text(), &value) && value != options_->input_smooth_sigma ) {
-            LOCK();
-            options_->input_smooth_sigma = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  input_smooth_sigma_ctl = add_numeric_box<double>("input_smooth_sigma",
+      [this](double value) {
+        if ( options_ && value != options_->input_smooth_sigma ) {
+          options_->input_smooth_sigma = value;
+          emit parameterChanged();
         }
       });
 
-  reference_smooth_sigma_ctl = add_numeric_box(form, "reference_smooth_sigma",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(reference_smooth_sigma_ctl->text(), &value) && value != options_->reference_smooth_sigma ) {
-            LOCK();
-            options_->reference_smooth_sigma = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  reference_smooth_sigma_ctl = add_numeric_box<double>("reference_smooth_sigma",
+      [this](double value) {
+        if ( options_ && value != options_->reference_smooth_sigma ) {
+          options_->reference_smooth_sigma = value;
+          emit parameterChanged();
         }
       });
 
-  update_step_scale_ctl = add_numeric_box(form, "update_step_scale",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(update_step_scale_ctl->text(), &value) && value != options_->update_step_scale ) {
-            LOCK();
+  update_step_scale_ctl = add_numeric_box<double>("update_step_scale",
+      [this](double value) {
+        if ( options_ && value != options_->update_step_scale ) {
             options_->update_step_scale = value;
-            UNLOCK();
             emit parameterChanged();
-          }
         }
       });
 
-  normalization_scale_ctl = add_numeric_box(form, "normalization_scale",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          int value;
-          if ( fromString(normalization_scale_ctl->text(), &value) && value != options_->normalization_scale ) {
-            LOCK();
+  normalization_scale_ctl = add_numeric_box<int>("normalization_scale",
+      [this](int value) {
+        if ( options_ && value != options_->normalization_scale ) {
             options_->normalization_scale = value;
-            UNLOCK();
             emit parameterChanged();
-          }
         }
       });
 
-  normalization_noise_ctl = add_numeric_box(form, "normalization_noise",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(normalization_noise_ctl->text(), &value) && value != options_->normalization_noise ) {
-            LOCK();
-            options_->normalization_noise = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  normalization_noise_ctl = add_numeric_box<double>("normalization_noise",
+      [this](double value) {
+        if ( options_ && value != options_->normalization_noise ) {
+          options_->normalization_noise = value;
+          emit parameterChanged();
         }
       });
 
-
-  max_iterations_ctl = add_numeric_box(form, "max_iterations",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          int value;
-          if ( fromString(max_iterations_ctl->text(), &value) && value != options_->max_iterations ) {
-            LOCK();
-            options_->max_iterations = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  max_iterations_ctl = add_numeric_box<int>("max_iterations",
+      [this](int value) {
+        if ( options_ && value != options_->max_iterations ) {
+          options_->max_iterations = value;
+          emit parameterChanged();
         }
       });
 
@@ -216,57 +170,36 @@ void QEccSettings::onupdatecontrols()
 QEccflowSettings::QEccflowSettings(QWidget * parent)
     : Base("QEccflowSettings", parent)
 {
-  support_scale_ctl = add_numeric_box(form, "support_scale",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(support_scale_ctl->text(), &value) && value != options_->support_scale ) {
-            LOCK();
+  support_scale_ctl = add_numeric_box<double>("support_scale",
+      [this](double value) {
+        if ( options_ && value != options_->support_scale ) {
             options_->support_scale = value;
-            UNLOCK();
             emit parameterChanged();
-          }
         }
       });
 
-  update_multiplier_ctl = add_numeric_box(form, "update_multiplier",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(update_multiplier_ctl->text(), &value) && value != options_->update_multiplier ) {
-            LOCK();
+  update_multiplier_ctl = add_numeric_box<double>("update_multiplier",
+      [this](double value) {
+        if ( options_ && value != options_->update_multiplier ) {
             options_->update_multiplier = value;
-            UNLOCK();
             emit parameterChanged();
-          }
         }
       });
 
-  max_iterations_ctl = add_numeric_box(form, "max_iterations",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          int value;
-          if ( fromString(max_iterations_ctl->text(), &value) && value != options_->max_iterations ) {
-            LOCK();
-            options_->max_iterations = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  max_iterations_ctl = add_numeric_box<int>("max_iterations",
+      [this](int value) {
+        if ( options_ && value != options_->max_iterations ) {
+          options_->max_iterations = value;
+          emit parameterChanged();
         }
       });
 
 
-
-  normalization_scale_ctl = add_numeric_box(form, "normalization_scale",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(normalization_scale_ctl->text(), &value) && value != options_->normalization_scale ) {
-            LOCK();
-            options_->normalization_scale = value;
-            UNLOCK();
-            emit parameterChanged();
-          }
+  normalization_scale_ctl = add_numeric_box<double>("normalization_scale",
+      [this](double v) {
+        if ( options_ && v != options_->normalization_scale ) {
+          options_->normalization_scale = v;
+          emit parameterChanged();
         }
       });
 
@@ -322,14 +255,11 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-  feature_scale_ctl = add_numeric_box(form, "Feature scale",
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          double value;
-          if ( fromString(feature_scale_ctl->text(), &value) && value != options_->feature_scale ) {
-            options_->feature_scale = value;
-            emit parameterChanged();
-          }
+  feature_scale_ctl = add_numeric_box<double>(form, "Feature scale",
+      [this](double value) {
+        if ( options_ && value != options_->feature_scale ) {
+          options_->feature_scale = value;
+          emit parameterChanged();
         }
       });
 
@@ -402,36 +332,27 @@ QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(QWidget * p
 {
 
   hessianThreshold_ctl =
-      add_numeric_box(form, "Hessian threshold",
-          [this]() {
-            if (options_ && !updatingControls() ) {
-              double value;
-              if ( fromString(hessianThreshold_ctl->text(), &value) && value != options_->hessianThreshold ) {
-                options_->hessianThreshold = value;
-                emit parameterChanged();
-              }
+      add_numeric_box<double>("Hessian threshold",
+          [this](double value) {
+            if (options_ && value != options_->hessianThreshold ) {
+              options_->hessianThreshold = value;
+              emit parameterChanged();
             }
           });
 
-  nOctaves_ctl = add_numeric_box(form, "Num Octaves",
-      [this]() {
-        if (options_ && !updatingControls() ) {
-          int value;
-          if ( fromString(nOctaves_ctl->text(), &value) && value != options_->nOctaves ) {
-            options_->nOctaves = value;
-            emit parameterChanged();
-          }
+  nOctaves_ctl = add_numeric_box<int>("Num Octaves",
+      [this](int value) {
+        if (options_ && value != options_->nOctaves ) {
+          options_->nOctaves = value;
+          emit parameterChanged();
         }
       });
 
-  nOctaveLayers_ctl = add_numeric_box(form, "Num Octave Layers",
-      [this]() {
-        if (options_ && !updatingControls() ) {
-          int value;
-          if ( fromString(nOctaveLayers_ctl->text(), &value) && value != options_->nOctaveLayers ) {
-            options_->nOctaveLayers = value;
-            emit parameterChanged();
-          }
+  nOctaveLayers_ctl = add_numeric_box<int>("Num Octave Layers",
+      [this](int value) {
+        if (options_ && value != options_->nOctaveLayers ) {
+          options_->nOctaveLayers = value;
+          emit parameterChanged();
         }
       });
 
@@ -647,19 +568,28 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
 
     switch ( options_->registration_method = frameRegistrationMethod_ctl->currentItem() ) {
     case frame_registration_method_surf :
+      frameRegistrationBaseSettings_ctl->setVisible(true);
       featureBasedRegistrationSettings_ctl->setVisible(true);
       planetaryDiskRegistrationSettings_ctl->setVisible(false);
       starFieldRegistrationSettings_ctl->setVisible(false);
       break;
     case frame_registration_method_planetary_disk :
+      frameRegistrationBaseSettings_ctl->setVisible(true);
       featureBasedRegistrationSettings_ctl->setVisible(false);
       planetaryDiskRegistrationSettings_ctl->setVisible(true);
       starFieldRegistrationSettings_ctl->setVisible(false);
       break;
     case frame_registration_method_star_field :
+      frameRegistrationBaseSettings_ctl->setVisible(true);
       featureBasedRegistrationSettings_ctl->setVisible(false);
       planetaryDiskRegistrationSettings_ctl->setVisible(false);
       starFieldRegistrationSettings_ctl->setVisible(true);
+      break;
+    case frame_registration_none :
+      frameRegistrationBaseSettings_ctl->setVisible(false);
+      featureBasedRegistrationSettings_ctl->setVisible(false);
+      planetaryDiskRegistrationSettings_ctl->setVisible(false);
+      starFieldRegistrationSettings_ctl->setVisible(false);
       break;
     }
 

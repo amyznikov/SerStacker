@@ -31,7 +31,11 @@ QImageProcessorsCollection * QImageProcessorsCollection::instance()
 bool QImageProcessorsCollection::load()
 {
   processors_->clear();
-  return processors_->load(c_image_processor_collection::default_processor_collection_path());
+  processors_->load(c_image_processor_collection::default_processor_collection_path());
+  if ( processors_->empty() ) {
+    processors_->emplace_back(c_image_processor::create("Default"));
+  }
+  return true;
 }
 
 bool QImageProcessorsCollection::save()

@@ -25,14 +25,14 @@ enum roi_selection_method {
 };
 
 enum frame_registration_method {
-  frame_registration_skip = -1,
+  frame_registration_none = -1,
   frame_registration_method_surf = 0,
   frame_registration_method_planetary_disk = 1,
   frame_registration_method_star_field = 2,
 };
 
 enum frame_accumulation_method {
-  frame_accumulation_skip = -1,
+  frame_accumulation_none = -1,
   frame_accumulation_average_masked = 0,
   frame_accumulation_average_weighted = 1,
   frame_accumulation_fft = 2,
@@ -87,9 +87,11 @@ enum frame_upscale_option fromStdString(const std::string  & s,
 
 
 struct c_input_options {
-  bool enable_remove_bad_pixels = true;
+  bool remove_bad_pixels = true;
   bool enable_color_maxtrix = false;
+
   enum anscombe_method anscombe = anscombe_none;
+  double bad_pixels_variation_threshold = 7;
 };
 
 struct c_roi_selection_options {
@@ -104,7 +106,6 @@ struct c_master_frame_options {
   bool generate_master_frame = true;
   bool allow_eccflow = false;
   bool compensate_master_flow = true;
-  bool dump_master_flow_for_debug = false;
 };
 
 struct c_frame_accumulation_options {
@@ -128,11 +129,13 @@ struct c_image_stacking_output_options {
 
   std::string output_aligned_video_filename;
 
-  c_image_processor::ptr postprocessor;
+  c_image_processor::ptr accumuated_image_postprocessor;
+  c_image_processor::ptr frame_postprocessor;
   std::string potprocessed_image_filename;
 
   bool write_aligned_video = false;
-  bool dump_reference_frames_for_debug = false;
+  bool save_processed_frames = false;
+  bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 };
 
@@ -291,13 +294,21 @@ protected:
       cv::Mat & dst, cv::Mat & dstmask);
 
 
-  static bool write_image(const std::string output_file_name,
+  static bool write_image(const std::string & output_file_name,
       const c_image_stacking_output_options & output_options,
       const cv::Mat & output_image,
       const cv::Mat & output_mask);
 
+  static bool save_processed_frame(const cv::Mat & curren_frame, const cv::Mat & current_mask,
+      const c_image_stacking_output_options & output_options,
+      const std::string & output_directory,
+      const std::string & sequence_name,
+      int frame_index);
 
-  static void remove_bad_pixels(cv::Mat & image);
+  static void remove_bad_pixels(cv::Mat & image,
+      const c_input_options & input_optons);
+
+
   static void upscale(cv::InputArray src, cv::InputArray srcmask,  cv::OutputArray dst, cv::OutputArray dstmask);
   static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);

@@ -55,6 +55,8 @@ protected:
   c_input_options * options_ = Q_NULLPTR;
 
   QCheckBox * enable_remove_bad_pixels_ctl = Q_NULLPTR;
+  QNumberEditBox * bad_pixels_variation_threshold_ctl = Q_NULLPTR;
+
   QCheckBox * enable_color_maxtrix_ctl = Q_NULLPTR;
   QAnscombeMethodCombo * anscombe_ctl  = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;

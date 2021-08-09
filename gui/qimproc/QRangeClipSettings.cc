@@ -12,11 +12,11 @@ const QRangeClipSettings::ClassFactory QRangeClipSettings::classFactory;
 QRangeClipSettings::QRangeClipSettings(const c_rangeclip_routine::ptr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)
 {
-  min_ctl = add_numeric_box("min:", &routine_,
+  min_ctl = add_numeric_box("min:",
       &c_rangeclip_routine::min,
       &c_rangeclip_routine::set_min);
 
-  max_ctl = add_numeric_box("max:", &routine_,
+  max_ctl = add_numeric_box("max:",
       &c_rangeclip_routine::max,
       &c_rangeclip_routine::set_max);
 }

@@ -38,6 +38,8 @@ protected:
 
 protected:
   QNumberEditBox * reference_channel_ctl = Q_NULLPTR;
+  QCheckBox * enable_threshold_ctl = Q_NULLPTR;
+  QNumberEditBox * threshold_ctl = Q_NULLPTR;
 };
 
 

@@ -12,19 +12,19 @@ const QHistogramWhiteBalanceSettings::ClassFactory QHistogramWhiteBalanceSetting
 QHistogramWhiteBalanceSettings::QHistogramWhiteBalanceSettings(const c_histogram_white_balance_routine::ptr & routine, QWidget * parent) :
     Base(&classFactory, routine, parent)
 {
-  lclip_ctl = add_numeric_box("lclip [%]", &routine_,
+  lclip_ctl = add_numeric_box("lclip [%]",
       &c_histogram_white_balance_routine::lclip,
       &c_histogram_white_balance_routine::set_lclip);
 
-  hclip_ctl = add_numeric_box("hclip [%]", &routine_,
+  hclip_ctl = add_numeric_box("hclip [%]",
       &c_histogram_white_balance_routine::hclip,
       &c_histogram_white_balance_routine::set_hclip);
 
-  enable_threshold_ctl = add_checkbox("threshold", &routine_,
+  enable_threshold_ctl = add_checkbox("threshold",
       &c_histogram_white_balance_routine::enable_threshold,
       &c_histogram_white_balance_routine::set_enable_threshold);
 
-  threshold_ctl = add_numeric_box("threshold value", &routine_,
+  threshold_ctl = add_numeric_box("threshold value",
       &c_histogram_white_balance_routine::threshold,
       &c_histogram_white_balance_routine::set_threshold);
 

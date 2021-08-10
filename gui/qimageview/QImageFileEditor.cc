@@ -149,8 +149,15 @@ QString QImageFileEditor::currentFileName() const
     }
   }
 
-  return QString();
+  return this->currentFileName_;
 }
+
+void QImageFileEditor::setCurrentFileName(const QString & newFileName)
+{
+  this->currentFileName_ = newFileName;
+  emit currentImageChanged();
+}
+
 
 //void QImageFileEditor::showEvent(QShowEvent *e)
 //{

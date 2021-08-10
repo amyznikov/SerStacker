@@ -171,7 +171,7 @@ protected:
     QObject::connect(ctl, &QLineEditBox::textChanged,
         [this, ctl, getfn, setfn]() {
           if ( routine_ && !updatingControls() ) {
-            PropType value;
+            PropType value = (routine_.get()->*getfn)();
             if ( fromString(ctl->text(), &value) && (routine_.get()->*getfn)() != value ) {
               LOCK();
               (routine_.get()->*setfn)(value);
@@ -185,6 +185,53 @@ protected:
 
     return ctl;
   }
+
+  template<class PropType>
+  QNumberEditBox * add_numeric_box(const char * name,
+      const PropType & (RoutineType::*getfn)() const,
+      void (RoutineType::*setfn)(const PropType &))
+  {
+    QNumberEditBox * ctl = new QNumberEditBox();
+    ctlform->addRow(name, ctl);
+    QObject::connect(ctl, &QLineEditBox::textChanged,
+        [this, ctl, getfn, setfn]() {
+          if ( routine_ && !updatingControls() ) {
+            PropType value = (routine_.get()->*getfn)();
+            if ( fromString(ctl->text(), &value) && (routine_.get()->*getfn)() != value ) {
+              LOCK();
+              (routine_.get()->*setfn)(value);
+              UNLOCK();
+              if ( routine_->enabled() ) {
+                emit parameterChanged();
+              }
+            }
+          }
+        });
+
+    return ctl;
+  }
+
+  QLineEditBox * add_textbox(const char * name,
+      const std::string & (RoutineType::*getfn)() const,
+      void (RoutineType::*setfn)(const std::string & ))
+  {
+    QLineEditBox * ctl = new QLineEditBox();
+    ctlform->addRow(name, ctl);
+    QObject::connect(ctl, &QLineEditBox::textChanged,
+        [this, ctl, getfn, setfn]() {
+          if ( routine_ && !updatingControls() ) {
+            LOCK();
+            (routine_.get()->*setfn)(ctl->text().toStdString());
+            UNLOCK();
+            if ( routine_->enabled() ) {
+              emit parameterChanged();
+            }
+          }
+        });
+
+    return ctl;
+  }
+
 
   template<class ComboboxType, class PropType>
   ComboboxType * add_combobox(const char * name,

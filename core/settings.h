@@ -107,7 +107,7 @@ public:
 
 
   template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
-   add(const T & value) {
+   add(const T & value) { // add element to a list or array
     return add_element(c_config_type_traits<T>::type).set(value);
   }
 
@@ -468,6 +468,28 @@ inline bool load_settings(c_config_setting array, cv::Vec<T, cn> * value)
   return false;
 }
 
+template<class T>
+inline bool save_settings(c_config_setting group, const cv::Scalar_<T> & v)
+{
+  group.set("v0", v.val[0]);
+  group.set("v1", v.val[1]);
+  group.set("v2", v.val[2]);
+  group.set("v3", v.val[3]);
+  return true;
+}
+
+template<class T>
+inline bool load_settings(c_config_setting group, cv::Scalar_<T> * v)
+{
+  if ( group.isGroup() ) {
+    group.get("v0", &v->val[0]);
+    group.get("v1", &v->val[1]);
+    group.get("v2", &v->val[2]);
+    group.get("v3", &v->val[3]);
+    return true;
+  }
+  return false;
+}
 
 template<class T, int m, int n>
 inline bool save_settings(c_config_setting array, const cv::Matx<T, m, n> & value)

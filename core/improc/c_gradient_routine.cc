@@ -1,26 +1,26 @@
 /*
- * c_differentiate_routine.cc
+ * c_gradient_routine.cc
  *
  *  Created on: Aug 10, 2021
  *      Author: amyznikov
  */
 
-#include "c_differentiate_routine.h"
+#include "c_gradient_routine.h"
 
 
-c_differentiate_routine::c_class_factory c_differentiate_routine::class_factory;
+c_gradient_routine::c_class_factory c_gradient_routine::class_factory;
 
-c_differentiate_routine::c_differentiate_routine(bool enabled)
+c_gradient_routine::c_gradient_routine(bool enabled)
   : base(&class_factory, enabled)
 {
 }
 
-c_differentiate_routine::ptr c_differentiate_routine::create(bool enabled)
+c_gradient_routine::ptr c_gradient_routine::create(bool enabled)
 {
   return ptr(new this_class(enabled));
 }
 
-bool c_differentiate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   static thread_local const cv::Matx<float, 1, 5> K(
       (+1.f / 12),
@@ -41,7 +41,7 @@ bool c_differentiate_routine::process(cv::InputOutputArray image, cv::InputOutpu
 }
 
 
-bool c_differentiate_routine::deserialize(c_config_setting settings)
+bool c_gradient_routine::deserialize(c_config_setting settings)
 {
   if ( !base::deserialize(settings) ) {
     return false;
@@ -50,7 +50,7 @@ bool c_differentiate_routine::deserialize(c_config_setting settings)
   return true;
 }
 
-bool c_differentiate_routine::serialize(c_config_setting settings) const
+bool c_gradient_routine::serialize(c_config_setting settings) const
 {
   if ( !base::serialize(settings) ) {
     return false;

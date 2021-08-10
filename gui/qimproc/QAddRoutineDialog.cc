@@ -26,6 +26,8 @@ QAddRoutineDialog::QAddRoutineDialog(QWidget * parent)
 
   hbox1->addLayout(vbox2);
   hbox1->addWidget(tooltip_ctl = new QLabel(this));
+  tooltip_ctl->setTextFormat(Qt::TextFormat::RichText);
+  tooltip_ctl->setWordWrap(true);
 
   hbox2->addWidget(ok_ctl = new QPushButton("OK", this));
   hbox2->addWidget(cancel_ctl = new QPushButton("Canel", this));

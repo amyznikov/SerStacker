@@ -16,6 +16,8 @@
 #include "QRangeClipSettings.h"
 #include "QHistogramWhiteBalanceSettings.h"
 #include "QRangeNormalizeSettings.h"
+#include "QGradientSettings.h"
+
 
 #define ICON_double_arrow_down    "double-arrow-down"
 #define ICON_double_arrow_right   "double-arrow-right"
@@ -73,6 +75,8 @@ void QImageProcessorRoutineSettingsBase::registrerAllClasses()
     registrerClassFactory(&QRangeClipSettings::classFactory);
     registrerClassFactory(&QHistogramWhiteBalanceSettings::classFactory);
     registrerClassFactory(&QRangeNormalizeSettings::classFactory);
+    registrerClassFactory(&QGradientSettings::classFactory);
+
 
   }
 }

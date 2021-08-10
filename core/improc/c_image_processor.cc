@@ -13,6 +13,7 @@
 #include "c_align_color_channels_routine.h"
 #include "c_anscombe_routine.h"
 #include "c_autoclip_routine.h"
+#include "c_gradient_routine.h"
 #include "c_histogram_white_balance_routine.h"
 #include "c_mtf_routine.h"
 #include "c_noisemap_routine.h"
@@ -20,7 +21,6 @@
 #include "c_rangeclip_routine.h"
 #include "c_smap_routine.h"
 #include "c_unsharp_mask_routine.h"
-#include "c_differentiate_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -76,7 +76,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_rangeclip_routine::class_factory);
     register_class_factory(&c_smap_routine::class_factory);
     register_class_factory(&c_unsharp_mask_routine::class_factory);
-    register_class_factory(&c_differentiate_routine::class_factory);
+    register_class_factory(&c_gradient_routine::class_factory);
   }
 }
 
@@ -216,7 +216,7 @@ bool c_image_processor::save(const std::string & path_or_filename) const
     filename.replace(0, 1, get_home_directory());
   }
 
-  CF_DEBUG("Saving '%s' ...", filename.c_str());
+//  CF_DEBUG("Saving '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 

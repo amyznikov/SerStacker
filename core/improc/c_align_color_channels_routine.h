@@ -43,9 +43,26 @@ public:
   void set_threshold(double v);
   double threshold() const;
 
+  void set_motion_type(ECC_MOTION_TYPE motion_type);
+  ECC_MOTION_TYPE motion_type() const;
+
+  void set_interpolation(cv::InterpolationFlags flags);
+  cv::InterpolationFlags interpolation() const;
+
+  void set_eps(double v);
+  double eps() const;
+
+  void set_max_iterations(int v);
+  int max_iterations() const;
+
+  void set_smooth_sigma(double v);
+  double smooth_sigma() const;
+
+  void set_update_step_scale(double v);
+  double update_step_scale() const;
+
   c_align_color_channels & algorithm();
   const c_align_color_channels & algorithm() const;
-
 
 protected:
   c_align_color_channels algorithm_;

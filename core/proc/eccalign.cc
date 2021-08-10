@@ -99,6 +99,42 @@ enum ECC_MOTION_TYPE fromStdString(const std::string & s, enum ECC_MOTION_TYPE d
   return defval;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+const extern struct ecc_interpolation_flags_desc ecc_interpolation_flags[] = {
+    { "AREA", cv::INTER_AREA },
+    { "LINEAR", cv::INTER_LINEAR },
+    { "CUBIC", cv::INTER_CUBIC },
+    { "LANCZOS4", cv::INTER_LANCZOS4 },
+    { "NEAREST", cv::INTER_NEAREST },
+    { nullptr, cv::INTER_NEAREST },
+};
+
+std::string toStdString(enum cv::InterpolationFlags v)
+{
+  for ( uint i = 0; ecc_interpolation_flags[i].name; ++i ) {
+    if ( (ecc_interpolation_flags[i].value & v) == ecc_motion_types[i].value ) {
+      return ecc_interpolation_flags[i].name;
+    }
+  }
+  return "";
+}
+
+enum cv::InterpolationFlags fromStdString(const std::string  & s, enum cv::InterpolationFlags defval )
+{
+  const char * cstr = s.c_str();
+
+  for ( uint i = 0; ecc_interpolation_flags[i].name; ++i ) {
+    if ( strcasecmp(ecc_interpolation_flags[i].name, cstr) == 0 ) {
+      return ecc_interpolation_flags[i].value;
+    }
+  }
+  return defval;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 static inline double square(double x)

@@ -37,9 +37,23 @@ protected:
   void onupdatecontrols() override;
 
 protected:
+  struct QMotionTypeCombo : public QEnumComboBox<ECC_MOTION_TYPE> {
+    QMotionTypeCombo(QWidget*parent) : QEnumComboBox<ECC_MOTION_TYPE>(parent, ecc_motion_types) {}
+  };
+  struct QInterpolationTypeCombo : public QEnumComboBox<cv::InterpolationFlags> {
+    QInterpolationTypeCombo(QWidget*parent) : QEnumComboBox<cv::InterpolationFlags>(parent, ecc_interpolation_flags) {}
+  };
+
   QNumberEditBox * reference_channel_ctl = Q_NULLPTR;
   QCheckBox * enable_threshold_ctl = Q_NULLPTR;
   QNumberEditBox * threshold_ctl = Q_NULLPTR;
+  QMotionTypeCombo * motion_ctl = Q_NULLPTR;
+  QInterpolationTypeCombo * interpolation_ctl = Q_NULLPTR;
+  QNumberEditBox * eps_ctl = Q_NULLPTR;
+  QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
+  QNumberEditBox * smooth_sigma_ctl = Q_NULLPTR;
+  QNumberEditBox * update_step_scale_ctl = Q_NULLPTR;
+
 };
 
 

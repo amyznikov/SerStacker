@@ -21,8 +21,8 @@ public:
   void set_motion_type(ECC_MOTION_TYPE motion_type);
   ECC_MOTION_TYPE motion_type() const;
 
-  void set_interpolation_flags(cv::InterpolationFlags flags);
-  cv::InterpolationFlags interpolation_flags() const;
+  void set_interpolation(cv::InterpolationFlags flags);
+  cv::InterpolationFlags interpolation() const;
 
   void set_border_value(const cv::Scalar & border_value);
   const cv::Scalar & border_value() const;
@@ -37,7 +37,7 @@ public:
   double update_step_scale() const;
 
   void set_eps(double v);
-  double eps(double v);
+  double eps() const;
 
   double computed_rho(int channel_index) const;
   double computed_eps(int channel_index) const;

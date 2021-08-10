@@ -610,17 +610,17 @@ inline bool load_settings(c_config_setting settings, const std::string & propnam
 
 
 #define SAVE_PROPERTY(cfg, obj, prop) \
-    qstaker::save_settings(cfg, #prop, (obj).prop())
+    ::save_settings(cfg, #prop, (obj).prop())
 
 #define LOAD_PROPERTY(cfg, obj, prop) \
-    qstaker::load_settings(cfg, #prop, (obj), \
+    ::load_settings(cfg, #prop, (obj), \
         &std::remove_reference<decltype(*obj)>::type::prop, \
         &std::remove_reference<decltype(*obj)>::type::set_##prop)
 
 #define SAVE_SETTINGS(cfg, obj, prop) \
-    qstaker::save_settings(cfg, #prop, (obj).prop())
+    ::save_settings(cfg, #prop, (obj).prop())
 
 #define LOAD_SETTINGS(cfg, obj, prop) \
-    qstaker::load_settings(cfg, #prop, &(obj)->prop())
+    ::load_settings(cfg, #prop, &(obj)->prop())
 
 #endif /* __qwcc_core_settings_h__ */

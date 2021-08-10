@@ -32,6 +32,15 @@ enum ECC_MOTION_TYPE fromStdString(const std::string  & s,
     enum ECC_MOTION_TYPE defval );
 
 
+const extern struct ecc_interpolation_flags_desc {
+  const char * name;
+  enum cv::InterpolationFlags value;
+} ecc_interpolation_flags[];
+
+std::string toStdString(enum cv::InterpolationFlags m);
+enum cv::InterpolationFlags fromStdString(const std::string  & s,
+    enum cv::InterpolationFlags defval );
+
 //
 // args:
 //  motionType - enum ECC_MOTION_*

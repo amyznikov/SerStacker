@@ -18,12 +18,12 @@ ECC_MOTION_TYPE c_align_color_channels::motion_type() const
   return (ECC_MOTION_TYPE )ecc_.motion_type();
 }
 
-void c_align_color_channels::set_interpolation_flags(cv::InterpolationFlags flags)
+void c_align_color_channels::set_interpolation(cv::InterpolationFlags flags)
 {
   ecc_.set_image_interpolation_flags(flags);
 }
 
-cv::InterpolationFlags c_align_color_channels::interpolation_flags() const
+cv::InterpolationFlags c_align_color_channels::interpolation() const
 {
   return (cv::InterpolationFlags )ecc_.image_interpolation_flags();
 }
@@ -75,7 +75,7 @@ void c_align_color_channels::set_eps(double v)
   ecc_.set_eps(v);
 }
 
-double c_align_color_channels::eps(double v)
+double c_align_color_channels::eps() const
 {
   return ecc_.eps();
 }
@@ -230,7 +230,7 @@ bool c_align_color_channels::align(int reference_channel,
       if ( dst.needed() ) {
 
         cv::remap(channels[i], channels[i], ecc_.current_remap(), cv::noArray(),
-            interpolation_flags(),
+            interpolation(),
             cv::BORDER_REPLICATE,
             border_value_[i]);
 
@@ -278,8 +278,8 @@ bool c_align_color_channels::align(int reference_channel,
         cv::merge(channels, cn, cumulative_image);
       }
 
-      cumulative_image.setTo(border_value_,
-          ~cumulative_mask);
+      //      cumulative_image.setTo(border_value_,
+      //          ~cumulative_mask);
 
       dst.move(cumulative_image);
     }
@@ -389,7 +389,7 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
     if ( dst.needed() ) {
 
       cv::remap(channels[i], channels[i], ecc_.current_remap(), cv::noArray(),
-          interpolation_flags(),
+          interpolation(),
           cv::BORDER_CONSTANT,
           border_value_[i]);
 

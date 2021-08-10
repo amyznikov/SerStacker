@@ -64,6 +64,66 @@ bool c_align_color_channels_routine::enable_threshold() const
   return enable_threshold_;
 }
 
+void c_align_color_channels_routine::set_motion_type(ECC_MOTION_TYPE motion_type)
+{
+  return algorithm_.set_motion_type(motion_type);
+}
+
+ECC_MOTION_TYPE c_align_color_channels_routine::motion_type() const
+{
+  return algorithm_.motion_type();
+}
+
+void c_align_color_channels_routine::set_interpolation(cv::InterpolationFlags flags)
+{
+  return algorithm_.set_interpolation(flags);
+}
+
+cv::InterpolationFlags c_align_color_channels_routine::interpolation() const
+{
+  return algorithm_.interpolation();
+}
+
+void c_align_color_channels_routine::set_eps(double v)
+{
+  return algorithm_.set_eps(v);
+}
+
+double c_align_color_channels_routine::eps() const
+{
+  return algorithm_.eps();
+}
+
+void c_align_color_channels_routine::set_max_iterations(int v)
+{
+  return algorithm_.set_max_iterations(v);
+}
+
+int c_align_color_channels_routine::max_iterations() const
+{
+  return algorithm_.max_iterations();
+}
+
+void c_align_color_channels_routine::set_smooth_sigma(double v)
+{
+  return algorithm_.set_smooth_sigma(v);
+}
+
+double c_align_color_channels_routine::smooth_sigma() const
+{
+  return algorithm_.smooth_sigma();
+}
+
+void c_align_color_channels_routine::set_update_step_scale(double v)
+{
+  return algorithm_.set_update_step_scale(v);
+}
+
+double c_align_color_channels_routine::update_step_scale() const
+{
+  return algorithm_.update_step_scale();
+}
+
 c_align_color_channels & c_align_color_channels_routine::algorithm()
 {
   return algorithm_;
@@ -101,6 +161,13 @@ bool c_align_color_channels_routine::deserialize(c_config_setting settings)
   settings.get("enable_threshold", &enable_threshold_);
   settings.get("threshold", &threshold_);
 
+  LOAD_PROPERTY(settings, &algorithm_, motion_type);
+  LOAD_PROPERTY(settings, &algorithm_, interpolation);
+  LOAD_PROPERTY(settings, &algorithm_, smooth_sigma);
+  LOAD_PROPERTY(settings, &algorithm_, eps);
+  LOAD_PROPERTY(settings, &algorithm_, max_iterations);
+  LOAD_PROPERTY(settings, &algorithm_, update_step_scale);
+
   return base::deserialize(settings);
 }
 
@@ -109,6 +176,12 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings) const
   settings.set("reference_channel", reference_channel_);
   settings.set("enable_threshold", enable_threshold_);
   settings.set("threshold", threshold_);
+  SAVE_PROPERTY(settings, algorithm_, motion_type);
+  SAVE_PROPERTY(settings, algorithm_, interpolation);
+  SAVE_PROPERTY(settings, algorithm_, smooth_sigma);
+  SAVE_PROPERTY(settings, algorithm_, eps);
+  SAVE_PROPERTY(settings, algorithm_, max_iterations);
+  SAVE_PROPERTY(settings, algorithm_, update_step_scale);
 
   return base::serialize(settings);
 }

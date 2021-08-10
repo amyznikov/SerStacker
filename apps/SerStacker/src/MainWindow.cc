@@ -879,8 +879,12 @@ void MainWindow::onSaveCurrentImageAs()
   static const QString keyName =
       "previousPathForSaveImageAs";
 
-  QString previousPathForSaveImageAs = settings.value(keyName,
+
+  QString previousPathForSaveImageAs = imageEditor->currentFileName();
+  if ( previousPathForSaveImageAs.isEmpty() ) {
+    previousPathForSaveImageAs = settings.value(keyName,
       imageEditor->currentFileName()).toString();
+  }
 
   while ( 42 ) {
 
@@ -946,6 +950,10 @@ void MainWindow::onSaveCurrentImageAs()
       continue;
     }
 
+
+    if ( imageEditor->currentFileName().isEmpty() ) {
+      imageEditor->setCurrentFileName(selectedFileName);
+    }
 
     settings.setValue(keyName,
         selectedFileName);

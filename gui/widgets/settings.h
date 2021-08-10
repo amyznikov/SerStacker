@@ -286,6 +286,22 @@ inline bool fromString(const QString & s, cv::Vec<double,3> * v) {
   return sscanf(s.toUtf8().data(), "%lf%*[ :;]%lf%*[ :;]%lf", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
 }
 
+inline bool fromString(const QString & text, cv::Scalar * v)
+{
+  const QByteArray a = text.toUtf8().data();
+  const char * s = a.data();
+
+  const int n = sscanf(s, "%lf[ :;]%lf[ :;]%lf[ :;]%lf[ :;]",
+      &v->val[0], &v->val[1], &v->val[2], &v->val[3]);
+
+  return n > 0;
+}
+
+inline QString toString(const cv::Scalar & v)
+{
+  return QString("%1;%2;%3;%4").arg(v[0]).arg(v[1]).arg(v[2]).arg(v[3]);
+}
+
 #endif
 
 

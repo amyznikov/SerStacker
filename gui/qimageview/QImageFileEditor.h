@@ -30,6 +30,7 @@ public:
   void closeCurrentSequence();
 
   QString currentFileName() const;
+  void setCurrentFileName(const QString & newFileName);
 
   const c_input_sequence::ptr & input_sequence() const;
 
@@ -43,6 +44,7 @@ protected:
   void hideEvent(QHideEvent *event) override;
 
 protected:
+  QString currentFileName_;
   c_input_sequence::ptr input_sequence_;
   QPlaySequenceControl * playControls = Q_NULLPTR;
 };

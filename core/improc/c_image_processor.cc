@@ -20,6 +20,7 @@
 #include "c_rangeclip_routine.h"
 #include "c_smap_routine.h"
 #include "c_unsharp_mask_routine.h"
+#include "c_differentiate_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -75,6 +76,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_rangeclip_routine::class_factory);
     register_class_factory(&c_smap_routine::class_factory);
     register_class_factory(&c_unsharp_mask_routine::class_factory);
+    register_class_factory(&c_differentiate_routine::class_factory);
   }
 }
 

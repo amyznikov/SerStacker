@@ -9,10 +9,10 @@
 #define __c_image_processor_h__
 
 #include <opencv2/opencv.hpp>
-#include <core/settings.h>
 #include <core/proc/normalize.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/smap.h>
+#include <core/settings.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 

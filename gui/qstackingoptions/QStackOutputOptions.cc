@@ -209,6 +209,8 @@ void QStackOutputOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
+    int current_index;
+
     output_directory_ctl->setCurrentPath(options_->output_directory.c_str(), false);
 
     save_processed_frames_ctl->setChecked(options_->save_processed_frames);
@@ -219,6 +221,30 @@ void QStackOutputOptions::onupdatecontrols()
     output_aligned_video_filename_ctl->setCurrentPath(options_->output_aligned_video_filename.c_str());
     output_aligned_video_filename_ctl->setEnabled(options_->write_aligned_video);
     dump_reference_data_for_debug_ctl->setChecked(options_->dump_reference_data_for_debug);
+
+
+    current_index = 0;
+    if ( options_->frame_postprocessor ) {
+      if ( (current_index = frame_processor_selector_ctl->findText(options_->frame_postprocessor->cname())) < 0 ) {
+        options_->frame_postprocessor.reset();
+        current_index = 0;
+      }
+    }
+    frame_processor_selector_ctl->setCurrentIndex(current_index);
+
+
+    current_index = 0;
+    if ( options_->accumuated_image_postprocessor ) {
+
+      current_index = accumulated_image_processor_selector_ctl->findText(
+              options_->accumuated_image_postprocessor->cname());
+
+      if ( current_index < 0 ) {
+        options_->accumuated_image_postprocessor.reset();
+        current_index = 0;
+      }
+    }
+    accumulated_image_processor_selector_ctl->setCurrentIndex(current_index);
 
 
     setEnabled(true);

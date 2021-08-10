@@ -10,6 +10,7 @@
 #define __QSettingsWidget_h__
 
 #include <QtWidgets/QtWidgets>
+#include <gui/widgets/settings.h>
 #include <gui/widgets/QEnumComboBox.h>
 #include <gui/widgets/QLineEditBox.h>
 #include <mutex>
@@ -119,7 +120,8 @@ protected:
   template<class _Calable>
   QComboBox* add_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
   {
-    QComboBox *ctl = new QComboBox(this);
+    QComboBox * ctl = new QComboBox(this);
+    ctl->setFocusPolicy( Qt::StrongFocus );
     form->addRow(name, ctl);
     QObject::connect(ctl,
         static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
@@ -142,7 +144,8 @@ protected:
   template<class CombomoxType, class _Calable>
   CombomoxType* add_enum_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
   {
-    CombomoxType *ctl = new CombomoxType(this);
+    CombomoxType * ctl = new CombomoxType(this);
+    ctl->setFocusPolicy( Qt::StrongFocus );
     form->addRow(name, ctl);
     QObject::connect(ctl, &CombomoxType::currentItemChanged,
         [this, ctl, slot](int currentIndex) {

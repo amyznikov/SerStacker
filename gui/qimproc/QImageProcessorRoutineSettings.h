@@ -10,7 +10,6 @@
 #define __QImageProcessorRoutineSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/addctrl.h>
 #include <core/improc/c_image_processor.h>
 
 

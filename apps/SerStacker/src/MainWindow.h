@@ -58,6 +58,7 @@ private:
   void restoreState();
   void configureImageViewerToolbars();
   void configureTextViewerToolbars();
+  bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
   void onSaveCurrentImageAs();

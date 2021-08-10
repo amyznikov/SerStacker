@@ -342,6 +342,7 @@ MainWindow::MainWindow()
   //  imageProcessorSelector->set_available_processors(image_processors_);
   imageEditor->set_current_processor(imageProcessorSelector->current_processor());
 
+  QApplication::instance()->installEventFilter(this);
 }
 
 MainWindow::~MainWindow()
@@ -382,6 +383,19 @@ void MainWindow::restoreState()
   fileSystemTreeDock->displayPath(settings.value(
       "fileSystemTree/absoluteFilePath").toString());
 }
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+  if ( event->type() == QEvent::Wheel) {
+    const QComboBox * combo = dynamic_cast<const QComboBox*>(watched);
+    if ( combo && !combo->isEditable() ) {
+      return true;
+    }
+  }
+
+  return Base::eventFilter(watched, event);
+}
+
 
 void MainWindow::configureTextViewerToolbars()
 {

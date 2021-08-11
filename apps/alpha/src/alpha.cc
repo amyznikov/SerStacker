@@ -92,6 +92,24 @@ int main(int argc, char *argv[])
   cf_set_loglevel(CF_LOG_DEBUG);
 
 
+
+  if ( 1 )  {
+    std::string parent_directory;
+    std::string file_name;
+    std::string file_suffix;
+
+    /* split the fullpathname to parent directory file name, and suffix */
+    split_pathfilename(filename,
+        &parent_directory,
+        &file_name,
+        &file_suffix);
+
+    CF_DEBUG("parent_directory='%s'", parent_directory.c_str());
+    CF_DEBUG("file_name='%s'", file_name.c_str());
+    CF_DEBUG("file_suffix='%s'", file_suffix.c_str());
+    return 0;
+  }
+
   if ( !load_image(image, filename) ) {
     CF_ERROR("load_tiff_image() fails");
   }

@@ -87,6 +87,12 @@ void split_path(const std::string & fullpathname,
     std::string * file_name,
     bool prune_backslash_in_parrent_directory = true);
 
+/* split the fullpathname to parent directory file name, and suffix */
+void split_pathfilename(const std::string & fullpathname,
+    std::string * parent_directory,
+    std::string * file_name,
+    std::string * file_suffix,
+    bool prune_backslash_in_parrent_directory = true);
 
 /**
  * Get home directory of current user.

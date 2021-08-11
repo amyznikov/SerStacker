@@ -122,7 +122,7 @@ QMtfControl::QMtfControl(QWidget * parent)
 
   // configure gistogram view
   levelsView_ = new QHistogramView(this);
-  levelsView_->setLogScale(logScaleSelectionAction_->isChecked());
+  logScaleSelectionAction_->setChecked(levelsView_->logScale());
   chartTypeSelectorButton_->setIcon(selectChartTypeIcon(levelsView_->chartType()) );
   displayChannel_ctl->setCurrentIndex(displayChannel_ctl->findData((int)levelsView_->displayChannel()));
 
@@ -138,6 +138,7 @@ QMtfControl::QMtfControl(QWidget * parent)
     bottomToolbar_->addWidget(spins[i] = new QDoubleSpinBox());
     spins[i]->setRange(0, 1);
     spins[i]->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
+    spins[i]->setDecimals(3);
     spins[i]->setSingleStep(0.01);
     if ( i < 2 ) {
       addStretch(bottomToolbar_);

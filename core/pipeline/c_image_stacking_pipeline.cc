@@ -1102,6 +1102,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
+    ///////////////
 
     if( output_options.frame_postprocessor ) {
       output_options.frame_postprocessor->process(current_frame_, current_mask_);
@@ -1110,21 +1111,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       }
     }
 
-
-    if( output_options.save_processed_frames ) {
-
-      save_processed_frame(current_frame_, current_mask_,
-          output_options, output_directory,
-          options->name(),
-          input_sequence->current_pos() - 1);
-
-      if ( canceled() ) {
-        break;
-      }
-    }
-
-
     ///////////////
+
 
     if( upscale_options.upscale_option != frame_upscale_none ) {
       if( upscale_options.upscale_stage == frame_upscale_after_align ) {
@@ -1139,6 +1127,24 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       }
     }
 
+    ///////////////
+
+    if( output_options.save_processed_frames ) {
+
+      //input_sequence->current_source()->
+
+      save_processed_frame(current_frame_, current_mask_,
+          output_options, output_directory,
+          options->name(),
+          input_sequence);
+
+      if ( canceled() ) {
+        break;
+      }
+    }
+
+
+    ///////////////
 
     if( output_options.write_aligned_video ) {
 
@@ -1213,7 +1219,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
         "upscale : %g ms\n"
         "register: %g ms\n"
         "remap   : %g ms\n"
-        "average : %g ms\n"
+        "process : %g ms\n"
         "-----------\n\n\n",
         processed_frames_ + start_frame_index, processed_frames_, total_frames_, total_time,
 
@@ -1804,13 +1810,38 @@ bool c_image_stacking_pipeline::save_processed_frame(const cv::Mat & current_fra
     const c_image_stacking_output_options & output_options,
     const std::string & output_directory,
     const std::string & sequence_name,
-    int frame_index)
+    const c_input_sequence::ptr & input_sequence)
 {
+  std::string source_name;
 
-  const std::string output_file_name = ssprintf("%s/%s.%06d.tiff",
-      output_directory.c_str(),
-      sequence_name.c_str(),
-      frame_index);
+  const c_input_source::ptr current_source =
+      input_sequence->current_source();
+
+  const int global_pos =
+      input_sequence->current_pos() - 1;
+
+  const int local_pos =
+      global_pos - current_source->global_pos();
+
+  split_pathfilename(current_source->filename(),
+      nullptr,
+      &source_name,
+      nullptr );
+
+
+  const std::string output_file_name =
+      input_sequence->sources().size() < 2 ?
+
+          ssprintf("%s/%s.%06d.tiff",
+              output_directory.c_str(),
+              source_name.c_str(),
+              global_pos) :
+
+          ssprintf("%s/%s.%06d.%06d.tiff",
+              output_directory.c_str(),
+              source_name.c_str(),
+              local_pos,
+              global_pos);
 
   return write_image(output_file_name, output_options,
       current_frame, current_mask);

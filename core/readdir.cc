@@ -276,6 +276,100 @@ void split_path(const std::string & fullpathname,
   }
 }
 
+/* split the fullpathname to parent directory file name, and suffix */
+void split_pathfilename(const std::string & fullpathname,
+    std::string * parent_directory,
+    std::string * file_name,
+    std::string * file_suffix,
+    bool prune_backslash_in_parrent_directory)
+{
+  if ( fullpathname.empty() ) {
+    if ( parent_directory ) {
+      *parent_directory = "";
+    }
+    if ( file_name ) {
+      *file_name = "";
+    }
+    if ( file_suffix ) {
+      *file_suffix = "";
+    }
+  }
+  else {
+
+    // skip tailing slashes if are exists
+    const std::string::const_iterator beg = fullpathname.begin();
+    std::string::const_iterator end = fullpathname.end();
+
+    while ( end > beg && *(end - 1) == '/' ) {
+      --end;
+    }
+
+    if ( end == beg ) {
+      if ( parent_directory ) {
+        *parent_directory = "/";
+      }
+      if ( file_name ) {
+        *file_name = "";
+      }
+      if ( file_suffix ) {
+        *file_suffix = "";
+      }
+    }
+    else {
+
+      // save position where tailing slashes begin (in order to drop them later)
+      std::string::const_iterator ends = end;
+
+      if ( *end == '/' ) { // don't extract file suffix from directory name
+
+        // find last '/' in remaining data
+        while ( end > beg && *(end - 1) != '/' ) {
+          --end;
+        }
+
+      }
+      else {
+
+        // find last one of '.' or '/' in remaining data
+        while ( end > beg && *(end - 1) != '.' && *(end - 1) != '/' ) {
+          --end;
+        }
+
+        if ( *(end - 1) == '.' ) {
+          if ( file_suffix ) {
+            *file_suffix = fullpathname.substr(end - beg - 1, ends - end + 1);
+          }
+
+          // find last '/' in remaining data
+          ends = end - 1;
+          while ( end > beg && *(end - 1) != '/' ) {
+            --end;
+          }
+        }
+      }
+
+      // A pointer could point to the former fullpathname, avoid the destroy by aliasing
+      const std::string name = fullpathname.substr(end - beg, ends - end);
+      const std::string directory = fullpathname.substr(0, end - beg);
+
+      if ( file_name ) {
+        *file_name = name;
+      }
+
+      if ( parent_directory ) {
+
+        *parent_directory = directory;
+
+        if ( prune_backslash_in_parrent_directory ) {
+          while ( !parent_directory->empty() && parent_directory->back() == '/' && parent_directory->size() > 1 ) {
+            parent_directory->pop_back();
+          }
+        }
+
+      }
+    }
+  }
+}
 
 
 int64_t last_modification_timestamp(const std::string & abspath)

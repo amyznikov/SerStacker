@@ -325,7 +325,7 @@ protected:
       const c_image_stacking_output_options & output_options,
       const std::string & output_directory,
       const std::string & sequence_name,
-      int frame_index);
+      const c_input_sequence::ptr & input_sequence);
 
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons);

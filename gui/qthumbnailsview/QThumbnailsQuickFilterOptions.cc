@@ -219,11 +219,13 @@ Qt::MatchFlags QThumbnailsQuickFilterOptions::matchingFlags() const
 QThumbnailsQuickFilterDialogBox::QThumbnailsQuickFilterDialogBox(QWidget * parent)
   : Base(parent)
 {
+  setWindowTitle("Quick filter");
+
   QVBoxLayout * layout =
       new QVBoxLayout(this);
 
-  setWindowTitle("Quick filter");
-  layout->addWidget(form_ = new QThumbnailsQuickFilterOptions(this));
+  layout->addWidget(form_ =
+      new QThumbnailsQuickFilterOptions(this));
 
   connect(form_, &QThumbnailsQuickFilterOptions::parameterChanged,
       this, &ThisClass::parameterChanged);

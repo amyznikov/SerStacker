@@ -17,13 +17,13 @@
 
 #define ICON_file_reload   "reload"
 #define ICON_file_delete   "delete"
-#define ICON_dirtree       "dirtree"
+#define ICON_dirtree      "dirtree"
 #define ICON_filter        "filter"
 #define ICON_filter_clear  "filter-clear"
 
 #define ICON_hourglass    "hourglass2"
 #define ICON_badimage     "badimage"
-#define ICON_textfile     "textfile"
+#define ICON_textfile      "textfile"
 
 
 static QIcon hourglass_icon;
@@ -479,13 +479,19 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
   addSpacer(toolbar_);
   toolbar_->addSeparator();
 
-  filerAction_= toolbar_->addAction(getIcon(ICON_filter),
-      "Quick filter",
+//  quickFilterAction_= toolbar_->addAction(getIcon(ICON_filter),
+//      "Quick filter",
+//      this, &ThisClass::onShowQuickFilter);
+  toolbar_->addAction(quickFilterAction_ =
+      new QAction(getIcon(ICON_filter),
+          "Quick filter"));
+  quickFilterAction_->setCheckable(true);
+  connect(quickFilterAction_, &QAction::triggered,
       this, &ThisClass::onShowQuickFilter);
 
-  clearFilterAction_= toolbar_->addAction(getIcon(ICON_filter_clear),
-      "Clear filter",
-      this, &ThisClass::clearQuickFilter);
+//  clearFilterAction_= toolbar_->addAction(getIcon(ICON_filter_clear),
+//      "Clear filter",
+//      this, &ThisClass::clearQuickFilter);
 
 
   thumbnailExtractor_.setThumbnailSize(MAX_ICON_LOAD_SIZE);
@@ -866,7 +872,12 @@ bool QThumbnailsView::moveToBads(const QString & pathfilename)
 
 void QThumbnailsView::onShowQuickFilter()
 {
-  showQuickFilter();
+  if ( quickFilterAction_->isChecked() ) {
+    showQuickFilter();
+  }
+  else {
+    clearQuickFilter();
+  }
 }
 
 void QThumbnailsView::showQuickFilter(const QString & wildcard)
@@ -877,7 +888,10 @@ void QThumbnailsView::showQuickFilter(const QString & wildcard)
 
     connect(quickfilterDialogBox_, &QThumbnailsQuickFilterDialogBox::parameterChanged,
         [this] () {
-          listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(), quickfilterDialogBox_->matchingFlags());
+          if ( quickFilterAction_->isChecked() ) {
+            listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),
+                quickfilterDialogBox_->matchingFlags());
+          }
         });
   }
 
@@ -892,7 +906,8 @@ void QThumbnailsView::showQuickFilter(const QString & wildcard)
   }
 
   quickfilterDialogBox_->show();
-  listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(), quickfilterDialogBox_->matchingFlags());
+  listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),
+      quickfilterDialogBox_->matchingFlags());
 }
 
 void QThumbnailsView::clearQuickFilter()

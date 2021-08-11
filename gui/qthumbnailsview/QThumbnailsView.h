@@ -150,8 +150,8 @@ private:
   QAction * showInDirTreeAction_ = Q_NULLPTR;
   QAction * refreshAction_ = Q_NULLPTR;
   QLabel * currentPathLabel_ = Q_NULLPTR;
-  QAction * filerAction_ = Q_NULLPTR;
-  QAction * clearFilterAction_ = Q_NULLPTR;
+  QAction * quickFilterAction_ = Q_NULLPTR;
+  //QAction * clearFilterAction_ = Q_NULLPTR;
   QThumbnailsQuickFilterDialogBox * quickfilterDialogBox_ = Q_NULLPTR;
 };
 

@@ -51,6 +51,7 @@ public:
   typedef QSettingsWidget Base;
 
   QThumbnailsQuickFilterOptions(QWidget * parent = Q_NULLPTR);
+  ~QThumbnailsQuickFilterOptions();
 
   void setSearchText(const QString & v);
   QString searchText() const;
@@ -58,6 +59,9 @@ public:
   void setMatchingFlags(Qt::MatchFlags v);
   Qt::MatchFlags matchingFlags() const;
 
+protected:
+  void loadSavedFilters();
+  void saveFilters();
 
 protected slots:
   void onSearchTextChanged(const QString & );

@@ -112,11 +112,6 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
   : Base("QThumbnailsQuickFilterOptions", parent)
 {
 
-//  const auto emit_parameterChanged =
-//      [this]() {
-//        emit parameterChanged();
-//      };
-
   searchText_ctl = new QComboBox(this);
   searchText_ctl->setEditable(true);
   searchText_ctl->setAutoCompletion(true);
@@ -141,8 +136,51 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
             emit parameterChanged();
           });
 
+  loadSavedFilters();
 }
 
+QThumbnailsQuickFilterOptions::~QThumbnailsQuickFilterOptions()
+{
+  saveFilters();
+}
+
+
+void QThumbnailsQuickFilterOptions::loadSavedFilters()
+{
+  QSettings settings;
+
+  QStringList savedFilters =
+      settings.value("ThumbnailsQuickFilters",
+          QStringList()).toStringList();
+
+
+  if ( !savedFilters.empty() ) {
+    setUpdatingControls(true);
+
+    for( int i = 0, n = std::min(20, savedFilters.count()); i < n; ++i ) {
+      searchText_ctl->addItem(savedFilters[i]);
+    }
+
+    setUpdatingControls(false);
+  }
+}
+
+void QThumbnailsQuickFilterOptions::saveFilters()
+{
+  QStringList savedFilters;
+  for( int i = 0, n = std::max(20, searchText_ctl->count()); i < n; ++i ) {
+    savedFilters.append(searchText_ctl->itemText(i));
+  }
+
+  if ( !savedFilters.empty() ) {
+
+    QSettings settings;
+
+    settings.setValue("ThumbnailsQuickFilters",
+      savedFilters);
+  }
+
+}
 
 void QThumbnailsQuickFilterOptions::onSearchTextChanged(const QString & s)
 {

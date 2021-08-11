@@ -32,17 +32,6 @@ public:
     {}
 };
 
-class QFrameUpscaleOptionCombo :
-    public QEnumComboBox<frame_upscale_option>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<frame_upscale_option> Base;
-
-  QFrameUpscaleOptionCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, frame_upscale_options)
-    {}
-};
 
 class QFrameAccumulationOptions :
     public QSettingsWidget
@@ -67,7 +56,6 @@ protected:
 protected:
   c_frame_accumulation_options * options_ = Q_NULLPTR;
   QFrameAccumulationMethodCombo * accumulation_method_ctl = Q_NULLPTR;
-  QFrameUpscaleOptionCombo * upscale_option_ctl = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

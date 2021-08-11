@@ -6,16 +6,16 @@
  */
 
 #include "QFrameAccumulationOptions.h"
-#include <gui/widgets/addctrl.h>
+//#include <gui/widgets/addctrl.h>
 #include <core/debug.h>
 
 
 #define ICON_check_all      "check_all"
 
-static const char borderless_style[] = ""
-    "QToolButton { border: none; } "
-    "QToolButton::menu-indicator { image: none; }"
-    "";
+//static const char borderless_style[] = ""
+//    "QToolButton { border: none; } "
+//    "QToolButton::menu-indicator { image: none; }"
+//    "";
 
 static QIcon getIcon(const QString & name)
 {
@@ -23,15 +23,6 @@ static QIcon getIcon(const QString & name)
 }
 
 
-QString toString(enum frame_upscale_option v)
-{
-  return toStdString(v).c_str();
-}
-
-enum frame_upscale_option fromString(const QString  & s, enum frame_upscale_option defval )
-{
-  return fromStdString(s.toStdString(), defval);
-}
 
 QString toString(enum frame_accumulation_method v)
 {
@@ -43,8 +34,8 @@ enum frame_accumulation_method fromString(const QString  & s, enum frame_accumul
   return fromStdString(s.toStdString(), defval);
 }
 
-QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent)
-  : Base("QFrameAccumulationOptions", parent)
+QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
+    Base("QFrameAccumulationOptions", parent)
 {
 
   accumulation_method_ctl = add_enum_combobox<QFrameAccumulationMethodCombo>(
@@ -56,19 +47,10 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent)
         }
       });
 
-  upscale_option_ctl = add_enum_combobox<QFrameUpscaleOptionCombo>(
-      "Upscale:",
-      [this](frame_upscale_option v) {
-        if ( options_ && v != options_->upscale_option  ) {
-          options_->upscale_option = upscale_option_ctl->currentItem();
-          emit parameterChanged();
-        }
-      });
-
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
-  applyToAll_ctl->setStyleSheet(borderless_style);
+//  applyToAll_ctl->setStyleSheet(borderless_style);
   applyToAll_ctl->setIcon(getIcon(ICON_check_all));
   applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
   connect(applyToAll_ctl, &QToolButton::clicked,
@@ -103,9 +85,9 @@ void QFrameAccumulationOptions::onupdatecontrols()
   else {
 
     accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
-    upscale_option_ctl->setCurrentItem(options_->upscale_option);
 
     setEnabled(true);
   }
 
+  Base::onupdatecontrols();
 }

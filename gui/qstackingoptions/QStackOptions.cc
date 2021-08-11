@@ -48,6 +48,10 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
       roiSelection_ctl =
           new QROISelectionOptions(this));
 
+  add_expandable_groupbox(form, "* Upscale Options",
+      upscaleOptions_ctl =
+          new QFrameUpscaleOptions(this));
+
   add_expandable_groupbox(form, "* Frame Accumulation Options",
       frameAccumulation_ctl =
           new QFrameAccumulationOptions(this));
@@ -71,6 +75,9 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
 
   connect(roiSelection_ctl, &QROISelectionOptions::applyROISelectionOptionsToAllRequested,
       this, &ThisClass::applyROISelectionOptionsToAllRequested);
+
+  connect(upscaleOptions_ctl, &QFrameUpscaleOptions::applyFrameUpScaleOptionsToAllRequested,
+      this, &ThisClass::applyFrameUpscaleOptionsToAllRequested);
 
   connect(frameAccumulation_ctl, &QFrameAccumulationOptions::applyFrameAccumulationOptionsToAllRequested,
       this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
@@ -105,6 +112,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     inputOptions_ctl->set_input_options(nullptr);
     masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
     roiSelection_ctl->set_roi_selection_options(nullptr);
+    upscaleOptions_ctl->set_upscale_options(nullptr);
     frameAccumulation_ctl->set_accumulation_options(nullptr);
     frameRegistration_ctl->set_registration_options(nullptr);
     outputOptions_ctl->set_output_options(nullptr);
@@ -116,6 +124,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     inputOptions_ctl->set_input_options(&stack_->input_options());
     masterFrame_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
     roiSelection_ctl->set_roi_selection_options(&stack_->roi_selection_options());
+    upscaleOptions_ctl->set_upscale_options(&stack_->upscale_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
     frameRegistration_ctl->set_registration_options(&stack_->frame_registration_options());
     outputOptions_ctl->set_output_options(&stack_->output_options());

@@ -1222,6 +1222,34 @@ void QStackTree::applyROISelectionOptionsToAll(const c_roi_selection_options & o
   }
 }
 
+void QStackTree::applyFrameUpscaleOptionsToAll(const c_frame_upscale_options & options)
+{
+  const int n = treeView_->topLevelItemCount();
+  for ( int i = 0; i < n; ++i ) {
+
+    QStackTreeView::QStackItem * stackItem =
+        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
+
+    if ( !stackItem || !stackItem->isSelected() ) {
+      continue;
+    }
+
+    const c_image_stacking_options::ptr & stack = stackItem->stack();
+    if ( !stack || &stack->upscale_options() == &options ) {
+      continue;
+    }
+
+    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+      continue;
+    }
+
+    // copy here
+    stack->upscale_options() = options;
+  }
+
+}
+
+
 void QStackTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options)
 {
   const int n = treeView_->topLevelItemCount();
@@ -1328,6 +1356,7 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
       // copy here
       stack->input_options() = fromStack->input_options();
       stack->roi_selection_options() = fromStack->roi_selection_options();
+      stack->upscale_options() = fromStack->upscale_options();
       stack->frame_registration_options() = fromStack->frame_registration_options();
       stack->accumulation_options() = fromStack->accumulation_options();
       stack->output_options() = fromStack->output_options();

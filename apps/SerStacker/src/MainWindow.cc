@@ -246,6 +246,9 @@ MainWindow::MainWindow()
   connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
       stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
 
+  connect(stackOptionsView, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyFrameUpscaleOptionsToAll);
+
   connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
       stackTreeView, & QStackTree::applyFrameAccumulationOptionsToAll);
 

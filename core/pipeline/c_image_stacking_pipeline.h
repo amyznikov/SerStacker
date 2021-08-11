@@ -38,10 +38,18 @@ enum frame_accumulation_method {
   frame_accumulation_fft = 2,
 };
 
+enum frame_upscale_stage {
+  frame_upscale_stage_unknown = -1,
+  frame_upscale_after_align = 1,
+  frame_upscale_before_align = 2,
+};
+
 enum frame_upscale_option {
   frame_upscale_none = 0,
-  frame_upscale_before_align = 1,
-  frame_upscale_after_align = 2,
+  frame_upscale_pyrUp = 1,
+  frame_upscale_x15 = 2,
+  frame_upscale_x20 = 3,
+  frame_upscale_x30 = 4,
 };
 
 
@@ -53,8 +61,6 @@ const extern struct roi_selection_method_desc {
 std::string toStdString(enum roi_selection_method v);
 enum roi_selection_method fromStdString(const std::string  & s,
     enum roi_selection_method defval );
-
-
 
 const extern struct frame_registration_method_desc {
   const char * name;
@@ -75,6 +81,14 @@ std::string toStdString(enum frame_accumulation_method v);
 enum frame_accumulation_method fromStdString(const std::string  & s,
     enum frame_accumulation_method defval );
 
+const extern struct frame_upscale_stage_desc {
+  const char * name;
+  enum frame_upscale_stage value;
+} frame_upscale_stages[];
+
+std::string toStdString(enum frame_upscale_stage v);
+enum frame_upscale_stage fromStdString(const std::string  & s,
+    enum frame_upscale_stage defval );
 
 const extern struct frame_upscale_option_desc {
   const char * name;
@@ -108,9 +122,13 @@ struct c_master_frame_options {
   bool compensate_master_flow = true;
 };
 
+struct c_frame_upscale_options {
+  enum frame_upscale_option upscale_option = frame_upscale_none;
+  enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
+};
+
 struct c_frame_accumulation_options {
   enum frame_accumulation_method accumulation_method  = frame_accumulation_average_masked;
-  enum frame_upscale_option upscale_option = frame_upscale_none;
 };
 
 
@@ -166,6 +184,9 @@ public:
   const c_roi_selection_options & roi_selection_options() const;
   c_feature_based_roi_selection::ptr create_roi_selection() const;
 
+  c_frame_upscale_options & upscale_options();
+  const c_frame_upscale_options & upscale_options() const;
+
   c_master_frame_options & master_frame_options();
   const c_master_frame_options & master_frame_options() const;
 
@@ -189,6 +210,7 @@ protected:
   c_input_sequence::ptr input_sequence_;
   c_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
+  c_frame_upscale_options upscale_options_;
   c_master_frame_options master_frame_options_;
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;
@@ -309,7 +331,10 @@ protected:
       const c_input_options & input_optons);
 
 
-  static void upscale(cv::InputArray src, cv::InputArray srcmask,  cv::OutputArray dst, cv::OutputArray dstmask);
+  static void upscale(enum frame_upscale_option scale,
+      cv::InputArray src, cv::InputArray srcmask,
+      cv::OutputArray dst, cv::OutputArray dstmask);
+
   static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);

@@ -125,10 +125,43 @@ enum frame_accumulation_method fromStdString(const std::string  & s,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const struct frame_upscale_stage_desc frame_upscale_stages[] = {
+    { "after_align", frame_upscale_after_align },
+    { "before_align", frame_upscale_before_align },
+    { nullptr, frame_upscale_stage_unknown },
+};
+
+std::string toStdString(enum frame_upscale_stage v)
+{
+  for ( uint i = 0; frame_upscale_stages[i].name; ++i ) {
+    if ( frame_upscale_stages[i].value == v ) {
+      return frame_upscale_stages[i].name;
+    }
+  }
+  return "";
+}
+
+enum frame_upscale_stage fromStdString(const std::string  & s,
+    enum frame_upscale_stage defval )
+{
+  const char * cstr = s.c_str();
+
+  for ( uint i = 0; frame_upscale_stages[i].name; ++i ) {
+    if ( strcasecmp(frame_upscale_stages[i].name, cstr) == 0 ) {
+      return frame_upscale_stages[i].value;
+    }
+  }
+  return defval;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const struct frame_upscale_option_desc frame_upscale_options[] ={
     {"none", frame_upscale_none},
-    {"before_align", frame_upscale_before_align},
-    {"after_align", frame_upscale_after_align},
+    {"x1.5", frame_upscale_x15},
+    {"x2.0", frame_upscale_x20},
+    {"x3.0", frame_upscale_x30},
+    {"pyrUp", frame_upscale_pyrUp},
     {nullptr, frame_upscale_none},
 } ;
 
@@ -507,6 +540,16 @@ const c_input_options & c_image_stacking_options::input_options() const
   return input_options_;
 }
 
+c_frame_upscale_options & c_image_stacking_options::upscale_options()
+{
+  return upscale_options_;
+}
+
+const c_frame_upscale_options & c_image_stacking_options::upscale_options() const
+{
+  return upscale_options_;
+}
+
 c_master_frame_options & c_image_stacking_options::master_frame_options()
 {
   return master_frame_options_;
@@ -780,6 +823,9 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   const c_input_options & input_options =
       options->input_options();
 
+  const c_frame_upscale_options & upscale_options =
+      options->upscale_options();
+
   const c_master_frame_options & master_frame_options =
       options->master_frame_options();
 
@@ -872,17 +918,30 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
   ///
+  if( upscale_options.upscale_option != frame_upscale_none ) {
+    if( upscale_options.upscale_stage == frame_upscale_before_align ) {
+      upscale(upscale_options.upscale_option,
+          reference_frame_, reference_mask_,
+          reference_frame_, reference_mask_);
+    }
+  }
 
-  if ( frame_accumulation_ ) {
 
-    if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+  ///
+
+  if( frame_accumulation_ ) {
+
+    if( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
       compute_weights(reference_frame_, reference_mask_, reference_weights_);
     }
 
-    if ( accumulation_options.upscale_option == frame_upscale_before_align ) {
-      upscale(reference_frame_, reference_mask_, reference_frame_, reference_mask_);
-      if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-        upscale(reference_weights_, cv::noArray(), reference_weights_, cv::noArray());
+    if( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+      if( upscale_options.upscale_option != frame_upscale_none ) {
+        if( upscale_options.upscale_stage == frame_upscale_before_align ) {
+          upscale(upscale_options.upscale_option,
+              reference_weights_, cv::noArray(),
+              reference_weights_, cv::noArray());
+        }
       }
     }
   }
@@ -1001,13 +1060,21 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
+    if( upscale_options.upscale_option != frame_upscale_none ) {
+      if( upscale_options.upscale_stage == frame_upscale_before_align ) {
 
-    if ( frame_accumulation_ && accumulation_options.upscale_option == frame_upscale_before_align ) {
-      upscale(current_frame_, current_mask_, current_frame_, current_mask_);
-      if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-        upscale(current_weights_, cv::noArray(), current_weights_, cv::noArray());
+        upscale(upscale_options.upscale_option,
+            current_frame_, current_mask_,
+            current_frame_, current_mask_);
+
+        if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+          upscale(upscale_options.upscale_option,
+              current_weights_, cv::noArray(),
+              current_weights_, cv::noArray());
+        }
       }
     }
+
 
     time_upscale = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
@@ -1035,19 +1102,14 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
-    write_aligned_video(current_frame_,
-        output_aligned_video,
-        output_options,
-        output_directory);
-
-
-    if ( canceled() ) {
-      break;
-    }
 
     if( output_options.frame_postprocessor ) {
       output_options.frame_postprocessor->process(current_frame_, current_mask_);
+      if ( canceled() ) {
+        break;
+      }
     }
+
 
     if( output_options.save_processed_frames ) {
 
@@ -1055,9 +1117,41 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
           output_options, output_directory,
           options->name(),
           input_sequence->current_pos() - 1);
+
+      if ( canceled() ) {
+        break;
+      }
     }
 
+
     ///////////////
+
+    if( upscale_options.upscale_option != frame_upscale_none ) {
+      if( upscale_options.upscale_stage == frame_upscale_after_align ) {
+
+        upscale(upscale_options.upscale_option,
+            current_frame_, current_mask_,
+            current_frame_, current_mask_);
+
+        if ( canceled() ) {
+          break;
+        }
+      }
+    }
+
+
+    if( output_options.write_aligned_video ) {
+
+      write_aligned_video(current_frame_,
+          output_aligned_video,
+          output_options,
+          output_directory);
+
+      if( canceled() ) {
+        break;
+      }
+    }
+
 
     if ( frame_accumulation_ ) {
 
@@ -1065,15 +1159,17 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         compute_relative_weights(current_weights_, current_mask_, reference_weights_, current_weights_);
 
-        if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-          upscale(current_frame_, current_weights_, current_frame_, current_weights_);
+        if ( upscale_options.upscale_option != frame_upscale_none ) {
+          if ( upscale_options.upscale_stage == frame_upscale_after_align ) {
+            upscale(upscale_options.upscale_option,
+                current_weights_, cv::noArray(),
+                current_weights_, cv::noArray());
+          }
         }
 
-        if ( accumulation_options.accumulation_method != frame_accumulation_fft ) {
-          if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
-            CF_ERROR("ERROR: current frame and accumulator sizes not match");
-            break;
-          }
+        if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
+          CF_ERROR("ERROR: current frame and accumulator sizes not match");
+          break;
         }
 
         if ( true ) {
@@ -1084,10 +1180,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
       }
       else {
-
-        if ( accumulation_options.upscale_option == frame_upscale_after_align ) {
-          upscale(current_frame_, current_mask_, current_frame_, current_mask_);
-        }
 
         if ( accumulation_options.accumulation_method != frame_accumulation_fft ) {
           if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
@@ -1754,18 +1846,67 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
 }
 
 
-void c_image_stacking_pipeline::upscale(cv::InputArray src, cv::InputArray srcmask, cv::OutputArray dst, cv::OutputArray dstmask)
+void c_image_stacking_pipeline::upscale(enum frame_upscale_option scale,
+    cv::InputArray src, cv::InputArray srcmask,
+    cv::OutputArray dst, cv::OutputArray dstmask)
 {
-  if ( !src.empty() && dst.needed() ) {
-    cv::pyrUp(src, dst);
+
+  switch (scale) {
+  case frame_upscale_x15:
+  {
+    const cv::Size dstsize(src.cols() * 3 / 2, src.rows() * 3 / 2);
+    if( !src.empty() && dst.needed() ) {
+      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    if( !srcmask.empty() && dstmask.needed() ) {
+      cv::resize(srcmask, dstmask, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    break;
+  }
+  case frame_upscale_x20:
+  {
+    const cv::Size dstsize(src.cols() * 2, src.rows() * 2);
+    if( !src.empty() && dst.needed() ) {
+      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    if( !srcmask.empty() && dstmask.needed() ) {
+      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    break;
+  }
+  case frame_upscale_pyrUp:
+  {
+    if( !src.empty() && dst.needed() ) {
+      cv::pyrUp(src, dst);
+    }
+    if( !srcmask.empty() && dstmask.needed() ) {
+      cv::pyrUp(srcmask, dstmask);
+    }
+    break;
+  }
+  case frame_upscale_x30:
+  {
+    const cv::Size dstsize(src.cols() * 3, src.rows() * 3);
+    if( !src.empty() && dst.needed() ) {
+      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    if( !srcmask.empty() && dstmask.needed() ) {
+      cv::resize(srcmask, dstmask, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    break;
+  }
+  default:
+    if( !src.empty() && dst.needed() ) {
+      src.copyTo(dst);
+    }
+    if( !srcmask.empty() && dstmask.needed() ) {
+      srcmask.copyTo(dstmask);
+    }
+    return;
   }
 
-  if ( !srcmask.empty() && dstmask.needed() ) {
-    cv::pyrUp(srcmask, dstmask);
-
-    if ( dstmask.depth() == CV_8U ) {
-      cv::compare(dstmask.getMatRef(), 255, dstmask.getMatRef(), cv::CMP_GE);
-    }
+  if( !srcmask.empty() && dstmask.needed() ) {
+    cv::compare(dstmask.getMatRef(), 255, dstmask.getMatRef(), cv::CMP_GE);
   }
 
 }

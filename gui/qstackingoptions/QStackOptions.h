@@ -13,6 +13,7 @@
 #include "QImageStackingInputOptions.h"
 #include "QMasterFrameOptions.h"
 #include "QROISelectionOptions.h"
+#include "QFrameUpscaleOptions.h"
 #include "QFrameRegistrationOptions.h"
 #include "QFrameAccumulationOptions.h"
 #include "QStackOutputOptions.h"
@@ -37,6 +38,7 @@ signals:
   void applyInputOptionsToAllRequested(const c_input_options & options);
   void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
   void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
+  void applyFrameUpscaleOptionsToAllRequested(const c_frame_upscale_options & options);
   void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
   void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);
   void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);
@@ -51,6 +53,7 @@ protected:
   QImageStackingInputOptions * inputOptions_ctl = Q_NULLPTR;
   QMasterFrameOptions * masterFrame_ctl = Q_NULLPTR;
   QROISelectionOptions * roiSelection_ctl = Q_NULLPTR;
+  QFrameUpscaleOptions * upscaleOptions_ctl = Q_NULLPTR;
   QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
   QFrameRegistrationOptions * frameRegistration_ctl = Q_NULLPTR;
   QStackOutputOptions * outputOptions_ctl = Q_NULLPTR;
@@ -79,6 +82,7 @@ signals:
   void applyInputOptionsToAllRequested(const c_input_options & options);
   void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
   void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
+  void applyFrameUpscaleOptionsToAllRequested(const c_frame_upscale_options & options);
   void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
   void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);
   void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);

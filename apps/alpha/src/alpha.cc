@@ -61,6 +61,7 @@ static void unsharp(cv::InputArray src, cv::OutputArray dst,
 }
 
 
+
 int main(int argc, char *argv[])
 {
   cv::Mat image, mask;
@@ -102,102 +103,159 @@ int main(int argc, char *argv[])
     CF_DEBUG("HAVE MASK");
     splitbgra(image, image, &mask);
     cv::erode(mask, smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-
-  }
-  else {
-    cv::erode(cv::Mat1b(image.size(), 255), smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_CONSTANT, 0);
   }
 
+  cv::Mat resized_image;
+  cv::resize(image, resized_image, cv::Size(image.cols * 2, image.rows * 2), 0, 0, cv::INTER_LINEAR);
+  save_image(resized_image, "resized.tiff");
 
-
-//  {
-//  double l1, l2, l2s;
-//    cv::Mat1f m(100,100, 2.f);
-//    l1 = cv::norm(m, cv::NORM_L1);
-//    l2 = cv::norm(m, cv::NORM_L2);
-//    l2s = cv::norm(m, cv::NORM_L2SQR);
-//
-//
-//    printf("\n"
-//        "M: L1=%g L2=%g L2SQR=%g"
-//        "\n",
-//        l1, l2, l2s);
-//
-//    return 0;
-//  }
-
-
-  if ( !smask.empty() ) {
-    cv::compare(image, 0.01, smask, cv::CMP_GT);
-    cv::cvtColor(smask, smask, cv::COLOR_BGR2GRAY);
-    save_image(smask, ssprintf("sharp/smask.png"));
-  }
-
-  double sigma = 0.5;
-  double l1, l2;
-
-  static const double alpha[] = {
-      0,
-      0.5, 0.75, 0.9,
-      0.95,
-      0.96,
-      0.970, 0.971, 0.972, 0.973, 0.974, 0.975, 0.976, 0.977, 0.978, 0.979,
-      0.980, 0.981, 0.982, 0.983, 0.984, 0.985, 0.986, 0.987, 0.988, 0.989,
-      0.990, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999,
-      0.9991, 0.9991, 0.9993, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9999,
-//      0.99995, 0.99999,
-//      0.999995, 0.999999,
-//      0.9999995, 0.9999999,
-  };
-
-
-  rmfiles("sharp/", "*");
-  rmfiles("g/", "*");
-
-//  cv::absdiff(image, 0, image);
-//  cv::sqrt(image, image);
-
-//  differentiate(image, gx, gy);
-//  save_image(gx, ssprintf("sharp/gx.tiff"));
-//  save_image(gy, ssprintf("sharp/gy.tiff"));
-
-//  cv::GaussianBlur(image, image, cv::Size(0,0), 0.9);
-//  differentiate(image, gx, gy);
-
-  //smask.release();
-  fprintf(stdout, "I\talpha\tm\ts\te\tim\tis\tie\n");
-
-  cv::Scalar ims, iss, ies;
-  double imv, isv, iev;
-  cv::meanStdDev(image, ims, iss, smask);
-  ies = estimate_noise(image, cv::noArray(), smask);
-  imv = (ims[0] + ims[1] + ims[2]);
-  isv = (iss[0] + iss[1] + iss[2]);
-  iev = (ies[0] + ies[1] + ies[2]);
-
-  for ( int i = 0, n = sizeof(alpha)/sizeof(alpha[0]); i < n; ++i ) {
-
-    cv::Scalar ms, ss, es;
-    double mv, sv, ev;
-
-    unsharp_mask(image, sharp, sigma, alpha[i]);
-
-    cv::meanStdDev(sharp, ms, ss, smask);
-    es = estimate_noise(sharp, cv::noArray(), smask);
-
-    mv = (ms[0] + ms[1] + ms[2]);
-    sv = (ss[0] + ss[1] + ss[2]);
-    ev = (es[0] + es[1] + es[2]);
-
-    fprintf(stdout, "%6d\t%12.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\n",
-        i, alpha[i], mv, sv, ev, imv, isv, iev);
-
-    save_image(sharp, ssprintf("sharp/sharp.%05d.tiff", i));
-   }
+//  cv::pyrUp(image, resized_image);
+//  save_image(resized_image, "resized-pup.tiff");
 
   return 0;
 }
 
+
+
+//
+//
+//int main(int argc, char *argv[])
+//{
+//  cv::Mat image, mask;
+//  std::string filename;
+//
+//  for ( int i = 1; i < argc; ++i ) {
+//
+//    if ( strcmp(argv[i], "--help") == 0 ) {
+//      printf("Usage: alpha <input-file-name.tiff>\n");
+//      return 0;
+//    }
+//
+//    if ( filename.empty() ) {
+//      filename = argv[i];
+//    }
+//    else {
+//      fprintf(stderr, "Invalid argument : %s\n", argv[i]);
+//      return 1;
+//    }
+//  }
+//
+//  if ( filename.empty() ) {
+//    fprintf(stderr, "No input file name specified\n");
+//    return 1;
+//  }
+//
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//
+//  if ( !load_image(image, filename) ) {
+//    CF_ERROR("load_tiff_image() fails");
+//  }
+//
+//
+//  cv::Mat sharp, sharpx, sharpy, gx, gy, g, smask;
+//
+//  if ( image.channels() == 4 || image.channels() == 2 ) {
+//    CF_DEBUG("HAVE MASK");
+//    splitbgra(image, image, &mask);
+//    cv::erode(mask, smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+//
+//  }
+//  else {
+//    cv::erode(cv::Mat1b(image.size(), 255), smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_CONSTANT, 0);
+//  }
+//
+//
+//
+////  {
+////  double l1, l2, l2s;
+////    cv::Mat1f m(100,100, 2.f);
+////    l1 = cv::norm(m, cv::NORM_L1);
+////    l2 = cv::norm(m, cv::NORM_L2);
+////    l2s = cv::norm(m, cv::NORM_L2SQR);
+////
+////
+////    printf("\n"
+////        "M: L1=%g L2=%g L2SQR=%g"
+////        "\n",
+////        l1, l2, l2s);
+////
+////    return 0;
+////  }
+//
+//
+//  if ( !smask.empty() ) {
+//    cv::compare(image, 0.01, smask, cv::CMP_GT);
+//    cv::cvtColor(smask, smask, cv::COLOR_BGR2GRAY);
+//    save_image(smask, ssprintf("sharp/smask.png"));
+//  }
+//
+//  double sigma = 0.5;
+//  double l1, l2;
+//
+//  static const double alpha[] = {
+//      0,
+//      0.5, 0.75, 0.9,
+//      0.95,
+//      0.96,
+//      0.970, 0.971, 0.972, 0.973, 0.974, 0.975, 0.976, 0.977, 0.978, 0.979,
+//      0.980, 0.981, 0.982, 0.983, 0.984, 0.985, 0.986, 0.987, 0.988, 0.989,
+//      0.990, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999,
+//      0.9991, 0.9991, 0.9993, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9999,
+////      0.99995, 0.99999,
+////      0.999995, 0.999999,
+////      0.9999995, 0.9999999,
+//  };
+//
+//
+//  rmfiles("sharp/", "*");
+//  rmfiles("g/", "*");
+//
+////  cv::absdiff(image, 0, image);
+////  cv::sqrt(image, image);
+//
+////  differentiate(image, gx, gy);
+////  save_image(gx, ssprintf("sharp/gx.tiff"));
+////  save_image(gy, ssprintf("sharp/gy.tiff"));
+//
+////  cv::GaussianBlur(image, image, cv::Size(0,0), 0.9);
+////  differentiate(image, gx, gy);
+//
+//  //smask.release();
+//  fprintf(stdout, "I\talpha\tm\ts\te\tim\tis\tie\n");
+//
+//  cv::Scalar ims, iss, ies;
+//  double imv, isv, iev;
+//  cv::meanStdDev(image, ims, iss, smask);
+//  ies = estimate_noise(image, cv::noArray(), smask);
+//  imv = (ims[0] + ims[1] + ims[2]);
+//  isv = (iss[0] + iss[1] + iss[2]);
+//  iev = (ies[0] + ies[1] + ies[2]);
+//
+//  for ( int i = 0, n = sizeof(alpha)/sizeof(alpha[0]); i < n; ++i ) {
+//
+//    cv::Scalar ms, ss, es;
+//    double mv, sv, ev;
+//
+//    unsharp_mask(image, sharp, sigma, alpha[i]);
+//
+//    cv::meanStdDev(sharp, ms, ss, smask);
+//    es = estimate_noise(sharp, cv::noArray(), smask);
+//
+//    mv = (ms[0] + ms[1] + ms[2]);
+//    sv = (ss[0] + ss[1] + ss[2]);
+//    ev = (es[0] + es[1] + es[2]);
+//
+//    fprintf(stdout, "%6d\t%12.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\t%15.9f\n",
+//        i, alpha[i], mv, sv, ev, imv, isv, iev);
+//
+//    save_image(sharp, ssprintf("sharp/sharp.%05d.tiff", i));
+//   }
+//
+//  return 0;
+//}
+//
 
 
 //static bool convertTofp32(const cv::Mat & src, cv::Mat & dst)

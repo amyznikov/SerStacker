@@ -9,11 +9,11 @@
 
 
 
-static void create_lpass_image(const cv::Mat & src, cv::Mat & lpass, double sigma)
+static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma)
 {
   const int borderType = cv::BORDER_REFLECT;
 
-  int min_size = std::min(src.cols, src.rows);
+  int min_size = std::min(src.cols(), src.rows());
   int imax = 0;
   while ( min_size >>= 1 ) {
     ++imax;
@@ -96,7 +96,7 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
     cv::Mat lpass;
 
 #if 1 // totally faster but sligthly approximate
-    create_lpass_image(src.getMat(), lpass, sigma);
+    create_lpass_image(src, lpass, sigma);
 #else
     cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
     cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);

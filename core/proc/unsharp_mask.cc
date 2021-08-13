@@ -7,6 +7,57 @@
 
 #include "unsharp_mask.h"
 
+
+
+static void create_lpass_image(const cv::Mat & src, cv::Mat & lpass, double sigma)
+{
+  const int borderType = cv::BORDER_REFLECT;
+
+  int min_size = std::min(src.cols, src.rows);
+  int imax = 0;
+  while ( min_size >>= 1 ) {
+    ++imax;
+  }
+
+  const int CCC = (int)(sigma * sigma / 2);
+
+  int i = 0, Ci = 0;
+  while ( i < imax && (1   + 4 * Ci) <= CCC ) {
+      Ci = 1 + 4 * Ci;
+      ++i;
+  }
+
+  if ( i < 1 ) {
+    const cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
+    cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, borderType);
+  }
+  else {
+
+    const double sigma_i = sqrt(Ci * 2);
+    const double delta2 = sqrt(sigma * sigma - sigma_i * sigma_i) / (1 << i)  ;
+
+    std::vector<cv::Size> size_history;
+
+    size_history.emplace_back(src.size());
+    cv::pyrDown(src, lpass, cv::Size(), borderType);
+
+    for ( int j = 1; j < i; ++j ) {
+      size_history.emplace_back(lpass.size());
+      cv::pyrDown(lpass, lpass, cv::Size(), borderType);
+    }
+
+    if ( delta2 > 0 ) {
+      const cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (delta2 * 5)) + 1, sigma, CV_32F);
+      cv::sepFilter2D(lpass, lpass, -1, G, G, cv::Point(-1, -1), 0, borderType);
+    }
+
+    for ( int j = size_history.size()-1; j >= 0; --j ) {
+      cv::pyrUp(lpass, lpass, size_history[j]);
+    }
+  }
+}
+
+
 void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
     double sigma, double alpha,
     double outmin, double outmax)
@@ -43,8 +94,14 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
     }
 
     cv::Mat lpass;
+
+#if 1 // totally faster but sligthly approximate
+    create_lpass_image(src.getMat(), lpass, sigma);
+#else
     cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
     cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+#endif
+
     cv::addWeighted(src, 1. / (1. - alpha), lpass, -alpha / (1. - alpha), 0, dst);
   }
 

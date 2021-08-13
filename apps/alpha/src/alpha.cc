@@ -17,6 +17,7 @@
 #include <core/settings.h>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
+#include <core/get_time.h>
 #include <core/debug.h>
 
 extern void ecc_differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy);;
@@ -108,41 +109,128 @@ int main(int argc, char *argv[])
 //    return 0;
 //  }
 
+
   if ( !load_image(image, filename) ) {
     CF_ERROR("load_tiff_image() fails");
   }
 
 
-//  cv::Mat sharp, sharpx, sharpy, gx, gy, g, smask;
+  int min_size = std::min(image.cols, image.rows);
+  CF_DEBUG("min_size=%d ", min_size);
+
+  int imax = 0;
+  while ( min_size >>= 1 ) {
+    ++imax;
+  }
+
+  CF_DEBUG("imax=%d ", imax);
+
+
+  double sigma = 50;
+  double CC = sigma * sigma / 2;
+  int CCC = (int)CC;
+
+  int i = 0;
+  int Ci = 0;
+  while ( i < imax && (1   + 4 * Ci) <= CCC ) {
+      Ci = 1 + 4 * Ci;
+      ++i;
+  }
+
+  double sigma_i = sqrt(Ci * 2);
+  double delta = sqrt(sigma * sigma - sigma_i * sigma_i);
+  double delta2 = delta / (1 << i)  ;
+
+
+  CF_DEBUG("sigma=%g CC=%g CCC=%d", sigma, CC, CCC);
+  CF_DEBUG("Ci=%d i=%d sigma_i=%g delta=%g delta2=%g", Ci, i, sigma_i, delta, delta2);
+
+
+
+
+
+  double t0, t1;
+
+  double gaussian_time, pyramid_time;
+
+  cv::Mat gaussian_blured_image;
+  cv::Mat pyramid_blured_image;
+  cv::Mat difference;
+
+
+  int borderType = cv::BORDER_REFLECT;
+  t0 = get_realtime_ms();
+  if ( i < 1 ) {
+    cv::GaussianBlur(image, pyramid_blured_image, cv::Size(0, 0), sigma, sigma, borderType);
+  }
+  else {
+    std::vector<cv::Size> size_history;
+
+    size_history.emplace_back(image.size());
+    cv::pyrDown(image, pyramid_blured_image, cv::Size(), borderType);
+
+    for ( int j = 1; j < i; ++j ) {
+      size_history.emplace_back(pyramid_blured_image.size());
+      cv::pyrDown(pyramid_blured_image, pyramid_blured_image, cv::Size(), borderType);
+    }
+
+    if ( delta2 > 0 ) {
+      cv::GaussianBlur(pyramid_blured_image, pyramid_blured_image, cv::Size(0, 0), delta2, borderType);
+    }
+
+    for ( int j = size_history.size()-1; j >= 0; --j ) {
+      cv::pyrUp(pyramid_blured_image, pyramid_blured_image, size_history[j]);
+    }
+  }
+  t1 = get_realtime_ms();
+  pyramid_time = t1 - t0;
+
+  t0 = get_realtime_ms();
+  cv::GaussianBlur(image, gaussian_blured_image, cv::Size(0, 0), sigma, sigma, borderType);
+  t1 = get_realtime_ms();
+  gaussian_time = t1 - t0;
+
+  CF_DEBUG("TIME: gaussian=%g pyramid=%g", gaussian_time, pyramid_time);
+
+  cv::subtract(gaussian_blured_image, pyramid_blured_image, difference);
+  save_image(image, "source_image.tiff");
+  save_image(gaussian_blured_image, "gaussian_blured_image.tiff");
+  save_image(pyramid_blured_image, "pyramid_blured_image.tiff");
+  save_image(difference, "difference.tiff");
+
+
+
 //
-//  if ( image.channels() == 4 || image.channels() == 2 ) {
-//    CF_DEBUG("HAVE MASK");
-//    splitbgra(image, image, &mask);
-//    cv::erode(mask, smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-//  }
-
-//  cv::Mat1f srcimage(30, 30);
-//  for ( int y = 0; y < srcimage.rows; ++y ) {
-//    for ( int x = 0; x < srcimage.cols; ++x ) {
-//      srcimage[y][x] = 10 + ((double)(x)) / srcimage.cols + ((double)(y)) / srcimage.rows;
-//    }
-//  }
-
-
-  cv::Mat srcimage;
-  cv::Mat resized_image;
-
-  cv::cvtColor(image, srcimage, cv::COLOR_BGR2GRAY);
-
-  cv::resize(srcimage, resized_image, cv::Size(srcimage.cols*3/2, srcimage.rows*3/2), 0, 0, cv::INTER_LINEAR);
-  save_image(srcimage, "src.tiff");
-  save_image(resized_image, "upsampled.tiff");
-
-//  cv::resize(image, resized_image, cv::Size(image.cols * 2, image.rows * 2), 0, 0, cv::INTER_LINEAR);
-//  save_image(resized_image, "resized.tiff");
-
-//  cv::pyrUp(image, resized_image);
-//  save_image(resized_image, "resized-pup.tiff");
+//
+//  std::vector<cv::Size> sizes;
+//
+//
+//  sizes.emplace_back(image.size());
+//  cv::pyrDown(image, pyramid_blured_image);
+//
+//  sizes.emplace_back(pyramid_blured_image.size());
+//  cv::pyrDown(pyramid_blured_image, pyramid_blured_image);
+//
+//  sizes.emplace_back(pyramid_blured_image.size());
+//  cv::pyrDown(pyramid_blured_image, pyramid_blured_image);
+//  cv::GaussianBlur(pyramid_blured_image, pyramid_blured_image, cv::Size(0, 0), 0.95197125);
+//
+//
+//
+//
+//  cv::pyrUp(pyramid_blured_image, pyramid_blured_image, sizes[sizes.size()-1]);
+//  cv::pyrUp(pyramid_blured_image, pyramid_blured_image, sizes[sizes.size()-2]);
+//  cv::pyrUp(pyramid_blured_image, pyramid_blured_image, sizes[sizes.size()-3]);
+//  //cv::GaussianBlur(pyramid_blured_image, pyramid_blured_image, cv::Size(0, 0), 7.61577);
+//
+//
+//  cv::subtract(gaussian_blured_image, pyramid_blured_image, difference);
+//
+//  save_image(image, "source_image.tiff");
+//  save_image(gaussian_blured_image, "gaussian_blured_image.tiff");
+//  save_image(pyramid_blured_image, "pyramid_blured_image.tiff");
+//  save_image(difference, "difference.tiff");
+//
 
   return 0;
 }

@@ -42,6 +42,9 @@ public:
   bool deleteFiles(const QList<QListWidgetItem*> & selectedItems, bool askConfirmation = true);
   void selectAll(bool includeHiddenItems = false);
 
+  void scheduleUpdateItemsLayout();
+  void updateItemsLayout();
+
 signals:
   //void keyPressed(QKeyEvent * e);
   void enterPressed(QListWidgetItem * current_item);
@@ -84,6 +87,7 @@ public:
   QPoint contextMenuPosToGlobal(const QPoint & pos) const;
 
   bool moveToBads(const QString & pathfilename );
+
 
 public slots:
   void displayPath(const QString & path);

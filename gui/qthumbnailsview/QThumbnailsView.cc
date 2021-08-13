@@ -194,7 +194,9 @@ void QThumbnailsListWidget::updateIcon(const QIcon & icon, const QString & fullP
   if ( foundItem ) {
     foundItem->setData(Qt::UserRole, data);
     foundItem->setIcon(icon.isNull() ? badimage_icon : icon);
-    repaint();
+    if ( !foundItem->isHidden() ) {
+      repaint();
+    }
   }
 }
 
@@ -233,6 +235,17 @@ void QThumbnailsListWidget::selectPrevIcon()
     }
     setCurrentRow(next_row);
   }
+}
+
+void QThumbnailsListWidget::scheduleUpdateItemsLayout()
+{
+  QTimer::singleShot(250, this, &ThisClass::scheduleDelayedItemsLayout);
+}
+
+void QThumbnailsListWidget::updateItemsLayout()
+{
+  Base::scheduleDelayedItemsLayout();
+  Base::executeDelayedItemsLayout();
 }
 
 
@@ -579,6 +592,8 @@ void QThumbnailsView::onSearchImageFilesFinished()
 
 void QThumbnailsView::extractMissingThumbiails()
 {
+  bool hasupdates = false;
+  bool finished = true;
 
   for ( int i = 0, n = listWidget_->count(); i < n; ++i ) {
     QListWidgetItem * item = listWidget_->item(i);
@@ -600,14 +615,28 @@ void QThumbnailsView::extractMissingThumbiails()
       if ( is_textfle ){
         item->setIcon(textfile_icon);
         item->setData(Qt::UserRole, QVariant(true));
-        listWidget_->update();
+
+        if ( !item->isHidden() ) {
+          hasupdates = true;
+        }
+
       }
       else {
+        finished = false;
         thumbnailExtractor_.start(filename);
         break;
       }
     }
   }
+
+  if ( finished ) {
+    listWidget_->updateItemsLayout();
+  }
+  else if ( hasupdates ) {
+    listWidget_->repaint();
+  }
+
+
 }
 
 void QThumbnailsView::onThumbnailExtractorStarted()

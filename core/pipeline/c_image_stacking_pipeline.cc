@@ -158,9 +158,8 @@ enum frame_upscale_stage fromStdString(const std::string  & s,
 
 const struct frame_upscale_option_desc frame_upscale_options[] ={
     {"none", frame_upscale_none},
-    {"pyrUp", frame_upscale_pyrUp},
     {"x1.5", frame_upscale_x15},
-    {"x2.0", frame_upscale_x20},
+    {"x2.0", frame_upscale_pyrUp},
     {"x3.0", frame_upscale_x30},
     {nullptr, frame_upscale_none},
 } ;
@@ -315,47 +314,6 @@ void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_al
 
 
 namespace {
-
-
-//static int countNaNs(const cv::Mat & image)
-//{
-//  int cnt = 0;
-//
-//  const int nc = image.channels();
-//
-//  for ( int y = 0; y < image.rows; ++y ) {
-//
-//    const float * p = image.ptr<const float>(y);
-//
-//    for ( int x = 0; x < image.cols * nc; ++x ) {
-//      if ( isnan(p[x]) ) {
-//        ++cnt;
-//      }
-//    }
-//  }
-//
-//  return cnt;
-//}
-
-//static int countInfs(const cv::Mat & image)
-//{
-//  int cnt = 0;
-//
-//  const int nc = image.channels();
-//
-//  for ( int y = 0; y < image.rows; ++y ) {
-//
-//    const float * p = image.ptr<const float>(y);
-//
-//    for ( int x = 0; x < image.cols * nc; ++x ) {
-//      if ( isinf(p[x]) ) {
-//        ++cnt;
-//      }
-//    }
-//  }
-//
-//  return cnt;
-//}
 
 //static cv::Mat2f remap2flow(const cv::Mat2f &rmap, const cv::Mat1b & mask)
 //{
@@ -791,6 +749,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   c_video_writer output_aligned_video;
   std::string output_file_name;
   std::string output_directory;
+  cv::Mat2f upscaled_remap;
   cv::Mat tmp;
   bool fOk;
 
@@ -918,30 +877,24 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
   ///
-  if( upscale_options.upscale_option != frame_upscale_none ) {
-    if( upscale_options.upscale_stage == frame_upscale_before_align ) {
-      upscale(upscale_options.upscale_option,
-          reference_frame_, reference_mask_,
-          reference_frame_, reference_mask_);
-    }
+  if ( upscale_options.need_upscale_before_align() ) {
+    upscale_image(upscale_options.upscale_option,
+        reference_frame_, reference_mask_,
+        reference_frame_, reference_mask_);
   }
 
 
   ///
 
   if( frame_accumulation_ ) {
-
     if( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+
       compute_weights(reference_frame_, reference_mask_, reference_weights_);
-    }
 
-    if( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-      if( upscale_options.upscale_option != frame_upscale_none ) {
-        if( upscale_options.upscale_stage == frame_upscale_before_align ) {
-          upscale(upscale_options.upscale_option,
+      if( upscale_options.need_upscale_before_align() ) {
+          upscale_image(upscale_options.upscale_option,
               reference_weights_, cv::noArray(),
               reference_weights_, cv::noArray());
-        }
       }
     }
   }
@@ -1060,18 +1013,16 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
-    if( upscale_options.upscale_option != frame_upscale_none ) {
-      if( upscale_options.upscale_stage == frame_upscale_before_align ) {
+    if ( upscale_options.need_upscale_before_align() ) {
 
-        upscale(upscale_options.upscale_option,
-            current_frame_, current_mask_,
-            current_frame_, current_mask_);
+      upscale_image(upscale_options.upscale_option,
+          current_frame_, current_mask_,
+          current_frame_, current_mask_);
 
-        if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-          upscale(upscale_options.upscale_option,
-              current_weights_, cv::noArray(),
-              current_weights_, cv::noArray());
-        }
+      if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+        upscale_image(upscale_options.upscale_option,
+            current_weights_, cv::noArray(),
+            current_weights_, cv::noArray());
       }
     }
 
@@ -1084,17 +1035,40 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     ///////////////
     if ( frame_registration_ ) {
 
-      if ( !frame_registration_->register_frame(current_frame_, current_frame_, current_mask_, current_mask_) ) {
-        CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + start_frame_index);
-        continue;
-      }
+      if ( !upscale_options.need_upscale_after_align() ) {
 
-      if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
-        if ( !frame_registration_->remap(current_weights_, current_weights_) ) {
-          CF_ERROR("[F %6d] reg->remap(current_weights) fails\n", processed_frames_ + start_frame_index);
+        if ( !frame_registration_->register_frame(current_frame_, current_mask_, current_frame_, current_mask_) ) {
+          CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + start_frame_index);
           continue;
         }
+
+        if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+          frame_registration_->remap(current_weights_, current_weights_);
+        }
+
       }
+      else {
+
+        if ( !frame_registration_->register_frame(current_frame_, current_mask_, cv::noArray(), cv::noArray()) ) {
+          CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + start_frame_index);
+          continue;
+        }
+
+        upscale_remap(upscale_options.upscale_option,
+            frame_registration_->current_remap(),
+            upscaled_remap);
+
+        frame_registration_->custom_remap(upscaled_remap,
+            current_frame_, current_frame_,
+            current_mask_, current_mask_);
+
+        if ( accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
+          frame_registration_->custom_remap(upscaled_remap,
+              current_weights_, current_weights_);
+        }
+
+      }
+
     }
 
     time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -1104,8 +1078,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     ///////////////
 
-    if( output_options.frame_postprocessor ) {
-      output_options.frame_postprocessor->process(current_frame_, current_mask_);
+    if( output_options.frame_processor ) {
+      output_options.frame_processor->process(current_frame_, current_mask_);
       if ( canceled() ) {
         break;
       }
@@ -1113,25 +1087,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     ///////////////
 
-
-    if( upscale_options.upscale_option != frame_upscale_none ) {
-      if( upscale_options.upscale_stage == frame_upscale_after_align ) {
-
-        upscale(upscale_options.upscale_option,
-            current_frame_, current_mask_,
-            current_frame_, current_mask_);
-
-        if ( canceled() ) {
-          break;
-        }
-      }
-    }
-
-    ///////////////
-
     if( output_options.save_processed_frames ) {
-
-      //input_sequence->current_source()->
 
       save_processed_frame(current_frame_, current_mask_,
           output_options, output_directory,
@@ -1165,14 +1121,6 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         compute_relative_weights(current_weights_, current_mask_, reference_weights_, current_weights_);
 
-        if ( upscale_options.upscale_option != frame_upscale_none ) {
-          if ( upscale_options.upscale_stage == frame_upscale_after_align ) {
-            upscale(upscale_options.upscale_option,
-                current_weights_, cv::noArray(),
-                current_weights_, cv::noArray());
-          }
-        }
-
         if ( frame_accumulation_->accumulated_frames() > 0 && current_frame_.size() != frame_accumulation_->accumulator_size() ) {
           CF_ERROR("ERROR: current frame and accumulator sizes not match");
           break;
@@ -1196,6 +1144,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
         if ( true ) {
           lock_guard lock(accumulator_lock_);
+
           frame_accumulation_->add(current_frame_, current_mask_);
         }
       }
@@ -1274,7 +1223,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       CF_ERROR("write_image('%s') fails", output_file_name.c_str());
     }
 
-    const c_image_processor::ptr postprocessor = options->output_options().accumuated_image_postprocessor;
+    const c_image_processor::ptr postprocessor = options->output_options().accumuated_image_processor;
 
     CF_DEBUG("postprocessor: %s", postprocessor ?
         postprocessor->cname() : "NONE");
@@ -1559,7 +1508,7 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     if ( frame_registration_ ) {
       lock_guard lock(registration_lock_);
 
-      if ( !frame_registration_->register_frame(current_frame_, current_frame_, current_mask_, current_mask_) ) {
+      if ( !frame_registration_->register_frame(current_frame_, current_mask_, current_frame_, current_mask_) ) {
         CF_WARNING("WARNING: frame_registration_->register_frame(i=%d) fails", processed_frames_);
         continue;
       }
@@ -1877,22 +1826,49 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
 }
 
 
-void c_image_stacking_pipeline::upscale(enum frame_upscale_option scale,
+void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
+    cv::InputArray srcmap,
+    cv::OutputArray dstmap)
+{
+  switch (scale) {
+  case frame_upscale_x15:
+  {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
+      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
+    }
+    break;
+  }
+  case frame_upscale_pyrUp:
+  {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      cv::pyrUp(srcmap, dstmap);
+    }
+    break;
+  }
+  case frame_upscale_x30:
+  {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      const cv::Size dstsize(srcmap.cols() * 3, srcmap.rows() * 3);
+      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    break;
+  }
+  default:
+    if( !srcmap.empty() && dstmap.needed() ) {
+      srcmap.copyTo(dstmap);
+    }
+    break;
+  }
+}
+
+
+void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
     cv::InputArray src, cv::InputArray srcmask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
 
   switch (scale) {
-  case frame_upscale_pyrUp:
-  {
-    if( !src.empty() && dst.needed() ) {
-      cv::pyrUp(src, dst);
-    }
-    if( !srcmask.empty() && dstmask.needed() ) {
-      cv::pyrUp(srcmask, dstmask);
-    }
-    break;
-  }
   case frame_upscale_x15:
   {
     const cv::Size dstsize(src.cols() * 3 / 2, src.rows() * 3 / 2);
@@ -1904,14 +1880,13 @@ void c_image_stacking_pipeline::upscale(enum frame_upscale_option scale,
     }
     break;
   }
-  case frame_upscale_x20:
+  case frame_upscale_pyrUp:
   {
-    const cv::Size dstsize(src.cols() * 2, src.rows() * 2);
     if( !src.empty() && dst.needed() ) {
-      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+      cv::pyrUp(src, dst);
     }
     if( !srcmask.empty() && dstmask.needed() ) {
-      cv::resize(srcmask, dstmask, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+      cv::pyrUp(srcmask, dstmask);
     }
     break;
   }
@@ -1945,13 +1920,6 @@ void c_image_stacking_pipeline::upscale(enum frame_upscale_option scale,
 void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
   compute_smap(src, dst, 0.01, 0);
-
-//  cv::Mat w;
-//  compute_smap(src, w, 0.01, 0);
-//  if ( !srcmask.empty() ) {
-//    w.setTo(0, ~srcmask);
-//  }
-//  dst = std::move(w);
 }
 
 void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel)
@@ -1961,21 +1929,6 @@ void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, con
     wrel.setTo(0, ~mc);
   }
 
-//  int n;
-//
-//  if ( (n = countNaNs(wrel)) > 0 ) {
-//    CF_DEBUG(" ******* NANS DETECTED : n= %d", n);
-//    exit(1);
-//  }
-//  if ( (n = countInfs(wrel)) > 0 ) {
-//    CF_DEBUG(" ******* INFS DETECTED : n= %d", n);
-//    exit(1);
-//  }
-
-
-//  if ( mc.size() == wc.size() ) {
-//    wrel.setTo(0, ~mc);
-//  }
 }
 
 

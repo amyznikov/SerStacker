@@ -48,7 +48,7 @@ enum frame_upscale_option {
   frame_upscale_none = 0,
   frame_upscale_pyrUp = 1,
   frame_upscale_x15 = 2,
-  frame_upscale_x20 = 3,
+  //frame_upscale_x20 = 3,
   frame_upscale_x30 = 4,
 };
 
@@ -125,6 +125,15 @@ struct c_master_frame_options {
 struct c_frame_upscale_options {
   enum frame_upscale_option upscale_option = frame_upscale_none;
   enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
+
+  bool need_upscale_before_align() const {
+    return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_before_align;
+  }
+
+  bool need_upscale_after_align() const {
+    return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
+  }
+
 };
 
 struct c_frame_accumulation_options {
@@ -147,9 +156,9 @@ struct c_image_stacking_output_options {
 
   std::string output_aligned_video_filename;
 
-  c_image_processor::ptr accumuated_image_postprocessor;
-  c_image_processor::ptr frame_postprocessor;
-  std::string potprocessed_image_filename;
+  c_image_processor::ptr accumuated_image_processor;
+  c_image_processor::ptr frame_processor;
+  std::string processed_frame_filename;
 
   bool write_aligned_video = false;
   bool save_processed_frames = false;
@@ -331,9 +340,13 @@ protected:
       const c_input_options & input_optons);
 
 
-  static void upscale(enum frame_upscale_option scale,
+  static void upscale_image(enum frame_upscale_option scale,
       cv::InputArray src, cv::InputArray srcmask,
       cv::OutputArray dst, cv::OutputArray dstmask);
+
+  static void upscale_remap(enum frame_upscale_option scale,
+      cv::InputArray srcmap,
+      cv::OutputArray dstmap);
 
   static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);

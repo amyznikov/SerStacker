@@ -343,20 +343,11 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
 }
 
 
-bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray dst,
-    cv::InputArray _srcmsk, cv::OutputArray dstmsk)
+bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _srcmask,
+    cv::OutputArray dst, cv::OutputArray dstmask)
 {
   double start_time = 0, total_time = 0;
   double t0, t1;
-
-  //double time_extract_feature_image = 0;
-  //double time_estimate_feature_transform = 0;
-  //double time_extract_ecc_image = 0;
-//  double time_ecc_align = 0;
-//  double time_create_remap = 0;
-//  double time_extract_smflow_image = 0;
-//  double time_smflow_align = 0;
-//  double time_remap = 0;
 
   bool have_transform = false;
 
@@ -365,7 +356,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
   start_time = get_realtime_ms();
 
   cv::Mat src = _src.getMat();
-  cv::Mat srcmsk = _srcmsk.getMat();
+  cv::Mat srcmsk = _srcmask.getMat();
 
   current_frame_size_ = src.size();
   current_transform_ = createEyeTransform(motion_type());
@@ -388,13 +379,6 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
       CF_ERROR("estimate_feature_transform() fails");
       return false;
     }
-
-//    if ( !current_ROI_.empty() ) {
-//      src = src(current_ROI_);
-//      if ( !srcmsk.empty() ) {
-//        srcmsk = srcmsk(current_ROI_);
-//      }
-//    }
 
     current_status_.timings.estimate_feature_transform =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -482,9 +466,9 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
   }
 
 
-  if ( dst.needed() || dstmsk.needed() ) {
+  if ( dst.needed() || dstmask.needed() ) {
     t0 = get_realtime_ms();
-    remap(_src, dst, _srcmsk, dstmsk);
+    remap(_src, dst, _srcmask, dstmask);
     current_status_.timings.remap =
         (t1 = get_realtime_ms()) - t0;
   }
@@ -524,8 +508,8 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::OutputArray d
 
 
 
-bool c_frame_registration::custom_remap(cv::InputArray _src, cv::OutputArray dst,
-    const cv::Mat2f & rmap,
+bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
+    cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
     int interpolation_flags,
     int border_mode,
@@ -599,7 +583,8 @@ bool c_frame_registration::remap(cv::InputArray src, cv::OutputArray dst,
     int border_mode,
     const cv::Scalar & border_value) const
 {
-  return custom_remap(src, dst, current_remap_,
+  return custom_remap(current_remap_,
+      src, dst,
       src_mask, dst_mask,
       interpolation_flags,
       border_mode,

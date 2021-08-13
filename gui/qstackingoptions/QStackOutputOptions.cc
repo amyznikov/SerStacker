@@ -75,10 +75,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ ) {
               if ( index < 1 ||(index = QImageProcessorsCollection::indexof(
                   frame_processor_selector_ctl->currentText()) ) < 0 ) {
-                options_->frame_postprocessor.reset();
+                options_->frame_processor.reset();
               }
               else {
-                options_->frame_postprocessor = QImageProcessorsCollection::item(index);
+                options_->frame_processor = QImageProcessorsCollection::item(index);
               }
             }
       });
@@ -97,10 +97,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ ) {
               if ( index < 1 ||(index = QImageProcessorsCollection::indexof(
                   accumulated_image_processor_selector_ctl->currentText()) ) < 0 ) {
-                options_->accumuated_image_postprocessor.reset();
+                options_->accumuated_image_processor.reset();
               }
               else {
-                options_->accumuated_image_postprocessor = QImageProcessorsCollection::item(index);
+                options_->accumuated_image_processor = QImageProcessorsCollection::item(index);
               }
             }
       });
@@ -224,9 +224,9 @@ void QStackOutputOptions::onupdatecontrols()
 
 
     current_index = 0;
-    if ( options_->frame_postprocessor ) {
-      if ( (current_index = frame_processor_selector_ctl->findText(options_->frame_postprocessor->cname())) < 0 ) {
-        options_->frame_postprocessor.reset();
+    if ( options_->frame_processor ) {
+      if ( (current_index = frame_processor_selector_ctl->findText(options_->frame_processor->cname())) < 0 ) {
+        options_->frame_processor.reset();
         current_index = 0;
       }
     }
@@ -234,13 +234,13 @@ void QStackOutputOptions::onupdatecontrols()
 
 
     current_index = 0;
-    if ( options_->accumuated_image_postprocessor ) {
+    if ( options_->accumuated_image_processor ) {
 
       current_index = accumulated_image_processor_selector_ctl->findText(
-              options_->accumuated_image_postprocessor->cname());
+              options_->accumuated_image_processor->cname());
 
       if ( current_index < 0 ) {
-        options_->accumuated_image_postprocessor.reset();
+        options_->accumuated_image_processor.reset();
         current_index = 0;
       }
     }

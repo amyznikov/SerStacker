@@ -132,9 +132,8 @@ public: // ops
   virtual bool setup_referece_frame(cv::InputArray image,
       cv::InputArray msk = cv::noArray());
 
-  virtual bool register_frame(cv::InputArray src, cv::OutputArray dst,
-      cv::InputArray srcmsk = cv::noArray(),
-      cv::OutputArray dstmsk = cv::noArray());
+  virtual bool register_frame(cv::InputArray src, cv::InputArray srcmask,
+      cv::OutputArray dst, cv::OutputArray dstmask);
 
   virtual bool remap(cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
@@ -143,9 +142,8 @@ public: // ops
       int border_mode = -1,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
-  virtual bool custom_remap(cv::InputArray src, cv::OutputArray dst,
-      //      const cv::Rect & srcROI,
-      const cv::Mat2f & rmap,
+  virtual bool custom_remap(const cv::Mat2f & rmap,
+      cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
       int interpolation_flags = -1,

@@ -153,6 +153,7 @@ private:
   QAction * quickFilterAction_ = Q_NULLPTR;
   //QAction * clearFilterAction_ = Q_NULLPTR;
   QThumbnailsQuickFilterDialogBox * quickfilterDialogBox_ = Q_NULLPTR;
+  bool ignoreQuickFilterAction_ = false;
 };
 
 #endif /* __QThumbnailsView_h__ */

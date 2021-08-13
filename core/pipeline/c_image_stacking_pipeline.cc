@@ -158,10 +158,10 @@ enum frame_upscale_stage fromStdString(const std::string  & s,
 
 const struct frame_upscale_option_desc frame_upscale_options[] ={
     {"none", frame_upscale_none},
+    {"pyrUp", frame_upscale_pyrUp},
     {"x1.5", frame_upscale_x15},
     {"x2.0", frame_upscale_x20},
     {"x3.0", frame_upscale_x30},
-    {"pyrUp", frame_upscale_pyrUp},
     {nullptr, frame_upscale_none},
 } ;
 
@@ -1852,14 +1852,24 @@ void c_image_stacking_pipeline::upscale(enum frame_upscale_option scale,
 {
 
   switch (scale) {
+  case frame_upscale_pyrUp:
+  {
+    if( !src.empty() && dst.needed() ) {
+      cv::pyrUp(src, dst);
+    }
+    if( !srcmask.empty() && dstmask.needed() ) {
+      cv::pyrUp(srcmask, dstmask);
+    }
+    break;
+  }
   case frame_upscale_x15:
   {
     const cv::Size dstsize(src.cols() * 3 / 2, src.rows() * 3 / 2);
     if( !src.empty() && dst.needed() ) {
-      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR);
     }
     if( !srcmask.empty() && dstmask.needed() ) {
-      cv::resize(srcmask, dstmask, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+      cv::resize(srcmask, dstmask, dstsize, 0, 0, cv::INTER_LINEAR);
     }
     break;
   }
@@ -1870,17 +1880,7 @@ void c_image_stacking_pipeline::upscale(enum frame_upscale_option scale,
       cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
     }
     if( !srcmask.empty() && dstmask.needed() ) {
-      cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
-    }
-    break;
-  }
-  case frame_upscale_pyrUp:
-  {
-    if( !src.empty() && dst.needed() ) {
-      cv::pyrUp(src, dst);
-    }
-    if( !srcmask.empty() && dstmask.needed() ) {
-      cv::pyrUp(srcmask, dstmask);
+      cv::resize(srcmask, dstmask, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
     }
     break;
   }

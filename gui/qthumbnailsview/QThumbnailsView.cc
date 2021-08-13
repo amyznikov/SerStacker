@@ -872,16 +872,19 @@ bool QThumbnailsView::moveToBads(const QString & pathfilename)
 
 void QThumbnailsView::onShowQuickFilter()
 {
-  if ( quickFilterAction_->isChecked() ) {
-    showQuickFilter();
-  }
-  else {
-    clearQuickFilter();
+  if ( !ignoreQuickFilterAction_ ) {
+    if ( quickFilterAction_->isChecked() ) {
+      showQuickFilter();
+    }
+    else {
+      clearQuickFilter();
+    }
   }
 }
 
 void QThumbnailsView::showQuickFilter(const QString & wildcard)
 {
+
   if ( !quickfilterDialogBox_ ) {
 
     quickfilterDialogBox_ = new QThumbnailsQuickFilterDialogBox(this);
@@ -904,6 +907,10 @@ void QThumbnailsView::showQuickFilter(const QString & wildcard)
       quickfilterDialogBox_->setSearchText(currentItem->text());
     }
   }
+
+  ignoreQuickFilterAction_ = true;
+  quickFilterAction_->setChecked(true);
+  ignoreQuickFilterAction_ = false;
 
   quickfilterDialogBox_->show();
   listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),

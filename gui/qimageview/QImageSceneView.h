@@ -18,8 +18,8 @@ public:
   typedef QImageSceneView ThisClass;
   typedef QGraphicsView Base;
 
-  static constexpr int MIN_SCALE = -100;
-  static constexpr int MAX_SCALE = +100;
+  static constexpr int MIN_SCALE = -256;
+  static constexpr int MAX_SCALE = +256;
 
 
   QImageSceneView(QWidget *parent = Q_NULLPTR);

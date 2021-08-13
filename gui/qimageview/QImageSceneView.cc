@@ -26,6 +26,10 @@ QImageSceneView::QImageSceneView(QWidget *parent)
         zoom(-1);
       }, Qt::WidgetShortcut);
 
+  shortcut = new QShortcut(QKeySequence("Ctrl+0"), this,
+      this, &ThisClass::resetZoom,
+      Qt::WidgetShortcut);
+
 }
 
 QImageScene * QImageSceneView::scene() const
@@ -91,7 +95,7 @@ void QImageSceneView::zoom(int delta, QPoint mousePos)
 
 void QImageSceneView::resetZoom()
 {
-  resetTransform();
+  setScale(0);
 }
 
 void QImageSceneView::setMouseScrollEnabled(bool v)

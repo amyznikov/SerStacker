@@ -60,8 +60,6 @@ static void unsharp(cv::InputArray src, cv::OutputArray dst,
   cv::scaleAdd(hpass, 1./alpha, lpass, dst);
 }
 
-
-
 int main(int argc, char *argv[])
 {
   cv::Mat image, mask;
@@ -93,39 +91,55 @@ int main(int argc, char *argv[])
 
 
 
-  if ( 1 )  {
-    std::string parent_directory;
-    std::string file_name;
-    std::string file_suffix;
-
-    /* split the fullpathname to parent directory file name, and suffix */
-    split_pathfilename(filename,
-        &parent_directory,
-        &file_name,
-        &file_suffix);
-
-    CF_DEBUG("parent_directory='%s'", parent_directory.c_str());
-    CF_DEBUG("file_name='%s'", file_name.c_str());
-    CF_DEBUG("file_suffix='%s'", file_suffix.c_str());
-    return 0;
-  }
+//  if ( 1 )  {
+//    std::string parent_directory;
+//    std::string file_name;
+//    std::string file_suffix;
+//
+//    /* split the fullpathname to parent directory file name, and suffix */
+//    split_pathfilename(filename,
+//        &parent_directory,
+//        &file_name,
+//        &file_suffix);
+//
+//    CF_DEBUG("parent_directory='%s'", parent_directory.c_str());
+//    CF_DEBUG("file_name='%s'", file_name.c_str());
+//    CF_DEBUG("file_suffix='%s'", file_suffix.c_str());
+//    return 0;
+//  }
 
   if ( !load_image(image, filename) ) {
     CF_ERROR("load_tiff_image() fails");
   }
 
 
-  cv::Mat sharp, sharpx, sharpy, gx, gy, g, smask;
+//  cv::Mat sharp, sharpx, sharpy, gx, gy, g, smask;
+//
+//  if ( image.channels() == 4 || image.channels() == 2 ) {
+//    CF_DEBUG("HAVE MASK");
+//    splitbgra(image, image, &mask);
+//    cv::erode(mask, smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+//  }
 
-  if ( image.channels() == 4 || image.channels() == 2 ) {
-    CF_DEBUG("HAVE MASK");
-    splitbgra(image, image, &mask);
-    cv::erode(mask, smask, cv::Mat1b(55, 55, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-  }
+//  cv::Mat1f srcimage(30, 30);
+//  for ( int y = 0; y < srcimage.rows; ++y ) {
+//    for ( int x = 0; x < srcimage.cols; ++x ) {
+//      srcimage[y][x] = 10 + ((double)(x)) / srcimage.cols + ((double)(y)) / srcimage.rows;
+//    }
+//  }
 
+
+  cv::Mat srcimage;
   cv::Mat resized_image;
-  cv::resize(image, resized_image, cv::Size(image.cols * 2, image.rows * 2), 0, 0, cv::INTER_LINEAR);
-  save_image(resized_image, "resized.tiff");
+
+  cv::cvtColor(image, srcimage, cv::COLOR_BGR2GRAY);
+
+  cv::resize(srcimage, resized_image, cv::Size(srcimage.cols*3/2, srcimage.rows*3/2), 0, 0, cv::INTER_LINEAR);
+  save_image(srcimage, "src.tiff");
+  save_image(resized_image, "upsampled.tiff");
+
+//  cv::resize(image, resized_image, cv::Size(image.cols * 2, image.rows * 2), 0, 0, cv::INTER_LINEAR);
+//  save_image(resized_image, "resized.tiff");
 
 //  cv::pyrUp(image, resized_image);
 //  save_image(resized_image, "resized-pup.tiff");

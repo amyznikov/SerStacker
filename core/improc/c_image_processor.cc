@@ -22,6 +22,7 @@
 #include "c_smap_routine.h"
 #include "c_unsharp_mask_routine.h"
 #include "c_scale_channels_routine.h"
+#include "c_type_convert_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -79,6 +80,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_unsharp_mask_routine::class_factory);
     register_class_factory(&c_gradient_routine::class_factory);
     register_class_factory(&c_scale_channels_routine::class_factory);
+    register_class_factory(&c_type_convert_routine::class_factory);
   }
 }
 
@@ -110,7 +112,7 @@ c_image_processor::ptr c_image_processor::load(const std::string & filename)
   }
 
   if ( object_class != "c_image_processor" ) {
-    CF_FATAL("Incorect object_class='%s' from file '%s'",
+    CF_FATAL("Incorrect object_class='%s' from file '%s'",
         object_class.c_str(), filename.c_str());
     return nullptr;
   }
@@ -166,7 +168,7 @@ c_image_processor::ptr c_image_processor::deserialize(c_config_setting settings)
 
       if ( !group || !group.isGroup() ) {
         CF_ERROR("c_image_processor:  chain.get_element(objname=%s, index=%d, type=GROUP) fails", objname.c_str(), i);
-        return nullptr;
+        continue;
       }
 
       c_image_processor_routine::ptr routine =
@@ -174,7 +176,7 @@ c_image_processor::ptr c_image_processor::deserialize(c_config_setting settings)
 
       if ( !routine ) {
         CF_ERROR("c_image_processor_routine::create(objname=%s, chain index=%d) fails", objname.c_str(), i);
-        return nullptr;
+        continue;
       }
 
       obj->emplace_back(routine);
@@ -296,9 +298,35 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
             min, max);
       }
 
-      if ( !processor->process(image, mask) ) {
-        CF_ERROR("[%s] processor->process() fails", processor->class_name().c_str());
-        return false;
+      try {
+        if ( !processor->process(image, mask) ) {
+
+          CF_ERROR("[%s] processor->process() fails",
+              processor->class_name().c_str());
+        }
+      }
+
+      catch( const cv::Exception &e ) {
+        CF_ERROR("OpenCV Exception in '%s' : %s\n",
+            "%s() : %d\n"
+            "file : %s\n",
+            processor->class_name().c_str(),
+            e.err.c_str(), ///< error description
+            e.func.c_str(),///< function name. Available only when the compiler supports getting it
+            e.line,///< line number in the source file where the error has occurred
+            e.file.c_str()///< source file name where the error has occurred
+            );
+      }
+
+      catch( const std::exception &e ) {
+        CF_ERROR("std::exception in '%s': %s\n",
+            processor->class_name().c_str(),
+            e.what());
+      }
+
+      catch( ... ) {
+        CF_ERROR("unknown exception in '%s'",
+            processor->class_name().c_str());
       }
     }
   }

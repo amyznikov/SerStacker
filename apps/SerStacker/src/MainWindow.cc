@@ -356,7 +356,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::updateWindowTittle()
 {
-  setWindowTitle("QSkyStacker");
+  setWindowTitle("SerStacker");
 }
 
 void MainWindow::saveGeometry()
@@ -537,6 +537,11 @@ void MainWindow::configureImageViewerToolbars()
         imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
         imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
 
+        if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
+
+          imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
+        }
+
       };
 
   connect(imageEditor, &QImageEditor::currentImageChanged,
@@ -609,6 +614,7 @@ void MainWindow::configureImageViewerToolbars()
       }
       else {
         imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+
         imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
         imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
         imageLevelsDialogBox->showNormal();
@@ -915,8 +921,6 @@ void MainWindow::onSaveCurrentImageAs()
     if ( selectedFileName.isEmpty() ) {
       return;
     }
-
-    //CF_DEBUG("Saving as '%s'...", selectedFileName.toStdString().c_str());
 
     cv::Mat image;
     bool must_convert = true;

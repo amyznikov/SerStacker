@@ -7,7 +7,7 @@
 
 #include "QHistogramView.h"
 #include <gui/widgets/QWaitCursor.h>
-#include <core/histogram/create_image_histogram.h>
+#include <core/proc/create_histogram.h>
 #include <core/debug.h>
 
 static constexpr int MARGIN = 2;
@@ -122,7 +122,7 @@ void QHistogramView::updateHistogram()
 
     hmin = hmax = -1;
 
-    if ( !create_image_histogram(image_, H, -1, -1, &hmin, &hmax, true, false) ) {
+    if ( !create_histogram(image_, mask_, H, &hmin, &hmax) ) {
       CF_ERROR("create_image_histogram() fails");
       H.release();
       LH.release();

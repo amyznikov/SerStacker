@@ -24,11 +24,11 @@ QAlignColorChannelsSettings::QAlignColorChannelsSettings(const c_align_color_cha
       &c_align_color_channels_routine::threshold,
       &c_align_color_channels_routine::set_threshold);
 
-  motion_ctl = add_combobox<QMotionTypeCombo>("Motion type:",
+  motion_ctl = add_enum_combobox<QMotionTypeCombo>("Motion type:",
       &c_align_color_channels_routine::motion_type,
       &c_align_color_channels_routine::set_motion_type);
 
-  interpolation_ctl = add_combobox<QInterpolationTypeCombo>("Interpolation:",
+  interpolation_ctl = add_enum_combobox<QInterpolationTypeCombo>("Interpolation:",
       &c_align_color_channels_routine::interpolation,
       &c_align_color_channels_routine::set_interpolation);
 

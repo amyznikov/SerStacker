@@ -380,7 +380,15 @@ double get_huang_threshold(const cv::Mat & _src, cv::InputArray _mask)
 
   cv::Mat gshist;
 
-  calcHist(&_src, 1, channels, _mask, gshist, 1, histSize, ranges, true, false);
+
+  try {
+    calcHist(&_src, 1, channels, _mask, gshist, 1, histSize, ranges, true, false);
+  }
+  catch( const std::exception &e ) {
+    CF_ERROR("cv::calcHist( fails: %s", e.what());
+    return 127;
+  }
+
   if ( gshist.empty() ) {
     CF_FATAL("calcHist fails");
     return 127;

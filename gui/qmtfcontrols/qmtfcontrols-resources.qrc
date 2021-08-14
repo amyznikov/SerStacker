@@ -2,8 +2,12 @@
 <qresource prefix="/qmtfcontrols">
 	<file>icons/histogram.png</file>
 	<file>icons/histogram-log-scale.png</file>
+	<file>icons/histogram-log-scale2.png</file>
 	<file>icons/histogram-linear-scale.png</file>
+	<file>icons/histogram-linear-scale2.png</file>
 	<file>icons/histogram-automtf.png</file>
+	<file>icons/reset.png</file>
+	<file>icons/contrast.png</file>
 	<file>icons/bar_chart.png</file>
 	<file>icons/line_chart.png</file>
 </qresource>

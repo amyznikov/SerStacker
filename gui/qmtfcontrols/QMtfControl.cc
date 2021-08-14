@@ -7,13 +7,16 @@
 
 #include "QMtfControl.h"
 #include <gui/widgets/QWaitCursor.h>
-#include <core/histogram/create_image_histogram.h>
+#include <core/proc/create_histogram.h>
+#include <core/proc/minmax.h>
 #include <core/debug.h>
 
 #define ICON_histogram                "histogram"
-#define ICON_histogram_linear_scale   "histogram-linear-scale"
-#define ICON_histogram_log_scale      "histogram-log-scale"
+#define ICON_histogram_linear_scale   "histogram-linear-scale2"
+#define ICON_histogram_log_scale      "histogram-log-scale2"
 #define ICON_histogram_automtf        "histogram-automtf"
+#define ICON_reset                    "reset"
+#define ICON_contrast                 "contrast"
 #define ICON_bar_chart                "bar_chart"
 #define ICON_line_chart               "line_chart"
 
@@ -45,8 +48,6 @@ static const QIcon & selectChartTypeIcon(QHistogramView::ChartType chartType)
   return bar_chart_icon;
 }
 
-
-
 static void addStretch(QToolBar * toolbar)
 {
   QWidget* empty = new QWidget();
@@ -68,6 +69,66 @@ static void intit_mtfcontrols_resources()
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_linear_scale), QIcon::Normal, QIcon::Off);
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_log_scale), QIcon::Normal, QIcon::On);
   }
+}
+
+
+
+/** @brief Return default pixel values range for given image depth
+ */
+static bool suggest_levels_range(int depth, double * minval, double * maxval)
+{
+  switch ( depth ) {
+  case CV_8U :
+    *minval = 0;
+    *maxval = UINT8_MAX;
+    break;
+  case CV_8S :
+    *minval = INT8_MIN;
+    *maxval = INT8_MAX;
+    break;
+  case CV_16U :
+    *minval = 0;
+    *maxval = UINT16_MAX;
+    break;
+  case CV_16S :
+    *minval = INT16_MIN;
+    *maxval = INT16_MAX;
+    break;
+  case CV_32S :
+    *minval = INT32_MIN;
+    *maxval = INT32_MAX;
+    break;
+  case CV_32F :
+    *minval = 0;
+    *maxval = 1;
+    break;
+  case CV_64F :
+    *minval = 0;
+    *maxval = 1;
+    break;
+  default:
+    *minval = 0;
+    *maxval = 1;
+    return false;
+  }
+
+  return true;
+}
+
+/** @brief Return default pixel values range for given image depth
+ */
+static bool suggest_levels_range(cv::InputArray src, double * minval, double * maxval)
+{
+  switch (src.depth()) {
+    case CV_32F:
+    case CV_64F:
+      cv::minMaxLoc(src, minval, maxval);
+      break;
+    default:
+      return suggest_levels_range(src.depth(), minval, maxval);
+  }
+
+  return true;
 }
 
 QMtfControl::QMtfControl(QWidget * parent)
@@ -106,8 +167,22 @@ QMtfControl::QMtfControl(QWidget * parent)
       this, &ThisClass::onChartTypeSelectorClicked );
 
 
+  //
+  resetMtfAction_ = topToolbar_->addAction(getIcon(ICON_reset), "Reset Clippig");
+  resetMtfAction_->setToolTip("Reset MTF clipping");
+  connect(resetMtfAction_, &QAction::triggered,
+      this, &ThisClass::onResetMtfClicked);
 
   //
+
+  autoClipAction_ = topToolbar_->addAction(getIcon(ICON_contrast), "Auto Clip");
+  autoClipAction_->setToolTip("Auto clip image range");
+  connect(autoClipAction_, &QAction::triggered,
+      this, &ThisClass::onAutoClipClicked);
+
+
+  //
+
   autoMtfAction_ = topToolbar_->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
   autoMtfAction_->setToolTip("Find automatic midtones balance");
   connect(autoMtfAction_, &QAction::triggered,
@@ -116,7 +191,9 @@ QMtfControl::QMtfControl(QWidget * parent)
   //
 
 
+
   logScaleSelectionAction_ = topToolbar_->addAction(log_scale_icon, "Log scale");
+  logScaleSelectionAction_ ->setToolTip("Switch between linear / log scale");
   logScaleSelectionAction_->setCheckable(true);
   logScaleSelectionAction_->setChecked(false);
 
@@ -257,7 +334,7 @@ void QMtfControl::updateControls()
 void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask)
 {
   inputImage_ = image.getMat();
-  inputMask_ = image.getMat();
+  inputMask_ = mask.getMat();
 }
 
 void QMtfControl::setDisplayImage(cv::InputArray image, cv::InputArray mask)
@@ -265,6 +342,40 @@ void QMtfControl::setDisplayImage(cv::InputArray image, cv::InputArray mask)
   levelsView_->setImage(image, mask);
 }
 
+
+void QMtfControl::onResetMtfClicked()
+{
+  QWaitCursor wait(this);
+
+  mtf_->set_shadows(0);
+  mtf_->set_highlights(1);
+  mtf_->set_midtones(0.5);
+
+  updateControls();
+  emit mtfChanged();
+}
+
+
+void QMtfControl::onAutoClipClicked()
+{
+  if( !inputImage_.empty() ) {
+
+    QWaitCursor wait(this);
+
+    double hmin = -1, hmax = -1;
+    double minval = 0, maxval = 1;
+
+    minmax(inputImage_, &hmin, &hmax, inputMask_);
+    suggest_levels_range(inputImage_, &minval, &maxval);
+
+    mtf_->set_shadows((hmin - minval) / (maxval - minval));
+    mtf_->set_highlights((hmax - minval) / (maxval - minval));
+    mtf_->set_midtones(0.5);
+
+    updateControls();
+    emit mtfChanged();
+  }
+}
 
 void QMtfControl::onFindAutoMidtonesBalanceClicked()
 {
@@ -275,7 +386,7 @@ void QMtfControl::onFindAutoMidtonesBalanceClicked()
     cv::Mat1f H;
     double hmin = -1, hmax = -1;
 
-    if ( !create_image_histogram(inputImage_, H, -1, -1, &hmin, &hmax, true, false) ) {
+    if ( !create_histogram(inputImage_, inputMask_, H, &hmin, &hmax) ) {
       CF_ERROR("create_image_histogram() fails");
     }
     else {

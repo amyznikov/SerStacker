@@ -328,7 +328,7 @@ template<class T>
 typename std::enable_if<std::is_enum<T>::value, bool>::type
 inline load_settings(c_config_setting cfg, const std::string & name, T * v) {
   std::string s;
-  return cfg.get(&s) ? *v = fromStdString(s, *v), true : false;
+  return cfg.get(name, &s) ? *v = fromStdString(s, *v), true : false;
 }
 
 

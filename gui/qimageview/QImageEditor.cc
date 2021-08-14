@@ -93,6 +93,7 @@ void QImageEditor::updateImage()
       if ( current_processor_ && !current_processor_->empty() ) {
         current_processor_->process(currentImage_, currentMask_);
       }
+
     }
 
     updateDisplay();

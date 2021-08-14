@@ -138,17 +138,21 @@ protected:
 
   QCheckBox * add_checkbox(const char * name,
       bool (RoutineType::*getfn)() const,
-      void (RoutineType::*setfn)(bool))
+      void (RoutineType::*setfn)(bool),
+      const std::function<void()> & onchange = std::function<void()>())
   {
     QCheckBox * ctl = new QCheckBox();
     ctlform->addRow(name, ctl);
     QObject::connect(ctl, &QCheckBox::stateChanged,
-        [this, ctl, getfn, setfn](int state) {
+        [this, ctl, getfn, setfn, onchange](int state) {
           if ( routine_ && !updatingControls() ) {
             const bool checked = state == Qt::Checked;
             if ( (routine_.get()->*getfn)() != checked ) {
               LOCK();
               (routine_.get()->*setfn)(checked);
+              if ( onchange ) {
+                onchange();
+              }
               UNLOCK();
               if ( routine_->enabled() ) {
                 emit parameterChanged();
@@ -233,7 +237,7 @@ protected:
 
 
   template<class ComboboxType, class PropType>
-  ComboboxType * add_combobox(const char * name,
+  ComboboxType * add_enum_combobox(const char * name,
       PropType (RoutineType::*getfn)() const,
       void (RoutineType::*setfn)(PropType))
   {

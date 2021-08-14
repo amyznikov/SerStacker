@@ -9,8 +9,8 @@
 #ifndef __c_mtf_routine_h__
 #define __c_mtf_routine_h__
 
+#include "../mtf/c_pixinsight_midtones_transfer_function.h"
 #include "c_image_processor.h"
-#include <core/histogram/c_pixinsight_midtones_transfer_function.h>
 
 class c_mtf_routine
     : public c_image_processor_routine

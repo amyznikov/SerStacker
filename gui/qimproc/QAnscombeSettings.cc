@@ -12,7 +12,7 @@ const QAnscombeSettings::ClassFactory QAnscombeSettings::classFactory;
 QAnscombeSettings::QAnscombeSettings(const c_anscombe_routine::ptr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)
 {
-  method_ctl = add_combobox<QAnscombeMethodCombo>("Method:",
+  method_ctl = add_enum_combobox<QAnscombeMethodCombo>("Method:",
       &c_anscombe_routine::method,
       &c_anscombe_routine::set_method);
 

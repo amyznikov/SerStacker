@@ -8,7 +8,7 @@
 #ifndef __c_display_function_h__
 #define __c_display_function_h__
 
-#include <core/histogram/c_pixinsight_midtones_transfer_function.h>
+#include "../../../core/mtf/c_pixinsight_midtones_transfer_function.h"
 
 class c_display_function
 {

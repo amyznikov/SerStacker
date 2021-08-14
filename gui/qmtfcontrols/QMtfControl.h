@@ -8,9 +8,9 @@
 #ifndef __QMtfControl_h__
 #define __QMtfControl_h__
 
+#include "../../core/mtf/c_pixinsight_midtones_transfer_function.h"
 #include "QHistogramView.h"
 #include "QMtfSlider.h"
-#include <core/histogram/c_pixinsight_midtones_transfer_function.h>
 
 class QMtfControl
     : public QWidget
@@ -33,6 +33,8 @@ signals:
 
 protected slots:
   void updateControls();
+  void onResetMtfClicked();
+  void onAutoClipClicked();
   void onFindAutoMidtonesBalanceClicked();
   void onChartTypeSelectorClicked();
   void onDisplayChannelComboCurrentIndexChanged(int);
@@ -46,6 +48,8 @@ protected:
   QToolBar * topToolbar_ = Q_NULLPTR;
   QComboBox * displayChannel_ctl = Q_NULLPTR;
 
+  QAction * resetMtfAction_ = Q_NULLPTR;
+  QAction * autoClipAction_ = Q_NULLPTR;
   QAction * autoMtfAction_ = Q_NULLPTR;
   QAction * logScaleSelectionAction_ = Q_NULLPTR;
   QToolButton * chartTypeSelectorButton_ = Q_NULLPTR;

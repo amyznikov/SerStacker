@@ -401,15 +401,22 @@ static bool build_histogram(cv::InputArray input_image,
 
     output_histogram.create(bins, 1);
 
-    cv::calcHist(&image, 1,
-        &channel,
-        mask,
-        output_histogram,
-        1,
-        sizes,
-        ranges,
-        uniform,
-        false);
+    try {
+
+      cv::calcHist(&image, 1,
+          &channel,
+          mask,
+          output_histogram,
+          1,
+          sizes,
+          ranges,
+          uniform,
+          false);
+    }
+    catch (const std::exception & e) {
+      CF_ERROR("cv::calcHist( fails: %s", e.what());
+      return false;
+    }
 
   }
   else {
@@ -420,6 +427,8 @@ static bool build_histogram(cv::InputArray input_image,
 
     for ( int i = 0; i < cn; ++i ) {
 
+      try {
+
       cv::calcHist(&image, 1,
           &i,
           mask,
@@ -429,6 +438,12 @@ static bool build_histogram(cv::InputArray input_image,
           ranges,
           uniform,
           false);
+
+      }
+      catch (const std::exception & e) {
+        CF_ERROR("cv::calcHist( fails: %s", e.what());
+        return false;
+      }
 
       tmp.copyTo(output_histogram.colRange(i, i + 1));
 

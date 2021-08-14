@@ -11,49 +11,60 @@
 
 static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma)
 {
-  const int borderType = cv::BORDER_REFLECT;
 
-  int min_size = std::min(src.cols(), src.rows());
-  int imax = 0;
-  while ( min_size >>= 1 ) {
-    ++imax;
-  }
+  constexpr int borderType = cv::BORDER_REFLECT;
 
-  const int CCC = (int)(sigma * sigma / 2);
+  static const auto gaussian_blur =
+      [](cv::InputArray src, cv::Mat & lpass, double sigma) {
+        const cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
+        cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, borderType);
+      };
 
-  int i = 0, Ci = 0;
-  while ( i < imax && (1   + 4 * Ci) <= CCC ) {
+  int pyramid_level = 0;
+  int Ci = 0;
+
+  if( sigma > 2 ) {
+
+    int min_size = std::min(src.cols(), src.rows());
+    int imax = 0;
+    while (min_size >>= 1) {
+      ++imax;
+    }
+
+    const int C = (int) (sigma * sigma / 2);
+
+    while (pyramid_level < imax && (1 + 4 * Ci) <= C) {
       Ci = 1 + 4 * Ci;
-      ++i;
+      ++pyramid_level;
+    }
   }
 
-  if ( i < 1 ) {
-    const cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
-    cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, borderType);
+  if ( pyramid_level < 1 ) {
+    gaussian_blur(src, lpass, sigma);
+    return;
   }
-  else {
 
-    const double sigma_i = sqrt(Ci * 2);
-    const double delta2 = sqrt(sigma * sigma - sigma_i * sigma_i) / (1 << i)  ;
 
-    std::vector<cv::Size> size_history;
+  std::vector<cv::Size> size_history;
 
-    size_history.emplace_back(src.size());
-    cv::pyrDown(src, lpass, cv::Size(), borderType);
+  const double delta =
+      sqrt(sigma * sigma - 2 * Ci) / (1 << pyramid_level)  ;
 
-    for ( int j = 1; j < i; ++j ) {
-      size_history.emplace_back(lpass.size());
-      cv::pyrDown(lpass, lpass, cv::Size(), borderType);
-    }
 
-    if ( delta2 > 0 ) {
-      const cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (delta2 * 5)) + 1, sigma, CV_32F);
-      cv::sepFilter2D(lpass, lpass, -1, G, G, cv::Point(-1, -1), 0, borderType);
-    }
+  size_history.emplace_back(src.size());
+  cv::pyrDown(src, lpass, cv::Size(), borderType);
 
-    for ( int j = size_history.size()-1; j >= 0; --j ) {
-      cv::pyrUp(lpass, lpass, size_history[j]);
-    }
+  for ( int j = 1; j < pyramid_level; ++j ) {
+    size_history.emplace_back(lpass.size());
+    cv::pyrDown(lpass, lpass, cv::Size(), borderType);
+  }
+
+  if ( delta > 0 ) {
+    gaussian_blur(src, lpass, delta);
+  }
+
+  for ( int j = size_history.size()-1; j >= 0; --j ) {
+    cv::pyrUp(lpass, lpass, size_history[j]);
   }
 }
 

@@ -78,9 +78,9 @@ protected:
           if ( !updatingControls() ) {
             ValueType v;
             if ( fromString(ctl->text(), &v) ) {
-              LOCK();
-              slot(v);
-              UNLOCK();
+                LOCK();
+                slot(v);
+                UNLOCK();
             }
           }
         });
@@ -102,9 +102,9 @@ protected:
     QObject::connect(ctl, &QCheckBox::stateChanged,
         [this, slot](int state) {
           if ( !updatingControls() ) {
-            LOCK();
-            slot(state);
-            UNLOCK();
+              LOCK();
+              slot(state);
+              UNLOCK();
           }
         });
     return ctl;
@@ -117,8 +117,8 @@ protected:
     return add_checkbox(this->form, name, slot);
   }
 
-  template<class _Calable>
-  QComboBox* add_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
+  QComboBox* add_combobox(QFormLayout * form, const QString & name,
+      const std::function<void(int)> & slot = std::function<void(int)>())
   {
     QComboBox * ctl = new QComboBox(this);
     form->addRow(name, ctl);
@@ -126,16 +126,17 @@ protected:
         static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
         [this, slot](int currentIndex) {
           if ( !updatingControls() ) {
-            LOCK();
-            slot(currentIndex);
-            UNLOCK();
+            if ( slot ) {
+              LOCK();
+              slot(currentIndex);
+              UNLOCK();
+            }
           }
         });
     return ctl;
   }
 
-  template<class _Calable>
-  QComboBox* add_combobox(const QString & name, const _Calable & slot = std::function<void(int)>())
+  QComboBox* add_combobox(const QString & name, const std::function<void(int)> & slot = std::function<void(int)>())
   {
     return add_combobox(this->form, name, slot);
   }
@@ -148,9 +149,11 @@ protected:
     QObject::connect(ctl, &CombomoxType::currentItemChanged,
         [this, ctl, slot](int currentIndex) {
           if ( !updatingControls() ) {
-            LOCK();
-            slot(ctl->currentItem());
-            UNLOCK();
+//            if ( slot ) {
+              LOCK();
+              slot(ctl->currentItem());
+              UNLOCK();
+//            }
           }
         });
     return ctl;

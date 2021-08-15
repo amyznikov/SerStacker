@@ -7,10 +7,12 @@
 
 #include "QImageSaveOptions.h"
 #include <gui/qimageview/cv2qt.h>
+#include <gui/widgets/QWaitCursor.h>
 #include <core/proc/normalize.h>
 #include <core/io/save_image.h>
 #include <tiff.h>
 #include <tiffio.h>
+#include <core/debug.h>
 
 const struct QImageSaveFormat_desc QImageSaveFormats[] = {
     { "TIFF", QImageSaveTIFF },
@@ -155,11 +157,9 @@ double QImageSaveJPEGOptions::jpegQuality() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-QImageSaveOptions::QImageSaveOptions(QWidget * parent)
-:
+QImageSaveOptions::QImageSaveOptions(QWidget * parent) :
     Base("QImageSaveOptions", parent)
 {
-
   format_ctl = add_enum_combobox<QImageSaveFormatCombo>("Format:",
       [this](QImageSaveFormat format) {
 
@@ -219,10 +219,11 @@ QImageSaveJPEGOptions * QImageSaveOptions::jpegOptions() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-QImageSaveOptionsDialog::QImageSaveOptionsDialog(QWidget * parent)
-:
+QImageSaveOptionsDialog::QImageSaveOptionsDialog(QWidget * parent) :
     Base(parent)
 {
+  setWindowTitle("Save Options...");
+
   QVBoxLayout * layout =
       new QVBoxLayout(this);
 
@@ -353,8 +354,8 @@ bool saveImageFileAs(QWidget * parent,
 
       static QImageSaveOptionsDialog * dlgbox;
       if ( !dlgbox ) {
-        dlgbox = new QImageSaveOptionsDialog();
-        dlgbox->setWindowTitle("Save Options...");
+        dlgbox = new QImageSaveOptionsDialog(parent);
+        //dlgbox->setWindowTitle("Save Options...");
       }
 
       dlgbox->setParent(parent);
@@ -386,7 +387,6 @@ bool saveImageFileAs(QWidget * parent,
             dlgbox->pngOptions();
 
         selectedPixelDepth = pngOptions->pixelDepth();
-
         break;
       }
       case QImageSaveJPEG : {
@@ -398,15 +398,17 @@ bool saveImageFileAs(QWidget * parent,
 
         imwrite_params.emplace_back(cv::IMWRITE_JPEG_QUALITY);
         imwrite_params.emplace_back(jpegOptions->jpegQuality());
-
         break;
       }
       }
 
     }
 
+    QWaitCursor wait(parent);
+
     cv::Mat image;
     const cv::Mat mask = currentMask;
+
 
     if ( format == QImageSaveFLO ) {
       image = currentImage;

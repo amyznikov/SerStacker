@@ -10,42 +10,6 @@
 
 c_type_convert_routine::c_class_factory c_type_convert_routine::class_factory;
 
-const c_type_convert_routine::ddepth_desc c_type_convert_routine::ddepths[] = {
-    { "CV_8U", DDEPTH_8U },
-    { "CV_8S", DDEPTH_8S },
-    { "CV_16U", DDEPTH_16U },
-    { "CV_16S", DDEPTH_16S },
-    { "CV_32S", DDEPTH_32S },
-    { "CV_32F", DDEPTH_32F },
-    { "CV_64F", DDEPTH_64F },
-    { "SAME", DDEPTH_SAME },
-    { nullptr, DDEPTH_SAME },
-} ;
-
-std::string toStdString(enum c_type_convert_routine::DDEPTH v)
-{
-  for ( uint i = 0; c_type_convert_routine::ddepths[i].name; ++i ) {
-    if ( c_type_convert_routine::ddepths[i].value == v ) {
-      return c_type_convert_routine::ddepths[i].name;
-    }
-  }
-  return "";
-}
-
-enum c_type_convert_routine::DDEPTH fromStdString(const std::string & s,
-    enum c_type_convert_routine::DDEPTH defval)
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; c_type_convert_routine::ddepths[i].name; ++i ) {
-    if ( strcasecmp(c_type_convert_routine::ddepths[i].name, cstr) == 0 ) {
-      return c_type_convert_routine::ddepths[i].value;
-    }
-  }
-  return defval;
-}
-
-
 c_type_convert_routine::c_type_convert_routine(bool enabled)
   : base(&class_factory, enabled)
 {
@@ -56,7 +20,7 @@ c_type_convert_routine::ptr c_type_convert_routine::create(bool enabled)
   return ptr(new this_class(enabled));
 }
 
-c_type_convert_routine::ptr c_type_convert_routine::create(DDEPTH ddepth, double alpha, double beta, bool enabled)
+c_type_convert_routine::ptr c_type_convert_routine::create(PIXEL_DEPTH ddepth, double alpha, double beta, bool enabled)
 {
   ptr obj(new this_class(enabled));
   obj->set_ddepth(ddepth);
@@ -65,12 +29,12 @@ c_type_convert_routine::ptr c_type_convert_routine::create(DDEPTH ddepth, double
   return obj;
 }
 
-void c_type_convert_routine::set_ddepth(DDEPTH v)
+void c_type_convert_routine::set_ddepth(PIXEL_DEPTH v)
 {
   ddepth_ = v;
 }
 
-c_type_convert_routine::DDEPTH c_type_convert_routine::ddepth() const
+PIXEL_DEPTH c_type_convert_routine::ddepth() const
 {
   return ddepth_;
 }
@@ -107,7 +71,7 @@ bool c_type_convert_routine::auto_scale() const
 
 bool c_type_convert_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  const int ddepth = (ddepth_ == DDEPTH_SAME || image.fixedType()) ?
+  const int ddepth = (ddepth_ == PIXEL_DEPTH_NO_CHANGE || image.fixedType()) ?
       image.depth() : ddepth_;
 
   double alpha, beta;

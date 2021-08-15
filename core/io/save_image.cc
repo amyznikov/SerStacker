@@ -30,11 +30,23 @@ static void write_tiff_image(const cv::Mat & image, int sampleformat, TIFF * tif
   }
 }
 
-static bool write_tiff(cv::InputArray src, const std::string & filename)
+static bool write_tiff(cv::InputArray src, const std::string & filename, const std::vector<int> & _params)
 {
   cv::Mat image;
   TIFF * tiff;
+
   int photometric_tag = 0;
+  int compression = COMPRESSION_NONE;
+
+  if ( !_params.empty() ) {
+
+    for ( uint i = 0, n = _params.size(); i < n; i += 2 ) {
+      if ( _params[i] == cv::ImwriteFlags::IMWRITE_TIFF_COMPRESSION ) {
+        compression = _params[i+1];
+        break;
+      }
+    }
+  }
 
   if ( filename.empty() ) {
     CF_FATAL("Empty file name for tiff image to write");
@@ -78,7 +90,8 @@ static bool write_tiff(cv::InputArray src, const std::string & filename)
   }
 
   TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, photometric_tag);
-  TIFFSetField(tiff, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+  TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression/*COMPRESSION_NONE*/);
+
   TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, (uint64_t) (image.cols));  // width of the image
   TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, (uint64_t) (image.rows));  // height of the image
   TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, image.channels());   // number of channels per pixel
@@ -195,8 +208,9 @@ bool mergebgra(const cv::Mat & input_image, const cv::Mat & input_alpha_mask, cv
 
   return true;
 }
+
 static bool write_image(const std::string & filename, cv::InputArray image,
-    const std::vector<int>& _params)
+    const std::vector<int> & _params)
 {
   std::vector<int> params = _params;
 
@@ -224,7 +238,7 @@ static bool write_image(const std::string & filename, cv::InputArray image,
   }
 
   if ( strcasecmp(output_suffix.c_str(), ".tiff") == 0 || strcasecmp(output_suffix.c_str(), ".tif") == 0 ) {
-    if ( write_tiff(image, filename) ) {
+    if ( write_tiff(image, filename, params) ) {
       return true;
     }
 
@@ -247,8 +261,7 @@ static bool write_image(const std::string & filename, cv::InputArray image,
 
 
 
-bool save_image(cv::InputArray image, const std::string & fname,
-    const std::vector<int>& params)
+bool save_image(cv::InputArray image, const std::string & fname, const std::vector<int> & params)
 {
   std::string dirname;
 
@@ -272,7 +285,7 @@ bool save_image(cv::InputArray image, const std::string & fname,
 }
 
 bool save_image(cv::InputArray _image, cv::InputArray _mask, const std::string & fname,
-    const std::vector<int>& params)
+    const std::vector<int> & params)
 {
   cv::Mat image_to_write;
 

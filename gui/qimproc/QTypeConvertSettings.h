@@ -31,10 +31,10 @@ public:
 
 
   struct QDDEPTHCombo:
-      public QEnumComboBox<c_type_convert_routine::DDEPTH>
+      public QEnumComboBox<PIXEL_DEPTH>
   {
     QDDEPTHCombo(QWidget * parent = Q_NULLPTR) :
-        QEnumComboBox<c_type_convert_routine::DDEPTH>(parent, c_type_convert_routine::ddepths)
+        QEnumComboBox<PIXEL_DEPTH>(parent, PIXEL_DEPTHS)
     {
     }
   };
@@ -47,7 +47,7 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  QDDEPTHCombo * ddept_ctl = Q_NULLPTR;
+  QDDEPTHCombo * ddepth_ctl = Q_NULLPTR;
   QCheckBox * auto_scale_ctl = Q_NULLPTR;
   QNumberEditBox * alpha_ctl = Q_NULLPTR;
   QNumberEditBox * beta_ctl = Q_NULLPTR;

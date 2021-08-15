@@ -9,7 +9,10 @@
 #include <gui/widgets/QToolbarSpacer.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/qstackingthread/QStackingThread.h>
-#include <core/io/save_image.h>
+#include <gui/qimagesave/QImageSaveOptions.h>
+//#include <gui/qimageview/cv2qt.h>
+//#include <core/proc/normalize.h>
+//#include <core/io/save_image.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -889,107 +892,15 @@ void MainWindow::onStackingThreadFinished()
 
 void MainWindow::onSaveCurrentImageAs()
 {
-  if ( !imageEditor->isVisible() ) {
+  if ( !imageEditor->isVisible() || imageEditor->currentImage().empty() ) {
     return;
   }
 
-  QSettings settings;
+  QString savedFileName = imageEditor->currentFileName();
 
-  static const QString filter =
-      "Image files(*.tiff *.tif *.png *.jpg);;"
-      "All files (*)";
-
-  static const QString keyName =
-      "previousPathForSaveImageAs";
-
-
-  QString previousPathForSaveImageAs = imageEditor->currentFileName();
-  if ( previousPathForSaveImageAs.isEmpty() ) {
-    previousPathForSaveImageAs = settings.value(keyName,
-      imageEditor->currentFileName()).toString();
+  if ( saveImageFileAs(this, imageEditor->currentImage(), imageEditor->currentMask(), &savedFileName)) {
+    imageEditor->setCurrentFileName(savedFileName);
   }
-
-  while ( 42 ) {
-
-    QString selectedFileName =
-        QFileDialog::getSaveFileName(this,
-            "Save image as...",
-            previousPathForSaveImageAs,
-            filter);
-
-
-    if ( selectedFileName.isEmpty() ) {
-      return;
-    }
-
-    cv::Mat image;
-    bool must_convert = true;
-
-    if( imageEditor->currentImage().depth() == CV_32F || imageEditor->currentImage().depth() == CV_64F ) {
-
-      static const char *fpsuffix[] = {
-          ".tiff", ".tif", ".flo"
-      };
-
-      for( int i = 0, n = sizeof(fpsuffix) / sizeof(fpsuffix[0]); i < n; ++i ) {
-        if( selectedFileName.endsWith(fpsuffix[i], Qt::CaseInsensitive) ) {
-          must_convert = false;
-          break;
-        }
-      }
-    }
-
-    if ( !must_convert ) {
-      image = imageEditor->currentImage();
-    }
-    else {
-
-      int ddepth;
-      int maxval;
-
-      if( selectedFileName.endsWith(".png", Qt::CaseInsensitive) ) {
-        ddepth = CV_16U;
-        maxval = UINT16_MAX;
-      }
-      else {
-        ddepth = CV_8U;
-        maxval = UINT8_MAX;
-      }
-
-      if ( imageEditor->currentMask().empty() ) {
-        cv::normalize(imageEditor->currentImage(), image, 0, maxval, cv::NORM_MINMAX, ddepth, imageEditor->currentMask());
-      }
-      else {
-        imageEditor->currentImage().copyTo(image);
-        image.setTo(0, ~imageEditor->currentMask());
-        cv::normalize(image, image, 0, maxval, cv::NORM_MINMAX, ddepth);
-      }
-    }
-
-    if( !save_image(image, imageEditor->currentMask(), selectedFileName.toStdString()) ) {
-      QMessageBox::critical(this, "ERROR", QString("save_image('%s') fails").arg(selectedFileName));
-      continue;
-    }
-
-
-    if ( imageEditor->currentFileName().isEmpty() ) {
-      imageEditor->setCurrentFileName(selectedFileName);
-    }
-
-    settings.setValue(keyName,
-        selectedFileName);
-
-    break;
-
-
-  }
-
-//
-//
-//  QMessageBox::information(this, "test",
-//      QString("selectedFileName='%1'\n")
-//      .arg(selectedFileName));
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////

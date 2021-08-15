@@ -12,7 +12,7 @@ const QTypeConvertSettings::ClassFactory QTypeConvertSettings::classFactory;
 QTypeConvertSettings::QTypeConvertSettings(const c_type_convert_routine::ptr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)
 {
-  ddept_ctl = add_enum_combobox<QDDEPTHCombo>("DDEPTH",
+  ddepth_ctl = add_enum_combobox<QDDEPTHCombo>("DDEPTH",
       &RoutineType::ddepth,
       &RoutineType::set_ddepth);
 
@@ -41,7 +41,7 @@ void QTypeConvertSettings::onupdatecontrols()
   }
   else {
 
-    ddept_ctl->setCurrentItem(routine_->ddepth());
+    ddepth_ctl->setCurrentItem(routine_->ddepth());
     auto_scale_ctl->setChecked(routine_->auto_scale());
     alpha_ctl->setValue(routine_->alpha());
     beta_ctl->setValue(routine_->beta());

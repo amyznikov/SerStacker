@@ -9,6 +9,7 @@
 #define __c_type_convert_routine_h__
 
 #include "c_image_processor.h"
+#include <core/proc/pixtype.h>
 
 class c_type_convert_routine
     : public c_image_processor_routine
@@ -30,37 +31,20 @@ public:
   } class_factory;
 
 
-  enum DDEPTH
-  {
-    DDEPTH_8U = CV_8U,
-    DDEPTH_8S = CV_8S,
-    DDEPTH_16U = CV_16U,
-    DDEPTH_16S = CV_16S,
-    DDEPTH_32S = CV_32S,
-    DDEPTH_32F = CV_32F,
-    DDEPTH_64F = CV_64F,
-    DDEPTH_SAME = -1,
-  };
-
-  static const struct ddepth_desc {
-    const char * name;
-    enum DDEPTH value;
-  } ddepths[];
-
 
 
 
   c_type_convert_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
-  static ptr create(DDEPTH ddepth, double alpha, double beta, bool enabled = true);
+  static ptr create(PIXEL_DEPTH ddepth, double alpha, double beta, bool enabled = true);
 
   bool deserialize(c_config_setting settings) override;
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  void set_ddepth(enum DDEPTH v);
-  enum DDEPTH ddepth() const;
+  void set_ddepth(enum PIXEL_DEPTH v);
+  enum PIXEL_DEPTH ddepth() const;
 
   void set_alpha(double  v);
   double alpha() const;
@@ -74,14 +58,11 @@ public:
 protected:
   double alpha_ = 1.0;
   double beta_ = 0.0;
-  DDEPTH ddepth_ = DDEPTH_32F;
+  PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_32F;
   bool auto_scale_ = true;
 };
 
 
-std::string toStdString(enum c_type_convert_routine::DDEPTH v);
-enum c_type_convert_routine::DDEPTH fromStdString(const std::string & s,
-    enum c_type_convert_routine::DDEPTH defval);
 
 #endif /* __c_type_convert_routine_h__ */
 

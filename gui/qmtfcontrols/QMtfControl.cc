@@ -8,6 +8,7 @@
 #include "QMtfControl.h"
 #include <gui/widgets/QWaitCursor.h>
 #include <core/proc/create_histogram.h>
+#include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/debug.h>
 
@@ -75,45 +76,45 @@ static void intit_mtfcontrols_resources()
 
 /** @brief Return default pixel values range for given image depth
  */
-static bool suggest_levels_range(int depth, double * minval, double * maxval)
-{
-  switch ( depth ) {
-  case CV_8U :
-    *minval = 0;
-    *maxval = UINT8_MAX;
-    break;
-  case CV_8S :
-    *minval = INT8_MIN;
-    *maxval = INT8_MAX;
-    break;
-  case CV_16U :
-    *minval = 0;
-    *maxval = UINT16_MAX;
-    break;
-  case CV_16S :
-    *minval = INT16_MIN;
-    *maxval = INT16_MAX;
-    break;
-  case CV_32S :
-    *minval = INT32_MIN;
-    *maxval = INT32_MAX;
-    break;
-  case CV_32F :
-    *minval = 0;
-    *maxval = 1;
-    break;
-  case CV_64F :
-    *minval = 0;
-    *maxval = 1;
-    break;
-  default:
-    *minval = 0;
-    *maxval = 1;
-    return false;
-  }
-
-  return true;
-}
+//static bool suggest_levels_range(int depth, double * minval, double * maxval)
+//{
+//  switch ( depth ) {
+//  case CV_8U :
+//    *minval = 0;
+//    *maxval = UINT8_MAX;
+//    break;
+//  case CV_8S :
+//    *minval = INT8_MIN;
+//    *maxval = INT8_MAX;
+//    break;
+//  case CV_16U :
+//    *minval = 0;
+//    *maxval = UINT16_MAX;
+//    break;
+//  case CV_16S :
+//    *minval = INT16_MIN;
+//    *maxval = INT16_MAX;
+//    break;
+//  case CV_32S :
+//    *minval = INT32_MIN;
+//    *maxval = INT32_MAX;
+//    break;
+//  case CV_32F :
+//    *minval = 0;
+//    *maxval = 1;
+//    break;
+//  case CV_64F :
+//    *minval = 0;
+//    *maxval = 1;
+//    break;
+//  default:
+//    *minval = 0;
+//    *maxval = 1;
+//    return false;
+//  }
+//
+//  return true;
+//}
 
 /** @brief Return default pixel values range for given image depth
  */
@@ -125,7 +126,7 @@ static bool suggest_levels_range(cv::InputArray src, double * minval, double * m
       cv::minMaxLoc(src, minval, maxval);
       break;
     default:
-      return suggest_levels_range(src.depth(), minval, maxval);
+      return get_data_range_for_pixel_depth(src.depth(), minval, maxval);
   }
 
   return true;

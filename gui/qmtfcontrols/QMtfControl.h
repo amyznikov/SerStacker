@@ -8,9 +8,9 @@
 #ifndef __QMtfControl_h__
 #define __QMtfControl_h__
 
-#include "../../core/mtf/c_pixinsight_midtones_transfer_function.h"
 #include "QHistogramView.h"
 #include "QMtfSlider.h"
+#include <core/mtf/c_pixinsight_midtones_transfer_function.h>
 
 class QMtfControl
     : public QWidget

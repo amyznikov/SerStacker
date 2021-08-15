@@ -15,7 +15,7 @@
  *
  *  The code is extracted from OpenCV example dis_opticalflow.cpp
  * */
-static bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool invert_y)
+bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool invert_y)
 {
   if ( flow.channels() != 2 ) {
     CF_FATAL("Unsupported number of channels: %d. 2-channel image expected", flow.channels());
@@ -56,6 +56,7 @@ static bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool 
 
   return true;
 }
+
 
 bool cv2qt(cv::InputArray __src, QImage * dst, bool rgbswap)
 {

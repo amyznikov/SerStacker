@@ -121,7 +121,6 @@ protected:
   QComboBox* add_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
   {
     QComboBox * ctl = new QComboBox(this);
-    ctl->setFocusPolicy( Qt::StrongFocus );
     form->addRow(name, ctl);
     QObject::connect(ctl,
         static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
@@ -136,7 +135,7 @@ protected:
   }
 
   template<class _Calable>
-  QComboBox* add_combobox(const QString & name, const _Calable & slot)
+  QComboBox* add_combobox(const QString & name, const _Calable & slot = std::function<void(int)>())
   {
     return add_combobox(this->form, name, slot);
   }
@@ -145,7 +144,6 @@ protected:
   CombomoxType* add_enum_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
   {
     CombomoxType * ctl = new CombomoxType(this);
-    ctl->setFocusPolicy( Qt::StrongFocus );
     form->addRow(name, ctl);
     QObject::connect(ctl, &CombomoxType::currentItemChanged,
         [this, ctl, slot](int currentIndex) {
@@ -162,6 +160,25 @@ protected:
   CombomoxType * add_enum_combobox(const QString & name, const _Calable & slot)
   {
     return add_enum_combobox<CombomoxType>(this->form, name, slot);
+  }
+
+  template<class WidgetType>
+  WidgetType * add_widget(QFormLayout * form, const QString & name = QString())
+  {
+    WidgetType * ctl = new WidgetType(this);
+    if ( !name.isEmpty() ) {
+      form->addRow(name, ctl);
+    }
+    else {
+      form->addRow(ctl);
+    }
+    return ctl;
+  }
+
+  template<class WidgetType>
+  WidgetType * add_widget(const QString & name = QString())
+  {
+    return add_widget<WidgetType>(this->form, name);
   }
 
 protected:

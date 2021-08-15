@@ -60,7 +60,7 @@ static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma
   }
 
   if ( delta > 0 ) {
-    gaussian_blur(src, lpass, delta);
+    gaussian_blur(lpass, lpass, delta);
   }
 
   for ( int j = size_history.size()-1; j >= 0; --j ) {

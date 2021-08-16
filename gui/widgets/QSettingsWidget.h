@@ -117,10 +117,11 @@ protected:
     return add_checkbox(this->form, name, slot);
   }
 
-  QComboBox* add_combobox(QFormLayout * form, const QString & name,
+  template<class ComboBoxType = QComboBox>
+  ComboBoxType * add_combobox(QFormLayout * form, const QString & name,
       const std::function<void(int)> & slot = std::function<void(int)>())
   {
-    QComboBox * ctl = new QComboBox(this);
+    ComboBoxType * ctl = new ComboBoxType(this);
     form->addRow(name, ctl);
     QObject::connect(ctl,
         static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
@@ -136,9 +137,10 @@ protected:
     return ctl;
   }
 
-  QComboBox* add_combobox(const QString & name, const std::function<void(int)> & slot = std::function<void(int)>())
+  template<class ComboBoxType = QComboBox>
+  ComboBoxType * add_combobox(const QString & name, const std::function<void(int)> & slot = std::function<void(int)>())
   {
-    return add_combobox(this->form, name, slot);
+    return add_combobox<ComboBoxType>(this->form, name, slot);
   }
 
   template<class CombomoxType, class _Calable>

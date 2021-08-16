@@ -10,8 +10,7 @@
 #define __QImageStackingInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QEnumComboBox.h>
-#include <gui/widgets/QLineEditBox.h>
+#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
 class QImageStackingInputOptions :
@@ -59,6 +58,9 @@ protected:
 
   QCheckBox * enable_color_maxtrix_ctl = Q_NULLPTR;
   QAnscombeMethodCombo * anscombe_ctl  = Q_NULLPTR;
+
+  QImageProcessorSelectionCombo * processor_selector_ctl = Q_NULLPTR;
+
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

@@ -65,6 +65,16 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         }
       });
 
+
+  processor_selector_ctl = add_combobox<QImageProcessorSelectionCombo>(
+      "Process input frames:",
+      [this](int currentIndex) {
+        if ( options_ ) {
+          options_->input_frame_processor =
+              processor_selector_ctl->processor(currentIndex);
+        }});
+
+
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
@@ -104,6 +114,10 @@ void QImageStackingInputOptions::onupdatecontrols()
     bad_pixels_variation_threshold_ctl->setValue(options_->bad_pixels_variation_threshold);
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
+
+    if ( !processor_selector_ctl->setCurrentProcessor(options_->input_frame_processor) ) {
+      options_->input_frame_processor.reset();
+    }
 
     setEnabled(true);
   }

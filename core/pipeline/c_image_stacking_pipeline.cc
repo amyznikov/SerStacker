@@ -158,8 +158,8 @@ enum frame_upscale_stage fromStdString(const std::string  & s,
 
 const struct frame_upscale_option_desc frame_upscale_options[] ={
     {"none", frame_upscale_none},
-    {"x1.5", frame_upscale_x15},
     {"x2.0", frame_upscale_pyrUp},
+    {"x1.5", frame_upscale_x15},
     {"x3.0", frame_upscale_x30},
     {nullptr, frame_upscale_none},
 } ;
@@ -1004,6 +1004,18 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
       break;
     }
 
+    if ( input_options.input_frame_processor ) {
+      if ( !input_options.input_frame_processor->process(current_frame_, current_mask_) ) {
+        CF_ERROR("input_frame_processor->process(current_frame) fails");
+        continue;
+      }
+    }
+
+    if ( canceled() ) {
+      break;
+    }
+
+    t0 = get_realtime_ms();
     if ( frame_accumulation_ && accumulation_options.accumulation_method == frame_accumulation_average_weighted ) {
       compute_weights(current_frame_, current_mask_, current_weights_);
     }
@@ -1255,8 +1267,11 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
     const std::string & output_directory)
 {
 
-  const c_master_frame_options & master_frame_options =
+  const c_master_frame_options & master_options =
       options->master_frame_options();
+
+  const c_input_options & input_options =
+      options->input_options();
 
   int num_total_frames = 0;
 
@@ -1270,15 +1285,15 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
 
 
 
-  if ( (master_file_name_ = master_frame_options.master_source_path).empty() ) {
+  if ( (master_file_name_ = master_options.master_source_path).empty() ) {
     master_file_name_ = options->input_sequence()->source(master_source_index_ = 0)->filename();
   }
   else {
 
     std::vector<c_input_source::ptr>::const_iterator source_pos =
         std::find_if(options->input_sequence()->sources().begin(), options->input_sequence()->sources().end(),
-            [master_frame_options](const c_input_source::ptr & s ) -> bool {
-              return s->filename() == master_frame_options.master_source_path;
+            [master_options](const c_input_source::ptr & s ) -> bool {
+              return s->filename() == master_options.master_source_path;
             });
 
     if ( source_pos != options->input_sequence()->sources().end() ) {
@@ -1300,7 +1315,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
     return false;
   }
 
-  if ( (master_frame_index_ = master_frame_options.master_frame_index) < 0 ) {
+  if ( (master_frame_index_ = master_options.master_frame_index) < 0 ) {
     master_frame_index_ = 0;
   }
   else if ( master_source_index_ >= 0 ) {
@@ -1331,7 +1346,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
     return false;
   }
 
-  if ( master_frame_options.generate_master_frame && num_total_frames > 1 &&
+  if ( master_options.generate_master_frame && num_total_frames > 1 &&
       options->accumulation_options().accumulation_method != frame_accumulation_none ) {
 
     // Generate it !
@@ -1349,6 +1364,13 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_stacking_op
     if ( !select_image_roi(roi_selection_, reference_frame_, reference_mask_, reference_frame_, reference_mask_) ) {
       CF_FATAL("select_image_roi(reference_frame) fails");
       return false;
+    }
+
+    if ( master_options.apply_input_frame_processor && input_options.input_frame_processor ) {
+      if ( !input_options.input_frame_processor->process(reference_frame_, reference_mask_) ) {
+        CF_ERROR("input_frame_processor->process(reference_frame) fails");
+        return false;
+      }
     }
 
     fOk = true;
@@ -1381,6 +1403,12 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     const c_image_stacking_options::ptr & options,
     const std::string & output_directory)
 {
+  const c_master_frame_options & master_options =
+      options->master_frame_options();
+
+  const c_input_options & input_options =
+      options->input_options();
+
   const int input_sequence_size = input_sequence->size();
   bool fOk = false;
 
@@ -1449,6 +1477,25 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       break;
     }
 
+    if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
+      continue;
+    }
+
+    if ( canceled() ) {
+      break;
+    }
+
+    if ( master_options.apply_input_frame_processor && input_options.input_frame_processor ) {
+      if ( !(fOk = input_options.input_frame_processor->process(current_frame_, current_mask_)) ) {
+        CF_ERROR("input_frame_processor->process(current_frame) fails");
+        break;
+      }
+    }
+
+    if ( canceled() ) {
+      break;
+    }
+
     if ( current_frame_.channels() > 1 ) {
 
       fOk = extract_channel(current_frame_, current_frame_, cv::noArray(), cv::noArray(),
@@ -1465,13 +1512,6 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       }
     }
 
-    if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
-      continue;
-    }
-
-    if ( canceled() ) {
-      break;
-    }
 
     if ( canceled() ) {
       break;

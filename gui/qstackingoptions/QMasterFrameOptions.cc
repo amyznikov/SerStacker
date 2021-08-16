@@ -42,6 +42,10 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, SLOT(onSpinBoxValueChanged(int)));
 
 
+  apply_input_frame_processor_ctl = new QCheckBox(this);
+  connect(apply_input_frame_processor_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::onApplyInputFramePprocessorCheckboxStateChanged);
+
   generateMasterFrame_ctl = new QCheckBox(this);
   connect(generateMasterFrame_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onGenerateMasterFrameCheckboxStateChanged);
@@ -78,6 +82,8 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
 
   form->addRow("Master file:", masterSource_ctl);
   form->addRow("Master frame Index:", masterFrameIndex_ctl);
+  form->addRow("Apply input frame processor:", apply_input_frame_processor_ctl);
+
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
   form->addRow("Enable ECC Flow:", allowEccFlow_ctl);
@@ -116,6 +122,7 @@ void QMasterFrameOptions::onupdatecontrols()
 
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
+    apply_input_frame_processor_ctl->setChecked(options_->apply_input_frame_processor);
     allowEccFlow_ctl->setChecked(options_->allow_eccflow);
     compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
 
@@ -270,6 +277,14 @@ void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
     options_->compensate_master_flow = state == Qt::Checked;
+    emit parameterChanged();
+  }
+}
+
+void QMasterFrameOptions::onApplyInputFramePprocessorCheckboxStateChanged(int state)
+{
+  if ( options_ && !updatingControls() ) {
+    options_->apply_input_frame_processor = state == Qt::Checked;
     emit parameterChanged();
   }
 }

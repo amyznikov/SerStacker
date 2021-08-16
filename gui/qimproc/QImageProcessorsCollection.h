@@ -8,7 +8,7 @@
 #ifndef __QImageProcessorCollection_h__
 #define __QImageProcessorCollection_h__
 
-#include <QtCore/QtCore>
+#include <QtWidgets/QtWidgets>
 #include <core/improc/c_image_processor.h>
 
 
@@ -48,6 +48,23 @@ protected:
   static c_image_processor_collection::ptr processors_;
 };
 
+class QImageProcessorSelectionCombo :
+    public QComboBox
+{
+  Q_OBJECT;
+public:
+  typedef QImageProcessorSelectionCombo ThisClass;
+  typedef QComboBox Base;
+
+  QImageProcessorSelectionCombo(QWidget * parent = Q_NULLPTR);
+
+  bool setCurrentProcessor(const c_image_processor::ptr & processor);
+  c_image_processor::ptr currentProcessor() const;
+  c_image_processor::ptr processor(int index) const;
+
+public slots:
+  void refresh();
+};
 
 
 #endif /* __QImageProcessorCollection_h__ */

@@ -48,8 +48,7 @@ enum frame_upscale_option {
   frame_upscale_none = 0,
   frame_upscale_pyrUp = 1,
   frame_upscale_x15 = 2,
-  //frame_upscale_x20 = 3,
-  frame_upscale_x30 = 4,
+  frame_upscale_x30 = 3,
 };
 
 
@@ -101,6 +100,8 @@ enum frame_upscale_option fromStdString(const std::string  & s,
 
 
 struct c_input_options {
+  c_image_processor::ptr input_frame_processor;
+
   bool remove_bad_pixels = true;
   bool enable_color_maxtrix = false;
 
@@ -117,6 +118,7 @@ struct c_master_frame_options {
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
   int max_input_frames_to_generate_master_frame = 200;
+  bool apply_input_frame_processor = true;
   bool generate_master_frame = true;
   bool allow_eccflow = false;
   bool compensate_master_flow = true;
@@ -156,9 +158,10 @@ struct c_image_stacking_output_options {
 
   std::string output_aligned_video_filename;
 
-  c_image_processor::ptr accumuated_image_processor;
   c_image_processor::ptr frame_processor;
   std::string processed_frame_filename;
+
+  c_image_processor::ptr accumuated_image_processor;
 
   bool write_aligned_video = false;
   bool save_processed_frames = false;

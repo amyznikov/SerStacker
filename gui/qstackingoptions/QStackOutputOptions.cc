@@ -7,8 +7,8 @@
 
 #include "QStackOutputOptions.h"
 #include <gui/qimproc/QImageProcessorsCollection.h>
-#include <gui/widgets/addctrl.h>
-#include <gui/widgets/settings.h>
+//#include <gui/widgets/addctrl.h>
+//#include <gui/widgets/settings.h>
 #include <core/debug.h>
 
 #define ICON_close          "close"
@@ -35,10 +35,6 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
     QImageProcessorsCollection::load();
   }
 
-  connect(QImageProcessorsCollection::instance(), &QImageProcessorsCollection::collectionChanged,
-      this, &ThisClass::populateAvailableImageProcessors);
-
-
   ///
 
   form->addRow(output_directory_ctl =
@@ -58,70 +54,60 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   ///
 
 
-  save_processed_frames_ctl =
-      add_checkbox("Save processed frames",
-          [this](int state) {
-            if ( options_ ) {
-              if ( options_->save_processed_frames != (state == Qt::Checked) ) {
-                options_->save_processed_frames = (state == Qt::Checked);
-                emit parameterChanged();
-              }
-            }
-          });
-
   frame_processor_selector_ctl =
-      add_combobox( "Post Process Individual Frames:",
+      add_combobox<QImageProcessorSelectionCombo>("Post Process Frames:",
           [this](int index) {
             if ( options_ ) {
-              if ( index < 1 ||(index = QImageProcessorsCollection::indexof(
-                  frame_processor_selector_ctl->currentText()) ) < 0 ) {
-                options_->frame_processor.reset();
-              }
-              else {
-                options_->frame_processor = QImageProcessorsCollection::item(index);
-              }
+              options_->frame_processor =
+                  frame_processor_selector_ctl->processor(index);
             }
-      });
-
-  frame_processor_selector_ctl->setEditable(false);
-  frame_processor_selector_ctl->setMinimumContentsLength(12);
-  frame_processor_selector_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+          });
 
 
   ///
 
+  save_processed_frames_ctl =
+      add_checkbox("Save processed frames",
+          [this](int state) {
+            if ( options_ && options_->save_processed_frames != (state == Qt::Checked)  ) {
+
+                options_->save_processed_frames = (state == Qt::Checked);
+
+                emit parameterChanged();
+            }
+          });
+
+
+  ///
 
   accumulated_image_processor_selector_ctl =
-      add_combobox( "Post Process Accumulated Image:",
+      add_combobox<QImageProcessorSelectionCombo>("Post Process Accumulated Frame:",
           [this](int index) {
             if ( options_ ) {
-              if ( index < 1 ||(index = QImageProcessorsCollection::indexof(
-                  accumulated_image_processor_selector_ctl->currentText()) ) < 0 ) {
-                options_->accumuated_image_processor.reset();
-              }
-              else {
-                options_->accumuated_image_processor = QImageProcessorsCollection::item(index);
-              }
+
+              options_->accumuated_image_processor =
+                  accumulated_image_processor_selector_ctl->processor(index);
+
             }
-      });
-
-  accumulated_image_processor_selector_ctl->setEditable(false);
-  accumulated_image_processor_selector_ctl->setMinimumContentsLength(12);
-  accumulated_image_processor_selector_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-
+          });
 
   ///
 
   write_aligned_video_ctl = add_checkbox("Write aligned video",
       [this](int state) {
         if ( options_ ) {
+
           const bool status = state == Qt::Checked;
+
           if ( status != options_->write_aligned_video ) {
+
             options_->write_aligned_video = status;
+
             emit parameterChanged();
           }
 
-          output_aligned_video_filename_ctl->setEnabled(options_->write_aligned_video);
+          output_aligned_video_filename_ctl->setEnabled(
+              options_->write_aligned_video);
         }
       });
 
@@ -134,7 +120,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   connect(output_aligned_video_filename_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
         if ( options_ && !updatingControls() ) {
-          options_->output_aligned_video_filename = output_aligned_video_filename_ctl->currentPath().toStdString();
+
+          options_->output_aligned_video_filename =
+              output_aligned_video_filename_ctl->currentPath().toStdString();
+
           emit parameterChanged();
         }
       });
@@ -146,8 +135,11 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
       [this](int state) {
         if ( options_ ) {
           const bool status = state == Qt::Checked;
+
           if ( status != options_->write_image_mask_as_alpha_channel ) {
+
             options_->write_image_mask_as_alpha_channel = status;
+
             emit parameterChanged();
           }
         }
@@ -160,8 +152,11 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
       [this](int state) {
         if ( options_ ) {
           const bool status = state == Qt::Checked;
+
           if ( status != options_->dump_reference_data_for_debug ) {
+
             options_->dump_reference_data_for_debug = status;
+
             emit parameterChanged();
           }
         }
@@ -187,8 +182,6 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   ///
 
-  populateAvailableImageProcessors();
-
   setEnabled(false);
 }
 
@@ -209,7 +202,7 @@ void QStackOutputOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    int current_index;
+    //int current_index;
 
     output_directory_ctl->setCurrentPath(options_->output_directory.c_str(), false);
 
@@ -222,88 +215,15 @@ void QStackOutputOptions::onupdatecontrols()
     output_aligned_video_filename_ctl->setEnabled(options_->write_aligned_video);
     dump_reference_data_for_debug_ctl->setChecked(options_->dump_reference_data_for_debug);
 
-
-    current_index = 0;
-    if ( options_->frame_processor ) {
-      if ( (current_index = frame_processor_selector_ctl->findText(options_->frame_processor->cname())) < 0 ) {
-        options_->frame_processor.reset();
-        current_index = 0;
-      }
+    if ( !frame_processor_selector_ctl->setCurrentProcessor(options_->frame_processor) ) {
+      options_->frame_processor.reset();
     }
-    frame_processor_selector_ctl->setCurrentIndex(current_index);
 
-
-    current_index = 0;
-    if ( options_->accumuated_image_processor ) {
-
-      current_index = accumulated_image_processor_selector_ctl->findText(
-              options_->accumuated_image_processor->cname());
-
-      if ( current_index < 0 ) {
-        options_->accumuated_image_processor.reset();
-        current_index = 0;
-      }
+    if ( !accumulated_image_processor_selector_ctl->setCurrentProcessor(options_->accumuated_image_processor) ) {
+      options_->accumuated_image_processor.reset();
     }
-    accumulated_image_processor_selector_ctl->setCurrentIndex(current_index);
-
 
     setEnabled(true);
   }
 
-}
-
-void QStackOutputOptions::populateAvailableImageProcessors()
-{
-  const bool oldUpdatingControlsFlag =
-      updatingControls();
-
-  setUpdatingControls(true);
-
-  const QString current_accumulated_processor_name =
-      accumulated_image_processor_selector_ctl->currentText();
-
-  const QString current_frame_processor_name =
-      frame_processor_selector_ctl->currentText();
-
-  accumulated_image_processor_selector_ctl->clear();
-  accumulated_image_processor_selector_ctl->addItem("None");
-
-  frame_processor_selector_ctl->clear();
-  frame_processor_selector_ctl->addItem("None");
-
-  for ( int i = 0, n = QImageProcessorsCollection::size(); i < n; ++i ) {
-
-    const c_image_processor::ptr processor =
-        QImageProcessorsCollection::item(i);
-
-    if( processor ) {
-
-      accumulated_image_processor_selector_ctl->
-          addItem(processor->cname(), processor->cfilename());
-
-      frame_processor_selector_ctl->
-          addItem(processor->cname(), processor->cfilename());
-
-    }
-  }
-
-  if ( !current_accumulated_processor_name.isEmpty() ) {
-    const int index =
-        accumulated_image_processor_selector_ctl->findText(current_accumulated_processor_name);
-
-    if ( index >= 0 ) {
-      accumulated_image_processor_selector_ctl->setCurrentIndex(index);
-    }
-  }
-
-  if ( !current_frame_processor_name.isEmpty() ) {
-    const int index =
-        frame_processor_selector_ctl->findText(current_frame_processor_name);
-
-    if ( index >= 0 ) {
-      frame_processor_selector_ctl->setCurrentIndex(index);
-    }
-  }
-
-  setUpdatingControls(oldUpdatingControlsFlag);
 }

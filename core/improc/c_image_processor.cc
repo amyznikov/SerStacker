@@ -23,6 +23,7 @@
 #include "c_unsharp_mask_routine.h"
 #include "c_scale_channels_routine.h"
 #include "c_type_convert_routine.h"
+#include "c_color_saturation_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -81,6 +82,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_gradient_routine::class_factory);
     register_class_factory(&c_scale_channels_routine::class_factory);
     register_class_factory(&c_type_convert_routine::class_factory);
+    register_class_factory(&c_color_saturation_routine::class_factory);
+
   }
 }
 
@@ -307,7 +310,7 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
       }
 
       catch( const cv::Exception &e ) {
-        CF_ERROR("OpenCV Exception in '%s' : %s\n",
+        CF_ERROR("OpenCV Exception in '%s' : %s\n"
             "%s() : %d\n"
             "file : %s\n",
             processor->class_name().c_str(),

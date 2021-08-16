@@ -13,6 +13,7 @@ c_align_color_channels_routine::c_class_factory c_align_color_channels_routine::
 c_align_color_channels_routine::c_align_color_channels_routine(bool enabled)
   : base(&class_factory, enabled)
 {
+  algorithm_.set_motion_type(ECC_MOTION_TRANSLATION);
 }
 
 c_align_color_channels_routine::ptr c_align_color_channels_routine::create(bool enabled)
@@ -176,6 +177,7 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings) const
   settings.set("reference_channel", reference_channel_);
   settings.set("enable_threshold", enable_threshold_);
   settings.set("threshold", threshold_);
+
   SAVE_PROPERTY(settings, algorithm_, motion_type);
   SAVE_PROPERTY(settings, algorithm_, interpolation);
   SAVE_PROPERTY(settings, algorithm_, smooth_sigma);

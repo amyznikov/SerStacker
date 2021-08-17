@@ -81,6 +81,8 @@ protected:
   QWidget * routine_ctl = Q_NULLPTR;
   QFormLayout * ctlform = Q_NULLPTR;
 
+  QToolButton * move_up_ctl = Q_NULLPTR;
+  QToolButton * move_down_ctl = Q_NULLPTR;
   QToolButton * menu_ctl = Q_NULLPTR;
 
 };

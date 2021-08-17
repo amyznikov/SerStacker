@@ -420,7 +420,7 @@ protected:
   bool pscale(cv::InputArray src, cv::Mat & dst,
       bool ismask = false) const;
 
-  void pnormalize(cv::InputArray src, cv::OutputArray dst) const;
+  void pnormalize(cv::InputArray src, cv::OutputArray dst, double noise_level) const;
 
   double update_multiplier_ = 1.5;
   int max_iterations_ = 1;

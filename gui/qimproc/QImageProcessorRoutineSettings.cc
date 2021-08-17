@@ -24,8 +24,8 @@
 
 #define ICON_double_arrow_down    "double-arrow-down"
 #define ICON_double_arrow_right   "double-arrow-right"
-#define ICON_move_down            "move-down"
-#define ICON_move_up              "move-up"
+#define ICON_move_down            "move-down2"
+#define ICON_move_up              "move-up2"
 #define ICON_delete               "delete"
 #define ICON_add                  "add"
 #define ICON_menu                 "menu"
@@ -119,62 +119,60 @@ QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const Cla
   );
 #undef __EXPAND_CTL_STYLE_TEXT
 
-    static const char borderless_style[] = ""
-        "QToolButton { border: none; }";
+  static const char borderless_style[] = ""
+      "QToolButton { border: none; }";
+
+  form->setSpacing(0);
+  form->setVerticalSpacing(0);
+  form->setMargin(0);
+
+  header_ctl = new QWidget(this);
+  header_layout = new QHBoxLayout(header_ctl);
+  header_layout->setSpacing(6);
+  header_layout->setMargin(0);
+  header_layout->setAlignment(Qt::AlignLeft);
+
+  expand_ctl = new QCheckBox(header_ctl);
+  expand_ctl->setStyleSheet(expand_box_style);
+  header_layout->addWidget(expand_ctl);
 
 
-    form->setSpacing(0);
-    form->setVerticalSpacing(0);
-    form->setMargin(0);
+  static QMenu menu;
+  if( menu.isEmpty() ) {
+    menu.addAction(add_routine_action = new QAction(getIcon(ICON_add), "Add ..."));
+    menu.addAction(remove_routine_action = new QAction(getIcon(ICON_delete), "Delete"));
+    menu.addAction(move_up_action = new QAction(getIcon(ICON_move_up), "Move Up"));
+    menu.addAction(move_down_action = new QAction(getIcon(ICON_move_down), "Move Down"));
+  }
 
-    header_ctl = new QWidget(this);
-    header_layout = new QHBoxLayout(header_ctl);
-    header_layout->setSpacing(6);
-    header_layout->setMargin(0);
-    header_layout->setAlignment(Qt::AlignLeft);
+  menu_ctl = new QToolButton();
+  menu_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  menu_ctl->setIconSize(QSize(16, 16));
+  menu_ctl->setIcon(getIcon(ICON_menu));
+  menu_ctl->setStyleSheet(borderless_style);
+  header_layout->addWidget(menu_ctl);
 
+  connect(menu_ctl, &QToolButton::clicked,
+      [this]() {
 
-    expand_ctl = new QCheckBox(header_ctl);
-    expand_ctl->setStyleSheet(expand_box_style);
-    header_layout->addWidget(expand_ctl);
+        QAction * selectedAction =
+        menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width()-2,menu_ctl->height()-4)));
 
-
-    static QMenu menu;
-    if ( menu.isEmpty() ) {
-      menu.addAction(add_routine_action = new QAction(getIcon(ICON_add), "Add ..."));
-      menu.addAction(remove_routine_action = new QAction(getIcon(ICON_delete), "Delete"));
-      menu.addAction(move_up_action = new QAction(getIcon(ICON_move_up), "Move Up"));
-      menu.addAction(move_down_action = new QAction(getIcon(ICON_move_down), "Move Down"));
-    }
-
-    menu_ctl = new QToolButton();
-    menu_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    menu_ctl->setIconSize(QSize(16,16));
-    menu_ctl->setIcon(getIcon(ICON_menu));
-    menu_ctl->setStyleSheet(borderless_style);
-    header_layout->addWidget(menu_ctl);
-
-    connect(menu_ctl, &QToolButton::clicked,
-        [this]() {
-
-          QAction * selectedAction =
-              menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width()-2,menu_ctl->height()-4)));
-
-          if ( selectedAction ) {
-            if ( selectedAction == move_up_action ) {
-              emit moveUpRequested(this);
-            }
-            else if ( selectedAction == move_down_action ) {
-              emit moveDownRequested(this);
-            }
-            else if ( selectedAction == add_routine_action ) {
-              emit addRoutineRequested(this);
-            }
-            else if ( selectedAction == remove_routine_action ) {
-              emit removeRoutineRequested(this);
-            }
+        if ( selectedAction ) {
+          if ( selectedAction == move_up_action ) {
+            emit moveUpRequested(this);
           }
-        });
+          else if ( selectedAction == move_down_action ) {
+            emit moveDownRequested(this);
+          }
+          else if ( selectedAction == add_routine_action ) {
+            emit addRoutineRequested(this);
+          }
+          else if ( selectedAction == remove_routine_action ) {
+            emit removeRoutineRequested(this);
+          }
+        }
+      });
 
 
 
@@ -183,6 +181,36 @@ QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const Cla
 
     enable_ctl = new QCheckBox(factory->routineClassName(), header_ctl);
     header_layout->addWidget(enable_ctl);
+
+    ///////////////
+    move_up_ctl = new QToolButton(this);
+    move_up_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    move_up_ctl->setStyleSheet(borderless_style);
+    move_up_ctl->setIconSize(QSize(16, 16));
+    move_up_ctl->setIcon(getIcon(ICON_move_up));
+    header_layout->addWidget(move_up_ctl, 10, Qt::AlignRight);
+    connect(move_up_ctl, &QToolButton::clicked,
+        [this]() {
+          emit moveUpRequested(this);
+          //QCursor::setPos(move_up_ctl->mapToGlobal(QPoint(move_up_ctl->width()/2, move_up_ctl->height()/2)));
+        });
+
+    ///////////////
+    move_down_ctl = new QToolButton(this);
+    move_down_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    move_down_ctl->setStyleSheet(borderless_style);
+    move_down_ctl->setIconSize(QSize(16, 16));
+    move_down_ctl->setIcon(getIcon(ICON_move_down));
+    header_layout->addWidget(move_down_ctl, 0, Qt::AlignRight);
+    connect(move_down_ctl, &QToolButton::clicked,
+        [this]() {
+          emit moveDownRequested(this);
+          //QCursor::setPos(move_down_ctl->mapToGlobal(QPoint(move_down_ctl->width()/2, move_down_ctl->height()/2)));
+        });
+
+
+    ///////////////
+
     form->addRow(header_ctl);
 
 

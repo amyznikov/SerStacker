@@ -2890,7 +2890,7 @@ bool c_ecch_flow::convert_input_images(cv::InputArray src, cv::InputArray src_ma
 }
 
 
-void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst) const
+void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst, double noise_level) const
 {
   if ( normalization_scale_ < 1 ) {
     _src.copyTo(dst);
@@ -2899,12 +2899,12 @@ void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst) const
 
     cv::Mat src, mean, stdev;
     const int nscale = std::max(normalization_scale_, support_scale_);
-    const double noise = estimate_noise(_src)[0];
+    //const double noise = estimate_noise(_src)[0];
     src = _src.getMat();
     pdownscale(src, mean, nscale, cv::BORDER_REPLICATE);
     pdownscale(src.mul(src), stdev, nscale, cv::BORDER_REPLICATE);
     cv::absdiff(stdev, mean.mul(mean), stdev);
-    cv::add(stdev, std::max(noise, 1e-3), stdev); // FIXME: 1e-3 is dummy
+    cv::add(stdev, std::max(noise_level/*noise*/, 1e-3), stdev); // FIXME: 1e-3 is dummy
     cv::sqrt(stdev, stdev);
 
     pupscale(mean, src.size());
@@ -3045,8 +3045,11 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
     return false;
   }
 
+  const double noise_level = estimate_noise(I, cv::noArray(),
+          pyramid_.front().current_mask)[0];
 
-  pnormalize(I, pyramid_.front().current_image);
+
+  pnormalize(I, pyramid_.front().current_image, noise_level);
   pyramid_[0].rmap = rmap; // attention to this!
   //rmap.copyTo(pyramid_.front().rmap);
 
@@ -3060,9 +3063,9 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
 
     tbb::parallel_invoke(
 
-        [this, &I, &next_scale, next_size]() {
+        [this, &I, &next_scale, next_size, noise_level]() {
           cv::pyrDown(I, I, next_size, cv::BORDER_REPLICATE);
-          pnormalize(I, next_scale.current_image);
+          pnormalize(I, next_scale.current_image, noise_level);
         },
 
 
@@ -3127,14 +3130,19 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
 
   const int min_image_size = 1 << (support_scale_ + 1);
   //const int min_image_size = 32;
-  const double Noise = pow(0.5 * estimate_noise(I, cv::noArray(), cv::noArray())[0], 4);
+
+  const double noise_level = estimate_noise(I, cv::noArray(),
+          pyramid_.front().reference_mask)[0];
+
+  const double RegularizationTerm =
+      pow(0.5 * noise_level, 4);
 
   while ( 42 ) {
 
     pyramid_entry & current_scale = pyramid_.back();
     const cv::Size currentSize = I.size();
 
-    pnormalize(I, current_scale.reference_image);
+    pnormalize(I, current_scale.reference_image, noise_level);
 
     ecc_differentiate(current_scale.reference_image,
         current_scale.Ix, current_scale.Iy);
@@ -3157,7 +3165,7 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
 
 
     cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
-    cv::add(DD, Noise, DD);
+    cv::add(DD, RegularizationTerm, DD);
     cv::divide(1, DD, DD);
 
     cv::Mat D_channels[4] = {

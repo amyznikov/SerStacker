@@ -17,6 +17,9 @@ bool color_saturation_hls(cv::InputArray src,
     double scale,
     cv::InputArray srcmask = cv::noArray());
 
+bool color_saturation_hls(cv::Mat & image,
+    double scale,
+    cv::InputArray srcmask = cv::noArray());
 
 
 

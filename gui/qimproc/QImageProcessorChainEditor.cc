@@ -11,8 +11,8 @@
 
 #define ICON_double_arrow_down    "double-arrow-down"
 #define ICON_double_arrow_right   "double-arrow-right"
-#define ICON_move_down            "move-down"
-#define ICON_move_up              "move-up"
+#define ICON_move_down            "move-down2"
+#define ICON_move_up              "move-up2"
 #define ICON_delete               "delete"
 #define ICON_add                  "add"
 #define ICON_menu                 "menu"

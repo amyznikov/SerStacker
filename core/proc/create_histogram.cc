@@ -16,10 +16,10 @@ static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
   const cv::Mat_<cv::Vec<T, cn>> src =
       _src.getMat();
 
-  const cv::Vec<float, cn> mv =
+  const cv::Vec<double, cn> mv =
       cv::Vec<float, cn>::all(minval);
 
-  const float scale =
+  const double scale =
       bn / (maxval - minval);
 
   H.create(bn, cn);
@@ -30,19 +30,14 @@ static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
     for ( int y = 0; y < src.rows; ++y ) {
       for ( int x = 0; x < src.cols; ++x ) {
 
-        const cv::Vec<int, cn> bin = cv::Vec<int, cn>(
-            (cv::Vec<float, cn>(src[y][x]) - mv) * scale);
+        for( int c = 0; c < cn; ++c ) {
 
-        for ( int c = 0; c < cn; ++c ) {
-          int b = bin[c];
-          if ( b < 0 ) {
-            b = 0;
-          }
-          else if ( b >= bn ) {
-            b = bn - 1;
-          }
+          const int b = std::max(0,  std::min(bn-1,
+                  (int)( (src[y][x][c] - mv[c]) * scale )));
+
           H[b][c] += 1;
         }
+
       }
     }
   }
@@ -54,19 +49,15 @@ static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
       for ( int x = 0; x < src.cols; ++x ) {
         if ( mask[y][x] ) {
 
-          const cv::Vec<int, cn> bin =
-              cv::Vec<int, cn>((cv::Vec<float, cn>(src[y][x]) - mv) * scale);
+          for( int c = 0; c < cn; ++c ) {
 
-          for ( int c = 0; c < cn; ++c ) {
-            int b = bin[c];
-            if ( b < 0 ) {
-              b = 0;
-            }
-            else if ( b >= bn ) {
-              b = bn - 1;
-            }
+            const int b = std::max(0,  std::min(bn-1,
+                    (int)( (src[y][x][c] - mv[c]) * scale )));
+
             H[b][c] += 1;
           }
+
+
         }
       }
     }
@@ -271,7 +262,7 @@ bool create_histogram(cv::InputArray image, cv::InputArray mask,
       cv::minMaxLoc(image, minval, maxval);
     }
     if ( nbins < 1 ) {
-      nbins = (int) std::min(65536., ((*maxval - *minval) / FLT_MIN) + 1);
+      nbins = (int) std::min(10000., ((*maxval - *minval) / FLT_MIN) + 1);
     }
     break;
 
@@ -281,7 +272,7 @@ bool create_histogram(cv::InputArray image, cv::InputArray mask,
       cv::minMaxLoc(image, minval, maxval);
     }
     if ( nbins < 1 ) {
-      nbins = (int) std::min(65536., ((*maxval - *minval) / DBL_MIN) + 1);
+      nbins = (int) std::min(10000., ((*maxval - *minval) / DBL_MIN) + 1);
     }
     break;
 

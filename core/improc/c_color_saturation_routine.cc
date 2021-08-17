@@ -61,5 +61,5 @@ bool c_color_saturation_routine::serialize(c_config_setting settings) const
 
 bool c_color_saturation_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  return color_saturation_hls(image.getMatRef(), image.getMatRef(), scale_, mask);
+  return color_saturation_hls(image.getMatRef(), scale_, mask);
 }

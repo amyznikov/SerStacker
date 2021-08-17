@@ -24,7 +24,7 @@
  * Convert an RGB color value to a HSL (Hue, Saturation, Lightness)
  * color value.
  **/
-static void gimp_rgb_to_hsl(double b, double r, double g,
+static void gimp_rgb_to_hsl(double b, double g, double r,
     double * h, double * s, double * l)
 {
   double max, min, delta;

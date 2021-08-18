@@ -192,12 +192,12 @@ protected:
   }
 
   template<class PropType>
-  QNumberEditBox * add_numeric_box(const char * name,
+  QNumberEditBox * add_numeric_box(const QString & label,
       const PropType & (RoutineType::*getfn)() const,
       void (RoutineType::*setfn)(const PropType &))
   {
     QNumberEditBox * ctl = new QNumberEditBox();
-    ctlform->addRow(name, ctl);
+    ctlform->addRow(label, ctl);
     QObject::connect(ctl, &QLineEditBox::textChanged,
         [this, ctl, getfn, setfn]() {
           if ( routine_ && !updatingControls() ) {
@@ -216,12 +216,12 @@ protected:
     return ctl;
   }
 
-  QLineEditBox * add_textbox(const char * name,
+  QLineEditBox * add_textbox(const QString & label,
       const std::string & (RoutineType::*getfn)() const,
       void (RoutineType::*setfn)(const std::string & ))
   {
     QLineEditBox * ctl = new QLineEditBox();
-    ctlform->addRow(name, ctl);
+    ctlform->addRow(label, ctl);
     QObject::connect(ctl, &QLineEditBox::textChanged,
         [this, ctl, getfn, setfn]() {
           if ( routine_ && !updatingControls() ) {
@@ -239,12 +239,12 @@ protected:
 
 
   template<class ComboboxType, class PropType>
-  ComboboxType * add_enum_combobox(const char * name,
+  ComboboxType * add_enum_combobox(const QString & label,
       PropType (RoutineType::*getfn)() const,
       void (RoutineType::*setfn)(PropType))
   {
     ComboboxType * ctl = new ComboboxType(this);
-    ctlform->addRow(name, ctl);
+    ctlform->addRow(label, ctl);
     QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
         [this, ctl, getfn, setfn]() {
           if ( routine_ && !updatingControls() ) {

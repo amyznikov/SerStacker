@@ -29,17 +29,17 @@ public:
   c_color_saturation_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
-  static ptr create(double scale, bool enabled = true);
+  static ptr create(const std::vector<double> & scales, bool enabled = true);
 
   bool serialize(c_config_setting settings) const override;
   bool deserialize(c_config_setting settings) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  void set_scale(double v);
-  double scale() const;
+  void set_scales(const std::vector<double> & scales);
+  const std::vector<double> & scales() const;
 
 protected:
-  double scale_ = 1.1;
+  std::vector<double> scales_;
 };
 
 #endif /* __c_color_saturation_routine_h__ */

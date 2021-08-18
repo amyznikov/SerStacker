@@ -1452,13 +1452,66 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
             new c_frame_accumulation_with_mask());
       }
     }
+
+    input_sequence->seek(master_frame_index_);
+
+    if ( !read_input_frame(input_sequence, options->input_options(), current_frame_, current_mask_) ) {
+      set_status_msg("read_input_frame(master_frame_index_) fails");
+      return false;
+    }
+
+    if ( canceled() ) {
+      return false;
+    }
+
+    if ( roi_selection_ && !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
+      set_status_msg("select_image_roi(master_frame_index_) fails");
+      return false;
+    }
+
+    if ( canceled() ) {
+      return false;
+    }
+
+    if ( master_options.apply_input_frame_processor && input_options.input_frame_processor ) {
+      if ( !(fOk = input_options.input_frame_processor->process(current_frame_, current_mask_)) ) {
+        CF_ERROR("input_frame_processor->process(current_frame) fails");
+        return false;
+      }
+    }
+
+    if ( canceled() ) {
+      return false;
+    }
+
+    if ( !(fOk = frame_registration_->setup_referece_frame(current_frame_, current_mask_)) ) {
+      set_status_msg("ERROR: frame_registration_->setup_referece_frame() fails");
+      return false;
+    }
+
+  }
+
+  // 2155
+
+  int max_input_frames = options->master_frame_options().max_input_frames_to_generate_master_frame;
+  int minpos = std::max(0, master_frame_index_ - max_input_frames);
+  int maxpos = std::min(master_frame_index_ + max_input_frames, input_sequence_size);
+
+  if ( !input_sequence->seek(minpos) ) {
+    CF_ERROR("input_sequence->seek(minpos=%d) fails", minpos);
+    set_status_msg("ERROR: input_sequence->seek(minpos) fails");
+    return false;
   }
 
 
   fOk = true;
   processed_frames_ = 0;
-  total_frames_ = std::min(options->master_frame_options().max_input_frames_to_generate_master_frame,
-          input_sequence_size - master_frame_index_);
+  total_frames_ = maxpos - minpos;
+
+  CF_DEBUG("max_input_frames=%d input_sequence_size=%d minpos=%d maxpos=%d total_frames_=%d",
+      max_input_frames, input_sequence_size,
+      minpos, maxpos,
+      total_frames_);
 
   emit_status_changed();
 
@@ -1517,27 +1570,17 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
       break;
     }
 
-    if ( frame_accumulation_->accumulated_frames() < 1 ) {
+    if( frame_accumulation_->accumulated_frames() > 0 ) {
+      if( current_frame_.size() != frame_accumulation_->accumulator_size() ) {
 
-     if ( true ) {
-        lock_guard lock(registration_lock_);
+        fOk = false;
 
-        if ( !(fOk = frame_registration_->setup_referece_frame(current_frame_, current_mask_)) ) {
-          set_status_msg("ERROR: frame_registration_->setup_referece_frame() fails");
-          break;
-        }
+        CF_ERROR("ERROR: input and accumulator frame sizes not match (input=%dx%d accumulator=%dx%d)",
+            current_frame_.cols, current_frame_.rows,
+            frame_accumulation_->accumulator_size().width, frame_accumulation_->accumulator_size().height);
+
+        break;
       }
-
-    }
-    else if ( current_frame_.size() != frame_accumulation_->accumulator_size() ) {
-
-      fOk = false;
-
-      CF_ERROR("ERROR: input and accumulator frame sizes not match (input=%dx%d accumulator=%dx%d)",
-          current_frame_.cols, current_frame_.rows,
-          frame_accumulation_->accumulator_size().width, frame_accumulation_->accumulator_size().height);
-
-      break;
     }
 
     if ( canceled() ) {
@@ -1569,7 +1612,6 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
 
         masterflow_accumulation_->add(turbulence, current_mask_);
       }
-
     }
 
     if ( canceled() ) {

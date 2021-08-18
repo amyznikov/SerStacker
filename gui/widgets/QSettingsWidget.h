@@ -13,6 +13,7 @@
 #include <gui/widgets/settings.h>
 #include <gui/widgets/QEnumComboBox.h>
 #include <gui/widgets/QLineEditBox.h>
+#include <functional>
 #include <mutex>
 
 class QSettingsWidget
@@ -93,6 +94,28 @@ protected:
     return add_numeric_box<ValueType>(this->form, name, slot);
   }
 
+  QLineEditBox* add_textbox(QFormLayout * form, const QString & name,
+      const std::function<void(const QString&)> & slot = std::function<void(const QString&)>())
+  {
+    QLineEditBox *ctl = new QLineEditBox();
+    form->addRow(name, ctl);
+    QObject::connect(ctl, &QLineEditBox::textChanged,
+        [this, ctl, slot]() {
+          if ( !updatingControls() && slot ) {
+            LOCK();
+            slot(ctl->text());
+            UNLOCK();
+          }
+        });
+
+    return ctl;
+  }
+
+  QLineEditBox* add_textbox(const QString & name,
+      const std::function<void(const QString&)> & slot = std::function<void(const QString&)>())
+  {
+    return add_textbox(this->form, name, slot);
+  }
 
   template<class _Calable>
   QCheckBox* add_checkbox(QFormLayout * form, const QString & name, const _Calable & slot)

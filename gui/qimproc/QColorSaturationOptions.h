@@ -36,7 +36,8 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  QNumberEditBox * scale_ctl = Q_NULLPTR;
+  //QNumberEditBox * scale_ctl = Q_NULLPTR;
+  QLineEditBox * scales_ctl = Q_NULLPTR;
 };
 
 #endif /* __QColorSaturationOptions_h__ */

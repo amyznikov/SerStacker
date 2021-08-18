@@ -1021,9 +1021,21 @@ bool getTranslationComponent(int motion_type, const cv::Mat1f & T,
 
   case ECC_MOTION_EUCLIDEAN :
   case ECC_MOTION_AFFINE :
-  case ECC_MOTION_HOMOGRAPHY :
   case ECC_MOTION_QUADRATIC :
     if ( T.rows == 2 && T.cols >= 3 ) {
+      *tx = T[0][2];
+      *ty = T[1][2];
+    }
+    else {
+      CF_ERROR("Invalid warp matrix size specified : %dx%d, can not extract translation components", T.rows, T.cols);
+      *tx = *ty = 0;
+      return false;
+    }
+    break;
+
+  case ECC_MOTION_HOMOGRAPHY :
+    if ( T.rows == 3 && T.cols == 3 ) {
+      // FIXME: check if this is correct for ECC_MOTION_HOMOGRAPHY
       *tx = T[0][2];
       *ty = T[1][2];
     }

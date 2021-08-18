@@ -19,6 +19,22 @@
 # define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
 
+
+// LZW is contr-productive with floating point data, growing file size
+// LZMA is not supported by ImageJ
+static int g_default_tiff_compression = COMPRESSION_NONE;
+
+void set_default_tiff_compression(int compression)
+{
+  g_default_tiff_compression = compression;
+}
+
+int default_tiff_compression()
+{
+  return g_default_tiff_compression;
+}
+
+
 template<class T>
 static void write_tiff_image(const cv::Mat & image, int sampleformat, TIFF * tiff)
 {
@@ -36,13 +52,12 @@ static bool write_tiff(cv::InputArray src, const std::string & filename, const s
   TIFF * tiff;
 
   int photometric_tag = 0;
-  int compression = COMPRESSION_NONE;
+  int compression = g_default_tiff_compression;
 
   if ( !_params.empty() ) {
-
     for ( uint i = 0, n = _params.size(); i < n; i += 2 ) {
       if ( _params[i] == cv::ImwriteFlags::IMWRITE_TIFF_COMPRESSION ) {
-        compression = _params[i+1];
+        compression = _params[i + 1];
         break;
       }
     }
@@ -57,6 +72,7 @@ static bool write_tiff(cv::InputArray src, const std::string & filename, const s
     CF_FATAL("Unsupported image depth=%d in write_tiff()", src.depth());
     return false;
   }
+
 
   switch ( src.channels() ) {
   case 1 :
@@ -89,8 +105,10 @@ static bool write_tiff(cv::InputArray src, const std::string & filename, const s
     return false;
   }
 
+  CF_DEBUG("SET TIFFTAG_COMPRESSION= %d", compression);
+
   TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, photometric_tag);
-  TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression/*COMPRESSION_NONE*/);
+  TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression);
 
   TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, (uint64_t) (image.cols));  // width of the image
   TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, (uint64_t) (image.rows));  // height of the image

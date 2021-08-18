@@ -10,6 +10,10 @@
 
 #include <opencv2/opencv.hpp>
 
+
+void set_default_tiff_compression(int compression);
+int default_tiff_compression();
+
 bool save_image(cv::InputArray _image, const std::string & fname,
     const std::vector<int>& params = std::vector<int>());
 

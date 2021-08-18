@@ -60,9 +60,8 @@ static QString toString(const PIXEL_DEPTH v)
 QImageSavePNGOptions::QImageSavePNGOptions(QWidget * parent) :
     Base("QImageSavePNGOptions", parent)
 {
-  pixtype_ctl = add_combobox("Pixel depth:",
-      [this](int currentIndex) {
-      });
+  pixtype_ctl = add_combobox(
+      "Pixel depth:");
 
   pixtype_ctl->addItem(toString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
   pixtype_ctl->addItem(toString(PIXEL_DEPTH_16U), QVariant::fromValue((int) (PIXEL_DEPTH_16U)));
@@ -107,7 +106,9 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
   compression_ctl->addItem("LZW", COMPRESSION_LZW);
   compression_ctl->addItem("LZMA", COMPRESSION_LZMA);
 
-  compression_ctl->setCurrentIndex(0);
+  compression_ctl->setCurrentIndex(std::max(0,
+      compression_ctl->findData(
+          default_tiff_compression())));
 }
 
 void QImageSaveTIFFOptions::setPixelDepth(PIXEL_DEPTH v)
@@ -377,7 +378,7 @@ bool saveImageFileAs(QWidget * parent,
         selectedPixelDepth = tiffOptions->pixelDepth();
 
         imwrite_params.emplace_back(cv::ImwriteFlags::IMWRITE_TIFF_COMPRESSION);
-        imwrite_params.emplace_back(COMPRESSION_LZW);
+        imwrite_params.emplace_back(tiffOptions->tiffCompression());
 
         break;
       }

@@ -5,7 +5,6 @@
  *      Author: amyznikov
  */
 
-//#include <functional>
 #include "c_image_processor.h"
 #include <atomic>
 #include <core/readdir.h>

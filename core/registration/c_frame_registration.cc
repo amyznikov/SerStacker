@@ -324,6 +324,8 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     eccflow_.set_max_iterations(base_options_.eccflow.max_iterations);
     eccflow_.set_support_scale(base_options_.eccflow.support_scale);
     eccflow_.set_normalization_scale(base_options_.eccflow.normalization_scale);
+    eccflow_.set_input_smooth_sigma(base_options_.eccflow.input_smooth_sigma);
+    eccflow_.set_reference_smooth_sigma(base_options_.eccflow.reference_smooth_sigma);
 
     cv::Mat1f reference_image;
     cv::Mat1b reference_mask;

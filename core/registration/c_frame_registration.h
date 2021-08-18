@@ -25,6 +25,8 @@ struct c_ecc_options {
 
 struct c_eccflow_options {
   double update_multiplier = 1.5;
+  double input_smooth_sigma = 0;
+  double reference_smooth_sigma = 0;
   int max_iterations = 1;
   int support_scale = 5;
   int normalization_scale = 0;

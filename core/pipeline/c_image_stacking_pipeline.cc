@@ -1440,14 +1440,14 @@ bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence:
     }
 
 
-    frame_registration_->set_enable_eccflow(options->master_frame_options().allow_eccflow);
-    if ( frame_registration_->enable_eccflow() && frame_registration_->eccflow().support_scale() < 5 ) {
-      frame_registration_->eccflow().set_support_scale(5);
+    frame_registration_->set_enable_eccflow(options->master_frame_options().eccflow_scale > 1);
+    if ( frame_registration_->enable_eccflow()  ) {
+      frame_registration_->eccflow().set_support_scale(options->master_frame_options().eccflow_scale);
+      frame_registration_->eccflow().set_normalization_scale(frame_registration_->eccflow().support_scale());
     }
 
     if ( options->master_frame_options().compensate_master_flow ) {
-      //if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() )
-      {
+      if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
         masterflow_accumulation_.reset(
             new c_frame_accumulation_with_mask());
       }

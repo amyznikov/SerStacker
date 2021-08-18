@@ -117,10 +117,10 @@ struct c_roi_selection_options {
 struct c_master_frame_options {
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
-  int max_input_frames_to_generate_master_frame = 200;
   bool apply_input_frame_processor = true;
   bool generate_master_frame = true;
-  bool allow_eccflow = false;
+  int max_input_frames_to_generate_master_frame = 200;
+  int eccflow_scale = 5;
   bool compensate_master_flow = true;
 };
 

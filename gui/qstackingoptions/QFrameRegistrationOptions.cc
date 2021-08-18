@@ -178,6 +178,30 @@ QEccflowSettings::QEccflowSettings(QWidget * parent)
         }
       });
 
+  normalization_scale_ctl = add_numeric_box<double>("normalization_scale",
+      [this](double v) {
+        if ( options_ && v != options_->normalization_scale ) {
+          options_->normalization_scale = v;
+          emit parameterChanged();
+        }
+      });
+
+  input_smooth_sigma_ctl = add_numeric_box<double>("input smooth sigma",
+      [this](double v) {
+        if ( options_ && v != options_->input_smooth_sigma ) {
+          options_->input_smooth_sigma = v;
+          emit parameterChanged();
+        }
+      });
+
+  reference_smooth_sigma_ctl = add_numeric_box<double>("reference smooth sigma",
+      [this](double v) {
+        if ( options_ && v != options_->input_smooth_sigma ) {
+          options_->reference_smooth_sigma = v;
+          emit parameterChanged();
+        }
+      });
+
   update_multiplier_ctl = add_numeric_box<double>("update_multiplier",
       [this](double value) {
         if ( options_ && value != options_->update_multiplier ) {
@@ -195,13 +219,6 @@ QEccflowSettings::QEccflowSettings(QWidget * parent)
       });
 
 
-  normalization_scale_ctl = add_numeric_box<double>("normalization_scale",
-      [this](double v) {
-        if ( options_ && v != options_->normalization_scale ) {
-          options_->normalization_scale = v;
-          emit parameterChanged();
-        }
-      });
 
 }
 
@@ -226,6 +243,8 @@ void QEccflowSettings::onupdatecontrols()
     update_multiplier_ctl->setValue(options_->update_multiplier);
     max_iterations_ctl->setValue(options_->max_iterations);
     normalization_scale_ctl->setValue(options_->normalization_scale);
+    input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
+    reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
 
     setEnabled(true);
   }

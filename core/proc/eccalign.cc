@@ -2755,6 +2755,23 @@ bool c_ecc_flow::set_reference_image(cv::InputArray referenceImage, cv::InputArr
 
 ///////////////////////////////////////////////////////////////////////////////
 
+static double estimate_image_noise(cv::InputArray inputImage, cv::InputArray inputMask)
+{
+  const cv::Scalar noise =
+      estimate_noise(inputImage,
+          cv::noArray(),
+          inputMask);
+
+  double max_noise =
+      noise[0];
+
+  for ( int i = 1, cn = inputImage.channels(); i < cn; ++i ) {
+    max_noise = std::max(max_noise, noise[i]);
+  }
+
+  return max_noise;
+}
+
 
 void c_ecch_flow::set_support_scale(int v)
 {
@@ -2795,6 +2812,27 @@ int c_ecch_flow::normalization_scale() const
 {
   return normalization_scale_;
 }
+
+void c_ecch_flow::set_input_smooth_sigma(double v)
+{
+  input_smooth_sigma_ = v;
+}
+
+double c_ecch_flow::input_smooth_sigma() const
+{
+  return input_smooth_sigma_;
+}
+
+void c_ecch_flow::set_reference_smooth_sigma(double v)
+{
+  reference_smooth_sigma_ = v;
+}
+
+double c_ecch_flow::reference_smooth_sigma() const
+{
+  return reference_smooth_sigma_;
+}
+
 
 void c_ecch_flow::flow2remap(const cv::Mat2f & uv, cv::Mat2f & rmap)
 {
@@ -3048,17 +3086,20 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::InputArray referenceIma
   return compute(inputImage, rmap, inputMask);
 }
 
+
 bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
 {
   cv::Mat1f I;
+
+  const double noise_level =
+      estimate_image_noise(inputImage,
+          inputMask);
 
   if ( !convert_input_images(inputImage, inputMask, I, pyramid_.front().current_mask) ) {
     CF_ERROR("convert_input_images() fails");
     return false;
   }
 
-  const double noise_level = estimate_noise(I, cv::noArray(),
-          pyramid_.front().current_mask)[0];
 
 
   pnormalize(I, pyramid_.front().current_image, noise_level);
@@ -3130,6 +3171,10 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
 {
   cv::Mat1f I, Ixx, Iyy, Ixy, DD;
 
+  const double noise_level =
+      estimate_image_noise(referenceImage,
+          referenceMask);
+
   pyramid_.clear();
 
   pyramid_.reserve(20);
@@ -3143,8 +3188,6 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
   const int min_image_size = 1 << (support_scale_ + 1);
   //const int min_image_size = 32;
 
-  const double noise_level = estimate_noise(I, cv::noArray(),
-          pyramid_.front().reference_mask)[0];
 
   const double RegularizationTerm =
       pow(0.5 * noise_level, 4);

@@ -46,19 +46,19 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   connect(apply_input_frame_processor_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onApplyInputFramePprocessorCheckboxStateChanged);
 
+
   generateMasterFrame_ctl = new QCheckBox(this);
   connect(generateMasterFrame_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onGenerateMasterFrameCheckboxStateChanged);
-
 
   maxFramesForMasterFrameGeneration_ctl = new QNumberEditBox(this);
   connect(maxFramesForMasterFrameGeneration_ctl, &QNumberEditBox::textChanged,
       this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
 
 
-  allowEccFlow_ctl = new QCheckBox(this);
-  connect(allowEccFlow_ctl, &QCheckBox::stateChanged,
-      this, &ThisClass::onAllowEccFlowCheckboxStateChanged);
+  eccFlowScale_ctl = new QNumberEditBox(this);
+  connect(eccFlowScale_ctl, &QNumberEditBox::textChanged,
+      this, &ThisClass::onEccFlowScaleChanged);
 
 
   compensateMasterFlow_ctl = new QCheckBox(this);
@@ -85,8 +85,8 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Apply input frame processor:", apply_input_frame_processor_ctl);
 
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
-  form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
-  form->addRow("Enable ECC Flow:", allowEccFlow_ctl);
+  form->addRow("max frames:", maxFramesForMasterFrameGeneration_ctl);
+  form->addRow("eccflow scale:", eccFlowScale_ctl);
   form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
   form->addRow(applyToAll_ctl);
 
@@ -123,9 +123,12 @@ void QMasterFrameOptions::onupdatecontrols()
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
     apply_input_frame_processor_ctl->setChecked(options_->apply_input_frame_processor);
-    allowEccFlow_ctl->setChecked(options_->allow_eccflow);
+    eccFlowScale_ctl->setValue(options_->eccflow_scale);
     compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
 
+    maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
+    eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
+    compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
 
     // Populate Master Source Combo
     masterSource_ctl->clear();
@@ -213,7 +216,7 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
       else {
         options_->master_source_path = selectedFileName.toStdString();
         masterSource_ctl->insertItem(masterSource_ctl->count()-1, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
-        masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-3);
+        masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-2);
       }
     }
     else {
@@ -244,11 +247,16 @@ void QMasterFrameOptions::onSpinBoxValueChanged(int value)
   }
 }
 
-
 void QMasterFrameOptions::onGenerateMasterFrameCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
     options_->generate_master_frame = state == Qt::Checked;
+
+    maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
+    eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
+    compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
+
+
     emit parameterChanged();
   }
 }
@@ -265,11 +273,16 @@ void QMasterFrameOptions::onMaxFramesForMasterFrameGenerationChanged()
   }
 }
 
-void QMasterFrameOptions::onAllowEccFlowCheckboxStateChanged(int state)
+void QMasterFrameOptions::onEccFlowScaleChanged()
 {
+
   if ( options_ && !updatingControls() ) {
-    options_->allow_eccflow = state == Qt::Checked;
-    emit parameterChanged();
+    int v = 0;
+    if ( fromString(eccFlowScale_ctl->text(), &v) &&
+        v != options_->max_input_frames_to_generate_master_frame ) {
+      options_->eccflow_scale = v;
+      emit parameterChanged();
+    }
   }
 }
 

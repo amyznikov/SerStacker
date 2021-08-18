@@ -374,6 +374,12 @@ public:
   void set_normalization_scale(int v);
   int normalization_scale() const;
 
+  void set_input_smooth_sigma(double v);
+  double input_smooth_sigma() const;
+
+  void set_reference_smooth_sigma(double v);
+  double reference_smooth_sigma() const;
+
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray());
 
@@ -421,6 +427,9 @@ protected:
       bool ismask = false) const;
 
   void pnormalize(cv::InputArray src, cv::OutputArray dst, double noise_level) const;
+
+  double input_smooth_sigma_ = 0;
+  double reference_smooth_sigma_ = 0;
 
   double update_multiplier_ = 1.5;
   int max_iterations_ = 1;

@@ -276,40 +276,70 @@ bool c_feature_based_registration::estimate_feature_transform(cv::InputArray cur
     else {
 
       const uint n = matched_current_positions_.size();
+      std::vector<bool> blacklist(n, false);
 
-      double tx = 0, ty = 0, mx = 0, my = 0, s2 = 0;
+      double mx = 0, my = 0, sx = 0, sy = 0;
       int c = 0;
 
-      for ( uint i = 0; i < n; ++i ) {
-        mx += matched_current_positions_[i].x - matched_reference_positions_[i].x;
-        my += matched_current_positions_[i].y - matched_reference_positions_[i].y;
-      }
-      mx /= n, my /= n;
+      for ( int iteration = 0; iteration < 10; ++iteration ) {
 
-      for ( uint i = 0; i < n; ++i ) {
-        const double dx = matched_current_positions_[i].x - matched_reference_positions_[i].x;
-        const double dy = matched_current_positions_[i].y - matched_reference_positions_[i].y;
-        s2 += (dx - mx) * (dx - mx) + (dy - my) * (dy - my) ;
-      }
-      s2 /= n;
+        mx = 0, my = 0, sx = 0, sy = 0;
+        c = 0;
 
-      for ( uint i = 0; i < n; ++i ) {
-        const double dx = matched_current_positions_[i].x - matched_reference_positions_[i].x;
-        const double dy = matched_current_positions_[i].y - matched_reference_positions_[i].y;
-        const double r2 = (dx - mx) * (dx - mx) + (dy - my) * (dy - my);
-        if ( r2 <= 9 * s2 ) {
-          tx += dx;
-          ty += dy;
-          ++c;
+        for ( uint i = 0; i < n; ++i ) {
+          if ( !blacklist[i] ) {
+
+            const double dx =
+                matched_current_positions_[i].x - matched_reference_positions_[i].x;
+
+            const double dy =
+                matched_current_positions_[i].y - matched_reference_positions_[i].y;
+
+            mx += dx;
+            my += dy;
+            sx += dx * dx;
+            sy += dy * dy;
+            ++c;
+          }
+        }
+
+        if ( c < 1 ) {
+          CF_ERROR("PROBLEM: ALL FEATURES ARE BLACKLISTED ON ITEARATION %d", iteration);
+          return false;
+        }
+
+        mx /= c;
+        my /= c;
+        sx = sqrt(fabs(sx / c - mx * mx));
+        sy = sqrt(fabs(sy / c - my * my));
+
+        int blacklisted = 0;
+
+        for ( uint i = 0; i < n; ++i ) {
+          if ( !blacklist[i] ) {
+
+            const double dx =
+                matched_current_positions_[i].x - matched_reference_positions_[i].x;
+
+            const double dy =
+                matched_current_positions_[i].y - matched_reference_positions_[i].y;
+
+            if ( fabs(dx - mx) > 3 * sx || fabs(dy - my) > 3 * sy ) {
+              blacklist[i] = true;
+              ++blacklisted;
+            }
+          }
+        }
+
+        CF_DEBUG("FEATURES ITEARATION %d: c=%d mx=%g my=%g sx=%g sy=%g blacklisted=%d",
+            iteration, c, mx, my, sx, sy, blacklisted);
+
+        if ( !blacklisted ) {
+          break;
         }
       }
 
-      if ( c < 1 ) {
-        CF_FATAL("APP BUG: c=%d", c);
-        exit(1);
-      }
-
-      *current_transform = createTranslationTransform(tx / c, ty / c);
+      *current_transform = createTranslationTransform(mx, my);
     }
 
     break;
@@ -374,9 +404,11 @@ bool c_feature_based_registration::estimate_feature_transform(cv::InputArray cur
   }
 
   if ( feature_scale() != 1. ) {
+
     scaleTransform(motion_type(),
         *current_transform,
         1. / feature_scale());
+
   }
 
   return true;

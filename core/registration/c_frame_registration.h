@@ -10,6 +10,7 @@
 
 #include <core/proc/extract_channel.h>
 #include <core/proc/eccalign.h>
+//#include <core/proc/c_gaussian_filter.h>
 
 struct c_ecc_options {
   double scale = 1.;
@@ -25,8 +26,8 @@ struct c_ecc_options {
 
 struct c_eccflow_options {
   double update_multiplier = 1.5;
-  double input_smooth_sigma = 0;
-  double reference_smooth_sigma = 0;
+//  double input_smooth_sigma = 0;
+//  double reference_smooth_sigma = 0;
   int max_iterations = 1;
   int support_scale = 5;
   int normalization_scale = 0;
@@ -202,7 +203,8 @@ protected:
   cv::Mat current_feature_image_;
   cv::Mat current_feature_mask_;
 
-  //c_ecc_inverse_compositional ecc_;
+  // c_gaussian_filter gaussian_filter_;
+
   c_ecc_forward_additive ecc_;
   c_ecch_flow eccflow_;
 

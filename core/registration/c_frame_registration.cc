@@ -273,16 +273,15 @@ bool c_frame_registration::create_eccflow_image(cv::InputArray src, cv::InputArr
 
 bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  cv::Mat src = reference_image.getMat();
-  cv::Mat srcmsk  = reference_mask.getMat();
+  cv::Mat ecc_image;
+  cv::Mat ecc_mask;
 
-  reference_frame_size_ = src.size();
-
+  reference_frame_size_ = reference_image.size();
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
 
   if ( feature_scale() > 0 ) {
 
-    if ( !create_feature_image(src, srcmsk, reference_feature_image_, reference_feature_mask_) ) {
+    if ( !create_feature_image(reference_image, reference_mask, reference_feature_image_, reference_feature_mask_) ) {
       CF_ERROR("extract_feature_image() fails");
       return false;
     }
@@ -291,8 +290,24 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
       CF_ERROR("extract_reference_features() fails");
       return false;
     }
-
   }
+
+  if ( enable_ecc() || enable_eccflow() ) {
+    if ( !create_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
+      CF_ERROR("extract_ecc_image(reference_image) fails");
+      return false;
+    }
+    //    const double sigma =
+    //        base_options_.ecc.reference_smooth_sigma;
+    //
+    //    if ( sigma > 0 ) {
+    //      if ( gaussian_filter_.sigmax() != sigma ) {
+    //        gaussian_filter_ = c_gaussian_filter(sigma, sigma);
+    //      }
+    //      gaussian_filter_.apply(ecc_image, ecc_mask, ecc_image);
+    //    }
+  }
+
 
   if ( enable_ecc() && ecc_scale() > 0 ) {
 
@@ -303,20 +318,32 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     ecc_.set_update_step_scale(base_options_.ecc.update_step_scale);
     ecc_.set_max_iterations(base_options_.ecc.max_iterations);
 
+    cv::Mat1f reference_ecc_image;
+    cv::Mat1b reference_ecc_mask;
 
-    cv::Mat1f reference_image;
-    cv::Mat1b reference_mask;
-
-    if ( !create_ecc_image(src, srcmsk, reference_image, reference_mask, ecc_scale()) ) {
-      CF_ERROR("extract_ecc_image() fails");
-      return false;
+    if ( ecc_scale() == 1 ) {
+      reference_ecc_image = ecc_image;
+      reference_ecc_mask = ecc_mask;
+    }
+    else if ( ecc_scale() < 1 ) {
+      cv::resize(ecc_image, reference_ecc_image, cv::Size(), ecc_scale(), ecc_scale(), cv::INTER_AREA);
+    }
+    else {
+      cv::resize(ecc_image, reference_ecc_image, cv::Size(), ecc_scale(), ecc_scale(), cv::INTER_LINEAR_EXACT);
     }
 
-    if ( !ecc_.set_reference_image(reference_image, reference_mask) ) {
+    if ( !ecc_mask.empty() && reference_ecc_mask.size() != reference_ecc_image.size() ) {
+      cv::resize(ecc_mask, reference_ecc_mask, reference_ecc_image.size(), 0, 0, cv::INTER_LINEAR);
+      cv::compare(reference_ecc_mask, 255, reference_ecc_mask, cv::CMP_GE);
+    }
+
+    if ( !ecc_.set_reference_image(reference_ecc_image, reference_ecc_mask) ) {
       CF_ERROR("ecc_.set_reference_image() fails");
       return false;
     }
   }
+
+
 
   if ( enable_eccflow() ) {
 
@@ -324,19 +351,11 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     eccflow_.set_max_iterations(base_options_.eccflow.max_iterations);
     eccflow_.set_support_scale(base_options_.eccflow.support_scale);
     eccflow_.set_normalization_scale(base_options_.eccflow.normalization_scale);
-    eccflow_.set_input_smooth_sigma(base_options_.eccflow.input_smooth_sigma);
-    eccflow_.set_reference_smooth_sigma(base_options_.eccflow.reference_smooth_sigma);
+    eccflow_.set_input_smooth_sigma(0/*base_options_.eccflow.input_smooth_sigma*/);
+    eccflow_.set_reference_smooth_sigma(0/*base_options_.eccflow.reference_smooth_sigma*/);
 
-    cv::Mat1f reference_image;
-    cv::Mat1b reference_mask;
-
-    if ( !create_eccflow_image(src, srcmsk, reference_image, reference_mask, 1.) ) {
-      CF_ERROR("extract_ecc_image(reference_smflow_image_) fails");
-      return false;
-    }
-
-    if ( !eccflow_.set_reference_image(reference_image, reference_mask) ) {
-      CF_ERROR("smflow_.set_reference_image() fails");
+    if ( !eccflow_.set_reference_image(ecc_image, ecc_mask) ) {
+      CF_ERROR("eccflow_.set_reference_image() fails");
       return false;
     }
   }
@@ -345,9 +364,12 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
 }
 
 
-bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _srcmask,
+bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray current_mask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
+  cv::Mat ecc_image;
+  cv::Mat ecc_mask;
+
   double start_time = 0, total_time = 0;
   double t0, t1;
 
@@ -357,10 +379,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _s
 
   start_time = get_realtime_ms();
 
-  cv::Mat src = _src.getMat();
-  cv::Mat srcmsk = _srcmask.getMat();
-
-  current_frame_size_ = src.size();
+  current_frame_size_ = current_image.size();
   current_transform_ = createEyeTransform(motion_type());
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
 
@@ -369,7 +388,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _s
   if ( feature_scale() > 0 ) {
 
     t0 = get_realtime_ms();
-    if ( !create_feature_image(src, srcmsk, current_feature_image_, current_feature_mask_) ) {
+    if ( !create_feature_image(current_image, current_mask, current_feature_image_, current_feature_mask_) ) {
       CF_ERROR("create_feature_image() fails");
       return false;
     }
@@ -388,34 +407,71 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _s
     have_transform = true;
   }
 
+
   /////////////////////////////////////////////////////////////////////////////
 
-  cv::Mat1f current_image;
-  cv::Mat1b current_mask;
+  if ( enable_ecc() || enable_eccflow() ) {
+
+    if ( !create_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
+      CF_ERROR("extract_ecc_image(current_image) fails");
+      return false;
+    }
+
+    //    const double sigma =
+    //        base_options_.ecc.input_smooth_sigma;
+    //
+    //    if ( sigma > 0 ) {
+    //      if ( gaussian_filter_.sigmax() != sigma ) {
+    //        gaussian_filter_ = c_gaussian_filter(sigma, sigma);
+    //      }
+    //      gaussian_filter_.apply(ecc_image, ecc_mask, ecc_image);
+    //    }
+  }
+
+
+  /////////////////////////////////////////////////////////////////////////////
 
   if ( enable_ecc() && ecc_scale() > 0 ) {
 
     t0 = get_realtime_ms();
 
-
-    if ( !create_ecc_image(src, srcmsk, current_image, current_mask, ecc_scale()) ) {
-      CF_ERROR("extract_ecc_image(current_ecc_image_) fails");
-      return false;
-    }
-
     current_status_.timings.extract_ecc_image =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     if ( have_transform && ecc_scale() != 1 ) {
+
+      CF_DEBUG("ECC: BEFORE scaleTransform: Tx=%g Ty=%g ", current_transform_[0][2], current_transform_[1][2]);
+
       scaleTransform(motion_type(),
           current_transform_,
           ecc_scale());
+
+      CF_DEBUG("ECC: AFTER scaleTransform: Tx=%g Ty=%g ", current_transform_[0][2], current_transform_[1][2]);
+
     }
 
+    cv::Mat1f current_ecc_image;
+    cv::Mat1b current_ecc_mask;
+
+    if ( ecc_scale() == 1 ) {
+      current_ecc_image = ecc_image;
+      current_ecc_mask = ecc_mask;
+    }
+    else if ( ecc_scale() < 1 ) {
+      cv::resize(ecc_image, current_ecc_image, cv::Size(), ecc_scale(), ecc_scale(), cv::INTER_AREA);
+    }
+    else {
+      cv::resize(ecc_image, current_ecc_image, cv::Size(), ecc_scale(), ecc_scale(), cv::INTER_LINEAR_EXACT);
+    }
+
+    if ( !ecc_mask.empty() && current_ecc_mask.size() != current_ecc_image.size() ) {
+      cv::resize(ecc_mask, current_ecc_mask, current_ecc_image.size(), 0, 0, cv::INTER_LINEAR);
+      cv::compare(current_ecc_mask, 255, current_ecc_mask, cv::CMP_GE);
+    }
 
     ecc_.set_motion_type(motion_type());
 
-    if ( !ecc_.align_to_reference(current_image, current_transform_, current_mask) /*|| ecc_.current_eps() > ecc_.eps()*/ ) {
+    if ( !ecc_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask)  ) {
       CF_ERROR("ecc_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
           ecc_.rho(), ecc_.min_rho(),
           ecc_.current_eps(), ecc_.eps(),
@@ -438,7 +494,6 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _s
   /////////////////////////////////////////////////////////////////////////////
 
   t0 = get_realtime_ms();
-  //createRemap(motion_type(), current_transform_, current_remap_, src.size());
   createRemap(motion_type(), current_transform_, current_remap_, reference_frame_size_);
   current_status_.timings.create_remap =
       get_realtime_ms() - t0;
@@ -447,18 +502,11 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _s
 
     t0 = get_realtime_ms();
 
-    if ( !enable_ecc() || ecc_scale() !=  1 || current_image.empty() ) {
-      if ( !create_eccflow_image(src, srcmsk, current_image, current_mask, 1) ) {
-        CF_ERROR("create_flow_image() fails");
-        return false;
-      }
-    }
-
     current_status_.timings.extract_smflow_image =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
 
 
-    if ( !eccflow_.compute(current_image, current_remap_, current_mask) ) {
+    if ( !eccflow_.compute(ecc_image, current_remap_, ecc_mask) ) {
       CF_ERROR("smflow_.compute() fails");
       return false;
     }
@@ -470,7 +518,7 @@ bool c_frame_registration::register_frame(cv::InputArray _src, cv::InputArray _s
 
   if ( dst.needed() || dstmask.needed() ) {
     t0 = get_realtime_ms();
-    remap(_src, dst, _srcmask, dstmask);
+    remap(current_image, dst, current_mask, dstmask);
     current_status_.timings.remap =
         (t1 = get_realtime_ms()) - t0;
   }

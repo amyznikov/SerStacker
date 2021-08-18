@@ -2954,7 +2954,7 @@ void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst, double no
     pdownscale(src, mean, nscale, cv::BORDER_REPLICATE);
     pdownscale(src.mul(src), stdev, nscale, cv::BORDER_REPLICATE);
     cv::absdiff(stdev, mean.mul(mean), stdev);
-    cv::add(stdev, std::max(noise_level/*noise*/, 1e-3), stdev); // FIXME: 1e-3 is dummy
+    cv::add(stdev, std::max(noise_level/*noise*/, 1e-2), stdev); // FIXME: 1e-2 is dummy for dark sky noise areas
     cv::sqrt(stdev, stdev);
 
     pupscale(mean, src.size());

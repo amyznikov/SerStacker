@@ -440,13 +440,9 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     if ( have_transform && ecc_scale() != 1 ) {
 
-      CF_DEBUG("ECC: BEFORE scaleTransform: Tx=%g Ty=%g ", current_transform_[0][2], current_transform_[1][2]);
-
       scaleTransform(motion_type(),
           current_transform_,
           ecc_scale());
-
-      CF_DEBUG("ECC: AFTER scaleTransform: Tx=%g Ty=%g ", current_transform_[0][2], current_transform_[1][2]);
 
     }
 

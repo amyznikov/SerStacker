@@ -10,7 +10,7 @@
 
 using namespace cv;
 
-static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc)
+static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv::Mat * cmponent_mask)
 {
   Mat1i labels, stats;
   Mat1d centroids;
@@ -55,6 +55,10 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc)
   rc->width = stats[cstats[0].label][CC_STAT_WIDTH];
   rc->height = stats[cstats[0].label][CC_STAT_HEIGHT];
 
+  if( cmponent_mask ) {
+    cv::compare(labels, cstats[0].label, *cmponent_mask, cv::CMP_EQ);
+  }
+
   return true;
 }
 
@@ -62,7 +66,8 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc)
 bool simple_small_planetary_disk_detector( cv::InputArray frame,
     cv::Point2f * out_centrold,
     double gbsigma,
-    cv::Rect * optional_output_component_rect)
+    cv::Rect * optional_output_component_rect,
+    cv::Mat * optional_output_cmponent_mask)
 {
   Mat src, gray;
   Mat1b comp;
@@ -90,7 +95,7 @@ bool simple_small_planetary_disk_detector( cv::InputArray frame,
   cv::compare(gray, get_otsu_threshold(gray), comp, cv::CMP_GT);
   cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, cv::Mat1b(5, 5, 255));
 
-  if ( !get_maximal_connected_component(comp, &rc) ) {
+  if ( !get_maximal_connected_component(comp, &rc, optional_output_cmponent_mask) ) {
     return false;
   }
 

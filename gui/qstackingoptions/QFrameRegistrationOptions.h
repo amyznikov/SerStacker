@@ -256,6 +256,7 @@ protected:
 protected:
   c_frame_registration_options * options_ = Q_NULLPTR;
   QFrameRegistrationMethodCombo * frameRegistrationMethod_ctl = Q_NULLPTR;
+  QCheckBox * incremental_mode_ctl = Q_NULLPTR;
   QFrameRegistrationBaseSettings * frameRegistrationBaseSettings_ctl = Q_NULLPTR;
   QFeatureBasedRegistrationSettings * featureBasedRegistrationSettings_ctl = Q_NULLPTR;
   QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings_ctl = Q_NULLPTR;

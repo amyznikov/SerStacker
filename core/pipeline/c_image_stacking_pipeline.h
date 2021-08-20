@@ -145,6 +145,7 @@ struct c_frame_accumulation_options {
 
 struct c_frame_registration_options {
   enum frame_registration_method registration_method = frame_registration_method_surf;
+  bool incremental_mode = false; // STUPID TEST, DON'T USE
   c_frame_registration_base_options base_options;
   c_feature_based_registration_options feature_options;
   c_planetary_disk_registration_options planetary_disk_options;
@@ -311,11 +312,17 @@ public:
 protected:
 
   void set_status_msg(const std::string & msg);
-  bool create_reference_frame(const c_image_stacking_options::ptr & options,
-      const std::string & output_directory);
-  bool generate_reference_frame(const c_input_sequence::ptr & input_sequence,
-      const c_image_stacking_options::ptr & options,
-      const std::string & output_directory);
+
+  bool run_regular_mode(const c_input_sequence::ptr & input_sequence);
+
+  // STUPID TEST, DON'T USE
+  bool run_incremental_mode(const c_input_sequence::ptr & input_sequence,
+      cv::Mat * output_accumulated_frame,
+      cv::Mat1f * output_accumulated_counts,
+      cv::Mat1b * output_accumulated_mask);
+
+  bool create_reguar_mode_reference_frame();
+  bool generate_reference_frame(const c_input_sequence::ptr & input_sequence);
 
 
 
@@ -364,10 +371,11 @@ protected:
 
   using lock_guard = std::lock_guard<std::mutex>;
 
-  c_image_stacking_options::ptr stacking_options_;
+  c_image_stacking_options::ptr options_;
 
   volatile bool canceled_ = false;
 
+  std::string output_directory_;
   std::string master_file_name_;
   int master_source_index_ = -1;
   int master_frame_index_ = -1;
@@ -375,7 +383,7 @@ protected:
   cv::Mat reference_mask_;
   cv::Mat reference_weights_;
   cv::Mat current_frame_;
-  cv::Mat current_mask_;
+  cv::Mat1b current_mask_;
   cv::Mat current_weights_;
   //cv::Mat current_master_flow_;
   double ecc_normalization_noise_ = 0;

@@ -497,6 +497,16 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
         updatemethodspecificpage();
       });
 
+  incremental_mode_ctl = add_checkbox("Incremental mode (STUPID TEST, DON'T USE)",
+      [this](int state) {
+        if ( options_ ) {
+          bool checked = state == Qt::Checked;
+          if ( options_->incremental_mode != checked ) {
+            options_->incremental_mode = checked;
+            emit parameterChanged();
+          }
+        }
+      });
 
   form->addRow(featureBasedRegistrationSettings_ctl = new QFeatureBasedRegistrationSettings(this));
   form->addRow(planetaryDiskRegistrationSettings_ctl = new QPlanetaryDiskRegistrationSettings(this));
@@ -548,6 +558,7 @@ void QFrameRegistrationOptions::onupdatecontrols()
   else {
 
     frameRegistrationMethod_ctl->setCurrentItem(options_->registration_method);
+    incremental_mode_ctl->setChecked(options_->incremental_mode);
     frameRegistrationBaseSettings_ctl->set_registration_options(&options_->base_options);
     featureBasedRegistrationSettings_ctl->set_registration_options(&options_->feature_options);
     planetaryDiskRegistrationSettings_ctl->set_registration_options(&options_->planetary_disk_options);

@@ -80,10 +80,10 @@ const c_planetary_disk_registration_options & c_planetary_disk_registration::opt
 //}
 
 
-bool c_planetary_disk_registration::create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
-    cv::OutputArray dst, cv::OutputArray dstmsk) const
+bool c_planetary_disk_registration::create_feature_image(cv::InputArray src, cv::InputArray srcmask,
+    cv::OutputArray dst, cv::OutputArray dstmask) const
 {
-  if ( !extract_channel(src, dst, srcmsk, dstmsk, registration_channel(), feature_scale()) ) {
+  if ( !extract_channel(src, dst, srcmask, dstmask, registration_channel(), feature_scale()) ) {
     CF_ERROR("extract_channel(registration_channel__=%d) fails", registration_channel());
     return false;
   }
@@ -94,7 +94,7 @@ bool c_planetary_disk_registration::create_feature_image(cv::InputArray src, cv:
 bool c_planetary_disk_registration::extract_reference_features(cv::InputArray feature_image,
     cv::InputArray feature_mask)
 {
-  if ( !simple_small_planetary_disk_detector(feature_image, &reference_centroid_) ) {
+  if ( !simple_small_planetary_disk_detector(feature_image, feature_mask, &reference_centroid_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }
@@ -130,7 +130,7 @@ bool c_planetary_disk_registration::estimate_feature_transform(cv::InputArray fe
     cv::InputArray feature_mask,
     cv::Mat1f * current_transform)
 {
-  if ( !simple_small_planetary_disk_detector(feature_image, &current_centroid_) ) {
+  if ( !simple_small_planetary_disk_detector(feature_image, feature_mask, &current_centroid_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

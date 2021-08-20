@@ -803,14 +803,41 @@ cv::Mat1f createEyeTransform(int ecc_motion_type)
  */
 cv::Mat1f createTranslationTransform(double Tx, double Ty)
 {
-  //  cv::Mat1f T = cv::Mat1f::eye(2, 3);
-  //  T[0][2] = Tx;
-  //  T[1][2] = Ty;
   cv::Mat1f T(2, 1);
+
   T[0][0] = Tx;
   T[1][0] = Ty;
+
   return T;
 }
+
+/*
+*
+*  x' =  scale * (cos(a) * (x-Cx) + sin(a) * (y-Cy)) + Tx
+*  y' =  scale * (-sin(a) * (x-Cx) + cos(a)* (y-Cy)) + Ty
+*
+*  For simple rotation arount of a point C call
+*   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
+*
+*/
+cv::Mat1f createEuclideanTransform(double Cx, double Cy, double Tx, double Ty, double scale, double angle)
+{
+  cv::Mat1f T(2, 3);
+  double sa, ca;
+
+  sincos(angle, &sa, &ca);
+
+  T[0][0] = scale * ca;
+  T[0][1] = scale * sa;
+  T[0][2] = Tx - scale * (ca * Cx + sa * Cy);
+
+  T[1][0] = -scale * sa;
+  T[1][1] = scale * ca;
+  T[1][2] = Ty + scale * (sa *Cx - ca * Cy);
+
+  return T;
+}
+
 
 /*
  * Scale remap to account image size change

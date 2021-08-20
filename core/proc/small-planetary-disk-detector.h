@@ -13,6 +13,7 @@
 
 bool simple_small_planetary_disk_detector(
     cv::InputArray frame,
+    cv::InputArray mask,
     cv::Point2f * centrold,
     double gbsigma = 0,
     cv::Rect * optional_output_component_rect = nullptr,

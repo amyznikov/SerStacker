@@ -65,6 +65,21 @@ cv::Mat1f createEyeTransform(
 cv::Mat1f createTranslationTransform(
     double Tx, double Ty);
 
+/*
+*
+*  x' =  scale * ( cos(a) * (x-Cx) + sin(a) * (y-Cy)) + Tx
+*  y' =  scale * (-sin(a) * (x-Cx) + cos(a) * (y-Cy)) + Ty
+*
+*  For simple rotation arount of a point C call
+*   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
+*
+*/
+cv::Mat1f createEuclideanTransform(double Cx, double Cy,
+    double Tx, double Ty,
+    double scale,
+    double angle);
+
+
 // Scale given transform matrix to reflect image scale change
 void scaleTransform(int ecc_motion_type,
     cv::Mat1f & T,

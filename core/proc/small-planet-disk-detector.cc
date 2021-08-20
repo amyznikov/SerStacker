@@ -6,6 +6,9 @@
  */
 #include "small-planetary-disk-detector.h"
 #include <core/proc/threshold.h>
+#include <core/proc/morphology.h>
+#include <core/proc/geo-reconstruction.h>
+//#include <core/proc/estimate_noise.h>
 #include <core/debug.h>
 
 using namespace cv;
@@ -63,7 +66,8 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv
 }
 
 
-bool simple_small_planetary_disk_detector( cv::InputArray frame,
+bool simple_small_planetary_disk_detector(cv::InputArray frame,
+    cv::InputArray mask,
     cv::Point2f * out_centrold,
     double gbsigma,
     cv::Rect * optional_output_component_rect,
@@ -71,6 +75,8 @@ bool simple_small_planetary_disk_detector( cv::InputArray frame,
 {
   Mat src, gray;
   Mat1b comp;
+  //double noise;
+  double threshold;
   //double gbsigma = 3.0;
 
   Rect rc, rcc;
@@ -84,18 +90,27 @@ bool simple_small_planetary_disk_detector( cv::InputArray frame,
   if ( src.channels() == 1 ) {
     src.copyTo(gray);
   }
+  else if ( src.channels() == 4 ) {
+    cv::cvtColor(src, gray, cv::COLOR_BGRA2GRAY);
+  }
   else {
     cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
   }
+
+  //noise = estimate_noise(gray, cv::noArray(), comp)[0];
 
   if ( gbsigma > 0 ) {
     GaussianBlur(gray, gray, cv::Size(0, 0), gbsigma);
   }
 
-  cv::compare(gray, get_otsu_threshold(gray), comp, cv::CMP_GT);
-  cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, cv::Mat1b(5, 5, 255));
+  cv::compare(gray, 1e-2 + get_triangle_threshold(gray, mask), comp, cv::CMP_GT);
+  morphological_smooth_close(comp, comp, cv::Mat1b(5, 5, 255), cv::BORDER_CONSTANT);
+  if ( !mask.empty() ) {
+    comp.setTo(0, ~mask.getMat());
+  }
 
   if ( !get_maximal_connected_component(comp, &rc, optional_output_cmponent_mask) ) {
+    CF_DEBUG("get_maximal_connected_component() fails");
     return false;
   }
 

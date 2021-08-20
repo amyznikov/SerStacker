@@ -52,11 +52,11 @@ c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Siz
   return obj;
 }
 
-bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::InputArray image_mask,
+bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::InputArray mask,
     cv::Point2f & outputObjectLocation,
     cv::Rect & outputCropRect )
 {
-  if ( !simple_small_planetary_disk_detector(image, &outputObjectLocation, 0, &outputCropRect) ) {
+  if ( !simple_small_planetary_disk_detector(image, mask, &outputObjectLocation, 0, &outputCropRect) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

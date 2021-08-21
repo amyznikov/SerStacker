@@ -26,7 +26,7 @@ public:
   const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask);
-  void setDisplayImage(cv::InputArray image, cv::InputArray mask);
+  void setOutputImage(cv::InputArray image, cv::InputArray mask);
 
 signals:
   void mtfChanged();

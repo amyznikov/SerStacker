@@ -120,7 +120,7 @@ struct c_master_frame_options {
   bool apply_input_frame_processor = true;
   bool generate_master_frame = true;
   int max_input_frames_to_generate_master_frame = 200;
-  int eccflow_scale = 5;
+  int eccflow_scale = 0;
   bool compensate_master_flow = true;
 };
 

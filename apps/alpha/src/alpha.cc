@@ -48,7 +48,8 @@ static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
 
   save_image(component_edge, "closed_component_edge.png");
 
-  *rc = cv::fitEllipse(edge_points);
+  //*rc = cv::fitEllipse(edge_points);
+  *rc = cv::fitEllipseAMS(edge_points);
 
   CF_DEBUG("ellipse: center=(%g %g) angle=%g", rc->center.x, rc->center.y, rc->angle);
 
@@ -89,6 +90,67 @@ static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
 }
 
 
+
+static bool createEllipseRotationRemap(cv::Mat2f & remap, const cv::Size & size,
+    double Cx, double Cy, double a, double b, double l)
+{
+  remap.create(size);
+
+  const double c = a / b;
+
+
+  for ( int y = 0; y < size.height; ++y ) {
+    double yy = y - Cy;
+
+    for ( int x = 0; x < size.width; ++x ) {
+      double xx = x - Cx;
+
+      if ( (xx / a) * (xx / a) + (yy / b) * (yy / b) >= 1 ) {
+        remap[y][x][0] = x;
+        remap[y][x][1] = y;
+      }
+      else {
+        double lambda = asin(xx / (c * sqrt(b * b - yy * yy))) + l;
+        if ( (lambda <= -CV_PI / 2) || (lambda >= CV_PI / 2) ) {
+          remap[y][x][0] = -1;
+          remap[y][x][1] = -1;
+        }
+        else {
+          remap[y][x][0] = sin(lambda) * c * sqrt(b * b - yy * yy) + Cx;
+          remap[y][x][1] = y;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+
+
+static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
+{
+//  cv::Scalar mv, sv;
+//  cv::Mat src, mean, stdev;
+//
+//  src = _src.getMat();
+//  cv::meanStdDev(src, mv, sv, mask);
+//
+//  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+//  cv::GaussianBlur(src.mul(src), stdev, cv::Size(), sigma, sigma);
+//  cv::absdiff(stdev, mean.mul(mean), stdev);
+//  cv::sqrt(stdev, stdev);
+//  cv::add(stdev, 0.01 * sv[0], stdev);
+//  cv::subtract(src, mean, mean);
+//  cv::divide(mean, stdev, dst);
+
+  cv::Mat src, mean;
+
+  src = _src.getMat();
+
+  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+  cv::subtract(src, mean, dst);
+}
 
 int main(int argc, char *argv[])
 {
@@ -156,15 +218,18 @@ int main(int argc, char *argv[])
     save_image(component_masks[i], ssprintf("raw_component_mask.%d.png", i));
 
     geo_fill_holes(component_masks[i], component_masks[i], 8);
+    cv::dilate(component_masks[i], component_masks[i], cv::Mat1b(3, 3, 255));
+
     save_image(component_masks[i], ssprintf("closed_component_mask.%d.png", i));
     images[i].setTo(0, ~component_masks[i]);
   }
 
-  cv::Size maxsize(std::max(component_rects[0].width, component_rects[1].width), std::max(component_rects[0].height, component_rects[1].height));
+  cv::Size maxsize(std::max(component_rects[0].width, component_rects[1].width) + 16, std::max(component_rects[0].height, component_rects[1].height) + 16);
+
   cv::Mat comps[2];
   for ( int i = 0; i < 2; ++i ) {
     comps[i] = cv::Mat::zeros(maxsize, images[i].type());
-    images[i](component_rects[i]).copyTo(comps[i](cv::Rect(0,0,component_rects[i].width, component_rects[i].height)));
+    images[i](component_rects[i]).copyTo(comps[i](cv::Rect(8,8,component_rects[i].width, component_rects[i].height)));
     comps[i].convertTo(comps[i], CV_32F);
     save_image(comps[i], ssprintf("comps.%d.tiff", i));
   }
@@ -185,7 +250,6 @@ int main(int argc, char *argv[])
     CF_ERROR("fit_ellipse() fails");
   }
 
-
   cv::Mat1f E;
   cv::Mat emap;
   E = createEuclideanTransform(erc.center.x, erc.center.y, erc.center.x, erc.center.y, 1.0, -erc.angle * CV_PI / 180 + CV_PI / 2);
@@ -195,6 +259,30 @@ int main(int argc, char *argv[])
     save_image(comps[i], ssprintf("comps.remap.%d.tiff", i));
   }
 
+  double A = std::max(erc.size.width, erc.size.height);
+  double B = std::min(erc.size.width, erc.size.height);
+
+  CF_DEBUG("ELLIPSE: A=%g B=%g", A, B);
+
+
+  cv::Mat2f rmap;
+  createEllipseRotationRemap(rmap, comps[0].size(),
+      erc.center.x, erc.center.y, A/2, B/2, -8.5 * CV_PI / 180);
+
+  cv::remap(comps[0], comps[0], rmap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(comps[0], ssprintf("comps.rotated.%d.tiff", 0));
+
+  cv::Mat gx, gy, diff;
+  ecc_differentiate(comps[1], gx, gy);
+  cv::subtract(comps[1], comps[0], diff);
+  save_image(gx, "gx.tiff");
+  save_image(gy, "gy.tiff");
+  save_image(diff, "diff.tiff");
+
+  for ( int i = 0; i < 2; ++i ) {
+    ecc_normalize(comps[i], cv::noArray(), comps[i], 5);
+    save_image(comps[i], ssprintf("comps.normalized.%d.tiff", i));
+  }
 
 //  std::vector<cv::Mat> pyramids[2];
 //  for(int i = 0; i < 2; ++i ) {

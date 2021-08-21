@@ -338,7 +338,7 @@ void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask)
   inputMask_ = mask.getMat();
 }
 
-void QMtfControl::setDisplayImage(cv::InputArray image, cv::InputArray mask)
+void QMtfControl::setOutputImage(cv::InputArray image, cv::InputArray mask)
 {
   levelsView_->setImage(image, mask);
 }

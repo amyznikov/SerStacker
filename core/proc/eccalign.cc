@@ -2974,21 +2974,28 @@ void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst, double no
   }
   else {
 
-    cv::Mat src, mean, stdev;
-    const int nscale = std::max(normalization_scale_, support_scale_);
-    //const double noise = estimate_noise(_src)[0];
+    cv::Mat src, mean;
     src = _src.getMat();
+    const int nscale = std::max(normalization_scale_, support_scale_);
     pdownscale(src, mean, nscale, cv::BORDER_REPLICATE);
-    pdownscale(src.mul(src), stdev, nscale, cv::BORDER_REPLICATE);
-    cv::absdiff(stdev, mean.mul(mean), stdev);
-    cv::add(stdev, std::max(noise_level/*noise*/, 1e-2), stdev); // FIXME: 1e-2 is dummy for dark sky noise areas
-    cv::sqrt(stdev, stdev);
-
     pupscale(mean, src.size());
-    pupscale(stdev, src.size());
-
     cv::subtract(src, mean, dst);
-    cv::divide(dst, stdev, dst);
+
+//    cv::Mat src, mean, stdev;
+//    const int nscale = std::max(normalization_scale_, support_scale_);
+//    //const double noise = estimate_noise(_src)[0];
+//    src = _src.getMat();
+//    pdownscale(src, mean, nscale, cv::BORDER_REPLICATE);
+//    pdownscale(src.mul(src), stdev, nscale, cv::BORDER_REPLICATE);
+//    cv::absdiff(stdev, mean.mul(mean), stdev);
+//    cv::add(stdev, std::max(noise_level/*noise*/, 1e-2), stdev); // FIXME: 1e-2 is dummy for dark sky noise areas
+//    cv::sqrt(stdev, stdev);
+//
+//    pupscale(mean, src.size());
+//    pupscale(stdev, src.size());
+//
+//    cv::subtract(src, mean, dst);
+//    cv::divide(dst, stdev, dst);
   }
 }
 
@@ -3127,9 +3134,17 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
     return false;
   }
 
+  if ( inputMask.empty() || cv::countNonZero(inputMask) == inputMask.size().area() ) {
+    pnormalize(I, pyramid_.front().current_image, noise_level);
+  }
+  else {
+    pyramid_.front().reference_image.copyTo(pyramid_.front().current_image);
+    I.copyTo(pyramid_.front().current_image, inputMask);
+    pnormalize(pyramid_.front().current_image, pyramid_.front().current_image, noise_level);
+  }
 
 
-  pnormalize(I, pyramid_.front().current_image, noise_level);
+
   pyramid_[0].rmap = rmap; // attention to this!
   //rmap.copyTo(pyramid_.front().rmap);
 
@@ -3212,8 +3227,10 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
     return false;
   }
 
-  const int min_image_size = 1 << (support_scale_ + 1);
-  //const int min_image_size = 32;
+  //const int min_image_size = 1 << (support_scale_ + 1);
+
+  const int min_image_size = std::min(std::max(referenceImage.cols(), referenceImage.rows()),
+      5 * (1 << (support_scale_)));
 
 
   const double RegularizationTerm =

@@ -23,7 +23,7 @@ static QColor defaultChannelColors [] = {
 QHistogramView::QHistogramView(QWidget * parent)
   : Base(parent)
 {
-  setMinimumSize(2 * MARGIN, 2 * MARGIN);
+  setMinimumSize( 128 + 2 * MARGIN, 128 + 2 * MARGIN);
   resize(256, (int)(256 / 1.62));
 }
 

@@ -56,7 +56,7 @@ void QMtfControlDialogBox::setInputImage(cv::InputArray image, cv::InputArray ma
 
 void QMtfControlDialogBox::setDisplayImage(cv::InputArray image, cv::InputArray mask)
 {
-  imageLevelsConfigWidget_->setDisplayImage(image, mask);
+  imageLevelsConfigWidget_->setOutputImage(image, mask);
 }
 
 

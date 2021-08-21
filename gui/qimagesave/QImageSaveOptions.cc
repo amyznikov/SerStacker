@@ -98,9 +98,15 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
       [this](PIXEL_DEPTH v) {
       });
 
+  embedAlphaMask_ctl =
+      add_checkbox("Embed alpha mask");
+
+  embedAlphaMask_ctl->setChecked(true);
+
   compression_ctl = add_combobox(
       "TIFF Compression: ",
       std::function<void(int)>());
+
 
   compression_ctl->addItem("NONE", COMPRESSION_NONE);
   compression_ctl->addItem("LZW", COMPRESSION_LZW);
@@ -119,6 +125,21 @@ void QImageSaveTIFFOptions::setPixelDepth(PIXEL_DEPTH v)
 PIXEL_DEPTH QImageSaveTIFFOptions::pixelDepth() const
 {
   return pixelDepth_ctl->currentItem();
+}
+
+void QImageSaveTIFFOptions::setEmbedAlphaMask(bool v)
+{
+  embedAlphaMask_ctl->setChecked(true);
+}
+
+bool QImageSaveTIFFOptions::embedAlphaMask() const
+{
+  return embedAlphaMask_ctl->isChecked();
+}
+
+QCheckBox * QImageSaveTIFFOptions::embedAlphaMaskCtl() const
+{
+  return embedAlphaMask_ctl;
 }
 
 void QImageSaveTIFFOptions::setTiffCompression(int v)
@@ -318,6 +339,8 @@ bool saveImageFileAs(QWidget * parent,
     enum QImageSaveFormat format =
         QImageSaveFormatUnknown;
 
+    bool embedAlphaMask = true;
+
     std::vector<int> imwrite_params;
     PIXEL_DEPTH selectedPixelDepth = PIXEL_DEPTH_NO_CHANGE;
 
@@ -361,6 +384,8 @@ bool saveImageFileAs(QWidget * parent,
 
       dlgbox->setParent(parent);
       dlgbox->set_format(format);
+      dlgbox->tiffOptions()->embedAlphaMaskCtl()->setChecked(!currentMask.empty());
+      dlgbox->tiffOptions()->embedAlphaMaskCtl()->setEnabled(!currentMask.empty());
 
       if ( dlgbox->exec() != QDialog::Accepted ) {
         return false;
@@ -376,6 +401,7 @@ bool saveImageFileAs(QWidget * parent,
             dlgbox->tiffOptions();
 
         selectedPixelDepth = tiffOptions->pixelDepth();
+        embedAlphaMask = tiffOptions->embedAlphaMask();
 
         imwrite_params.emplace_back(cv::ImwriteFlags::IMWRITE_TIFF_COMPRESSION);
         imwrite_params.emplace_back(tiffOptions->tiffCompression());
@@ -456,7 +482,7 @@ bool saveImageFileAs(QWidget * parent,
       }
     }
 
-    if ( !save_image(image, mask, selectedFileName.toStdString(), imwrite_params) ) {
+    if ( !save_image(image, embedAlphaMask ? mask : cv::noArray(), selectedFileName.toStdString(), imwrite_params) ) {
       QMessageBox::critical(parent, "ERROR", QString("save_image('%s') fails").arg(selectedFileName));
       continue;
     }

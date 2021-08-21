@@ -53,9 +53,14 @@ public:
   void setTiffCompression(int v);
   int tiffCompression() const;
 
+  void setEmbedAlphaMask(bool v);
+  bool embedAlphaMask() const;
+
+  QCheckBox * embedAlphaMaskCtl() const;
 
 protected:
   QPixelDepthCombo * pixelDepth_ctl = Q_NULLPTR;
+  QCheckBox * embedAlphaMask_ctl = Q_NULLPTR;
   QComboBox * compression_ctl = Q_NULLPTR;
 };
 

@@ -26,7 +26,7 @@ public:
   int zoom(void) const;
   void setZoom(int z);
 
-  void setQuickFilter(const QString & v, Qt::MatchFlags flags);
+  void setQuickFilter(const QString & v, Qt::MatchFlags flags, bool invertMatch);
   void clearQuickFilter();
   const QString & quickFilter() const;
   Qt::MatchFlags quickFilterMatchingFlags() const;
@@ -66,6 +66,7 @@ protected:
 private:
   QString quickFilter_;
   Qt::MatchFlags quickFilterMatchingFlags_ = Qt::MatchContains;
+  bool quickFilterInvertMatch_ = false;
   int currentZoom_ = 0;
 };
 

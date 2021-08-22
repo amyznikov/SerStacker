@@ -59,6 +59,9 @@ public:
   void setMatchingFlags(Qt::MatchFlags v);
   Qt::MatchFlags matchingFlags() const;
 
+  void setInvertMatch(bool v);
+  bool invertMatch() const;
+
 protected:
   void loadSavedFilters();
   void saveFilters();
@@ -69,6 +72,7 @@ protected:
   QComboBox * searchText_ctl = Q_NULLPTR;
   QThumbnailsQuickFilterMatchingFlagsCombo * matchingFlags_ctl = Q_NULLPTR;
   QCheckBox * caseSensitivity_ctl = Q_NULLPTR;
+  QCheckBox * invertMatch_ctl = Q_NULLPTR;
 };
 
 
@@ -88,6 +92,9 @@ public:
 
   void setMatchingFlags(Qt::MatchFlags v);
   Qt::MatchFlags matchingFlags() const;
+
+  void setInvertMatch(bool v);
+  bool invertMatch() const;
 
 signals:
   void parameterChanged();

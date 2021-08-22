@@ -125,10 +125,11 @@ Qt::MatchFlags QThumbnailsListWidget::quickFilterMatchingFlags() const
   return quickFilterMatchingFlags_;
 }
 
-void QThumbnailsListWidget::setQuickFilter(const QString & v, Qt::MatchFlags flags)
+void QThumbnailsListWidget::setQuickFilter(const QString & v, Qt::MatchFlags flags, bool invertMatch)
 {
   quickFilter_ = v;
   quickFilterMatchingFlags_ = flags;
+  quickFilterInvertMatch_ = invertMatch;
   quickFilterUpdateItemsVisibility();
 }
 
@@ -154,8 +155,15 @@ void QThumbnailsListWidget::quickFilterUpdateItemsVisibility()
   }
   else {
     for ( int  i = 0, n = this->count(); i < n; ++i ) {
+
       QListWidgetItem * item = this->item(i);
-      item->setHidden(!matchQuickFilter(item->text()));
+
+      if ( !quickFilterInvertMatch_ ) {
+        item->setHidden(!matchQuickFilter(item->text()));
+      }
+      else {
+        item->setHidden(matchQuickFilter(item->text()));
+      }
     }
   }
 }
@@ -922,7 +930,8 @@ void QThumbnailsView::showQuickFilter(const QString & wildcard)
         [this] () {
           if ( quickFilterAction_->isChecked() ) {
             listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),
-                quickfilterDialogBox_->matchingFlags());
+                quickfilterDialogBox_->matchingFlags(),
+                quickfilterDialogBox_->invertMatch());
           }
         });
   }
@@ -943,7 +952,8 @@ void QThumbnailsView::showQuickFilter(const QString & wildcard)
 
   quickfilterDialogBox_->show();
   listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),
-      quickfilterDialogBox_->matchingFlags());
+      quickfilterDialogBox_->matchingFlags(),
+      quickfilterDialogBox_->invertMatch());
 }
 
 void QThumbnailsView::clearQuickFilter()

@@ -136,6 +136,13 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
             emit parameterChanged();
           });
 
+
+  invertMatch_ctl =
+      add_checkbox("Invert match",
+        [this] (int) {
+          emit parameterChanged();
+        });
+
   loadSavedFilters();
 }
 
@@ -202,8 +209,15 @@ QString QThumbnailsQuickFilterOptions::searchText() const
 
 void QThumbnailsQuickFilterOptions::setMatchingFlags(Qt::MatchFlags v)
 {
+  const bool inUpdatingControls =
+      updatingControls();
+
+  setUpdatingControls(true);
+
   matchingFlags_ctl->setCurrentItem((Qt::MatchFlags)(v & 0xF));
   caseSensitivity_ctl->setChecked((((uint) v) & Qt::MatchCaseSensitive) != 0);
+
+  setUpdatingControls(inUpdatingControls);
 }
 
 Qt::MatchFlags QThumbnailsQuickFilterOptions::matchingFlags() const
@@ -213,6 +227,21 @@ Qt::MatchFlags QThumbnailsQuickFilterOptions::matchingFlags() const
     v |= Qt::MatchCaseSensitive;
   }
   return v;
+}
+
+void QThumbnailsQuickFilterOptions::setInvertMatch(bool v)
+{
+  const bool inUpdatingControls =
+      updatingControls();
+
+  setUpdatingControls(true);
+  invertMatch_ctl->setChecked(v);
+  setUpdatingControls(inUpdatingControls);
+}
+
+bool QThumbnailsQuickFilterOptions::invertMatch() const
+{
+  return invertMatch_ctl->isChecked();
 }
 
 
@@ -251,4 +280,13 @@ Qt::MatchFlags QThumbnailsQuickFilterDialogBox::matchingFlags() const
   return form_->matchingFlags();
 }
 
+void QThumbnailsQuickFilterDialogBox::setInvertMatch(bool v)
+{
+  form_->setInvertMatch(v);
+}
+
+bool QThumbnailsQuickFilterDialogBox::invertMatch() const
+{
+  return form_->invertMatch();
+}
 

@@ -152,8 +152,8 @@ void QMasterFrameOptions::onupdatecontrols()
     }
 
     if ( !options_->master_source_path.empty() ) {
-      QString source_file_name = options_->master_source_path.c_str();
       if ( !input_sequence_ || input_sequence_->indexof(options_->master_source_path) < 0 ) {
+        QString source_file_name = options_->master_source_path.c_str();
         masterSource_ctl->addItem(QString("* %1").arg(QFileInfo(source_file_name).fileName()), source_file_name);
       }
     }
@@ -161,14 +161,14 @@ void QMasterFrameOptions::onupdatecontrols()
     masterSource_ctl->addItem("Browse...");
 
     // Select Current Index In Master Source Combo
-    if ( options_->master_source_path.empty() ) {
+    if ( !options_->master_source_path.empty() ) {
+      masterSource_ctl->setCurrentIndex(masterSource_ctl->findData(options_->master_source_path.c_str()));
+    }
+    else {
       masterSource_ctl->setCurrentIndex(0);
       if ( masterSource_ctl->count() > 1 ) {
         options_->master_source_path = masterSource_ctl->itemData(0).toString().toStdString();
       }
-    }
-    else {
-      masterSource_ctl->setCurrentIndex(masterSource_ctl->findData(options_->master_source_path.c_str()));
     }
 
     updateMasterFrameIndex();
@@ -357,13 +357,27 @@ QString QMasterFrameOptions::browseForMasterFrame()
 
   QSettings settings;
 
-
   QString selectedFilter =
       settings.value(lastMasterFrameSelectionFilter).toString();
 
+
+  QString proposedMasterSourcePath;
+  if ( options_ ) {
+    if ( !options_->master_source_path.empty() ) {
+      proposedMasterSourcePath  = options_->master_source_path.c_str();
+    }
+    else {
+      // FIXME: need access to stack output directory
+    }
+  }
+
+  if ( proposedMasterSourcePath.isEmpty() ) {
+    proposedMasterSourcePath = settings.value(lastSourcesDirectoryKeyName).toString();
+  }
+
   QString selectedFile = QFileDialog::getOpenFileName(this,
       "Select master frame",
-      settings.value(lastSourcesDirectoryKeyName).toString(),
+      proposedMasterSourcePath,
       filter,
       &selectedFilter);
 

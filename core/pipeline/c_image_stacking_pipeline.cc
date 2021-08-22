@@ -1760,8 +1760,8 @@ bool c_image_stacking_pipeline::create_reguar_mode_reference_frame()
 
 
   if ( fOk && !canceled() ) {
-    if ( options_->output_options().dump_reference_data_for_debug ) {
-      write_image(ssprintf("%s/%s-reference-frame.tiff", output_directory_.c_str(),
+    if ( options_->master_frame_options().save_master_frame ) {
+      write_image(ssprintf("%s/%s-master.tiff", output_directory_.c_str(),
           options_->name().c_str()), options_->output_options(), reference_frame_, reference_mask_);
     }
   }

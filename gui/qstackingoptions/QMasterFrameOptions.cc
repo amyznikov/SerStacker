@@ -66,6 +66,13 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
 
 
+  saveMasterFrame_ctl = new QCheckBox(this);
+  connect(saveMasterFrame_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::onSaveMasterFrameCheckboxStateChanged);
+
+
+
+
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
@@ -85,9 +92,11 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Apply input frame processor:", apply_input_frame_processor_ctl);
 
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
-  form->addRow("max frames:", maxFramesForMasterFrameGeneration_ctl);
-  form->addRow("eccflow scale:", eccFlowScale_ctl);
+  form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
+  form->addRow("eccflow support scale:", eccFlowScale_ctl);
   form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
+  form->addRow("Save Master Frame", saveMasterFrame_ctl);
+
   form->addRow(applyToAll_ctl);
 
 
@@ -125,6 +134,8 @@ void QMasterFrameOptions::onupdatecontrols()
     apply_input_frame_processor_ctl->setChecked(options_->apply_input_frame_processor);
     eccFlowScale_ctl->setValue(options_->eccflow_scale);
     compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
+    saveMasterFrame_ctl->setChecked(options_->save_master_frame);
+
 
     maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
@@ -290,6 +301,14 @@ void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
     options_->compensate_master_flow = state == Qt::Checked;
+    emit parameterChanged();
+  }
+}
+
+void QMasterFrameOptions::onSaveMasterFrameCheckboxStateChanged(int state)
+{
+  if ( options_ && !updatingControls() ) {
+    options_->save_master_frame = state == Qt::Checked;
     emit parameterChanged();
   }
 }

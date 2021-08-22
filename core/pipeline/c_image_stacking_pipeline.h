@@ -130,6 +130,7 @@ struct c_master_frame_options {
   int max_input_frames_to_generate_master_frame = 500;
   int eccflow_scale = 0;
   bool compensate_master_flow = true;
+  bool save_master_frame = false;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

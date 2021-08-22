@@ -449,7 +449,8 @@ bool saveImageFileAs(QWidget * parent,
         image = currentImage;
       }
       else {
-        cv::normalize(currentImage, image, 0, UINT8_MAX, cv::NORM_MINMAX, CV_8U, mask);
+        normalize_minmax(currentImage, image, 0, UINT8_MAX, mask, true);
+        image.convertTo(image, CV_8U);
       }
     }
     else if ( format == QImageSavePNG ) {

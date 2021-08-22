@@ -196,15 +196,20 @@ public:
   iterator find(const std::string & name);
   const_iterator find(const std::string & name) const;
 
+  c_image_processor::ptr get(const std::string & name) const;
+
   iterator find(const c_image_processor::ptr &);
   const_iterator find(const c_image_processor::ptr &) const;
+
 
   static const std::string & default_processor_collection_path();
   static void set_default_processor_collection_path(const std::string & );
 
+  static c_image_processor_collection::ptr default_instance();
 
 protected:
   static std::string default_processor_collection_path_;
+  static c_image_processor_collection::ptr default_instance_;
 };
 
 

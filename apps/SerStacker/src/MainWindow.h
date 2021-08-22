@@ -79,6 +79,9 @@ private slots:
   void onStackingThreadStarted();
   void onStackingThreadFinished();
 
+  void saveCurrentWork();
+
+
   //void onPipelineTreeViewCurrentItemChanged();
 //  void onPipelineItemPressed(const QFrameStackingPipeline::ptr & ppline);
 //  void onPipelineItemClicked(const QFrameStackingPipeline::ptr & ppline);

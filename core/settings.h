@@ -89,21 +89,26 @@ public:
     return add_member(setting_, name.c_str(), type);
   }
 
-  c_config_setting add_group(const std::string & name = "") {
-    return add_member(setting_, name.c_str(), CONFIG_TYPE_GROUP);
-  }
-
-  c_config_setting add_list(const std::string & name = "") {
-    return add_member(setting_, name.c_str(), CONFIG_TYPE_LIST);
-  }
-
-  c_config_setting add_array(const std::string & name = "") {
-    return add_member(setting_, name.c_str(), CONFIG_TYPE_ARRAY);
-  }
-
   c_config_setting add_element(int type) {
     return add_element(setting_, type);
   }
+
+  c_config_setting add_group(const std::string & name = "")
+  {
+    return (isList() || isArray()) ? add_element(CONFIG_TYPE_GROUP) :
+        add_member(setting_, name.c_str(), CONFIG_TYPE_GROUP);
+  }
+
+  c_config_setting add_list(const std::string & name = "") {
+    return (isList() || isArray()) ? add_element(CONFIG_TYPE_LIST) :
+        add_member(setting_, name.c_str(), CONFIG_TYPE_LIST);
+  }
+
+  c_config_setting add_array(const std::string & name = "") {
+    return (isList() || isArray()) ? add_element(CONFIG_TYPE_ARRAY) :
+        add_member(setting_, name.c_str(), CONFIG_TYPE_ARRAY);
+  }
+
 
 
   template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
@@ -147,6 +152,11 @@ public:
   inline get(uint index, T * value) const {
     return get_value(get_element(setting_, index), value);
   }
+  template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
+  inline get(const std::string & name, T * v) {
+    std::string s;
+    return get(&s) ? *v = fromStdString(s, *v), true : false;
+  }
 
 
   template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
@@ -160,6 +170,10 @@ public:
   template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
   inline set(uint index, const T & value) {
     return set_value(get_element(setting_, index), value);
+  }
+  template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
+  inline set(const std::string & name, T v) {
+    return set(name, toStdString(v));
   }
 
 

@@ -478,6 +478,13 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
 std::string c_image_processor_collection::default_processor_collection_path_ =
     "~/.config/SerStacker/image_processors";
 
+c_image_processor_collection::ptr c_image_processor_collection::default_instance_ =
+    c_image_processor_collection::create();
+
+c_image_processor_collection::ptr c_image_processor_collection::default_instance()
+{
+  return default_instance_;
+}
 
 c_image_processor_collection::ptr c_image_processor_collection::create()
 {
@@ -577,6 +584,12 @@ c_image_processor_collection::iterator c_image_processor_collection::find(const 
 c_image_processor_collection::const_iterator c_image_processor_collection::find(const c_image_processor::ptr & p)  const
 {
   return std::find(begin(), end(), p);
+}
+
+c_image_processor::ptr c_image_processor_collection::get(const std::string & name) const
+{
+  const_iterator pos = find(name);
+  return pos == end() ? nullptr : *pos;
 }
 
 

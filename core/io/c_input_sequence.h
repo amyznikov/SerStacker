@@ -9,6 +9,7 @@
 #define __c_input_sequence_h__
 
 #include "c_input_source.h"
+#include <core/settings.h>
 
 
 class c_input_sequence
@@ -67,6 +68,8 @@ public:
   const cv::Matx33f & color_matrix() const;
   bool has_color_matrix() const;
 
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 
 protected:
   bool open_source(int source_index);

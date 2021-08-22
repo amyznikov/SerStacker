@@ -12,8 +12,8 @@
 
 QImageProcessorsCollection QImageProcessorsCollection::instance_;
 
-c_image_processor_collection::ptr QImageProcessorsCollection::processors_ =
-    c_image_processor_collection::create();
+//c_image_processor_collection::ptr QImageProcessorsCollection::processors_ =
+//    c_image_processor_collection::create();
 
 QImageProcessorsCollection::QImageProcessorsCollection()
 {
@@ -31,10 +31,10 @@ QImageProcessorsCollection * QImageProcessorsCollection::instance()
 
 bool QImageProcessorsCollection::load()
 {
-  processors_->clear();
-  processors_->load(c_image_processor_collection::default_processor_collection_path());
-  if ( processors_->empty() ) {
-    processors_->emplace_back(c_image_processor::create("Default"));
+  c_image_processor_collection::default_instance()->clear();
+  c_image_processor_collection::default_instance()->load(c_image_processor_collection::default_processor_collection_path());
+  if ( c_image_processor_collection::default_instance()->empty() ) {
+    c_image_processor_collection::default_instance()->emplace_back(c_image_processor::create("Default"));
   }
   emit instance()->collectionChanged();
   return true;
@@ -42,29 +42,29 @@ bool QImageProcessorsCollection::load()
 
 bool QImageProcessorsCollection::save()
 {
-  return processors_->save();
+  return c_image_processor_collection::default_instance()->save();
 }
 
 int QImageProcessorsCollection::size()
 {
-  return processors_->size();
+  return c_image_processor_collection::default_instance()->size();
 }
 
 bool QImageProcessorsCollection::empty()
 {
-  return processors_->empty();
+  return c_image_processor_collection::default_instance()->empty();
 }
 
 const c_image_processor::ptr & QImageProcessorsCollection::item(int pos)
 {
-  return processors_->at(pos);
+  return c_image_processor_collection::default_instance()->at(pos);
 }
 
 
 
 void QImageProcessorsCollection::add(const c_image_processor::ptr & p, bool emit_notify)
 {
-  processors_->emplace_back(p);
+  c_image_processor_collection::default_instance()->emplace_back(p);
 
   if ( emit_notify ) {
     emit instance_.collectionChanged();
@@ -78,7 +78,7 @@ bool QImageProcessorsCollection::insert(int pos, const c_image_processor::ptr & 
     return false;
   }
 
-  processors_->insert(processors_->begin() + pos, p);
+  c_image_processor_collection::default_instance()->insert(c_image_processor_collection::default_instance()->begin() + pos, p);
 
   if ( emit_notify ) {
     emit instance_.collectionChanged();
@@ -90,10 +90,10 @@ bool QImageProcessorsCollection::insert(int pos, const c_image_processor::ptr & 
 bool QImageProcessorsCollection::remove(const c_image_processor::ptr & p, bool emit_notify)
 {
   c_image_processor_collection::iterator pos =
-      processors_->find(p);
+      c_image_processor_collection::default_instance()->find(p);
 
-  if( pos != processors_->end() ) {
-    processors_->erase(pos);
+  if( pos != c_image_processor_collection::default_instance()->end() ) {
+    c_image_processor_collection::default_instance()->erase(pos);
 
     if ( emit_notify ) {
       emit instance_.collectionChanged();
@@ -112,7 +112,7 @@ bool QImageProcessorsCollection::remove_at(int pos, bool emit_notify)
     return false;
   }
 
-  processors_->erase(processors_->begin() + pos);
+  c_image_processor_collection::default_instance()->erase(c_image_processor_collection::default_instance()->begin() + pos);
   if ( emit_notify ) {
     emit instance_.collectionChanged();
   }
@@ -123,29 +123,29 @@ bool QImageProcessorsCollection::remove_at(int pos, bool emit_notify)
 int QImageProcessorsCollection::indexof(const c_image_processor::ptr & p)
 {
   c_image_processor_collection::iterator pos =
-      processors_->find(p);
+      c_image_processor_collection::default_instance()->find(p);
 
-  return pos != processors_->end() ?
-      pos - processors_->begin() : -1;
+  return pos != c_image_processor_collection::default_instance()->end() ?
+      pos - c_image_processor_collection::default_instance()->begin() : -1;
 }
 
 int QImageProcessorsCollection::indexof(const std::string & name)
 {
   c_image_processor_collection::iterator pos =
-      processors_->find(name);
+      c_image_processor_collection::default_instance()->find(name);
 
-  return pos != processors_->end() ?
-      pos - processors_->begin() : -1;
+  return pos != c_image_processor_collection::default_instance()->end() ?
+      pos - c_image_processor_collection::default_instance()->begin() : -1;
 
 }
 
 int QImageProcessorsCollection::indexof(const QString & name)
 {
   c_image_processor_collection::iterator pos =
-      processors_->find(name.toStdString());
+      c_image_processor_collection::default_instance()->find(name.toStdString());
 
-  return pos != processors_->end() ?
-      pos - processors_->begin() : -1;
+  return pos != c_image_processor_collection::default_instance()->end() ?
+      pos - c_image_processor_collection::default_instance()->begin() : -1;
 
 }
 

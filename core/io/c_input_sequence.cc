@@ -49,6 +49,56 @@ c_input_sequence::ptr c_input_sequence::create(const std::vector<std::string> & 
   return sources_added ? obj : nullptr;
 }
 
+
+bool c_input_sequence::serialize(c_config_setting settings) const
+{
+  SAVE_PROPERTY(settings, *this, auto_debayer);
+  SAVE_PROPERTY(settings, *this, auto_apply_color_matrix);
+
+  c_config_setting sources_list =
+      settings.add_list("sources");
+
+  for ( const c_input_source::ptr & source : sources_ ) {
+    if ( source )  {
+      sources_list.add(source->filename());
+    }
+  }
+
+  return true;
+}
+
+bool c_input_sequence::deserialize(c_config_setting settings)
+{
+  sources_.clear();
+
+  LOAD_PROPERTY(settings, this, auto_debayer);
+  LOAD_PROPERTY(settings, this, auto_apply_color_matrix);
+
+  c_config_setting sources_list =
+      settings["sources"];
+
+  if ( sources_list.isList() ) {
+
+    const int n = sources_list.length();
+    sources_.reserve(n);
+
+    for ( int i = 0; i < n; ++i ) {
+
+      std::string filename;
+
+      if ( sources_list.get_element(i).get(&filename) && !filename.empty() ) {
+        c_input_source::ptr source = c_input_source::create(filename);
+        if ( source ) {
+          sources_.emplace_back(source);
+        }
+      }
+    }
+  }
+
+
+  return true;
+}
+
 void c_input_sequence::set_auto_debayer(enum DEBAYER_ALGORITHM algo)
 {
   auto_debayer_ = algo;

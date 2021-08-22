@@ -43,6 +43,16 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_GBNR      // Use GaussianBlur() interpolation with simple bad pixels filtering
 };
 
+const extern struct DEBAYER_ALGORITHM_desc {
+  const char * name;
+  enum DEBAYER_ALGORITHM value;
+} debayer_algorithms[];
+
+std::string toStdString(enum DEBAYER_ALGORITHM m);
+enum DEBAYER_ALGORITHM fromStdString(const std::string & s,
+    enum DEBAYER_ALGORITHM defval);
+
+
 /** @brief
  * Return true if colorid is one from known bayer patterns (COLORID_BAYER_XXXX)
  */

@@ -29,7 +29,7 @@ struct c_eccflow_options {
 //  double input_smooth_sigma = 0;
 //  double reference_smooth_sigma = 0;
   int max_iterations = 1;
-  int support_scale = 5;
+  int support_scale = 4;
   int normalization_scale = 0;
 };
 
@@ -38,16 +38,15 @@ struct c_frame_registration_base_options {
   ECC_MOTION_TYPE motion_type = ECC_MOTION_EUCLIDEAN;
   color_channel_type registration_channel = color_channel_gray;
   int interpolation_flags = cv::INTER_AREA;
-  int remap_border_mode = cv::BORDER_REFLECT101;
+  int remap_border_mode = cv::BORDER_REPLICATE;
   cv::Scalar remap_border_value = cv::Scalar(0, 0, 0);
+
+  double feature_scale = 1.;
+  bool enable_ecc = true;
+  bool enable_eccflow = false;
 
   c_ecc_options ecc;
   c_eccflow_options eccflow;
-
-  double feature_scale = 1.;
-
-  bool enable_ecc = true;
-  bool enable_eccflow = false;
 };
 
 

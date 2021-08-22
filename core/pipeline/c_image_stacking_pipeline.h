@@ -16,6 +16,7 @@
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/improc/c_image_processor.h>
+#include <core/settings.h>
 #include <atomic>
 
 
@@ -107,11 +108,18 @@ struct c_input_options {
 
   enum anscombe_method anscombe = anscombe_none;
   double bad_pixels_variation_threshold = 7;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
+
 };
 
 struct c_roi_selection_options {
   enum roi_selection_method method = roi_selection_none;
   cv::Size crop_size;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 };
 
 struct c_master_frame_options {
@@ -119,12 +127,16 @@ struct c_master_frame_options {
   int master_frame_index = 0; // relative, in master source
   bool apply_input_frame_processor = true;
   bool generate_master_frame = true;
-  int max_input_frames_to_generate_master_frame = 200;
+  int max_input_frames_to_generate_master_frame = 500;
   int eccflow_scale = 0;
   bool compensate_master_flow = true;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 };
 
 struct c_frame_upscale_options {
+
   enum frame_upscale_option upscale_option = frame_upscale_none;
   enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
 
@@ -136,20 +148,34 @@ struct c_frame_upscale_options {
     return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
   }
 
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
+
 };
 
 struct c_frame_accumulation_options {
-  enum frame_accumulation_method accumulation_method  = frame_accumulation_average_masked;
+  enum frame_accumulation_method accumulation_method  =
+      frame_accumulation_average_masked;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 };
 
 
 struct c_frame_registration_options {
-  enum frame_registration_method registration_method = frame_registration_method_surf;
+
+  enum frame_registration_method registration_method =
+      frame_registration_method_surf;
+
   bool incremental_mode = false; // STUPID TEST, DON'T USE
+
   c_frame_registration_base_options base_options;
   c_feature_based_registration_options feature_options;
   c_planetary_disk_registration_options planetary_disk_options;
   c_star_field_registration_options star_field_options;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 };
 
 
@@ -168,6 +194,9 @@ struct c_image_stacking_output_options {
   bool save_processed_frames = false;
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 };
 
 
@@ -216,6 +245,11 @@ public:
 
   std::string get_displaypatch() const;
 
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
+
+
 protected:
   c_image_stacking_options(const std::string & name = "");
 
@@ -228,6 +262,7 @@ protected:
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
+
 };
 
 
@@ -251,11 +286,19 @@ public:
   ssize_t indexof(const c_image_stacking_options::ptr & pipeline) const;
   ssize_t indexof(const std::string & name) const;
 
+  bool save(const std::string & cfgfilename = "") const;
+  bool load(const std::string & cfgfilename = "");
+
+  static const std::string & default_config_filename();
+  static void set_default_config_filename(const std::string & v);
+
 
 protected:
   c_image_stacks_collection();
 
   std::vector<c_image_stacking_options::ptr> stacks_;
+  mutable std::string filename_;
+  static std::string default_config_filename_;
 };
 
 
@@ -274,6 +317,7 @@ public:
   {
     set_canceled(true);
   }
+
 
   bool run(const c_image_stacking_options::ptr & stacking_options);
   void set_canceled(bool canceled);

@@ -128,10 +128,6 @@ MainWindow::MainWindow()
   stackTreeView =
       stackTreeDock->sequencesView();
 
-  stackTreeView->
-      set_stacklist(stacklist_);
-
-
   imageProcessorSelectorDock = addCustomDock(this,
       Qt::LeftDockWidgetArea,
       "imageProcessorSettingsDock",
@@ -265,13 +261,30 @@ MainWindow::MainWindow()
       stackTreeView, & QStackTree::applyAllStackOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::stackNameChanged,
-      stackTreeView, &QStackTree::updateStackName);
+      [this](const c_image_stacking_options::ptr & stack) {
+        stackTreeView->updateStackName(stack);
+        saveCurrentWork();
+    });
+
+  connect(stackOptionsView, &QStackOptions::stackOptionsChanged,
+      this, &ThisClass::saveCurrentWork );
 
   connect(stackTreeView, &QStackTree::stackNameChanged,
-      [this] (const c_image_stacking_options::ptr & options) {
-        if ( stackOptionsView->currentStack() == options ) {
+      [this] (const c_image_stacking_options::ptr & stack) {
+        if ( stackOptionsView->currentStack() == stack ) {
           stackOptionsView->updateControls();
-        }});
+        }
+        saveCurrentWork();
+      });
+
+  connect(stackTreeView, &QStackTree::stackCollectionChanged,
+        this, &ThisClass::saveCurrentWork );
+
+//  connect(stackTreeView, &QStackTree::stackSourcesChanged,
+//      this, &ThisClass::saveCurrentWork );
+//
+//  connect(stackTreeView, &QStackTree::stackDeleted,
+//      this, &ThisClass::saveCurrentWork );
 
   connect(QStackingThread::singleton(), &QStackingThread::started,
       this, &ThisClass::onStackingThreadStarted);
@@ -348,7 +361,11 @@ MainWindow::MainWindow()
   //  imageProcessorSelector->set_available_processors(image_processors_);
   imageEditor->set_current_processor(imageProcessorSelector->current_processor());
 
+  stacklist_->load();
+  stackTreeView->set_stacklist(stacklist_);
+
   QApplication::instance()->installEventFilter(this);
+
 }
 
 MainWindow::~MainWindow()
@@ -902,6 +919,14 @@ void MainWindow::onSaveCurrentImageAs()
     imageEditor->setCurrentFileName(savedFileName);
   }
 }
+
+
+void MainWindow::saveCurrentWork()
+{
+  stacklist_->save();
+}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 }  // namespace qskystacker

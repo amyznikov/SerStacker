@@ -34,14 +34,15 @@ public:
   const c_image_stacking_options::ptr & currentStack() const;
 
 signals:
-  void stackNameChanged(const c_image_stacking_options::ptr & pipeline);
-  void applyInputOptionsToAllRequested(const c_input_options & options);
-  void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & options);
-  void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & options);
-  void applyFrameUpscaleOptionsToAllRequested(const c_frame_upscale_options & options);
-  void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & options);
-  void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & options);
-  void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & options);
+  void stackOptionsChanged();
+  void stackNameChanged(const c_image_stacking_options::ptr & stack);
+  void applyInputOptionsToAllRequested(const c_input_options & stack);
+  void applyMasterFrameOptionsToAllRequested(const c_master_frame_options & stack);
+  void applyROISelectionOptionsToAllRequested(const c_roi_selection_options & stack);
+  void applyFrameUpscaleOptionsToAllRequested(const c_frame_upscale_options & stack);
+  void applyFrameAccumulationOptionsToAllRequested(const c_frame_accumulation_options & stack);
+  void applyFrameRegistrationOptionsToAllRequested(const c_frame_registration_options & stack);
+  void applyOutputOptionsToAllRequested(const c_image_stacking_output_options & stack);
 
 protected:
   void onupdatecontrols() override;
@@ -76,6 +77,7 @@ public:
   void updateControls();
 
 signals:
+  void stackOptionsChanged();
   void stackNameChanged(const c_image_stacking_options::ptr & stack);
   void closeWindowRequested();
 

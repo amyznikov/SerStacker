@@ -691,6 +691,8 @@ std::string c_image_stacking_options::get_displaypatch() const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+
 c_image_stacks_collection :: c_image_stacks_collection()
 {
 
@@ -2229,12 +2231,12 @@ bool c_image_stacking_pipeline::save_processed_frame(const cv::Mat & current_fra
   const std::string output_file_name =
       input_sequence->sources().size() < 2 ?
 
-          ssprintf("%s/%s.%06d.tiff",
+          ssprintf("%s/%s-%06d.tiff",
               output_directory.c_str(),
               source_name.c_str(),
               global_pos) :
 
-          ssprintf("%s/%s.%06d.%06d.tiff",
+          ssprintf("%s/%s-%06d-%06d.tiff",
               output_directory.c_str(),
               source_name.c_str(),
               local_pos,

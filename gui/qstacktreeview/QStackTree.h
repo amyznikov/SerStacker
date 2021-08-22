@@ -38,6 +38,7 @@ public:
   const QList<QAction * > & toolbarActions() const;
 
 signals:
+  void stackCollectionChanged();
   void currentItemChanged(const c_image_stacking_options::ptr & stack, const c_input_source::ptr & inputSource);
   void itemDoubleClicked(const c_image_stacking_options::ptr & stack, const c_input_source::ptr & inputSource);
   //void currentInputSourceChanged(const c_input_source::ptr & input_source);
@@ -93,6 +94,7 @@ protected:
     ProcessBatch,
   } currentProcessingMode_ = ProcessIdle;
 
+  bool isItemChangeFeedBack_ = false;
 };
 
 class QStackTreeView
@@ -116,16 +118,19 @@ public:
   QStackItem * findStackItem(const c_image_stacking_options::ptr & stack) const;
   QInputSourceItem * findInputSourceItem(QStackItem * stackItem, const QString & name) const;
 
+signals:
+  void stackCollectionChanged();
+
 protected slots:
   void updateStackName(const c_image_stacking_options::ptr & stack);
-  void onAddNewStackingOptions();
+  void onAddNewStack();
   void onAddSourcesToCurrentStackingOptions();
   void onDeleteSelectedItems();
 
 protected:
   void populateTreeView();
-  QTreeWidgetItem * addStackingOptionsItem(const c_image_stacking_options::ptr & stack);
-  QTreeWidgetItem * addNewStackingOptions(const QString & name = QString());
+  QTreeWidgetItem * addStackItem(const c_image_stacking_options::ptr & stack);
+  QTreeWidgetItem * addNewStack(const QString & name = QString());
   void deleteItems(QList<QTreeWidgetItem*> & items);
 
   void keyPressEvent(QKeyEvent *event) override;

@@ -69,24 +69,39 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
 
   connect(inputOptions_ctl, &QImageStackingInputOptions::applyInputOptionsToAllRequested,
       this, &ThisClass::applyInputOptionsToAllRequested);
+  connect(inputOptions_ctl, &QImageStackingInputOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
+
 
   connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
       this, &ThisClass::applyMasterFrameOptionsToAllRequested);
+  connect(masterFrame_ctl, &QMasterFrameOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
 
   connect(roiSelection_ctl, &QROISelectionOptions::applyROISelectionOptionsToAllRequested,
       this, &ThisClass::applyROISelectionOptionsToAllRequested);
+  connect(roiSelection_ctl, &QROISelectionOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
 
   connect(upscaleOptions_ctl, &QFrameUpscaleOptions::applyFrameUpScaleOptionsToAllRequested,
       this, &ThisClass::applyFrameUpscaleOptionsToAllRequested);
+  connect(upscaleOptions_ctl, &QFrameUpscaleOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
 
   connect(frameAccumulation_ctl, &QFrameAccumulationOptions::applyFrameAccumulationOptionsToAllRequested,
       this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
+  connect(frameAccumulation_ctl, &QFrameAccumulationOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
 
   connect(frameRegistration_ctl, &QFrameRegistrationOptions::applyFrameRegistrationOptionsToAllRequested,
       this, &ThisClass::applyFrameRegistrationOptionsToAllRequested);
+  connect(frameRegistration_ctl, &QFrameRegistrationOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
 
   connect(outputOptions_ctl, &QStackOutputOptions::applyOutputOptionsToAllRequested,
       this, &ThisClass::applyOutputOptionsToAllRequested);
+  connect(outputOptions_ctl, &QStackOutputOptions::parameterChanged,
+      this, &ThisClass::stackOptionsChanged);
 
 
   updateControls();
@@ -203,6 +218,12 @@ QStackOptions::QStackOptions(QWidget * parent)
 
   layout_->addWidget(toolbar_, 1, Qt::AlignTop);
   layout_->addWidget(scrollArea_, 100);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::stackOptionsChanged,
+      this, &ThisClass::stackOptionsChanged);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::stackNameChanged,
+      this, &ThisClass::stackNameChanged);
 
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyInputOptionsToAllRequested,
       this, &ThisClass::applyInputOptionsToAllRequested);

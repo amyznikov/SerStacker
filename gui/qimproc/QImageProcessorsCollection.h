@@ -45,7 +45,6 @@ protected:
 
 protected:
   static QImageProcessorsCollection instance_;
-  static c_image_processor_collection::ptr processors_;
 };
 
 class QImageProcessorSelectionCombo :

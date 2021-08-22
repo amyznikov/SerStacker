@@ -1131,6 +1131,8 @@ const QList<QAction *> & QStackTree::toolbarActions() const
 
 void QStackTree::applyInputOptionsToAll(const c_input_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
@@ -1151,12 +1153,20 @@ void QStackTree::applyInputOptionsToAll(const c_input_options & options)
     }
 
     // copy here
+    hasUpdates = true;
     stack->input_options() = options;
   }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
+  }
+
 }
 
 void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
 
   for ( int i = 0; i < n; ++i ) {
@@ -1178,17 +1188,24 @@ void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & opt
     }
 
     // copy here
-
+    hasUpdates = true;
     const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
     const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
     stack->master_frame_options() = options;
     stack->master_frame_options().master_source_path = backup_master_source_path;
     stack->master_frame_options().master_frame_index = backup_master_frame_index;
  }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
+  }
+
 }
 
 void QStackTree::applyROISelectionOptionsToAll(const c_roi_selection_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
@@ -1209,12 +1226,20 @@ void QStackTree::applyROISelectionOptionsToAll(const c_roi_selection_options & o
     }
 
     // copy here
+    hasUpdates = true;
     stack->roi_selection_options() = options;
   }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
+  }
+
 }
 
 void QStackTree::applyFrameUpscaleOptionsToAll(const c_frame_upscale_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
@@ -1235,7 +1260,12 @@ void QStackTree::applyFrameUpscaleOptionsToAll(const c_frame_upscale_options & o
     }
 
     // copy here
+    hasUpdates = true;
     stack->upscale_options() = options;
+  }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
   }
 
 }
@@ -1243,6 +1273,8 @@ void QStackTree::applyFrameUpscaleOptionsToAll(const c_frame_upscale_options & o
 
 void QStackTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
@@ -1263,13 +1295,20 @@ void QStackTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_o
     }
 
     // copy here
+    hasUpdates = true;
     stack->accumulation_options() = options;
+  }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
   }
 
 }
 
 void QStackTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
   for ( int i = 0; i < n; ++i ) {
 
@@ -1290,12 +1329,20 @@ void QStackTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_o
     }
 
     // copy here
+    hasUpdates = true;
     stack->frame_registration_options() = options;
   }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
+  }
+
 }
 
 void QStackTree::applyOutputOptionsToAll(const c_image_stacking_output_options & options)
 {
+  bool hasUpdates = false;
+
   const int n = treeView_->topLevelItemCount();
 
   for ( int i = 0; i < n; ++i ) {
@@ -1317,12 +1364,20 @@ void QStackTree::applyOutputOptionsToAll(const c_image_stacking_output_options &
     }
 
     // copy here
+    hasUpdates = true;
     stack->output_options() = options;
   }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
+  }
+
 }
 
 void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr & fromStack)
 {
+  bool hasUpdates = false;
+
   if ( fromStack ) {
     const int n = treeView_->topLevelItemCount();
 
@@ -1345,6 +1400,7 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
       }
 
       // copy here
+      hasUpdates = true;
       stack->input_options() = fromStack->input_options();
       stack->roi_selection_options() = fromStack->roi_selection_options();
       stack->upscale_options() = fromStack->upscale_options();
@@ -1360,6 +1416,10 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
 
     }
 
+  }
+
+  if ( hasUpdates ) {
+    emit stackCollectionChanged();
   }
 
 }

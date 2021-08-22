@@ -42,7 +42,7 @@ bool c_image_stacks_collection::save(const std::string & cfgfilename) const
     return false;
   }
 
-  //CF_DEBUG("Saving '%s' ...", filename.c_str());
+  // CF_DEBUG("Saving '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 

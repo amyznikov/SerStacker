@@ -129,7 +129,7 @@ struct c_master_frame_options {
   bool generate_master_frame = true;
   int max_input_frames_to_generate_master_frame = 500;
   int eccflow_scale = 0;
-  bool compensate_master_flow = true;
+  //bool compensate_master_flow = true;
   bool save_master_frame = false;
 
   bool serialize(c_config_setting settings) const;
@@ -168,7 +168,7 @@ struct c_frame_registration_options {
   enum frame_registration_method registration_method =
       frame_registration_method_surf;
 
-  bool incremental_mode = false; // STUPID TEST, DON'T USE
+  bool accumulate_and_compensate_turbulent_flow = true;
 
   c_frame_registration_base_options base_options;
   c_feature_based_registration_options feature_options;
@@ -321,6 +321,7 @@ public:
 
 
   bool run(const c_image_stacking_options::ptr & stacking_options);
+
   void set_canceled(bool canceled);
   bool canceled() const;
 
@@ -330,16 +331,12 @@ public:
     return master_file_name_;
   }
 
-  const cv::Mat & reference_image() const {
-    return reference_frame_;
-  }
+//  const cv::Mat & reference_image() const {
+//    return reference_frame_;
+//  }
 
   const cv::Mat & current_image() const {
     return current_frame_;
-  }
-
-  const cv::Mat current_weights() const {
-    return current_weights_;
   }
 
   const c_anscombe_transform & anscombe() const {
@@ -358,16 +355,26 @@ protected:
 
   void set_status_msg(const std::string & msg);
 
-  bool run_regular_mode(const c_input_sequence::ptr & input_sequence);
+  bool initialize(const c_image_stacking_options::ptr & options);
+  bool actual_run();
+  void cleanup();
 
-  // STUPID TEST, DON'T USE
-  bool run_incremental_mode(const c_input_sequence::ptr & input_sequence,
-      cv::Mat * output_accumulated_frame,
-      cv::Mat1f * output_accumulated_counts,
-      cv::Mat1b * output_accumulated_mask);
+  bool setup_frame_registration(bool for_master_generation,
+      const cv::Mat & reference_frame,
+      const cv::Mat & reference_mask);
 
-  bool create_reguar_mode_reference_frame();
-  bool generate_reference_frame(const c_input_sequence::ptr & input_sequence);
+  bool prepare_reference_frame(cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+
+  bool read_existing_reference_frame(const c_input_sequence::ptr & input_sequence, int master_frame_index,
+      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+
+  bool generate_new_reference_frame(const c_input_sequence::ptr & input_sequence,
+      int master_frame_index, int max_frames_to_stack,
+      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+
+  bool process_input_sequence(const c_input_sequence::ptr & input_sequence,
+      int startpos, int endpos);
+
 
 
 
@@ -394,7 +401,6 @@ protected:
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons);
 
-
   static void upscale_image(enum frame_upscale_option scale,
       cv::InputArray src, cv::InputArray srcmask,
       cv::OutputArray dst, cv::OutputArray dstmask);
@@ -407,6 +413,7 @@ protected:
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
+  bool upscale_required(frame_upscale_stage current_stage) const;
 
   virtual void emit_status_changed() {}
   virtual void emit_accumulator_changed() {}
@@ -417,20 +424,21 @@ protected:
   using lock_guard = std::lock_guard<std::mutex>;
 
   c_image_stacking_options::ptr options_;
+  c_input_sequence::ptr input_sequence_;
 
   volatile bool canceled_ = false;
+  bool master_frame_generation_ = false;
 
   std::string output_directory_;
   std::string master_file_name_;
-  int master_source_index_ = -1;
-  int master_frame_index_ = -1;
-  cv::Mat reference_frame_;
-  cv::Mat reference_mask_;
-  cv::Mat reference_weights_;
+  //int master_source_index_ = -1;
+  //int master_frame_index_ = -1;
+
   cv::Mat current_frame_;
   cv::Mat1b current_mask_;
-  cv::Mat current_weights_;
-  //cv::Mat current_master_flow_;
+  //cv::Mat current_weights_;
+  cv::Mat accumulated_flow_;
+
   double ecc_normalization_noise_ = 0;
 
   int total_frames_ = 0;
@@ -442,12 +450,14 @@ protected:
   c_anscombe_transform anscombe_;
   c_feature_based_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
-  c_frame_accumulation_with_mask::ptr masterflow_accumulation_;
+  c_frame_accumulation_with_mask::ptr flow_accumulation_;
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
-  mutable std::mutex accumulator_lock_;
+  mutable std::mutex frame_accumulator_lock_;
 
+  c_fft_power_accumulation::ptr fft_accumulation_;
+  mutable std::mutex fft_accumulator_lock_;
 
 };
 

@@ -109,4 +109,26 @@ protected:
   int border_right_ = 0;
 };
 
+
+class c_fft_power_accumulation
+    : public c_frame_accumulation
+{
+public:
+  typedef c_fft_power_accumulation this_class;
+  typedef c_frame_accumulation base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
+  void release() override;
+  cv::Size accumulator_size() const override;
+
+  const cv::Mat & accumulator() const;
+  float counter() const;
+
+protected:
+  cv::Mat accumulator_;
+  float counter_ = 0;
+};
+
 #endif /* __c_frame_stacking_h__ */

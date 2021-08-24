@@ -42,7 +42,7 @@ bool c_image_stacks_collection::save(const std::string & cfgfilename) const
     return false;
   }
 
-  // CF_DEBUG("Saving '%s' ...", filename.c_str());
+  CF_DEBUG("Saving '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 
@@ -297,7 +297,7 @@ bool c_master_frame_options::serialize(c_config_setting settings) const
   save_settings(settings, "generate_master_frame", generate_master_frame);
   save_settings(settings, "max_input_frames_to_generate_master_frame", max_input_frames_to_generate_master_frame);
   save_settings(settings, "eccflow_scale", eccflow_scale);
-  save_settings(settings, "compensate_master_flow", compensate_master_flow);
+  //save_settings(settings, "compensate_master_flow", compensate_master_flow);
 
   return false;
 }
@@ -314,7 +314,7 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
   load_settings(settings, "generate_master_frame", &generate_master_frame);
   load_settings(settings, "max_input_frames_to_generate_master_frame", &max_input_frames_to_generate_master_frame);
   load_settings(settings, "eccflow_scale", &eccflow_scale);
-  load_settings(settings, "compensate_master_flow", &compensate_master_flow);
+  //load_settings(settings, "compensate_master_flow", &compensate_master_flow);
 
   return true;
 }
@@ -343,6 +343,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
 
   group = settings;
   save_settings(group, "registration_method", registration_method);
+  save_settings(group, "accumulate_and_compensate_turbulent_flow", accumulate_and_compensate_turbulent_flow);
   save_settings(group, "motion_type", base_options.motion_type);
   save_settings(group, "registration_channel", base_options.registration_channel);
   save_settings(group, "interpolation_flags", base_options.interpolation_flags);
@@ -387,6 +388,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
 
   c_config_setting group = settings;
   load_settings(group, "registration_method", &registration_method);
+  load_settings(group, "accumulate_and_compensate_turbulent_flow", &accumulate_and_compensate_turbulent_flow);
   load_settings(group, "motion_type", &base_options.motion_type);
   load_settings(group, "registration_channel", &base_options.registration_channel);
   load_settings(group, "interpolation_flags", &base_options.interpolation_flags);

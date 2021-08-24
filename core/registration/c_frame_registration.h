@@ -135,7 +135,7 @@ public: // ops
       cv::InputArray msk = cv::noArray());
 
   virtual bool register_frame(cv::InputArray src, cv::InputArray srcmask,
-      cv::OutputArray dst, cv::OutputArray dstmask);
+      cv::OutputArray dst = cv::noArray(), cv::OutputArray dstmask = cv::noArray());
 
   virtual bool remap(cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),

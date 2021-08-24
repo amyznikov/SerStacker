@@ -731,8 +731,6 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
 
 bool c_frame_accumulation_with_mask::add(cv::InputArray src, cv::InputArray mask)
 {
-
-
   if ( accumulator_.empty() || counter_.empty() ) {
     accumulator_.create(src.size(), CV_MAKETYPE(accdepth, src.channels()));
     counter_.create(src.size(), accumulator_.depth());
@@ -1123,5 +1121,43 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
   dst = std::move(cmag);
 
   return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool c_fft_power_accumulation::add(cv::InputArray src, cv::InputArray mask)
+{
+  return accumulate_fft_power_spectrum(src.getMat(), accumulator_, counter_);
+}
+
+bool c_fft_power_accumulation::compute(cv::OutputArray dst, cv::OutputArray mask, double dscale, int ddepth ) const
+{
+  if ( counter_ < 1 ) {
+    CF_ERROR("c_fft_power_accumulation: counter is empty");
+    return false;
+  }
+
+  cv::multiply(accumulator_, 1. / counter_, dst);
+  return true;
+}
+
+void c_fft_power_accumulation::release()
+{
+  accumulator_.release();
+  counter_ = 0;
+}
+
+cv::Size c_fft_power_accumulation::accumulator_size() const
+{
+  return accumulator_.size();
+}
+const cv::Mat & c_fft_power_accumulation::accumulator() const
+{
+  return accumulator_;
+}
+
+float c_fft_power_accumulation::counter() const
+{
+  return counter_;
 }
 

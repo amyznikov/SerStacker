@@ -105,7 +105,7 @@ static bool write_tiff(cv::InputArray src, const std::string & filename, const s
     return false;
   }
 
-  CF_DEBUG("SET TIFFTAG_COMPRESSION= %d", compression);
+  // CF_DEBUG("SET TIFFTAG_COMPRESSION= %d", compression);
 
   TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, photometric_tag);
   TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression);

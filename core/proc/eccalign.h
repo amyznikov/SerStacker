@@ -306,74 +306,74 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////////
 
-// Smooth optical flow
-class c_ecc_flow
-{
-public:
-  void set_pyramid_level(int v);
-  int pyramid_level() const;
+//// Smooth optical flow
+//class c_ecc_flow
+//{
+//public:
+//  void set_pyramid_level(int v);
+//  int pyramid_level() const;
+//
+//  void set_max_iterations(int v);
+//  int max_iterations() const;
+//
+//  void set_update_multiplier(double v);
+//  double update_multiplier() const;
+//
+//  bool set_reference_image(cv::InputArray referenceImage,
+//      cv::InputArray referenceMask = cv::noArray());
+//
+//  bool compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
+//      cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());
+//
+//  bool compute(cv::InputArray inputImage, cv::Mat2f & rmap,
+//      cv::InputArray inputMask = cv::noArray());
+//
+//  const cv::Mat1f & reference_image() const;
+//  const cv::Mat1b & reference_mask() const;
+//
+//  const cv::Mat1f & input_image() const;
+//  const cv::Mat1b & input_mask() const;
+//
+//  const cv::Mat2f & current_uv() const;
+//  const cv::Mat1f & current_It() const;
+//  const cv::Mat1f & current_worker_image() const;
+//
+//  static void flow2remap(const cv::Mat2f & uv,
+//      cv::Mat2f & rmap);
+//
+//  static void remap2flow(const cv::Mat2f & rmap,
+//      cv::Mat2f & uv);
+//
+//protected:
+//  bool convert_input_images(cv::InputArray src, cv::InputArray src_mask,
+//      cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
+//
+//  void pnormalize(const cv::Mat1f & src, cv::Mat1f & dst) const;
+//
+//  bool compute_uv(const cv::Mat1f & I1, const cv::Mat1f & I2, const cv::Mat1b & mask,
+//      cv::Mat2f & outuv);
+//
+//  bool pscale(cv::InputArray src, cv::Mat & dst, bool ismask = false) const;
+//
+//  double update_multiplier_ = 1.5;
+//  double reference_noise_ = 0;
+//  int pyramid_level_ = 5;
+//  int max_iterations_ = 1;
+//
+//  cv::Mat1f reference_image_;
+//  cv::Mat1b reference_mask_;
+//  cv::Mat1f current_image_;
+//  cv::Mat1b current_mask_;
+//  cv::Mat1f current_It_;
+//  cv::Mat1f worker_image_;
+//  cv::Mat2f uv_;
+//
+//  cv::Mat1f Ix, Iy;
+//  cv::Mat4f D;
+//};
+//
 
-  void set_max_iterations(int v);
-  int max_iterations() const;
-
-  void set_update_multiplier(double v);
-  double update_multiplier() const;
-
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray());
-
-  bool compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
-      cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());
-
-  bool compute(cv::InputArray inputImage, cv::Mat2f & rmap,
-      cv::InputArray inputMask = cv::noArray());
-
-  const cv::Mat1f & reference_image() const;
-  const cv::Mat1b & reference_mask() const;
-
-  const cv::Mat1f & input_image() const;
-  const cv::Mat1b & input_mask() const;
-
-  const cv::Mat2f & current_uv() const;
-  const cv::Mat1f & current_It() const;
-  const cv::Mat1f & current_worker_image() const;
-
-  static void flow2remap(const cv::Mat2f & uv,
-      cv::Mat2f & rmap);
-
-  static void remap2flow(const cv::Mat2f & rmap,
-      cv::Mat2f & uv);
-
-protected:
-  bool convert_input_images(cv::InputArray src, cv::InputArray src_mask,
-      cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
-
-  void pnormalize(const cv::Mat1f & src, cv::Mat1f & dst) const;
-
-  bool compute_uv(const cv::Mat1f & I1, const cv::Mat1f & I2, const cv::Mat1b & mask,
-      cv::Mat2f & outuv);
-
-  bool pscale(cv::InputArray src, cv::Mat & dst, bool ismask = false) const;
-
-  double update_multiplier_ = 1.5;
-  double reference_noise_ = 0;
-  int pyramid_level_ = 5;
-  int max_iterations_ = 1;
-
-  cv::Mat1f reference_image_;
-  cv::Mat1b reference_mask_;
-  cv::Mat1f current_image_;
-  cv::Mat1b current_mask_;
-  cv::Mat1f current_It_;
-  cv::Mat1f worker_image_;
-  cv::Mat2f uv_;
-
-  cv::Mat1f Ix, Iy;
-  cv::Mat4f D;
-};
-
-
-// Smooth optical flow from pyramid hierarchy
+// Smooth optical flow on image pyramids
 class c_ecch_flow
 {
 public:
@@ -386,6 +386,8 @@ public:
   void set_update_multiplier(double v);
   double update_multiplier() const;
 
+  // Use only for images which violate brightness constancy assumption,
+  // for example on strong vigneting or planetary disk derotation
   void set_normalization_scale(int v);
   int normalization_scale() const;
 
@@ -432,7 +434,7 @@ protected:
     cv::Mat4f D;
   };
 
-  bool convert_input_images(cv::InputArray src, cv::InputArray src_mask,
+  bool convert_input_images(cv::InputArray src, cv::InputArray srcmask,
       cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
 
   bool compute_uv(pyramid_entry & e,
@@ -441,7 +443,8 @@ protected:
   bool pscale(cv::InputArray src, cv::Mat & dst,
       bool ismask = false) const;
 
-  void pnormalize(cv::InputArray src, cv::OutputArray dst, double noise_level) const;
+  void pnormalize(cv::InputArray src, cv::OutputArray dst,
+      double noise_level) const;
 
   double input_smooth_sigma_ = 0;
   double reference_smooth_sigma_ = 0;

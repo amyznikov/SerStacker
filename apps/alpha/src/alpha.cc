@@ -40,7 +40,7 @@ static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
   }
 
   //save_image(component_mask, "raw_component_mask.png");
-  geo_fill_holes(component_mask, component_mask, 8);
+  //geo_fill_holes(component_mask, component_mask, 8);
   save_image(component_mask, "closed_component_mask.png");
 
   morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
@@ -89,12 +89,56 @@ static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
   return true;
 }
 
+static bool fit_jovian_ellipse_ecc(const cv::Mat & image, cv::RotatedRect * rc, int index)
+{
+  cv::Point2f centrold;
+  cv::Rect component_rect;
+  cv::Mat1b component_mask;
+  cv::Mat component_edge;
+  std::vector<cv::Point2f> edge_points;
+  cv::Mat draw;
+
+  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
+    CF_ERROR("simple_small_planetary_disk_detector() fails");
+    return false;
+  }
+
+  geo_fill_holes(component_mask, component_mask, 8);
+  save_image(component_mask, ssprintf("closed_component_mask.%d.png", index));
+
+  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
+  cv::findNonZero(component_edge, edge_points);
+
+  save_image(component_edge, ssprintf("closed_component_edge.%d.png", index));
+
+  //*rc = cv::fitEllipse(edge_points);
+  *rc = cv::fitEllipseAMS(edge_points);
 
 
-static bool createEllipseRotationRemap(cv::Mat2f & remap, const cv::Size & size,
+  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
+
+  double rcA = std::max(rc->size.width, rc->size.height);
+  double rcB = std::min(rc->size.width, rc->size.height);
+  double rcR = 0.5 * (rcA + rcB);
+
+//  rc->size.width = rcR;
+//  rc->size.height = rcR * jovian_polar_to_equatorial_axis_ratio;
+
+  cv::Mat1f artifical_ellipse(component_rect.size(), 0);
+
+  cv::ellipse(artifical_ellipse, *rc, 255, -1, cv::LINE_AA);
+  save_image(artifical_ellipse, ssprintf("artifical_ellipse.%d.png", index));
+
+
+  return true;
+}
+
+static bool createEllipseRotationRemap(cv::Mat2f & remap, cv::Mat1f & mask, const cv::Size & size,
     double Cx, double Cy, double a, double b, double l)
 {
   remap.create(size);
+  mask.create(size);
+  mask.setTo(0);
 
   const double c = a / b;
 
@@ -105,20 +149,23 @@ static bool createEllipseRotationRemap(cv::Mat2f & remap, const cv::Size & size,
     for ( int x = 0; x < size.width; ++x ) {
       double xx = x - Cx;
 
-      if ( (xx / a) * (xx / a) + (yy / b) * (yy / b) >= 1 ) {
-        remap[y][x][0] = x;
-        remap[y][x][1] = y;
+      if ( (xx / a) * (xx / a) + (yy / b) * (yy / b) >= 0.95 ) {
+        remap[y][x][0] = -1;
+        remap[y][x][1] = -1;
       }
       else {
         double lambda = asin(xx / (c * sqrt(b * b - yy * yy))) + l;
-        if ( (lambda <= -CV_PI / 2) || (lambda >= CV_PI / 2) ) {
+        if ( (lambda <= - 0.8 * CV_PI / 2) || (lambda >= CV_PI / 2) ) {
           remap[y][x][0] = -1;
           remap[y][x][1] = -1;
         }
         else {
           remap[y][x][0] = sin(lambda) * c * sqrt(b * b - yy * yy) + Cx;
           remap[y][x][1] = y;
+          mask[y][x] = cos(0.5 * CV_PI * xx / ((c * sqrt(b * b - yy * yy)))) * cos(0.5 * CV_PI * yy / b) ;
+          //mask[y][x] *= mask[y][x];
         }
+
       }
     }
   }
@@ -144,12 +191,17 @@ static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputAr
 //  cv::subtract(src, mean, mean);
 //  cv::divide(mean, stdev, dst);
 
+  cv::Scalar mv, sv;
   cv::Mat src, mean;
 
   src = _src.getMat();
+  cv::meanStdDev(src, mv, sv, mask);
 
   cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
-  cv::subtract(src, mean, dst);
+  cv::subtract(src, mean, mean);
+  cv::multiply(mean, 1./sv[0], dst);
+
+
 }
 
 int main(int argc, char *argv[])
@@ -224,65 +276,97 @@ int main(int argc, char *argv[])
     images[i].setTo(0, ~component_masks[i]);
   }
 
-  cv::Size maxsize(std::max(component_rects[0].width, component_rects[1].width) + 16, std::max(component_rects[0].height, component_rects[1].height) + 16);
+  cv::Size maxsize(std::max(component_rects[0].width, component_rects[1].width) + 32, std::max(component_rects[0].height, component_rects[1].height) + 32);
 
   cv::Mat comps[2];
+  cv::RotatedRect erc[2];
   for ( int i = 0; i < 2; ++i ) {
     comps[i] = cv::Mat::zeros(maxsize, images[i].type());
-    images[i](component_rects[i]).copyTo(comps[i](cv::Rect(8,8,component_rects[i].width, component_rects[i].height)));
+
+    images[i](component_rects[i]).copyTo(
+        comps[i](cv::Rect(32 / 2, 32 / 2, component_rects[i].width, component_rects[i].height)));
+
     comps[i].convertTo(comps[i], CV_32F);
     save_image(comps[i], ssprintf("comps.%d.tiff", i));
+
+
+    fit_jovian_ellipse_ecc(comps[i], &erc[i], i);
   }
 
-  c_ecc_forward_additive ecc;
-  c_ecc_pyramide_align ecch(&ecc);
-  cv::Mat T = createEyeTransform(ECC_MOTION_EUCLIDEAN);
 
-  ecch.align(comps[0], comps[1], T);
-  cv::remap(comps[0], comps[0], ecch.method()->current_remap(), cv::noArray(), cv::INTER_LINEAR);
-  save_image(comps[0], ssprintf("comps.%d.aligned.tiff", 0));
+//
+//  c_ecc_forward_additive ecc;
+//  c_ecc_pyramide_align ecch(&ecc);
+//  cv::Mat avgimg, diff;
+//  cv::Mat T;
+//  cv::RotatedRect erc;
+//
+//  ecch.align(comps[0], comps[1], T = createEyeTransform(ECC_MOTION_EUCLIDEAN));
+//  cv::remap(comps[0], comps[0], ecch.method()->current_remap(), cv::noArray(), cv::INTER_LINEAR);
+//  save_image(comps[0], ssprintf("comps.%d.aligned.tiff", 0));
+//
+//
+//  cv::add(comps[0], comps[1], avgimg);
+//  if ( !fit_ellipse(avgimg, &erc) ) {
+//    CF_ERROR("fit_ellipse() fails");
+//  }
+//
+//  cv::Mat1f E;
+//  cv::Mat emap;
+//  E = createEuclideanTransform(erc.center.x, erc.center.y, erc.center.x, erc.center.y, 1.0, -erc.angle * CV_PI / 180 + CV_PI / 2);
+//  createRemap(ECC_MOTION_EUCLIDEAN, E, emap, avgimg.size());
+//  for ( int i = 0; i < 2; ++i ) {
+//    cv::remap(comps[i], comps[i], emap, cv::noArray(), cv::INTER_LINEAR);
+//    save_image(comps[i], ssprintf("comps.remap.%d.tiff", i));
+//  }
+//
+//  cv::subtract(comps[1], comps[0], diff);
+//  save_image(diff, "diff.initial.tiff");
+//
+//
+//  double A = std::max(erc.size.width, erc.size.height);
+//  double B = std::min(erc.size.width, erc.size.height);
+//  double normalize_sigma = 3 * A / 500;
+//
+//  CF_DEBUG("ELLIPSE: A=%g B=%g normalize_sigma=%g", A, B, normalize_sigma);
+//
+//
+//  cv::Mat2f rmap;
+//  cv::Mat1f visibility_mask;
+//  cv::Mat rotated_image;
+//
+//
+//  ecc_normalize(comps[0], cv::noArray(), comps[0], normalize_sigma );
+//  ecc_normalize(comps[1], cv::noArray(), comps[1], normalize_sigma );
+//
+//  for ( int i = 0; i < 50; ++i ) {
+//
+//    double angle = i * CV_PI / 180;
+//
+//
+//    createEllipseRotationRemap(rmap, visibility_mask, comps[0].size(),
+//        erc.center.x, erc.center.y, A / 2, B / 2, -angle);
+//
+//    cv::remap(comps[0], rotated_image, rmap, cv::noArray(), cv::INTER_LINEAR);
+//    save_image(rotated_image, ssprintf("rotations/comps0.rotated.%02d.tiff", i));
+//
+//    cv::subtract(comps[1], rotated_image, diff);
+//    cv::multiply(diff, visibility_mask, diff);
+//
+//    save_image(diff, ssprintf("rotations/diff.%02d.tiff", i));
+//
+//    double cost = cv::norm(diff, cv::NORM_L2);
+//    CF_DEBUG("rotation %d: angle=%g cost=%g", i, angle * 180 / CV_PI,  cost);
+//  }
 
-  cv::Mat avgimg;
-  cv::RotatedRect erc;
-  cv::add(comps[0], comps[1], avgimg);
+//  cv::Mat gx, gy;
+//  save_image(diff, "diff.rotated.tiff");
+//  ecc_differentiate(comps[1], gx, gy);
 
-  if ( !fit_ellipse(avgimg, &erc) ) {
-    CF_ERROR("fit_ellipse() fails");
-  }
-
-  cv::Mat1f E;
-  cv::Mat emap;
-  E = createEuclideanTransform(erc.center.x, erc.center.y, erc.center.x, erc.center.y, 1.0, -erc.angle * CV_PI / 180 + CV_PI / 2);
-  createRemap(ECC_MOTION_EUCLIDEAN, E, emap, avgimg.size());
-  for ( int i = 0; i < 2; ++i ) {
-    cv::remap(comps[i], comps[i], emap, cv::noArray(), cv::INTER_LINEAR);
-    save_image(comps[i], ssprintf("comps.remap.%d.tiff", i));
-  }
-
-  double A = std::max(erc.size.width, erc.size.height);
-  double B = std::min(erc.size.width, erc.size.height);
-
-  CF_DEBUG("ELLIPSE: A=%g B=%g", A, B);
-
-
-  cv::Mat2f rmap;
-  createEllipseRotationRemap(rmap, comps[0].size(),
-      erc.center.x, erc.center.y, A/2, B/2, -8.5 * CV_PI / 180);
-
-  cv::remap(comps[0], comps[0], rmap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(comps[0], ssprintf("comps.rotated.%d.tiff", 0));
-
-  cv::Mat gx, gy, diff;
-  ecc_differentiate(comps[1], gx, gy);
-  cv::subtract(comps[1], comps[0], diff);
-  save_image(gx, "gx.tiff");
-  save_image(gy, "gy.tiff");
-  save_image(diff, "diff.tiff");
-
-  for ( int i = 0; i < 2; ++i ) {
-    ecc_normalize(comps[i], cv::noArray(), comps[i], 5);
-    save_image(comps[i], ssprintf("comps.normalized.%d.tiff", i));
-  }
+//  for ( int i = 0; i < 2; ++i ) {
+//    ecc_normalize(comps[i], cv::noArray(), comps[i], 5);
+//    save_image(comps[i], ssprintf("comps.normalized.%d.tiff", i));
+//  }
 
 //  std::vector<cv::Mat> pyramids[2];
 //  for(int i = 0; i < 2; ++i ) {

@@ -294,7 +294,8 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
       });
 
   form->addRow(ecc_ctl = new QEccSettings(this));
-
+  connect(ecc_ctl, &QEccSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
 
   enable_eccflow_ctl = add_checkbox("Enable ECCFLOW",
       [this](int state ) {
@@ -308,6 +309,8 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
       });
 
   form->addRow(eccflow_ctl = new QEccflowSettings(this));
+  connect(eccflow_ctl, &QEccflowSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
 
   updateControls();
 }
@@ -495,7 +498,21 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
       "Registration method:",
       [this](frame_registration_method) {
         updatemethodspecificpage();
+        emit parameterChanged();
       });
+
+
+  accumulate_and_compensate_turbulent_flow_ctl =
+      add_checkbox("Accumulate and compensate turbulent flow",
+          [this](int state) {
+            if ( options_ ) {
+              bool checked = state == Qt::Checked;
+              if ( options_->accumulate_and_compensate_turbulent_flow != checked ) {
+                options_->accumulate_and_compensate_turbulent_flow = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 
 //  incremental_mode_ctl = add_checkbox("Incremental mode (STUPID TEST, DON'T USE)",
 //      [this](int state) {
@@ -512,6 +529,16 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   form->addRow(planetaryDiskRegistrationSettings_ctl = new QPlanetaryDiskRegistrationSettings(this));
   form->addRow(starFieldRegistrationSettings_ctl = new QStarFieldRegistrationSettings(this));
   form->addRow(frameRegistrationBaseSettings_ctl = new QFrameRegistrationBaseSettings(this));
+
+
+  connect(featureBasedRegistrationSettings_ctl, &QFeatureBasedRegistrationSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(planetaryDiskRegistrationSettings_ctl, &QPlanetaryDiskRegistrationSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(starFieldRegistrationSettings_ctl, &QStarFieldRegistrationSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(frameRegistrationBaseSettings_ctl, &QFrameRegistrationBaseSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
 
 
   applyToAll_ctl = new QToolButton(this);
@@ -558,6 +585,7 @@ void QFrameRegistrationOptions::onupdatecontrols()
   else {
 
     frameRegistrationMethod_ctl->setCurrentItem(options_->registration_method);
+    accumulate_and_compensate_turbulent_flow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
 //    incremental_mode_ctl->setChecked(options_->incremental_mode);
     frameRegistrationBaseSettings_ctl->set_registration_options(&options_->base_options);
     featureBasedRegistrationSettings_ctl->set_registration_options(&options_->feature_options);

@@ -91,6 +91,9 @@ bool c_input_sequence::deserialize(c_config_setting settings)
         if ( source ) {
           sources_.emplace_back(source);
         }
+        else {
+          CF_ERROR("c_input_source::create(filename='%s') fails", filename.c_str());
+        }
       }
     }
   }

@@ -10,8 +10,8 @@
 
 
 const struct QtMatchingFlags_desc QtMatchingFlags[] = {
-    {"Contains", Qt::MatchContains },
     {"Wildcard", Qt::MatchWildcard},
+    {"Contains", Qt::MatchContains },
     {"StartsWith", Qt::MatchStartsWith},
     {"EndsWith", Qt::MatchEndsWith},
     {"Exact", Qt::MatchExactly},
@@ -170,22 +170,29 @@ void QThumbnailsQuickFilterOptions::loadSavedFilters()
 
     setUpdatingControls(false);
   }
+
+  matchingFlags_ctl->setCurrentIndex(
+      settings.value("ThumbnailsQuickFiltersMatchMethod", 0).
+          toInt());
+
 }
 
 void QThumbnailsQuickFilterOptions::saveFilters()
 {
+  QSettings settings;
+
   QStringList savedFilters;
   for( int i = 0, n = std::max(20, searchText_ctl->count()); i < n; ++i ) {
     savedFilters.append(searchText_ctl->itemText(i));
   }
 
   if ( !savedFilters.empty() ) {
-
-    QSettings settings;
-
     settings.setValue("ThumbnailsQuickFilters",
       savedFilters);
   }
+
+  settings.setValue("ThumbnailsQuickFiltersMatchMethod",
+      matchingFlags_ctl->currentIndex());
 
 }
 

@@ -61,9 +61,9 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, &ThisClass::onEccFlowScaleChanged);
 
 
-  compensateMasterFlow_ctl = new QCheckBox(this);
-  connect(compensateMasterFlow_ctl, &QCheckBox::stateChanged,
-      this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
+//  compensateMasterFlow_ctl = new QCheckBox(this);
+//  connect(compensateMasterFlow_ctl, &QCheckBox::stateChanged,
+//      this, &ThisClass::onAccumulateMasterFlowCheckboxStateChanged);
 
 
   saveMasterFrame_ctl = new QCheckBox(this);
@@ -94,7 +94,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
   form->addRow("eccflow support scale:", eccFlowScale_ctl);
-  form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
+  //form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
   form->addRow("Save Master Frame", saveMasterFrame_ctl);
 
   form->addRow(applyToAll_ctl);
@@ -133,13 +133,13 @@ void QMasterFrameOptions::onupdatecontrols()
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
     apply_input_frame_processor_ctl->setChecked(options_->apply_input_frame_processor);
     eccFlowScale_ctl->setValue(options_->eccflow_scale);
-    compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
+    //compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
     saveMasterFrame_ctl->setChecked(options_->save_master_frame);
 
 
     maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
-    compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
+    //compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
 
     // Populate Master Source Combo
     masterSource_ctl->clear();
@@ -265,8 +265,7 @@ void QMasterFrameOptions::onGenerateMasterFrameCheckboxStateChanged(int state)
 
     maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
-    compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
-
+    //compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
 
     emit parameterChanged();
   }
@@ -297,13 +296,13 @@ void QMasterFrameOptions::onEccFlowScaleChanged()
   }
 }
 
-void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
-{
-  if ( options_ && !updatingControls() ) {
-    options_->compensate_master_flow = state == Qt::Checked;
-    emit parameterChanged();
-  }
-}
+//void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
+//{
+//  if ( options_ && !updatingControls() ) {
+//    //options_->compensate_master_flow = state == Qt::Checked;
+//    emit parameterChanged();
+//  }
+//}
 
 void QMasterFrameOptions::onSaveMasterFrameCheckboxStateChanged(int state)
 {

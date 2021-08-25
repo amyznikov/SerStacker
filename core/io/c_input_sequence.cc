@@ -13,6 +13,7 @@
 
 c_input_sequence::~c_input_sequence()
 {
+  close(true);
 }
 
 c_input_sequence::ptr c_input_sequence::create()

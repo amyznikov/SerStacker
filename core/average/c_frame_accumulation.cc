@@ -737,6 +737,10 @@ bool c_frame_accumulation_with_mask::add(cv::InputArray src, cv::InputArray mask
     accumulator_.setTo(0);
     counter_.setTo(0);
   }
+  else if ( src.size() != accumulator_.size() ) {
+    CF_ERROR("ERROR: current frame and accumulator sizes not match");
+    return false;
+  }
 
   cv::add(accumulator_, src, accumulator_, mask, accumulator_.type());
   cv::add(counter_, 1, counter_, mask, counter_.type());

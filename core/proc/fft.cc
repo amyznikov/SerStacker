@@ -485,8 +485,9 @@ bool accumulate_fft_power_spectrum(const cv::Mat & src,  cv::Mat & acc, float & 
       };
 
 
+  cv::Mat img;
   cv::Size fft_size;
-  cv::Mat img, spec;
+
   const int cn = src.channels();
   cv::Mat channels[cn];
 
@@ -516,6 +517,9 @@ bool accumulate_fft_power_spectrum(const cv::Mat & src,  cv::Mat & acc, float & 
 
   if ( cn > 1 ) {
     cv::merge(channels, cn, img);
+  }
+  else {
+    img = channels[0];
   }
 
   cv::add(acc, img, acc);
@@ -579,6 +583,9 @@ bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
 
   if ( cn > 1 ) {
     cv::merge(channels, cn, img);
+  }
+  else {
+    img = channels[0];
   }
 
   cv::max(acc, img, acc);
@@ -648,6 +655,9 @@ bool swap_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat &
 
   if ( cn > 1 ) {
     cv::merge(channels, cn, img);
+  }
+  else {
+    img = channels[0];
   }
 
   img(rc).copyTo(dst);

@@ -138,7 +138,7 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
 
     updatingDisplay_ = true;
 
-    QWaitCursor wait(this, pipeline->current_image().size().area() > 3e6);
+    QWaitCursor wait(this/*, pipeline->current_image().size().area() > 3e6*/);
 
     cv::Mat currentImage;
     cv::Mat currentMask;

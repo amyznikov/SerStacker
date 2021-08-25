@@ -211,6 +211,7 @@ public:
 
   void set_name(const std::string & name);
   const std::string & name() const;
+  const char * cname() const;
 
   void set_input_sequence(const c_input_sequence::ptr & sequence);
   const c_input_sequence::ptr & input_sequence() const;
@@ -327,17 +328,17 @@ public:
 
   const c_image_stacking_options::ptr & stacking_options() const;
 
-  const std::string & master_file_name() const {
-    return master_file_name_;
-  }
+//  const std::string & master_file_name() const {
+//    return master_file_name_;
+//  }
 
 //  const cv::Mat & reference_image() const {
 //    return reference_frame_;
 //  }
 
-  const cv::Mat & current_image() const {
-    return current_frame_;
-  }
+//  const cv::Mat & current_image() const {
+//    return current_frame_;
+//  }
 
   const c_anscombe_transform & anscombe() const {
     return anscombe_;
@@ -359,18 +360,22 @@ protected:
   bool actual_run();
   void cleanup();
 
-  bool setup_frame_registration(bool for_master_generation,
-      const cv::Mat & reference_frame,
-      const cv::Mat & reference_mask);
-
-  bool prepare_reference_frame(cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
-
-  bool read_existing_reference_frame(const c_input_sequence::ptr & input_sequence, int master_frame_index,
-      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
-
-  bool generate_new_reference_frame(const c_input_sequence::ptr & input_sequence,
+  bool create_reference_frame(const c_input_sequence::ptr & input_sequence,
       int master_frame_index, int max_frames_to_stack,
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+
+//  bool setup_frame_registration(bool for_master_generation,
+//      const cv::Mat & reference_frame,
+//      const cv::Mat & reference_mask);
+//
+//  bool prepare_reference_frame(cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+//
+//  bool read_existing_reference_frame(const c_input_sequence::ptr & input_sequence, int master_frame_index,
+//      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+//
+//  bool generate_reference_frame(const c_input_sequence::ptr & input_sequence,
+//      int master_frame_index, int max_frames_to_stack,
+//      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
 
   bool process_input_sequence(const c_input_sequence::ptr & input_sequence,
       int startpos, int endpos);
@@ -430,14 +435,14 @@ protected:
   bool master_frame_generation_ = false;
 
   std::string output_directory_;
-  std::string master_file_name_;
+  //std::string master_file_name_;
   //int master_source_index_ = -1;
   //int master_frame_index_ = -1;
 
-  cv::Mat current_frame_;
-  cv::Mat1b current_mask_;
+  //cv::Mat current_frame_;
+  //cv::Mat1b current_mask_;
   //cv::Mat current_weights_;
-  cv::Mat accumulated_flow_;
+  //cv::Mat accumulated_flow_;
 
   double ecc_normalization_noise_ = 0;
 
@@ -454,10 +459,9 @@ protected:
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
-  mutable std::mutex frame_accumulator_lock_;
-
   c_fft_power_accumulation::ptr fft_accumulation_;
-  mutable std::mutex fft_accumulator_lock_;
+  mutable std::mutex accumulator_lock_;
+
 
 };
 

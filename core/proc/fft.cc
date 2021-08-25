@@ -664,3 +664,164 @@ bool swap_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat &
 
   return true;
 }
+
+//#include <core/io/save_image.h>
+//#include <core/ssprintf.h>
+
+
+bool scale_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat & dst, const std::string & dbgpath)
+{
+  if ( src.empty() ) {
+    CF_ERROR("Invalid argument: src is empty");
+    return false;
+  }
+
+  if ( acc.depth() != CV_32F ) {
+    CF_ERROR("Invalid argument: acc.depth()=CV_32F is expected");
+    return false;
+  }
+
+  if ( acc.channels() != src.channels() ) {
+    CF_ERROR("Invalid argument: number of channels in src and sp not match");
+    return false;
+  }
+
+  typedef std::complex<float> complex;
+
+  cv::Mat img, spec;
+  cv::Rect rc;
+  const cv::Size fft_size = acc.size();
+  const int cn = src.channels();
+  cv::Mat channels[cn];
+
+
+
+
+  if ( !copyMakeFFTBorder(src, img, fft_size, &rc) ) {
+    CF_ERROR("copyMakeFFTBorder() fails");
+    return false;
+  }
+
+  if ( cn == 1 ) {
+    channels[0] = img;
+  }
+  else {
+    cv::split(img, channels);
+  }
+
+  /* Pyramid down to specific level */
+  static const auto pdownscale =
+      [](cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_WRAP)
+          {
+            cv::pyrDown(src, dst, cv::Size(), border_mode);
+            for ( int l = 1; l < level; ++l ) {
+              cv::pyrDown(dst, dst, cv::Size(), border_mode);
+            }
+          };
+
+  /* Pyramid up to specific size */
+  static const auto pupscale =
+      [](cv::Mat & image, cv::Size dstSize) -> bool
+          {
+            const cv::Size inputSize = image.size();
+
+            if ( inputSize != dstSize ) {
+
+              std::vector<cv::Size> spyramid;
+
+              spyramid.emplace_back(dstSize);
+
+              while ( 42 ) {
+                const cv::Size nextSize((spyramid.back().width + 1) / 2, (spyramid.back().height + 1) / 2);
+                if ( nextSize == inputSize ) {
+                  break;
+                }
+                if ( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+                  CF_DEBUG("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+                      nextSize.width, nextSize.height,
+                      inputSize.width, inputSize.height);
+                  return false;
+                }
+                spyramid.emplace_back(nextSize);
+              }
+
+              for ( int i = spyramid.size() - 1; i >= 0; --i ) {
+                cv::pyrUp(image, image, spyramid[i]);
+              }
+            }
+
+            return true;
+          };
+
+  /* compute spectrum magnitude */
+  static const auto compute_magnitue =
+      [](const cv::Mat & src, cv::Mat & dst)
+          {
+            const cv::Mat_<complex> spec = src;
+            cv::Mat1f mag(spec.size());
+
+            for ( int y = 0; y < spec.rows; ++y ) {
+              for ( int x = 0; x < spec.cols; ++x ) {
+                mag[y][x] = std::abs(spec[y][x]);
+              }
+            }
+
+            dst = std::move(mag);
+          };
+
+
+
+  cv::Mat accs, chs;
+  const int scale_level = 4;
+  const double eps = 1e-2; // FIXME: this is crazy constant
+
+  pdownscale(acc, accs, scale_level);
+  pupscale(accs, acc.size());
+  //  if ( !dbgpath.empty() ) {
+  //    save_image(accs, ssprintf("%s/accb.tiff", dbgpath.c_str()));
+  //  }
+
+
+
+
+  for ( int i = 0; i < cn; ++i ) {
+
+    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
+    cv::Mat_<complex> spec = channels[i];
+
+
+
+    compute_magnitue(channels[i], chs);
+    pdownscale(chs, chs, scale_level);
+    pupscale(chs, channels[i].size());
+    //  if ( !dbgpath.empty() ) {
+    //    save_image(chs, ssprintf("%s/chs.%d.tiff", dbgpath.c_str(), i));
+    //  }
+
+
+    for ( int y = 0; y < spec.rows; ++y ) {
+
+      const float * accp = accs.ptr<const float>(y);
+      const float * chp = chs.ptr<const float>(y);
+
+      for ( int x = 0; x < spec.cols; ++x ) {
+
+        spec[y][x] *= accp[x * cn + i] / (chp[x] + eps );
+
+      }
+    }
+
+    cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
+  }
+
+  if ( cn > 1 ) {
+    cv::merge(channels, cn, img);
+  }
+  else {
+    img = channels[0];
+  }
+
+  img(rc).copyTo(dst);
+
+  return true;
+}

@@ -1474,9 +1474,13 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
         if ( options_->output_options().dump_reference_data_for_debug ) {
 
           cv::Mat spec;
+          float cnt = 0;
+
+          save_image(reference_frame, ssprintf("%s/%s-reference_frame_before_scale.tiff",
+              output_directory_.c_str(),
+              options_->cname()));
 
           averaged_spec.copyTo(spec);
-
           fftSwapQuadrants(spec);
           cv::log(1. + spec, spec);
 
@@ -1484,16 +1488,35 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
               output_directory_.c_str(),
               options_->cname()));
 
-          save_image(reference_frame, ssprintf("%s/%s-reference_frame_before_fftswap.tiff",
+
+          accumulate_fft_power_spectrum(reference_frame, spec, cnt);
+          fftSwapQuadrants(spec);
+          cv::log(1. + spec, spec);
+
+          save_image(spec, ssprintf("%s/%s-reference_fft_power.tiff",
               output_directory_.c_str(),
               options_->cname()));
 
         }
 
 
-        if ( !swap_fft_power_spectrum(reference_frame, averaged_spec, reference_frame) ) {
+        if ( !scale_fft_power_spectrum(reference_frame, averaged_spec, reference_frame) ) {
           CF_ERROR("ERROR: swap_fft_power_spectrum() fails");
           return false;
+        }
+
+
+        if ( options_->output_options().dump_reference_data_for_debug ) {
+
+          cv::Mat spec;
+          float cnt = 0;
+          accumulate_fft_power_spectrum(reference_frame, spec, cnt);
+          fftSwapQuadrants(spec);
+          cv::log(1. + spec, spec);
+
+          save_image(spec, ssprintf("%s/%s-reference_fft_power_after_scale.tiff",
+              output_directory_.c_str(),
+              options_->cname()));
         }
 
         clip_range(reference_frame, 0, 1, reference_mask);

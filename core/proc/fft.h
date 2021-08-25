@@ -62,4 +62,9 @@ bool swap_fft_power_spectrum(const cv::Mat & image,
     const cv::Mat & sp,
     cv::Mat & dst);
 
+bool scale_fft_power_spectrum(const cv::Mat & image,
+    const cv::Mat & acc,
+    cv::Mat & dst,
+    const std::string & dbgpath = "");
+
 #endif /* __fft_h__ */

@@ -410,10 +410,8 @@ static cv::Mat2f compute_turbulent_flow(
     return uv;
   }
 
-  CF_DEBUG("H");
   uv.create(current_remap.size());
 
-  CF_DEBUG("H");
   typedef tbb::blocked_range<int> range;
   tbb::parallel_for(range(0, current_remap.rows, 256),
       [&current_remap, &uv/*, &mask*/, tx, ty](const range &r) {
@@ -1318,7 +1316,7 @@ bool c_image_stacking_pipeline::actual_run()
 
         // FIXME: BORDER !!!
         cv::remap(accumulated_frame, accumulated_frame, accumulated_flow,
-            cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REPLICATE);
+            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
 
         cv::remap(accumulated_mask, accumulated_mask, accumulated_flow,
             cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT);
@@ -1326,7 +1324,7 @@ bool c_image_stacking_pipeline::actual_run()
         cv::compare(accumulated_mask, 220, accumulated_mask, cv::CMP_GE);
 
         // reduce potential remap interpoolation artifacts
-        clip_range(accumulated_frame, 0, 1, accumulated_mask);
+        //clip_range(accumulated_frame, 0, 1, accumulated_mask);
       }
 
     }
@@ -1760,7 +1758,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       frame_registration_->custom_remap(current_remap,
           current_frame, current_frame,
           current_mask, current_mask,
-          cv::INTER_LANCZOS4,
+          cv::INTER_LINEAR,
           cv::BORDER_REFLECT101);
 
     }

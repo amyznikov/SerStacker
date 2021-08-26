@@ -22,6 +22,7 @@ public:
 
   QImageFileViewer(QWidget * parent = Q_NULLPTR);
 
+  void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/) override;
   void openImage(const std::string & pathfilename);
   void openImage(const QString & pathfilename);
   void openImages(const std::vector<std::string> & pathfilenames);

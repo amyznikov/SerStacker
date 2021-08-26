@@ -100,7 +100,7 @@ void QImageEditor::updateImage()
       /////////////////////
       // EXPERIMENT
 
-      if ( true ) {
+      if ( false ) {
 
         double l2 = hpass_norm(currentImage_, M_SQRT2,
             currentMask_, cv::NORM_L2);

@@ -22,11 +22,19 @@ QImageFileViewer::QImageFileViewer(QWidget * parent)
   connect(playControls, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
 
+  playControls->hide();
+
 }
 
 const c_input_sequence::ptr & QImageFileViewer::input_sequence() const
 {
   return input_sequence_;
+}
+
+void QImageFileViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy )
+{
+  closeCurrentSequence();
+  Base::setImage(image, mask, imageData, make_copy);
 }
 
 void QImageFileViewer::openImage(const std::string & pathfilename)
@@ -91,6 +99,9 @@ void QImageFileViewer::startDisplay()
   }
 
   const int num_frames = input_sequence_->size();
+
+  CF_DEBUG("num_frames=%d", num_frames);
+
   if ( num_frames < 1 ) {
     return;
   }

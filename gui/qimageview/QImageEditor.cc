@@ -13,7 +13,9 @@
 #include <core/improc/c_autoclip_routine.h>
 #include <core/improc/c_noisemap_routine.h>
 #include <core/improc/c_align_color_channels_routine.h>
+#include <core/proc/unsharp_mask.h>
 #include <core/debug.h>
+
 
 QImageEditor::QImageEditor(QWidget * parent)
   : Base(parent)
@@ -94,6 +96,21 @@ void QImageEditor::updateImage()
         current_processor_->process(currentImage_, currentMask_);
       }
 
+
+      /////////////////////
+      // EXPERIMENT
+
+      if ( true ) {
+
+        double l2 = hpass_norm(currentImage_, M_SQRT2,
+            currentMask_, cv::NORM_L2);
+
+        CF_DEBUG("HPASS L2 norm = %g", l2);
+
+      }
+
+
+      /////////////////////
     }
 
     updateDisplay();

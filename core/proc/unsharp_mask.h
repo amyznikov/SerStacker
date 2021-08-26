@@ -17,5 +17,8 @@ void unsharp_mask(cv::InputArray src,
     double outmin = -1.,
     double outmax = -1.);
 
+double hpass_norm(cv::InputArray src, double sigma,
+    cv::InputArray mask = cv::noArray(),
+    enum cv::NormTypes normType = cv::NORM_L2);
 
 #endif /* __unsharp_mask_h__ */

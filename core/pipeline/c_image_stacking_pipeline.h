@@ -435,16 +435,9 @@ protected:
   bool master_frame_generation_ = false;
 
   std::string output_directory_;
-  //std::string master_file_name_;
-  //int master_source_index_ = -1;
-  //int master_frame_index_ = -1;
-
-  //cv::Mat current_frame_;
-  //cv::Mat1b current_mask_;
-  //cv::Mat current_weights_;
-  //cv::Mat accumulated_flow_;
 
   double ecc_normalization_noise_ = 0;
+  double reference_sharpeness_ = 0;
 
   int total_frames_ = 0;
   int processed_frames_ = 0;
@@ -459,10 +452,8 @@ protected:
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
-  c_fft_power_accumulation::ptr fft_accumulation_;
+  c_sharpeness_norm_measure::ptr sharpeness_norm_accumulation_;
   mutable std::mutex accumulator_lock_;
-
-
 };
 
 #endif /* __c_stacking_pipeline_h__ */

@@ -123,3 +123,17 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
 }
 
 
+
+double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,
+    enum cv::NormTypes normType)
+{
+  static const thread_local cv::Mat1f G =
+      cv::getGaussianKernel(7, sigma, CV_32F);
+
+  cv::Mat hpass;
+
+  cv::sepFilter2D(src, hpass, src.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REFLECT101);
+  cv::subtract(src, hpass, hpass);
+
+  return cv::norm(hpass, normType, mask );
+}

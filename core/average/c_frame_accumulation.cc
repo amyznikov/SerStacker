@@ -8,6 +8,7 @@
 #include "c_frame_accumulation.h"
 #include <core/proc/fft.h>
 #include <core/proc/reduce_channels.h>
+#include <core/proc/unsharp_mask.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
@@ -1127,40 +1128,60 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
   return true;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool c_fft_power_accumulation::add(cv::InputArray src, cv::InputArray mask)
+
+
+void c_sharpeness_norm_measure::set_norm_type(cv::NormTypes v)
 {
-  return accumulate_fft_power_spectrum(src.getMat(), accumulator_, counter_);
+  norm_type_ = v;
 }
 
-bool c_fft_power_accumulation::compute(cv::OutputArray dst, cv::OutputArray mask, double dscale, int ddepth ) const
+cv::NormTypes c_sharpeness_norm_measure::norm_type() const
 {
-  if ( counter_ < 1 ) {
-    CF_ERROR("c_fft_power_accumulation: counter is empty");
-    return false;
-  }
+  return norm_type_;
+}
 
-  cv::multiply(accumulator_, 1. / counter_, dst);
+
+double c_sharpeness_norm_measure::sigma() const
+{
+  return sigma_;
+}
+
+void c_sharpeness_norm_measure::set_sigma(double v)
+{
+  sigma_ = v;
+}
+
+double c_sharpeness_norm_measure::measure(cv::InputArray src, cv::InputArray mask) const
+{
+  return hpass_norm(src, sigma_, mask, norm_type_);
+}
+
+bool c_sharpeness_norm_measure::add(cv::InputArray src, cv::InputArray mask)
+{
+  accumulator_ += measure(src, mask);
+  counter_ += 1;
   return true;
 }
 
-void c_fft_power_accumulation::release()
+double c_sharpeness_norm_measure::average() const
 {
-  accumulator_.release();
+  return accumulator_ / counter_;
+}
+
+void c_sharpeness_norm_measure::reset()
+{
+  accumulator_ = 0;
   counter_ = 0;
 }
 
-cv::Size c_fft_power_accumulation::accumulator_size() const
-{
-  return accumulator_.size();
-}
-const cv::Mat & c_fft_power_accumulation::accumulator() const
+
+double c_sharpeness_norm_measure::accumulator() const
 {
   return accumulator_;
 }
 
-float c_fft_power_accumulation::counter() const
+int c_sharpeness_norm_measure::counter() const
 {
   return counter_;
 }

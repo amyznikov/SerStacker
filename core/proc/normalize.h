@@ -11,10 +11,16 @@
 
 #include <opencv2/opencv.hpp>
 
+// For maskBorderMode:
+//  cv::BORDER_CONSTANT - fill unmasked pixels with unmaskedPixelsValue
+//  cv::BORDER_TRANSPARENT - process unmasked pixels in the same way as regular masked pixels
+//  cv::BORDER_ISOLATED - do not touch unmasked pixels
+
+
 bool normalize_image(cv::Mat & image,
     double imin, double imax, double omin, double omax,
     const cv::Mat & mask,
-    bool fillUnmaskedPixels = false,
+    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
     const cv::Scalar & unmaskedPixelsValue = cv::Scalar::all(0));
 
 bool normalize_image(cv::InputArray src,
@@ -24,7 +30,7 @@ bool normalize_image(cv::InputArray src,
     double omin,
     double omax,
     cv::InputArray mask = cv::noArray(),
-    bool fillUnmaskedPixels = false,
+    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
     const cv::Scalar & unmaskedPixelsValue  = cv::Scalar::all(0));
 
 bool normalize_minmax(cv::InputArray src,
@@ -32,7 +38,7 @@ bool normalize_minmax(cv::InputArray src,
     double omin,
     double omax,
     cv::InputArray mask = cv::noArray(),
-    bool fillUnmaskedPixels = false,
+    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
     const cv::Scalar & unmaskedPixelsValue  = cv::Scalar::all(0));
 
 

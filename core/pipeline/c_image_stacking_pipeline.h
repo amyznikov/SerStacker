@@ -129,8 +129,8 @@ struct c_master_frame_options {
   bool generate_master_frame = true;
   int max_input_frames_to_generate_master_frame = 500;
   int eccflow_scale = 0;
-  double master_sharpen_factor = 0.3;
-  double accumulated_sharpen_factor = 0.2;
+  double master_sharpen_factor = 0.4;
+  double accumulated_sharpen_factor = 0.5;
   //bool compensate_master_flow = true;
   bool save_master_frame = false;
 

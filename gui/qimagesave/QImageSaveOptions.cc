@@ -449,7 +449,7 @@ bool saveImageFileAs(QWidget * parent,
         image = currentImage;
       }
       else {
-        normalize_minmax(currentImage, image, 0, UINT8_MAX, mask, true);
+        normalize_minmax(currentImage, image, 0, UINT8_MAX, mask);
         image.convertTo(image, CV_8U);
       }
     }
@@ -464,7 +464,7 @@ bool saveImageFileAs(QWidget * parent,
       else {
         double minv, maxv;
         get_data_range_for_pixel_depth(selectedPixelDepth, &minv, &maxv);
-        normalize_minmax(currentImage, image, minv, maxv, mask, true);
+        normalize_minmax(currentImage, image, minv, maxv, mask);
         image.convertTo(image, selectedPixelDepth);
       }
     }
@@ -478,7 +478,7 @@ bool saveImageFileAs(QWidget * parent,
       else {
         double minv, maxv;
         get_data_range_for_pixel_depth(selectedPixelDepth, &minv, &maxv);
-        normalize_minmax(currentImage, image, minv, maxv, mask, false);
+        normalize_minmax(currentImage, image, minv, maxv, mask);
         image.convertTo(image, selectedPixelDepth);
       }
     }

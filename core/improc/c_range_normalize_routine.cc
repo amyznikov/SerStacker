@@ -90,9 +90,7 @@ bool c_range_normalize_routine::process(cv::InputOutputArray image, cv::InputOut
         image.getMatRef(),
         output_min_,
         output_max_,
-        mask,
-        true,
-        cv::Scalar::all(0));
+        mask);
   }
   else {
 
@@ -102,9 +100,7 @@ bool c_range_normalize_routine::process(cv::InputOutputArray image, cv::InputOut
         input_max_,
         output_min_,
         output_max_,
-        mask.getMatRef(),
-        true,
-        cv::Scalar::all(0));
+        mask.getMatRef());
 
   }
 

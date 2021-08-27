@@ -26,9 +26,6 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    roi_selection_none = 0,
-//    roi_selection_planetary_disk = 1
-
 const struct roi_selection_method_desc roi_selection_methods[] = {
     {"none", roi_selection_none},
     {"planetary_disk", roi_selection_planetary_disk},

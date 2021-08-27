@@ -30,11 +30,11 @@ c_unsharp_mask_routine::ptr c_unsharp_mask_routine::create(double sigma, double 
 bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   unsharp_mask(image, image, sigma_, alpha_, outmin_, outmax_);
-  if ( mask.needed() && !mask.empty() ) {
-    const int ksize = 2 * std::max(2, (int) (sigma_ * 5)) + 3;
-    cv::erode(mask, mask, cv::Mat1b(ksize, ksize, 255), cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
-    image.getMatRef().setTo(0, ~mask.getMat());
-  }
+//  if ( mask.needed() && !mask.empty() ) {
+//    const int ksize = 2 * std::max(2, (int) (sigma_ * 5)) + 3;
+//    cv::erode(mask, mask, cv::Mat1b(ksize, ksize, 255), cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+//    image.getMatRef().setTo(0, ~mask.getMat());
+//  }
   return true;
 }
 

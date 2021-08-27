@@ -42,6 +42,9 @@ protected slots:
   void onSpinBoxValueChanged(int value);
   void onGenerateMasterFrameCheckboxStateChanged(int);
   void onEccFlowScaleChanged();
+  void onMasterSharpenFactorChanged();
+  void onAccumulatedSharpenFactorChanged();
+
   //void onAccumulateMasterFlowCheckboxStateChanged(int);
   void onSaveMasterFrameCheckboxStateChanged(int);
   void onMaxFramesForMasterFrameGenerationChanged();
@@ -57,6 +60,9 @@ protected:
   QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
   QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
   QNumberEditBox * eccFlowScale_ctl = Q_NULLPTR;
+  QNumberEditBox * master_sharpen_factor_ctl = Q_NULLPTR;
+  QNumberEditBox * accumulated_sharpen_factor_ctl = Q_NULLPTR;
+
   //QCheckBox * compensateMasterFlow_ctl = Q_NULLPTR;
   QCheckBox * saveMasterFrame_ctl = Q_NULLPTR;
 

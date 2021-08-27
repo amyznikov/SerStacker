@@ -128,12 +128,20 @@ double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,
     enum cv::NormTypes normType)
 {
   static const thread_local cv::Mat1f G =
-      cv::getGaussianKernel(7, sigma, CV_32F);
+      cv::getGaussianKernel(5, sigma, CV_32F);
 
-  cv::Mat hpass;
+  cv::Mat lpass;
 
-  cv::sepFilter2D(src, hpass, src.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REFLECT101);
-  cv::subtract(src, hpass, hpass);
+  cv::sepFilter2D(src, lpass, src.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REFLECT101);
 
-  return cv::norm(hpass, normType, mask );
+  double v = cv::norm(src, lpass, normType, mask);
+
+  if( mask.size() == src.size() ) {
+    v /= cv::countNonZero(mask);
+  }
+  else {
+    v /= src.size().area();
+  }
+
+  return v;
 }

@@ -29,6 +29,18 @@ const c_input_sequence::ptr & QImageFileEditor::input_sequence() const
   return input_sequence_;
 }
 
+void QImageFileEditor::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
+{
+  closeCurrentSequence();
+  Base::setImage(image, mask, imageData, make_copy);
+}
+
+void QImageFileEditor::editImage(cv::InputArray image, cv::InputArray mask)
+{
+  closeCurrentSequence();
+  Base::editImage(image, mask);
+}
+
 void QImageFileEditor::openImage(const std::string & pathfilename)
 {
   input_sequence_->close(true);

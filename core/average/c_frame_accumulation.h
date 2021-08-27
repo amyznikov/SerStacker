@@ -109,9 +109,9 @@ protected:
   int border_right_ = 0;
 };
 
-class c_sharpeness_norm_measure {
+class c_sharpness_norm_measure {
 public:
-  typedef c_sharpeness_norm_measure this_class;
+  typedef c_sharpness_norm_measure this_class;
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
@@ -123,8 +123,9 @@ public:
   double sigma() const;
 
   double measure(cv::InputArray src, cv::InputArray mask = cv::noArray()) const;
+  static double measure(cv::InputArray src, cv::InputArray mask, double sigma, cv::NormTypes norm_type);
 
-  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray());
+  double add(cv::InputArray src, cv::InputArray mask = cv::noArray());
   double average() const;
   void reset();
 
@@ -132,10 +133,10 @@ public:
   int counter() const;
 
 protected:
-  double sigma_ = M_SQRT2;
+  double sigma_ = 1; // M_SQRT2;
   double accumulator_ = 0;
   int counter_ = 0;
-  cv::NormTypes norm_type_ = cv::NORM_L2;
+  cv::NormTypes norm_type_ = cv::NORM_L1;
 };
 
 

@@ -129,6 +129,8 @@ struct c_master_frame_options {
   bool generate_master_frame = true;
   int max_input_frames_to_generate_master_frame = 500;
   int eccflow_scale = 0;
+  double master_sharpen_factor = 0.3;
+  double accumulated_sharpen_factor = 0.2;
   //bool compensate_master_flow = true;
   bool save_master_frame = false;
 
@@ -148,6 +150,22 @@ struct c_frame_upscale_options {
   bool need_upscale_after_align() const {
     return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
   }
+
+  double image_scale() const
+  {
+    switch (upscale_option) {
+    case frame_upscale_x15:
+      return 1.5;
+    case frame_upscale_pyrUp:
+      return 2;
+    case frame_upscale_x30:
+      return 3;
+    default:
+      break;
+    }
+    return 1.0;
+  }
+
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -437,7 +455,7 @@ protected:
   std::string output_directory_;
 
   double ecc_normalization_noise_ = 0;
-  double reference_sharpeness_ = 0;
+  double reference_sharpness_ = 0;
 
   int total_frames_ = 0;
   int processed_frames_ = 0;
@@ -452,7 +470,7 @@ protected:
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
-  c_sharpeness_norm_measure::ptr sharpeness_norm_accumulation_;
+  c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
   mutable std::mutex accumulator_lock_;
 };
 

@@ -297,6 +297,8 @@ bool c_master_frame_options::serialize(c_config_setting settings) const
   save_settings(settings, "generate_master_frame", generate_master_frame);
   save_settings(settings, "max_input_frames_to_generate_master_frame", max_input_frames_to_generate_master_frame);
   save_settings(settings, "eccflow_scale", eccflow_scale);
+  save_settings(settings, "master_sharpen_factor", master_sharpen_factor);
+  save_settings(settings, "accumulated_sharpen_factor", accumulated_sharpen_factor);
   save_settings(settings, "save_master_frame", save_master_frame);
 
   //save_settings(settings, "compensate_master_flow", compensate_master_flow);
@@ -316,6 +318,8 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
   load_settings(settings, "generate_master_frame", &generate_master_frame);
   load_settings(settings, "max_input_frames_to_generate_master_frame", &max_input_frames_to_generate_master_frame);
   load_settings(settings, "eccflow_scale", &eccflow_scale);
+  load_settings(settings, "master_sharpen_factor", &master_sharpen_factor);
+  load_settings(settings, "accumulated_sharpen_factor", &accumulated_sharpen_factor);
   load_settings(settings, "save_master_frame", &save_master_frame);
   //load_settings(settings, "compensate_master_flow", &compensate_master_flow);
 

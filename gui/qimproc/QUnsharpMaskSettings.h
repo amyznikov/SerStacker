@@ -39,6 +39,8 @@ protected:
 protected:
   QNumberEditBox * sigma_ctl = Q_NULLPTR;
   QNumberEditBox * alpha_ctl = Q_NULLPTR;
+  QNumberEditBox * outmin_ctl = Q_NULLPTR;
+  QNumberEditBox * outmax_ctl = Q_NULLPTR;
 };
 
 

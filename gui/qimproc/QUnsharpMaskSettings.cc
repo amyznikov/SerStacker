@@ -23,6 +23,15 @@ QUnsharpMaskSettings::QUnsharpMaskSettings(const c_unsharp_mask_routine::ptr & r
       &c_unsharp_mask_routine::alpha,
       &c_unsharp_mask_routine::set_alpha);
 
+
+  outmin_ctl = add_numeric_box("outmin",
+      &c_unsharp_mask_routine::outmin,
+      &c_unsharp_mask_routine::set_outmin);
+
+  outmax_ctl = add_numeric_box("outmax",
+      &c_unsharp_mask_routine::outmax,
+      &c_unsharp_mask_routine::set_outmax);
+
   updateControls();
 }
 
@@ -34,6 +43,8 @@ void QUnsharpMaskSettings::onupdatecontrols()
   else {
     sigma_ctl->setValue(routine_->sigma());
     alpha_ctl->setValue(routine_->alpha());
+    outmin_ctl->setValue(routine_->outmin());
+    outmax_ctl->setValue(routine_->outmax());
 
     setEnabled(true);
   }

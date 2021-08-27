@@ -26,6 +26,9 @@ public:
   void openImage(const QString & pathfilename);
   void openImages(const std::vector<std::string> & pathfilenames);
   void openImages(const QStringList & pathfilenames);
+  void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/) override;
+  void editImage(cv::InputArray image, cv::InputArray mask) override;
+
 
   void closeCurrentSequence();
 

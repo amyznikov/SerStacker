@@ -60,6 +60,15 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   connect(eccFlowScale_ctl, &QNumberEditBox::textChanged,
       this, &ThisClass::onEccFlowScaleChanged);
 
+  master_sharpen_factor_ctl = new QNumberEditBox(this);
+  connect(master_sharpen_factor_ctl, &QNumberEditBox::textChanged,
+      this, &ThisClass::onMasterSharpenFactorChanged);
+
+  accumulated_sharpen_factor_ctl = new QNumberEditBox(this);
+  connect(accumulated_sharpen_factor_ctl, &QNumberEditBox::textChanged,
+      this, &ThisClass::onAccumulatedSharpenFactorChanged);
+
+
 
 //  compensateMasterFlow_ctl = new QCheckBox(this);
 //  connect(compensateMasterFlow_ctl, &QCheckBox::stateChanged,
@@ -94,6 +103,9 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
   form->addRow("eccflow support scale:", eccFlowScale_ctl);
+  form->addRow("Sharpen factor:", master_sharpen_factor_ctl);
+  form->addRow("Acc. sharpen factor:", accumulated_sharpen_factor_ctl);
+
   //form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
   form->addRow("Save Master Frame", saveMasterFrame_ctl);
 
@@ -133,12 +145,16 @@ void QMasterFrameOptions::onupdatecontrols()
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
     apply_input_frame_processor_ctl->setChecked(options_->apply_input_frame_processor);
     eccFlowScale_ctl->setValue(options_->eccflow_scale);
+    master_sharpen_factor_ctl->setValue(options_->master_sharpen_factor);
+    accumulated_sharpen_factor_ctl->setValue(options_->accumulated_sharpen_factor);
+
     //compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
     saveMasterFrame_ctl->setChecked(options_->save_master_frame);
 
 
     maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
+    master_sharpen_factor_ctl->setEnabled(options_->generate_master_frame);
     //compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
 
     // Populate Master Source Combo
@@ -265,6 +281,8 @@ void QMasterFrameOptions::onGenerateMasterFrameCheckboxStateChanged(int state)
 
     maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
+    master_sharpen_factor_ctl->setEnabled(options_->generate_master_frame);
+
     //compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
 
     emit parameterChanged();
@@ -285,12 +303,35 @@ void QMasterFrameOptions::onMaxFramesForMasterFrameGenerationChanged()
 
 void QMasterFrameOptions::onEccFlowScaleChanged()
 {
-
   if ( options_ && !updatingControls() ) {
     int v = 0;
     if ( fromString(eccFlowScale_ctl->text(), &v) &&
         v != options_->max_input_frames_to_generate_master_frame ) {
       options_->eccflow_scale = v;
+      emit parameterChanged();
+    }
+  }
+}
+
+void QMasterFrameOptions::onMasterSharpenFactorChanged()
+{
+  if ( options_ && !updatingControls() ) {
+    double v = 0;
+    if ( fromString(master_sharpen_factor_ctl->text(), &v) &&
+        v != options_->master_sharpen_factor ) {
+      options_->master_sharpen_factor = v;
+      emit parameterChanged();
+    }
+  }
+}
+
+void QMasterFrameOptions::onAccumulatedSharpenFactorChanged()
+{
+  if ( options_ && !updatingControls() ) {
+    double v = 0;
+    if ( fromString(accumulated_sharpen_factor_ctl->text(), &v) &&
+        v != options_->accumulated_sharpen_factor ) {
+      options_->accumulated_sharpen_factor = v;
       emit parameterChanged();
     }
   }

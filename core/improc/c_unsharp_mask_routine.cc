@@ -58,6 +58,26 @@ double c_unsharp_mask_routine::alpha() const
   return alpha_;
 }
 
+void c_unsharp_mask_routine::set_outmin(double v)
+{
+  outmin_ = v;
+}
+
+double c_unsharp_mask_routine::outmin() const
+{
+  return outmin_;
+}
+
+void c_unsharp_mask_routine::set_outmax(double v)
+{
+  outmax_ = v;
+}
+
+double c_unsharp_mask_routine::outmax() const
+{
+  return outmax_;
+}
+
 bool c_unsharp_mask_routine::deserialize(c_config_setting settings)
 {
   if ( !base::deserialize(settings) ) {
@@ -66,6 +86,9 @@ bool c_unsharp_mask_routine::deserialize(c_config_setting settings)
 
   settings.get("sigma", &sigma_);
   settings.get("alpha", &alpha_);
+  settings.get("outmin", &outmin_);
+  settings.get("outmax", &outmax_);
+
 
   return true;
 }
@@ -78,6 +101,8 @@ bool c_unsharp_mask_routine::serialize(c_config_setting settings) const
 
   settings.set("sigma", sigma_);
   settings.set("alpha", alpha_);
+  settings.set("outmin", outmin_);
+  settings.set("outmax", outmax_);
 
   return true;
 }

@@ -35,11 +35,17 @@ public:
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  double sigma() const;
   void set_sigma(double v);
+  double sigma() const;
 
-  double alpha() const;
   void set_alpha(double v);
+  double alpha() const;
+
+  void set_outmin(double v);
+  double outmin() const;
+
+  void set_outmax(double v);
+  double outmax() const;
 
 protected:
   double sigma_ = 1, alpha_ = 0.9;

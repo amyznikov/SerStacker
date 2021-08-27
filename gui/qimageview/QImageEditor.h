@@ -24,7 +24,7 @@ public:
   void set_current_processor(const c_image_processor::ptr & processor);
   const c_image_processor::ptr & current_processor() const;
 
-  void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
+  virtual void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void clear();
 
   cv::Mat & inputImage();

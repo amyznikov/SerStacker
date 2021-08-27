@@ -13,6 +13,8 @@
 QStackingProgressView::QStackingProgressView(QWidget * parent)
   : Base(parent)
 {
+  setWindowTitle("Stacking progress view");
+
   layout_ = new QVBoxLayout(this);
 
   statusLabel_= new QLabel("INITIALIZATION...");

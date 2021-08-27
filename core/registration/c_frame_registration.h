@@ -35,7 +35,7 @@ struct c_eccflow_options {
 
 struct c_frame_registration_base_options {
 
-  ECC_MOTION_TYPE motion_type = ECC_MOTION_EUCLIDEAN;
+  ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
   color_channel_type registration_channel = color_channel_gray;
   int interpolation_flags = cv::INTER_AREA;
   int remap_border_mode = cv::BORDER_REPLICATE;

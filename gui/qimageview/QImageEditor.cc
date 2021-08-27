@@ -13,7 +13,7 @@
 #include <core/improc/c_autoclip_routine.h>
 #include <core/improc/c_noisemap_routine.h>
 #include <core/improc/c_align_color_channels_routine.h>
-#include <core/proc/unsharp_mask.h>
+#include <core/average/c_frame_accumulation.h>
 #include <core/debug.h>
 
 
@@ -102,8 +102,9 @@ void QImageEditor::updateImage()
 
       if ( false ) {
 
-        double l2 = hpass_norm(currentImage_, M_SQRT2,
-            currentMask_, cv::NORM_L2);
+        c_sharpness_norm_measure sm;
+
+        double l2 = sm.measure(currentImage_, currentMask_);
 
         CF_DEBUG("HPASS L2 norm = %g", l2);
 

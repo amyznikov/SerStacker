@@ -922,7 +922,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
   total_frames_ = 0;
   processed_frames_ = 0;
-  reference_sharpeness_ = 0;
+  reference_sharpness_ = 0;
 
   statusmsg_.clear();
 
@@ -1017,7 +1017,7 @@ void c_image_stacking_pipeline::cleanup()
     lock_guard lock(accumulator_lock_);
     // frame_accumulation_.reset();
     //fft_accumulation_.reset();
-    sharpeness_norm_accumulation_.reset();
+    sharpness_norm_accumulation_.reset();
   }
 }
 
@@ -1230,43 +1230,46 @@ bool c_image_stacking_pipeline::actual_run()
 
 
 
-    if ( true ) {
+    if( true ) {
 
-      c_sharpeness_norm_measure sm;
+      c_sharpness_norm_measure sm;
 
-      double current_sharpeness =
+      const double current_sharpeness =
           sm.measure(accumulated_frame, accumulated_mask);
 
-      double alpha =
-          1 - 0.5 * current_sharpeness / reference_sharpeness_;
+      const double factor =
+          options_->master_frame_options().accumulated_sharpen_factor;
 
-      CF_DEBUG("accumulated sharpeness = %g reference sharpeness = %g alpha=%g",
+      const double alpha =
+          1.0 - factor * current_sharpeness / reference_sharpness_ / accumulated_frame.channels();
+
+      CF_DEBUG("YYY accumulated sharpness = %g reference sharpness = %g alpha=%g",
           current_sharpeness,
-          reference_sharpeness_,
+          reference_sharpness_,
           alpha);
 
-        if ( options_->output_options().dump_reference_data_for_debug ) {
+      if( options_->output_options().dump_reference_data_for_debug ) {
 
-          save_image(accumulated_frame,
-              ssprintf("%s/%s-initial_accumulated_frame.tiff",
-                  output_directory_.c_str(),
-                  options_->cname()));
-        }
+        save_image(accumulated_frame,
+            ssprintf("%s/%s-initial_accumulated_frame.tiff",
+                output_directory_.c_str(),
+                options_->cname()));
+      }
 
-        if ( alpha < 1 ) {
+      if( alpha < 1 ) {
 
-          unsharp_mask(accumulated_frame, accumulated_frame,
-              sm.sigma(),
-              alpha, 0, 1);
+        unsharp_mask(accumulated_frame, accumulated_frame,
+            sm.sigma() * upscale_options.image_scale(),
+            alpha, 0, 1);
 
-          current_sharpeness =
-              sm.measure(accumulated_frame, accumulated_mask);
+        const double current_sharpeness =
+            sm.measure(accumulated_frame, accumulated_mask);
 
-          CF_DEBUG("final sharpeness = %g reference sharpeness = %g alpha=%g",
-              current_sharpeness,
-              reference_sharpeness_,
-              alpha);
-        }
+        CF_DEBUG("YYY final sharpeness = %g reference sharpeness = %g alpha=%g",
+            current_sharpeness,
+            reference_sharpness_,
+            alpha);
+      }
     }
 
 
@@ -1445,8 +1448,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
     // Use single frame as reference
 
-    reference_sharpeness_ =
-        c_sharpeness_norm_measure().measure(
+    reference_sharpness_ =
+        c_sharpness_norm_measure().measure(
             reference_frame,
             reference_mask);
 
@@ -1479,7 +1482,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     if ( true ) {
       lock_guard lock(accumulator_lock_);
       frame_accumulation_.reset(new c_frame_accumulation_with_mask());
-      sharpeness_norm_accumulation_.reset(new c_sharpeness_norm_measure());
+      sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
       //fft_accumulation_.reset(new c_fft_power_accumulation());
     }
 
@@ -1518,21 +1521,21 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
         return false;
       }
 
-      if ( sharpeness_norm_accumulation_ ) {
+      if ( sharpness_norm_accumulation_ ) {
 
-        reference_sharpeness_ =
-            sharpeness_norm_accumulation_->average();
+        reference_sharpness_ =
+            sharpness_norm_accumulation_->average();
 
         const double current_sharpeness =
-            sharpeness_norm_accumulation_->measure(reference_frame,
+            sharpness_norm_accumulation_->measure(reference_frame,
                 reference_mask);
 
         const double alpha =
-            1 - 0.5 * current_sharpeness / reference_sharpeness_;
+            1 - master_options.master_sharpen_factor * current_sharpeness / reference_sharpness_;
 
-        CF_DEBUG("current sharpeness = %g averaged sharpeness = %g alpha=%g",
+        CF_DEBUG("XX MASTER: current sharpeness = %g averaged sharpeness = %g alpha=%g",
             current_sharpeness,
-            reference_sharpeness_,
+            reference_sharpness_,
             alpha);
 
         if ( options_->output_options().dump_reference_data_for_debug ) {
@@ -1544,27 +1547,27 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
         }
 
         if ( alpha < 1 ) {
+
           unsharp_mask(reference_frame, reference_frame,
-              sharpeness_norm_accumulation_->sigma(),
+              sharpness_norm_accumulation_->sigma(),
               alpha, 0, 1);
-        }
 
+          if ( options_->output_options().dump_reference_data_for_debug ) {
 
-        if ( options_->output_options().dump_reference_data_for_debug ) {
+            const double current_sharpeness =
+                sharpness_norm_accumulation_->measure(reference_frame,
+                    reference_mask);
 
-          const double current_sharpeness =
-              sharpeness_norm_accumulation_->measure(reference_frame,
-                  reference_mask);
+            CF_DEBUG("AFTER UNSHARP: sharpeness = %g",
+                current_sharpeness);
 
-          CF_DEBUG("AFTER UNSHARP: sharpeness = %g",
-              current_sharpeness);
+            if ( !master_options.save_master_frame ) {
 
-          if ( !master_options.save_master_frame ) {
+              save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
+                  output_directory_.c_str(),
+                  options_->cname()));
 
-            save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
-                output_directory_.c_str(),
-                options_->cname()));
-
+            }
           }
         }
       }
@@ -1580,7 +1583,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
   if ( true ) {
     lock_guard lock(accumulator_lock_);
 
-    sharpeness_norm_accumulation_.reset();
+    sharpness_norm_accumulation_.reset();
     flow_accumulation_.reset();
     frame_accumulation_.reset();
     frame_registration_.reset();
@@ -1714,9 +1717,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 //      }
 //    }
 
-    if ( sharpeness_norm_accumulation_ ) {
-      sharpeness_norm_accumulation_->add(current_frame,
-          current_mask);
+    if ( sharpness_norm_accumulation_ ) {
+      sharpness_norm_accumulation_-> add(current_frame, current_mask);
     }
 
     /////////////////////////////////////

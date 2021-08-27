@@ -206,6 +206,24 @@ static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputAr
 
 int main(int argc, char *argv[])
 {
+  if ( true ) {
+
+    cv::Mat1f cc(100,100, 1.f);
+    cv::Mat1b mask(100, 100, (uint8_t)0);
+
+    mask(cv::Rect(0, 0, 50, 50)).setTo(255);
+
+
+    double l1 = cv::norm(cc, cv::NORM_L1, mask);
+    double l2 = cv::norm(cc, cv::NORM_L2, mask);
+    double l2sqr = cv::norm(cc, cv::NORM_L2SQR, mask);
+
+    printf("l1=%g l2=%g l2sqr=%g nnz=%d\n", l1, l2, l2sqr, cv::countNonZero(mask));
+
+    return 0;
+  }
+
+
   std::string filenames[2];
 
   cv::Mat images[2];

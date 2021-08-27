@@ -22,8 +22,7 @@ QImageFileViewer::QImageFileViewer(QWidget * parent)
   connect(playControls, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
 
-  playControls->hide();
-
+  playControls->setVisible(false);
 }
 
 const c_input_sequence::ptr & QImageFileViewer::input_sequence() const

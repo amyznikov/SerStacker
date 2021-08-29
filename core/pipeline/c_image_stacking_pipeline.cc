@@ -12,6 +12,7 @@
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/normalize.h>
+#include <core/proc/inpaint.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/fft.h>
 #include <core/proc/smap.h>
@@ -444,68 +445,68 @@ static cv::Mat2f compute_turbulent_flow(
 
 // acc = (acc * n + cur ) / (n + 1);
 
-template<class T>
-static inline void average_add_(cv::Mat & acc, cv::Mat1f & cnt, const cv::Mat & cf, const cv::Mat1b & cm)
-{
-  const int cn = acc.channels();
-
-  if( cm.empty() ) {
-    for( int y = 0; y < acc.rows; ++y ) {
-      T *accp = acc.ptr<T>(y);
-      const T *srcp = cf.ptr<const T>(y);
-
-      for( int x = 0; x < acc.cols; ++x ) {
-        for( int c = 0; c < cn; ++c ) {
-          accp[x * cn + c] = (accp[x * cn + c] * cnt[y][x] + srcp[x * cn + c]) / (cnt[y][x] + 1);
-          ++cnt[y][x];
-        }
-      }
-    }
-  }
-  else {
-
-    for( int y = 0; y < acc.rows; ++y ) {
-      T *accp = acc.ptr<T>(y);
-      const T *srcp = cf.ptr<const T>(y);
-
-      for( int x = 0; x < acc.cols; ++x ) {
-        if( cm[y][x] ) {
-          for( int c = 0; c < cn; ++c ) {
-            accp[x * cn + c] = (accp[x * cn + c] * cnt[y][x] + srcp[x * cn + c]) / (cnt[y][x] + 1);
-            ++cnt[y][x];
-          }
-        }
-      }
-    }
-  }
-}
-
-static inline void average_add(cv::Mat & acc, cv::Mat1f & cntr, const cv::Mat & cf, const cv::Mat1b & cm)
-{
-  switch (acc.depth()) {
-    case CV_8U:
-      average_add_<uint8_t>(acc, cntr, cf, cm);
-      break;
-    case CV_8S:
-      average_add_<int8_t>(acc, cntr, cf, cm);
-      break;
-    case CV_16U:
-      average_add_<uint16_t>(acc, cntr, cf, cm);
-      break;
-    case CV_16S:
-      average_add_<int16_t>(acc, cntr, cf, cm);
-      break;
-    case CV_32S:
-      average_add_<int32_t>(acc, cntr, cf, cm);
-      break;
-    case CV_32F:
-      average_add_<float>(acc, cntr, cf, cm);
-      break;
-    case CV_64F:
-      average_add_<double>(acc, cntr, cf, cm);
-      break;
-  }
-}
+//template<class T>
+//static inline void average_add_(cv::Mat & acc, cv::Mat1f & cnt, const cv::Mat & cf, const cv::Mat1b & cm)
+//{
+//  const int cn = acc.channels();
+//
+//  if( cm.empty() ) {
+//    for( int y = 0; y < acc.rows; ++y ) {
+//      T *accp = acc.ptr<T>(y);
+//      const T *srcp = cf.ptr<const T>(y);
+//
+//      for( int x = 0; x < acc.cols; ++x ) {
+//        for( int c = 0; c < cn; ++c ) {
+//          accp[x * cn + c] = (accp[x * cn + c] * cnt[y][x] + srcp[x * cn + c]) / (cnt[y][x] + 1);
+//          ++cnt[y][x];
+//        }
+//      }
+//    }
+//  }
+//  else {
+//
+//    for( int y = 0; y < acc.rows; ++y ) {
+//      T *accp = acc.ptr<T>(y);
+//      const T *srcp = cf.ptr<const T>(y);
+//
+//      for( int x = 0; x < acc.cols; ++x ) {
+//        if( cm[y][x] ) {
+//          for( int c = 0; c < cn; ++c ) {
+//            accp[x * cn + c] = (accp[x * cn + c] * cnt[y][x] + srcp[x * cn + c]) / (cnt[y][x] + 1);
+//            ++cnt[y][x];
+//          }
+//        }
+//      }
+//    }
+//  }
+//}
+//
+//static inline void average_add(cv::Mat & acc, cv::Mat1f & cntr, const cv::Mat & cf, const cv::Mat1b & cm)
+//{
+//  switch (acc.depth()) {
+//    case CV_8U:
+//      average_add_<uint8_t>(acc, cntr, cf, cm);
+//      break;
+//    case CV_8S:
+//      average_add_<int8_t>(acc, cntr, cf, cm);
+//      break;
+//    case CV_16U:
+//      average_add_<uint16_t>(acc, cntr, cf, cm);
+//      break;
+//    case CV_16S:
+//      average_add_<int16_t>(acc, cntr, cf, cm);
+//      break;
+//    case CV_32S:
+//      average_add_<int32_t>(acc, cntr, cf, cm);
+//      break;
+//    case CV_32F:
+//      average_add_<float>(acc, cntr, cf, cm);
+//      break;
+//    case CV_64F:
+//      average_add_<double>(acc, cntr, cf, cm);
+//      break;
+//  }
+//}
 
 }
 
@@ -1232,6 +1233,10 @@ bool c_image_stacking_pipeline::actual_run()
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
+
+      average_pyramid_inpaint(accumulated_frame,
+          accumulated_mask,
+          accumulated_frame);
     }
 
 
@@ -1525,6 +1530,10 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
+
+      average_pyramid_inpaint(reference_frame,
+          reference_mask,
+          reference_frame);
 
       if ( sharpness_norm_accumulation_ ) {
 

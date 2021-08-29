@@ -8,6 +8,7 @@
 #include "QStackingProgressView.h"
 #include "QStackingThread.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <core/proc/inpaint.h>
 #include <core/debug.h>
 
 QStackingProgressView::QStackingProgressView(QWidget * parent)
@@ -146,6 +147,10 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
 
     bool computed = pipeline->compute_accumulated_image(currentImage, currentMask);
     if ( computed ) {
+
+      average_pyramid_inpaint(currentImage,
+          currentMask,
+          currentImage);
 
       if ( pipeline->anscombe().method() != anscombe_none ) {
         pipeline->anscombe().inverse(currentImage, currentImage);

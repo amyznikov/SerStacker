@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   }
 
   image.setTo(0, ~mask);
-  save_image(image, "broken_image.tiff");
+  save_image(image, mask, "broken_image.tiff");
 
   average_pyramid_inpaint(image, mask, result_image);
 

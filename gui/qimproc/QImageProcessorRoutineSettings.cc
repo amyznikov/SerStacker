@@ -20,6 +20,7 @@
 #include "QScaleChannelsSettings.h"
 #include "QTypeConvertSettings.h"
 #include "QColorSaturationOptions.h"
+#include "QInPaintSettings.h"
 
 
 #define ICON_double_arrow_down    "double-arrow-down"
@@ -82,7 +83,7 @@ void QImageProcessorRoutineSettingsBase::registrerAllClasses()
     registrerClassFactory(&QScaleChannelsSettings::classFactory);
     registrerClassFactory(&QTypeConvertSettings::classFactory);
     registrerClassFactory(&QColorSaturationOptions::classFactory);
-
+    registrerClassFactory(&QInPaintSettings::classFactory);
   }
 }
 

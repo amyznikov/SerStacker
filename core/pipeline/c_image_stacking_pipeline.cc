@@ -438,7 +438,6 @@ static cv::Mat2f compute_turbulent_flow(
     }
   });
 
-  CF_DEBUG("H");
   return uv;
 }
 
@@ -913,22 +912,28 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
   set_canceled(false);
 
-  output_directory_.clear();
 
-  ecc_normalization_noise_ = 0;
+  if (true ) {
 
-  total_frames_ = 0;
-  processed_frames_ = 0;
-  reference_sharpness_ = 0;
+    lock_guard lock(accumulator_lock_);
 
-  statusmsg_.clear();
+    output_directory_.clear();
 
-  roi_selection_.reset();
-  frame_registration_.reset();
-  frame_accumulation_.reset();
-  flow_accumulation_.reset();
+    ecc_normalization_noise_ = 0;
 
-  input_sequence_.reset();
+    total_frames_ = 0;
+    processed_frames_ = 0;
+    reference_sharpness_ = 0;
+
+    statusmsg_.clear();
+
+    roi_selection_.reset();
+    frame_registration_.reset();
+    frame_accumulation_.reset();
+    flow_accumulation_.reset();
+
+    input_sequence_.reset();
+  }
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -991,6 +996,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
   /////////////////////////////////////////////////////////////////////////////
 
+  CF_DEBUG("H");
   return true;
 }
 
@@ -1012,8 +1018,7 @@ void c_image_stacking_pipeline::cleanup()
 
   if ( true ) {
     lock_guard lock(accumulator_lock_);
-    // frame_accumulation_.reset();
-    //fft_accumulation_.reset();
+    frame_accumulation_.reset();
     sharpness_norm_accumulation_.reset();
   }
 }
@@ -1067,6 +1072,7 @@ bool c_image_stacking_pipeline::actual_run()
 
     std::string master_file_name = master_options.master_source_path;
 
+    CF_DEBUG("H");
 
     if ( master_file_name.empty() ) {
       master_file_name = this->input_sequence_->source(master_source_index = 0)->filename();
@@ -1125,11 +1131,13 @@ bool c_image_stacking_pipeline::actual_run()
       max_frames_to_stack = master_options.max_input_frames_to_generate_master_frame;
     }
 
+    CF_DEBUG("H");
     if ( !create_reference_frame(input_sequence, master_frame_index, max_frames_to_stack,
         reference_frame, reference_mask) ) {
       CF_FATAL("ERROR: create_reference_frame() fails");
       return false;
     }
+    CF_DEBUG("H");
 
     ecc_normalization_noise_ =
         compute_image_noise(reference_frame, reference_mask,
@@ -1173,6 +1181,7 @@ bool c_image_stacking_pipeline::actual_run()
         flow_accumulation_.reset(new c_frame_accumulation_with_mask());
       }
     }
+    CF_DEBUG("H");
   }
 
 
@@ -1480,7 +1489,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       lock_guard lock(accumulator_lock_);
       frame_accumulation_.reset(new c_frame_accumulation_with_mask());
       sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
-      //fft_accumulation_.reset(new c_fft_power_accumulation());
     }
 
     if ( canceled() ) {
@@ -1850,385 +1858,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         time_remap,
         time_accumulate);
 
-    CF_DEBUG("H");
     emit_accumulator_changed();
-    CF_DEBUG("H");
   }
-  CF_DEBUG("H");
 
   return true;
 }
-//
-//bool c_image_stacking_pipeline::setup_frame_registration(bool for_master_generation,
-//    const cv::Mat & reference_frame,
-//    const cv::Mat & reference_mask)
-//{
-//  const c_frame_registration_options & registration_options =
-//      options_->frame_registration_options();
-//
-//  frame_registration_.reset();
-//  flow_accumulation_.reset();
-//
-//  if ( registration_options.registration_method != frame_registration_none ) {
-//
-//    if ( !(frame_registration_ = options_->create_frame_registration()) ) {
-//      CF_FATAL("options_->create_frame_registration() fails");
-//      return false;
-//    }
-//
-//    // Force some align options for reference frame generation
-//    if ( for_master_generation ) {
-//      if ( frame_registration_->enable_ecc() ) {
-//        frame_registration_->ecc().set_reference_smooth_sigma(
-//            frame_registration_->ecc().input_smooth_sigma());
-//      }
-//    }
-//
-//
-//    frame_registration_->set_enable_eccflow(options_->master_frame_options().eccflow_scale > 1);
-//    if ( frame_registration_->enable_eccflow() ) {
-//      frame_registration_->eccflow().set_support_scale(options_->master_frame_options().eccflow_scale);
-//      // frame_registration_->eccflow().set_normalization_scale(frame_registration_->eccflow().support_scale());
-//    }
-//
-//
-//    if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {
-//      CF_ERROR("ERROR: frame_registration_->setup_referece_frame() fails");
-//      return false;
-//    }
-//
-//    if ( !for_master_generation && registration_options.accumulate_and_compensate_turbulent_flow ) {
-//      if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
-//        flow_accumulation_.reset(
-//            new c_frame_accumulation_with_mask());
-//      }
-//    }
-//  }
-//
-//  return true;
-//}
-
-
-//bool c_image_stacking_pipeline::prepare_reference_frame(cv::Mat & output_reference_frame, cv::Mat & output_reference_mask)
-//{
-//  const c_master_frame_options & master_options =
-//      options_->master_frame_options();
-//
-//  const c_input_options & input_options =
-//      options_->input_options();
-//
-//  int num_total_frames = 0;
-//
-//  c_input_sequence::ptr input_sequence;
-//  c_auto_close_input_sequence auto_close(input_sequence);
-//
-//  bool fOk = false;
-//  int master_frame_index = -1;
-//  int master_source_index = -1;
-//  master_file_name_.clear();
-//
-//  if ( (master_file_name_ = master_options.master_source_path).empty() ) {
-//    master_file_name_ = options_->input_sequence()->source(master_source_index = 0)->filename();
-//  }
-//  else {
-//
-//    std::vector<c_input_source::ptr>::const_iterator source_pos =
-//        std::find_if(options_->input_sequence()->sources().begin(), options_->input_sequence()->sources().end(),
-//            [master_options](const c_input_source::ptr & s ) -> bool {
-//              return s->filename() == master_options.master_source_path;
-//            });
-//
-//    if ( source_pos != options_->input_sequence()->sources().end() ) {
-//      master_source_index = source_pos - options_->input_sequence()->sources().begin();
-//    }
-//  }
-//
-//  if ( master_source_index >= 0 ) {
-//    input_sequence = this->input_sequence_;
-//  }
-//  else if ( !(input_sequence = c_input_sequence::create(master_file_name_)) ) {
-//    CF_ERROR("ERROR: c_input_sequence::create(master_file_name_=%s) fails", master_file_name_.c_str());
-//    return false;
-//  }
-//
-//  if ( !input_sequence->open() ) {
-//    CF_FATAL("ERROR: Can not open input source '%s'", master_file_name_.c_str());
-//    return false;
-//  }
-//
-//  if ( (master_frame_index = master_options.master_frame_index) < 0 ) {
-//    master_frame_index = 0;
-//  }
-//  else if ( master_source_index >= 0 ) {
-//    if ( master_frame_index >= input_sequence->source(master_source_index)->size() ) {
-//      CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
-//          master_frame_index, master_file_name_.c_str());
-//      return false;
-//    }
-//  }
-//  else if ( master_frame_index >= input_sequence->source(0)->size() ) {
-//    CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
-//        master_frame_index, master_file_name_.c_str());
-//    return false;
-//  }
-//
-//
-//  num_total_frames = input_sequence->size();
-//  if ( master_source_index >= 0 ) {
-//    master_frame_index = input_sequence->global_pos(master_source_index, master_frame_index);
-//  }
-//  else {
-//    master_frame_index = input_sequence->global_pos(0, master_frame_index);
-//  }
-//
-//  if ( master_options.generate_master_frame && num_total_frames > 1 &&
-//      options_->accumulation_options().accumulation_method != frame_accumulation_none ) {
-//
-//    // Generate reference frame from given sequence of frames
-//    fOk = generate_reference_frame(input_sequence, master_frame_index,
-//        master_options.max_input_frames_to_generate_master_frame,
-//        output_reference_frame, output_reference_mask);
-//  }
-//
-//  else {
-//    // Just read single reference frame from given input sequence
-//    fOk = read_existing_reference_frame(input_sequence, master_frame_index,
-//        output_reference_frame, output_reference_mask);
-//  }
-//
-//  if ( fOk && !canceled()) {
-//    ecc_normalization_noise_ =
-//        compute_image_noise(output_reference_frame, output_reference_mask,
-//            options_->frame_registration_options().base_options.registration_channel);
-//
-//    if ( master_source_index < 0 ) {
-//      ecc_normalization_noise_ *= 10;
-//    }
-//
-//    CF_DEBUG("Set ecc_noise=%g", ecc_normalization_noise_);
-//  }
-//
-//  if ( fOk ) {
-//    if ( options_->master_frame_options().save_master_frame ) {
-//      write_image(ssprintf("%s/%s-master.tiff", output_directory_.c_str(),
-//          options_->name().c_str()), options_->output_options(),
-//          output_reference_frame,
-//          output_reference_mask);
-//    }
-//  }
-//
-//  CF_DEBUG("Reference frame : %dx%d depth=%d channels=%d",
-//      output_reference_frame.cols, output_reference_frame.rows,
-//      output_reference_frame.depth(),
-//      output_reference_frame.channels());
-//
-//  CF_DEBUG("Reference mask : %dx%d depth=%d channels=%d",
-//      output_reference_mask.cols, output_reference_mask.rows,
-//      output_reference_mask.depth(),
-//      output_reference_mask.channels());
-//
-//
-//  return fOk && !canceled();
-//}
-
-//// Just read single reference frame from given input sequence, and preprocess it if requested
-//bool c_image_stacking_pipeline::read_existing_reference_frame(const c_input_sequence::ptr & input_sequence, int master_frame_index,
-//    cv::Mat & reference_frame, cv::Mat & reference_mask)
-//{
-//  if ( !input_sequence->seek(master_frame_index) ) {
-//    CF_ERROR("ERROR: input_sequence->seek(local pos=%d) fails",
-//        master_frame_index);
-//    return false;
-//  }
-//
-//  if ( !read_input_frame(input_sequence, options_->input_options(), reference_frame, reference_mask) ) {
-//    CF_FATAL("read_input_frame(reference_frame) fails");
-//    return false;
-//  }
-//
-//  if ( !select_image_roi(roi_selection_, reference_frame, reference_mask, reference_frame, reference_mask) ) {
-//    CF_FATAL("select_image_roi(reference_frame) fails");
-//    return false;
-//  }
-//
-//  if ( options_->master_frame_options().apply_input_frame_processor ) {
-//    if ( options_->input_options().input_frame_processor ) {
-//      if ( !options_->input_options().input_frame_processor->process(reference_frame, reference_mask) ) {
-//        CF_ERROR("input_frame_processor->process(reference_frame) fails");
-//        return false;
-//      }
-//    }
-//  }
-//
-//  return true;
-//}
-
-//bool c_image_stacking_pipeline::generate_reference_frame(const c_input_sequence::ptr & input_sequence,
-//    int master_frame_index, int max_frames_to_stack,
-//    cv::Mat & output_reference_frame, cv::Mat & output_reference_mask)
-//{
-//  const c_input_options & input_options =
-//      options_->input_options();
-//
-//  const c_master_frame_options & master_options =
-//      options_->master_frame_options();
-//
-//  const c_frame_registration_options & registration_options =
-//      options_->frame_registration_options();
-//
-//
-//  if ( !input_sequence->seek(master_frame_index) ) {
-//    CF_ERROR("input_sequence->seek(master_frame_index=%d) fails", master_frame_index);
-//    return false;
-//  }
-//
-//  if ( !read_input_frame(input_sequence, input_options, current_frame_, current_mask_) ) {
-//    CF_ERROR("read_input_frame(master_frame_index_) fails");
-//    return false;
-//  }
-//
-//  if ( canceled() ) {
-//    return false;
-//  }
-//
-//  if ( !select_image_roi(roi_selection_, current_frame_, current_mask_, current_frame_, current_mask_) ) {
-//    CF_ERROR("select_image_roi() fails");
-//    return false;
-//  }
-//
-//  if ( canceled() ) {
-//    return false;
-//  }
-//
-//  if ( master_options.apply_input_frame_processor && input_options.input_frame_processor ) {
-//    if ( !input_options.input_frame_processor->process(current_frame_, current_mask_) ) {
-//      CF_ERROR("input_frame_processor->process(current_frame) fails");
-//      return false;
-//    }
-//  }
-//
-//  if ( canceled() ) {
-//    return false;
-//  }
-//
-//  // Init frame registration if required
-//  if ( true ) {
-//    lock_guard lock(registration_lock_);
-//    if ( !setup_frame_registration(true, current_frame_, current_mask_) ) {
-//      CF_ERROR("setup_frame_registration() fails");
-//      return false;
-//    }
-//  }
-//
-//  if ( canceled() ) {
-//    return false;
-//  }
-//
-//  // Init frame accumulator
-//  if ( true ) {
-//    lock_guard lock(accumulator_lock_);
-//    frame_accumulation_.reset(new c_frame_accumulation_with_mask());
-//  }
-//
-//  // Init fft accumulator
-//  if ( true ) {
-//    fft_accumulation_.reset(new c_fft_power_accumulation());
-//  }
-//
-//  if ( canceled() ) {
-//    return false;
-//  }
-//
-//
-//  const int input_sequence_size = input_sequence->size();
-//  const int startpos = std::max(0, master_frame_index - max_frames_to_stack);
-//  const int endpos = std::min(master_frame_index + max_frames_to_stack, input_sequence_size);
-//
-//  CF_DEBUG("H: master_frame_index=%d max_frames_to_stack=%d", master_frame_index, max_frames_to_stack);
-//  CF_DEBUG("H: input_sequence_size=%d startpos=%d endpos=%d", input_sequence_size, startpos, endpos);
-//
-//  if ( !process_input_sequence(input_sequence, startpos, endpos) ) {
-//    CF_ERROR("process_and_stack_images() fails");
-//    return false;
-//  }
-//
-//  // Read accumulators
-//  if ( true ) {
-//    lock_guard lock(accumulator_lock_);
-//
-//    if ( frame_accumulation_->accumulated_frames() < 1 ) {
-//      CF_ERROR("ERROR: No frames accumulated for reference frame");
-//      return false;
-//    }
-//
-//    if ( !frame_accumulation_->compute(output_reference_frame, output_reference_mask) ) {
-//      CF_ERROR("ERROR: frame_accumulation_->compute() fails");
-//      return false;
-//    }
-//  }
-//
-//  if ( fft_accumulation_ ) {
-//
-//    lock_guard lock(fft_accumulator_lock_);
-//
-//    cv::Mat fftacc;
-//
-//    if ( !fft_accumulation_->compute(fftacc) ) {
-//      CF_ERROR("ERROR: fft_accumulation_->compute() fails");
-//      return false;
-//    }
-//
-//
-//    if ( !swap_fft_power_spectrum(output_reference_frame, fftacc, output_reference_frame) ) {
-//      CF_ERROR("ERROR: swap_fft_power_spectrum() fails");
-//      return false;
-//    }
-//  }
-//
-//
-//  if ( flow_accumulation_ ) {
-//
-//    if ( !flow_accumulation_->compute(accumulated_flow_) ) {
-//      CF_ERROR("ERROR: flow_accumulation_->compute() fails");
-//      return false;
-//    }
-//
-//    if ( registration_options.accumulate_and_compensate_turbulent_flow && !accumulated_flow_.empty() ) {
-//
-//      if ( options_->output_options().dump_reference_data_for_debug && !output_directory_.empty() ) {
-//
-//        save_image(flow_accumulation_->counter(),
-//            ssprintf("%s/%s-masterflow-counter.tiff", output_directory_.c_str(),
-//                options_->name().c_str()));
-//
-//        save_image(accumulated_flow_,
-//            ssprintf("%s/%s-masterflow.flo", output_directory_.c_str(),
-//                options_->name().c_str()));
-//      }
-//
-//      accumulated_flow_ = flow2remap(accumulated_flow_,
-//          output_reference_mask);
-//
-//      // FIXME: BORDER !!!
-//      cv::remap(output_reference_frame, output_reference_frame, accumulated_flow_,
-//          cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
-//
-//      cv::remap(output_reference_mask, output_reference_mask, accumulated_flow_,
-//          cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT);
-//
-//      cv::compare(output_reference_mask, 200, output_reference_mask, cv::CMP_GE);
-//
-//    }
-//  }
-//
-//  if ( fft_accumulation_ || flow_accumulation_ ) {
-//    clip_range(output_reference_frame, 0, 1, output_reference_mask);
-//  }
-//
-//  CF_DEBUG("H");
-//  return true;
-//}
-
 
 
 bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & input_sequence,

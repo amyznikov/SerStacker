@@ -133,30 +133,24 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
         arg(pipeline->accumulated_frames()).
         arg(pipeline->processed_frames()).
             arg(pipeline->total_frames()));
-
   }
 
   if ( (force || hasCurrentImageUpdates_) && imageViewer_ && imageViewer_->isVisible() ) {
 
     updatingDisplay_ = true;
 
-    QWaitCursor wait(this/*, pipeline->current_image().size().area() > 3e6*/);
+    QWaitCursor wait(this);
 
     cv::Mat currentImage;
     cv::Mat currentMask;
 
-//    cv::Mat & currentImage = imageViewer_->inputImage();
-//    cv::Mat & currentMask = imageViewer_->inputMask();
-
     bool computed = pipeline->compute_accumulated_image(currentImage, currentMask);
-
     if ( computed ) {
 
       if ( pipeline->anscombe().method() != anscombe_none ) {
         pipeline->anscombe().inverse(currentImage, currentImage);
       }
 
-      //imageViewer_->updateImage();
       imageViewer_->editImage(currentImage, currentMask);
     }
   }

@@ -22,230 +22,29 @@
 #include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <core/get_time.h>
+#include <core/proc/inpaint.h>
 #include <core/debug.h>
-
-
-static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
-{
-  cv::Point2f centrold;
-  cv::Rect component_rect;
-  cv::Mat1b component_mask;
-  cv::Mat component_edge;
-  std::vector<cv::Point2f> edge_points;
-  cv::Mat draw;
-
-  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
-    CF_ERROR("simple_small_planetary_disk_detector() fails");
-    return false;
-  }
-
-  //save_image(component_mask, "raw_component_mask.png");
-  //geo_fill_holes(component_mask, component_mask, 8);
-  save_image(component_mask, "closed_component_mask.png");
-
-  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-  cv::findNonZero(component_edge, edge_points);
-
-  save_image(component_edge, "closed_component_edge.png");
-
-  //*rc = cv::fitEllipse(edge_points);
-  *rc = cv::fitEllipseAMS(edge_points);
-
-  CF_DEBUG("ellipse: center=(%g %g) angle=%g", rc->center.x, rc->center.y, rc->angle);
-
-  normalize_minmax(image, draw, 0, 255);
-  draw.convertTo(draw, CV_8U);
-  if( draw.channels() != 3 ) {
-    cv::cvtColor(draw, draw, cv::COLOR_GRAY2BGR);
-  }
-
-  draw.setTo(cv::Scalar(0, 0, 255), component_edge);
-  cv::ellipse(draw, *rc, cv::Scalar(0, 255, 0), 1, cv::LINE_8);
-
-  double measured_polar_semi_axis = 0.5 * std::min(rc->size.width, rc->size.height);
-  double measured_equatorial_semi_axis = 0.5 * std::max(rc->size.width, rc->size.height);
-
-  if( true ) {
-    double angle1 = rc->angle * CV_PI / 180;
-    double angle2 = rc->angle * CV_PI / 180 - CV_PI / 2;
-
-    cv::Point2f pt1(-measured_polar_semi_axis * cos(angle1), -measured_polar_semi_axis * sin(angle1));
-    cv::Point2f pt2(measured_polar_semi_axis * cos(angle1), measured_polar_semi_axis * sin(angle1));
-
-    cv::Point2f pt3(-measured_polar_semi_axis * cos(angle2), -measured_polar_semi_axis * sin(angle2));
-    cv::Point2f pt4(measured_polar_semi_axis * cos(angle2), measured_polar_semi_axis * sin(angle2));
-
-    cv::line(draw, rc->center + pt1, rc->center + pt2, cv::Scalar(0, 255, 255), 1, cv::LINE_8);
-    cv::line(draw, rc->center + pt3, rc->center + pt4, cv::Scalar(0, 255, 255), 1, cv::LINE_8);
-  }
-
-  save_image(draw, "fitEllipse.png");
-
-  //  double jovian_axis_ratio = 71.492 / 66.854;
-  //  double masured_axis_ratio = measured_equatorial_semi_axis / measured_polar_semi_axis;
-  //  CF_DEBUG("jovian_axis_ratio=%g masured_axis_ratio=%g", jovian_axis_ratio, masured_axis_ratio);
-  //  return 0;
-
-  return true;
-}
-
-static bool fit_jovian_ellipse_ecc(const cv::Mat & image, cv::RotatedRect * rc, int index)
-{
-  cv::Point2f centrold;
-  cv::Rect component_rect;
-  cv::Mat1b component_mask;
-  cv::Mat component_edge;
-  std::vector<cv::Point2f> edge_points;
-  cv::Mat draw;
-
-  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
-    CF_ERROR("simple_small_planetary_disk_detector() fails");
-    return false;
-  }
-
-  geo_fill_holes(component_mask, component_mask, 8);
-  save_image(component_mask, ssprintf("closed_component_mask.%d.png", index));
-
-  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-  cv::findNonZero(component_edge, edge_points);
-
-  save_image(component_edge, ssprintf("closed_component_edge.%d.png", index));
-
-  //*rc = cv::fitEllipse(edge_points);
-  *rc = cv::fitEllipseAMS(edge_points);
-
-
-  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
-
-  double rcA = std::max(rc->size.width, rc->size.height);
-  double rcB = std::min(rc->size.width, rc->size.height);
-  double rcR = 0.5 * (rcA + rcB);
-
-//  rc->size.width = rcR;
-//  rc->size.height = rcR * jovian_polar_to_equatorial_axis_ratio;
-
-  cv::Mat1f artifical_ellipse(component_rect.size(), 0);
-
-  cv::ellipse(artifical_ellipse, *rc, 255, -1, cv::LINE_AA);
-  save_image(artifical_ellipse, ssprintf("artifical_ellipse.%d.png", index));
-
-
-  return true;
-}
-
-static bool createEllipseRotationRemap(cv::Mat2f & remap, cv::Mat1f & mask, const cv::Size & size,
-    double Cx, double Cy, double a, double b, double l)
-{
-  remap.create(size);
-  mask.create(size);
-  mask.setTo(0);
-
-  const double c = a / b;
-
-
-  for ( int y = 0; y < size.height; ++y ) {
-    double yy = y - Cy;
-
-    for ( int x = 0; x < size.width; ++x ) {
-      double xx = x - Cx;
-
-      if ( (xx / a) * (xx / a) + (yy / b) * (yy / b) >= 0.95 ) {
-        remap[y][x][0] = -1;
-        remap[y][x][1] = -1;
-      }
-      else {
-        double lambda = asin(xx / (c * sqrt(b * b - yy * yy))) + l;
-        if ( (lambda <= - 0.8 * CV_PI / 2) || (lambda >= CV_PI / 2) ) {
-          remap[y][x][0] = -1;
-          remap[y][x][1] = -1;
-        }
-        else {
-          remap[y][x][0] = sin(lambda) * c * sqrt(b * b - yy * yy) + Cx;
-          remap[y][x][1] = y;
-          mask[y][x] = cos(0.5 * CV_PI * xx / ((c * sqrt(b * b - yy * yy)))) * cos(0.5 * CV_PI * yy / b) ;
-          //mask[y][x] *= mask[y][x];
-        }
-
-      }
-    }
-  }
-
-  return true;
-}
-
-
-
-static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
-{
-//  cv::Scalar mv, sv;
-//  cv::Mat src, mean, stdev;
-//
-//  src = _src.getMat();
-//  cv::meanStdDev(src, mv, sv, mask);
-//
-//  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
-//  cv::GaussianBlur(src.mul(src), stdev, cv::Size(), sigma, sigma);
-//  cv::absdiff(stdev, mean.mul(mean), stdev);
-//  cv::sqrt(stdev, stdev);
-//  cv::add(stdev, 0.01 * sv[0], stdev);
-//  cv::subtract(src, mean, mean);
-//  cv::divide(mean, stdev, dst);
-
-  cv::Scalar mv, sv;
-  cv::Mat src, mean;
-
-  src = _src.getMat();
-  cv::meanStdDev(src, mv, sv, mask);
-
-  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
-  cv::subtract(src, mean, mean);
-  cv::multiply(mean, 1./sv[0], dst);
-
-
-}
 
 int main(int argc, char *argv[])
 {
-  if ( true ) {
+  std::string image_file_name, mask_file_name;
 
-    cv::Mat1f cc(100,100, 1.f);
-    cv::Mat1b mask(100, 100, (uint8_t)0);
-
-    mask(cv::Rect(0, 0, 50, 50)).setTo(255);
-
-
-    double l1 = cv::norm(cc, cv::NORM_L1, mask);
-    double l2 = cv::norm(cc, cv::NORM_L2, mask);
-    double l2sqr = cv::norm(cc, cv::NORM_L2SQR, mask);
-
-    printf("l1=%g l2=%g l2sqr=%g nnz=%d\n", l1, l2, l2sqr, cv::countNonZero(mask));
-
-    return 0;
-  }
-
-
-  std::string filenames[2];
-
-  cv::Mat images[2];
-  cv::Mat masks[2];
-
-  cv::Point2f centrolds[2];
-  cv::Rect component_rects[2];
-  cv::Mat1b component_masks[2];
-
+  cv::Mat image;
+  cv::Mat mask;
+  cv::Mat result_image;
 
   for ( int i = 1; i < argc; ++i ) {
 
     if ( strcmp(argv[i], "--help") == 0 ) {
-      printf("Usage: alpha <input-file-name1> <input-file-name2>\n");
+      printf("Usage: alpha image_file_name mask_file_name\n");
       return 0;
     }
 
-    if ( filenames[0].empty() ) {
-      filenames[0] = argv[i];
+    if ( image_file_name.empty() ) {
+      image_file_name = argv[i];
     }
-    else if ( filenames[1].empty() ) {
-      filenames[1] = argv[i];
+    else if ( mask_file_name.empty() ) {
+      mask_file_name = argv[i];
     }
     else {
       fprintf(stderr, "Invalid argument : %s\n", argv[i]);
@@ -253,7 +52,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if ( filenames[0].empty() || filenames[1].empty()) {
+  if ( image_file_name.empty() || mask_file_name.empty()) {
     fprintf(stderr, "Two input file name required\n");
     return 1;
   }
@@ -261,145 +60,384 @@ int main(int argc, char *argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-
-  for ( int i = 0; i < 2; ++i ) {
-
-    if ( !load_image(images[i], filenames[i]) ) {
-      CF_ERROR("load_image(%s) fails", filenames[i].c_str());
-      return 1;
-    }
-
-
-    if( images[i].channels() == 4 || images[i].channels() == 2 ) {
-      splitbgra(images[i], images[i], &masks[i]);
-    }
-
-    if( images[i].channels() == 3  ) {
-      cv::cvtColor(images[i], images[i], cv::COLOR_BGR2GRAY);
-    }
-
-    save_image(images[i], ssprintf("gray_image.%d.tiff", i));
-
-    if( !simple_small_planetary_disk_detector(images[i], masks[i], &centrolds[i], 1, &component_rects[i], &component_masks[i]) ) {
-      CF_ERROR("simple_small_planetary_disk_detector(%s) fails", filenames[i].c_str());
-      return 1;
-    }
-
-    save_image(component_masks[i], ssprintf("raw_component_mask.%d.png", i));
-
-    geo_fill_holes(component_masks[i], component_masks[i], 8);
-    cv::dilate(component_masks[i], component_masks[i], cv::Mat1b(3, 3, 255));
-
-    save_image(component_masks[i], ssprintf("closed_component_mask.%d.png", i));
-    images[i].setTo(0, ~component_masks[i]);
+  if ( !load_image(image, image_file_name) ) {
+    CF_ERROR("load_image(image) fails");
+    return 1;
   }
 
-  cv::Size maxsize(std::max(component_rects[0].width, component_rects[1].width) + 32, std::max(component_rects[0].height, component_rects[1].height) + 32);
-
-  cv::Mat comps[2];
-  cv::RotatedRect erc[2];
-  for ( int i = 0; i < 2; ++i ) {
-    comps[i] = cv::Mat::zeros(maxsize, images[i].type());
-
-    images[i](component_rects[i]).copyTo(
-        comps[i](cv::Rect(32 / 2, 32 / 2, component_rects[i].width, component_rects[i].height)));
-
-    comps[i].convertTo(comps[i], CV_32F);
-    save_image(comps[i], ssprintf("comps.%d.tiff", i));
-
-
-    fit_jovian_ellipse_ecc(comps[i], &erc[i], i);
+  if ( !load_image(mask, mask_file_name) ) {
+    CF_ERROR("load_image(mask) fails");
+    return 1;
   }
 
+  image.setTo(0, ~mask);
+  save_image(image, "broken_image.tiff");
 
-//
-//  c_ecc_forward_additive ecc;
-//  c_ecc_pyramide_align ecch(&ecc);
-//  cv::Mat avgimg, diff;
-//  cv::Mat T;
-//  cv::RotatedRect erc;
-//
-//  ecch.align(comps[0], comps[1], T = createEyeTransform(ECC_MOTION_EUCLIDEAN));
-//  cv::remap(comps[0], comps[0], ecch.method()->current_remap(), cv::noArray(), cv::INTER_LINEAR);
-//  save_image(comps[0], ssprintf("comps.%d.aligned.tiff", 0));
-//
-//
-//  cv::add(comps[0], comps[1], avgimg);
-//  if ( !fit_ellipse(avgimg, &erc) ) {
-//    CF_ERROR("fit_ellipse() fails");
-//  }
-//
-//  cv::Mat1f E;
-//  cv::Mat emap;
-//  E = createEuclideanTransform(erc.center.x, erc.center.y, erc.center.x, erc.center.y, 1.0, -erc.angle * CV_PI / 180 + CV_PI / 2);
-//  createRemap(ECC_MOTION_EUCLIDEAN, E, emap, avgimg.size());
-//  for ( int i = 0; i < 2; ++i ) {
-//    cv::remap(comps[i], comps[i], emap, cv::noArray(), cv::INTER_LINEAR);
-//    save_image(comps[i], ssprintf("comps.remap.%d.tiff", i));
-//  }
-//
-//  cv::subtract(comps[1], comps[0], diff);
-//  save_image(diff, "diff.initial.tiff");
-//
-//
-//  double A = std::max(erc.size.width, erc.size.height);
-//  double B = std::min(erc.size.width, erc.size.height);
-//  double normalize_sigma = 3 * A / 500;
-//
-//  CF_DEBUG("ELLIPSE: A=%g B=%g normalize_sigma=%g", A, B, normalize_sigma);
-//
-//
-//  cv::Mat2f rmap;
-//  cv::Mat1f visibility_mask;
-//  cv::Mat rotated_image;
-//
-//
-//  ecc_normalize(comps[0], cv::noArray(), comps[0], normalize_sigma );
-//  ecc_normalize(comps[1], cv::noArray(), comps[1], normalize_sigma );
-//
-//  for ( int i = 0; i < 50; ++i ) {
-//
-//    double angle = i * CV_PI / 180;
-//
-//
-//    createEllipseRotationRemap(rmap, visibility_mask, comps[0].size(),
-//        erc.center.x, erc.center.y, A / 2, B / 2, -angle);
-//
-//    cv::remap(comps[0], rotated_image, rmap, cv::noArray(), cv::INTER_LINEAR);
-//    save_image(rotated_image, ssprintf("rotations/comps0.rotated.%02d.tiff", i));
-//
-//    cv::subtract(comps[1], rotated_image, diff);
-//    cv::multiply(diff, visibility_mask, diff);
-//
-//    save_image(diff, ssprintf("rotations/diff.%02d.tiff", i));
-//
-//    double cost = cv::norm(diff, cv::NORM_L2);
-//    CF_DEBUG("rotation %d: angle=%g cost=%g", i, angle * 180 / CV_PI,  cost);
-//  }
+  average_pyramid_inpaint(image, mask, result_image);
 
-//  cv::Mat gx, gy;
-//  save_image(diff, "diff.rotated.tiff");
-//  ecc_differentiate(comps[1], gx, gy);
-
-//  for ( int i = 0; i < 2; ++i ) {
-//    ecc_normalize(comps[i], cv::noArray(), comps[i], 5);
-//    save_image(comps[i], ssprintf("comps.normalized.%d.tiff", i));
-//  }
-
-//  std::vector<cv::Mat> pyramids[2];
-//  for(int i = 0; i < 2; ++i ) {
-//
-//    cv::buildPyramid(comps[i], pyramids[i], 7 );
-//
-//    for(int j = 0, nj = pyramids[i].size(); j < nj; ++j ) {
-//      save_image(pyramids[i][j], ssprintf("pyr.%d.%d.tiff", i, j));
-//    }
-//  }
-
+  save_image(result_image, "result_image.tiff");
 
 
   return 0;
 }
+
+//static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
+//{
+//  cv::Point2f centrold;
+//  cv::Rect component_rect;
+//  cv::Mat1b component_mask;
+//  cv::Mat component_edge;
+//  std::vector<cv::Point2f> edge_points;
+//  cv::Mat draw;
+//
+//  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
+//    CF_ERROR("simple_small_planetary_disk_detector() fails");
+//    return false;
+//  }
+//
+//  //save_image(component_mask, "raw_component_mask.png");
+//  //geo_fill_holes(component_mask, component_mask, 8);
+//  save_image(component_mask, "closed_component_mask.png");
+//
+//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
+//  cv::findNonZero(component_edge, edge_points);
+//
+//  save_image(component_edge, "closed_component_edge.png");
+//
+//  //*rc = cv::fitEllipse(edge_points);
+//  *rc = cv::fitEllipseAMS(edge_points);
+//
+//  CF_DEBUG("ellipse: center=(%g %g) angle=%g", rc->center.x, rc->center.y, rc->angle);
+//
+//  normalize_minmax(image, draw, 0, 255);
+//  draw.convertTo(draw, CV_8U);
+//  if( draw.channels() != 3 ) {
+//    cv::cvtColor(draw, draw, cv::COLOR_GRAY2BGR);
+//  }
+//
+//  draw.setTo(cv::Scalar(0, 0, 255), component_edge);
+//  cv::ellipse(draw, *rc, cv::Scalar(0, 255, 0), 1, cv::LINE_8);
+//
+//  double measured_polar_semi_axis = 0.5 * std::min(rc->size.width, rc->size.height);
+//  double measured_equatorial_semi_axis = 0.5 * std::max(rc->size.width, rc->size.height);
+//
+//  if( true ) {
+//    double angle1 = rc->angle * CV_PI / 180;
+//    double angle2 = rc->angle * CV_PI / 180 - CV_PI / 2;
+//
+//    cv::Point2f pt1(-measured_polar_semi_axis * cos(angle1), -measured_polar_semi_axis * sin(angle1));
+//    cv::Point2f pt2(measured_polar_semi_axis * cos(angle1), measured_polar_semi_axis * sin(angle1));
+//
+//    cv::Point2f pt3(-measured_polar_semi_axis * cos(angle2), -measured_polar_semi_axis * sin(angle2));
+//    cv::Point2f pt4(measured_polar_semi_axis * cos(angle2), measured_polar_semi_axis * sin(angle2));
+//
+//    cv::line(draw, rc->center + pt1, rc->center + pt2, cv::Scalar(0, 255, 255), 1, cv::LINE_8);
+//    cv::line(draw, rc->center + pt3, rc->center + pt4, cv::Scalar(0, 255, 255), 1, cv::LINE_8);
+//  }
+//
+//  save_image(draw, "fitEllipse.png");
+//
+//  //  double jovian_axis_ratio = 71.492 / 66.854;
+//  //  double masured_axis_ratio = measured_equatorial_semi_axis / measured_polar_semi_axis;
+//  //  CF_DEBUG("jovian_axis_ratio=%g masured_axis_ratio=%g", jovian_axis_ratio, masured_axis_ratio);
+//  //  return 0;
+//
+//  return true;
+//}
+//
+//static bool fit_jovian_ellipse_ecc(const cv::Mat & image, cv::RotatedRect * rc, int index)
+//{
+//  cv::Point2f centrold;
+//  cv::Rect component_rect;
+//  cv::Mat1b component_mask;
+//  cv::Mat component_edge;
+//  std::vector<cv::Point2f> edge_points;
+//  cv::Mat draw;
+//
+//  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
+//    CF_ERROR("simple_small_planetary_disk_detector() fails");
+//    return false;
+//  }
+//
+//  geo_fill_holes(component_mask, component_mask, 8);
+//  save_image(component_mask, ssprintf("closed_component_mask.%d.png", index));
+//
+//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
+//  cv::findNonZero(component_edge, edge_points);
+//
+//  save_image(component_edge, ssprintf("closed_component_edge.%d.png", index));
+//
+//  //*rc = cv::fitEllipse(edge_points);
+//  *rc = cv::fitEllipseAMS(edge_points);
+//
+//
+//  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
+//
+//  double rcA = std::max(rc->size.width, rc->size.height);
+//  double rcB = std::min(rc->size.width, rc->size.height);
+//  double rcR = 0.5 * (rcA + rcB);
+//
+////  rc->size.width = rcR;
+////  rc->size.height = rcR * jovian_polar_to_equatorial_axis_ratio;
+//
+//  cv::Mat1f artifical_ellipse(component_rect.size(), 0);
+//
+//  cv::ellipse(artifical_ellipse, *rc, 255, -1, cv::LINE_AA);
+//  save_image(artifical_ellipse, ssprintf("artifical_ellipse.%d.png", index));
+//
+//
+//  return true;
+//}
+//
+//static bool createEllipseRotationRemap(cv::Mat2f & remap, cv::Mat1f & mask, const cv::Size & size,
+//    double Cx, double Cy, double a, double b, double l)
+//{
+//  remap.create(size);
+//  mask.create(size);
+//  mask.setTo(0);
+//
+//  const double c = a / b;
+//
+//
+//  for ( int y = 0; y < size.height; ++y ) {
+//    double yy = y - Cy;
+//
+//    for ( int x = 0; x < size.width; ++x ) {
+//      double xx = x - Cx;
+//
+//      if ( (xx / a) * (xx / a) + (yy / b) * (yy / b) >= 0.95 ) {
+//        remap[y][x][0] = -1;
+//        remap[y][x][1] = -1;
+//      }
+//      else {
+//        double lambda = asin(xx / (c * sqrt(b * b - yy * yy))) + l;
+//        if ( (lambda <= - 0.8 * CV_PI / 2) || (lambda >= CV_PI / 2) ) {
+//          remap[y][x][0] = -1;
+//          remap[y][x][1] = -1;
+//        }
+//        else {
+//          remap[y][x][0] = sin(lambda) * c * sqrt(b * b - yy * yy) + Cx;
+//          remap[y][x][1] = y;
+//          mask[y][x] = cos(0.5 * CV_PI * xx / ((c * sqrt(b * b - yy * yy)))) * cos(0.5 * CV_PI * yy / b) ;
+//          //mask[y][x] *= mask[y][x];
+//        }
+//
+//      }
+//    }
+//  }
+//
+//  return true;
+//}
+//
+//
+//
+//static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
+//{
+////  cv::Scalar mv, sv;
+////  cv::Mat src, mean, stdev;
+////
+////  src = _src.getMat();
+////  cv::meanStdDev(src, mv, sv, mask);
+////
+////  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+////  cv::GaussianBlur(src.mul(src), stdev, cv::Size(), sigma, sigma);
+////  cv::absdiff(stdev, mean.mul(mean), stdev);
+////  cv::sqrt(stdev, stdev);
+////  cv::add(stdev, 0.01 * sv[0], stdev);
+////  cv::subtract(src, mean, mean);
+////  cv::divide(mean, stdev, dst);
+//
+//  cv::Scalar mv, sv;
+//  cv::Mat src, mean;
+//
+//  src = _src.getMat();
+//  cv::meanStdDev(src, mv, sv, mask);
+//
+//  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+//  cv::subtract(src, mean, mean);
+//  cv::multiply(mean, 1./sv[0], dst);
+//
+//
+//}
+//
+//int main(int argc, char *argv[])
+//{
+//  std::string filenames[2];
+//
+//  cv::Mat images[2];
+//  cv::Mat masks[2];
+//
+//  cv::Point2f centrolds[2];
+//  cv::Rect component_rects[2];
+//  cv::Mat1b component_masks[2];
+//
+//
+//  for ( int i = 1; i < argc; ++i ) {
+//
+//    if ( strcmp(argv[i], "--help") == 0 ) {
+//      printf("Usage: alpha <input-file-name1> <input-file-name2>\n");
+//      return 0;
+//    }
+//
+//    if ( filenames[0].empty() ) {
+//      filenames[0] = argv[i];
+//    }
+//    else if ( filenames[1].empty() ) {
+//      filenames[1] = argv[i];
+//    }
+//    else {
+//      fprintf(stderr, "Invalid argument : %s\n", argv[i]);
+//      return 1;
+//    }
+//  }
+//
+//  if ( filenames[0].empty() || filenames[1].empty()) {
+//    fprintf(stderr, "Two input file name required\n");
+//    return 1;
+//  }
+//
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//
+//  for ( int i = 0; i < 2; ++i ) {
+//
+//    if ( !load_image(images[i], filenames[i]) ) {
+//      CF_ERROR("load_image(%s) fails", filenames[i].c_str());
+//      return 1;
+//    }
+//
+//
+//    if( images[i].channels() == 4 || images[i].channels() == 2 ) {
+//      splitbgra(images[i], images[i], &masks[i]);
+//    }
+//
+//    if( images[i].channels() == 3  ) {
+//      cv::cvtColor(images[i], images[i], cv::COLOR_BGR2GRAY);
+//    }
+//
+//    save_image(images[i], ssprintf("gray_image.%d.tiff", i));
+//
+//    if( !simple_small_planetary_disk_detector(images[i], masks[i], &centrolds[i], 1, &component_rects[i], &component_masks[i]) ) {
+//      CF_ERROR("simple_small_planetary_disk_detector(%s) fails", filenames[i].c_str());
+//      return 1;
+//    }
+//
+//    save_image(component_masks[i], ssprintf("raw_component_mask.%d.png", i));
+//
+//    geo_fill_holes(component_masks[i], component_masks[i], 8);
+//    cv::dilate(component_masks[i], component_masks[i], cv::Mat1b(3, 3, 255));
+//
+//    save_image(component_masks[i], ssprintf("closed_component_mask.%d.png", i));
+//    images[i].setTo(0, ~component_masks[i]);
+//  }
+//
+//  cv::Size maxsize(std::max(component_rects[0].width, component_rects[1].width) + 32, std::max(component_rects[0].height, component_rects[1].height) + 32);
+//
+//  cv::Mat comps[2];
+//  cv::RotatedRect erc[2];
+//  for ( int i = 0; i < 2; ++i ) {
+//    comps[i] = cv::Mat::zeros(maxsize, images[i].type());
+//
+//    images[i](component_rects[i]).copyTo(
+//        comps[i](cv::Rect(32 / 2, 32 / 2, component_rects[i].width, component_rects[i].height)));
+//
+//    comps[i].convertTo(comps[i], CV_32F);
+//    save_image(comps[i], ssprintf("comps.%d.tiff", i));
+//
+//
+//    fit_jovian_ellipse_ecc(comps[i], &erc[i], i);
+//  }
+//
+//
+////
+////  c_ecc_forward_additive ecc;
+////  c_ecc_pyramide_align ecch(&ecc);
+////  cv::Mat avgimg, diff;
+////  cv::Mat T;
+////  cv::RotatedRect erc;
+////
+////  ecch.align(comps[0], comps[1], T = createEyeTransform(ECC_MOTION_EUCLIDEAN));
+////  cv::remap(comps[0], comps[0], ecch.method()->current_remap(), cv::noArray(), cv::INTER_LINEAR);
+////  save_image(comps[0], ssprintf("comps.%d.aligned.tiff", 0));
+////
+////
+////  cv::add(comps[0], comps[1], avgimg);
+////  if ( !fit_ellipse(avgimg, &erc) ) {
+////    CF_ERROR("fit_ellipse() fails");
+////  }
+////
+////  cv::Mat1f E;
+////  cv::Mat emap;
+////  E = createEuclideanTransform(erc.center.x, erc.center.y, erc.center.x, erc.center.y, 1.0, -erc.angle * CV_PI / 180 + CV_PI / 2);
+////  createRemap(ECC_MOTION_EUCLIDEAN, E, emap, avgimg.size());
+////  for ( int i = 0; i < 2; ++i ) {
+////    cv::remap(comps[i], comps[i], emap, cv::noArray(), cv::INTER_LINEAR);
+////    save_image(comps[i], ssprintf("comps.remap.%d.tiff", i));
+////  }
+////
+////  cv::subtract(comps[1], comps[0], diff);
+////  save_image(diff, "diff.initial.tiff");
+////
+////
+////  double A = std::max(erc.size.width, erc.size.height);
+////  double B = std::min(erc.size.width, erc.size.height);
+////  double normalize_sigma = 3 * A / 500;
+////
+////  CF_DEBUG("ELLIPSE: A=%g B=%g normalize_sigma=%g", A, B, normalize_sigma);
+////
+////
+////  cv::Mat2f rmap;
+////  cv::Mat1f visibility_mask;
+////  cv::Mat rotated_image;
+////
+////
+////  ecc_normalize(comps[0], cv::noArray(), comps[0], normalize_sigma );
+////  ecc_normalize(comps[1], cv::noArray(), comps[1], normalize_sigma );
+////
+////  for ( int i = 0; i < 50; ++i ) {
+////
+////    double angle = i * CV_PI / 180;
+////
+////
+////    createEllipseRotationRemap(rmap, visibility_mask, comps[0].size(),
+////        erc.center.x, erc.center.y, A / 2, B / 2, -angle);
+////
+////    cv::remap(comps[0], rotated_image, rmap, cv::noArray(), cv::INTER_LINEAR);
+////    save_image(rotated_image, ssprintf("rotations/comps0.rotated.%02d.tiff", i));
+////
+////    cv::subtract(comps[1], rotated_image, diff);
+////    cv::multiply(diff, visibility_mask, diff);
+////
+////    save_image(diff, ssprintf("rotations/diff.%02d.tiff", i));
+////
+////    double cost = cv::norm(diff, cv::NORM_L2);
+////    CF_DEBUG("rotation %d: angle=%g cost=%g", i, angle * 180 / CV_PI,  cost);
+////  }
+//
+////  cv::Mat gx, gy;
+////  save_image(diff, "diff.rotated.tiff");
+////  ecc_differentiate(comps[1], gx, gy);
+//
+////  for ( int i = 0; i < 2; ++i ) {
+////    ecc_normalize(comps[i], cv::noArray(), comps[i], 5);
+////    save_image(comps[i], ssprintf("comps.normalized.%d.tiff", i));
+////  }
+//
+////  std::vector<cv::Mat> pyramids[2];
+////  for(int i = 0; i < 2; ++i ) {
+////
+////    cv::buildPyramid(comps[i], pyramids[i], 7 );
+////
+////    for(int j = 0, nj = pyramids[i].size(); j < nj; ++j ) {
+////      save_image(pyramids[i][j], ssprintf("pyr.%d.%d.tiff", i, j));
+////    }
+////  }
+//
+//
+//
+//  return 0;
+//}
 
 //
 //

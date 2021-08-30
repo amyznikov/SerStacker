@@ -61,7 +61,7 @@ protected:
   QAnscombeMethodCombo * anscombe_ctl  = Q_NULLPTR;
 
   QBrowsePathCombo * bad_pixel_mask_filename_ctl = Q_NULLPTR;
-  QCheckBox * invert_bad_pixels_mask_ctl  = Q_NULLPTR;
+  QCheckBox * black_bad_pixels_ctl  = Q_NULLPTR;
 
   QImageProcessorSelectionCombo * processor_selector_ctl = Q_NULLPTR;
 

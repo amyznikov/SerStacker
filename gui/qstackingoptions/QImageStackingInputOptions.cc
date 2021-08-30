@@ -89,7 +89,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         }
       });
 
-  invert_bad_pixels_mask_ctl = add_checkbox("Bad pixes marked black",
+  black_bad_pixels_ctl = add_checkbox("Bad pixes marked black",
       [this](int state) {
         if ( options_ ) {
           bool checked = state == Qt::Checked;
@@ -141,6 +141,9 @@ void QImageStackingInputOptions::onupdatecontrols()
     bad_pixels_variation_threshold_ctl->setValue(options_->hot_pixels_variation_threshold);
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
+
+    black_bad_pixels_ctl->setChecked(options_->bad_pixels_marked_black);
+    bad_pixel_mask_filename_ctl->setCurrentPath(options_->bad_pixel_mask_filename.c_str(), false);
 
     if ( !processor_selector_ctl->setCurrentProcessor(options_->input_frame_processor) ) {
       options_->input_frame_processor.reset();

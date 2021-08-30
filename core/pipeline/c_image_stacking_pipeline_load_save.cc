@@ -217,6 +217,8 @@ bool c_image_stacking_options::deserialize(c_config_setting settings)
 bool c_input_options::serialize(c_config_setting settings) const
 {
   settings.set("bad_pixel_mask", bad_pixel_mask_filename);
+  settings.set("bad_pixels_marked_black", bad_pixels_marked_black);
+
   settings.set("remove_bad_pixels", filter_hot_pixels);
   settings.set("bad_pixels_variation_threshold", hot_pixels_variation_threshold);
   settings.set("enable_color_maxtrix", enable_color_maxtrix );
@@ -238,6 +240,7 @@ bool c_input_options::deserialize(c_config_setting settings)
   }
 
   settings.get("bad_pixel_mask", &bad_pixel_mask_filename);
+  settings.get("bad_pixels_marked_black", &bad_pixels_marked_black);
   settings.get("remove_bad_pixels", &filter_hot_pixels);
   settings.get("bad_pixels_variation_threshold", &hot_pixels_variation_threshold);
   settings.get("enable_color_maxtrix", &enable_color_maxtrix );

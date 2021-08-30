@@ -148,10 +148,6 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
     bool computed = pipeline->compute_accumulated_image(currentImage, currentMask);
     if ( computed ) {
 
-      average_pyramid_inpaint(currentImage,
-          currentMask,
-          currentImage);
-
       if ( pipeline->anscombe().method() != anscombe_none ) {
         pipeline->anscombe().inverse(currentImage, currentImage);
       }

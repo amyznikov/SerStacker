@@ -1963,12 +1963,15 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     }
 
     if ( output_mask.empty() ) {
+      CF_DEBUG("bad_pixel_mask_.copyTo(output_mask)");
       bad_pixel_mask_.copyTo(output_mask);
     }
     else {
+      CF_DEBUG("cv::bitwise_and(output_mask, bad_pixel_mask_, output_mask)");
       cv::bitwise_and(output_mask, bad_pixel_mask_, output_mask);
     }
   }
+
 
   return true;
 }

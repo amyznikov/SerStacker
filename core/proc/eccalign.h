@@ -427,10 +427,10 @@ public:
 
 protected:
   struct pyramid_entry {
-    cv::Mat1f reference_image, current_image;
-    cv::Mat1b reference_mask, current_mask;
+    cv::Mat1f current_image, reference_image;
+    cv::Mat1b current_mask, reference_mask;
     cv::Mat2f rmap;
-    cv::Mat1f Ix, Iy, It;
+    cv::Mat1f Ix, Iy;//, It;
     cv::Mat4f D;
   };
 

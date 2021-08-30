@@ -60,8 +60,9 @@ protected:
   QCheckBox * enable_color_maxtrix_ctl = Q_NULLPTR;
   QAnscombeMethodCombo * anscombe_ctl  = Q_NULLPTR;
 
-  QBrowsePathCombo * bad_pixel_mask_filename_ctl = Q_NULLPTR;
-  QCheckBox * black_bad_pixels_ctl  = Q_NULLPTR;
+  QBrowsePathCombo * missing_pixel_mask_filename_ctl = Q_NULLPTR;
+  QCheckBox * missing_pixels_marked_black_ctl  = Q_NULLPTR;
+  QCheckBox * inpaint_missing_pixels_ctl  = Q_NULLPTR;
 
   QImageProcessorSelectionCombo * processor_selector_ctl = Q_NULLPTR;
 

@@ -2910,6 +2910,7 @@ const cv::Mat1b & c_ecch_flow::reference_mask() const
 {
   static const cv::Mat1b empty_stub;
   return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
+//  return reference_mask_;
 }
 
 //
@@ -3014,8 +3015,10 @@ bool c_ecch_flow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
   }
   cv::resize(src, dst, size, 0, 0, cv::INTER_AREA);
 
-  (void)(ismask);
-  if ( !ismask ) {
+  if ( ismask ) {
+    cv::compare(dst, 255, dst, cv::CMP_EQ);
+  }
+  else {
     static thread_local const cv::Mat G = cv::getGaussianKernel(3, 0, CV_32F);
     cv::sepFilter2D(dst, dst, -1, G, G, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
   }
@@ -3028,19 +3031,42 @@ bool c_ecch_flow::compute_uv(pyramid_entry & e,
     cv::Mat2f & outuv) const
 {
   cv::Mat1f worker_image;
-  cv::Mat1f Itx, Ity;
+  cv::Mat1f It, Itx, Ity;
+  cv::Mat1b M;
 
-  e.reference_image.copyTo(worker_image);
+  tbb::parallel_invoke(
+    [&e, &worker_image]() {
+      e.reference_image.copyTo(worker_image);
+      cv::remap(e.current_image, worker_image,
+          e.rmap, cv::noArray(),
+          cv::INTER_AREA,
+          cv::BORDER_TRANSPARENT);
+    },
 
-  cv::remap(e.current_image, worker_image,
-      e.rmap, cv::noArray(),
-      cv::INTER_LINEAR,
-      cv::BORDER_TRANSPARENT);
+    [&e, &M]() {
+      if ( !e.current_mask.empty() ) {
+        cv::remap(e.current_mask, M,
+            e.rmap, cv::noArray(),
+            cv::INTER_NEAREST,
+            cv::BORDER_CONSTANT);
+      }
+    });
+
+
+  if ( !e.reference_mask.empty() ) {
+    if ( M.empty() ) {
+      e.reference_mask.copyTo(M);
+    }
+    else {
+      cv::bitwise_and(e.reference_mask, M, M);
+    }
+  }
+
 
   const cv::Mat1f & I1 = worker_image;
   const cv::Mat1f & I2 = e.reference_image;
 
-  cv::subtract(I2, I1, e.It);
+  cv::subtract(I2, I1, It, M);
 
 
 #if 0
@@ -3054,13 +3080,13 @@ bool c_ecch_flow::compute_uv(pyramid_entry & e,
 
   tbb::parallel_invoke(
 
-    [this, &e, &Itx]() {
-      cv::multiply(e.Ix, e.It, Itx);
+    [this, &e, &It, &Itx]() {
+      cv::multiply(e.Ix, It, Itx);
       pscale(Itx, Itx);
     },
 
-    [this, &e, &Ity]() {
-      cv::multiply(e.Iy, e.It, Ity);
+    [this, &e, &It, &Ity]() {
+      cv::multiply(e.Iy, It, Ity);
       pscale(Ity, Ity);
     }
   );
@@ -3078,6 +3104,13 @@ bool c_ecch_flow::compute_uv(pyramid_entry & e,
   //  v = 1/D * (a00 * b1 - a10 * b0);
 
   outuv.create(e.D.size());
+
+  CF_DEBUG("e.D.size=%dx%d Itx: %dx%d e.current_image: %dx%d e.current_mask: %dx%d",
+      e.D.cols, e.D.rows,
+      Itx.cols, Itx.rows,
+      e.current_image.cols, e.current_image.rows,
+      e.current_mask.cols, e.current_mask.rows);
+
 
   typedef tbb::blocked_range<int> range;
 
@@ -3123,7 +3156,7 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::InputArray referenceIma
   return compute(inputImage, rmap, inputMask);
 }
 
-
+// FIXME: Make sure at caller side that both reference and current image are pre-inpained for missing pixels!!!!
 bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
 {
   cv::Mat1f I;
@@ -3137,17 +3170,8 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
     return false;
   }
 
-  if ( inputMask.empty() || cv::countNonZero(inputMask) == inputMask.size().area() ) {
-    pnormalize(I, pyramid_.front().current_image, noise_level);
-  }
-  else {
-    pyramid_.front().reference_image.copyTo(pyramid_.front().current_image);
-    I.copyTo(pyramid_.front().current_image, inputMask);
-    pnormalize(pyramid_.front().current_image, pyramid_.front().current_image, noise_level);
-  }
 
-
-
+  pnormalize(I, pyramid_.front().current_image, noise_level);
   pyramid_[0].rmap = rmap; // attention to this!
   //rmap.copyTo(pyramid_.front().rmap);
 
@@ -3161,7 +3185,7 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
 
     tbb::parallel_invoke(
 
-        [this, &I, &next_scale, next_size, noise_level]() {
+        [this, &I, &prev_scale, &next_scale, next_size, noise_level]() {
           cv::pyrDown(I, I, next_size, cv::BORDER_REPLICATE);
           pnormalize(I, next_scale.current_image, noise_level);
         },
@@ -3174,6 +3198,15 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
 
           cv::pyrDown(prev_scale.rmap, next_scale.rmap, next_size, cv::BORDER_REPLICATE);
           cv::multiply(next_scale.rmap, size_ratio, next_scale.rmap);
+        },
+
+        [&prev_scale, &next_scale, prev_size, next_size]() {
+          if ( !prev_scale.current_mask.empty()) {
+            cv::resize(prev_scale.current_mask, next_scale.current_mask, next_size, 0, 0, cv::INTER_NEAREST);
+            if ( cv::countNonZero(next_scale.current_mask) == next_size.area() ) {
+              next_scale.current_mask.release();
+            }
+          }
         }
     );
   }
@@ -3228,10 +3261,9 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
           referenceMask);
 
   pyramid_.clear();
-
   pyramid_.reserve(20);
-  pyramid_.emplace_back();
 
+  pyramid_.emplace_back();
   if ( !convert_input_images(referenceImage, referenceMask, I, pyramid_.back().reference_mask) ) {
     CF_ERROR("convert_input_images() fails");
     return false;
@@ -3240,9 +3272,6 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
   const int min_image_size =
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
           3 * (1 << (support_scale_)));
-
-//    const double RegularizationTerm =
-//        pow(0.5 * noise_level, 4);
 
   for ( int scale = 0; ; ++scale ) {
 
@@ -3289,15 +3318,23 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
 
     const cv::Size nextSize((currentSize.width + 1) / 2, (currentSize.height + 1) / 2);
     if ( nextSize.width < min_image_size || nextSize.height < min_image_size ) {
-      CF_DEBUG("nextSize: %dx%d currentSize: %dx%d",
-          nextSize.width, nextSize.height,
-          currentSize.width, currentSize.height);
+      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
+          currentSize.width, currentSize.height,
+          nextSize.width, nextSize.height);
       break;
     }
 
 
     pyramid_.emplace_back();
     cv::pyrDown(I, I, cv::Size(-1,-1), cv::BORDER_REPLICATE);
+
+    if ( !pyramid_[pyramid_.size()-2].reference_mask.empty() ) {
+      cv::resize(pyramid_[pyramid_.size()-2].reference_mask, pyramid_.back().reference_mask,
+          I.size(), 0, 0, cv::INTER_NEAREST);
+      if ( cv::countNonZero(pyramid_.back().reference_mask) == I.size().area() ) {
+        pyramid_.back().reference_mask.release();
+      }
+    }
   }
 
   CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),

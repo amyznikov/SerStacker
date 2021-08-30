@@ -216,9 +216,9 @@ bool c_image_stacking_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_input_options::serialize(c_config_setting settings) const
 {
-  settings.set("bad_pixel_mask", bad_pixel_mask_filename);
-  settings.set("bad_pixels_marked_black", bad_pixels_marked_black);
-
+  settings.set("missing_pixel_mask", missing_pixel_mask_filename);
+  settings.set("missing_pixels_marked_black", missing_pixels_marked_black);
+  settings.set("inpaint_missing_pixels", inpaint_missing_pixels);
   settings.set("remove_bad_pixels", filter_hot_pixels);
   settings.set("bad_pixels_variation_threshold", hot_pixels_variation_threshold);
   settings.set("enable_color_maxtrix", enable_color_maxtrix );
@@ -239,8 +239,9 @@ bool c_input_options::deserialize(c_config_setting settings)
     return false;
   }
 
-  settings.get("bad_pixel_mask", &bad_pixel_mask_filename);
-  settings.get("bad_pixels_marked_black", &bad_pixels_marked_black);
+  settings.get("missing_pixel_mask", &missing_pixel_mask_filename);
+  settings.get("missing_pixels_marked_black", &missing_pixels_marked_black);
+  settings.get("inpaint_missing_pixels", &inpaint_missing_pixels);
   settings.get("remove_bad_pixels", &filter_hot_pixels);
   settings.get("bad_pixels_variation_threshold", &hot_pixels_variation_threshold);
   settings.get("enable_color_maxtrix", &enable_color_maxtrix );

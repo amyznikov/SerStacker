@@ -102,8 +102,9 @@ enum frame_upscale_option fromStdString(const std::string  & s,
 
 struct c_input_options {
 
-  std::string bad_pixel_mask_filename;
-  bool bad_pixels_marked_black = true;
+  std::string missing_pixel_mask_filename;
+  bool missing_pixels_marked_black = true;
+  bool inpaint_missing_pixels = false;
 
   c_image_processor::ptr input_frame_processor;
 
@@ -464,7 +465,7 @@ protected:
   int total_frames_ = 0;
   int processed_frames_ = 0;
 
-  cv::Mat bad_pixel_mask_;
+  cv::Mat missing_pixel_mask_;
 
   std::string statusmsg_;
   mutable std::mutex status_lock_;

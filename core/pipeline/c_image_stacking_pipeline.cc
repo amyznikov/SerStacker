@@ -919,7 +919,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     lock_guard lock(accumulator_lock_);
 
     output_directory_.clear();
-    bad_pixel_mask_.release();
+    missing_pixel_mask_.release();
 
     ecc_normalization_noise_ = 0;
 
@@ -996,21 +996,21 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     }
   }
 
-  if ( !options_->input_options().bad_pixel_mask_filename.empty() ) {
+  if ( !options_->input_options().missing_pixel_mask_filename.empty() ) {
 
-    if ( !load_image(bad_pixel_mask_, options_->input_options().bad_pixel_mask_filename) ) {
-      CF_ERROR("load_image('%s') fails.", options_->input_options().bad_pixel_mask_filename.c_str());
+    if ( !load_image(missing_pixel_mask_, options_->input_options().missing_pixel_mask_filename) ) {
+      CF_ERROR("load_image('%s') fails.", options_->input_options().missing_pixel_mask_filename.c_str());
       return false;
     }
 
-    if ( bad_pixel_mask_.type() != CV_8UC1 ) {
+    if ( missing_pixel_mask_.type() != CV_8UC1 ) {
       CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
-          options_->input_options().bad_pixel_mask_filename.c_str());
+          options_->input_options().missing_pixel_mask_filename.c_str());
       return false;
     }
 
-    if ( !options_->input_options().bad_pixels_marked_black ) {
-      cv::invert(bad_pixel_mask_, bad_pixel_mask_);
+    if ( !options_->input_options().missing_pixels_marked_black ) {
+      cv::invert(missing_pixel_mask_, missing_pixel_mask_);
     }
   }
 
@@ -1042,7 +1042,7 @@ void c_image_stacking_pipeline::cleanup()
     sharpness_norm_accumulation_.reset();
   }
 
-  bad_pixel_mask_.release();
+  missing_pixel_mask_.release();
 }
 
 
@@ -1948,28 +1948,32 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     anscombe_.apply(output_image, output_image);
   }
 
-  if ( !bad_pixel_mask_.empty() ) {
+  if ( !missing_pixel_mask_.empty() ) {
 
-    if ( output_image.size() != bad_pixel_mask_.size() ) {
+    if ( output_image.size() != missing_pixel_mask_.size() ) {
 
       CF_ERROR("Invalid input: "
           "frame and bad pixel mask sizes not match:\n"
           "frame size: %dx%d\n"
           "mask size : %dx%d",
           output_image.cols, output_image.rows,
-          bad_pixel_mask_.cols, bad_pixel_mask_.rows);
+          missing_pixel_mask_.cols, missing_pixel_mask_.rows);
 
       return false;
     }
 
     if ( output_mask.empty() ) {
-      CF_DEBUG("bad_pixel_mask_.copyTo(output_mask)");
-      bad_pixel_mask_.copyTo(output_mask);
+      missing_pixel_mask_.copyTo(output_mask);
     }
     else {
-      CF_DEBUG("cv::bitwise_and(output_mask, bad_pixel_mask_, output_mask)");
-      cv::bitwise_and(output_mask, bad_pixel_mask_, output_mask);
+      cv::bitwise_and(output_mask, missing_pixel_mask_,
+          output_mask);
     }
+  }
+
+  if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
+    average_pyramid_inpaint(output_image, output_mask,
+        output_image);
   }
 
 

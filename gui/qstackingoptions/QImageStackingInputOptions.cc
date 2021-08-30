@@ -45,6 +45,19 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
             }
           });
 
+
+  inpaint_missing_pixels_ctl = add_checkbox("Inpaint missing pixels with feasible values",
+      [this](int state) {
+        if ( options_ ) {
+          bool checked = state == Qt::Checked;
+          if ( checked != options_->inpaint_missing_pixels ) {
+            options_->inpaint_missing_pixels = checked;
+            emit parameterChanged();
+          }
+        }
+      });;
+
+
   enable_color_maxtrix_ctl = add_checkbox("Apply color matrix if available",
       [this](int state) {
         if ( options_ ) {
@@ -75,30 +88,31 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         }});
 
 
-  form->addRow(bad_pixel_mask_filename_ctl =
-      new QBrowsePathCombo("Bad pixels mask:",
+  form->addRow(missing_pixel_mask_filename_ctl =
+      new QBrowsePathCombo("MIssing pixels mask:",
           QFileDialog::ExistingFile,
           this));
 
-  connect(bad_pixel_mask_filename_ctl, &QBrowsePathCombo::pathChanged,
+  connect(missing_pixel_mask_filename_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
         if ( options_ && !updatingControls() ) {
-          options_->bad_pixel_mask_filename =
-              bad_pixel_mask_filename_ctl->currentPath().toStdString();
+          options_->missing_pixel_mask_filename =
+              missing_pixel_mask_filename_ctl->currentPath().toStdString();
           emit parameterChanged();
         }
       });
 
-  black_bad_pixels_ctl = add_checkbox("Bad pixes marked black",
+  missing_pixels_marked_black_ctl = add_checkbox("Missing pixels marked as black",
       [this](int state) {
         if ( options_ ) {
           bool checked = state == Qt::Checked;
-          if ( checked != options_->bad_pixels_marked_black ) {
-            options_->bad_pixels_marked_black = checked;
+          if ( checked != options_->missing_pixels_marked_black ) {
+            options_->missing_pixels_marked_black = checked;
             emit parameterChanged();
           }
         }
       });;
+
 
 
 
@@ -142,8 +156,9 @@ void QImageStackingInputOptions::onupdatecontrols()
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
 
-    black_bad_pixels_ctl->setChecked(options_->bad_pixels_marked_black);
-    bad_pixel_mask_filename_ctl->setCurrentPath(options_->bad_pixel_mask_filename.c_str(), false);
+    missing_pixel_mask_filename_ctl->setCurrentPath(options_->missing_pixel_mask_filename.c_str(), false);
+    missing_pixels_marked_black_ctl->setChecked(options_->missing_pixels_marked_black);
+    inpaint_missing_pixels_ctl->setChecked(options_->inpaint_missing_pixels);
 
     if ( !processor_selector_ctl->setCurrentProcessor(options_->input_frame_processor) ) {
       options_->input_frame_processor.reset();

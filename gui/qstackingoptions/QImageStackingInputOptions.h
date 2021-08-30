@@ -10,6 +10,7 @@
 #define __QImageStackingInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
@@ -58,6 +59,9 @@ protected:
 
   QCheckBox * enable_color_maxtrix_ctl = Q_NULLPTR;
   QAnscombeMethodCombo * anscombe_ctl  = Q_NULLPTR;
+
+  QBrowsePathCombo * bad_pixel_mask_filename_ctl = Q_NULLPTR;
+  QCheckBox * invert_bad_pixels_mask_ctl  = Q_NULLPTR;
 
   QImageProcessorSelectionCombo * processor_selector_ctl = Q_NULLPTR;
 

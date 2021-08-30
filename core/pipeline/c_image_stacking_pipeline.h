@@ -101,13 +101,17 @@ enum frame_upscale_option fromStdString(const std::string  & s,
 
 
 struct c_input_options {
+
+  std::string bad_pixel_mask_filename;
+  bool bad_pixels_marked_black = true;
+
   c_image_processor::ptr input_frame_processor;
 
-  bool remove_bad_pixels = true;
+  bool filter_hot_pixels = true;
   bool enable_color_maxtrix = false;
 
   enum anscombe_method anscombe = anscombe_none;
-  double bad_pixels_variation_threshold = 7;
+  double hot_pixels_variation_threshold = 7;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -459,6 +463,8 @@ protected:
 
   int total_frames_ = 0;
   int processed_frames_ = 0;
+
+  cv::Mat bad_pixel_mask_;
 
   std::string statusmsg_;
   mutable std::mutex status_lock_;

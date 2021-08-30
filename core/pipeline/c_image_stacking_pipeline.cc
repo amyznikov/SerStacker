@@ -919,6 +919,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     lock_guard lock(accumulator_lock_);
 
     output_directory_.clear();
+    bad_pixel_mask_.release();
 
     ecc_normalization_noise_ = 0;
 
@@ -995,6 +996,24 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     }
   }
 
+  if ( !options_->input_options().bad_pixel_mask_filename.empty() ) {
+
+    if ( !load_image(bad_pixel_mask_, options_->input_options().bad_pixel_mask_filename) ) {
+      CF_ERROR("load_image('%s') fails.", options_->input_options().bad_pixel_mask_filename.c_str());
+      return false;
+    }
+
+    if ( bad_pixel_mask_.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
+          options_->input_options().bad_pixel_mask_filename.c_str());
+      return false;
+    }
+
+    if ( !options_->input_options().bad_pixels_marked_black ) {
+      cv::invert(bad_pixel_mask_, bad_pixel_mask_);
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////
 
   CF_DEBUG("H");
@@ -1022,6 +1041,8 @@ void c_image_stacking_pipeline::cleanup()
     frame_accumulation_.reset();
     sharpness_norm_accumulation_.reset();
   }
+
+  bad_pixel_mask_.release();
 }
 
 
@@ -1893,7 +1914,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
-    if ( input_options.remove_bad_pixels ) {
+    if ( input_options.filter_hot_pixels ) {
       remove_bad_pixels(output_image, input_options);
     }
 
@@ -1906,7 +1927,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     extract_bayer_planes(output_image, output_image,
         input_sequence->colorid());
 
-    if ( input_options.remove_bad_pixels ) {
+    if ( input_options.filter_hot_pixels ) {
       remove_bad_pixels(output_image, input_options);
     }
 
@@ -1925,6 +1946,28 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 
   if ( anscombe_.method() != anscombe_none ) {
     anscombe_.apply(output_image, output_image);
+  }
+
+  if ( !bad_pixel_mask_.empty() ) {
+
+    if ( output_image.size() != bad_pixel_mask_.size() ) {
+
+      CF_ERROR("Invalid input: "
+          "frame and bad pixel mask sizes not match:\n"
+          "frame size: %dx%d\n"
+          "mask size : %dx%d",
+          output_image.cols, output_image.rows,
+          bad_pixel_mask_.cols, bad_pixel_mask_.rows);
+
+      return false;
+    }
+
+    if ( output_mask.empty() ) {
+      bad_pixel_mask_.copyTo(output_mask);
+    }
+    else {
+      cv::bitwise_and(output_mask, bad_pixel_mask_, output_mask);
+    }
   }
 
   return true;
@@ -2053,7 +2096,7 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
   cv::filter2D(variationImage, meanVariationImage, -1, cv::Mat1f(3, 3, K));
   cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
 
-  medianImage.copyTo(image, variationImage > input_optons.bad_pixels_variation_threshold * meanVariationImage);
+  medianImage.copyTo(image, variationImage > input_optons.hot_pixels_variation_threshold * meanVariationImage);
 }
 
 

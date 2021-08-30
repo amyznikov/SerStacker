@@ -29,8 +29,8 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
       [this](int state) {
         if ( options_ ) {
           bool checked = state == Qt::Checked;
-          if ( checked != options_->remove_bad_pixels ) {
-            options_->remove_bad_pixels = checked;
+          if ( checked != options_->filter_hot_pixels ) {
+            options_->filter_hot_pixels = checked;
             emit parameterChanged();
           }
         }
@@ -39,8 +39,8 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
   bad_pixels_variation_threshold_ctl =
       add_numeric_box<double>("Bad Pixels Variation Threshold",
           [this](double v) {
-            if ( options_ && options_->bad_pixels_variation_threshold != v ) {
-              options_->bad_pixels_variation_threshold = v;
+            if ( options_ && options_->hot_pixels_variation_threshold != v ) {
+              options_->hot_pixels_variation_threshold = v;
               emit parameterChanged();
             }
           });
@@ -73,6 +73,33 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           options_->input_frame_processor =
               processor_selector_ctl->processor(currentIndex);
         }});
+
+
+  form->addRow(bad_pixel_mask_filename_ctl =
+      new QBrowsePathCombo("Bad pixels mask:",
+          QFileDialog::ExistingFile,
+          this));
+
+  connect(bad_pixel_mask_filename_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->bad_pixel_mask_filename =
+              bad_pixel_mask_filename_ctl->currentPath().toStdString();
+          emit parameterChanged();
+        }
+      });
+
+  invert_bad_pixels_mask_ctl = add_checkbox("Bad pixes marked black",
+      [this](int state) {
+        if ( options_ ) {
+          bool checked = state == Qt::Checked;
+          if ( checked != options_->bad_pixels_marked_black ) {
+            options_->bad_pixels_marked_black = checked;
+            emit parameterChanged();
+          }
+        }
+      });;
+
 
 
   applyToAll_ctl = new QToolButton(this);
@@ -110,8 +137,8 @@ void QImageStackingInputOptions::onupdatecontrols()
   }
   else {
 
-    enable_remove_bad_pixels_ctl->setChecked(options_->remove_bad_pixels);
-    bad_pixels_variation_threshold_ctl->setValue(options_->bad_pixels_variation_threshold);
+    enable_remove_bad_pixels_ctl->setChecked(options_->filter_hot_pixels);
+    bad_pixels_variation_threshold_ctl->setValue(options_->hot_pixels_variation_threshold);
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
 

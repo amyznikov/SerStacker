@@ -1262,15 +1262,15 @@ bool c_image_stacking_pipeline::actual_run()
 
 
 
-    if( true ) {
+    if( options_->master_frame_options().accumulated_sharpen_factor > 0 ) {
 
       c_sharpness_norm_measure sm;
 
-      const double current_sharpeness =
-          sm.measure(accumulated_frame, accumulated_mask);
-
       const double factor =
           options_->master_frame_options().accumulated_sharpen_factor;
+
+      const double current_sharpeness =
+          sm.measure(accumulated_frame, accumulated_mask);
 
       const double alpha =
           1.0 - factor * current_sharpeness / reference_sharpness_ / accumulated_frame.channels();
@@ -1514,8 +1514,14 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     if ( true ) {
       lock_guard lock(accumulator_lock_);
       frame_accumulation_.reset(new c_frame_accumulation_with_mask());
-      sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
+
+      if ( master_options.master_sharpen_factor > 0 ) {
+        sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
+      }
     }
+
+
+
 
     if ( canceled() ) {
       return false;

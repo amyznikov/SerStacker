@@ -913,9 +913,13 @@ void MainWindow::onSaveCurrentImageAs()
     return;
   }
 
-  QString savedFileName = imageEditor->currentFileName();
+  QString savedFileName = saveImageFileAs(this,
+      imageEditor->currentImage(),
+      imageEditor->currentMask(),
+      imageEditor->current_processor(),
+      imageEditor->currentFileName());
 
-  if ( saveImageFileAs(this, imageEditor->currentImage(), imageEditor->currentMask(), &savedFileName)) {
+  if ( !savedFileName.isEmpty() ) {
     imageEditor->setCurrentFileName(savedFileName);
   }
 }

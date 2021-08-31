@@ -10,7 +10,7 @@
 #define __QImageSaveOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/io/save_image.h>
+#include <core/improc/c_image_processor.h>
 #include <core/proc/pixtype.h>
 
 class QImageSavePNGOptions :
@@ -126,7 +126,7 @@ public:
   QImageSavePNGOptions * pngOptions() const;
   QImageSaveTIFFOptions * tiffOptions() const;
   QImageSaveJPEGOptions * jpegOptions() const;
-
+  QCheckBox * saveProcessorConfigCtl() const;
 
 
 protected:
@@ -137,6 +137,7 @@ protected:
   QImageSaveTIFFOptions * tiffOptions_ctl = Q_NULLPTR;
   QImageSavePNGOptions * pngOptions_ctl = Q_NULLPTR;
   QImageSaveJPEGOptions * jpegOptions_ctl = Q_NULLPTR;
+  QCheckBox * save_also_processor_config_ctl = Q_NULLPTR;
 };
 
 
@@ -156,6 +157,7 @@ public:
   QImageSavePNGOptions * pngOptions() const;
   QImageSaveTIFFOptions * tiffOptions() const;
   QImageSaveJPEGOptions * jpegOptions() const;
+  QCheckBox * saveProcessorConfigCtl() const;
 
 protected:
   QImageSaveOptions * options_ctl = Q_NULLPTR;
@@ -163,9 +165,10 @@ protected:
   QPushButton * cancel_ctl = Q_NULLPTR;
 };
 
-bool saveImageFileAs(QWidget * parent,
+QString saveImageFileAs(QWidget * parent,
     const cv::Mat & currentImage,
     const cv::Mat & currentMask,
-    QString * savedFileName);
+    const c_image_processor::ptr & currentProcesor = nullptr,
+    const QString & fileName = "");
 
 #endif /* __QImageSaveOptions_h__ */

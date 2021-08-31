@@ -36,6 +36,31 @@ public:
 
   const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
 
+  void set_shadows(double v) {
+    mtf_->set_shadows(v);
+  }
+
+  double shadows() const {
+    return mtf_->shadows();
+  }
+
+  void set_highlights(double v) {
+    mtf_->set_highlights(v);
+  }
+
+  double highlights() const {
+    return mtf_->highlights();
+  }
+
+  void set_midtones(double v) {
+    mtf_->set_midtones(v);
+  }
+
+  double midtones() const {
+    return mtf_->midtones();
+  }
+
+
 protected:
   c_pixinsight_midtones_transfer_function::ptr mtf_ =
       c_pixinsight_midtones_transfer_function::create();

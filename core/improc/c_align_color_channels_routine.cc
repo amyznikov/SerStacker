@@ -158,6 +158,10 @@ bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::Inp
 
 bool c_align_color_channels_routine::deserialize(c_config_setting settings)
 {
+  if ( !base::deserialize(settings) ) {
+    return false;
+  }
+
   settings.get("reference_channel", &reference_channel_);
   settings.get("enable_threshold", &enable_threshold_);
   settings.get("threshold", &threshold_);
@@ -169,11 +173,15 @@ bool c_align_color_channels_routine::deserialize(c_config_setting settings)
   LOAD_PROPERTY(settings, &algorithm_, max_iterations);
   LOAD_PROPERTY(settings, &algorithm_, update_step_scale);
 
-  return base::deserialize(settings);
+  return true;
 }
 
 bool c_align_color_channels_routine::serialize(c_config_setting settings) const
 {
+  if ( !base::serialize(settings) ) {
+    return false;
+  }
+
   settings.set("reference_channel", reference_channel_);
   settings.set("enable_threshold", enable_threshold_);
   settings.set("threshold", threshold_);
@@ -185,5 +193,6 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings) const
   SAVE_PROPERTY(settings, algorithm_, max_iterations);
   SAVE_PROPERTY(settings, algorithm_, update_step_scale);
 
-  return base::serialize(settings);
+
+  return true;
 }

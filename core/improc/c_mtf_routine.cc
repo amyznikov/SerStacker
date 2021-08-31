@@ -29,20 +29,29 @@ const c_pixinsight_midtones_transfer_function::ptr & c_mtf_routine::mtf() const
   return mtf_;
 }
 
+bool c_mtf_routine::serialize(c_config_setting settings) const
+{
+  if ( !base::serialize(settings) ) {
+    return false;
+  }
+
+  SAVE_PROPERTY(settings, *this, shadows);
+  SAVE_PROPERTY(settings, *this, highlights);
+  SAVE_PROPERTY(settings, *this, midtones);
+
+  return true;
+}
+
+
 bool c_mtf_routine::deserialize(c_config_setting settings)
 {
   if ( !base::deserialize(settings) ) {
     return false;
   }
 
-  return true;
-}
-
-bool c_mtf_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
+  LOAD_PROPERTY(settings, this, shadows);
+  LOAD_PROPERTY(settings, this, highlights);
+  LOAD_PROPERTY(settings, this, midtones);
 
   return true;
 }

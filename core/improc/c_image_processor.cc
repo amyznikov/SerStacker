@@ -190,7 +190,9 @@ c_image_processor::ptr c_image_processor::deserialize(c_config_setting settings)
 }
 
 
-bool c_image_processor::save(const std::string & path_or_filename) const
+bool c_image_processor::save(const std::string & path_or_filename,
+    const std::string & objname,
+    bool incude_disabled_functions) const
 {
   std::string filename;
 
@@ -239,7 +241,7 @@ bool c_image_processor::save(const std::string & path_or_filename) const
     return false;
   }
 
-  if ( !serialize(cfg.root().add_group("c_image_processor"))) {
+  if ( !serialize(cfg.root().add_group("c_image_processor"), objname, incude_disabled_functions)) {
     CF_FATAL("save(c_image_processor) fails");
     return false;
   }
@@ -255,21 +257,25 @@ bool c_image_processor::save(const std::string & path_or_filename) const
   return true;
 }
 
-bool c_image_processor::serialize(c_config_setting settings) const
+bool c_image_processor::serialize(c_config_setting settings, const std::string & objname, bool incude_disabled_functions) const
 {
   if ( !settings ) {
     CF_ERROR("c_image_processor::save() gets invalid argument: c_config_setting = null");
     return false;
   }
 
-  settings.set("name", name_);
+  settings.set("name",  objname.empty() ? name_ : objname);
 
   c_config_setting chain =
       settings.add_list("chain");
 
-  for ( const c_image_processor_routine::ptr & routine : *this ) {
-    if ( routine && !routine->serialize(chain.add_element(CONFIG_TYPE_GROUP)) ) {
-      return false;
+  for( const c_image_processor_routine::ptr &routine : *this ) {
+    if( routine ) {
+      if( routine->enabled() || incude_disabled_functions ) {
+        if( !routine->serialize(chain.add_element(CONFIG_TYPE_GROUP)) ) {
+          return false;
+        }
+      }
     }
   }
 

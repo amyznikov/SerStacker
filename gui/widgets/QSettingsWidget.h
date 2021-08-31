@@ -121,8 +121,8 @@ protected:
   QCheckBox* add_checkbox(QFormLayout * form, const QString & name,
       const std::function<void(int)> & slot = std::function<void(int)>())
   {
-    QCheckBox *ctl = new QCheckBox(name, this);
-    form->addRow(ctl);
+    QCheckBox *ctl = new QCheckBox(this);
+    form->addRow(name, ctl);
     QObject::connect(ctl, &QCheckBox::stateChanged,
         [this, slot](int state) {
           if ( !updatingControls() && slot ) {

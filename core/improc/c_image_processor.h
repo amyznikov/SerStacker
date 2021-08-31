@@ -125,8 +125,14 @@ public:
   static ptr create(const std::string & objname);
   static ptr load(const std::string & filename);
   static ptr deserialize(c_config_setting settings);
-  bool save(const std::string & path_or_filename = "") const;
-  bool serialize(c_config_setting settings) const;
+
+  bool save(const std::string & path_or_filename = "",
+      const std::string & objname = "" ,
+      bool incude_disabled_functions = true) const;
+
+  bool serialize(c_config_setting settings,
+      const std::string & objname = "",
+      bool incude_disabled_functions = true ) const;
 
   iterator find(const c_image_processor_routine::ptr & p);
   const_iterator find(const c_image_processor_routine::ptr & p) const;

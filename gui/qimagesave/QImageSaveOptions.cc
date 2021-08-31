@@ -98,11 +98,6 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
       [this](PIXEL_DEPTH v) {
       });
 
-  embedAlphaMask_ctl =
-      add_checkbox("Embed alpha mask");
-
-  embedAlphaMask_ctl->setChecked(true);
-
   compression_ctl = add_combobox(
       "TIFF Compression: ",
       std::function<void(int)>());
@@ -115,6 +110,11 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
   compression_ctl->setCurrentIndex(std::max(0,
       compression_ctl->findData(
           default_tiff_compression())));
+
+  embedAlphaMask_ctl =
+      add_checkbox("Embed alpha mask");
+
+  embedAlphaMask_ctl->setChecked(true);
 }
 
 void QImageSaveTIFFOptions::setPixelDepth(PIXEL_DEPTH v)
@@ -204,10 +204,14 @@ QImageSaveOptions::QImageSaveOptions(QWidget * parent) :
         }
       });
 
+  save_also_processor_config_ctl =
+      add_checkbox("Save also proc.cfg:");
+
   stack_ctl = add_widget<QStackedWidget>(QString());
   stack_ctl->addWidget(tiffOptions_ctl = new QImageSaveTIFFOptions());
   stack_ctl->addWidget(pngOptions_ctl = new QImageSavePNGOptions());
   stack_ctl->addWidget(jpegOptions_ctl = new QImageSaveJPEGOptions());
+
 
   updateControls();
 }
@@ -237,6 +241,11 @@ QImageSaveTIFFOptions * QImageSaveOptions::tiffOptions() const
 QImageSaveJPEGOptions * QImageSaveOptions::jpegOptions() const
 {
   return jpegOptions_ctl;
+}
+
+QCheckBox * QImageSaveOptions::saveProcessorConfigCtl() const
+{
+  return save_also_processor_config_ctl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -297,13 +306,21 @@ QImageSaveJPEGOptions * QImageSaveOptionsDialog::jpegOptions() const
   return options_ctl->jpegOptions();
 }
 
+QCheckBox * QImageSaveOptionsDialog::saveProcessorConfigCtl() const
+{
+  return options_ctl->saveProcessorConfigCtl();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-bool saveImageFileAs(QWidget * parent,
+QString saveImageFileAs(QWidget * parent,
     const cv::Mat & currentImage,
     const cv::Mat & currentMask,
-    QString * savedFileName)
+    const c_image_processor::ptr & currentProcesor,
+    const QString & fileName)
 {
+
+  // QString * savedFileName
 
   QSettings settings;
 
@@ -319,7 +336,7 @@ bool saveImageFileAs(QWidget * parent,
 
   filter.append("All files (*);;");
 
-  QString previousPathForSaveImageAs = *savedFileName;
+  QString previousPathForSaveImageAs = fileName;
   if ( previousPathForSaveImageAs.isEmpty() ) {
     previousPathForSaveImageAs = settings.value(keyName).toString();
   }
@@ -333,13 +350,14 @@ bool saveImageFileAs(QWidget * parent,
             filter);
 
     if ( selectedFileName.isEmpty() ) {
-      return false;
+      break;
     }
 
     enum QImageSaveFormat format =
         QImageSaveFormatUnknown;
 
     bool embedAlphaMask = true;
+    bool saveProcessorConfig = false;
 
     std::vector<int> imwrite_params;
     PIXEL_DEPTH selectedPixelDepth = PIXEL_DEPTH_NO_CHANGE;
@@ -384,41 +402,50 @@ bool saveImageFileAs(QWidget * parent,
 
       dlgbox->setParent(parent);
       dlgbox->set_format(format);
-      dlgbox->tiffOptions()->embedAlphaMaskCtl()->setChecked(!currentMask.empty());
+      dlgbox->saveProcessorConfigCtl()->setEnabled(currentProcesor != nullptr);
       dlgbox->tiffOptions()->embedAlphaMaskCtl()->setEnabled(!currentMask.empty());
 
       if ( dlgbox->exec() != QDialog::Accepted ) {
-        return false;
-      }
-
-      switch ( format ) {
-      case QImageSaveFLO : {
         break;
       }
-      case QImageSaveTIFF : {
 
-        const QImageSaveTIFFOptions * tiffOptions =
+
+      if ( currentProcesor ) {
+        saveProcessorConfig = dlgbox->saveProcessorConfigCtl()->isChecked();
+      }
+
+      switch (format) {
+      case QImageSaveFLO:
+      {
+        break;
+      }
+      case QImageSaveTIFF:
+      {
+
+        const QImageSaveTIFFOptions *tiffOptions =
             dlgbox->tiffOptions();
 
         selectedPixelDepth = tiffOptions->pixelDepth();
-        embedAlphaMask = tiffOptions->embedAlphaMask();
+        embedAlphaMask = !currentMask.empty() && tiffOptions->embedAlphaMask();
 
         imwrite_params.emplace_back(cv::ImwriteFlags::IMWRITE_TIFF_COMPRESSION);
         imwrite_params.emplace_back(tiffOptions->tiffCompression());
 
         break;
       }
-      case QImageSavePNG : {
+      case QImageSavePNG:
+      {
 
-        const QImageSavePNGOptions * pngOptions =
+        const QImageSavePNGOptions *pngOptions =
             dlgbox->pngOptions();
 
         selectedPixelDepth = pngOptions->pixelDepth();
         break;
       }
-      case QImageSaveJPEG : {
+      case QImageSaveJPEG:
+      {
 
-        const QImageSaveJPEGOptions * jpegOptions =
+        const QImageSaveJPEGOptions *jpegOptions =
             dlgbox->jpegOptions();
 
         selectedPixelDepth = PIXEL_DEPTH_8U;
@@ -428,7 +455,6 @@ bool saveImageFileAs(QWidget * parent,
         break;
       }
       }
-
     }
 
     QWaitCursor wait(parent);
@@ -490,10 +516,15 @@ bool saveImageFileAs(QWidget * parent,
 
     settings.setValue(keyName, selectedFileName);
 
-    *savedFileName = selectedFileName;
+    if( currentProcesor && saveProcessorConfig ) {
+      currentProcesor->save(QString("%1.cfg").arg(selectedFileName).toStdString(),
+          QFileInfo(selectedFileName).completeBaseName().toStdString(),
+          false);
+    }
 
-    break;
+
+    return selectedFileName;
   }
 
-  return true;
+  return QString();
 }

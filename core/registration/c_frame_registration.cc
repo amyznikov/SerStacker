@@ -145,20 +145,20 @@ bool c_frame_registration::enable_eccflow() const
   return base_options_.enable_eccflow;
 }
 
-c_ecc_forward_additive & c_frame_registration::ecc()
-{
-  return ecc_;
-}
+//c_ecc_forward_additive & c_frame_registration::ecc()
+//{
+//  return ecc_;
+//}
 
 const c_ecc_forward_additive & c_frame_registration::ecc() const
 {
   return ecc_;
 }
 
-c_ecch_flow & c_frame_registration::eccflow()
-{
-  return eccflow_;
-}
+//c_ecch_flow & c_frame_registration::eccflow()
+//{
+//  return eccflow_;
+//}
 
 const c_ecch_flow & c_frame_registration::eccflow() const
 {

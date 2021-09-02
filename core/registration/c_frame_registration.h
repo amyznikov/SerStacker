@@ -114,10 +114,10 @@ public: // opts
   void set_ecc_normalization_noise(double v);
   double ecc_normalization_noise() const;
 
-  c_ecc_forward_additive & ecc();
+  // c_ecc_forward_additive & ecc();
   const c_ecc_forward_additive & ecc() const;
 
-  c_ecch_flow & eccflow();
+  // c_ecch_flow & eccflow();
   const c_ecch_flow & eccflow() const;
 
   c_frame_registration_base_options & base_options();

@@ -1495,15 +1495,19 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       return false;
     }
 
-    if ( frame_registration_->enable_ecc() ) {
-      frame_registration_->ecc().set_reference_smooth_sigma(
-          frame_registration_->ecc().input_smooth_sigma());
+    if( frame_registration_->enable_ecc() ) {
+      frame_registration_->base_options().ecc.reference_smooth_sigma =
+          frame_registration_->base_options().ecc.input_smooth_sigma;
     }
 
     frame_registration_->set_enable_eccflow(master_options.eccflow_scale > 1);
     if ( frame_registration_->enable_eccflow() ) {
-      frame_registration_->eccflow().set_support_scale(master_options.eccflow_scale);
-      frame_registration_->eccflow().set_normalization_scale(master_options.eccflow_scale);
+
+      frame_registration_->base_options().eccflow.support_scale =
+          master_options.eccflow_scale;
+
+      frame_registration_->base_options().eccflow.normalization_scale =
+          master_options.eccflow_scale;
     }
 
     if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {

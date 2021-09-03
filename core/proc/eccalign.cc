@@ -73,7 +73,8 @@ void filter2D(int stype, int dtype, int kernel_type,
 const struct ecc_motion_type_desc ecc_motion_types[] = {
     {"TRANSLATION", ECC_MOTION_TRANSLATION },
     {"EUCLIDEAN", ECC_MOTION_EUCLIDEAN},
-    {"AFFINE", ECC_MOTION_AFFINE    },
+    {"SCALED_EUCLIDEAN", ECC_MOTION_SCALED_EUCLIDEAN},
+    {"AFFINE", ECC_MOTION_AFFINE },
     {"HOMOGRAPHY", ECC_MOTION_HOMOGRAPHY},
     {"QUADRATIC", ECC_MOTION_QUADRATIC },
     {nullptr, ECC_MOTION_NONE}
@@ -630,6 +631,7 @@ static bool fillRemap(int motionType, const cv::Mat_<T1> & a, cv::Mat_<cv::Vec<T
   case ECC_MOTION_TRANSLATION :
     return fillTranslateRemap_(a, map);
   case ECC_MOTION_EUCLIDEAN :
+  case ECC_MOTION_SCALED_EUCLIDEAN :
     case ECC_MOTION_AFFINE :
     return fillAffineRemap_(a, map);
     break;
@@ -661,6 +663,7 @@ bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv
 
 
     case ECC_MOTION_EUCLIDEAN :
+    case ECC_MOTION_SCALED_EUCLIDEAN:
     case ECC_MOTION_AFFINE :
     if ( A.size() != cv::Size(3, 2) ) {
       CF_ERROR("Invalid argument: warp matrix size must be 2x3");
@@ -789,6 +792,7 @@ cv::Mat1f createEyeTransform(int ecc_motion_type)
   case ECC_MOTION_TRANSLATION :
     return cv::Mat1f(2, 1, 0.f);
   case ECC_MOTION_EUCLIDEAN :
+  case ECC_MOTION_SCALED_EUCLIDEAN:
   case ECC_MOTION_AFFINE :
     return cv::Mat1f::eye(2, 3);
   case ECC_MOTION_HOMOGRAPHY :
@@ -867,8 +871,9 @@ void scaleTransform(int motion_type, cv::Mat1f & T, double scale)
     }
     break;
 
-  case ECC_MOTION_AFFINE :
-    case ECC_MOTION_EUCLIDEAN :
+  case ECC_MOTION_EUCLIDEAN :
+    case ECC_MOTION_SCALED_EUCLIDEAN :
+    case ECC_MOTION_AFFINE :
     T[0][2] *= scale;
     T[1][2] *= scale;
     break;
@@ -927,6 +932,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
     case ECC_MOTION_AFFINE :
     case ECC_MOTION_EUCLIDEAN :
+    case ECC_MOTION_SCALED_EUCLIDEAN:
       TT = cv::Mat1f::eye(2, 3);
       TT[0][2] = T[0][0];
       TT[1][2] = T[0][1];
@@ -962,6 +968,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
     case ECC_MOTION_AFFINE :
     case ECC_MOTION_EUCLIDEAN :
+    case ECC_MOTION_SCALED_EUCLIDEAN:
       TT = cv::Mat1f::eye(2, 3);
       TT[0][2] = T[0][0];
       TT[1][2] = T[1][0];
@@ -998,6 +1005,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
     case ECC_MOTION_AFFINE :
     case ECC_MOTION_EUCLIDEAN :
+    case ECC_MOTION_SCALED_EUCLIDEAN:
       T.copyTo(TT);
       break;
 
@@ -1050,6 +1058,7 @@ bool getTranslationComponent(int motion_type, const cv::Mat1f & T,
     break;
 
   case ECC_MOTION_EUCLIDEAN :
+  case ECC_MOTION_SCALED_EUCLIDEAN:
   case ECC_MOTION_AFFINE :
   case ECC_MOTION_QUADRATIC :
     if ( T.rows == 2 && T.cols >= 3 ) {
@@ -1092,7 +1101,7 @@ static int init_warp_matrix(int motion_type, cv::InputOutputArray warpMatrix)
 {
   int numberOfParameters = -1;
 
-  if ( warpMatrix.empty() ) {
+ if ( warpMatrix.empty() ) {
     createEyeTransform(motion_type).copyTo(warpMatrix);
   }
   else if ( warpMatrix.type() != CV_32FC1 && warpMatrix.type() != CV_64FC1 ) {
@@ -1125,6 +1134,14 @@ static int init_warp_matrix(int motion_type, cv::InputOutputArray warpMatrix)
       return -1;
     }
     numberOfParameters = 3;
+    break;
+
+  case ECC_MOTION_SCALED_EUCLIDEAN:
+    if ( warpMatrix.size() != cv::Size(3, 2) ) {
+      CF_FATAL("Warp matrix must be single-channel floating-point 2x3 matrix");
+      return -1;
+    }
+    numberOfParameters = 4;
     break;
 
   case ECC_MOTION_AFFINE :
@@ -1188,15 +1205,15 @@ static bool compute_jacobian(int motion_type, const cv::Mat1f & gx, const cv::Ma
   }
 
   case ECC_MOTION_EUCLIDEAN : {
-
-    // https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html
+    // For the signs of angles see opencv doc
+    //  <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
     // x' =  cos(theta) * x - sin(theta) * y + a02
     // y' =  sin(theta) * x + cos(theta) * y + a12
 
     const float ca = W(0, 0);  //  cos(theta)
     const float sa = -W(1, 0);  // sin(theta)
 
-    // jac:
+    // jac (theta):
     // -sin(theta)*X - cos(theta)*Y
     //  cos(theta)*X - sin(theta)*Y
 
@@ -1213,6 +1230,38 @@ static bool compute_jacobian(int motion_type, const cv::Mat1f & gx, const cv::Ma
         });
     break;
   }
+
+
+  case ECC_MOTION_SCALED_EUCLIDEAN : {
+    // For the signs of angles see opencv doc
+    //  <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
+    // x' =  scale * cos(theta) * x - scale * sin(theta) * y + a02
+    // y' =  scale * sin(theta) * x + scale * cos(theta) * y + a12
+
+    const double scale = hypot(W(0, 0), W(1, 0));
+    const double ca = W(0, 0) / scale;  // cos(theta)
+    const double sa = W(1, 0) / scale;  // sin(theta)
+
+    // jac (theta):
+    // -sin(theta)*X - cos(theta)*Y
+    //  cos(theta)*X - sin(theta)*Y
+
+    jac.create(h * 4, w);
+
+    tbb::parallel_for(range(0, h, block_size),
+        [ca, sa, scale, w, h, &gx, &gy, &jac](const range & r) {
+          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+            for ( int x = 0; x < w; ++x ) {
+              jac[y + 0 * h][x] = (-gx[y][x] * (sa * x + ca * y) + gy[y][x]* (ca * x - sa * y)) * scale;
+              jac[y + 1 * h][x] = gx[y][x];
+              jac[y + 2 * h][x] = gy[y][x];
+              jac[y + 3 * h][x] = gx[y][x] * (ca * x - sa * y) + gy[y][x] * (sa * x + ca * y);
+            }
+          }
+        });
+    break;
+  }
+
 
   case ECC_MOTION_AFFINE : {
     // x' =  a00 * x + a01 * y + a02
@@ -1303,7 +1352,7 @@ static bool compute_jacobian(int motion_type, const cv::Mat1f & gx, const cv::Ma
 
 }
 
-static bool update_warp_matrix(int motion_type, cv::Mat1f & W, const cv::Mat1f & deltaP, double * e, double xmax, double ymax)
+static bool update_warp_matrix_forward_additive(int motion_type, cv::Mat1f & W, const cv::Mat1f & deltaP, double * e, double xmax, double ymax)
 {
   switch ( motion_type ) {
   case ECC_MOTION_TRANSLATION :
@@ -1325,15 +1374,16 @@ static bool update_warp_matrix(int motion_type, cv::Mat1f & W, const cv::Mat1f &
     break;
 
   case ECC_MOTION_EUCLIDEAN : {
-    // https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html
+    // For the signs of angles see opencv doc
+    //  <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
     // x' =  cos(theta) * x - sin(theta) * y + a02
     // y' =  sin(theta) * x + cos(theta) * y + a12
 
     // 0 1 2
     // 3 4 5
 
-    float sa, ca;
-    sincosf(deltaP(0, 0) + asinf(W(1, 0)), &sa, &ca);
+    double sa, ca;
+    sincos(deltaP(0, 0) + asin(W(1, 0)), &sa, &ca);
 
     W(0, 0) = ca;
     W(0, 1) = -sa;
@@ -1351,6 +1401,41 @@ static bool update_warp_matrix(int motion_type, cv::Mat1f & W, const cv::Mat1f &
 
     break;
   }
+
+  case ECC_MOTION_SCALED_EUCLIDEAN : {
+    // For the signs of angles see opencv doc
+    //  <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
+    // x' =  cos(theta) * x - sin(theta) * y + a02
+    // y' =  sin(theta) * x + cos(theta) * y + a12
+
+    // 0 1 2
+    // 3 4 5
+
+    double sa, ca, scale;
+
+    scale = hypot(W(0, 0), W(1, 0));
+
+    sincos(deltaP(0, 0) + asin(W(1, 0) / scale), &sa, &ca);
+    scale += deltaP(3, 0);
+
+    W(0, 0) = scale * ca;
+    W(0, 1) = -scale * sa;
+    W(0, 2) += deltaP(1, 0);
+
+    W(1, 0) = scale * sa;
+    W(1, 1) = scale * ca;
+    W(1, 2) += deltaP(2, 0);
+
+    if ( e ) {
+      const double a = sin(deltaP(0, 0));
+      *e = sqrt(square(deltaP(1, 0)) + square(deltaP(2, 0)) +
+          square(xmax * a) + square(ymax * a));
+    }
+
+    break;
+  }
+
+
 
   case ECC_MOTION_AFFINE : {
 
@@ -1461,10 +1546,11 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
     // 0 1 2
     // 3 4 5
 
-    float sa, ca;
+    double sa, ca;
     bool isok = false;
 
-    sincosf(deltaP(0, 0), &sa, &ca);
+    sincos(deltaP(0, 0), &sa, &ca);
+
 
     cv::Matx33f P(
         W(0, 0), W(0, 1), W(0, 2),
@@ -1484,7 +1570,7 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
     else {
       P = P * dP;
 
-      sincosf(P(1, 0), &sa, &ca);
+      sincos(P(1, 0), &sa, &ca);
 
       W(0,0) = ca;
       W(0,1) = -sa;
@@ -1492,6 +1578,62 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
 
       W(1,0) = sa;
       W(1,1) = ca;
+      W(1,2) = P(1,2);
+
+      if ( e ) {
+        const double a = sin(deltaP(0, 0));
+        *e = sqrt(square(deltaP(1, 0)) + square(deltaP(2, 0)) +
+            square(xmax * a) + square(ymax * a));
+      }
+    }
+
+    return isok;
+  }
+
+
+  case ECC_MOTION_SCALED_EUCLIDEAN : {
+    // https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html
+    // x' =  cos(theta) * x - sin(theta) * y + a02
+    // y' =  sin(theta) * x + cos(theta) * y + a12
+
+    // 0 1 2
+    // 3 4 5
+
+    double sa, ca, scale;
+    bool isok = false;
+
+    sincos(deltaP(0, 0), &sa, &ca);
+
+    cv::Matx33f P(
+        W(0, 0), W(0, 1), W(0, 2),
+        W(1, 0), W(1, 1), W(1, 2),
+        0,        0,        1   );
+
+    cv::Matx33f dP(
+        ca, -sa, deltaP(1, 0),
+        sa, ca, deltaP(2, 0),
+        0,   0,     1     );
+
+
+    dP = dP.inv(cv::DECOMP_LU, &isok);
+    if ( !isok ) {
+      CF_DEBUG("dP.inv() fails");
+    }
+    else {
+      P = P * dP;
+
+      scale = hypot(P(0, 0), P(1, 0));
+      sincos(P(1, 0) / scale, &sa, &ca);
+
+      // FIXME: Check if this is corect
+      scale = hypot(W(0, 0), W(1, 0)) - deltaP(3, 0);
+
+      W(0,0) = scale * ca;
+      W(0,1) = -scale * sa;
+      W(0,2) = P(0,2);
+
+      W(1,0) = scale * sa;
+      W(1,1) = scale * ca;
       W(1,2) = P(1,2);
 
       if ( e ) {
@@ -1851,6 +1993,18 @@ void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mas
 
 bool c_ecc_forward_additive::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
+  if ( referenceImage.channels() != 1 ) {
+    CF_ERROR("reference image must be single-channel (grayscale)");
+    return false;
+  }
+
+  if ( !referenceMask.empty() ) {
+    if ( referenceMask.type() != CV_8UC1 || referenceMask.size() != referenceImage.size() ) {
+      CF_ERROR("reference mask must CV_8UC1 type of the same size as input image");
+      return false;
+    }
+  }
+
   // convert reference image to float
   prepare_input_image(referenceImage, referenceMask, reference_smooth_sigma_, false, f, fmask);
 //  if ( pyramid_normalization_level_ > 0 ) {
@@ -1883,6 +2037,19 @@ bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage,
     cv::InputOutputArray inputOutputWarpMatrix,
     cv::InputArray inputMask)
 {
+  if ( inputImage.channels() != 1 ) {
+    CF_ERROR("input image must be single-channel (grayscale)");
+    return false;
+  }
+
+  if ( !inputMask.empty() ) {
+    if ( inputMask.type() != CV_8UC1 || inputMask.size() != inputImage.size() ) {
+      CF_ERROR("input mask must CV_8UC1 type of the same size as input image");
+      return false;
+    }
+  }
+
+
   num_iterations_ = -1;
   rho_ = -1;
   if ( eps_ <= 0 ) {
@@ -1962,7 +2129,7 @@ bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage,
     dp = (Hinv * ep) * (-update_step_scale_);
 
     // update warping matrix
-    if ( !update_warp_matrix(ecc_motion_type_, p, dp, &current_eps_, f.cols, f.rows) ) {
+    if ( !update_warp_matrix_forward_additive(ecc_motion_type_, p, dp, &current_eps_, f.cols, f.rows) ) {
       CF_ERROR("update_warp_matrix() fails");
       failed = true;
     }
@@ -2255,18 +2422,23 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
     cv::InputOutputArray inputOutputWarpMatrix,
     cv::InputArray inputMask, cv::InputArray referenceMask)
 {
-  cv::Mat1f warpMatrix;
+  cv::Mat1f T;
 
   if ( !method ) {
     CF_ERROR("Invalid call: No underlying align method specified");
     return false;
   }
 
+  if ( inputImage.channels() != 1 || referenceImage.channels() != 1 ) {
+    CF_ERROR("Both input and reference images must be single-channel (grayscale)");
+    return false;
+  }
+
 
   if ( !inputOutputWarpMatrix.empty() ) {
-    inputOutputWarpMatrix.getMat().convertTo(warpMatrix, warpMatrix.type());
+    inputOutputWarpMatrix.getMat().convertTo(T, T.type());
   }
-  else if ( (warpMatrix = createEyeTransform(method->motion_type())).empty() ) {
+  else if ( (T = createEyeTransform(method->motion_type())).empty() ) {
     CF_ERROR("createTransform(motion_type=%d) fails", method->motion_type() );
     return false;
   }
@@ -2286,7 +2458,7 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
 
   transform_pyramid_.clear();
   transform_pyramid_.reserve(10);
-  transform_pyramid_.emplace_back(warpMatrix);
+  transform_pyramid_.emplace_back(T);
 
   // Build pyramid
   while ( 42 ) {
@@ -2326,6 +2498,7 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
   for ( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
 
     cv::Mat1f & T = transform_pyramid_[i];
+    CF_DEBUG("H: i=%d T: %dx%d", i, T.rows, T.cols);
 
     if ( !method->align(image_pyramids_[0][i], image_pyramids_[1][i], T, mask_pyramids_[0][i], mask_pyramids_[1][i]) ) {
       CF_DEBUG("L[%2d] : eccAlign() fails: motion: %d size=%dx%d numiterations=%d rho=%g eps=%g", i,
@@ -2334,11 +2507,11 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
           method->num_iterations(), method->rho(), method->current_eps());
       continue;
     }
-    //        else {
-    //          CF_DEBUG("L[%2d] : eccAlign() OK: motion: %d size=%dx%d numiterations=%d rho=%g eps=%g", i, method->motion_type(),
-    //              image_pyramids_[0][i].cols, image_pyramids_[0][i].rows,
-    //              method->num_iterations(), method->rho(), method->current_eps());
-    //        }
+    else {
+      CF_DEBUG("L[%2d] : eccAlign() OK: motion: %d size=%dx%d numiterations=%d rho=%g eps=%g", i, method->motion_type(),
+          image_pyramids_[0][i].cols, image_pyramids_[0][i].rows,
+          method->num_iterations(), method->rho(), method->current_eps());
+    }
 
     if ( i == 0 ) {
       eccOk = true;

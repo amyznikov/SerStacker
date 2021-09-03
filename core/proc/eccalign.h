@@ -14,11 +14,12 @@
 
 enum ECC_MOTION_TYPE {
     ECC_MOTION_NONE = -1,
-    ECC_MOTION_TRANSLATION = cv::MOTION_TRANSLATION,
-    ECC_MOTION_EUCLIDEAN   = cv::MOTION_EUCLIDEAN,
-    ECC_MOTION_AFFINE      = cv::MOTION_AFFINE,
-    ECC_MOTION_HOMOGRAPHY  = cv::MOTION_HOMOGRAPHY,
-    ECC_MOTION_QUADRATIC   = ECC_MOTION_HOMOGRAPHY + 1,
+    ECC_MOTION_TRANSLATION = 0, // cv::MOTION_TRANSLATION, two parameters are estimated
+    ECC_MOTION_EUCLIDEAN   = 1, // cv::MOTION_EUCLIDEAN, Euclidean (rigid) transformation; three parameters are estimated
+    ECC_MOTION_SCALED_EUCLIDEAN = 2, // cv::MOTION_EUCLIDEAN + SCALE; four parameters are estimated
+    ECC_MOTION_AFFINE      = 3,  // cv::MOTION_AFFINE, six parameters are estimated
+    ECC_MOTION_HOMOGRAPHY  = 4, // cv::MOTION_HOMOGRAPHY, eight parameters are estimated
+    ECC_MOTION_QUADRATIC   = 5, // Quadratic form, 12 parameters are estimated
 };
 
 

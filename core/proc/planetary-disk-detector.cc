@@ -4,11 +4,10 @@
  *  Created on: Sep 13, 2019
  *      Author: amyznikov
  */
-#include "small-planetary-disk-detector.h"
+#include "planetary-disk-detector.h"
 #include <core/proc/threshold.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
-//#include <core/proc/estimate_noise.h>
 #include <core/debug.h>
 
 using namespace cv;
@@ -41,11 +40,6 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv
         [](const ss & p, const ss & n) {
           return p.area > n.area;
         });
-
-//    if ( cstats[0].area < 3 * cstats[1].area  ) {
-//      CF_DEBUG("Bad second component");
-//      return false;
-//    }
   }
 
   if ( cstats[0].area < 4 ) {
@@ -66,7 +60,7 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv
 }
 
 
-bool simple_small_planetary_disk_detector(cv::InputArray frame,
+bool simple_planetary_disk_detector(cv::InputArray frame,
     cv::InputArray mask,
     cv::Point2f * out_centrold,
     double gbsigma,
@@ -104,6 +98,7 @@ bool simple_small_planetary_disk_detector(cv::InputArray frame,
   }
 
   cv::compare(gray, 1e-2 + get_triangle_threshold(gray, mask), comp, cv::CMP_GT);
+  //cv::compare(gray, get_otsu_threshold(gray, mask), comp, cv::CMP_GT);
   morphological_smooth_close(comp, comp, cv::Mat1b(5, 5, 255), cv::BORDER_CONSTANT);
   if ( !mask.empty() ) {
     comp.setTo(0, ~mask.getMat());

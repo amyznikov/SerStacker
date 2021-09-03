@@ -1,5 +1,5 @@
 /*
- * small-planetary-disk-detector.h
+ * planetary-disk-detector.h
  *
  *  Created on: Sep 13, 2019
  *      Author: amyznikov
@@ -11,7 +11,7 @@
 #include <opencv2/opencv.hpp>
 
 
-bool simple_small_planetary_disk_detector(
+bool simple_planetary_disk_detector(
     cv::InputArray frame,
     cv::InputArray mask,
     cv::Point2f * centrold,

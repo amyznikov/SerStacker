@@ -6,7 +6,7 @@
  */
 
 #include "c_planetary_disk_registration.h"
-#include <core/proc/small-planetary-disk-detector.h>
+#include <core/proc/planetary-disk-detector.h>
 #include <core/debug.h>
 
 
@@ -94,7 +94,7 @@ bool c_planetary_disk_registration::create_feature_image(cv::InputArray src, cv:
 bool c_planetary_disk_registration::extract_reference_features(cv::InputArray feature_image,
     cv::InputArray feature_mask)
 {
-  if ( !simple_small_planetary_disk_detector(feature_image, feature_mask, &reference_centroid_) ) {
+  if ( !simple_planetary_disk_detector(feature_image, feature_mask, &reference_centroid_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }
@@ -130,7 +130,7 @@ bool c_planetary_disk_registration::estimate_feature_transform(cv::InputArray fe
     cv::InputArray feature_mask,
     cv::Mat1f * current_transform)
 {
-  if ( !simple_small_planetary_disk_detector(feature_image, feature_mask, &current_centroid_) ) {
+  if ( !simple_planetary_disk_detector(feature_image, feature_mask, &current_centroid_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

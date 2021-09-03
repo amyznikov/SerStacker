@@ -6,7 +6,7 @@
  */
 
 #include "c_planetary_disk_selection.h"
-#include <core/proc/small-planetary-disk-detector.h>
+#include <core/proc/planetary-disk-detector.h>
 #include <core/debug.h>
 
 
@@ -56,7 +56,7 @@ bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::Inp
     cv::Point2f & outputObjectLocation,
     cv::Rect & outputCropRect )
 {
-  if ( !simple_small_planetary_disk_detector(image, mask, &outputObjectLocation, 0, &outputCropRect) ) {
+  if ( !simple_planetary_disk_detector(image, mask, &outputObjectLocation, 0, &outputCropRect) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

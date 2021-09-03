@@ -25,26 +25,21 @@
 #include <core/proc/inpaint.h>
 #include <core/debug.h>
 
+
 int main(int argc, char *argv[])
 {
-  std::string image_file_name, mask_file_name;
-
-  cv::Mat image;
-  cv::Mat mask;
-  cv::Mat result_image;
+  cv::Mat image, mask;
+  std::string filename;
 
   for ( int i = 1; i < argc; ++i ) {
 
     if ( strcmp(argv[i], "--help") == 0 ) {
-      printf("Usage: alpha image_file_name mask_file_name\n");
+      printf("Usage: alpha <input-file-name.tiff>\n");
       return 0;
     }
 
-    if ( image_file_name.empty() ) {
-      image_file_name = argv[i];
-    }
-    else if ( mask_file_name.empty() ) {
-      mask_file_name = argv[i];
+    if ( filename.empty() ) {
+      filename = argv[i];
     }
     else {
       fprintf(stderr, "Invalid argument : %s\n", argv[i]);
@@ -52,34 +47,23 @@ int main(int argc, char *argv[])
     }
   }
 
-  if ( image_file_name.empty() || mask_file_name.empty()) {
-    fprintf(stderr, "Two input file name required\n");
+  if ( filename.empty() ) {
+    fprintf(stderr, "No input file name specified\n");
     return 1;
   }
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  if ( !load_image(image, image_file_name) ) {
-    CF_ERROR("load_image(image) fails");
-    return 1;
+
+  if ( !load_image(filename, image) ) {
+    CF_ERROR("load_tiff_image() fails");
   }
-
-  if ( !load_image(mask, mask_file_name) ) {
-    CF_ERROR("load_image(mask) fails");
-    return 1;
-  }
-
-  image.setTo(0, ~mask);
-  save_image(image, mask, "broken_image.tiff");
-
-  average_pyramid_inpaint(image, mask, result_image);
-
-  save_image(result_image, "result_image.tiff");
-
 
   return 0;
 }
+
+
 
 //static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
 //{

@@ -575,7 +575,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       }
     }
 
-    if ( load_image(cvimage, pathFileName.toStdString()) ) {
+    if ( load_image(pathFileName.toStdString(), cvimage) ) {
 
       if ( cvimage.channels() ==  2 ) {
         // interpret second channel as mask and ignore for preview,

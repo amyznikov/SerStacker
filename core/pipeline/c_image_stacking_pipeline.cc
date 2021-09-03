@@ -998,7 +998,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
   if ( !options_->input_options().missing_pixel_mask_filename.empty() ) {
 
-    if ( !load_image(missing_pixel_mask_, options_->input_options().missing_pixel_mask_filename) ) {
+    if ( !load_image(options_->input_options().missing_pixel_mask_filename, missing_pixel_mask_) ) {
       CF_ERROR("load_image('%s') fails.", options_->input_options().missing_pixel_mask_filename.c_str());
       return false;
     }

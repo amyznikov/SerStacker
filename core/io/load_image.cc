@@ -440,21 +440,88 @@ bool splitbgra(const cv::Mat & input_image, cv::Mat & output_image, cv::Mat * ou
 
 
 
-bool load_image(cv::Mat & dst, const std::string & filename)
+//bool load_image(cv::OutputArray dst, const std::string & filename)
+//{
+//  const std::string suffix = get_file_suffix(filename);
+//
+//  if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
+//    return (dst = cv::readOpticalFlow(filename)).data != nullptr;
+//  }
+//
+//  if ( strcasecmp(suffix.c_str(), ".tif") == 0 || strcasecmp(suffix.c_str(), ".tiff") == 0  ) {
+//    if ( load_tiff_image(dst, filename) ) {
+//      // CF_DEBUG("[%s] loaded with load_tiff_image()", filename.c_str());
+//      return true;
+//    }
+//  }
+//
+//  return (dst = cv::imread(filename, cv::IMREAD_UNCHANGED)).data != nullptr;
+//}
+
+bool load_image(const std::string & filename, cv::OutputArray output_image, cv::OutputArray output_mask)
 {
   const std::string suffix = get_file_suffix(filename);
 
   if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
-    return (dst = cv::readOpticalFlow(filename)).data != nullptr;
+
+    if ( output_mask.needed() ) {
+      output_mask.release();
+    }
+
+    if ( output_image.needed() ) {
+
+      output_image.assign(cv::readOpticalFlow(filename));
+      if ( output_image.empty() ) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
-  if ( strcasecmp(suffix.c_str(), ".tif") == 0 || strcasecmp(suffix.c_str(), ".tiff") == 0  ) {
-    if ( load_tiff_image(dst, filename) ) {
-      // CF_DEBUG("[%s] loaded with load_tiff_image()", filename.c_str());
-      return true;
+  if ( !output_mask.needed() ) {
+    if ( output_image.needed() ) {
+
+      if ( strcasecmp(suffix.c_str(), ".tif") == 0 || strcasecmp(suffix.c_str(), ".tiff") == 0 ) {
+        if ( !load_tiff_image(output_image.getMatRef(), filename) ) {
+          return false;
+        }
+      }
+      else {
+        output_image.assign(cv::imread(filename, cv::IMREAD_UNCHANGED));
+        if ( output_image.empty() ) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+
+  cv::Mat tmp_image, tmp_mask;
+
+  if ( strcasecmp(suffix.c_str(), ".tif") == 0 || strcasecmp(suffix.c_str(), ".tiff") == 0 ) {
+    if ( !load_tiff_image(tmp_image, filename) ) {
+      return false;
+    }
+  }
+  else {
+    if ( !(tmp_image = cv::imread(filename, cv::IMREAD_UNCHANGED)).data ) {
+      return false;
     }
   }
 
-  return (dst = cv::imread(filename, cv::IMREAD_UNCHANGED)).data != nullptr;
-}
+  if ( tmp_image.channels() == 4 || tmp_image.channels() == 2 ) { // assume the last channel is mask
+    splitbgra(tmp_image, tmp_image, &tmp_mask);
+  }
 
+  if ( output_image.needed() ) {
+    output_image.assign(tmp_image);
+  }
+  if ( output_mask.needed() ) {
+    output_mask.assign(tmp_mask);
+  }
+
+  return true;
+}

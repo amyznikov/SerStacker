@@ -11,8 +11,12 @@
 
 #include <opencv2/opencv.hpp>
 
-bool load_image(cv::Mat & dst,
-    const std::string & filename);
+//bool load_image(cv::OutputArray image,
+//    const std::string & filename);
+
+bool load_image(const std::string & filename,
+    cv::OutputArray output_image,
+    cv::OutputArray output_mask = cv::noArray());
 
 // Split BGRA to BGR and mask
 bool splitbgra(const cv::Mat & input_bgra_image,

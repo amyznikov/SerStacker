@@ -421,7 +421,7 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
   }
   else {
 
-    if ( !load_image(output_frame, filename_) ) {
+    if ( !load_image(filename_, output_frame) ) {
       return false;
     }
 

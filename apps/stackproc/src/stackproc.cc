@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
       get_file_suffix(output_file_name);
 
 
-  if ( !load_image(image, input_file_name) ) {
+  if ( !load_image(input_file_name, image) ) {
     CF_FATAL("cv::imread(%s) fails", input_file_name.c_str());
     return 1;
   }

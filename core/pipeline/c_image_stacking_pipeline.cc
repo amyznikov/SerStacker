@@ -403,7 +403,7 @@ static cv::Mat2f compute_turbulent_flow(
 
   // TODO: Extract also rotation component, because telescope mount sometimes could drift with FOV rotation as well.
 
-  if ( !getTranslationComponent(current_motion_type, current_transfrorm, &tx, &ty) ) {
+  if ( !getTranslationComponents(current_motion_type, current_transfrorm, &tx, &ty) ) {
     CF_ERROR("getTranslationComponent(current_motion_type=%d) fails", current_motion_type);
     return uv;
   }

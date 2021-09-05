@@ -845,7 +845,46 @@ cv::Mat1f createEuclideanTransform(double Cx, double Cy, double Tx, double Ty, d
   return T;
 }
 
+// Extract Euclidean components from (scaled) Euclidean transfom matrix T
+bool getEuclideanComponents(const cv::Mat1f & T,
+    double * outTx, double * outTy,
+    double * outScale,
+    double * outAngle)
+{
+  // check if this is equcledian transform matrix
 
+  if ( T.rows != 2 || T.cols != 3 ) {
+    CF_ERROR("Invalid matrix size for euclidean motion: must be 2x3");
+    return false;
+  }
+
+  if ( abs(abs(T(0, 0)) - abs(T(1, 1))) > 1e-5 || abs(abs(T(0, 1)) - abs(T(1, 0))) > 1e-5 ) {
+    CF_ERROR("Not an eucledian matrix: diagonal components not match");
+    return false;
+  }
+
+
+  const double scale =
+      0.5 * (hypot(T(0, 0), T(1, 0)) + hypot(T(0, 1), T(1, 1)));
+
+  if ( outScale ) {
+    *outScale = scale;
+  }
+
+  if ( outAngle ) {
+    *outAngle = asin(T(1, 0) / scale);
+  }
+
+  if ( outTx ) {
+    *outTx = T(0, 2);
+  }
+
+  if ( outTy ) {
+    *outTx = T(1, 2);
+  }
+
+  return true;
+}
 /*
  * Scale remap to account image size change
  */
@@ -1039,7 +1078,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
 
 // Extract translation component from current transform
-bool getTranslationComponent(int motion_type, const cv::Mat1f & T,
+bool getTranslationComponents(int motion_type, const cv::Mat1f & T,
     double * tx, double * ty)
 {
   switch ( motion_type ) {
@@ -1093,6 +1132,8 @@ bool getTranslationComponent(int motion_type, const cv::Mat1f & T,
 
   return true;
 }
+
+
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -1990,6 +2031,12 @@ void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mas
 
 
 ///////////////////////////////////////////////////////////////////////////////
+
+c_ecc_forward_additive::c_ecc_forward_additive(int ecc_motion_type)
+{
+  set_motion_type(ecc_motion_type);
+}
+
 
 bool c_ecc_forward_additive::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {

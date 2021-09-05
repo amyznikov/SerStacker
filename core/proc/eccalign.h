@@ -66,19 +66,28 @@ cv::Mat1f createEyeTransform(
 cv::Mat1f createTranslationTransform(
     double Tx, double Ty);
 
-/*
-*
-*  x' =  scale * ( cos(a) * (x-Cx) + sin(a) * (y-Cy)) + Tx
-*  y' =  scale * (-sin(a) * (x-Cx) + cos(a) * (y-Cy)) + Ty
-*
-*  For simple rotation arount of a point C call
-*   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
-*
-*/
+// Extract translation component from current transform
+bool getTranslationComponents(int ecc_motion_type, const cv::Mat1f & T,
+    double * tx, double * ty);
+
+
+//
+//  x' =  scale * ( cos(a) * (x-Cx) + sin(a) * (y-Cy)) + Tx
+//  y' =  scale * (-sin(a) * (x-Cx) + cos(a) * (y-Cy)) + Ty
+//
+//  For simple rotation arount of a point C call
+//   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
+//
 cv::Mat1f createEuclideanTransform(double Cx, double Cy,
     double Tx, double Ty,
     double scale,
     double angle);
+
+// Extract Euclidean components from (scaled) Euclidean transfom matrix T
+bool getEuclideanComponents(const cv::Mat1f & T,
+    double * Tx, double * Ty,
+    double * scale,
+    double * angle);
 
 
 // Scale given transform matrix to reflect image scale change
@@ -97,9 +106,6 @@ void scaleTransform(int ecc_motion_type,
 cv::Mat1f expandAffineTransform(const cv::Mat1f T,
     int ecc_motion_type);
 
-// Extract translation component from current transform
-bool getTranslationComponent(int ecc_motion_type, const cv::Mat1f & T,
-    double * tx, double * ty);
 
 
 // pyramide utils
@@ -204,6 +210,9 @@ class c_ecc_forward_additive
 public:
   typedef c_ecc_forward_additive this_class;
   typedef std::shared_ptr<this_class> ptr;
+
+
+  c_ecc_forward_additive(int ecc_motion_type = ECC_MOTION_AFFINE);
 
   bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray(), cv::InputArray templateMask = cv::noArray()) override;

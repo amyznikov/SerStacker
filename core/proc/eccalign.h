@@ -16,7 +16,7 @@ enum ECC_MOTION_TYPE {
     ECC_MOTION_NONE = -1,
     ECC_MOTION_TRANSLATION = 0, // cv::MOTION_TRANSLATION, two parameters are estimated
     ECC_MOTION_EUCLIDEAN   = 1, // cv::MOTION_EUCLIDEAN, Euclidean (rigid) transformation; three parameters are estimated
-    ECC_MOTION_SCALED_EUCLIDEAN = 2, // cv::MOTION_EUCLIDEAN + SCALE; four parameters are estimated
+    ECC_MOTION_EUCLIDEAN_SCALED = 2, // cv::MOTION_EUCLIDEAN + SCALE; four parameters are estimated
     ECC_MOTION_AFFINE      = 3,  // cv::MOTION_AFFINE, six parameters are estimated
     ECC_MOTION_HOMOGRAPHY  = 4, // cv::MOTION_HOMOGRAPHY, eight parameters are estimated
     ECC_MOTION_QUADRATIC   = 5, // Quadratic form, 12 parameters are estimated
@@ -54,6 +54,11 @@ bool createRemap(int motionType,
     const cv::Size & size,
     int ddepth = -1 );
 
+cv::Mat createRemap(int motionType,
+    cv::InputArray T,
+    const cv::Size & size,
+    int ddepth = -1 );
+
 void createIdentityRemap(cv::OutputArray rmap,
     const cv::Size & size,
     int ddepth = -1 );
@@ -63,8 +68,9 @@ cv::Mat1f createEyeTransform(
     int ecc_motion_type);
 
 // Initialize translation transform matrix of appropriate size for given motion type
-cv::Mat1f createTranslationTransform(
-    double Tx, double Ty);
+cv::Mat createTranslationTransform(
+    double Tx, double Ty,
+    int ddepth = CV_32F);
 
 // Extract translation component from current transform
 bool getTranslationComponents(int ecc_motion_type, const cv::Mat1f & T,
@@ -78,13 +84,14 @@ bool getTranslationComponents(int ecc_motion_type, const cv::Mat1f & T,
 //  For simple rotation arount of a point C call
 //   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
 //
-cv::Mat1f createEuclideanTransform(double Cx, double Cy,
+cv::Mat createEuclideanTransform(double Cx, double Cy,
     double Tx, double Ty,
     double scale,
-    double angle);
+    double angle,
+    int ddepth = CV_32F);
 
-// Extract Euclidean components from (scaled) Euclidean transfom matrix T
-bool getEuclideanComponents(const cv::Mat1f & T,
+// Extract Euclidean components from (scaled) Euclidean transfom matrix T of size 2x3
+bool getEuclideanComponents(cv::InputArray T,
     double * Tx, double * Ty,
     double * scale,
     double * angle);
@@ -106,13 +113,15 @@ void scaleTransform(int ecc_motion_type,
 cv::Mat1f expandAffineTransform(const cv::Mat1f T,
     int ecc_motion_type);
 
+//bool invertAffineTransform(cv::InputArray src,
+//    cv::OutputArray dst);
 
 
 // pyramide utils
-bool pdownscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_REPLICATE);
-bool pupscale(cv::Mat & image, cv::Size dstSize);
-bool pnormalize(cv::Mat1f & image, cv::InputArray _mask, int level, double regularization_term);
-void ecc_differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy);
+bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_REPLICATE);
+bool ecc_upscale(cv::Mat & image, cv::Size dstSize);
+bool ecc_normalize(cv::Mat1f & image, cv::InputArray _mask, int level, double regularization_term);
+void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddepth=-1);
 ///////////////////////////////////////////////////////////////////////////////
 
 

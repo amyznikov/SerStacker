@@ -241,13 +241,13 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
     cv::Mat mean, stdev;
     cv::Mat mask;
 
-    pdownscale(m, mean, ecc_normalization_scale(), cv::BORDER_REPLICATE);
-    pdownscale(m.mul(m), stdev, ecc_normalization_scale(), cv::BORDER_REPLICATE);
+    ecc_downscale(m, mean, ecc_normalization_scale(), cv::BORDER_REPLICATE);
+    ecc_downscale(m.mul(m), stdev, ecc_normalization_scale(), cv::BORDER_REPLICATE);
     cv::absdiff(stdev, mean.mul(mean), stdev);
     cv::sqrt(stdev, stdev);
 
-    pupscale(mean, m.size());
-    pupscale(stdev, m.size());
+    ecc_upscale(mean, m.size());
+    ecc_upscale(stdev, m.size());
 
     cv::add(stdev, ecc_normalization_noise(), stdev);
     cv::subtract(m, mean, m);

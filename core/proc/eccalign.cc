@@ -73,7 +73,7 @@ void filter2D(int stype, int dtype, int kernel_type,
 const struct ecc_motion_type_desc ecc_motion_types[] = {
     {"TRANSLATION", ECC_MOTION_TRANSLATION },
     {"EUCLIDEAN", ECC_MOTION_EUCLIDEAN},
-    {"SCALED_EUCLIDEAN", ECC_MOTION_SCALED_EUCLIDEAN},
+    {"SCALED_EUCLIDEAN", ECC_MOTION_EUCLIDEAN_SCALED},
     {"AFFINE", ECC_MOTION_AFFINE },
     {"HOMOGRAPHY", ECC_MOTION_HOMOGRAPHY},
     {"QUADRATIC", ECC_MOTION_QUADRATIC },
@@ -383,7 +383,7 @@ static void downstrike_uneven(cv::InputArray _src, cv::Mat & dst)
  * Five-point approximation to first order image derivative.
  *  <https://en.wikipedia.org/wiki/Numerical_differentiation>
  * */
-void ecc_differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy)
+void ecc_differentiate(cv::InputArray _src, cv::Mat & gx, cv::Mat & gy, int ddepth)
 {
   static thread_local const cv::Matx<float, 1, 5> K(
       (+1.f / 12),
@@ -392,8 +392,13 @@ void ecc_differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy)
       (+8.f / 12),
       (-1.f / 12));
 
-  doFilter2D(src, gx, -1, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  doFilter2D(src, gy, -1, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  if ( ddepth < 0 ) {
+    ddepth = std::max(_src.depth(), CV_32F);
+  }
+
+  const cv::Mat & src = _src.getMat();
+  doFilter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  doFilter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 }
 
 
@@ -401,7 +406,7 @@ void ecc_differentiate(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy)
 /*
  * Pyramid down to specific level
  */
-bool pdownscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
+bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
 {
   cv::pyrDown(src, dst, cv::Size(), border_mode);
   for ( int l = 1; l < level; ++l ) {
@@ -413,7 +418,7 @@ bool pdownscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
 /*
  * Pyramid up to specific size
  */
-bool pupscale(cv::Mat & image, cv::Size dstSize)
+bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
 {
   const cv::Size inputSize = image.size();
 
@@ -449,7 +454,7 @@ bool pupscale(cv::Mat & image, cv::Size dstSize)
  * Image normalizxation with zero mean and unity stdev,
  * use of pyramidal scaling for efficiency
  */
-bool pnormalize(cv::Mat1f & image, cv::InputArray _mask, int level, double regularization_term)
+bool ecc_normalize(cv::Mat1f & image, cv::InputArray _mask, int level, double regularization_term)
 {
   // stdev = sqrt( mean(image ^2) - mean(image)^2 )
 
@@ -458,13 +463,13 @@ bool pnormalize(cv::Mat1f & image, cv::InputArray _mask, int level, double regul
 
   const int pyramid_border_mode = cv::BORDER_REPLICATE;
 
-  pdownscale(image, mean, level, pyramid_border_mode);
-  pdownscale(image.mul(image), stdev, level, pyramid_border_mode);
+  ecc_downscale(image, mean, level, pyramid_border_mode);
+  ecc_downscale(image.mul(image), stdev, level, pyramid_border_mode);
   cv::absdiff(stdev, mean.mul(mean), stdev);
   cv::sqrt(stdev, stdev);
 
-  pupscale(mean, image.size());
-  pupscale(stdev, image.size());
+  ecc_upscale(mean, image.size());
+  ecc_upscale(stdev, image.size());
 
   cv::subtract(image, mean, image);
   cv::divide(image, stdev + regularization_term, image);
@@ -631,7 +636,7 @@ static bool fillRemap(int motionType, const cv::Mat_<T1> & a, cv::Mat_<cv::Vec<T
   case ECC_MOTION_TRANSLATION :
     return fillTranslateRemap_(a, map);
   case ECC_MOTION_EUCLIDEAN :
-  case ECC_MOTION_SCALED_EUCLIDEAN :
+  case ECC_MOTION_EUCLIDEAN_SCALED :
     case ECC_MOTION_AFFINE :
     return fillAffineRemap_(a, map);
     break;
@@ -646,16 +651,16 @@ static bool fillRemap(int motionType, const cv::Mat_<T1> & a, cv::Mat_<cv::Vec<T
 /*
  * Create remap of requested type for given parameters
  * */
-bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv::Size & size, int ddepth)
+bool createRemap(int motionType, cv::InputArray T, cv::OutputArray map, const cv::Size & size, int ddepth)
 {
-  if ( (A.depth() != CV_32F && A.depth() != CV_64F) || A.channels() != 1 ) {
+  if ( (T.depth() != CV_32F && T.depth() != CV_64F) || T.channels() != 1 ) {
     CF_ERROR("Invalid argument: warp matrix must be single channel floating point");
     return false;
   }
 
   switch ( motionType ) {
   case ECC_MOTION_TRANSLATION :
-    if ( A.size() == cv::Size(1, 2) || A.size() == cv::Size(2, 1) || (A.rows() == 2 && A.cols() >= 3) ) {
+    if ( T.size() == cv::Size(1, 2) || T.size() == cv::Size(2, 1) || (T.rows() == 2 && T.cols() >= 3) ) {
       break;
     }
     CF_ERROR("Invalid argument: warp matrix size must be 2x1, 1x2 or 2x3");
@@ -663,22 +668,22 @@ bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv
 
 
     case ECC_MOTION_EUCLIDEAN :
-    case ECC_MOTION_SCALED_EUCLIDEAN:
+    case ECC_MOTION_EUCLIDEAN_SCALED:
     case ECC_MOTION_AFFINE :
-    if ( A.size() != cv::Size(3, 2) ) {
+    if ( T.size() != cv::Size(3, 2) ) {
       CF_ERROR("Invalid argument: warp matrix size must be 2x3");
       return false;
     }
     break;
   case ECC_MOTION_HOMOGRAPHY :
-    if ( A.size() != cv::Size(3, 3) ) {
+    if ( T.size() != cv::Size(3, 3) ) {
       CF_ERROR("Invalid argument: warp matrix size must be 3x3");
       return false;
     }
     break;
 
   case ECC_MOTION_QUADRATIC :
-    if ( A.size() != cv::Size(6, 2) ) {
+    if ( T.size() != cv::Size(6, 2) ) {
       CF_ERROR("Invalid argument: warp matrix size must be 2x6");
       return false;
     }
@@ -705,9 +710,9 @@ bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv
     ddepth = CV_32F;
   }
 
-  switch ( A.depth() ) {
+  switch ( T.depth() ) {
   case CV_32F : {
-    const cv::Mat_<float> a = A.getMat();
+    const cv::Mat_<float> a = T.getMat();
     switch ( ddepth ) {
     case CV_32F : {
       cv::Mat_<cv::Vec<float, 2>> m = (map.create(size, CV_MAKETYPE(ddepth,2)), map.getMatRef());
@@ -721,7 +726,7 @@ bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv
     break;
   }
   case CV_64F : {
-    const cv::Mat_<double> a = A.getMat();
+    const cv::Mat_<double> a = T.getMat();
     switch ( ddepth ) {
     case CV_32F : {
       cv::Mat_<cv::Vec<float, 2>> m = (map.create(size, CV_MAKETYPE(ddepth,2)), map.getMatRef());
@@ -739,6 +744,14 @@ bool createRemap(int motionType, cv::InputArray A, cv::OutputArray map, const cv
   return false;
 }
 
+cv::Mat createRemap(int motionType, cv::InputArray T, const cv::Size & size, int ddepth)
+{
+  cv::Mat m;
+  if ( createRemap(motionType, T, m, size, ddepth) ) {
+    return m;
+  }
+  return cv::Mat();
+}
 
 /*
  * Create identity remap of requested type
@@ -792,7 +805,7 @@ cv::Mat1f createEyeTransform(int ecc_motion_type)
   case ECC_MOTION_TRANSLATION :
     return cv::Mat1f(2, 1, 0.f);
   case ECC_MOTION_EUCLIDEAN :
-  case ECC_MOTION_SCALED_EUCLIDEAN:
+  case ECC_MOTION_EUCLIDEAN_SCALED:
   case ECC_MOTION_AFFINE :
     return cv::Mat1f::eye(2, 3);
   case ECC_MOTION_HOMOGRAPHY :
@@ -808,14 +821,28 @@ cv::Mat1f createEyeTransform(int ecc_motion_type)
 /*
  * Initialize translation transform matrix of appropriate size for given motion type
  */
-cv::Mat1f createTranslationTransform(double Tx, double Ty)
+template<class T>
+static cv::Mat createTranslationTransform_(double Tx, double Ty)
 {
-  cv::Mat1f T(2, 1);
+  cv::Mat_<T> M(2, 1);
 
-  T[0][0] = Tx;
-  T[1][0] = Ty;
+  M[0][0] = (T) Tx;
+  M[1][0] = (T) Ty;
 
-  return T;
+  return M;
+}
+
+cv::Mat createTranslationTransform(double Tx, double Ty, int ddepth /*= CV_32F*/)
+{
+  switch ( ddepth ) {
+  case CV_32F :
+    return createTranslationTransform_<float>(Tx, Ty);
+  case CV_64F :
+    return createTranslationTransform_<double>(Tx, Ty);
+  }
+
+  CF_DEBUG("Invalid ddepth=%d specified. Only CV_32F and CV_64F supported", ddepth);
+  return cv::Mat();
 }
 
 /*
@@ -827,64 +854,106 @@ cv::Mat1f createTranslationTransform(double Tx, double Ty)
 *   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
 *
 */
-cv::Mat1f createEuclideanTransform(double Cx, double Cy, double Tx, double Ty, double scale, double angle)
+
+template<class T>
+static cv::Mat createEuclideanTransform_(double Cx, double Cy, double Tx, double Ty, double scale, double angle)
 {
-  cv::Mat1f T(2, 3);
+  cv::Mat_<T> M(2, 3);
   double sa, ca;
 
   sincos(angle, &sa, &ca);
 
-  T[0][0] = scale * ca;
-  T[0][1] = scale * sa;
-  T[0][2] = Tx - scale * (ca * Cx + sa * Cy);
+  M[0][0] = scale * ca;
+  M[0][1] = scale * sa;
+  M[0][2] = Tx - scale * (ca * Cx + sa * Cy);
 
-  T[1][0] = -scale * sa;
-  T[1][1] = scale * ca;
-  T[1][2] = Ty + scale * (sa *Cx - ca * Cy);
+  M[1][0] = -scale * sa;
+  M[1][1] = scale * ca;
+  M[1][2] = Ty + scale * (sa * Cx - ca * Cy);
 
-  return T;
+  return M;
 }
 
-// Extract Euclidean components from (scaled) Euclidean transfom matrix T
-bool getEuclideanComponents(const cv::Mat1f & T,
+cv::Mat createEuclideanTransform(double Cx, double Cy, double Tx, double Ty, double scale, double angle,
+    int ddepth /*= CV_32F*/)
+{
+  switch ( ddepth ) {
+  case CV_32F :
+    return createEuclideanTransform_<float>(Cx, Cy, Tx, Ty, scale, angle);
+  case CV_64F :
+    return createEuclideanTransform_<double>(Cx, Cy, Tx, Ty, scale, angle);
+  }
+
+  CF_DEBUG("Invalid ddepth=%d specified. Only CV_32F and CV_64F supported", ddepth);
+  return cv::Mat();
+}
+
+template<class T>
+static bool getEuclideanComponents_(const cv::Mat & _M,
     double * outTx, double * outTy,
     double * outScale,
     double * outAngle)
 {
+  const cv::Mat_<T> M = _M;
+
   // check if this is equcledian transform matrix
 
-  if ( T.rows != 2 || T.cols != 3 ) {
+  if ( M.rows != 2 || M.cols != 3 ) {
     CF_ERROR("Invalid matrix size for euclidean motion: must be 2x3");
     return false;
   }
 
-  if ( abs(abs(T(0, 0)) - abs(T(1, 1))) > 1e-5 || abs(abs(T(0, 1)) - abs(T(1, 0))) > 1e-5 ) {
+  if ( abs(abs(M(0, 0)) - abs(M(1, 1))) > 1e-5 || abs(abs(M(0, 1)) - abs(M(1, 0))) > 1e-5 ) {
     CF_ERROR("Not an eucledian matrix: diagonal components not match");
     return false;
   }
 
 
   const double scale =
-      0.5 * (hypot(T(0, 0), T(1, 0)) + hypot(T(0, 1), T(1, 1)));
+      0.5 * (hypot(M(0, 0), M(1, 0)) + hypot(M(0, 1), M(1, 1)));
 
   if ( outScale ) {
     *outScale = scale;
   }
 
   if ( outAngle ) {
-    *outAngle = asin(T(1, 0) / scale);
+    *outAngle = -asin(M(1, 0) / scale);
   }
 
   if ( outTx ) {
-    *outTx = T(0, 2);
+    *outTx = M(0, 2);
   }
 
   if ( outTy ) {
-    *outTx = T(1, 2);
+    *outTy = M(1, 2);
   }
 
   return true;
 }
+
+// Extract Euclidean components from (scaled) Euclidean transfom matrix M of size 2x3
+bool getEuclideanComponents(cv::InputArray M,
+    double * outTx, double * outTy,
+    double * outScale,
+    double * outAngle)
+{
+  switch ( M.type() ) {
+  case CV_32FC1 :
+    return getEuclideanComponents_<float>(M.getMat(),
+        outTx, outTy,
+        outScale,
+        outAngle);
+  case CV_64FC1 :
+    return getEuclideanComponents_<double>(M.getMat(),
+        outTx, outTy,
+        outScale,
+        outAngle);
+  }
+
+  CF_ERROR("Invalid matrix type=%d specified: must be CV_32FC1 or CV_64FC1", M.type());
+  return false;
+}
+
 /*
  * Scale remap to account image size change
  */
@@ -911,7 +980,7 @@ void scaleTransform(int motion_type, cv::Mat1f & T, double scale)
     break;
 
   case ECC_MOTION_EUCLIDEAN :
-    case ECC_MOTION_SCALED_EUCLIDEAN :
+    case ECC_MOTION_EUCLIDEAN_SCALED :
     case ECC_MOTION_AFFINE :
     T[0][2] *= scale;
     T[1][2] *= scale;
@@ -971,7 +1040,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
     case ECC_MOTION_AFFINE :
     case ECC_MOTION_EUCLIDEAN :
-    case ECC_MOTION_SCALED_EUCLIDEAN:
+    case ECC_MOTION_EUCLIDEAN_SCALED:
       TT = cv::Mat1f::eye(2, 3);
       TT[0][2] = T[0][0];
       TT[1][2] = T[0][1];
@@ -1007,7 +1076,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
     case ECC_MOTION_AFFINE :
     case ECC_MOTION_EUCLIDEAN :
-    case ECC_MOTION_SCALED_EUCLIDEAN:
+    case ECC_MOTION_EUCLIDEAN_SCALED:
       TT = cv::Mat1f::eye(2, 3);
       TT[0][2] = T[0][0];
       TT[1][2] = T[1][0];
@@ -1044,7 +1113,7 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
     case ECC_MOTION_AFFINE :
     case ECC_MOTION_EUCLIDEAN :
-    case ECC_MOTION_SCALED_EUCLIDEAN:
+    case ECC_MOTION_EUCLIDEAN_SCALED:
       T.copyTo(TT);
       break;
 
@@ -1076,6 +1145,81 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
   return TT;
 }
 
+//template<class T1, class T2>
+//static bool invertAffineTransform_(cv::InputArray src, cv::OutputArray dst)
+//{
+//  if ( src.rows() != 2 || src.cols() != 3 ) {
+//    CF_ERROR("Invalid input matrix specified: must be 2x3 size of CV_32FC1 or CV_64FC1 type");
+//    return false;
+//  }
+//
+//  if ( dst.fixedSize() ) {
+//    if ( dst.rows() != 2 || dst.cols() != 3 ) {
+//      CF_ERROR("Invalid destination matrix specified: must be 2x3 size of CV_32FC1 or CV_64FC1 type");
+//      return false;
+//    }
+//  }
+//
+//  const cv::Mat_<T1> RT = src.getMat();
+//
+//  cv::Mat_<T1> R(2, 2);
+//  cv::Vec<T1, 2> V;
+//
+//  R(0,0) = RT(0,0);
+//  R(0,0) = RT(0,1);
+//  R(1,0) = RT(1,0);
+//  R(1,1) = RT(1,1);
+//  V(0) = RT(0, 2);
+//  V(1) = RT(1, 2);
+//
+//  R = R.inv();
+//  V = -R * V;
+//
+//  dst.create(2, 3, cv::DataType<T2>::depth);
+//  cv::Mat_<T2> RTi = dst.getMatRef();
+//
+//  RTi(0,0) = R(0,0);
+//  RTi(0,1) = R(0,1);
+//  RTi(0,2) = V(0);
+//
+//  RTi(1,0) = R(1,0);
+//  RTi(1,1) = R(1,1);
+//  RTi(1,2) = V(1);
+//
+//  return true;
+//}
+//
+//bool invertAffineTransform(cv::InputArray src, cv::OutputArray dst)
+//{
+//  const int srctype = src.type();
+//  const int dsttype = dst.fixedType() ? dst.type() : src.type();
+//
+//  switch ( srctype ) {
+//
+//  case CV_32F :
+//    switch ( dsttype ) {
+//    case CV_32F :
+//      return invertAffineTransform_<float, float>(src, dst);
+//    case CV_64F :
+//      return invertAffineTransform_<float, double>(src, dst);
+//    }
+//    break;
+//
+//  case CV_64F :
+//    switch ( dsttype ) {
+//    case CV_32F :
+//      return invertAffineTransform_<double, float>(src, dst);
+//    case CV_64F :
+//      return invertAffineTransform_<double, double>(src, dst);
+//    }
+//    break;
+//  }
+//
+//  CF_ERROR("Invalid input / output matrix specified: must be 2x3 size of CV_32FC1 or CV_64FC1 type");
+//  return false;
+//}
+//
+
 
 // Extract translation component from current transform
 bool getTranslationComponents(int motion_type, const cv::Mat1f & T,
@@ -1097,7 +1241,7 @@ bool getTranslationComponents(int motion_type, const cv::Mat1f & T,
     break;
 
   case ECC_MOTION_EUCLIDEAN :
-  case ECC_MOTION_SCALED_EUCLIDEAN:
+  case ECC_MOTION_EUCLIDEAN_SCALED:
   case ECC_MOTION_AFFINE :
   case ECC_MOTION_QUADRATIC :
     if ( T.rows == 2 && T.cols >= 3 ) {
@@ -1177,7 +1321,7 @@ static int init_warp_matrix(int motion_type, cv::InputOutputArray warpMatrix)
     numberOfParameters = 3;
     break;
 
-  case ECC_MOTION_SCALED_EUCLIDEAN:
+  case ECC_MOTION_EUCLIDEAN_SCALED:
     if ( warpMatrix.size() != cv::Size(3, 2) ) {
       CF_FATAL("Warp matrix must be single-channel floating-point 2x3 matrix");
       return -1;
@@ -1273,7 +1417,7 @@ static bool compute_jacobian(int motion_type, const cv::Mat1f & gx, const cv::Ma
   }
 
 
-  case ECC_MOTION_SCALED_EUCLIDEAN : {
+  case ECC_MOTION_EUCLIDEAN_SCALED : {
     // For the signs of angles see opencv doc
     //  <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
     // x' =  scale * cos(theta) * x - scale * sin(theta) * y + a02
@@ -1443,7 +1587,7 @@ static bool update_warp_matrix_forward_additive(int motion_type, cv::Mat1f & W, 
     break;
   }
 
-  case ECC_MOTION_SCALED_EUCLIDEAN : {
+  case ECC_MOTION_EUCLIDEAN_SCALED : {
     // For the signs of angles see opencv doc
     //  <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
     // x' =  cos(theta) * x - sin(theta) * y + a02
@@ -1632,7 +1776,7 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
   }
 
 
-  case ECC_MOTION_SCALED_EUCLIDEAN : {
+  case ECC_MOTION_EUCLIDEAN_SCALED : {
     // https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html
     // x' =  cos(theta) * x - sin(theta) * y + a02
     // y' =  sin(theta) * x + cos(theta) * y + a12
@@ -3201,8 +3345,8 @@ void c_ecch_flow::pnormalize(cv::InputArray _src, cv::OutputArray dst, double no
     cv::Mat src, mean;
     src = _src.getMat();
     const int nscale = std::max(normalization_scale_, support_scale_);
-    pdownscale(src, mean, nscale, cv::BORDER_REPLICATE);
-    pupscale(mean, src.size());
+    ecc_downscale(src, mean, nscale, cv::BORDER_REPLICATE);
+    ecc_upscale(mean, src.size());
     cv::subtract(src, mean, dst);
 
 //    cv::Mat src, mean, stdev;
@@ -3360,7 +3504,7 @@ bool c_ecch_flow::compute_uv(pyramid_entry & e,
     cv::multiply(outuv, update_multiplier_, outuv);
   }
 
-  pupscale(outuv, I1.size());
+  ecc_upscale(outuv, I1.size());
   if ( outuv.size() != I1.size() ) {
     CF_ERROR("Invalid outuv size: %dx%d must be %dx%d", outuv.cols, outuv.rows, I1.cols, I1.rows);
     return false;

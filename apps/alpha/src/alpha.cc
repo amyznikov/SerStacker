@@ -28,24 +28,6 @@
 #include <core/debug.h>
 
 
-static void crop_ellipse(const cv::Mat & src_image, const cv::RotatedRect & erc, cv::Rect * rc)
-{
-  cv::Rect boundingRect = erc.boundingRect();
-  if ( boundingRect.x < 0 ) {
-    boundingRect.x = 0;
-  }
-  if ( boundingRect.y < 0 ) {
-    boundingRect.y = 0;
-  }
-  if ( boundingRect.x + boundingRect.width >= src_image.cols ) {
-    boundingRect.width = src_image.cols - boundingRect.x;
-  }
-  if ( boundingRect.y + boundingRect.height >= src_image.rows ) {
-    boundingRect.height = src_image.rows - boundingRect.y;
-  }
-
-  * rc = boundingRect;
-}
 
 
 int main(int argc, char *argv[])
@@ -130,7 +112,7 @@ int main(int argc, char *argv[])
 
     save_image(tmp, ssprintf("ellipse.%d.tiff", i));
 
-    crop_ellipse(images[i], erc[i], &crops[i]);
+    get_jovian_ellipse_bounding_box(images[i].size(), erc[i], &crops[i]);
     erc[i].center.x -= crops[i].x;
     erc[i].center.y -= crops[i].y;
 
@@ -172,162 +154,13 @@ int main(int argc, char *argv[])
   save_image(wmask, ssprintf("emask.tiff"));
 
   cv::remap(input_image, tmp, ermap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(tmp, ssprintf("ellipse.remapped.%d.tiff", 0));
+  save_image(tmp, ssprintf("crop.remapped.%d.tiff", 0));
 
   return 0;
 }
 
 
 
-//static bool fit_ellipse(const cv::Mat & image, cv::RotatedRect * rc)
-//{
-//  cv::Point2f centrold;
-//  cv::Rect component_rect;
-//  cv::Mat1b component_mask;
-//  cv::Mat component_edge;
-//  std::vector<cv::Point2f> edge_points;
-//  cv::Mat draw;
-//
-//  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
-//    CF_ERROR("simple_small_planetary_disk_detector() fails");
-//    return false;
-//  }
-//
-//  //save_image(component_mask, "raw_component_mask.png");
-//  //geo_fill_holes(component_mask, component_mask, 8);
-//  save_image(component_mask, "closed_component_mask.png");
-//
-//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-//  cv::findNonZero(component_edge, edge_points);
-//
-//  save_image(component_edge, "closed_component_edge.png");
-//
-//  //*rc = cv::fitEllipse(edge_points);
-//  *rc = cv::fitEllipseAMS(edge_points);
-//
-//  CF_DEBUG("ellipse: center=(%g %g) angle=%g", rc->center.x, rc->center.y, rc->angle);
-//
-//  normalize_minmax(image, draw, 0, 255);
-//  draw.convertTo(draw, CV_8U);
-//  if( draw.channels() != 3 ) {
-//    cv::cvtColor(draw, draw, cv::COLOR_GRAY2BGR);
-//  }
-//
-//  draw.setTo(cv::Scalar(0, 0, 255), component_edge);
-//  cv::ellipse(draw, *rc, cv::Scalar(0, 255, 0), 1, cv::LINE_8);
-//
-//  double measured_polar_semi_axis = 0.5 * std::min(rc->size.width, rc->size.height);
-//  double measured_equatorial_semi_axis = 0.5 * std::max(rc->size.width, rc->size.height);
-//
-//  if( true ) {
-//    double angle1 = rc->angle * CV_PI / 180;
-//    double angle2 = rc->angle * CV_PI / 180 - CV_PI / 2;
-//
-//    cv::Point2f pt1(-measured_polar_semi_axis * cos(angle1), -measured_polar_semi_axis * sin(angle1));
-//    cv::Point2f pt2(measured_polar_semi_axis * cos(angle1), measured_polar_semi_axis * sin(angle1));
-//
-//    cv::Point2f pt3(-measured_polar_semi_axis * cos(angle2), -measured_polar_semi_axis * sin(angle2));
-//    cv::Point2f pt4(measured_polar_semi_axis * cos(angle2), measured_polar_semi_axis * sin(angle2));
-//
-//    cv::line(draw, rc->center + pt1, rc->center + pt2, cv::Scalar(0, 255, 255), 1, cv::LINE_8);
-//    cv::line(draw, rc->center + pt3, rc->center + pt4, cv::Scalar(0, 255, 255), 1, cv::LINE_8);
-//  }
-//
-//  save_image(draw, "fitEllipse.png");
-//
-//  //  double jovian_axis_ratio = 71.492 / 66.854;
-//  //  double masured_axis_ratio = measured_equatorial_semi_axis / measured_polar_semi_axis;
-//  //  CF_DEBUG("jovian_axis_ratio=%g masured_axis_ratio=%g", jovian_axis_ratio, masured_axis_ratio);
-//  //  return 0;
-//
-//  return true;
-//}
-//
-//static bool fit_jovian_ellipse_ecc(const cv::Mat & image, cv::RotatedRect * rc, int index)
-//{
-//  cv::Point2f centrold;
-//  cv::Rect component_rect;
-//  cv::Mat1b component_mask;
-//  cv::Mat component_edge;
-//  std::vector<cv::Point2f> edge_points;
-//  cv::Mat draw;
-//
-//  if( !simple_small_planetary_disk_detector(image, cv::noArray(), &centrold, 1, &component_rect, &component_mask) ) {
-//    CF_ERROR("simple_small_planetary_disk_detector() fails");
-//    return false;
-//  }
-//
-//  geo_fill_holes(component_mask, component_mask, 8);
-//  save_image(component_mask, ssprintf("closed_component_mask.%d.png", index));
-//
-//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-//  cv::findNonZero(component_edge, edge_points);
-//
-//  save_image(component_edge, ssprintf("closed_component_edge.%d.png", index));
-//
-//  //*rc = cv::fitEllipse(edge_points);
-//  *rc = cv::fitEllipseAMS(edge_points);
-//
-//
-//  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
-//
-//  double rcA = std::max(rc->size.width, rc->size.height);
-//  double rcB = std::min(rc->size.width, rc->size.height);
-//  double rcR = 0.5 * (rcA + rcB);
-//
-////  rc->size.width = rcR;
-////  rc->size.height = rcR * jovian_polar_to_equatorial_axis_ratio;
-//
-//  cv::Mat1f artifical_ellipse(component_rect.size(), 0);
-//
-//  cv::ellipse(artifical_ellipse, *rc, 255, -1, cv::LINE_AA);
-//  save_image(artifical_ellipse, ssprintf("artifical_ellipse.%d.png", index));
-//
-//
-//  return true;
-//}
-//
-//static bool createEllipseRotationRemap(cv::Mat2f & remap, cv::Mat1f & mask, const cv::Size & size,
-//    double Cx, double Cy, double a, double b, double l)
-//{
-//  remap.create(size);
-//  mask.create(size);
-//  mask.setTo(0);
-//
-//  const double c = a / b;
-//
-//
-//  for ( int y = 0; y < size.height; ++y ) {
-//    double yy = y - Cy;
-//
-//    for ( int x = 0; x < size.width; ++x ) {
-//      double xx = x - Cx;
-//
-//      if ( (xx / a) * (xx / a) + (yy / b) * (yy / b) >= 0.95 ) {
-//        remap[y][x][0] = -1;
-//        remap[y][x][1] = -1;
-//      }
-//      else {
-//        double lambda = asin(xx / (c * sqrt(b * b - yy * yy))) + l;
-//        if ( (lambda <= - 0.8 * CV_PI / 2) || (lambda >= CV_PI / 2) ) {
-//          remap[y][x][0] = -1;
-//          remap[y][x][1] = -1;
-//        }
-//        else {
-//          remap[y][x][0] = sin(lambda) * c * sqrt(b * b - yy * yy) + Cx;
-//          remap[y][x][1] = y;
-//          mask[y][x] = cos(0.5 * CV_PI * xx / ((c * sqrt(b * b - yy * yy)))) * cos(0.5 * CV_PI * yy / b) ;
-//          //mask[y][x] *= mask[y][x];
-//        }
-//
-//      }
-//    }
-//  }
-//
-//  return true;
-//}
-//
-//
 //
 //static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
 //{
@@ -354,8 +187,6 @@ int main(int argc, char *argv[])
 //  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
 //  cv::subtract(src, mean, mean);
 //  cv::multiply(mean, 1./sv[0], dst);
-//
-//
 //}
 //
 //int main(int argc, char *argv[])

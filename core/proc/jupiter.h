@@ -94,4 +94,10 @@ void create_jovian_rotation_remap(double rotation_angle,
     cv::Mat1f & output_wmask);
 
 
+/**
+ *
+ */
+void get_jovian_ellipse_bounding_box(const cv::Size & image_size,
+    const cv::RotatedRect & jovian_ellipse,
+    cv::Rect * bbox);
 #endif /* __jupiter_h__ */

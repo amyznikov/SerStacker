@@ -319,3 +319,23 @@ void create_jovian_rotation_remap(double rotation_angle,
       });
 
 }
+
+void get_jovian_ellipse_bounding_box(const cv::Size & image_size, const cv::RotatedRect & ellipse, cv::Rect * bbox)
+{
+  cv::Rect boundingRect = ellipse.boundingRect();
+  if ( boundingRect.x < 0 ) {
+    boundingRect.x = 0;
+  }
+  if ( boundingRect.y < 0 ) {
+    boundingRect.y = 0;
+  }
+  if ( boundingRect.x + boundingRect.width >= image_size.width ) {
+    boundingRect.width = image_size.width - boundingRect.x;
+  }
+  if ( boundingRect.y + boundingRect.height >= image_size.height ) {
+    boundingRect.height = image_size.height - boundingRect.y;
+  }
+
+  * bbox = boundingRect;
+}
+

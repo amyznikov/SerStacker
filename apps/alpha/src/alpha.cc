@@ -17,440 +17,46 @@
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
-#include <core/proc/planetary-disk-detector.h>
+#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/planetary-disk-rotation.h>
 #include <core/proc/jupiter.h>
 #include <core/settings.h>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/proc/inpaint.h>
+#include <tbb/tbb.h>
 #include <core/debug.h>
 
-//
-//static bool fitJovianEllipseECC(const cv::Mat & image, cv::RotatedRect * rc, int debug_index)
-//{
-//  cv::Point2f centroid;
-//  cv::Rect component_rect;
-//  cv::Mat component_mask;
-//  cv::Mat component_edge;
-//  std::vector<cv::Point2f> component_edge_points;
-//  cv::Mat draw;
-//
-//  if( !simple_planetary_disk_detector(image, cv::noArray(), &centroid, 1, &component_rect, &component_mask) ) {
-//    CF_ERROR("simple_small_planetary_disk_detector() fails");
-//    return false;
-//  }
-//
-//  geo_fill_holes(component_mask, component_mask, 8);
-//  save_image(component_mask, ssprintf("closed_component_mask.%d.png", debug_index));
-//
-//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-//  cv::findNonZero(component_edge, component_edge_points);
-//
-//  save_image(component_edge, ssprintf("closed_component_edge.%d.png", debug_index));
-//
-//  //*rc = cv::fitEllipse(edge_points);
-//  *rc = cv::fitEllipseAMS(component_edge_points);
-//
-//
-//  CF_DEBUG("angle=%g", rc->angle);
-//
-//  static constexpr double jovian_equatorial_to_polar_to_axis_ratio = 71.492 / 66.854;
-//
-//  double rcA = std::max(rc->size.width, rc->size.height);
-//  double rcB = std::min(rc->size.width, rc->size.height);
-//  double rcR = 0.5 * (rcA + rcB);
-//  rc->size.height = rcR;
-//  rc->size.width = rcR * jovian_equatorial_to_polar_to_axis_ratio;
-//  rc->angle -= 90;
-//
-//  cv::Mat1f artifical_ellipse(image.size(), 0);
-//  cv::ellipse(artifical_ellipse, *rc, 1.0, -1, cv::LINE_8);
-//  cv::GaussianBlur(artifical_ellipse, artifical_ellipse, cv::Size(), 2);
-//  save_image(artifical_ellipse, ssprintf("artifical_ellipse.%d.tiff", debug_index));
-//
-//  cv::Mat gray_image(image.size(), 0), gx, gy;
-//  image.copyTo(gray_image, component_mask);
-//  if ( gray_image.channels() == 3 ) {
-//    cv::cvtColor(gray_image, gray_image, cv::COLOR_BGR2GRAY);
-//  }
-//
-//  ecc_differentiate(gray_image, gx, gy);
-//  cv::magnitude(gx, gy, gray_image);
-//  save_image(gray_image, ssprintf("gray_image.%d.tiff", debug_index));
-//
-//  {
-//    cv::Mat tmp;
-//    cv::add(artifical_ellipse, gray_image, tmp);;
-//    save_image(tmp, ssprintf("compose.before.%d.tiff", debug_index));
-//  }
-//
-//
-//  c_ecc_forward_additive ecc(ECC_MOTION_SCALED_EUCLIDEAN);
-//  c_ecc_pyramide_align ecch(&ecc);
-//  cv::Mat1f T = createEyeTransform(ecc.motion_type());
-//
-//  ecc.set_min_rho(0.1);
-//
-//  if (!ecch.align(artifical_ellipse, gray_image, T) ) {
-//    CF_ERROR("ecch.align() fails");
-//    //return false;
-//  }
-//
-//  CF_DEBUG("T: {\n"
-//      "  %+15.6f %+15.6f %+15.6f\n"
-//      "  %+15.6f %+15.6f %+15.6f\n"
-//      "}\n",
-//      T[0][0], T[0][1], T[0][2],
-//      T[1][0], T[1][1], T[1][2]);
-//
-//
-//  cv::remap(artifical_ellipse, artifical_ellipse, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR);
-//  save_image(artifical_ellipse, ssprintf("artifical_ellipse_remapped.%d.tiff", debug_index));
-//
-//  {
-//    cv::Mat tmp;
-//    cv::add(artifical_ellipse, gray_image, tmp);;
-//    save_image(tmp, ssprintf("compose.after.%d.tiff", debug_index));
-//  }
-//
-//
-////  image.copyTo(draw);
-////  draw.setTo(CV_RGB(0,0,1), component_edge);
-////  save_image(draw, ssprintf("component_edge_draw.%d.tiff", debug_index));
-////
-////
-////
-////  image.copyTo(draw);
-////  cv::ellipse(draw, *rc, 1.0, 1, cv::LINE_8);
-////  save_image(draw, ssprintf("artifical_ellipse_draw.%d.tiff", debug_index));
-////
-////  cv::cvtColor(component_mask, component_mask, cv::COLOR_GRAY2BGR);
-////  cv::ellipse(component_mask, *rc, CV_RGB(0,0, 255), 1, cv::LINE_8);
-////  save_image(component_mask, ssprintf("component_mask_draw.%d.png", debug_index));
-//
-//  return true;
-//}
 
+static void crop_ellipse(const cv::Mat & src_image, const cv::RotatedRect & erc, cv::Rect * rc)
+{
+  cv::Rect boundingRect = erc.boundingRect();
+  if ( boundingRect.x < 0 ) {
+    boundingRect.x = 0;
+  }
+  if ( boundingRect.y < 0 ) {
+    boundingRect.y = 0;
+  }
+  if ( boundingRect.x + boundingRect.width >= src_image.cols ) {
+    boundingRect.width = src_image.cols - boundingRect.x;
+  }
+  if ( boundingRect.y + boundingRect.height >= src_image.rows ) {
+    boundingRect.height = src_image.rows - boundingRect.y;
+  }
 
-//static bool fitJovianEllipseECC(const cv::Mat & _image, cv::RotatedRect * rc, int debug_index)
-//{
-//  cv::Mat gray_image;
-//  cv::Point2f centroid;
-//  cv::Rect component_rect;
-//  cv::Mat component_mask;
-//  cv::Mat component_edge;
-//  std::vector<cv::Point2f> component_edge_points;
-//  cv::Mat draw;
-//
-//  _image.convertTo(gray_image, CV_32F);
-//
-//  if ( _image.channels() == 3 ) {
-//    cv::cvtColor(gray_image, gray_image, cv::COLOR_BGR2GRAY);
-//  }
-//
-//
-//  //////////////////
-//
-//  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), &centroid, 1, &component_rect, &component_mask) ) {
-//    CF_ERROR("simple_small_planetary_disk_detector() fails");
-//    return false;
-//  }
-//
-//  component_rect.x = std::max(0, component_rect.x - 16);
-//  component_rect.y = std::max(0, component_rect.y - 16);
-//  component_rect.width = std::min(gray_image.cols, component_rect.width + 2 * 16);
-//  component_rect.height = std::min(gray_image.rows, component_rect.height + 2 * 16);
-//
-//  geo_fill_holes(component_mask, component_mask, 8);
-//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-//  cv::findNonZero(component_edge, component_edge_points);
-//  *rc = cv::fitEllipseAMS(component_edge_points);
-//  rc->angle -= 90;
-//
-//
-//  //////////////////
-//
-//
-//  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
-//  const double A = 0.5 * std::max(rc->size.width, rc->size.height);
-//  const double B = A * jovian_polar_to_equatorial_axis_ratio;
-//  const cv::Point2f C = rc->center - cv::Point2f(component_rect.x, component_rect.y);
-//
-//  CF_DEBUG("A=%g B=%g C.x=%g C.y=%g angle=%g ", A, B, C.x, C.y, rc->angle );
-//
-//  cv::Mat gx, gy;
-//  cv::Mat1f artifical_ellipse(component_rect.size(), 0);
-//
-//  cv::ellipse(artifical_ellipse, C, cv::Size(A, B), 0, 0, 360, 1.0, -1, cv::LINE_8);
-//
-//  cv::GaussianBlur(artifical_ellipse, artifical_ellipse, cv::Size(), 1);
-//  ecc_differentiate(artifical_ellipse, gx, gy);
-//  cv::magnitude(gx, gy, artifical_ellipse);
-//  save_image(artifical_ellipse, ssprintf("artifical_ellipse.%d.tiff", debug_index));
-//
-//  cv::Mat1f component_image(component_rect.size(), 0);
-//  gray_image(component_rect).copyTo(component_image, component_mask(component_rect));
-//  //ecc_normalize(component_image, cv::noArray(), 2, 0.01);
-//  ecc_differentiate(component_image, gx, gy);
-//  cv::magnitude(gx, gy, component_image);
-//  save_image(component_image, ssprintf("component_image.%d.tiff", debug_index));
-//
-//
-//  cv::Matx23f T = createEuclideanTransform(C.x, C.y, C.x, C.y, 1.0, rc->angle * CV_PI / 180);
-//  CF_DEBUG("T BEFORE: {\n"
-//      "  %+15.6f %+15.6f %+15.6f\n"
-//      "  %+15.6f %+15.6f %+15.6f\n"
-//      "}\n",
-//      T(0,0), T(0,1), T(0,2),
-//      T(1,0), T(1,1), T(1,2));
-//
-//  {
-//    cv::Mat tmp;
-//
-//    cv::remap(artifical_ellipse, tmp,
-//        createRemap(ECC_MOTION_EUCLIDEAN_SCALED, T, artifical_ellipse.size()),
-//        cv::noArray(),
-//        cv::INTER_LINEAR);
-//
-//    cv::add(tmp, component_image, tmp);
-//    cv::circle(tmp, C, 10, CV_RGB(0,0,0), 1);
-//    save_image(tmp, ssprintf("comp.before.%d.tiff", debug_index));
-//  }
-//
-//
-//  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
-//  c_ecc_pyramide_align ecch(&ecc);
-//
-//  ecc.set_min_rho(0.1);
-//
-//  if (!ecch.align(artifical_ellipse, component_image, T) ) {
-//    CF_ERROR("ecch.align() fails");
-//  }
-//
-//  cv::Matx23f TT;
-//  cv::invertAffineTransform(T, TT);
-//  cv::Vec2f V = TT * cv::Vec3f(C.x, C.y, 1);
-//  cv::Point2f CC (V[0], V[1]);
-//
-//  {
-//    cv::Mat tmp;
-//
-//    cv::remap(artifical_ellipse, tmp,
-//        createRemap(ECC_MOTION_EUCLIDEAN_SCALED, T, artifical_ellipse.size()),
-//        cv::noArray(),
-//        cv::INTER_LINEAR);
-//
-//    cv::add(tmp, component_image, tmp);
-//    cv::circle(tmp, CC, 10, CV_RGB(0,0,0), 1);
-//    save_image(tmp, ssprintf("comp.after.%d.tiff", debug_index));
-//  }
-//
-//
-//  CF_DEBUG("T AFTER: {\n"
-//      "  %+15.6f %+15.6f %+15.6f\n"
-//      "  %+15.6f %+15.6f %+15.6f\n"
-//      "}\n",
-//      T(0,0), T(0,1), T(0,2),
-//      T(1,0), T(1,1), T(1,2));
-//
-//  double Tx, Ty, scale, angle;
-//  getEuclideanComponents(TT, &Tx, &Ty, &scale, & angle);
-//  CF_DEBUG("Tx=%g Ty=%g scale=%g angle=%g delta_anle=%g", Tx, Ty, scale, angle * 180 / M_PI, angle * 180 / M_PI - rc->angle);
-//
-//
-//
-//  cv::RotatedRect ERC;
-//  cv::Mat color_image;
-//
-//  ERC.size.width = 2 * A * scale;
-//  ERC.size.height = 2 * B * scale;
-//  ERC.center = CC;
-//  ERC.angle = -angle * 180 / M_PI;
-//
-//  CF_DEBUG("ERC: center=(%g %g) size=(%g x %g) angle=%g",
-//      ERC.center.x, ERC.center.y,
-//      ERC.size.width, ERC.size.height,
-//      ERC.angle);
-//
-//  _image(component_rect).copyTo(color_image);
-//  if ( color_image.channels() == 1 ) {
-//    cv::cvtColor(color_image, color_image, cv::COLOR_GRAY2BGR);
-//  }
-//  cv::ellipse(color_image, ERC, CV_RGB(1, 0, 0), 1, cv::LINE_8);
-//  save_image(color_image, ssprintf("color_image.after.%d.tiff", debug_index));
-//
-//
-//  {
-//    cv::Mat tmp;
-//    cv::cvtColor(component_image, tmp, cv::COLOR_GRAY2BGR);
-//    cv::ellipse(tmp, ERC, CV_RGB(0.5, 0, 0), 1, cv::LINE_8);
-//    save_image(tmp, ssprintf("gradient.after.%d.tiff", debug_index));
-//  }
-//
-////
-////  cv::circle(component_image, ERC.center, 10, CV_RGB(0,0,0), 1);
-////  save_image(component_image, ssprintf("center.after.%d.tiff", debug_index));
-//
-//  return true;
-//}
-//
-//
-//static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst)
-//{
-//  cv::Mat gx, gy;
-//  ecc_differentiate(src, gx, gy);
-//  cv::magnitude(gx, gy, dst);
-//}
-//
-//static bool fitJovianEllipseECC(const cv::Mat & _image, cv::RotatedRect * rc)
-//{
-//  cv::Mat gray_image;
-//  cv::Rect component_rect;
-//  cv::Mat component_mask;
-//  cv::Mat component_edge;
-//  cv::Mat component_image;
-//  cv::Mat artifical_ellipse;
-//  std::vector<cv::Point2f> component_edge_points;
-//
-//  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
-//
-//  if ( _image.channels() == 1 ) {
-//    gray_image = _image;
-//  }
-//  else {
-//    cv::cvtColor(_image, gray_image, cv::COLOR_BGR2GRAY);
-//  }
-//
-//  //////////////////
-//
-//  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask) ) {
-//    CF_ERROR("simple_small_planetary_disk_detector() fails");
-//    return false;
-//  }
-//
-//  geo_fill_holes(component_mask, component_mask, 8);
-//  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-//  cv::findNonZero(component_edge, component_edge_points);
-//  *rc = cv::fitEllipseAMS(component_edge_points);
-//  rc->angle -= 90;
-//
-//
-//
-//  component_rect.x = std::max(0, component_rect.x - 16);
-//  component_rect.y = std::max(0, component_rect.y - 16);
-//  component_rect.width = std::min(gray_image.cols, component_rect.width + 2 * 16);
-//  component_rect.height = std::min(gray_image.rows, component_rect.height + 2 * 16);
-//
-//  //////////////////
-//
-//  gray_image(component_rect).copyTo(component_image, component_mask(component_rect));
-//  gradient_magnitude(component_image, component_image);
-//
-//  //////////////////
-//
-//
-//  const double A = 0.5 * std::max(rc->size.width, rc->size.height);
-//  const double B = A * jovian_polar_to_equatorial_axis_ratio;
-//  const cv::Point2f C = rc->center - cv::Point2f(component_rect.x, component_rect.y);
-//
-//  artifical_ellipse.create(component_rect.size(), CV_32F);
-//  artifical_ellipse.setTo(0);
-//  cv::ellipse(artifical_ellipse, C, cv::Size(A, B), 0, 0, 360, 1.0, 3.0, cv::LINE_AA);
-//  cv::GaussianBlur(artifical_ellipse, artifical_ellipse, cv::Size(), 2);
-//
-//  if ( true ) {
-//    save_image(artifical_ellipse, "artifical_ellipse.tiff");
-//  }
-//
-//  //////////////////
-//
-//
-//  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
-//  c_ecc_pyramide_align ecch(&ecc);
-//
-//  cv::Matx23f T =
-//      createEuclideanTransform(C.x, C.y, C.x, C.y, 1.0, rc->angle * CV_PI / 180);
-//
-//  if ( true ) {
-//
-//    if ( true ) {
-//      cv::Mat tmp;
-//
-//      cv::remap(artifical_ellipse, tmp,
-//          createRemap(ecc.motion_type(), T, artifical_ellipse.size()),
-//          cv::noArray(), cv::INTER_LINEAR);
-//
-//      save_image(tmp, "artifical_ellipse.before.tiff");
-//    }
-//
-//    CF_DEBUG("T BEFORE: {\n"
-//        "  %+15.6f %+15.6f %+15.6f\n"
-//        "  %+15.6f %+15.6f %+15.6f\n"
-//        "}\n",
-//        T(0,0), T(0,1), T(0,2),
-//        T(1,0), T(1,1), T(1,2));
-//  }
-//
-//  ecc.set_min_rho(0.2);
-//  if ( !ecch.align(artifical_ellipse, component_image, T) ) {
-//    CF_ERROR("ecch.align() fails");
-//    return false;
-//  }
-//
-//  if ( true ) {
-//
-//    CF_DEBUG("T AFTER: {\n"
-//        "  %+15.6f %+15.6f %+15.6f\n"
-//        "  %+15.6f %+15.6f %+15.6f\n"
-//        "}\n",
-//        T(0,0), T(0,1), T(0,2),
-//        T(1,0), T(1,1), T(1,2));
-//
-//    if ( true ) {
-//      cv::Mat tmp;
-//
-//      cv::remap(artifical_ellipse, tmp,
-//          createRemap(ecc.motion_type(), T, artifical_ellipse.size()),
-//          cv::noArray(), cv::INTER_LINEAR);
-//
-//      save_image(tmp, "artifical_ellipse.after.tiff");
-//    }
-//
-//  }
-//
-//  //////////////////
-//
-//  cv::Vec2f CC;
-//  double Tx, Ty, scale, angle;
-//
-//  cv::invertAffineTransform(T, T);
-//  getEuclideanComponents(T, &Tx, &Ty, &scale, &angle);
-//
-//  CC = T * cv::Vec3f(C.x, C.y, 1);
-//
-//  CF_DEBUG("Tx=%g Ty=%g scale=%g angle=%g delta_angle=%g", Tx, Ty, scale, angle * 180 / M_PI, angle * 180 / M_PI - rc->angle);
-//
-//  rc->size.width = 2 * A * scale;
-//  rc->size.height = 2 * B * scale;
-//  rc->center.x = CC(0) + component_rect.x;
-//  rc->center.y = CC(1) + component_rect.y;
-//  rc->angle = -angle * 180 / M_PI;
-//
-//  //////////////////
-//
-//  CF_DEBUG("ERC: center=(%g %g) size=(%g x %g) angle=%g",
-//      rc->center.x, rc->center.y,
-//      rc->size.width, rc->size.height,
-//      rc->angle);
-//
-//  return true;
-//}
+  * rc = boundingRect;
+}
+
 
 int main(int argc, char *argv[])
 {
-  cv::Mat images[2], masks[2];
   std::string filenames[2];
+  cv::Mat images[2], masks[2];
+  cv::Mat cropped_images[2], crop_masks[2];
+  cv::RotatedRect erc[2];
+  cv::Rect crops[2];
+  cv::Mat tmp;
 
   for ( int i = 1; i < argc; ++i ) {
 
@@ -471,7 +77,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if ( filenames[0].empty() /*|| filenames[1].empty()*/ ) {
+  if ( filenames[0].empty() || filenames[1].empty() ) {
     fprintf(stderr, "Two input file name required\n");
     return 1;
   }
@@ -481,42 +87,93 @@ int main(int argc, char *argv[])
 
 
 
-    for ( int i = 0; i < 1; ++i ) {
-    if ( !filenames[i].empty() ) {
-      if ( !load_image(filenames[i], images[i], masks[i]) ) {
-        CF_ERROR("load_image('%s') fails", filenames[i].c_str());
-        return 1;
-      }
+  for ( int i = 0; i < 2; ++i ) {
 
-//      if ( images[i].channels() == 3 ) {
-//        cv::cvtColor(images[i], images[i], cv::COLOR_BGR2GRAY);
-//      }
+    double minval, maxval;
 
-      CF_DEBUG("image[%d]: %dx%d", i, images[i].cols, images[i].rows);
+    if ( !load_image(filenames[i], images[i], masks[i]) ) {
+      CF_ERROR("load_image('%s') fails", filenames[i].c_str());
+      return 1;
     }
+
+    cv::minMaxLoc(images[i], &minval, &maxval);
+
+    CF_DEBUG("image[%d]: %dx%d channels=%d depth=%d min=%g max=%g", i,
+        images[i].cols, images[i].rows,
+        images[i].channels(), images[i].depth(),
+        minval, maxval);
+
+    if ( !fit_jovian_ellipse(images[i], &erc[i]) ) {
+      CF_ERROR("fit_jovian_ellipse(image %d) fails", i);
+      return 1;
+    }
+
+
+    if ( images[i].channels() == 3 ) {
+      images[i].copyTo(tmp);
+    }
+    else {
+      cv::cvtColor(images[i], tmp, cv::COLOR_GRAY2BGR);
+    }
+
+
+    cv::ellipse(tmp, erc[i], CV_RGB(0, maxval, 0), 1, cv::LINE_8);
+
+    cv::line(tmp, erc[i].center, erc[i].center +
+        cv::Point2f(0.5 * erc[i].size.width * cos(erc[i].angle * CV_PI / 180),
+            0.5 * erc[i].size.width * sin(erc[i].angle * CV_PI / 180)),
+            CV_RGB(1,1,0));
+
+    cv::line(tmp, erc[i].center, erc[i].center +
+        cv::Point2f(0.5 * erc[i].size.height * sin(erc[i].angle * CV_PI / 180),
+            -0.5 * erc[i].size.height * cos(erc[i].angle * CV_PI / 180)),
+            CV_RGB(1,1,0));
+
+    save_image(tmp, ssprintf("ellipse.%d.tiff", i));
+
+    crop_ellipse(images[i], erc[i], &crops[i]);
+    erc[i].center.x -= crops[i].x;
+    erc[i].center.y -= crops[i].y;
+
+    if ( images[i].channels() == 1 ) {
+      images[i](crops[i]).copyTo(cropped_images[i]);
+    }
+    else {
+      cv::cvtColor(images[i](crops[i]), cropped_images[i], cv::COLOR_BGR2GRAY);
+    }
+
+    save_image(cropped_images[i], ssprintf("crop.%d.tiff", i));
   }
 
-  cv::RotatedRect rc;
-  if ( !fit_jovian_ellipse(images[0], &rc) ) {
-    CF_ERROR("fitJovianEllipseECC() fails");
-    return 1;
+  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
+  c_ecc_pyramide_align ecch(&ecc);
+  cv::Matx23d T = createEyeTransform(ecc.motion_type());
+
+  cv::Mat & input_image = cropped_images[0];
+  cv::Mat & reference_image = cropped_images[1];
+
+  if ( !ecch.align(input_image, reference_image, T) ) {
+    CF_ERROR("ecch.align() fails");
   }
 
-  cv::ellipse(images[0], rc, CV_RGB(0, 1, 0), 1, cv::LINE_8);
-
-  cv::line(images[0], rc.center, rc.center +
-      cv::Point2f(0.5 * rc.size.width * cos(rc.angle * CV_PI / 180),
-          0.5 * rc.size.width * sin(rc.angle * CV_PI / 180)),
-          CV_RGB(1,1,0));
-
-  cv::line(images[0], rc.center, rc.center +
-      cv::Point2f(0.5 * rc.size.height * sin(rc.angle * CV_PI / 180),
-          -0.5 * rc.size.height * cos(rc.angle * CV_PI / 180)),
-          CV_RGB(1,1,0));
-
-  save_image(images[0], "fitJovianEllipseECC.tiff");
+  cv::remap(input_image, tmp, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR);
+  save_image(tmp, ssprintf("crop.remapped.%d.tiff", 0));
 
 
+  cv::Mat2f ermap;
+  cv::Mat1f wmask;
+
+  create_ellipse_rotation_remap(-8.5 * CV_PI / 180,
+      erc[1],
+      T,
+      reference_image.size(),
+      ermap,
+      wmask);
+
+  save_image(wmask, ssprintf("emask.tiff"));
+
+  cv::remap(input_image, tmp, ermap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(tmp, ssprintf("ellipse.remapped.%d.tiff", 0));
 
   return 0;
 }

@@ -1145,80 +1145,9 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
   return TT;
 }
 
-//template<class T1, class T2>
-//static bool invertAffineTransform_(cv::InputArray src, cv::OutputArray dst)
-//{
-//  if ( src.rows() != 2 || src.cols() != 3 ) {
-//    CF_ERROR("Invalid input matrix specified: must be 2x3 size of CV_32FC1 or CV_64FC1 type");
-//    return false;
-//  }
-//
-//  if ( dst.fixedSize() ) {
-//    if ( dst.rows() != 2 || dst.cols() != 3 ) {
-//      CF_ERROR("Invalid destination matrix specified: must be 2x3 size of CV_32FC1 or CV_64FC1 type");
-//      return false;
-//    }
-//  }
-//
-//  const cv::Mat_<T1> RT = src.getMat();
-//
-//  cv::Mat_<T1> R(2, 2);
-//  cv::Vec<T1, 2> V;
-//
-//  R(0,0) = RT(0,0);
-//  R(0,0) = RT(0,1);
-//  R(1,0) = RT(1,0);
-//  R(1,1) = RT(1,1);
-//  V(0) = RT(0, 2);
-//  V(1) = RT(1, 2);
-//
-//  R = R.inv();
-//  V = -R * V;
-//
-//  dst.create(2, 3, cv::DataType<T2>::depth);
-//  cv::Mat_<T2> RTi = dst.getMatRef();
-//
-//  RTi(0,0) = R(0,0);
-//  RTi(0,1) = R(0,1);
-//  RTi(0,2) = V(0);
-//
-//  RTi(1,0) = R(1,0);
-//  RTi(1,1) = R(1,1);
-//  RTi(1,2) = V(1);
-//
-//  return true;
-//}
-//
-//bool invertAffineTransform(cv::InputArray src, cv::OutputArray dst)
-//{
-//  const int srctype = src.type();
-//  const int dsttype = dst.fixedType() ? dst.type() : src.type();
-//
-//  switch ( srctype ) {
-//
-//  case CV_32F :
-//    switch ( dsttype ) {
-//    case CV_32F :
-//      return invertAffineTransform_<float, float>(src, dst);
-//    case CV_64F :
-//      return invertAffineTransform_<float, double>(src, dst);
-//    }
-//    break;
-//
-//  case CV_64F :
-//    switch ( dsttype ) {
-//    case CV_32F :
-//      return invertAffineTransform_<double, float>(src, dst);
-//    case CV_64F :
-//      return invertAffineTransform_<double, double>(src, dst);
-//    }
-//    break;
-//  }
-//
-//  CF_ERROR("Invalid input / output matrix specified: must be 2x3 size of CV_32FC1 or CV_64FC1 type");
-//  return false;
-//}
-//
+
+
+
 
 
 // Extract translation component from current transform

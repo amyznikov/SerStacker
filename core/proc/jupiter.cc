@@ -6,11 +6,11 @@
  */
 
 #include "jupiter.h"
-#include "planetary-disk-detector.h"
 #include "morphology.h"
 #include "geo-reconstruction.h"
 #include "eccalign.h"
 #include <core/debug.h>
+#include "planetary-disk-detection.h"
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT

@@ -113,8 +113,11 @@ void scaleTransform(int ecc_motion_type,
 cv::Mat1f expandAffineTransform(const cv::Mat1f T,
     int ecc_motion_type);
 
-//bool invertAffineTransform(cv::InputArray src,
-//    cv::OutputArray dst);
+// apply transfromation T to a single point x,y
+//bool applyTransform(double x, double y,
+//    double *xt, double * yt,
+//    const cv::Mat & T,
+//    enum ECC_MOTION_TYPE motion_type);
 
 
 // pyramide utils

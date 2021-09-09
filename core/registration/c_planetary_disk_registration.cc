@@ -6,7 +6,7 @@
  */
 
 #include "c_planetary_disk_registration.h"
-#include <core/proc/planetary-disk-detector.h>
+#include <core/proc/planetary-disk-detection.h>
 #include <core/debug.h>
 
 

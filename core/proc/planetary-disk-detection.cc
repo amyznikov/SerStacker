@@ -1,13 +1,13 @@
 /*
- * small-planet-disk-detector.cc
+ * planetary-disk-detection.cc
  *
  *  Created on: Sep 13, 2019
  *      Author: amyznikov
  */
-#include "planetary-disk-detector.h"
 #include <core/proc/threshold.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
+#include "planetary-disk-detection.h"
 #include <core/debug.h>
 
 using namespace cv;

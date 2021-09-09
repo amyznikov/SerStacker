@@ -1,12 +1,12 @@
 /*
- * planetary-disk-detector.h
+ * planetary-disk-detection.h
  *
  *  Created on: Sep 13, 2019
  *      Author: amyznikov
  */
 
-#ifndef __small_planetary_disk_detector_h__
-#define __small_planetary_disk_detector_h__
+#ifndef __planetary_disk_detection_h__
+#define __planetary_disk_detection_h__
 
 #include <opencv2/opencv.hpp>
 
@@ -19,4 +19,4 @@ bool simple_planetary_disk_detector(
     cv::Rect * optional_output_component_rect = nullptr,
     cv::Mat * optional_output_cmponent_mask = nullptr);
 
-#endif /* __small_planetary_disk_detector_h__ */
+#endif /* __planetary_disk_detection_h__ */

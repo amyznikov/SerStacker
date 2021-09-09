@@ -7,7 +7,7 @@ It is highly bugged and constantly changed.
 Examples of stacked images on my flickr account : 
   https://www.flickr.com/photos/116211323@N02/.
 
-Examples of raw stacks (saved in TIFF format as 32-bit floating point) my google drive : 
+Examples of raw stacks (saved in TIFF format as 32-bit floats) on my google drive : 
   https://drive.google.com/drive/folders/16Ko6ebfuFToQyXbqewETryaVsAN_rmVS?usp=sharing
 
 

@@ -27,7 +27,47 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
+static void jovian_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
+{
+  cv::Scalar mv, sv;
+  cv::Mat src, mean;
 
+  src = _src.getMat();
+  cv::meanStdDev(src, mv, sv, mask);
+
+  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+  cv::subtract(src, mean, mean);
+  cv::multiply(mean, 1./sv[0], dst);
+}
+
+
+static double compute_jovian_derotation_cost(
+    const cv::Mat1f & reference_image, const cv::Mat1f & derotated_image,
+    const cv::Mat1f & derotation_mask,
+    cv::Mat1f & difference_image)
+{
+
+  double score = 0;
+  double total_weight = 0;
+
+  difference_image.create(derotation_mask.size());
+  difference_image.setTo(0);
+
+  for ( int y = 0; y < derotation_mask.rows; ++y ) {
+    for ( int x = 0; x < derotation_mask.cols; ++x ) {
+      if ( derotation_mask[y][x] > 0 ) {
+
+        double difference = derotation_mask[y][x] * abs(reference_image[y][x] - derotated_image[y][x]);
+        total_weight += derotation_mask[y][x];
+        score += difference;
+
+        difference_image[y][x] = difference;
+      }
+    }
+  }
+
+  return score / total_weight;
+}
 
 
 int main(int argc, char *argv[])
@@ -90,6 +130,8 @@ int main(int argc, char *argv[])
     }
 
 
+    CF_DEBUG("image[%d]: fit_jovian_ellipse() OK", i);
+
     if ( images[i].channels() == 3 ) {
       images[i].copyTo(tmp);
     }
@@ -112,7 +154,12 @@ int main(int argc, char *argv[])
 
     save_image(tmp, ssprintf("ellipse.%d.tiff", i));
 
+    CF_DEBUG("image[%d]: C get_jovian_ellipse_bounding_box()", i);
+
     get_jovian_ellipse_bounding_box(images[i].size(), erc[i], &crops[i]);
+
+    CF_DEBUG("image[%d]: C get_jovian_ellipse_bounding_box() OK", i);
+
     erc[i].center.x -= crops[i].x;
     erc[i].center.y -= crops[i].y;
 
@@ -144,50 +191,103 @@ int main(int argc, char *argv[])
   cv::Mat2f ermap;
   cv::Mat1f wmask;
 
-  create_jovian_rotation_remap(-8.5 * CV_PI / 180,
+
+  const double rotation_step = CV_PI / erc[1].size.width;
+  const double min_rotation = - 25 * CV_PI / 180;
+  const double max_rotation = + 25 * CV_PI / 180;
+  const int num_rotations = (int)((max_rotation - min_rotation) / rotation_step);
+
+  CF_DEBUG("rotation_step=%g", rotation_step * 180/ CV_PI);
+
+
+  cv::Mat1f reference_jupiter_image;
+  cv::Mat1f input_jupiter_image;
+  cv::Mat1b reference_jupiter_mask;
+  cv::Mat1b input_jupiter_mask;
+
+  cv::Mat1f derotated_image;
+  cv::Mat1f derotation_mask;
+  cv::Mat1f difference_image;
+
+  double normalization_scale = std::max(2.0, 3 * erc[1].size.width / 500.);
+  jovian_normalize(reference_image, cv::noArray(), reference_jupiter_image, normalization_scale);
+  jovian_normalize(input_image, cv::noArray(), input_jupiter_image, normalization_scale);
+
+  double best_cost;
+  double best_rotation;
+  int best_rotation_index;
+
+  for ( int i = 0; i < num_rotations; ++i ) {
+
+    double l = min_rotation + i * rotation_step;
+
+    create_jovian_rotation_remap(l,
+        erc[1],
+        T,
+        reference_jupiter_image.size(),
+        ermap,
+        derotation_mask);
+
+    //save_image(derotation_mask, ssprintf("rotations/derotation_mask.%03d.tiff", i));
+    cv::remap(input_jupiter_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+    //save_image(derotated_image, ssprintf("rotations/rotation.%03d.tiff", i));
+
+    double cost = compute_jovian_derotation_cost(
+        reference_jupiter_image, derotated_image,
+        derotation_mask,
+        difference_image);
+
+    //save_image(difference_image, ssprintf("rotations/absdiff.%03d.tiff", i));
+
+    CF_DEBUG("R %6d: l=%+.3f score=%.6f", i, l * 180 / CV_PI, cost);
+
+    if ( i == 0 || cost < best_cost ) {
+      best_cost = cost;
+      best_rotation = l;
+      best_rotation_index = i;
+    }
+  }
+
+  CF_DEBUG("BEST cost: %g at rotation %d %g deg", best_cost, best_rotation_index, best_rotation * 180 / CV_PI);
+
+  c_ecch_flow eccflow;
+
+
+  create_jovian_rotation_remap(best_rotation,
       erc[1],
       T,
-      reference_image.size(),
+      reference_jupiter_image.size(),
       ermap,
-      wmask);
+      derotation_mask);
 
-  save_image(wmask, ssprintf("emask.tiff"));
 
-  cv::remap(input_image, tmp, ermap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(tmp, ssprintf("crop.remapped.%d.tiff", 0));
+  eccflow.set_support_scale(3);
+  eccflow.set_normalization_scale(0);
+
+  reference_jupiter_mask = cv::Mat1b(reference_jupiter_image.size(), 0);
+  input_jupiter_mask = cv::Mat1b(input_jupiter_image.size(), 0);
+  cv::ellipse(reference_jupiter_mask, erc[1], 255, -1, cv::LINE_8);
+  cv::ellipse(input_jupiter_mask, erc[0], 255, -1, cv::LINE_8);
+
+  save_image(reference_jupiter_image, ssprintf("reference_jupiter_image.tiff"));
+  save_image(input_jupiter_image, ssprintf("input_jupiter_image.tiff"));
+
+  save_image(reference_jupiter_mask, ssprintf("reference_jupiter_mask.tiff"));
+  save_image(input_jupiter_mask, ssprintf("input_jupiter_mask.tiff"));
+
+  eccflow.compute(input_jupiter_image, reference_jupiter_image,
+      ermap,
+      input_jupiter_mask,
+      reference_jupiter_mask);
+
+  cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(derotated_image, ssprintf("derotated_image.tiff"));
 
   return 0;
 }
 
 
 
-//
-//static void ecc_normalize(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
-//{
-////  cv::Scalar mv, sv;
-////  cv::Mat src, mean, stdev;
-////
-////  src = _src.getMat();
-////  cv::meanStdDev(src, mv, sv, mask);
-////
-////  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
-////  cv::GaussianBlur(src.mul(src), stdev, cv::Size(), sigma, sigma);
-////  cv::absdiff(stdev, mean.mul(mean), stdev);
-////  cv::sqrt(stdev, stdev);
-////  cv::add(stdev, 0.01 * sv[0], stdev);
-////  cv::subtract(src, mean, mean);
-////  cv::divide(mean, stdev, dst);
-//
-//  cv::Scalar mv, sv;
-//  cv::Mat src, mean;
-//
-//  src = _src.getMat();
-//  cv::meanStdDev(src, mv, sv, mask);
-//
-//  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
-//  cv::subtract(src, mean, mean);
-//  cv::multiply(mean, 1./sv[0], dst);
-//}
 //
 //int main(int argc, char *argv[])
 //{

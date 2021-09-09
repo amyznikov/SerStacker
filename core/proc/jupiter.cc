@@ -166,11 +166,15 @@ bool fit_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc)
   rc->angle -= 90;
 
 
+  const int l = std::max(0, component_rect.x - 16);
+  const int t = std::max(0, component_rect.y - 16);
+  const int r = std::min(gray_image.cols - 1, component_rect.x + component_rect.width + 16 - 1);
+  const int b = std::min(gray_image.rows - 1, component_rect.y + component_rect.height + 16 - 1);
 
-  component_rect.x = std::max(0, component_rect.x - 16);
-  component_rect.y = std::max(0, component_rect.y - 16);
-  component_rect.width = std::min(gray_image.cols, component_rect.width + 2 * 16);
-  component_rect.height = std::min(gray_image.rows, component_rect.height + 2 * 16);
+  component_rect.x = l;
+  component_rect.y = t;
+  component_rect.width = r - l + 1;
+  component_rect.height = b - t + 1;
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Copy planetary disk into separate sub-image,

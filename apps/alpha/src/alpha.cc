@@ -18,7 +18,6 @@
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/planetary-disk-detection.h>
-#include <core/proc/planetary-disk-rotation.h>
 #include <core/proc/jupiter.h>
 #include <core/settings.h>
 #include <core/ssprintf.h>
@@ -163,7 +162,7 @@ int main(int argc, char *argv[])
   cv::Mat2f ermap;
   cv::Mat1f wmask;
 
-  create_ellipse_rotation_remap(-8.5 * CV_PI / 180,
+  create_jovian_rotation_remap(-8.5 * CV_PI / 180,
       erc[1],
       T,
       reference_image.size(),

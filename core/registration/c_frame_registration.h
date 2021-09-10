@@ -30,7 +30,7 @@ struct c_eccflow_options {
 //  double reference_smooth_sigma = 0;
   int max_iterations = 1;
   int support_scale = 4;
-  int normalization_scale = 0;
+  int normalization_scale = -1;
 };
 
 struct c_frame_registration_base_options {

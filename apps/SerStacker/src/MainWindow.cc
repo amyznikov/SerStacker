@@ -559,6 +559,13 @@ void MainWindow::configureImageViewerToolbars()
 
         if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
 
+          if ( imageEditor->currentFileName().isEmpty() ) {
+            imageLevelsDialogBox->setWindowTitle("Adjust Display Levels ...");
+          }
+          else {
+            imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+          }
+
           imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
         }
 
@@ -633,7 +640,13 @@ void MainWindow::configureImageViewerToolbars()
         imageLevelsDialogBox->hide();
       }
       else {
-        imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+
+        if ( imageEditor->currentFileName().isEmpty() ) {
+          imageLevelsDialogBox->setWindowTitle("Adjust Display Levels ...");
+        }
+        else {
+          imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+        }
 
         imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
         imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
@@ -646,7 +659,6 @@ void MainWindow::configureImageViewerToolbars()
   connect(imageEditor, &QImageEditor::currentDisplayImageChanged,
       [this] () {
         if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
-          imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
           imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
         }
       });

@@ -1198,6 +1198,26 @@ bool c_image_stacking_pipeline::actual_run()
       return false;
     }
 
+    if ( false ) {
+
+      if ( frame_registration_->enable_eccflow() ) {
+
+        const c_ecch_flow & eccflow =
+            frame_registration_->eccflow();
+
+        const std::vector<c_ecch_flow::pyramid_entry> & pyramid =
+            eccflow.current_pyramid();
+
+        const std::string debugpath =
+              ssprintf("%s/eccdebug", output_directory_.c_str());
+
+        for ( uint i = 0, n = pyramid.size(); i < n; ++i ) {
+          save_image(pyramid[i].reference_image, ssprintf("%s/eccref.%02u.tiff", debugpath.c_str(), i));
+        }
+      }
+    }
+
+
     if ( registration_options.accumulate_and_compensate_turbulent_flow ) {
       if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
         flow_accumulation_.reset(new c_frame_accumulation_with_mask());

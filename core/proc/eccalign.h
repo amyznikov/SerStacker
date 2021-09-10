@@ -328,77 +328,20 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////////
 
-//// Smooth optical flow
-//class c_ecc_flow
-//{
-//public:
-//  void set_pyramid_level(int v);
-//  int pyramid_level() const;
-//
-//  void set_max_iterations(int v);
-//  int max_iterations() const;
-//
-//  void set_update_multiplier(double v);
-//  double update_multiplier() const;
-//
-//  bool set_reference_image(cv::InputArray referenceImage,
-//      cv::InputArray referenceMask = cv::noArray());
-//
-//  bool compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
-//      cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());
-//
-//  bool compute(cv::InputArray inputImage, cv::Mat2f & rmap,
-//      cv::InputArray inputMask = cv::noArray());
-//
-//  const cv::Mat1f & reference_image() const;
-//  const cv::Mat1b & reference_mask() const;
-//
-//  const cv::Mat1f & input_image() const;
-//  const cv::Mat1b & input_mask() const;
-//
-//  const cv::Mat2f & current_uv() const;
-//  const cv::Mat1f & current_It() const;
-//  const cv::Mat1f & current_worker_image() const;
-//
-//  static void flow2remap(const cv::Mat2f & uv,
-//      cv::Mat2f & rmap);
-//
-//  static void remap2flow(const cv::Mat2f & rmap,
-//      cv::Mat2f & uv);
-//
-//protected:
-//  bool convert_input_images(cv::InputArray src, cv::InputArray src_mask,
-//      cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
-//
-//  void pnormalize(const cv::Mat1f & src, cv::Mat1f & dst) const;
-//
-//  bool compute_uv(const cv::Mat1f & I1, const cv::Mat1f & I2, const cv::Mat1b & mask,
-//      cv::Mat2f & outuv);
-//
-//  bool pscale(cv::InputArray src, cv::Mat & dst, bool ismask = false) const;
-//
-//  double update_multiplier_ = 1.5;
-//  double reference_noise_ = 0;
-//  int pyramid_level_ = 5;
-//  int max_iterations_ = 1;
-//
-//  cv::Mat1f reference_image_;
-//  cv::Mat1b reference_mask_;
-//  cv::Mat1f current_image_;
-//  cv::Mat1b current_mask_;
-//  cv::Mat1f current_It_;
-//  cv::Mat1f worker_image_;
-//  cv::Mat2f uv_;
-//
-//  cv::Mat1f Ix, Iy;
-//  cv::Mat4f D;
-//};
-//
-
 // Smooth optical flow on image pyramids
 class c_ecch_flow
 {
 public:
+
+  // made public for debug purposes
+  struct pyramid_entry {
+    cv::Mat1f current_image, reference_image;
+    cv::Mat1b current_mask, reference_mask;
+    cv::Mat2f rmap;
+    cv::Mat1f Ix, Iy;//, It;
+    cv::Mat4f D;
+  };
+
   void set_support_scale(int v);
   int support_scale() const;
 
@@ -430,16 +373,13 @@ public:
 
   const cv::Mat1f & reference_image() const;
   const cv::Mat1b & reference_mask() const;
-  //
-  //  const cv::Mat1f & input_image() const;
-  //  const cv::Mat1b & input_mask() const;
-  //
+
   const cv::Mat2f & current_uv() const;
-  //  const cv::Mat1f & current_It() const;
-  //  const cv::Mat1f & current_worker_image() const;
-  //
-  //  const std::vector<cv::Mat1f> & mu1() const;
-  //  const std::vector<cv::Mat1f> & mu2() const;
+
+  // public access for debug purposes
+  const std::vector<pyramid_entry> & current_pyramid() const {
+    return pyramid_;
+  }
 
   static void flow2remap(const cv::Mat2f & uv,
       cv::Mat2f & rmap);
@@ -448,13 +388,6 @@ public:
       cv::Mat2f & uv);
 
 protected:
-  struct pyramid_entry {
-    cv::Mat1f current_image, reference_image;
-    cv::Mat1b current_mask, reference_mask;
-    cv::Mat2f rmap;
-    cv::Mat1f Ix, Iy;//, It;
-    cv::Mat4f D;
-  };
 
   bool convert_input_images(cv::InputArray src, cv::InputArray srcmask,
       cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
@@ -465,8 +398,7 @@ protected:
   bool pscale(cv::InputArray src, cv::Mat & dst,
       bool ismask = false) const;
 
-  void pnormalize(cv::InputArray src, cv::OutputArray dst,
-      double noise_level) const;
+  void pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const;
 
   double input_smooth_sigma_ = 0;
   double reference_smooth_sigma_ = 0;
@@ -474,7 +406,7 @@ protected:
   double update_multiplier_ = 1.5;
   int max_iterations_ = 1;
   int support_scale_ = 5;
-  int normalization_scale_ = 0;
+  int normalization_scale_ = -1;
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f cuv;

@@ -18,7 +18,9 @@ QMtfControlDialogBox::QMtfControlDialogBox(QWidget * parent)
   : Base(parent)
 {
   Q_INIT_RESOURCE(qmtfcontrols_resources);
+
   setWindowIcon(getIcon(ICON_histogram));
+  setWindowTitle("Adjust Display Levels ...");
 
   vbox_ = new QVBoxLayout(this);
   imageLevelsConfigWidget_ = new QMtfControl(this);

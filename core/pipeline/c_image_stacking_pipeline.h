@@ -112,7 +112,7 @@ struct c_input_options {
   bool enable_color_maxtrix = false;
 
   enum anscombe_method anscombe = anscombe_none;
-  double hot_pixels_variation_threshold = 7;
+  double hot_pixels_variation_threshold = 6;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

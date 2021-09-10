@@ -362,68 +362,91 @@ void QStackTreeView::onAddSourcesToCurrentStackingOptions()
 
 void QStackTreeView::onDeleteSelectedItems()
 {
+  if ( QStackingThread::isRunning() ) {
+    //running_stack = QStackingThread::currentStack();
+    return;
+  }
+
   QList<QTreeWidgetItem*> cursel = selectedItems();
   if ( !cursel.empty() ) {
-    deleteItems(cursel);
+
+    int responce = QMessageBox::question(this, "Confirmation required",
+        QString("Are you sure to delete %1 items ?").arg(cursel.count()),
+        QMessageBox::Ok | QMessageBox::Cancel, QMessageBox::Cancel);
+
+    if ( responce == QMessageBox::Ok ) {
+      deleteItems(cursel);
+    }
   }
 }
 
 void QStackTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 {
-  QStackItem * stackingOptionsItem;
-  QStackTreeView::QInputSourceItem * inpuSourceItem;
+  QStackTreeView::QInputSourceItem * inputSourceItem;
+  QStackItem * stackItem;
 
-//  QSet<c_stacking_options::ptr> deletedStacks;
-//  QSet<c_stacking_options::ptr> changedStacks;
+  //c_image_stacking_options::ptr & running_stack;
+  //QList<QTreeWidgetItem*> running_items;
+
+  if ( QStackingThread::isRunning() ) {
+    //running_stack = QStackingThread::currentStack();
+    return;
+  }
 
   for ( QTreeWidgetItem * item : items ) {
 
     switch ( item->type() ) {
 
     case ItemType_Stack :
-      if ( (stackingOptionsItem = dynamic_cast<QStackItem *>(item)) ) {
+      if ( (stackItem = dynamic_cast<QStackItem *>(item)) ) {
 
-        c_image_stacking_options::ptr options =
-            stackingOptionsItem->stack();
+        c_image_stacking_options::ptr stack =
+            stackItem->stack();
 
-        //deletedStacks.insert(options);
+//        if ( stack == running_stack ) {
+//          running_items.append(stackItem);
+//          continue;
+//        }
 
         for ( int i = 0, n = item->childCount(); i < n; ++i ) {
-          if ( (inpuSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item->child(i))) ) {
+          if ( (inputSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item->child(i))) ) {
 
-            if ( options ) {
-              options->remove_input_source(inpuSourceItem->inputSource());
+            if ( stack ) {
+              stack->remove_input_source(inputSourceItem->inputSource());
             }
 
-            inpuSourceItem->setInputSource(nullptr);
+            inputSourceItem->setInputSource(nullptr);
           }
         }
 
-        if ( options ) {
-          stackingOptionsItem->setStack(nullptr);
-          stacklist_->remove(options);
+        if ( stack ) {
+          stackItem->setStack(nullptr);
+          stacklist_->remove(stack);
         }
 
       }
       break;
 
     case ItemType_InputSource :
-      if ( (inpuSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item)) ) {
+      if ( (inputSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem *>(item)) ) {
+
+        if ( (stackItem = dynamic_cast<QStackItem *>(item->parent())) ) {
+//          if ( stackItem->stack() == running_stack ) {
+//            running_items.append(stackItem);
+//            continue;
+//          }
+        }
 
         c_input_source::ptr input_source =
-            inpuSourceItem->inputSource();
+            inputSourceItem->inputSource();
 
         if ( input_source ) {
-          inpuSourceItem->setInputSource(nullptr);
+          inputSourceItem->setInputSource(nullptr);
 
-          if ( (stackingOptionsItem = dynamic_cast<QStackItem *>(item->parent())) ) {
-
-            if ( stackingOptionsItem->stack() ) {
-
-              stackingOptionsItem->stack()->remove_input_source(input_source);
-            }
-
+          if ( stackItem && stackItem->stack() ) {
+            stackItem->stack()->remove_input_source(input_source);
           }
+
         }
       }
       break;
@@ -441,7 +464,6 @@ void QStackTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
   qDeleteAll(items);
 
   emit stackCollectionChanged();
-
 }
 
 

@@ -215,7 +215,7 @@ static void color_saturation_(cv::InputArray _src, cv::OutputArray _dst,
 }
 
 template<class T>
-static void color_saturation_(cv::Mat _image,
+static void color_saturation_(cv::Mat & _image,
     double amount, cv::InputArray mask)
 {
   cv::Mat_<cv::Vec<T, 3>> image = _image;

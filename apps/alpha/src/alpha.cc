@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
       cv::cvtColor(images[i](crops[i]), cropped_images[i], cv::COLOR_BGR2GRAY);
     }
 
+    unsharp_mask(cropped_images[i], cropped_images[i], 1, 0.99);
     save_image(cropped_images[i], ssprintf("crop.%d.tiff", i));
   }
 
@@ -261,8 +262,8 @@ int main(int argc, char *argv[])
       derotation_mask);
 
 
-  eccflow.set_support_scale(3);
-  eccflow.set_normalization_scale(0);
+  eccflow.set_support_scale(4);
+  eccflow.set_normalization_scale(-1);
 
   reference_jupiter_mask = cv::Mat1b(reference_jupiter_image.size(), 0);
   input_jupiter_mask = cv::Mat1b(input_jupiter_image.size(), 0);
@@ -275,10 +276,13 @@ int main(int argc, char *argv[])
   save_image(reference_jupiter_mask, ssprintf("reference_jupiter_mask.tiff"));
   save_image(input_jupiter_mask, ssprintf("input_jupiter_mask.tiff"));
 
+  cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(derotated_image, ssprintf("derotated_no_optfow_image.tiff"));
+
   eccflow.compute(input_jupiter_image, reference_jupiter_image,
-      ermap,
+      ermap/*,
       input_jupiter_mask,
-      reference_jupiter_mask);
+      reference_jupiter_mask*/);
 
   cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
   save_image(derotated_image, ssprintf("derotated_image.tiff"));

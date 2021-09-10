@@ -351,7 +351,7 @@ public:
   void set_update_multiplier(double v);
   double update_multiplier() const;
 
-  // Use only for images which violate brightness constancy assumption,
+  // Use for images which violate brightness constancy assumption,
   // for example on strong vigneting or planetary disk derotation
   void set_normalization_scale(int v);
   int normalization_scale() const;
@@ -361,6 +361,9 @@ public:
 
   void set_reference_smooth_sigma(double v);
   double reference_smooth_sigma() const;
+
+  void set_max_pyramid_level(int v);
+  int max_pyramid_level() const;
 
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray());
@@ -404,9 +407,10 @@ protected:
   double reference_smooth_sigma_ = 0;
 
   double update_multiplier_ = 1.5;
-  int max_iterations_ = 1;
+  int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;
+  int max_pyramid_level_ = -1; // to allow force limit max pyramid size
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f cuv;

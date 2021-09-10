@@ -262,7 +262,8 @@ int main(int argc, char *argv[])
       derotation_mask);
 
 
-  eccflow.set_support_scale(4);
+  eccflow.set_max_pyramid_level(1);
+  eccflow.set_support_scale(3);
   eccflow.set_normalization_scale(-1);
 
   reference_jupiter_mask = cv::Mat1b(reference_jupiter_image.size(), 0);

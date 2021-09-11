@@ -3401,6 +3401,25 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::InputArray referenceIma
 bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
     cv::InputArray referenceMask)
 {
+
+  if ( !referenceMask.empty() ) {
+
+    if ( referenceMask.size() != referenceImage.size() ) {
+      CF_ERROR("Invalid reference mask size: %dx%d. Must be is %dx%d",
+          referenceMask.cols(), referenceMask.rows(),
+          referenceImage.cols(), referenceImage.rows());
+
+      return false;
+    }
+
+    if ( referenceMask.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid reference mask type: %d. Must be CV_8UC1",
+          referenceMask.type());
+      return false;
+    }
+  }
+
+
   cv::Mat1f I, Ixx, Iyy, Ixy, DD;
   cv::Mat1b M;
 
@@ -3535,6 +3554,23 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
     return false;
   }
 
+  if ( !inputMask.empty() ) {
+
+    if ( inputMask.size() != inputImage.size() ) {
+      CF_ERROR("Invalid input mask size: %dx%d. Must be %dx%d",
+          inputMask.cols(), inputMask.rows(),
+          inputImage.cols(), inputImage.rows());
+
+      return false;
+    }
+
+    if ( inputMask.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid input mask type: %d. Must be CV_8UC1",
+          inputMask.type());
+      return false;
+    }
+  }
+
   if ( !convert_input_images(inputImage, inputMask, I, M) ) {
     CF_ERROR("convert_input_images() fails");
     return false;
@@ -3582,13 +3618,6 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
         }
     );
   }
-
-
-//  if ( true ) {
-//    for ( int i = 0, n = pyramid_.size(); i < n; ++i ) {
-//      save_image(pyramid_[i].current_image, ssprintf("pyramid/cur.%03d.tiff", i));
-//    }
-//  }
 
 
   compute_uv(pyramid_.back(), cuv);

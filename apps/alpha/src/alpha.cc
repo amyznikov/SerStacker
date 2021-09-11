@@ -24,6 +24,7 @@
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/proc/inpaint.h>
+#include <core/registration/c_planetary_disk_registration.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
 {
   std::string filenames[2];
   cv::Mat images[2], masks[2];
-  cv::Mat tmp;
+  cv::Mat tmpimage, tmpmask;
 
   for ( int i = 1; i < argc; ++i ) {
 
@@ -149,26 +150,63 @@ int main(int argc, char *argv[])
   }
 
 
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  c_planetary_disk_registration::ptr reg = c_planetary_disk_registration::create();
+
+  reg->set_motion_type(ECC_MOTION_TRANSLATION);
+  reg->set_eccflow_support_scale(3);
+  reg->set_eccflow_normalization_scale(-1);
+  reg->set_enable_ecc(true);
+  reg->set_enable_eccflow(true);
+
+  if ( !reg->setup_referece_frame(images[1]) ) {
+    CF_ERROR("reg.setup_referece_frame() fails");
+    return 1;
+  }
+
+  if ( !reg->register_frame(images[0], masks[0], tmpimage, tmpmask) ) {
+    CF_ERROR("reg.setup_referece_frame() fails");
+    return 1;
+  }
+
+  save_image(tmpimage, tmpmask, "aligned0.tiff");
+
+
+
+  //////////////////////////////////////////////////////////////////////////////
+
   c_jovian_derotation jovian_derotation;
-  cv::Mat2f rmap;
+  cv::Mat2f derotation_remap;
+  cv::Mat2f total_remap;
 
   if ( !jovian_derotation.setup_reference_image(images[1]) ) {
     CF_ERROR("jovian_derotation.setup_reference_image() fails");
     return 1;
   }
 
-  if ( !jovian_derotation.compute(images[0], rmap, cv::noArray()) ) {
+  if ( !jovian_derotation.compute(images[0], derotation_remap, cv::noArray()) ) {
     CF_ERROR("jovian_derotation.compute() fails");
     return 1;
   }
 
 
-  save_image(rmap, "rmap.flo");
+  save_image(derotation_remap, "rmap.flo");
 
-  cv::remap(images[0], tmp, rmap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(tmp, "image0.remapped.tiff");
+  cv::remap(images[0], tmpimage, derotation_remap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(tmpimage, "image0.remapped.tiff");
   save_image(images[1](jovian_derotation.reference_boundig_box()), "image1.tiff");
 
+  //////////////////////////////////////////////////////////////////////////////
+
+  reg->current_remap().copyTo(total_remap);
+  derotation_remap.copyTo(total_remap(jovian_derotation.reference_boundig_box()),
+      jovian_derotation.current_binary_rotation_mask());
+  save_image(total_remap, "total_remap.flo");
+
+  cv::remap(images[0], tmpimage, total_remap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(tmpimage, "image0.total_remapped.tiff");
 
   return 0;
 }

@@ -26,8 +26,6 @@ struct c_ecc_options {
 
 struct c_eccflow_options {
   double update_multiplier = 1.5;
-//  double input_smooth_sigma = 0;
-//  double reference_smooth_sigma = 0;
   int max_iterations = 1;
   int support_scale = 4;
   int normalization_scale = -1;
@@ -113,6 +111,12 @@ public: // opts
 
   void set_ecc_normalization_noise(double v);
   double ecc_normalization_noise() const;
+
+  void set_eccflow_support_scale(int v);
+  int eccflow_support_scale() const;
+
+  void set_eccflow_normalization_scale(int v);
+  int eccflow_normalization_scale() const;
 
   // c_ecc_forward_additive & ecc();
   const c_ecc_forward_additive & ecc() const;

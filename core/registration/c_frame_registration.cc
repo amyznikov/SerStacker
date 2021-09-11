@@ -124,6 +124,26 @@ double c_frame_registration::ecc_normalization_noise() const
   return base_options_.ecc.normalization_noise;
 }
 
+void c_frame_registration::set_eccflow_support_scale(int v)
+{
+  base_options_.eccflow.support_scale = v;
+}
+
+int c_frame_registration::eccflow_support_scale() const
+{
+  return base_options_.eccflow.support_scale;
+}
+
+void c_frame_registration::set_eccflow_normalization_scale(int v)
+{
+  base_options_.eccflow.normalization_scale = v;
+}
+
+int c_frame_registration::eccflow_normalization_scale() const
+{
+  return base_options_.eccflow.normalization_scale;
+}
+
 
 void c_frame_registration::set_enable_ecc(bool v)
 {

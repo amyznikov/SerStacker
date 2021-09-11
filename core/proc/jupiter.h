@@ -122,12 +122,19 @@ public:
   const cv::Rect & reference_boundig_box() const;
   const cv::Rect & current_boundig_box() const;
 
+  const cv::Mat1b & reference_ellipse_mask() const;
+  const cv::Mat1b & current_ellipse_mask() const;
+
+  const cv::Mat1f & current_rotation_mask() const;
+  const cv::Mat1b & current_binary_rotation_mask() const;
+
 protected:
   static bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
       cv::RotatedRect * output_ellipse,
       cv::Rect * output_ellipse_boundig_box,
       cv::Mat * output_component_image,
-      cv::Mat * output_component_mask);
+      cv::Mat * output_component_mask,
+      cv::Mat1b * output_ellipse_mask);
 
   static void normalize_jovian_image(cv::InputArray _src, cv::InputArray mask,
       cv::OutputArray dst,
@@ -148,10 +155,14 @@ protected:
   cv::Mat reference_component_mask_;
   cv::Mat current_component_mask_;
 
-  cv::Mat normalized_reference_component_image_;
-  cv::Mat normalized_current_component_image_;
-  cv::Mat1b reference_component_ellipse_mask_;
+  cv::Mat normalized_reference_image_;
+  cv::Mat normalized_current_image_;
+  cv::Mat1b reference_ellipse_mask_;
+  cv::Mat1b current_ellipse_mask_;
   double normalization_scale_ = 1.0;
+
+  cv::Mat1f current_rotation_mask_;
+  cv::Mat1b current_binary_rotation_mask_;
 
   c_ecc_forward_additive ecc_;
   c_ecc_pyramide_align ecch_;

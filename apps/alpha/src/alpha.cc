@@ -69,6 +69,31 @@ static double compute_jovian_derotation_cost(
   return score / total_weight;
 }
 
+static void blend_images(const cv::Mat & image1, const cv::Mat1f & wmask1,
+    const cv::Mat & image2, const cv::Mat1f & wmask2,
+    cv::Mat & blend,
+    cv::Mat & wblend)
+{
+  cv::Mat w1, w2, w;
+  cv::Mat m1, m2;
+
+  cv::cvtColor(wmask1, w1, cv::COLOR_GRAY2BGR);
+  cv::cvtColor(wmask2, w2, cv::COLOR_GRAY2BGR);
+  cv::add(w1, w2, w);
+
+  cv::multiply(image1, w1, m1);
+
+  cv::multiply(image2, w2, m2);
+  cv::add(m1,  m2, blend);
+
+
+  cv::divide(blend, w, blend);
+  wblend = w;
+  //dst.setTo(0, w < 1e-5);
+  //CF_DEBUG("H");
+
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -124,7 +149,7 @@ int main(int argc, char *argv[])
         images[i].channels(), images[i].depth(),
         minval, maxval);
 
-    if ( !fit_jovian_ellipse(images[i], &erc[i]) ) {
+    if ( !detect_jovian_ellipse(images[i], &erc[i]) ) {
       CF_ERROR("fit_jovian_ellipse(image %d) fails", i);
       return 1;
     }
@@ -170,7 +195,7 @@ int main(int argc, char *argv[])
       cv::cvtColor(images[i](crops[i]), cropped_images[i], cv::COLOR_BGR2GRAY);
     }
 
-    unsharp_mask(cropped_images[i], cropped_images[i], 1, 0.99);
+    //unsharp_mask(cropped_images[i], cropped_images[i], 1, 0.99);
     save_image(cropped_images[i], ssprintf("crop.%d.tiff", i));
   }
 
@@ -287,6 +312,27 @@ int main(int argc, char *argv[])
 
   cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
   save_image(derotated_image, ssprintf("derotated_image.tiff"));
+
+
+  cv::Mat reference_rgb_image, derotated_rgb_image;
+  reference_rgb_image = images[1](crops[1]);
+  cv::remap(images[0](crops[0]), derotated_rgb_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+  cv::remap(derotation_mask, derotation_mask, ermap, cv::noArray(), cv::INTER_LINEAR);
+  cv::erode(derotation_mask, derotation_mask, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(15,15)));
+  cv::GaussianBlur(derotation_mask, derotation_mask, cv::Size(), 7, 0, cv::BORDER_REPLICATE);
+
+  save_image(reference_rgb_image, ssprintf("reference_rgb_image.tiff"));
+  save_image(derotated_rgb_image, ssprintf("derotated_rgb_image.tiff"));
+  save_image(derotation_mask, ssprintf("derotation_mask.tiff"));
+
+
+  cv::Mat blend, wblend;
+  blend_images(derotated_rgb_image, derotation_mask,
+      reference_rgb_image, cv::Mat1f::ones(reference_rgb_image.size()),
+      blend, wblend);
+
+  save_image(blend, "blend.tiff");
+  save_image(wblend, "blendw.tiff");
 
   return 0;
 }

@@ -131,7 +131,7 @@ static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst)
 
 // TODO: add horizontal lines to artifical ellipse in appropriate zones
 // for better rotation fitting (assuming that jupiter usually shows zonal gradients)
-bool fit_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc)
+bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc)
 {
   cv::Mat gray_image;
   cv::Rect component_rect;
@@ -341,5 +341,51 @@ void get_jovian_ellipse_bounding_box(const cv::Size & image_size, const cv::Rota
   }
 
   * bbox = boundingRect;
+}
+
+
+
+const cv::RotatedRect & c_jovian_derotation::reference_ellipse() const
+{
+  return reference_ellipse_;
+}
+
+const cv::Rect & c_jovian_derotation::reference_ellipse_boudig_box() const
+{
+  return reference_ellipse_boudig_box_;
+}
+
+bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+{
+  if( !detect_jovian_ellipse(reference_image, &reference_ellipse_) ) {
+    CF_ERROR("detect_jovian_ellipse(reference_image) fails");
+    return false;
+  }
+
+  get_jovian_ellipse_bounding_box(reference_image.size(), reference_ellipse_,
+      &reference_ellipse_boudig_box_);
+
+  if( reference_image.channels() == 1 ) {
+    reference_image.getMat()(reference_ellipse_boudig_box_).copyTo(reference_image_);
+  }
+  else {
+    cv::cvtColor(reference_image.getMat()(reference_ellipse_boudig_box_),
+        reference_image_, cv::COLOR_BGR2GRAY);
+  }
+
+  if ( reference_mask.empty() ) {
+    reference_mask_.release();
+  }
+  else {
+    reference_mask.getMat()(reference_ellipse_boudig_box_).copyTo(reference_mask_);
+  }
+
+  return true;
+}
+
+bool c_jovian_derotation::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputArray input_mask)
+{
+
+  return false;
 }
 

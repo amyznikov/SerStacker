@@ -12,15 +12,15 @@
 #include <opencv2/opencv.hpp>
 
 /*
- Detect planetary disk on given image, fit jovian ellipse
- and return final enclosing ellipse in cv::RotatedRect structure.
+ Detect planetary disk on given image, fit Jovian ellipse
+ and return final enclosing ellipse as cv::RotatedRect structure.
 
  Example:
 
   @code
   cv::RotatedRect rc;
 
-  if ( !fit_jovian_ellipse(image, &rc) ) {
+  if ( !detect_jovian_ellipse(image, &rc) ) {
     CF_ERROR("fit_jovian_ellipse() fails");
     return;
   }
@@ -43,7 +43,7 @@
 
  @endcode
  */
-bool fit_jovian_ellipse(cv::InputArray _image,
+bool detect_jovian_ellipse(cv::InputArray _image,
     cv::RotatedRect * output_ellipse_rect);
 
 
@@ -100,4 +100,30 @@ void create_jovian_rotation_remap(double rotation_angle,
 void get_jovian_ellipse_bounding_box(const cv::Size & image_size,
     const cv::RotatedRect & jovian_ellipse,
     cv::Rect * bbox);
+
+
+/**
+ *
+ */
+class c_jovian_derotation
+{
+public:
+  bool setup_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
+  bool compute(cv::InputArray input_image,
+      cv::Mat2f & rmap,
+      cv::InputArray input_mask = cv::noArray());
+
+  const cv::RotatedRect & reference_ellipse() const;
+  const cv::Rect & reference_ellipse_boudig_box() const;
+
+
+protected:
+  cv::RotatedRect reference_ellipse_;
+  cv::Rect reference_ellipse_boudig_box_;
+  cv::Mat reference_image_;
+  cv::Mat reference_mask_;
+};
+
 #endif /* __jupiter_h__ */

@@ -164,11 +164,12 @@ public:
   //  void set_pyramid_normalization_regularization_term(double v);
   //  double pyramid_normalization_regularization_term() const;
 
+  virtual bool set_reference_image(cv::InputArray referenceImage,
+      cv::InputArray referenceMask = cv::noArray()) = 0;
+
   virtual bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray()) = 0;
 
-  virtual bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray()) = 0;
   virtual bool align_to_reference(cv::InputArray inputImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray()) = 0;
 
@@ -268,11 +269,12 @@ public:
   typedef c_ecc_inverse_compositional this_class;
   typedef std::shared_ptr<this_class> ptr;
 
-  bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
-      cv::InputArray inputMask = cv::noArray(), cv::InputArray templateMask = cv::noArray()) override;
-
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray()) override;
+
+  bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
+      cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray()) override;
+
   bool align_to_reference(cv::InputArray inputImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray()) override;
 

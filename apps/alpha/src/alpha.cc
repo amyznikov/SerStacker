@@ -95,13 +95,11 @@ static void blend_images(const cv::Mat & image1, const cv::Mat1f & wmask1,
 }
 
 
+
 int main(int argc, char *argv[])
 {
   std::string filenames[2];
   cv::Mat images[2], masks[2];
-  cv::Mat cropped_images[2], crop_masks[2];
-  cv::RotatedRect erc[2];
-  cv::Rect crops[2];
   cv::Mat tmp;
 
   for ( int i = 1; i < argc; ++i ) {
@@ -148,194 +146,276 @@ int main(int argc, char *argv[])
         images[i].cols, images[i].rows,
         images[i].channels(), images[i].depth(),
         minval, maxval);
-
-    if ( !detect_jovian_ellipse(images[i], &erc[i]) ) {
-      CF_ERROR("fit_jovian_ellipse(image %d) fails", i);
-      return 1;
-    }
-
-
-    CF_DEBUG("image[%d]: fit_jovian_ellipse() OK", i);
-
-    if ( images[i].channels() == 3 ) {
-      images[i].copyTo(tmp);
-    }
-    else {
-      cv::cvtColor(images[i], tmp, cv::COLOR_GRAY2BGR);
-    }
-
-
-    cv::ellipse(tmp, erc[i], CV_RGB(0, maxval, 0), 1, cv::LINE_8);
-
-    cv::line(tmp, erc[i].center, erc[i].center +
-        cv::Point2f(0.5 * erc[i].size.width * cos(erc[i].angle * CV_PI / 180),
-            0.5 * erc[i].size.width * sin(erc[i].angle * CV_PI / 180)),
-            CV_RGB(1,1,0));
-
-    cv::line(tmp, erc[i].center, erc[i].center +
-        cv::Point2f(0.5 * erc[i].size.height * sin(erc[i].angle * CV_PI / 180),
-            -0.5 * erc[i].size.height * cos(erc[i].angle * CV_PI / 180)),
-            CV_RGB(1,1,0));
-
-    save_image(tmp, ssprintf("ellipse.%d.tiff", i));
-
-    CF_DEBUG("image[%d]: C get_jovian_ellipse_bounding_box()", i);
-
-    get_jovian_ellipse_bounding_box(images[i].size(), erc[i], &crops[i]);
-
-    CF_DEBUG("image[%d]: C get_jovian_ellipse_bounding_box() OK", i);
-
-    erc[i].center.x -= crops[i].x;
-    erc[i].center.y -= crops[i].y;
-
-    if ( images[i].channels() == 1 ) {
-      images[i](crops[i]).copyTo(cropped_images[i]);
-    }
-    else {
-      cv::cvtColor(images[i](crops[i]), cropped_images[i], cv::COLOR_BGR2GRAY);
-    }
-
-    //unsharp_mask(cropped_images[i], cropped_images[i], 1, 0.99);
-    save_image(cropped_images[i], ssprintf("crop.%d.tiff", i));
   }
 
-  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
-  c_ecc_pyramide_align ecch(&ecc);
-  cv::Matx23d T = createEyeTransform(ecc.motion_type());
 
-  cv::Mat & input_image = cropped_images[0];
-  cv::Mat & reference_image = cropped_images[1];
+  c_jovian_derotation jovian_derotation;
+  cv::Mat2f rmap;
 
-  if ( !ecch.align(input_image, reference_image, T) ) {
-    CF_ERROR("ecch.align() fails");
+  if ( !jovian_derotation.setup_reference_image(images[1]) ) {
+    CF_ERROR("jovian_derotation.setup_reference_image() fails");
+    return 1;
   }
 
-  cv::remap(input_image, tmp, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR);
-  save_image(tmp, ssprintf("crop.remapped.%d.tiff", 0));
-
-
-  cv::Mat2f ermap;
-  cv::Mat1f wmask;
-
-
-  const double rotation_step = CV_PI / erc[1].size.width;
-  const double min_rotation = - 25 * CV_PI / 180;
-  const double max_rotation = + 25 * CV_PI / 180;
-  const int num_rotations = (int)((max_rotation - min_rotation) / rotation_step);
-
-  CF_DEBUG("rotation_step=%g", rotation_step * 180/ CV_PI);
-
-
-  cv::Mat1f reference_jupiter_image;
-  cv::Mat1f input_jupiter_image;
-  cv::Mat1b reference_jupiter_mask;
-  cv::Mat1b input_jupiter_mask;
-
-  cv::Mat1f derotated_image;
-  cv::Mat1f derotation_mask;
-  cv::Mat1f difference_image;
-
-  double normalization_scale = std::max(2.0, 3 * erc[1].size.width / 500.);
-  jovian_normalize(reference_image, cv::noArray(), reference_jupiter_image, normalization_scale);
-  jovian_normalize(input_image, cv::noArray(), input_jupiter_image, normalization_scale);
-
-  double best_cost;
-  double best_rotation;
-  int best_rotation_index;
-
-  for ( int i = 0; i < num_rotations; ++i ) {
-
-    double l = min_rotation + i * rotation_step;
-
-    create_jovian_rotation_remap(l,
-        erc[1],
-        T,
-        reference_jupiter_image.size(),
-        ermap,
-        derotation_mask);
-
-    //save_image(derotation_mask, ssprintf("rotations/derotation_mask.%03d.tiff", i));
-    cv::remap(input_jupiter_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
-    //save_image(derotated_image, ssprintf("rotations/rotation.%03d.tiff", i));
-
-    double cost = compute_jovian_derotation_cost(
-        reference_jupiter_image, derotated_image,
-        derotation_mask,
-        difference_image);
-
-    //save_image(difference_image, ssprintf("rotations/absdiff.%03d.tiff", i));
-
-    CF_DEBUG("R %6d: l=%+.3f score=%.6f", i, l * 180 / CV_PI, cost);
-
-    if ( i == 0 || cost < best_cost ) {
-      best_cost = cost;
-      best_rotation = l;
-      best_rotation_index = i;
-    }
+  if ( !jovian_derotation.compute(images[0], rmap, cv::noArray()) ) {
+    CF_ERROR("jovian_derotation.compute() fails");
+    return 1;
   }
 
-  CF_DEBUG("BEST cost: %g at rotation %d %g deg", best_cost, best_rotation_index, best_rotation * 180 / CV_PI);
 
-  c_ecch_flow eccflow;
+  save_image(rmap, "rmap.flo");
 
+  cv::remap(images[0], tmp, rmap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(tmp, "image0.remapped.tiff");
+  save_image(images[1](jovian_derotation.reference_boundig_box()), "image1.tiff");
 
-  create_jovian_rotation_remap(best_rotation,
-      erc[1],
-      T,
-      reference_jupiter_image.size(),
-      ermap,
-      derotation_mask);
-
-
-  eccflow.set_max_pyramid_level(1);
-  eccflow.set_support_scale(3);
-  eccflow.set_normalization_scale(-1);
-
-  reference_jupiter_mask = cv::Mat1b(reference_jupiter_image.size(), 0);
-  input_jupiter_mask = cv::Mat1b(input_jupiter_image.size(), 0);
-  cv::ellipse(reference_jupiter_mask, erc[1], 255, -1, cv::LINE_8);
-  cv::ellipse(input_jupiter_mask, erc[0], 255, -1, cv::LINE_8);
-
-  save_image(reference_jupiter_image, ssprintf("reference_jupiter_image.tiff"));
-  save_image(input_jupiter_image, ssprintf("input_jupiter_image.tiff"));
-
-  save_image(reference_jupiter_mask, ssprintf("reference_jupiter_mask.tiff"));
-  save_image(input_jupiter_mask, ssprintf("input_jupiter_mask.tiff"));
-
-  cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(derotated_image, ssprintf("derotated_no_optfow_image.tiff"));
-
-  eccflow.compute(input_jupiter_image, reference_jupiter_image,
-      ermap/*,
-      input_jupiter_mask,
-      reference_jupiter_mask*/);
-
-  cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(derotated_image, ssprintf("derotated_image.tiff"));
-
-
-  cv::Mat reference_rgb_image, derotated_rgb_image;
-  reference_rgb_image = images[1](crops[1]);
-  cv::remap(images[0](crops[0]), derotated_rgb_image, ermap, cv::noArray(), cv::INTER_LINEAR);
-  cv::remap(derotation_mask, derotation_mask, ermap, cv::noArray(), cv::INTER_LINEAR);
-  cv::erode(derotation_mask, derotation_mask, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(15,15)));
-  cv::GaussianBlur(derotation_mask, derotation_mask, cv::Size(), 7, 0, cv::BORDER_REPLICATE);
-
-  save_image(reference_rgb_image, ssprintf("reference_rgb_image.tiff"));
-  save_image(derotated_rgb_image, ssprintf("derotated_rgb_image.tiff"));
-  save_image(derotation_mask, ssprintf("derotation_mask.tiff"));
-
-
-  cv::Mat blend, wblend;
-  blend_images(derotated_rgb_image, derotation_mask,
-      reference_rgb_image, cv::Mat1f::ones(reference_rgb_image.size()),
-      blend, wblend);
-
-  save_image(blend, "blend.tiff");
-  save_image(wblend, "blendw.tiff");
 
   return 0;
 }
+
+
+//
+//int main(int argc, char *argv[])
+//{
+//  std::string filenames[2];
+//  cv::Mat images[2], masks[2];
+//  cv::Mat cropped_images[2], crop_masks[2];
+//  cv::RotatedRect erc[2];
+//  cv::Rect crops[2];
+//  cv::Mat tmp;
+//
+//  for ( int i = 1; i < argc; ++i ) {
+//
+//    if ( strcmp(argv[i], "--help") == 0 ) {
+//      printf("Usage: alpha input-file-name1.tiff input-file-name2.tiff \n");
+//      return 0;
+//    }
+//
+//    if ( filenames[0].empty() ) {
+//      filenames[0] = argv[i];
+//    }
+//    else if ( filenames[1].empty() ) {
+//      filenames[1] = argv[i];
+//    }
+//    else {
+//      fprintf(stderr, "Invalid argument : %s\n", argv[i]);
+//      return 1;
+//    }
+//  }
+//
+//  if ( filenames[0].empty() || filenames[1].empty() ) {
+//    fprintf(stderr, "Two input file name required\n");
+//    return 1;
+//  }
+//
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//
+//
+//  for ( int i = 0; i < 2; ++i ) {
+//
+//    double minval, maxval;
+//
+//    if ( !load_image(filenames[i], images[i], masks[i]) ) {
+//      CF_ERROR("load_image('%s') fails", filenames[i].c_str());
+//      return 1;
+//    }
+//
+//    cv::minMaxLoc(images[i], &minval, &maxval);
+//
+//    CF_DEBUG("image[%d]: %dx%d channels=%d depth=%d min=%g max=%g", i,
+//        images[i].cols, images[i].rows,
+//        images[i].channels(), images[i].depth(),
+//        minval, maxval);
+//
+//    if ( !detect_jovian_ellipse(images[i], &erc[i]) ) {
+//      CF_ERROR("fit_jovian_ellipse(image %d) fails", i);
+//      return 1;
+//    }
+//
+//
+//    CF_DEBUG("image[%d]: fit_jovian_ellipse() OK", i);
+//
+//    if ( images[i].channels() == 3 ) {
+//      images[i].copyTo(tmp);
+//    }
+//    else {
+//      cv::cvtColor(images[i], tmp, cv::COLOR_GRAY2BGR);
+//    }
+//
+//
+//    cv::ellipse(tmp, erc[i], CV_RGB(0, maxval, 0), 1, cv::LINE_8);
+//
+//    cv::line(tmp, erc[i].center, erc[i].center +
+//        cv::Point2f(0.5 * erc[i].size.width * cos(erc[i].angle * CV_PI / 180),
+//            0.5 * erc[i].size.width * sin(erc[i].angle * CV_PI / 180)),
+//            CV_RGB(1,1,0));
+//
+//    cv::line(tmp, erc[i].center, erc[i].center +
+//        cv::Point2f(0.5 * erc[i].size.height * sin(erc[i].angle * CV_PI / 180),
+//            -0.5 * erc[i].size.height * cos(erc[i].angle * CV_PI / 180)),
+//            CV_RGB(1,1,0));
+//
+//    save_image(tmp, ssprintf("ellipse.%d.tiff", i));
+//
+//    CF_DEBUG("image[%d]: C get_jovian_ellipse_bounding_box()", i);
+//
+//    get_jovian_ellipse_bounding_box(images[i].size(), erc[i], &crops[i]);
+//
+//    CF_DEBUG("image[%d]: C get_jovian_ellipse_bounding_box() OK", i);
+//
+//    erc[i].center.x -= crops[i].x;
+//    erc[i].center.y -= crops[i].y;
+//
+//    if ( images[i].channels() == 1 ) {
+//      images[i](crops[i]).copyTo(cropped_images[i]);
+//    }
+//    else {
+//      cv::cvtColor(images[i](crops[i]), cropped_images[i], cv::COLOR_BGR2GRAY);
+//    }
+//
+//    //unsharp_mask(cropped_images[i], cropped_images[i], 1, 0.99);
+//    save_image(cropped_images[i], ssprintf("crop.%d.tiff", i));
+//  }
+//
+//  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
+//  c_ecc_pyramide_align ecch(&ecc);
+//  cv::Matx23d T = createEyeTransform(ecc.motion_type());
+//
+//  cv::Mat & input_image = cropped_images[0];
+//  cv::Mat & reference_image = cropped_images[1];
+//
+//  if ( !ecch.align(input_image, reference_image, T) ) {
+//    CF_ERROR("ecch.align() fails");
+//  }
+//
+//  cv::remap(input_image, tmp, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR);
+//  save_image(tmp, ssprintf("crop.remapped.%d.tiff", 0));
+//
+//
+//  cv::Mat2f ermap;
+//  cv::Mat1f wmask;
+//
+//
+//  const double rotation_step = CV_PI / erc[1].size.width;
+//  const double min_rotation = - 25 * CV_PI / 180;
+//  const double max_rotation = + 25 * CV_PI / 180;
+//  const int num_rotations = (int)((max_rotation - min_rotation) / rotation_step);
+//
+//  CF_DEBUG("rotation_step=%g", rotation_step * 180/ CV_PI);
+//
+//
+//  cv::Mat1f reference_jupiter_image;
+//  cv::Mat1f input_jupiter_image;
+//  cv::Mat1b reference_jupiter_mask;
+//  cv::Mat1b input_jupiter_mask;
+//
+//  cv::Mat1f derotated_image;
+//  cv::Mat1f derotation_mask;
+//  cv::Mat1f difference_image;
+//
+//  double normalization_scale = std::max(2.0, 3 * erc[1].size.width / 500.);
+//  jovian_normalize(reference_image, cv::noArray(), reference_jupiter_image, normalization_scale);
+//  jovian_normalize(input_image, cv::noArray(), input_jupiter_image, normalization_scale);
+//
+//  double best_cost;
+//  double best_rotation;
+//  int best_rotation_index;
+//
+//  for ( int i = 0; i < num_rotations; ++i ) {
+//
+//    double l = min_rotation + i * rotation_step;
+//
+//    create_jovian_rotation_remap(l,
+//        erc[1],
+//        T,
+//        reference_jupiter_image.size(),
+//        ermap,
+//        derotation_mask);
+//
+//    //save_image(derotation_mask, ssprintf("rotations/derotation_mask.%03d.tiff", i));
+//    cv::remap(input_jupiter_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+//    //save_image(derotated_image, ssprintf("rotations/rotation.%03d.tiff", i));
+//
+//    double cost = compute_jovian_derotation_cost(
+//        reference_jupiter_image, derotated_image,
+//        derotation_mask,
+//        difference_image);
+//
+//    //save_image(difference_image, ssprintf("rotations/absdiff.%03d.tiff", i));
+//
+//    CF_DEBUG("R %6d: l=%+.3f score=%.6f", i, l * 180 / CV_PI, cost);
+//
+//    if ( i == 0 || cost < best_cost ) {
+//      best_cost = cost;
+//      best_rotation = l;
+//      best_rotation_index = i;
+//    }
+//  }
+//
+//  CF_DEBUG("BEST cost: %g at rotation %d %g deg", best_cost, best_rotation_index, best_rotation * 180 / CV_PI);
+//
+//  c_ecch_flow eccflow;
+//
+//
+//  create_jovian_rotation_remap(best_rotation,
+//      erc[1],
+//      T,
+//      reference_jupiter_image.size(),
+//      ermap,
+//      derotation_mask);
+//
+//
+//  eccflow.set_max_pyramid_level(1);
+//  eccflow.set_support_scale(3);
+//  eccflow.set_normalization_scale(-1);
+//
+//  reference_jupiter_mask = cv::Mat1b(reference_jupiter_image.size(), 0);
+//  input_jupiter_mask = cv::Mat1b(input_jupiter_image.size(), 0);
+//  cv::ellipse(reference_jupiter_mask, erc[1], 255, -1, cv::LINE_8);
+//  cv::ellipse(input_jupiter_mask, erc[0], 255, -1, cv::LINE_8);
+//
+//  save_image(reference_jupiter_image, ssprintf("reference_jupiter_image.tiff"));
+//  save_image(input_jupiter_image, ssprintf("input_jupiter_image.tiff"));
+//
+//  save_image(reference_jupiter_mask, ssprintf("reference_jupiter_mask.tiff"));
+//  save_image(input_jupiter_mask, ssprintf("input_jupiter_mask.tiff"));
+//
+//  cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+//  save_image(derotated_image, ssprintf("derotated_no_optfow_image.tiff"));
+//
+//  eccflow.compute(input_jupiter_image, reference_jupiter_image,
+//      ermap/*,
+//      input_jupiter_mask,
+//      reference_jupiter_mask*/);
+//
+//  cv::remap(input_image, derotated_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+//  save_image(derotated_image, ssprintf("derotated_image.tiff"));
+//
+//
+//  cv::Mat reference_rgb_image, derotated_rgb_image;
+//  reference_rgb_image = images[1](crops[1]);
+//  cv::remap(images[0](crops[0]), derotated_rgb_image, ermap, cv::noArray(), cv::INTER_LINEAR);
+//  cv::remap(derotation_mask, derotation_mask, ermap, cv::noArray(), cv::INTER_LINEAR);
+//  cv::erode(derotation_mask, derotation_mask, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(15,15)));
+//  cv::GaussianBlur(derotation_mask, derotation_mask, cv::Size(), 7, 0, cv::BORDER_REPLICATE);
+//
+//  save_image(reference_rgb_image, ssprintf("reference_rgb_image.tiff"));
+//  save_image(derotated_rgb_image, ssprintf("derotated_rgb_image.tiff"));
+//  save_image(derotation_mask, ssprintf("derotation_mask.tiff"));
+//
+//
+//  cv::Mat blend, wblend;
+//  blend_images(derotated_rgb_image, derotation_mask,
+//      reference_rgb_image, cv::Mat1f::ones(reference_rgb_image.size()),
+//      blend, wblend);
+//
+//  save_image(blend, "blend.tiff");
+//  save_image(wblend, "blendw.tiff");
+//
+//  return 0;
+//}
 
 
 

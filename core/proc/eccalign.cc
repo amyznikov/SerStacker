@@ -651,7 +651,7 @@ static bool fillRemap(int motionType, const cv::Mat_<T1> & a, cv::Mat_<cv::Vec<T
 /*
  * Create remap of requested type for given parameters
  * */
-bool createRemap(int motionType, cv::InputArray T, cv::OutputArray map, const cv::Size & size, int ddepth)
+bool createRemap(enum ECC_MOTION_TYPE motionType, cv::InputArray T, cv::OutputArray map, const cv::Size & size, int ddepth)
 {
   if ( (T.depth() != CV_32F && T.depth() != CV_64F) || T.channels() != 1 ) {
     CF_ERROR("Invalid argument: warp matrix must be single channel floating point");
@@ -744,7 +744,7 @@ bool createRemap(int motionType, cv::InputArray T, cv::OutputArray map, const cv
   return false;
 }
 
-cv::Mat createRemap(int motionType, cv::InputArray T, const cv::Size & size, int ddepth)
+cv::Mat createRemap(enum ECC_MOTION_TYPE motionType, cv::InputArray T, const cv::Size & size, int ddepth)
 {
   cv::Mat m;
   if ( createRemap(motionType, T, m, size, ddepth) ) {
@@ -796,26 +796,58 @@ void createIdentityRemap(cv::OutputArray rmap, const cv::Size & size, int ddepth
 }
 
 
+
 /*
  * Create identity matrix for given motion type
  * */
-cv::Mat1f createEyeTransform(int ecc_motion_type)
+template<class T>
+static cv::Mat_<T> createEyeTransform_(enum ECC_MOTION_TYPE motionType)
 {
-  switch ( ecc_motion_type ) {
+  switch ( motionType ) {
   case ECC_MOTION_TRANSLATION :
-    return cv::Mat1f(2, 1, 0.f);
+    return cv::Mat_<T>(2, 1, 0.f);
   case ECC_MOTION_EUCLIDEAN :
   case ECC_MOTION_EUCLIDEAN_SCALED:
   case ECC_MOTION_AFFINE :
-    return cv::Mat1f::eye(2, 3);
+    return cv::Mat_<T>::eye(2, 3);
   case ECC_MOTION_HOMOGRAPHY :
-    return cv::Mat1f::eye(3, 3);
+    return cv::Mat_<T>::eye(3, 3);
   case ECC_MOTION_QUADRATIC :
-    return cv::Mat1f::eye(2, 6);
-  default :
+    return cv::Mat_<T>::eye(2, 6);
+  default:
+    CF_ERROR("Invalid ECC MOtion type soecified: %d", motionType);
     break;
   }
-  return cv::Mat1f();
+  return cv::Mat_<T> ();
+}
+
+cv::Mat createEyeTransform(enum ECC_MOTION_TYPE motionType, int ddepth)
+{
+  if ( ddepth < 0 ) {
+    ddepth = CV_32F;
+  }
+
+  switch ( ddepth ) {
+  case CV_8U :
+    return createEyeTransform_<uint8_t>(motionType);
+  case CV_8S :
+    return createEyeTransform_<int8_t>(motionType);
+  case CV_16U :
+    return createEyeTransform_<uint16_t>(motionType);
+  case CV_16S :
+    return createEyeTransform_<int16_t>(motionType);
+  case CV_32S :
+    return createEyeTransform_<int32_t>(motionType);
+  case CV_32F :
+    return createEyeTransform_<float>(motionType);
+  case CV_64F :
+    return createEyeTransform_<double>(motionType);
+  default :
+    CF_ERROR("Invalid output matrix depth specified: %d", ddepth);
+    break;
+  }
+
+  return cv::Mat();
 }
 
 /*
@@ -957,7 +989,7 @@ bool getEuclideanComponents(cv::InputArray M,
 /*
  * Scale remap to account image size change
  */
-void scaleTransform(int motion_type, cv::Mat1f & T, double scale)
+void scaleTransform(enum ECC_MOTION_TYPE motion_type, cv::Mat1f & T, double scale)
 {
   switch ( motion_type ) {
   case ECC_MOTION_TRANSLATION :
@@ -1012,7 +1044,7 @@ void scaleTransform(int motion_type, cv::Mat1f & T, double scale)
 /*
  * Scale remap to account image size change
  */
-void scaleTransform(int motion_type, const cv::Mat1f & src, cv::Mat1f & dst, double scale)
+void scaleTransform(enum ECC_MOTION_TYPE motion_type, const cv::Mat1f & src, cv::Mat1f & dst, double scale)
 {
   if ( src.data != dst.data ) {
     src.copyTo(dst);
@@ -1025,7 +1057,7 @@ void scaleTransform(int motion_type, const cv::Mat1f & src, cv::Mat1f & dst, dou
  * Convert the matrix of affine transform into other compatibe motion type,
  * filling new added elements as appropriate
  */
-cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
+cv::Mat1f expandAffineTransform(const cv::Mat1f T, enum ECC_MOTION_TYPE target_motion_type)
 {
   cv::Mat1f TT;
 
@@ -1151,10 +1183,10 @@ cv::Mat1f expandAffineTransform(const cv::Mat1f T, int target_motion_type)
 
 
 // Extract translation component from current transform
-bool getTranslationComponents(int motion_type, const cv::Mat1f & T,
+bool getTranslationComponents(enum ECC_MOTION_TYPE motionType, const cv::Mat1f & T,
     double * tx, double * ty)
 {
-  switch ( motion_type ) {
+  switch ( motionType ) {
   case ECC_MOTION_TRANSLATION :
     if ( T.rows == 1 && T.cols == 2 ) {
       *tx = T[0][0], *ty = T[0][1];
@@ -1198,7 +1230,7 @@ bool getTranslationComponents(int motion_type, const cv::Mat1f & T,
     break;
 
   default :
-    CF_ERROR("Invalid ecc_motion_type=%d", motion_type);
+    CF_ERROR("Invalid ecc_motion_type spoecified: %d", motionType);
     *tx = *ty = 0;
     return false;
   }
@@ -1211,7 +1243,7 @@ bool getTranslationComponents(int motion_type, const cv::Mat1f & T,
 /////////////////////////////////////////////////////////////////////////////////
 
 
-static int init_warp_matrix(int motion_type, cv::InputOutputArray warpMatrix)
+static int init_warp_matrix(enum ECC_MOTION_TYPE motion_type, cv::InputOutputArray warpMatrix)
 {
   int numberOfParameters = -1;
 
@@ -1935,12 +1967,12 @@ c_ecc_align::~c_ecc_align()
 {
 }
 
-void c_ecc_align::set_motion_type(int v)
+void c_ecc_align::set_motion_type(enum ECC_MOTION_TYPE v)
 {
   this->ecc_motion_type_ = v;
 }
 
-int c_ecc_align::motion_type() const
+enum ECC_MOTION_TYPE c_ecc_align::motion_type() const
 {
   return this->ecc_motion_type_;
 }
@@ -2105,7 +2137,7 @@ void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mas
 
 ///////////////////////////////////////////////////////////////////////////////
 
-c_ecc_forward_additive::c_ecc_forward_additive(int ecc_motion_type)
+c_ecc_forward_additive::c_ecc_forward_additive(enum ECC_MOTION_TYPE ecc_motion_type)
 {
   set_motion_type(ecc_motion_type);
 }
@@ -2653,6 +2685,378 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
 
 ///////////////////////////////////////////////////////////////////////////////
 
+template<class T1, class T2>
+static bool ecc_flow2remap_(cv::InputArray _uv,
+    cv::OutputArray _rmap)
+{
+  const cv::Mat_<cv::Vec<T1, 2>> uv =
+      _uv.getMat();
+
+  _rmap.create(uv.size(),
+      CV_MAKETYPE(cv::DataType<T2>::depth, 2));
+
+  cv::Mat_<cv::Vec<T2, 2>> rmap =
+      _rmap.getMatRef();
+
+  typedef tbb::blocked_range<int> range;
+  tbb::parallel_for(range(0, rmap.rows, 256),
+      [&rmap, &uv] (const range & r ) {
+        const int nx = rmap.cols;
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+          for ( int x = 0; x < nx; ++x ) {
+            rmap[y][x][0] = cv::saturate_cast<T2>(uv[y][x][0] + x);
+            rmap[y][x][1] = cv::saturate_cast<T2>(uv[y][x][1] + y);
+          }
+        }
+      });
+
+  return true;
+}
+
+template<class T1, class T2>
+static bool ecc_remap2flow_(cv::InputArray _rmap,
+    cv::OutputArray _uv)
+{
+  const cv::Mat_<cv::Vec<T1, 2>> rmap =
+      _rmap.getMat();
+
+  _uv.create(rmap.size(),
+      CV_MAKETYPE(cv::DataType<T2>::depth, 2));
+
+  cv::Mat_<cv::Vec<T2, 2>> uv =
+      _uv.getMatRef();
+
+  typedef tbb::blocked_range<int> range;
+  tbb::parallel_for(range(0, rmap.rows, 256),
+      [&rmap, &uv] (const range & r ) {
+        const int nx = rmap.cols;
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+          for ( int x = 0; x < nx; ++x ) {
+            uv[y][x][0] = cv::saturate_cast<T2>(rmap[y][x][0] - x);
+            uv[y][x][1] = cv::saturate_cast<T2>(rmap[y][x][1] - y);
+          }
+        }
+      });
+
+  return true;
+}
+
+bool ecc_flow2remap(cv::InputArray uv,
+    cv::OutputArray rmap)
+{
+  if ( uv.channels() != 2 ) {
+    CF_ERROR("Invalid argument: input uv marix must be 2-channel");
+    return false;
+  }
+
+  if ( rmap.fixedType() && rmap.channels() != 2 ) {
+    CF_ERROR("Invalid argument: ouput rmap matrix must be 2-channel");
+    return false;
+  }
+
+  if ( rmap.fixedSize() && rmap.size() != uv.size() ) {
+    CF_ERROR("Invalid argument: ouput rmap matrix must have the same size as input uv matrix");
+    return false;
+  }
+
+  const int ddepth =
+      rmap.fixedType() ? rmap.depth() :
+          uv.depth();
+
+  switch ( uv.depth() ) {
+  case CV_8U :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<uint8_t, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<uint8_t, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<uint8_t, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<uint8_t, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<uint8_t, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<uint8_t, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<uint8_t, double>(uv, rmap);
+    }
+    break;
+  case CV_8S :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<int8_t, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<int8_t, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<int8_t, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<int8_t, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<int8_t, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<int8_t, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<int8_t, double>(uv, rmap);
+    }
+    break;
+  case CV_16U :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<uint16_t, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<uint16_t, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<uint16_t, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<uint16_t, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<uint16_t, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<uint16_t, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<uint16_t, double>(uv, rmap);
+    }
+    break;
+  case CV_16S :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<int16_t, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<int16_t, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<int16_t, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<int16_t, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<int16_t, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<int16_t, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<int16_t, double>(uv, rmap);
+    }
+    break;
+  case CV_32S :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<int32_t, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<int32_t, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<int32_t, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<int32_t, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<int32_t, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<int32_t, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<int32_t, double>(uv, rmap);
+    }
+    break;
+  case CV_32F :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<float, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<float, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<float, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<float, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<float, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<float, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<float, double>(uv, rmap);
+    }
+    break;
+  case CV_64F :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_flow2remap_<double, uint8_t>(uv, rmap);
+    case CV_8S :
+      return ecc_flow2remap_<double, int8_t>(uv, rmap);
+    case CV_16U :
+      return ecc_flow2remap_<double, uint16_t>(uv, rmap);
+    case CV_16S :
+      return ecc_flow2remap_<double, int16_t>(uv, rmap);
+    case CV_32S :
+      return ecc_flow2remap_<double, int32_t>(uv, rmap);
+    case CV_32F :
+      return ecc_flow2remap_<double, float>(uv, rmap);
+    case CV_64F :
+      return ecc_flow2remap_<double, double>(uv, rmap);
+    }
+    break;
+  }
+
+  CF_ERROR("Not supported combination of input depth=%d and output depth=%d",
+      rmap.depth(), ddepth);
+
+  return false;
+
+}
+
+
+bool ecc_remap2flow(cv::InputArray rmap,
+    cv::OutputArray uv)
+{
+  if ( rmap.channels() != 2 ) {
+    CF_ERROR("Invalid argument: input rmap marix must be 2-channel");
+    return false;
+  }
+
+  if ( uv.fixedType() && uv.channels() != 2 ) {
+    CF_ERROR("Invalid argument: ouput uv matrix must be 2-channel");
+    return false;
+  }
+
+  if ( uv.fixedSize() && uv.size() != rmap.size() ) {
+    CF_ERROR("Invalid argument: ouput uv matrix must have the same size as input rmap matrix");
+    return false;
+  }
+
+  const int ddepth =
+      uv.fixedType() ? uv.depth() :
+          rmap.depth();
+
+  switch ( rmap.depth() ) {
+  case CV_8U :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<uint8_t, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<uint8_t, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<uint8_t, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<uint8_t, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<uint8_t, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<uint8_t, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<uint8_t, double>(rmap, uv);
+    }
+    break;
+  case CV_8S :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<int8_t, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<int8_t, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<int8_t, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<int8_t, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<int8_t, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<int8_t, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<int8_t, double>(rmap, uv);
+    }
+    break;
+  case CV_16U :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<uint16_t, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<uint16_t, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<uint16_t, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<uint16_t, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<uint16_t, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<uint16_t, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<uint16_t, double>(rmap, uv);
+    }
+    break;
+  case CV_16S :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<int16_t, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<int16_t, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<int16_t, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<int16_t, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<int16_t, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<int16_t, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<int16_t, double>(rmap, uv);
+    }
+    break;
+  case CV_32S :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<int32_t, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<int32_t, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<int32_t, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<int32_t, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<int32_t, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<int32_t, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<int32_t, double>(rmap, uv);
+    }
+    break;
+  case CV_32F :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<float, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<float, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<float, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<float, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<float, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<float, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<float, double>(rmap, uv);
+    }
+    break;
+  case CV_64F :
+    switch ( ddepth ) {
+    case CV_8U :
+      return ecc_remap2flow_<double, uint8_t>(rmap, uv);
+    case CV_8S :
+      return ecc_remap2flow_<double, int8_t>(rmap, uv);
+    case CV_16U :
+      return ecc_remap2flow_<double, uint16_t>(rmap, uv);
+    case CV_16S :
+      return ecc_remap2flow_<double, int16_t>(rmap, uv);
+    case CV_32S :
+      return ecc_remap2flow_<double, int32_t>(rmap, uv);
+    case CV_32F :
+      return ecc_remap2flow_<double, float>(rmap, uv);
+    case CV_64F :
+      return ecc_remap2flow_<double, double>(rmap, uv);
+    }
+    break;
+  }
+
+  CF_ERROR("Not supported combination of input depth=%d and output depth=%d",
+      rmap.depth(), ddepth);
+
+  return false;
+}
+
 static double estimate_image_noise(cv::InputArray inputImage, cv::InputArray inputMask)
 {
   const cv::Scalar noise =
@@ -2739,43 +3143,6 @@ void c_ecch_flow::set_max_pyramid_level(int v)
 int c_ecch_flow::max_pyramid_level() const
 {
   return max_pyramid_level_;
-}
-
-
-void c_ecch_flow::flow2remap(const cv::Mat2f & uv, cv::Mat2f & rmap)
-{
-  rmap.create(uv.size());
-
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, rmap.rows, 256),
-      [&rmap, &uv] (const range & r ) {
-        const int nx = rmap.cols;
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < nx; ++x ) {
-            rmap[y][x][0] = x + uv[y][x][0];
-            rmap[y][x][1] = y + uv[y][x][1];
-          }
-        }
-      });
-}
-
-void c_ecch_flow::remap2flow(const cv::Mat2f & rmap,
-    cv::Mat2f & uv)
-{
-  uv.create(rmap.size());
-
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, rmap.rows, 256),
-      [&rmap, &uv] (const range & r ) {
-        const int nx = rmap.cols;
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < nx; ++x ) {
-            uv[y][x][0] = rmap[y][x][0] - x;
-            uv[y][x][1] = rmap[y][x][1] - y;
-          }
-        }
-      });
-
 }
 
 const cv::Mat1f & c_ecch_flow::reference_image() const

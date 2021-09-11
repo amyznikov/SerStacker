@@ -11,6 +11,8 @@
 #include "eccalign.h"
 #include "planetary-disk-detection.h"
 #include <tbb/tbb.h>
+#include <core/io/save_image.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 // OpenCV version macro
@@ -350,42 +352,292 @@ const cv::RotatedRect & c_jovian_derotation::reference_ellipse() const
   return reference_ellipse_;
 }
 
-const cv::Rect & c_jovian_derotation::reference_ellipse_boudig_box() const
+const cv::RotatedRect & c_jovian_derotation::current_ellipse() const
 {
-  return reference_ellipse_boudig_box_;
+  return current_ellipse_;
 }
 
-bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+const cv::Rect & c_jovian_derotation::reference_boundig_box() const
 {
-  if( !detect_jovian_ellipse(reference_image, &reference_ellipse_) ) {
-    CF_ERROR("detect_jovian_ellipse(reference_image) fails");
+  return reference_boundig_box_;
+}
+
+const cv::Rect & c_jovian_derotation::current_boundig_box() const
+{
+  return current_boundig_box_;
+}
+
+void c_jovian_derotation::normalize_jovian_image(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
+{
+  cv::Scalar mv, sv;
+  cv::Mat src, mean;
+
+  src = _src.getMat();
+  cv::meanStdDev(src, mv, sv, mask);
+
+  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+  cv::subtract(src, mean, mean);
+  cv::multiply(mean, 1./sv[0], dst);
+}
+
+
+bool c_jovian_derotation::extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
+    cv::RotatedRect * output_ellipse,
+    cv::Rect * output_ellipse_boundig_box,
+    cv::Mat * output_component_image,
+    cv::Mat * output_component_mask)
+{
+  if ( !detect_jovian_ellipse(src_image, output_ellipse) ) {
+    CF_ERROR("detect_jovian_ellipse() fails");
     return false;
   }
 
-  get_jovian_ellipse_bounding_box(reference_image.size(), reference_ellipse_,
-      &reference_ellipse_boudig_box_);
+  get_jovian_ellipse_bounding_box(src_image.size(), *output_ellipse,
+      output_ellipse_boundig_box);
 
-  if( reference_image.channels() == 1 ) {
-    reference_image.getMat()(reference_ellipse_boudig_box_).copyTo(reference_image_);
+
+  output_ellipse->center.x -= output_ellipse_boundig_box->x;
+  output_ellipse->center.y -= output_ellipse_boundig_box->y;
+
+  if ( src_image.channels() == 1 ) {
+    src_image.getMat()(*output_ellipse_boundig_box).copyTo(*output_component_image);
   }
   else {
-    cv::cvtColor(reference_image.getMat()(reference_ellipse_boudig_box_),
-        reference_image_, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(src_image.getMat()(*output_ellipse_boundig_box),
+        *output_component_image, cv::COLOR_BGR2GRAY);
   }
 
-  if ( reference_mask.empty() ) {
-    reference_mask_.release();
+  if ( src_mask.empty() ) {
+    output_component_mask->release();
   }
   else {
-    reference_mask.getMat()(reference_ellipse_boudig_box_).copyTo(reference_mask_);
+    src_mask.getMat()(*output_ellipse_boundig_box).copyTo(*output_component_mask);
   }
 
   return true;
 }
 
-bool c_jovian_derotation::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputArray input_mask)
+bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+{
+  // Just extract and save reference jovian image
+
+  bool fOk =
+      extract_jovian_image(reference_image, reference_mask,
+          &reference_ellipse_,
+          &reference_boundig_box_,
+          &reference_component_image_,
+          &reference_component_mask_);
+
+  if ( !fOk) {
+    CF_ERROR("extract_jovian_image(reference_image) fails");
+    return false;
+  }
+
+  // precompute normalization scale and normalized reference image
+  normalization_scale_ =
+      std::max(2.0, 3 * reference_ellipse_.size.width / 500.);
+
+  normalize_jovian_image(reference_component_image_,
+      reference_component_mask_,
+      normalized_reference_component_image_,
+      normalization_scale_);
+
+
+  // create also artificaly drawn reference ellipse mask
+  reference_component_ellipse_mask_.create(reference_component_image_.size());
+  reference_component_ellipse_mask_.setTo(0);
+  cv::ellipse(reference_component_ellipse_mask_, reference_ellipse_, 255, -1, cv::LINE_8);
+
+  return true;
+}
+
+double c_jovian_derotation::compute_jovian_derotation_cost(const cv::Mat1f & reference_component_image,
+    const cv::Mat1f & rotated_component_image,
+    const cv::Mat1f & rotation_mask,
+    cv::Mat1f * difference_image /* optional for debug */)
+{
+  double score = 0;
+  double total_weight = 0;
+
+  if ( difference_image ) {
+    difference_image->create(rotation_mask.size());
+    difference_image->setTo(0);
+  }
+
+  for ( int y = 0; y < rotation_mask.rows; ++y ) {
+    for ( int x = 0; x < rotation_mask.cols; ++x ) {
+      if ( rotation_mask[y][x] > 0 ) {
+
+        const double difference =
+            rotation_mask[y][x] * abs(reference_component_image[y][x] - rotated_component_image[y][x]);
+
+        total_weight += rotation_mask[y][x];
+        score += difference;
+
+        if ( difference_image ) {
+          (*difference_image)[y][x] = difference;
+        }
+      }
+    }
+  }
+
+  return score / total_weight;
+}
+
+
+bool c_jovian_derotation::compute(cv::InputArray current_image, cv::Mat2f & output_rmap, cv::InputArray current_mask)
 {
 
-  return false;
+  //
+  // Extract current jovian image
+  //
+
+  bool fOk =
+      extract_jovian_image(current_image, current_mask,
+          &current_ellipse_,
+          &current_boundig_box_,
+          &current_component_image_,
+          &current_component_mask_);
+
+  if ( !fOk) {
+    CF_ERROR("extract_jovian_image(current_image) fails");
+    return false;
+  }
+
+
+  //
+  // Align current jovian component image to the reference component image
+  //
+
+  ecc_.set_motion_type(ECC_MOTION_EUCLIDEAN_SCALED);
+  ecc_.set_eps(0.1);
+  ecc_.set_min_rho(0.4);
+
+  cv::Matx23d T =
+      createEyeTransform(ecc_.motion_type());
+
+  fOk =
+      ecch_.align(&ecc_,
+          current_component_image_,
+          reference_component_image_,
+          T,
+          current_component_mask_,
+          reference_component_mask_);
+
+  if ( !fOk ) {
+    CF_ERROR("ecch.align(current_component_image_->reference_component_image_) fails");
+    return false;
+  }
+
+  normalize_jovian_image(current_component_image_,
+      current_component_mask_,
+      normalized_current_component_image_,
+      normalization_scale_);
+
+
+
+  //
+  // Loop over the sequence of rotation angles and compute derotation cost for each rotation angle
+  // Select the best candidate.
+  //
+
+  const double rotation_step = CV_PI / reference_ellipse_.size.width;
+  const double min_rotation = -30 * CV_PI / 180;
+  const double max_rotation = +30 * CV_PI / 180;
+  const int num_rotations = (int)((max_rotation - min_rotation) / rotation_step);
+
+
+  double current_cost, best_cost;
+  double best_rotation;
+  int best_rotation_index;
+
+  CF_DEBUG("rotation_step=%g deg",
+      rotation_step * 180/ CV_PI);
+
+  cv::Mat2f rotation_remap;
+  cv::Mat1f rotation_mask;
+  cv::Mat1b current_ellipse_mask;
+  cv::Mat rotated_component_image;
+
+  for ( int i = 0; i < num_rotations; ++i ) {
+
+    const double l =
+          min_rotation + i * rotation_step;
+
+    create_jovian_rotation_remap(l,
+        reference_ellipse_,
+        T,
+        reference_component_image_.size(),
+        rotation_remap,
+        rotation_mask);
+
+    cv::remap(normalized_current_component_image_, rotated_component_image,
+        rotation_remap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_REPLICATE);
+
+    current_cost =
+        compute_jovian_derotation_cost(
+            normalized_reference_component_image_,
+            rotated_component_image,
+            rotation_mask);
+
+    CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i, l * 180 / CV_PI, current_cost);
+
+    if ( i == 0 || current_cost < best_cost ) {
+      best_cost = current_cost;
+      best_rotation = l;
+      best_rotation_index = i;
+    }
+  }
+
+  CF_DEBUG("BEST cost: %g at rotation %d = %g deg",
+      best_cost, best_rotation_index, best_rotation * 180 / CV_PI);
+
+  //
+  // Use ecc optical flow to perfectly align rotated current component image
+  //
+
+  create_jovian_rotation_remap(best_rotation,
+      reference_ellipse_,
+      T,
+      reference_component_image_.size(),
+      rotation_remap,
+      rotation_mask);
+
+  eccflow_.set_max_pyramid_level(0);
+  eccflow_.set_support_scale(3);
+  eccflow_.set_normalization_scale(0);
+
+  cv::compare(rotation_mask, 1e-5, current_ellipse_mask, cv::CMP_GT);
+
+  //save_image(normalized_current_component_image_, "normalized_current_component_image_.tiff");
+  //save_image(normalized_reference_component_image_, "normalized_reference_component_image_.tiff");
+
+  fOk = eccflow_.compute(normalized_current_component_image_,
+      normalized_reference_component_image_,
+      rotation_remap,
+      current_ellipse_mask,
+      reference_component_ellipse_mask_);
+
+  if ( !fOk ) {
+    CF_ERROR("eccflow_.compute(current_component_image_->reference_component_image_) fails");
+    return false;
+  }
+
+
+  //  output_rmap = rotation_remap;
+  //  output_rmap.setTo(0, ~reference_component_ellipse_mask_);
+
+  output_rmap.create(rotation_remap.size());
+  output_rmap.setTo(-1);
+
+  cv::add(rotation_remap,
+      cv::Scalar(current_boundig_box_.x, current_boundig_box_.y),
+      output_rmap,
+      current_ellipse_mask);
+
+
+  return true;
 }
 

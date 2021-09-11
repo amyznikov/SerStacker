@@ -10,6 +10,7 @@
 #define __jupiter_h__
 
 #include <opencv2/opencv.hpp>
+#include "eccalign.h"
 
 /*
  Detect planetary disk on given image, fit Jovian ellipse
@@ -116,14 +117,46 @@ public:
       cv::InputArray input_mask = cv::noArray());
 
   const cv::RotatedRect & reference_ellipse() const;
-  const cv::Rect & reference_ellipse_boudig_box() const;
+  const cv::RotatedRect & current_ellipse() const;
 
+  const cv::Rect & reference_boundig_box() const;
+  const cv::Rect & current_boundig_box() const;
+
+protected:
+  static bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
+      cv::RotatedRect * output_ellipse,
+      cv::Rect * output_ellipse_boundig_box,
+      cv::Mat * output_component_image,
+      cv::Mat * output_component_mask);
+
+  static void normalize_jovian_image(cv::InputArray _src, cv::InputArray mask,
+      cv::OutputArray dst,
+      double sigma);
+
+  static double compute_jovian_derotation_cost(const cv::Mat1f & reference_component_image,
+      const cv::Mat1f & curret_rotated_component_image,
+      const cv::Mat1f & rotation_mask,
+      cv::Mat1f * difference_image = nullptr) ;
 
 protected:
   cv::RotatedRect reference_ellipse_;
-  cv::Rect reference_ellipse_boudig_box_;
-  cv::Mat reference_image_;
-  cv::Mat reference_mask_;
+  cv::RotatedRect current_ellipse_;
+  cv::Rect reference_boundig_box_;
+  cv::Rect current_boundig_box_;
+  cv::Mat reference_component_image_;
+  cv::Mat current_component_image_;
+  cv::Mat reference_component_mask_;
+  cv::Mat current_component_mask_;
+
+  cv::Mat normalized_reference_component_image_;
+  cv::Mat normalized_current_component_image_;
+  cv::Mat1b reference_component_ellipse_mask_;
+  double normalization_scale_ = 1.0;
+
+  c_ecc_forward_additive ecc_;
+  c_ecc_pyramide_align ecch_;
+  c_ecch_flow eccflow_;
+
 };
 
 #endif /* __jupiter_h__ */

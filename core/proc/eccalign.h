@@ -48,13 +48,13 @@ enum cv::InterpolationFlags fromStdString(const std::string  & s,
 //  T - input transformation  matrix
 //  rmap - output cv::Mat2f or cv::Mat2d matrix for cv::remap()
 //  ddepth - destination type of rmap output matrix
-bool createRemap(int motionType,
+bool createRemap(enum ECC_MOTION_TYPE motionType,
     cv::InputArray T,
     cv::OutputArray rmap,
     const cv::Size & size,
     int ddepth = -1 );
 
-cv::Mat createRemap(int motionType,
+cv::Mat createRemap(enum ECC_MOTION_TYPE motionType,
     cv::InputArray T,
     const cv::Size & size,
     int ddepth = -1 );
@@ -64,8 +64,8 @@ void createIdentityRemap(cv::OutputArray rmap,
     int ddepth = -1 );
 
 // Initialize identity (eye) transform matrix of appropriate size for given motion type
-cv::Mat1f createEyeTransform(
-    int ecc_motion_type);
+cv::Mat createEyeTransform(enum ECC_MOTION_TYPE motionType,
+    int ddepth = CV_32F);
 
 // Initialize translation transform matrix of appropriate size for given motion type
 cv::Mat createTranslationTransform(
@@ -73,8 +73,10 @@ cv::Mat createTranslationTransform(
     int ddepth = CV_32F);
 
 // Extract translation component from current transform
-bool getTranslationComponents(int ecc_motion_type, const cv::Mat1f & T,
-    double * tx, double * ty);
+bool getTranslationComponents(enum ECC_MOTION_TYPE motionType,
+    const cv::Mat1f & T,
+    double * tx,
+    double * ty);
 
 
 //
@@ -98,12 +100,12 @@ bool getEuclideanComponents(cv::InputArray T,
 
 
 // Scale given transform matrix to reflect image scale change
-void scaleTransform(int ecc_motion_type,
+void scaleTransform(enum ECC_MOTION_TYPE ecc_motion_type,
     cv::Mat1f & T,
     double scale);
 
 // Scale given transform matrix to reflect image scale change
-void scaleTransform(int ecc_motion_type,
+void scaleTransform(enum ECC_MOTION_TYPE ecc_motion_type,
     const cv::Mat1f & src,
     cv::Mat1f & dst,
     double scale);
@@ -111,7 +113,7 @@ void scaleTransform(int ecc_motion_type,
 // Expand given 2x3 affine transformation matrix T to given motion type (homography or quadratic),
 // padding with zeros and/or ones as appropriate
 cv::Mat1f expandAffineTransform(const cv::Mat1f T,
-    int ecc_motion_type);
+    enum ECC_MOTION_TYPE target_motion_type);
 
 // apply transfromation T to a single point x,y
 //bool applyTransform(double x, double y,
@@ -134,8 +136,8 @@ public:
   typedef c_ecc_align this_class;
   typedef std::shared_ptr<this_class> ptr;
 
-  void set_motion_type(int ecc_motion_type);
-  int motion_type() const;
+  void set_motion_type(enum ECC_MOTION_TYPE ecc_motion_type);
+  enum ECC_MOTION_TYPE motion_type() const;
 
   void set_max_iterations(int v);
   int max_iterations() const;
@@ -181,7 +183,7 @@ public:
   virtual ~c_ecc_align();
 
 protected:
-  int ecc_motion_type_ = ECC_MOTION_AFFINE;
+  enum ECC_MOTION_TYPE ecc_motion_type_ = ECC_MOTION_AFFINE;
   int max_iterations_ = 30;
   int image_interpolation_flags_ = cv::INTER_LINEAR;
   //  int pyramid_normalization_level_ = 0;
@@ -225,7 +227,7 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
 
-  c_ecc_forward_additive(int ecc_motion_type = ECC_MOTION_AFFINE);
+  c_ecc_forward_additive(enum ECC_MOTION_TYPE ecc_motion_type = ECC_MOTION_AFFINE);
 
   bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray(), cv::InputArray templateMask = cv::noArray()) override;
@@ -233,6 +235,7 @@ public:
 
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray()) override;
+
   bool align_to_reference(cv::InputArray inputImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray()) override;
 
@@ -386,12 +389,6 @@ public:
     return pyramid_;
   }
 
-  static void flow2remap(const cv::Mat2f & uv,
-      cv::Mat2f & rmap);
-
-  static void remap2flow(const cv::Mat2f & rmap,
-      cv::Mat2f & uv);
-
 protected:
 
   bool convert_input_images(cv::InputArray src, cv::InputArray srcmask,
@@ -418,6 +415,12 @@ protected:
   cv::Mat2f cuv;
 };
 
+
+bool ecc_flow2remap(cv::InputArray uv,
+    cv::OutputArray rmap);
+
+bool ecc_remap2flow(cv::InputArray rmap,
+    cv::OutputArray uv);
 
 /////////////////////////////////////////////////////////////////////////////////
 #endif /* __ecc_align_h__ */

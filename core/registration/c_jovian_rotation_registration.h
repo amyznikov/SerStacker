@@ -53,6 +53,14 @@ public: // overrides
       cv::OutputArray dst = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray()) override;
 
+  bool custom_remap(const cv::Mat2f & rmap,
+      cv::InputArray src, cv::OutputArray dst,
+      cv::InputArray src_mask = cv::noArray(),
+      cv::OutputArray dst_mask = cv::noArray(),
+      int interpolation_flags = -1,
+      int border_mode = -1,
+      const cv::Scalar & border_value = cv::Scalar()) const override;
+
 protected:
   c_jovian_rotation_registration();
   c_jovian_rotation_registration(const c_jovian_derotation_options & opts);

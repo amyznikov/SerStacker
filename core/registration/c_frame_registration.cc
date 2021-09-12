@@ -533,8 +533,14 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
 
   if ( dst.needed() || dstmask.needed() ) {
+
     t0 = get_realtime_ms();
-    remap(current_image, dst, current_mask, dstmask);
+
+    if ( !remap(current_image, dst, current_mask, dstmask) ) {
+      CF_ERROR("c_frame_registration::remap() fails");
+      return false;
+    }
+
     current_status_.timings.remap =
         (t1 = get_realtime_ms()) - t0;
   }
@@ -633,10 +639,15 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
           interpolation_flags, cv::BORDER_CONSTANT, cv::Scalar::all(0));
     }
 
-    cv::Mat & out_mask = dst_mask.getMatRef();
-    cv::compare(out_mask, 255, out_mask, cv::CMP_GE);
-    cv::erode(out_mask, out_mask,cv::Mat1b(5, 5, 255), cv::Point(-1,-1), 1,
-        cv::BORDER_CONSTANT, cv::Scalar::all(255));
+    cv::Mat & out_mask =
+        dst_mask.getMatRef();
+
+    if ( out_mask.depth() == CV_8U ) {
+      // reduce mask edge artifacts
+      cv::compare(out_mask, 255, out_mask, cv::CMP_GE);
+      cv::erode(out_mask, out_mask, cv::Mat1b(5, 5, 255), cv::Point(-1, -1), 1,
+          cv::BORDER_CONSTANT, cv::Scalar::all(255));
+    }
   }
 
   return true;

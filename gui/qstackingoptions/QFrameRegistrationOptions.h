@@ -199,16 +199,36 @@ public:
   typedef QSettingsWidget Base;
 
   QPlanetaryDiskRegistrationSettings(QWidget * parent = Q_NULLPTR);
+  QPlanetaryDiskRegistrationSettings(const QString & prefix, QWidget * parent = Q_NULLPTR);
 
-  void set_registration_options(c_planetary_disk_registration_options * options);
-  const c_planetary_disk_registration_options * registration_options() const;
+  void set_planetary_disk_options(c_planetary_disk_registration_options * options);
+  const c_planetary_disk_registration_options * planetary_disk_options() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_planetary_disk_registration_options * options_ = Q_NULLPTR;
-  //QNumberEditBox * crop_size_ctl = Q_NULLPTR;
+  c_planetary_disk_registration_options * planetary_disk_options_ = Q_NULLPTR;
+};
+
+class QJovianDerotationSettings
+    : public QPlanetaryDiskRegistrationSettings
+{
+  Q_OBJECT;
+public:
+  typedef QJovianDerotationSettings ThisClass;
+  typedef QPlanetaryDiskRegistrationSettings Base;
+
+  QJovianDerotationSettings(QWidget * parent = Q_NULLPTR);
+
+  void set_jovian_derotation_options(c_jovian_derotation_options * jovian_derotation_options);
+  const c_jovian_derotation_options * jovian_derotation_options() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  c_jovian_derotation_options * jovian_derotation_options_ = Q_NULLPTR;
 };
 
 class QStarFieldRegistrationSettings
@@ -258,10 +278,11 @@ protected:
   QFrameRegistrationMethodCombo * frameRegistrationMethod_ctl = Q_NULLPTR;
   QCheckBox * accumulate_and_compensate_turbulent_flow_ctl = Q_NULLPTR;
   //QCheckBox * incremental_mode_ctl = Q_NULLPTR;
-  QFrameRegistrationBaseSettings * frameRegistrationBaseSettings_ctl = Q_NULLPTR;
-  QFeatureBasedRegistrationSettings * featureBasedRegistrationSettings_ctl = Q_NULLPTR;
-  QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings_ctl = Q_NULLPTR;
-  QStarFieldRegistrationSettings * starFieldRegistrationSettings_ctl = Q_NULLPTR;
+  QFrameRegistrationBaseSettings * frameRegistrationBaseSettings = Q_NULLPTR;
+  QFeatureBasedRegistrationSettings * featureBasedRegistrationSettings = Q_NULLPTR;
+  QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings = Q_NULLPTR;
+  QJovianDerotationSettings * jovianDerotationSettings = Q_NULLPTR;
+  QStarFieldRegistrationSettings * starFieldRegistrationSettings = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

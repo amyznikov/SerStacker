@@ -113,7 +113,6 @@ public:
       cv::InputArray reference_mask = cv::noArray());
 
   bool compute(cv::InputArray input_image,
-      cv::Mat2f & rmap,
       cv::InputArray input_mask = cv::noArray());
 
   const cv::RotatedRect & reference_ellipse() const;
@@ -125,6 +124,7 @@ public:
   const cv::Mat1b & reference_ellipse_mask() const;
   const cv::Mat1b & current_ellipse_mask() const;
 
+  const cv::Mat2f & current_rotation_remap() const;
   const cv::Mat1f & current_rotation_mask() const;
   const cv::Mat1b & current_binary_rotation_mask() const;
 
@@ -161,6 +161,7 @@ protected:
   cv::Mat1b current_ellipse_mask_;
   double normalization_scale_ = 1.0;
 
+  cv::Mat2f current_rotation_remap_;
   cv::Mat1f current_rotation_mask_;
   cv::Mat1b current_binary_rotation_mask_;
 

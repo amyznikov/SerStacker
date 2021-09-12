@@ -187,11 +187,12 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if ( !jovian_derotation.compute(images[0], derotation_remap, cv::noArray()) ) {
+  if ( !jovian_derotation.compute(images[0], cv::noArray()) ) {
     CF_ERROR("jovian_derotation.compute() fails");
     return 1;
   }
 
+  derotation_remap = jovian_derotation.current_rotation_remap();
 
   save_image(derotation_remap, "rmap.flo");
 

@@ -431,41 +431,62 @@ void QFeatureBasedRegistrationSettings::onupdatecontrols()
 QPlanetaryDiskRegistrationSettings::QPlanetaryDiskRegistrationSettings(QWidget * parent) :
     Base("QPlanetaryDiskRegistrationSettings", parent)
 {
-//  crop_size_ctl =
-//      add_numeric_box(form, "Crop size WxH:",
-//          [this]() {
-//            if (options_ && !updatingControls() ) {
-//              cv::Size v;
-//              if ( fromString(crop_size_ctl->text(), &v) && v != options_->crop_size ) {
-//                options_->crop_size = v;
-//                emit parameterChanged();
-//              }
-//            }
-//          });
-
 }
 
-void QPlanetaryDiskRegistrationSettings::set_registration_options(c_planetary_disk_registration_options * options)
+QPlanetaryDiskRegistrationSettings::QPlanetaryDiskRegistrationSettings(const QString & prefix, QWidget * parent)
+  : Base(prefix, parent)
 {
-  this->options_ = options;
+}
+
+void QPlanetaryDiskRegistrationSettings::set_planetary_disk_options(c_planetary_disk_registration_options * options)
+{
+  this->planetary_disk_options_ = options;
   updateControls();
 }
 
-const c_planetary_disk_registration_options * QPlanetaryDiskRegistrationSettings::registration_options() const
+const c_planetary_disk_registration_options * QPlanetaryDiskRegistrationSettings::planetary_disk_options() const
 {
-  return this->options_;
+  return this->planetary_disk_options_;
 }
 
 void QPlanetaryDiskRegistrationSettings::onupdatecontrols()
 {
-  if ( !options_ ) {
+  if ( !planetary_disk_options_ ) {
     setEnabled(false);
   }
   else {
-    //crop_size_ctl->setValue(options_->crop_size);
     setEnabled(true);
   }
 }
+
+QJovianDerotationSettings::QJovianDerotationSettings(QWidget * parent)
+  : Base("QJovianDerotationSettings", parent)
+{
+}
+
+void QJovianDerotationSettings::set_jovian_derotation_options(c_jovian_derotation_options * jovian_derotation_options)
+{
+  this->jovian_derotation_options_ = jovian_derotation_options;
+  updateControls();
+}
+
+const c_jovian_derotation_options * QJovianDerotationSettings::jovian_derotation_options() const
+{
+  return this->jovian_derotation_options_;
+}
+
+void QJovianDerotationSettings::onupdatecontrols()
+{
+  Base::onupdatecontrols();
+
+  if ( !jovian_derotation_options_ || !planetary_disk_options_ ) {
+    setEnabled(false);
+  }
+  else {
+    setEnabled(true);
+  }
+}
+
 
 QStarFieldRegistrationSettings::QStarFieldRegistrationSettings(QWidget * parent)
   : Base("QStarFieldRegistrationSettings", parent)
@@ -525,19 +546,22 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
 //        }
 //      });
 
-  form->addRow(featureBasedRegistrationSettings_ctl = new QFeatureBasedRegistrationSettings(this));
-  form->addRow(planetaryDiskRegistrationSettings_ctl = new QPlanetaryDiskRegistrationSettings(this));
-  form->addRow(starFieldRegistrationSettings_ctl = new QStarFieldRegistrationSettings(this));
-  form->addRow(frameRegistrationBaseSettings_ctl = new QFrameRegistrationBaseSettings(this));
+  form->addRow(featureBasedRegistrationSettings = new QFeatureBasedRegistrationSettings(this));
+  form->addRow(planetaryDiskRegistrationSettings = new QPlanetaryDiskRegistrationSettings(this));
+  form->addRow(jovianDerotationSettings = new QJovianDerotationSettings(this));
+  form->addRow(starFieldRegistrationSettings = new QStarFieldRegistrationSettings(this));
+  form->addRow(frameRegistrationBaseSettings = new QFrameRegistrationBaseSettings(this));
 
 
-  connect(featureBasedRegistrationSettings_ctl, &QFeatureBasedRegistrationSettings::parameterChanged,
+  connect(featureBasedRegistrationSettings, &QFeatureBasedRegistrationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
-  connect(planetaryDiskRegistrationSettings_ctl, &QPlanetaryDiskRegistrationSettings::parameterChanged,
+  connect(planetaryDiskRegistrationSettings, &QPlanetaryDiskRegistrationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
-  connect(starFieldRegistrationSettings_ctl, &QStarFieldRegistrationSettings::parameterChanged,
+  connect(jovianDerotationSettings, &QJovianDerotationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
-  connect(frameRegistrationBaseSettings_ctl, &QFrameRegistrationBaseSettings::parameterChanged,
+  connect(starFieldRegistrationSettings, &QStarFieldRegistrationSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(frameRegistrationBaseSettings, &QFrameRegistrationBaseSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
 
 
@@ -576,10 +600,12 @@ void QFrameRegistrationOptions::onupdatecontrols()
   if ( !options_ ) {
     setEnabled(false);
 
-    frameRegistrationBaseSettings_ctl->set_registration_options(nullptr);
-    featureBasedRegistrationSettings_ctl->set_registration_options(nullptr);
-    planetaryDiskRegistrationSettings_ctl->set_registration_options(nullptr);
-    starFieldRegistrationSettings_ctl->set_registration_options(nullptr);
+    frameRegistrationBaseSettings->set_registration_options(nullptr);
+    featureBasedRegistrationSettings->set_registration_options(nullptr);
+    planetaryDiskRegistrationSettings->set_planetary_disk_options(nullptr);
+    jovianDerotationSettings->set_planetary_disk_options(nullptr);
+    jovianDerotationSettings->set_jovian_derotation_options(nullptr);
+    starFieldRegistrationSettings->set_registration_options(nullptr);
 
   }
   else {
@@ -587,10 +613,12 @@ void QFrameRegistrationOptions::onupdatecontrols()
     frameRegistrationMethod_ctl->setCurrentItem(options_->registration_method);
     accumulate_and_compensate_turbulent_flow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
 //    incremental_mode_ctl->setChecked(options_->incremental_mode);
-    frameRegistrationBaseSettings_ctl->set_registration_options(&options_->base_options);
-    featureBasedRegistrationSettings_ctl->set_registration_options(&options_->feature_options);
-    planetaryDiskRegistrationSettings_ctl->set_registration_options(&options_->planetary_disk_options);
-    starFieldRegistrationSettings_ctl->set_registration_options(&options_->star_field_options);
+    frameRegistrationBaseSettings->set_registration_options(&options_->base_options);
+    featureBasedRegistrationSettings->set_registration_options(&options_->feature_options);
+    planetaryDiskRegistrationSettings->set_planetary_disk_options(&options_->planetary_disk_options);
+    jovianDerotationSettings->set_planetary_disk_options(&options_->planetary_disk_options);
+    jovianDerotationSettings->set_jovian_derotation_options(&options_->jovian_derotation_options);
+    starFieldRegistrationSettings->set_registration_options(&options_->star_field_options);
 
     setEnabled(true);
   }
@@ -602,52 +630,48 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
 {
   if ( !options_ ) {
     //stackWidget->setVisible(false);
-    featureBasedRegistrationSettings_ctl->setVisible(false);
-    planetaryDiskRegistrationSettings_ctl->setVisible(false);
-    starFieldRegistrationSettings_ctl->setVisible(false);
+    featureBasedRegistrationSettings->setVisible(false);
+    planetaryDiskRegistrationSettings->setVisible(false);
+    jovianDerotationSettings->setVisible(false);
+    starFieldRegistrationSettings->setVisible(false);
   }
   else {
 
-//    switch ( options_->registration_method = frameRegistrationMethod_ctl->currentItem() ) {
-//    case frame_registration_method_surf :
-//      stackWidget->setCurrentWidget(featureBasedRegistrationSettings_ctl);
-//      break;
-//    case frame_registration_method_small_planetary_disk :
-//      stackWidget->setCurrentWidget(planetaryDiskRegistrationSettings_ctl);
-//      break;
-//    case frame_registration_method_star_field :
-//      stackWidget->setCurrentWidget(starFieldRegistrationSettings_ctl);
-//      break;
-//    }
-//
-//    if ( !stackWidget->isVisible() ) {
-//      stackWidget->setVisible(true);
-//    }
-
     switch ( options_->registration_method = frameRegistrationMethod_ctl->currentItem() ) {
     case frame_registration_method_surf :
-      frameRegistrationBaseSettings_ctl->setVisible(true);
-      featureBasedRegistrationSettings_ctl->setVisible(true);
-      planetaryDiskRegistrationSettings_ctl->setVisible(false);
-      starFieldRegistrationSettings_ctl->setVisible(false);
+      frameRegistrationBaseSettings->setVisible(true);
+      featureBasedRegistrationSettings->setVisible(true);
+      planetaryDiskRegistrationSettings->setVisible(false);
+      jovianDerotationSettings->setVisible(false);
+      starFieldRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_planetary_disk :
-      frameRegistrationBaseSettings_ctl->setVisible(true);
-      featureBasedRegistrationSettings_ctl->setVisible(false);
-      planetaryDiskRegistrationSettings_ctl->setVisible(true);
-      starFieldRegistrationSettings_ctl->setVisible(false);
+      frameRegistrationBaseSettings->setVisible(true);
+      featureBasedRegistrationSettings->setVisible(false);
+      planetaryDiskRegistrationSettings->setVisible(true);
+      jovianDerotationSettings->setVisible(false);
+      starFieldRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_star_field :
-      frameRegistrationBaseSettings_ctl->setVisible(true);
-      featureBasedRegistrationSettings_ctl->setVisible(false);
-      planetaryDiskRegistrationSettings_ctl->setVisible(false);
-      starFieldRegistrationSettings_ctl->setVisible(true);
+      frameRegistrationBaseSettings->setVisible(true);
+      featureBasedRegistrationSettings->setVisible(false);
+      planetaryDiskRegistrationSettings->setVisible(false);
+      jovianDerotationSettings->setVisible(false);
+      starFieldRegistrationSettings->setVisible(true);
+      break;
+    case frame_registration_method_jovian_derotate :
+      frameRegistrationBaseSettings->setVisible(true);
+      featureBasedRegistrationSettings->setVisible(false);
+      planetaryDiskRegistrationSettings->setVisible(false);
+      jovianDerotationSettings->setVisible(true);
+      starFieldRegistrationSettings->setVisible(false);
       break;
     case frame_registration_none :
-      frameRegistrationBaseSettings_ctl->setVisible(false);
-      featureBasedRegistrationSettings_ctl->setVisible(false);
-      planetaryDiskRegistrationSettings_ctl->setVisible(false);
-      starFieldRegistrationSettings_ctl->setVisible(false);
+      frameRegistrationBaseSettings->setVisible(false);
+      featureBasedRegistrationSettings->setVisible(false);
+      planetaryDiskRegistrationSettings->setVisible(false);
+      jovianDerotationSettings->setVisible(false);
+      starFieldRegistrationSettings->setVisible(false);
       break;
     }
 

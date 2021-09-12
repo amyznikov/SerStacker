@@ -12,6 +12,7 @@
 #include <core/roi_selection/c_planetary_disk_selection.h>
 #include <core/registration/c_feature_based_registration.h>
 #include <core/registration/c_planetary_disk_registration.h>
+#include <core/registration/c_jovian_rotation_registration.h>
 #include <core/registration/c_star_field_registration.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/c_anscombe_transform.h>
@@ -30,13 +31,13 @@ enum frame_registration_method {
   frame_registration_method_surf = 0,
   frame_registration_method_planetary_disk = 1,
   frame_registration_method_star_field = 2,
+  frame_registration_method_jovian_derotate = 3,
 };
 
 enum frame_accumulation_method {
   frame_accumulation_none = -1,
-  frame_accumulation_average_masked = 0,
-  frame_accumulation_average_weighted = 1,
-  frame_accumulation_fft = 2,
+  frame_accumulation_weighted_average = 0,
+  frame_accumulation_fft = 1,
 };
 
 enum frame_upscale_stage {
@@ -178,7 +179,7 @@ struct c_frame_upscale_options {
 
 struct c_frame_accumulation_options {
   enum frame_accumulation_method accumulation_method  =
-      frame_accumulation_average_masked;
+      frame_accumulation_weighted_average;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -196,6 +197,7 @@ struct c_frame_registration_options {
   c_feature_based_registration_options feature_options;
   c_planetary_disk_registration_options planetary_disk_options;
   c_star_field_registration_options star_field_options;
+  c_jovian_derotation_options jovian_derotation_options;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -455,6 +457,7 @@ protected:
 
   volatile bool canceled_ = false;
   bool master_frame_generation_ = false;
+  int master_frame_index_ = -1;
 
   std::string output_directory_;
 
@@ -472,7 +475,7 @@ protected:
   c_anscombe_transform anscombe_;
   c_feature_based_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
-  c_frame_accumulation_with_mask::ptr flow_accumulation_;
+  c_frame_weigthed_average::ptr flow_accumulation_;
   mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;

@@ -377,6 +377,11 @@ const cv::Mat1b & c_jovian_derotation::current_ellipse_mask() const
   return current_ellipse_mask_;
 }
 
+const cv::Mat2f & c_jovian_derotation::current_rotation_remap() const
+{
+  return current_rotation_remap_;
+}
+
 const cv::Mat1f & c_jovian_derotation::current_rotation_mask() const
 {
   return current_rotation_mask_;
@@ -509,7 +514,7 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
 
 
 
-bool c_jovian_derotation::compute(cv::InputArray current_image, cv::Mat2f & output_rmap, cv::InputArray current_mask)
+bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray current_mask)
 {
 
   //
@@ -660,14 +665,13 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::Mat2f & outp
   //  output_rmap = rotation_remap;
   //  output_rmap.setTo(0, ~reference_component_ellipse_mask_);
 
-  output_rmap.create(rotation_remap.size());
-  output_rmap.setTo(-1);
+  current_rotation_remap_.create(rotation_remap.size());
+  current_rotation_remap_.setTo(-1);
 
   cv::add(rotation_remap,
       cv::Scalar(current_boundig_box_.x, current_boundig_box_.y),
-      output_rmap,
+      current_rotation_remap_,
       reference_ellipse_mask_);
-
 
   return true;
 }

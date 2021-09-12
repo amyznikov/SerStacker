@@ -88,8 +88,68 @@ bool c_jovian_rotation_registration::register_frame(cv::InputArray src, cv::Inpu
     return false;
   }
 
-  // call derotation_.compute() and update the current_remap_ here.
-  // the problem to solve is that dstmask need to be 32FC1, but currently it is CV_8UC1
+  if ( !derotation_.compute(src, srcmask) ) {
+    CF_ERROR("derotation_.compute() fails");
+    return false;
+  }
 
-  return false;
+  const cv::Mat2f & rotation_remap =
+      derotation_.current_rotation_remap();
+
+  rotation_remap.copyTo(base::current_remap_(derotation_.reference_boundig_box()),
+      derotation_.current_binary_rotation_mask());
+
+  if ( (dst.needed() || dstmask.needed()) && !remap(src, dst, srcmask, dstmask) ) {
+    CF_ERROR(" c_jovian_rotation_registration::remap() fails");
+    return false;
+  }
+
+  return true;
+}
+
+
+bool c_jovian_rotation_registration::custom_remap(const cv::Mat2f & rmap,
+    cv::InputArray src, cv::OutputArray dst,
+    cv::InputArray src_mask, cv::OutputArray dst_mask,
+    int interpolation_flags, int border_mode,
+    const cv::Scalar & border_value) const
+{
+  bool fOk = base::custom_remap(rmap,
+      src, dst,
+      src_mask, dst_mask,
+      interpolation_flags,
+      border_mode,
+      border_value);
+
+  if ( !fOk ) {
+    CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails fails");
+    return false;
+  }
+
+  if ( dst_mask.needed() ) {
+
+    const cv::Mat & dstmask = dst_mask.getMatRef();
+
+    cv::Mat1f combined_mask(dstmask.size(), 1.0);
+
+    combined_mask(derotation_.reference_boundig_box()).setTo(0,
+      derotation_.reference_ellipse_mask());
+
+    derotation_.current_rotation_mask().copyTo(
+        combined_mask(derotation_.reference_boundig_box()),
+        derotation_.current_binary_rotation_mask());
+
+    cv::GaussianBlur(combined_mask, combined_mask, cv::Size(), 3);
+
+    if ( dstmask.depth() == CV_8U ) {
+      combined_mask.setTo(0, ~dstmask);
+    }
+    else {
+      cv::multiply(dstmask, combined_mask, combined_mask, 1.0, combined_mask.depth());
+    }
+
+    dst_mask.move(combined_mask);
+  }
+
+  return true;
 }

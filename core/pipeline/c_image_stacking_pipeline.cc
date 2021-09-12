@@ -62,6 +62,7 @@ const struct frame_registration_method_desc frame_registration_methods[] = {
     { "Feature Based Registration (SURF)", frame_registration_method_surf },
     { "Planetary Disk Registration", frame_registration_method_planetary_disk},
     { "Star Field Registration", frame_registration_method_star_field},
+    { "Jovian Derotate", frame_registration_method_jovian_derotate},
     { "None", frame_registration_none},
     { nullptr, frame_registration_none }, // must be last
 };
@@ -91,8 +92,7 @@ enum frame_registration_method fromStdString(const std::string & s, enum frame_r
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const struct frame_accumulation_method_desc frame_accumulation_methods[] = {
-    { "masked", frame_accumulation_average_masked },
-    { "weigted", frame_accumulation_average_weighted },
+    { "weigted_average", frame_accumulation_weighted_average },
     { "fft", frame_accumulation_fft },
     { "None", frame_accumulation_none },
     { nullptr, frame_accumulation_none, },
@@ -646,6 +646,11 @@ c_frame_registration::ptr c_image_stacking_options::create_frame_registration() 
       return c_star_field_registration::create(frame_registration_options_.base_options,
           frame_registration_options_.star_field_options);
 
+    case frame_registration_method_jovian_derotate:
+      return c_jovian_rotation_registration::create(frame_registration_options_.base_options,
+          frame_registration_options_.planetary_disk_options,
+          frame_registration_options_.jovian_derotation_options);
+
     default:
       break;
   }
@@ -666,10 +671,8 @@ const c_frame_accumulation_options & c_image_stacking_options::accumulation_opti
 c_frame_accumulation::ptr c_image_stacking_options::create_frame_accumulation() const
 {
   switch ( accumulation_options_.accumulation_method ) {
-  case frame_accumulation_average_masked :
-    return c_frame_accumulation::ptr(new c_frame_accumulation_with_mask());
-  case frame_accumulation_average_weighted :
-    return c_frame_accumulation::ptr(new c_frame_accumulation_with_weights());
+  case frame_accumulation_weighted_average:
+    return c_frame_accumulation::ptr(new c_frame_weigthed_average());
   case frame_accumulation_fft :
     return c_frame_accumulation::ptr(new c_frame_accumulation_with_fft());
   default :
@@ -921,6 +924,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     output_directory_.clear();
     missing_pixel_mask_.release();
 
+    master_frame_index_ = -1;
     ecc_normalization_noise_ = 0;
 
     total_frames_ = 0;
@@ -1220,7 +1224,7 @@ bool c_image_stacking_pipeline::actual_run()
 
     if ( registration_options.accumulate_and_compensate_turbulent_flow ) {
       if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
-        flow_accumulation_.reset(new c_frame_accumulation_with_mask());
+        flow_accumulation_.reset(new c_frame_weigthed_average());
       }
     }
     CF_DEBUG("H");
@@ -1495,6 +1499,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     }
   }
 
+  // setup master index indicator
+ this->master_frame_index_ = master_frame_index;
 
   if ( max_frames_to_stack < 2 || input_sequence->size() < 2 ) {
 
@@ -1537,7 +1543,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
     if ( true ) {
       lock_guard lock(accumulator_lock_);
-      frame_accumulation_.reset(new c_frame_accumulation_with_mask());
+      frame_accumulation_.reset(new c_frame_weigthed_average());
 
       if ( master_options.master_sharpen_factor > 0 ) {
         sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
@@ -1563,6 +1569,9 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       CF_ERROR("process_input_sequence() fails");
       return false;
     }
+
+    // Reset master index indicator because master frame was generated from a sequence, not just a single frame
+    this->master_frame_index_ = -1;
 
     if ( canceled() ) {
       return false;
@@ -1660,8 +1669,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
 bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::ptr & input_sequence, int startpos, int endpos)
 {
-  cv::Mat current_frame;
-  cv::Mat1b current_mask;
+  cv::Mat current_frame, current_mask;
   cv::Mat2f current_remap;
 
   c_video_writer output_aligned_video;
@@ -1775,12 +1783,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     /////////////////////////////////////
 
-//    if ( fft_accumulation_ ) {
-//      if ( !fft_accumulation_->add(current_frame) ) {
-//        CF_ERROR("fft_accumulation_->add(current_frame) fails");
-//        return false;
-//      }
-//    }
 
     if ( sharpness_norm_accumulation_ ) {
       sharpness_norm_accumulation_-> add(current_frame, current_mask);
@@ -1789,45 +1791,57 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     /////////////////////////////////////
     if ( frame_registration_ ) {
 
-      if ( !frame_registration_->register_frame(current_frame, current_mask) ) {
-        CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + startpos);
-        continue;
-      }
+      if ( input_sequence->current_pos() == master_frame_index_ + 1 ) {
 
-      if ( flow_accumulation_ ) {
+        if ( upscale_required(frame_upscale_after_align) ) {
 
-        const cv::Mat2f turbulence = compute_turbulent_flow(
-            frame_registration_->motion_type(),
-            frame_registration_->current_transform(),
-            frame_registration_->current_remap()/*,
-            current_mask_*/);
+          upscale_image(upscale_options.upscale_option,
+              current_frame, current_mask,
+              current_frame, current_mask);
 
-        if ( turbulence.empty() ) {
-          CF_ERROR("compute_turbulence_flow() fails");
         }
-        else {
-          flow_accumulation_->add(turbulence/*,
-              current_mask_*/);
-        }
-      }
 
-
-      if ( !upscale_required(frame_upscale_after_align) ) {
-        current_remap = frame_registration_->current_remap();
       }
       else {
-        current_remap.release();
-        upscale_remap(upscale_options.upscale_option,
-            frame_registration_->current_remap(),
-            current_remap);
+
+        if ( !frame_registration_->register_frame(current_frame, current_mask) ) {
+          CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + startpos);
+          continue;
+        }
+
+        if ( flow_accumulation_ ) {
+
+          const cv::Mat2f turbulence = compute_turbulent_flow(
+              frame_registration_->motion_type(),
+              frame_registration_->current_transform(),
+              frame_registration_->current_remap()/*,
+              current_mask_*/);
+
+          if ( turbulence.empty() ) {
+            CF_ERROR("compute_turbulence_flow() fails");
+          }
+          else {
+            flow_accumulation_->add(turbulence/*,
+                current_mask_*/);
+          }
+        }
+
+        if ( !upscale_required(frame_upscale_after_align) ) {
+          current_remap = frame_registration_->current_remap();
+        }
+        else {
+          current_remap.release();
+          upscale_remap(upscale_options.upscale_option,
+              frame_registration_->current_remap(),
+              current_remap);
+        }
+
+        frame_registration_->custom_remap(current_remap,
+            current_frame, current_frame,
+            current_mask, current_mask,
+            cv::INTER_LINEAR,
+            cv::BORDER_REFLECT101);
       }
-
-      frame_registration_->custom_remap(current_remap,
-          current_frame, current_frame,
-          current_mask, current_mask,
-          cv::INTER_LINEAR,
-          cv::BORDER_REFLECT101);
-
     }
 
     time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -2054,6 +2068,11 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
     const cv::Mat & output_image, const cv::Mat & output_mask)
 {
   cv::Mat image_to_write;
+
+  if ( output_mask.depth() != CV_8U ) {
+    CF_ERROR("FIX THIS CODE: c_image_stacking_pipeline::write_image(). NON - CV_8UC1 MASK IS NOT SUPPORTED YET");
+    return false;
+  }
 
   if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
     image_to_write = output_image;

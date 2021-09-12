@@ -180,6 +180,7 @@ int main(int argc, char *argv[])
   c_jovian_derotation jovian_derotation;
   cv::Mat2f derotation_remap;
   cv::Mat2f total_remap;
+  cv::Mat1f total_mask;
 
   if ( !jovian_derotation.setup_reference_image(images[1]) ) {
     CF_ERROR("jovian_derotation.setup_reference_image() fails");
@@ -194,19 +195,47 @@ int main(int argc, char *argv[])
 
   save_image(derotation_remap, "rmap.flo");
 
+  save_image(images[0], "image0.tiff");
+  save_image(images[1], "image1.tiff");
+
   cv::remap(images[0], tmpimage, derotation_remap, cv::noArray(), cv::INTER_LINEAR);
-  save_image(tmpimage, "image0.remapped.tiff");
-  save_image(images[1](jovian_derotation.reference_boundig_box()), "image1.tiff");
+  save_image(tmpimage, "image0.crop.remapped.tiff");
+  save_image(images[0](jovian_derotation.current_boundig_box()), "image0.crop.tiff");
+  save_image(images[1](jovian_derotation.reference_boundig_box()), "image1.crop.tiff");
 
   //////////////////////////////////////////////////////////////////////////////
 
   reg->current_remap().copyTo(total_remap);
+
   derotation_remap.copyTo(total_remap(jovian_derotation.reference_boundig_box()),
       jovian_derotation.current_binary_rotation_mask());
   save_image(total_remap, "total_remap.flo");
 
+  total_mask.create(total_remap.size());
+  total_mask.setTo(1.0);
+  total_mask(jovian_derotation.reference_boundig_box()).setTo(0, jovian_derotation.reference_ellipse_mask());
+  //cv::erode(total_mask, total_mask, cv::Mat1b(9,9, 255));
+
+  jovian_derotation.current_rotation_mask().copyTo(
+      total_mask(jovian_derotation.reference_boundig_box()),
+      jovian_derotation.current_binary_rotation_mask());
+  cv::GaussianBlur(total_mask, total_mask, cv::Size(), 3);
+
+  save_image(total_mask, "total_mask.tiff");
+
+
   cv::remap(images[0], tmpimage, total_remap, cv::noArray(), cv::INTER_LINEAR);
   save_image(tmpimage, "image0.total_remapped.tiff");
+
+
+  cv::Mat blend, wblend;
+  blend_images(tmpimage, total_mask,
+      images[1], cv::Mat1f::ones(total_mask.size()),
+      blend,
+      wblend);
+
+  save_image(blend, "blend.tiff");
+  save_image(wblend, "wblend.tiff");
 
   return 0;
 }

@@ -371,7 +371,7 @@ void QStackTreeView::onDeleteSelectedItems()
   if ( !cursel.empty() ) {
 
     int responce = QMessageBox::question(this, "Confirmation required",
-        QString("Are you sure to delete %1 items ?").arg(cursel.count()),
+        QString("Are you sure to remove %1 items from here ?").arg(cursel.count()),
         QMessageBox::Ok | QMessageBox::Cancel, QMessageBox::Cancel);
 
     if ( responce == QMessageBox::Ok ) {

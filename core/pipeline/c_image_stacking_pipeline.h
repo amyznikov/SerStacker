@@ -388,24 +388,8 @@ protected:
       int master_frame_index, int max_frames_to_stack,
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
 
-//  bool setup_frame_registration(bool for_master_generation,
-//      const cv::Mat & reference_frame,
-//      const cv::Mat & reference_mask);
-//
-//  bool prepare_reference_frame(cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
-//
-//  bool read_existing_reference_frame(const c_input_sequence::ptr & input_sequence, int master_frame_index,
-//      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
-//
-//  bool generate_reference_frame(const c_input_sequence::ptr & input_sequence,
-//      int master_frame_index, int max_frames_to_stack,
-//      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
-
   bool process_input_sequence(const c_input_sequence::ptr & input_sequence,
       int startpos, int endpos);
-
-
-
 
   bool read_input_frame(const c_input_sequence::ptr & input_sequence,
       const c_input_options & input_options,

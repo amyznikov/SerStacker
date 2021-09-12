@@ -613,7 +613,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
             rotated_current_image,
             current_rotation_mask_);
 
-    CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i, l * 180 / CV_PI, current_cost);
+    // CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i, l * 180 / CV_PI, current_cost);
 
     if ( i == 0 || current_cost < best_cost ) {
       best_cost = current_cost;

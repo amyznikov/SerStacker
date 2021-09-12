@@ -53,51 +53,6 @@ protected:
   cv::Mat accumulator_, counter_;
 };
 
-//
-//class c_frame_accumulation_with_mask
-//    : public c_frame_accumulation
-//{
-//public:
-//  typedef c_frame_accumulation_with_mask this_class;
-//  typedef c_frame_accumulation base;
-//  typedef std::shared_ptr<this_class> ptr;
-//
-//  static constexpr int accdepth = CV_32F;
-//
-//  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
-//  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = accdepth) const override;
-//  void release() override;
-//  cv::Size accumulator_size() const override;
-//
-//  const cv::Mat & accumulator() const;
-//  const cv::Mat & counter() const;
-//
-//protected:
-//  cv::Mat accumulator_, counter_;
-//};
-//
-//class c_frame_accumulation_with_weights
-//    : public c_frame_accumulation
-//{
-//public:
-//  typedef c_frame_accumulation_with_weights this_class;
-//  typedef c_frame_accumulation base;
-//  typedef std::shared_ptr<this_class> ptr;
-//
-//  static constexpr int accdepth = CV_32F;
-//
-//  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
-//  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = accdepth) const override;
-//  void release() override;
-//  cv::Size accumulator_size() const override;
-//
-//  const cv::Mat & accumulator() const;
-//  const cv::Mat & weights() const;
-//
-//protected:
-//  cv::Mat accumulator_, weights_, tmp_;
-//};
-
 
 class c_frame_accumulation_with_fft
     : public c_frame_accumulation

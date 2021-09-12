@@ -2069,16 +2069,12 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
 {
   cv::Mat image_to_write;
 
-  if ( output_mask.depth() != CV_8U ) {
-    CF_ERROR("FIX THIS CODE: c_image_stacking_pipeline::write_image(). NON - CV_8UC1 MASK IS NOT SUPPORTED YET");
-    return false;
-  }
-
   if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
     image_to_write = output_image;
   }
-  else {
-    mergebgra(output_image, output_mask, image_to_write);
+  else if ( !mergebgra(output_image, output_mask, image_to_write) ) {
+    CF_ERROR("ERROR: mergebgra() fails");
+    return false;
   }
 
   return save_image(image_to_write, output_file_name);

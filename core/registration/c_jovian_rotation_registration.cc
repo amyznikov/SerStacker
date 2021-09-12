@@ -139,7 +139,7 @@ bool c_jovian_rotation_registration::custom_remap(const cv::Mat2f & rmap,
         combined_mask(derotation_.reference_boundig_box()),
         derotation_.current_binary_rotation_mask());
 
-    cv::GaussianBlur(combined_mask, combined_mask, cv::Size(), 3);
+   // cv::GaussianBlur(combined_mask, combined_mask, cv::Size(), 3);
 
     if ( dstmask.depth() == CV_8U ) {
       combined_mask.setTo(0, ~dstmask);

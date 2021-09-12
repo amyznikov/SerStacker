@@ -24,6 +24,46 @@
 // LZMA is not supported by ImageJ
 static int g_default_tiff_compression = COMPRESSION_NONE;
 
+static bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval)
+{
+  switch ( ddepth ) {
+  case CV_8U :
+    *minval = 0;
+    *maxval = UINT8_MAX;
+    break;
+  case CV_8S :
+    *minval = INT8_MIN;
+    *maxval = INT8_MAX;
+    break;
+  case CV_16U :
+    *minval = 0;
+    *maxval = UINT16_MAX;
+    break;
+  case CV_16S :
+    *minval = INT16_MIN;
+    *maxval = INT16_MAX;
+    break;
+  case CV_32S :
+    *minval = INT32_MIN;
+    *maxval = INT32_MAX;
+    break;
+  case CV_32F :
+    *minval = 0;
+    *maxval = 1;
+    break;
+  case CV_64F :
+    *minval = 0;
+    *maxval = 1;
+    break;
+  default:
+    *minval = 0;
+    *maxval = 1;
+    return false;
+  }
+
+  return true;
+}
+
 void set_default_tiff_compression(int compression)
 {
   g_default_tiff_compression = compression;
@@ -157,42 +197,49 @@ static bool write_tiff(cv::InputArray src, const std::string & filename, const s
 
 
 // Merge BGR and mask to to BGRA
-bool mergebgra(const cv::Mat & input_image, const cv::Mat & input_alpha_mask, cv::Mat & output_image)
+bool mergebgra(const cv::Mat & input_image, const cv::Mat & input_mask, cv::Mat & output_image)
 {
   const int cn = input_image.channels();
   if ( cn != 1 && cn != 3 ) {
+    CF_ERROR("Invalid number of image channels: %d. Must be 1 or 3", cn);
     return false;
   }
 
-  if ( input_alpha_mask.empty() || input_alpha_mask.type() != CV_8UC1 || input_alpha_mask.size() != input_image.size() ) {
+  if ( input_mask.empty() ) {
+    CF_ERROR("No alpha mask specified");
+    return false;
+  }
+
+  if ( input_mask.channels() != 1 ) {
+    CF_ERROR("Invalid number of channels in alpha mask %d. Must be 1",
+        input_mask.channels());
+    return false;
+  }
+
+  if ( input_mask.size() != input_image.size() ) {
+    CF_ERROR("Image and mask sizes not match. image: %dx%d mask:%dx%d",
+        input_image.cols, input_image.rows,
+        input_mask.cols, input_mask.rows);
     return false;
   }
 
 
   cv::Mat alpha;
 
-  switch ( input_image.depth() ) {
-  case CV_8U :
-    alpha = input_alpha_mask;
-    break;
-  case CV_8S :
-    alpha = input_alpha_mask;
-    break;
-  case CV_16U :
-    input_alpha_mask.convertTo(alpha, input_image.depth(), UINT16_MAX / UINT8_MAX);
-    break;
-  case CV_16S :
-    input_alpha_mask.convertTo(alpha, input_image.depth(), INT16_MAX / (double) UINT8_MAX);
-    break;
-  case CV_32S :
-    input_alpha_mask.convertTo(alpha, input_image.depth(), INT32_MAX / (double) UINT8_MAX);
-    break;
-  case CV_32F :
-    input_alpha_mask.convertTo(alpha, input_image.depth(), 1.0 / UINT8_MAX);
-    break;
-  case CV_64F :
-    input_alpha_mask.convertTo(alpha, input_image.depth(), 1.0 / UINT8_MAX);
-    break;
+  if ( input_image.depth() == input_mask.depth() ) {
+    alpha = input_mask;
+  }
+  else {
+
+    double image_minval, image_maxval;
+    get_data_range_for_pixel_depth(input_image.depth(),
+        &image_minval, &image_maxval);
+
+    double mask_minval, mask_maxval;
+    get_data_range_for_pixel_depth(input_mask.depth(),
+        &mask_minval, &mask_maxval);
+
+    input_mask.convertTo(alpha, input_image.depth(), image_maxval / mask_maxval);
   }
 
   if ( cn == 1 ) {
@@ -205,7 +252,7 @@ bool mergebgra(const cv::Mat & input_image, const cv::Mat & input_alpha_mask, cv
     cv::Mat bgra;
 
     cv::Mat & dst = (output_image.data == input_image.data ||
-        output_image.data == input_alpha_mask.data) ?
+        output_image.data == input_mask.data) ?
         bgra : output_image;
 
     cv::Mat src[2] = { input_image, alpha };
@@ -220,9 +267,7 @@ bool mergebgra(const cv::Mat & input_image, const cv::Mat & input_alpha_mask, cv
     if ( dst.data != output_image.data ) {
       output_image = std::move(dst);
     }
-
   }
-
 
   return true;
 }

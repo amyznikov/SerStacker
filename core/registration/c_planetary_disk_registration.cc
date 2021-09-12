@@ -26,26 +26,26 @@ c_planetary_disk_registration::c_planetary_disk_registration(const c_frame_regis
 
 c_planetary_disk_registration::ptr c_planetary_disk_registration::create()
 {
-  return c_planetary_disk_registration::ptr(new c_planetary_disk_registration());
+  return ptr(new c_planetary_disk_registration());
 }
 
 c_planetary_disk_registration::ptr c_planetary_disk_registration::create(const c_planetary_disk_registration_options & opts)
 {
-  return c_planetary_disk_registration::ptr(new c_planetary_disk_registration(opts));
+  return ptr(new c_planetary_disk_registration(opts));
 }
 
 c_planetary_disk_registration::ptr c_planetary_disk_registration::create(const c_frame_registration_base_options & base_opts, const c_planetary_disk_registration_options & opts)
 {
-  return c_planetary_disk_registration::ptr(new c_planetary_disk_registration(base_opts, opts));
+  return ptr(new c_planetary_disk_registration(base_opts, opts));
 }
 
 
-c_planetary_disk_registration_options & c_planetary_disk_registration::options()
+c_planetary_disk_registration_options & c_planetary_disk_registration::planetary_disk_registration_options()
 {
   return options_;
 }
 
-const c_planetary_disk_registration_options & c_planetary_disk_registration::options() const
+const c_planetary_disk_registration_options & c_planetary_disk_registration::planetary_disk_registration_options() const
 {
   return options_;
 }

@@ -46,8 +46,8 @@ public:
   void set_motion_type(ECC_MOTION_TYPE motion_type);
   ECC_MOTION_TYPE motion_type() const;
 
-  void set_interpolation(cv::InterpolationFlags flags);
-  cv::InterpolationFlags interpolation() const;
+  void set_interpolation(enum ECC_INTERPOLATION_METHOD flags);
+  enum ECC_INTERPOLATION_METHOD interpolation() const;
 
   void set_eps(double v);
   double eps() const;

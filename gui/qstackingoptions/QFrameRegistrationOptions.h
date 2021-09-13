@@ -50,6 +50,30 @@ public:
     {}
 };
 
+class QEccInterpolatioMethodCombo :
+    public QEnumComboBox<ECC_INTERPOLATION_METHOD>
+{
+  Q_OBJECT;
+public:
+  typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> Base;
+
+  QEccInterpolatioMethodCombo(QWidget * parent = Q_NULLPTR)
+      : Base(parent, ecc_interpolation_methods)
+    {}
+};
+
+
+class QEccBorderModeCombo :
+    public QEnumComboBox<ECC_BORDER_MODE>
+{
+  Q_OBJECT;
+public:
+  typedef QEnumComboBox<ECC_BORDER_MODE> Base;
+
+  QEccBorderModeCombo(QWidget * parent = Q_NULLPTR)
+      : Base(parent, ecc_border_modes)
+    {}
+};
 
 
 class QRegistrationColorChannelCombo :
@@ -147,13 +171,15 @@ protected:
   QRegistrationColorChannelCombo * reference_channel_ctl = Q_NULLPTR;
 
   QEccMotionTypeCombo * motion_type_ctl = Q_NULLPTR;
+  QLineEditBox * feature_scale_ctl = Q_NULLPTR;
+  QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
+  QEccBorderModeCombo * border_ctl = Q_NULLPTR;
 
   //  void set_registration_channel(int channel);
   //  int registration_channel() const;
 
   //  void set_interpolation_flags(int v);
   //  int interpolation_flags() const;
-  QLineEditBox * feature_scale_ctl = Q_NULLPTR;
 
   QCheckBox * enable_ecc_ctl = Q_NULLPTR;
   QEccSettings * ecc_ctl = Q_NULLPTR;

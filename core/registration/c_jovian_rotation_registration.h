@@ -57,8 +57,8 @@ public: // overrides
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      int interpolation_flags = -1,
-      int border_mode = -1,
+      enum ECC_INTERPOLATION_METHOD interpolation_flags = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const override;
 
 protected:

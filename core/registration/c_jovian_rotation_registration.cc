@@ -111,7 +111,8 @@ bool c_jovian_rotation_registration::register_frame(cv::InputArray src, cv::Inpu
 bool c_jovian_rotation_registration::custom_remap(const cv::Mat2f & rmap,
     cv::InputArray src, cv::OutputArray dst,
     cv::InputArray src_mask, cv::OutputArray dst_mask,
-    int interpolation_flags, int border_mode,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   bool fOk = base::custom_remap(rmap,

@@ -35,9 +35,9 @@ struct c_frame_registration_base_options {
 
   ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
   color_channel_type registration_channel = color_channel_gray;
-  int interpolation_flags = cv::INTER_AREA;
-  int remap_border_mode = cv::BORDER_REPLICATE;
-  cv::Scalar remap_border_value = cv::Scalar(0, 0, 0);
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_AREA;
+  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
+  cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
   double feature_scale = 1.;
   bool enable_ecc = true;
@@ -85,14 +85,14 @@ public: // opts
   void set_registration_channel(color_channel_type channel);
   int registration_channel() const;
 
-  void set_interpolation_flags(int v);
-  int interpolation_flags() const;
+  void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
+  enum ECC_INTERPOLATION_METHOD interpolation() const;
 
-  void set_remap_border_mode(int v);
-  int remap_border_mode() const;
+  void set_border_mode(enum ECC_BORDER_MODE v);
+  enum ECC_BORDER_MODE border_mode() const;
 
-  void set_remap_border_value(const cv::Scalar & v);
-  const cv::Scalar & remap_border_value() const;
+  void set_border_value(const cv::Scalar & v);
+  const cv::Scalar & border_value() const;
 
   void set_enable_ecc(bool v);
   bool enable_ecc() const;
@@ -144,16 +144,16 @@ public: // ops
   virtual bool remap(cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      int interpolation_flags = -1,
-      int border_mode = -1,
+      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
   virtual bool custom_remap(const cv::Mat2f & rmap,
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      int interpolation_flags = -1,
-      int border_mode = -1,
+      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
 public: // artifacts

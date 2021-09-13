@@ -92,7 +92,7 @@ enum frame_registration_method fromStdString(const std::string & s, enum frame_r
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const struct frame_accumulation_method_desc frame_accumulation_methods[] = {
-    { "weigted_average", frame_accumulation_weighted_average },
+    { "weighted_average", frame_accumulation_weighted_average },
     { "fft", frame_accumulation_fft },
     { "None", frame_accumulation_none },
     { nullptr, frame_accumulation_none, },
@@ -1836,11 +1836,14 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               current_remap);
         }
 
+
         frame_registration_->custom_remap(current_remap,
             current_frame, current_frame,
             current_mask, current_mask,
-            cv::INTER_LINEAR,
-            cv::BORDER_REFLECT101);
+            registration_options.base_options.interpolation,
+            master_frame_generation_ ? ECC_BORDER_REFLECT101 :
+                registration_options.base_options.border_mode,
+            registration_options.base_options.border_value);
       }
     }
 

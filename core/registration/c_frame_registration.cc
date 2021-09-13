@@ -54,34 +54,34 @@ int c_frame_registration::registration_channel() const
   return base_options_.registration_channel;
 }
 
-void c_frame_registration::set_interpolation_flags(int v)
+void c_frame_registration::set_interpolation(enum ECC_INTERPOLATION_METHOD v)
 {
-  base_options_.interpolation_flags = v;
+  base_options_.interpolation = v;
 }
 
-int c_frame_registration::interpolation_flags() const
+enum ECC_INTERPOLATION_METHOD c_frame_registration::interpolation() const
 {
-  return base_options_.interpolation_flags;
+  return base_options_.interpolation;
 }
 
-void c_frame_registration::set_remap_border_mode(int v)
+void c_frame_registration::set_border_mode(enum ECC_BORDER_MODE v)
 {
-  base_options_.remap_border_mode = v;
+  base_options_.border_mode = v;
 }
 
-int c_frame_registration::remap_border_mode() const
+enum ECC_BORDER_MODE c_frame_registration::border_mode() const
 {
-  return base_options_.remap_border_mode;
+  return base_options_.border_mode;
 }
 
-void c_frame_registration::set_remap_border_value(const cv::Scalar & v)
+void c_frame_registration::set_border_value(const cv::Scalar & v)
 {
-  base_options_.remap_border_value = v;
+  base_options_.border_value = v;
 }
 
-const cv::Scalar & c_frame_registration::remap_border_value() const
+const cv::Scalar & c_frame_registration::border_value() const
 {
-  return base_options_.remap_border_value;
+  return base_options_.border_value;
 }
 
 void c_frame_registration::set_feature_scale(double v)
@@ -583,8 +583,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
-    int interpolation_flags,
-    int border_mode,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   cv::Mat src = _src.getMat();
@@ -612,15 +612,15 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
   }
 
   if ( interpolation_flags < 0 ) {
-    interpolation_flags = this->interpolation_flags();
+    interpolation_flags = this->interpolation();
   }
 
   if ( border_mode >= 0 ) {
     border_value_ptr = &border_value;
   }
   else {
-    border_mode = remap_border_mode();
-    border_value_ptr = &base_options_.remap_border_value;
+    border_mode = this->border_mode();
+    border_value_ptr = &base_options_.border_value;
   }
 
   if ( dst.needed() ) {
@@ -656,8 +656,8 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
 
 bool c_frame_registration::remap(cv::InputArray src, cv::OutputArray dst,
     cv::InputArray src_mask, cv::OutputArray dst_mask,
-    int interpolation_flags,
-    int border_mode,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   return custom_remap(current_remap_,

@@ -75,12 +75,12 @@ ECC_MOTION_TYPE c_align_color_channels_routine::motion_type() const
   return algorithm_.motion_type();
 }
 
-void c_align_color_channels_routine::set_interpolation(cv::InterpolationFlags flags)
+void c_align_color_channels_routine::set_interpolation(enum ECC_INTERPOLATION_METHOD flags)
 {
   return algorithm_.set_interpolation(flags);
 }
 
-cv::InterpolationFlags c_align_color_channels_routine::interpolation() const
+enum ECC_INTERPOLATION_METHOD c_align_color_channels_routine::interpolation() const
 {
   return algorithm_.interpolation();
 }

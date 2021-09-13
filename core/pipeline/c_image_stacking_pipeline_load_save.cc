@@ -334,7 +334,7 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_frame_accumulation_options::serialize(c_config_setting settings) const
 {
-  save_settings(settings, "accumulation_method ", accumulation_method );
+  save_settings(settings, "accumulation_method", accumulation_method );
   return true;
 }
 
@@ -344,7 +344,7 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
     return false;
   }
 
-  load_settings(settings, "accumulation_method ", &accumulation_method );
+  load_settings(settings, "accumulation_method", &accumulation_method );
 
   return true;
 }
@@ -359,9 +359,9 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "accumulate_and_compensate_turbulent_flow", accumulate_and_compensate_turbulent_flow);
   save_settings(group, "motion_type", base_options.motion_type);
   save_settings(group, "registration_channel", base_options.registration_channel);
-  save_settings(group, "interpolation_flags", base_options.interpolation_flags);
-  save_settings(group, "remap_border_mode", base_options.remap_border_mode);
-  save_settings(group, "remap_border_value", base_options.remap_border_value);
+  save_settings(group, "interpolation", base_options.interpolation);
+  save_settings(group, "border_mode", base_options.border_mode);
+  save_settings(group, "border_value", base_options.border_value);
   save_settings(group, "feature_scale", base_options.feature_scale);
   save_settings(group, "enable_ecc", base_options.enable_ecc);
   save_settings(group, "enable_eccflow", base_options.enable_eccflow);
@@ -404,9 +404,9 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
   load_settings(group, "accumulate_and_compensate_turbulent_flow", &accumulate_and_compensate_turbulent_flow);
   load_settings(group, "motion_type", &base_options.motion_type);
   load_settings(group, "registration_channel", &base_options.registration_channel);
-  load_settings(group, "interpolation_flags", &base_options.interpolation_flags);
-  load_settings(group, "remap_border_mode", &base_options.remap_border_mode);
-  load_settings(group, "remap_border_value", &base_options.remap_border_value);
+  load_settings(group, "interpolation", &base_options.interpolation);
+  load_settings(group, "border_mode", &base_options.border_mode);
+  load_settings(group, "border_value", &base_options.border_value);
   load_settings(group, "feature_scale", &base_options.feature_scale);
   load_settings(group, "enable_ecc", &base_options.enable_ecc);
   load_settings(group, "enable_eccflow", &base_options.enable_eccflow);

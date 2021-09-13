@@ -18,14 +18,14 @@ ECC_MOTION_TYPE c_align_color_channels::motion_type() const
   return (ECC_MOTION_TYPE )ecc_.motion_type();
 }
 
-void c_align_color_channels::set_interpolation(cv::InterpolationFlags flags)
+void c_align_color_channels::set_interpolation(enum ECC_INTERPOLATION_METHOD flags)
 {
-  ecc_.set_image_interpolation_flags(flags);
+  ecc_.set_image_interpolation_method(flags);
 }
 
-cv::InterpolationFlags c_align_color_channels::interpolation() const
+enum ECC_INTERPOLATION_METHOD c_align_color_channels::interpolation() const
 {
-  return (cv::InterpolationFlags )ecc_.image_interpolation_flags();
+  return ecc_.image_interpolation_method();
 }
 
 void c_align_color_channels::set_border_value(const cv::Scalar & v)

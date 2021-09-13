@@ -360,6 +360,8 @@ bool c_feature_based_registration::estimate_feature_transform(cv::InputArray cur
 
     break;
 
+
+  case ECC_MOTION_EUCLIDEAN_SCALED : // FIXME: update this code to estimate ECC_MOTION_EUCLIDEAN_SCALED CORRECTLY !!!!
   case ECC_MOTION_AFFINE :
   case ECC_MOTION_QUADRATIC :
 

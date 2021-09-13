@@ -84,7 +84,7 @@ const struct ecc_motion_type_desc ecc_motion_types[] = {
 std::string toStdString(enum ECC_MOTION_TYPE v)
 {
   for ( uint i = 0; ecc_motion_types[i].name; ++i ) {
-    if ( ecc_motion_types[i].value == v ) {
+    if ( v == ecc_motion_types[i].value ) {
       return ecc_motion_types[i].name;
     }
   }
@@ -107,37 +107,73 @@ enum ECC_MOTION_TYPE fromStdString(const std::string & s, enum ECC_MOTION_TYPE d
 ///////////////////////////////////////////////////////////////////////////////
 
 
-const extern struct ecc_interpolation_flags_desc ecc_interpolation_flags[] = {
-    { "AREA", cv::INTER_AREA },
-    { "LINEAR", cv::INTER_LINEAR },
-    { "CUBIC", cv::INTER_CUBIC },
-    { "LANCZOS4", cv::INTER_LANCZOS4 },
-    { "NEAREST", cv::INTER_NEAREST },
-    { nullptr, cv::INTER_NEAREST },
+const extern struct ecc_interpolation_method_desc ecc_interpolation_methods[] = {
+    { "LINEAR", ECC_INTER_LINEAR },
+    { "LINEAR_EXACT", ECC_INTER_LINEAR_EXACT },
+    { "AREA", ECC_INTER_AREA },
+    { "CUBIC", ECC_INTER_CUBIC },
+    { "LANCZOS4", ECC_INTER_LANCZOS4 },
+    { "NEAREST", ECC_INTER_NEAREST },
+    { "NEAREST_EXACT", ECC_INTER_NEAREST_EXACT },
+    { nullptr, ECC_INTER_NEAREST }  // must be last
 };
 
-std::string toStdString(enum cv::InterpolationFlags v)
+std::string toStdString(enum ECC_INTERPOLATION_METHOD v)
 {
-  for ( uint i = 0; ecc_interpolation_flags[i].name; ++i ) {
-    if ( (ecc_interpolation_flags[i].value & v) == ecc_motion_types[i].value ) {
-      return ecc_interpolation_flags[i].name;
+  for ( uint i = 0; ecc_interpolation_methods[i].name; ++i ) {
+    if ( v == ecc_interpolation_methods[i].value ) {
+      return ecc_interpolation_methods[i].name;
     }
   }
   return "";
 }
 
-enum cv::InterpolationFlags fromStdString(const std::string  & s, enum cv::InterpolationFlags defval )
+enum ECC_INTERPOLATION_METHOD fromStdString(const std::string & s, enum ECC_INTERPOLATION_METHOD defval )
 {
   const char * cstr = s.c_str();
 
-  for ( uint i = 0; ecc_interpolation_flags[i].name; ++i ) {
-    if ( strcasecmp(ecc_interpolation_flags[i].name, cstr) == 0 ) {
-      return ecc_interpolation_flags[i].value;
+  for ( uint i = 0; ecc_interpolation_methods[i].name; ++i ) {
+    if ( strcasecmp(ecc_interpolation_methods[i].name, cstr) == 0 ) {
+      return ecc_interpolation_methods[i].value;
     }
   }
   return defval;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+const extern struct ecc_border_mode_desc ecc_border_modes[] = {
+    { "BORDER_REFLECT101", ECC_BORDER_REFLECT101},
+    { "BORDER_REFLECT", ECC_BORDER_REFLECT},
+    { "BORDER_REPLICATE",  ECC_BORDER_REPLICATE},
+    { "BORDER_WRAP", ECC_BORDER_WRAP},
+    { "BORDER_CONSTANT",  ECC_BORDER_CONSTANT},
+    { "BORDER_TRANSPARENT", ECC_BORDER_TRANSPARENT},
+    { "BORDER_ISOLATED", ECC_BORDER_ISOLATED},
+    { nullptr, ECC_BORDER_DEFAULT}  // must be last
+};
+
+std::string toStdString(enum ECC_BORDER_MODE v)
+{
+  for ( uint i = 0; ecc_border_modes[i].name; ++i ) {
+    if ( v == ecc_border_modes[i].value ) {
+      return ecc_border_modes[i].name;
+    }
+  }
+  return "";
+}
+
+enum ECC_BORDER_MODE fromStdString(const std::string & s, enum ECC_BORDER_MODE defval )
+{
+  const char * cstr = s.c_str();
+
+  for ( uint i = 0; ecc_border_modes[i].name; ++i ) {
+    if ( strcasecmp(ecc_border_modes[i].name, cstr) == 0 ) {
+      return ecc_border_modes[i].value;
+    }
+  }
+  return defval;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -2008,14 +2044,14 @@ double c_ecc_align::min_rho() const
 }
 
 
-void c_ecc_align::set_image_interpolation_flags(int v)
+void c_ecc_align::set_image_interpolation_method(enum ECC_INTERPOLATION_METHOD  v)
 {
-  image_interpolation_flags_ = v;
+  image_interpolation_method_ = v;
 }
 
-int c_ecc_align::image_interpolation_flags() const
+enum ECC_INTERPOLATION_METHOD c_ecc_align::image_interpolation_method() const
 {
-  return image_interpolation_flags_;
+  return image_interpolation_method_;
 }
 
 void c_ecc_align::set_input_smooth_sigma(double v)
@@ -2245,9 +2281,9 @@ bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage,
     // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
     createRemap(ecc_motion_type_, p, current_remap_, f.size(), -1);
 
-    cv::remap(g, gw, current_remap_, cv::noArray(), image_interpolation_flags_, cv::BORDER_REPLICATE);
-    cv::remap(gx, gxw, current_remap_, cv::noArray(), image_interpolation_flags_, cv::BORDER_REPLICATE);
-    cv::remap(gy, gyw, current_remap_, cv::noArray(), image_interpolation_flags_, cv::BORDER_REPLICATE);
+    cv::remap(g, gw, current_remap_, cv::noArray(), image_interpolation_method_, cv::BORDER_REPLICATE);
+    cv::remap(gx, gxw, current_remap_, cv::noArray(), image_interpolation_method_, cv::BORDER_REPLICATE);
+    cv::remap(gy, gyw, current_remap_, cv::noArray(), image_interpolation_method_, cv::BORDER_REPLICATE);
     cv::remap(gmask, wmask, current_remap_, cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT, 0);
 
     if ( !fmask.empty() ) {
@@ -2446,7 +2482,7 @@ bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, 
     }
 
     cv::remap(g, gw, current_remap_, cv::noArray(),
-        image_interpolation_flags_,
+        image_interpolation_method_,
         cv::BORDER_REPLICATE);  // The cv::BORDER_REPLICATE is to avoid some annoying edge effects caused by interpolation
 
     //

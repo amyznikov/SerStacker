@@ -22,7 +22,6 @@ enum ECC_MOTION_TYPE {
     ECC_MOTION_QUADRATIC   = 5, // Quadratic form, 12 parameters are estimated
 };
 
-
 const extern struct ecc_motion_type_desc {
   const char * name;
   enum ECC_MOTION_TYPE value;
@@ -33,14 +32,48 @@ enum ECC_MOTION_TYPE fromStdString(const std::string  & s,
     enum ECC_MOTION_TYPE defval );
 
 
-const extern struct ecc_interpolation_flags_desc {
-  const char * name;
-  enum cv::InterpolationFlags value;
-} ecc_interpolation_flags[];
 
-std::string toStdString(enum cv::InterpolationFlags m);
-enum cv::InterpolationFlags fromStdString(const std::string  & s,
-    enum cv::InterpolationFlags defval );
+enum ECC_INTERPOLATION_METHOD {
+  ECC_INTER_UNKNOWN        = -1,
+  ECC_INTER_NEAREST        = cv::INTER_NEAREST,
+  ECC_INTER_LINEAR         = cv::INTER_LINEAR,
+  ECC_INTER_CUBIC          = cv::INTER_CUBIC,
+  ECC_INTER_AREA           = cv::INTER_AREA,
+  ECC_INTER_LANCZOS4       = cv::INTER_LANCZOS4,
+  ECC_INTER_LINEAR_EXACT   = cv::INTER_LINEAR_EXACT,
+  ECC_INTER_NEAREST_EXACT  = cv::INTER_NEAREST_EXACT,
+};
+
+
+const extern struct ecc_interpolation_method_desc {
+  const char * name;
+  enum ECC_INTERPOLATION_METHOD value;
+} ecc_interpolation_methods[];
+
+std::string toStdString(enum ECC_INTERPOLATION_METHOD m);
+enum ECC_INTERPOLATION_METHOD fromStdString(const std::string  & s,
+    enum ECC_INTERPOLATION_METHOD defval );
+
+enum ECC_BORDER_MODE {
+  ECC_BORDER_UNKNOWN     = -1,
+  ECC_BORDER_CONSTANT    = cv::BORDER_CONSTANT,
+  ECC_BORDER_REPLICATE   = cv::BORDER_REPLICATE,
+  ECC_BORDER_REFLECT     = cv::BORDER_REFLECT,
+  ECC_BORDER_WRAP        = cv::BORDER_WRAP,
+  ECC_BORDER_REFLECT101  = cv::BORDER_REFLECT101,
+  ECC_BORDER_TRANSPARENT = cv::BORDER_TRANSPARENT,
+  ECC_BORDER_DEFAULT     = cv::BORDER_DEFAULT,
+  ECC_BORDER_ISOLATED    = cv::BORDER_ISOLATED
+};
+
+const extern struct ecc_border_mode_desc {
+  const char * name;
+  enum ECC_BORDER_MODE value;
+} ecc_border_modes[];
+
+std::string toStdString(enum ECC_BORDER_MODE m);
+enum ECC_BORDER_MODE fromStdString(const std::string  & s,
+    enum ECC_BORDER_MODE defval );
 
 //
 // args:
@@ -148,8 +181,8 @@ public:
   void set_min_rho(double v);
   double min_rho() const;
 
-  void set_image_interpolation_flags(int v);
-  int image_interpolation_flags() const;
+  void set_image_interpolation_method(enum ECC_INTERPOLATION_METHOD v);
+  enum ECC_INTERPOLATION_METHOD image_interpolation_method() const;
 
   void set_input_smooth_sigma(double v);
   double input_smooth_sigma() const;
@@ -184,8 +217,8 @@ public:
 
 protected:
   enum ECC_MOTION_TYPE ecc_motion_type_ = ECC_MOTION_AFFINE;
+  enum ECC_INTERPOLATION_METHOD image_interpolation_method_ = ECC_INTER_LINEAR;
   int max_iterations_ = 30;
-  int image_interpolation_flags_ = cv::INTER_LINEAR;
   //  int pyramid_normalization_level_ = 0;
   //  double pyramid_normalization_regularization_term_ = 1.;
 

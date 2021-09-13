@@ -1048,7 +1048,6 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
   /////////////////////////////////////////////////////////////////////////////
 
-  CF_DEBUG("H");
   return true;
 }
 
@@ -1126,8 +1125,6 @@ bool c_image_stacking_pipeline::actual_run()
 
     std::string master_file_name = master_options.master_source_path;
 
-    CF_DEBUG("H");
-
     if ( master_file_name.empty() ) {
       master_file_name = this->input_sequence_->source(master_source_index = 0)->filename();
     }
@@ -1185,13 +1182,11 @@ bool c_image_stacking_pipeline::actual_run()
       max_frames_to_stack = master_options.max_input_frames_to_generate_master_frame;
     }
 
-    CF_DEBUG("H");
     if ( !create_reference_frame(input_sequence, master_frame_index, max_frames_to_stack,
         reference_frame, reference_mask) ) {
       CF_FATAL("ERROR: create_reference_frame() fails");
       return false;
     }
-    CF_DEBUG("H");
 
     ecc_normalization_noise_ =
         compute_image_noise(reference_frame, reference_mask,
@@ -1255,7 +1250,6 @@ bool c_image_stacking_pipeline::actual_run()
         flow_accumulation_.reset(new c_frame_weigthed_average());
       }
     }
-    CF_DEBUG("H");
   }
 
 
@@ -1745,6 +1739,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       break;
     }
 
+
     t0 = start_time = get_realtime_ms();
 
     if ( !read_input_frame(input_sequence, input_options, current_frame, current_mask) ) {
@@ -1824,7 +1819,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     }
 
     /////////////////////////////////////
-
 
     if ( sharpness_norm_accumulation_ ) {
       sharpness_norm_accumulation_-> add(current_frame, current_mask);

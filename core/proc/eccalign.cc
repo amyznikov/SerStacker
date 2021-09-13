@@ -470,7 +470,7 @@ bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
         break;
       }
       if ( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
-        CF_DEBUG("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
             nextSize.width, nextSize.height,
             inputSize.width, inputSize.height);
         return false;
@@ -909,7 +909,7 @@ cv::Mat createTranslationTransform(double Tx, double Ty, int ddepth /*= CV_32F*/
     return createTranslationTransform_<double>(Tx, Ty);
   }
 
-  CF_DEBUG("Invalid ddepth=%d specified. Only CV_32F and CV_64F supported", ddepth);
+  CF_ERROR("Invalid ddepth=%d specified. Only CV_32F and CV_64F supported", ddepth);
   return cv::Mat();
 }
 
@@ -952,7 +952,7 @@ cv::Mat createEuclideanTransform(double Cx, double Cy, double Tx, double Ty, dou
     return createEuclideanTransform_<double>(Cx, Cy, Tx, Ty, scale, angle);
   }
 
-  CF_DEBUG("Invalid ddepth=%d specified. Only CV_32F and CV_64F supported", ddepth);
+  CF_ERROR("Invalid ddepth=%d specified. Only CV_32F and CV_64F supported", ddepth);
   return cv::Mat();
 }
 
@@ -1747,7 +1747,7 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
 
     dP = dP.inv(cv::DECOMP_LU, &isok);
     if ( !isok ) {
-      CF_DEBUG("dP.inv() fails");
+      CF_ERROR("dP.inv() fails");
     }
     else {
       P = P * dP;
@@ -1799,7 +1799,7 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
 
     dP = dP.inv(cv::DECOMP_LU, &isok);
     if ( !isok ) {
-      CF_DEBUG("dP.inv() fails");
+      CF_ERROR("dP.inv() fails");
     }
     else {
       P = P * dP;
@@ -1851,7 +1851,7 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
 
     dP = dP.inv(cv::DECOMP_LU, &isok);
     if ( !isok ) {
-      CF_DEBUG("dP.inv() fails");
+      CF_ERROR("dP.inv() fails");
     }
     else {
 
@@ -1906,7 +1906,7 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
 
     dP = dP.inv(cv::DECOMP_LU, &isok);
     if ( !isok ) {
-      CF_DEBUG("dP.inv() fails");
+      CF_ERROR("dP.inv() fails");
     }
     else {
 
@@ -2686,7 +2686,6 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
   for ( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
 
     cv::Mat1f & T = transform_pyramid_[i];
-    CF_DEBUG("H: i=%d T: %dx%d", i, T.rows, T.cols);
 
     if ( !method->align(image_pyramids_[0][i], image_pyramids_[1][i], T, mask_pyramids_[0][i], mask_pyramids_[1][i]) ) {
       CF_DEBUG("L[%2d] : eccAlign() fails: motion: %d size=%dx%d numiterations=%d rho=%g eps=%g", i,
@@ -2695,7 +2694,7 @@ bool c_ecc_pyramide_align::align(c_ecc_align * method,
           method->num_iterations(), method->rho(), method->current_eps());
       continue;
     }
-    else {
+    else if ( false ) {
       CF_DEBUG("L[%2d] : eccAlign() OK: motion: %d size=%dx%d numiterations=%d rho=%g eps=%g", i, method->motion_type(),
           image_pyramids_[0][i].cols, image_pyramids_[0][i].rows,
           method->num_iterations(), method->rho(), method->current_eps());
@@ -3484,7 +3483,7 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
     pyramid_entry & current_scale = pyramid_.back();
     const cv::Size currentSize = I.size();
 
-    pnormalize(I, current_scale.current_mask, current_scale.reference_image);
+    pnormalize(I, current_scale.reference_mask, current_scale.reference_image);
 
     ecc_differentiate(current_scale.reference_image,
         current_scale.Ix, current_scale.Iy);
@@ -3629,8 +3628,12 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
     const cv::Size prev_rmap_size = prev_scale.rmap.size();
     const cv::Size next_rmap_size((prev_rmap_size.width + 1) / 2, (prev_rmap_size.height + 1) / 2);
 
+    next_scale.current_mask.release();
+
     if ( !prev_scale.current_mask.empty()) {
+
       cv::resize(M, next_scale.current_mask, next_image_size, 0, 0, cv::INTER_NEAREST);
+
       if ( cv::countNonZero(next_scale.current_mask) == next_image_size.area() ) {
         next_scale.current_mask.release();
       }
@@ -3653,6 +3656,7 @@ bool c_ecch_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Input
           cv::multiply(next_scale.rmap, size_ratio, next_scale.rmap);
         }
     );
+
   }
 
 

@@ -396,7 +396,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   bool have_transform = false;
 
 
-
   start_time = get_realtime_ms();
 
   current_frame_size_ = current_image.size();
@@ -513,6 +512,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   createRemap(motion_type(), current_transform_, current_remap_, reference_frame_size_);
   current_status_.timings.create_remap =
       get_realtime_ms() - t0;
+
 
   if ( enable_eccflow() ) {
 

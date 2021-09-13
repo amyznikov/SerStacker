@@ -45,7 +45,94 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
         if ( options_ && !updatingControls() ) {
-          options_->output_directory = output_directory_ctl->currentPath().toStdString();
+          options_->output_options().output_directory =
+              output_directory_ctl->currentPath().toStdString();
+          emit parameterChanged();
+        }
+      });
+
+
+
+  ///
+
+  save_preprocessed_frames_ctl =
+      add_named_checkbox("Save preprocessed (input) frames",
+          [this](int state) {
+            if ( options_ && options_->output_options().save_preprocessed_frames != (state == Qt::Checked)  ) {
+              options_->output_options().save_preprocessed_frames = (state == Qt::Checked);
+              output_preprocessed_frames_path_ctl->setEnabled(options_->output_options().save_preprocessed_frames);
+              emit parameterChanged();
+            }
+          });
+
+  form->addRow(output_preprocessed_frames_path_ctl =
+      new QBrowsePathCombo("Preprocessd frames file name:",
+          QFileDialog::AnyFile,
+          this));
+
+  connect(output_preprocessed_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->output_options().output_preprocessed_frames_filename =
+              output_preprocessed_frames_path_ctl->currentPath().toStdString();
+          emit parameterChanged();
+        }
+      });
+
+  ///
+
+
+  ///
+
+  save_aligned_frames_ctl =
+      add_named_checkbox("Save aligned frames",
+          [this](int state) {
+            if ( options_ && options_->output_options().save_aligned_frames != (state == Qt::Checked)  ) {
+              options_->output_options().save_aligned_frames = (state == Qt::Checked);
+              output_aligned_frames_path_ctl->setEnabled(options_->output_options().save_aligned_frames);
+              emit parameterChanged();
+            }
+          });
+
+  form->addRow(output_aligned_frames_path_ctl =
+      new QBrowsePathCombo("Aligned frames file name:",
+          QFileDialog::AnyFile,
+          this));
+
+  connect(output_aligned_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->output_options().output_aligned_frames_filename =
+              output_aligned_frames_path_ctl->currentPath().toStdString();
+          emit parameterChanged();
+        }
+      });
+
+  ///
+
+
+  ///
+
+  save_postprocessed_frames_ctl =
+      add_named_checkbox("Save postprocessed frames",
+          [this](int state) {
+            if ( options_ && options_->output_options().save_postprocessed_frames != (state == Qt::Checked)  ) {
+              options_->output_options().save_postprocessed_frames = (state == Qt::Checked);
+              output_postprocessed_frames_path_ctl->setEnabled(options_->output_options().save_postprocessed_frames);
+              emit parameterChanged();
+            }
+          });
+
+  form->addRow(output_postprocessed_frames_path_ctl =
+      new QBrowsePathCombo("Postprocessed frames file name:",
+          QFileDialog::AnyFile,
+          this));
+
+  connect(output_postprocessed_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->output_options().output_postprocessed_frames_filename =
+              output_postprocessed_frames_path_ctl->currentPath().toStdString();
           emit parameterChanged();
         }
       });
@@ -53,117 +140,74 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   ///
 
-
-  frame_processor_selector_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("Post Process Frames:",
-          [this](int index) {
-            if ( options_ ) {
-              options_->frame_processor =
-                  frame_processor_selector_ctl->processor(index);
-            }
-          });
-
-
-  ///
-
-  save_processed_frames_ctl =
-      add_checkbox("Save processed frames",
+  save_accumulation_masks_ctl =
+      add_named_checkbox("Save accumulation masks",
           [this](int state) {
-            if ( options_ && options_->save_processed_frames != (state == Qt::Checked)  ) {
-
-                options_->save_processed_frames = (state == Qt::Checked);
-
-                emit parameterChanged();
+            if ( options_ && options_->output_options().save_accumulation_masks != (state == Qt::Checked)  ) {
+              options_->output_options().save_accumulation_masks = (state == Qt::Checked);
+              output_accumulation_masks_path_ctl->setEnabled(options_->output_options().save_accumulation_masks);
+              emit parameterChanged();
             }
           });
 
+  form->addRow(output_accumulation_masks_path_ctl =
+      new QBrowsePathCombo("Accumulation masks file name:",
+          QFileDialog::AnyFile,
+          this));
+
+  connect(output_accumulation_masks_path_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->output_options().output_accumulation_masks_filename =
+              output_accumulation_masks_path_ctl->currentPath().toStdString();
+          emit parameterChanged();
+        }
+      });
 
   ///
 
   accumulated_image_processor_selector_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("Post Process Accumulated Frame:",
+      add_combobox<QImageProcessorSelectionCombo>("Postprocess accumulated frame:",
           [this](int index) {
             if ( options_ ) {
-
-              options_->accumuated_image_processor =
+              options_->output_options().accumulated_image_processor =
                   accumulated_image_processor_selector_ctl->processor(index);
+              emit parameterChanged();
+            }
+          });
+  ///
 
+
+  write_image_mask_as_alpha_channel_ctl =
+      add_checkbox("Write image mask as alpha channel",
+          [this](int state) {
+            if ( options_ ) {
+              const bool checked = state == Qt::Checked;
+              if ( options_->output_options().write_image_mask_as_alpha_channel != checked ) {
+                options_->output_options().write_image_mask_as_alpha_channel = checked;
+                emit parameterChanged();
+              }
+            }
+          });
+
+
+  ///
+
+
+  dump_reference_data_for_debug_ctl =
+      add_checkbox("Dump reference data for debug",
+          [this](int state) {
+            if ( options_ ) {
+              const bool checked = state == Qt::Checked;
+              if ( options_->output_options(). dump_reference_data_for_debug != checked ) {
+                options_->output_options(). dump_reference_data_for_debug = checked;
+                emit parameterChanged();
+              }
             }
           });
 
   ///
 
-  write_aligned_video_ctl = add_checkbox("Write aligned video",
-      [this](int state) {
-        if ( options_ ) {
-
-          const bool status = state == Qt::Checked;
-
-          if ( status != options_->write_aligned_video ) {
-
-            options_->write_aligned_video = status;
-
-            emit parameterChanged();
-          }
-
-          output_aligned_video_filename_ctl->setEnabled(
-              options_->write_aligned_video);
-        }
-      });
-
-
-  form->addRow(output_aligned_video_filename_ctl =
-      new QBrowsePathCombo("Aligned video file name:",
-          QFileDialog::AnyFile,
-          this));
-
-  connect(output_aligned_video_filename_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
-        if ( options_ && !updatingControls() ) {
-
-          options_->output_aligned_video_filename =
-              output_aligned_video_filename_ctl->currentPath().toStdString();
-
-          emit parameterChanged();
-        }
-      });
-
-
-  ///
-
-  write_image_mask_as_alpha_channel_ctl = add_checkbox("Write image mask as alpha channel",
-      [this](int state) {
-        if ( options_ ) {
-          const bool status = state == Qt::Checked;
-
-          if ( status != options_->write_image_mask_as_alpha_channel ) {
-
-            options_->write_image_mask_as_alpha_channel = status;
-
-            emit parameterChanged();
-          }
-        }
-      });
-
-
-  ///
-
-  dump_reference_data_for_debug_ctl = add_checkbox("Dump reference data for debug",
-      [this](int state) {
-        if ( options_ ) {
-          const bool status = state == Qt::Checked;
-
-          if ( status != options_->dump_reference_data_for_debug ) {
-
-            options_->dump_reference_data_for_debug = status;
-
-            emit parameterChanged();
-          }
-        }
-      });
-
-
-  ///
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -175,7 +219,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   connect(applyToAll_ctl, &QToolButton::clicked,
       [this]() {
         if ( options_ ) {
-          emit applyOutputOptionsToAllRequested(*options_);
+          emit applyOutputOptionsToAllRequested(options_->output_options());
         }
       });
 
@@ -185,13 +229,13 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   setEnabled(false);
 }
 
-void QStackOutputOptions::set_output_options(c_image_stacking_output_options * options)
+void QStackOutputOptions::set_stacking_options(const c_image_stacking_options::ptr & options)
 {
   this->options_ = options;
   updateControls();
 }
 
-const c_image_stacking_output_options * QStackOutputOptions::output_options() const
+const c_image_stacking_options::ptr & QStackOutputOptions::stacking_options() const
 {
   return this->options_;
 }
@@ -202,26 +246,35 @@ void QStackOutputOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    //int current_index;
 
-    output_directory_ctl->setCurrentPath(options_->output_directory.c_str(), false);
+    c_image_stacking_output_options & output_options =
+        options_->output_options();
 
-    save_processed_frames_ctl->setChecked(options_->save_processed_frames);
+    output_directory_ctl->setCurrentPath(output_options.output_directory.c_str(), false);
 
-    write_image_mask_as_alpha_channel_ctl->setChecked(options_->write_image_mask_as_alpha_channel);
-    write_aligned_video_ctl->setChecked(options_->write_aligned_video);
+    save_preprocessed_frames_ctl->setChecked(output_options.save_preprocessed_frames);
+    output_preprocessed_frames_path_ctl->setCurrentPath(output_options.output_preprocessed_frames_filename.c_str());
+    output_preprocessed_frames_path_ctl->setEnabled(output_options.save_preprocessed_frames);
 
-    output_aligned_video_filename_ctl->setCurrentPath(options_->output_aligned_video_filename.c_str());
-    output_aligned_video_filename_ctl->setEnabled(options_->write_aligned_video);
-    dump_reference_data_for_debug_ctl->setChecked(options_->dump_reference_data_for_debug);
+    save_aligned_frames_ctl->setChecked(output_options.save_aligned_frames);
+    output_aligned_frames_path_ctl->setCurrentPath(output_options.output_aligned_frames_filename.c_str());
+    output_aligned_frames_path_ctl->setEnabled(output_options.save_aligned_frames);
 
-    if ( !frame_processor_selector_ctl->setCurrentProcessor(options_->frame_processor) ) {
-      options_->frame_processor.reset();
+    save_postprocessed_frames_ctl->setChecked(output_options.save_postprocessed_frames);
+    output_postprocessed_frames_path_ctl->setCurrentPath(output_options.output_postprocessed_frames_filename.c_str());
+    output_postprocessed_frames_path_ctl->setEnabled(output_options.save_postprocessed_frames);
+
+    save_accumulation_masks_ctl->setChecked(output_options.save_accumulation_masks);
+    output_accumulation_masks_path_ctl->setCurrentPath(output_options.output_accumulation_masks_filename.c_str());
+    output_accumulation_masks_path_ctl->setEnabled(output_options.save_accumulation_masks);
+
+    if ( !accumulated_image_processor_selector_ctl->setCurrentProcessor(output_options.accumulated_image_processor) ) {
+      output_options.accumulated_image_processor.reset();
     }
 
-    if ( !accumulated_image_processor_selector_ctl->setCurrentProcessor(options_->accumuated_image_processor) ) {
-      options_->accumuated_image_processor.reset();
-    }
+    write_image_mask_as_alpha_channel_ctl->setChecked(output_options.write_image_mask_as_alpha_channel);
+    dump_reference_data_for_debug_ctl->setChecked(output_options.dump_reference_data_for_debug);
+
 
     setEnabled(true);
   }

@@ -199,6 +199,8 @@ struct c_frame_registration_options {
   c_star_field_registration_options star_field_options;
   c_jovian_derotation_options jovian_derotation_options;
 
+  c_image_processor::ptr aligned_frame_processor;
+
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
 };
@@ -208,15 +210,17 @@ struct c_image_stacking_output_options {
 
   std::string output_directory;
 
-  std::string output_aligned_video_filename;
+  c_image_processor::ptr accumulated_image_processor;
 
-  c_image_processor::ptr frame_processor;
-  std::string processed_frame_filename;
+  std::string output_preprocessed_frames_filename;
+  std::string output_aligned_frames_filename;
+  std::string output_postprocessed_frames_filename;
+  std::string output_accumulation_masks_filename;
 
-  c_image_processor::ptr accumuated_image_processor;
-
-  bool write_aligned_video = false;
-  bool save_processed_frames = false;
+  bool save_preprocessed_frames = false;
+  bool save_aligned_frames = false;
+  bool save_postprocessed_frames = false;
+  bool save_accumulation_masks = false;
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 
@@ -405,11 +409,26 @@ protected:
       const cv::Mat & output_image,
       const cv::Mat & output_mask);
 
-  static bool save_processed_frame(const cv::Mat & curren_frame, const cv::Mat & current_mask,
-      const c_image_stacking_output_options & output_options,
-      const std::string & output_directory,
-      const std::string & sequence_name,
-      const c_input_sequence::ptr & input_sequence);
+  class c_video_writer;
+
+  void save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_video_writer & output_writer) const;
+
+  void save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_video_writer & output_writer) const;
+
+  void save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_video_writer & output_writer) const;
+
+  void save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_video_writer & output_writer) const;
+
+
+//  static bool save_processed_frame(const cv::Mat & curren_frame, const cv::Mat & current_mask,
+//      const c_image_stacking_output_options & output_options,
+//      const std::string & output_directory,
+//      const std::string & sequence_name,
+//      const c_input_sequence::ptr & input_sequence);
 
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons);

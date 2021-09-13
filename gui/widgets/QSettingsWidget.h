@@ -117,7 +117,6 @@ protected:
     return add_textbox(this->form, name, slot);
   }
 
-  //template<class _Calable>
   QCheckBox* add_checkbox(QFormLayout * form, const QString & name,
       const std::function<void(int)> & slot = std::function<void(int)>())
   {
@@ -134,11 +133,30 @@ protected:
     return ctl;
   }
 
+  QCheckBox* add_named_checkbox(QFormLayout * form, const QString & name,
+      const std::function<void(int)> & slot = std::function<void(int)>())
+  {
+    QCheckBox *ctl = new QCheckBox(name, this);
+    form->addRow(ctl);
+    QObject::connect(ctl, &QCheckBox::stateChanged,
+        [this, slot](int state) {
+          if ( !updatingControls() && slot ) {
+              LOCK();
+              slot(state);
+              UNLOCK();
+          }
+        });
+    return ctl;
+  }
 
-  //template<class _Calable>
-  QCheckBox* add_checkbox(const QString & name, const std::function<void(int)> & slot = std::function<void(int)>() )
+  QCheckBox * add_checkbox(const QString & name, const std::function<void(int)> & slot = std::function<void(int)>() )
   {
     return add_checkbox(this->form, name, slot);
+  }
+
+  QCheckBox * add_named_checkbox(const QString & name, const std::function<void(int)> & slot = std::function<void(int)>() )
+  {
+    return add_named_checkbox(this->form, name, slot);
   }
 
   template<class ComboBoxType = QComboBox>
@@ -150,12 +168,10 @@ protected:
     QObject::connect(ctl,
         static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
         [this, slot](int currentIndex) {
-          if ( !updatingControls() ) {
-            if ( slot ) {
-              LOCK();
-              slot(currentIndex);
-              UNLOCK();
-            }
+          if ( !updatingControls() && slot ) {
+            LOCK();
+            slot(currentIndex);
+            UNLOCK();
           }
         });
     return ctl;

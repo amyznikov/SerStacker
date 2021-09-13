@@ -79,13 +79,13 @@ c_input_source::ptr c_input_source::create(source_type type, const std::string &
   return obj;
 }
 
-c_input_source::ptr c_input_source::create(const std::string & filename)
+enum c_input_source::source_type c_input_source::suggest_source_type(
+    const std::string & filename)
 {
+  enum source_type type = c_input_source::UNKNOWN;
+
   const std::string suffix = get_file_suffix(filename);
-
   if ( !suffix.empty() ) {
-
-    source_type type = c_input_source::UNKNOWN;
 
     static const auto contains =
         [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {
@@ -114,14 +114,65 @@ c_input_source::ptr c_input_source::create(const std::string & filename)
     else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
       type = c_input_source::RAW_IMAGE;
     }
+  }
 
-    if ( type != c_input_source::UNKNOWN ) {
-      return c_input_source::create(type, filename);
-    }
+  return type;
+}
 
+
+c_input_source::ptr c_input_source::create(const std::string & filename)
+{
+  enum source_type type =
+      suggest_source_type(filename);
+
+  if ( type != c_input_source::UNKNOWN ) {
+    return c_input_source::create(type, filename);
   }
 
   return nullptr;
+
+//
+//  const std::string suffix = get_file_suffix(filename);
+//
+//  if ( !suffix.empty() ) {
+//
+//    source_type type = c_input_source::UNKNOWN;
+//
+//    static const auto contains =
+//        [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {
+//
+//          const char * csuffix = suffix.c_str();
+//          for ( const std::string & s : suffixes ) {
+//            if ( strcasecmp(csuffix, s.c_str()) == 0 ) {
+//              return true;
+//            }
+//          }
+//          return false;
+//        };
+//
+//    if ( contains(c_ser_input_source::suffixes(), suffix) ) {
+//      type = c_input_source::SER;
+//    }
+//    else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
+//      type = c_input_source::FITS;
+//    }
+//    else if ( contains(c_movie_input_source::suffixes(), suffix) ) {
+//      type = c_input_source::MOVIE;
+//    }
+//    else if ( contains(c_regular_image_input_source::suffixes(), suffix) ) {
+//      type = c_input_source::REGULAR_IMAGE;
+//    }
+//    else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
+//      type = c_input_source::RAW_IMAGE;
+//    }
+//
+//    if ( type != c_input_source::UNKNOWN ) {
+//      return c_input_source::create(type, filename);
+//    }
+//
+//  }
+//
+//  return nullptr;
 }
 
 

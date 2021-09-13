@@ -9,8 +9,7 @@
 #define __QFrameRegistrationSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QEnumComboBox.h>
-#include <gui/widgets/QLineEditBox.h>
+#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
 QString toString(enum frame_registration_method v);
@@ -302,8 +301,10 @@ protected:
 protected:
   c_frame_registration_options * options_ = Q_NULLPTR;
   QFrameRegistrationMethodCombo * frameRegistrationMethod_ctl = Q_NULLPTR;
-  QCheckBox * accumulate_and_compensate_turbulent_flow_ctl = Q_NULLPTR;
-  //QCheckBox * incremental_mode_ctl = Q_NULLPTR;
+
+  QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = Q_NULLPTR;
+  QImageProcessorSelectionCombo * alignedFramesProcessor_ctl = Q_NULLPTR;
+
   QFrameRegistrationBaseSettings * frameRegistrationBaseSettings = Q_NULLPTR;
   QFeatureBasedRegistrationSettings * featureBasedRegistrationSettings = Q_NULLPTR;
   QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings = Q_NULLPTR;

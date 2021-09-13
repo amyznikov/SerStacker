@@ -11,8 +11,9 @@ QImageSceneView::QImageSceneView(QWidget *parent)
     : Base(parent)
 {
   setScene(scene_ = new QImageScene(this));
-  setMouseTracking(true);
+  scene_->setBackgroundBrush(QBrush(Qt::darkGray, Qt::SolidPattern));
 
+  setMouseTracking(true);
 
   QShortcut * shortcut;
 

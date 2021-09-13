@@ -390,6 +390,10 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "update_multiplier", base_options.eccflow.update_multiplier);
   save_settings(group, "max_iterations", base_options.eccflow.max_iterations);
 
+  if ( aligned_frame_processor ) {
+    save_settings(settings, "aligned_frame_processor", aligned_frame_processor->name() );
+  }
+
   return true;
 }
 
@@ -438,6 +442,11 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     load_settings(group, "max_iterations", &base_options.eccflow.max_iterations);
   }
 
+  std::string s;
+  if ( load_settings(settings, "aligned_frame_processor", &s) && !s.empty() ) {
+    aligned_frame_processor = c_image_processor_collection::default_instance()->get(s);
+  }
+
   return true;
 }
 
@@ -445,19 +454,22 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
 bool c_image_stacking_output_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "output_directory", output_directory);
-  save_settings(settings, "output_aligned_video_filename", output_aligned_video_filename);
-  save_settings(settings, "processed_frame_filename", processed_frame_filename);
-  save_settings(settings, "write_aligned_video", write_aligned_video);
-  save_settings(settings, "save_processed_frames", save_processed_frames);
+
+  save_settings(settings, "output_preprocessed_frames_filename", output_preprocessed_frames_filename);
+  save_settings(settings, "output_aligned_frames_filename", output_aligned_frames_filename);
+  save_settings(settings, "output_postprocessed_frames_filename", output_postprocessed_frames_filename);
+  save_settings(settings, "output_accumulation_masks_filename", output_accumulation_masks_filename);
+
+  save_settings(settings, "save_preprocessed_frames", save_preprocessed_frames);
+  save_settings(settings, "save_aligned_frames", save_aligned_frames);
+  save_settings(settings, "save_postprocessed_frames", save_postprocessed_frames);
+  save_settings(settings, "save_accumulation_masks", save_accumulation_masks);
+
   save_settings(settings, "dump_reference_data_for_debug", dump_reference_data_for_debug);
   save_settings(settings, "write_image_mask_as_alpha_channel", write_image_mask_as_alpha_channel);
 
-  if ( frame_processor ) {
-    save_settings(settings, "frame_processor", frame_processor->name() );
-  }
-
-  if ( accumuated_image_processor ) {
-    save_settings(settings, "accumuated_image_processor", accumuated_image_processor->name());
+  if ( accumulated_image_processor ) {
+    save_settings(settings, "accumulated_image_processor", accumulated_image_processor->name());
   }
 
   return true;
@@ -472,20 +484,23 @@ bool c_image_stacking_output_options::deserialize(c_config_setting settings)
   }
 
   load_settings(settings, "output_directory", &output_directory);
-  load_settings(settings, "output_aligned_video_filename", &output_aligned_video_filename);
-  load_settings(settings, "processed_frame_filename", &processed_frame_filename);
-  load_settings(settings, "write_aligned_video", &write_aligned_video);
-  load_settings(settings, "save_processed_frames", &save_processed_frames);
+
+  load_settings(settings, "output_preprocessed_frames_filename", &output_preprocessed_frames_filename);
+  load_settings(settings, "output_aligned_frames_filename", &output_aligned_frames_filename);
+  load_settings(settings, "output_postprocessed_frames_filename", &output_postprocessed_frames_filename);
+  load_settings(settings, "output_accumulation_masks_filename", &output_accumulation_masks_filename);
+
+  load_settings(settings, "save_preprocessed_frames", &save_preprocessed_frames);
+  load_settings(settings, "save_aligned_frames", &save_aligned_frames);
+  load_settings(settings, "save_postprocessed_frames", &save_postprocessed_frames);
+  load_settings(settings, "save_accumulation_masks", &save_accumulation_masks);
+
+
   load_settings(settings, "dump_reference_data_for_debug", &dump_reference_data_for_debug);
   load_settings(settings, "write_image_mask_as_alpha_channel", &write_image_mask_as_alpha_channel);
 
-
-  if ( load_settings(settings, "frame_processor", &s) && !s.empty() ) {
-    frame_processor = c_image_processor_collection::default_instance()->get(s);
-  }
-
-  if ( load_settings(settings, "accumuated_image_processor", &s) && !s.empty() ) {
-    accumuated_image_processor = c_image_processor_collection::default_instance()->get(s);
+  if ( load_settings(settings, "accumulated_image_processor", &s) && !s.empty() ) {
+    accumulated_image_processor = c_image_processor_collection::default_instance()->get(s);
   }
 
   return true;

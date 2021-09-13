@@ -544,7 +544,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
       });
 
 
-  accumulate_and_compensate_turbulent_flow_ctl =
+  accumulateAndCompensateTurbulentFlow_ctl =
       add_checkbox("Accumulate and compensate turbulent flow",
           [this](int state) {
             if ( options_ ) {
@@ -553,6 +553,17 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
                 options_->accumulate_and_compensate_turbulent_flow = checked;
                 emit parameterChanged();
               }
+            }
+          });
+
+
+  alignedFramesProcessor_ctl =
+      add_combobox<QImageProcessorSelectionCombo>("Postprocess aligned frames:",
+          [this](int index) {
+            if ( options_ ) {
+              options_->aligned_frame_processor =
+                  alignedFramesProcessor_ctl->processor(index);
+              emit parameterChanged();
             }
           });
 
@@ -632,7 +643,7 @@ void QFrameRegistrationOptions::onupdatecontrols()
   else {
 
     frameRegistrationMethod_ctl->setCurrentItem(options_->registration_method);
-    accumulate_and_compensate_turbulent_flow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
+    accumulateAndCompensateTurbulentFlow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
 //    incremental_mode_ctl->setChecked(options_->incremental_mode);
     frameRegistrationBaseSettings->set_registration_options(&options_->base_options);
     featureBasedRegistrationSettings->set_registration_options(&options_->feature_options);
@@ -640,6 +651,10 @@ void QFrameRegistrationOptions::onupdatecontrols()
     jovianDerotationSettings->set_planetary_disk_options(&options_->planetary_disk_options);
     jovianDerotationSettings->set_jovian_derotation_options(&options_->jovian_derotation_options);
     starFieldRegistrationSettings->set_registration_options(&options_->star_field_options);
+
+    if ( !alignedFramesProcessor_ctl->setCurrentProcessor(options_->aligned_frame_processor) ) {
+      options_->aligned_frame_processor.reset();
+    }
 
     setEnabled(true);
   }

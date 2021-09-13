@@ -33,6 +33,9 @@ public:
   static ptr create(source_type type,
       const std::string & filename);
 
+  static enum source_type suggest_source_type(
+      const std::string & filename);
+
   const std::string & filename() const
   {
     return filename_;

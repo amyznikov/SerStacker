@@ -130,7 +130,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     upscaleOptions_ctl->set_upscale_options(nullptr);
     frameAccumulation_ctl->set_accumulation_options(nullptr);
     frameRegistration_ctl->set_registration_options(nullptr);
-    outputOptions_ctl->set_output_options(nullptr);
+    outputOptions_ctl->set_stacking_options(nullptr);
 
   }
   else {
@@ -142,7 +142,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     upscaleOptions_ctl->set_upscale_options(&stack_->upscale_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
     frameRegistration_ctl->set_registration_options(&stack_->frame_registration_options());
-    outputOptions_ctl->set_output_options(&stack_->output_options());
+    outputOptions_ctl->set_stacking_options(stack_);
 
     if ( QStackingThread::isRunning() && stack_ == QStackingThread::currentStack() ) {
       setEnabled(false);

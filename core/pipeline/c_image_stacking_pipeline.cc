@@ -190,129 +190,6 @@ enum frame_upscale_option fromStdString(const std::string  & s,
 
 namespace {
 
-// /home/data/scope/test_records/2020-10-05/Challenge/
-class c_video_writer {
-
-public:
-
-  ~c_video_writer()
-  {
-    close();
-  }
-
-  bool open(const std::string & fileName, const cv::Size & frameSize, bool color)
-  {
-    const std::string suffix = get_file_suffix(fileName);
-    if ( strcasecmp(suffix.c_str(), ".ser") == 0 ) {
-
-      serVideo.create(fileName, frameSize.width, frameSize.height,
-          color ? COLORID_BGR : COLORID_MONO,
-              16);
-
-      if ( !serVideo.is_open() ) {
-        CF_ERROR("Can not write ser file '%s'", fileName.c_str());
-        return false;
-      }
-
-    }
-    else {
-
-      aviVideo.open(fileName, cv::CAP_FFMPEG,
-          cv::VideoWriter::fourcc('H', 'F', 'Y', 'U'),
-          10,
-          frameSize,
-          color);
-
-      if ( !aviVideo.isOpened() ) {
-        CF_ERROR("Can not write aligned video file '%s'", fileName.c_str());
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-
-  bool isOpened() const
-  {
-    return aviVideo.isOpened() || serVideo.is_open();
-  }
-
-  bool write(const cv::Mat & currenFrame) {
-
-    if ( aviVideo.isOpened() ) {
-      currenFrame.convertTo(tmp, CV_8U, 255);
-      aviVideo.write(tmp);
-    }
-    else if ( serVideo.is_open() ) {
-      currenFrame.convertTo(tmp, CV_16U, 65535);
-      serVideo.write(tmp);
-    }
-    else {
-      CF_ERROR("ERROR: Output video file is not open");
-      return false;
-    }
-
-    return true;
-  }
-
-
-  void close()
-  {
-    aviVideo.release();
-    serVideo.close();
-    tmp.release();
-  }
-
-protected:
-  cv::VideoWriter aviVideo;
-  c_ser_writer serVideo;
-  cv::Mat tmp;
-};
-
-
-void write_aligned_video(const cv::Mat & currenFrame, c_video_writer & output_aligned_video,
-    const c_image_stacking_output_options & output_options, const std::string & output_directory)
-{
-  if ( output_options.write_aligned_video && !output_options.output_aligned_video_filename.empty() ) {
-
-    if ( !output_aligned_video.isOpened() ) {
-
-      std::string pathfilename =
-          output_options.output_aligned_video_filename;
-
-      if ( !is_absolute_path(pathfilename)  ) {
-        pathfilename = ssprintf("%s/%s", output_directory.c_str(), pathfilename.c_str());
-      }
-
-      if ( !create_path(get_parent_directory(pathfilename)) ) {
-        CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-        return;
-      }
-
-      output_aligned_video.open(pathfilename,
-          currenFrame.size(),
-          currenFrame.channels() > 1);
-
-      if ( !output_aligned_video.isOpened() ) {
-        CF_ERROR("Can not write aligned video file '%s'",
-            pathfilename.c_str());
-      }
-    }
-
-    if ( output_aligned_video.isOpened() ) {
-      output_aligned_video.write(currenFrame);
-    }
-  }
-}
-
-
-
-}
-
-
-namespace {
-
 //static cv::Mat2f remap2flow(const cv::Mat2f &rmap, const cv::Mat1b & mask)
 //{
 //  cv::Mat2f uv(rmap.size());
@@ -772,6 +649,157 @@ ssize_t c_image_stacks_collection::indexof(const std::string & name) const
   return ii == stacks_.end() ? -1 : ii - stacks_.begin();
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+class c_image_stacking_pipeline::c_video_writer {
+
+public:
+
+  ~c_video_writer()
+  {
+    close();
+  }
+
+  bool open(const std::string & filename, const cv::Size & frameSize, bool color)
+  {
+    output_file_name = filename;
+    output_type = output_type_unknown;
+    current_frame_index = 0;
+
+    switch ( c_input_source::suggest_source_type(filename) ) {
+    case c_input_source::SER : {
+
+      serVideo.create(filename, frameSize.width, frameSize.height,
+          color ? COLORID_BGR : COLORID_MONO,
+          16);
+
+      if ( !serVideo.is_open() ) {
+        CF_ERROR("Can not write ser file '%s'", filename.c_str());
+        return false;
+      }
+
+      output_type = output_type_ser;
+      break;
+    }
+
+    case c_input_source::MOVIE : {
+
+      aviVideo.open(filename, cv::CAP_FFMPEG,
+          cv::VideoWriter::fourcc('H', 'F', 'Y', 'U'),
+          10,
+          frameSize,
+          color);
+
+      if ( !aviVideo.isOpened() ) {
+        CF_ERROR("Can not write aligned video file '%s'", filename.c_str());
+        return false;
+      }
+
+      output_type = output_type_video;
+      break;
+    }
+
+    case c_input_source::REGULAR_IMAGE : {
+
+      output_type = output_type_images;
+      break;
+    }
+
+    default : {
+      CF_ERROR("NOOT SUPPORTED output format requested for file '%s'", filename.c_str());
+      return false;
+    }
+    }
+
+    return true;
+  }
+
+
+  bool isOpened() const
+  {
+    switch (output_type) {
+      case output_type_images:
+        return !output_file_name.empty();
+      case output_type_ser:
+        return serVideo.is_open();
+      case output_type_video:
+        return aviVideo.isOpened();
+    }
+    return false;
+  }
+
+  bool write(const cv::Mat & currenFrame)
+  {
+    switch ( output_type ) {
+    case output_type_video :
+      if ( aviVideo.isOpened() ) {
+        currenFrame.convertTo(tmp, CV_8U, 255);
+        aviVideo.write(tmp);
+      }
+      break;
+
+    case output_type_ser :
+      if ( serVideo.is_open() ) {
+        currenFrame.convertTo(tmp, CV_16U, 65535);
+        serVideo.write(tmp);
+      }
+      break;
+
+    case output_type_images : {
+
+      std::string fname =
+          output_file_name;
+
+      const std::string suffix =
+          get_file_suffix(fname);
+
+      set_file_suffix(fname, ssprintf("-%06d%s",
+          current_frame_index,
+          suffix.c_str()));
+
+      if ( !save_image(currenFrame, fname) ) {
+        CF_ERROR("save_image('%s) fails", fname.c_str());
+        return false;
+      }
+
+      break;
+    }
+
+    default :
+      CF_ERROR("ERROR: Output video file is not open");
+      return false;
+    }
+
+    ++current_frame_index;
+    return true;
+  }
+
+  void close()
+  {
+    aviVideo.release();
+    serVideo.close();
+    tmp.release();
+    output_type = output_type_unknown;
+  }
+
+protected:
+  cv::VideoWriter aviVideo;
+  c_ser_writer serVideo;
+  cv::Mat tmp;
+
+  enum {
+    output_type_unknown,
+    output_type_video,
+    output_type_ser,
+    output_type_images,
+  } output_type = output_type_unknown;
+
+  std::string output_file_name;
+  int current_frame_index = 0;
+
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1402,10 +1430,10 @@ bool c_image_stacking_pipeline::actual_run()
     }
 
 
-    if ( output_options.accumuated_image_processor ) {
+    if ( output_options.accumulated_image_processor ) {
 
-      if ( !output_options.accumuated_image_processor->process(accumulated_frame, accumulated_mask) ) {
-        CF_ERROR("postprocessor %s : process() fails", output_options.accumuated_image_processor->cname());
+      if ( !output_options.accumulated_image_processor->process(accumulated_frame, accumulated_mask) ) {
+        CF_ERROR("postprocessor %s : process() fails", output_options.accumulated_image_processor->cname());
       }
       else {
 
@@ -1672,7 +1700,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
   cv::Mat current_frame, current_mask;
   cv::Mat2f current_remap;
 
-  c_video_writer output_aligned_video;
+  c_video_writer output_preprocessed_frames_writer;
+  c_video_writer output_aligned_frames_writer;
+  c_video_writer output_postprocessed_frames_writer;
+  c_video_writer output_accumulation_masks_writer;
 
   const c_input_options & input_options =
       options_->input_options();
@@ -1746,6 +1777,17 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     if ( canceled() ) {
       break;
     }
+
+    if ( !master_frame_generation_ ) {
+
+      save_preprocessed_frame(current_frame, current_mask,
+          output_preprocessed_frames_writer);
+
+      if ( canceled() ) {
+        break;
+      }
+    }
+
 
     if ( master_frame_generation_ && current_frame.channels() > 1 ) {
 
@@ -1845,6 +1887,35 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
                 registration_options.base_options.border_mode,
             registration_options.base_options.border_value);
       }
+
+
+      if ( !master_frame_generation_ ) {
+
+        save_aligned_frame(current_frame, current_mask,
+            output_aligned_frames_writer);
+
+        if ( canceled() ) {
+          break;
+        }
+      }
+
+      if( registration_options.aligned_frame_processor) {
+        registration_options.aligned_frame_processor->process(current_frame, current_mask);
+        if ( canceled() ) {
+          break;
+        }
+      }
+
+      if( output_options.save_postprocessed_frames ) {
+
+        save_postprocessed_frame(current_frame, current_mask,
+            output_postprocessed_frames_writer);
+
+        if ( canceled() ) {
+          break;
+        }
+      }
+
     }
 
     time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -1852,23 +1923,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       break;
     }
 
-    ///////////////
+    /////////////////////////////////////////////////////////////////////////////////
 
-    if( output_options.frame_processor ) {
-      output_options.frame_processor->process(current_frame, current_mask);
-      if ( canceled() ) {
-        break;
-      }
-    }
+    if ( output_options.save_accumulation_masks ) {
 
-    ///////////////
-
-    if( output_options.save_processed_frames ) {
-
-      save_processed_frame(current_frame, current_mask,
-          output_options, output_directory_,
-          options_->name(),
-          input_sequence);
+      save_accumulation_mask(current_frame, current_mask,
+          output_accumulation_masks_writer);
 
       if ( canceled() ) {
         break;
@@ -1876,22 +1936,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     }
 
 
-    ///////////////
-
-    if( !master_frame_generation_  && output_options.write_aligned_video ) {
-
-      write_aligned_video(current_frame,
-          output_aligned_video,
-          output_options,
-          output_directory_);
-
-      if( canceled() ) {
-        break;
-      }
-    }
-
-
-    /////////////////////////////////////
     if ( frame_accumulation_ ) {
 
       if ( true ) {
@@ -2061,68 +2105,6 @@ bool c_image_stacking_pipeline::select_image_roi(const c_feature_based_roi_selec
   }
 
   return true;
-}
-
-
-
-
-bool c_image_stacking_pipeline::write_image(const std::string & output_file_name,
-    const c_image_stacking_output_options & output_options,
-    const cv::Mat & output_image, const cv::Mat & output_mask)
-{
-  cv::Mat image_to_write;
-
-  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
-    image_to_write = output_image;
-  }
-  else if ( !mergebgra(output_image, output_mask, image_to_write) ) {
-    CF_ERROR("ERROR: mergebgra() fails");
-    return false;
-  }
-
-  return save_image(image_to_write, output_file_name);
-}
-
-
-bool c_image_stacking_pipeline::save_processed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    const c_image_stacking_output_options & output_options,
-    const std::string & output_directory,
-    const std::string & sequence_name,
-    const c_input_sequence::ptr & input_sequence)
-{
-  std::string source_name;
-
-  const c_input_source::ptr current_source =
-      input_sequence->current_source();
-
-  const int global_pos =
-      input_sequence->current_pos() - 1;
-
-  const int local_pos =
-      global_pos - current_source->global_pos();
-
-  split_pathfilename(current_source->filename(),
-      nullptr,
-      &source_name,
-      nullptr );
-
-
-  const std::string output_file_name =
-      input_sequence->sources().size() < 2 ?
-
-          ssprintf("%s/%s-%06d.tiff",
-              output_directory.c_str(),
-              source_name.c_str(),
-              global_pos) :
-
-          ssprintf("%s/%s-%06d-%06d.tiff",
-              output_directory.c_str(),
-              source_name.c_str(),
-              local_pos,
-              global_pos);
-
-  return write_image(output_file_name, output_options,
-      current_frame, current_mask);
 }
 
 
@@ -2310,3 +2292,211 @@ bool c_image_stacking_pipeline::upscale_required(frame_upscale_stage current_sta
 }
 
 
+
+bool c_image_stacking_pipeline::write_image(const std::string & output_file_name,
+    const c_image_stacking_output_options & output_options,
+    const cv::Mat & output_image, const cv::Mat & output_mask)
+{
+  cv::Mat image_to_write;
+
+  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
+    image_to_write = output_image;
+  }
+  else if ( !mergebgra(output_image, output_mask, image_to_write) ) {
+    CF_ERROR("ERROR: mergebgra() fails");
+    return false;
+  }
+
+  return save_image(image_to_write, output_file_name);
+}
+
+
+void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+    c_video_writer & output_writer) const
+{
+  const c_image_stacking_output_options & output_options =
+      options_->output_options();
+
+  if ( !output_options.save_preprocessed_frames ) {
+    return;
+  }
+
+  if ( !output_writer.isOpened() ) {
+
+    std::string pathfilename =
+        output_options.output_preprocessed_frames_filename;
+
+    if ( pathfilename.empty() ) {
+      pathfilename = ssprintf("%s-preproc.avi",
+          options_->cname());
+    }
+
+    if ( !is_absolute_path(pathfilename)  ) {
+      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+          pathfilename.c_str());
+    }
+
+    if ( !create_path(get_parent_directory(pathfilename)) ) {
+      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
+      return;
+    }
+
+    output_writer.open(pathfilename,
+        current_frame.size(),
+        current_frame.channels() > 1);
+
+    if ( !output_writer.isOpened() ) {
+
+      CF_ERROR("Can not open output writer '%s'",
+          pathfilename.c_str());
+
+      return;
+    }
+  }
+
+  output_writer.write(current_frame);
+}
+
+void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+    c_video_writer & output_writer) const
+{
+  const c_image_stacking_output_options & output_options =
+      options_->output_options();
+
+  if ( !output_options.save_aligned_frames ) {
+    return;
+  }
+
+  if ( !output_writer.isOpened() ) {
+
+    std::string pathfilename =
+        output_options.output_aligned_frames_filename;
+
+    if ( pathfilename.empty() ) {
+      pathfilename = ssprintf("%s-aligned.avi",
+          options_->cname());
+    }
+
+    if ( !is_absolute_path(pathfilename)  ) {
+      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+          pathfilename.c_str());
+    }
+
+    if ( !create_path(get_parent_directory(pathfilename)) ) {
+      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
+      return;
+    }
+
+    output_writer.open(pathfilename,
+        current_frame.size(),
+        current_frame.channels() > 1);
+
+    if ( !output_writer.isOpened() ) {
+
+      CF_ERROR("Can not open output writer '%s'",
+          pathfilename.c_str());
+
+      return;
+    }
+  }
+
+  output_writer.write(current_frame);
+}
+
+void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
+    c_video_writer & output_writer) const
+{
+  const c_image_stacking_output_options & output_options =
+      options_->output_options();
+
+  if ( !output_options.save_postprocessed_frames ) {
+    return;
+  }
+
+  if ( !output_writer.isOpened() ) {
+
+    std::string pathfilename =
+        output_options.output_postprocessed_frames_filename;
+
+    if ( pathfilename.empty() ) {
+      pathfilename = ssprintf("%s-postproc.avi",
+          options_->cname());
+    }
+
+    if ( !is_absolute_path(pathfilename)  ) {
+      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+          pathfilename.c_str());
+    }
+
+    if ( !create_path(get_parent_directory(pathfilename)) ) {
+      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
+      return;
+    }
+
+    output_writer.open(pathfilename,
+        current_frame.size(),
+        current_frame.channels() > 1);
+
+    if ( !output_writer.isOpened() ) {
+
+      CF_ERROR("Can not open output writer '%s'",
+          pathfilename.c_str());
+
+      return;
+    }
+  }
+
+  output_writer.write(current_frame);
+}
+
+void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
+    c_video_writer & output_writer) const
+{
+  const c_image_stacking_output_options & output_options =
+      options_->output_options();
+
+  if ( !output_options.save_accumulation_masks ) {
+    return;
+  }
+
+  if ( !output_writer.isOpened() ) {
+
+    std::string pathfilename =
+        output_options.output_accumulation_masks_filename;
+
+    if ( pathfilename.empty() ) {
+      pathfilename = ssprintf("%s-masks.avi",
+          options_->cname());
+    }
+
+    if ( !is_absolute_path(pathfilename)  ) {
+      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+          pathfilename.c_str());
+    }
+
+    if ( !create_path(get_parent_directory(pathfilename)) ) {
+      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
+      return;
+    }
+
+    output_writer.open(pathfilename,
+        current_frame.size(),
+        false);
+
+    if ( !output_writer.isOpened() ) {
+
+      CF_ERROR("Can not open output writer '%s'",
+          pathfilename.c_str());
+
+      return;
+    }
+  }
+
+  if ( !current_mask.empty() ) {
+    output_writer.write(current_mask);
+  }
+  else {
+    output_writer.write(cv::Mat1b(current_frame.size(), 255));
+  }
+
+}

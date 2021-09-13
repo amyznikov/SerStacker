@@ -128,6 +128,12 @@ public:
   const cv::Mat1f & current_rotation_mask() const;
   const cv::Mat1b & current_binary_rotation_mask() const;
 
+  void set_dbgpath(const std::string & dbgpath);
+  const std::string & dbgpath() const;
+
+  void set_write_debug_images(bool v);
+  bool write_debug_images() const;
+
 protected:
   static bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
       cv::RotatedRect * output_ellipse,
@@ -146,6 +152,7 @@ protected:
       cv::Mat1f * difference_image = nullptr) ;
 
 protected:
+
   cv::RotatedRect reference_ellipse_;
   cv::RotatedRect current_ellipse_;
   cv::Rect reference_boundig_box_;
@@ -168,6 +175,9 @@ protected:
   c_ecc_forward_additive ecc_;
   c_ecc_pyramide_align ecch_;
   c_ecch_flow eccflow_;
+
+  std::string dbgpath_;
+  bool write_debug_images_ = false;
 
 };
 

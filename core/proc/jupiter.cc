@@ -15,8 +15,6 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-#define SAVE_DEBUG_IMAGES   false
-
 // OpenCV version macro
 #ifndef CV_VERSION_INT
 # define CV_VERSION_INT(a,b,c) ((a)<<16 | (b)<<8 | (c))
@@ -508,9 +506,9 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
       normalized_reference_image_,
       normalization_scale_);
 
-  if ( SAVE_DEBUG_IMAGES ) {
+  if ( write_debug_images_ && !dbgpath_.empty() ) {
     save_image(normalized_reference_image_,
-        "normalized_reference_image_.tiff");
+        ssprintf("%s/normalized_reference_image_.tiff", dbgpath_.c_str()));
   }
 
   return true;
@@ -544,9 +542,9 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       normalization_scale_);
 
 
-  if ( SAVE_DEBUG_IMAGES ) {
+  if ( write_debug_images_ && !dbgpath_.empty() ) {
     save_image(normalized_current_image_,
-        "normalized_current_image_.tiff");
+        ssprintf("%s/normalized_current_image_.tiff", dbgpath_.c_str()));
   }
 
   //
@@ -645,13 +643,13 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 
   cv::compare(current_rotation_mask_, 0, current_binary_rotation_mask_, cv::CMP_GT);
 
-  if ( SAVE_DEBUG_IMAGES ) {
-    save_image(current_component_image_, "current_component_image_.tiff");
-    save_image(reference_component_image_, "reference_component_image_.tiff");
-    save_image(current_ellipse_mask_, "current_ellipse_mask_.tiff");
-    save_image(reference_ellipse_mask_, "reference_ellipse_mask_.tiff");
-    save_image(current_rotation_mask_, "current_rotation_mask_.tiff");
-    save_image(current_binary_rotation_mask_, "current_binary_rotation_mask_.tiff");
+  if ( write_debug_images_ && !dbgpath_.empty() ) {
+    save_image(current_component_image_, ssprintf("%s/current_component_image_.tiff", dbgpath_.c_str()));
+    save_image(reference_component_image_, ssprintf("%s/reference_component_image_.tiff", dbgpath_.c_str()));
+    save_image(current_ellipse_mask_, ssprintf("%s/current_ellipse_mask_.tiff", dbgpath_.c_str()));
+    save_image(reference_ellipse_mask_, ssprintf("%s/reference_ellipse_mask_.tiff", dbgpath_.c_str()));
+    save_image(current_rotation_mask_, ssprintf("%s/current_rotation_mask_.tiff", dbgpath_.c_str()));
+    save_image(current_binary_rotation_mask_, ssprintf("%s/current_binary_rotation_mask_.tiff", dbgpath_.c_str()));
   }
 
   if ( true ) {
@@ -711,4 +709,25 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 
   return true;
 }
+
+void c_jovian_derotation::set_dbgpath(const std::string & dbgpath)
+{
+  dbgpath_ = dbgpath;
+}
+
+const std::string & c_jovian_derotation::dbgpath() const
+{
+  return dbgpath_;
+}
+
+void c_jovian_derotation::set_write_debug_images(bool v)
+{
+  write_debug_images_ = v;
+}
+
+bool c_jovian_derotation::write_debug_images() const
+{
+  return write_debug_images_;
+}
+
 

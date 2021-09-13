@@ -15,6 +15,8 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+#define SAVE_DEBUG_IMAGES   false
+
 // OpenCV version macro
 #ifndef CV_VERSION_INT
 # define CV_VERSION_INT(a,b,c) ((a)<<16 | (b)<<8 | (c))
@@ -506,8 +508,10 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
       normalized_reference_image_,
       normalization_scale_);
 
-  save_image(normalized_reference_image_,
-      "normalized_reference_image_.tiff");
+  if ( SAVE_DEBUG_IMAGES ) {
+    save_image(normalized_reference_image_,
+        "normalized_reference_image_.tiff");
+  }
 
   return true;
 }
@@ -540,8 +544,10 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       normalization_scale_);
 
 
-  save_image(normalized_current_image_,
-      "normalized_current_image_.tiff");
+  if ( SAVE_DEBUG_IMAGES ) {
+    save_image(normalized_current_image_,
+        "normalized_current_image_.tiff");
+  }
 
   //
   // Align current jovian component image to the reference component image
@@ -636,34 +642,64 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       rotation_remap,
       current_rotation_mask_);
 
-  eccflow_.set_max_pyramid_level(1);
-  eccflow_.set_support_scale(3);
-  eccflow_.set_normalization_scale(0);
 
   cv::compare(current_rotation_mask_, 0, current_binary_rotation_mask_, cv::CMP_GT);
 
-  save_image(current_component_image_, "current_component_image_.tiff");
-  save_image(reference_component_image_, "reference_component_image_.tiff");
-  save_image(current_ellipse_mask_, "current_ellipse_mask_.tiff");
-  save_image(reference_ellipse_mask_, "reference_ellipse_mask_.tiff");
-  save_image(current_rotation_mask_, "current_rotation_mask_.tiff");
-  save_image(current_binary_rotation_mask_, "current_binary_rotation_mask_.tiff");
-
-
-  fOk = eccflow_.compute(normalized_current_image_,
-      normalized_reference_image_,
-      rotation_remap,
-      current_ellipse_mask_,
-      current_binary_rotation_mask_);
-
-  if ( !fOk ) {
-    CF_ERROR("eccflow_.compute(current_component_image_->reference_component_image_) fails");
-    return false;
+  if ( SAVE_DEBUG_IMAGES ) {
+    save_image(current_component_image_, "current_component_image_.tiff");
+    save_image(reference_component_image_, "reference_component_image_.tiff");
+    save_image(current_ellipse_mask_, "current_ellipse_mask_.tiff");
+    save_image(reference_ellipse_mask_, "reference_ellipse_mask_.tiff");
+    save_image(current_rotation_mask_, "current_rotation_mask_.tiff");
+    save_image(current_binary_rotation_mask_, "current_binary_rotation_mask_.tiff");
   }
 
+  if ( true ) {
 
-  //  output_rmap = rotation_remap;
-  //  output_rmap.setTo(0, ~reference_component_ellipse_mask_);
+    eccflow_.set_max_pyramid_level(1);
+    eccflow_.set_support_scale(3);
+    eccflow_.set_normalization_scale(0);
+
+    fOk = eccflow_.compute(normalized_current_image_,
+        normalized_reference_image_,
+        rotation_remap,
+        current_ellipse_mask_,
+        current_binary_rotation_mask_);
+
+    if ( !fOk ) {
+      CF_ERROR("eccflow_.compute(current_component_image_->reference_component_image_) fails");
+      return false;
+    }
+  }
+  else {
+
+    // FIXME: Optimize image normalization and update rotation_remap after ecc_.align() to allow this code work
+
+    ecc_.set_motion_type(ECC_MOTION_AFFINE);
+    ecc_.set_eps(0.1);
+    ecc_.set_min_rho(0.5);
+
+
+    cv::remap(normalized_current_image_, normalized_current_image_,
+        rotation_remap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_REPLICATE);
+
+    cv::remap(current_ellipse_mask_, current_ellipse_mask_,
+        rotation_remap, cv::noArray(),
+        cv::INTER_NEAREST,
+        cv::BORDER_REPLICATE);
+
+    cv::Matx23d T2 =
+        createEyeTransform(ecc_.motion_type());
+
+    fOk = ecc_.align(normalized_current_image_, normalized_reference_image_, T2,
+        current_ellipse_mask_, current_binary_rotation_mask_);
+
+    CF_DEBUG("ecc_.align(): fOk = %d eps=%g rho=%g iterations=%d",
+        fOk, ecc_.current_eps(), ecc_.rho(), ecc_.num_iterations());
+
+  }
 
   current_rotation_remap_.create(rotation_remap.size());
   current_rotation_remap_.setTo(-1);

@@ -17,6 +17,7 @@ bool simple_planetary_disk_detector(
     cv::Point2f * centrold,
     double gbsigma = 0,
     cv::Rect * optional_output_component_rect = nullptr,
-    cv::Mat * optional_output_cmponent_mask = nullptr);
+    cv::Mat * optional_output_cmponent_mask = nullptr,
+    cv::Mat * optional_output_debug_image = nullptr);
 
 #endif /* __planetary_disk_detection_h__ */

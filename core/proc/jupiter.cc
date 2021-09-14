@@ -141,6 +141,8 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   cv::Mat component_edge;
   cv::Mat component_image;
   cv::Mat artifical_ellipse;
+  cv::Mat debug_image;
+  cv::Mat * pdbg = nullptr;
   std::vector<cv::Point2f> component_edge_points;
 
   static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
@@ -155,14 +157,30 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   /////////////////////////////////////////////////////////////////////////////////////////
   // Detect planetary disk mask and use fitEllipseAMS() as initial ellipse estimate
 
+  if ( !debug_path.empty() ) {
+    save_image(gray_image, ssprintf("%s/gray_image.tiff", debug_path.c_str()) );
+    pdbg = &debug_image;
+  }
 
-  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask) ) {
+  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask, pdbg) ) {
     CF_ERROR("simple_small_planetary_disk_detector() fails");
+    if ( !debug_path.empty() ) {
+      save_image(debug_image, ssprintf("%s/debug_image.tiff", debug_path.c_str()) );
+    }
     return false;
   }
 
+  if ( !debug_path.empty() ) {
+    save_image(component_mask, ssprintf("%s/initial_component_mask.tiff", debug_path.c_str()) );
+    save_image(debug_image, ssprintf("%s/debug_image.tiff", debug_path.c_str()) );
+  }
+
   geo_fill_holes(component_mask, component_mask, 8);
+  if ( !debug_path.empty() ) {
+    save_image(component_mask, ssprintf("%s/component_mask.tiff", debug_path.c_str()) );
+  }
   morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
+
   cv::findNonZero(component_edge, component_edge_points);
   *rc = cv::fitEllipseAMS(component_edge_points);
   rc->angle -= 90;
@@ -212,7 +230,7 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   cv::Matx23f T =
       createEuclideanTransform(C.x, C.y, C.x, C.y, 1.0, rc->angle * CV_PI / 180);
 
-  if ( true ) {
+  if ( false ) {
     CF_DEBUG("T BEFORE: {\n"
         "  %+15.6f %+15.6f %+15.6f\n"
         "  %+15.6f %+15.6f %+15.6f\n"
@@ -221,27 +239,15 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
         T(1,0), T(1,1), T(1,2));
   }
 
-  ecc.set_min_rho(0.25);
 
-  bool fOk =
-      ecch.align(artifical_ellipse,
-          component_image,
-          T);
-
-  if ( !debug_path.empty() ) {
-    cv::Mat tmp;
-    cv::remap(artifical_ellipse, tmp, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR);
-    save_image(tmp, ssprintf("%s/remapped_artifical_ellipse.tiff", debug_path.c_str()) );
-  }
-
-  if ( !fOk ) {
+  ecc.set_min_rho(0.2);
+  if ( !ecch.align(artifical_ellipse, component_image, T) ) {
     CF_ERROR("ecch.align() fails");
     return false;
   }
 
 
-
-  if ( true ) {
+  if ( false ) {
     CF_DEBUG("T AFTER: {\n"
         "  %+15.6f %+15.6f %+15.6f\n"
         "  %+15.6f %+15.6f %+15.6f\n"
@@ -261,10 +267,10 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
 
   CC = T * cv::Vec3f(C.x, C.y, 1);
 
-  CF_DEBUG("Tx=%g Ty=%g scale=%g angle=%g delta_angle=%g",
-      Tx, Ty, scale,
-      angle * 180 / M_PI,
-      angle * 180 / M_PI - rc->angle);
+  //  CF_DEBUG("Tx=%g Ty=%g scale=%g angle=%g delta_angle=%g",
+  //      Tx, Ty, scale,
+  //      angle * 180 / M_PI,
+  //      angle * 180 / M_PI - rc->angle);
 
   rc->size.width = 2 * A * scale;
   rc->size.height = 2 * B * scale;
@@ -274,7 +280,7 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
 
   //////////////////
 
-  CF_DEBUG("ERC: center=(%g %g) size=(%g x %g) angle=%g",
+  CF_DEBUG("ELLIPSE: center=(%g %g) size=(%g x %g) angle=%g",
       rc->center.x, rc->center.y,
       rc->size.width, rc->size.height,
       rc->angle);

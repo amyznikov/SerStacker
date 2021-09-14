@@ -374,7 +374,7 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     }
 
     if ( !ecc_mask.empty() && reference_ecc_mask.size() != reference_ecc_image.size() ) {
-      cv::resize(ecc_mask, reference_ecc_mask, reference_ecc_image.size(), 0, 0, cv::INTER_LINEAR);
+      cv::resize(ecc_mask, reference_ecc_mask, reference_ecc_image.size(), 0, 0, cv::INTER_AREA);
       cv::compare(reference_ecc_mask, 255, reference_ecc_mask, cv::CMP_GE);
     }
 

@@ -4,9 +4,11 @@
  *  Created on: Sep 13, 2019
  *      Author: amyznikov
  */
-#include <core/proc/threshold.h>
-#include <core/proc/morphology.h>
-#include <core/proc/geo-reconstruction.h>
+#include "autoclip.h"
+#include "threshold.h"
+#include "morphology.h"
+#include "estimate_noise.h"
+#include "geo-reconstruction.h"
 #include "planetary-disk-detection.h"
 #include <core/debug.h>
 
@@ -65,11 +67,12 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     cv::Point2f * out_centrold,
     double gbsigma,
     cv::Rect * optional_output_component_rect,
-    cv::Mat * optional_output_cmponent_mask)
+    cv::Mat * optional_output_cmponent_mask,
+    cv::Mat * optional_output_debug_image)
 {
   Mat src, gray;
   Mat1b comp;
-  //double noise;
+  double noise;
   double threshold;
   //double gbsigma = 3.0;
 
@@ -91,14 +94,18 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
   }
 
-  //noise = estimate_noise(gray, cv::noArray(), comp)[0];
-
   if ( gbsigma > 0 ) {
     GaussianBlur(gray, gray, cv::Size(0, 0), gbsigma);
   }
 
-  cv::compare(gray, 1e-2 + get_triangle_threshold(gray, mask), comp, cv::CMP_GT);
-  //cv::compare(gray, get_otsu_threshold(gray, mask), comp, cv::CMP_GT);
+  autoclip(gray, mask, gray, 1, 99, 0, 255);
+  gray.convertTo(gray, CV_8U);
+  if ( optional_output_debug_image ) {
+    gray.copyTo(*optional_output_debug_image);
+  }
+
+
+  cv::threshold(gray, comp, 0, 255, cv::THRESH_TRIANGLE);
   morphological_smooth_close(comp, comp, cv::Mat1b(5, 5, 255), cv::BORDER_CONSTANT);
   if ( !mask.empty() ) {
     comp.setTo(0, ~mask.getMat());

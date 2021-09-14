@@ -1220,9 +1220,19 @@ bool c_image_stacking_pipeline::actual_run()
           reference_frame, reference_mask);
     }
 
+    if ( output_options.debug_frame_registration ) {
+      frame_registration_->set_enable_debug(true);
+      frame_registration_->set_debug_path(ssprintf("%s/debug-registration-reference",
+          output_directory_.c_str()));
+    }
+
     if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {
       CF_ERROR("ERROR: frame_registration_->setup_referece_frame() fails");
       return false;
+    }
+
+    if ( output_options.debug_frame_registration ) {
+      frame_registration_->set_enable_debug(false);
     }
 
     if ( false ) {

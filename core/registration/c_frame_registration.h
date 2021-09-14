@@ -35,7 +35,7 @@ struct c_frame_registration_base_options {
 
   ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
   color_channel_type registration_channel = color_channel_gray;
-  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_AREA;
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_CUBIC;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 

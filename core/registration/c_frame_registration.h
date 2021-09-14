@@ -118,6 +118,12 @@ public: // opts
   void set_eccflow_normalization_scale(int v);
   int eccflow_normalization_scale() const;
 
+  virtual void set_enable_debug(bool v);
+  bool enable_debug() const;
+
+  virtual void set_debug_path(const std::string & v);
+  const std::string & debug_path() const;
+
   // c_ecc_forward_additive & ecc();
   const c_ecc_forward_additive & ecc() const;
 
@@ -215,6 +221,9 @@ protected:
   cv::Mat2f current_remap_;
 
   c_frame_registration_status current_status_;
+
+  std::string debug_path_;
+  bool enable_debug_ = false;
 };
 
 #endif /* __c_frame_registration_h__ */

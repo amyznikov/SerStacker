@@ -165,6 +165,27 @@ bool c_frame_registration::enable_eccflow() const
   return base_options_.enable_eccflow;
 }
 
+
+void c_frame_registration::set_enable_debug(bool v)
+{
+  enable_debug_ =  v;
+}
+
+bool c_frame_registration::enable_debug() const
+{
+  return enable_debug_;
+}
+
+void c_frame_registration::set_debug_path(const std::string & v)
+{
+  debug_path_ = v;
+}
+
+const std::string & c_frame_registration::debug_path() const
+{
+  return debug_path_;
+}
+
 //c_ecc_forward_additive & c_frame_registration::ecc()
 //{
 //  return ecc_;

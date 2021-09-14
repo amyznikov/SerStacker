@@ -45,7 +45,8 @@
  @endcode
  */
 bool detect_jovian_ellipse(cv::InputArray _image,
-    cv::RotatedRect * output_ellipse_rect);
+    cv::RotatedRect * output_ellipse_rect,
+    const std::string & debug_path = "");
 
 
 
@@ -135,12 +136,12 @@ public:
   bool write_debug_images() const;
 
 protected:
-  static bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
+  bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
       cv::RotatedRect * output_ellipse,
       cv::Rect * output_ellipse_boundig_box,
       cv::Mat * output_component_image,
       cv::Mat * output_component_mask,
-      cv::Mat1b * output_ellipse_mask);
+      cv::Mat1b * output_ellipse_mask) const;
 
   static void normalize_jovian_image(cv::InputArray _src, cv::InputArray mask,
       cv::OutputArray dst,
@@ -162,8 +163,8 @@ protected:
   cv::Mat reference_component_mask_;
   cv::Mat current_component_mask_;
 
-  cv::Mat normalized_reference_image_;
-  cv::Mat normalized_current_image_;
+  cv::Mat reference_normalized_image_;
+  cv::Mat current_normalized_image_;
   cv::Mat1b reference_ellipse_mask_;
   cv::Mat1b current_ellipse_mask_;
   double normalization_scale_ = 1.0;

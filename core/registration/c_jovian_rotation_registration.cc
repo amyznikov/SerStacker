@@ -31,6 +31,19 @@ c_jovian_rotation_registration::c_jovian_rotation_registration(const c_frame_reg
 }
 
 
+void c_jovian_rotation_registration::set_enable_debug(bool v)
+{
+  base::set_enable_debug(v);
+  derotation_.set_write_debug_images(v);
+}
+
+void c_jovian_rotation_registration::set_debug_path(const std::string & v)
+{
+  base::set_debug_path(v);
+  derotation_.set_dbgpath(v);
+}
+
+
 c_jovian_rotation_registration::ptr c_jovian_rotation_registration::create()
 {
   return ptr(new c_jovian_rotation_registration());

@@ -208,6 +208,32 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   ///
 
+  debug_frame_registration_ctl =
+      add_checkbox("Debug frame registration",
+          [this](int state) {
+            if ( options_ ) {
+              const bool checked = state == Qt::Checked;
+              if ( options_->output_options(). debug_frame_registration != checked ) {
+                options_->output_options().debug_frame_registration = checked;
+                debug_frame_registration_frame_indexes_ctl->setEnabled(checked);
+                emit parameterChanged();
+              }
+            }
+          });
+
+  debug_frame_registration_frame_indexes_ctl =
+      add_textbox("Frame indexes to debug registration:",
+          [this](const QString & s) {
+            if ( options_ ) {
+              if ( fromString(s, &options_->output_options().debug_frame_registration_frame_indexes)) {
+                emit parameterChanged();
+              }
+            }
+          });
+
+
+  ///
+
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -274,6 +300,13 @@ void QStackOutputOptions::onupdatecontrols()
 
     write_image_mask_as_alpha_channel_ctl->setChecked(output_options.write_image_mask_as_alpha_channel);
     dump_reference_data_for_debug_ctl->setChecked(output_options.dump_reference_data_for_debug);
+
+    debug_frame_registration_ctl->setChecked(
+        output_options.debug_frame_registration);
+    debug_frame_registration_frame_indexes_ctl->setValue(toString(
+        output_options.debug_frame_registration_frame_indexes));
+    debug_frame_registration_frame_indexes_ctl->setEnabled(
+        output_options.debug_frame_registration);
 
 
     setEnabled(true);

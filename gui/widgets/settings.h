@@ -174,9 +174,6 @@ inline bool fromString(const QString & s, uint * x, uint * y, uint * z, uint * w
 
 
 
-
-
-
 #ifdef CV_VERSION
 
 template<class T>
@@ -329,6 +326,40 @@ QString toString(const T x[], int nmax)
     if ( i < nmax - 1 ) {
       s.append(';');
     }
+  }
+  return s;
+}
+
+template<class T>
+inline bool fromString(const QString & text, std::vector<T> * v)
+{
+  const QStringList tokens =
+      text.split(QRegExp("[ ;:\t\n]"),
+          Qt::SkipEmptyParts);
+
+  v->clear();
+  v->reserve(tokens.size());
+
+  T value;
+
+  for ( int i = 0, n = tokens.size(); i < n; ++i ) {
+    if ( fromString(tokens[i], &value) ) {
+      v->emplace_back(value);
+    }
+    else {
+      break;
+    }
+  }
+
+  return !v->empty();
+}
+
+template<class T>
+inline QString toString(const std::vector<T> & v)
+{
+  QString s;
+  for ( uint i = 0, n = v.size(); i < n; ++i ) {
+    s.append(QString("%1 ; ").arg(v[i]));
   }
   return s;
 }

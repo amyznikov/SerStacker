@@ -11,39 +11,39 @@
 
 
 const QColorSaturationOptions::ClassFactory QColorSaturationOptions::classFactory;
-
-static bool fromString(const QString & text, std::vector<double> * v)
-{
-  std::vector<std::string> tokens;
-
-  strsplit(text.toStdString(), tokens, " ;:\t\n");
-
-  v->clear();
-  v->reserve(tokens.size());
-
-  for ( int i = 0, n = tokens.size(); i < n; ++i ) {
-    double value;
-    if ( sscanf(tokens[i].c_str(), "%lf", &value) == 1 ) {
-      v->emplace_back(value);
-    }
-    else {
-      break;
-    }
-  }
-
-  return !v->empty();
-}
-
-static QString toString(const std::vector<double> & v)
-{
-  QString s;
-
-  for ( uint i = 0, n = v.size(); i < n; ++i ) {
-    s.append(QString("%1 ; ").arg(v[i]));
-  }
-
-  return s;
-}
+//
+//static bool fromString(const QString & text, std::vector<double> * v)
+//{
+//  std::vector<std::string> tokens;
+//
+//  strsplit(text.toStdString(), tokens, " ;:\t\n");
+//
+//  v->clear();
+//  v->reserve(tokens.size());
+//
+//  for ( int i = 0, n = tokens.size(); i < n; ++i ) {
+//    double value;
+//    if ( sscanf(tokens[i].c_str(), "%lf", &value) == 1 ) {
+//      v->emplace_back(value);
+//    }
+//    else {
+//      break;
+//    }
+//  }
+//
+//  return !v->empty();
+//}
+//
+//static QString toString(const std::vector<double> & v)
+//{
+//  QString s;
+//
+//  for ( uint i = 0, n = v.size(); i < n; ++i ) {
+//    s.append(QString("%1 ; ").arg(v[i]));
+//  }
+//
+//  return s;
+//}
 
 QColorSaturationOptions::QColorSaturationOptions(const RoutinePtr & routine, QWidget * parent)
   : Base(&classFactory, routine, parent)

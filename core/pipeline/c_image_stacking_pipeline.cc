@@ -1725,6 +1725,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
   total_frames_ = endpos - startpos;
   CF_DEBUG("total_frames_=%d", total_frames_);
 
+  int accumulated_frames_ = 0;
   for ( processed_frames_ = 0; processed_frames_ < total_frames_; ++processed_frames_, emit_status_changed() ) {
 
     double t0, t1, start_time, total_time;
@@ -1840,6 +1841,29 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       }
       else {
 
+        if ( output_options.debug_frame_registration ) {
+
+          if ( !output_options.debug_frame_registration_frame_indexes.empty()  ) {
+
+            const std::vector<int> :: const_iterator pos =
+                std::find(output_options.debug_frame_registration_frame_indexes.begin(),
+                    output_options.debug_frame_registration_frame_indexes.end(),
+                    input_sequence->current_pos() - 1);
+
+            if ( pos == output_options.debug_frame_registration_frame_indexes.end() ) {
+              frame_registration_->set_enable_debug(false);
+            }
+            else {
+              frame_registration_->set_enable_debug(true);
+              frame_registration_->set_debug_path(ssprintf("%s/debug-registration-%d",
+                  output_directory_.c_str(), *pos));
+            }
+
+          }
+
+        }
+
+
         if ( !frame_registration_->register_frame(current_frame, current_mask) ) {
           CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + startpos);
           continue;
@@ -1941,6 +1965,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
+      ++accumulated_frames_;
       emit_accumulator_changed();
     }
 
@@ -1956,7 +1981,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     total_time = get_realtime_ms() - start_time;
 
-    CF_DEBUG("[F %d / %5d / %6d] OK  %g ms\n"
+    CF_DEBUG("[F %d / %5d / %5d / %6d] OK  %g ms\n"
         "read    : %g ms\n"
         "roi     : %g ms\n"
         "upscale : %g ms\n"
@@ -1964,7 +1989,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         "remap   : %g ms\n"
         "process : %g ms\n"
         "-----------\n\n\n",
-        processed_frames_ + startpos, processed_frames_, total_frames_, total_time,
+        processed_frames_ + startpos, processed_frames_, accumulated_frames_, total_frames_, total_time,
 
         time_read,
         time_select_roi,

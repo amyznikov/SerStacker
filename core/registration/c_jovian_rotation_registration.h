@@ -61,6 +61,9 @@ public: // overrides
       enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const override;
 
+  void set_enable_debug(bool v) override;
+  void set_debug_path(const std::string & v) override;
+
 protected:
   c_jovian_rotation_registration();
   c_jovian_rotation_registration(const c_jovian_derotation_options & opts);

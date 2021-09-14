@@ -56,6 +56,9 @@ protected:
   QCheckBox * write_image_mask_as_alpha_channel_ctl = Q_NULLPTR;
   QCheckBox * dump_reference_data_for_debug_ctl = Q_NULLPTR;
 
+  QCheckBox * debug_frame_registration_ctl = Q_NULLPTR;
+  QLineEditBox * debug_frame_registration_frame_indexes_ctl = Q_NULLPTR;
+
 
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };

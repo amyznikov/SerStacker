@@ -69,29 +69,30 @@ protected:
 
 protected:
 
-  template<class ValueType, class _Calable>
-  QNumberEditBox* add_numeric_box(QFormLayout * form, const QString & name, const _Calable & slot)
+  template<class T>
+  QNumberEditBox* add_numeric_box(QFormLayout * form, const QString & name,
+      const std::function<void(T)> & slot = std::function<void(T)>())
   {
     QNumberEditBox *ctl = new QNumberEditBox(this);
     form->addRow(name, ctl);
     QObject::connect(ctl, &QNumberEditBox::textChanged,
         [this, ctl, slot]() {
-          if ( !updatingControls() ) {
-            ValueType v;
+          if ( !updatingControls() && slot ) {
+            T v;
             if ( fromString(ctl->text(), &v) ) {
-                LOCK();
-                slot(v);
-                UNLOCK();
+              LOCK();
+              slot(v);
+              UNLOCK();
             }
           }
         });
     return ctl;
   }
 
-  template<class ValueType, class _Calable>
-  QNumberEditBox* add_numeric_box(const QString & name, const _Calable & slot)
+  template<class T>
+  QNumberEditBox* add_numeric_box(const QString & name, const std::function<void(T)> & slot = std::function<void(T)>() )
   {
-    return add_numeric_box<ValueType>(this->form, name, slot);
+    return add_numeric_box<T>(this->form, name, slot);
   }
 
   QLineEditBox* add_textbox(QFormLayout * form, const QString & name,

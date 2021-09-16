@@ -254,6 +254,12 @@ protected:
 
 protected:
   c_jovian_derotation_options * jovian_derotation_options_ = Q_NULLPTR;
+  QNumberEditBox * min_rotation_ctl = Q_NULLPTR;
+  QNumberEditBox * max_rotation_ctl = Q_NULLPTR;
+  QNumberEditBox * eccflow_support_scale_ctl = Q_NULLPTR;
+  QNumberEditBox * eccflow_normalization_scale_ctl = Q_NULLPTR;
+  QNumberEditBox * eccflow_max_pyramid_level_ctl = Q_NULLPTR;
+
 };
 
 class QStarFieldRegistrationSettings

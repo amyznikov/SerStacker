@@ -483,6 +483,64 @@ void QPlanetaryDiskRegistrationSettings::onupdatecontrols()
 QJovianDerotationSettings::QJovianDerotationSettings(QWidget * parent)
   : Base("QJovianDerotationSettings", parent)
 {
+
+  min_rotation_ctl =
+      add_numeric_box<double>("Min Rotation [deg]:",
+          [this](double v) -> void {
+            if ( jovian_derotation_options_ ) {
+              if ( jovian_derotation_options_->min_rotation != v ) {
+                jovian_derotation_options_->min_rotation = v * M_PI / 180;
+                emit parameterChanged();
+              }
+            }
+          });
+
+  max_rotation_ctl =
+      add_numeric_box<double>("Max Rotation [deg]:",
+          [this](double v) -> void {
+            if ( jovian_derotation_options_ ) {
+              if ( jovian_derotation_options_->max_rotation != v ) {
+                jovian_derotation_options_->max_rotation = v * M_PI / 180;
+                emit parameterChanged();
+              }
+            }
+          });
+
+
+  eccflow_support_scale_ctl =
+      add_numeric_box<int>("ECC flow support scale:",
+          [this](int v) -> void {
+            if ( jovian_derotation_options_ ) {
+              if ( jovian_derotation_options_->eccflow_support_scale != v ) {
+                jovian_derotation_options_->eccflow_support_scale = v;
+                emit parameterChanged();
+              }
+            }
+          });
+
+  eccflow_normalization_scale_ctl =
+      add_numeric_box<int>("ECC flow normalization scale:",
+          [this](int v) -> void {
+            if ( jovian_derotation_options_ ) {
+              if ( jovian_derotation_options_->eccflow_normalization_scale != v ) {
+                jovian_derotation_options_->eccflow_normalization_scale = v;
+                emit parameterChanged();
+              }
+            }
+          });
+
+
+  eccflow_max_pyramid_level_ctl =
+      add_numeric_box<int>("ECC flow support scale:",
+          [this](int v) -> void {
+            if ( jovian_derotation_options_ ) {
+              if ( jovian_derotation_options_->eccflow_max_pyramid_level != v ) {
+                jovian_derotation_options_->eccflow_max_pyramid_level = v;
+                emit parameterChanged();
+              }
+            }
+          });
+
 }
 
 void QJovianDerotationSettings::set_jovian_derotation_options(c_jovian_derotation_options * jovian_derotation_options)
@@ -504,6 +562,11 @@ void QJovianDerotationSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
+    min_rotation_ctl->setValue(jovian_derotation_options_->min_rotation * 180 / M_PI);
+    max_rotation_ctl->setValue(jovian_derotation_options_->max_rotation * 180 / M_PI);
+    eccflow_support_scale_ctl->setValue(jovian_derotation_options_->eccflow_support_scale);
+    eccflow_normalization_scale_ctl->setValue(jovian_derotation_options_->eccflow_normalization_scale);
+    eccflow_max_pyramid_level_ctl->setValue(jovian_derotation_options_->eccflow_max_pyramid_level);
     setEnabled(true);
   }
 }

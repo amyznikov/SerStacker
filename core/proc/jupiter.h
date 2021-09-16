@@ -116,6 +116,23 @@ public:
   bool compute(cv::InputArray input_image,
       cv::InputArray input_mask = cv::noArray());
 
+  // set mininum rotation angle for best rotation search range.
+  void set_min_rotation(double v);
+  double min_rotation() const;
+
+  // set maximum rotation angle for best rotation search range.
+  void set_max_rotation(double v);
+  double max_rotation() const;
+
+  void set_eccflow_support_scale(int v);
+  int eccflow_support_scale() const;
+
+  void set_eccflow_normalization_scale(int v);
+  int eccflow_normalization_scale() const;
+
+  void set_eccflow_max_pyramid_level(int v);
+  int max_eccflow_pyramid_level(int v);
+
   const cv::RotatedRect & reference_ellipse() const;
   const cv::RotatedRect & current_ellipse() const;
 
@@ -129,11 +146,11 @@ public:
   const cv::Mat1f & current_rotation_mask() const;
   const cv::Mat1b & current_binary_rotation_mask() const;
 
-  void set_dbgpath(const std::string & dbgpath);
-  const std::string & dbgpath() const;
+  void set_enable_debug(bool v);
+  bool enable_debug() const;
 
-  void set_write_debug_images(bool v);
-  bool write_debug_images() const;
+  void set_debug_path(const std::string & v);
+  const std::string & debug_path() const;
 
 protected:
   bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
@@ -177,8 +194,14 @@ protected:
   c_ecc_pyramide_align ecch_;
   c_ecch_flow eccflow_;
 
-  std::string dbgpath_;
-  bool write_debug_images_ = false;
+  double min_rotation_ = -30 * CV_PI / 180;
+  double max_rotation_ = +30 * CV_PI / 180;
+  int eccflow_support_scale_ = 3;
+  int eccflow_normalization_scale_ = 0;
+  int eccflow_max_pyramid_level_ = 1;
+
+  std::string debug_path_;
+  bool enable_debug_ = false;
 
 };
 

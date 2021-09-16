@@ -133,7 +133,7 @@ static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst)
 
 // TODO: add horizontal lines to artifical ellipse in appropriate zones
 // for better rotation fitting (assuming that jupiter usually shows zonal gradients)
-bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const std::string & debug_path)
+bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const std::string & dbgpath)
 {
   cv::Mat gray_image;
   cv::Rect component_rect;
@@ -157,27 +157,27 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   /////////////////////////////////////////////////////////////////////////////////////////
   // Detect planetary disk mask and use fitEllipseAMS() as initial ellipse estimate
 
-  if ( !debug_path.empty() ) {
-    save_image(gray_image, ssprintf("%s/gray_image.tiff", debug_path.c_str()) );
+  if ( !dbgpath.empty() ) {
+    save_image(gray_image, ssprintf("%s/gray_image.tiff", dbgpath.c_str()) );
     pdbg = &debug_image;
   }
 
   if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask, pdbg) ) {
     CF_ERROR("simple_small_planetary_disk_detector() fails");
-    if ( !debug_path.empty() ) {
-      save_image(debug_image, ssprintf("%s/debug_image.tiff", debug_path.c_str()) );
+    if ( !dbgpath.empty() ) {
+      save_image(debug_image, ssprintf("%s/component_debug_image.tiff", dbgpath.c_str()) );
     }
     return false;
   }
 
-  if ( !debug_path.empty() ) {
-    save_image(component_mask, ssprintf("%s/initial_component_mask.tiff", debug_path.c_str()) );
-    save_image(debug_image, ssprintf("%s/debug_image.tiff", debug_path.c_str()) );
+  if ( !dbgpath.empty() ) {
+    save_image(component_mask, ssprintf("%s/initial_component_mask.tiff", dbgpath.c_str()) );
+    save_image(debug_image, ssprintf("%s/component_debug_image.tiff", dbgpath.c_str()) );
   }
 
   geo_fill_holes(component_mask, component_mask, 8);
-  if ( !debug_path.empty() ) {
-    save_image(component_mask, ssprintf("%s/component_mask.tiff", debug_path.c_str()) );
+  if ( !dbgpath.empty() ) {
+    save_image(component_mask, ssprintf("%s/component_mask.tiff", dbgpath.c_str()) );
   }
   morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
 
@@ -218,9 +218,9 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   /////////////////////////////////////////////////////////////////////////////////////////
   // Use of ECC to fit artifical jovian ellipse into planetary disk gradient image
 
-  if ( !debug_path.empty() ) {
-    save_image(artifical_ellipse, ssprintf("%s/artifical_ellipse.tiff", debug_path.c_str()) );
-    save_image(component_image, ssprintf("%s/component_image.tiff", debug_path.c_str()) );
+  if ( !dbgpath.empty() ) {
+    save_image(artifical_ellipse, ssprintf("%s/artifical_ellipse.tiff", dbgpath.c_str()) );
+    save_image(component_image, ssprintf("%s/component_image.tiff", dbgpath.c_str()) );
   }
 
 
@@ -228,7 +228,10 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   c_ecc_pyramide_align ecch(&ecc);
 
   cv::Matx23f T =
-      createEuclideanTransform(C.x, C.y, C.x, C.y, 1.0, rc->angle * CV_PI / 180);
+      createEuclideanTransform(C.x, C.y,
+          C.x, C.y,
+          1.0,
+          rc->angle * CV_PI / 180);
 
   if ( false ) {
     CF_DEBUG("T BEFORE: {\n"
@@ -373,6 +376,59 @@ void get_jovian_ellipse_bounding_box(const cv::Size & image_size, const cv::Rota
 
 
 
+// set mininum rotation angle for best rotation search range.
+void c_jovian_derotation::set_min_rotation(double v)
+{
+  min_rotation_ = v;
+}
+
+double c_jovian_derotation::min_rotation() const
+{
+  return min_rotation_;
+}
+
+// set maximum rotation angle for best rotation search range.
+void c_jovian_derotation::set_max_rotation(double v)
+{
+  max_rotation_ = v;
+}
+
+double c_jovian_derotation::max_rotation() const
+{
+  return max_rotation_;
+}
+
+void c_jovian_derotation::set_eccflow_support_scale(int v)
+{
+  eccflow_support_scale_ = v;
+}
+
+int c_jovian_derotation::eccflow_support_scale() const
+{
+  return eccflow_support_scale_;
+}
+
+void c_jovian_derotation::set_eccflow_normalization_scale(int v)
+{
+  eccflow_normalization_scale_ = v;
+}
+
+int c_jovian_derotation::eccflow_normalization_scale() const
+{
+  return eccflow_normalization_scale_;
+}
+
+
+void c_jovian_derotation::set_eccflow_max_pyramid_level(int v)
+{
+  eccflow_max_pyramid_level_ = v;
+}
+
+int c_jovian_derotation::max_eccflow_pyramid_level(int v)
+{
+  return eccflow_max_pyramid_level_;
+}
+
 const cv::RotatedRect & c_jovian_derotation::reference_ellipse() const
 {
   return reference_ellipse_;
@@ -472,7 +528,7 @@ bool c_jovian_derotation::extract_jovian_image(cv::InputArray src_image, cv::Inp
     cv::Mat * output_component_mask,
     cv::Mat1b * output_ellipse_mask) const
 {
-  if ( !detect_jovian_ellipse(src_image, output_ellipse, write_debug_images_ ? dbgpath_ : "") ) {
+  if ( !detect_jovian_ellipse(src_image, output_ellipse, enable_debug_ ? debug_path_ : "") ) {
     CF_ERROR("detect_jovian_ellipse() fails");
     return false;
   }
@@ -563,15 +619,15 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       normalization_scale_);
 
 
-  if ( write_debug_images_ && !dbgpath_.empty() ) {
-    save_image(current_component_image_, ssprintf("%s/current_component_image_.tiff", dbgpath_.c_str()));
-    save_image(reference_component_image_, ssprintf("%s/reference_component_image_.tiff", dbgpath_.c_str()));
-    save_image(current_component_mask_, ssprintf("%s/current_component_mask_.tiff", dbgpath_.c_str()));
-    save_image(reference_component_mask_, ssprintf("%s/reference_component_mask_.tiff", dbgpath_.c_str()));
-    save_image(current_normalized_image_, ssprintf("%s/current_normalized_image_.tiff", dbgpath_.c_str()));
-    save_image(reference_normalized_image_, ssprintf("%s/reference_normalized_image_.tiff", dbgpath_.c_str()));
-    save_image(current_ellipse_mask_, ssprintf("%s/current_ellipse_mask_.tiff", dbgpath_.c_str()));
-    save_image(reference_ellipse_mask_, ssprintf("%s/reference_ellipse_mask_.tiff", dbgpath_.c_str()));
+  if ( enable_debug_ && !debug_path_.empty() ) {
+    save_image(current_component_image_, ssprintf("%s/current_component_image_.tiff", debug_path_.c_str()));
+    save_image(reference_component_image_, ssprintf("%s/reference_component_image_.tiff", debug_path_.c_str()));
+    save_image(current_component_mask_, ssprintf("%s/current_component_mask_.tiff", debug_path_.c_str()));
+    save_image(reference_component_mask_, ssprintf("%s/reference_component_mask_.tiff", debug_path_.c_str()));
+    save_image(current_normalized_image_, ssprintf("%s/current_normalized_image_.tiff", debug_path_.c_str()));
+    save_image(reference_normalized_image_, ssprintf("%s/reference_normalized_image_.tiff", debug_path_.c_str()));
+    save_image(current_ellipse_mask_, ssprintf("%s/current_ellipse_mask_.tiff", debug_path_.c_str()));
+    save_image(reference_ellipse_mask_, ssprintf("%s/reference_ellipse_mask_.tiff", debug_path_.c_str()));
   }
 
   //
@@ -608,16 +664,13 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   //
 
   const double rotation_step = CV_PI / reference_ellipse_.size.width;
-  const double min_rotation = -30 * CV_PI / 180;
-  const double max_rotation = +30 * CV_PI / 180;
-  const int num_rotations = (int)((max_rotation - min_rotation) / rotation_step);
-
+  const int num_rotations = (int)((max_rotation_ - min_rotation_) / rotation_step);
 
   double current_cost, best_cost;
   double best_rotation;
   int best_rotation_index;
 
-  CF_DEBUG("rotation_step=%g deg",
+  CF_DEBUG("c_jovian_derotation: use rotation_step=%g deg",
       rotation_step * 180/ CV_PI);
 
   cv::Mat2f rotation_remap;
@@ -626,7 +679,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   for ( int i = 0; i < num_rotations; ++i ) {
 
     const double l =
-          min_rotation + i * rotation_step;
+          min_rotation_ + i * rotation_step;
 
     create_jovian_rotation_remap(l,
         reference_ellipse_,
@@ -670,18 +723,20 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       current_rotation_mask_);
 
 
-  cv::compare(current_rotation_mask_, 0, current_binary_rotation_mask_, cv::CMP_GT);
+  cv::compare(current_rotation_mask_, 0,
+      current_binary_rotation_mask_,
+      cv::CMP_GT);
 
-  if ( write_debug_images_ && !dbgpath_.empty() ) {
-    save_image(current_rotation_mask_, ssprintf("%s/current_rotation_mask_.tiff", dbgpath_.c_str()));
-    save_image(current_binary_rotation_mask_, ssprintf("%s/current_binary_rotation_mask_.tiff", dbgpath_.c_str()));
+  if ( enable_debug_ && !debug_path_.empty() ) {
+    save_image(current_rotation_mask_, ssprintf("%s/current_rotation_mask_.tiff", debug_path_.c_str()));
+    save_image(current_binary_rotation_mask_, ssprintf("%s/current_binary_rotation_mask_.tiff", debug_path_.c_str()));
   }
 
   if ( true ) {
 
-    eccflow_.set_max_pyramid_level(1);
-    eccflow_.set_support_scale(3);
-    eccflow_.set_normalization_scale(0);
+    eccflow_.set_max_pyramid_level(eccflow_max_pyramid_level_);
+    eccflow_.set_support_scale(eccflow_support_scale_);
+    eccflow_.set_normalization_scale(eccflow_normalization_scale_);
 
     fOk = eccflow_.compute(current_normalized_image_,
         reference_normalized_image_,
@@ -696,7 +751,8 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   }
   else {
 
-    // FIXME: Optimize image normalization and update rotation_remap after ecc_.align() to allow this code work
+    // FIXME: not sure yet if it is a good idea.
+    //  optimize image normalization and update rotation_remap after ecc_.align() to allow this code work
 
     ecc_.set_motion_type(ECC_MOTION_AFFINE);
     ecc_.set_eps(0.1);
@@ -735,24 +791,24 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   return true;
 }
 
-void c_jovian_derotation::set_dbgpath(const std::string & dbgpath)
+void c_jovian_derotation::set_debug_path(const std::string & v)
 {
-  dbgpath_ = dbgpath;
+  debug_path_ = v;
 }
 
-const std::string & c_jovian_derotation::dbgpath() const
+const std::string & c_jovian_derotation::debug_path() const
 {
-  return dbgpath_;
+  return debug_path_;
 }
 
-void c_jovian_derotation::set_write_debug_images(bool v)
+void c_jovian_derotation::set_enable_debug(bool v)
 {
-  write_debug_images_ = v;
+  enable_debug_ = v;
 }
 
-bool c_jovian_derotation::write_debug_images() const
+bool c_jovian_derotation::enable_debug() const
 {
-  return write_debug_images_;
+  return enable_debug_;
 }
 
 

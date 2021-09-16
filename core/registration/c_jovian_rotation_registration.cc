@@ -34,13 +34,13 @@ c_jovian_rotation_registration::c_jovian_rotation_registration(const c_frame_reg
 void c_jovian_rotation_registration::set_enable_debug(bool v)
 {
   base::set_enable_debug(v);
-  derotation_.set_write_debug_images(v);
+  derotation_.set_enable_debug(v);
 }
 
 void c_jovian_rotation_registration::set_debug_path(const std::string & v)
 {
   base::set_debug_path(v);
-  derotation_.set_dbgpath(v);
+  derotation_.set_debug_path(v);
 }
 
 
@@ -84,6 +84,12 @@ bool c_jovian_rotation_registration::setup_referece_frame(cv::InputArray image, 
     CF_ERROR("base::setup_referece_frame() fails");
     return false;
   }
+
+  derotation_.set_min_rotation(jovian_derotation_options_.min_rotation);
+  derotation_.set_max_rotation(jovian_derotation_options_.max_rotation);
+  derotation_.set_eccflow_support_scale(jovian_derotation_options_.eccflow_support_scale);
+  derotation_.set_eccflow_normalization_scale(jovian_derotation_options_.eccflow_normalization_scale);
+  derotation_.set_eccflow_max_pyramid_level(jovian_derotation_options_.eccflow_max_pyramid_level);
 
   if ( !derotation_.setup_reference_image(image, mask) ) {
     CF_ERROR("derotation_.setup_reference_image() fails");

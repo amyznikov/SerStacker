@@ -390,6 +390,14 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "update_multiplier", base_options.eccflow.update_multiplier);
   save_settings(group, "max_iterations", base_options.eccflow.max_iterations);
 
+  group = settings.add_group("jovian_derotation");
+  save_settings(group, "min_rotation", jovian_derotation_options.min_rotation);
+  save_settings(group, "max_rotation", jovian_derotation_options.max_rotation);
+  save_settings(group, "eccflow_support_scale", jovian_derotation_options.eccflow_support_scale);
+  save_settings(group, "eccflow_normalization_scale", jovian_derotation_options.eccflow_normalization_scale);
+  save_settings(group, "eccflow_max_pyramid_level", jovian_derotation_options.eccflow_max_pyramid_level);
+
+
   if ( aligned_frame_processor ) {
     save_settings(settings, "aligned_frame_processor", aligned_frame_processor->name() );
   }
@@ -440,6 +448,14 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     load_settings(group, "normalization_scale", &base_options.eccflow.normalization_scale);
     load_settings(group, "update_multiplier", &base_options.eccflow.update_multiplier);
     load_settings(group, "max_iterations", &base_options.eccflow.max_iterations);
+  }
+
+  if ( (group = settings["jovian_derotation"]).isGroup() ) {
+    load_settings(group, "min_rotation", &jovian_derotation_options.min_rotation);
+    load_settings(group, "max_rotation", &jovian_derotation_options.max_rotation);
+    load_settings(group, "eccflow_support_scale", &jovian_derotation_options.eccflow_support_scale);
+    load_settings(group, "eccflow_normalization_scale", &jovian_derotation_options.eccflow_normalization_scale);
+    load_settings(group, "eccflow_max_pyramid_level", &jovian_derotation_options.eccflow_max_pyramid_level);
   }
 
   std::string s;

@@ -406,7 +406,6 @@ protected:
       const cv::Mat & src, const cv::Mat & srcmask,
       cv::Mat & dst, cv::Mat & dstmask);
 
-
   static bool write_image(const std::string & output_file_name,
       const c_image_stacking_output_options & output_options,
       const cv::Mat & output_image,

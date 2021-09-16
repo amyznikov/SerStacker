@@ -464,6 +464,7 @@ protected:
   volatile bool canceled_ = false;
   bool master_frame_generation_ = false;
   int master_frame_index_ = -1;
+  bool external_master_frame_ = false;
 
   std::string output_directory_;
 

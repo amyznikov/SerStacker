@@ -952,6 +952,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     output_directory_.clear();
     missing_pixel_mask_.release();
 
+    external_master_frame_ = false;
     master_frame_index_ = -1;
     ecc_normalization_noise_ = 0;
 
@@ -1143,10 +1144,14 @@ bool c_image_stacking_pipeline::actual_run()
 
     if ( master_source_index >= 0 ) {
       input_sequence = this->input_sequence_;
+      external_master_frame_ = false;
     }
     else if ( !(input_sequence = c_input_sequence::create(master_file_name)) ) {
       CF_ERROR("ERROR: c_input_sequence::create(master_file_name_=%s) fails", master_file_name.c_str());
       return false;
+    }
+    else {
+      external_master_frame_ = true;
     }
 
     if ( !input_sequence->open() ) {
@@ -1603,7 +1608,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     }
 
     // Reset master index indicator because master frame was generated from a sequence, not just a single frame
-    this->master_frame_index_ = -1;
 
     if ( canceled() ) {
       return false;
@@ -1838,7 +1842,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     /////////////////////////////////////
     if ( frame_registration_ ) {
 
-      if ( input_sequence->current_pos() == master_frame_index_ + 1 ) {
+      CF_DEBUG("external_master_frame_=%d master_frame_index_=%d",
+          external_master_frame_, master_frame_index_);
+
+      if ( !external_master_frame_ && input_sequence->current_pos() == master_frame_index_ + 1 ) {
 
         if ( upscale_required(frame_upscale_after_align) ) {
 
@@ -1855,15 +1862,19 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
           if ( !output_options.debug_frame_registration_frame_indexes.empty()  ) {
 
+            CF_DEBUG("CHECING FOR DEBUG FRAME %d", input_sequence->current_pos() - 1);
+
             const std::vector<int> :: const_iterator pos =
                 std::find(output_options.debug_frame_registration_frame_indexes.begin(),
                     output_options.debug_frame_registration_frame_indexes.end(),
                     input_sequence->current_pos() - 1);
 
             if ( pos == output_options.debug_frame_registration_frame_indexes.end() ) {
+              CF_DEBUG("DEBUG FRAME %d IS NOT LISTED", input_sequence->current_pos() - 1);
               frame_registration_->set_enable_debug(false);
             }
             else {
+              CF_DEBUG("DEBUG FRAME %d IS LISTED", input_sequence->current_pos() - 1);
               frame_registration_->set_enable_debug(true);
               frame_registration_->set_debug_path(ssprintf("%s/debug-registration-%d",
                   output_directory_.c_str(), *pos));

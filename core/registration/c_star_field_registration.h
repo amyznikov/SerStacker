@@ -35,7 +35,6 @@ public: // ops
   c_star_field_registration_options & options();
   const c_star_field_registration_options & options() const ;
 
-
 protected:
   bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk) const override;
@@ -73,7 +72,6 @@ protected:
   std::vector<cv::Point2f> current_positions_;
 
   std::vector<std::pair<uint16_t, uint16_t> > current_matches_;
-
 };
 
 #endif /* __c_star_field_registration__h__ */

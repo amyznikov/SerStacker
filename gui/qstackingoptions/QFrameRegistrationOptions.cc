@@ -531,7 +531,7 @@ QJovianDerotationSettings::QJovianDerotationSettings(QWidget * parent)
 
 
   eccflow_max_pyramid_level_ctl =
-      add_numeric_box<int>("ECC flow support scale:",
+      add_numeric_box<int>("ECC flow max pyramid level:",
           [this](int v) -> void {
             if ( jovian_derotation_options_ ) {
               if ( jovian_derotation_options_->eccflow_max_pyramid_level != v ) {

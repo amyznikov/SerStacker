@@ -124,10 +124,16 @@ static void differentiate(cv::InputArray _src, cv::Mat & gx, cv::Mat & gy, int d
   doFilter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 }
 
-static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst)
+static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst, double sigma = 0)
 {
-  cv::Mat gx, gy;
-  differentiate(src, gx, gy);
+  cv::Mat g, gx, gy;
+  if ( sigma > 0 ) {
+    cv::GaussianBlur(src, g, cv::Size(), sigma, sigma, cv::BORDER_REFLECT101);
+  }
+  else {
+    g = src.getMat();
+  }
+  differentiate(g, gx, gy);
   cv::magnitude(gx, gy, dst);
 }
 
@@ -201,7 +207,7 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   // compute the image gradient to enchange the disk edge
 
   gray_image(component_rect).copyTo(component_image, component_mask(component_rect));
-  gradient_magnitude(component_image, component_image);
+  gradient_magnitude(component_image, component_image, std::max(1., component_rect.width/250.) );
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Draw artifical jovian ellipse

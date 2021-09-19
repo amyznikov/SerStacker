@@ -669,8 +669,15 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   // Select the best candidate.
   //
 
-  const double rotation_step = CV_PI / reference_ellipse_.size.width;
-  const int num_rotations = (int)((max_rotation_ - min_rotation_) / rotation_step);
+
+  const double rotation_step =
+      eccflow_support_scale_ > 1 ?
+          CV_PI / reference_ellipse_.size.width :
+          0.25 * CV_PI / reference_ellipse_.size.width;
+
+
+  const int num_rotations =
+      (int)((max_rotation_ - min_rotation_) / rotation_step);
 
   double current_cost, best_cost;
   double best_rotation;
@@ -738,7 +745,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     save_image(current_binary_rotation_mask_, ssprintf("%s/current_binary_rotation_mask_.tiff", debug_path_.c_str()));
   }
 
-  if ( true ) {
+  if ( eccflow_support_scale_ > 1 ) {
 
     eccflow_.set_max_pyramid_level(eccflow_max_pyramid_level_);
     eccflow_.set_support_scale(eccflow_support_scale_);
@@ -755,7 +762,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       return false;
     }
   }
-  else {
+  else if (false) {
 
     // FIXME: not sure yet if it is a good idea.
     //  optimize image normalization and update rotation_remap after ecc_.align() to allow this code work

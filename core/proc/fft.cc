@@ -9,8 +9,18 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
+static inline double hyp(double x, double y)
+{
+  return sqrt(x * x + y * y);
+}
 
-cv::Size getOptimalFFTSize(cv::Size imageSize, cv::Size psfSize, bool forceEvenSize )
+static inline double square (double x)
+{
+  return x * x;
+}
+
+
+cv::Size fftGetOptimalSize(cv::Size imageSize, cv::Size psfSize, bool forceEvenSize )
 {
   int w, h;
 
@@ -42,7 +52,7 @@ cv::Size getOptimalFFTSize(cv::Size imageSize, cv::Size psfSize, bool forceEvenS
 }
 
 
-bool copyMakeFFTBorder(cv::InputArray src, cv::OutputArray dst, cv::Size fftSize, cv::Rect * outrc)
+bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, cv::Size fftSize, cv::Rect * outrc)
 {
   const cv::Size src_size = src.size();
 
@@ -74,7 +84,7 @@ bool copyMakeFFTBorder(cv::InputArray src, cv::OutputArray dst, cv::Size fftSize
   return true;
 }
 
-void imageToSpectrum(const cv::Mat & src, std::vector<cv::Mat2f> & complex_channels)
+void fftImageToSpectrum(cv::InputArray src, std::vector<cv::Mat2f> & complex_channels)
 {
   const int cn = src.channels();
   complex_channels.resize(cn);
@@ -84,7 +94,7 @@ void imageToSpectrum(const cv::Mat & src, std::vector<cv::Mat2f> & complex_chann
   }
   else {
     cv::Mat channels[cn];
-    cv::split(src, channels);
+    cv::split(src.getMat(), channels);
 
     for ( int i = 0; i < cn; ++i ) {
       cv::dft(channels[i], complex_channels[i], cv::DFT_COMPLEX_OUTPUT);
@@ -93,7 +103,7 @@ void imageToSpectrum(const cv::Mat & src, std::vector<cv::Mat2f> & complex_chann
 }
 
 
-void imageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::Mat & dst)
+void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::OutputArray dst)
 {
   const int cn = complex_channels.size();
 
@@ -108,6 +118,58 @@ void imageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::Mat 
     }
 
     cv::merge(channels, cn, dst);
+  }
+}
+
+
+void fftImageToSpectrum(cv::InputArray image,
+    std::vector<cv::Mat2f> & complex_channels,
+    const cv::Size & psfSize,
+    cv::Rect * outrc)
+{
+  if ( psfSize.empty() ) {
+
+    fftImageToSpectrum(image,
+        complex_channels);
+
+    if ( outrc ) {
+      *outrc = cv::Rect(0, 0,
+          image.cols(),
+          image.rows());
+    }
+
+  }
+  else {
+
+    cv::Mat tmp;
+    cv::Rect rc;
+
+    fftCopyMakeBorder(image, tmp,
+        fftGetOptimalSize(image.size(),
+            psfSize),
+        &rc);
+
+    fftImageToSpectrum(tmp,
+        complex_channels);
+
+    if ( outrc ) {
+      *outrc = rc;
+    }
+  }
+
+}
+
+void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
+    cv::OutputArray dst,
+    const cv::Rect & rc)
+{
+  if ( rc.empty() ) {
+    fftImageFromSpectrum(complex_channels, dst);
+  }
+  else {
+    cv::Mat tmp;
+    fftImageFromSpectrum(complex_channels, tmp);
+    dst.move(tmp = tmp(rc));
   }
 }
 
@@ -314,70 +376,6 @@ bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::
 }
 
 
-static inline double hyp(double x, double y)
-{
-  return sqrt(x * x + y * y);
-}
-
-void fftRadialPowerProfile(const cv::Mat1f & magnitude,
-    std::vector<double> & output_profile,
-    std::vector<int> & output_counts)
-{
-
-  const int x0 = magnitude.cols / 2;
-  const int y0 = magnitude.rows / 2;
-  const double sx = 2.0 / magnitude.cols;
-  const double sy = 2.0 / magnitude.rows;
-  const int min_size = std::min(magnitude.cols, magnitude.rows);
-  const int profile_size = (int) ceil(hyp(min_size / 2, min_size / 2));
-
-
-  output_profile.clear();
-  output_profile.resize(profile_size, 0.0);
-
-  output_counts.clear();
-  output_counts.resize(profile_size, 0);
-
-  for ( int y = 0; y < magnitude.rows; ++y ) {
-    for ( int x = 0; x < magnitude.cols; ++x ) {
-
-      const int r = (int)(hyp((x - x0) * sx, (y - y0) * sy) * profile_size);
-      if ( r < profile_size ) {
-        output_profile[r] += magnitude[y][x];
-        output_counts[r] += 1;
-      }
-    }
-  }
-
-  for ( int i = 0; i < profile_size; ++i ) {
-    if ( output_counts[i] > 0 ) {
-      output_profile[i] /= output_counts[i];
-    }
-  }
-}
-
-void fftMultiplyRadialPowerProfile(cv::Mat1f & magnitude,
-    const std::vector<double> & profile,
-    double scale)
-{
-  const int x0 = magnitude.cols / 2;
-  const int y0 = magnitude.rows / 2;
-  const double sx = 2.0 / magnitude.cols;
-  const double sy = 2.0 / magnitude.rows;
-  const int profile_size = profile.size();
-
-  for ( int y = 0; y < magnitude.rows; ++y ) {
-    for ( int x = 0; x < magnitude.cols; ++x ) {
-      const int r = (int)(hyp((x - x0) * sx, (y - y0) * sy) * profile_size);
-      if ( r < profile_size ) {
-        magnitude[y][x] *= (scale * profile[r]);
-      }
-    }
-  }
-}
-
-
-
 void fftSharpen(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs)
 {
@@ -393,7 +391,7 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
     src.copyTo(image);
   }
   else {
-    copyMakeFFTBorder(src, image, fftSize, &rc);
+    fftCopyMakeBorder(src, image, fftSize, &rc);
   }
 
 
@@ -407,7 +405,7 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
           for ( int x = 0, nx = F.cols; x < nx; ++x ) {
 
-            const double D = 2 * hypot(((double)x - centre.x) / F.cols, ((double)y - centre.y) / F.rows);
+            const double D = 2 * hyp(((double)x - centre.x) / F.cols, ((double)y - centre.y) / F.rows);
 
             F[y][x][0] = 1;
             F[y][x][1] = 0;
@@ -465,7 +463,76 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
 }
 
 
-bool accumulate_fft_power_spectrum(const cv::Mat & src,  cv::Mat & acc, float & cnt)
+void fftSharpenR1(cv::InputArray image, cv::OutputArray dst, double scale, bool preserve_l2_norm)
+{
+  typedef tbb::blocked_range<int> range;
+
+  std::vector<cv::Mat2f> channels;
+  double saved_image_norm = 1;
+  cv::Rect rc;
+
+  if ( preserve_l2_norm ) {
+    saved_image_norm = cv::norm(image, cv::NORM_L2);
+  }
+
+  fftImageToSpectrum(image, channels, cv::Size(32, 32), &rc);
+
+  for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
+
+    cv::Mat2f & spec = channels[c];
+
+    fftSwapQuadrants(spec);
+
+    if ( scale >= 0 ) {
+      // sharpen
+
+      tbb::parallel_for(range(0, spec.rows, 64),
+          [&spec, scale] (const range & r) {
+
+            const double x0 = spec.cols / 2;
+            const double y0 = spec.rows / 2;
+
+            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+              for ( int x = 0; x < spec.cols; ++x ) {
+                const double r1 = 1. + scale * hyp((x - x0) / x0, (y - y0) / y0);
+                spec[y][x][0] *= r1;
+                spec[y][x][1] *= r1;
+              }
+            }
+          });
+    }
+    else {
+      // smoothing
+
+      tbb::parallel_for(range(0, spec.rows, 64),
+          [&spec, scale] (const range & r) {
+
+            const double x0 = spec.cols / 2;
+            const double y0 = spec.rows / 2;
+
+            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+              for ( int x = 0; x < spec.cols; ++x ) {
+                const double r1 = 1./(1. - scale * hyp((x - x0) / x0, (y - y0) / y0));
+                spec[y][x][0] *= r1;
+                spec[y][x][1] *= r1;
+              }
+            }
+          });
+    }
+
+    fftSwapQuadrants(spec);
+  }
+
+  fftImageFromSpectrum(channels, dst, rc);
+
+  if ( preserve_l2_norm ) {
+    cv::multiply(dst, saved_image_norm / cv::norm(image, cv::NORM_L2), dst);
+  }
+}
+
+
+
+bool fftAccumulatePowerSpectrum(const cv::Mat & src,  cv::Mat & acc, float & cnt)
 {
   static const auto compute_magnitue =
       [](cv::Mat & src) {
@@ -495,13 +562,13 @@ bool accumulate_fft_power_spectrum(const cv::Mat & src,  cv::Mat & acc, float & 
     fft_size = acc.size();
   }
   else {
-    fft_size = getOptimalFFTSize(src.size(), cv::Size(32,32));
+    fft_size = fftGetOptimalSize(src.size(), cv::Size(32,32));
     acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
     acc.setTo(0);
     cnt = 0;
   }
 
-  copyMakeFFTBorder(src, img, fft_size, nullptr);
+  fftCopyMakeBorder(src, img, fft_size, nullptr);
 
   if ( cn == 1 ) {
     channels[0] = img;
@@ -528,7 +595,7 @@ bool accumulate_fft_power_spectrum(const cv::Mat & src,  cv::Mat & acc, float & 
   return true;
 }
 
-bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
+bool fftMaxPowerSpectrum(const cv::Mat & src, cv::Mat & acc)
 {
   static const auto compute_magnitue =
       [](cv::Mat & src) {
@@ -558,12 +625,12 @@ bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
     fft_size = acc.size();
   }
   else {
-    fft_size = getOptimalFFTSize(src.size(), cv::Size(32, 32));
+    fft_size = fftGetOptimalSize(src.size(), cv::Size(32, 32));
     acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
     acc.setTo(0);
   }
 
-  if ( !copyMakeFFTBorder(src, img, fft_size, nullptr) ) {
+  if ( !fftCopyMakeBorder(src, img, fft_size, nullptr) ) {
     CF_ERROR("copyMakeFFTBorder(src=%dx%d, img, fft_size=%dx%d) fails", src.cols, src.rows, fft_size.width, fft_size.height);
     return false;
   }
@@ -594,234 +661,3 @@ bool max_fft_spectrum_power(const cv::Mat & src, cv::Mat & acc)
 }
 
 
-bool swap_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat & dst)
-{
-  if ( src.empty() ) {
-    CF_ERROR("Invalid argument: src is empty");
-    return false;
-  }
-
-  if ( acc.depth() != CV_32F ) {
-    CF_ERROR("Invalid argument: acc.depth()=CV_32F is expected");
-    return false;
-  }
-
-  if ( acc.channels() != src.channels() ) {
-    CF_ERROR("Invalid argument: number of channels in src and sp not match");
-    return false;
-  }
-
-  typedef std::complex<float> complex;
-
-  cv::Mat img, spec;
-  cv::Rect rc;
-  const cv::Size fft_size = acc.size();
-  const int cn = src.channels();
-  cv::Mat channels[cn];
-
-
-  if ( !copyMakeFFTBorder(src, img, fft_size, &rc) ) {
-    CF_ERROR("copyMakeFFTBorder() fails");
-    return false;
-  }
-
-  if ( cn == 1 ) {
-    channels[0] = img;
-  }
-  else {
-    cv::split(img, channels);
-  }
-
-
-  for ( int i = 0; i < cn; ++i ) {
-
-    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
-
-    cv::Mat_<complex> spec = channels[i];
-
-    for ( int y = 0; y < spec.rows; ++y ) {
-
-      const float * accp = acc.ptr<const float>(y);
-
-      for ( int x = 0; x < spec.cols; ++x ) {
-
-        spec[y][x] = std::polar(accp[x * cn + i], std::arg(spec[y][x]));
-
-      }
-    }
-
-    cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-  }
-
-  if ( cn > 1 ) {
-    cv::merge(channels, cn, img);
-  }
-  else {
-    img = channels[0];
-  }
-
-  img(rc).copyTo(dst);
-
-  return true;
-}
-
-//#include <core/io/save_image.h>
-//#include <core/ssprintf.h>
-
-
-bool scale_fft_power_spectrum(const cv::Mat & src, const cv::Mat & acc, cv::Mat & dst, const std::string & dbgpath)
-{
-  if ( src.empty() ) {
-    CF_ERROR("Invalid argument: src is empty");
-    return false;
-  }
-
-  if ( acc.depth() != CV_32F ) {
-    CF_ERROR("Invalid argument: acc.depth()=CV_32F is expected");
-    return false;
-  }
-
-  if ( acc.channels() != src.channels() ) {
-    CF_ERROR("Invalid argument: number of channels in src and sp not match");
-    return false;
-  }
-
-  typedef std::complex<float> complex;
-
-  cv::Mat img, spec;
-  cv::Rect rc;
-  const cv::Size fft_size = acc.size();
-  const int cn = src.channels();
-  cv::Mat channels[cn];
-
-
-
-
-  if ( !copyMakeFFTBorder(src, img, fft_size, &rc) ) {
-    CF_ERROR("copyMakeFFTBorder() fails");
-    return false;
-  }
-
-  if ( cn == 1 ) {
-    channels[0] = img;
-  }
-  else {
-    cv::split(img, channels);
-  }
-
-  /* Pyramid down to specific level */
-  static const auto pdownscale =
-      [](cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_WRAP)
-          {
-            cv::pyrDown(src, dst, cv::Size(), border_mode);
-            for ( int l = 1; l < level; ++l ) {
-              cv::pyrDown(dst, dst, cv::Size(), border_mode);
-            }
-          };
-
-  /* Pyramid up to specific size */
-  static const auto pupscale =
-      [](cv::Mat & image, cv::Size dstSize) -> bool
-          {
-            const cv::Size inputSize = image.size();
-
-            if ( inputSize != dstSize ) {
-
-              std::vector<cv::Size> spyramid;
-
-              spyramid.emplace_back(dstSize);
-
-              while ( 42 ) {
-                const cv::Size nextSize((spyramid.back().width + 1) / 2, (spyramid.back().height + 1) / 2);
-                if ( nextSize == inputSize ) {
-                  break;
-                }
-                if ( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
-                  CF_DEBUG("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
-                      nextSize.width, nextSize.height,
-                      inputSize.width, inputSize.height);
-                  return false;
-                }
-                spyramid.emplace_back(nextSize);
-              }
-
-              for ( int i = spyramid.size() - 1; i >= 0; --i ) {
-                cv::pyrUp(image, image, spyramid[i]);
-              }
-            }
-
-            return true;
-          };
-
-  /* compute spectrum magnitude */
-  static const auto compute_magnitue =
-      [](const cv::Mat & src, cv::Mat & dst)
-          {
-            const cv::Mat_<complex> spec = src;
-            cv::Mat1f mag(spec.size());
-
-            for ( int y = 0; y < spec.rows; ++y ) {
-              for ( int x = 0; x < spec.cols; ++x ) {
-                mag[y][x] = std::abs(spec[y][x]);
-              }
-            }
-
-            dst = std::move(mag);
-          };
-
-
-
-  cv::Mat accs, chs;
-  const int scale_level = 4;
-  const double eps = 1e-2; // FIXME: this is crazy constant
-
-  pdownscale(acc, accs, scale_level);
-  pupscale(accs, acc.size());
-  //  if ( !dbgpath.empty() ) {
-  //    save_image(accs, ssprintf("%s/accb.tiff", dbgpath.c_str()));
-  //  }
-
-
-
-
-  for ( int i = 0; i < cn; ++i ) {
-
-    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
-    cv::Mat_<complex> spec = channels[i];
-
-
-
-    compute_magnitue(channels[i], chs);
-    pdownscale(chs, chs, scale_level);
-    pupscale(chs, channels[i].size());
-    //  if ( !dbgpath.empty() ) {
-    //    save_image(chs, ssprintf("%s/chs.%d.tiff", dbgpath.c_str(), i));
-    //  }
-
-
-    for ( int y = 0; y < spec.rows; ++y ) {
-
-      const float * accp = accs.ptr<const float>(y);
-      const float * chp = chs.ptr<const float>(y);
-
-      for ( int x = 0; x < spec.cols; ++x ) {
-
-        spec[y][x] *= accp[x * cn + i] / (chp[x] + eps );
-
-      }
-    }
-
-    cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-  }
-
-  if ( cn > 1 ) {
-    cv::merge(channels, cn, img);
-  }
-  else {
-    img = channels[0];
-  }
-
-  img(rc).copyTo(dst);
-
-  return true;
-}

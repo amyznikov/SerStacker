@@ -227,8 +227,8 @@ static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
           for ( int x = 0; x < nx; ++x ) {
             if ( mask[y][x] ) {
-              rmap[y][x][0] = -uv[y][x][0] + x;
-              rmap[y][x][1] = -uv[y][x][1] + y;
+              rmap[y][x][0] = x - uv[y][x][0];
+              rmap[y][x][1] = y - uv[y][x][1];
             }
             else {
               rmap[y][x][0] = x;
@@ -958,7 +958,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
     total_frames_ = 0;
     processed_frames_ = 0;
-    reference_sharpness_ = 0;
+    //reference_sharpness_ = 0;
 
     statusmsg_.clear();
 
@@ -1236,27 +1236,25 @@ bool c_image_stacking_pipeline::actual_run()
       return false;
     }
 
-    if ( output_options.debug_frame_registration ) {
-      frame_registration_->set_enable_debug(false);
+    if ( output_options.debug_frame_registration && frame_registration_->enable_eccflow() ) {
+
+      const c_ecch_flow & eccflow =
+          frame_registration_->eccflow();
+
+      const std::vector<c_ecch_flow::pyramid_entry> & pyramid =
+          eccflow.current_pyramid();
+
+      const std::string debugpath =
+          ssprintf("%s/eccdebug", output_directory_.c_str());
+
+      for ( uint i = 0, n = pyramid.size(); i < n; ++i ) {
+        save_image(pyramid[i].reference_image, ssprintf("%s/eccref.%02u.tiff", debugpath.c_str(), i));
+      }
     }
 
-    if ( false ) {
 
-      if ( frame_registration_->enable_eccflow() ) {
-
-        const c_ecch_flow & eccflow =
-            frame_registration_->eccflow();
-
-        const std::vector<c_ecch_flow::pyramid_entry> & pyramid =
-            eccflow.current_pyramid();
-
-        const std::string debugpath =
-              ssprintf("%s/eccdebug", output_directory_.c_str());
-
-        for ( uint i = 0, n = pyramid.size(); i < n; ++i ) {
-          save_image(pyramid[i].reference_image, ssprintf("%s/eccref.%02u.tiff", debugpath.c_str(), i));
-        }
-      }
+    if ( output_options.debug_frame_registration ) {
+      frame_registration_->set_enable_debug(false);
     }
 
 
@@ -1301,91 +1299,74 @@ bool c_image_stacking_pipeline::actual_run()
   set_status_msg("FINISHING ...");
 
 
-  // Read back accumulators
+  // Read accumulators back
 
   if ( frame_accumulation_ ) {
 
-    cv::Mat accumulated_frame;
+    cv::Mat accumulated_image;
     cv::Mat1b accumulated_mask;
 
     if ( true ) {
       lock_guard lock(accumulator_lock_);
 
-      if ( !frame_accumulation_->compute(accumulated_frame, accumulated_mask) ) {
+      if ( !frame_accumulation_->compute(accumulated_image, accumulated_mask) ) {
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
 
-      average_pyramid_inpaint(accumulated_frame,
+      average_pyramid_inpaint(accumulated_image,
           accumulated_mask,
-          accumulated_frame);
-    }
-
-
-
-    if( options_->master_frame_options().accumulated_sharpen_factor > 0 ) {
-
-      c_sharpness_norm_measure sm;
-
-      const double factor =
-          options_->master_frame_options().accumulated_sharpen_factor;
-
-      const double current_sharpeness =
-          sm.measure(accumulated_frame, accumulated_mask);
-
-      const double alpha =
-          1.0 - factor * current_sharpeness / reference_sharpness_ / accumulated_frame.channels();
-
-      CF_DEBUG("YYY accumulated sharpness = %g reference sharpness = %g alpha=%g",
-          current_sharpeness,
-          reference_sharpness_,
-          alpha);
-
-      if( options_->output_options().dump_reference_data_for_debug ) {
-
-        save_image(accumulated_frame,
-            ssprintf("%s/%s-initial_accumulated_frame.tiff",
-                output_directory_.c_str(),
-                options_->cname()));
-      }
-
-      if( alpha < 1 ) {
-
-        unsharp_mask(accumulated_frame, accumulated_frame,
-            sm.sigma() * upscale_options.image_scale(),
-            alpha, 0, 1);
-
-        const double current_sharpeness =
-            sm.measure(accumulated_frame, accumulated_mask);
-
-        CF_DEBUG("YYY final sharpeness = %g reference sharpeness = %g alpha=%g",
-            current_sharpeness,
-            reference_sharpness_,
-            alpha);
-      }
+          accumulated_image);
     }
 
 
     if ( anscombe_.method() != anscombe_none ) {
-      anscombe_.inverse(accumulated_frame,
-          accumulated_frame);
+      anscombe_.inverse(accumulated_image,
+          accumulated_image);
     }
+
+
+
 
 
     // Fix turbulent flow
     if ( flow_accumulation_ ) {
 
       cv::Mat accumulated_flow;
+      double sharpenScale = 0;
 
       if ( !flow_accumulation_->compute(accumulated_flow) ) {
         CF_ERROR("ERROR: flow_accumulation_->compute() fails");
       }
       else {
 
-        CF_DEBUG("accumulated_flow: %dx%d", accumulated_flow.cols, accumulated_flow.rows);
+        if ( options_->master_frame_options().accumulated_sharpen_factor > 0 ) {
+          if ( frame_accumulation_->accumulated_frames() > 1 ) {
 
-        if ( accumulated_flow.size() != accumulated_frame.size() ) {
-          upscale_remap(upscale_options.upscale_option,
+            if ( output_options.dump_reference_data_for_debug ) {
+              write_image(ssprintf("%s/%s-before-sharpen.tiff",
+                  output_directory_.c_str(), options_->cname()),
+                  output_options,
+                  accumulated_image,
+                  accumulated_mask);
+            }
+
+            sharpenScale =
+                options_->master_frame_options().accumulated_sharpen_factor
+                    * sqrt(frame_accumulation_->accumulated_frames());
+
+            CF_DEBUG("sharpenScale=%g accumulated_frames=%d",
+                sharpenScale,
+                frame_accumulation_->accumulated_frames());
+
+            fftSharpenR1(accumulated_image, accumulated_image,
+                sharpenScale, false);
+
+          }
+        }
+
+        if ( accumulated_flow.size() != accumulated_image.size() ) {
+          upscale_optflow(upscale_options.upscale_option,
               accumulated_flow,
               accumulated_flow);
         }
@@ -1403,26 +1384,30 @@ bool c_image_stacking_pipeline::actual_run()
           write_image(ssprintf("%s/%s-before-flow_compensation.tiff",
               output_directory_.c_str(), options_->cname()),
               output_options,
-              accumulated_frame,
+              accumulated_image,
               accumulated_mask);
         }
 
-        accumulated_flow = flow2remap(accumulated_flow,
-            accumulated_mask);
+        accumulated_flow =
+            flow2remap(accumulated_flow,
+                accumulated_mask);
 
         // FIXME: BORDER !!!
-        cv::remap(accumulated_frame, accumulated_frame, accumulated_flow,
+        cv::remap(accumulated_image, accumulated_image, accumulated_flow,
             cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
 
         cv::remap(accumulated_mask, accumulated_mask, accumulated_flow,
-            cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT);
+            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
-        cv::compare(accumulated_mask, 220, accumulated_mask, cv::CMP_GE);
+        cv::compare(accumulated_mask, 255, accumulated_mask, cv::CMP_GE);
 
-        // reduce potential remap interpoolation artifacts
-        //clip_range(accumulated_frame, 0, 1, accumulated_mask);
+        if ( sharpenScale > 0 ) {
+
+          fftSharpenR1(accumulated_image, accumulated_image,
+              -sharpenScale, false);
+
+        }
       }
-
     }
 
     if ( output_file_name.empty() ) {
@@ -1434,14 +1419,14 @@ bool c_image_stacking_pipeline::actual_run()
     }
 
     CF_DEBUG("Saving '%s'", output_file_name.c_str());
-    if ( !write_image(output_file_name, output_options, accumulated_frame, accumulated_mask) ) {
+    if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
       CF_ERROR("write_image('%s') fails", output_file_name.c_str());
     }
 
 
     if ( output_options.accumulated_image_processor ) {
 
-      if ( !output_options.accumulated_image_processor->process(accumulated_frame, accumulated_mask) ) {
+      if ( !output_options.accumulated_image_processor->process(accumulated_image, accumulated_mask) ) {
         CF_ERROR("postprocessor %s : process() fails", output_options.accumulated_image_processor->cname());
       }
       else {
@@ -1452,7 +1437,7 @@ bool c_image_stacking_pipeline::actual_run()
                 options_->cname());
 
         CF_DEBUG("Saving '%s'", output_file_name.c_str());
-        if ( !write_image(output_file_name, output_options, accumulated_frame, accumulated_mask) ) {
+        if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
           CF_ERROR("write_image('%s') fails", output_file_name.c_str());
         }
 
@@ -1539,7 +1524,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
   // setup master index indicator
  this->master_frame_index_ = master_frame_index;
 
-  if ( max_frames_to_stack < 2 || input_sequence->size() < 2 ) {
+ if ( max_frames_to_stack < 2 || input_sequence->size() < 2 ) {
 
     // Use single frame as reference
 
@@ -1551,16 +1536,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
   }
   else {
 
+
     // Generate from sequence
 
     if ( !(frame_registration_ = options_->create_frame_registration()) ) {
       CF_FATAL("options_->create_frame_registration() fails");
       return false;
-    }
-
-    if( frame_registration_->enable_ecc() ) {
-      frame_registration_->base_options().ecc.reference_smooth_sigma =
-          frame_registration_->base_options().ecc.input_smooth_sigma;
     }
 
     frame_registration_->set_enable_eccflow(master_options.eccflow_scale > 1);
@@ -1580,15 +1561,13 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
     if ( true ) {
       lock_guard lock(accumulator_lock_);
+
       frame_accumulation_.reset(new c_frame_weigthed_average());
 
       if ( master_options.master_sharpen_factor > 0 ) {
         sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
       }
     }
-
-
-
 
     if ( canceled() ) {
       return false;
@@ -1631,6 +1610,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
           reference_mask,
           reference_frame);
 
+      // sharpen reference image
       if ( sharpness_norm_accumulation_ ) {
 
         reference_sharpness_ =
@@ -1681,7 +1661,41 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
           }
         }
       }
-
+//      if ( master_options.master_sharpen_factor > 0 && frame_accumulation_->accumulated_frames() > 1 ) {
+//
+//        if ( options_->output_options().dump_reference_data_for_debug ) {
+//
+//          save_image(reference_frame,
+//              ssprintf("%s/%s-initial_reference_frame.tiff",
+//                  output_directory_.c_str(),
+//                  options_->cname()));
+//        }
+//
+//        double fftscale = master_options.master_sharpen_factor * CV_PI * sqrt(frame_accumulation_->accumulated_frames());
+//        CF_DEBUG("fftscale = %g accumulated_frames=%d", fftscale, frame_accumulation_->accumulated_frames());
+//
+//        fftSharpenR2(reference_frame, reference_frame, fftscale);
+//
+//
+//        //cv::max(reference_frame, 0, reference_frame);
+//
+//        static const thread_local cv::Mat G =
+//            cv::getGaussianKernel(3, 0.5, CV_32F);
+//
+//        cv::sepFilter2D(reference_frame, reference_frame, -1, G, G);
+//
+//
+//        if ( options_->output_options().dump_reference_data_for_debug ) {
+//          if ( !master_options.save_master_frame ) {
+//
+//            save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
+//                output_directory_.c_str(),
+//                options_->cname()));
+//
+//          }
+//        }
+//
+//      }
     }
 
     if ( canceled() ) {
@@ -1692,7 +1706,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
   if ( true ) {
     lock_guard lock(accumulator_lock_);
-
     sharpness_norm_accumulation_.reset();
     flow_accumulation_.reset();
     frame_accumulation_.reset();
@@ -1938,7 +1951,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
-      if( registration_options.aligned_frame_processor) {
+      if( registration_options.aligned_frame_processor ) {
         registration_options.aligned_frame_processor->process(current_frame, current_mask);
         if ( canceled() ) {
           break;
@@ -2202,6 +2215,45 @@ void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
     if( !srcmap.empty() && dstmap.needed() ) {
       const cv::Size dstsize(srcmap.cols() * 3, srcmap.rows() * 3);
       cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+    }
+    break;
+  }
+  default:
+    if( !srcmap.empty() && dstmap.needed() ) {
+      srcmap.copyTo(dstmap);
+    }
+    break;
+  }
+}
+
+void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
+    cv::InputArray srcmap,
+    cv::OutputArray dstmap)
+{
+  switch (scale) {
+  case frame_upscale_x15:
+  {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
+      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
+      cv::multiply(dstmap, 3.0 / 2.0, dstmap);
+    }
+    break;
+  }
+  case frame_upscale_pyrUp:
+  {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      cv::pyrUp(srcmap, dstmap);
+      cv::multiply(dstmap, 2.0, dstmap);
+    }
+    break;
+  }
+  case frame_upscale_x30:
+  {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      const cv::Size dstsize(srcmap.cols() * 3, srcmap.rows() * 3);
+      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR_EXACT);
+      cv::multiply(dstmap, 3.0, dstmap);
     }
     break;
   }

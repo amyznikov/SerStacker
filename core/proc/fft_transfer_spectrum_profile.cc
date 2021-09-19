@@ -72,7 +72,7 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
     return false;
   }
 
-  fft_size = getOptimalFFTSize(source_size);
+  fft_size = fftGetOptimalSize(source_size);
 
   if ( from_image.channels() == 1 ) {
     source_image = from_image.getMat();
@@ -96,7 +96,7 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
 
 
   if ( source_size != fft_size ) {
-    copyMakeFFTBorder(source_image,
+    fftCopyMakeBorder(source_image,
         source_image,
         fft_size,
         &source_rc);
@@ -109,7 +109,7 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
 
 
   if ( target_size != fft_size ) {
-    copyMakeFFTBorder(target_image,
+    fftCopyMakeBorder(target_image,
         target_image,
         fft_size,
         &target_rc);
@@ -146,7 +146,7 @@ bool fft_transfer_spectrum_profile(cv::InputArray from_image,
     for ( int i = 0; i < cn; ++i ) {
 
       if ( target_size != fft_size ) {
-        copyMakeFFTBorder(channels[i],
+        fftCopyMakeBorder(channels[i],
             channels[i],
             fft_size);
       }

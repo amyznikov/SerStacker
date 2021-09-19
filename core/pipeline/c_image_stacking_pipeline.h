@@ -136,7 +136,7 @@ struct c_master_frame_options {
   int max_input_frames_to_generate_master_frame = 500;
   int eccflow_scale = 0;
   double master_sharpen_factor = 0.5;
-  double accumulated_sharpen_factor = 0.5;
+  double accumulated_sharpen_factor = 1;
   bool save_master_frame = false;
 
   bool serialize(c_config_setting settings) const;
@@ -426,12 +426,6 @@ protected:
       c_video_writer & output_writer) const;
 
 
-//  static bool save_processed_frame(const cv::Mat & curren_frame, const cv::Mat & current_mask,
-//      const c_image_stacking_output_options & output_options,
-//      const std::string & output_directory,
-//      const std::string & sequence_name,
-//      const c_input_sequence::ptr & input_sequence);
-
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons);
 
@@ -440,6 +434,10 @@ protected:
       cv::OutputArray dst, cv::OutputArray dstmask);
 
   static void upscale_remap(enum frame_upscale_option scale,
+      cv::InputArray srcmap,
+      cv::OutputArray dstmap);
+
+  static void upscale_optflow(enum frame_upscale_option scale,
       cv::InputArray srcmap,
       cv::OutputArray dstmap);
 

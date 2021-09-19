@@ -10,20 +10,30 @@
 
 #include <opencv2/opencv.hpp>
 
-cv::Size getOptimalFFTSize(cv::Size imageSize,
+cv::Size fftGetOptimalSize(cv::Size imageSize,
     cv::Size psfSize = cv::Size(0,0),
     bool forceEvenSize = true);
 
-bool copyMakeFFTBorder(cv::InputArray src,
+bool fftCopyMakeBorder(cv::InputArray src,
     cv::OutputArray dst,
     cv::Size fftSize,
     cv::Rect * outrc = nullptr);
 
-void imageToSpectrum(const cv::Mat & src,
+void fftImageToSpectrum(cv::InputArray image,
     std::vector<cv::Mat2f> & complex_channels);
 
-void imageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
-    cv::Mat & dst);
+void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
+    cv::OutputArray dst);
+
+void fftImageToSpectrum(cv::InputArray image,
+    std::vector<cv::Mat2f> & complex_channels,
+    const cv::Size & psfSize,
+    cv::Rect * rc);
+
+void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
+    cv::OutputArray dst,
+    const cv::Rect & rc);
+
 
 void fftSwapQuadrants(cv::InputOutputArray spec);
 
@@ -40,31 +50,18 @@ bool fftSpectrumToPolar(const cv::Mat & src,
 bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase,
     cv::Mat & dst );
 
-void fftRadialPowerProfile(const cv::Mat1f & magnitude,
-    std::vector<double> & output_profile,
-    std::vector<int> & output_counts);
-
-void fftMultiplyRadialPowerProfile(cv::Mat1f & magnitude,
-    const std::vector<double> & profile,
-    double scale = 1);
-
 void fftSharpen(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs);
 
-bool accumulate_fft_power_spectrum(const cv::Mat & src,
+void fftSharpenR1(cv::InputArray image, cv::OutputArray dst,
+    double scale,
+    bool preserve_l2_norm = true);
+
+bool fftAccumulatePowerSpectrum(const cv::Mat & src,
     cv::Mat & acc,
     float & cnt);
 
-bool max_fft_spectrum_power(const cv::Mat & src,
+bool fftMaxPowerSpectrum(const cv::Mat & src,
     cv::Mat & acc);
-
-bool swap_fft_power_spectrum(const cv::Mat & image,
-    const cv::Mat & sp,
-    cv::Mat & dst);
-
-bool scale_fft_power_spectrum(const cv::Mat & image,
-    const cv::Mat & acc,
-    cv::Mat & dst,
-    const std::string & dbgpath = "");
 
 #endif /* __fft_h__ */

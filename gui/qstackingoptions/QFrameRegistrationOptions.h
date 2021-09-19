@@ -140,9 +140,8 @@ protected:
 
   QNumberEditBox * support_scale_ctl = Q_NULLPTR;
   QNumberEditBox * update_multiplier_ctl = Q_NULLPTR;
-
-//  QNumberEditBox * input_smooth_sigma_ctl = Q_NULLPTR;
-//  QNumberEditBox * reference_smooth_sigma_ctl = Q_NULLPTR;
+  QNumberEditBox * input_smooth_sigma_ctl = Q_NULLPTR;
+  QNumberEditBox * reference_smooth_sigma_ctl = Q_NULLPTR;
 
   QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
   QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
@@ -171,8 +170,8 @@ protected:
 
   QEccMotionTypeCombo * motion_type_ctl = Q_NULLPTR;
   QLineEditBox * feature_scale_ctl = Q_NULLPTR;
-  QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
-  QEccBorderModeCombo * border_ctl = Q_NULLPTR;
+  //QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
+  //QEccBorderModeCombo * border_ctl = Q_NULLPTR;
 
   //  void set_registration_channel(int channel);
   //  int registration_channel() const;

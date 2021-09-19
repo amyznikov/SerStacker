@@ -21,11 +21,13 @@ struct c_ecc_options {
   double update_step_scale = 1.5;
   double normalization_noise = 0.01;
   int normalization_scale = 0;
-  int max_iterations = 30;
+  int max_iterations = 15;
 };
 
 struct c_eccflow_options {
   double update_multiplier = 1.5;
+  double input_smooth_sigma = 0;
+  double reference_smooth_sigma = 0;
   int max_iterations = 1;
   int support_scale = 4;
   int normalization_scale = -1;
@@ -35,7 +37,8 @@ struct c_frame_registration_base_options {
 
   ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
   color_channel_type registration_channel = color_channel_gray;
-  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_CUBIC;
+  // use only linear interpolations to avoid high-frequency moire patterns
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 

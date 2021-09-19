@@ -33,6 +33,8 @@ enum ECC_MOTION_TYPE fromStdString(const std::string  & s,
 
 
 
+// For the images destined for later sharpening use only LINEAR and AREA interpolation
+// to prevent high-frequency moire patterns.
 enum ECC_INTERPOLATION_METHOD {
   ECC_INTER_UNKNOWN        = -1,
   ECC_INTER_NEAREST        = cv::INTER_NEAREST,

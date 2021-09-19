@@ -392,8 +392,8 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     eccflow_.set_max_iterations(base_options_.eccflow.max_iterations);
     eccflow_.set_support_scale(base_options_.eccflow.support_scale);
     eccflow_.set_normalization_scale(base_options_.eccflow.normalization_scale);
-    eccflow_.set_input_smooth_sigma(0/*base_options_.eccflow.input_smooth_sigma*/);
-    eccflow_.set_reference_smooth_sigma(0/*base_options_.eccflow.reference_smooth_sigma*/);
+    eccflow_.set_input_smooth_sigma(base_options_.eccflow.input_smooth_sigma);
+    eccflow_.set_reference_smooth_sigma(base_options_.eccflow.reference_smooth_sigma);
 
     if ( !eccflow_.set_reference_image(ecc_image, ecc_mask) ) {
       CF_ERROR("eccflow_.set_reference_image() fails");

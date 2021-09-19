@@ -186,21 +186,21 @@ QEccflowSettings::QEccflowSettings(QWidget * parent)
         }
       });
 
-//  input_smooth_sigma_ctl = add_numeric_box<double>("input smooth sigma",
-//      [this](double v) {
-//        if ( options_ && v != options_->input_smooth_sigma ) {
-//          options_->input_smooth_sigma = v;
-//          emit parameterChanged();
-//        }
-//      });
-//
-//  reference_smooth_sigma_ctl = add_numeric_box<double>("reference smooth sigma",
-//      [this](double v) {
-//        if ( options_ && v != options_->input_smooth_sigma ) {
-//          options_->reference_smooth_sigma = v;
-//          emit parameterChanged();
-//        }
-//      });
+  input_smooth_sigma_ctl = add_numeric_box<double>("input smooth sigma",
+      [this](double v) {
+        if ( options_ && v != options_->input_smooth_sigma ) {
+          options_->input_smooth_sigma = v;
+          emit parameterChanged();
+        }
+      });
+
+  reference_smooth_sigma_ctl = add_numeric_box<double>("reference smooth sigma",
+      [this](double v) {
+        if ( options_ && v != options_->input_smooth_sigma ) {
+          options_->reference_smooth_sigma = v;
+          emit parameterChanged();
+        }
+      });
 
   update_multiplier_ctl = add_numeric_box<double>("update_multiplier",
       [this](double value) {
@@ -243,8 +243,8 @@ void QEccflowSettings::onupdatecontrols()
     update_multiplier_ctl->setValue(options_->update_multiplier);
     max_iterations_ctl->setValue(options_->max_iterations);
     normalization_scale_ctl->setValue(options_->normalization_scale);
-//    input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
-//    reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
+    input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
+    reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
 
     setEnabled(true);
   }
@@ -282,23 +282,23 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-  interpolation_ctl =  add_enum_combobox<QEccInterpolatioMethodCombo>(
-      "Interpolation method:",
-      [this](ECC_INTERPOLATION_METHOD v) {
-        if ( options_ && v != options_->interpolation ) {
-          options_->interpolation = v;
-          emit parameterChanged();
-        }
-      });
-
-  border_ctl = add_enum_combobox<QEccBorderModeCombo>(
-      "Border mode:",
-      [this](ECC_BORDER_MODE v) {
-        if ( options_ && v != options_->border_mode ) {
-          options_->border_mode = v;
-          emit parameterChanged();
-        }
-      });
+//  interpolation_ctl =  add_enum_combobox<QEccInterpolatioMethodCombo>(
+//      "Interpolation method:",
+//      [this](ECC_INTERPOLATION_METHOD v) {
+//        if ( options_ && v != options_->interpolation ) {
+//          options_->interpolation = v;
+//          emit parameterChanged();
+//        }
+//      });
+//
+//  border_ctl = add_enum_combobox<QEccBorderModeCombo>(
+//      "Border mode:",
+//      [this](ECC_BORDER_MODE v) {
+//        if ( options_ && v != options_->border_mode ) {
+//          options_->border_mode = v;
+//          emit parameterChanged();
+//        }
+//      });
 
 
   enable_ecc_ctl = add_checkbox("Enable ECC",
@@ -354,8 +354,8 @@ void QFrameRegistrationBaseSettings::onupdatecontrols()
 
     reference_channel_ctl->setCurrentItem(options_->registration_channel);
     motion_type_ctl->setCurrentItem(options_->motion_type);
-    interpolation_ctl->setCurrentItem(options_->interpolation);
-    border_ctl->setCurrentItem(options_->border_mode);
+//    interpolation_ctl->setCurrentItem(options_->interpolation);
+//    border_ctl->setCurrentItem(options_->border_mode);
     enable_ecc_ctl->setChecked(options_->enable_ecc);
     enable_eccflow_ctl->setChecked(options_->enable_eccflow);
     feature_scale_ctl->setValue(options_->feature_scale);
@@ -621,7 +621,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
 
 
   alignedFramesProcessor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("Postprocess aligned frames:",
+      add_combobox<QImageProcessorSelectionCombo>("Process aligned frames:",
           [this](int index) {
             if ( options_ ) {
               options_->aligned_frame_processor =

@@ -3503,8 +3503,9 @@ bool c_ecch_flow::set_reference_image(cv::InputArray referenceImage,
         }
     );
 
-    const double RegularizationTerm = // fxme: this regularization therm estimation seems crazy
-        pow(1e-3 * noise_level / (1 << current_level), 4);
+    // fixme: this regularization therm estimation seems crazy
+    const double RegularizationTerm =
+        pow(1e-5 * noise_level / (1 << current_level), 4);
 
     cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
     cv::add(DD, RegularizationTerm, DD);

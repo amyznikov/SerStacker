@@ -389,6 +389,8 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "normalization_scale", base_options.eccflow.normalization_scale);
   save_settings(group, "update_multiplier", base_options.eccflow.update_multiplier);
   save_settings(group, "max_iterations", base_options.eccflow.max_iterations);
+  save_settings(group, "input_smooth_sigma", base_options.eccflow.input_smooth_sigma);
+  save_settings(group, "reference_smooth_sigma", base_options.eccflow.reference_smooth_sigma);
 
   group = settings.add_group("jovian_derotation");
   save_settings(group, "min_rotation", jovian_derotation_options.min_rotation);
@@ -448,6 +450,8 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     load_settings(group, "normalization_scale", &base_options.eccflow.normalization_scale);
     load_settings(group, "update_multiplier", &base_options.eccflow.update_multiplier);
     load_settings(group, "max_iterations", &base_options.eccflow.max_iterations);
+    load_settings(group, "input_smooth_sigma", &base_options.eccflow.input_smooth_sigma);
+    load_settings(group, "reference_smooth_sigma", &base_options.eccflow.reference_smooth_sigma);
   }
 
   if ( (group = settings["jovian_derotation"]).isGroup() ) {

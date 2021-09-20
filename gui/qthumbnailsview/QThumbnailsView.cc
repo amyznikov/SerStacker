@@ -702,6 +702,8 @@ void QThumbnailsView::reload()
 
 void QThumbnailsView::cancelPendingUpdates()
 {
+  QWaitCursor wait(this);
+
   searchImageFiles_.cancel();
   thumbnailExtractor_.cancel();
   updateProgressIndicator();

@@ -11,7 +11,6 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QLineEditBox.h>
 #include "QImageStackingInputOptions.h"
-#include "QMasterFrameOptions.h"
 #include "QROISelectionOptions.h"
 #include "QFrameUpscaleOptions.h"
 #include "QFrameRegistrationOptions.h"
@@ -52,11 +51,10 @@ protected:
 
   QLineEditBox * stackName_ctl = Q_NULLPTR;
   QImageStackingInputOptions * inputOptions_ctl = Q_NULLPTR;
-  QMasterFrameOptions * masterFrame_ctl = Q_NULLPTR;
   QROISelectionOptions * roiSelection_ctl = Q_NULLPTR;
   QFrameUpscaleOptions * upscaleOptions_ctl = Q_NULLPTR;
-  QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
   QFrameRegistrationOptions * frameRegistration_ctl = Q_NULLPTR;
+  QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
   QStackOutputOptions * outputOptions_ctl = Q_NULLPTR;
 };
 

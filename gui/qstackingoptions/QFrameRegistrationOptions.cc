@@ -599,21 +599,24 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   Q_INIT_RESOURCE(qstackingoptions_resources);
 
 
-  frameRegistrationMethod_ctl = add_enum_combobox<QFrameRegistrationMethodCombo>(
-      "Registration method:",
-      [this](frame_registration_method) {
-        updatemethodspecificpage();
-        emit parameterChanged();
-      });
+  frameRegistrationMethod_ctl =
+      add_enum_combobox<QFrameRegistrationMethodCombo>(
+          "Registration method:",
+          [this](frame_registration_method) {
+            updatemethodspecificpage();
+            emit parameterChanged();
+          });
 
+  masterFrame_ctl =
+      add_widget<QMasterFrameOptions>(); // "* Master Frame Options"
 
   accumulateAndCompensateTurbulentFlow_ctl =
       add_checkbox("Accumulate and compensate turbulent flow",
           [this](int state) {
             if ( options_ ) {
               bool checked = state == Qt::Checked;
-              if ( options_->accumulate_and_compensate_turbulent_flow != checked ) {
-                options_->accumulate_and_compensate_turbulent_flow = checked;
+              if ( options_->frame_registration_options().accumulate_and_compensate_turbulent_flow != checked ) {
+                options_->frame_registration_options().accumulate_and_compensate_turbulent_flow = checked;
                 emit parameterChanged();
               }
             }
@@ -624,22 +627,12 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
       add_combobox<QImageProcessorSelectionCombo>("Process aligned frames:",
           [this](int index) {
             if ( options_ ) {
-              options_->aligned_frame_processor =
+              options_->frame_registration_options().aligned_frame_processor =
                   alignedFramesProcessor_ctl->processor(index);
               emit parameterChanged();
             }
           });
 
-//  incremental_mode_ctl = add_checkbox("Incremental mode (STUPID TEST, DON'T USE)",
-//      [this](int state) {
-//        if ( options_ ) {
-//          bool checked = state == Qt::Checked;
-//          if ( options_->incremental_mode != checked ) {
-//            options_->incremental_mode = checked;
-//            emit parameterChanged();
-//          }
-//        }
-//      });
 
   form->addRow(featureBasedRegistrationSettings = new QFeatureBasedRegistrationSettings(this));
   form->addRow(planetaryDiskRegistrationSettings = new QPlanetaryDiskRegistrationSettings(this));
@@ -648,6 +641,8 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   form->addRow(frameRegistrationBaseSettings = new QFrameRegistrationBaseSettings(this));
 
 
+  connect(masterFrame_ctl, &QMasterFrameOptions::parameterChanged,
+      this, &ThisClass::parameterChanged);
   connect(featureBasedRegistrationSettings, &QFeatureBasedRegistrationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
   connect(planetaryDiskRegistrationSettings, &QPlanetaryDiskRegistrationSettings::parameterChanged,
@@ -659,6 +654,9 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   connect(frameRegistrationBaseSettings, &QFrameRegistrationBaseSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+  connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
+      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
+
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -669,7 +667,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   connect(applyToAll_ctl, &QToolButton::clicked,
       [this]() {
         if ( options_ ) {
-          emit applyFrameRegistrationOptionsToAllRequested(*options_);
+          emit applyFrameRegistrationOptionsToAllRequested(options_->frame_registration_options());
         }
       });
 
@@ -679,13 +677,14 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   setEnabled(false);
 }
 
-void QFrameRegistrationOptions::set_registration_options(c_frame_registration_options * options)
+
+void QFrameRegistrationOptions::set_stacking_options(const c_image_stacking_options::ptr & options)
 {
   this->options_ = options;
   updateControls();
 }
 
-const c_frame_registration_options * QFrameRegistrationOptions::registration_options() const
+const c_image_stacking_options::ptr & QFrameRegistrationOptions::stacking_options() const
 {
   return this->options_;
 }
@@ -695,6 +694,7 @@ void QFrameRegistrationOptions::onupdatecontrols()
   if ( !options_ ) {
     setEnabled(false);
 
+    masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
     frameRegistrationBaseSettings->set_registration_options(nullptr);
     featureBasedRegistrationSettings->set_registration_options(nullptr);
     planetaryDiskRegistrationSettings->set_planetary_disk_options(nullptr);
@@ -705,18 +705,39 @@ void QFrameRegistrationOptions::onupdatecontrols()
   }
   else {
 
-    frameRegistrationMethod_ctl->setCurrentItem(options_->registration_method);
-    accumulateAndCompensateTurbulentFlow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
-//    incremental_mode_ctl->setChecked(options_->incremental_mode);
-    frameRegistrationBaseSettings->set_registration_options(&options_->base_options);
-    featureBasedRegistrationSettings->set_registration_options(&options_->feature_options);
-    planetaryDiskRegistrationSettings->set_planetary_disk_options(&options_->planetary_disk_options);
-    jovianDerotationSettings->set_planetary_disk_options(&options_->planetary_disk_options);
-    jovianDerotationSettings->set_jovian_derotation_options(&options_->jovian_derotation_options);
-    starFieldRegistrationSettings->set_registration_options(&options_->star_field_options);
+    masterFrame_ctl->set_master_frame_options(
+        &options_->master_frame_options(),
+        options_->input_sequence());
 
-    if ( !alignedFramesProcessor_ctl->setCurrentProcessor(options_->aligned_frame_processor) ) {
-      options_->aligned_frame_processor.reset();
+    c_frame_registration_options & registration_options =
+        options_->frame_registration_options();
+
+    frameRegistrationMethod_ctl->setCurrentItem(
+        registration_options.registration_method);
+
+    accumulateAndCompensateTurbulentFlow_ctl->setChecked(
+        registration_options.accumulate_and_compensate_turbulent_flow);
+
+    frameRegistrationBaseSettings->set_registration_options(
+        &registration_options.base_options);
+
+    featureBasedRegistrationSettings->set_registration_options(
+        &registration_options.feature_options);
+
+    planetaryDiskRegistrationSettings->set_planetary_disk_options(
+        &registration_options.planetary_disk_options);
+
+    jovianDerotationSettings->set_planetary_disk_options(
+        &registration_options.planetary_disk_options);
+
+    jovianDerotationSettings->set_jovian_derotation_options(
+        &registration_options.jovian_derotation_options);
+
+    starFieldRegistrationSettings->set_registration_options(
+        &registration_options.star_field_options);
+
+    if ( !alignedFramesProcessor_ctl->setCurrentProcessor(registration_options.aligned_frame_processor) ) {
+      registration_options.aligned_frame_processor.reset();
     }
 
     setEnabled(true);
@@ -727,8 +748,11 @@ void QFrameRegistrationOptions::onupdatecontrols()
 
 void QFrameRegistrationOptions::updatemethodspecificpage()
 {
+
   if ( !options_ ) {
-    //stackWidget->setVisible(false);
+    masterFrame_ctl->setVisible(false);
+    accumulateAndCompensateTurbulentFlow_ctl->setVisible(false);
+    alignedFramesProcessor_ctl->setVisible(false);
     featureBasedRegistrationSettings->setVisible(false);
     planetaryDiskRegistrationSettings->setVisible(false);
     jovianDerotationSettings->setVisible(false);
@@ -736,8 +760,14 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
   }
   else {
 
-    switch ( options_->registration_method = frameRegistrationMethod_ctl->currentItem() ) {
+    c_frame_registration_options & registration_options =
+        options_->frame_registration_options();
+
+    switch ( registration_options.registration_method = frameRegistrationMethod_ctl->currentItem() ) {
     case frame_registration_method_surf :
+      masterFrame_ctl->setVisible(true);
+      accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
+      alignedFramesProcessor_ctl->setVisible(true);
       frameRegistrationBaseSettings->setVisible(true);
       featureBasedRegistrationSettings->setVisible(true);
       planetaryDiskRegistrationSettings->setVisible(false);
@@ -745,6 +775,9 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       starFieldRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_planetary_disk :
+      masterFrame_ctl->setVisible(true);
+      accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
+      alignedFramesProcessor_ctl->setVisible(true);
       frameRegistrationBaseSettings->setVisible(true);
       featureBasedRegistrationSettings->setVisible(false);
       planetaryDiskRegistrationSettings->setVisible(true);
@@ -752,6 +785,9 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       starFieldRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_star_field :
+      masterFrame_ctl->setVisible(true);
+      accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
+      alignedFramesProcessor_ctl->setVisible(true);
       frameRegistrationBaseSettings->setVisible(true);
       featureBasedRegistrationSettings->setVisible(false);
       planetaryDiskRegistrationSettings->setVisible(false);
@@ -759,6 +795,9 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       starFieldRegistrationSettings->setVisible(true);
       break;
     case frame_registration_method_jovian_derotate :
+      masterFrame_ctl->setVisible(true);
+      accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
+      alignedFramesProcessor_ctl->setVisible(true);
       frameRegistrationBaseSettings->setVisible(true);
       featureBasedRegistrationSettings->setVisible(false);
       planetaryDiskRegistrationSettings->setVisible(false);
@@ -766,6 +805,9 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       starFieldRegistrationSettings->setVisible(false);
       break;
     case frame_registration_none :
+      masterFrame_ctl->setVisible(false);
+      accumulateAndCompensateTurbulentFlow_ctl->setVisible(false);
+      alignedFramesProcessor_ctl->setVisible(false);
       frameRegistrationBaseSettings->setVisible(false);
       featureBasedRegistrationSettings->setVisible(false);
       planetaryDiskRegistrationSettings->setVisible(false);

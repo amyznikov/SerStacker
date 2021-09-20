@@ -11,6 +11,7 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
+#include "QMasterFrameOptions.h"
 
 QString toString(enum frame_registration_method v);
 enum frame_registration_method fromString(const QString  & s,
@@ -292,20 +293,23 @@ public:
 
   QFrameRegistrationOptions(QWidget * parent = Q_NULLPTR);
 
-  void set_registration_options(c_frame_registration_options * options);
-  const c_frame_registration_options * registration_options() const;
+  void set_stacking_options(const c_image_stacking_options::ptr & options);
+  const c_image_stacking_options::ptr & stacking_options() const;
 
 signals:
   void applyFrameRegistrationOptionsToAllRequested(
       const c_frame_registration_options & options);
+  void applyMasterFrameSettingsToAllRequested(
+      const c_master_frame_options & options);
 
 protected:
   void onupdatecontrols() override;
   void updatemethodspecificpage();
 
 protected:
-  c_frame_registration_options * options_ = Q_NULLPTR;
+  c_image_stacking_options::ptr options_;
   QFrameRegistrationMethodCombo * frameRegistrationMethod_ctl = Q_NULLPTR;
+  QMasterFrameOptions * masterFrame_ctl = Q_NULLPTR;
 
   QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = Q_NULLPTR;
   QImageProcessorSelectionCombo * alignedFramesProcessor_ctl = Q_NULLPTR;

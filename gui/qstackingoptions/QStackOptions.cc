@@ -40,10 +40,6 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
       inputOptions_ctl =
           new QImageStackingInputOptions(this));
 
-  add_expandable_groupbox(form, "* Master Frame Options",
-      masterFrame_ctl =
-          new QMasterFrameOptions(this));
-
   add_expandable_groupbox(form, "* ROI Selection",
       roiSelection_ctl =
           new QROISelectionOptions(this));
@@ -52,14 +48,15 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
       upscaleOptions_ctl =
           new QFrameUpscaleOptions(this));
 
-  add_expandable_groupbox(form, "* Frame Accumulation Options",
-      frameAccumulation_ctl =
-          new QFrameAccumulationOptions(this));
-
   add_expandable_groupbox(form,
       "* Frame Registration Options",
       frameRegistration_ctl =
           new QFrameRegistrationOptions(this));
+
+
+  add_expandable_groupbox(form, "* Frame Accumulation Options",
+      frameAccumulation_ctl =
+          new QFrameAccumulationOptions(this));
 
   add_expandable_groupbox(form,
       "* Output Options",
@@ -73,10 +70,6 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
       this, &ThisClass::stackOptionsChanged);
 
 
-  connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
-      this, &ThisClass::applyMasterFrameOptionsToAllRequested);
-  connect(masterFrame_ctl, &QMasterFrameOptions::parameterChanged,
-      this, &ThisClass::stackOptionsChanged);
 
   connect(roiSelection_ctl, &QROISelectionOptions::applyROISelectionOptionsToAllRequested,
       this, &ThisClass::applyROISelectionOptionsToAllRequested);
@@ -125,11 +118,10 @@ void QStackingSettingsWidget::onupdatecontrols()
 
     stackName_ctl->setText("");
     inputOptions_ctl->set_input_options(nullptr);
-    masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
     roiSelection_ctl->set_roi_selection_options(nullptr);
     upscaleOptions_ctl->set_upscale_options(nullptr);
     frameAccumulation_ctl->set_accumulation_options(nullptr);
-    frameRegistration_ctl->set_registration_options(nullptr);
+    frameRegistration_ctl->set_stacking_options(nullptr);
     outputOptions_ctl->set_stacking_options(nullptr);
 
   }
@@ -137,11 +129,10 @@ void QStackingSettingsWidget::onupdatecontrols()
 
     stackName_ctl->setText(stack_->name().c_str());
     inputOptions_ctl->set_input_options(&stack_->input_options());
-    masterFrame_ctl->set_master_frame_options(&stack_->master_frame_options(), stack_->input_sequence());
     roiSelection_ctl->set_roi_selection_options(&stack_->roi_selection_options());
     upscaleOptions_ctl->set_upscale_options(&stack_->upscale_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
-    frameRegistration_ctl->set_registration_options(&stack_->frame_registration_options());
+    frameRegistration_ctl->set_stacking_options(stack_);
     outputOptions_ctl->set_stacking_options(stack_);
 
     if ( QStackingThread::isRunning() && stack_ == QStackingThread::currentStack() ) {

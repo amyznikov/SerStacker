@@ -282,23 +282,23 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-//  interpolation_ctl =  add_enum_combobox<QEccInterpolatioMethodCombo>(
-//      "Interpolation method:",
-//      [this](ECC_INTERPOLATION_METHOD v) {
-//        if ( options_ && v != options_->interpolation ) {
-//          options_->interpolation = v;
-//          emit parameterChanged();
-//        }
-//      });
-//
-//  border_ctl = add_enum_combobox<QEccBorderModeCombo>(
-//      "Border mode:",
-//      [this](ECC_BORDER_MODE v) {
-//        if ( options_ && v != options_->border_mode ) {
-//          options_->border_mode = v;
-//          emit parameterChanged();
-//        }
-//      });
+  interpolation_ctl =  add_enum_combobox<QEccInterpolatioMethodCombo>(
+      "Interpolation method:",
+      [this](ECC_INTERPOLATION_METHOD v) {
+        if ( options_ && v != options_->interpolation ) {
+          options_->interpolation = v;
+          emit parameterChanged();
+        }
+      });
+
+  border_ctl = add_enum_combobox<QEccBorderModeCombo>(
+      "Border mode:",
+      [this](ECC_BORDER_MODE v) {
+        if ( options_ && v != options_->border_mode ) {
+          options_->border_mode = v;
+          emit parameterChanged();
+        }
+      });
 
 
   enable_ecc_ctl = add_checkbox("Enable ECC",
@@ -354,8 +354,8 @@ void QFrameRegistrationBaseSettings::onupdatecontrols()
 
     reference_channel_ctl->setCurrentItem(options_->registration_channel);
     motion_type_ctl->setCurrentItem(options_->motion_type);
-//    interpolation_ctl->setCurrentItem(options_->interpolation);
-//    border_ctl->setCurrentItem(options_->border_mode);
+    interpolation_ctl->setCurrentItem(options_->interpolation);
+    border_ctl->setCurrentItem(options_->border_mode);
     enable_ecc_ctl->setChecked(options_->enable_ecc);
     enable_eccflow_ctl->setChecked(options_->enable_eccflow);
     feature_scale_ctl->setValue(options_->feature_scale);

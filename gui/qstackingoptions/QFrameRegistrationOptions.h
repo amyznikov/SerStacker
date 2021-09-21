@@ -171,8 +171,8 @@ protected:
 
   QEccMotionTypeCombo * motion_type_ctl = Q_NULLPTR;
   QLineEditBox * feature_scale_ctl = Q_NULLPTR;
-  //QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
-  //QEccBorderModeCombo * border_ctl = Q_NULLPTR;
+  QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
+  QEccBorderModeCombo * border_ctl = Q_NULLPTR;
 
   //  void set_registration_channel(int channel);
   //  int registration_channel() const;

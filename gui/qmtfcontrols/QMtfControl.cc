@@ -36,6 +36,8 @@ static QPixmap getPixmap(const QString & name)
 static QIcon log_scale_icon;
 static QIcon bar_chart_icon;
 static QIcon line_chart_icon;
+static QIcon auto_clip_icon;
+static QIcon auto_mtf_icon;
 
 static const QIcon & selectChartTypeIcon(QHistogramView::ChartType chartType)
 {
@@ -69,6 +71,12 @@ static void intit_mtfcontrols_resources()
   if ( log_scale_icon.isNull() ) {
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_linear_scale), QIcon::Normal, QIcon::Off);
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_log_scale), QIcon::Normal, QIcon::On);
+  }
+  if ( auto_clip_icon.isNull() ) {
+    auto_clip_icon = getIcon(ICON_contrast);
+  }
+  if ( auto_mtf_icon.isNull() ) {
+    auto_mtf_icon = getIcon(ICON_histogram_automtf);
   }
 }
 
@@ -174,23 +182,54 @@ QMtfControl::QMtfControl(QWidget * parent)
   connect(resetMtfAction_, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
-  //
-
-  autoClipAction_ = topToolbar_->addAction(getIcon(ICON_contrast), "Auto Clip");
-  autoClipAction_->setToolTip("Auto clip image range");
-  connect(autoClipAction_, &QAction::triggered,
-      this, &ThisClass::onAutoClipClicked);
-
 
   //
+  autoMtf_ctl = new QToolButton(this);
+  autoMtf_ctl->setIconSize(QSize(16, 16));
+  autoMtf_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  autoMtf_ctl->setCheckable(true);
+  autoMtf_ctl->setText("Auto MTF");
+  autoMtf_ctl->setToolTip("Auto MTF adjustment");
+  topToolbar_->addWidget(autoMtf_ctl);
 
-  autoMtfAction_ = topToolbar_->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
-  autoMtfAction_->setToolTip("Find automatic midtones balance");
-  connect(autoMtfAction_, &QAction::triggered,
-      this, &ThisClass::onFindAutoMidtonesBalanceClicked);
+  connect(autoMtf_ctl, &QToolButton::clicked,
+      this, &ThisClass::onAutoMtfCtrlClicked );
 
-  //
+  autoMtfMenu.addAction(auto_clip_icon,
+      "Auto clip",
+      [this]() {
+        selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
+        onAutoMtfCtrlClicked();
+      });
 
+  autoMtfMenu.addAction(auto_mtf_icon,
+      "Auto Mtf",
+      [this]() {
+        selectedAutoMtfAction_ = AutoMtfAction_AutoMtf;
+        onAutoMtfCtrlClicked();
+      });
+
+  autoMtf_ctl->setPopupMode(QToolButton::MenuButtonPopup);
+  autoMtf_ctl->setMenu(&autoMtfMenu);
+
+
+//  //
+//
+//  autoClipAction_ = topToolbar_->addAction(getIcon(ICON_contrast), "Auto Clip");
+//  autoClipAction_->setToolTip("Auto clip image range");
+//  connect(autoClipAction_, &QAction::triggered,
+//      this, &ThisClass::onAutoClipClicked);
+//
+//
+//  //
+//
+//  autoMtfAction_ = topToolbar_->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
+//  autoMtfAction_->setToolTip("Find automatic midtones balance");
+//  connect(autoMtfAction_, &QAction::triggered,
+//      this, &ThisClass::onFindAutoMidtonesBalanceClicked);
+//
+//  //
+//
 
 
   logScaleSelectionAction_ = topToolbar_->addAction(log_scale_icon, "Log scale");
@@ -241,7 +280,10 @@ QMtfControl::QMtfControl(QWidget * parent)
       [this]() {
         if ( mtf_ && !updatingControls_ ) {
 
-          updatingControls_ = true;
+          const bool wasInUpdatingControls =
+              updatingControls();
+
+          setUpdatingControls(true);
 
           mtf_->set_shadows(mtfSlider_->shadows());
           mtf_->set_highlights(mtfSlider_->highlights());
@@ -251,51 +293,71 @@ QMtfControl::QMtfControl(QWidget * parent)
           spins[SPIN_HIGHLIGHTS]->setValue(mtf_->highlights());
           spins[SPIN_MIDTONES]->setValue(mtf_->midtones());
 
-          updatingControls_ = false;
-
-          emit mtfChanged();
+          setUpdatingControls(wasInUpdatingControls);
+          if ( !wasInUpdatingControls ) {
+            emit mtfChanged();
+          }
         }
       });
 
   connect(spins[SPIN_SHADOWS], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if (  mtf_ && !updatingControls_ && v != mtf_->shadows() ) {
-          updatingControls_ = true;
+
+          const bool wasInUpdatingControls =
+              updatingControls();
+
+          setUpdatingControls(true);
 
           mtf_->set_shadows(v);
           mtfSlider_->setShadows(mtf_->shadows());
 
-          updatingControls_ = false;
-          emit mtfChanged();
+          setUpdatingControls(wasInUpdatingControls);
+          if ( !wasInUpdatingControls ) {
+            emit mtfChanged();
+          }
         }
       });
 
   connect(spins[SPIN_HIGHLIGHTS], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( mtf_ && !updatingControls_ && v != mtf_->highlights() ) {
-          updatingControls_ = true;
+
+          const bool wasInUpdatingControls =
+              updatingControls();
+
+          setUpdatingControls(true);
 
           mtf_->set_highlights(v);
           mtfSlider_->setHighlights(mtf_->highlights());
 
-          updatingControls_ = false;
-          emit mtfChanged();
+          setUpdatingControls(wasInUpdatingControls);
+          if ( !wasInUpdatingControls ) {
+            emit mtfChanged();
+          }
         }
       });
 
   connect(spins[SPIN_MIDTONES], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( mtf_ && !updatingControls_ && v != mtf_->midtones() ) {
-          updatingControls_ = true;
+
+          const bool wasInUpdatingControls =
+              updatingControls();
+
+          setUpdatingControls(true);
 
           mtf_->set_midtones(v);
           mtfSlider_->setMidtones(mtf_->midtones());
 
-          updatingControls_ = false;
-          emit mtfChanged();
+          setUpdatingControls(wasInUpdatingControls);
+          if ( !wasInUpdatingControls ) {
+            emit mtfChanged();
+          }
         }
       });
 
+  updateControls();
 }
 
 
@@ -310,6 +372,16 @@ const c_pixinsight_midtones_transfer_function::ptr & QMtfControl::mtf() const
   return this->mtf_;
 }
 
+bool QMtfControl::updatingControls() const
+{
+  return updatingControls_;
+}
+
+void QMtfControl::setUpdatingControls(bool v)
+{
+  updatingControls_ = v;
+}
+
 
 void QMtfControl::updateControls()
 {
@@ -318,15 +390,37 @@ void QMtfControl::updateControls()
   }
   else {
 
-    updatingControls_ = true;
+    const bool wasInUpdatingControls =
+        updatingControls();
+
+    setUpdatingControls(true);
 
     mtfSlider_->setup(mtf_->shadows(), mtf_->highlights(), mtf_->midtones());
+
     spins[SPIN_SHADOWS]->setValue(mtf_->shadows());
     spins[SPIN_HIGHLIGHTS]->setValue(mtf_->highlights());
     spins[SPIN_MIDTONES]->setValue(mtf_->midtones());
     logScaleSelectionAction_->setChecked(levelsView_->logScale());
 
-    updatingControls_ = false;
+    const bool autoMtfChecked =
+        autoMtf_ctl->isChecked();
+
+    spins[SPIN_SHADOWS]->setEnabled(!autoMtfChecked);
+    spins[SPIN_HIGHLIGHTS]->setEnabled(!autoMtfChecked);
+    spins[SPIN_MIDTONES]->setEnabled(!autoMtfChecked);
+    mtfSlider_->setEnabled(!autoMtfChecked);
+
+    switch ( selectedAutoMtfAction_ ) {
+    case AutoMtfAction_AutoMtf :
+      autoMtf_ctl->setIcon(auto_mtf_icon);
+      break;
+    case AutoMtfAction_AutoClip :
+      default :
+      autoMtf_ctl->setIcon(auto_clip_icon);
+      break;
+    }
+
+    setUpdatingControls(wasInUpdatingControls);
 
     setEnabled(true);
   }
@@ -337,6 +431,7 @@ void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask)
 {
   inputImage_ = image.getMat();
   inputMask_ = mask.getMat();
+  onAutoMtfCtrlClicked();
 }
 
 void QMtfControl::setOutputImage(cv::InputArray image, cv::InputArray mask)
@@ -349,16 +444,58 @@ void QMtfControl::onResetMtfClicked()
 {
   QWaitCursor wait(this);
 
+  const bool wasInUpdatingControls =
+      updatingControls();
+
+  setUpdatingControls(true);
+
   mtf_->set_shadows(0);
   mtf_->set_highlights(1);
   mtf_->set_midtones(0.5);
 
   updateControls();
-  emit mtfChanged();
+
+  setUpdatingControls(wasInUpdatingControls);
+  if ( !wasInUpdatingControls ) {
+    emit mtfChanged();
+  }
 }
 
 
-void QMtfControl::onAutoClipClicked()
+bool QMtfControl::isAutoMtfActionEnabled() const
+{
+  return autoMtf_ctl && autoMtf_ctl->isChecked();
+}
+
+
+
+void QMtfControl::onAutoMtfCtrlClicked()
+{
+  if ( autoMtf_ctl->isChecked() ) {
+
+    switch ( selectedAutoMtfAction_ ) {
+    case AutoMtfAction_AutoMtf :
+      findAutoMidtonesBalance();
+      break;
+
+    case AutoMtfAction_AutoClip :
+      default :
+      findAutoHistogramClips();
+      break;
+    }
+  }
+
+  updateControls();
+
+  if ( !updatingControls() ) {
+    emit mtfChanged();
+  }
+
+}
+
+
+
+void QMtfControl::findAutoHistogramClips()
 {
   if( !inputImage_.empty() ) {
 
@@ -374,12 +511,15 @@ void QMtfControl::onAutoClipClicked()
     mtf_->set_highlights((hmax - minval) / (maxval - minval));
     mtf_->set_midtones(0.5);
 
-    updateControls();
-    emit mtfChanged();
+    //updateControls();
+
+    if ( !updatingControls() ) {
+      emit mtfChanged();
+    }
   }
 }
 
-void QMtfControl::onFindAutoMidtonesBalanceClicked()
+void QMtfControl::findAutoMidtonesBalance()
 {
   if ( mtf_ && !inputImage_.empty() ) {
 
@@ -393,8 +533,12 @@ void QMtfControl::onFindAutoMidtonesBalanceClicked()
     }
     else {
       mtf_->find_midtones_balance(H);
-      updateControls();
-      emit mtfChanged();
+
+      //updateControls();
+
+      if ( !updatingControls() ) {
+        emit mtfChanged();
+      }
     }
   }
 }

@@ -28,29 +28,44 @@ public:
   void setInputImage(cv::InputArray image, cv::InputArray mask);
   void setOutputImage(cv::InputArray image, cv::InputArray mask);
 
+  bool isAutoMtfActionEnabled() const;
+
+  bool updatingControls() const;
+  void setUpdatingControls(bool v) ;
+
 signals:
   void mtfChanged();
 
 protected slots:
   void updateControls();
   void onResetMtfClicked();
-  void onAutoClipClicked();
-  void onFindAutoMidtonesBalanceClicked();
+  void onAutoMtfCtrlClicked();
   void onChartTypeSelectorClicked();
   void onDisplayChannelComboCurrentIndexChanged(int);
 
+protected:
+  void findAutoHistogramClips();
+  void findAutoMidtonesBalance();
 
 
 protected:
   c_pixinsight_midtones_transfer_function::ptr mtf_;
 
+  enum AutoMtfAction {
+    AutoMtfAction_AutoClip = 0,
+    AutoMtfAction_AutoMtf = 1,
+  } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
+
+
   QVBoxLayout * vbox_ = Q_NULLPTR;
   QToolBar * topToolbar_ = Q_NULLPTR;
   QComboBox * displayChannel_ctl = Q_NULLPTR;
 
+
   QAction * resetMtfAction_ = Q_NULLPTR;
-  QAction * autoClipAction_ = Q_NULLPTR;
-  QAction * autoMtfAction_ = Q_NULLPTR;
+  QToolButton * autoMtf_ctl = Q_NULLPTR;
+  QMenu autoMtfMenu;
+
   QAction * logScaleSelectionAction_ = Q_NULLPTR;
   QToolButton * chartTypeSelectorButton_ = Q_NULLPTR;
 

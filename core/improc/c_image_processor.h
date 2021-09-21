@@ -23,6 +23,11 @@ public:
   typedef std::shared_ptr<this_class> ptr;
   typedef std::function<this_class::ptr()> factory;
 
+  typedef std::function<void(this_class *,
+      cv::InputOutputArray image,
+      cv::InputOutputArray mask)>
+  notify_callback;
+
   struct class_factory
   {
     std::string class_name;
@@ -92,6 +97,37 @@ public:
     return enabled_;
   }
 
+  void set_preprocess_notify_callback(const notify_callback & preprocess_notify)
+  {
+    preprocess_notify_ = preprocess_notify;
+  }
+
+  const notify_callback & preprocess_notify_callback() const
+  {
+    return preprocess_notify_;
+  }
+
+  void set_postprocess_notify_callback(const notify_callback & postprocess_notify)
+  {
+    postprocess_notify_ = postprocess_notify;
+  }
+
+  const notify_callback & postprocess_notify_callback() const
+  {
+    return postprocess_notify_;
+  }
+
+  void emit_preprocess_notify(cv::InputOutputArray image, cv::InputOutputArray mask) {
+    if ( preprocess_notify_ ) {
+      preprocess_notify_(this, image, mask);
+    }
+  }
+
+  void emit_postprocess_notify(cv::InputOutputArray image, cv::InputOutputArray mask) {
+    if ( postprocess_notify_ ) {
+      postprocess_notify_(this, image, mask);
+    }
+  }
 
   virtual bool process(cv::InputOutputArray image,
       cv::InputOutputArray mask = cv::noArray()) = 0;
@@ -105,6 +141,8 @@ protected:
 
 protected:
   const class_factory * const class_factory_;
+  notify_callback preprocess_notify_;
+  notify_callback postprocess_notify_;
   bool enabled_;
 };
 

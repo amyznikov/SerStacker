@@ -308,11 +308,16 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
       }
 
       try {
+
+        processor->emit_preprocess_notify(image, mask);
+
         if ( !processor->process(image, mask) ) {
 
           CF_ERROR("[%s] processor->process() fails",
               processor->class_name().c_str());
         }
+
+        processor->emit_postprocess_notify(image, mask);
       }
 
       catch( const cv::Exception &e ) {

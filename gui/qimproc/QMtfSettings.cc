@@ -16,8 +16,15 @@ QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent)
 
   updateControls();
 
+//  connect(mtf_ctl, &QMtfControl::mtfChanged,
+//      this, &ThisClass::parameterChanged);
+
   connect(mtf_ctl, &QMtfControl::mtfChanged,
-      this, &ThisClass::parameterChanged);
+      [this]() {
+        if ( routine_ && routine_->enabled() ) {
+          emit parameterChanged();
+        }
+      });
 }
 
 void QMtfSettings::onupdatecontrols()

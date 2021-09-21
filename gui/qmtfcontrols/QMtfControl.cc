@@ -214,6 +214,7 @@ QMtfControl::QMtfControl(QWidget * parent)
 
   for ( int i = 0; i < 3; ++i ) {
     bottomToolbar_->addWidget(spins[i] = new QDoubleSpinBox());
+    spins[i]->setKeyboardTracking(false);
     spins[i]->setRange(0, 1);
     spins[i]->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
     spins[i]->setDecimals(3);
@@ -260,8 +261,8 @@ QMtfControl::QMtfControl(QWidget * parent)
       [this](double v) {
         if (  mtf_ && !updatingControls_ && v != mtf_->shadows() ) {
           updatingControls_ = true;
-          mtf_->set_shadows(v);
 
+          mtf_->set_shadows(v);
           mtfSlider_->setShadows(mtf_->shadows());
 
           updatingControls_ = false;
@@ -273,8 +274,8 @@ QMtfControl::QMtfControl(QWidget * parent)
       [this](double v) {
         if ( mtf_ && !updatingControls_ && v != mtf_->highlights() ) {
           updatingControls_ = true;
-          mtf_->set_highlights(v);
 
+          mtf_->set_highlights(v);
           mtfSlider_->setHighlights(mtf_->highlights());
 
           updatingControls_ = false;
@@ -286,8 +287,8 @@ QMtfControl::QMtfControl(QWidget * parent)
       [this](double v) {
         if ( mtf_ && !updatingControls_ && v != mtf_->midtones() ) {
           updatingControls_ = true;
-          mtf_->set_midtones(v);
 
+          mtf_->set_midtones(v);
           mtfSlider_->setMidtones(mtf_->midtones());
 
           updatingControls_ = false;

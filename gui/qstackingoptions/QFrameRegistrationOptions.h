@@ -298,9 +298,7 @@ public:
 
 signals:
   void applyFrameRegistrationOptionsToAllRequested(
-      const c_frame_registration_options & options);
-  void applyMasterFrameSettingsToAllRequested(
-      const c_master_frame_options & options);
+      const c_image_stacking_options::ptr & stack);
 
 protected:
   void onupdatecontrols() override;

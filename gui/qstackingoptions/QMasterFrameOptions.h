@@ -28,7 +28,7 @@ public:
   const c_input_sequence::ptr & input_sequence() const;
 
 signals:
-  void applyMasterFrameSettingsToAllRequested(const c_master_frame_options & options);
+  //void applyMasterFrameSettingsToAllRequested(const c_master_frame_options & options);
 
 protected:
   void onupdatecontrols() override;
@@ -66,7 +66,7 @@ protected:
   //QCheckBox * compensateMasterFlow_ctl = Q_NULLPTR;
   QCheckBox * saveMasterFrame_ctl = Q_NULLPTR;
 
-  QToolButton * applyToAll_ctl = Q_NULLPTR;
+  //QToolButton * applyToAll_ctl = Q_NULLPTR;
   int previousComboboxItemIndex = -1;
 
 };

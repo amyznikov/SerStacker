@@ -654,8 +654,8 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   connect(frameRegistrationBaseSettings, &QFrameRegistrationBaseSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
-      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
+//  connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
+//      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
 
 
   applyToAll_ctl = new QToolButton(this);
@@ -667,7 +667,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   connect(applyToAll_ctl, &QToolButton::clicked,
       [this]() {
         if ( options_ ) {
-          emit applyFrameRegistrationOptionsToAllRequested(options_->frame_registration_options());
+          emit applyFrameRegistrationOptionsToAllRequested(options_);
         }
       });
 

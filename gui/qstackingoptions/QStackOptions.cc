@@ -219,17 +219,17 @@ QStackOptions::QStackOptions(QWidget * parent)
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyInputOptionsToAllRequested,
       this, &ThisClass::applyInputOptionsToAllRequested);
 
-  connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameOptionsToAllRequested,
-      this, &ThisClass::applyMasterFrameOptionsToAllRequested);
-
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyROISelectionOptionsToAllRequested,
       this, &ThisClass::applyROISelectionOptionsToAllRequested);
 
-  connect(stackSettings_ctl, &QStackingSettingsWidget::applyFrameAccumulationOptionsToAllRequested,
-      this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
-
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyFrameRegistrationOptionsToAllRequested,
       this, &ThisClass::applyFrameRegistrationOptionsToAllRequested);
+
+//  connect(stackSettings_ctl, &QStackingSettingsWidget::applyMasterFrameOptionsToAllRequested,
+//      this, &ThisClass::applyMasterFrameOptionsToAllRequested);
+
+  connect(stackSettings_ctl, &QStackingSettingsWidget::applyFrameAccumulationOptionsToAllRequested,
+      this, &ThisClass::applyFrameAccumulationOptionsToAllRequested);
 
   connect(stackSettings_ctl, &QStackingSettingsWidget::applyOutputOptionsToAllRequested,
       this, &ThisClass::applyOutputOptionsToAllRequested);

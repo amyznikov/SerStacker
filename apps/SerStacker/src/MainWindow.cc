@@ -239,8 +239,8 @@ MainWindow::MainWindow()
   connect(stackOptionsView, &QStackOptions::applyInputOptionsToAllRequested,
       stackTreeView, & QStackTree::applyInputOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyMasterFrameOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyMasterFrameOptionsToAll);
+//  connect(stackOptionsView, &QStackOptions::applyMasterFrameOptionsToAllRequested,
+//      stackTreeView, & QStackTree::applyMasterFrameOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
       stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
@@ -248,11 +248,11 @@ MainWindow::MainWindow()
   connect(stackOptionsView, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
       stackTreeView, &QStackTree::applyFrameUpscaleOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyFrameAccumulationOptionsToAll);
-
   connect(stackOptionsView, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
       stackTreeView, & QStackTree::applyFrameRegistrationOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
+      stackTreeView, & QStackTree::applyFrameAccumulationOptionsToAll);
 
   connect(stackOptionsView, &QStackOptions::applyOutputOptionsToAllRequested,
       stackTreeView, & QStackTree::applyOutputOptionsToAll);
@@ -905,17 +905,22 @@ void MainWindow::onStackingThreadStarted()
 
 void MainWindow::onStackingThreadFinished()
 {
-  if( stackProgressView ) {
+  if ( stackProgressView ) {
 
     // it may be that there is next task in queue,
     // don't blink with this dialog box
     QTimer::singleShot(500,
         [this]() {
-          if ( stackProgressView->isVisible() && !QStackingThread::isRunning() ) {
-            stackProgressView->hide();
+
+          if ( !QStackingThread::isRunning() ) {
+            if ( stackProgressView->isVisible() ) {
+              stackProgressView->hide();
+            }
+            if ( stackOptionsView->isVisible() ) {
+              stackOptionsView->setEnabled(true);
+            }
           }
         });
-
   }
 }
 

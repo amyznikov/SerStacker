@@ -1185,44 +1185,44 @@ void QStackTree::applyInputOptionsToAll(const c_input_options & options)
 
 }
 
-void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & options)
-{
-  bool hasUpdates = false;
-
-  const int n = treeView_->topLevelItemCount();
-
-  for ( int i = 0; i < n; ++i ) {
-
-    QStackTreeView::QStackItem * stackItem =
-        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
-
-    if ( !stackItem || !stackItem->isSelected() ) {
-      continue;
-    }
-
-    const c_image_stacking_options::ptr & stack = stackItem->stack();
-    if ( !stack || &stack->master_frame_options() == &options ) {
-      continue;
-    }
-
-    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
-      continue;
-    }
-
-    // copy here
-    hasUpdates = true;
-    const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
-    const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
-    stack->master_frame_options() = options;
-    stack->master_frame_options().master_source_path = backup_master_source_path;
-    stack->master_frame_options().master_frame_index = backup_master_frame_index;
- }
-
-  if ( hasUpdates ) {
-    emit stackCollectionChanged();
-  }
-
-}
+//void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & options)
+//{
+//  bool hasUpdates = false;
+//
+//  const int n = treeView_->topLevelItemCount();
+//
+//  for ( int i = 0; i < n; ++i ) {
+//
+//    QStackTreeView::QStackItem * stackItem =
+//        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
+//
+//    if ( !stackItem || !stackItem->isSelected() ) {
+//      continue;
+//    }
+//
+//    const c_image_stacking_options::ptr & stack = stackItem->stack();
+//    if ( !stack || &stack->master_frame_options() == &options ) {
+//      continue;
+//    }
+//
+//    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
+//      continue;
+//    }
+//
+//    // copy here
+//    hasUpdates = true;
+//    const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
+//    const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
+//    stack->master_frame_options() = options;
+//    stack->master_frame_options().master_source_path = backup_master_source_path;
+//    stack->master_frame_options().master_frame_index = backup_master_frame_index;
+// }
+//
+//  if ( hasUpdates ) {
+//    emit stackCollectionChanged();
+//  }
+//
+//}
 
 void QStackTree::applyROISelectionOptionsToAll(const c_roi_selection_options & options)
 {
@@ -1327,7 +1327,7 @@ void QStackTree::applyFrameAccumulationOptionsToAll(const c_frame_accumulation_o
 
 }
 
-void QStackTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_options & options)
+void QStackTree::applyFrameRegistrationOptionsToAll(const c_image_stacking_options::ptr & stack)
 {
   bool hasUpdates = false;
 
@@ -1341,8 +1341,8 @@ void QStackTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_o
       continue;
     }
 
-    const c_image_stacking_options::ptr & stack = stackItem->stack();
-    if ( !stack || &stack->frame_registration_options() == &options ) {
+    const c_image_stacking_options::ptr & current_stack = stackItem->stack();
+    if ( !current_stack || current_stack == stack ) {
       continue;
     }
 
@@ -1352,7 +1352,15 @@ void QStackTree::applyFrameRegistrationOptionsToAll(const c_frame_registration_o
 
     // copy here
     hasUpdates = true;
-    stack->frame_registration_options() = options;
+
+    current_stack->frame_registration_options() = stack->frame_registration_options();
+
+    const std::string backup_master_source_path = current_stack->master_frame_options().master_source_path;
+    const int backup_master_frame_index = current_stack->master_frame_options().master_frame_index;
+    current_stack->master_frame_options() = stack->master_frame_options();
+    current_stack->master_frame_options().master_source_path = backup_master_source_path;
+    current_stack->master_frame_options().master_frame_index = backup_master_frame_index;
+
   }
 
   if ( hasUpdates ) {

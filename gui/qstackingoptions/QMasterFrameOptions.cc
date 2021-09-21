@@ -82,18 +82,18 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
 
 
 
-  applyToAll_ctl = new QToolButton(this);
-  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  applyToAll_ctl->setIconSize(QSize(16,16));
-  applyToAll_ctl->setStyleSheet(borderless_style);
-  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-  connect(applyToAll_ctl, &QToolButton::clicked,
-      [this]() {
-        if ( options_ ) {
-          emit applyMasterFrameSettingsToAllRequested(*options_);
-        }
-      });
+//  applyToAll_ctl = new QToolButton(this);
+//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//  applyToAll_ctl->setIconSize(QSize(16,16));
+//  applyToAll_ctl->setStyleSheet(borderless_style);
+//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
+//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
+//  connect(applyToAll_ctl, &QToolButton::clicked,
+//      [this]() {
+//        if ( options_ ) {
+//          emit applyMasterFrameSettingsToAllRequested(*options_);
+//        }
+//      });
 
 
   form->addRow("Master file:", masterSource_ctl);
@@ -109,7 +109,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   //form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
   form->addRow("Save Master Frame", saveMasterFrame_ctl);
 
-  form->addRow(applyToAll_ctl);
+  //form->addRow(applyToAll_ctl);
 
 
   setEnabled(false);

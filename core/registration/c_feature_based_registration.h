@@ -51,7 +51,7 @@ public: // parameters
   c_feature_based_registration_options & options();
   const c_feature_based_registration_options & options() const;
 
-protected: // overrides
+public: // overrides, made public for debug & non-regular usage
   virtual cv::Ptr<cv::Feature2D> create_keypoints_detector() const;
 
   bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
@@ -64,10 +64,18 @@ protected: // overrides
   bool extract_reference_features(cv::InputArray reference_feature_image,
       cv::InputArray reference_feature_mask) override;
 
+  bool detect_and_match_keypoints(cv::InputArray current_feature_image,
+      cv::InputArray current_feature_mask,
+      std::vector<cv::Point2f> & output_matched_current_positions,
+      std::vector<cv::Point2f> & output_matched_reference_positions,
+      std::vector<cv::KeyPoint> * current_keypoints = nullptr,
+      cv::Mat * current_descriptors = nullptr,
+      std::vector<cv::DMatch> * current_matches = nullptr,
+      std::vector<std::vector<cv::DMatch> > * current_matches12 = nullptr ) const;
+
   bool estimate_feature_transform(cv::InputArray current_feature_image,
       cv::InputArray current_feature_mask,
       cv::Mat1f * current_transform) override;
-
 
 
 protected: // use create() instead

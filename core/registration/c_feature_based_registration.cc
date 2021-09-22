@@ -209,26 +209,60 @@ bool c_feature_based_registration::create_ecc_image(cv::InputArray src, cv::Inpu
   return base::create_ecc_image(src, srcmsk, dst, dstmsk, scale);
 }
 
-bool c_feature_based_registration::estimate_feature_transform(cv::InputArray current_feature_image,
+bool c_feature_based_registration::detect_and_match_keypoints(
+    cv::InputArray current_feature_image,
     cv::InputArray current_feature_mask,
-    cv::Mat1f * current_transform)
+
+    std::vector<cv::Point2f> & output_matched_current_positions,
+    std::vector<cv::Point2f> & output_matched_reference_positions,
+
+    std::vector<cv::KeyPoint> * _current_keypoints,
+    cv::Mat * _current_descriptors,
+    std::vector<cv::DMatch> * _current_matches,
+    std::vector<std::vector<cv::DMatch> > * _current_matches12) const
 {
+
+  std::vector<cv::KeyPoint> local_current_keypoints;
+  cv::Mat local_current_descriptors;
+  std::vector<cv::DMatch> local_current_matches;
+  std::vector<std::vector<cv::DMatch> > local_current_matches12;
+
+  std::vector<cv::KeyPoint> & current_keypoints =
+      _current_keypoints ?
+          *_current_keypoints :
+          local_current_keypoints;
+
+  cv::Mat & current_descriptors =
+      _current_descriptors ?
+          *_current_descriptors :
+          local_current_descriptors;
+
+  std::vector<cv::DMatch> & current_matches =
+      _current_matches ?
+          *_current_matches :
+          local_current_matches;
+
+  std::vector<std::vector<cv::DMatch> > & current_matches12 =
+      _current_matches12 ?
+          *_current_matches12 :
+          local_current_matches12;
+
   keypoints_detector_->detectAndCompute(current_feature_image, current_feature_mask,
-      current_keypoints_, current_descriptors_);
+      current_keypoints, current_descriptors);
 
-  CF_DEBUG("current_keypoints_.size()=%zu",
-      current_keypoints_.size());
+  CF_DEBUG("current_keypoints.size()=%zu",
+      current_keypoints.size());
 
-  if ( current_keypoints_.size() < 3 ) {
-    CF_ERROR("Too few current key points detected : %zu", current_keypoints_.size());
+  if ( current_keypoints.size() < 3 ) {
+    CF_ERROR("Too few current key points detected : %zu", current_keypoints.size());
     return false;
   }
 
   static constexpr double lowe_ratio = 0.8;
 
-  current_matches_.clear(), current_matches12_.clear();
+  current_matches.clear(), current_matches12.clear();
   if ( lowe_ratio <= 0 ) {
-    keypoints_matcher_->match(current_descriptors_, current_matches_);
+    keypoints_matcher_->match(current_descriptors, current_matches);
   }
   else {
 
@@ -245,20 +279,89 @@ bool c_feature_based_registration::estimate_feature_transform(cv::InputArray cur
         };
 
 
-    keypoints_matcher_->knnMatch(current_descriptors_, current_matches12_, 2);
-    lowe_ratio_test(current_matches12_, &current_matches_, lowe_ratio);
+    keypoints_matcher_->knnMatch(current_descriptors, current_matches12, 2);
+    lowe_ratio_test(current_matches12, &current_matches, lowe_ratio);
   }
 
-  CF_DEBUG("current_matches_.size()=%zu",
-      current_matches_.size());
+  CF_DEBUG("current_matches.size()=%zu",
+      current_matches.size());
 
-  extract_matched_positions(current_keypoints_, reference_keypoints_, current_matches_,
-      &matched_current_positions_, &matched_reference_positions_);
+  extract_matched_positions(current_keypoints, reference_keypoints_, current_matches,
+      &output_matched_current_positions, &output_matched_reference_positions);
 
-  if ( current_matches_.size() < 1 ) {
-    CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+  if ( current_matches.size() < 1 ) {
+    CF_ERROR("No key points matches found");
     return false;
   }
+
+  return true;
+}
+
+bool c_feature_based_registration::estimate_feature_transform(cv::InputArray current_feature_image,
+    cv::InputArray current_feature_mask,
+    cv::Mat1f * current_transform)
+{
+//  keypoints_detector_->detectAndCompute(current_feature_image, current_feature_mask,
+//      current_keypoints_, current_descriptors_);
+//
+//  CF_DEBUG("current_keypoints_.size()=%zu",
+//      current_keypoints_.size());
+//
+//  if ( current_keypoints_.size() < 3 ) {
+//    CF_ERROR("Too few current key points detected : %zu", current_keypoints_.size());
+//    return false;
+//  }
+//
+//  static constexpr double lowe_ratio = 0.8;
+//
+//  current_matches_.clear(), current_matches12_.clear();
+//  if ( lowe_ratio <= 0 ) {
+//    keypoints_matcher_->match(current_descriptors_, current_matches_);
+//  }
+//  else {
+//
+//    // David Lowe ratio test nearest/second nearest < ratio
+//    static const auto lowe_ratio_test =
+//        [](const std::vector<std::vector<cv::DMatch>> & matches12,
+//            std::vector<cv::DMatch> * good_matches,
+//            double lowe_ratio = 0.8)
+//        {
+//          for ( const std::vector<cv::DMatch> & m : matches12 ) {
+//            if ( m.size() == 1 || (m.size() == 2 && m[0].distance < lowe_ratio * m[1].distance) )
+//            good_matches->emplace_back(m[0]);
+//          }
+//        };
+//
+//
+//    keypoints_matcher_->knnMatch(current_descriptors_, current_matches12_, 2);
+//    lowe_ratio_test(current_matches12_, &current_matches_, lowe_ratio);
+//  }
+//
+//  CF_DEBUG("current_matches_.size()=%zu",
+//      current_matches_.size());
+//
+//  extract_matched_positions(current_keypoints_, reference_keypoints_, current_matches_,
+//      &matched_current_positions_, &matched_reference_positions_);
+//
+//  if ( current_matches_.size() < 1 ) {
+//    CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+//    return false;
+//  }
+
+  /////////////////
+  bool fOk =
+      detect_and_match_keypoints(current_feature_image, current_feature_mask,
+          matched_current_positions_, matched_reference_positions_,
+          &current_keypoints_, &current_descriptors_,
+          &current_matches_, &current_matches12_);
+
+  if ( !fOk ) {
+    CF_ERROR("detect_and_match_keypoints() fails");
+    return false;
+  }
+
+
+  ///////////////
 
   switch ( motion_type() ) {
   case ECC_MOTION_TRANSLATION :

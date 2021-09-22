@@ -42,7 +42,8 @@ include_directories(
     ${APP_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME}
-	${APP_LIBRARIES})
+	${APP_LIBRARIES}
+    levmar)
 
 add_custom_target(uninstall-${PROJECT_NAME}
 	xargs rm -vf < ${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt)

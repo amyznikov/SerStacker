@@ -233,7 +233,11 @@ protected:
   void onupdatecontrols() override;
 
 protected:
+  void construct();
+
+protected:
   c_planetary_disk_registration_options * planetary_disk_options_ = Q_NULLPTR;
+  QCheckBox * align_planetary_disk_masks_ctl = Q_NULLPTR;
 };
 
 class QJovianDerotationSettings

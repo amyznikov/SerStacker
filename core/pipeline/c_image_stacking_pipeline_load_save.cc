@@ -392,6 +392,9 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "input_smooth_sigma", base_options.eccflow.input_smooth_sigma);
   save_settings(group, "reference_smooth_sigma", base_options.eccflow.reference_smooth_sigma);
 
+  group = settings.add_group("planetary_disk");
+  save_settings(group, "align_planetary_disk_masks", planetary_disk_options.align_planetary_disk_masks);
+
   group = settings.add_group("jovian_derotation");
   save_settings(group, "min_rotation", jovian_derotation_options.min_rotation);
   save_settings(group, "max_rotation", jovian_derotation_options.max_rotation);
@@ -453,6 +456,11 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     load_settings(group, "input_smooth_sigma", &base_options.eccflow.input_smooth_sigma);
     load_settings(group, "reference_smooth_sigma", &base_options.eccflow.reference_smooth_sigma);
   }
+
+  if ( (group = settings["planetary_disk"]).isGroup() ) {
+    load_settings(group, "align_planetary_disk_masks", &planetary_disk_options.align_planetary_disk_masks);
+  }
+
 
   if ( (group = settings["jovian_derotation"]).isGroup() ) {
     load_settings(group, "min_rotation", &jovian_derotation_options.min_rotation);

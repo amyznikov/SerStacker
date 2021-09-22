@@ -452,11 +452,28 @@ void QFeatureBasedRegistrationSettings::onupdatecontrols()
 QPlanetaryDiskRegistrationSettings::QPlanetaryDiskRegistrationSettings(QWidget * parent) :
     Base("QPlanetaryDiskRegistrationSettings", parent)
 {
+  construct();
 }
 
 QPlanetaryDiskRegistrationSettings::QPlanetaryDiskRegistrationSettings(const QString & prefix, QWidget * parent)
   : Base(prefix, parent)
 {
+  construct();
+}
+
+void QPlanetaryDiskRegistrationSettings::construct()
+{
+  align_planetary_disk_masks_ctl =
+      add_checkbox("Align Planetary Disk masks instead of images",
+          [this](int state) {
+            if ( planetary_disk_options_ ) {
+              const bool checked = state == Qt::Checked;
+              if ( planetary_disk_options_->align_planetary_disk_masks != checked ) {
+                planetary_disk_options_->align_planetary_disk_masks = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 }
 
 void QPlanetaryDiskRegistrationSettings::set_planetary_disk_options(c_planetary_disk_registration_options * options)
@@ -476,6 +493,10 @@ void QPlanetaryDiskRegistrationSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
+
+    align_planetary_disk_masks_ctl->setChecked(
+        planetary_disk_options_->align_planetary_disk_masks);
+
     setEnabled(true);
   }
 }

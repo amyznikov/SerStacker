@@ -190,7 +190,11 @@ protected: // specs
       cv::OutputArray dst, cv::OutputArray dstmsk,
       double scale) const;
 
-  virtual bool create_eccflow_image(cv::InputArray src, cv::InputArray srcmsk,
+  virtual bool create_reference_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
+      cv::OutputArray dst, cv::OutputArray dstmsk,
+      double scale) const;
+
+  virtual bool create_current_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk,
       double scale) const;
 

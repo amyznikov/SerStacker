@@ -168,7 +168,7 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
     pdbg = &debug_image;
   }
 
-  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask, pdbg) ) {
+  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask, nullptr, pdbg) ) {
     CF_ERROR("simple_small_planetary_disk_detector() fails");
     if ( !dbgpath.empty() ) {
       save_image(debug_image, ssprintf("%s/component_debug_image.tiff", dbgpath.c_str()) );

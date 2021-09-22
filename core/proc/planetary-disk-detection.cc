@@ -14,7 +14,7 @@
 
 using namespace cv;
 
-static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv::Mat * cmponent_mask)
+static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv::Mat * cmponent_mask, cv::Point2f * geometrical_center)
 {
   Mat1i labels, stats;
   Mat1d centroids;
@@ -58,6 +58,28 @@ static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv
     cv::compare(labels, cstats[0].label, *cmponent_mask, cv::CMP_EQ);
   }
 
+  if ( geometrical_center ) {
+
+    geometrical_center->x = 0;
+    geometrical_center->y = 0;
+    int n = 0;
+
+    for ( int y = 0; y < rc->height; ++y ) {
+      for ( int x = 0; x < rc->width; ++x ) {
+        if ( labels[rc->y + y][rc->x + x] == cstats[0].label ) {
+
+          geometrical_center->x += (rc->x + x);
+          geometrical_center->y = (rc->y + y);
+          ++n;
+        }
+      }
+    }
+
+    geometrical_center->x /= n;
+    geometrical_center->y /= n;
+
+  }
+
   return true;
 }
 
@@ -68,13 +90,13 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     double gbsigma,
     cv::Rect * optional_output_component_rect,
     cv::Mat * optional_output_cmponent_mask,
+    cv::Point2f * optional_output_geometrical_center,
     cv::Mat * optional_output_debug_image)
 {
   Mat src, gray;
   Mat1b comp;
   double noise;
   double threshold;
-  //double gbsigma = 3.0;
 
   Rect rc, rcc;
   Point2f center;
@@ -111,7 +133,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     comp.setTo(0, ~mask.getMat());
   }
 
-  if ( !get_maximal_connected_component(comp, &rc, optional_output_cmponent_mask) ) {
+  if ( !get_maximal_connected_component(comp, &rc, optional_output_cmponent_mask, optional_output_geometrical_center) ) {
     CF_DEBUG("get_maximal_connected_component() fails");
     return false;
   }

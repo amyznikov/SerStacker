@@ -298,17 +298,18 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
   return true;
 }
 
-
-bool c_frame_registration::create_eccflow_image(cv::InputArray src, cv::InputArray srcmsk,
+bool c_frame_registration::create_reference_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
     cv::OutputArray dst, cv::OutputArray dstmsk,
     double scale) const
 {
-  if ( !extract_channel(src, dst, srcmsk, dstmsk, registration_channel(), scale, CV_32F) ) {
-    CF_ERROR("extract_channel(registration_channel_=%d) fails", base_options_.registration_channel);
-    return false;
-  }
+  return create_ecc_image(src, srcmsk, dst, dstmsk, scale);
+}
 
-  return true;
+bool c_frame_registration::create_current_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
+    cv::OutputArray dst, cv::OutputArray dstmsk,
+    double scale) const
+{
+  return create_ecc_image(src, srcmsk, dst, dstmsk, scale);
 }
 
 
@@ -334,19 +335,10 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
   }
 
   if ( enable_ecc() || enable_eccflow() ) {
-    if ( !create_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
+    if ( !create_reference_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
       CF_ERROR("extract_ecc_image(reference_image) fails");
       return false;
     }
-    //    const double sigma =
-    //        base_options_.ecc.reference_smooth_sigma;
-    //
-    //    if ( sigma > 0 ) {
-    //      if ( gaussian_filter_.sigmax() != sigma ) {
-    //        gaussian_filter_ = c_gaussian_filter(sigma, sigma);
-    //      }
-    //      gaussian_filter_.apply(ecc_image, ecc_mask, ecc_image);
-    //    }
   }
 
 
@@ -451,21 +443,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   /////////////////////////////////////////////////////////////////////////////
 
   if ( enable_ecc() || enable_eccflow() ) {
-
-    if ( !create_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
+    if ( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
       CF_ERROR("extract_ecc_image(current_image) fails");
       return false;
     }
-
-    //    const double sigma =
-    //        base_options_.ecc.input_smooth_sigma;
-    //
-    //    if ( sigma > 0 ) {
-    //      if ( gaussian_filter_.sigmax() != sigma ) {
-    //        gaussian_filter_ = c_gaussian_filter(sigma, sigma);
-    //      }
-    //      gaussian_filter_.apply(ecc_image, ecc_mask, ecc_image);
-    //    }
   }
 
 

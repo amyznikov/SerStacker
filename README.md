@@ -10,7 +10,8 @@ Examples of stacked images on my flickr account :
 Examples of raw stacks (saved in TIFF format as 32-bit floats) on my google drive : 
   https://drive.google.com/drive/folders/16Ko6ebfuFToQyXbqewETryaVsAN_rmVS?usp=sharing
 
-
+Jovian derotation+blend quick demo video:
+  https://www.youtube.com/watch?v=ARGoWo2w8YY
 
 ## Build deps
 

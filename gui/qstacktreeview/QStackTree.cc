@@ -1647,13 +1647,46 @@ void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
 
     QTreeWidgetItem * item = contextItems[0];
 
-    if( item->type() == ItemType_Stack ) {
-
+    switch ( item->type() ) {
+    case ItemType_Stack : {
       menu.addAction("Rename...",
           [this, item]() {
             treeView_->editItem(item);
           });
+      break;
     }
+
+    case ItemType_InputSource : {
+
+      menu.addAction("Copy Name",
+          [this, item]() {
+
+            QClipboard * clipboard =
+                QApplication::clipboard();
+
+            if ( clipboard ) {
+              clipboard->setText(item->text(0));
+            }
+          });
+
+
+      menu.addAction("Copy Fuull path name",
+          [this, item]() {
+
+            QClipboard * clipboard =
+                QApplication::clipboard();
+
+            if ( clipboard ) {
+
+              clipboard->setText( ((QStackTreeView::QInputSourceItem*)item)->
+                  inputSource()->cfilename());
+            }
+          });
+
+      break;
+    }
+    }
+
   }
 
   if ( !menu.isEmpty() ) {

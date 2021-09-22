@@ -41,6 +41,11 @@ public:
     return filename_;
   }
 
+  const char * cfilename() const
+  {
+    return filename_.c_str();
+  }
+
   enum source_type type() const
   {
     return type_;

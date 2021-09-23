@@ -38,6 +38,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
 
 
   masterFrameIndex_ctl = new QSpinBox(this);
+  masterFrameIndex_ctl->setKeyboardTracking(false);
   connect(masterFrameIndex_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onSpinBoxValueChanged(int)));
 

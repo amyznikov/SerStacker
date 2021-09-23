@@ -278,7 +278,7 @@ public:
 
   std::string get_displaypatch() const;
 
-
+  bool save(const std::string & cfgfilename) const;
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
 

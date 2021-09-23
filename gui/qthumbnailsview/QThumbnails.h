@@ -15,6 +15,7 @@ QStringList getSupportedThumbnailsExtensions();
 QImage  loadThumbnailImage(const QString & pathFileName, int thumb_size);
 QIcon   loadThumbnailIcon(const QString & pathFileName, int maxSize);
 QPixmap loadThumbnailPixmap(const QString & pathFileName, int maxSize);
+const char ** thumbnail_textfile_suffixes();
 
 
 #endif /* __QThumbnails_h__ */

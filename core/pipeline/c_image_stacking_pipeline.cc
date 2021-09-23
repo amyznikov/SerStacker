@@ -1106,6 +1106,11 @@ bool c_image_stacking_pipeline::actual_run()
       options_->output_options();
 
 
+  options_->save(ssprintf("%s/%s.cfg",
+      output_directory_.c_str(),
+      options_->cname()));
+
+
   /////////////////////////////////////////////////////////////////////////////
   // SETUP FRAME REGISTRATION
 

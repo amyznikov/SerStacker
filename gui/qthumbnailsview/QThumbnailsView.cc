@@ -607,18 +607,36 @@ void QThumbnailsView::extractMissingThumbiails()
     QListWidgetItem * item = listWidget_->item(i);
     if ( !item->data(Qt::UserRole).toBool() ) {
 
-      static const char * textfile_suffixes[] = {
-          ".txt", ".doc", ".md", ".xml", ".html", ".htm", ".rtf", ".tex"
-      };
+      const QString filename =
+          item->whatsThis();
 
-      const QString filename = item->whatsThis();
+      const QString suffix =
+          QFileInfo(filename).suffix();
+
+      const char ** textfiles =
+          thumbnail_textfile_suffixes();
+
       bool is_textfle = false;
-      for ( uint i = 0; i < sizeof(textfile_suffixes)/sizeof(textfile_suffixes[0]); ++i ) {
-        if ( filename.endsWith(textfile_suffixes[i], Qt::CaseInsensitive) ) {
+
+      for( ; *textfiles; ++textfiles ) {
+        if( suffix.compare(*textfiles, Qt::CaseInsensitive) == 0 ) {
           is_textfle = true;
           break;
         }
       }
+
+//      static const char * textfile_suffixes[] = {
+//          ".txt", ".doc", ".md", ".xml", ".html", ".htm", ".rtf", ".tex", ".cfg", ".conf"
+//      };
+//
+//      const QString filename = item->whatsThis();
+//      bool is_textfle = false;
+//      for ( uint i = 0; i < sizeof(textfile_suffixes)/sizeof(textfile_suffixes[0]); ++i ) {
+//        if ( filename.endsWith(textfile_suffixes[i], Qt::CaseInsensitive) ) {
+//          is_textfle = true;
+//          break;
+//        }
+//      }
 
       if ( is_textfle ){
         item->setIcon(textfile_icon);

@@ -162,6 +162,47 @@ bool c_image_stacks_collection::load(const std::string & cfgfilename)
 
 ///////////////////////////////////////////////////////////////////////////////
 
+bool c_image_stacking_options::save(const std::string & cfgfilename) const
+{
+  if ( cfgfilename.empty() ) {
+    CF_ERROR("c_image_stacking_options: No output file name specified");
+    return false;
+  }
+
+  const std::string filename =
+      expand_path(cfgfilename);
+
+  CF_DEBUG("Saving '%s' ...",
+      filename.c_str());
+
+  c_config cfg(filename);
+
+  time_t t = time(0);
+
+  if ( !save_settings(cfg.root(), "object_class", std::string("c_image_stacking_options")) ) {
+    CF_FATAL("c_image_stacking_options: save_settings(object_class) fails");
+    return false;
+  }
+
+  if ( !save_settings(cfg.root(), "created", asctime(localtime(&t))) ) {
+    CF_FATAL("c_image_stacking_options: save_settings(created) fails");
+    return false;
+  }
+
+  if ( !serialize(cfg.root()) ) {
+    CF_FATAL("c_image_stacking_options: serialize() fails");
+    return false;
+  }
+
+
+  if ( !cfg.write() ) {
+    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
+    return false;
+  }
+
+  return true;
+}
+
 
 bool c_image_stacking_options::serialize(c_config_setting settings) const
 {

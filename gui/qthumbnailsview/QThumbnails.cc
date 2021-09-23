@@ -108,6 +108,16 @@ static void add_libraw_file_suffixes(QStringList & suffixes)
 
 #endif
 
+
+const char ** thumbnail_textfile_suffixes()
+{
+  static const char * textfile_suffixes[] = {
+      "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf", nullptr
+  };
+
+  return textfile_suffixes;
+}
+
 QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
 {
   if ( !srcSize.isEmpty() ) {
@@ -142,13 +152,22 @@ QStringList getSupportedThumbnailsExtensions()
   suffixes.append("tiff");
   suffixes.append("tif");
   suffixes.append("flo");
-  suffixes.append("txt");
-  suffixes.append("doc");
-  suffixes.append("md");
-  suffixes.append("xml");
-  suffixes.append("html");
-  suffixes.append("htm");
-  suffixes.append("rtf");
+//  suffixes.append("cfg");
+//  suffixes.append("conf");
+//  suffixes.append("txt");
+//  suffixes.append("doc");
+//  suffixes.append("md");
+//  suffixes.append("xml");
+//  suffixes.append("html");
+//  suffixes.append("htm");
+//  suffixes.append("rtf");
+
+  const char ** textfiles =
+      thumbnail_textfile_suffixes();
+  while ( *textfiles ) {
+    suffixes.append(*textfiles++);
+  }
+
 
 #if HAVE_SER_FILE
   suffixes.append("ser");

@@ -71,6 +71,7 @@ bool c_input_sequence::serialize(c_config_setting settings) const
 bool c_input_sequence::deserialize(c_config_setting settings)
 {
   sources_.clear();
+  disabled_sources_.clear();
 
   LOAD_PROPERTY(settings, this, auto_debayer);
   LOAD_PROPERTY(settings, this, auto_apply_color_matrix);
@@ -134,24 +135,38 @@ const c_input_source::ptr & c_input_sequence::source(int index) const
 }
 
 
-int c_input_sequence::indexof(const std::string & pathfilename) const
+int c_input_sequence::indexof(const c_input_source::ptr & source,
+    const std::vector<c_input_source::ptr> & list)
 {
   std::vector<c_input_source::ptr>::const_iterator ii =
-      std::find_if(sources_.begin(), sources_.end(),
+      std::find(list.begin(), list.end(), source);
+
+  return ii == list.end() ? -1 : ii - list.begin();
+}
+
+int c_input_sequence::indexof(const std::string & pathfilename,
+    const std::vector<c_input_source::ptr> & list)
+{
+  std::vector<c_input_source::ptr>::const_iterator ii =
+      std::find_if(list.begin(), list.end(),
           [&pathfilename](const c_input_source::ptr & source) -> bool {
             return source->filename() == pathfilename;
           });
 
-  return ii == sources_.end() ? -1 : ii - sources_.begin();
+  return ii == list.end() ? -1 : ii - list.begin();
+}
+
+
+int c_input_sequence::indexof(const std::string & pathfilename) const
+{
+  return indexof(pathfilename, sources_);
 }
 
 int c_input_sequence::indexof(const c_input_source::ptr & source) const
 {
-  std::vector<c_input_source::ptr>::const_iterator ii =
-      std::find(sources_.begin(), sources_.end(), source);
-
-  return ii == sources_.end() ? -1 : ii - sources_.begin();
+  return indexof(source, sources_);
 }
+
 
 c_input_source::ptr c_input_sequence::source(const std::string & pathfilename) const
 {
@@ -191,34 +206,40 @@ bool c_input_sequence::add_sources(const std::vector<std::string> & pathfilename
   return num_sourcess_added > 0;
 }
 
-bool c_input_sequence::remove_source(int index)
+void c_input_sequence::remove_source(int pos)
 {
-  if ( index >= 0 && index < sources_.size() ) {
-    sources_.erase(sources_.begin() + index);
-    return true;
+  if ( pos >= 0 && pos < sources_.size() ) {
+
+    c_input_source::ptr p =
+        sources_[pos];
+
+    sources_.erase(sources_.begin() + pos);
+
+    if ( (pos = indexof(p, disabled_sources_)) >= 0 ) {
+      disabled_sources_.erase(disabled_sources_.begin() + pos);
+    }
+
   }
-  return false;
 }
 
 
-bool c_input_sequence::remove_source(const c_input_source::ptr & source)
+void c_input_sequence::remove_source(const c_input_source::ptr & source)
 {
   if ( source ) {
 
-    std::vector<c_input_source::ptr>::iterator ii =
-        std::find(sources_.begin(), sources_.end(),
-            source);
+    std::vector<c_input_source::ptr>::iterator ii;
 
-    if ( ii != sources_.end() ) {
+    if ( (ii = std::find(sources_.begin(), sources_.end(), source)) != sources_.end() ) {
       sources_.erase(ii);
-      return true;
+    }
+
+    if ( (ii = std::find(disabled_sources_.begin(), disabled_sources_.end(), source)) != disabled_sources_.end() ) {
+      disabled_sources_.erase(ii);
     }
   }
-
-  return false;
 }
 
-bool c_input_sequence::remove_source(const std::string & sourcefilename)
+void c_input_sequence::remove_source(const std::string & sourcefilename)
 {
   return remove_source(source(sourcefilename));
 }
@@ -228,6 +249,7 @@ void c_input_sequence::clear()
 {
   close();
   sources_.clear();
+  disabled_sources_.clear();
 }
 
 bool c_input_sequence::empty() const
@@ -235,6 +257,89 @@ bool c_input_sequence::empty() const
   return sources_.empty();
 }
 
+
+const std::vector<c_input_source::ptr> & c_input_sequence::disabled_sources() const
+{
+  return disabled_sources_;
+}
+
+void c_input_sequence::set_enabled(const c_input_source::ptr & p, bool enable)
+{
+  if ( p ) {
+    if ( enable ) {
+      int pos = indexof(p, disabled_sources_);
+      if ( pos >= 0 ) {
+        disabled_sources_.erase(disabled_sources_.begin() + pos);
+      }
+    }
+    else if ( indexof(p, sources_) >=0  && indexof(p, disabled_sources_) < 0 ) {
+      disabled_sources_.emplace_back(p);
+    }
+  }
+}
+
+void c_input_sequence::set_enabled(const std::string & fullpathname, bool enable)
+{
+  int pos = indexof(fullpathname, sources_);
+  if ( pos >= 0 ) {
+    if ( enable ) {
+      if ( (pos = indexof(sources_[pos], disabled_sources_)) >= 0 ) {
+        disabled_sources_.erase(disabled_sources_.begin() + pos);
+      }
+    }
+    else if ( indexof(sources_[pos], disabled_sources_) < 0 ) {
+      disabled_sources_.emplace_back(sources_[pos]);
+    }
+  }
+}
+
+bool c_input_sequence::is_enabled(const c_input_source::ptr & p) const
+{
+  return p && indexof(p, sources_) >= 0 && indexof(p, disabled_sources_) < 0;
+}
+
+bool c_input_sequence::is_enabled(const std::string & fullpathname) const
+{
+  return is_enabled(source(fullpathname));
+}
+
+
+//void c_input_sequence::disable_source(const c_input_source::ptr & p)
+//{
+//  if ( indexof(p) >= 0 && indexof(p, disabled_sources_) < 0  ) {
+//    disabled_sources_.emplace_back(p);
+//  }
+//}
+//
+//void c_input_sequence::disable_source(const std::string & fullpathname )
+//{
+//  c_input_source::ptr p = source(fullpathname);
+//  if ( p && indexof(p, disabled_sources_) < 0  ) {
+//    disabled_sources_.emplace_back(p);
+//  }
+//}
+//
+//bool c_input_sequence::is_disabled(const c_input_source::ptr & p )
+//{
+//  return indexof(p, disabled_sources_) >= 0;
+//}
+//
+//void c_input_sequence::enable_source(const c_input_source::ptr & p)
+//{
+//  int pos = indexof(p, disabled_sources_);
+//  if ( pos >= 0 ) {
+//    disabled_sources_.erase(disabled_sources_.begin() + pos);
+//  }
+//}
+
+//void c_input_sequence::enable_source(const std::string & fullpathname)
+//{
+//  int pos = indexof(fullpathname, disabled_sources_);
+//  if ( pos >= 0 ) {
+//    disabled_sources_.erase(disabled_sources_.begin() + pos);
+//  }
+//}
+//
 
 bool c_input_sequence::open()
 {

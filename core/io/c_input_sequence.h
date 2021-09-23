@@ -34,9 +34,9 @@ public:
   c_input_source::ptr add_source(const std::string & pathfilename, int insert_pos = -1);
   bool add_sources(const std::vector<std::string> & pathfilenames);
 
-  bool remove_source(int index);
-  bool remove_source(const c_input_source::ptr & source);
-  bool remove_source(const std::string & sourcefilename);
+  void remove_source(int index);
+  void remove_source(const c_input_source::ptr & source);
+  void remove_source(const std::string & sourcefilename);
 
   const std::vector<c_input_source::ptr> & sources() const;
   const c_input_source::ptr & source(int index) const;
@@ -45,8 +45,18 @@ public:
   int indexof(const std::string & pathfilename) const;
   int indexof(const c_input_source::ptr & source) const;
 
-  void set_blacklist(const std::string & pathfilename, const std::vector<int> & bad_frame_indexes);
+  static int indexof(const std::string & pathfilename,
+      const std::vector<c_input_source::ptr> & list) ;
+  static int indexof(const c_input_source::ptr & source,
+      const std::vector<c_input_source::ptr> & list);
 
+  //void set_blacklist(const std::string & pathfilename, const std::vector<int> & bad_frame_indexes);
+
+  const std::vector<c_input_source::ptr> & disabled_sources() const;
+  void set_enabled(const c_input_source::ptr & , bool);
+  void set_enabled(const std::string & , bool);
+  bool is_enabled(const c_input_source::ptr & ) const;
+  bool is_enabled(const std::string & ) const;
 
   void clear();
   bool empty() const;
@@ -80,6 +90,7 @@ protected:
 protected:
 
   std::vector<c_input_source::ptr> sources_;
+  std::vector<c_input_source::ptr> disabled_sources_;
 
   enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_GBNR;
   bool auto_apply_color_matrix_ = true;

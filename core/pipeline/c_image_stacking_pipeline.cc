@@ -439,9 +439,11 @@ bool c_image_stacking_options::add_input_sources(const std::vector<std::string> 
   return input_sequence_ ? input_sequence_->add_sources(pathfilenames) : false;
 }
 
-bool c_image_stacking_options::remove_input_source(const c_input_source::ptr & source)
+void c_image_stacking_options::remove_input_source(const c_input_source::ptr & source)
 {
-  return input_sequence_ ? input_sequence_->remove_source(source) : false;
+  if ( input_sequence_  ) {
+    input_sequence_->remove_source(source);
+  }
 }
 
 c_input_options & c_image_stacking_options::input_options()

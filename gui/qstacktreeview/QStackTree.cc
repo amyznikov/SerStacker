@@ -76,6 +76,8 @@ public:
   QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent = Q_NULLPTR );
   const c_input_source::ptr & inputSource() const;
   void setInputSource(const c_input_source::ptr & input_source ) ;
+  void setCkecked(bool v);
+  void updateCheckState();
 
 protected:
   c_input_source::ptr input_source_;
@@ -99,7 +101,7 @@ void QStackTreeView::QStackItem::refreshInputSources()
 
   if ( stack_ && stack_->input_sequence() ) {
     for ( const c_input_source::ptr & input_source : stack_->input_sources() ) {
-      new QInputSourceItem(input_source, this);
+      new QStackTreeView::QInputSourceItem(input_source, this);
     }
   }
 }
@@ -137,10 +139,26 @@ void QStackTreeView::QStackTreeView::QInputSourceItem::setInputSource(const c_in
     setText(0, QFileInfo(input_source->filename().c_str()).fileName());
     setWhatsThis(0, input_source->filename().c_str());
     setToolTip(0, input_source->filename().c_str());
-    setFlags(flags() & ~Qt::ItemIsEditable);
+    setFlags((flags() | Qt::ItemIsUserCheckable) & ~Qt::ItemIsEditable);
+    updateCheckState();
   }
 }
 
+void QStackTreeView::QStackTreeView::QInputSourceItem::setCkecked(bool v)
+{
+  setCheckState(0, v ? Qt::Checked : Qt::Unchecked);
+}
+
+void QStackTreeView::QStackTreeView::QInputSourceItem::updateCheckState()
+{
+  QStackItem * stackItem = dynamic_cast<QStackItem *>(parent());
+  if ( !stackItem || !stackItem->stack() || stackItem->stack()->input_sequence() ) {
+    setCkecked(true);
+  }
+  else {
+    setCkecked(stackItem->stack()->input_sequence()->is_enabled(input_source_));
+  }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +225,7 @@ void QStackTreeView::populateTreeView()
 
 QTreeWidgetItem * QStackTreeView::addStackItem(const c_image_stacking_options::ptr & options)
 {
-  return new QStackItem(this, options);
+  return new QStackTreeView::QStackItem(this, options);
 }
 
 QTreeWidgetItem * QStackTreeView::addNewStack(const QString & name)
@@ -725,8 +743,14 @@ bool QStackTreeView::dropSource(QDropEvent *e, const QUrl & url, QStackItem * ta
         c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
         if (  input_source ) {
 
-          targetStackItem->insertChild(target_sequence->indexof(input_source),
-              new QStackTreeView::QInputSourceItem(input_source));
+          QStackTreeView::QInputSourceItem * sourceItem =
+              new QStackTreeView::QInputSourceItem(input_source);
+
+          targetStackItem->insertChild(
+              target_sequence->indexof(input_source),
+              sourceItem);
+
+          sourceItem->updateCheckState();
 
           dropped = true;
         }
@@ -849,8 +873,13 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
           c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
           if (  input_source ) {
 
+            QStackTreeView::QInputSourceItem * sourceItem =
+                new QStackTreeView::QInputSourceItem(input_source);
+
             targetStackItem->insertChild(target_sequence->indexof(input_source),
-                new QStackTreeView::QInputSourceItem(input_source));
+                sourceItem);
+
+            sourceItem->updateCheckState();
 
             ++ num_sourcess_added;
           }
@@ -1544,8 +1573,32 @@ void QStackTree::onItemChanged(QTreeWidgetItem *item, int column)
       break;
     }
 
-    case ItemType_InputSource :
+    case ItemType_InputSource : {
+
+      QStackTreeView::QInputSourceItem * sourceItem =
+          dynamic_cast<QStackTreeView::QInputSourceItem *>(item);
+      if ( sourceItem ) {
+
+        QStackTreeView::QStackItem * stackItem =
+            dynamic_cast<QStackTreeView::QStackItem *>(item->parent());
+
+        if ( stackItem && stackItem->stack() && stackItem->stack()->input_sequence() ) {
+
+          if ( QStackingThread::isRunning() ) {
+            if ( QStackingThread::currentStack()->input_sequence() == stackItem->stack()->input_sequence() ) {
+              break;
+            }
+          }
+
+          stackItem->stack()->input_sequence()->
+              set_enabled(sourceItem->inputSource(),
+                  sourceItem->checkState(0) == Qt::Checked);
+        }
+
+      }
+
       break;
+    }
 
     default :
       break;
@@ -1793,7 +1846,22 @@ void QStackTree::onStackingThreadStarted()
 {
   startStacking->setEnabled(false);
   stopStacking->setEnabled(true);
-  //startStopStackingAction->setIcon(getIcon(ICON_stop));
+
+  QStackTreeView::QStackItem * stackItem =
+      treeView_->findStackItem(QStackingThread::currentStack());
+
+  if ( stackItem ) {
+
+    for ( int j = 0, m = stackItem->childCount(); j < m; ++j ) {
+
+      QStackTreeView::QInputSourceItem * sourceItem =
+          dynamic_cast<QStackTreeView::QInputSourceItem *>(stackItem->child(j));
+
+      if ( sourceItem ) {
+        sourceItem->setFlags(sourceItem->flags() & ~Qt::ItemIsEnabled);
+      }
+    }
+  }
 }
 
 void QStackTree::onStackingThreadFinishing()
@@ -1803,18 +1871,25 @@ void QStackTree::onStackingThreadFinishing()
 
 void QStackTree::onStackingThreadFinished()
 {
-  //startStopStackingAction->setIcon(getIcon(ICON_start));
+  QStackTreeView::QStackItem * stackItem =
+      treeView_->findStackItem(QStackingThread::currentStack());
 
-  if ( currentProcessingMode_ == ProcessBatch ) {
+  if ( stackItem ) {
 
-    QStackTreeView::QStackItem * item =
-        treeView_->findStackItem(QStackingThread::currentStack());
+    for ( int j = 0, m = stackItem->childCount(); j < m; ++j ) {
 
-    if ( item ) {
-      item->setCheckState(0, Qt::Unchecked);
+      QStackTreeView::QInputSourceItem * sourceItem =
+          dynamic_cast<QStackTreeView::QInputSourceItem *>(stackItem->child(j));
+
+      if ( sourceItem ) {
+        sourceItem->setFlags(sourceItem->flags() | Qt::ItemIsEnabled);
+      }
+    }
+
+    if ( currentProcessingMode_ == ProcessBatch ) {
+      stackItem->setCheckState(0, Qt::Unchecked);
     }
   }
-
 
   if ( currentProcessingMode_ != ProcessBatch || !startNextStacking() ) {
     currentProcessingMode_ = ProcessIdle;

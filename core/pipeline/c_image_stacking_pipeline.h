@@ -250,7 +250,7 @@ public:
   const std::vector<c_input_source::ptr> & input_sources() const;
   c_input_source::ptr add_input_source(const std::string & pathfilename);
   bool add_input_sources(const std::vector<std::string> & pathfilenames);
-  bool remove_input_source(const c_input_source::ptr & source);
+  void remove_input_source(const c_input_source::ptr & source);
 
   c_input_options & input_options();
   const c_input_options & input_options() const;

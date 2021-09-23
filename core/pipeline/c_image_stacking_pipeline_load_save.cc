@@ -442,6 +442,8 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "eccflow_support_scale", jovian_derotation_options.eccflow_support_scale);
   save_settings(group, "eccflow_normalization_scale", jovian_derotation_options.eccflow_normalization_scale);
   save_settings(group, "eccflow_max_pyramid_level", jovian_derotation_options.eccflow_max_pyramid_level);
+  save_settings(group, "align_jovian_disk_horizontally", jovian_derotation_options.align_jovian_disk_horizontally);
+
 
 
   if ( aligned_frame_processor ) {
@@ -509,6 +511,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     load_settings(group, "eccflow_support_scale", &jovian_derotation_options.eccflow_support_scale);
     load_settings(group, "eccflow_normalization_scale", &jovian_derotation_options.eccflow_normalization_scale);
     load_settings(group, "eccflow_max_pyramid_level", &jovian_derotation_options.eccflow_max_pyramid_level);
+    load_settings(group, "align_jovian_disk_horizontally", &jovian_derotation_options.align_jovian_disk_horizontally);
   }
 
   std::string s;

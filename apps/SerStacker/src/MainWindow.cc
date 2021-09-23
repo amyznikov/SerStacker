@@ -10,9 +10,7 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/qstackingthread/QStackingThread.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
-//#include <gui/qimageview/cv2qt.h>
-//#include <core/proc/normalize.h>
-//#include <core/io/save_image.h>
+#include <gui/qthumbnailsview/QThumbnails.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -41,21 +39,25 @@ static bool isTextFile(const QString & abspath)
 {
   const QString suffix = QFileInfo(abspath).suffix();
 
-  CF_DEBUG("suffix=%s", suffix.toStdString().c_str());
+  const char ** textfile_suffixes =
+      thumbnail_textfile_suffixes();
 
-
-  static const char * textfiles[] = {
-      "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf"
-  };
-
-  for (  uint i = 0; i < sizeof(textfiles)/sizeof(textfiles[0]); ++i ) {
-    if ( suffix.compare(textfiles[i], Qt::CaseInsensitive) == 0 ) {
-      CF_DEBUG("suffix=%s IS TEXT", suffix.toStdString().c_str());
+  for ( ; *textfile_suffixes; ++textfile_suffixes ) {
+    if ( suffix.compare(*textfile_suffixes, Qt::CaseInsensitive) == 0 ) {
       return true;
     }
   }
 
-  CF_DEBUG("suffix=%s NOT TEXT", suffix.toStdString().c_str());
+//  static const char * textfiles[] = {
+//      "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf"
+//  };
+//
+//  for (  uint i = 0; i < sizeof(textfiles)/sizeof(textfiles[0]); ++i ) {
+//    if ( suffix.compare(textfiles[i], Qt::CaseInsensitive) == 0 ) {
+//      return true;
+//    }
+//  }
+
   return false;
 }
 

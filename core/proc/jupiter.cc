@@ -435,6 +435,16 @@ int c_jovian_derotation::max_eccflow_pyramid_level(int v)
   return eccflow_max_pyramid_level_;
 }
 
+//void c_jovian_derotation::set_align_jovian_disk_horizontally(bool v)
+//{
+//  align_jovian_disk_horizontally_ = v;
+//}
+//
+//bool c_jovian_derotation::align_jovian_disk_horizontally() const
+//{
+//  return align_jovian_disk_horizontally_;
+//}
+
 const cv::RotatedRect & c_jovian_derotation::reference_ellipse() const
 {
   return reference_ellipse_;
@@ -465,19 +475,19 @@ const cv::Mat1b & c_jovian_derotation::current_ellipse_mask() const
   return current_ellipse_mask_;
 }
 
-const cv::Mat2f & c_jovian_derotation::current_rotation_remap() const
+const cv::Mat2f & c_jovian_derotation::current_total_remap() const
 {
-  return current_rotation_remap_;
+  return current_total_remap_;
 }
 
-const cv::Mat1f & c_jovian_derotation::current_rotation_mask() const
+const cv::Mat1f & c_jovian_derotation::current_total_mask() const
 {
-  return current_rotation_mask_;
+  return current_total_mask_;
 }
 
-const cv::Mat1b & c_jovian_derotation::current_binary_rotation_mask() const
+const cv::Mat1b & c_jovian_derotation::current_total_binary_mask() const
 {
-  return current_binary_rotation_mask_;
+  return current_total_binary_mask_;
 }
 
 void c_jovian_derotation::normalize_jovian_image(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
@@ -699,7 +709,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
         T,
         reference_component_image_.size(),
         rotation_remap,
-        current_rotation_mask_);
+        current_total_mask_);
 
     cv::remap(current_normalized_image_, rotated_current_image,
         rotation_remap, cv::noArray(),
@@ -710,7 +720,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
         compute_jovian_derotation_cost(
             reference_normalized_image_,
             rotated_current_image,
-            current_rotation_mask_);
+            current_total_mask_);
 
     // CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i, l * 180 / CV_PI, current_cost);
 
@@ -733,16 +743,16 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       T,
       reference_component_image_.size(),
       rotation_remap,
-      current_rotation_mask_);
+      current_total_mask_);
 
 
-  cv::compare(current_rotation_mask_, 0,
-      current_binary_rotation_mask_,
+  cv::compare(current_total_mask_, 0,
+      current_total_binary_mask_,
       cv::CMP_GT);
 
   if ( enable_debug_ && !debug_path_.empty() ) {
-    save_image(current_rotation_mask_, ssprintf("%s/current_rotation_mask_.tiff", debug_path_.c_str()));
-    save_image(current_binary_rotation_mask_, ssprintf("%s/current_binary_rotation_mask_.tiff", debug_path_.c_str()));
+    save_image(current_total_mask_, ssprintf("%s/current_rotation_mask_.tiff", debug_path_.c_str()));
+    save_image(current_total_binary_mask_, ssprintf("%s/current_total_binary_mask_.tiff", debug_path_.c_str()));
   }
 
   if ( eccflow_support_scale_ > 1 ) {
@@ -755,7 +765,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
         reference_normalized_image_,
         rotation_remap,
         current_ellipse_mask_,
-        current_binary_rotation_mask_);
+        current_total_binary_mask_);
 
     if ( !fOk ) {
       CF_ERROR("eccflow_.compute(current_component_image_->reference_component_image_) fails");
@@ -786,20 +796,34 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
         createEyeTransform(ecc_.motion_type());
 
     fOk = ecc_.align(current_normalized_image_, reference_normalized_image_, T2,
-        current_ellipse_mask_, current_binary_rotation_mask_);
+        current_ellipse_mask_, current_total_binary_mask_);
 
     CF_DEBUG("ecc_.align(): fOk = %d eps=%g rho=%g iterations=%d",
         fOk, ecc_.current_eps(), ecc_.rho(), ecc_.num_iterations());
 
   }
 
-  current_rotation_remap_.create(rotation_remap.size());
-  current_rotation_remap_.setTo(-1);
+  current_total_remap_.create(rotation_remap.size());
+  current_total_remap_.setTo(-1);
 
   cv::add(rotation_remap,
       cv::Scalar(current_boundig_box_.x, current_boundig_box_.y),
-      current_rotation_remap_,
+      current_total_remap_,
       reference_ellipse_mask_);
+
+
+//  if ( align_jovian_disk_horizontally_ ) {
+//
+//    cv::Matx23f T =
+//        createEuclideanTransform(reference_ellipse_.center.x, reference_ellipse_.center.y,
+//            reference_ellipse_.center.x, reference_ellipse_.center.y,
+//            1.0,
+//            -reference_ellipse_.angle * CV_PI / 180);
+//
+//    addRemap(createRemap(ECC_MOTION_EUCLIDEAN, T, current_total_remap_.size(), current_total_remap_.depth()),
+//        current_total_remap_);
+//
+//  }
 
   return true;
 }

@@ -1415,6 +1415,7 @@ bool c_image_stacking_pipeline::actual_run()
       }
     }
 
+
     if ( output_file_name.empty() ) {
 
       output_file_name =
@@ -1422,6 +1423,9 @@ bool c_image_stacking_pipeline::actual_run()
               output_directory_.c_str(),
               options_->cname());
     }
+
+
+
 
     CF_DEBUG("Saving '%s'", output_file_name.c_str());
     if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
@@ -1445,11 +1449,70 @@ bool c_image_stacking_pipeline::actual_run()
         if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
           CF_ERROR("write_image('%s') fails", output_file_name.c_str());
         }
-
       }
     }
 
+    switch ( registration_options.registration_method ) {
+    case frame_registration_method_jovian_derotate :
+      if ( registration_options.jovian_derotation_options.align_jovian_disk_horizontally ) {
+
+        c_jovian_rotation_registration::ptr jovian_derotation =
+            std::dynamic_pointer_cast<c_jovian_rotation_registration>(frame_registration_);
+        if ( jovian_derotation ) {
+
+          const cv::RotatedRect & E =
+              jovian_derotation->jovian_derotation().reference_ellipse();
+
+          const cv::Rect & BB =
+              jovian_derotation->jovian_derotation().reference_boundig_box();
+
+          const cv::Mat T =
+              createEuclideanTransform(E.center.x + BB.x, E.center.y + BB.y,
+                  accumulated_image.cols / 2, accumulated_image.rows / 2,
+                  1.0,
+                  -E.angle * CV_PI / 180,
+                  CV_32F);
+
+          const cv::Mat M =
+              createRemap(ECC_MOTION_AFFINE,
+                  T,
+                  accumulated_image.size(),
+                  CV_32F);
+
+          cv::remap(accumulated_image, accumulated_image,
+              M, cv::noArray(),
+              cv::INTER_LINEAR,
+              cv::BORDER_REPLICATE);
+
+          cv::remap(accumulated_mask, accumulated_mask,
+              M, cv::noArray(),
+              cv::INTER_LINEAR,
+              cv::BORDER_CONSTANT);
+
+          cv::compare(accumulated_mask, 255,
+              accumulated_mask,
+              cv::CMP_GE);
+
+          output_file_name =
+              ssprintf("%s/%s-32F-PPR.tiff",
+                  output_directory_.c_str(),
+                  options_->cname());
+
+          CF_DEBUG("Saving '%s'", output_file_name.c_str());
+          if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
+            CF_ERROR("write_image('%s') fails", output_file_name.c_str());
+          }
+
+
+        }
+      }
+      break;
+    default :
+      break;
+    }
   }
+
+
 
 
   //////////////////

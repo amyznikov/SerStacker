@@ -94,6 +94,9 @@ cv::Mat createRemap(enum ECC_MOTION_TYPE motionType,
     const cv::Size & size,
     int ddepth = -1 );
 
+bool addRemap(cv::InputArray src,
+    cv::InputOutputArray dst);
+
 void createIdentityRemap(cv::OutputArray rmap,
     const cv::Size & size,
     int ddepth = -1 );

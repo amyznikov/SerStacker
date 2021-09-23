@@ -133,6 +133,9 @@ public:
   void set_eccflow_max_pyramid_level(int v);
   int max_eccflow_pyramid_level(int v);
 
+  //  void set_align_jovian_disk_horizontally(bool v);
+  //  bool align_jovian_disk_horizontally() const;
+
   const cv::RotatedRect & reference_ellipse() const;
   const cv::RotatedRect & current_ellipse() const;
 
@@ -142,9 +145,9 @@ public:
   const cv::Mat1b & reference_ellipse_mask() const;
   const cv::Mat1b & current_ellipse_mask() const;
 
-  const cv::Mat2f & current_rotation_remap() const;
-  const cv::Mat1f & current_rotation_mask() const;
-  const cv::Mat1b & current_binary_rotation_mask() const;
+  const cv::Mat2f & current_total_remap() const;
+  const cv::Mat1f & current_total_mask() const;
+  const cv::Mat1b & current_total_binary_mask() const;
 
   void set_enable_debug(bool v);
   bool enable_debug() const;
@@ -186,9 +189,9 @@ protected:
   cv::Mat1b current_ellipse_mask_;
   double normalization_scale_ = 1.0;
 
-  cv::Mat2f current_rotation_remap_;
-  cv::Mat1f current_rotation_mask_;
-  cv::Mat1b current_binary_rotation_mask_;
+  cv::Mat2f current_total_remap_;
+  cv::Mat1f current_total_mask_;
+  cv::Mat1b current_total_binary_mask_;
 
   c_ecc_forward_additive ecc_;
   c_ecc_pyramide_align ecch_;
@@ -199,6 +202,9 @@ protected:
   int eccflow_support_scale_ = 3;
   int eccflow_normalization_scale_ = 0;
   int eccflow_max_pyramid_level_ = 1;
+
+  //bool align_jovian_disk_horizontally_ = false;
+
 
   std::string debug_path_;
   bool enable_debug_ = false;

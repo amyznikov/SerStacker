@@ -90,6 +90,7 @@ bool c_jovian_rotation_registration::setup_referece_frame(cv::InputArray image, 
   derotation_.set_eccflow_support_scale(jovian_derotation_options_.eccflow_support_scale);
   derotation_.set_eccflow_normalization_scale(jovian_derotation_options_.eccflow_normalization_scale);
   derotation_.set_eccflow_max_pyramid_level(jovian_derotation_options_.eccflow_max_pyramid_level);
+  //derotation_.set_align_jovian_disk_horizontally(jovian_derotation_options_.align_jovian_disk_horizontally);
 
   if ( !derotation_.setup_reference_image(image, mask) ) {
     CF_ERROR("derotation_.setup_reference_image() fails");
@@ -165,9 +166,9 @@ bool c_jovian_rotation_registration::custom_remap(const cv::Mat2f & rmap,
     cv::Mat2f total_remap =
         rmap.clone();
 
-    derotation_.current_rotation_remap().copyTo(total_remap(
+    derotation_.current_total_remap().copyTo(total_remap(
         derotation_.reference_boundig_box()),
-        derotation_.current_binary_rotation_mask());
+        derotation_.current_total_binary_mask());
 
     fOk = base::custom_remap(total_remap,
         src, dst,
@@ -192,9 +193,9 @@ bool c_jovian_rotation_registration::custom_remap(const cv::Mat2f & rmap,
     combined_mask(derotation_.reference_boundig_box()).setTo(0,
         derotation_.reference_ellipse_mask());
 
-    derotation_.current_rotation_mask().copyTo(
+    derotation_.current_total_mask().copyTo(
         combined_mask(derotation_.reference_boundig_box()),
-        derotation_.current_binary_rotation_mask());
+        derotation_.current_total_binary_mask());
 
     if ( dstmask.depth() == CV_8U ) {
       combined_mask.setTo(0, ~dstmask);

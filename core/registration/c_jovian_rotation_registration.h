@@ -22,6 +22,7 @@ struct c_jovian_derotation_options {
   int eccflow_support_scale = 3;
   int eccflow_normalization_scale = 0;
   int eccflow_max_pyramid_level = 1;
+  bool align_jovian_disk_horizontally = false;
 };
 
 class c_jovian_rotation_registration :

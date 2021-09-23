@@ -263,6 +263,7 @@ protected:
   QNumberEditBox * eccflow_support_scale_ctl = Q_NULLPTR;
   QNumberEditBox * eccflow_normalization_scale_ctl = Q_NULLPTR;
   QNumberEditBox * eccflow_max_pyramid_level_ctl = Q_NULLPTR;
+  QCheckBox * align_jovian_disk_horizontally_ctl = Q_NULLPTR;
 
 };
 

@@ -832,6 +832,171 @@ void createIdentityRemap(cv::OutputArray rmap, const cv::Size & size, int ddepth
 }
 
 
+template<class T1, class T2>
+bool addRemap_(cv::InputArray _src, cv::InputOutputArray _dst)
+{
+  const cv::Mat_<cv::Vec<T1, 2>> src = _src.getMat();
+  cv::Mat_<cv::Vec<T2, 2>> dst = _dst.getMatRef();
+
+  for ( int y = 0; y < src.rows; ++y ) {
+    for ( int x = 0; x < src.cols; ++x ) {
+      dst[y][x][0] = cv::saturate_cast<T2>(dst[y][x][0] + src[y][x][0] - x);
+      dst[y][x][1] = cv::saturate_cast<T2>(dst[y][x][1] + src[y][x][1] - y);
+    }
+  }
+
+  return true;
+}
+
+bool addRemap(cv::InputArray src, cv::InputOutputArray dst)
+{
+  if ( src.size() != dst.size() ) {
+    CF_ERROR("Invalid arguments: image sizes not equal");
+    return false;
+  }
+
+  if ( src.channels() != 2 || dst.channels() != 2 ) {
+    CF_ERROR("Invalid arguments: input images must be two channel");
+    return false;
+  }
+
+  switch ( src.depth() ) {
+  case CV_8U :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<uint8_t, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<uint8_t, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<uint8_t, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<uint8_t, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<uint8_t, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<uint8_t, float>(src, dst);
+    case CV_64F :
+      return addRemap_<uint8_t, double>(src, dst);
+    }
+    break;
+  case CV_8S :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<int8_t, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<int8_t, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<int8_t, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<int8_t, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<int8_t, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<int8_t, float>(src, dst);
+    case CV_64F :
+      return addRemap_<int8_t, double>(src, dst);
+    }
+    break;
+  case CV_16U :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<uint16_t, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<uint16_t, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<uint16_t, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<uint16_t, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<uint16_t, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<uint16_t, float>(src, dst);
+    case CV_64F :
+      return addRemap_<uint16_t, double>(src, dst);
+    }
+    break;
+  case CV_16S :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<int16_t, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<int16_t, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<int16_t, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<int16_t, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<int16_t, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<int16_t, float>(src, dst);
+    case CV_64F :
+      return addRemap_<int16_t, double>(src, dst);
+    }
+    break;
+  case CV_32S :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<int32_t, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<int32_t, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<int32_t, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<int32_t, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<int32_t, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<int32_t, float>(src, dst);
+    case CV_64F :
+      return addRemap_<int32_t, double>(src, dst);
+    }
+    break;
+  case CV_32F :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<float, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<float, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<float, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<float, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<float, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<float, float>(src, dst);
+    case CV_64F :
+      return addRemap_<float, double>(src, dst);
+    }
+    break;
+  case CV_64F :
+    switch ( dst.depth() ) {
+    case CV_8U :
+      return addRemap_<double, uint8_t>(src, dst);
+    case CV_8S :
+      return addRemap_<double, int8_t>(src, dst);
+    case CV_16U :
+      return addRemap_<double, uint16_t>(src, dst);
+    case CV_16S :
+      return addRemap_<double, int16_t>(src, dst);
+    case CV_32S :
+      return addRemap_<double, int32_t>(src, dst);
+    case CV_32F :
+      return addRemap_<double, float>(src, dst);
+    case CV_64F :
+      return addRemap_<double, double>(src, dst);
+    }
+    break;
+  }
+
+
+  CF_ERROR("Unsupported src.depth()=%d dst.depth()=%d encountered",
+      src.depth(), dst.depth());
+
+  return false;
+}
+
+
 
 /*
  * Create identity matrix for given motion type

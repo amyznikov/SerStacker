@@ -373,38 +373,48 @@ void QFrameRegistrationBaseSettings::onupdatecontrols()
 QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(QWidget * parent)
     : Base("QFeatureBasedRegistrationSettings", parent)
 {
+  construct();
+}
 
+QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(const QString & prefix, QWidget * parent)
+  : Base(prefix, parent)
+{
+  construct();
+}
+
+void QFeatureBasedRegistrationSettings::construct()
+{
   hessianThreshold_ctl =
       add_numeric_box<double>("Hessian threshold",
           [this](double value) {
-            if (options_ && value != options_->hessianThreshold ) {
-              options_->hessianThreshold = value;
+            if (feature_options_ && value != feature_options_->hessianThreshold ) {
+              feature_options_->hessianThreshold = value;
               emit parameterChanged();
             }
           });
 
   nOctaves_ctl = add_numeric_box<int>("Num Octaves",
       [this](int value) {
-        if (options_ && value != options_->nOctaves ) {
-          options_->nOctaves = value;
+        if (feature_options_ && value != feature_options_->nOctaves ) {
+          feature_options_->nOctaves = value;
           emit parameterChanged();
         }
       });
 
   nOctaveLayers_ctl = add_numeric_box<int>("Num Octave Layers",
       [this](int value) {
-        if (options_ && value != options_->nOctaveLayers ) {
-          options_->nOctaveLayers = value;
+        if (feature_options_ && value != feature_options_->nOctaveLayers ) {
+          feature_options_->nOctaveLayers = value;
           emit parameterChanged();
         }
       });
 
   extended_ctl = add_checkbox("Extended",
       [this](int state) {
-        if (options_ ) {
+        if (feature_options_ ) {
           bool checked = state == Qt::Checked;
-          if ( checked != options_->extended ) {
-            options_->extended = checked;
+          if ( checked != feature_options_->extended ) {
+            feature_options_->extended = checked;
             emit parameterChanged();
           }
         }
@@ -412,39 +422,39 @@ QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(QWidget * p
 
   upright_ctl = add_checkbox("Upright",
       [this](int state) {
-        if (options_ ) {
+        if (feature_options_ ) {
           bool checked = state == Qt::Checked;
-          if ( checked != options_->upright ) {
-            options_->upright = checked;
+          if ( checked != feature_options_->upright ) {
+            feature_options_->upright = checked;
             emit parameterChanged();
           }
         }
       });
-
 }
 
-void QFeatureBasedRegistrationSettings::set_registration_options(c_feature_based_registration_options * options)
+
+void QFeatureBasedRegistrationSettings::set_feature_options(c_feature_based_registration_options * options)
 {
-  this->options_ = options;
+  this->feature_options_ = options;
   updateControls();
 }
 
-const c_feature_based_registration_options * QFeatureBasedRegistrationSettings::registration_options() const
+const c_feature_based_registration_options * QFeatureBasedRegistrationSettings::feature_options() const
 {
-  return this->options_;
+  return this->feature_options_;
 }
 
 void QFeatureBasedRegistrationSettings::onupdatecontrols()
 {
-  if ( !options_ )  {
+  if ( !feature_options_ )  {
     setEnabled(false);
   }
   else {
-    hessianThreshold_ctl->setValue(options_->hessianThreshold);
-    nOctaves_ctl->setValue(options_->nOctaves);
-    nOctaveLayers_ctl->setValue(options_->nOctaveLayers);
-    extended_ctl->setChecked(options_->extended);
-    upright_ctl->setChecked(options_->upright);
+    hessianThreshold_ctl->setValue(feature_options_->hessianThreshold);
+    nOctaves_ctl->setValue(feature_options_->nOctaves);
+    nOctaveLayers_ctl->setValue(feature_options_->nOctaveLayers);
+    extended_ctl->setChecked(feature_options_->extended);
+    upright_ctl->setChecked(feature_options_->upright);
     setEnabled(true);
   }
 }
@@ -628,6 +638,35 @@ void QStarFieldRegistrationSettings::onupdatecontrols()
   Base::onupdatecontrols();
 }
 
+QMMRegistrationSettings::QMMRegistrationSettings(QWidget * parent)
+  : Base("QMMRegistrationSettings", parent)
+{
+}
+
+void QMMRegistrationSettings::set_mm_options(c_mm_registration_options * options)
+{
+  mm_options_ = options;
+  updateControls();
+}
+
+const c_mm_registration_options * QMMRegistrationSettings::mm_options() const
+{
+  return mm_options_;
+}
+
+void QMMRegistrationSettings::onupdatecontrols()
+{
+  Base::onupdatecontrols();
+  if ( !mm_options_ ) {
+    setEnabled(false);
+  }
+  else {
+    // ...
+  }
+}
+
+
+
 QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
     : Base("QFrameRegistrationOptions", parent)
 {
@@ -673,6 +712,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   form->addRow(planetaryDiskRegistrationSettings = new QPlanetaryDiskRegistrationSettings(this));
   form->addRow(jovianDerotationSettings = new QJovianDerotationSettings(this));
   form->addRow(starFieldRegistrationSettings = new QStarFieldRegistrationSettings(this));
+  form->addRow(mmRegistrationSettings = new QMMRegistrationSettings(this));
   form->addRow(frameRegistrationBaseSettings = new QFrameRegistrationBaseSettings(this));
 
 
@@ -685,6 +725,8 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   connect(jovianDerotationSettings, &QJovianDerotationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
   connect(starFieldRegistrationSettings, &QStarFieldRegistrationSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(mmRegistrationSettings, &QMMRegistrationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
   connect(frameRegistrationBaseSettings, &QFrameRegistrationBaseSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
@@ -731,11 +773,17 @@ void QFrameRegistrationOptions::onupdatecontrols()
 
     masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
     frameRegistrationBaseSettings->set_registration_options(nullptr);
-    featureBasedRegistrationSettings->set_registration_options(nullptr);
+    featureBasedRegistrationSettings->set_feature_options(nullptr);
     planetaryDiskRegistrationSettings->set_planetary_disk_options(nullptr);
+
     jovianDerotationSettings->set_planetary_disk_options(nullptr);
     jovianDerotationSettings->set_jovian_derotation_options(nullptr);
+
+    mmRegistrationSettings->set_feature_options(nullptr);
+    mmRegistrationSettings->set_mm_options(nullptr);
+
     starFieldRegistrationSettings->set_registration_options(nullptr);
+
 
   }
   else {
@@ -756,7 +804,7 @@ void QFrameRegistrationOptions::onupdatecontrols()
     frameRegistrationBaseSettings->set_registration_options(
         &registration_options.base_options);
 
-    featureBasedRegistrationSettings->set_registration_options(
+    featureBasedRegistrationSettings->set_feature_options(
         &registration_options.feature_options);
 
     planetaryDiskRegistrationSettings->set_planetary_disk_options(
@@ -767,6 +815,12 @@ void QFrameRegistrationOptions::onupdatecontrols()
 
     jovianDerotationSettings->set_jovian_derotation_options(
         &registration_options.jovian_derotation_options);
+
+    mmRegistrationSettings->set_feature_options(
+        &registration_options.feature_options);
+
+    mmRegistrationSettings->set_mm_options(
+        &registration_options.mm_options);
 
     starFieldRegistrationSettings->set_registration_options(
         &registration_options.star_field_options);
@@ -791,6 +845,7 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
     featureBasedRegistrationSettings->setVisible(false);
     planetaryDiskRegistrationSettings->setVisible(false);
     jovianDerotationSettings->setVisible(false);
+    mmRegistrationSettings->setVisible(false);
     starFieldRegistrationSettings->setVisible(false);
   }
   else {
@@ -808,6 +863,7 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(false);
+      mmRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_planetary_disk :
       masterFrame_ctl->setVisible(true);
@@ -818,6 +874,7 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(true);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(false);
+      mmRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_star_field :
       masterFrame_ctl->setVisible(true);
@@ -828,6 +885,7 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(true);
+      mmRegistrationSettings->setVisible(false);
       break;
     case frame_registration_method_jovian_derotate :
       masterFrame_ctl->setVisible(true);
@@ -838,6 +896,18 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(true);
       starFieldRegistrationSettings->setVisible(false);
+      mmRegistrationSettings->setVisible(false);
+      break;
+    case frame_registration_method_mm :
+      masterFrame_ctl->setVisible(true);
+      accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
+      alignedFramesProcessor_ctl->setVisible(true);
+      frameRegistrationBaseSettings->setVisible(true);
+      featureBasedRegistrationSettings->setVisible(false);
+      planetaryDiskRegistrationSettings->setVisible(false);
+      jovianDerotationSettings->setVisible(false);
+      starFieldRegistrationSettings->setVisible(false);
+      mmRegistrationSettings->setVisible(true);
       break;
     case frame_registration_none :
       masterFrame_ctl->setVisible(false);
@@ -848,6 +918,7 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(false);
+      mmRegistrationSettings->setVisible(false);
       break;
     }
 

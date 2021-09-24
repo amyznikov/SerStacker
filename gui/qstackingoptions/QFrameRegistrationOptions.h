@@ -196,15 +196,17 @@ public:
   typedef QSettingsWidget Base;
 
   QFeatureBasedRegistrationSettings(QWidget * parent = Q_NULLPTR);
+  QFeatureBasedRegistrationSettings(const QString & prefix, QWidget * parent = Q_NULLPTR);
 
-  void set_registration_options(c_feature_based_registration_options * options);
-  const c_feature_based_registration_options * registration_options() const;
+  void set_feature_options(c_feature_based_registration_options * options);
+  const c_feature_based_registration_options * feature_options() const;
 
 protected:
+  void construct();
   void onupdatecontrols() override;
 
 protected:
-  c_feature_based_registration_options * options_ =  Q_NULLPTR;
+  c_feature_based_registration_options * feature_options_ =  Q_NULLPTR;
 
   QNumberEditBox * hessianThreshold_ctl = Q_NULLPTR;
   QNumberEditBox * nOctaves_ctl = Q_NULLPTR;
@@ -287,6 +289,27 @@ protected:
   c_star_field_registration_options * options_ = Q_NULLPTR;
 };
 
+class QMMRegistrationSettings
+    : public QFeatureBasedRegistrationSettings
+{
+  Q_OBJECT;
+public:
+  typedef QMMRegistrationSettings ThisClass;
+  typedef QFeatureBasedRegistrationSettings Base;
+
+  QMMRegistrationSettings(QWidget * parent = Q_NULLPTR);
+
+  void set_mm_options(c_mm_registration_options * options);
+  const c_mm_registration_options * mm_options() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  c_mm_registration_options * mm_options_ = Q_NULLPTR;
+};
+
+
 
 class QFrameRegistrationOptions
     : public QSettingsWidget
@@ -322,6 +345,7 @@ protected:
   QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings = Q_NULLPTR;
   QJovianDerotationSettings * jovianDerotationSettings = Q_NULLPTR;
   QStarFieldRegistrationSettings * starFieldRegistrationSettings = Q_NULLPTR;
+  QMMRegistrationSettings * mmRegistrationSettings = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

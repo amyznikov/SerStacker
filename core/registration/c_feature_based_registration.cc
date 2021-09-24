@@ -28,12 +28,12 @@ c_feature_based_registration::c_feature_based_registration()
 }
 
 c_feature_based_registration::c_feature_based_registration(const c_feature_based_registration_options & opts)
-  : options_(opts)
+  : feature_options_(opts)
 {
 }
 
 c_feature_based_registration::c_feature_based_registration(const c_frame_registration_base_options & base_opts, const c_feature_based_registration_options & opts)
-  : base(base_opts), options_(opts)
+  : base(base_opts), feature_options_(opts)
 {
 }
 
@@ -53,14 +53,14 @@ c_feature_based_registration::ptr c_feature_based_registration::create(const c_f
   return c_feature_based_registration::ptr(new c_feature_based_registration(base_opts, opts));
 }
 
-c_feature_based_registration_options & c_feature_based_registration::options()
+c_feature_based_registration_options & c_feature_based_registration::feature_options()
 {
-  return options_;
+  return feature_options_;
 }
 
-const c_feature_based_registration_options & c_feature_based_registration::options() const
+const c_feature_based_registration_options & c_feature_based_registration::feature_options() const
 {
-  return options_;
+  return feature_options_;
 }
 
 const cv::Ptr<cv::Feature2D> & c_feature_based_registration::set_keypoints_detector(const cv::Ptr<cv::Feature2D> & detector)
@@ -75,12 +75,12 @@ const cv::Ptr<cv::Feature2D> & c_feature_based_registration::keypoints_detector(
 
 void c_feature_based_registration::set_feature_hessian_threshold(double v)
 {
-  options_.hessianThreshold = v;
+  feature_options_.hessianThreshold = v;
 }
 
 double c_feature_based_registration::feature_hessian_threshold() const
 {
-  return options_.hessianThreshold;
+  return feature_options_.hessianThreshold;
 }
 
 
@@ -138,11 +138,11 @@ cv::Ptr<cv::Feature2D> c_feature_based_registration::create_keypoints_detector()
 //  } SURF;
 
   return cv::xfeatures2d::SURF::create(
-      options_.hessianThreshold,
-      options_.nOctaves,
-      options_.nOctaveLayers,
-      options_.extended,
-      options_.upright);
+      feature_options_.hessianThreshold,
+      feature_options_.nOctaves,
+      feature_options_.nOctaveLayers,
+      feature_options_.extended,
+      feature_options_.upright);
 }
 
 

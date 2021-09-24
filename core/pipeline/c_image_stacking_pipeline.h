@@ -14,6 +14,7 @@
 #include <core/registration/c_planetary_disk_registration.h>
 #include <core/registration/c_jovian_rotation_registration.h>
 #include <core/registration/c_star_field_registration.h>
+#include <core/registration/c_mm_registration.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/improc/c_image_processor.h>
@@ -32,6 +33,7 @@ enum frame_registration_method {
   frame_registration_method_planetary_disk = 1,
   frame_registration_method_star_field = 2,
   frame_registration_method_jovian_derotate = 3,
+  frame_registration_method_mm = 4,
 };
 
 enum frame_accumulation_method {
@@ -198,6 +200,7 @@ struct c_frame_registration_options {
   c_planetary_disk_registration_options planetary_disk_options;
   c_star_field_registration_options star_field_options;
   c_jovian_derotation_options jovian_derotation_options;
+  c_mm_registration_options mm_options;
 
   c_image_processor::ptr aligned_frame_processor;
 

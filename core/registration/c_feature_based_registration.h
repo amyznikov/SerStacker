@@ -31,8 +31,9 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   static this_class::ptr create();
-  static this_class::ptr create(const c_feature_based_registration_options & options);
-  static this_class::ptr create(const c_frame_registration_base_options & base_opts, const c_feature_based_registration_options & opts);
+  static this_class::ptr create(const c_feature_based_registration_options & feature_options);
+  static this_class::ptr create(const c_frame_registration_base_options & base_opts,
+      const c_feature_based_registration_options & feature_opts);
 
 public: // parameters
 
@@ -48,8 +49,8 @@ public: // parameters
   const std::vector<cv::KeyPoint> & current_keypoints() const;
   const cv::Mat & current_descriptors() const;
 
-  c_feature_based_registration_options & options();
-  const c_feature_based_registration_options & options() const;
+  c_feature_based_registration_options & feature_options();
+  const c_feature_based_registration_options & feature_options() const;
 
 public: // overrides, made public for debug & non-regular usage
   virtual cv::Ptr<cv::Feature2D> create_keypoints_detector() const;
@@ -84,7 +85,7 @@ protected: // use create() instead
   c_feature_based_registration(const c_frame_registration_base_options & base_opts, const c_feature_based_registration_options & opts);
 
 protected:
-  c_feature_based_registration_options options_;
+  c_feature_based_registration_options feature_options_;
 
   cv::Ptr<cv::Feature2D> keypoints_detector_;
   cv::Ptr<cv::FlannBasedMatcher> keypoints_matcher_;

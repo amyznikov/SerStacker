@@ -63,6 +63,7 @@ const struct frame_registration_method_desc frame_registration_methods[] = {
     { "Planetary Disk Registration", frame_registration_method_planetary_disk},
     { "Star Field Registration", frame_registration_method_star_field},
     { "Jovian Derotate", frame_registration_method_jovian_derotate},
+    { "MM", frame_registration_method_mm},
     { "None", frame_registration_none},
     { nullptr, frame_registration_none }, // must be last
 };
@@ -530,6 +531,11 @@ c_frame_registration::ptr c_image_stacking_options::create_frame_registration() 
           frame_registration_options_.planetary_disk_options,
           frame_registration_options_.jovian_derotation_options);
 
+    case frame_registration_method_mm:
+      return c_mm_registration::create(frame_registration_options_.base_options,
+          frame_registration_options_.feature_options,
+          frame_registration_options_.mm_options);
+
     default:
       break;
   }
@@ -732,19 +738,19 @@ public:
     return false;
   }
 
-  bool write(const cv::Mat & currenFrame)
+  bool write(cv::InputArray currenFrame, cv::InputArray currentMask)
   {
     switch ( output_type ) {
     case output_type_video :
       if ( aviVideo.isOpened() ) {
-        currenFrame.convertTo(tmp, CV_8U, 255);
+        currenFrame.getMat().convertTo(tmp, CV_8U, 255);
         aviVideo.write(tmp);
       }
       break;
 
     case output_type_ser :
       if ( serVideo.is_open() ) {
-        currenFrame.convertTo(tmp, CV_16U, 65535);
+        currenFrame.getMat().convertTo(tmp, CV_16U, 65535);
         serVideo.write(tmp);
       }
       break;
@@ -761,7 +767,7 @@ public:
           current_frame_index,
           suffix.c_str()));
 
-      if ( !save_image(currenFrame, fname) ) {
+      if ( !save_image(currenFrame, currentMask, fname) ) {
         CF_ERROR("save_image('%s) fails", fname.c_str());
         return false;
       }
@@ -2476,7 +2482,7 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
 }
 
 
-void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_video_writer & output_writer) const
 {
   const c_image_stacking_output_options & output_options =
@@ -2519,10 +2525,10 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
     }
   }
 
-  output_writer.write(current_frame);
+  output_writer.write(current_frame, current_mask);
 }
 
-void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_video_writer & output_writer) const
 {
   const c_image_stacking_output_options & output_options =
@@ -2565,7 +2571,7 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
     }
   }
 
-  output_writer.write(current_frame);
+  output_writer.write(current_frame, current_mask);
 }
 
 void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
@@ -2611,7 +2617,7 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
     }
   }
 
-  output_writer.write(current_frame);
+  output_writer.write(current_frame, current_mask);
 }
 
 void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
@@ -2658,10 +2664,10 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
   }
 
   if ( !current_mask.empty() ) {
-    output_writer.write(current_mask);
+    output_writer.write(current_mask, cv::noArray());
   }
   else {
-    output_writer.write(cv::Mat1b(current_frame.size(), 255));
+    output_writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray());
   }
 
 }

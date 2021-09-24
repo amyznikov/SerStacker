@@ -102,7 +102,6 @@ void QStackTreeView::QStackItem::refreshInputSources()
 
   if ( stack_ && stack_->input_sequence() ) {
     for ( const c_input_source::ptr & input_source : stack_->input_sources() ) {
-      CF_DEBUG("new QStackTreeView::QInputSourceItem");
       new QStackTreeView::QInputSourceItem(input_source, this);
     }
   }
@@ -128,7 +127,6 @@ void QStackTreeView::QStackItem::setStack(const c_image_stacking_options::ptr & 
 QStackTreeView::QInputSourceItem::QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent)
   : Base(parent, (int) ItemType_InputSource)
 {
-  CF_DEBUG("setInputSource");
   setInputSource(input_source);
 }
 
@@ -144,9 +142,7 @@ void QStackTreeView::QStackTreeView::QInputSourceItem::setInputSource(const c_in
     setText(0, QFileInfo(input_source->filename().c_str()).fileName());
     setWhatsThis(0, input_source->filename().c_str());
     setToolTip(0, input_source->filename().c_str());
-    CF_DEBUG("setFlags");
     setFlags((flags() | Qt::ItemIsUserCheckable) & ~Qt::ItemIsEditable);
-    CF_DEBUG("updateCheckState");
 
     updateCheckState();
   }
@@ -159,7 +155,6 @@ void QStackTreeView::QStackTreeView::QInputSourceItem::setCkecked(bool v)
 
 void QStackTreeView::QStackTreeView::QInputSourceItem::updateCheckState()
 {
-  CF_DEBUG("setChecked %d", input_source_->enabled());
   setCkecked(input_source_ && input_source_->enabled());
 }
 
@@ -520,8 +515,6 @@ void QStackTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 
 void QStackTreeView::onItemChanged(QTreeWidgetItem *item, int column)
 {
-//  CF_DEBUG("updatingControls=%d", updatingControls_);
-
   if ( updatingControls() ) {
     return;
   }
@@ -568,7 +561,6 @@ void QStackTreeView::onItemChanged(QTreeWidgetItem *item, int column)
           }
 
           sourceItem->inputSource()->set_enabled( sourceItem->checkState(0) == Qt::Checked);
-          CF_DEBUG("InputSource CHANGED: enabled=%d", sourceItem->inputSource()->enabled());
           emit stackSourcesChanged(stackItem->stack());
         }
       }

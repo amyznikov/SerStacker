@@ -95,15 +95,18 @@ void QStackTreeView::QStackItem::refreshInputSources()
 {
   QTreeWidgetItem * childItem;
 
+
   while ( (childItem = takeChild(0)) ) {
     delete childItem;
   }
 
   if ( stack_ && stack_->input_sequence() ) {
     for ( const c_input_source::ptr & input_source : stack_->input_sources() ) {
+      CF_DEBUG("new QStackTreeView::QInputSourceItem");
       new QStackTreeView::QInputSourceItem(input_source, this);
     }
   }
+
 }
 
 const c_image_stacking_options::ptr & QStackTreeView::QStackItem::stack() const
@@ -125,6 +128,7 @@ void QStackTreeView::QStackItem::setStack(const c_image_stacking_options::ptr & 
 QStackTreeView::QInputSourceItem::QInputSourceItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent)
   : Base(parent, (int) ItemType_InputSource)
 {
+  CF_DEBUG("setInputSource");
   setInputSource(input_source);
 }
 
@@ -136,10 +140,14 @@ const c_input_source::ptr & QStackTreeView::QStackTreeView::QInputSourceItem::in
 void QStackTreeView::QStackTreeView::QInputSourceItem::setInputSource(const c_input_source::ptr & input_source)
 {
   if ( (input_source_ = input_source) ) {
+
     setText(0, QFileInfo(input_source->filename().c_str()).fileName());
     setWhatsThis(0, input_source->filename().c_str());
     setToolTip(0, input_source->filename().c_str());
+    CF_DEBUG("setFlags");
     setFlags((flags() | Qt::ItemIsUserCheckable) & ~Qt::ItemIsEditable);
+    CF_DEBUG("updateCheckState");
+
     updateCheckState();
   }
 }
@@ -151,6 +159,7 @@ void QStackTreeView::QStackTreeView::QInputSourceItem::setCkecked(bool v)
 
 void QStackTreeView::QStackTreeView::QInputSourceItem::updateCheckState()
 {
+  CF_DEBUG("setChecked %d", input_source_->enabled());
   setCkecked(input_source_ && input_source_->enabled());
 }
 
@@ -180,8 +189,8 @@ QStackTreeView::QStackTreeView(QWidget * parent)
 //  connect(this, &QTreeWidget::customContextMenuRequested,
 //      this, &ThisClass::onCustomContextMenuRequested);
 //
-//  connect(this, &QTreeWidget::itemChanged,
-//      this, &ThisClass::onItemChanged);
+  connect(this, &QTreeWidget::itemChanged,
+      this, &ThisClass::onItemChanged);
 //
 //  connect(this, &QTreeWidget::currentItemChanged,
 //      this, &ThisClass::onCurrentItemChanged);
@@ -190,6 +199,18 @@ QStackTreeView::QStackTreeView(QWidget * parent)
 //      this, &ThisClass::onItemDoubleClicked);
 
   setEnabled(false);
+}
+
+bool QStackTreeView::setUpdatingControls(bool v)
+{
+  const bool oldValue = updatingControls_;
+  updatingControls_ = v;
+  return oldValue;
+}
+
+bool QStackTreeView::updatingControls() const
+{
+  return updatingControls_;
 }
 
 void QStackTreeView::set_stacklist(const c_image_stacks_collection::ptr & stacklist)
@@ -206,6 +227,10 @@ const c_image_stacks_collection::ptr & QStackTreeView::stacklist() const
 void QStackTreeView::populateTreeView()
 {
   QTreeWidgetItem * item;
+
+  const bool oldValue =
+      setUpdatingControls(true);
+
   while ( (item = takeTopLevelItem(0)) ) {
     delete item;
   }
@@ -215,6 +240,8 @@ void QStackTreeView::populateTreeView()
       addStackItem(stacklist_->item(i));
     }
   }
+
+  setUpdatingControls(oldValue);
 }
 
 QTreeWidgetItem * QStackTreeView::addStackItem(const c_image_stacking_options::ptr & options)
@@ -362,10 +389,18 @@ void QStackTreeView::onAddSourcesToCurrentStackingOptions()
         cfilenames.emplace_back(s.toStdString());
       }
 
+
       if ( ppitem->stack()->input_sequence()->add_sources(cfilenames) ) {
+
+        const bool oldValue =
+            setUpdatingControls(true);
+
         ppitem->refreshInputSources();
         expandItem(ppitem);
+
+        setUpdatingControls(oldValue);
       }
+
 
     }
 
@@ -404,6 +439,9 @@ void QStackTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
     //running_stack = QStackingThread::currentStack();
     return;
   }
+
+  const bool oldValue =
+      setUpdatingControls(true);
 
   for ( QTreeWidgetItem * item : items ) {
 
@@ -475,9 +513,75 @@ void QStackTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 
   qDeleteAll(items);
 
+  setUpdatingControls(oldValue);
+
   emit stackCollectionChanged();
 }
 
+void QStackTreeView::onItemChanged(QTreeWidgetItem *item, int column)
+{
+//  CF_DEBUG("updatingControls=%d", updatingControls_);
+
+  if ( updatingControls() ) {
+    return;
+  }
+
+  if ( item ) {
+    switch ( item->type() ) {
+
+    case ItemType_Stack : {
+
+      QStackTreeView::QStackItem * ppItem =
+          dynamic_cast<QStackTreeView::QStackItem *>(item);
+
+      if ( ppItem->text(0).isEmpty() ) {
+
+        const bool oldValue = setUpdatingControls(true);
+        ppItem->setText(0, ppItem->stack()->name().c_str());
+        setUpdatingControls(oldValue);
+
+      }
+      else if ( ppItem->text(0).toStdString() != ppItem->stack()->name() ) {
+        ppItem->stack()->set_name(ppItem->text(0).toStdString());
+        emit stackNameChanged(ppItem->stack());
+      }
+
+      break;
+    }
+
+    case ItemType_InputSource : {
+
+      QStackTreeView::QInputSourceItem * sourceItem =
+          dynamic_cast<QStackTreeView::QInputSourceItem *>(item);
+
+      if ( sourceItem ) {
+
+        QStackTreeView::QStackItem * stackItem =
+            dynamic_cast<QStackTreeView::QStackItem *>(item->parent());
+
+        if ( stackItem && stackItem->stack() ) {
+
+          if ( QStackingThread::isRunning() ) {
+            if ( QStackingThread::currentStack()->input_sequence() == stackItem->stack()->input_sequence() ) {
+              break;
+            }
+          }
+
+          sourceItem->inputSource()->set_enabled( sourceItem->checkState(0) == Qt::Checked);
+          CF_DEBUG("InputSource CHANGED: enabled=%d", sourceItem->inputSource()->enabled());
+          emit stackSourcesChanged(stackItem->stack());
+        }
+      }
+
+      break;
+    }
+
+    default :
+      break;
+    }
+  }
+
+}
 
 void QStackTreeView::keyPressEvent(QKeyEvent *e)
 {
@@ -605,6 +709,9 @@ void QStackTreeView::dropEvent(QDropEvent *e)
     }
   }
 
+  const bool oldValue =
+      setUpdatingControls(true);
+
 
   if ( stackItem || (e->keyboardModifiers() & Qt::ControlModifier) ) {
     //
@@ -698,6 +805,8 @@ void QStackTreeView::dropEvent(QDropEvent *e)
   e->accept();
 
   setFocus();
+
+  setUpdatingControls(oldValue);
 
   if ( action != Qt::IgnoreAction ) {
     emit stackCollectionChanged();
@@ -1123,8 +1232,14 @@ QStackTree::QStackTree(QWidget * parent)
   connect(treeView_, &QTreeWidget::customContextMenuRequested,
       this, &ThisClass::onCustomContextMenuRequested);
 
-  connect(treeView_, &QTreeWidget::itemChanged,
-      this, &ThisClass::onItemChanged);
+//  connect(treeView_, &QTreeWidget::itemChanged,
+//      this, &ThisClass::onItemChanged);
+
+  connect(treeView_, &QStackTreeView::stackNameChanged,
+      this, &ThisClass::stackNameChanged);
+
+  connect(treeView_, &QStackTreeView::stackSourcesChanged,
+      this, &ThisClass::stackSourcesChanged);
 
   connect(treeView_, &QTreeWidget::currentItemChanged,
       this, &ThisClass::onCurrentItemChanged);
@@ -1529,66 +1644,6 @@ bool QStackTree::eventFilter(QObject *watched, QEvent *event)
   return false;
 }
 
-void QStackTree::onItemChanged(QTreeWidgetItem *item, int column)
-{
-  if ( isItemChangeFeedBack_ ) {
-    return;
-  }
-
-  if ( item ) {
-    switch ( item->type() ) {
-
-    case ItemType_Stack : {
-
-      QStackTreeView::QStackItem * ppItem =
-          dynamic_cast<QStackTreeView::QStackItem *>(item);
-
-      if ( ppItem->text(0).isEmpty() ) {
-        isItemChangeFeedBack_ = true;
-        ppItem->setText(0, ppItem->stack()->name().c_str());
-        isItemChangeFeedBack_ = false;
-      }
-      else if ( ppItem->text(0).toStdString() != ppItem->stack()->name() ) {
-        ppItem->stack()->set_name(ppItem->text(0).toStdString());
-        emit stackNameChanged(ppItem->stack());
-      }
-
-      break;
-    }
-
-    case ItemType_InputSource : {
-
-      QStackTreeView::QInputSourceItem * sourceItem =
-          dynamic_cast<QStackTreeView::QInputSourceItem *>(item);
-      if ( sourceItem ) {
-
-        QStackTreeView::QStackItem * stackItem =
-            dynamic_cast<QStackTreeView::QStackItem *>(item->parent());
-
-        if ( stackItem && stackItem->stack() && stackItem->stack()->input_sequence() ) {
-
-          if ( QStackingThread::isRunning() ) {
-            if ( QStackingThread::currentStack()->input_sequence() == stackItem->stack()->input_sequence() ) {
-              break;
-            }
-          }
-
-          sourceItem->inputSource()->set_enabled(
-              sourceItem->checkState(0) == Qt::Checked);
-
-        }
-
-      }
-
-      break;
-    }
-
-    default :
-      break;
-    }
-  }
-
-}
 
 void QStackTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
 {
@@ -1685,6 +1740,18 @@ void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
 
     switch ( item->type() ) {
     case ItemType_Stack : {
+
+      menu.addAction("Copy Name",
+          [this, item]() {
+
+            QClipboard * clipboard =
+                QApplication::clipboard();
+
+            if ( clipboard ) {
+              clipboard->setText(item->text(0));
+            }
+          });
+
       menu.addAction("Rename...",
           [this, item]() {
             treeView_->editItem(item);
@@ -1706,7 +1773,7 @@ void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
           });
 
 
-      menu.addAction("Copy Fuull path name",
+      menu.addAction("Copy full path name",
           [this, item]() {
 
             QClipboard * clipboard =
@@ -1768,21 +1835,6 @@ void QStackTree::onStartStackingClicked()
 
 void QStackTree::onStartAllStackingClicked()
 {
-//  QImageStackItem * item =
-//      dynamic_cast<QImageStackItem *>(this->
-//          currentItem());
-//  if ( item )  {
-//
-//    if ( !QStackingThread::isRunning() ) {
-//      CF_DEBUG("QStackingThread::start(item->pipeline())");
-//      QStackingThread::start(item->stacking_options());
-//    }
-//    else if ( item->stacking_options() == QStackingThread::options() ) {
-//      CF_DEBUG("QStackingThread::cancel()");
-//      QStackingThread::cancel();
-//    }
-//  }
-
   if ( !QStackingThread::isRunning() ) {
     currentProcessingMode_ = ProcessBatch;
     if ( !startNextStacking() ) {
@@ -1835,6 +1887,9 @@ void QStackTree::onStackingThreadStarted()
 
   if ( stackItem ) {
 
+    const bool oldValue =
+        treeView_->setUpdatingControls(true);
+
     for ( int j = 0, m = stackItem->childCount(); j < m; ++j ) {
 
       QStackTreeView::QInputSourceItem * sourceItem =
@@ -1844,6 +1899,9 @@ void QStackTree::onStackingThreadStarted()
         sourceItem->setFlags(sourceItem->flags() & ~Qt::ItemIsEnabled);
       }
     }
+
+    treeView_->setUpdatingControls(oldValue);
+
   }
 }
 
@@ -1859,6 +1917,9 @@ void QStackTree::onStackingThreadFinished()
 
   if ( stackItem ) {
 
+    const bool oldValue =
+        treeView_->setUpdatingControls(true);
+
     for ( int j = 0, m = stackItem->childCount(); j < m; ++j ) {
 
       QStackTreeView::QInputSourceItem * sourceItem =
@@ -1872,6 +1933,8 @@ void QStackTree::onStackingThreadFinished()
     if ( currentProcessingMode_ == ProcessBatch ) {
       stackItem->setCheckState(0, Qt::Unchecked);
     }
+
+    treeView_->setUpdatingControls(oldValue);
   }
 
   if ( currentProcessingMode_ != ProcessBatch || !startNextStacking() ) {

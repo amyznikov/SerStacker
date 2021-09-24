@@ -53,7 +53,7 @@ public slots:
   void addNewStack();
   void addSourcesToCurrentStack();
   void deleteSelectedItems();
-  void onItemChanged(QTreeWidgetItem *item, int column);
+  //void onItemChanged(QTreeWidgetItem *item, int column);
   void onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous);
   void onItemDoubleClicked(QTreeWidgetItem *item, int column);
   void onCustomContextMenuRequested(const QPoint &pos);
@@ -94,7 +94,7 @@ protected:
     ProcessBatch,
   } currentProcessingMode_ = ProcessIdle;
 
-  bool isItemChangeFeedBack_ = false;
+  //bool updatingControls_ = false;
 };
 
 class QStackTreeView
@@ -118,14 +118,21 @@ public:
   QStackItem * findStackItem(const c_image_stacking_options::ptr & stack) const;
   QInputSourceItem * findInputSourceItem(QStackItem * stackItem, const QString & name) const;
 
+  bool setUpdatingControls(bool v);
+  bool updatingControls() const;
+
 signals:
   void stackCollectionChanged();
+  void stackNameChanged(const c_image_stacking_options::ptr & stack);
+  void stackSourcesChanged(const c_image_stacking_options::ptr & stack);
 
 protected slots:
   void updateStackName(const c_image_stacking_options::ptr & stack);
   void onAddNewStack();
   void onAddSourcesToCurrentStackingOptions();
   void onDeleteSelectedItems();
+  void onItemChanged(QTreeWidgetItem *item, int column);
+  //void onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous);
 
 protected:
   void populateTreeView();
@@ -146,6 +153,7 @@ protected:
 
 protected:
   c_image_stacks_collection::ptr stacklist_;
+  bool updatingControls_ = false;
 };
 
 #endif /* __QStackSequencesTree_h__ */

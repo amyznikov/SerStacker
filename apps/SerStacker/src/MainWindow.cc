@@ -287,8 +287,8 @@ MainWindow::MainWindow()
   connect(stackTreeView, &QStackTree::stackCollectionChanged,
         this, &ThisClass::saveCurrentWork );
 
-//  connect(stackTreeView, &QStackTree::stackSourcesChanged,
-//      this, &ThisClass::saveCurrentWork );
+  connect(stackTreeView, &QStackTree::stackSourcesChanged,
+      this, &ThisClass::saveCurrentWork );
 //
 //  connect(stackTreeView, &QStackTree::stackDeleted,
 //      this, &ThisClass::saveCurrentWork );

@@ -1131,10 +1131,15 @@ bool c_image_stacking_pipeline::actual_run()
     cv::Mat reference_frame;
     cv::Mat reference_mask;
 
-    std::string master_file_name = master_options.master_source_path;
+    std::string master_file_name =
+        master_options.master_source_path;
+
+    CF_DEBUG("master_options.master_file_name=%s", master_file_name.c_str());
 
     if ( master_file_name.empty() ) {
-      master_file_name = this->input_sequence_->source(master_source_index = 0)->filename();
+      master_file_name =
+          input_sequence_->
+              source(master_source_index = 0)->filename();
     }
     else {
 
@@ -1159,39 +1164,44 @@ bool c_image_stacking_pipeline::actual_run()
     }
     else {
       external_master_frame_ = true;
+      master_source_index = 0;
+    }
+
+    if ( master_source_index >= (int) input_sequence->sources().size() ) {
+      CF_FATAL("ERROR: master_source_index=%d exceeds input_sequence->sources().size()=%zu",
+          master_source_index, input_sequence->sources().size());
+      return false;
+    }
+
+    if ( !input_sequence->source(master_source_index)->enabled() ) {
+      CF_FATAL("ERROR: master_source_index=%d is NOT enabled in input_sequence",
+          master_source_index);
+      return false;
     }
 
     if ( !input_sequence->open() ) {
-      CF_FATAL("ERROR: Can not open input source '%s'", master_file_name.c_str());
+      CF_FATAL("ERROR: Can not open master input source '%s'",
+          master_file_name.c_str());
       return false;
     }
 
     if ( (master_frame_index = master_options.master_frame_index) < 0 ) {
       master_frame_index = 0;
     }
-    else if ( master_source_index >= 0 ) {
-      if ( master_frame_index >= input_sequence->source(master_source_index)->size() ) {
-        CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
-            master_frame_index, master_file_name.c_str());
-        return false;
-      }
-    }
-    else if ( master_frame_index >= input_sequence->source(0)->size() ) {
+    else if ( master_frame_index >= input_sequence->source(master_source_index)->size() ) {
       CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
           master_frame_index, master_file_name.c_str());
       return false;
     }
 
-    if ( master_source_index < 0 ) {
-      master_frame_index = input_sequence->global_pos(0, master_frame_index);
-    }
-    else {
-      master_frame_index = input_sequence->global_pos(master_source_index, master_frame_index);
-    }
-
+    master_frame_index =
+        input_sequence->global_pos(
+            master_source_index,
+            master_frame_index);
 
     if ( master_options.generate_master_frame ) {
-      max_frames_to_stack = master_options.max_input_frames_to_generate_master_frame;
+      max_frames_to_stack =
+          master_options.max_input_frames_to_generate_master_frame;
     }
 
     if ( !create_reference_frame(input_sequence, master_frame_index, max_frames_to_stack,
@@ -1925,9 +1935,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     /////////////////////////////////////
     if ( frame_registration_ ) {
 
-      CF_DEBUG("external_master_frame_=%d master_frame_index_=%d",
-          external_master_frame_, master_frame_index_);
-
       if ( !external_master_frame_ && input_sequence->current_pos() == master_frame_index_ + 1 ) {
 
         if ( upscale_required(frame_upscale_after_align) ) {
@@ -1945,19 +1952,15 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
           if ( !output_options.debug_frame_registration_frame_indexes.empty()  ) {
 
-            CF_DEBUG("CHECING FOR DEBUG FRAME %d", input_sequence->current_pos() - 1);
-
             const std::vector<int> :: const_iterator pos =
                 std::find(output_options.debug_frame_registration_frame_indexes.begin(),
                     output_options.debug_frame_registration_frame_indexes.end(),
                     input_sequence->current_pos() - 1);
 
             if ( pos == output_options.debug_frame_registration_frame_indexes.end() ) {
-              CF_DEBUG("DEBUG FRAME %d IS NOT LISTED", input_sequence->current_pos() - 1);
               frame_registration_->set_enable_debug(false);
             }
             else {
-              CF_DEBUG("DEBUG FRAME %d IS LISTED", input_sequence->current_pos() - 1);
               frame_registration_->set_enable_debug(true);
               frame_registration_->set_debug_path(ssprintf("%s/debug-registration-%d",
                   output_directory_.c_str(), *pos));

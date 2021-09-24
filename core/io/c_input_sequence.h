@@ -81,15 +81,15 @@ protected:
 
 protected:
 
-  std::vector<c_input_source::ptr> sources_;
+  std::vector<c_input_source::ptr> all_sources_;
+  std::vector<c_input_source::ptr> enabled_sources_;
 
   enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_GBNR;
   bool auto_apply_color_matrix_ = true;
 
-  int total_frames_ = -1;
-  int current_source_ = -1;
-  int current_global_pos_ = -1;
-  //int current_source_pos_ = -1;
+  int total_frames_ = -1;  // in enabled_sources_
+  int current_source_ = -1; // in enabled_sources_
+  int current_global_pos_ = -1; // in enabled_sources_
 
 
   enum COLORID last_colorid_ = COLORID_UNKNOWN;

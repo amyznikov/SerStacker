@@ -82,6 +82,16 @@ public:
     return color_matrix_;
   }
 
+  void set_enabled(bool v)
+  {
+    enabled_ = v;
+  }
+
+  bool enabled() const
+  {
+    return enabled_;
+  }
+
   virtual ~c_input_source() = default;
 
   virtual bool open() = 0;
@@ -101,6 +111,7 @@ protected:
   enum source_type type_;
   int size_ = 0;
   int global_pos_ = 0;
+  bool enabled_ = true;
 
   bool has_color_matrix_ = false;
   cv::Matx33f color_matrix_ = cv::Matx33f::eye();

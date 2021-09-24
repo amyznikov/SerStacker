@@ -151,13 +151,7 @@ void QStackTreeView::QStackTreeView::QInputSourceItem::setCkecked(bool v)
 
 void QStackTreeView::QStackTreeView::QInputSourceItem::updateCheckState()
 {
-  QStackItem * stackItem = dynamic_cast<QStackItem *>(parent());
-  if ( !stackItem || !stackItem->stack() || stackItem->stack()->input_sequence() ) {
-    setCkecked(true);
-  }
-  else {
-    setCkecked(stackItem->stack()->input_sequence()->is_enabled(input_source_));
-  }
+  setCkecked(input_source_ && input_source_->enabled());
 }
 
 
@@ -743,14 +737,8 @@ bool QStackTreeView::dropSource(QDropEvent *e, const QUrl & url, QStackItem * ta
         c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
         if (  input_source ) {
 
-          QStackTreeView::QInputSourceItem * sourceItem =
-              new QStackTreeView::QInputSourceItem(input_source);
-
-          targetStackItem->insertChild(
-              target_sequence->indexof(input_source),
-              sourceItem);
-
-          sourceItem->updateCheckState();
+          targetStackItem->insertChild( target_sequence->indexof(input_source),
+              new QStackTreeView::QInputSourceItem(input_source));
 
           dropped = true;
         }
@@ -873,13 +861,8 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
           c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
           if (  input_source ) {
 
-            QStackTreeView::QInputSourceItem * sourceItem =
-                new QStackTreeView::QInputSourceItem(input_source);
-
             targetStackItem->insertChild(target_sequence->indexof(input_source),
-                sourceItem);
-
-            sourceItem->updateCheckState();
+                new QStackTreeView::QInputSourceItem(input_source));
 
             ++ num_sourcess_added;
           }
@@ -1590,9 +1573,9 @@ void QStackTree::onItemChanged(QTreeWidgetItem *item, int column)
             }
           }
 
-          stackItem->stack()->input_sequence()->
-              set_enabled(sourceItem->inputSource(),
-                  sourceItem->checkState(0) == Qt::Checked);
+          sourceItem->inputSource()->set_enabled(
+              sourceItem->checkState(0) == Qt::Checked);
+
         }
 
       }

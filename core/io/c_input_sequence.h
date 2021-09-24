@@ -50,14 +50,6 @@ public:
   static int indexof(const c_input_source::ptr & source,
       const std::vector<c_input_source::ptr> & list);
 
-  //void set_blacklist(const std::string & pathfilename, const std::vector<int> & bad_frame_indexes);
-
-  const std::vector<c_input_source::ptr> & disabled_sources() const;
-  void set_enabled(const c_input_source::ptr & , bool);
-  void set_enabled(const std::string & , bool);
-  bool is_enabled(const c_input_source::ptr & ) const;
-  bool is_enabled(const std::string & ) const;
-
   void clear();
   bool empty() const;
 
@@ -90,7 +82,6 @@ protected:
 protected:
 
   std::vector<c_input_source::ptr> sources_;
-  std::vector<c_input_source::ptr> disabled_sources_;
 
   enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_GBNR;
   bool auto_apply_color_matrix_ = true;

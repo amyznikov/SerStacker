@@ -6,7 +6,8 @@
  */
 
 #include "unsharp_mask.h"
-
+#include <tbb/tbb.h>
+#include <core/debug.h>
 
 
 static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma)
@@ -69,6 +70,58 @@ static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma
 }
 
 
+static void create_lpass_image(cv::InputArray src, cv::InputArray srcmask, cv::Mat & lpass, double sigma)
+{
+  if ( srcmask.empty() ) {
+    create_lpass_image(src, lpass, sigma);
+    return;
+  }
+
+  cv::Mat fmask;
+
+  const cv::Mat1b mask =
+      srcmask.getMat();
+
+  mask.convertTo(fmask, CV_32F, 1. / 255);
+  src.getMat().convertTo(lpass, CV_32F);
+  lpass.setTo(0, ~mask);
+
+  create_lpass_image(lpass, lpass, sigma);
+  create_lpass_image(fmask, fmask, sigma);
+
+  typedef tbb::blocked_range<int> tbb_range;
+
+  tbb::parallel_for(tbb_range(0, lpass.rows, 256),
+      [&](const tbb_range & range) {
+
+        const int cn = lpass.channels();
+        constexpr float zv = 0;
+
+        for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
+
+          float * lpassp = lpass.ptr<float>(y);
+          const float * fmaskp = fmask.ptr<const float>(y);
+          const uint8_t * smaskp = mask[y];
+
+          for ( int x = 0, nx = lpass.cols; x < nx; ++x, lpassp += cn ) {
+
+            if ( smaskp[x] ) {
+              for ( int c = 0; c < cn; ++c ) {
+                lpassp[c] /= fmaskp[x];
+              }
+            }
+            else {
+              for ( int c = 0; c < cn; ++c ) {
+                lpassp[c] = zv;
+              }
+            }
+
+          }
+        }
+      });
+}
+
+
 void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
     double sigma, double alpha,
     double outmin, double outmax)
@@ -122,6 +175,63 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
   }
 }
 
+
+
+void unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
+    cv::OutputArray dst,
+    double sigma,
+    double alpha,
+    double outmin,
+    double outmax)
+{
+
+  if ( srcmask.empty() ) {
+    unsharp_mask(src, dst, sigma, alpha, outmin, outmax);
+    return;
+  }
+
+  if ( sigma <= 0 || alpha <= 0 ) {
+    src.copyTo(dst);
+  }
+  else {
+
+    if ( outmax <= outmin ) {
+
+      const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
+
+      switch ( ddepth ) {
+      case CV_8U :
+        outmin = 0, outmax = UINT8_MAX;
+        break;
+      case CV_8S :
+        outmin = -INT8_MIN, outmax = INT8_MAX;
+        break;
+      case CV_16U :
+        outmin = 0, outmax = UINT16_MAX;
+        break;
+      case CV_16S :
+        outmin = INT16_MIN, outmax = INT16_MAX;
+        break;
+      case CV_32S :
+        outmin = INT32_MIN, outmax = INT32_MAX;
+        break;
+      default : /*cv::minMaxLoc(src, &outmin, &outmax); */
+        break;
+      }
+    }
+
+    cv::Mat lpass;
+    create_lpass_image(src, srcmask, lpass, sigma);
+    cv::addWeighted(src, 1. / (1. - alpha), lpass, -alpha / (1. - alpha), 0, dst, src.depth());
+    //dst.getMatRef().setTo(0, ~srcmask.getMat());
+  }
+
+  if ( outmax > outmin ) {
+    cv::min(dst.getMatRef(), outmax, dst.getMatRef());
+    cv::max(dst.getMatRef(), outmin, dst.getMatRef());
+  }
+
+}
 
 
 double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,

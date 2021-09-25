@@ -153,6 +153,7 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
         pipeline->anscombe().inverse(currentImage, currentImage);
       }
 
+      imageViewer_->setCurrentFileName(pipeline->options()->cname());
       imageViewer_->editImage(currentImage, currentMask);
     }
   }

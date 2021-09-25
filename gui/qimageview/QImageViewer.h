@@ -37,6 +37,9 @@ public:
   const cv::Mat & currentImageData() const;
   const cv::Mat & displayImage() const;
 
+  QString currentFileName() const;
+  void setCurrentFileName(const QString & newFileName);
+
   QString statusStringForPixel(const QPoint & viewpos);
 
   void setSelectionRectVisible(bool v);
@@ -78,6 +81,7 @@ protected:
   QStatusBar * statusbar_ = Q_NULLPTR;
   QGraphicsRectItem * selectionRect_ = Q_NULLPTR;
 
+  QString currentFileName_;
   cv::Mat currentImage_, currentMask_;
   cv::Mat currentImageData_;
   cv::Mat displayImage_;

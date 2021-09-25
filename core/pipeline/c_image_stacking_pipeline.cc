@@ -626,24 +626,34 @@ c_image_stacking_options::ptr c_image_stacks_collection::item(const std::string 
   return index >= 0 ? stacks_[index] : nullptr;
 }
 
-void c_image_stacks_collection::add(const c_image_stacking_options::ptr & pipeline)
+void c_image_stacks_collection::add(const c_image_stacking_options::ptr & stack)
 {
-  stacks_.emplace_back(pipeline);
+  stacks_.emplace_back(stack);
 }
 
-bool c_image_stacks_collection::remove(const c_image_stacking_options::ptr & pipeline)
+bool c_image_stacks_collection::remove(const c_image_stacking_options::ptr & stack)
 {
   const size_t original_size = stacks_.size();
   if ( original_size > 0 ) {
-    stacks_.erase(std::remove(stacks_.begin(), stacks_.end(), pipeline), stacks_.end());
+    stacks_.erase(std::remove(stacks_.begin(), stacks_.end(), stack), stacks_.end());
   }
   return stacks_.size() < original_size;
 }
 
-ssize_t c_image_stacks_collection::indexof(const c_image_stacking_options::ptr & pipeline) const
+void c_image_stacks_collection::set(int pos, const c_image_stacking_options::ptr & stack)
+{
+  if ( pos < 0 || pos >= (int)(stacks_.size()) ) {
+    stacks_.emplace_back(stack);
+  }
+  else {
+    stacks_[pos] = stack;
+  }
+}
+
+ssize_t c_image_stacks_collection::indexof(const c_image_stacking_options::ptr & stack) const
 {
   std::vector<c_image_stacking_options::ptr>::const_iterator ii =
-      std::find(stacks_.begin(), stacks_.end(), pipeline);
+      std::find(stacks_.begin(), stacks_.end(), stack);
   return ii == stacks_.end() ? -1 : ii - stacks_.begin();
 }
 
@@ -811,7 +821,7 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const c_image_stacking_options::ptr & c_image_stacking_pipeline::stacking_options() const
+const c_image_stacking_options::ptr & c_image_stacking_pipeline::options() const
 {
   return options_;
 }

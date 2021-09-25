@@ -162,6 +162,58 @@ bool c_image_stacks_collection::load(const std::string & cfgfilename)
 
 ///////////////////////////////////////////////////////////////////////////////
 
+c_image_stacking_options::ptr c_image_stacking_options::load(const std::string & cfgfilename)
+{
+  if ( cfgfilename.empty() ) {
+    CF_ERROR("c_image_stacking_options: No input file name specified");
+    return nullptr;
+  }
+
+  const std::string filename =
+      expand_path(cfgfilename);
+
+  CF_DEBUG("Saving '%s' ...",
+      filename.c_str());
+
+  c_config cfg(filename);
+
+  if ( !cfg.read() ) {
+    CF_FATAL("cfg.read('%s') fails", filename.c_str());
+    return nullptr;
+  }
+
+
+  std::string object_class;
+  if ( !::load_settings(cfg.root(), "object_class", &object_class) ) {
+    CF_FATAL("load_settings(object_class) fails", filename.c_str());
+    return nullptr;
+  }
+
+  if ( object_class != "c_image_stacking_options" ) {
+    CF_FATAL("Incorrect object_class='%s' from file '%s'",
+        object_class.c_str(), filename.c_str());
+    return nullptr;
+  }
+
+  c_config_setting root = cfg.root();
+  if ( !root || !root.isGroup() ) {
+    CF_FATAL("cfg.root() is not group in file '%s''",
+        filename.c_str());
+    return nullptr;
+  }
+
+  c_image_stacking_options::ptr obj =
+      c_image_stacking_options::create("");
+
+  if ( !obj->deserialize(root) ) {
+    CF_FATAL("obj->deserialize() fails for file '%s''",
+        filename.c_str());
+    return nullptr;
+  }
+
+  return obj;
+}
+
 bool c_image_stacking_options::save(const std::string & cfgfilename) const
 {
   if ( cfgfilename.empty() ) {

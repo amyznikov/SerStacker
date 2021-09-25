@@ -110,6 +110,27 @@ const cv::Mat & QImageViewer::displayImage() const
   return displayImage_;
 }
 
+QString QImageViewer::currentFileName() const
+{
+//  if ( input_sequence_->is_open() ) {
+//
+//    c_input_source::ptr source =
+//        input_sequence_->current_source();
+//
+//    if ( source ) {
+//      return source->filename().c_str();
+//    }
+//  }
+
+  return this->currentFileName_;
+}
+
+void QImageViewer::setCurrentFileName(const QString & newFileName)
+{
+  this->currentFileName_ = newFileName;
+  emit currentImageChanged();
+}
+
 void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
 {
   if ( image.empty() ) {

@@ -25,6 +25,7 @@ public:
 
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
+  void refresh();
 
   void applyInputOptionsToAll(const c_input_options & options);
   //void applyMasterFrameOptionsToAll(const c_master_frame_options & options);
@@ -67,7 +68,6 @@ public slots:
   bool startNextStacking();
 
 protected:
-  void updateControls();
   bool eventFilter(QObject *watched, QEvent *event) override;
 
 protected:
@@ -113,6 +113,7 @@ public:
 
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
+  void refresh();
 
   QStackItem * findStackItem(const QString & name) const;
   QStackItem * findStackItem(const c_image_stacking_options::ptr & stack) const;

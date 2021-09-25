@@ -281,7 +281,9 @@ public:
 
   std::string get_displaypatch() const;
 
+  static ptr load(const std::string & cfgfilename);
   bool save(const std::string & cfgfilename) const;
+
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
 
@@ -316,10 +318,11 @@ public:
   c_image_stacking_options::ptr item(size_t index) const;
   c_image_stacking_options::ptr item(const std::string & name) const;
 
-  void add(const c_image_stacking_options::ptr & pipeline);
-  bool remove(const c_image_stacking_options::ptr & pipeline);
+  void add(const c_image_stacking_options::ptr & stack);
+  bool remove(const c_image_stacking_options::ptr & stack);
+  void set(int pos, const c_image_stacking_options::ptr & stack);
 
-  ssize_t indexof(const c_image_stacking_options::ptr & pipeline) const;
+  ssize_t indexof(const c_image_stacking_options::ptr & stack) const;
   ssize_t indexof(const std::string & name) const;
 
   bool save(const std::string & cfgfilename = "") const;
@@ -360,7 +363,7 @@ public:
   void set_canceled(bool canceled);
   bool canceled() const;
 
-  const c_image_stacking_options::ptr & stacking_options() const;
+  const c_image_stacking_options::ptr & options() const;
 
 //  const std::string & master_file_name() const {
 //    return master_file_name_;

@@ -219,6 +219,12 @@ const c_image_stacks_collection::ptr & QStackTreeView::stacklist() const
   return this->stacklist_;
 }
 
+void QStackTreeView::refresh()
+{
+  setEnabled(this->stacklist_ != nullptr);
+  populateTreeView();
+}
+
 void QStackTreeView::populateTreeView()
 {
   QTreeWidgetItem * item;
@@ -1256,7 +1262,6 @@ QStackTree::QStackTree(QWidget * parent)
 void QStackTree::set_stacklist(const c_image_stacks_collection::ptr & pipelines)
 {
   treeView_->set_stacklist(pipelines);
-  updateControls();
 }
 
 const c_image_stacks_collection::ptr & QStackTree::stacklist() const
@@ -1574,8 +1579,9 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
 }
 
 
-void QStackTree::updateControls()
+void QStackTree::refresh()
 {
+  treeView_->refresh();
 }
 
 

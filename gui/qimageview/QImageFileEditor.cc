@@ -45,6 +45,18 @@ void QImageFileEditor::openImage(const std::string & pathfilename)
 {
   input_sequence_->close(true);
   input_sequence_->add_source(pathfilename);
+  setCurrentFileName(pathfilename.c_str());
+
+  //  if ( input_sequence_->is_open() ) {
+  //
+  //    c_input_source::ptr source =
+  //        input_sequence_->current_source();
+  //
+  //    if ( source ) {
+  //      return source->filename().c_str();
+  //    }
+  //  }
+
   startDisplay();
 }
 
@@ -57,6 +69,7 @@ void QImageFileEditor::openImages(const std::vector<std::string> & pathfilenames
 {
   input_sequence_->close(true);
   input_sequence_->add_sources(pathfilenames);
+  setCurrentFileName(pathfilenames.empty() ? "" : pathfilenames.front().c_str());
   startDisplay();
 }
 
@@ -84,6 +97,7 @@ void QImageFileEditor::closeCurrentSequence()
     input_sequence_->close(true);
   }
 
+  setCurrentFileName("");
   emit currentImageChanged();
 }
 
@@ -142,33 +156,35 @@ void QImageFileEditor::loadNextFrame()
       input_sequence_->read(inputImage_, &inputMask_);
 
       updateImage();
-      emit currentImageChanged();
+      setCurrentFileName(current_source->filename().c_str());
+
+      //emit currentImageChanged();
     }
   }
 }
 
 
 
-QString QImageFileEditor::currentFileName() const
-{
-  if ( input_sequence_->is_open() ) {
-
-    c_input_source::ptr source =
-        input_sequence_->current_source();
-
-    if ( source ) {
-      return source->filename().c_str();
-    }
-  }
-
-  return this->currentFileName_;
-}
-
-void QImageFileEditor::setCurrentFileName(const QString & newFileName)
-{
-  this->currentFileName_ = newFileName;
-  emit currentImageChanged();
-}
+//QString QImageFileEditor::currentFileName() const
+//{
+//  if ( input_sequence_->is_open() ) {
+//
+//    c_input_source::ptr source =
+//        input_sequence_->current_source();
+//
+//    if ( source ) {
+//      return source->filename().c_str();
+//    }
+//  }
+//
+//  return this->currentFileName_;
+//}
+//
+//void QImageFileEditor::setCurrentFileName(const QString & newFileName)
+//{
+//  this->currentFileName_ = newFileName;
+//  emit currentImageChanged();
+//}
 
 
 //void QImageFileEditor::showEvent(QShowEvent *e)

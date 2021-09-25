@@ -62,6 +62,7 @@ private:
 
 public slots:
   void onSaveCurrentImageAs();
+  void onLoadStackConfig();
 
 private slots:
   void updateWindowTittle();
@@ -116,7 +117,8 @@ private:
 
   QMenu * fileMenu = Q_NULLPTR;
   QMenu * viewMenu = Q_NULLPTR;
-  QAction * menuSaveImageAs_action = Q_NULLPTR;
+  QAction * menuSaveImageAsAction = Q_NULLPTR;
+  QAction * menuLoadStackAction = Q_NULLPTR;
 };
 
 

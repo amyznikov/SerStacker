@@ -336,18 +336,27 @@ MainWindow::MainWindow()
 //      this, &ThisClass::onAddStack);
 //
 
-  fileMenu->addAction(menuSaveImageAs_action =
+  fileMenu->addAction(menuSaveImageAsAction =
       new QAction("Save current image as..."));
-  menuSaveImageAs_action->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+  menuSaveImageAsAction->setEnabled(imageEditor->isVisible() &&
+      !imageEditor->currentImage().empty());
 
-  connect(menuSaveImageAs_action, &QAction::triggered,
+  connect(menuSaveImageAsAction, &QAction::triggered,
       this, &ThisClass::onSaveCurrentImageAs);
 
   connect(imageEditor, &QImageEditor::currentImageChanged,
       [this]() {
-        menuSaveImageAs_action->setEnabled(imageEditor->isVisible() &&
+        menuSaveImageAsAction->setEnabled(imageEditor->isVisible() &&
             !imageEditor->currentImage().empty());
       });
+
+
+  fileMenu->addSeparator();
+  fileMenu->addAction(menuLoadStackAction =
+      new QAction("Load stack config..."));
+  connect(menuLoadStackAction, &QAction::triggered,
+      this, &ThisClass::onLoadStackConfig);
+
 
   fileMenu->addSeparator();
   fileMenu->addAction(action = new QAction("Quit"));
@@ -952,6 +961,92 @@ void MainWindow::onSaveCurrentImageAs()
 void MainWindow::saveCurrentWork()
 {
   stacklist_->save();
+}
+
+void MainWindow::onLoadStackConfig()
+{
+  static const QString loadStackConfigSavedPathKeyName =
+      "loadStackConfigSavedPath";
+
+  QSettings settings;
+
+  QString savedPathFileName =
+      settings.value(loadStackConfigSavedPathKeyName).toString();
+
+  const QString filter =
+      "Config files (*.cfg) ;;"
+      "All files (*.*)";
+
+  QStringList selectedFileNames =
+      QFileDialog::getOpenFileNames(this,
+          "Select stack config files",
+          savedPathFileName,
+          filter,
+          Q_NULLPTR,
+          QFileDialog::ReadOnly);
+
+
+  if ( selectedFileNames.isEmpty() ) {
+    return;
+  }
+
+  settings.setValue(loadStackConfigSavedPathKeyName,
+      selectedFileNames[0]);
+
+  bool hasChanges = false;
+
+  for ( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
+
+    c_image_stacking_options::ptr stack =
+        c_image_stacking_options::load(selectedFileNames[i].toStdString());
+
+    if ( !stack ) {
+
+      if ( i == n - 1 ) {
+        QMessageBox::critical(this,
+            "ERROR",
+            QString("Can not load %1.\nSee error log for details.").arg(selectedFileNames[i]));
+        break;
+      }
+
+      const int responce =
+          QMessageBox::critical(this, "ERROR",
+              QString("Can not load %1.\n"
+                  "See error log for details.\n"
+                  "Continue loading ?").arg(selectedFileNames[i]),
+              QMessageBox::Yes | QMessageBox::No);
+
+      if ( responce != QMessageBox::Yes ) {
+        break;
+      }
+
+      continue;
+    }
+
+
+    int pos = stacklist_->indexof(stack->name());
+    if ( pos < 0 ) {
+      stacklist_->add(stack);
+      hasChanges = true;
+    }
+    else {
+
+      const int responce =
+          QMessageBox::critical(this, "ERROR",
+              QString("Stack with name '%1' already exists.\n"
+                  "Replace existing ?").arg(stack->cname()),
+              QMessageBox::Yes | QMessageBox::No);
+
+      if ( responce == QMessageBox::Yes  ) {
+        stacklist_->set(pos, stack);
+        hasChanges = true;
+      }
+    }
+  }
+
+  if ( hasChanges ) {
+    stackTreeView->refresh();
+  }
 }
 
 

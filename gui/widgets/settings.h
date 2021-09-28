@@ -91,6 +91,13 @@ inline QString toString(const T & x, const T & y, const T & z, const T & w) {
   return QString("%1;%2;%3;%4").arg(x).arg(y).arg(z).arg(w);
 }
 
+inline bool fromString(const QString & s, QString * v)
+{
+  if ( &s != v ) {
+    *v = s;
+  }
+  return true;
+}
 
 
 inline bool fromString(const QString & s, float * v) {

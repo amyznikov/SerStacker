@@ -350,7 +350,8 @@ bool c_input_options::deserialize(c_config_setting settings)
 bool c_roi_selection_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "roi_selection_method", method);
-  save_settings(settings, "crop_size", crop_size);
+  save_settings(settings, "planetary_disk_crop_size", planetary_disk_crop_size);
+  save_settings(settings, "rectangle_roi_selection", rectangle_roi_selection);
 
   return true;
 }
@@ -362,7 +363,8 @@ bool c_roi_selection_options::deserialize(c_config_setting settings)
   }
 
   load_settings(settings, "roi_selection_method", &method);
-  load_settings(settings, "crop_size", &crop_size);
+  load_settings(settings, "planetary_disk_crop_size", &planetary_disk_crop_size);
+  load_settings(settings, "rectangle_roi_selection", &rectangle_roi_selection);
 
 
   return true;

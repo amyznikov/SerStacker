@@ -9,25 +9,39 @@
 #ifndef __c_planetary_disk_selection__
 #define __c_planetary_disk_selection__
 
-#include "c_feature_based_roi_selection.h"
+#include "c_roi_selection.h"
 
-class c_planetary_disk_selection :
-    public c_feature_based_roi_selection
+class c_planetary_disk_selection
+    : public c_roi_selection
 {
 public:
   typedef c_planetary_disk_selection this_class;
-  typedef c_feature_based_roi_selection base;
+  typedef c_roi_selection base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_planetary_disk_selection() = default;
+  c_planetary_disk_selection();
+  c_planetary_disk_selection(const cv::Size & crop_size);
 
   static this_class::ptr create();
   static this_class::ptr create(const cv::Size & crop_size);
 
-  bool detect_object_roi(cv::InputArray image, cv::InputArray image_mask,
-      cv::Point2f & outputObjectLocation,
-      cv::Rect & outputCropRect ) override;
+  const cv::Size & crop_size() const;
+  void set_crop_size(const cv::Size & size) ;
 
+  bool select_roi(cv::InputArray image, cv::InputArray image_mask,
+      cv::Rect & outputROIRectangle ) override;
+
+  const cv::Point2f & detected_object_position() const;
+  const cv::Rect & detected_object_roi()  const;
+
+//  bool detect_object_roi(cv::InputArray image, cv::InputArray image_mask,
+//      cv::Point2f & outputObjectLocation,
+//      cv::Rect & outputCropRect ) override;
+
+protected:
+  cv::Size crop_size_;
+  cv::Point2f objpos_;
+  cv::Rect objrect_;
 };
 
 #endif /* __c_planetary_disk_selection__ */

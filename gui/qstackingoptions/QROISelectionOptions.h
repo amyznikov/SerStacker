@@ -52,11 +52,13 @@ signals:
 
 protected:
   void onupdatecontrols() override;
+  void updateROIControls();
 
 protected:
   c_roi_selection_options * options_ = Q_NULLPTR;
   QROISelectionMethodCombo * selectionMethod_ctl = Q_NULLPTR;
-  QNumberEditBox * cropSize_ctl = Q_NULLPTR;
+  QNumberEditBox * planetaryDiskSize_ctl = Q_NULLPTR;
+  QNumberEditBox * rectangeROI_ctl = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

@@ -30,6 +30,7 @@
 const struct roi_selection_method_desc roi_selection_methods[] = {
     {"none", roi_selection_none},
     {"planetary_disk", roi_selection_planetary_disk},
+    {"rectangle", roi_selection_rectange_crop},
     {nullptr, roi_selection_none},
 };
 
@@ -482,12 +483,15 @@ const c_roi_selection_options & c_image_stacking_options::roi_selection_options(
   return roi_selection_options_;
 }
 
-c_feature_based_roi_selection::ptr c_image_stacking_options::create_roi_selection() const
+c_roi_selection::ptr c_image_stacking_options::create_roi_selection() const
 {
   switch ( roi_selection_options_.method ) {
-  case roi_selection_planetary_disk:
-    return c_planetary_disk_selection::create(roi_selection_options_.crop_size);
-    break;
+  case roi_selection_planetary_disk :
+    return c_planetary_disk_selection::create(roi_selection_options_.planetary_disk_crop_size);
+
+  case roi_selection_rectange_crop :
+    return c_roi_rectangle_selection::create(roi_selection_options_.rectangle_roi_selection);
+
   default :
     break;
   }
@@ -2213,7 +2217,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
   return true;
 }
 
-bool c_image_stacking_pipeline::select_image_roi(const c_feature_based_roi_selection::ptr & roi_selection,
+bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::ptr & roi_selection,
     const cv::Mat & src, const cv::Mat & srcmask,
     cv::Mat & dst, cv::Mat & dstmask)
 {
@@ -2228,11 +2232,10 @@ bool c_image_stacking_pipeline::select_image_roi(const c_feature_based_roi_selec
   }
 
 
-  cv::Point2f feature_location;
   cv::Rect ROI;
 
-  if ( !roi_selection->detect_object_roi(src, srcmask, feature_location, ROI) ) {
-    CF_ERROR("roi_selection->detect_object_roi() fails");
+  if ( !roi_selection->select_roi(src, srcmask, ROI) || ROI.empty() ) {
+    CF_ERROR("roi_selection->select_roi() fails");
     return false;
   }
 

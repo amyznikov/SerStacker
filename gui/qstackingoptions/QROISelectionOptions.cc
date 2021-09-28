@@ -33,27 +33,60 @@ enum roi_selection_method fromString(const QString  & s, enum roi_selection_meth
 }
 
 
+
 QROISelectionOptions::QROISelectionOptions(QWidget * parent)
   : Base("QROISelectionOptions", parent)
 {
 
   selectionMethod_ctl = add_enum_combobox<QROISelectionMethodCombo>(
-      "Detect feature:",
+      "ROI selection:",
       [this](roi_selection_method v) {
         if ( options_ && v != options_->method ) {
           options_->method = v;
+          updateROIControls();
           emit parameterChanged();
         }
       });
 
-  cropSize_ctl =
-      add_numeric_box<cv::Size>("Crop Size WxH:",
+  planetaryDiskSize_ctl =
+      add_numeric_box<cv::Size>("Crop size WxH [px]:",
           [this](const cv::Size & v) {
-            if ( options_ && v != options_->crop_size ) {
-              options_->crop_size = v;
+            if ( options_ && v != options_->planetary_disk_crop_size ) {
+              options_->planetary_disk_crop_size = v;
               emit parameterChanged();
             }
           });
+
+  rectangeROI_ctl =
+      add_numeric_box<QString>("Rectangle L;T;WxH [px]:",
+          [this](const QString & v) {
+
+            if ( options_ ) {
+
+              int x, y, cx, cy, n;
+
+              const QByteArray a = v.toUtf8();
+              const char * s = a.data();
+
+              if ( (n = sscanf(s, "%d ; %d ; %d x %d", &x, &y, &cx, &cy)) == 4 ) {
+                options_ ->rectangle_roi_selection.x = x;
+                options_ ->rectangle_roi_selection.y = y;
+                options_ ->rectangle_roi_selection.width = cx;
+                options_ ->rectangle_roi_selection.height = cy;
+              }
+              else if ((n = sscanf(s, "%d ; %d ; %d ; %d", &x, &y, &cx, &cy)) == 4) {
+                options_ ->rectangle_roi_selection.x = x;
+                options_ ->rectangle_roi_selection.y = y;
+                options_ ->rectangle_roi_selection.width = cx - x;
+                options_ ->rectangle_roi_selection.height = cy - y;
+              }
+              else {
+                CF_ERROR("Parse error in ROI specification: s='%s' n=%d", s, n);
+              }
+            }
+
+          });
+
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -95,9 +128,53 @@ void QROISelectionOptions::onupdatecontrols()
   else {
 
     selectionMethod_ctl->setCurrentItem(options_->method);
-    cropSize_ctl->setValue(options_->crop_size);
-
+    updateROIControls();
     setEnabled(true);
   }
 
+}
+
+void QROISelectionOptions::updateROIControls()
+{
+  if ( !options_ || options_->method == roi_selection_none ) {
+
+    planetaryDiskSize_ctl->setVisible(false);
+    form->labelForField(planetaryDiskSize_ctl)->setVisible(false);
+
+    rectangeROI_ctl->setVisible(false);
+    form->labelForField(rectangeROI_ctl)->setVisible(false);
+  }
+  else {
+    switch ( options_->method ) {
+    case roi_selection_planetary_disk :
+
+      rectangeROI_ctl->setVisible(false);
+      form->labelForField(rectangeROI_ctl)->setVisible(false);
+
+
+      planetaryDiskSize_ctl->setValue(options_->planetary_disk_crop_size);
+      planetaryDiskSize_ctl->setVisible(true);
+      form->labelForField(planetaryDiskSize_ctl)->setVisible(true);
+      break;
+
+    case roi_selection_rectange_crop :
+
+      planetaryDiskSize_ctl->setVisible(false);
+      form->labelForField(planetaryDiskSize_ctl)->setVisible(false);
+
+
+      rectangeROI_ctl->setText(QString("%1;%2;%3x%4")
+          .arg(options_->rectangle_roi_selection.x)
+          .arg(options_->rectangle_roi_selection.y)
+          .arg(options_->rectangle_roi_selection.width)
+          .arg(options_->rectangle_roi_selection.height));
+
+      rectangeROI_ctl->setVisible(true);
+      form->labelForField(rectangeROI_ctl)->setVisible(true);
+      break;
+
+    default:
+      break;
+    }
+  }
 }

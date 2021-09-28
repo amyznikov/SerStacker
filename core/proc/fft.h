@@ -50,9 +50,6 @@ bool fftSpectrumToPolar(const cv::Mat & src,
 bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase,
     cv::Mat & dst );
 
-void fftSharpen(cv::InputArray src, cv::OutputArray dst,
-    const std::vector<double> & coeffs);
-
 void fftSharpenR1(cv::InputArray image, cv::OutputArray dst,
     double scale,
     bool preserve_l2_norm = true);
@@ -63,5 +60,13 @@ bool fftAccumulatePowerSpectrum(const cv::Mat & src,
 
 bool fftMaxPowerSpectrum(const cv::Mat & src,
     cv::Mat & acc);
+
+bool fftRadialPowerProfile(cv::InputArray src,
+    std::vector<double> * fftprofile);
+
+void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
+    const std::vector<double> & coeffs,
+    std::vector<double> * profile_before = nullptr,
+    std::vector<double> * profile_after = nullptr );
 
 #endif /* __fft_h__ */

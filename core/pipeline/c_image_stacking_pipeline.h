@@ -9,6 +9,7 @@
 #define __c_stacking_pipeline_h__
 
 #include <core/io/c_input_sequence.h>
+#include <core/roi_selection/c_roi_rectangle_selection.h>
 #include <core/roi_selection/c_planetary_disk_selection.h>
 #include <core/registration/c_feature_based_registration.h>
 #include <core/registration/c_planetary_disk_registration.h>
@@ -24,7 +25,8 @@
 
 enum roi_selection_method {
   roi_selection_none = 0,
-  roi_selection_planetary_disk = 1
+  roi_selection_planetary_disk = 1,
+  roi_selection_rectange_crop = 2
 };
 
 enum frame_registration_method {
@@ -124,7 +126,8 @@ struct c_input_options {
 
 struct c_roi_selection_options {
   enum roi_selection_method method = roi_selection_none;
-  cv::Size crop_size;
+  cv::Size planetary_disk_crop_size;
+  cv::Rect rectangle_roi_selection;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -260,7 +263,7 @@ public:
 
   c_roi_selection_options & roi_selection_options();
   const c_roi_selection_options & roi_selection_options() const;
-  c_feature_based_roi_selection::ptr create_roi_selection() const;
+  c_roi_selection::ptr create_roi_selection() const;
 
   c_frame_upscale_options & upscale_options();
   const c_frame_upscale_options & upscale_options() const;
@@ -408,7 +411,7 @@ protected:
       const c_input_options & input_options,
       cv::Mat & output_reference_image, cv::Mat & output_reference_mask) const;
 
-  static bool select_image_roi(const c_feature_based_roi_selection::ptr & roi_selection,
+  static bool select_image_roi(const c_roi_selection::ptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
       cv::Mat & dst, cv::Mat & dstmask);
 
@@ -483,7 +486,7 @@ protected:
   mutable std::mutex status_lock_;
 
   c_anscombe_transform anscombe_;
-  c_feature_based_roi_selection::ptr roi_selection_;
+  c_roi_selection::ptr roi_selection_;
   c_frame_registration::ptr frame_registration_;
   c_frame_weigthed_average::ptr flow_accumulation_;
   mutable std::mutex registration_lock_;

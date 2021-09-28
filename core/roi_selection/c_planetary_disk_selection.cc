@@ -40,6 +40,17 @@ static bool select_crop_rectangle(const cv::Size & image_size, const cv::Size & 
 }
 
 
+c_planetary_disk_selection::c_planetary_disk_selection()
+{
+
+}
+
+c_planetary_disk_selection::c_planetary_disk_selection(const cv::Size & crop_size)
+  : crop_size_(crop_size)
+{
+}
+
+
 c_planetary_disk_selection::ptr c_planetary_disk_selection::create()
 {
   return ptr(new this_class());
@@ -47,32 +58,66 @@ c_planetary_disk_selection::ptr c_planetary_disk_selection::create()
 
 c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Size & crop_size)
 {
-  ptr obj(new this_class());
-  obj->set_crop_size(crop_size);
-  return obj;
+  return ptr(new this_class(crop_size));
 }
 
-bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::InputArray mask,
-    cv::Point2f & outputObjectLocation,
-    cv::Rect & outputCropRect )
+bool c_planetary_disk_selection::select_roi(cv::InputArray image, cv::InputArray mask,
+    cv::Rect & outputROIRectangle )
 {
-  if ( !simple_planetary_disk_detector(image, mask, &outputObjectLocation, 0, &outputCropRect) ) {
+  if ( !simple_planetary_disk_detector(image, mask, &objpos_, 0, &objrect_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }
 
   if ( crop_size_.empty() ) {
-    crop_size_ = outputCropRect.size() * 2;
+    crop_size_ = objrect_.size() * 2;
   }
 
   if ( crop_size_ == image.size() ) {
-    outputCropRect = cv::Rect(0,0, crop_size_.width, crop_size_.height);
+    objrect_ = cv::Rect(0,0, crop_size_.width, crop_size_.height);
   }
-  else if ( !select_crop_rectangle(image.size(), crop_size_, outputObjectLocation, &outputCropRect) ) {
+  else if ( !select_crop_rectangle(image.size(), crop_size_, objpos_, &objrect_) ) {
     CF_FATAL("select_crop_rectangle() fails");
     return false;
   }
 
+  outputROIRectangle = objrect_;
+
   return true;
 }
+
+const cv::Point2f & c_planetary_disk_selection::detected_object_position() const
+{
+  return objpos_;
+}
+
+const cv::Rect & c_planetary_disk_selection::detected_object_roi() const
+{
+  return objrect_;
+}
+
+
+//bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::InputArray mask,
+//    cv::Point2f & outputObjectLocation,
+//    cv::Rect & outputCropRect )
+//{
+//  if ( !simple_planetary_disk_detector(image, mask, &outputObjectLocation, 0, &outputCropRect) ) {
+//    CF_FATAL("simple_small_planetary_disk_detector() fails");
+//    return false;
+//  }
+//
+//  if ( crop_size_.empty() ) {
+//    crop_size_ = outputCropRect.size() * 2;
+//  }
+//
+//  if ( crop_size_ == image.size() ) {
+//    outputCropRect = cv::Rect(0,0, crop_size_.width, crop_size_.height);
+//  }
+//  else if ( !select_crop_rectangle(image.size(), crop_size_, outputObjectLocation, &outputCropRect) ) {
+//    CF_FATAL("select_crop_rectangle() fails");
+//    return false;
+//  }
+//
+//  return true;
+//}
 

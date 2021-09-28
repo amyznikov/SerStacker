@@ -376,8 +376,10 @@ bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::
 }
 
 
-void fftSharpen(cv::InputArray src, cv::OutputArray dst,
-    const std::vector<double> & coeffs)
+void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
+    const std::vector<double> & coeffs,
+    std::vector<double> * profile_before,
+    std::vector<double> * profile_after)
 {
   cv::Mat image;
   cv::Mat2f F;
@@ -424,7 +426,7 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
 
   fftSwapQuadrants(F);
 
-  const auto deconv = [](const cv::Mat & src, cv::Mat & dst, const cv::Mat2f & F) -> void {
+  const auto applyF = [](const cv::Mat & src, cv::Mat & dst, const cv::Mat2f & F) -> void {
     cv::Mat S;
     cv::dft(src, S, cv::DFT_COMPLEX_OUTPUT);
     cv::mulSpectrums(S, F, S, 0, false);
@@ -434,7 +436,7 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
 
   const int nc = image.channels();
   if ( nc == 1 ) {
-    deconv(image, image, F);
+    applyF(image, image, F);
   }
   else {
     cv::Mat1f channels[nc];
@@ -442,13 +444,13 @@ void fftSharpen(cv::InputArray src, cv::OutputArray dst,
 
     if ( image.size().area() > 1024 * 124 ) {
       for ( int i = 0; i < nc; ++i ) {
-        deconv(channels[i], channels[i], F);
+        applyF(channels[i], channels[i], F);
       }
     }
     else {
       tbb::parallel_for(0, nc, 1,
-          [&F, &channels, &deconv](int i) {
-            deconv(channels[i], channels[i], F);
+          [&F, &channels, &applyF](int i) {
+            applyF(channels[i], channels[i], F);
           });
     }
     cv::merge(channels, nc, image);

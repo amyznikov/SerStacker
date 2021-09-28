@@ -21,6 +21,8 @@
 #include "QTypeConvertSettings.h"
 #include "QColorSaturationOptions.h"
 #include "QInPaintSettings.h"
+#include "QRadialPolySharpSettings.h"
+
 
 
 #define ICON_double_arrow_down    "double-arrow-down"
@@ -84,14 +86,14 @@ void QImageProcessorRoutineSettingsBase::registrerAllClasses()
     registrerClassFactory(&QTypeConvertSettings::classFactory);
     registrerClassFactory(&QColorSaturationOptions::classFactory);
     registrerClassFactory(&QInPaintSettings::classFactory);
+    registrerClassFactory(&QRadialPolySharpSettings::classFactory);
+
   }
 }
 
 void QImageProcessorRoutineSettingsBase::focusInEvent(QFocusEvent *event)
 {
   Base::focusInEvent(event);
-  CF_DEBUG(" focusWidget=%p this=%p", focusWidget(), this );
-
 }
 
 

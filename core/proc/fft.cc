@@ -378,18 +378,26 @@ bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::
 
 void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs,
-    std::vector<double> * profile_before,
-    std::vector<double> * profile_after)
+    std::vector<double> & profile_before,
+    std::vector<double> & profile_after,
+    std::vector<double> & profile_poly)
 {
   cv::Mat image;
-  cv::Mat2f F;
+  std::vector<cv::Mat> channels;
+  std::vector<int> profile_counter;
   cv::Rect rc;
 
-  cv::Size fftSize(cv::getOptimalDFTSize(src.cols()),
+  constexpr bool preserve_l2_norm = true;
+  double saved_image_norm = 1;
+
+  if ( preserve_l2_norm ) {
+    saved_image_norm = cv::norm(src, cv::NORM_L2);
+  }
+
+  const cv::Size fftSize(cv::getOptimalDFTSize(src.cols()),
       cv::getOptimalDFTSize(src.rows()));
 
   if ( src.size() == fftSize ) {
-    //image = src.getMat();
     src.copyTo(image);
   }
   else {
@@ -397,70 +405,108 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
   }
 
 
+  if ( image.channels() == 1 ) {
+    channels.emplace_back(image);
+  }
+  else {
+    cv::split(image, channels);
+  }
 
-  const cv::Point centre = cv::Point(fftSize.width / 2, fftSize.height / 2);
-  F.create(fftSize);
+  const cv::Point C(fftSize.width / 2, fftSize.height / 2);
+  const int Rmax = (int) ceil(hyp(image.cols / 2, image.rows / 2));
 
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, F.rows, 256),
-      [&F, &coeffs, centre](const range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0, nx = F.cols; x < nx; ++x ) {
+  profile_before.clear();
+  profile_before.resize(Rmax, 0);
 
-            const double D = 2 * hyp(((double)x - centre.x) / F.cols, ((double)y - centre.y) / F.rows);
+  profile_after.clear();
+  profile_after.resize(Rmax, 0);
 
-            F[y][x][0] = 1;
-            F[y][x][1] = 0;
+  profile_poly.clear();
+  profile_poly.resize(Rmax, 0);
 
-            double DD = D;
-            for ( int i = 0, n = coeffs.size(); i < n; ++i) {
-              F[y][x][0] = std::max(0., F[y][x][0] + coeffs[i] * DD);
-              if ( i < n - 1 ) {
-                DD *= D;
-              }
-            }
+  profile_counter.clear();
+  profile_counter.resize(Rmax, 0);
 
+
+  for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
+
+    cv::dft(channels[c], channels[c], cv::DFT_COMPLEX_OUTPUT);
+    fftSwapQuadrants(channels[c]);
+
+    cv::Mat_<std::complex<float>> spec =
+        channels[c];
+
+    double Fn = 1, Rn = 0;
+    for ( int y = 0; y < spec.rows; ++y ) {
+      for ( int x = 0; x < spec.cols; ++x ) {
+
+        const double R = hyp(((double)x - C.x) / C.x,
+            ((double)y - C.y) / C.y);
+
+
+        if ( !coeffs.empty() ) {
+          Fn = coeffs[0], Rn = 1;
+          for ( int i = 1, n = coeffs.size(); i < n; ++i ) {
+            Fn += coeffs[i] * (Rn *= R);
           }
         }
-      });
 
-  fftSwapQuadrants(F);
+        const int Ridx = (int) (R * Rmax);
+            //std::min((int) (R * Rmax), Rmax - 1);
 
-  const auto applyF = [](const cv::Mat & src, cv::Mat & dst, const cv::Mat2f & F) -> void {
-    cv::Mat S;
-    cv::dft(src, S, cv::DFT_COMPLEX_OUTPUT);
-    cv::mulSpectrums(S, F, S, 0, false);
-    cv::idft(S, dst, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-  };
+        if ( Ridx < Rmax ) {
+          profile_poly[Ridx] += Fn;
+          profile_before[Ridx] += std::abs(spec[y][x]);
+        }
 
+        spec[y][x] *= Fn;
 
-  const int nc = image.channels();
-  if ( nc == 1 ) {
-    applyF(image, image, F);
-  }
-  else {
-    cv::Mat1f channels[nc];
-    cv::split(image, channels);
-
-    if ( image.size().area() > 1024 * 124 ) {
-      for ( int i = 0; i < nc; ++i ) {
-        applyF(channels[i], channels[i], F);
+        if ( Ridx < Rmax ) {
+          profile_after[Ridx] += std::abs(spec[y][x]);
+          profile_counter[Ridx] += 1;
+        }
       }
     }
-    else {
-      tbb::parallel_for(0, nc, 1,
-          [&F, &channels, &applyF](int i) {
-            applyF(channels[i], channels[i], F);
-          });
-    }
-    cv::merge(channels, nc, image);
+
+    fftSwapQuadrants(channels[c]);
+    cv::idft(channels[c], channels[c], cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
   }
 
-  if ( rc.empty() ) {
-    dst.move(image);
+  for ( int i = 0; i < Rmax; ++i ) {
+    if ( profile_counter[i] > 0 ) {
+      profile_before[i] = log(1 + profile_before[i] / profile_counter[i]);
+      profile_after[i] = log(1 + profile_after[i] / profile_counter[i]);
+      profile_poly[i] /= profile_counter[i];
+    }
+  }
+
+  const int ddepth = dst.fixedType() ?
+      dst.depth() :
+      src.depth();
+
+  if ( channels.size() == 1 ) {
+    image = channels[0];
   }
   else {
-    image(rc).copyTo(dst);
+    cv::merge(channels, image);
+  }
+
+  if ( !rc.empty() ) {
+    image = image(rc);
+  }
+
+  if ( preserve_l2_norm ) {
+    cv::multiply(image, saved_image_norm / cv::norm(image, cv::NORM_L2), image);
+  }
+
+  if ( image.depth() != ddepth ) {
+    image.convertTo(dst, ddepth);
+  }
+  else if ( src.getMat().data == dst.getMat().data ) {
+    image.copyTo(dst);
+  }
+  else {
+    dst.move(image);
   }
 }
 

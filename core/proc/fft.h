@@ -66,7 +66,8 @@ bool fftRadialPowerProfile(cv::InputArray src,
 
 void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs,
-    std::vector<double> * profile_before = nullptr,
-    std::vector<double> * profile_after = nullptr );
+    std::vector<double> & output_profile_before,
+    std::vector<double> & output_profile_after,
+    std::vector<double> & output_profile_poly);
 
 #endif /* __fft_h__ */

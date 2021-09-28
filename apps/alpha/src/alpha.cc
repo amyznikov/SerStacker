@@ -32,44 +32,62 @@
 
 int main(int argc, char *argv[])
 {
-  std::string filenames[2];
-  cv::Mat images[2], masks[2];
-  cv::Mat feature_image, feature_mask;
+//  std::string filenames[2];
+//  cv::Mat images[2], masks[2];
+//  cv::Mat feature_image, feature_mask;
+//
+//  for ( int i = 1; i < argc; ++i ) {
+//
+//    if ( strcmp(argv[i], "--help") == 0 ) {
+//      printf("Usage: alpha <input-file-name1.tiff> <input-file-name2.tiff> \n");
+//      return 0;
+//    }
+//
+//    else if ( filenames[0].empty() ) {
+//      filenames[0] = argv[i];
+//    }
+//    else if ( filenames[1].empty() ) {
+//      filenames[1] = argv[i];
+//    }
+//    else {
+//      fprintf(stderr, "Invalid argument : %s\n", argv[i]);
+//      return 1;
+//    }
+//  }
+//
+//  if ( filenames[0].empty() /*|| filenames[1].empty()*/ ) {
+//    fprintf(stderr, "Two input file names expected\n");
+//    return 1;
+//  }
+//
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//
+//  for ( int i = 0; i < 1; ++i ) {
+//    if ( !load_image(filenames[i], images[i], masks[i]) ) {
+//      CF_ERROR("load_image(%s) fails", filenames[i].c_str());
+//      return 1;
+//    }
+//  }
 
-  for ( int i = 1; i < argc; ++i ) {
+  cv::Mat1f image(128, 512, 0.f);
+  cv::Mat_<std::complex<float>> spec;
+  cv::Mat1f spow;
 
-    if ( strcmp(argv[i], "--help") == 0 ) {
-      printf("Usage: alpha <input-file-name1.tiff> <input-file-name2.tiff> \n");
-      return 0;
-    }
+  cv::circle(image, cv::Point(image.cols/2, image.rows/2), 31, 1, -1, cv::LINE_8 );
 
-    else if ( filenames[0].empty() ) {
-      filenames[0] = argv[i];
-    }
-    else if ( filenames[1].empty() ) {
-      filenames[1] = argv[i];
-    }
-    else {
-      fprintf(stderr, "Invalid argument : %s\n", argv[i]);
-      return 1;
-    }
-  }
+  save_image(image, "image.tiff");
 
-  if ( filenames[0].empty() || filenames[1].empty() ) {
-    fprintf(stderr, "Two input file names expected\n");
-    return 1;
-  }
+  cv::dft(image, spec, cv::DFT_COMPLEX_OUTPUT);
+  fftSwapQuadrants(spec);
 
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
+  cv::Mat channels[2];
+  cv::split(spec, channels);
+  cv::magnitude(channels[0], channels[1], spow);
+  cv::log(1 + spow, spow);
+  save_image(spow, "spow.tiff");
 
-
-  for ( int i = 0; i < 2; ++i ) {
-    if ( !load_image(filenames[i], images[i], masks[i]) ) {
-      CF_ERROR("load_image(%s) fails", filenames[i].c_str());
-      return 1;
-    }
-  }
 
   return 0;
 }

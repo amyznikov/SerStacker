@@ -11,7 +11,8 @@
 #include <QtWidgets/QtWidgets>
 #include <opencv2/opencv.hpp>
 
-class QHistogramView: public QWidget
+class QHistogramView
+    : public QWidget
 {
   Q_OBJECT;
 public:
@@ -48,11 +49,6 @@ public:
   void setDisplayChannel(DisplayChannel v);
   DisplayChannel displayChannel() const;
 
-
-//  void showHistogram(const cv::Mat1f & histogram, int channel,
-//      int first_bin, float first_level,
-//      int last_bin, float last_level);
-
   void clear();
 
 
@@ -66,8 +62,6 @@ protected:
 
 protected:
   void updateHistogram();
-  //  double scaled_count(double c) const;
-  //  void update_scaled_counts();
 
 protected:
   QColor backgroundColor_ = Qt::white;
@@ -78,13 +72,6 @@ protected:
   cv::Mat image_, mask_;
   cv::Mat1f H, LH;
   double hmin = -1, hmax = -1;
-//  cv::Mat1f histogram_;
-//  std::vector<double> scaled_counts_;
-//  int channel_ = 0;
-//  int first_bin_ = 0;
-//  float first_level_ = 0;
-//  int last_bin_ = 0;
-//  float last_level_ = 0;
   bool logScale_ = true;
 };
 

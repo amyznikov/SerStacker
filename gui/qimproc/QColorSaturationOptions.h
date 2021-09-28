@@ -36,7 +36,6 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  //QNumberEditBox * scale_ctl = Q_NULLPTR;
   QLineEditBox * scales_ctl = Q_NULLPTR;
 };
 

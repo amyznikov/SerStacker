@@ -603,8 +603,8 @@ bool autoclip(cv::Mat & image,
 
   clip_range(image,
       imin, imax,
-      omin, omax,
-      mask.getMat());
+      omin, omax/*,
+      mask.getMat()*/);
 
   return true;
 

@@ -387,15 +387,18 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
   std::vector<int> profile_counter;
   cv::Rect rc;
 
-  constexpr bool preserve_l2_norm = true;
+  constexpr bool preserve_l2_norm = false;
   double saved_image_norm = 1;
 
   if ( preserve_l2_norm ) {
     saved_image_norm = cv::norm(src, cv::NORM_L2);
   }
 
-  const cv::Size fftSize(cv::getOptimalDFTSize(src.cols()),
-      cv::getOptimalDFTSize(src.rows()));
+
+  const cv::Size fftSize =
+      fftGetOptimalSize(src.size(),
+          cv::Size(64, 64),
+          true);
 
   if ( src.size() == fftSize ) {
     src.copyTo(image);
@@ -413,7 +416,7 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
   }
 
   const cv::Point C(fftSize.width / 2, fftSize.height / 2);
-  const int Rmax = (int) ceil(hyp(image.cols / 2, image.rows / 2));
+  const int Rmax = (int) ceil(hyp(C.x, C.y));
 
   profile_before.clear();
   profile_before.resize(Rmax, 0);
@@ -431,35 +434,41 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
   for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
 
     cv::dft(channels[c], channels[c], cv::DFT_COMPLEX_OUTPUT);
-    fftSwapQuadrants(channels[c]);
 
     cv::Mat_<std::complex<float>> spec =
         channels[c];
 
-    double Fn = 1, Rn = 0;
-    for ( int y = 0; y < spec.rows; ++y ) {
-      for ( int x = 0; x < spec.cols; ++x ) {
+    double Pn = 1, Rn = 0, E = 0;
+    for ( int y = 0; y < spec.rows / 2; ++y ) {
+      for ( int x = 0; x < spec.cols / 2; ++x ) {
 
-        const double R = hyp(((double)x - C.x) / C.x,
-            ((double)y - C.y) / C.y);
-
+        const double R = M_SQRT1_2 *
+            hyp((double) (x) / C.x,
+                (double) (y) / C.y);
 
         if ( !coeffs.empty() ) {
-          Fn = coeffs[0], Rn = 1;
-          for ( int i = 1, n = coeffs.size(); i < n; ++i ) {
-            Fn += coeffs[i] * (Rn *= R);
+          // Compute Pn(x) = a0*x + a1*x^2 + a2*x^3 + ...
+          Pn = 0, Rn = 1, E = 0;
+          for ( int i = 0, n = coeffs.size(); i < n; ++i ) {
+            Pn += coeffs[i] * (Rn *= R);
+            E += coeffs[i] * (i + 1);
           }
+          // Force zero derivative at edge R=1
+          Pn += 1 - E * Rn * R * R / (coeffs.size() + 2);
         }
 
-        const int Ridx = (int) (R * Rmax);
-            //std::min((int) (R * Rmax), Rmax - 1);
+        const int Ridx =
+            (int) (R * Rmax);
 
         if ( Ridx < Rmax ) {
-          profile_poly[Ridx] += Fn;
+          profile_poly[Ridx] += Pn;
           profile_before[Ridx] += std::abs(spec[y][x]);
         }
 
-        spec[y][x] *= Fn;
+        spec[y][x] *= Pn;
+        spec[y][spec.cols - x - 1] *= Pn;
+        spec[spec.rows - y - 1][x] *= Pn;
+        spec[spec.rows - y - 1][spec.cols - x - 1] *= Pn;
 
         if ( Ridx < Rmax ) {
           profile_after[Ridx] += std::abs(spec[y][x]);
@@ -468,7 +477,6 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
       }
     }
 
-    fftSwapQuadrants(channels[c]);
     cv::idft(channels[c], channels[c], cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
   }
 

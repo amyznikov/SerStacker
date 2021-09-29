@@ -73,12 +73,14 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent)
                 options_ ->rectangle_roi_selection.y = y;
                 options_ ->rectangle_roi_selection.width = cx;
                 options_ ->rectangle_roi_selection.height = cy;
+                emit parameterChanged();
               }
               else if ((n = sscanf(s, "%d ; %d ; %d ; %d", &x, &y, &cx, &cy)) == 4) {
                 options_ ->rectangle_roi_selection.x = x;
                 options_ ->rectangle_roi_selection.y = y;
                 options_ ->rectangle_roi_selection.width = cx - x;
                 options_ ->rectangle_roi_selection.height = cy - y;
+                emit parameterChanged();
               }
               else {
                 CF_ERROR("Parse error in ROI specification: s='%s' n=%d", s, n);

@@ -49,7 +49,7 @@ double c_rangeclip_routine::max() const
 
 bool c_rangeclip_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  return clip_range(image.getMatRef(), min_, max_, mask.getMat());
+  return clip_range(image.getMatRef(), min_, max_/*, mask.getMat()*/);
 }
 
 

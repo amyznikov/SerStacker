@@ -119,9 +119,11 @@ struct c_input_options {
   enum anscombe_method anscombe = anscombe_none;
   double hot_pixels_variation_threshold = 6;
 
+  int start_frame_index = 0;
+  int max_input_frames = 0;
+
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
-
 };
 
 struct c_roi_selection_options {
@@ -138,7 +140,7 @@ struct c_master_frame_options {
   int master_frame_index = 0; // relative, in master source
   bool apply_input_frame_processor = true;
   bool generate_master_frame = true;
-  int max_input_frames_to_generate_master_frame = 500;
+  int max_input_frames_to_generate_master_frame = 2500;
   int eccflow_scale = 0;
   double master_sharpen_factor = 0.5;
   double accumulated_sharpen_factor = 1;
@@ -183,8 +185,13 @@ struct c_frame_upscale_options {
 };
 
 struct c_frame_accumulation_options {
+
   enum frame_accumulation_method accumulation_method  =
       frame_accumulation_weighted_average;
+
+  int lksize = 0;
+  int scale_size = 6;
+  double minv = 1e-5;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -450,7 +457,8 @@ protected:
       cv::InputArray srcmap,
       cv::OutputArray dstmap);
 
-  static void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
+  bool weights_required() const;
+  void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
@@ -481,6 +489,7 @@ protected:
   int processed_frames_ = 0;
 
   cv::Mat missing_pixel_mask_;
+  cv::Mat1f reference_weights_;
 
   std::string statusmsg_;
   mutable std::mutex status_lock_;

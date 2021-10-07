@@ -77,7 +77,7 @@ int c_raw_file_reader::raw2mat(cv::Mat & output_image)
 
 
   colorid_ = COLORID_UNKNOWN;
-  bpc_ = raw.imgdata.color.raw_bps;
+  bpc_ = 16; // fixme: raw.imgdata.color.raw_bps;
   black_level_ = raw.imgdata.color.black;
 
   if ( !output_image.empty() && !output_image.isContinuous() ) {

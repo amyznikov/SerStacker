@@ -12,7 +12,7 @@
 #include <opencv2/opencv.hpp>
 
 bool compute_smap(cv::InputArray src, cv::Mat & dst,
-    double minv = -1, double scale = 1./16);
+    int lksize, int scale_size, double minv);
 
 
 #endif /* __smap_h__ */

@@ -56,6 +56,9 @@ protected:
 protected:
   c_frame_accumulation_options * options_ = Q_NULLPTR;
   QFrameAccumulationMethodCombo * accumulation_method_ctl = Q_NULLPTR;
+  QNumberEditBox * lksize_ctl = Q_NULLPTR;
+  QNumberEditBox * scale_size_ctl = Q_NULLPTR;
+  QNumberEditBox * minv_ctl = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

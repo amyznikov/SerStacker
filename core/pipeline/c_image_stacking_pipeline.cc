@@ -973,6 +973,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
     output_directory_.clear();
     missing_pixel_mask_.release();
+    reference_weights_.release();
 
     external_master_frame_ = false;
     master_frame_index_ = -1;
@@ -1251,15 +1252,32 @@ bool c_image_stacking_pipeline::actual_run()
         reference_mask.depth(),
         reference_mask.channels());
 
+
+    if ( weights_required() ) {
+      compute_weights(reference_frame, reference_mask, reference_weights_);
+    }
+
     if ( !(frame_registration_ = options_->create_frame_registration()) ) {
       CF_FATAL("options_->create_frame_registration() fails");
       return false;
     }
 
-    if ( options_->upscale_options().need_upscale_before_align() ) {
+    if( upscale_required(frame_upscale_before_align) ) {
+
       upscale_image(options_->upscale_options().upscale_option,
           reference_frame, reference_mask,
           reference_frame, reference_mask);
+
+      if( !reference_weights_.empty() ) {
+        upscale_image(options_->upscale_options().upscale_option,
+            reference_weights_, cv::noArray(),
+            reference_weights_, cv::noArray());
+
+        CF_DEBUG("Reference weights: %dx%d depth=%d channels=%d",
+            reference_weights_.cols, reference_weights_.rows,
+            reference_weights_.depth(),
+            reference_weights_.channels());
+      }
     }
 
     if ( output_options.debug_frame_registration ) {
@@ -1271,6 +1289,19 @@ bool c_image_stacking_pipeline::actual_run()
     if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {
       CF_ERROR("ERROR: frame_registration_->setup_referece_frame() fails");
       return false;
+    }
+
+
+    if( upscale_required(frame_upscale_after_align) ) {
+
+      upscale_image(options_->upscale_options().upscale_option,
+          reference_weights_, cv::noArray(),
+          reference_weights_, cv::noArray());
+
+      CF_DEBUG("Reference weights: %dx%d depth=%d channels=%d",
+          reference_weights_.cols, reference_weights_.rows,
+          reference_weights_.depth(),
+          reference_weights_.channels());
     }
 
     if ( output_options.debug_frame_registration && frame_registration_->enable_eccflow() ) {
@@ -1326,9 +1357,18 @@ bool c_image_stacking_pipeline::actual_run()
 
   set_status_msg("RUNNING ...");
 
-  master_frame_generation_ = false;
 
-  if ( !(fOk = process_input_sequence(input_sequence_, 0, input_sequence_->size())) ) {
+
+  const int start_pos =
+      std::max(input_options.start_frame_index, 0);
+
+  const int end_pos =
+      input_options.max_input_frames < 1 ?
+          input_sequence_->size() :
+          std::min(input_sequence_->size(),
+              input_options.start_frame_index + input_options.max_input_frames);
+
+  if ( !(fOk = process_input_sequence(input_sequence_, start_pos, end_pos)) ) {
     CF_ERROR("process_input_sequence() fails");
     return false;
   }
@@ -1565,6 +1605,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
   const c_master_frame_options & master_options =
       options_->master_frame_options();
 
+  master_frame_generation_ = true;
 
   if ( !input_sequence->seek(master_frame_index) ) {
     CF_ERROR("ERROR: input_sequence->seek(master_frame_index=%d) fails", master_frame_index);
@@ -1659,6 +1700,10 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       return false;
     }
 
+    if ( weights_required() ) {
+      compute_weights(reference_frame, reference_mask, reference_weights_);
+    }
+
     if ( true ) {
       lock_guard lock(accumulator_lock_);
 
@@ -1680,7 +1725,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     const int startpos = std::max(0, master_frame_index - max_frames_to_stack / 2);
     const int endpos = startpos + max_frames_to_stack;
 
-    master_frame_generation_ = true;
     if ( !process_input_sequence(input_sequence, startpos, endpos) ) {
       CF_ERROR("process_input_sequence() fails");
       return false;
@@ -1761,41 +1805,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
           }
         }
       }
-//      if ( master_options.master_sharpen_factor > 0 && frame_accumulation_->accumulated_frames() > 1 ) {
-//
-//        if ( options_->output_options().dump_reference_data_for_debug ) {
-//
-//          save_image(reference_frame,
-//              ssprintf("%s/%s-initial_reference_frame.tiff",
-//                  output_directory_.c_str(),
-//                  options_->cname()));
-//        }
-//
-//        double fftscale = master_options.master_sharpen_factor * CV_PI * sqrt(frame_accumulation_->accumulated_frames());
-//        CF_DEBUG("fftscale = %g accumulated_frames=%d", fftscale, frame_accumulation_->accumulated_frames());
-//
-//        fftSharpenR2(reference_frame, reference_frame, fftscale);
-//
-//
-//        //cv::max(reference_frame, 0, reference_frame);
-//
-//        static const thread_local cv::Mat G =
-//            cv::getGaussianKernel(3, 0.5, CV_32F);
-//
-//        cv::sepFilter2D(reference_frame, reference_frame, -1, G, G);
-//
-//
-//        if ( options_->output_options().dump_reference_data_for_debug ) {
-//          if ( !master_options.save_master_frame ) {
-//
-//            save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
-//                output_directory_.c_str(),
-//                options_->cname()));
-//
-//          }
-//        }
-//
-//      }
+
     }
 
     if ( canceled() ) {
@@ -1812,6 +1822,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     frame_registration_.reset();
   }
 
+  master_frame_generation_ = false;
   return true;
 }
 
@@ -1820,6 +1831,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 {
   cv::Mat current_frame, current_mask;
   cv::Mat2f current_remap;
+  cv::Mat1f current_weights;
 
   c_video_writer output_preprocessed_frames_writer;
   c_video_writer output_aligned_frames_writer;
@@ -1929,11 +1941,28 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       }
     }
 
+    if( weights_required() ) {
+      compute_weights(current_frame, current_mask, current_weights);
+      if ( canceled() ) {
+        break;
+      }
+    }
+
     if ( upscale_required(frame_upscale_before_align) ) {
 
       upscale_image(upscale_options.upscale_option,
           current_frame, current_mask,
           current_frame, current_mask);
+
+      if ( canceled() ) {
+        break;
+      }
+
+      if( !current_weights.empty() ) {
+        upscale_image(options_->upscale_options().upscale_option,
+            current_weights, cv::noArray(),
+            current_weights, cv::noArray());
+      }
 
       if ( canceled() ) {
         break;
@@ -1988,12 +2017,19 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
           }
 
+          if( canceled() ) {
+            break;
+          }
         }
 
 
         if ( !frame_registration_->register_frame(current_frame, current_mask) ) {
           CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + startpos);
           continue;
+        }
+
+        if( canceled() ) {
+          break;
         }
 
         if ( flow_accumulation_ ) {
@@ -2010,6 +2046,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           else {
             flow_accumulation_->add(turbulence/*,
                 current_mask_*/);
+          }
+
+          if( canceled() ) {
+            break;
           }
         }
 
@@ -2031,6 +2071,24 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
             master_frame_generation_ ? ECC_BORDER_REFLECT101 :
                 registration_options.base_options.border_mode,
             registration_options.base_options.border_value);
+
+        if( !current_weights.empty() ) {
+
+          frame_registration_->custom_remap(current_remap,
+              current_weights, current_weights,
+              cv::noArray(), cv::noArray(),
+              registration_options.base_options.interpolation,
+              ECC_BORDER_CONSTANT);
+
+          cv::divide(current_weights, reference_weights_,
+              current_weights);
+
+          cv::multiply(current_mask, current_weights, current_weights,
+              current_mask.depth() == CV_8U ? 1./255 : 1,
+                  CV_32F);
+
+          current_mask = current_weights;
+        }
       }
 
 
@@ -2412,9 +2470,21 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
 
 }
 
-void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
+bool c_image_stacking_pipeline::weights_required() const
 {
-  compute_smap(src, dst, 0.01, 0);
+  return options_->accumulation_options().accumulation_method == frame_accumulation_weighted_average &&
+      options_->accumulation_options().lksize > 0;
+}
+
+void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
+{
+  const c_frame_accumulation_options & acc_options =
+      options_->accumulation_options();
+
+  compute_smap(src, dst,
+      acc_options.lksize,
+      acc_options.scale_size,
+      acc_options.minv);
 }
 
 void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel)

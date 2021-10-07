@@ -28,20 +28,24 @@ public:
   c_smap_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
-  static ptr create(double minv, double scale = 1.0 / 16, bool enabled = true);
+  static ptr create(int lksize, int scale_size, double minv, bool enabled = true);
   bool deserialize(c_config_setting settings) override;
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  void set_minv(double v);
+  void set_lksize(int );
+  int lksize() const;
+
+  void set_scale_size(int);
+  int scale_size() const;
+
+  void set_minv(double);
   double minv() const;
 
-  void set_scale(double v);
-  double scale() const;
-
 protected:
-  double minv_ = 0;
-  double scale_ = 1.0/16;
+  int lksize_ = 7;
+  int scale_size_ = 6;
+  double minv_ = 1;
 };
 
 

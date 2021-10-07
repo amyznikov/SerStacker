@@ -7,9 +7,76 @@
 
 #include "smap.h"
 #include <core/proc/reduce_channels.h>
+#include <core/proc/estimate_noise.h>
+#include <core/proc/eccalign.h>
 
 
+#if 1
+bool compute_smap(cv::InputArray src, cv::Mat & dst,
+    int lksize, int scale_size, double minv)
+{
+  cv::Mat gs;
+  //double noise;
 
+  double mscale = 1.0;
+  switch ( src.depth() ) {
+  case CV_8U :
+    case CV_8S :
+    mscale = 1. / UINT8_MAX;
+    break;
+  case CV_16U :
+    case CV_16S :
+    mscale = 1. / UINT16_MAX;
+    break;
+  case CV_32S :
+    mscale = 1. / UINT32_MAX;
+    break;
+  case CV_32F :
+    case CV_64F :
+    break;
+  }
+
+  if ( src.channels() == 1 ) {
+    src.getMat().convertTo(gs, CV_32F, mscale);
+  }
+  else {
+    cv::cvtColor(src, gs, cv::COLOR_BGR2GRAY);
+    gs.convertTo(gs, CV_32F, mscale);
+  }
+
+
+  if ( lksize < 1 ) {
+    lksize = 7;
+  }
+
+  if ( 1 ) {
+    cv::Laplacian(gs, gs, CV_32F, lksize);
+    cv::multiply(gs, gs, gs);
+  }
+  else  {
+    cv::Mat gx, gy;
+    cv::pyrDown(gs, gs);
+    ecc_differentiate(gs, gx, gy, CV_32F);
+    cv::magnitude(gx, gy, gs);
+    cv::pyrUp(gs, gs, src.size());
+  }
+
+  if ( scale_size > 1 ) {
+    ecc_downscale(gs, gs, scale_size, cv::BORDER_REPLICATE);
+    ecc_upscale(gs, src.size());
+  }
+
+  if ( minv > 0 ) {
+    cv::add(gs, minv, dst);
+  }
+  else {
+    dst = std::move(gs);
+  }
+
+  return true;
+}
+
+#else
 bool compute_smap(cv::InputArray src, cv::Mat & dst,
     double minv, double scale)
 {
@@ -76,3 +143,5 @@ bool compute_smap(cv::InputArray src, cv::Mat & dst,
 
   return true;
 }
+#endif
+

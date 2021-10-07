@@ -19,12 +19,35 @@ c_smap_routine::ptr c_smap_routine::create(bool enabled)
   return ptr (new this_class(enabled));
 }
 
-c_smap_routine::ptr c_smap_routine::create(double minv, double scale, bool enabled)
+c_smap_routine::ptr c_smap_routine::create(int lksize, int scale_size, double minv, bool enabled)
 {
   ptr obj(new this_class(enabled));
+  obj->set_lksize(lksize);
+  obj->set_scale_size(scale_size);
   obj->set_minv(minv);
-  obj->set_scale(scale);
   return obj;
+}
+
+
+void c_smap_routine::set_lksize(int v)
+{
+  lksize_ = v;
+}
+
+int c_smap_routine::lksize() const
+{
+  return lksize_;
+}
+
+
+void c_smap_routine::set_scale_size(int v)
+{
+  scale_size_ = v;
+}
+
+int c_smap_routine::scale_size() const
+{
+  return scale_size_;
 }
 
 void c_smap_routine::set_minv(double v)
@@ -37,20 +60,11 @@ double c_smap_routine::minv() const
   return minv_;
 }
 
-void c_smap_routine::set_scale(double v)
-{
-  scale_ =  v;
-}
-
-double c_smap_routine::scale() const
-{
-  return scale_;
-}
 
 bool c_smap_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   cv::Mat1f smap;
-  compute_smap(image, smap, minv_, scale_);
+  compute_smap(image, smap, lksize_, scale_size_, minv_);
   image.move(smap);
   return true;
 }
@@ -61,8 +75,9 @@ bool c_smap_routine::deserialize(c_config_setting settings)
     return false;
   }
 
+  settings.get("lksize", &lksize_);
+  settings.get("scale_size", &scale_size_);
   settings.get("minv", &minv_);
-  settings.get("scale", &scale_);
 
   return true;
 }
@@ -73,8 +88,10 @@ bool c_smap_routine::serialize(c_config_setting settings) const
     return false;
   }
 
+
+  settings.set("lksize", lksize_);
+  settings.set("scale_size", scale_size_);
   settings.set("minv", minv_);
-  settings.set("scale", scale_);
 
   return true;
 }

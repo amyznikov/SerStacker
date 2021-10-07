@@ -24,17 +24,36 @@ static QIcon getIcon(const QString & name)
 QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
   : Base("QImageStackingInputOptions", parent)
 {
+  start_frame_index_ctl =
+      add_numeric_box<int>("Start frame index:",
+          [this](int v) {
+            if ( options_ && options_->start_frame_index != v ) {
+              options_->start_frame_index = v;
+              emit parameterChanged();
+            }
+          });
 
-  enable_remove_bad_pixels_ctl = add_checkbox("Detect Bad Pixels",
-      [this](int state) {
-        if ( options_ ) {
-          bool checked = state == Qt::Checked;
-          if ( checked != options_->filter_hot_pixels ) {
-            options_->filter_hot_pixels = checked;
-            emit parameterChanged();
-          }
-        }
-      });
+
+  max_input_frames_ctl =
+      add_numeric_box<int>("Max frames:",
+          [this](int v) {
+            if ( options_ && options_->max_input_frames != v ) {
+              options_->max_input_frames = v;
+              emit parameterChanged();
+            }
+          });
+
+  enable_remove_bad_pixels_ctl =
+      add_checkbox("Detect Bad Pixels",
+          [this](int state) {
+            if ( options_ ) {
+              bool checked = state == Qt::Checked;
+              if ( checked != options_->filter_hot_pixels ) {
+                options_->filter_hot_pixels = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 
   bad_pixels_variation_threshold_ctl =
       add_numeric_box<double>("Bad Pixels Variation Threshold",
@@ -46,52 +65,58 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           });
 
 
-  inpaint_missing_pixels_ctl = add_checkbox("Inpaint missing pixels with feasible values",
-      [this](int state) {
-        if ( options_ ) {
-          bool checked = state == Qt::Checked;
-          if ( checked != options_->inpaint_missing_pixels ) {
-            options_->inpaint_missing_pixels = checked;
-            emit parameterChanged();
-          }
-        }
-      });;
+  inpaint_missing_pixels_ctl =
+      add_checkbox("Inpaint missing pixels with feasible values",
+          [this](int state) {
+            if ( options_ ) {
+              bool checked = state == Qt::Checked;
+              if ( checked != options_->inpaint_missing_pixels ) {
+                options_->inpaint_missing_pixels = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 
 
-  enable_color_maxtrix_ctl = add_checkbox("Apply color matrix if available",
-      [this](int state) {
-        if ( options_ ) {
-          bool checked = state == Qt::Checked;
-          if ( checked != options_->enable_color_maxtrix ) {
-            options_->enable_color_maxtrix = checked;
-            emit parameterChanged();
-          }
-        }
-      });
-
-  anscombe_ctl = add_enum_combobox<QAnscombeMethodCombo>(
-      "Anscombe Transform:",
-      [this](anscombe_method v) {
-        if ( options_ && v != options_->anscombe ) {
-          options_->anscombe = v;
-          emit parameterChanged();
-        }
-      });
+  enable_color_maxtrix_ctl =
+      add_checkbox("Apply color matrix if available",
+          [this](int state) {
+            if ( options_ ) {
+              bool checked = state == Qt::Checked;
+              if ( checked != options_->enable_color_maxtrix ) {
+                options_->enable_color_maxtrix = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 
 
-  processor_selector_ctl = add_combobox<QImageProcessorSelectionCombo>(
-      "Process input frames:",
-      [this](int currentIndex) {
-        if ( options_ ) {
-          options_->input_frame_processor =
+  anscombe_ctl =
+      add_enum_combobox<QAnscombeMethodCombo>(
+          "Anscombe Transform:",
+          [this](anscombe_method v) {
+            if ( options_ && v != options_->anscombe ) {
+              options_->anscombe = v;
+              emit parameterChanged();
+            }
+          });
+
+
+  processor_selector_ctl =
+      add_combobox<QImageProcessorSelectionCombo>(
+          "Process input frames:",
+          [this](int currentIndex) {
+            if ( options_ ) {
+              options_->input_frame_processor =
               processor_selector_ctl->processor(currentIndex);
-        }});
+            }});
 
 
   form->addRow(missing_pixel_mask_filename_ctl =
       new QBrowsePathCombo("MIssing pixels mask:",
           QFileDialog::ExistingFile,
           this));
+
 
   connect(missing_pixel_mask_filename_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
@@ -102,18 +127,18 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         }
       });
 
-  missing_pixels_marked_black_ctl = add_checkbox("Missing pixels marked as black",
-      [this](int state) {
-        if ( options_ ) {
-          bool checked = state == Qt::Checked;
-          if ( checked != options_->missing_pixels_marked_black ) {
-            options_->missing_pixels_marked_black = checked;
-            emit parameterChanged();
-          }
-        }
-      });;
 
-
+  missing_pixels_marked_black_ctl =
+      add_checkbox("Missing pixels marked as black",
+          [this](int state) {
+            if ( options_ ) {
+              bool checked = state == Qt::Checked;
+              if ( checked != options_->missing_pixels_marked_black ) {
+                options_->missing_pixels_marked_black = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 
 
   applyToAll_ctl = new QToolButton(this);
@@ -130,7 +155,6 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
       });
 
   form->addRow(applyToAll_ctl);
-
 }
 
 void QImageStackingInputOptions::set_input_options(c_input_options * options)
@@ -159,6 +183,9 @@ void QImageStackingInputOptions::onupdatecontrols()
     missing_pixel_mask_filename_ctl->setCurrentPath(options_->missing_pixel_mask_filename.c_str(), false);
     missing_pixels_marked_black_ctl->setChecked(options_->missing_pixels_marked_black);
     inpaint_missing_pixels_ctl->setChecked(options_->inpaint_missing_pixels);
+
+    start_frame_index_ctl->setValue(options_->start_frame_index);
+    max_input_frames_ctl->setValue(options_->max_input_frames);
 
     if ( !processor_selector_ctl->setCurrentProcessor(options_->input_frame_processor) ) {
       options_->input_frame_processor.reset();

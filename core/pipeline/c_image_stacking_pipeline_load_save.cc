@@ -316,6 +316,9 @@ bool c_input_options::serialize(c_config_setting settings) const
   settings.set("bad_pixels_variation_threshold", hot_pixels_variation_threshold);
   settings.set("enable_color_maxtrix", enable_color_maxtrix );
   settings.set("anscombe", anscombe);
+  settings.set("start_frame_index", start_frame_index);
+  settings.set("max_input_frames", max_input_frames);
+
 
   if ( input_frame_processor ) {
     settings.set("input_frame_processor", input_frame_processor->name());
@@ -339,6 +342,8 @@ bool c_input_options::deserialize(c_config_setting settings)
   settings.get("bad_pixels_variation_threshold", &hot_pixels_variation_threshold);
   settings.get("enable_color_maxtrix", &enable_color_maxtrix );
   settings.get("anscombe", &anscombe);
+  settings.get("start_frame_index", &start_frame_index);
+  settings.get("max_input_frames", &max_input_frames);
 
   if ( settings.get("input_frame_processor", &s) && !s.empty() ) {
     input_frame_processor = c_image_processor_collection::default_instance()->get(s);
@@ -432,6 +437,10 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
 bool c_frame_accumulation_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "accumulation_method", accumulation_method );
+  save_settings(settings, "lksize", lksize );
+  save_settings(settings, "scale_size", scale_size);
+  save_settings(settings, "minv", minv);
+
   return true;
 }
 
@@ -442,6 +451,9 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
   }
 
   load_settings(settings, "accumulation_method", &accumulation_method );
+  load_settings(settings, "lksize", &lksize );
+  load_settings(settings, "scale_size", &scale_size);
+  load_settings(settings, "minv", &minv);
 
   return true;
 }

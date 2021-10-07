@@ -42,7 +42,7 @@ struct c_frame_registration_base_options {
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
-  double feature_scale = 1.;
+  double feature_scale = 0.5;
   bool enable_ecc = true;
   bool enable_eccflow = false;
 

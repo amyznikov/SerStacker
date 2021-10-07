@@ -62,7 +62,10 @@ protected:
 
   QBrowsePathCombo * missing_pixel_mask_filename_ctl = Q_NULLPTR;
   QCheckBox * missing_pixels_marked_black_ctl  = Q_NULLPTR;
-  QCheckBox * inpaint_missing_pixels_ctl  = Q_NULLPTR;
+  QCheckBox * inpaint_missing_pixels_ctl = Q_NULLPTR;
+
+  QNumberEditBox * start_frame_index_ctl = Q_NULLPTR;
+  QNumberEditBox * max_input_frames_ctl = Q_NULLPTR;
 
   QImageProcessorSelectionCombo * processor_selector_ctl = Q_NULLPTR;
 

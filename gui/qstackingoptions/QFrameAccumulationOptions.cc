@@ -47,6 +47,33 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
         }
       });
 
+  lksize_ctl =
+      add_numeric_box<int>("lksize:",
+          [this](int v) {
+            if ( options_ && v != options_->lksize ) {
+              options_->lksize = v;
+              emit parameterChanged();
+            }
+          });
+
+  scale_size_ctl =
+      add_numeric_box<int>("scale:",
+          [this](int v) {
+            if ( options_ && v != options_->scale_size ) {
+              options_->scale_size = v;
+              emit parameterChanged();
+            }
+          });
+
+  minv_ctl =
+      add_numeric_box<double>("miv:",
+          [this](double v) {
+            if ( options_ && v != options_->minv ) {
+              options_->minv = v;
+              emit parameterChanged();
+            }
+          });
+
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
@@ -85,6 +112,9 @@ void QFrameAccumulationOptions::onupdatecontrols()
   else {
 
     accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
+    lksize_ctl->setValue(options_->lksize);
+    scale_size_ctl->setValue(options_->scale_size);
+    minv_ctl->setValue(options_->minv);
 
     setEnabled(true);
   }

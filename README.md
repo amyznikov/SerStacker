@@ -21,13 +21,13 @@ OpenCV >= 4.2
 
 TBB
 
-libconfig >= 1.5
+libconfig >= 1.7 
 
 libtiff
 
-libraw
+libraw >= 0.20 (https://www.libraw.org)
 
-libopenraw-0.3
+libopenraw-0.3 (https://libopenraw.freedesktop.org)
 
 cfitsio
 

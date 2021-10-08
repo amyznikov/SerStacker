@@ -48,6 +48,9 @@ Compare jovian images captured with two different tubes, processed and derotated
 ![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
 
 
+Montes Alpes and Mare Frigoris.
+![MontesAlpes](./debug/MontesAlpes.2021-09-26-2327_8-CapObj-32F.jpg)
+
 
 
 

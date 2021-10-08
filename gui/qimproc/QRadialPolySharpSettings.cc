@@ -81,7 +81,12 @@ const c_radial_polysharp_routine::ptr & QRadialPolyProfileView::radial_polysharp
 
 QSize QRadialPolyProfileView::sizeHint() const
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   const int width = std::max(256, this->screen()->geometry().width() / 3);
+#else
+  const int width = std::max(256, QGuiApplication::primaryScreen()->geometry().width() / 3);
+#endif
+
   return QSize(width, (int) (width / 2));
 }
 

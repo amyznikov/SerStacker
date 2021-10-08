@@ -206,10 +206,26 @@ static void ensure_ffmpeg_initialized()
 
 
     const AVInputFormat * iformat = nullptr;
-    void * opaque = nullptr;
-
     static const char delims[] = ", \t";
     char * tok;
+
+#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(58, 0, 0)
+
+    while ( (iformat = av_iformat_next(iformat)) ) {
+      if ( iformat->name && iformat->extensions ) {
+
+        char buf[strlen(iformat->extensions) + 1];
+
+        tok = strtok(strcpy(buf, iformat->extensions), delims);
+        while ( tok ) {
+          g_supported_input_formats.emplace_back(tok);
+          tok = strtok(NULL, delims);
+        }
+      }
+    }
+
+#else
+    void * opaque = nullptr;
 
     while ( (iformat = av_demuxer_iterate(&opaque)) ) {
       if ( iformat->name && iformat->extensions ) {
@@ -223,6 +239,8 @@ static void ensure_ffmpeg_initialized()
         }
       }
     }
+
+#endif
 
     already_initialized = true;
   }

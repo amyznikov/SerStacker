@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+project(serstacker CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -32,8 +33,28 @@ set(LIBRAW_LIBS raw)
 
 # openraw
 # find_package(openraw REQUIRED)
-set(OPENRAW_LIBS openraw)
-set(OPENRAW_INCLUDES /usr/include/libopenraw-0.3)
+
+foreach (v 0.3 0.2 0.1 )
+  unset(OPENRAW_INCLUDES CACHE)
+  find_path(OPENRAW_INCLUDES "libopenraw-${v}/libopenraw"
+    /usr/local/include
+    /opt/local/include
+    /usr/include)
+  if ( OPENRAW_INCLUDES )
+    set(OPENRAW_INCLUDES "${OPENRAW_INCLUDES}/libopenraw-${v}")
+    break()
+  endif() 
+endforeach()
+if ( NOT OPENRAW_INCLUDES )
+  message(WARNING "Can not locate libopenraw-0.3 directory under search path.
+    Install please libopenraw-0.3 package (ubuntu: libopenraw-dev, archliux libopenraw: windows: https://libopenraw.freedesktop.org)")
+else()
+  set(OPENRAW_LIBS openraw)
+  add_definitions(-DHAVE_LIBOPENRAW=1)
+  message(STATUS "libopenraw: ${OPENRAW_INCLUDES}")
+endif()
+
+
 
 # cfitsio
 # find_package(cfitsio REQUIRED)
@@ -63,30 +84,99 @@ set(FFMPEG_LIBRARIES ${SWSCALE_LIBRARY} ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} $
 
 
 # Intel TBB
-find_package(TBB)
-if ( ${TBB_FOUND} )
-  add_definitions(-DHAVE_TBB=1 -DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
-  set(TBB_LIBRARIES "tbb")    
+# find_package(TBB)
+# if ( ${TBB_FOUND} )
+#   add_definitions(-DHAVE_TBB=1 -DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
+#   set(TBB_LIBRARIES "tbb")    
+# endif()
+find_package(TBB QUIET)
+if (TBB_FOUND)
+
+  get_target_property(TBB_INCLUDES TBB::tbb INTERFACE_INCLUDE_DIRECTORIES)
+  if ( NOT TBB_INCLUDES ) # This happend under SUSE: TBB_FOUND is TRUE but INTERFACE_INCLUDE_DIRECTORIES is not set
+        SET(TBB_INCLUDES /usr/include)
+        MESSAGE(WARNING, "INTERFACE_INCLUDE_DIRECTORIES was not set by TBBConfig.cmake, force TBB_INCLUDES to ${TBB_INCLUDES}")
+  endif()
+  
+  set(TBB_LIBRARIES TBB::tbb)
+
+elseif(UNIX)
+  # It seems we are working on old version of ubuntu or apple, try to locate files manually
+
+  find_path(TBB_INCLUDES tbb/tbb.h
+    /usr/local/include/
+    /opt/local/include/
+    /usr/include)
+
+  if ( NOT TBB_INCLUDES )
+    message(FATAL_ERROR "Can not locate TBB include directory under search path. 
+      Install please correct tbb package (ubuntu: libtbb-dev, archliux tbb: windows: https://github.com/oneapi-src/oneTBB.git)")
+  endif()
+
+  find_library(TBB_LIBRARIES
+    NAMES tbb 
+    PATHS /usr/local/lib
+          /opt/local/lib
+          /usr/lib
+          ENV LD_LIBRARY_PATH
+          ENV LIBRARY_PATH)
+
+  if ( NOT TBB_LIBRARIES )
+    message(FATAL_ERROR "Can not locate TBB library under search path. 
+      Install please correct tbb package (ubuntu: libtbb-dev, archliux tbb: windows: https://github.com/oneapi-src/oneTBB.git)")
+  endif()
+
+  set(TBB_FOUND TRUE)
+  
+else()
+    message(FATAL_ERROR "Can not locate TBB library under search path. 
+      Install please correct tbb package (ubuntu: libtbb-dev, archliux tbb: windows: https://github.com/oneapi-src/oneTBB.git)") 
 endif()
+
+add_definitions(-DHAVE_TBB=1 -DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
+message (STATUS "TBB: ${TBB_INCLUDES} ${TBB_LIBRARIES}")
+
 
 
 
 # libconfig
 set(LIBCONFIG_MINIMUM_VERSION_REQUIRED "1.7")
 find_package(libconfig)
-if( LIBCONFIG_FOUND AND (LIBCONFIG_VERSION VERSION_GREATER ${LIBCONFIG_MINIMUM_VERSION_REQUIRED}) OR (LIBCONFIG_VERSION VERSION_EQUAL ${LIBCONFIG_MINIMUM_VERSION_REQUIRED}))
-   message(STATUS "libconfig ${LIBCONFIG_VERSION} found")
-   add_definitions(-DHAVE_LIBCONFIG=1)
-
-   if(APPLE)
-     SET (LIBCONFIG_INCLUDE_DIRS /usr/local/include/)
-     SET (LIBCONFIG_LIBRARIES /usr/local/lib/libconfig.dylib)
-     INCLUDE_DIRECTORIES(${LIBCONFIG_INCLUDE_DIRS})
-   endif(APPLE)
-
-else()
-   message("WARNING: libconfig ${LIBCONFIG_MINIMUM_VERSION_REQUIRED} NOT FOUND, libConfig related functionality will unavailable")
+message(STATUS "libconfig [ ${LIBCONFIG_VERSION}, ${libconfig_VERSION}] found=${libconfig_FOUND}")
+if ( NOT ${libconfig_FOUND} )
+    message(FATAL_ERROR "libconfig version >= ${LIBCONFIG_MINIMUM_VERSION_REQUIRED} is not found\n \
+        Please install fresh version of libconfig manually from github: https://github.com/hyperrealm/libconfig.git")
 endif()
+if ( libconfig_VERSION AND NOT LIBCONFIG_VERSION ) # Th case of the lellers vary between ubuntu and arch linux
+    set(LIBCONFIG_VERSION ${libconfig_VERSION})
+endif()
+if ( NOT LIBCONFIG_VERSION )
+    message(FATAL_ERROR "Can not determine libconfig version, seems libconfig cmake skript is broken.
+        Please install fresh version of libconfig manually from github: https://github.com/hyperrealm/libconfig.git")
+endif()
+if ( LIBCONFIG_VERSION VERSION_LESS ${LIBCONFIG_MINIMUM_VERSION_REQUIRED} )
+    message(FATAL_ERROR "libconfig version >= ${LIBCONFIG_MINIMUM_VERSION_REQUIRED} is required but libconfig version ${LIBCONFIG_VERSION} found.
+        Please install fresh version of libconfig manually from github: https://github.com/hyperrealm/libconfig.git")
+endif()
+
+if ( NOT LIBCONFIG_INCLUDE_DIRS )
+  if (WIN32)
+    get_target_property(LIBCONFIG_INCLUDE_DIRS libconfig::libconfig INTERFACE_INCLUDE_DIRECTORIES)
+  else()
+    get_target_property(LIBCONFIG_INCLUDE_DIRS libconfig::config INTERFACE_INCLUDE_DIRECTORIES)
+  endif()
+endif()
+
+if ( NOT LIBCONFIG_LIBRARIES ) 
+  if (WIN32)
+    set(LIBCONFIG_LIBRARIES libconfig::libconfig)
+  else() 
+    set(LIBCONFIG_LIBRARIES libconfig::config)
+  endif()
+endif()
+
+message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LIBCONFIG_LIBRARIES}")
+
 
 
 # Qt5

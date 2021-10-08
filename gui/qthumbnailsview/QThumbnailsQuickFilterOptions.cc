@@ -8,6 +8,10 @@
 #include "QThumbnailsQuickFilterOptions.h"
 #include <core/debug.h>
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+# define MatchRegularExpression MatchRegExp
+#endif
+
 
 const struct QtMatchingFlags_desc QtMatchingFlags[] = {
     {"Wildcard", Qt::MatchWildcard},

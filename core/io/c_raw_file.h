@@ -9,7 +9,6 @@
 #define __c_raw_file_h__
 
 #include "debayer.h"
-#include <libopenraw/libopenraw.h>
 #include <libraw/libraw.h>
 
 class c_raw_file_reader

@@ -286,8 +286,13 @@ bool c_ser_reader::open(const std::string & filename)
 
       timestamps_.resize(header_.frames_count, 0);
 
-      ::read(fd, timestamps_.data(),
-          sizeof(timestamps_[0]) * timestamps_.size());
+      const ssize_t bytest_to_read =
+          sizeof(timestamps_[0]) * timestamps_.size();
+
+      if ( ::read(fd, timestamps_.data(), bytest_to_read) != bytest_to_read ) {
+        CF_ERROR("::read() fails : %s", strerror(errno));
+        return false;
+      }
 
       lseek64(fd, backup_pos, SEEK_SET);
 

@@ -910,7 +910,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     fOk = false;
 
-    CF_ERROR("std::exception catched in c_image_stacking_pipeline::run()\n",
+    CF_ERROR("std::exception catched in c_image_stacking_pipeline::run(): %s\n",
         e.what());
   }
   catch (...) {
@@ -944,7 +944,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     fOk = false;
 
-    CF_ERROR("std::exception catched in c_image_stacking_pipeline::cleanup()\n",
+    CF_ERROR("std::exception catched in c_image_stacking_pipeline::cleanup(): %s\n",
         e.what());
   }
   catch (...) {

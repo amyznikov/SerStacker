@@ -194,7 +194,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
   }
 
   if ( IMAGE_WIDTH > MAX_IMAGE_SIZE || IMAGE_HEIGHT > MAX_IMAGE_SIZE ) {
-    CF_ERROR("Invalid image dimensions (%u x %u) for page %d. Image may be corrupt.", IMAGE_WIDTH, IMAGE_HEIGHT);
+    CF_ERROR("Invalid image dimensions (%u x %u). Image may be corrupt.", IMAGE_WIDTH, IMAGE_HEIGHT);
     return false;
   }
 
@@ -284,7 +284,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
   }
 
   if ( (EXTRA = get_extra_channels_count(PHOTOMETRIC, SAMPLES_PER_PIXEL, alpha)) > 0 ) {
-    CF_WARNING("%u additional extrac channels are not handled");
+    CF_WARNING("%u additional extra channels are not handled", EXTRA);
   }
 
   // CF_DEBUG("[%s] worst_case=%d", cfilename, worst_case);

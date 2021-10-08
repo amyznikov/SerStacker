@@ -38,8 +38,8 @@ static int bitpix2ddepth(int bitpix)
   case DOUBLE_IMG :  //  -64
     return CV_64F;
 
-  case LONGLONG_IMG :  // 64
-  case ULONGLONG_IMG :  //    80
+    // case LONGLONG_IMG :  // 64
+    // case ULONGLONG_IMG :  //    80
   default :
     break;
   }
@@ -328,7 +328,7 @@ bool c_fits_reader::open(const std::string & filename)
     char comment[256];
 
     if ( fits_read_keyn(fp, keynum, keyname, value, comment, &(status_ = 0)) ) {
-      CF_ERROR("'%s': fits_read_keyn(keynum=%d) fails for '%s': %s", filename.c_str(),
+      CF_ERROR("'%s': fits_read_keyn(keynum=%d) fails: %s", filename.c_str(),
           keynum, fits_errmsg(status_));
       goto end;
     }

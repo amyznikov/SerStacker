@@ -112,7 +112,7 @@ c_image_processor::ptr c_image_processor::load(const std::string & filename)
 
   std::string object_class;
   if ( !::load_settings(cfg.root(), "object_class", &object_class) ) {
-    CF_FATAL("load_settings(object_class) fails", filename.c_str());
+    CF_FATAL("load_settings(object_class) fails for %s", filename.c_str());
     return nullptr;
   }
 

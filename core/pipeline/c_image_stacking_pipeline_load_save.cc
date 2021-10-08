@@ -110,7 +110,7 @@ bool c_image_stacks_collection::load(const std::string & cfgfilename)
 
   std::string object_class;
   if ( !::load_settings(cfg.root(), "object_class", &object_class) ) {
-    CF_FATAL("load_settings(object_class) fails", filename.c_str());
+    CF_FATAL("[%s] load_settings(object_class) fails", filename.c_str());
     return false;
   }
 
@@ -185,7 +185,7 @@ c_image_stacking_options::ptr c_image_stacking_options::load(const std::string &
 
   std::string object_class;
   if ( !::load_settings(cfg.root(), "object_class", &object_class) ) {
-    CF_FATAL("load_settings(object_class) fails", filename.c_str());
+    CF_FATAL("[%s] load_settings(object_class) fails", filename.c_str());
     return nullptr;
   }
 

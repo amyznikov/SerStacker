@@ -340,9 +340,15 @@ QString toString(const T x[], int nmax)
 template<class T>
 inline bool fromString(const QString & text, std::vector<T> * v)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   const QStringList tokens =
       text.split(QRegExp("[ ;:\t\n]"),
           Qt::SkipEmptyParts);
+#else
+  const QStringList tokens =
+      text.split(QRegExp("[ ;:\t\n]"),
+          QString::SkipEmptyParts);
+#endif
 
   v->clear();
   v->reserve(tokens.size());

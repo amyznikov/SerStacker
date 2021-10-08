@@ -88,10 +88,17 @@ int QScaleSelectionButton::QPopupSlider::value() const
 
 void QScaleSelectionButton::QPopupSlider::showPopup(QPoint pos)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   QScreen * currentScreen = QGuiApplication::screenAt(pos);
   if ( !currentScreen && !(currentScreen = QGuiApplication::primaryScreen())) {
     return;
   }
+#else
+  QScreen * currentScreen = QGuiApplication::primaryScreen();
+  if ( !currentScreen ) {
+    return;
+  }
+#endif
 
   QRect rc = currentScreen->geometry();
   QSize s = sizeHint();

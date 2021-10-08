@@ -1,7 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1.0)
-
 project(SerStacker CXX)
-set(APP_VERSION ${QSTAKER_VERSION})
 
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 14)
@@ -23,8 +21,10 @@ set(SRC
 
 set(APP_INCLUDES 
   ${SRC} 
-  ${CORE_INCLUDES} 
-  ${OPENGL_INCLUDE_DIR})
+  ${CORE_INCLUDES} )
+#  ${OPENGL_INCLUDE_DIR}
+
+include_directories(${APP_INCLUDES})
 
 set(APP_LIBRARIES 
   gui 
@@ -33,10 +33,11 @@ set(APP_LIBRARIES
   Qt5::MultimediaWidgets 
   Qt5::Xml
   Qt5::PrintSupport
-  v4lconvert
-  v4l2
   ${CORE_LIBRARIES})
 
+
+#  v4lconvert
+#  v4l2
 
 file(GLOB_RECURSE SOURCE_FILES
 	${SRC}/*.c
@@ -53,7 +54,6 @@ if( EXISTS ${SRC}/app-resources.qrc )
 endif()
 
 
-include_directories(${APP_INCLUDES})
 
 add_executable(${PROJECT_NAME}
 	${SOURCE_FILES}

@@ -206,7 +206,7 @@ bool c_star_field_registration::extract_reference_features(cv::InputArray featur
   switch (motion_type()) {
     case ECC_MOTION_TRANSLATION:
       if ( reference_keypoints_.size() < 1 ) {
-        CF_ERROR("Not enough reference stars detected (%d)",
+        CF_ERROR("Not enough reference stars detected (%zu)",
             reference_keypoints_.size());
         return false;
       }
@@ -214,7 +214,7 @@ bool c_star_field_registration::extract_reference_features(cv::InputArray featur
 
     case ECC_MOTION_EUCLIDEAN:
       if ( reference_keypoints_.size() < 3 ) {
-        CF_ERROR("Not enough reference stars detected (%d)",
+        CF_ERROR("Not enough reference stars detected (%zu)",
             reference_keypoints_.size());
         return false;
       }
@@ -222,21 +222,21 @@ bool c_star_field_registration::extract_reference_features(cv::InputArray featur
     case ECC_MOTION_EUCLIDEAN_SCALED : // FIXME: update this code to estimate ECC_MOTION_EUCLIDEAN_SCALED CORRECTLY !!!!
     case ECC_MOTION_AFFINE:
       if ( reference_keypoints_.size() < 3 ) {
-        CF_ERROR("Not enough reference stars detected (%d)",
+        CF_ERROR("Not enough reference stars detected (%zu)",
             reference_keypoints_.size());
         return false;
       }
       break;
     case ECC_MOTION_HOMOGRAPHY:
       if ( reference_keypoints_.size() < 4 ) {
-        CF_ERROR("Not enough reference stars detected (%d)",
+        CF_ERROR("Not enough reference stars detected (%zu)",
             reference_keypoints_.size());
         return false;
       }
       break;
     case ECC_MOTION_QUADRATIC:
       if ( reference_keypoints_.size() < 6 ) {
-        CF_ERROR("Not enough reference stars detected (%d)",
+        CF_ERROR("Not enough reference stars detected (%zu)",
             reference_keypoints_.size());
         return false;
       }

@@ -255,9 +255,11 @@ QMtfControl::QMtfControl(QWidget * parent)
     bottomToolbar_->addWidget(spins[i] = new QDoubleSpinBox());
     spins[i]->setKeyboardTracking(false);
     spins[i]->setRange(0, 1);
-    spins[i]->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
     spins[i]->setDecimals(3);
     spins[i]->setSingleStep(0.01);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    spins[i]->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
+#endif
     if ( i < 2 ) {
       addStretch(bottomToolbar_);
     }

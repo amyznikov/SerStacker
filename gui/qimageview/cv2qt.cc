@@ -120,7 +120,7 @@ bool cv2qt(cv::InputArray __src, QImage * dst, bool rgbswap)
     return true;
 
   default :
-    CF_FATAL("Unhandled cv2 type: depth=%d channels=%d  %d", src.depth(), src.channels());
+    CF_FATAL("Unhandled cv2 type: depth=%d channels=%d", src.depth(), src.channels());
     break;
   }
 

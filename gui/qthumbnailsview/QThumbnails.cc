@@ -13,7 +13,6 @@
 #define HAVE_SER_FILE       1
 #define HAVE_FITS_FILE      1
 #define HAVE_FFMPEG_FILE    1
-#define HAVE_LIBOPENRAW     1
 #define HAVE_LIBRAW         0
 
 #if HAVE_SER_FILE
@@ -29,7 +28,7 @@
 # include <core/io/c_ffmpeg_file.h>
 #endif
 
-#if HAVE_LIBOPENRAW
+#if HAVE_LIBOPENRAW // come from cmake
 # undef HAVE_LIBRAW
 # include <libopenraw/libopenraw.h>
 #elif HAVE_LIBRAW

@@ -17,6 +17,8 @@ QImageSceneView::QImageSceneView(QWidget *parent)
 
   QShortcut * shortcut;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+
   shortcut = new QShortcut(QKeySequence("Ctrl++"), this,
       [this]() {
         zoom(+1);
@@ -30,6 +32,40 @@ QImageSceneView::QImageSceneView(QWidget *parent)
   shortcut = new QShortcut(QKeySequence("Ctrl+0"), this,
       this, &ThisClass::resetZoom,
       Qt::WidgetShortcut);
+
+#else
+  shortcut =
+      new QShortcut(QKeySequence("Ctrl++"), this,
+          nullptr,
+          nullptr,
+          Qt::WidgetShortcut);
+
+  connect(shortcut, &QShortcut::activated,
+      [this]() {
+        zoom(+1);
+      });
+
+  shortcut =
+      new QShortcut(QKeySequence("Ctrl+-"), this,
+          nullptr,
+          nullptr,
+          Qt::WidgetShortcut);
+
+  connect(shortcut, &QShortcut::activated,
+      [this]() {
+        zoom(-1);
+      });
+
+  shortcut =
+      new QShortcut(QKeySequence("Ctrl+0"), this,
+          nullptr,
+          nullptr,
+          Qt::WidgetShortcut);
+
+  connect(shortcut, &QShortcut::activated,
+      this, &ThisClass::resetZoom);
+
+#endif
 
 }
 

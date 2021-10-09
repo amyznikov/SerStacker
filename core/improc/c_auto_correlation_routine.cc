@@ -39,6 +39,6 @@ bool c_auto_correlation_routine::serialize(c_config_setting settings) const
 
 bool c_auto_correlation_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  fftComputeAutoCorrelation(image.getMat(), image.getMatRef());
+  fftComputeAutoCorrelation(image.getMat(), image.getMatRef(), true);
   return true;
 }

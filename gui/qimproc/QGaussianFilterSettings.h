@@ -1,24 +1,22 @@
 /*
- * QAutoClipSettings.h
+ * QGaussianFilterSettings.h
  *
- *  Created on: Jul 30, 2021
+ *  Created on: Oct 9, 2021
  *      Author: amyznikov
  */
 
-#pragma once
-#ifndef __QAutoClipSettings_h__
-#define __QAutoClipSettings_h__
+#ifndef __QGaussianFilterSettings_h__
+#define __QGaussianFilterSettings_h__
 
-
-#include <core/improc/c_autoclip_routine.h>
+#include <core/improc/c_gaussian_filter_routine.h>
 #include "QImageProcessorRoutineSettings.h"
 
-class QAutoClipSettings
-  : public QImageProcessorRoutineSettings<c_autoclip_routine>
+class QGaussianFilterSettings
+  : public QImageProcessorRoutineSettings<c_gaussian_filter_routine>
 {
   Q_OBJECT;
 public:
-  typedef QAutoClipSettings ThisClass;
+  typedef QGaussianFilterSettings ThisClass;
   typedef QImageProcessorRoutineSettings Base;
 
   static const struct ClassFactory : public Base::ClassFactory {
@@ -30,16 +28,15 @@ public:
     {}
   } classFactory;
 
-  QAutoClipSettings(const c_autoclip_routine::ptr & processor,
+  QGaussianFilterSettings(const c_gaussian_filter_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  QNumberEditBox * lclip_ctl = Q_NULLPTR;
-  QNumberEditBox * hclip_ctl = Q_NULLPTR;
+  QNumberEditBox * sigma_ctl = Q_NULLPTR;
+
 };
 
-
-#endif /* __QAutoClipSettings_h__ */
+#endif /* __QGaussianFilterSettings_h__ */

@@ -23,6 +23,7 @@
 #include "QInPaintSettings.h"
 #include "QRadialPolySharpSettings.h"
 #include "QAutoCorrelationSettings.h"
+#include "QGaussianFilterSettings.h"
 
 
 
@@ -89,7 +90,7 @@ void QImageProcessorRoutineSettingsBase::registrerAllClasses()
     registrerClassFactory(&QInPaintSettings::classFactory);
     registrerClassFactory(&QRadialPolySharpSettings::classFactory);
     registrerClassFactory(&QAutoCorrelationSettings::classFactory);
-
+    registrerClassFactory(&QGaussianFilterSettings::classFactory);
   }
 }
 

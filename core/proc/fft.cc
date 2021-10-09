@@ -754,10 +754,25 @@ void fftComputeAutoCorrelation(cv::InputArray src, cv::OutputArray dst, bool log
   }
 
   fftImageFromSpectrum(channels, image);
+
+  if( true ) {
+    cv::Scalar scale;
+    const int cn = std::min((int) (sizeof(scale.val) / sizeof(scale.val[0])), image.channels());
+    for( int c = 0; c < cn; ++c ) {
+      scale.val[c] = 1./image.ptr<const float>(0)[0 + c];
+    }
+
+    cv::multiply(image, scale, image);
+  }
+
   fftSwapQuadrants(image);
 
   if ( !rc.empty() ) {
     image = image(rc);
+  }
+
+  if ( logscale ) {
+    // cv::log(image + cv::Scalar::all(1), image);
   }
 
   dst.move(image);

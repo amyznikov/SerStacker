@@ -1,8 +1,8 @@
 # SerStacker
 Highly experimental code for planetary images stacking with OpenCV.
 
-This code is intendend mainly for my experimentation only.
-It is highly bugged and constantly changed. 
+This code is intendend mainly for my experimentation.
+It is totally bugged and constantly changed. 
 
 Examples of stacked images on my flickr account : 
   https://www.flickr.com/photos/116211323@N02/.

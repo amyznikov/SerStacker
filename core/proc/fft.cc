@@ -716,4 +716,50 @@ bool fftMaxPowerSpectrum(const cv::Mat & src, cv::Mat & acc)
   return true;
 }
 
+void fftComputeAutoCorrelation(cv::InputArray src, cv::OutputArray dst, bool logscale)
+{
+  static const auto compute_magnitue =
+      [](cv::Mat2f & src) {
+
+        typedef std::complex<float> complex;
+
+        const cv::Mat_<complex> spec = src;
+
+        for ( int y = 0; y < spec.rows; ++y ) {
+          for ( int x = 0; x < spec.cols; ++x ) {
+            src[y][x] = std::abs(spec[y][x]);
+          }
+        }
+
+      };
+
+
+  cv::Mat image;
+  cv::Rect rc;
+
+  if ( !(src.cols() & 0x1) && !(src.rows() & 0x1) ) {
+    image = src.getMat();
+  }
+  else {
+    fftCopyMakeBorder(src, image, fftGetOptimalSize(src.size(), cv::Size(), true), &rc);
+  }
+
+
+  std::vector<cv::Mat2f> channels;
+
+  fftImageToSpectrum(image, channels);
+
+  for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
+    compute_magnitue(channels[c]);
+  }
+
+  fftImageFromSpectrum(channels, image);
+  fftSwapQuadrants(image);
+
+  if ( !rc.empty() ) {
+    image = image(rc);
+  }
+
+  dst.move(image);
+}
 

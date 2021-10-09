@@ -70,4 +70,8 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     std::vector<double> & output_profile_after,
     std::vector<double> & output_profile_poly);
 
+void fftComputeAutoCorrelation(cv::InputArray src,
+    cv::OutputArray dst,
+    bool logscale = true);
+
 #endif /* __fft_h__ */

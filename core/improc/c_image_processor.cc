@@ -25,6 +25,7 @@
 #include "c_color_saturation_routine.h"
 #include "c_inpaint_routine.h"
 #include "c_radial_polysharp_routine.h"
+#include "c_auto_correlation_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -86,6 +87,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_color_saturation_routine::class_factory);
     register_class_factory(&c_inpaint_routine::class_factory);
     register_class_factory(&c_radial_polysharp_routine::class_factory);
+    register_class_factory(&c_auto_correlation_routine::class_factory);
   }
 }
 

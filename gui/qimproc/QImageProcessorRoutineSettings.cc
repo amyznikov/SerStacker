@@ -22,6 +22,7 @@
 #include "QColorSaturationOptions.h"
 #include "QInPaintSettings.h"
 #include "QRadialPolySharpSettings.h"
+#include "QAutoCorrelationSettings.h"
 
 
 
@@ -87,6 +88,7 @@ void QImageProcessorRoutineSettingsBase::registrerAllClasses()
     registrerClassFactory(&QColorSaturationOptions::classFactory);
     registrerClassFactory(&QInPaintSettings::classFactory);
     registrerClassFactory(&QRadialPolySharpSettings::classFactory);
+    registrerClassFactory(&QAutoCorrelationSettings::classFactory);
 
   }
 }

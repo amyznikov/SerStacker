@@ -50,6 +50,13 @@
 # endif
 #endif
 
+
+static inline double square(double x)
+{
+  return x * x;
+}
+
+
 #if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(3,4,0) )
 namespace cv {
 namespace hal {
@@ -137,6 +144,46 @@ static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst, double s
   cv::magnitude(gx, gy, dst);
 }
 
+static void draw_artifical_jupiter(cv::Mat & image, const cv::RotatedRect & rc,
+    const cv::Scalar & color,
+    int thickness = 1,
+    int line_type = cv::LINE_AA)
+{
+  const double A = 0.5 * rc.size.width;
+  const double B = 0.5 * rc.size.height;
+  const double angle = rc.angle * CV_PI / 180;
+
+  static const double ys[] = {
+      +85.0/251,
+      +128.0/251,
+      -42.0/251,
+      -97.0/251,
+  };
+
+  cv::ellipse(image, rc, color, thickness, line_type);
+
+  for ( uint i = 0; i < sizeof(ys)/sizeof(ys[0]); ++i ) {
+
+    const double y = ys[i] * B;
+
+    const double x1 = +0.9 * A * sqrt(1. - square(ys[i]));
+    const double x2 = -0.9 * A * sqrt(1. - square(ys[i]));
+
+    const double xp1 = x1 * cos(angle) - y * sin(angle);
+    const double yp1 = x1 * sin(angle) + y * cos(angle);
+
+    const double xp2 = x2 * cos(angle) - y * sin(angle);
+    const double yp2 = x2 * sin(angle) + y * cos(angle);
+
+    cv::line(image,
+        rc.center + cv::Point2f( xp1, yp1),
+        rc.center + cv::Point2f( xp2, yp2),
+        color,
+        thickness,
+        line_type);
+  }
+}
+
 // TODO: add horizontal lines to artifical ellipse in appropriate zones
 // for better rotation fitting (assuming that jupiter usually shows zonal gradients)
 bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const std::string & dbgpath)
@@ -192,10 +239,11 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   rc->angle -= 90;
 
 
-  const int l = std::max(0, component_rect.x - 16);
-  const int t = std::max(0, component_rect.y - 16);
-  const int r = std::min(gray_image.cols - 1, component_rect.x + component_rect.width + 16 - 1);
-  const int b = std::min(gray_image.rows - 1, component_rect.y + component_rect.height + 16 - 1);
+  const int margin = std::max(16, (std::max(component_rect.width, component_rect.height)/8) & ~0x1);
+  const int l = std::max(0, component_rect.x - margin);
+  const int t = std::max(0, component_rect.y - margin);
+  const int r = std::min(gray_image.cols - 1, component_rect.x + component_rect.width + margin - 1);
+  const int b = std::min(gray_image.rows - 1, component_rect.y + component_rect.height + margin - 1);
 
   component_rect.x = l;
   component_rect.y = t;
@@ -209,26 +257,25 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   gray_image(component_rect).copyTo(component_image, component_mask(component_rect));
   gradient_magnitude(component_image, component_image, std::max(1., component_rect.width/250.) );
 
+  if ( !dbgpath.empty() ) {
+    save_image(component_image, ssprintf("%s/gradient_magnitude.tiff", dbgpath.c_str()) );
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////
-  // Draw artifical jovian ellipse
+  // Draw artifical jovian ellipse and use of ECC to fit it into planetary disk gradient image
 
   const double A = 0.5 * std::max(rc->size.width, rc->size.height);
   const double B = A * jovian_polar_to_equatorial_axis_ratio;
   const cv::Point2f C = rc->center - cv::Point2f(component_rect.x, component_rect.y);
 
-  artifical_ellipse.create(component_rect.size(), CV_32F);
+  artifical_ellipse.create(component_rect.size(), CV_32FC1);
   artifical_ellipse.setTo(0);
-  cv::ellipse(artifical_ellipse, C, cv::Size(A, B), 0, 0, 360, 1.0, 2.0, cv::LINE_AA);
-  cv::GaussianBlur(artifical_ellipse, artifical_ellipse, cv::Size(), 2);
-
-  /////////////////////////////////////////////////////////////////////////////////////////
-  // Use of ECC to fit artifical jovian ellipse into planetary disk gradient image
+  draw_artifical_jupiter(artifical_ellipse, cv::RotatedRect(C, cv::Size2f(2 * A, 2 * B), 0), 1, 2);
+  cv::GaussianBlur(artifical_ellipse, artifical_ellipse, cv::Size(), 3);
 
   if ( !dbgpath.empty() ) {
-    save_image(artifical_ellipse, ssprintf("%s/artifical_ellipse.tiff", dbgpath.c_str()) );
-    save_image(component_image, ssprintf("%s/component_image.tiff", dbgpath.c_str()) );
+    save_image(artifical_ellipse, ssprintf("%s/initial_artifical_ellipse.tiff", dbgpath.c_str()) );
   }
-
 
   c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
   c_ecc_pyramide_align ecch(&ecc);
@@ -293,6 +340,19 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
       rc->center.x, rc->center.y,
       rc->size.width, rc->size.height,
       rc->angle);
+
+  if ( !dbgpath.empty() ) {
+
+    cv::RotatedRect rc2 = *rc;
+    rc2.center.x -= component_rect.x;
+    rc2.center.y -= component_rect.y;
+
+    cv::normalize(component_image, component_image, 0, 1, cv::NORM_MINMAX);
+    cv::cvtColor(component_image, artifical_ellipse, cv::COLOR_GRAY2BGR);
+    draw_artifical_jupiter(artifical_ellipse, rc2, CV_RGB(0, 1, 0), 1);
+
+    save_image(artifical_ellipse, ssprintf("%s/fitted_artifical_ellipse.tiff", dbgpath.c_str()) );
+  }
 
   return true;
 }
@@ -490,15 +550,17 @@ const cv::Mat1b & c_jovian_derotation::current_total_binary_mask() const
   return current_total_binary_mask_;
 }
 
-void c_jovian_derotation::normalize_jovian_image(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, double sigma)
+void c_jovian_derotation::normalize_jovian_image(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, int normalization_scale)
 {
   cv::Scalar mv, sv;
   cv::Mat src, mean;
 
   src = _src.getMat();
+
   cv::meanStdDev(src, mv, sv/*, mask*/);
 
-  cv::GaussianBlur(src, mean, cv::Size(), sigma, sigma);
+  ecc_downscale(src, mean, normalization_scale, cv::BORDER_REPLICATE);
+  ecc_upscale(mean, src.size());
   cv::subtract(src, mean, mean);
   cv::multiply(mean, 1./sv[0], dst);
 }
@@ -596,8 +658,9 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
   }
 
   // precompute normalization scale and normalized reference image
+
   normalization_scale_ =
-      std::max(3.0, 3 * reference_ellipse_.size.width / 500.);
+      std::max(3, eccflow_support_scale_);
 
   normalize_jovian_image(reference_component_image_,
       reference_component_mask_,

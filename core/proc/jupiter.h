@@ -165,7 +165,7 @@ protected:
 
   static void normalize_jovian_image(cv::InputArray _src, cv::InputArray mask,
       cv::OutputArray dst,
-      double sigma);
+      int normalization_scale);
 
   static double compute_jovian_derotation_cost(const cv::Mat1f & reference_component_image,
       const cv::Mat1f & curret_rotated_component_image,
@@ -187,7 +187,7 @@ protected:
   cv::Mat current_normalized_image_;
   cv::Mat1b reference_ellipse_mask_;
   cv::Mat1b current_ellipse_mask_;
-  double normalization_scale_ = 1.0;
+  int normalization_scale_ = 4;
 
   cv::Mat2f current_total_remap_;
   cv::Mat1f current_total_mask_;

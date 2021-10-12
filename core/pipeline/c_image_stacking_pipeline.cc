@@ -1882,6 +1882,22 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     t0 = start_time = get_realtime_ms();
 
+    if ( !input_options.bad_frames.empty()  ) {
+
+      const std::vector<int> :: const_iterator pos =
+          std::find(input_options.bad_frames.begin(),
+              input_options.bad_frames.end(),
+              input_sequence->current_pos());
+
+      if( pos != input_options.bad_frames.end() ) {
+        CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
+        input_sequence->seek(input_sequence->current_pos() + 1);
+        continue;
+      }
+
+    }
+
+
     if ( !read_input_frame(input_sequence, input_options, current_frame, current_mask) ) {
       set_status_msg("read_input_frame() fails");
       break;
@@ -2209,7 +2225,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
-    if ( input_options.filter_hot_pixels ) {
+    if ( input_options.filter_bad_pixels ) {
       remove_bad_pixels(output_image, input_options);
     }
 
@@ -2222,7 +2238,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     extract_bayer_planes(output_image, output_image,
         input_sequence->colorid());
 
-    if ( input_options.filter_hot_pixels ) {
+    if ( input_options.filter_bad_pixels ) {
       remove_bad_pixels(output_image, input_options);
     }
 

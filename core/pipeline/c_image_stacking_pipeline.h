@@ -112,8 +112,10 @@ struct c_input_options {
   bool inpaint_missing_pixels = false;
 
   c_image_processor::ptr input_frame_processor;
+  std::vector<int> bad_frames; // global indexes
 
-  bool filter_hot_pixels = true;
+
+  bool filter_bad_pixels = true;
   bool enable_color_maxtrix = false;
 
   enum anscombe_method anscombe = anscombe_none;

@@ -1300,7 +1300,12 @@ void QStackTree::applyInputOptionsToAll(const c_input_options & options)
 
     // copy here
     hasUpdates = true;
+
+    const std::vector<int> backup_bad_frames =
+        stack->input_options().bad_frames;
+
     stack->input_options() = options;
+    stack->input_options().bad_frames = backup_bad_frames;
   }
 
   if ( hasUpdates ) {
@@ -1555,7 +1560,11 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
 
       // copy here
       hasUpdates = true;
+      const std::vector<int> backup_bad_frames = stack->input_options().bad_frames;
       stack->input_options() = fromStack->input_options();
+      stack->input_options().bad_frames = backup_bad_frames;
+
+
       stack->roi_selection_options() = fromStack->roi_selection_options();
       stack->upscale_options() = fromStack->upscale_options();
       stack->frame_registration_options() = fromStack->frame_registration_options();

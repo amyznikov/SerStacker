@@ -312,12 +312,13 @@ bool c_input_options::serialize(c_config_setting settings) const
   settings.set("missing_pixel_mask", missing_pixel_mask_filename);
   settings.set("missing_pixels_marked_black", missing_pixels_marked_black);
   settings.set("inpaint_missing_pixels", inpaint_missing_pixels);
-  settings.set("remove_bad_pixels", filter_hot_pixels);
+  settings.set("remove_bad_pixels", filter_bad_pixels);
   settings.set("bad_pixels_variation_threshold", hot_pixels_variation_threshold);
   settings.set("enable_color_maxtrix", enable_color_maxtrix );
   settings.set("anscombe", anscombe);
   settings.set("start_frame_index", start_frame_index);
   settings.set("max_input_frames", max_input_frames);
+  save_settings(settings, "bad_frames", bad_frames);
 
 
   if ( input_frame_processor ) {
@@ -338,12 +339,13 @@ bool c_input_options::deserialize(c_config_setting settings)
   settings.get("missing_pixel_mask", &missing_pixel_mask_filename);
   settings.get("missing_pixels_marked_black", &missing_pixels_marked_black);
   settings.get("inpaint_missing_pixels", &inpaint_missing_pixels);
-  settings.get("remove_bad_pixels", &filter_hot_pixels);
+  settings.get("remove_bad_pixels", &filter_bad_pixels);
   settings.get("bad_pixels_variation_threshold", &hot_pixels_variation_threshold);
   settings.get("enable_color_maxtrix", &enable_color_maxtrix );
   settings.get("anscombe", &anscombe);
   settings.get("start_frame_index", &start_frame_index);
   settings.get("max_input_frames", &max_input_frames);
+  load_settings(settings, "bad_frames", &bad_frames);
 
   if ( settings.get("input_frame_processor", &s) && !s.empty() ) {
     input_frame_processor = c_image_processor_collection::default_instance()->get(s);

@@ -7,6 +7,7 @@
 
 #include "QImageStackingInputOptions.h"
 #include <gui/widgets/addctrl.h>
+#include <gui/widgets/settings.h>
 #include <core/debug.h>
 
 #define ICON_check_all      "check_all"
@@ -48,8 +49,8 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](int state) {
             if ( options_ ) {
               bool checked = state == Qt::Checked;
-              if ( checked != options_->filter_hot_pixels ) {
-                options_->filter_hot_pixels = checked;
+              if ( checked != options_->filter_bad_pixels ) {
+                options_->filter_bad_pixels = checked;
                 emit parameterChanged();
               }
             }
@@ -64,19 +65,15 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
             }
           });
 
-
-  inpaint_missing_pixels_ctl =
-      add_checkbox("Inpaint missing pixels with feasible values",
-          [this](int state) {
+  bad_frames_ctl =
+      add_textbox("Bad frames (global pos):",
+          [this](const QString & s) {
             if ( options_ ) {
-              bool checked = state == Qt::Checked;
-              if ( checked != options_->inpaint_missing_pixels ) {
-                options_->inpaint_missing_pixels = checked;
+              if ( ::fromString(s, &options_->bad_frames)) {
                 emit parameterChanged();
               }
             }
           });
-
 
   enable_color_maxtrix_ctl =
       add_checkbox("Apply color matrix if available",
@@ -140,6 +137,17 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
             }
           });
 
+  inpaint_missing_pixels_ctl =
+      add_checkbox("Inpaint missing pixels with feasible values",
+          [this](int state) {
+            if ( options_ ) {
+              bool checked = state == Qt::Checked;
+              if ( checked != options_->inpaint_missing_pixels ) {
+                options_->inpaint_missing_pixels = checked;
+                emit parameterChanged();
+              }
+            }
+          });
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -175,8 +183,10 @@ void QImageStackingInputOptions::onupdatecontrols()
   }
   else {
 
-    enable_remove_bad_pixels_ctl->setChecked(options_->filter_hot_pixels);
+    enable_remove_bad_pixels_ctl->setChecked(options_->filter_bad_pixels);
     bad_pixels_variation_threshold_ctl->setValue(options_->hot_pixels_variation_threshold);
+    bad_frames_ctl->setValue(::toString(options_->bad_frames));
+
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
 

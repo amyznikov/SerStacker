@@ -372,6 +372,7 @@ void QImageSceneView::mouseMoveEvent(QMouseEvent *e)
     default :
       currentLineItem->setPos(currentLineItem->pos() +
           spos - mapToScene(prevMouseScrollPos_));
+      update();
       break;
     }
 
@@ -415,6 +416,7 @@ void QImageSceneView::mouseMoveEvent(QMouseEvent *e)
     default :
       currentRectItem->setPos(currentRectItem->pos() +
           spos - mapToScene(prevMouseScrollPos_));
+      update();
       break;
     }
 
@@ -505,12 +507,16 @@ void QImageSceneView::addLineShape()
     const QPointF viewCenterOnScene =
         mapToScene(viewrect.center());
 
-    const QPoint topleft(0, 0);
+    const QPointF topleft(0, 0);
+
+    const QPointF bottomRight =
+        mapToScene(QPoint(
+            std::max(8, viewrect.width() / 4),
+            std::max(8, viewrect.height() / 4)));
 
     QGraphicsLineItem * item =
-        scene_->addLine(0, 0,
-            std::max(4, viewrect.width() / 4),
-            std::max(4, viewrect.height() / 4),
+        scene_->addLine(topleft.x(), topleft.y(),
+            bottomRight.x(), bottomRight.y(),
             pen);
 
     item->setFlags(item->flags()
@@ -543,9 +549,10 @@ void QImageSceneView::addRectShape()
 
     const QPointF topleft(0, 0);
 
-    const QPointF bottomright(mapToScene(QPoint(
-        std::max(4, viewrect.width() / 4),
-        std::max(4, viewrect.height() / 4))));
+    const QPointF bottomright =
+        mapToScene(QPoint(
+            std::max(8, viewrect.width() / 4),
+            std::max(8, viewrect.height() / 4)));
 
     QGraphicsRectItem * item =
         scene_->addRect(QRectF(topleft, bottomright),
@@ -559,7 +566,9 @@ void QImageSceneView::addRectShape()
     item->setPos(viewCenterOnScene.x() - item->rect().width() / 2,
         viewCenterOnScene.y() - item->rect().height() / 2);
 
-    update();
+    CF_DEBUG("scene_->update(): shapesVisible_=%d", shapesVisible_);
+    scene_->update();
+    //update();
 
     emit onRectShapeChanged(item);
   }

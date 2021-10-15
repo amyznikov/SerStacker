@@ -10,9 +10,6 @@
 
 #include <QtWidgets/QtWidgets>
 //#include <gui/widgets/QLogWidget.h>
-//#include <gui/widgets/QCustomDock.h>
-//#include <gui/widgets/QVideoSceneView.h>
-//#include <gui/widgets/QImageViewer.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qimageview/QImageFileEditor.h>
@@ -23,17 +20,6 @@
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include "c_display_function.h"
-
-//#include <gui/widgets/QMTFImageLevelsWidget.h>
-//#include <gui/pipeline/QLibrawOutputParamsWidget.h>
-//#include <gui/pipeline/QStakerBatchEditor.h>
-//#include <gui/pipeline/QPipelineSettings.h>
-//#include <gui/pipeline/QStackingProgressView.h>
-//#include <gui/pipeline/QStackingThread.h>
-
-//
-//#include "QStackListTree.h"
-//#include "QFrameStackingPipelineView.h"
 
 
 namespace qserstacker {

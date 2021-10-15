@@ -26,8 +26,8 @@ public:
 
   QImageScene * scene() const;
 
-  void setScale(int scale, const QPoint * centerPos = Q_NULLPTR);
-  int scale() const;
+  void setViewScale(int scale, const QPoint * centerPos = Q_NULLPTR);
+  int viewScale() const;
 
   void zoom(int delta);
   void zoom(int delta, QPoint mousePos);
@@ -38,12 +38,21 @@ public:
 
   void scrollView(int dx, int dy);
 
+  void setShapesVisible(bool v);
+  bool shapesVisible() const;
+
+  void deleteAllShapes();
+  void addLineShape();
+  void addRectShape();
+
 signals:
   void onMouseMove(QMouseEvent * e);
   void onMousePressEvent(QMouseEvent * e);
   void onMouseReleaseEvent(QMouseEvent * e);
   void onMouseDoubleClick(QMouseEvent * e);
   void scaleChanged(int currentScale);
+  void onLineShapeChanged(QGraphicsLineItem * item);
+  void onRectShapeChanged(QGraphicsRectItem * item);
 
 protected:
   void wheelEvent(QWheelEvent* e) override;
@@ -55,9 +64,16 @@ protected:
 protected:
   QImageScene * scene_ = Q_NULLPTR;
   QPoint prevMouseScrollPos_;
-  int currentScale_ = 0;
+  int currentViewScale_ = 0;
   bool mouseScrollEnabled_ = true;
   bool mouseScrollActive_ = false;
+  bool shapesVisible_ = false;
+
+  QGraphicsLineItem * currentLineItem = Q_NULLPTR;
+  int currentLineCorner = -1; // 0:p1, 1:p2, -1:pos
+
+  QGraphicsRectItem * currentRectItem = Q_NULLPTR;
+  int currentRectCorner = -1; // 0:topleft, 1:topright, 2:bottomright, 3:bottomleft, -1: pos
 
 };
 

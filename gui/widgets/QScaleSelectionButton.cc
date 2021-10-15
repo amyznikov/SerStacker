@@ -9,11 +9,10 @@
 
 #define ICON_zoom "zoom"
 
-static QIcon getIcon(const QString & name) {
-  return QIcon(QString(":/%1").arg(name));
+static QIcon getIcon(const QString & name)
+{
+  return QIcon(QString(":/gui/icons/%1").arg(name));
 }
-
-
 
 class QScaleSelectionButton::QPopupSlider
   : public QDialog
@@ -128,6 +127,8 @@ void QScaleSelectionButton::QPopupSlider::showPopup(QPoint pos)
 QScaleSelectionButton::QScaleSelectionButton(QWidget * parent)
   : Base(parent)
 {
+  Q_INIT_RESOURCE(gui_resources);
+
   setToolButtonStyle(Qt::ToolButtonIconOnly);
   setIconSize(QSize(16, 16));
   setIcon(getIcon(ICON_zoom));

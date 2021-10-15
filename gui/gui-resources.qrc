@@ -14,5 +14,6 @@
 	<file>icons/double-arrow-right.png</file>
 	<file>icons/double-arrow-up.png</file>
     <file>icons/marker-blue.png</file>
+    <file>icons/zoom.png</file>
 </qresource>
 </RCC>

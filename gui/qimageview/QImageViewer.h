@@ -22,6 +22,8 @@ public:
 
   QImageViewer(QWidget * parent = Q_NULLPTR);
 
+  QImageSceneView * sceneView() const;
+
   QToolBar * embedToolbar(QToolBar * toolbar = Q_NULLPTR);
   QToolBar * toolbar() const;
 
@@ -30,6 +32,9 @@ public:
 
   void setDisplayFunction(const DisplayFunction & func);
   const DisplayFunction & displayFunction() const;
+
+  void setViewScale(int scale, const QPoint * centerPos = Q_NULLPTR);
+  int viewScale() const;
 
   virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
   const cv::Mat & currentImage() const;
@@ -42,13 +47,6 @@ public:
 
   QString statusStringForPixel(const QPoint & viewpos);
 
-  void setSelectionRectVisible(bool v);
-  bool selectionRectIsVisible() const;
-
-  void setSelectionRect(const QRectF & rc);
-  QRectF selectionRect() const;
-
-  void selectionRectToCenterOfView();
 
 signals:
   void onMouseMove(QMouseEvent * e);
@@ -56,13 +54,15 @@ signals:
   void onMouseReleaseEvent(QMouseEvent * e);
   void onMouseDoubleClick(QMouseEvent * e);
   void onScaleChanged(int currentScale);
-//  void onShowEvent(QShowEvent *e);
-//  void onHideEvent(QHideEvent *e);
+  //  void onShowEvent(QShowEvent *e);
+  //  void onHideEvent(QHideEvent *e);
   void onFocusInEvent(QFocusEvent *e);
   void onFocusOutEvent(QFocusEvent *e);
   void visibilityChanged(bool visible);
   void currentImageChanged();
   void currentDisplayImageChanged();
+  void onLineShapeChanged(QGraphicsLineItem * item);
+  void onRectShapeChanged(QGraphicsRectItem * item);
 
 public slots:
   virtual void updateDisplay();
@@ -72,14 +72,12 @@ protected:
   void hideEvent(QHideEvent *event) override;
   void focusInEvent(QFocusEvent *event) override;
   void focusOutEvent(QFocusEvent *event) override;
-  void createSelectionRect(const QRectF & rc);
 
 protected:
   QVBoxLayout * layout_  = Q_NULLPTR;
   QImageSceneView * view_ = Q_NULLPTR;
   QToolBar * toolbar_ = Q_NULLPTR;
   QStatusBar * statusbar_ = Q_NULLPTR;
-  QGraphicsRectItem * selectionRect_ = Q_NULLPTR;
 
   QString currentFileName_;
   cv::Mat currentImage_, currentMask_;

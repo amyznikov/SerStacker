@@ -180,7 +180,7 @@ message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LI
 
 
 # Qt5
-set(Qt5_MINIMUM_VERSION_REQUIRED "5.6")
+set(Qt5_MINIMUM_VERSION_REQUIRED "5.10")
 foreach ( module Qt5Core Qt5Gui Qt5Widgets Qt5Xml Qt5PrintSupport Qt5Multimedia Qt5MultimediaWidgets)
     find_package(${module} ${Qt5_MINIMUM_VERSION_REQUIRED})
     if ( NOT ${module}_FOUND )

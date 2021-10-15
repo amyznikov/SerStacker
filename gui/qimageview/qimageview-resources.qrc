@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qimageview">
+	<file>icons/shapes.png</file>
+	<file>icons/line.png</file>
+	<file>icons/rectangle.png</file>
+	<file>icons/delete.png</file>
+
+</qresource>
+</RCC>

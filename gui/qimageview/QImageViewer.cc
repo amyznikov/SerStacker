@@ -26,7 +26,15 @@ QImageViewer::QImageViewer(QWidget * parent)
       this, &ThisClass::onMouseDoubleClick);
   connect(view_, &QImageSceneView::scaleChanged,
       this, &ThisClass::onScaleChanged);
+  connect(view_, &QImageSceneView::onLineShapeChanged,
+      this, &ThisClass::onLineShapeChanged);
+  connect(view_, &QImageSceneView::onRectShapeChanged,
+      this, &ThisClass::onRectShapeChanged);
+}
 
+QImageSceneView * QImageViewer::sceneView() const
+{
+  return view_;
 }
 
 QToolBar * QImageViewer::embedToolbar(QToolBar * toolbar)
@@ -88,6 +96,16 @@ void QImageViewer::setDisplayFunction(const DisplayFunction & func)
 const QImageViewer::DisplayFunction & QImageViewer::displayFunction() const
 {
   return this->displayFunction_;
+}
+
+void QImageViewer::setViewScale(int scale, const QPoint * centerPos)
+{
+  view_->setViewScale(scale, centerPos);
+}
+
+int QImageViewer::viewScale() const
+{
+  return view_->viewScale();
 }
 
 const cv::Mat & QImageViewer::currentImage() const
@@ -290,69 +308,3 @@ void QImageViewer::focusOutEvent(QFocusEvent *e)
   Base::focusOutEvent(e);
 }
 
-
-void QImageViewer::createSelectionRect(const QRectF & rc)
-{
-  if ( !selectionRect_ ) {
-    QPen pen(Qt::yellow);
-    pen.setWidth(1);
-    selectionRect_ =  view_->scene()->addRect(rc, pen);
-
-    QGraphicsItem::GraphicsItemFlags flags = selectionRect_->flags();
-    flags |= QGraphicsItem::ItemIsMovable;
-    flags &= ~(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable);
-    selectionRect_->setFlags(flags);
-
-    selectionRectToCenterOfView();
-  }
-}
-
-void QImageViewer::setSelectionRectVisible(bool v)
-{
-  if ( v && !selectionRect_ ) {
-    createSelectionRect(QRectF(0, 0, 11, 11));
-  }
-  if ( selectionRect_ ) {
-    selectionRect_->setVisible(v);
-  }
-}
-
-bool QImageViewer::selectionRectIsVisible() const
-{
-  return selectionRect_ && selectionRect_->isVisible();
-}
-
-
-void QImageViewer::setSelectionRect(const QRectF & rc)
-{
-  if ( !selectionRect_ ) {
-    createSelectionRect(rc);
-  }
-  selectionRect_->setPos(selectionRect_->mapFromScene(rc.topLeft()));
-}
-
-QRectF QImageViewer::selectionRect() const
-{
-  if ( !selectionRect_ || !selectionRect_->isVisible() ) {
-    return QRectF(-1, -1, -1, -1);
-  }
-
-  QPointF tl = selectionRect_->mapToScene(selectionRect_->rect().topLeft());
-  QPointF br = selectionRect_->mapToScene(selectionRect_->rect().bottomRight());
-
-  return  QRectF(tl, br);
-}
-
-void QImageViewer::selectionRectToCenterOfView()
-{
-  if ( !selectionRect_ ) {
-    createSelectionRect(QRectF(0, 0, 11, 11));
-  }
-  else {
-    QPointF viewCenterOnScene = view_->mapToScene(view_->rect().center());
-    selectionRect_->setPos(viewCenterOnScene.x() - selectionRect_->rect().width() / 2,
-        viewCenterOnScene.y() - selectionRect_->rect().height() / 2);
-  }
-
-  selectionRect_->setVisible(true);
-}

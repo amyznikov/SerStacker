@@ -7,8 +7,11 @@
 
 #include "MainWindow.h"
 #include <gui/widgets/QToolbarSpacer.h>
+#include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/qstackingthread/QStackingThread.h>
+#include <gui/qimageview/QShapesButton.h>
+
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
 #include <core/debug.h>
@@ -47,16 +50,6 @@ static bool isTextFile(const QString & abspath)
       return true;
     }
   }
-
-//  static const char * textfiles[] = {
-//      "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf"
-//  };
-//
-//  for (  uint i = 0; i < sizeof(textfiles)/sizeof(textfiles[0]); ++i ) {
-//    if ( suffix.compare(textfiles[i], Qt::CaseInsensitive) == 0 ) {
-//      return true;
-//    }
-//  }
 
   return false;
 }
@@ -512,7 +505,8 @@ void MainWindow::configureImageViewerToolbars()
   QLabel * imageNameLabel;
   QLabel * imageSizeLabel;
   QShortcut * shortcut;
-//  QScaleSelectionButton * scaleSelectionCtl;
+  QScaleSelectionButton * scaleSelectionCtl;
+  QShapesButton * shapesCtl;
 
   toolbar = imageEditor->embedToolbar();
   statusbar = imageEditor->embedStatusbar();
@@ -597,32 +591,34 @@ void MainWindow::configureImageViewerToolbars()
 
   toolbar->addWidget(new QToolbarSpacer());
 
-//  toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton());
-//  connect(scaleSelectionCtl, &QScaleSelectionButton::scaleChanged, [this](int v) {
-//    imageView->setScale(v);
+//  toolbar->addAction(action = new QAction(getIcon(ICON_marker_blue), "Marker"));
+//  action->setToolTip("Show rectange marker.\nUse Ctrl+M to move the marker into center of view.");
+//  action->setCheckable(true);
+//  action->setChecked(imageEditor->selectionRectIsVisible());
+//  shortcut = new QShortcut(QKeySequence("Ctrl+M"), toolbar);
+//  connect(shortcut, &QShortcut::activated, [this, action]() {
+//    if ( imageEditor->isVisible() ) {
+//      if ( imageEditor->selectionRectIsVisible() ) {
+//        imageEditor->setSelectionRectVisible(false);
+//      }
+//      else {
+//        imageEditor->selectionRectToCenterOfView();
+//      }
+//      action->setChecked(imageEditor->selectionRectIsVisible());
+//    }
 //  });
+//  connect(action, &QAction::triggered, [this](bool checked) {
+//    imageEditor->setSelectionRectVisible(checked);
+//  });
+//
 
 
-  toolbar->addAction(action = new QAction(getIcon(ICON_marker_blue), "Marker"));
-  action->setToolTip("Show rectange marker.\nUse Ctrl+M to move the marker into center of view.");
-  action->setCheckable(true);
-  action->setChecked(imageEditor->selectionRectIsVisible());
-  shortcut = new QShortcut(QKeySequence("Ctrl+M"), toolbar);
-  connect(shortcut, &QShortcut::activated, [this, action]() {
-    if ( imageEditor->isVisible() ) {
-      if ( imageEditor->selectionRectIsVisible() ) {
-        imageEditor->setSelectionRectVisible(false);
-      }
-      else {
-        imageEditor->selectionRectToCenterOfView();
-      }
-      action->setChecked(imageEditor->selectionRectIsVisible());
-    }
-  });
-  connect(action, &QAction::triggered, [this](bool checked) {
-    imageEditor->setSelectionRectVisible(checked);
-  });
-
+  toolbar->addWidget(shapesCtl = new QShapesButton(this));
+  shapesCtl->setSceneView(imageEditor->sceneView());
+//  connect(shapesCtl, &QShapesButton::scaleChanged,
+//      [this](int v) {
+//        imageEditor->setViewScale(v);
+//      });
 
 
 
@@ -681,6 +677,14 @@ void MainWindow::configureImageViewerToolbars()
 
 
 
+  toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton(this));
+  scaleSelectionCtl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
+  connect(scaleSelectionCtl, &QScaleSelectionButton::scaleChanged,
+      [this](int v) {
+        imageEditor->setViewScale(v);
+      });
+
+
   toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
   action->setShortcut(QKeySequence::Cancel);
   action->setToolTip("Close window");
@@ -692,6 +696,47 @@ void MainWindow::configureImageViewerToolbars()
   connect(imageEditor, &QImageFileEditor::onMouseMove,
       [this, statusbar](QMouseEvent * e) {
         statusbar->showMessage(imageEditor->statusStringForPixel(e->pos()));
+    });
+
+
+  connect(imageEditor, &QImageFileEditor::onLineShapeChanged,
+      [this, statusbar](QGraphicsLineItem * item) {
+
+        const QLineF line = item->line();
+        const QPointF p1 = item->pos() + line.p1();
+        const QPointF p2 = item->pos() + line.p2();
+        const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+        const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+        QString msg;
+        statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
+#else
+        statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
+#endif
+    });
+
+  connect(imageEditor, &QImageFileEditor::onRectShapeChanged,
+      [this, statusbar](QGraphicsRectItem * item) {
+
+        const QRectF rect = item->rect();
+
+        const QPointF p1 = item->pos() + rect.topLeft();
+        const QPointF p2 = item->pos() + rect.bottomRight();
+        const double width = rect.width();
+        const double height = rect.height();
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+        QString msg;
+        statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
+                p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
+#else
+        statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
+                p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
+#endif
+
     });
 
 }

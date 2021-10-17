@@ -105,6 +105,7 @@ private:
   QMenu * viewMenu = Q_NULLPTR;
   QAction * menuSaveImageAsAction = Q_NULLPTR;
   QAction * menuLoadStackAction = Q_NULLPTR;
+  QAction * setReferenceFrameAction = Q_NULLPTR;
 };
 
 

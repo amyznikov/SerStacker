@@ -1274,6 +1274,69 @@ const QList<QAction *> & QStackTree::toolbarActions() const
   return toolbarActions_;
 }
 
+c_input_source::ptr QStackTree::getCurrentInputSource(c_image_stacking_options::ptr * parentStack) const
+{
+  QTreeWidgetItem * currentItem =
+      treeView_->currentItem();
+
+  if ( currentItem ) {
+
+    switch (currentItem->type()) {
+
+    case ItemType_InputSource: {
+
+      c_input_source::ptr inputSource;
+
+      QStackTreeView::QInputSourceItem * inputSourceItem =
+          dynamic_cast<QStackTreeView::QInputSourceItem *>(currentItem);
+
+      if ( inputSourceItem ) {
+
+        inputSource = inputSourceItem->inputSource();
+
+        if( parentStack ) {
+
+          QStackTreeView::QStackItem *stackItem =
+              dynamic_cast<QStackTreeView::QStackItem*>(inputSourceItem->
+                  parent());
+
+          if( !stackItem ) {
+            parentStack->reset();
+          }
+          else {
+            *parentStack = stackItem->stack();
+          }
+        }
+      }
+
+      return inputSource;
+    }
+
+    case ItemType_Stack:
+      if( parentStack ) {
+
+        QStackTreeView::QStackItem *stackItem =
+            dynamic_cast<QStackTreeView::QStackItem*>(currentItem);
+
+        if( !stackItem ) {
+          parentStack->reset();
+        }
+        else {
+          *parentStack = stackItem->stack();
+        }
+
+      }
+      return nullptr;
+    }
+  }
+
+  if ( parentStack ) {
+    parentStack->reset();
+  }
+
+  return nullptr;
+}
+
 
 void QStackTree::applyInputOptionsToAll(const c_input_options & options)
 {

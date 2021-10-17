@@ -25,6 +25,12 @@ public:
 
   void set_stacklist(const c_image_stacks_collection::ptr & stacks);
   const c_image_stacks_collection::ptr & stacklist() const;
+
+
+  c_input_source::ptr getCurrentInputSource(
+      c_image_stacking_options::ptr * parentStack = nullptr) const;
+
+
   void refresh();
 
   void applyInputOptionsToAll(const c_input_options & options);
@@ -37,6 +43,7 @@ public:
   void applyAllStackOptionsToAll(const c_image_stacking_options::ptr & currentStack);
 
   const QList<QAction * > & toolbarActions() const;
+
 
 signals:
   void stackCollectionChanged();

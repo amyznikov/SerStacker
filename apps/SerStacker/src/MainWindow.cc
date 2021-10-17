@@ -28,6 +28,7 @@ namespace qserstacker {
 #define ICON_close        "close"
 #define ICON_histogram    "histogram"
 #define ICON_marker_blue  "marker-blue"
+#define ICON_reference    "reference"
 
 #define ICON_copy         "copy"
 #define ICON_delete       "delete"
@@ -544,6 +545,26 @@ void MainWindow::configureImageViewerToolbars()
   connect(action, &QAction::triggered, [this]() {
     if ( imageEditor->isVisible() ) {
       thumbnailsView->moveToBads(imageEditor->currentFileName());
+    }
+  });
+
+
+  toolbar->addAction(setReferenceFrameAction = new QAction(getIcon(ICON_reference), "Make reference"));
+  setReferenceFrameAction->setToolTip("Make this frame reference");
+  //  setReferenceFrameAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
+  connect(setReferenceFrameAction, &QAction::triggered, [this]() {
+    if ( imageEditor->isVisible() && stackTreeView->isVisible() ) {
+
+      c_input_source::ptr selectedSource;
+      c_image_stacking_options::ptr selectedStack;
+
+      selectedSource = stackTreeView->getCurrentInputSource(&selectedStack);
+      if ( selectedSource && selectedStack ) {
+        const c_input_sequence::ptr & currentSequence = imageEditor->input_sequence();
+        if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
+          selectedStack->master_frame_options().master_frame_index = currentSequence->current_pos() - 1;
+        }
+      }
     }
   });
 

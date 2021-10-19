@@ -6,6 +6,8 @@
  */
 
 #include "QImageScene.h"
+#include "QGraphicsShape.h"
+#include <core/debug.h>
 
 QImageScene::QImageScene(QObject * parent)
   : Base(parent)
@@ -63,9 +65,36 @@ QGraphicsPixmapItem * QImageScene::setBackground(const QPixmap & pxmap)
   return bgItem_;
 }
 
-void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent */*e*/)
+void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *e)
 {
-//  QGraphicsItem * item = itemAt(e->scenePos(), QTransform());
-//  if (item ) {
-//  }
+  QGraphicsItem * item =
+      itemAt(e->scenePos(),
+          QTransform());
+
+  if ( !item || item == bgItem_ ) {
+    Base::contextMenuEvent(e);
+  }
+  else { // show context menu
+
+    QMenu menu;
+    QAction * action;
+
+    QGraphicsShape * shape =
+        dynamic_cast<QGraphicsShape * >(item);
+
+    if ( shape ) {
+      shape->populateContextMenu(menu, *e);
+      menu.addSeparator();
+    }
+
+    menu.addAction(action = new QAction("Delete this object"));
+    connect(action, &QAction::triggered,
+        [this, item]() {
+      removeItem(item);
+    });
+
+    menu.exec(e->screenPos());
+
+    e->accept();
+  }
 }

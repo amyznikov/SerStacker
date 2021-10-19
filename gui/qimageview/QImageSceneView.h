@@ -9,6 +9,7 @@
 #define __QImageSceneView_h__
 
 #include "QImageScene.h"
+#include "QGraphicsShape.h"
 
 class QImageSceneView
     : public QGraphicsView
@@ -68,12 +69,13 @@ protected:
   bool mouseScrollEnabled_ = true;
   bool mouseScrollActive_ = false;
   bool shapesVisible_ = false;
+  //QGraphicsItem * currentShape_ = Q_NULLPTR;
 
-  QGraphicsLineItem * currentLineItem = Q_NULLPTR;
-  int currentLineCorner = -1; // 0:p1, 1:p2, -1:pos
-
-  QGraphicsRectItem * currentRectItem = Q_NULLPTR;
-  int currentRectCorner = -1; // 0:topleft, 1:topright, 2:bottomright, 3:bottomleft, -1: pos
+//  QGraphicsLineItem * currentLineItem = Q_NULLPTR;
+//  int currentLineCorner = -1; // 0:p1, 1:p2, -1:pos
+//
+//  QGraphicsRectItem * currentRectItem = Q_NULLPTR;
+//  int currentRectCorner = -1; // 0:topleft, 1:topright, 2:bottomright, 3:bottomleft, -1: pos
 
 };
 

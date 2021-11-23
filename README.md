@@ -41,6 +41,13 @@ libavdevice
 
 libswscale
 
+For glddm team:
+	qt5-opengl 
+	libQGLViewer  (http://libqglviewer.com)
+	freeglut
+	glew 2.2
+ 
+
 ## Example pictures
 
 Compare jovian images captured with two different tubes, processed and derotated with this SerStacker.

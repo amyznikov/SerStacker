@@ -179,14 +179,69 @@ message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LI
 
 
 
+set(HAVE_QGLViewer FALSE)  
+find_package(QGLViewer QUIET)
+if ( QGLViewer_FOUND )
+	
+	# OpenGL is required for QGLViewer
+	# This option should affect only OpenGL-dependent targets
+	# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
+	# (usually libOpenGL.so and libGLX.so).
+	if( ${CMAKE_VERSION} VERSION_GREATER "3.10" AND NOT OpenGL_GL_PREFERENCE )
+	    set(OpenGL_GL_PREFERENCE GLVND)
+	endif()
+	
+	find_package(OpenGL QUIET)
+	if ( OpenGL_FOUND )
+		find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
+		if ( freeglut_h_found ) 
+			
+			set(HAVE_QGLViewer TRUE)
+			add_definitions(-DHAVE_QGLViewer=1)
+			
+			# Fixing GLEW PATH on OSX
+			if (APPLE)
+			    find_path( GLEW_INCLUDE_DIR GL/glew.h
+			        /usr/local/include
+			        /usr/local/Cellar/glew/2.1.0/include
+			        /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
+			        ${OPENGL_LIBRARY_DIR}
+			    )
+			    find_library( GLEW_GLEW_LIBRARY GLEW
+			        /usr/local/lib
+			        /usr/openwin/lib
+			        /usr/X11R6/lib
+			        /usr/local/Cellar/glew/2.1.0/lib
+			    )
+			    set( GLEW_FOUND TRUE )
+			    if(NOT GLEW_GLEW_LIBRARY)
+			        set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
+			        set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
+			        set(GLEW_FOUND FALSE )
+			    endif()
+			endif (APPLE)
+		endif(freeglut_h_found)	
+	endif(OpenGL_FOUND)	
+endif(QGLViewer_FOUND)
+
 # Qt5
-set(Qt5_MINIMUM_VERSION_REQUIRED "5.10")
-foreach ( module Qt5Core Qt5Gui Qt5Widgets Qt5Xml Qt5PrintSupport Qt5Multimedia Qt5MultimediaWidgets)
+set(Qt5_REQUIRED_COMPONENTS Core Gui Widgets Xml PrintSupport Multimedia MultimediaWidgets) #  
+if ( QGLViewer_FOUND )
+	set(Qt5_REQUIRED_COMPONENTS ${Qt5_REQUIRED_COMPONENTS} OpenGL)
+endif()
+
+find_package(Qt5 5.10 COMPONENTS ${Qt5_REQUIRED_COMPONENTS}) 
+
+message(STATUS "QGLViewer_FOUND= ${QGLViewer_FOUND}")
+message(STATUS "Qt5_REQUIRED_COMPONENTS= ${Qt5_REQUIRED_COMPONENTS}")
+
+foreach ( module ${Qt5_REQUIRED_MODULES} )
     find_package(${module} ${Qt5_MINIMUM_VERSION_REQUIRED})
     if ( NOT ${module}_FOUND )
         message( FATAL_ERROR "${module} ${Qt5_MINIMUM_VERSION_REQUIRED} NOT FOUND")
     endif()
 endforeach()
+
 
 set(CORE_INCLUDES
 	${CMAKE_CURRENT_SOURCE_DIR}

@@ -21,20 +21,27 @@ set(SRC
 
 set(APP_INCLUDES 
   ${SRC} 
-  ${CORE_INCLUDES} )
-#  ${OPENGL_INCLUDE_DIR}
+  ${CORE_INCLUDES} 
+  ${OPENGL_INCLUDE_DIR} 
+  ${QGLVIEWER_INCLUDE_DIRS} 
+  Qt5::Widgets
+  Qt5::OpenGL
+  Qt5::Xml
+  Qt5::PrintSupport)
 
 include_directories(${APP_INCLUDES})
 
 set(APP_LIBRARIES 
-  gui 
+  gui
+  ${QGLVIEWER_LIBRARY}
   Qt5::Widgets
+  Qt5::OpenGL
   Qt5::Multimedia
   Qt5::MultimediaWidgets 
   Qt5::Xml
   Qt5::PrintSupport
+  ${OPENGL_LIBRARIES}
   ${CORE_LIBRARIES})
-
 
 #  v4lconvert
 #  v4l2

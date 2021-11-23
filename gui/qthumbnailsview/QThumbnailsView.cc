@@ -21,14 +21,16 @@
 #define ICON_filter        "filter"
 #define ICON_filter_clear  "filter-clear"
 
-#define ICON_hourglass    "hourglass2"
-#define ICON_badimage     "badimage"
+#define ICON_hourglass     "hourglass2"
+#define ICON_badimage      "badimage"
 #define ICON_textfile      "textfile"
+#define ICON_plyfile       "plyfile"
 
 
 static QIcon hourglass_icon;
 static QIcon badimage_icon;
 static QIcon textfile_icon;
+static QIcon plyfile_icon;
 
 
 static QIcon getIcon(const QString & name)
@@ -63,6 +65,11 @@ static void init_thumbnailsview_resources()
   if ( textfile_icon.isNull() ) {
     textfile_icon = getIcon(ICON_textfile);
   }
+  if ( plyfile_icon.isNull() ) {
+    plyfile_icon = getIcon(ICON_plyfile);
+  }
+
+
 
 }
 
@@ -613,39 +620,32 @@ void QThumbnailsView::extractMissingThumbiails()
       const QString suffix =
           QFileInfo(filename).suffix();
 
-      const char ** textfiles =
-          thumbnail_textfile_suffixes();
-
       bool is_textfle = false;
+      bool is_plyfile = false;
 
-      for( ; *textfiles; ++textfiles ) {
-        if( suffix.compare(*textfiles, Qt::CaseInsensitive) == 0 ) {
-          is_textfle = true;
-          break;
-        }
+      if ( isTextFileSuffix(suffix) ) {
+        is_textfle = true;
+      }
+      else if ( isPlyFileSuffix(suffix) ) {
+        is_plyfile = true;
       }
 
-//      static const char * textfile_suffixes[] = {
-//          ".txt", ".doc", ".md", ".xml", ".html", ".htm", ".rtf", ".tex", ".cfg", ".conf"
-//      };
-//
-//      const QString filename = item->whatsThis();
-//      bool is_textfle = false;
-//      for ( uint i = 0; i < sizeof(textfile_suffixes)/sizeof(textfile_suffixes[0]); ++i ) {
-//        if ( filename.endsWith(textfile_suffixes[i], Qt::CaseInsensitive) ) {
-//          is_textfle = true;
-//          break;
-//        }
-//      }
 
-      if ( is_textfle ){
+      if ( is_textfle ) {
         item->setIcon(textfile_icon);
         item->setData(Qt::UserRole, QVariant(true));
 
         if ( !item->isHidden() ) {
           hasupdates = true;
         }
+      }
+      else if ( is_plyfile ){
+        item->setIcon(plyfile_icon);
+        item->setData(Qt::UserRole, QVariant(true));
 
+        if ( !item->isHidden() ) {
+          hasupdates = true;
+        }
       }
       else {
         finished = false;

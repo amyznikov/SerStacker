@@ -16,5 +16,6 @@
     <file>icons/marker-blue.png</file>
     <file>icons/zoom.png</file>
     <file>icons/reference.png</file>
+    <file>icons/options.png</file>
 </qresource>
 </RCC>

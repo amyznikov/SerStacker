@@ -29,6 +29,8 @@ namespace qserstacker {
 #define ICON_histogram    "histogram"
 #define ICON_marker_blue  "marker-blue"
 #define ICON_reference    "reference"
+#define ICON_options      "options"
+
 
 #define ICON_copy         "copy"
 #define ICON_delete       "delete"
@@ -39,21 +41,10 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/gui/icons/%1").arg(name));
 }
 
-static bool isTextFile(const QString & abspath)
-{
-  const QString suffix = QFileInfo(abspath).suffix();
 
-  const char ** textfile_suffixes =
-      thumbnail_textfile_suffixes();
 
-  for ( ; *textfile_suffixes; ++textfile_suffixes ) {
-    if ( suffix.compare(*textfile_suffixes, Qt::CaseInsensitive) == 0 ) {
-      return true;
-    }
-  }
 
-  return false;
-}
+
 
 MainWindow::MainWindow()
 {
@@ -79,11 +70,22 @@ MainWindow::MainWindow()
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(stackOptionsView = new QStackOptions(this));
 
-
   imageEditor->setDisplayFunction(QImageViewer::DisplayFunction(
       [this] (const cv::Mat & src, cv::Mat & dst, int ddepth) -> void {
         image_display_function_(src, dst, ddepth);
       }));
+
+#if HAVE_QGLViewer
+  centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
+  connect(centralStackedWidget, &QStackedWidget::currentChanged,
+      [this]() {
+        if ( cloudViewSettingsDialogBox && cloudViewSettingsDialogBox->isVisible() ) {
+          if ( !cloudViewer->isVisible() ) {
+            cloudViewSettingsDialogBox->hide();
+          }
+        }
+      });
+#endif // HAVE_QGLViewer
 
 
 
@@ -156,6 +158,9 @@ MainWindow::MainWindow()
 
         imageEditor->clear();
         textViewer->clear();
+#if HAVE_QGLViewer
+        cloudViewer->clear();
+#endif
         centralStackedWidget->setCurrentWidget(thumbnailsView);
         thumbnailsView->displayPath(abspath);
       });
@@ -168,6 +173,9 @@ MainWindow::MainWindow()
         }
         imageEditor->clear();
         textViewer->clear();
+#if HAVE_QGLViewer
+        cloudViewer->clear();
+#endif
 
         if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
@@ -184,6 +192,9 @@ MainWindow::MainWindow()
         }
         imageEditor->clear();
         textViewer->clear();
+#if HAVE_QGLViewer
+        cloudViewer->clear();
+#endif
         fileSystemTreeDock->show(),
         fileSystemTreeDock->raise(),
         fileSystemTreeDock->displayPath(abspath);
@@ -201,10 +212,20 @@ MainWindow::MainWindow()
 
         imageEditor->clear();
         textViewer->clear();
-
-        if ( imageEditor->isVisible() || textViewer->isVisible() ) {
+#if HAVE_QGLViewer
+        cloudViewer->clear();
+#endif
+        if ( imageEditor->isVisible() ) {
           openImage(abspath);
         }
+        else if ( textViewer->isVisible() ) {
+          openImage(abspath);
+        }
+#if HAVE_QGLViewer
+        else if ( cloudViewer->isVisible() ) {
+          openImage(abspath);
+        }
+#endif
       });
 
   connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
@@ -365,6 +386,7 @@ MainWindow::MainWindow()
   restoreState();
   configureImageViewerToolbars();
   configureTextViewerToolbars();
+  configureCloudViewerToolbars();
 
 
   //  image_processors_->load(c_image_processor_collection::default_processor_collection_path());
@@ -649,45 +671,46 @@ void MainWindow::configureImageViewerToolbars()
   action->setCheckable(true);
   action->setChecked(false);
   //action->setShortcut(QKeySequence::Cancel);
-  connect(action, &QAction::triggered, [this, action](bool checked) {
+  connect(action, &QAction::triggered,
+      [this, action](bool checked) {
 
-    if ( checked && !imageLevelsDialogBox ) {
+        if ( checked && !imageLevelsDialogBox ) {
 
-      imageLevelsDialogBox = new QMtfControlDialogBox(this);
-      imageLevelsDialogBox->setMtf(image_display_function_.mtf());
+          imageLevelsDialogBox = new QMtfControlDialogBox(this);
+          imageLevelsDialogBox->setMtf(image_display_function_.mtf());
 
-      connect(imageLevelsDialogBox, &QMtfControlDialogBox::mtfChanged,
-          [this]() {
-            if ( imageEditor->isVisible() ) {
-              QWaitCursor wait(this);
-              imageEditor->updateDisplay();
+          connect(imageLevelsDialogBox, &QMtfControlDialogBox::mtfChanged,
+              [this]() {
+                if ( imageEditor->isVisible() ) {
+                  QWaitCursor wait(this);
+                  imageEditor->updateDisplay();
+                }
+              });
+
+          connect(imageLevelsDialogBox, &QMtfControlDialogBox::visibilityChanged,
+              action, &QAction::setChecked);
+        }
+
+        if ( imageLevelsDialogBox ) {
+          if ( !checked ) {
+            imageLevelsDialogBox->hide();
+          }
+          else {
+
+            if ( imageEditor->currentFileName().isEmpty() ) {
+              imageLevelsDialogBox->setWindowTitle("Adjust Display Levels ...");
             }
-          });
+            else {
+              imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+            }
 
-      connect(imageLevelsDialogBox, &QMtfControlDialogBox::visibilityChanged,
-          action, &QAction::setChecked);
-    }
-
-    if ( imageLevelsDialogBox ) {
-      if ( !checked ) {
-        imageLevelsDialogBox->hide();
-      }
-      else {
-
-        if ( imageEditor->currentFileName().isEmpty() ) {
-          imageLevelsDialogBox->setWindowTitle("Adjust Display Levels ...");
-        }
-        else {
-          imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+            imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
+            imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
+            imageLevelsDialogBox->showNormal();
+          }
         }
 
-        imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
-        imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
-        imageLevelsDialogBox->showNormal();
-      }
-    }
-
-  });
+      });
 
   connect(imageEditor, &QImageEditor::currentDisplayImageChanged,
       [this] () {
@@ -763,18 +786,136 @@ void MainWindow::configureImageViewerToolbars()
 }
 
 
+void MainWindow::configureCloudViewerToolbars()
+{
+#if HAVE_QGLViewer
+  QToolBar * toolbar;
+  QAction * action;
+  QLabel * imageNameLabel;
+  QLabel * imageSizeLabel;
+  QShortcut * shortcut;
+
+  toolbar = cloudViewer->toolbar();
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
+  action->setToolTip("Load previous image from list");
+  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
+  connect(action, &QAction::triggered, [this]() {
+    thumbnailsView->selectPrevIcon();
+  });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
+  action->setToolTip("Load next image from list");
+  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
+  connect(action, &QAction::triggered, [this]() {
+    thumbnailsView->selectNextIcon();
+  });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
+  action->setToolTip("Reaload current image from disk");
+  connect(action, &QAction::triggered, [this]() {
+    QWaitCursor wait(this);
+    cloudViewer->openPlyFile(cloudViewer->currentFileName());
+  });
+
+
+  toolbar->addSeparator();
+
+
+  toolbar->addWidget(imageNameLabel = new QLabel(""));
+  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  toolbar->addSeparator();
+
+  const auto onCloudViewerCurrentSourceChanged =
+      [this, imageNameLabel] () {
+        const QString abspath = cloudViewer->currentFileName();
+        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+      };
+
+  connect(cloudViewer, &QCloudViewer::currentFileNameChanged,
+      onCloudViewerCurrentSourceChanged);
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(new QToolbarSpacer());
+
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_options), "Options"));
+  action->setToolTip("Configure cloud view options");
+  action->setCheckable(true);
+  action->setChecked(false);
+  connect(action, &QAction::triggered,
+      [this, action](bool checked) {
+
+        if ( checked && !cloudViewSettingsDialogBox ) {
+
+          cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
+          cloudViewSettingsDialogBox->setCloudViewer(cloudViewer);
+          connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
+              action, &QAction::setChecked);
+        }
+
+        if ( cloudViewSettingsDialogBox ) {
+          if ( !checked ) {
+            cloudViewSettingsDialogBox->hide();
+          }
+          else {
+            cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
+            cloudViewSettingsDialogBox->showNormal();
+          }
+        }
+      });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
+  action->setShortcut(QKeySequence::Cancel);
+  action->setToolTip("Close window");
+  connect(action, &QAction::triggered, [this]() {
+    cloudViewer->clear();
+    centralStackedWidget->setCurrentWidget(thumbnailsView);
+  });
+
+#endif
+}
+
 void MainWindow::openImage(const QString & abspath)
 {
+  QWaitCursor wait(this);
+
   if ( stackProgressView ) {
     stackProgressView->setImageViewer(nullptr);
   }
 
   imageEditor->clear();
   textViewer->clear();
+#if HAVE_QGLViewer
+  cloudViewer->clear();
+#endif
 
-  if ( isTextFile(abspath) ) {
+  const QString suffix =
+      QFileInfo(abspath).suffix();
+
+  if ( isTextFileSuffix(suffix) ) {
     centralStackedWidget->setCurrentWidget(textViewer);
     textViewer->showTextFile(abspath);
+  }
+  else if ( isPlyFileSuffix(suffix) ) {
+#if HAVE_QGLViewer
+    if ( cloudViewer->openPlyFile(abspath) ) {
+      centralStackedWidget->setCurrentWidget(cloudViewer);
+    }
+    else {
+      centralStackedWidget->setCurrentWidget(textViewer);
+      textViewer->showTextFile(abspath);
+    }
+#else
+    centralStackedWidget->setCurrentWidget(textViewer);
+    textViewer->showTextFile(abspath);
+#endif
   }
   else {
     centralStackedWidget->setCurrentWidget(imageEditor);

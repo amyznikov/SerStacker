@@ -47,6 +47,9 @@ file(GLOB_RECURSE QRC_FILES
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Xml_INCLUDE_DIRS}
+    ${Qt5OpenGL_INCLUDE_DIRS}
+    ${QGLVIEWER_INCLUDE_DIRS} 
     ${CORE_INCLUDES})
 
 

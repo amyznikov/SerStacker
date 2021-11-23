@@ -110,11 +110,20 @@ static void add_libraw_file_suffixes(QStringList & suffixes)
 
 const char ** thumbnail_textfile_suffixes()
 {
-  static const char * textfile_suffixes[] = {
+  static const char * suffixes[] = {
       "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf", nullptr
   };
 
-  return textfile_suffixes;
+  return suffixes;
+}
+
+const char ** thumbnail_plyfile_suffixes()
+{
+  static const char * suffixes[] = {
+      "ply", nullptr
+  };
+
+  return suffixes;
 }
 
 QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
@@ -167,6 +176,13 @@ QStringList getSupportedThumbnailsExtensions()
     suffixes.append(*textfiles++);
   }
 
+#if HAVE_QGLViewer
+  const char ** plyfiles =
+      thumbnail_plyfile_suffixes();
+  while ( *plyfiles ) {
+    suffixes.append(*plyfiles++);
+  }
+#endif
 
 #if HAVE_SER_FILE
   suffixes.append("ser");
@@ -195,11 +211,13 @@ QStringList getSupportedThumbnailsExtensions()
   }
 #endif
 
+
   std::sort(suffixes.begin(), suffixes.end());
   QStringList::iterator ii = std::unique(suffixes.begin(), suffixes.end());
   if ( ii != suffixes.end() ) {
     suffixes.erase(ii, suffixes.end());
   }
+
   return suffixes;
 }
 
@@ -698,4 +716,43 @@ QPixmap loadThumbnailPixmap(const QString & pathFileName, int maxSize)
 QIcon loadThumbnailIcon(const QString & pathFileName, int maxSize)
 {
   return QIcon(loadThumbnailPixmap(pathFileName, maxSize));
+}
+
+bool isTextFileSuffix(const QString & suffix)
+{
+  const char ** suffixes =
+      thumbnail_textfile_suffixes();
+
+  for ( ; *suffixes; ++suffixes ) {
+    if ( suffix.compare(*suffixes, Qt::CaseInsensitive) == 0 ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool isPlyFileSuffix(const QString & suffix)
+{
+  const char ** suffixes =
+      thumbnail_plyfile_suffixes();
+
+  for ( ; *suffixes; ++suffixes ) {
+    if ( suffix.compare(*suffixes, Qt::CaseInsensitive) == 0 ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+bool isTextFile(const QString & abspath)
+{
+  return isTextFileSuffix(QFileInfo(abspath).suffix());
+}
+
+bool isPlyFile(const QString & abspath)
+{
+  return isPlyFileSuffix(QFileInfo(abspath).suffix());
 }

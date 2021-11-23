@@ -4,10 +4,15 @@
  *  Created on: Nov 8, 2016
  *      Author: amyznikov
  */
+#ifdef _MSC_VER
+# pragma warning (disable:4996)
+# define _CRT_SECURE_NO_WARNINGS
+# define _USE_MATH_DEFINES
+# define strcasecmp(a, b) 	_stricmp(a, b)
+#endif 
 
 #include <limits.h>
 #include <string.h>
-#include <ftw.h>
 #include <ctype.h>
 #include <errno.h>
 #include <algorithm>
@@ -17,21 +22,47 @@
 #include "ssprintf.h"
 #include "debug.h"
 
-#ifdef _WIN32
-# include <windows.h>
-# include <sys/stat.h>
-#endif
-
-
 #ifndef _WIN32
 # include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
+# include <sys/types.h>
+# include <pwd.h>
+# include <ftw.h>
 # include <fnmatch.h>
 #else
 
+// https://stackoverflow.com/questions/11238918/s-isreg-macro-undefined/22404853
+// Windows does not define the S_ISREG and S_ISDIR macros in stat.h, so we do.
+// We have to define _CRT_INTERNAL_NONSTDC_NAMES 1 before #including sys/stat.h
+// in order for Microsoft's stat.h to define names like S_IFMT, S_IFREG, and S_IFDIR,
+// rather than just defining  _S_IFMT, _S_IFREG, and _S_IFDIR as it normally does.
+# define _CRT_INTERNAL_NONSTDC_NAMES 1
+# include <sys/stat.h>
+# include <windows.h>
+# include "Shlwapi.h"
+# include <io.h>
+# if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#   define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+# endif
+# if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
+#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+# endif
+
 # include <io.h>
 # include "Shlwapi.h"
+# include <io.h>
+# if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#   define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+# endif
+# if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
+#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+# endif
+
+
+// flags for access() https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/access-waccess?view=msvc-160
+#define F_OK    0 	// Existence only
+#define W_OK    2 	// Write - only
+#define R_OK    4 	// Read - only
+#define RW_OK   6 	// Read and write
 
 /*
  *  Match NAME against the filename pattern PATTERN,
@@ -42,6 +73,11 @@ static int fnmatch (const char *__pattern, const char *__name, int __flags) {
   (void)(__flags);
   return PathMatchSpec(__name,__pattern) ? 0 : -1;
 }
+
+#define PATH_MAX MAX_PATH
+#define FNM_CASEFOLD 0
+
+#define access _access
 
 #endif
 
@@ -74,8 +110,13 @@ bool is_regular_file(const std::string & path)
 /* check for link existence */
 bool is_link(const std::string & path)
 {
+#ifdef _MSC_VER
+    // fixme: implemet a way to check if path is symlink under windows
+    return false;
+#else
   struct stat sb;
   return stat(expand_path(path).c_str(), &sb) == 0 && S_ISLNK(sb.st_mode);
+#endif
 }
 
 
@@ -156,7 +197,7 @@ const char * c_file_suffix(const char * fname)
 {
   if ( fname ) {
     const char * s = strrchr(fname, '.' );
-    return s ? s : s + strlen(s);
+    return s ? s : fname + strlen(fname);
   }
   return nullptr;
 }
@@ -492,6 +533,7 @@ std::string expand_path(const std::string & path)
  *  Number of filenames added to the filelist, or -1 on error.
  *  For the error code see the errno value.
  */
+#ifndef  _MSC_VER
 int readdir(std::vector<std::string> * list, const std::string & _path,
     const std::string & filemask, bool fullpathname, uint8_t d_type)
 {
@@ -610,7 +652,73 @@ int readdir(std::vector<std::string> * list, const std::string & _path,
 
   return n;
 }
+#else
+int readdir(std::vector<std::string> * list, const std::string & path,
+    const std::string & filemask, bool fullpathname, uint8_t d_type)
+{
+    vector<string> masks;
+    int n = 0;
 
+    split(filemask, &masks, '|');
+
+    for (const std::string& mask : masks) {
+        HANDLE hFind;
+        WIN32_FIND_DATA FindFileData;
+
+        std::string fullmask = path + "/" + filemask;
+        if ((hFind = FindFirstFile(fullmask.c_str(), &FindFileData)) != INVALID_HANDLE_VALUE) {
+            do {
+
+                const char* fullpathname = FindFileData.cFileName;
+
+                // printf("%s\n", FindFileData.cFileName);
+                //if (strcmp(fullpathname, ".") == 0 || strcmp(fullpathname, "..") == 0) {
+                //    continue;
+                //}
+
+                if (d_type != DT_UNKNOWN) {
+                    struct stat st;
+
+                    if (stat(fullpathname, &st) == -1) {
+                        continue;
+                    }
+
+                    switch (d_type) {
+                    case DT_DIR:
+                        if (!S_ISDIR(st.st_mode)) {
+                            continue;
+                        }
+                        break;
+                    case DT_REG:
+                        if (!S_ISREG(st.st_mode)) {
+                            continue;
+                        }
+                        break;
+                    default:
+                        continue;
+                    }
+                }
+
+                ++n;
+                if (list) {
+                    if (fullpathname) {
+                        list->emplace_back(fullpathname);
+                    }
+                    else {
+                        list->emplace_back(c_file_name(fullpathname));
+                    }
+                }
+
+            } while (FindNextFile(hFind, &FindFileData));
+
+            FindClose(hFind);
+        }
+    }
+
+  return n;
+}
+
+#endif //_MSC_VER
 
 
 
@@ -741,6 +849,9 @@ int recursive_rmdir(const std::string & path)
   }
 #ifdef __APPLE__
   return nftw(path.c_str(), recursive_rmdir_callback, 1, FTW_DEPTH | FTW_PHYS);
+#elif defined _MSC_VER
+  CF_FATAL("FIXME: recursive_rmdir() is not implemented for windows");
+  return -1;
 #else
   return nftw(path.c_str(), recursive_rmdir_callback, 1, FTW_ACTIONRETVAL | FTW_DEPTH | FTW_PHYS);
 #endif
@@ -772,7 +883,14 @@ bool create_path(const std::string & path, mode_t mode)
   (void)(mode);
 
   size_t size = path.size();
+#ifndef  _MSC_VER
   char tmp[size + 1];
+#else
+  std::vector<char> sbuf(size + 1);
+  char* tmp = sbuf.data();
+#endif //  _MSC_VER
+
+
   char * p;
   char c;
   bool has_leading_drive_letter = false;

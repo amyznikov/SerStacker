@@ -6,7 +6,7 @@
  */
 
 #include "QTextFileViewer.h"
-#include <gui/widgets/QWaitCursor.h>
+#include <core/debug.h>
 
 QTextFileViewer::QTextFileViewer(QWidget * parent)
   : Base(parent)
@@ -19,9 +19,13 @@ QTextFileViewer::QTextFileViewer(QWidget * parent)
   toolbar_->setOrientation(Qt::Horizontal);
   toolbar_->setIconSize(QSize(16,16));
 
-  textBrowser_ = new QTextEdit(this);
+  //textBrowser_ = new QTextEdit(this);
+  textBrowser_ = new QPlainTextEdit(this);
   textBrowser_->setReadOnly(true);
-  textBrowser_->setAutoFormatting(QTextBrowser::AutoAll);
+  textBrowser_->setLineWrapMode(QPlainTextEdit::NoWrap);
+  textBrowser_->setWordWrapMode(QTextOption::WrapMode::NoWrap);
+  textBrowser_->setFont(QFont("monospace"));
+  //textBrowser_->setAutoFormatting(QTextBrowser::AutoNone);
 
   layout_->addWidget(toolbar_, 1);
   layout_->addWidget(textBrowser_, 100);
@@ -57,11 +61,12 @@ void QTextFileViewer::showTextFile(const QString & pathfilename)
 
   if ( !(currentFileName_ = pathfilename).isEmpty() ) {
 
-    QWaitCursor wait(this);
+    // QWaitCursor wait(this);
+
     QFile file(currentFileName_);
 
     if ( file.open(QIODevice::ReadOnly | QIODevice::Text) ) {
-      textBrowser_->setText(file.readAll());
+      textBrowser_->setPlainText(file.readAll());
     }
 
   }

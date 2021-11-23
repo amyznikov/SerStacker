@@ -38,8 +38,8 @@ protected:
   QString currentFileName_;
   QVBoxLayout * layout_ = Q_NULLPTR;
   QToolBar * toolbar_ = Q_NULLPTR;
-  QTextEdit * textBrowser_ = Q_NULLPTR;
-  //QPlainTextEdit * textBrowser_ = Q_NULLPTR;
+  //QTextEdit * textBrowser_ = Q_NULLPTR;
+  QPlainTextEdit * textBrowser_ = Q_NULLPTR;
 };
 
 #endif /* __QTextFileViewer_h__ */

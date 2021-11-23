@@ -13,6 +13,12 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <dirent.h>
+#endif // _MSC_VER
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -39,6 +45,14 @@ enum {
 # define DT_WHT		DT_WHT
 };
 
+#endif
+
+#ifdef _WIN32
+  typedef int mode_t;
+# define DEFAULT_MKDIR_MODE 0
+# else
+# define DEFAULT_MKDIR_MODE \
+    (S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
 #endif
 
 
@@ -115,8 +129,6 @@ std::string search_file(const std::string file_name,
  * Create directory recursively
  *  on error see the errno value
  * */
-# define DEFAULT_MKDIR_MODE \
-    (S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
 bool create_path(const std::string & path, mode_t mode = DEFAULT_MKDIR_MODE);
 
 

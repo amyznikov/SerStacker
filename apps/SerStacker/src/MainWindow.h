@@ -21,6 +21,10 @@
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include "c_display_function.h"
 
+#if HAVE_QGLViewer // Should come from CMakeLists.txt
+#include <gui/qcloudview/QCloudViewer.h>
+#include <gui/qcloudview/QCloudViewSettings.h>
+#endif // HAVE_QGLViewer
 
 namespace qserstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -44,6 +48,7 @@ private:
   void restoreState();
   void configureImageViewerToolbars();
   void configureTextViewerToolbars();
+  void configureCloudViewerToolbars();
   bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
@@ -86,6 +91,11 @@ private:
   QThumbnailsView * thumbnailsView = Q_NULLPTR;
   QImageFileEditor * imageEditor = Q_NULLPTR;
   QTextFileViewer * textViewer = Q_NULLPTR;
+#if HAVE_QGLViewer
+  QCloudViewer * cloudViewer = Q_NULLPTR;
+  QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = Q_NULLPTR;
+#endif // HAVE_QGLViewer
+
   QStackOptions * stackOptionsView = Q_NULLPTR;
   //QScrollArea * stackingOptionsScrollArea = Q_NULLPTR;
   QStackingProgressView * stackProgressView = Q_NULLPTR;

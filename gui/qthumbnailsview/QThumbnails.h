@@ -16,6 +16,11 @@ QImage  loadThumbnailImage(const QString & pathFileName, int thumb_size);
 QIcon   loadThumbnailIcon(const QString & pathFileName, int maxSize);
 QPixmap loadThumbnailPixmap(const QString & pathFileName, int maxSize);
 const char ** thumbnail_textfile_suffixes();
+const char ** thumbnail_plyfile_suffixes();
 
+bool isTextFileSuffix(const QString & suffix);
+bool isPlyFileSuffix(const QString & suffix);
+bool isTextFile(const QString & abspath);
+bool isPlyFile(const QString & abspath);
 
 #endif /* __QThumbnails_h__ */

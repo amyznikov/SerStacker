@@ -14,7 +14,7 @@ set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 # OpenCV
 #
 set(OpenCV_MINIMUM_VERSION_REQUIRED "4.2")
-find_package(OpenCV REQUIRED COMPONENTS core imgproc ximgproc imgcodecs features2d xfeatures2d flann freetype video videoio objdetect xobjdetect dnn)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc ximgproc imgcodecs features2d xfeatures2d flann freetype video videoio objdetect xobjdetect)
 if((OpenCV_VERSION VERSION_LESS ${OpenCV_MINIMUM_VERSION_REQUIRED}) )
    message(FATAL_ERROR "ERROR: OpenCV version >= ${OpenCV_MINIMUM_VERSION_REQUIRED} is required but '${OpenCV_VERSION}' is found")
    return()

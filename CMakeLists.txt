@@ -10,19 +10,18 @@ set(CMAKE_CXX_STANDARD 14)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 
+# ----------------------------------------------------------------------------
 # OpenCV
-set(OpenCV_MINIMUM_VERSION_REQUIRED "3.4")
-set(OpenCV_FRESH_CV4_API_REQUIRED "4.0.1")
-find_package(OpenCV REQUIRED)
-if((OpenCV_VERSION VERSION_GREATER ${OpenCV_MINIMUM_VERSION_REQUIRED}) OR (OpenCV_VERSION VERSION_EQUAL ${OpenCV_MINIMUM_VERSION_REQUIRED}))
-   if((OpenCV_VERSION VERSION_GREATER ${OpenCV_FRESH_CV4_API_REQUIRED}) OR (OpenCV_VERSION VERSION_EQUAL ${OpenCV_FRESH_CV4_API_REQUIRED}))
-       message("Setting usage of fresh API, as OpenCV version exceeds ${OpenCV_FRESH_CV4_API_REQUIRED}")
-       set(USE_FRESH_CV4_API ON)
-   endif()
-else()
+#
+set(OpenCV_MINIMUM_VERSION_REQUIRED "4.2")
+find_package(OpenCV REQUIRED COMPONENTS core imgproc ximgproc imgcodecs features2d xfeatures2d flann freetype video videoio objdetect xobjdetect dnn)
+if((OpenCV_VERSION VERSION_LESS ${OpenCV_MINIMUM_VERSION_REQUIRED}) )
    message(FATAL_ERROR "ERROR: OpenCV version >= ${OpenCV_MINIMUM_VERSION_REQUIRED} is required but '${OpenCV_VERSION}' is found")
    return()
 endif()
+set(enable_OpenCV TRUE)
+message (STATUS "OpenCV_LIBS=${OpenCV_LIBS}")
+
 
 #find_package(Eigen3 QUIET)
 #find_package(Ceres QUIET)

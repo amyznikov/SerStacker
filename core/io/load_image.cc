@@ -342,7 +342,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
 
       if ( !TIFFIsTiled(tif) ) {
 
-        for ( int y = 0; y < IMAGE_HEIGHT; ++y ) {
+        for ( uint y = 0; y < IMAGE_HEIGHT; ++y ) {
           if ( TIFFReadScanline(tif, image.ptr<void>(y), y, 0) < 0 ) {
             CF_ERROR("TIFFReadScanline(y=%d) fails", y);
             return false;
@@ -355,8 +355,8 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
         cv::Mat tile;
         tile.create(tile_height, tile_width, image.type());
 
-        for ( int y = 0; y < IMAGE_HEIGHT; y += tile_height ) {
-          for ( int x = 0; x < IMAGE_WIDTH; x += tile_width ) {
+        for ( uint y = 0; y < IMAGE_HEIGHT; y += tile_height ) {
+          for ( uint x = 0; x < IMAGE_WIDTH; x += tile_width ) {
 
             if ( TIFFReadTile(tif, tile.data, x, y, 0, 0) < 0 ) {
               CF_ERROR("TIFFReadTile(x=%d y=%d) fails", x, y);

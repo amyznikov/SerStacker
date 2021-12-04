@@ -23,71 +23,148 @@ set(enable_OpenCV TRUE)
 message (STATUS "OpenCV_LIBS=${OpenCV_LIBS}")
 
 
-#find_package(Eigen3 QUIET)
-#find_package(Ceres QUIET)
+# ----------------------------------------------------------------------------
+# cfitsio
+#
+unset(CFITSIO_INCLUDE_DIRS CACHE)
+unset(CFITSIO_LIBRARY CACHE)
+find_path(CFITSIO_INCLUDE_DIRS fitsio2.h)
+find_library(CFITSIO_LIBRARY cfitsio)
+if( CFITSIO_INCLUDE_DIRS AND CFITSIO_LIBRARY ) 
+    message(STATUS "cfitsio FOUND: CFITSIO_INCLUDE_DIRS=${CFITSIO_INCLUDE_DIRS} CFITSIO_LIBRARY=${CFITSIO_LIBRARY}")
+    add_definitions(-DHAVE_CFITSIO=1)
+else()
+	
+    message(WARNING "Can not locate cfitsio library under search parth.
+      Install please cfitsio package: 
+     	ubuntu: libcfitsio-dev
+     	archliux: cfitsio
+     	windows: https://github.com/healpy/cfitsio")
+     
+	unset(CFITSIO_INCLUDE_DIRS CACHE)
+	unset(CFITSIO_LIBRARY CACHE)
+endif()
 
+# ----------------------------------------------------------------------------
 # libraw
-# find_package(libraw REQUIRED)
-set(LIBRAW_LIBS raw)
+#
+unset(LIBRAW_INCLUDE_DIRS CACHE)
+unset(LIBRAW_LIBRARY CACHE)
+find_path(LIBRAW_INCLUDE_DIRS libraw/libraw.h)
+find_library(LIBRAW_LIBRARY raw)
+if( LIBRAW_INCLUDE_DIRS AND LIBRAW_LIBRARY ) 
+    message(STATUS "libraw FOUND: LIBRAW_INCLUDE_DIRS=${LIBRAW_INCLUDE_DIRS} LIBRAW_LIBRARY=${LIBRAW_LIBRARY}")
+    add_definitions(-DHAVE_LIBRAW=1)
+else()
+    message(WARNING "Can not locate libraw directory under search path.
+      Install please libraw package (ubuntu: libraw-dev, archliux: libraw, windows: https://www.libraw.org/)")
+	unset(LIBRAW_INCLUDE_DIRS CACHE)
+	unset(LIBRAW_LIBRARY CACHE)
+endif()
 
+
+# ----------------------------------------------------------------------------
 # openraw
-# find_package(openraw REQUIRED)
+#
 
 foreach (v 0.3 0.2 0.1 )
-  unset(OPENRAW_INCLUDES CACHE)
-  find_path(OPENRAW_INCLUDES "libopenraw-${v}/libopenraw"
+  unset(OPENRAW_INCLUDE_DIRS CACHE)
+  find_path(OPENRAW_INCLUDE_DIRS "libopenraw-${v}/libopenraw"
     /usr/local/include
     /opt/local/include
     /usr/include)
-  if ( OPENRAW_INCLUDES )
-    set(OPENRAW_INCLUDES "${OPENRAW_INCLUDES}/libopenraw-${v}")
+  if ( OPENRAW_INCLUDE_DIRS )
+    set(OPENRAW_INCLUDE_DIRS "${OPENRAW_INCLUDE_DIRS}/libopenraw-${v}")
     break()
   endif() 
 endforeach()
-if ( NOT OPENRAW_INCLUDES )
-  message(WARNING "Can not locate libopenraw-0.3 directory under search path.
-    Install please libopenraw-0.3 package (ubuntu: libopenraw-dev, archliux libopenraw: windows: https://libopenraw.freedesktop.org)")
+if ( NOT OPENRAW_INCLUDE_DIRS )
+	set(OPENRAW_INCLUDE_DIRS)
+    message(WARNING "Can not locate libopenraw-0.3 directory under search path.
+      Install please libopenraw-0.3 package:
+      	ubuntu: libopenraw-dev 
+      	archliux: libopenraw
+      	windows: https://libopenraw.freedesktop.org")
 else()
   set(OPENRAW_LIBS openraw)
   add_definitions(-DHAVE_LIBOPENRAW=1)
-  message(STATUS "libopenraw: ${OPENRAW_INCLUDES}")
+  message(STATUS "libopenraw: ${OPENRAW_INCLUDE_DIRS}")
 endif()
 
 
-
-# cfitsio
-# find_package(cfitsio REQUIRED)
-set(CFITSIO_LIBS cfitsio)
-
+# ----------------------------------------------------------------------------
 # TIFF : TIFF_LIBRARIES TIFF_INCLUDE_DIR
+#
 find_package(TIFF)
 if ( NOT TIFF_FOUND )
-  message( FATAL_ERROR "TIFF package is mandatory but is not found in your system. Install libtiff package please.")
+  message(FATAL_ERROR "TIFF package is mandatory but is not found in your system. 
+  	Install please libtiff package.")
 endif()
 
 
 
+# ----------------------------------------------------------------------------
 # FFMPEG
+#
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
 find_library(AVCODEC_LIBRARY avcodec)
+if( AVCODEC_INCLUDE_DIR AND AVCODEC_LIBRARY ) 
+    message(STATUS "avcodec FOUND: AVCODEC_INCLUDE_DIR=${AVCODEC_INCLUDE_DIR} AVCODEC_LIBRARY=${AVCODEC_LIBRARY}")
+    add_definitions(-DHAVE_AVCODEC=1)
+else()
+    message(FATAL_ERROR "Can not locate avcodec library under search path.
+      Install please avcodec package (ubuntu: libavcodec-dev, archliux: ffmpeg, windows: http://www.ffmpeg.org)")
+endif()
+
 find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h)
 find_library(AVFORMAT_LIBRARY avformat)
+if( AVFORMAT_INCLUDE_DIR AND AVFORMAT_LIBRARY ) 
+    message(STATUS "avformat FOUND: AVFORMAT_INCLUDE_DIR=${AVFORMAT_INCLUDE_DIR} AVFORMAT_LIBRARY=${AVFORMAT_LIBRARY}")
+    add_definitions(-DHAVE_AVFORMAT=1)
+else()
+    message(FATAL_ERROR "Can not locate avformat library under search path.
+      Install please avformat package (ubuntu: libavformat-dev, archliux: ffmpeg, windows: http://www.ffmpeg.org)")
+endif()
+
 find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h)
 find_library(AVUTIL_LIBRARY avutil)
+if( AVUTIL_INCLUDE_DIR AND AVUTIL_LIBRARY ) 
+    message(STATUS "avutil FOUND: AVUTIL_INCLUDE_DIR=${AVUTIL_INCLUDE_DIR} AVUTIL_LIBRARY=${_LIBRARY}")
+    add_definitions(-DHAVE_AVUTIL=1)
+else()
+    message(FATAL_ERROR "Can not locate avutil library under search path.
+      Install please avutil package (ubuntu: libavutil-dev, archliux: ffmpeg, windows: http://www.ffmpeg.org)")
+endif()
+
+find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h)
+find_library(SWSCALE_LIBRARY swscale)
+if( SWSCALE_INCLUDE_DIR AND SWSCALE_LIBRARY ) 
+    message(STATUS "swscale FOUND: SWSCALE_INCLUDE_DIR=${SWSCALE_INCLUDE_DIR} SWSCALE_LIBRARY=${SWSCALE_LIBRARY}")
+    add_definitions(-DHAVE_SWSCALE=1)
+else()
+    message(FATAL_ERROR "Can not locate swscale library under search path.
+      Install please swscale package (ubuntu: libswscale-dev, archliux: ffmpeg, windows: http://www.ffmpeg.org)")
+endif()
+
 find_path(AVDEVICE_INCLUDE_DIR libavdevice/avdevice.h)
 find_library(AVDEVICE_LIBRARY avdevice)
-find_path(AVDEVICE_INCLUDE_DIR libswscale/swscale.h)
-find_library(SWSCALE_LIBRARY swscale)
+if( AVDEVICE_INCLUDE_DIR AND AVDEVICE_LIBRARY ) 
+    message(STATUS "avdevice FOUND: AVDEVICE_INCLUDE_DIR=${AVDEVICE_INCLUDE_DIR} AVDEVICE_LIBRARY=${AVDEVICE_LIBRARY}")
+    add_definitions(-DHAVE_AVDEVICE=1)
+else()
+    message(WARNING "Can not locate avdevice library  under search path.
+      Install please avdevice package (ubuntu: libavdevice-dev, archliux: ffmpeg, windows: http://www.ffmpeg.org)")
+	unset(AVDEVICE_INCLUDE_DIR CACHE)
+	unset(AVDEVICE_LIBRARY CACHE)
+endif()
+
 set(FFMPEG_INCLUDE_DIRS ${SWSCALE_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
 set(FFMPEG_LIBRARIES ${SWSCALE_LIBRARY} ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY})
 
 
+# ----------------------------------------------------------------------------
 # Intel TBB
-# find_package(TBB)
-# if ( ${TBB_FOUND} )
-#   add_definitions(-DHAVE_TBB=1 -DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
-#   set(TBB_LIBRARIES "tbb")    
-# endif()
+#
 find_package(TBB QUIET)
 if (TBB_FOUND)
 
@@ -138,9 +215,11 @@ message (STATUS "TBB: ${TBB_INCLUDES} ${TBB_LIBRARIES}")
 
 
 
+# ----------------------------------------------------------------------------
 # libconfig
+#
 set(LIBCONFIG_MINIMUM_VERSION_REQUIRED "1.7")
-find_package(libconfig)
+find_package(libconfig QUIET)
 message(STATUS "libconfig [ ${LIBCONFIG_VERSION}, ${libconfig_VERSION}] found=${libconfig_FOUND}")
 if ( NOT ${libconfig_FOUND} )
     message(FATAL_ERROR "libconfig version >= ${LIBCONFIG_MINIMUM_VERSION_REQUIRED} is not found\n \
@@ -177,7 +256,9 @@ endif()
 message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LIBCONFIG_LIBRARIES}")
 
 
-
+# ----------------------------------------------------------------------------
+# QGLViewer (optional, for glddm team)
+#
 set(HAVE_QGLViewer FALSE)  
 find_package(QGLViewer QUIET)
 if ( QGLViewer_FOUND )
@@ -223,7 +304,10 @@ if ( QGLViewer_FOUND )
 	endif(OpenGL_FOUND)	
 endif(QGLViewer_FOUND)
 
+
+# ----------------------------------------------------------------------------
 # Qt5
+#
 set(Qt5_REQUIRED_COMPONENTS Core Gui Widgets Xml PrintSupport Multimedia MultimediaWidgets) #  
 if ( QGLViewer_FOUND )
 	set(Qt5_REQUIRED_COMPONENTS ${Qt5_REQUIRED_COMPONENTS} OpenGL)
@@ -242,12 +326,16 @@ foreach ( module ${Qt5_REQUIRED_MODULES} )
 endforeach()
 
 
+
+# ----------------------------------------------------------------------------
 set(CORE_INCLUDES
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${LIBCONFIG_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
+	${CFITSIO_INCLUDE_DIRS}
 	${FFMPEG_INCLUDE_DIRS}
-	${OPENRAW_INCLUDES}
+	${LIBRAW_INCLUDE_DIRS}
+	${OPENRAW_INCLUDE_DIRS}
 	${TIFF_INCLUDE_DIR})
 
 set(CORE_LIBRARIES
@@ -256,8 +344,8 @@ set(CORE_LIBRARIES
 	${OpenCV_LIBS}
 	${FFMPEG_LIBRARIES}
 	${TIFF_LIBRARIES}
-	${LIBRAW_LIBS}
-	${CFITSIO_LIBS}
+	${LIBRAW_LIBRARY}
+	${CFITSIO_LIBRARY}
 	${OPENRAW_LIBS}
     ${TBB_LIBRARIES}
 	pthread)

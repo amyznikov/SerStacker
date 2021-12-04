@@ -329,25 +329,27 @@ void QStackTreeView::onAddSourcesToCurrentStackingOptions()
       }
       filter.append(");;");
 
-
-      filter.append("FITS files (");
-      for ( const std::string & s : c_fits_input_source::suffixes() ) {
-        filter.append(QString("*%1 ").arg(s.c_str()));
-      }
-      filter.append(");;");
-
-
       filter.append("Regular images (");
       for ( const std::string & s : c_regular_image_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
 
+#if HAVE_CFITSIO
+      filter.append("FITS files (");
+      for ( const std::string & s : c_fits_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+#endif // HAVE_CFITSIO
+
+#if HAVE_LIBRAW
       filter.append("RAW/DSLR images (");
       for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
+#endif // HAVE_LIBRAW
 
       filter.append("Movies (");
       for ( const std::string & s : c_movie_input_source::suffixes() ) {

@@ -11,6 +11,20 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+#if !HAVE_LIBRAW
+
+int main()
+{
+  fprintf(stderr, "raw2png\n"
+      "This application is built with no libraw support.\n"
+      "Install please libraw package (ubuntu: libraw-dev, archliux: libraw, windows: https://www.libraw.org/),\n"
+      "reconfigure and rebuild the project.\n");
+
+  return 1;
+}
+
+#else // HAVE_LIBRAW
+
 
 static void create_gamma_lut16(double g, cv::Mat1w & lut)
 {
@@ -145,6 +159,7 @@ static bool color_saturation(const cv::Mat & src, cv::Mat & dst, double a, doubl
 
 int main(int argc, char *argv[])
 {
+
 
   std::vector<std::string> input_file_names;
   std::string output_path;
@@ -382,4 +397,5 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+#endif // HAVE_LIBRAW
 

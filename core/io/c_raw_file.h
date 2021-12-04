@@ -9,6 +9,9 @@
 #define __c_raw_file_h__
 
 #include "debayer.h"
+
+#if HAVE_LIBRAW
+
 #include <libraw/libraw.h>
 
 class c_raw_file_reader
@@ -73,5 +76,7 @@ private:
 private:
   int raw2mat(cv::Mat & output_image);
 };
+
+#endif // HAVE_LIBRAW
 
 #endif /* __c_raw_file_h__ */

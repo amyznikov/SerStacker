@@ -108,15 +108,15 @@ double QGLCloudViewer::pointBrightness() const
 
 void QGLCloudViewer::init()
 {
-  setSceneCenter(qglviewer::Vec(0.0, 0.0, 0.0)); // with a center shifted by 400 units along X direction
   setSceneRadius(500);
-  setBackgroundColor(QColor(0, 0, 0));
+  setSceneCenter(QGLVector(0.0, 0.0, 0.0));
+
   glDisable(GL_LIGHTING);
   glDisable(GL_COLOR_MATERIAL);
   glEnable(GL_PROGRAM_POINT_SIZE);
 
-  //camera()->showEntireScene();
-  //camera()->setFlySpeed(0.01);
+  // setBackgroundColor(QColor(0, 0, 0));
+
   Base::init();
 }
 

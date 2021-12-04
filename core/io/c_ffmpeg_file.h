@@ -13,8 +13,11 @@
 extern "C" {
   #include <libavformat/avformat.h>
   #include <libavcodec/avcodec.h>
-  #include <libavdevice/avdevice.h>
   #include <libswscale/swscale.h>
+  #include <libavutil/avutil.h>
+#if HAVE_AVDEVICE
+  #include <libavdevice/avdevice.h>
+#endif
 }
 
 class c_ffmpeg_reader

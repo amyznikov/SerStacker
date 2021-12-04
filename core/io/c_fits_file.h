@@ -8,8 +8,10 @@
 #ifndef __c_fits_file_h__
 #define __c_fits_file_h__
 
-#include <fitsio2.h>
 #include "debayer.h" // for COLORID
+
+#if HAVE_CFITSIO
+#include <fitsio2.h>
 
 /** @brief Base class for fits reader and writer */
 class c_fits_file
@@ -114,5 +116,7 @@ class c_fits_writer
 public:
   c_fits_writer() = default;
 };
+
+#endif // HAVE_CFITSIO
 
 #endif /* __c_fits_file_h__ */

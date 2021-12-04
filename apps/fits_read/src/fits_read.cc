@@ -10,6 +10,20 @@
 #include <core/readdir.h>
 #include <core/debug.h>
 
+#if !HAVE_CFITSIO
+
+int main()
+{
+  fprintf(stderr, "fits_read\n"
+      "This application is built with no cfitsio support.\n"
+      "Install please libraw package (ubuntu: libcfitsio-dev, archliux: cfitsio, windows: https://github.com/healpy/cfitsio),\n"
+      "reconfigure and rebuild the project.\n");
+
+  return 1;
+}
+
+#else // HAVE_CFITSIO
+
 
 int main(int argc, char *argv[])
 {
@@ -106,3 +120,4 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+#endif // HAVE_CFITSIO

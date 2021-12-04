@@ -198,7 +198,9 @@ static void ensure_ffmpeg_initialized()
     av_register_all();
 #endif
 
+#if HAVE_AVDEVICE
     avdevice_register_all();
+#endif
     avformat_network_init();
 
     av_log_set_level(AV_LOG_ERROR);

@@ -9,6 +9,8 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
+#if HAVE_LIBRAW
+
 static enum COLORID raw2colorid(LibRaw & raw)
 {
   enum COLORID colorid = COLORID_UNKNOWN;
@@ -268,3 +270,4 @@ void c_raw_file_reader::recycle()
   raw.recycle();
 }
 
+#endif // HAVE_LIBRAW

@@ -8,6 +8,9 @@
  */
 
 #include "c_fits_file.h"
+
+#if HAVE_CFITSIO
+
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
@@ -532,3 +535,5 @@ bool c_fits_reader::read(const std::string & filename,
 
   return fits.read(output_image, ddepth);
 }
+
+#endif // HAVE_CFITSIO

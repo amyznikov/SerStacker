@@ -375,17 +375,21 @@ QString QMasterFrameOptions::browseForMasterFrame()
     }
     filter.append(");;");
 
+#if HAVE_LIBRAW
     filter.append("RAW/DSLR images (");
     for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
       filter.append(QString("*%1 ").arg(s.c_str()));
     }
     filter.append(");;");
+#endif
 
+#if HAVE_CFITSIO
     filter.append("FITS files (");
     for ( const std::string & s : c_fits_input_source::suffixes() ) {
       filter.append(QString("*%1 ").arg(s.c_str()));
     }
     filter.append(");;");
+#endif
 
     filter.append("All Files (*.*);;");
   }

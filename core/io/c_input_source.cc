@@ -58,18 +58,22 @@ c_input_source::ptr c_input_source::create(source_type type, const std::string &
     case c_input_source::SER :
       obj = c_ser_input_source::create(filename);
       break;
+#if HAVE_CFITSIO
     case c_input_source::FITS :
       obj = c_fits_input_source::create(filename);
       break;
+#endif // HAVE_CFITSIO
     case c_input_source::MOVIE :
       obj = c_movie_input_source::create(filename);
       break;
     case c_input_source::REGULAR_IMAGE :
       obj = c_regular_image_input_source::create(filename);
       break;
+#if HAVE_LIBRAW
     case c_input_source::RAW_IMAGE :
       obj = c_raw_image_input_source::create(filename);
       break;
+#endif // HAVE_LIBRAW
     default :
       CF_ERROR("c_input_source: invalid source type = %d requested", type);
       break;
@@ -102,18 +106,22 @@ enum c_input_source::source_type c_input_source::suggest_source_type(
     if ( contains(c_ser_input_source::suffixes(), suffix) ) {
       type = c_input_source::SER;
     }
+#if HAVE_CFITSIO
     else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
       type = c_input_source::FITS;
     }
+#endif // HAVE_CFITSIO
     else if ( contains(c_movie_input_source::suffixes(), suffix) ) {
       type = c_input_source::MOVIE;
     }
     else if ( contains(c_regular_image_input_source::suffixes(), suffix) ) {
       type = c_input_source::REGULAR_IMAGE;
     }
+#if HAVE_LIBRAW
     else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
       type = c_input_source::RAW_IMAGE;
     }
+#endif // HAVE_LIBRAW
   }
 
   return type;
@@ -130,49 +138,6 @@ c_input_source::ptr c_input_source::create(const std::string & filename)
   }
 
   return nullptr;
-
-//
-//  const std::string suffix = get_file_suffix(filename);
-//
-//  if ( !suffix.empty() ) {
-//
-//    source_type type = c_input_source::UNKNOWN;
-//
-//    static const auto contains =
-//        [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {
-//
-//          const char * csuffix = suffix.c_str();
-//          for ( const std::string & s : suffixes ) {
-//            if ( strcasecmp(csuffix, s.c_str()) == 0 ) {
-//              return true;
-//            }
-//          }
-//          return false;
-//        };
-//
-//    if ( contains(c_ser_input_source::suffixes(), suffix) ) {
-//      type = c_input_source::SER;
-//    }
-//    else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
-//      type = c_input_source::FITS;
-//    }
-//    else if ( contains(c_movie_input_source::suffixes(), suffix) ) {
-//      type = c_input_source::MOVIE;
-//    }
-//    else if ( contains(c_regular_image_input_source::suffixes(), suffix) ) {
-//      type = c_input_source::REGULAR_IMAGE;
-//    }
-//    else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
-//      type = c_input_source::RAW_IMAGE;
-//    }
-//
-//    if ( type != c_input_source::UNKNOWN ) {
-//      return c_input_source::create(type, filename);
-//    }
-//
-//  }
-//
-//  return nullptr;
 }
 
 
@@ -239,6 +204,8 @@ bool c_ser_input_source::read(cv::Mat & output_frame,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if HAVE_CFITSIO
 
 c_fits_input_source::c_fits_input_source(const std::string & filename)
   : base(c_input_source::FITS, filename)
@@ -312,6 +279,7 @@ bool c_fits_input_source::read(cv::Mat & output_frame,
 
   return true;
 }
+#endif // HAVE_CFITSIO
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -495,6 +463,7 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if HAVE_LIBRAW
 c_raw_image_input_source::c_raw_image_input_source(const std::string & filename)
   : base(c_input_source::RAW_IMAGE, filename)
 {
@@ -559,5 +528,7 @@ bool c_raw_image_input_source::read(cv::Mat & output_frame,
 
   return true;
 }
+
+#endif // HAVE_LIBRAW
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

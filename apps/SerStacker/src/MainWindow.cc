@@ -406,6 +406,18 @@ MainWindow::~MainWindow()
   saveGeometry();
 }
 
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+  if ( event->type() == QEvent::Wheel) {
+    const QComboBox * combo = dynamic_cast<const QComboBox*>(watched);
+    if ( combo && !combo->isEditable() ) {
+      return true;
+    }
+  }
+
+  return Base::eventFilter(watched, event);
+}
+
 void MainWindow::updateWindowTittle()
 {
   setWindowTitle("SerStacker");
@@ -438,19 +450,6 @@ void MainWindow::restoreState()
   fileSystemTreeDock->displayPath(settings.value(
       "fileSystemTree/absoluteFilePath").toString());
 }
-
-bool MainWindow::eventFilter(QObject *watched, QEvent *event)
-{
-  if ( event->type() == QEvent::Wheel) {
-    const QComboBox * combo = dynamic_cast<const QComboBox*>(watched);
-    if ( combo && !combo->isEditable() ) {
-      return true;
-    }
-  }
-
-  return Base::eventFilter(watched, event);
-}
-
 
 void MainWindow::configureTextViewerToolbars()
 {

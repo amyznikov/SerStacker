@@ -22,10 +22,14 @@ public:
   enum source_type {
     UNKNOWN = 0,
     SER = 1,
+#if HAVE_CFITSIO
     FITS = 2,
+#endif
     MOVIE = 3,
     REGULAR_IMAGE = 4,
+#if HAVE_LIBRAW
     RAW_IMAGE = 5,
+#endif
   };
 
   static ptr create(const std::string & filename);
@@ -145,6 +149,7 @@ protected:
   c_ser_reader ser_;
 };
 
+#if HAVE_CFITSIO
 class c_fits_input_source
   : public c_input_source
 {
@@ -173,6 +178,8 @@ protected:
   c_fits_reader fits_;
   int curpos_ = -1;
 };
+#endif // HAVE_CFITSIO
+
 
 class c_movie_input_source
   : public c_input_source
@@ -231,6 +238,7 @@ protected:
   int curpos_ = -1;
 };
 
+#if HAVE_LIBRAW
 class c_raw_image_input_source
   : public c_input_source
 {
@@ -259,5 +267,6 @@ protected:
   c_raw_file_reader raw_;
   int curpos_ = -1;
 };
+#endif // HAVE_LIBRAW
 
 #endif /* __c_input_source_h__ */

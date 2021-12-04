@@ -9,24 +9,12 @@
 #include <core/io/load_image.h>
 #include "QThumbnails.h"
 
-// Temporary stubs until CMakelists.txt update
-#define HAVE_SER_FILE       1
-#define HAVE_FITS_FILE      1
-#define HAVE_FFMPEG_FILE    1
-#define HAVE_LIBRAW         0
+#include <core/io/c_ser_file.h>
+#include <core/io/c_fits_file.h>
 
-#if HAVE_SER_FILE
-# include <core/io/c_ser_file.h>
-#endif
+#define HAVE_FFMPEG_READER 1
+#include <core/io/c_ffmpeg_file.h>
 
-#if HAVE_FITS_FILE
-# include <core/io/c_fits_file.h>
-#endif
-
-
-#if HAVE_FFMPEG_FILE
-# include <core/io/c_ffmpeg_file.h>
-#endif
 
 #if HAVE_LIBOPENRAW // come from cmake
 # undef HAVE_LIBRAW
@@ -160,15 +148,7 @@ QStringList getSupportedThumbnailsExtensions()
   suffixes.append("tiff");
   suffixes.append("tif");
   suffixes.append("flo");
-//  suffixes.append("cfg");
-//  suffixes.append("conf");
-//  suffixes.append("txt");
-//  suffixes.append("doc");
-//  suffixes.append("md");
-//  suffixes.append("xml");
-//  suffixes.append("html");
-//  suffixes.append("htm");
-//  suffixes.append("rtf");
+  suffixes.append("ser");
 
   const char ** textfiles =
       thumbnail_textfile_suffixes();
@@ -184,11 +164,7 @@ QStringList getSupportedThumbnailsExtensions()
   }
 #endif
 
-#if HAVE_SER_FILE
-  suffixes.append("ser");
-#endif
-
-#if HAVE_FITS_FILE
+#if HAVE_CFITSIO
   suffixes.append("fits");
   suffixes.append("fit");
 #endif
@@ -205,12 +181,9 @@ QStringList getSupportedThumbnailsExtensions()
 #endif
 
 
-#if HAVE_FFMPEG_FILE
   for ( const std::string & s : c_ffmpeg_reader::supported_input_formats() ) {
     suffixes.append(s.c_str());
   }
-#endif
-
 
   std::sort(suffixes.begin(), suffixes.end());
   QStringList::iterator ii = std::unique(suffixes.begin(), suffixes.end());
@@ -518,7 +491,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
   }
 #endif // HAVE_SER_FILE
 
-#if HAVE_FITS_FILE
+#if HAVE_CFITSIO
   if ( suffix.compare("fits", Qt::CaseInsensitive) == 0 || suffix.compare("fit", Qt::CaseInsensitive) == 0  ) {
 
     c_fits_reader fits(pathFileName.toStdString());
@@ -548,7 +521,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
     }
 
   }
-#endif // HAVE_FITS_FILE
+#endif
 
 
   if ( is_raw_file_suffix(suffix) ) {
@@ -641,19 +614,16 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
   //CF_DEBUG("pathFileName: %s mime.name()=%s", pathFileName.toStdString().c_str(), mime.name().toStdString().c_str());
   bool is_video = mime.name().contains("video/", Qt::CaseInsensitive);
   if ( !is_video ) {
-#if HAVE_FFMPEG_FILE
     const std::string csuffix = suffix.toLower().toStdString();
     const std::vector<std::string> & fmts = c_ffmpeg_reader::supported_input_formats();
     if ( std::find(fmts.begin(), fmts.end(), csuffix) != fmts.end() ) {
       is_video = true;
     }
-#endif
   }
 
-//#undef HAVE_FFMPEG_FILE
   if ( is_video ) {
 
-#if HAVE_FFMPEG_FILE
+#if HAVE_FFMPEG_READER
     c_ffmpeg_reader ffmpeg;
 
     if ( ffmpeg.open(pathFileName.toStdString()) ) {
@@ -702,8 +672,6 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
     }
 #endif
   }
-
-//#define HAVE_FFMPEG_FILE  1
 
   return qimage;
 }

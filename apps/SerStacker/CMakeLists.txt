@@ -75,18 +75,17 @@ target_link_libraries(${PROJECT_NAME}
 
 set(MY_RUNTIME_PATH bin)
 set(MY_DESKTOP_ENTRY_PATH ${CMAKE_INSTALL_PREFIX}/share/applications)
-set(MY_DESKTOP_ENTRY_COMMENT "QSkyStacker App")
+set(MY_DESKTOP_ENTRY_COMMENT "${PROJECT_NAME}")
 set(MY_APP_ICONS_PATH ${CMAKE_INSTALL_PREFIX}/share/app-install/icons)
 
-
-if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${SRC}/app.desktop.in)
-	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${SRC}/app.desktop.in
+if( EXISTS ${SRC}/app.desktop.in)
+	configure_file(${SRC}/app.desktop.in
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.desktop
 		@ONLY)
 endif()
 
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${SRC}/app-icon.png)
-	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${SRC}/app-icon.png
+if(EXISTS ${SRC}/app-icon.png)
+	configure_file(${SRC}/app-icon.png
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.png
 		COPYONLY)
 endif()

@@ -5,7 +5,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
@@ -261,8 +261,25 @@ message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LI
 #
 set(HAVE_QGLViewer FALSE)  
 find_package(QGLViewer QUIET)
-if ( QGLViewer_FOUND )
-	
+if ( NOT QGLViewer_FOUND )
+
+    set(QGLVIEWER_INCLUDE_DIRS)
+    set(QGLVIEWER_LIBRARY)
+    
+    message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
+    	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
+        To support this functionality install pleaae fresh version of QGLViewer: \n \
+        \n \
+         wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
+         tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \
+         cd libQGLViewer-2.7.1/QGLViewer && \\ \n \
+         qmake && \\ \n \
+         make && \\ \n \
+         sudo make install && \\ \n \
+         make clean\ \n \
+     ")
+
+else()
 	# OpenGL is required for QGLViewer
 	# This option should affect only OpenGL-dependent targets
 	# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
@@ -272,38 +289,55 @@ if ( QGLViewer_FOUND )
 	endif()
 	
 	find_package(OpenGL QUIET)
-	if ( OpenGL_FOUND )
-		find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
-		if ( freeglut_h_found ) 
-			
-			set(HAVE_QGLViewer TRUE)
-			add_definitions(-DHAVE_QGLViewer=1)
-			
-			# Fixing GLEW PATH on OSX
-			if (APPLE)
-			    find_path( GLEW_INCLUDE_DIR GL/glew.h
-			        /usr/local/include
-			        /usr/local/Cellar/glew/2.1.0/include
-			        /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
-			        ${OPENGL_LIBRARY_DIR}
-			    )
-			    find_library( GLEW_GLEW_LIBRARY GLEW
-			        /usr/local/lib
-			        /usr/openwin/lib
-			        /usr/X11R6/lib
-			        /usr/local/Cellar/glew/2.1.0/lib
-			    )
-			    set( GLEW_FOUND TRUE )
-			    if(NOT GLEW_GLEW_LIBRARY)
-			        set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
-			        set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
-			        set(GLEW_FOUND FALSE )
-			    endif()
-			endif (APPLE)
-		endif(freeglut_h_found)	
-	endif(OpenGL_FOUND)	
-endif(QGLViewer_FOUND)
+	if ( NOT OpenGL_FOUND )
+        message(WARNING "OpenGL package is not found, disabling QGLViewer")
+        set(QGLVIEWER_INCLUDE_DIRS)
+        set(QGLVIEWER_LIBRARY)
+        set(OPENGL_INCLUDE_DIR)
+        set(OPENGL_LIBRARY_DIR)
+        set(OPENGL_LIBRARIES)
+        set(QGLViewer_FOUND FALSE)
+    else ()
+        find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
+        if ( NOT freeglut_h_found ) 
+            message(WARNING "OpenGL package is not found, disabling QGLViewer")
+            set(QGLVIEWER_INCLUDE_DIRS)
+            set(QGLVIEWER_LIBRARY)
+            set(OPENGL_INCLUDE_DIR)
+            set(OPENGL_LIBRARY_DIR)
+            set(OPENGL_LIBRARIES)
+            set(QGLViewer_FOUND FALSE)
+        else()
+            set(HAVE_QGLViewer TRUE)
+            add_definitions(-DHAVE_QGLViewer=1)
 
+            # Fixing GLEW PATH on OSX
+            if (APPLE)
+                find_path( GLEW_INCLUDE_DIR GL/glew.h
+                    /usr/local/include
+                    /usr/local/Cellar/glew/2.1.0/include
+                    /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
+                    ${OPENGL_LIBRARY_DIR}
+                )
+                find_library( GLEW_GLEW_LIBRARY GLEW
+                    /usr/local/lib
+                    /usr/openwin/lib
+                    /usr/X11R6/lib
+                    /usr/local/Cellar/glew/2.1.0/lib
+                )
+                set( GLEW_FOUND TRUE )
+                if(NOT GLEW_GLEW_LIBRARY)
+                    set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
+                    set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
+                    set(GLEW_FOUND FALSE )
+                endif()
+            endif (APPLE)
+        endif()
+    endif()
+endif()
+
+message(STATUS "OPENGL_INCLUDE_DIR=${OPENGL_INCLUDE_DIR}")
+return()
 
 # ----------------------------------------------------------------------------
 # Qt5

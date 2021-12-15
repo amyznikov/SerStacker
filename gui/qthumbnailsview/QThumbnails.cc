@@ -460,7 +460,6 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
     return qimage;
   }
 
-#if HAVE_SER_FILE
   if ( suffix.compare("ser", Qt::CaseInsensitive) == 0 ) {
 
     c_ser_reader ser(pathFileName.toStdString());
@@ -489,7 +488,6 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       return qimage;
     }
   }
-#endif // HAVE_SER_FILE
 
 #if HAVE_CFITSIO
   if ( suffix.compare("fits", Qt::CaseInsensitive) == 0 || suffix.compare("fit", Qt::CaseInsensitive) == 0  ) {

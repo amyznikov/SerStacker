@@ -7,6 +7,7 @@
 
 #include "QSearchImageFiles.h"
 #include "QThumbnails.h"
+#include <core/debug.h>
 
 QSearchImageFiles::QSearchImageFiles()
 {
@@ -61,7 +62,9 @@ void QSearchImageFiles::run()
       QDirIterator::FollowSymlinks);
 
   while ( !cancel_requested_ && iterator.hasNext() ) {
+
     emit imageFound(rid, iterator.next());
+
     QThread::yieldCurrentThread();
   }
 }

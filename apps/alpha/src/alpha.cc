@@ -29,9 +29,141 @@
 #include <core/registration/c_planetary_disk_registration.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
+#include <variant>
+#include <core/strddx.h>
+
+enum new_anscombe_method
+{
+  new_anscombe_method_none = 0,
+  new_anscombe_method_regular = 1,
+  new_anscombe_method_sqrt = 2,
+};
+
+
+template<class enum_type>
+class c_enum_combobox_base
+{
+public:
+  c_enum_combobox_base()
+  {
+    populate_combo();
+  }
+
+  void populate_combo()
+  {
+    const c_enum_member * members =
+        members_of<enum_type>();
+
+    while ( members->name ) {
+      ++members;
+    }
+  }
+};
+
+class c_new_anscombe_method_combo:
+     public c_enum_combobox_base<new_anscombe_method>
+{
+public:
+  c_new_anscombe_method_combo()
+  {
+  }
+};
+
+
+
+class c_some_processor
+{
+public:
+
+  virtual ~c_some_processor() = default;
+
+  //virtual void get_parameters(std::vector<c_property> * params) const  = 0;
+  virtual bool set_parameter(const std::string & name, const std::string & value) = 0;
+  virtual bool get_parameter(const std::string & name, std::string * value) = 0;
+
+};
+
+class c_some_anscombe_processor
+  : public c_some_processor
+{
+public:
+
+  typedef c_some_anscombe_processor this_class;
+
+  void set_some_value(int v)
+  {
+    CF_DEBUG("some_value_ = %d", v);
+    some_value_ = v;
+  }
+
+  int some_value() const
+  {
+    return some_value_;
+  }
+
+  void set_method(new_anscombe_method v)
+  {
+    method_ = v;
+  }
+
+  new_anscombe_method method() const
+  {
+    return method_;
+  }
+
+//  void get_parameters(std::vector<c_property> * params) const
+//  {
+//    params->emplace_back("some_value", "this is some value");
+//    params->emplace_back("method", "this is some method", members_of<decltype(method())>());
+//  }
+
+  bool ddxparam(bool getit, const std::string & name, std::string & value)
+  {
+    STRDDX(some_value, name, value, getit);
+    STRDDX(method, name, value, getit);
+    return false;
+  }
+
+  bool set_parameter(const std::string & name, const std::string & value)
+  {
+    return ddxparam(false, name, const_cast<std::string &>(value));
+  }
+
+  virtual bool get_parameter(const std::string & name, std::string * value)
+  {
+    return ddxparam(true, name, *value);
+  }
+
+protected:
+  int some_value_ = 0;
+  new_anscombe_method method_ = new_anscombe_method_sqrt;
+};
+
+
+class c_property_list_widget {
+public:
+
+  void populate(c_some_processor * p)
+  {
+
+
+  }
+};
 
 int main(int argc, char *argv[])
 {
+    cf_set_logfile(stderr);
+    cf_set_loglevel(CF_LOG_DEBUG);
+
+  c_new_anscombe_method_combo combo;
+  c_some_anscombe_processor proc;
+
+  proc.set_parameter("some_value", "10");
+
+  return 0;
+
+
+
 //  std::string filenames[2];
 //  cv::Mat images[2], masks[2];
 //  cv::Mat feature_image, feature_mask;
@@ -71,22 +203,22 @@ int main(int argc, char *argv[])
 //    }
 //  }
 
-  cv::Mat1f image(128, 512, 0.f);
-  cv::Mat_<std::complex<float>> spec;
-  cv::Mat1f spow;
-
-  cv::circle(image, cv::Point(image.cols/2, image.rows/2), 31, 1, -1, cv::LINE_8 );
-
-  save_image(image, "image.tiff");
-
-  cv::dft(image, spec, cv::DFT_COMPLEX_OUTPUT);
-  fftSwapQuadrants(spec);
-
-  cv::Mat channels[2];
-  cv::split(spec, channels);
-  cv::magnitude(channels[0], channels[1], spow);
-  cv::log(1 + spow, spow);
-  save_image(spow, "spow.tiff");
+//  cv::Mat1f image(128, 512, 0.f);
+//  cv::Mat_<std::complex<float>> spec;
+//  cv::Mat1f spow;
+//
+//  cv::circle(image, cv::Point(image.cols/2, image.rows/2), 31, 1, -1, cv::LINE_8 );
+//
+//  save_image(image, "image.tiff");
+//
+//  cv::dft(image, spec, cv::DFT_COMPLEX_OUTPUT);
+//  fftSwapQuadrants(spec);
+//
+//  cv::Mat channels[2];
+//  cv::split(spec, channels);
+//  cv::magnitude(channels[0], channels[1], spow);
+//  cv::log(1 + spow, spow);
+//  save_image(spow, "spow.tiff");
 
 
   return 0;

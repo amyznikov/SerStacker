@@ -478,7 +478,7 @@ void c_ffmpeg_reader::close()
 
 bool c_ffmpeg_reader::seek_frame(int frame_index)
 {
-  if ( !stream ) {
+  if ( !stream || stream->avg_frame_rate.num <= 0 || stream->time_base.num <= 0 ) {
     return false;
   }
 

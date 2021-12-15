@@ -7,7 +7,7 @@
 
 #include "QThumbnailExtractor.h"
 #include "QThumbnails.h"
-
+#include <core/debug.h>
 
 QThumbnailExtractor::QThumbnailExtractor()
 {
@@ -71,12 +71,10 @@ void QThumbnailExtractor::run()
 
   if( !currentImagePathFileName_.isEmpty() ) {
 
-
-
-
     emit extracted(rid,
         loadThumbnailIcon(currentImagePathFileName_, thumbSize_),
         currentImagePathFileName_);
+
   }
 
 }

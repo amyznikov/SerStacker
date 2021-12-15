@@ -336,8 +336,6 @@ else()
     endif()
 endif()
 
-message(STATUS "OPENGL_INCLUDE_DIR=${OPENGL_INCLUDE_DIR}")
-return()
 
 # ----------------------------------------------------------------------------
 # Qt5

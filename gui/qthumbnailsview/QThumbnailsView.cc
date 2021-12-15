@@ -309,7 +309,8 @@ void QThumbnailsListWidget::mouseMoveEvent(QMouseEvent *e)
   QDrag * drag = new QDrag(this);
   drag->setMimeData(mimeData);
 
-  Qt::DropAction act = drag->exec(Qt::CopyAction | Qt::MoveAction); // , Qt::MoveAction
+  Qt::DropAction act =
+      drag->exec(Qt::CopyAction | Qt::MoveAction);
 
   switch ( act ) {
   case Qt::MoveAction :
@@ -333,7 +334,7 @@ void QThumbnailsListWidget::mouseMoveEvent(QMouseEvent *e)
     break;
 
   default :
-    CF_DEBUG("QIconListWidget: unknown action");
+    CF_ERROR("QIconListWidget: unknown action %d", act);
     break;
   }
 }
@@ -596,7 +597,6 @@ void QThumbnailsView::onImageFileFound(int rid, const QString fullPathName)
   if ( rid == lastSearchImageFilesRID_ ) {
     listWidget_->addIcon(hourglass_icon, fullPathName, QVariant(false));
   }
-
 }
 
 void QThumbnailsView::onSearchImageFilesFinished()
@@ -661,8 +661,6 @@ void QThumbnailsView::extractMissingThumbiails()
   else if ( hasupdates ) {
     listWidget_->repaint();
   }
-
-
 }
 
 void QThumbnailsView::onThumbnailExtractorStarted()

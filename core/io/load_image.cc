@@ -470,7 +470,10 @@ bool load_image(const std::string & filename, cv::OutputArray output_image, cv::
 
     if ( output_image.needed() ) {
 
-      output_image.assign(cv::readOpticalFlow(filename));
+      cv::Mat m =
+          cv::readOpticalFlow(filename);
+      output_image.move(m);
+
       if ( output_image.empty() ) {
         return false;
       }
@@ -488,7 +491,11 @@ bool load_image(const std::string & filename, cv::OutputArray output_image, cv::
         }
       }
       else {
-        output_image.assign(cv::imread(filename, cv::IMREAD_UNCHANGED));
+
+        cv::Mat m = cv::imread(filename,
+            cv::IMREAD_UNCHANGED);
+        output_image.move(m);
+
         if ( output_image.empty() ) {
           return false;
         }
@@ -517,10 +524,10 @@ bool load_image(const std::string & filename, cv::OutputArray output_image, cv::
   }
 
   if ( output_image.needed() ) {
-    output_image.assign(tmp_image);
+    output_image.move(tmp_image);
   }
   if ( output_mask.needed() ) {
-    output_mask.assign(tmp_mask);
+    output_mask.move(tmp_mask);
   }
 
   return true;

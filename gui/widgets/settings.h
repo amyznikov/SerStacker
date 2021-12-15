@@ -185,7 +185,7 @@ inline bool fromString(const QString & s, uint * x, uint * y, uint * z, uint * w
 
 template<class T>
 inline QString toString(const cv::Point_<T> &  v) {
-  return QString("%1;%2;%3").arg(v.x).arg(v.y);
+  return QString("%1;%2").arg(v.x).arg(v.y);
 }
 
 inline bool fromString(const QString & s, cv::Point2i * v) {
@@ -235,7 +235,7 @@ inline bool fromString(const QString & s, cv::Size_<int> * v) {
 
 inline bool fromString(const QString & s, cv::Size_<int64> * v) {
   cv::Size_<int64> vv;
-  return sscanf(s.toUtf8().data(), "%" PRId64 "%*[ xX:;,]%" PRId64, &vv.width, &vv.height) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%" SCNd64 "%*[ xX:;,]%" SCNd64, &vv.width, &vv.height) == 2 ? *v = vv, true : false;
 }
 
 inline bool fromString(const QString & s, cv::Size_<float> * v) {

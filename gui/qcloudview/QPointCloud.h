@@ -10,6 +10,7 @@
 #define __QPointCloud_h__
 
 #include <QtGui/QtGui>
+#include <memory>
 
 class QPoint3D {
 public:

@@ -30,7 +30,7 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 #include <variant>
-#include <core/strddx.h>
+#include <core/stdstring.h>
 
 enum new_anscombe_method
 {
@@ -51,12 +51,12 @@ public:
 
   void populate_combo()
   {
-    const c_enum_member * members =
-        members_of<enum_type>();
+//    const c_enum_member * members =
+//        members_of<enum_type>();
 
-    while ( members->name ) {
-      ++members;
-    }
+//    while ( members->name ) {
+//      ++members;
+//    }
   }
 };
 
@@ -119,8 +119,8 @@ public:
 
   bool ddxparam(bool getit, const std::string & name, std::string & value)
   {
-    STRDDX(some_value, name, value, getit);
-    STRDDX(method, name, value, getit);
+//    STRDDX(some_value, name, value, getit);
+//    STRDDX(method, name, value, getit);
     return false;
   }
 

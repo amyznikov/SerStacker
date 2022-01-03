@@ -81,6 +81,8 @@ void QFileSystemTreeView::refresh()
       Qt::DirectConnection);
 }
 
+
+
 void QFileSystemTreeView::hideColumn(int column)
 {
   return treeView->hideColumn(column);

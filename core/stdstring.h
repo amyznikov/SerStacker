@@ -1,164 +1,184 @@
 /*
- * strddx.h
+ * stdstring.h
  *
- *  Created on: Dec 5, 2021
+ *  Created on: Dec 27, 2021
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_enum__h__
-#define __c_enum__h__
+#ifndef __stdstring_h__
+#define __stdstring_h__
 
-#include "enum.h"
-#include <core/ssprintf.h>
-#include <opencv2/opencv.hpp>
+#include <cinttypes>
+#include <cstdio>
+#include <string>
+#include <string.h>
 
 // int8_t
-inline std::string toString(int8_t v) {
-  char s[256] = "";
-  snprintf(s, sizeof(s) - 1, "%" PRId8, v);
-  return s;
-}
-inline bool fromString(const char * s, int8_t * v) {
-  return s && sscanf(s, "%" SCNd8, v) == 1;
-}
-inline bool fromString(const std::string & s, int8_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(int8_t v);
+bool fromString(const char * s, int8_t * v);
 
 // uint8_t
-inline std::string toString(uint8_t v) {
-  char s[256] = "";
-  snprintf(s, sizeof(s) - 1, "%" PRIu8, v);
-  return s;
-}
-inline bool fromString(const char * s, uint8_t * v) {
-  return s && sscanf(s, "%" SCNu8, v) == 1;
-}
-inline bool fromString(const std::string & s, uint8_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(uint8_t v);
+bool fromString(const char * s, uint8_t * v);
 
 // int16_t
-inline std::string toString(int16_t v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%" PRId16, v);
-  return s;
-}
-inline bool fromString(const char * s, int16_t * v) {
-  return s && sscanf(s, "%" SCNd16, v) == 1;
-}
-inline bool fromString(const std::string & s, int16_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(int16_t v);
+bool fromString(const char * s, int16_t * v);
 
 // uint16_t
-inline std::string toString(uint16_t v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%" PRIu16, v);
-  return s;
-}
-inline bool fromString(const char * s, uint16_t * v) {
-  return s && sscanf(s, "%" SCNu16, v) == 1;
-}
-inline bool fromString(const std::string & s, uint16_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(uint16_t v);
+bool fromString(const char * s, uint16_t * v);
 
 // int32_t
-inline std::string toString(int32_t v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%" PRId32, v);
-  return s;
-}
-inline bool fromString(const char * s, int32_t * v) {
-  return s && sscanf(s, "%" SCNd32, v) == 1;
-}
-inline bool fromString(const std::string & s, int32_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(int32_t v);
+bool fromString(const char * s, int32_t * v);
 
 // uint32_t
-inline std::string toString(uint32_t v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%" PRIu32, v);
-  return s;
-}
-inline bool fromString(const char * s, uint32_t * v) {
-  return s && sscanf(s, "%" SCNu32, v) == 1;
-}
-inline bool fromString(const std::string & s, uint32_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(uint32_t v);
+bool fromString(const char * s, uint32_t * v);
 
 // int64_t
-inline std::string toString(int64_t v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%" PRId64, v);
-  return s;
-}
-inline bool fromString(const char * s, int64_t * v) {
-  return s && sscanf(s, "%" SCNd64, v) == 1;
-}
-inline bool fromString(const std::string & s, int64_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(int64_t v);
+bool fromString(const char * s, int64_t * v);
 
 // uint64_t
-inline std::string toString(uint64_t v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%" PRIu64, v);
-  return s;
-}
-inline bool fromString(const char * s, uint64_t * v) {
-  return s && sscanf(s, "%" SCNu64, v) == 1;
-}
-inline bool fromString(const std::string & s, uint64_t * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(uint64_t v);
+bool fromString(const char * s, uint64_t * v);
 
 // float
-inline std::string toString(float v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%f", v);
-  return s;
-}
-inline bool fromString(const char * s, float * v) {
-  return s && sscanf(s, "%f", v) == 1;
-}
-inline bool fromString(const std::string & s, float * v) {
-  return fromString(s.c_str(), v);
-}
+std::string toString(float v);
+bool fromString(const char * s, float * v);
 
 // double
-inline std::string toString(double v) {
-  char s[256];
-  snprintf(s, sizeof(s) - 1, "%lf", v);
-  return s;
+std::string toString(double v);
+bool fromString(const char * s, double * v);
+
+// bool
+std::string toString(bool v);
+bool fromString(const char * s, bool * v);
+
+
+// string
+std::string toString(const std::string & v);
+bool fromString(const char * s, std::string * v);
+bool fromString(const std::string & s, std::string * v);
+
+
+
+// enums
+
+struct c_enum_member {
+  int value;
+  const char * name;
+  const char * tooltip;
+};
+
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+    const c_enum_member *>::type members_of();
+
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+    const char *>::type toString(const enum_type & v)
+{
+  const c_enum_member * members =
+      members_of<enum_type>();
+
+  if ( members ) {
+    for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+      if ( members[i].value == v ) {
+        return members[i].name;
+      }
+    }
+  }
+  return "";
 }
-inline bool fromString(const char * s, double * v) {
-  return s && sscanf(s, "%lf", v) == 1;
+
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+    bool>::type fromString(const char * s, enum_type * v)
+{
+  if ( s && *s ) {
+
+    const c_enum_member * members =
+        members_of<enum_type>();
+
+    if ( members ) {
+
+      int x;
+
+      if ( sscanf(s, "%d", &x) == 1 ) {  // try numeric first
+        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+          if ( members[i].value == x ) {
+            *v = static_cast<enum_type>(members[i].value);
+            return true;
+          }
+        }
+      }
+      else {  // then try string
+        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+          if ( strcasecmp(members[i].name, s) == 0 ) {
+            *v = static_cast<enum_type>(members[i].value);
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
 }
-inline bool fromString(const std::string & s, double * v) {
+
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+    bool>::type fromString(const std::string & s, enum_type * v)
+{
   return fromString(s.c_str(), v);
 }
 
-// string
-inline std::string toString(const std::string & v) {
-  return v;
-}
-inline bool fromString(const char * s, std::string * v) {
-  * v =  s ? s : "" ;
-  return true;
-}
-inline bool fromString(const std::string & s, std::string * v) {
-  *v = s;
-  return true;
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+    enum_type>::type fromString(const char * s, const enum_type & defval)
+{
+  if ( s && *s ) {
+
+    const c_enum_member * members =
+        members_of<enum_type>();
+
+    if ( members ) {
+
+      int x;
+      if ( sscanf(s, "%d", &x) == 1 ) {  // try numeric first
+        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+          if ( members[i].value == x ) {
+            return static_cast<enum_type>(members[i].value);
+          }
+        }
+      }
+      else {  // then try string
+        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+          if ( strcasecmp(members[i].name, s) == 0 ) {
+            return static_cast<enum_type>(members[i].value);
+          }
+        }
+      }
+    }
+  }
+  return defval;
 }
 
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+    enum_type>::type fromString(const std::string & s, const enum_type & defval)
+{
+  return fromString(s.c_str(), defval);
+}
 
+// opencv
 #ifdef CV_VERSION
 
+// cv::Point
 template<class T>
 inline bool fromString(const char * s, const char fmt[], cv::Point_<T> * v) {
   return sscanf(s, fmt, &v->x, &v->y) == 2 ;
@@ -203,6 +223,7 @@ inline bool fromString(const std::string & s, cv::Point_<T> * v) {
 }
 
 
+// cv::Size
 template<class T>
 inline bool fromString(const char * s, const char fmt[], cv::Size_<T> * v)
 {
@@ -252,6 +273,7 @@ inline bool fromString(const std::string & s, cv::Size_<T> * v) {
 }
 
 
+// cv::Point3
 template<class T>
 inline bool fromString(const char * s, const char fmt[], cv::Point3_<T> * v) {
   return sscanf(s, fmt, &v->x, &v->y, &v->z) ==  3;
@@ -294,45 +316,13 @@ template<class T>
 inline bool fromString(const std::string & s, cv::Point3_<T> * v) {
   return fromString(s.c_str(), v);
 }
+#endif // CV_VERSION
 
 
+template<class T>
+inline bool fromString(const std::string & s, T * v)
+{
+  return fromString(s.c_str(), v);
+}
 
-#endif
-
-
-
-
-struct c_property {
-  const char * name;
-  const char * tooltip;
-  const c_enum_member * enumeration;
-  c_property(const char * _name, const char * _tooltip,
-      const c_enum_member * _enumeration = nullptr) :
-      name(_name), tooltip(_tooltip), enumeration(_enumeration)
-  {
-  }
-};
-
-#define STRDDX(prop, name, value, getit) \
-  if ( name == #prop ) { \
-    if ( getit ) { \
-       value = toString(prop()); \
-       return true; \
-    } \
-    else { \
-      auto v = prop(); \
-      if ( !fromString(value, &v) ) { \
-        CF_DEBUG("fromString('%s') fails",\
-            value.c_str());\
-      } \
-      else { \
-        set_##prop(v); \
-        return true; \
-      } \
-    } \
-    return false; \
-  }
-
-
-
-#endif /* __c_enum__h__ */
+#endif /* __stdstring_h__ */

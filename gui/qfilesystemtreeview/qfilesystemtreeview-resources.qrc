@@ -6,5 +6,6 @@
 	<file>icons/edit.png</file>
 	<file>icons/open.png</file>
 	<file>icons/reload.png</file>
+	<file>icons/history.png</file>	
 </qresource>
 </RCC>

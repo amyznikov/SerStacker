@@ -51,10 +51,13 @@ public slots:
 
 protected:
   void updateTitlebarIcons();
+  void updateHistory(const QString & abspath);
+  void onShowHistoryClicked();
 
 protected:
   QFileSystemTreeView * fileSystemTreeView_ = Q_NULLPTR;
   QToolButton * refreshButton_ = Q_NULLPTR;
+  QToolButton * historyButton_ = Q_NULLPTR;
   QToolButton * fileFilterButton_ = Q_NULLPTR;
   QToolButton * jumpButton_ = Q_NULLPTR;
 };

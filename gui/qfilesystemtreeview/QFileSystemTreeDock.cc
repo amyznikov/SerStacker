@@ -6,11 +6,13 @@
  */
 
 #include "QFileSystemTreeDock.h"
+#include <gui/widgets/QWaitCursor.h>
 
 #define ICON_reload         "reload"
 #define ICON_edit           "edit"
 #define ICON_folder_closed  "closed"
 #define ICON_folder_open    "open"
+#define ICON_history        "history"
 
 
 static QIcon getIcon(const QString & name)
@@ -49,33 +51,51 @@ QFileSystemTreeDock::QFileSystemTreeDock(const QString & title, QWidget * parent
 
   QCustomDockTitleBar * titleBar_ = Base::titleBar();
 
-  refreshButton_ = titleBar_->addButton(getIcon(ICON_reload), "Refresh",
-      fileSystemTreeView_,  &QFileSystemTreeView::refresh);
+  refreshButton_ =
+      titleBar_->addButton(getIcon(ICON_reload),
+          "Refresh",
+          fileSystemTreeView_,
+          &QFileSystemTreeView::refresh);
 
-  fileFilterButton_ = titleBar_->addButton(getIcon(ICON_folder_closed), "Show Files",
-      [this] () {
-        fileSystemTreeView_->setFilter(fileSystemTreeView_->filter() ^ QDir::Files);
-        updateTitlebarIcons();
+  historyButton_ =
+      titleBar_->addButton(getIcon(ICON_history),
+          "History",
+          this,
+          &ThisClass::onShowHistoryClicked);
+
+
+  fileFilterButton_ =
+      titleBar_->addButton(
+          getIcon(ICON_folder_closed),
+          "Show Files",
+          [this] () {
+            fileSystemTreeView_->setFilter(fileSystemTreeView_->filter() ^ QDir::Files);
+            updateTitlebarIcons();
+          });
+
+  jumpButton_ =
+      titleBar_->addButton(getIcon(ICON_edit),
+          "Jump to...",
+          [this] () {
+            bool fok = false;
+            QString path = QInputDialog::getText(this, "Expand path",
+                "Enter path to expand", QLineEdit::EchoMode::Normal,
+                fileSystemTreeView_->currentAbsoluteFilePath(),
+                &fok);
+            if ( fok && !path.isEmpty() ) {
+              fileSystemTreeView_->displayPath(path, true);
+            }
+          });
+
+
+  connect(fileSystemTreeView_, &QFileSystemTreeView::currentDirectoryChanged,
+      [this] (const QString & abspath) {
+        updateHistory(abspath);
+        emit currentDirectoryChanged(abspath);
       });
-
-  jumpButton_ = titleBar_->addButton(getIcon(ICON_edit), "Jump to...",
-      [this] () {
-        bool fok = false;
-        QString path = QInputDialog::getText(this, "Expand path",
-            "Enter path to expand", QLineEdit::EchoMode::Normal,
-            fileSystemTreeView_->currentAbsoluteFilePath(),
-            &fok);
-        if ( fok && !path.isEmpty() ) {
-          fileSystemTreeView_->displayPath(path, true);
-        }
-      });
-
 
   connect(fileSystemTreeView_, &QFileSystemTreeView::filterChanged,
       this, &ThisClass::updateTitlebarIcons);
-
-  connect(fileSystemTreeView_, &QFileSystemTreeView::currentDirectoryChanged,
-      this, &ThisClass::currentDirectoryChanged);
 
   connect(fileSystemTreeView_, &QFileSystemTreeView::directoryItemPressed,
       this, &ThisClass::directoryItemPressed);
@@ -151,4 +171,73 @@ void QFileSystemTreeDock::fillContextMenu(QMenu & menu, const QFileInfoList & fl
 void QFileSystemTreeDock::refresh()
 {
   return fileSystemTreeView_->refresh();
+}
+
+void QFileSystemTreeDock::onShowHistoryClicked()
+{
+  QStringList history;
+
+  if ( true ) {
+
+    static const QString historyKeyName =
+        "QFileSystemTreeHistory";
+
+    QSettings setings;
+
+    history =
+        setings.value(historyKeyName).
+            toStringList();
+  }
+
+  if ( !history.empty() ) {
+
+    QMenu menu;
+    QAction * action;
+
+    for ( int i = history.size() - 1; i >= 0; --i ) {
+      menu.addAction(action = new QAction(history[i]));
+    }
+
+    if ( (action = menu.exec(historyButton_->mapToGlobal(QPoint(0, 0)))) ) {
+      QWaitCursor wait(this);
+      fileSystemTreeView_->displayPath(action->text());
+    }
+
+  }
+
+}
+
+void QFileSystemTreeDock::updateHistory(const QString & abspath)
+{
+  static const QString historyKeyName =
+      "QFileSystemTreeHistory";
+
+  QSettings setings;
+
+  QStringList history =
+      setings.value(historyKeyName).
+          toStringList();
+
+  if ( !history.empty() ) {
+
+    const int index =
+        history.indexOf(abspath);
+
+    if ( index == history.size() - 1 ) {
+      return;
+    }
+
+    history.removeAt(index);
+
+    while ( history.size() > 16 ) {
+      history.removeAt(0);
+    }
+  }
+
+
+
+  history.append(abspath);
+
+  setings.setValue(historyKeyName,
+      history);
 }

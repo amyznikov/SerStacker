@@ -41,7 +41,7 @@ void save_parameter(const QString & prefix, const char * name, const QGLVector &
 QGLCloudViewer::QGLCloudViewer(QWidget* parent)
   : Base(parent)
 {
-  init();
+  //init();
 }
 
 
@@ -108,14 +108,13 @@ double QGLCloudViewer::pointBrightness() const
 
 void QGLCloudViewer::init()
 {
-  setSceneRadius(500);
+  setSceneRadius(100);
   setSceneCenter(QGLVector(0.0, 0.0, 0.0));
+  setBackgroundColor(QColor(0, 0, 0));
 
   glDisable(GL_LIGHTING);
   glDisable(GL_COLOR_MATERIAL);
   glEnable(GL_PROGRAM_POINT_SIZE);
-
-  // setBackgroundColor(QColor(0, 0, 0));
 
   Base::init();
 }
@@ -123,6 +122,8 @@ void QGLCloudViewer::init()
 
 void QGLCloudViewer::draw()
 {
+//  glPushMatrix();
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.0, 0.0, 0.0, 1.0);
 
@@ -167,6 +168,7 @@ void QGLCloudViewer::draw()
         }
 
         const QPoint3D & p = points[j];
+
         glVertex3d(p.x *  Sx - Tx - sceneOrigin_.x,
             p.y * Sy - Ty - sceneOrigin_.y,
             p.z * Sz - Tz - sceneOrigin_.z);
@@ -176,6 +178,7 @@ void QGLCloudViewer::draw()
     }
   }
 
+//  glPopMatrix();
 }
 
 
@@ -184,7 +187,8 @@ bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
   QPointCloud::ptr cloud = QPointCloud::create();
 
   if ( !loadPlyFile(pathFileName, cloud.get()) ) {
-    CF_ERROR("loadPlyFile('%s') fails", pathFileName.toStdString().c_str());
+    CF_ERROR("loadPlyFile('%s') fails",
+        pathFileName.toStdString().c_str());
     return false;
   }
 

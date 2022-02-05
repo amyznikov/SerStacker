@@ -263,12 +263,12 @@ set(HAVE_QGLViewer FALSE)
 find_package(QGLViewer QUIET)
 if ( NOT QGLViewer_FOUND )
 
-    set(QGLVIEWER_INCLUDE_DIRS)
-    set(QGLVIEWER_LIBRARY)
-    
+	set(QGLVIEWER_INCLUDE_DIRS "")
+	set(QGLVIEWER_LIBRARY "")
+
     message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
     	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
-        To support this functionality install pleaae fresh version of QGLViewer: \n \
+        To support this functionality install pleaae fresh version of QGLViewer from AUR or from sources: \n \
         \n \
          wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
          tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \

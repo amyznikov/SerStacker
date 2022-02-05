@@ -6,6 +6,12 @@ IF(NOT Qt5_FOUND)
   ENDIF()
 ENDIF()
 
+
+unset(QGLVIEWER_INCLUDE_DIRS)
+unset(QGLVIEWER_LIBRARY)
+unset(QGLVIEWER_LIBRARY_RELEASE)
+unset(QGLVIEWER_LIBRARY_DEBUG)
+
 FIND_PATH(QGLVIEWER_INCLUDE_DIRS QGLViewer/qglviewer.h
     /usr/include/
     /opt/local/include/
@@ -27,6 +33,7 @@ find_library(QGLVIEWER_LIBRARY_RELEASE
         ENV LIBRARY_PATH
   PATH_SUFFIXES QGLViewer QGLViewer/release
 )
+
 find_library(QGLVIEWER_LIBRARY_DEBUG
   NAMES dqglviewer dQGLViewer dqglviewer-qt5 dQGLViewer-qt5 QGLViewerd2
   PATHS /usr/lib

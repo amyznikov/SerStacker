@@ -155,7 +155,7 @@ public:
   template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
   inline get(const std::string & name, T * v) {
     std::string s;
-    return get(&s) ? *v = fromStdString(s, *v), true : false;
+    return get(name, &s) ? *v = fromStdString(s, *v), true : false;
   }
 
 

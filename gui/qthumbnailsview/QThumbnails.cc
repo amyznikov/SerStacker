@@ -99,7 +99,7 @@ static void add_libraw_file_suffixes(QStringList & suffixes)
 const char ** thumbnail_textfile_suffixes()
 {
   static const char * suffixes[] = {
-      "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf", nullptr
+      "txt", "doc", "md", "xml", "html", "htm", "rtf", "tex", "cfg", "conf", "yml", nullptr
   };
 
   return suffixes;

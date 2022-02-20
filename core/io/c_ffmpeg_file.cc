@@ -7,8 +7,8 @@
 
 #include "c_ffmpeg_file.h"
 #include <mutex>
-#include <core/readdir.h>
 #include <core/ssprintf.h>
+#include <core/readdir.h>
 #include <core/debug.h>
 
 
@@ -287,6 +287,7 @@ static bool ffmpeg_setup_encoder_parameters(AVCodecContext * codec_ctx,
 static AVCodecContext * ffmpeg_open_encoder(AVCodecID codec_id,
     int w, int h, AVPixelFormat pix_fmt, double fps,
     int flags,
+    int qscale,
     AVDictionary ** opts = nullptr)
 {
   const AVCodec * codec = nullptr;
@@ -306,6 +307,14 @@ static AVCodecContext * ffmpeg_open_encoder(AVCodecID codec_id,
 
   codec_ctx->flags |= flags; // AV_CODEC_FLAG_GLOBAL_HEADER;
   ffmpeg_setup_encoder_parameters(codec_ctx, w, h, fps, pix_fmt);
+
+  if ( qscale >= 0 ) {
+    // Based on new_output_stream() from /ffmpeg/fftools/ffmpeg_opt.c
+    codec_ctx->flags |= AV_CODEC_FLAG_QSCALE;
+    codec_ctx->global_quality = FF_QP2LAMBDA * qscale;
+    CF_DEBUG("SET codec_ctx->global_quality=%d (qscale=%d)", codec_ctx->global_quality, qscale);
+  }
+
 
   if ( (status = avcodec_open2(codec_ctx, codec, opts)) < 0 ) {
     CF_ERROR("avcodec_open2() fails: %s\n", averr2str(status));
@@ -908,6 +917,7 @@ bool c_ffmpeg_writer::open(const std::string & output_filename,
   AVCodecID codec_id = AV_CODEC_ID_NONE;
   AVPixelFormat codec_pix_fmt = AV_PIX_FMT_NONE;
   double fps = -1;
+  int qscale = -1;
 
   bool need_color_convert = false;
 
@@ -1010,6 +1020,16 @@ bool c_ffmpeg_writer::open(const std::string & output_filename,
           goto end;
         }
       }
+
+      /* check if global_quality (q, qscale) option specified */
+      if ( (e = av_dict_get(opts, "q", nullptr, flags)) || (e = av_dict_get(opts, "qscale", nullptr, flags)) ||
+          (e = av_dict_get(opts, "q:v", nullptr, flags)) ) {
+        if ( sscanf(e->value, "%d", &qscale) != 1 ) {
+          CF_ERROR("requested qscale %s is invalid", e->value);
+          goto end;
+        }
+      }
+
     }
   }
 
@@ -1093,6 +1113,7 @@ bool c_ffmpeg_writer::open(const std::string & output_filename,
           codec_pix_fmt,
           fps,
           AV_CODEC_FLAG_GLOBAL_HEADER, /*(ofmt->flags & AVFMT_GLOBALHEADER) ? AV_CODEC_FLAG_GLOBAL_HEADER : 0,*/
+          qscale,
           &opts);
 
   if ( !codec_ctx ) {
@@ -1303,10 +1324,16 @@ bool c_ffmpeg_writer::write(const cv::Mat image, int64_t pts)
 int c_ffmpeg_writer::encode_and_send_frame(AVFrame * picture)
 {
   if ( picture ) {
+
     picture->pts =
         av_rescale_q(picture->pts,
             ostream->time_base,
             codec_ctx->time_base);
+
+    if ( codec_ctx->flags & AV_CODEC_FLAG_QSCALE ) {
+      picture->quality =
+          codec_ctx->global_quality;
+    }
   }
 
   int status = avcodec_send_frame(codec_ctx, picture);

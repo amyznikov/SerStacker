@@ -6,7 +6,6 @@
  */
 
 #include "QColorSaturationOptions.h"
-#include <core/strsplit.h>
 #include <core/debug.h>
 
 
@@ -70,7 +69,7 @@ void QColorSaturationOptions::onupdatecontrols()
   }
   else {
 
-    scales_ctl->setText(toString(routine_->scales()));
+    scales_ctl->setText(toQString(routine_->scales()));
 
     setEnabled(true);
   }

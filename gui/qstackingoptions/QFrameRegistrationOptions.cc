@@ -23,38 +23,38 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
 }
 
-
-QString toString(enum frame_registration_method m)
-{
-  return toStdString(m).c_str();
-}
-
-enum frame_registration_method fromString(const QString  & s,
-    enum frame_registration_method defval )
-{
-  return fromStdString(s.toStdString(), defval);
-}
-
-QString toString(enum ECC_MOTION_TYPE v)
-{
-  return toStdString(v).c_str();
-}
-
-enum ECC_MOTION_TYPE fromString(const QString & s, enum ECC_MOTION_TYPE defval)
-{
-  return fromStdString(s.toStdString(), defval);
-}
-
-
-QString toString(enum color_channel_type v)
-{
-  return toStdString(v).c_str();
-}
-
-enum color_channel_type fromString(const QString  & s, enum color_channel_type defval )
-{
-  return fromStdString(s.toStdString(), defval);
-}
+//
+//QString toString(enum frame_registration_method m)
+//{
+//  return toStdString(m).c_str();
+//}
+//
+//enum frame_registration_method fromString(const QString  & s,
+//    enum frame_registration_method defval )
+//{
+//  return fromStdString(s.toStdString(), defval);
+//}
+//
+//QString toString(enum ECC_MOTION_TYPE v)
+//{
+//  return toStdString(v).c_str();
+//}
+//
+//enum ECC_MOTION_TYPE fromString(const QString & s, enum ECC_MOTION_TYPE defval)
+//{
+//  return fromStdString(s.toStdString(), defval);
+//}
+//
+//
+//QString toString(enum color_channel_type v)
+//{
+//  return toStdString(v).c_str();
+//}
+//
+//enum color_channel_type fromString(const QString  & s, enum color_channel_type defval )
+//{
+//  return fromStdString(s.toStdString(), defval);
+//}
 
 
 QEccSettings::QEccSettings(QWidget * parent)

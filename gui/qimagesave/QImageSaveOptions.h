@@ -38,7 +38,7 @@ public:
 
   struct QPixelDepthCombo : public QEnumComboBox<PIXEL_DEPTH> {
     QPixelDepthCombo(QWidget * parent = Q_NULLPTR) :
-        QEnumComboBox<PIXEL_DEPTH>(parent, PIXEL_DEPTHS)
+        QEnumComboBox<PIXEL_DEPTH>(parent)
     {
     }
 
@@ -88,15 +88,15 @@ enum QImageSaveFormat {
   QImageSaveJPEG = 2,
   QImageSaveFLO = 3,
 };
-
-const extern struct QImageSaveFormat_desc {
-  const char * name;
-  enum QImageSaveFormat value;
-} QImageSaveFormats[];
-
-QString toString(enum QImageSaveFormat m);
-enum QImageSaveFormat fromString(const QString & s,
-    enum QImageSaveFormat defval);
+//
+//const extern struct QImageSaveFormat_desc {
+//  const char * name;
+//  enum QImageSaveFormat value;
+//} QImageSaveFormats[];
+//
+//QString toString(enum QImageSaveFormat m);
+//enum QImageSaveFormat fromString(const QString & s,
+//    enum QImageSaveFormat defval);
 
 
 
@@ -112,7 +112,7 @@ public:
       public QEnumComboBox<QImageSaveFormat>
   {
     QImageSaveFormatCombo(QWidget * parent = Q_NULLPTR) :
-        QEnumComboBox<QImageSaveFormat>(parent, QImageSaveFormats)
+        QEnumComboBox<QImageSaveFormat>(parent)
     {
     }
   };

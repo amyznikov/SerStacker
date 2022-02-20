@@ -34,7 +34,7 @@ public:
       public QEnumComboBox<PIXEL_DEPTH>
   {
     QDDEPTHCombo(QWidget * parent = Q_NULLPTR) :
-        QEnumComboBox<PIXEL_DEPTH>(parent, PIXEL_DEPTHS)
+        QEnumComboBox<PIXEL_DEPTH>(parent)
     {
     }
   };

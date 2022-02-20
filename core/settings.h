@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef __qwcc_core_settings_h__
-#define __qwcc_core_settings_h__
+#ifndef __libconfig_settings__h__
+#define __libconfig_settings__h__
 
 #include <sys/types.h>
 #include <stddef.h>
@@ -17,12 +17,14 @@
 #include <vector>
 #include <type_traits>
 #include <libconfig.h>
-#include <core/debug.h>
+#include "ssprintf.h"
 
 
 template<class T> struct c_config_type_traits { static constexpr int type = CONFIG_TYPE_GROUP;};
 template<class T> struct c_config_type_traits<std::vector<T>> { static constexpr int type = CONFIG_TYPE_LIST;};
 template<> struct c_config_type_traits<bool> {static constexpr int type = CONFIG_TYPE_BOOL;};
+template<> struct c_config_type_traits<uint8_t> {static constexpr int type = CONFIG_TYPE_INT;};
+template<> struct c_config_type_traits<int8_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<int32_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<uint32_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<int64_t> {static constexpr int type = CONFIG_TYPE_INT64;};
@@ -35,6 +37,8 @@ template<> struct c_config_type_traits<std::string> { static constexpr int type 
 
 template<class T> struct is_config_atomic_type {static constexpr bool value = false;};
 template<> struct is_config_atomic_type<bool> {static constexpr bool value = true;};
+template<> struct is_config_atomic_type<uint8_t> {static constexpr bool value = true;};
+template<> struct is_config_atomic_type<int8_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<int32_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<uint32_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<int64_t> {static constexpr bool value = true;};
@@ -59,11 +63,13 @@ public:
   bool isNull() const;
   bool isRoot() const;
   bool isGroup() const;
+  bool isString() const;
   bool isArray() const;
   bool isList() const;
   bool isAggregate() const;
   bool isScalar() const;
   bool isNumber() const;
+  bool isInteger() const;
 
   operator bool () const;
 
@@ -155,7 +161,7 @@ public:
   template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
   inline get(const std::string & name, T * v) {
     std::string s;
-    return get(name, &s) ? *v = fromStdString(s, *v), true : false;
+    return get(name, &s) && (s.empty() || fromString(s, v));
   }
 
 
@@ -173,7 +179,7 @@ public:
   }
   template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
   inline set(const std::string & name, T v) {
-    return set(name, toStdString(v));
+    return set(name, toString(v));
   }
 
 
@@ -190,6 +196,8 @@ protected:
   static bool remove_element(config_setting_t *setting, uint index);
 
   static bool get_value(const config_setting_t *setting, bool * value);
+  static bool get_value(const config_setting_t *setting, int8_t * value);
+  static bool get_value(const config_setting_t *setting, uint8_t * value);
   static bool get_value(const config_setting_t *setting, int32_t * value);
   static bool get_value(const config_setting_t *setting, uint32_t * value);
   static bool get_value(const config_setting_t *setting, int64_t * value);
@@ -306,13 +314,13 @@ inline load_settings(c_config_setting cfg, T * v) {
 template<class T>
 typename std::enable_if<std::is_enum<T>::value, bool>::type
 inline save_settings(c_config_setting cfg, T v) {
-  return cfg.set(toStdString(v));
+  return cfg.set(toString(v));
 }
 template<class T>
 typename std::enable_if<std::is_enum<T>::value, bool>::type
 inline load_settings(c_config_setting cfg, T * v) {
   std::string s;
-  return cfg.get(&s) ? *v = fromStdString(s, *v), true : false;
+  return cfg.get(&s) && (s.empty() || fromString(s, v));
 }
 
 
@@ -336,13 +344,12 @@ inline load_settings(c_config_setting cfg, const std::string & name, T * v) {
 template<class T>
 typename std::enable_if<std::is_enum<T>::value, bool>::type
 inline save_settings(c_config_setting cfg, const std::string & name, const T & v) {
-  return cfg.set(name, toStdString(v));
+  return cfg.set(name, toString(v));
 }
 template<class T>
 typename std::enable_if<std::is_enum<T>::value, bool>::type
 inline load_settings(c_config_setting cfg, const std::string & name, T * v) {
-  std::string s;
-  return cfg.get(name, &s) ? *v = fromStdString(s, *v), true : false;
+  return cfg.get(name, v);
 }
 
 
@@ -388,160 +395,7 @@ inline bool load_settings(c_config_setting list, std::vector<T> * values)
 
 
 
-#ifdef CV_VERSION
-// This block will compile only when <opencv.hpp> is included BEFORE this include,
-// thus include opencv-related headers BEFORE this header if you need these declarations.
 
-template<class T> struct c_config_type_traits<cv::Point_<T>> { static constexpr int type = CONFIG_TYPE_GROUP; };
-template<class T> struct c_config_type_traits<cv::Point3_<T>> { static constexpr int type = CONFIG_TYPE_GROUP; };
-template<class T> struct c_config_type_traits<cv::Size_<T>> { static constexpr int type = CONFIG_TYPE_GROUP; };
-template<class T> struct c_config_type_traits<cv::Rect_<T>> { static constexpr int type = CONFIG_TYPE_GROUP; };
-template<class T, int cn> struct c_config_type_traits<cv::Vec<T, cn>> { static constexpr int type = CONFIG_TYPE_ARRAY; };
-template<class T, int m, int n> struct c_config_type_traits<cv::Matx<T, m, n>> { static constexpr int type = CONFIG_TYPE_ARRAY; };
-
-
-
-
-template<class T>
-inline bool save_settings(c_config_setting item, const cv::Size_<T> & value) {
-  return item.isGroup() && item.set("width", value.width) && item.set("height", value.height);
-}
-template<class T>
-inline bool load_settings(c_config_setting item, cv::Size_<T> * value) {
-  return item.isGroup() && item.get("width", &value->width) && item.get("height", &value->height);
-}
-
-
-
-
-template<class T>
-inline bool save_settings(c_config_setting item, const cv::Point_<T> & value) {
-  return item.isGroup() && item.set("x", value.x) && item.set("y", value.y);
-}
-template<class T>
-inline bool load_settings(c_config_setting item, cv::Point_<T> * value) {
-  return item.isGroup() && item.get("x", &value->x) && item.get("y", &value->y);
-}
-
-
-
-
-template<class T>
-inline bool save_settings(c_config_setting item, const cv::Point3_<T> & value) {
-  return item.isGroup() && item.set("x", value.x) && item.set("y", value.y) && item.set("z", value.z);
-}
-template<class T>
-inline bool load_settings(c_config_setting item, cv::Point3_<T> * value) {
-  return item.isGroup() && item.get("x", &value->x) && item.get("y", &value->y) && item.get("z", &value->z);
-}
-
-
-
-
-template<class T>
-inline bool save_settings(c_config_setting item, const cv::Rect_<T> & value) {
-  return item.isGroup() && item.set("x", value.x) && item.set("y", value.y) &&
-      item.set("width", value.width) && item.set("height", value.height);
-}
-template<class T>
-inline bool load_settings(c_config_setting item, cv::Rect_<T> * value) {
-  return item.isGroup() && item.get("x", &value->x) && item.get("y", &value->y) &&
-      item.get("width", &value->width) && item.get("height", &value->height);
-}
-
-
-
-
-template<class T, int cn>
-inline bool save_settings(c_config_setting array, const cv::Vec<T, cn> & value)
-{
-  if ( array.isArray() ) {
-    while (array.length() ) {
-      array.remove_element(0);
-    }
-    for ( int i = 0; i < cn; ++i ) {
-      if ( !array.add(value[i]) ) {
-        return false;
-      }
-    }
-    return true;
-  }
-  return false;
-}
-template<class T, int cn>
-inline bool load_settings(c_config_setting array, cv::Vec<T, cn> * value)
-{
-  if ( (array.isArray() || array.isList()) && array.length() == cn ) {
-    for ( int i = 0; i < cn; ++i ) {
-      if ( !array.get(i, &value->val[i]) ) {
-        return false;
-      }
-    }
-    return true;
-  }
-  return false;
-}
-
-template<class T>
-inline bool save_settings(c_config_setting group, const cv::Scalar_<T> & v)
-{
-  group.set("v0", v.val[0]);
-  group.set("v1", v.val[1]);
-  group.set("v2", v.val[2]);
-  group.set("v3", v.val[3]);
-  return true;
-}
-
-template<class T>
-inline bool load_settings(c_config_setting group, cv::Scalar_<T> * v)
-{
-  if ( group.isGroup() ) {
-    group.get("v0", &v->val[0]);
-    group.get("v1", &v->val[1]);
-    group.get("v2", &v->val[2]);
-    group.get("v3", &v->val[3]);
-    return true;
-  }
-  return false;
-}
-
-template<class T, int m, int n>
-inline bool save_settings(c_config_setting array, const cv::Matx<T, m, n> & value)
-{
-  if ( array.isArray() ) {
-    while (array.length() ) {
-      array.remove_element(0);
-    }
-    for ( int i = 0; i < m; ++i ) {
-      for ( int j = 0; j < n; ++j ) {
-        if ( !array.add(value(i,j)) ) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-  return false;
-}
-template<class T, int m, int n>
-inline bool load_settings(c_config_setting array, cv::Matx<T, m, n> * value)
-{
-  if ( (array.isArray() || array.isList()) && array.length() == m * n ) {
-    for ( int i = 0; i < m; ++i ) {
-      for ( int j = 0; j < n; ++j ) {
-        if ( !array.get(i * n + j, &(*value)(i,j)) ) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-  return false;
-}
-
-
-
-#endif // CV_VERSION
 
 
 template<class T>
@@ -585,53 +439,6 @@ inline bool save_c_array(c_config_setting cfg, const std::string &name, const T 
   return save_c_array(cfg.add_list(name), values, count);
 }
 
-
-
-template<class T>
-inline bool save_settings(const std::string & config_file, const T & obj, const std::string & group = "")
-{
-  c_config cfg(config_file);
-
-  time_t t = time(0);
-  if ( !save_settings(cfg.root(), "creation_date", asctime(localtime(&t))) ) {
-    CF_FATAL("save_settings() fails");
-    return false;
-  }
-
-  c_config_setting root = group.empty() ? cfg.root() : cfg.root().add_group(group);
-  if ( !save_settings(root, obj) ) {
-    CF_FATAL("save_settings('%s') fails", config_file.c_str());
-    return false;
-  }
-
-  if ( !cfg.write() ) {
-    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
-    return false;
-  }
-
-  return true;
-}
-
-template<class T>
-inline bool load_settings(const std::string & config_file, T * obj, const std::string & group = "")
-{
-  c_config cfg(config_file);
-
-  if ( !cfg.read() ) {
-    CF_FATAL("cfg.read('%s') fails", cfg.filename().c_str());
-    return false;
-  }
-
-  c_config_setting root = group.empty() ? cfg.root() : cfg.root().add_group(group);
-  if ( !load_settings(root, obj) ) {
-    CF_FATAL("load_settings('%s') fails", config_file.c_str());
-    return false;
-  }
-
-  return true;
-}
-
-
 template<class Obj, class getFn, class setFn>
 inline bool load_settings(c_config_setting settings, const std::string & propname,
     Obj * obj, getFn get, setFn set)
@@ -644,14 +451,92 @@ inline bool load_settings(c_config_setting settings, const std::string & propnam
   return false;
 }
 
+//
+//
+//#define LOAD_OPTIONS(cfg, obj, param) { \
+//  c_config_setting p = cfg[#param]; \
+//  if ( p ) { \
+//    if ( !::load_settings(p, &(obj).param) ) { \
+//      CF_ERROR("load_settings('%s') fails in %s()", #param, __PRETTY_FUNCTION__); \
+//      return false; \
+//    } \
+//  } \
+//}
+//
+
+
+
+
+struct c_libconfig_flag_desc {
+  const char * flag;
+  uint32_t value;
+};
+
+bool libconfig_parse_flags(c_config_setting settings,
+    const c_libconfig_flag_desc fdescs[/*ndescs*/],
+    uint ndescs, int * flags);
+//
+//#define LOAD_FLAGS(cfg, obj, param, fdesc) { \
+//  c_config_setting p = cfg[#param]; \
+//  if ( p ) { \
+//    int flags = 0; \
+//    const uint nflags = sizeof(fdesc) / sizeof(fdesc[0]); \
+//    if ( !::libconfig_parse_flags(p, fdesc, nflags, &flags) ) { \
+//      CF_ERROR("libconfig_parse_flags() fails for %s", #param); \
+//      return false; \
+//    } \
+//    (obj).param = flags; \
+//  } \
+//}
+//
+//
+
+#define BEGIN_LOAD_OPTIONS(cfg) \
+  if ( !(cfg) ) { \
+    CF_ERROR("libconfig settins is null in %s", __PRETTY_FUNCTION__); \
+    return false; \
+  } \
+  for ( int tmpi = 0, tmpn = (cfg).length(); tmpi < tmpn; ++tmpi ) { \
+    c_config_setting current_option = (cfg)[tmpi]; \
+    const char * current_option_name = current_option.name(); \
+    if ( !current_option_name || !*current_option_name ) { \
+      continue; \
+    }
+
+#define LOAD_OPTIONS(cfg, opts, param) \
+  if ( strcmp(current_option_name, #param) == 0 ) { \
+    if ( !load_settings(current_option, &(opts).param) ) { \
+      CF_ERROR("load_settings('%s.%s') fails", (cfg).name(), current_option_name); \
+      return false; \
+    } \
+    continue; \
+  }
+
+#define LOAD_FLAGS(cfg, opts, param, fdesc) \
+  if ( strcmp(current_option_name, #param) == 0 ) { \
+    int flags = 0; \
+    const uint nflags = sizeof(fdesc) / sizeof(fdesc[0]); \
+    if ( !::libconfig_parse_flags(current_option, fdesc, nflags, &flags) ) { \
+      CF_ERROR("libconfig_parse_flags(%s.%s) fails", (cfg).name(), current_option_name); \
+      return false; \
+    } \
+    (opts).param = flags; \
+    continue; \
+  } \
+
+
+#define END_LOAD_OPTIONS(cfg) \
+  CF_ERROR("WARNING: INVALID OR NOT SUPPORTED OPTIONS '%s.%s' in %s", \
+      (cfg).name(), current_option_name, __PRETTY_FUNCTION__); \
+  } \
 
 #define SAVE_PROPERTY(cfg, obj, prop) \
-    ::save_settings(cfg, #prop, (obj).prop())
+  ::save_settings(cfg, #prop, (obj).prop())
 
 #define LOAD_PROPERTY(cfg, obj, prop) \
-    ::load_settings(cfg, #prop, (obj), \
-        &std::remove_reference<decltype(*obj)>::type::prop, \
-        &std::remove_reference<decltype(*obj)>::type::set_##prop)
+  ::load_settings(cfg, #prop, (obj), \
+      &std::remove_reference<decltype(*obj)>::type::prop, \
+      &std::remove_reference<decltype(*obj)>::type::set_##prop)
 
 #define SAVE_SETTINGS(cfg, obj, prop) \
     ::save_settings(cfg, #prop, (obj).prop())
@@ -659,4 +544,4 @@ inline bool load_settings(c_config_setting settings, const std::string & propnam
 #define LOAD_SETTINGS(cfg, obj, prop) \
     ::load_settings(cfg, #prop, &(obj)->prop())
 
-#endif /* __qwcc_core_settings_h__ */
+#endif /* __libconfig_settings__h__ */

@@ -91,8 +91,10 @@ int main(int argc, char *argv[])
   }
 
 
+  const cv::Size frame_size = ffmpeg_reader.frame_size();
+
   fprintf(stderr, "Input: %dx%d; num_frames=%d; duration=%g sec; fps=%g\n",
-      ffmpeg_reader.coded_width(), ffmpeg_reader.coded_height(),
+      frame_size.width, frame_size.height,
       ffmpeg_reader.num_frames(),
       ffmpeg_reader.duration(),
       ffmpeg_reader.fps());

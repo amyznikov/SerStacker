@@ -356,7 +356,7 @@ bool c_input_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_roi_selection_options::serialize(c_config_setting settings) const
 {
-  CF_DEBUG("c_roi_selection_options::serialize() method=%s", toStdString(method).c_str());
+  CF_DEBUG("c_roi_selection_options::serialize() method=%s", toString(method));
 
   save_settings(settings, "roi_selection_method", method);
   save_settings(settings, "planetary_disk_crop_size", planetary_disk_crop_size);

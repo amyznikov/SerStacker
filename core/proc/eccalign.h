@@ -30,15 +30,15 @@ enum ECC_MOTION_TYPE {
     ECC_MOTION_QUADRATIC   = 5, // Quadratic form, 12 parameters are estimated
 };
 
-const extern struct ecc_motion_type_desc {
-  const char * name;
-  enum ECC_MOTION_TYPE value;
-} ecc_motion_types[];
-
-std::string toStdString(enum ECC_MOTION_TYPE m);
-enum ECC_MOTION_TYPE fromStdString(const std::string  & s,
-    enum ECC_MOTION_TYPE defval );
-
+//const extern struct ecc_motion_type_desc {
+//  const char * name;
+//  enum ECC_MOTION_TYPE value;
+//} ecc_motion_types[];
+//
+//std::string toStdString(enum ECC_MOTION_TYPE m);
+//enum ECC_MOTION_TYPE fromStdString(const std::string  & s,
+//    enum ECC_MOTION_TYPE defval );
+//
 
 
 // For the images destined for later sharpening use only LINEAR and AREA interpolation
@@ -57,14 +57,14 @@ enum ECC_INTERPOLATION_METHOD {
 };
 
 
-const extern struct ecc_interpolation_method_desc {
-  const char * name;
-  enum ECC_INTERPOLATION_METHOD value;
-} ecc_interpolation_methods[];
-
-std::string toStdString(enum ECC_INTERPOLATION_METHOD m);
-enum ECC_INTERPOLATION_METHOD fromStdString(const std::string  & s,
-    enum ECC_INTERPOLATION_METHOD defval );
+//const extern struct ecc_interpolation_method_desc {
+//  const char * name;
+//  enum ECC_INTERPOLATION_METHOD value;
+//} ecc_interpolation_methods[];
+//
+//std::string toStdString(enum ECC_INTERPOLATION_METHOD m);
+//enum ECC_INTERPOLATION_METHOD fromStdString(const std::string  & s,
+//    enum ECC_INTERPOLATION_METHOD defval );
 
 enum ECC_BORDER_MODE {
   ECC_BORDER_UNKNOWN     = -1,
@@ -77,15 +77,15 @@ enum ECC_BORDER_MODE {
   ECC_BORDER_DEFAULT     = cv::BORDER_DEFAULT,
   ECC_BORDER_ISOLATED    = cv::BORDER_ISOLATED
 };
-
-const extern struct ecc_border_mode_desc {
-  const char * name;
-  enum ECC_BORDER_MODE value;
-} ecc_border_modes[];
-
-std::string toStdString(enum ECC_BORDER_MODE m);
-enum ECC_BORDER_MODE fromStdString(const std::string  & s,
-    enum ECC_BORDER_MODE defval );
+//
+//const extern struct ecc_border_mode_desc {
+//  const char * name;
+//  enum ECC_BORDER_MODE value;
+//} ecc_border_modes[];
+//
+//std::string toStdString(enum ECC_BORDER_MODE m);
+//enum ECC_BORDER_MODE fromStdString(const std::string  & s,
+//    enum ECC_BORDER_MODE defval );
 
 //
 // args:

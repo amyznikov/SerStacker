@@ -13,18 +13,33 @@
 #endif
 
 
-const struct QtMatchingFlags_desc QtMatchingFlags[] = {
-    {"Wildcard", Qt::MatchWildcard},
-    {"Contains", Qt::MatchContains },
-    {"StartsWith", Qt::MatchStartsWith},
-    {"EndsWith", Qt::MatchEndsWith},
-    {"Exact", Qt::MatchExactly},
-    {"RegExp", Qt::MatchRegularExpression},
-    {nullptr, (Qt::MatchFlag)(0)}
-};
+template<>
+const c_enum_member * members_of<Qt::MatchFlag>()
+{
+  static constexpr c_enum_member members[] = {
+      {Qt::MatchWildcard, "Wildcard", },
+      {Qt::MatchContains , "Contains", },
+      {Qt::MatchStartsWith, "StartsWith", },
+      {Qt::MatchEndsWith, "EndsWith", },
+      {Qt::MatchExactly, "Exact", },
+      {Qt::MatchRegularExpression, "RegExp", },
+      {(Qt::MatchFlag)(0), nullptr, }
+  };
+  return members;
+}
+//
+//const struct QtMatchingFlags_desc QtMatchingFlags[] = {
+//    {"Wildcard", Qt::MatchWildcard},
+//    {"Contains", Qt::MatchContains },
+//    {"StartsWith", Qt::MatchStartsWith},
+//    {"EndsWith", Qt::MatchEndsWith},
+//    {"Exact", Qt::MatchExactly},
+//    {"RegExp", Qt::MatchRegularExpression},
+//    {nullptr, (Qt::MatchFlag)(0)}
+//};
 
 
-QString toString(Qt::MatchFlags v)
+QString toQString(Qt::MatchFlags v)
 {
   v = v & 0xF;
   if ( v == Qt::MatchRegExp ) {
@@ -34,25 +49,33 @@ QString toString(Qt::MatchFlags v)
     v = Qt::MatchExactly;
   }
 
-  for ( uint i = 0; QtMatchingFlags[i].name; ++i ) {
-    if ( QtMatchingFlags[i].value == v ) {
-      return QtMatchingFlags[i].name;
+  const c_enum_member * QtMatchingFlags =
+      members_of<Qt::MatchFlag>();
+
+  if ( QtMatchingFlags ) {
+    for ( uint i = 0; QtMatchingFlags[i].name; ++i ) {
+      if ( QtMatchingFlags[i].value == v ) {
+        return QtMatchingFlags[i].name;
+      }
     }
   }
   return "";
 }
 
-Qt::MatchFlags fromString(const QString & s, Qt::MatchFlags defval)
+Qt::MatchFlags fromQString(const QString & s, Qt::MatchFlags defval)
 {
   const QByteArray a = s.toUtf8();
   const char * cstr = a.data();
 
-  for ( uint i = 0; QtMatchingFlags[i].name; ++i ) {
-    if ( strcasecmp(QtMatchingFlags[i].name, cstr) == 0 ) {
-      return QtMatchingFlags[i].value;
+  const c_enum_member * QtMatchingFlags =
+      members_of<Qt::MatchFlag>();
+  if ( QtMatchingFlags ) {
+    for ( uint i = 0; QtMatchingFlags[i].name; ++i ) {
+      if ( strcasecmp(QtMatchingFlags[i].name, cstr) == 0 ) {
+        return (Qt::MatchFlags)QtMatchingFlags[i].value;
+      }
     }
   }
-
   return defval;
 }
 
@@ -225,7 +248,7 @@ void QThumbnailsQuickFilterOptions::setMatchingFlags(Qt::MatchFlags v)
 
   setUpdatingControls(true);
 
-  matchingFlags_ctl->setCurrentItem((Qt::MatchFlags)(v & 0xF));
+  matchingFlags_ctl->setCurrentItem((Qt::MatchFlag)(int)(v & 0xF));
   caseSensitivity_ctl->setChecked((((uint) v) & Qt::MatchCaseSensitive) != 0);
 
   setUpdatingControls(inUpdatingControls);

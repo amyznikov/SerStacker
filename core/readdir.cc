@@ -1,3 +1,4 @@
+
 /*
  * readdir.cc
  *
@@ -181,39 +182,76 @@ const char * c_file_name(const std::string & ss)
   return eos;
 }
 
+std::string stem(const std::string &pathname, int depth)
+{
+  if (depth < 0) {
+    depth = INT_MAX;
+  }
+
+  std::string filename = get_file_name(pathname);
+
+  size_t pos = 0;
+  while (depth > 0) {
+    pos = filename.find_last_of(".");
+    if (pos == std::string::npos) {
+      break;
+    }
+    filename = filename.substr(0, pos);
+    depth--;
+  }
+  return filename;
+}
+
+static size_t get_file_suffix_pos(const std::string & pathname)
+{
+  size_t pos = pathname.find_last_of(".");
+  if ( pos == std::string::npos || pos == pathname.size() - 1 ) {
+    return pos;
+  }
+
+  if ( pathname[pos + 1] != '/' && pathname[pos + 1] != '\\' ) {
+    return pos;
+  }
+
+  return std::string::npos;
+}
 
 /* get file suffix from full path name */
 std::string get_file_suffix(const std::string & pathname)
 {
-  size_t pos = pathname.find_last_of(".");
+  size_t pos = get_file_suffix_pos(pathname);
   if ( pos != std::string::npos ) {
     return pathname.substr(pos);
   }
   return std::string();
 }
 
-/* get file suffix from full path name (C-string version) */
-const char * c_file_suffix(const char * fname)
-{
-  if ( fname ) {
-    const char * s = strrchr(fname, '.' );
-    return s ? s : fname + strlen(fname);
-  }
-  return nullptr;
-}
-
-
 /* add new or replace existng file suffix */
 void set_file_suffix(std::string & pathname, const std::string & suffix)
 {
-  size_t pos = pathname.find_last_of('.');
+  size_t pos = get_file_suffix_pos(pathname);
   if ( pos == std::string::npos ) {
     pathname.append(suffix);
   }
   else {
-    pathname.replace(pathname.begin() + pos, pathname.end(), suffix);
+    pathname.replace(pathname.begin() + pos,
+        pathname.end(),
+        suffix);
   }
 }
+
+
+///* get file suffix from full path name (C-string version) */
+//const char * c_file_suffix(const char * fname)
+//{
+//  if ( fname ) {
+//    const char * s = strrchr(fname, '.' );
+//    return s ? s : fname + strlen(fname);
+//  }
+//  return nullptr;
+//}
+//
+
 
 /* get directory part from full path name */
 std::string get_parent_directory(const std::string & fullpathname)
@@ -1135,5 +1173,27 @@ std::string get_self_exe_path(void)
 {
   return get_parent_directory(get_self_exe_pathname());
 }
+
+/*
+ * Return command line of the self executable
+ * */
+std::string get_self_exe_cmdline(void)
+{
+  std::string cmdline;
+  FILE * fp;
+
+  if ( (fp = fopen("/proc/self/cmdline", "r")) ) {
+
+    int c;
+    while ( (c = fgetc(fp)) != -1 ) {
+      cmdline += (char) ( c ? c : ' ');
+    }
+
+    fclose(fp);
+  }
+
+  return cmdline;
+}
+
 
 

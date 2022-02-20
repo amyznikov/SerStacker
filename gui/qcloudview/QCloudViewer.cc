@@ -18,7 +18,7 @@ bool fromString(const QString & s, QGLVector * v)
   return sscanf(s.toUtf8().data(), "%lf ; %lf ; %lf", &v->x, &v->y, &v->z) == 3;
 }
 
-QString toString(const QGLVector & v)
+QString toQString(const QGLVector & v)
 {
   return QString("%1;%2;%3").arg(v.x).arg(v.y).arg(v.z);
 }
@@ -31,7 +31,7 @@ bool load_parameter(const QSettings & settings, const QString & prefix, const ch
 void save_parameter(const QString & prefix, const char * name, const QGLVector & value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), toString(value));
+  settings.setValue(QString("%1/%2").arg(prefix).arg(name), toQString(value));
 }
 
 

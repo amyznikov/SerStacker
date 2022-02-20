@@ -19,173 +19,78 @@
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
 #include <core/readdir.h>
-#include <core/ssprintf.h>
 #include <core/get_time.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const struct roi_selection_method_desc roi_selection_methods[] = {
-    {"none", roi_selection_none},
-    {"planetary_disk", roi_selection_planetary_disk},
-    {"rectangle", roi_selection_rectange_crop},
-    {nullptr, roi_selection_none},
-};
 
-std::string toStdString(enum roi_selection_method v)
+template<>
+const c_enum_member * members_of<roi_selection_method>()
 {
-  for ( uint i = 0; roi_selection_methods[i].name; ++i ) {
-    if ( roi_selection_methods[i].value == v ) {
-      return roi_selection_methods[i].name;
-    }
-  }
-  return "";
-}
-
-enum roi_selection_method fromStdString(const std::string & s, enum roi_selection_method defval )
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; roi_selection_methods[i].name; ++i ) {
-    if ( strcasecmp(roi_selection_methods[i].name, cstr) == 0 ) {
-      return roi_selection_methods[i].value;
-    }
-  }
-  return defval;
+  static constexpr c_enum_member members[] = {
+      { roi_selection_none, "none", },
+      { roi_selection_planetary_disk, "planetary_disk", },
+      { roi_selection_rectange_crop, "rectangle", },
+      { roi_selection_none, nullptr, },
+  };
+  return members;
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const struct frame_registration_method_desc frame_registration_methods[] = {
-    { "Feature Based Registration (SURF)", frame_registration_method_surf },
-    { "Planetary Disk Registration", frame_registration_method_planetary_disk},
-    { "Star Field Registration", frame_registration_method_star_field},
-    { "Jovian Derotate", frame_registration_method_jovian_derotate},
-    { "MM", frame_registration_method_mm},
-    { "None", frame_registration_none},
-    { nullptr, frame_registration_none }, // must be last
-};
-
-std::string toStdString(enum frame_registration_method v)
+template<>
+const c_enum_member * members_of<frame_registration_method>()
 {
-  for ( uint i = 0; frame_registration_methods[i].name; ++i ) {
-    if ( frame_registration_methods[i].value == v ) {
-      return frame_registration_methods[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      { frame_registration_method_surf , "Feature Based Registration (SURF)", },
+      { frame_registration_method_planetary_disk, "Planetary Disk Registration", },
+      { frame_registration_method_star_field, "Star Field Registration", },
+      { frame_registration_method_jovian_derotate, "Jovian Derotate", },
+      { frame_registration_method_mm, "MM", },
+      { frame_registration_none, "None", },
+      { frame_registration_none , nullptr, }, // must be last
+  };
+  return members;
 }
 
-enum frame_registration_method fromStdString(const std::string & s, enum frame_registration_method defval)
+template<>
+const c_enum_member * members_of<frame_accumulation_method>()
 {
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; frame_registration_methods[i].name; ++i ) {
-    if ( strcasecmp(frame_registration_methods[i].name, cstr) == 0 ) {
-      return frame_registration_methods[i].value;
-    }
-  }
-  return defval;
+  static constexpr c_enum_member members[] = {
+      { frame_accumulation_weighted_average, "weighted_average", },
+      { frame_accumulation_fft, "fft", },
+      { frame_accumulation_none, "None", },
+      { frame_accumulation_none, nullptr, },
+  };
+  return members;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const struct frame_accumulation_method_desc frame_accumulation_methods[] = {
-    { "weighted_average", frame_accumulation_weighted_average },
-    { "fft", frame_accumulation_fft },
-    { "None", frame_accumulation_none },
-    { nullptr, frame_accumulation_none, },
-};
-
-std::string toStdString(enum frame_accumulation_method v)
+template<>
+const c_enum_member * members_of<frame_upscale_stage>()
 {
-  for ( uint i = 0; frame_accumulation_methods[i].name; ++i ) {
-    if ( frame_accumulation_methods[i].value == v ) {
-      return frame_accumulation_methods[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      { frame_upscale_after_align , "after_align", },
+      { frame_upscale_before_align , "before_align", },
+      { frame_upscale_stage_unknown , nullptr, },
+  };
+  return members;
 }
 
-enum frame_accumulation_method fromStdString(const std::string  & s,
-    enum frame_accumulation_method defval )
+template<>
+const c_enum_member * members_of<frame_upscale_option>()
 {
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; frame_accumulation_methods[i].name; ++i ) {
-    if ( strcasecmp(frame_accumulation_methods[i].name, cstr) == 0 ) {
-      return frame_accumulation_methods[i].value;
-    }
-  }
-  return defval;
+  static constexpr c_enum_member members[] = {
+      {frame_upscale_none, "none", },
+      {frame_upscale_pyrUp, "x2.0", },
+      {frame_upscale_x15, "x1.5", },
+      {frame_upscale_x30, "x3.0", },
+      {frame_upscale_none, nullptr, },
+  };
+  return members;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const struct frame_upscale_stage_desc frame_upscale_stages[] = {
-    { "after_align", frame_upscale_after_align },
-    { "before_align", frame_upscale_before_align },
-    { nullptr, frame_upscale_stage_unknown },
-};
-
-std::string toStdString(enum frame_upscale_stage v)
-{
-  for ( uint i = 0; frame_upscale_stages[i].name; ++i ) {
-    if ( frame_upscale_stages[i].value == v ) {
-      return frame_upscale_stages[i].name;
-    }
-  }
-  return "";
-}
-
-enum frame_upscale_stage fromStdString(const std::string  & s,
-    enum frame_upscale_stage defval )
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; frame_upscale_stages[i].name; ++i ) {
-    if ( strcasecmp(frame_upscale_stages[i].name, cstr) == 0 ) {
-      return frame_upscale_stages[i].value;
-    }
-  }
-  return defval;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const struct frame_upscale_option_desc frame_upscale_options[] ={
-    {"none", frame_upscale_none},
-    {"x2.0", frame_upscale_pyrUp},
-    {"x1.5", frame_upscale_x15},
-    {"x3.0", frame_upscale_x30},
-    {nullptr, frame_upscale_none},
-} ;
-
-std::string toStdString(enum frame_upscale_option v)
-{
-  for ( uint i = 0; frame_upscale_options[i].name; ++i ) {
-    if ( frame_upscale_options[i].value == v ) {
-      return frame_upscale_options[i].name;
-    }
-  }
-  return "";
-}
-
-enum frame_upscale_option fromStdString(const std::string  & s,
-    enum frame_upscale_option defval )
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; frame_upscale_options[i].name; ++i ) {
-    if ( strcasecmp(frame_upscale_options[i].name, cstr) == 0 ) {
-      return frame_upscale_options[i].value;
-    }
-  }
-  return defval;
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

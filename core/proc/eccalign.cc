@@ -7,10 +7,10 @@
 
 #include "eccalign.h"
 #include <tbb/tbb.h>
-#include <core/debug.h>
-
 #include <core/io/save_image.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
+
 
 // Debug logging macros
 
@@ -61,112 +61,56 @@ void filter2D(int stype, int dtype, int kernel_type,
 
 ///////////////////////////////////////////////////////////////////////////////
 
-const struct ecc_motion_type_desc ecc_motion_types[] = {
-    {"TRANSLATION", ECC_MOTION_TRANSLATION },
-    {"EUCLIDEAN", ECC_MOTION_EUCLIDEAN},
-    {"SCALED_EUCLIDEAN", ECC_MOTION_EUCLIDEAN_SCALED},
-    {"AFFINE", ECC_MOTION_AFFINE },
-    {"HOMOGRAPHY", ECC_MOTION_HOMOGRAPHY},
-    {"QUADRATIC", ECC_MOTION_QUADRATIC },
-    {nullptr, ECC_MOTION_NONE}
-};
-
-
-std::string toStdString(enum ECC_MOTION_TYPE v)
+template<>
+const c_enum_member * members_of<ECC_MOTION_TYPE>()
 {
-  for ( uint i = 0; ecc_motion_types[i].name; ++i ) {
-    if ( v == ecc_motion_types[i].value ) {
-      return ecc_motion_types[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      { ECC_MOTION_TRANSLATION, "TRANSLATION", "" },
+      { ECC_MOTION_EUCLIDEAN, "EUCLIDEAN", },
+      { ECC_MOTION_EUCLIDEAN_SCALED, "SCALED_EUCLIDEAN", "" },
+      { ECC_MOTION_AFFINE, "AFFINE", "" },
+      { ECC_MOTION_HOMOGRAPHY, "HOMOGRAPHY", "" },
+      { ECC_MOTION_QUADRATIC, "QUADRATIC" "" },
+      { ECC_MOTION_NONE, nullptr, nullptr }
+  };
+
+  return members;
 }
 
-enum ECC_MOTION_TYPE fromStdString(const std::string & s, enum ECC_MOTION_TYPE defval)
+template<>
+const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
 {
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; ecc_motion_types[i].name; ++i ) {
-    if ( strcasecmp(ecc_motion_types[i].name, cstr) == 0 ) {
-      return ecc_motion_types[i].value;
-    }
-  }
-  return defval;
+  static constexpr c_enum_member members[] = {
+      { ECC_INTER_LINEAR, "LINEAR", "" },
+      { ECC_INTER_LINEAR_EXACT, "LINEAR_EXACT", "" },
+      { ECC_INTER_AREA, "AREA", "" },
+      { ECC_INTER_CUBIC, "CUBIC", "" },
+      { ECC_INTER_LANCZOS4, "LANCZOS4", "" },
+      { ECC_INTER_NEAREST, "NEAREST", "" },
+      #if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(4,5,0) )
+      { ECC_INTER_NEAREST_EXACT, "NEAREST_EXACT", "" },
+      #endif
+      { ECC_INTER_NEAREST, nullptr, nullptr }  // must be last
+  };
+  return members;
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-
-const extern struct ecc_interpolation_method_desc ecc_interpolation_methods[] = {
-    { "LINEAR", ECC_INTER_LINEAR },
-    { "LINEAR_EXACT", ECC_INTER_LINEAR_EXACT },
-    { "AREA", ECC_INTER_AREA },
-    { "CUBIC", ECC_INTER_CUBIC },
-    { "LANCZOS4", ECC_INTER_LANCZOS4 },
-    { "NEAREST", ECC_INTER_NEAREST },
-#if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(4,5,0) )
-    { "NEAREST_EXACT", ECC_INTER_NEAREST_EXACT },
-#endif
-    { nullptr, ECC_INTER_NEAREST }  // must be last
-};
-
-std::string toStdString(enum ECC_INTERPOLATION_METHOD v)
+template<>
+const c_enum_member * members_of<ECC_BORDER_MODE>()
 {
-  for ( uint i = 0; ecc_interpolation_methods[i].name; ++i ) {
-    if ( v == ecc_interpolation_methods[i].value ) {
-      return ecc_interpolation_methods[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      { ECC_BORDER_REFLECT101, "BORDER_REFLECT101", },
+      { ECC_BORDER_REFLECT, "BORDER_REFLECT", },
+      { ECC_BORDER_REPLICATE, "BORDER_REPLICATE", },
+      { ECC_BORDER_WRAP, "BORDER_WRAP", },
+      { ECC_BORDER_CONSTANT, "BORDER_CONSTANT", },
+      { ECC_BORDER_TRANSPARENT, "BORDER_TRANSPARENT", },
+      { ECC_BORDER_ISOLATED, "BORDER_ISOLATED", },
+      { ECC_BORDER_DEFAULT, nullptr, }  // must be last
+  };
+  return members;
 }
 
-enum ECC_INTERPOLATION_METHOD fromStdString(const std::string & s, enum ECC_INTERPOLATION_METHOD defval )
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; ecc_interpolation_methods[i].name; ++i ) {
-    if ( strcasecmp(ecc_interpolation_methods[i].name, cstr) == 0 ) {
-      return ecc_interpolation_methods[i].value;
-    }
-  }
-  return defval;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-const extern struct ecc_border_mode_desc ecc_border_modes[] = {
-    { "BORDER_REFLECT101", ECC_BORDER_REFLECT101},
-    { "BORDER_REFLECT", ECC_BORDER_REFLECT},
-    { "BORDER_REPLICATE",  ECC_BORDER_REPLICATE},
-    { "BORDER_WRAP", ECC_BORDER_WRAP},
-    { "BORDER_CONSTANT",  ECC_BORDER_CONSTANT},
-    { "BORDER_TRANSPARENT", ECC_BORDER_TRANSPARENT},
-    { "BORDER_ISOLATED", ECC_BORDER_ISOLATED},
-    { nullptr, ECC_BORDER_DEFAULT}  // must be last
-};
-
-std::string toStdString(enum ECC_BORDER_MODE v)
-{
-  for ( uint i = 0; ecc_border_modes[i].name; ++i ) {
-    if ( v == ecc_border_modes[i].value ) {
-      return ecc_border_modes[i].name;
-    }
-  }
-  return "";
-}
-
-enum ECC_BORDER_MODE fromStdString(const std::string & s, enum ECC_BORDER_MODE defval )
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; ecc_border_modes[i].name; ++i ) {
-    if ( strcasecmp(ecc_border_modes[i].name, cstr) == 0 ) {
-      return ecc_border_modes[i].value;
-    }
-  }
-  return defval;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 

@@ -6,36 +6,20 @@
  */
 
 #include "c_anscombe_transform.h"
+#include <core/ssprintf.h>
 #include <tbb/tbb.h>
 
-const struct anscombe_method_desc anscombe_methods[] = {
-    {"none", anscombe_none},
-    {"sqrt", anscombe_sqrt},
-    {"native", anscombe_native},
-    {nullptr, anscombe_none} // must  be last
-};
-
-
-std::string toStdString(enum anscombe_method v)
+template<>
+const c_enum_member * members_of<anscombe_method>()
 {
-  for ( uint i = 0; anscombe_methods[i].name; ++i ) {
-    if ( anscombe_methods[i].value == v ) {
-      return anscombe_methods[i].name;
-    }
-  }
-  return "";
-}
+  static constexpr c_enum_member members[] = {
+      { anscombe_none, "none" },
+      { anscombe_sqrt, "sqrt", },
+      { anscombe_native, "native", },
+      { anscombe_none, nullptr, }  // must  be last
+  };
 
-enum anscombe_method fromStdString(const std::string & s, enum anscombe_method defval)
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; anscombe_methods[i].name; ++i ) {
-    if ( strcasecmp(anscombe_methods[i].name, cstr) == 0 ) {
-      return anscombe_methods[i].value;
-    }
-  }
-  return defval;
+  return members;
 }
 
 

@@ -22,7 +22,6 @@
 #include <core/proc/jupiter.h>
 #include <core/proc/fft.h>
 #include <core/settings.h>
-#include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/proc/inpaint.h>
@@ -30,7 +29,7 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 #include <variant>
-#include <core/stdstring.h>
+
 
 enum new_anscombe_method
 {

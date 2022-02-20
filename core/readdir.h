@@ -80,11 +80,20 @@ const char * c_file_name(const char * s);
 /* get file name part from full path name (C-string version)*/
 const char * c_file_name(const std::string & s);
 
+/**
+ * @brief Returns filename stem
+ * 
+ * @param pathname full/short filename
+ * @param depth number of suffixes to be dropped (-1 for all suffixes)
+ * @return std::string 
+ */
+std::string stem(const std::string &pathname, int depth = 1);
+
 /* get file suffix from full path name */
 std::string get_file_suffix(const std::string & pathname);
 
-/* get file suffix from full path name (C-string version) */
-const char * c_file_suffix(const char * fname);
+///* get file suffix from full path name (C-string version) */
+//const char * c_file_suffix(const char * fname);
 
 /* add new or replace existng file suffix */
 void set_file_suffix(std::string & pathname, const std::string & suffix);
@@ -189,6 +198,11 @@ std::string get_self_exe_pathname(void);
  * Return directory name to self executable
  * */
 std::string get_self_exe_path(void);
+
+/*
+ * Return command line of the self executable
+ * */
+std::string get_self_exe_cmdline(void);
 
 ///////////////////////////////////////////////////////////////////////////////
 #endif /* __readdir_h__ */

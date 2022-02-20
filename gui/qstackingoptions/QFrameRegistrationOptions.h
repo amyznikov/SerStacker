@@ -12,18 +12,18 @@
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 #include "QMasterFrameOptions.h"
-
-QString toString(enum frame_registration_method v);
-enum frame_registration_method fromString(const QString  & s,
-    enum frame_registration_method defval );
-
-QString toString(enum ECC_MOTION_TYPE v);
-enum ECC_MOTION_TYPE fromString(const QString  & s,
-    enum ECC_MOTION_TYPE defval );
-
-QString toString(enum color_channel_type v);
-enum color_channel_type fromString(const QString  & s,
-    enum color_channel_type defval );
+//
+//QString toString(enum frame_registration_method v);
+//enum frame_registration_method fromString(const QString  & s,
+//    enum frame_registration_method defval );
+//
+//QString toString(enum ECC_MOTION_TYPE v);
+//enum ECC_MOTION_TYPE fromString(const QString  & s,
+//    enum ECC_MOTION_TYPE defval );
+//
+//QString toString(enum color_channel_type v);
+//enum color_channel_type fromString(const QString  & s,
+//    enum color_channel_type defval );
 
 
 class QFrameRegistrationMethodCombo :
@@ -34,7 +34,7 @@ public:
   typedef QEnumComboBox<frame_registration_method> Base;
 
   QFrameRegistrationMethodCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, frame_registration_methods)
+      : Base(parent)
     {}
 };
 
@@ -46,7 +46,7 @@ public:
   typedef QEnumComboBox<ECC_MOTION_TYPE> Base;
 
   QEccMotionTypeCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, ecc_motion_types)
+      : Base(parent)
     {}
 };
 
@@ -58,7 +58,7 @@ public:
   typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> Base;
 
   QEccInterpolatioMethodCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, ecc_interpolation_methods)
+      : Base(parent)
     {}
 };
 
@@ -71,7 +71,7 @@ public:
   typedef QEnumComboBox<ECC_BORDER_MODE> Base;
 
   QEccBorderModeCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, ecc_border_modes)
+      : Base(parent)
     {}
 };
 
@@ -84,7 +84,7 @@ public:
   typedef QEnumComboBox<color_channel_type> Base;
 
   QRegistrationColorChannelCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, color_channel_types)
+      : Base(parent)
     {}
 };
 

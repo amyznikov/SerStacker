@@ -22,18 +22,6 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
 }
 
-
-
-QString toString(enum frame_accumulation_method v)
-{
-  return toStdString(v).c_str();
-}
-
-enum frame_accumulation_method fromString(const QString  & s, enum frame_accumulation_method defval)
-{
-  return fromStdString(s.toStdString(), defval);
-}
-
 QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
     Base("QFrameAccumulationOptions", parent)
 {

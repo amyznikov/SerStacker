@@ -303,8 +303,8 @@ void QStackOutputOptions::onupdatecontrols()
 
     debug_frame_registration_ctl->setChecked(
         output_options.debug_frame_registration);
-    debug_frame_registration_frame_indexes_ctl->setValue(toString(
-        output_options.debug_frame_registration_frame_indexes));
+    debug_frame_registration_frame_indexes_ctl->setValue(
+        output_options.debug_frame_registration_frame_indexes);
     debug_frame_registration_frame_indexes_ctl->setEnabled(
         output_options.debug_frame_registration);
 

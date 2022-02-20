@@ -6,9 +6,6 @@
  */
 
 #include "c_image_processor.h"
-#include <atomic>
-#include <core/readdir.h>
-#include <core/ssprintf.h>
 #include "c_align_color_channels_routine.h"
 #include "c_anscombe_routine.h"
 #include "c_autoclip_routine.h"
@@ -27,6 +24,8 @@
 #include "c_radial_polysharp_routine.h"
 #include "c_auto_correlation_routine.h"
 #include "c_gaussian_filter_routine.h"
+#include <core/readdir.h>
+#include <atomic>
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 

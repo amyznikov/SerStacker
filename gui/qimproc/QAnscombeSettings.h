@@ -28,22 +28,22 @@ public:
             }))
     {}
   } classFactory;
-
-  static QString toString(enum anscombe_method v) {
-    return QString::fromStdString(toStdString(v));
-  }
-
-  static enum anscombe_method fromString(const QString  & s, enum anscombe_method defval ) {
-    return fromStdString(s.toStdString(), defval);
-  }
+//
+//  static QString toString(enum anscombe_method v) {
+//    return QString::fromStdString(toStdString(v));
+//  }
+//
+//  static enum anscombe_method fromString(const QString  & s, enum anscombe_method defval ) {
+//    return fromStdString(s.toStdString(), defval);
+//  }
 
   class QAnscombeMethodCombo :
       public QEnumComboBox<anscombe_method>
   {
   public:
     typedef QEnumComboBox<anscombe_method> Base;
-    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR)
-        : Base(parent, anscombe_methods)
+    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR) :
+      Base(parent)
       {}
   };
 

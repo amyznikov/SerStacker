@@ -38,10 +38,10 @@ protected:
 
 protected:
   struct QMotionTypeCombo : public QEnumComboBox<ECC_MOTION_TYPE> {
-    QMotionTypeCombo(QWidget*parent) : QEnumComboBox<ECC_MOTION_TYPE>(parent, ecc_motion_types) {}
+    QMotionTypeCombo(QWidget*parent) : QEnumComboBox<ECC_MOTION_TYPE>(parent) {}
   };
-  struct QInterpolationTypeCombo : public QEnumComboBox<enum ECC_INTERPOLATION_METHOD> {
-    QInterpolationTypeCombo(QWidget*parent) : QEnumComboBox<enum ECC_INTERPOLATION_METHOD>(parent, ecc_interpolation_methods) {}
+  struct QInterpolationTypeCombo : public QEnumComboBox<ECC_INTERPOLATION_METHOD> {
+    QInterpolationTypeCombo(QWidget*parent) : QEnumComboBox<ECC_INTERPOLATION_METHOD>(parent) {}
   };
 
   QNumberEditBox * reference_channel_ctl = Q_NULLPTR;

@@ -118,7 +118,7 @@ protected:
 
 
 bool fromString(const QString & s, QGLVector * v);
-QString toString(const QGLVector & v);
+QString toQString(const QGLVector & v);
 
 bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  QGLVector * v);
 void save_parameter(const QString & prefix, const char * name, const QGLVector & value );

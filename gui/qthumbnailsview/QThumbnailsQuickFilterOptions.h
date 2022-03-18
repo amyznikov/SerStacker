@@ -12,15 +12,16 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/addctrl.h>
 
+//
+//const extern struct QtMatchingFlags_desc {
+//  const char * name;
+//  Qt::MatchFlags value;
+//} QtMatchingFlags[];
+//
 
-const extern struct QtMatchingFlags_desc {
-  const char * name;
-  Qt::MatchFlags value;
-} QtMatchingFlags[];
+QString toQString(Qt::MatchFlags m);
 
-QString toString(Qt::MatchFlags m);
-
-Qt::MatchFlags fromString(const QString & s,
+Qt::MatchFlags fromQString(const QString & s,
     Qt::MatchFlags defval );
 
 bool matchQuickFilter(const QString & text,
@@ -29,14 +30,14 @@ bool matchQuickFilter(const QString & text,
 
 
 class QThumbnailsQuickFilterMatchingFlagsCombo
-    : public QEnumComboBox<Qt::MatchFlags>
+    : public QEnumComboBox<Qt::MatchFlag>
 {
   Q_OBJECT;
 public:
-  typedef QEnumComboBox<Qt::MatchFlags> Base;
+  typedef QEnumComboBox<Qt::MatchFlag> Base;
 
   QThumbnailsQuickFilterMatchingFlagsCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, QtMatchingFlags)
+      : Base(parent)
     {}
 
 };

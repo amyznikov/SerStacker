@@ -629,7 +629,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       const QSize thumbSize = compute_thumbnail_size(QSize(ffmpeg.coded_size().width, ffmpeg.coded_size().height),
           thumb_size);
       if ( thumbSize.width() < ffmpeg.coded_size().width || thumbSize.height() < ffmpeg.coded_size().height ) {
-        ffmpeg.set_scaled_size(cv::Size(thumbSize.width(), thumbSize.height()));
+        ffmpeg.set_frame_size(cv::Size(thumbSize.width(), thumbSize.height()));
       }
 
       //CF_DEBUG("pathFileName: %s ffmpeg.num_frames()=%d", pathFileName.toStdString().c_str(), ffmpeg.num_frames());

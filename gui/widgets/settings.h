@@ -10,6 +10,7 @@
 
 #include <QtWidgets/QtWidgets>
 #include <opencv2/opencv.hpp>
+#include <core/ssprintf.h>
 
 template<class T>
 struct cfmt {
@@ -70,6 +71,7 @@ struct cfmt<double> {
   static constexpr const char * format = "%lf";
 };
 
+#if 0
 
 template<class T>
 inline QString toString(const T & v) {
@@ -309,8 +311,32 @@ inline QString toString(const cv::Scalar & v)
 #endif
 
 
+#endif
+
 template<class T>
-inline int fromString(const QString & s, T * x, int nmax)
+inline QString toQString(const T & v) {
+  return QString(std::string(toString(v)).c_str());
+}
+
+template<>
+inline QString toQString(const QString & v) {
+  return v;
+}
+
+template<class T>
+inline bool fromString(const QString & text, T * v) {
+  return fromString(text.toStdString(), v);
+}
+
+template<>
+inline bool fromString(const QString & text, QString * v) {
+  *v = text;
+  return true;
+}
+
+
+template<class T>
+inline int fromString(const QString & s, T x[], int nmax)
 {
   const char * sp = s.toUtf8().data();
   int n = 0;
@@ -368,7 +394,7 @@ inline bool fromString(const QString & text, std::vector<T> * v)
 }
 
 template<class T>
-inline QString toString(const std::vector<T> & v)
+inline QString toQString(const std::vector<T> & v)
 {
   QString s;
   for ( uint i = 0, n = v.size(); i < n; ++i ) {
@@ -376,12 +402,10 @@ inline QString toString(const std::vector<T> & v)
   }
   return s;
 }
-
-
 template<class T>
 inline void save_parameter(const QString & prefix, const char * name, const T & value ) {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), toString(value));
+  settings.setValue(QString("%1/%2").arg(prefix).arg(name), toQString(value));
 }
 
 inline void save_parameter(const QString & prefix, const char * name, const QString & value ) {

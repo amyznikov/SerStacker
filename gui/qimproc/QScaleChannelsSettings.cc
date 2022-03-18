@@ -73,17 +73,17 @@ void QScaleChannelsSettings::onupdatecontrols()
   }
   else {
 
-    bias_r_ctl->setText(toString(routine_->bias_r()));
-    stretch_r_ctl->setText(toString(routine_->stretch_r()));
+    bias_r_ctl->setText(toQString(routine_->bias_r()));
+    stretch_r_ctl->setText(toQString(routine_->stretch_r()));
 
-    bias_g_ctl->setText(toString(routine_->bias_g()));
-    stretch_g_ctl->setText(toString(routine_->stretch_g()));
+    bias_g_ctl->setText(toQString(routine_->bias_g()));
+    stretch_g_ctl->setText(toQString(routine_->stretch_g()));
 
-    bias_b_ctl->setText(toString(routine_->bias_b()));
-    stretch_b_ctl->setText(toString(routine_->stretch_b()));
+    bias_b_ctl->setText(toQString(routine_->bias_b()));
+    stretch_b_ctl->setText(toQString(routine_->stretch_b()));
 
-    bias_a_ctl->setText(toString(routine_->bias_a()));
-    stretch_a_ctl->setText(toString(routine_->stretch_a()));
+    bias_a_ctl->setText(toQString(routine_->bias_a()));
+    stretch_a_ctl->setText(toQString(routine_->stretch_a()));
 
     setEnabled(true);
   }

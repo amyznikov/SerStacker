@@ -12,42 +12,52 @@
 #include <core/io/save_image.h>
 #include <tiff.h>
 #include <tiffio.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
-const struct QImageSaveFormat_desc QImageSaveFormats[] = {
-    { "TIFF", QImageSaveTIFF },
-    { "PNG", QImageSavePNG },
-    { "JPEG", QImageSaveJPEG },
-    { nullptr, QImageSaveFormatUnknown }  // must  be last
-};
-
-QString toString(enum QImageSaveFormat v)
+template<>
+const c_enum_member * members_of<QImageSaveFormat>()
 {
-  for ( uint i = 0; QImageSaveFormats[i].name; ++i ) {
-    if ( QImageSaveFormats[i].value == v ) {
-      return QImageSaveFormats[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      { QImageSaveTIFF, "TIFF", },
+      { QImageSavePNG, "PNG", },
+      { QImageSaveJPEG, "JPEG", },
+      { QImageSaveFormatUnknown, nullptr, }  // must  be last
+  };
+
+  return members;
 }
 
-enum QImageSaveFormat fromString(const QString & s, enum QImageSaveFormat defval)
-{
-  const QByteArray utf8 = s.toUtf8();
-  const char * cstr = utf8.data();
+//const struct QImageSaveFormat_desc QImageSaveFormats[] = {
+//};
+//
+//QString toString(enum QImageSaveFormat v)
+//{
+//  for ( uint i = 0; QImageSaveFormats[i].name; ++i ) {
+//    if ( QImageSaveFormats[i].value == v ) {
+//      return QImageSaveFormats[i].name;
+//    }
+//  }
+//  return "";
+//}
+//
+//enum QImageSaveFormat fromString(const QString & s, enum QImageSaveFormat defval)
+//{
+//  const QByteArray utf8 = s.toUtf8();
+//  const char * cstr = utf8.data();
+//
+//  for ( uint i = 0; QImageSaveFormats[i].name; ++i ) {
+//    if ( strcasecmp(QImageSaveFormats[i].name, cstr) == 0 ) {
+//      return QImageSaveFormats[i].value;
+//    }
+//  }
+//  return defval;
+//}
 
-  for ( uint i = 0; QImageSaveFormats[i].name; ++i ) {
-    if ( strcasecmp(QImageSaveFormats[i].name, cstr) == 0 ) {
-      return QImageSaveFormats[i].value;
-    }
-  }
-  return defval;
-}
-
-static QString toString(const PIXEL_DEPTH v)
-{
-  return toStdString(v).c_str();
-}
+//static QString toString(const PIXEL_DEPTH v)
+//{
+//  return toStdString(v).c_str();
+//}
 
 //static PIXEL_DEPTH fromString(const QString & s, PIXEL_DEPTH defval)
 //{

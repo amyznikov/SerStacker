@@ -6,44 +6,52 @@
  */
 
 #include "extract_channel.h"
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
-
-
-const struct color_channel_type_desc color_channel_types[] = {
-    {"gray", color_channel_gray },
-    {"luminance (Lab)", color_channel_luminance},
-    {"red", color_channel_red    },
-    {"green", color_channel_green},
-    {"blue",  color_channel_blue},
-    {"min_inensity",  color_channel_min_inensity},
-    {"max_inensity",  color_channel_max_inensity},
-    {"avg_inensity",  color_channel_avg_inensity},
-    {nullptr, color_channel_unknown}
-};
-
-
-std::string toStdString(enum color_channel_type v)
+template<>
+const c_enum_member * members_of<color_channel_type>()
 {
-  for ( uint i = 0; color_channel_types[i].name; ++i ) {
-    if ( color_channel_types[i].value == v ) {
-      return color_channel_types[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      { color_channel_gray, "gray", },
+      { color_channel_luminance, "luminance (Lab)", },
+      { color_channel_red, "red", },
+      { color_channel_green, "green", },
+      { color_channel_blue, "blue", },
+      { color_channel_min_inensity, "min_inensity", },
+      { color_channel_max_inensity, "max_inensity", },
+      { color_channel_avg_inensity, "avg_inensity", },
+      { color_channel_unknown, nullptr, }
+  };
+  return members;
 }
 
-enum color_channel_type fromStdString(const std::string & s, enum color_channel_type defval)
-{
-  const char * cstr = s.c_str();
-
-  for ( uint i = 0; color_channel_types[i].name; ++i ) {
-    if ( strcasecmp(color_channel_types[i].name, cstr) == 0 ) {
-      return color_channel_types[i].value;
-    }
-  }
-  return defval;
-}
+//
+//const struct color_channel_type_desc color_channel_types[] = {
+//};
+//
+//
+//std::string toStdString(enum color_channel_type v)
+//{
+//  for ( uint i = 0; color_channel_types[i].name; ++i ) {
+//    if ( color_channel_types[i].value == v ) {
+//      return color_channel_types[i].name;
+//    }
+//  }
+//  return "";
+//}
+//
+//enum color_channel_type fromStdString(const std::string & s, enum color_channel_type defval)
+//{
+//  const char * cstr = s.c_str();
+//
+//  for ( uint i = 0; color_channel_types[i].name; ++i ) {
+//    if ( strcasecmp(color_channel_types[i].name, cstr) == 0 ) {
+//      return color_channel_types[i].value;
+//    }
+//  }
+//  return defval;
+//}
 
 
 // Extract requested color channel form input color image

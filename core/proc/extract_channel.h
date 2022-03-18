@@ -25,15 +25,15 @@ enum color_channel_type {
   color_channel_avg_inensity = channel_channel_featured_begin + 7, // cv::reduce(avg)
 };
 
-
-const extern struct color_channel_type_desc {
-  const char * name;
-  enum color_channel_type value;
-} color_channel_types[];
-
-std::string toStdString(enum color_channel_type v);
-enum color_channel_type fromStdString(const std::string  & s,
-    enum color_channel_type defval );
+//
+//const extern struct color_channel_type_desc {
+//  const char * name;
+//  enum color_channel_type value;
+//} color_channel_types[];
+//
+//std::string toStdString(enum color_channel_type v);
+//enum color_channel_type fromStdString(const std::string  & s,
+//    enum color_channel_type defval );
 
 
 

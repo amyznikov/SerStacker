@@ -301,17 +301,18 @@ c_movie_input_source::ptr c_movie_input_source::create(const std::string & filen
 
 const std::vector<std::string> & c_movie_input_source::suffixes()
 {
-  static const std::vector<std::string> suffixes_ = {
-      ".mov",
-      ".avi",
-      ".mp4",
-      ".mjpg",
-      ".mjpeg",
-      ".ogv",
-      ".webm",
-      ".mkv",
-      ".h264",
-  };
+  static std::vector<std::string> suffixes_;
+
+  if ( suffixes_.empty() ) {
+
+    const std::vector<std::string> & ffmpeg_formats =
+        c_ffmpeg_reader::supported_input_formats();
+
+    suffixes_.reserve(ffmpeg_formats.size());
+    for (const std::string & fmt : ffmpeg_formats ) {
+      suffixes_.emplace_back("." + fmt);
+    }
+  }
 
   return suffixes_;
 }

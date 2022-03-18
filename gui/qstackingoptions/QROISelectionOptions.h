@@ -14,10 +14,10 @@
 #include <gui/widgets/QLineEditBox.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
-
-QString toString(enum roi_selection_method v);
-enum roi_selection_method fromString(const QString  & s,
-    enum roi_selection_method defval );
+//
+//QString toString(enum roi_selection_method v);
+//enum roi_selection_method fromString(const QString  & s,
+//    enum roi_selection_method defval );
 
 
 class QROISelectionMethodCombo :
@@ -28,7 +28,7 @@ public:
   typedef QEnumComboBox<roi_selection_method> Base;
 
   QROISelectionMethodCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, roi_selection_methods)
+      : Base(parent)
     {}
 };
 

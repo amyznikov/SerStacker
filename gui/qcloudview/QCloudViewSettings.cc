@@ -130,7 +130,7 @@ void QCloudViewSettings::onupdatecontrols()
   else {
 
     sceneRadius_ctl->setValue(cloudViewer_->sceneRadius());
-    sceneOrigin_ctl->setValue(toString(cloudViewer_->sceneOrigin()));
+    sceneOrigin_ctl->setValue(toQString(cloudViewer_->sceneOrigin()));
     pointSize_ctl->setValue(cloudViewer_->pointSize());
     pointBrightness_ctl->setValue(cloudViewer_->pointBrightness());
     sceneCenter_ctl->setValue(toString(cloudViewer_->sceneCenter()));

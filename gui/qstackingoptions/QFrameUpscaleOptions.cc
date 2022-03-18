@@ -19,15 +19,15 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
 }
 
-QString toString(enum frame_upscale_option v)
-{
-  return toStdString(v).c_str();
-}
-
-enum frame_upscale_option fromString(const QString  & s, enum frame_upscale_option defval )
-{
-  return fromStdString(s.toStdString(), defval);
-}
+//QString toString(enum frame_upscale_option v)
+//{
+//  return toStdString(v).c_str();
+//}
+//
+//enum frame_upscale_option fromString(const QString  & s, enum frame_upscale_option defval )
+//{
+//  return fromStdString(s.toStdString(), defval);
+//}
 
 QFrameUpscaleOptions::QFrameUpscaleOptions(QWidget * parent) :
     Base("QFrameUpscaleOptions", parent)

@@ -278,6 +278,12 @@ bool c_config_setting::isGroup() const
   return setting_ && config_setting_type(setting_) == CONFIG_TYPE_GROUP;
 }
 
+bool c_config_setting::isString() const
+{
+  return setting_ && config_setting_type(setting_) == CONFIG_TYPE_STRING;
+}
+
+
 bool c_config_setting::isArray() const
 {
   return setting_ && config_setting_type(setting_) == CONFIG_TYPE_ARRAY;
@@ -305,6 +311,12 @@ bool c_config_setting::isNumber() const
 {
   const int type = setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
   return type == CONFIG_TYPE_INT || type == CONFIG_TYPE_INT64 || type == CONFIG_TYPE_FLOAT;
+}
+
+bool c_config_setting::isInteger() const
+{
+  const int type = setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
+  return type == CONFIG_TYPE_INT || type == CONFIG_TYPE_INT64;
 }
 
 
@@ -395,6 +407,30 @@ bool c_config_setting::get_value(const config_setting_t * setting, bool * value)
   return false;
 }
 
+bool c_config_setting::get_value(const config_setting_t *setting, int8_t * value)
+{
+  if ( setting && config_setting_is_number(setting) ) {
+    const int v = config_setting_get_int(setting);
+    if ( v >= INT8_MIN && v <= INT8_MAX ) {
+      *value = v;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool c_config_setting::get_value(const config_setting_t *setting, uint8_t * value)
+{
+  if ( setting && config_setting_is_number(setting) ) {
+    const int v = config_setting_get_int(setting);
+    if ( v >= 0 && v <= UINT8_MAX ) {
+      *value = v;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool c_config_setting::get_value(const config_setting_t * setting, int32_t * value)
 {
   if ( setting && config_setting_is_number(setting) ) {
@@ -461,7 +497,7 @@ bool c_config_setting::get_value(const config_setting_t * setting, const char **
 bool c_config_setting::get_value(const config_setting_t *setting, std::string * value)
 {
   if ( setting && setting->type == CONFIG_TYPE_STRING ) {
-    *value = setting->value.sval ? setting->value.sval : "";
+    *value = setting->value.sval ? (const char *)setting->value.sval : "";
     return true;
   }
   return false;
@@ -514,4 +550,38 @@ bool c_config_setting::set_value(config_setting_t *setting, const std::string & 
 }
 
 
+bool libconfig_parse_flags(c_config_setting settings, const c_libconfig_flag_desc fdescs[/*ndescs*/], uint ndescs, int * flags)
+{
+  if ( !settings ) {
+    CF_ERROR("libconfig settings is null in %s",
+        __PRETTY_FUNCTION__);
+    return false;
+  }
+
+  std::string sflags;
+
+  if ( ::load_settings(settings, &sflags) ) {
+
+    const std::vector<std::string> tokens =
+        strsplit(sflags, " \t\n|+;");
+
+    uint i;
+
+    for ( const std::string & sflag : tokens ) {
+      const char * cflag = sflag.c_str();
+      for ( i = 0; i < ndescs; ++i ) {
+        if ( strcasecmp(cflag, fdescs[i].flag) == 0 ) {
+          *flags |= fdescs[i].value;
+          break;
+        }
+      }
+      if ( i == ndescs ) {
+        CF_ERROR("Invalid or not supported flag: %s", cflag);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 

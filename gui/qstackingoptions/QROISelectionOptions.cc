@@ -20,17 +20,17 @@ static QIcon getIcon(const QString & name)
 {
   return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
 }
-
-
-QString toString(enum roi_selection_method v)
-{
-  return QString::fromStdString(toStdString(v));
-}
-
-enum roi_selection_method fromString(const QString  & s, enum roi_selection_method defval )
-{
-  return fromStdString(s.toStdString(), defval);
-}
+//
+//
+//QString toString(enum roi_selection_method v)
+//{
+//  return QString::fromStdString(toStdString(v));
+//}
+//
+//enum roi_selection_method fromString(const QString  & s, enum roi_selection_method defval )
+//{
+//  return fromStdString(s.toStdString(), defval);
+//}
 
 
 

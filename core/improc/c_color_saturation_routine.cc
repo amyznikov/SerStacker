@@ -8,7 +8,6 @@
 #include "c_color_saturation_routine.h"
 #include <core/proc/color_saturation.h>
 #include <core/io/save_image.h>
-#include <core/ssprintf.h>
 
 c_color_saturation_routine::c_class_factory c_color_saturation_routine::class_factory;
 

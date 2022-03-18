@@ -25,8 +25,8 @@ public:
   explicit QLineEditBox(const QString &, QWidget *parent = Q_NULLPTR);
 
   template<class T>
-  void setValue(T v) {
-    setText(toString(v));
+  void setValue(const T & v) {
+    setText(toQString(v));
   }
 
 signals:

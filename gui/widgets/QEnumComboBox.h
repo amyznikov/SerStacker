@@ -9,7 +9,7 @@
 #define __QEnumComboBox_h__
 
 #include <QtWidgets/QtWidgets>
-
+#include <core/ssprintf.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -44,21 +44,7 @@ public:
   QEnumComboBox(QWidget * parent)
     : Base(parent)
   {
-  }
-
-  template<class S>
-  QEnumComboBox(QWidget * parent, const S items[])
-    : Base(parent)
-  {
-    setEnumItems(items);
-  }
-
-  template<class S>
-  void setEnumItems(const S items[]) {
-    while ( items->name ) {
-      QComboBox::addItem(items->name, (int)(items->value));
-      ++items;
-    }
+    setupItems();
   }
 
   void setCurrentItem(E value) {
@@ -67,6 +53,20 @@ public:
 
   E currentItem(void) {
     return QComboBox::currentIndex() >= 0 ? (E) (QComboBox::currentData().toInt()) : (E) (-1);
+  }
+
+protected:
+  void setupItems()
+  {
+    const c_enum_member * membs =
+        members_of<E>();
+
+    if ( membs ) {
+      while ( membs->name && *membs->name ) {
+        QComboBox::addItem(membs->name, (int) (membs->value));
+        ++membs;
+      }
+    }
   }
 
 };

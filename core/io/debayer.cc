@@ -7,42 +7,50 @@
 
 #include "debayer.h"
 #include <tbb/tbb.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
-
-
-const struct DEBAYER_ALGORITHM_desc debayer_algorithms[] = {
-    {"DISABLE", DEBAYER_DISABLE},
-    {"GB", DEBAYER_GB},
-    {"EA", DEBAYER_EA},
-    {"VNG", DEBAYER_VNG},
-    {"NN", DEBAYER_NN},
-    {"GBNR", DEBAYER_GBNR},
-    {nullptr, DEBAYER_GB} // must  be last
-};
-
-
-std::string toStdString(enum DEBAYER_ALGORITHM v)
+template<>
+const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 {
-  for ( uint i = 0; debayer_algorithms[i].name; ++i ) {
-    if ( debayer_algorithms[i].value == v ) {
-      return debayer_algorithms[i].name;
-    }
-  }
-  return "";
+  static constexpr c_enum_member members[] = {
+      {DEBAYER_DISABLE, "DISABLE", },
+      {DEBAYER_GB, "GB", },
+      {DEBAYER_EA, "EA", },
+      {DEBAYER_VNG, "VNG", },
+      {DEBAYER_NN, "NN", },
+      {DEBAYER_GBNR, "GBNR", },
+      {DEBAYER_GB, nullptr, } // must  be last
+  };
+  return members;
 }
 
-enum DEBAYER_ALGORITHM fromStdString(const std::string & s, enum DEBAYER_ALGORITHM defval)
-{
-  const char * cstr = s.c_str();
 
-  for ( uint i = 0; debayer_algorithms[i].name; ++i ) {
-    if ( strcasecmp(debayer_algorithms[i].name, cstr) == 0 ) {
-      return debayer_algorithms[i].value;
-    }
-  }
-  return defval;
-}
+//const struct DEBAYER_ALGORITHM_desc debayer_algorithms[] = {
+//};
+//
+//
+//std::string toStdString(enum DEBAYER_ALGORITHM v)
+//{
+//  for ( uint i = 0; debayer_algorithms[i].name; ++i ) {
+//    if ( debayer_algorithms[i].value == v ) {
+//      return debayer_algorithms[i].name;
+//    }
+//  }
+//  return "";
+//}
+//
+//enum DEBAYER_ALGORITHM fromStdString(const std::string & s, enum DEBAYER_ALGORITHM defval)
+//{
+//  const char * cstr = s.c_str();
+//
+//  for ( uint i = 0; debayer_algorithms[i].name; ++i ) {
+//    if ( strcasecmp(debayer_algorithms[i].name, cstr) == 0 ) {
+//      return debayer_algorithms[i].value;
+//    }
+//  }
+//  return defval;
+//}
 
 
 /** @brief

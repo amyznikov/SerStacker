@@ -25,7 +25,7 @@ public:
     typedef QEnumComboBox<frame_upscale_option> Base;
 
     QUpscaleOptionCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, frame_upscale_options)
+      : Base(parent)
       {}
   };
 
@@ -35,7 +35,7 @@ public:
     typedef QEnumComboBox<frame_upscale_stage> Base;
 
     QUpscaleStageCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent, frame_upscale_stages)
+      : Base(parent)
       {}
   };
 

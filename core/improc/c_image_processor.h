@@ -13,6 +13,7 @@
 #include <core/proc/estimate_noise.h>
 #include <core/proc/smap.h>
 #include <core/settings.h>
+#include <core/opencv_settings.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 

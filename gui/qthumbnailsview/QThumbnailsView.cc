@@ -470,6 +470,7 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
   connect(listWidget_, &QThumbnailsListWidget::customContextMenuRequested,
     this, &ThisClass::customContextMenuRequested);
 
+
   //onViewItemCustomContextMenuRequested
 
 //  connect(new QShortcut(QKeySequence(Qt::Key_Return), listWidget_),&QShortcut::activated,
@@ -589,6 +590,7 @@ void QThumbnailsView::updateCurrentStackWidget()
 
 void QThumbnailsView::onSearchImageFilesStarted()
 {
+  QApplication::setOverrideCursor(Qt::WaitCursor);
   updateCurrentStackWidget();
 }
 
@@ -603,6 +605,7 @@ void QThumbnailsView::onSearchImageFilesFinished()
 {
   extractMissingThumbiails();
   updateCurrentStackWidget();
+  QApplication::restoreOverrideCursor();
 }
 
 void QThumbnailsView::extractMissingThumbiails()

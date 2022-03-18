@@ -28,7 +28,6 @@ public:
       Qt::WindowFlags flags = Qt::WindowFlags());
 
   QCustomDockTitleBar * titleBar() const;
-
 };
 
 
@@ -45,8 +44,8 @@ public:
 
   QCustomDockTitleBarLabel * titleLabel() const;
 
-  void addButton(QToolButton * button);
-  void addButton(QAction * action);
+  QToolButton * addButton(QToolButton * button);
+  QToolButton * addButton(QAction * action);
 
   QToolButton * addButton(const QIcon & icon, const QString & tooltip = "");
   QToolButton * addButton(const QString & icon, const QString & tooltip = "");

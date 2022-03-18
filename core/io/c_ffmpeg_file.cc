@@ -101,7 +101,7 @@ end:
 
 static int ffmpeg_alloc_input_context(AVFormatContext **ic, AVIOInterruptCB * icb, AVDictionary ** options)
 {
-  AVInputFormat * fmt = nullptr;
+  const AVInputFormat * fmt = nullptr;
   AVDictionaryEntry * e = nullptr;
 
   int status = 0;

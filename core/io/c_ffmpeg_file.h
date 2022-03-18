@@ -97,7 +97,7 @@ protected:
 
   int  video_stream_index = -1;
   AVFormatContext * ic = nullptr;
-  AVCodec *         codec = nullptr;
+  const AVCodec *   codec = nullptr;
   AVCodecContext *  cctx = nullptr;
   AVStream *        stream = nullptr;
   AVPacket *        avpacket = nullptr;

@@ -103,14 +103,14 @@ PIXEL_DEPTH QImageSavePNGOptions::pixelDepth() const
 QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
     Base("QImageSaveTIFFOptions", parent)
 {
-  pixelDepth_ctl = add_enum_combobox<QPixelDepthCombo>(
-      "Pixel type:",
-      [this](PIXEL_DEPTH v) {
-      });
+  pixelDepth_ctl =
+      add_enum_combobox<PIXEL_DEPTH>("Pixel type:",
+          [this](PIXEL_DEPTH v) {
+          });
 
-  compression_ctl = add_combobox(
-      "TIFF Compression: ",
-      std::function<void(int)>());
+  compression_ctl = 
+      add_combobox( "TIFF Compression: ",
+          std::function<void(int)>());
 
 
   compression_ctl->addItem("NONE", COMPRESSION_NONE);
@@ -168,7 +168,8 @@ int QImageSaveTIFFOptions::tiffCompression() const
 QImageSaveJPEGOptions::QImageSaveJPEGOptions(QWidget * parent) :
     Base("QImageSaveJPEGOptions", parent)
 {
-  quality_ctl = add_numeric_box<double>("Jpeg quality",
+  quality_ctl = 
+    add_numeric_box<double>("Jpeg quality",
       [this](double v) {
       });
 
@@ -192,8 +193,9 @@ double QImageSaveJPEGOptions::jpegQuality() const
 QImageSaveOptions::QImageSaveOptions(QWidget * parent) :
     Base("QImageSaveOptions", parent)
 {
-  format_ctl = add_enum_combobox<QImageSaveFormatCombo>("Format:",
-      [this](QImageSaveFormat format) {
+  format_ctl =
+      add_enum_combobox<QImageSaveFormat>("Format:",
+          [this](QImageSaveFormat format) {
 
         switch (format) {
           case QImageSaveTIFF:
@@ -275,7 +277,7 @@ QImageSaveOptionsDialog::QImageSaveOptionsDialog(QWidget * parent) :
       new QPushButton("OK", this));
 
   hbox->addWidget(cancel_ctl =
-      new QPushButton("Canel", this));
+      new QPushButton("Cancel", this));
 
   layout->addWidget(options_ctl = new QImageSaveOptions(this));
   layout->addLayout(hbox);
@@ -450,6 +452,11 @@ QString saveImageFileAs(QWidget * parent,
             dlgbox->pngOptions();
 
         selectedPixelDepth = pngOptions->pixelDepth();
+
+        if ( embedAlphaMask && currentImage.channels() == 1 ) {
+          embedAlphaMask = false;
+        }
+
         break;
       }
       case QImageSaveJPEG:

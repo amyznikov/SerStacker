@@ -119,6 +119,7 @@ static int cvMatDepth(uint tiff_sample_format, uint tiff_bps)
 
 static bool load_tiff_image (cv::Mat & image, const std::string & filename)
 {
+  CF_DEBUG("ENTER");
   image.release();
 
   if ( filename.empty() ) {
@@ -287,7 +288,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
     CF_WARNING("%u additional extra channels are not handled", EXTRA);
   }
 
-  // CF_DEBUG("[%s] worst_case=%d", cfilename, worst_case);
+  CF_DEBUG("[%s] worst_case=%d", cfilename, worst_case);
 
   if ( worst_case ) {
 
@@ -307,6 +308,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
 
   }
   else {
+
 
     uint32_t tile_width = 0;
     uint32_t tile_height = 0;
@@ -353,18 +355,28 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
       else {
 
         cv::Mat tile;
+        uint w, h;
         tile.create(tile_height, tile_width, image.type());
 
-        for ( uint y = 0; y < IMAGE_HEIGHT; y += tile_height ) {
-          for ( uint x = 0; x < IMAGE_WIDTH; x += tile_width ) {
+        for ( uint y = 0; y < IMAGE_HEIGHT; ) {
+
+          h = y + tile_height <= IMAGE_HEIGHT ? tile_height : IMAGE_HEIGHT - y;
+
+          for ( uint x = 0; x < IMAGE_WIDTH;  ) {
 
             if ( TIFFReadTile(tif, tile.data, x, y, 0, 0) < 0 ) {
               CF_ERROR("TIFFReadTile(x=%d y=%d) fails", x, y);
               return false;
             }
 
-            tile.copyTo(image(cv::Rect(x, y, tile_width, tile_height)));
+            w = x + tile_width <= IMAGE_WIDTH ? tile_width : IMAGE_WIDTH - x;
+
+            tile(cv::Rect(0,0,w,h)).copyTo(image(cv::Rect(x, y, w, h)));
+
+            x += w;
           }
+
+          y += h;
         }
 
       }

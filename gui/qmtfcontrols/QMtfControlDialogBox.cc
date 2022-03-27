@@ -23,11 +23,11 @@ QMtfControlDialogBox::QMtfControlDialogBox(QWidget * parent)
   setWindowTitle("Adjust Display Levels ...");
 
   vbox_ = new QVBoxLayout(this);
-  imageLevelsConfigWidget_ = new QMtfControl(this);
+  mtfControl_ = new QMtfControl(this);
 
-  vbox_->addWidget(imageLevelsConfigWidget_);
+  vbox_->addWidget(mtfControl_);
 
-  connect(imageLevelsConfigWidget_, &QMtfControl::mtfChanged,
+  connect(mtfControl_, &QMtfControl::mtfChanged,
       this, &ThisClass::mtfChanged);
 }
 
@@ -52,22 +52,22 @@ void QMtfControlDialogBox::hideEvent(QHideEvent *e)
 
 void QMtfControlDialogBox::setInputImage(cv::InputArray image, cv::InputArray mask)
 {
-  imageLevelsConfigWidget_->setInputImage(image, mask);
+  mtfControl_->setInputImage(image, mask);
 
 }
 
 void QMtfControlDialogBox::setDisplayImage(cv::InputArray image, cv::InputArray mask)
 {
-  imageLevelsConfigWidget_->setOutputImage(image, mask);
+  mtfControl_->setOutputImage(image, mask);
 }
 
 
-void QMtfControlDialogBox::setMtf(const c_pixinsight_midtones_transfer_function::ptr & mtf)
+void QMtfControlDialogBox::setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf)
 {
-  return imageLevelsConfigWidget_->setMtf(mtf);
+  return mtfControl_->setMtf(mtf);
 }
 
-const c_pixinsight_midtones_transfer_function::ptr & QMtfControlDialogBox::mtf() const
+const c_pixinsight_midtones_transfer_function::sptr & QMtfControlDialogBox::mtf() const
 {
-  return imageLevelsConfigWidget_->mtf();
+  return mtfControl_->mtf();
 }

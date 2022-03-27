@@ -26,7 +26,7 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
     Base("QFrameAccumulationOptions", parent)
 {
 
-  accumulation_method_ctl = add_enum_combobox<QFrameAccumulationMethodCombo>(
+  accumulation_method_ctl = add_enum_combobox<frame_accumulation_method>(
       "Accumulation Method:",
       [this](frame_accumulation_method v) {
         if ( options_ && v != options_->accumulation_method ) {

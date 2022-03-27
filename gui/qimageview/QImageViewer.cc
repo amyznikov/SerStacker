@@ -90,12 +90,12 @@ QStatusBar * QImageViewer::statusbar() const
 
 void QImageViewer::setDisplayFunction(const DisplayFunction & func)
 {
-  this->displayFunction_ = func;
+  this->display_function_ = func;
 }
 
 const QImageViewer::DisplayFunction & QImageViewer::displayFunction() const
 {
-  return this->displayFunction_;
+  return this->display_function_;
 }
 
 void QImageViewer::setViewScale(int scale, const QPoint * centerPos)
@@ -181,17 +181,17 @@ void QImageViewer::updateDisplay()
     view_->scene()->setBackground(QImage());
   }
   else {
-    if ( !displayFunction_ ) {
+    if ( !display_function_ ) {
       displayImage_ = currentImage_;
     }
     else if ( currentImage_.channels() == 2  ) {
       // asumme this is optical flow image
       displayImage_.release();
-      displayFunction_(currentImage_, displayImage_, currentImage_.depth());
+      display_function_(currentImage_, displayImage_, currentImage_.depth());
     }
     else  {
       displayImage_.release();
-      displayFunction_(currentImage_, displayImage_, CV_8U);
+      display_function_(currentImage_, displayImage_, CV_8U);
     }
 
     cv2qt(displayImage_, &qimage_);

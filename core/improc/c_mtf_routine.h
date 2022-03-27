@@ -34,7 +34,7 @@ public:
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
+  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
 
   void set_shadows(double v) {
     mtf_->set_shadows(v);
@@ -62,7 +62,7 @@ public:
 
 
 protected:
-  c_pixinsight_midtones_transfer_function::ptr mtf_ =
+  c_pixinsight_midtones_transfer_function::sptr mtf_ =
       c_pixinsight_midtones_transfer_function::create();
 };
 

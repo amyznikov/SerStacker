@@ -6,9 +6,7 @@
  */
 
 #include "QFrameRegistrationOptions.h"
-
-#include <gui/widgets/addctrl.h>
-#include <gui/widgets/settings.h>
+//#include <gui/widgets/addctrl.h>
 #include <core/debug.h>
 
 #define ICON_check_all      "check_all"
@@ -256,7 +254,7 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
     : Base("QFrameRegistrationBaseSettings", parent)
 {
 
-  reference_channel_ctl = add_enum_combobox<QRegistrationColorChannelCombo>(
+  reference_channel_ctl = add_enum_combobox<color_channel_type>(
       "Registration channel:",
       [this](color_channel_type v) {
         if ( options_ && v != options_->registration_channel ) {
@@ -265,7 +263,7 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-  motion_type_ctl = add_enum_combobox<QEccMotionTypeCombo>(
+  motion_type_ctl = add_enum_combobox<ECC_MOTION_TYPE>(
       "Motion type:",
       [this](ECC_MOTION_TYPE v) {
         if ( options_ && v != options_->motion_type ) {
@@ -282,7 +280,7 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-  interpolation_ctl =  add_enum_combobox<QEccInterpolatioMethodCombo>(
+  interpolation_ctl =  add_enum_combobox<ECC_INTERPOLATION_METHOD>(
       "Interpolation method:",
       [this](ECC_INTERPOLATION_METHOD v) {
         if ( options_ && v != options_->interpolation ) {
@@ -291,7 +289,7 @@ QFrameRegistrationBaseSettings::QFrameRegistrationBaseSettings(QWidget * parent)
         }
       });
 
-  border_ctl = add_enum_combobox<QEccBorderModeCombo>(
+  border_ctl = add_enum_combobox<ECC_BORDER_MODE>(
       "Border mode:",
       [this](ECC_BORDER_MODE v) {
         if ( options_ && v != options_->border_mode ) {
@@ -674,7 +672,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
 
 
   frameRegistrationMethod_ctl =
-      add_enum_combobox<QFrameRegistrationMethodCombo>(
+      add_enum_combobox<frame_registration_method>(
           "Registration method:",
           [this](frame_registration_method) {
             updatemethodspecificpage();

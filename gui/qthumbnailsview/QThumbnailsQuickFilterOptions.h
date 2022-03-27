@@ -29,19 +29,21 @@ bool matchQuickFilter(const QString & text,
     Qt::MatchFlags flags);
 
 
-class QThumbnailsQuickFilterMatchingFlagsCombo
-    : public QEnumComboBox<Qt::MatchFlag>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<Qt::MatchFlag> Base;
+typedef QEnumComboBox<Qt::MatchFlag> QThumbnailsQuickFilterMatchingFlagsCombo;
 
-  QThumbnailsQuickFilterMatchingFlagsCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-
-};
-
+//class QThumbnailsQuickFilterMatchingFlagsCombo
+//    : public QEnumComboBox<Qt::MatchFlag>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<Qt::MatchFlag> Base;
+//
+//  QThumbnailsQuickFilterMatchingFlagsCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//
+//};
+//
 
 class QThumbnailsQuickFilterOptions
     : public QSettingsWidget

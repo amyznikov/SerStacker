@@ -9,9 +9,9 @@
 #include "pixinsight-mtf.h"
 
 
-c_pixinsight_midtones_transfer_function::ptr c_pixinsight_midtones_transfer_function::create()
+c_pixinsight_midtones_transfer_function::sptr c_pixinsight_midtones_transfer_function::create()
 {
-  return ptr(new c_pixinsight_midtones_transfer_function());
+  return sptr(new c_pixinsight_midtones_transfer_function());
 }
 
 

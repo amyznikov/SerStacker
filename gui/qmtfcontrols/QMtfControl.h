@@ -22,8 +22,8 @@ public:
 
   QMtfControl(QWidget * parent = Q_NULLPTR);
 
-  void setMtf(const c_pixinsight_midtones_transfer_function::ptr & mtf);
-  const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
+  void setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf);
+  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask);
   void setOutputImage(cv::InputArray image, cv::InputArray mask);
@@ -49,7 +49,7 @@ protected:
 
 
 protected:
-  c_pixinsight_midtones_transfer_function::ptr mtf_;
+  c_pixinsight_midtones_transfer_function::sptr mtf_;
 
   enum AutoMtfAction {
     AutoMtfAction_AutoClip = 0,

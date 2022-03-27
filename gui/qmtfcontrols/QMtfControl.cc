@@ -363,13 +363,13 @@ QMtfControl::QMtfControl(QWidget * parent)
 }
 
 
-void QMtfControl::setMtf(const c_pixinsight_midtones_transfer_function::ptr & mtf)
+void QMtfControl::setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf)
 {
   this->mtf_ = mtf;
   updateControls();
 }
 
-const c_pixinsight_midtones_transfer_function::ptr & QMtfControl::mtf() const
+const c_pixinsight_midtones_transfer_function::sptr & QMtfControl::mtf() const
 {
   return this->mtf_;
 }

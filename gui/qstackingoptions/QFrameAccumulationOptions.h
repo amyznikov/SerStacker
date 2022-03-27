@@ -20,18 +20,21 @@
 //enum frame_accumulation_method fromString(const QString  & s,
 //    enum frame_accumulation_method defval );
 
-class QFrameAccumulationMethodCombo :
-    public QEnumComboBox<frame_accumulation_method>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<frame_accumulation_method> Base;
+typedef QEnumComboBox<frame_accumulation_method>
+  QFrameAccumulationMethodCombo;
 
-  QFrameAccumulationMethodCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-};
-
+//class QFrameAccumulationMethodCombo :
+//    public QEnumComboBox<frame_accumulation_method>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<frame_accumulation_method> Base;
+//
+//  QFrameAccumulationMethodCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//};
+//
 
 class QFrameAccumulationOptions :
     public QSettingsWidget

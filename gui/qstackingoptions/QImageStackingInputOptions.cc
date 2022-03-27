@@ -89,7 +89,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
 
   anscombe_ctl =
-      add_enum_combobox<QAnscombeMethodCombo>(
+      add_enum_combobox<anscombe_method>(
           "Anscombe Transform:",
           [this](anscombe_method v) {
             if ( options_ && v != options_->anscombe ) {

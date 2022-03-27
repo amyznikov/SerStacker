@@ -10,19 +10,19 @@
 
 #include "../../../core/mtf/c_pixinsight_midtones_transfer_function.h"
 
-class c_display_function
+class c_image_display_function
 {
 public:
-  c_display_function();
+  c_image_display_function();
 
-  const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
+  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
 
   void operator ()(const cv::Mat & src,
       cv::Mat & dst,
       int ddepth) const;
 
 protected:
-  c_pixinsight_midtones_transfer_function::ptr mtf_;
+  c_pixinsight_midtones_transfer_function::sptr mtf_;
 };
 
 #endif /* __c_display_function_h__ */

@@ -21,21 +21,22 @@ class QImageStackingInputOptions :
 public:
   typedef QImageStackingInputOptions ThisClass;
   typedef QSettingsWidget Base;
+  typedef QEnumComboBox<anscombe_method> QAnscombeMethodCombo;
 
   QImageStackingInputOptions(QWidget * parent = Q_NULLPTR);
 
   void set_input_options(c_input_options * options);
   c_input_options * input_options() const;
 
-  class QAnscombeMethodCombo :
-      public QEnumComboBox<anscombe_method>
-  {
-  public:
-    typedef QEnumComboBox<anscombe_method> Base;
-    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR)
-        : Base(parent)
-      {}
-  };
+//  class QAnscombeMethodCombo :
+//      public QEnumComboBox<anscombe_method>
+//  {
+//  public:
+//    typedef QEnumComboBox<anscombe_method> Base;
+//    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR)
+//        : Base(parent)
+//      {}
+//  };
 
 //  static QString toString(enum anscombe_method v) {
 //    return QString::fromStdString(toStdString(v));

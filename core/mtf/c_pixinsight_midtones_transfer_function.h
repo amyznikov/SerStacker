@@ -33,9 +33,9 @@ class c_pixinsight_midtones_transfer_function
 public:
   typedef c_pixinsight_midtones_transfer_function this_class;
   typedef c_midtones_transfer_function base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
-  static ptr create();
+  static sptr create();
 
   void set_midtones(double v);
   double midtones() const;

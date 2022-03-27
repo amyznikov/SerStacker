@@ -21,8 +21,8 @@ public:
 
   QMtfControlDialogBox(QWidget * parent = Q_NULLPTR);
 
-  void setMtf(const c_pixinsight_midtones_transfer_function::ptr & mtf);
-  const c_pixinsight_midtones_transfer_function::ptr & mtf() const;
+  void setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf);
+  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void setDisplayImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
@@ -38,7 +38,7 @@ protected:
 
 protected:
   QVBoxLayout * vbox_ = Q_NULLPTR;
-  QMtfControl * imageLevelsConfigWidget_ = Q_NULLPTR;
+  QMtfControl * mtfControl_ = Q_NULLPTR;
   QSize lastWidnowSize_;
   QPoint lastWidnowPos_;
 };

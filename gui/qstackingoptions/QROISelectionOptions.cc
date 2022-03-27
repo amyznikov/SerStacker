@@ -38,7 +38,7 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent)
   : Base("QROISelectionOptions", parent)
 {
 
-  selectionMethod_ctl = add_enum_combobox<QROISelectionMethodCombo>(
+  selectionMethod_ctl = add_enum_combobox<roi_selection_method>(
       "ROI selection:",
       [this](roi_selection_method v) {
         if ( options_ && v != options_->method ) {

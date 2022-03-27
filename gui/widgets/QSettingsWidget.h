@@ -184,28 +184,27 @@ protected:
     return add_combobox<ComboBoxType>(this->form, name, slot);
   }
 
-  template<class CombomoxType, class _Calable>
-  CombomoxType* add_enum_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
+  template<class EnumType, class _Calable>
+  QEnumComboBox<EnumType> * add_enum_combobox(QFormLayout * form, const QString & name, const _Calable & slot)
   {
+    typedef QEnumComboBox<EnumType> CombomoxType;
     CombomoxType * ctl = new CombomoxType(this);
     form->addRow(name, ctl);
-    QObject::connect(ctl, &CombomoxType::currentItemChanged,
-        [this, ctl, slot](int currentIndex) {
+    QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+        [this, ctl, slot](int) {
           if ( !updatingControls() ) {
-//            if ( slot ) {
-              LOCK();
-              slot(ctl->currentItem());
-              UNLOCK();
-//            }
+            LOCK();
+            slot(ctl->currentItem());
+            UNLOCK();
           }
         });
     return ctl;
   }
 
-  template<class CombomoxType, class _Calable>
-  CombomoxType * add_enum_combobox(const QString & name, const _Calable & slot)
+  template<class EnumType, class _Calable>
+  QEnumComboBox<EnumType> * add_enum_combobox(const QString & name, const _Calable & slot)
   {
-    return add_enum_combobox<CombomoxType>(this->form, name, slot);
+    return add_enum_combobox<EnumType>(this->form, name, slot);
   }
 
   template<class WidgetType>

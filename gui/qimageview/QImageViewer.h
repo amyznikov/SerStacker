@@ -84,7 +84,7 @@ protected:
   cv::Mat currentImageData_;
   cv::Mat displayImage_;
   QImage qimage_;
-  DisplayFunction displayFunction_;
+  DisplayFunction display_function_;
 
 
 };

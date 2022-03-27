@@ -42,10 +42,13 @@ const c_enum_member * members_of<Qt::MatchFlag>()
 QString toQString(Qt::MatchFlags v)
 {
   v = v & 0xF;
+#if !(QT_DEPRECATED_SINCE(5, 15))
   if ( v == Qt::MatchRegExp ) {
     v = Qt::MatchRegularExpression;
   }
-  else if ( v == Qt::MatchFixedString ) {
+  else
+#endif
+    if ( v == Qt::MatchFixedString ) {
     v = Qt::MatchExactly;
   }
 
@@ -102,10 +105,12 @@ bool matchQuickFilter(const QString & text,
        break;
      }
 
+#if !(QT_DEPRECATED_SINCE(5, 15))
      case Qt::MatchRegExp : {
        matchStatus = QRegExp(pattern, cs, QRegExp::RegExp).exactMatch(text);
        break;
      }
+#endif
 
      case Qt::MatchWildcard : {
        matchStatus = QRegExp(pattern, cs, QRegExp::Wildcard).exactMatch(text);
@@ -141,7 +146,13 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
 
   searchText_ctl = new QComboBox(this);
   searchText_ctl->setEditable(true);
+#if !(QT_DEPRECATED_SINCE(5, 13))
   searchText_ctl->setAutoCompletion(true);
+#else
+  QCompleter *completer = new QCompleter(this);
+  completer->setModel(searchText_ctl->model());
+  searchText_ctl->setCompleter(completer);
+#endif
   searchText_ctl->setMinimumContentsLength(32);
   searchText_ctl->setInsertPolicy(QComboBox::InsertAtTop);
 
@@ -151,7 +162,7 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
   connect(searchText_ctl, &QComboBox::currentTextChanged,
       this, &ThisClass::onSearchTextChanged);
 
-  matchingFlags_ctl = add_enum_combobox<QThumbnailsQuickFilterMatchingFlagsCombo>(
+  matchingFlags_ctl = add_enum_combobox<Qt::MatchFlag>(
       "Matching type:",
       [this](Qt::MatchFlags) {
         emit parameterChanged();

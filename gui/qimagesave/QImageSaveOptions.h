@@ -35,14 +35,7 @@ class QImageSaveTIFFOptions :
 public:
   typedef QImageSaveTIFFOptions ThisClass;
   typedef QSettingsWidget Base;
-
-  struct QPixelDepthCombo : public QEnumComboBox<PIXEL_DEPTH> {
-    QPixelDepthCombo(QWidget * parent = Q_NULLPTR) :
-        QEnumComboBox<PIXEL_DEPTH>(parent)
-    {
-    }
-
-  };
+  typedef QEnumComboBox<PIXEL_DEPTH> QPixelDepthCombo;
 
 
   QImageSaveTIFFOptions(QWidget * parent = Q_NULLPTR);
@@ -107,15 +100,7 @@ class QImageSaveOptions :
 public:
   typedef QImageSaveOptions ThisClass;
   typedef QSettingsWidget Base;
-
-  struct QImageSaveFormatCombo :
-      public QEnumComboBox<QImageSaveFormat>
-  {
-    QImageSaveFormatCombo(QWidget * parent = Q_NULLPTR) :
-        QEnumComboBox<QImageSaveFormat>(parent)
-    {
-    }
-  };
+  typedef QEnumComboBox<QImageSaveFormat> QImageSaveFormatCombo;
 
 
   QImageSaveOptions(QWidget * parent = Q_NULLPTR);

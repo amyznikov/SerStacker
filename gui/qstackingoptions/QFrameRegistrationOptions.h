@@ -25,68 +25,77 @@
 //enum color_channel_type fromString(const QString  & s,
 //    enum color_channel_type defval );
 
+typedef QEnumComboBox<frame_registration_method> QFrameRegistrationMethodCombo;
 
-class QFrameRegistrationMethodCombo :
-    public QEnumComboBox<frame_registration_method>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<frame_registration_method> Base;
+//class QFrameRegistrationMethodCombo :
+//    public QEnumComboBox<frame_registration_method>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<frame_registration_method> Base;
+//
+//  QFrameRegistrationMethodCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//};
 
-  QFrameRegistrationMethodCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-};
+typedef QEnumComboBox<ECC_MOTION_TYPE> QEccMotionTypeCombo;
 
-class QEccMotionTypeCombo :
-    public QEnumComboBox<ECC_MOTION_TYPE>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<ECC_MOTION_TYPE> Base;
+//class QEccMotionTypeCombo :
+//    public QEnumComboBox<ECC_MOTION_TYPE>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<ECC_MOTION_TYPE> Base;
+//
+//  QEccMotionTypeCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//};
 
-  QEccMotionTypeCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-};
+typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
 
-class QEccInterpolatioMethodCombo :
-    public QEnumComboBox<ECC_INTERPOLATION_METHOD>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> Base;
+//class QEccInterpolatioMethodCombo :
+//    public QEnumComboBox<ECC_INTERPOLATION_METHOD>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> Base;
+//
+//  QEccInterpolatioMethodCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//};
+//
 
-  QEccInterpolatioMethodCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-};
+typedef QEnumComboBox<ECC_BORDER_MODE> QEccBorderModeCombo;
+
+//class QEccBorderModeCombo :
+//    public QEnumComboBox<ECC_BORDER_MODE>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<ECC_BORDER_MODE> Base;
+//
+//  QEccBorderModeCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//};
 
 
-class QEccBorderModeCombo :
-    public QEnumComboBox<ECC_BORDER_MODE>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<ECC_BORDER_MODE> Base;
+typedef QEnumComboBox<color_channel_type> QRegistrationColorChannelCombo;
 
-  QEccBorderModeCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-};
-
-
-class QRegistrationColorChannelCombo :
-    public QEnumComboBox<color_channel_type>
-{
-  Q_OBJECT;
-public:
-  typedef QEnumComboBox<color_channel_type> Base;
-
-  QRegistrationColorChannelCombo(QWidget * parent = Q_NULLPTR)
-      : Base(parent)
-    {}
-};
+//class QRegistrationColorChannelCombo :
+//    public QEnumComboBox<color_channel_type>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QEnumComboBox<color_channel_type> Base;
+//
+//  QRegistrationColorChannelCombo(QWidget * parent = Q_NULLPTR)
+//      : Base(parent)
+//    {}
+//};
 
 
 

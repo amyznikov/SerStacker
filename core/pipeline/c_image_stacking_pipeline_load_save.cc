@@ -6,6 +6,7 @@
  */
 
 #include "c_image_stacking_pipeline.h"
+#include <core/settings/opencv_settings.h>
 #include <core/readdir.h>
 #include <core/debug.h>
 

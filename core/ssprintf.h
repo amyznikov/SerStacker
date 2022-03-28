@@ -12,7 +12,6 @@
 #ifndef __ssprintf_h__
 #define __ssprintf_h__
 
-#include <opencv2/opencv.hpp>
 #include <cinttypes>
 #include <cstdio>
 #include <string>
@@ -125,7 +124,18 @@ bool fromString(const std::string & s, bool * v);
 // string
 std::string toString(const std::string & v);
 bool fromString(const std::string & s, std::string * v);
-bool fromString(const std::string & s, std::string * v);
+
+// std::pair<>
+template<class T1, class T2>
+std::string toString(const std::pair<T1, T2> & p) {
+  return ssprintf("%s;%s", toString(p.first).c_str(), toString(p.second).c_str());
+}
+template<class T1, class T2>
+bool fromString(const std::string & s, std::pair<T1, T2> * v)
+{
+  const std::vector<std::string> tokens = strsplit(s, ":;, \t");
+  return tokens.size() == 2 && fromString(tokens[0], &v->first) && fromString(tokens[1], &v->second);
+}
 
 
 // enums

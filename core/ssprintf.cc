@@ -12,7 +12,6 @@
 #include "ssprintf.h"
 #include <core/debug.h>
 
-
 /**
  * C-style string formating
  */
@@ -222,7 +221,7 @@ bool fromString(const std::string & s, uint64_t * v)
 std::string toString(float v)
 {
   char s[256];
-  snprintf(s, sizeof(s) - 1, "%f", v);
+  snprintf(s, sizeof(s) - 1, "%g", v);
   return s;
 }
 
@@ -235,7 +234,7 @@ bool fromString(const std::string & s, float * v)
 std::string toString(double v)
 {
   char s[256];
-  snprintf(s, sizeof(s) - 1, "%lf", v);
+  snprintf(s, sizeof(s) - 1, "%g", v);
   return s;
 }
 

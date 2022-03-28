@@ -1163,6 +1163,7 @@ QStackTree::QStackTree(QWidget * parent)
   startStacking->addAction(startAction = new QAction(getIcon(ICON_start), "Start"));
   startStacking->addAction(startAllAction = new QAction(getIcon(ICON_start_all), "Start all"));
   startStacking->setDefaultAction(startAction);
+  startStacking->setIcon(getIcon(ICON_start));
   //startStackingMenu->setEnabled(false);
   startStackingMenuAction->setEnabled(false);
 

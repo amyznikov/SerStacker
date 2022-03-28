@@ -1,0 +1,59 @@
+/*
+ * c_hamming_distance_feature2d_matcher.h
+ *
+ *  Created on: Jan 4, 2022
+ *      Author: amyznikov
+ */
+
+#pragma once
+#ifndef __c_hamming_distance_feature2d_matcher_h__
+#define __c_hamming_distance_feature2d_matcher_h__
+
+#include "c_feature2d_matcher.h"
+
+/**
+ * Options for c_hamming_distance_feature2d_matcher
+ */
+struct c_hamming_distance_feature2d_matcher_options : c_feature2d_matcher_base_options
+{
+  int max_acceptable_distance = -1; // auto select
+};
+
+/** @brief Sparse feature2d descriptor matcher based on haming distance
+ */
+class c_hamming_distance_feature2d_matcher :
+  public c_feature2d_matcher
+{
+public:
+  typedef c_hamming_distance_feature2d_matcher this_class;
+  typedef c_feature2d_matcher base;
+  typedef cv::Ptr<this_class> ptr;
+
+  c_hamming_distance_feature2d_matcher() = default;
+
+  void set_max_acceptable_distance(int v);
+  int max_acceptable_distance() const;
+
+  bool train( cv::InputArray train_descriptors) override;
+  bool match(cv::InputArray query_descriptors, /* out */ std::vector<cv::DMatch> & matches) override;
+
+protected:
+  struct index_entry {
+    uint16_t row, norm;
+    index_entry(uint16_t r, uint16_t n) :
+      row(r), norm(n)
+    {}
+  };
+
+  cv::Mat1i train_descriptors_;
+  cv::Mat1i query_descriptors_;
+  std::vector<index_entry> index_;
+  int max_acceptable_distance_ = -1; // auto select
+};
+
+
+c_hamming_distance_feature2d_matcher::ptr create_sparse_feature_matcher(
+    const c_hamming_distance_feature2d_matcher_options & options);
+
+
+#endif /* __c_hamming_distance_feature2d_matcher_h__ */

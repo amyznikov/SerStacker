@@ -38,6 +38,7 @@ const std::vector<double> & c_color_saturation_routine::scales() const
   return scales_;
 }
 
+
 bool c_color_saturation_routine::deserialize(c_config_setting settings)
 {
   if ( !base::deserialize(settings) ) {

@@ -17,7 +17,7 @@
 #include <vector>
 #include <type_traits>
 #include <libconfig.h>
-#include <core/ssprintf.h>
+#include "ssprintf.h"
 
 
 template<class T> struct c_config_type_traits { static constexpr int type = CONFIG_TYPE_GROUP;};
@@ -451,6 +451,20 @@ inline bool load_settings(c_config_setting settings, const std::string & propnam
   return false;
 }
 
+//
+//
+//#define LOAD_OPTIONS(cfg, obj, param) { \
+//  c_config_setting p = cfg[#param]; \
+//  if ( p ) { \
+//    if ( !::load_settings(p, &(obj).param) ) { \
+//      CF_ERROR("load_settings('%s') fails in %s()", #param, __PRETTY_FUNCTION__); \
+//      return false; \
+//    } \
+//  } \
+//}
+//
+
+
 
 
 struct c_libconfig_flag_desc {
@@ -461,10 +475,25 @@ struct c_libconfig_flag_desc {
 bool libconfig_parse_flags(c_config_setting settings,
     const c_libconfig_flag_desc fdescs[/*ndescs*/],
     uint ndescs, int * flags);
+//
+//#define LOAD_FLAGS(cfg, obj, param, fdesc) { \
+//  c_config_setting p = cfg[#param]; \
+//  if ( p ) { \
+//    int flags = 0; \
+//    const uint nflags = sizeof(fdesc) / sizeof(fdesc[0]); \
+//    if ( !::libconfig_parse_flags(p, fdesc, nflags, &flags) ) { \
+//      CF_ERROR("libconfig_parse_flags() fails for %s", #param); \
+//      return false; \
+//    } \
+//    (obj).param = flags; \
+//  } \
+//}
+//
+//
 
 #define BEGIN_LOAD_OPTIONS(cfg) \
   if ( !(cfg) ) { \
-    CF_ERROR("libconfig settings is null in %s", __PRETTY_FUNCTION__); \
+    CF_ERROR("libconfig settins is null in %s", __PRETTY_FUNCTION__); \
     return false; \
   } \
   for ( int tmpi = 0, tmpn = (cfg).length(); tmpi < tmpn; ++tmpi ) { \
@@ -501,21 +530,18 @@ bool libconfig_parse_flags(c_config_setting settings,
       (cfg).name(), current_option_name, __PRETTY_FUNCTION__); \
   } \
 
-
-//#define LOAD_PROPERTY(cfg, obj, prop) \
-//  ::load_settings(cfg, #prop, (obj), \
-//      &std::remove_reference<decltype(*obj)>::type::prop, \
-//      &std::remove_reference<decltype(*obj)>::type::set_##prop)
-
-#define LOAD_PROPERTY(cfg, obj, prop) \
-  if ( true ) { \
-    auto v = (obj)->prop(); \
-    if ( ::load_settings(cfg,  &v) ) { \
-      (obj)->set_##prop(v); \
-    }\
-  }
-
 #define SAVE_PROPERTY(cfg, obj, prop) \
   ::save_settings(cfg, #prop, (obj).prop())
+
+#define LOAD_PROPERTY(cfg, obj, prop) \
+  ::load_settings(cfg, #prop, (obj), \
+      &std::remove_reference<decltype(*obj)>::type::prop, \
+      &std::remove_reference<decltype(*obj)>::type::set_##prop)
+
+#define SAVE_SETTINGS(cfg, obj, prop) \
+    ::save_settings(cfg, #prop, (obj).prop())
+
+#define LOAD_SETTINGS(cfg, obj, prop) \
+    ::load_settings(cfg, #prop, &(obj)->prop())
 
 #endif /* __libconfig_settings__h__ */

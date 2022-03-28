@@ -38,9 +38,16 @@ QAddRoutineDialog::QAddRoutineDialog(QWidget * parent)
   populateClassList();
 
   filter_ctl->setEditable(true);
-  filter_ctl->setAutoCompletion(true);
   filter_ctl->setMinimumContentsLength(32);
   filter_ctl->setInsertPolicy(QComboBox::InsertAtTop);
+
+#if !(QT_DEPRECATED_SINCE(5, 13) )
+  filter_ctl->setAutoCompletion(true);
+#else
+  QCompleter * completer = new QCompleter();
+  completer->setModel(filter_ctl->model());
+  filter_ctl->setCompleter(completer);
+#endif
 
   ok_ctl->setDefault(true);
   ok_ctl->setAutoDefault(true);

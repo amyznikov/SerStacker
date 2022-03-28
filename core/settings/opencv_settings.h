@@ -10,6 +10,7 @@
 #define __opencv_settings_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/ssprintf.h>
 #include <core/settings.h>
 
 template<class T> struct c_config_type_traits<cv::Point_<T>> { static constexpr int type = CONFIG_TYPE_GROUP; };

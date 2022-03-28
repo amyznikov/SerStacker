@@ -7,6 +7,7 @@
 
 #include "QROISelectionOptions.h"
 #include <gui/widgets/addctrl.h>
+#include <core/settings/opencv_settings.h>
 #include <core/debug.h>
 
 #define ICON_check_all      "check_all"

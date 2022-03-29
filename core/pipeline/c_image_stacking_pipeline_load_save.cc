@@ -7,6 +7,7 @@
 
 #include "c_image_stacking_pipeline.h"
 #include <core/settings/opencv_settings.h>
+#include <core/feature2d/feature2d_settings.h>
 #include <core/readdir.h>
 #include <core/debug.h>
 
@@ -478,12 +479,8 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "enable_ecc", base_options.enable_ecc);
   save_settings(group, "enable_eccflow", base_options.enable_eccflow);
 
-  group = settings.add_group("SURF");
-  save_settings(group, "hessianThreshold", feature_options.hessianThreshold);
-  save_settings(group, "nOctaves", feature_options.nOctaves);
-  save_settings(group, "nOctaveLayers", feature_options.nOctaveLayers);
-  save_settings(group, "extended", feature_options.extended);
-  save_settings(group, "upright", feature_options.upright);
+  group = settings.add_group("sparse_feature_extractor");
+  save_settings(group, feature_options.sparse_feature_extractor);
 
   group = settings.add_group("ecc");
   save_settings(group, "scale", base_options.ecc.scale);
@@ -542,12 +539,8 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
   load_settings(group, "enable_ecc", &base_options.enable_ecc);
   load_settings(group, "enable_eccflow", &base_options.enable_eccflow);
 
-  if ( (group = settings["SURF"]).isGroup() ) {
-    load_settings(group, "hessianThreshold", &feature_options.hessianThreshold);
-    load_settings(group, "nOctaves", &feature_options.nOctaves);
-    load_settings(group, "nOctaveLayers", &feature_options.nOctaveLayers);
-    load_settings(group, "extended", &feature_options.extended);
-    load_settings(group, "upright", &feature_options.upright);
+  if ( (group = settings["sparse_feature_extractor"]).isGroup() ) {
+    load_settings(group, &feature_options.sparse_feature_extractor);
   }
 
   if ( (group = settings["ecc"]).isGroup() ) {

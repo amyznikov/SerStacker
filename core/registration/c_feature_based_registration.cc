@@ -63,25 +63,25 @@ const c_feature_based_registration_options & c_feature_based_registration::featu
   return feature_options_;
 }
 
-const cv::Ptr<cv::Feature2D> & c_feature_based_registration::set_keypoints_detector(const cv::Ptr<cv::Feature2D> & detector)
+const c_feature2d::ptr  & c_feature_based_registration::set_keypoints_detector(const c_feature2d::ptr & detector)
 {
   return this->keypoints_detector_ = detector;
 }
 
-const cv::Ptr<cv::Feature2D> & c_feature_based_registration::keypoints_detector() const
+const c_feature2d::ptr & c_feature_based_registration::keypoints_detector() const
 {
   return this->keypoints_detector_;
 }
-
-void c_feature_based_registration::set_feature_hessian_threshold(double v)
-{
-  feature_options_.hessianThreshold = v;
-}
-
-double c_feature_based_registration::feature_hessian_threshold() const
-{
-  return feature_options_.hessianThreshold;
-}
+//
+//void c_feature_based_registration::set_feature_hessian_threshold(double v)
+//{
+//  feature_options_. hessianThreshold = v;
+//}
+//
+//double c_feature_based_registration::feature_hessian_threshold() const
+//{
+//  return feature_options_.hessianThreshold;
+//}
 
 
 const std::vector<cv::KeyPoint> & c_feature_based_registration::reference_keypoints() const
@@ -104,45 +104,9 @@ const cv::Mat & c_feature_based_registration::current_descriptors() const
   return current_descriptors_;
 }
 
-cv::Ptr<cv::Feature2D> c_feature_based_registration::create_keypoints_detector() const
+c_feature2d::ptr c_feature_based_registration::create_keypoints_detector() const
 {
-//  static const struct {
-//    int nfeatures = 150;
-//    float scaleFactor = 1.2f;
-//    int nlevels = 8;
-//    int edgeThreshold = 31;
-//    int firstLevel = 1;
-//    int WTA_K = 4;
-//    cv::ORB::ScoreType scoreType = cv::ORB::FAST_SCORE;
-//    int patchSize = 31;
-//    int fastThreshold = 8;
-//  } ORB;
-//
-//  return cv::ORB::create(ORB.nfeatures,
-//        ORB.scaleFactor,
-//        ORB.nlevels,
-//        ORB.edgeThreshold,
-//        ORB.firstLevel,
-//        ORB.WTA_K,
-//        ORB.scoreType,
-//        ORB.patchSize,
-//        ORB.fastThreshold);
-
-
-//  static const struct {
-//    double hessianThreshold = 200;
-//    int nOctaves = 4;
-//    int nOctaveLayers = 1;
-//    bool extended = false;
-//    bool upright = true;
-//  } SURF;
-
-  return cv::xfeatures2d::SURF::create(
-      feature_options_.hessianThreshold,
-      feature_options_.nOctaves,
-      feature_options_.nOctaveLayers,
-      feature_options_.extended,
-      feature_options_.upright);
+  return create_sparse_feature_detector(feature_options_.sparse_feature_extractor.detector);
 }
 
 
@@ -184,20 +148,27 @@ bool c_feature_based_registration::extract_reference_features(cv::InputArray ref
     return false;
   }
 
-  if ( reference_descriptors_.depth() == CV_32F ) {
-    keypoints_matcher_ = cv::makePtr<cv::FlannBasedMatcher>(
-        cv::makePtr<cv::flann::KDTreeIndexParams>(1),
-        cv::makePtr<cv::flann::SearchParams>(cvflann::FLANN_CHECKS_UNLIMITED, 0, false)); // 32
-  }
-  else {
-    keypoints_matcher_ = cv::makePtr<cv::FlannBasedMatcher>(
-        //        cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2),
-        cv::makePtr<cv::flann::LshIndexParams>(6, 12, 1),
-        cv::makePtr<cv::flann::SearchParams>(cvflann::FLANN_CHECKS_UNLIMITED, 0, false));
-  }
+  keypoints_matcher_ =
+      create_sparse_feature_matcher(
+          feature_options_.sparse_feature_matcher);
 
-  keypoints_matcher_->add(reference_descriptors_);
-  keypoints_matcher_->train();
+  if ( !keypoints_matcher_ ) {
+    CF_ERROR("create_sparse_feature_matcher() fails");
+    return false;
+  }
+//  if ( reference_descriptors_.depth() == CV_32F ) {
+//    keypoints_matcher_ = cv::makePtr<cv::FlannBasedMatcher>(
+//        cv::makePtr<cv::flann::KDTreeIndexParams>(1),
+//        cv::makePtr<cv::flann::SearchParams>(cvflann::FLANN_CHECKS_UNLIMITED, 0, false)); // 32
+//  }
+//  else {
+//    keypoints_matcher_ = cv::makePtr<cv::FlannBasedMatcher>(
+//        //        cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2),
+//        cv::makePtr<cv::flann::LshIndexParams>(6, 12, 1),
+//        cv::makePtr<cv::flann::SearchParams>(cvflann::FLANN_CHECKS_UNLIMITED, 0, false));
+//  }
+
+  keypoints_matcher_->train(reference_descriptors_);
 
   return true;
 }
@@ -258,30 +229,33 @@ bool c_feature_based_registration::detect_and_match_keypoints(
     return false;
   }
 
-  static constexpr double lowe_ratio = 0.8;
+//  static constexpr double lowe_ratio = 0.8;
+//
+//  current_matches.clear(), current_matches12.clear();
+//  if ( lowe_ratio <= 0 ) {
+//    keypoints_matcher_->match(current_descriptors, current_matches);
+//  }
+//  else {
+//
+//    // David Lowe ratio test nearest/second nearest < ratio
+//    static const auto lowe_ratio_test =
+//        [](const std::vector<std::vector<cv::DMatch>> & matches12,
+//            std::vector<cv::DMatch> * good_matches,
+//            double lowe_ratio = 0.8)
+//        {
+//          for ( const std::vector<cv::DMatch> & m : matches12 ) {
+//            if ( m.size() == 1 || (m.size() == 2 && m[0].distance < lowe_ratio * m[1].distance) )
+//            good_matches->emplace_back(m[0]);
+//          }
+//        };
+//
+//
+//    keypoints_matcher_->knnMatch(current_descriptors, current_matches12, 2);
+//    lowe_ratio_test(current_matches12, &current_matches, lowe_ratio);
+//  }
 
-  current_matches.clear(), current_matches12.clear();
-  if ( lowe_ratio <= 0 ) {
-    keypoints_matcher_->match(current_descriptors, current_matches);
-  }
-  else {
-
-    // David Lowe ratio test nearest/second nearest < ratio
-    static const auto lowe_ratio_test =
-        [](const std::vector<std::vector<cv::DMatch>> & matches12,
-            std::vector<cv::DMatch> * good_matches,
-            double lowe_ratio = 0.8)
-        {
-          for ( const std::vector<cv::DMatch> & m : matches12 ) {
-            if ( m.size() == 1 || (m.size() == 2 && m[0].distance < lowe_ratio * m[1].distance) )
-            good_matches->emplace_back(m[0]);
-          }
-        };
-
-
-    keypoints_matcher_->knnMatch(current_descriptors, current_matches12, 2);
-    lowe_ratio_test(current_matches12, &current_matches, lowe_ratio);
-  }
+  keypoints_matcher_->match(current_descriptors,
+      current_matches);
 
   CF_DEBUG("current_matches.size()=%zu",
       current_matches.size());

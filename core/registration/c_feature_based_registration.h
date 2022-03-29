@@ -8,17 +8,14 @@
 #ifndef __c_feature_based_image_registration_h___
 #define __c_feature_based_image_registration_h___
 
-#include <opencv2/features2d.hpp>
-#include <opencv2/xfeatures2d.hpp>
+//#include <opencv2/features2d.hpp>
+//#include <opencv2/xfeatures2d.hpp>
+#include <core/feature2d/feature2d.h>
 #include "c_frame_registration.h"
 
 struct c_feature_based_registration_options {
-  // SURF parameters
-  double hessianThreshold = 100;
-  int nOctaves = 1; // set to > 1 if aligned frame scales are different !
-  int nOctaveLayers = 1;
-  bool extended = false;
-  bool upright = true;
+  c_sparse_feature_extractor_options sparse_feature_extractor;
+  c_feature2d_matcher_options sparse_feature_matcher;
 };
 
 class c_feature_based_registration
@@ -37,12 +34,12 @@ public:
 
 public: // parameters
 
-  const cv::Ptr<cv::Feature2D> & set_keypoints_detector(const cv::Ptr<cv::Feature2D> & detector);
-  const cv::Ptr<cv::Feature2D> & keypoints_detector() const;
+  const c_feature2d::ptr & set_keypoints_detector(const c_feature2d::ptr & detector);
+  const c_feature2d::ptr & keypoints_detector() const;
 
   // for cv::xfeatures2d::SURF::create()
-  void set_feature_hessian_threshold(double v);
-  double feature_hessian_threshold() const;
+  //void set_feature_hessian_threshold(double v);
+  //double feature_hessian_threshold() const;
 
   const std::vector<cv::KeyPoint> & reference_keypoints() const;
   const cv::Mat & reference_descriptors() const;
@@ -53,7 +50,7 @@ public: // parameters
   const c_feature_based_registration_options & feature_options() const;
 
 public: // overrides, made public for debug & non-regular usage
-  virtual cv::Ptr<cv::Feature2D> create_keypoints_detector() const;
+  virtual c_feature2d::ptr create_keypoints_detector() const;
 
   bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk) const override;
@@ -87,8 +84,9 @@ protected: // use create() instead
 protected:
   c_feature_based_registration_options feature_options_;
 
-  cv::Ptr<cv::Feature2D> keypoints_detector_;
-  cv::Ptr<cv::FlannBasedMatcher> keypoints_matcher_;
+  c_feature2d::ptr keypoints_detector_;
+  //cv::Ptr<cv::FlannBasedMatcher> keypoints_matcher_;
+  c_feature2d_matcher::ptr keypoints_matcher_;
 
   std::vector<cv::KeyPoint> reference_keypoints_;
   cv::Mat reference_descriptors_;

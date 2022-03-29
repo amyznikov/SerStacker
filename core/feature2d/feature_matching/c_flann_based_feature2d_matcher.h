@@ -80,7 +80,7 @@ struct c_flann_autotuned_index_options
 
 struct c_flann_index_options
 {
-  FlannIndexType type = FlannIndex_unknown;
+  FlannIndexType type = FlannIndex_kdtree;
   c_flann_linear_index_options linear;
   c_flann_kdtree_index_options kdtree;
   c_flann_kmeans_index_options kmeans;

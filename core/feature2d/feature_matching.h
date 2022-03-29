@@ -17,8 +17,8 @@
 enum FEATURE2D_MATCHER_TYPE {
   FEATURE2D_MATCHER_UNKNOWN = -1,
   FEATURE2D_MATCHER_HAMMING,
-  FEATURE2D_MATCHER_SNORM,
   FEATURE2D_MATCHER_FLANN,
+  FEATURE2D_MATCHER_SNORM,
 };
 
 template<> const c_enum_member *
@@ -28,7 +28,7 @@ template<> const c_enum_member *
 
 struct c_feature2d_matcher_options {
 
-  FEATURE2D_MATCHER_TYPE type = FEATURE2D_MATCHER_UNKNOWN;
+  FEATURE2D_MATCHER_TYPE type = FEATURE2D_MATCHER_FLANN;
 
   c_hamming_distance_feature2d_matcher_options hamming;
   c_flann_based_feature2d_matcher_options flann;

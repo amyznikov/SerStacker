@@ -13,8 +13,8 @@ const c_enum_member * members_of<FEATURE2D_MATCHER_TYPE>()
 {
   static constexpr c_enum_member members[] = {
       { FEATURE2D_MATCHER_HAMMING, "hamming", "" },
-      { FEATURE2D_MATCHER_SNORM, "snorm", "" },
       { FEATURE2D_MATCHER_FLANN, "flann", "" },
+      { FEATURE2D_MATCHER_SNORM, "snorm", "" },
       { FEATURE2D_MATCHER_UNKNOWN, nullptr, "" },
   };
 

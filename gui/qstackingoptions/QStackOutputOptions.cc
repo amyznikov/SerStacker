@@ -57,9 +57,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   save_preprocessed_frames_ctl =
       add_named_checkbox("Save preprocessed (input) frames",
-          [this](int state) {
-            if ( options_ && options_->output_options().save_preprocessed_frames != (state == Qt::Checked)  ) {
-              options_->output_options().save_preprocessed_frames = (state == Qt::Checked);
+          [this](bool checked) {
+            if ( options_ && options_->output_options().save_preprocessed_frames != checked ) {
+              options_->output_options().save_preprocessed_frames = checked;
               output_preprocessed_frames_path_ctl->setEnabled(options_->output_options().save_preprocessed_frames);
               emit parameterChanged();
             }
@@ -86,9 +86,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   save_aligned_frames_ctl =
       add_named_checkbox("Save aligned frames",
-          [this](int state) {
-            if ( options_ && options_->output_options().save_aligned_frames != (state == Qt::Checked)  ) {
-              options_->output_options().save_aligned_frames = (state == Qt::Checked);
+          [this](bool checked) {
+            if ( options_ && options_->output_options().save_aligned_frames != checked ) {
+              options_->output_options().save_aligned_frames = checked;
               output_aligned_frames_path_ctl->setEnabled(options_->output_options().save_aligned_frames);
               emit parameterChanged();
             }
@@ -115,9 +115,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   save_postprocessed_frames_ctl =
       add_named_checkbox("Save postprocessed frames",
-          [this](int state) {
-            if ( options_ && options_->output_options().save_postprocessed_frames != (state == Qt::Checked)  ) {
-              options_->output_options().save_postprocessed_frames = (state == Qt::Checked);
+          [this](bool checked) {
+            if ( options_ && options_->output_options().save_postprocessed_frames != checked  ) {
+              options_->output_options().save_postprocessed_frames = checked;
               output_postprocessed_frames_path_ctl->setEnabled(options_->output_options().save_postprocessed_frames);
               emit parameterChanged();
             }
@@ -142,9 +142,9 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   save_accumulation_masks_ctl =
       add_named_checkbox("Save accumulation masks",
-          [this](int state) {
-            if ( options_ && options_->output_options().save_accumulation_masks != (state == Qt::Checked)  ) {
-              options_->output_options().save_accumulation_masks = (state == Qt::Checked);
+          [this](bool checked) {
+            if ( options_ && options_->output_options().save_accumulation_masks != checked  ) {
+              options_->output_options().save_accumulation_masks = checked;
               output_accumulation_masks_path_ctl->setEnabled(options_->output_options().save_accumulation_masks);
               emit parameterChanged();
             }
@@ -180,13 +180,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   write_image_mask_as_alpha_channel_ctl =
       add_checkbox("Write image mask as alpha channel",
-          [this](int state) {
-            if ( options_ ) {
-              const bool checked = state == Qt::Checked;
-              if ( options_->output_options().write_image_mask_as_alpha_channel != checked ) {
-                options_->output_options().write_image_mask_as_alpha_channel = checked;
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && options_->output_options().write_image_mask_as_alpha_channel != checked ) {
+              options_->output_options().write_image_mask_as_alpha_channel = checked;
+              emit parameterChanged();
             }
           });
 
@@ -196,13 +193,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   dump_reference_data_for_debug_ctl =
       add_checkbox("Dump reference data for debug",
-          [this](int state) {
-            if ( options_ ) {
-              const bool checked = state == Qt::Checked;
-              if ( options_->output_options(). dump_reference_data_for_debug != checked ) {
-                options_->output_options(). dump_reference_data_for_debug = checked;
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && options_->output_options(). dump_reference_data_for_debug != checked ) {
+              options_->output_options(). dump_reference_data_for_debug = checked;
+              emit parameterChanged();
             }
           });
 
@@ -210,14 +204,11 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   debug_frame_registration_ctl =
       add_checkbox("Debug frame registration",
-          [this](int state) {
-            if ( options_ ) {
-              const bool checked = state == Qt::Checked;
-              if ( options_->output_options(). debug_frame_registration != checked ) {
-                options_->output_options().debug_frame_registration = checked;
-                debug_frame_registration_frame_indexes_ctl->setEnabled(checked);
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && options_->output_options(). debug_frame_registration != checked ) {
+              options_->output_options().debug_frame_registration = checked;
+              debug_frame_registration_frame_indexes_ctl->setEnabled(checked);
+              emit parameterChanged();
             }
           });
 

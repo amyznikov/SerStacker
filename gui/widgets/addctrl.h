@@ -20,16 +20,16 @@ QDockWidget * addDock(QMainWindow * parent,
     QMenu * viewMenu = Q_NULLPTR);
 
 
-
-template<class _Calable>
-inline QLineEditBox * add_editbox(QFormLayout * form, const char * parameter_name, _Calable && slot)
-{
-  QLineEditBox * ctl = new QLineEditBox();
-  form->addRow(parameter_name, ctl);
-  QObject::connect(ctl, &QLineEditBox::textChanged, slot);
-
-  return ctl;
-}
+//
+//template<class _Calable>
+//inline QLineEditBox * add_editbox(QFormLayout * form, const char * parameter_name, _Calable && slot)
+//{
+//  QLineEditBox * ctl = new QLineEditBox();
+//  form->addRow(parameter_name, ctl);
+//  QObject::connect(ctl, &QLineEditBox::textChanged, slot);
+//
+//  return ctl;
+//}
 
 template<class _Calable>
 inline QLineEditBox * insert_editbox(QFormLayout * form, int row, const char * parameter_name, _Calable && slot)
@@ -117,43 +117,43 @@ inline QPushButton * add_pushbutton(QFormLayout * form, const char * command_nam
   QObject::connect(ctl, &QPushButton::clicked, slot);
   return ctl;
 }
-
-inline QGroupBox * add_expandable_groupbox(QFormLayout * form, const QString & title, QWidget * ctl)
-{
-#define __STYLE_TEXT(x) #x
-  static const char style[] = __STYLE_TEXT(
-      QCheckBox {
-          spacing: 15px;
-      }
-      QCheckBox::indicator {
-          width: 13px;
-          height: 13px;
-      }
-      QCheckBox::indicator:unchecked {
-          image: url(:/gui/icons/double-arrow-right.png);
-      }
-      QCheckBox::indicator:checked {
-          image: url(:/gui/icons/double-arrow-up.png);
-      }
-  );
-#undef __STYLE_TEXT
-
-
-  QCheckBox * chkBox = new QCheckBox(title);
-  chkBox->setStyleSheet(style);
-  form->addRow(chkBox);
-
-  QGroupBox * gb = new QGroupBox();
-  form->addRow(gb);
-  (new QVBoxLayout(gb))->addWidget(ctl);
-  gb->setVisible(false);
-
-  QObject::connect(chkBox, &QCheckBox::stateChanged,
-      [gb](int state) {
-        gb->setVisible(state == Qt::Checked);
-      });
-
-  return gb;
-}
+//
+//inline QGroupBox * add_expandable_groupbox(QFormLayout * form, const QString & title, QWidget * ctl)
+//{
+//#define __STYLE_TEXT(x) #x
+//  static const char style[] = __STYLE_TEXT(
+//      QCheckBox {
+//          spacing: 15px;
+//      }
+//      QCheckBox::indicator {
+//          width: 13px;
+//          height: 13px;
+//      }
+//      QCheckBox::indicator:unchecked {
+//          image: url(:/gui/icons/double-arrow-right.png);
+//      }
+//      QCheckBox::indicator:checked {
+//          image: url(:/gui/icons/double-arrow-up.png);
+//      }
+//  );
+//#undef __STYLE_TEXT
+//
+//
+//  QCheckBox * chkBox = new QCheckBox(title);
+//  chkBox->setStyleSheet(style);
+//  form->addRow(chkBox);
+//
+//  QGroupBox * gb = new QGroupBox();
+//  form->addRow(gb);
+//  (new QVBoxLayout(gb))->addWidget(ctl);
+//  gb->setVisible(false);
+//
+//  QObject::connect(chkBox, &QCheckBox::stateChanged,
+//      [gb](int state) {
+//        gb->setVisible(state == Qt::Checked);
+//      });
+//
+//  return gb;
+//}
 
 #endif /* __adddock_h__ */

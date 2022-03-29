@@ -140,6 +140,30 @@ bool save_settings(c_config_setting settings,
     const c_feature2d_boost::options & );
 #endif
 
+bool save_settings(c_config_setting settings,
+    const c_feature2d::ptr & obj);
+
+
+bool load_settings(c_config_setting settings,
+    c_sparse_feature_detector_options * options);
+
+bool save_settings(c_config_setting settings,
+    const c_sparse_feature_detector_options & options);
+
+bool load_settings(c_config_setting settings,
+    c_sparse_feature_descriptor_options * options);
+
+bool save_settings(c_config_setting settings,
+    const c_sparse_feature_descriptor_options & options);
+
+bool load_settings(c_config_setting settings,
+    c_sparse_feature_extractor_options * options);
+
+bool save_settings(c_config_setting settings,
+    const c_sparse_feature_extractor_options & options);
+
+
+
 bool load_settings(c_config_setting settings,
     c_flann_linear_index_options * options);
 
@@ -176,14 +200,12 @@ bool load_settings(c_config_setting settings,
 bool load_settings(c_config_setting settings,
     c_feature2d_matcher_options * options);
 
-bool load_settings(c_config_setting settings,
-    c_sparse_feature_detector_options * options);
 
-bool load_settings(c_config_setting settings,
-    c_sparse_feature_descriptor_options * options);
+bool save_settings(c_config_setting settings,
+    const c_feature2d_matcher::ptr & obj);
 
-bool load_settings(c_config_setting settings,
-    c_sparse_feature_extractor_options * options);
+
+///////////////////////////////////////////////////////////////////////
 
 c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
     c_config_setting settings);
@@ -198,15 +220,5 @@ c_feature2d_matcher::ptr create_sparse_feature_matcher(
 c_feature2d_matcher::ptr create_sparse_feature_matcher(
     const c_sparse_feature_extractor::ptr & extractor,
     const std::string & matcher_spec);
-
-
-bool save_settings(c_config_setting settings,
-    const c_feature2d::ptr & obj);
-
-bool save_settings(c_config_setting settings,
-    const c_sparse_feature_extractor::ptr & obj);
-
-bool save_settings(c_config_setting settings,
-    const c_feature2d_matcher::ptr & obj);
 
 #endif /* __feature2d_settings_h__ */

@@ -19,6 +19,7 @@
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/improc/c_image_processor.h>
+#include <core/feature2d/feature2d.h>
 #include <core/settings.h>
 #include <atomic>
 
@@ -56,54 +57,6 @@ enum frame_upscale_option {
   frame_upscale_x15 = 2,
   frame_upscale_x30 = 3,
 };
-
-//
-//const extern struct roi_selection_method_desc {
-//  const char * name;
-//  enum roi_selection_method value;
-//} roi_selection_methods[];
-//
-//std::string toStdString(enum roi_selection_method v);
-//enum roi_selection_method fromStdString(const std::string  & s,
-//    enum roi_selection_method defval );
-//
-//const extern struct frame_registration_method_desc {
-//  const char * name;
-//  enum frame_registration_method value;
-//} frame_registration_methods[];
-//
-//std::string toStdString(enum frame_registration_method v);
-//enum frame_registration_method fromStdString(const std::string  & s,
-//    enum frame_registration_method defval );
-//
-//
-//const extern struct frame_accumulation_method_desc {
-//  const char * name;
-//  enum frame_accumulation_method value;
-//} frame_accumulation_methods[];
-//
-//std::string toStdString(enum frame_accumulation_method v);
-//enum frame_accumulation_method fromStdString(const std::string  & s,
-//    enum frame_accumulation_method defval );
-//
-//const extern struct frame_upscale_stage_desc {
-//  const char * name;
-//  enum frame_upscale_stage value;
-//} frame_upscale_stages[];
-//
-//std::string toStdString(enum frame_upscale_stage v);
-//enum frame_upscale_stage fromStdString(const std::string  & s,
-//    enum frame_upscale_stage defval );
-//
-//const extern struct frame_upscale_option_desc {
-//  const char * name;
-//  enum frame_upscale_option value;
-//} frame_upscale_options[];
-//
-//std::string toStdString(enum frame_upscale_option v);
-//enum frame_upscale_option fromStdString(const std::string  & s,
-//    enum frame_upscale_option defval );
-
 
 struct c_input_options {
 
@@ -276,6 +229,15 @@ public:
 
   c_frame_upscale_options & upscale_options();
   const c_frame_upscale_options & upscale_options() const;
+
+  c_sparse_feature_extractor_options & sparse_feature_extractor_options();
+  const c_sparse_feature_extractor_options & sparse_feature_extractor_options() const;
+
+  c_sparse_feature_detector_options & sparse_feature_detector_options();
+  const c_sparse_feature_detector_options & sparse_feature_detector_options() const;
+
+  c_sparse_feature_descriptor_options & sparse_feature_descriptor_options() ;
+  const c_sparse_feature_descriptor_options & sparse_feature_descriptor_options() const;
 
   c_master_frame_options & master_frame_options();
   const c_master_frame_options & master_frame_options() const;

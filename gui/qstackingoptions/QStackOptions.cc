@@ -24,48 +24,42 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
   Q_INIT_RESOURCE(qstackingoptions_resources);
 
   stackName_ctl =
-      add_editbox(form, "* Stack Name:",
-          [this]() {
-            if ( stack_ && !updatingControls() ) {
-              const QString & text = stackName_ctl->text();
-              if ( !text.isEmpty() ) {
-                LOCK(); stack_->set_name(text.toStdString()); UNLOCK();
-                emit stackNameChanged(stack_);
-              }
+      add_textbox("* Stack Name:",
+          [this](const QString & text) {
+            if ( stack_ && !text.isEmpty() ) {
+              stack_->set_name(text.toStdString());
+              emit stackNameChanged(stack_);
             }
           });
 
-
-  add_expandable_groupbox(form, "* Input Options",
+  add_expandable_groupbox("* Input Options",
       inputOptions_ctl =
           new QImageStackingInputOptions(this));
 
-  add_expandable_groupbox(form, "* ROI Selection",
+  add_expandable_groupbox("* ROI Selection",
       roiSelection_ctl =
           new QROISelectionOptions(this));
 
-  add_expandable_groupbox(form, "* Upscale Options",
+  add_expandable_groupbox("* Upscale Options",
       upscaleOptions_ctl =
           new QFrameUpscaleOptions(this));
 
-  add_expandable_groupbox(form,
-      "* Frame Registration Options",
+  add_expandable_groupbox("* Frame Registration Options",
       frameRegistration_ctl =
           new QFrameRegistrationOptions(this));
 
-
-  add_expandable_groupbox(form, "* Frame Accumulation Options",
+  add_expandable_groupbox("* Frame Accumulation Options",
       frameAccumulation_ctl =
           new QFrameAccumulationOptions(this));
 
-  add_expandable_groupbox(form,
-      "* Output Options",
+  add_expandable_groupbox("* Output Options",
       outputOptions_ctl =
           new QStackOutputOptions(this));
 
 
   connect(inputOptions_ctl, &QImageStackingInputOptions::applyInputOptionsToAllRequested,
       this, &ThisClass::applyInputOptionsToAllRequested);
+
   connect(inputOptions_ctl, &QImageStackingInputOptions::parameterChanged,
       this, &ThisClass::stackOptionsChanged);
 

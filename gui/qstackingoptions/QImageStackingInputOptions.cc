@@ -46,13 +46,10 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
   enable_remove_bad_pixels_ctl =
       add_checkbox("Detect Bad Pixels",
-          [this](int state) {
-            if ( options_ ) {
-              bool checked = state == Qt::Checked;
-              if ( checked != options_->filter_bad_pixels ) {
-                options_->filter_bad_pixels = checked;
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && checked != options_->filter_bad_pixels ) {
+              options_->filter_bad_pixels = checked;
+              emit parameterChanged();
             }
           });
 
@@ -77,20 +74,16 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
   enable_color_maxtrix_ctl =
       add_checkbox("Apply color matrix if available",
-          [this](int state) {
-            if ( options_ ) {
-              bool checked = state == Qt::Checked;
-              if ( checked != options_->enable_color_maxtrix ) {
-                options_->enable_color_maxtrix = checked;
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && checked != options_->enable_color_maxtrix ) {
+              options_->enable_color_maxtrix = checked;
+              emit parameterChanged();
             }
           });
 
 
   anscombe_ctl =
-      add_enum_combobox<anscombe_method>(
-          "Anscombe Transform:",
+      add_enum_combobox<anscombe_method>("Anscombe Transform:",
           [this](anscombe_method v) {
             if ( options_ && v != options_->anscombe ) {
               options_->anscombe = v;
@@ -100,8 +93,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
 
   processor_selector_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Process input frames:",
+      add_combobox<QImageProcessorSelectionCombo>("Process input frames:",
           [this](int currentIndex) {
             if ( options_ ) {
               options_->input_frame_processor =
@@ -127,25 +119,19 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
   missing_pixels_marked_black_ctl =
       add_checkbox("Missing pixels marked as black",
-          [this](int state) {
-            if ( options_ ) {
-              bool checked = state == Qt::Checked;
-              if ( checked != options_->missing_pixels_marked_black ) {
-                options_->missing_pixels_marked_black = checked;
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && checked != options_->missing_pixels_marked_black ) {
+              options_->missing_pixels_marked_black = checked;
+              emit parameterChanged();
             }
           });
 
   inpaint_missing_pixels_ctl =
       add_checkbox("Inpaint missing pixels with feasible values",
-          [this](int state) {
-            if ( options_ ) {
-              bool checked = state == Qt::Checked;
-              if ( checked != options_->inpaint_missing_pixels ) {
-                options_->inpaint_missing_pixels = checked;
-                emit parameterChanged();
-              }
+          [this](bool checked) {
+            if ( options_ && checked != options_->inpaint_missing_pixels ) {
+              options_->inpaint_missing_pixels = checked;
+              emit parameterChanged();
             }
           });
 

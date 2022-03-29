@@ -38,7 +38,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   }
 
   enabled_ctl = add_checkbox("Enabled",
-      [this](int /*state*/) {
+      [this](bool /*checked*/) {
         //emit imageProcessingEnableChanged(state == Qt::Checked);
         emit parameterChanged();
       });

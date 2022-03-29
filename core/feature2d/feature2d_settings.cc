@@ -758,179 +758,6 @@ bool save_settings(c_config_setting section, const c_feature2d::ptr & obj)
 }
 
 
-bool load_settings(c_config_setting settings, c_sparse_feature_detector_options * options)
-{
-  INSTRUMENT_REGION("");
-
-  if ( !settings ) {
-    CF_ERROR("libconfig settings is null in load_settings(c_sparse_feature_detector_options)");
-    return false;
-  }
-
-  std::string detector_type;
-
-  if ( load_settings(settings, "type", &detector_type) && !detector_type.empty() ) {
-    if ( !fromString(detector_type, &options->type) || options->type == FEATURE2D_UNKNOWN ) {
-      CF_ERROR("Invalid or not supported feature descriptor type specified : %s",
-          detector_type.c_str());
-      return false;
-    }
-  }
-
-  if ( options->type == FEATURE2D_UNKNOWN ) {
-    CF_ERROR("No sparse_feature_descriptor type specified in \n"
-        "load_settings(c_sparse_feature_descriptor_options)");
-    return false;
-  }
-
-  if ( detector_type.empty() ) {
-    detector_type =
-        toString(options->type);
-  }
-
-  c_config_setting subsection =
-      settings[detector_type];
-
-  if ( subsection ) {
-
-    switch ( options->type ) {
-    case FEATURE2D_ORB :
-      return load_settings(subsection, &options->orb);
-    case FEATURE2D_BRISK :
-      return load_settings(subsection, &options->brisk);
-    case FEATURE2D_KAZE :
-      return load_settings(subsection, &options->kaze);
-    case FEATURE2D_AKAZE :
-      return load_settings(subsection, &options->akaze);
-#if HAVE_FEATURE2D_SIFT
-    case FEATURE2D_SIFT :
-      return load_settings(subsection, &options->sift);
-#endif
-#if HAVE_FEATURE2D_SURF
-    case FEATURE2D_SURF :
-      return load_settings(subsection, &options->surf);
-#endif
-    case FEATURE2D_MSER :
-      return load_settings(subsection, &options->mser);
-    case FEATURE2D_FAST :
-      return load_settings(subsection, &options->fast);
-    case FEATURE2D_AGAST :
-      return load_settings(subsection, &options->agast);
-    case FEATURE2D_GFTT :
-      return load_settings(subsection, &options->gftt);
-    case FEATURE2D_BLOB :
-      return load_settings(subsection, &options->blob);
-#if HAVE_FEATURE2D_STAR
-    case FEATURE2D_STAR :
-      return load_settings(subsection, &options->star);
-#endif
-#if HAVE_FEATURE2D_MSD
-    case FEATURE2D_MSD :
-      return load_settings(subsection, &options->msd);
-#endif
-#if HAVE_FEATURE2D_HL
-    case FEATURE2D_HL :
-      return load_settings(subsection, &options->hl);
-#endif
-    default :
-      CF_ERROR("Requested feature2d object '%s' can not detect sparse features",
-          detector_type.c_str());
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_options * options)
-{
-  INSTRUMENT_REGION("");
-
-  if ( !settings ) {
-    CF_ERROR("libconfig settings is null in load_settings(c_sparse_feature_descriptor_options)");
-    return false;
-  }
-
-  std::string descriptor_type;
-
-  if ( load_settings(settings, "type", &descriptor_type) && !descriptor_type.empty() ) {
-    if ( !fromString(descriptor_type, &options->type) || options->type == FEATURE2D_UNKNOWN ) {
-      CF_ERROR("Invalid or not supported feature descriptor type specified : %s",
-          descriptor_type.c_str());
-      return false;
-    }
-  }
-
-  if ( options->type == FEATURE2D_UNKNOWN ) {
-    CF_ERROR("No sparse_feature_descriptor type specified in \n"
-        "load_settings(c_sparse_feature_descriptor_options)");
-    return false;
-  }
-
-  if ( descriptor_type.empty() ) {
-    descriptor_type =
-        toString(options->type);
-  }
-
-  c_config_setting subsection =
-      settings[descriptor_type];
-
-  if ( subsection ) {
-
-    switch ( options->type ) {
-    case FEATURE2D_ORB :
-      return load_settings(subsection, &options->orb);
-    case FEATURE2D_BRISK :
-      return load_settings(subsection, &options->brisk);
-    case FEATURE2D_KAZE :
-      return load_settings(subsection, &options->kaze);
-    case FEATURE2D_AKAZE :
-      return load_settings(subsection, &options->akaze);
-#if HAVE_FEATURE2D_SIFT
-    case FEATURE2D_SIFT :
-      return load_settings(subsection, &options->sift);
-#endif
-#if HAVE_FEATURE2D_SURF
-    case FEATURE2D_SURF :
-      return load_settings(subsection, &options->surf);
-#endif
-#if HAVE_FEATURE2D_FREAK
-    case FEATURE2D_FREAK :
-      return load_settings(subsection, &options->freak);
-#endif
-#if HAVE_FEATURE2D_BRIEF
-    case FEATURE2D_BRIEF :
-      return load_settings(subsection, &options->brief);
-#endif
-#if HAVE_FEATURE2D_LUCID
-    case FEATURE2D_LUCID :
-      return load_settings(subsection, &options->lucid);
-#endif
-#if HAVE_FEATURE2D_LATCH
-    case FEATURE2D_LATCH :
-      return load_settings(subsection, &options->latch);
-#endif
-#if HAVE_FEATURE2D_DAISY
-    case FEATURE2D_DAISY :
-      return load_settings(subsection, &options->daisy);
-#endif
-#if HAVE_FEATURE2D_VGG
-    case FEATURE2D_VGG :
-      return load_settings(subsection, &options->vgg);
-#endif
-#if HAVE_FEATURE2D_BOOST
-    case FEATURE2D_BOOST :
-      return load_settings(subsection, &options->boost);
-#endif
-    default :
-      CF_ERROR("Requested feature2d object '%s' can not extract sparse feature descriptors",
-          descriptor_type.c_str());
-      return false;
-    }
-  }
-
-  return true;
-}
 
 
 bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options * options)
@@ -1672,46 +1499,265 @@ c_feature2d_matcher::ptr create_sparse_feature_matcher(const c_sparse_feature_ex
 
 
 
-bool save_settings(c_config_setting settings, const c_sparse_feature_extractor::ptr & obj)
+bool load_settings(c_config_setting settings, c_sparse_feature_detector_options * options)
 {
-  c_feature2d::ptr detector =
-      obj->detector();
+  INSTRUMENT_REGION("");
 
-  c_feature2d::ptr descriptor =
-      obj->descriptor();
-
-  if ( detector ) {
-
-    std::string detector_type =
-        toString(detector->type());
-
-    c_config_setting section =
-        settings.add_group("detector");
-
-    save_settings(section, "type",
-        detector_type);
-
-    save_settings(section.add_group(detector_type),
-        detector);
+  if ( !settings ) {
+    CF_ERROR("libconfig settings is null in load_settings(c_sparse_feature_detector_options)");
+    return false;
   }
 
-  if ( descriptor && descriptor != detector ) {
+  std::string detector_type;
 
-    std::string descriptor_type =
-        toString(descriptor->type());
-
-    c_config_setting section =
-        settings.add_group("descriptor");
-
-    save_settings(section, "type",
-        descriptor_type);
-
-    save_settings(section.add_group(descriptor_type),
-        descriptor);
+  if ( load_settings(settings, "type", &detector_type) && !detector_type.empty() ) {
+    if ( !fromString(detector_type, &options->type) || options->type == SPARSE_FEATURE_DETECTOR_UNKNOWN ) {
+      CF_ERROR("Invalid or not supported feature descriptor type specified : %s",
+          detector_type.c_str());
+    }
   }
+
+  c_config_setting group;
+#define LOAD_GROUP(name) \
+  if ( (group = settings[#name]).isGroup() ) { \
+    load_settings(group, &options->name); \
+  }
+
+  LOAD_GROUP(orb);
+  LOAD_GROUP(brisk);
+  LOAD_GROUP(kaze);
+  LOAD_GROUP(akaze);
+#if HAVE_FEATURE2D_SIFT
+  LOAD_GROUP(sift);
+#endif
+#if HAVE_FEATURE2D_SURF
+  LOAD_GROUP(surf);
+#endif
+  LOAD_GROUP(mser);
+  LOAD_GROUP(fast);
+  LOAD_GROUP(agast);
+  LOAD_GROUP(gftt);
+  LOAD_GROUP(blob);
+#if HAVE_FEATURE2D_STAR
+  LOAD_GROUP(star);
+#endif
+#if HAVE_FEATURE2D_MSD
+  LOAD_GROUP(msd);
+#endif
+#if HAVE_FEATURE2D_HL
+  LOAD_GROUP(hl);
+#endif
+
+#undef LOAD_GROUP
 
   return true;
 }
+
+bool save_settings(c_config_setting settings, const c_sparse_feature_detector_options & options)
+{
+  save_settings(settings, "type",
+      toString(options.type));
+
+#define SAVE_GROUP(name) \
+    save_settings(settings.add_group(#name), \
+        options.name);
+
+  SAVE_GROUP(orb);
+  SAVE_GROUP(brisk);
+  SAVE_GROUP(kaze);
+  SAVE_GROUP(akaze);
+#if HAVE_FEATURE2D_SIFT
+  SAVE_GROUP(sift);
+#endif
+#if HAVE_FEATURE2D_SURF
+  SAVE_GROUP(surf);
+#endif
+  SAVE_GROUP(mser);
+  SAVE_GROUP(fast);
+  SAVE_GROUP(agast);
+  SAVE_GROUP(gftt);
+  SAVE_GROUP(blob);
+#if HAVE_FEATURE2D_STAR
+  SAVE_GROUP(star);
+#endif
+#if HAVE_FEATURE2D_MSD
+  SAVE_GROUP(msd);
+#endif
+#if HAVE_FEATURE2D_HL
+  SAVE_GROUP(hl);
+#endif
+
+#undef SAVE_GROUP
+
+  return true;
+}
+
+
+
+bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_options * options)
+{
+  INSTRUMENT_REGION("");
+
+  if ( !settings ) {
+    CF_ERROR("libconfig settings is null in load_settings(c_sparse_feature_descriptor_options)");
+    return false;
+  }
+
+  std::string descriptor_type;
+
+  if ( load_settings(settings, "type", &descriptor_type) && !descriptor_type.empty() ) {
+    if ( !fromString(descriptor_type, &options->type) || options->type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+      CF_ERROR("Invalid or not supported feature descriptor type specified : %s",
+          descriptor_type.c_str());
+    }
+  }
+
+  c_config_setting group;
+#define LOAD_GROUP(name) \
+  if ( (group = settings[#name]).isGroup() ) { \
+    load_settings(group, &options->name); \
+  }
+
+  LOAD_GROUP(orb);
+  LOAD_GROUP(brisk);
+  LOAD_GROUP(kaze);
+  LOAD_GROUP(akaze);
+#if HAVE_FEATURE2D_SIFT
+  LOAD_GROUP(sift);
+#endif
+#if HAVE_FEATURE2D_SURF
+  LOAD_GROUP(surf);
+#endif
+#if HAVE_FEATURE2D_FREAK
+  LOAD_GROUP(freak);
+#endif
+#if HAVE_FEATURE2D_BRIEF
+  LOAD_GROUP(brief);
+#endif
+#if HAVE_FEATURE2D_LUCID
+  LOAD_GROUP(lucid);
+#endif
+#if HAVE_FEATURE2D_LATCH
+  LOAD_GROUP(latch);
+#endif
+#if HAVE_FEATURE2D_DAISY
+  LOAD_GROUP(daisy);
+#endif
+#if HAVE_FEATURE2D_VGG
+  LOAD_GROUP(vgg);
+#endif
+#if HAVE_FEATURE2D_BOOST
+  LOAD_GROUP(boost);
+#endif
+
+#undef LOAD_GROUP
+
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_options & options)
+{
+  save_settings(settings, "type",
+      toString(options.type));
+
+  save_settings(settings, "use_detector_options",
+      toString(options.use_detector_options));
+
+#define SAVE_GROUP(name) \
+    save_settings(settings.add_group(#name), \
+        options.name);
+
+  SAVE_GROUP(orb);
+  SAVE_GROUP(brisk);
+  SAVE_GROUP(kaze);
+  SAVE_GROUP(akaze);
+#if HAVE_FEATURE2D_SIFT
+  SAVE_GROUP(sift);
+#endif
+#if HAVE_FEATURE2D_SURF
+  SAVE_GROUP(surf);
+#endif
+#if HAVE_FEATURE2D_FREAK
+  SAVE_GROUP(freak);
+#endif
+#if HAVE_FEATURE2D_BRIEF
+  SAVE_GROUP(brief);
+#endif
+#if HAVE_FEATURE2D_LUCID
+  SAVE_GROUP(lucid);
+#endif
+#if HAVE_FEATURE2D_LATCH
+  SAVE_GROUP(latch);
+#endif
+#if HAVE_FEATURE2D_DAISY
+  SAVE_GROUP(daisy);
+#endif
+#if HAVE_FEATURE2D_VGG
+  SAVE_GROUP(vgg);
+#endif
+#if HAVE_FEATURE2D_BOOST
+  SAVE_GROUP(boost);
+#endif
+
+#undef SAVE_GROUP
+
+  return true;
+}
+
+
+bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_options & options)
+{
+  save_settings(settings.add_group("detector"),
+      options.detector);
+
+  save_settings(settings.add_group("descriptor"),
+      options.descriptor);
+
+  return true;
+}
+
+
+//
+//bool save_settings(c_config_setting settings, const c_sparse_feature_extractor::ptr & obj)
+//{
+//  c_feature2d::ptr detector =
+//      obj->detector();
+//
+//  c_feature2d::ptr descriptor =
+//      obj->descriptor();
+//
+//  if ( detector ) {
+//
+//    std::string detector_type =
+//        toString(detector->type());
+//
+//    c_config_setting section =
+//        settings.add_group("detector");
+//
+//    save_settings(section, "type",
+//        detector_type);
+//
+//    save_settings(section.add_group(detector_type),
+//        detector);
+//  }
+//
+//  if ( descriptor && descriptor != detector ) {
+//
+//    std::string descriptor_type =
+//        toString(descriptor->type());
+//
+//    c_config_setting section =
+//        settings.add_group("descriptor");
+//
+//    save_settings(section, "type",
+//        descriptor_type);
+//
+//    save_settings(section.add_group(descriptor_type),
+//        descriptor);
+//  }
+//
+//  return true;
+//}
 
 
 

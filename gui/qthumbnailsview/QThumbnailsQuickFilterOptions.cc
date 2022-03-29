@@ -170,14 +170,14 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
 
   caseSensitivity_ctl =
       add_checkbox("Case sensitive",
-          [this] (int) {
+          [this] (bool) {
             emit parameterChanged();
           });
 
 
   invertMatch_ctl =
       add_checkbox("Invert match",
-        [this] (int) {
+        [this] (bool) {
           emit parameterChanged();
         });
 

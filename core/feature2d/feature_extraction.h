@@ -120,8 +120,80 @@ enum FEATURE2D_TYPE {
 #endif
 };
 
+
+enum SPARSE_FEATURE_DETECTOR_TYPE
+{
+  SPARSE_FEATURE_DETECTOR_UNKNOWN = -1,
+  SPARSE_FEATURE_DETECTOR_ORB = FEATURE2D_ORB,
+  SPARSE_FEATURE_DETECTOR_BRISK = FEATURE2D_BRISK,
+  SPARSE_FEATURE_DETECTOR_MSER = FEATURE2D_MSER,
+  SPARSE_FEATURE_DETECTOR_FAST = FEATURE2D_FAST,
+  SPARSE_FEATURE_DETECTOR_AGAST = FEATURE2D_AGAST,
+  SPARSE_FEATURE_DETECTOR_GFTT = FEATURE2D_GFTT,
+  SPARSE_FEATURE_DETECTOR_BLOB = FEATURE2D_BLOB,
+  SPARSE_FEATURE_DETECTOR_KAZE = FEATURE2D_KAZE,
+  SPARSE_FEATURE_DETECTOR_AKAZE = FEATURE2D_AKAZE,
+#if HAVE_FEATURE2D_SIFT
+  SPARSE_FEATURE_DETECTOR_SIFT = FEATURE2D_SIFT,
+#endif
+#if HAVE_FEATURE2D_SURF
+  SPARSE_FEATURE_DETECTOR_SURF = FEATURE2D_SURF,
+#endif
+#if HAVE_FEATURE2D_STAR
+  SPARSE_FEATURE_DETECTOR_STAR = FEATURE2D_STAR,
+#endif
+#if HAVE_FEATURE2D_MSD
+  SPARSE_FEATURE_DETECTOR_MSD = FEATURE2D_MSD,
+#endif
+#if HAVE_FEATURE2D_HL
+  SPARSE_FEATURE_DETECTOR_HL = FEATURE2D_HL,
+#endif
+};
+
+enum SPARSE_FEATURE_DESCRIPTOR_TYPE
+{
+  SPARSE_FEATURE_DESCRIPTOR_UNKNOWN = -1,
+  SPARSE_FEATURE_DESCRIPTOR_ORB = FEATURE2D_ORB,
+  SPARSE_FEATURE_DESCRIPTOR_BRISK = FEATURE2D_BRISK,
+  SPARSE_FEATURE_DESCRIPTOR_KAZE = FEATURE2D_KAZE,
+  SPARSE_FEATURE_DESCRIPTOR_AKAZE = FEATURE2D_AKAZE,
+#if HAVE_FEATURE2D_SIFT
+  SPARSE_FEATURE_DESCRIPTOR_SIFT = FEATURE2D_SIFT,
+#endif
+#if HAVE_FEATURE2D_SURF
+  SPARSE_FEATURE_DESCRIPTOR_SURF = FEATURE2D_SURF,
+#endif
+#if HAVE_FEATURE2D_FREAK
+  SPARSE_FEATURE_DESCRIPTOR_FREAK = FEATURE2D_FREAK,
+#endif
+#if HAVE_FEATURE2D_BRIEF
+  SPARSE_FEATURE_DESCRIPTOR_BRIEF = FEATURE2D_BRIEF,
+#endif
+#if HAVE_FEATURE2D_LUCID
+  SPARSE_FEATURE_DESCRIPTOR_LUCID = FEATURE2D_LUCID,
+#endif
+#if HAVE_FEATURE2D_LATCH
+  SPARSE_FEATURE_DESCRIPTOR_LATCH = FEATURE2D_LATCH,
+#endif
+#if HAVE_FEATURE2D_DAISY
+  SPARSE_FEATURE_DESCRIPTOR_DAISY = FEATURE2D_DAISY,
+#endif
+#if HAVE_FEATURE2D_VGG
+  SPARSE_FEATURE_DESCRIPTOR_VGG = FEATURE2D_VGG,
+#endif
+#if HAVE_FEATURE2D_BOOST
+  SPARSE_FEATURE_DESCRIPTOR_BOOST = FEATURE2D_BOOST,
+#endif
+};
+
 template<> const c_enum_member *
 members_of<FEATURE2D_TYPE>();
+
+template<> const c_enum_member *
+members_of<SPARSE_FEATURE_DETECTOR_TYPE>();
+
+template<> const c_enum_member *
+members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>();
 
 template<> const c_enum_member *
 members_of<cv::ORB::ScoreType>();
@@ -149,6 +221,8 @@ BoostDesc_Type;
 template<> const c_enum_member *
 members_of<BoostDesc_Type>();
 #endif
+
+
 
 template<class cvFeature2D_type>
 struct feature2d_traits;
@@ -270,7 +344,7 @@ public:
   void detect(cv::InputArray image,
       CV_OUT std::vector<cv::KeyPoint>& keypoints,
       cv::InputArray mask = cv::noArray()) const
-          {
+  {
     feature2d_->detect(image, keypoints, mask);
   }
 
@@ -680,7 +754,7 @@ public:
     using feature2d_class = this_class;
     decltype (cv::AKAZE::DESCRIPTOR_MLDB) descriptor_type =
         cv::AKAZE::DESCRIPTOR_MLDB;
-    int descriptor_size = 0;
+    int descriptor_size = 256;
     int descriptor_channels = 3;
     float threshold = 0.001f;
     int nOctaves = 4;
@@ -1313,8 +1387,8 @@ inline constexpr bool can_detect_features_and_compute_descriptors(enum FEATURE2D
 
 struct c_sparse_feature_detector_options
 {
-  FEATURE2D_TYPE type =
-      FEATURE2D_UNKNOWN;
+  SPARSE_FEATURE_DETECTOR_TYPE type =
+      SPARSE_FEATURE_DETECTOR_SURF;
 
   c_feature2d_orb::options orb;
   c_feature2d_brisk::options brisk;
@@ -1345,8 +1419,10 @@ struct c_sparse_feature_detector_options
 
 struct c_sparse_feature_descriptor_options
 {
-  FEATURE2D_TYPE type =
-      FEATURE2D_UNKNOWN;
+  SPARSE_FEATURE_DESCRIPTOR_TYPE type =
+      SPARSE_FEATURE_DESCRIPTOR_SURF;
+
+  bool use_detector_options = true;
 
   c_feature2d_orb::options orb;
   c_feature2d_brisk::options brisk;
@@ -1462,24 +1538,11 @@ protected:
 c_feature2d::ptr create_sparse_feature_detector(
     const c_sparse_feature_detector_options & options);
 
-c_feature2d::ptr create_sparse_feature_detector(
-    const std::string & detector_spec);
-
 c_feature2d::ptr create_sparse_descriptor_extractor(
     const c_sparse_feature_descriptor_options & options);
-
-c_feature2d::ptr create_sparse_descriptor_extractor(
-    const std::string & descroptor_spec);
 
 c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
     const c_sparse_feature_extractor_options & options);
 
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
-    const std::string & detector_spec,
-    const std::string & descriptor_spec = "");
-
-void dump_supported_feature_detectors(FILE * fp = stdout);
-void dump_supported_feature_descriptor_extractors(FILE * fp = stdout);
-void dump_supported_feature_detectors_and_descriptor_extractors(FILE * fp = stdout);
 
 #endif /* __feature_detection_h__ */

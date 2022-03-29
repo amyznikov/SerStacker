@@ -373,6 +373,36 @@ const c_frame_upscale_options & c_image_stacking_options::upscale_options() cons
   return upscale_options_;
 }
 
+c_sparse_feature_extractor_options & c_image_stacking_options::sparse_feature_extractor_options()
+{
+  return frame_registration_options_.feature_options.sparse_feature_extractor;
+}
+
+const c_sparse_feature_extractor_options & c_image_stacking_options::sparse_feature_extractor_options() const
+{
+  return frame_registration_options_.feature_options.sparse_feature_extractor;
+}
+
+c_sparse_feature_detector_options & c_image_stacking_options::sparse_feature_detector_options()
+{
+  return sparse_feature_extractor_options().detector;
+}
+
+const c_sparse_feature_detector_options & c_image_stacking_options::sparse_feature_detector_options() const
+{
+  return sparse_feature_extractor_options().detector;
+}
+
+c_sparse_feature_descriptor_options & c_image_stacking_options::sparse_feature_descriptor_options()
+{
+  return sparse_feature_extractor_options().descriptor;
+}
+
+const c_sparse_feature_descriptor_options & c_image_stacking_options::sparse_feature_descriptor_options() const
+{
+  return sparse_feature_extractor_options().descriptor;
+}
+
 c_master_frame_options & c_image_stacking_options::master_frame_options()
 {
   return master_frame_options_;

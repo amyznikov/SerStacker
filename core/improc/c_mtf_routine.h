@@ -9,7 +9,7 @@
 #ifndef __c_mtf_routine_h__
 #define __c_mtf_routine_h__
 
-#include "../mtf/c_pixinsight_midtones_transfer_function.h"
+#include "../mtf/c_pixinsight_mtf.h"
 #include "c_image_processor.h"
 
 class c_mtf_routine
@@ -34,7 +34,7 @@ public:
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
+  const c_pixinsight_mtf::sptr & mtf() const;
 
   void set_shadows(double v) {
     mtf_->set_shadows(v);
@@ -62,8 +62,8 @@ public:
 
 
 protected:
-  c_pixinsight_midtones_transfer_function::sptr mtf_ =
-      c_pixinsight_midtones_transfer_function::create();
+  c_pixinsight_mtf::sptr mtf_ =
+      c_pixinsight_mtf::create();
 };
 
 #endif /* __c_mtf_routine_h__ */

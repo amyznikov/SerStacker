@@ -62,12 +62,12 @@ void QMtfControlDialogBox::setDisplayImage(cv::InputArray image, cv::InputArray 
 }
 
 
-void QMtfControlDialogBox::setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf)
+void QMtfControlDialogBox::setMtf(const c_pixinsight_mtf::sptr & mtf)
 {
   return mtfControl_->setMtf(mtf);
 }
 
-const c_pixinsight_midtones_transfer_function::sptr & QMtfControlDialogBox::mtf() const
+const c_pixinsight_mtf::sptr & QMtfControlDialogBox::mtf() const
 {
   return mtfControl_->mtf();
 }

@@ -431,49 +431,6 @@ public:
   }
 
   /////////////////////////////////////////////////////////////////////
-//
-//  QGroupBox * add_expandable_groupbox(QFormLayout * form, const QString & title, QWidget * ctl)
-//  {
-//#define __STYLE_TEXT(x) #x
-//    static constexpr char style[] =
-//      __STYLE_TEXT(
-//          QCheckBox {
-//            spacing: 15px;
-//          }
-//          QCheckBox::indicator {
-//            width: 13px;
-//            height: 13px;
-//          }
-//          QCheckBox::indicator:unchecked {
-//            image: url(:/gui/icons/double-arrow-right.png);
-//          }
-//          QCheckBox::indicator:checked {
-//            image: url(:/gui/icons/double-arrow-up.png);
-//          }
-//        );
-//#undef __STYLE_TEXT
-//
-//    QCheckBox * chkBox = new QCheckBox(title);
-//    chkBox->setStyleSheet(style);
-//    form->addRow(chkBox);
-//
-//    QGroupBox *gb = new QGroupBox();
-//    form->addRow(gb);
-//    (new QVBoxLayout(gb))->addWidget(ctl);
-//    gb->setVisible(false);
-//
-//    QObject::connect(chkBox, &QCheckBox::stateChanged,
-//        [gb](int state) {
-//          gb->setVisible(state == Qt::Checked);
-//        });
-//
-//    return gb;
-//  }
-
-//  QGroupBox* add_expandable_groupbox(const QString & title, QWidget * ctl)
-//  {
-//    return add_expandable_groupbox(this->form, title, ctl);
-//  }
 
   QExpandableGroupBox* add_expandable_groupbox(QFormLayout * form, const QString & title, QWidget * ctl)
   {

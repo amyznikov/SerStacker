@@ -8,9 +8,9 @@
 #ifndef __QMtfControl_h__
 #define __QMtfControl_h__
 
+#include <core/mtf/c_pixinsight_mtf.h>
 #include "QHistogramView.h"
 #include "QMtfSlider.h"
-#include <core/mtf/c_pixinsight_midtones_transfer_function.h>
 
 class QMtfControl
     : public QWidget
@@ -22,8 +22,8 @@ public:
 
   QMtfControl(QWidget * parent = Q_NULLPTR);
 
-  void setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf);
-  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
+  void setMtf(const c_pixinsight_mtf::sptr & mtf);
+  const c_pixinsight_mtf::sptr & mtf() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask);
   void setOutputImage(cv::InputArray image, cv::InputArray mask);
@@ -49,7 +49,7 @@ protected:
 
 
 protected:
-  c_pixinsight_midtones_transfer_function::sptr mtf_;
+  c_pixinsight_mtf::sptr mtf_;
 
   enum AutoMtfAction {
     AutoMtfAction_AutoClip = 0,

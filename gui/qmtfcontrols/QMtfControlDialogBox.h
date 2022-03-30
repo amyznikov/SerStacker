@@ -21,8 +21,8 @@ public:
 
   QMtfControlDialogBox(QWidget * parent = Q_NULLPTR);
 
-  void setMtf(const c_pixinsight_midtones_transfer_function::sptr & mtf);
-  const c_pixinsight_midtones_transfer_function::sptr & mtf() const;
+  void setMtf(const c_pixinsight_mtf::sptr & mtf);
+  const c_pixinsight_mtf::sptr & mtf() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void setDisplayImage(cv::InputArray image, cv::InputArray mask = cv::noArray());

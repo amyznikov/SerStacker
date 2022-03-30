@@ -1,5 +1,5 @@
 /*
- * c_pixinsight_midtones_transfer_function.h
+ * c_pixinsight_mtf.h
  *
  *  Created on: Dec 16, 2020
  *      Author: amyznikov
@@ -27,11 +27,11 @@ See section 'Midtones balance' at
 
 @endcode
  */
-class c_pixinsight_midtones_transfer_function
+class c_pixinsight_mtf
     : public c_midtones_transfer_function
 {
 public:
-  typedef c_pixinsight_midtones_transfer_function this_class;
+  typedef c_pixinsight_mtf this_class;
   typedef c_midtones_transfer_function base;
   typedef std::shared_ptr<this_class> sptr;
 
@@ -43,6 +43,8 @@ public:
   bool apply(cv::InputArray src_image,
       cv::OutputArray dst_image,
       int ddepth = -1) const override;
+
+  double apply(double pix) const override;
 
   bool find_midtones_balance(cv::InputArray input_image_histogram);
 

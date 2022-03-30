@@ -10,12 +10,12 @@
 
 
 c_image_display_function::c_image_display_function()
-  : mtf_(c_pixinsight_midtones_transfer_function::create())
+  : mtf_(c_pixinsight_mtf::create())
 {
 }
 
 
-const c_pixinsight_midtones_transfer_function::sptr & c_image_display_function::mtf() const
+const c_pixinsight_mtf::sptr & c_image_display_function::mtf() const
 {
   return mtf_;
 }

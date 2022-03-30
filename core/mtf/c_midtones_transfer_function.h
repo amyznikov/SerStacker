@@ -53,6 +53,8 @@ public:
       cv::OutputArray dst_image,
       int ddepth = -1) const;
 
+  virtual double apply(double pix) const;
+
 
 public: // Utility subroutines
 

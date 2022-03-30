@@ -24,7 +24,7 @@ bool c_mtf_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
   return mtf_->apply(image, image);
 }
 
-const c_pixinsight_midtones_transfer_function::sptr & c_mtf_routine::mtf() const
+const c_pixinsight_mtf::sptr & c_mtf_routine::mtf() const
 {
   return mtf_;
 }

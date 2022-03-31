@@ -223,7 +223,7 @@ void QFileSystemTreeDock::updateHistory(const QString & abspath)
     const int index =
         history.indexOf(abspath);
 
-    if ( index == history.size() - 1 ) {
+    if ( index < 0 || index >= history.size() - 1 ) {
       return;
     }
 

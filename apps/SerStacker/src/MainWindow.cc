@@ -11,7 +11,6 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/qstackingthread/QStackingThread.h>
 #include <gui/qimageview/QShapesButton.h>
-
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
 #include <core/debug.h>
@@ -46,7 +45,8 @@ static QIcon getIcon(const QString & name)
 
 
 
-MainWindow::MainWindow()
+MainWindow::MainWindow() :
+   imageDisplayFunction_(this)
 {
 
   static const auto createScrollableWrap =
@@ -70,10 +70,8 @@ MainWindow::MainWindow()
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(stackOptionsView = new QStackOptions(this));
 
-  imageEditor->setDisplayFunction(QImageViewer::DisplayFunction(
-      [this] (const cv::Mat & src, cv::Mat & dst, int ddepth) -> void {
-        image_display_function_(src, dst, ddepth);
-      }));
+  imageEditor->setDisplayFunction(&imageDisplayFunction_);
+
 
 #if HAVE_QGLViewer
   centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
@@ -94,6 +92,7 @@ MainWindow::MainWindow()
 
   menuBar()->setNativeMenuBar(false);
   fileMenu = menuBar()->addMenu("&File");
+  editMenu = menuBar()->addMenu("&Edit");
   viewMenu = menuBar()->addMenu("&View");
 
 
@@ -142,9 +141,6 @@ MainWindow::MainWindow()
   tabifyDockWidget(stackTreeDock, imageProcessorSelectorDock);
   fileSystemTreeDock->raise();
 
-
-//  imageProcessorSettings->set_processor(stackProgressView->
-//      currentImageProcessor());
 
   ///////////////////////////////////
   // Configure events
@@ -261,9 +257,6 @@ MainWindow::MainWindow()
   connect(stackOptionsView, &QStackOptions::applyInputOptionsToAllRequested,
       stackTreeView, & QStackTree::applyInputOptionsToAll);
 
-//  connect(stackOptionsView, &QStackOptions::applyMasterFrameOptionsToAllRequested,
-//      stackTreeView, & QStackTree::applyMasterFrameOptionsToAll);
-
   connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
       stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
 
@@ -319,66 +312,64 @@ MainWindow::MainWindow()
         imageEditor->set_current_processor(imageProcessorSelector->current_processor());
       });
 
-//  connect(imageProcessorSelector, &QImageProcessorSelector::currentImageProcessorChanged,
-//      [this]() {
-//        imageEditor->set_current_processor(imageProcessorSelector->current_processor());
-//      });
-//
-//  connect(imageProcessorSelector, &QImageProcessorSelector::imageProcessingEnableChanged,
-//      [this](bool) {
-//        imageEditor->set_current_processor(imageProcessorSelector->current_processor());
-//      });
-
-//  connect(pipelinesTreeView_ctl, &QStackListTree::currentItemChanged,
-//      this, &ThisClass::onPipelineTreeViewCurrentItemChanged);
-//  connect(pipelinesTreeView_ctl, &QStackListTree::pipelineItemPressed,
-//      this, &ThisClass::onPipelineItemPressed);
-//  connect(pipelinesTreeView_ctl, &QStackListTree::pipelineItemClicked,
-//      this, &ThisClass::onPipelineItemClicked);
-//  connect(pipelinesTreeView_ctl, &QStackListTree::pipelineItemDoubleClicked,
-//      this, &ThisClass::onPipelineItemDoubleClicked);
-//  connect(pipelinesTreeView_ctl, &QStackListTree::pipelineItemActivated,
-//      this, &ThisClass::onPipelineItemActivated);
-//  connect(pipelinesTreeView_ctl, &QStackListTree::pipelineItemEntered,
-//      this, &ThisClass::onPipelineItemEntered);
-
 
   ///////////////////////////////////
-  QAction * action;
-//
-//  fileMenu->addAction(action = new QAction("Add stack..."));
-//  connect(action, &QAction::triggered,
-//      this, &ThisClass::onAddStack);
-//
 
-  fileMenu->addAction(menuSaveImageAsAction =
-      new QAction("Save current image as..."));
-  menuSaveImageAsAction->setEnabled(imageEditor->isVisible() &&
-      !imageEditor->currentImage().empty());
+  QShortcut * shortcut;
 
-  connect(menuSaveImageAsAction, &QAction::triggered,
-      this, &ThisClass::onSaveCurrentImageAs);
+  fileMenu->addAction(saveImageAsAction = new QAction("Save current image as..."));
+  saveImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+  connect(saveImageAsAction, &QAction::triggered, this, &ThisClass::onSaveCurrentImageAs);
 
-  connect(imageEditor, &QImageEditor::currentImageChanged,
-      [this]() {
-        menuSaveImageAsAction->setEnabled(imageEditor->isVisible() &&
-            !imageEditor->currentImage().empty());
-      });
+
+  fileMenu->addAction(saveDisplayImageAsAction = new QAction("Save current display image as..."));
+  saveDisplayImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+  connect(saveDisplayImageAsAction, &QAction::triggered, this, &ThisClass::onSaveCurrentDisplayImageAs);
 
 
   fileMenu->addSeparator();
-  fileMenu->addAction(menuLoadStackAction =
+  fileMenu->addAction(loadStackAction =
       new QAction("Load stack config..."));
-  connect(menuLoadStackAction, &QAction::triggered,
+  connect(loadStackAction, &QAction::triggered,
       this, &ThisClass::onLoadStackConfig);
 
 
   fileMenu->addSeparator();
-  fileMenu->addAction(action = new QAction("Quit"));
-  connect(action, &QAction::triggered, []() {
+  fileMenu->addAction(quitAppAction = new QAction("Quit"));
+  connect(quitAppAction, &QAction::triggered, []() {
     QApplication::quit();
   });
 
+
+
+  imageEditor->addAction(copyDisplayImageAction = new QAction("Copy display image to clipboard", imageEditor));
+  editMenu->addAction(copyDisplayImageAction);
+  shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_C), imageEditor);
+  connect(shortcut, &QShortcut::activated, copyDisplayImageAction, &QAction::trigger);
+  editMenu->addAction(copyDisplayImageAction);
+
+
+
+  connect(copyDisplayImageAction, &QAction::triggered,
+      [this]() {
+        if ( imageEditor->isVisible() ) {
+          imageEditor->copyDisplayImageToClipboard();
+        }
+      });
+
+  connect(imageEditor, &QImageEditor::currentImageChanged,
+      [this]() {
+        saveImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+        saveDisplayImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->displayImage().empty());
+        copyDisplayImageAction->setEnabled(imageEditor->isVisible() && !imageEditor->displayImage().empty());
+      });
+
+  connect(imageEditor, &QImageViewer::visibilityChanged,
+      [this](bool visible) {
+        copyDisplayImageAction->setEnabled(visible && !imageEditor->displayImage().empty());
+        saveDisplayImageAsAction->setEnabled(visible && !imageEditor->displayImage().empty());
+        saveImageAsAction->setEnabled(visible && !imageEditor->currentImage().empty());
+      });
 
   ///////////////////////////////////
 
@@ -602,29 +593,33 @@ void MainWindow::configureImageViewerToolbars()
   toolbar->addWidget(imageSizeLabel = new QLabel(""));
   imageSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-  const auto onImageEditorCurrentImageChanged =
+  connect(imageEditor, &QImageEditor::currentImageFileNameChanged,
       [this, imageNameLabel, imageSizeLabel]() {
 
         const QString abspath = imageEditor->currentFileName();
         imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
         imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
 
-        if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
-
+        if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
           if ( imageEditor->currentFileName().isEmpty() ) {
-            imageLevelsDialogBox->setWindowTitle("Adjust Display Levels ...");
+            mtfDialogBox->setWindowTitle("Adjust Display Levels ...");
           }
           else {
-            imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+            mtfDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
           }
-
-          imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
         }
-
-      };
+      });
 
   connect(imageEditor, &QImageEditor::currentImageChanged,
-      onImageEditorCurrentImageChanged);
+      [this]() {
+        if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
+          mtfDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
+        }
+      });
+
+
+
+
 
   toolbar->addSeparator();
 
@@ -673,49 +668,41 @@ void MainWindow::configureImageViewerToolbars()
   connect(action, &QAction::triggered,
       [this, action](bool checked) {
 
-        if ( checked && !imageLevelsDialogBox ) {
+        if ( checked && !mtfDialogBox ) {
 
-          imageLevelsDialogBox = new QMtfControlDialogBox(this);
-          imageLevelsDialogBox->setMtf(image_display_function_.mtf());
+          mtfDialogBox = new QMtfDialogBox(this);
+          mtfDialogBox->setDisplayFunction(&imageDisplayFunction_);
 
-          connect(imageLevelsDialogBox, &QMtfControlDialogBox::mtfChanged,
+          connect(mtfDialogBox, &QMtfDialogBox::visibilityChanged,
+              action, &QAction::setChecked);
+
+          connect(&imageDisplayFunction_, &QImageDisplayFunction::update,
               [this]() {
-                if ( imageEditor->isVisible() ) {
-                  QWaitCursor wait(this);
-                  imageEditor->updateDisplay();
+                if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
+                  mtfDialogBox->updateOutputHistogramLevels();
                 }
               });
 
-          connect(imageLevelsDialogBox, &QMtfControlDialogBox::visibilityChanged,
-              action, &QAction::setChecked);
         }
 
-        if ( imageLevelsDialogBox ) {
+        if ( mtfDialogBox ) {
           if ( !checked ) {
-            imageLevelsDialogBox->hide();
+            mtfDialogBox->hide();
           }
           else {
-
             if ( imageEditor->currentFileName().isEmpty() ) {
-              imageLevelsDialogBox->setWindowTitle("Adjust Display Levels ...");
+              mtfDialogBox->setWindowTitle("Adjust Display Levels ...");
             }
             else {
-              imageLevelsDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+              mtfDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
             }
 
-            imageLevelsDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
-            imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
-            imageLevelsDialogBox->showNormal();
+            mtfDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
+            mtfDialogBox->updateOutputHistogramLevels();
+            mtfDialogBox->showNormal();
           }
         }
 
-      });
-
-  connect(imageEditor, &QImageEditor::currentDisplayImageChanged,
-      [this] () {
-        if ( imageLevelsDialogBox && imageLevelsDialogBox->isVisible() ) {
-          imageLevelsDialogBox->setDisplayImage(imageEditor->displayImage());
-        }
       });
 
 
@@ -732,7 +719,6 @@ void MainWindow::configureImageViewerToolbars()
   action->setShortcut(QKeySequence::Cancel);
   action->setToolTip("Close window");
   connect(action, &QAction::triggered, [this]() {
-    imageEditor->closeCurrentSequence();
     centralStackedWidget->setCurrentWidget(thumbnailsView);
   });
 
@@ -1160,6 +1146,18 @@ void MainWindow::onSaveCurrentImageAs()
 
   if ( !savedFileName.isEmpty() ) {
     imageEditor->setCurrentFileName(savedFileName);
+  }
+}
+
+void MainWindow::onSaveCurrentDisplayImageAs()
+{
+  if( imageEditor->isVisible() && !imageEditor->displayImage().empty() ) {
+
+    saveImageFileAs(this,
+        imageEditor->displayImage(),
+        cv::Mat(),
+        nullptr,
+        imageEditor->currentFileName());
   }
 }
 

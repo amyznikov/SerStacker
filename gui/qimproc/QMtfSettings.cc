@@ -10,48 +10,37 @@
 const QMtfSettings::ClassFactory QMtfSettings::classFactory;
 
 QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent)
-  : Base(&classFactory, routine, parent)
+  : Base(&classFactory, routine, parent),
+    displayFunction_(this)
 {
+  displayFunction_.set_mtf(&routine->mtf());
   mtf_ctl = add_widget("", new QMtfControl(this));
+  mtf_ctl->setDisplayFunction(&displayFunction_);
 
   updateControls();
 
-  connect(mtf_ctl, &QMtfControl::mtfChanged,
+  connect(&displayFunction_, &QImageDisplayFunction::update,
       [this]() {
-        if ( routine_ && routine_->enabled() ) {
+        if ( routine_->enabled() && !mtf_ctl->updatingControls() ) {
           emit parameterChanged();
         }
+      });
+
+  routine_->set_preprocess_notify_callback(
+      [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
+        mtf_ctl->setUpdatingControls(true);
+        mtf_ctl->setInputImage(image, mask);
+        mtf_ctl->setUpdatingControls(false);
+      });
+
+
+  routine_->set_postprocess_notify_callback(
+      [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
+        mtf_ctl->updateOutputHistogramLevels();
       });
 }
 
 void QMtfSettings::onupdatecontrols()
 {
-  if ( !routine_ ) {
-    setEnabled(false);
-    mtf_ctl->setMtf(nullptr);
-  }
-  else {
-
-    mtf_ctl->setMtf(routine_->mtf());
-
-    routine_->set_preprocess_notify_callback(
-        [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
-          if ( mtf_ctl->isAutoMtfActionEnabled() ) {
-
-            mtf_ctl->setUpdatingControls(true);
-            mtf_ctl->setInputImage(image, mask);
-            mtf_ctl->setUpdatingControls(false);
-
-          }
-        });
-
-    routine_->set_postprocess_notify_callback(
-        [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
-          mtf_ctl->setOutputImage(image, mask);
-        });
-
-    setEnabled(true);
-  }
-
   Base::onupdatecontrols();
 }

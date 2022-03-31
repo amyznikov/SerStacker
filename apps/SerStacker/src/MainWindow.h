@@ -14,12 +14,12 @@
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qtextview/QTextFileViewer.h>
-#include <gui/qmtfcontrols/QMtfControlDialogBox.h>
 #include <gui/qstackingthread/QStackingProgressView.h>
 #include <gui/qstackingoptions/QStackOptions.h>
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
-#include "c_display_function.h"
+#include <gui/qmtf/QMtfDisplayFunction.h>
+#include <gui/qmtf/QMtfDialogBox.h>
 
 #if HAVE_QGLViewer // Should come from CMakeLists.txt
 #include <gui/qcloudview/QCloudViewer.h>
@@ -53,6 +53,7 @@ private:
 
 public slots:
   void onSaveCurrentImageAs();
+  void onSaveCurrentDisplayImageAs();
   void onLoadStackConfig();
 
 private slots:
@@ -73,19 +74,19 @@ private slots:
 
   void saveCurrentWork();
 
-
-  //void onPipelineTreeViewCurrentItemChanged();
-//  void onPipelineItemPressed(const QFrameStackingPipeline::ptr & ppline);
-//  void onPipelineItemClicked(const QFrameStackingPipeline::ptr & ppline);
-//  void onPipelineItemDoubleClicked(const QFrameStackingPipeline::ptr & ppline);
-//  void onPipelineItemActivated(const QFrameStackingPipeline::ptr & ppline);
-//  void onPipelineItemEntered(const QFrameStackingPipeline::ptr & ppline);
-  //void onAddStack();
-
 private:
+
+  class ImageDisplayFunction : public QMtfDisplayFunction {
+    c_pixinsight_mtf mymtf;
+  public:
+    ImageDisplayFunction(QObject * parent ) :
+      QMtfDisplayFunction(parent) {
+      set_mtf(&mymtf);
+    }
+  };
+
   c_image_stacks_collection::ptr stacklist_ = c_image_stacks_collection::create();
-  //c_image_processor_collection::ptr image_processors_ = c_image_processor_collection::create();
-  c_image_display_function image_display_function_;
+  ImageDisplayFunction imageDisplayFunction_;
 
   QStackedWidget * centralStackedWidget = Q_NULLPTR;
   QThumbnailsView * thumbnailsView = Q_NULLPTR;
@@ -100,7 +101,7 @@ private:
   //QScrollArea * stackingOptionsScrollArea = Q_NULLPTR;
   QStackingProgressView * stackProgressView = Q_NULLPTR;
 
-  QMtfControlDialogBox * imageLevelsDialogBox = Q_NULLPTR;
+  QMtfDialogBox * mtfDialogBox = Q_NULLPTR;
 
   QFileSystemTreeDock * fileSystemTreeDock = Q_NULLPTR;
 
@@ -109,13 +110,18 @@ private:
 
   QCustomDockWidget * imageProcessorSelectorDock = Q_NULLPTR;
   QImageProcessorSelector * imageProcessorSelector = Q_NULLPTR;
-  //QImageEditor * currentImageEditor = Q_NULLPTR;
 
   QMenu * fileMenu = Q_NULLPTR;
   QMenu * viewMenu = Q_NULLPTR;
-  QAction * menuSaveImageAsAction = Q_NULLPTR;
-  QAction * menuLoadStackAction = Q_NULLPTR;
+  QMenu * editMenu = Q_NULLPTR;
+
+  QAction * quitAppAction = Q_NULLPTR;
+  QAction * saveImageAsAction = Q_NULLPTR;
+  QAction * saveDisplayImageAsAction = Q_NULLPTR;
+  QAction * loadStackAction = Q_NULLPTR;
   QAction * setReferenceFrameAction = Q_NULLPTR;
+  QAction * copyDisplayImageAction = Q_NULLPTR;
+
 };
 
 

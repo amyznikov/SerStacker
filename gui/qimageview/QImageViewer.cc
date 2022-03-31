@@ -6,6 +6,7 @@
  */
 
 #include "QImageViewer.h"
+#include <gui/widgets/QWaitCursor.h>
 #include "cv2qt.h"
 #include <core/debug.h>
 
@@ -88,14 +89,24 @@ QStatusBar * QImageViewer::statusbar() const
 }
 
 
-void QImageViewer::setDisplayFunction(const DisplayFunction & func)
+void QImageViewer::setDisplayFunction(QImageDisplayFunction * displayFunction)
 {
-  this->display_function_ = func;
+  if( displayFunction_ ) {
+    QObject::disconnect(displayFunction_, &QImageDisplayFunction::update,
+        this, &ThisClass::updateDisplay);
+  }
+
+  displayFunction_ = displayFunction;
+
+  if( displayFunction_ ) {
+    QObject::connect(displayFunction_, &QImageDisplayFunction::update,
+        this, &ThisClass::updateDisplay);
+  }
 }
 
-const QImageViewer::DisplayFunction & QImageViewer::displayFunction() const
+QImageDisplayFunction * QImageViewer::displayFunction() const
 {
-  return this->display_function_;
+  return this->displayFunction_;
 }
 
 void QImageViewer::setViewScale(int scale, const QPoint * centerPos)
@@ -146,7 +157,7 @@ QString QImageViewer::currentFileName() const
 void QImageViewer::setCurrentFileName(const QString & newFileName)
 {
   this->currentFileName_ = newFileName;
-  emit currentImageChanged();
+  emit currentImageFileNameChanged();
 }
 
 void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
@@ -176,28 +187,57 @@ void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::Input
 
 void QImageViewer::updateDisplay()
 {
+  createDisplayImage();
+  showCurrentDisplayImage();
+}
+
+void QImageViewer::createDisplayImage()
+{
   if ( currentImage_.empty() ) {
     displayImage_.release();
+  }
+  else if ( !displayFunction_ ) {
+    displayImage_ = currentImage_;
+  }
+  else {
+
+    const int ddepth =
+        currentImage_.channels() == 2 ?
+            currentImage_.depth() : // asumme this is optical flow image
+            CV_8U; // create regular BGR 8bit image
+
+    displayImage_.release();
+    displayFunction_->createDisplayImage(currentImage_, currentMask_,
+        displayImage_, ddepth);
+  }
+
+  emit currentDisplayImageChanged();
+}
+
+void QImageViewer::showCurrentDisplayImage()
+{
+  if( displayImage_.empty() ) {
     view_->scene()->setBackground(QImage());
   }
   else {
-    if ( !display_function_ ) {
-      displayImage_ = currentImage_;
-    }
-    else if ( currentImage_.channels() == 2  ) {
-      // asumme this is optical flow image
-      displayImage_.release();
-      display_function_(currentImage_, displayImage_, currentImage_.depth());
-    }
-    else  {
-      displayImage_.release();
-      display_function_(currentImage_, displayImage_, CV_8U);
-    }
-
     cv2qt(displayImage_, &qimage_);
     view_->scene()->setBackground(qimage_);
   }
-  emit currentDisplayImageChanged();
+}
+
+void QImageViewer::copyDisplayImageToClipboard()
+{
+  QClipboard * clipboard = QApplication::clipboard();
+  if ( !clipboard ) {
+    QMessageBox::critical(this, "ERROR",
+        "No application clipboard available");
+  }
+  else {
+    QWaitCursor wait(this);
+
+    cv2qt(displayImage(), &qimage_, true);
+    clipboard->setImage(qimage_);
+  }
 }
 
 template<class T>

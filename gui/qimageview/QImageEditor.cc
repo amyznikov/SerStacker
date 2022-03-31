@@ -61,6 +61,7 @@ void QImageEditor::clear()
   currentMask_.release();
   currentImageData_.release();
   view_->scene()->setBackground(QImage());
+
   emit currentImageChanged();
 }
 

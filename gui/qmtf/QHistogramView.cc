@@ -7,7 +7,7 @@
 
 #include "QHistogramView.h"
 #include <gui/widgets/QWaitCursor.h>
-#include <core/proc/create_histogram.h>
+#include <core/proc/histogram.h>
 #include <core/debug.h>
 
 static constexpr int MARGIN = 2;
@@ -110,44 +110,57 @@ QHistogramView::DisplayChannel QHistogramView::displayChannel() const
   return displayChannel_;
 }
 
+void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
+{
+  CF_DEBUG("setHistogram CALLED: _H.size=%dx%d\n\n", _H.rows(), _H.cols());
+  double min = 0, max = 1;
+
+  this->hmin = hmin;
+  this->hmax = hmax;
+
+  if ( _H.getMat().data != this->H.data ) {
+    _H.copyTo(this->H);
+  }
+
+  if ( !this->H.empty() ) {
+    cv::log(H + 1, LH);
+
+    cv::minMaxLoc(H, &min, &max);
+    if( max > 0 ) {
+      cv::multiply(H, 0.8 / max, H);
+    }
+
+    cv::minMaxLoc(LH, &min, &max);
+    if( max > 0 ) {
+      cv::multiply(LH, 0.8 / max, LH);
+    }
+  }
+
+  if( isVisible() ) {
+    repaint();
+  }
+}
+
 void QHistogramView::updateHistogram()
 {
-  if ( image_.empty() ) {
+  double hmin = -1;
+  double hmax = -1;
+
+  if( image_.empty() ) {
     H.release();
     LH.release();
   }
   else {
-
     QWaitCursor wait(this);
-
-    hmin = hmax = -1;
-
-    if ( !create_histogram(image_, mask_, H, &hmin, &hmax) ) {
+    if( !create_histogram(image_, mask_, H, &hmin, &hmax) ) {
       CF_ERROR("create_image_histogram() fails");
       H.release();
       LH.release();
     }
-    else {
-
-      double min = 0, max = 1;
-
-      cv::log(H + 1, LH);
-
-      cv::minMaxLoc(H, &min, &max);
-      if ( max > 0 ) {
-        cv::multiply(H, 0.8 / max, H);
-      }
-
-      cv::minMaxLoc(LH, &min, &max);
-      if ( max > 0 ) {
-        cv::multiply(LH, 0.8 / max, LH);
-      }
-
-      if ( isVisible() ) {
-        repaint();
-      }
-    }
   }
+
+  CF_DEBUG("Call setHistogram");
+  setHistogram(H, hmin, hmax);
 }
 
 

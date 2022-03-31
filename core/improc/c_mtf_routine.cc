@@ -21,10 +21,10 @@ c_mtf_routine::ptr c_mtf_routine::create(bool enabled)
 
 bool c_mtf_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  return mtf_->apply(image, image);
+  return mtf_.apply(image, image);
 }
 
-const c_pixinsight_mtf::sptr & c_mtf_routine::mtf() const
+c_pixinsight_mtf & c_mtf_routine::mtf()
 {
   return mtf_;
 }

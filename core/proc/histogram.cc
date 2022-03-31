@@ -1,17 +1,171 @@
 /*
- * create_histogram.cc
+ * histogram.cc
  *
  *  Created on: Aug 14, 2021
  *      Author: amyznikov
  */
-#include "create_histogram.h"
+#include "histogram.h"
 #include <core/debug.h>
+
+
+void c_histogram_builder::set_channels(int cn)
+{
+  channels_ = cn;
+}
+
+int c_histogram_builder::channels() const
+{
+  return channels_;
+}
+
+void c_histogram_builder::set_input_range(double minval, double maxval)
+{
+  minval_ = minval;
+  maxval_ = maxval;
+}
+
+void c_histogram_builder::get_input_range(double *minval, double *maxval) const
+{
+  *minval = minval_;
+  *maxval = maxval_;
+}
+
+void c_histogram_builder::set_bins(int nbins)
+{
+  bins_ = nbins;
+}
+
+int c_histogram_builder::bins() const
+{
+  return bins_;
+}
+
+void c_histogram_builder::set_cumulative(bool v)
+{
+  cumulative_ = v;
+}
+
+bool c_histogram_builder::cumulative() const
+{
+  return cumulative_;
+}
+
+void c_histogram_builder::set_scaled(bool v)
+{
+  scaled_ = v;
+}
+
+bool c_histogram_builder::scaled() const
+{
+  return scaled_;
+}
+
+void c_histogram_builder::set_logscale(bool v)
+{
+  logscale_ = v;
+}
+
+bool c_histogram_builder::logscale() const
+{
+  return logscale_;
+}
+
+void c_histogram_builder::reset()
+{
+  H_.release();
+}
+
+void c_histogram_builder::initialize()
+{
+  if ( bins_ > 10000 ) {
+    bins_ = 10000;
+  }
+
+  if ( channels_ < 1 ) {
+    channels_ = 1;
+  }
+
+  if ( maxval_ <= minval_ ) {
+    minval_ = 0;
+    maxval_ = 1.0;
+  }
+
+  scale_ = bins_ / (maxval_ - minval_);
+
+  H_.create(bins_, channels_);
+  H_.setTo(0);
+
+}
+
+void c_histogram_builder::add_pixel(const cv::Scalar & src)
+{
+  if( H_.empty() ) {
+    initialize();
+  }
+
+  for( int c = 0; c < channels_; ++c ) {
+    const int b =
+        std::max(0, std::min(bins_ - 1,
+            (int) ((src[c] - minval_) * scale_)));
+
+    H_[b][c] += 1;
+  }
+
+}
+
+void c_histogram_builder::compute(cv::OutputArray outputH)
+{
+  cv::Mat1f H;
+  H_.copyTo(H);
+
+  if( !H.empty() ) {
+
+    if( scaled_ ) {
+      cv::Mat1f sums;
+      cv::reduce(H, sums, 0, cv::REDUCE_SUM, sums.depth());
+      for( int y = 0; y < H.rows; ++y ) {
+        for( int x = 0; x < H.cols; ++x ) {
+          H[y][x] /= sums[0][x];
+        }
+      }
+    }
+
+    if( cumulative_ ) {
+      accumulate_histogram(H, H);
+    }
+
+    if( logscale_ ) {
+      double min = 0, max = 1;
+
+      cv::log(H + 1, H);
+
+      cv::minMaxLoc(H, &min, &max);
+      if( max > 0 ) {
+        cv::multiply(H, 1 / max, H);
+      }
+    }
+  }
+
+  if( outputH.fixedType() && outputH.depth() != H.depth() ) {
+    H.convertTo(outputH, outputH.depth());
+  }
+  else {
+    outputH.move(H);
+  }
+}
+
+
 
 template<class T, int cn>
 static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
     double minval, double maxval, int bn, cv::InputArray _mask)
 {
-  // FIXME: implement with TBB
+  c_histogram_builder builder;
+  cv::Scalar s;
+
+  builder.set_channels(cn);
+  builder.set_bins(bn);
+  builder.set_input_range(minval, maxval);
 
   const cv::Mat_<cv::Vec<T, cn>> src =
       _src.getMat();
@@ -22,22 +176,17 @@ static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
   const double scale =
       bn / (maxval - minval);
 
-  H.create(bn, cn);
-  H.setTo(0);
+  //  H.create(bn, cn);
+  //  H.setTo(0);
 
-  if ( _mask.empty() ) {
+  if( _mask.empty() ) {
 
-    for ( int y = 0; y < src.rows; ++y ) {
-      for ( int x = 0; x < src.cols; ++x ) {
-
+    for( int y = 0; y < src.rows; ++y ) {
+      for( int x = 0; x < src.cols; ++x ) {
         for( int c = 0; c < cn; ++c ) {
-
-          const int b = std::max(0,  std::min(bn-1,
-                  (int)( (src[y][x][c] - mv[c]) * scale )));
-
-          H[b][c] += 1;
+          s[c] = src[y][x][c];
         }
-
+        builder.add_pixel(s);
       }
     }
   }
@@ -45,23 +194,19 @@ static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
 
     const cv::Mat1b mask = _mask.getMat();
 
-    for ( int y = 0; y < src.rows; ++y ) {
-      for ( int x = 0; x < src.cols; ++x ) {
-        if ( mask[y][x] ) {
-
+    for( int y = 0; y < src.rows; ++y ) {
+      for( int x = 0; x < src.cols; ++x ) {
+        if( mask[y][x] ) {
           for( int c = 0; c < cn; ++c ) {
-
-            const int b = std::max(0,  std::min(bn-1,
-                    (int)( (src[y][x][c] - mv[c]) * scale )));
-
-            H[b][c] += 1;
+            s[c] = src[y][x][c];
           }
-
-
+          builder.add_pixel(s);
         }
       }
     }
   }
+
+  builder.compute(H);
 
   return true;
 }
@@ -316,5 +461,66 @@ bool create_histogram(cv::InputArray image, cv::InputArray mask,
 
   return true;
 }
+
+
+//
+//template<class T, int cn>
+//static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
+//    double minval, double maxval, int bn, cv::InputArray _mask)
+//{
+//  // FIXME: implement with TBB
+//
+//  const cv::Mat_<cv::Vec<T, cn>> src =
+//      _src.getMat();
+//
+//  const cv::Vec<double, cn> mv =
+//      cv::Vec<float, cn>::all(minval);
+//
+//  const double scale =
+//      bn / (maxval - minval);
+//
+//  H.create(bn, cn);
+//  H.setTo(0);
+//
+//  if ( _mask.empty() ) {
+//
+//    for ( int y = 0; y < src.rows; ++y ) {
+//      for ( int x = 0; x < src.cols; ++x ) {
+//
+//        for( int c = 0; c < cn; ++c ) {
+//
+//          const int b = std::max(0,  std::min(bn-1,
+//                  (int)( (src[y][x][c] - mv[c]) * scale )));
+//
+//          H[b][c] += 1;
+//        }
+//
+//      }
+//    }
+//  }
+//  else {
+//
+//    const cv::Mat1b mask = _mask.getMat();
+//
+//    for ( int y = 0; y < src.rows; ++y ) {
+//      for ( int x = 0; x < src.cols; ++x ) {
+//        if ( mask[y][x] ) {
+//
+//          for( int c = 0; c < cn; ++c ) {
+//
+//            const int b = std::max(0,  std::min(bn-1,
+//                    (int)( (src[y][x][c] - mv[c]) * scale )));
+//
+//            H[b][c] += 1;
+//          }
+//
+//
+//        }
+//      }
+//    }
+//  }
+//
+//  return true;
+//}
 
 

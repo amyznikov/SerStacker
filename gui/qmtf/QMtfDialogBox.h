@@ -1,36 +1,37 @@
 /*
- * QMtfControlDialogBox.h
+ * QMtfDialogBox.h
  *
  *  Created on: Dec 11, 2020
  *      Author: amyznikov
  */
 
-#ifndef __QMtfControlDialogBox_h__
-#define __QMtfControlDialogBox_h__
+#ifndef __QMtfDialogBox_h__
+#define __QMtfDialogBox_h__
 
 #include "QMtfControl.h"
 
 
-class QMtfControlDialogBox
+class QMtfDialogBox
     : public QDialog
 {
   Q_OBJECT;
 public:
-  typedef QMtfControlDialogBox ThisClass;
+  typedef QMtfDialogBox ThisClass;
   typedef QDialog Base;
 
-  QMtfControlDialogBox(QWidget * parent = Q_NULLPTR);
+  QMtfDialogBox(QWidget * parent = Q_NULLPTR);
 
-  void setMtf(const c_pixinsight_mtf::sptr & mtf);
-  const c_pixinsight_mtf::sptr & mtf() const;
+  void setDisplayFunction(QMtfDisplayFunction * displayFunction);
+  QMtfDisplayFunction * displayFunction() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
-  void setDisplayImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
 
 
 signals:
-  void mtfChanged();
   void visibilityChanged(bool visible);
+
+public slots:
+  void updateOutputHistogramLevels();
 
 protected:
   void showEvent(QShowEvent *event) override;
@@ -43,4 +44,4 @@ protected:
   QPoint lastWidnowPos_;
 };
 
-#endif /* __QMtfControlDialogBox_h__ */
+#endif /* __QMtfDialogBox_h__ */

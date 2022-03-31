@@ -46,17 +46,6 @@ void QImageFileEditor::openImage(const std::string & pathfilename)
   input_sequence_->close(true);
   input_sequence_->add_source(pathfilename);
   setCurrentFileName(pathfilename.c_str());
-
-  //  if ( input_sequence_->is_open() ) {
-  //
-  //    c_input_source::ptr source =
-  //        input_sequence_->current_source();
-  //
-  //    if ( source ) {
-  //      return source->filename().c_str();
-  //    }
-  //  }
-
   startDisplay();
 }
 
@@ -97,8 +86,8 @@ void QImageFileEditor::closeCurrentSequence()
     input_sequence_->close(true);
   }
 
+  clear();
   setCurrentFileName("");
-  emit currentImageChanged();
 }
 
 
@@ -163,44 +152,9 @@ void QImageFileEditor::loadNextFrame()
   }
 }
 
-
-
-//QString QImageFileEditor::currentFileName() const
-//{
-//  if ( input_sequence_->is_open() ) {
-//
-//    c_input_source::ptr source =
-//        input_sequence_->current_source();
-//
-//    if ( source ) {
-//      return source->filename().c_str();
-//    }
-//  }
-//
-//  return this->currentFileName_;
-//}
-//
-//void QImageFileEditor::setCurrentFileName(const QString & newFileName)
-//{
-//  this->currentFileName_ = newFileName;
-//  emit currentImageChanged();
-//}
-
-
-//void QImageFileEditor::showEvent(QShowEvent *e)
-//{
-//  Base::showEvent(e);
-//}
-
 void QImageFileEditor::hideEvent(QHideEvent *e)
 {
   closeCurrentSequence();
-
-  Base::currentImage_.release();
-  Base::currentImageData_.release();
-  Base::inputImage_.release();
-  Base::inputMask_.release();
-
   Base::hideEvent(e);
 }
 

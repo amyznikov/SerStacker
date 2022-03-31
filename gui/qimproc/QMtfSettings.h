@@ -9,8 +9,8 @@
 #ifndef __QMtfSettings_h__
 #define __QMtfSettings_h__
 
-#include <gui/qmtfcontrols/QMtfControl.h>
 #include <core/improc/c_mtf_routine.h>
+#include <gui/qmtf/QMtfControl.h>
 #include "QImageProcessorSelector.h"
 
 class QMtfSettings
@@ -37,7 +37,18 @@ protected:
   void onupdatecontrols() override;
 
 protected:
+
+  class ImageDisplayFunction : public QMtfDisplayFunction {
+    c_pixinsight_mtf mymtf;
+  public:
+    ImageDisplayFunction(QObject * parent ) :
+      QMtfDisplayFunction(parent) {
+      set_mtf(&mymtf);
+    }
+  };
+
   QMtfControl * mtf_ctl = Q_NULLPTR;
+  ImageDisplayFunction displayFunction_;
 };
 
 #endif /* __QMtfSettings_h__ */

@@ -9,7 +9,7 @@
 #ifndef __c_mtf_routine_h__
 #define __c_mtf_routine_h__
 
-#include "../mtf/c_pixinsight_mtf.h"
+#include <core/mtf/c_pixinsight_mtf.h>
 #include "c_image_processor.h"
 
 class c_mtf_routine
@@ -34,36 +34,35 @@ public:
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
-  const c_pixinsight_mtf::sptr & mtf() const;
+  c_pixinsight_mtf & mtf();
 
   void set_shadows(double v) {
-    mtf_->set_shadows(v);
+    mtf_.set_shadows(v);
   }
 
   double shadows() const {
-    return mtf_->shadows();
+    return mtf_.shadows();
   }
 
   void set_highlights(double v) {
-    mtf_->set_highlights(v);
+    mtf_.set_highlights(v);
   }
 
   double highlights() const {
-    return mtf_->highlights();
+    return mtf_.highlights();
   }
 
   void set_midtones(double v) {
-    mtf_->set_midtones(v);
+    mtf_.set_midtones(v);
   }
 
   double midtones() const {
-    return mtf_->midtones();
+    return mtf_.midtones();
   }
 
 
 protected:
-  c_pixinsight_mtf::sptr mtf_ =
-      c_pixinsight_mtf::create();
+  c_pixinsight_mtf mtf_;
 };
 
 #endif /* __c_mtf_routine_h__ */

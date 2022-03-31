@@ -11,7 +11,7 @@
 #include <opencv2/opencv.hpp>
 
 
-bool minmax(cv::InputArray src,
+bool getminmax(cv::InputArray src,
     double * minval,
     double * maxal,
     cv::InputArray mask = cv::noArray());

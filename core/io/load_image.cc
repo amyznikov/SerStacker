@@ -119,7 +119,6 @@ static int cvMatDepth(uint tiff_sample_format, uint tiff_bps)
 
 static bool load_tiff_image (cv::Mat & image, const std::string & filename)
 {
-  CF_DEBUG("ENTER");
   image.release();
 
   if ( filename.empty() ) {
@@ -287,8 +286,6 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
   if ( (EXTRA = get_extra_channels_count(PHOTOMETRIC, SAMPLES_PER_PIXEL, alpha)) > 0 ) {
     CF_WARNING("%u additional extra channels are not handled", EXTRA);
   }
-
-  CF_DEBUG("[%s] worst_case=%d", cfilename, worst_case);
 
   if ( worst_case ) {
 

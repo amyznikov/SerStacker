@@ -155,7 +155,7 @@ static bool getminmax_(cv::InputArray _src, double * minval, double * maxval, cv
 }
 
 
-bool minmax(cv::InputArray src, double * minval, double * maxval, cv::InputArray mask)
+bool getminmax(cv::InputArray src, double * minval, double * maxval, cv::InputArray mask)
 {
   switch ( src.depth() ) {
 

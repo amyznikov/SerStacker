@@ -160,7 +160,7 @@ bool get_data_range(cv::InputArray _src, cv::InputArray mask,
   case CV_64F :
   default:
     *minval = 0, *maxval = 1;
-    minmax(_src, minval, maxval, mask);
+    getminmax(_src, minval, maxval, mask);
     break;
   }
 

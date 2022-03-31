@@ -8,9 +8,11 @@
 #ifndef __QMtfControl_h__
 #define __QMtfControl_h__
 
-#include <core/mtf/c_pixinsight_mtf.h>
+#include "QMtfDisplayFunction.h"
 #include "QHistogramView.h"
 #include "QMtfSlider.h"
+#include <gui/widgets/QLineEditBox.h>
+#include <gui/widgets/QEnumComboBox.h>
 
 class QMtfControl
     : public QWidget
@@ -22,34 +24,39 @@ public:
 
   QMtfControl(QWidget * parent = Q_NULLPTR);
 
-  void setMtf(const c_pixinsight_mtf::sptr & mtf);
-  const c_pixinsight_mtf::sptr & mtf() const;
+  void setDisplayFunction(QMtfDisplayFunction * displayFunction);
+  QMtfDisplayFunction * displayFunction() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask);
-  void setOutputImage(cv::InputArray image, cv::InputArray mask);
 
   bool isAutoMtfActionEnabled() const;
 
   bool updatingControls() const;
   void setUpdatingControls(bool v) ;
 
-signals:
-  void mtfChanged();
+
+public slots:
+  void updateControls();
+  void updateOutputHistogramLevels();
 
 protected slots:
-  void updateControls();
+  void onInputDataRangeChanged();
+  void onColormapCtlClicked();
   void onResetMtfClicked();
   void onAutoMtfCtrlClicked();
   void onChartTypeSelectorClicked();
   void onDisplayChannelComboCurrentIndexChanged(int);
 
 protected:
+  void resizeEvent(QResizeEvent *event) override;
   void findAutoHistogramClips();
   void findAutoMidtonesBalance();
+  void updateColormapPixmap();
+  void updateColormapStrip();
 
 
 protected:
-  c_pixinsight_mtf::sptr mtf_;
+  QMtfDisplayFunction * displayFunction_ = Q_NULLPTR;
 
   enum AutoMtfAction {
     AutoMtfAction_AutoClip = 0,
@@ -60,6 +67,8 @@ protected:
   QVBoxLayout * vbox_ = Q_NULLPTR;
   QToolBar * topToolbar_ = Q_NULLPTR;
   QComboBox * displayChannel_ctl = Q_NULLPTR;
+  QNumberEditBox * inputDataRange_ctl = Q_NULLPTR;
+  QToolButton * colormap_ctl = Q_NULLPTR;
 
 
   QAction * resetMtfAction_ = Q_NULLPTR;
@@ -71,6 +80,8 @@ protected:
 
   QHistogramView * levelsView_ = Q_NULLPTR;
   QMtfSlider * mtfSlider_ = Q_NULLPTR;
+  QLabel * colormap_strip_ctl = Q_NULLPTR;
+  QPixmap colormap_pixmap_;
 
   QToolBar * bottomToolbar_ = Q_NULLPTR;
 

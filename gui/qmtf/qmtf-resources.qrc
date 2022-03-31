@@ -1,5 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource prefix="/qmtfcontrols">
+<qresource prefix="/qmtf">
 	<file>icons/histogram.png</file>
 	<file>icons/histogram-log-scale.png</file>
 	<file>icons/histogram-log-scale2.png</file>
@@ -10,5 +10,6 @@
 	<file>icons/contrast.png</file>
 	<file>icons/bar_chart.png</file>
 	<file>icons/line_chart.png</file>
+	<file>icons/colormap.png</file>
 </qresource>
 </RCC>

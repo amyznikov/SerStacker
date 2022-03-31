@@ -467,9 +467,15 @@ void QMtfControl::onResetMtfClicked()
 
       setUpdatingControls(true);
 
-      double min, max;
+      double min = -1, max = -1;
 
-      getminmax(inputImage_, &min, &max, inputMask_);
+      mtf->get_input_range(&min, &max);
+      if ( min < max ) {
+        min = max = -1;
+      }
+      else {
+        getminmax(inputImage_, &min, &max, inputMask_);
+      }
 
       mtf->set_input_range(min, max);
       mtf->set_shadows(0);

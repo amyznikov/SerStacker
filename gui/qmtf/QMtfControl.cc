@@ -413,12 +413,42 @@ void QMtfControl::updateControls()
 
 }
 
-void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask)
+void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask, bool make_copy)
 {
-  inputImage_ = image.getMat();
-  inputMask_ = mask.getMat();
-  colormap_ctl->setEnabled(!inputImage_.empty() && inputImage_.channels() == 1);
-  onAutoMtfCtrlClicked();
+  if ( make_copy ) {
+    image.copyTo(inputImage_);
+    mask.copyTo(inputMask_);
+  }
+  else {
+    inputImage_ = image.getMat();
+    inputMask_ = mask.getMat();
+  }
+
+  colormap_ctl->setEnabled(!inputImage_.empty() &&
+      inputImage_.channels() == 1);
+
+  if ( displayFunction_ ) {
+
+    if ( !updatingControls() && autoMtf_ctl->isChecked() ) {
+
+      switch ( selectedAutoMtfAction_ ) {
+      case AutoMtfAction_AutoMtf :
+        findAutoMidtonesBalance();
+        break;
+
+      case AutoMtfAction_AutoClip :
+      default :
+        findAutoHistogramClips();
+        break;
+      }
+    }
+
+    updateControls();
+
+    if ( !updatingControls() ) {
+      emit displayFunction_->update();
+    }
+  }
 }
 
 void QMtfControl::onResetMtfClicked()
@@ -466,26 +496,24 @@ bool QMtfControl::isAutoMtfActionEnabled() const
 
 void QMtfControl::onAutoMtfCtrlClicked()
 {
-  if ( displayFunction_ ) {
+  if( displayFunction_ ) {
 
-    if ( autoMtf_ctl->isChecked() ) {
-
-      switch ( selectedAutoMtfAction_ ) {
-      case AutoMtfAction_AutoMtf :
+    if( !autoMtf_ctl->isChecked() ) {
+      updateControls();
+    }
+    else {
+      switch (selectedAutoMtfAction_) {
+      case AutoMtfAction_AutoMtf:
         findAutoMidtonesBalance();
         break;
 
-      case AutoMtfAction_AutoClip :
-        default :
+      case AutoMtfAction_AutoClip:
+        default:
         findAutoHistogramClips();
         break;
       }
-    }
 
-    updateControls();
-
-    if ( !updatingControls() ) {
-      emit displayFunction_->update();
+      updateControls();
     }
   }
 }
@@ -545,6 +573,7 @@ void QMtfControl::findAutoMidtonesBalance()
       cv::Mat1f H;
       double hmin = -1, hmax = -1;
 
+
       if( !displayFunction_->createInputHistogram(inputImage_, inputMask_, H, &hmin, &hmax) ) {
         CF_ERROR("displayFunction_->createInputHistogram() fails");
       }
@@ -555,6 +584,7 @@ void QMtfControl::findAutoMidtonesBalance()
         updateControls();
 
         if( !updatingControls() ) {
+          CF_DEBUG("emit displayFunction_->update()");
           emit displayFunction_->update();
         }
       }
@@ -653,8 +683,13 @@ void QMtfControl::resizeEvent(QResizeEvent *e)
 }
 
 
+void QMtfControl::setOutputHistogram(const cv::Mat1f & H, double hmin, double hmax)
+{
+  levelsView_->setHistogram(H, hmin, hmax);
+}
 
-void QMtfControl::updateOutputHistogramLevels()
+
+void QMtfControl::updateOutputHistogram()
 {
   if ( displayFunction_ && !inputImage_.empty() ) {
 
@@ -667,7 +702,7 @@ void QMtfControl::updateOutputHistogramLevels()
       CF_ERROR("displayFunction_->createOutputHistogram() fails");
     }
 
-    levelsView_->setHistogram(H, hmin, hmax);
+    setOutputHistogram(H, hmin, hmax);
   }
 }
 

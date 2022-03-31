@@ -27,17 +27,18 @@ public:
   void setDisplayFunction(QMtfDisplayFunction * displayFunction);
   QMtfDisplayFunction * displayFunction() const;
 
-  void setInputImage(cv::InputArray image, cv::InputArray mask);
+  void setInputImage(cv::InputArray image, cv::InputArray mask, bool make_copy = false);
 
   bool isAutoMtfActionEnabled() const;
 
   bool updatingControls() const;
   void setUpdatingControls(bool v) ;
 
+  void setOutputHistogram(const cv::Mat1f & H, double hmin, double hmax);
 
 public slots:
   void updateControls();
-  void updateOutputHistogramLevels();
+  void updateOutputHistogram();
 
 protected slots:
   void onInputDataRangeChanged();

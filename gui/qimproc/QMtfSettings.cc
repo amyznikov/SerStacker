@@ -6,6 +6,7 @@
  */
 
 #include "QMtfSettings.h"
+#include <core/proc/histogram.h>
 
 const QMtfSettings::ClassFactory QMtfSettings::classFactory;
 
@@ -29,14 +30,14 @@ QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent)
   routine_->set_preprocess_notify_callback(
       [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
         mtf_ctl->setUpdatingControls(true);
-        mtf_ctl->setInputImage(image, mask);
+        mtf_ctl->setInputImage(image, mask, true);
         mtf_ctl->setUpdatingControls(false);
       });
 
 
   routine_->set_postprocess_notify_callback(
       [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
-        mtf_ctl->updateOutputHistogramLevels();
+        mtf_ctl->updateOutputHistogram();
       });
 }
 

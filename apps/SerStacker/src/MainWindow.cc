@@ -613,7 +613,8 @@ void MainWindow::configureImageViewerToolbars()
   connect(imageEditor, &QImageEditor::currentImageChanged,
       [this]() {
         if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
-          mtfDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
+          mtfDialogBox->setInputImage(imageEditor->currentImage(),
+              imageEditor->currentMask());
         }
       });
 
@@ -679,7 +680,7 @@ void MainWindow::configureImageViewerToolbars()
           connect(&imageDisplayFunction_, &QImageDisplayFunction::update,
               [this]() {
                 if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
-                  mtfDialogBox->updateOutputHistogramLevels();
+                  mtfDialogBox->updateOutputHistogram();
                 }
               });
 
@@ -698,7 +699,7 @@ void MainWindow::configureImageViewerToolbars()
             }
 
             mtfDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
-            mtfDialogBox->updateOutputHistogramLevels();
+            mtfDialogBox->updateOutputHistogram();
             mtfDialogBox->showNormal();
           }
         }

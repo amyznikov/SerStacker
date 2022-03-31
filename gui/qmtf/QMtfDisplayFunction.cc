@@ -60,14 +60,22 @@ bool QMtfDisplayFunction::createOutputHistogram(cv::InputArray src, cv::InputArr
 {
   bool fOk;
 
-  if( !mtf_ || (mtf_->shadows() == 0 && mtf_->highlights() == 1 && mtf_->midtones() == 0.5) ) {
+  if ( !mtf_ ) {
     fOk = create_histogram(src, srcmask, H, hmin, hmax, 256);
   }
   else {
+
     cv::Mat M;
+
     mtf_->apply(src, M);
+
+    if( *hmin >= *hmax ) {
+      mtf_->get_output_range(hmin, hmax);
+    }
+
     fOk = create_histogram(M, srcmask, H, hmin, hmax, 256);
   }
+
 
   return fOk;
 }

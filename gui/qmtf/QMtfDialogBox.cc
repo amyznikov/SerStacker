@@ -52,9 +52,14 @@ void QMtfDialogBox::setInputImage(cv::InputArray image, cv::InputArray mask)
   mtfControl_->setInputImage(image, mask);
 }
 
-void QMtfDialogBox::updateOutputHistogramLevels()
+void QMtfDialogBox::setOutputHistogram(const cv::Mat1f & H, double hmin, double hmax)
 {
-  mtfControl_->updateOutputHistogramLevels();
+  mtfControl_->setOutputHistogram(H, hmin, hmax);
+}
+
+void QMtfDialogBox::updateOutputHistogram()
+{
+  mtfControl_->updateOutputHistogram();
 }
 
 void QMtfDialogBox::setDisplayFunction(QMtfDisplayFunction * displayFunction)

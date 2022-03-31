@@ -25,13 +25,14 @@ public:
   QMtfDisplayFunction * displayFunction() const;
 
   void setInputImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
+  void setOutputHistogram(const cv::Mat1f & H, double hmin, double hmax);
 
 
 signals:
   void visibilityChanged(bool visible);
 
 public slots:
-  void updateOutputHistogramLevels();
+  void updateOutputHistogram();
 
 protected:
   void showEvent(QShowEvent *event) override;

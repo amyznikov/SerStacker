@@ -197,7 +197,7 @@ void QImageViewer::createDisplayImage()
     displayImage_.release();
   }
   else if ( !displayFunction_ ) {
-    displayImage_ = currentImage_;
+    currentImage_.copyTo(displayImage_);
   }
   else {
 

@@ -1405,6 +1405,8 @@ bool c_image_stacking_pipeline::actual_run()
                 accumulated_mask);
 
         // FIXME: BORDER !!!
+        CF_DEBUG("H: accumulated_image=%dx%d", accumulated_image.cols, accumulated_image.rows);
+        CF_DEBUG("H: accumulated_flow=%dx%d", accumulated_flow.cols, accumulated_flow.rows);
         cv::remap(accumulated_image, accumulated_image, accumulated_flow,
             cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
 
@@ -2015,6 +2017,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
 
 
+        CF_DEBUG("C custom_remap");
         frame_registration_->custom_remap(current_remap,
             current_frame, current_frame,
             current_mask, current_mask,

@@ -89,6 +89,31 @@ protected:
   QSparseDescriptorExtractorSettingsWidget * descriptorSettings_ctl = Q_NULLPTR;
 };
 
+class QFlannIndexParamsWidget :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QFlannIndexParamsWidget ThisClass;
+  typedef QSettingsWidget Base;
+
+  QFlannIndexParamsWidget(QWidget * parent = Q_NULLPTR);
+
+  void set_feature2d_matcher_options(c_feature2d_matcher_options * opts);
+  const c_feature2d_matcher_options * feature2d_matcher_options() const;
+
+protected:
+  void clearIndexParamsSpecificControls();
+  void populateIndexParamsSpecificControls();
+  void updateIndexParamsSpecificControls();
+  void onupdatecontrols() override;
+
+protected:
+  c_feature2d_matcher_options * options_ = Q_NULLPTR;
+  QEnumComboBox<FlannIndexType> * flannIndexType_ctl = Q_NULLPTR;
+  QList<QWidget*> controls_;
+};
+
 class QSparseFeature2DMatcherSettingsWidget :
     public QSettingsWidget
 {
@@ -113,5 +138,6 @@ protected:
   QEnumComboBox<FEATURE2D_MATCHER_TYPE> * matcherType_ctl = Q_NULLPTR;
   QList<QWidget*> controls_;
 };
+
 
 #endif /* __QFeature2DSettings_h__ */

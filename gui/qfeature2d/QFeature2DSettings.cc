@@ -536,56 +536,13 @@ void QSparseFeature2DMatcherSettingsWidget::populateMatcherSpecificControls()
       ADD_CTL(snorm, lowe_ratio);
       break;
 
-    case FEATURE2D_MATCHER_FLANN:
-      ADD_CTL(flann, distance_type);
-      ADD_CTL(flann, lowe_ratio);
-      ADD_CTL(flann, index.type);
-
-      switch (options_->flann.index.type) {
-      case FlannIndex_linear:
-        break;
-
-      case FlannIndex_kdtree:
-        ADD_FLANN_INDEX_CTL(kdtree, trees);
-        break;
-
-      case FlannIndex_kmeans:
-        ADD_FLANN_INDEX_CTL(kmeans, centers_init);
-        ADD_FLANN_INDEX_CTL(kmeans, branching);
-        ADD_FLANN_INDEX_CTL(kmeans, iterations);
-        ADD_FLANN_INDEX_CTL(kmeans, cb_index);
-        break;
-
-      case FlannIndex_composite:
-        ADD_FLANN_INDEX_CTL(composite, centers_init);
-        ADD_FLANN_INDEX_CTL(composite, trees);
-        ADD_FLANN_INDEX_CTL(composite, branching);
-        ADD_FLANN_INDEX_CTL(composite, iterations);
-        ADD_FLANN_INDEX_CTL(composite, cb_index);
-        break;
-
-      case FlannIndex_hierarchical:
-        ADD_FLANN_INDEX_CTL(hierarchical, centers_init);
-        ADD_FLANN_INDEX_CTL(hierarchical, branching);
-        ADD_FLANN_INDEX_CTL(hierarchical, trees);
-        ADD_FLANN_INDEX_CTL(hierarchical, leaf_size);
-        break;
-
-      case FlannIndex_lsh:
-        ADD_FLANN_INDEX_CTL(lsh, table_number);
-        ADD_FLANN_INDEX_CTL(lsh, key_size);
-        ADD_FLANN_INDEX_CTL(lsh, multi_probe_level);
-        break;
-
-      case FlannIndex_autotuned:
-        ADD_FLANN_INDEX_CTL(autotuned, target_precision);
-        ADD_FLANN_INDEX_CTL(autotuned, build_weight);
-        ADD_FLANN_INDEX_CTL(autotuned, memory_weight);
-        ADD_FLANN_INDEX_CTL(autotuned, sample_fraction);
-        break;
-      }
-
+    case FEATURE2D_MATCHER_FLANN: {
+      QFlannIndexParamsWidget *flannIndexParams_ctl = new QFlannIndexParamsWidget(this);
+      flannIndexParams_ctl->set_feature2d_matcher_options(options_);
+      form->addRow(flannIndexParams_ctl);
+      controls_.append(flannIndexParams_ctl);
       break;
+      }
     }
 
     emit populatecontrols();
@@ -610,3 +567,114 @@ void QSparseFeature2DMatcherSettingsWidget::onupdatecontrols()
     setEnabled(true);
   }
 }
+
+///////////////////////////////////////////////////////////////////////
+
+QFlannIndexParamsWidget::QFlannIndexParamsWidget(QWidget * parent) :
+     Base("QFlannIndexParams", parent)
+{
+  flannIndexType_ctl =
+      add_enum_combobox<FlannIndexType>(
+          "Flann Index Type:",
+          [this](FlannIndexType v) {
+            if ( options_ && options_->flann.index.type != v ) {
+              options_->flann.index.type = v;
+              updateIndexParamsSpecificControls();
+            }
+          });
+}
+
+void QFlannIndexParamsWidget::set_feature2d_matcher_options(c_feature2d_matcher_options * opts)
+{
+  clearIndexParamsSpecificControls();
+  options_ = opts;
+  updateControls();
+}
+
+const c_feature2d_matcher_options * QFlannIndexParamsWidget::feature2d_matcher_options() const
+{
+  return options_;
+}
+
+void QFlannIndexParamsWidget::clearIndexParamsSpecificControls()
+{
+  for ( QWidget * w : controls_ ) {
+    form->removeRow(w);
+  }
+  controls_.clear();
+}
+
+void QFlannIndexParamsWidget::populateIndexParamsSpecificControls()
+{
+  if( options_ && options_->type == FEATURE2D_MATCHER_FLANN ) {
+
+    ADD_CTL(flann, distance_type);
+    ADD_CTL(flann, lowe_ratio);
+
+    switch (options_->flann.index.type) {
+    case FlannIndex_linear:
+      break;
+
+    case FlannIndex_kdtree:
+      ADD_FLANN_INDEX_CTL(kdtree, trees);
+      break;
+
+    case FlannIndex_kmeans:
+      ADD_FLANN_INDEX_CTL(kmeans, centers_init);
+      ADD_FLANN_INDEX_CTL(kmeans, branching);
+      ADD_FLANN_INDEX_CTL(kmeans, iterations);
+      ADD_FLANN_INDEX_CTL(kmeans, cb_index);
+      break;
+
+    case FlannIndex_composite:
+      ADD_FLANN_INDEX_CTL(composite, centers_init);
+      ADD_FLANN_INDEX_CTL(composite, trees);
+      ADD_FLANN_INDEX_CTL(composite, branching);
+      ADD_FLANN_INDEX_CTL(composite, iterations);
+      ADD_FLANN_INDEX_CTL(composite, cb_index);
+      break;
+
+    case FlannIndex_hierarchical:
+      ADD_FLANN_INDEX_CTL(hierarchical, centers_init);
+      ADD_FLANN_INDEX_CTL(hierarchical, branching);
+      ADD_FLANN_INDEX_CTL(hierarchical, trees);
+      ADD_FLANN_INDEX_CTL(hierarchical, leaf_size);
+      break;
+
+    case FlannIndex_lsh:
+      ADD_FLANN_INDEX_CTL(lsh, table_number);
+      ADD_FLANN_INDEX_CTL(lsh, key_size);
+      ADD_FLANN_INDEX_CTL(lsh, multi_probe_level);
+      break;
+
+    case FlannIndex_autotuned:
+      ADD_FLANN_INDEX_CTL(autotuned, target_precision);
+      ADD_FLANN_INDEX_CTL(autotuned, build_weight);
+      ADD_FLANN_INDEX_CTL(autotuned, memory_weight);
+      ADD_FLANN_INDEX_CTL(autotuned, sample_fraction);
+      break;
+    }
+
+    emit populatecontrols();
+  }
+}
+
+void QFlannIndexParamsWidget::updateIndexParamsSpecificControls()
+{
+  clearIndexParamsSpecificControls();
+  populateIndexParamsSpecificControls();
+}
+
+void QFlannIndexParamsWidget::onupdatecontrols()
+{
+  if( !options_ ) {
+    setEnabled(false);
+    clearIndexParamsSpecificControls();
+  }
+  else {
+    flannIndexType_ctl->setCurrentItem(options_->flann.index.type);
+    populateIndexParamsSpecificControls();
+    setEnabled(true);
+  }
+}
+

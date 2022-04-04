@@ -608,8 +608,10 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
 
   if ( dst.needed() || dst_mask.needed()) {
     if ( current_remap_.size() != src_size ) {
-      CF_ERROR("Invalid argument: invalid src / remap size");
-      //return false;
+      CF_ERROR("WARNING: src size (%dx%d) and remap size (%dx%d) different",
+          src_size.width, src_size.height,
+          current_remap_.cols, current_remap_.rows);
+     // return false;
     }
   }
 

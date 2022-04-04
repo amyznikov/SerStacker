@@ -250,16 +250,28 @@ bool c_flann_based_feature2d_matcher::match(cv::InputArray query_descriptors, /*
 
     if ( !search_params_ ) {
       search_params_.reset(new cv::flann::SearchParams(
-          cvflann::FLANN_CHECKS_UNLIMITED,
-          0,
-          knn > 1));
+            cvflann::FLANN_CHECKS_UNLIMITED,
+            0,
+            true));
     }
+
+    CF_DEBUG("query_descriptors.size=%dx%d depth=%d channels=%d",
+        query_descriptors.rows(), query_descriptors.cols(),
+        query_descriptors.depth(), query_descriptors.channels());
 
     index_.knnSearch(query_descriptors,
         indices_,
         dists_,
         knn,
         *search_params_);
+
+    CF_DEBUG("indices_.size=%dx%d depth=%d channels=%d",
+        indices_.rows, indices_.cols,
+        indices_.depth(), indices_.channels());
+
+    //    CF_DEBUG("dists_.size=%dx%d depth=%d channels=%d",
+    //        dists_.rows, dists_.cols,
+    //        dists_.depth(), dists_.channels());
 
     static const auto dist =
         [](const cv::Mat & m, int r, int c) -> float {
@@ -271,6 +283,7 @@ bool c_flann_based_feature2d_matcher::match(cv::InputArray query_descriptors, /*
     const int cc = indices_.cols;
     const int ddepth = dists_.depth();
 
+    // CF_DEBUG("cr=%d cc=%d", cr, cc);
     for ( int i = 0; i < cr; ++i ) {
 
       if ( indices_[i][0] < 0 ) {

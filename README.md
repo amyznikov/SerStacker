@@ -58,7 +58,7 @@ qt5-default qtmultimedia5-dev
 
 ## Example pictures
 
-Compare jovian images captured with two different tubes, processed and derotated with this SerStacker.
+Compare jovian images captured with two different tubes, processed and derotated with SerStacker.
 
 ![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
 

@@ -787,6 +787,11 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray mask)
 
 bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
 {
+  if ( accumulated_frames_ < 1 ) {
+    CF_ERROR("No frames was accumulated");
+    return false;
+  }
+
   if ( !divide_accumulator(accumulator_, counter_, avg, mask, dscale, ddepth) ) {
     CF_ERROR("ERROR in weigthed_frame_average: divide_accumulator() fails");
     return false;

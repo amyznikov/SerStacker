@@ -21,39 +21,6 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
 }
 
-//
-//QString toString(enum frame_registration_method m)
-//{
-//  return toStdString(m).c_str();
-//}
-//
-//enum frame_registration_method fromString(const QString  & s,
-//    enum frame_registration_method defval )
-//{
-//  return fromStdString(s.toStdString(), defval);
-//}
-//
-//QString toString(enum ECC_MOTION_TYPE v)
-//{
-//  return toStdString(v).c_str();
-//}
-//
-//enum ECC_MOTION_TYPE fromString(const QString & s, enum ECC_MOTION_TYPE defval)
-//{
-//  return fromStdString(s.toStdString(), defval);
-//}
-//
-//
-//QString toString(enum color_channel_type v)
-//{
-//  return toStdString(v).c_str();
-//}
-//
-//enum color_channel_type fromString(const QString  & s, enum color_channel_type defval )
-//{
-//  return fromStdString(s.toStdString(), defval);
-//}
-
 
 QEccSettings::QEccSettings(QWidget * parent)
   : Base("QEccSettings", parent)
@@ -362,100 +329,7 @@ void QFrameRegistrationBaseSettings::onupdatecontrols()
     setEnabled(true);
   }
 }
-//
-//QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(QWidget * parent)
-//    : Base("QFeatureBasedRegistrationSettings", parent)
-//{
-//  construct();
-//}
-//
-//QFeatureBasedRegistrationSettings::QFeatureBasedRegistrationSettings(const QString & prefix, QWidget * parent)
-//  : Base(prefix, parent)
-//{
-//  construct();
-//}
-//
-//void QFeatureBasedRegistrationSettings::construct()
-//{
-//  add_expandable_groupbox("Sparse Feature Extraction Options",
-//      sparseFeatureExtractorOptions_ctl = new QSparseFeatureExtractorSettingsWidget(this));
-//
-////  hessianThreshold_ctl =
-////      add_numeric_box<double>("Hessian threshold",
-////          [this](double value) {
-////            if (feature_options_ && value != feature_options_->hessianThreshold ) {
-////              feature_options_->hessianThreshold = value;
-////              emit parameterChanged();
-////            }
-////          });
-////
-////  nOctaves_ctl = add_numeric_box<int>("Num Octaves",
-////      [this](int value) {
-////        if (feature_options_ && value != feature_options_->nOctaves ) {
-////          feature_options_->nOctaves = value;
-////          emit parameterChanged();
-////        }
-////      });
-////
-////  nOctaveLayers_ctl = add_numeric_box<int>("Num Octave Layers",
-////      [this](int value) {
-////        if (feature_options_ && value != feature_options_->nOctaveLayers ) {
-////          feature_options_->nOctaveLayers = value;
-////          emit parameterChanged();
-////        }
-////      });
-////
-////  extended_ctl = add_checkbox("Extended",
-////      [this](bool checked) {
-////        if (feature_options_ ) {
-////          bool checked = state == Qt::Checked;
-////          if ( checked != feature_options_->extended ) {
-////            feature_options_->extended = checked;
-////            emit parameterChanged();
-////          }
-////        }
-////      });
-////
-////  upright_ctl = add_checkbox("Upright",
-////      [this](bool checked) {
-////        if (feature_options_ ) {
-////          bool checked = state == Qt::Checked;
-////          if ( checked != feature_options_->upright ) {
-////            feature_options_->upright = checked;
-////            emit parameterChanged();
-////          }
-////        }
-////      });
-//}
-//
-//
-//void QFeatureBasedRegistrationSettings::set_feature_options(c_feature_based_registration_options * options)
-//{
-//  this->feature_options_ = options;
-//  updateControls();
-//}
-//
-//const c_feature_based_registration_options * QFeatureBasedRegistrationSettings::feature_options() const
-//{
-//  return this->feature_options_;
-//}
-//
-//void QFeatureBasedRegistrationSettings::onupdatecontrols()
-//{
-//  if ( !feature_options_ )  {
-//    setEnabled(false);
-//    sparseFeatureExtractorOptions_ctl->set_sparse_feature_extractor_options(nullptr);
-//  }
-//  else {
-//    sparseFeatureExtractorOptions_ctl->set_sparse_feature_extractor_options(&feature_options_->sparse_feature_extractor);
-////    hessianThreshold_ctl->setValue(feature_options_->hessianThreshold);
-////    nOctaves_ctl->setValue(feature_options_->nOctaves);
-////    nOctaveLayers_ctl->setValue(feature_options_->nOctaveLayers);
-////    extended_ctl->setChecked(feature_options_->extended);
-////    upright_ctl->setChecked(feature_options_->upright);
-//    setEnabled(true);
-//  }
-//}
+
 
 QPlanetaryDiskRegistrationSettings::QPlanetaryDiskRegistrationSettings(QWidget * parent) :
     Base("QPlanetaryDiskRegistrationSettings", parent)
@@ -629,34 +503,6 @@ void QStarFieldRegistrationSettings::onupdatecontrols()
 {
   Base::onupdatecontrols();
 }
-//
-//QMMRegistrationSettings::QMMRegistrationSettings(QWidget * parent)
-//  : Base("QMMRegistrationSettings", parent)
-//{
-//}
-//
-//void QMMRegistrationSettings::set_mm_options(c_mm_registration_options * options)
-//{
-//  mm_options_ = options;
-//  updateControls();
-//}
-//
-//const c_mm_registration_options * QMMRegistrationSettings::mm_options() const
-//{
-//  return mm_options_;
-//}
-//
-//void QMMRegistrationSettings::onupdatecontrols()
-//{
-//  Base::onupdatecontrols();
-//  if ( !mm_options_ ) {
-//    setEnabled(false);
-//  }
-//  else {
-//    // ...
-//  }
-//}
-
 
 
 QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)

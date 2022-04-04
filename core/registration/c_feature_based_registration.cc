@@ -135,6 +135,25 @@ bool c_feature_based_registration::extract_reference_features(cv::InputArray ref
     return false;
   }
 
+  CF_DEBUG("keypoints_detector_=%p (%s)",  keypoints_detector_.get(), keypoints_detector_ ? typeid(*keypoints_detector_.get()).name() : "");
+
+  CF_DEBUG("reference_feature_image: %dx%d %d channels %d depth",
+      reference_feature_image.cols(), reference_feature_image.rows(),
+      reference_feature_image.channels(),
+      reference_feature_image.depth());
+
+  CF_DEBUG("reference_feature_mask: %dx%d %d channels %d depth",
+      reference_feature_mask.cols(), reference_feature_mask.rows(),
+      reference_feature_mask.channels(),
+      reference_feature_mask.depth());
+
+  CF_DEBUG("reference_keypoints_.clear()");
+  reference_keypoints_.clear();
+
+  CF_DEBUG("reference_descriptors_.release()");
+  reference_descriptors_.release();
+
+  CF_DEBUG("keypoints_detector_->detectAndCompute()");
   keypoints_detector_->detectAndCompute(reference_feature_image, reference_feature_mask,
       reference_keypoints_,
       reference_descriptors_);

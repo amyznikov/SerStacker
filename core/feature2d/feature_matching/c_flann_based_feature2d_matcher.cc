@@ -37,8 +37,10 @@ const c_enum_member * members_of<cvflann::flann_distance_t>()
       { cvflann::FLANN_DIST_CS, "CS", "" },
       { cvflann::FLANN_DIST_KL, "KL", "" },
       { cvflann::FLANN_DIST_HAMMING, "HAMMING", "" },
+#if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(4,4,0) )
       { cvflann::FLANN_DIST_DNAMMING, "DNAMMING", "" },
-      { cvflann::FLANN_DIST_EUCLIDEAN, nullptr, "" },
+#endif
+      { cvflann::FLANN_DIST_L2, nullptr, "" },
   };
 
   return members;

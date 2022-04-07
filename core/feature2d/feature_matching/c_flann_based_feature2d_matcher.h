@@ -12,6 +12,17 @@
 #include "c_feature2d_matcher.h"
 #include <core/ssprintf.h>
 
+#ifndef CV_VERSION_INT
+# define CV_VERSION_INT(a,b,c) \
+    ((a)<<16 | (b)<<8 | (c))
+#endif
+
+#ifndef CV_VERSION_CURRRENT
+#define CV_VERSION_CURRRENT \
+    CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
+#endif
+
+
 enum FlannIndexType {
   FlannIndex_unknown  = -1,
   FlannIndex_linear = 0,

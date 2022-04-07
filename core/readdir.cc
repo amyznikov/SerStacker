@@ -1,4 +1,3 @@
-
 /*
  * readdir.cc
  *

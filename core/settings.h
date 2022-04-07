@@ -25,6 +25,8 @@ template<class T> struct c_config_type_traits<std::vector<T>> { static constexpr
 template<> struct c_config_type_traits<bool> {static constexpr int type = CONFIG_TYPE_BOOL;};
 template<> struct c_config_type_traits<uint8_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<int8_t> {static constexpr int type = CONFIG_TYPE_INT;};
+template<> struct c_config_type_traits<int16_t> {static constexpr int type = CONFIG_TYPE_INT;};
+template<> struct c_config_type_traits<uint16_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<int32_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<uint32_t> {static constexpr int type = CONFIG_TYPE_INT;};
 template<> struct c_config_type_traits<int64_t> {static constexpr int type = CONFIG_TYPE_INT64;};
@@ -39,6 +41,8 @@ template<class T> struct is_config_atomic_type {static constexpr bool value = fa
 template<> struct is_config_atomic_type<bool> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<uint8_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<int8_t> {static constexpr bool value = true;};
+template<> struct is_config_atomic_type<int16_t> {static constexpr bool value = true;};
+template<> struct is_config_atomic_type<uint16_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<int32_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<uint32_t> {static constexpr bool value = true;};
 template<> struct is_config_atomic_type<int64_t> {static constexpr bool value = true;};
@@ -198,6 +202,8 @@ protected:
   static bool get_value(const config_setting_t *setting, bool * value);
   static bool get_value(const config_setting_t *setting, int8_t * value);
   static bool get_value(const config_setting_t *setting, uint8_t * value);
+  static bool get_value(const config_setting_t *setting, int16_t * value);
+  static bool get_value(const config_setting_t *setting, uint16_t * value);
   static bool get_value(const config_setting_t *setting, int32_t * value);
   static bool get_value(const config_setting_t *setting, uint32_t * value);
   static bool get_value(const config_setting_t *setting, int64_t * value);

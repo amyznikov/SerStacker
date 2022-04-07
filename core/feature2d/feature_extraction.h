@@ -1388,7 +1388,11 @@ inline constexpr bool can_detect_features_and_compute_descriptors(enum FEATURE2D
 struct c_sparse_feature_detector_options
 {
   SPARSE_FEATURE_DETECTOR_TYPE type =
+#if HAVE_FEATURE2D_SURF
       SPARSE_FEATURE_DETECTOR_SURF;
+#else
+    SPARSE_FEATURE_DETECTOR_AKAZE;
+#endif
 
   c_feature2d_orb::options orb;
   c_feature2d_brisk::options brisk;
@@ -1420,7 +1424,11 @@ struct c_sparse_feature_detector_options
 struct c_sparse_feature_descriptor_options
 {
   SPARSE_FEATURE_DESCRIPTOR_TYPE type =
+#if HAVE_FEATURE2D_SURF
       SPARSE_FEATURE_DESCRIPTOR_SURF;
+#else
+      SPARSE_FEATURE_DESCRIPTOR_AKAZE;
+#endif
 
   bool use_detector_options = true;
 

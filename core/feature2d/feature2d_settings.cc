@@ -882,72 +882,28 @@ bool load_settings(c_config_setting settings, c_flann_index_options * options)
     return false;
   }
 
-  if ( objtype.empty() ) {
-    objtype = toString(
-        options->type);
+  c_config_setting subsection;
+
+  if( (subsection = settings[toString(FlannIndex_linear)]).isGroup() ) {
+    load_settings(subsection, &options->linear);
   }
-
-  c_config_setting subsection =
-      settings[objtype];
-
-  switch ( options->type ) {
-  case FlannIndex_unknown:
-    CF_ERROR("No flann index type specified");
-    return false;
-
-  case FlannIndex_linear:
-    if ( subsection && !load_settings(subsection, &options->linear) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  case FlannIndex_kdtree:
-    if ( subsection && !load_settings(subsection, &options->kdtree) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  case FlannIndex_kmeans:
-    if ( subsection && !load_settings(subsection, &options->kmeans) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  case FlannIndex_composite:
-    if ( subsection && !load_settings(subsection, &options->composite) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  case FlannIndex_hierarchical:
-    if ( subsection && !load_settings(subsection, &options->hierarchical) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  case FlannIndex_lsh:
-    if ( subsection && !load_settings(subsection, &options->lsh) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  case FlannIndex_autotuned:
-    if ( subsection && !load_settings(subsection, &options->autotuned) ) {
-      CF_ERROR("load_settings(flann_index ='%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-
-  default:
-    CF_ERROR("APP BUG: Not handled flann index type encountered: %d (%s)",
-        options->type, objtype.c_str());
-    return false;
+  if( (subsection = settings[toString(FlannIndex_kdtree)]).isGroup() ) {
+    load_settings(subsection, &options->kdtree);
+  }
+  if( (subsection = settings[toString(FlannIndex_kmeans)]).isGroup() ) {
+    load_settings(subsection, &options->kmeans);
+  }
+  if( (subsection = settings[toString(FlannIndex_composite)]).isGroup() ) {
+    load_settings(subsection, &options->composite);
+  }
+  if( (subsection = settings[toString(FlannIndex_hierarchical)]).isGroup() ) {
+    load_settings(subsection, &options->hierarchical);
+  }
+  if( (subsection = settings[toString(FlannIndex_lsh)]).isGroup() ) {
+    load_settings(subsection, &options->lsh);
+  }
+  if( (subsection = settings[toString(FlannIndex_autotuned)]).isGroup() ) {
+    load_settings(subsection, &options->autotuned);
   }
 
   return true;
@@ -1019,64 +975,6 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
 
   return true;
 }
-
-//
-//bool load_settings(c_config_setting settings, c_feature2d_matcher_options * options)
-//{
-//  if ( !settings ) {
-//    CF_ERROR("settings pointer is NULL");
-//    return false;
-//  }
-//
-//  std::string objtype;
-//  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
-//    if ( options->type == FEATURE2D_MATCHER_UNKNOWN ) {
-//      CF_ERROR("No sparse feature2d matcher type specified");
-//      return false;
-//    }
-//  }
-//  else if ( !fromString(objtype, &options->type) || options->type == FEATURE2D_MATCHER_UNKNOWN ) {
-//    CF_ERROR("Unknown or not supported No sparse feature2d matcher type specified: '%s'",
-//        objtype.c_str());
-//    return false;
-//  }
-//
-//  if ( objtype.empty() ) {
-//    objtype = toString(
-//        options->type);
-//  }
-//
-//  c_config_setting subsection =
-//      settings[objtype];
-//
-//  switch ( options->type ) {
-//  case  FEATURE2D_MATCHER_HAMMING:
-//    if ( subsection && !load_settings(subsection, &options->hamming) ) {
-//      CF_ERROR("load_settings('%s') fails", objtype.c_str());
-//      return false;
-//    }
-//    break;
-//  case  FEATURE2D_MATCHER_FLANN:
-//    if ( subsection && !load_settings(subsection, &options->flann) ) {
-//      CF_ERROR("load_settings('%s') fails", objtype.c_str());
-//      return false;
-//    }
-//    break;
-//  case  FEATURE2D_MATCHER_SNORM:
-//    if ( subsection && !load_settings(subsection, &options->snorm) ) {
-//      CF_ERROR("load_settings('%s') fails", objtype.c_str());
-//      return false;
-//    }
-//    break;
-//  default :
-//    CF_ERROR("APP BUG: Not handled FEATURE2D MATCHER type encountered: %d (%s)",
-//        options->type, objtype.c_str());
-//    return false;
-//  }
-//
-//
-//  return true;
-//}
 
 
 c_feature2d_matcher::ptr create_sparse_feature_matcher(const c_sparse_feature_extractor::ptr & extractor, c_config_setting settings)

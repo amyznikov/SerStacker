@@ -11,7 +11,6 @@
 #define SAVE_SETINGS(p)  \
   save_settings(settings, #p, args.p);
 
-
 bool load_settings(c_config_setting settings, c_feature2d_orb::options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
@@ -554,6 +553,15 @@ bool save_settings(c_config_setting settings, const c_feature2d_boost::options &
 #endif
 
 
+
+bool save_settings(c_config_setting settings, const c_flann_based_feature2d_matcher_options & args)
+{
+  SAVE_SETINGS(distance_type);
+  SAVE_SETINGS(lowe_ratio);
+  SAVE_SETINGS(index);
+  return true;
+}
+
 bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_options * options)
 {
   BEGIN_LOAD_OPTIONS(settings)
@@ -561,6 +569,13 @@ bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_op
   LOAD_OPTIONS(settings, *options, lowe_ratio);
   LOAD_OPTIONS(settings, *options, index);
   END_LOAD_OPTIONS(settings)
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_snorm_based_feature2d_matcher_options & args)
+{
+  SAVE_SETINGS(max_acceptable_distance);
+  SAVE_SETINGS(lowe_ratio);
   return true;
 }
 
@@ -574,10 +589,21 @@ bool load_settings(c_config_setting settings, c_snorm_based_feature2d_matcher_op
 }
 
 
+bool save_settings(c_config_setting settings, const c_flann_linear_index_options & args)
+{
+  // has no options
+  return true;
+}
+
 bool load_settings(c_config_setting settings, c_flann_linear_index_options * options)
 {
   // has no options
+  return true;
+}
 
+bool save_settings(c_config_setting settings, const c_flann_kdtree_index_options & args)
+{
+  SAVE_SETINGS(trees);
   return true;
 }
 
@@ -586,7 +612,15 @@ bool load_settings(c_config_setting settings, c_flann_kdtree_index_options * opt
   BEGIN_LOAD_OPTIONS(settings)
   LOAD_OPTIONS(settings, *options, trees);
   END_LOAD_OPTIONS(settings)
+  return true;
+}
 
+bool save_settings(c_config_setting settings, const c_flann_kmeans_index_options & args)
+{
+  SAVE_SETINGS(centers_init);
+  SAVE_SETINGS(branching);
+  SAVE_SETINGS(iterations);
+  SAVE_SETINGS(cb_index);
   return true;
 }
 
@@ -598,7 +632,16 @@ bool load_settings(c_config_setting settings, c_flann_kmeans_index_options* opti
   LOAD_OPTIONS(settings, *options, iterations);
   LOAD_OPTIONS(settings, *options, cb_index);
   END_LOAD_OPTIONS(settings)
+  return true;
+}
 
+bool save_settings(c_config_setting settings, const c_flann_composite_index_options & args)
+{
+  SAVE_SETINGS(centers_init);
+  SAVE_SETINGS(trees);
+  SAVE_SETINGS(branching);
+  SAVE_SETINGS(iterations);
+  SAVE_SETINGS(cb_index);
   return true;
 }
 
@@ -611,7 +654,15 @@ bool load_settings(c_config_setting settings, c_flann_composite_index_options * 
   LOAD_OPTIONS(settings, *options, iterations);
   LOAD_OPTIONS(settings, *options, cb_index);
   END_LOAD_OPTIONS(settings)
+  return true;
+}
 
+bool save_settings(c_config_setting settings, const c_flann_hierarchical_index_options & args)
+{
+  SAVE_SETINGS(centers_init);
+  SAVE_SETINGS(branching);
+  SAVE_SETINGS(trees);
+  SAVE_SETINGS(leaf_size);
   return true;
 }
 
@@ -623,7 +674,14 @@ bool load_settings(c_config_setting settings, c_flann_hierarchical_index_options
   LOAD_OPTIONS(settings, *options, trees);
   LOAD_OPTIONS(settings, *options, leaf_size);
   END_LOAD_OPTIONS(settings)
+  return true;
+}
 
+bool save_settings(c_config_setting settings, const c_flann_lsh_index_options & args)
+{
+  SAVE_SETINGS(table_number);
+  SAVE_SETINGS(key_size);
+  SAVE_SETINGS(multi_probe_level);
   return true;
 }
 
@@ -634,7 +692,15 @@ bool load_settings(c_config_setting settings, c_flann_lsh_index_options * option
   LOAD_OPTIONS(settings, *options, key_size);
   LOAD_OPTIONS(settings, *options, multi_probe_level);
   END_LOAD_OPTIONS(settings)
+  return true;
+}
 
+bool save_settings(c_config_setting settings, const c_flann_autotuned_index_options & args)
+{
+  SAVE_SETINGS(target_precision);
+  SAVE_SETINGS(build_weight);
+  SAVE_SETINGS(memory_weight);
+  SAVE_SETINGS(sample_fraction);
   return true;
 }
 
@@ -783,6 +849,19 @@ c_sparse_feature_extractor::ptr create_sparse_feature_extractor(c_config_setting
   return create_sparse_feature_extractor(options);
 }
 
+bool save_settings(c_config_setting settings, const c_flann_index_options & args)
+{
+  SAVE_SETINGS(type);
+  SAVE_SETINGS(linear);
+  SAVE_SETINGS(kdtree);
+  SAVE_SETINGS(kmeans);
+  SAVE_SETINGS(composite);
+  SAVE_SETINGS(hierarchical);
+  SAVE_SETINGS(lsh);
+  SAVE_SETINGS(autotuned);
+  return true;
+}
+
 bool load_settings(c_config_setting settings, c_flann_index_options * options)
 {
   if ( !settings ) {
@@ -874,11 +953,33 @@ bool load_settings(c_config_setting settings, c_flann_index_options * options)
   return true;
 }
 
+bool save_settings(c_config_setting settings, const c_hamming_distance_feature2d_matcher_options & args)
+{
+  SAVE_SETINGS(max_acceptable_distance);
+  return true;
+}
+
 bool load_settings(c_config_setting settings, c_hamming_distance_feature2d_matcher_options * options)
 {
   BEGIN_LOAD_OPTIONS(settings)
   LOAD_OPTIONS(settings, *options, max_acceptable_distance);
   END_LOAD_OPTIONS(settings)
+
+  return true;
+}
+
+
+bool save_settings(c_config_setting settings, const c_feature2d_matcher_options & options)
+{
+  if ( !settings ) {
+    CF_ERROR("settings pointer is NULL");
+    return false;
+  }
+
+  save_settings(settings, "type", options.type);
+  save_settings(settings.add_group(toString(FEATURE2D_MATCHER_FLANN)), options.flann);
+  save_settings(settings.add_group(toString(FEATURE2D_MATCHER_HAMMING)), options.hamming);
+  save_settings(settings.add_group(toString(FEATURE2D_MATCHER_SNORM)), options.snorm);
 
   return true;
 }
@@ -904,42 +1005,78 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
     return false;
   }
 
-  if ( objtype.empty() ) {
-    objtype = toString(
-        options->type);
+  c_config_setting subsection;
+
+  if( (subsection = settings[toString(FEATURE2D_MATCHER_FLANN)]).isGroup() ) {
+    load_settings(subsection, &options->flann);
   }
-
-  c_config_setting subsection =
-      settings[objtype];
-
-  switch ( options->type ) {
-  case  FEATURE2D_MATCHER_HAMMING:
-    if ( subsection && !load_settings(subsection, &options->hamming) ) {
-      CF_ERROR("load_settings('%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-  case  FEATURE2D_MATCHER_FLANN:
-    if ( subsection && !load_settings(subsection, &options->flann) ) {
-      CF_ERROR("load_settings('%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-  case  FEATURE2D_MATCHER_SNORM:
-    if ( subsection && !load_settings(subsection, &options->snorm) ) {
-      CF_ERROR("load_settings('%s') fails", objtype.c_str());
-      return false;
-    }
-    break;
-  default :
-    CF_ERROR("APP BUG: Not handled FEATURE2D MATCHER type encountered: %d (%s)",
-        options->type, objtype.c_str());
-    return false;
+  if( (subsection = settings[toString(FEATURE2D_MATCHER_HAMMING)]).isGroup() ) {
+    load_settings(subsection, &options->hamming);
   }
-
+  if( (subsection = settings[toString(FEATURE2D_MATCHER_SNORM)]).isGroup() ) {
+    load_settings(subsection, &options->snorm);
+  }
 
   return true;
 }
+
+//
+//bool load_settings(c_config_setting settings, c_feature2d_matcher_options * options)
+//{
+//  if ( !settings ) {
+//    CF_ERROR("settings pointer is NULL");
+//    return false;
+//  }
+//
+//  std::string objtype;
+//  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
+//    if ( options->type == FEATURE2D_MATCHER_UNKNOWN ) {
+//      CF_ERROR("No sparse feature2d matcher type specified");
+//      return false;
+//    }
+//  }
+//  else if ( !fromString(objtype, &options->type) || options->type == FEATURE2D_MATCHER_UNKNOWN ) {
+//    CF_ERROR("Unknown or not supported No sparse feature2d matcher type specified: '%s'",
+//        objtype.c_str());
+//    return false;
+//  }
+//
+//  if ( objtype.empty() ) {
+//    objtype = toString(
+//        options->type);
+//  }
+//
+//  c_config_setting subsection =
+//      settings[objtype];
+//
+//  switch ( options->type ) {
+//  case  FEATURE2D_MATCHER_HAMMING:
+//    if ( subsection && !load_settings(subsection, &options->hamming) ) {
+//      CF_ERROR("load_settings('%s') fails", objtype.c_str());
+//      return false;
+//    }
+//    break;
+//  case  FEATURE2D_MATCHER_FLANN:
+//    if ( subsection && !load_settings(subsection, &options->flann) ) {
+//      CF_ERROR("load_settings('%s') fails", objtype.c_str());
+//      return false;
+//    }
+//    break;
+//  case  FEATURE2D_MATCHER_SNORM:
+//    if ( subsection && !load_settings(subsection, &options->snorm) ) {
+//      CF_ERROR("load_settings('%s') fails", objtype.c_str());
+//      return false;
+//    }
+//    break;
+//  default :
+//    CF_ERROR("APP BUG: Not handled FEATURE2D MATCHER type encountered: %d (%s)",
+//        options->type, objtype.c_str());
+//    return false;
+//  }
+//
+//
+//  return true;
+//}
 
 
 c_feature2d_matcher::ptr create_sparse_feature_matcher(const c_sparse_feature_extractor::ptr & extractor, c_config_setting settings)

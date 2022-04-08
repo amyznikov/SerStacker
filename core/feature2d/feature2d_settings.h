@@ -164,41 +164,78 @@ bool save_settings(c_config_setting settings,
 
 
 
+bool save_settings(c_config_setting settings,
+    const c_flann_linear_index_options & options);
+
 bool load_settings(c_config_setting settings,
     c_flann_linear_index_options * options);
+
+bool save_settings(c_config_setting settings,
+    const c_flann_kdtree_index_options & options);
 
 bool load_settings(c_config_setting settings,
     c_flann_kdtree_index_options * options);
 
+bool save_settings(c_config_setting settings,
+    const c_flann_kmeans_index_options & options);
+
 bool load_settings(c_config_setting settings,
     c_flann_kmeans_index_options* options);
+
+bool save_settings(c_config_setting settings,
+    const c_flann_composite_index_options & options);
 
 bool load_settings(c_config_setting settings,
     c_flann_composite_index_options * options);
 
+bool save_settings(c_config_setting settings,
+    const c_flann_hierarchical_index_options & options);
+
 bool load_settings(c_config_setting settings,
     c_flann_hierarchical_index_options  * options);
+
+bool save_settings(c_config_setting settings,
+    const c_flann_lsh_index_options & options);
 
 bool load_settings(c_config_setting settings,
     c_flann_lsh_index_options * options);
 
+bool save_settings(c_config_setting settings,
+    const c_flann_autotuned_index_options & options);
+
 bool load_settings(c_config_setting settings,
     c_flann_autotuned_index_options  * options);
+
+bool save_settings(c_config_setting settings,
+    const c_flann_index_options & options);
 
 bool load_settings(c_config_setting settings,
     c_flann_index_options * options);
 
-bool load_settings(c_config_setting settings,
+bool save_settings(c_config_setting settings,
+    const c_hamming_distance_feature2d_matcher_options & options);
+
+bool load_sett3ings(c_config_setting settings,
     c_hamming_distance_feature2d_matcher_options * options);
+
+bool save_settings(c_config_setting settings,
+    const c_flann_based_feature2d_matcher_options & options);
 
 bool load_settings(c_config_setting settings,
     c_flann_based_feature2d_matcher_options * options);
 
+bool save_settings(c_config_setting settings,
+    const c_snorm_based_feature2d_matcher_options & options);
+
 bool load_settings(c_config_setting settings,
     c_snorm_based_feature2d_matcher_options * options);
 
+bool save_settings(c_config_setting settings,
+    const c_feature2d_matcher_options & options);
+
 bool load_settings(c_config_setting settings,
     c_feature2d_matcher_options * options);
+
 
 
 bool save_settings(c_config_setting settings,

@@ -482,6 +482,9 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   group = settings.add_group("sparse_feature_extractor");
   save_settings(group, feature_options.sparse_feature_extractor);
 
+  group = settings.add_group("sparse_feature_matcher");
+  save_settings(group, feature_options.sparse_feature_matcher);
+
   group = settings.add_group("ecc");
   save_settings(group, "scale", base_options.ecc.scale);
   save_settings(group, "eps", base_options.ecc.eps);
@@ -542,6 +545,10 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
   if ( (group = settings["sparse_feature_extractor"]).isGroup() ) {
     load_settings(group, &feature_options.sparse_feature_extractor);
   }
+  if ( (group = settings["sparse_feature_matcher"]).isGroup() ) {
+    load_settings(group, &feature_options.sparse_feature_matcher);
+  }
+
 
   if ( (group = settings["ecc"]).isGroup() ) {
     load_settings(group, "scale", &base_options.ecc.scale);

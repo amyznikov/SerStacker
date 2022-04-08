@@ -161,7 +161,7 @@ QEccflowSettings::QEccflowSettings(QWidget * parent)
 
   reference_smooth_sigma_ctl = add_numeric_box<double>("reference smooth sigma",
       [this](double v) {
-        if ( options_ && v != options_->input_smooth_sigma ) {
+        if ( options_ && v != options_->reference_smooth_sigma ) {
           options_->reference_smooth_sigma = v;
           emit parameterChanged();
         }

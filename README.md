@@ -1,6 +1,18 @@
 # SerStacker
 Highly experimental code for planetary images stacking with OpenCV.
 
+## Example pictures
+
+Compare jovian images captured with two different tubes, processed and derotated with SerStacker.
+
+![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
+
+
+Montes Alpes and Mare Frigoris.
+![MontesAlpes](./debug/MontesAlpes.2021-09-26-2327_8-CapObj-32F.jpg)
+
+
+
 This code is intendend mainly for my experimentation.
 It is totally bugged and constantly changed. 
 
@@ -54,17 +66,6 @@ Dependency packages for Ubuntu:
 libtiff5-dev libraw-dev libopenraw-dev libcfitsio-dev 
 libavcodec-dev libavformat-dev libavutil-dev libavdevice-dev libswscale-dev
 qt5-default qtmultimedia5-dev 
-
-
-## Example pictures
-
-Compare jovian images captured with two different tubes, processed and derotated with SerStacker.
-
-![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
-
-
-Montes Alpes and Mare Frigoris.
-![MontesAlpes](./debug/MontesAlpes.2021-09-26-2327_8-CapObj-32F.jpg)
 
 
 

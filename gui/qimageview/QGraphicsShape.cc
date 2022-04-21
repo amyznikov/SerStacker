@@ -289,41 +289,57 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent *e)
 {
   if ( e->buttons() == Qt::LeftButton ) {
 
-    const QPointF epos =
+    QGraphicsView * view = nullptr;
+    QWidget * widget = e->widget();
+
+    if( widget ) {
+      view = dynamic_cast<QGraphicsView*>(widget);
+      if( !view ) {
+        view = dynamic_cast<QGraphicsView*>(widget->parent());
+      }
+    }
+
+    QPointF epos =
         e->pos();
 
-    const QRectF rect =
+    QRectF rect =
         Base::rect();
 
-    const int margin = 1; //
-        std::max(1, pen().width());
+    double eps = hiteps;
 
-    const QRectF rc2 =
-        rect.marginsRemoved(QMarginsF(margin, margin, margin, margin));
+    if ( view ) {
+      epos = view->mapFromScene(epos);
+      rect.setTopLeft(view->mapFromScene(rect.topLeft()));
+      rect.setBottomRight(view->mapFromScene(rect.bottomRight()));
 
-    CF_DEBUG("rc2.empty=%d rc:(%g %g %g %g) rect:(%g %g %g %g)",
-        rc2.isEmpty(),
-        rc2.x(), rc2.y(), rc2.width(), rc2.height(),
-        rect.x(), rect.y(), rect.width(), rect.height());
-
-    if ( !rc2.isEmpty() && rc2.contains(epos) ) {
-      rect_moving_mode_ = move_whole_rect;
-      CF_DEBUG("contains");
+      if ( rect.width() < 10 || rect.height() < 10 ) {
+        eps = 2;
+      }
+      else if ( rect.width() < 15 || rect.height() < 15 ) {
+        eps = 3;
+      }
+      else if ( rect.width() < 20 || rect.height() < 20 ) {
+        eps = 5;
+      }
+      else {
+        eps = 15;
+      }
     }
-    else {
+
+    if (true) {
 
       QPointF p;
-      int best_corner = move_whole_rect;
+      int best_corner = not_moving;
       double distance, best_distance = 1e32;
 
       p = rect.topLeft();
-      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < hiteps ) {
+      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < eps ) {
         best_distance = distance;
         best_corner = move_lt;
       }
 
       p = rect.topRight();
-      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < hiteps ) {
+      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < eps ) {
         if ( distance < best_distance ) {
           best_distance = distance;
           best_corner = move_rt;
@@ -331,7 +347,7 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent *e)
       }
 
       p = rect.bottomRight();
-      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < hiteps ) {
+      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < eps ) {
         if ( distance < best_distance ) {
           best_distance = distance;
           best_corner = move_rb;
@@ -339,26 +355,23 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent *e)
       }
 
       p = rect.bottomLeft();
-      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < hiteps ) {
+      if ( (distance = hypot(p.x() - epos.x(), p.y() - epos.y())) < eps ) {
         if ( distance < best_distance ) {
           best_distance = distance;
           best_corner = move_lb;
         }
       }
 
-      if ( best_corner != move_whole_rect ) {
+      if ( best_corner != not_moving ) {
         rect_moving_mode_ = (rect_moving_mode)best_corner;
-        e->accept();
-        return;
       }
-
-      if ( rect.contains(epos) ) {
+      else if ( rect.contains(epos) ) {
         rect_moving_mode_ = move_whole_rect;
       }
     }
   }
 
-  Base::mousePressEvent(e);
+  e->accept();
 }
 
 void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
@@ -417,13 +430,15 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
       e->accept();
       return;
     }
-    default :
+    case move_whole_rect: {
       setPos(pos() + epos - e->lastPos());
       e->accept();
       update();
       return;
     }
-
+    default :
+      return;
+    }
   }
 
   Base::mouseMoveEvent(e);

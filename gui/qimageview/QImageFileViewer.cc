@@ -168,8 +168,8 @@ void QImageFileViewer::hideEvent(QHideEvent *e)
 {
   closeCurrentSequence();
 
-  Base::currentImage_.release();
-  Base::currentImageData_.release();
+//  Base::currentImage_.release();
+//  Base::currentImageData_.release();
 
   Base::hideEvent(e);
 }

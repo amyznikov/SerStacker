@@ -423,6 +423,7 @@ void QImageSceneView::addLineShape()
 
     QPen pen(Qt::yellow);
     pen.setWidth(1);
+    pen.setCosmetic(true);
 
     const QRect viewrect =
         this->rect();
@@ -466,6 +467,7 @@ void QImageSceneView::addRectShape()
 
     QPen pen(Qt::yellow);
     pen.setWidth(1);
+    pen.setCosmetic(true);
 
     const QRect viewrect =
         this->rect();

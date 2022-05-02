@@ -9,7 +9,6 @@
 #ifndef __QShapesButton__
 #define __QShapesButton__
 
-//#include <QtWidgets/QtWidgets>
 #include "QImageSceneView.h"
 
 class QShapesButton

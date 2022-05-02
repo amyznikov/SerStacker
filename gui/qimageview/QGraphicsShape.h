@@ -14,10 +14,13 @@
 class QGraphicsShape :
     public QObject
 {
+  Q_OBJECT;
+
 public:
-  virtual void populateContextMenu(QMenu & menu, const QGraphicsSceneContextMenuEvent & e)
-  {
-  }
+  virtual void populateContextMenu(QMenu & menu, const QGraphicsSceneContextMenuEvent & e){}
+
+signals:
+  void itemChanged(QGraphicsShape*);
 };
 
 class QGraphicsLineShape :
@@ -36,9 +39,6 @@ public:
   QPainterPath shape() const override;
   QRectF boundingRect() const override;
   void populateContextMenu(QMenu & menu, const QGraphicsSceneContextMenuEvent & e) override;
-
-signals:
-  void onItemChanged(QGraphicsLineItem*);
 
 protected:
   void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -73,9 +73,6 @@ public:
 
   QPainterPath shape() const override;
   QRectF boundingRect() const override;
-
-signals:
-  void onItemChanged(QGraphicsRectItem*);
 
 protected:
   void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

@@ -10,6 +10,7 @@
 	<file>icons/contrast.png</file>
 	<file>icons/bar_chart.png</file>
 	<file>icons/line_chart.png</file>
-	<file>icons/colormap.png</file>
+	<file>icons/colormap.png</file>	
+	<file>icons/colormap2.png</file>	
 </qresource>
 </RCC>

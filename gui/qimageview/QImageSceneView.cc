@@ -185,8 +185,6 @@ void QImageSceneView::scrollView(int dx, int dy)
   verticalScrollBar()->setValue(verticalScrollBar()->value() + dy);
 }
 
-
-
 void QImageSceneView::wheelEvent(QWheelEvent* e)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
@@ -404,15 +402,19 @@ bool QImageSceneView::shapesVisible() const
 
 void QImageSceneView::deleteAllShapes()
 {
-  if ( scene_ ) {
-    const QList<QGraphicsItem *> items = scene_->items();
-    const QGraphicsPixmapItem * bgitem = scene_->background();
-    for ( QGraphicsItem * item : items ) {
-      if ( item != bgitem ) {
+  if( scene_ ) {
+    const QList<QGraphicsItem*> items = scene_->items();
+    const QGraphicsPixmapItem *bgitem = scene_->background();
+    for( QGraphicsItem *item : items ) {
+      if( item != bgitem ) {
+        QGraphicsShape *shape =
+            dynamic_cast<QGraphicsShape*>(item);
+        if( shape ) {
+          emit graphicsShapeDeleted(shape);
+        }
         delete item;
       }
     }
-
     update();
   }
 }
@@ -453,10 +455,10 @@ void QImageSceneView::addLineShape()
     scene_->addItem(item);
     update();
 
-    connect(item, &QGraphicsLineShape::onItemChanged,
-        this, &ThisClass::onLineShapeChanged);
+    connect(item, &QGraphicsShape::itemChanged,
+        this, &ThisClass::graphicsShapeChanged);
 
-    emit onLineShapeChanged(item);
+    emit graphicsShapeAdded(item);
   }
 
 }
@@ -495,8 +497,9 @@ void QImageSceneView::addRectShape()
     scene_->addItem(item);
     update();
 
-    connect(item, &QGraphicsRectShape::onItemChanged,
-        this, &ThisClass::onRectShapeChanged);
-    emit onRectShapeChanged(item);
+    connect(item, &QGraphicsShape::itemChanged,
+        this, &ThisClass::graphicsShapeChanged);
+
+    emit graphicsShapeAdded(item);
   }
 }

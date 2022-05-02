@@ -45,8 +45,8 @@ static QIcon getIcon(const QString & name)
 
 
 
-MainWindow::MainWindow() :
-   imageDisplayFunction_(this)
+MainWindow::MainWindow()/* :
+   imageDisplayFunction_(this) */
 {
 
   static const auto createScrollableWrap =
@@ -66,12 +66,9 @@ MainWindow::MainWindow() :
 
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
-  centralStackedWidget->addWidget(imageEditor = new QImageFileEditor(this));
+  centralStackedWidget->addWidget(imageEditor = new QImageEditor(this));
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(stackOptionsView = new QStackOptions(this));
-
-  imageEditor->setDisplayFunction(&imageDisplayFunction_);
-
 
 #if HAVE_QGLViewer
   centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
@@ -593,39 +590,25 @@ void MainWindow::configureImageViewerToolbars()
   toolbar->addWidget(imageSizeLabel = new QLabel(""));
   imageSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-  connect(imageEditor, &QImageEditor::currentImageFileNameChanged,
+  connect(imageEditor, &QImageEditor::currentImageChanged,
       [this, imageNameLabel, imageSizeLabel]() {
 
         const QString abspath = imageEditor->currentFileName();
         imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
         imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
 
-        if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
+        if ( mtfControl && mtfControl->isVisible() ) {
           if ( imageEditor->currentFileName().isEmpty() ) {
-            mtfDialogBox->setWindowTitle("Adjust Display Levels ...");
+            mtfControl->setWindowTitle("Adjust Display Levels ...");
           }
           else {
-            mtfDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+            mtfControl->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
           }
         }
       });
-
-  connect(imageEditor, &QImageEditor::currentImageChanged,
-      [this]() {
-        if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
-          mtfDialogBox->setInputImage(imageEditor->currentImage(),
-              imageEditor->currentMask());
-        }
-      });
-
-
-
 
 
   toolbar->addSeparator();
-
-
-
 
   toolbar->addWidget(new QToolbarSpacer());
 
@@ -660,52 +643,12 @@ void MainWindow::configureImageViewerToolbars()
 
 
 
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_histogram), "Levels"));
-  action->setToolTip("Configure Display Image Levels");
-  action->setCheckable(true);
-  action->setChecked(false);
-  //action->setShortcut(QKeySequence::Cancel);
-  connect(action, &QAction::triggered,
-      [this, action](bool checked) {
-
-        if ( checked && !mtfDialogBox ) {
-
-          mtfDialogBox = new QMtfDialogBox(this);
-          mtfDialogBox->setDisplayFunction(&imageDisplayFunction_);
-
-          connect(mtfDialogBox, &QMtfDialogBox::visibilityChanged,
-              action, &QAction::setChecked);
-
-          connect(&imageDisplayFunction_, &QImageDisplayFunction::update,
-              [this]() {
-                if ( mtfDialogBox && mtfDialogBox->isVisible() ) {
-                  mtfDialogBox->updateOutputHistogram();
-                }
-              });
-
-        }
-
-        if ( mtfDialogBox ) {
-          if ( !checked ) {
-            mtfDialogBox->hide();
-          }
-          else {
-            if ( imageEditor->currentFileName().isEmpty() ) {
-              mtfDialogBox->setWindowTitle("Adjust Display Levels ...");
-            }
-            else {
-              mtfDialogBox->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-            }
-
-            mtfDialogBox->setInputImage(imageEditor->currentImage(), imageEditor->currentMask());
-            mtfDialogBox->updateOutputHistogram();
-            mtfDialogBox->showNormal();
-          }
-        }
-
-      });
-
+  toolbar->addAction(displaySettingsMenuAction = new QAction(getIcon(ICON_histogram), "Display options..."));
+  displaySettingsMenuAction->setToolTip("Adjust display options");
+  displaySettingsMenuAction->setCheckable(true);
+  displaySettingsMenuAction->setChecked(false);
+  connect(displaySettingsMenuAction, &QAction::triggered,
+      this, &ThisClass::onDisplaySettingsMenuActionClicked);
 
 
   toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton(this));
@@ -729,46 +672,48 @@ void MainWindow::configureImageViewerToolbars()
     });
 
 
-  connect(imageEditor, &QImageFileEditor::onLineShapeChanged,
-      [this, statusbar](QGraphicsLineItem * item) {
+  connect(imageEditor->sceneView(), &QImageSceneView::graphicsShapeChanged,
+      [this, statusbar](QGraphicsShape * shape) {
 
-        const QLineF line = item->line();
-        const QPointF p1 = item->pos() + line.p1();
-        const QPointF p2 = item->pos() + line.p2();
-        const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
-        const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+        QGraphicsLineItem * lineItem = Q_NULLPTR;
+        QGraphicsRectItem * rectItem = Q_NULLPTR;
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-        QString msg;
-        statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
-#else
-        statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
-#endif
-    });
+        if ( (lineItem = dynamic_cast<QGraphicsLineItem * >(shape)) ) {
 
-  connect(imageEditor, &QImageFileEditor::onRectShapeChanged,
-      [this, statusbar](QGraphicsRectItem * item) {
-
-        const QRectF rect = item->rect();
-
-        const QPointF p1 = item->pos() + rect.topLeft();
-        const QPointF p2 = item->pos() + rect.bottomRight();
-        const double width = rect.width();
-        const double height = rect.height();
+          const QLineF line = lineItem->line();
+          const QPointF p1 = lineItem->pos() + line.p1();
+          const QPointF p2 = lineItem->pos() + line.p2();
+          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-        QString msg;
-        statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
-                p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
+          QString msg;
+          statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
 #else
-        statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
-                p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
+          statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
 #endif
+        }
+        else if ( (rectItem = dynamic_cast<QGraphicsRectItem * >(shape))) {
 
-    });
+          const QRectF rect = rectItem->rect();
+          const QPointF p1 = rectItem->pos() + rect.topLeft();
+          const QPointF p2 = rectItem->pos() + rect.bottomRight();
+          const double width = rect.width();
+          const double height = rect.height();
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+          QString msg;
+          statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
+                  p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
+#else
+          statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
+                  p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
+#endif
+        }
+
+      });
 }
 
 
@@ -866,6 +811,36 @@ void MainWindow::configureCloudViewerToolbars()
   });
 
 #endif
+}
+
+void MainWindow::createDisplaySettingsControl()
+{
+  if( !mtfControl ) {
+
+    mtfControl = new QMtfControlDialogBox(this);
+    mtfControl->setMtfDisplaySettings(imageEditor->displaySettings());
+
+    connect(mtfControl, &QMtfControlDialogBox::visibilityChanged,
+        [this](bool visible) {
+          displaySettingsMenuAction->setChecked(visible);
+        });
+  }
+
+}
+
+void MainWindow::onDisplaySettingsMenuActionClicked(bool checked)
+{
+  if( !checked ) {
+    if( mtfControl && mtfControl->isVisible() ) {
+      mtfControl->hide();
+    }
+  }
+  else {
+    createDisplaySettingsControl();
+    if( !mtfControl->isVisible() ) {
+      mtfControl->show();
+    }
+  }
 }
 
 void MainWindow::openImage(const QString & abspath)

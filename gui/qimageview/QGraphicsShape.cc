@@ -138,7 +138,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         setLine(line);
         e->accept();
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
       }
       return;
@@ -153,7 +153,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         setLine(line);
         e->accept();
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
       }
       return;
@@ -169,7 +169,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         setLine(line);
         e->accept();
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
         return;
       }
@@ -183,7 +183,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         setLine(line);
         e->accept();
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
         return;
       }
@@ -204,7 +204,7 @@ void QGraphicsLineShape::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 QVariant QGraphicsLineShape::itemChange(GraphicsItemChange change, const QVariant &value)
 {
   if ( change == ItemPositionChange || change == ItemScenePositionHasChanged ) {
-    emit onItemChanged(this);
+    emit itemChanged(this);
   }
   return Base::itemChange(change, value);
 }
@@ -388,7 +388,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         rect.setTopLeft(epos);
         setRect(rect);
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
       }
       e->accept();
@@ -400,7 +400,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         rect.setTopRight(epos);
         setRect(rect);
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
       }
       e->accept();
@@ -412,7 +412,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         rect.setBottomRight(epos);
         setRect(rect);
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
       }
       e->accept();
@@ -424,7 +424,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
         rect.setBottomLeft(epos);
         setRect(rect);
         if ( flags() & ItemSendsGeometryChanges ) {
-          emit onItemChanged(this);
+          emit itemChanged(this);
         }
       }
       e->accept();
@@ -453,7 +453,7 @@ void QGraphicsRectShape::mouseReleaseEvent(QGraphicsSceneMouseEvent *e)
 QVariant QGraphicsRectShape::itemChange(GraphicsItemChange change, const QVariant &value)
 {
   if ( change == ItemPositionChange || change == ItemScenePositionHasChanged ) {
-    emit onItemChanged(this);
+    emit itemChanged(this);
   }
   return Base::itemChange(change, value);
 }

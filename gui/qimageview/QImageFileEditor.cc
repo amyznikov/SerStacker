@@ -146,8 +146,6 @@ void QImageFileEditor::loadNextFrame()
 
       updateImage();
       setCurrentFileName(current_source->filename().c_str());
-
-      //emit currentImageChanged();
     }
   }
 }

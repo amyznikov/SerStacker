@@ -97,7 +97,7 @@ void c_histogram_builder::initialize()
 
 }
 
-void c_histogram_builder::add_pixel(const cv::Scalar & src)
+void c_histogram_builder::add_pixel(const cv::Scalar & s)
 {
   if( H_.empty() ) {
     initialize();
@@ -106,7 +106,7 @@ void c_histogram_builder::add_pixel(const cv::Scalar & src)
   for( int c = 0; c < channels_; ++c ) {
     const int b =
         std::max(0, std::min(bins_ - 1,
-            (int) ((src[c] - minval_) * scale_)));
+            (int) ((s[c] - minval_) * scale_)));
 
     H_[b][c] += 1;
   }

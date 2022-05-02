@@ -112,7 +112,6 @@ QHistogramView::DisplayChannel QHistogramView::displayChannel() const
 
 void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
 {
-  // CF_DEBUG("setHistogram CALLED: _H.size=%dx%d\n\n", _H.rows(), _H.cols());
   double min = 0, max = 1;
 
   this->hmin = hmin;

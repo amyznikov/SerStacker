@@ -1,21 +1,22 @@
 /*
  * QMtfControl.h
  *
- *  Created on: Dec 11, 2020
+ *  Created on: Apr 19, 2022
  *      Author: amyznikov
  */
 
+#pragma once
 #ifndef __QMtfControl_h__
 #define __QMtfControl_h__
 
-#include "QMtfDisplayFunction.h"
+#include <QtWidgets/QtWidgets>
+#include <gui/widgets/QLineEditBox.h>
 #include "QHistogramView.h"
 #include "QMtfSlider.h"
-#include <gui/widgets/QLineEditBox.h>
-#include <gui/widgets/QEnumComboBox.h>
+#include "QMtfDisplaySettings.h"
 
-class QMtfControl
-    : public QWidget
+class QMtfControl:
+    public QWidget
 {
   Q_OBJECT;
 public:
@@ -24,53 +25,38 @@ public:
 
   QMtfControl(QWidget * parent = Q_NULLPTR);
 
-  void setDisplayFunction(QMtfDisplayFunction * displayFunction);
-  QMtfDisplayFunction * displayFunction() const;
-
-  void setInputImage(cv::InputArray image, cv::InputArray mask, bool make_copy = false);
+  void setDisplaySettings(QMtfDisplaySettingsBase * displaySettings);
+  QMtfDisplaySettingsBase * displaySettings() const;
 
   bool isAutoMtfActionEnabled() const;
-
   bool updatingControls() const;
   void setUpdatingControls(bool v) ;
 
-  void setOutputHistogram(const cv::Mat1f & H, double hmin, double hmax);
-
-public slots:
-  void updateControls();
-  void updateOutputHistogram();
-
 protected slots:
-  void onInputDataRangeChanged();
-  void onColormapCtlClicked();
+  void updateControls();
+  void updateHistogramLevels();
+  void onChartTypeSelectorClicked();
   void onResetMtfClicked();
   void onAutoMtfCtrlClicked();
-  void onChartTypeSelectorClicked();
-  void onDisplayChannelComboCurrentIndexChanged(int);
+  void onColormapCtlClicked();
+  void onDisplayTypeCurrentItemChanged();
+  void onInputDataRangeChanged();
 
 protected:
   void resizeEvent(QResizeEvent *event) override;
   void findAutoHistogramClips();
   void findAutoMidtonesBalance();
-  void updateColormapPixmap();
   void updateColormapStrip();
-
+  void updateColormapPixmap();
 
 protected:
-  QMtfDisplayFunction * displayFunction_ = Q_NULLPTR;
-
-  enum AutoMtfAction {
-    AutoMtfAction_AutoClip = 0,
-    AutoMtfAction_AutoMtf = 1,
-  } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
-
+  QMtfDisplaySettingsBase * displaySettings_ = Q_NULLPTR;
 
   QVBoxLayout * vbox_ = Q_NULLPTR;
   QToolBar * topToolbar_ = Q_NULLPTR;
-  QComboBox * displayChannel_ctl = Q_NULLPTR;
+  QComboBox * displayType_ctl = Q_NULLPTR;
   QNumberEditBox * inputDataRange_ctl = Q_NULLPTR;
   QToolButton * colormap_ctl = Q_NULLPTR;
-
 
   QAction * resetMtfAction_ = Q_NULLPTR;
   QToolButton * autoMtf_ctl = Q_NULLPTR;
@@ -86,6 +72,11 @@ protected:
 
   QToolBar * bottomToolbar_ = Q_NULLPTR;
 
+  enum AutoMtfAction {
+    AutoMtfAction_AutoClip = 0,
+    AutoMtfAction_AutoMtf = 1,
+  } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
+
   enum SPINID {
     SPIN_SHADOWS = 0,
     SPIN_MIDTONES = 1,
@@ -95,11 +86,35 @@ protected:
   QDoubleSpinBox * spins[3] = {
       Q_NULLPTR };
 
-  cv::Mat inputImage_;
-  cv::Mat inputMask_;
-
   bool updatingControls_ = false;
-
 };
 
+
+
+class QMtfControlDialogBox:
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QMtfControlDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QMtfControlDialogBox(QWidget * parent = Q_NULLPTR);
+
+  void setMtfDisplaySettings(QMtfDisplaySettingsBase * display);
+  QMtfDisplaySettingsBase * mtfDisplaySettings() const;
+
+  signals:
+  void visibilityChanged(bool visible);
+
+protected:
+  void showEvent(QShowEvent * event) override;
+  void hideEvent(QHideEvent * event) override;
+
+protected:
+  QVBoxLayout *vbox_ = Q_NULLPTR;
+  QMtfControl * widget = Q_NULLPTR;
+  QSize lastWidnowSize_;
+  QPoint lastWidnowPos_;
+};
 #endif /* __QMtfControl_h__ */

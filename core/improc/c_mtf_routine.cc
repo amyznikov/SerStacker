@@ -29,6 +29,12 @@ c_pixinsight_mtf & c_mtf_routine::mtf()
   return mtf_;
 }
 
+const c_pixinsight_mtf & c_mtf_routine::mtf() const
+{
+  return mtf_;
+}
+
+
 bool c_mtf_routine::serialize(c_config_setting settings) const
 {
   if ( !base::serialize(settings) ) {

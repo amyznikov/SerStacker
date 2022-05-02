@@ -64,7 +64,7 @@ public: // Utility subroutines
 
 protected:
   double input_range_[2] = {-1, -1};
-  double output_range_[2] = {0, 255};
+  double output_range_[2] = {-1, -1};
   double shadows_ = 0;
   double highlights_ = 1;
 

@@ -6,7 +6,6 @@
  */
 
 #include "QImageViewer.h"
-#include <gui/widgets/QWaitCursor.h>
 #include "cv2qt.h"
 #include <core/debug.h>
 
@@ -27,10 +26,8 @@ QImageViewer::QImageViewer(QWidget * parent)
       this, &ThisClass::onMouseDoubleClick);
   connect(view_, &QImageSceneView::scaleChanged,
       this, &ThisClass::onScaleChanged);
-  connect(view_, &QImageSceneView::onLineShapeChanged,
-      this, &ThisClass::onLineShapeChanged);
-  connect(view_, &QImageSceneView::onRectShapeChanged,
-      this, &ThisClass::onRectShapeChanged);
+//  connect(view_, &QImageSceneView::graphicsShapeChanged,
+//      this, &ThisClass::graphicsShapeChanged);
 }
 
 QImageSceneView * QImageViewer::sceneView() const
@@ -89,17 +86,15 @@ QStatusBar * QImageViewer::statusbar() const
 }
 
 
-void QImageViewer::setDisplayFunction(QImageDisplayFunction * displayFunction)
+void QImageViewer::setDisplayFunction(QImageDisplayFunction *  displayfunction)
 {
   if( displayFunction_ ) {
-    QObject::disconnect(displayFunction_, &QImageDisplayFunction::update,
+    disconnect(displayFunction_, &QImageDisplayFunction::update,
         this, &ThisClass::updateDisplay);
   }
 
-  displayFunction_ = displayFunction;
-
-  if( displayFunction_ ) {
-    QObject::connect(displayFunction_, &QImageDisplayFunction::update,
+  if( (displayFunction_ = displayfunction) ) {
+    connect(displayFunction_, &QImageDisplayFunction::update,
         this, &ThisClass::updateDisplay);
   }
 }
@@ -157,10 +152,10 @@ QString QImageViewer::currentFileName() const
 void QImageViewer::setCurrentFileName(const QString & newFileName)
 {
   this->currentFileName_ = newFileName;
-  emit currentImageFileNameChanged();
+  emit currentImageChanged();
 }
 
-void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
+void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
 {
   if ( image.empty() ) {
     currentImage_.release();
@@ -182,13 +177,28 @@ void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::Input
     }
   }
 
+  if ( displayFunction_ ) {
+    displayFunction_->setCurrentImage(currentImage_,
+        currentMask_);
+  }
+
+  emit currentImageChanged();
+}
+
+void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
+{
+  setCurrentImage(image, mask, imageData, make_copy);
   updateDisplay();
 }
 
+
+
 void QImageViewer::updateDisplay()
 {
-  createDisplayImage();
-  showCurrentDisplayImage();
+  if ( isVisible() ) {
+    createDisplayImage();
+    showCurrentDisplayImage();
+  }
 }
 
 void QImageViewer::createDisplayImage()
@@ -196,21 +206,19 @@ void QImageViewer::createDisplayImage()
   if ( currentImage_.empty() ) {
     displayImage_.release();
   }
-  else if ( !displayFunction_ ) {
-    currentImage_.copyTo(displayImage_);
-  }
   else {
-
-    const int ddepth =
-        currentImage_.channels() == 2 ?
-            currentImage_.depth() : // asumme this is optical flow image
-            CV_8U; // create regular BGR 8bit image
-
-    displayImage_.release();
-    displayFunction_->createDisplayImage(currentImage_, currentMask_,
-        displayImage_, ddepth);
+    if ( !displayFunction_ ) {
+      currentImage_.copyTo(displayImage_);
+    }
+    else if ( currentImage_.channels() == 2  ) { // assume this is optical flow image
+      displayImage_.release();
+      displayFunction_->getDisplayImage(displayImage_, currentImage_.depth());
+    }
+    else  {
+      displayImage_.release();
+      displayFunction_->getDisplayImage(displayImage_, CV_8U);
+    }
   }
-
   emit currentDisplayImageChanged();
 }
 
@@ -225,20 +233,19 @@ void QImageViewer::showCurrentDisplayImage()
   }
 }
 
+
 void QImageViewer::copyDisplayImageToClipboard()
 {
   QClipboard * clipboard = QApplication::clipboard();
   if ( !clipboard ) {
-    QMessageBox::critical(this, "ERROR",
-        "No application clipboard available");
+    QMessageBox::critical(this, "ERROR", "No application clipboard available");
   }
   else {
-    QWaitCursor wait(this);
-
     cv2qt(displayImage(), &qimage_, true);
     clipboard->setImage(qimage_);
   }
 }
+
 
 template<class T>
 static int sdump_(const cv::Mat & image, int x, int y, char buf[], int bufsz, int n, const char * dtype, const char * fmt)
@@ -324,16 +331,15 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
 
 void QImageViewer::showEvent(QShowEvent *e)
 {
-  //emit onShowEvent(e);
-  emit visibilityChanged(true);
+  updateDisplay();
   Base::showEvent(e);
+  emit visibilityChanged(isVisible());
 }
 
 void QImageViewer::hideEvent(QHideEvent *e)
 {
-  //emit onHideEvent(e);
   Base::hideEvent(e);
-  emit visibilityChanged(false);
+  emit visibilityChanged(isVisible());
 }
 
 void QImageViewer::focusInEvent(QFocusEvent *e)

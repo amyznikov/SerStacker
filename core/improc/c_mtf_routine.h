@@ -36,6 +36,8 @@ public:
 
   c_pixinsight_mtf & mtf();
 
+  const c_pixinsight_mtf & mtf() const;
+
   void set_shadows(double v) {
     mtf_.set_shadows(v);
   }

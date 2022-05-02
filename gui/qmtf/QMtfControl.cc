@@ -1,17 +1,19 @@
 /*
- * QMtfControl.cc
+ * QMtfDisplaySettings.cc
  *
- *  Created on: Dec 11, 2020
+ *  Created on: Apr 19, 2022
  *      Author: amyznikov
  */
 
-#include "QMtfControl.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/settings.h>
 #include <gui/qimageview/cv2qt.h>
-#include <core/proc/histogram.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
+#include <core/proc/histogram.h>
 #include <core/debug.h>
+#include "QMtfControl.h"
+
 
 #define ICON_histogram                "histogram"
 #define ICON_histogram_linear_scale   "histogram-linear-scale2"
@@ -21,8 +23,7 @@
 #define ICON_contrast                 "contrast"
 #define ICON_bar_chart                "bar_chart"
 #define ICON_line_chart               "line_chart"
-#define ICON_colormap                 "colormap"
-
+#define ICON_colormap                 "colormap2"
 
 static QIcon getIcon(const QString & name)
 {
@@ -83,31 +84,31 @@ static void intit_mtfcontrol_resources()
   if ( colormap_icon.isNull() ) {
     colormap_icon = getIcon(ICON_colormap);
   }
+
 }
 
-QMtfControl::QMtfControl(QWidget * parent)
-    : Base(parent)
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+QMtfControl::QMtfControl(QWidget * parent) :
+    Base(parent)
 {
   intit_mtfcontrol_resources();
 
   vbox_ = new QVBoxLayout(this);
-
-  // configure toolbar1
 
   topToolbar_ = new QToolBar(this);
   topToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
   topToolbar_->setIconSize(QSize(16, 16));
 
 
-  displayChannel_ctl = new QComboBox(this);
-  displayChannel_ctl->setEditable(false);
-  displayChannel_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-  displayChannel_ctl->addItem("RGB", (int)QHistogramView::DisplayChannel_RGB);
-  displayChannel_ctl->addItem("Grayscale", (int)(QHistogramView::DisplayChannel_Grayscale));
-  displayChannel_ctl->addItem("Value", (int)(QHistogramView::DisplayChannel_Value));
-  connect(displayChannel_ctl, SIGNAL(currentIndexChanged(int)),
-      this, SLOT(onDisplayChannelComboCurrentIndexChanged(int)) );
-  topToolbar_->addWidget(displayChannel_ctl);
+  displayType_ctl = new QComboBox(this);
+  displayType_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  displayType_ctl->setToolTip("Select data to visualize");
+  topToolbar_->addWidget(displayType_ctl);
+
+  connect(displayType_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+      this, &ThisClass::onDisplayTypeCurrentItemChanged);
 
   inputDataRange_ctl = new QNumberEditBox(this);
   inputDataRange_ctl->setToolTip("Set input data range (min/max clips)");
@@ -115,8 +116,9 @@ QMtfControl::QMtfControl(QWidget * parent)
   connect(inputDataRange_ctl, &QNumberEditBox::textChanged,
       this, &ThisClass::onInputDataRangeChanged);
 
-  resetMtfAction_ = topToolbar_->addAction(getIcon(ICON_reset), "Reset Clipping");
-  resetMtfAction_->setToolTip("Reset MTF clipping");
+
+  resetMtfAction_ = topToolbar_->addAction(getIcon(ICON_reset), "Reset");
+  resetMtfAction_->setToolTip("Reset MTF clipping and recompute input data range");
   connect(resetMtfAction_, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
@@ -137,7 +139,6 @@ QMtfControl::QMtfControl(QWidget * parent)
   chartTypeSelectorButton_->setText("Chart type");
   chartTypeSelectorButton_->setToolTip("Select chart type");
   topToolbar_->addWidget(chartTypeSelectorButton_);
-
   connect(chartTypeSelectorButton_, &QToolButton::clicked,
       this, &ThisClass::onChartTypeSelectorClicked );
 
@@ -152,7 +153,6 @@ QMtfControl::QMtfControl(QWidget * parent)
   autoMtf_ctl->setText("Auto MTF");
   autoMtf_ctl->setToolTip("Auto MTF adjustment");
   topToolbar_->addWidget(autoMtf_ctl);
-
   connect(autoMtf_ctl, &QToolButton::clicked,
       this, &ThisClass::onAutoMtfCtrlClicked );
 
@@ -173,7 +173,6 @@ QMtfControl::QMtfControl(QWidget * parent)
   autoMtf_ctl->setPopupMode(QToolButton::MenuButtonPopup);
   autoMtf_ctl->setMenu(&autoMtfMenu);
 
-
   logScaleSelectionAction_ = topToolbar_->addAction(log_scale_icon, "Log scale");
   logScaleSelectionAction_ ->setToolTip("Switch between linear / log scale");
   logScaleSelectionAction_->setCheckable(true);
@@ -183,11 +182,12 @@ QMtfControl::QMtfControl(QWidget * parent)
   levelsView_ = new QHistogramView(this);
   logScaleSelectionAction_->setChecked(levelsView_->logScale());
   chartTypeSelectorButton_->setIcon(selectChartTypeIcon(levelsView_->chartType()) );
-  displayChannel_ctl->setCurrentIndex(displayChannel_ctl->findData((int)levelsView_->displayChannel()));
+  //displayChannel_ctl->setCurrentIndex(displayChannel_ctl->findData((int)levelsView_->displayChannel()));
 
   // configure mtf slider
   mtfSlider_ = new QMtfSlider(this);
   colormap_strip_ctl = new QLabel(this);
+  //  colormap_strip_ctl->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 
   // configure toolbar2
   bottomToolbar_ = new QToolBar(this);
@@ -208,8 +208,6 @@ QMtfControl::QMtfControl(QWidget * parent)
     }
   }
 
-  //setupLevels(0, 256);
-
   // Combine layouts
   vbox_->addWidget(topToolbar_, 1);
   vbox_->addWidget(levelsView_, 1000);
@@ -224,109 +222,119 @@ QMtfControl::QMtfControl(QWidget * parent)
 
   connect(mtfSlider_, &QMtfSlider::mtfChanged,
       [this]() {
-        if ( !updatingControls_ && displayFunction_ && displayFunction_->mtf() ) {
+        if ( !updatingControls_ ) {
 
-          c_pixinsight_mtf * mtf =
-              displayFunction_->mtf();
+          if ( displaySettings_ ) {
 
-          const bool wasInUpdatingControls =
-              updatingControls();
-
-          setUpdatingControls(true);
-
-
-          mtf->set_shadows(mtfSlider_->shadows());
-          mtf->set_highlights(mtfSlider_->highlights());
-          mtf->set_midtones(mtfSlider_->midtones());
-
-          spins[SPIN_SHADOWS]->setValue(mtf->shadows());
-          spins[SPIN_HIGHLIGHTS]->setValue(mtf->highlights());
-          spins[SPIN_MIDTONES]->setValue(mtf->midtones());
-
-          setUpdatingControls(wasInUpdatingControls);
-
-          if ( !wasInUpdatingControls ) {
-            emit displayFunction_->update();
-          }
-        }
-      });
-
-  connect(spins[SPIN_SHADOWS],
-      static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
-      [this](double v) {
-        if ( !updatingControls_ && displayFunction_ && displayFunction_->mtf() ) {
-
-          c_pixinsight_mtf * mtf =
-              displayFunction_->mtf();
-
-          if ( v != mtf->shadows() ) {
+            c_pixinsight_mtf & mtf =
+                displaySettings_->mtf();
 
             const bool wasInUpdatingControls =
                 updatingControls();
 
             setUpdatingControls(true);
 
-            mtf->set_shadows(v);
-            mtfSlider_->setShadows(mtf->shadows());
+            mtf.set_shadows(mtfSlider_->shadows());
+            mtf.set_highlights(mtfSlider_->highlights());
+            mtf.set_midtones(mtfSlider_->midtones());
+
+            spins[SPIN_SHADOWS]->setValue(mtf.shadows());
+            spins[SPIN_HIGHLIGHTS]->setValue(mtf.highlights());
+            spins[SPIN_MIDTONES]->setValue(mtf.midtones());
 
             setUpdatingControls(wasInUpdatingControls);
 
             if ( !wasInUpdatingControls ) {
-              emit displayFunction_->update();
+              updateHistogramLevels();
+              displaySettings_->updateDisplay();
             }
           }
         }
       });
 
-  connect(spins[SPIN_HIGHLIGHTS],
-      static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(spins[SPIN_SHADOWS], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( !updatingControls_ && displayFunction_ && displayFunction_->mtf() ) {
+        if ( !updatingControls_ ) {
 
-          c_pixinsight_mtf * mtf =
-              displayFunction_->mtf();
+          if ( displaySettings_ ) {
 
-          if ( v != mtf->highlights() ) {
+            c_pixinsight_mtf & mtf =
+                displaySettings_->mtf();
 
-            const bool wasInUpdatingControls =
-                updatingControls();
+            if ( v != mtf.shadows() ) {
 
-            setUpdatingControls(true);
+              const bool wasInUpdatingControls =
+                  updatingControls();
 
-            mtf->set_highlights(v);
-            mtfSlider_->setHighlights(mtf->highlights());
+              setUpdatingControls(true);
 
-            setUpdatingControls(wasInUpdatingControls);
+              mtf.set_shadows(v);
+              mtfSlider_->setShadows(mtf.shadows());
 
-            if ( !wasInUpdatingControls ) {
-              emit displayFunction_->update();
+              setUpdatingControls(wasInUpdatingControls);
+              if ( !wasInUpdatingControls ) {
+                updateHistogramLevels();
+                emit displaySettings_->updateDisplay();
+              }
             }
           }
         }
       });
 
-  connect(spins[SPIN_MIDTONES],
-      static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(spins[SPIN_HIGHLIGHTS], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( !updatingControls_ && displayFunction_ && displayFunction_->mtf() ) {
 
-          c_pixinsight_mtf * mtf =
-              displayFunction_->mtf();
+        if ( !updatingControls_ ) {
 
-          if ( v != mtf->midtones() ) {
+          if ( displaySettings_ ) {
 
-            const bool wasInUpdatingControls =
-                updatingControls();
+            c_pixinsight_mtf & mtf =
+                displaySettings_->mtf();
 
-            setUpdatingControls(true);
+            if ( v != mtf.highlights() ) {
 
-            mtf->set_midtones(v);
-            mtfSlider_->setMidtones(mtf->midtones());
+              const bool wasInUpdatingControls =
+                  updatingControls();
 
-            setUpdatingControls(wasInUpdatingControls);
+              setUpdatingControls(true);
 
-            if ( !wasInUpdatingControls ) {
-              emit displayFunction_->update();
+              mtf.set_highlights(v);
+              mtfSlider_->setHighlights(mtf.highlights());
+
+              setUpdatingControls(wasInUpdatingControls);
+              if ( !wasInUpdatingControls ) {
+                updateHistogramLevels();
+                emit displaySettings_->updateDisplay();
+              }
+            }
+          }
+        }
+      });
+
+  connect(spins[SPIN_MIDTONES], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+      [this](double v) {
+        if ( !updatingControls_ ) {
+
+          if ( displaySettings_ ) {
+
+            c_pixinsight_mtf & mtf =
+                displaySettings_->mtf();
+
+            if ( v != mtf.midtones() ) {
+
+              const bool wasInUpdatingControls =
+                  updatingControls();
+
+              setUpdatingControls(true);
+
+              mtf.set_midtones(v);
+              mtfSlider_->setMidtones(mtf.midtones());
+
+              setUpdatingControls(wasInUpdatingControls);
+              if ( !wasInUpdatingControls ) {
+                updateHistogramLevels();
+                emit displaySettings_->updateDisplay();
+              }
             }
           }
         }
@@ -335,16 +343,45 @@ QMtfControl::QMtfControl(QWidget * parent)
   updateControls();
 }
 
-
-void QMtfControl::setDisplayFunction(QMtfDisplayFunction * displayFunction)
+void QMtfControl::setDisplaySettings(QMtfDisplaySettingsBase * displaySettings)
 {
-  displayFunction_ = displayFunction;
+  const bool wasInUpdatingControls =
+      updatingControls();
+
+  setUpdatingControls(true);
+
+  if( displaySettings_ ) {
+    disconnect(displaySettings_, &QMtfDisplaySettings::inputDataChanged,
+        this, &ThisClass::updateHistogramLevels);
+  }
+
+  displaySettings_ = displaySettings;
+  displayType_ctl->clear();
+
+  if( displaySettings_ ) {
+
+    const c_enum_member * displayType = displaySettings_->displayTypes();
+    for ( ; displayType->name && *displayType->name; ++ displayType ) {
+      displayType_ctl->addItem(displayType->name, displayType->value);
+    }
+
+    connect(displaySettings_, &QMtfDisplaySettings::inputDataChanged,
+        this, &ThisClass::updateHistogramLevels);
+  }
+
+  setUpdatingControls(wasInUpdatingControls);
+
   updateControls();
 }
 
-QMtfDisplayFunction * QMtfControl::displayFunction() const
+QMtfDisplaySettingsBase * QMtfControl::displaySettings() const
 {
-  return displayFunction_;
+  return displaySettings_;
+}
+
+bool QMtfControl::isAutoMtfActionEnabled() const
+{
+  return autoMtf_ctl && autoMtf_ctl->isChecked();
 }
 
 bool QMtfControl::updatingControls() const
@@ -357,79 +394,82 @@ void QMtfControl::setUpdatingControls(bool v)
   updatingControls_ = v;
 }
 
-
-void QMtfControl::updateControls()
+void QMtfControl::onChartTypeSelectorClicked()
 {
-  if ( !displayFunction_ ) {
-    setEnabled(false);
+  static QMenu chartTypesMenu;
+  static QAction *setLineChartAction = Q_NULLPTR;
+  static QAction *setBarChartAction = Q_NULLPTR;
+
+  if( chartTypesMenu.isEmpty() ) {
+    chartTypesMenu.addAction(setLineChartAction = new QAction(line_chart_icon, "Lines"));
+    chartTypesMenu.addAction(setBarChartAction = new QAction(bar_chart_icon, "Bars"));
   }
-  else {
+
+  QAction *selectedAction =
+      chartTypesMenu.exec(chartTypeSelectorButton_->mapToGlobal(QPoint(
+          2 * chartTypeSelectorButton_->width() / 3,
+          chartTypeSelectorButton_->height() / 2)));
+
+  if( selectedAction ) {
+
+    if( selectedAction == setLineChartAction ) {
+      levelsView_->setChartType(QHistogramView::ChartType_Lines);
+    }
+    else if( selectedAction == setBarChartAction ) {
+      levelsView_->setChartType(QHistogramView::ChartType_Bars);
+    }
+
+    chartTypeSelectorButton_->setIcon(selectChartTypeIcon(
+        levelsView_->chartType()));
+  }
+}
+
+void QMtfControl::onResetMtfClicked()
+{
+  if ( displaySettings_ ) {
+
+    QWaitCursor wait(this);
+
 
     const bool wasInUpdatingControls =
         updatingControls();
 
     setUpdatingControls(true);
 
-    const c_pixinsight_mtf * mtf =
-        displayFunction_->mtf();
+    double min = -1, max = -1;
 
-    if( mtf ) {
+    c_pixinsight_mtf & mtf =
+        displaySettings_->mtf();
 
-      double minval, maxval;
-
-      mtf->get_input_range(&minval, &maxval);
-      inputDataRange_ctl->setText(QString("%1;%2").arg(minval).arg(maxval));
-
-      mtfSlider_->setup(mtf->shadows(), mtf->highlights(), mtf->midtones());
-
-      spins[SPIN_SHADOWS]->setValue(mtf->shadows());
-      spins[SPIN_HIGHLIGHTS]->setValue(mtf->highlights());
-      spins[SPIN_MIDTONES]->setValue(mtf->midtones());
-      logScaleSelectionAction_->setChecked(levelsView_->logScale());
+    mtf.get_input_range(&min, &max);
+    if( min < max ) {
+      min = max = -1;
+    }
+    else {
+      displaySettings_->getInputDataRange(&min, &max);
     }
 
-    const bool autoMtfChecked =
-        autoMtf_ctl->isChecked();
+    mtf.set_input_range(min, max);
+    mtf.set_shadows(0);
+    mtf.set_highlights(1);
+    mtf.set_midtones(0.5);
+    displaySettings_->saveParameters();
 
-    spins[SPIN_SHADOWS]->setEnabled(!autoMtfChecked);
-    spins[SPIN_HIGHLIGHTS]->setEnabled(!autoMtfChecked);
-    spins[SPIN_MIDTONES]->setEnabled(!autoMtfChecked);
-    mtfSlider_->setEnabled(!autoMtfChecked);
-
-    switch ( selectedAutoMtfAction_ ) {
-    case AutoMtfAction_AutoMtf :
-      autoMtf_ctl->setIcon(auto_mtf_icon);
-      break;
-    case AutoMtfAction_AutoClip :
-      default :
-      autoMtf_ctl->setIcon(auto_clip_icon);
-      break;
-    }
+    updateControls();
 
     setUpdatingControls(wasInUpdatingControls);
-    updateColormapPixmap();
-    setEnabled(true);
+    if ( !wasInUpdatingControls ) {
+      updateHistogramLevels();
+      emit displaySettings_->updateDisplay();
+    }
   }
-
 }
 
-void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask, bool make_copy)
+void QMtfControl::onAutoMtfCtrlClicked()
 {
-  if ( make_copy ) {
-    image.copyTo(inputImage_);
-    mask.copyTo(inputMask_);
-  }
-  else {
-    inputImage_ = image.getMat();
-    inputMask_ = mask.getMat();
-  }
+  if ( displaySettings_ ) {
 
-  colormap_ctl->setEnabled(!inputImage_.empty() &&
-      inputImage_.channels() == 1);
-
-  if ( displayFunction_ ) {
-
-    if ( !updatingControls() && autoMtf_ctl->isChecked() ) {
+    if ( autoMtf_ctl->isChecked() ) {
 
       switch ( selectedAutoMtfAction_ ) {
       case AutoMtfAction_AutoMtf :
@@ -437,7 +477,7 @@ void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask, bool 
         break;
 
       case AutoMtfAction_AutoClip :
-      default :
+        default :
         findAutoHistogramClips();
         break;
       }
@@ -446,80 +486,83 @@ void QMtfControl::setInputImage(cv::InputArray image, cv::InputArray mask, bool 
     updateControls();
 
     if ( !updatingControls() ) {
-      emit displayFunction_->update();
+      updateHistogramLevels();
+      emit displaySettings_->updateDisplay();
     }
   }
 }
 
-void QMtfControl::onResetMtfClicked()
+void QMtfControl::onColormapCtlClicked()
 {
-  if( displayFunction_ && !inputImage_.empty() ) {
+  if( displaySettings_ ) {
 
-    c_pixinsight_mtf *mtf =
-        displayFunction_->mtf();
+    QMenu menu;
 
-    if( mtf ) {
+    const COLORMAP current_colormap =
+        displaySettings_->colormap();
 
-      QWaitCursor wait(this);
+    for( const c_enum_member *colormap = members_of<COLORMAP>(); colormap->name; ++colormap ) {
 
-      const bool wasInUpdatingControls =
-          updatingControls();
+      QAction * action = new QAction(colormap->name);
+      action->setData((int) (colormap->value));
 
-      setUpdatingControls(true);
-
-      double min = -1, max = -1;
-
-      mtf->get_input_range(&min, &max);
-      if ( min < max ) {
-        min = max = -1;
-      }
-      else {
-        getminmax(inputImage_, &min, &max, inputMask_);
+      if( colormap->value == current_colormap ) {
+        action->setCheckable(true);
+        action->setChecked(true);
       }
 
-      mtf->set_input_range(min, max);
-      mtf->set_shadows(0);
-      mtf->set_highlights(1);
-      mtf->set_midtones(0.5);
+      menu.addAction(action);
+    }
 
-      updateControls();
+    QAction *action =
+        menu.exec(colormap_ctl->mapToGlobal(
+            QPoint(0, 0)));
 
-      setUpdatingControls(wasInUpdatingControls);
-      if( !wasInUpdatingControls ) {
-        emit displayFunction_->update();
-      }
+    if ( action ) {
+      displaySettings_->setColormap((COLORMAP )action->data().toInt());
+      displaySettings_->saveParameters();
+      updateHistogramLevels();
+      updateColormapPixmap();
     }
   }
 }
 
-
-bool QMtfControl::isAutoMtfActionEnabled() const
+void QMtfControl::onDisplayTypeCurrentItemChanged()
 {
-  return autoMtf_ctl && autoMtf_ctl->isChecked();
+  if( !updatingControls_ && displaySettings_ ) {
+    displaySettings_->setDisplayType(displayType_ctl->currentData().toInt());
+    displaySettings_->saveParameters();
+    updateControls();
+  }
 }
 
-
-
-void QMtfControl::onAutoMtfCtrlClicked()
+void QMtfControl::onInputDataRangeChanged()
 {
-  if( displayFunction_ ) {
+  if( !updatingControls_ ) {
+    if( displaySettings_ ) {
 
-    if( !autoMtf_ctl->isChecked() ) {
-      updateControls();
-    }
-    else {
-      switch (selectedAutoMtfAction_) {
-      case AutoMtfAction_AutoMtf:
-        findAutoMidtonesBalance();
-        break;
+      double range[2];
 
-      case AutoMtfAction_AutoClip:
-        default:
-        findAutoHistogramClips();
-        break;
+      if( fromString(inputDataRange_ctl->text(), range, 2) == 2 ) {
+
+        c_pixinsight_mtf &mtf =
+            displaySettings_->mtf();
+
+        const bool wasInUpdatingControls =
+            updatingControls();
+
+        setUpdatingControls(true);
+
+        mtf.set_input_range(range[0], range[1]);
+        displaySettings_->saveParameters();
+
+        setUpdatingControls(wasInUpdatingControls);
+
+        if( !wasInUpdatingControls ) {
+          updateHistogramLevels();
+          emit displaySettings_->updateDisplay();
+        }
       }
-
-      updateControls();
     }
   }
 }
@@ -528,117 +571,84 @@ void QMtfControl::onAutoMtfCtrlClicked()
 
 void QMtfControl::findAutoHistogramClips()
 {
-  if( displayFunction_ && !inputImage_.empty() ) {
+  if( displaySettings_ ) {
 
-    c_pixinsight_mtf * mtf =
-        displayFunction_->mtf();
+    QWaitCursor wait(this);
 
-    if ( mtf ) {
+    c_pixinsight_mtf &mtf =
+        displaySettings_->mtf();
 
-      QWaitCursor wait(this);
+    double data_min = -1, data_max = -1;
+    double range_min = -1, range_max = -1;
 
-      double data_min = -1, data_max = -1;
-      double range_min = -1, range_max = -1;
+    displaySettings_->getInputDataRange(&data_min, &data_max);
+    mtf.get_input_range(&range_min, &range_max);
 
-      getminmax(inputImage_, &data_min, &data_max, inputMask_);
-      mtf->get_input_range(&range_min, &range_max);
-
-      if ( data_min >= data_max ) {
-        data_min = 0;
-        data_max = 1;
-      }
-
-      if ( range_min >= range_max ) {
-        range_min = 0;
-        range_max = 1;
-      }
-
-      mtf->set_shadows((data_min - range_min) / (range_max - range_min));
-      mtf->set_highlights((data_max - range_min) / (range_max - range_min));
-      mtf->set_midtones(0.5);
+    if ( data_min >= data_max ) {
+      data_min = 0;
+      data_max = 1;
     }
+
+    if ( range_min >= range_max ) {
+      range_min = 0;
+      range_max = 1;
+    }
+
+    mtf.set_shadows((data_min - range_min) / (range_max - range_min));
+    mtf.set_highlights((data_max - range_min) / (range_max - range_min));
+    mtf.set_midtones(0.5);
 
     if( !updatingControls() ) {
-      emit displayFunction_->update();
+      emit displaySettings_->updateDisplay();
     }
   }
-
 }
 
 void QMtfControl::findAutoMidtonesBalance()
 {
-  if( displayFunction_ && !inputImage_.empty() ) {
+  if( displaySettings_ ) {
 
-    c_pixinsight_mtf *mtf =
-        displayFunction_->mtf();
+    QWaitCursor wait(this);
 
-    if( mtf ) {
+    c_pixinsight_mtf &mtf =
+        displaySettings_->mtf();
 
-      QWaitCursor wait(this);
+    cv::Mat1f H;
+    double hmin = -1, hmax = -1;
 
-      cv::Mat1f H;
-      double hmin = -1, hmax = -1;
+    displaySettings_->getInputHistogramm(H, &hmin, &hmax);
+    if( H.empty() ) {
+      CF_ERROR("currentDisplay_->create_input_histogramm() fails");
+    }
+    else {
+      mtf.find_midtones_balance(H);
 
+      updateControls();
 
-      if( !displayFunction_->createInputHistogram(inputImage_, inputMask_, H, &hmin, &hmax) ) {
-        CF_ERROR("displayFunction_->createInputHistogram() fails");
-      }
-      else {
-
-        mtf->find_midtones_balance(H);
-
-        updateControls();
-
-        if( !updatingControls() ) {
-          CF_DEBUG("emit displayFunction_->update()");
-          emit displayFunction_->update();
-        }
+      if( !updatingControls() ) {
+        emit displaySettings_->updateDisplay();
       }
     }
   }
+
 }
 
-void QMtfControl::onChartTypeSelectorClicked()
+void QMtfControl::updateHistogramLevels()
 {
-  static QMenu chartTypesMenu;
-  static QAction * setLineChartAction = Q_NULLPTR;
-  static QAction * setBarChartAction = Q_NULLPTR;
+  cv::Mat1f H;
+  double hmin = -1, hmax = -1;
 
-  if ( chartTypesMenu.isEmpty() ) {
-    chartTypesMenu.addAction(setLineChartAction = new QAction(line_chart_icon, "Lines"));
-    chartTypesMenu.addAction(setBarChartAction = new QAction(bar_chart_icon, "Bars"));
+  if( displaySettings_ ) {
+    QWaitCursor wait(this);
+    displaySettings_->getOutputHistogramm(H, &hmin, &hmax);
   }
 
-  QAction * selectedAction =
-      chartTypesMenu.exec(chartTypeSelectorButton_->mapToGlobal(QPoint(
-          2 * chartTypeSelectorButton_->width() / 3,
-          chartTypeSelectorButton_->height() / 2)));
-
-  if ( selectedAction ) {
-
-    if ( selectedAction == setLineChartAction ) {
-      levelsView_->setChartType(QHistogramView::ChartType_Lines);
-    }
-    else if ( selectedAction == setBarChartAction ) {
-      levelsView_->setChartType(QHistogramView::ChartType_Bars);
-    }
-
-    chartTypeSelectorButton_->setIcon(selectChartTypeIcon(
-        levelsView_->chartType()));
-  }
-
+  levelsView_->setHistogram(H, hmin, hmax);
 }
-
-void QMtfControl::onDisplayChannelComboCurrentIndexChanged(int)
-{
-  levelsView_->setDisplayChannel((QHistogramView::DisplayChannel)
-      displayChannel_ctl->currentData().toInt());
-}
-
 
 void QMtfControl::updateColormapPixmap()
 {
-  if ( displayFunction_ ) {
+  if ( displaySettings_ ) {
 
     cv::Mat1b gray_image(16, 256);
     QImage qimage;
@@ -650,7 +660,7 @@ void QMtfControl::updateColormapPixmap()
     }
 
     const COLORMAP cmap =
-        displayFunction_->colormap();
+        displaySettings_->colormap();
 
     if ( cmap == COLORMAP_NONE ) {
       cv2qt(gray_image, &qimage);
@@ -670,10 +680,11 @@ void QMtfControl::updateColormapPixmap()
 
 void QMtfControl::updateColormapStrip()
 {
-  if ( colormap_strip_ctl && !colormap_pixmap_.isNull() ) {
+  if ( colormap_strip_ctl ) {
 
-    colormap_strip_ctl->setPixmap(colormap_pixmap_.scaled(
-        mtfSlider_->width(), colormap_pixmap_.height()));
+    colormap_strip_ctl->setPixmap( colormap_pixmap_.isNull() ?
+            colormap_pixmap_ :
+            colormap_pixmap_.scaled(mtfSlider_->width(), colormap_pixmap_.height()));
 
     colormap_strip_ctl->setMinimumSize(64, 16);
   }
@@ -682,99 +693,107 @@ void QMtfControl::updateColormapStrip()
 void QMtfControl::resizeEvent(QResizeEvent *e)
 {
   Base::resizeEvent(e);
+  updateColormapStrip();
+}
 
-  if ( this->width() > 0 && this->height() > 0 ) {
-    updateColormapStrip();
+void QMtfControl::updateControls()
+{
+  if( !displaySettings_ ) {
+    setEnabled(false);
+  }
+  else {
+
+    double minval, maxval;
+
+    const bool wasInUpdatingControls =
+        updatingControls();
+
+    setUpdatingControls(true);
+
+    displayType_ctl->setCurrentIndex(displayType_ctl->findData(
+        displaySettings_->displayType()));
+
+    const c_pixinsight_mtf & mtf =
+        displaySettings_->mtf();
+
+    mtf.get_input_range(&minval, &maxval);
+    inputDataRange_ctl->setText(QString("%1;%2").arg(minval).arg(maxval));
+
+    mtfSlider_->setup(mtf.shadows(), mtf.highlights(), mtf.midtones());
+
+    spins[SPIN_SHADOWS]->setValue(mtf.shadows());
+    spins[SPIN_HIGHLIGHTS]->setValue(mtf.highlights());
+    spins[SPIN_MIDTONES]->setValue(mtf.midtones());
+    logScaleSelectionAction_->setChecked(levelsView_->logScale());
+
+    const bool autoMtfChecked =
+        autoMtf_ctl->isChecked();
+
+    spins[SPIN_SHADOWS]->setEnabled(!autoMtfChecked);
+    spins[SPIN_HIGHLIGHTS]->setEnabled(!autoMtfChecked);
+    spins[SPIN_MIDTONES]->setEnabled(!autoMtfChecked);
+    mtfSlider_->setEnabled(!autoMtfChecked);
+
+    switch (selectedAutoMtfAction_) {
+    case AutoMtfAction_AutoMtf:
+      autoMtf_ctl->setIcon(auto_mtf_icon);
+      break;
+    case AutoMtfAction_AutoClip:
+      default:
+      autoMtf_ctl->setIcon(auto_clip_icon);
+      break;
+    }
+
+    updateHistogramLevels();
+    setUpdatingControls(wasInUpdatingControls);
+    updateColormapPixmap();
+    setEnabled(true);
   }
 }
 
 
-void QMtfControl::setOutputHistogram(const cv::Mat1f & H, double hmin, double hmax)
+/////////////////////////////////////////////////////////////////////////////////////////
+
+QMtfControlDialogBox::QMtfControlDialogBox(QWidget * parent) :
+    Base(parent)
 {
-  levelsView_->setHistogram(H, hmin, hmax);
+  intit_mtfcontrol_resources();
+
+  setWindowIcon(getIcon(ICON_histogram));
+  setWindowTitle("Select visual data and adjust display levels ...");
+
+  vbox_ = new QVBoxLayout(this);
+  widget = new QMtfControl(this);
+  vbox_->addWidget(widget);
 }
 
 
-void QMtfControl::updateOutputHistogram()
+void QMtfControlDialogBox::setMtfDisplaySettings(QMtfDisplaySettingsBase * display)
 {
-  if ( displayFunction_ && !inputImage_.empty() ) {
-
-    cv::Mat1f H;
-    double hmin = -1, hmax = -1;
-
-    QWaitCursor wait(this);
-
-    if ( !displayFunction_->createOutputHistogram(inputImage_, inputMask_, H, &hmin, &hmax) ) {
-      CF_ERROR("displayFunction_->createOutputHistogram() fails");
-    }
-
-    setOutputHistogram(H, hmin, hmax);
-  }
+  widget->setDisplaySettings(display);
 }
 
-
-void QMtfControl::onInputDataRangeChanged()
+QMtfDisplaySettingsBase * QMtfControlDialogBox::mtfDisplaySettings() const
 {
-  if( displayFunction_ && !updatingControls_ ) {
-
-    c_pixinsight_mtf *mtf =
-        displayFunction_->mtf();
-
-    if( mtf ) {
-
-      double range[2];
-
-      if( fromString(inputDataRange_ctl->text(), range, 2) == 2 ) {
-
-        const bool wasInUpdatingControls =
-            updatingControls();
-
-        setUpdatingControls(true);
-
-        mtf->set_input_range(range[0], range[1]);
-
-        setUpdatingControls(wasInUpdatingControls);
-
-        if( !wasInUpdatingControls ) {
-          emit displayFunction_->update();
-        }
-      }
-    }
-  }
+  return widget->displaySettings();
 }
 
-void QMtfControl::onColormapCtlClicked()
+void QMtfControlDialogBox::showEvent(QShowEvent *event)
 {
-  if( displayFunction_ && !updatingControls_ ) {
-
-    QMenu menu;
-
-    const COLORMAP current_colormap =
-        displayFunction_->colormap();
-
-    for( const c_enum_member *colormap = members_of<COLORMAP>();
-        colormap->name && *colormap->name;
-        ++colormap ) {
-
-      QAction *action = new QAction(colormap->name);
-      action->setData((int) (colormap->value));
-
-      if( colormap->value == current_colormap ) {
-        action->setCheckable(true);
-        action->setChecked(true);
-      }
-
-      menu.addAction(action);
-    }
-
-    QAction *action =
-        menu.exec(colormap_ctl->mapToGlobal(
-            QPoint(0, 0)));
-
-    if( action ) {
-      displayFunction_->set_colormap((COLORMAP) action->data().toInt());
-      //displayFunction_->save_paramters();
-      updateColormapPixmap();
-    }
+  if( !lastWidnowSize_.isEmpty() ) {
+    Base::move(lastWidnowPos_);
+    Base::resize(lastWidnowSize_);
   }
+
+  Base::showEvent(event);
+  emit visibilityChanged(isVisible());
+}
+
+void QMtfControlDialogBox::hideEvent(QHideEvent *event)
+{
+  lastWidnowSize_ = this->size();
+  lastWidnowPos_ = this->pos();
+
+  Base::hideEvent(event);
+  emit visibilityChanged(isVisible());
 }

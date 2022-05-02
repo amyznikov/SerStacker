@@ -55,14 +55,7 @@ const c_image_processor::ptr & QImageEditor::current_processor() const
 
 void QImageEditor::clear()
 {
-  inputImage_.release();
-  inputMask_.release();
-  currentImage_.release();
-  currentMask_.release();
-  currentImageData_.release();
-  view_->scene()->setBackground(QImage());
-
-  emit currentImageChanged();
+  setCurrentImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
 }
 
 void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask)
@@ -96,23 +89,11 @@ void QImageEditor::updateImage()
       if ( current_processor_ && !current_processor_->empty() ) {
         current_processor_->process(currentImage_, currentMask_);
       }
+    }
 
-
-      /////////////////////
-      // EXPERIMENT
-
-      if ( false ) {
-
-        c_sharpness_norm_measure sm;
-
-        double l2 = sm.measure(currentImage_, currentMask_);
-
-        CF_DEBUG("HPASS L2 norm = %g", l2);
-
-      }
-
-
-      /////////////////////
+    if ( displayFunction_ ) {
+      displayFunction_->setCurrentImage(currentImage_,
+          currentMask_);
     }
 
     updateDisplay();
@@ -123,9 +104,13 @@ void QImageEditor::updateImage()
 
 void QImageEditor::showEvent(QShowEvent *event)
 {
-  if ( hasPendingUpdates_ ) {
-    updateImage();
+  if ( !hasPendingUpdates_ ) {
+    Base::showEvent(event);
   }
-  Base::showEvent(event);
+  else {
+    updateImage();
+    QWidget::showEvent(event);
+    emit visibilityChanged(isVisible());
+  }
 }
 

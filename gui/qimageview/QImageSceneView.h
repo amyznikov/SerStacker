@@ -52,8 +52,11 @@ signals:
   void onMouseReleaseEvent(QMouseEvent * e);
   void onMouseDoubleClick(QMouseEvent * e);
   void scaleChanged(int currentScale);
-  void onLineShapeChanged(QGraphicsLineItem * item);
-  void onRectShapeChanged(QGraphicsRectItem * item);
+  //  void onLineShapeChanged(QGraphicsLineItem * item);
+  //  void onRectShapeChanged(QGraphicsRectItem * item);
+  void graphicsShapeChanged(QGraphicsShape*);
+  void graphicsShapeAdded(QGraphicsShape*);
+  void graphicsShapeDeleted(QGraphicsShape*);
 
 protected:
   void wheelEvent(QWheelEvent* e) override;
@@ -69,6 +72,7 @@ protected:
   bool mouseScrollEnabled_ = true;
   bool mouseScrollActive_ = false;
   bool shapesVisible_ = false;
+
   //QGraphicsItem * currentShape_ = Q_NULLPTR;
 
 //  QGraphicsLineItem * currentLineItem = Q_NULLPTR;

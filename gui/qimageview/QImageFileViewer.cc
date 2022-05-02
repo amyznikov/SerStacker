@@ -99,8 +99,6 @@ void QImageFileViewer::startDisplay()
 
   const int num_frames = input_sequence_->size();
 
-  CF_DEBUG("num_frames=%d", num_frames);
-
   if ( num_frames < 1 ) {
     return;
   }

@@ -342,7 +342,7 @@ inline int fromString(const QString & s, T x[], int nmax)
   int n = 0;
   while( n < nmax && sp && *sp && sscanf(sp, cfmt<T>::format, &x[n]) == 1 ) {
     ++n;
-    if ( (sp = strpbrk(sp + 1, "; \t")) ) {
+    if ( (sp = strpbrk(sp + 1, ";: \t")) ) {
       ++sp;
     }
   }
@@ -402,6 +402,64 @@ inline QString toQString(const std::vector<T> & v)
   }
   return s;
 }
+
+inline bool fromString(const QString & text, QSize * v)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+  const QStringList tokens =
+      text.split(QRegExp("[ x;:\t\n]"),
+          Qt::SkipEmptyParts);
+#else
+  const QStringList tokens =
+      text.split(QRegExp("[ x;:\t\n]"),
+          QString::SkipEmptyParts);
+#endif
+
+  bool wok = false;
+  bool hok = false;
+
+  if( tokens.size() == 2 ) {
+    v->setWidth(tokens[0].toInt(&wok));
+    v->setHeight(tokens[1].toInt(&hok));
+  }
+
+  return wok && hok;
+}
+
+inline QString toQString(const QSize & v)
+{
+  return QString("%1x%2").arg(v.width()).arg(v.height());
+}
+
+
+inline bool fromString(const QString & text, QPoint * v)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+  const QStringList tokens =
+      text.split(QRegExp("[ ;:\t\n]"),
+          Qt::SkipEmptyParts);
+#else
+  const QStringList tokens =
+      text.split(QRegExp("[ ;:\t\n]"),
+          QString::SkipEmptyParts);
+#endif
+
+  bool wok = false;
+  bool hok = false;
+
+  if( tokens.size() == 2 ) {
+    v->setX(tokens[0].toInt(&wok));
+    v->setY(tokens[1].toInt(&hok));
+  }
+
+  return wok && hok;
+}
+
+inline QString toQString(const QPoint & v)
+{
+  return QString("%1;%2").arg(v.x()).arg(v.y());
+}
+
 template<class T>
 inline void save_parameter(const QString & prefix, const char * name, const T & value ) {
   QSettings settings;

@@ -159,18 +159,18 @@ bool c_midtones_transfer_function::suggest_levels_range(int depth, double * minv
 
 double c_midtones_transfer_function::apply(double pix) const
 {
-  double imin = input_range_[0];
-  double imax = input_range_[1];
-  double omin = output_range_[0];
-  double omax = output_range_[1];
-  if ( imin >= imax ) {
-    imin = 0;
-    imax  = 1;
-  }
-  if ( omin >= omax ) {
-    omin = 0;
-    omax  = 1;
-  }
+  const double & imin = input_range_[0];
+  const double & imax = input_range_[1];
+  const double & omin = output_range_[0];
+  const double & omax = output_range_[1];
+//  if ( imin >= imax ) {
+//    imin = 0;
+//    imax  = 1;
+//  }
+//  if ( omin >= omax ) {
+//    omin = 0;
+//    omax  = 1;
+//  }
 
   return omin + (pix - imin) * (omax - omin) / (imax - imin);
 }

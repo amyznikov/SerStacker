@@ -590,8 +590,9 @@ void QMtfControl::findAutoHistogramClips()
     }
 
     if ( range_min >= range_max ) {
-      range_min = 0;
-      range_max = 1;
+      range_min = data_min;
+      range_max = data_max;
+      //c_midtones_transfer_function::suggest_levels_range(depth, minval, maxval)
     }
 
     mtf.set_shadows((data_min - range_min) / (range_max - range_min));

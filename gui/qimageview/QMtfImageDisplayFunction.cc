@@ -84,10 +84,37 @@ void QMtfImageDisplaySettings::getDisplayImage(cv::OutputArray displayImage, int
 {
   if ( !currentImage_.empty() ) {
 
-    const QMtfDisplaySettings::DisplayParams & opts =
+    QMtfDisplaySettings::DisplayParams & opts =
         displayParams();
 
-    opts.mtf.apply(currentImage_, displayImage, ddepth);
+    c_midtones_transfer_function * mtf =
+        &opts.mtf;
+
+    double imin, imax;
+    mtf->get_input_range(&imin, &imax);
+    if( imin >= imax ) {
+
+      double adjusted_min, adjusted_max;
+
+      const int depth = currentImage_.depth();
+      if( depth == CV_32F || depth == CV_64F ) {
+        getminmax(currentImage_, &adjusted_min, &adjusted_max, currentMask_);
+      }
+      else {
+        c_midtones_transfer_function::suggest_levels_range(currentImage_.depth(),
+            &adjusted_min,
+            &adjusted_max);
+      }
+
+      mtf->set_input_range(adjusted_min, adjusted_max);
+    }
+
+    mtf->apply(currentImage_, displayImage, ddepth);
+
+    if( imin >= imax ) {
+      mtf->set_input_range(imin, imax);
+    }
+
 
     if ( opts.colormap != COLORMAP_NONE && displayImage.type() == CV_8UC1 ) {
       apply_colormap(displayImage.getMat(), displayImage, opts.colormap);

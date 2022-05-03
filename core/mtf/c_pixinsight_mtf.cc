@@ -27,19 +27,19 @@ double c_pixinsight_mtf::midtones() const
 
 double c_pixinsight_mtf::apply(double pix) const
 {
-  double srcmin = input_range_[0];
-  double srcmax = input_range_[1];
-  double dstmin = output_range_[0];
-  double dstmax = output_range_[1];
+  const double & srcmin = input_range_[0];
+  const double & srcmax = input_range_[1];
+  const double & dstmin = output_range_[0];
+  const double & dstmax = output_range_[1];
 
-  if ( srcmin >= srcmax ) {
-    srcmin = 0;
-    srcmax  = 1;
-  }
-  if ( dstmin >= dstmax ) {
-    dstmin = srcmin;
-    dstmax  = srcmax;
-  }
+//  if ( srcmin >= srcmax ) {
+//    srcmin = 0;
+//    srcmax  = 1;
+//  }
+//  if ( dstmin >= dstmax ) {
+//    dstmin = srcmin;
+//    dstmax  = srcmax;
+//  }
 
   const double imin = srcmin + shadows_ * (srcmax - srcmin);
   const double imax = srcmin + highlights_ * (srcmax - srcmin);

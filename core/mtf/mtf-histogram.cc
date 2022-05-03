@@ -99,8 +99,7 @@ bool create_output_histogram(const c_midtones_transfer_function * mtf,
 
     double adjusted_min, adjusted_max;
 
-    c_midtones_transfer_function::suggest_levels_range(
-        image.depth(),
+    c_midtones_transfer_function::suggest_levels_range(image.depth(),
         &adjusted_min,
         &adjusted_max);
 

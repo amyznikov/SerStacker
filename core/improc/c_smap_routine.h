@@ -42,6 +42,13 @@ public:
   void set_minv(double);
   double minv() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, lksize, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, scale_size, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, minv, "");
+  }
+
 protected:
   int lksize_ = 7;
   int scale_size_ = 6;

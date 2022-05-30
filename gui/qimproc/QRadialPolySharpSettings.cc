@@ -7,48 +7,51 @@
 
 #include "QRadialPolySharpSettings.h"
 
-const QRadialPolySharpSettings::ClassFactory QRadialPolySharpSettings::classFactory;
-
-QRadialPolySharpSettings::QRadialPolySharpSettings(const c_radial_polysharp_routine::ptr & routine, QWidget * parent)
-  : Base(&classFactory, routine, parent)
+QRadialPolySharpSettings::QRadialPolySharpSettings(const c_radial_polysharp_routine::ptr & routine, QWidget * parent) :
+    Base(routine, parent)
 {
+}
+
+void QRadialPolySharpSettings::setup_controls()
+{
+  const c_radial_polysharp_routine::ptr routine =
+      std::dynamic_pointer_cast<c_radial_polysharp_routine>(routine_);
 
   profileView_ =
-      add_widget("",
-          new QRadialPolyProfileView(this));
+      add_widget<QRadialPolyProfileView>(ctlform);
 
   profileView_->
-      set_radial_polysharp_routine(routine);
+      set_polysharp_routine(routine);
 
   coeffs_ctl =
       QSettingsWidget::add_textbox(Base::ctlform,
-      "coeffs:",
-      [this](const QString & s) {
-        if ( routine_ ) {
+          "coeffs:",
+          [this, routine](const QString & s) {
             std::vector<double> values;
             if ( fromString(s, &values)) {
-              routine_->set_coeffs(values);
+              routine->set_coeffs(values);
               emit parameterChanged();
             }
-        }
-      });
+          });
 
   updateControls();
 }
 
 void QRadialPolySharpSettings::onupdatecontrols()
 {
-  if ( !routine_ ) {
+  const c_radial_polysharp_routine::ptr routine =
+      std::dynamic_pointer_cast<c_radial_polysharp_routine>(routine_);
+
+  if ( !routine ) {
     setEnabled(false);
   }
   else {
-
-    routine_->set_postprocess_notify_callback(
+    routine->set_postprocess_notify_callback(
         [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
           profileView_->update();
         });
 
-    coeffs_ctl->setValue(routine_->coeffs());
+    coeffs_ctl->setValue(routine->coeffs());
     profileView_->update();
     setEnabled(true);
   }
@@ -64,20 +67,17 @@ QRadialPolyProfileView::QRadialPolyProfileView(QWidget * parent)
 {
   setMinimumSize( 128 + 2 * MARGIN, 128 + 2 * MARGIN);
   resize(256, (int)(256 / 1.62));
-
 }
 
-void QRadialPolyProfileView::set_radial_polysharp_routine(const c_radial_polysharp_routine::ptr & p)
+void QRadialPolyProfileView::set_polysharp_routine(const c_radial_polysharp_routine::ptr & routine)
 {
-  routine_ = p;
-  update();
+  routine_ = routine;
 }
 
-const c_radial_polysharp_routine::ptr & QRadialPolyProfileView::radial_polysharp_routine() const
+const c_radial_polysharp_routine::ptr & QRadialPolyProfileView::polysharp_routine() const
 {
   return routine_;
 }
-
 
 QSize QRadialPolyProfileView::sizeHint() const
 {

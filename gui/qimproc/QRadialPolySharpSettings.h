@@ -22,8 +22,8 @@ public:
 
   QRadialPolyProfileView(QWidget * parent = Q_NULLPTR);
 
-  void set_radial_polysharp_routine(const c_radial_polysharp_routine::ptr & p);
-  const c_radial_polysharp_routine::ptr & radial_polysharp_routine() const;
+  void set_polysharp_routine(const c_radial_polysharp_routine::ptr & routine);
+  const c_radial_polysharp_routine::ptr & polysharp_routine() const;
 
 protected:
   QSize sizeHint() const override;
@@ -34,26 +34,18 @@ protected:
 };
 
 class QRadialPolySharpSettings :
-    public QImageProcessorRoutineSettings<c_radial_polysharp_routine>
+    public QImageProcessorRoutineSettings
 {
 public:
   typedef QRadialPolySharpSettings ThisClass;
-  typedef QImageProcessorRoutineSettings<c_radial_polysharp_routine> Base;
-
-  static const struct ClassFactory : public Base::ClassFactory {
-    ClassFactory() :
-        Base::ClassFactory(&RoutineType::class_factory,
-            SettingsWidgetFactory([](const c_image_processor_routine::ptr & routine, QWidget * parent) {
-              return new ThisClass(std::dynamic_pointer_cast<RoutineType>(routine), parent );
-            }))
-    {}
-  } classFactory;
+  typedef QImageProcessorRoutineSettings Base;
 
 
   QRadialPolySharpSettings(const c_radial_polysharp_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
+  void setup_controls() override;
   void onupdatecontrols() override;
 
 protected:

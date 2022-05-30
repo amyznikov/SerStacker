@@ -48,6 +48,15 @@ public:
   void set_output_max(double v);
   double output_max() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, auto_input_range, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, input_min, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, input_max, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_min, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_max, "");
+  }
+
 protected:
   double  input_min_ = 0.0;
   double  input_max_ = 1.0;

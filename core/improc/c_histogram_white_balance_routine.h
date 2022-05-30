@@ -46,6 +46,14 @@ public:
   void set_enable_threshold(bool v);
   bool enable_threshold() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, lclip, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, hclip, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_threshold, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold, "");
+  }
+
 protected:
   double lclip_ = 1;
   double hclip_ = 99;

@@ -38,6 +38,11 @@ public:
   void set_scales(const std::vector<double> & scales);
   const std::vector<double> & scales() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, scales, "");
+  }
+
 protected:
   std::vector<double> scales_;
 };

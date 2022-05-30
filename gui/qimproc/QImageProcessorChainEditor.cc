@@ -24,8 +24,8 @@ static QIcon getIcon(const QString & name)
 }
 
 
-QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent)
-  : Base("QImageProcessorChainEditor", parent)
+QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
+    Base("QImageProcessorChainEditor", parent)
 {
 }
 
@@ -78,8 +78,8 @@ void QImageProcessorChainEditor::set_current_processor(const c_image_processor::
     for ( const c_image_processor_routine::ptr & routine : *current_processor_ ) {
       if ( routine ) {
 
-        QImageProcessorRoutineSettingsBase * ctl =
-            QImageProcessorRoutineSettingsBase::create(routine);
+        QImageProcessorRoutineSettings * ctl =
+            QImageProcessorRoutineSettings::create(routine);
 
         if ( !ctl ) {
           form->addRow(routine->class_name().c_str(), new QSettingsWidget(""));
@@ -88,16 +88,16 @@ void QImageProcessorChainEditor::set_current_processor(const c_image_processor::
 
           form->addRow(ctl);
 
-          connect(ctl, &QImageProcessorRoutineSettingsBase::addRoutineRequested,
+          connect(ctl, &QImageProcessorRoutineSettings::addRoutineRequested,
               this, &ThisClass::addRoutine);
 
-          connect(ctl, &QImageProcessorRoutineSettingsBase::removeRoutineRequested,
+          connect(ctl, &QImageProcessorRoutineSettings::removeRoutineRequested,
               this, &ThisClass::removeRoutine);
 
-          connect(ctl, &QImageProcessorRoutineSettingsBase::moveUpRequested,
+          connect(ctl, &QImageProcessorRoutineSettings::moveUpRequested,
               this, &ThisClass::moveUpRoutine);
 
-          connect(ctl, &QImageProcessorRoutineSettingsBase::moveDownRequested,
+          connect(ctl, &QImageProcessorRoutineSettings::moveDownRequested,
               this, &ThisClass::moveDownRoutine);
 
           connect(ctl, &QSettingsWidget::parameterChanged,
@@ -152,7 +152,7 @@ void QImageProcessorChainEditor::onupdatecontrols()
 }
 
 
-void QImageProcessorChainEditor::addRoutine(QImageProcessorRoutineSettingsBase * insertAfter)
+void QImageProcessorChainEditor::addRoutine(QImageProcessorRoutineSettings * insertAfter)
 {
   static QAddRoutineDialog * dlgbox = Q_NULLPTR;
   c_image_processor_routine::ptr current_routine, new_routine;
@@ -172,8 +172,8 @@ void QImageProcessorChainEditor::addRoutine(QImageProcessorRoutineSettingsBase *
     return;
   }
 
-  if ( insertAfter && !(current_routine = insertAfter->current_routine()) ) {
-    QMessageBox::critical(this, "APP BUG", QString("insertAfter->current_routine() is NULL.\n"
+  if ( insertAfter && !(current_routine = insertAfter->routine()) ) {
+    QMessageBox::critical(this, "APP BUG", QString("insertAfter->routine() is NULL.\n"
         "Fix this code please"));
     return;
   }
@@ -199,13 +199,13 @@ void QImageProcessorChainEditor::addRoutine(QImageProcessorRoutineSettingsBase *
   set_current_processor(current_processor_);
 }
 
-void QImageProcessorChainEditor::removeRoutine(QImageProcessorRoutineSettingsBase * w)
+void QImageProcessorChainEditor::removeRoutine(QImageProcessorRoutineSettings * w)
 {
   if ( w && current_processor_ ) {
 
     QWaitCursor wait(this);
 
-    c_image_processor::iterator pos = current_processor_->find(w->current_routine());
+    c_image_processor::iterator pos = current_processor_->find(w->routine());
     if ( pos != current_processor_->end() ) {
 
       current_processor_->erase(pos);
@@ -217,13 +217,13 @@ void QImageProcessorChainEditor::removeRoutine(QImageProcessorRoutineSettingsBas
   }
 }
 
-void QImageProcessorChainEditor::moveUpRoutine(QImageProcessorRoutineSettingsBase * w)
+void QImageProcessorChainEditor::moveUpRoutine(QImageProcessorRoutineSettings * w)
 {
   if ( w && current_processor_ ) {
 
     QWaitCursor wait(this);
 
-    c_image_processor::iterator pos = current_processor_->find(w->current_routine());
+    c_image_processor::iterator pos = current_processor_->find(w->routine());
     if ( pos != current_processor_->begin() && pos != current_processor_->end() ) {
 
       const c_image_processor_routine::ptr routine = *pos;
@@ -239,13 +239,13 @@ void QImageProcessorChainEditor::moveUpRoutine(QImageProcessorRoutineSettingsBas
 
 }
 
-void QImageProcessorChainEditor::moveDownRoutine(QImageProcessorRoutineSettingsBase * w)
+void QImageProcessorChainEditor::moveDownRoutine(QImageProcessorRoutineSettings * w)
 {
   if ( w && current_processor_ ) {
 
     QWaitCursor wait(this);
 
-    c_image_processor::iterator pos = current_processor_->find(w->current_routine());
+    c_image_processor::iterator pos = current_processor_->find(w->routine());
     if ( pos + 1 < current_processor_->end()  ) {
 
       const c_image_processor_routine::ptr routine = *pos;

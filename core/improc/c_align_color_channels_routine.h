@@ -64,6 +64,19 @@ public:
   c_align_color_channels & algorithm();
   const c_align_color_channels & algorithm() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, reference_channel, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_threshold, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, motion_type, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, interpolation, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, eps, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, max_iterations, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, smooth_sigma, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, update_step_scale, "");
+  }
+
 protected:
   c_align_color_channels algorithm_;
   int reference_channel_ = 0;

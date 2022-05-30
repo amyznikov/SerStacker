@@ -39,6 +39,11 @@ public:
   void set_hclip(double v);
   double hclip() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, lclip, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, hclip, "");
+  }
 
 protected:
   double plo_ = 0.5;

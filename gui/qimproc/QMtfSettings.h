@@ -15,8 +15,8 @@
 #include "QImageProcessorSelector.h"
 
 
-class QMtfRoutineDisplaySettings
-  : public QMtfDisplaySettingsBase
+class QMtfRoutineDisplaySettings :
+    public QMtfDisplaySettingsBase
 {
   Q_OBJECT;
 public:
@@ -56,27 +56,19 @@ protected:
 };
 
 
-class QMtfSettings
-  : public QImageProcessorRoutineSettings<c_mtf_routine>
+class QMtfSettings :
+    public QImageProcessorRoutineSettings
 {
   Q_OBJECT;
 public:
   typedef QMtfSettings ThisClass;
   typedef QImageProcessorRoutineSettings Base;
 
-  static const struct ClassFactory : public Base::ClassFactory {
-    ClassFactory() :
-        Base::ClassFactory(&RoutineType::class_factory,
-            SettingsWidgetFactory([](const c_image_processor_routine::ptr & routine, QWidget * parent) {
-              return new ThisClass(std::dynamic_pointer_cast<RoutineType>(routine), parent );
-            }))
-    {}
-  } classFactory;
-
   QMtfSettings(const c_mtf_routine::ptr & processor,
       QWidget * parent = Q_NULLPTR);
 
 protected:
+  void setup_controls() override;
   void onupdatecontrols() override;
 
 protected:

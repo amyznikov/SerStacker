@@ -25,10 +25,10 @@ public:
   const c_image_processor::ptr & current_processor() const;
 
 protected slots:
-  void addRoutine(QImageProcessorRoutineSettingsBase * w = Q_NULLPTR);
-  void removeRoutine(QImageProcessorRoutineSettingsBase * w);
-  void moveUpRoutine(QImageProcessorRoutineSettingsBase * w);
-  void moveDownRoutine(QImageProcessorRoutineSettingsBase * w);
+  void addRoutine(QImageProcessorRoutineSettings * w = Q_NULLPTR);
+  void removeRoutine(QImageProcessorRoutineSettings * w);
+  void moveUpRoutine(QImageProcessorRoutineSettings * w);
+  void moveDownRoutine(QImageProcessorRoutineSettings * w);
 
 protected:
   void onupdatecontrols() override;

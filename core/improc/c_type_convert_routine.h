@@ -30,10 +30,6 @@ public:
             factory([]() {return ptr(new this_class());})) {}
   } class_factory;
 
-
-
-
-
   c_type_convert_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
@@ -54,6 +50,14 @@ public:
 
   void set_auto_scale(bool v);
   bool auto_scale() const;
+
+
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ddepth, "OpenCV pixel depth");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "scale");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, beta, "offset");
+  }
 
 protected:
   double alpha_ = 1.0;

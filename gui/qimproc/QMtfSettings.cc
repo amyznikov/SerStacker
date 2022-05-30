@@ -26,10 +26,6 @@ const c_enum_member* members_of<DISPLAY_TYPE>()
   return members;
 }
 
-const QMtfSettings::ClassFactory QMtfSettings::classFactory;
-
-
-
 
 QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr & processor, QObject * parent) :
     Base(parent), processor_(processor)
@@ -147,11 +143,15 @@ void QMtfRoutineDisplaySettings::saveParameters(const QString & /*prefix*/) cons
 }
 
 
-QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent)
-  : Base(&classFactory, routine, parent),
+QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent) :
+    Base(routine, parent),
     displaySettings_(routine, this)
 {
-  mtf_ctl = add_widget("", new QMtfControl(this));
+}
+
+void QMtfSettings::setup_controls()
+{
+  mtf_ctl = add_widget<QMtfControl>(ctlform);
   mtf_ctl->setDisplaySettings(&displaySettings_);
 
   updateControls();
@@ -159,6 +159,7 @@ QMtfSettings::QMtfSettings(const c_mtf_routine::ptr & routine, QWidget * parent)
   connect(&displaySettings_, &QMtfRoutineDisplaySettings::updateDisplay,
       this, &ThisClass::parameterChanged);
 }
+
 
 void QMtfSettings::onupdatecontrols()
 {

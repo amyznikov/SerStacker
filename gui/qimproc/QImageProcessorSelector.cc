@@ -122,7 +122,11 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
       this, SLOT(onProcessorSelectorCurrentIndexChanged(int)) );
 
   connect(chain_ctl, &QImageProcessorChainEditor::parameterChanged,
-      this, &ThisClass::parameterChanged);
+      [this]() {
+        if ( enabled_ctl->isChecked() ) {
+          emit parameterChanged();
+        }
+      });
 
   updateControls();
 }

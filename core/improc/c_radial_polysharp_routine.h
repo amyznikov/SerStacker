@@ -41,6 +41,11 @@ public:
   bool serialize(c_config_setting settings) const override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, coeffs, "");
+  }
+
 protected:
   std::vector<double> profile_before_;
   std::vector<double> profile_after_;

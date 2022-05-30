@@ -21,9 +21,6 @@ public:
 
   QImageProcessorSelector(QWidget * parent = Q_NULLPTR);
 
-//  void set_available_processors(const c_image_processor_collection::ptr & processors);
-//  const c_image_processor_collection::ptr available_processors() const;
-
   c_image_processor::ptr current_processor() const;
 
   bool imageProcessingEnabled() const;

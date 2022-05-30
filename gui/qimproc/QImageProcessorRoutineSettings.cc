@@ -6,26 +6,8 @@
  */
 
 #include "QImageProcessorRoutineSettings.h"
-#include "QUnsharpMaskSettings.h"
-#include "QSmapSettings.h"
-#include "QNoiseMapSettings.h"
 #include "QMtfSettings.h"
-#include "QAutoClipSettings.h"
-#include "QAnscombeSettings.h"
-#include "QAlignColorChannelsSettings.h"
-#include "QRangeClipSettings.h"
-#include "QHistogramWhiteBalanceSettings.h"
-#include "QRangeNormalizeSettings.h"
-#include "QGradientSettings.h"
-#include "QScaleChannelsSettings.h"
-#include "QTypeConvertSettings.h"
-#include "QColorSaturationOptions.h"
-#include "QInPaintSettings.h"
 #include "QRadialPolySharpSettings.h"
-#include "QAutoCorrelationSettings.h"
-#include "QGaussianFilterSettings.h"
-
-
 
 #define ICON_double_arrow_down    "double-arrow-down"
 #define ICON_double_arrow_right   "double-arrow-right"
@@ -35,94 +17,41 @@
 #define ICON_add                  "add"
 #define ICON_menu                 "menu"
 
+static QAction *add_routine_action;
+static QAction *remove_routine_action;
+static QAction *move_up_action;
+static QAction *move_down_action;
 
 static QIcon getIcon(const QString & name)
 {
   return QIcon(QString(":/qimproc/icons/%1").arg(name));
 }
 
-static std::vector<const QImageProcessorRoutineSettingsBase::ClassFactory*>
-  QImageProcessorRoutineSettingsClasses_;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static QAction * add_routine_action;
-static QAction * remove_routine_action;
-static QAction * move_up_action;
-static QAction * move_down_action;
-
-
-void QImageProcessorRoutineSettingsBase::registrerClassFactory(const ClassFactory * classFactory)
-{
-  ClassFactoryGuardLock lock;
-
-  std::vector<const QImageProcessorRoutineSettingsBase::ClassFactory*>::iterator ii =
-      std::find(QImageProcessorRoutineSettingsClasses_.begin(),
-          QImageProcessorRoutineSettingsClasses_.end(),
-          classFactory);
-
-  if ( ii == QImageProcessorRoutineSettingsClasses_.end() ) {
-    QImageProcessorRoutineSettingsClasses_.emplace_back(classFactory);
-  }
-
-}
-
-void QImageProcessorRoutineSettingsBase::registrerAllClasses()
-{
-  static bool registered = false;
-
-  if ( !registered ) {
-
-    registered = true;
-
-    registrerClassFactory(&QUnsharpMaskSettings::classFactory);
-    registrerClassFactory(&QSmapSettings::classFactory);
-    registrerClassFactory(&QNoiseMapSettings::classFactory);
-    registrerClassFactory(&QMtfSettings::classFactory);
-    registrerClassFactory(&QAutoClipSettings::classFactory);
-    registrerClassFactory(&QAnscombeSettings::classFactory);
-    registrerClassFactory(&QAlignColorChannelsSettings::classFactory);
-    registrerClassFactory(&QRangeClipSettings::classFactory);
-    registrerClassFactory(&QHistogramWhiteBalanceSettings::classFactory);
-    registrerClassFactory(&QRangeNormalizeSettings::classFactory);
-    registrerClassFactory(&QGradientSettings::classFactory);
-    registrerClassFactory(&QScaleChannelsSettings::classFactory);
-    registrerClassFactory(&QTypeConvertSettings::classFactory);
-    registrerClassFactory(&QColorSaturationOptions::classFactory);
-    registrerClassFactory(&QInPaintSettings::classFactory);
-    registrerClassFactory(&QRadialPolySharpSettings::classFactory);
-    registrerClassFactory(&QAutoCorrelationSettings::classFactory);
-    registrerClassFactory(&QGaussianFilterSettings::classFactory);
-  }
-}
-
-void QImageProcessorRoutineSettingsBase::focusInEvent(QFocusEvent *event)
-{
-  Base::focusInEvent(event);
-}
-
-
-QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const ClassFactory * factory, QWidget * parent)
-  : Base("QImageProcessorRoutine", parent), class_factory_(factory)
+QImageProcessorRoutineSettings::QImageProcessorRoutineSettings(const c_image_processor_routine::ptr & routine,
+    QWidget * parent) :
+    Base(routine->class_name().c_str(), parent),
+    routine_(routine)
 {
   Q_INIT_RESOURCE(qimproc_resources);
-
-
 
 #define __EXPAND_CTL_STYLE_TEXT(x) #x
   static const char expand_box_style[] = __EXPAND_CTL_STYLE_TEXT(
       QCheckBox {
-          spacing: 12px;
+        spacing: 12px;
       }
       QCheckBox::indicator {
-          width: 16px;
-          height: 16px;
+        width: 16px;
+        height: 16px;
       }
       QCheckBox::indicator:unchecked {
-          image: url(:/qimproc/icons/double-arrow-right.png);
+        image: url(:/qimproc/icons/double-arrow-right.png);
       }
       QCheckBox::indicator:checked {
-          image: url(:/qimproc/icons/double-arrow-up.png);
+        image: url(:/qimproc/icons/double-arrow-up.png);
       }
-  );
+      );
 #undef __EXPAND_CTL_STYLE_TEXT
 
   static const char borderless_style[] = ""
@@ -141,7 +70,6 @@ QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const Cla
   expand_ctl = new QCheckBox(header_ctl);
   expand_ctl->setStyleSheet(expand_box_style);
   header_layout->addWidget(expand_ctl);
-
 
   static QMenu menu;
   if( menu.isEmpty() ) {
@@ -162,7 +90,7 @@ QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const Cla
       [this]() {
 
         QAction * selectedAction =
-        menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width()-2,menu_ctl->height()-4)));
+            menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width()-2,menu_ctl->height()-4)));
 
         if ( selectedAction ) {
           if ( selectedAction == move_up_action ) {
@@ -180,79 +108,242 @@ QImageProcessorRoutineSettingsBase::QImageProcessorRoutineSettingsBase(const Cla
         }
       });
 
+  enable_ctl = new QCheckBox(routine->class_name().c_str(), header_ctl);
+  header_layout->addWidget(enable_ctl);
+  connect(enable_ctl, &QCheckBox::stateChanged,
+      [this](int state) {
+        routine_->set_enabled(state == Qt::Checked);
+        if ( routine_->enabled() ) {
+          populatecontrols();
+        }
+        emit parameterChanged();
+  });
 
+  ///////////////
+  move_up_ctl = new QToolButton(this);
+  move_up_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  move_up_ctl->setStyleSheet(borderless_style);
+  move_up_ctl->setIconSize(QSize(16, 16));
+  move_up_ctl->setIcon(getIcon(ICON_move_up));
+  header_layout->addWidget(move_up_ctl, 10, Qt::AlignRight);
+  connect(move_up_ctl, &QToolButton::clicked,
+      [this]() {
+        emit moveUpRequested(this);
+        //QCursor::setPos(move_up_ctl->mapToGlobal(QPoint(move_up_ctl->width()/2, move_up_ctl->height()/2)));
+    });
 
+  ///////////////
+  move_down_ctl = new QToolButton(this);
+  move_down_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  move_down_ctl->setStyleSheet(borderless_style);
+  move_down_ctl->setIconSize(QSize(16, 16));
+  move_down_ctl->setIcon(getIcon(ICON_move_down));
+  header_layout->addWidget(move_down_ctl, 0, Qt::AlignRight);
+  connect(move_down_ctl, &QToolButton::clicked,
+      [this]() {
+        emit moveDownRequested(this);
+        //QCursor::setPos(move_down_ctl->mapToGlobal(QPoint(move_down_ctl->width()/2, move_down_ctl->height()/2)));
+    });
 
+  ///////////////
 
+  form->addRow(header_ctl);
 
-    enable_ctl = new QCheckBox(factory->routineClassName(), header_ctl);
-    header_layout->addWidget(enable_ctl);
+  QFrame *frame = new QFrame(this);
+  frame->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+  frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
-    ///////////////
-    move_up_ctl = new QToolButton(this);
-    move_up_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    move_up_ctl->setStyleSheet(borderless_style);
-    move_up_ctl->setIconSize(QSize(16, 16));
-    move_up_ctl->setIcon(getIcon(ICON_move_up));
-    header_layout->addWidget(move_up_ctl, 10, Qt::AlignRight);
-    connect(move_up_ctl, &QToolButton::clicked,
-        [this]() {
-          emit moveUpRequested(this);
-          //QCursor::setPos(move_up_ctl->mapToGlobal(QPoint(move_up_ctl->width()/2, move_up_ctl->height()/2)));
-        });
+  ctlform = new QFormLayout(routine_ctl = frame/*new QWidget(this)*/);
+  //ctlform->setMargin(4);
+  //ctlform->setContentsMargins(8, 8, 0, 0);
+  form->addRow(routine_ctl);
 
-    ///////////////
-    move_down_ctl = new QToolButton(this);
-    move_down_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    move_down_ctl->setStyleSheet(borderless_style);
-    move_down_ctl->setIconSize(QSize(16, 16));
-    move_down_ctl->setIcon(getIcon(ICON_move_down));
-    header_layout->addWidget(move_down_ctl, 0, Qt::AlignRight);
-    connect(move_down_ctl, &QToolButton::clicked,
-        [this]() {
-          emit moveDownRequested(this);
-          //QCursor::setPos(move_down_ctl->mapToGlobal(QPoint(move_down_ctl->width()/2, move_down_ctl->height()/2)));
-        });
+  connect(expand_ctl, &QCheckBox::stateChanged,
+      [this](int state) {
+        routine_ctl->setVisible(state == Qt::Checked);
+      });
 
-
-    ///////////////
-
-    form->addRow(header_ctl);
-
-
-    QFrame * frame = new QFrame(this);
-    frame->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-
-    ctlform = new QFormLayout(routine_ctl = frame/*new QWidget(this)*/);
-    //ctlform->setMargin(4);
-    //ctlform->setContentsMargins(8, 8, 0, 0);
-    form->addRow(routine_ctl);
-
-    connect(expand_ctl, &QCheckBox::stateChanged,
-        [this](int state) {
-            routine_ctl->setVisible(state == Qt::Checked);
-        });
-
-    routine_ctl->setVisible(expand_ctl->isChecked());
-
+  routine_ctl->setVisible(expand_ctl->isChecked());
 }
 
-QImageProcessorRoutineSettingsBase * QImageProcessorRoutineSettingsBase::create(const c_image_processor_routine::ptr & routine, QWidget * parent)
+const c_image_processor_routine::ptr& QImageProcessorRoutineSettings::routine() const
 {
-  registrerAllClasses();
+  return routine_;
+}
 
-  if ( !routine ) {
-    return nullptr;
-  }
+void QImageProcessorRoutineSettings::setup_controls()
+{
+  std::vector<struct c_image_processor_routine_ctrl> params;
+  routine_->get_parameters(&params);
 
-  ClassFactoryGuardLock lock;
+  for( const struct c_image_processor_routine_ctrl &p : params ) {
 
-  for ( const ClassFactory * f : QImageProcessorRoutineSettingsClasses_ ) {
-    if ( f->routine_factory == routine->classfactory() ) {
-      return f->create_widget_instance(routine, parent);
+    switch (p.ctl_type) {
+    case c_image_processor_routine_gui_ctl_numeric_text_box: {
+
+      QNumberEditBox *ctl = new QNumberEditBox();
+      ctl->setToolTip(p.tooltip.c_str());
+      ctlform->addRow(p.name.c_str(), ctl);
+
+      if( p.set_value ) {
+
+        QMetaObject::Connection conn =
+            QObject::connect(ctl, &QNumberEditBox::textChanged,
+                [this, ctl, p]() {
+                  if ( !updatingControls() ) {
+                    p.set_value(ctl->text().toStdString());
+                    emit parameterChanged();
+                  }
+                });
+
+        QObject::connect(ctl, &QObject::destroyed,
+            [conn]() {
+              QObject::disconnect(conn);
+            });
+      }
+
+      if( p.get_value ) {
+        QMetaObject::Connection conn =
+            QObject::connect(this, &ThisClass::populatecontrols,
+                [ctl, p]() {
+                  ctl->setText(p.get_value().c_str());
+                });
+
+        QObject::connect(ctl, &QObject::destroyed,
+            [conn]() {
+              QObject::disconnect(conn);
+            });
+      }
+
+      break;
+    }
+    case c_image_processor_routine_gui_ctl_enum_combobox: {
+
+      QEnumComboBoxBase *ctl = new QEnumComboBoxBase();
+      ctl->setToolTip(p.tooltip.c_str());
+      ctlform->addRow(p.name.c_str(), ctl);
+
+      if( p.get_enum_members ) {
+        ctl->setupItems(p.get_enum_members());
+      }
+
+      if( p.set_value ) {
+
+        QMetaObject::Connection conn =
+            QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+                [this, ctl, p]() {
+                  if ( !updatingControls() ) {
+                    p.set_value(ctl->currentText().toStdString());
+                    emit parameterChanged();
+                  }
+                });
+
+        QObject::connect(ctl, &QObject::destroyed,
+            [conn]() {
+              QObject::disconnect(conn);
+            });
+      }
+
+      if( p.get_value ) {
+
+        QMetaObject::Connection conn =
+            QObject::connect(this, &ThisClass::populatecontrols,
+                [ctl, p]() {
+                  ctl->setCurrentText(p.get_value().c_str());
+                });
+
+        QObject::connect(ctl, &QObject::destroyed,
+            [conn]() {
+              QObject::disconnect(conn);
+            });
+      }
+
+      break;
+    }
+    case c_image_processor_routine_gui_ctl_check_box: {
+
+      QCheckBox *ctl = new QCheckBox();
+      ctl->setToolTip(p.tooltip.c_str());
+      ctlform->addRow(p.name.c_str(), ctl);
+
+      if( p.set_value ) {
+
+        QMetaObject::Connection conn =
+            QObject::connect(ctl, &QCheckBox::stateChanged,
+                [this, ctl, p](int state) {
+                  if ( !updatingControls() ) {
+                    p.set_value(state == Qt::Checked ? "1" : "0");
+                    emit parameterChanged();
+                  }
+                });
+
+        QObject::connect(ctl, &QObject::destroyed,
+            [conn]() {
+              QObject::disconnect(conn);
+            });
+      }
+
+      if( p.get_value ) {
+        QMetaObject::Connection conn =
+            QObject::connect(this, &ThisClass::populatecontrols,
+                [ctl, p]() {
+                  bool checked = false;
+                  if ( fromString(p.get_value(), &checked) ) {
+                    ctl->setChecked(checked);
+                  }
+                });
+
+        QObject::connect(ctl, &QObject::destroyed,
+            [conn]() {
+              QObject::disconnect(conn);
+            });
+      }
+      break;
+    }
+    default:
+      break;
     }
   }
 
-  return nullptr;
+  updateControls();
 }
+
+void QImageProcessorRoutineSettings::onupdatecontrols()
+{
+  if( routine_ ) {
+    enable_ctl->setChecked(routine_->enabled());
+    emit populatecontrols();
+  }
+}
+
+//void QImageProcessorRoutineSettings::focusInEvent(QFocusEvent * event)
+//{
+//  Base::focusInEvent(event);
+//}
+
+QImageProcessorRoutineSettings* QImageProcessorRoutineSettings::create(const c_image_processor_routine::ptr & routine,
+    QWidget * parent)
+{
+  if( !routine ) {
+    CF_ERROR("No image processing routine specifies");
+    return nullptr;
+  }
+
+  QImageProcessorRoutineSettings * settingsWidget;
+
+  if( routine->classfactory() == &c_mtf_routine::class_factory ) {
+    settingsWidget = new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(routine), parent);
+  }
+  else if( routine->classfactory() == &c_radial_polysharp_routine::class_factory ) {
+    settingsWidget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(routine), parent);
+  }
+  else {
+    settingsWidget = new QImageProcessorRoutineSettings(routine, parent);
+  }
+
+  settingsWidget->setup_controls();
+
+  return settingsWidget;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -25,7 +25,6 @@ public:
             factory([]() {return ptr(new this_class());})) {}
   } class_factory;
 
-
   c_gaussian_filter_routine(bool enabled = true);
   static ptr create(bool enabled = true);
   static ptr create(double sigma, bool enabled = true);
@@ -35,6 +34,12 @@ public:
 
   double sigma() const;
   void set_sigma(double v);
+
+
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "Gaussian kernel sigma");
+  }
 
 protected:
   double sigma_ = 1;

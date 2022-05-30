@@ -16,6 +16,54 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+class c_image_processor_routine;
+
+enum c_image_processor_routine_gui_ctl_type {
+  c_image_processor_routine_gui_ctl_numeric_text_box = 0,
+  c_image_processor_routine_gui_ctl_check_box,
+  c_image_processor_routine_gui_ctl_enum_combobox,
+};
+
+struct c_image_processor_routine_ctrl {
+  const std::string name;
+  const std::string tooltip;
+  c_image_processor_routine_gui_ctl_type ctl_type;
+  const c_enum_member * (*get_enum_members)() = nullptr;
+  std::function<std::string(void)> get_value;
+  std::function<void (const std::string &)> set_value;
+};
+
+#define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
+  if ( true ) { \
+    c_image_processor_routine_gui_ctl_type ctype; \
+    if( std::is_enum<decltype(param())>::value ) { \
+      ctype = c_image_processor_routine_gui_ctl_enum_combobox; \
+    } \
+    else if( std::is_same<decltype(param()), bool>::value ) { \
+      ctype = c_image_processor_routine_gui_ctl_check_box; \
+    } \
+    else { \
+      ctype = c_image_processor_routine_gui_ctl_numeric_text_box; \
+    } \
+    c_image_processor_routine_ctrl tmp = { \
+        .name = #param, \
+        .tooltip = desc, \
+        .ctl_type = ctype, \
+        .get_enum_members = get_members_of<decltype(param())>(), \
+    }; \
+    tmp.get_value = [this](void) { \
+        return toString(param()); \
+      }; \
+    tmp.set_value = [this](const std::string & s) { \
+      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      if( fromString(s, &v) ) { \
+        set_##param(v); \
+      } \
+    }; \
+    (ctls)->emplace_back(tmp); \
+  }
+
+
 class c_image_processor_routine
 {
 public:
@@ -133,11 +181,18 @@ public:
       cv::InputOutputArray mask = cv::noArray()) = 0;
 
 
+  virtual void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * params)
+  {
+  }
+
 protected:
   c_image_processor_routine(const class_factory * _class_factory, bool enabled = true)
     : class_factory_(_class_factory), enabled_(enabled)
   {
   }
+
+protected:
+
 
 protected:
   const class_factory * const class_factory_;
@@ -255,6 +310,10 @@ protected:
   static std::string default_processor_collection_path_;
   static c_image_processor_collection::ptr default_instance_;
 };
+
+
+
+
 
 
 #endif /* __c_image_processor_h__ */

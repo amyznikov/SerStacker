@@ -47,6 +47,14 @@ public:
   void set_outmax(double v);
   double outmax() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, outmin, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, outmax, "");
+  }
+
 protected:
   double sigma_ = 1, alpha_ = 0.9;
   double outmin_ = -1, outmax_ = -1;

@@ -20,14 +20,45 @@ class QEnumComboBoxBase
 {
   Q_OBJECT;
 public:
+  typedef QEnumComboBoxBase ThsClass;
   typedef QComboBox Base;
-  QEnumComboBoxBase(QWidget * parent = 0)
-    : Base(parent) {
+
+  QEnumComboBoxBase(QWidget * parent = 0) :
+      Base(parent)
+  {
+    setEditable(false);
     connect(this, SIGNAL(currentIndexChanged(int)),
-        this,  SIGNAL(currentItemChanged(int)));
+        this, SIGNAL(currentItemChanged(int)));
   }
+
+  QEnumComboBoxBase(const c_enum_member * membs, QWidget * parent = 0) :
+      Base(parent)
+  {
+    setEditable(false);
+    setupItems(membs);
+    connect(this, SIGNAL(currentIndexChanged(int)),
+        this, SIGNAL(currentItemChanged(int)));
+  }
+
+  void setupItems(const c_enum_member * membs)
+  {
+    if ( membs ) {
+      while ( membs->name && *membs->name ) {
+        QComboBox::addItem(membs->name, (int) (membs->value));
+        ++membs;
+      }
+    }
+  }
+
+//  void setCurrentItem(const std::string & value)
+//  {
+//    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
+//  }
+
 signals:
   void currentItemChanged(int index);
+
+
 };
 
 
@@ -44,29 +75,19 @@ public:
   QEnumComboBox(QWidget * parent)
     : Base(parent)
   {
-    setupItems();
+    setupItems(members_of<E>());
   }
 
-  void setCurrentItem(E value) {
+  void setCurrentItem(E value)
+  {
     QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
   }
 
-  E currentItem(void) {
-    return QComboBox::currentIndex() >= 0 ? (E) (QComboBox::currentData().toInt()) : (E) (-1);
-  }
-
-protected:
-  void setupItems()
+  E currentItem(void)
   {
-    const c_enum_member * membs =
-        members_of<E>();
-
-    if ( membs ) {
-      while ( membs->name && *membs->name ) {
-        QComboBox::addItem(membs->name, (int) (membs->value));
-        ++membs;
-      }
-    }
+    return QComboBox::currentIndex() >= 0 ?
+        (E) (QComboBox::currentData().toInt()) :
+        (E) (-1);
   }
 
 };

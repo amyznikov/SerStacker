@@ -62,6 +62,12 @@ public:
     return mtf_.midtones();
   }
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, shadows, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, highlights, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, midtones, "");
+  }
 
 protected:
   c_pixinsight_mtf mtf_;

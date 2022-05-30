@@ -30,122 +30,53 @@
 #include <core/debug.h>
 #include <variant>
 
-
-enum new_anscombe_method
-{
-  new_anscombe_method_none = 0,
-  new_anscombe_method_regular = 1,
-  new_anscombe_method_sqrt = 2,
+enum TEST_ENUM {
+  TEST_ENUM_M1,
+  TEST_ENUM_M2,
 };
 
-
-template<class enum_type>
-class c_enum_combobox_base
+class c_test_class
 {
-public:
-  c_enum_combobox_base()
-  {
-    populate_combo();
-  }
+  double alpha_ = 0;
+  TEST_ENUM e_ = TEST_ENUM_M1;
 
-  void populate_combo()
-  {
-//    const c_enum_member * members =
-//        members_of<enum_type>();
-
-//    while ( members->name ) {
-//      ++members;
-//    }
-  }
-};
-
-class c_new_anscombe_method_combo:
-     public c_enum_combobox_base<new_anscombe_method>
-{
-public:
-  c_new_anscombe_method_combo()
-  {
-  }
-};
-
-
-
-class c_some_processor
-{
 public:
 
-  virtual ~c_some_processor() = default;
-
-  //virtual void get_parameters(std::vector<c_property> * params) const  = 0;
-  virtual bool set_parameter(const std::string & name, const std::string & value) = 0;
-  virtual bool get_parameter(const std::string & name, std::string * value) = 0;
-
-};
-
-class c_some_anscombe_processor
-  : public c_some_processor
-{
-public:
-
-  typedef c_some_anscombe_processor this_class;
-
-  void set_some_value(int v)
+  double alpha() const
   {
-    CF_DEBUG("some_value_ = %d", v);
-    some_value_ = v;
+    return alpha_;
   }
 
-  int some_value() const
+  void set_alpha(double v)
   {
-    return some_value_;
+    alpha_ = v;
   }
 
-  void set_method(new_anscombe_method v)
+  TEST_ENUM e() const
   {
-    method_ = v;
+    return e_;
   }
 
-  new_anscombe_method method() const
+  void set_e(TEST_ENUM v)
   {
-    return method_;
+    e_ = v;
   }
 
-//  void get_parameters(std::vector<c_property> * params) const
-//  {
-//    params->emplace_back("some_value", "this is some value");
-//    params->emplace_back("method", "this is some method", members_of<decltype(method())>());
-//  }
-
-  bool ddxparam(bool getit, const std::string & name, std::string & value)
+  void do_test()
   {
-//    STRDDX(some_value, name, value, getit);
-//    STRDDX(method, name, value, getit);
-    return false;
-  }
+    if ( std::is_enum<decltype(alpha())>::value ) {
+      CF_DEBUG("alpha IS ENUM");
+    }
+    else {
+      CF_DEBUG("alpha is NOT ENUM");
+    }
 
-  bool set_parameter(const std::string & name, const std::string & value)
-  {
-    return ddxparam(false, name, const_cast<std::string &>(value));
-  }
-
-  virtual bool get_parameter(const std::string & name, std::string * value)
-  {
-    return ddxparam(true, name, *value);
-  }
-
-protected:
-  int some_value_ = 0;
-  new_anscombe_method method_ = new_anscombe_method_sqrt;
-};
-
-
-class c_property_list_widget {
-public:
-
-  void populate(c_some_processor * p)
-  {
-
-
+    if ( std::is_enum<decltype(e())>::value ) {
+      CF_DEBUG("e IS ENUM");
+    }
+    else {
+      CF_DEBUG("e is NOT ENUM");
+    }
   }
 };
 
@@ -154,10 +85,8 @@ int main(int argc, char *argv[])
     cf_set_logfile(stderr);
     cf_set_loglevel(CF_LOG_DEBUG);
 
-  c_new_anscombe_method_combo combo;
-  c_some_anscombe_processor proc;
-
-  proc.set_parameter("some_value", "10");
+    c_test_class test_class;
+    test_class.do_test();
 
   return 0;
 

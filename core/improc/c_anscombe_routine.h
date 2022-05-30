@@ -39,6 +39,10 @@ public:
   void set_method(enum anscombe_method v);
   enum anscombe_method method() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, method, "");
+  }
 
 protected:
   c_anscombe_transform anscombe_;

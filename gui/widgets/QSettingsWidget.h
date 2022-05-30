@@ -86,7 +86,7 @@ public:
     if ( setfn ) {
       QObject::connect(ctl, &QNumberEditBox::textChanged,
           [this, ctl, setfn]() {
-            if ( !updatingControls() && setfn ) {
+            if ( !updatingControls() ) {
               T v;
               if ( fromString(ctl->text(), &v) ) {
                 LOCK();

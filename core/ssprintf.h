@@ -146,9 +146,26 @@ struct c_enum_member {
   const char * tooltip;
 };
 
+typedef const c_enum_member * (*get_enum_members_proc)();
+
 template<class enum_type>
 typename std::enable_if<std::is_enum<enum_type>::value,
   const c_enum_member *>::type members_of();
+
+
+template<class T>
+inline constexpr typename std::enable_if<std::is_enum<T>::value,
+  get_enum_members_proc>::type get_members_of()
+{
+  return &members_of<T>;
+}
+
+template<class T>
+inline constexpr typename std::enable_if<!std::is_enum<T>::value,
+  get_enum_members_proc>::type get_members_of()
+{
+  return nullptr;
+}
 
 template<class enum_type>
 typename std::enable_if<std::is_enum<enum_type>::value,
@@ -240,8 +257,108 @@ typename std::enable_if<std::is_enum<enum_type>::value,
   return defval;
 }
 
+
+
+template<class T>
+inline std::string toString(const std::vector<T> & v) {
+  std::string s;
+  for ( int i = 0, n = v.size(); i < n; ++i ) {
+    s += toString(v[i]);
+    if ( i < n - 1 ) {
+      s += ";";
+    }
+  }
+  return s;
+}
+
+template<class T>
+inline bool fromString(const std::string & s, std::vector<T> * v)
+{
+  const std::vector<std::string> tokens =
+      strsplit(s, " \t\n;:");
+
+  v->clear(), v->reserve(tokens.size());
+  for ( int i = 0, n = tokens.size(); i < n; ++i ) {
+    T value;
+    if ( !fromString(tokens[i], &value) ) {
+      return false;
+    }
+    v->emplace_back(value);
+  }
+
+  return true;
+}
+
+
 // opencv types
 #ifdef CV_VERSION
+
+// cv::Vec
+template<class T, int n>
+inline std::string toString(const cv::Vec<T, n> & v) {
+  std::string s;
+  for ( int i = 0; i < n; ++i ) {
+    s += ssprintf("%g", (double)v[i]);
+    if ( i < n - 1 ) {
+      s += ";";
+    }
+  }
+  return s;
+}
+
+template<class T, int n>
+inline bool fromString(const std::string & s, cv::Vec<T, n> * v)
+{
+  const std::vector<std::string> tokens =
+      strsplit(s, " \t\n;:");
+
+  if ( tokens.size() != n ) {
+    return false;
+  }
+
+  for ( int i = 0; i < n; ++i ) {
+    if ( !fromString(tokens[i], &v->v[i]) ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// cv::Scalar
+template<class T>
+inline std::string toString(const cv::Scalar_<T> & v) {
+  std::string s;
+  for ( int i = 0; i < 4; ++i ) {
+    s += ssprintf("%g", (double)v[i]);
+    if ( i < 3 ) {
+      s += ";";
+    }
+  }
+  return s;
+}
+
+template<class T>
+inline bool fromString(const std::string & s, cv::Scalar_<T> * v)
+{
+  const std::vector<std::string> tokens =
+      strsplit(s, " \t\n;:");
+
+  if ( tokens.empty() ) {
+    return false;
+  }
+
+  const int n =
+      std::min(4, (int)tokens.size());
+
+  for ( int i = 0; i < n; ++i ) {
+    if ( !fromString(tokens[i], &v->v[i]) ) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 // cv::Point
 template<class T>
@@ -420,7 +537,8 @@ inline std::string toString(const cv::Rect_<T> & v) {
  * Parse the list of 'key=value' pairs separated by semicolon
  */
 bool parse_key_value_pairs(const std::string & text,
-    std::vector<std::pair<std::string, std::string>> & dst);
+    std::vector<std::pair<std::string,
+    std::string>> & dst);
 
 /**
  * Parse the object name followed by the list of 'key=value' pairs
@@ -428,7 +546,8 @@ bool parse_key_value_pairs(const std::string & text,
  */
 bool parse_object_type_and_args(const std::string & text,
     std::string & output_objtype,
-    std::vector<std::pair<std::string, std::string>> & output_objparams);
+    std::vector<std::pair<std::string,
+    std::string>> & output_objparams);
 
 
 #endif /* __ssprintf_h__ */

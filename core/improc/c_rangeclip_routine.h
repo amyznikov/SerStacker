@@ -41,6 +41,11 @@ public:
   void set_max(double v);
   double max() const;
 
+  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, min, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, max, "");
+  }
 
 protected:
   double min_ = 0.0;

@@ -7,17 +7,15 @@
 
 #include "QStackOutputOptions.h"
 #include <gui/qimproc/QImageProcessorsCollection.h>
-//#include <gui/widgets/addctrl.h>
-//#include <gui/widgets/settings.h>
 #include <core/debug.h>
 
 #define ICON_close          "close"
 #define ICON_check_all      "check_all"
 
-static const char borderless_style[] = ""
-    "QToolButton { border: none; } "
-    "QToolButton::menu-indicator { image: none; }"
-    "";
+//static const char borderless_style[] = ""
+//    "QToolButton { border: none; } "
+//    "QToolButton::menu-indicator { image: none; }"
+//    "";
 
 static QIcon getIcon(const QString & name)
 {
@@ -39,8 +37,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   form->addRow(output_directory_ctl =
       new QBrowsePathCombo("Output directory:",
-          QFileDialog::DirectoryOnly,
+          QFileDialog::AnyFile,
           this));
+  output_directory_ctl->setShowDirsOnly(true);
+
 
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
@@ -229,7 +229,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   applyToAll_ctl->setIconSize(QSize(16,16));
-  applyToAll_ctl->setStyleSheet(borderless_style);
+  //applyToAll_ctl->setStyleSheet(borderless_style);
   applyToAll_ctl->setIcon(getIcon(ICON_check_all));
   applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
   form->addRow(applyToAll_ctl);

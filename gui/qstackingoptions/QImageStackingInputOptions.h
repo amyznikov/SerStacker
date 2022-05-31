@@ -28,24 +28,6 @@ public:
   void set_input_options(c_input_options * options);
   c_input_options * input_options() const;
 
-//  class QAnscombeMethodCombo :
-//      public QEnumComboBox<anscombe_method>
-//  {
-//  public:
-//    typedef QEnumComboBox<anscombe_method> Base;
-//    QAnscombeMethodCombo(QWidget * parent = Q_NULLPTR)
-//        : Base(parent)
-//      {}
-//  };
-
-//  static QString toString(enum anscombe_method v) {
-//    return QString::fromStdString(toStdString(v));
-//  }
-//
-//  static enum anscombe_method fromString(const QString  & s, enum anscombe_method defval ) {
-//    return fromStdString(s.toStdString(), defval);
-//  }
-
 signals:
   void applyInputOptionsToAllRequested(const c_input_options & options);
 

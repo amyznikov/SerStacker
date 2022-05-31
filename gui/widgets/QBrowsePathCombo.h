@@ -28,6 +28,9 @@ public:
   QBrowsePathCombo(QWidget *parent = Q_NULLPTR);
   QBrowsePathCombo(const QString & label, QFileDialog::FileMode mode = QFileDialog::AnyFile, QWidget *parent = Q_NULLPTR);
 
+  void setShowDirsOnly(bool v);
+  bool showDirsOnly() const;
+
   void setLabel(const QString & label);
   void setFileDialogCaption(const QString & caption);
   void setFileDialogMode(QFileDialog::FileMode mode);
@@ -57,8 +60,10 @@ private:
   QString labelText_;
   QFileDialog::FileMode fileDialogMode = QFileDialog::AnyFile;
   QFileDialog::ViewMode fileDialogViewMode = QFileDialog::ViewMode::List;
+  bool showDirsOnly_ = false;
   bool hasChanges_ = false;
   bool enableEmitChagesEvent_ = true;
+
 
 private:
   void construct(void);

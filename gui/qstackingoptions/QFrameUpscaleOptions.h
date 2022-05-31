@@ -21,25 +21,6 @@ public:
   typedef QEnumComboBox<frame_upscale_option> QUpscaleOptionCombo;
   typedef QEnumComboBox<frame_upscale_stage> QUpscaleStageCombo;
 
-//  struct QUpscaleOptionCombo:
-//      public QEnumComboBox<frame_upscale_option>
-//  {
-//    typedef QEnumComboBox<frame_upscale_option> Base;
-//
-//    QUpscaleOptionCombo(QWidget * parent = Q_NULLPTR)
-//      : Base(parent)
-//      {}
-//  };
-
-//  struct QUpscaleStageCombo:
-//      public QEnumComboBox<frame_upscale_stage>
-//  {
-//    typedef QEnumComboBox<frame_upscale_stage> Base;
-//
-//    QUpscaleStageCombo(QWidget * parent = Q_NULLPTR)
-//      : Base(parent)
-//      {}
-//  };
 
   QFrameUpscaleOptions(QWidget * parent = Q_NULLPTR);
 

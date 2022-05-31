@@ -317,7 +317,7 @@ inline bool fromString(const std::string & s, cv::Vec<T, n> * v)
   }
 
   for ( int i = 0; i < n; ++i ) {
-    if ( !fromString(tokens[i], &v->v[i]) ) {
+    if ( !fromString(tokens[i], &v->val[i]) ) {
       return false;
     }
   }
@@ -352,7 +352,7 @@ inline bool fromString(const std::string & s, cv::Scalar_<T> * v)
       std::min(4, (int)tokens.size());
 
   for ( int i = 0; i < n; ++i ) {
-    if ( !fromString(tokens[i], &v->v[i]) ) {
+    if ( !fromString(tokens[i], &v->val[i]) ) {
       return false;
     }
   }

@@ -12,15 +12,15 @@
 #define ICON_close          "close"
 #define ICON_check_all      "check_all"
 
-static const char borderless_style[] = ""
-    "QToolButton { border: none; } "
-    "QToolButton::menu-indicator { image: none; }"
-    "";
-
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-}
+//static const char borderless_style[] = ""
+//    "QToolButton { border: none; } "
+//    "QToolButton::menu-indicator { image: none; }"
+//    "";
+//
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+//}
 
 
 QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)

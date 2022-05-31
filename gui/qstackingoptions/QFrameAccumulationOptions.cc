@@ -6,7 +6,6 @@
  */
 
 #include "QFrameAccumulationOptions.h"
-//#include <gui/widgets/addctrl.h>
 #include <core/debug.h>
 
 

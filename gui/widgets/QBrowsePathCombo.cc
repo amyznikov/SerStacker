@@ -25,6 +25,19 @@ QBrowsePathCombo :: QBrowsePathCombo(const QString & label_, QFileDialog::FileMo
   construct();
 }
 
+void QBrowsePathCombo::setShowDirsOnly(bool v)
+{
+  showDirsOnly_ = v;
+}
+
+bool QBrowsePathCombo::showDirsOnly() const
+{
+  return showDirsOnly_;
+}
+
+//setOption(ShowDirsOnly, true)
+
+
 void QBrowsePathCombo::construct(void)
 {
   QVBoxLayout * vbox;
@@ -91,6 +104,8 @@ void QBrowsePathCombo::onBrowseForPath(void)
       fileInfo.isDir() ? path : fileInfo.filePath());
 
   dlg.setFileMode(fileDialogMode);
+  dlg.setOption(QFileDialog::ShowDirsOnly, showDirsOnly_);
+
   //dlg.setOption(QFileDialog::DontUseNativeDialog);
   dlg.setViewMode(fileDialogViewMode);
   dlg.selectFile(path);
@@ -102,7 +117,7 @@ void QBrowsePathCombo::onBrowseForPath(void)
 
   if ( dlg.exec() == QDialog::Accepted ) {
 
-    if ( fileDialogMode == QFileDialog::DirectoryOnly ) {
+    if ( dlg.options() & QFileDialog::ShowDirsOnly /*fileDialogMode == QFileDialog::DirectoryOnly*/ ) {
       path = dlg.directory().path();
     }
     else {

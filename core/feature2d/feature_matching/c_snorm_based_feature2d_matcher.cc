@@ -9,7 +9,6 @@
  */
 
 #include "c_snorm_based_feature2d_matcher.h"
-
 #include <core/debug.h>
 
 c_snorm_based_feature2d_matcher::ptr create_sparse_feature_matcher(

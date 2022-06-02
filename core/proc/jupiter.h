@@ -194,7 +194,7 @@ protected:
   cv::Mat1b current_total_binary_mask_;
 
   c_ecc_forward_additive ecc_;
-  c_ecc_pyramide_align ecch_;
+  c_ecch ecch_;
   c_ecch_flow eccflow_;
 
   double min_rotation_ = -30 * CV_PI / 180;

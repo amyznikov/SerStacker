@@ -309,7 +309,8 @@ public:
   QEnumComboBox<EnumType>* add_enum_combobox(QFormLayout * form, const QString & name,
       const std::function<void(EnumType)> & setfn, const std::function<bool(EnumType*)> & getfn)
   {
-    QEnumComboBox<EnumType> *ctl = add_enum_combobox(form, name, setfn);
+    QEnumComboBox<EnumType> *ctl =
+        add_enum_combobox(form, name, setfn);
 
     if( getfn ) {
 
@@ -373,7 +374,9 @@ public:
   ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const std::function<void(int)> & setfn,
       const std::function<bool(int*)> & getfn)
   {
-    ComboBoxType *ctl = add_combobox(form, name, setfn);
+    ComboBoxType *ctl =
+        add_combobox(form, name, setfn);
+
     if( getfn ) {
 
       QMetaObject::Connection conn =

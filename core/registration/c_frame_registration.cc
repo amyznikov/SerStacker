@@ -6,16 +6,17 @@
  */
 
 #include "c_frame_registration.h"
-
 #include <core/get_time.h>
 #include <core/debug.h>
 
-c_frame_registration::c_frame_registration()
+c_frame_registration::c_frame_registration() :
+  ecch_(&ecc_)
 {
 }
 
-c_frame_registration::c_frame_registration(const c_frame_registration_base_options & opts)
-  : base_options_(opts)
+c_frame_registration::c_frame_registration(const c_frame_registration_base_options & opts) :
+    base_options_(opts),
+    ecch_(&ecc_)
 {
 }
 
@@ -186,20 +187,15 @@ const std::string & c_frame_registration::debug_path() const
   return debug_path_;
 }
 
-//c_ecc_forward_additive & c_frame_registration::ecc()
-//{
-//  return ecc_;
-//}
+const c_ecch & c_frame_registration::ecch() const
+{
+  return ecch_;
+}
 
 const c_ecc_forward_additive & c_frame_registration::ecc() const
 {
   return ecc_;
 }
-
-//c_ecch_flow & c_frame_registration::eccflow()
-//{
-//  return eccflow_;
-//}
 
 const c_ecch_flow & c_frame_registration::eccflow() const
 {
@@ -245,17 +241,6 @@ const cv::Mat & c_frame_registration::current_ecc_mask() const
 {
   return ecc_.input_mask();
 }
-
-//const cv::Rect & c_frame_registration::reference_ROI() const
-//{
-//  return reference_ROI_;
-//}
-//
-//const cv::Rect & c_frame_registration::current_ROI() const
-//{
-//  return current_ROI_;
-//}
-
 
 const cv::Mat1f & c_frame_registration::current_transform() const
 {
@@ -488,6 +473,9 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     ecc_.set_motion_type(motion_type());
 
+    //ecch_.set_minimum_image_size(v)
+
+
     if ( !ecc_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask)  ) {
       CF_ERROR("ecc_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
           ecc_.rho(), ecc_.min_rho(),
@@ -497,6 +485,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
 
     if ( ecc_scale() != 1 ) {
+
       scaleTransform(motion_type(),
           current_transform_,
           1. / ecc_scale());

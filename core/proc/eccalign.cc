@@ -2660,45 +2660,45 @@ bool c_ecc_inverse_compositional::align(cv::InputArray inputImage, cv::InputArra
 
 ///////////////////////////////////////////////////////////////////////////////
 
-c_ecc_pyramide_align::c_ecc_pyramide_align(c_ecc_align * method)
+c_ecch::c_ecch(c_ecc_align * method)
   : method_(method)
 {
 }
 
-c_ecc_align * c_ecc_pyramide_align::method() const
+c_ecc_align * c_ecch::method() const
 {
   return this->method_;
 }
 
 
-void c_ecc_pyramide_align::set_minimum_image_size(int v)
+void c_ecch::set_minimum_image_size(int v)
 {
   minimum_image_size_ = v;
 }
-int c_ecc_pyramide_align::minimum_image_size() const
+int c_ecch::minimum_image_size() const
 {
   return minimum_image_size_;
 }
 
 
-const std::vector<cv::Mat> & c_ecc_pyramide_align::image_pyramid(int index) const
+const std::vector<cv::Mat> & c_ecch::image_pyramid(int index) const
 {
   return image_pyramids_[index];
 }
 
-const std::vector<cv::Mat> & c_ecc_pyramide_align::mask_pyramid( int index) const
+const std::vector<cv::Mat> & c_ecch::mask_pyramid( int index) const
 {
   return mask_pyramids_[index];
 }
 
-const std::vector<cv::Mat1f> & c_ecc_pyramide_align::transform_pyramid() const
+const std::vector<cv::Mat1f> & c_ecch::transform_pyramid() const
 {
   return transform_pyramid_;
 }
 
 
 
-bool c_ecc_pyramide_align::align(cv::InputArray inputImage, cv::InputArray referenceImage,
+bool c_ecch::align(cv::InputArray inputImage, cv::InputArray referenceImage,
     cv::InputOutputArray inputOutputWarpMatrix,
     cv::InputArray inputMask, cv::InputArray referenceMask)
 {
@@ -2707,7 +2707,7 @@ bool c_ecc_pyramide_align::align(cv::InputArray inputImage, cv::InputArray refer
       inputMask, referenceMask);
 }
 
-bool c_ecc_pyramide_align::align(c_ecc_align * method,
+bool c_ecch::align(c_ecc_align * method,
     cv::InputArray inputImage, cv::InputArray referenceImage,
     cv::InputOutputArray inputOutputWarpMatrix,
     cv::InputArray inputMask, cv::InputArray referenceMask)

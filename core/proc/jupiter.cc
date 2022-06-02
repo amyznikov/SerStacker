@@ -278,7 +278,7 @@ bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const st
   }
 
   c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
-  c_ecc_pyramide_align ecch(&ecc);
+  c_ecch ecch(&ecc);
 
   cv::Matx23f T =
       createEuclideanTransform(C.x, C.y,

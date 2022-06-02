@@ -43,11 +43,11 @@ template<>
 const c_enum_member * members_of<frame_registration_method>()
 {
   static constexpr c_enum_member members[] = {
-      { frame_registration_method_surf , "Feature Based Registration (SURF)", },
-      { frame_registration_method_planetary_disk, "Planetary Disk Registration", },
-      { frame_registration_method_star_field, "Star Field Registration", },
-      { frame_registration_method_jovian_derotate, "Jovian Derotate", },
-      { frame_registration_method_mm, "MM", },
+      { frame_registration_generic , "Generic", },
+      { frame_registration_planetary_disk, "Planetary Disk Registration", },
+      { frame_registration_star_field, "Star Field Registration", },
+      { frame_registration_ecch, "ECCH Registration", },
+      { frame_registration_jovian_derotate, "Jovian Derotate", },
       { frame_registration_none, "None", },
       { frame_registration_none , nullptr, }, // must be last
   };
@@ -375,12 +375,12 @@ const c_frame_upscale_options & c_image_stacking_options::upscale_options() cons
 
 c_sparse_feature_extractor_options & c_image_stacking_options::sparse_feature_extractor_options()
 {
-  return frame_registration_options_.feature_options.sparse_feature_extractor;
+  return frame_registration_options_.generic_options.sparse_feature_extractor;
 }
 
 const c_sparse_feature_extractor_options & c_image_stacking_options::sparse_feature_extractor_options() const
 {
-  return frame_registration_options_.feature_options.sparse_feature_extractor;
+  return frame_registration_options_.generic_options.sparse_feature_extractor;
 }
 
 c_sparse_feature_detector_options & c_image_stacking_options::sparse_feature_detector_options()
@@ -453,27 +453,22 @@ c_frame_registration::ptr c_image_stacking_options::create_frame_registration() 
 {
   switch (frame_registration_options_.registration_method) {
 
-    case frame_registration_method_surf:
-      return c_feature_based_registration::create(frame_registration_options_.base_options,
-          frame_registration_options_.feature_options);
+    case frame_registration_generic:
+      return c_generic_frame_registration::create(frame_registration_options_.base_options,
+          frame_registration_options_.generic_options);
 
-    case frame_registration_method_planetary_disk:
+    case frame_registration_planetary_disk:
       return c_planetary_disk_registration::create(frame_registration_options_.base_options,
           frame_registration_options_.planetary_disk_options);
 
-    case frame_registration_method_star_field:
+    case frame_registration_star_field:
       return c_star_field_registration::create(frame_registration_options_.base_options,
           frame_registration_options_.star_field_options);
 
-    case frame_registration_method_jovian_derotate:
+    case frame_registration_jovian_derotate:
       return c_jovian_rotation_registration::create(frame_registration_options_.base_options,
           frame_registration_options_.planetary_disk_options,
           frame_registration_options_.jovian_derotation_options);
-
-    case frame_registration_method_mm:
-      return c_mm_registration::create(frame_registration_options_.base_options,
-          frame_registration_options_.feature_options,
-          frame_registration_options_.mm_options);
 
     default:
       break;
@@ -1462,7 +1457,7 @@ bool c_image_stacking_pipeline::actual_run()
     }
 
     switch ( registration_options.registration_method ) {
-    case frame_registration_method_jovian_derotate :
+    case frame_registration_jovian_derotate :
       if ( registration_options.jovian_derotation_options.align_jovian_disk_horizontally ) {
 
         c_jovian_rotation_registration::ptr jovian_derotation =

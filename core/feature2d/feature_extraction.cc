@@ -18,7 +18,6 @@ template<>
 const c_enum_member *members_of<FEATURE2D_TYPE>()
 {
   static constexpr c_enum_member members[] = {
-
       { FEATURE2D_ORB, "ORB", "" },
       { FEATURE2D_BRISK, "BRISK", "" },
       { FEATURE2D_MSER, "MSER", "" },
@@ -64,6 +63,12 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
 #if HAVE_FEATURE2D_HL
       { FEATURE2D_HL, "HL", "" },
 #endif
+#if HAVE_STAR_EXTRACTOR
+      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
+#endif
       { FEATURE2D_UNKNOWN, nullptr, "" },
   };
 
@@ -98,6 +103,9 @@ members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 #if HAVE_FEATURE2D_HL
       { SPARSE_FEATURE_DETECTOR_HL, "HL" },
 #endif
+#if HAVE_STAR_EXTRACTOR
+      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
+#endif
       { SPARSE_FEATURE_DETECTOR_UNKNOWN, nullptr },
   };
 
@@ -115,30 +123,33 @@ members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
       {SPARSE_FEATURE_DESCRIPTOR_ORB, "ORB"},
       {SPARSE_FEATURE_DESCRIPTOR_BRISK, "BRISK"},
       {SPARSE_FEATURE_DESCRIPTOR_KAZE, "KAZE"},
-    #if HAVE_FEATURE2D_SIFT
+#if HAVE_FEATURE2D_SIFT
       {SPARSE_FEATURE_DESCRIPTOR_SIFT, "SIFT"},
-    #endif
-    #if HAVE_FEATURE2D_FREAK
+#endif
+#if HAVE_FEATURE2D_FREAK
       {SPARSE_FEATURE_DESCRIPTOR_FREAK, "FREAK"},
-    #endif
-    #if HAVE_FEATURE2D_BRIEF
+#endif
+#if HAVE_FEATURE2D_BRIEF
       {SPARSE_FEATURE_DESCRIPTOR_BRIEF, "BRIEF"},
-    #endif
-    #if HAVE_FEATURE2D_LUCID
+#endif
+#if HAVE_FEATURE2D_LUCID
       {SPARSE_FEATURE_DESCRIPTOR_LUCID, "LUCID"},
-    #endif
-    #if HAVE_FEATURE2D_LATCH
+#endif
+#if HAVE_FEATURE2D_LATCH
       {SPARSE_FEATURE_DESCRIPTOR_LATCH, "LATCH"},
-    #endif
-    #if HAVE_FEATURE2D_DAISY
+#endif
+#if HAVE_FEATURE2D_DAISY
       {SPARSE_FEATURE_DESCRIPTOR_DAISY, "DAISY"},
-    #endif
-    #if HAVE_FEATURE2D_VGG
+#endif
+#if HAVE_FEATURE2D_VGG
       {SPARSE_FEATURE_DESCRIPTOR_VGG, "VGG"},
-    #endif
-    #if HAVE_FEATURE2D_BOOST
+#endif
+#if HAVE_FEATURE2D_BOOST
       {SPARSE_FEATURE_DESCRIPTOR_BOOST, "BOOST"},
-    #endif
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
+#endif
       {SPARSE_FEATURE_DESCRIPTOR_UNKNOWN, nullptr}
   };
 
@@ -252,9 +263,10 @@ const c_enum_member * members_of<BoostDesc_Type>()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_sparse_feature_extractor::c_sparse_feature_extractor(const c_feature2d::ptr & detector,
-    const c_feature2d::ptr & descriptor) :
+    const c_feature2d::ptr & descriptor, int max_keypoints) :
     detector_(detector),
-        descriptor_(descriptor)
+    descriptor_(descriptor),
+    max_keypoints_(max_keypoints)
 {
 }
 
@@ -265,6 +277,16 @@ bool c_sparse_feature_extractor::detect(cv::InputArray image,
 {
   INSTRUMENT_REGION("");
   detector_->detect(image, keypoints, mask);
+
+  if ( max_keypoints_ > 0 && keypoints.size() > max_keypoints_ ) {
+    std::sort(keypoints.begin(), keypoints.end(),
+        [](const cv::KeyPoint & prev, const cv::KeyPoint & next )-> bool {
+          return prev.response > next.response;
+        });
+
+    keypoints.erase(keypoints.begin() + max_keypoints_, keypoints.end());
+  }
+
   return true;
 }
 
@@ -305,15 +327,18 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
   }
 
   //
-  // Detect sparse 2D features (keypoints) and compute descriptots
+  // Detect sparse 2D features (keypoints) and compute descriptors
   //
 
   keypoints.clear();
-  keypoints.reserve(std::max(max_keypoints_to_extract_, 1000));
+  keypoints.reserve(std::max(max_keypoints_, 1000));
+
+  CF_DEBUG("H descriptor_=%p", descriptor_.get());
 
   // Prefer detectAndCompute() if possible because it can be faster for some detectors
   if ( !descriptor_ || descriptor_.get() == detector_.get() ) {
 
+    CF_DEBUG("H");
     detector_->detectAndCompute(
             image,
             mask,
@@ -333,6 +358,7 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
   }
   else {
 
+    CF_DEBUG("H");
     detector_->detect(image,
         keypoints,
         mask);
@@ -343,14 +369,14 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
     }
 
 
-    if ( max_keypoints_to_extract_ > 0 && (int)keypoints.size() > max_keypoints_to_extract_ ) {
+    if ( max_keypoints_ > 0 && (int)keypoints.size() > max_keypoints_ ) {
 
       std::sort(keypoints.begin(), keypoints.end(),
           [](const cv::KeyPoint & prev, const cv::KeyPoint & next )-> bool {
             return prev.response > next.response;
           });
 
-      keypoints.erase(keypoints.begin() + max_keypoints_to_extract_, keypoints.end());
+      keypoints.erase(keypoints.begin() + max_keypoints_, keypoints.end());
     }
 
     descriptor_->compute(image,
@@ -409,6 +435,11 @@ c_feature2d::ptr create_sparse_feature_detector(const c_sparse_feature_detector_
   case FEATURE2D_HL :
     return create_feature2d(options.hl);
 #endif
+#if HAVE_STAR_EXTRACTOR
+  case FEATURE2D_STAR_EXTRACTOR:
+    return create_feature2d(options.star_extractor);
+#endif
+
   default :
     CF_ERROR("Unknown or not supported "
         "feature detector requested: %d",
@@ -436,7 +467,7 @@ c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_f
     }
   }
 
-  return c_sparse_feature_extractor::create(detector, descriptor);
+  return c_sparse_feature_extractor::create(detector, descriptor, options.detector.max_keypoints);
 }
 
 
@@ -489,6 +520,11 @@ c_feature2d::ptr create_sparse_descriptor_extractor(const c_sparse_feature_descr
   case FEATURE2D_BOOST :
     return create_feature2d(options.boost);
 #endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  case FEATURE2D_TRIANGLE_EXTRACTOR :
+    return create_feature2d(options.triangles);
+#endif
+
   default :
     CF_ERROR("Unknown or not supported descriptor "
         "extractor requested: %d",

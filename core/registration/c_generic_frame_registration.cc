@@ -5,7 +5,8 @@
  *      Author: amyznikov
  */
 
-#include "c_feature_based_registration.h"
+#include "c_generic_frame_registration.h"
+
 #include <core/proc/normalize.h>
 #include <core/debug.h>
 
@@ -23,90 +24,80 @@ static void extract_matched_positions(const std::vector<cv::KeyPoint> & current_
   }
 }
 
-c_feature_based_registration::c_feature_based_registration()
+c_generic_frame_registration::c_generic_frame_registration()
 {
 }
 
-c_feature_based_registration::c_feature_based_registration(const c_feature_based_registration_options & opts)
+c_generic_frame_registration::c_generic_frame_registration(const c_sparse_feature_options & opts)
   : feature_options_(opts)
 {
 }
 
-c_feature_based_registration::c_feature_based_registration(const c_frame_registration_base_options & base_opts, const c_feature_based_registration_options & opts)
+c_generic_frame_registration::c_generic_frame_registration(const c_frame_registration_base_options & base_opts, const c_sparse_feature_options & opts)
   : base(base_opts), feature_options_(opts)
 {
 }
 
 
-c_feature_based_registration::ptr c_feature_based_registration::create()
+c_generic_frame_registration::ptr c_generic_frame_registration::create()
 {
-  return c_feature_based_registration::ptr(new c_feature_based_registration());
+  return ptr(new this_class());
 }
 
-c_feature_based_registration::ptr c_feature_based_registration::create(const c_feature_based_registration_options & opts)
+c_generic_frame_registration::ptr c_generic_frame_registration::create(const c_sparse_feature_options & feature_opts)
 {
-  return c_feature_based_registration::ptr(new c_feature_based_registration(opts));
+  return ptr(new this_class(feature_opts));
 }
 
-c_feature_based_registration::ptr c_feature_based_registration::create(const c_frame_registration_base_options & base_opts, const c_feature_based_registration_options & opts)
+c_generic_frame_registration::ptr c_generic_frame_registration::create(const c_frame_registration_base_options & base_opts,
+    const c_sparse_feature_options & feature_opts)
 {
-  return c_feature_based_registration::ptr(new c_feature_based_registration(base_opts, opts));
+  return ptr(new this_class(base_opts, feature_opts));
 }
 
-c_feature_based_registration_options & c_feature_based_registration::feature_options()
-{
-  return feature_options_;
-}
-
-const c_feature_based_registration_options & c_feature_based_registration::feature_options() const
+c_sparse_feature_options & c_generic_frame_registration::feature_options()
 {
   return feature_options_;
 }
 
-const c_feature2d::ptr  & c_feature_based_registration::set_keypoints_detector(const c_feature2d::ptr & detector)
+const c_sparse_feature_options & c_generic_frame_registration::feature_options() const
 {
-  return this->keypoints_detector_ = detector;
+  return feature_options_;
 }
 
-const c_feature2d::ptr & c_feature_based_registration::keypoints_detector() const
+const c_sparse_feature_extractor::ptr & c_generic_frame_registration::set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor)
 {
-  return this->keypoints_detector_;
+  return this->keypoints_extractor_ = extractor;
 }
-//
-//void c_feature_based_registration::set_feature_hessian_threshold(double v)
-//{
-//  feature_options_. hessianThreshold = v;
-//}
-//
-//double c_feature_based_registration::feature_hessian_threshold() const
-//{
-//  return feature_options_.hessianThreshold;
-//}
 
+const c_sparse_feature_extractor::ptr & c_generic_frame_registration::keypoints_extractor() const
+{
+  return this->keypoints_extractor_;
+}
 
-const std::vector<cv::KeyPoint> & c_feature_based_registration::reference_keypoints() const
+const std::vector<cv::KeyPoint> & c_generic_frame_registration::reference_keypoints() const
 {
   return reference_keypoints_;
 }
 
-const cv::Mat & c_feature_based_registration::reference_descriptors() const
+const cv::Mat & c_generic_frame_registration::reference_descriptors() const
 {
   return reference_descriptors_;
 }
 
-const std::vector<cv::KeyPoint> & c_feature_based_registration::current_keypoints() const
+const std::vector<cv::KeyPoint> & c_generic_frame_registration::current_keypoints() const
 {
   return current_keypoints_;
 }
 
-const cv::Mat & c_feature_based_registration::current_descriptors() const
+const cv::Mat & c_generic_frame_registration::current_descriptors() const
 {
   return current_descriptors_;
 }
 
-c_feature2d::ptr c_feature_based_registration::create_keypoints_detector() const
+c_sparse_feature_extractor::ptr c_generic_frame_registration::create_keypoints_extractor() const
 {
-  return create_sparse_feature_detector(feature_options_.sparse_feature_extractor.detector);
+  return create_sparse_feature_extractor(feature_options_.sparse_feature_extractor);
 }
 
 
@@ -114,7 +105,7 @@ c_feature2d::ptr c_feature_based_registration::create_keypoints_detector() const
 // Create image appropriate for sift/surf/orb/etc feature detection
 // TODO: Check the Christopher Tsai "Effects of 2-D Preprocessing on Feature Extraction"
 //    <https://pdfs.semanticscholar.org/185e/62d607becc8d0ee2409a224a36c58b084ab3.pdf>
-bool c_feature_based_registration::create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
+bool c_generic_frame_registration::create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
     cv::OutputArray dst, cv::OutputArray dstmsk) const
 {
   cv::Mat tmp;
@@ -127,15 +118,15 @@ bool c_feature_based_registration::create_feature_image(cv::InputArray src, cv::
 }
 
 
-bool c_feature_based_registration::extract_reference_features(cv::InputArray reference_feature_image,
+bool c_generic_frame_registration::extract_reference_features(cv::InputArray reference_feature_image,
     cv::InputArray reference_feature_mask)
 {
-  if ( !keypoints_detector_ && !set_keypoints_detector(create_keypoints_detector()) ) {
-    CF_FATAL("c_feature_based_image_registration:: setup keypoints detector fails");
+  if ( !keypoints_extractor_ && !set_keypoints_extractor(create_keypoints_extractor()) ) {
+    CF_FATAL("c_feature_based_image_registration:: set_keypoints_extractor() fails");
     return false;
   }
 
-  CF_DEBUG("keypoints_detector_=%p (%s)",  keypoints_detector_.get(), keypoints_detector_ ? typeid(*keypoints_detector_.get()).name() : "");
+  CF_DEBUG("keypoints_detector_=%p (%s)",  keypoints_extractor_.get(), keypoints_extractor_ ? typeid(*keypoints_extractor_.get()).name() : "");
 
   CF_DEBUG("reference_feature_image: %dx%d %d channels %d depth",
       reference_feature_image.cols(), reference_feature_image.rows(),
@@ -153,8 +144,8 @@ bool c_feature_based_registration::extract_reference_features(cv::InputArray ref
   CF_DEBUG("reference_descriptors_.release()");
   reference_descriptors_.release();
 
-  CF_DEBUG("keypoints_detector_->detectAndCompute()");
-  keypoints_detector_->detectAndCompute(reference_feature_image, reference_feature_mask,
+  CF_DEBUG("keypoints_detector_->detectAndCompute(): keypoints_detector_=%p", keypoints_extractor_.get());
+  keypoints_extractor_->detectAndCompute(reference_feature_image, reference_feature_mask,
       reference_keypoints_,
       reference_descriptors_);
 
@@ -192,14 +183,14 @@ bool c_feature_based_registration::extract_reference_features(cv::InputArray ref
   return true;
 }
 
-bool c_feature_based_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
+bool c_generic_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
     cv::OutputArray dst, cv::OutputArray dstmsk,
     double scale) const
 {
   return base::create_ecc_image(src, srcmsk, dst, dstmsk, scale);
 }
 
-bool c_feature_based_registration::detect_and_match_keypoints(
+bool c_generic_frame_registration::detect_and_match_keypoints(
     cv::InputArray current_feature_image,
     cv::InputArray current_feature_mask,
 
@@ -237,7 +228,7 @@ bool c_feature_based_registration::detect_and_match_keypoints(
           *_current_matches12 :
           local_current_matches12;
 
-  keypoints_detector_->detectAndCompute(current_feature_image, current_feature_mask,
+  keypoints_extractor_->detectAndCompute(current_feature_image, current_feature_mask,
       current_keypoints, current_descriptors);
 
   CF_DEBUG("current_keypoints.size()=%zu",
@@ -290,7 +281,7 @@ bool c_feature_based_registration::detect_and_match_keypoints(
   return true;
 }
 
-bool c_feature_based_registration::estimate_feature_transform(cv::InputArray current_feature_image,
+bool c_generic_frame_registration::estimate_feature_transform(cv::InputArray current_feature_image,
     cv::InputArray current_feature_mask,
     cv::Mat1f * current_transform)
 {

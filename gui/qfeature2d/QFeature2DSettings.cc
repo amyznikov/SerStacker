@@ -51,6 +51,16 @@ QSparseFeatureDetectorSettingsWidget::QSparseFeatureDetectorSettingsWidget(QWidg
               updateFeatureExtractorSpecificControls();
             }
           });
+
+  max_keypoints_ctl =
+      add_numeric_box<int>("max_keypoints",
+          [this](int v) {
+            if ( options_ && options_->max_keypoints != v ) {
+              options_->max_keypoints = v;
+              emit parameterChanged();
+            }
+          });
+
 }
 
 void QSparseFeatureDetectorSettingsWidget::set_feature_detector_options(c_sparse_feature_detector_options * opts)
@@ -247,6 +257,7 @@ void QSparseFeatureDetectorSettingsWidget::onupdatecontrols()
   }
   else {
     featureExtractorType_ctl->setCurrentItem(options_->type);
+    max_keypoints_ctl->setValue(options_->max_keypoints);
     populateFeatureExtractorSpecificControls();
     setEnabled(true);
   }
@@ -264,6 +275,7 @@ QSparseDescriptorExtractorSettingsWidget::QSparseDescriptorExtractorSettingsWidg
                 options_->use_detector_options = checked;
                 descriptorExtractorType_ctl->setEnabled(!options_->use_detector_options);
                 updateDescriptorExtractorSpecificControls();
+                emit parameterChanged();
               }
           });
 
@@ -274,6 +286,7 @@ QSparseDescriptorExtractorSettingsWidget::QSparseDescriptorExtractorSettingsWidg
             if ( options_ && options_->type != v ) {
               options_->type = v;
               updateDescriptorExtractorSpecificControls();
+              emit parameterChanged();
             }
           });
 

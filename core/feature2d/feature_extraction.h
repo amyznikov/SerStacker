@@ -14,11 +14,17 @@
 #define __feature_detection_h__
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
 
 #if HAVE_xfeatures2d
 # include <opencv2/xfeatures2d.hpp>
 #endif // HAVE_xfeatures2d
+
+#include "c_star_extractor.h"
+#define HAVE_STAR_EXTRACTOR 1
+
+#include "feature_matching/c_triangle_matcher.h"
+#define HAVE_TRIANGLE_EXTRACTOR 1
+
 
 #include <core/ssprintf.h>
 
@@ -118,6 +124,13 @@ enum FEATURE2D_TYPE {
 #if HAVE_FEATURE2D_HL
   FEATURE2D_HL = 20,  // HarrisLaplaceFeatureDetector
 #endif
+#if HAVE_STAR_EXTRACTOR
+  FEATURE2D_STAR_EXTRACTOR,
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  FEATURE2D_TRIANGLE_EXTRACTOR,
+#endif
+
 };
 
 
@@ -148,6 +161,10 @@ enum SPARSE_FEATURE_DETECTOR_TYPE
 #if HAVE_FEATURE2D_HL
   SPARSE_FEATURE_DETECTOR_HL = FEATURE2D_HL,
 #endif
+#if HAVE_STAR_EXTRACTOR
+  SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR = FEATURE2D_STAR_EXTRACTOR,
+#endif
+
 };
 
 enum SPARSE_FEATURE_DESCRIPTOR_TYPE
@@ -183,6 +200,9 @@ enum SPARSE_FEATURE_DESCRIPTOR_TYPE
 #endif
 #if HAVE_FEATURE2D_BOOST
   SPARSE_FEATURE_DESCRIPTOR_BOOST = FEATURE2D_BOOST,
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  SPARSE_FEATURE_DESCRIPTOR_TRIANGLE = FEATURE2D_TRIANGLE_EXTRACTOR,
 #endif
 };
 
@@ -314,6 +334,18 @@ template<> struct feature2d_traits<cv::xfeatures2d::HarrisLaplaceFeatureDetector
   static constexpr FEATURE2D_TYPE type = FEATURE2D_HL;
 };
 #endif
+#if HAVE_STAR_EXTRACTOR
+template<> struct feature2d_traits<c_star_extractor> {
+  static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR_EXTRACTOR;
+};
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+template<> struct feature2d_traits<c_triangle_extractor> {
+  static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;
+};
+#endif
+
+
 
 class c_feature2d
 {
@@ -1295,6 +1327,76 @@ protected:
 };
 #endif
 
+#if HAVE_STAR_EXTRACTOR
+class c_feature2d_star_extractor :
+    public c_feature2d_base<c_star_extractor>
+{
+public:
+  typedef c_feature2d_star_extractor this_class;
+  typedef c_feature2d_base base;
+
+  struct options :
+      public base::options
+  {
+    using feature2d_class = this_class;
+    int numOctaves = 4;
+  };
+
+  static ptr create(const options * opts = nullptr)
+  {
+    return ptr(new this_class(opts));
+  }
+
+protected:
+  c_feature2d_star_extractor(const options * opts) :
+      base(&this->opts_),
+          opts_(opts ? *opts : options())
+  {
+    feature2d_ =
+        c_star_extractor::create(
+            opts_.numOctaves);
+  }
+
+protected:
+  const options opts_;
+};
+#endif
+
+#if HAVE_TRIANGLE_EXTRACTOR
+class c_feature2d_triangle_extractor :
+    public c_feature2d_base<c_triangle_extractor>
+{
+public:
+  typedef c_feature2d_triangle_extractor this_class;
+  typedef c_feature2d_base base;
+
+  struct options :
+      public base::options
+  {
+    using feature2d_class = this_class;
+    int min_side_size = 10;
+  };
+
+  static ptr create(const options * opts = nullptr)
+  {
+    return ptr(new this_class(opts));
+  }
+
+protected:
+  c_feature2d_triangle_extractor(const options * opts) :
+      base(&this->opts_),
+          opts_(opts ? *opts : options())
+  {
+    feature2d_ =
+        c_triangle_extractor::create(opts_.min_side_size);
+  }
+
+protected:
+  const options opts_;
+};
+#endif
+
+
 template<class feature2d_options>
 c_feature2d::ptr create_feature2d(const feature2d_options & options)
 {
@@ -1308,26 +1410,29 @@ inline constexpr bool can_detect_features(enum FEATURE2D_TYPE type)
     case FEATURE2D_BRISK :
     case FEATURE2D_KAZE :
     case FEATURE2D_AKAZE :
-    #if HAVE_FEATURE2D_SIFT
-  case FEATURE2D_SIFT :
-    #endif
+#if HAVE_FEATURE2D_SIFT
+    case FEATURE2D_SIFT :
+#endif
 #if HAVE_FEATURE2D_SURF
-  case FEATURE2D_SURF :
-    #endif
-  case FEATURE2D_MSER :
+    case FEATURE2D_SURF :
+#endif
+    case FEATURE2D_MSER :
     case FEATURE2D_FAST :
     case FEATURE2D_AGAST :
     case FEATURE2D_GFTT :
     case FEATURE2D_BLOB :
-    #if HAVE_FEATURE2D_STAR
-  case FEATURE2D_STAR :
-    #endif
+#if HAVE_FEATURE2D_STAR
+    case FEATURE2D_STAR :
+#endif
 #if HAVE_FEATURE2D_MSD
-  case FEATURE2D_MSD :
-    #endif
+    case FEATURE2D_MSD :
+#endif
 #if HAVE_FEATURE2D_HL
-  case FEATURE2D_HL :
-    #endif
+    case FEATURE2D_HL :
+#endif
+#if HAVE_STAR_EXTRACTOR
+    case FEATURE2D_STAR_EXTRACTOR:
+#endif
     return true;
 
   default :
@@ -1340,37 +1445,37 @@ inline constexpr bool can_detect_features(enum FEATURE2D_TYPE type)
 inline constexpr bool can_compute_decriptors(enum FEATURE2D_TYPE type)
 {
   switch ( type ) {
-  case FEATURE2D_ORB :
+    case FEATURE2D_ORB :
     case FEATURE2D_BRISK :
     case FEATURE2D_KAZE :
     case FEATURE2D_AKAZE :
-    #if HAVE_FEATURE2D_SIFT
-  case FEATURE2D_SIFT :
-    #endif
+#if HAVE_FEATURE2D_SIFT
+    case FEATURE2D_SIFT :
+#endif
 #if HAVE_FEATURE2D_SURF
-  case FEATURE2D_SURF :
-    #endif
+    case FEATURE2D_SURF :
+#endif
 #if HAVE_FEATURE2D_FREAK
-  case FEATURE2D_FREAK :
-    #endif
+    case FEATURE2D_FREAK :
+#endif
 #if HAVE_FEATURE2D_BRIEF
-  case FEATURE2D_BRIEF :
-    #endif
+    case FEATURE2D_BRIEF :
+#endif
 #if HAVE_FEATURE2D_LUCID
-  case FEATURE2D_LUCID :
-    #endif
+    case FEATURE2D_LUCID :
+#endif
 #if HAVE_FEATURE2D_LATCH
-  case FEATURE2D_LATCH :
-    #endif
+    case FEATURE2D_LATCH :
+#endif
 #if HAVE_FEATURE2D_DAISY
-  case FEATURE2D_DAISY :
-    #endif
+    case FEATURE2D_DAISY :
+#endif
 #if HAVE_FEATURE2D_VGG
-  case FEATURE2D_VGG :
-    #endif
+    case FEATURE2D_VGG :
+#endif
 #if HAVE_FEATURE2D_BOOST
-  case FEATURE2D_BOOST :
-    #endif
+    case FEATURE2D_BOOST :
+#endif
     return true;
   default :
     break;
@@ -1391,8 +1496,10 @@ struct c_sparse_feature_detector_options
 #if HAVE_FEATURE2D_SURF
       SPARSE_FEATURE_DETECTOR_SURF;
 #else
-    SPARSE_FEATURE_DETECTOR_AKAZE;
+      SPARSE_FEATURE_DETECTOR_AKAZE;
 #endif
+
+  int max_keypoints = 1000;
 
   c_feature2d_orb::options orb;
   c_feature2d_brisk::options brisk;
@@ -1400,24 +1507,27 @@ struct c_sparse_feature_detector_options
   c_feature2d_akaze::options akaze;
 #if HAVE_FEATURE2D_SIFT
   c_feature2d_sift::options sift;
-  #endif
+#endif
 #if HAVE_FEATURE2D_SURF
   c_feature2d_surf::options surf;
-  #endif
+#endif
   c_feature2d_mser::options mser;
   c_feature2d_fast::options fast;
   c_feature2d_agast::options agast;
   c_feature2d_gftt::options gftt;
   c_feature2d_blob::options blob;
-  #if HAVE_FEATURE2D_STAR
+#if HAVE_FEATURE2D_STAR
   c_feature2d_star::options star;
-  #endif
+#endif
 #if HAVE_FEATURE2D_MSD
   c_feature2d_msd::options msd;
-  #endif
+#endif
 #if HAVE_FEATURE2D_HL
   c_feature2d_hl::options hl;
-  #endif
+#endif
+#if HAVE_STAR_EXTRACTOR
+  c_feature2d_star_extractor::options star_extractor;
+#endif
 };
 
 
@@ -1462,7 +1572,10 @@ struct c_sparse_feature_descriptor_options
 #endif
 #if HAVE_FEATURE2D_BOOST
   c_feature2d_boost::options boost;
-  #endif
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  c_feature2d_triangle_extractor::options triangles;
+#endif
 };
 
 struct c_sparse_feature_extractor_options
@@ -1483,9 +1596,10 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   static ptr create(const c_feature2d::ptr & feature_detector,
-      const c_feature2d::ptr & descriptor_extrator = nullptr)
+      const c_feature2d::ptr & descriptor_extrator = nullptr,
+      int max_keypoints = -1)
   {
-    return ptr(new this_class(feature_detector, descriptor_extrator));
+    return ptr(new this_class(feature_detector, descriptor_extrator, max_keypoints));
   }
 
 
@@ -1499,14 +1613,14 @@ public:
     return descriptor_ ? descriptor_->type() : FEATURE2D_UNKNOWN;
   }
 
-  void set_max_keypoints_to_extract(int v)
+  void set_max_keypoints(int v)
   {
-    max_keypoints_to_extract_ = v;
+    max_keypoints_ = v;
   }
 
-  int max_keypoints_to_extract() const
+  int max_keypoints() const
   {
-    return max_keypoints_to_extract_;
+    return max_keypoints_;
   }
 
   const c_feature2d::ptr & detector() const
@@ -1534,12 +1648,13 @@ public:
 
 protected:
   c_sparse_feature_extractor(const c_feature2d::ptr & detector,
-      const c_feature2d::ptr & descriptor = nullptr);
+      const c_feature2d::ptr & descriptor = nullptr,
+      int max_keypoints = -1);
 
 protected:
   c_feature2d::ptr detector_;
   c_feature2d::ptr descriptor_;
-  int max_keypoints_to_extract_ = -1;
+  int max_keypoints_;
 };
 
 

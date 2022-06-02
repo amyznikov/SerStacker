@@ -9,29 +9,7 @@
 #define __c_frame_registration_h__
 
 #include <core/proc/extract_channel.h>
-#include <core/proc/eccalign.h>
-//#include <core/proc/c_gaussian_filter.h>
-
-struct c_ecc_options {
-  double scale = 1.;
-  double eps = 0.2;
-  double min_rho = 0.8;
-  double input_smooth_sigma = 1.0;
-  double reference_smooth_sigma = 1.0;
-  double update_step_scale = 1.5;
-  double normalization_noise = 0.01;
-  int normalization_scale = 0;
-  int max_iterations = 15;
-};
-
-struct c_eccflow_options {
-  double update_multiplier = 1.5;
-  double input_smooth_sigma = 0;
-  double reference_smooth_sigma = 0;
-  int max_iterations = 1;
-  int support_scale = 4;
-  int normalization_scale = -1;
-};
+#include <core/registration/c_ecc_options.h>
 
 struct c_frame_registration_base_options {
 
@@ -127,7 +105,7 @@ public: // opts
   virtual void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
 
-  // c_ecc_forward_additive & ecc();
+  const c_ecch & ecch() const;
   const c_ecc_forward_additive & ecc() const;
 
   // c_ecch_flow & eccflow();
@@ -176,9 +154,6 @@ public: // artifacts
   const cv::Mat & current_ecc_image() const;
   const cv::Mat & current_ecc_mask() const;
 
-//  const cv::Rect & reference_ROI() const;
-//  const cv::Rect & current_ROI() const;
-
   const cv::Mat1f & current_transform() const;
   const cv::Mat2f & current_remap() const;
 
@@ -221,6 +196,7 @@ protected:
 
   // c_gaussian_filter gaussian_filter_;
 
+  c_ecch ecch_;
   c_ecc_forward_additive ecc_;
   c_ecch_flow eccflow_;
 

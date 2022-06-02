@@ -30,17 +30,6 @@ enum ECC_MOTION_TYPE {
     ECC_MOTION_QUADRATIC   = 5, // Quadratic form, 12 parameters are estimated
 };
 
-//const extern struct ecc_motion_type_desc {
-//  const char * name;
-//  enum ECC_MOTION_TYPE value;
-//} ecc_motion_types[];
-//
-//std::string toStdString(enum ECC_MOTION_TYPE m);
-//enum ECC_MOTION_TYPE fromStdString(const std::string  & s,
-//    enum ECC_MOTION_TYPE defval );
-//
-
-
 // For the images destined for later sharpening use only LINEAR and AREA interpolation
 // to prevent high-frequency moire patterns.
 enum ECC_INTERPOLATION_METHOD {
@@ -57,15 +46,6 @@ enum ECC_INTERPOLATION_METHOD {
 };
 
 
-//const extern struct ecc_interpolation_method_desc {
-//  const char * name;
-//  enum ECC_INTERPOLATION_METHOD value;
-//} ecc_interpolation_methods[];
-//
-//std::string toStdString(enum ECC_INTERPOLATION_METHOD m);
-//enum ECC_INTERPOLATION_METHOD fromStdString(const std::string  & s,
-//    enum ECC_INTERPOLATION_METHOD defval );
-
 enum ECC_BORDER_MODE {
   ECC_BORDER_UNKNOWN     = -1,
   ECC_BORDER_CONSTANT    = cv::BORDER_CONSTANT,
@@ -77,15 +57,6 @@ enum ECC_BORDER_MODE {
   ECC_BORDER_DEFAULT     = cv::BORDER_DEFAULT,
   ECC_BORDER_ISOLATED    = cv::BORDER_ISOLATED
 };
-//
-//const extern struct ecc_border_mode_desc {
-//  const char * name;
-//  enum ECC_BORDER_MODE value;
-//} ecc_border_modes[];
-//
-//std::string toStdString(enum ECC_BORDER_MODE m);
-//enum ECC_BORDER_MODE fromStdString(const std::string  & s,
-//    enum ECC_BORDER_MODE defval );
 
 //
 // args:
@@ -208,12 +179,6 @@ public:
   void set_update_step_scale(double v);
   double update_step_scale() const;
 
-  //  void set_pyramid_normalization_level(int v);
-  //  int pyramid_normalization_level() const;
-
-  //  void set_pyramid_normalization_regularization_term(double v);
-  //  double pyramid_normalization_regularization_term() const;
-
   virtual bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray()) = 0;
 
@@ -234,8 +199,6 @@ protected:
   enum ECC_MOTION_TYPE ecc_motion_type_ = ECC_MOTION_AFFINE;
   enum ECC_INTERPOLATION_METHOD image_interpolation_method_ = ECC_INTER_LINEAR;
   int max_iterations_ = 30;
-  //  int pyramid_normalization_level_ = 0;
-  //  double pyramid_normalization_regularization_term_ = 1.;
 
   double reference_smooth_sigma_ = 1.;
   double input_smooth_sigma_ = 1.;
@@ -348,13 +311,13 @@ protected: // Notations are from the paper of  B. Pan, K. Li and W. Tong
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Coarse-To-Fine registration using umage pyramids
-class c_ecc_pyramide_align
+// Coarse-To-Fine registration using image pyramids
+class c_ecch
 {
 public:
-  typedef c_ecc_pyramide_align this_class;
+  typedef c_ecch this_class;
 
-  c_ecc_pyramide_align(c_ecc_align * method = nullptr) ;
+  c_ecch(c_ecc_align * method = nullptr) ;
 
   bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());

@@ -35,6 +35,7 @@ protected:
 protected:
   c_sparse_feature_detector_options * options_ = Q_NULLPTR;
   QEnumComboBox<SPARSE_FEATURE_DETECTOR_TYPE> * featureExtractorType_ctl = Q_NULLPTR;
+  QNumberEditBox * max_keypoints_ctl = Q_NULLPTR;
   QList<QWidget*> controls_;
 };
 

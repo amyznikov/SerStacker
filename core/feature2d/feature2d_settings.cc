@@ -552,6 +552,36 @@ bool save_settings(c_config_setting settings, const c_feature2d_boost::options &
 }
 #endif
 
+#if HAVE_STAR_EXTRACTOR
+
+bool load_settings(c_config_setting settings, c_feature2d_star_extractor::options * args)
+{
+  BEGIN_LOAD_OPTIONS(settings)
+  END_LOAD_OPTIONS(settings)
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::options & )
+{
+  return true;
+}
+#endif
+
+#if HAVE_TRIANGLE_EXTRACTOR
+bool load_settings(c_config_setting settings, c_feature2d_triangle_extractor::options * options)
+{
+  BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *options, min_side_size);
+  END_LOAD_OPTIONS(settings)
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_feature2d_triangle_extractor::options & args)
+{
+  SAVE_SETINGS(min_side_size);
+  return true;
+}
+#endif
 
 
 bool save_settings(c_config_setting settings, const c_flann_based_feature2d_matcher_options & args)
@@ -584,6 +614,20 @@ bool load_settings(c_config_setting settings, c_snorm_based_feature2d_matcher_op
   BEGIN_LOAD_OPTIONS(settings)
   LOAD_OPTIONS(settings, *options, max_acceptable_distance);
   LOAD_OPTIONS(settings, *options, lowe_ratio);
+  END_LOAD_OPTIONS(settings)
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_triangle_matcher_options & args)
+{
+  SAVE_SETINGS(eps);
+  return true;
+}
+
+bool load_settings(c_config_setting settings, c_triangle_matcher_options * options)
+{
+  BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *options, eps);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -814,6 +858,11 @@ bool save_settings(c_config_setting section, const c_feature2d::ptr & obj)
     return save_settings(section,
         *static_cast<const c_feature2d_hl::options*>(p->opts()));
 #endif
+#if HAVE_STAR_EXTRACTOR
+  case FEATURE2D_STAR_EXTRACTOR :
+    return save_settings(section,
+        *static_cast<const c_feature2d_star_extractor::options*>(p->opts()));
+#endif
   default :
     CF_ERROR("Unknown or not supported feature2d object type=%d (%s)",
         (int )(p->type()), toString(p->type()));
@@ -972,6 +1021,9 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
   if( (subsection = settings[toString(FEATURE2D_MATCHER_SNORM)]).isGroup() ) {
     load_settings(subsection, &options->snorm);
   }
+  if( (subsection = settings[toString(FEATURE2D_MATCHER_TRIANGLES)]).isGroup() ) {
+    load_settings(subsection, &options->triangles);
+  }
 
   return true;
 }
@@ -1037,16 +1089,16 @@ c_feature2d_matcher::ptr create_sparse_feature_matcher(const c_sparse_feature_ex
 {
   INSTRUMENT_REGION("");
 
-  if ( feature_extractor ) {
-
-    CF_DEBUG("descriptor: \n"
-        "defaultNorm=%d\n"
-        "descriptorType=%d\n"
-        "descriptorSize=%d\n",
-        (int )(feature_extractor->descriptor()->defaultNorm()),
-        (int )(feature_extractor->descriptor()->descriptorType()),
-        (int )(feature_extractor->descriptor()->descriptorSize()));
-  }
+//  if ( feature_extractor ) {
+//
+//    CF_DEBUG("descriptor: \n"
+//        "defaultNorm=%d\n"
+//        "descriptorType=%d\n"
+//        "descriptorSize=%d\n",
+//        (int )(feature_extractor->descriptor()->defaultNorm()),
+//        (int )(feature_extractor->descriptor()->descriptorType()),
+//        (int )(feature_extractor->descriptor()->descriptorSize()));
+//  }
 
 
   //
@@ -1552,6 +1604,10 @@ bool load_settings(c_config_setting settings, c_sparse_feature_detector_options 
     }
   }
 
+  load_settings(settings, "max_keypoints",
+      &options->max_keypoints);
+
+
   c_config_setting group;
 #define LOAD_GROUP(name) \
   if ( (group = settings[#name]).isGroup() ) { \
@@ -1592,6 +1648,9 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_detector_op
 {
   save_settings(settings, "type",
       toString(options.type));
+
+  save_settings(settings, "max_keypoints",
+      options.max_keypoints);
 
 #define SAVE_GROUP(name) \
     save_settings(settings.add_group(#name), \
@@ -1647,6 +1706,9 @@ bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_option
     }
   }
 
+  load_settings(settings, "use_detector_options",
+      &options->use_detector_options);
+
   c_config_setting group;
 #define LOAD_GROUP(name) \
   if ( (group = settings[#name]).isGroup() ) { \
@@ -1684,6 +1746,9 @@ bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_option
 #if HAVE_FEATURE2D_BOOST
   LOAD_GROUP(boost);
 #endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  LOAD_GROUP(triangles);
+#endif
 
 #undef LOAD_GROUP
 
@@ -1696,7 +1761,7 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_
       toString(options.type));
 
   save_settings(settings, "use_detector_options",
-      toString(options.use_detector_options));
+      options.use_detector_options);
 
 #define SAVE_GROUP(name) \
     save_settings(settings.add_group(#name), \
@@ -1750,49 +1815,6 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_o
 
   return true;
 }
-
-
-//
-//bool save_settings(c_config_setting settings, const c_sparse_feature_extractor::ptr & obj)
-//{
-//  c_feature2d::ptr detector =
-//      obj->detector();
-//
-//  c_feature2d::ptr descriptor =
-//      obj->descriptor();
-//
-//  if ( detector ) {
-//
-//    std::string detector_type =
-//        toString(detector->type());
-//
-//    c_config_setting section =
-//        settings.add_group("detector");
-//
-//    save_settings(section, "type",
-//        detector_type);
-//
-//    save_settings(section.add_group(detector_type),
-//        detector);
-//  }
-//
-//  if ( descriptor && descriptor != detector ) {
-//
-//    std::string descriptor_type =
-//        toString(descriptor->type());
-//
-//    c_config_setting section =
-//        settings.add_group("descriptor");
-//
-//    save_settings(section, "type",
-//        descriptor_type);
-//
-//    save_settings(section.add_group(descriptor_type),
-//        descriptor);
-//  }
-//
-//  return true;
-//}
 
 
 

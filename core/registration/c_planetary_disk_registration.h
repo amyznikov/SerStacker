@@ -14,8 +14,8 @@ struct c_planetary_disk_registration_options {
   bool align_planetary_disk_masks = false;
 };
 
-class c_planetary_disk_registration
-    : public c_frame_registration
+class c_planetary_disk_registration :
+  public c_frame_registration
 {
 public:
   typedef c_planetary_disk_registration this_class;

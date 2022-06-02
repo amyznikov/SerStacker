@@ -14,6 +14,7 @@ const c_enum_member * members_of<FEATURE2D_MATCHER_TYPE>()
   static constexpr c_enum_member members[] = {
       { FEATURE2D_MATCHER_HAMMING, "hamming", "" },
       { FEATURE2D_MATCHER_FLANN, "flann", "" },
+      { FEATURE2D_MATCHER_TRIANGLES, "triangle_matcher", "" },
       { FEATURE2D_MATCHER_SNORM, "snorm", "" },
       { FEATURE2D_MATCHER_UNKNOWN, nullptr, "" },
   };
@@ -31,6 +32,8 @@ c_feature2d_matcher::ptr create_sparse_feature_matcher(
     return create_sparse_feature_matcher(options.flann);
   case FEATURE2D_MATCHER_SNORM :
     return create_sparse_feature_matcher(options.snorm);
+  case FEATURE2D_MATCHER_TRIANGLES :
+    return create_sparse_feature_matcher(options.triangles);
   case FEATURE2D_MATCHER_UNKNOWN :
     CF_ERROR("ERROR: c_feature2d_matcher type not specified");
     return nullptr;

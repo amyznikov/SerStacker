@@ -49,6 +49,10 @@ protected:
   QNumberEditBox * normalization_noise_ctl = Q_NULLPTR;
   QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
   QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
+
+  QCheckBox * enable_ecch_ctl = Q_NULLPTR;
+  QNumberEditBox * ecch_minimum_image_size_ctl  = Q_NULLPTR;
+
 };
 
 class QEccflowSettings
@@ -105,48 +109,12 @@ protected:
   QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
   QEccBorderModeCombo * border_ctl = Q_NULLPTR;
 
-  //  void set_registration_channel(int channel);
-  //  int registration_channel() const;
-
-  //  void set_interpolation_flags(int v);
-  //  int interpolation_flags() const;
-
   QCheckBox * enable_ecc_ctl = Q_NULLPTR;
   QEccSettings * ecc_ctl = Q_NULLPTR;
 
   QCheckBox * enable_eccflow_ctl = Q_NULLPTR;
   QEccflowSettings * eccflow_ctl = Q_NULLPTR;
 };
-//
-//class QFeatureBasedRegistrationSettings
-//    : public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QFeatureBasedRegistrationSettings ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QFeatureBasedRegistrationSettings(QWidget * parent = Q_NULLPTR);
-//  QFeatureBasedRegistrationSettings(const QString & prefix, QWidget * parent = Q_NULLPTR);
-//
-//  void set_feature_options(c_feature_based_registration_options * options);
-//  const c_feature_based_registration_options * feature_options() const;
-//
-//protected:
-//  void construct();
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_feature_based_registration_options * feature_options_ =  Q_NULLPTR;
-//  QSparseFeatureExtractorSettingsWidget * sparseFeatureExtractorOptions_ctl = Q_NULLPTR;
-//
-////  QNumberEditBox * hessianThreshold_ctl = Q_NULLPTR;
-////  QNumberEditBox * nOctaves_ctl = Q_NULLPTR;
-////  QNumberEditBox * nOctaveLayers_ctl = Q_NULLPTR;
-////  QCheckBox * extended_ctl = Q_NULLPTR;
-////  QCheckBox * upright_ctl = Q_NULLPTR;
-//
-//};
 
 
 class QPlanetaryDiskRegistrationSettings
@@ -220,27 +188,6 @@ protected:
 protected:
   c_star_field_registration_options * options_ = Q_NULLPTR;
 };
-//
-//class QMMRegistrationSettings
-//    : public QFeatureBasedRegistrationSettings
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QMMRegistrationSettings ThisClass;
-//  typedef QFeatureBasedRegistrationSettings Base;
-//
-//  QMMRegistrationSettings(QWidget * parent = Q_NULLPTR);
-//
-//  void set_mm_options(c_mm_registration_options * options);
-//  const c_mm_registration_options * mm_options() const;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_mm_registration_options * mm_options_ = Q_NULLPTR;
-//};
-
 
 
 class QFrameRegistrationOptions
@@ -272,7 +219,7 @@ protected:
   QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = Q_NULLPTR;
   QImageProcessorSelectionCombo * alignedFramesProcessor_ctl = Q_NULLPTR;
 
-  QFrameRegistrationBaseSettings * frameRegistrationBaseSettings = Q_NULLPTR;
+  QFrameRegistrationBaseSettings * frameRegistrationBaseSettings_ctl = Q_NULLPTR;
 
   QSparseFeatureDetectorSettingsWidget * sparseFeatureDetectorSettings_ctl = Q_NULLPTR;
   QExpandableGroupBox * sparseFeatureDetectorSettingsGroup_ctl = Q_NULLPTR;
@@ -283,11 +230,9 @@ protected:
   QSparseFeature2DMatcherSettingsWidget * sparseFeatureMatching_ctl = Q_NULLPTR;
   QExpandableGroupBox * sparseFeatureMatchingGroup_ctl = Q_NULLPTR;
 
-  //QFeatureBasedRegistrationSettings * featureBasedRegistrationSettings = Q_NULLPTR;
   QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings = Q_NULLPTR;
   QJovianDerotationSettings * jovianDerotationSettings = Q_NULLPTR;
   QStarFieldRegistrationSettings * starFieldRegistrationSettings = Q_NULLPTR;
-  // QMMRegistrationSettings * mmRegistrationSettings = Q_NULLPTR;
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

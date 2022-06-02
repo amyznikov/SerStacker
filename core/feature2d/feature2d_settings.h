@@ -140,6 +140,20 @@ bool save_settings(c_config_setting settings,
     const c_feature2d_boost::options & );
 #endif
 
+#if HAVE_STAR_EXTRACTOR
+bool load_settings(c_config_setting settings,
+    c_feature2d_star_extractor::options * args);
+bool save_settings(c_config_setting settings,
+    const c_feature2d_star_extractor::options & );
+#endif
+
+#if HAVE_TRIANGLE_EXTRACTOR
+bool load_settings(c_config_setting settings,
+    c_feature2d_triangle_extractor::options * args);
+bool save_settings(c_config_setting settings,
+    const c_feature2d_triangle_extractor::options & );
+#endif
+
 bool save_settings(c_config_setting settings,
     const c_feature2d::ptr & obj);
 
@@ -229,6 +243,12 @@ bool save_settings(c_config_setting settings,
 
 bool load_settings(c_config_setting settings,
     c_snorm_based_feature2d_matcher_options * options);
+
+bool save_settings(c_config_setting settings,
+    const c_triangle_matcher_options & options);
+
+bool load_settings(c_config_setting settings,
+    c_triangle_matcher_options * options);
 
 bool save_settings(c_config_setting settings,
     const c_feature2d_matcher_options & options);

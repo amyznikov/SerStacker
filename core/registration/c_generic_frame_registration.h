@@ -8,49 +8,38 @@
 #ifndef __c_feature_based_image_registration_h___
 #define __c_feature_based_image_registration_h___
 
-//#include <opencv2/features2d.hpp>
-//#include <opencv2/xfeatures2d.hpp>
-#include <core/feature2d/feature2d.h>
 #include "c_frame_registration.h"
+#include <core/registration/c_sparse_feature_options.h>
 
-struct c_feature_based_registration_options {
-  c_sparse_feature_extractor_options sparse_feature_extractor;
-  c_feature2d_matcher_options sparse_feature_matcher;
-};
-
-class c_feature_based_registration
-    : public c_frame_registration
+class c_generic_frame_registration :
+    public c_frame_registration
 {
 public:
-  typedef c_feature_based_registration this_class;
+  typedef c_generic_frame_registration this_class;
   typedef c_frame_registration base;
 
   typedef std::shared_ptr<this_class> ptr;
 
   static this_class::ptr create();
-  static this_class::ptr create(const c_feature_based_registration_options & feature_options);
+  static this_class::ptr create(const c_sparse_feature_options & feature_options);
   static this_class::ptr create(const c_frame_registration_base_options & base_opts,
-      const c_feature_based_registration_options & feature_opts);
+      const c_sparse_feature_options & feature_opts);
 
 public: // parameters
 
-  const c_feature2d::ptr & set_keypoints_detector(const c_feature2d::ptr & detector);
-  const c_feature2d::ptr & keypoints_detector() const;
-
-  // for cv::xfeatures2d::SURF::create()
-  //void set_feature_hessian_threshold(double v);
-  //double feature_hessian_threshold() const;
+  const c_sparse_feature_extractor::ptr & set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor);
+  const c_sparse_feature_extractor::ptr & keypoints_extractor() const;
 
   const std::vector<cv::KeyPoint> & reference_keypoints() const;
   const cv::Mat & reference_descriptors() const;
   const std::vector<cv::KeyPoint> & current_keypoints() const;
   const cv::Mat & current_descriptors() const;
 
-  c_feature_based_registration_options & feature_options();
-  const c_feature_based_registration_options & feature_options() const;
+  c_sparse_feature_options & feature_options();
+  const c_sparse_feature_options & feature_options() const;
 
 public: // overrides, made public for debug & non-regular usage
-  virtual c_feature2d::ptr create_keypoints_detector() const;
+  virtual c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
 
   bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk) const override;
@@ -77,15 +66,15 @@ public: // overrides, made public for debug & non-regular usage
 
 
 protected: // use create() instead
-  c_feature_based_registration();
-  c_feature_based_registration(const c_feature_based_registration_options & opts);
-  c_feature_based_registration(const c_frame_registration_base_options & base_opts, const c_feature_based_registration_options & opts);
+  c_generic_frame_registration();
+  c_generic_frame_registration(const c_sparse_feature_options & opts);
+  c_generic_frame_registration(const c_frame_registration_base_options & base_opts,
+      const c_sparse_feature_options & opts);
 
 protected:
-  c_feature_based_registration_options feature_options_;
+  c_sparse_feature_options feature_options_;
 
-  c_feature2d::ptr keypoints_detector_;
-  //cv::Ptr<cv::FlannBasedMatcher> keypoints_matcher_;
+  c_sparse_feature_extractor::ptr keypoints_extractor_;
   c_feature2d_matcher::ptr keypoints_matcher_;
 
   std::vector<cv::KeyPoint> reference_keypoints_;

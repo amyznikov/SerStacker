@@ -17,7 +17,6 @@
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
-#include <core/registration/c_feature_based_registration.h>
 #include <core/proc/planetary-disk-detection.h>
 #include <core/proc/jupiter.h>
 #include <core/proc/fft.h>
@@ -29,6 +28,7 @@
 #include <tbb/tbb.h>
 #include <core/debug.h>
 #include <variant>
+#include "../../../core/registration/c_generic_frame_registration.h"
 
 enum TEST_ENUM {
   TEST_ENUM_M1,

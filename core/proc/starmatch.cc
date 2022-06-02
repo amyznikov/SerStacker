@@ -15,6 +15,7 @@
  */
 
 #include "starmatch.h"
+#include <core/debug.h>
 
 
 template<class T>
@@ -228,7 +229,14 @@ bool build_triangles(const std::vector<cv::KeyPoint> & keypoints,
     std::vector<cv::Vec2f> & descriptors,
     float min_side_size)
 {
-  return build_triangles_(keypoints, triangles, descriptors, min_side_size);
+  if( !build_triangles_(keypoints, triangles, descriptors, min_side_size) ) {
+    CF_ERROR("build_triangles_() fails");
+    return false;
+  }
+
+  CF_DEBUG("keypoints.size=%zu descriptors.rows=%zu", keypoints.size(), descriptors.size());
+
+  return true;
 }
 
 bool build_triangles(const std::vector<cv::Point2f> & keypoints,
@@ -243,7 +251,7 @@ bool build_triangles(const std::vector<cv::Point2f> & keypoints,
 
 cv::Ptr<cvflann::KDTreeIndex<StarMathingDistanceType>> index_triangles(std::vector<cv::Vec2f> & descriptors)
 {
-  cvflann::Matrix<StarMathingDistanceType::ElementType> features((float*) &descriptors.front(), descriptors.size(), 2);
+  cvflann::Matrix<StarMathingDistanceType::ElementType> features((float*) descriptors.data(), descriptors.size(), 2);
   cv::Ptr<cvflann::KDTreeIndex<StarMathingDistanceType>> index(new cvflann::KDTreeIndex<StarMathingDistanceType>(features, cvflann::KDTreeIndexParams(1)));
   index->buildIndex();
   return index;

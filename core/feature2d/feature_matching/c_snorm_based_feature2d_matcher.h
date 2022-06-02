@@ -18,7 +18,8 @@
 /**
  * Options for c_sorted_norm_based_feature2d_matcher
  */
-struct c_snorm_based_feature2d_matcher_options : c_feature2d_matcher_base_options
+struct c_snorm_based_feature2d_matcher_options :
+    c_feature2d_matcher_base_options
 {
   float max_acceptable_distance = -1; // auto select
   float lowe_ratio = -1;

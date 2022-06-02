@@ -11,93 +11,121 @@
 
 #define ICON_check_all      "check_all"
 
-static const char borderless_style[] = ""
-    "QToolButton { border: none; } "
-    "QToolButton::menu-indicator { image: none; }"
-    "";
+//static const char borderless_style[] = ""
+//    "QToolButton { border: none; } "
+//    "QToolButton::menu-indicator { image: none; }"
+//    "";
 
 static QIcon getIcon(const QString & name)
 {
   return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
 }
 
-
-QEccSettings::QEccSettings(QWidget * parent)
-  : Base("QEccSettings", parent)
+QEccSettings::QEccSettings(QWidget * parent) :
+  Base("QEccSettings", parent)
 {
 
-  scale_ctl = add_numeric_box<double>("scale",
-      [this](double value) {
-        if ( options_ && value != options_->scale ) {
-          options_->scale = value;
-          emit parameterChanged();
-        }
-      });
+  scale_ctl =
+      add_numeric_box<double>("scale",
+          [this](double value) {
+            if ( options_ && value != options_->scale ) {
+              options_->scale = value;
+              emit parameterChanged();
+            }
+          });
 
-  eps_ctl = add_numeric_box<double>("eps",
-      [this](double value) {
-        if ( options_ && value != options_->eps ) {
-          options_->eps = value;
-          emit parameterChanged();
-        }
-      });
+  eps_ctl =
+      add_numeric_box<double>("eps",
+          [this](double value) {
+            if ( options_ && value != options_->eps ) {
+              options_->eps = value;
+              emit parameterChanged();
+            }
+          });
 
-  min_rho_ctl = add_numeric_box<double>("min_rho",
-      [this](double value) {
-        if ( options_ && value != options_->min_rho ) {
-          options_->min_rho = value;
-          emit parameterChanged();
-        }
-      });
+  min_rho_ctl =
+      add_numeric_box<double>("min_rho",
+          [this](double value) {
+            if ( options_ && value != options_->min_rho ) {
+              options_->min_rho = value;
+              emit parameterChanged();
+            }
+          });
 
-  input_smooth_sigma_ctl = add_numeric_box<double>("input_smooth_sigma",
-      [this](double value) {
-        if ( options_ && value != options_->input_smooth_sigma ) {
-          options_->input_smooth_sigma = value;
-          emit parameterChanged();
-        }
-      });
+  input_smooth_sigma_ctl =
+      add_numeric_box<double>("input_smooth_sigma",
+          [this](double value) {
+            if ( options_ && value != options_->input_smooth_sigma ) {
+              options_->input_smooth_sigma = value;
+              emit parameterChanged();
+            }
+          });
 
-  reference_smooth_sigma_ctl = add_numeric_box<double>("reference_smooth_sigma",
-      [this](double value) {
-        if ( options_ && value != options_->reference_smooth_sigma ) {
-          options_->reference_smooth_sigma = value;
-          emit parameterChanged();
-        }
-      });
+  reference_smooth_sigma_ctl =
+      add_numeric_box<double>("reference_smooth_sigma",
+          [this](double value) {
+            if ( options_ && value != options_->reference_smooth_sigma ) {
+              options_->reference_smooth_sigma = value;
+              emit parameterChanged();
+            }
+          });
 
-  update_step_scale_ctl = add_numeric_box<double>("update_step_scale",
-      [this](double value) {
-        if ( options_ && value != options_->update_step_scale ) {
-            options_->update_step_scale = value;
-            emit parameterChanged();
-        }
-      });
+  update_step_scale_ctl =
+      add_numeric_box<double>("update_step_scale",
+          [this](double value) {
+            if ( options_ && value != options_->update_step_scale ) {
+              options_->update_step_scale = value;
+              emit parameterChanged();
+            }
+          });
 
-  normalization_scale_ctl = add_numeric_box<int>("normalization_scale",
-      [this](int value) {
-        if ( options_ && value != options_->normalization_scale ) {
-            options_->normalization_scale = value;
-            emit parameterChanged();
-        }
-      });
+  normalization_scale_ctl =
+      add_numeric_box<int>("normalization_scale:",
+          [this](int value) {
+            if ( options_ && value != options_->normalization_scale ) {
+              options_->normalization_scale = value;
+              emit parameterChanged();
+            }
+          });
 
-  normalization_noise_ctl = add_numeric_box<double>("normalization_noise",
-      [this](double value) {
-        if ( options_ && value != options_->normalization_noise ) {
-          options_->normalization_noise = value;
-          emit parameterChanged();
-        }
-      });
+  normalization_noise_ctl =
+      add_numeric_box<double>("normalization_noise:",
+          [this](double value) {
+            if ( options_ && value != options_->normalization_noise ) {
+              options_->normalization_noise = value;
+              emit parameterChanged();
+            }
+          });
 
-  max_iterations_ctl = add_numeric_box<int>("max_iterations",
-      [this](int value) {
-        if ( options_ && value != options_->max_iterations ) {
-          options_->max_iterations = value;
-          emit parameterChanged();
-        }
-      });
+  max_iterations_ctl =
+      add_numeric_box<int>("max_iterations:",
+          [this](int value) {
+            if ( options_ && value != options_->max_iterations ) {
+              options_->max_iterations = value;
+              emit parameterChanged();
+            }
+          });
 
+  enable_ecch_ctl =
+      add_checkbox("Enable ecch",
+          [this](bool checked) {
+            if ( options_ && options_->enable_ecch != checked ) {
+              options_->enable_ecch = checked;
+              ecch_minimum_image_size_ctl->setEnabled(checked);
+              emit parameterChanged();
+            }
+          });
+
+  ecch_minimum_image_size_ctl =
+      add_numeric_box<int>("ECCH min size [px]:",
+          [this](int value) {
+            if ( options_ && options_->ecch_minimum_image_size != value ) {
+              options_->ecch_minimum_image_size = value;
+              emit parameterChanged();
+            }
+          });
+
+  updateControls();
 }
 
 void QEccSettings::set_registration_options(c_ecc_options * options)
@@ -126,6 +154,9 @@ void QEccSettings::onupdatecontrols()
     normalization_scale_ctl->setValue(options_->normalization_scale);
     normalization_noise_ctl->setValue(options_->normalization_noise);
     max_iterations_ctl->setValue(options_->max_iterations);
+    enable_ecch_ctl->setChecked(options_->enable_ecch);
+    ecch_minimum_image_size_ctl->setValue(options_->ecch_minimum_image_size);
+    ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
     setEnabled(true);
   }
 }
@@ -539,8 +570,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
   form->addRow(planetaryDiskRegistrationSettings = new QPlanetaryDiskRegistrationSettings(this));
   form->addRow(jovianDerotationSettings = new QJovianDerotationSettings(this));
   form->addRow(starFieldRegistrationSettings = new QStarFieldRegistrationSettings(this));
- // form->addRow(mmRegistrationSettings = new QMMRegistrationSettings(this));
-  form->addRow(frameRegistrationBaseSettings = new QFrameRegistrationBaseSettings(this));
+  form->addRow(frameRegistrationBaseSettings_ctl = new QFrameRegistrationBaseSettings(this));
 
   accumulateAndCompensateTurbulentFlow_ctl =
       add_checkbox("Accumulate and compensate turbulent flow",
@@ -562,23 +592,23 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent)
             }
           });
 
-//  connect(masterFrame_ctl, &QMasterFrameOptions::applyMasterFrameSettingsToAllRequested,
-//      this, &ThisClass::applyMasterFrameSettingsToAllRequested);
-
   connect(masterFrame_ctl, &QMasterFrameOptions::parameterChanged,
       this, &ThisClass::parameterChanged);
-//  connect(featureBasedRegistrationSettings, &QFeatureBasedRegistrationSettings::parameterChanged,
-//      this, &ThisClass::parameterChanged);
   connect(planetaryDiskRegistrationSettings, &QPlanetaryDiskRegistrationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
   connect(jovianDerotationSettings, &QJovianDerotationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
   connect(starFieldRegistrationSettings, &QStarFieldRegistrationSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
-//  connect(mmRegistrationSettings, &QMMRegistrationSettings::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-  connect(frameRegistrationBaseSettings, &QFrameRegistrationBaseSettings::parameterChanged,
+  connect(frameRegistrationBaseSettings_ctl, &QFrameRegistrationBaseSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
+  connect(sparseFeatureDetectorSettings_ctl, &QSparseFeatureDetectorSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(sparseFeatureDescriptorSettings_ctl, &QSparseDescriptorExtractorSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  connect(sparseFeatureMatching_ctl, &QSparseFeature2DMatcherSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
 
   applyToAll_ctl = new QToolButton(this);
   applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -617,21 +647,16 @@ void QFrameRegistrationOptions::onupdatecontrols()
     setEnabled(false);
 
     masterFrame_ctl->set_master_frame_options(nullptr, nullptr);
-    frameRegistrationBaseSettings->set_registration_options(nullptr);
+    frameRegistrationBaseSettings_ctl->set_registration_options(nullptr);
     sparseFeatureDetectorSettings_ctl->set_feature_detector_options(nullptr);
     sparseFeatureDescriptorSettings_ctl->set_feature_descriptor_options(nullptr);
     sparseFeatureMatching_ctl->set_feature2d_matcher_options(nullptr);
-    //featureBasedRegistrationSettings->set_feature_options(nullptr);
     planetaryDiskRegistrationSettings->set_planetary_disk_options(nullptr);
 
     jovianDerotationSettings->set_planetary_disk_options(nullptr);
     jovianDerotationSettings->set_jovian_derotation_options(nullptr);
 
-//    mmRegistrationSettings->set_feature_options(nullptr);
-//    mmRegistrationSettings->set_mm_options(nullptr);
-
     starFieldRegistrationSettings->set_registration_options(nullptr);
-
 
   }
   else {
@@ -649,20 +674,20 @@ void QFrameRegistrationOptions::onupdatecontrols()
     accumulateAndCompensateTurbulentFlow_ctl->setChecked(
         registration_options.accumulate_and_compensate_turbulent_flow);
 
-    frameRegistrationBaseSettings->set_registration_options(
+    frameRegistrationBaseSettings_ctl->set_registration_options(
         &registration_options.base_options);
 
 //    featureBasedRegistrationSettings->set_feature_options(
 //        &registration_options.feature_options);
 
     sparseFeatureDetectorSettings_ctl->set_feature_detector_options(
-        &registration_options.feature_options.sparse_feature_extractor.detector);
+        &registration_options.generic_options.sparse_feature_extractor.detector);
 
     sparseFeatureDescriptorSettings_ctl->set_feature_descriptor_options(
-        &registration_options.feature_options.sparse_feature_extractor.descriptor);
+        &registration_options.generic_options.sparse_feature_extractor.descriptor);
 
     sparseFeatureMatching_ctl->set_feature2d_matcher_options(
-        &registration_options.feature_options.sparse_feature_matcher);
+        &registration_options.generic_options.sparse_feature_matcher);
 
     planetaryDiskRegistrationSettings->set_planetary_disk_options(
         &registration_options.planetary_disk_options);
@@ -672,12 +697,6 @@ void QFrameRegistrationOptions::onupdatecontrols()
 
     jovianDerotationSettings->set_jovian_derotation_options(
         &registration_options.jovian_derotation_options);
-
-//    mmRegistrationSettings->set_feature_options(
-//        &registration_options.feature_options);
-//
-//    mmRegistrationSettings->set_mm_options(
-//        &registration_options.mm_options);
 
     starFieldRegistrationSettings->set_registration_options(
         &registration_options.star_field_options);
@@ -699,13 +718,11 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
     masterFrame_ctl->setVisible(false);
     accumulateAndCompensateTurbulentFlow_ctl->setVisible(false);
     alignedFramesProcessor_ctl->setVisible(false);
-    //featureBasedRegistrationSettings->setVisible(false);
     sparseFeatureDetectorSettingsGroup_ctl->setVisible(false);
     sparseFeatureDescriptorSettingsGroup_ctl->setVisible(false);
     sparseFeatureMatchingGroup_ctl->setVisible(false);
     planetaryDiskRegistrationSettings->setVisible(false);
     jovianDerotationSettings->setVisible(false);
-    //mmRegistrationSettings->setVisible(false);
     starFieldRegistrationSettings->setVisible(false);
   }
   else {
@@ -714,11 +731,11 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
         options_->frame_registration_options();
 
     switch ( registration_options.registration_method = frameRegistrationMethod_ctl->currentItem() ) {
-    case frame_registration_method_surf :
+    case frame_registration_generic :
       masterFrame_ctl->setVisible(true);
       accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
       alignedFramesProcessor_ctl->setVisible(true);
-      frameRegistrationBaseSettings->setVisible(true);
+      frameRegistrationBaseSettings_ctl->setVisible(true);
       //featureBasedRegistrationSettings->setVisible(true);
 
       sparseFeatureDetectorSettingsGroup_ctl->setVisible(true);
@@ -728,14 +745,12 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(false);
-//      mmRegistrationSettings->setVisible(false);
       break;
-    case frame_registration_method_planetary_disk :
+    case frame_registration_planetary_disk :
       masterFrame_ctl->setVisible(true);
       accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
       alignedFramesProcessor_ctl->setVisible(true);
-      frameRegistrationBaseSettings->setVisible(true);
-      //featureBasedRegistrationSettings->setVisible(false);
+      frameRegistrationBaseSettings_ctl->setVisible(true);
 
       sparseFeatureDetectorSettingsGroup_ctl->setVisible(false);
       sparseFeatureDescriptorSettingsGroup_ctl->setVisible(false);
@@ -744,14 +759,12 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(true);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(false);
-      //mmRegistrationSettings->setVisible(false);
       break;
-    case frame_registration_method_star_field :
+    case frame_registration_star_field :
       masterFrame_ctl->setVisible(true);
       accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
       alignedFramesProcessor_ctl->setVisible(true);
-      frameRegistrationBaseSettings->setVisible(true);
-      //featureBasedRegistrationSettings->setVisible(false);
+      frameRegistrationBaseSettings_ctl->setVisible(true);
 
       sparseFeatureDetectorSettingsGroup_ctl->setVisible(false);
       sparseFeatureDescriptorSettingsGroup_ctl->setVisible(false);
@@ -760,14 +773,12 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(true);
-      //mmRegistrationSettings->setVisible(false);
       break;
-    case frame_registration_method_jovian_derotate :
+    case frame_registration_jovian_derotate :
       masterFrame_ctl->setVisible(true);
       accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
       alignedFramesProcessor_ctl->setVisible(true);
-      frameRegistrationBaseSettings->setVisible(true);
-      //featureBasedRegistrationSettings->setVisible(false);
+      frameRegistrationBaseSettings_ctl->setVisible(true);
 
       sparseFeatureDetectorSettingsGroup_ctl->setVisible(false);
       sparseFeatureDescriptorSettingsGroup_ctl->setVisible(false);
@@ -776,30 +787,12 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(true);
       starFieldRegistrationSettings->setVisible(false);
-      //mmRegistrationSettings->setVisible(false);
-      break;
-    case frame_registration_method_mm :
-      masterFrame_ctl->setVisible(true);
-      accumulateAndCompensateTurbulentFlow_ctl->setVisible(true);
-      alignedFramesProcessor_ctl->setVisible(true);
-      frameRegistrationBaseSettings->setVisible(true);
-      //featureBasedRegistrationSettings->setVisible(false);
-
-      sparseFeatureDetectorSettingsGroup_ctl->setVisible(false);
-      sparseFeatureDescriptorSettingsGroup_ctl->setVisible(false);
-      sparseFeatureMatchingGroup_ctl->setVisible(false);
-
-      planetaryDiskRegistrationSettings->setVisible(false);
-      jovianDerotationSettings->setVisible(false);
-      starFieldRegistrationSettings->setVisible(false);
-      //mmRegistrationSettings->setVisible(true);
       break;
     case frame_registration_none :
       masterFrame_ctl->setVisible(false);
       accumulateAndCompensateTurbulentFlow_ctl->setVisible(false);
       alignedFramesProcessor_ctl->setVisible(false);
-      frameRegistrationBaseSettings->setVisible(false);
-      //featureBasedRegistrationSettings->setVisible(false);
+      frameRegistrationBaseSettings_ctl->setVisible(false);
 
       sparseFeatureDetectorSettingsGroup_ctl->setVisible(false);
       sparseFeatureDescriptorSettingsGroup_ctl->setVisible(false);
@@ -808,7 +801,6 @@ void QFrameRegistrationOptions::updatemethodspecificpage()
       planetaryDiskRegistrationSettings->setVisible(false);
       jovianDerotationSettings->setVisible(false);
       starFieldRegistrationSettings->setVisible(false);
-      //mmRegistrationSettings->setVisible(false);
       break;
     }
 

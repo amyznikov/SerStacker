@@ -11,17 +11,16 @@
 #include <core/io/c_input_sequence.h>
 #include <core/roi_selection/c_roi_rectangle_selection.h>
 #include <core/roi_selection/c_planetary_disk_selection.h>
-#include <core/registration/c_feature_based_registration.h>
 #include <core/registration/c_planetary_disk_registration.h>
 #include <core/registration/c_jovian_rotation_registration.h>
 #include <core/registration/c_star_field_registration.h>
-#include <core/registration/c_mm_registration.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/improc/c_image_processor.h>
 #include <core/feature2d/feature2d.h>
 #include <core/settings.h>
 #include <atomic>
+#include "../registration/c_generic_frame_registration.h"
 
 
 enum roi_selection_method {
@@ -32,11 +31,11 @@ enum roi_selection_method {
 
 enum frame_registration_method {
   frame_registration_none = -1,
-  frame_registration_method_surf = 0,
-  frame_registration_method_planetary_disk = 1,
-  frame_registration_method_star_field = 2,
-  frame_registration_method_jovian_derotate = 3,
-  frame_registration_method_mm = 4,
+  frame_registration_generic = 0,
+  frame_registration_planetary_disk = 1,
+  frame_registration_star_field = 2,
+  frame_registration_jovian_derotate = 3,
+  frame_registration_ecch = 4,
 };
 
 enum frame_accumulation_method {
@@ -156,16 +155,15 @@ struct c_frame_accumulation_options {
 struct c_frame_registration_options {
 
   enum frame_registration_method registration_method =
-      frame_registration_method_surf;
+      frame_registration_generic;
 
   bool accumulate_and_compensate_turbulent_flow = true;
 
   c_frame_registration_base_options base_options;
-  c_feature_based_registration_options feature_options;
+  c_sparse_feature_options generic_options;
   c_planetary_disk_registration_options planetary_disk_options;
   c_star_field_registration_options star_field_options;
   c_jovian_derotation_options jovian_derotation_options;
-  c_mm_registration_options mm_options;
 
   c_image_processor::ptr aligned_frame_processor;
 

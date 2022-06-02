@@ -358,8 +358,6 @@ bool c_input_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_roi_selection_options::serialize(c_config_setting settings) const
 {
-  CF_DEBUG("c_roi_selection_options::serialize() method=%s", toString(method));
-
   save_settings(settings, "roi_selection_method", method);
   save_settings(settings, "planetary_disk_crop_size", planetary_disk_crop_size);
   save_settings(settings, "rectangle_roi_selection", rectangle_roi_selection);
@@ -480,10 +478,10 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   save_settings(group, "enable_eccflow", base_options.enable_eccflow);
 
   group = settings.add_group("sparse_feature_extractor");
-  save_settings(group, feature_options.sparse_feature_extractor);
+  save_settings(group, generic_options.sparse_feature_extractor);
 
   group = settings.add_group("sparse_feature_matcher");
-  save_settings(group, feature_options.sparse_feature_matcher);
+  save_settings(group, generic_options.sparse_feature_matcher);
 
   group = settings.add_group("ecc");
   save_settings(group, "scale", base_options.ecc.scale);
@@ -543,10 +541,10 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
   load_settings(group, "enable_eccflow", &base_options.enable_eccflow);
 
   if ( (group = settings["sparse_feature_extractor"]).isGroup() ) {
-    load_settings(group, &feature_options.sparse_feature_extractor);
+    load_settings(group, &generic_options.sparse_feature_extractor);
   }
   if ( (group = settings["sparse_feature_matcher"]).isGroup() ) {
-    load_settings(group, &feature_options.sparse_feature_matcher);
+    load_settings(group, &generic_options.sparse_feature_matcher);
   }
 
 

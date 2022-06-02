@@ -20,13 +20,14 @@
 namespace {
 
 // the sizeof for this struct MUST be multiple of sizeof(float)
-#pragma pack push(sizeof(float))
+
+#pragma pack(push, 4)
 struct c_triangle_descriptor
 {
   cv::Vec2f descriptor;
   cv::Vec3w triangle;
 };
-#pragma pack pop(4)
+#pragma pack(pop)
 
 
 template<class T>

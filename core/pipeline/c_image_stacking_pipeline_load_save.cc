@@ -263,7 +263,7 @@ bool c_image_stacking_options::serialize(c_config_setting settings) const
   settings.set("name", name_);
 
   input_options_.serialize(settings.add_group("input_options"));
-  master_frame_options_.serialize(settings.add_group("master_frame_options"));
+  frame_registration_options_.master_frame_options.serialize(settings.add_group("master_frame_options"));
   roi_selection_options_.serialize(settings.add_group("roi_selection"));
   upscale_options_.serialize(settings.add_group("upscale_options"));
   frame_registration_options_.serialize(settings.add_group("frame_registration"));
@@ -292,7 +292,7 @@ bool c_image_stacking_options::deserialize(c_config_setting settings)
   input_options_.deserialize(settings["input_options"]);
   roi_selection_options_.deserialize(settings["roi_selection"]);
   upscale_options_.deserialize(settings["upscale_options"]);
-  master_frame_options_.deserialize(settings["master_frame_options"]);
+  frame_registration_options_.master_frame_options.deserialize(settings["master_frame_options"]);
   frame_registration_options_.deserialize(settings["frame_registration"]);
   accumulation_options_.deserialize(settings["accumulation_options"]);
   output_options_.deserialize(settings["output_options"]);
@@ -463,62 +463,67 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
 
 bool c_frame_registration_options::serialize(c_config_setting settings) const
 {
-  c_config_setting group;
+  c_config_setting section;
 
-  group = settings;
-  save_settings(group, "registration_method", registration_method);
-  save_settings(group, "accumulate_and_compensate_turbulent_flow", accumulate_and_compensate_turbulent_flow);
-  save_settings(group, "motion_type", base_options.motion_type);
-  save_settings(group, "registration_channel", base_options.registration_channel);
-  save_settings(group, "interpolation", base_options.interpolation);
-  save_settings(group, "border_mode", base_options.border_mode);
-  save_settings(group, "border_value", base_options.border_value);
-  save_settings(group, "feature_scale", base_options.feature_scale);
-  save_settings(group, "enable_ecc", base_options.enable_ecc);
-  save_settings(group, "enable_eccflow", base_options.enable_eccflow);
+#define SAVE(s, name) \
+  save_settings(section, #name, s.name)
 
-  group = settings.add_group("sparse_feature_extractor");
-  save_settings(group, generic_options.sparse_feature_extractor);
+  section = settings;
+  SAVE(image_registration_options, enable_frame_registration);
+  SAVE(image_registration_options, motion_type);
+  SAVE(image_registration_options, registration_channel);
+  SAVE(image_registration_options, interpolation);
+  SAVE(image_registration_options, border_mode);
+  SAVE(image_registration_options, border_value);
+  save_settings(section, "accumulate_and_compensate_turbulent_flow", accumulate_and_compensate_turbulent_flow);
 
-  group = settings.add_group("sparse_feature_matcher");
-  save_settings(group, generic_options.sparse_feature_matcher);
+  section = settings.add_group("feature_registration");
+  SAVE(image_registration_options.feature_registration, enabled);
+  SAVE(image_registration_options.feature_registration, scale);
+  save_settings(section.add_group("sparse_feature_extractor"),
+      image_registration_options.feature_registration.sparse_feature_extractor);
+  save_settings(section.add_group("sparse_feature_matcher"),
+      image_registration_options.feature_registration.sparse_feature_matcher);
 
-  group = settings.add_group("ecc");
-  save_settings(group, "scale", base_options.ecc.scale);
-  save_settings(group, "eps", base_options.ecc.eps);
-  save_settings(group, "min_rho", base_options.ecc.min_rho);
-  save_settings(group, "input_smooth_sigma", base_options.ecc.input_smooth_sigma);
-  save_settings(group, "reference_smooth_sigma", base_options.ecc.reference_smooth_sigma);
-  save_settings(group, "update_step_scale", base_options.ecc.update_step_scale);
-  save_settings(group, "normalization_noise", base_options.ecc.normalization_noise);
-  save_settings(group, "normalization_scale", base_options.ecc.normalization_scale);
-  save_settings(group, "ecc.max_iterations", base_options.ecc.max_iterations);
+  // save_settings(group, "align_planetary_disk_masks", planetary_disk_options.align_planetary_disk_masks);
 
-  group = settings.add_group("eccflow");
-  save_settings(group, "support_scale", base_options.eccflow.support_scale);
-  save_settings(group, "normalization_scale", base_options.eccflow.normalization_scale);
-  save_settings(group, "update_multiplier", base_options.eccflow.update_multiplier);
-  save_settings(group, "max_iterations", base_options.eccflow.max_iterations);
-  save_settings(group, "input_smooth_sigma", base_options.eccflow.input_smooth_sigma);
-  save_settings(group, "reference_smooth_sigma", base_options.eccflow.reference_smooth_sigma);
+  section = settings.add_group("ecc");
+  SAVE(image_registration_options.ecc, enabled);
+  SAVE(image_registration_options.ecc, scale);
+  SAVE(image_registration_options.ecc, eps);
+  SAVE(image_registration_options.ecc, min_rho);
+  SAVE(image_registration_options.ecc, input_smooth_sigma);
+  SAVE(image_registration_options.ecc, reference_smooth_sigma);
+  SAVE(image_registration_options.ecc, update_step_scale);
+  SAVE(image_registration_options.ecc, normalization_noise);
+  SAVE(image_registration_options.ecc, normalization_scale);
+  SAVE(image_registration_options.ecc, max_iterations);
+  SAVE(image_registration_options.ecc, ecch_minimum_image_size);
+  SAVE(image_registration_options.ecc, enable_ecch);
 
-  group = settings.add_group("planetary_disk");
-  save_settings(group, "align_planetary_disk_masks", planetary_disk_options.align_planetary_disk_masks);
+  section = settings.add_group("eccflow");
+  SAVE(image_registration_options.eccflow, enabled);
+  SAVE(image_registration_options.eccflow, update_multiplier);
+  SAVE(image_registration_options.eccflow, input_smooth_sigma);
+  SAVE(image_registration_options.eccflow, reference_smooth_sigma);
+  SAVE(image_registration_options.eccflow, max_iterations);
+  SAVE(image_registration_options.eccflow, support_scale);
+  SAVE(image_registration_options.eccflow, normalization_scale);
 
-  group = settings.add_group("jovian_derotation");
-  save_settings(group, "min_rotation", jovian_derotation_options.min_rotation);
-  save_settings(group, "max_rotation", jovian_derotation_options.max_rotation);
-  save_settings(group, "eccflow_support_scale", jovian_derotation_options.eccflow_support_scale);
-  save_settings(group, "eccflow_normalization_scale", jovian_derotation_options.eccflow_normalization_scale);
-  save_settings(group, "eccflow_max_pyramid_level", jovian_derotation_options.eccflow_max_pyramid_level);
-  save_settings(group, "align_jovian_disk_horizontally", jovian_derotation_options.align_jovian_disk_horizontally);
+  section = settings.add_group("jovian_derotation");
+  SAVE(image_registration_options.jovian_derotation, enabled);
+  SAVE(image_registration_options.jovian_derotation, min_rotation);
+  SAVE(image_registration_options.jovian_derotation, max_rotation);
+  SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
+  SAVE(image_registration_options.jovian_derotation, eccflow_normalization_scale);
+  SAVE(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
+  SAVE(image_registration_options.jovian_derotation, align_jovian_disk_horizontally);
 
-
-
-  if ( aligned_frame_processor ) {
-    save_settings(settings, "aligned_frame_processor", aligned_frame_processor->name() );
+  if ( aligned_frame_postprocessor ) {
+    save_settings(settings, "aligned_frame_processor", aligned_frame_postprocessor->name() );
   }
 
+#undef SAVE
   return true;
 }
 
@@ -528,64 +533,74 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     return false;
   }
 
-  c_config_setting group = settings;
-  load_settings(group, "registration_method", &registration_method);
-  load_settings(group, "accumulate_and_compensate_turbulent_flow", &accumulate_and_compensate_turbulent_flow);
-  load_settings(group, "motion_type", &base_options.motion_type);
-  load_settings(group, "registration_channel", &base_options.registration_channel);
-  load_settings(group, "interpolation", &base_options.interpolation);
-  load_settings(group, "border_mode", &base_options.border_mode);
-  load_settings(group, "border_value", &base_options.border_value);
-  load_settings(group, "feature_scale", &base_options.feature_scale);
-  load_settings(group, "enable_ecc", &base_options.enable_ecc);
-  load_settings(group, "enable_eccflow", &base_options.enable_eccflow);
+  c_config_setting section = settings;
 
-  if ( (group = settings["sparse_feature_extractor"]).isGroup() ) {
-    load_settings(group, &generic_options.sparse_feature_extractor);
-  }
-  if ( (group = settings["sparse_feature_matcher"]).isGroup() ) {
-    load_settings(group, &generic_options.sparse_feature_matcher);
-  }
+#define LOAD(s, name) \
+  load_settings(section, #name, &s.name)
+
+  LOAD(image_registration_options, enable_frame_registration);
+  LOAD(image_registration_options, motion_type);
+  LOAD(image_registration_options, registration_channel);
+  LOAD(image_registration_options, interpolation);
+  LOAD(image_registration_options, border_mode);
+  LOAD(image_registration_options, border_value);
+  load_settings(section, "accumulate_and_compensate_turbulent_flow",
+      &accumulate_and_compensate_turbulent_flow);
 
 
-  if ( (group = settings["ecc"]).isGroup() ) {
-    load_settings(group, "scale", &base_options.ecc.scale);
-    load_settings(group, "eps", &base_options.ecc.eps);
-    load_settings(group, "min_rho", &base_options.ecc.min_rho);
-    load_settings(group, "input_smooth_sigma", &base_options.ecc.input_smooth_sigma);
-    load_settings(group, "reference_smooth_sigma", &base_options.ecc.reference_smooth_sigma);
-    load_settings(group, "update_step_scale", &base_options.ecc.update_step_scale);
-    load_settings(group, "normalization_noise", &base_options.ecc.normalization_noise);
-    load_settings(group, "normalization_scale", &base_options.ecc.normalization_scale);
-    load_settings(group, "ecc.max_iterations", &base_options.ecc.max_iterations);
+  if( (section = settings["feature_registration"]).isGroup() ) {
+    LOAD(image_registration_options.feature_registration, enabled);
+    LOAD(image_registration_options.feature_registration, scale);
+    if( section["sparse_feature_extractor"] ) {
+      load_settings(section["sparse_feature_extractor"],
+          &image_registration_options.feature_registration.sparse_feature_extractor);
+    }
+    if( section["sparse_feature_matcher"] ) {
+      load_settings(section.add_group("sparse_feature_matcher"),
+          &image_registration_options.feature_registration.sparse_feature_matcher);
+    }
   }
 
-  if ( (group = settings["eccflow"]).isGroup() ) {
-    load_settings(group, "support_scale", &base_options.eccflow.support_scale);
-    load_settings(group, "normalization_scale", &base_options.eccflow.normalization_scale);
-    load_settings(group, "update_multiplier", &base_options.eccflow.update_multiplier);
-    load_settings(group, "max_iterations", &base_options.eccflow.max_iterations);
-    load_settings(group, "input_smooth_sigma", &base_options.eccflow.input_smooth_sigma);
-    load_settings(group, "reference_smooth_sigma", &base_options.eccflow.reference_smooth_sigma);
+  // load_settings(ection, "align_planetary_disk_masks", &planetary_disk_options.align_planetary_disk_masks);
+
+  if( (section = settings["ecc"]).isGroup() ) {
+    LOAD(image_registration_options.ecc, enabled);
+    LOAD(image_registration_options.ecc, scale);
+    LOAD(image_registration_options.ecc, eps);
+    LOAD(image_registration_options.ecc, min_rho);
+    LOAD(image_registration_options.ecc, input_smooth_sigma);
+    LOAD(image_registration_options.ecc, reference_smooth_sigma);
+    LOAD(image_registration_options.ecc, update_step_scale);
+    LOAD(image_registration_options.ecc, normalization_noise);
+    LOAD(image_registration_options.ecc, normalization_scale);
+    LOAD(image_registration_options.ecc, max_iterations);
+    LOAD(image_registration_options.ecc, ecch_minimum_image_size);
+    LOAD(image_registration_options.ecc, enable_ecch);
   }
 
-  if ( (group = settings["planetary_disk"]).isGroup() ) {
-    load_settings(group, "align_planetary_disk_masks", &planetary_disk_options.align_planetary_disk_masks);
+  if( (section = settings["eccflow"]).isGroup() ) {
+    LOAD(image_registration_options.eccflow, enabled);
+    LOAD(image_registration_options.eccflow, update_multiplier);
+    LOAD(image_registration_options.eccflow, input_smooth_sigma);
+    LOAD(image_registration_options.eccflow, reference_smooth_sigma);
+    LOAD(image_registration_options.eccflow, max_iterations);
+    LOAD(image_registration_options.eccflow, support_scale);
+    LOAD(image_registration_options.eccflow, normalization_scale);
   }
 
-
-  if ( (group = settings["jovian_derotation"]).isGroup() ) {
-    load_settings(group, "min_rotation", &jovian_derotation_options.min_rotation);
-    load_settings(group, "max_rotation", &jovian_derotation_options.max_rotation);
-    load_settings(group, "eccflow_support_scale", &jovian_derotation_options.eccflow_support_scale);
-    load_settings(group, "eccflow_normalization_scale", &jovian_derotation_options.eccflow_normalization_scale);
-    load_settings(group, "eccflow_max_pyramid_level", &jovian_derotation_options.eccflow_max_pyramid_level);
-    load_settings(group, "align_jovian_disk_horizontally", &jovian_derotation_options.align_jovian_disk_horizontally);
+  if( (section = settings["jovian_derotation"]).isGroup() ) {
+    LOAD(image_registration_options.jovian_derotation, enabled);
+    LOAD(image_registration_options.jovian_derotation, min_rotation);
+    LOAD(image_registration_options.jovian_derotation, max_rotation);
+    LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);
+    LOAD(image_registration_options.jovian_derotation, eccflow_normalization_scale);
+    LOAD(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
+    LOAD(image_registration_options.jovian_derotation, align_jovian_disk_horizontally);
   }
 
   std::string s;
   if ( load_settings(settings, "aligned_frame_processor", &s) && !s.empty() ) {
-    aligned_frame_processor = c_image_processor_collection::default_instance()->get(s);
+    aligned_frame_postprocessor = c_image_processor_collection::default_instance()->get(s);
   }
 
   return true;

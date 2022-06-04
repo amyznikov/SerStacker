@@ -111,7 +111,7 @@ struct c_flann_based_feature2d_matcher_options : c_feature2d_matcher_base_option
 
   c_flann_index_options index;
 
-  double lowe_ratio = -1;
+  double lowe_ratio = 0.75;
 };
 
 /**
@@ -139,7 +139,7 @@ public:
   bool match(cv::InputArray query_descriptors, /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
-  double lowe_ratio_ = -1;
+  double lowe_ratio_ = 0.75;
   cvflann::flann_distance_t distance_type_ = cvflann::FLANN_DIST_L2;
   cv::flann::Index index_;
   cv::Ptr<cv::flann::IndexParams> index_params_;

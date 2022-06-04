@@ -13,8 +13,8 @@
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
-class QMasterFrameOptions
-    : public QSettingsWidget
+class QMasterFrameOptions :
+    public QSettingsWidget
 {
   Q_OBJECT;
 public:

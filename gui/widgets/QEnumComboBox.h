@@ -90,6 +90,11 @@ public:
         (E) (-1);
   }
 
+  void setValue(E value)
+  {
+    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
+  }
+
 };
 
 

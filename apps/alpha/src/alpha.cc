@@ -24,11 +24,9 @@
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/proc/inpaint.h>
-#include <core/registration/c_planetary_disk_registration.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
 #include <variant>
-#include "../../../core/registration/c_generic_frame_registration.h"
 
 enum TEST_ENUM {
   TEST_ENUM_M1,

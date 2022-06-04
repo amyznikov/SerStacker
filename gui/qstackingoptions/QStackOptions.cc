@@ -80,8 +80,8 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
   connect(frameAccumulation_ctl, &QFrameAccumulationOptions::parameterChanged,
       this, &ThisClass::stackOptionsChanged);
 
-  connect(frameRegistration_ctl, &QFrameRegistrationOptions::applyFrameRegistrationOptionsToAllRequested,
-      this, &ThisClass::applyFrameRegistrationOptionsToAllRequested);
+//  connect(frameRegistration_ctl, &QFrameRegistrationOptions::applyFrameRegistrationOptionsToAllRequested,
+//      this, &ThisClass::applyFrameRegistrationOptionsToAllRequested);
   connect(frameRegistration_ctl, &QFrameRegistrationOptions::parameterChanged,
       this, &ThisClass::stackOptionsChanged);
 
@@ -115,7 +115,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     roiSelection_ctl->set_roi_selection_options(nullptr);
     upscaleOptions_ctl->set_upscale_options(nullptr);
     frameAccumulation_ctl->set_accumulation_options(nullptr);
-    frameRegistration_ctl->set_stacking_options(nullptr);
+    frameRegistration_ctl->set_stack_options(nullptr);
     outputOptions_ctl->set_stacking_options(nullptr);
 
   }
@@ -126,7 +126,7 @@ void QStackingSettingsWidget::onupdatecontrols()
     roiSelection_ctl->set_roi_selection_options(&stack_->roi_selection_options());
     upscaleOptions_ctl->set_upscale_options(&stack_->upscale_options());
     frameAccumulation_ctl->set_accumulation_options(&stack_->accumulation_options());
-    frameRegistration_ctl->set_stacking_options(stack_);
+    frameRegistration_ctl->set_stack_options(stack_);
     outputOptions_ctl->set_stacking_options(stack_);
 
     if ( QStackingThread::isRunning() && stack_ == QStackingThread::currentStack() ) {

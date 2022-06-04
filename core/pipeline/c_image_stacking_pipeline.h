@@ -11,31 +11,19 @@
 #include <core/io/c_input_sequence.h>
 #include <core/roi_selection/c_roi_rectangle_selection.h>
 #include <core/roi_selection/c_planetary_disk_selection.h>
-#include <core/registration/c_planetary_disk_registration.h>
-#include <core/registration/c_jovian_rotation_registration.h>
-#include <core/registration/c_star_field_registration.h>
 #include <core/average/c_frame_accumulation.h>
+#include <core/registration/c_frame_registration.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/improc/c_image_processor.h>
 #include <core/feature2d/feature2d.h>
 #include <core/settings.h>
 #include <atomic>
-#include "../registration/c_generic_frame_registration.h"
 
 
 enum roi_selection_method {
   roi_selection_none = 0,
   roi_selection_planetary_disk = 1,
   roi_selection_rectange_crop = 2
-};
-
-enum frame_registration_method {
-  frame_registration_none = -1,
-  frame_registration_generic = 0,
-  frame_registration_planetary_disk = 1,
-  frame_registration_star_field = 2,
-  frame_registration_jovian_derotate = 3,
-  frame_registration_ecch = 4,
 };
 
 enum frame_accumulation_method {
@@ -57,8 +45,8 @@ enum frame_upscale_option {
   frame_upscale_x30 = 3,
 };
 
-struct c_input_options {
-
+struct c_input_options
+{
   std::string missing_pixel_mask_filename;
   bool missing_pixels_marked_black = true;
   bool inpaint_missing_pixels = false;
@@ -80,7 +68,8 @@ struct c_input_options {
   bool deserialize(c_config_setting settings);
 };
 
-struct c_roi_selection_options {
+struct c_roi_selection_options
+{
   enum roi_selection_method method = roi_selection_none;
   cv::Size planetary_disk_crop_size;
   cv::Rect rectangle_roi_selection;
@@ -89,7 +78,8 @@ struct c_roi_selection_options {
   bool deserialize(c_config_setting settings);
 };
 
-struct c_master_frame_options {
+struct c_master_frame_options
+{
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
   bool apply_input_frame_processor = true;
@@ -104,8 +94,8 @@ struct c_master_frame_options {
   bool deserialize(c_config_setting settings);
 };
 
-struct c_frame_upscale_options {
-
+struct c_frame_upscale_options
+{
   enum frame_upscale_option upscale_option = frame_upscale_none;
   enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
 
@@ -138,8 +128,8 @@ struct c_frame_upscale_options {
 
 };
 
-struct c_frame_accumulation_options {
-
+struct c_frame_accumulation_options
+{
   enum frame_accumulation_method accumulation_method  =
       frame_accumulation_weighted_average;
 
@@ -152,20 +142,12 @@ struct c_frame_accumulation_options {
 };
 
 
-struct c_frame_registration_options {
-
-  enum frame_registration_method registration_method =
-      frame_registration_generic;
-
+struct c_frame_registration_options
+{
+  c_master_frame_options master_frame_options;
+  c_image_registration_options image_registration_options;
+  c_image_processor::ptr aligned_frame_postprocessor;
   bool accumulate_and_compensate_turbulent_flow = true;
-
-  c_frame_registration_base_options base_options;
-  c_sparse_feature_options generic_options;
-  c_planetary_disk_registration_options planetary_disk_options;
-  c_star_field_registration_options star_field_options;
-  c_jovian_derotation_options jovian_derotation_options;
-
-  c_image_processor::ptr aligned_frame_processor;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -242,7 +224,8 @@ public:
 
   c_frame_registration_options & frame_registration_options();
   const c_frame_registration_options & frame_registration_options() const;
-  c_frame_registration::ptr create_frame_registration() const;
+  c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
+  c_frame_registration::sptr create_frame_registration() const;
 
   c_frame_accumulation_options & accumulation_options();
   const c_frame_accumulation_options & accumulation_options() const;
@@ -268,7 +251,7 @@ protected:
   c_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
   c_frame_upscale_options upscale_options_;
-  c_master_frame_options master_frame_options_;
+  //c_master_frame_options master_frame_options_;
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
@@ -336,18 +319,6 @@ public:
   bool canceled() const;
 
   const c_image_stacking_options::ptr & options() const;
-
-//  const std::string & master_file_name() const {
-//    return master_file_name_;
-//  }
-
-//  const cv::Mat & reference_image() const {
-//    return reference_frame_;
-//  }
-
-//  const cv::Mat & current_image() const {
-//    return current_frame_;
-//  }
 
   const c_anscombe_transform & anscombe() const {
     return anscombe_;
@@ -458,7 +429,7 @@ protected:
 
   c_anscombe_transform anscombe_;
   c_roi_selection::ptr roi_selection_;
-  c_frame_registration::ptr frame_registration_;
+  c_frame_registration::sptr frame_registration_;
   c_frame_weigthed_average::ptr flow_accumulation_;
   mutable std::mutex registration_lock_;
 

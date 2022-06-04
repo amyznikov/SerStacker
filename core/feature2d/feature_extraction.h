@@ -1548,22 +1548,22 @@ struct c_sparse_feature_descriptor_options
   c_feature2d_akaze::options akaze;
 #if HAVE_FEATURE2D_SIFT
   c_feature2d_sift::options sift;
-  #endif
+#endif
 #if HAVE_FEATURE2D_SURF
   c_feature2d_surf::options surf;
-  #endif
+#endif
 #if HAVE_FEATURE2D_FREAK
   c_feature2d_freak::options freak;
-  #endif
+#endif
 #if HAVE_FEATURE2D_BRIEF
   c_feature2d_brief::options brief;
-  #endif
+#endif
 #if HAVE_FEATURE2D_LUCID
   c_feature2d_lucid::options lucid;
-  #endif
+#endif
 #if HAVE_FEATURE2D_LATCH
   c_feature2d_latch::options latch;
-  #endif
+#endif
 #if HAVE_FEATURE2D_DAISY
   c_feature2d_daisy::options daisy;
 #endif

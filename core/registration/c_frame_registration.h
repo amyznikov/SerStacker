@@ -9,27 +9,68 @@
 #define __c_frame_registration_h__
 
 #include <core/proc/extract_channel.h>
-#include <core/registration/c_ecc_options.h>
+#include <core/feature2d/feature2d.h>
+#include <core/proc/eccalign.h>
 
-struct c_frame_registration_base_options {
+struct c_feature_based_registration_options {
+  bool enabled = true;
+  double scale = 0.5;
+  c_sparse_feature_extractor_options sparse_feature_extractor;
+  c_feature2d_matcher_options sparse_feature_matcher;
+};
+
+struct c_ecc_registration_options {
+  bool enabled = true;
+  double scale = 1.;
+  double eps = 0.2;
+  double min_rho = 0.8;
+  double input_smooth_sigma = 1.0;
+  double reference_smooth_sigma = 1.0;
+  double update_step_scale = 1.5;
+  double normalization_noise = 0.01;
+  int normalization_scale = 0;
+  int max_iterations = 15;
+  int ecch_minimum_image_size = 32;
+  bool enable_ecch = false;
+};
+
+struct c_eccflow_registration_options {
+  bool enabled = false;
+  double update_multiplier = 1.5;
+  double input_smooth_sigma = 0;
+  double reference_smooth_sigma = 0;
+  int max_iterations = 1;
+  int support_scale = 4;
+  int normalization_scale = -1;
+};
+
+struct c_jovian_derotation_options {
+  bool enabled = false;
+  double min_rotation = -30 * CV_PI / 180;
+  double max_rotation = +30 * CV_PI / 180;
+  int eccflow_support_scale = 3;
+  int eccflow_normalization_scale = 0;
+  int eccflow_max_pyramid_level = 1;
+  bool align_jovian_disk_horizontally = false;
+};
+
+struct c_image_registration_options {
+
+  bool enable_frame_registration = true;
 
   ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
   color_channel_type registration_channel = color_channel_gray;
-  // use only linear interpolations to avoid high-frequency moire patterns
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
-  double feature_scale = 0.5;
-  bool enable_ecc = true;
-  bool enable_eccflow = false;
-
-  c_ecc_options ecc;
-  c_eccflow_options eccflow;
+  struct c_feature_based_registration_options feature_registration;
+  struct c_ecc_registration_options ecc;
+  struct c_eccflow_registration_options eccflow;
+  struct c_jovian_derotation_options jovian_derotation;
 };
 
-
-struct c_frame_registration_status {
+struct c_image_registration_status {
   struct {
     double extract_feature_image = 0;
     double estimate_feature_transform = 0;
@@ -55,71 +96,37 @@ struct c_frame_registration_status {
 
 class c_frame_registration
 {
-public: // opts
-
+public:
   typedef c_frame_registration this_class;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
-  void set_motion_type(enum ECC_MOTION_TYPE v);
-  enum ECC_MOTION_TYPE motion_type() const;
+  c_frame_registration();
+  c_frame_registration(const c_image_registration_options & optsions);
 
-  void set_registration_channel(color_channel_type channel);
-  int registration_channel() const;
+  c_image_registration_options & options();
+  const c_image_registration_options & options() const;
 
-  void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
-  enum ECC_INTERPOLATION_METHOD interpolation() const;
-
-  void set_border_mode(enum ECC_BORDER_MODE v);
-  enum ECC_BORDER_MODE border_mode() const;
-
-  void set_border_value(const cv::Scalar & v);
-  const cv::Scalar & border_value() const;
-
-  void set_enable_ecc(bool v);
-  bool enable_ecc() const;
-
-  void set_enable_eccflow(bool v);
-  bool enable_eccflow() const;
-
-  void set_feature_scale(double v);
-  double feature_scale() const;
-
-  void set_ecc_scale(double v);
-  double ecc_scale() const;
-
-  void set_ecc_normalization_scale(int v);
-  int ecc_normalization_scale() const;
-
-  void set_ecc_normalization_noise(double v);
-  double ecc_normalization_noise() const;
-
-  void set_eccflow_support_scale(int v);
-  int eccflow_support_scale() const;
-
-  void set_eccflow_normalization_scale(int v);
-  int eccflow_normalization_scale() const;
-
-  virtual void set_enable_debug(bool v);
+  void set_enable_debug(bool v);
   bool enable_debug() const;
 
-  virtual void set_debug_path(const std::string & v);
+  void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
 
-  const c_ecch & ecch() const;
-  const c_ecc_forward_additive & ecc() const;
+  virtual c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
+  const c_sparse_feature_extractor::ptr & set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor);
+  const c_sparse_feature_extractor::ptr & keypoints_extractor() const;
 
-  // c_ecch_flow & eccflow();
+  const c_ecc_forward_additive & ecc() const;
+  const c_ecch & ecch() const;
   const c_ecch_flow & eccflow() const;
 
-  c_frame_registration_base_options & base_options();
-  const c_frame_registration_base_options & base_options() const;
 
-  const c_frame_registration_status & status() const;
+  const c_image_registration_status & status() const;
+
+
 
 public: // ops
-  c_frame_registration();
-  c_frame_registration(const c_frame_registration_base_options & opts);
-
   virtual ~c_frame_registration() = default;
 
   virtual bool setup_referece_frame(cv::InputArray image,
@@ -157,9 +164,9 @@ public: // artifacts
   const cv::Mat1f & current_transform() const;
   const cv::Mat2f & current_remap() const;
 
-protected: // specs
+protected:
   virtual bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
-      cv::OutputArray dst, cv::OutputArray dstmsk) const = 0;
+      cv::OutputArray dst, cv::OutputArray dstmsk) const;
 
   virtual bool create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk,
@@ -174,27 +181,44 @@ protected: // specs
       double scale) const;
 
   virtual bool extract_reference_features(cv::InputArray reference_feature_image,
-      cv::InputArray reference_feature_mask) = 0;
+      cv::InputArray reference_feature_mask);
 
   virtual bool estimate_feature_transform(cv::InputArray current_feature_image,
       cv::InputArray current_feature_mask,
-      cv::Mat1f * current_transform) = 0;
+      cv::Mat1f * current_transform);
 
+  virtual bool detect_and_match_keypoints(cv::InputArray current_feature_image,
+      cv::InputArray current_feature_mask,
+      std::vector<cv::Point2f> & output_matched_current_positions,
+      std::vector<cv::Point2f> & output_matched_reference_positions,
+      std::vector<cv::KeyPoint> * _current_keypoints,
+      cv::Mat * _current_descriptors,
+      std::vector<cv::DMatch> * _current_matches,
+      std::vector<std::vector<cv::DMatch> > * _current_matches12) const;
 
 
 protected:
-  c_frame_registration_base_options base_options_;
+  c_image_registration_options options_;
 
   cv::Size reference_frame_size_;
   cv::Size current_frame_size_;
 
   cv::Mat reference_feature_image_;
-  cv::Mat reference_feature_mask_;
-
   cv::Mat current_feature_image_;
+
+  cv::Mat reference_feature_mask_;
   cv::Mat current_feature_mask_;
 
-  // c_gaussian_filter gaussian_filter_;
+  c_sparse_feature_extractor::ptr keypoints_extractor_;
+  c_feature2d_matcher::ptr keypoints_matcher_;
+  std::vector<cv::KeyPoint> reference_keypoints_;
+  cv::Mat reference_descriptors_;
+  std::vector<cv::KeyPoint> current_keypoints_;
+  cv::Mat current_descriptors_;
+  std::vector<cv::DMatch> current_matches_;
+  std::vector<std::vector<cv::DMatch> > current_matches12_;
+  std::vector<cv::Point2f> matched_current_positions_;
+  std::vector<cv::Point2f> matched_reference_positions_;
 
   c_ecch ecch_;
   c_ecc_forward_additive ecc_;
@@ -203,7 +227,7 @@ protected:
   cv::Mat1f current_transform_;
   cv::Mat2f current_remap_;
 
-  c_frame_registration_status current_status_;
+  c_image_registration_status current_status_;
 
   std::string debug_path_;
   bool enable_debug_ = false;

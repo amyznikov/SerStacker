@@ -38,22 +38,6 @@ const c_enum_member * members_of<roi_selection_method>()
   return members;
 }
 
-
-template<>
-const c_enum_member * members_of<frame_registration_method>()
-{
-  static constexpr c_enum_member members[] = {
-      { frame_registration_generic , "Generic", },
-      { frame_registration_planetary_disk, "Planetary Disk Registration", },
-      { frame_registration_star_field, "Star Field Registration", },
-      { frame_registration_ecch, "ECCH Registration", },
-      { frame_registration_jovian_derotate, "Jovian Derotate", },
-      { frame_registration_none, "None", },
-      { frame_registration_none , nullptr, }, // must be last
-  };
-  return members;
-}
-
 template<>
 const c_enum_member * members_of<frame_accumulation_method>()
 {
@@ -97,32 +81,6 @@ const c_enum_member * members_of<frame_upscale_option>()
 
 namespace {
 
-//static cv::Mat2f remap2flow(const cv::Mat2f &rmap, const cv::Mat1b & mask)
-//{
-//  cv::Mat2f uv(rmap.size());
-//
-//  typedef tbb::blocked_range<int> range;
-//  tbb::parallel_for(range(0, rmap.rows, 256),
-//      [&rmap, &uv, &mask](const range &r) {
-//        const int nx = rmap.cols;
-//        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-//          for ( int x = 0; x < nx; ++x ) {
-//
-//            if ( mask[y][x] ) {
-//              uv[y][x][0] = rmap[y][x][0] - x;
-//              uv[y][x][1] = rmap[y][x][1] - y;
-//            }
-//            else {
-//              uv[y][x][0] = 0;
-//              uv[y][x][1] = 0;
-//            }
-//          }
-//        }
-//      });
-//
-//  return uv;
-//}
-
 static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
 {
   cv::Mat2f rmap(uv.size());
@@ -147,33 +105,6 @@ static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
 
   return rmap;
 }
-
-//static cv::Mat2f iremap(const cv::Mat2f &map, const cv::Mat1b & mask)
-//{
-//  cv::Mat2f imap(map.size());
-//
-//  typedef tbb::blocked_range<int> range;
-//  tbb::parallel_for(range(0, map.rows, 256),
-//      [&map, &imap, &mask](const range &r) {
-//        const int nx = map.cols;
-//        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-//          for ( int x = 0; x < nx; ++x ) {
-//
-//            if ( mask[y][x] ) {
-//              imap[y][x][0] = 2 * x - map[y][x][0];
-//              imap[y][x][1] = 2 * y - map[y][x][1];
-//            }
-//            else {
-//              imap[y][x][0] = x;
-//              imap[y][x][1] = y;
-//            }
-//          }
-//        }
-//      });
-//
-//  return imap;
-//}
-
 
 static cv::Mat2f compute_turbulent_flow(
     ECC_MOTION_TYPE current_motion_type,
@@ -375,12 +306,12 @@ const c_frame_upscale_options & c_image_stacking_options::upscale_options() cons
 
 c_sparse_feature_extractor_options & c_image_stacking_options::sparse_feature_extractor_options()
 {
-  return frame_registration_options_.generic_options.sparse_feature_extractor;
+  return frame_registration_options_.image_registration_options.feature_registration.sparse_feature_extractor;
 }
 
 const c_sparse_feature_extractor_options & c_image_stacking_options::sparse_feature_extractor_options() const
 {
-  return frame_registration_options_.generic_options.sparse_feature_extractor;
+  return frame_registration_options_.image_registration_options.feature_registration.sparse_feature_extractor;
 }
 
 c_sparse_feature_detector_options & c_image_stacking_options::sparse_feature_detector_options()
@@ -405,7 +336,7 @@ const c_sparse_feature_descriptor_options & c_image_stacking_options::sparse_fea
 
 c_master_frame_options & c_image_stacking_options::master_frame_options()
 {
-  return master_frame_options_;
+  return frame_registration_options_.master_frame_options;
 }
 
 c_roi_selection_options & c_image_stacking_options::roi_selection_options()
@@ -436,7 +367,7 @@ c_roi_selection::ptr c_image_stacking_options::create_roi_selection() const
 
 const c_master_frame_options & c_image_stacking_options::master_frame_options() const
 {
-  return master_frame_options_;
+  return frame_registration_options_.master_frame_options;
 }
 
 c_frame_registration_options & c_image_stacking_options::frame_registration_options()
@@ -449,32 +380,14 @@ const c_frame_registration_options & c_image_stacking_options::frame_registratio
   return frame_registration_options_;
 }
 
-c_frame_registration::ptr c_image_stacking_options::create_frame_registration() const
+c_frame_registration::sptr c_image_stacking_options::create_frame_registration(const c_image_registration_options & options) const
 {
-  switch (frame_registration_options_.registration_method) {
+  return c_frame_registration::sptr(new c_frame_registration(options));
+}
 
-    case frame_registration_generic:
-      return c_generic_frame_registration::create(frame_registration_options_.base_options,
-          frame_registration_options_.generic_options);
-
-    case frame_registration_planetary_disk:
-      return c_planetary_disk_registration::create(frame_registration_options_.base_options,
-          frame_registration_options_.planetary_disk_options);
-
-    case frame_registration_star_field:
-      return c_star_field_registration::create(frame_registration_options_.base_options,
-          frame_registration_options_.star_field_options);
-
-    case frame_registration_jovian_derotate:
-      return c_jovian_rotation_registration::create(frame_registration_options_.base_options,
-          frame_registration_options_.planetary_disk_options,
-          frame_registration_options_.jovian_derotation_options);
-
-    default:
-      break;
-  }
-
-  return nullptr;
+c_frame_registration::sptr c_image_stacking_options::create_frame_registration() const
+{
+  return create_frame_registration(frame_registration_options_.image_registration_options);
 }
 
 c_frame_accumulation_options & c_image_stacking_options::accumulation_options()
@@ -1067,7 +980,7 @@ bool c_image_stacking_pipeline::actual_run()
   /////////////////////////////////////////////////////////////////////////////
   // SETUP FRAME REGISTRATION
 
-  if ( registration_options.registration_method != frame_registration_none ) {
+  if ( registration_options.image_registration_options.enable_frame_registration ) {
 
     set_status_msg("CREATE REFERENCE FRAME ...");
 
@@ -1163,7 +1076,7 @@ bool c_image_stacking_pipeline::actual_run()
 
     ecc_normalization_noise_ =
         compute_image_noise(reference_frame, reference_mask,
-            options_->frame_registration_options().base_options.registration_channel);
+            options_->frame_registration_options().image_registration_options.registration_channel);
 
     if ( master_options.save_master_frame ) {
       write_image(ssprintf("%s/%s-master.tiff", output_directory_.c_str(), options_->cname()),
@@ -1234,7 +1147,7 @@ bool c_image_stacking_pipeline::actual_run()
           reference_weights_.channels());
     }
 
-    if ( output_options.debug_frame_registration && frame_registration_->enable_eccflow() ) {
+    if ( output_options.debug_frame_registration && frame_registration_->options().eccflow.enabled  ) {
 
       const c_ecch_flow & eccflow =
           frame_registration_->eccflow();
@@ -1256,8 +1169,9 @@ bool c_image_stacking_pipeline::actual_run()
     }
 
 
-    if ( registration_options.accumulate_and_compensate_turbulent_flow ) {
-      if ( frame_registration_->motion_type() > ECC_MOTION_EUCLIDEAN || frame_registration_->enable_eccflow() ) {
+    if( registration_options.accumulate_and_compensate_turbulent_flow ) {
+      if( registration_options.image_registration_options.motion_type > ECC_MOTION_EUCLIDEAN ||
+          registration_options.image_registration_options.eccflow.enabled ) {
         flow_accumulation_.reset(new c_frame_weigthed_average());
       }
     }
@@ -1456,63 +1370,56 @@ bool c_image_stacking_pipeline::actual_run()
       }
     }
 
-    switch ( registration_options.registration_method ) {
-    case frame_registration_jovian_derotate :
-      if ( registration_options.jovian_derotation_options.align_jovian_disk_horizontally ) {
-
-        c_jovian_rotation_registration::ptr jovian_derotation =
-            std::dynamic_pointer_cast<c_jovian_rotation_registration>(frame_registration_);
-        if ( jovian_derotation ) {
-
-          const cv::RotatedRect & E =
-              jovian_derotation->jovian_derotation().reference_ellipse();
-
-          const cv::Rect & BB =
-              jovian_derotation->jovian_derotation().reference_boundig_box();
-
-          const cv::Mat T =
-              createEuclideanTransform(E.center.x + BB.x, E.center.y + BB.y,
-                  accumulated_image.cols / 2, accumulated_image.rows / 2,
-                  1.0,
-                  -E.angle * CV_PI / 180,
-                  CV_32F);
-
-          const cv::Mat M =
-              createRemap(ECC_MOTION_AFFINE,
-                  T,
-                  accumulated_image.size(),
-                  CV_32F);
-
-          cv::remap(accumulated_image, accumulated_image,
-              M, cv::noArray(),
-              cv::INTER_LINEAR,
-              cv::BORDER_REPLICATE);
-
-          cv::remap(accumulated_mask, accumulated_mask,
-              M, cv::noArray(),
-              cv::INTER_LINEAR,
-              cv::BORDER_CONSTANT);
-
-          cv::compare(accumulated_mask, 255,
-              accumulated_mask,
-              cv::CMP_GE);
-
-          output_file_name =
-              ssprintf("%s/%s-32F-PPR.tiff",
-                  output_directory_.c_str(),
-                  options_->cname());
-
-          CF_DEBUG("Saving '%s'", output_file_name.c_str());
-          if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
-            CF_ERROR("write_image('%s') fails", output_file_name.c_str());
-          }
-
-
-        }
+    if ( registration_options.image_registration_options.jovian_derotation.enabled ) {
+      if ( registration_options.image_registration_options.jovian_derotation.align_jovian_disk_horizontally ) {
+//        c_jovian_rotation_registration::ptr jovian_derotation =
+//            std::dynamic_pointer_cast<c_jovian_rotation_registration>(frame_registration_);
+//        if ( jovian_derotation ) {
+//
+//          const cv::RotatedRect & E =
+//              jovian_derotation->jovian_derotation().reference_ellipse();
+//
+//          const cv::Rect & BB =
+//              jovian_derotation->jovian_derotation().reference_boundig_box();
+//
+//          const cv::Mat T =
+//              createEuclideanTransform(E.center.x + BB.x, E.center.y + BB.y,
+//                  accumulated_image.cols / 2, accumulated_image.rows / 2,
+//                  1.0,
+//                  -E.angle * CV_PI / 180,
+//                  CV_32F);
+//
+//          const cv::Mat M =
+//              createRemap(ECC_MOTION_AFFINE,
+//                  T,
+//                  accumulated_image.size(),
+//                  CV_32F);
+//
+//          cv::remap(accumulated_image, accumulated_image,
+//              M, cv::noArray(),
+//              cv::INTER_LINEAR,
+//              cv::BORDER_REPLICATE);
+//
+//          cv::remap(accumulated_mask, accumulated_mask,
+//              M, cv::noArray(),
+//              cv::INTER_LINEAR,
+//              cv::BORDER_CONSTANT);
+//
+//          cv::compare(accumulated_mask, 255,
+//              accumulated_mask,
+//              cv::CMP_GE);
+//
+//          output_file_name =
+//              ssprintf("%s/%s-32F-PPR.tiff",
+//                  output_directory_.c_str(),
+//                  options_->cname());
+//
+//          CF_DEBUG("Saving '%s'", output_file_name.c_str());
+//          if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
+//            CF_ERROR("write_image('%s') fails", output_file_name.c_str());
+//          }
+//        }
       }
-      break;
-    default :
-      break;
     }
   }
 
@@ -1582,7 +1489,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
     const color_channel_type master_channel =
         options_->frame_registration_options().
-            base_options.registration_channel;
+            image_registration_options.registration_channel;
 
     if ( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(), master_channel) ) {
       CF_ERROR("extract_channel(master_channel=%d) fails",master_channel);
@@ -1609,23 +1516,20 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
   }
   else {
 
-
     // Generate from sequence
+    c_image_registration_options master_registration_options =
+        options_->frame_registration_options().image_registration_options;
 
-    if ( !(frame_registration_ = options_->create_frame_registration()) ) {
-      CF_FATAL("options_->create_frame_registration() fails");
+    if ( master_options.eccflow_scale > 1 ) {
+      master_registration_options.eccflow.enabled = true;
+      master_registration_options.eccflow.support_scale = master_options.eccflow_scale;
+    }
+
+    if ( !(frame_registration_ = options_->create_frame_registration(master_registration_options)) ) {
+      CF_FATAL("options_->create_frame_registration(master_registration_options) fails");
       return false;
     }
 
-    frame_registration_->set_enable_eccflow(master_options.eccflow_scale > 1);
-    if ( frame_registration_->enable_eccflow() ) {
-
-      frame_registration_->base_options().eccflow.support_scale =
-          master_options.eccflow_scale;
-
-      frame_registration_->base_options().eccflow.normalization_scale =
-          master_options.eccflow_scale;
-    }
 
     if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {
       CF_FATAL("frame_registration_->setup_referece_frame() fails");
@@ -1876,11 +1780,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
       bool fOk = extract_channel(current_frame, current_frame,
           cv::noArray(), cv::noArray(),
-          options_->frame_registration_options().base_options.registration_channel);
+          options_->frame_registration_options().image_registration_options.registration_channel);
 
       if ( !fOk ) {
         CF_ERROR("extract_channel(registration_channel=%d) fails",
-            options_->frame_registration_options().base_options.registration_channel);
+            options_->frame_registration_options().image_registration_options.registration_channel);
         return false;
       }
 
@@ -1982,11 +1886,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
         if ( flow_accumulation_ ) {
 
-          const cv::Mat2f turbulence = compute_turbulent_flow(
-              frame_registration_->motion_type(),
-              frame_registration_->current_transform(),
-              frame_registration_->current_remap()/*,
-              current_mask_*/);
+          const cv::Mat2f turbulence =
+              compute_turbulent_flow(
+                  frame_registration_->options().motion_type,
+                  frame_registration_->current_transform(),
+                  frame_registration_->current_remap()/*,
+                   current_mask_*/);
 
           if ( turbulence.empty() ) {
             CF_ERROR("compute_turbulence_flow() fails");
@@ -2012,29 +1917,30 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
 
 
-        CF_DEBUG("C custom_remap");
         frame_registration_->custom_remap(current_remap,
             current_frame, current_frame,
             current_mask, current_mask,
-            registration_options.base_options.interpolation,
-            master_frame_generation_ ? ECC_BORDER_REFLECT101 :
-                registration_options.base_options.border_mode,
-            registration_options.base_options.border_value);
+            registration_options.image_registration_options.interpolation,
+            master_frame_generation_ ?
+                ECC_BORDER_REFLECT101 :
+                registration_options.image_registration_options.border_mode,
+            registration_options.image_registration_options.border_value);
 
         if( !current_weights.empty() ) {
 
           frame_registration_->custom_remap(current_remap,
               current_weights, current_weights,
               cv::noArray(), cv::noArray(),
-              registration_options.base_options.interpolation,
+              registration_options.image_registration_options.interpolation,
               ECC_BORDER_CONSTANT);
 
           cv::divide(current_weights, reference_weights_,
               current_weights);
 
           cv::multiply(current_mask, current_weights, current_weights,
-              current_mask.depth() == CV_8U ? 1./255 : 1,
-                  CV_32F);
+              current_mask.depth() == CV_8U ?
+                  1. / 255 : 1,
+              CV_32F);
 
           current_mask = current_weights;
         }
@@ -2051,8 +1957,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
-      if( registration_options.aligned_frame_processor ) {
-        registration_options.aligned_frame_processor->process(current_frame, current_mask);
+      if( registration_options.aligned_frame_postprocessor ) {
+        registration_options.aligned_frame_postprocessor->process(current_frame, current_mask);
         if ( canceled() ) {
           break;
         }

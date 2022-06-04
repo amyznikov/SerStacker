@@ -18,6 +18,12 @@ template<>
 const c_enum_member *members_of<FEATURE2D_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+#if HAVE_STAR_EXTRACTOR
+      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
+#endif
       { FEATURE2D_ORB, "ORB", "" },
       { FEATURE2D_BRISK, "BRISK", "" },
       { FEATURE2D_MSER, "MSER", "" },
@@ -63,12 +69,6 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
 #if HAVE_FEATURE2D_HL
       { FEATURE2D_HL, "HL", "" },
 #endif
-#if HAVE_STAR_EXTRACTOR
-      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
-#endif
-#if HAVE_TRIANGLE_EXTRACTOR
-      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
-#endif
       { FEATURE2D_UNKNOWN, nullptr, "" },
   };
 
@@ -79,6 +79,9 @@ template<> const c_enum_member*
 members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+#if HAVE_STAR_EXTRACTOR
+      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
+#endif
 #if HAVE_FEATURE2D_SURF
       { SPARSE_FEATURE_DETECTOR_SURF, "SURF" },
 #endif
@@ -103,9 +106,6 @@ members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 #if HAVE_FEATURE2D_HL
       { SPARSE_FEATURE_DETECTOR_HL, "HL" },
 #endif
-#if HAVE_STAR_EXTRACTOR
-      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
-#endif
       { SPARSE_FEATURE_DETECTOR_UNKNOWN, nullptr },
   };
 
@@ -116,6 +116,9 @@ template<> const c_enum_member *
 members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+#if HAVE_TRIANGLE_EXTRACTOR
+      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
+#endif
 #if HAVE_FEATURE2D_SURF
       {SPARSE_FEATURE_DESCRIPTOR_SURF, "SURF"},
 #endif
@@ -146,9 +149,6 @@ members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 #endif
 #if HAVE_FEATURE2D_BOOST
       {SPARSE_FEATURE_DESCRIPTOR_BOOST, "BOOST"},
-#endif
-#if HAVE_TRIANGLE_EXTRACTOR
-      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
 #endif
       {SPARSE_FEATURE_DESCRIPTOR_UNKNOWN, nullptr}
   };
@@ -494,6 +494,7 @@ c_feature2d::ptr create_sparse_descriptor_extractor(const c_sparse_feature_descr
     return create_feature2d(options.surf);
 #endif
 #if HAVE_FEATURE2D_FREAK
+  case FEATURE2D_FREAK :
     return create_feature2d(options.freak);
 #endif
 #if HAVE_FEATURE2D_BRIEF

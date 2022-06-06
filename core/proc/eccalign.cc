@@ -2798,9 +2798,11 @@ bool c_ecch::align_to_reference(cv::InputArray inputImage, cv::InputOutputArray 
 
   while ( 42 ) {
 
+    int I = image_pyramids_[C].size() - 1;
+
     const int currentMinSize = std::min(std::min(std::min(
-        image_pyramids_[C].back().cols, image_pyramids_[C].back().rows),
-            image_pyramids_[R].back().cols), image_pyramids_[R].back().rows);
+        image_pyramids_[C][I].cols, image_pyramids_[C][I].rows),
+            image_pyramids_[R][I].cols), image_pyramids_[R][I].rows);
 
     const int nextMinSize = currentMinSize / 2;
 
@@ -2810,7 +2812,7 @@ bool c_ecch::align_to_reference(cv::InputArray inputImage, cv::InputOutputArray 
 
     image_pyramids_[C].emplace_back();
 
-    // fixme: GaussianBlur with mask will produce edge effects
+    // FIXME: GaussianBlur with mask will produce edge effects
     cv::GaussianBlur(image_pyramids_[C][image_pyramids_[C].size() - 2],
         image_pyramids_[C].back(),
         cv::Size(5, 5),
@@ -2835,6 +2837,10 @@ bool c_ecch::align_to_reference(cv::InputArray inputImage, cv::InputOutputArray 
   // Align pyramid images in coarse-to-fine direction
   bool eccOk = false;
 
+  //  CF_DEBUG("transform_pyramid_.size()=%zu", transform_pyramid_.size());
+  //  CF_DEBUG("image_pyramids_[C].size()=%zu", image_pyramids_[C].size());
+  //  CF_DEBUG("image_pyramids_[R].size()=%zu", image_pyramids_[R].size());
+
   for ( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
 
     cv::Mat1f & T =
@@ -2856,7 +2862,7 @@ bool c_ecch::align_to_reference(cv::InputArray inputImage, cv::InputOutputArray 
       continue;
     }
 
-    else if ( false ) {
+    else if ( true ) {
       CF_DEBUG("L[%2d] : eccAlign() OK: motion: %d size=%dx%d num_iterations=%d rho=%g eps=%g", i, method_->motion_type(),
           image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
           method_->num_iterations(), method_->rho(), method_->current_eps());

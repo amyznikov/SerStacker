@@ -25,6 +25,9 @@
 #include "feature_matching/c_triangle_matcher.h"
 #define HAVE_TRIANGLE_EXTRACTOR 1
 
+#include "c_simple_planetary_disk_detector.h"
+#define HAVE_SIMPLE_PLANETARY_DISK_DETECTOR 1
+
 
 #include <core/ssprintf.h>
 
@@ -130,6 +133,9 @@ enum FEATURE2D_TYPE {
 #if HAVE_TRIANGLE_EXTRACTOR
   FEATURE2D_TRIANGLE_EXTRACTOR,
 #endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+  FEATURE2D_PLANETARY_DISK,
+#endif
 
 };
 
@@ -163,6 +169,9 @@ enum SPARSE_FEATURE_DETECTOR_TYPE
 #endif
 #if HAVE_STAR_EXTRACTOR
   SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR = FEATURE2D_STAR_EXTRACTOR,
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+  SPARSE_FEATURE_DETECTOR_PLANETARY_DISK = FEATURE2D_PLANETARY_DISK,
 #endif
 
 };
@@ -342,6 +351,11 @@ template<> struct feature2d_traits<c_star_extractor> {
 #if HAVE_TRIANGLE_EXTRACTOR
 template<> struct feature2d_traits<c_triangle_extractor> {
   static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;
+};
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+template<> struct feature2d_traits<c_simple_planetary_disk_detector> {
+  static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;
 };
 #endif
 
@@ -1362,6 +1376,45 @@ protected:
 };
 #endif
 
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+class c_feature2d_planetary_disk_detector :
+    public c_feature2d_base<c_simple_planetary_disk_detector>
+{
+public:
+  typedef c_feature2d_planetary_disk_detector this_class;
+  typedef c_feature2d_base base;
+
+  struct options :
+      public base::options
+  {
+    using feature2d_class = this_class;
+    double gbsigma = 0.5;
+    bool align_planetary_disk_masks = false;
+  };
+
+  static ptr create(const options * opts = nullptr)
+  {
+    return ptr(new this_class(opts));
+  }
+
+protected:
+  c_feature2d_planetary_disk_detector(const options * opts) :
+      base(&this->opts_),
+          opts_(opts ? *opts : options())
+  {
+    feature2d_ =
+        c_simple_planetary_disk_detector::create(
+            opts_.gbsigma);
+  }
+
+protected:
+  const options opts_;
+};
+
+
+#endif
+
+
 #if HAVE_TRIANGLE_EXTRACTOR
 class c_feature2d_triangle_extractor :
     public c_feature2d_base<c_triangle_extractor>
@@ -1432,6 +1485,9 @@ inline constexpr bool can_detect_features(enum FEATURE2D_TYPE type)
 #endif
 #if HAVE_STAR_EXTRACTOR
     case FEATURE2D_STAR_EXTRACTOR:
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+    case FEATURE2D_PLANETARY_DISK:
 #endif
     return true;
 
@@ -1527,6 +1583,9 @@ struct c_sparse_feature_detector_options
 #endif
 #if HAVE_STAR_EXTRACTOR
   c_feature2d_star_extractor::options star_extractor;
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+  c_feature2d_planetary_disk_detector::options planetary_disk_detector;
 #endif
 };
 

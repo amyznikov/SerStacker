@@ -29,6 +29,9 @@ public:
   void set_feature_detector_options(c_sparse_feature_detector_options * options);
   c_sparse_feature_detector_options* feature_detector_options() const;
 
+signals:
+ void detectorTypeChanged();
+
 protected:
   void onupdatecontrols() override;
   void update_detector_specific_controls();
@@ -113,7 +116,6 @@ protected:
   QWidgetList controls;
 };
 
-//c_triangle_matcher_options triangles;
 class QTriangleMatcherOptions :
     public QSettingsWidget
 {
@@ -202,6 +204,9 @@ public:
 protected:
   void onupdatecontrols() override;
   void update_controls_state();
+
+protected slots:
+  void onDetectorTypeChanged();
 
 protected:
   c_feature_based_registration_options * options_ = Q_NULLPTR;
@@ -371,226 +376,6 @@ protected:
   QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = Q_NULLPTR;
   QImageProcessorSelectionCombo * alignedFramesPostProcessor_ctl = Q_NULLPTR;
 };
-
-
-
-//
-//typedef QEnumComboBox<frame_registration_method> QFrameRegistrationMethodCombo;
-//typedef QEnumComboBox<ECC_MOTION_TYPE> QEccMotionTypeCombo;
-//typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
-//typedef QEnumComboBox<ECC_BORDER_MODE> QEccBorderModeCombo;
-//typedef QEnumComboBox<color_channel_type> QRegistrationColorChannelCombo;
-//
-//
-//class QEccSettings
-//    : public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QEccSettings ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QEccSettings(QWidget * parent = Q_NULLPTR);
-//
-//  void set_registration_options(c_ecc_options * options);
-//  const c_ecc_options * registration_options() const;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_ecc_options * options_ = Q_NULLPTR;
-//
-//  QNumberEditBox * scale_ctl = Q_NULLPTR;
-//  QNumberEditBox * eps_ctl = Q_NULLPTR;
-//  QNumberEditBox * min_rho_ctl = Q_NULLPTR;
-//  QNumberEditBox * input_smooth_sigma_ctl = Q_NULLPTR;
-//  QNumberEditBox * reference_smooth_sigma_ctl = Q_NULLPTR;
-//  QNumberEditBox * update_step_scale_ctl = Q_NULLPTR;
-//  QNumberEditBox * normalization_noise_ctl = Q_NULLPTR;
-//  QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
-//  QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
-//
-//  QCheckBox * enable_ecch_ctl = Q_NULLPTR;
-//  QNumberEditBox * ecch_minimum_image_size_ctl  = Q_NULLPTR;
-//
-//};
-//
-//class QEccflowSettings
-//    : public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QEccflowSettings ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QEccflowSettings(QWidget * parent = Q_NULLPTR);
-//
-//  void set_registration_options(c_eccflow_options * options);
-//  const c_eccflow_options * registration_options() const;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_eccflow_options * options_ = Q_NULLPTR;
-//
-//  QNumberEditBox * support_scale_ctl = Q_NULLPTR;
-//  QNumberEditBox * update_multiplier_ctl = Q_NULLPTR;
-//  QNumberEditBox * input_smooth_sigma_ctl = Q_NULLPTR;
-//  QNumberEditBox * reference_smooth_sigma_ctl = Q_NULLPTR;
-//
-//  QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
-//  QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
-//};
-//
-//
-//class QGenericFrameRegistrationSettings :
-//    public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QGenericFrameRegistrationSettings ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QGenericFrameRegistrationSettings(QWidget * parent = Q_NULLPTR);
-//
-//};
-//
-//
-//class QFrameRegistrationBaseSettings:
-//    public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QFrameRegistrationBaseSettings ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QFrameRegistrationBaseSettings(QWidget * parent = Q_NULLPTR);
-//
-//  void set_registration_options(c_frame_registration_base_options * options);
-//  const c_frame_registration_base_options * registration_options() const;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_frame_registration_base_options * options_ = Q_NULLPTR;
-//
-//  QRegistrationColorChannelCombo * reference_channel_ctl = Q_NULLPTR;
-//
-//  QEccMotionTypeCombo * motion_type_ctl = Q_NULLPTR;
-//  QLineEditBox * feature_scale_ctl = Q_NULLPTR;
-//  QEccInterpolatioMethodCombo * interpolation_ctl = Q_NULLPTR;
-//  QEccBorderModeCombo * border_ctl = Q_NULLPTR;
-//
-//  QCheckBox * enable_ecc_ctl = Q_NULLPTR;
-//  QEccSettings * ecc_ctl = Q_NULLPTR;
-//
-//  QCheckBox * enable_eccflow_ctl = Q_NULLPTR;
-//  QEccflowSettings * eccflow_ctl = Q_NULLPTR;
-//};
-//
-//
-//class QPlanetaryDiskRegistrationSettings
-//    : public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QPlanetaryDiskRegistrationSettings ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QPlanetaryDiskRegistrationSettings(QWidget * parent = Q_NULLPTR);
-//  QPlanetaryDiskRegistrationSettings(const QString & prefix, QWidget * parent = Q_NULLPTR);
-//
-//  void set_planetary_disk_options(c_planetary_disk_registration_options * options);
-//  const c_planetary_disk_registration_options * planetary_disk_options() const;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  void construct();
-//
-//protected:
-//  c_planetary_disk_registration_options * planetary_disk_options_ = Q_NULLPTR;
-//  QCheckBox * align_planetary_disk_masks_ctl = Q_NULLPTR;
-//};
-//
-//class QJovianDerotationSettings
-//    : public QPlanetaryDiskRegistrationSettings
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QJovianDerotationSettings ThisClass;
-//  typedef QPlanetaryDiskRegistrationSettings Base;
-//
-//  QJovianDerotationSettings(QWidget * parent = Q_NULLPTR);
-//
-//  void set_jovian_derotation_options(c_jovian_derotation_options * jovian_derotation_options);
-//  const c_jovian_derotation_options * jovian_derotation_options() const;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_jovian_derotation_options * jovian_derotation_options_ = Q_NULLPTR;
-//  QNumberEditBox * min_rotation_ctl = Q_NULLPTR;
-//  QNumberEditBox * max_rotation_ctl = Q_NULLPTR;
-//  QNumberEditBox * eccflow_support_scale_ctl = Q_NULLPTR;
-//  QNumberEditBox * eccflow_normalization_scale_ctl = Q_NULLPTR;
-//  QNumberEditBox * eccflow_max_pyramid_level_ctl = Q_NULLPTR;
-//  QCheckBox * align_jovian_disk_horizontally_ctl = Q_NULLPTR;
-//
-//};
-//
-//
-//class QFrameRegistrationOptions
-//    : public QSettingsWidget
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QFrameRegistrationOptions ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QFrameRegistrationOptions(QWidget * parent = Q_NULLPTR);
-//
-//  void set_stacking_options(const c_image_stacking_options::ptr & options);
-//  const c_image_stacking_options::ptr & stacking_options() const;
-//
-//signals:
-//  void applyFrameRegistrationOptionsToAllRequested(
-//      const c_image_stacking_options::ptr & stack);
-//
-//protected:
-//  void onupdatecontrols() override;
-//  void updatemethodspecificpage();
-//
-//protected:
-//  c_image_stacking_options::ptr options_;
-//  QFrameRegistrationMethodCombo * frameRegistrationMethod_ctl = Q_NULLPTR;
-//  QMasterFrameOptions * masterFrame_ctl = Q_NULLPTR;
-//
-//  QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = Q_NULLPTR;
-//  QImageProcessorSelectionCombo * alignedFramesProcessor_ctl = Q_NULLPTR;
-//
-//  QFrameRegistrationBaseSettings * frameRegistrationBaseSettings_ctl = Q_NULLPTR;
-//
-//  QSparseFeatureDetectorSettingsWidget * sparseFeatureDetectorSettings_ctl = Q_NULLPTR;
-//  QExpandableGroupBox * sparseFeatureDetectorSettingsGroup_ctl = Q_NULLPTR;
-//
-//  QSparseDescriptorExtractorSettingsWidget * sparseFeatureDescriptorSettings_ctl = Q_NULLPTR;
-//  QExpandableGroupBox * sparseFeatureDescriptorSettingsGroup_ctl = Q_NULLPTR;
-//
-//  QSparseFeature2DMatcherSettingsWidget * sparseFeatureMatching_ctl = Q_NULLPTR;
-//  QExpandableGroupBox * sparseFeatureMatchingGroup_ctl = Q_NULLPTR;
-//
-//  QPlanetaryDiskRegistrationSettings * planetaryDiskRegistrationSettings = Q_NULLPTR;
-//  QJovianDerotationSettings * jovianDerotationSettings = Q_NULLPTR;
-//  QToolButton * applyToAll_ctl = Q_NULLPTR;
-//};
-//
-
 
 
 #endif /* __QFrameRegistrationSettings_h__ */

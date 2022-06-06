@@ -18,6 +18,12 @@ template<>
 const c_enum_member *members_of<FEATURE2D_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+#if HAVE_FEATURE2D_SURF
+      { FEATURE2D_SURF, "SURF", "" },
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+      { FEATURE2D_PLANETARY_DISK, "PLANETARY_DISK" },
+#endif
 #if HAVE_STAR_EXTRACTOR
       { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
 #endif
@@ -38,9 +44,6 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
 #endif
 #if HAVE_FEATURE2D_SIFT
       { FEATURE2D_SIFT, "SIFT", "" },
-#endif
-#if HAVE_FEATURE2D_SURF
-      { FEATURE2D_SURF, "SURF", "" },
 #endif
 #if HAVE_FEATURE2D_FREAK
       { FEATURE2D_FREAK, "FREAK", "" },
@@ -79,11 +82,14 @@ template<> const c_enum_member*
 members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 {
   static constexpr c_enum_member members[] = {
-#if HAVE_STAR_EXTRACTOR
-      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
-#endif
 #if HAVE_FEATURE2D_SURF
       { SPARSE_FEATURE_DETECTOR_SURF, "SURF" },
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+      { SPARSE_FEATURE_DETECTOR_PLANETARY_DISK, "PLANETARY_DISK" },
+#endif
+#if HAVE_STAR_EXTRACTOR
+      { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
 #endif
       { SPARSE_FEATURE_DETECTOR_AKAZE, "AKAZE" },
 #if HAVE_FEATURE2D_SIFT
@@ -116,11 +122,11 @@ template<> const c_enum_member *
 members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 {
   static constexpr c_enum_member members[] = {
-#if HAVE_TRIANGLE_EXTRACTOR
-      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
-#endif
 #if HAVE_FEATURE2D_SURF
       {SPARSE_FEATURE_DESCRIPTOR_SURF, "SURF"},
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+      { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
 #endif
       {SPARSE_FEATURE_DESCRIPTOR_AKAZE, "AKAZE"},
       {SPARSE_FEATURE_DESCRIPTOR_ORB, "ORB"},
@@ -321,9 +327,12 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
   INSTRUMENT_REGION("");
 
   if ( !descriptor_ && !can_compute_decriptors(detector_->type()) ) {
-    CF_ERROR("specified keypoints detector %s can not compute feature descriptors",
+    // simple planetary disk detector not required to compute descriptors
+    if ( detector_->type() != FEATURE2D_PLANETARY_DISK ) {
+      CF_ERROR("specified keypoints detector %s can not compute feature descriptors",
         toString(detector_->type()));
-    return false;
+      return false;
+    }
   }
 
   //
@@ -333,32 +342,30 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
   keypoints.clear();
   keypoints.reserve(std::max(max_keypoints_, 1000));
 
-  CF_DEBUG("H descriptor_=%p", descriptor_.get());
-
   // Prefer detectAndCompute() if possible because it can be faster for some detectors
   if ( !descriptor_ || descriptor_.get() == detector_.get() ) {
 
-    CF_DEBUG("H");
-    detector_->detectAndCompute(
-            image,
-            mask,
-            keypoints,
-            descriptors,
-            useProvidedKeypoints);
+    if( detector_->type() == FEATURE2D_PLANETARY_DISK ) {
+      // simple planetary disk detector not required to compute descriptors
+      detector_->detect(image, keypoints, mask);
+      descriptors.release();
+    }
+    else {
+      detector_->detectAndCompute(
+              image,
+              mask,
+              keypoints,
+              descriptors,
+              useProvidedKeypoints);
+    }
 
     if ( keypoints.size() < 1 ) {
       CF_ERROR("No keypoints detected on image");
       return false;
     }
-
-    // TODO: keep no more than max_keypoints_to_extract if requested ?
-    // if ( max_keypoints_to_extract > 0 && (int)output_keypoints.size() > max_keypoints_to_extract ) {
-    // }
-
   }
   else {
 
-    CF_DEBUG("H");
     detector_->detect(image,
         keypoints,
         mask);
@@ -397,47 +404,51 @@ c_feature2d::ptr create_sparse_feature_detector(const c_sparse_feature_detector_
   case FEATURE2D_UNKNOWN :
     CF_ERROR("No detector type specified in sparse_feature_detector_options");
     return nullptr;
-  case FEATURE2D_ORB :
+  case SPARSE_FEATURE_DETECTOR_ORB :
     return create_feature2d(options.orb);
-  case FEATURE2D_BRISK :
+  case SPARSE_FEATURE_DETECTOR_BRISK :
     return create_feature2d(options.brisk);
-  case FEATURE2D_KAZE :
+  case SPARSE_FEATURE_DETECTOR_KAZE :
     return create_feature2d(options.kaze);
-  case FEATURE2D_AKAZE :
+  case SPARSE_FEATURE_DETECTOR_AKAZE :
     return create_feature2d(options.akaze);
 #if HAVE_FEATURE2D_SIFT
-  case FEATURE2D_SIFT :
+  case SPARSE_FEATURE_DETECTOR_SIFT :
     return create_feature2d(options.sift);
 #endif
 #if HAVE_FEATURE2D_SURF
-  case FEATURE2D_SURF :
+  case SPARSE_FEATURE_DETECTOR_SURF :
     return create_feature2d(options.surf);
 #endif
-  case FEATURE2D_MSER :
+  case SPARSE_FEATURE_DETECTOR_MSER :
     return create_feature2d(options.mser);
-  case FEATURE2D_FAST :
+  case SPARSE_FEATURE_DETECTOR_FAST :
     return create_feature2d(options.fast);
-  case FEATURE2D_AGAST :
+  case SPARSE_FEATURE_DETECTOR_AGAST :
     return create_feature2d(options.agast);
-  case FEATURE2D_GFTT :
+  case SPARSE_FEATURE_DETECTOR_GFTT :
     return create_feature2d(options.gftt);
-  case FEATURE2D_BLOB :
+  case SPARSE_FEATURE_DETECTOR_BLOB :
     return create_feature2d(options.blob);
 #if HAVE_FEATURE2D_STAR
-  case FEATURE2D_STAR :
+  case SPARSE_FEATURE_DETECTOR_STAR :
     return create_feature2d(options.star);
 #endif
 #if HAVE_FEATURE2D_MSD
-  case FEATURE2D_MSD :
+  case SPARSE_FEATURE_DETECTOR_MSD :
     return create_feature2d(options.msd);
 #endif
 #if HAVE_FEATURE2D_HL
-  case FEATURE2D_HL :
+  case SPARSE_FEATURE_DETECTOR_HL :
     return create_feature2d(options.hl);
 #endif
 #if HAVE_STAR_EXTRACTOR
-  case FEATURE2D_STAR_EXTRACTOR:
+  case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
     return create_feature2d(options.star_extractor);
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+  case SPARSE_FEATURE_DETECTOR_PLANETARY_DISK:
+    return create_feature2d(options.planetary_disk_detector);
 #endif
 
   default :
@@ -477,48 +488,48 @@ c_feature2d::ptr create_sparse_descriptor_extractor(const c_sparse_feature_descr
   case FEATURE2D_UNKNOWN :
     CF_ERROR("No descriptor type soecified in sparse_feature_descriptor_options");
     return nullptr;
-  case FEATURE2D_ORB :
+  case SPARSE_FEATURE_DESCRIPTOR_ORB :
     return create_feature2d(options.orb);
-  case FEATURE2D_BRISK :
+  case SPARSE_FEATURE_DESCRIPTOR_BRISK :
     return create_feature2d(options.brisk);
-  case FEATURE2D_KAZE :
+  case SPARSE_FEATURE_DESCRIPTOR_KAZE :
     return create_feature2d(options.kaze);
-  case FEATURE2D_AKAZE :
+  case SPARSE_FEATURE_DESCRIPTOR_AKAZE :
     return create_feature2d(options.akaze);
 #if HAVE_FEATURE2D_SIFT
-  case FEATURE2D_SIFT :
+  case SPARSE_FEATURE_DESCRIPTOR_SIFT :
     return create_feature2d(options.sift);
 #endif
 #if HAVE_FEATURE2D_SURF
-  case FEATURE2D_SURF :
+  case SPARSE_FEATURE_DESCRIPTOR_SURF :
     return create_feature2d(options.surf);
 #endif
 #if HAVE_FEATURE2D_FREAK
-  case FEATURE2D_FREAK :
+  case SPARSE_FEATURE_DESCRIPTOR_FREAK :
     return create_feature2d(options.freak);
 #endif
 #if HAVE_FEATURE2D_BRIEF
-  case FEATURE2D_BRIEF :
+  case SPARSE_FEATURE_DESCRIPTOR_BRIEF :
     return create_feature2d(options.brief);
 #endif
 #if HAVE_FEATURE2D_LUCID
-  case FEATURE2D_LUCID :
+  case SPARSE_FEATURE_DESCRIPTOR_LUCID :
     return create_feature2d(options.lucid);
 #endif
 #if HAVE_FEATURE2D_LATCH
-  case FEATURE2D_LATCH :
+  case SPARSE_FEATURE_DESCRIPTOR_LATCH :
     return create_feature2d(options.latch);
 #endif
 #if HAVE_FEATURE2D_DAISY
-  case FEATURE2D_DAISY :
+  case SPARSE_FEATURE_DESCRIPTOR_DAISY :
     return create_feature2d(options.daisy);
 #endif
 #if HAVE_FEATURE2D_VGG
-  case FEATURE2D_VGG :
+  case SPARSE_FEATURE_DESCRIPTOR_VGG :
     return create_feature2d(options.vgg);
 #endif
 #if HAVE_FEATURE2D_BOOST
-  case FEATURE2D_BOOST :
+  case SPARSE_FEATURE_DESCRIPTOR_BOOST :
     return create_feature2d(options.boost);
 #endif
 #if HAVE_TRIANGLE_EXTRACTOR

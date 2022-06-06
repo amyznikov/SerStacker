@@ -11,6 +11,7 @@
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
 #include <core/proc/eccalign.h>
+#include <core/proc/jupiter.h>
 
 struct c_feature_based_registration_options {
   bool enabled = true;
@@ -196,6 +197,13 @@ protected:
       std::vector<cv::DMatch> * _current_matches,
       std::vector<std::vector<cv::DMatch> > * _current_matches12) const;
 
+  virtual bool base_remap(const cv::Mat2f & rmap,
+      cv::InputArray src, cv::OutputArray dst,
+      cv::InputArray src_mask = cv::noArray(),
+      cv::OutputArray dst_mask = cv::noArray(),
+      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
+      const cv::Scalar & border_value = cv::Scalar()) const;
 
 protected:
   c_image_registration_options options_;
@@ -215,6 +223,14 @@ protected:
   cv::Mat reference_descriptors_;
   std::vector<cv::KeyPoint> current_keypoints_;
   cv::Mat current_descriptors_;
+
+  cv::Point2f planetary_disk_reference_centroid_;
+  cv::Point2f planetary_disk_current_centroid_;
+  cv::Rect planetary_disk_reference_component_rect_;
+  cv::Rect planetary_disk_current_component_rect_;
+  cv::Mat planetary_disk_reference_component_mask_;
+  cv::Mat planetary_disk_current_component_mask_;
+
   std::vector<cv::DMatch> current_matches_;
   std::vector<std::vector<cv::DMatch> > current_matches12_;
   std::vector<cv::Point2f> matched_current_positions_;
@@ -223,6 +239,7 @@ protected:
   c_ecch ecch_;
   c_ecc_forward_additive ecc_;
   c_ecch_flow eccflow_;
+  c_jovian_derotation jovian_derotation_;
 
   cv::Mat1f current_transform_;
   cv::Mat2f current_remap_;

@@ -6,7 +6,9 @@
  */
 
 #include "c_frame_registration.h"
+#include <core/proc/planetary-disk-detection.h>
 #include <core/proc/normalize.h>
+#include <core/io/save_image.h>
 #include <core/get_time.h>
 #include <core/debug.h>
 
@@ -230,6 +232,21 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     }
   }
 
+
+  if( options_.jovian_derotation.enabled ) {
+    jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
+    jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
+    jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
+    jovian_derotation_.set_eccflow_normalization_scale(options_.jovian_derotation.eccflow_normalization_scale);
+    jovian_derotation_.set_eccflow_max_pyramid_level(options_.jovian_derotation.eccflow_max_pyramid_level);
+    //jovian_derotation_.set_align_jovian_disk_horizontally(options_.jovian_derotation.align_jovian_disk_horizontally);
+
+    if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
+      CF_ERROR("jovian_derotation_.setup_reference_image() fails");
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -371,6 +388,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
         (t1 = get_realtime_ms()) - t0, t0 = t1;
   }
 
+  if( options_.jovian_derotation.enabled ) {
+    if ( !jovian_derotation_.compute(current_image, current_mask) ) {
+      CF_ERROR("jovian_derotation_.compute() fails");
+      return false;
+    }
+  }
+
   if( dst.needed() || dstmask.needed() ) {
 
     t0 = get_realtime_ms();
@@ -495,80 +519,99 @@ bool c_frame_registration::create_current_ecc_image(cv::InputArray src, cv::Inpu
 
 bool c_frame_registration::extract_reference_features(cv::InputArray reference_feature_image, cv::InputArray reference_feature_mask)
 {
-  // generic
-  if ( !keypoints_extractor_ && !set_keypoints_extractor(create_keypoints_extractor()) ) {
-    CF_FATAL("c_feature_based_image_registration:: set_keypoints_extractor() fails");
-    return false;
+  if( options_.feature_registration.sparse_feature_extractor.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
+
+    // single planetary disk detection
+
+    const c_feature2d_planetary_disk_detector::options &detector_opts =
+        options_.feature_registration.sparse_feature_extractor.detector.planetary_disk_detector;
+
+    if( !detector_opts.align_planetary_disk_masks ) {
+
+      const bool fOk =
+          simple_planetary_disk_detector(reference_feature_image,
+              reference_feature_mask,
+              &planetary_disk_reference_centroid_,
+              detector_opts.gbsigma);
+
+      if( !fOk ) {
+        CF_FATAL("simple_planetary_disk_detector() fails");
+        return false;
+      }
+
+    }
+    else {
+
+      const bool fOk =
+          simple_planetary_disk_detector(reference_feature_image,
+              reference_feature_mask,
+              nullptr,
+              detector_opts.gbsigma,
+              &planetary_disk_reference_component_rect_,
+              &planetary_disk_reference_component_mask_,
+              &planetary_disk_reference_centroid_);
+
+      if( !fOk ) {
+        CF_FATAL("simple_planetary_disk_detector() fails");
+        return false;
+      }
+
+      if( enable_debug_ && !debug_path_.empty() ) {
+        save_image(planetary_disk_reference_component_mask_,
+            ssprintf("%s/reference_component_mask_.tiff",
+                debug_path_.c_str()));
+      }
+    }
+
+    if( options_.feature_registration.scale != 1 ) {
+      planetary_disk_reference_centroid_ /= options_.feature_registration.scale;
+    }
   }
+  else {
 
-  CF_DEBUG("reference_feature_image: %dx%d %d channels %d depth",
-      reference_feature_image.cols(), reference_feature_image.rows(),
-      reference_feature_image.channels(),
-      reference_feature_image.depth());
+    // generic feature detection
 
-  CF_DEBUG("reference_feature_mask: %dx%d %d channels %d depth",
-      reference_feature_mask.cols(), reference_feature_mask.rows(),
-      reference_feature_mask.channels(),
-      reference_feature_mask.depth());
+    if( !keypoints_extractor_ && !set_keypoints_extractor(create_keypoints_extractor()) ) {
+      CF_FATAL("c_feature_based_image_registration:: set_keypoints_extractor() fails");
+      return false;
+    }
 
-  CF_DEBUG("reference_keypoints_.clear()");
-  reference_keypoints_.clear();
+    CF_DEBUG("reference_feature_image: %dx%d %d channels %d depth",
+        reference_feature_image.cols(), reference_feature_image.rows(),
+        reference_feature_image.channels(),
+        reference_feature_image.depth());
 
-  CF_DEBUG("reference_descriptors_.release()");
-  reference_descriptors_.release();
+    CF_DEBUG("reference_feature_mask: %dx%d %d channels %d depth",
+        reference_feature_mask.cols(), reference_feature_mask.rows(),
+        reference_feature_mask.channels(),
+        reference_feature_mask.depth());
 
-  CF_DEBUG("keypoints_detector_->detectAndCompute(): keypoints_detector_=%p", keypoints_extractor_.get());
-  keypoints_extractor_->detectAndCompute(reference_feature_image, reference_feature_mask,
-      reference_keypoints_,
-      reference_descriptors_);
+    reference_keypoints_.clear();
+    reference_descriptors_.release();
 
-  CF_DEBUG("reference_keypoints_.size()=%zu",
-      reference_keypoints_.size());
+    keypoints_extractor_->detectAndCompute(reference_feature_image, reference_feature_mask,
+        reference_keypoints_,
+        reference_descriptors_);
 
-  if ( reference_keypoints_.size() < 3 ) {
-    CF_ERROR("Too few reference key points detected : %zu",
+    CF_DEBUG("reference_keypoints_.size()=%zu",
         reference_keypoints_.size());
-    return false;
+
+    if( reference_keypoints_.size() < 1 ) {
+      CF_ERROR("No reference key points detected : %zu",
+          reference_keypoints_.size());
+      return false;
+    }
+
+    keypoints_matcher_ =
+        create_sparse_feature_matcher(options_.feature_registration.sparse_feature_matcher);
+
+    if( !keypoints_matcher_ ) {
+      CF_ERROR("create_sparse_feature_matcher() fails");
+      return false;
+    }
+
+    keypoints_matcher_->train(reference_descriptors_);
   }
-
-  keypoints_matcher_ =
-      create_sparse_feature_matcher(options_.feature_registration.sparse_feature_matcher);
-
-  if ( !keypoints_matcher_ ) {
-    CF_ERROR("create_sparse_feature_matcher() fails");
-    return false;
-  }
-
-  keypoints_matcher_->train(reference_descriptors_);
-
-
-  // planetary disk
-//  double gbsigma = 0.5;
-//
-//  if ( !options_.align_planetary_disk_masks ) {
-//    if ( !simple_planetary_disk_detector(feature_image, feature_mask, &reference_centroid_, gbsigma) ) {
-//      CF_FATAL("simple_small_planetary_disk_detector() fails");
-//      return false;
-//    }
-//  }
-//  else {
-//    if ( !simple_planetary_disk_detector(feature_image, feature_mask, nullptr, gbsigma,
-//        &reference_component_rect_, &reference_component_mask_, &reference_centroid_) ) {
-//      CF_FATAL("simple_small_planetary_disk_detector() fails");
-//      return false;
-//    }
-//
-//    if ( enable_debug_ && !debug_path_.empty() ) {
-//      save_image(reference_component_mask_,
-//          ssprintf("%s/reference_component_mask_.tiff",
-//              debug_path_.c_str()));
-//    }
-//
-//  }
-//
-//  if ( feature_scale() != 1.0 && feature_scale() != 0 ) {
-//    reference_centroid_ /= feature_scale();
-//  }
 
 
   return true;
@@ -577,213 +620,238 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
 bool c_frame_registration::estimate_feature_transform(cv::InputArray current_feature_image, cv::InputArray current_feature_mask,
     cv::Mat1f * current_transform)
 {
-  // generic
-  bool fOk =
-      detect_and_match_keypoints(current_feature_image, current_feature_mask,
-          matched_current_positions_, matched_reference_positions_,
-          &current_keypoints_, &current_descriptors_,
-          &current_matches_, &current_matches12_);
+  if( options_.feature_registration.sparse_feature_extractor.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
 
-  if( !fOk ) {
-    CF_ERROR("detect_and_match_keypoints() fails");
-    return false;
-  }
+    // single planetary disk registration
 
-  ///////////////
+    const c_feature2d_planetary_disk_detector::options &detector_opts =
+        options_.feature_registration.sparse_feature_extractor.detector.planetary_disk_detector;
 
-  switch (options_.motion_type) {
-  case ECC_MOTION_TRANSLATION:
-    // TODO: mnove this code into to estimateTranslation2D()
-    if( matched_reference_positions_.size() == 1 ) {
-      *current_transform = createTranslationTransform(
-          matched_current_positions_[0].x - matched_reference_positions_[0].x,
-          matched_current_positions_[0].y - matched_reference_positions_[0].y);
-    }
-    else if( matched_reference_positions_.size() == 2 ) {
-      *current_transform = createTranslationTransform(
-          0.5
-              * (matched_current_positions_[0].x - matched_reference_positions_[0].x + matched_current_positions_[1].x
-                  - matched_reference_positions_[1].x),
-          0.5
-              * (matched_current_positions_[0].y - matched_reference_positions_[0].y + matched_current_positions_[1].y
-                  - matched_reference_positions_[1].y));
+    if( !detector_opts.align_planetary_disk_masks ) {
+
+      const bool fOk =
+          simple_planetary_disk_detector(current_feature_image,
+              current_feature_mask,
+              &planetary_disk_current_centroid_,
+              detector_opts.gbsigma);
+
+      if( !fOk ) {
+        CF_FATAL("simple_planetary_disk_detector() fails");
+        return false;
+      }
     }
     else {
 
-      const uint n = matched_current_positions_.size();
-      std::vector<bool> blacklist(n, false);
+      const bool fOk =
+          simple_planetary_disk_detector(current_feature_image,
+              current_feature_mask,
+              nullptr,
+              detector_opts.gbsigma,
+              &planetary_disk_current_component_rect_,
+              &planetary_disk_current_component_mask_,
+              &planetary_disk_current_centroid_);
 
-      double mx = 0, my = 0, sx = 0, sy = 0;
-      int c = 0;
-
-      for( int iteration = 0; iteration < 10; ++iteration ) {
-
-        mx = 0, my = 0, sx = 0, sy = 0;
-        c = 0;
-
-        for( uint i = 0; i < n; ++i ) {
-          if( !blacklist[i] ) {
-
-            const double dx =
-                matched_current_positions_[i].x - matched_reference_positions_[i].x;
-
-            const double dy =
-                matched_current_positions_[i].y - matched_reference_positions_[i].y;
-
-            mx += dx;
-            my += dy;
-            sx += dx * dx;
-            sy += dy * dy;
-            ++c;
-          }
-        }
-
-        if( c < 1 ) {
-          CF_ERROR("PROBLEM: ALL FEATURES ARE BLACKLISTED ON ITEARATION %d", iteration);
-          return false;
-        }
-
-        mx /= c;
-        my /= c;
-        sx = sqrt(fabs(sx / c - mx * mx));
-        sy = sqrt(fabs(sy / c - my * my));
-
-        int blacklisted = 0;
-
-        for( uint i = 0; i < n; ++i ) {
-          if( !blacklist[i] ) {
-
-            const double dx =
-                matched_current_positions_[i].x - matched_reference_positions_[i].x;
-
-            const double dy =
-                matched_current_positions_[i].y - matched_reference_positions_[i].y;
-
-            if( fabs(dx - mx) > 3 * sx || fabs(dy - my) > 3 * sy ) {
-              blacklist[i] = true;
-              ++blacklisted;
-            }
-          }
-        }
-
-        CF_DEBUG("FEATURES ITEARATION %d: c=%d mx=%g my=%g sx=%g sy=%g blacklisted=%d",
-            iteration, c, mx, my, sx, sy, blacklisted);
-
-        if( !blacklisted ) {
-          break;
-        }
+      if( !fOk ) {
+        CF_FATAL("simple_planetary_disk_detector() fails");
+        return false;
       }
 
-      *current_transform = createTranslationTransform(mx, my);
+      if( enable_debug_ && !debug_path_.empty() ) {
+        save_image(planetary_disk_current_component_mask_,
+            ssprintf("%s/current_component_mask_.tiff",
+                debug_path_.c_str()));
+      }
     }
 
-    break;
-
-  case ECC_MOTION_EUCLIDEAN:
-    if( current_matches_.size() < 2 ) {
-      CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
-      return false;
+    if( options_.feature_registration.scale != 1 ) {
+      planetary_disk_current_centroid_ /= options_.feature_registration.scale;
     }
 
-    *current_transform = cv::estimateAffinePartial2D(matched_reference_positions_, matched_current_positions_,
-        cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
+    const cv::Point2f current_translation =
+        planetary_disk_current_centroid_ - planetary_disk_reference_centroid_;
 
-    if( current_transform->empty() ) {
-      CF_ERROR("estimateAffinePartial2D() fails");
-      return false;
-    }
+    *current_transform =
+        createTranslationTransform(current_translation.x,
+            current_translation.y);
 
-    break;
-
-  case ECC_MOTION_EUCLIDEAN_SCALED: // FIXME: update this code to estimate ECC_MOTION_EUCLIDEAN_SCALED CORRECTLY !!!!
-  case ECC_MOTION_AFFINE:
-    case ECC_MOTION_QUADRATIC:
-
-    if( current_matches_.size() < 3 ) {
-      CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
-      return false;
-    }
-
-    *current_transform = cv::estimateAffine2D(matched_reference_positions_, matched_current_positions_,
-        cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
-
-    if( current_transform->empty() ) {
-      CF_ERROR("estimateAffine2D() fails");
-      return false;
-    }
-
-    if( options_.motion_type == ECC_MOTION_QUADRATIC ) {
+    if( options_.motion_type != ECC_MOTION_TRANSLATION ) {
       *current_transform =
-          expandAffineTransform(*current_transform,
+          expandAffineTransform(current_transform_,
               options_.motion_type);
     }
-    break;
+  }
+  else {
 
-  case ECC_MOTION_HOMOGRAPHY:
+    // generic
+    bool fOk =
+        detect_and_match_keypoints(current_feature_image, current_feature_mask,
+            matched_current_positions_, matched_reference_positions_,
+            &current_keypoints_, &current_descriptors_,
+            &current_matches_, &current_matches12_);
 
-    if( current_matches_.size() < 3 ) {
-      CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+    if( !fOk ) {
+      CF_ERROR("detect_and_match_keypoints() fails");
       return false;
     }
 
-    *current_transform = cv::findHomography(matched_reference_positions_, matched_current_positions_,
-        cv::LMEDS, 5, cv::noArray(), 2000, 0.95);
+    ///////////////
 
-    if( current_transform->empty() ) {
-      CF_ERROR("findHomography() fails");
+    switch (options_.motion_type) {
+    case ECC_MOTION_TRANSLATION:
+      // TODO: move this code into to estimateTranslation2D()
+      if( matched_reference_positions_.size() == 1 ) {
+        *current_transform = createTranslationTransform(
+            matched_current_positions_[0].x - matched_reference_positions_[0].x,
+            matched_current_positions_[0].y - matched_reference_positions_[0].y);
+      }
+      else if( matched_reference_positions_.size() == 2 ) {
+        *current_transform = createTranslationTransform(
+            0.5 * (matched_current_positions_[0].x - matched_reference_positions_[0].x + matched_current_positions_[1].x
+                - matched_reference_positions_[1].x),
+            0.5 * (matched_current_positions_[0].y - matched_reference_positions_[0].y + matched_current_positions_[1].y
+                - matched_reference_positions_[1].y));
+      }
+      else {
+
+        const uint n = matched_current_positions_.size();
+        std::vector<bool> blacklist(n, false);
+
+        double mx = 0, my = 0, sx = 0, sy = 0;
+        int c = 0;
+
+        for( int iteration = 0; iteration < 10; ++iteration ) {
+
+          mx = 0, my = 0, sx = 0, sy = 0;
+          c = 0;
+
+          for( uint i = 0; i < n; ++i ) {
+            if( !blacklist[i] ) {
+
+              const double dx =
+                  matched_current_positions_[i].x - matched_reference_positions_[i].x;
+
+              const double dy =
+                  matched_current_positions_[i].y - matched_reference_positions_[i].y;
+
+              mx += dx;
+              my += dy;
+              sx += dx * dx;
+              sy += dy * dy;
+              ++c;
+            }
+          }
+
+          if( c < 1 ) {
+            CF_ERROR("PROBLEM: ALL FEATURES ARE BLACKLISTED ON ITEARATION %d", iteration);
+            return false;
+          }
+
+          mx /= c;
+          my /= c;
+          sx = sqrt(fabs(sx / c - mx * mx));
+          sy = sqrt(fabs(sy / c - my * my));
+
+          int blacklisted = 0;
+
+          for( uint i = 0; i < n; ++i ) {
+            if( !blacklist[i] ) {
+
+              const double dx =
+                  matched_current_positions_[i].x - matched_reference_positions_[i].x;
+
+              const double dy =
+                  matched_current_positions_[i].y - matched_reference_positions_[i].y;
+
+              if( fabs(dx - mx) > 3 * sx || fabs(dy - my) > 3 * sy ) {
+                blacklist[i] = true;
+                ++blacklisted;
+              }
+            }
+          }
+
+          CF_DEBUG("FEATURES ITEARATION %d: c=%d mx=%g my=%g sx=%g sy=%g blacklisted=%d",
+              iteration, c, mx, my, sx, sy, blacklisted);
+
+          if( !blacklisted ) {
+            break;
+          }
+        }
+
+        *current_transform = createTranslationTransform(mx, my);
+      }
+
+      break;
+
+    case ECC_MOTION_EUCLIDEAN:
+      if( current_matches_.size() < 2 ) {
+        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+        return false;
+      }
+
+      *current_transform = cv::estimateAffinePartial2D(matched_reference_positions_, matched_current_positions_,
+          cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
+
+      if( current_transform->empty() ) {
+        CF_ERROR("estimateAffinePartial2D() fails");
+        return false;
+      }
+
+      break;
+
+    case ECC_MOTION_EUCLIDEAN_SCALED: // FIXME: update this code to estimate ECC_MOTION_EUCLIDEAN_SCALED CORRECTLY !!!!
+    case ECC_MOTION_AFFINE:
+      case ECC_MOTION_QUADRATIC:
+
+      if( current_matches_.size() < 3 ) {
+        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+        return false;
+      }
+
+      *current_transform = cv::estimateAffine2D(matched_reference_positions_, matched_current_positions_,
+          cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
+
+      if( current_transform->empty() ) {
+        CF_ERROR("estimateAffine2D() fails");
+        return false;
+      }
+
+      if( options_.motion_type == ECC_MOTION_QUADRATIC ) {
+        *current_transform =
+            expandAffineTransform(*current_transform,
+                options_.motion_type);
+      }
+      break;
+
+    case ECC_MOTION_HOMOGRAPHY:
+
+      if( current_matches_.size() < 3 ) {
+        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
+        return false;
+      }
+
+      *current_transform = cv::findHomography(matched_reference_positions_, matched_current_positions_,
+          cv::LMEDS, 5, cv::noArray(), 2000, 0.95);
+
+      if( current_transform->empty() ) {
+        CF_ERROR("findHomography() fails");
+        return false;
+      }
+
+      break;
+
+    default:
+      CF_ERROR("Invalid motion tyoe %d specified", options_.motion_type);
       return false;
     }
 
-    break;
+    if( options_.feature_registration.scale != 1 ) {
 
-  default:
-    CF_ERROR("Invalid motion tyoe %d specified", options_.motion_type);
-    return false;
+      scaleTransform(options_.motion_type,
+          *current_transform,
+          1. / options_.feature_registration.scale);
+
+    }
   }
-
-  if( options_.feature_registration.scale != 1 ) {
-
-    scaleTransform(options_.motion_type,
-        *current_transform,
-        1. / options_.feature_registration.scale);
-
-  }
-
-  //  planetary disk
-//
-//  double gbsigma = 0.5;
-//
-//  if ( !options_.align_planetary_disk_masks ) {
-//    if ( !simple_planetary_disk_detector(feature_image, feature_mask, &current_centroid_, gbsigma) ) {
-//      CF_FATAL("simple_small_planetary_disk_detector() fails");
-//      return false;
-//    }
-//  }
-//  else {
-//    if ( !simple_planetary_disk_detector(feature_image, feature_mask, nullptr, gbsigma,
-//        &current_component_rect_, &current_component_mask_, &current_centroid_) ) {
-//      CF_FATAL("simple_small_planetary_disk_detector() fails");
-//      return false;
-//    }
-//
-//    if ( enable_debug_ && !debug_path_.empty() ) {
-//      save_image(current_component_mask_,
-//          ssprintf("%s/current_component_mask_.tiff",
-//              debug_path_.c_str()));
-//    }
-//  }
-//
-//  if ( feature_scale() != 1.0 && feature_scale() != 0 ) {
-//    current_centroid_ /= feature_scale();
-//  }
-//
-//  const cv::Point2f current_translation =
-//      current_centroid_ - reference_centroid_;
-//
-//  *current_transform = createTranslationTransform(current_translation.x, current_translation.y);
-//  if ( motion_type() != ECC_MOTION_TRANSLATION ) {
-//    *current_transform = expandAffineTransform(current_transform_, motion_type());
-//  }
 
   return true;
 }
@@ -829,8 +897,8 @@ bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_fea
   CF_DEBUG("current_keypoints.size()=%zu",
       current_keypoints.size());
 
-  if ( current_keypoints.size() < 3 ) {
-    CF_ERROR("Too few current key points detected : %zu", current_keypoints.size());
+  if ( current_keypoints.size() < 1 ) {
+    CF_ERROR("No key points detected : %zu", current_keypoints.size());
     return false;
   }
 
@@ -851,7 +919,7 @@ bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_fea
   return true;
 }
 
-bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
+bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
     enum ECC_INTERPOLATION_METHOD interpolation_flags,
@@ -874,13 +942,11 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     src_size = current_remap_.size();
   }
 
-
-  if ( dst.needed() || dst_mask.needed()) {
+  if ( dst.needed() || dst_mask.needed() ) {
     if ( current_remap_.size() != src_size ) {
       CF_ERROR("WARNING: src size (%dx%d) and remap size (%dx%d) different",
           src_size.width, src_size.height,
           current_remap_.cols, current_remap_.rows);
-     // return false;
     }
   }
 
@@ -896,7 +962,10 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     border_value_ptr = &options_.border_value;
   }
 
-  if ( dst.needed() ) {
+
+
+  if( dst.needed() ) {
+
     cv::remap(src, dst, rmap, cv::noArray(), interpolation_flags,
         border_mode, *border_value_ptr);
   }
@@ -921,6 +990,98 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
       cv::erode(out_mask, out_mask, cv::Mat1b(5, 5, 255), cv::Point(-1, -1), 1,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
+  }
+
+  return true;
+}
+
+bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
+    cv::InputArray _src, cv::OutputArray dst,
+    cv::InputArray _src_mask, cv::OutputArray dst_mask,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
+    const cv::Scalar & border_value) const
+{
+
+  bool enable_jovian_derotation =
+      options_.jovian_derotation.enabled;
+
+  if( enable_jovian_derotation && rmap.size() != current_remap_.size() ) {
+    CF_ERROR("ERROR: Sorry, scaled remaps are not supported for jovian derotations yet.");
+    enable_jovian_derotation = false;
+  }
+
+  if( !enable_jovian_derotation ) {
+
+    return base_remap(rmap,
+        _src, dst,
+        _src_mask, dst_mask,
+        interpolation_flags,
+        border_mode,
+        border_value);
+  }
+
+  if( dst_mask.needed() ) {
+
+    bool fOk =
+        base_remap(rmap,
+            cv::noArray(), cv::noArray(),
+            _src_mask, dst_mask,
+            interpolation_flags,
+            border_mode,
+            border_value);
+
+    if( !fOk ) {
+      CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails");
+      return false;
+    }
+  }
+
+  if( dst.needed() ) {
+
+    cv::Mat2f total_remap =
+        rmap.clone();
+
+    jovian_derotation_.current_total_remap().copyTo(total_remap(
+        jovian_derotation_.reference_boundig_box()),
+        jovian_derotation_.current_total_binary_mask());
+
+    bool fOk =
+        base_remap(total_remap,
+            _src, dst,
+            cv::noArray(), cv::noArray(),
+            interpolation_flags,
+            border_mode,
+            border_value);
+
+    if( !fOk ) {
+      CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails fails");
+      return false;
+    }
+  }
+
+  if( dst_mask.needed() ) {
+
+    const cv::Mat &dstmask =
+        dst_mask.getMatRef();
+
+    cv::Mat1f combined_mask(dstmask.size(), 1.0);
+
+    combined_mask(jovian_derotation_.reference_boundig_box()).setTo(0,
+        jovian_derotation_.reference_ellipse_mask());
+
+    jovian_derotation_.current_total_mask().copyTo(
+        combined_mask(jovian_derotation_.reference_boundig_box()),
+        jovian_derotation_.current_total_binary_mask());
+
+    if( dstmask.depth() == CV_8U ) {
+      combined_mask.setTo(0, ~dstmask);
+    }
+    else {
+      cv::multiply(dstmask, combined_mask, combined_mask, 1.0, combined_mask.depth());
+    }
+
+    dst_mask.move(combined_mask);
   }
 
   return true;

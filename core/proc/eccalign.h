@@ -102,7 +102,7 @@ bool getTranslationComponents(enum ECC_MOTION_TYPE motionType,
 //  x' =  scale * ( cos(a) * (x-Cx) + sin(a) * (y-Cy)) + Tx
 //  y' =  scale * (-sin(a) * (x-Cx) + cos(a) * (y-Cy)) + Ty
 //
-//  For simple rotation arount of a point C call
+//  For simple rotation around of a point C call
 //   createEuclideanTransform(C.x, C.y, C.x, C.y, scale, angle);
 //
 cv::Mat createEuclideanTransform(double Cx, double Cy,

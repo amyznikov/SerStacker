@@ -1358,8 +1358,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
   controls.append(align_jovian_disk_horizontally_ctl =
       add_checkbox("align_jovian_disk_horizontally",
           [this](bool checked) {
-            if ( options_ && options_->align_jovian_disk_horizontally != checked ) {
-              options_->align_jovian_disk_horizontally = checked;
+            if ( options_ && options_->rotate_jovian_disk_horizontally != checked ) {
+              options_->rotate_jovian_disk_horizontally = checked;
               emit parameterChanged();
             }
           }));
@@ -1388,7 +1388,7 @@ void QJovianDerotationOptions::onupdatecontrols()
     eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
     eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);
     eccflow_max_pyramid_level_ctl->setValue(options_->eccflow_max_pyramid_level);
-    align_jovian_disk_horizontally_ctl->setChecked(options_->align_jovian_disk_horizontally);
+    align_jovian_disk_horizontally_ctl->setChecked(options_->rotate_jovian_disk_horizontally);
 
     update_controls_state();
 

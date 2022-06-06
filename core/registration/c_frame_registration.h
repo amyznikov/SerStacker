@@ -52,7 +52,7 @@ struct c_jovian_derotation_options {
   int eccflow_support_scale = 3;
   int eccflow_normalization_scale = 0;
   int eccflow_max_pyramid_level = 1;
-  bool align_jovian_disk_horizontally = false;
+  bool rotate_jovian_disk_horizontally = false;
 };
 
 struct c_image_registration_options {
@@ -121,6 +121,7 @@ public:
   const c_ecc_forward_additive & ecc() const;
   const c_ecch & ecch() const;
   const c_ecch_flow & eccflow() const;
+  const c_jovian_derotation & jovian_derotation() const;
 
 
   const c_image_registration_status & status() const;

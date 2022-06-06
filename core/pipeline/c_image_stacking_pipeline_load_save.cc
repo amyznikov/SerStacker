@@ -517,7 +517,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
   SAVE(image_registration_options.jovian_derotation, eccflow_normalization_scale);
   SAVE(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
-  SAVE(image_registration_options.jovian_derotation, align_jovian_disk_horizontally);
+  SAVE(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
 
   if ( aligned_frame_postprocessor ) {
     save_settings(settings, "aligned_frame_processor", aligned_frame_postprocessor->name() );
@@ -595,7 +595,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);
     LOAD(image_registration_options.jovian_derotation, eccflow_normalization_scale);
     LOAD(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
-    LOAD(image_registration_options.jovian_derotation, align_jovian_disk_horizontally);
+    LOAD(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
   }
 
   std::string s;

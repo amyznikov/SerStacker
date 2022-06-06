@@ -133,6 +133,11 @@ const c_ecch_flow & c_frame_registration::eccflow() const
   return this->eccflow_;
 }
 
+const c_jovian_derotation & c_frame_registration::jovian_derotation() const
+{
+  return this->jovian_derotation_;
+}
+
 void c_frame_registration::set_enable_debug(bool v)
 {
   enable_debug_ = v;

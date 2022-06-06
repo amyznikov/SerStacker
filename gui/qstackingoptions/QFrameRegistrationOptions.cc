@@ -1478,12 +1478,12 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
   connect(eccOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  add_expandable_groupbox("ECC Registration Options",
+  add_expandable_groupbox("ECC Flow Registration Options",
       eccFlowOptions_ctl = new QEccFlowRegistrationOptions(this));
   connect(eccFlowOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  add_expandable_groupbox("Jovian Derotation options",
+  add_expandable_groupbox("Jovian Derotation Options",
       jovianDerotationOptions_ctl = new QJovianDerotationOptions(this));
   connect(jovianDerotationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);

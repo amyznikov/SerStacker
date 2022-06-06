@@ -2696,6 +2696,188 @@ const std::vector<cv::Mat1f> & c_ecch::transform_pyramid() const
   return transform_pyramid_;
 }
 
+bool c_ecch::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
+{
+  if ( referenceImage.channels() != 1 ) {
+    CF_ERROR("c_ecch: Both input and reference images must be single-channel (grayscale)");
+    return false;
+  }
+
+  // Build reference image pyramid
+  constexpr int R = reference_image_index;
+
+  transform_pyramid_.clear();
+  transform_pyramid_.reserve(10);
+  image_pyramids_[R].clear();
+  image_pyramids_[R].reserve(10);
+  mask_pyramids_[R].clear();
+  mask_pyramids_[R].reserve(10);
+
+
+  image_pyramids_[R].emplace_back(referenceImage.getMat());
+  mask_pyramids_[R].emplace_back(referenceMask.getMat());
+
+  // Build pyramid for reference image
+  while ( 42 ) {
+
+    const int currentMinSize =
+        std::min(image_pyramids_[R].back().cols,
+            image_pyramids_[R].back().rows);
+
+    const int nextMinSize = currentMinSize / 2;
+
+    if ( nextMinSize < minimum_image_size_) {
+      break;
+    }
+
+    image_pyramids_[R].emplace_back();
+
+    // fixme: GaussianBlur with mask will produce edge effects
+    cv::GaussianBlur(image_pyramids_[R][image_pyramids_[R].size() - 2],
+        image_pyramids_[R].back(),
+        cv::Size(5, 5),
+        0, 0,
+        cv::BORDER_REPLICATE);
+
+    downstrike_uneven(image_pyramids_[R].back(),
+        image_pyramids_[R].back());
+
+    mask_pyramids_[R].emplace_back();
+
+    if ( !mask_pyramids_[R][mask_pyramids_[R].size() - 2].empty() ) {
+      downstrike_uneven(mask_pyramids_[R][mask_pyramids_[R].size() - 2],
+          mask_pyramids_[R].back());
+    }
+  }
+
+  return true;
+}
+
+bool c_ecch::align_to_reference(cv::InputArray inputImage, cv::InputOutputArray warpMatrix, cv::InputArray inputMask)
+{
+  constexpr int C = current_image_index;
+  constexpr int R = reference_image_index;
+
+  cv::Mat1f T;
+
+  if ( !method_ ) {
+    CF_ERROR("c_ecch: No underlying align method specified");
+    return false;
+  }
+
+  if ( image_pyramids_[R].empty() ) {
+    CF_ERROR("c_ecch: No reference image was set");
+    return false;
+  }
+
+  if ( inputImage.channels() != 1 ) {
+    CF_ERROR("c_ecch: Both input and reference images must be single-channel (grayscale)");
+    return false;
+  }
+
+  if ( !warpMatrix.empty() ) {
+    warpMatrix.getMat().convertTo(T, T.type());
+  }
+  else if ( (T = createEyeTransform(method_->motion_type())).empty() ) {
+    CF_ERROR("createTransform(motion_type=%d) fails", method_->motion_type() );
+    return false;
+  }
+
+  // Build current image and initial transform pyramid
+
+  image_pyramids_[C].clear();
+  image_pyramids_[C].reserve(10);
+  mask_pyramids_[C].clear();
+  mask_pyramids_[C].reserve(10);
+  transform_pyramid_.clear();
+  transform_pyramid_.reserve(10);
+
+  image_pyramids_[C].emplace_back(inputImage.getMat());
+  mask_pyramids_[C].emplace_back(inputMask.getMat());
+  transform_pyramid_.emplace_back(T);
+
+  while ( 42 ) {
+
+    const int currentMinSize = std::min(std::min(std::min(
+        image_pyramids_[C].back().cols, image_pyramids_[C].back().rows),
+            image_pyramids_[R].back().cols), image_pyramids_[R].back().rows);
+
+    const int nextMinSize = currentMinSize / 2;
+
+    if ( nextMinSize < minimum_image_size_) {
+      break;
+    }
+
+    image_pyramids_[C].emplace_back();
+
+    // fixme: GaussianBlur with mask will produce edge effects
+    cv::GaussianBlur(image_pyramids_[C][image_pyramids_[C].size() - 2],
+        image_pyramids_[C].back(),
+        cv::Size(5, 5),
+        0, 0,
+        cv::BORDER_REPLICATE);
+
+    downstrike_uneven(image_pyramids_[C].back(),
+        image_pyramids_[C].back());
+
+    mask_pyramids_[C].emplace_back();
+    if ( !mask_pyramids_[C][mask_pyramids_[C].size() - 2].empty() ) {
+      downstrike_uneven(mask_pyramids_[C][mask_pyramids_[C].size() - 2],
+          mask_pyramids_[C].back());
+    }
+
+    transform_pyramid_.emplace_back();
+
+    scaleTransform(method_->motion_type(), transform_pyramid_[transform_pyramid_.size() - 2],
+        transform_pyramid_[transform_pyramid_.size() - 1], 0.5);
+  }
+
+  // Align pyramid images in coarse-to-fine direction
+  bool eccOk = false;
+
+  for ( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
+
+    cv::Mat1f & T =
+        transform_pyramid_[i];
+
+    bool fOk =
+      method_->align(image_pyramids_[C][i],
+        image_pyramids_[R][i],
+        T,
+        mask_pyramids_[C][i],
+        mask_pyramids_[R][i]);
+
+
+    if ( !fOk ) {
+      CF_DEBUG("L[%2d] : align fails: motion: %d size=%dx%d num_iterations=%d rho=%g eps=%g", i,
+          method_->motion_type(),
+          image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
+          method_->num_iterations(), method_->rho(), method_->current_eps());
+      continue;
+    }
+
+    else if ( false ) {
+      CF_DEBUG("L[%2d] : eccAlign() OK: motion: %d size=%dx%d num_iterations=%d rho=%g eps=%g", i, method_->motion_type(),
+          image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
+          method_->num_iterations(), method_->rho(), method_->current_eps());
+    }
+
+    if ( i == 0 ) {
+      eccOk = true;
+    }
+    else { // i > 0
+      scaleTransform(method_->motion_type(), T, transform_pyramid_[i - 1], 2);
+    }
+  }
+
+  if ( !eccOk ) {
+    return false;
+  }
+
+  transform_pyramid_[0].copyTo(warpMatrix);
+
+  return true;
+}
 
 
 bool c_ecch::align(cv::InputArray inputImage, cv::InputArray referenceImage,

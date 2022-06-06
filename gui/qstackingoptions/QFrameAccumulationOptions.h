@@ -12,29 +12,8 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
-//QString toString(enum frame_upscale_option v);
-//enum frame_upscale_option fromString(const QString  & s,
-//    enum frame_upscale_option defval );
-//
-//QString toString(enum frame_accumulation_method v);
-//enum frame_accumulation_method fromString(const QString  & s,
-//    enum frame_accumulation_method defval );
-
 typedef QEnumComboBox<frame_accumulation_method>
   QFrameAccumulationMethodCombo;
-
-//class QFrameAccumulationMethodCombo :
-//    public QEnumComboBox<frame_accumulation_method>
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QEnumComboBox<frame_accumulation_method> Base;
-//
-//  QFrameAccumulationMethodCombo(QWidget * parent = Q_NULLPTR)
-//      : Base(parent)
-//    {}
-//};
-//
 
 class QFrameAccumulationOptions :
     public QSettingsWidget

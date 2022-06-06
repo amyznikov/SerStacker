@@ -319,6 +319,12 @@ public:
 
   c_ecch(c_ecc_align * method = nullptr) ;
 
+  bool set_reference_image(cv::InputArray referenceImage,
+      cv::InputArray referenceMask);
+
+  bool align_to_reference(cv::InputArray inputImage, cv::InputOutputArray warpMatrix,
+      cv::InputArray inputMask = cv::noArray());
+
   bool align(cv::InputArray inputImage, cv::InputArray referenceImage, cv::InputOutputArray warpMatrix,
       cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());
 
@@ -335,6 +341,11 @@ public:
   const std::vector<cv::Mat1f> & transform_pyramid() const;
 
 protected:
+  enum {
+    current_image_index = 0,
+    reference_image_index = 1,
+  };
+
   c_ecc_align * method_;
   std::vector<cv::Mat> image_pyramids_[2];
   std::vector<cv::Mat> mask_pyramids_[2];

@@ -210,9 +210,20 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
         cv::compare(reference_ecc_mask, 255, reference_ecc_mask, cv::CMP_GE);
       }
 
-      if( !ecc_.set_reference_image(reference_ecc_image, reference_ecc_mask) ) {
-        CF_ERROR("ecc_.set_reference_image() fails");
-        return false;
+      if ( !options_.ecc.enable_ecch ) {
+        if( !ecc_.set_reference_image(reference_ecc_image, reference_ecc_mask) ) {
+          CF_ERROR("ecc_.set_reference_image() fails");
+          return false;
+        }
+      }
+      else {
+        if ( options_.ecc.ecch_minimum_image_size > 0 ) {
+          ecch_.set_minimum_image_size(options_.ecc.ecch_minimum_image_size);
+        }
+        if( !ecch_.set_reference_image(reference_ecc_image, reference_ecc_mask) ) {
+          CF_ERROR("ecch_.set_reference_image() fails");
+          return false;
+        }
       }
     }
 
@@ -337,14 +348,24 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
 
     ecc_.set_motion_type(options_.motion_type);
-    //ecch_.set_minimum_image_size(v)
 
-    if( !ecc_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask) ) {
-      CF_ERROR("ecc_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
-          ecc_.rho(), ecc_.min_rho(),
-          ecc_.current_eps(), ecc_.eps(),
-          ecc_.num_iterations(), ecc_.max_iterations());
-      return false;
+    if ( !options_.ecc.enable_ecch ) {
+      if( !ecc_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask) ) {
+        CF_ERROR("ecc_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
+            ecc_.rho(), ecc_.min_rho(),
+            ecc_.current_eps(), ecc_.eps(),
+            ecc_.num_iterations(), ecc_.max_iterations());
+        return false;
+      }
+    }
+    else {
+      if( !ecch_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask) ) {
+        CF_ERROR("ecch_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
+            ecc_.rho(), ecc_.min_rho(),
+            ecc_.current_eps(), ecc_.eps(),
+            ecc_.num_iterations(), ecc_.max_iterations());
+        return false;
+      }
     }
 
     if( options_.ecc.scale != 1 ) {

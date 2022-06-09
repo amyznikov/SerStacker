@@ -55,6 +55,7 @@ public:
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ddepth, "OpenCV pixel depth");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, auto_scale, "auto_scale");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "scale");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, beta, "offset");
   }

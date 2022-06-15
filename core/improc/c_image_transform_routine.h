@@ -65,9 +65,9 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, translation, "image translation in pixels before rotation/scale");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, rotation, "rotation angle in degrees");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, scale, "image scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, translation, "image translation in pixels after rotation/scale");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, resize_mode, "resize mode");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, interpolation, "interpolation");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, border_type, "border_type");

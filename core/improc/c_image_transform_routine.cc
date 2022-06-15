@@ -285,15 +285,12 @@ bool c_image_transform_routine::create_transformation_remap(cv::Mat2f & dst,
   }
   }
 
-  const cv::Vec2f T(-translation.x,
-      -translation.y);
-
   dst.create(rotated_image_size);
+  dst.setTo(cv::Vec2f(-translation.x, -translation.y));
 
   for( int y = 0; y < dst.rows; ++y ) {
     for( int x = 0; x < dst.cols; ++x ) {
-      dst[y][x] =
-          Mi * cv::Vec3f(x + xmin, y + ymin, 1) + T;
+      dst[y][x] += Mi * cv::Vec3f(x + xmin, y + ymin, 1);
     }
   }
 

@@ -75,14 +75,15 @@ void QImageProcessorChainEditor::set_current_processor(const c_image_processor::
           });
     }
 
-    for ( const c_image_processor_routine::ptr & routine : *current_processor_ ) {
-      if ( routine ) {
+    for( const c_image_processor_routine::ptr &routine : *current_processor_ ) {
+      if( routine ) {
 
-        QImageProcessorRoutineSettings * ctl =
+        QImageProcessorRoutineSettings *ctl =
             QImageProcessorRoutineSettings::create(routine);
 
-        if ( !ctl ) {
-          form->addRow(routine->class_name().c_str(), new QSettingsWidget(""));
+        if( !ctl ) {
+          form->addRow(routine->class_name().c_str(),
+              new QSettingsWidget(""));
         }
         else {
 
@@ -102,11 +103,13 @@ void QImageProcessorChainEditor::set_current_processor(const c_image_processor::
 
           connect(ctl, &QSettingsWidget::parameterChanged,
               [this]() {
+
                 if ( current_processor_ ) {
                   current_processor_->save();
                 }
+
                 emit parameterChanged();
-          });
+              });
         }
       }
     }

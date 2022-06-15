@@ -49,7 +49,7 @@ struct c_input_options
 {
   std::string missing_pixel_mask_filename;
   bool missing_pixels_marked_black = true;
-  bool inpaint_missing_pixels = false;
+  bool inpaint_missing_pixels = true;
 
   c_image_processor::ptr input_frame_processor;
   std::vector<int> bad_frames; // global indexes
@@ -84,11 +84,11 @@ struct c_master_frame_options
   int master_frame_index = 0; // relative, in master source
   bool apply_input_frame_processor = true;
   bool generate_master_frame = true;
-  int max_input_frames_to_generate_master_frame = 2500;
-  int eccflow_scale = 0;
+  int max_input_frames_to_generate_master_frame = 1000;
+  int eccflow_scale = 5;
   double master_sharpen_factor = 0.5;
   double accumulated_sharpen_factor = 1;
-  bool save_master_frame = false;
+  bool save_master_frame = true;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

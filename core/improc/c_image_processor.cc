@@ -24,6 +24,8 @@
 #include "c_radial_polysharp_routine.h"
 #include "c_auto_correlation_routine.h"
 #include "c_gaussian_filter_routine.h"
+#include "c_rotate_image_routine.h"
+#include "c_image_transform_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -89,6 +91,9 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_radial_polysharp_routine::class_factory);
     register_class_factory(&c_auto_correlation_routine::class_factory);
     register_class_factory(&c_gaussian_filter_routine::class_factory);
+    register_class_factory(&c_rotate_image_routine::class_factory);
+    register_class_factory(&c_image_transform_routine::class_factory);
+
   }
 }
 
@@ -230,7 +235,7 @@ bool c_image_processor::save(const std::string & path_or_filename,
     filename.replace(0, 1, get_home_directory());
   }
 
-//  CF_DEBUG("Saving '%s' ...", filename.c_str());
+  //  CF_DEBUG("Saving '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 

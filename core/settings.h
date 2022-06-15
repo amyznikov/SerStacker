@@ -367,7 +367,7 @@ template<class T>
 inline bool save_settings(c_config_setting list, const std::vector<T> & values)
 {
   if ( list.isList() || list.isArray() ) {
-    while ( list.length() ) {
+    while ( list.length() > 0 ) {
       list.remove_element(0);
     }
     for ( size_t i = 0, n = values.size(); i < n; ++i ) {
@@ -516,7 +516,7 @@ bool libconfig_parse_flags(c_config_setting settings,
 #define LOAD_PROPERTY(cfg, obj, prop) \
   if ( true ) { \
     auto v = (obj)->prop(); \
-    if ( ::load_settings(cfg,  &v) ) { \
+    if ( ::load_settings(cfg, #prop,  &v) ) { \
       (obj)->set_##prop(v); \
     }\
   }

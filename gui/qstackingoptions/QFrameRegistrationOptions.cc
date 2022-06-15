@@ -1096,7 +1096,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           }));
 
   controls.append(normalization_scale_ctl =
-      add_numeric_box<int>("",
+      add_numeric_box<int>("normalization_scale",
           [this](int value) {
             if ( options_ && options_->normalization_scale != value ) {
               options_->normalization_scale = value;
@@ -1105,7 +1105,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           }));
 
   controls.append(max_iterations_ctl =
-      add_numeric_box<int>("",
+      add_numeric_box<int>("max_iterations",
           [this](int value) {
             if ( options_ && options_->max_iterations != value ) {
               options_->max_iterations = value;

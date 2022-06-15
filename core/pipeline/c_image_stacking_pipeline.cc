@@ -595,7 +595,7 @@ public:
     return false;
   }
 
-  bool write(cv::InputArray currenFrame, cv::InputArray currentMask)
+  bool write(cv::InputArray currenFrame, cv::InputArray currentMask, bool with_alpha_mask = true)
   {
     switch ( output_type ) {
     case output_type_video :
@@ -624,9 +624,17 @@ public:
           current_frame_index,
           suffix.c_str()));
 
-      if ( !save_image(currenFrame, currentMask, fname) ) {
-        CF_ERROR("save_image('%s) fails", fname.c_str());
-        return false;
+      if ( with_alpha_mask ) {
+        if ( !save_image(currenFrame, currentMask, fname) ) {
+          CF_ERROR("save_image('%s) fails", fname.c_str());
+          return false;
+        }
+      }
+      else {
+        if ( !save_image(currenFrame, fname) ) {
+          CF_ERROR("save_image('%s) fails", fname.c_str());
+          return false;
+        }
       }
 
       break;
@@ -2463,7 +2471,8 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
     }
   }
 
-  output_writer.write(current_frame, current_mask);
+  output_writer.write(current_frame, current_mask,
+      output_options.write_image_mask_as_alpha_channel);
 }
 
 void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
@@ -2509,7 +2518,8 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
     }
   }
 
-  output_writer.write(current_frame, current_mask);
+  output_writer.write(current_frame, current_mask,
+      output_options.write_image_mask_as_alpha_channel);
 }
 
 void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
@@ -2555,7 +2565,8 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
     }
   }
 
-  output_writer.write(current_frame, current_mask);
+  output_writer.write(current_frame, current_mask,
+      output_options.write_image_mask_as_alpha_channel);
 }
 
 void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,

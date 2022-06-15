@@ -41,7 +41,7 @@
 
 
 
-#if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(3,4,0) )
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(3,4,0)
 namespace cv {
 namespace hal {
 void filter2D(int stype, int dtype, int kernel_type,
@@ -87,9 +87,9 @@ const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
       { ECC_INTER_CUBIC, "CUBIC", "" },
       { ECC_INTER_LANCZOS4, "LANCZOS4", "" },
       { ECC_INTER_NEAREST, "NEAREST", "" },
-      #if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(4,5,0) )
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4,5,0)
       { ECC_INTER_NEAREST_EXACT, "NEAREST_EXACT", "" },
-      #endif
+#endif
       { ECC_INTER_NEAREST, nullptr, nullptr }  // must be last
   };
   return members;
@@ -123,7 +123,7 @@ static inline void doFilter2D(const cv::Mat & src, cv::Mat & dst, int ddepth,
     cv::InputArray kernel, const cv::Point & anchor,
     double delta = 0, int borderType = cv::BORDER_REFLECT)
 {
-#if ( CV_VERSION_CURRRENT < CV_VERSION_INT(3,4,0) )
+#if CV_VERSION_CURRRENT < CV_VERSION_INT(3,4,0)
   cv::filter2D(src, dst, ddepth, kernel, anchor, delta, borderType);
 #else
 

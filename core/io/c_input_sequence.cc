@@ -366,7 +366,7 @@ bool c_input_sequence::seek(int global_pos)
   }
 
   if ( required_source_ < 0 || required_source_ >= (int)enabled_sources_.size() )  {
-    CF_DEBUG("ERROR: required_source_=%d / %zu is invalid",
+    CF_ERROR("ERROR: required_source_=%d / %zu is invalid",
         required_source_, enabled_sources_.size());
     return  false;
   }
@@ -405,12 +405,12 @@ c_input_source::ptr c_input_sequence::current_source() const
 int c_input_sequence::global_pos(int source_index, int source_frame_index) const
 {
   if ( !is_open() ) {
-    CF_DEBUG("c_input_sequence: IS NOT OPEN");
+    CF_ERROR("c_input_sequence: IS NOT OPEN");
     return -1;
   }
 
   if ( source_index < 0 || source_index >= all_sources_.size() ) {
-    CF_DEBUG("Invalid source_index=%d / %zu", source_index, all_sources_.size());
+    CF_ERROR("Invalid source_index=%d / %zu", source_index, all_sources_.size());
     return -1;
   }
 
@@ -423,12 +423,12 @@ int c_input_sequence::global_pos(int source_index, int source_frame_index) const
   }
 
   if ( enabled_source_index < 0 ) {
-    CF_DEBUG("source_index=%d is not enabled", source_index);
+    CF_ERROR("source_index=%d is not enabled", source_index);
     return -1;
   }
 
   if ( source_frame_index < 0 || source_frame_index >= enabled_sources_[enabled_source_index]->size() ) {
-    CF_DEBUG("source_frame_index=%d exceeds the size=%d of source_index=%d ",
+    CF_ERROR("source_frame_index=%d exceeds the size=%d of source_index=%d ",
         source_frame_index, enabled_sources_[enabled_source_index]->size(), source_index);
     return -1;
   }

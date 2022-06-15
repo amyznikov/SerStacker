@@ -154,14 +154,14 @@ typename std::enable_if<std::is_enum<enum_type>::value,
 
 
 template<class T>
-inline constexpr typename std::enable_if<std::is_enum<T>::value,
+inline const typename std::enable_if<std::is_enum<T>::value,
   get_enum_members_proc>::type get_members_of()
 {
   return &members_of<T>;
 }
 
 template<class T>
-inline constexpr typename std::enable_if<!std::is_enum<T>::value,
+inline const typename std::enable_if<!std::is_enum<T>::value,
   get_enum_members_proc>::type get_members_of()
 {
   return nullptr;
@@ -528,6 +528,44 @@ inline bool fromString(const std::string & s, cv::Rect_<double> * v) {
 template<class T>
 inline std::string toString(const cv::Rect_<T> & v) {
   return ssprintf("%g;%g;%g;%g", (double)v.x, (double)v.y, (double)v.width, (double)v.height);
+}
+
+template<>
+inline const c_enum_member * members_of<cv::InterpolationFlags>()
+{
+  static constexpr c_enum_member members[] = {
+      {cv::INTER_LINEAR, "LINEAR", "bilinear interpolation"},
+      {cv::INTER_NEAREST, "NEAREST", "nearest neighbor interpolation"},
+      {cv::INTER_CUBIC, "CUBIC", "bicubic interpolation"},
+      {cv::INTER_AREA, "AREA", "resampling using pixel area relation. It may be a preferred method for image decimation, as "
+      "it gives moire'-free results. But when the image is zoomed, it is similar to the INTER_NEAREST "
+      "method."},
+      {cv::INTER_LANCZOS4, "LANCZOS4", "Lanczos interpolation over 8x8 neighborhood"},
+      {cv::INTER_LINEAR_EXACT, "LINEAR_EXACT", "Bit exact bilinear interpolation"},
+      {cv::INTER_NEAREST_EXACT, "NEAREST_EXACT", "Bit exact nearest neighbor interpolation. This will produce same results as "
+      "the nearest neighbor method in PIL, scikit-image or Matlab."},
+      {cv::INTER_LINEAR},
+  };
+
+  return members;
+}
+
+
+template<>
+inline const c_enum_member * members_of<cv::BorderTypes>()
+{
+  static constexpr c_enum_member members[] = {
+    {cv::BORDER_CONSTANT, "BORDER_CONSTANT", "iiiiii|abcdefgh|iiiiiii"},
+    {cv::BORDER_REPLICATE, "BORDER_REPLICATE", "aaaaaa|abcdefgh|hhhhhhh"},
+    {cv::BORDER_REFLECT, "BORDER_REFLECT", "fedcba|abcdefgh|hgfedcb"},
+    {cv::BORDER_WRAP, "BORDER_WRAP", "cdefgh|abcdefgh|abcdefg"},
+    {cv::BORDER_REFLECT_101, "BORDER_REFLECT_101", "gfedcb|abcdefgh|gfedcba"},
+    {cv::BORDER_TRANSPARENT, "BORDER_TRANSPARENT", "uvwxyz|abcdefgh|ijklmno"},
+    {cv::BORDER_ISOLATED, "BORDER_ISOLATED", "do not look outside of ROI"},
+    {cv::BORDER_REFLECT_101}
+  };
+
+  return members;
 }
 #endif // CV_VERSION
 

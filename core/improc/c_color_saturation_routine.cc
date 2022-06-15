@@ -56,7 +56,9 @@ bool c_color_saturation_routine::serialize(c_config_setting settings) const
     return false;
   }
 
-  SAVE_PROPERTY(settings, *this, scales);
+  if ( !SAVE_PROPERTY(settings, *this, scales) ) {
+    CF_ERROR("APP BUG: SAVE_PROPERTY(scales) fails");
+  }
 
   return true;
 }

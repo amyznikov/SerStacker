@@ -44,7 +44,7 @@ bool c_image_stacks_collection::save(const std::string & cfgfilename) const
     return false;
   }
 
-  CF_DEBUG("Saving '%s' ...", filename.c_str());
+  // CF_DEBUG("Saving '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 
@@ -96,11 +96,11 @@ bool c_image_stacks_collection::load(const std::string & cfgfilename)
   }
 
   if ( (filename = expand_path(filename)).empty() ) {
-    CF_ERROR("No output config file name specified for c_image_stacks_collection::save()");
+    CF_ERROR("No output config file name specified for c_image_stacks_collection::load()");
     return false;
   }
 
-  CF_DEBUG("Loading '%s' ...", filename.c_str());
+  // CF_DEBUG("Loading '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 
@@ -174,8 +174,8 @@ c_image_stacking_options::ptr c_image_stacking_options::load(const std::string &
   const std::string filename =
       expand_path(cfgfilename);
 
-  CF_DEBUG("Saving '%s' ...",
-      filename.c_str());
+  //CF_DEBUG("Saving '%s' ...",
+  //    filename.c_str());
 
   c_config cfg(filename);
 
@@ -226,8 +226,8 @@ bool c_image_stacking_options::save(const std::string & cfgfilename) const
   const std::string filename =
       expand_path(cfgfilename);
 
-  CF_DEBUG("Saving '%s' ...",
-      filename.c_str());
+  // CF_DEBUG("Saving '%s' ...",
+  //    filename.c_str());
 
   c_config cfg(filename);
 

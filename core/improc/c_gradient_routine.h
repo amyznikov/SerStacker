@@ -20,7 +20,7 @@ public:
 
   static struct c_class_factory : public base::class_factory {
     c_class_factory() :
-        base::class_factory("gradient", "gradient", "compute gradient magnitude",
+        base::class_factory("gradient", "gradient", "compute image gradient magnitude",
             factory([]() {return ptr(new this_class());})) {}
   } class_factory;
 

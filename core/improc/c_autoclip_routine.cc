@@ -10,8 +10,8 @@
 
 c_autoclip_routine::c_class_factory c_autoclip_routine::class_factory;
 
-c_autoclip_routine::c_autoclip_routine(bool enabled)
-  : base(&class_factory, enabled)
+c_autoclip_routine::c_autoclip_routine(bool enabled) :
+    base(&class_factory, enabled)
 {
 }
 

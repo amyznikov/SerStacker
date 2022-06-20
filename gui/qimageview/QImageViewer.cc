@@ -114,6 +114,18 @@ int QImageViewer::viewScale() const
   return view_->viewScale();
 }
 
+void QImageViewer::setDisplayType(DisplayType v)
+{
+  currentDisplayType_ = v;
+  currentDisplayTypeChanged();
+  updateDisplay();
+}
+
+QImageViewer::DisplayType QImageViewer::displayType() const
+{
+  return currentDisplayType_;
+}
+
 const cv::Mat & QImageViewer::currentImage() const
 {
   return currentImage_;
@@ -203,20 +215,25 @@ void QImageViewer::updateDisplay()
 
 void QImageViewer::createDisplayImage()
 {
-  if ( currentImage_.empty() ) {
-    displayImage_.release();
+  if ( currentDisplayType_ == DisplayMask ) {
+    currentMask_.copyTo(displayImage_);
   }
   else {
-    if ( !displayFunction_ ) {
-      currentImage_.copyTo(displayImage_);
-    }
-    else if ( currentImage_.channels() == 2  ) { // assume this is optical flow image
+    if ( currentImage_.empty() ) {
       displayImage_.release();
-      displayFunction_->getDisplayImage(displayImage_, currentImage_.depth());
     }
-    else  {
-      displayImage_.release();
-      displayFunction_->getDisplayImage(displayImage_, CV_8U);
+    else {
+      if ( !displayFunction_ ) {
+        currentImage_.copyTo(displayImage_);
+      }
+      else if ( currentImage_.channels() == 2  ) { // assume this is optical flow image
+        displayImage_.release();
+        displayFunction_->getDisplayImage(displayImage_, currentImage_.depth());
+      }
+      else  {
+        displayImage_.release();
+        displayFunction_->getDisplayImage(displayImage_, CV_8U);
+      }
     }
   }
   emit currentDisplayImageChanged();

@@ -17,5 +17,6 @@
     <file>icons/zoom.png</file>
     <file>icons/reference.png</file>
     <file>icons/options.png</file>
+    <file>icons/mask.png</file>
 </qresource>
 </RCC>

@@ -19,6 +19,12 @@ public:
   typedef QImageViewer ThisClass;
   typedef QWidget Base;
 
+  enum DisplayType {
+    DisplayImage,
+    DisplayMask
+  };
+
+
   QImageViewer(QWidget * parent = Q_NULLPTR);
 
   QImageSceneView * sceneView() const;
@@ -34,6 +40,9 @@ public:
 
   void setViewScale(int scale, const QPoint * centerPos = Q_NULLPTR);
   int viewScale() const;
+
+  void setDisplayType(DisplayType v);
+  DisplayType displayType() const;
 
   virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
 
@@ -61,8 +70,7 @@ signals:
   void visibilityChanged(bool visible);
   void currentImageChanged();
   void currentDisplayImageChanged();
-//  void onLineShapeChanged(QGraphicsLineItem * item);
-//  void onRectShapeChanged(QGraphicsRectItem * item);
+  void currentDisplayTypeChanged();
 
 public slots:
   virtual void updateDisplay();
@@ -84,6 +92,7 @@ protected:
   QStatusBar * statusbar_ = Q_NULLPTR;
 
   QImageDisplayFunction * displayFunction_ = Q_NULLPTR;
+  DisplayType currentDisplayType_ = DisplayImage;
   QString currentFileName_;
   cv::Mat currentImage_, currentMask_;
   cv::Mat currentImageData_;

@@ -29,6 +29,7 @@ namespace qserstacker {
 #define ICON_marker_blue  "marker-blue"
 #define ICON_reference    "reference"
 #define ICON_options      "options"
+#define ICON_mask         "mask"
 
 
 #define ICON_copy         "copy"
@@ -612,34 +613,22 @@ void MainWindow::configureImageViewerToolbars()
 
   toolbar->addWidget(new QToolbarSpacer());
 
-//  toolbar->addAction(action = new QAction(getIcon(ICON_marker_blue), "Marker"));
-//  action->setToolTip("Show rectange marker.\nUse Ctrl+M to move the marker into center of view.");
-//  action->setCheckable(true);
-//  action->setChecked(imageEditor->selectionRectIsVisible());
-//  shortcut = new QShortcut(QKeySequence("Ctrl+M"), toolbar);
-//  connect(shortcut, &QShortcut::activated, [this, action]() {
-//    if ( imageEditor->isVisible() ) {
-//      if ( imageEditor->selectionRectIsVisible() ) {
-//        imageEditor->setSelectionRectVisible(false);
-//      }
-//      else {
-//        imageEditor->selectionRectToCenterOfView();
-//      }
-//      action->setChecked(imageEditor->selectionRectIsVisible());
-//    }
-//  });
-//  connect(action, &QAction::triggered, [this](bool checked) {
-//    imageEditor->setSelectionRectVisible(checked);
-//  });
-//
+  toolbar->addAction(editMaskAction = new QAction(getIcon(ICON_mask), "Edit mask"));
+  editMaskAction->setToolTip("Edit image mask");
+  editMaskAction->setCheckable(true);
+  editMaskAction->setChecked(imageEditor->displayType() == QImageViewer::DisplayMask);
+  //  editMaskAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_M));
+  connect(editMaskAction, &QAction::triggered,
+      [this](bool checked) {
+        if ( imageEditor->isVisible() ) {
+          imageEditor->setDisplayType(checked ? QImageViewer::DisplayMask : QImageViewer::DisplayImage);
+        }
+      });
+
 
 
   toolbar->addWidget(shapesCtl = new QShapesButton(this));
   shapesCtl->setSceneView(imageEditor->sceneView());
-//  connect(shapesCtl, &QShapesButton::scaleChanged,
-//      [this](int v) {
-//        imageEditor->setViewScale(v);
-//      });
 
 
 

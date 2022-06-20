@@ -110,6 +110,7 @@ private:
   QAction * setReferenceFrameAction = Q_NULLPTR;
   QAction * copyDisplayImageAction = Q_NULLPTR;
   QAction * displaySettingsMenuAction = Q_NULLPTR;
+  QAction * editMaskAction = Q_NULLPTR;
 
 };
 

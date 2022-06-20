@@ -15,15 +15,6 @@ enum anscombe_method {
   anscombe_native = 1, // formulas from <https://en.wikipedia.org/wiki/Anscombe_transform>
   anscombe_sqrt = 2, // stupid sqrt
 };
-//
-//const extern struct anscombe_method_desc {
-//  const char * name;
-//  enum anscombe_method value;
-//} anscombe_methods[];
-//
-//std::string toStdString(enum anscombe_method m);
-//enum anscombe_method fromStdString(const std::string & s,
-//    enum anscombe_method defval);
 
 
 // https://en.wikipedia.org/wiki/Anscombe_transform

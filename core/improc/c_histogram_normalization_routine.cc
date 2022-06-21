@@ -6,14 +6,78 @@
  */
 
 #include "c_histogram_normalization_routine.h"
+//#include <core/proc/median.h>
+#include <core/proc/histogram.h>
 #include <core/ssprintf.h>
+
+
+//static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
+//{
+//  if ( image.channels() == 1 ) {
+//    return median(image, _mask);
+//  }
+//
+//  std::vector<cv::Mat> channels;
+//  cv::split(image, channels);
+//
+//  cv::Scalar m = cv::Scalar::all(0);
+//
+//  for ( uint i = 0; i < channels.size(); ++i ) {
+//    m[i] = median(channels[i], _mask);
+//  }
+//
+//  return m;
+//}
+
+static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
+{
+  cv::Mat1f H;
+  double minval = -1, maxval = -1;
+  int nbins = -1;
+
+  bool fOK =
+      create_histogram(image,
+          _mask,
+          H,
+          &minval,
+          &maxval,
+          nbins,
+          true,
+          true);
+
+  if( !fOK ) {
+    CF_ERROR("create_histogram() fails");
+    return cv::Scalar();
+  }
+
+  cv::Scalar s;
+
+  for( int i = 0, n = (std::min)(4, H.cols); i < n; ++i ) {
+
+    if ( H.rows < 2 ) {
+      s[i] = minval;
+    }
+    else {
+      for( int j = 0, m = H.rows; j < m; ++j ) {
+        if( H[j][i] >= 0.5 ) {
+          s[i] = minval + j * (maxval - minval) / (m - 1);
+          break;
+        }
+      }
+    }
+  }
+
+  return s;
+}
+
+
 
 template<>
 const c_enum_member * members_of<c_histogram_normalization_routine::histogram_normalization_type>()
 {
   static constexpr c_enum_member members[] = {
       { c_histogram_normalization_routine::normalize_mean, "mean" },
-      //{ c_histogram_normalization_routine::normalize_median, "median" },
+      { c_histogram_normalization_routine::normalize_median, "median" },
       { c_histogram_normalization_routine::normalize_mean, nullptr, }  // must  be last
   };
 
@@ -95,8 +159,16 @@ bool c_histogram_normalization_routine::process(cv::InputOutputArray image, cv::
 {
   if( !image.empty() ) {
 
-    const cv::Scalar m =
-        cv::mean(image, mask);
+    cv::Scalar m;
+
+    switch (normalization_type_) {
+    case normalize_mean:
+      m = cv::mean(image, mask);
+      break;
+    default:
+      m = compute_median(image.getMat(), mask);
+      break;
+    }
 
     cv::add(image, offset_ - m, image, mask,
         image.depth());

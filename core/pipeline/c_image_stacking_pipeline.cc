@@ -707,6 +707,51 @@ int c_image_stacking_pipeline::accumulated_frames() const
   return frame_accumulation_ ? frame_accumulation_->accumulated_frames() : 0;
 }
 
+void c_image_stacking_pipeline::gather_badframe_indexes()
+{
+  badframes_.clear();
+
+  if ( input_sequence_ ) {
+
+    const bool was_open = input_sequence_->is_open();
+    if( !was_open && !input_sequence_->open() ) {
+      CF_ERROR("input_sequence_->open() fails");
+      return;
+    }
+
+    const std::vector<c_input_source::ptr> & sources =
+        input_sequence_->sources();
+
+    for ( uint source_index  = 0, n = sources.size();  source_index < n; ++source_index ) {
+
+      const c_input_source::ptr source =
+          input_sequence_->source(source_index);
+
+      if( source ) {
+
+        const std::vector<uint> &bad_source_frames =
+            source->load_badframes();
+
+        for( uint source_frame_index : bad_source_frames ) {
+
+          const int global_index =
+              input_sequence_->global_pos(source_index,
+                  source_frame_index);
+
+          if ( global_index >= 0 ) {
+            badframes_.emplace_back(global_index);
+          }
+        }
+      }
+    }
+
+    if( !was_open ) {
+      input_sequence_->close(false);
+    }
+  }
+}
+
+
 std::string c_image_stacking_pipeline::status_message() const
 {
   std::string msg;
@@ -857,6 +902,8 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     set_status_msg("ERROR: empty input sequence specified");
     return false;
   }
+
+  gather_badframe_indexes();
 
   /////////////////////////////////////////////////////////////////////////////
   if ( (output_directory_ = options_->output_options().output_directory).empty() ) {
@@ -1545,7 +1592,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     }
 
     if ( weights_required() ) {
-      compute_weights(reference_frame, reference_mask, reference_weights_);
+      compute_weights(reference_frame, reference_mask,
+          reference_weights_);
     }
 
     if ( true ) {
@@ -1726,14 +1774,14 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     t0 = start_time = get_realtime_ms();
 
-    if ( !input_options.bad_frames.empty()  ) {
+    if ( !badframes_.empty() ) {
 
-      const std::vector<int> :: const_iterator pos =
-          std::find(input_options.bad_frames.begin(),
-              input_options.bad_frames.end(),
+      const std::vector<uint> :: const_iterator pos =
+          std::find(badframes_.begin(),
+              badframes_.end(),
               input_sequence->current_pos());
 
-      if( pos != input_options.bad_frames.end() ) {
+      if( pos != badframes_.end() ) {
         CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
         input_sequence->seek(input_sequence->current_pos() + 1);
         continue;

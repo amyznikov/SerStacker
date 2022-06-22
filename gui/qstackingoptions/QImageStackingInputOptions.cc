@@ -62,16 +62,6 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
             }
           });
 
-  bad_frames_ctl =
-      add_textbox("Bad frames (global pos):",
-          [this](const QString & s) {
-            if ( options_ ) {
-              if ( ::fromString(s, &options_->bad_frames)) {
-                emit parameterChanged();
-              }
-            }
-          });
-
   enable_color_maxtrix_ctl =
       add_checkbox("Apply color matrix if available",
           [this](bool checked) {
@@ -171,7 +161,6 @@ void QImageStackingInputOptions::onupdatecontrols()
 
     enable_remove_bad_pixels_ctl->setChecked(options_->filter_bad_pixels);
     bad_pixels_variation_threshold_ctl->setValue(options_->hot_pixels_variation_threshold);
-    bad_frames_ctl->setValue(options_->bad_frames);
 
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);

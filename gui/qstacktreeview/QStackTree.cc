@@ -1142,9 +1142,9 @@ QStackTree::QStackTree(QWidget * parent)
   //
   toolbarActions_.append(deleteItemAction =
       new QAction(getIcon(ICON_delete_item),
-          "Delete selected item"));
+          "Delete selected items"));
   deleteItemAction->setToolTip(
-      "Delete selecteted item...");
+      "Delete selecteted items...");
   deleteItemAction->setEnabled(false);
 
 
@@ -1366,12 +1366,7 @@ void QStackTree::applyInputOptionsToAll(const c_input_options & options)
 
     // copy here
     hasUpdates = true;
-
-    const std::vector<int> backup_bad_frames =
-        stack->input_options().bad_frames;
-
     stack->input_options() = options;
-    stack->input_options().bad_frames = backup_bad_frames;
   }
 
   if ( hasUpdates ) {
@@ -1626,9 +1621,7 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
 
       // copy here
       hasUpdates = true;
-      const std::vector<int> backup_bad_frames = stack->input_options().bad_frames;
       stack->input_options() = fromStack->input_options();
-      stack->input_options().bad_frames = backup_bad_frames;
 
 
       stack->roi_selection_options() = fromStack->roi_selection_options();
@@ -1809,7 +1802,8 @@ void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
 
   if ( contextItems.size() == 1 ) {
 
-    QTreeWidgetItem * item = contextItems[0];
+    QTreeWidgetItem * item =
+        contextItems[0];
 
     switch ( item->type() ) {
     case ItemType_Stack : {
@@ -1863,6 +1857,10 @@ void QStackTree::onCustomContextMenuRequested(const QPoint &pos)
     }
     }
 
+  }
+
+  if ( contextItems.size() > 0 ) {
+    menu.addAction(deleteItemAction);
   }
 
   if ( !menu.isEmpty() ) {

@@ -111,6 +111,7 @@ private:
   QAction * copyDisplayImageAction = Q_NULLPTR;
   QAction * displaySettingsMenuAction = Q_NULLPTR;
   QAction * editMaskAction = Q_NULLPTR;
+  QAction * badframeAction = Q_NULLPTR;
 
 };
 

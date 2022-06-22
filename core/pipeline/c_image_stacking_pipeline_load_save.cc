@@ -320,7 +320,6 @@ bool c_input_options::serialize(c_config_setting settings) const
   settings.set("anscombe", anscombe);
   settings.set("start_frame_index", start_frame_index);
   settings.set("max_input_frames", max_input_frames);
-  save_settings(settings, "bad_frames", bad_frames);
 
 
   if ( input_frame_processor ) {
@@ -347,7 +346,6 @@ bool c_input_options::deserialize(c_config_setting settings)
   settings.get("anscombe", &anscombe);
   settings.get("start_frame_index", &start_frame_index);
   settings.get("max_input_frames", &max_input_frames);
-  load_settings(settings, "bad_frames", &bad_frames);
 
   if ( settings.get("input_frame_processor", &s) && !s.empty() ) {
     input_frame_processor = c_image_processor_collection::default_instance()->get(s);

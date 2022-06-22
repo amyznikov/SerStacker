@@ -108,6 +108,15 @@ public:
       enum COLORID * output_colorid,
       int * output_bpc) = 0;
 
+  const std::vector<uint> & badframes() const;
+  bool is_badframe(uint index) const;
+  void set_badframe(uint index, bool is_bad);
+  void set_badframes(const std::vector<uint> & indexes);
+  const std::vector<uint> & load_badframes(const std::string & fname = "");
+  void save_badframes(const std::string & fname = "") const;
+
+
+
 protected:
   c_input_source(enum source_type type, const std::string & filename);
 
@@ -119,6 +128,8 @@ protected:
 
   bool has_color_matrix_ = false;
   cv::Matx33f color_matrix_ = cv::Matx33f::eye();
+
+  std::vector<uint> badframes_;
 };
 
 class c_ser_input_source

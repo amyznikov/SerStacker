@@ -18,5 +18,7 @@
     <file>icons/reference.png</file>
     <file>icons/options.png</file>
     <file>icons/mask.png</file>
+    <file>icons/frame.png</file>
+    <file>icons/badframe.png</file>
 </qresource>
 </RCC>

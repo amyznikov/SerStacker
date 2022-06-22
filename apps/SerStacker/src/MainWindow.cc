@@ -30,6 +30,8 @@ namespace qserstacker {
 #define ICON_reference    "reference"
 #define ICON_options      "options"
 #define ICON_mask         "mask"
+#define ICON_frame        "frame"
+#define ICON_badframe     "badframe"
 
 
 #define ICON_copy         "copy"
@@ -41,6 +43,10 @@ static QIcon getIcon(const QString & name)
   return QIcon(QString(":/gui/icons/%1").arg(name));
 }
 
+static QPixmap getPixmap(const QString & name)
+{
+  return QPixmap(QString(":/gui/icons/%1").arg(name));
+}
 
 
 
@@ -522,6 +528,7 @@ void MainWindow::configureImageViewerToolbars()
   toolbar = imageEditor->embedToolbar();
   statusbar = imageEditor->embedStatusbar();
 
+  /////////////////////
 
   toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
   action->setToolTip("Load previous image from list");
@@ -530,6 +537,7 @@ void MainWindow::configureImageViewerToolbars()
     thumbnailsView->selectPrevIcon();
   });
 
+  /////////////////////
 
   toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
   action->setToolTip("Load next image from list");
@@ -538,6 +546,7 @@ void MainWindow::configureImageViewerToolbars()
     thumbnailsView->selectNextIcon();
   });
 
+  /////////////////////
 
   toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
   action->setToolTip("Reaload current image from disk");
@@ -545,9 +554,11 @@ void MainWindow::configureImageViewerToolbars()
     imageEditor->openImage(imageEditor->currentFileName());
   });
 
+  /////////////////////
 
   toolbar->addSeparator();
 
+  /////////////////////
 
   toolbar->addAction(action = new QAction(getIcon(ICON_dislike), "Bad"));
   action->setToolTip("Move current image to the .bads subfolder (Ctrl+DEL)");
@@ -557,6 +568,62 @@ void MainWindow::configureImageViewerToolbars()
       thumbnailsView->moveToBads(imageEditor->currentFileName());
     }
   });
+
+
+  /////////////////////
+
+  static QIcon badframeIcon;
+  badframeIcon.addPixmap(getPixmap(ICON_frame), QIcon::Normal, QIcon::Off);
+  badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
+  toolbar->addAction(badframeAction = new QAction(badframeIcon, "Bad Frame"));
+  badframeAction->setCheckable(true);
+  badframeAction->setToolTip("Mark/Unmark current frame as bad (Ctrl+B)");
+  badframeAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_B));
+
+  connect(badframeAction, &QAction::triggered, [this](bool checked) {
+    if ( imageEditor->isVisible() ) {
+
+      const c_input_sequence::ptr & input_sequence =
+          imageEditor->input_sequence();
+
+      if ( input_sequence ) {
+
+        c_input_source::ptr source =
+            input_sequence->current_source();
+
+        if ( source ) {
+          source->set_badframe(input_sequence->current_pos() - 1, checked);
+          source->save_badframes();
+        }
+      }
+    }
+  });
+
+  connect(imageEditor, &QImageEditor::currentImageChanged,
+      [this]() {
+
+        bool checked = false;
+
+        const c_input_sequence::ptr & input_sequence =
+            imageEditor->input_sequence();
+
+        if ( input_sequence ) {
+
+          c_input_source::ptr source =
+              input_sequence->current_source();
+
+          if ( source ) {
+            checked = source->is_badframe(
+                input_sequence->current_pos() - 1);
+          }
+        }
+
+        if ( badframeAction->isChecked() != checked ) {
+          badframeAction->setChecked(checked);
+        }
+      });
+
+  /////////////////////
 
 
   toolbar->addAction(setReferenceFrameAction = new QAction(getIcon(ICON_reference), "Make reference"));
@@ -578,6 +645,7 @@ void MainWindow::configureImageViewerToolbars()
     }
   });
 
+  /////////////////////
 
   toolbar->addSeparator();
 
@@ -585,6 +653,8 @@ void MainWindow::configureImageViewerToolbars()
 
   toolbar->addWidget(imageNameLabel = new QLabel(""));
   imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  /////////////////////
 
   toolbar->addSeparator();
 
@@ -608,10 +678,12 @@ void MainWindow::configureImageViewerToolbars()
         }
       });
 
+  /////////////////////
 
   toolbar->addSeparator();
-
   toolbar->addWidget(new QToolbarSpacer());
+
+  /////////////////////
 
   toolbar->addAction(editMaskAction = new QAction(getIcon(ICON_mask), "Edit mask"));
   editMaskAction->setToolTip("Edit image mask");
@@ -626,11 +698,13 @@ void MainWindow::configureImageViewerToolbars()
       });
 
 
+  /////////////////////
 
   toolbar->addWidget(shapesCtl = new QShapesButton(this));
   shapesCtl->setSceneView(imageEditor->sceneView());
 
 
+  /////////////////////
 
   toolbar->addAction(displaySettingsMenuAction = new QAction(getIcon(ICON_histogram), "Display options..."));
   displaySettingsMenuAction->setToolTip("Adjust display options");
@@ -640,6 +714,8 @@ void MainWindow::configureImageViewerToolbars()
       this, &ThisClass::onDisplaySettingsMenuActionClicked);
 
 
+  /////////////////////
+
   toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton(this));
   scaleSelectionCtl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
   connect(scaleSelectionCtl, &QScaleSelectionButton::scaleChanged,
@@ -648,6 +724,7 @@ void MainWindow::configureImageViewerToolbars()
       });
 
 
+  /////////////////////
   toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
   action->setShortcut(QKeySequence::Cancel);
   action->setToolTip("Close window");
@@ -660,6 +737,7 @@ void MainWindow::configureImageViewerToolbars()
         statusbar->showMessage(imageEditor->statusStringForPixel(e->pos()));
     });
 
+  /////////////////////
 
   connect(imageEditor->sceneView(), &QImageSceneView::graphicsShapeChanged,
       [this, statusbar](QGraphicsShape * shape) {

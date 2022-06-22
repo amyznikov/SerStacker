@@ -52,8 +52,6 @@ struct c_input_options
   bool inpaint_missing_pixels = true;
 
   c_image_processor::ptr input_frame_processor;
-  std::vector<int> bad_frames; // global indexes
-
 
   bool filter_bad_pixels = true;
   bool enable_color_maxtrix = false;
@@ -320,7 +318,8 @@ public:
 
   const c_image_stacking_options::ptr & options() const;
 
-  const c_anscombe_transform & anscombe() const {
+  const c_anscombe_transform & anscombe() const
+  {
     return anscombe_;
   }
 
@@ -436,6 +435,9 @@ protected:
   c_frame_accumulation::ptr frame_accumulation_;
   c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
   mutable std::mutex accumulator_lock_;
+
+  std::vector<uint> badframes_; // global indexes
+  void gather_badframe_indexes();
 };
 
 #endif /* __c_stacking_pipeline_h__ */

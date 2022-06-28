@@ -119,14 +119,14 @@ const cv::Scalar & c_histogram_normalization_routine::offset() const
   return offset_;
 }
 
-void c_histogram_normalization_routine::set_scale(const cv::Scalar & v)
+void c_histogram_normalization_routine::set_stretch(const cv::Scalar & v)
 {
-  scale_ = v;
+  stretch_ = v;
 }
 
-const cv::Scalar & c_histogram_normalization_routine::scale() const
+const cv::Scalar & c_histogram_normalization_routine::stretch() const
 {
-  return scale_;
+  return stretch_;
 }
 
 bool c_histogram_normalization_routine::deserialize(c_config_setting settings)
@@ -137,7 +137,7 @@ bool c_histogram_normalization_routine::deserialize(c_config_setting settings)
 
   LOAD_PROPERTY(settings, this, normalization_type);
   LOAD_PROPERTY(settings, this, offset);
-  LOAD_PROPERTY(settings, this, scale);
+  LOAD_PROPERTY(settings, this, stretch);
 
   return true;
 }
@@ -150,7 +150,7 @@ bool c_histogram_normalization_routine::serialize(c_config_setting settings) con
 
   SAVE_PROPERTY(settings, *this, normalization_type);
   SAVE_PROPERTY(settings, *this, offset);
-  SAVE_PROPERTY(settings, *this, scale);
+  SAVE_PROPERTY(settings, *this, stretch);
 
   return true;
 }
@@ -159,19 +159,63 @@ bool c_histogram_normalization_routine::process(cv::InputOutputArray image, cv::
 {
   if( !image.empty() ) {
 
-    cv::Scalar m;
+    // v' = (v - mv ) * stretch + offset
+    // v' = v* stretch + offset - mv * stretch
+
+
+    cv::Scalar mv;
 
     switch (normalization_type_) {
     case normalize_mean:
-      m = cv::mean(image, mask);
+      mv = cv::mean(image, mask);
       break;
     default:
-      m = compute_median(image.getMat(), mask);
+      mv = compute_median(image.getMat(), mask);
       break;
     }
 
-    cv::add(image, offset_ - m, image, mask,
-        image.depth());
+    switch (image.channels()) {
+    case 1: {
+
+      const cv::Matx12f m(
+          stretch_(0), offset_(0) - mv(0) * stretch_(0));
+
+      cv::transform(image.getMat(), image, m);
+      break;
+    }
+    case 2: {
+
+      const cv::Matx23f m(
+          stretch_(0), 0, offset_(0) - mv(0) * stretch_(0),
+          0, stretch_(1), offset_(1) - mv(1) * stretch_(1));
+
+      cv::transform(image.getMat(), image, m);
+      break;
+    }
+    case 3: {
+
+      const cv::Matx34f m(
+          stretch_(0), 0, 0, offset_(0) - mv(0) * stretch_(0),
+          0, stretch_(1), 0, offset_(1) - mv(1) * stretch_(1),
+          0, 0, stretch_(2), offset_(2) - mv(2) * stretch_(2));
+
+      cv::transform(image.getMat(), image, m);
+      break;
+    }
+    case 4: {
+      typedef cv::Matx<float, 4, 5> Matx45f;
+
+      Matx45f m = Matx45f::zeros();
+
+      m(0, 0) = stretch_(0), m(0, 4) = offset_(0) - mv(0) * stretch_(0);
+      m(1, 1) = stretch_(1), m(1, 4) = offset_(1) - mv(1) * stretch_(1);
+      m(2, 2) = stretch_(2), m(2, 4) = offset_(2) - mv(2) * stretch_(2);
+      m(3, 3) = stretch_(3), m(3, 4) = offset_(3) - mv(3) * stretch_(3);
+
+      cv::transform(image.getMat(), image, m);
+      break;
+    }
+    }
   }
 
   return true;

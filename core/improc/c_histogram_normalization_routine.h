@@ -42,23 +42,23 @@ public:
   void set_normalization_type(histogram_normalization_type v);
   histogram_normalization_type normalization_type() const;
 
+  void set_stretch(const cv::Scalar & v);
+  const cv::Scalar & stretch() const;
+
   void set_offset(const cv::Scalar & v);
   const cv::Scalar & offset() const;
-
-  void set_scale(const cv::Scalar & v);
-  const cv::Scalar & scale() const;
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_type, "normalization_type");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch, "stretch");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, offset, "offset");
-    //ADD_IMAGE_PROCESSOR_CTRL(ctls, scale, "scale");
   }
 
 protected:
   histogram_normalization_type normalization_type_ = normalize_mean;
   cv::Scalar offset_ = cv::Scalar::all(0);
-  cv::Scalar scale_ = cv::Scalar::all(1);
+  cv::Scalar stretch_ = cv::Scalar::all(1);
 
 };
 

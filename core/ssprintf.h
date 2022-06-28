@@ -351,10 +351,15 @@ inline bool fromString(const std::string & s, cv::Scalar_<T> * v)
   const int n =
       std::min(4, (int)tokens.size());
 
-  for ( int i = 0; i < n; ++i ) {
+  int i = 0;
+
+  for ( ; i < n; ++i ) {
     if ( !fromString(tokens[i], &v->val[i]) ) {
       return false;
     }
+  }
+  for ( ; i < 4; ++i ) {
+    v->val[i] = v->val[n-1];
   }
 
   return true;

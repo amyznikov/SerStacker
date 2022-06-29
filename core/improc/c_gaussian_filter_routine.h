@@ -35,14 +35,19 @@ public:
   double sigma() const;
   void set_sigma(double v);
 
+  void set_ignore_mask(bool v);
+  bool ignore_mask() const;
+
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "Gaussian kernel sigma");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "Ignore alpha mask");
   }
 
 protected:
   double sigma_ = 1;
+  bool ignore_mask_ = true;
 };
 
 #endif /* __c_gaussian_filter_routine_h__ */

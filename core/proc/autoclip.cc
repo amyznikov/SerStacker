@@ -502,6 +502,56 @@ static void extract_max_channel(cv::InputArray _src, cv::OutputArray _dst)
   _dst.move(dst);
 }
 
+
+bool compute_clip_levels(const cv::Mat1f & cumulative_normalized_histogram,
+    double minv, double maxv,
+    double plo, double phi,
+    /*out */ double * minval,
+    /*out */ double * maxval)
+{
+  const cv::Mat1f & H =
+      cumulative_normalized_histogram;
+
+  double range, hmin, imin, imax;
+  int lowidx, highidx;
+
+  plo /= 100;
+  phi /= 100;
+
+  const int nbins = H.rows;
+
+  if ( (range = (maxv - minv)) <= 0 ) {
+    CF_CRITICAL("build_histogram() returns empty [min..max] range");
+    return false;
+  }
+
+  hmin = H[lowidx = 0][0];
+  while ( lowidx < nbins && H[lowidx][0] == hmin ) {
+    ++lowidx;
+  }
+  while ( lowidx < nbins && H[lowidx][0] < plo ) {
+    ++lowidx;
+  }
+  imin = minv + lowidx * range / nbins;
+
+
+  highidx = lowidx + 1;
+  while ( highidx < nbins && H[highidx][0] <= phi ) {
+    ++highidx;
+  }
+  imax = minv + highidx * range / nbins;
+
+  if ( minval ) {
+    *minval = imin;
+  }
+
+  if ( maxval ) {
+    *maxval = imax;
+  }
+
+  return true;
+}
+
 bool compute_clip_levels(cv::InputArray image, cv::InputArray mask, double plo, double phi,
     /*out */ double * minval, /*out */ double * maxval)
 {
@@ -536,45 +586,11 @@ bool compute_clip_levels(cv::InputArray image, cv::InputArray mask, double plo, 
     return false;
   }
 
-  plo /= 100;
-  phi /= 100;
-
-
-//  CF_DEBUG("H: %dx%d channels=%d", H.rows, H.cols, H.channels());
-//  CF_DEBUG("minv=%g maxv=%g range=%g", minv, maxv, maxv - minv);
-
-  const int nbins = H.rows;
-
-  if ( (range = (maxv - minv)) <= 0 ) {
-    CF_CRITICAL("build_histogram() returns empty [min..max] range");
-    return false;
-  }
-
-  hmin = H[lowidx = 0][0];
-  while ( lowidx < nbins && H[lowidx][0] == hmin ) {
-    ++lowidx;
-  }
-  while ( lowidx < nbins && H[lowidx][0] < plo ) {
-    ++lowidx;
-  }
-  imin = minv + lowidx * range / nbins;
-
-
-  highidx = lowidx + 1;
-  while ( highidx < nbins && H[highidx][0] <= phi ) {
-    ++highidx;
-  }
-  imax = minv + highidx * range / nbins;
-
-  if ( minval ) {
-    *minval = imin;
-  }
-
-  if ( maxval ) {
-    *maxval = imax;
-  }
-
-  return true;
+  return compute_clip_levels(H,
+      minv, maxv,
+      plo, phi,
+      minval,
+      maxval);
 }
 
 bool autoclip(cv::Mat & image,

@@ -22,6 +22,7 @@ public:
   enum histogram_normalization_type {
     normalize_mean,
     normalize_median,
+    normalize_mode
   };
 
 

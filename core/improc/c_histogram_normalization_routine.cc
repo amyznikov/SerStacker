@@ -71,6 +71,55 @@ static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = c
 }
 
 
+static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
+{
+  cv::Mat1f H;
+  double minval = -1, maxval = -1;
+  int nbins = -1;
+
+  bool fOK =
+      create_histogram(image,
+          _mask,
+          H,
+          &minval,
+          &maxval,
+          nbins,
+          false,
+          false);
+
+  if( !fOK ) {
+    CF_ERROR("create_histogram() fails");
+    return cv::Scalar();
+  }
+
+  cv::Scalar s;
+
+  for( int i = 0, n = (std::min)(4, H.cols); i < n; ++i ) {
+
+    if ( H.rows < 2 ) {
+      s[i] = minval;
+    }
+    else {
+
+      int jmax = 0;
+
+      float hmax = H[jmax][i];
+
+      for( int j = 1, m = H.rows; j < m; ++j ) {
+        if( H[j][i] > hmax ) {
+          jmax = j;
+          hmax = H[j][i];
+        }
+      }
+
+      s[i] = minval + jmax * (maxval - minval) / (H.rows - 1);
+    }
+  }
+
+  return s;
+}
+
+
 
 template<>
 const c_enum_member * members_of<c_histogram_normalization_routine::histogram_normalization_type>()
@@ -78,6 +127,7 @@ const c_enum_member * members_of<c_histogram_normalization_routine::histogram_no
   static constexpr c_enum_member members[] = {
       { c_histogram_normalization_routine::normalize_mean, "mean" },
       { c_histogram_normalization_routine::normalize_median, "median" },
+      { c_histogram_normalization_routine::normalize_mode, "mode" },
       { c_histogram_normalization_routine::normalize_mean, nullptr, }  // must  be last
   };
 
@@ -169,6 +219,11 @@ bool c_histogram_normalization_routine::process(cv::InputOutputArray image, cv::
     case normalize_mean:
       mv = cv::mean(image, mask);
       break;
+
+    case normalize_mode:
+      mv = compute_mode(image.getMat(), mask);
+      break;
+
     default:
       mv = compute_median(image.getMat(), mask);
       break;

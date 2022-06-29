@@ -308,6 +308,41 @@ bool accumulate_histogram(cv::InputArray H, cv::OutputArray cumulative)
   return true;
 }
 
+void scale_histogram(cv::Mat1f & H)
+{
+  cv::Mat1f sums;
+  cv::reduce(H, sums, 0, cv::REDUCE_SUM, sums.depth());
+  for( int y = 0; y < H.rows; ++y ) {
+    for( int x = 0; x < H.cols; ++x ) {
+      H[y][x] /= sums[0][x];
+    }
+  }
+}
+
+/// @brief  scale conventional image histogram H by it's total sum
+void scale_histogram(const cv::Mat1f & Hsrc, cv::Mat1f & Hdst)
+{
+  if( &Hsrc == &Hdst ) {
+    scale_histogram (Hdst);
+  }
+  else {
+
+    cv::Mat1f H;
+    cv::Mat1f sums;
+
+    cv::reduce(Hsrc, sums, 0, cv::REDUCE_SUM, sums.depth());
+
+    H.create(Hsrc.size());
+
+    for( int y = 0; y < H.rows; ++y ) {
+      for( int x = 0; x < H.cols; ++x ) {
+        H[y][x] = Hsrc[y][x] / sums[0][x];
+      }
+    }
+
+    Hdst = std::move(H);
+  }
+}
 
 bool create_histogram(cv::InputArray image, cv::InputArray mask,
     cv::OutputArray dst,
@@ -439,13 +474,7 @@ bool create_histogram(cv::InputArray image, cv::InputArray mask,
   }
 
   if ( scaled ) {
-    cv::Mat1f sums;
-    cv::reduce(H, sums, 0, cv::REDUCE_SUM, sums.depth());
-    for ( int y = 0; y < H.rows; ++y ) {
-      for ( int x = 0; x < H.cols; ++x ) {
-        H[y][x] /= sums[0][x];
-      }
-    }
+    scale_histogram(H);
   }
 
   if ( cumulative ) {

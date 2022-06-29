@@ -6,7 +6,9 @@
  */
 
 #include "c_gaussian_filter.h"
-#include <tbb/tbb.h>
+#if HAVE_TBB
+# include <tbb/tbb.h>
+#endif
 
 c_gaussian_filter::c_gaussian_filter()
 {
@@ -99,11 +101,11 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
 
   cv::Mat gsrc;
   cv::Mat gmask;
-  constexpr double Kscale = 1.0/255;
+  constexpr double Kscale = 1.0 / 255;
   const cv::Mat1b src_mask = _mask.getMat();
 
   cv::sepFilter2D(_src, gsrc, CV_32F, Kx_, Ky_, cv::Point(-1, -1), 0, borderType);
-  cv::sepFilter2D(_mask, gmask, CV_32F, Kscale * Kx_, Ky_, cv::Point(-1, -1), 0, borderType);
+  cv::sepFilter2D(_mask, gmask, CV_32F, Kscale * Kx_, Kscale * Ky_, cv::Point(-1, -1), 0, borderType);
 
 
 #if !HAVE_TBB

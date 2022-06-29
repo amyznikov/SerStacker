@@ -19,6 +19,8 @@ public:
 
   c_gaussian_filter(double sigmaX, double sigmaY, const cv::Size & ksize = cv::Size(), double scale = 1.0);
 
+
+  // The src pixels MUST be also set to 0 where _mask is 0
   void apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
       int borderType = cv::BORDER_DEFAULT, double zvalue = 0, int ddepth=-1) const;
 

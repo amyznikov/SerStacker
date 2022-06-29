@@ -95,7 +95,6 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_rotate_image_routine::class_factory);
     register_class_factory(&c_image_transform_routine::class_factory);
     register_class_factory(&c_histogram_normalization_routine::class_factory);
-
   }
 }
 

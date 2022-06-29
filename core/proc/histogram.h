@@ -63,6 +63,12 @@ bool create_histogram(cv::InputArray image,
     bool cumulative = false,
     bool scaled = false);
 
+/// @brief  scale conventional image histogram H by it's total sum
+void scale_histogram(cv::Mat1f & H);
+
+/// @brief  scale conventional image histogram H by it's total sum
+void scale_histogram(const cv::Mat1f & Hsrc, cv::Mat1f & Hdst);
+
 /// @brief  convert conventional image histogram H into cumulative
 ///         by accumulating the bin values along rows
 bool accumulate_histogram(cv::InputArray H,

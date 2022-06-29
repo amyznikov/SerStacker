@@ -20,6 +20,12 @@ bool clip_range(cv::Mat & image,
     double imin, double imax, double omin, double omax,
     const cv::Mat1b & mask = cv::Mat1b());
 
+bool compute_clip_levels(const cv::Mat1f & cumulative_normalized_histogram,
+    double minv, double maxv,
+    double plo, double phi,
+    /*out */ double * minval,
+    /*out */ double * maxval);
+
 bool compute_clip_levels(cv::InputArray image,
     cv::InputArray mask,
     double plo,

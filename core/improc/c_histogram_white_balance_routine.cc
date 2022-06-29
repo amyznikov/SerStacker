@@ -72,6 +72,10 @@ bool c_histogram_white_balance_routine::enable_threshold() const
 
 bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  if ( image.channels() < 2 ) {
+    return true;
+  }
+
   cv::Mat objmask;
 
   if ( !enable_threshold_ ) {

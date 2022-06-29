@@ -471,10 +471,53 @@ c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_f
     return nullptr;
   }
 
-  if ( !options.descriptor.use_detector_options && options.descriptor.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN) {
-    if ( !(descriptor = create_sparse_descriptor_extractor(options.descriptor)) ) {
+  if( options.descriptor.use_detector_options || options.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+
+    bool ignore_errors = false;
+
+    switch (options.detector.type) {
+    case SPARSE_FEATURE_DETECTOR_MSER:
+    case SPARSE_FEATURE_DETECTOR_FAST:
+    case SPARSE_FEATURE_DETECTOR_AGAST:
+    case SPARSE_FEATURE_DETECTOR_GFTT:
+    case SPARSE_FEATURE_DETECTOR_BLOB:
+#if HAVE_FEATURE2D_MSD
+    case SPARSE_FEATURE_DETECTOR_MSD:
+#endif
+#if HAVE_FEATURE2D_STAR
+    case SPARSE_FEATURE_DETECTOR_STAR:
+#endif
+#if HAVE_FEATURE2D_HL
+    case SPARSE_FEATURE_DETECTOR_HL:
+#endif
+#if HAVE_FEATURE2D_SURF
+      descriptor = create_feature2d(options.descriptor.surf);
+#else
+      descriptor = create_feature2d(options.descriptor.orb);
+#endif
+      break;
+#if HAVE_STAR_EXTRACTOR
+    case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
+      descriptor = create_feature2d(options.descriptor.triangles);
+      break;
+#endif
+    default:
+      ignore_errors = true;
+      break;
+    }
+
+    if ( !ignore_errors && !descriptor ) {
       CF_ERROR("create_sparse_descriptor_extractor() fails");
       return nullptr;
+    }
+  }
+
+  if ( !descriptor ) {
+    if ( !options.descriptor.use_detector_options && options.descriptor.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN) {
+      if ( !(descriptor = create_sparse_descriptor_extractor(options.descriptor)) ) {
+        CF_ERROR("create_sparse_descriptor_extractor() fails");
+        return nullptr;
+      }
     }
   }
 

@@ -17,6 +17,7 @@
 #include <gui/qstackingoptions/QStackOptions.h>
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
+#include <gui/qimageview/QImageViewOptions.h>
 #include "QImageEditor.h"
 
 #if HAVE_QGLViewer // Should come from CMakeLists.txt
@@ -48,11 +49,14 @@ private:
   void configureTextViewerToolbars();
   void configureCloudViewerToolbars();
   void createDisplaySettingsControl();
+  void createImageViewOptionsControl();
   bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
   void onSaveCurrentImageAs();
   void onSaveCurrentDisplayImageAs();
+  void onSaveCurrentImageMask();
+  void onLoadCurrentImageMask();
   void onLoadStackConfig();
 
 private slots:
@@ -82,6 +86,7 @@ private:
   QThumbnailsView * thumbnailsView = Q_NULLPTR;
   QImageEditor * imageEditor = Q_NULLPTR;
   QTextFileViewer * textViewer = Q_NULLPTR;
+  QImageViewOptionsDlgBox *  imageViewOptionsControl = Q_NULLPTR;
 
 #if HAVE_QGLViewer
   QCloudViewer * cloudViewer = Q_NULLPTR;
@@ -106,11 +111,13 @@ private:
   QAction * quitAppAction = Q_NULLPTR;
   QAction * saveImageAsAction = Q_NULLPTR;
   QAction * saveDisplayImageAsAction = Q_NULLPTR;
+  QAction * saveImageMaskAction = Q_NULLPTR;
   QAction * loadStackAction = Q_NULLPTR;
   QAction * setReferenceFrameAction = Q_NULLPTR;
   QAction * copyDisplayImageAction = Q_NULLPTR;
   QAction * displaySettingsMenuAction = Q_NULLPTR;
   QAction * editMaskAction = Q_NULLPTR;
+  QAction * loadImageMaskAction = Q_NULLPTR;
   QAction * badframeAction = Q_NULLPTR;
 
 };

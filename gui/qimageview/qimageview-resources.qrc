@@ -4,5 +4,9 @@
 	<file>icons/line.png</file>
 	<file>icons/rectangle.png</file>
 	<file>icons/delete.png</file>
+	<file>icons/pen16.png</file>
+	<file>icons/pen64.png</file>
+	<file>icons/circle.png</file>
+	<file>icons/square.png</file>
 </qresource>
 </RCC>

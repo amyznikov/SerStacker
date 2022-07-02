@@ -21,9 +21,14 @@ public:
 
   enum DisplayType {
     DisplayImage,
-    DisplayMask
+    DisplayMask,
+    DisplayBlend
   };
 
+  enum PenShape {
+    PenShape_square,
+    PenShape_circle,
+  };
 
   QImageViewer(QWidget * parent = Q_NULLPTR);
 
@@ -45,6 +50,7 @@ public:
   DisplayType displayType() const;
 
   virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
+  virtual void setMask(cv::InputArray mask, bool make_copy /*= true*/);
 
   const cv::Mat & currentImage() const;
   const cv::Mat & currentMask() const;
@@ -56,6 +62,14 @@ public:
 
   QString statusStringForPixel(const QPoint & viewpos);
 
+  void setEnableEditMask(bool enable);
+  bool enableEditMask() const;
+
+  void setEditMaskPenRadius(int v);
+  int editMaskPenRadius() const;
+
+  void setEditMaskPenShape(PenShape v);
+  PenShape editMaskPenShape() const;
 
 signals:
   void onMouseMove(QMouseEvent * e);
@@ -72,10 +86,6 @@ signals:
   void currentDisplayImageChanged();
   void currentDisplayTypeChanged();
 
-public slots:
-  virtual void updateDisplay();
-  void copyDisplayImageToClipboard();
-
 protected:
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
@@ -84,6 +94,15 @@ protected:
   virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
   virtual void createDisplayImage();
   virtual void showCurrentDisplayImage();
+  void updateCursor();
+
+public slots:
+  virtual void updateDisplay();
+  void copyDisplayImageToClipboard();
+  void handleMousePressEvent(QMouseEvent * e);
+  void handleMouseMoveEvent(QMouseEvent * e);
+  void editMask(QMouseEvent * e);
+  void undoEditMask();
 
 protected:
   QVBoxLayout * layout_  = Q_NULLPTR;
@@ -99,6 +118,12 @@ protected:
   cv::Mat displayImage_;
   QImage qimage_;
 
+  bool enableEditMask_ = false;
+  int editMaskPenRadius_ = 5;
+  PenShape editMaskPenShape_ = PenShape_square;
+  // QAction * undoEditMaskAction_ = Q_NULLPTR;
+  QShortcut * undoEditMaskActionShortcut_ = Q_NULLPTR;
+  QStack<cv::Mat> editMaskUndoQueue_;
 };
 
 #endif /* __QImageViewer_h__ */

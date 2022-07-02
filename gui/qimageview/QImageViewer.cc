@@ -7,7 +7,22 @@
 
 #include "QImageViewer.h"
 #include "cv2qt.h"
+#include <core/ssprintf.h>
 #include <core/debug.h>
+
+
+template<>
+const c_enum_member* members_of<QImageViewer::DisplayType>()
+{
+  static constexpr c_enum_member members[] = {
+      { QImageViewer::DisplayImage, "Image", "" },
+      { QImageViewer::DisplayMask, "Mask", "" },
+      { QImageViewer::DisplayBlend, "Blend", "" },
+      { QImageViewer::DisplayImage }, // must be last
+      };
+
+  return members;
+}
 
 QImageViewer::QImageViewer(QWidget * parent)
   : Base(parent)
@@ -17,9 +32,9 @@ QImageViewer::QImageViewer(QWidget * parent)
   layout_->addWidget(view_ = new QImageSceneView(this), 100);
 
   connect(view_, &QImageSceneView::onMouseMove,
-      this, &ThisClass::onMouseMove);
+      this, &ThisClass::handleMouseMoveEvent);
   connect(view_, &QImageSceneView::onMousePressEvent,
-      this, &ThisClass::onMousePressEvent);
+      this, &ThisClass::handleMousePressEvent);
   connect(view_, &QImageSceneView::onMouseReleaseEvent,
       this, &ThisClass::onMouseReleaseEvent);
   connect(view_, &QImageSceneView::onMouseDoubleClick,
@@ -28,6 +43,19 @@ QImageViewer::QImageViewer(QWidget * parent)
       this, &ThisClass::onScaleChanged);
 //  connect(view_, &QImageSceneView::graphicsShapeChanged,
 //      this, &ThisClass::graphicsShapeChanged);
+
+  //QShortcut * shortcut = new QShortcut();
+
+//  undoEditMaskAction_ = new QAction(this);
+//  connect(undoEditMaskAction_, &QAction::triggered,
+//      this, &ThisClass::undoEditMask);
+
+  undoEditMaskActionShortcut_ = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Z), this);
+  //connect(undoEditMaskActionShortcut_, &QShortcut::activated,
+  //  undoEditMaskAction_, &QAction::trigger);
+  connect(undoEditMaskActionShortcut_, &QShortcut::activated,
+      this, &ThisClass::undoEditMask);
+
 }
 
 QImageSceneView * QImageViewer::sceneView() const
@@ -148,16 +176,6 @@ const cv::Mat & QImageViewer::displayImage() const
 
 QString QImageViewer::currentFileName() const
 {
-//  if ( input_sequence_->is_open() ) {
-//
-//    c_input_source::ptr source =
-//        input_sequence_->current_source();
-//
-//    if ( source ) {
-//      return source->filename().c_str();
-//    }
-//  }
-
   return this->currentFileName_;
 }
 
@@ -169,6 +187,8 @@ void QImageViewer::setCurrentFileName(const QString & newFileName)
 
 void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
 {
+  editMaskUndoQueue_.clear();
+
   if ( image.empty() ) {
     currentImage_.release();
     currentMask_.release();
@@ -203,6 +223,27 @@ void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::Input
   updateDisplay();
 }
 
+void QImageViewer::setMask(cv::InputArray mask, bool make_copy /*= true*/)
+{
+  if( !mask.empty() && (mask.size() != currentImage_.size() || mask.type() != CV_8UC1) ) {
+    CF_ERROR("Invalid mask specifed: %dx%d channes=%d depth=%d. Must be  %dx%d CV_8UC1",
+        mask.cols(), mask.rows(), mask.channels(), mask.depth(),
+        currentImage_.cols, currentImage_.rows);
+    return;
+  }
+
+  editMaskUndoQueue_.clear();
+
+  if ( make_copy ) {
+    mask.getMat().copyTo(currentMask_);
+  }
+  else {
+    currentMask_ = mask.getMat();
+  }
+
+  emit currentImageChanged();
+  updateDisplay();
+}
 
 
 void QImageViewer::updateDisplay()
@@ -235,6 +276,25 @@ void QImageViewer::createDisplayImage()
         displayFunction_->getDisplayImage(displayImage_, CV_8U);
       }
     }
+
+    if ( currentDisplayType_ == DisplayBlend && !displayImage_.empty() && !currentMask_.empty() ) {
+
+      cv::Mat mask;
+      if ( displayImage_.channels() == currentMask_.channels() ) {
+        mask = currentMask_;
+      }
+      else {
+        const int cn = displayImage_.channels();
+        cv::Mat channels[cn];
+        for ( int i = 0; i < cn; ++i ) {
+          channels[i] = currentMask_;
+        }
+        cv::merge(channels, cn, mask);
+      }
+
+      cv::addWeighted(displayImage_, 0.5, mask, 0.5, 0, displayImage_, displayImage_.depth());
+    }
+
   }
   emit currentDisplayImageChanged();
 }
@@ -370,4 +430,167 @@ void QImageViewer::focusOutEvent(QFocusEvent *e)
   emit onFocusOutEvent(e);
   Base::focusOutEvent(e);
 }
+
+void QImageViewer::setEnableEditMask(bool enable)
+{
+  enableEditMask_ = enable;
+  view_->setMouseScrollEnabled(!enable);
+  updateCursor();
+}
+
+bool QImageViewer::enableEditMask() const
+{
+  return enableEditMask_;
+}
+
+void QImageViewer::setEditMaskPenRadius(int v)
+{
+  editMaskPenRadius_ = v;
+  updateCursor();
+}
+
+int QImageViewer::editMaskPenRadius() const
+{
+  return editMaskPenRadius_;
+}
+
+void QImageViewer::setEditMaskPenShape(PenShape v)
+{
+  editMaskPenShape_ = v;
+  updateCursor();
+}
+
+QImageViewer::PenShape QImageViewer::editMaskPenShape() const
+{
+  return editMaskPenShape_;
+}
+
+void QImageViewer::updateCursor()
+{
+  static const QCursor defaultCursor =
+      view_->cursor();
+
+  if ( !enableEditMask_ ) {
+    view_->setCursor(defaultCursor);
+  }
+  else {
+    view_->setCursor(Qt::CursorShape::CrossCursor);
+
+//    const int imageSize =
+//        std::min(65, std::max(17, 2 * editMaskPenRadius_ + 1));
+//
+//    QImage image(imageSize, imageSize, QImage::Format_Mono);
+//    QPainter image_painter(&image);
+//    QPen imagePen(Qt::black);
+//
+//    imagePen.setWidth(1);
+//    image_painter.setPen(imagePen);
+//    image_painter.fillRect(0, 0, imageSize, imageSize, QBrush(Qt::white));
+//
+//
+//
+//    QImage mask(imageSize, imageSize, QImage::Format_Mono);
+//    QPainter mask_painter(&mask);
+//    QPen maskPen(Qt::black);
+//
+//    maskPen.setWidth(2);
+//    mask_painter.setPen(maskPen);
+//    mask_painter.fillRect(0, 0, imageSize, imageSize, QBrush(Qt::white));
+//
+//
+//    switch (editMaskPenShape_) {
+//    case PenShape_circle:
+//      image_painter.drawEllipse(0, 0, imageSize - 1, imageSize - 1);
+//      mask_painter.drawEllipse(0, 0, imageSize - 1, imageSize - 1);
+//      break;
+//    default:
+//      image_painter.drawRect(0, 0, imageSize - 1, imageSize - 1);
+//      mask_painter.drawRect(0, 0, imageSize - 1, imageSize - 1);
+//      break;
+//    }
+//
+//    image_painter.drawRect(imageSize / 2 - 2, imageSize / 2 - 2, 4, 4);
+//    mask_painter.fillRect(imageSize / 2 - 2, imageSize / 2 - 2, 5, 5, Qt::black);
+//
+//    setCursor(QCursor(QBitmap::fromImage(image), QBitmap::fromImage(mask),
+//        imageSize / 2, imageSize / 2));
+  }
+}
+
+void QImageViewer::editMask(QMouseEvent * e)
+{
+  if( !currentImage_.empty() ) {
+
+    if( currentMask_.empty() ) {
+      currentMask_.create(currentImage_.size(), CV_8UC1);
+      currentMask_.setTo(255);
+    }
+
+    if ( editMaskUndoQueue_.size() > 100 ) {
+      editMaskUndoQueue_.erase(editMaskUndoQueue_.begin());
+    }
+
+    editMaskUndoQueue_.push(currentMask_.clone());
+
+    const QPointF pos = view_->mapToScene(e->pos());
+    const int x = pos.x(), y = pos.y();
+
+    switch (editMaskPenShape_) {
+    case PenShape_circle:
+
+      cv::circle(currentMask_, cv::Point(x, y),
+          editMaskPenRadius_,
+          0,
+          -1,
+          cv::LINE_8,
+          0);
+
+      break;
+
+    default:
+      cv::rectangle(currentMask_,
+          cv::Point(x - editMaskPenRadius_, y - editMaskPenRadius_),
+          cv::Point(x + editMaskPenRadius_, y + editMaskPenRadius_),
+          0,
+          -1,
+          cv::LINE_8,
+          0);
+      break;
+    }
+
+    emit currentImageChanged();
+    updateDisplay();
+  }
+}
+
+void QImageViewer::undoEditMask()
+{
+  if ( !editMaskUndoQueue_.empty() ) {
+
+    cv::Mat mask = editMaskUndoQueue_.pop();
+    if ( mask.size() == currentImage_.size() ) {
+      currentMask_ = mask;
+      emit currentImageChanged();
+      updateDisplay();
+    }
+  }
+}
+
+void QImageViewer::handleMousePressEvent(QMouseEvent * e)
+{
+  if( e->buttons() == Qt::LeftButton && enableEditMask_ ) {
+    editMask(e);
+  }
+
+  emit onMousePressEvent(e);
+}
+
+void QImageViewer::handleMouseMoveEvent(QMouseEvent * e)
+{
+  if( e->buttons() == Qt::LeftButton && enableEditMask_ ) {
+    editMask(e);
+  }
+  emit onMouseMove(e);
+}
+
 

@@ -13,6 +13,7 @@
 #include <gui/qimageview/QShapesButton.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
+#include <core/io/load_image.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -331,6 +332,16 @@ MainWindow::MainWindow()/* :
   connect(saveDisplayImageAsAction, &QAction::triggered, this, &ThisClass::onSaveCurrentDisplayImageAs);
 
 
+  fileMenu->addAction(saveImageMaskAction = new QAction("Save current image mask..."));
+  saveImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentMask().empty());
+  connect(saveImageMaskAction, &QAction::triggered, this, &ThisClass::onSaveCurrentImageMask);
+
+  fileMenu->addAction(loadImageMaskAction = new QAction("Set current image mask from file..."));
+  loadImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+  connect(loadImageMaskAction, &QAction::triggered, this, &ThisClass::onLoadCurrentImageMask);
+
+
+
   fileMenu->addSeparator();
   fileMenu->addAction(loadStackAction =
       new QAction("Load stack config..."));
@@ -361,19 +372,21 @@ MainWindow::MainWindow()/* :
         }
       });
 
-  connect(imageEditor, &QImageEditor::currentImageChanged,
+
+  static const auto enableFileMenuActions =
       [this]() {
         saveImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
         saveDisplayImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->displayImage().empty());
         copyDisplayImageAction->setEnabled(imageEditor->isVisible() && !imageEditor->displayImage().empty());
-      });
+        saveImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentMask().empty());
+        loadImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+      };
+
+  connect(imageEditor, &QImageEditor::currentImageChanged,
+      enableFileMenuActions);
 
   connect(imageEditor, &QImageViewer::visibilityChanged,
-      [this](bool visible) {
-        copyDisplayImageAction->setEnabled(visible && !imageEditor->displayImage().empty());
-        saveDisplayImageAsAction->setEnabled(visible && !imageEditor->displayImage().empty());
-        saveImageAsAction->setEnabled(visible && !imageEditor->currentImage().empty());
-      });
+      enableFileMenuActions);
 
   ///////////////////////////////////
 
@@ -577,8 +590,8 @@ void MainWindow::configureImageViewerToolbars()
   badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
   toolbar->addAction(badframeAction = new QAction(badframeIcon, "Bad Frame"));
   badframeAction->setCheckable(true);
-  badframeAction->setToolTip("Mark/Unmark current frame as bad (Ctrl+B)");
-  badframeAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_B));
+  badframeAction->setToolTip("Mark/Unmark current frame as bad (Ctrl+A)");
+  badframeAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_A));
 
   connect(badframeAction, &QAction::triggered, [this](bool checked) {
     if ( imageEditor->isVisible() ) {
@@ -685,15 +698,24 @@ void MainWindow::configureImageViewerToolbars()
 
   /////////////////////
 
-  toolbar->addAction(editMaskAction = new QAction(getIcon(ICON_mask), "Edit mask"));
-  editMaskAction->setToolTip("Edit image mask");
+  toolbar->addAction(editMaskAction = new QAction(getIcon(ICON_mask), "mask"));
+  editMaskAction->setToolTip("View/edit image mask");
   editMaskAction->setCheckable(true);
   editMaskAction->setChecked(imageEditor->displayType() == QImageViewer::DisplayMask);
   //  editMaskAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_M));
   connect(editMaskAction, &QAction::triggered,
       [this](bool checked) {
         if ( imageEditor->isVisible() ) {
-          imageEditor->setDisplayType(checked ? QImageViewer::DisplayMask : QImageViewer::DisplayImage);
+
+          if ( checked ) {
+            createImageViewOptionsControl();
+          }
+          else if ( imageViewOptionsControl )  {
+            delete imageViewOptionsControl;
+            imageViewOptionsControl = Q_NULLPTR;
+          }
+
+          //imageEditor->setDisplayType(checked ? QImageViewer::DisplayMask : QImageViewer::DisplayImage);
         }
       });
 
@@ -907,6 +929,30 @@ void MainWindow::onDisplaySettingsMenuActionClicked(bool checked)
     if( !mtfControl->isVisible() ) {
       mtfControl->show();
     }
+  }
+}
+
+void MainWindow::createImageViewOptionsControl()
+{
+  if( !imageViewOptionsControl ) {
+
+    imageViewOptionsControl = new QImageViewOptionsDlgBox(this);
+    imageViewOptionsControl->setImageViewer(imageEditor);
+
+    connect(imageViewOptionsControl, &QImageViewOptionsDlgBox::visibilityChanged,
+        [this](bool visible) {
+          if ( editMaskAction->isChecked() != visible ) {
+            editMaskAction->setChecked(visible);
+          }
+        });
+
+    connect(imageViewOptionsControl, &QImageViewOptionsDlgBox::finished,
+        [this](int) {
+          delete imageViewOptionsControl;
+          imageViewOptionsControl = Q_NULLPTR;
+        });
+
+    imageViewOptionsControl->show();
   }
 }
 
@@ -1201,6 +1247,69 @@ void MainWindow::onSaveCurrentDisplayImageAs()
         cv::Mat(),
         nullptr,
         imageEditor->currentFileName());
+  }
+}
+
+void MainWindow::onSaveCurrentImageMask()
+{
+  if( imageEditor->isVisible() && !imageEditor->currentMask().empty() ) {
+
+    saveImageFileAs(this,
+        imageEditor->currentMask(),
+        cv::Mat(),
+        nullptr,
+        QString("%1.mask.png").arg(imageEditor->currentFileName()));
+  }
+}
+
+void MainWindow::onLoadCurrentImageMask()
+{
+  if( imageEditor->isVisible() && !imageEditor->currentImage().empty() ) {
+
+    static const QString keyName = "lastImageMask";
+
+    QSettings settings;
+
+    static const QString filter =
+        "Image files *.tiff *.tif *.png *.jpg (*.tiff *.tif *.png *.jpg);;\n"
+        "All files (*);;";
+
+    QString fileName =
+        QFileDialog::getOpenFileName(this,
+            "Select binary image", settings.value(keyName).toString(),
+            filter,
+            nullptr);
+
+    if ( fileName.isEmpty() ) {
+      return;
+    }
+
+    settings.setValue(keyName, fileName);
+
+    cv::Mat image;
+
+    if ( !load_image(fileName.toStdString(), image) ) {
+      QMessageBox::critical(this, "Error",
+          "load_image() fails.\n"
+          "Can not load image from specified file");
+      return;
+    }
+
+    if( image.type() != CV_8UC1 || image.size() != imageEditor->currentImage().size() ) {
+      QMessageBox::critical(this, "Error",
+          QString("Not appropriate mask image: %dx%d depth=%1 channels=%1.\n"
+              "Must be CV_8UC1 of the same size as current image (%dx%d)")
+              .arg(image.cols)
+              .arg(image.rows)
+              .arg(image.depth())
+              .arg(image.channels())
+              .arg(imageEditor->currentImage().cols)
+              .arg(imageEditor->currentImage().rows));
+      return;
+    }
+
+    imageEditor->setMask(image, false);
+
   }
 }
 

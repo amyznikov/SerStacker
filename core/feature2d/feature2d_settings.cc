@@ -985,6 +985,7 @@ bool save_settings(c_config_setting settings, const c_feature2d_matcher_options 
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_FLANN)), options.flann);
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_HAMMING)), options.hamming);
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_SNORM)), options.snorm);
+  save_settings(settings.add_group(toString(FEATURE2D_MATCHER_TRIANGLES)), options.triangles);
 
   return true;
 }

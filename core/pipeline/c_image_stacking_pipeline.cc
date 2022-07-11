@@ -423,6 +423,17 @@ const c_image_stacking_output_options & c_image_stacking_options::output_options
   return output_options_;
 }
 
+c_image_processing_options & c_image_stacking_options::image_processing_options()
+{
+  return image_processing_options_;
+}
+
+const c_image_processing_options & c_image_stacking_options::image_processing_options() const
+{
+  return image_processing_options_;
+}
+
+
 std::string c_image_stacking_options::get_displaypatch() const
 {
   std::string path;

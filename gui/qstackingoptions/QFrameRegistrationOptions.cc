@@ -6,7 +6,6 @@
  */
 
 #include "QFrameRegistrationOptions.h"
-//#include <gui/widgets/addctrl.h>
 #include <core/debug.h>
 
 #define ICON_check_all      "check_all"
@@ -1622,5 +1621,5 @@ void QFrameRegistrationOptions::update_controls_visibility()
 }
 
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

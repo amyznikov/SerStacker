@@ -628,8 +628,51 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
       return false;
     }
 
-    keypoints_matcher_ =
-        create_sparse_feature_matcher(options_.feature_registration.sparse_feature_matcher);
+
+    if ( options_.feature_registration.sparse_feature_matcher.type != FEATURE2D_MATCHER_AUTO_SELECT ) {
+      keypoints_matcher_ =
+          create_sparse_feature_matcher(options_.feature_registration.sparse_feature_matcher);
+    }
+    else {
+
+      c_feature2d_matcher_options auto_selected_matcher_options =
+          options_.feature_registration.sparse_feature_matcher;
+
+      const SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type =
+          keypoints_extractor_->descriptor_type();
+
+#if HAVE_STAR_EXTRACTOR
+      if( descriptor_type == SPARSE_FEATURE_DESCRIPTOR_TRIANGLE ) {
+        auto_selected_matcher_options.type = FEATURE2D_MATCHER_TRIANGLES;
+      }
+#endif
+      if( auto_selected_matcher_options.type == FEATURE2D_MATCHER_AUTO_SELECT ) {
+
+        switch (keypoints_extractor_->descriptor()->defaultNorm()) {
+        case cv::NORM_HAMMING:
+          case cv::NORM_HAMMING2:
+          auto_selected_matcher_options.type = FEATURE2D_MATCHER_HAMMING;
+          break;
+        default:
+          auto_selected_matcher_options.type = FEATURE2D_MATCHER_FLANN;
+          switch (CV_MAT_DEPTH(keypoints_extractor_->descriptor()->type())) {
+          case CV_8U:
+            case CV_8S:
+            auto_selected_matcher_options.flann.distance_type = cvflann::FLANN_DIST_HAMMING;
+            auto_selected_matcher_options.flann.index.type = FlannIndex_lsh;
+            break;
+          default:
+            auto_selected_matcher_options.flann.distance_type = cvflann::FLANN_DIST_L2;
+            auto_selected_matcher_options.flann.index.type = FlannIndex_kdtree;
+            break;
+          }
+          break;
+        }
+      }
+
+      keypoints_matcher_ =
+          create_sparse_feature_matcher(auto_selected_matcher_options);
+    }
 
     if( !keypoints_matcher_ ) {
       CF_ERROR("create_sparse_feature_matcher() fails");

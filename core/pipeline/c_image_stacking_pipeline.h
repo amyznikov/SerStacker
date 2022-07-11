@@ -152,6 +152,13 @@ struct c_frame_registration_options
 };
 
 
+struct c_image_processing_options {
+  c_image_processor::ptr input_image_processor;
+  c_image_processor::ptr ecc_image_processor;
+  c_image_processor::ptr aligned_image_processor;
+  c_image_processor::ptr accumulated_image_processor;
+};
+
 struct c_image_stacking_output_options {
 
   std::string output_directory;
@@ -232,6 +239,9 @@ public:
   c_image_stacking_output_options & output_options();
   const c_image_stacking_output_options & output_options() const;
 
+  c_image_processing_options & image_processing_options();
+  const c_image_processing_options & image_processing_options() const;
+
   std::string get_displaypatch() const;
 
   static ptr load(const std::string & cfgfilename);
@@ -253,6 +263,7 @@ protected:
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
+  c_image_processing_options image_processing_options_;
 
 };
 

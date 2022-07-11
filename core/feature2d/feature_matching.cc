@@ -12,6 +12,7 @@ template<>
 const c_enum_member * members_of<FEATURE2D_MATCHER_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+      { FEATURE2D_MATCHER_AUTO_SELECT, "Auto", "Auto select depending on feature descriptor type" },
       { FEATURE2D_MATCHER_HAMMING, "hamming", "" },
       { FEATURE2D_MATCHER_FLANN, "flann", "" },
       { FEATURE2D_MATCHER_TRIANGLES, "triangle_matcher", "" },
@@ -41,8 +42,8 @@ c_feature2d_matcher::ptr create_sparse_feature_matcher(
     break;
   }
 
-  CF_ERROR("ERROR: Unknown or not supported sparse feature matcher type=%d requested",
-      options.type);
+  CF_ERROR("ERROR: Unknown or not supported sparse feature matcher type=%d (%s) requested",
+      options.type, toString(options.type));
   return nullptr;
 }
 
@@ -53,11 +54,11 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
   fprintf(fp, "SUPPORTED FEATURE MATCHERS:\n"
       "\n");
 
-  fprintf(fp, "%s: GLDDM matcher based on hamming distance\n"
+  fprintf(fp, "%s: GLDDM matcher based on Hamming distance\n"
       "double max_acceptable_distance = -1;\n"
       "\n", toString(FEATURE2D_MATCHER_HAMMING));
 
-  fprintf(fp, "%s: GLDDM matcher based on sorded L1 norm (NOT recommended, prefer FLANN_INDEX_KDTREE for SIFT/SURF matching) \n"
+  fprintf(fp, "%s: GLDDM matcher based on sorted L1 norm (NOT recommended, prefer FLANN_INDEX_KDTREE for SIFT/SURF matching) \n"
       "double max_acceptable_distance = -1;\n"
       "double lowe_ratio = -1;\n"
       "\n", toString(FEATURE2D_MATCHER_SNORM));

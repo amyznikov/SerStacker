@@ -15,6 +15,7 @@
 #include "QFrameUpscaleOptions.h"
 #include "QFrameRegistrationOptions.h"
 #include "QFrameAccumulationOptions.h"
+#include "QImageProcessingOptions.h"
 #include "QStackOutputOptions.h"
 
 
@@ -55,6 +56,7 @@ protected:
   QFrameUpscaleOptions * upscaleOptions_ctl = Q_NULLPTR;
   QFrameRegistrationOptions * frameRegistration_ctl = Q_NULLPTR;
   QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
+  QImageProcessingOptions * imageProcessingOptions_ctl = Q_NULLPTR;
   QStackOutputOptions * outputOptions_ctl = Q_NULLPTR;
 };
 

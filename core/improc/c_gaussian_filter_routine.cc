@@ -70,7 +70,7 @@ bool c_gaussian_filter_routine::deserialize(c_config_setting settings)
   }
 
   settings.get("sigma", &sigma_);
-  settings.get("sigma", &ignore_mask_);
+  settings.get("ignore_mask", &ignore_mask_);
 
   return true;
 }

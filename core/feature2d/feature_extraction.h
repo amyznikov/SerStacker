@@ -1662,14 +1662,14 @@ public:
   }
 
 
-  enum FEATURE2D_TYPE detector_type() const
+  enum SPARSE_FEATURE_DETECTOR_TYPE detector_type() const
   {
-    return detector_->type();
+    return (SPARSE_FEATURE_DETECTOR_TYPE) detector_->type();
   }
 
-  enum FEATURE2D_TYPE descriptor_type() const
+  enum SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type() const
   {
-    return descriptor_ ? descriptor_->type() : FEATURE2D_UNKNOWN;
+    return descriptor_ ? (SPARSE_FEATURE_DESCRIPTOR_TYPE)descriptor_->type() : SPARSE_FEATURE_DESCRIPTOR_UNKNOWN;
   }
 
   void set_max_keypoints(int v)

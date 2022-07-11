@@ -6,7 +6,9 @@
  */
 
 #include "unsharp_mask.h"
-#include <tbb/tbb.h>
+#if HAVE_TBB
+# include <tbb/tbb.h>
+#endif
 #include <core/debug.h>
 
 
@@ -17,8 +19,8 @@ static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma
 
   static const auto gaussian_blur =
       [](cv::InputArray src, cv::Mat & lpass, double sigma) {
-        const cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
-        cv::sepFilter2D(src, lpass, -1, G, G, cv::Point(-1, -1), 0, borderType);
+        const cv::Mat1f G = cv::getGaussianKernel(2 * (std::max)(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
+        cv::sepFilter2D(src, lpass, -1, G,  G, cv::Point(-1, -1), 0, borderType);
       };
 
   int pyramid_level = 0;
@@ -26,8 +28,12 @@ static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma
 
   if( sigma > 2 ) {
 
-    int min_size = std::min(src.cols(), src.rows());
+    int min_size =
+        (std::min)(src.rows(),
+            src.cols());
+
     int imax = 0;
+
     while (min_size >>= 1) {
       ++imax;
     }
@@ -64,62 +70,62 @@ static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma
     gaussian_blur(lpass, lpass, delta);
   }
 
-  for ( int j = size_history.size()-1; j >= 0; --j ) {
+  for( int j = size_history.size() - 1; j >= 0; --j ) {
     cv::pyrUp(lpass, lpass, size_history[j]);
   }
 }
 
 
-static void create_lpass_image(cv::InputArray src, cv::InputArray srcmask, cv::Mat & lpass, double sigma)
-{
-  if ( srcmask.empty() ) {
-    create_lpass_image(src, lpass, sigma);
-    return;
-  }
-
-  cv::Mat fmask;
-
-  const cv::Mat1b mask =
-      srcmask.getMat();
-
-  mask.convertTo(fmask, CV_32F, 1. / 255);
-  src.getMat().convertTo(lpass, CV_32F);
-  lpass.setTo(0, ~mask);
-
-  create_lpass_image(lpass, lpass, sigma);
-  create_lpass_image(fmask, fmask, sigma);
-
-  typedef tbb::blocked_range<int> tbb_range;
-
-  tbb::parallel_for(tbb_range(0, lpass.rows, 256),
-      [&](const tbb_range & range) {
-
-        const int cn = lpass.channels();
-        constexpr float zv = 0;
-
-        for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
-
-          float * lpassp = lpass.ptr<float>(y);
-          const float * fmaskp = fmask.ptr<const float>(y);
-          const uint8_t * smaskp = mask[y];
-
-          for ( int x = 0, nx = lpass.cols; x < nx; ++x, lpassp += cn ) {
-
-            if ( smaskp[x] ) {
-              for ( int c = 0; c < cn; ++c ) {
-                lpassp[c] /= fmaskp[x];
-              }
-            }
-            else {
-              for ( int c = 0; c < cn; ++c ) {
-                lpassp[c] = zv;
-              }
-            }
-
-          }
-        }
-      });
-}
+//static void create_lpass_image(cv::InputArray src, cv::InputArray srcmask, cv::Mat & lpass, double sigma)
+//{
+//  if ( srcmask.empty() ) {
+//    create_lpass_image(src, lpass, sigma);
+//    return;
+//  }
+//
+//  cv::Mat fmask;
+//
+//  const cv::Mat1b mask =
+//      srcmask.getMat();
+//
+//  mask.convertTo(fmask, CV_32F, 1. / 255);
+//  src.getMat().convertTo(lpass, CV_32F);
+//  lpass.setTo(0, ~mask);
+//
+//  create_lpass_image(lpass, lpass, sigma);
+//  create_lpass_image(fmask, fmask, sigma);
+//
+//  typedef tbb::blocked_range<int> tbb_range;
+//
+//  tbb::parallel_for(tbb_range(0, lpass.rows, 256),
+//      [&](const tbb_range & range) {
+//
+//        const int cn = lpass.channels();
+//        constexpr float zv = 0;
+//
+//        for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
+//
+//          float * lpassp = lpass.ptr<float>(y);
+//          const float * fmaskp = fmask.ptr<const float>(y);
+//          const uint8_t * smaskp = mask[y];
+//
+//          for ( int x = 0, nx = lpass.cols; x < nx; ++x, lpassp += cn ) {
+//
+//            if ( smaskp[x] ) {
+//              for ( int c = 0; c < cn; ++c ) {
+//                lpassp[c] /= fmaskp[x];
+//              }
+//            }
+//            else {
+//              for ( int c = 0; c < cn; ++c ) {
+//                lpassp[c] = zv;
+//              }
+//            }
+//
+//          }
+//        }
+//      });
+//}
 
 
 
@@ -160,7 +166,7 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
 
     cv::Mat lpass;
 
-#if 1 // totally faster but sligthly approximate
+#if 1 // totally faster but slightly approximate
     create_lpass_image(src, lpass, sigma);
 #else
     cv::Mat1f G = cv::getGaussianKernel(2 * std::max(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
@@ -189,7 +195,9 @@ static void do_unsharp_mask_(cv::InputArray _src, cv::InputArray srcmask,
   //  create_lpass_image(src, srcmask, lpass, sigma);
   //  cv::addWeighted(src, 1. / (1. - alpha), lpass, -alpha / (1. - alpha), 0, dst, src.depth());
 
+#if HAVE_TBB
   typedef tbb::blocked_range<int> tbb_range;
+#endif
 
   const cv::Mat1b mask =
       srcmask.getMat();
@@ -209,15 +217,19 @@ static void do_unsharp_mask_(cv::InputArray _src, cv::InputArray srcmask,
   _dst.create(src.size(), CV_MAKETYPE(cv::DataType<TDST>::depth, src.channels()));
   cv::Mat & dst = _dst.getMatRef();
 
+#if HAVE_TBB
   tbb::parallel_for(tbb_range(0, lpass.rows, 128),
       [&mask, &fmask, &lpass, &src, &dst, w, outmin, outmax](const tbb_range & range) {
-
+#endif
         const double alpha = 1. / (1. - w);
         const double beta = -w / (1. - w);
         const int cn = src.channels();
 
+#if HAVE_TBB
         for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
-
+#else
+        for ( int y = 0, ny = lpass.rows; y < ny; ++y ) {
+#endif
           const float * lpassp = lpass.ptr<float>(y);
           const float * fmaskp = fmask.ptr<const float>(y);
           const uint8_t * smaskp = mask[y];
@@ -244,8 +256,9 @@ static void do_unsharp_mask_(cv::InputArray _src, cv::InputArray srcmask,
             }
           }
         }
+#if HAVE_TBB
       });
-
+#endif
 }
 
 bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,

@@ -28,6 +28,8 @@
 #include "c_image_transform_routine.h"
 #include "c_histogram_normalization_routine.h"
 #include "c_pyrdown_routine.h"
+#include "c_gaussian_pyramid_routine.h"
+#include "c_median_blur_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -97,6 +99,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_image_transform_routine::class_factory);
     register_class_factory(&c_histogram_normalization_routine::class_factory);
     register_class_factory(&c_pyrdown_routine::class_factory);
+    register_class_factory(&c_gaussian_pyramid_routine::class_factory);
+    register_class_factory(&c_median_blur_routine::class_factory);
   }
 }
 

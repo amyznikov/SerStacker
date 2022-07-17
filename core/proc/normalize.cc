@@ -337,3 +337,68 @@ bool normalize_minmax(cv::InputArray src, cv::OutputArray dst, double omin, doub
       maskBorderMode,
       unmaskedPixelsValue);
 }
+
+
+bool normalize_meanStdDev(cv::Mat & image, double k,
+    double omin, double omax,
+    cv::InputArray mask,
+    cv::BorderTypes maskBorderMode,
+    const cv::Scalar & unmaskedPixelsValue)
+{
+  cv::Scalar m, s;
+
+  double mv = 0;
+  double sv = 0;
+
+  const int cn =
+      image.channels();
+
+  cv::meanStdDev(image, m, s, mask);
+
+  for( int i = 0; i < cn; ++i ) {
+    mv += m[i];
+    sv += s[i];
+  }
+
+  mv /= cn;
+  sv /= cn;
+
+  return normalize_image(image,
+      mv - k * sv, mv + k * sv,
+      omin, omax,
+      mask.getMat(),
+      maskBorderMode,
+      unmaskedPixelsValue);
+}
+
+bool normalize_meanStdDev(const cv::Mat & src, cv::Mat & dst, double k,
+    double omin, double omax,
+    cv::InputArray mask,
+    enum cv::BorderTypes maskBorderMode,
+    const cv::Scalar & unmaskedPixelsValue)
+{
+  cv::Scalar m, s;
+
+  double mv = 0;
+  double sv = 0;
+
+  const int cn =
+      src.channels();
+
+  cv::meanStdDev(src, m, s, mask);
+
+  for( int i = 0; i < cn; ++i ) {
+    mv += m[i];
+    sv += s[i];
+  }
+
+  mv /= cn;
+  sv /= cn;
+
+  return normalize_image(src, dst,
+      mv - k * sv, mv + k * sv,
+      omin, omax,
+      mask.getMat(),
+      maskBorderMode,
+      unmaskedPixelsValue);
+}

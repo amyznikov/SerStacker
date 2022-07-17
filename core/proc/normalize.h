@@ -42,4 +42,16 @@ bool normalize_minmax(cv::InputArray src,
     const cv::Scalar & unmaskedPixelsValue  = cv::Scalar::all(0));
 
 
+bool normalize_meanStdDev(cv::Mat & image, double k,
+    double omin, double omax,
+    cv::InputArray mask = cv::noArray(),
+    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
+    const cv::Scalar & unmaskedPixelsValue = cv::Scalar::all(0));
+
+bool normalize_meanStdDev(const cv::Mat & src, cv::Mat & dst, double k,
+    double omin, double omax,
+    cv::InputArray mask = cv::noArray(),
+    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
+    const cv::Scalar & unmaskedPixelsValue = cv::Scalar::all(0));
+
 #endif /* __normalize_h__ */

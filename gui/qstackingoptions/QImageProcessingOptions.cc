@@ -74,6 +74,22 @@ void QImageProcessingOptions::onupdatecontrols()
   }
   else {
 
+    if( !input_image_processor_ctl->setCurrentProcessor(options_->input_image_processor) ) {
+      options_->input_image_processor.reset();
+    }
+
+    if( !ecc_image_processor_ctl->setCurrentProcessor(options_->ecc_image_processor) ) {
+      options_->ecc_image_processor.reset();
+    }
+
+    if( !aligned_image_processor_ctl->setCurrentProcessor(options_->aligned_image_processor) ) {
+      options_->aligned_image_processor.reset();
+    }
+
+    if( !accumulated_image_processor_ctl->setCurrentProcessor(options_->accumulated_image_processor) ) {
+      options_->accumulated_image_processor.reset();
+    }
+
     setEnabled(true);
   }
 }

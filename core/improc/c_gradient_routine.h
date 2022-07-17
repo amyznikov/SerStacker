@@ -28,8 +28,10 @@ public:
   c_gradient_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
+
   bool deserialize(c_config_setting settings) override;
   bool serialize(c_config_setting settings) const override;
+
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 };
 

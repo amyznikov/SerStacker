@@ -9,7 +9,7 @@
 #define __QFrameRegistrationSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/qimproc/QImageProcessorsCollection.h>
+//#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 #include "QMasterFrameOptions.h"
 
@@ -373,7 +373,6 @@ protected:
   QCheckBox * enable_frame_registration_ctl = Q_NULLPTR;
   QImageRegistrationOptions * imageRegistrationOptions_ctl = Q_NULLPTR;
   QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = Q_NULLPTR;
-  QImageProcessorSelectionCombo * alignedFramesPostProcessor_ctl = Q_NULLPTR;
 };
 
 #endif /* __QFrameRegistrationSettings_h__ */

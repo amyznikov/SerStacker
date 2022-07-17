@@ -51,8 +51,6 @@ struct c_input_options
   bool missing_pixels_marked_black = true;
   bool inpaint_missing_pixels = true;
 
-  c_image_processor::ptr input_frame_processor;
-
   bool filter_bad_pixels = true;
   bool enable_color_maxtrix = false;
 
@@ -144,7 +142,6 @@ struct c_frame_registration_options
 {
   c_master_frame_options master_frame_options;
   c_image_registration_options image_registration_options;
-  c_image_processor::ptr aligned_frame_postprocessor;
   bool accumulate_and_compensate_turbulent_flow = true;
 
   bool serialize(c_config_setting settings) const;
@@ -152,18 +149,20 @@ struct c_frame_registration_options
 };
 
 
-struct c_image_processing_options {
+struct c_image_processing_options
+{
   c_image_processor::ptr input_image_processor;
   c_image_processor::ptr ecc_image_processor;
   c_image_processor::ptr aligned_image_processor;
   c_image_processor::ptr accumulated_image_processor;
+
+  bool serialize(c_config_setting settings) const;
+  bool deserialize(c_config_setting settings);
 };
 
 struct c_image_stacking_output_options {
 
   std::string output_directory;
-
-  c_image_processor::ptr accumulated_image_processor;
 
   std::string output_preprocessed_frames_filename;
   std::string output_aligned_frames_filename;
@@ -259,7 +258,6 @@ protected:
   c_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
   c_frame_upscale_options upscale_options_;
-  //c_master_frame_options master_frame_options_;
   c_frame_registration_options frame_registration_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;

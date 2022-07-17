@@ -12,7 +12,7 @@ const c_enum_member * members_of<c_image_transform_routine::image_resize_mode>()
 {
   static constexpr c_enum_member members[] = {
       {c_image_transform_routine::resize_keep, "KEEP", ""},
-      {c_image_transform_routine::resize_expand, "EXPAND", ""},
+      {c_image_transform_routine::resize_adjust, "ADJUST", ""},
       {c_image_transform_routine::resize_keep},
   };
 
@@ -278,7 +278,7 @@ bool c_image_transform_routine::create_transformation_remap(cv::Mat2f & dst,
     rotated_image_size = image_size;
     break;
 
-  case resize_expand: {
+  case resize_adjust: {
     rotated_image_size.width = (xmax - xmin);
     rotated_image_size.height = (ymax - ymin);
     break;

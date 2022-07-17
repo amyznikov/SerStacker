@@ -65,14 +65,19 @@ bool c_color_saturation_routine::serialize(c_config_setting settings) const
 
 bool c_color_saturation_routine::process(cv::InputOutputArray _image, cv::InputOutputArray mask)
 {
-  if( _image.channels() != 3 || scales_.empty() ) {
+  cv::Mat & image =
+      _image.getMatRef();
+
+  if( image.channels() != 3 || scales_.empty() ) {
     return true; //
   }
 
-  cv::Mat & image = _image.getMatRef();
 
   if( scales_.size() == 1 ) {
-    return color_saturation_hls(image, scales_[0], mask);
+
+    return color_saturation_hls(image,
+        scales_[0],
+        mask);
   }
 
   std::vector<cv::Mat> layers;
@@ -93,6 +98,7 @@ bool c_color_saturation_routine::process(cv::InputOutputArray _image, cv::InputO
   for( int i = layers.size() - 1; i > 0; --i ) {
 
     cv::pyrUp(layers[i], layers[i], layers[i - 1].size());
+
     cv::add(layers[i], layers[i - 1], layers[i - 1]);
   }
 

@@ -11,7 +11,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QBrowsePathCombo.h>
-#include <gui/qimproc/QImageProcessorsCollection.h>
+//#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
 class QImageStackingInputOptions :
@@ -49,8 +49,6 @@ protected:
 
   QNumberEditBox * start_frame_index_ctl = Q_NULLPTR;
   QNumberEditBox * max_input_frames_ctl = Q_NULLPTR;
-
-  QImageProcessorSelectionCombo * processor_selector_ctl = Q_NULLPTR;
 
   QToolButton * applyToAll_ctl = Q_NULLPTR;
 };

@@ -1375,45 +1375,6 @@ void QStackTree::applyInputOptionsToAll(const c_input_options & options)
 
 }
 
-//void QStackTree::applyMasterFrameOptionsToAll(const c_master_frame_options & options)
-//{
-//  bool hasUpdates = false;
-//
-//  const int n = treeView_->topLevelItemCount();
-//
-//  for ( int i = 0; i < n; ++i ) {
-//
-//    QStackTreeView::QStackItem * stackItem =
-//        dynamic_cast<QStackTreeView::QStackItem*>(treeView_->topLevelItem(i));
-//
-//    if ( !stackItem || !stackItem->isSelected() ) {
-//      continue;
-//    }
-//
-//    const c_image_stacking_options::ptr & stack = stackItem->stack();
-//    if ( !stack || &stack->master_frame_options() == &options ) {
-//      continue;
-//    }
-//
-//    if ( QStackingThread::isRunning() && QStackingThread::currentStack() == stack ) {
-//      continue;
-//    }
-//
-//    // copy here
-//    hasUpdates = true;
-//    const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
-//    const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
-//    stack->master_frame_options() = options;
-//    stack->master_frame_options().master_source_path = backup_master_source_path;
-//    stack->master_frame_options().master_frame_index = backup_master_frame_index;
-// }
-//
-//  if ( hasUpdates ) {
-//    emit stackCollectionChanged();
-//  }
-//
-//}
-
 void QStackTree::applyROISelectionOptionsToAll(const c_roi_selection_options & options)
 {
   bool hasUpdates = false;
@@ -1543,13 +1504,20 @@ void QStackTree::applyFrameRegistrationOptionsToAll(const c_image_stacking_optio
     // copy here
     hasUpdates = true;
 
-    current_stack->frame_registration_options() = stack->frame_registration_options();
+    const std::string backup_master_source_path =
+        current_stack->master_frame_options().master_source_path;
 
-    const std::string backup_master_source_path = current_stack->master_frame_options().master_source_path;
-    const int backup_master_frame_index = current_stack->master_frame_options().master_frame_index;
-    current_stack->master_frame_options() = stack->master_frame_options();
-    current_stack->master_frame_options().master_source_path = backup_master_source_path;
-    current_stack->master_frame_options().master_frame_index = backup_master_frame_index;
+    const int backup_master_frame_index =
+        current_stack->master_frame_options().master_frame_index;
+
+    current_stack->frame_registration_options() =
+        stack->frame_registration_options();
+
+    current_stack->master_frame_options().master_source_path =
+        backup_master_source_path;
+
+    current_stack->master_frame_options().master_frame_index =
+        backup_master_frame_index;
 
   }
 
@@ -1624,17 +1592,23 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
       stack->input_options() = fromStack->input_options();
 
 
+      const std::string backup_master_source_path =
+          stack->master_frame_options().master_source_path;
+
+      const int backup_master_frame_index =
+          stack->master_frame_options().master_frame_index;
+
       stack->roi_selection_options() = fromStack->roi_selection_options();
       stack->upscale_options() = fromStack->upscale_options();
-      stack->frame_registration_options() = fromStack->frame_registration_options();
       stack->accumulation_options() = fromStack->accumulation_options();
       stack->output_options() = fromStack->output_options();
+      stack->frame_registration_options() = fromStack->frame_registration_options();
 
-      const std::string backup_master_source_path = stack->master_frame_options().master_source_path;
-      const int backup_master_frame_index = stack->master_frame_options().master_frame_index;
-      stack->master_frame_options() = fromStack->master_frame_options();
-      stack->master_frame_options().master_source_path = backup_master_source_path;
-      stack->master_frame_options().master_frame_index = backup_master_frame_index;
+      stack->master_frame_options().master_source_path =
+          backup_master_source_path;
+
+      stack->master_frame_options().master_frame_index =
+          backup_master_frame_index;
 
     }
 

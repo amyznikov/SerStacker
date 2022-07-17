@@ -101,6 +101,7 @@ public:
   typedef c_frame_registration this_class;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  typedef std::function<void(cv::InputOutputArray image, cv::InputOutputArray mask)> ecc_image_preprocessor_function;
 
   c_frame_registration();
   c_frame_registration(const c_image_registration_options & optsions);
@@ -123,6 +124,8 @@ public:
   const c_ecch_flow & eccflow() const;
   const c_jovian_derotation & jovian_derotation() const;
 
+  void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
+  const ecc_image_preprocessor_function & ecc_image_preprocessor() const;
 
   const c_image_registration_status & status() const;
 
@@ -241,6 +244,7 @@ protected:
   c_ecc_forward_additive ecc_;
   c_ecch_flow eccflow_;
   c_jovian_derotation jovian_derotation_;
+  ecc_image_preprocessor_function ecc_image_preprocessor_;
 
   cv::Mat1f current_transform_;
   cv::Mat2f current_remap_;

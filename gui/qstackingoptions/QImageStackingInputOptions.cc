@@ -12,10 +12,10 @@
 
 #define ICON_check_all      "check_all"
 
-static const char borderless_style[] = ""
-    "QToolButton { border: none; } "
-    "QToolButton::menu-indicator { image: none; }"
-    "";
+//static const char borderless_style[] = ""
+//    "QToolButton { border: none; } "
+//    "QToolButton::menu-indicator { image: none; }"
+//    "";
 
 static QIcon getIcon(const QString & name)
 {
@@ -80,15 +80,6 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
               emit parameterChanged();
             }
           });
-
-
-  processor_selector_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("Process input frames:",
-          [this](int currentIndex) {
-            if ( options_ ) {
-              options_->input_frame_processor =
-              processor_selector_ctl->processor(currentIndex);
-            }});
 
 
   form->addRow(missing_pixel_mask_filename_ctl =
@@ -171,10 +162,6 @@ void QImageStackingInputOptions::onupdatecontrols()
 
     start_frame_index_ctl->setValue(options_->start_frame_index);
     max_input_frames_ctl->setValue(options_->max_input_frames);
-
-    if ( !processor_selector_ctl->setCurrentProcessor(options_->input_frame_processor) ) {
-      options_->input_frame_processor.reset();
-    }
 
     setEnabled(true);
   }

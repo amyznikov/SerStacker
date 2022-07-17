@@ -607,8 +607,6 @@ bool autoclip(cv::Mat & image,
     return false;
   }
 
-  CF_DEBUG("hclips: imin=%g imax=%g omin=%g omax=%g", imin, imax, omin, omax);
-
   if ( minval ) {
     *minval = imin;
   }

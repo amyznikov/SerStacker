@@ -21,7 +21,7 @@ public:
 
   enum image_resize_mode {
     resize_keep,
-    resize_expand,
+    resize_adjust,
   };
 
   static struct c_class_factory : public base::class_factory {

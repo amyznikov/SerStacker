@@ -1034,6 +1034,9 @@ bool c_image_stacking_pipeline::actual_run()
   const c_frame_registration_options & registration_options =
       options_->frame_registration_options();
 
+  const c_image_processing_options & image_processing_options =
+      options_->image_processing_options();
+
   const c_image_stacking_output_options & output_options =
       options_->output_options();
 
@@ -1169,6 +1172,17 @@ bool c_image_stacking_pipeline::actual_run()
     if ( !(frame_registration_ = options_->create_frame_registration()) ) {
       CF_FATAL("options_->create_frame_registration() fails");
       return false;
+    }
+
+    if( image_processing_options.ecc_image_processor ) {
+
+      const c_image_processor::ptr ecc_image_processor =
+          image_processing_options.ecc_image_processor;
+
+      frame_registration_->set_ecc_image_preprocessor(
+          [ecc_image_processor](cv::InputOutputArray image, cv::InputOutputArray mask) {
+            ecc_image_processor->process(image, mask);
+          });
     }
 
     if( upscale_required(frame_upscale_before_align) ) {
@@ -1417,10 +1431,10 @@ bool c_image_stacking_pipeline::actual_run()
     }
 
 
-    if ( output_options.accumulated_image_processor ) {
+    if ( image_processing_options.accumulated_image_processor ) {
 
-      if ( !output_options.accumulated_image_processor->process(accumulated_image, accumulated_mask) ) {
-        CF_ERROR("postprocessor %s : process() fails", output_options.accumulated_image_processor->cname());
+      if ( !image_processing_options.accumulated_image_processor->process(accumulated_image, accumulated_mask) ) {
+        CF_ERROR("postprocessor %s : process() fails", image_processing_options.accumulated_image_processor->cname());
       }
       else {
 
@@ -1510,6 +1524,9 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
   const c_master_frame_options & master_options =
       options_->master_frame_options();
 
+  const c_image_processing_options & image_processing_options =
+      options_->image_processing_options();
+
   master_frame_generation_ = true;
 
   if ( !input_sequence->seek(master_frame_index) ) {
@@ -1540,9 +1557,9 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     return false;
   }
 
-  if ( master_options.apply_input_frame_processor && input_options.input_frame_processor ) {
-    if ( !input_options.input_frame_processor->process(reference_frame, reference_mask) ) {
-      CF_ERROR("input_frame_processor->process(reference_frame) fails");
+  if( master_options.apply_input_frame_processor && image_processing_options.input_image_processor ) {
+    if( !image_processing_options.input_image_processor->process(reference_frame, reference_mask) ) {
+      CF_ERROR("input_image_processor->process(reference_frame) fails");
       return false;
     }
   }
@@ -1594,6 +1611,17 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     if ( !(frame_registration_ = options_->create_frame_registration(master_registration_options)) ) {
       CF_FATAL("options_->create_frame_registration(master_registration_options) fails");
       return false;
+    }
+
+    if( image_processing_options.ecc_image_processor ) {
+
+      const c_image_processor::ptr ecc_image_processor =
+          image_processing_options.ecc_image_processor;
+
+      frame_registration_->set_ecc_image_preprocessor(
+          [ecc_image_processor](cv::InputOutputArray image, cv::InputOutputArray mask) {
+            ecc_image_processor->process(image, mask);
+          });
     }
 
 
@@ -1756,6 +1784,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
   const c_frame_registration_options & registration_options =
       options_->frame_registration_options();
 
+  const c_image_processing_options & image_processing_options =
+      options_->image_processing_options();
+
   const c_image_stacking_output_options & output_options =
       options_->output_options();
 
@@ -1821,9 +1852,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       break;
     }
 
-    if ( input_options.input_frame_processor ) {
-      if ( !input_options.input_frame_processor->process(current_frame, current_mask) ) {
-        CF_ERROR("input_frame_processor->process(current_frame) fails");
+    if( image_processing_options.input_image_processor ) {
+      if( !image_processing_options.input_image_processor->process(current_frame, current_mask) ) {
+        CF_ERROR("input_image_processor->process(current_frame) fails");
         continue;
       }
     }
@@ -2024,8 +2055,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
-      if( registration_options.aligned_frame_postprocessor ) {
-        registration_options.aligned_frame_postprocessor->process(current_frame, current_mask);
+      if( image_processing_options.aligned_image_processor ) {
+        image_processing_options.aligned_image_processor->process(current_frame, current_mask);
         if ( canceled() ) {
           break;
         }

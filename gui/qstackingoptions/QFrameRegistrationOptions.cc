@@ -1555,16 +1555,6 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
             }
           });
 
-  alignedFramesPostProcessor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("PostProcess aligned frames:",
-          [this](int index) {
-            if ( options_ ) {
-              options_->aligned_frame_postprocessor =
-              alignedFramesPostProcessor_ctl->processor(index);
-              emit parameterChanged();
-            }
-          });
-
   update_controls_visibility();
 }
 
@@ -1596,10 +1586,6 @@ void QFrameRegistrationOptions::onupdatecontrols()
     accumulateAndCompensateTurbulentFlow_ctl->setChecked(
         options_->accumulate_and_compensate_turbulent_flow);
 
-    if( !alignedFramesPostProcessor_ctl->setCurrentProcessor(options_->aligned_frame_postprocessor) ) {
-      options_->aligned_frame_postprocessor.reset();
-    }
-
     update_controls_visibility();
 
     setEnabled(true);
@@ -1611,12 +1597,10 @@ void QFrameRegistrationOptions::update_controls_visibility()
   if( !options_ ) {
     imageRegistrationOptions_ctl->setVisible(false);
     accumulateAndCompensateTurbulentFlow_ctl->setEnabled(false);
-    alignedFramesPostProcessor_ctl->setEnabled(false);
   }
   else {
     imageRegistrationOptions_ctl->setVisible(options_->image_registration_options.enable_frame_registration);
     accumulateAndCompensateTurbulentFlow_ctl->setEnabled(options_->image_registration_options.enable_frame_registration);
-    alignedFramesPostProcessor_ctl->setEnabled(options_->image_registration_options.enable_frame_registration);
   }
 }
 

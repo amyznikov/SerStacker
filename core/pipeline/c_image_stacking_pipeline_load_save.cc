@@ -268,6 +268,7 @@ bool c_image_stacking_options::serialize(c_config_setting settings) const
   upscale_options_.serialize(settings.add_group("upscale_options"));
   frame_registration_options_.serialize(settings.add_group("frame_registration"));
   accumulation_options_.serialize(settings.add_group("accumulation_options"));
+  image_processing_options_.serialize(settings.add_group("image_processing_options"));
   output_options_.serialize(settings.add_group("output_options"));
 
   if ( input_sequence_ ) {
@@ -295,6 +296,7 @@ bool c_image_stacking_options::deserialize(c_config_setting settings)
   frame_registration_options_.master_frame_options.deserialize(settings["master_frame_options"]);
   frame_registration_options_.deserialize(settings["frame_registration"]);
   accumulation_options_.deserialize(settings["accumulation_options"]);
+  image_processing_options_.deserialize(settings["image_processing_options"]);
   output_options_.deserialize(settings["output_options"]);
 
   c_config_setting input_sequence_group =
@@ -321,11 +323,6 @@ bool c_input_options::serialize(c_config_setting settings) const
   settings.set("start_frame_index", start_frame_index);
   settings.set("max_input_frames", max_input_frames);
 
-
-  if ( input_frame_processor ) {
-    settings.set("input_frame_processor", input_frame_processor->name());
-  }
-
   return false;
 }
 
@@ -346,10 +343,6 @@ bool c_input_options::deserialize(c_config_setting settings)
   settings.get("anscombe", &anscombe);
   settings.get("start_frame_index", &start_frame_index);
   settings.get("max_input_frames", &max_input_frames);
-
-  if ( settings.get("input_frame_processor", &s) && !s.empty() ) {
-    input_frame_processor = c_image_processor_collection::default_instance()->get(s);
-  }
 
   return true;
 }
@@ -517,10 +510,6 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
   SAVE(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
 
-  if ( aligned_frame_postprocessor ) {
-    save_settings(settings, "aligned_frame_processor", aligned_frame_postprocessor->name() );
-  }
-
 #undef SAVE
   return true;
 }
@@ -596,9 +585,43 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
   }
 
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+bool c_image_processing_options::serialize(c_config_setting settings) const
+{
+  if( input_image_processor ) {
+    save_settings(settings, "input_image_processor", input_image_processor->name());
+  }
+  if( ecc_image_processor ) {
+    save_settings(settings, "ecc_image_processor", ecc_image_processor->name());
+  }
+  if( aligned_image_processor ) {
+    save_settings(settings, "aligned_image_processor", aligned_image_processor->name());
+  }
+  if( accumulated_image_processor ) {
+    save_settings(settings, "accumulated_image_processor", accumulated_image_processor->name());
+  }
+  return true;
+}
+
+bool c_image_processing_options::deserialize(c_config_setting settings)
+{
   std::string s;
-  if ( load_settings(settings, "aligned_frame_processor", &s) && !s.empty() ) {
-    aligned_frame_postprocessor = c_image_processor_collection::default_instance()->get(s);
+
+  if ( load_settings(settings, "input_image_processor", &s) && !s.empty() ) {
+    input_image_processor = c_image_processor_collection::default_instance()->get(s);
+  }
+  if ( load_settings(settings, "ecc_image_processor", &s) && !s.empty() ) {
+    ecc_image_processor = c_image_processor_collection::default_instance()->get(s);
+  }
+  if ( load_settings(settings, "aligned_image_processor", &s) && !s.empty() ) {
+    aligned_image_processor = c_image_processor_collection::default_instance()->get(s);
+  }
+  if ( load_settings(settings, "accumulated_image_processor", &s) && !s.empty() ) {
+    accumulated_image_processor = c_image_processor_collection::default_instance()->get(s);
   }
 
   return true;
@@ -621,10 +644,6 @@ bool c_image_stacking_output_options::serialize(c_config_setting settings) const
 
   save_settings(settings, "dump_reference_data_for_debug", dump_reference_data_for_debug);
   save_settings(settings, "write_image_mask_as_alpha_channel", write_image_mask_as_alpha_channel);
-
-  if ( accumulated_image_processor ) {
-    save_settings(settings, "accumulated_image_processor", accumulated_image_processor->name());
-  }
 
   return true;
 }
@@ -652,10 +671,6 @@ bool c_image_stacking_output_options::deserialize(c_config_setting settings)
 
   load_settings(settings, "dump_reference_data_for_debug", &dump_reference_data_for_debug);
   load_settings(settings, "write_image_mask_as_alpha_channel", &write_image_mask_as_alpha_channel);
-
-  if ( load_settings(settings, "accumulated_image_processor", &s) && !s.empty() ) {
-    accumulated_image_processor = c_image_processor_collection::default_instance()->get(s);
-  }
 
   return true;
 }

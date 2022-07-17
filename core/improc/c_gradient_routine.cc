@@ -30,9 +30,11 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       (-1.f / 12));
 
   cv::Mat gx, gy;
-  cv::filter2D(image, gx, -1, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::filter2D(image, gy, -1, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::magnitude(gx, gy, image.getMatRef());
+
+  cv::filter2D(image, gx, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::filter2D(image, gy, CV_32F, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::magnitude(gx, gy, image);
+
   if ( !mask.empty() ) {
     image.getMatRef().setTo(0, ~mask.getMat());
   }

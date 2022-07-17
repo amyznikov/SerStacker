@@ -10,7 +10,7 @@
 #define __QStackingDebugOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/qimproc/QImageProcessorsCollection.h>
+//#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
@@ -50,8 +50,6 @@ protected:
 
   QCheckBox * save_accumulation_masks_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_accumulation_masks_path_ctl = Q_NULLPTR;
-
-  QImageProcessorSelectionCombo * accumulated_image_processor_selector_ctl = Q_NULLPTR;
 
   QCheckBox * write_image_mask_as_alpha_channel_ctl = Q_NULLPTR;
   QCheckBox * dump_reference_data_for_debug_ctl = Q_NULLPTR;

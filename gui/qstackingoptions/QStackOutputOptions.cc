@@ -166,17 +166,6 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   ///
 
-  accumulated_image_processor_selector_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("Postprocess accumulated frame:",
-          [this](int index) {
-            if ( options_ ) {
-              options_->output_options().accumulated_image_processor =
-                  accumulated_image_processor_selector_ctl->processor(index);
-              emit parameterChanged();
-            }
-          });
-  ///
-
 
   write_image_mask_as_alpha_channel_ctl =
       add_checkbox("Write image mask as alpha channel",
@@ -284,10 +273,6 @@ void QStackOutputOptions::onupdatecontrols()
     save_accumulation_masks_ctl->setChecked(output_options.save_accumulation_masks);
     output_accumulation_masks_path_ctl->setCurrentPath(output_options.output_accumulation_masks_filename.c_str());
     output_accumulation_masks_path_ctl->setEnabled(output_options.save_accumulation_masks);
-
-    if ( !accumulated_image_processor_selector_ctl->setCurrentProcessor(output_options.accumulated_image_processor) ) {
-      output_options.accumulated_image_processor.reset();
-    }
 
     write_image_mask_as_alpha_channel_ctl->setChecked(output_options.write_image_mask_as_alpha_channel);
     dump_reference_data_for_debug_ctl->setChecked(output_options.dump_reference_data_for_debug);

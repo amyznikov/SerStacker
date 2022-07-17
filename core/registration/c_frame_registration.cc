@@ -138,6 +138,16 @@ const c_jovian_derotation & c_frame_registration::jovian_derotation() const
   return this->jovian_derotation_;
 }
 
+void c_frame_registration::set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func)
+{
+  ecc_image_preprocessor_ = func;
+}
+
+const c_frame_registration::ecc_image_preprocessor_function & c_frame_registration::ecc_image_preprocessor() const
+{
+  return ecc_image_preprocessor_;
+}
+
 void c_frame_registration::set_enable_debug(bool v)
 {
   enable_debug_ = v;
@@ -505,6 +515,10 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
   if( !extract_channel(src, dst, srcmsk, dstmsk, options_.registration_channel, scale, CV_32F) ) {
     CF_ERROR("extract_channel(registration_channel_=%d) fails", options_.registration_channel);
     return false;
+  }
+
+  if ( ecc_image_preprocessor_ ) {
+    ecc_image_preprocessor_(dst.getMatRef(), dstmsk.getMatRef());
   }
 
   if( options_.ecc.normalization_scale > 0 ) {

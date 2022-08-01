@@ -1607,6 +1607,10 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       master_registration_options.eccflow.enabled = true;
       master_registration_options.eccflow.support_scale = master_options.eccflow_scale;
     }
+    else {
+      master_registration_options.eccflow.enabled = false;
+      master_registration_options.eccflow.support_scale = 0;
+    }
 
     if ( !(frame_registration_ = options_->create_frame_registration(master_registration_options)) ) {
       CF_FATAL("options_->create_frame_registration(master_registration_options) fails");

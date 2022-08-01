@@ -1603,12 +1603,14 @@ void QStackTree::applyAllStackOptionsToAll(const c_image_stacking_options::ptr &
       stack->accumulation_options() = fromStack->accumulation_options();
       stack->output_options() = fromStack->output_options();
       stack->frame_registration_options() = fromStack->frame_registration_options();
+      stack->image_processing_options() = fromStack->image_processing_options();
 
       stack->master_frame_options().master_source_path =
           backup_master_source_path;
 
       stack->master_frame_options().master_frame_index =
           backup_master_frame_index;
+
 
     }
 

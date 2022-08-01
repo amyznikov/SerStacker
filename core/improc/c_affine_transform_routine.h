@@ -11,29 +11,30 @@
 
 #include "c_image_processor.h"
 
-class c_image_transform_routine:
+class c_affine_transform_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_image_transform_routine this_class;
+  typedef c_affine_transform_routine this_class;
   typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
   enum image_resize_mode {
     resize_keep,
     resize_adjust,
+    resize_scale,
   };
 
   static struct c_class_factory : public base::class_factory {
     c_class_factory() :
-        base::class_factory("transform", "geometrical image transform", "geometrical image transform",
+        base::class_factory("affine_transform", "geometrical affine transform", "geometrical affine transform",
             factory([]() {return ptr(new this_class());}))
     {
     }
   } class_factory;
 
 
-  c_image_transform_routine(bool enabled = true);
+  c_affine_transform_routine(bool enabled = true);
 
   static ptr create(bool enabled = true);
 
@@ -96,6 +97,6 @@ protected:
 };
 
 template<> const c_enum_member *
-members_of<c_image_transform_routine::image_resize_mode>();
+members_of<c_affine_transform_routine::image_resize_mode>();
 
 #endif /* __c_image_transform_routine_h__ */

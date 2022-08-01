@@ -5,105 +5,106 @@
  *      Author: amyznikov
  */
 
-#include "c_image_transform_routine.h"
+#include "c_affine_transform_routine.h"
 
 template<>
-const c_enum_member * members_of<c_image_transform_routine::image_resize_mode>()
+const c_enum_member * members_of<c_affine_transform_routine::image_resize_mode>()
 {
   static constexpr c_enum_member members[] = {
-      {c_image_transform_routine::resize_keep, "KEEP", ""},
-      {c_image_transform_routine::resize_adjust, "ADJUST", ""},
-      {c_image_transform_routine::resize_keep},
+      {c_affine_transform_routine::resize_keep, "KEEP", ""},
+      {c_affine_transform_routine::resize_adjust, "ADJUST", ""},
+      {c_affine_transform_routine::resize_scale, "SCALE", ""},
+      {c_affine_transform_routine::resize_keep},
   };
 
   return members;
 }
 
 
-c_image_transform_routine::c_class_factory c_image_transform_routine::class_factory;
+c_affine_transform_routine::c_class_factory c_affine_transform_routine::class_factory;
 
 
-c_image_transform_routine::c_image_transform_routine(bool enabled) :
+c_affine_transform_routine::c_affine_transform_routine(bool enabled) :
     base(&class_factory, enabled)
 {
 }
 
-c_image_transform_routine::ptr c_image_transform_routine::create(bool enabled)
+c_affine_transform_routine::ptr c_affine_transform_routine::create(bool enabled)
 {
   return ptr(new this_class(enabled));
 }
 
-void c_image_transform_routine::set_resize_mode(image_resize_mode v)
+void c_affine_transform_routine::set_resize_mode(image_resize_mode v)
 {
   resize_mode_ = v;
 }
 
-c_image_transform_routine::image_resize_mode c_image_transform_routine::resize_mode() const
+c_affine_transform_routine::image_resize_mode c_affine_transform_routine::resize_mode() const
 {
   return resize_mode_;
 }
 
-void c_image_transform_routine::set_interpolation(cv::InterpolationFlags v)
+void c_affine_transform_routine::set_interpolation(cv::InterpolationFlags v)
 {
   interpolation_ = v;
 }
 
-cv::InterpolationFlags c_image_transform_routine::interpolation() const
+cv::InterpolationFlags c_affine_transform_routine::interpolation() const
 {
   return interpolation_;
 }
 
-void c_image_transform_routine::set_border_type(cv::BorderTypes v)
+void c_affine_transform_routine::set_border_type(cv::BorderTypes v)
 {
   border_type_ = v;
 }
 
-cv::BorderTypes c_image_transform_routine::border_type() const
+cv::BorderTypes c_affine_transform_routine::border_type() const
 {
   return border_type_;
 }
 
-void c_image_transform_routine::set_border_value(const cv::Scalar & v)
+void c_affine_transform_routine::set_border_value(const cv::Scalar & v)
 {
   border_value_ = v;
 }
 
-const cv::Scalar & c_image_transform_routine::border_value() const
+const cv::Scalar & c_affine_transform_routine::border_value() const
 {
   return border_value_;
 }
 
-void c_image_transform_routine::set_rotation(double v)
+void c_affine_transform_routine::set_rotation(double v)
 {
   rotation_ = v;
 }
 
-double c_image_transform_routine::rotation() const
+double c_affine_transform_routine::rotation() const
 {
   return rotation_;
 }
 
-void c_image_transform_routine::set_translation(const cv::Point2f & v)
+void c_affine_transform_routine::set_translation(const cv::Point2f & v)
 {
   translation_ = v;
 }
 
-const cv::Point2f & c_image_transform_routine::translation() const
+const cv::Point2f & c_affine_transform_routine::translation() const
 {
   return translation_;
 }
 
-void c_image_transform_routine::set_scale(const cv::Size2f & v)
+void c_affine_transform_routine::set_scale(const cv::Size2f & v)
 {
   scale_ = v;
 }
 
-const cv::Size2f c_image_transform_routine::scale() const
+const cv::Size2f c_affine_transform_routine::scale() const
 {
   return scale_;
 }
 
-bool c_image_transform_routine::deserialize(c_config_setting settings)
+bool c_affine_transform_routine::deserialize(c_config_setting settings)
 {
   if ( !base::deserialize(settings) ) {
     return false;
@@ -119,7 +120,7 @@ bool c_image_transform_routine::deserialize(c_config_setting settings)
   return true;
 }
 
-bool c_image_transform_routine::serialize(c_config_setting settings) const
+bool c_affine_transform_routine::serialize(c_config_setting settings) const
 {
   if ( !base::serialize(settings) ) {
     return false;
@@ -135,7 +136,7 @@ bool c_image_transform_routine::serialize(c_config_setting settings) const
   return true;
 }
 
-bool c_image_transform_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( !image.empty() ) {
     if( rotation_ || translation_.x || translation_.y || scale_.width != 1 || scale_.height != 1 ) {
@@ -148,16 +149,12 @@ bool c_image_transform_routine::process(cv::InputOutputArray image, cv::InputOut
       }
 
       if ( !image.empty() ) {
-        //cv::Mat new_image;
         cv::remap(image.getMat(), image, M, cv::noArray(), interpolation_, border_type_, border_value_);
-        //image.move(new_image);
       }
 
       if ( !mask.empty() ) {
-        //cv::Mat new_mask;
         cv::remap(mask.getMat(), mask, M, cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT);
         cv::compare(mask, 255, mask, cv::CMP_EQ);
-        //mask.move(new_mask);
       }
     }
   }
@@ -193,31 +190,7 @@ static cv::Matx23f build_forward_transformation_matrix(const cv::Point2f & src_c
       SR(1, 0), SR(1, 1), T(1));
 }
 
-static cv::Matx23f invert(const cv::Matx23f & M)
-{
-  // v' = R * v + T
-  // v'- T = R * v
-  // Ri * ( v'- T) = v
-  // Ri * v'- Ri * T = v
-
-
-  const cv::Matx22f R(M(0, 0), M(0, 1),
-      M(1, 0), M(1, 1));
-
-  const cv::Vec2f T(M(0,2), M(1, 2));
-
-  const cv::Matx22f Ri =
-      R.inv();
-
-  const cv::Vec2f Ti =
-      -Ri * T;
-
-  return cv::Matx23f(
-      Ri(0, 0), Ri(0, 1), Ti(0),
-      Ri(1, 0), Ri(1, 1), Ti(1));
-}
-
-bool c_image_transform_routine::create_transformation_remap(cv::Mat2f & dst,
+bool c_affine_transform_routine::create_transformation_remap(cv::Mat2f & dst,
     const cv::Size & image_size,
     double rotation_degrees,
     const cv::Point2f & translation,
@@ -230,15 +203,6 @@ bool c_image_transform_routine::create_transformation_remap(cv::Mat2f & dst,
   const cv::Point2f image_center(image_size.width / 2,
       image_size.height / 2);
 
-  const cv::Matx23f M =
-      build_forward_transformation_matrix(image_center,
-          rotation_degrees * CV_PI / 180,
-          scale);
-
-
-  const cv::Matx23f Mi =
-      invert(M);
-
   const cv::Vec3f corners[4] = {
       cv::Vec3f(0, 0, 1),
       cv::Vec3f(image_size.width, 0, 1),
@@ -246,43 +210,72 @@ bool c_image_transform_routine::create_transformation_remap(cv::Mat2f & dst,
       cv::Vec3f(0, image_size.height, 1),
   };
 
+  const cv::Matx23f M =
+      build_forward_transformation_matrix(image_center,
+          rotation_degrees * CV_PI / 180,
+          scale);
 
-  int xmin = INT_MAX;
-  int xmax = INT_MIN;
-  int ymin = INT_MAX;
-  int ymax = INT_MIN;
 
-  for( uint i = 0; i < 4; ++i ) {
-
-    const cv::Vec2f c =
-        M * corners[i];
-
-    if( c(0) < xmin ) {
-      xmin = c(0);
-    }
-    if( c(0) > xmax ) {
-      xmax = c(0);
-    }
-    if( c(1) < ymin ) {
-      ymin = c(1);
-    }
-    if( c(1) > ymax ) {
-      ymax = c(1);
-    }
-  }
-
+  int xmin, xmax, ymin, ymax;
   cv::Size rotated_image_size;
 
+  cv::Matx23f Mi;
+  cv::invertAffineTransform(M, Mi);
+
   switch (resize_mode) {
-  case resize_keep:
+
+  case resize_keep: {
+    xmin = 0;
+    xmax = image_size.width;
+    ymin = 0;
+
+    ymax = image_size.height;
     rotated_image_size = image_size;
     break;
+  }
 
-  case resize_adjust: {
+  case resize_scale: {
+    xmin = 0;
+    xmax = image_size.width * scale.width;
+    ymin = 0;
+    ymax = image_size.height * scale.height;
+
     rotated_image_size.width = (xmax - xmin);
     rotated_image_size.height = (ymax - ymin);
     break;
   }
+
+  case resize_adjust: {
+
+    xmin = INT_MAX;
+    xmax = INT_MIN;
+    ymin = INT_MAX;
+    ymax = INT_MIN;
+
+    for( uint i = 0; i < 4; ++i ) {
+
+      const cv::Vec2f c =
+          M * corners[i];
+
+      if( c(0) < xmin ) {
+        xmin = c(0);
+      }
+      if( c(0) > xmax ) {
+        xmax = c(0);
+      }
+      if( c(1) < ymin ) {
+        ymin = c(1);
+      }
+      if( c(1) > ymax ) {
+        ymax = c(1);
+      }
+    }
+
+    rotated_image_size.width = (xmax - xmin);
+    rotated_image_size.height = (ymax - ymin);
+    break;
+  }
+
   }
 
   dst.create(rotated_image_size);

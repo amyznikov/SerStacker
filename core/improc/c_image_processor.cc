@@ -25,11 +25,13 @@
 #include "c_auto_correlation_routine.h"
 #include "c_gaussian_filter_routine.h"
 #include "c_rotate_image_routine.h"
-#include "c_image_transform_routine.h"
 #include "c_histogram_normalization_routine.h"
 #include "c_pyrdown_routine.h"
 #include "c_gaussian_pyramid_routine.h"
 #include "c_median_blur_routine.h"
+#include "c_remove_sharp_artifacts_routine.h"
+#include "c_affine_transform_routine.h"
+#include "c_mean_curvature_blur_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -96,11 +98,13 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_auto_correlation_routine::class_factory);
     register_class_factory(&c_gaussian_filter_routine::class_factory);
     register_class_factory(&c_rotate_image_routine::class_factory);
-    register_class_factory(&c_image_transform_routine::class_factory);
+    register_class_factory(&c_affine_transform_routine::class_factory);
     register_class_factory(&c_histogram_normalization_routine::class_factory);
     register_class_factory(&c_pyrdown_routine::class_factory);
     register_class_factory(&c_gaussian_pyramid_routine::class_factory);
     register_class_factory(&c_median_blur_routine::class_factory);
+    register_class_factory(&c_remove_sharp_artifacts_routine::class_factory);
+    register_class_factory(&c_mean_curvature_blur_routine::class_factory);
   }
 }
 

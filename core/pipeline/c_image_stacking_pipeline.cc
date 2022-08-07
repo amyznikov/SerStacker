@@ -1203,17 +1203,25 @@ bool c_image_stacking_pipeline::actual_run()
       }
     }
 
-    if ( output_options.debug_frame_registration ) {
-      frame_registration_->set_enable_debug(true);
-      frame_registration_->set_debug_path(ssprintf("%s/debug-registration-reference",
+//    if ( output_options.debug_frame_registration ) {
+//      frame_registration_->set_enable_debug(true);
+//      frame_registration_->set_debug_path(ssprintf("%s/debug-registration-reference",
+//          output_directory_.c_str()));
+//    }
+
+    if( output_options.debug_frame_registration ) {
+      frame_registration_->set_debug_path(ssprintf("%s/debug/reference_frame",
           output_directory_.c_str()));
     }
 
-    if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {
-      CF_ERROR("ERROR: frame_registration_->setup_referece_frame() fails");
+    if ( !frame_registration_->setup_reference_frame(reference_frame, reference_mask) ) {
+      CF_ERROR("ERROR: frame_registration_->setup_reference_frame() fails");
       return false;
     }
 
+    if( output_options.debug_frame_registration ) {
+      frame_registration_->set_debug_path("");
+    }
 
     if( upscale_required(frame_upscale_after_align) ) {
 
@@ -1244,9 +1252,9 @@ bool c_image_stacking_pipeline::actual_run()
     }
 
 
-    if ( output_options.debug_frame_registration ) {
-      frame_registration_->set_enable_debug(false);
-    }
+//    if ( output_options.debug_frame_registration ) {
+//      frame_registration_->set_enable_debug(false);
+//    }
 
 
     if( registration_options.accumulate_and_compensate_turbulent_flow ) {
@@ -1629,7 +1637,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     }
 
 
-    if ( !frame_registration_->setup_referece_frame(reference_frame, reference_mask) ) {
+    if ( !frame_registration_->setup_reference_frame(reference_frame, reference_mask) ) {
       CF_FATAL("frame_registration_->setup_referece_frame() fails");
       return false;
     }
@@ -1953,7 +1961,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
         if ( output_options.debug_frame_registration ) {
 
-          if ( !output_options.debug_frame_registration_frame_indexes.empty()  ) {
+          if ( output_options.debug_frame_registration_frame_indexes.empty()  ) {
+            frame_registration_->set_debug_path(ssprintf("%s/debug/registration-%d",
+                output_directory_.c_str(), input_sequence->current_pos() - 1));
+          }
+          else {
 
             const std::vector<int> :: const_iterator pos =
                 std::find(output_options.debug_frame_registration_frame_indexes.begin(),
@@ -1961,14 +1973,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
                     input_sequence->current_pos() - 1);
 
             if ( pos == output_options.debug_frame_registration_frame_indexes.end() ) {
-              frame_registration_->set_enable_debug(false);
+              frame_registration_->set_debug_path("");
             }
             else {
-              frame_registration_->set_enable_debug(true);
-              frame_registration_->set_debug_path(ssprintf("%s/debug-registration-%d",
+              frame_registration_->set_debug_path(ssprintf("%s/debug/registration-%d",
                   output_directory_.c_str(), *pos));
             }
-
           }
 
           if( canceled() ) {

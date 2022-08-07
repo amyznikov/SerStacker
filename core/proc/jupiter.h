@@ -149,9 +149,6 @@ public:
   const cv::Mat1f & current_total_mask() const;
   const cv::Mat1b & current_total_binary_mask() const;
 
-  void set_enable_debug(bool v);
-  bool enable_debug() const;
-
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
 
@@ -203,12 +200,7 @@ protected:
   int eccflow_normalization_scale_ = 0;
   int eccflow_max_pyramid_level_ = 1;
 
-  //bool align_jovian_disk_horizontally_ = false;
-
-
   std::string debug_path_;
-  bool enable_debug_ = false;
-
 };
 
 #endif /* __jupiter_h__ */

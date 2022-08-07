@@ -116,6 +116,7 @@ bool c_affine_transform_routine::deserialize(c_config_setting settings)
   LOAD_PROPERTY(settings, this, interpolation);
   LOAD_PROPERTY(settings, this, border_type);
   LOAD_PROPERTY(settings, this, border_value);
+  LOAD_PROPERTY(settings, this, resize_mode);
 
   return true;
 }
@@ -132,6 +133,7 @@ bool c_affine_transform_routine::serialize(c_config_setting settings) const
   SAVE_PROPERTY(settings, *this, interpolation);
   SAVE_PROPERTY(settings, *this, border_type);
   SAVE_PROPERTY(settings, *this, border_value);
+  SAVE_PROPERTY(settings, *this, resize_mode);
 
   return true;
 }

@@ -1362,6 +1362,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
               emit parameterChanged();
             }
           }));
+
 }
 
 void QJovianDerotationOptions::set_derotation_options(c_jovian_derotation_options * options)

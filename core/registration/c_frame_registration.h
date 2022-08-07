@@ -53,6 +53,8 @@ struct c_jovian_derotation_options {
   int eccflow_normalization_scale = 0;
   int eccflow_max_pyramid_level = 1;
   bool rotate_jovian_disk_horizontally = false;
+//  bool enable_debug = false;
+  //std::string debug_path;
 };
 
 struct c_image_registration_options {
@@ -109,8 +111,8 @@ public:
   c_image_registration_options & options();
   const c_image_registration_options & options() const;
 
-  void set_enable_debug(bool v);
-  bool enable_debug() const;
+//  void set_enable_debug(bool v);
+//  bool enable_debug() const;
 
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
@@ -134,7 +136,7 @@ public:
 public: // ops
   virtual ~c_frame_registration() = default;
 
-  virtual bool setup_referece_frame(cv::InputArray image,
+  virtual bool setup_reference_frame(cv::InputArray image,
       cv::InputArray msk = cv::noArray());
 
   virtual bool register_frame(cv::InputArray src, cv::InputArray srcmask,
@@ -252,7 +254,7 @@ protected:
   c_image_registration_status current_status_;
 
   std::string debug_path_;
-  bool enable_debug_ = false;
+  //bool enable_debug_ = false;
 };
 
 #endif /* __c_frame_registration_h__ */

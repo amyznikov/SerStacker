@@ -148,15 +148,15 @@ const c_frame_registration::ecc_image_preprocessor_function & c_frame_registrati
   return ecc_image_preprocessor_;
 }
 
-void c_frame_registration::set_enable_debug(bool v)
-{
-  enable_debug_ = v;
-}
-
-bool c_frame_registration::enable_debug() const
-{
-  return enable_debug_;
-}
+//void c_frame_registration::set_enable_debug(bool v)
+//{
+//  enable_debug_ = v;
+//}
+//
+//bool c_frame_registration::enable_debug() const
+//{
+//  return enable_debug_;
+//}
 
 void c_frame_registration::set_debug_path(const std::string & v)
 {
@@ -168,7 +168,7 @@ const std::string& c_frame_registration::debug_path() const
   return debug_path_;
 }
 
-bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
+bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   cv::Mat ecc_image;
   cv::Mat ecc_mask;
@@ -265,7 +265,9 @@ bool c_frame_registration::setup_referece_frame(cv::InputArray reference_image, 
     jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
     jovian_derotation_.set_eccflow_normalization_scale(options_.jovian_derotation.eccflow_normalization_scale);
     jovian_derotation_.set_eccflow_max_pyramid_level(options_.jovian_derotation.eccflow_max_pyramid_level);
-    //jovian_derotation_.set_align_jovian_disk_horizontally(options_.jovian_derotation.align_jovian_disk_horizontally);
+
+    jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+        ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
 
     if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
       CF_ERROR("jovian_derotation_.setup_reference_image() fails");
@@ -425,6 +427,11 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   }
 
   if( options_.jovian_derotation.enabled ) {
+
+    jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+        ssprintf("%s/derotation", debug_path_.c_str()));
+
+
     if ( !jovian_derotation_.compute(current_image, current_mask) ) {
       CF_ERROR("jovian_derotation_.compute() fails");
       return false;
@@ -596,7 +603,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
         return false;
       }
 
-      if( enable_debug_ && !debug_path_.empty() ) {
+      if( !debug_path_.empty() ) {
         save_image(planetary_disk_reference_component_mask_,
             ssprintf("%s/reference_component_mask_.tiff",
                 debug_path_.c_str()));
@@ -739,7 +746,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
         return false;
       }
 
-      if( enable_debug_ && !debug_path_.empty() ) {
+      if( !debug_path_.empty() ) {
         save_image(planetary_disk_current_component_mask_,
             ssprintf("%s/current_component_mask_.tiff",
                 debug_path_.c_str()));

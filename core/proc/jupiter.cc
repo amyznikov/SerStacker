@@ -558,10 +558,9 @@ void c_jovian_derotation::normalize_jovian_image(cv::InputArray _src, cv::InputA
   src = _src.getMat();
 
   cv::meanStdDev(src, mv, sv/*, mask*/);
-
   ecc_downscale(src, mean, normalization_scale, cv::BORDER_REPLICATE);
   ecc_upscale(mean, src.size());
-  cv::subtract(src, mean, mean);
+  cv::subtract(src, /*mv*/mean, mean);
   cv::multiply(mean, 1./sv[0], dst);
 }
 
@@ -606,7 +605,7 @@ bool c_jovian_derotation::extract_jovian_image(cv::InputArray src_image, cv::Inp
     cv::Mat * output_component_mask,
     cv::Mat1b * output_ellipse_mask) const
 {
-  if ( !detect_jovian_ellipse(src_image, output_ellipse, enable_debug_ ? debug_path_ : "") ) {
+  if ( !detect_jovian_ellipse(src_image, output_ellipse, debug_path_ ) ) {
     CF_ERROR("detect_jovian_ellipse() fails");
     return false;
   }
@@ -659,8 +658,12 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
 
   // precompute normalization scale and normalized reference image
 
+
   normalization_scale_ =
-      std::max(3, eccflow_support_scale_);
+    std::max(3, (int)(ceil(log2(reference_ellipse_.size.width / 20.))));
+
+  CF_DEBUG("c_jovian_derotation: normalization_scale_=%d", normalization_scale_);
+      //std::max(5, eccflow_support_scale_);
 
   normalize_jovian_image(reference_component_image_,
       reference_component_mask_,
@@ -698,7 +701,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       normalization_scale_);
 
 
-  if ( enable_debug_ && !debug_path_.empty() ) {
+  if ( !debug_path_.empty() ) {
     save_image(current_component_image_, ssprintf("%s/current_component_image_.tiff", debug_path_.c_str()));
     save_image(reference_component_image_, ssprintf("%s/reference_component_image_.tiff", debug_path_.c_str()));
     save_image(current_component_mask_, ssprintf("%s/current_component_mask_.tiff", debug_path_.c_str()));
@@ -743,21 +746,28 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   //
 
 
-  const double rotation_step =
-      eccflow_support_scale_ > 1 ?
-          CV_PI / reference_ellipse_.size.width :
-          0.25 * CV_PI / reference_ellipse_.size.width;
-
+//  const double rotation_step =
+//      eccflow_support_scale_ > 1 ?
+//          CV_PI / reference_ellipse_.size.width :
+//          0.25 * CV_PI / reference_ellipse_.size.width;
+//
+//
+//  const int num_rotations =
+//      (int)((max_rotation_ - min_rotation_) / rotation_step);
 
   const int num_rotations =
-      (int)((max_rotation_ - min_rotation_) / rotation_step);
+      reference_ellipse_.size.width * (max_rotation_ - min_rotation_) / CV_PI;
+
+  const double rotation_step =
+    (max_rotation_ - min_rotation_) / num_rotations;
 
   double current_cost, best_cost;
   double best_rotation;
   int best_rotation_index;
 
-  CF_DEBUG("c_jovian_derotation: use rotation_step=%g deg",
-      rotation_step * 180/ CV_PI);
+  CF_DEBUG("c_jovian_derotation:  use num_rotations=%d rotation_step=%g deg",
+      num_rotations,
+      rotation_step * 180 / CV_PI);
 
   cv::Mat2f rotation_remap;
   cv::Mat rotated_current_image;
@@ -813,9 +823,13 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       current_total_binary_mask_,
       cv::CMP_GT);
 
-  if ( enable_debug_ && !debug_path_.empty() ) {
+  if ( !debug_path_.empty() ) {
     save_image(current_total_mask_, ssprintf("%s/current_rotation_mask_.tiff", debug_path_.c_str()));
     save_image(current_total_binary_mask_, ssprintf("%s/current_total_binary_mask_.tiff", debug_path_.c_str()));
+
+    cv::Mat tmp;
+    cv::remap(current_normalized_image_, tmp, rotation_remap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    save_image(tmp, ssprintf("%s/current_normalized_image_remapped.tiff", debug_path_.c_str()));
   }
 
   if ( eccflow_support_scale_ > 1 ) {
@@ -894,21 +908,12 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 void c_jovian_derotation::set_debug_path(const std::string & v)
 {
   debug_path_ = v;
+  CF_DEBUG("SET debug_path_=%s", debug_path_.c_str());
 }
 
 const std::string & c_jovian_derotation::debug_path() const
 {
   return debug_path_;
-}
-
-void c_jovian_derotation::set_enable_debug(bool v)
-{
-  enable_debug_ = v;
-}
-
-bool c_jovian_derotation::enable_debug() const
-{
-  return enable_debug_;
 }
 
 

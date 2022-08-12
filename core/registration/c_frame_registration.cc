@@ -262,6 +262,8 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   if( options_.jovian_derotation.enabled ) {
     jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
     jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
+    jovian_derotation_.set_normalization_scale(options_.jovian_derotation.normalization_scale);
+    jovian_derotation_.set_normalization_blur(options_.jovian_derotation.normalization_blur);
     jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
     jovian_derotation_.set_eccflow_normalization_scale(options_.jovian_derotation.eccflow_normalization_scale);
     jovian_derotation_.set_eccflow_max_pyramid_level(options_.jovian_derotation.eccflow_max_pyramid_level);

@@ -1034,6 +1034,9 @@ bool c_image_stacking_pipeline::actual_run()
   const c_frame_registration_options & registration_options =
       options_->frame_registration_options();
 
+  const c_jovian_derotation_options & jovian_derotation =
+      registration_options.image_registration_options.jovian_derotation;
+
   const c_image_processing_options & image_processing_options =
       options_->image_processing_options();
 
@@ -1442,7 +1445,7 @@ bool c_image_stacking_pipeline::actual_run()
     if ( image_processing_options.accumulated_image_processor ) {
 
       if ( !image_processing_options.accumulated_image_processor->process(accumulated_image, accumulated_mask) ) {
-        CF_ERROR("postprocessor %s : process() fails", image_processing_options.accumulated_image_processor->cname());
+        CF_ERROR("post-processor '%s' fails", image_processing_options.accumulated_image_processor->cname());
       }
       else {
 
@@ -1458,55 +1461,53 @@ bool c_image_stacking_pipeline::actual_run()
       }
     }
 
-    if ( registration_options.image_registration_options.jovian_derotation.enabled ) {
-      if ( registration_options.image_registration_options.jovian_derotation.rotate_jovian_disk_horizontally ) {
+    if ( jovian_derotation.enabled && jovian_derotation.rotate_jovian_disk_horizontally ) {
 
-        const c_jovian_derotation & jovian_derotation =
-            frame_registration_->jovian_derotation();
+      const c_jovian_derotation & jovian_derotation =
+          frame_registration_->jovian_derotation();
 
-        const cv::RotatedRect &E =
-            jovian_derotation.reference_ellipse();
+      const cv::RotatedRect &E =
+          jovian_derotation.reference_ellipse();
 
-        const cv::Rect &BB =
-            jovian_derotation.reference_boundig_box();
+      const cv::Rect &BB =
+          jovian_derotation.reference_boundig_box();
 
-        const cv::Mat T =
-            createEuclideanTransform(E.center.x + BB.x, E.center.y + BB.y,
-                //accumulated_image.cols / 2, accumulated_image.rows / 2,
-                E.center.x + BB.x, E.center.y + BB.y,
-                1.0,
-                -E.angle * CV_PI / 180,
-                CV_32F);
+      const cv::Mat T =
+          createEuclideanTransform(E.center.x + BB.x, E.center.y + BB.y,
+              //accumulated_image.cols / 2, accumulated_image.rows / 2,
+              E.center.x + BB.x, E.center.y + BB.y,
+              1.0,
+              -E.angle * CV_PI / 180,
+              CV_32F);
 
-        const cv::Mat M =
-            createRemap(ECC_MOTION_AFFINE,
-                T,
-                accumulated_image.size(),
-                CV_32F);
+      const cv::Mat M =
+          createRemap(ECC_MOTION_AFFINE,
+              T,
+              accumulated_image.size(),
+              CV_32F);
 
-          cv::remap(accumulated_image, accumulated_image,
-              M, cv::noArray(),
-              cv::INTER_LINEAR,
-              cv::BORDER_REPLICATE);
+        cv::remap(accumulated_image, accumulated_image,
+            M, cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_REPLICATE);
 
-          cv::remap(accumulated_mask, accumulated_mask,
-              M, cv::noArray(),
-              cv::INTER_LINEAR,
-              cv::BORDER_CONSTANT);
+        cv::remap(accumulated_mask, accumulated_mask,
+            M, cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_CONSTANT);
 
-        cv::compare(accumulated_mask, 255,
-            accumulated_mask,
-            cv::CMP_GE);
+      cv::compare(accumulated_mask, 255,
+          accumulated_mask,
+          cv::CMP_GE);
 
-        output_file_name =
-            ssprintf("%s/%s-32F-PPR.tiff",
-                output_directory_.c_str(),
-                options_->cname());
+      output_file_name =
+          ssprintf("%s/%s-32F-PPR.tiff",
+              output_directory_.c_str(),
+              options_->cname());
 
-        CF_DEBUG("Saving '%s'", output_file_name.c_str());
-        if( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
-          CF_ERROR("write_image('%s') fails", output_file_name.c_str());
-        }
+      CF_DEBUG("Saving '%s'", output_file_name.c_str());
+      if( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
+        CF_ERROR("write_image('%s') fails", output_file_name.c_str());
       }
     }
   }

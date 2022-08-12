@@ -505,10 +505,14 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.jovian_derotation, enabled);
   SAVE(image_registration_options.jovian_derotation, min_rotation);
   SAVE(image_registration_options.jovian_derotation, max_rotation);
+  SAVE(image_registration_options.jovian_derotation, normalization_scale);
+  SAVE(image_registration_options.jovian_derotation, normalization_blur);
   SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
   SAVE(image_registration_options.jovian_derotation, eccflow_normalization_scale);
   SAVE(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
   SAVE(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
+  SAVE(image_registration_options.jovian_derotation, derotate_all_frames);
+  SAVE(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
 
 #undef SAVE
   return true;
@@ -579,10 +583,14 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.jovian_derotation, enabled);
     LOAD(image_registration_options.jovian_derotation, min_rotation);
     LOAD(image_registration_options.jovian_derotation, max_rotation);
+    LOAD(image_registration_options.jovian_derotation, normalization_scale);
+    LOAD(image_registration_options.jovian_derotation, normalization_blur);
     LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);
     LOAD(image_registration_options.jovian_derotation, eccflow_normalization_scale);
     LOAD(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
     LOAD(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
+    LOAD(image_registration_options.jovian_derotation, derotate_all_frames);
+    LOAD(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
   }
 
   return true;

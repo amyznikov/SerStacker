@@ -44,9 +44,19 @@
 
  @endcode
  */
+
+struct c_detect_jovian_ellipse_debug_images {
+  cv::Mat gray_image;
+  cv::Mat component_mask;
+  cv::Mat gradient_magnitude;
+  cv::Mat initial_artifical_ellipse;
+  cv::Mat fitted_artifical_ellipse;
+};
+
 bool detect_jovian_ellipse(cv::InputArray _image,
     cv::RotatedRect * output_ellipse_rect,
-    const std::string & debug_path = "");
+    const std::string & debug_path = "",
+    c_detect_jovian_ellipse_debug_images * debug = nullptr);
 
 
 
@@ -107,6 +117,17 @@ void get_jovian_ellipse_bounding_box(const cv::Size & image_size,
 /**
  *
  */
+bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
+    cv::RotatedRect * output_ellipse,
+    cv::Rect * output_ellipse_boundig_box,
+    cv::Mat * output_component_image,
+    cv::Mat * output_component_mask,
+    cv::Mat1b * output_ellipse_mask);
+
+
+/**
+ *
+ */
 class c_jovian_derotation
 {
 public:
@@ -123,6 +144,12 @@ public:
   // set maximum rotation angle for best rotation search range.
   void set_max_rotation(double v);
   double max_rotation() const;
+
+  void set_normalization_scale(int v);
+  int normalization_scale() const;
+
+  void set_normalization_blur(double v);
+  double normalization_blur() const;
 
   void set_eccflow_support_scale(int v);
   int eccflow_support_scale() const;
@@ -184,7 +211,9 @@ protected:
   cv::Mat current_normalized_image_;
   cv::Mat1b reference_ellipse_mask_;
   cv::Mat1b current_ellipse_mask_;
-  int normalization_scale_ = 4;
+  int normalization_scale_ = -1;
+  int actual_normalization_scale_ = -1;
+  double normalization_blur_ = 0;
 
   cv::Mat2f current_total_remap_;
   cv::Mat1f current_total_mask_;

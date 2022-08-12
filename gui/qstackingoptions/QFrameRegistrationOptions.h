@@ -306,9 +306,13 @@ protected:
   QCheckBox * enableJovianDerotation_ctl = Q_NULLPTR;
   QNumberEditBox * min_rotation_ctl = Q_NULLPTR;
   QNumberEditBox * max_rotation_ctl = Q_NULLPTR;
+  QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
+  QNumberEditBox * normalization_blur_ctl = Q_NULLPTR;
   QNumberEditBox * eccflow_support_scale_ctl = Q_NULLPTR;
   QNumberEditBox * eccflow_normalization_scale_ctl = Q_NULLPTR;
   QNumberEditBox * eccflow_max_pyramid_level_ctl = Q_NULLPTR;
+  QCheckBox * derotate_all_frames_ctl = Q_NULLPTR;
+  QNumberEditBox * derotate_all_frames_max_context_size_ctl = Q_NULLPTR;
   QCheckBox * align_jovian_disk_horizontally_ctl = Q_NULLPTR;
   QWidgetList controls;
 };

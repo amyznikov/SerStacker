@@ -49,12 +49,14 @@ struct c_jovian_derotation_options {
   bool enabled = false;
   double min_rotation = -30 * CV_PI / 180;
   double max_rotation = +30 * CV_PI / 180;
+  int normalization_scale = -1;
+  double normalization_blur = 0;
   int eccflow_support_scale = 3;
   int eccflow_normalization_scale = 0;
   int eccflow_max_pyramid_level = 1;
+  bool derotate_all_frames = false;
+  int  derotate_all_frames_max_context_size = -1;
   bool rotate_jovian_disk_horizontally = false;
-//  bool enable_debug = false;
-  //std::string debug_path;
 };
 
 struct c_image_registration_options {

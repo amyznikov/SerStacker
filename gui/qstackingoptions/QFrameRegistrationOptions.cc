@@ -1327,6 +1327,24 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(normalization_scale_ctl =
+      add_numeric_box<int>("normalization_scale:",
+          [this](int value) {
+            if ( options_ && options_->normalization_scale != value ) {
+              options_->normalization_scale = value;
+              emit parameterChanged();
+            }
+          }));
+
+  controls.append(normalization_blur_ctl =
+      add_numeric_box<double>("normalization_blur [px]:",
+          [this](double value) {
+            if ( options_ && options_->normalization_blur != value ) {
+              options_->normalization_blur = value;
+              emit parameterChanged();
+            }
+          }));
+
   controls.append(eccflow_support_scale_ctl =
       add_numeric_box<int>("eccflow_support_scale:",
           [this](double value) {
@@ -1354,6 +1372,25 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(derotate_all_frames_ctl =
+      add_checkbox("process all frames",
+          [this](bool checked) {
+            if ( options_ && options_->derotate_all_frames != checked ) {
+              options_->derotate_all_frames = checked;
+              derotate_all_frames_max_context_size_ctl->setEnabled(checked);
+              emit parameterChanged();
+            }
+          }));
+
+  controls.append(derotate_all_frames_max_context_size_ctl =
+      add_numeric_box<int>("max_context_size:",
+          [this](double value) {
+            if ( options_ && options_->derotate_all_frames_max_context_size != value ) {
+              options_->derotate_all_frames_max_context_size = value;
+              emit parameterChanged();
+            }
+          }));
+
   controls.append(align_jovian_disk_horizontally_ctl =
       add_checkbox("align_jovian_disk_horizontally",
           [this](bool checked) {
@@ -1363,6 +1400,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
+  updateControls();
 }
 
 void QJovianDerotationOptions::set_derotation_options(c_jovian_derotation_options * options)
@@ -1385,12 +1423,17 @@ void QJovianDerotationOptions::onupdatecontrols()
     enableJovianDerotation_ctl->setChecked(options_->enabled);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
+    normalization_scale_ctl->setValue(options_->normalization_scale);
+    normalization_blur_ctl->setValue(options_->normalization_blur);
     eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
     eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);
     eccflow_max_pyramid_level_ctl->setValue(options_->eccflow_max_pyramid_level);
+    derotate_all_frames_ctl->setChecked(options_->derotate_all_frames);
+    derotate_all_frames_max_context_size_ctl->setValue(options_->derotate_all_frames_max_context_size);
     align_jovian_disk_horizontally_ctl->setChecked(options_->rotate_jovian_disk_horizontally);
-
     update_controls_state();
+
+    derotate_all_frames_max_context_size_ctl->setEnabled(options_->derotate_all_frames);
 
     setEnabled(true);
   }

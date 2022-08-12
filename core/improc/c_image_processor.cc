@@ -32,6 +32,7 @@
 #include "c_remove_sharp_artifacts_routine.h"
 #include "c_affine_transform_routine.h"
 #include "c_mean_curvature_blur_routine.h"
+#include "c_fit_jovian_ellipse_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -105,6 +106,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_median_blur_routine::class_factory);
     register_class_factory(&c_remove_sharp_artifacts_routine::class_factory);
     register_class_factory(&c_mean_curvature_blur_routine::class_factory);
+    register_class_factory(&c_fit_jovian_ellipse_routine::class_factory);
   }
 }
 

@@ -1309,6 +1309,11 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           });
 
+  add_expandable_groupbox("Jovian detector options",
+      detector_setting_ctl = new QJovianEllipseDetectorSettings(this));
+  controls.append(detector_setting_ctl);
+
+
   controls.append(min_rotation_ctl =
       add_numeric_box<double>("min_rotation [deg]:",
           [this](double value) {
@@ -1323,24 +1328,6 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->max_rotation != (value *= M_PI / 180) ) {
               options_->max_rotation = value;
-              emit parameterChanged();
-            }
-          }));
-
-  controls.append(normalization_scale_ctl =
-      add_numeric_box<int>("normalization_scale:",
-          [this](int value) {
-            if ( options_ && options_->normalization_scale != value ) {
-              options_->normalization_scale = value;
-              emit parameterChanged();
-            }
-          }));
-
-  controls.append(normalization_blur_ctl =
-      add_numeric_box<double>("normalization_blur [px]:",
-          [this](double value) {
-            if ( options_ && options_->normalization_blur != value ) {
-              options_->normalization_blur = value;
               emit parameterChanged();
             }
           }));
@@ -1423,14 +1410,13 @@ void QJovianDerotationOptions::onupdatecontrols()
     enableJovianDerotation_ctl->setChecked(options_->enabled);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
-    normalization_scale_ctl->setValue(options_->normalization_scale);
-    normalization_blur_ctl->setValue(options_->normalization_blur);
     eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
     eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);
     eccflow_max_pyramid_level_ctl->setValue(options_->eccflow_max_pyramid_level);
     derotate_all_frames_ctl->setChecked(options_->derotate_all_frames);
     derotate_all_frames_max_context_size_ctl->setValue(options_->derotate_all_frames_max_context_size);
     align_jovian_disk_horizontally_ctl->setChecked(options_->rotate_jovian_disk_horizontally);
+    detector_setting_ctl->set_jovian_ellipse_detector_options(&options_->ellipse);
     update_controls_state();
 
     derotate_all_frames_max_context_size_ctl->setEnabled(options_->derotate_all_frames);

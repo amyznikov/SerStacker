@@ -1,0 +1,8 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qjovian">
+	<file>icons/download.png</file>
+	<file>icons/upload.png</file>
+	<file>icons/copy.png</file>
+	<file>icons/paste.png</file>
+</qresource>
+</RCC>

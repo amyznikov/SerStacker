@@ -47,13 +47,12 @@ struct c_eccflow_registration_options {
 
 struct c_jovian_derotation_options {
   bool enabled = false;
-  double min_rotation = -30 * CV_PI / 180;
-  double max_rotation = +30 * CV_PI / 180;
-  int normalization_scale = -1;
-  double normalization_blur = 0;
-  int eccflow_support_scale = 3;
-  int eccflow_normalization_scale = 0;
-  int eccflow_max_pyramid_level = 1;
+  c_jovian_ellipse_detector_options ellipse;
+  double min_rotation = -60 * CV_PI / 180;
+  double max_rotation = +60 * CV_PI / 180;
+  int eccflow_support_scale = 4;
+  int eccflow_normalization_scale = 2;
+  int eccflow_max_pyramid_level = 0;
   bool derotate_all_frames = false;
   int  derotate_all_frames_max_context_size = -1;
   bool rotate_jovian_disk_horizontally = false;

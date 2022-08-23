@@ -39,6 +39,7 @@ protected:
 
   QCheckBox * enable_remove_bad_pixels_ctl = Q_NULLPTR;
   QNumberEditBox * bad_pixels_variation_threshold_ctl = Q_NULLPTR;
+  QCheckBox * drop_bad_asi_frames_ctl = Q_NULLPTR;
 
   QCheckBox * enable_color_maxtrix_ctl = Q_NULLPTR;
   QAnscombeMethodCombo * anscombe_ctl  = Q_NULLPTR;

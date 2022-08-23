@@ -88,7 +88,13 @@ bool gbinterpolation(cv::InputArray src, cv::OutputArray dst,
 bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
     enum DEBAYER_ALGORITHM algo = DEBAYER_GB);
 
-
+/** @brief
+ * Check for ZWO ASI specific horizontal stripe artifact
+ * on the 4-channel Bayer image.
+ * The input 4-plane Bayer image can be created
+ * from raw 1-channel Bayer frame using extract_bayer_planes()
+ */
+bool is_corrupted_asi_frame(const cv::Mat & bayer_planes);
 
 
 #endif /* __debayer_h__ */

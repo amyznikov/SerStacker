@@ -8,6 +8,8 @@
 #include "QImageProcessorRoutineSettings.h"
 #include "QMtfSettings.h"
 #include "QRadialPolySharpSettings.h"
+#include "QJovianEllipseSettings.h"
+
 
 #define ICON_double_arrow_down    "double-arrow-down"
 #define ICON_double_arrow_right   "double-arrow-right"
@@ -336,6 +338,9 @@ QImageProcessorRoutineSettings* QImageProcessorRoutineSettings::create(const c_i
   }
   else if( routine->classfactory() == &c_radial_polysharp_routine::class_factory ) {
     settingsWidget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(routine), parent);
+  }
+  else if( routine->classfactory() == &c_fit_jovian_ellipse_routine::class_factory ) {
+    settingsWidget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(routine), parent);
   }
   else {
     settingsWidget = new QImageProcessorRoutineSettings(routine, parent);

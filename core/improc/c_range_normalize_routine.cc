@@ -81,11 +81,11 @@ bool c_range_normalize_routine::process(cv::InputOutputArray image, cv::InputOut
 {
   bool fOk;
 
-  CF_DEBUG("auto_input_range_=%d", auto_input_range_);
+  // CF_DEBUG("auto_input_range_=%d", auto_input_range_);
 
   if ( auto_input_range_ ) {
 
-    CF_DEBUG("normalize_minmax(output_min_=%g, output_max_=%g)", output_min_, output_max_);
+    // CF_DEBUG("normalize_minmax(output_min_=%g, output_max_=%g)", output_min_, output_max_);
     fOk = normalize_minmax(image.getMatRef(),
         image.getMatRef(),
         output_min_,
@@ -94,7 +94,7 @@ bool c_range_normalize_routine::process(cv::InputOutputArray image, cv::InputOut
   }
   else {
 
-    CF_DEBUG("normalize_image(input_min_=%g input_max_=%g output_min_=%g, output_max_=%g)", input_min_, input_max_, output_min_, output_max_);
+    // CF_DEBUG("normalize_image(input_min_=%g input_max_=%g output_min_=%g, output_max_=%g)", input_min_, input_max_, output_min_, output_max_);
     fOk = normalize_image(image.getMatRef(),
         input_min_,
         input_max_,

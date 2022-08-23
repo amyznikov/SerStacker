@@ -922,3 +922,42 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
   return false;
 }
 
+
+/** @brief
+ * Check for ZWO ASI specific horizontal stripe artifact
+ * on the 4-channel Bayer image.
+ * The input 4-plane Bayer image can be created
+ * from raw 1-channel Bayer frame using extract_bayer_planes()
+ */
+bool is_corrupted_asi_frame(const cv::Mat & bayer_planes)
+{
+  if ( bayer_planes.channels() != 4 ) {
+    // not a Bayer planes image
+    return false;
+  }
+
+  cv::Mat plane;
+  double minVal, maxVal;
+  cv::Scalar avgVal, stdVal;
+
+  // check only green planes
+  for ( int i = 1; i <= 2; ++i ) {
+
+    static float K[2] = {
+        -1, 1
+    };
+
+    cv::extractChannel(bayer_planes, plane, 1);
+    cv::filter2D(plane, plane, CV_32F, cv::Mat1f(2, 1, K));
+    cv::reduce(plane, plane, cv::REDUCE_AVG, 1, CV_32F);
+
+    cv::minMaxLoc(plane, &minVal, &maxVal);
+    cv::meanStdDev(plane, avgVal, stdVal);
+
+    if( stdVal[0] > 0 && std::max(fabs(minVal), fabs(maxVal)) / stdVal[0] > 10 ) {
+      return true;
+    }
+  }
+
+  return false;
+}

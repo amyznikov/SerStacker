@@ -1146,6 +1146,16 @@ bool c_image_stacking_pipeline::actual_run()
       return false;
     }
 
+    CF_DEBUG("Reference frame : %dx%d depth=%d channels=%d",
+        reference_frame.cols, reference_frame.rows,
+        reference_frame.depth(),
+        reference_frame.channels());
+
+    CF_DEBUG("Reference mask : %dx%d depth=%d channels=%d",
+        reference_mask.cols, reference_mask.rows,
+        reference_mask.depth(),
+        reference_mask.channels());
+
     ecc_normalization_noise_ =
         compute_image_noise(reference_frame, reference_mask,
             options_->frame_registration_options().image_registration_options.registration_channel);
@@ -1157,15 +1167,6 @@ bool c_image_stacking_pipeline::actual_run()
           reference_mask);
     }
 
-    CF_DEBUG("Reference frame : %dx%d depth=%d channels=%d",
-        reference_frame.cols, reference_frame.rows,
-        reference_frame.depth(),
-        reference_frame.channels());
-
-    CF_DEBUG("Reference mask : %dx%d depth=%d channels=%d",
-        reference_mask.cols, reference_mask.rows,
-        reference_mask.depth(),
-        reference_mask.channels());
 
 
     if ( weights_required() ) {
@@ -1470,7 +1471,7 @@ bool c_image_stacking_pipeline::actual_run()
           jovian_derotation.reference_ellipse();
 
       const cv::Rect &BB =
-          jovian_derotation.reference_boundig_box();
+          jovian_derotation.reference_bounding_box();
 
       const cv::Mat T =
           createEuclideanTransform(E.center.x + BB.x, E.center.y + BB.y,
@@ -1556,6 +1557,9 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     return false;
   }
 
+  if ( reference_frame.empty() ) {
+    return false;
+  }
 
   if ( !select_image_roi(roi_selection_, reference_frame, reference_mask, reference_frame, reference_mask) ) {
     CF_FATAL("select_image_roi(reference_frame) fails");
@@ -1856,6 +1860,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       break;
     }
 
+    if ( current_frame.empty() ) {
+      continue;
+    }
+
     if ( !select_image_roi(roi_selection_, current_frame, current_mask, current_frame, current_mask) ) {
       continue;
     }
@@ -1988,15 +1996,18 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
 
 
+        CF_DEBUG("H");
         if ( !frame_registration_->register_frame(current_frame, current_mask) ) {
           CF_ERROR("[F %6d] reg->register_frame() fails\n", processed_frames_ + startpos);
           continue;
         }
 
+        CF_DEBUG("H");
         if( canceled() ) {
           break;
         }
 
+        CF_DEBUG("H");
         if ( flow_accumulation_ ) {
 
           const cv::Mat2f turbulence =
@@ -2019,6 +2030,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           }
         }
 
+        CF_DEBUG("H");
         if ( !upscale_required(frame_upscale_after_align) ) {
           current_remap = frame_registration_->current_remap();
         }
@@ -2029,6 +2041,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               current_remap);
         }
 
+        CF_DEBUG("H");
 
         frame_registration_->custom_remap(current_remap,
             current_frame, current_frame,
@@ -2038,6 +2051,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
                 ECC_BORDER_REFLECT101 :
                 registration_options.image_registration_options.border_mode,
             registration_options.image_registration_options.border_value);
+
+        CF_DEBUG("H");
 
         if( !current_weights.empty() ) {
 
@@ -2059,6 +2074,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
+      CF_DEBUG("H");
 
       if ( !master_frame_generation_ ) {
 
@@ -2070,6 +2086,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
+      CF_DEBUG("H");
       if( image_processing_options.aligned_image_processor ) {
         image_processing_options.aligned_image_processor->process(current_frame, current_mask);
         if ( canceled() ) {
@@ -2077,6 +2094,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         }
       }
 
+      CF_DEBUG("H");
       if( output_options.save_postprocessed_frames ) {
 
         save_postprocessed_frame(current_frame, current_mask,
@@ -2086,8 +2104,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           break;
         }
       }
-
     }
+    CF_DEBUG("H");
 
     time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
@@ -2096,6 +2114,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     /////////////////////////////////////////////////////////////////////////////////
 
+    CF_DEBUG("H");
     if ( output_options.save_accumulation_masks ) {
 
       save_accumulation_mask(current_frame, current_mask,
@@ -2106,6 +2125,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       }
     }
 
+    CF_DEBUG("H");
 
     if ( frame_accumulation_ ) {
 
@@ -2121,6 +2141,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       ++accumulated_frames_;
       emit_accumulator_changed();
     }
+    CF_DEBUG("H");
 
     /////////////////////////////////////
 
@@ -2189,6 +2210,16 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
 
     extract_bayer_planes(output_image, output_image,
         input_sequence->colorid());
+
+    if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+
+      CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+
+      // return true with empty output image
+      output_image.release();
+      return true;
+    }
+
 
     if ( input_options.filter_bad_pixels ) {
       remove_bad_pixels(output_image, input_options);
@@ -2453,6 +2484,13 @@ void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::M
       acc_options.lksize,
       acc_options.scale_size,
       acc_options.minv);
+
+//  double min, max;
+//  cv::minMaxLoc(dst, &min, &max);
+//  CF_DEBUG("smap: min=%g max=%g acc_options: lksize=%d scale_size=%d minv=%g", min, max,
+//      acc_options.lksize,
+//      acc_options.scale_size,
+//      acc_options.minv);
 }
 
 void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel)

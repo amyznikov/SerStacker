@@ -7,6 +7,11 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 
+add_compile_options(-march=native)
+if( ENABLE_CALL_GRAPH_INSTRUMENTATION )
+	add_definitions(-DENABLE_CALL_GRAPH_INSTRUMENTATION=1)
+endif()
+
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 

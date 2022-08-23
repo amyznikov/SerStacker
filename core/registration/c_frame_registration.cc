@@ -262,11 +262,12 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   if( options_.jovian_derotation.enabled ) {
     jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
     jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
-    jovian_derotation_.set_normalization_scale(options_.jovian_derotation.normalization_scale);
-    jovian_derotation_.set_normalization_blur(options_.jovian_derotation.normalization_blur);
+    jovian_derotation_.set_normalization_scale(options_.jovian_derotation.ellipse.normalization_scale);
+    jovian_derotation_.set_normalization_blur(options_.jovian_derotation.ellipse.normalization_blur);
     jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
     jovian_derotation_.set_eccflow_normalization_scale(options_.jovian_derotation.eccflow_normalization_scale);
     jovian_derotation_.set_eccflow_max_pyramid_level(options_.jovian_derotation.eccflow_max_pyramid_level);
+    jovian_derotation_.set_hlines(options_.jovian_derotation.ellipse.hlines);
 
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
@@ -433,11 +434,11 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation", debug_path_.c_str()));
 
-
     if ( !jovian_derotation_.compute(current_image, current_mask) ) {
       CF_ERROR("jovian_derotation_.compute() fails");
       return false;
     }
+
   }
 
   if( dst.needed() || dstmask.needed() ) {
@@ -1134,9 +1135,32 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     cv::Mat2f total_remap =
         rmap.clone();
 
-    jovian_derotation_.current_total_remap().copyTo(total_remap(
-        jovian_derotation_.reference_boundig_box()),
-        jovian_derotation_.current_total_binary_mask());
+    const cv::Mat1f & wmask =
+        jovian_derotation_.current_cropped_wmask();
+
+    const cv::Mat1b bmask =
+        wmask > 0;
+
+    const cv::Rect & rbox =
+        jovian_derotation_.reference_bounding_box();
+
+    const cv::Rect & cbox =
+        jovian_derotation_.current_bounding_box();
+
+  //    CF_DEBUG("rmap:  %dx%d", rmap.cols, rmap.rows);
+  //    CF_DEBUG("wmask: %dx%d", wmask.cols, wmask.rows);
+  //    CF_DEBUG("rbox:  x=%d y=%d %dx%d", rbox.x, rbox.y, rbox.width, rbox.height);
+  //    CF_DEBUG("total_remap: %dx%d", total_remap.cols, total_remap.rows);
+
+    cv::Mat2f derotation_remap;
+
+    cv::add(jovian_derotation_.current_cropped_derotation_remap(),
+        cv::Scalar(cbox.x, cbox.y),
+        derotation_remap);
+
+    derotation_remap.copyTo(total_remap(rbox),
+        bmask);
+
 
     bool fOk =
         base_remap(total_remap,
@@ -1151,31 +1175,33 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
       return false;
     }
   }
-
-  if( dst_mask.needed() ) {
-
-    const cv::Mat &dstmask =
-        dst_mask.getMatRef();
-
-    cv::Mat1f combined_mask(dstmask.size(), 1.0);
-
-    combined_mask(jovian_derotation_.reference_boundig_box()).setTo(0,
-        jovian_derotation_.reference_ellipse_mask());
-
-    jovian_derotation_.current_total_mask().copyTo(
-        combined_mask(jovian_derotation_.reference_boundig_box()),
-        jovian_derotation_.current_total_binary_mask());
-
-    if( dstmask.depth() == CV_8U ) {
-      combined_mask.setTo(0, ~dstmask);
-    }
-    else {
-      cv::multiply(dstmask, combined_mask, combined_mask, 1.0, combined_mask.depth());
-    }
-
-    dst_mask.move(combined_mask);
-  }
-
+//
+//  CF_DEBUG("H");
+//  if( dst_mask.needed() ) {
+//
+//    const cv::Mat & dstmask =
+//        dst_mask.getMatRef();
+//
+//    cv::Mat1f combined_mask(dstmask.size(), 1.0);
+//
+//    combined_mask(jovian_derotation_.reference_bounding_box()).setTo(0,
+//        jovian_derotation_.reference_uncropped_planetary_disk_mask());
+//
+//    jovian_derotation_.current_cropped_wmask().copyTo(
+//        combined_mask(jovian_derotation_.reference_bounding_box()),
+//        jovian_derotation_.current_total_binary_mask());
+//
+//    if( dstmask.depth() == CV_8U ) {
+//      combined_mask.setTo(0, ~dstmask);
+//    }
+//    else {
+//      cv::multiply(dstmask, combined_mask, combined_mask, 1.0, combined_mask.depth());
+//    }
+//
+//    dst_mask.move(combined_mask);
+//  }
+//
+//  CF_DEBUG("H");
   return true;
 }
 

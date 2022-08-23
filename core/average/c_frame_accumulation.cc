@@ -763,10 +763,11 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray mask)
       return false;
     }
 
-
+#if 0
     double min, max;
     cv::minMaxLoc(mask, &min, &max);
     CF_DEBUG("mask: min=%g max=%g depth=%d", min, max, mask.depth());
+#endif
   }
 
 

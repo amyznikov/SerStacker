@@ -141,260 +141,65 @@ static void gradient_magnitude(cv::InputArray src, cv::OutputArray dst, double s
     g = src.getMat();
   }
   differentiate(g, gx, gy);
+  //cv::add(gx.mul(gx), gy.mul(gy), dst);
   cv::magnitude(gx, gy, dst);
 }
 
-static void draw_artifical_jupiter(cv::Mat & image, const cv::RotatedRect & rc,
+static void draw_artifical_jupiter(bool filled_ellipse, cv::Mat & image, const cv::RotatedRect & rc,
     const cv::Scalar & color,
     int thickness = 1,
-    int line_type = cv::LINE_AA)
+    int line_type = cv::LINE_AA,
+    const std::vector<float> * hlines = nullptr)
 {
+
+
+  static const auto draw_hlines =
+      [](cv::Mat & _image, const cv::RotatedRect & _rc, const std::vector<float> & _hlines,
+          double A, double B, double angle,
+          const cv::Scalar & _color,
+          int _thickness,
+          int _line_type) {
+        for ( uint i = 0, n = _hlines.size(); i < n; ++i ) {
+
+          const double y = _hlines[i] * B;
+
+          const double x1 = +0.75 * A * sqrt(1. - square(_hlines[i]));
+          const double x2 = -0.75 * A * sqrt(1. - square(_hlines[i]));
+
+          const double xp1 = x1 * cos(angle) - y * sin(angle);
+          const double yp1 = x1 * sin(angle) + y * cos(angle);
+
+          const double xp2 = x2 * cos(angle) - y * sin(angle);
+          const double yp2 = x2 * sin(angle) + y * cos(angle);
+
+          cv::line(_image,
+            _rc.center + cv::Point2f( xp1, yp1),
+            _rc.center + cv::Point2f( xp2, yp2),
+            _color,
+            _thickness,
+            _line_type);
+        }
+    };
+
   const double A = 0.5 * rc.size.width;
   const double B = 0.5 * rc.size.height;
   const double angle = rc.angle * CV_PI / 180;
 
-//  static const double ys[] = {
-//      +85.0/251,
-//      +128.0/251,
-//      -42.0/251,
-//      -97.0/251,
-//  };
+  if ( filled_ellipse ) {
+    thickness = -1;
+  }
 
   cv::ellipse(image, rc, color, thickness, line_type);
 
-  constexpr int NL = 4;
-  double ys[2 * NL + 1] = {0};
-
-  // i: 0   1  2  3  4   5     6  7  8  9  10
-  //    []  [] [] [] [] []    [] [] [] [] []
-  //
-
-  for ( int i = 1; i <= NL; ++i ) {
-    ys[i] = i / (double)NL;
-    ys[i + NL] = -i / (double)NL;
-  }
-
-  for ( uint i = 0; i < sizeof(ys)/sizeof(ys[0]); ++i ) {
-
-    const double y = ys[i] * B;
-
-    const double x1 = +0.9 * A * sqrt(1. - square(ys[i]));
-    const double x2 = -0.9 * A * sqrt(1. - square(ys[i]));
-
-    const double xp1 = x1 * cos(angle) - y * sin(angle);
-    const double yp1 = x1 * sin(angle) + y * cos(angle);
-
-    const double xp2 = x2 * cos(angle) - y * sin(angle);
-    const double yp2 = x2 * sin(angle) + y * cos(angle);
-
-    cv::line(image,
-        rc.center + cv::Point2f( xp1, yp1),
-        rc.center + cv::Point2f( xp2, yp2),
-        color,
-        thickness,
-        line_type);
+  if ( hlines && !hlines->empty() ) {
+    if ( filled_ellipse ) {
+      draw_hlines(image, rc, *hlines, A, B, angle, 0, 2, line_type);
+    }
+    else {
+      draw_hlines(image, rc, *hlines, A, B, angle, color, 2, line_type);
+    }
   }
 }
-
-// TODO: add horizontal lines to artificial ellipse in appropriate zones
-// for better rotation fitting (assuming that jupiter usually shows zonal gradients)
-bool detect_jovian_ellipse(cv::InputArray _image, cv::RotatedRect * rc, const std::string & dbgpath,
-    c_detect_jovian_ellipse_debug_images * debug)
-{
-  cv::Mat gray_image;
-  cv::Rect component_rect;
-  cv::Mat component_mask;
-  cv::Mat component_edge;
-  cv::Mat component_image;
-  cv::Mat artifical_ellipse;
-  cv::Mat debug_image;
-  cv::Mat * pdbg = nullptr;
-  std::vector<cv::Point2f> component_edge_points;
-
-  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
-
-  if ( _image.channels() == 1 ) {
-    gray_image = _image.getMat();
-  }
-  else {
-    cv::cvtColor(_image, gray_image, cv::COLOR_BGR2GRAY);
-  }
-
-  if ( debug ) {
-    gray_image.copyTo(debug->gray_image);
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////
-  // Detect planetary disk mask and use fitEllipseAMS() as initial ellipse estimate
-
-  if ( debug || !dbgpath.empty()  ) {
-    pdbg = &debug_image;
-    if ( !dbgpath.empty()  ) {
-      save_image(gray_image, ssprintf("%s/gray_image.tiff", dbgpath.c_str()) );
-    }
-  }
-
-  if( !simple_planetary_disk_detector(gray_image, cv::noArray(), nullptr, 1, &component_rect, &component_mask, nullptr, pdbg) ) {
-    CF_ERROR("simple_small_planetary_disk_detector() fails");
-    if ( !dbgpath.empty() ) {
-      save_image(debug_image, ssprintf("%s/component_debug_image.tiff", dbgpath.c_str()) );
-    }
-    return false;
-  }
-
-  if ( !dbgpath.empty() ) {
-    save_image(component_mask, ssprintf("%s/initial_component_mask.tiff", dbgpath.c_str()) );
-    save_image(debug_image, ssprintf("%s/component_debug_image.tiff", dbgpath.c_str()) );
-  }
-
-  geo_fill_holes(component_mask, component_mask, 8);
-  if ( !dbgpath.empty() ) {
-    save_image(component_mask, ssprintf("%s/component_mask.tiff", dbgpath.c_str()) );
-  }
-  if ( debug ) {
-    debug->component_mask = component_mask;
-  }
-
-  morphological_gradient(component_mask, component_edge, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-
-  cv::findNonZero(component_edge, component_edge_points);
-  *rc = cv::fitEllipseAMS(component_edge_points);
-  rc->angle -= 90;
-
-
-  const int margin = std::max(16, (std::max(component_rect.width, component_rect.height)/8) & ~0x1);
-  const int l = std::max(0, component_rect.x - margin);
-  const int t = std::max(0, component_rect.y - margin);
-  const int r = std::min(gray_image.cols - 1, component_rect.x + component_rect.width + margin - 1);
-  const int b = std::min(gray_image.rows - 1, component_rect.y + component_rect.height + margin - 1);
-
-  component_rect.x = l;
-  component_rect.y = t;
-  component_rect.width = r - l + 1;
-  component_rect.height = b - t + 1;
-
-  /////////////////////////////////////////////////////////////////////////////////////////
-  // Copy planetary disk into separate sub-image,
-  // compute the image gradient to enchange the disk edge
-
-  gray_image(component_rect).copyTo(component_image, component_mask(component_rect));
-  gradient_magnitude(component_image, component_image, std::max(1., component_rect.width/250.) );
-
-  if ( !dbgpath.empty() ) {
-    save_image(component_image, ssprintf("%s/gradient_magnitude.tiff", dbgpath.c_str()) );
-  }
-  if ( debug ) {
-    component_image.copyTo(debug->gradient_magnitude);
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////
-  // Draw artifical jovian ellipse and use of ECC to fit it into planetary disk gradient image
-
-  const double A = 0.5 * std::max(rc->size.width, rc->size.height);
-  const double B = A * jovian_polar_to_equatorial_axis_ratio;
-  const cv::Point2f C = rc->center - cv::Point2f(component_rect.x, component_rect.y);
-
-  artifical_ellipse.create(component_rect.size(), CV_32FC1);
-  artifical_ellipse.setTo(0);
-  draw_artifical_jupiter(artifical_ellipse, cv::RotatedRect(C, cv::Size2f(2 * A, 2 * B), 0), 1, 2);
-  cv::GaussianBlur(artifical_ellipse, artifical_ellipse, cv::Size(), 5);
-
-  if ( !dbgpath.empty() ) {
-    save_image(artifical_ellipse, ssprintf("%s/initial_artifical_ellipse.tiff", dbgpath.c_str()) );
-  }
-  if ( debug ) {
-    artifical_ellipse.copyTo(debug->initial_artifical_ellipse);
-  }
-
-  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
-  c_ecch ecch(&ecc);
-
-  cv::Matx23f T =
-      createEuclideanTransform(C.x, C.y,
-          C.x, C.y,
-          1.0,
-          rc->angle * CV_PI / 180);
-
-  if ( false ) {
-    CF_DEBUG("T BEFORE: {\n"
-        "  %+15.6f %+15.6f %+15.6f\n"
-        "  %+15.6f %+15.6f %+15.6f\n"
-        "}\n",
-        T(0,0), T(0,1), T(0,2),
-        T(1,0), T(1,1), T(1,2));
-  }
-
-
-  ecc.set_min_rho(0.2);
-  if ( !ecch.align(artifical_ellipse, component_image, T) ) {
-    CF_ERROR("ecch.align() fails");
-    return false;
-  }
-
-
-  if ( false ) {
-    CF_DEBUG("T AFTER: {\n"
-        "  %+15.6f %+15.6f %+15.6f\n"
-        "  %+15.6f %+15.6f %+15.6f\n"
-        "}\n",
-        T(0,0), T(0,1), T(0,2),
-        T(1,0), T(1,1), T(1,2));
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////
-  // Extract best fit ellipse parameters and return to caller
-
-  cv::Vec2f CC;
-  double Tx, Ty, scale, angle;
-
-  cv::invertAffineTransform(T, T);
-  getEuclideanComponents(T, &Tx, &Ty, &scale, &angle);
-
-  CC = T * cv::Vec3f(C.x, C.y, 1);
-
-  //  CF_DEBUG("Tx=%g Ty=%g scale=%g angle=%g delta_angle=%g",
-  //      Tx, Ty, scale,
-  //      angle * 180 / M_PI,
-  //      angle * 180 / M_PI - rc->angle);
-
-  rc->size.width = 2 * A * scale;
-  rc->size.height = 2 * B * scale;
-  rc->center.x = CC(0) + component_rect.x;
-  rc->center.y = CC(1) + component_rect.y;
-  rc->angle = -angle * 180 / M_PI;
-
-  //////////////////
-
-  CF_DEBUG("ELLIPSE: center=(%g %g) size=(%g x %g) angle=%g",
-      rc->center.x, rc->center.y,
-      rc->size.width, rc->size.height,
-      rc->angle);
-
-  if ( debug || !dbgpath.empty() ) {
-
-    cv::RotatedRect rc2 = *rc;
-    rc2.center.x -= component_rect.x;
-    rc2.center.y -= component_rect.y;
-
-    cv::normalize(component_image, component_image, 0, 1, cv::NORM_MINMAX);
-    cv::cvtColor(component_image, artifical_ellipse, cv::COLOR_GRAY2BGR);
-    draw_artifical_jupiter(artifical_ellipse, rc2, CV_RGB(0, 1, 0), 1);
-
-    if ( debug ) {
-      artifical_ellipse.copyTo(debug->fitted_artifical_ellipse);
-    }
-
-    if ( !dbgpath.empty() ) {
-      save_image(artifical_ellipse, ssprintf("%s/fitted_artifical_ellipse.tiff", dbgpath.c_str()) );
-    }
-  }
-
-
-  return true;
-}
-
-
-
 
 void create_jovian_rotation_remap(double rotation_angle,
     const cv::RotatedRect & E,
@@ -403,6 +208,8 @@ void create_jovian_rotation_remap(double rotation_angle,
     cv::Mat2f & rmap,
     cv::Mat1f & wmask)
 {
+  INSTRUMENT_REGION("");
+
   double sa, ca;
   sincos(E.angle * CV_PI / 180, &sa, &ca);
 
@@ -502,22 +309,22 @@ double c_jovian_derotation::max_rotation() const
 
 void c_jovian_derotation::set_normalization_scale(int v)
 {
-  normalization_scale_ = v;
+  planetary_detector_.set_normalization_scale(v);
 }
 
 int c_jovian_derotation::normalization_scale() const
 {
-  return normalization_scale_;
+  return planetary_detector_.normalization_scale();
 }
 
 void c_jovian_derotation::set_normalization_blur(double v)
 {
-  normalization_blur_ = v;
+  planetary_detector_.set_normalization_blur(v);
 }
 
 double c_jovian_derotation::normalization_blur() const
 {
-  return normalization_blur_;
+  return planetary_detector_.normalization_blur();
 }
 
 void c_jovian_derotation::set_eccflow_support_scale(int v)
@@ -551,15 +358,15 @@ int c_jovian_derotation::max_eccflow_pyramid_level(int v)
   return eccflow_max_pyramid_level_;
 }
 
-//void c_jovian_derotation::set_align_jovian_disk_horizontally(bool v)
-//{
-//  align_jovian_disk_horizontally_ = v;
-//}
-//
-//bool c_jovian_derotation::align_jovian_disk_horizontally() const
-//{
-//  return align_jovian_disk_horizontally_;
-//}
+void c_jovian_derotation::set_hlines(const std::vector<float> & hlines)
+{
+  planetary_detector_.set_hlines(hlines);
+}
+
+const std::vector<float> & c_jovian_derotation::hlines() const
+{
+  return planetary_detector_.hlines();
+}
 
 const cv::RotatedRect & c_jovian_derotation::reference_ellipse() const
 {
@@ -571,68 +378,43 @@ const cv::RotatedRect & c_jovian_derotation::current_ellipse() const
   return current_ellipse_;
 }
 
-const cv::Rect & c_jovian_derotation::reference_boundig_box() const
+const cv::Rect & c_jovian_derotation::reference_bounding_box() const
 {
-  return reference_boundig_box_;
+  return reference_bounding_box_;
 }
 
-const cv::Rect & c_jovian_derotation::current_boundig_box() const
+const cv::Rect & c_jovian_derotation::current_bounding_box() const
 {
-  return current_boundig_box_;
+  return current_bounding_box_;
 }
 
-const cv::Mat1b & c_jovian_derotation::reference_ellipse_mask() const
+const cv::Mat & c_jovian_derotation::reference_uncropped_planetary_disk_mask() const
 {
-  return reference_ellipse_mask_;
+  return reference_uncropped_planetary_disk_mask_;
 }
 
-const cv::Mat1b & c_jovian_derotation::current_ellipse_mask() const
+const cv::Mat & c_jovian_derotation::current_uncropped_planetary_disk_mask() const
 {
-  return current_ellipse_mask_;
+  return current_uncropped_planetary_disk_mask_;
 }
 
-const cv::Mat2f & c_jovian_derotation::current_total_remap() const
+const cv::Mat2f & c_jovian_derotation::current_cropped_derotation_remap() const
 {
-  return current_total_remap_;
+  return current_cropped_remap_;
 }
 
-const cv::Mat1f & c_jovian_derotation::current_total_mask() const
+const cv::Mat1f & c_jovian_derotation::current_cropped_wmask() const
 {
-  return current_total_mask_;
+  return current_cropped_wmask_;
 }
-
-const cv::Mat1b & c_jovian_derotation::current_total_binary_mask() const
-{
-  return current_total_binary_mask_;
-}
-
-void c_jovian_derotation::normalize_jovian_image(cv::InputArray _src, cv::InputArray mask, cv::OutputArray dst, int normalization_scale)
-{
-  cv::Scalar mv, sv;
-  cv::Mat src, mean;
-
-  src = _src.getMat();
-
-  cv::meanStdDev(src, mv, sv/*, mask*/);
-
-  if ( normalization_scale <= 0 ) {
-    cv::subtract(src, mv, mean);
-  }
-  else {
-    ecc_downscale(src, mean, normalization_scale, cv::BORDER_REPLICATE);
-    ecc_upscale(mean, src.size());
-    cv::subtract(src, /*mv*/mean, mean);
-  }
-
-  cv::multiply(mean, 1./sv[0], dst);
-}
-
 
 double c_jovian_derotation::compute_jovian_derotation_cost(const cv::Mat1f & reference_component_image,
     const cv::Mat1f & rotated_component_image,
     const cv::Mat1f & rotation_mask,
     cv::Mat1f * output_difference_image /* optional for debug */)
 {
+  INSTRUMENT_REGION("");
+
   double total_cost = 0;
   double total_weight = 0;
 
@@ -661,134 +443,20 @@ double c_jovian_derotation::compute_jovian_derotation_cost(const cv::Mat1f & ref
   return total_cost / total_weight;
 }
 
-/**
- *
- */
-bool extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
-    cv::RotatedRect * output_ellipse,
-    cv::Rect * output_ellipse_boundig_box,
-    cv::Mat * output_component_image,
-    cv::Mat * output_component_mask,
-    cv::Mat1b * output_ellipse_mask,
-    const std::string & debug_path)
-{
-  if ( !detect_jovian_ellipse(src_image, output_ellipse, debug_path ) ) {
-    CF_ERROR("detect_jovian_ellipse() fails");
-    return false;
-  }
-
-  get_jovian_ellipse_bounding_box(src_image.size(), *output_ellipse,
-      output_ellipse_boundig_box);
-
-  output_ellipse->center.x -= output_ellipse_boundig_box->x;
-  output_ellipse->center.y -= output_ellipse_boundig_box->y;
-
-  if ( src_image.channels() == 1 ) {
-    src_image.getMat()(*output_ellipse_boundig_box).copyTo(*output_component_image);
-  }
-  else {
-    cv::cvtColor(src_image.getMat()(*output_ellipse_boundig_box),
-        *output_component_image, cv::COLOR_BGR2GRAY);
-  }
-
-  if ( src_mask.empty() ) {
-    output_component_mask->release();
-  }
-  else {
-    src_mask.getMat()(*output_ellipse_boundig_box).copyTo(*output_component_mask);
-  }
-
-  // create also artificial reference ellipse mask
-  output_ellipse_mask->create(output_component_image->size());
-  output_ellipse_mask->setTo(0);
-  cv::ellipse(*output_ellipse_mask, *output_ellipse, 255, -1, cv::LINE_8);
-
-  return true;
-}
-
-
-bool c_jovian_derotation::extract_jovian_image(cv::InputArray src_image, cv::InputArray src_mask,
-    cv::RotatedRect * output_ellipse,
-    cv::Rect * output_ellipse_boundig_box,
-    cv::Mat * output_component_image,
-    cv::Mat * output_component_mask,
-    cv::Mat1b * output_ellipse_mask) const
-{
-  return ::extract_jovian_image(src_image, src_mask,
-      output_ellipse,
-      output_ellipse_boundig_box,
-      output_component_image,
-      output_component_mask,
-      output_ellipse_mask,
-      debug_path_);
-
-//  if ( !detect_jovian_ellipse(src_image, output_ellipse, debug_path_ ) ) {
-//    CF_ERROR("detect_jovian_ellipse() fails");
-//    return false;
-//  }
-//
-//  get_jovian_ellipse_bounding_box(src_image.size(), *output_ellipse,
-//      output_ellipse_boundig_box);
-//
-//  output_ellipse->center.x -= output_ellipse_boundig_box->x;
-//  output_ellipse->center.y -= output_ellipse_boundig_box->y;
-//
-//  if ( src_image.channels() == 1 ) {
-//    src_image.getMat()(*output_ellipse_boundig_box).copyTo(*output_component_image);
-//  }
-//  else {
-//    cv::cvtColor(src_image.getMat()(*output_ellipse_boundig_box),
-//        *output_component_image, cv::COLOR_BGR2GRAY);
-//  }
-//
-//  if ( src_mask.empty() ) {
-//    output_component_mask->release();
-//  }
-//  else {
-//    src_mask.getMat()(*output_ellipse_boundig_box).copyTo(*output_component_mask);
-//  }
-//
-//  // create also artificial reference ellipse mask
-//  output_ellipse_mask->create(output_component_image->size());
-//  output_ellipse_mask->setTo(0);
-//  cv::ellipse(*output_ellipse_mask, *output_ellipse, 255, -1, cv::LINE_8);
-//
-//  return true;
-}
-
 bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  // Just extract and save reference jovian image
+  INSTRUMENT_REGION("");
 
-  bool fOk =
-      extract_jovian_image(reference_image, reference_mask,
-          &reference_ellipse_,
-          &reference_boundig_box_,
-          &reference_component_image_,
-          &reference_component_mask_,
-          &reference_ellipse_mask_);
-
-  if ( !fOk) {
-    CF_ERROR("extract_jovian_image(reference_image) fails");
+  if ( !planetary_detector_.detect_planetary_disk(reference_image, reference_mask) ) {
+    CF_ERROR("ellipse_detector_.detect_jovian_ellipse(reference_image) fails");
     return false;
   }
 
-  // precompute normalization scale and normalized reference image
-
-  if ( (actual_normalization_scale_ = normalization_scale_) < 0 ) {
-      normalization_scale_ =
-          std::max(3, (int)(ceil(log2(reference_ellipse_.size.width / 20.))));
-  }
-
-
-
-  CF_DEBUG("c_jovian_derotation: actual_normalization_scale_=%d", actual_normalization_scale_);
-      //std::max(5, eccflow_support_scale_);
-
-  normalize_jovian_image(reference_component_image_,
-      reference_component_mask_,
-      reference_normalized_image_,
-      actual_normalization_scale_);
+  reference_ellipse_ = planetary_detector_.planetary_disk_ellipse();
+  reference_bounding_box_ = planetary_detector_.crop_bounding_box();
+  planetary_detector_.uncropped_planetary_disk_mask().copyTo(reference_uncropped_planetary_disk_mask_);
+  planetary_detector_.cropped_normalized_image().copyTo(reference_cropped_normalized_image_);
+  planetary_detector_.cropped_gray_image().copyTo(reference_cropped_gray_image_);
 
   return true;
 }
@@ -797,29 +465,28 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
 
 bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray current_mask)
 {
+  INSTRUMENT_REGION("");
 
-  //
-  // Extract current jovian image
-  //
-
-  bool fOk =
-      extract_jovian_image(current_image, current_mask,
-          &current_ellipse_,
-          &current_boundig_box_,
-          &current_component_image_,
-          &current_component_mask_,
-          &current_ellipse_mask_);
-
-  if ( !fOk) {
-    CF_ERROR("extract_jovian_image(current_image) fails");
+  if ( !planetary_detector_.detect_planetary_disk(current_image, current_mask) ) {
+    CF_ERROR("ellipse_detector_.detect_jovian_ellipse(current_image) fails");
     return false;
   }
 
-  normalize_jovian_image(current_component_image_,
-      current_component_mask_,
-      current_normalized_image_,
-      actual_normalization_scale_);
+  current_ellipse_ = planetary_detector_.planetary_disk_ellipse();
+  current_bounding_box_ = planetary_detector_.crop_bounding_box();
+  planetary_detector_.uncropped_planetary_disk_mask().copyTo(current_uncropped_planetary_disk_mask_);
+  planetary_detector_.cropped_normalized_image().copyTo(current_cropped_normalized_image_);
+  planetary_detector_.cropped_gray_image().copyTo(current_cropped_gray_image_);
 
+  if ( !debug_path_.empty() ) {
+    save_image(current_uncropped_planetary_disk_mask_, ssprintf("%s/current_uncropped_planetary_disk_mask_.tiff", debug_path_.c_str()));
+    save_image(current_cropped_normalized_image_, ssprintf("%s/current_cropped_normalized_image_.tiff", debug_path_.c_str()));
+    save_image(current_cropped_gray_image_, ssprintf("%s/current_cropped_gray_image_.tiff", debug_path_.c_str()));
+
+    save_image(reference_uncropped_planetary_disk_mask_, ssprintf("%s/reference_uncropped_planetary_disk_mask_.tiff", debug_path_.c_str()));
+    save_image(reference_cropped_normalized_image_, ssprintf("%s/reference_cropped_normalized_image_.tiff", debug_path_.c_str()));
+    save_image(reference_cropped_gray_image_, ssprintf("%s/reference_cropped_gray_image_.tiff", debug_path_.c_str()));
+  }
 
   //
   // Align current jovian component image to the reference component image
@@ -832,21 +499,22 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   cv::Matx23d T =
       createEyeTransform(ecc_.motion_type());
 
-
-
-  fOk =
+  bool fOk =
       ecch_.align(&ecc_,
-          current_component_image_,
-          reference_component_image_,
-          T,
-          current_component_mask_,
-          reference_component_mask_);
+          current_cropped_gray_image_,
+          reference_cropped_gray_image_,
+          T);
 
   if ( !fOk ) {
     CF_ERROR("ecch.align(current_component_image_->reference_component_image_) fails");
     return false;
   }
 
+  if ( !debug_path_.empty() ) {
+    cv::Mat tmp;
+    cv::remap(current_cropped_gray_image_, tmp, ecc_.current_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    save_image(tmp, ssprintf("%s/current_cropped_gray_image_aligned.tiff", debug_path_.c_str()));
+  }
 
 
   //
@@ -854,18 +522,8 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   // Select the best candidate.
   //
 
-
-//  const double rotation_step =
-//      eccflow_support_scale_ > 1 ?
-//          CV_PI / reference_ellipse_.size.width :
-//          0.25 * CV_PI / reference_ellipse_.size.width;
-//
-//
-//  const int num_rotations =
-//      (int)((max_rotation_ - min_rotation_) / rotation_step);
-
   const int num_rotations =
-      reference_ellipse_.size.width * (max_rotation_ - min_rotation_) / CV_PI;
+        reference_ellipse_.size.width * (max_rotation_ - min_rotation_) / CV_PI;
 
   const double rotation_step =
     (max_rotation_ - min_rotation_) / num_rotations;
@@ -878,78 +536,48 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       num_rotations,
       rotation_step * 180 / CV_PI);
 
-  cv::Mat2f rotation_remap;
-  cv::Mat current_rotated_image;
-  cv::Mat1f blured_reference_image;
+  cv::Mat current_rotated_normalized_image;
 
-  if ( normalization_blur_ <= 0 ) {
-    blured_reference_image =
-        reference_normalized_image_;
-  }
-  else {
-    cv::GaussianBlur(reference_normalized_image_,
-        blured_reference_image,
-        cv::Size(),
-        normalization_blur_,
-        normalization_blur_);
-  }
+  cv::RotatedRect cropped_reference_ellipse =
+      reference_ellipse_;
 
-  if ( !debug_path_.empty() ) {
-    save_image(current_component_image_, ssprintf("%s/current_component_image_.tiff", debug_path_.c_str()));
-    save_image(reference_component_image_, ssprintf("%s/reference_component_image_.tiff", debug_path_.c_str()));
-    save_image(current_component_mask_, ssprintf("%s/current_component_mask_.tiff", debug_path_.c_str()));
-    save_image(reference_component_mask_, ssprintf("%s/reference_component_mask_.tiff", debug_path_.c_str()));
-    save_image(current_normalized_image_, ssprintf("%s/current_normalized_image_.tiff", debug_path_.c_str()));
-    save_image(blured_reference_image, ssprintf("%s/reference_normalized_image_.tiff", debug_path_.c_str()));
-    save_image(current_ellipse_mask_, ssprintf("%s/current_ellipse_mask_.tiff", debug_path_.c_str()));
-    save_image(reference_ellipse_mask_, ssprintf("%s/reference_ellipse_mask_.tiff", debug_path_.c_str()));
-  }
+  cropped_reference_ellipse.center.x -=
+      reference_bounding_box_.x;
 
-
-//  cv::Mat1f current_difference_image;
-//  cv::Mat1f best_difference_image;
+  cropped_reference_ellipse.center.y -=
+      reference_bounding_box_.y;
 
   for ( int i = 0; i < num_rotations; ++i ) {
+
+    INSTRUMENT_REGION("derotation_body");
+
 
     const double l =
           min_rotation_ + i * rotation_step;
 
     create_jovian_rotation_remap(l,
-        reference_ellipse_,
+        cropped_reference_ellipse,
         T,
-        reference_component_image_.size(),
-        rotation_remap,
-        current_total_mask_);
+        reference_cropped_gray_image_.size(),
+        current_cropped_remap_,
+        current_cropped_wmask_);
 
-    cv::remap(current_normalized_image_, current_rotated_image,
-        rotation_remap, cv::noArray(),
+    cv::remap(current_cropped_normalized_image_, current_rotated_normalized_image,
+        current_cropped_remap_, cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_REPLICATE);
 
-    if ( normalization_blur_ > 0 ) {
-      cv::GaussianBlur(current_rotated_image,
-          current_rotated_image,
-          cv::Size(),
-          normalization_blur_,
-          normalization_blur_);
-    }
-
     current_cost =
         compute_jovian_derotation_cost(
-            blured_reference_image,
-            current_rotated_image,
-            current_total_mask_,
+            reference_cropped_normalized_image_,
+            current_rotated_normalized_image,
+            current_cropped_wmask_,
             nullptr/*debug_path_.empty() ? nullptr :
                 &current_difference_image*/);
 
 
     if ( !debug_path_.empty() ) {
-
-      CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i, l * 180 / CV_PI, current_cost);
-
-//      save_image(current_difference_image,
-//          ssprintf("%s/diffs/current_difference_image.%03d.tiff",
-//              debug_path_.c_str(), i));
+      // CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i, l * 180 / CV_PI, current_cost);
     }
 
 
@@ -957,117 +585,52 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       best_cost = current_cost;
       best_rotation = l;
       best_rotation_index = i;
-//      if ( !debug_path_.empty() ) {
-//        current_difference_image.copyTo(best_difference_image);
-//      }
     }
   }
 
   CF_DEBUG("BEST cost: %g at rotation %d = %g deg",
       best_cost, best_rotation_index, best_rotation * 180 / CV_PI);
 
+  create_jovian_rotation_remap(best_rotation,
+    cropped_reference_ellipse,
+    T,
+    reference_cropped_gray_image_.size(),
+    current_cropped_remap_,
+    current_cropped_wmask_);
+
+  if ( !debug_path_.empty() ) {
+    cv::remap(current_cropped_normalized_image_, current_rotated_normalized_image, current_cropped_remap_, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    save_image(current_rotated_normalized_image, ssprintf("%s/current_rotated_normalized_image.tiff", debug_path_.c_str()));
+    save_image(current_cropped_wmask_, ssprintf("%s/current_cropped_wmask_.tiff", debug_path_.c_str()));
+  }
+
   //
   // Use ecc optical flow to perfectly align rotated current component image
   //
 
-  create_jovian_rotation_remap(best_rotation,
-      reference_ellipse_,
-      T,
-      reference_component_image_.size(),
-      rotation_remap,
-      current_total_mask_);
-
-
-  cv::compare(current_total_mask_, 0,
-      current_total_binary_mask_,
-      cv::CMP_GT);
-
-  if ( !debug_path_.empty() ) {
-    save_image(current_total_mask_, ssprintf("%s/current_rotation_mask_.tiff", debug_path_.c_str()));
-    save_image(current_total_binary_mask_, ssprintf("%s/current_total_binary_mask_.tiff", debug_path_.c_str()));
-    //save_image(best_difference_image, ssprintf("%s/best_difference_image.tiff", debug_path_.c_str()));
-
-
-    cv::Mat tmp;
-    cv::remap(current_normalized_image_, tmp, rotation_remap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    if ( normalization_blur_ > 0 ) {
-      cv::GaussianBlur(tmp, tmp, cv::Size(),
-          normalization_blur_,
-          normalization_blur_);
-    }
-
-    save_image(tmp, ssprintf("%s/current_normalized_image_remapped.tiff", debug_path_.c_str()));
-  }
-
   if ( eccflow_support_scale_ > 1 ) {
+
+    INSTRUMENT_REGION("eccflow_.compute()");
 
     eccflow_.set_max_pyramid_level(eccflow_max_pyramid_level_);
     eccflow_.set_support_scale(eccflow_support_scale_);
     eccflow_.set_normalization_scale(eccflow_normalization_scale_);
 
-    fOk = eccflow_.compute(current_normalized_image_,
-        reference_normalized_image_,
-        rotation_remap,
-        current_ellipse_mask_,
-        current_total_binary_mask_);
+    fOk = eccflow_.compute(current_cropped_normalized_image_,
+        reference_cropped_normalized_image_,
+        current_cropped_remap_);
 
     if ( !fOk ) {
-      CF_ERROR("eccflow_.compute(current_component_image_->reference_component_image_) fails");
+      CF_ERROR("eccflow_.compute() fails");
       return false;
     }
+
+    if ( !debug_path_.empty() ) {
+      cv::Mat tmp;
+      cv::remap(current_cropped_normalized_image_, tmp, current_cropped_remap_, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      save_image(tmp, ssprintf("%s/current_rotated_normalized_ecc_aligned_image.tiff", debug_path_.c_str()));
+    }
   }
-  else if (false) {
-
-    // FIXME: not sure yet if it is a good idea.
-    //  optimize image normalization and update rotation_remap after ecc_.align() to allow this code work
-
-    ecc_.set_motion_type(ECC_MOTION_AFFINE);
-    ecc_.set_eps(0.1);
-    ecc_.set_min_rho(0.5);
-
-
-    cv::remap(current_normalized_image_, current_normalized_image_,
-        rotation_remap, cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_REPLICATE);
-
-    cv::remap(current_ellipse_mask_, current_ellipse_mask_,
-        rotation_remap, cv::noArray(),
-        cv::INTER_NEAREST,
-        cv::BORDER_REPLICATE);
-
-    cv::Matx23d T2 =
-        createEyeTransform(ecc_.motion_type());
-
-    fOk = ecc_.align(current_normalized_image_, reference_normalized_image_, T2,
-        current_ellipse_mask_, current_total_binary_mask_);
-
-    CF_DEBUG("ecc_.align(): fOk = %d eps=%g rho=%g iterations=%d",
-        fOk, ecc_.current_eps(), ecc_.rho(), ecc_.num_iterations());
-
-  }
-
-  current_total_remap_.create(rotation_remap.size());
-  current_total_remap_.setTo(-1);
-
-  cv::add(rotation_remap,
-      cv::Scalar(current_boundig_box_.x, current_boundig_box_.y),
-      current_total_remap_,
-      reference_ellipse_mask_);
-
-
-//  if ( align_jovian_disk_horizontally_ ) {
-//
-//    cv::Matx23f T =
-//        createEuclideanTransform(reference_ellipse_.center.x, reference_ellipse_.center.y,
-//            reference_ellipse_.center.x, reference_ellipse_.center.y,
-//            1.0,
-//            -reference_ellipse_.angle * CV_PI / 180);
-//
-//    addRemap(createRemap(ECC_MOTION_EUCLIDEAN, T, current_total_remap_.size(), current_total_remap_.depth()),
-//        current_total_remap_);
-//
-//  }
 
   return true;
 }
@@ -1075,12 +638,326 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 void c_jovian_derotation::set_debug_path(const std::string & v)
 {
   debug_path_ = v;
-  CF_DEBUG("SET debug_path_=%s", debug_path_.c_str());
 }
 
 const std::string & c_jovian_derotation::debug_path() const
 {
   return debug_path_;
+}
+
+//////////////////////////
+
+
+void c_jovian_ellipse_detector::set_hlines(const std::vector<float> & v)
+{
+  options_.hlines = v;
+}
+
+const std::vector<float> & c_jovian_ellipse_detector::hlines() const
+{
+  return options_.hlines;
+}
+
+void c_jovian_ellipse_detector::set_normalization_scale(int v)
+{
+  options_.normalization_scale = v;
+}
+
+int c_jovian_ellipse_detector::normalization_scale() const
+{
+  return options_.normalization_scale;
+}
+
+int c_jovian_ellipse_detector::actual_normalization_scale() const
+{
+  return actual_normalization_scale_;
+}
+
+void c_jovian_ellipse_detector::set_normalization_blur(double v)
+{
+  options_.normalization_blur = v;
+}
+
+double c_jovian_ellipse_detector::normalization_blur() const
+{
+  return options_.normalization_blur;
+}
+
+void c_jovian_ellipse_detector::set_options(const c_jovian_ellipse_detector_options & v)
+{
+  options_ = v;
+}
+
+c_jovian_ellipse_detector_options * c_jovian_ellipse_detector::options()
+{
+  return &options_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::uncropped_planetary_disk_mask() const
+{
+  return uncropped_planetary_disk_mask_;
+}
+
+//cv::Mat c_jovian_ellipse_detector::component_mask(const cv::Rect & crop) const
+//{
+//  return uncropped_planetary_disk_mask_(crop);
+//}
+
+const cv::Mat & c_jovian_ellipse_detector::cropped_gray_image() const
+{
+  return cropped_gray_image_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::cropped_normalized_image() const
+{
+  return cropped_normalized_image_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::cropped_gradient_image() const
+{
+  return cropped_gradient_image_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::initial_artificial_ellipse() const
+{
+  return cropped_artificial_ellipse_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::initial_artificial_ellipse_fit() const
+{
+  return cropped_initial_ellipse_fit_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::cropped_final_ellipse_fit() const
+{
+  return cropped_final_ellipse_fit_;
+}
+
+const cv::Rect & c_jovian_ellipse_detector::crop_bounding_box() const
+{
+  return crop_bounding_box_;
+}
+
+const cv::RotatedRect & c_jovian_ellipse_detector::planetary_disk_ellipse() const
+{
+  return ellipse_;
+}
+
+bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv::InputArray _mask)
+{
+  INSTRUMENT_REGION("");
+
+  cv::Mat gray_image, edge_mask;
+  std::vector<cv::Point2f> component_edge_points;
+  cv::Scalar m, s;
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Convert input image to gray scale
+
+  if ( _image.channels() == 1 ) {
+    _image.getMat().copyTo(gray_image);
+  }
+  else {
+    cv::cvtColor(_image, gray_image, cv::COLOR_BGR2GRAY);
+  }
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Detect planetary disk mask and use fitEllipseAMS() on planetary disk edge
+  // as initial ellipse estimate
+
+  if( !simple_planetary_disk_detector(gray_image, _mask, nullptr, 1, &crop_bounding_box_, &uncropped_planetary_disk_mask_) ) {
+    CF_ERROR("simple_small_planetary_disk_detector() fails");
+    return false;
+  }
+
+  cv::meanStdDev(gray_image, m, s, uncropped_planetary_disk_mask_);
+  cv::bitwise_and(uncropped_planetary_disk_mask_, gray_image > s[0] / 2, uncropped_planetary_disk_mask_);
+  morphological_smooth_close(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, cv::Mat1b(3, 3, 255));
+  geo_fill_holes(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, 8);
+
+  morphological_gradient(uncropped_planetary_disk_mask_, edge_mask, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
+  cv::findNonZero(edge_mask, component_edge_points);
+
+  ellipse_ = cv::fitEllipseAMS(component_edge_points);
+  if ( ellipse_.size.width < ellipse_.size.height ) {
+    std::swap(ellipse_.size.width, ellipse_.size.height);
+    ellipse_.angle -= 90;
+  }
+
+  CF_DEBUG("fitEllipseAMS: angle=%g width=%g height=%g", ellipse_.angle, ellipse_.size.width, ellipse_.size.height);
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Crop planetary disk into separate sub-image with some margins,
+  // compute the image gradient to enhance the disk edge
+  // draw artificial solid ellipse
+  // and finally use ECC to improve initial ellipse estimate
+
+  int margin = std::max(16, (std::max(crop_bounding_box_.width, crop_bounding_box_.height)/8) & ~0x1);
+  int l = std::max(0, crop_bounding_box_.x - margin);
+  int t = std::max(0, crop_bounding_box_.y - margin);
+  int r = std::min(gray_image.cols - 1, crop_bounding_box_.x + crop_bounding_box_.width + margin - 1);
+  int b = std::min(gray_image.rows - 1, crop_bounding_box_.y + crop_bounding_box_.height + margin - 1);
+
+  crop_bounding_box_.x = l;
+  crop_bounding_box_.y = t;
+  crop_bounding_box_.width = r - l + 1;
+  crop_bounding_box_.height = b - t + 1;
+
+  gray_image(crop_bounding_box_).copyTo(cropped_gray_image_, uncropped_planetary_disk_mask_(crop_bounding_box_));
+  gradient_magnitude(cropped_gray_image_, cropped_gradient_image_, std::max(1., crop_bounding_box_.width / 300.) );
+
+  static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
+
+  double A = 0.5 * ellipse_.size.width;
+  double B = A * jovian_polar_to_equatorial_axis_ratio;
+  const cv::Point2f C = ellipse_.center - cv::Point2f(crop_bounding_box_.x, crop_bounding_box_.y);
+
+  if ( true ) { // for debug visualization
+
+    cv::RotatedRect rc = ellipse_;
+    rc.center.x -= crop_bounding_box_.x;
+    rc.center.y -= crop_bounding_box_.y;
+
+    cv::normalize(cropped_gradient_image_, cropped_gradient_image_, 0, 1, cv::NORM_MINMAX);
+    cv::cvtColor(cropped_gradient_image_, cropped_initial_ellipse_fit_, cv::COLOR_GRAY2BGR);
+    draw_artifical_jupiter(false, cropped_initial_ellipse_fit_, rc, CV_RGB(0, 1, 0), 1, cv::LINE_AA, &options_.hlines);
+  }
+
+
+  cropped_artificial_ellipse_.create(crop_bounding_box_.size(), CV_32FC1);
+  cropped_artificial_ellipse_.setTo(0);
+  draw_artifical_jupiter(true, cropped_artificial_ellipse_, cv::RotatedRect(C, cv::Size2f(2 * A, 2 * B), 0), 1, 2, cv::LINE_AA, &options_.hlines);
+  cv::GaussianBlur(cropped_artificial_ellipse_, cropped_artificial_ellipse_, cv::Size(), 2);
+
+  c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
+
+  cv::Matx23f T =
+      createEuclideanTransform(C.x, C.y,
+          C.x, C.y,
+          1.0,
+          ellipse_.angle * CV_PI / 180);
+
+  if ( true ) {
+    CF_DEBUG("T BEFORE: {\n"
+        "A = %g B = %g angle=%g center = (%g %g)\n"
+        "}\n",
+        A, B, ellipse_.angle, ellipse_.center.x, ellipse_.center.y);
+  }
+
+
+  ecc.set_eps(0.2);
+  ecc.set_min_rho(0.25);
+  ecc.set_max_iterations(100);
+
+  c_ecch ecch(&ecc);
+  if ( !ecch.align(cropped_artificial_ellipse_, cropped_gradient_image_, T) ) {
+    CF_ERROR("ecch.align(artifical_ellipse) fails");
+    return false;
+  }
+//  if ( !ecc.align(initial_artifical_ellipse_, component_image_, T) ) {
+//    CF_ERROR("ecc.align(artifical_ellipse) fails");
+//    return false;
+//  }
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Extract best fit ellipse parameters and return to caller
+
+  cv::Vec2f CC;
+  double Tx, Ty, scale, angle;
+
+  cv::invertAffineTransform(T, T);
+  getEuclideanComponents(T, &Tx, &Ty, &scale, &angle);
+
+  CC = T * cv::Vec3f(C.x, C.y, 1);
+  A *= scale;
+  B *= scale;
+
+  ellipse_.size.width = 2 * A;
+  ellipse_.size.height = 2 * B;
+  ellipse_.center.x = CC(0) + crop_bounding_box_.x;
+  ellipse_.center.y = CC(1) + crop_bounding_box_.y;
+  ellipse_.angle = -angle * 180 / M_PI;
+
+  if ( true ) {
+    CF_DEBUG("T AFTER: {\n"
+        "A = %g B = %g angle=%g center = (%g %g)\n"
+        "}\n",
+        A, B, ellipse_.angle, ellipse_.center.x, ellipse_.center.y);
+  }
+
+  CF_DEBUG("ELLIPSE: center=(%g %g) size=(%g x %g) angle=%g",
+      ellipse_.center.x, ellipse_.center.y,
+      ellipse_.size.width, ellipse_.size.height,
+      ellipse_.angle);
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Update component bounding box, image and mask using improved ellipse fit
+  cv::Rect bbox;
+  get_jovian_ellipse_bounding_box(_image.size(), ellipse_, &bbox);
+  margin = std::max(16, (std::max(bbox.width, bbox.height)/16) & ~0x1);
+  l = std::max(0, bbox.x - margin);
+  t = std::max(0, bbox.y - margin);
+  r = std::min(gray_image.cols - 1, bbox.x + bbox.width + margin - 1);
+  b = std::min(gray_image.rows - 1, bbox.y + bbox.height + margin - 1);
+
+  crop_bounding_box_.x = l;
+  crop_bounding_box_.y = t;
+  crop_bounding_box_.width = r - l + 1;
+  crop_bounding_box_.height = b - t + 1;
+
+  gray_image(crop_bounding_box_).copyTo(cropped_gray_image_);
+  gradient_magnitude(cropped_gray_image_, cropped_gradient_image_, std::max(1., crop_bounding_box_.width / 300.) );
+  uncropped_planetary_disk_mask_.create(gray_image.size(), CV_8U);
+  uncropped_planetary_disk_mask_.setTo(0);
+  cv::ellipse(uncropped_planetary_disk_mask_, ellipse_, 255, -1, cv::LINE_8);
+
+  // create also normalized image for jovian derotation loop
+
+  if ( options_.normalization_scale < 0 ) {
+    cropped_gray_image_.copyTo(cropped_normalized_image_);
+  }
+  else  {
+    cv::Mat mean;
+
+    cv::meanStdDev(cropped_gray_image_, m, s/*, mask*/);
+
+    if ( options_.normalization_scale <= 0 ) {
+      cv::subtract(cropped_gray_image_, m, mean);
+    }
+    else {
+      ecc_downscale(cropped_gray_image_, mean, options_.normalization_scale, cv::BORDER_REPLICATE);
+      ecc_upscale(mean, cropped_gray_image_.size());
+      cv::subtract(cropped_gray_image_, /*mv*/mean, mean);
+    }
+
+    cv::multiply(mean, 1. / s[0], cropped_normalized_image_);
+  }
+
+  if( options_.normalization_blur > 0 ) {
+    cv::GaussianBlur(cropped_normalized_image_,
+        cropped_normalized_image_,
+        cv::Size(),
+        options_.normalization_blur,
+        options_.normalization_blur);
+  }
+
+  // create also artificial reference ellipse mask
+
+  if ( true ) { // for debug visualization
+
+    cv::RotatedRect rc2 = ellipse_;
+    rc2.center.x -= crop_bounding_box_.x;
+    rc2.center.y -= crop_bounding_box_.y;
+
+    cv::normalize(cropped_gradient_image_, cropped_gradient_image_, 0, 1, cv::NORM_MINMAX);
+    cv::cvtColor(cropped_gradient_image_, cropped_final_ellipse_fit_, cv::COLOR_GRAY2BGR);
+    draw_artifical_jupiter(false, cropped_final_ellipse_fit_, rc2, CV_RGB(0, 1, 0), 1, cv::LINE_AA, &options_.hlines);
+  }
+
+  return true;
 }
 
 

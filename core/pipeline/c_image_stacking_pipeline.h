@@ -52,6 +52,7 @@ struct c_input_options
   bool inpaint_missing_pixels = true;
 
   bool filter_bad_pixels = true;
+  bool drop_bad_asi_frames = true;
   bool enable_color_maxtrix = false;
 
   enum anscombe_method anscombe = anscombe_none;
@@ -130,8 +131,8 @@ struct c_frame_accumulation_options
       frame_accumulation_weighted_average;
 
   int lksize = 0;
-  int scale_size = 6;
-  double minv = 1e-5;
+  int scale_size = 3;
+  double minv = 1;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

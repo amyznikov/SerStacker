@@ -317,6 +317,7 @@ bool c_input_options::serialize(c_config_setting settings) const
   settings.set("missing_pixels_marked_black", missing_pixels_marked_black);
   settings.set("inpaint_missing_pixels", inpaint_missing_pixels);
   settings.set("remove_bad_pixels", filter_bad_pixels);
+  settings.set("drop_bad_asi_frames", drop_bad_asi_frames);
   settings.set("bad_pixels_variation_threshold", hot_pixels_variation_threshold);
   settings.set("enable_color_maxtrix", enable_color_maxtrix );
   settings.set("anscombe", anscombe);
@@ -338,6 +339,7 @@ bool c_input_options::deserialize(c_config_setting settings)
   settings.get("missing_pixels_marked_black", &missing_pixels_marked_black);
   settings.get("inpaint_missing_pixels", &inpaint_missing_pixels);
   settings.get("remove_bad_pixels", &filter_bad_pixels);
+  settings.get("drop_bad_asi_frames", &drop_bad_asi_frames);
   settings.get("bad_pixels_variation_threshold", &hot_pixels_variation_threshold);
   settings.get("enable_color_maxtrix", &enable_color_maxtrix );
   settings.get("anscombe", &anscombe);
@@ -454,7 +456,7 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
 
 bool c_frame_registration_options::serialize(c_config_setting settings) const
 {
-  c_config_setting section;
+  c_config_setting section, subsection;
 
 #define SAVE(s, name) \
   save_settings(section, #name, s.name)
@@ -505,14 +507,16 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.jovian_derotation, enabled);
   SAVE(image_registration_options.jovian_derotation, min_rotation);
   SAVE(image_registration_options.jovian_derotation, max_rotation);
-  SAVE(image_registration_options.jovian_derotation, normalization_scale);
-  SAVE(image_registration_options.jovian_derotation, normalization_blur);
   SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
   SAVE(image_registration_options.jovian_derotation, eccflow_normalization_scale);
   SAVE(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
   SAVE(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
   SAVE(image_registration_options.jovian_derotation, derotate_all_frames);
   SAVE(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
+  SAVE(image_registration_options.jovian_derotation.ellipse, normalization_scale);
+  SAVE(image_registration_options.jovian_derotation.ellipse, normalization_blur);
+  SAVE(image_registration_options.jovian_derotation.ellipse, hlines);
+
 
 #undef SAVE
   return true;
@@ -583,14 +587,15 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.jovian_derotation, enabled);
     LOAD(image_registration_options.jovian_derotation, min_rotation);
     LOAD(image_registration_options.jovian_derotation, max_rotation);
-    LOAD(image_registration_options.jovian_derotation, normalization_scale);
-    LOAD(image_registration_options.jovian_derotation, normalization_blur);
     LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);
     LOAD(image_registration_options.jovian_derotation, eccflow_normalization_scale);
     LOAD(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
     LOAD(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
     LOAD(image_registration_options.jovian_derotation, derotate_all_frames);
     LOAD(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
+    LOAD(image_registration_options.jovian_derotation.ellipse, normalization_scale);
+    LOAD(image_registration_options.jovian_derotation.ellipse, normalization_blur);
+    LOAD(image_registration_options.jovian_derotation.ellipse, hlines);
   }
 
   return true;

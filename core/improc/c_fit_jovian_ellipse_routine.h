@@ -20,12 +20,14 @@ public:
   typedef c_image_processor_routine base;
   typedef std::shared_ptr<this_class> ptr;
 
-  enum display_image_type {
-    display_gray_image,
-    display_component_mask,
-    display_gradient_magnitude,
-    display_initial_artifical_ellipse,
-    display_fitted_artifical_ellipse,
+  enum display_type {
+    display_cropped_gray_image,
+    display_cropped_component_mask,
+    display_cropped_gradient_image,
+    display_cropped_normalized_image,
+    display_initial_artificial_ellipse,
+    display_initial_ellipse_fit,
+    display_final_ellipse_fit,
   };
 
   static struct c_class_factory : public base::class_factory {
@@ -39,8 +41,20 @@ public:
 
   static ptr create(bool enabled = true);
 
-  void set_display_type(display_image_type v);
-  display_image_type display_type() const;
+  void set_display(display_type v);
+  display_type display() const;
+
+  void set_hlines(const std::vector<float> & hlines);
+  const std::vector<float> & hlines() const;
+
+  void set_normalization_scale(int v);
+  int normalization_scale() const;
+
+  void set_normalization_blur(double v);
+  double normalization_blur() const;
+
+  c_jovian_ellipse_detector * detector();
+  const c_jovian_ellipse_detector * detector() const;
 
   bool serialize(c_config_setting settings) const override;
   bool deserialize(c_config_setting settings) override;
@@ -50,11 +64,16 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_type, "display image type");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, hlines, "hlines");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_scale, "normalization_scale");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_blur, "normalization_blur");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
   }
 
 protected:
-  display_image_type display_type_ = display_fitted_artifical_ellipse;
+  display_type display_type_ = display_final_ellipse_fit;
+  c_jovian_ellipse_detector detector_;
+  //std::vector<float> hlines_;
 };
 
 #endif /* __c_fit_jovian_ellipse_routine_h__ */

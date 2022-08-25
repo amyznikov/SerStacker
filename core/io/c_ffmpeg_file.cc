@@ -686,6 +686,7 @@ end:
 void c_ffmpeg_reader::close()
 {
   if ( ic ) {
+    CF_DEBUG("XXXXXXXXXXXXXXXX      CLOSE XXXXXXXXXXXXXXXXXXX");
     ffmpeg_close_input(&ic);
   }
 
@@ -802,7 +803,10 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, int64_t * outpts)
       continue;
     }
 
-    if ( (status = avcodec_send_packet(cctx, avpacket)) < 0 ) {
+    status = avcodec_send_packet(cctx, avpacket);
+    av_packet_unref(avpacket);
+
+    if ( status < 0 ) {
       CF_ERROR("avcodec_send_packet() fails: %s", averr2str(status));
       if ( status == AVERROR_EOF || status == AVERROR(EINVAL) || status == AVERROR(ENOMEM) ) {
         CF_ERROR("break");
@@ -810,6 +814,7 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, int64_t * outpts)
       }
       continue;
     }
+
 
     while ( (status = avcodec_receive_frame(cctx, avframe)) >= 0 ) {
 

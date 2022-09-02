@@ -1953,7 +1953,21 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     /////////////////////////////////////
     if ( frame_registration_ ) {
 
-      if ( !external_master_frame_ && input_sequence->current_pos() == master_frame_index_ + 1 ) {
+      const bool is_master_frame =
+          !external_master_frame_ &&
+          input_sequence->current_pos() == master_frame_index_ + 1;
+
+      CF_DEBUG("\nXXXXXXXX\n"
+          "master_frame_index_=%d input_sequence->current_pos()=%d master_frame_generation_=%d\n"
+          "is_master_frame = %d\n"
+          "XXXXXXXXXX\n",
+          master_frame_index_,
+          input_sequence->current_pos(),
+          master_frame_generation_,
+          is_master_frame);
+
+
+      if ( is_master_frame ) {
 
         if ( upscale_required(frame_upscale_after_align) ) {
 

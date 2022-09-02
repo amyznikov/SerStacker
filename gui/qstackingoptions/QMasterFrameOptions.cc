@@ -261,6 +261,8 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
 
     previousComboboxItemIndex = masterSource_ctl->currentIndex();
     setUpdatingControls(false);
+
+    emit parameterChanged();
   }
 }
 

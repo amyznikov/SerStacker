@@ -110,6 +110,7 @@ void create_jovian_rotation_remap(double rotation_angle,
 struct c_jovian_ellipse_detector_options {
   std::vector<float> hlines;
   double normalization_blur = 2;
+  double gradient_blur = 2;
   int normalization_scale = 3;
 };
 
@@ -126,6 +127,8 @@ public:
   void set_normalization_blur(double v);
   double normalization_blur() const;
 
+  void set_gradient_blur(double v);
+  double gradient_blur() const;
 
   void set_options(const c_jovian_ellipse_detector_options & v);
   c_jovian_ellipse_detector_options * options();
@@ -191,6 +194,9 @@ public:
   void set_normalization_blur(double v);
   double normalization_blur() const;
 
+  void set_gradient_blur(double v);
+  double gradient_blur() const;
+
   void set_eccflow_support_scale(int v);
   int eccflow_support_scale() const;
 
@@ -244,8 +250,8 @@ protected:
   cv::Mat1f current_cropped_wmask_;
   cv::Mat2f current_cropped_remap_;
 
-  c_ecc_forward_additive ecc_;
-  c_ecch ecch_;
+//  c_ecc_forward_additive ecc_;
+//  c_ecch ecch_;
   c_ecch_flow eccflow_;
   c_jovian_ellipse_detector planetary_detector_;
 

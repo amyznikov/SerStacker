@@ -53,6 +53,9 @@ public:
   void set_normalization_blur(double v);
   double normalization_blur() const;
 
+  void set_gradient_blur(double v);
+  double gradient_blur() const;
+
   c_jovian_ellipse_detector * detector();
   const c_jovian_ellipse_detector * detector() const;
 
@@ -73,7 +76,6 @@ public:
 protected:
   display_type display_type_ = display_final_ellipse_fit;
   c_jovian_ellipse_detector detector_;
-  //std::vector<float> hlines_;
 };
 
 #endif /* __c_fit_jovian_ellipse_routine_h__ */

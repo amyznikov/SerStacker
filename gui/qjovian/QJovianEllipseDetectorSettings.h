@@ -38,6 +38,7 @@ protected:
   QNumberEditBox * hlines_ctl = Q_NULLPTR;
   QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
   QNumberEditBox * normalization_blur_ctl = Q_NULLPTR;
+  QNumberEditBox * gradient_blur_ctl = Q_NULLPTR;
   QToolBar * toolbar_ctl = Q_NULLPTR;
 };
 

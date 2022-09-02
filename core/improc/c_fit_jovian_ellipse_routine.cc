@@ -27,7 +27,6 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
   return members;
 }
 
-
 c_fit_jovian_ellipse_routine::c_fit_jovian_ellipse_routine(bool enabled)
   : base(&class_factory, enabled)
 {
@@ -78,6 +77,16 @@ double c_fit_jovian_ellipse_routine::normalization_blur() const
   return detector_.normalization_blur();
 }
 
+void c_fit_jovian_ellipse_routine::set_gradient_blur(double v)
+{
+  return detector_.set_gradient_blur(v);
+}
+
+double c_fit_jovian_ellipse_routine::gradient_blur() const
+{
+  return detector_.gradient_blur();
+}
+
 c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector()
 {
   return &detector_;
@@ -97,8 +106,8 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings) const
   SAVE_PROPERTY(settings, *this, hlines);
   SAVE_PROPERTY(settings, *this, normalization_scale);
   SAVE_PROPERTY(settings, *this, normalization_blur);
+  SAVE_PROPERTY(settings, *this, gradient_blur);
   SAVE_PROPERTY(settings, *this, display);
-
 
   return true;
 }
@@ -112,6 +121,7 @@ bool c_fit_jovian_ellipse_routine::deserialize(c_config_setting settings)
   LOAD_PROPERTY(settings, this, hlines);
   LOAD_PROPERTY(settings, this, normalization_scale);
   LOAD_PROPERTY(settings, this, normalization_blur);
+  LOAD_PROPERTY(settings, this, gradient_blur);
   LOAD_PROPERTY(settings, this, display);
 
   return true;

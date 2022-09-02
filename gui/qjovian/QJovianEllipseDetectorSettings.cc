@@ -74,6 +74,16 @@ QJovianEllipseDetectorSettings::QJovianEllipseDetectorSettings(QWidget * parent)
             }
           });
 
+  gradient_blur_ctl =
+      add_numeric_box<float>("gradient_blur",
+          [this](float v) {
+            if ( options_ && options_->gradient_blur != v ) {
+              options_->gradient_blur = v;
+              emit parameterChanged();
+            }
+          });
+
+
 }
 
 void QJovianEllipseDetectorSettings::set_jovian_ellipse_detector_options(c_jovian_ellipse_detector_options * options)
@@ -97,6 +107,7 @@ void QJovianEllipseDetectorSettings::onupdatecontrols()
     hlines_ctl->setValue(options_->hlines);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     normalization_blur_ctl->setValue(options_->normalization_blur);
+    gradient_blur_ctl->setValue(options_->gradient_blur);
 
     setEnabled(true);
   }

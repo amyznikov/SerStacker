@@ -515,6 +515,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
   SAVE(image_registration_options.jovian_derotation.ellipse, normalization_scale);
   SAVE(image_registration_options.jovian_derotation.ellipse, normalization_blur);
+  SAVE(image_registration_options.jovian_derotation.ellipse, gradient_blur);
   SAVE(image_registration_options.jovian_derotation.ellipse, hlines);
 
 
@@ -595,6 +596,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
     LOAD(image_registration_options.jovian_derotation.ellipse, normalization_scale);
     LOAD(image_registration_options.jovian_derotation.ellipse, normalization_blur);
+    LOAD(image_registration_options.jovian_derotation.ellipse, gradient_blur);
     LOAD(image_registration_options.jovian_derotation.ellipse, hlines);
   }
 

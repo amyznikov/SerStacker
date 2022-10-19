@@ -1332,6 +1332,15 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(align_planetary_disk_masks_ctl =
+      add_checkbox("align planetary disk masks",
+          [this](bool checked) {
+            if ( options_ && options_->align_planetary_disk_masks != checked ) {
+              options_->align_planetary_disk_masks = checked;
+              emit parameterChanged();
+            }
+          }));
+
   controls.append(eccflow_support_scale_ctl =
       add_numeric_box<int>("eccflow_support_scale:",
           [this](double value) {
@@ -1410,6 +1419,7 @@ void QJovianDerotationOptions::onupdatecontrols()
     enableJovianDerotation_ctl->setChecked(options_->enabled);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
+    align_planetary_disk_masks_ctl->setChecked(options_->align_planetary_disk_masks);
     eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
     eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);
     eccflow_max_pyramid_level_ctl->setValue(options_->eccflow_max_pyramid_level);

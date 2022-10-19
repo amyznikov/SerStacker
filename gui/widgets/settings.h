@@ -382,15 +382,13 @@ inline bool fromString(const QString & text, std::vector<T> * v)
   T value;
 
   for ( int i = 0, n = tokens.size(); i < n; ++i ) {
-    if ( fromString(tokens[i], &value) ) {
-      v->emplace_back(value);
+    if ( !fromString(tokens[i], &value) ) {
+      return false;
     }
-    else {
-      break;
-    }
+    v->emplace_back(value);
   }
 
-  return !v->empty();
+  return true;// !v->empty();
 }
 
 template<class T>

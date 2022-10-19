@@ -43,8 +43,8 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, SLOT(onSpinBoxValueChanged(int)));
 
 
-  apply_input_frame_processor_ctl = new QCheckBox(this);
-  connect(apply_input_frame_processor_ctl, &QCheckBox::stateChanged,
+  apply_input_frame_processors_ctl = new QCheckBox(this);
+  connect(apply_input_frame_processors_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onApplyInputFramePprocessorCheckboxStateChanged);
 
 
@@ -99,7 +99,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
 
   form->addRow("Master file:", masterSource_ctl);
   form->addRow("Master frame Index:", masterFrameIndex_ctl);
-  form->addRow("Apply input frame processor:", apply_input_frame_processor_ctl);
+  form->addRow("Apply input processors:", apply_input_frame_processors_ctl);
 
   form->addRow("Generate master frame:", generateMasterFrame_ctl);
   form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
@@ -144,7 +144,7 @@ void QMasterFrameOptions::onupdatecontrols()
 
     generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
     maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_input_frames_to_generate_master_frame);
-    apply_input_frame_processor_ctl->setChecked(options_->apply_input_frame_processor);
+    apply_input_frame_processors_ctl->setChecked(options_->apply_input_frame_processors);
     eccFlowScale_ctl->setValue(options_->eccflow_scale);
     master_sharpen_factor_ctl->setValue(options_->master_sharpen_factor);
     accumulated_sharpen_factor_ctl->setValue(options_->accumulated_sharpen_factor);
@@ -359,7 +359,7 @@ void QMasterFrameOptions::onSaveMasterFrameCheckboxStateChanged(int state)
 void QMasterFrameOptions::onApplyInputFramePprocessorCheckboxStateChanged(int state)
 {
   if ( options_ && !updatingControls() ) {
-    options_->apply_input_frame_processor = state == Qt::Checked;
+    options_->apply_input_frame_processors = state == Qt::Checked;
     emit parameterChanged();
   }
 }

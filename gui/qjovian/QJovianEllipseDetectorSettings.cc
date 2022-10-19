@@ -51,6 +51,9 @@ QJovianEllipseDetectorSettings::QJovianEllipseDetectorSettings(QWidget * parent)
       add_numeric_box<std::vector<float>>("hlines",
           [this](const std::vector<float> & v) {
             if ( options_ ) {
+
+              CF_DEBUG("v.size=%zu", v.size());
+
               options_->hlines = v;
               emit parameterChanged();
             }

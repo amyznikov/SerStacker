@@ -686,7 +686,6 @@ end:
 void c_ffmpeg_reader::close()
 {
   if ( ic ) {
-    CF_DEBUG("XXXXXXXXXXXXXXXX      CLOSE XXXXXXXXXXXXXXXXXXX");
     ffmpeg_close_input(&ic);
   }
 

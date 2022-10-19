@@ -86,7 +86,7 @@ private:
   QThumbnailsView * thumbnailsView = Q_NULLPTR;
   QImageEditor * imageEditor = Q_NULLPTR;
   QTextFileViewer * textViewer = Q_NULLPTR;
-  QImageViewOptionsDlgBox *  imageViewOptionsControl = Q_NULLPTR;
+  QImageViewOptionsDlgBox * imageViewOptionsControl = Q_NULLPTR;
 
 #if HAVE_QGLViewer
   QCloudViewer * cloudViewer = Q_NULLPTR;

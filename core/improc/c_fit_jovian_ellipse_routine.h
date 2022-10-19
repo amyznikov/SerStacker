@@ -21,6 +21,15 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   enum display_type {
+    display_uncropped_planetary_disk_mask,
+    display_uncropped_planetary_disk_edge,
+    display_uncropped_planetary_disk_ellipse,
+    display_uncropped_planetary_disk_ellipseAMS,
+    display_initial_uncropped_artifial_ellipse,
+    display_aligned_uncropped_artifial_ellipse,
+    display_uncropped_planetary_disk_ellipseAMS2,
+
+
     display_cropped_gray_image,
     display_cropped_component_mask,
     display_cropped_gradient_image,

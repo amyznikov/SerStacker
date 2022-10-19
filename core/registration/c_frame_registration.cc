@@ -7,6 +7,8 @@
 
 #include "c_frame_registration.h"
 #include <core/proc/planetary-disk-detection.h>
+#include <core/proc/morphology.h>
+#include <core/proc/geo-reconstruction.h>
 #include <core/proc/normalize.h>
 #include <core/io/save_image.h>
 #include <core/get_time.h>
@@ -170,7 +172,7 @@ const std::string& c_frame_registration::debug_path() const
 
 bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  cv::Mat ecc_image;
+  cv::Mat ecc_image, original_ecc_image;
   cv::Mat ecc_mask;
 
   reference_frame_size_ = reference_image.size();
@@ -191,9 +193,16 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
   if( options_.eccflow.enabled || (options_.ecc.enabled && options_.ecc.scale > 0) ) {
 
-    if( !create_reference_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
+    if( !create_reference_ecc_image(reference_image, reference_mask, original_ecc_image, ecc_mask, 1) ) {
       CF_ERROR("create_reference_ecc_image() fails");
       return false;
+    }
+
+    if( options_.jovian_derotation.enabled &&  options_.jovian_derotation.align_planetary_disk_masks ) {
+      insert_planetary_disk_mask(original_ecc_image, ecc_mask, ecc_image);
+    }
+    else {
+      ecc_image = original_ecc_image;
     }
 
     if( options_.ecc.enabled && options_.ecc.scale > 0 ) {
@@ -256,6 +265,11 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
         return false;
       }
     }
+
+    if( options_.jovian_derotation.enabled &&  options_.jovian_derotation.align_planetary_disk_masks ) {
+      ecc_image = original_ecc_image;
+    }
+
   }
 
 
@@ -285,7 +299,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray current_mask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
-  cv::Mat ecc_image;
+  cv::Mat ecc_image, original_ecc_image;
   cv::Mat ecc_mask;
 
   double start_time = 0, total_time = 0;
@@ -325,9 +339,17 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   /////////////////////////////////////////////////////////////////////////////
 
   if( options_.eccflow.enabled || (options_.ecc.enabled && options_.ecc.scale > 0) ) {
-    if( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
+
+    if( !create_current_ecc_image(current_image, current_mask, original_ecc_image, ecc_mask, 1) ) {
       CF_ERROR("extract_ecc_image(current_image) fails");
       return false;
+    }
+
+    if( options_.jovian_derotation.enabled &&  options_.jovian_derotation.align_planetary_disk_masks ) {
+      insert_planetary_disk_mask(original_ecc_image, ecc_mask, ecc_image);
+    }
+    else {
+      ecc_image = original_ecc_image;
     }
   }
 
@@ -431,6 +453,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   }
 
   if( options_.jovian_derotation.enabled ) {
+
+    if( options_.jovian_derotation.align_planetary_disk_masks ) {
+      ecc_image = original_ecc_image;
+    }
 
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation", debug_path_.c_str()));
@@ -566,6 +592,35 @@ bool c_frame_registration::create_current_ecc_image(cv::InputArray src, cv::Inpu
     double scale) const
 {
   return create_ecc_image(src, srcmsk, dst, dstmsk, scale);
+}
+
+bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
+    cv::Mat & dst_ecc_image) const
+{
+  cv::Mat1f planetary_disk_mask;
+
+  bool fOk =
+      simple_planetary_disk_detector(src_ecc_image, src_mask,
+          nullptr,
+          2,
+          nullptr,
+          &planetary_disk_mask);
+
+  if( !fOk ) {
+    CF_ERROR("simple_small_planetary_disk_detector() fails");
+    return false;
+  }
+
+  cv::Scalar m, s;
+  cv::meanStdDev(src_ecc_image, m, s, src_mask);
+  cv::bitwise_and(planetary_disk_mask, src_ecc_image > s[0] / 2, planetary_disk_mask);
+  morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
+  geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
+
+  src_ecc_image.copyTo(dst_ecc_image);
+  dst_ecc_image.setTo(1, planetary_disk_mask);
+
+  return true;
 }
 
 bool c_frame_registration::extract_reference_features(cv::InputArray reference_feature_image, cv::InputArray reference_feature_mask)
@@ -1139,19 +1194,21 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     const cv::Mat1f & wmask =
         jovian_derotation_.current_cropped_wmask();
 
-    const cv::Mat1b bmask =
-        wmask > 0;
-
     const cv::Rect & rbox =
         jovian_derotation_.reference_bounding_box();
 
     const cv::Rect & cbox =
         jovian_derotation_.current_bounding_box();
 
-  //    CF_DEBUG("rmap:  %dx%d", rmap.cols, rmap.rows);
-  //    CF_DEBUG("wmask: %dx%d", wmask.cols, wmask.rows);
-  //    CF_DEBUG("rbox:  x=%d y=%d %dx%d", rbox.x, rbox.y, rbox.width, rbox.height);
-  //    CF_DEBUG("total_remap: %dx%d", total_remap.cols, total_remap.rows);
+
+      CF_DEBUG("rmap:  %dx%d", rmap.cols, rmap.rows);
+      CF_DEBUG("wmask: %dx%d", wmask.cols, wmask.rows);
+      CF_DEBUG("rbox:  x=%d y=%d %dx%d", rbox.x, rbox.y, rbox.width, rbox.height);
+      CF_DEBUG("cbox:  x=%d y=%d %dx%d", cbox.x, cbox.y, cbox.width, cbox.height);
+      CF_DEBUG("total_remap: %dx%d", total_remap.cols, total_remap.rows);
+
+      const cv::Mat1b bmask =
+          (wmask > 0) ;//& (jovian_derotation_.current_uncropped_planetary_disk_mask()(rbox));
 
     cv::Mat2f derotation_remap;
 
@@ -1195,11 +1252,14 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
       orig_mask.convertTo(new_mask, CV_32F, 1./255);
     }
 
+
     const cv::Mat1f & wmask =
         jovian_derotation_.current_cropped_wmask();
 
+
+    new_mask.setTo(0, jovian_derotation_.current_uncropped_planetary_disk_mask());
     wmask.copyTo(new_mask(jovian_derotation_.reference_bounding_box()), wmask > 0);
-    //cv::GaussianBlur(new_mask, new_mask, cv::Size(), 1, 1);
+    //cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
     new_mask.setTo(0, ~orig_mask);
     dst_mask.move(new_mask);
   }

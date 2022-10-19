@@ -31,13 +31,13 @@ double get_yen_threshold(cv::InputArray src, cv::InputArray _mask = cv::noArray(
 
 
 
-double get_isodata_threshold(const cv::Mat& _src, cv::InputArray _mask = cv::noArray());
+double get_isodata_threshold(cv::InputArray _src, cv::InputArray _mask = cv::noArray());
 void isodata_threshold(const cv::Mat & src, cv::Mat & dst, double maxval, cv::InputArray _mask = cv::noArray(), int ttype = cv::THRESH_BINARY);
 
-double get_huang_threshold(const cv::Mat& _src, cv::InputArray _mask = cv::noArray());
+double get_huang_threshold(cv::InputArray src, cv::InputArray _mask = cv::noArray());
 void huang_threshold(const cv::Mat & _src, cv::Mat & _dst, cv::InputArray _mask = cv::noArray());
 
-void mean_threshold(const cv::Mat & _src, cv::Mat & _dst, cv::InputArray _mask = cv::noArray());
+void mean_threshold(cv::InputArray  _src, cv::Mat & _dst, cv::InputArray _mask = cv::noArray());
 
 ///////////////////////////////////////////////////////////////////////////////
 #endif /* __glv_threshold_h__*/

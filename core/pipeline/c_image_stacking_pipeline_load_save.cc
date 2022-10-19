@@ -396,7 +396,7 @@ bool c_master_frame_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "master_source_path", master_source_path);
   save_settings(settings, "master_frame_index",master_frame_index );
-  save_settings(settings, "apply_input_frame_processor", apply_input_frame_processor);
+  save_settings(settings, "apply_input_frame_processors", apply_input_frame_processors);
   save_settings(settings, "generate_master_frame", generate_master_frame);
   save_settings(settings, "max_input_frames_to_generate_master_frame", max_input_frames_to_generate_master_frame);
   save_settings(settings, "eccflow_scale", eccflow_scale);
@@ -417,7 +417,7 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
 
   load_settings(settings, "master_source_path", &master_source_path);
   load_settings(settings, "master_frame_index", &master_frame_index );
-  load_settings(settings, "apply_input_frame_processor", &apply_input_frame_processor);
+  load_settings(settings, "apply_input_frame_processors", &apply_input_frame_processors);
   load_settings(settings, "generate_master_frame", &generate_master_frame);
   load_settings(settings, "max_input_frames_to_generate_master_frame", &max_input_frames_to_generate_master_frame);
   load_settings(settings, "eccflow_scale", &eccflow_scale);
@@ -432,9 +432,14 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
 bool c_frame_accumulation_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "accumulation_method", accumulation_method );
-  save_settings(settings, "lksize", lksize );
-  save_settings(settings, "scale_size", scale_size);
+//  save_settings(settings, "lksize", lksize );
+//  save_settings(settings, "scale_size", scale_size);
+//  save_settings(settings, "minv", minv);
+
+  save_settings(settings, "s1", s1);
+  save_settings(settings, "s2", s2);
   save_settings(settings, "minv", minv);
+  save_settings(settings, "scale", scale);
 
   return true;
 }
@@ -446,9 +451,14 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
   }
 
   load_settings(settings, "accumulation_method", &accumulation_method );
-  load_settings(settings, "lksize", &lksize );
-  load_settings(settings, "scale_size", &scale_size);
+//  load_settings(settings, "lksize", &lksize );
+//  load_settings(settings, "scale_size", &scale_size);
+//  load_settings(settings, "minv", &minv);
+
+  load_settings(settings, "s1", &s1);
+  load_settings(settings, "s2", &s2);
   load_settings(settings, "minv", &minv);
+  load_settings(settings, "scale", &scale);
 
   return true;
 }
@@ -505,6 +515,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
 
   section = settings.add_group("jovian_derotation");
   SAVE(image_registration_options.jovian_derotation, enabled);
+  SAVE(image_registration_options.jovian_derotation, align_planetary_disk_masks);
   SAVE(image_registration_options.jovian_derotation, min_rotation);
   SAVE(image_registration_options.jovian_derotation, max_rotation);
   SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
@@ -586,6 +597,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
 
   if( (section = settings["jovian_derotation"]).isGroup() ) {
     LOAD(image_registration_options.jovian_derotation, enabled);
+    LOAD(image_registration_options.jovian_derotation, align_planetary_disk_masks);
     LOAD(image_registration_options.jovian_derotation, min_rotation);
     LOAD(image_registration_options.jovian_derotation, max_rotation);
     LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);
@@ -649,11 +661,13 @@ bool c_image_stacking_output_options::serialize(c_config_setting settings) const
 
   save_settings(settings, "output_preprocessed_frames_filename", output_preprocessed_frames_filename);
   save_settings(settings, "output_aligned_frames_filename", output_aligned_frames_filename);
+  save_settings(settings, "output_ecc_frames_filename", output_ecc_frames_filename);
   save_settings(settings, "output_postprocessed_frames_filename", output_postprocessed_frames_filename);
   save_settings(settings, "output_accumulation_masks_filename", output_accumulation_masks_filename);
 
   save_settings(settings, "save_preprocessed_frames", save_preprocessed_frames);
   save_settings(settings, "save_aligned_frames", save_aligned_frames);
+  save_settings(settings, "save_ecc_frames", save_ecc_frames);
   save_settings(settings, "save_postprocessed_frames", save_postprocessed_frames);
   save_settings(settings, "save_accumulation_masks", save_accumulation_masks);
 
@@ -675,11 +689,13 @@ bool c_image_stacking_output_options::deserialize(c_config_setting settings)
 
   load_settings(settings, "output_preprocessed_frames_filename", &output_preprocessed_frames_filename);
   load_settings(settings, "output_aligned_frames_filename", &output_aligned_frames_filename);
+  load_settings(settings, "output_ecc_frames_filename", &output_ecc_frames_filename);
   load_settings(settings, "output_postprocessed_frames_filename", &output_postprocessed_frames_filename);
   load_settings(settings, "output_accumulation_masks_filename", &output_accumulation_masks_filename);
 
   load_settings(settings, "save_preprocessed_frames", &save_preprocessed_frames);
   load_settings(settings, "save_aligned_frames", &save_aligned_frames);
+  load_settings(settings, "save_ecc_frames", &save_ecc_frames);
   load_settings(settings, "save_postprocessed_frames", &save_postprocessed_frames);
   load_settings(settings, "save_accumulation_masks", &save_accumulation_masks);
 

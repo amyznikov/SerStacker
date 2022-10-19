@@ -34,26 +34,44 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
         }
       });
 
-  lksize_ctl =
-      add_numeric_box<int>("lksize:",
-          [this](int v) {
-            if ( options_ && v != options_->lksize ) {
-              options_->lksize = v;
+//  lksize_ctl =
+//      add_numeric_box<int>("lksize:",
+//          [this](int v) {
+//            if ( options_ && v != options_->lksize ) {
+//              options_->lksize = v;
+//              emit parameterChanged();
+//            }
+//          });
+//
+//  scale_size_ctl =
+//      add_numeric_box<int>("scale:",
+//          [this](int v) {
+//            if ( options_ && v != options_->scale_size ) {
+//              options_->scale_size = v;
+//              emit parameterChanged();
+//            }
+//          });
+//
+  s1_ctl =
+      add_numeric_box<double>("s1:",
+          [this](double v) {
+            if ( options_ && v != options_->s1 ) {
+              options_->s1 = v;
               emit parameterChanged();
             }
           });
 
-  scale_size_ctl =
-      add_numeric_box<int>("scale:",
-          [this](int v) {
-            if ( options_ && v != options_->scale_size ) {
-              options_->scale_size = v;
+  s2_ctl =
+      add_numeric_box<double>("s2:",
+          [this](double v) {
+            if ( options_ && v != options_->s2 ) {
+              options_->s2 = v;
               emit parameterChanged();
             }
           });
 
   minv_ctl =
-      add_numeric_box<double>("miv:",
+      add_numeric_box<double>("minv:",
           [this](double v) {
             if ( options_ && v != options_->minv ) {
               options_->minv = v;
@@ -61,20 +79,32 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
             }
           });
 
-  applyToAll_ctl = new QToolButton(this);
-  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  applyToAll_ctl->setIconSize(QSize(16,16));
-//  applyToAll_ctl->setStyleSheet(borderless_style);
-  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-  connect(applyToAll_ctl, &QToolButton::clicked,
-      [this]() {
-        if ( options_ ) {
-          emit applyFrameAccumulationOptionsToAllRequested(*options_);
-        }
-      });
+  scale_ctl =
+      add_numeric_box<int>("scale:",
+          [this](double v) {
+            if ( options_ && v != options_->scale ) {
+              options_->scale = v;
+              emit parameterChanged();
+            }
+          });
 
-  form->addRow(applyToAll_ctl);
+
+
+
+//  applyToAll_ctl = new QToolButton(this);
+//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//  applyToAll_ctl->setIconSize(QSize(16,16));
+////  applyToAll_ctl->setStyleSheet(borderless_style);
+//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
+//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
+//  connect(applyToAll_ctl, &QToolButton::clicked,
+//      [this]() {
+//        if ( options_ ) {
+//          emit applyFrameAccumulationOptionsToAllRequested(*options_);
+//        }
+//      });
+//
+//  form->addRow(applyToAll_ctl);
 
   setEnabled(false);
 }
@@ -99,9 +129,14 @@ void QFrameAccumulationOptions::onupdatecontrols()
   else {
 
     accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
-    lksize_ctl->setValue(options_->lksize);
-    scale_size_ctl->setValue(options_->scale_size);
+//    lksize_ctl->setValue(options_->lksize);
+//    scale_size_ctl->setValue(options_->scale_size);
+//    minv_ctl->setValue(options_->minv);
+
+    s1_ctl->setValue(options_->s1);
+    s2_ctl->setValue(options_->s2);
     minv_ctl->setValue(options_->minv);
+    scale_ctl->setValue(options_->scale);
 
     setEnabled(true);
   }

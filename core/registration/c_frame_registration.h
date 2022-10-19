@@ -53,6 +53,7 @@ struct c_jovian_derotation_options {
   int eccflow_support_scale = 4;
   int eccflow_normalization_scale = 2;
   int eccflow_max_pyramid_level = 0;
+  bool align_planetary_disk_masks = true;
   bool derotate_all_frames = false;
   int  derotate_all_frames_max_context_size = -1;
   bool rotate_jovian_disk_horizontally = false;
@@ -187,6 +188,10 @@ protected:
   virtual bool create_current_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk,
       double scale) const;
+
+  bool insert_planetary_disk_mask(const cv::Mat & src_ecc_image,
+      const cv::Mat & src_mask,
+      cv::Mat & dst_ecc_image) const;
 
   virtual bool extract_reference_features(cv::InputArray reference_feature_image,
       cv::InputArray reference_feature_mask);

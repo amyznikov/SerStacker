@@ -176,10 +176,10 @@ double get_otsu_threshold(cv::InputArray src, cv::InputArray _mask)
   const cv::Mat _src = src.getMat();
 
   if ( !_src.isContinuous() ) {
-    CF_FATAL("Unsupperted not continuous matrix encountered");
+    CF_FATAL("Unsupported not continuous matrix encountered");
   }
   else if ( _src.channels() != 1 ) {
-    CF_FATAL("Unsupperted multichannel matrix encountered");
+    CF_FATAL("Unsupported multichannel matrix encountered");
   }
   else {
     switch ( _src.type() ) {
@@ -238,10 +238,11 @@ void otsu_threshold(const cv::Mat & _src, cv::Mat & _dst, double ts, cv::InputAr
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-double get_isodata_threshold(const cv::Mat& src, cv::InputArray _srcmask)
+double get_isodata_threshold(cv::InputArray _src, cv::InputArray _srcmask)
 {
   double min, max, t, tp;
 
+  cv::Mat src = _src.getMat();
   cv::Mat srcmask = _srcmask.getMat();
 
   minMaxLoc(src, &min, &max, NULL, NULL, _srcmask);
@@ -370,7 +371,7 @@ static int Huang(float hist[256])
 
 
 /* fixme: this computes index in 256-bin histogram instead of real threshold */
-double get_huang_threshold(const cv::Mat & _src, cv::InputArray _mask)
+double get_huang_threshold(cv::InputArray _src, cv::InputArray _mask)
 {
   const int numbins = 256;
   int histSize[] = { numbins };
@@ -378,11 +379,13 @@ double get_huang_threshold(const cv::Mat & _src, cv::InputArray _mask)
   float hrange[] = { (float) 0, (float) 255 };
   const float * ranges[] = { hrange };
 
-  cv::Mat gshist;
+  cv::Mat src, gshist;
 
+
+  src = _src.getMat();
 
   try {
-    calcHist(&_src, 1, channels, _mask, gshist, 1, histSize, ranges, true, false);
+    calcHist(&src, 1, channels, _mask, gshist, 1, histSize, ranges, true, false);
   }
   catch( const std::exception &e ) {
     CF_ERROR("cv::calcHist( fails: %s", e.what());
@@ -425,7 +428,7 @@ void huang_threshold(const cv::Mat & _src, cv::Mat & _dst, cv::InputArray _mask)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void mean_threshold(const cv::Mat & _src, cv::Mat & _dst, cv::InputArray _mask)
+void mean_threshold(cv::InputArray & _src, cv::Mat & _dst, cv::InputArray _mask)
 {
   // C. A. Glasbey, "An analysis of histogram-based thresholding algorithms,"
   // CVGIP: Graphical Models and Image Processing, vol. 55, pp. 532-537, 1993.

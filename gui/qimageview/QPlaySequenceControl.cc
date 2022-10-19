@@ -14,23 +14,32 @@ QPlaySequenceControl::QPlaySequenceControl(QWidget * parent)
 
   layout->setContentsMargins(4, 0, 0, 4);
 
-  playButton = new QToolButton(this);
-  playButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-  connect(playButton, &QAbstractButton::clicked,
+  playButton_ctl = new QToolButton(this);
+  playButton_ctl->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+  connect(playButton_ctl, &QAbstractButton::clicked,
       this, &ThisClass::onPlayClicked);
 
-  curposSlider = new QSlider(Qt::Horizontal, this);
-  curposSlider->setRange(0, 0);
-  curposSlider->setValue(0);
-  curposSlider->setSingleStep(1);
-  connect(curposSlider, &QSlider::valueChanged,
+  curposSpin_ctl = new QSpinBox(this);
+  curposSpin_ctl->setKeyboardTracking(false);
+  curposSpin_ctl->setAccelerated(true);
+  curposSpin_ctl->setRange(0, 0);
+  curposSpin_ctl->setButtonSymbols(QSpinBox::ButtonSymbols::UpDownArrows);
+  connect(curposSpin_ctl, SIGNAL(valueChanged(int)),
+      this, SLOT(onSpinValueChanged(int)));
+
+  curposSlider_ctl = new QSlider(Qt::Horizontal, this);
+  curposSlider_ctl->setRange(0, 0);
+  curposSlider_ctl->setValue(0);
+  curposSlider_ctl->setSingleStep(1);
+  connect(curposSlider_ctl, &QSlider::valueChanged,
       this, &ThisClass::onSliderValueChanged);
 
-  curposLabel = new QLabel("");
+  curposLabel_ctl = new QLabel("");
 
-  layout->addWidget(playButton);
-  layout->addWidget(curposSlider, 100);
-  layout->addWidget(curposLabel, 0);
+  layout->addWidget(curposSpin_ctl);
+  layout->addWidget(playButton_ctl);
+  layout->addWidget(curposSlider_ctl, 100);
+  layout->addWidget(curposLabel_ctl, 0);
 }
 
 QPlaySequenceControl::State QPlaySequenceControl::state() const
@@ -49,7 +58,7 @@ void QPlaySequenceControl::setState(State state)
       break;
     case Playing :  // stopped -> playing
       timerId = startTimer(100, Qt::CoarseTimer);
-      playButton->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+      playButton_ctl->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
       break;
     }
     break;
@@ -59,7 +68,7 @@ void QPlaySequenceControl::setState(State state)
     case Stopped :  // playing -> stopped
       killTimer(timerId);
       timerId = 0;
-      playButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+      playButton_ctl->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
       break;
     case Playing :  // playing -> playing
       break;
@@ -71,7 +80,8 @@ void QPlaySequenceControl::setState(State state)
 void QPlaySequenceControl::setSeekRange(int min,  int max)
 {
   disableEmitSignals = true;
-  curposSlider->setRange(min, max);
+  curposSlider_ctl->setRange(min, max);
+  curposSpin_ctl->setRange(min, max);
   disableEmitSignals = false;
   updateCurposLabel();
 }
@@ -79,9 +89,8 @@ void QPlaySequenceControl::setSeekRange(int min,  int max)
 void QPlaySequenceControl::setCurpos(int pos)
 {
   disableEmitSignals = true;
-  curposSlider->setValue(pos);
+  curposSlider_ctl->setValue(pos);
   disableEmitSignals = false;
-  updateCurposLabel();
 }
 
 
@@ -91,33 +100,59 @@ void QPlaySequenceControl::onPlayClicked()
     setState(Stopped);
   }
   else {
-    if ( curposSlider->value() >= curposSlider->maximum() ) {
-      curposSlider->setValue(0);
+    if ( curposSlider_ctl->value() >= curposSlider_ctl->maximum() ) {
+      curposSlider_ctl->setValue(0);
     }
     setState(Playing);
   }
 }
 
+void QPlaySequenceControl::onSpinValueChanged(int newpos)
+{
+  if ( !updatingControls ) {
+
+    updatingControls = true;
+    curposSlider_ctl->setValue(newpos);
+    updatingControls = false;
+
+    if ( !disableEmitSignals ) {
+      emit onSeek(newpos);
+    }
+  }
+
+}
+
 void QPlaySequenceControl::onSliderValueChanged(int newpos)
 {
-  updateCurposLabel();
-  if ( !disableEmitSignals ) {
-    emit onSeek(newpos);
+  if ( !updatingControls ) {
+
+    updatingControls = true;
+    curposSpin_ctl->setValue(newpos);
+    updatingControls = false;
+
+    if ( !disableEmitSignals ) {
+      emit onSeek(newpos);
+    }
   }
 }
 
+
+
 void QPlaySequenceControl::updateCurposLabel()
 {
-  curposLabel->setText(QString("%1/%2").
-      arg(curposSlider->value()).
-      arg(curposSlider->maximum() + 1));
+  //  curposLabel->setText(QString("%1/%2").
+  //      arg(curposSlider_ctl->value()).
+  //      arg(curposSlider_ctl->maximum() + 1));
+
+  curposLabel_ctl->setText(QString("%1").
+      arg(curposSlider_ctl->maximum() + 1));
 }
 
 void QPlaySequenceControl::timerEvent(QTimerEvent *event)
 {
   if ( currentState == Playing ) {
-    if ( curposSlider->value() < curposSlider->maximum() ) {
-      curposSlider->setValue(curposSlider->value() + 1);
+    if ( curposSlider_ctl->value() < curposSlider_ctl->maximum() ) {
+      curposSlider_ctl->setValue(curposSlider_ctl->value() + 1);
     }
     else {
       setState(Stopped);

@@ -45,20 +45,20 @@
  @endcode
  */
 
-struct c_detect_jovian_ellipse_debug_images {
-  cv::Mat gray_image;
-  cv::Mat component_mask;
-  cv::Mat cropped_component_mask;
-  cv::Mat cropped_component_image;
-  cv::Mat initial_artifical_ellipse;
-  cv::Mat fitted_artifical_ellipse;
-};
+//struct c_detect_jovian_ellipse_debug_images {
+//  cv::Mat gray_image;
+//  cv::Mat component_mask;
+//  cv::Mat cropped_component_mask;
+//  cv::Mat cropped_component_image;
+//  cv::Mat initial_artifical_ellipse;
+//  cv::Mat fitted_artifical_ellipse;
+//};
 
-bool detect_jovian_ellipse(cv::InputArray _image,
-    cv::RotatedRect * output_ellipse_rect,
-    const std::string & debug_path = "",
-    c_detect_jovian_ellipse_debug_images * debug = nullptr,
-    const std::vector<float> * hlines = nullptr);
+//bool detect_jovian_ellipse(cv::InputArray _image,
+//    cv::RotatedRect * output_ellipse_rect,
+//    const std::string & debug_path = "",
+//    c_detect_jovian_ellipse_debug_images * debug = nullptr,
+//    const std::vector<float> * hlines = nullptr);
 
 
 
@@ -138,6 +138,11 @@ public:
   // ellipse in source image coordinates
   const cv::RotatedRect & planetary_disk_ellipse() const;
   const cv::Mat & uncropped_planetary_disk_mask() const;
+  const cv::Mat & uncropped_planetary_disk_edge() const;
+  const cv::RotatedRect & ellipseAMS() const;
+  const cv::Mat & initial_uncropped_artifial_ellipse() const;
+  const cv::Mat & aligned_uncropped_artifial_ellipse() const;
+  const cv::RotatedRect & ellipseAMS2() const;
 
   // bounding box for component_mask
   const cv::Rect & crop_bounding_box() const;
@@ -156,6 +161,11 @@ protected:
 
   cv::RotatedRect ellipse_;
   cv::Mat uncropped_planetary_disk_mask_;
+  cv::Mat uncropped_planetary_disk_edge_;
+  cv::RotatedRect ellipseAMS_;
+  cv::Mat1f initial_uncropped_artifial_ellipse_;
+  cv::Mat1f aligned_uncropped_artifial_ellipse_;
+  cv::RotatedRect ellipseAMS2_;
 
   cv::Rect crop_bounding_box_;
   cv::Mat cropped_gray_image_;

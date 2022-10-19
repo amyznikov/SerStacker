@@ -45,6 +45,9 @@ protected:
   QCheckBox * save_aligned_frames_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_aligned_frames_path_ctl = Q_NULLPTR;
 
+  QCheckBox * save_ecc_frames_ctl = Q_NULLPTR;
+  QBrowsePathCombo * output_ecc_frames_path_ctl = Q_NULLPTR;
+
   QCheckBox * save_postprocessed_frames_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_postprocessed_frames_path_ctl = Q_NULLPTR;
 

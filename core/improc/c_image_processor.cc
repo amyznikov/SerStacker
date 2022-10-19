@@ -16,6 +16,7 @@
 #include "c_range_normalize_routine.h"
 #include "c_rangeclip_routine.h"
 #include "c_smap_routine.h"
+#include "c_dogsmap_routine.h"
 #include "c_unsharp_mask_routine.h"
 #include "c_scale_channels_routine.h"
 #include "c_type_convert_routine.h"
@@ -33,6 +34,7 @@
 #include "c_affine_transform_routine.h"
 #include "c_mean_curvature_blur_routine.h"
 #include "c_fit_jovian_ellipse_routine.h"
+#include "c_threshold_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -89,6 +91,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_range_normalize_routine::class_factory);
     register_class_factory(&c_rangeclip_routine::class_factory);
     register_class_factory(&c_smap_routine::class_factory);
+    register_class_factory(&c_dogsmap_routine::class_factory);
     register_class_factory(&c_unsharp_mask_routine::class_factory);
     register_class_factory(&c_gradient_routine::class_factory);
     register_class_factory(&c_scale_channels_routine::class_factory);
@@ -107,6 +110,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_remove_sharp_artifacts_routine::class_factory);
     register_class_factory(&c_mean_curvature_blur_routine::class_factory);
     register_class_factory(&c_fit_jovian_ellipse_routine::class_factory);
+    register_class_factory(&c_threshold_routine::class_factory);
   }
 }
 

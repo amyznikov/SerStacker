@@ -40,17 +40,20 @@ protected:
 
 protected slots:
   void onPlayClicked();
+  void onSpinValueChanged(int newpos);
   void onSliderValueChanged(int newpos);
   void updateCurposLabel();
 
 protected:
-  QAbstractButton * playButton = Q_NULLPTR;
-  QAbstractSlider * curposSlider = Q_NULLPTR;
-  QLabel * curposLabel = Q_NULLPTR;
-  QComboBox * rateBox = Q_NULLPTR;
+  QAbstractButton * playButton_ctl = Q_NULLPTR;
+  QSpinBox * curposSpin_ctl = Q_NULLPTR;
+  QAbstractSlider * curposSlider_ctl = Q_NULLPTR;
+  QLabel * curposLabel_ctl = Q_NULLPTR;
+  QComboBox * rateBox_ctl = Q_NULLPTR;
   State currentState = Stopped;
   int timerId = 0;
   bool disableEmitSignals = false;
+  bool updatingControls = false;
 };
 
 #endif /* __QPlaySequenceControl_h__ */

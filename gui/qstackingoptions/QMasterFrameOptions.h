@@ -56,7 +56,7 @@ protected:
 
   QComboBox * masterSource_ctl = Q_NULLPTR;
   QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
-  QCheckBox * apply_input_frame_processor_ctl = Q_NULLPTR;
+  QCheckBox * apply_input_frame_processors_ctl = Q_NULLPTR;
   QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
   QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
   QNumberEditBox * eccFlowScale_ctl = Q_NULLPTR;

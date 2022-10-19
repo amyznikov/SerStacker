@@ -38,10 +38,16 @@ protected:
 protected:
   c_frame_accumulation_options * options_ = Q_NULLPTR;
   QFrameAccumulationMethodCombo * accumulation_method_ctl = Q_NULLPTR;
-  QNumberEditBox * lksize_ctl = Q_NULLPTR;
-  QNumberEditBox * scale_size_ctl = Q_NULLPTR;
+//  QNumberEditBox * lksize_ctl = Q_NULLPTR;
+//  QNumberEditBox * scale_size_ctl = Q_NULLPTR;
+//  QNumberEditBox * minv_ctl = Q_NULLPTR;
+//  QToolButton * applyToAll_ctl = Q_NULLPTR;
+
+  QNumberEditBox * s1_ctl = Q_NULLPTR;
+  QNumberEditBox * s2_ctl = Q_NULLPTR;
   QNumberEditBox * minv_ctl = Q_NULLPTR;
-  QToolButton * applyToAll_ctl = Q_NULLPTR;
+  QNumberEditBox * scale_ctl = Q_NULLPTR;
+
 };
 
 #endif /* __QFrameAccumulationOptions_h__ */

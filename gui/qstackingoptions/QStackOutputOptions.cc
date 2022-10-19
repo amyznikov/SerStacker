@@ -110,6 +110,34 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   ///
 
+  ///
+
+  save_ecc_frames_ctl =
+      add_named_checkbox("Save ecc frames",
+      [this](bool checked) {
+        if ( options_ && options_->output_options().save_ecc_frames != checked ) {
+          options_->output_options().save_ecc_frames = checked;
+          output_ecc_frames_path_ctl->setEnabled(options_->output_options().save_ecc_frames);
+          emit parameterChanged();
+        }
+      });
+
+  form->addRow(output_ecc_frames_path_ctl =
+    new QBrowsePathCombo("ECC frames file name:",
+        QFileDialog::AnyFile,
+        this));
+
+  connect(output_ecc_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+    [this] () {
+      if ( options_ && !updatingControls() ) {
+        options_->output_options().output_ecc_frames_filename =
+            output_ecc_frames_path_ctl->currentPath().toStdString();
+        emit parameterChanged();
+      }
+    });
+
+
+  ///
 
   ///
 
@@ -265,6 +293,10 @@ void QStackOutputOptions::onupdatecontrols()
     save_aligned_frames_ctl->setChecked(output_options.save_aligned_frames);
     output_aligned_frames_path_ctl->setCurrentPath(output_options.output_aligned_frames_filename.c_str());
     output_aligned_frames_path_ctl->setEnabled(output_options.save_aligned_frames);
+
+    save_ecc_frames_ctl->setChecked(output_options.save_ecc_frames);
+    output_ecc_frames_path_ctl->setCurrentPath(output_options.output_ecc_frames_filename.c_str());
+    output_ecc_frames_path_ctl->setEnabled(output_options.save_ecc_frames);
 
     save_postprocessed_frames_ctl->setChecked(output_options.save_postprocessed_frames);
     output_postprocessed_frames_path_ctl->setCurrentPath(output_options.output_postprocessed_frames_filename.c_str());

@@ -103,7 +103,8 @@ public:
   QNumberEditBox * add_numeric_box(QFormLayout * form, const QString & name,
       const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
   {
-    QNumberEditBox * ctl = add_numeric_box(form, name, setfn);
+    QNumberEditBox * ctl =
+        add_numeric_box(form, name, setfn);
 
     if( getfn ) {
 

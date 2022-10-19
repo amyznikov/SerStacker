@@ -14,6 +14,17 @@ template<>
 const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
 {
   static constexpr c_enum_member members[] = {
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_mask, "planetary_disk_mask", },
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_edge, "planetary_disk_edge", },
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_ellipse, "planetary_disk_ellipse", },
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_ellipseAMS, "planetary_disk_ellipseAMS", },
+      { c_fit_jovian_ellipse_routine::display_initial_uncropped_artifial_ellipse, "initial_uncropped_artifial_ellipse", },
+      { c_fit_jovian_ellipse_routine::display_aligned_uncropped_artifial_ellipse, "aligned_uncropped_artifial_ellipse", },
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_ellipseAMS2, "planetary_disk_ellipseAMS2", },
+
+
+
+
       { c_fit_jovian_ellipse_routine::display_cropped_gray_image, "cropped_gray_image", },
       { c_fit_jovian_ellipse_routine::display_cropped_component_mask, "cropped_component_mask", },
       { c_fit_jovian_ellipse_routine::display_cropped_gradient_image, "cropped_gradient_image", },
@@ -150,36 +161,45 @@ bool c_fit_jovian_ellipse_routine::deserialize(c_config_setting settings)
 //  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 //}
 
+static void rotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & rc,
+    const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
+{
+  cv::Point2f pts[4];
+  rc.points(pts);
+
+  for (int i = 0; i < 4; i++) {
+   cv::line(image, pts[i], pts[(i+1)%4], color, thickness, lineType, shift);
+  }
+}
+
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-//  c_detect_jovian_ellipse_debug_images debug;
-//  cv::RotatedRect ellipse_rect;
-//
-//  if ( !detect_jovian_ellipse(image, &ellipse_rect, "", &debug, &hlines_) ) {
-//    CF_ERROR("detect_jovian_ellipse() fails");
-//  }
-
-//  switch (display_type_) {
-//  case display_gray_image:
-//    debug.gray_image.copyTo(image);
-//    break;
-//  case display_component_mask:
-//    debug.component_mask.copyTo(image);
-//    break;
-//  case display_gradient_magnitude:
-//    debug.cropped_component_image.copyTo(image);
-//    break;
-//  case display_initial_artifical_ellipse:
-//    debug.initial_artifical_ellipse.copyTo(image);
-//    break;
-//  case display_fitted_artifical_ellipse:
-//    debug.fitted_artifical_ellipse.copyTo(image);
-//    break;
-//  }
-//
-
   detector_.detect_planetary_disk(image, mask);
+
   switch (display_type_) {
+  case display_uncropped_planetary_disk_mask:
+    detector_.uncropped_planetary_disk_mask().copyTo(image);
+    break;
+  case display_uncropped_planetary_disk_edge:
+    image.setTo(1, detector_.uncropped_planetary_disk_edge());
+    break;
+  case display_uncropped_planetary_disk_ellipseAMS:
+    rotatedRectange(image, detector_.ellipseAMS(), CV_RGB(0, 1, 0), 1);
+    cv::ellipse(image, detector_.ellipseAMS(), CV_RGB(0, 0, 1), 1);
+    break;
+  case display_initial_uncropped_artifial_ellipse:
+    detector_.initial_uncropped_artifial_ellipse().copyTo(image);
+    break;
+  case display_aligned_uncropped_artifial_ellipse:
+    detector_.aligned_uncropped_artifial_ellipse().copyTo(image);
+    break;
+  case display_uncropped_planetary_disk_ellipseAMS2:
+    rotatedRectange(image, detector_.ellipseAMS2(), CV_RGB(0, 1, 0), 1);
+    cv::ellipse(image, detector_.ellipseAMS2(), CV_RGB(0, 0, 1), 1);
+    break;
+  case display_uncropped_planetary_disk_ellipse:
+    cv::ellipse(image, detector_.planetary_disk_ellipse(), 1, 1);
+    break;
   case display_cropped_gray_image:
     detector_.cropped_gray_image().copyTo(image);
     break;

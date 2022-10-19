@@ -14,5 +14,7 @@
 bool compute_smap(cv::InputArray src, cv::Mat & dst,
     int lksize, int scale_size, double minv);
 
+bool compute_dogsmap(cv::InputArray src, cv::Mat & dst,
+    double s1, double s2, int scale, double minv);
 
 #endif /* __smap_h__ */

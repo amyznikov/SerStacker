@@ -767,10 +767,30 @@ const cv::Mat & c_jovian_ellipse_detector::uncropped_planetary_disk_mask() const
   return uncropped_planetary_disk_mask_;
 }
 
-//cv::Mat c_jovian_ellipse_detector::component_mask(const cv::Rect & crop) const
-//{
-//  return uncropped_planetary_disk_mask_(crop);
-//}
+const cv::Mat & c_jovian_ellipse_detector::uncropped_planetary_disk_edge() const
+{
+  return uncropped_planetary_disk_edge_;
+}
+
+const cv::RotatedRect & c_jovian_ellipse_detector::ellipseAMS() const
+{
+  return ellipseAMS_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::initial_uncropped_artifial_ellipse() const
+{
+  return initial_uncropped_artifial_ellipse_;
+}
+
+const cv::Mat & c_jovian_ellipse_detector::aligned_uncropped_artifial_ellipse() const
+{
+  return aligned_uncropped_artifial_ellipse_;
+}
+
+const cv::RotatedRect & c_jovian_ellipse_detector::ellipseAMS2() const
+{
+  return ellipseAMS2_;
+}
 
 const cv::Mat & c_jovian_ellipse_detector::cropped_gray_image() const
 {
@@ -816,7 +836,7 @@ bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv:
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat gray_image, edge_mask;
+  cv::Mat gray_image;
   std::vector<cv::Point2f> component_edge_points;
   cv::Scalar m, s;
 
@@ -845,14 +865,15 @@ bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv:
   morphological_smooth_close(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, cv::Mat1b(3, 3, 255));
   geo_fill_holes(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, 8);
 
-  morphological_gradient(uncropped_planetary_disk_mask_, edge_mask, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
-  cv::findNonZero(edge_mask, component_edge_points);
+  morphological_gradient(uncropped_planetary_disk_mask_, uncropped_planetary_disk_edge_, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
+  cv::findNonZero(uncropped_planetary_disk_edge_, component_edge_points);
 
   ellipse_ = cv::fitEllipseAMS(component_edge_points);
   if ( ellipse_.size.width < ellipse_.size.height ) {
     std::swap(ellipse_.size.width, ellipse_.size.height);
     ellipse_.angle -= 90;
   }
+  ellipseAMS_ = ellipse_;
 
   CF_DEBUG("fitEllipseAMS: angle=%g width=%g height=%g", ellipse_.angle, ellipse_.size.width, ellipse_.size.height);
 
@@ -874,8 +895,86 @@ bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv:
   crop_bounding_box_.width = r - l + 1;
   crop_bounding_box_.height = b - t + 1;
 
-  gray_image(crop_bounding_box_).copyTo(cropped_gray_image_, uncropped_planetary_disk_mask_(crop_bounding_box_));
-  gradient_magnitude(cropped_gray_image_, cropped_gradient_image_, std::max(1., crop_bounding_box_.width / 300.) );
+  /////////////////////////////////////////////////////////////////////////////////////////
+  if ( true ) {
+
+    initial_uncropped_artifial_ellipse_.create(_image.size());
+    initial_uncropped_artifial_ellipse_.setTo(0);
+
+    static constexpr double jovian_polar_to_equatorial_axis_ratio = 66.854 / 71.492;
+
+    double A = 0.5 * ellipseAMS_.size.width;
+    double B = A * jovian_polar_to_equatorial_axis_ratio;
+    const double angle = 0; // ellipseAMS_.angle;
+    const cv::Point2f C = ellipseAMS_.center;
+
+    cv::RotatedRect rc(C, cv::Size(2*A, 2*B), angle);
+
+    cv::ellipse(initial_uncropped_artifial_ellipse_, rc, 0.5, -1, cv::LINE_AA);
+
+    c_ecc_forward_additive ecc(ECC_MOTION_EUCLIDEAN_SCALED);
+
+    cv::Matx23f T =
+        createEuclideanTransform(C.x, C.y,
+            C.x, C.y,
+            1,
+            0);
+
+    ecc.set_eps(0.2);
+    ecc.set_min_rho(0.25);
+    ecc.set_max_iterations(100);
+
+    c_ecch ecch(&ecc);
+    if ( !ecch.align(initial_uncropped_artifial_ellipse_, uncropped_planetary_disk_mask_, T) ) {
+      CF_ERROR("ecch.align(artifical_ellipse) fails");
+      return false;
+    }
+//    if ( !ecc.align(initial_uncropped_artifial_ellipse_, uncropped_planetary_disk_mask_, T) ) {
+//      CF_ERROR("ecc.align(artifical_ellipse) fails");
+//      return false;
+//    }
+
+    cv::remap(initial_uncropped_artifial_ellipse_,
+        aligned_uncropped_artifial_ellipse_,
+        ecc.current_remap(),
+        cv::noArray(),
+        cv::INTER_LINEAR);
+
+    cv::Vec2f CC;
+    double Tx, Ty, scale, aa;
+
+    cv::invertAffineTransform(T, T);
+    getEuclideanComponents(T, &Tx, &Ty, &scale, &aa);
+    CC = T * cv::Vec3f(C.x, C.y, 1);
+
+    CF_DEBUG("E: BEFORE {A=%g B=%g X0=%g Y0=%g angle=%g} ", A, B, C.x, C.y, angle);
+    CF_DEBUG("E: AFTER  {A=%g B=%g X0=%g Y0=%g angle=%g} ", A*scale, B*scale, CC(0), CC(1), angle - aa * 180 / CV_PI);
+
+    ellipseAMS2_.size.width = 2 * A * scale;
+    ellipseAMS2_.size.height = 2 * B * scale;
+    ellipseAMS2_.center.x = CC(0);
+    ellipseAMS2_.center.y = CC(1);
+    ellipseAMS2_.angle = angle - aa * 180 / CV_PI;
+
+//    CC = T * cv::Vec3f(C.x, C.y, 1);
+//    A *= scale;
+//    B *= scale;
+//    ellipse_.size.width = 2 * A;
+//    ellipse_.size.height = 2 * B;
+//    ellipse_.center.x = CC(0) + crop_bounding_box_.x;
+//    ellipse_.center.y = CC(1) + crop_bounding_box_.y;
+//    ellipse_.angle = -angle * 180 / M_PI;
+
+  }
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+  //gray_image(crop_bounding_box_).copyTo(cropped_gray_image_, uncropped_planetary_disk_mask_(crop_bounding_box_));
+  //gradient_magnitude(cropped_gray_image_, cropped_gradient_image_, std::max(1., crop_bounding_box_.width / 300.) );
+  uncropped_planetary_disk_mask_(crop_bounding_box_).convertTo(cropped_gradient_image_, CV_32F, 1./255);
   if ( options_.gradient_blur > 0 ) {
     cv::GaussianBlur(cropped_gradient_image_, cropped_gradient_image_,
         cv::Size(),

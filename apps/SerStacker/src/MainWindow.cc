@@ -652,6 +652,7 @@ void MainWindow::configureImageViewerToolbars()
       if ( selectedSource && selectedStack ) {
         const c_input_sequence::ptr & currentSequence = imageEditor->input_sequence();
         if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
+          selectedStack->master_frame_options().master_source_path = selectedSource->filename();
           selectedStack->master_frame_options().master_frame_index = currentSequence->current_pos() - 1;
         }
       }

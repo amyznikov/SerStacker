@@ -79,10 +79,10 @@ struct c_master_frame_options
 {
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
-  bool apply_input_frame_processor = true;
+  bool apply_input_frame_processors = true;
   bool generate_master_frame = true;
-  int max_input_frames_to_generate_master_frame = 1000;
-  int eccflow_scale = 5;
+  int max_input_frames_to_generate_master_frame = 3000;
+  int eccflow_scale = 0;
   double master_sharpen_factor = 0.5;
   double accumulated_sharpen_factor = 1;
   bool save_master_frame = true;
@@ -130,9 +130,13 @@ struct c_frame_accumulation_options
   enum frame_accumulation_method accumulation_method  =
       frame_accumulation_weighted_average;
 
-  int lksize = 0;
-  int scale_size = 3;
-  double minv = 1;
+//  int lksize = 0;
+//  int scale_size = 3;
+//  double minv = 1;
+  double s1 = 2;
+  double s2 = 4;
+  double minv = 1e-9;
+  int scale = -1;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -167,11 +171,13 @@ struct c_image_stacking_output_options {
 
   std::string output_preprocessed_frames_filename;
   std::string output_aligned_frames_filename;
+  std::string output_ecc_frames_filename;
   std::string output_postprocessed_frames_filename;
   std::string output_accumulation_masks_filename;
 
   bool save_preprocessed_frames = false;
   bool save_aligned_frames = false;
+  bool save_ecc_frames = false;
   bool save_postprocessed_frames = false;
   bool save_accumulation_masks = false;
   bool dump_reference_data_for_debug = false;
@@ -372,6 +378,9 @@ protected:
   class c_video_writer;
 
   void save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_video_writer & output_writer) const;
+
+  void save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_video_writer & output_writer) const;
 
   void save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,

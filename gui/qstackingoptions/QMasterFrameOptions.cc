@@ -37,6 +37,15 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
       this, SLOT(onMasterSourceComboCurrentIndexChanged(int)));
 
 
+
+  masterFrameSelectionMethod_ctl =
+      add_enum_combobox<master_frame_selection_method>(
+          "Frame selection:",
+          [this](master_frame_selection_method v) {
+            onMasterFrameSeletionMethodChaned(v);
+          });
+
+
   masterFrameIndex_ctl = new QSpinBox(this);
   masterFrameIndex_ctl->setKeyboardTracking(false);
   connect(masterFrameIndex_ctl, SIGNAL(valueChanged(int)),
@@ -191,6 +200,9 @@ void QMasterFrameOptions::onupdatecontrols()
     updateMasterFrameIndex();
     previousComboboxItemIndex = masterSource_ctl->currentIndex();
 
+    masterFrameSelectionMethod_ctl->setValue(options_->master_selection_method);
+    masterFrameIndex_ctl->setEnabled(options_->master_selection_method == master_frame_specific_index);
+
     setEnabled(true);
   }
 }
@@ -263,6 +275,28 @@ void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
     setUpdatingControls(false);
 
     emit parameterChanged();
+  }
+}
+
+void QMasterFrameOptions::onMasterFrameSeletionMethodChaned(master_frame_selection_method v)
+{
+  if ( options_ && !updatingControls() ) {
+
+    options_->master_selection_method = v;
+
+    switch (v) {
+      case master_frame_specific_index:
+        masterFrameIndex_ctl->setEnabled(true);
+        break;
+      case master_frame_middle_index:
+        masterFrameIndex_ctl->setEnabled(false);
+        break;
+      case master_frame_best_of_100_in_middle:
+        masterFrameIndex_ctl->setEnabled(false);
+        break;
+      default:
+        break;
+    }
   }
 }
 

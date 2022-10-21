@@ -45,6 +45,12 @@ enum frame_upscale_option {
   frame_upscale_x30 = 3,
 };
 
+enum master_frame_selection_method {
+  master_frame_specific_index,
+  master_frame_middle_index,
+  master_frame_best_of_100_in_middle,
+};
+
 struct c_input_options
 {
   std::string missing_pixel_mask_filename;
@@ -77,8 +83,13 @@ struct c_roi_selection_options
 
 struct c_master_frame_options
 {
+  master_frame_selection_method master_selection_method =
+      master_frame_specific_index;
+
   std::string master_source_path;
   int master_frame_index = 0; // relative, in master source
+
+
   bool apply_input_frame_processors = true;
   bool generate_master_frame = true;
   int max_input_frames_to_generate_master_frame = 3000;
@@ -362,6 +373,8 @@ protected:
   bool process_input_sequence(const c_input_sequence::ptr & input_sequence,
       int startpos, int endpos);
 
+  int select_master_frame_index(const c_input_sequence::ptr & input_sequence) const;
+
   bool read_input_frame(const c_input_sequence::ptr & input_sequence,
       const c_input_options & input_options,
       cv::Mat & output_reference_image, cv::Mat & output_reference_mask) const;
@@ -374,6 +387,8 @@ protected:
       const c_image_stacking_output_options & output_options,
       const cv::Mat & output_image,
       const cv::Mat & output_mask);
+
+
 
   class c_video_writer;
 
@@ -440,7 +455,7 @@ protected:
   int processed_frames_ = 0;
 
   cv::Mat missing_pixel_mask_;
-  cv::Mat1f reference_weights_;
+  //cv::Mat1f reference_weights_;
 
   std::string statusmsg_;
   mutable std::mutex status_lock_;

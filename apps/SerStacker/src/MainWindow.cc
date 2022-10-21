@@ -139,7 +139,7 @@ MainWindow::MainWindow()/* :
       Qt::LeftDockWidgetArea,
       "imageProcessorSettingsDock",
       "Image Processing",
-      createScrollableWrap(imageProcessorSelector = new QImageProcessorSelector(this)),
+      imageProcessorSelector = new QImageProcessorSelector(this), //createScrollableWrap(imageProcessorSelector = new QImageProcessorSelector(this)),
       viewMenu);
 
   tabifyDockWidget(fileSystemTreeDock, stackTreeDock);

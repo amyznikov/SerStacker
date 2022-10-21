@@ -394,6 +394,7 @@ bool c_frame_upscale_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_master_frame_options::serialize(c_config_setting settings) const
 {
+  save_settings(settings, "master_selection_method", master_selection_method);
   save_settings(settings, "master_source_path", master_source_path);
   save_settings(settings, "master_frame_index",master_frame_index );
   save_settings(settings, "apply_input_frame_processors", apply_input_frame_processors);
@@ -415,6 +416,7 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
     return false;
   }
 
+  load_settings(settings, "master_selection_method", &master_selection_method);
   load_settings(settings, "master_source_path", &master_source_path);
   load_settings(settings, "master_frame_index", &master_frame_index );
   load_settings(settings, "apply_input_frame_processors", &apply_input_frame_processors);

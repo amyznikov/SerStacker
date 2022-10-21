@@ -929,26 +929,70 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
  * The input 4-plane Bayer image can be created
  * from raw 1-channel Bayer frame using extract_bayer_planes()
  */
-bool is_corrupted_asi_frame(const cv::Mat & bayer_planes)
+bool is_corrupted_asi_frame(const cv::Mat & image)
 {
-  if ( bayer_planes.channels() != 4 ) {
-    // not a Bayer planes image
-    return false;
+  if( image.channels() == 4 ) {
+
+    // Bayer planes image, check only two green planes
+
+    cv::Mat plane;
+    double minVal, maxVal;
+    cv::Scalar avgVal, stdVal;
+
+    //
+    for( int i = 1; i <= 2; ++i ) {
+
+      static float K[2] = {
+          -1, 1
+      };
+
+      cv::extractChannel(image, plane, 1);
+      cv::filter2D(plane, plane, CV_32F, cv::Mat1f(2, 1, K));
+      cv::reduce(plane, plane, cv::REDUCE_AVG, 1, CV_32F);
+
+      cv::minMaxLoc(plane, &minVal, &maxVal);
+      cv::meanStdDev(plane, avgVal, stdVal);
+
+      if( stdVal[0] > 0 && std::max(fabs(minVal), fabs(maxVal)) / stdVal[0] > 10 ) {
+        return true;
+      }
+    }
   }
+  else if( image.channels() == 3 ) {
 
-  cv::Mat plane;
-  double minVal, maxVal;
-  cv::Scalar avgVal, stdVal;
+    // assume BGR image, check only B plane
 
-  // check only green planes
-  for ( int i = 1; i <= 2; ++i ) {
+    cv::Mat plane;
+    double minVal, maxVal;
+    cv::Scalar avgVal, stdVal;
 
     static float K[2] = {
         -1, 1
     };
 
-    cv::extractChannel(bayer_planes, plane, 1);
+    cv::extractChannel(image, plane, 0);
     cv::filter2D(plane, plane, CV_32F, cv::Mat1f(2, 1, K));
+    cv::reduce(plane, plane, cv::REDUCE_AVG, 1, CV_32F);
+
+    cv::minMaxLoc(plane, &minVal, &maxVal);
+    cv::meanStdDev(plane, avgVal, stdVal);
+
+    if( stdVal[0] > 0 && std::max(fabs(minVal), fabs(maxVal)) / stdVal[0] > 10 ) {
+      return true;
+    }
+  }
+  else if( image.channels() == 1 ) {
+    // assume monochrome image
+
+    cv::Mat plane;
+    double minVal, maxVal;
+    cv::Scalar avgVal, stdVal;
+
+    static float K[2] = {
+        -1, 1
+    };
+
+    cv::filter2D(image, plane, CV_32F, cv::Mat1f(2, 1, K));
     cv::reduce(plane, plane, cv::REDUCE_AVG, 1, CV_32F);
 
     cv::minMaxLoc(plane, &minVal, &maxVal);

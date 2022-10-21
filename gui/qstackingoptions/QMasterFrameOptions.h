@@ -39,6 +39,7 @@ protected:
 
 protected slots:
   void onMasterSourceComboCurrentIndexChanged(int);
+  void onMasterFrameSeletionMethodChaned(master_frame_selection_method v);
   void onSpinBoxValueChanged(int value);
   void onGenerateMasterFrameCheckboxStateChanged(int);
   void onEccFlowScaleChanged();
@@ -55,6 +56,7 @@ protected:
   c_input_sequence::ptr input_sequence_;
 
   QComboBox * masterSource_ctl = Q_NULLPTR;
+  QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = Q_NULLPTR;
   QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
   QCheckBox * apply_input_frame_processors_ctl = Q_NULLPTR;
   QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;

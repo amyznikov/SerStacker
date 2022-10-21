@@ -31,6 +31,19 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   : Base("QImageProcessorSelector", parent)
 {
 
+  static const auto createScrollableWrap =
+      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea *
+  {
+    QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidget(w);
+    return scrollArea;
+  };
+
+
+
   Q_INIT_RESOURCE(qimproc_resources);
 
   if ( QImageProcessorsCollection::empty() ) {
@@ -62,7 +75,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   form->addRow(selectorToolbar);
 
   chain_ctl = new QImageProcessorChainEditor(this);
-  form->addRow(chain_ctl);
+  form->addRow(createScrollableWrap(chain_ctl, this));
 
 
   connect(selectorMenu_ctl, &QToolButton::clicked,

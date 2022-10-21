@@ -753,8 +753,10 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray mask)
 
   if ( !mask.empty() ) {
 
-    if ( mask.size() != src.size() ) {
-      CF_ERROR("ERROR in weigthed_frame_average: iimage and mask sizes not match");
+    if ( src.size() != mask.size() ) {
+      CF_ERROR("ERROR in weigthed_frame_average: image size=%dx%d and mask size = %dx%d not match",
+          src.cols(), src.rows(),
+          mask.cols(), mask.rows());
       return false;
     }
 

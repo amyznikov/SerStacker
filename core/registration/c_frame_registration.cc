@@ -172,7 +172,7 @@ const std::string& c_frame_registration::debug_path() const
 
 bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  cv::Mat ecc_image, original_ecc_image;
+  cv::Mat ecc_image;
   cv::Mat ecc_mask;
 
   reference_frame_size_ = reference_image.size();
@@ -193,16 +193,13 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
   if( options_.eccflow.enabled || (options_.ecc.enabled && options_.ecc.scale > 0) ) {
 
-    if( !create_reference_ecc_image(reference_image, reference_mask, original_ecc_image, ecc_mask, 1) ) {
+    if( !create_reference_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
       CF_ERROR("create_reference_ecc_image() fails");
       return false;
     }
 
-    if( options_.jovian_derotation.enabled &&  options_.jovian_derotation.align_planetary_disk_masks ) {
-      insert_planetary_disk_mask(original_ecc_image, ecc_mask, ecc_image);
-    }
-    else {
-      ecc_image = original_ecc_image;
+    if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+      insert_planetary_disk_mask(ecc_image, ecc_mask, ecc_image);
     }
 
     if( options_.ecc.enabled && options_.ecc.scale > 0 ) {
@@ -266,10 +263,6 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       }
     }
 
-    if( options_.jovian_derotation.enabled &&  options_.jovian_derotation.align_planetary_disk_masks ) {
-      ecc_image = original_ecc_image;
-    }
-
   }
 
 
@@ -299,7 +292,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray current_mask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
-  cv::Mat ecc_image, original_ecc_image;
+  cv::Mat ecc_image;
   cv::Mat ecc_mask;
 
   double start_time = 0, total_time = 0;
@@ -340,16 +333,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   if( options_.eccflow.enabled || (options_.ecc.enabled && options_.ecc.scale > 0) ) {
 
-    if( !create_current_ecc_image(current_image, current_mask, original_ecc_image, ecc_mask, 1) ) {
+    if( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
       CF_ERROR("extract_ecc_image(current_image) fails");
       return false;
     }
 
-    if( options_.jovian_derotation.enabled &&  options_.jovian_derotation.align_planetary_disk_masks ) {
-      insert_planetary_disk_mask(original_ecc_image, ecc_mask, ecc_image);
-    }
-    else {
-      ecc_image = original_ecc_image;
+    if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+      insert_planetary_disk_mask(ecc_image, ecc_mask, ecc_image);
     }
   }
 
@@ -454,9 +444,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   if( options_.jovian_derotation.enabled ) {
 
-    if( options_.jovian_derotation.align_planetary_disk_masks ) {
-      ecc_image = original_ecc_image;
-    }
 
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation", debug_path_.c_str()));
@@ -597,7 +584,7 @@ bool c_frame_registration::create_current_ecc_image(cv::InputArray src, cv::Inpu
 bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
     cv::Mat & dst_ecc_image) const
 {
-  cv::Mat1f planetary_disk_mask;
+  cv::Mat planetary_disk_mask;
 
   bool fOk =
       simple_planetary_disk_detector(src_ecc_image, src_mask,
@@ -618,8 +605,23 @@ bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_im
   geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
 
   src_ecc_image.copyTo(dst_ecc_image);
-  dst_ecc_image.setTo(1, planetary_disk_mask);
 
+#if 0
+  dst_ecc_image.setTo(1, planetary_disk_mask);
+#else
+  /*
+   * My current ECC flow implementation produces bugged artifacts when tries to align flat image regions with no gradients.
+   * Here is temporary workaround to draw artificial planetary disk with radial intensity gradient from center to edges.
+   */
+  double min, max;
+
+  cv::distanceTransform(planetary_disk_mask, planetary_disk_mask, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
+  cv::minMaxLoc(planetary_disk_mask, &min, &max);
+  cv::multiply(planetary_disk_mask, planetary_disk_mask, planetary_disk_mask, 1. / (max * max));
+
+  planetary_disk_mask.copyTo(dst_ecc_image, planetary_disk_mask > FLT_EPSILON);
+
+#endif
   return true;
 }
 

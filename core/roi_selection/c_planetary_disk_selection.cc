@@ -61,7 +61,7 @@ c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Siz
   return ptr(new this_class(crop_size));
 }
 
-bool c_planetary_disk_selection::select_roi(cv::InputArray image, cv::InputArray mask,
+bool c_planetary_disk_selection::select(cv::InputArray image, cv::InputArray mask,
     cv::Rect & outputROIRectangle )
 {
   if ( !simple_planetary_disk_detector(image, mask, &objpos_, 0, &objrect_) ) {

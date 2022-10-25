@@ -19,7 +19,7 @@ public:
   c_roi_selection() = default;
   virtual ~c_roi_selection() = default;
 
-  virtual bool select_roi(cv::InputArray image, cv::InputArray image_mask,
+  virtual bool select(cv::InputArray image, cv::InputArray image_mask,
       cv::Rect & outputROIRectangle ) = 0;
 };
 

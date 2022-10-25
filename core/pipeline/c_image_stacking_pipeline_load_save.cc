@@ -505,6 +505,9 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.ecc, max_iterations);
   SAVE(image_registration_options.ecc, ecch_minimum_image_size);
   SAVE(image_registration_options.ecc, enable_ecch);
+  SAVE(image_registration_options.ecc, replace_planetary_disk_with_mask);
+  SAVE(image_registration_options.ecc, planetary_disk_mask_stdev_factor);
+
 
   section = settings.add_group("eccflow");
   SAVE(image_registration_options.eccflow, enabled);
@@ -517,7 +520,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
 
   section = settings.add_group("jovian_derotation");
   SAVE(image_registration_options.jovian_derotation, enabled);
-  SAVE(image_registration_options.jovian_derotation, align_planetary_disk_masks);
+  //SAVE(image_registration_options.jovian_derotation, align_planetary_disk_masks);
   SAVE(image_registration_options.jovian_derotation, min_rotation);
   SAVE(image_registration_options.jovian_derotation, max_rotation);
   SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
@@ -585,6 +588,8 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.ecc, max_iterations);
     LOAD(image_registration_options.ecc, ecch_minimum_image_size);
     LOAD(image_registration_options.ecc, enable_ecch);
+    LOAD(image_registration_options.ecc, replace_planetary_disk_with_mask);
+    LOAD(image_registration_options.ecc, planetary_disk_mask_stdev_factor);
   }
 
   if( (section = settings["eccflow"]).isGroup() ) {
@@ -599,7 +604,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
 
   if( (section = settings["jovian_derotation"]).isGroup() ) {
     LOAD(image_registration_options.jovian_derotation, enabled);
-    LOAD(image_registration_options.jovian_derotation, align_planetary_disk_masks);
+    //LOAD(image_registration_options.jovian_derotation, align_planetary_disk_masks);
     LOAD(image_registration_options.jovian_derotation, min_rotation);
     LOAD(image_registration_options.jovian_derotation, max_rotation);
     LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);

@@ -40,13 +40,6 @@ static bool compute_dogsmap_(const cv::Mat & src, cv::Mat & dst, double s1, doub
   const cv::Size src_size =
       src.size();
 
-//  const cv::Mat1f k =
-//      create_dog_kernel(s1, s2);
-//
-//  cv::sepFilter2D(src, dst, -1, k, k.t());
-//  cv::multiply(dst, dst, dst);
-
-
   cv::Mat g, gx, gy;
   if ( s1 <= 0 ) {
     g = src;
@@ -61,22 +54,6 @@ static bool compute_dogsmap_(const cv::Mat & src, cv::Mat & dst, double s1, doub
   cv::magnitude(gx,  gy, g);
   cv::multiply(g, g, dst);
 
-
-//  const int ksize = 2 * (int) (s2) + 1;
-//  const cv::Mat1b k(ksize, ksize, 255);
-//  morphological_gradient(g, dst, k);
-//  cv::multiply(dst, dst, dst);
-
-//  const int ksize =
-//      2 * (int) (4 * s1) + 1;
-//
-//  const cv::Mat1f k1 =
-//      cv::getGaussianKernel(ksize, s1, CV_32F);
-//
-//  cv::Mat1f gx, gy;
-//
-//  cv::sepFilter2D(src, dst, CV_32F, k1, k1.t());
-//  ecc_differentiate(dst, gx, gy);
 
   if ( scale > 0 ) {
     ecc_downscale(dst, dst, scale, cv::BORDER_REPLICATE);

@@ -1131,6 +1131,26 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(replace_planetary_disk_with_mask_ctl =
+      add_checkbox("replace_planetary_disk_with_mask",
+          [this](bool checked) {
+            if ( options_ && options_->replace_planetary_disk_with_mask != checked ) {
+              options_->replace_planetary_disk_with_mask = checked;
+              planetary_disk_mask_stdev_factor_ctl->setEnabled(checked);
+              emit parameterChanged();
+            }
+          }));
+
+  controls.append(planetary_disk_mask_stdev_factor_ctl =
+      add_numeric_box<double>("stdev_factor",
+          [this](double value) {
+            if ( options_ && options_->planetary_disk_mask_stdev_factor != value ) {
+              options_->planetary_disk_mask_stdev_factor = value;
+              emit parameterChanged();
+            }
+          }));
+
+
   updateControls();
 }
 
@@ -1164,6 +1184,9 @@ void QEccRegistrationOptions::onupdatecontrols()
     enable_ecch_ctl->setChecked(options_->enable_ecch);
     ecch_minimum_image_size_ctl->setValue(options_->ecch_minimum_image_size);
     ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
+    replace_planetary_disk_with_mask_ctl->setChecked(options_->replace_planetary_disk_with_mask);
+    planetary_disk_mask_stdev_factor_ctl->setEnabled(options_->replace_planetary_disk_with_mask);
+    planetary_disk_mask_stdev_factor_ctl->setValue(options_->planetary_disk_mask_stdev_factor);
 
     update_controls_state();
 
@@ -1332,14 +1355,14 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
-  controls.append(align_planetary_disk_masks_ctl =
-      add_checkbox("align planetary disk masks",
-          [this](bool checked) {
-            if ( options_ && options_->align_planetary_disk_masks != checked ) {
-              options_->align_planetary_disk_masks = checked;
-              emit parameterChanged();
-            }
-          }));
+//  controls.append(align_planetary_disk_masks_ctl =
+//      add_checkbox("align planetary disk masks",
+//          [this](bool checked) {
+//            if ( options_ && options_->align_planetary_disk_masks != checked ) {
+//              options_->align_planetary_disk_masks = checked;
+//              emit parameterChanged();
+//            }
+//          }));
 
   controls.append(eccflow_support_scale_ctl =
       add_numeric_box<int>("eccflow_support_scale:",
@@ -1419,7 +1442,7 @@ void QJovianDerotationOptions::onupdatecontrols()
     enableJovianDerotation_ctl->setChecked(options_->enabled);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
-    align_planetary_disk_masks_ctl->setChecked(options_->align_planetary_disk_masks);
+    //align_planetary_disk_masks_ctl->setChecked(options_->align_planetary_disk_masks);
     eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
     eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);
     eccflow_max_pyramid_level_ctl->setValue(options_->eccflow_max_pyramid_level);

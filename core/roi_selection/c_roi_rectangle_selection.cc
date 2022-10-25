@@ -68,7 +68,7 @@ void c_roi_rectangle_selection::set_size(const cv::Size & size)
   rect_.height = size.height;
 }
 
-bool c_roi_rectangle_selection::select_roi(cv::InputArray image, cv::InputArray image_mask, cv::Rect & outrc )
+bool c_roi_rectangle_selection::select(cv::InputArray image, cv::InputArray image_mask, cv::Rect & outrc )
 {
   outrc = rect_;
 

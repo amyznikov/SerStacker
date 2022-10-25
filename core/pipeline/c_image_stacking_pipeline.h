@@ -470,6 +470,8 @@ protected:
   c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
   mutable std::mutex accumulator_lock_;
 
+  mutable std::string output_file_name_postfix_;
+
   std::vector<uint> badframes_; // global indexes
   void gather_badframe_indexes();
 };

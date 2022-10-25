@@ -6,6 +6,7 @@
  */
 
 #include "c_fit_jovian_ellipse_routine.h"
+#include <core/proc/cdiffs.h>
 #include <core/ssprintf.h>
 
 c_fit_jovian_ellipse_routine::c_class_factory c_fit_jovian_ellipse_routine::class_factory;
@@ -21,6 +22,9 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_initial_uncropped_artifial_ellipse, "initial_uncropped_artifial_ellipse", },
       { c_fit_jovian_ellipse_routine::display_aligned_uncropped_artifial_ellipse, "aligned_uncropped_artifial_ellipse", },
       { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_ellipseAMS2, "planetary_disk_ellipseAMS2", },
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_eigen2d_mu, "eigen2d_mu", },
+      { c_fit_jovian_ellipse_routine::display_uncropped_planetary_disk_eigen2d_N, "eigen2d_N", },
+
 
 
 
@@ -174,9 +178,104 @@ static void rotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & 
 
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+
+  static const auto atan2 =
+      [](const cv::Mat1f & Nx, const cv::Mat1f & Ny, cv::Mat1f & angle) {
+
+        angle.create(Nx.size());
+        for ( int y = 0; y < Nx.rows; ++y ) {
+          for ( int x = 0; x < Nx.cols; ++x ) {
+            angle[y][x] = std::atan2 (Ny[y][x], Nx[y][x]) * 180 / CV_PI;
+          }
+        }
+
+      };
+
+
   detector_.detect_planetary_disk(image, mask);
 
   switch (display_type_) {
+  case display_uncropped_planetary_disk_eigen2d_mu:
+  case display_uncropped_planetary_disk_eigen2d_N: {
+
+    cv::Mat gray;
+    cv::Mat mu1, mu2, mu;
+    cv::Mat1f Nx, Ny, angle;
+    bool fixNormals = false;
+
+    if ( image.channels() == 3 ) {
+      cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    }
+    else {
+      gray = image.getMat();
+    }
+
+    if( detector_.gradient_blur() > 0 ) {
+      cv::GaussianBlur(gray, gray, cv::Size(), detector_.gradient_blur());
+    }
+
+    eigen2d(gray,
+        &mu1,
+        &mu2,
+        &Nx,
+        &Ny,
+        fixNormals);
+
+    //    cv::absdiff(Nx, 0, Nx);
+    //    cv::absdiff(Ny, 0, Ny);
+
+    cv::Mat1b msk;
+    cv::erode(detector_.uncropped_planetary_disk_mask(), msk,
+        cv::Mat1b(63,63, 255));
+
+    switch (display_type_) {
+    case display_uncropped_planetary_disk_eigen2d_mu:
+      //cv::magnitude(mu1, mu2, mu);
+      cv::add(mu1.mul(mu1), mu2.mul(mu2), mu);
+      mu.setTo(0, ~msk);
+      mu.copyTo(image);
+      break;
+    case display_uncropped_planetary_disk_eigen2d_N:
+      atan2(Nx, Ny, angle);
+      angle.setTo(0, ~msk);
+      angle.copyTo(image);
+
+      if ( true ) {
+        //cv::magnitude(mu1, mu2, mu);
+        cv::add(mu1.mul(mu1), mu2.mul(mu2), mu);
+        mu.setTo(0, ~msk);
+
+        cv::multiply(mu, Nx, Nx);
+        cv::multiply(mu, Ny, Ny);
+
+        //    cv::absdiff(Nx, 0, Nx);
+        //    cv::absdiff(Ny, 0, Ny);
+
+        double avgMu = cv::mean(mu, msk)[0];
+        double NX = cv::mean(Nx, msk)[0] / avgMu;
+        double NY = cv::mean(Ny, msk)[0] / avgMu;
+        double avgA = std::atan2(NY, NX);
+
+        CF_DEBUG("avgA=%g", avgA * 180 / CV_PI);
+
+        cv::cvtColor(image,  image, cv::COLOR_GRAY2BGR);
+
+        cv::line(image,
+            detector_.ellipseAMS2().center,
+            detector_.ellipseAMS2().center + 200 * cv::Point2f(cos(avgA), sin(avgA)),
+            CV_RGB(255, 100, 0),
+            2,
+            cv::LINE_AA);
+
+      }
+
+      break;
+    }
+
+
+    break;
+  }
+
   case display_uncropped_planetary_disk_mask:
     detector_.uncropped_planetary_disk_mask().copyTo(image);
     break;
@@ -198,6 +297,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
     cv::ellipse(image, detector_.ellipseAMS2(), CV_RGB(0, 0, 1), 1);
     break;
   case display_uncropped_planetary_disk_ellipse:
+    rotatedRectange(image, detector_.planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
     cv::ellipse(image, detector_.planetary_disk_ellipse(), 1, 1);
     break;
   case display_cropped_gray_image:

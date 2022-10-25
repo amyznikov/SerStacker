@@ -33,6 +33,8 @@ struct c_ecc_registration_options {
   int max_iterations = 15;
   int ecch_minimum_image_size = 32;
   bool enable_ecch = false;
+  bool replace_planetary_disk_with_mask = false;
+  double planetary_disk_mask_stdev_factor = 0.5;
 };
 
 struct c_eccflow_registration_options {
@@ -53,7 +55,7 @@ struct c_jovian_derotation_options {
   int eccflow_support_scale = 4;
   int eccflow_normalization_scale = 2;
   int eccflow_max_pyramid_level = 0;
-  bool align_planetary_disk_masks = true;
+  //bool align_planetary_disk_masks = true;
   bool derotate_all_frames = false;
   int  derotate_all_frames_max_context_size = -1;
   bool rotate_jovian_disk_horizontally = false;

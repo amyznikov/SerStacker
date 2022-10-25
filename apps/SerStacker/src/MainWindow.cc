@@ -1298,8 +1298,8 @@ void MainWindow::onLoadCurrentImageMask()
 
     if( image.type() != CV_8UC1 || image.size() != imageEditor->currentImage().size() ) {
       QMessageBox::critical(this, "Error",
-          QString("Not appropriate mask image: %dx%d depth=%1 channels=%1.\n"
-              "Must be CV_8UC1 of the same size as current image (%dx%d)")
+          QString("Not appropriate mask image: %1x%2 depth=%3 channels=%4.\n"
+              "Must be CV_8UC1 of the same size as current image (%5x%6)")
               .arg(image.cols)
               .arg(image.rows)
               .arg(image.depth())

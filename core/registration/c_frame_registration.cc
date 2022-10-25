@@ -198,7 +198,8 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       return false;
     }
 
-    if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+    //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+    if( options_.ecc.replace_planetary_disk_with_mask ) {
       insert_planetary_disk_mask(ecc_image, ecc_mask, ecc_image);
     }
 
@@ -338,7 +339,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+    //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+    if( options_.ecc.replace_planetary_disk_with_mask ) {
       insert_planetary_disk_mask(ecc_image, ecc_mask, ecc_image);
     }
   }
@@ -598,30 +600,39 @@ bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_im
     return false;
   }
 
-  cv::Scalar m, s;
-  cv::meanStdDev(src_ecc_image, m, s, src_mask);
-  cv::bitwise_and(planetary_disk_mask, src_ecc_image > s[0] / 2, planetary_disk_mask);
+  if( options_.ecc.planetary_disk_mask_stdev_factor > 0 ) {
+
+    cv::Scalar m, s;
+
+    const double threshold =
+        s[0] * options_.ecc.planetary_disk_mask_stdev_factor;
+
+    cv::meanStdDev(src_ecc_image, m, s, src_mask);
+    cv::bitwise_and(planetary_disk_mask, src_ecc_image > threshold, planetary_disk_mask);
+  }
+
   morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
   geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
 
   src_ecc_image.copyTo(dst_ecc_image);
 
-#if 0
-  dst_ecc_image.setTo(1, planetary_disk_mask);
-#else
-  /*
-   * My current ECC flow implementation produces bugged artifacts when tries to align flat image regions with no gradients.
-   * Here is temporary workaround to draw artificial planetary disk with radial intensity gradient from center to edges.
-   */
-  double min, max;
+  if( !options_.eccflow.enabled || options_.eccflow.support_scale < 1 ) {
+    dst_ecc_image.setTo(1, planetary_disk_mask);
+  }
+  else {
+    /*
+     * My current ECC flow implementation produces bugged artifacts when tries to align flat image regions with no gradients.
+     * Here is temporary workaround to draw artificial planetary disk with radial intensity gradient from center to edges.
+     */
+    double min, max;
 
-  cv::distanceTransform(planetary_disk_mask, planetary_disk_mask, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
-  cv::minMaxLoc(planetary_disk_mask, &min, &max);
-  cv::multiply(planetary_disk_mask, planetary_disk_mask, planetary_disk_mask, 1. / (max * max));
+    cv::distanceTransform(planetary_disk_mask, planetary_disk_mask, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
+    cv::minMaxLoc(planetary_disk_mask, &min, &max);
+    cv::multiply(planetary_disk_mask, planetary_disk_mask, planetary_disk_mask, 1. / (max * max));
 
-  planetary_disk_mask.copyTo(dst_ecc_image, planetary_disk_mask > FLT_EPSILON);
+    planetary_disk_mask.copyTo(dst_ecc_image, planetary_disk_mask > FLT_EPSILON);
 
-#endif
+  }
   return true;
 }
 

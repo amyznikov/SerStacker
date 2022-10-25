@@ -28,7 +28,7 @@ public:
   const cv::Size & crop_size() const;
   void set_crop_size(const cv::Size & size) ;
 
-  bool select_roi(cv::InputArray image, cv::InputArray image_mask,
+  bool select(cv::InputArray image, cv::InputArray image_mask,
       cv::Rect & outputROIRectangle ) override;
 
   const cv::Point2f & detected_object_position() const;

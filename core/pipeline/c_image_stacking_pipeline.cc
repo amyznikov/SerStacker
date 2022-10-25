@@ -827,8 +827,105 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
     if ( !(fOk = initialize(options)) ) {
       CF_ERROR("initialize() fails");
     }
-    else if ( !(fOk = actual_run()) ) {
-      CF_ERROR("actual_run() fails");
+    else {
+
+      const c_jovian_derotation_options & jovian_derotation =
+          options->frame_registration_options().image_registration_options.jovian_derotation;
+
+      const bool do_jovian_derotaton_for_each_frame =
+          jovian_derotation.enabled &&
+              jovian_derotation.derotate_all_frames &&
+              jovian_derotation.derotate_all_frames_max_context_size > 0;
+
+      if ( !do_jovian_derotaton_for_each_frame ) {
+
+        if( !(fOk = actual_run()) ) {
+          CF_ERROR("actual_run() fails");
+        }
+      }
+      else {
+
+        // save options
+
+        const c_master_frame_options backup_master_options =
+            options_->master_frame_options();
+
+        const c_input_options backup_input_options =
+            options_->input_options();
+
+
+        try {
+
+          const int num_sources =
+              options_->input_sequence()->sources().size();
+
+          const int max_context_size =
+              std::min(num_sources, jovian_derotation.derotate_all_frames_max_context_size);
+
+
+          c_master_frame_options & master_options =
+              options_->master_frame_options();
+
+          c_input_options & input_options =
+              options_->input_options();
+
+          master_options.master_selection_method = master_frame_specific_index;
+          master_options.master_frame_index = 0;
+          input_options.max_input_frames = max_context_size;
+
+          for( int master_source = 0; master_source < num_sources; ++master_source ) {
+
+            CF_DEBUG("\n\n=============================================\n\n"
+                "SELECT master_source %d / %d",
+                master_source,
+                num_sources);
+
+            master_options.master_source_path =
+                options_->input_sequence()->source(master_source)->filename();
+
+            if( max_context_size == num_sources ) {
+              input_options.start_frame_index = 0;
+            }
+            else if( (input_options.start_frame_index = master_source - max_context_size / 2) < 0 ) {
+              input_options.start_frame_index = 0;
+            }
+            else if( input_options.start_frame_index + max_context_size >= num_sources ) {
+              input_options.start_frame_index = num_sources - max_context_size - 1;
+            }
+
+            output_file_name_postfix_ =
+                ssprintf(".F%03d",
+                    master_source);
+
+            if( !(fOk = actual_run()) ) {
+              CF_ERROR("actual_run() fails for master_source=%d", master_source);
+            }
+          }
+
+        }
+        catch (...) {
+          CF_ERROR("Exception in jovian loop");
+
+          // restore options
+
+          options_->input_options() =
+              backup_input_options;
+
+          options_->master_frame_options() =
+              backup_master_options;
+
+          throw;
+        }
+
+        // restore options
+
+        options_->input_options() =
+            backup_input_options;
+
+        options_->master_frame_options() =
+            backup_master_options;
+      }
+
     }
 
   }
@@ -921,6 +1018,7 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
 
     total_frames_ = 0;
     processed_frames_ = 0;
+    output_file_name_postfix_.clear();
     //reference_sharpness_ = 0;
 
     statusmsg_.clear();
@@ -1156,7 +1254,10 @@ bool c_image_stacking_pipeline::actual_run()
       return false;
     }
 
-    if ( (master_frame_index = master_options.master_frame_index) < 0 ) {
+    master_frame_index =
+        select_master_frame_index(input_sequence);
+
+    if ( (master_frame_index /*= master_options.master_frame_index*/) < 0 ) {
       master_frame_index = 0;
     }
     else if ( master_frame_index >= input_sequence->source(master_source_index)->size() ) {
@@ -1459,9 +1560,10 @@ bool c_image_stacking_pipeline::actual_run()
     if ( output_file_name.empty() ) {
 
       output_file_name =
-          ssprintf("%s/%s-32F.tiff",
+          ssprintf("%s/%s%s.32F.tiff",
               output_directory_.c_str(),
-              options_->cname());
+              options_->cname(),
+              output_file_name_postfix_.c_str());
     }
 
 
@@ -1481,9 +1583,10 @@ bool c_image_stacking_pipeline::actual_run()
       else {
 
         output_file_name =
-            ssprintf("%s/%s-32F-PP.tiff",
+            ssprintf("%s/%s%s.32F.PP.tiff",
                 output_directory_.c_str(),
-                options_->cname());
+                options_->cname(),
+                output_file_name_postfix_.c_str());
 
         CF_DEBUG("Saving '%s'", output_file_name.c_str());
         if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
@@ -1532,9 +1635,10 @@ bool c_image_stacking_pipeline::actual_run()
           cv::CMP_GE);
 
       output_file_name =
-          ssprintf("%s/%s-32F-PPR.tiff",
+          ssprintf("%s/%s%s.32F.PPR.tiff",
               output_directory_.c_str(),
-              options_->cname());
+              options_->cname(),
+              output_file_name_postfix_.c_str());
 
       CF_DEBUG("Saving '%s'", output_file_name.c_str());
       if( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
@@ -2259,10 +2363,10 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     return false;
   }
 
-  CF_DEBUG("input_sequence->read(): %dx%d channels=%d pixel_depth=%d",
-      output_image.cols, output_image.rows,
-      output_image.channels(),
-      input_sequence->pixel_depth());
+//  CF_DEBUG("input_sequence->read(): %dx%d channels=%d pixel_depth=%d",
+//      output_image.cols, output_image.rows,
+//      output_image.channels(),
+//      input_sequence->pixel_depth());
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
@@ -2368,7 +2472,7 @@ bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::ptr & ro
 
   cv::Rect ROI;
 
-  if ( !roi_selection->select_roi(src, srcmask, ROI) || ROI.empty() ) {
+  if ( !roi_selection->select(src, srcmask, ROI) || ROI.empty() ) {
     CF_ERROR("roi_selection->select_roi() fails");
     return false;
   }
@@ -2393,7 +2497,7 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
   cv::Mat medianImage, variationImage, meanVariationImage;
   double minimal_mean_variation_for_very_smooth_images;
 
-  // treshold = estimate_noise(image);
+  // threshold = estimate_noise(image);
   if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
     minimal_mean_variation_for_very_smooth_images = 1e-2;
   }
@@ -2925,33 +3029,47 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
 
   case master_frame_best_of_100_in_middle: {
 
-    constexpr int count_of_frames_to_scan = 100;
+    constexpr int max_frames_to_scan = 200;
 
-    int start_pos;
+    CF_DEBUG("Scan %d frames around of middle %d", max_frames_to_scan, input_sequence->size() / 2);
 
-    if( input_sequence->size() <= count_of_frames_to_scan ) {
+
+
+    int start_pos, backup_current_pos;
+
+    if( input_sequence->size() <= max_frames_to_scan ) {
       start_pos = 0;
     }
     else {
-      start_pos = input_sequence->size() / 2 - count_of_frames_to_scan / 2;
+      start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
     }
 
+    backup_current_pos = input_sequence->current_pos();
     input_sequence->seek(start_pos);
 
     cv::Mat image, mask, dogs;
     int current_index, best_index = 0;
     double current_metric, best_metric = 0;
 
-    for( current_index = 0; current_index < count_of_frames_to_scan; ++current_index ) {
+    for( current_index = 0; current_index < max_frames_to_scan; ++current_index ) {
 
       read_input_frame(input_sequence, input_options, image, mask);
-      compute_dogsmap(image, dogs, 1, 1, 3, 0);
 
-      if( (current_metric = cv::mean(dogs, mask)[0]) > best_metric ) {
-        best_metric = current_metric;
-        best_index = current_index;
+      if ( !image.empty() ) {
+
+        compute_dogsmap(image, dogs, 3, 3, 3, 0);
+
+        if( (current_metric = cv::mean(dogs, mask)[0]) > best_metric ) {
+          best_metric = current_metric;
+          best_index = current_index;
+
+          CF_DEBUG("best: index=%d  metric: %g", best_index + start_pos, best_metric);
+        }
       }
     }
+
+    selected_master_frame_index = best_index + start_pos;
+    input_sequence->seek(backup_current_pos);
 
     break;
   }

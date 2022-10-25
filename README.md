@@ -8,6 +8,14 @@ Compare jovian images captured with two different tubes, processed and derotated
 ![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
 
 
+Jovian rotation captured at 2022-10-21 1930 with Arsenal-GSO N305/1200 f/4, ocular projection using x20 objective lens from microscope.
+
+![jovian-rotation](./debug/jovian-derotation/JUP5.2022-10-21-1930.Arsenal-GSO.mov)
+
+
+
+
+
 Montes Alpes and Mare Frigoris.
 ![MontesAlpes](./debug/MontesAlpes.2021-09-26-2327_8-CapObj-32F.jpg)
 

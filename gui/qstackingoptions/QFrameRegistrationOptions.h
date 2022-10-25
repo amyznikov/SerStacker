@@ -250,6 +250,8 @@ protected:
   QNumberEditBox * max_iterations_ctl = Q_NULLPTR;
   QCheckBox * enable_ecch_ctl = Q_NULLPTR;
   QNumberEditBox * ecch_minimum_image_size_ctl = Q_NULLPTR;
+  QCheckBox * replace_planetary_disk_with_mask_ctl = Q_NULLPTR;
+  QNumberEditBox * planetary_disk_mask_stdev_factor_ctl = Q_NULLPTR;
   QWidgetList controls;
 };
 
@@ -314,7 +316,7 @@ protected:
   QNumberEditBox * eccflow_normalization_scale_ctl = Q_NULLPTR;
   QNumberEditBox * eccflow_max_pyramid_level_ctl = Q_NULLPTR;
   //QNumberEditBox * hlines_ctl = Q_NULLPTR;
-  QCheckBox * align_planetary_disk_masks_ctl = Q_NULLPTR;
+  //QCheckBox * align_planetary_disk_masks_ctl = Q_NULLPTR;
   QCheckBox * derotate_all_frames_ctl = Q_NULLPTR;
   QNumberEditBox * derotate_all_frames_max_context_size_ctl = Q_NULLPTR;
   QCheckBox * align_jovian_disk_horizontally_ctl = Q_NULLPTR;

@@ -28,6 +28,8 @@ public:
     display_initial_uncropped_artifial_ellipse,
     display_aligned_uncropped_artifial_ellipse,
     display_uncropped_planetary_disk_ellipseAMS2,
+    display_uncropped_planetary_disk_eigen2d_mu,
+    display_uncropped_planetary_disk_eigen2d_N,
 
 
     display_cropped_gray_image,

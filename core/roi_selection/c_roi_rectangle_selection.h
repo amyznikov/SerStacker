@@ -36,7 +36,7 @@ public:
   cv::Size size() const;
   void set_size(const cv::Size & size);
 
-  bool select_roi(cv::InputArray image, cv::InputArray image_mask,
+  bool select(cv::InputArray image, cv::InputArray image_mask,
       cv::Rect & outputROIRectangle ) override;
 
 protected:

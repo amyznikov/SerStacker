@@ -35,6 +35,7 @@
 #include "c_mean_curvature_blur_routine.h"
 #include "c_fit_jovian_ellipse_routine.h"
 #include "c_threshold_routine.h"
+#include "c_desaturate_edges_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -111,6 +112,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_mean_curvature_blur_routine::class_factory);
     register_class_factory(&c_fit_jovian_ellipse_routine::class_factory);
     register_class_factory(&c_threshold_routine::class_factory);
+    register_class_factory(&c_desaturate_edges_routine::class_factory);
   }
 }
 

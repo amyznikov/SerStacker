@@ -11,7 +11,8 @@ Compare jovian images captured with two different tubes, processed and derotated
 Jovian rotation captured at 2022-10-21 1930 with Arsenal-GSO N305/1200 f/4, ocular projection using x20 objective lens from microscope.
 
 
-https://user-images.githubusercontent.com/1285263/197895860-05c63412-db9d-4adc-bfd4-0ee9abcbe314.mov
+https://user-images.githubusercontent.com/1285263/197896096-c0db0918-69b4-436a-8746-0a7f94ff5705.mov
+
 
 
 

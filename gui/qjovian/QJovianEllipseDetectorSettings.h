@@ -35,10 +35,12 @@ protected:
 
 protected:
   c_jovian_ellipse_detector_options * options_ = Q_NULLPTR;
-  QNumberEditBox * hlines_ctl = Q_NULLPTR;
+  QNumberEditBox * stdev_factor_ctl = Q_NULLPTR;
   QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
   QNumberEditBox * normalization_blur_ctl = Q_NULLPTR;
   QNumberEditBox * gradient_blur_ctl = Q_NULLPTR;
+  QNumberEditBox * hlines_ctl = Q_NULLPTR;
+  QCheckBox * force_reference_ellipse_ctl = Q_NULLPTR;
   QToolBar * toolbar_ctl = Q_NULLPTR;
 };
 

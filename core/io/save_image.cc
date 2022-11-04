@@ -113,7 +113,6 @@ static bool write_tiff(cv::InputArray src, const std::string & filename, const s
     return false;
   }
 
-
   switch ( src.channels() ) {
   case 1 :
     photometric_tag = PHOTOMETRIC_MINISBLACK;

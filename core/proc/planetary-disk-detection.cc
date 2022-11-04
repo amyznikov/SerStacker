@@ -88,6 +88,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     cv::InputArray mask,
     cv::Point2f * out_centrold,
     double gbsigma,
+    double stdev_factor,
     cv::Rect * optional_output_component_rect,
     cv::Mat * optional_output_cmponent_mask,
     cv::Point2f * optional_output_geometrical_center,
@@ -133,12 +134,35 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     comp.setTo(0, ~mask.getMat());
   }
 
+  if ( !get_maximal_connected_component(comp, &rc, &comp, nullptr) ) {
+    CF_DEBUG("get_maximal_connected_component() fails");
+    return false;
+  }
+
+  if( stdev_factor > 0 ) {
+
+    cv::Scalar m, s;
+    double min = 0, max = 0;
+
+    cv::meanStdDev(gray, m, s, mask);
+    cv::minMaxLoc(gray, &min, &max, nullptr, nullptr, mask);
+
+    const double threshold = s[0] * stdev_factor;
+
+    CF_DEBUG("s[0]=%g threshold=%g min=%g max=%g", s[0], threshold,  min, max);
+
+    cv::bitwise_and(comp, gray > threshold, comp);
+  }
+
+  morphological_smooth_close(comp, comp, cv::Mat1b(3, 3, 255));
+  geo_fill_holes(comp, comp, 8);
+
   if ( !get_maximal_connected_component(comp, &rc, optional_output_cmponent_mask, optional_output_geometrical_center) ) {
     CF_DEBUG("get_maximal_connected_component() fails");
     return false;
   }
 
-  if ( optional_output_component_rect ) {
+  if( optional_output_component_rect ) {
     *optional_output_component_rect = rc;
   }
 

@@ -79,21 +79,38 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent)
 
           });
 
+  planetaryDiskGbSigma_ctl =
+      add_numeric_box<double>("gbsigma:",
+          [this](double v) {
+            if ( options_ && v != options_->planetary_disk_gbsigma ) {
+              options_->planetary_disk_gbsigma = v;
+              emit parameterChanged();
+            }
+          });
 
-  applyToAll_ctl = new QToolButton(this);
-  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  applyToAll_ctl->setIconSize(QSize(16,16));
-  //applyToAll_ctl->setStyleSheet(borderless_style);
-  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-  connect(applyToAll_ctl, &QToolButton::clicked,
-      [this]() {
-        if ( options_ ) {
-          emit applyROISelectionOptionsToAllRequested(*options_);
-        }
-      });
+  planetaryDiskStdevFactor_ctl =
+      add_numeric_box<double>("stdev_factor:",
+          [this](double v) {
+            if ( options_ && v != options_->planetary_disk_stdev_factor ) {
+              options_->planetary_disk_stdev_factor = v;
+              emit parameterChanged();
+            }
+          });
 
-  form->addRow(applyToAll_ctl);
+//  applyToAll_ctl = new QToolButton(this);
+//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//  applyToAll_ctl->setIconSize(QSize(16,16));
+//  //applyToAll_ctl->setStyleSheet(borderless_style);
+//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
+//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
+//  connect(applyToAll_ctl, &QToolButton::clicked,
+//      [this]() {
+//        if ( options_ ) {
+//          emit applyROISelectionOptionsToAllRequested(*options_);
+//        }
+//      });
+//
+//  form->addRow(applyToAll_ctl);
 
   setEnabled(false);
 
@@ -135,6 +152,12 @@ void QROISelectionOptions::updateROIControls()
 
     rectangeROI_ctl->setVisible(false);
     form->labelForField(rectangeROI_ctl)->setVisible(false);
+
+    planetaryDiskGbSigma_ctl->setVisible(false);
+    form->labelForField(planetaryDiskGbSigma_ctl)->setVisible(false);
+
+    planetaryDiskStdevFactor_ctl->setVisible(false);
+    form->labelForField(planetaryDiskStdevFactor_ctl)->setVisible(false);
   }
   else {
     switch ( options_->method ) {
@@ -143,16 +166,29 @@ void QROISelectionOptions::updateROIControls()
       rectangeROI_ctl->setVisible(false);
       form->labelForField(rectangeROI_ctl)->setVisible(false);
 
-
       planetaryDiskSize_ctl->setValue(options_->planetary_disk_crop_size);
       planetaryDiskSize_ctl->setVisible(true);
-      form->labelForField(planetaryDiskSize_ctl)->setVisible(true);
+
+      planetaryDiskGbSigma_ctl->setValue(options_->planetary_disk_gbsigma);
+      planetaryDiskGbSigma_ctl->setVisible(true);
+      form->labelForField(planetaryDiskGbSigma_ctl)->setVisible(true);
+
+      planetaryDiskStdevFactor_ctl->setValue(options_->planetary_disk_stdev_factor);
+      planetaryDiskStdevFactor_ctl->setVisible(true);
+      form->labelForField(planetaryDiskStdevFactor_ctl)->setVisible(true);
+
       break;
 
     case roi_selection_rectange_crop :
 
       planetaryDiskSize_ctl->setVisible(false);
       form->labelForField(planetaryDiskSize_ctl)->setVisible(false);
+
+      planetaryDiskGbSigma_ctl->setVisible(false);
+      form->labelForField(planetaryDiskGbSigma_ctl)->setVisible(false);
+
+      planetaryDiskStdevFactor_ctl->setVisible(false);
+      form->labelForField(planetaryDiskStdevFactor_ctl)->setVisible(false);
 
 
       rectangeROI_ctl->setText(QString("%1;%2;%3x%4")

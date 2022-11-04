@@ -142,25 +142,25 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
   ///
 
   save_postprocessed_frames_ctl =
-      add_named_checkbox("Save postprocessed frames",
+      add_named_checkbox("Save processed aligned frames",
           [this](bool checked) {
-            if ( options_ && options_->output_options().save_postprocessed_frames != checked  ) {
-              options_->output_options().save_postprocessed_frames = checked;
-              output_postprocessed_frames_path_ctl->setEnabled(options_->output_options().save_postprocessed_frames);
+            if ( options_ && options_->output_options().save_processed_aligned_frames != checked  ) {
+              options_->output_options().save_processed_aligned_frames = checked;
+              output_processed_aligned_frames_path_ctl->setEnabled(options_->output_options().save_processed_aligned_frames);
               emit parameterChanged();
             }
           });
 
-  form->addRow(output_postprocessed_frames_path_ctl =
-      new QBrowsePathCombo("Postprocessed frames file name:",
+  form->addRow(output_processed_aligned_frames_path_ctl =
+      new QBrowsePathCombo("Processed aligned frames file name:",
           QFileDialog::AnyFile,
           this));
 
-  connect(output_postprocessed_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+  connect(output_processed_aligned_frames_path_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
         if ( options_ && !updatingControls() ) {
           options_->output_options().output_postprocessed_frames_filename =
-              output_postprocessed_frames_path_ctl->currentPath().toStdString();
+              output_processed_aligned_frames_path_ctl->currentPath().toStdString();
           emit parameterChanged();
         }
       });
@@ -298,9 +298,9 @@ void QStackOutputOptions::onupdatecontrols()
     output_ecc_frames_path_ctl->setCurrentPath(output_options.output_ecc_frames_filename.c_str());
     output_ecc_frames_path_ctl->setEnabled(output_options.save_ecc_frames);
 
-    save_postprocessed_frames_ctl->setChecked(output_options.save_postprocessed_frames);
-    output_postprocessed_frames_path_ctl->setCurrentPath(output_options.output_postprocessed_frames_filename.c_str());
-    output_postprocessed_frames_path_ctl->setEnabled(output_options.save_postprocessed_frames);
+    save_postprocessed_frames_ctl->setChecked(output_options.save_processed_aligned_frames);
+    output_processed_aligned_frames_path_ctl->setCurrentPath(output_options.output_postprocessed_frames_filename.c_str());
+    output_processed_aligned_frames_path_ctl->setEnabled(output_options.save_processed_aligned_frames);
 
     save_accumulation_masks_ctl->setChecked(output_options.save_accumulation_masks);
     output_accumulation_masks_path_ctl->setCurrentPath(output_options.output_accumulation_masks_filename.c_str());

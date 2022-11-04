@@ -9,6 +9,7 @@
 #define __debayer_h__
 
 #include <opencv2/opencv.hpp>
+#include <memory>
 
 /// @brief COLORID
 /// SER file color id.

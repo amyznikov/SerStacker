@@ -12,55 +12,6 @@
 #include <opencv2/opencv.hpp>
 #include "eccalign.h"
 
-/*
- Detect planetary disk on given image, fit Jovian ellipse
- and return final enclosing ellipse as cv::RotatedRect structure.
-
- Example:
-
-  @code
-  cv::RotatedRect rc;
-
-  if ( !detect_jovian_ellipse(image, &rc) ) {
-    CF_ERROR("fit_jovian_ellipse() fails");
-    return;
-  }
-
-  cv::ellipse(image, rc, CV_RGB(0, 1, 0), 1, cv::LINE_8);
-
-  // draw major semi-axis
-  cv::line(image, rc.center, rc.center +
-      0.5 * cv::Point2f(rc.size.width * cos(rc.angle * CV_PI / 180),
-          rc.size.width * sin(rc.angle * CV_PI / 180)),
-          CV_RGB(1,1,0));
-
-  // draw minor semi-axis
-  cv::line(image, rc.center, rc.center +
-      0.5 * cv::Point2f(rc.size.height * sin(rc.angle * CV_PI / 180),
-          -rc.size.height * cos(rc.angle * CV_PI / 180)),
-          CV_RGB(1,1,0));
-
-  save_image(image, "fit_jovian_ellipse.tiff");
-
- @endcode
- */
-
-//struct c_detect_jovian_ellipse_debug_images {
-//  cv::Mat gray_image;
-//  cv::Mat component_mask;
-//  cv::Mat cropped_component_mask;
-//  cv::Mat cropped_component_image;
-//  cv::Mat initial_artifical_ellipse;
-//  cv::Mat fitted_artifical_ellipse;
-//};
-
-//bool detect_jovian_ellipse(cv::InputArray _image,
-//    cv::RotatedRect * output_ellipse_rect,
-//    const std::string & debug_path = "",
-//    c_detect_jovian_ellipse_debug_images * debug = nullptr,
-//    const std::vector<float> * hlines = nullptr);
-
-
 
 /**
  *
@@ -109,9 +60,11 @@ void create_jovian_rotation_remap(double rotation_angle,
 
 struct c_jovian_ellipse_detector_options {
   std::vector<float> hlines;
+  double stdev_factor = 0.5;
   double normalization_blur = 2;
   double gradient_blur = 2;
   int normalization_scale = 3;
+  bool force_reference_ellipse = false;
 };
 
 class c_jovian_ellipse_detector
@@ -123,6 +76,9 @@ public:
   void set_normalization_scale(int v);
   int normalization_scale() const;
   int actual_normalization_scale() const;
+
+  void set_stdev_factor(double v);
+  double stdev_factor() const;
 
   void set_normalization_blur(double v);
   double normalization_blur() const;
@@ -219,6 +175,9 @@ public:
   void set_hlines(const std::vector<float> & hlines);
   const std::vector<float> & hlines() const;
 
+  void set_force_reference_ellipse(bool v);
+  bool force_reference_ellipse() const;
+
   //  void set_align_jovian_disk_horizontally(bool v);
   //  bool align_jovian_disk_horizontally() const;
 
@@ -270,6 +229,7 @@ protected:
   int eccflow_support_scale_ = 4;
   int eccflow_normalization_scale_ = 2;
   int eccflow_max_pyramid_level_ = 0;
+  bool force_reference_ellipse_ = false;
 
   std::string debug_path_;
 };

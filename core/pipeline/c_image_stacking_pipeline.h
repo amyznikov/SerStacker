@@ -53,6 +53,7 @@ enum master_frame_selection_method {
 
 struct c_input_options
 {
+  std::string darkbayer_filename;
   std::string missing_pixel_mask_filename;
   bool missing_pixels_marked_black = true;
   bool inpaint_missing_pixels = true;
@@ -76,6 +77,8 @@ struct c_roi_selection_options
   enum roi_selection_method method = roi_selection_none;
   cv::Size planetary_disk_crop_size;
   cv::Rect rectangle_roi_selection;
+  double planetary_disk_gbsigma = 1;
+  double planetary_disk_stdev_factor = 0.25;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);
@@ -189,7 +192,7 @@ struct c_image_stacking_output_options {
   bool save_preprocessed_frames = false;
   bool save_aligned_frames = false;
   bool save_ecc_frames = false;
-  bool save_postprocessed_frames = false;
+  bool save_processed_aligned_frames = false;
   bool save_accumulation_masks = false;
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
@@ -360,7 +363,7 @@ public:
 
 protected:
 
-  void set_status_msg(const std::string & msg);
+  void set_status_msg(const std::string & msg) const;
 
   bool initialize(const c_image_stacking_options::ptr & options);
   bool actual_run();
@@ -409,7 +412,8 @@ protected:
 
 
   static void remove_bad_pixels(cv::Mat & image,
-      const c_input_options & input_optons);
+      const c_input_options & input_optons,
+      bool isbayer);
 
   static void upscale_image(enum frame_upscale_option scale,
       cv::InputArray src, cv::InputArray srcmask,
@@ -430,8 +434,8 @@ protected:
 
   bool upscale_required(frame_upscale_stage current_stage) const;
 
-  virtual void emit_status_changed() {}
-  virtual void emit_accumulator_changed() {}
+  virtual void emit_status_changed() const {}
+  virtual void emit_accumulator_changed() const {}
 
 
 protected:
@@ -454,10 +458,11 @@ protected:
   int total_frames_ = 0;
   int processed_frames_ = 0;
 
+  cv::Mat darkbayer_;
   cv::Mat missing_pixel_mask_;
   //cv::Mat1f reference_weights_;
 
-  std::string statusmsg_;
+  mutable std::string statusmsg_;
   mutable std::mutex status_lock_;
 
   c_anscombe_transform anscombe_;

@@ -57,10 +57,10 @@ protected:
     c_stacking_thread_impl(QStackingThread * qobj);
 
 protected:
-    void emit_status_changed() override {
+    void emit_status_changed() const override {
       emit qobj->statusChanged();
     }
-    void emit_accumulator_changed() override {
+    void emit_accumulator_changed() const override {
       emit qobj->accumulatorChanged();
     }
   };

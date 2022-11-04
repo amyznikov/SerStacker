@@ -49,7 +49,7 @@ protected:
   QBrowsePathCombo * output_ecc_frames_path_ctl = Q_NULLPTR;
 
   QCheckBox * save_postprocessed_frames_ctl = Q_NULLPTR;
-  QBrowsePathCombo * output_postprocessed_frames_path_ctl = Q_NULLPTR;
+  QBrowsePathCombo * output_processed_aligned_frames_path_ctl = Q_NULLPTR;
 
   QCheckBox * save_accumulation_masks_ctl = Q_NULLPTR;
   QBrowsePathCombo * output_accumulation_masks_path_ctl = Q_NULLPTR;

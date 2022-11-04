@@ -41,9 +41,11 @@ protected:
 protected:
   c_roi_selection_options * options_ = Q_NULLPTR;
   QROISelectionMethodCombo * selectionMethod_ctl = Q_NULLPTR;
-  QNumberEditBox * planetaryDiskSize_ctl = Q_NULLPTR;
   QNumberEditBox * rectangeROI_ctl = Q_NULLPTR;
-  QToolButton * applyToAll_ctl = Q_NULLPTR;
+  QNumberEditBox * planetaryDiskSize_ctl = Q_NULLPTR;
+  QNumberEditBox * planetaryDiskGbSigma_ctl = Q_NULLPTR;
+  QNumberEditBox * planetaryDiskStdevFactor_ctl = Q_NULLPTR;
+//  QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 
 #endif /* __QROISelectionOptions_h__ */

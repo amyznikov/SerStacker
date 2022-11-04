@@ -271,6 +271,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
     jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
     jovian_derotation_.set_normalization_scale(options_.jovian_derotation.ellipse.normalization_scale);
+    jovian_derotation_.set_force_reference_ellipse(options_.jovian_derotation.ellipse.force_reference_ellipse);
     jovian_derotation_.set_normalization_blur(options_.jovian_derotation.ellipse.normalization_blur);
     jovian_derotation_.set_gradient_blur(options_.jovian_derotation.ellipse.gradient_blur);
     jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
@@ -592,6 +593,7 @@ bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_im
       simple_planetary_disk_detector(src_ecc_image, src_mask,
           nullptr,
           2,
+          options_.ecc.planetary_disk_mask_stdev_factor,
           nullptr,
           &planetary_disk_mask);
 
@@ -600,19 +602,20 @@ bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_im
     return false;
   }
 
-  if( options_.ecc.planetary_disk_mask_stdev_factor > 0 ) {
+//  if( options_.ecc.planetary_disk_mask_stdev_factor > 0 ) {
+//
+//    cv::Scalar m, s;
+//
+//    cv::meanStdDev(src_ecc_image, m, s, src_mask);
+//
+//    const double threshold =
+//        s[0] * options_.ecc.planetary_disk_mask_stdev_factor;
+//
+//    cv::bitwise_and(planetary_disk_mask, src_ecc_image > threshold, planetary_disk_mask);
+//  }
+//  morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
+//  geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
 
-    cv::Scalar m, s;
-
-    const double threshold =
-        s[0] * options_.ecc.planetary_disk_mask_stdev_factor;
-
-    cv::meanStdDev(src_ecc_image, m, s, src_mask);
-    cv::bitwise_and(planetary_disk_mask, src_ecc_image > threshold, planetary_disk_mask);
-  }
-
-  morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
-  geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
 
   src_ecc_image.copyTo(dst_ecc_image);
 
@@ -666,6 +669,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
               reference_feature_mask,
               nullptr,
               detector_opts.gbsigma,
+              detector_opts.stdev_factor,
               &planetary_disk_reference_component_rect_,
               &planetary_disk_reference_component_mask_,
               &planetary_disk_reference_centroid_);
@@ -809,6 +813,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
               current_feature_mask,
               nullptr,
               detector_opts.gbsigma,
+              detector_opts.stdev_factor,
               &planetary_disk_current_component_rect_,
               &planetary_disk_current_component_mask_,
               &planetary_disk_current_centroid_);

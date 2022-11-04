@@ -42,14 +42,39 @@ public:
   void set_alpha(double v);
   double alpha() const;
 
+  void set_gbsigma(double v);
+  double gbsigma() const;
+
+  void set_stdev_factor(double v);
+  double stdev_factor() const;
+
+  void set_blur_radius(double v);
+  double blur_radius() const;
+
+  void set_l1norm(bool v);
+  bool l1norm() const;
+
+  void set_show_weights(bool v);
+  bool show_weights() const;
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, gbsigma, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, blur_radius, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, l1norm, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, show_weights, "");
   }
 
 
 protected:
   double alpha_ = 0.5;
+  double gbsigma_ = 1;
+  double stdev_factor_ = 0.25;
+  double blur_radius_ = 1;
+  bool show_weights_ = false;
+  bool l1norm_ = false;
 };
 
 #endif /* __c_desaturate_edges_routine_h__ */

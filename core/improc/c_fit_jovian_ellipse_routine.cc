@@ -82,6 +82,16 @@ int c_fit_jovian_ellipse_routine::normalization_scale() const
   return detector_.normalization_scale();
 }
 
+void c_fit_jovian_ellipse_routine::set_stdev_factor(double v)
+{
+  detector_.set_stdev_factor(v);
+}
+
+double c_fit_jovian_ellipse_routine::stdev_factor() const
+{
+  return detector_.stdev_factor();
+}
+
 void c_fit_jovian_ellipse_routine::set_normalization_blur(double v)
 {
   return detector_.set_normalization_blur(v);
@@ -122,6 +132,7 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings) const
   SAVE_PROPERTY(settings, *this, normalization_scale);
   SAVE_PROPERTY(settings, *this, normalization_blur);
   SAVE_PROPERTY(settings, *this, gradient_blur);
+  SAVE_PROPERTY(settings, *this, stdev_factor);
   SAVE_PROPERTY(settings, *this, display);
 
   return true;
@@ -137,6 +148,7 @@ bool c_fit_jovian_ellipse_routine::deserialize(c_config_setting settings)
   LOAD_PROPERTY(settings, this, normalization_scale);
   LOAD_PROPERTY(settings, this, normalization_blur);
   LOAD_PROPERTY(settings, this, gradient_blur);
+  LOAD_PROPERTY(settings, this, stdev_factor);
   LOAD_PROPERTY(settings, this, display);
 
   return true;

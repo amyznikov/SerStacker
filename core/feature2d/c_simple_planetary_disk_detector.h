@@ -18,9 +18,9 @@ public:
   typedef c_simple_planetary_disk_detector this_class;
   typedef cv::Feature2D bae;
 
-  c_simple_planetary_disk_detector(double gbsigma = 0.5);
+  c_simple_planetary_disk_detector(double gbsigma = 1, double stdev_factor = 0.5);
 
-  static cv::Ptr<this_class> create(double gbsigma = 0.5);
+  static cv::Ptr<this_class> create(double gbsigma = 1, double stdev_factor = 0.5);
 
   void detect(cv::InputArray _src, std::vector<cv::KeyPoint> & keypoints,
       cv::InputArray _mask) override;
@@ -28,6 +28,7 @@ public:
 
 protected:
   double gbsigma_;
+  double stdev_factor_ = 0.5;
   cv::Rect component_rect_;
   //cv::Mat cmponent_mask_;
   //cv::Point2f geometrical_center_;

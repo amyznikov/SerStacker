@@ -9,14 +9,15 @@
 #include <core/proc/planetary-disk-detection.h>
 #include <core/debug.h>
 
-c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gbsigma)
-  : gbsigma_(gbsigma)
+c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gbsigma, double stdev_factor) :
+  gbsigma_(gbsigma),
+  stdev_factor_(stdev_factor)
 {
 }
 
-cv::Ptr<c_simple_planetary_disk_detector> c_simple_planetary_disk_detector::create(double gbsigma)
+cv::Ptr<c_simple_planetary_disk_detector> c_simple_planetary_disk_detector::create(double gbsigma, double stdev_factor)
 {
-  return cv::Ptr<this_class>(new c_simple_planetary_disk_detector(gbsigma));
+  return cv::Ptr<this_class>(new c_simple_planetary_disk_detector(gbsigma, stdev_factor));
 }
 
 void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<cv::KeyPoint> & keypoints,
@@ -30,6 +31,7 @@ void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<c
           _mask,
           &centrold,
           gbsigma_,
+          stdev_factor_,
           &component_rect_,
           nullptr/* &cmponent_mask_*/,
           nullptr/* &geometrical_center_*/,

@@ -313,6 +313,7 @@ bool c_image_stacking_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_input_options::serialize(c_config_setting settings) const
 {
+  settings.set("darkbayer", darkbayer_filename);
   settings.set("missing_pixel_mask", missing_pixel_mask_filename);
   settings.set("missing_pixels_marked_black", missing_pixels_marked_black);
   settings.set("inpaint_missing_pixels", inpaint_missing_pixels);
@@ -335,6 +336,7 @@ bool c_input_options::deserialize(c_config_setting settings)
     return false;
   }
 
+  settings.get("darkbayer", &darkbayer_filename);
   settings.get("missing_pixel_mask", &missing_pixel_mask_filename);
   settings.get("missing_pixels_marked_black", &missing_pixels_marked_black);
   settings.get("inpaint_missing_pixels", &inpaint_missing_pixels);
@@ -352,8 +354,10 @@ bool c_input_options::deserialize(c_config_setting settings)
 bool c_roi_selection_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "roi_selection_method", method);
-  save_settings(settings, "planetary_disk_crop_size", planetary_disk_crop_size);
   save_settings(settings, "rectangle_roi_selection", rectangle_roi_selection);
+  save_settings(settings, "planetary_disk_crop_size", planetary_disk_crop_size);
+  save_settings(settings, "planetary_disk_gbsigma", planetary_disk_gbsigma);
+  save_settings(settings, "planetary_disk_stdev_factor", planetary_disk_stdev_factor);
 
   return true;
 }
@@ -365,8 +369,10 @@ bool c_roi_selection_options::deserialize(c_config_setting settings)
   }
 
   load_settings(settings, "roi_selection_method", &method);
-  load_settings(settings, "planetary_disk_crop_size", &planetary_disk_crop_size);
   load_settings(settings, "rectangle_roi_selection", &rectangle_roi_selection);
+  load_settings(settings, "planetary_disk_crop_size", &planetary_disk_crop_size);
+  load_settings(settings, "planetary_disk_gbsigma", &planetary_disk_gbsigma);
+  load_settings(settings, "planetary_disk_stdev_factor", &planetary_disk_stdev_factor);
 
 
   return true;
@@ -530,6 +536,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE(image_registration_options.jovian_derotation, derotate_all_frames);
   SAVE(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
   SAVE(image_registration_options.jovian_derotation.ellipse, normalization_scale);
+  SAVE(image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
   SAVE(image_registration_options.jovian_derotation.ellipse, normalization_blur);
   SAVE(image_registration_options.jovian_derotation.ellipse, gradient_blur);
   SAVE(image_registration_options.jovian_derotation.ellipse, hlines);
@@ -614,6 +621,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD(image_registration_options.jovian_derotation, derotate_all_frames);
     LOAD(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
     LOAD(image_registration_options.jovian_derotation.ellipse, normalization_scale);
+    LOAD(image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
     LOAD(image_registration_options.jovian_derotation.ellipse, normalization_blur);
     LOAD(image_registration_options.jovian_derotation.ellipse, gradient_blur);
     LOAD(image_registration_options.jovian_derotation.ellipse, hlines);
@@ -675,7 +683,7 @@ bool c_image_stacking_output_options::serialize(c_config_setting settings) const
   save_settings(settings, "save_preprocessed_frames", save_preprocessed_frames);
   save_settings(settings, "save_aligned_frames", save_aligned_frames);
   save_settings(settings, "save_ecc_frames", save_ecc_frames);
-  save_settings(settings, "save_postprocessed_frames", save_postprocessed_frames);
+  save_settings(settings, "save_processed_aligned_frames", save_processed_aligned_frames);
   save_settings(settings, "save_accumulation_masks", save_accumulation_masks);
 
   save_settings(settings, "dump_reference_data_for_debug", dump_reference_data_for_debug);
@@ -703,7 +711,7 @@ bool c_image_stacking_output_options::deserialize(c_config_setting settings)
   load_settings(settings, "save_preprocessed_frames", &save_preprocessed_frames);
   load_settings(settings, "save_aligned_frames", &save_aligned_frames);
   load_settings(settings, "save_ecc_frames", &save_ecc_frames);
-  load_settings(settings, "save_postprocessed_frames", &save_postprocessed_frames);
+  load_settings(settings, "save_processed_aligned_frames", &save_processed_aligned_frames);
   load_settings(settings, "save_accumulation_masks", &save_accumulation_masks);
 
 

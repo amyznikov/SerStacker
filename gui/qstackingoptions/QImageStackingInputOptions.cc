@@ -91,6 +91,23 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           });
 
 
+
+  form->addRow(darkbayer_filename_ctl =
+      new QBrowsePathCombo("DarkBayer:",
+          QFileDialog::ExistingFile,
+          this));
+
+  connect(darkbayer_filename_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->darkbayer_filename =
+              darkbayer_filename_ctl->currentPath().toStdString();
+          emit parameterChanged();
+        }
+      });
+
+
+
   form->addRow(missing_pixel_mask_filename_ctl =
       new QBrowsePathCombo("MIssing pixels mask:",
           QFileDialog::ExistingFile,
@@ -166,6 +183,7 @@ void QImageStackingInputOptions::onupdatecontrols()
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);
 
+    darkbayer_filename_ctl->setCurrentPath(options_->darkbayer_filename.c_str(), false);
     missing_pixel_mask_filename_ctl->setCurrentPath(options_->missing_pixel_mask_filename.c_str(), false);
     missing_pixels_marked_black_ctl->setChecked(options_->missing_pixels_marked_black);
     inpaint_missing_pixels_ctl->setChecked(options_->inpaint_missing_pixels);

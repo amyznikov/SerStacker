@@ -379,6 +379,16 @@ const std::vector<float> & c_jovian_derotation::hlines() const
   return planetary_detector_.hlines();
 }
 
+void c_jovian_derotation::set_force_reference_ellipse(bool v)
+{
+  force_reference_ellipse_ = v;
+}
+
+bool c_jovian_derotation::force_reference_ellipse() const
+{
+  return force_reference_ellipse_;
+}
+
 const cv::RotatedRect & c_jovian_derotation::reference_ellipse() const
 {
   return reference_ellipse_;
@@ -489,6 +499,11 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   planetary_detector_.cropped_normalized_image().copyTo(current_cropped_normalized_image_);
   planetary_detector_.cropped_gray_image().copyTo(current_cropped_gray_image_);
 
+  if ( force_reference_ellipse_ ) {
+    current_ellipse_ = reference_ellipse_;
+    current_bounding_box_ = reference_bounding_box_;
+  }
+
   if ( !debug_path_.empty() ) {
     save_image(current_uncropped_planetary_disk_mask_, ssprintf("%s/current_uncropped_planetary_disk_mask_.tiff", debug_path_.c_str()));
     save_image(current_cropped_normalized_image_, ssprintf("%s/current_cropped_normalized_image_.tiff", debug_path_.c_str()));
@@ -498,34 +513,6 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     save_image(reference_cropped_normalized_image_, ssprintf("%s/reference_cropped_normalized_image_.tiff", debug_path_.c_str()));
     save_image(reference_cropped_gray_image_, ssprintf("%s/reference_cropped_gray_image_.tiff", debug_path_.c_str()));
   }
-
-  //
-  // Align current jovian component image to the reference component image
-  //
-
-//  ecc_.set_motion_type(ECC_MOTION_EUCLIDEAN_SCALED);
-//  ecc_.set_eps(0.1);
-//  ecc_.set_min_rho(0.4);
-//
-//  cv::Matx23f T =
-//      createEyeTransform(ecc_.motion_type());
-//
-//  bool fOk =
-//      ecch_.align(&ecc_,
-//          current_cropped_gray_image_,
-//          reference_cropped_gray_image_,
-//          T);
-//
-//  if ( !fOk ) {
-//    CF_ERROR("ecch.align(current_component_image_->reference_component_image_) fails");
-//    return false;
-//  }
-//
-//  if ( !debug_path_.empty() ) {
-//    cv::Mat tmp;
-//    cv::remap(current_cropped_gray_image_, tmp, ecc_.current_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-//    save_image(tmp, ssprintf("%s/current_cropped_gray_image_aligned.tiff", debug_path_.c_str()));
-//  }
 
 
   //
@@ -732,6 +719,16 @@ int c_jovian_ellipse_detector::actual_normalization_scale() const
   return actual_normalization_scale_;
 }
 
+void c_jovian_ellipse_detector::set_stdev_factor(double v)
+{
+  options_.stdev_factor = v;
+}
+
+double c_jovian_ellipse_detector::stdev_factor() const
+{
+  return options_.stdev_factor;
+}
+
 void c_jovian_ellipse_detector::set_normalization_blur(double v)
 {
   options_.normalization_blur = v;
@@ -855,15 +852,24 @@ bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv:
   // Detect planetary disk mask and use fitEllipseAMS() on planetary disk edge
   // as initial ellipse estimate
 
-  if( !simple_planetary_disk_detector(gray_image, _mask, nullptr, 1, &crop_bounding_box_, &uncropped_planetary_disk_mask_) ) {
+  CF_DEBUG("options_.stdev_factor=%g", options_.stdev_factor);
+
+  bool fOk =
+      simple_planetary_disk_detector(gray_image, _mask, nullptr,
+          1,
+          options_.stdev_factor,
+          &crop_bounding_box_,
+          &uncropped_planetary_disk_mask_);
+
+  if( !fOk ) {
     CF_ERROR("simple_small_planetary_disk_detector() fails");
     return false;
   }
 
-  cv::meanStdDev(gray_image, m, s, uncropped_planetary_disk_mask_);
-  cv::bitwise_and(uncropped_planetary_disk_mask_, gray_image > s[0] / 2, uncropped_planetary_disk_mask_);
-  morphological_smooth_close(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, cv::Mat1b(3, 3, 255));
-  geo_fill_holes(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, 8);
+//  cv::meanStdDev(gray_image, m, s, uncropped_planetary_disk_mask_);
+//  cv::bitwise_and(uncropped_planetary_disk_mask_, gray_image > s[0] / 2, uncropped_planetary_disk_mask_);
+//  morphological_smooth_close(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, cv::Mat1b(3, 3, 255));
+//  geo_fill_holes(uncropped_planetary_disk_mask_, uncropped_planetary_disk_mask_, 8);
 
   morphological_gradient(uncropped_planetary_disk_mask_, uncropped_planetary_disk_edge_, cv::Mat1b(3, 3, 255), cv::BORDER_CONSTANT);
   cv::findNonZero(uncropped_planetary_disk_edge_, component_edge_points);

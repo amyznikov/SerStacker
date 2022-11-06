@@ -364,6 +364,11 @@ MainWindow::MainWindow()/* :
   editMenu->addAction(copyDisplayImageAction);
 
 
+  viewMenu->addAction(viewGeneralSettingsAction = new QAction("General Settings..."));
+  viewGeneralSettingsAction->setCheckable(true);
+  connect(viewGeneralSettingsAction, &QAction::triggered,
+      this, &ThisClass::onViewGeneralSettings);
+
 
   connect(copyDisplayImageAction, &QAction::triggered,
       [this]() {
@@ -711,9 +716,9 @@ void MainWindow::configureImageViewerToolbars()
           if ( checked ) {
             createImageViewOptionsControl();
           }
-          else if ( imageViewOptionsControl )  {
-            delete imageViewOptionsControl;
-            imageViewOptionsControl = Q_NULLPTR;
+          else if ( imageViewOptionsDlgBox )  {
+            delete imageViewOptionsDlgBox;
+            imageViewOptionsDlgBox = Q_NULLPTR;
           }
 
           //imageEditor->setDisplayType(checked ? QImageViewer::DisplayMask : QImageViewer::DisplayImage);
@@ -935,25 +940,25 @@ void MainWindow::onDisplaySettingsMenuActionClicked(bool checked)
 
 void MainWindow::createImageViewOptionsControl()
 {
-  if( !imageViewOptionsControl ) {
+  if( !imageViewOptionsDlgBox ) {
 
-    imageViewOptionsControl = new QImageViewOptionsDlgBox(this);
-    imageViewOptionsControl->setImageViewer(imageEditor);
+    imageViewOptionsDlgBox = new QImageViewOptionsDlgBox(this);
+    imageViewOptionsDlgBox->setImageViewer(imageEditor);
 
-    connect(imageViewOptionsControl, &QImageViewOptionsDlgBox::visibilityChanged,
+    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged,
         [this](bool visible) {
           if ( editMaskAction->isChecked() != visible ) {
             editMaskAction->setChecked(visible);
           }
         });
 
-    connect(imageViewOptionsControl, &QImageViewOptionsDlgBox::finished,
+    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
         [this](int) {
-          delete imageViewOptionsControl;
-          imageViewOptionsControl = Q_NULLPTR;
+          delete imageViewOptionsDlgBox;
+          imageViewOptionsDlgBox = Q_NULLPTR;
         });
 
-    imageViewOptionsControl->show();
+    imageViewOptionsDlgBox->show();
   }
 }
 
@@ -1406,6 +1411,23 @@ void MainWindow::onLoadStackConfig()
   }
 }
 
+void MainWindow::onViewGeneralSettings()
+{
+  if ( !appSettingsDlgBox ) {
+    appSettingsDlgBox = new QGeneralAppSettingsDialogBox(this);
+  }
+
+  if ( !appSettingsDlgBox->isVisible() ){
+    appSettingsDlgBox->show();
+  }
+  else {
+    appSettingsDlgBox->hide();
+  }
+
+  viewGeneralSettingsAction->setChecked(
+      appSettingsDlgBox->isVisible());
+
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////

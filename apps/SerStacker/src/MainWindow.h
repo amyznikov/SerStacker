@@ -19,6 +19,7 @@
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include "QImageEditor.h"
+#include "QAppSettings.h"
 
 #if HAVE_QGLViewer // Should come from CMakeLists.txt
 #include <gui/qcloudview/QCloudViewer.h>
@@ -58,6 +59,7 @@ public slots:
   void onSaveCurrentImageMask();
   void onLoadCurrentImageMask();
   void onLoadStackConfig();
+  void onViewGeneralSettings();
 
 private slots:
   void updateWindowTittle();
@@ -86,7 +88,8 @@ private:
   QThumbnailsView * thumbnailsView = Q_NULLPTR;
   QImageEditor * imageEditor = Q_NULLPTR;
   QTextFileViewer * textViewer = Q_NULLPTR;
-  QImageViewOptionsDlgBox * imageViewOptionsControl = Q_NULLPTR;
+  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = Q_NULLPTR;
+  QGeneralAppSettingsDialogBox * appSettingsDlgBox = Q_NULLPTR;
 
 #if HAVE_QGLViewer
   QCloudViewer * cloudViewer = Q_NULLPTR;
@@ -119,6 +122,7 @@ private:
   QAction * editMaskAction = Q_NULLPTR;
   QAction * loadImageMaskAction = Q_NULLPTR;
   QAction * badframeAction = Q_NULLPTR;
+  QAction * viewGeneralSettingsAction = Q_NULLPTR;
 
 };
 

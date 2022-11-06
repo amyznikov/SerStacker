@@ -14,43 +14,31 @@ template<>
 const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 {
   static constexpr c_enum_member members[] = {
-      {DEBAYER_DISABLE, "DISABLE", },
-      {DEBAYER_GB, "GB", },
-      {DEBAYER_EA, "EA", },
-      {DEBAYER_VNG, "VNG", },
-      {DEBAYER_NN, "NN", },
-      {DEBAYER_GBNR, "GBNR", },
+      {DEBAYER_DISABLE, "DISABLE", ""},
+      {DEBAYER_GB,    "GB",   "SerStacker GaussianBlur() interpolation"},
+      {DEBAYER_GBNR,  "GBNR", "SerStacker GaussianBlur() interpolation with simple bad pixels filtering"},
+      {DEBAYER_EA,    "EA",   "OpenCV EA (edge aware) interpolation with cv::demosaicing()"},
+      {DEBAYER_VNG,   "VNG",  "OpenCV VNG interpolation with cv::demosaicing()"},
+      {DEBAYER_NN,    "NN",   "OpenCV nearest-neighboor interpolation with cv::demosaicing()"},
       {DEBAYER_GB, nullptr, } // must  be last
   };
   return members;
 }
 
 
-//const struct DEBAYER_ALGORITHM_desc debayer_algorithms[] = {
-//};
-//
-//
-//std::string toStdString(enum DEBAYER_ALGORITHM v)
-//{
-//  for ( uint i = 0; debayer_algorithms[i].name; ++i ) {
-//    if ( debayer_algorithms[i].value == v ) {
-//      return debayer_algorithms[i].name;
-//    }
-//  }
-//  return "";
-//}
-//
-//enum DEBAYER_ALGORITHM fromStdString(const std::string & s, enum DEBAYER_ALGORITHM defval)
-//{
-//  const char * cstr = s.c_str();
-//
-//  for ( uint i = 0; debayer_algorithms[i].name; ++i ) {
-//    if ( strcasecmp(debayer_algorithms[i].name, cstr) == 0 ) {
-//      return debayer_algorithms[i].value;
-//    }
-//  }
-//  return defval;
-//}
+static DEBAYER_ALGORITHM g_default_debayer_algorithm =
+    DEBAYER_GB;
+
+void set_default_debayer_algorithm(DEBAYER_ALGORITHM algo)
+{
+  g_default_debayer_algorithm = algo;
+}
+
+DEBAYER_ALGORITHM default_debayer_algorithm()
+{
+  return g_default_debayer_algorithm;
+}
+
 
 
 /** @brief
@@ -776,6 +764,13 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
     return gbdemosaic(src, dst, colorid, algo == DEBAYER_GBNR);
   }
 
+  if ( algo == DEBAYER_VNG && src.depth() != CV_8U ) {
+    //  OpenCV(4.6.0) /modules/imgproc/src/demosaicing.cpp:1740:
+    //    error: (-215:Assertion failed) depth == CV_8U in function 'demosaicing'
+    algo = DEBAYER_EA;
+  }
+
+
   switch ( colorid ) {
 
   case COLORID_BAYER_RGGB :
@@ -790,7 +785,7 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
       cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_EA);
       break;
     default :
-      CF_DEBUG("Unknown  debayer algorithm=%d requested", algo);
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
       return false;
     }
     break;
@@ -859,13 +854,16 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
  */
 bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
 {
+  if ( algo == DEBAYER_DEFAULT ) {
+    algo = default_debayer_algorithm();
+  }
+
   if ( algo == DEBAYER_DISABLE ) {
     if ( dst.getMatRef().data != src.getMat().data ) {
       src.getMat().copyTo(dst);
     }
     return true;
   }
-
 
   switch ( colorid ) {
 

@@ -13,7 +13,7 @@ QImageFileViewer::QImageFileViewer(QWidget * parent)
   : Base(parent)
 {
   input_sequence_ = c_input_sequence::create();
-  input_sequence_->set_auto_debayer(DEBAYER_GB);
+  //input_sequence_->set_auto_debayer(DEBAYER_GB);
   input_sequence_->set_auto_apply_color_matrix(true);
 
   Base::layout_->insertWidget(2, playControls =

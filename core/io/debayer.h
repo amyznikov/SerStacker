@@ -36,6 +36,8 @@ enum COLORID : int32_t {
 
 
 enum DEBAYER_ALGORITHM {
+  DEBAYER_DEFAULT = -1, // Use default_debayer_algorithm()
+
   DEBAYER_DISABLE,  // Don't debayer
   DEBAYER_NN,       // Use OpenCV nearest-neighboor interpolation with cv::demosaicing()
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
@@ -43,15 +45,10 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_GB,       // Use GaussianBlur() interpolation
   DEBAYER_GBNR      // Use GaussianBlur() interpolation with simple bad pixels filtering
 };
-//
-//const extern struct DEBAYER_ALGORITHM_desc {
-//  const char * name;
-//  enum DEBAYER_ALGORITHM value;
-//} debayer_algorithms[];
-//
-//std::string toStdString(enum DEBAYER_ALGORITHM m);
-//enum DEBAYER_ALGORITHM fromStdString(const std::string & s,
-//    enum DEBAYER_ALGORITHM defval);
+
+
+void set_default_debayer_algorithm(DEBAYER_ALGORITHM algo);
+DEBAYER_ALGORITHM default_debayer_algorithm();
 
 
 /** @brief
@@ -96,6 +93,8 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
  * from raw 1-channel Bayer frame using extract_bayer_planes()
  */
 bool is_corrupted_asi_frame(const cv::Mat & bayer_planes);
+
+
 
 
 #endif /* __debayer_h__ */

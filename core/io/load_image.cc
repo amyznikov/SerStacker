@@ -332,7 +332,7 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
 
     const int channels = SAMPLES_PER_PIXEL;
 
-    CF_DEBUG("SAMPLES_PER_PIXEL=%d", channels);
+    // CF_DEBUG("SAMPLES_PER_PIXEL=%d", channels);
 
 
     if ( PLANAR_CONFIG == PLANARCONFIG_CONTIG ) {

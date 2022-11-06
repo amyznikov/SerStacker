@@ -42,18 +42,17 @@ public:
 
   void setupItems(const c_enum_member * membs)
   {
-    if ( membs ) {
-      while ( membs->name && *membs->name ) {
-        QComboBox::addItem(membs->name, (int) (membs->value));
+    if( membs ) {
+      while (membs->name && *membs->name) {
+        Base::addItem(membs->name, (int) (membs->value));
+        if( membs->tooltip ) {
+          Base::setItemData(count() - 1, QString(membs->tooltip), Qt::ToolTipRole);
+        }
         ++membs;
       }
     }
   }
 
-//  void setCurrentItem(const std::string & value)
-//  {
-//    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
-//  }
 
 signals:
   void currentItemChanged(int index);

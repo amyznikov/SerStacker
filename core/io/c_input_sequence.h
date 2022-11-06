@@ -84,7 +84,7 @@ protected:
   std::vector<c_input_source::ptr> all_sources_;
   std::vector<c_input_source::ptr> enabled_sources_;
 
-  enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_GBNR;
+  enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_DEFAULT; // DEBAYER_GBNR;
   bool auto_apply_color_matrix_ = true;
 
   int total_frames_ = -1;  // in enabled_sources_

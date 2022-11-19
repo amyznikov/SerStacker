@@ -14,6 +14,7 @@
 
 #include <cinttypes>
 #include <cstdio>
+#include <cstdarg>
 #include <string>
 #include <vector>
 #include <string.h>

@@ -191,9 +191,10 @@ protected:
       cv::OutputArray dst, cv::OutputArray dstmsk,
       double scale) const;
 
-  bool insert_planetary_disk_mask(const cv::Mat & src_ecc_image,
+  bool insert_planetary_disk_shape(const cv::Mat & src_ecc_image,
       const cv::Mat & src_mask,
-      cv::Mat & dst_ecc_image) const;
+      cv::Mat & dst_ecc_image,
+      cv::Mat & dst_ecc_mask) const;
 
   virtual bool extract_reference_features(cv::InputArray reference_feature_image,
       cv::InputArray reference_feature_mask);

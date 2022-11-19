@@ -174,6 +174,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 {
   cv::Mat ecc_image;
   cv::Mat ecc_mask;
+  cv::Mat eccflow_mask;
 
   reference_frame_size_ = reference_image.size();
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
@@ -200,7 +201,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
     //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
     if( options_.ecc.replace_planetary_disk_with_mask ) {
-      insert_planetary_disk_mask(ecc_image, ecc_mask, ecc_image);
+      insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
     }
 
     if( options_.ecc.enabled && options_.ecc.scale > 0 ) {
@@ -258,7 +259,11 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       eccflow_.set_input_smooth_sigma(options_.eccflow.input_smooth_sigma);
       eccflow_.set_reference_smooth_sigma(options_.eccflow.reference_smooth_sigma);
 
-      if( !eccflow_.set_reference_image(ecc_image, ecc_mask) ) {
+      if (eccflow_mask.empty() ) {
+        eccflow_mask = ecc_mask;
+      }
+
+      if( !eccflow_.set_reference_image(ecc_image, eccflow_mask) ) {
         CF_ERROR("eccflow_.set_reference_image() fails");
         return false;
       }
@@ -296,6 +301,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 {
   cv::Mat ecc_image;
   cv::Mat ecc_mask;
+  cv::Mat eccflow_mask;
 
   double start_time = 0, total_time = 0;
   double t0, t1;
@@ -342,7 +348,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
     if( options_.ecc.replace_planetary_disk_with_mask ) {
-      insert_planetary_disk_mask(ecc_image, ecc_mask, ecc_image);
+      insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
     }
   }
 
@@ -436,7 +442,11 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     current_status_.timings.extract_smflow_image =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
 
-    if( !eccflow_.compute(ecc_image, current_remap_, ecc_mask) ) {
+    if ( eccflow_mask.empty() ) {
+      eccflow_mask = ecc_mask;
+    }
+
+    if( !eccflow_.compute(ecc_image, current_remap_, eccflow_mask) ) {
       CF_ERROR("smflow_.compute() fails");
       return false;
     }
@@ -584,8 +594,8 @@ bool c_frame_registration::create_current_ecc_image(cv::InputArray src, cv::Inpu
   return create_ecc_image(src, srcmsk, dst, dstmsk, scale);
 }
 
-bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
-    cv::Mat & dst_ecc_image) const
+bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
+    cv::Mat & dst_ecc_image, cv::Mat & dst_ecc_mask) const
 {
   cv::Mat planetary_disk_mask;
 
@@ -618,6 +628,13 @@ bool c_frame_registration::insert_planetary_disk_mask(const cv::Mat & src_ecc_im
 
 
   src_ecc_image.copyTo(dst_ecc_image);
+
+  if ( !src_mask.empty() ) {
+    cv::bitwise_and(src_mask, ~planetary_disk_mask, dst_ecc_mask );
+  }
+  else {
+    cv::bitwise_not(planetary_disk_mask, dst_ecc_mask);
+  }
 
   if( !options_.eccflow.enabled || options_.eccflow.support_scale < 1 ) {
     dst_ecc_image.setTo(1, planetary_disk_mask);

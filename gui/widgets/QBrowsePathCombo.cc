@@ -6,7 +6,6 @@
  */
 
 #include <gui/widgets/QBrowsePathCombo.h>
-#include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +46,10 @@ void QBrowsePathCombo::construct(void)
   vbox->addWidget(label = new QLabel(labelText_), 0, Qt::AlignLeft);
   vbox->addLayout(hbox = new QHBoxLayout(), 0);
   hbox->setContentsMargins(0,0,0,0);
+
+#if !QT_DEPRECATED_SINCE(5, 13)
   hbox->setMargin(0);
+#endif
 
   hbox->addWidget(combo = new QComboBox(this), -1);
   hbox->addWidget(button = new QToolButton(this), -1);
@@ -92,12 +94,6 @@ void QBrowsePathCombo::onBrowseForPath(void)
 //  if ( path.isEmpty() ) {
 //    path = "/";
 //  }
-
-  CF_DEBUG("path=%s fileInfo.isDir()=%d fileInfo.filePath()=%s",
-      path.toStdString().c_str(),
-      fileInfo.isDir(),
-      fileInfo.filePath().toStdString().c_str());
-
 
   QFileDialog dlg(this,
       fileDialogCaption.isEmpty() ? labelText_ : fileDialogCaption,

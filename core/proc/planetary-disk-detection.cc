@@ -149,7 +149,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
 
     const double threshold = s[0] * stdev_factor;
 
-    CF_DEBUG("s[0]=%g threshold=%g min=%g max=%g", s[0], threshold,  min, max);
+    // CF_DEBUG("s[0]=%g threshold=%g min=%g max=%g", s[0], threshold,  min, max);
 
     cv::bitwise_and(comp, gray > threshold, comp);
   }

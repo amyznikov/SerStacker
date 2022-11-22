@@ -841,7 +841,8 @@ bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv:
     ellipse_.angle -= 90;
   }
   ellipseAMS_ = ellipse_;
-  CF_DEBUG("INITIAL ELLIPSE: width=%g height=%g angle=%g", ellipse_.size.width, ellipse_.size.height, ellipse_.angle);
+  CF_DEBUG("INITIAL ELLIPSE: width=%g height=%g angle=%g",
+      ellipse_.size.width, ellipse_.size.height, ellipse_.angle);
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Fit artifical ellipse
@@ -852,8 +853,8 @@ bool c_jovian_ellipse_detector::detect_planetary_disk(cv::InputArray _image, cv:
   initial_artifial_ellipse_edge_.setTo(0);
 
   double A = 0.5 * ellipseAMS_.size.width;
-  double B = 0.5 * ellipseAMS_.size.height; // A * jovian_polar_to_equatorial_axis_ratio;
-  //const double angle = 0;//ellipseAMS_.angle;
+  //double B = 0.5 * ellipseAMS_.size.height;
+  double B = A * jovian_polar_to_equatorial_axis_ratio;
 
   cv::RotatedRect rc(ellipseAMS_.center, cv::Size(2 * A, 2 * B), 0);
 

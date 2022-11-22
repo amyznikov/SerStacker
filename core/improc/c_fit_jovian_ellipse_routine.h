@@ -21,23 +21,17 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   enum display_type {
-    display_uncropped_planetary_disk_mask,
-    display_uncropped_planetary_disk_edge,
-    display_uncropped_planetary_disk_ellipse,
-    display_uncropped_planetary_disk_ellipseAMS,
-    display_initial_uncropped_artifial_ellipse,
-    display_aligned_uncropped_artifial_ellipse,
-    display_uncropped_planetary_disk_ellipseAMS2,
-    display_uncropped_planetary_disk_eigen2d_mu,
-    display_uncropped_planetary_disk_eigen2d_N,
-
-
-    display_cropped_gray_image,
-    display_cropped_component_mask,
-    display_cropped_gradient_image,
-    display_cropped_normalized_image,
-    display_initial_artificial_ellipse,
-    display_initial_ellipse_fit,
+    display_detected_planetary_disk_mask,
+    display_detected_planetary_disk_edge,
+    display_planetary_disk_ellipse_edge,
+    display_detected_ellipseAMS,
+    display_initial_artifial_ellipse_edge,
+    display_remapped_artifial_ellipse_edge,
+    display_aligned_artifial_ellipse_edge,
+    display_aligned_artifial_ellipse_mask,
+    display_planetary_disk_ellipseAMS2,
+    display_gray_image,
+    display_normalized_image,
     display_final_ellipse_fit,
   };
 

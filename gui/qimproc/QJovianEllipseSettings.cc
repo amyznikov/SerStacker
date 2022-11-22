@@ -50,7 +50,7 @@ void QJovianEllipseSettings::onupdatecontrols()
     settings_ctl->set_jovian_ellipse_detector_options(nullptr);
   }
   else {
-    settings_ctl->set_jovian_ellipse_detector_options(routine->detector()->options());
+    settings_ctl->set_jovian_ellipse_detector_options(&routine->detector()->options());
     display_ctl->setValue(routine->display());
     setEnabled(true);
   }

@@ -75,7 +75,6 @@ public:
 
   void set_normalization_scale(int v);
   int normalization_scale() const;
-  int actual_normalization_scale() const;
 
   void set_stdev_factor(double v);
   double stdev_factor() const;
@@ -87,50 +86,56 @@ public:
   double gradient_blur() const;
 
   void set_options(const c_jovian_ellipse_detector_options & v);
-  c_jovian_ellipse_detector_options * options();
+  const c_jovian_ellipse_detector_options & options() const;
+  c_jovian_ellipse_detector_options & options();
 
   bool detect_planetary_disk(cv::InputArray _image, cv::InputArray mask = cv::noArray());
 
-  // ellipse in source image coordinates
-  const cv::RotatedRect & planetary_disk_ellipse() const;
-  const cv::Mat & uncropped_planetary_disk_mask() const;
-  const cv::Mat & uncropped_planetary_disk_edge() const;
+  const cv::Mat & detected_planetary_disk_mask() const;
+  const cv::Mat & detected_planetary_disk_edge() const;
   const cv::RotatedRect & ellipseAMS() const;
-  const cv::Mat & initial_uncropped_artifial_ellipse() const;
-  const cv::Mat & aligned_uncropped_artifial_ellipse() const;
+  const cv::Mat & initial_artifial_ellipse_edge() const;
+  const cv::Mat & remapped_artifial_ellipse_edge() const;
+  const cv::Mat & aligned_artifial_ellipse_edge() const;
+  const cv::Mat1b & aligned_artifial_ellipse_edge_mask() const;
+  const cv::Mat1b & aligned_artifial_ellipse_mask() const;
   const cv::RotatedRect & ellipseAMS2() const;
+  const cv::RotatedRect & planetary_disk_ellipse() const;
 
   // bounding box for component_mask
-  const cv::Rect & crop_bounding_box() const;
-
-  const cv::Mat & cropped_gray_image() const ;
-  const cv::Mat & cropped_normalized_image() const ;
-  const cv::Mat & cropped_gradient_image() const ;
-
-  const cv::Mat & initial_artificial_ellipse() const ;
-  const cv::Mat & initial_artificial_ellipse_fit() const ;
-  const cv::Mat & cropped_final_ellipse_fit() const ;
+//  const cv::Rect & crop_bounding_box() const;
+//
+  const cv::Mat & gray_image() const ;
+  const cv::Mat & normalized_image() const ;
+//  const cv::Mat & cropped_gradient_image() const ;
+//
+//  const cv::Mat & initial_artificial_ellipse() const ;
+//  const cv::Mat & initial_artificial_ellipse_fit() const ;
+//  const cv::Mat & cropped_final_ellipse_fit() const ;
 
 protected:
   c_jovian_ellipse_detector_options options_;
-  int actual_normalization_scale_ = -1;
 
   cv::RotatedRect ellipse_;
-  cv::Mat uncropped_planetary_disk_mask_;
-  cv::Mat uncropped_planetary_disk_edge_;
+  cv::Mat detected_planetary_disk_mask_;
+  cv::Mat detected_planetary_disk_edge_;
   cv::RotatedRect ellipseAMS_;
-  cv::Mat1f initial_uncropped_artifial_ellipse_;
-  cv::Mat1f aligned_uncropped_artifial_ellipse_;
+
+  cv::Mat1f initial_artifial_ellipse_edge_;
+  cv::Mat1f remapped_artifial_ellipse_edge_;
+  cv::Mat1f aligned_artifial_ellipse_edge_;
+  cv::Mat1b aligned_artifial_ellipse_edge_mask_;
+  cv::Mat1b aligned_artifial_ellipse_mask_;
   cv::RotatedRect ellipseAMS2_;
 
-  cv::Rect crop_bounding_box_;
-  cv::Mat cropped_gray_image_;
-  cv::Mat cropped_normalized_image_;
-  cv::Mat cropped_gradient_image_;
+  cv::Mat gray_image_;
+  cv::Mat normalized_image_;
 
-  cv::Mat cropped_artificial_ellipse_;
-  cv::Mat cropped_initial_ellipse_fit_;
-  cv::Mat cropped_final_ellipse_fit_;
+//  cv::Rect crop_bounding_box_;
+//  cv::Mat cropped_gradient_image_;
+//  cv::Mat cropped_artificial_ellipse_;
+//  cv::Mat cropped_initial_ellipse_fit_;
+//  cv::Mat cropped_final_ellipse_fit_;
 };
 
 
@@ -146,6 +151,10 @@ public:
   bool compute(cv::InputArray input_image,
       cv::InputArray input_mask = cv::noArray());
 
+
+  void set_jovian_detector_options(const c_jovian_ellipse_detector_options & v);
+  const c_jovian_ellipse_detector_options & jovian_detector_options() const;
+
   // set mininum rotation angle for best rotation search range.
   void set_min_rotation(double v);
   double min_rotation() const;
@@ -153,15 +162,6 @@ public:
   // set maximum rotation angle for best rotation search range.
   void set_max_rotation(double v);
   double max_rotation() const;
-
-  void set_normalization_scale(int v);
-  int normalization_scale() const;
-
-  void set_normalization_blur(double v);
-  double normalization_blur() const;
-
-  void set_gradient_blur(double v);
-  double gradient_blur() const;
 
   void set_eccflow_support_scale(int v);
   int eccflow_support_scale() const;
@@ -172,26 +172,20 @@ public:
   void set_eccflow_max_pyramid_level(int v);
   int max_eccflow_pyramid_level(int v);
 
-  void set_hlines(const std::vector<float> & hlines);
-  const std::vector<float> & hlines() const;
+//  void set_hlines(const std::vector<float> & hlines);
+//  const std::vector<float> & hlines() const;
 
   void set_force_reference_ellipse(bool v);
   bool force_reference_ellipse() const;
 
-  //  void set_align_jovian_disk_horizontally(bool v);
-  //  bool align_jovian_disk_horizontally() const;
-
   const cv::RotatedRect & reference_ellipse() const;
   const cv::RotatedRect & current_ellipse() const;
 
-  const cv::Rect & reference_bounding_box() const;
-  const cv::Rect & current_bounding_box() const;
+  const cv::Mat1b & reference_ellipse_mask() const ;
+  const cv::Mat1b & current_ellipse_mask() const ;
 
-  const cv::Mat & reference_uncropped_planetary_disk_mask() const ;
-  const cv::Mat & current_uncropped_planetary_disk_mask() const ;
-
-  const cv::Mat2f & current_cropped_derotation_remap() const;
-  const cv::Mat1f & current_cropped_wmask() const;
+  const cv::Mat2f & current_derotation_remap() const;
+  const cv::Mat1f & current_wmask() const;
 
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
@@ -205,19 +199,18 @@ protected:
 protected:
 
   cv::RotatedRect reference_ellipse_;
+  cv::Mat1f reference_gray_image_;
+  cv::Mat1f reference_normalized_image_;
+  cv::Mat1b reference_ellipse_mask_;
+
   cv::RotatedRect current_ellipse_;
-  cv::Rect reference_bounding_box_;
-  cv::Rect current_bounding_box_;
-  cv::Mat reference_cropped_gray_image_;
-  cv::Mat current_cropped_gray_image_;
-  cv::Mat reference_uncropped_planetary_disk_mask_;
-  cv::Mat current_uncropped_planetary_disk_mask_;
+  cv::Mat1f current_gray_image_;
+  cv::Mat1f current_normalized_image_;
+  cv::Mat1b current_ellipse_mask_;
 
-  cv::Mat reference_cropped_normalized_image_;
-  cv::Mat current_cropped_normalized_image_;
 
-  cv::Mat1f current_cropped_wmask_;
-  cv::Mat2f current_cropped_remap_;
+  cv::Mat1f current_wmask_;
+  cv::Mat2f current_remap_;
 
 //  c_ecc_forward_additive ecc_;
 //  c_ecch ecch_;

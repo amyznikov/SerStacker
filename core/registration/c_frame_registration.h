@@ -50,10 +50,11 @@ struct c_eccflow_registration_options {
 struct c_jovian_derotation_options {
   bool enabled = false;
   c_jovian_ellipse_detector_options ellipse;
-  double min_rotation = -60 * CV_PI / 180;
-  double max_rotation = +60 * CV_PI / 180;
+  double min_rotation = -40 * CV_PI / 180;
+  double max_rotation = +40 * CV_PI / 180;
+  int num_orientations = 1;
   int eccflow_support_scale = 4;
-  int eccflow_normalization_scale = 2;
+  int eccflow_normalization_scale = 0;
   int eccflow_max_pyramid_level = 0;
   //bool align_planetary_disk_masks = true;
   bool derotate_all_frames = false;

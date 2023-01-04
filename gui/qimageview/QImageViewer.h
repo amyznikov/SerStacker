@@ -33,6 +33,7 @@ public:
   QImageViewer(QWidget * parent = Q_NULLPTR);
 
   QImageSceneView * sceneView() const;
+  QImageScene * scene() const;
 
   QToolBar * embedToolbar(QToolBar * toolbar = Q_NULLPTR);
   QToolBar * toolbar() const;
@@ -51,6 +52,7 @@ public:
 
   virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
   virtual void setMask(cv::InputArray mask, bool make_copy /*= true*/);
+  virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
 
   const cv::Mat & currentImage() const;
   const cv::Mat & currentMask() const;
@@ -91,7 +93,6 @@ protected:
   void hideEvent(QHideEvent *event) override;
   void focusInEvent(QFocusEvent *event) override;
   void focusOutEvent(QFocusEvent *event) override;
-  virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
   virtual void createDisplayImage();
   virtual void showCurrentDisplayImage();
   void updateCursor();

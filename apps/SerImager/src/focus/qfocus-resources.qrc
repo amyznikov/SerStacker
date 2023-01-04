@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qfocus">
+	<file>icons/dark/menu.png</file>
+	<file>icons/light/menu.png</file>
+</qresource>
+</RCC>

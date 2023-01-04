@@ -110,7 +110,7 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
 
   compression_ctl = 
       add_combobox( "TIFF Compression: ",
-          std::function<void(int)>());
+          std::function<void(int, QComboBox *)>());
 
 
   compression_ctl->addItem("NONE", COMPRESSION_NONE);

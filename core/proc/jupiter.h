@@ -163,6 +163,9 @@ public:
   void set_max_rotation(double v);
   double max_rotation() const;
 
+  void set_num_orientations(int v);
+  int num_orientations() const;
+
   void set_eccflow_support_scale(int v);
   int eccflow_support_scale() const;
 
@@ -217,10 +220,11 @@ protected:
   c_ecch_flow eccflow_;
   c_jovian_ellipse_detector planetary_detector_;
 
-  double min_rotation_ = -80 * CV_PI / 180;
-  double max_rotation_ = +80 * CV_PI / 180;
+  double min_rotation_ = -30 * CV_PI / 180;
+  double max_rotation_ = +30 * CV_PI / 180;
+  int num_orientations_ = 1;
   int eccflow_support_scale_ = 4;
-  int eccflow_normalization_scale_ = 2;
+  int eccflow_normalization_scale_ = 0;
   int eccflow_max_pyramid_level_ = 0;
   bool force_reference_ellipse_ = false;
 

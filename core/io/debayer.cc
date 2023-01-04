@@ -10,6 +10,29 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+
+template<>
+const c_enum_member* members_of<COLORID>()
+{
+  static constexpr c_enum_member members[] = {
+      { COLORID_MONO, "MONO", "" },
+      { COLORID_BAYER_RGGB, "BAYER_RGGB", "" },
+      { COLORID_BAYER_GRBG, "BAYER_GRBG", "" },
+      { COLORID_BAYER_GBRG, "BAYER_GBRG", "" },
+      { COLORID_BAYER_BGGR, "BAYER_BGGR", "" },
+      { COLORID_BAYER_CYYM, "BAYER_CYYM", "" },
+      { COLORID_BAYER_YCMY, "BAYER_YCMY", "" },
+      { COLORID_BAYER_YMCY, "BAYER_YMCY", "" },
+      { COLORID_BAYER_MYYC, "BAYER_MYYC", "" },
+      { COLORID_RGB, "RGB", "" },
+      { COLORID_BGR, "BGR", "" },
+      { COLORID_BGRA, "BGRA", "" },
+      { COLORID_OPTFLOW, "OPTFLOW", "" },
+      { COLORID_UNKNOWN },
+  };
+  return members;
+}
+
 template<>
 const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 {

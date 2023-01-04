@@ -35,10 +35,10 @@ void QImageFileEditor::setImage(cv::InputArray image, cv::InputArray mask, cv::I
   Base::setImage(image, mask, imageData, make_copy);
 }
 
-void QImageFileEditor::editImage(cv::InputArray image, cv::InputArray mask)
+void QImageFileEditor::editImage(cv::InputArray image, cv::InputArray mask, bool make_copy)
 {
   closeCurrentSequence();
-  Base::editImage(image, mask);
+  Base::editImage(image, mask, make_copy);
 }
 
 void QImageFileEditor::openImage(const std::string & pathfilename)

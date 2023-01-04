@@ -636,15 +636,18 @@ void QMtfControl::findAutoMidtonesBalance()
 
 void QMtfControl::updateHistogramLevels()
 {
-  cv::Mat1f H;
-  double hmin = -1, hmax = -1;
+  if ( isVisible() ) {
 
-  if( displaySettings_ ) {
-    QWaitCursor wait(this);
-    displaySettings_->getOutputHistogramm(H, &hmin, &hmax);
+    cv::Mat1f H;
+    double hmin = -1, hmax = -1;
+
+    if( displaySettings_ ) {
+      // QWaitCursor wait(this);
+      displaySettings_->getOutputHistogramm(H, &hmin, &hmax);
+    }
+
+    levelsView_->setHistogram(H, hmin, hmax);
   }
-
-  levelsView_->setHistogram(H, hmin, hmax);
 }
 
 void QMtfControl::updateColormapPixmap()

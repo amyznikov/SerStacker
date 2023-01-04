@@ -163,7 +163,7 @@ protected:
 
 
 
-/// @brief c_ser_reader
+/// @brief c_ser_writer
 /// SER file writer for OpenCV cv::Mat images.
 /// No automatic bayer/debayer/rgb swap is made,
 /// the input image format must match to color_id, dimensions and format

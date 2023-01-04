@@ -1,0 +1,13 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qindigo">
+	<file>icons/play_icon.png</file>
+	<file>icons/stop_icon.png</file>
+	<file>icons/left_arrow_icon.png</file>
+	<file>icons/right_arrow_icon.png</file>
+	<file>icons/double_left_arrow_icon.png</file>
+	<file>icons/double_right_arrow_icon.png</file>
+	<file>icons/down_b_arrow_icon.png</file>
+	<file>icons/up_b_arrow_icon.png</file>
+	<file>icons/apply_icon.png</file>
+</qresource>
+</RCC>

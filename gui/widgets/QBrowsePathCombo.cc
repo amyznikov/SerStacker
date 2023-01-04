@@ -6,6 +6,7 @@
  */
 
 #include <gui/widgets/QBrowsePathCombo.h>
+#include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -19,7 +20,7 @@ QBrowsePathCombo :: QBrowsePathCombo(const QString & label_, QFileDialog::FileMo
   : Base(parent),
   fileDialogCaption(label_),
   labelText_(label_),
-  fileDialogMode(mode)
+  fileMode_(mode)
 {
   construct();
 }
@@ -42,7 +43,10 @@ void QBrowsePathCombo::construct(void)
   QVBoxLayout * vbox;
   QHBoxLayout * hbox;
 
+  setContentsMargins(0, 0, 0, 0);
+
   vbox = new QVBoxLayout(this);
+  vbox->setContentsMargins(0,0,0,0);
   vbox->addWidget(label = new QLabel(labelText_), 0, Qt::AlignLeft);
   vbox->addLayout(hbox = new QHBoxLayout(), 0);
   hbox->setContentsMargins(0,0,0,0);
@@ -51,8 +55,8 @@ void QBrowsePathCombo::construct(void)
   hbox->setMargin(0);
 #endif
 
-  hbox->addWidget(combo = new QComboBox(this), -1);
-  hbox->addWidget(button = new QToolButton(this), -1);
+  hbox->addWidget(combo = new QComboBox(this), 1000);
+  hbox->addWidget(button = new QToolButton(this), 1);
 
   combo->setEditable(true);
   combo->setDuplicatesEnabled(false);
@@ -80,53 +84,59 @@ void QBrowsePathCombo::setFileDialogCaption(const QString & caption)
   this->fileDialogCaption = caption;
 }
 
-void QBrowsePathCombo::setFileDialogMode(QFileDialog::FileMode mode)
+void QBrowsePathCombo::setFileMode(QFileDialog::FileMode mode)
 {
-  this->fileDialogMode = mode;
+  fileMode_ = mode;
+}
+
+QFileDialog::FileMode QBrowsePathCombo::fileMode() const
+{
+  return fileMode_;
+}
+
+void QBrowsePathCombo::setAcceptMode(QFileDialog::AcceptMode mode)
+{
+  acceptMode_ = mode;
+}
+
+QFileDialog::AcceptMode QBrowsePathCombo::acceptMode() const
+{
+  return acceptMode_;
 }
 
 void QBrowsePathCombo::onBrowseForPath(void)
 {
+  QString title = fileDialogCaption.isEmpty() ? labelText_ : fileDialogCaption;
   QString path = combo->currentText();
-  QFileInfo fileInfo(path);
 
-
-//  if ( path.isEmpty() ) {
-//    path = "/";
-//  }
-
-  QFileDialog dlg(this,
-      fileDialogCaption.isEmpty() ? labelText_ : fileDialogCaption,
-      fileInfo.isDir() ? path : fileInfo.filePath());
-
-  dlg.setFileMode(fileDialogMode);
-  dlg.setOption(QFileDialog::ShowDirsOnly, showDirsOnly_);
-
-  //dlg.setOption(QFileDialog::DontUseNativeDialog);
-  dlg.setViewMode(fileDialogViewMode);
-  dlg.selectFile(path);
-
-
-  //  QSortFilterProxyModel *sorter = new QSortFilterProxyModel();
-  //  sorter->setDynamicSortFilter(true); // This ensures the proxy will resort when the model changes
-  //  dlg.setProxyModel(sorter);
-
-  if ( dlg.exec() == QDialog::Accepted ) {
-
-    if ( dlg.options() & QFileDialog::ShowDirsOnly /*fileDialogMode == QFileDialog::DirectoryOnly*/ ) {
-      path = dlg.directory().path();
+  switch (fileMode_) {
+    case QFileDialog::Directory: {
+      QFileInfo fileInfo(path);
+      QString dir = fileInfo.isDir() ? path : fileInfo.filePath();
+      path = QFileDialog::getExistingDirectory(this, title, dir);
+      break;
     }
-    else {
-      QStringList selectedFiles = dlg.selectedFiles();
-      if ( selectedFiles.size() > 0 ) {
-        path = selectedFiles[0];
+    default:
+      switch (acceptMode_) {
+        case QFileDialog::AcceptOpen:
+          path = QFileDialog::getOpenFileName(this, title, path);
+          break;
+        case QFileDialog::AcceptSave:
+          path = QFileDialog::getSaveFileName(this, title, path);
+          break;
+        default:
+          path.clear();
+          break;
       }
-    }
-    addPath(path, true);
-    emit pathSelected(path);
+      break;
   }
 
-  fileDialogViewMode = dlg.viewMode(); // save user preference
+  if( !path.isEmpty() ) {
+    addPath(path, true);
+
+    CF_DEBUG("Q_EMIT pathSelected(%s)", path.toUtf8().constData());
+    Q_EMIT pathSelected(path);
+  }
 }
 
 

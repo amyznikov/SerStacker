@@ -6,10 +6,11 @@
  */
 
 #include "QCustomDock.h"
+#include <gui/widgets/style.h>
 #include <core/debug.h>
 
-#define ICON_dock       "dock"
-#define ICON_dock_close "close"
+#define ICON_dock       ":/qcustomdock/icons/dock.png"
+#define ICON_close      ":/qcustomdock/icons/close.png"
 
 
 static const char borderless_style[] = ""
@@ -17,11 +18,6 @@ static const char borderless_style[] = ""
     "QToolButton:checked { background-color: darkgray; border: none; }"
     ;
 
-
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qcustomdock/icons/%1").arg(name));
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -85,7 +81,7 @@ QCustomDockTitleBar::QCustomDockTitleBar(const QString & title)
   layout_->addWidget(close_button_ = new QToolButton(), 1, Qt::AlignRight);
   close_button_->setFocusPolicy(Qt::NoFocus);
   close_button_->setIconSize(QSize(16,16));
-  close_button_->setIcon(getIcon(ICON_dock_close));
+  close_button_->setIcon(getIcon(ICON_close));
   close_button_->setStyleSheet(borderless_style);
 
   connect(close_button_, &QToolButton::clicked,
@@ -214,7 +210,6 @@ QCustomDockWidget::QCustomDockWidget(const QString &title, QWidget *parent, QWid
           raise();
         }
       });
-
 
 }
 

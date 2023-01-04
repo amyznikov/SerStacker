@@ -1,5 +1,14 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/gui">
+	<file>icons/light/double-arrow-down.png</file>
+	<file>icons/dark/double-arrow-down.png</file>
+	<file>icons/light/double-arrow-left.png</file>
+	<file>icons/dark/double-arrow-left.png</file>
+	<file>icons/light/double-arrow-right.png</file>
+	<file>icons/dark/double-arrow-right.png</file>	
+	<file>icons/light/double-arrow-up.png</file>
+	<file>icons/dark/double-arrow-up.png</file>
+
 	<file>icons/close.png</file>
 	<file>icons/copy.png</file>
 	<file>icons/delete.png</file>
@@ -9,10 +18,6 @@
 	<file>icons/prev.png</file>
 	<file>icons/reload.png</file>
 	<file>icons/histogram.png</file>
-	<file>icons/double-arrow-down.png</file>
-	<file>icons/double-arrow-left.png</file>
-	<file>icons/double-arrow-right.png</file>
-	<file>icons/double-arrow-up.png</file>
     <file>icons/marker-blue.png</file>
     <file>icons/zoom.png</file>
     <file>icons/reference.png</file>

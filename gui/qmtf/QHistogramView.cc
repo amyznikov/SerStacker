@@ -316,7 +316,7 @@ void QHistogramView::paintEvent(QPaintEvent *event)
   QPainter p(this);
 
   p.fillRect(0, 0, size.width(), size.height(),
-      backgroundColor_);
+      backgroundColor_); // palette().window().color()/**/
 
   if ( size.width() <= 2 * MARGIN || size.height() <= 2 * MARGIN ) {
     return;  // too small wiindow

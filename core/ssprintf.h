@@ -109,6 +109,12 @@ bool fromString(const std::string & s, int64_t * v);
 std::string toString(uint64_t v);
 bool fromString(const std::string & s, uint64_t * v);
 
+// long long
+std::string toString(long long v);
+
+// unsigned long long
+std::string toString(unsigned long long v);
+
 // float
 std::string toString(float v);
 bool fromString(const std::string & s, float * v);

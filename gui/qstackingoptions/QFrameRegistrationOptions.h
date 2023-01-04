@@ -308,7 +308,7 @@ protected:
   QCheckBox * enableJovianDerotation_ctl = Q_NULLPTR;
   QNumberEditBox * min_rotation_ctl = Q_NULLPTR;
   QNumberEditBox * max_rotation_ctl = Q_NULLPTR;
-
+  QNumberEditBox * num_orientations_ctl = Q_NULLPTR;
 
 //  QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
 //  QNumberEditBox * normalization_blur_ctl = Q_NULLPTR;

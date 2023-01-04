@@ -6,6 +6,8 @@
  */
 
 #include "QExpandableGroupBox.h"
+#include <gui/widgets/style.h>
+#include <core/debug.h>
 
 #define __STYLE_TEXT(x) #x
 
@@ -20,38 +22,68 @@ static constexpr char chkbox_style[] =
         height: 13px;
       }
       QCheckBox::indicator:unchecked {
-        image: url(:/gui/icons/double-arrow-right.png);
+        image: url(:/gui/icons/${style}/double-arrow-right.png);
       }
       QCheckBox::indicator:checked {
-        image: url(:/gui/icons/double-arrow-up.png);
+        image: url(:/gui/icons/${style}/double-arrow-up.png);
       }
   );
 
 #undef __STYLE_TEXT
 
-QExpandableGroupBox::QExpandableGroupBox(const QString & title, QWidget * view, QWidget * parent) :
-    Base(parent)
+QExpandableGroupBox::QExpandableGroupBox(const QString & title, QWidget * view, int stretch, Qt::Alignment alignment, QWidget * parent) :
+    Base(parent),
+    view_(view)
 {
   Q_INIT_RESOURCE(gui_resources);
 
-  layout_ =  new QFormLayout(this);
+  layout_ = new QVBoxLayout(this);
 
-  chkBox_ = new QCheckBox(title);
-  chkBox_->setStyleSheet(chkbox_style);
-  layout_->addRow(chkBox_);
 
-  gBox_ = new QGroupBox();
-  layout_->addRow(gBox_);
+  chkBox_ = new QCheckBox(title, this);
+  chkBox_->setStyleSheet(QString(chkbox_style).replace("${style}", iconStyleSelector()));
+  layout_->addWidget(chkBox_, 0, Qt::AlignTop);
 
-  if( view ) {
-    (new QVBoxLayout(gBox_))->addWidget(view);
-    gBox_->setVisible(chkBox_->isChecked());
+  frame_ = new QGroupBox(this);
+  frame_->setCheckable(false);
+
+  frameLayout_ = new QVBoxLayout(frame_);
+
+  if ( view_ ) {
+    frameLayout_->addWidget(view_);
   }
 
+  frame_->setVisible(false);
+
   QObject::connect(chkBox_, &QCheckBox::stateChanged,
-      [this](int state) {
-        gBox_->setVisible(state == Qt::Checked);
+      [this, stretch, alignment](int state) {
+
+        if ( state == Qt::Checked ) {
+          layout_->addWidget(frame_, stretch, alignment);
+          frame_->setVisible(true);
+        }
+        else {
+          frame_->setVisible(false);
+          layout_->removeWidget(frame_);
+        }
+
+        this->parentWidget()->updateGeometry();
+
       });
+
+}
+
+void QExpandableGroupBox::setView(QWidget * view)
+{
+  if ( this->view_ ) {
+    frameLayout_->removeWidget(this->view_);
+  }
+
+  if ( (this->view_ = view) ) {
+    frameLayout_->addWidget(this->view_);
+  }
+
+  updateGeometry();
 }
 
 QWidget * QExpandableGroupBox::view() const
@@ -59,18 +91,28 @@ QWidget * QExpandableGroupBox::view() const
   return view_;
 }
 
-//void QExpandableGroupBox::expand()
-//{
-//
-//}
-//
-//void QExpandableGroupBox::collapse()
-//{
-//
-//}
-//
-//void QExpandableGroupBox::toggle()
-//{
-//
-//}
+QCheckBox * QExpandableGroupBox::checkbox() const
+{
+  return chkBox_;
+}
+
+QVBoxLayout * QExpandableGroupBox::boxlayout() const
+{
+  return layout_;
+}
+
+void QExpandableGroupBox::expand()
+{
+  chkBox_->setChecked(true);
+}
+
+void QExpandableGroupBox::collapse()
+{
+  chkBox_->setChecked(false);
+}
+
+void QExpandableGroupBox::toggle()
+{
+  chkBox_->toggle();
+}
 

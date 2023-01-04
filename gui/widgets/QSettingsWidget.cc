@@ -10,6 +10,7 @@
 QSettingsWidget::QSettingsWidget(const QString & prefix, QWidget * parent)
   : Base(parent), PREFIX(prefix)
 {
+  setFrameShape(NoFrame);
   form = new QFormLayout(this);
 }
 
@@ -35,14 +36,14 @@ std::mutex * QSettingsWidget::mutex()
 
 }
 
-void QSettingsWidget::LOCK()
+void QSettingsWidget::lock()
 {
   if ( mtx_ ) {
     mtx_->lock();
   }
 }
 
-void QSettingsWidget::UNLOCK()
+void QSettingsWidget::unlock()
 {
   if ( mtx_ ) {
     mtx_->unlock();
@@ -51,12 +52,17 @@ void QSettingsWidget::UNLOCK()
 
 bool QSettingsWidget::updatingControls()
 {
-  return updatingControls_;
+  return updatingControls_ > 0;
 }
 
 void QSettingsWidget::setUpdatingControls(bool v)
 {
-  updatingControls_ = v;
+  if ( v ) {
+    ++updatingControls_;
+  }
+  else if ( updatingControls_ && --updatingControls_ < 0 ) {
+    updatingControls_ = 0;
+  }
 }
 
 void QSettingsWidget::updateControls()

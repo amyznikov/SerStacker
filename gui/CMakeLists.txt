@@ -79,8 +79,6 @@ foreach(QRC_FILE ${QRC_FILES})
 		${QRC_FILE})
 endforeach()
 
-message("RESOURCE_FILES =${RESOURCE_FILES}")
-
 add_library(${PROJECT_NAME} STATIC 
 	${HEADER_FILES} 
 	${SRC_FILES} 

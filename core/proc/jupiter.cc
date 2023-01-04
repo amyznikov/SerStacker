@@ -317,6 +317,16 @@ double c_jovian_derotation::max_rotation() const
   return max_rotation_;
 }
 
+void c_jovian_derotation::set_num_orientations(int v)
+{
+  num_orientations_ = v;
+}
+
+int c_jovian_derotation::num_orientations() const
+{
+  return num_orientations_;
+}
+
 void c_jovian_derotation::set_eccflow_support_scale(int v)
 {
   eccflow_support_scale_ = v;
@@ -506,24 +516,38 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   const double rotation_step =
     (max_rotation_ - min_rotation_) / num_rotations;
 
+  const int num_orientations = std::max(1, std::min(15, num_orientations_));
+  const double orientation_step = // radian
+      0.25 * num_orientations / reference_ellipse_.size.width;
+
   double current_cost, best_cost;
   double best_rotation;
+  double best_orientation;
   int best_rotation_index;
 
-  CF_DEBUG("c_jovian_derotation:  use num_rotations=%d rotation_step=%g deg",
+  CF_DEBUG("c_jovian_derotation:\n"
+      "use num_rotations=%3d rotation_step=%g deg\n"
+      "num_orientations =%3d orientation_step=%g deg",
       num_rotations,
-      rotation_step * 180 / CV_PI);
+      rotation_step * 180 / CV_PI,
+      num_orientations,
+      orientation_step * 180 / CV_PI);
 
   // current -> reference ellipse transform
-  cv::Matx23f T =
-      createEuclideanTransform(
-          reference_ellipse_.center.x, reference_ellipse_.center.y,
-          current_ellipse_.center.x, current_ellipse_.center.y,
-          current_ellipse_.size.width / reference_ellipse_.size.width,
-          (reference_ellipse_.angle - current_ellipse_.angle) * CV_PI / 180,
-          CV_32F);
+
+  double initial_orientation =
+      (reference_ellipse_.angle - current_ellipse_.angle) * CV_PI / 180;
+
 
   if( !debug_path_.empty() ) {
+
+    cv::Matx23f T =
+        createEuclideanTransform(
+            reference_ellipse_.center.x, reference_ellipse_.center.y,
+            current_ellipse_.center.x, current_ellipse_.center.y,
+            current_ellipse_.size.width / reference_ellipse_.size.width,
+            initial_orientation,
+            CV_32F);
 
     cv::Mat tmp;
 
@@ -545,7 +569,6 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   cv::Mat1f current_rotated_normalized_image;
   cv::Mat1f current_difference_image;
 
-
   for( int i = 0; i < num_rotations; ++i ) {
 
     INSTRUMENT_REGION("derotation_body");
@@ -553,57 +576,82 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     const double l =
         min_rotation_ + i * rotation_step;
 
-    create_jovian_rotation_remap(l,
-        reference_ellipse_,
-        T,
-        reference_gray_image_.size(),
-        current_remap_,
-        current_wmask_);
+    for( int j = 0; j < num_orientations; ++j ) {
 
-    cv::remap(current_normalized_image_, current_rotated_normalized_image,
-        current_remap_, cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_REPLICATE);
+      const double current_orientation =
+          initial_orientation + (j - num_orientations / 2) * orientation_step;
 
-    if( !debug_path_.empty() ) {
+      const cv::Matx23f Tj =
+          createEuclideanTransform(
+              reference_ellipse_.center.x, reference_ellipse_.center.y,
+              current_ellipse_.center.x, current_ellipse_.center.y,
+              current_ellipse_.size.width / reference_ellipse_.size.width,
+              current_orientation,
+              CV_32F);
 
-      save_image(current_rotated_normalized_image,
-          ssprintf("%s/rotations/current_rotated_normalized_image.%03d.tiff",
-              debug_path_.c_str(),
-              i));
-    }
+      create_jovian_rotation_remap(l,
+          reference_ellipse_,
+          Tj,
+          reference_gray_image_.size(),
+          current_remap_,
+          current_wmask_);
 
-    current_cost =
-        compute_jovian_derotation_cost(
-            reference_normalized_image_,
-            current_rotated_normalized_image,
-            current_wmask_,
-            debug_path_.empty() ?
-                nullptr :
-                &current_difference_image);
+      cv::remap(current_normalized_image_, current_rotated_normalized_image,
+          current_remap_, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_REPLICATE);
 
-    if( !debug_path_.empty() ) {
+      if( !debug_path_.empty() ) {
 
-      CF_DEBUG("R %6d: l=%+.3f cost=%.6f", i,
-          l * 180 / CV_PI,
-          current_cost);
+        save_image(current_rotated_normalized_image,
+            ssprintf("%s/rotations/current_rotated_normalized_image.%03d.%03d.tiff",
+                debug_path_.c_str(),
+                i, j));
+      }
 
-      save_image(current_difference_image,
-          ssprintf("%s/diffs/current_difference_image.%03d.tiff",
-              debug_path_.c_str(),
-              i));
-    }
+      current_cost =
+          compute_jovian_derotation_cost(
+              reference_normalized_image_,
+              current_rotated_normalized_image,
+              current_wmask_,
+              debug_path_.empty() ?
+                  nullptr :
+                  &current_difference_image);
+
+      if( !debug_path_.empty() ) {
+
+        CF_DEBUG("R %6d: l=%+.3f o=%+.3f cost=%.6f", i,
+            l * 180 / CV_PI,
+            current_orientation * 180 / CV_PI,
+            current_cost);
+
+        save_image(current_difference_image,
+            ssprintf("%s/diffs/current_difference_image.%03d.%03d.tiff",
+                debug_path_.c_str(),
+                i, j));
+      }
 
 
-    if( i == 0 || current_cost < best_cost ) {
-      best_cost = current_cost;
-      best_rotation = l;
-      best_rotation_index = i;
+      if( (i == 0 && j == 0) || current_cost < best_cost ) {
+        best_cost = current_cost;
+        best_rotation_index = i;
+        best_rotation = l;
+        best_orientation = current_orientation;
+      }
     }
   }
 
-  CF_DEBUG("BEST cost: %g at rotation %d = %g deg",
-      best_cost, best_rotation_index, best_rotation * 180 / CV_PI);
+  CF_DEBUG("BEST cost: %g at rotation %d: %g deg orientation: %g deg",
+      best_cost, best_rotation_index, best_rotation * 180 / CV_PI,
+      best_orientation * 180 / CV_PI);
+
+  cv::Matx23f T =
+      createEuclideanTransform(
+          reference_ellipse_.center.x, reference_ellipse_.center.y,
+          current_ellipse_.center.x, current_ellipse_.center.y,
+          current_ellipse_.size.width / reference_ellipse_.size.width,
+          best_orientation,
+          CV_32F);
 
   create_jovian_rotation_remap(best_rotation,
       reference_ellipse_,

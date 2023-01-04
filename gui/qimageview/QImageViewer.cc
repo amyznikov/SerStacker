@@ -63,17 +63,22 @@ QImageSceneView * QImageViewer::sceneView() const
   return view_;
 }
 
+QImageScene * QImageViewer::scene() const
+{
+  return view_->scene();
+}
+
 QToolBar * QImageViewer::embedToolbar(QToolBar * toolbar)
 {
-  if ( this->toolbar_ != Q_NULLPTR ) {
-    if ( toolbar == Q_NULLPTR ) {
+  if ( this->toolbar_ ) {
+    if ( !toolbar ) {
       return this->toolbar_; // already embedded
     }
     layout_->removeWidget(this->toolbar_);
   }
 
 
-  if ( (this->toolbar_ = toolbar) == Q_NULLPTR ) {
+  if ( !(this->toolbar_ = toolbar) ) {
     this->toolbar_ = new QToolBar(this);
     this->toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
     this->toolbar_->setOrientation(Qt::Horizontal);
@@ -182,31 +187,28 @@ QString QImageViewer::currentFileName() const
 void QImageViewer::setCurrentFileName(const QString & newFileName)
 {
   this->currentFileName_ = newFileName;
-  emit currentImageChanged();
+  Q_EMIT currentImageChanged();
 }
 
 void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
 {
+  INSTRUMENT_REGION("");
   editMaskUndoQueue_.clear();
 
-  if ( image.empty() ) {
+  if( image.empty() ) {
     currentImage_.release();
     currentMask_.release();
     currentImageData_.release();
-    qimage_ = QImage();
+  }
+  else if( make_copy ) {
+    image.getMat().copyTo(currentImage_);
+    mask.getMat().copyTo(currentMask_);
+    imageData.getMat().copyTo(currentImageData_);
   }
   else {
-
-    if ( make_copy ) {
-      image.getMat().copyTo(currentImage_);
-      mask.getMat().copyTo(currentMask_);
-      imageData.getMat().copyTo(currentImageData_);
-    }
-    else {
-      currentImage_ = image.getMat();
-      currentMask_ = mask.getMat();
-      currentImageData_ = imageData.getMat();
-    }
+    currentImage_ = image.getMat();
+    currentMask_ = mask.getMat();
+    currentImageData_ = imageData.getMat();
   }
 
   if ( displayFunction_ ) {
@@ -214,7 +216,7 @@ void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv
         currentMask_);
   }
 
-  emit currentImageChanged();
+  Q_EMIT currentImageChanged();
 }
 
 void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
@@ -241,13 +243,14 @@ void QImageViewer::setMask(cv::InputArray mask, bool make_copy /*= true*/)
     currentMask_ = mask.getMat();
   }
 
-  emit currentImageChanged();
+  Q_EMIT currentImageChanged();
   updateDisplay();
 }
 
 
 void QImageViewer::updateDisplay()
 {
+  INSTRUMENT_REGION("");
   if ( isVisible() ) {
     createDisplayImage();
     showCurrentDisplayImage();
@@ -299,14 +302,90 @@ void QImageViewer::createDisplayImage()
   emit currentDisplayImageChanged();
 }
 
+//////
+//static QPixmap QPixmap_fromImage(const QImage &image, Qt::ImageConversionFlags flags)
+//{
+//    if (image.isNull())
+//        return QPixmap();
+//    if (Q_UNLIKELY(!qobject_cast<QGuiApplication *>(QCoreApplication::instance()))) {
+//        qWarning("QPixmap::fromImage: QPixmap cannot be created without a QGuiApplication");
+//        return QPixmap();
+//    }
+//    QScopedPointer<QPlatformPixmap> data(QGuiApplicationPrivate::platformIntegration()->createPlatformPixmap(QPlatformPixmap::PixmapType));
+//    data->fromImage(image, flags);
+//    return QPixmap(data.take());
+//}
+//////
+
 void QImageViewer::showCurrentDisplayImage()
 {
+  INSTRUMENT_REGION("");
   if( displayImage_.empty() ) {
-    view_->scene()->setBackground(QImage());
+    scene()->setBackground(QPixmap());
   }
   else {
-    cv2qt(displayImage_, &qimage_);
-    view_->scene()->setBackground(qimage_);
+
+    QPixmap pixmap;
+
+    if( displayImage_.type() == CV_8UC3 ) {
+
+      QImage qimage ( displayImage_.data,
+          displayImage_.cols, displayImage_.rows,
+          (int) (size_t) (displayImage_.step),
+          QImage::Format_BGR888 );
+
+      pixmap =
+          QPixmap::fromImage(qimage,
+              Qt::NoFormatConversion |
+                  Qt::ThresholdDither |
+                  Qt::ThresholdAlphaDither |
+                  Qt::NoOpaqueDetection);
+
+    }
+    else if( displayImage_.type() == CV_8UC1 ) {
+
+      QImage qimage ( displayImage_.data,
+          displayImage_.cols, displayImage_.rows,
+          (int) (size_t) (displayImage_.step),
+          QImage::Format_Grayscale8 );
+
+      pixmap =
+          QPixmap::fromImage(qimage,
+              Qt::NoFormatConversion |
+                  Qt::ThresholdDither |
+                  Qt::ThresholdAlphaDither |
+                  Qt::NoOpaqueDetection);
+
+    }
+    else if( displayImage_.type() == CV_16UC1 ) {
+
+      QImage qimage ( displayImage_.data,
+          displayImage_.cols, displayImage_.rows,
+          (int) (size_t) (displayImage_.step),
+          QImage::Format_Grayscale16 );
+
+      pixmap =
+          QPixmap::fromImage(qimage,
+              Qt::NoFormatConversion |
+                  Qt::ThresholdDither |
+                  Qt::ThresholdAlphaDither |
+                  Qt::NoOpaqueDetection);
+
+    }
+    else {
+
+      cv2qt(displayImage_, &qimage_);
+
+      pixmap =
+          QPixmap::fromImage(qimage_,
+              Qt::NoFormatConversion |
+                  Qt::ThresholdDither |
+                  Qt::ThresholdAlphaDither |
+                  Qt::NoOpaqueDetection);
+    }
+
+
+    scene()->setBackground(pixmap);
   }
 }
 
@@ -558,7 +637,7 @@ void QImageViewer::editMask(QMouseEvent * e)
       break;
     }
 
-    emit currentImageChanged();
+    Q_EMIT currentImageChanged();
     updateDisplay();
   }
 }
@@ -570,7 +649,7 @@ void QImageViewer::undoEditMask()
     cv::Mat mask = editMaskUndoQueue_.pop();
     if ( mask.size() == currentImage_.size() ) {
       currentMask_ = mask;
-      emit currentImageChanged();
+      Q_EMIT currentImageChanged();
       updateDisplay();
     }
   }

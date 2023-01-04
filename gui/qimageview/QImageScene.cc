@@ -57,11 +57,16 @@ QGraphicsPixmapItem * QImageScene::setBackground(const QImage & image)
 
 QGraphicsPixmapItem * QImageScene::setBackground(const QPixmap & pxmap)
 {
+  const QSize oldPixmapSize =
+      bgItem_->pixmap().size();
+
   bgItem_->setPixmap(pxmap);
-  if ( !pxmap.isNull() ) {
+
+  if ( pxmap.size() != oldPixmapSize ) {
     setSceneRect(0, 0, pxmap.width(), pxmap.height());
     bgItem_->setPos(bgItem_->mapFromScene(0, 0));
   }
+
   return bgItem_;
 }
 

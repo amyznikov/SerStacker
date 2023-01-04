@@ -7,6 +7,7 @@
 
 #include "c_pixinsight_mtf.h"
 #include "pixinsight-mtf.h"
+#include <core/debug.h>
 
 
 c_pixinsight_mtf::sptr c_pixinsight_mtf::create()
@@ -54,6 +55,11 @@ bool c_pixinsight_mtf::apply(cv::InputArray src_image,
     cv::OutputArray dst_image,
     int ddepth) const
 {
+
+  if( fabs(midtones_ - 0.5) < 10 * FLT_EPSILON ) {
+    return base::apply(src_image, dst_image, ddepth);
+  }
+
   return apply_mtf_pixinsight(src_image,
       dst_image,
       input_range_[0], input_range_[1],

@@ -278,6 +278,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
     jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
     jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
+    jovian_derotation_.set_num_orientations(options_.jovian_derotation.num_orientations);
     jovian_derotation_.set_force_reference_ellipse(options_.jovian_derotation.ellipse.force_reference_ellipse);
     jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
     jovian_derotation_.set_eccflow_normalization_scale(options_.jovian_derotation.eccflow_normalization_scale);
@@ -1226,23 +1227,9 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     cv::Mat2f current_total_remap =
         rmap.clone();
 
-    CF_DEBUG("current_total_remap.size=%dx%d",
-        current_total_remap.cols,
-        current_total_remap.rows);
-
-
     // size must be reference_image.size()
     const cv::Mat1b &reference_ellipse_mask =
         jovian_derotation_.reference_ellipse_mask();
-
-    CF_DEBUG("reference_ellipse_mask.size=%dx%d",
-        reference_ellipse_mask.cols,
-        reference_ellipse_mask.rows);
-
-
-    CF_DEBUG("jovian_derotation_.current_derotation_remap().size=%dx%d",
-        jovian_derotation_.current_derotation_remap().cols,
-        jovian_derotation_.current_derotation_remap().rows);
 
     // current_derotation_remap size must be reference_image.size()
     jovian_derotation_.current_derotation_remap().copyTo(
@@ -1258,7 +1245,8 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
             border_value);
 
     if( !fOk ) {
-      CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails fails");
+      CF_ERROR(" c_jovian_rotation_registration:  "
+          "base::custom_remap() fails fails");
       return false;
     }
   }
@@ -1270,12 +1258,8 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     const cv::Mat orig_mask =
         dst_mask.getMat();
 
-    CF_DEBUG("dst_mask: %dx%d channels=%d depth=%d",
-        dst_mask.cols(), dst_mask.rows(),
-        dst_mask.channels(),
-        dst_mask.depth());
-
     cv::Mat new_mask;
+
     if ( orig_mask.depth() == CV_32F ) {
       orig_mask.copyTo(new_mask);
     }
@@ -1289,8 +1273,6 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     current_wmask.copyTo(new_mask,
         jovian_derotation_.reference_ellipse_mask());
 
-//    new_mask.setTo(0, jovian_derotation_.current_uncropped_planetary_disk_mask());
-//    wmask.copyTo(new_mask(jovian_derotation_.reference_bounding_box()), wmask > 0);
     cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
     new_mask.setTo(0, ~orig_mask);
     dst_mask.move(new_mask);

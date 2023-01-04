@@ -1784,6 +1784,9 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       return false;
     }
 
+    // disable jovian derotation for master frame generator
+    frame_registration_->options().jovian_derotation.enabled = false;
+
     if( image_processing_options.ecc_image_processor && master_options.apply_input_frame_processors  ) {
       frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options));
     }

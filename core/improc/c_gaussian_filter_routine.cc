@@ -50,7 +50,7 @@ bool c_gaussian_filter_routine::ignore_mask() const
 
 bool c_gaussian_filter_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( ignore_mask_ || mask.empty() ) {
+  if ( ignore_mask_ || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
     c_gaussian_filter(sigma_, sigma_).apply(image.getMat(), cv::noArray(), image, cv::BORDER_REFLECT101);
   }
   else {

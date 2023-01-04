@@ -12,7 +12,24 @@ if( ENABLE_CALL_GRAPH_INSTRUMENTATION )
 	add_definitions(-DENABLE_CALL_GRAPH_INSTRUMENTATION=1)
 endif()
 
+set (CMAKE_INCLUDE_CURRENT_DIR ON)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_PREFIX_PATH "/usr/local") # need for some stupid ubuntus
+
+if (CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "armv6l")
+  set(APP_ARCH armv6)
+elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "armv7")
+  set(APP_ARCH armv7)
+elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64|armv8")
+  set(APP_ARCH armv8)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL "8")
+  set(APP_ARCH x86_64)
+else()
+  set(APP_ARCH i686)
+endif ()
+
+message(STATUS "Detected architecture: ${APP_ARCH}")
+
 
 
 # ----------------------------------------------------------------------------

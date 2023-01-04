@@ -527,7 +527,7 @@ void c_callgraph_dump::dump_node(FILE * fp, const c_graph_node * node, int level
           for ( int i = 0; i < 4 * n; ++i ) {
             fputc('.', fp);
           }
-          fputc(' ', fp);
+          //fputc(' ', fp);
         }
       };
 

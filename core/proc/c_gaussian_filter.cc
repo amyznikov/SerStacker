@@ -78,47 +78,79 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
 
 void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst, int borderType, double zvalue, int ddepth) const
 {
-  const cv::Size src_size = _src.size();
+  const cv::Size src_size =
+      _src.size();
 
-  const int src_type = _src.type();
+  const int src_type =
+      _src.type();
 
   if ( _dst.fixedType() ) {
-    ddepth = _dst.depth();
+    ddepth =
+        _dst.depth();
   }
   else if ( ddepth < 0 ) {
-    ddepth = _src.depth();
+    ddepth =
+        _src.depth();
   }
 
   if ( Kx_.rows == 1 &&  Ky_.rows == 1 ) {
+
     _src.getMat().convertTo(_dst, ddepth);
+
     return;
   }
 
   if ( _mask.empty() || cv::countNonZero(_mask) == _mask.size().area() ) {
-    cv::sepFilter2D(_src, _dst, ddepth, Kx_, Ky_, cv::Point(-1, -1), 0, borderType);
+
+    cv::sepFilter2D(_src, _dst,
+        ddepth,
+        Kx_, Ky_,
+        cv::Point(-1, -1),
+        0,
+        borderType);
+
     return;
   }
 
-  cv::Mat gsrc;
-  cv::Mat gmask;
-  constexpr double Kscale = 1.0 / 255;
-  const cv::Mat1b src_mask = _mask.getMat();
+  cv::Mat gsrc, gmask;
 
-  cv::sepFilter2D(_src, gsrc, CV_32F, Kx_, Ky_, cv::Point(-1, -1), 0, borderType);
-  cv::sepFilter2D(_mask, gmask, CV_32F, Kscale * Kx_, Kscale * Ky_, cv::Point(-1, -1), 0, borderType);
+  cv::sepFilter2D(_src, gsrc,
+      CV_32F,
+      Kx_, Ky_,
+      cv::Point(-1, -1),
+      0,
+      borderType);
+
+  cv::sepFilter2D(_mask, gmask,
+      CV_32F,
+      (1.0 / 255) * Kx_, Ky_,
+      cv::Point(-1, -1),
+      0,
+      borderType);
+
+
+  const cv::Mat1b src_mask =
+      _mask.getMat();
 
 
 #if !HAVE_TBB
-    const int cn = gsrc.channels();
+
+  const int cn =
+      gsrc.channels();
+
     if ( cn > 1 ) {
+
       std::vector<cv::Mat> channels(cn);
+
       for ( int i = 0; i < cn ; ++i ) {
         channels[i] = gmask;
       }
+
       cv::merge(channels, gmask);
     }
 
     cv::divide(gsrc, gmask, _dst, 1, ddepth);
+
     _dst.setTo(0, ~src_mask);
 
 #else
@@ -128,14 +160,22 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
     tbb::parallel_for(tbb_range(0, gsrc.rows, 256),
         [&](const tbb_range & range) {
 
-          const int cn = gsrc.channels();
-          const double zv = zvalue;
+          const int cn =
+              gsrc.channels();
+
+          const double zv =
+              zvalue;
 
           for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
 
-            float * gsrcp = gsrc.ptr<float>(y);
-            const float * gmskp = gmask.ptr<const float>(y);
-            const uint8_t * smskp = src_mask[y];
+            float * gsrcp =
+                gsrc.ptr<float>(y);
+
+            const float * gmskp =
+                gmask.ptr<const float>(y);
+
+            const uint8_t * smskp =
+                src_mask[y];
 
             for ( int x = 0, nx = gsrc.cols; x < nx; ++x, gsrcp += cn ) {
 

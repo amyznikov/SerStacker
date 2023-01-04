@@ -5,8 +5,8 @@
  *      Author: amyznikov
  */
 #include <opencv2/core/ocl.hpp>
-#include <core/debug.h>
 #include "MainWindow.h"
+#include <core/debug.h>
 
 
 #define MY_COMPANY  "amyznikov"

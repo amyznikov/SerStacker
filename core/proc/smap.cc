@@ -11,62 +11,97 @@
 #include <core/proc/eccalign.h>
 #include <core/proc/morphology.h>
 
-static cv::Mat1f create_dog_kernel(double _s1, double _s2)
-{
-  const double s1 =
-      (std::min)(_s1, _s2);
-
-  const double s2 =
-      (std::max)(_s1, _s2);
-
-  const int ksize =
-      2 * (int) (4 * s2) + 1;
-
-  const cv::Mat1f k1 =
-      cv::getGaussianKernel(ksize, s1, CV_32F);
-
-  const cv::Mat1f k2 =
-      cv::getGaussianKernel(ksize, s2, CV_32F);
-
-//  cv::Mat1f k;
-//  cv::normalize(k1 - k2, k, 1, cv::NORM_L1);
 //
-//  return k;
-  return k1 - k2;
-}
+//static cv::Mat1f create_dog_kernel(double _s1, double _s2)
+//{
+//  const double s1 =
+//      (std::min)(_s1, _s2);
+//
+//  const double s2 =
+//      (std::max)(_s1, _s2);
+//
+//  const int ksize =
+//      2 * (int) (4 * s2) + 1;
+//
+//  const cv::Mat1f k1 =
+//      cv::getGaussianKernel(ksize, s1, CV_32F);
+//
+//  const cv::Mat1f k2 =
+//      cv::getGaussianKernel(ksize, s2, CV_32F);
+//
+////  cv::Mat1f k;
+////  cv::normalize(k1 - k2, k, 1, cv::NORM_L1);
+////
+////  return k;
+//  return k1 - k2;
+//}
+
+//static bool compute_dogsmap_(const cv::Mat & src, cv::Mat & dst, double s1, double s2, int scale, double minv)
+//{
+//  const cv::Size src_size =
+//      src.size();
+//
+//  cv::Mat g, gx, gy;
+//  if ( s1 <= 0 ) {
+//    g = src;
+//  }
+//  else {
+//    const int gsize = 2 * (int) (4 * s1) + 1;
+//    const cv::Mat1f k1 = cv::getGaussianKernel(gsize, s1, CV_32F);
+//    cv::sepFilter2D(src, g, CV_32F, k1, k1.t());
+//  }
+//
+//  ecc_differentiate(g, gx, gy);
+//  cv::magnitude(gx,  gy, g);
+//  cv::multiply(g, g, dst);
+//
+//
+//  if ( scale > 0 ) {
+//    ecc_downscale(dst, dst, scale, cv::BORDER_REPLICATE);
+//  }
+//  if ( minv > 0 ) {
+//    cv::add(dst, minv, dst);
+//  }
+//  if ( scale > 0 ) {
+//    ecc_upscale(dst, src_size);
+//  }
+//
+//  return true;
+//}
 
 static bool compute_dogsmap_(const cv::Mat & src, cv::Mat & dst, double s1, double s2, int scale, double minv)
 {
   const cv::Size src_size =
       src.size();
 
-  cv::Mat g, gx, gy;
-  if ( s1 <= 0 ) {
-    g = src;
+  const cv::Mat1b SE(3, 3, 255);
+  const cv::Mat1f K(3, 3, (float) (1.0 / 9));
+
+  cv::Mat m, g;
+
+  if( scale < 1 ) {
+    cv::filter2D(src, m, CV_32F, K, cv::Point(1, 1), 1e-8);
+    morphological_gradient(src, g, SE);
   }
   else {
-    const int gsize = 2 * (int) (4 * s1) + 1;
-    const cv::Mat1f k1 = cv::getGaussianKernel(gsize, s1, CV_32F);
-    cv::sepFilter2D(src, g, CV_32F, k1, k1.t());
+    ecc_downscale(src, g, scale);
+    cv::filter2D(g, m, CV_32F, K, cv::Point(1, 1), std::max(minv, 1e-15));
+    morphological_gradient(g, g, SE);
   }
 
-  ecc_differentiate(g, gx, gy);
-  cv::magnitude(gx,  gy, g);
-  cv::multiply(g, g, dst);
-
-
-  if ( scale > 0 ) {
-    ecc_downscale(dst, dst, scale, cv::BORDER_REPLICATE);
+  if( g.depth() != CV_32F ) {
+    g.convertTo(g, CV_32F);
   }
-  if ( minv > 0 ) {
-    cv::add(dst, minv, dst);
-  }
-  if ( scale > 0 ) {
+
+  cv::divide(g, m, dst, 1.0, CV_32F);
+
+  if( scale > 0 ) {
     ecc_upscale(dst, src_size);
   }
 
   return true;
 }
+
 
 bool compute_dogsmap(cv::InputArray src, cv::Mat & dst, double s1, double s2, int scale, double minv)
 {
@@ -80,6 +115,12 @@ bool compute_dogsmap(cv::InputArray src, cv::Mat & dst, double s1, double s2, in
   }
 
   return compute_dogsmap_(gray, dst, s1, s2, scale, minv);
+}
+
+bool compute_dogsmapc(cv::InputArray src, cv::Mat & dst,
+    double s1, double s2, int scale, double minv)
+{
+  return compute_dogsmap_(src.getMat(), dst, s1, s2, scale, minv);
 }
 
 

@@ -58,10 +58,17 @@ void QImageEditor::clear()
   setCurrentImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
 }
 
-void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask)
+void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask, bool make_copy)
 {
-  inputImage_ = image.getMat();
-  inputMask_ = mask.getMat();
+  if ( make_copy ) {
+    image.getMat().copyTo(inputImage_);
+    mask.getMat().copyTo(inputMask_);
+  }
+  else {
+    inputImage_ = image.getMat();
+    inputMask_ = mask.getMat();
+  }
+
   updateImage();
 }
 
@@ -72,7 +79,7 @@ void QImageEditor::updateImage()
   }
   else {
 
-    QWaitCursor wait(this);
+    //QWaitCursor wait(this);
 
     hasPendingUpdates_ = false;
 
@@ -99,7 +106,7 @@ void QImageEditor::updateImage()
     updateDisplay();
   }
 
-  emit currentImageChanged();
+  Q_EMIT currentImageChanged();
 }
 
 void QImageEditor::showEvent(QShowEvent *event)

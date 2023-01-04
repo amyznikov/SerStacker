@@ -17,7 +17,7 @@ template<>
 const c_enum_member* members_of<DISPLAY_TYPE>()
 {
   static constexpr c_enum_member members[] = {
-      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
+      { DISPLAY_PIXEL_VALUE, "VALUE" },
       { DISPLAY_PIXEL_VALUE }
   };
 

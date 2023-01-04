@@ -43,7 +43,7 @@ QImageSceneView::QImageSceneView(QWidget *parent)
     : Base(parent)
 {
   setScene(scene_ = new QImageScene(this));
-  scene_->setBackgroundBrush(QBrush(Qt::darkGray, Qt::SolidPattern));
+  //scene_->setBackgroundBrush(QBrush(Qt::darkGray, Qt::SolidPattern));
 
   setMouseTracking(true);
 

@@ -28,6 +28,7 @@ void morphological_smooth_open(cv::InputArray src, cv::Mat & dst,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
 
 /** @brief Morphological gradient using cv::morphologyEx().
+    It is the difference between dilation and erosion of an image.
 
  @see <http://www.mif.vu.lt/atpazinimas/dip/FIP/fip-Morpholo.html>
  * */

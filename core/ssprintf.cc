@@ -199,6 +199,22 @@ std::string toString(int64_t v)
   return s;
 }
 
+// long long
+std::string toString(long long v)
+{
+  char s[256];
+  snprintf(s, sizeof(s) - 1, "%lld", v);
+  return s;
+}
+
+// unsigned long long
+std::string toString(unsigned long long v)
+{
+  char s[256];
+  snprintf(s, sizeof(s) - 1, "%llu", v);
+  return s;
+}
+
 bool fromString(const std::string & s, int64_t * v)
 {
   return sscanf(s.c_str(), "%" SCNd64, v) == 1;

@@ -11,45 +11,45 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
     Base("QImageProcessingOptions", parent)
 {
   input_image_processor_ctl =
-      add_combobox < QImageProcessorSelectionCombo > ("Input image processor:",
-          [this](int index)
-          {
+      add_combobox<QImageProcessorSelectionCombo>(
+          "Input image processor:",
+          [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->input_image_processor =
-                  input_image_processor_ctl->processor(index);
+              combo->processor(index);
               emit parameterChanged();
             }
           });
 
   ecc_image_processor_ctl =
-      add_combobox < QImageProcessorSelectionCombo > ("ECC image processor:",
-          [this](int index)
-          {
+      add_combobox<QImageProcessorSelectionCombo>(
+          "ECC image processor:",
+          [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->ecc_image_processor =
-                  ecc_image_processor_ctl->processor(index);
+              combo->processor(index);
               emit parameterChanged();
             }
           });
 
   aligned_image_processor_ctl =
-      add_combobox < QImageProcessorSelectionCombo > ("Aligned image processor:",
-          [this](int index)
-          {
+      add_combobox<QImageProcessorSelectionCombo>(
+          "Aligned image processor:",
+          [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->aligned_image_processor =
-                  aligned_image_processor_ctl->processor(index);
+              combo->processor(index);
               emit parameterChanged();
             }
           });
 
   accumulated_image_processor_ctl =
-      add_combobox < QImageProcessorSelectionCombo > ("Accumulated image processor:",
-          [this](int index)
-          {
+      add_combobox<QImageProcessorSelectionCombo>(
+          "Accumulated image processor:",
+          [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->accumulated_image_processor =
-                  accumulated_image_processor_ctl->processor(index);
+              combo->processor(index);
               emit parameterChanged();
             }
           });

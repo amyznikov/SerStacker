@@ -23,8 +23,8 @@ public:
   typedef QDockWidget Base;
 
   explicit QCustomDockWidget(const QString & title,
-      QWidget * parent = Q_NULLPTR,
-      QWidget * view = Q_NULLPTR,
+      QWidget * parent = nullptr,
+      QWidget * view = nullptr,
       Qt::WindowFlags flags = Qt::WindowFlags());
 
   QCustomDockTitleBar * titleBar() const;
@@ -122,8 +122,8 @@ QCustomDockWidgetType * addDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,
-    QClientWidgetType * clientWidget = Q_NULLPTR,
-    QMenu * viewMenu = Q_NULLPTR)
+    QClientWidgetType * clientWidget = nullptr,
+    QMenu * viewMenu = nullptr)
 {
   QCustomDockWidgetType * dock = new QCustomDockWidgetType(title, parent, clientWidget);
   dock->setObjectName(dockName);
@@ -142,8 +142,8 @@ inline QCustomDockWidget * addCustomDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,
-    QWidget * clientWidget = Q_NULLPTR,
-    QMenu * viewMenu = Q_NULLPTR)
+    QWidget * clientWidget = nullptr,
+    QMenu * viewMenu = nullptr)
 {
   return addDock<QCustomDockWidget>(parent, area, dockName, title, clientWidget, viewMenu);
 }

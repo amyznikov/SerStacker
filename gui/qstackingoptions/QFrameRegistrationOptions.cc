@@ -1355,6 +1355,16 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(num_orientations_ctl =
+      add_numeric_box<int>("num_orientations:",
+          [this](int value) {
+            if ( options_ && options_->num_orientations != value ) {
+              options_->num_orientations = value;
+              emit parameterChanged();
+            }
+          }));
+
+
 //  controls.append(align_planetary_disk_masks_ctl =
 //      add_checkbox("align planetary disk masks",
 //          [this](bool checked) {
@@ -1442,6 +1452,7 @@ void QJovianDerotationOptions::onupdatecontrols()
     enableJovianDerotation_ctl->setChecked(options_->enabled);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
+    num_orientations_ctl->setValue(options_->num_orientations);
     //align_planetary_disk_masks_ctl->setChecked(options_->align_planetary_disk_masks);
     eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
     eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);

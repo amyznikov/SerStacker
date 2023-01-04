@@ -105,6 +105,8 @@ static bool apply_mtf__(const cv::Mat & src, cv::Mat & dst,
     double shadows, double highlights, double midtones)
 {
 
+  INSTRUMENT_REGION("");
+
   using tbb_range = tbb::blocked_range<int>;
 
   const int ny = src.rows;
@@ -115,7 +117,7 @@ static bool apply_mtf__(const cv::Mat & src, cv::Mat & dst,
   const double si = 1. / (imax - imin);
   const double so = (dst_max - dst_min);
 
-  tbb::parallel_for(tbb_range(0, ny, 256),
+  tbb::parallel_for(tbb_range(0, ny, 512),
       [&src, &dst, nx, imin, imax, dst_min, si, so, midtones]
 
       (const tbb_range & r) {
@@ -128,7 +130,7 @@ static bool apply_mtf__(const cv::Mat & src, cv::Mat & dst,
           for ( int x = 0; x < nx; ++x ) {
 
             dstp[x] = cv::saturate_cast<T2>(dst_min +
-                so * mtf_pixinsight((srcp[x] - imin) * si, midtones));
+                so * mtf_pixinsight(si * (srcp[x] - imin), midtones));
           }
         }
       });

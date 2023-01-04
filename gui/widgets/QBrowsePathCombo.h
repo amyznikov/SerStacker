@@ -14,16 +14,13 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
 class QBrowsePathCombo
     : public QWidget
 {
   Q_OBJECT;
 public:
-
   typedef QBrowsePathCombo ThisClass;
   typedef QWidget Base;
-
 
   QBrowsePathCombo(QWidget *parent = Q_NULLPTR);
   QBrowsePathCombo(const QString & label, QFileDialog::FileMode mode = QFileDialog::AnyFile, QWidget *parent = Q_NULLPTR);
@@ -33,7 +30,12 @@ public:
 
   void setLabel(const QString & label);
   void setFileDialogCaption(const QString & caption);
-  void setFileDialogMode(QFileDialog::FileMode mode);
+
+  void setFileMode(QFileDialog::FileMode mode);
+  QFileDialog::FileMode fileMode() const;
+
+  void setAcceptMode(QFileDialog::AcceptMode mode);
+  QFileDialog::AcceptMode acceptMode() const;
 
   void addPath(const QString & path, bool emitHasChages = false);
 
@@ -58,8 +60,9 @@ private:
   QToolButton * button = Q_NULLPTR;
   QString fileDialogCaption;
   QString labelText_;
-  QFileDialog::FileMode fileDialogMode = QFileDialog::AnyFile;
-  QFileDialog::ViewMode fileDialogViewMode = QFileDialog::ViewMode::List;
+  QFileDialog::FileMode fileMode_ = QFileDialog::AnyFile;
+  QFileDialog::AcceptMode acceptMode_ = QFileDialog::AcceptOpen;
+  QFileDialog::ViewMode viewMode_ = QFileDialog::ViewMode::Detail;
   bool showDirsOnly_ = false;
   bool hasChanges_ = false;
   bool enableEmitChagesEvent_ = true;

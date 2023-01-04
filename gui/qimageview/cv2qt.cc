@@ -126,3 +126,59 @@ bool cv2qt(cv::InputArray __src, QImage * dst, bool rgbswap)
 
   return false;
 }
+
+QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags flags)
+{
+  QPixmap pixmap;
+
+  const cv::Mat image =
+      src.getMat();
+
+  if( image.type() == CV_8UC3 ) {
+
+    QImage qimage(image.data,
+        image.cols, image.rows,
+        (int) (size_t) (image.step),
+        rgbswap ? QImage::Format_BGR888 :
+            QImage::Format_RGB888);
+
+    pixmap =
+        QPixmap::fromImage(qimage, flags);
+
+  }
+  else if( image.type() == CV_8UC1 ) {
+
+    QImage qimage ( image.data,
+        image.cols, image.rows,
+        (int) (size_t) (image.step),
+        QImage::Format_Grayscale8 );
+
+    pixmap =
+        QPixmap::fromImage(qimage, flags);
+
+  }
+  else if( image.type() == CV_16UC1 ) {
+
+    QImage qimage ( image.data,
+        image.cols, image.rows,
+        (int) (size_t) (image.step),
+        QImage::Format_Grayscale16 );
+
+    pixmap =
+        QPixmap::fromImage(qimage, flags);
+
+  }
+
+  else {
+
+    QImage qimage;
+
+    cv2qt(image, &qimage);
+
+    pixmap =
+        QPixmap::fromImage(qimage, flags);
+  }
+
+  return pixmap;
+}
+

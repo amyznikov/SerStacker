@@ -38,6 +38,8 @@ class QCameraFrameDisplay:
 public:
   typedef QCameraFrameDisplay ThisClass;
   typedef QImageEditor Base;
+  typedef std::lock_guard<std::mutex> c_guard_lock;
+  typedef std::unique_lock<std::mutex> c_unique_lock;
 
   QCameraFrameDisplay(QWidget * parent = nullptr);
   ~QCameraFrameDisplay();
@@ -49,20 +51,41 @@ public:
   QCameraFrameDisplaySettings * displaySettings();
 
 
+Q_SIGNALS:
+  void pixmapChanged();
+
 protected Q_SLOTS:
+  void onPixmapChanged();
   void onCameraStateChanged(QImagingCamera::State oldSate,
       QImagingCamera::State newState);
-  void onUpdateCameraFrameDisplay();
 
 protected:
   void showCurrentDisplayImage() override;
 
 protected:
+  void startWorkerThread();
+  void stopWorkerThread();
+  void workerThread();
+  void showEvent(QShowEvent *event) override;
+  void hideEvent(QHideEvent *event) override;
+
+protected:
   QImagingCamera::sptr camera_;
   QCameraFrameDisplaySettings displaySettings_;
   QMtfImageDisplayFunction displayFunction_;
-  QTimer timer_;
-  int last_index = -1;
+
+  std::mutex mutex_;
+  enum WorkerState {
+    Worker_Idle,
+    Worker_Starting,
+    Worker_Running,
+    Worker_Stopping,
+  } workerState_ = Worker_Idle;
+
+  enum COLORID colorid_ = COLORID_UNKNOWN;
+  int bpp_ = 0;
+  QPixmap pixmap_;
+
 };
 
 } /* namespace qserimager */

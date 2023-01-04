@@ -55,19 +55,14 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
 {
   setDisplayFunction(&displayFunction_);
 
-  timer_.setSingleShot(true);
-  timer_.setInterval(50);
-  connect(&timer_, &QTimer::timeout,
-      this, &ThisClass::onUpdateCameraFrameDisplay);
+  connect(this, &ThisClass::pixmapChanged,
+      this, &ThisClass::onPixmapChanged,
+      Qt::QueuedConnection);
 
-  // scene()->setBackgroundBrush(Qt::darkGray);
 }
 
 QCameraFrameDisplay::~QCameraFrameDisplay()
 {
-//  if ( camera_ ) {
-//    disconnect(camera_.get(), nullptr, this, nullptr);
-//  }
 }
 
 const QCameraFrameDisplaySettings * QCameraFrameDisplay::displaySettings() const
@@ -83,8 +78,10 @@ QCameraFrameDisplaySettings * QCameraFrameDisplay::displaySettings()
 
 void QCameraFrameDisplay::setCamera(const QImagingCamera::sptr & camera)
 {
+  stopWorkerThread();
+
   if ( camera_ ) {
-    disconnect(camera_.get(), nullptr, this, nullptr);
+    disconnect(camera_.get());
   }
 
   if ( (camera_  = camera) ) {
@@ -95,7 +92,8 @@ void QCameraFrameDisplay::setCamera(const QImagingCamera::sptr & camera)
 
 
     if ( camera_->state() == QImagingCamera::State_started ) {
-      timer_.start();
+      // timer_.start();
+      startWorkerThread();
     }
   }
 }
@@ -110,67 +108,7 @@ void QCameraFrameDisplay::onCameraStateChanged(QImagingCamera::State oldSate,
     QImagingCamera::State newState)
 {
   if ( camera_ && camera_->state() == QImagingCamera::State_started ) {
-    last_index = -1;
-    timer_.start();
-  }
-}
-
-void QCameraFrameDisplay::onUpdateCameraFrameDisplay()
-{
-  INSTRUMENT_REGION("");
-
-  if( camera_ ) {
-
-    cv::Mat display_image;
-    enum COLORID colorid = COLORID_UNKNOWN;
-    int bpp = 0;
-
-    if( true ) {
-
-      QImagingCamera::shared_lock lock(camera_->mutex());
-
-      const std::deque<QCameraFrame::sptr> &deque =
-          camera_->deque();
-
-      if( !deque.empty() ) {
-
-        const QCameraFrame::sptr &frame =
-            deque.back();
-
-        const int index =
-            frame->index();
-
-        if( index > last_index ) {
-
-          last_index = index;
-          bpp = frame->bpp();
-          colorid = frame->colorid();
-          frame->image().copyTo(display_image);
-        }
-      }
-    }
-
-    if( !display_image.empty() ) {
-
-      if( display_image.depth() != CV_8U && bpp > 0 ) {
-        display_image.convertTo(display_image, CV_8U, 255. / (1 << bpp));
-      }
-
-      if( is_bayer_pattern(colorid) ) {
-        debayer(display_image, display_image, colorid, DEBAYER_NN);
-      }
-      else if ( colorid == COLORID_RGB ) {
-        cv::cvtColor(display_image, display_image, cv::COLOR_RGB2BGR);
-      }
-
-      //  editImage(image, cv::noArray(), false);
-      setCurrentImage(display_image, cv::noArray(), cv::noArray(), false);
-      updateDisplay();
-    }
-
-    if( camera_->state() == QImagingCamera::State_started ) {
-      timer_.start();
-    }
+    startWorkerThread();
   }
 }
 
@@ -244,6 +182,160 @@ void QCameraFrameDisplay::showCurrentDisplayImage()
 
     scene()->setBackground(pixmap);
   }
+}
+
+
+void QCameraFrameDisplay::showEvent(QShowEvent *event)
+{
+  Base::showEvent(event);
+
+  if ( !isVisible() ) {
+    stopWorkerThread();
+  }
+  else if ( camera_ && camera_->state() == QImagingCamera::State_started ) {
+    startWorkerThread();
+  }
+}
+
+void QCameraFrameDisplay::hideEvent(QHideEvent *event)
+{
+  Base::hideEvent(event);
+
+  if ( !isVisible() ) {
+    stopWorkerThread();
+  }
+  else if ( camera_ && camera_->state() == QImagingCamera::State_started ) {
+    startWorkerThread();
+  }
+}
+
+void QCameraFrameDisplay::startWorkerThread()
+{
+  c_unique_lock lock(mutex_);
+
+  while (workerState_ == Worker_Stopping) {
+    lock.unlock();
+    QThread::msleep(20);
+    lock.lock();
+  }
+
+  if (workerState_ != Worker_Idle ) {
+    return;
+  }
+
+  workerState_ = Worker_Starting;
+  std::thread(&ThisClass::workerThread, this).detach();
+}
+
+void QCameraFrameDisplay::stopWorkerThread()
+{
+  c_unique_lock lock(mutex_);
+  while (workerState_ != Worker_Idle) {
+    workerState_ = Worker_Stopping;
+    lock.unlock();
+    QThread::msleep(20);
+    lock.lock();
+  }
+}
+
+void QCameraFrameDisplay::onPixmapChanged()
+{
+  c_unique_lock lock(mutex_);
+  scene()->setBackground(pixmap_);
+}
+
+
+void QCameraFrameDisplay::workerThread()
+{
+  CF_DEBUG("ENTER");
+
+  c_unique_lock lock(mutex_);
+  workerState_ = Worker_Running;
+
+
+  bool haveImage = false;
+  int last_index = -1;
+
+
+  while ( workerState_ == Worker_Running && camera_ && camera_->state() == QImagingCamera::State_started ) {
+
+    haveImage = false;
+
+    if( true ) {
+
+      QImagingCamera::shared_lock lock(camera_->mutex());
+
+      const std::deque<QCameraFrame::sptr> &deque =
+          camera_->deque();
+
+      if( !deque.empty() ) {
+
+        const QCameraFrame::sptr &frame =
+            deque.back();
+
+        const int index =
+            frame->index();
+
+        if( index > last_index ) {
+
+          last_index = index;
+          bpp_ = frame->bpp();
+          colorid_ = frame->colorid();
+          frame->image().copyTo(inputImage_);
+          haveImage = true;
+        }
+      }
+    }
+
+    lock.unlock();
+
+    if( haveImage && !inputImage_.empty() ) {
+
+      if( inputImage_.depth() != CV_8U && bpp_ > 0 ) {
+        inputImage_.convertTo(inputImage_, CV_8U, 255. / (1 << bpp_));
+      }
+
+      if( is_bayer_pattern(colorid_) ) {
+        debayer(inputImage_, inputImage_, colorid_, DEBAYER_NN);
+      }
+      else if( colorid_ == COLORID_RGB ) {
+        cv::cvtColor(inputImage_, inputImage_, cv::COLOR_RGB2BGR);
+      }
+
+
+      //editImage(image, cv::noArray(), false);
+      if( current_processor_ && !current_processor_->empty() ) {
+        current_processor_->process(inputImage_, inputMask_);
+      }
+
+      currentImage_ = inputImage_;
+      currentMask_ = inputMask_;
+      displayFunction_.setCurrentImage(currentImage_, currentMask_);
+      //displayImage_.release();
+      displayFunction_.getDisplayImage(displayImage_, CV_8U);
+
+      QPixmap pixmap =
+          createPixmap(displayImage_, true,
+              Qt::NoFormatConversion |
+                  Qt::ThresholdDither |
+                  Qt::ThresholdAlphaDither |
+                  Qt::NoOpaqueDetection);
+
+      lock.lock();
+      pixmap_ = pixmap;
+      lock.unlock();
+      Q_EMIT pixmapChanged();
+    }
+
+    QThread::msleep(50);
+
+    lock.lock();
+  }
+
+
+  workerState_ = Worker_Idle;
+
+  CF_DEBUG("LEAVE");
 }
 
 } /* namespace qserimager */

@@ -366,7 +366,8 @@ void QMtfControl::setDisplaySettings(QMtfDisplaySettingsBase * displaySettings)
     }
 
     connect(displaySettings_, &QMtfDisplaySettings::inputDataChanged,
-        this, &ThisClass::updateHistogramLevels);
+        this, &ThisClass::updateHistogramLevels,
+        Qt::QueuedConnection);
   }
 
   setUpdatingControls(wasInUpdatingControls);

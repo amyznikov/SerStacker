@@ -68,7 +68,7 @@ QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr 
               false);
         }
 
-        emit inputDataChanged();
+        Q_EMIT inputDataChanged();
       });
 
 }

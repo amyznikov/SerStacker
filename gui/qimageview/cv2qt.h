@@ -30,4 +30,13 @@ bool flow2HSV(cv::InputArray flow,
     double maxmotion,
     bool invert_y);
 
+
+// Qt::NoFormatConversion |
+//                Qt::ThresholdDither |
+//                Qt::ThresholdAlphaDither |
+//                Qt::NoOpaqueDetection
+
+QPixmap createPixmap(cv::InputArray src, bool rgbswap = true,
+    Qt::ImageConversionFlags flags = Qt::AutoColor);
+
 #endif /* __cv2qt_h__ */

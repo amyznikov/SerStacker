@@ -225,7 +225,7 @@ bool QImagingCamera::start()
 
       deque_.emplace_back(frame);
 
-      if ( deque_.size() > qsize / 2 ) {
+      if ( deque_.size() > qsize ) {
 
         frame = deque_.front();
         deque_.pop_front();

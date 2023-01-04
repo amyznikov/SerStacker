@@ -22,7 +22,7 @@ void QMtfImageDisplaySettings::setCurrentImage(cv::InputArray image, cv::InputAr
 {
   currentImage_ = image.getMat();
   currentMask_ = mask.getMat();
-  emit inputDataChanged();
+  Q_EMIT inputDataChanged();
 }
 
 const cv::Mat & QMtfImageDisplaySettings::currentImage() const

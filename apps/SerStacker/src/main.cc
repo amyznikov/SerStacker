@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 #include <opencv2/core/ocl.hpp>
+#include <gui/widgets/style.h>
 #include "MainWindow.h"
 #include <core/debug.h>
 
@@ -30,6 +31,8 @@ int main(int argc, char *argv[])
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
+
+  setIconStyleSelector("dark");
 
 
   MainWindow mainWindow;

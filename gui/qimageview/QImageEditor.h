@@ -19,7 +19,8 @@ public:
   typedef QImageEditor ThisClass;
   typedef QImageViewer Base;
 
-  QImageEditor(QWidget * parent = Q_NULLPTR);
+  QImageEditor(QWidget * parent = nullptr);
+  QImageEditor(QImageScene * scene, QWidget * parent = nullptr);
 
   void set_current_processor(const c_image_processor::ptr & processor);
   const c_image_processor::ptr & current_processor() const;

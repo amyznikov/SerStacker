@@ -10,7 +10,7 @@
 #include <core/debug.h>
 
 #define MY_COMPANY  "amyznikov"
-#define MY_APP      "SerCap"
+#define MY_APP      "SerImager"
 
 using namespace serimager;
 

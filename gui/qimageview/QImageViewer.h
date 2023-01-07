@@ -30,21 +30,22 @@ public:
     PenShape_circle,
   };
 
-  QImageViewer(QWidget * parent = Q_NULLPTR);
+  QImageViewer(QWidget * parent = nullptr);
+  QImageViewer(QImageScene * scene, QWidget * parent = nullptr);
 
   QImageSceneView * sceneView() const;
   QImageScene * scene() const;
 
-  QToolBar * embedToolbar(QToolBar * toolbar = Q_NULLPTR);
+  QToolBar * embedToolbar(QToolBar * toolbar = nullptr);
   QToolBar * toolbar() const;
 
-  QStatusBar * embedStatusbar(QStatusBar * statusBar = Q_NULLPTR);
+  QStatusBar * embedStatusbar(QStatusBar * statusBar = nullptr);
   QStatusBar * statusbar() const;
 
   void setDisplayFunction(QImageDisplayFunction * displayfunc);
   QImageDisplayFunction * displayFunction() const;
 
-  void setViewScale(int scale, const QPoint * centerPos = Q_NULLPTR);
+  void setViewScale(int scale, const QPoint * centerPos = nullptr);
   int viewScale() const;
 
   void setDisplayType(DisplayType v);
@@ -73,7 +74,7 @@ public:
   void setEditMaskPenShape(PenShape v);
   PenShape editMaskPenShape() const;
 
-signals:
+Q_SIGNALS:
   void onMouseMove(QMouseEvent * e);
   void onMousePressEvent(QMouseEvent * e);
   void onMouseReleaseEvent(QMouseEvent * e);
@@ -97,7 +98,7 @@ protected:
   virtual void showCurrentDisplayImage();
   void updateCursor();
 
-public slots:
+public Q_SLOTS:
   virtual void updateDisplay();
   void copyDisplayImageToClipboard();
   void handleMousePressEvent(QMouseEvent * e);
@@ -106,24 +107,24 @@ public slots:
   void undoEditMask();
 
 protected:
-  QVBoxLayout * layout_  = Q_NULLPTR;
-  QImageSceneView * view_ = Q_NULLPTR;
-  QToolBar * toolbar_ = Q_NULLPTR;
-  QStatusBar * statusbar_ = Q_NULLPTR;
+  QVBoxLayout * layout_  = nullptr;
+  QImageScene * scene_ = nullptr;
+  QImageSceneView * view_ = nullptr;
+  QToolBar * toolbar_ = nullptr;
+  QStatusBar * statusbar_ = nullptr;
 
-  QImageDisplayFunction * displayFunction_ = Q_NULLPTR;
+  QImageDisplayFunction * displayFunction_ = nullptr;
   DisplayType currentDisplayType_ = DisplayImage;
   QString currentFileName_;
-  cv::Mat currentImage_, currentMask_;
-  cv::Mat currentImageData_;
+  cv::Mat currentImage_, currentImageData_, currentMask_;
   cv::Mat displayImage_;
   QImage qimage_;
 
   bool enableEditMask_ = false;
   int editMaskPenRadius_ = 5;
   PenShape editMaskPenShape_ = PenShape_square;
-  // QAction * undoEditMaskAction_ = Q_NULLPTR;
-  QShortcut * undoEditMaskActionShortcut_ = Q_NULLPTR;
+  // QAction * undoEditMaskAction_ = nullptr;
+  QShortcut * undoEditMaskActionShortcut_ = nullptr;
   QStack<cv::Mat> editMaskUndoQueue_;
 };
 

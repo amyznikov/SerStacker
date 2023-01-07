@@ -7,57 +7,107 @@
 
 #include "QCameraFrameDisplay.h"
 #include <gui/qimageview/cv2qt.h>
+#include <core/mtf/mtf-histogram.h>
+#include <core/proc/histogram.h>
+#include <core/proc/minmax.h>
+#include <core/ssprintf.h>
 
 namespace {
-  enum DISPLAY_TYPE {
-    DISPLAY_PIXEL_VALUE,
-  };
-}
 
-template<>
-const c_enum_member* members_of<DISPLAY_TYPE>()
-{
-  static constexpr c_enum_member members[] = {
-      { DISPLAY_PIXEL_VALUE, "VALUE" },
-      { DISPLAY_PIXEL_VALUE }
-  };
+typedef std::lock_guard<std::mutex>
+  c_guard_lock;
 
-  return members;
-}
+typedef std::unique_lock<std::mutex>
+  c_unique_lock;
+
+} // namespace
+
 
 namespace serimager {
 
-QCameraFrameDisplaySettings::QCameraFrameDisplaySettings(QObject * parent) :
-    Base(parent)
+QCameraFrameMtfDisplayFunction::QCameraFrameMtfDisplayFunction(QImageViewer * imageViewer) :
+    Base(imageViewer, "QCameraFrameMtfDisplayFunction")
 {
-  Base::displayType_ = DISPLAY_PIXEL_VALUE;
-  addDisplay(displayParams_, DISPLAY_PIXEL_VALUE, -1, -1);
-}
-const c_enum_member* QCameraFrameDisplaySettings::displayTypes() const
-{
-  return members_of<DISPLAY_TYPE>();
 }
 
-void QCameraFrameDisplaySettings::loadParameters()
+std::mutex & QCameraFrameMtfDisplayFunction::mutex()
 {
-  Base::loadParameters("QFrameDisplaySettings");
+  return mutex_;
 }
 
-void QCameraFrameDisplaySettings::saveParameters() const
+//void QCameraFrameMtfDisplayFunction::setCurrentImage(cv::InputArray image, cv::InputArray mask)
+//{
+//  // must be locked by caller
+//  //c_unique_lock lock(mutex_);
+//  Base::setCurrentImage(image, mask);
+//}
+
+void QCameraFrameMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
 {
-  Base::saveParameters("QFrameDisplaySettings");
+  c_unique_lock lock(mutex_);
+  Base::getInputDataRange(minval, maxval);
 }
+
+void QCameraFrameMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+{
+  c_unique_lock lock(mutex_);
+  Base::getInputHistogramm(H, hmin, hmax);
+}
+
+void QCameraFrameMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+{
+  INSTRUMENT_REGION("");
+
+  if ( imageViewer_ ) {
+
+    cv::Mat image, mask;
+
+    mutex_.lock();
+    isBusy_ = true;
+    imageViewer_->displayImage().copyTo(image);
+    imageViewer_->currentMask().copyTo(mask);
+    mutex_.unlock();
+
+    create_histogram(image, mask,
+        H,
+        hmin, hmax,
+        256,
+        false,
+        false);
+
+
+    mutex_.lock();
+    isBusy_ = false;
+    mutex_.unlock();
+  }
+}
+
+
+void QCameraFrameMtfDisplayFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
+    cv::OutputArray displayImage, int ddepth)
+{
+  //  c_unique_lock lock(mutex_);
+  Base::createDisplayImage(currentImage, currentMask, displayImage, ddepth);
+}
+
 
 QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
     Base(parent),
-    displaySettings_(this),
-    displayFunction_(&displaySettings_, this)
+    mtfDisplayFunction_(this)
 {
-  setDisplayFunction(&displayFunction_);
+  setDisplayFunction(&mtfDisplayFunction_);
 
   connect(this, &ThisClass::pixmapChanged,
       this, &ThisClass::onPixmapChanged,
       Qt::QueuedConnection);
+
+
+  connect(&mtfDisplayFunction_, &QMtfDisplay::updateDisplay,
+      [this]() {
+        if (workerState_ == Worker_Idle) {
+          Base::updateDisplay();
+        }
+      });
 
 }
 
@@ -65,23 +115,22 @@ QCameraFrameDisplay::~QCameraFrameDisplay()
 {
 }
 
-const QCameraFrameDisplaySettings * QCameraFrameDisplay::displaySettings() const
+const QCameraFrameMtfDisplayFunction * QCameraFrameDisplay::mtfDisplayFunction() const
 {
-  return &displaySettings_;
+  return &mtfDisplayFunction_;
 }
 
-QCameraFrameDisplaySettings * QCameraFrameDisplay::displaySettings()
+QCameraFrameMtfDisplayFunction * QCameraFrameDisplay::mtfDisplayFunction()
 {
-  return &displaySettings_;
+  return &mtfDisplayFunction_;
 }
-
 
 void QCameraFrameDisplay::setCamera(const QImagingCamera::sptr & camera)
 {
   stopWorkerThread();
 
-  if ( camera_ ) {
-    disconnect(camera_.get());
+  if( camera_ ) {
+    (static_cast<QObject*>(camera_.get()))->disconnect(this);
   }
 
   if ( (camera_  = camera) ) {
@@ -92,7 +141,6 @@ void QCameraFrameDisplay::setCamera(const QImagingCamera::sptr & camera)
 
 
     if ( camera_->state() == QImagingCamera::State_started ) {
-      // timer_.start();
       startWorkerThread();
     }
   }
@@ -109,78 +157,6 @@ void QCameraFrameDisplay::onCameraStateChanged(QImagingCamera::State oldSate,
 {
   if ( camera_ && camera_->state() == QImagingCamera::State_started ) {
     startWorkerThread();
-  }
-}
-
-void QCameraFrameDisplay::showCurrentDisplayImage()
-{
-  INSTRUMENT_REGION("");
-  if( displayImage_.empty() ) {
-    scene()->setBackground(QPixmap());
-  }
-  else {
-
-    QPixmap pixmap;
-
-    if( displayImage_.type() == CV_8UC3 ) {
-
-      QImage qimage ( displayImage_.data,
-          displayImage_.cols, displayImage_.rows,
-          (int) (size_t) (displayImage_.step),
-          QImage::Format_BGR888 );
-
-      pixmap =
-          QPixmap::fromImage(qimage,
-              Qt::NoFormatConversion |
-                  Qt::ThresholdDither |
-                  Qt::ThresholdAlphaDither |
-                  Qt::NoOpaqueDetection);
-
-    }
-    else if( displayImage_.type() == CV_8UC1 ) {
-
-      QImage qimage ( displayImage_.data,
-          displayImage_.cols, displayImage_.rows,
-          (int) (size_t) (displayImage_.step),
-          QImage::Format_Grayscale8 );
-
-      pixmap =
-          QPixmap::fromImage(qimage,
-              Qt::NoFormatConversion |
-                  Qt::ThresholdDither |
-                  Qt::ThresholdAlphaDither |
-                  Qt::NoOpaqueDetection);
-
-    }
-    else if( displayImage_.type() == CV_16UC1 ) {
-
-      QImage qimage ( displayImage_.data,
-          displayImage_.cols, displayImage_.rows,
-          (int) (size_t) (displayImage_.step),
-          QImage::Format_Grayscale16 );
-
-      pixmap =
-          QPixmap::fromImage(qimage,
-              Qt::NoFormatConversion |
-                  Qt::ThresholdDither |
-                  Qt::ThresholdAlphaDither |
-                  Qt::NoOpaqueDetection);
-
-    }
-
-    else {
-
-      cv2qt(displayImage_, &qimage_);
-
-      pixmap =
-          QPixmap::fromImage(qimage_,
-              Qt::NoFormatConversion |
-                  Qt::ThresholdDither |
-                  Qt::ThresholdAlphaDither |
-                  Qt::NoOpaqueDetection);
-    }
-
-    scene()->setBackground(pixmap);
   }
 }
 
@@ -211,7 +187,7 @@ void QCameraFrameDisplay::hideEvent(QHideEvent *event)
 
 void QCameraFrameDisplay::startWorkerThread()
 {
-  c_unique_lock lock(mutex_);
+  c_unique_lock lock(mtfDisplayFunction_.mutex());
 
   while (workerState_ == Worker_Stopping) {
     lock.unlock();
@@ -229,7 +205,7 @@ void QCameraFrameDisplay::startWorkerThread()
 
 void QCameraFrameDisplay::stopWorkerThread()
 {
-  c_unique_lock lock(mutex_);
+  c_unique_lock lock(mtfDisplayFunction_.mutex());
   while (workerState_ != Worker_Idle) {
     workerState_ = Worker_Stopping;
     lock.unlock();
@@ -240,16 +216,15 @@ void QCameraFrameDisplay::stopWorkerThread()
 
 void QCameraFrameDisplay::onPixmapChanged()
 {
-  c_unique_lock lock(mutex_);
-  scene()->setBackground(pixmap_);
+  c_unique_lock lock(mtfDisplayFunction_.mutex());
+  scene()->setSceneImage(pixmap_);
 }
 
 
 void QCameraFrameDisplay::workerThread()
 {
-  CF_DEBUG("ENTER");
 
-  c_unique_lock lock(mutex_);
+  c_unique_lock lock(mtfDisplayFunction_.mutex());
   workerState_ = Worker_Running;
 
 
@@ -257,11 +232,18 @@ void QCameraFrameDisplay::workerThread()
   int last_index = -1;
 
 
+  cv::Mat currentImage, displayImage, colormapImage, currentMask;
+  QPixmap pixmap;
+
+
   while ( workerState_ == Worker_Running && camera_ && camera_->state() == QImagingCamera::State_started ) {
+
+    INSTRUMENT_REGION("body");
 
     haveImage = false;
 
     if( true ) {
+      INSTRUMENT_REGION("wait_frame");
 
       QImagingCamera::shared_lock lock(camera_->mutex());
 
@@ -281,7 +263,7 @@ void QCameraFrameDisplay::workerThread()
           last_index = index;
           bpp_ = frame->bpp();
           colorid_ = frame->colorid();
-          frame->image().copyTo(inputImage_);
+          frame->image().copyTo(currentImage);
           haveImage = true;
         }
       }
@@ -289,42 +271,79 @@ void QCameraFrameDisplay::workerThread()
 
     lock.unlock();
 
-    if( haveImage && !inputImage_.empty() ) {
+    if( haveImage && !currentImage.empty() ) {
 
-      if( inputImage_.depth() != CV_8U && bpp_ > 0 ) {
-        inputImage_.convertTo(inputImage_, CV_8U, 255. / (1 << bpp_));
+      {
+        INSTRUMENT_REGION("convert");
+
+        //CF_DEBUG("colorid_=%s", toString(colorid_));
+
+        if( currentImage.depth() != CV_8U && bpp_ > 0 ) {
+          currentImage.convertTo(currentImage, CV_8U, 255. / (1 << bpp_));
+        }
+
+        if( is_bayer_pattern(colorid_) ) {
+          debayer(currentImage, currentImage, colorid_, DEBAYER_NN);
+        }
+        else if( colorid_ == COLORID_RGB ) {
+          cv::cvtColor(currentImage, currentImage, cv::COLOR_RGB2BGR);
+        }
+
+        //editImage(image, cv::noArray(), false);
+        if( current_processor_ && !current_processor_->empty() ) {
+          current_processor_->process(currentImage, currentMask);
+        }
+
+        const QMtfDisplay::DisplayParams &opts =
+            mtfDisplayFunction_.displayParams();
+
+        const bool needColormap =
+            opts.colormap != COLORMAP_NONE &&
+                currentImage.channels() == 1;
+
+        mtfDisplayFunction_.applyMtf(currentImage,
+            needColormap ? cv::noArray() : currentMask,
+                displayImage, CV_8U);
+
+        if ( needColormap ) {
+          mtfDisplayFunction_.applyColorMap(displayImage, currentMask, colormapImage);
+        }
+        else {
+          colormapImage = displayImage;
+        }
+
+
+
+        //mtfDisplayFunction_.createDisplayImage(currentImage, currentMask, displayImage, CV_8U);
+
+        pixmap =
+            createPixmap(colormapImage, true,
+                Qt::NoFormatConversion |
+                    Qt::ThresholdDither |
+                    Qt::ThresholdAlphaDither |
+                    Qt::NoOpaqueDetection);
+
       }
 
-      if( is_bayer_pattern(colorid_) ) {
-        debayer(inputImage_, inputImage_, colorid_, DEBAYER_NN);
+
+      {
+        INSTRUMENT_REGION("setCurrentImage");
+        lock.lock();
+        cv::swap(currentImage, currentImage_);
+        cv::swap(currentMask, currentMask_);
+        cv::swap(displayImage, displayImage_);
+        //cv::swap(colormapImage, colormapImage_);
+        pixmap_ = pixmap;
+        lock.unlock();
       }
-      else if( colorid_ == COLORID_RGB ) {
-        cv::cvtColor(inputImage_, inputImage_, cv::COLOR_RGB2BGR);
-      }
 
 
-      //editImage(image, cv::noArray(), false);
-      if( current_processor_ && !current_processor_->empty() ) {
-        current_processor_->process(inputImage_, inputMask_);
-      }
-
-      currentImage_ = inputImage_;
-      currentMask_ = inputMask_;
-      displayFunction_.setCurrentImage(currentImage_, currentMask_);
-      //displayImage_.release();
-      displayFunction_.getDisplayImage(displayImage_, CV_8U);
-
-      QPixmap pixmap =
-          createPixmap(displayImage_, true,
-              Qt::NoFormatConversion |
-                  Qt::ThresholdDither |
-                  Qt::ThresholdAlphaDither |
-                  Qt::NoOpaqueDetection);
-
-      lock.lock();
-      pixmap_ = pixmap;
-      lock.unlock();
       Q_EMIT pixmapChanged();
+
+      if ( !mtfDisplayFunction_.isBusy() ) {
+        Q_EMIT mtfDisplayFunction_.inputDataChanged();
+      }
+
     }
 
     QThread::msleep(50);
@@ -334,8 +353,6 @@ void QCameraFrameDisplay::workerThread()
 
 
   workerState_ = Worker_Idle;
-
-  CF_DEBUG("LEAVE");
 }
 
 } /* namespace qserimager */

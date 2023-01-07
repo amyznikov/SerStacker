@@ -10,24 +10,40 @@
 #define __QCameraFrameDisplay_h__
 
 #include <gui/qimageview/QImageFileEditor.h>
-#include <gui/qimageview/QMtfImageDisplayFunction.h>
+#include <gui/qimageview/QImageViewMtfDisplayFunction.h>
 #include "QImagingCamera.h"
 
 namespace serimager {
 
-class QCameraFrameDisplaySettings :
-    public QMtfImageDisplaySettings
+class QCameraFrameMtfDisplayFunction :
+    public QImageViewMtfDisplayFunction
 {
   Q_OBJECT;
 public:
-  typedef QCameraFrameDisplaySettings ThisClass;
-  typedef QMtfImageDisplaySettings Base;
+  typedef QCameraFrameMtfDisplayFunction ThisClass;
+  typedef QImageViewMtfDisplayFunction Base;
 
-  QCameraFrameDisplaySettings(QObject * parent = nullptr);
-  const c_enum_member * displayTypes() const override;
+  QCameraFrameMtfDisplayFunction(QImageViewer * imageViewer);
 
-  void loadParameters() override;
-  void saveParameters() const override;
+  std::mutex & mutex();
+
+  bool isBusy() const
+  {
+    return isBusy_;
+  }
+
+//  void setCurrentImage(cv::InputArray image, cv::InputArray mask) override;
+  void getInputDataRange(double * minval, double * maxval) const override;
+  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+
+/*  void getDisplayImage(cv::OutputArray image, int ddepth = -1) override;*/
+  void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
+      cv::OutputArray displayImage, int ddepth = CV_8U) override;
+
+protected:
+  mutable std::mutex mutex_;
+  bool isBusy_ = false;
 };
 
 
@@ -38,8 +54,6 @@ class QCameraFrameDisplay:
 public:
   typedef QCameraFrameDisplay ThisClass;
   typedef QImageEditor Base;
-  typedef std::lock_guard<std::mutex> c_guard_lock;
-  typedef std::unique_lock<std::mutex> c_unique_lock;
 
   QCameraFrameDisplay(QWidget * parent = nullptr);
   ~QCameraFrameDisplay();
@@ -47,8 +61,8 @@ public:
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr & camera() const;
 
-  const QCameraFrameDisplaySettings * displaySettings() const;
-  QCameraFrameDisplaySettings * displaySettings();
+  const QCameraFrameMtfDisplayFunction * mtfDisplayFunction() const;
+  QCameraFrameMtfDisplayFunction * mtfDisplayFunction();
 
 
 Q_SIGNALS:
@@ -59,8 +73,8 @@ protected Q_SLOTS:
   void onCameraStateChanged(QImagingCamera::State oldSate,
       QImagingCamera::State newState);
 
-protected:
-  void showCurrentDisplayImage() override;
+//protected:
+//  void showCurrentDisplayImage() override;
 
 protected:
   void startWorkerThread();
@@ -71,10 +85,9 @@ protected:
 
 protected:
   QImagingCamera::sptr camera_;
-  QCameraFrameDisplaySettings displaySettings_;
-  QMtfImageDisplayFunction displayFunction_;
+  QCameraFrameMtfDisplayFunction mtfDisplayFunction_;
 
-  std::mutex mutex_;
+  //std::mutex mutex_;
   enum WorkerState {
     Worker_Idle,
     Worker_Starting,
@@ -85,6 +98,7 @@ protected:
   enum COLORID colorid_ = COLORID_UNKNOWN;
   int bpp_ = 0;
   QPixmap pixmap_;
+  // cv::Mat colormapImage_;
 
 };
 

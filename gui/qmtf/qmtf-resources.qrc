@@ -1,15 +1,35 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/qmtf">
-	<file>icons/histogram.png</file>
-	<file>icons/histogram-log-scale.png</file>
-	<file>icons/histogram-log-scale2.png</file>
-	<file>icons/histogram-linear-scale.png</file>
-	<file>icons/histogram-linear-scale2.png</file>
-	<file>icons/histogram-automtf.png</file>
-	<file>icons/reset.png</file>
-	<file>icons/contrast.png</file>
-	<file>icons/bar_chart.png</file>
-	<file>icons/line_chart.png</file>
+	<file>icons/light/histogram.png</file>
+	<file>icons/dark/histogram.png</file>
+	
+	<file>icons/light/histogram-log-scale.png</file>
+	<file>icons/dark/histogram-log-scale.png</file>
+	
+	<file>icons/light/histogram-log-scale2.png</file>
+	<file>icons/dark/histogram-log-scale2.png</file>
+	
+	<file>icons/light/histogram-linear-scale.png</file>
+	<file>icons/dark/histogram-linear-scale.png</file>
+	
+	<file>icons/light/histogram-linear-scale2.png</file>
+	<file>icons/dark/histogram-linear-scale2.png</file>
+	
+	<file>icons/light/histogram-automtf.png</file>
+	<file>icons/dark/histogram-automtf.png</file>
+	
+	<file>icons/light/reset.png</file>
+	<file>icons/dark/reset.png</file>
+	
+	<file>icons/light/contrast.png</file>
+	<file>icons/dark/contrast.png</file>
+	
+	<file>icons/light/bar_chart.png</file>
+	<file>icons/dark/bar_chart.png</file>
+	
+	<file>icons/light/line_chart.png</file>
+	<file>icons/dark/line_chart.png</file>
+
 	<file>icons/colormap.png</file>	
 	<file>icons/colormap2.png</file>	
 </qresource>

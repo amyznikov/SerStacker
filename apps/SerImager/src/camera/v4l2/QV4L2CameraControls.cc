@@ -58,6 +58,23 @@ const c_enum_member* members_of<enum v4l2_ctrl_type>()
   return members;
 }
 
+
+template<>
+const c_enum_member* members_of<enum v4l2_frmivaltypes>()
+{
+  static constexpr c_enum_member members[] = {
+      {V4L2_FRMIVAL_TYPE_DISCRETE, "V4L2_FRMIVAL_TYPE_DISCRETE", ""},
+      {V4L2_FRMIVAL_TYPE_CONTINUOUS, "V4L2_FRMIVAL_TYPE_CONTINUOUS", ""},
+      {V4L2_FRMIVAL_TYPE_STEPWISE, "V4L2_FRMIVAL_TYPE_STEPWISE", ""},
+      {(enum v4l2_frmivaltypes)(0)}
+  };
+
+
+  return members;
+}
+
+
+
 namespace serimager {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -504,13 +521,8 @@ void QV4L2CameraControls::onupdatecontrols()
     enable_control(extraControls_ctl, enable_extended_controls);
 
     if ( extraControls_ctl && extraControls_ctl->isEnabled() ) {
-      CF_DEBUG("extraControls_ctl->updateControls()");
       extraControls_ctl->updateControls();
     }
-
-
-
-
 
     setEnabled(true);
   }
@@ -871,6 +883,7 @@ void QV4L2CameraControls::onFrameSizeChanged(int index)
       }
 
       c_update_controls_lock lock(this);
+      CF_DEBUG("C refreshFrameRates()");
       refreshFrameRates(device);
     }
   }
@@ -901,23 +914,36 @@ void QV4L2CameraControls::onFrameHeightChanged(int value)
 
 void QV4L2CameraControls::refreshFrameRates(cv4l_fd & device)
 {
-  cv4l_fmt fmt;
+  const enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-  if( device.g_fmt(fmt, V4L2_BUF_TYPE_VIDEO_CAPTURE) != 0 ) {
+  cv4l_fmt fmt;
+  int status;
+
+  if( (status = device.g_fmt(fmt, type)) != 0 ) {
+
+    CF_ERROR("device.g_fmt() fails: status=%d (%s)",
+        status, strerror(status));
+
     remove_control(form, frameRate_ctl);
   }
   else {
 
     v4l2_frmivalenum frmival = { 0 };
 
-    const bool ok =
+    status =
         device.enum_frameintervals(frmival,
             fmt.g_pixelformat(),
             fmt.g_width(),
-            fmt.g_height()) == 0;
+            fmt.g_height(),
+            0);
 
+    if( status ) {
+      CF_DEBUG("device.enum_frameintervals(): status=%d (%s) for format '%s' %ux%u",
+          status, strerror(status),
+          fourccToString(fmt.g_pixelformat()).c_str(), fmt.g_width(), fmt.g_height());
+    }
 
-    if( !ok || frmival.type != V4L2_FRMIVAL_TYPE_DISCRETE ) {
+    if( status || frmival.type != V4L2_FRMIVAL_TYPE_DISCRETE ) {
       remove_control(form, frameRate_ctl);
     }
     else {
@@ -935,20 +961,26 @@ void QV4L2CameraControls::refreshFrameRates(cv4l_fd & device)
 
       v4l2_fract curr = { 1, 1 };
 
-      const bool curr_ok =
-          device.get_interval(curr) == 0;
+      if( (status = device.get_interval(curr, type)) ) {
+        CF_DEBUG("device.get_interval() fails: status= %d (%s) curr=%u/%u",
+            status, strerror(status),
+            curr.numerator, curr.denominator);
+      }
 
       do {
 
         frameRate_ctl->addItem(QString("%1 fps")
             .arg((double) frmival.discrete.denominator / frmival.discrete.numerator));
 
-        if( curr_ok && frmival.discrete.numerator == curr.numerator
-            && frmival.discrete.denominator == curr.denominator ) {
+        if( status == 0 && frmival.discrete.numerator == curr.numerator &&
+            frmival.discrete.denominator == curr.denominator ) {
+
           frameRate_ctl->setCurrentIndex(frmival.index);
         }
 
-      } while ( device.enum_frameintervals(frmival) == 0);
+      } while (device.enum_frameintervals(frmival) == 0);
+
+
     }
   }
 
@@ -974,25 +1006,32 @@ void QV4L2CameraControls::onFrameRateChanged(int index)
 
         v4l2_frmivalenum frmival = { 0 };
 
-        const bool ok =
+        status =
             device.enum_frameintervals(frmival,
                 fmt.g_pixelformat(),
                 fmt.g_width(),
                 fmt.g_height(),
-                index) == 0;
+                index);
 
-        if( ok && frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE ) {
+        CF_DEBUG("index=%d", index);
 
-          if( (status = device.set_interval(frmival.discrete)) ) {
-
-            CF_ERROR("device.set_interval() fails: status=%d (%s)",
-                status, strerror(status));
-
-            c_update_controls_lock lock(this);
-            refreshFrameRates(device);
-          }
+        if( status != 0 ) {
+          CF_ERROR("device.enum_frameintervals(index=%d) fails: status=%d (%s)",
+              index, status, strerror(status));
         }
+        else if( frmival.type != V4L2_FRMIVAL_TYPE_DISCRETE ) {
+          CF_ERROR("frmival.type = %d (%s) is not V4L2_FRMIVAL_TYPE_DISCRETE",
+              frmival.type, toString((enum v4l2_frmivaltypes )frmival.type));
+        }
+        else if( (status = device.set_interval(frmival.discrete, type)) ) {
 
+          CF_ERROR("device.set_interval(%u/%u) fails: status=%d (%s)",
+              frmival.discrete.numerator, frmival.discrete.numerator,
+              status, strerror(status));
+
+          c_update_controls_lock lock(this);
+          refreshFrameRates(device);
+        }
       }
     }
   }

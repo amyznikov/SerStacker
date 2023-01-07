@@ -6,29 +6,28 @@
  */
 
 #include "QStackTree.h"
-
 #include <gui/qstackingthread/QStackingThread.h>
-
+#include <gui/widgets/style.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define ICON_stack          "stack"
-#define ICON_add_stack      "add-stack"
-#define ICON_add_frames     "add-frames"
-#define ICON_add_items      "add-items"
-#define ICON_delete_item    "delete-item"
-#define ICON_options        "options"
-#define ICON_start          "start"
-#define ICON_start_all      "start-all"
-#define ICON_stop           "stop"
-#define ICON_pause          "pause"
+#define ICON_stack          ":/qstacktree/icons/stack"
+#define ICON_add_stack      ":/qstacktree/icons/add-stack"
+#define ICON_add_frames     ":/qstacktree/icons/add-frames"
+#define ICON_add_items      ":/qstacktree/icons/add-items"
+#define ICON_delete_item    ":/qstacktree/icons/delete-item"
+#define ICON_options        ":/qstacktree/icons/options"
+#define ICON_start          ":/qstacktree/icons/start"
+#define ICON_start_all      ":/qstacktree/icons/start-all"
+#define ICON_stop           ":/qstacktree/icons/stop"
+#define ICON_pause          ":/qstacktree/icons/pause"
 
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qstacktree/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstacktree/icons/%1").arg(name));
+//}
 
 //static QString getResource(const QString & name)
 //{

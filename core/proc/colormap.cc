@@ -12,7 +12,7 @@ template<>
 const c_enum_member * members_of<COLORMAP>()
 {
   static constexpr c_enum_member members[] = {
-      { COLORMAP_NONE, "NONE", "" },
+      { COLORMAP_GRAYS, "GRAYS", "" },
       { COLORMAP_JET, "JET", "" },
       { COLORMAP_RAINBOW, "RAINBOW", "" },
       { COLORMAP_AUTUMN, "AUTUMN", "" },
@@ -37,6 +37,7 @@ const c_enum_member * members_of<COLORMAP>()
 #if HAVE_COLORMAP_DEEPGREEN
       { COLORMAP_DEEPGREEN, "DEEPGREEN", "" },
 #endif // HAVE_COLORMAP_DEEPGREEN
+      { COLORMAP_NONE, "NONE", "" },
       { COLORMAP_NONE, nullptr, nullptr },
   };
 
@@ -47,8 +48,36 @@ const c_enum_member * members_of<COLORMAP>()
 
 bool apply_colormap(cv::InputArray src, cv::OutputArray dst, COLORMAP cmap)
 {
-  if ( cmap != COLORMAP_NONE ) {
-    cv::applyColorMap(src, dst, cmap);
+  if( cmap != COLORMAP_NONE ) {
+
+    switch (cmap) {
+      case COLORMAP_GRAYS: {
+
+        static std::mutex mtx;
+
+        mtx.lock();
+
+        static cv::Mat3b lut;
+
+        if( lut.empty() ) {
+
+          lut.create(256, 1);
+          for( int i = 0; i < 256; ++i ) {
+            lut[i][0] = cv::Vec3b(i, i, i);
+          }
+        }
+
+        mtx.unlock();
+
+        cv::applyColorMap(src, dst, lut);
+        break;
+      }
+
+      default:
+        cv::applyColorMap(src, dst, cmap);
+        break;
+    }
+
     return true;
   }
 

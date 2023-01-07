@@ -10,7 +10,8 @@
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/qstackingthread/QStackingThread.h>
-#include <gui/qimageview/QShapesButton.h>
+#include <gui/qgraphicsshape/QShapesButton.h>
+#include <gui/qgraphicsshape/QGraphicsRectShape.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
 #include <core/io/load_image.h>
@@ -53,8 +54,7 @@ static QPixmap getPixmap(const QString & name)
 
 
 
-MainWindow::MainWindow()/* :
-   imageDisplayFunction_(this) */
+MainWindow::MainWindow()
 {
 
   static const auto createScrollableWrap =
@@ -767,34 +767,35 @@ void MainWindow::configureImageViewerToolbars()
 
   /////////////////////
 
-  connect(imageEditor->sceneView(), &QImageSceneView::graphicsShapeChanged,
-      [this, statusbar](QGraphicsShape * shape) {
+  connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
+      [this, statusbar](QGraphicsItem * item) {
 
-        QGraphicsLineItem * lineItem = Q_NULLPTR;
-        QGraphicsRectItem * rectItem = Q_NULLPTR;
+        //QGraphicsLineItem * lineItem = Q_NULLPTR;
+        QGraphicsRectShape * rectShape = nullptr;
 
-        if ( (lineItem = dynamic_cast<QGraphicsLineItem * >(shape)) ) {
+//        if ( (lineItem = dynamic_cast<QGraphicsLineItem * >(shape)) ) {
+//
+//          const QLineF line = lineItem->line();
+//          const QPointF p1 = lineItem->pos() + line.p1();
+//          const QPointF p2 = lineItem->pos() + line.p2();
+//          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+//          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+//
+//#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+//          QString msg;
+//          statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+//                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
+//#else
+//          statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+//                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
+//#endif
+//        }
+        // else
+        if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
 
-          const QLineF line = lineItem->line();
-          const QPointF p1 = lineItem->pos() + line.p1();
-          const QPointF p2 = lineItem->pos() + line.p2();
-          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
-          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-          QString msg;
-          statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
-#else
-          statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
-#endif
-        }
-        else if ( (rectItem = dynamic_cast<QGraphicsRectItem * >(shape))) {
-
-          const QRectF rect = rectItem->rect();
-          const QPointF p1 = rectItem->pos() + rect.topLeft();
-          const QPointF p2 = rectItem->pos() + rect.bottomRight();
+          const QRectF rect = rectShape->mapToScene(rectShape->rect()).boundingRect();
+          const QPointF p1 = rect.topLeft();
+          const QPointF p2 = rect.bottomRight();
           const double width = rect.width();
           const double height = rect.height();
 
@@ -913,7 +914,7 @@ void MainWindow::createDisplaySettingsControl()
   if( !mtfControl ) {
 
     mtfControl = new QMtfControlDialogBox(this);
-    mtfControl->setMtfDisplaySettings(imageEditor->displaySettings());
+    mtfControl->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
 
     connect(mtfControl, &QMtfControlDialogBox::visibilityChanged,
         [this](bool visible) {

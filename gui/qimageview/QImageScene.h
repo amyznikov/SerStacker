@@ -18,19 +18,25 @@ public:
   typedef QImageScene ThisClass;
   typedef QGraphicsScene Base;
 
-  QImageScene(QObject * parent = Q_NULLPTR);
-  QImageScene(const QRectF & sceneRect, QObject *parent  = Q_NULLPTR);
-  QImageScene(qreal x, qreal y, qreal width, qreal height, QObject *parent  = Q_NULLPTR);
+  QImageScene(QObject * parent = nullptr);
+  QImageScene(const QRectF & sceneRect, QObject *parent  = nullptr);
+  QImageScene(qreal x, qreal y, qreal width, qreal height, QObject *parent  = nullptr);
 
-  QGraphicsPixmapItem * background(void) const;
-  QGraphicsPixmapItem * setBackground(const QImage & image);
-  QGraphicsPixmapItem * setBackground(const QPixmap & pxmap);
+  QGraphicsPixmapItem * sceneImage(void) const;
+  QGraphicsPixmapItem * setSceneImage(const QImage & image);
+  QGraphicsPixmapItem * setSceneImage(const QPixmap & pxmap);
+
+Q_SIGNALS:
+  void graphicsItemChanged(QGraphicsItem * item);
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *e) override;
+  void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+  void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+  void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 private:
-  QGraphicsPixmapItem * bgItem_ = Q_NULLPTR;
+  QGraphicsPixmapItem * pixmapItem_ = nullptr;
 };
 
 #endif /* __QImageScene_h__ */

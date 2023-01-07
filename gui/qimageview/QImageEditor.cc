@@ -17,10 +17,15 @@
 #include <core/debug.h>
 
 
-QImageEditor::QImageEditor(QWidget * parent)
-  : Base(parent)
+QImageEditor::QImageEditor(QWidget * parent) : Base(parent)
 {
 }
+
+QImageEditor::QImageEditor(QImageScene * scene, QWidget * parent) :
+    Base(scene, parent)
+{
+}
+
 
 const cv::Mat & QImageEditor::inputImage() const
 {
@@ -98,10 +103,10 @@ void QImageEditor::updateImage()
       }
     }
 
-    if ( displayFunction_ ) {
-      displayFunction_->setCurrentImage(currentImage_,
-          currentMask_);
-    }
+//    if ( displayFunction_ ) {
+//      displayFunction_->setCurrentImage(currentImage_,
+//          currentMask_);
+//    }
 
     updateDisplay();
   }

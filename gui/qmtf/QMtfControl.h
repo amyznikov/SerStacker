@@ -12,8 +12,8 @@
 #include <QtWidgets/QtWidgets>
 #include <gui/widgets/QLineEditBox.h>
 #include "QHistogramView.h"
+#include "QMtfDisplay.h"
 #include "QMtfSlider.h"
-#include "QMtfDisplaySettings.h"
 
 class QMtfControl:
     public QWidget
@@ -23,16 +23,16 @@ public:
   typedef QMtfControl ThisClass;
   typedef QWidget Base;
 
-  QMtfControl(QWidget * parent = Q_NULLPTR);
+  QMtfControl(QWidget * parent = nullptr);
 
-  void setDisplaySettings(QMtfDisplaySettingsBase * displaySettings);
-  QMtfDisplaySettingsBase * displaySettings() const;
+  void setDisplaySettings(QMtfDisplay* display);
+  QMtfDisplay * displaySettings() const;
 
   bool isAutoMtfActionEnabled() const;
   bool updatingControls() const;
   void setUpdatingControls(bool v) ;
 
-protected slots:
+protected Q_SLOTS:
   void updateControls();
   void updateHistogramLevels();
   void onChartTypeSelectorClicked();
@@ -44,33 +44,35 @@ protected slots:
 
 protected:
   void resizeEvent(QResizeEvent *event) override;
+  void showEvent(QShowEvent *event) override;
+  void hideEvent(QHideEvent *event) override;
   void findAutoHistogramClips();
   void findAutoMidtonesBalance();
   void updateColormapStrip();
   void updateColormapPixmap();
 
 protected:
-  QMtfDisplaySettingsBase * displaySettings_ = Q_NULLPTR;
+  QMtfDisplay * displaySettings_ = nullptr;
 
-  QVBoxLayout * vbox_ = Q_NULLPTR;
-  QToolBar * topToolbar_ = Q_NULLPTR;
-  QComboBox * displayType_ctl = Q_NULLPTR;
-  QNumberEditBox * inputDataRange_ctl = Q_NULLPTR;
-  QToolButton * colormap_ctl = Q_NULLPTR;
+  QVBoxLayout * vbox_ = nullptr;
+  QToolBar * topToolbar_ctl = nullptr;
+  QComboBox * displayType_ctl = nullptr;
+  QNumberEditBox * inputDataRange_ctl = nullptr;
+  QToolButton * colormap_ctl = nullptr;
 
-  QAction * resetMtfAction_ = Q_NULLPTR;
-  QToolButton * autoMtf_ctl = Q_NULLPTR;
+  QAction * resetMtfAction_ = nullptr;
+  QToolButton * autoMtf_ctl = nullptr;
   QMenu autoMtfMenu;
 
-  QAction * logScaleSelectionAction_ = Q_NULLPTR;
-  QToolButton * chartTypeSelectorButton_ = Q_NULLPTR;
+  QAction * logScaleSelectionAction_ = nullptr;
+  QToolButton * chartTypeSelectorButton_ = nullptr;
 
-  QHistogramView * levelsView_ = Q_NULLPTR;
-  QMtfSlider * mtfSlider_ = Q_NULLPTR;
-  QLabel * colormap_strip_ctl = Q_NULLPTR;
+  QHistogramView * levelsView_ctl = nullptr;
+  QMtfSlider * mtfSlider_ctl = nullptr;
+  QLabel * colormap_strip_ctl = nullptr;
   QPixmap colormap_pixmap_;
 
-  QToolBar * bottomToolbar_ = Q_NULLPTR;
+  QToolBar * bottomToolbar_ctl = nullptr;
 
   enum AutoMtfAction {
     AutoMtfAction_AutoClip = 0,
@@ -84,7 +86,7 @@ protected:
   };
 
   QDoubleSpinBox * spins[3] = {
-      Q_NULLPTR };
+      nullptr };
 
   bool updatingControls_ = false;
 };
@@ -99,12 +101,14 @@ public:
   typedef QMtfControlDialogBox ThisClass;
   typedef QDialog Base;
 
-  QMtfControlDialogBox(QWidget * parent = Q_NULLPTR);
+  QMtfControlDialogBox(QWidget * parent = nullptr);
 
-  void setMtfDisplaySettings(QMtfDisplaySettingsBase * display);
-  QMtfDisplaySettingsBase * mtfDisplaySettings() const;
+  QMtfControl * mtfControl() const;
 
-  signals:
+  void setMtfDisplaySettings(QMtfDisplay * display);
+  QMtfDisplay * mtfDisplaySettings() const;
+
+signals:
   void visibilityChanged(bool visible);
 
 protected:
@@ -112,8 +116,8 @@ protected:
   void hideEvent(QHideEvent * event) override;
 
 protected:
-  QVBoxLayout *vbox_ = Q_NULLPTR;
-  QMtfControl * widget = Q_NULLPTR;
+  QVBoxLayout *vbox_ = nullptr;
+  QMtfControl * mtfControl_ = nullptr;
   QSize lastWidnowSize_;
   QPoint lastWidnowPos_;
 };

@@ -138,7 +138,7 @@ void MainWindow::setupMainMenuBar()
         if ( checked && !mtfControl_ ) {
 
           mtfControl_ = new QMtfControlDialogBox(this);
-          mtfControl_->setMtfDisplaySettings(centralDisplay_->displaySettings());
+          mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
 
           connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
               showMtfControlAction_, &QAction::setChecked);
@@ -157,7 +157,7 @@ void MainWindow::setupImagerSettings()
 {
   addDockWidget(Qt::RightDockWidgetArea,
       imagerSettingsDock_ =
-          new QCameraControlDock("Capture Options", this,
+          new QCameraControlDock("Camera controls", this,
               imagerSettings_ctl = new QImagerSettingsWidget(this)));
 
   imagerSettingsDock_->setObjectName("imagerSettingsDock_");

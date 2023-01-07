@@ -384,7 +384,7 @@ bool QASICamera::device_start()
     case ASI_IMG_RGB24:
       cvType = CV_8UC3;
       bpp = 8;
-      colorid = COLORID_RGB;
+      colorid = COLORID_BGR;
       break;
     case ASI_IMG_Y8:
       bpp = 8;
@@ -452,14 +452,14 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
           ASIGetVideoData(camInfo_.CameraID,
               (uint8_t*) frm->data(),
               frm->size(),
-              1000);
+              100);
 
       if( status == ASI_SUCCESS ) {
         return frm;
       }
 
       if( status == ASI_ERROR_TIMEOUT ) {
-        CF_DEBUG("ASI_ERROR_TIMEOUT");
+        // CF_DEBUG("ASI_ERROR_TIMEOUT");
         continue;
       }
 

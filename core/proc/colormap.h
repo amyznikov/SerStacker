@@ -50,6 +50,9 @@ enum COLORMAP {
 #if HAVE_COLORMAP_DEEPGREEN
   COLORMAP_DEEPGREEN = cv::COLORMAP_DEEPGREEN, //!< ![deepgreen](pics/colormaps/colorscale_deepgreen.jpg)
 #endif // HAVE_COLORMAP_DEEPGREEN
+
+  COLORMAP_GRAYS = 100,
+
 };
 
 bool apply_colormap(cv::InputArray src,

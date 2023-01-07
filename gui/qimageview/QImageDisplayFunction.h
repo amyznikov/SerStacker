@@ -12,24 +12,15 @@
 #include <QtCore/QtCore>
 #include <opencv2/opencv.hpp>
 
-class QImageDisplayFunction:
-    public QObject
+class QImageDisplayFunction
 {
-  Q_OBJECT;
 public:
   typedef QImageDisplayFunction ThisClass;
-  typedef QObject Base;
 
-  QImageDisplayFunction(QObject * parent = Q_NULLPTR) :
-      Base(parent)
-  {
-  }
+  virtual ~QImageDisplayFunction() = default;
 
-  virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask) = 0;
-  virtual void getDisplayImage(cv::OutputArray image, int ddepth = -1) = 0;
-
-signals:
-  void update();
+  virtual void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
+      cv::OutputArray displayImage, int ddepth = CV_8U) = 0;
 };
 
 #endif /* __QImageDisplayFunction_h__ */

@@ -20,7 +20,8 @@ public:
   typedef QImageFileViewer ThisClass;
   typedef QImageViewer Base;
 
-  QImageFileViewer(QWidget * parent = Q_NULLPTR);
+  QImageFileViewer(QWidget * parent = nullptr);
+  QImageFileViewer(QImageScene * scene, QWidget * parent = nullptr);
 
   void openImage(const std::string & pathfilename);
   void openImage(const QString & pathfilename);
@@ -48,7 +49,7 @@ protected:
 
 protected:
   c_input_sequence::ptr input_sequence_;
-  QPlaySequenceControl * playControls = Q_NULLPTR;
+  QPlaySequenceControl * playControls = nullptr;
 };
 
 #endif /* __QImageFileViewer_h__ */

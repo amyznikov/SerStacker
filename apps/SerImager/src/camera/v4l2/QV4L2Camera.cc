@@ -249,16 +249,16 @@ bool QV4L2Camera::device_start()
     return false;
   }
 
+
   if( (status = device_.get_interval(interval, devtype)) ) {
     CF_ERROR("device_.get_interval() fails. status=%d (%s)\n",
         status, strerror(status));
   }
 
-  CF_DEBUG("m_capSrcFormat: %u/%u \n"
+  CF_DEBUG("m_capSrcFormat: '%s' %ux%u rate=%u/%u \n"
       "type=%d\n"
       "width=%u\n"
       "height=%u\n"
-      "pixelformat=%u\n"
       "field=%u\n"
       "bytesperline=%u\n"
       "sizeimage=%u\n"
@@ -268,12 +268,10 @@ bool QV4L2Camera::device_start()
       "quantization=%u\n"
       "xfer_func=%u\n"
       ,
-      interval.numerator,
-      interval.denominator,
+      fourccToString(srcFormat.g_pixelformat()).c_str(),
+      srcFormat.g_width(), srcFormat.g_height(),
+      interval.numerator, interval.denominator,
       srcFormat.type,
-      srcFormat.fmt.pix.width,
-      srcFormat.fmt.pix.height,
-      srcFormat.fmt.pix.pixelformat,
       srcFormat.fmt.pix.field,
       srcFormat.fmt.pix.bytesperline,
       srcFormat.fmt.pix.sizeimage,
@@ -358,14 +356,14 @@ bool QV4L2Camera::device_start()
     colorid_ = COLORID_BGR;
     bpp_ = 8;
 
+    const cv4l_fmt copy =
+        srcFormat;
+
     // Make sure sizeimage is large enough. This is necessary if the mplane
     // plugin is in use since v4lconvert_try_format() bypasses the plugin.
 
 
     dstFormat.s_sizeimage(dstFormat.g_width() * dstFormat.g_height() * 3);
-
-    const cv4l_fmt copy =
-        srcFormat;
 
     if( !(convert_ = v4lconvert_create(device_.g_fd())) ) {
       CF_ERROR("v4lconvert_create() fails");
@@ -387,9 +385,9 @@ bool QV4L2Camera::device_start()
             fourccToString(copy.fmt.pix.pixelformat).c_str());
         // status = -1;
       }
-
-      srcFormat = copy;
     }
+
+    srcFormat = copy;
   }
 
   if ( status == 0 && !create_queue() ) {
@@ -649,8 +647,10 @@ QCameraFrame::sptr QV4L2Camera::device_recv_frame()
               dstFormat.fmt.pix.sizeimage);
 
           if( status < 0 ) {
-            CF_ERROR("v4lconvert_convert() fails: errno=%d (%s) %s",
-                errno, strerror(errno), v4lconvert_get_error_message(convert_));
+            CF_ERROR("v4lconvert_convert() fails: errno=%d (%s) message='%s' srcFormat='%s' %ux%u",
+                errno, strerror(errno), v4lconvert_get_error_message(convert_),
+                fourccToString(srcFormat.g_pixelformat()).c_str(),
+                srcFormat.g_width(), srcFormat.g_height());
           }
           else {
             status = 0;

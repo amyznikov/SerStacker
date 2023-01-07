@@ -9,7 +9,7 @@
 #define __QImageSceneView_h__
 
 #include "QImageScene.h"
-#include "QGraphicsShape.h"
+#include "QImageDisplayFunction.h"
 
 class QImageSceneView
     : public QGraphicsView
@@ -22,12 +22,11 @@ public:
   static constexpr int MIN_SCALE = -256;
   static constexpr int MAX_SCALE = +256;
 
+  QImageSceneView(QWidget *parent = nullptr);
 
-  QImageSceneView(QWidget *parent = Q_NULLPTR);
+  QImageScene * imageScene() const;
 
-  QImageScene * scene() const;
-
-  void setViewScale(int scale, const QPoint * centerPos = Q_NULLPTR);
+  void setViewScale(int scale, const QPoint * centerPos = nullptr);
   int viewScale() const;
 
   void zoom(int delta);
@@ -39,12 +38,6 @@ public:
 
   void scrollView(int dx, int dy);
 
-  void setShapesVisible(bool v);
-  bool shapesVisible() const;
-
-  void deleteAllShapes();
-  void addLineShape();
-  void addRectShape();
 
 signals:
   void onMouseMove(QMouseEvent * e);
@@ -52,11 +45,6 @@ signals:
   void onMouseReleaseEvent(QMouseEvent * e);
   void onMouseDoubleClick(QMouseEvent * e);
   void scaleChanged(int currentScale);
-  //  void onLineShapeChanged(QGraphicsLineItem * item);
-  //  void onRectShapeChanged(QGraphicsRectItem * item);
-  void graphicsShapeChanged(QGraphicsShape*);
-  void graphicsShapeAdded(QGraphicsShape*);
-  void graphicsShapeDeleted(QGraphicsShape*);
 
 protected:
   void wheelEvent(QWheelEvent* e) override;
@@ -66,21 +54,10 @@ protected:
   void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 protected:
-  QImageScene * scene_ = Q_NULLPTR;
   QPoint prevMouseScrollPos_;
   int currentViewScale_ = 0;
   bool mouseScrollEnabled_ = true;
   bool mouseScrollActive_ = false;
-  bool shapesVisible_ = false;
-
-  //QGraphicsItem * currentShape_ = Q_NULLPTR;
-
-//  QGraphicsLineItem * currentLineItem = Q_NULLPTR;
-//  int currentLineCorner = -1; // 0:p1, 1:p2, -1:pos
-//
-//  QGraphicsRectItem * currentRectItem = Q_NULLPTR;
-//  int currentRectCorner = -1; // 0:topleft, 1:topright, 2:bottomright, 3:bottomleft, -1: pos
-
 };
 
 #endif /* __QImageSceneView_h__ */

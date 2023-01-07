@@ -6,6 +6,7 @@
  */
 
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/style.h>
 #include <gui/widgets/settings.h>
 #include <gui/qimageview/cv2qt.h>
 #include <core/proc/pixtype.h>
@@ -15,25 +16,15 @@
 #include "QMtfControl.h"
 
 
-#define ICON_histogram                "histogram"
-#define ICON_histogram_linear_scale   "histogram-linear-scale2"
-#define ICON_histogram_log_scale      "histogram-log-scale2"
-#define ICON_histogram_automtf        "histogram-automtf"
-#define ICON_reset                    "reset"
-#define ICON_contrast                 "contrast"
-#define ICON_bar_chart                "bar_chart"
-#define ICON_line_chart               "line_chart"
-#define ICON_colormap                 "colormap2"
-
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qmtf/icons/%1").arg(name));
-}
-
-static QPixmap getPixmap(const QString & name)
-{
-  return QPixmap(QString(":/qmtf/icons/%1").arg(name));
-}
+#define ICON_histogram                ":/qmtf/icons/histogram"
+#define ICON_histogram_linear_scale   ":/qmtf/icons/histogram-linear-scale2"
+#define ICON_histogram_log_scale      ":/qmtf/icons/histogram-log-scale2"
+#define ICON_histogram_automtf        ":/qmtf/icons/histogram-automtf"
+#define ICON_reset                    ":/qmtf/icons/reset"
+#define ICON_contrast                 ":/qmtf/icons/contrast"
+#define ICON_bar_chart                ":/qmtf/icons/bar_chart"
+#define ICON_line_chart               ":/qmtf/icons/line_chart"
+#define ICON_colormap                 ":/qmtf/icons/colormap2"
 
 static QIcon log_scale_icon;
 static QIcon bar_chart_icon;
@@ -97,40 +88,40 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
   vbox_ = new QVBoxLayout(this);
 
-  topToolbar_ = new QToolBar(this);
-  topToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  topToolbar_->setIconSize(QSize(16, 16));
+  topToolbar_ctl = new QToolBar(this);
+  topToolbar_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  topToolbar_ctl->setIconSize(QSize(16, 16));
 
 
   displayType_ctl = new QComboBox(this);
   displayType_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
   displayType_ctl->setToolTip("Select data to visualize");
-  topToolbar_->addWidget(displayType_ctl);
+  topToolbar_ctl->addWidget(displayType_ctl);
 
   connect(displayType_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
       this, &ThisClass::onDisplayTypeCurrentItemChanged);
 
   inputDataRange_ctl = new QNumberEditBox(this);
   inputDataRange_ctl->setToolTip("Set input data range (min/max clips)");
-  topToolbar_->addWidget(inputDataRange_ctl);
+  topToolbar_ctl->addWidget(inputDataRange_ctl);
   connect(inputDataRange_ctl, &QNumberEditBox::textChanged,
       this, &ThisClass::onInputDataRangeChanged);
 
 
-  resetMtfAction_ = topToolbar_->addAction(getIcon(ICON_reset), "Reset");
+  resetMtfAction_ = topToolbar_ctl->addAction(getIcon(ICON_reset), "Reset");
   resetMtfAction_->setToolTip("Reset MTF clipping and recompute input data range");
   connect(resetMtfAction_, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
 
   //
-  addStretch(topToolbar_);
+  addStretch(topToolbar_ctl);
 
   colormap_ctl = new QToolButton();
   colormap_ctl->setIcon(colormap_icon);
   colormap_ctl->setText("Colormap");
   colormap_ctl->setToolTip("Select colormap");
-  topToolbar_->addWidget(colormap_ctl);
+  topToolbar_ctl->addWidget(colormap_ctl);
   connect(colormap_ctl, &QToolButton::clicked,
       this, &ThisClass::onColormapCtlClicked);
 
@@ -138,7 +129,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   chartTypeSelectorButton_ = new QToolButton();
   chartTypeSelectorButton_->setText("Chart type");
   chartTypeSelectorButton_->setToolTip("Select chart type");
-  topToolbar_->addWidget(chartTypeSelectorButton_);
+  topToolbar_ctl->addWidget(chartTypeSelectorButton_);
   connect(chartTypeSelectorButton_, &QToolButton::clicked,
       this, &ThisClass::onChartTypeSelectorClicked );
 
@@ -152,7 +143,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   autoMtf_ctl->setCheckable(true);
   autoMtf_ctl->setText("Auto MTF");
   autoMtf_ctl->setToolTip("Auto MTF adjustment");
-  topToolbar_->addWidget(autoMtf_ctl);
+  topToolbar_ctl->addWidget(autoMtf_ctl);
   connect(autoMtf_ctl, &QToolButton::clicked,
       this, &ThisClass::onAutoMtfCtrlClicked );
 
@@ -173,29 +164,29 @@ QMtfControl::QMtfControl(QWidget * parent) :
   autoMtf_ctl->setPopupMode(QToolButton::MenuButtonPopup);
   autoMtf_ctl->setMenu(&autoMtfMenu);
 
-  logScaleSelectionAction_ = topToolbar_->addAction(log_scale_icon, "Log scale");
+  logScaleSelectionAction_ = topToolbar_ctl->addAction(log_scale_icon, "Log scale");
   logScaleSelectionAction_ ->setToolTip("Switch between linear / log scale");
   logScaleSelectionAction_->setCheckable(true);
   logScaleSelectionAction_->setChecked(false);
 
   // configure gistogram view
-  levelsView_ = new QHistogramView(this);
-  logScaleSelectionAction_->setChecked(levelsView_->logScale());
-  chartTypeSelectorButton_->setIcon(selectChartTypeIcon(levelsView_->chartType()) );
+  levelsView_ctl = new QHistogramView(this);
+  logScaleSelectionAction_->setChecked(levelsView_ctl->logScale());
+  chartTypeSelectorButton_->setIcon(selectChartTypeIcon(levelsView_ctl->chartType()) );
   //displayChannel_ctl->setCurrentIndex(displayChannel_ctl->findData((int)levelsView_->displayChannel()));
 
   // configure mtf slider
-  mtfSlider_ = new QMtfSlider(this);
+  mtfSlider_ctl = new QMtfSlider(this);
   colormap_strip_ctl = new QLabel(this);
   //  colormap_strip_ctl->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 
   // configure toolbar2
-  bottomToolbar_ = new QToolBar(this);
-  bottomToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  bottomToolbar_->setIconSize(QSize(16, 16));
+  bottomToolbar_ctl = new QToolBar(this);
+  bottomToolbar_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  bottomToolbar_ctl->setIconSize(QSize(16, 16));
 
   for ( int i = 0; i < 3; ++i ) {
-    bottomToolbar_->addWidget(spins[i] = new QDoubleSpinBox());
+    bottomToolbar_ctl->addWidget(spins[i] = new QDoubleSpinBox());
     spins[i]->setKeyboardTracking(false);
     spins[i]->setRange(0, 1);
     spins[i]->setDecimals(3);
@@ -204,23 +195,23 @@ QMtfControl::QMtfControl(QWidget * parent) :
     spins[i]->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
 #endif
     if ( i < 2 ) {
-      addStretch(bottomToolbar_);
+      addStretch(bottomToolbar_ctl);
     }
   }
 
   // Combine layouts
-  vbox_->addWidget(topToolbar_, 1);
-  vbox_->addWidget(levelsView_, 1000);
-  vbox_->addWidget(mtfSlider_, 1);
+  vbox_->addWidget(topToolbar_ctl, 1);
+  vbox_->addWidget(levelsView_ctl, 1000);
+  vbox_->addWidget(mtfSlider_ctl, 1);
   vbox_->addWidget(colormap_strip_ctl, 1);
-  vbox_->addWidget(bottomToolbar_, 1);
+  vbox_->addWidget(bottomToolbar_ctl, 1);
 
   // Configure event handles
 
   connect(logScaleSelectionAction_, &QAction::triggered,
-      levelsView_, &QHistogramView::setLogScale);
+      levelsView_ctl, &QHistogramView::setLogScale);
 
-  connect(mtfSlider_, &QMtfSlider::mtfChanged,
+  connect(mtfSlider_ctl, &QMtfSlider::mtfChanged,
       [this]() {
         if ( !updatingControls_ ) {
 
@@ -234,9 +225,9 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
             setUpdatingControls(true);
 
-            mtf.set_shadows(mtfSlider_->shadows());
-            mtf.set_highlights(mtfSlider_->highlights());
-            mtf.set_midtones(mtfSlider_->midtones());
+            mtf.set_shadows(mtfSlider_ctl->shadows());
+            mtf.set_highlights(mtfSlider_ctl->highlights());
+            mtf.set_midtones(mtfSlider_ctl->midtones());
 
             spins[SPIN_SHADOWS]->setValue(mtf.shadows());
             spins[SPIN_HIGHLIGHTS]->setValue(mtf.highlights());
@@ -269,7 +260,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
               setUpdatingControls(true);
 
               mtf.set_shadows(v);
-              mtfSlider_->setShadows(mtf.shadows());
+              mtfSlider_ctl->setShadows(mtf.shadows());
 
               setUpdatingControls(wasInUpdatingControls);
               if ( !wasInUpdatingControls ) {
@@ -299,7 +290,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
               setUpdatingControls(true);
 
               mtf.set_highlights(v);
-              mtfSlider_->setHighlights(mtf.highlights());
+              mtfSlider_ctl->setHighlights(mtf.highlights());
 
               setUpdatingControls(wasInUpdatingControls);
               if ( !wasInUpdatingControls ) {
@@ -328,7 +319,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
               setUpdatingControls(true);
 
               mtf.set_midtones(v);
-              mtfSlider_->setMidtones(mtf.midtones());
+              mtfSlider_ctl->setMidtones(mtf.midtones());
 
               setUpdatingControls(wasInUpdatingControls);
               if ( !wasInUpdatingControls ) {
@@ -343,7 +334,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   updateControls();
 }
 
-void QMtfControl::setDisplaySettings(QMtfDisplaySettingsBase * displaySettings)
+void QMtfControl::setDisplaySettings(QMtfDisplay * displaySettings)
 {
   const bool wasInUpdatingControls =
       updatingControls();
@@ -351,8 +342,7 @@ void QMtfControl::setDisplaySettings(QMtfDisplaySettingsBase * displaySettings)
   setUpdatingControls(true);
 
   if( displaySettings_ ) {
-    disconnect(displaySettings_, &QMtfDisplaySettings::inputDataChanged,
-        this, &ThisClass::updateHistogramLevels);
+    displaySettings_->disconnect(this);
   }
 
   displaySettings_ = displaySettings;
@@ -360,12 +350,17 @@ void QMtfControl::setDisplaySettings(QMtfDisplaySettingsBase * displaySettings)
 
   if( displaySettings_ ) {
 
-    const c_enum_member * displayType = displaySettings_->displayTypes();
+    const c_enum_member * displayType =
+        displaySettings_->displayTypes();
+
     for ( ; displayType->name && *displayType->name; ++ displayType ) {
-      displayType_ctl->addItem(displayType->name, displayType->value);
+
+      displayType_ctl->addItem(displayType->name,
+          displayType->value);
+
     }
 
-    connect(displaySettings_, &QMtfDisplaySettings::inputDataChanged,
+    connect(displaySettings_, &QMtfDisplay::inputDataChanged,
         this, &ThisClass::updateHistogramLevels,
         Qt::QueuedConnection);
   }
@@ -375,7 +370,7 @@ void QMtfControl::setDisplaySettings(QMtfDisplaySettingsBase * displaySettings)
   updateControls();
 }
 
-QMtfDisplaySettingsBase * QMtfControl::displaySettings() const
+QMtfDisplay * QMtfControl::displaySettings() const
 {
   return displaySettings_;
 }
@@ -414,14 +409,14 @@ void QMtfControl::onChartTypeSelectorClicked()
   if( selectedAction ) {
 
     if( selectedAction == setLineChartAction ) {
-      levelsView_->setChartType(QHistogramView::ChartType_Lines);
+      levelsView_ctl->setChartType(QHistogramView::ChartType_Lines);
     }
     else if( selectedAction == setBarChartAction ) {
-      levelsView_->setChartType(QHistogramView::ChartType_Bars);
+      levelsView_ctl->setChartType(QHistogramView::ChartType_Bars);
     }
 
     chartTypeSelectorButton_->setIcon(selectChartTypeIcon(
-        levelsView_->chartType()));
+        levelsView_ctl->chartType()));
   }
 }
 
@@ -460,7 +455,7 @@ void QMtfControl::onResetMtfClicked()
 
     setUpdatingControls(wasInUpdatingControls);
     if ( !wasInUpdatingControls ) {
-      updateHistogramLevels();
+      //updateHistogramLevels();
       emit displaySettings_->updateDisplay();
     }
   }
@@ -487,7 +482,7 @@ void QMtfControl::onAutoMtfCtrlClicked()
     updateControls();
 
     if ( !updatingControls() ) {
-      updateHistogramLevels();
+      //updateHistogramLevels();
       emit displaySettings_->updateDisplay();
     }
   }
@@ -498,9 +493,16 @@ void QMtfControl::onColormapCtlClicked()
   if( displaySettings_ ) {
 
     QMenu menu;
+    QAction * invertColormapAction;
 
     const COLORMAP current_colormap =
         displaySettings_->colormap();
+
+
+    menu.addAction(invertColormapAction = new QAction("Invert colormap"));
+    invertColormapAction->setCheckable(true);
+    invertColormapAction->setChecked(displaySettings_->invertColormap());
+    menu.addSeparator();
 
     for( const c_enum_member *colormap = members_of<COLORMAP>(); colormap->name; ++colormap ) {
 
@@ -515,13 +517,23 @@ void QMtfControl::onColormapCtlClicked()
       menu.addAction(action);
     }
 
+
+
     QAction *action =
         menu.exec(colormap_ctl->mapToGlobal(
             QPoint(0, 0)));
 
     if ( action ) {
-      displaySettings_->setColormap((COLORMAP )action->data().toInt());
+
+      if( action == invertColormapAction ) {
+        displaySettings_->setInvertColormap(invertColormapAction->isChecked());
+      }
+      else {
+        displaySettings_->setColormap((COLORMAP) action->data().toInt());
+      }
+
       displaySettings_->saveParameters();
+
       updateHistogramLevels();
       updateColormapPixmap();
     }
@@ -530,7 +542,7 @@ void QMtfControl::onColormapCtlClicked()
 
 void QMtfControl::onDisplayTypeCurrentItemChanged()
 {
-  if( !updatingControls_ && displaySettings_ ) {
+  if( displaySettings_ && !updatingControls_ ) {
     displaySettings_->setDisplayType(displayType_ctl->currentData().toInt());
     displaySettings_->saveParameters();
     updateControls();
@@ -539,30 +551,28 @@ void QMtfControl::onDisplayTypeCurrentItemChanged()
 
 void QMtfControl::onInputDataRangeChanged()
 {
-  if( !updatingControls_ ) {
-    if( displaySettings_ ) {
+  if( displaySettings_ && !updatingControls_ ) {
 
-      double range[2];
+    double range[2];
 
-      if( fromString(inputDataRange_ctl->text(), range, 2) == 2 ) {
+    if( fromString(inputDataRange_ctl->text(), range, 2) == 2 ) {
 
-        c_pixinsight_mtf &mtf =
-            displaySettings_->mtf();
+      c_pixinsight_mtf &mtf =
+          displaySettings_->mtf();
 
-        const bool wasInUpdatingControls =
-            updatingControls();
+      const bool wasInUpdatingControls =
+          updatingControls();
 
-        setUpdatingControls(true);
+      setUpdatingControls(true);
 
-        mtf.set_input_range(range[0], range[1]);
-        displaySettings_->saveParameters();
+      mtf.set_input_range(range[0], range[1]);
+      displaySettings_->saveParameters();
 
-        setUpdatingControls(wasInUpdatingControls);
+      setUpdatingControls(wasInUpdatingControls);
 
-        if( !wasInUpdatingControls ) {
-          updateHistogramLevels();
-          emit displaySettings_->updateDisplay();
-        }
+      if( !wasInUpdatingControls ) {
+        updateHistogramLevels();
+        emit displaySettings_->updateDisplay();
       }
     }
   }
@@ -647,7 +657,7 @@ void QMtfControl::updateHistogramLevels()
       displaySettings_->getOutputHistogramm(H, &hmin, &hmax);
     }
 
-    levelsView_->setHistogram(H, hmin, hmax);
+    levelsView_ctl->setHistogram(H, hmin, hmax);
   }
 }
 
@@ -676,7 +686,14 @@ void QMtfControl::updateColormapPixmap()
       cv2qt(color_image, &qimage);
     }
 
-    colormap_pixmap_ = QPixmap::fromImage(qimage);
+    if ( displaySettings_->invertColormap() ) {
+
+      qimage = qimage.mirrored(true, false);
+    }
+
+    colormap_pixmap_ =
+        QPixmap::fromImage(qimage);
+
   }
 
   updateColormapStrip();
@@ -689,7 +706,7 @@ void QMtfControl::updateColormapStrip()
 
     colormap_strip_ctl->setPixmap( colormap_pixmap_.isNull() ?
             colormap_pixmap_ :
-            colormap_pixmap_.scaled(mtfSlider_->width(), colormap_pixmap_.height()));
+            colormap_pixmap_.scaled(mtfSlider_ctl->width(), colormap_pixmap_.height()));
 
     colormap_strip_ctl->setMinimumSize(64, 16);
   }
@@ -700,6 +717,18 @@ void QMtfControl::resizeEvent(QResizeEvent *e)
   Base::resizeEvent(e);
   updateColormapStrip();
 }
+
+void QMtfControl::showEvent(QShowEvent *e)
+{
+  Base::showEvent(e);
+  updateHistogramLevels();
+}
+
+void QMtfControl::hideEvent(QHideEvent *e)
+{
+  Base::hideEvent(e);
+}
+
 
 void QMtfControl::updateControls()
 {
@@ -724,12 +753,12 @@ void QMtfControl::updateControls()
     mtf.get_input_range(&minval, &maxval);
     inputDataRange_ctl->setText(QString("%1;%2").arg(minval).arg(maxval));
 
-    mtfSlider_->setup(mtf.shadows(), mtf.highlights(), mtf.midtones());
+    mtfSlider_ctl->setup(mtf.shadows(), mtf.highlights(), mtf.midtones());
 
     spins[SPIN_SHADOWS]->setValue(mtf.shadows());
     spins[SPIN_HIGHLIGHTS]->setValue(mtf.highlights());
     spins[SPIN_MIDTONES]->setValue(mtf.midtones());
-    logScaleSelectionAction_->setChecked(levelsView_->logScale());
+    logScaleSelectionAction_->setChecked(levelsView_ctl->logScale());
 
     const bool autoMtfChecked =
         autoMtf_ctl->isChecked();
@@ -737,7 +766,7 @@ void QMtfControl::updateControls()
     spins[SPIN_SHADOWS]->setEnabled(!autoMtfChecked);
     spins[SPIN_HIGHLIGHTS]->setEnabled(!autoMtfChecked);
     spins[SPIN_MIDTONES]->setEnabled(!autoMtfChecked);
-    mtfSlider_->setEnabled(!autoMtfChecked);
+    mtfSlider_ctl->setEnabled(!autoMtfChecked);
 
     switch (selectedAutoMtfAction_) {
     case AutoMtfAction_AutoMtf:
@@ -768,19 +797,23 @@ QMtfControlDialogBox::QMtfControlDialogBox(QWidget * parent) :
   setWindowTitle("Select visual data and adjust display levels ...");
 
   vbox_ = new QVBoxLayout(this);
-  widget = new QMtfControl(this);
-  vbox_->addWidget(widget);
+  mtfControl_ = new QMtfControl(this);
+  vbox_->addWidget(mtfControl_);
 }
 
-
-void QMtfControlDialogBox::setMtfDisplaySettings(QMtfDisplaySettingsBase * display)
+QMtfControl * QMtfControlDialogBox::mtfControl() const
 {
-  widget->setDisplaySettings(display);
+  return mtfControl_;
 }
 
-QMtfDisplaySettingsBase * QMtfControlDialogBox::mtfDisplaySettings() const
+void QMtfControlDialogBox::setMtfDisplaySettings(QMtfDisplay * display)
 {
-  return widget->displaySettings();
+  mtfControl_->setDisplaySettings(display);
+}
+
+QMtfDisplay * QMtfControlDialogBox::mtfDisplaySettings() const
+{
+  return mtfControl_->displaySettings();
 }
 
 void QMtfControlDialogBox::showEvent(QShowEvent *event)

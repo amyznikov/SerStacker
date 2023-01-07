@@ -10,25 +10,9 @@
 #define __qserstacker_image_editor_h__
 
 #include <gui/qimageview/QImageFileEditor.h>
-#include <gui/qimageview/QMtfImageDisplayFunction.h>
+#include <gui/qimageview/QImageViewMtfDisplayFunction.h>
 
 namespace qserstacker {
-
-class QImageEditorDisplaySettings :
-    public QMtfImageDisplaySettings
-{
-  Q_OBJECT;
-public:
-  typedef QImageEditorDisplaySettings ThisClass;
-  typedef QMtfImageDisplaySettings Base;
-
-  QImageEditorDisplaySettings(QObject * parent = Q_NULLPTR);
-  const c_enum_member * displayTypes() const override;
-
-  void loadParameters() override;
-  void saveParameters() const override;
-};
-
 
 class QImageEditor:
     public QImageFileEditor
@@ -38,14 +22,13 @@ public:
   typedef QImageEditor ThisClass;
   typedef QImageFileEditor Base;
 
-  QImageEditor(QWidget * parent = Q_NULLPTR);
+  QImageEditor(QWidget * parent = nullptr);
 
-  QMtfImageDisplaySettings * displaySettings();
-  const QMtfImageDisplaySettings * displaySettings() const;
+  QImageViewMtfDisplayFunction * mtfDisplayFunction();
+  const QImageViewMtfDisplayFunction * mtfDisplayFunction() const;
 
 protected:
-  QImageEditorDisplaySettings displaySettings_;
-  QMtfImageDisplayFunction display_;
+  QImageViewMtfDisplayFunction mtfDisplayFunction_;
 };
 
 } /* namespace qserstacker */

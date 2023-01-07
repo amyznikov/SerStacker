@@ -9,8 +9,8 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <core/debug.h>
 
-QImageFileViewer::QImageFileViewer(QWidget * parent)
-  : Base(parent)
+QImageFileViewer::QImageFileViewer(QImageScene * scene, QWidget * parent) :
+  Base(scene, parent)
 {
   input_sequence_ = c_input_sequence::create();
   //input_sequence_->set_auto_debayer(DEBAYER_GB);
@@ -23,6 +23,11 @@ QImageFileViewer::QImageFileViewer(QWidget * parent)
       this, &ThisClass::onSeek);
 
   playControls->setVisible(false);
+}
+
+QImageFileViewer::QImageFileViewer(QWidget * parent) :
+    ThisClass(nullptr, parent)
+{
 }
 
 const c_input_sequence::ptr & QImageFileViewer::input_sequence() const

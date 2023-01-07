@@ -8,15 +8,16 @@
 #include "QStackOptions.h"
 #include <gui/qstackingthread/QStackingThread.h>
 #include <gui/widgets/addctrl.h>
+#include <gui/widgets/style.h>
 
-#define ICON_close          "close"
-#define ICON_check_all      "check_all"
+#define ICON_close          ":/qstackingoptions/icons/close"
+#define ICON_check_all      ":/qstackingoptions/icons/check_all"
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-}
-
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+//}
+//
 
 QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
   : Base("QStackingSettingsWidget", parent)

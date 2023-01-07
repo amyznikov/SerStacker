@@ -42,7 +42,7 @@
 QImageSceneView::QImageSceneView(QWidget *parent)
     : Base(parent)
 {
-  setScene(scene_ = new QImageScene(this));
+  //setScene(scene_ = new QImageScene(this));
   //scene_->setBackgroundBrush(QBrush(Qt::darkGray, Qt::SolidPattern));
 
   setMouseTracking(true);
@@ -101,9 +101,9 @@ QImageSceneView::QImageSceneView(QWidget *parent)
 
 }
 
-QImageScene * QImageSceneView::scene() const
+QImageScene * QImageSceneView::imageScene() const
 {
-  return scene_;
+  return dynamic_cast<QImageScene *>(Base::scene());
 }
 
 int QImageSceneView::viewScale() const
@@ -122,8 +122,12 @@ void QImageSceneView::setViewScale(int scale, const QPoint * centerPos)
 
   if ( currentViewScale_ != scale ) {
 
-    QPoint mouse_pos = centerPos ? *centerPos : QPoint(width() / 2, height() / 2);
-    QPointF old_scene_pos = mapToScene(mouse_pos);
+    QPoint mouse_pos =
+        centerPos ? *centerPos :
+            QPoint(width() / 2, height() / 2);
+
+    QPointF old_scene_pos =
+        mapToScene(mouse_pos);
 
     if ( scale == 0 ) {
       setTransform(QTransform());
@@ -143,12 +147,14 @@ void QImageSceneView::setViewScale(int scale, const QPoint * centerPos)
       setTransform(t);
     }
 
-    const QPointF delta = mapFromScene(old_scene_pos) - mouse_pos;
+    const QPointF delta =
+        mapFromScene(old_scene_pos) - mouse_pos;
+
     horizontalScrollBar()->setValue(delta.x() + horizontalScrollBar()->value());
     verticalScrollBar()->setValue(delta.y() + verticalScrollBar()->value());
 
     currentViewScale_ = scale;
-    emit scaleChanged(scale);
+    Q_EMIT scaleChanged(scale);
   }
 }
 
@@ -187,6 +193,8 @@ void QImageSceneView::scrollView(int dx, int dy)
 
 void QImageSceneView::wheelEvent(QWheelEvent* e)
 {
+ // CF_DEBUG("Scene: %p", scene_);
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   if ( (e->modifiers() & Qt::ControlModifier) || (e->buttons() == Qt::LeftButton) ) {
     const int amount = e->angleDelta().y();
@@ -208,298 +216,197 @@ void QImageSceneView::wheelEvent(QWheelEvent* e)
 
 void QImageSceneView::mousePressEvent(QMouseEvent * e)
 {
-  const Qt::MouseButtons buttons =
-      e->buttons();
+  e->ignore();
 
-  bool handled =
-      false;
+  Q_EMIT onMousePressEvent(e);
 
-  if ( buttons == Qt::LeftButton && mouseScrollEnabled_ ) {
-
-    const QPoint mpos =
-        e->pos();
-
-    QGraphicsItem * bgitem =
-        scene()->background();
-
-    const QGraphicsItem * item =
-        scene()->itemAt(mapToScene(mpos),
-            QTransform());
-
-    if ( !item || item == bgitem ) {
-      mouseScrollActive_ = true;
-      prevMouseScrollPos_ = mpos;
-      e->accept();
-      handled = true;
-    }
+  if ( e->isAccepted() ) {
+    return;
   }
 
-//
-//  if ( buttons ) {
-//
-//    const QImageScene * scene =
-//        this->scene();
-//
-//    QGraphicsItem * bgitem =
-//        scene->background();
-//
-//    const QPoint mpos =
-//        e->pos();
-//
-//    const QPointF spos =
-//        this->mapToScene(mpos);
-//
-//    const QList<QGraphicsItem *> items =
-//        scene->items(spos);
-//
-//    QGraphicsItem * currentShape =
-//        Q_NULLPTR;
-//
-//    for ( QGraphicsItem * item : items ) {
-//      if ( item != bgitem ) {
-//        currentShape = item;
-//        break;
-//      }
-//    }
-//
-//    switch ( buttons ) {
-//
-//    case Qt::LeftButton : {
-//      if ( currentShape ) {
-//        break;
-//
-//        //        if ( (handled = currentShape->handleMousePressEvent(this, e)) ) {
-//        //          currentShape_ = currentShape;
-//        //        }
-//        //        else {
-//        //          currentShape_ = Q_NULLPTR;
-//        //        }
-//      }
-//
-//      if ( !handled && mouseScrollEnabled_ ) {
-//
-//        const QGraphicsItem * item =
-//            scene->itemAt(spos,
-//                QTransform());
-//
-//        if ( !item || item == bgitem ) {
-//          mouseScrollActive_ = true;
-//          prevMouseScrollPos_ = mpos;
-//        }
-//      }
-//
-//      break;
-//    }
-//
-//    case Qt::RightButton :
-//      if ( currentShape ) {
-//
-//        // Context menu
-//        QMenu menu;
-//        QAction * action;
-//
-//        menu.addAction(action = new QAction("Delete this shape"));
-//        connect(action, &QAction::triggered,
-//            [this, currentShape]() {
-//              if ( currentShape == this->currentShape_ ) {
-//                this->currentShape_ = Q_NULLPTR;
-//              }
-//
-//              QGraphicsItem * item =
-//                  dynamic_cast<QGraphicsItem*>(currentShape);
-//
-//              CF_DEBUG("item=%p", item);
-//
-//              if ( item ) {
-//                this->scene()->removeItem(item);
-//              }
-//            });
-//
-//
-//        menu.exec(mapToGlobal(mpos));
-//
-//      }
-//      break;
-//    }
-//  }
-
-  if ( !handled ) {
+  if( mouseScrollEnabled_ && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
+    mouseScrollActive_ = true;
+    prevMouseScrollPos_ = e->pos();
+    e->accept();
+  }
+  else {
     Base::mousePressEvent(e);
-    emit onMousePressEvent(e);
   }
 }
 
-void QImageSceneView::mouseMoveEvent(QMouseEvent *e)
+void QImageSceneView::mouseMoveEvent(QMouseEvent * e)
 {
-  if ( mouseScrollActive_ ) {
+  e->ignore();
+
+  Q_EMIT onMouseMove(e);
+  if( e->isAccepted() ) {
+    return;
+  }
+
+  if( mouseScrollActive_ && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
     const QPoint mpos = e->pos();
     const QPointF delta = prevMouseScrollPos_ - mpos;
     scrollView(delta.x(), delta.y());
     prevMouseScrollPos_ = mpos;
     e->accept();
   }
-//  else if ( currentShape_ ) {
-//    if ( !currentShape_->handleMouseMoveEvent(this, e) ) {
-//      currentShape_ =  Q_NULLPTR;
-//    }
-//  }
-  else {
-    emit onMouseMove(e);
+  else if( e->buttons() != Qt::NoButton ) {
     Base::mouseMoveEvent(e);
   }
 }
 
 void QImageSceneView::mouseReleaseEvent(QMouseEvent *e)
 {
-  if ( mouseScrollActive_ ) {
+  if( mouseScrollActive_ && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
     mouseScrollActive_ = false;
-    e->accept();
   }
-//  else if ( currentShape_ ) {
-//    currentShape_ =  Q_NULLPTR;
-////    if ( !currentShape_->handleMouseReleaseEvent(this, e) ) {
-////      currentShape_ =  Q_NULLPTR;
-////    }
-//  }
   else {
     Base::mouseReleaseEvent(e);
-    emit onMouseReleaseEvent(e);
   }
+
+  Q_EMIT onMouseReleaseEvent(e);
 }
 
 void QImageSceneView::mouseDoubleClickEvent(QMouseEvent *e)
 {
   Base::mouseDoubleClickEvent(e);
-  emit onMouseDoubleClick(e);
+  Q_EMIT onMouseDoubleClick(e);
 }
 
+//
+//void QImageSceneView::setShapesVisible(bool v)
+//{
+//  shapesVisible_ = v;
+//
+//  QImageScene * scene = imageScene();
+//  if( scene ) {
+//
+//    const QList<QGraphicsItem*> items =
+//        scene->items();
+//
+//    const QGraphicsPixmapItem * bgitem =
+//        scene->pixmap();
+//
+//    for( QGraphicsItem *item : items ) {
+//      if( item != bgitem ) {
+//        item->setVisible(v);
+//      }
+//    }
+//
+//    update();
+//  }
+//}
 
-void QImageSceneView::setShapesVisible(bool v)
-{
-  //if ( shapesVisible_ != v )
-  {
-    shapesVisible_ = v;
+//bool QImageSceneView::shapesVisible() const
+//{
+//  return shapesVisible_;
+//}
 
-    if ( scene_ ) {
+//void QImageSceneView::deleteAllShapes()
+//{
+//  QImageScene * scene = imageScene();
+//  if( scene ) {
+//
+//    const QList<QGraphicsItem*> items = scene->items();
+//    const QGraphicsPixmapItem *bgitem = scene->pixmap();
+//
+//    for( QGraphicsItem *item : items ) {
+//      if( item != bgitem ) {
+//        QGraphicsShape *shape =
+//            dynamic_cast<QGraphicsShape*>(item);
+//        if( shape ) {
+//          Q_EMIT graphicsShapeDeleted(shape);
+//        }
+//        delete item;
+//      }
+//    }
+//    update();
+//  }
+//}
 
-      const QList<QGraphicsItem *> items = scene_->items();
-      const QGraphicsPixmapItem * bgitem = scene_->background();
-      for ( QGraphicsItem * item : items ) {
-        if ( item != bgitem ) {
-          item->setVisible(v);
-        }
-      }
-
-      update();
-    }
-  }
-}
-
-bool QImageSceneView::shapesVisible() const
-{
-  return shapesVisible_;
-}
-
-void QImageSceneView::deleteAllShapes()
-{
-  if( scene_ ) {
-    const QList<QGraphicsItem*> items = scene_->items();
-    const QGraphicsPixmapItem *bgitem = scene_->background();
-    for( QGraphicsItem *item : items ) {
-      if( item != bgitem ) {
-        QGraphicsShape *shape =
-            dynamic_cast<QGraphicsShape*>(item);
-        if( shape ) {
-          emit graphicsShapeDeleted(shape);
-        }
-        delete item;
-      }
-    }
-    update();
-  }
-}
-
-void QImageSceneView::addLineShape()
-{
-  if ( scene_ ) {
-
-    QPen pen(Qt::yellow);
-    pen.setWidth(1);
-    pen.setCosmetic(true);
-
-    const QRect viewrect =
-        this->rect();
-
-    const QPointF viewCenterOnScene =
-        mapToScene(viewrect.center());
-
-    QRectF rc(0, 0, 64, 64);
-
-    QGraphicsLineShape * item =
-        new QGraphicsLineShape(rc.x(), rc.y(),
-            rc.width(), rc.height());
-
-    item->setPen(pen);
-
-    item->setFlags(item->flags()
-        | QGraphicsItem::ItemIsMovable
-        | QGraphicsItem::ItemSendsGeometryChanges
-        | QGraphicsItem::ItemSendsScenePositionChanges
-        /*| QGraphicsItem::ItemIsSelectable*/
-        /*| QGraphicsItem::ItemIsFocusable*/);
-
-
-    item->setPos(viewCenterOnScene.x() - rc.width() / 2,
-        viewCenterOnScene.y() - rc.height() / 2);
-
-    scene_->addItem(item);
-    update();
-
-    connect(item, &QGraphicsShape::itemChanged,
-        this, &ThisClass::graphicsShapeChanged);
-
-    emit graphicsShapeAdded(item);
-  }
-
-}
-
-void QImageSceneView::addRectShape()
-{
-  if ( scene_ ) {
-
-    QPen pen(Qt::yellow);
-    pen.setWidth(1);
-    pen.setCosmetic(true);
-
-    const QRect viewrect =
-        this->rect();
-
-    const QPointF viewCenterOnScene =
-        mapToScene(viewrect.center());
-
-    QRectF rc(0, 0, 64, 64);
-
-    QGraphicsRectShape * item =
-        new QGraphicsRectShape(rc);
-
-    item->setPen(pen);
-
-    item->setFlags(item->flags()
-        | QGraphicsItem::ItemIsMovable
-        | QGraphicsItem::ItemSendsGeometryChanges
-        | QGraphicsItem::ItemSendsScenePositionChanges
-        /*| QGraphicsItem::ItemIsSelectable */
-        /*| QGraphicsItem::ItemIsFocusable*/);
-
-    item->setPos(viewCenterOnScene.x() - item->rect().width() / 2,
-        viewCenterOnScene.y() - item->rect().height() / 2);
-
-    scene_->addItem(item);
-    update();
-
-    connect(item, &QGraphicsShape::itemChanged,
-        this, &ThisClass::graphicsShapeChanged);
-
-    emit graphicsShapeAdded(item);
-  }
-}
+//void QImageSceneView::addLineShape()
+//{
+//  QImageScene * scene = imageScene();
+//  if ( scene ) {
+//
+//    QPen pen(Qt::yellow);
+//    pen.setWidth(1);
+//    pen.setCosmetic(true);
+//
+//    const QRect viewrect =
+//        this->rect();
+//
+//    const QPointF viewCenterOnScene =
+//        mapToScene(viewrect.center());
+//
+//    QRectF rc(0, 0, 64, 64);
+//
+//    QGraphicsLineShape * item =
+//        new QGraphicsLineShape(rc.x(), rc.y(),
+//            rc.width(), rc.height());
+//
+//    item->setPen(pen);
+//
+//    item->setFlags(item->flags()
+//        | QGraphicsItem::ItemIsMovable
+//        | QGraphicsItem::ItemSendsGeometryChanges
+//        | QGraphicsItem::ItemSendsScenePositionChanges
+//        /*| QGraphicsItem::ItemIsSelectable*/
+//        /*| QGraphicsItem::ItemIsFocusable*/);
+//
+//
+//    item->setPos(viewCenterOnScene.x() - rc.width() / 2,
+//        viewCenterOnScene.y() - rc.height() / 2);
+//
+//    scene->addItem(item);
+//    update();
+//
+//    connect(item, &QGraphicsShape::itemChanged,
+//        this, &ThisClass::graphicsShapeChanged);
+//
+//    Q_EMIT graphicsShapeAdded(item);
+//  }
+//
+//}
+//
+//void QImageSceneView::addRectShape()
+//{
+//  QImageScene * scene = imageScene();
+//  if ( scene ) {
+//
+//    QPen pen(Qt::yellow);
+//    pen.setWidth(1);
+//    pen.setCosmetic(true);
+//
+//    const QRect viewrect =
+//        this->rect();
+//
+//    const QPointF viewCenterOnScene =
+//        mapToScene(viewrect.center());
+//
+//    QRectF rc(0, 0, 64, 64);
+//
+//    QGraphicsRectShape * item =
+//        new QGraphicsRectShape(rc);
+//
+//    item->setPen(pen);
+//
+//    item->setFlags(item->flags()
+//        | QGraphicsItem::ItemIsMovable
+//        | QGraphicsItem::ItemSendsGeometryChanges
+//        | QGraphicsItem::ItemSendsScenePositionChanges
+//        /*| QGraphicsItem::ItemIsSelectable */
+//        /*| QGraphicsItem::ItemIsFocusable*/);
+//
+//    item->setPos(viewCenterOnScene.x() - item->rect().width() / 2,
+//        viewCenterOnScene.y() - item->rect().height() / 2);
+//
+//    scene->addItem(item);
+//    update();
+//
+//    connect(item, &QGraphicsShape::itemChanged,
+//        this, &ThisClass::graphicsShapeChanged);
+//
+//    Q_EMIT graphicsShapeAdded(item);
+//  }
+//}

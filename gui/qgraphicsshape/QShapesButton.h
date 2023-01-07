@@ -9,7 +9,7 @@
 #ifndef __QShapesButton__
 #define __QShapesButton__
 
-#include "QImageSceneView.h"
+#include <QtWidgets/QtWidgets>
 
 class QShapesButton
     : public QToolButton
@@ -21,12 +21,13 @@ public:
 
   QShapesButton(QWidget * parent = Q_NULLPTR);
 
-  void setSceneView(QImageSceneView * sceneView);
-  QImageSceneView * sceneView() const;
+  void setSceneView(QGraphicsView * view);
+  QGraphicsView * sceneView() const;
 
 protected:
   QMenu popup_;
-  QImageSceneView * sceneView_ = Q_NULLPTR;
+  QGraphicsView * sceneView_ = nullptr;
+  QPen pen_;
 };
 
 #endif /* __QShapesButton__ */

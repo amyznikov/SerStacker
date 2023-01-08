@@ -151,7 +151,7 @@ int QImageViewer::viewScale() const
 void QImageViewer::setDisplayType(DisplayType v)
 {
   currentDisplayType_ = v;
-  currentDisplayTypeChanged();
+  displayTypeChanged();
   updateDisplay();
 }
 
@@ -273,11 +273,14 @@ void QImageViewer::createDisplayImage()
       }
       else if ( currentImage_.channels() == 2  ) { // assume this is optical flow image
         //displayImage_.release();
-        displayFunction_->createDisplayImage(currentImage_, currentMask_, displayImage_, currentImage_.depth());
+        displayFunction_->createDisplayImage(currentImage_, currentMask_,
+            displayImage_,
+            currentImage_.depth());
       }
       else  {
         displayImage_.release();
-        displayFunction_->createDisplayImage(currentImage_, currentMask_, displayImage_, CV_8U);
+        displayFunction_->createDisplayImage(currentImage_, currentMask_,
+            displayImage_, CV_8U);
       }
     }
 
@@ -300,7 +303,7 @@ void QImageViewer::createDisplayImage()
     }
 
   }
-  emit currentDisplayImageChanged();
+  Q_EMIT displayImageChanged();
 }
 
 //////

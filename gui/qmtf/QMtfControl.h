@@ -10,13 +10,15 @@
 #define __QMtfControl_h__
 
 #include <QtWidgets/QtWidgets>
+#include <gui/widgets/UpdateControls.h>
 #include <gui/widgets/QLineEditBox.h>
 #include "QHistogramView.h"
 #include "QMtfDisplay.h"
 #include "QMtfSlider.h"
 
 class QMtfControl:
-    public QWidget
+    public QWidget,
+    public HasUpdateControls
 {
   Q_OBJECT;
 public:
@@ -29,11 +31,12 @@ public:
   QMtfDisplay * displaySettings() const;
 
   bool isAutoMtfActionEnabled() const;
-  bool updatingControls() const;
-  void setUpdatingControls(bool v) ;
+
+  //  bool updatingControls() const;
+  //  void setUpdatingControls(bool v) ;
 
 protected Q_SLOTS:
-  void updateControls();
+  //void updateControls();
   void updateHistogramLevels();
   void onChartTypeSelectorClicked();
   void onResetMtfClicked();
@@ -43,6 +46,7 @@ protected Q_SLOTS:
   void onInputDataRangeChanged();
 
 protected:
+  void onupdatecontrols() override;
   void resizeEvent(QResizeEvent *event) override;
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
@@ -88,7 +92,7 @@ protected:
   QDoubleSpinBox * spins[3] = {
       nullptr };
 
-  bool updatingControls_ = false;
+  // bool updatingControls_ = false;
 };
 
 

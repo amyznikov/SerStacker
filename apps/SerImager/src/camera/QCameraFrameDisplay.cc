@@ -102,13 +102,16 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
       Qt::QueuedConnection);
 
 
-  connect(&mtfDisplayFunction_, &QMtfDisplay::updateDisplay,
+  connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
       [this]() {
         if (workerState_ == Worker_Idle) {
           Base::updateDisplay();
         }
       });
 
+  connect(this, &ThisClass::displayImageChanged,
+      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
+      Qt::QueuedConnection);
 }
 
 QCameraFrameDisplay::~QCameraFrameDisplay()
@@ -341,7 +344,8 @@ void QCameraFrameDisplay::workerThread()
       Q_EMIT pixmapChanged();
 
       if ( !mtfDisplayFunction_.isBusy() ) {
-        Q_EMIT mtfDisplayFunction_.inputDataChanged();
+        //Q_EMIT mtfDisplayFunction_.displayImageChanged();
+        Q_EMIT displayImageChanged();
       }
 
     }

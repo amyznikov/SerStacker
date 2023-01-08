@@ -78,6 +78,31 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
         }
       });
 
+
+  actionsMenu_.addAction(showFocusTrackSettingsAction =
+      new QAction("Options...", this));
+
+  showFocusTrackSettingsAction->setCheckable(true);
+  showFocusTrackSettingsAction->setChecked(false);
+
+  connect(showFocusTrackSettingsAction, &QAction::triggered,
+      [this](bool checked) {
+        if ( settings_ctl ) {
+          settings_ctl->setVisible(checked);
+        }
+        else {
+
+          settings_ctl = new QFocusGraphSettingsDialogBox (this);
+          settings_ctl->setFocusMeasureThread(focusMeasureThread_);
+
+          connect(settings_ctl, &QFocusGraphSettingsDialogBox::visibilityChanged,
+              enableFocusTrackAction, &QAction::setChecked);
+
+          settings_ctl->show();
+        }
+
+      });
+
 }
 
 void QFocusGraph::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
@@ -93,6 +118,10 @@ void QFocusGraph::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
         Qt::QueuedConnection);
 
     focusMeasureThread_->setEnabled(isVisible() && enableFocusTrackAction->isChecked());
+  }
+
+  if ( settings_ctl ) {
+    settings_ctl->setFocusMeasureThread(focusMeasureThread_);
   }
 }
 
@@ -282,5 +311,92 @@ QFocusGraphDock::QFocusGraphDock(const QString & title, QWidget * parent, QFocus
   }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
+    Base("QFocusGraphSettings", parent)
+{
+  eps_ctl =
+      add_numeric_box<double>(
+          "eps",
+          [this](double v) {
+            if ( focusMeasureThread_ ) {
+              focusMeasureThread_->setEps(v);
+            }
+          },
+          [this](double * v) {
+            if ( focusMeasureThread_ ) {
+              *v = focusMeasureThread_->eps();
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+void QFocusGraphSettingsWidget::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
+{
+  focusMeasureThread_ = thread;
+  updateControls();
+}
+
+QCameraFocusMeasureThread * QFocusGraphSettingsWidget::focusMeasureThread() const
+{
+  return focusMeasureThread_;
+}
+
+void QFocusGraphSettingsWidget::onupdatecontrols()
+{
+  Base::onupdatecontrols();
+
+  if ( !focusMeasureThread_ ) {
+    setEnabled(false);
+  }
+  else {
+    setEnabled(true);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QFocusGraphSettingsDialogBox::QFocusGraphSettingsDialogBox(QWidget * parent) :
+    Base(parent)
+{
+  setWindowTitle("QFocusGraphSettings");
+
+  lv_ = new QVBoxLayout(this);
+  lv_->addWidget(settings_ctl = new QFocusGraphSettingsWidget(this));
+}
+
+void QFocusGraphSettingsDialogBox::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
+{
+  settings_ctl->setFocusMeasureThread(thread);
+}
+
+QCameraFocusMeasureThread * QFocusGraphSettingsDialogBox::focusMeasureThread() const
+{
+  return settings_ctl->focusMeasureThread();
+}
+
+void QFocusGraphSettingsDialogBox::showEvent(QShowEvent *e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QFocusGraphSettingsDialogBox::hideEvent(QHideEvent *e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QFocusGraphSettingsDialogBox::closeEvent(QCloseEvent *)
+{
+  hide();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } /* namespace serimager */

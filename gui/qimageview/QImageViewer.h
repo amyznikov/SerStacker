@@ -86,8 +86,8 @@ Q_SIGNALS:
   void onFocusOutEvent(QFocusEvent *e);
   void visibilityChanged(bool visible);
   void currentImageChanged();
-  void currentDisplayImageChanged();
-  void currentDisplayTypeChanged();
+  void displayImageChanged();
+  void displayTypeChanged();
 
 protected:
   void showEvent(QShowEvent *event) override;

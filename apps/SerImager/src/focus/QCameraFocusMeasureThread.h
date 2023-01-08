@@ -27,10 +27,20 @@ public:
   };
 
   QCameraFocusMeasureThread(QObject * parent = nullptr);
+  ~QCameraFocusMeasureThread();
 
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr camera() const;
 
+  void setEps(double v)
+  {
+    eps_ = v;
+  }
+
+  double eps() const
+  {
+    return eps_;
+  }
 
   int maxDataLength() const
   {
@@ -81,6 +91,7 @@ protected:
 
   enum COLORID colorid_ = COLORID_UNKNOWN;
   int bpp_ = 0;
+  double eps_ = 0;
 
 
 };

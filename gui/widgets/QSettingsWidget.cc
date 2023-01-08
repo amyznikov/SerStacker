@@ -91,4 +91,5 @@ void QSettingsWidget::onload(QSettings & /*settings*/)
 
 void QSettingsWidget::onupdatecontrols()
 {
+  populatecontrols();
 }

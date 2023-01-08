@@ -10,6 +10,7 @@
 #include <core/proc/histogram.h>
 #include <core/proc/minmax.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 namespace {
   enum DISPLAY_TYPE {
@@ -113,7 +114,11 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
       H.release();
     }
     else {
-      create_output_histogram(&mtf(),
+
+      DisplayParams & opts =
+          displayParams();
+
+      create_output_histogram(&opts.mtf,
           image, mask,
           H,
           hmin, hmax,
@@ -215,13 +220,13 @@ bool QImageViewMtfDisplayFunction::applyColorMap(cv::InputArray displayImage, cv
   DisplayParams &opts =
       displayParams();
 
-  if( opts.colormap == COLORMAP_NONE ) {
+  if( opts.colormap == COLORMAP_NONE || opts.lut.empty() ) {
     return false;
   }
 
-  apply_colormap(displayImage.getMat(),
+  cv::applyColorMap(displayImage,
       colormapImage,
-      opts.colormap);
+      opts.lut);
 
   if( displayMask.size() == colormapImage.size() ) {
     colormapImage.setTo(0, ~displayMask.getMat());

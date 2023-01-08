@@ -42,6 +42,21 @@ public:
   virtual void setDisplayType(int v);
   virtual int displayType() const;
 
+  virtual void setMtfInputRange(double min, double max);
+  virtual void getMtfInputRange(double * min, double * max) const;
+
+  virtual void setShadows(double shadows);
+  virtual double shadows() const;
+
+  virtual void setHighlights(double highlights);
+  virtual double highlights() const;
+
+  virtual void setMidtones(double midtones);
+  virtual double midtones() const;
+
+  virtual void setMtf(double shadows, double highlights, double midtones);
+  virtual void getMtf(double * shadows, double * highlights, double * midtones) const;
+
   virtual void setColormap(COLORMAP v);
   virtual COLORMAP colormap() const;
 
@@ -51,8 +66,8 @@ public:
   virtual DisplayParams & displayParams();
   virtual const DisplayParams & displayParams() const;
 
-  virtual c_pixinsight_mtf & mtf();
-  virtual const c_pixinsight_mtf & mtf() const;
+  //  virtual c_pixinsight_mtf & mtf();
+  //  virtual const c_pixinsight_mtf & mtf() const;
 
   void loadParameters();
   void saveParameters() const;
@@ -63,8 +78,11 @@ public:
 
 
 Q_SIGNALS:
-  void inputDataChanged();
-  void updateDisplay();
+  void parameterChanged();
+  void displayImageChanged();
+
+//  void inputDataChanged();
+//  void updateDisplay();
 
 protected:
   static void addDisplay(DisplayMap & map, int type, double rmin, double rmax);

@@ -10,11 +10,14 @@
 #define __QFocusGraph_h__
 
 #include <QtWidgets/QtWidgets>
+#include <gui/widgets/QSettingsWidget.h>
 #include <gui/qcustomdock/QCustomDock.h>
 #include <gui/qcustomplot/qcustomplot.h>
 #include "QCameraFocusMeasureThread.h"
 
 namespace serimager {
+
+class QFocusGraphSettingsDialogBox;
 
 class QFocusGraph :
     public QWidget
@@ -51,6 +54,10 @@ protected:
 
   QMenu actionsMenu_;
   QAction * enableFocusTrackAction = nullptr;
+  QAction * showFocusTrackSettingsAction = nullptr;
+
+
+  QFocusGraphSettingsDialogBox  * settings_ctl = nullptr;
 };
 
 
@@ -67,6 +74,54 @@ public:
 protected:
   QToolButton *menuButton_ = nullptr;
 
+};
+
+
+class QFocusGraphSettingsWidget :
+    public QSettingsWidget
+{
+public:
+  typedef QFocusGraphSettingsWidget ThisClass;
+  typedef QSettingsWidget Base;
+
+  QFocusGraphSettingsWidget(QWidget * parent = nullptr);
+
+  void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
+  QCameraFocusMeasureThread * focusMeasureThread() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  QCameraFocusMeasureThread * focusMeasureThread_ = nullptr;
+  QNumberEditBox * eps_ctl = nullptr;
+};
+
+
+class QFocusGraphSettingsDialogBox:
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QFocusGraphSettingsDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QFocusGraphSettingsDialogBox(QWidget * parent = nullptr);
+
+  void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
+  QCameraFocusMeasureThread * focusMeasureThread() const;
+
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+
+protected:
+  void showEvent(QShowEvent *event) override;
+  void hideEvent(QHideEvent *event) override;
+  void closeEvent(QCloseEvent *event) override;
+
+protected:
+  QVBoxLayout *lv_ = nullptr;
+  QFocusGraphSettingsWidget * settings_ctl = nullptr;
 };
 
 

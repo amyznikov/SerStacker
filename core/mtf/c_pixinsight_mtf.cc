@@ -26,6 +26,20 @@ double c_pixinsight_mtf::midtones() const
   return midtones_;
 }
 
+void c_pixinsight_mtf::set_parameters(double shadows, double highlights, double midtones)
+{
+  shadows_ = shadows;
+  highlights_ = highlights;
+  midtones_ = midtones;
+}
+
+void c_pixinsight_mtf::get_parameters(double * shadows, double * highlights, double * midtones) const
+{
+  *shadows = shadows_;
+  *highlights = highlights_;
+  *midtones = midtones_;
+}
+
 double c_pixinsight_mtf::apply(double pix) const
 {
   const double & srcmin = input_range_[0];

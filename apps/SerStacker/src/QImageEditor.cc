@@ -16,8 +16,13 @@ QImageEditor::QImageEditor(QWidget * parent) :
 {
   Base::setDisplayFunction(&mtfDisplayFunction_);
 
-  connect(&mtfDisplayFunction_, &QImageViewMtfDisplayFunction::updateDisplay,
+  connect(&mtfDisplayFunction_, &QImageViewMtfDisplayFunction::parameterChanged,
       this, &ThisClass::updateDisplay);
+
+  connect(this, &ThisClass::displayImageChanged,
+      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
+      Qt::QueuedConnection);
+
 }
 
 QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction()

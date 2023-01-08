@@ -40,6 +40,9 @@ public:
   void set_midtones(double v);
   double midtones() const;
 
+  void set_parameters(double shadows, double highlights, double midtones);
+  void get_parameters(double * shadows, double * highlights, double * midtones) const;
+
   bool apply(cv::InputArray src_image,
       cv::OutputArray dst_image,
       int ddepth = -1) const override;

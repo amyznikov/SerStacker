@@ -360,7 +360,8 @@ bool QASICamera::device_start()
       break;
     case ASI_IMG_RAW16:
       cvType = CV_16UC1;
-      bpp = camInfo_.BitDepth;
+      //bpp = camInfo_.BitDepth;
+      bpp = 16;
       if( !camInfo_.IsColorCam ) {
         colorid = COLORID_MONO;
       }

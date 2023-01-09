@@ -8,20 +8,21 @@
 #include "QImageProcessorChainEditor.h"
 #include "QAddRoutineDialog.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/style.h>
 
-#define ICON_double_arrow_down    "double-arrow-down"
-#define ICON_double_arrow_right   "double-arrow-right"
-#define ICON_move_down            "move-down2"
-#define ICON_move_up              "move-up2"
-#define ICON_delete               "delete"
-#define ICON_add                  "add"
-#define ICON_menu                 "menu"
+#define ICON_double_arrow_down    ":/qimproc/icons/double-arrow-down"
+#define ICON_double_arrow_right   ":/qimproc/icons/double-arrow-right"
+#define ICON_move_down            ":/qimproc/icons/move-down2"
+#define ICON_move_up              ":/qimproc/icons/move-up2"
+#define ICON_delete               ":/qimproc/icons/delete"
+#define ICON_add                  ":/qimproc/icons/add"
+#define ICON_menu                 ":/qimproc/icons/menu"
 
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qimproc/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qimproc/icons/%1").arg(name));
+//}
 
 
 QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :

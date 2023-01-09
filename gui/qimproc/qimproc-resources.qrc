@@ -1,15 +1,36 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/qimproc">
-	<file>icons/double-arrow-up.png</file>
-	<file>icons/double-arrow-right.png</file>
-	<file>icons/move-up.png</file>
-	<file>icons/move-down.png</file>
-	<file>icons/move-up2.png</file>
-	<file>icons/move-down2.png</file>
-	<file>icons/delete.png</file>
-	<file>icons/add.png</file>
-	<file>icons/rename.png</file>
-	<file>icons/copy.png</file>
-	<file>icons/menu.png</file>
+	<file>icons/light/double-arrow-up.png</file>
+	<file>icons/dark/double-arrow-up.png</file>
+	
+	<file>icons/light/double-arrow-right.png</file>
+	<file>icons/dark/double-arrow-right.png</file>
+	
+	<file>icons/light/move-up.png</file>
+	<file>icons/dark/move-up.png</file>
+	
+	<file>icons/light/move-down.png</file>
+	<file>icons/dark/move-down.png</file>
+	
+	<file>icons/light/move-up2.png</file>
+	<file>icons/dark/move-up2.png</file>
+	
+	<file>icons/light/move-down2.png</file>
+	<file>icons/dark/move-down2.png</file>
+	
+	<file>icons/light/delete.png</file>
+	<file>icons/dark/delete.png</file>
+	
+	<file>icons/light/add.png</file>
+	<file>icons/dark/add.png</file>
+	
+	<file>icons/light/rename.png</file>
+	<file>icons/dark/rename.png</file>
+	
+	<file>icons/light/copy.png</file>
+	<file>icons/dark/copy.png</file>
+	
+	<file>icons/light/menu.png</file>
+	<file>icons/dark/menu.png</file>
 </qresource>
 </RCC>

@@ -32,6 +32,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupFocusGraph();
   setupIndigoFocuser();
   setupImagerSettings();
+  setupFrameProcessorControls();
 
   restoreState();
 
@@ -187,6 +188,27 @@ void MainWindow::setupImagerSettings()
       this, &ThisClass:: onCameraWriterStatisticsUpdate,
       Qt::QueuedConnection);
 
+
+}
+
+void MainWindow::setupFrameProcessorControls()
+{
+  frameProcessorDock_ =
+      addCustomDock(this,
+          Qt::RightDockWidgetArea,
+          "frameProcessorDock_",
+          "Display processing",
+          frameProcessor_ctl = new QCameraFrameProcessorSelector(this),
+          menuView_);
+
+  frameProcessorDock_->hide();
+
+
+  connect(frameProcessor_ctl, &QImageProcessorSelector::parameterChanged,
+      [this]() {
+        CF_DEBUG("centralDisplay_->setFrameProcessor()");
+        centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
+      });
 
 }
 

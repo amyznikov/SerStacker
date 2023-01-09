@@ -9,25 +9,26 @@
 #include "QMtfSettings.h"
 #include "QRadialPolySharpSettings.h"
 #include "QJovianEllipseSettings.h"
+#include <gui/widgets/style.h>
 
 
-#define ICON_double_arrow_down    "double-arrow-down"
-#define ICON_double_arrow_right   "double-arrow-right"
-#define ICON_move_down            "move-down2"
-#define ICON_move_up              "move-up2"
-#define ICON_delete               "delete"
-#define ICON_add                  "add"
-#define ICON_menu                 "menu"
+#define ICON_double_arrow_down    ":/qimproc/icons/double-arrow-down"
+#define ICON_double_arrow_right   ":/qimproc/icons/double-arrow-right"
+#define ICON_move_down            ":/qimproc/icons/move-down2"
+#define ICON_move_up              ":/qimproc/icons/move-up2"
+#define ICON_delete               ":/qimproc/icons/delete"
+#define ICON_add                  ":/qimproc/icons/add"
+#define ICON_menu                 ":/qimproc/icons/menu"
 
 static QAction *add_routine_action;
 static QAction *remove_routine_action;
 static QAction *move_up_action;
 static QAction *move_down_action;
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qimproc/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qimproc/icons/%1").arg(name));
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -48,10 +49,10 @@ QImageProcessorRoutineSettings::QImageProcessorRoutineSettings(const c_image_pro
         height: 16px;
       }
       QCheckBox::indicator:unchecked {
-        image: url(:/qimproc/icons/double-arrow-right.png);
+        image: url(:/qimproc/icons/${style}/double-arrow-right.png);
       }
       QCheckBox::indicator:checked {
-        image: url(:/qimproc/icons/double-arrow-up.png);
+        image: url(:/qimproc/icons/${style}/double-arrow-up.png);
       }
       );
 #undef __EXPAND_CTL_STYLE_TEXT
@@ -70,7 +71,7 @@ QImageProcessorRoutineSettings::QImageProcessorRoutineSettings(const c_image_pro
   header_layout->setAlignment(Qt::AlignLeft);
 
   expand_ctl = new QCheckBox(header_ctl);
-  expand_ctl->setStyleSheet(expand_box_style);
+  expand_ctl->setStyleSheet(  QString(expand_box_style).replace("${style}", iconStyleSelector()));
   header_layout->addWidget(expand_ctl);
 
   static QMenu menu;

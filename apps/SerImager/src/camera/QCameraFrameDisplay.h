@@ -64,6 +64,8 @@ public:
   const QCameraFrameMtfDisplayFunction * mtfDisplayFunction() const;
   QCameraFrameMtfDisplayFunction * mtfDisplayFunction();
 
+  void setFrameProcessor(const c_image_processor::ptr & processor);
+
 
 Q_SIGNALS:
   void pixmapChanged();

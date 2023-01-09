@@ -7,25 +7,26 @@
 
 #include "QImageProcessorSelector.h"
 #include "QImageProcessorsCollection.h"
+#include <gui/widgets/style.h>
 #include <core/debug.h>
 
 
-#define ICON_double_arrow_down    "double-arrow-down"
-#define ICON_double_arrow_right   "double-arrow-right"
-#define ICON_move_down            "move-down"
-#define ICON_move_up              "move-up"
-#define ICON_delete               "delete"
-#define ICON_add                  "add"
-#define ICON_rename               "rename"
-#define ICON_copy                 "copy"
-#define ICON_menu                 "menu"
+#define ICON_double_arrow_down    ":/qimproc/icons/double-arrow-down"
+#define ICON_double_arrow_right   ":/qimproc/icons/double-arrow-right"
+#define ICON_move_down            ":/qimproc/icons/move-down"
+#define ICON_move_up              ":/qimproc/icons/move-up"
+#define ICON_delete               ":/qimproc/icons/delete"
+#define ICON_add                  ":/qimproc/icons/add"
+#define ICON_rename               ":/qimproc/icons/rename"
+#define ICON_copy                 ":/qimproc/icons/copy"
+#define ICON_menu                 ":/qimproc/icons/menu"
 
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qimproc/icons/%1").arg(name));
-}
-
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qimproc/icons/%1").arg(name));
+//}
+//
 
 QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   : Base("QImageProcessorSelector", parent)
@@ -53,7 +54,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   enabled_ctl = add_checkbox("Enabled",
       [this](bool /*checked*/) {
         //emit imageProcessingEnableChanged(state == Qt::Checked);
-        emit parameterChanged();
+        Q_EMIT parameterChanged();
       });
 
 
@@ -137,7 +138,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
   connect(chain_ctl, &QImageProcessorChainEditor::parameterChanged,
       [this]() {
         if ( enabled_ctl->isChecked() ) {
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 

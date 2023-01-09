@@ -19,13 +19,13 @@ public:
   typedef QImageProcessorSelector ThisClass;
   typedef QSettingsWidget Base;
 
-  QImageProcessorSelector(QWidget * parent = Q_NULLPTR);
+  QImageProcessorSelector(QWidget * parent = nullptr);
 
   c_image_processor::ptr current_processor() const;
 
   bool imageProcessingEnabled() const;
 
-signals:
+Q_SIGNALS:
   //void currentImageProcessorChanged();
   //void imageProcessingEnableChanged(bool enable);
 
@@ -33,7 +33,7 @@ protected:
   void onupdatecontrols() override;
   void updatecurrentprocessor();
 
-protected slots:
+protected Q_SLOTS:
   void onProcessorSelectorCurrentIndexChanged(int);
   void addProcessor();
   void deleteCurrentProcessor();
@@ -44,12 +44,12 @@ protected:
   //c_image_processor_collection::ptr available_processors_;
   c_image_processor::ptr current_processor_;
 
-  QCheckBox * enabled_ctl = Q_NULLPTR;
-  QToolBar * selectorToolbar = Q_NULLPTR;
-  QComboBox * selector_ctl = Q_NULLPTR;
-  QToolButton * selectorMenu_ctl = Q_NULLPTR;
+  QCheckBox * enabled_ctl = nullptr;
+  QToolBar * selectorToolbar = nullptr;
+  QComboBox * selector_ctl = nullptr;
+  QToolButton * selectorMenu_ctl = nullptr;
 
-  QImageProcessorChainEditor * chain_ctl = Q_NULLPTR;
+  QImageProcessorChainEditor * chain_ctl = nullptr;
 
 };
 

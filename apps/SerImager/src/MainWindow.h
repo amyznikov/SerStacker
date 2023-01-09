@@ -11,6 +11,7 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/qmtf/QMtfControl.h>
+#include "QCameraFrameProcessorSelector.h"
 #include "QCameraFrameDisplay.h"
 #include "QImagerSettingsWidget.h"
 #include "QFocusGraph.h"
@@ -39,6 +40,7 @@ protected:
   void restoreState();
   void setupMainMenuBar();
   void setupImagerSettings();
+  void setupFrameProcessorControls();
   void setupFocusGraph();
   void setupIndigoFocuser();
 
@@ -54,6 +56,9 @@ protected:
 
   QImagerSettingsWidget * imagerSettings_ctl = nullptr;
   QCameraControlDock * imagerSettingsDock_ = nullptr;
+
+  QCameraFrameProcessorSelector * frameProcessor_ctl = nullptr;
+  QCustomDockWidget * frameProcessorDock_ = nullptr;
 
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;

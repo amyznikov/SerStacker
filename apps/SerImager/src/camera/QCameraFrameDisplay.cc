@@ -128,6 +128,17 @@ QCameraFrameMtfDisplayFunction * QCameraFrameDisplay::mtfDisplayFunction()
   return &mtfDisplayFunction_;
 }
 
+void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::ptr & processor)
+{
+  mtfDisplayFunction_.mutex().lock();
+  Base::current_processor_ = processor;
+  if( this->workerState_ == Worker_Idle ) {
+    Base::updateDisplay();
+  }
+  mtfDisplayFunction_.mutex().unlock();
+}
+
+
 void QCameraFrameDisplay::setCamera(const QImagingCamera::sptr & camera)
 {
   stopWorkerThread();

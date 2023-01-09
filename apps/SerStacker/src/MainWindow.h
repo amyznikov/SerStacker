@@ -83,46 +83,46 @@ private slots:
 private:
   c_image_stacks_collection::ptr stacklist_ = c_image_stacks_collection::create();
 
-  QStackedWidget * centralStackedWidget = Q_NULLPTR;
-  QMtfControlDialogBox * mtfControl = Q_NULLPTR;
-  QThumbnailsView * thumbnailsView = Q_NULLPTR;
-  QImageEditor * imageEditor = Q_NULLPTR;
-  QTextFileViewer * textViewer = Q_NULLPTR;
-  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = Q_NULLPTR;
-  QGeneralAppSettingsDialogBox * appSettingsDlgBox = Q_NULLPTR;
+  QStackedWidget * centralStackedWidget = nullptr;
+  QMtfControlDialogBox * mtfControl = nullptr;
+  QThumbnailsView * thumbnailsView = nullptr;
+  QImageEditor * imageEditor = nullptr;
+  QTextFileViewer * textViewer = nullptr;
+  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
+  QGeneralAppSettingsDialogBox * appSettingsDlgBox = nullptr;
 
 #if HAVE_QGLViewer
-  QCloudViewer * cloudViewer = Q_NULLPTR;
-  QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = Q_NULLPTR;
+  QCloudViewer * cloudViewer = nullptr;
+  QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
 #endif // HAVE_QGLViewer
 
-  QStackOptions * stackOptionsView = Q_NULLPTR;
-  QStackingProgressView * stackProgressView = Q_NULLPTR;
+  QStackOptions * stackOptionsView = nullptr;
+  QStackingProgressView * stackProgressView = nullptr;
 
-  QFileSystemTreeDock * fileSystemTreeDock = Q_NULLPTR;
+  QFileSystemTreeDock * fileSystemTreeDock = nullptr;
 
-  QStackTreeViewDock * stackTreeDock = Q_NULLPTR;
-  QStackTree * stackTreeView = Q_NULLPTR;
+  QStackTreeViewDock * stackTreeDock = nullptr;
+  QStackTree * stackTreeView = nullptr;
 
-  QCustomDockWidget * imageProcessorSelectorDock = Q_NULLPTR;
-  QImageProcessorSelector * imageProcessorSelector = Q_NULLPTR;
+  QCustomDockWidget * imageProcessorSelectorDock = nullptr;
+  QImageProcessorSelector * imageProcessorSelector = nullptr;
 
-  QMenu * fileMenu = Q_NULLPTR;
-  QMenu * viewMenu = Q_NULLPTR;
-  QMenu * editMenu = Q_NULLPTR;
+  QMenu * fileMenu = nullptr;
+  QMenu * viewMenu = nullptr;
+  QMenu * editMenu = nullptr;
 
-  QAction * quitAppAction = Q_NULLPTR;
-  QAction * saveImageAsAction = Q_NULLPTR;
-  QAction * saveDisplayImageAsAction = Q_NULLPTR;
-  QAction * saveImageMaskAction = Q_NULLPTR;
-  QAction * loadStackAction = Q_NULLPTR;
-  QAction * setReferenceFrameAction = Q_NULLPTR;
-  QAction * copyDisplayImageAction = Q_NULLPTR;
-  QAction * displaySettingsMenuAction = Q_NULLPTR;
-  QAction * editMaskAction = Q_NULLPTR;
-  QAction * loadImageMaskAction = Q_NULLPTR;
-  QAction * badframeAction = Q_NULLPTR;
-  QAction * viewGeneralSettingsAction = Q_NULLPTR;
+  QAction * quitAppAction = nullptr;
+  QAction * saveImageAsAction = nullptr;
+  QAction * saveDisplayImageAsAction = nullptr;
+  QAction * saveImageMaskAction = nullptr;
+  QAction * loadStackAction = nullptr;
+  QAction * setReferenceFrameAction = nullptr;
+  QAction * copyDisplayImageAction = nullptr;
+  QAction * displaySettingsMenuAction = nullptr;
+  QAction * editMaskAction = nullptr;
+  QAction * loadImageMaskAction = nullptr;
+  QAction * badframeAction = nullptr;
+  QAction * viewGeneralSettingsAction = nullptr;
 
 };
 

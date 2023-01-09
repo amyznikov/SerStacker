@@ -11,6 +11,7 @@
 
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
+#include <gui/qgraphicsshape/QGraphicsRectShape.h>
 #include "QImagingCamera.h"
 
 namespace serimager {
@@ -66,9 +67,13 @@ public:
 
   void setFrameProcessor(const c_image_processor::ptr & processor);
 
+  void showFocusRoi(bool show);
+  QRect focusRoi() const;
+
 
 Q_SIGNALS:
   void pixmapChanged();
+  void focusRoiChanged(const QRect & rc);
 
 protected Q_SLOTS:
   void onPixmapChanged();
@@ -82,6 +87,7 @@ protected:
   void startWorkerThread();
   void stopWorkerThread();
   void workerThread();
+  void createFocusRoiRectItem();
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 
@@ -100,7 +106,8 @@ protected:
   enum COLORID colorid_ = COLORID_UNKNOWN;
   int bpp_ = 0;
   QPixmap pixmap_;
-  // cv::Mat colormapImage_;
+
+  mutable QGraphicsRectShape * focusRoi_ = nullptr;
 
 };
 

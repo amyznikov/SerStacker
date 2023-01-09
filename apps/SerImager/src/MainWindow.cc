@@ -251,11 +251,26 @@ void MainWindow::setupFocusGraph()
           focusGraph_ = new QFocusGraph(this),
           menuView_);
 
-  focusGraph_->setFocusMeasureThread(focusMeasureThread_);
-  focusGraph_->setFocusMeasureThread(focusMeasureThread_);
-  focusGraph_->setFocusMeasureThread(focusMeasureThread_);
-
   focusGraphDock_->hide();
+
+  focusGraph_->setFocusMeasureThread(focusMeasureThread_);
+  focusMeasureThread_->setRoi(centralDisplay_->focusRoi());
+
+  connect(focusGraph_->showRoiAction(), &QAction::triggered,
+      centralDisplay_, &QCameraFrameDisplay::showFocusRoi);
+
+  connect(centralDisplay_, &QCameraFrameDisplay::focusRoiChanged,
+      [this](const QRect & rc) {
+
+        focusMeasureThread_-> setRoi(rc);
+
+        mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
+            .arg(rc.x())
+            .arg(rc.y())
+            .arg(rc.width())
+            .arg(rc.height()));
+      });
+
 }
 
 void MainWindow::setupIndigoFocuser()

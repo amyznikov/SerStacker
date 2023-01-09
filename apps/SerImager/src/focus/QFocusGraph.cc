@@ -11,7 +11,10 @@
 
 namespace serimager {
 
-#define ICON_menu        ":/qfocus/icons/menu.png"
+#define ICON_menu         ":/qfocus/icons/menu.png"
+#define ICON_chart        ":/qfocus/icons/chart.png"
+#define ICON_roi          ":/qfocus/icons/roi.png"
+#define ICON_options      ":/qfocus/icons/options.png"
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,7 +25,6 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
   vl_ = new QVBoxLayout(this);
   vl_->addWidget(plot_ = new QCustomPlot(this));
 
-
   QPen pen(Qt::red);
   pen.setWidth(2);
   pen.setCosmetic(true);
@@ -32,13 +34,7 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
     graphs_[i]->setPen(pen);
   }
 
-
   plot_->setBackground(QBrush(QColor(0, 0, 0, 0)));
-
-//  plot_->xAxis2->setVisible(true);
-//  plot_->xAxis2->setTickLabels(false);
-//  plot_->yAxis2->setVisible(true);
-//  plot_->yAxis2->setTickLabels(false);
 
   QPen axis_pen(QColor(150, 150, 150));
   plot_->xAxis->setBasePen(axis_pen);
@@ -47,45 +43,21 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
   plot_->yAxis->setBasePen(axis_pen);
   plot_->yAxis->setTickPen(axis_pen);
   plot_->yAxis->setSubTickPen(axis_pen);
-//  plot_->xAxis2->setBasePen(axis_pen);
-//  plot_->xAxis2->setTickPen(axis_pen);
-//  plot_->xAxis2->setSubTickPen(axis_pen);
-//  plot_->yAxis2->setBasePen(axis_pen);
-//  plot_->yAxis2->setTickPen(axis_pen);
-//  plot_->yAxis2->setSubTickPen(axis_pen);
-  //  plot_->xAxis->setAutoTickCount(4);
-  //  plot_->yAxis->setAutoTickCount(5);
-  //  plot_->xAxis2->setAutoTickCount(4);
-  //  plot_->yAxis2->setAutoTickCount(5);
   plot_->xAxis->setRange(0, 120);
   plot_->xAxis->setTickLabelColor(QColor(255, 255, 255));
   plot_->yAxis->setTickLabelColor(QColor(255, 255, 255));
 
-  // make left and bottom axes always transfer their ranges to right and top axes:
-  //  connect(plot_->xAxis, SIGNAL(rangeChanged(QCPRange)), plot_->xAxis2, SLOT(setRange(QCPRange)));
-  //  connect(plot_->yAxis, SIGNAL(rangeChanged(QCPRange)), plot_->yAxis2, SLOT(setRange(QCPRange)));
+  ///////////////////////////////////////////////////////////////////
 
-  actionsMenu_.addAction(enableFocusTrackAction =
-      new QAction("Enable focus track", this));
+  addAction(showSettingsAction_ =
+      new QAction(getIcon(ICON_options),
+          "Options...",
+          this));
 
-  enableFocusTrackAction->setCheckable(true);
-  enableFocusTrackAction->setChecked(false);
+  showSettingsAction_->setCheckable(true);
+  showSettingsAction_->setChecked(false);
 
-  connect(enableFocusTrackAction, &QAction::triggered,
-      [this](bool checked) {
-        if ( focusMeasureThread_ ) {
-          focusMeasureThread_->setEnabled(checked && isVisible());
-        }
-      });
-
-
-  actionsMenu_.addAction(showFocusTrackSettingsAction =
-      new QAction("Options...", this));
-
-  showFocusTrackSettingsAction->setCheckable(true);
-  showFocusTrackSettingsAction->setChecked(false);
-
-  connect(showFocusTrackSettingsAction, &QAction::triggered,
+  connect(showSettingsAction_, &QAction::triggered,
       [this](bool checked) {
         if ( settings_ctl ) {
           settings_ctl->setVisible(checked);
@@ -96,31 +68,65 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
           settings_ctl->setFocusMeasureThread(focusMeasureThread_);
 
           connect(settings_ctl, &QFocusGraphSettingsDialogBox::visibilityChanged,
-              enableFocusTrackAction, &QAction::setChecked);
+              showSettingsAction_, &QAction::setChecked);
 
           settings_ctl->show();
         }
 
       });
 
+  ///////////////////////////////////////////////////////////////////
+
+  addAction(enableFocusTrackAction_ =
+      new QAction(getIcon(ICON_chart),
+          "Enable focus track",
+          this));
+
+  enableFocusTrackAction_->setCheckable(true);
+  enableFocusTrackAction_->setChecked(false);
+  connect(enableFocusTrackAction_, &QAction::triggered,
+      [this](bool checked) {
+        if ( focusMeasureThread_ ) {
+          focusMeasureThread_->setEnabled(checked && isVisible());
+        }
+      });
+
+  ///////////////////////////////////////////////////////////////////
+
+  addAction(showRoiAction_ =
+      new QAction(getIcon(ICON_roi),
+          "Show / Hide ROI...",
+          this));
+
+  showRoiAction_->setCheckable(true);
+  showRoiAction_->setChecked(false);
+
+  connect(showRoiAction_, &QAction::triggered,
+      [this](bool checked) {
+        if ( focusMeasureThread_ ) {
+        }
+      });
+
+
+  ///////////////////////////////////////////////////////////////////
 }
 
 void QFocusGraph::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
 {
-  if ( focusMeasureThread_ ) {
+  if( focusMeasureThread_ ) {
     focusMeasureThread_->disconnect(this);
   }
 
-  if ((focusMeasureThread_ = thread)) {
+  if( (focusMeasureThread_ = thread) ) {
 
     connect(focusMeasureThread_, &QCameraFocusMeasureThread::dataChanged,
         this, &ThisClass::updateFocusGraph,
         Qt::QueuedConnection);
 
-    focusMeasureThread_->setEnabled(isVisible() && enableFocusTrackAction->isChecked());
+    focusMeasureThread_->setEnabled(isVisible() && enableFocusTrackAction_->isChecked());
   }
 
-  if ( settings_ctl ) {
+  if( settings_ctl ) {
     settings_ctl->setFocusMeasureThread(focusMeasureThread_);
   }
 }
@@ -130,10 +136,15 @@ QCameraFocusMeasureThread * QFocusGraph::focusMeasureThread() const
   return focusMeasureThread_;
 }
 
-QMenu & QFocusGraph::actionsMenu()
+QAction * QFocusGraph::showRoiAction() const
 {
-  return actionsMenu_;
+  return showRoiAction_;
 }
+
+//QMenu & QFocusGraph::actionsMenu()
+//{
+//  return actionsMenu_;
+//}
 
 void QFocusGraph::clearFocusGraph()
 {
@@ -158,7 +169,7 @@ void QFocusGraph::updateFocusGraph()
     for( int i = 0; i < QCameraFocusMeasureThread::MAX_CHANNELS; ++i ) {
 
       const QVector<double> &values =
-          focusMeasureThread_->data(i);
+          focusMeasureThread_->measurements(i);
 
       keys.clear();
 
@@ -263,7 +274,7 @@ void QFocusGraph::showEvent(QShowEvent *event)
   Base::showEvent(event);
 
   if ( focusMeasureThread_ ) {
-    focusMeasureThread_->setEnabled(enableFocusTrackAction->isChecked() && isVisible());
+    focusMeasureThread_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
   }
 
 }
@@ -273,7 +284,7 @@ void QFocusGraph::hideEvent(QHideEvent *event)
   Base::hideEvent(event);
 
   if ( focusMeasureThread_ ) {
-    focusMeasureThread_->setEnabled(enableFocusTrackAction->isChecked() && isVisible());
+    focusMeasureThread_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
   }
 }
 
@@ -284,30 +295,43 @@ QFocusGraphDock::QFocusGraphDock(const QString & title, QWidget * parent, QFocus
 {
   if( view ) {
 
-    menuButton_ =
-        Base::titleBar()->addButton(getIcon(ICON_menu),
-            "FocusGraph actions...");
+    const QList<QAction*> actions =
+        view->actions();
 
-    connect(menuButton_, &QToolButton::clicked,
-        [this]() {
+    QCustomDockTitleBar * bar =
+        titleBar();
 
-          QFocusGraph * fg =
-              dynamic_cast<QFocusGraph * >(this->widget());
+    for( QAction *action : actions ) {
+      QToolButton *tb =
+          bar->addButton(action);
+    }
 
-          if ( fg ) {
 
-            QMenu & menu =
-                fg->actionsMenu();
 
-            if ( !menu.isEmpty() ) {
-
-              menu.exec(menuButton_->mapToGlobal(
-                  QPoint(menuButton_->width()/2,
-                      menuButton_->height()/2)));
-
-            }
-          }
-        });
+//    menuButton_ =
+//        Base::titleBar()->addButton(getIcon(ICON_menu),
+//            "FocusGraph actions...");
+//
+//    connect(menuButton_, &QToolButton::clicked,
+//        [this]() {
+//
+//          QFocusGraph * fg =
+//              dynamic_cast<QFocusGraph * >(this->widget());
+//
+//          if ( fg ) {
+//
+//            QMenu & menu =
+//                fg->actionsMenu();
+//
+//            if ( !menu.isEmpty() ) {
+//
+//              menu.exec(menuButton_->mapToGlobal(
+//                  QPoint(menuButton_->width()/2,
+//                      menuButton_->height()/2)));
+//
+//            }
+//          }
+//        });
   }
 }
 

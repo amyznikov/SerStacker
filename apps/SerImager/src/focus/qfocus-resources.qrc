@@ -2,5 +2,15 @@
 <qresource prefix="/qfocus">
 	<file>icons/dark/menu.png</file>
 	<file>icons/light/menu.png</file>
+	
+	<file>icons/dark/chart.png</file>
+	<file>icons/light/chart.png</file>
+	
+	<file>icons/dark/roi.png</file>
+	<file>icons/light/roi.png</file>
+	
+	<file>icons/options.png</file>
+
+	
 </qresource>
 </RCC>

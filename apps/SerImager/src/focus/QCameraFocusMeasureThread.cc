@@ -74,6 +74,51 @@ void QCameraFocusMeasureThread::setEnabled(bool enabled)
   }
 }
 
+void QCameraFocusMeasureThread::setEps(double v)
+{
+  eps_ = v;
+}
+
+double QCameraFocusMeasureThread::eps() const
+{
+  return eps_;
+}
+
+const QRect & QCameraFocusMeasureThread::roi() const
+{
+  return roi_;
+}
+
+void QCameraFocusMeasureThread::setRoi(const QRect & roi)
+{
+  roi_ = roi;
+}
+
+int QCameraFocusMeasureThread::maxMeasurements() const
+{
+  return max_measurements_;
+}
+
+const QVector<double> & QCameraFocusMeasureThread::measurements(int channel) const
+{
+  return measurements_[channel];
+}
+
+enum COLORID QCameraFocusMeasureThread::colorid() const
+{
+  return colorid_;
+}
+
+int QCameraFocusMeasureThread::bpp() const
+{
+  return bpp_;
+}
+
+QMutex & QCameraFocusMeasureThread::mutex()
+{
+  return mutex_;
+}
+
 void QCameraFocusMeasureThread::onCameraStateChanged()
 {
   if( isEnabled_ && camera_ && camera_->state() == QImagingCamera::State_started ) {
@@ -92,7 +137,7 @@ void QCameraFocusMeasureThread::run()
     QMutexLocker lock(&mutex_);
 
     for( int i = 0; i < MAX_CHANNELS; ++i ) {
-      data_[i].clear();
+      measurements_[i].clear();
     }
   }
 
@@ -130,8 +175,41 @@ void QCameraFocusMeasureThread::run()
           last_frame_index_ = index;
           bpp = frame->bpp();
           colorid = frame->colorid();
-          frame->image().copyTo(image);
-          haveUpdate = true;
+
+          const cv::Mat & frame_image =
+              frame->image();
+
+          cv::Rect roi(roi_.x() & ~0x1, roi_.y() & ~0x1,
+              roi_.width() & ~0x1, roi_.height() & ~0x1);
+
+          if ( roi.x + roi.width <= 0 ) {
+            roi.width = 0;
+          }
+          else {
+            if ( roi.x < 0 ) {
+              roi.x = 0;
+            }
+            if ( roi.x + roi.width >= frame_image.cols ) {
+              roi.width = (frame_image.cols - roi.x) & ~0x1;
+            }
+          }
+
+          if ( roi.y + roi.height <= 0 ) {
+            roi.height = 0;
+          }
+          else {
+            if ( roi.y < 0 ) {
+              roi.y = 0;
+            }
+            if ( roi.y + roi.height >= frame_image.rows ) {
+              roi.height = (frame_image.rows - roi.y) & ~0x1;
+            }
+          }
+
+          if ( roi.width > 0 && roi.height > 0 ) {
+            frame_image(roi).copyTo(image);
+            haveUpdate = true;
+          }
         }
       }
     }
@@ -143,13 +221,6 @@ void QCameraFocusMeasureThread::run()
         haveUpdate = false;
       }
       else {
-
-        if( false ) {
-          double min, max;
-          cv::minMaxLoc(image, &min, &max);
-          CF_DEBUG("image: min=%g max=%g bpp=%d", min, max, bpp);
-        }
-
 
         if( is_bayer_pattern(colorid) ) {
           if( !extract_bayer_planes(image, image, colorid) ) {
@@ -170,11 +241,11 @@ void QCameraFocusMeasureThread::run()
 
         lock.relock();
 
-        while (data_size >= maxDataSize_) {
+        while (data_size >= max_measurements_) {
 
           for( int i = 0; i < MAX_CHANNELS; ++i ) {
-            if( !data_[i].isEmpty() ) {
-              data_[i].pop_front();
+            if( !measurements_[i].isEmpty() ) {
+              measurements_[i].pop_front();
             }
           }
 
@@ -182,7 +253,7 @@ void QCameraFocusMeasureThread::run()
         }
 
         for( int i = 0; i < image.channels(); ++i ) {
-          data_[i].push_back(v[i]);
+          measurements_[i].push_back(v[i]);
         }
 
         ++data_size;

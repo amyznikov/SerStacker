@@ -111,6 +111,8 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
   connect(this, &ThisClass::displayImageChanged,
       &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
       Qt::QueuedConnection);
+
+  createFocusRoiRectItem();
 }
 
 QCameraFrameDisplay::~QCameraFrameDisplay()
@@ -365,6 +367,58 @@ void QCameraFrameDisplay::workerThread()
 
 
   workerState_ = Worker_Idle;
+}
+
+void QCameraFrameDisplay::createFocusRoiRectItem()
+{
+  if( !focusRoi_ ) {
+
+    QRectF rect;
+
+    if( currentImage_.empty() ) {
+      rect.setRect(0, 0, 400, 400);
+    }
+    else {
+
+      rect.setRect(0, 0, currentImage_.cols, currentImage_.rows);
+
+      if( rect.width() > 400 ) {
+        rect.setX((rect.left() + rect.right()) / 2 - 200);
+        rect.setWidth(400);
+      }
+
+      if( rect.height() > 400 ) {
+        rect.setY((rect.top() + rect.bottom()) / 2 - 200);
+        rect.setHeight(400);
+      }
+    }
+
+    focusRoi_ = new QGraphicsRectShape(rect);
+    focusRoi_->setResizable(true);
+    focusRoi_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    focusRoi_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    focusRoi_->setCosmeticPen(Qt::red);
+    focusRoi_->setVisible(false);
+    scene_->addItem(focusRoi_);
+
+    connect(focusRoi_, &QGraphicsRectShape::itemChanged,
+        [this]() {
+          const QRectF rc = focusRoi_->sceneRect();
+          Q_EMIT focusRoiChanged(QRect(rc.x(), rc.y(), rc.width(), rc.height()));
+        });
+  }
+}
+
+void QCameraFrameDisplay::showFocusRoi(bool show)
+{
+  createFocusRoiRectItem();
+  focusRoi_->setVisible(show);
+}
+
+QRect QCameraFrameDisplay::focusRoi() const
+{
+  const QRectF rc = focusRoi_->sceneRect();
+  return QRect(rc.x(), rc.y(), rc.width(), rc.height());
 }
 
 } /* namespace qserimager */

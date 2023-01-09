@@ -29,46 +29,27 @@ public:
   QCameraFocusMeasureThread(QObject * parent = nullptr);
   ~QCameraFocusMeasureThread();
 
+  bool enabled() const;
+
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr camera() const;
 
-  void setEps(double v)
-  {
-    eps_ = v;
-  }
+  void setEps(double v);
+  double eps() const;
 
-  double eps() const
-  {
-    return eps_;
-  }
+  void setRoi(const QRect & roi);
+  const QRect & roi() const;
 
-  int maxDataLength() const
-  {
-    return maxDataSize_;
-  }
+  int maxMeasurements() const;
 
-  const QVector<double> & data(int channel) const
-  {
-    return data_[channel];
-  }
+  const QVector<double> & measurements(int channel) const;
 
-  enum COLORID colorid() const
-  {
-    return colorid_;
-  }
+  enum COLORID colorid() const;
 
-  int bpp() const
-  {
-    return bpp_;
-  }
+  int bpp() const;
 
+  QMutex & mutex();
 
-  QMutex & mutex()
-  {
-    return mutex_;
-  }
-
-  bool enabled() const;
 
 public Q_SLOTS:
   void setEnabled(bool v);
@@ -85,8 +66,9 @@ protected :
 protected:
   QImagingCamera::sptr camera_;
   QMutex mutex_;
-  QVector<double> data_[MAX_CHANNELS];
-  int maxDataSize_ = 100;
+  QVector<double> measurements_[MAX_CHANNELS];
+  QRect roi_;
+  int max_measurements_ = 100;
   bool isEnabled_ = false;
 
   enum COLORID colorid_ = COLORID_UNKNOWN;

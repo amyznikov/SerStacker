@@ -33,7 +33,7 @@ public:
   void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
   QCameraFocusMeasureThread * focusMeasureThread() const;
 
-  QMenu & actionsMenu();
+  QAction * showRoiAction() const;
 
 protected Q_SLOTS:
   void clearFocusGraph();
@@ -52,10 +52,10 @@ protected:
   QCPGraph *graphs_[QCameraFocusMeasureThread::MAX_CHANNELS] = { nullptr };
   enum COLORID last_colorid_ = COLORID_UNKNOWN;
 
-  QMenu actionsMenu_;
-  QAction * enableFocusTrackAction = nullptr;
-  QAction * showFocusTrackSettingsAction = nullptr;
-
+  //QMenu actionsMenu_;
+  QAction * enableFocusTrackAction_ = nullptr;
+  QAction * showRoiAction_ = nullptr;
+  QAction * showSettingsAction_ = nullptr;
 
   QFocusGraphSettingsDialogBox  * settings_ctl = nullptr;
 };
@@ -72,7 +72,7 @@ public:
   QFocusGraphDock(const QString & title, QWidget * parent, QFocusGraph * view);
 
 protected:
-  QToolButton *menuButton_ = nullptr;
+  //QToolButton *menuButton_ = nullptr;
 
 };
 

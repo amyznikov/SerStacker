@@ -26,9 +26,12 @@ public:
 
   void setRect(const QRectF & rc);
   const QRectF & rect() const;
+  QRectF sceneRect() const;
 
   void setPen(const QPen & pen);
+  void setCosmeticPen(const QColor & color, int width = 1 );
   const QPen & pen() const;
+
 
   void setBrush(const QBrush & brush);
   const QBrush & brush() const;

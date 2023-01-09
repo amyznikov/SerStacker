@@ -98,6 +98,12 @@ const QRectF & QGraphicsRectShape::rect() const
   return rect_;
 }
 
+QRectF QGraphicsRectShape::sceneRect() const
+{
+  return mapToScene(rect_).boundingRect();
+}
+
+
 void QGraphicsRectShape::setPen(const QPen & pen)
 {
   if ( pen_ != pen ) {
@@ -107,6 +113,15 @@ void QGraphicsRectShape::setPen(const QPen & pen)
     update();
   }
 }
+
+void QGraphicsRectShape::setCosmeticPen(const QColor & color, int width )
+{
+  QPen pen(color);
+  pen.setWidth(width);
+  pen.setCosmetic(true);
+  setPen(pen);
+}
+
 
 const QPen & QGraphicsRectShape::pen() const
 {
@@ -126,6 +141,16 @@ void QGraphicsRectShape::setBrush(const QBrush & brush)
 const QBrush & QGraphicsRectShape::brush() const
 {
   return brush_;
+}
+
+void QGraphicsRectShape::setResizable(bool v)
+{
+  itemIsResizable_ = v;
+}
+
+bool QGraphicsRectShape::resizable() const
+{
+  return itemIsResizable_;
 }
 
 void QGraphicsRectShape::updateGeometry()

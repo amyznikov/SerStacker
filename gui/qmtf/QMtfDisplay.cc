@@ -14,7 +14,7 @@ QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
 {
 }
 
-void QMtfDisplay::addDisplay(DisplayMap & map, int type, double rmin, double rmax)
+void QMtfDisplay::addDisplay(int type, double rmin, double rmax)
 {
   DisplayParams p;
   p.mtf.set_input_range(rmin, rmax);
@@ -23,7 +23,7 @@ void QMtfDisplay::addDisplay(DisplayMap & map, int type, double rmin, double rma
     createLut(p.colormap, p.lut,
         p.invert_colormap);
   }
-  map.emplace(type, p);
+  displayParams_.emplace(type, p);
 }
 
 void QMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap)

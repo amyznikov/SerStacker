@@ -35,16 +35,15 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
 
   setFrameShape(QFrame::Shape::NoFrame);
 
-  static const auto createScrollableWrap =
-      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea*
-          {
-            QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
-            scrollArea->setWidgetResizable(true);
-            scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
-            scrollArea->setFrameShape(QFrame::NoFrame);
-            scrollArea->setWidget(w);
-            return scrollArea;
-          };
+//  static const auto createScrollableWrap =
+//      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea* {
+//        QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+//        scrollArea->setWidgetResizable(true);
+//        scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+//        scrollArea->setFrameShape(QFrame::NoFrame);
+//        scrollArea->setWidget(w);
+//        return scrollArea;
+//      };
 
   if( QImageProcessorsCollection::empty() ) {
     QImageProcessorsCollection::load();
@@ -68,7 +67,8 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
   toolbar_ctl->addWidget(enable_ctl = new QCheckBox(this));
   enable_ctl->setToolTip("Enable / Disable image processing");
 
-  lv_->addWidget(createScrollableWrap(chain_ctl = new QImageProcessorChainEditor(this), this));
+  //lv_->addWidget(createScrollableWrap(chain_ctl = new QImageProcessorChainEditor(this), this));
+  lv_->addWidget(chain_ctl = new QImageProcessorChainEditor(this));
 
 
   connect(enable_ctl, &QCheckBox::stateChanged,
@@ -194,6 +194,7 @@ void QImageProcessorSelector::onProcessorSelectorCurrentIndexChanged(int)
 {
   if ( !updatingControls() ) {
     updatecurrentprocessor();
+    Q_EMIT parameterChanged();
   }
 }
 

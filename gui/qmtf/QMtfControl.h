@@ -32,6 +32,9 @@ public:
 
   bool isAutoMtfActionEnabled() const;
 
+  void setHistoramViewSizeHint(const QSize & s);
+  QSize historamViewSizeHint() const;
+
   //  bool updatingControls() const;
   //  void setUpdatingControls(bool v) ;
 

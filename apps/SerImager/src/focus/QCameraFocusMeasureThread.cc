@@ -30,14 +30,10 @@ QCameraFocusMeasureThread::QCameraFocusMeasureThread(QObject * parent) :
 
 QCameraFocusMeasureThread::~QCameraFocusMeasureThread()
 {
-  CF_DEBUG("ENTER");
-
   while (isRunning()) {
     isEnabled_ = false;
     QThread::msleep(20);
   }
-
-  CF_DEBUG("LEAVE");
 }
 
 const QImagingCamera::sptr QCameraFocusMeasureThread::camera() const

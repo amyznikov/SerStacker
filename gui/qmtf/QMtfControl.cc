@@ -316,6 +316,16 @@ bool QMtfControl::isAutoMtfActionEnabled() const
   return autoMtf_ctl && autoMtf_ctl->isChecked();
 }
 
+void QMtfControl::setHistoramViewSizeHint(const QSize & s)
+{
+  levelsView_ctl->setSizeHint(s);
+}
+
+QSize QMtfControl::historamViewSizeHint() const
+{
+  return levelsView_ctl->sizeHint();
+}
+
 //bool QMtfControl::updatingControls() const
 //{
 //  return updatingControls_;
@@ -329,8 +339,8 @@ bool QMtfControl::isAutoMtfActionEnabled() const
 void QMtfControl::onChartTypeSelectorClicked()
 {
   static QMenu chartTypesMenu;
-  static QAction *setLineChartAction = Q_NULLPTR;
-  static QAction *setBarChartAction = Q_NULLPTR;
+  static QAction *setLineChartAction = nullptr;
+  static QAction *setBarChartAction = nullptr;
 
   if( chartTypesMenu.isEmpty() ) {
     chartTypesMenu.addAction(setLineChartAction = new QAction(line_chart_icon, "Lines"));
@@ -598,7 +608,7 @@ void QMtfControl::updateColormapStrip()
             colormap_pixmap_ :
             colormap_pixmap_.scaled(mtfSlider_ctl->width(), colormap_pixmap_.height()));
 
-    colormap_strip_ctl->setMinimumSize(64, 16);
+    colormap_strip_ctl->setMinimumSize(32, 16);
   }
 }
 

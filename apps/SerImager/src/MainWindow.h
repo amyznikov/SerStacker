@@ -59,6 +59,7 @@ protected:
 
   QCameraFrameProcessorSelector * frameProcessor_ctl = nullptr;
   QCustomDockWidget * frameProcessorDock_ = nullptr;
+  QAction * showFrameProcessorAction_ = nullptr;
 
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;

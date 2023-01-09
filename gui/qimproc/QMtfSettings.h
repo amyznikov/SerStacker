@@ -12,72 +12,85 @@
 #include <core/improc/c_mtf_routine.h>
 #include <gui/qmtf/QMtfControl.h>
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
-#include "QImageProcessorSelector.h"
+#include "QImageProcessorChainEditor.h"
+//#include "QImageProcessorSelector.h"
 
-//
-//class QMtfRoutineDisplaySettings :
-//    public QMtfDisplayBase
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QMtfRoutineDisplaySettings ThisClass;
-//  typedef QMtfDisplayBase Base;
-//
-//  QMtfRoutineDisplaySettings(const c_mtf_routine::ptr & processor,
-//      QObject * parent = Q_NULLPTR);
-//
-//  const c_enum_member * displayTypes() const override;
-//
-//  void setDisplayType(int v) override;
-//  virtual int displayType() const override;
-//
-//  void setColormap(COLORMAP v) override;
-//  COLORMAP colormap() const override;
-//
-//  void setInvertColormap(bool v) override;
-//  bool invertColormap() const override;
-//
-//  c_pixinsight_mtf & mtf() override;
-//  const c_pixinsight_mtf & mtf() const override;
-//
-//  void getInputDataRange(double * minval, double * maxval) const override;
-//  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
-//  void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
-//
+
+class QMtfRoutineDisplaySettings :
+    public QMtfDisplay
+{
+  Q_OBJECT;
+public:
+  typedef QMtfRoutineDisplaySettings ThisClass;
+  typedef QMtfDisplay Base;
+
+  QMtfRoutineDisplaySettings(const c_mtf_routine::ptr & processor,
+      QObject * parent = nullptr);
+
+  const c_enum_member * displayTypes() const override;
+
+  void setDisplayType(int v) override;
+  virtual int displayType() const override;
+
+  void setMtfInputRange(double min, double max) override;
+  void getMtfInputRange(double * min, double * max) const override;
+
+  void setShadows(double shadows) override;
+  double shadows() const override;
+
+  void setHighlights(double highlights) override;
+  double highlights() const override;
+
+  void setMidtones(double midtones) override;
+  double midtones() const override;
+
+  void setMtf(double shadows, double highlights, double midtones) override;
+  void getMtf(double * shadows, double * highlights, double * midtones) const override;
+
+  void setColormap(COLORMAP v) override;
+  COLORMAP colormap() const override;
+
+  void setInvertColormap(bool v) override;
+  bool invertColormap() const override;
+
+  void getInputDataRange(double * minval, double * maxval) const override;
+  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+
 //  void loadParameters() override;
 //  void saveParameters() const override;
-//
-//protected:
+
+protected:
 //  virtual void loadParameters(const QString & prefix);
 //  virtual void saveParameters(const QString & prefix) const;
-//
-//protected:
-//  c_mtf_routine::ptr processor_;
-//  double imin = 0, imax = 0;
-//  double omin = 0, omax = 255;
-//  cv::Mat iH, oH;
-//};
+
+protected:
+  c_mtf_routine::ptr processor_;
+  double imin = 0, imax = 0;
+  double omin = 0, omax = 255;
+  cv::Mat iH, oH;
+};
 
 
 class QMtfSettings :
-    public QImageProcessorRoutineSettings
+    public QImageProcessorSettingsControl
 {
   Q_OBJECT;
 public:
   typedef QMtfSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
+  typedef QImageProcessorSettingsControl Base;
 
   QMtfSettings(const c_mtf_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
+      QWidget * parent = nullptr);
 
 protected:
-  void setup_controls() override;
-  void onupdatecontrols() override;
+  void setupControls() override;
+  //void onupdatecontrols() override;
 
 protected:
   QMtfControl * mtf_ctl = nullptr;
   //QMtfImageDisplayFunction displayFunction_;
-  //QMtfRoutineDisplaySettings displaySettings_;
+  QMtfRoutineDisplaySettings displaySettings_;
 };
 
 #endif /* __QMtfSettings_h__ */

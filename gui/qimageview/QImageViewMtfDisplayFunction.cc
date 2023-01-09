@@ -37,8 +37,7 @@ QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageV
   QMtfDisplay::displayType_ =
       DISPLAY_PIXEL_VALUE;
 
-  addDisplay(displayParams_,
-      DISPLAY_PIXEL_VALUE, -1, -1);
+  addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
 }
 
 QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const

@@ -42,9 +42,8 @@ public:
 
   void updateControls()
   {
-    setUpdatingControls(true);
+    c_update_controls_lock lock(this);
     onupdatecontrols();
-    setUpdatingControls(false);
   }
 
 

@@ -9,32 +9,71 @@
 #ifndef __QImageProcessorChainEditor_h__
 #define __QImageProcessorChainEditor_h__
 
-#include "QImageProcessorRoutineSettings.h"
+//#include "QImageProcessorRoutineSettings.h"
+#include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/UpdateControls.h>
+#include <core/improc/c_image_processor.h>
 
 class QImageProcessorChainEditor :
-    public QSettingsWidget
+    public QFrame,
+    public HasUpdateControls
 {
   Q_OBJECT;
 public:
   typedef QImageProcessorChainEditor ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QFrame Base;
 
   QImageProcessorChainEditor(QWidget * parent = Q_NULLPTR);
 
   void set_current_processor(const c_image_processor::ptr & p);
   const c_image_processor::ptr & current_processor() const;
 
-protected slots:
-  void addRoutine(QImageProcessorRoutineSettings * w = Q_NULLPTR);
-  void removeRoutine(QImageProcessorRoutineSettings * w);
-  void moveUpRoutine(QImageProcessorRoutineSettings * w);
-  void moveDownRoutine(QImageProcessorRoutineSettings * w);
+Q_SIGNALS:
+  void parameterChanged();
+
+protected Q_SLOTS:
+  void onTreeItemChanged(QTreeWidgetItem *item, int column);
+  void onCurrentTreeItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
+  void onMoveCurrentProcessorDown();
+  void onMoveCurrentProcessorUp();
+  void onAddImageProcessor();
+  void onRemoveCurrentImageProcessor();
 
 protected:
   void onupdatecontrols() override;
+  QTreeWidgetItem * insertProcessorItem(int index, const c_image_processor_routine::ptr & routine);
 
 protected:
   c_image_processor::ptr current_processor_;
+  QVBoxLayout * lv_ = nullptr;
+  QToolBar * toolbar_ctl = nullptr;
+  QTreeWidget * tree_ctl = nullptr;
+
+  QAction * moveDownAction_ = nullptr;
+  QAction * moveUpAction_ = nullptr;
+  QAction * addProcAction_ = nullptr;
+  QAction * removeProcAction_ = nullptr;
+};
+
+
+class QImageProcessorSettingsControl :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QImageProcessorSettingsControl ThisClass;
+  typedef QSettingsWidget Base;
+
+  static QImageProcessorSettingsControl * create(const c_image_processor_routine::ptr & processor,
+      QWidget * parent = nullptr);
+
+protected:
+  QImageProcessorSettingsControl(const c_image_processor_routine::ptr & processor, QWidget * parent = nullptr);
+  virtual void setupControls();
+  void onupdatecontrols() override;
+
+protected:
+  c_image_processor_routine::ptr processor_;
 };
 
 #endif /* __QImageProcessorChainEditor_h__ */

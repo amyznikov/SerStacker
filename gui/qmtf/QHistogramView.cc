@@ -23,8 +23,8 @@ static QColor defaultChannelColors [] = {
 QHistogramView::QHistogramView(QWidget * parent)
   : Base(parent)
 {
-  setMinimumSize( 128 + 2 * MARGIN, 128 + 2 * MARGIN);
-  resize(256, (int)(256 / 1.62));
+  setMinimumSize( 64 + 2 * MARGIN, 64 + 2 * MARGIN);
+  resize(128, (int)(128 / 1.62));
 }
 
 void QHistogramView::setImage(cv::InputArray image, cv::InputArray mask)
@@ -163,13 +163,24 @@ void QHistogramView::updateHistogram()
 }
 
 
+void QHistogramView::setSizeHint(const QSize & s)
+{
+  sizeHint_ = s;
+}
+
+
 QSize QHistogramView::sizeHint() const
 {
+  if ( !sizeHint_.isEmpty() ) {
+    return sizeHint_;
+  }
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   const int width = std::max(256, this->screen()->geometry().width() / 3);
 #else
   const int width = std::max(256, QGuiApplication::primaryScreen()->geometry().width() / 3);
 #endif
+
   return QSize(width, (int) (width / 2));
 }
 

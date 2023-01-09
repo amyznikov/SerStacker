@@ -12,6 +12,7 @@
 namespace serimager {
 
 #define ICON_histogram        ":/qserimager/icons/histogram.png"
+#define ICON_display          ":/qserimager/icons/display.png"
 
 MainWindow::MainWindow(QWidget * parent) :
    Base(parent)
@@ -123,7 +124,10 @@ void MainWindow::setupMainMenuBar()
   manToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
   manToolbar_->setIconSize(QSize(16,16));
 
+
   //////////////
+
+
 
   manToolbar_->addAction(showMtfControlAction_ =
       new QAction(getIcon(ICON_histogram),
@@ -197,18 +201,23 @@ void MainWindow::setupFrameProcessorControls()
       addCustomDock(this,
           Qt::RightDockWidgetArea,
           "frameProcessorDock_",
-          "Display processing",
+          "Processing options...",
           frameProcessor_ctl = new QCameraFrameProcessorSelector(this),
           menuView_);
 
   frameProcessorDock_->hide();
 
+  showFrameProcessorAction_ = frameProcessorDock_->toggleViewAction();
+  showFrameProcessorAction_->setIcon(getIcon(ICON_display));
+  showFrameProcessorAction_->setToolTip("Show / Hide video frame processing options");
+  manToolbar_->insertAction(showMtfControlAction_, showFrameProcessorAction_);
+
 
   connect(frameProcessor_ctl, &QImageProcessorSelector::parameterChanged,
       [this]() {
-        CF_DEBUG("centralDisplay_->setFrameProcessor()");
         centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
       });
+
 
 }
 

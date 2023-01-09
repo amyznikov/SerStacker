@@ -50,11 +50,13 @@ public:
   void setDisplayChannel(DisplayChannel v);
   DisplayChannel displayChannel() const;
 
+  void setSizeHint(const QSize & s);
+  QSize sizeHint() const override;
+
   void clear();
 
 
 protected:
-  QSize sizeHint() const override;
   void paintEvent(QPaintEvent *event) override;
   void drawMajorGrid(QPainter & p) const;
   void drawBorder(QPainter & p) const;
@@ -65,6 +67,7 @@ protected:
   void updateHistogram();
 
 protected:
+  QSize sizeHint_;
   QColor backgroundColor_ = Qt::white;
   QColor foregroundColor_ = Qt::lightGray;
   ChartType chartType_ = ChartType_Lines;

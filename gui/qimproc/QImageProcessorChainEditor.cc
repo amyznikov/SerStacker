@@ -7,6 +7,9 @@
 
 #include "QImageProcessorChainEditor.h"
 #include "QAddRoutineDialog.h"
+#include "QRadialPolySharpSettings.h"
+#include "QJovianEllipseSettings.h"
+#include "QMtfSettings.h"
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
 
@@ -18,107 +21,163 @@
 #define ICON_add                  ":/qimproc/icons/add"
 #define ICON_menu                 ":/qimproc/icons/menu"
 
+namespace  {
 
-//static QIcon getIcon(const QString & name)
-//{
-//  return QIcon(QString(":/qimproc/icons/%1").arg(name));
-//}
+class QImageProcessorItem :
+    public QTreeWidgetItem
+{
+public:
+  typedef QImageProcessorItem ThisClass;
+  typedef QTreeWidgetItem Base;
+
+  QImageProcessorItem(const c_image_processor_routine::ptr &routine) :
+    routine_(routine)
+  {
+    setText(0, routine->display_name().c_str());
+    setToolTip(0, routine->tooltip().c_str());
+    setCheckState(0, routine->enabled() ? Qt::Checked : Qt::Unchecked);
+  }
+
+  const c_image_processor_routine::ptr & routine() const
+  {
+    return routine_;
+  }
+
+protected:
+  c_image_processor_routine::ptr routine_;
+};
+
+class QImageProcessorOptionsItem :
+    public QTreeWidgetItem
+{
+public:
+  typedef QImageProcessorOptionsItem ThisClass;
+  typedef QTreeWidgetItem Base;
+
+  QImageProcessorOptionsItem(const c_image_processor_routine::ptr &routine) :
+    routine_(routine)
+  {
+  }
+
+  const c_image_processor_routine::ptr & routine() const
+  {
+    return routine_;
+  }
+
+protected:
+  c_image_processor_routine::ptr routine_;
+};
+
+
+QImageProcessorItem * currentImageProcessorItem(QTreeWidget * tree_ctl)
+{
+  QImageProcessorItem * processorItem = nullptr;
+
+  QTreeWidgetItem * currentItem =
+      tree_ctl->currentItem();
+
+  if ( currentItem ) {
+
+    processorItem =
+        dynamic_cast<QImageProcessorItem * >(currentItem);
+
+    if ( !processorItem ) {
+      processorItem =
+          dynamic_cast<QImageProcessorItem * >(
+              currentItem->parent());
+    }
+  }
+
+
+  return processorItem;
+}
+
+QWidget* addStretch(QToolBar * toolbar)
+{
+  QWidget *stretch = new QWidget();
+  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  toolbar->addWidget(stretch);
+  return stretch;
+}
+
+
+
+}  // namespace
 
 
 QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
-    Base("QImageProcessorChainEditor", parent)
+    Base(parent)
 {
+  lv_ = new QVBoxLayout(this);
+
+  ///////////////////////////////////////////////////////////////////
+  lv_->addWidget(toolbar_ctl = new QToolBar(this));
+
+  toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
+  toolbar_ctl->setIconSize(QSize(16, 16));
+
+  addStretch(toolbar_ctl);
+
+  moveDownAction_ =
+      toolbar_ctl->addAction(getIcon(ICON_move_down),
+          "Move Down",
+          this,
+          &ThisClass::onMoveCurrentProcessorDown);
+
+  moveDownAction_->setToolTip(""
+      "Move selected processor down");
+
+  moveUpAction_ =
+      toolbar_ctl->addAction(getIcon(ICON_move_up),
+          "Move Up",
+          this,
+          &ThisClass::onMoveCurrentProcessorUp);
+
+  moveUpAction_->setToolTip(""
+      "Move selected processor up");
+
+  addProcAction_ =
+      toolbar_ctl->addAction(getIcon(ICON_add),
+          "Add processor ...",
+          this,
+          &ThisClass::onAddImageProcessor);
+
+  addProcAction_->setToolTip(""
+      "Add image processor");
+
+  removeProcAction_ =
+      toolbar_ctl->addAction(getIcon(ICON_delete),
+          "Remove selected processor",
+          this,
+          &ThisClass::onRemoveCurrentImageProcessor);
+
+  removeProcAction_->setToolTip(""
+      "Remove image processor");
+
+
+
+  ///////////////////////////////////////////////////////////////////
+  lv_->addWidget(tree_ctl = new QTreeWidget(this));
+  tree_ctl->setHeaderHidden(true);
+  tree_ctl->setColumnCount(1);
+  tree_ctl->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
+  tree_ctl->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+
+  connect(tree_ctl, &QTreeWidget::itemChanged,
+      this, &ThisClass::onTreeItemChanged);
+
+  connect(tree_ctl, &QTreeWidget::currentItemChanged,
+      this, &ThisClass::onCurrentTreeItemChanged);
+
+
+  ///////////////////////////////////////////////////////////////////
+
+  updateControls();
 }
 
 void QImageProcessorChainEditor::set_current_processor(const c_image_processor::ptr & p)
 {
   current_processor_ = p;
-
-  for ( int i = form->rowCount() - 1; i >= 0; --i ) {
-    form->removeRow(i);
-  }
-
-  if ( current_processor_ ) {
-
-    if ( true ) { // stub for empty processors
-
-      static QMenu menu;
-      static QAction * add_routine_action = Q_NULLPTR;
-      if ( menu.isEmpty() ) {
-        add_routine_action = menu.addAction(getIcon(ICON_add), "Add ...");
-      }
-
-      static const char borderless_style[] = ""
-          "QToolButton { border: none; }";
-
-      QToolButton * menu_ctl = new QToolButton();
-      menu_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-      menu_ctl->setIconSize(QSize(16, 16));
-      menu_ctl->setStyleSheet(borderless_style);
-      menu_ctl->setIcon(getIcon(ICON_menu));
-      menu_ctl->setText("Options...");
-      menu_ctl->setToolTip("Options...");
-      form->addRow(menu_ctl);
-
-      connect(menu_ctl, &QToolButton::clicked,
-          [this, menu_ctl] () {
-            if ( current_processor_ ) {
-
-              QAction * selectedAction =
-                  menu.exec(menu_ctl->mapToGlobal(QPoint(
-                      menu_ctl->width()-2,
-                      menu_ctl->height()-4)));
-
-              if ( selectedAction == add_routine_action ) {
-                addRoutine();
-              }
-            }
-          });
-    }
-
-    for( const c_image_processor_routine::ptr &routine : *current_processor_ ) {
-      if( routine ) {
-
-        QImageProcessorRoutineSettings *ctl =
-            QImageProcessorRoutineSettings::create(routine);
-
-        if( !ctl ) {
-          form->addRow(routine->class_name().c_str(),
-              new QSettingsWidget(""));
-        }
-        else {
-
-          form->addRow(ctl);
-
-          connect(ctl, &QImageProcessorRoutineSettings::addRoutineRequested,
-              this, &ThisClass::addRoutine);
-
-          connect(ctl, &QImageProcessorRoutineSettings::removeRoutineRequested,
-              this, &ThisClass::removeRoutine);
-
-          connect(ctl, &QImageProcessorRoutineSettings::moveUpRequested,
-              this, &ThisClass::moveUpRoutine);
-
-          connect(ctl, &QImageProcessorRoutineSettings::moveDownRequested,
-              this, &ThisClass::moveDownRoutine);
-
-          connect(ctl, &QSettingsWidget::parameterChanged,
-              [this]() {
-
-                if ( current_processor_ ) {
-                  current_processor_->save();
-                }
-
-                emit parameterChanged();
-              });
-        }
-      }
-    }
-
-  }
-
-  emit parameterChanged();
-
   updateControls();
 }
 
@@ -131,59 +190,217 @@ void QImageProcessorChainEditor::onupdatecontrols()
 {
   if ( !current_processor_ ) {
     setEnabled(false);
+    tree_ctl->clear();
   }
   else {
 
-    QLayoutItem *item;
-    QSettingsWidget * ctl;
+    tree_ctl->clear();
 
-    for ( int i = 1, n = form->rowCount(); i < n; ++i ) {
-
-      if ( (item = form->itemAt(i, QFormLayout::ItemRole::FieldRole)) ) {
-
-        if ( (ctl = dynamic_cast<QSettingsWidget *>(item->widget()))  ) {
-
-          ctl->updateControls();
-
-        }
+    for( const c_image_processor_routine::ptr &routine : *current_processor_ ) {
+      if( routine ) {
+        insertProcessorItem(tree_ctl->topLevelItemCount(), routine);
       }
     }
 
     setEnabled(true);
   }
-
-  Base::onupdatecontrols();
 }
 
-
-void QImageProcessorChainEditor::addRoutine(QImageProcessorRoutineSettings * insertAfter)
+QTreeWidgetItem * QImageProcessorChainEditor::insertProcessorItem(int index, const c_image_processor_routine::ptr & routine)
 {
-  static QAddRoutineDialog * dlgbox = Q_NULLPTR;
+  QImageProcessorItem * item =
+      new QImageProcessorItem(routine);
+
+  tree_ctl->insertTopLevelItem(index, item);
+
+  QImageProcessorSettingsControl * ctrl =
+      QImageProcessorSettingsControl::create(routine,
+          this);
+
+  if ( ctrl ) {
+
+    QImageProcessorOptionsItem * subitem =
+        new QImageProcessorOptionsItem(routine);
+
+    item->addChild(subitem);
+
+    tree_ctl->setItemWidget(subitem, 0, ctrl);
+
+    connect(ctrl, &QImageProcessorSettingsControl::parameterChanged,
+        this, &ThisClass::parameterChanged,
+        Qt::QueuedConnection);
+
+  }
+
+
+  return item;
+}
+
+void QImageProcessorChainEditor::onTreeItemChanged(QTreeWidgetItem * item, int column)
+{
+  if( item && column == 0 ) {
+
+    QImageProcessorItem *improcItem =
+        dynamic_cast<QImageProcessorItem*>(item);
+
+    if( improcItem || (improcItem = dynamic_cast<QImageProcessorItem*>(item->parent())) ) {
+
+      const bool checked =
+          improcItem->checkState(0) == Qt::Checked;
+
+      if( improcItem->routine()->enabled() != checked ) {
+
+        improcItem->routine()->set_enabled(checked);
+
+        Q_EMIT parameterChanged();
+      }
+    }
+  }
+}
+
+void QImageProcessorChainEditor::onCurrentTreeItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
+{
+  if( !current ) {
+    removeProcAction_->setEnabled(false);
+    moveDownAction_->setEnabled(false);
+    moveUpAction_->setEnabled(false);
+  }
+  else {
+    removeProcAction_->setEnabled(true);
+    moveDownAction_->setEnabled(true);
+    moveUpAction_->setEnabled(true);
+
+    current->setSelected(true);
+  }
+}
+
+void QImageProcessorChainEditor::onMoveCurrentProcessorDown()
+{
+  if( current_processor_ ) {
+
+    QImageProcessorItem *currentItem =
+        currentImageProcessorItem(tree_ctl);
+
+    if( currentItem ) {
+
+      const int index =
+          tree_ctl->indexOfTopLevelItem(currentItem);
+
+      if( index < tree_ctl->topLevelItemCount() - 1 ) {
+
+        QWaitCursor wait(this);
+
+        c_image_processor::iterator pos =
+            current_processor_->find(currentItem->routine());
+
+        if( pos + 1 < current_processor_->end() ) {
+
+          const c_image_processor_routine::ptr routine = *pos;
+
+          current_processor_->erase(pos);
+          current_processor_->insert(pos + 1, routine);
+          current_processor_->save();
+
+          const bool isExpanded =
+              currentItem->isExpanded();
+
+          delete currentItem;
+
+          QTreeWidgetItem * newItem =
+              insertProcessorItem(index + 1, routine);
+
+          tree_ctl->setCurrentItem(newItem);
+          if ( isExpanded ) {
+            tree_ctl->expandItem(newItem);
+          }
+
+          Q_EMIT parameterChanged();
+        }
+      }
+    }
+  }
+}
+
+void QImageProcessorChainEditor::onMoveCurrentProcessorUp()
+{
+  if( current_processor_ ) {
+
+    QImageProcessorItem *currentItem =
+        currentImageProcessorItem(tree_ctl);
+
+    if( currentItem ) {
+
+      const int index =
+          tree_ctl->indexOfTopLevelItem(currentItem);
+
+
+      if( index > 0 ) {
+
+        QWaitCursor wait(this);
+
+        c_image_processor::iterator pos =
+            current_processor_->find(currentItem->routine());
+
+        if ( pos != current_processor_->begin() && pos != current_processor_->end() ) {
+
+          const c_image_processor_routine::ptr routine = *pos;
+
+          current_processor_->erase(pos);
+          current_processor_->insert(pos - 1, routine);
+          current_processor_->save();
+
+          const bool isExpanded =
+              currentItem->isExpanded();
+
+          delete currentItem;
+
+          QTreeWidgetItem * newItem =
+              insertProcessorItem(index - 1, routine);
+
+          tree_ctl->setCurrentItem(newItem);
+          if ( isExpanded ) {
+            tree_ctl->expandItem(newItem);
+          }
+
+          Q_EMIT parameterChanged();
+        }
+      }
+    }
+  }
+}
+
+void QImageProcessorChainEditor::onAddImageProcessor()
+{
+  static QAddRoutineDialog *dlgbox = nullptr;
+
   c_image_processor_routine::ptr current_routine, new_routine;
 
-  if ( !current_processor_ ) {
+  if( !current_processor_ ) {
     return;
   }
 
-  if ( !dlgbox ) {
+  if( !dlgbox ) {
     dlgbox = new QAddRoutineDialog(this);
   }
   else {
     dlgbox->setParent(this);
   }
 
-  if ( dlgbox->exec() != QDialog::Accepted || !dlgbox->selectedClassFactory() ) {
+  if( dlgbox->exec() != QDialog::Accepted || !dlgbox->selectedClassFactory() ) {
     return;
   }
 
-  if ( insertAfter && !(current_routine = insertAfter->routine()) ) {
+  QImageProcessorItem * insertAfter =
+      currentImageProcessorItem(tree_ctl);
+
+  if( insertAfter && !(current_routine = insertAfter->routine()) ) {
     QMessageBox::critical(this, "APP BUG", QString("insertAfter->routine() is NULL.\n"
         "Fix this code please"));
     return;
   }
 
   new_routine = c_image_processor_routine::create(dlgbox->selectedClassFactory()->class_name);
-  if ( !new_routine ) {
+  if( !new_routine ) {
     QMessageBox::critical(this, "ERROR", QString("c_image_processor_routine::create(%1) fails").
         arg(dlgbox->selectedClassFactory()->class_name.c_str()));
     return;
@@ -191,76 +408,234 @@ void QImageProcessorChainEditor::addRoutine(QImageProcessorRoutineSettings * ins
 
   QWaitCursor wait(this);
 
-  if ( !current_routine ) {
+  if( !current_routine ) {
     current_processor_->insert(current_processor_->begin(), new_routine);
   }
   else {
     current_processor_->insert(current_processor_->find(current_routine) + 1, new_routine);
   }
 
-  // force reload config widgets
   current_processor_->save();
-  set_current_processor(current_processor_);
+
+  QTreeWidgetItem * newItem =
+      insertProcessorItem(tree_ctl->indexOfTopLevelItem(insertAfter) + 1,
+          new_routine);
+
+  tree_ctl->setCurrentItem(newItem);
+
+  tree_ctl->expandItem(newItem);
+
+  Q_EMIT parameterChanged();
 }
 
-void QImageProcessorChainEditor::removeRoutine(QImageProcessorRoutineSettings * w)
+void QImageProcessorChainEditor::onRemoveCurrentImageProcessor()
 {
-  if ( w && current_processor_ ) {
+  if ( current_processor_ ) {
 
-    QWaitCursor wait(this);
+    QImageProcessorItem * currentItem =
+        currentImageProcessorItem(tree_ctl);
 
-    c_image_processor::iterator pos = current_processor_->find(w->routine());
-    if ( pos != current_processor_->end() ) {
+    if( currentItem ) {
 
-      current_processor_->erase(pos);
-      current_processor_->save();
+      QWaitCursor wait(this);
 
-      // force reload config widgets
-      set_current_processor(current_processor_);
+      c_image_processor::iterator pos =
+          current_processor_->find(currentItem->routine());
+
+      if( pos != current_processor_->end() ) {
+
+        current_processor_->erase(pos);
+        current_processor_->save();
+
+        delete currentItem;
+
+        Q_EMIT parameterChanged();
+      }
     }
   }
 }
 
-void QImageProcessorChainEditor::moveUpRoutine(QImageProcessorRoutineSettings * w)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+QImageProcessorSettingsControl * QImageProcessorSettingsControl::create(const c_image_processor_routine::ptr & processor,
+    QWidget * parent)
 {
-  if ( w && current_processor_ ) {
+  QImageProcessorSettingsControl * widget = nullptr;
 
-    QWaitCursor wait(this);
+  if( processor->classfactory() == &c_radial_polysharp_routine::class_factory ) {
+    widget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor), parent);
+  }
+  else if( processor->classfactory() == &c_fit_jovian_ellipse_routine::class_factory ) {
+    widget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor), parent);
+  }
+  else if( processor->classfactory() == &c_mtf_routine::class_factory ) {
+    widget = new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(processor), parent);
+  }
+  else {
+    widget = new QImageProcessorSettingsControl(processor, parent);
+  }
 
-    c_image_processor::iterator pos = current_processor_->find(w->routine());
-    if ( pos != current_processor_->begin() && pos != current_processor_->end() ) {
+  widget->setupControls();
 
-      const c_image_processor_routine::ptr routine = *pos;
+  return widget;
+}
 
-      current_processor_->erase(pos);
-      current_processor_->insert(pos - 1, routine);
-      current_processor_->save();
+QImageProcessorSettingsControl::QImageProcessorSettingsControl(const c_image_processor_routine::ptr & processor, QWidget * parent) :
+    Base("QImageProcessorSettingsControl", parent),
+    processor_(processor)
+{
+  setFrameShape(QFrame::Shape::Box);
+}
 
-      // force reload config widgets
-      set_current_processor(current_processor_);
+void QImageProcessorSettingsControl::setupControls()
+{
+  std::vector<struct c_image_processor_routine_ctrl> params;
+  processor_->get_parameters(&params);
+
+  for( const struct c_image_processor_routine_ctrl &p : params ) {
+
+    switch (p.ctl_type) {
+      case c_image_processor_routine_gui_ctl_numeric_text_box: {
+
+        QNumberEditBox *ctl = new QNumberEditBox(this);
+        form->addRow(p.name.c_str(), ctl);
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( p.set_value ) {
+
+          QMetaObject::Connection conn =
+              QObject::connect(ctl, &QNumberEditBox::textChanged,
+                  [this, ctl, p]() {
+                    if ( !updatingControls() ) {
+                      p.set_value(ctl->text().toStdString());
+                      emit parameterChanged();
+                    }
+                  });
+
+          QObject::connect(ctl, &QObject::destroyed,
+              [conn]() {
+                QObject::disconnect(conn);
+              });
+        }
+
+        if( p.get_value ) {
+          QMetaObject::Connection conn =
+              QObject::connect(this, &ThisClass::populatecontrols,
+                  [ctl, p]() {
+                    ctl->setText(p.get_value().c_str());
+                  });
+
+          QObject::connect(ctl, &QObject::destroyed,
+              [conn]() {
+                QObject::disconnect(conn);
+              });
+        }
+
+        break;
+      }
+
+      case c_image_processor_routine_gui_ctl_enum_combobox: {
+
+        QEnumComboBoxBase *ctl = new QEnumComboBoxBase(this);
+        form->addRow(p.name.c_str(), ctl);
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( p.get_enum_members ) {
+          ctl->setupItems(p.get_enum_members());
+        }
+
+        if( p.set_value ) {
+
+          QMetaObject::Connection conn =
+              QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+                  [this, ctl, p]() {
+                    if ( !updatingControls() ) {
+                      p.set_value(ctl->currentText().toStdString());
+                      emit parameterChanged();
+                    }
+                  });
+
+          QObject::connect(ctl, &QObject::destroyed,
+              [conn]() {
+                QObject::disconnect(conn);
+              });
+        }
+
+        if( p.get_value ) {
+
+          QMetaObject::Connection conn =
+              QObject::connect(this, &ThisClass::populatecontrols,
+                  [ctl, p]() {
+                    ctl->setCurrentText(p.get_value().c_str());
+                  });
+
+          QObject::connect(ctl, &QObject::destroyed,
+              [conn]() {
+                QObject::disconnect(conn);
+              });
+        }
+
+        break;
+      }
+
+      case c_image_processor_routine_gui_ctl_check_box: {
+
+        QCheckBox *ctl = new QCheckBox(this);
+        form->addRow(p.name.c_str(), ctl);
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( p.set_value ) {
+
+          QMetaObject::Connection conn =
+              QObject::connect(ctl, &QCheckBox::stateChanged,
+                  [this, ctl, p](int state) {
+                    if ( !updatingControls() ) {
+                      p.set_value(state == Qt::Checked ? "1" : "0");
+                      emit parameterChanged();
+                    }
+                  });
+
+          QObject::connect(ctl, &QObject::destroyed,
+              [conn]() {
+                QObject::disconnect(conn);
+              });
+        }
+
+        if( p.get_value ) {
+          QMetaObject::Connection conn =
+              QObject::connect(this, &ThisClass::populatecontrols,
+                  [ctl, p]() {
+                    bool checked = false;
+                    if ( fromString(p.get_value(), &checked) ) {
+                      ctl->setChecked(checked);
+                    }
+                  });
+
+          QObject::connect(ctl, &QObject::destroyed,
+              [conn]() {
+                QObject::disconnect(conn);
+              });
+        }
+        break;
+      }
+      default:
+        break;
     }
   }
 
+  updateControls();
 }
 
-void QImageProcessorChainEditor::moveDownRoutine(QImageProcessorRoutineSettings * w)
+void QImageProcessorSettingsControl::onupdatecontrols()
 {
-  if ( w && current_processor_ ) {
-
-    QWaitCursor wait(this);
-
-    c_image_processor::iterator pos = current_processor_->find(w->routine());
-    if ( pos + 1 < current_processor_->end()  ) {
-
-      const c_image_processor_routine::ptr routine = *pos;
-
-      current_processor_->erase(pos);
-      current_processor_->insert(pos + 1, routine);
-      current_processor_->save();
-
-      // force reload config widgets
-      set_current_processor(current_processor_);
-    }
+  if ( !processor_ ) {
+    setEnabled(false);
   }
-
+  else {
+    Q_EMIT populatecontrols();
+    setEnabled(true);
+  }
 }
+

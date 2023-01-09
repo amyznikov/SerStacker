@@ -12,21 +12,20 @@ QJovianEllipseSettings::QJovianEllipseSettings(const c_fit_jovian_ellipse_routin
 {
 }
 
-void QJovianEllipseSettings::setup_controls()
+void QJovianEllipseSettings::setupControls()
 {
   const c_fit_jovian_ellipse_routine::ptr routine =
-      std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(routine_);
+      std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor_);
 
   settings_ctl =
-      add_widget<QJovianEllipseDetectorSettings>(ctlform);
+      add_widget<QJovianEllipseDetectorSettings>();
 
 
   display_ctl =
-      add_enum_combobox<DisplayType>(ctlform,
-          "Display",
+      add_enum_combobox<DisplayType>("Display",
           [this](DisplayType v) {
             const c_fit_jovian_ellipse_routine::ptr routine =
-                std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(routine_);
+                std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor_);
             if ( routine ) {
               routine->set_display(v);
               emit parameterChanged();
@@ -43,7 +42,7 @@ void QJovianEllipseSettings::setup_controls()
 void QJovianEllipseSettings::onupdatecontrols()
 {
   const c_fit_jovian_ellipse_routine::ptr routine =
-      std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(routine_);
+      std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor_);
 
   if ( !routine ) {
     setEnabled(false);

@@ -30,9 +30,6 @@ public:
 Q_SIGNALS:
   void parameterChanged();
 
-  //void currentImageProcessorChanged();
-  //void imageProcessingEnableChanged(bool enable);
-
 protected:
   void onupdatecontrols() override;
   void updatecurrentprocessor();
@@ -45,7 +42,6 @@ protected Q_SLOTS:
   void addCopyOfCurrentProcessor();
 
 protected:
-  //c_image_processor_collection::ptr available_processors_;
   c_image_processor::ptr current_processor_;
 
   QVBoxLayout * lv_ = nullptr;
@@ -53,11 +49,8 @@ protected:
   QImageProcessorChainEditor * chain_ctl = nullptr;
 
   QCheckBox * enable_ctl = nullptr;
-  //QToolBar * selectorToolbar = nullptr;
   QComboBox * selector_ctl = nullptr;
   QToolButton * selectorMenu_ctl = nullptr;
-
-
 };
 
 

@@ -85,7 +85,7 @@ Q_SIGNALS:
 //  void updateDisplay();
 
 protected:
-  static void addDisplay(DisplayMap & map, int type, double rmin, double rmax);
+  void addDisplay(int type, double rmin, double rmax);
   static void createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap);
 
   virtual void adjustMtfInputRange(c_midtones_transfer_function *mtf, double * imin, double * imax) const;

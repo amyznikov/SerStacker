@@ -9,7 +9,8 @@
 #ifndef __QRadialPolySharpSettings_h__
 #define __QRadialPolySharpSettings_h__
 
-#include "QImageProcessorRoutineSettings.h"
+//#include "QImageProcessorRoutineSettings.h"
+#include "QImageProcessorChainEditor.h"
 #include <core/improc/c_radial_polysharp_routine.h>
 
 class QRadialPolyProfileView
@@ -20,7 +21,7 @@ public:
   typedef QRadialPolyProfileView ThisClass;
   typedef QWidget Base;
 
-  QRadialPolyProfileView(QWidget * parent = Q_NULLPTR);
+  QRadialPolyProfileView(QWidget * parent = nullptr);
 
   void set_polysharp_routine(const c_radial_polysharp_routine::ptr & routine);
   const c_radial_polysharp_routine::ptr & polysharp_routine() const;
@@ -34,23 +35,22 @@ protected:
 };
 
 class QRadialPolySharpSettings :
-    public QImageProcessorRoutineSettings
+    public QImageProcessorSettingsControl
 {
 public:
   typedef QRadialPolySharpSettings ThisClass;
-  typedef QImageProcessorRoutineSettings Base;
-
+  typedef QImageProcessorSettingsControl Base;
 
   QRadialPolySharpSettings(const c_radial_polysharp_routine::ptr & processor,
-      QWidget * parent = Q_NULLPTR);
+      QWidget * parent = nullptr);
 
 protected:
-  void setup_controls() override;
+  void setupControls() override;
   void onupdatecontrols() override;
 
 protected:
-  QRadialPolyProfileView * profileView_ = Q_NULLPTR;
-  QLineEditBox * coeffs_ctl = Q_NULLPTR;
+  QRadialPolyProfileView * profileView_ = nullptr;
+  QLineEditBox * coeffs_ctl = nullptr;
 
 };
 

@@ -12,20 +12,19 @@ QRadialPolySharpSettings::QRadialPolySharpSettings(const c_radial_polysharp_rout
 {
 }
 
-void QRadialPolySharpSettings::setup_controls()
+void QRadialPolySharpSettings::setupControls()
 {
   const c_radial_polysharp_routine::ptr routine =
-      std::dynamic_pointer_cast<c_radial_polysharp_routine>(routine_);
+      std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor_);
 
   profileView_ =
-      add_widget<QRadialPolyProfileView>(ctlform);
+      add_widget<QRadialPolyProfileView>();
 
   profileView_->
       set_polysharp_routine(routine);
 
   coeffs_ctl =
-      QSettingsWidget::add_textbox(Base::ctlform,
-          "coeffs:",
+      QSettingsWidget::add_textbox("coeffs:",
           [this, routine](const QString & s) {
             std::vector<double> values;
             if ( fromString(s, &values)) {
@@ -40,7 +39,7 @@ void QRadialPolySharpSettings::setup_controls()
 void QRadialPolySharpSettings::onupdatecontrols()
 {
   const c_radial_polysharp_routine::ptr routine =
-      std::dynamic_pointer_cast<c_radial_polysharp_routine>(routine_);
+      std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor_);
 
   if ( !routine ) {
     setEnabled(false);

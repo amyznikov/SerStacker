@@ -9,15 +9,17 @@
 #define __QImageProcessorCollectionSettings_h__
 
 #include "QImageProcessorChainEditor.h"
+#include <gui/widgets/UpdateControls.h>
 
 
-class QImageProcessorSelector
-    : public QSettingsWidget
+class QImageProcessorSelector :
+    public QFrame,
+    public HasUpdateControls
 {
   Q_OBJECT;
 public:
   typedef QImageProcessorSelector ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QFrame Base;
 
   QImageProcessorSelector(QWidget * parent = nullptr);
 
@@ -26,6 +28,8 @@ public:
   bool imageProcessingEnabled() const;
 
 Q_SIGNALS:
+  void parameterChanged();
+
   //void currentImageProcessorChanged();
   //void imageProcessingEnableChanged(bool enable);
 
@@ -44,12 +48,15 @@ protected:
   //c_image_processor_collection::ptr available_processors_;
   c_image_processor::ptr current_processor_;
 
-  QCheckBox * enabled_ctl = nullptr;
-  QToolBar * selectorToolbar = nullptr;
+  QVBoxLayout * lv_ = nullptr;
+  QToolBar * toolbar_ctl = nullptr;
+  QImageProcessorChainEditor * chain_ctl = nullptr;
+
+  QCheckBox * enable_ctl = nullptr;
+  //QToolBar * selectorToolbar = nullptr;
   QComboBox * selector_ctl = nullptr;
   QToolButton * selectorMenu_ctl = nullptr;
 
-  QImageProcessorChainEditor * chain_ctl = nullptr;
 
 };
 

@@ -101,11 +101,10 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
       this, &ThisClass::onPixmapChanged,
       Qt::QueuedConnection);
 
-
   connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
       [this]() {
         if (workerState_ == Worker_Idle) {
-          Base::updateDisplay();
+          Base::updateImage();
         }
       });
 
@@ -132,8 +131,10 @@ void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::ptr & proce
 {
   mtfDisplayFunction_.mutex().lock();
   Base::current_processor_ = processor;
+
   if( this->workerState_ == Worker_Idle ) {
-    Base::updateDisplay();
+    CF_DEBUG("updateImage()");
+    updateImage();
   }
   mtfDisplayFunction_.mutex().unlock();
 }
@@ -242,11 +243,11 @@ void QCameraFrameDisplay::workerThread()
   workerState_ = Worker_Running;
 
 
-  bool haveImage = false;
+  bool haveInputImage = false;
   int last_index = -1;
 
 
-  cv::Mat currentImage, displayImage, colormapImage, currentMask;
+  cv::Mat inputImage, currentImage, displayImage, colormapImage, currentMask;
   QPixmap pixmap;
 
 
@@ -254,7 +255,7 @@ void QCameraFrameDisplay::workerThread()
 
     INSTRUMENT_REGION("body");
 
-    haveImage = false;
+    haveInputImage = false;
 
     if( true ) {
       INSTRUMENT_REGION("wait_frame");
@@ -277,33 +278,34 @@ void QCameraFrameDisplay::workerThread()
           last_index = index;
           bpp_ = frame->bpp();
           colorid_ = frame->colorid();
-          frame->image().copyTo(currentImage);
-          haveImage = true;
+          frame->image().copyTo(inputImage);
+          haveInputImage = true;
         }
       }
     }
 
     lock.unlock();
 
-    if( haveImage && !currentImage.empty() ) {
+    if( haveInputImage && !inputImage.empty() ) {
 
       {
         INSTRUMENT_REGION("convert");
 
         //CF_DEBUG("colorid_=%s", toString(colorid_));
 
-        if( currentImage.depth() != CV_8U && bpp_ > 0 ) {
-          currentImage.convertTo(currentImage, CV_8U, 255. / (1 << bpp_));
+        if( inputImage.depth() != CV_8U && bpp_ > 0 ) {
+          inputImage.convertTo(inputImage, CV_8U, 255. / (1 << bpp_));
         }
 
         if( is_bayer_pattern(colorid_) ) {
-          debayer(currentImage, currentImage, colorid_, DEBAYER_NN);
+          debayer(inputImage, inputImage, colorid_, DEBAYER_NN);
         }
         else if( colorid_ == COLORID_RGB ) {
-          cv::cvtColor(currentImage, currentImage, cv::COLOR_RGB2BGR);
+          cv::cvtColor(inputImage, inputImage, cv::COLOR_RGB2BGR);
         }
 
-        //editImage(image, cv::noArray(), false);
+        // editImage(image, cv::noArray(), false);
+        inputImage.copyTo(currentImage);
         if( current_processor_ && !current_processor_->empty() ) {
           current_processor_->process(currentImage, currentMask);
         }
@@ -326,10 +328,6 @@ void QCameraFrameDisplay::workerThread()
           colormapImage = displayImage;
         }
 
-
-
-        //mtfDisplayFunction_.createDisplayImage(currentImage, currentMask, displayImage, CV_8U);
-
         pixmap =
             createPixmap(colormapImage, true,
                 Qt::NoFormatConversion |
@@ -343,10 +341,10 @@ void QCameraFrameDisplay::workerThread()
       {
         INSTRUMENT_REGION("setCurrentImage");
         lock.lock();
+        cv::swap(inputImage, inputImage_);
         cv::swap(currentImage, currentImage_);
         cv::swap(currentMask, currentMask_);
         cv::swap(displayImage, displayImage_);
-        //cv::swap(colormapImage, colormapImage_);
         pixmap_ = pixmap;
         lock.unlock();
       }
@@ -355,7 +353,6 @@ void QCameraFrameDisplay::workerThread()
       Q_EMIT pixmapChanged();
 
       if ( !mtfDisplayFunction_.isBusy() ) {
-        //Q_EMIT mtfDisplayFunction_.displayImageChanged();
         Q_EMIT displayImageChanged();
       }
 

@@ -28,55 +28,51 @@
 //}
 //
 
-QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
-  : Base("QImageProcessorSelector", parent)
+QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
+    Base(parent)
 {
-
-  static const auto createScrollableWrap =
-      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea *
-  {
-    QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setWidget(w);
-    return scrollArea;
-  };
-
-
-
   Q_INIT_RESOURCE(qimproc_resources);
 
-  if ( QImageProcessorsCollection::empty() ) {
+  setFrameShape(QFrame::Shape::NoFrame);
+
+  static const auto createScrollableWrap =
+      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea*
+          {
+            QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+            scrollArea->setWidgetResizable(true);
+            scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+            scrollArea->setFrameShape(QFrame::NoFrame);
+            scrollArea->setWidget(w);
+            return scrollArea;
+          };
+
+  if( QImageProcessorsCollection::empty() ) {
     QImageProcessorsCollection::load();
   }
 
-  enabled_ctl = add_checkbox("Enabled",
-      [this](bool /*checked*/) {
-        //emit imageProcessingEnableChanged(state == Qt::Checked);
-        Q_EMIT parameterChanged();
-      });
+  lv_ = new QVBoxLayout(this);
 
+  lv_->addWidget(toolbar_ctl = new QToolBar(this));
+  toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
+  toolbar_ctl->setIconSize(QSize(16, 16));
 
-  selectorToolbar = new QToolBar(this);
-  selectorToolbar->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
-  selectorToolbar->setIconSize(QSize(16, 16));
-
-  selector_ctl = new QComboBox(this);
+  toolbar_ctl->addWidget(selector_ctl = new QComboBox(this));
   selector_ctl->setEditable(false);
   selector_ctl->setMinimumContentsLength(12);
   selector_ctl->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  selectorToolbar->addWidget(selector_ctl);
 
-  selectorMenu_ctl = new QToolButton();
+  toolbar_ctl->addWidget(selectorMenu_ctl = new QToolButton(this));
   selectorMenu_ctl->setIcon(getIcon(ICON_menu));
   selectorMenu_ctl->setToolTip("Popup menu");
-  selectorToolbar->addWidget(selectorMenu_ctl);
 
-  form->addRow(selectorToolbar);
+  toolbar_ctl->addWidget(enable_ctl = new QCheckBox(this));
+  enable_ctl->setToolTip("Enable / Disable image processing");
 
-  chain_ctl = new QImageProcessorChainEditor(this);
-  form->addRow(createScrollableWrap(chain_ctl, this));
+  lv_->addWidget(createScrollableWrap(chain_ctl = new QImageProcessorChainEditor(this), this));
+
+
+  connect(enable_ctl, &QCheckBox::stateChanged,
+      this, &ThisClass::parameterChanged);
 
 
   connect(selectorMenu_ctl, &QToolButton::clicked,
@@ -137,7 +133,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
 
   connect(chain_ctl, &QImageProcessorChainEditor::parameterChanged,
       [this]() {
-        if ( enabled_ctl->isChecked() ) {
+        if ( enable_ctl->isChecked() ) {
           Q_EMIT parameterChanged();
         }
       });
@@ -158,12 +154,12 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent)
 
 c_image_processor::ptr QImageProcessorSelector::current_processor() const
 {
-  return enabled_ctl->isChecked() ? current_processor_ : nullptr;
+  return enable_ctl->isChecked() ? current_processor_ : nullptr;
 }
 
 bool QImageProcessorSelector::imageProcessingEnabled() const
 {
-  return enabled_ctl->isChecked();
+  return enable_ctl->isChecked();
 }
 
 void QImageProcessorSelector::onupdatecontrols()
@@ -192,8 +188,6 @@ void QImageProcessorSelector::onupdatecontrols()
   setEnabled(true);
 
   updatecurrentprocessor();
-
-  Base::onupdatecontrols();
 }
 
 void QImageProcessorSelector::onProcessorSelectorCurrentIndexChanged(int)

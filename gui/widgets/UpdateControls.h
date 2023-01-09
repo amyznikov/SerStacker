@@ -51,7 +51,7 @@ public:
   virtual ~HasUpdateControls() = default;
 
 protected:
-  virtual void onupdatecontrols() = 0;
+  virtual void onupdatecontrols() {};
 
 protected:
   int updatingControls_ = 0;

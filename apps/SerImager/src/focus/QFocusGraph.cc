@@ -345,16 +345,49 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
           "eps",
           [this](double v) {
             if ( focusMeasureThread_ ) {
-              focusMeasureThread_->setEps(v);
+              focusMeasureThread_->measure().set_eps(v);
             }
           },
           [this](double * v) {
             if ( focusMeasureThread_ ) {
-              *v = focusMeasureThread_->eps();
+              *v = focusMeasureThread_->measure().eps();
               return true;
             }
             return false;
           });
+
+  dscale_ctl =
+      add_numeric_box<int>(
+          "dscale",
+          [this](int v) {
+            if ( focusMeasureThread_ ) {
+              focusMeasureThread_->measure().set_dscale(v);
+            }
+          },
+          [this](int * v) {
+            if ( focusMeasureThread_ ) {
+              *v = focusMeasureThread_->measure().dscale();
+              return true;
+            }
+            return false;
+          });
+
+  equalize_hist_ctl =
+      add_checkbox(
+          "equalize_hist",
+          [this](bool checked ) {
+            if ( focusMeasureThread_ ) {
+              focusMeasureThread_->measure().set_equalize_hist(checked);
+            }
+          },
+          [this](bool * v) {
+            if ( focusMeasureThread_ ) {
+              *v = focusMeasureThread_->measure().equalize_hist();
+              return true;
+            }
+            return false;
+          });
+
 
   updateControls();
 }

@@ -201,6 +201,22 @@ protected:
   bool enabled_;
 };
 
+#define DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip ) \
+    typedef class_name this_class; \
+    typedef c_image_processor_routine base; \
+    typedef std::shared_ptr<this_class> ptr; \
+    static struct c_class_factory : public base::class_factory { \
+      c_class_factory() : \
+        base::class_factory(#class_name, display_name, tooltip , factory([]() {return ptr(new this_class());})) {} \
+    } class_factory; \
+    \
+    class_name(bool enabled = true); \
+    static ptr create(bool enabled = true); \
+    bool serialize(c_config_setting settings) const override; \
+    bool deserialize(c_config_setting settings) override; \
+    bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+
+
 class c_image_processor :
     public std::vector<c_image_processor_routine::ptr>
 {

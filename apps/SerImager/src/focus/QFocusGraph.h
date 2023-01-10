@@ -95,6 +95,8 @@ protected:
 protected:
   QCameraFocusMeasureThread * focusMeasureThread_ = nullptr;
   QNumberEditBox * eps_ctl = nullptr;
+  QNumberEditBox * dscale_ctl = nullptr;
+  QCheckBox * equalize_hist_ctl = nullptr;
 };
 
 

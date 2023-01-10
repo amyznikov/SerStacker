@@ -10,7 +10,6 @@
 #include <core/proc/morphology.h>
 #include <core/proc/smap.h>
 #include <core/proc/reduce_channels.h>
-#include <core/proc/focus.h>
 #include <core/debug.h>
 
 namespace serimager {
@@ -74,15 +73,16 @@ void QCameraFocusMeasureThread::setEnabled(bool enabled)
   }
 }
 
-void QCameraFocusMeasureThread::setEps(double v)
+c_local_contrast_measure & QCameraFocusMeasureThread::measure()
 {
-  eps_ = v;
+  return measure_;
 }
 
-double QCameraFocusMeasureThread::eps() const
+const c_local_contrast_measure & QCameraFocusMeasureThread::measure() const
 {
-  return eps_;
+  return measure_;
 }
+
 
 const QRect & QCameraFocusMeasureThread::roi() const
 {
@@ -229,10 +229,13 @@ void QCameraFocusMeasureThread::run()
         }
 
         cv::Scalar v =
-            c_local_contrast_measure::compute_contrast_map(image,
-                cv::noArray(),
-                eps_,
-                cv::noArray());
+            measure_.compute(image);
+
+//        cv::Scalar v =
+//            c_local_contrast_measure::compute_contrast_map(image,
+//                cv::noArray(),
+//                eps_,
+//                dscale_);
 
 //        cv::Scalar v =
 //            compute_dogs_metric(image);

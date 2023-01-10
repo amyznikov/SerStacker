@@ -11,6 +11,7 @@
 
 #include <QtCore/QtCore>
 #include "QImagingCamera.h"
+#include <core/proc/focus.h>
 
 namespace serimager {
 
@@ -34,8 +35,8 @@ public:
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr camera() const;
 
-  void setEps(double v);
-  double eps() const;
+  c_local_contrast_measure & measure();
+  const c_local_contrast_measure & measure() const;
 
   void setRoi(const QRect & roi);
   const QRect & roi() const;
@@ -73,7 +74,8 @@ protected:
 
   enum COLORID colorid_ = COLORID_UNKNOWN;
   int bpp_ = 0;
-  double eps_ = 0;
+
+  c_local_contrast_measure measure_;
 
 
 };

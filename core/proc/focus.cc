@@ -5,7 +5,8 @@
  *      Author: amyznikov
  */
 #include "focus.h"
-#include "weighted_mean.h"
+#include <core/proc/weighted_mean.h>
+#include <core/proc/morphology.h>
 #include <core/debug.h>
 
 
@@ -90,105 +91,229 @@ static int get_bpp(int ddepth)
   return 0;
 }
 
-static inline float square(float x)
+static void equalizehist(cv::Mat & image)
 {
-  return x * x;
+  if( image.depth() == CV_8U ) {
+
+    const int cn = image.channels();
+    if( cn == 1 ) {
+      cv::equalizeHist(image, image);
+    }
+    else {
+      std::vector<cv::Mat> channels;
+      cv::split(image, channels);
+
+      for( int i = 0; i < cn; ++i ) {
+        cv::equalizeHist(channels[i], channels[i]);
+      }
+
+      cv::merge(channels, image);
+    }
+  }
+
 }
 
-cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image, cv::OutputArray cmap,
-    double eps, cv::InputArray H)
+
+//static inline float square(float x)
+//{
+//  return x * x;
+//}
+//
+//cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image, cv::OutputArray cmap,
+//    double eps, cv::InputArray H)
+//{
+//
+//  INSTRUMENT_REGION("");
+//
+//  cv::Mat s, ss, r;//, g;
+//
+//  if( eps <= 0 ) {
+//    eps = 1e-6;
+//  }
+//
+//  const cv::Mat src =
+//      image.getMat();
+//
+//  if( src.depth() == CV_32F ) {
+//    cv::add(src, eps, s);
+//  }
+//  else {
+//    src.convertTo(s, CV_32F, 1. / (1 << get_bpp(src.depth())), eps);
+//  }
+//
+//  if( true ) {
+//    INSTRUMENT_REGION("blur");
+//    downscale(s, ss, 2);
+//    upscale(ss, s.size());
+//  }
+//  else {
+//    INSTRUMENT_REGION("blur");
+//    static const cv::Mat1f K = cv::getGaussianKernel(15, 5, CV_32F);
+//    cv::sepFilter2D(s, ss, CV_32F, K, K);
+//  }
+//
+//  //compute_gradient(ss, g);
+//
+//  const bool needcmap =
+//      cmap.needed();
+//
+//  const int src_channels =
+//      src.channels();
+//
+//  const int cn =
+//      (std::min)(4, src_channels);
+//
+//  if( needcmap ) {
+//    r.create(s.size(), CV_MAKETYPE(CV_32F, cn));
+//  }
+//
+//  cv::Scalar rr =
+//      cv::Scalar::all(0);
+//
+//  cv::Scalar ww =
+//      cv::Scalar::all(0);
+//
+//  for( int y = 0; y < s.rows; ++y ) {
+//
+//    const float *sp = s.ptr<const float>(y);
+//    const float *ssp = ss.ptr<const float>(y);
+//    //const float *gp = g.ptr<const float>(y);
+//    float *rp = needcmap ? r.ptr<float>(y) : nullptr;
+//
+//    for( int x = 0; x < s.cols; ++x ) {
+//      for( int c = 0; c < cn; ++c ) {
+//
+//        const float w =
+//            1; // square(gp[x * src_channels + c]);
+//
+////        const float v =
+////            square(sp[x * src_channels + c] / ssp[x * src_channels + c] - 1);
+//        const float v =
+//            (sp[x * src_channels + c] / ssp[x * src_channels + c]);
+//
+////        const float w =
+////            v ;
+//
+//        rr[c] += w * v;
+//        ww[c] += w;
+//
+//        if( needcmap ) {
+//          rp[x * src_channels + c] = w * v;
+//        }
+//      }
+//    }
+//  }
+//
+//  for( int c = 0; c < cn; ++c ) {
+//    rr[c] /= ww[c];
+//  }
+//
+//  if( needcmap ) {
+//    cmap.move(r);
+//    //cv::divide(r, ww, cmap);
+//  }
+//
+//  return rr;
+//}
+
+
+void c_local_contrast_measure::set_dscale(int v)
+{
+  dscale_ = v;
+}
+
+int c_local_contrast_measure::dscale() const
+{
+  return dscale_;
+}
+
+void c_local_contrast_measure::set_eps(double v)
+{
+  eps_ = v;
+}
+
+double c_local_contrast_measure::eps() const
+{
+  return eps_;
+}
+
+void c_local_contrast_measure::set_equalize_hist(bool v)
+{
+  equalize_hist_ = v;
+}
+
+bool c_local_contrast_measure::equalize_hist() const
+{
+  return equalize_hist_;
+}
+
+cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
+    cv::OutputArray output_map, double eps, int dscale, bool equalize_hist)
 {
 
   INSTRUMENT_REGION("");
 
-  cv::Mat s, ss, g, r;
+  const cv::Mat1b SE(3, 3, 255);
+
+  const cv::Mat src =
+      image.getMat();
+
+  cv::Mat s, e, d, r;
 
   if( eps <= 0 ) {
     eps = 1e-6;
   }
 
-  const cv::Mat src =
-      image.getMat();
+  if ( dscale < 1 ) {
+    s = src;
+  }
+  else {
+    downscale(src, s, dscale);
+  }
+
+  if( equalize_hist ) {
+    equalizehist(s);
+  }
+
+  cv::erode(s, e, SE);
+  cv::dilate(s, d, SE);
 
   if( src.depth() == CV_32F ) {
-    cv::add(src, eps, s);
+    cv::add(d, eps, d);
   }
   else {
-    src.convertTo(s, CV_32F, 1. / (1 << get_bpp(src.depth())), eps);
+    d.convertTo(d, CV_32F, 1. / (1 << get_bpp(src.depth())), eps);
+    e.convertTo(e, CV_32F, 1. / (1 << get_bpp(src.depth())), 0);
   }
 
-  if( true ) {
-    INSTRUMENT_REGION("blur");
-    downscale(s, ss, 3);
-    upscale(ss, s.size());
-  }
-  else {
-    INSTRUMENT_REGION("blur");
-    static const cv::Mat1f K = cv::getGaussianKernel(15, 5, CV_32F);
-    cv::sepFilter2D(s, ss, CV_32F, K, K);
+  cv::divide(e,  d, r);
+  cv::subtract(cv::Scalar::all(1), r, r);
+
+  if( output_map.needed() ) {
+    //output_map.move(r);
+    r.copyTo(output_map);
   }
 
-  compute_gradient(ss, g);
+  //cv::multiply(r, r, d);
 
-  const bool needcmap =
-      cmap.needed();
+  cv::GaussianBlur(r, d, cv::Size(), 1, 1);
 
-  const int src_channels =
-      src.channels();
+  const cv::Scalar w =
+      cv::sum(d);
 
-  const int cn =
-      (std::min)(4, src_channels);
+  cv::multiply(r, d, r);
+  cv::divide(r, w, r);
 
-  if( needcmap ) {
-    r.create(s.size(), CV_MAKETYPE(CV_32F, cn));
-  }
+//  cv::Scalar rv =
+//      weighted_mean(r, d.mul(d));
 
-  cv::Scalar rr =
-      cv::Scalar::all(0);
 
-  cv::Scalar ww =
-      cv::Scalar::all(0);
-
-  for( int y = 0; y < s.rows; ++y ) {
-
-    const float *sp = s.ptr<const float>(y);
-    const float *ssp = ss.ptr<const float>(y);
-    const float *gp = g.ptr<const float>(y);
-    float *rp = needcmap ? r.ptr<float>(y) : nullptr;
-
-    for( int x = 0; x < s.cols; ++x ) {
-      for( int c = 0; c < cn; ++c ) {
-
-        const float w =
-            gp[x * src_channels + c];
-
-        const float v =
-            w * square(sp[x * src_channels + c] / ssp[x * src_channels + c] - 1);
-
-        rr[c] += v;
-        ww[c] += w;
-
-        if( needcmap ) {
-          rp[x * src_channels + c] = v;
-        }
-      }
-    }
-  }
-
-  for( int c = 0; c < cn; ++c ) {
-    rr[c] /= ww[c];
-  }
-
-  if( needcmap ) {
-    cv::divide(r, ww, cmap);
-  }
-
-  return rr;
+  return cv::sum(r);
+  //return rv;
 }
-
 
 cv::Scalar c_local_contrast_measure::compute(cv::InputArray image)
 {
   return compute_contrast_map(image, cv::noArray(),
-      noise_eps_, cv::noArray());
+      eps_, dscale_, equalize_hist_);
 }

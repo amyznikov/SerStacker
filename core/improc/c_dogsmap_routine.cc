@@ -9,13 +9,13 @@
 
 c_dogsmap_routine::c_class_factory c_dogsmap_routine::class_factory;
 
-c_dogsmap_routine::c_dogsmap_routine(bool enabled)
-  : base(&class_factory, enabled)
+c_dogsmap_routine::c_dogsmap_routine(bool enabled) :
+    base(&class_factory, enabled)
 {
 }
 
-c_dogsmap_routine::c_dogsmap_routine(double s1, double s2, int scale, double minv, bool enabled)
-  : base(&class_factory, enabled),
+c_dogsmap_routine::c_dogsmap_routine(double s1, double s2, int scale, double minv, bool enabled) :
+    base(&class_factory, enabled),
     s1_(s1),
     s2_(s2),
     minv_(minv),

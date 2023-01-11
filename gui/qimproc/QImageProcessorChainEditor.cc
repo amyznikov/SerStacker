@@ -100,6 +100,14 @@ QWidget* addStretch(QToolBar * toolbar)
   return stretch;
 }
 
+template<class Obj, typename Func1>
+QAction * createAction(const QIcon &icon, const QString &text, const QString &tooltip, const Obj *object, Func1 slot)
+{
+  QAction * action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  QObject::connect(action, &QAction::triggered, object, slot);
+  return action;
+}
 
 
 }  // namespace
@@ -111,50 +119,40 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
   lv_ = new QVBoxLayout(this);
 
   ///////////////////////////////////////////////////////////////////
-  lv_->addWidget(toolbar_ctl = new QToolBar(this));
+//  lv_->addWidget(toolbar_ctl = new QToolBar(this));
+//  toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
+//  toolbar_ctl->setIconSize(QSize(16, 16));
+//
+//  addStretch(toolbar_ctl);
 
-  toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
-  toolbar_ctl->setIconSize(QSize(16, 16));
-
-  addStretch(toolbar_ctl);
-
-  moveDownAction_ =
-      toolbar_ctl->addAction(getIcon(ICON_move_down),
+  addAction(moveDownAction_ =
+      createAction(getIcon(ICON_move_down),
           "Move Down",
+          "Move selected processor down",
           this,
-          &ThisClass::onMoveCurrentProcessorDown);
+          &ThisClass::onMoveCurrentProcessorDown));
 
-  moveDownAction_->setToolTip(""
-      "Move selected processor down");
 
-  moveUpAction_ =
-      toolbar_ctl->addAction(getIcon(ICON_move_up),
+  addAction(moveUpAction_ =
+      createAction(getIcon(ICON_move_up),
           "Move Up",
+          "Move selected processor up",
           this,
-          &ThisClass::onMoveCurrentProcessorUp);
+          &ThisClass::onMoveCurrentProcessorUp));
 
-  moveUpAction_->setToolTip(""
-      "Move selected processor up");
-
-  addProcAction_ =
-      toolbar_ctl->addAction(getIcon(ICON_add),
+  addAction(addProcAction_ =
+      createAction(getIcon(ICON_add),
           "Add processor ...",
+          "Add image processor",
           this,
-          &ThisClass::onAddImageProcessor);
+          &ThisClass::onAddImageProcessor));
 
-  addProcAction_->setToolTip(""
-      "Add image processor");
-
-  removeProcAction_ =
-      toolbar_ctl->addAction(getIcon(ICON_delete),
+  addAction(removeProcAction_ =
+      createAction(getIcon(ICON_delete),
           "Remove selected processor",
+          "Remove selected image processor",
           this,
-          &ThisClass::onRemoveCurrentImageProcessor);
-
-  removeProcAction_->setToolTip(""
-      "Remove image processor");
-
-
+          &ThisClass::onRemoveCurrentImageProcessor));
 
   ///////////////////////////////////////////////////////////////////
   lv_->addWidget(tree_ctl = new QTreeWidget(this));
@@ -299,7 +297,6 @@ void QImageProcessorChainEditor::onMoveCurrentProcessorDown()
 
           current_processor_->erase(pos);
           current_processor_->insert(pos + 1, routine);
-          current_processor_->save();
 
           const bool isExpanded =
               currentItem->isExpanded();
@@ -347,7 +344,6 @@ void QImageProcessorChainEditor::onMoveCurrentProcessorUp()
 
           current_processor_->erase(pos);
           current_processor_->insert(pos - 1, routine);
-          current_processor_->save();
 
           const bool isExpanded =
               currentItem->isExpanded();
@@ -415,8 +411,6 @@ void QImageProcessorChainEditor::onAddImageProcessor()
     current_processor_->insert(current_processor_->find(current_routine) + 1, new_routine);
   }
 
-  current_processor_->save();
-
   QTreeWidgetItem * newItem =
       insertProcessorItem(tree_ctl->indexOfTopLevelItem(insertAfter) + 1,
           new_routine);
@@ -445,7 +439,6 @@ void QImageProcessorChainEditor::onRemoveCurrentImageProcessor()
       if( pos != current_processor_->end() ) {
 
         current_processor_->erase(pos);
-        current_processor_->save();
 
         delete currentItem;
 
@@ -489,6 +482,14 @@ QImageProcessorSettingsControl::QImageProcessorSettingsControl(const c_image_pro
 
 void QImageProcessorSettingsControl::setupControls()
 {
+  if( !processor_->classfactory()->tooltip.empty() ) {
+    QLabel *label = new QLabel(this);
+    label->setTextFormat(Qt::RichText);
+    label->setWordWrap(true);
+    label->setText(processor_->classfactory()->tooltip.c_str());
+    form->addRow(label);
+  }
+
   std::vector<struct c_image_processor_routine_ctrl> params;
   processor_->get_parameters(&params);
 
@@ -509,7 +510,7 @@ void QImageProcessorSettingsControl::setupControls()
                   [this, ctl, p]() {
                     if ( !updatingControls() ) {
                       p.set_value(ctl->text().toStdString());
-                      emit parameterChanged();
+                      Q_EMIT parameterChanged();
                     }
                   });
 
@@ -552,7 +553,7 @@ void QImageProcessorSettingsControl::setupControls()
                   [this, ctl, p]() {
                     if ( !updatingControls() ) {
                       p.set_value(ctl->currentText().toStdString());
-                      emit parameterChanged();
+                      Q_EMIT parameterChanged();
                     }
                   });
 
@@ -593,7 +594,7 @@ void QImageProcessorSettingsControl::setupControls()
                   [this, ctl, p](int state) {
                     if ( !updatingControls() ) {
                       p.set_value(state == Qt::Checked ? "1" : "0");
-                      emit parameterChanged();
+                      Q_EMIT parameterChanged();
                     }
                   });
 

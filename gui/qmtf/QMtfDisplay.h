@@ -88,8 +88,12 @@ protected:
   void addDisplay(int type, double rmin, double rmax);
   static void createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap);
 
-  virtual void adjustMtfInputRange(c_midtones_transfer_function *mtf, double * imin, double * imax) const;
-  virtual void restoreMtfInputRange(c_midtones_transfer_function *mtf, double imin, double imax)  const;
+  virtual void adjustMtfInputRange(c_midtones_transfer_function *mtf,
+      cv::InputArray currentImage, cv::InputArray currentMask,
+      double * imin, double * imax) const;
+
+  virtual void restoreMtfInputRange(c_midtones_transfer_function *mtf,
+      double imin, double imax)  const;
 
   virtual void loadParameters(const QSettings & settings, const QString & prefix);
   virtual void saveParameters(QSettings & settings, const QString & prefix) const;

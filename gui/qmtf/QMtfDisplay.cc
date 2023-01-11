@@ -6,6 +6,7 @@
  */
 
 #include "QMtfDisplay.h"
+#include <core/proc/minmax.h>
 
 
 QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
@@ -62,13 +63,27 @@ void QMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colo
   }
 }
 
-void QMtfDisplay::adjustMtfInputRange(c_midtones_transfer_function *mtf, double * imin, double * imax) const
+void QMtfDisplay::adjustMtfInputRange(c_midtones_transfer_function * mtf,
+    cv::InputArray currentImage, cv::InputArray currentMask,
+    double * imin, double * imax) const
 {
   mtf->get_input_range(imin, imax);
-  if( *imin >= *imax ) {
-    double min, max;
-    getInputDataRange(&min, &max);
-    mtf->set_input_range(min, max);
+
+  if( *imin >= *imax && !currentImage.empty() ) {
+
+    double adjusted_min, adjusted_max;
+
+    const int cdepth =
+        currentImage.depth();
+
+    if( cdepth == CV_32F || cdepth == CV_64F ) {
+      getminmax(currentImage, &adjusted_min, &adjusted_max, currentMask);
+    }
+    else {
+      c_midtones_transfer_function::suggest_levels_range(cdepth, &adjusted_min, &adjusted_max);
+    }
+
+    mtf->set_input_range(adjusted_min, adjusted_max);
   }
 }
 

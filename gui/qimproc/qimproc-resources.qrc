@@ -32,5 +32,12 @@
 	
 	<file>icons/light/menu.png</file>
 	<file>icons/dark/menu.png</file>
+	
+	<file>icons/light/display_config.png</file>
+	<file>icons/dark/display_config.png</file>
+
+	<file>icons/light/config.png</file>
+	<file>icons/dark/config.png</file>
+	
 </qresource>
 </RCC>

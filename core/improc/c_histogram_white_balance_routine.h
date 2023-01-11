@@ -21,7 +21,8 @@ public:
 
   static struct c_class_factory : public base::class_factory {
     c_class_factory() :
-        base::class_factory("histogram_white_balance", "histogram_white_balance", "histogram_white_balance",
+        base::class_factory("histogram_white_balance", "histogram_white_balance",
+            "GrayWorld-like image white balance based on image histogram stretch",
             factory([]() {return ptr(new this_class());})) {}
   } class_factory;
 

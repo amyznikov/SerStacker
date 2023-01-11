@@ -40,10 +40,6 @@ public:
       cv::OutputArray colormapImage);
 
 protected:
-  void adjustMtfInputRange(c_midtones_transfer_function *mtf, double * imin, double * imax) const override;
-  void restoreMtfInputRange(c_midtones_transfer_function *mtf, double imin, double imax) const override;
-
-protected:
   QImageViewer * imageViewer_ = nullptr;
 };
 

@@ -25,13 +25,19 @@ public:
     resize_scale,
   };
 
-  static struct c_class_factory : public base::class_factory {
+  struct c_class_factory : public base::class_factory {
     c_class_factory() :
         base::class_factory("affine_transform", "geometrical affine transform", "geometrical affine transform",
             factory([]() {return ptr(new this_class());}))
     {
     }
-  } class_factory;
+  };
+
+  static const c_class_factory* class_factory_instance()
+  {
+    static c_class_factory class_factory_instance_;
+    return &class_factory_instance_;
+  }
 
 
   c_affine_transform_routine(bool enabled = true);

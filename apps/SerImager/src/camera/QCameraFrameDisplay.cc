@@ -20,6 +20,24 @@ typedef std::lock_guard<std::mutex>
 typedef std::unique_lock<std::mutex>
   c_unique_lock;
 
+inline int get_bpp(int ddepth)
+{
+  switch (ddepth) {
+    case CV_8U:
+    case CV_8S:
+      return 8;
+
+    case CV_16U:
+    case CV_16S:
+      return 16;
+
+    case CV_32S:
+      return 32;
+  }
+
+  return 0;
+}
+
 } // namespace
 
 
@@ -129,6 +147,17 @@ QCameraFrameMtfDisplayFunction * QCameraFrameDisplay::mtfDisplayFunction()
   return &mtfDisplayFunction_;
 }
 
+void QCameraFrameDisplay::set_debayer_algorithm(DEBAYER_ALGORITHM algo)
+{
+  debayer_algorithm_ = algo;
+}
+
+DEBAYER_ALGORITHM QCameraFrameDisplay::debayer_algorithm()
+{
+  return debayer_algorithm_;
+}
+
+
 void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::ptr & processor)
 {
   mtfDisplayFunction_.mutex().lock();
@@ -237,138 +266,6 @@ void QCameraFrameDisplay::onPixmapChanged()
   scene()->setSceneImage(pixmap_);
 }
 
-
-void QCameraFrameDisplay::workerThread()
-{
-
-  c_unique_lock lock(mtfDisplayFunction_.mutex());
-  workerState_ = Worker_Running;
-
-
-  bool haveInputImage = false;
-  int last_index = -1;
-
-
-  cv::Mat inputImage, currentImage, displayImage, colormapImage, currentMask;
-  QPixmap pixmap;
-
-
-  while ( workerState_ == Worker_Running && camera_ && camera_->state() == QImagingCamera::State_started ) {
-
-    INSTRUMENT_REGION("body");
-
-    haveInputImage = false;
-
-    if( true ) {
-      INSTRUMENT_REGION("wait_frame");
-
-      QImagingCamera::shared_lock lock(camera_->mutex());
-
-      const std::deque<QCameraFrame::sptr> &deque =
-          camera_->deque();
-
-      if( !deque.empty() ) {
-
-        const QCameraFrame::sptr &frame =
-            deque.back();
-
-        const int index =
-            frame->index();
-
-        if( index > last_index ) {
-
-          last_index = index;
-          bpp_ = frame->bpp();
-          colorid_ = frame->colorid();
-          frame->image().copyTo(inputImage);
-          haveInputImage = true;
-        }
-      }
-    }
-
-    lock.unlock();
-
-    if( haveInputImage && !inputImage.empty() ) {
-
-      {
-        INSTRUMENT_REGION("convert");
-
-        //CF_DEBUG("colorid_=%s", toString(colorid_));
-
-        if( inputImage.depth() != CV_8U && bpp_ > 0 ) {
-          inputImage.convertTo(inputImage, CV_8U, 255. / (1 << bpp_));
-        }
-
-        if( is_bayer_pattern(colorid_) ) {
-          debayer(inputImage, inputImage, colorid_, DEBAYER_NN);
-        }
-        else if( colorid_ == COLORID_RGB ) {
-          cv::cvtColor(inputImage, inputImage, cv::COLOR_RGB2BGR);
-        }
-
-        // editImage(image, cv::noArray(), false);
-        inputImage.copyTo(currentImage);
-        if( current_processor_ && !current_processor_->empty() ) {
-          current_processor_->process(currentImage, currentMask);
-        }
-
-        const QMtfDisplay::DisplayParams &opts =
-            mtfDisplayFunction_.displayParams();
-
-        const bool needColormap =
-            opts.colormap != COLORMAP_NONE &&
-                currentImage.channels() == 1;
-
-        mtfDisplayFunction_.applyMtf(currentImage,
-            needColormap ? cv::noArray() : currentMask,
-                displayImage, CV_8U);
-
-        if ( needColormap ) {
-          mtfDisplayFunction_.applyColorMap(displayImage, currentMask, colormapImage);
-        }
-        else {
-          colormapImage = displayImage;
-        }
-
-        pixmap =
-            createPixmap(colormapImage, true,
-                Qt::NoFormatConversion |
-                    Qt::ThresholdDither |
-                    Qt::ThresholdAlphaDither |
-                    Qt::NoOpaqueDetection);
-
-      }
-
-
-      {
-        INSTRUMENT_REGION("setCurrentImage");
-        lock.lock();
-        cv::swap(inputImage, inputImage_);
-        cv::swap(currentImage, currentImage_);
-        cv::swap(currentMask, currentMask_);
-        cv::swap(displayImage, displayImage_);
-        pixmap_ = pixmap;
-        lock.unlock();
-      }
-
-
-      Q_EMIT pixmapChanged();
-
-      if ( !mtfDisplayFunction_.isBusy() ) {
-        Q_EMIT displayImageChanged();
-      }
-
-    }
-
-    QThread::msleep(50);
-
-    lock.lock();
-  }
-
-
-  workerState_ = Worker_Idle;
-}
-
 void QCameraFrameDisplay::createFocusRoiRectItem()
 {
   if( !roiItem_ ) {
@@ -423,6 +320,134 @@ QRect QCameraFrameDisplay::roi() const
 {
   const QRectF rc = roiItem_->sceneRect();
   return QRect(rc.x(), rc.y(), rc.width(), rc.height());
+}
+
+
+void QCameraFrameDisplay::workerThread()
+{
+
+  c_unique_lock lock(mtfDisplayFunction_.mutex());
+  workerState_ = Worker_Running;
+
+
+  bool haveInputImage = false;
+  int last_index = -1;
+
+
+  cv::Mat inputImage, currentImage, displayImage, currentMask;
+  QPixmap pixmap;
+
+
+  while ( workerState_ == Worker_Running && camera_ && camera_->state() == QImagingCamera::State_started ) {
+
+    INSTRUMENT_REGION("body");
+
+    haveInputImage = false;
+
+    if( true ) {
+      INSTRUMENT_REGION("wait_frame");
+
+      QImagingCamera::shared_lock lock(camera_->mutex());
+
+      const std::deque<QCameraFrame::sptr> &deque =
+          camera_->deque();
+
+      if( !deque.empty() ) {
+
+        const QCameraFrame::sptr &frame =
+            deque.back();
+
+        const int index =
+            frame->index();
+
+        if( index > last_index ) {
+
+          last_index = index;
+          bpp_ = frame->bpp();
+          colorid_ = frame->colorid();
+          frame->image().copyTo(inputImage);
+          haveInputImage = true;
+        }
+      }
+    }
+
+    lock.unlock();
+
+    if( haveInputImage && !inputImage.empty() ) {
+
+      {
+        INSTRUMENT_REGION("convert");
+
+        if( is_bayer_pattern(colorid_) ) {
+          debayer(inputImage, inputImage, colorid_, debayer_algorithm_);
+        }
+
+        else if( colorid_ == COLORID_RGB ) {
+          cv::cvtColor(inputImage, inputImage, cv::COLOR_RGB2BGR);
+        }
+
+        // editImage(image, cv::noArray(), false);
+        inputImage.copyTo(currentImage);
+        currentMask.release();
+        if( current_processor_ && !current_processor_->empty() ) {
+          current_processor_->process(currentImage, currentMask);
+        }
+
+        const QMtfDisplay::DisplayParams &opts =
+            mtfDisplayFunction_.displayParams();
+
+        const bool needColormap =
+            opts.colormap != COLORMAP_NONE &&
+              displayImage.channels() == 1;
+
+        mtfDisplayFunction_.applyMtf(currentImage,
+            needColormap ? cv::noArray() : currentMask,
+                displayImage,
+                CV_8U);
+
+        if ( needColormap ) {
+          mtfDisplayFunction_.applyColorMap(displayImage,
+              currentMask,
+              displayImage);
+        }
+
+        pixmap =
+            createPixmap(displayImage, true,
+                Qt::NoFormatConversion |
+                    Qt::ThresholdDither |
+                    Qt::ThresholdAlphaDither |
+                    Qt::NoOpaqueDetection);
+
+      }
+
+
+      {
+        INSTRUMENT_REGION("setCurrentImage");
+        lock.lock();
+        cv::swap(inputImage, inputImage_);
+        cv::swap(currentImage, currentImage_);
+        cv::swap(currentMask, currentMask_);
+        cv::swap(displayImage, displayImage_);
+        pixmap_ = pixmap;
+        lock.unlock();
+      }
+
+
+      Q_EMIT pixmapChanged();
+
+      if ( !mtfDisplayFunction_.isBusy() ) {
+        Q_EMIT displayImageChanged();
+      }
+
+    }
+
+    QThread::msleep(50);
+
+    lock.lock();
+  }
+
+
+  workerState_ = Worker_Idle;
 }
 
 } /* namespace qserimager */

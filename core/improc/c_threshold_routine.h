@@ -12,6 +12,12 @@
 #include "c_image_processor.h"
 
 enum THRESHOLD_TYPE {
+  THRESHOLD_TYPE_CMP_GT,
+  THRESHOLD_TYPE_CMP_LT,
+  THRESHOLD_TYPE_CMP_GE,
+  THRESHOLD_TYPE_CMP_LE,
+  THRESHOLD_TYPE_CMP_EQ,
+  THRESHOLD_TYPE_CMP_NE,
   THRESHOLD_TYPE_OTSU,
   THRESHOLD_TYPE_TRIANGLE,
   THRESHOLD_TYPE_MOMENTS,
@@ -32,7 +38,9 @@ public:
 
   static struct c_class_factory : public base::class_factory {
     c_class_factory() :
-        base::class_factory("threshold", "threshold", "threshold",
+        base::class_factory("threshold", "threshold",
+            "Uses <strong>cv::compare()</strong> or <strong>cv::threshold()</strong> to threshold image.<br>"
+            "Each color channel is processed independently",
             factory([]() {return ptr(new this_class());})) {}
   } class_factory;
 
@@ -45,12 +53,17 @@ public:
   void set_threshold_type(THRESHOLD_TYPE v);
   THRESHOLD_TYPE threshold_type() const;
 
+  void set_threshold_value(double v);
+  double threshold_value() const;
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_type, "Threshold type");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Threshold value");
   }
 
 protected:
+  double threshold_value_ = 0;
   THRESHOLD_TYPE threshold_type_ = THRESHOLD_TYPE_OTSU;
 };
 

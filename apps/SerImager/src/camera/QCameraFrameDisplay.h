@@ -62,6 +62,9 @@ public:
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr & camera() const;
 
+  void set_debayer_algorithm(DEBAYER_ALGORITHM algo);
+  DEBAYER_ALGORITHM debayer_algorithm();
+
   const QCameraFrameMtfDisplayFunction * mtfDisplayFunction() const;
   QCameraFrameMtfDisplayFunction * mtfDisplayFunction();
 
@@ -102,6 +105,7 @@ protected:
   } workerState_ = Worker_Idle;
 
   enum COLORID colorid_ = COLORID_UNKNOWN;
+  enum DEBAYER_ALGORITHM debayer_algorithm_ = DEBAYER_NN;
   int bpp_ = 0;
   QPixmap pixmap_;
 

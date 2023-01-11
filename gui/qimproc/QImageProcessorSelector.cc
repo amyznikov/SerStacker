@@ -20,13 +20,8 @@
 #define ICON_rename               ":/qimproc/icons/rename"
 #define ICON_copy                 ":/qimproc/icons/copy"
 #define ICON_menu                 ":/qimproc/icons/menu"
+#define ICON_config               ":/qimproc/icons/config"
 
-
-//static QIcon getIcon(const QString & name)
-//{
-//  return QIcon(QString(":/qimproc/icons/%1").arg(name));
-//}
-//
 
 QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
     Base(parent)
@@ -55,6 +50,9 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
   toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
   toolbar_ctl->setIconSize(QSize(16, 16));
 
+  toolbar_ctl->addWidget(enable_ctl = new QCheckBox(this));
+  enable_ctl->setToolTip("Enable / Disable image processing");
+
   toolbar_ctl->addWidget(selector_ctl = new QComboBox(this));
   selector_ctl->setEditable(false);
   selector_ctl->setMinimumContentsLength(12);
@@ -64,8 +62,6 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
   selectorMenu_ctl->setIcon(getIcon(ICON_menu));
   selectorMenu_ctl->setToolTip("Popup menu");
 
-  toolbar_ctl->addWidget(enable_ctl = new QCheckBox(this));
-  enable_ctl->setToolTip("Enable / Disable image processing");
 
   //lv_->addWidget(createScrollableWrap(chain_ctl = new QImageProcessorChainEditor(this), this));
   lv_->addWidget(chain_ctl = new QImageProcessorChainEditor(this));
@@ -86,7 +82,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
 
         menu.addAction(add_processor_action =
             new QAction(getIcon(ICON_add),
-                "Add ..."));
+                "Add chain ..."));
 
         if ( current_processor_ ) {
 
@@ -97,11 +93,11 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
 
           menu.addAction(rename_processor_action =
               new QAction(getIcon(ICON_rename),
-                  "Rename ..."));
+                  "Rename chain ..."));
 
           menu.addAction(delete_processor_action =
               new QAction(getIcon(ICON_delete),
-                  "Delete ..."));
+                  "Delete chain ..."));
         }
 
 
@@ -133,24 +129,39 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
 
   connect(chain_ctl, &QImageProcessorChainEditor::parameterChanged,
       [this]() {
+
         if ( enable_ctl->isChecked() ) {
           Q_EMIT parameterChanged();
         }
+
+        const c_image_processor::ptr & processor =
+            chain_ctl->current_processor();
+        if ( processor ) {
+          processor->save();
+        }
+
       });
+
+  const QList<QAction*> chain_ctl_actions =
+      chain_ctl->actions();
+
+  for( QAction *action : chain_ctl_actions ) {
+    toolbar_ctl->addAction(action);
+  }
+
+
+  showDisplaysSettingsAction_ =
+      toolbar_ctl->addAction(getIcon(ICON_config),
+          "Config...");
+
+  showDisplaysSettingsAction_->setToolTip(""
+      "Configure display and processing options");
+
+  showDisplaysSettingsAction_->setEnabled(false);
+
 
   updateControls();
 }
-
-//void QImageProcessorSelector::set_available_processors(const c_image_processor_collection::ptr & processors)
-//{
-//  available_processors_ = processors;
-//  updateControls();
-//}
-//
-//const c_image_processor_collection::ptr QImageProcessorSelector::available_processors() const
-//{
-//  return available_processors_;
-//}
 
 c_image_processor::ptr QImageProcessorSelector::current_processor() const
 {
@@ -160,6 +171,11 @@ c_image_processor::ptr QImageProcessorSelector::current_processor() const
 bool QImageProcessorSelector::imageProcessingEnabled() const
 {
   return enable_ctl->isChecked();
+}
+
+QAction * QImageProcessorSelector::showDisplaysSettingsAction() const
+{
+  return showDisplaysSettingsAction_;
 }
 
 void QImageProcessorSelector::onupdatecontrols()

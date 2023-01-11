@@ -150,34 +150,6 @@ void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImag
       applyColorMap(displayImage, currentMask, displayImage);
     }
   }
-
-//  if ( !currentImage.empty() ) {
-//
-//    DisplayParams & opts =
-//        displayParams();
-//
-//    c_pixinsight_mtf * mtf =
-//        &opts.mtf;
-//
-//    double imin, imax;
-//
-//    adjustMtfInputRange(mtf, &imin, &imax);
-//
-//    mtf->apply(currentImage, displayImage, ddepth);
-//
-//    restoreMtfInputRange(mtf, imin, imax);
-//
-//    if ( opts.colormap != COLORMAP_NONE && displayImage.type() == CV_8UC1 ) {
-//
-//      apply_colormap(displayImage.getMat(),
-//          displayImage,
-//          opts.colormap);
-//
-//      if ( !currentMask.empty() ) {
-//        displayImage.setTo(0, ~currentMask.getMat());
-//      }
-//    }
-//  }
 }
 
 
@@ -196,7 +168,7 @@ bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::Inp
 
   double imin, imax;
 
-  adjustMtfInputRange(mtf, &imin, &imax);
+  adjustMtfInputRange(mtf, currentImage, currentMask, &imin, &imax);
 
   mtf->apply(currentImage, displayImage, ddepth);
 
@@ -234,41 +206,3 @@ bool QImageViewMtfDisplayFunction::applyColorMap(cv::InputArray displayImage, cv
   return true;
 }
 
-
-void QImageViewMtfDisplayFunction::adjustMtfInputRange(c_midtones_transfer_function * mtf,
-    double * imin, double * imax) const
-{
-  mtf->get_input_range(imin, imax);
-
-  if( *imin >= *imax && imageViewer_ ) {
-
-    const cv::Mat &currentImage =
-        imageViewer_->currentImage();
-
-    if( !currentImage.empty() ) {
-
-      double adjusted_min, adjusted_max;
-
-      const int depth =
-          currentImage.depth();
-
-      if( depth == CV_32F || depth == CV_64F ) {
-        getminmax(currentImage, &adjusted_min, &adjusted_max, imageViewer_->currentMask());
-      }
-      else {
-        c_midtones_transfer_function::suggest_levels_range(currentImage.depth(),
-            &adjusted_min,
-            &adjusted_max);
-      }
-
-      mtf->set_input_range(adjusted_min, adjusted_max);
-    }
-  }
-}
-
-void QImageViewMtfDisplayFunction::restoreMtfInputRange(c_midtones_transfer_function *mtf, double imin, double imax) const
-{
-  if( imin >= imax ) {
-    mtf->set_input_range(imin, imax);
-  }
-}

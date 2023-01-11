@@ -21,11 +21,11 @@ const c_enum_member * members_of<c_affine_transform_routine::image_resize_mode>(
 }
 
 
-c_affine_transform_routine::c_class_factory c_affine_transform_routine::class_factory;
+//c_affine_transform_routine::c_class_factory c_affine_transform_routine::class_factory;
 
 
 c_affine_transform_routine::c_affine_transform_routine(bool enabled) :
-    base(&class_factory, enabled)
+    base(class_factory_instance(), enabled)
 {
 }
 

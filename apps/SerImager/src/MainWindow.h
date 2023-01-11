@@ -46,6 +46,7 @@ protected:
 
 protected Q_SLOTS:
   void onCameraWriterStatisticsUpdate();
+  void onShowDisplaysSettingsActionTriggered(bool checked);
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;

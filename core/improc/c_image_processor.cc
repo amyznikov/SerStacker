@@ -106,7 +106,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_auto_correlation_routine::class_factory);
     register_class_factory(&c_gaussian_filter_routine::class_factory);
     register_class_factory(&c_rotate_image_routine::class_factory);
-    register_class_factory(&c_affine_transform_routine::class_factory);
+    register_class_factory(c_affine_transform_routine::class_factory_instance());
     register_class_factory(&c_histogram_normalization_routine::class_factory);
     register_class_factory(&c_pyrdown_routine::class_factory);
     register_class_factory(&c_gaussian_pyramid_routine::class_factory);

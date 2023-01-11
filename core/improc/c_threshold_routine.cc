@@ -14,15 +14,22 @@ template<>
 const c_enum_member* members_of<THRESHOLD_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+      { THRESHOLD_TYPE_CMP_GT, "GT", "" },
+      { THRESHOLD_TYPE_CMP_GE, "GE", "" },
+      { THRESHOLD_TYPE_CMP_LT, "LT", "" },
+      { THRESHOLD_TYPE_CMP_LE, "LE", "" },
+      { THRESHOLD_TYPE_CMP_EQ, "EQ", "" },
+      { THRESHOLD_TYPE_CMP_NE, "NE", "" },
+
       { THRESHOLD_TYPE_OTSU, "OTSU", "OTSU" },
-      { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "TRIANGLE"  },
-      { THRESHOLD_TYPE_MOMENTS, "MOMENTS", "MOMENTS"  },
-      { THRESHOLD_TYPE_ISODATA, "ISODATA", "ISODATA"  },
-      { THRESHOLD_TYPE_HUANG, "HUANG", "HUANG"  },
-      { THRESHOLD_TYPE_YEN, "YEN", "YEN"  },
-      { THRESHOLD_TYPE_MEAN, "MEAN", "MEAN"  },
-      { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "MINIMUM"  },
-      { THRESHOLD_TYPE_OTSU  }
+      { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "TRIANGLE" },
+      { THRESHOLD_TYPE_MOMENTS, "MOMENTS", "MOMENTS" },
+      { THRESHOLD_TYPE_ISODATA, "ISODATA", "ISODATA" },
+      { THRESHOLD_TYPE_HUANG, "HUANG", "HUANG" },
+      { THRESHOLD_TYPE_YEN, "YEN", "YEN" },
+      { THRESHOLD_TYPE_MEAN, "MEAN", "MEAN" },
+      { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "MINIMUM" },
+      { THRESHOLD_TYPE_OTSU }
   };
 
   return members;
@@ -43,6 +50,37 @@ c_threshold_routine::ptr c_threshold_routine::create(bool enabled)
 
 bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  bool handled = true;
+
+  switch (threshold_type_) {
+    case THRESHOLD_TYPE_CMP_GT:
+      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_GT);
+      break;
+    case THRESHOLD_TYPE_CMP_GE:
+      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_GE);
+      break;
+    case THRESHOLD_TYPE_CMP_LT:
+      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_LT);
+      break;
+    case THRESHOLD_TYPE_CMP_LE:
+      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_LE);
+      break;
+    case THRESHOLD_TYPE_CMP_EQ:
+      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_EQ);
+      break;
+    case THRESHOLD_TYPE_CMP_NE:
+      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_NE);
+      break;
+    default:
+      handled = false;
+      break;
+  }
+
+  if ( handled ) {
+    return true;
+  }
+
+
   std::vector<cv::Mat> channels;
 
   if ( image.channels() == 1 ) {
@@ -51,7 +89,6 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
   else {
     cv::split(image, channels);
   }
-
 
   for( int i = 0, n = channels.size(); i < n; ++i ) {
     switch (threshold_type_) {
@@ -104,6 +141,7 @@ bool c_threshold_routine::deserialize(c_config_setting settings)
   }
 
   LOAD_PROPERTY(settings, this, threshold_type);
+  LOAD_PROPERTY(settings, this, threshold_value);
 
   return true;
 }
@@ -115,6 +153,7 @@ bool c_threshold_routine::serialize(c_config_setting settings) const
   }
 
   SAVE_PROPERTY(settings, *this, threshold_type);
+  SAVE_PROPERTY(settings, *this, threshold_value);
 
   return true;
 }
@@ -128,4 +167,14 @@ void c_threshold_routine::set_threshold_type(THRESHOLD_TYPE v)
 THRESHOLD_TYPE c_threshold_routine::threshold_type() const
 {
   return threshold_type_;
+}
+
+void c_threshold_routine::set_threshold_value(double v)
+{
+  threshold_value_ = v;
+}
+
+double c_threshold_routine::threshold_value() const
+{
+  return threshold_value_;
 }

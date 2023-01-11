@@ -235,6 +235,20 @@ void MainWindow::setupFrameProcessorControls()
       });
 
 
+  QAction * showDisplaysSettingsAction =
+      frameProcessor_ctl->showDisplaysSettingsAction();
+
+  if ( showDisplaysSettingsAction ) {
+
+    showDisplaysSettingsAction->setCheckable(true);
+    showDisplaysSettingsAction->setChecked(false);
+    showDisplaysSettingsAction->setEnabled(true);
+
+    connect(showDisplaysSettingsAction, &QAction::triggered,
+        this, &ThisClass::onShowDisplaysSettingsActionTriggered);
+  }
+
+
 }
 
 void MainWindow::onCameraWriterStatisticsUpdate()
@@ -327,6 +341,11 @@ void MainWindow::setupIndigoFocuser()
 
   }
 #endif // HAVE_INDIGO
+}
+
+void MainWindow::onShowDisplaysSettingsActionTriggered(bool checked)
+{
+
 }
 
 

@@ -13,6 +13,7 @@ namespace serimager {
 
 #define ICON_histogram        ":/qserimager/icons/histogram.png"
 #define ICON_display          ":/qserimager/icons/display.png"
+#define ICON_roi              ":/qserimager/icons/roi.png"
 
 MainWindow::MainWindow(QWidget * parent) :
    Base(parent)
@@ -122,8 +123,21 @@ void MainWindow::setupMainMenuBar()
 
   manToolbar_->setContentsMargins(0, 0, 0, 0);
   manToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  manToolbar_->setIconSize(QSize(16,16));
+  manToolbar_->setIconSize(QSize(16, 16));
 
+  //////////////
+
+  manToolbar_->addAction(showRoiAction_ =
+      new QAction(getIcon(ICON_roi),
+          "Show ROI"));
+
+  showRoiAction_->setToolTip("Show / Hide ROI rectangle");
+  showRoiAction_->setCheckable(true);
+  showRoiAction_->setChecked(centralDisplay_->showROI());
+  menuView_->addAction(showRoiAction_);
+
+  connect(showRoiAction_, &QAction::triggered,
+      centralDisplay_, &QCameraFrameDisplay::setShowROI);
 
   //////////////
 
@@ -155,6 +169,8 @@ void MainWindow::setupMainMenuBar()
 
 
   //////////////
+
+
 
 }
 
@@ -254,15 +270,12 @@ void MainWindow::setupFocusGraph()
   focusGraphDock_->hide();
 
   focusGraph_->setFocusMeasureThread(focusMeasureThread_);
-  focusMeasureThread_->setRoi(centralDisplay_->focusRoi());
+  focusMeasureThread_->setRoi(centralDisplay_->roi());
 
-  connect(focusGraph_->showRoiAction(), &QAction::triggered,
-      centralDisplay_, &QCameraFrameDisplay::showFocusRoi);
-
-  connect(centralDisplay_, &QCameraFrameDisplay::focusRoiChanged,
+  connect(centralDisplay_, &QCameraFrameDisplay::roiChanged,
       [this](const QRect & rc) {
 
-        focusMeasureThread_-> setRoi(rc);
+        focusMeasureThread_->setRoi(rc);
 
         mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
             .arg(rc.x())

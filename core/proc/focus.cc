@@ -93,6 +93,15 @@ static int get_bpp(int ddepth)
 
 static void equalizehist(cv::Mat & image)
 {
+  switch (image.depth()) {
+    case CV_16U:
+      image.convertTo(image, CV_8U, 255. / 65536);
+      break;
+    case CV_32F:
+      image.convertTo(image, CV_8U, 255.);
+      break;
+  }
+
   if( image.depth() == CV_8U ) {
 
     const int cn = image.channels();
@@ -216,37 +225,6 @@ static void equalizehist(cv::Mat & image)
 //  return rr;
 //}
 
-
-void c_local_contrast_measure::set_dscale(int v)
-{
-  dscale_ = v;
-}
-
-int c_local_contrast_measure::dscale() const
-{
-  return dscale_;
-}
-
-void c_local_contrast_measure::set_eps(double v)
-{
-  eps_ = v;
-}
-
-double c_local_contrast_measure::eps() const
-{
-  return eps_;
-}
-
-void c_local_contrast_measure::set_equalize_hist(bool v)
-{
-  equalize_hist_ = v;
-}
-
-bool c_local_contrast_measure::equalize_hist() const
-{
-  return equalize_hist_;
-}
-
 cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
     cv::OutputArray output_map, double eps, int dscale, bool equalize_hist)
 {
@@ -312,8 +290,97 @@ cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
   //return rv;
 }
 
+
+void c_local_contrast_measure::set_dscale(int v)
+{
+  dscale_ = v;
+}
+
+int c_local_contrast_measure::dscale() const
+{
+  return dscale_;
+}
+
+void c_local_contrast_measure::set_eps(double v)
+{
+  eps_ = v;
+}
+
+double c_local_contrast_measure::eps() const
+{
+  return eps_;
+}
+
+void c_local_contrast_measure::set_equalize_hist(bool v)
+{
+  equalize_hist_ = v;
+}
+
+bool c_local_contrast_measure::equalize_hist() const
+{
+  return equalize_hist_;
+}
+
+
+
 cv::Scalar c_local_contrast_measure::compute(cv::InputArray image)
 {
   return compute_contrast_map(image, cv::noArray(),
       eps_, dscale_, equalize_hist_);
 }
+
+
+
+#if 0
+
+
+
+cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
+    cv::OutputArray output_map, double eps, int dscale, bool equalize_hist)
+{
+
+  INSTRUMENT_REGION("");
+
+  const cv::Mat1b SE(3, 3, 255);
+
+  const cv::Mat src =
+      image.getMat();
+
+  cv::Mat s, g, w;
+
+  if( eps <= 0 ) {
+    eps = 1e-6;
+  }
+
+  if ( dscale < 1 ) {
+    s = src;
+  }
+  else {
+    downscale(src, s, dscale);
+  }
+
+  if( equalize_hist ) {
+    equalizehist(s);
+  }
+
+  compute_gradient(s, g);
+  cv::GaussianBlur(g, w, cv::Size(), 1, 1);
+
+
+//  cv::Scalar rv =
+//      cv::mean(g);
+
+  cv::Scalar rv =
+      weighted_mean(g, w);
+
+//  cv::Scalar rv =
+//      cv::mean(g);
+
+  if ( output_map.needed() ) {
+    //output_map.move(g);
+    g.copyTo(output_map);
+  }
+
+  return rv;
+}
+#endif

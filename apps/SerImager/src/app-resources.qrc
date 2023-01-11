@@ -20,6 +20,9 @@
 	<file>icons/light/display.png</file>
 	<file>icons/dark/display.png</file>
 
+	<file>icons/dark/roi.png</file>
+	<file>icons/light/roi.png</file>
+	
 	<file>icons/connect.png</file>
 	<file>icons/disconnect.png</file>
 	<file>icons/start.png</file>

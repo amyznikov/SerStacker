@@ -74,6 +74,8 @@ protected:
   QMenu * menuFile_ = nullptr;
   QMenu * menuView_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;
+  QAction * showRoiAction_ = nullptr;
+
 
 #if HAVE_INDIGO
   QIndigoClient * indigoClient_ = nullptr;

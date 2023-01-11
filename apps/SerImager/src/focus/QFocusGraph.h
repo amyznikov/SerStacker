@@ -33,8 +33,6 @@ public:
   void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
   QCameraFocusMeasureThread * focusMeasureThread() const;
 
-  QAction * showRoiAction() const;
-
 protected Q_SLOTS:
   void clearFocusGraph();
   void updateFocusGraph();
@@ -54,7 +52,6 @@ protected:
 
   //QMenu actionsMenu_;
   QAction * enableFocusTrackAction_ = nullptr;
-  QAction * showRoiAction_ = nullptr;
   QAction * showSettingsAction_ = nullptr;
 
   QFocusGraphSettingsDialogBox  * settings_ctl = nullptr;

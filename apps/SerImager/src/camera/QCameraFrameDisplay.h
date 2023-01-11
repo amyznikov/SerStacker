@@ -67,21 +67,19 @@ public:
 
   void setFrameProcessor(const c_image_processor::ptr & processor);
 
-  void showFocusRoi(bool show);
-  QRect focusRoi() const;
+  void setShowROI(bool show);
+  bool showROI() const;
+  QRect roi() const;
 
 
 Q_SIGNALS:
   void pixmapChanged();
-  void focusRoiChanged(const QRect & rc);
+  void roiChanged(const QRect & rc);
 
 protected Q_SLOTS:
   void onPixmapChanged();
   void onCameraStateChanged(QImagingCamera::State oldSate,
       QImagingCamera::State newState);
-
-//protected:
-//  void showCurrentDisplayImage() override;
 
 protected:
   void startWorkerThread();
@@ -107,7 +105,7 @@ protected:
   int bpp_ = 0;
   QPixmap pixmap_;
 
-  mutable QGraphicsRectShape * focusRoi_ = nullptr;
+  mutable QGraphicsRectShape * roiItem_ = nullptr;
 
 };
 

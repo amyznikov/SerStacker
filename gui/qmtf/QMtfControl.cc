@@ -383,6 +383,7 @@ void QMtfControl::onResetMtfClicked()
     }
 
     displaySettings_->setMtfInputRange(imin, imax);
+    displaySettings_->setMtf(0, 1, 0.5);
     displaySettings_->saveParameters();
 
     updateControls();

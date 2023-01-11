@@ -66,7 +66,7 @@ QGraphicsPixmapItem * QImageScene::setSceneImage(const QPixmap & pxmap)
   pixmapItem_->setPixmap(pxmap);
   pixmapItem_->setVisible(true);
 
-  if ( pxmap.size() != oldPixmapSize ) {
+  if ( !pxmap.isNull() && pxmap.size() != oldPixmapSize ) {
     setSceneRect(0, 0, pxmap.width(), pxmap.height());
     //pixmapItem_->setPos(pixmapItem_->mapFromScene(0, 0));
     pixmapItem_->setPos(0, 0);

@@ -91,22 +91,6 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
         }
       });
 
-  ///////////////////////////////////////////////////////////////////
-
-  addAction(showRoiAction_ =
-      new QAction(getIcon(ICON_roi),
-          "Show / Hide ROI...",
-          this));
-
-  showRoiAction_->setCheckable(true);
-  showRoiAction_->setChecked(false);
-
-  connect(showRoiAction_, &QAction::triggered,
-      [this](bool checked) {
-        if ( focusMeasureThread_ ) {
-        }
-      });
-
 
   ///////////////////////////////////////////////////////////////////
 }
@@ -136,15 +120,6 @@ QCameraFocusMeasureThread * QFocusGraph::focusMeasureThread() const
   return focusMeasureThread_;
 }
 
-QAction * QFocusGraph::showRoiAction() const
-{
-  return showRoiAction_;
-}
-
-//QMenu & QFocusGraph::actionsMenu()
-//{
-//  return actionsMenu_;
-//}
 
 void QFocusGraph::clearFocusGraph()
 {

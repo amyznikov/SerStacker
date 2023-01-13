@@ -6,6 +6,7 @@
  */
 
 #include "c_gaussian_filter.h"
+#include <core/debug.h>
 #if HAVE_TBB
 # include <tbb/tbb.h>
 #endif
@@ -14,8 +15,8 @@ c_gaussian_filter::c_gaussian_filter()
 {
 }
 
-c_gaussian_filter::c_gaussian_filter(double sigmaX, double sigmaY, const cv::Size & ksize, double scale)
-  :   sigmaX_(sigmaX), sigmaY_(sigmaY), ksize_(ksize), scale_(scale)
+c_gaussian_filter::c_gaussian_filter(double sigmaX, double sigmaY, const cv::Size & ksize, double scale) :
+  sigmaX_(sigmaX), sigmaY_(sigmaY), ksize_(ksize), scale_(scale)
 {
   create_gaussian_kernels(Kx_, Ky_, CV_32F, ksize_, sigmaX_, sigmaY_, scale_);
 }
@@ -74,7 +75,6 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
     ky = cv::Mat1f::ones(1,1) * scale;
   }
 }
-
 
 void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst, int borderType, double zvalue, int ddepth) const
 {

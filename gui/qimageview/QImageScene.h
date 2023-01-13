@@ -22,9 +22,9 @@ public:
   QImageScene(const QRectF & sceneRect, QObject *parent  = nullptr);
   QImageScene(qreal x, qreal y, qreal width, qreal height, QObject *parent  = nullptr);
 
-  QGraphicsPixmapItem * sceneImage(void) const;
-  QGraphicsPixmapItem * setSceneImage(const QImage & image);
-  QGraphicsPixmapItem * setSceneImage(const QPixmap & pxmap);
+  QGraphicsPixmapItem * image(void) const;
+  QGraphicsPixmapItem * setImage(const QImage & image);
+  QGraphicsPixmapItem * setImage(const QPixmap & pxmap);
 
 Q_SIGNALS:
   void graphicsItemChanged(QGraphicsItem * item);

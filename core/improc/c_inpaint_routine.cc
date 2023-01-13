@@ -23,9 +23,7 @@ c_inpaint_routine::ptr c_inpaint_routine::create(bool enabled)
 
 bool c_inpaint_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  average_pyramid_inpaint(image.getMatRef(), mask,
-      image.getMatRef());
-
+  average_pyramid_inpaint(image.getMat(), mask, image);
   return true;
 }
 

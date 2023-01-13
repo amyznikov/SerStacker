@@ -51,6 +51,9 @@ public:
   void setDisplayType(DisplayType v);
   DisplayType displayType() const;
 
+  void setTransparentMask(bool v);
+  bool transparentMask() const;
+
   virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
   virtual void setMask(cv::InputArray mask, bool make_copy /*= true*/);
   virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/);
@@ -120,6 +123,7 @@ protected:
   cv::Mat displayImage_;
   QImage qimage_;
 
+  bool transparentMask_ = true;
   bool enableEditMask_ = false;
   int editMaskPenRadius_ = 5;
   PenShape editMaskPenShape_ = PenShape_square;

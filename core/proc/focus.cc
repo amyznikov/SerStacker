@@ -7,10 +7,11 @@
 #include "focus.h"
 #include <core/proc/weighted_mean.h>
 #include <core/proc/morphology.h>
+#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 
-static void compute_gradient(const cv::Mat & src, cv::Mat & dst)
+static void compute_gradient(const cv::Mat & src, cv::Mat & g, double delta = 0)
 {
   INSTRUMENT_REGION("");
 
@@ -25,10 +26,10 @@ static void compute_gradient(const cv::Mat & src, cv::Mat & dst)
 
   cv::Mat gx, gy;
 
-  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-
-  cv::add(gx.mul(gx), gy.mul(gy), dst);
+  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::magnitude(gx, gy, g);
+  //cv::add(gx.mul(gx), gy.mul(gy), dst);
 }
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
@@ -91,17 +92,26 @@ static int get_bpp(int ddepth)
   return 0;
 }
 
-static void equalizehist(cv::Mat & image)
+static double maxval(int ddepth)
 {
-  switch (image.depth()) {
+  switch (CV_MAT_DEPTH(ddepth)) {
+    case CV_8U:
+      return UINT8_MAX;
+    case CV_8S:
+      return INT8_MAX;
     case CV_16U:
-      image.convertTo(image, CV_8U, 255. / 65536);
-      break;
-    case CV_32F:
-      image.convertTo(image, CV_8U, 255.);
-      break;
+      return UINT16_MAX;
+    case CV_16S:
+      return INT16_MAX;
+    case CV_32S:
+      return INT32_MAX;
   }
 
+  return 1;
+}
+
+static void equalizehist(cv::Mat & image)
+{
   if( image.depth() == CV_8U ) {
 
     const int cn = image.channels();
@@ -119,14 +129,13 @@ static void equalizehist(cv::Mat & image)
       cv::merge(channels, image);
     }
   }
-
 }
 
 
-//static inline float square(float x)
-//{
-//  return x * x;
-//}
+static inline float square(float x)
+{
+  return x * x;
+}
 //
 //cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image, cv::OutputArray cmap,
 //    double eps, cv::InputArray H)
@@ -225,69 +234,101 @@ static void equalizehist(cv::Mat & image)
 //  return rr;
 //}
 
+//static bool isfptype(int depth)
+//{
+//  return (depth = CV_MAT_DEPTH(depth)) == CV_32F || depth == CV_64F;
+//}
+
+
 cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
-    cv::OutputArray output_map, double eps, int dscale, bool equalize_hist)
+    cv::OutputArray output_contrast_map, double eps, int dscale, double threshold)
 {
 
   INSTRUMENT_REGION("");
 
-  const cv::Mat1b SE(3, 3, 255);
-
   const cv::Mat src =
       image.getMat();
 
-  cv::Mat s, e, d, r;
+  cv::Mat s, ss, r, map;
 
-  if( eps <= 0 ) {
-    eps = 1e-6;
+  src.convertTo(s, CV_32F, 1. / maxval(src.depth()));
+
+  if( dscale > 0 ) {
+    downscale(s, s, dscale);
   }
 
-  if ( dscale < 1 ) {
-    s = src;
-  }
-  else {
-    downscale(src, s, dscale);
-  }
+  // faster replacement for cv::GaussinBlur() for large kernels
+  downscale(s, ss, 2);
+  upscale(ss, s.size());
 
-  if( equalize_hist ) {
-    equalizehist(s);
-  }
-
-  cv::erode(s, e, SE);
-  cv::dilate(s, d, SE);
-
-  if( src.depth() == CV_32F ) {
-    cv::add(d, eps, d);
-  }
-  else {
-    d.convertTo(d, CV_32F, 1. / (1 << get_bpp(src.depth())), eps);
-    e.convertTo(e, CV_32F, 1. / (1 << get_bpp(src.depth())), 0);
+#if 0
+  //cv::max(ss, cv::Scalar::all(eps), ss);
+  cv::divide(s, ss, r, 1, CV_32F);
+  cv::absdiff(r, 1, r);
+  if( output_contrast_map.needed() ) {
+    r.copyTo(output_contrast_map);
   }
 
-  cv::divide(e,  d, r);
-  cv::subtract(cv::Scalar::all(1), r, r);
+  cv::Scalar rv =
+      cv::mean(r);
+#else
 
-  if( output_map.needed() ) {
-    //output_map.move(r);
-    r.copyTo(output_map);
+  const cv::Size size =
+      s.size();
+
+  const int src_channels =
+      s.channels();
+
+  const int cn =
+      (std::min)(4, src_channels);
+
+  if( output_contrast_map.needed() ) {
+    output_contrast_map.create(size, CV_MAKE_TYPE(CV_32F, cn));
+    map = output_contrast_map.getMat();
   }
 
-  //cv::multiply(r, r, d);
 
-  cv::GaussianBlur(r, d, cv::Size(), 1, 1);
+  // Compute weighted average
 
-  const cv::Scalar w =
-      cv::sum(d);
+  cv::Scalar rv, ww;
 
-  cv::multiply(r, d, r);
-  cv::divide(r, w, r);
+  for ( int y = 0; y < size.height; ++y ) {
 
-//  cv::Scalar rv =
-//      weighted_mean(r, d.mul(d));
+    const float * sp =
+        s.ptr<const float>(y);
 
+    const float * ssp =
+        ss.ptr<const float>(y);
 
-  return cv::sum(r);
-  //return rv;
+    float *mp =
+        map.empty() ? nullptr :
+            map.ptr<float>(y);
+
+    for ( int x = 0; x < size.width; ++x ) {
+      for ( int c = 0; c < cn; ++c ) {
+
+        const float sv = sp[x * src_channels + c];
+        const float ssv = ssp[x * src_channels + c];
+        const float r = fabs(1.f - sv / (std::max)(ssv, 1e-5f));
+        const float w = r;
+
+        rv[c] += r * w;
+        ww[c] += w;
+
+        if( mp ) {
+          mp[x * cn + c] = r * w;
+        }
+      }
+    }
+  }
+
+  for( int c = 0; c < cn; ++c ) {
+    rv[c] /= ww[c];
+  }
+
+#endif
+
+  return rv;
 }
 
 
@@ -311,14 +352,14 @@ double c_local_contrast_measure::eps() const
   return eps_;
 }
 
-void c_local_contrast_measure::set_equalize_hist(bool v)
+void c_local_contrast_measure::set_threshold(double v)
 {
-  equalize_hist_ = v;
+  threshold_ = v;
 }
 
-bool c_local_contrast_measure::equalize_hist() const
+double c_local_contrast_measure::threshold() const
 {
-  return equalize_hist_;
+  return threshold_;
 }
 
 
@@ -326,7 +367,7 @@ bool c_local_contrast_measure::equalize_hist() const
 cv::Scalar c_local_contrast_measure::compute(cv::InputArray image)
 {
   return compute_contrast_map(image, cv::noArray(),
-      eps_, dscale_, equalize_hist_);
+      eps_, dscale_, threshold_);
 }
 
 
@@ -383,4 +424,50 @@ cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
 
   return rv;
 }
+
+cv::Scalar c_local_contrast_measure::compute_contrast_map(cv::InputArray image,
+    cv::OutputArray output_map, double eps, int dscale, double threshold)
+{
+
+  INSTRUMENT_REGION("");
+
+  const cv::Mat1b SE(3, 3, 255);
+
+  const cv::Mat src =
+      image.getMat();
+
+  cv::Mat s, e, d, r, t;
+
+  if( eps <= 0 ) {
+    eps = 1e-6;
+  }
+
+  src.convertTo(s, CV_8U, maxval(CV_8U) / maxval(src.depth()));
+  if( dscale > 0 ) {
+    downscale(s, s, dscale);
+  }
+
+  //equalizehist(s);
+  //cv::GaussianBlur(s, s, cv::Size(), 1, 1);
+
+  cv::erode(s, e, SE);
+  cv::dilate(s, d, SE);
+  cv::max(d, 1, d);
+
+  cv::divide(e,  d, r, 1, CV_32F);
+  cv::subtract(cv::Scalar::all(1), r, r);
+
+
+
+  if( output_map.needed() ) {
+    r.copyTo(output_map);
+  }
+
+  //cv::compare(r, threshold, t, cv::CMP_GE);
+
+  // return cv::mean(r);
+  return weighted_mean(r, r);
+}
+
 #endif
+

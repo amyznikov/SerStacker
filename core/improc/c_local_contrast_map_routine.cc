@@ -39,19 +39,19 @@ int c_local_contrast_map_routine::dscale() const
   return dscale_;
 }
 
-void c_local_contrast_map_routine::set_equalize_hist(bool v)
+void c_local_contrast_map_routine::set_threshold(double v)
 {
-  equalize_hist_ = v;
+  threshold_ = v;
 }
 
-bool c_local_contrast_map_routine::equalize_hist() const
+double c_local_contrast_map_routine::threshold() const
 {
-  return equalize_hist_;
+  return threshold_;
 }
 
 bool c_local_contrast_map_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  c_local_contrast_measure::compute_contrast_map(image.getMat(), image, eps_, dscale_, equalize_hist_);
+  c_local_contrast_measure::compute_contrast_map(image.getMat(), image, eps_, dscale_, threshold_);
   return true;
 }
 
@@ -63,7 +63,7 @@ bool c_local_contrast_map_routine::deserialize(c_config_setting settings)
 
   settings.get("eps", &eps_);
   settings.get("dscale", &dscale_);
-  settings.get("equalize_hist", &equalize_hist_);
+  settings.get("equalize_hist", &threshold_);
 
   return true;
 }
@@ -76,7 +76,7 @@ bool c_local_contrast_map_routine::serialize(c_config_setting settings) const
 
   settings.set("eps", eps_);
   settings.set("dscale", dscale_);
-  settings.set("equalize_hist", equalize_hist_);
+  settings.set("equalize_hist", threshold_);
 
 
   return true;

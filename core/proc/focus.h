@@ -36,16 +36,16 @@ public:
   void set_eps(double v);
   double eps() const;
 
-  void set_equalize_hist(bool v);
-  bool equalize_hist() const;
+  void set_threshold(double v);
+  double threshold() const;
 
-  static cv::Scalar compute_contrast_map(cv::InputArray image, cv::OutputArray cmap,
-      double eps = 1e-6, int dscale = 0, bool equalize_hist = false);
+  static cv::Scalar compute_contrast_map(cv::InputArray image, cv::OutputArray output_contrast_map,
+      double eps = 1e-6, int dscale = 0, double threshold = 0.1);
 
 protected:
   int dscale_ = 0;
   double eps_ = 1e-6;
-  bool equalize_hist_ = false;
+  double threshold_ = 0.1;
 };
 
 #endif /* __focus_h__ */

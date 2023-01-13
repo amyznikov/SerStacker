@@ -45,17 +45,17 @@ QImageScene::QImageScene(qreal x, qreal y, qreal width, qreal height, QObject *p
   setSceneRect(0, 0, 1, 1);
 }
 
-QGraphicsPixmapItem * QImageScene::sceneImage(void) const
+QGraphicsPixmapItem * QImageScene::image(void) const
 {
   return pixmapItem_;
 }
 
-QGraphicsPixmapItem * QImageScene::setSceneImage(const QImage & image)
+QGraphicsPixmapItem * QImageScene::setImage(const QImage & image)
 {
-  return setSceneImage(QPixmap::fromImage(image));
+  return setImage(QPixmap::fromImage(image));
 }
 
-QGraphicsPixmapItem * QImageScene::setSceneImage(const QPixmap & pxmap)
+QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
 {
   const QSize oldPixmapSize =
       pixmapItem_->pixmap().size();

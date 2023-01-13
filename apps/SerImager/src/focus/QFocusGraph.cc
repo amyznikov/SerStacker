@@ -347,17 +347,17 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
             return false;
           });
 
-  equalize_hist_ctl =
-      add_checkbox(
-          "equalize_hist",
-          [this](bool checked ) {
+  threshold_ctl =
+      add_numeric_box<double>(
+          "threshold",
+          [this](double v ) {
             if ( focusMeasureThread_ ) {
-              focusMeasureThread_->measure().set_equalize_hist(checked);
+              focusMeasureThread_->measure().set_threshold(v);
             }
           },
-          [this](bool * v) {
+          [this](double * v) {
             if ( focusMeasureThread_ ) {
-              *v = focusMeasureThread_->measure().equalize_hist();
+              *v = focusMeasureThread_->measure().threshold();
               return true;
             }
             return false;

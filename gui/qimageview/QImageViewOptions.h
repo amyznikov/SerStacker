@@ -23,18 +23,20 @@ public:
   typedef QSettingsWidget Base;
   typedef QEnumComboBox<QImageViewer::DisplayType> DisplayTypeCombo;
 
-  QImageViewOptions(QWidget * parent = Q_NULLPTR);
+  QImageViewOptions(QWidget * parent = nullptr);
 
   void setImageViewer(QImageViewer * imageViewer);
   QImageViewer * imageViewer() const;
 
 protected:
   void onupdatecontrols() override;
+  void hideEvent(QHideEvent *event) override;
 
 protected:
-  QImageViewer * imageViewer_ = Q_NULLPTR;
-  DisplayTypeCombo * displayType_ctl = Q_NULLPTR;
-  QPenOptionsControl * penOptions_ctl = Q_NULLPTR;
+  QImageViewer * imageViewer_ = nullptr;
+  DisplayTypeCombo * displayType_ctl = nullptr;
+  QCheckBox * transparentMask_ctl = nullptr;
+  QPenOptionsControl * penOptions_ctl = nullptr;
 };
 
 
@@ -46,7 +48,7 @@ public:
   typedef QImageViewOptionsDlgBox ThisClass;
   typedef QDialog Base;
 
-  QImageViewOptionsDlgBox(QWidget * parent = Q_NULLPTR);
+  QImageViewOptionsDlgBox(QWidget * parent = nullptr);
 
   QImageViewOptions * viewOptions() const;
 
@@ -61,7 +63,7 @@ protected:
   void hideEvent(QHideEvent *event) override;
 
 protected:
-  QImageViewOptions * viewOptions_ctl = Q_NULLPTR;
+  QImageViewOptions * viewOptions_ctl = nullptr;
 };
 
 class QPenOptionsControl :
@@ -72,7 +74,7 @@ public:
   typedef QPenOptionsControl ThisClass;
   typedef QToolBar Base;
 
-  QPenOptionsControl(QWidget * parent = Q_NULLPTR);
+  QPenOptionsControl(QWidget * parent = nullptr);
 
   void setEnableEditMask(bool enable);
   bool enableEditMask() const;
@@ -89,9 +91,9 @@ signals:
   void editMaskPenShapeChanged();
 
 protected:
-  QToolButton * enableEdit_ctl = Q_NULLPTR;
-  QComboBox * penShape_ctl = Q_NULLPTR;
-  QComboBox * penSize_ctl = Q_NULLPTR;
+  QToolButton * enableEdit_ctl = nullptr;
+  QComboBox * penShape_ctl = nullptr;
+  QComboBox * penSize_ctl = nullptr;
   bool updatingControls_ = false;
 };
 

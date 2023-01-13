@@ -58,7 +58,7 @@ MainWindow::MainWindow()
 {
 
   static const auto createScrollableWrap =
-      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea *
+      [](QWidget * w, QWidget * parent = nullptr) -> QScrollArea *
   {
     QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
     scrollArea->setWidgetResizable(true);
@@ -718,7 +718,7 @@ void MainWindow::configureImageViewerToolbars()
           }
           else if ( imageViewOptionsDlgBox )  {
             delete imageViewOptionsDlgBox;
-            imageViewOptionsDlgBox = Q_NULLPTR;
+            imageViewOptionsDlgBox = nullptr;
           }
 
           //imageEditor->setDisplayType(checked ? QImageViewer::DisplayMask : QImageViewer::DisplayImage);
@@ -770,7 +770,7 @@ void MainWindow::configureImageViewerToolbars()
   connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
       [this, statusbar](QGraphicsItem * item) {
 
-        //QGraphicsLineItem * lineItem = Q_NULLPTR;
+        //QGraphicsLineItem * lineItem = nullptr;
         QGraphicsRectShape * rectShape = nullptr;
 
 //        if ( (lineItem = dynamic_cast<QGraphicsLineItem * >(shape)) ) {
@@ -956,7 +956,7 @@ void MainWindow::createImageViewOptionsControl()
     connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
         [this](int) {
           delete imageViewOptionsDlgBox;
-          imageViewOptionsDlgBox = Q_NULLPTR;
+          imageViewOptionsDlgBox = nullptr;
         });
 
     imageViewOptionsDlgBox->show();
@@ -1345,7 +1345,7 @@ void MainWindow::onLoadStackConfig()
           "Select stack config files",
           savedPathFileName,
           filter,
-          Q_NULLPTR,
+          nullptr,
           QFileDialog::ReadOnly);
 
 

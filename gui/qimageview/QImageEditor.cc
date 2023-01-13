@@ -103,10 +103,6 @@ void QImageEditor::updateImage()
       }
     }
 
-//    if ( displayFunction_ ) {
-//      displayFunction_->setCurrentImage(currentImage_,
-//          currentMask_);
-//    }
 
     updateDisplay();
   }

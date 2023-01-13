@@ -263,7 +263,7 @@ void QCameraFrameDisplay::stopWorkerThread()
 void QCameraFrameDisplay::onPixmapChanged()
 {
   c_unique_lock lock(mtfDisplayFunction_.mutex());
-  scene()->setSceneImage(pixmap_);
+  scene()->setImage(pixmap_);
 }
 
 void QCameraFrameDisplay::createFocusRoiRectItem()

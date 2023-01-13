@@ -22,15 +22,24 @@ QImageViewOptions::QImageViewOptions(QWidget * parent) :
 
   Q_INIT_RESOURCE(qimageview_resources);
 
-  displayType_ctl = add_enum_combobox<QImageViewer::DisplayType>(
-      "Display",
-      [this](QImageViewer::DisplayType v) {
-        if ( imageViewer_ && !updatingControls() ) {
-          imageViewer_->setDisplayType(v);
-          // emit parameterChanged();
-        }
-      });
+  displayType_ctl =
+      add_enum_combobox<QImageViewer::DisplayType>(
+          "Display",
+          [this](QImageViewer::DisplayType v) {
+            if ( imageViewer_ ) {
+              imageViewer_->setDisplayType(v);
+              // emit parameterChanged();
+            }
+          });
 
+  transparentMask_ctl =
+      add_checkbox("Transparent mask",
+          [this](bool checked) {
+            if ( imageViewer_ ) {
+              imageViewer_->setTransparentMask(checked);
+              // emit parameterChanged();
+            }
+          });
 
   penOptions_ctl =
       add_widget<QPenOptionsControl>();
@@ -79,11 +88,20 @@ void QImageViewOptions::onupdatecontrols()
   else {
 
     displayType_ctl->setCurrentItem(imageViewer_->displayType());
+    transparentMask_ctl->setChecked(imageViewer_->transparentMask());
     penOptions_ctl->setEnableEditMask(imageViewer_->enableEditMask());
     penOptions_ctl->setEditMaskPenRadius(imageViewer_->editMaskPenRadius());
     penOptions_ctl->setEditMaskPenShape(imageViewer_->editMaskPenShape());
 
     setEnabled(true);
+  }
+}
+
+void QImageViewOptions::hideEvent(QHideEvent * e)
+{
+  Base::hideEvent(e);
+  if( imageViewer_ ) {
+    imageViewer_->setEnableEditMask(false);
   }
 }
 

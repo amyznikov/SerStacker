@@ -15,10 +15,10 @@ template<>
 const c_enum_member* members_of<QImageViewer::DisplayType>()
 {
   static constexpr c_enum_member members[] = {
-      { QImageViewer::DisplayImage, "Image", "" },
+      { QImageViewer::DisplayImage, "Image", ""},
       { QImageViewer::DisplayMask, "Mask", "" },
       { QImageViewer::DisplayBlend, "Blend", "" },
-      { QImageViewer::DisplayImage }, // must be last
+      { QImageViewer::DisplayImage}, // must be last
       };
 
   return members;
@@ -160,6 +160,17 @@ QImageViewer::DisplayType QImageViewer::displayType() const
   return currentDisplayType_;
 }
 
+void QImageViewer::setTransparentMask(bool v)
+{
+  transparentMask_ = v;
+  updateDisplay();
+}
+
+bool QImageViewer::transparentMask() const
+{
+  return transparentMask_;
+}
+
 const cv::Mat & QImageViewer::currentImage() const
 {
   return currentImage_;
@@ -273,14 +284,17 @@ void QImageViewer::createDisplayImage()
       }
       else if ( currentImage_.channels() == 2  ) { // assume this is optical flow image
         //displayImage_.release();
-        displayFunction_->createDisplayImage(currentImage_, currentMask_,
+        displayFunction_->createDisplayImage(currentImage_,
+            transparentMask_ ? cv::noArray() : currentMask_,
             displayImage_,
             currentImage_.depth());
       }
       else  {
-        displayImage_.release();
-        displayFunction_->createDisplayImage(currentImage_, currentMask_,
-            displayImage_, CV_8U);
+        // displayImage_.release();
+        displayFunction_->createDisplayImage(currentImage_,
+            transparentMask_ ? cv::noArray() : currentMask_,
+            displayImage_,
+            CV_8U);
       }
     }
 
@@ -325,7 +339,7 @@ void QImageViewer::showCurrentDisplayImage()
 {
   INSTRUMENT_REGION("");
   if( displayImage_.empty() ) {
-    scene()->setSceneImage(QPixmap());
+    scene()->setImage(QPixmap());
   }
   else {
 
@@ -336,64 +350,7 @@ void QImageViewer::showCurrentDisplayImage()
                 Qt::ThresholdAlphaDither |
                 Qt::NoOpaqueDetection);
 
-//    if( displayImage_.type() == CV_8UC3 ) {
-//
-//      QImage qimage ( displayImage_.data,
-//          displayImage_.cols, displayImage_.rows,
-//          (int) (size_t) (displayImage_.step),
-//          QImage::Format_BGR888 );
-//
-//      pixmap =
-//          QPixmap::fromImage(qimage,
-//              Qt::NoFormatConversion |
-//                  Qt::ThresholdDither |
-//                  Qt::ThresholdAlphaDither |
-//                  Qt::NoOpaqueDetection);
-//
-//    }
-//    else if( displayImage_.type() == CV_8UC1 ) {
-//
-//      QImage qimage ( displayImage_.data,
-//          displayImage_.cols, displayImage_.rows,
-//          (int) (size_t) (displayImage_.step),
-//          QImage::Format_Grayscale8 );
-//
-//      pixmap =
-//          QPixmap::fromImage(qimage,
-//              Qt::NoFormatConversion |
-//                  Qt::ThresholdDither |
-//                  Qt::ThresholdAlphaDither |
-//                  Qt::NoOpaqueDetection);
-//
-//    }
-//    else if( displayImage_.type() == CV_16UC1 ) {
-//
-//      QImage qimage ( displayImage_.data,
-//          displayImage_.cols, displayImage_.rows,
-//          (int) (size_t) (displayImage_.step),
-//          QImage::Format_Grayscale16 );
-//
-//      pixmap =
-//          QPixmap::fromImage(qimage,
-//              Qt::NoFormatConversion |
-//                  Qt::ThresholdDither |
-//                  Qt::ThresholdAlphaDither |
-//                  Qt::NoOpaqueDetection);
-//
-//    }
-//    else {
-//
-//      cv2qt(displayImage_, &qimage_);
-//
-//      pixmap =
-//          QPixmap::fromImage(qimage_,
-//              Qt::NoFormatConversion |
-//                  Qt::ThresholdDither |
-//                  Qt::ThresholdAlphaDither |
-//                  Qt::NoOpaqueDetection);
-//    }
-
-    scene()->setSceneImage(pixmap);
+    scene()->setImage(pixmap);
   }
 }
 

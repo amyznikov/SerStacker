@@ -11,6 +11,10 @@
 
 #include <opencv2/opencv.hpp>
 
+/**
+ * This is wrapper around of cv:sepFilter2D() with support of image masks.
+ * Pixels for which mask == 0 don't contribute the blur operation.
+ */
 
 class c_gaussian_filter
 {

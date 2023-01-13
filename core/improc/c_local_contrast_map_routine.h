@@ -25,20 +25,20 @@ public:
   void set_dscale(int);
   int dscale() const;
 
-  void set_equalize_hist(bool v);
-  bool equalize_hist() const;
+  void set_threshold(double v);
+  double threshold() const;
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, eps, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, dscale, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, equalize_hist, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold, "");
   }
 //
 protected:
   double eps_ = 1e-6;
   int dscale_ = 0;
-  bool equalize_hist_ = false;
+  double threshold_ = 0.1;
 };
 
 #endif /* __c_local_contrast_map_routine_h__ */

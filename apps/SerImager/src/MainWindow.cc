@@ -32,6 +32,14 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
   return action;
 }
 
+QWidget* addStretch(QToolBar * toolbar)
+{
+  QWidget *stretch = new QWidget();
+  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  toolbar->addWidget(stretch);
+  return stretch;
+}
+
 }
 
 MainWindow::MainWindow(QWidget * parent) :
@@ -49,6 +57,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
 
 
+  setupStatusbar();
   setupMainMenu();
   setupFocusGraph();
   setupIndigoFocuser();
@@ -60,16 +69,12 @@ MainWindow::MainWindow(QWidget * parent) :
 
   QApplication::instance()->installEventFilter(this);
 
-  statusBar()->addWidget(mousepos_ctl = new QLabel("mouse", this));
-  mousepos_ctl->setText("");
   //mousepos_ctl->setFrameShape(QFrame::Box);
 
   connect(centralDisplay_, &QCameraFrameDisplay::onMouseMove,
       [this](QMouseEvent * e) {
         mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
-        //statusBar()->showMessage(centralDisplay_->statusStringForPixel(e->pos()));
       });
-
 }
 
 
@@ -116,6 +121,16 @@ void MainWindow::restoreState()
   QSettings settings;
   Base::restoreGeometry(settings.value("MainWindow/Geometry").toByteArray());
   Base::restoreState(settings.value("MainWindow/State").toByteArray());
+}
+
+void MainWindow::setupStatusbar()
+{
+  QStatusBar * sb =
+      statusBar();
+
+  sb->addWidget(mousepos_ctl = new QLabel(this));
+  sb->addWidget(exposure_status_ctl = new QLabel(this));
+  sb->addWidget(statistics_ctl = new QLabel("", this));
 }
 
 void MainWindow::setupMainMenu()
@@ -207,12 +222,21 @@ void MainWindow::setupImagerSettings()
 
         centralDisplay_->setCamera(camera);
         focusMeasureThread_->setCamera(camera);
+
+        if ( camera ) {
+          connect(camera.get(), &QImagingCamera::exposureStateUpdate,
+              [this](QImagingCamera::ExposureStatus status, double exposure, double elapsed) {
+
+                exposure_status_ctl->setText(
+                    QString::asprintf("Exposure: %s elapsed: %.1f / %.1f",
+                        toString(status),
+                        elapsed * 1e-3,
+                        exposure * 1e-3));
+
+              });
+        }
       });
 
-
-  statusBar()->addWidget(statistics_ctl = new QLabel("Stats", this));
-  statistics_ctl->setText("");
-  //statistics_ctl->setFrameShape(QFrame::Panel);
 
   connect(&cameraWriter_, &QCameraWriter::statisticsUpdate,
       this, &ThisClass:: onCameraWriterStatisticsUpdate,

@@ -19,11 +19,11 @@ struct c_capture_limits
 {
 public:
   enum TYPE {
-    by_time,
-    by_number_of_frames
+    ByTime,
+    ByNumberOfFrames
   };
 
-  TYPE type = by_time;
+  TYPE type = ByTime;
   int value = -1; // unlimited
 };
 

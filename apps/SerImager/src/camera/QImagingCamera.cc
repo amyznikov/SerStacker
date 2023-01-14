@@ -28,6 +28,23 @@ const c_enum_member* members_of<serimager::QImagingCamera::State>()
   return members;
 }
 
+template<>
+const c_enum_member* members_of<serimager::QImagingCamera::ExposureStatus>()
+{
+  using namespace serimager;
+
+  static constexpr c_enum_member members[] = {
+      { QImagingCamera::Exposure_idle, "idle", "idle state, can start exposure now" },
+      { QImagingCamera::Exposure_working, "exposing", "exposing" },
+      { QImagingCamera::Exposure_success, "success", "exposure finished and waiting for download" },
+      { QImagingCamera::Exposure_failed, "failed", "exposure failed, you need to start exposure again" },
+      { QImagingCamera::Exposure_idle }
+  };
+
+  return members;
+}
+
+
 namespace serimager {
 
 
@@ -65,6 +82,8 @@ QImagingCamera::QImagingCamera(QObject * parent) :
   //static const int r1 = qRegisterMetaType<serimager::QImagingCamera::State>("State");
   static const int r2 = qRegisterMetaType<serimager::QImagingCamera::State>("QImagingCamera::State");
   static const int r3 = qRegisterMetaType<serimager::QImagingCamera::State>("serimager::QImagingCamera::State");
+  static const int r4 = qRegisterMetaType<serimager::QImagingCamera::State>("QImagingCamera::ExposureStatus");
+  static const int r5 = qRegisterMetaType<serimager::QImagingCamera::State>("serimager::QImagingCamera::ExposureStatus");
 }
 
 QImagingCamera::State QImagingCamera::state() const

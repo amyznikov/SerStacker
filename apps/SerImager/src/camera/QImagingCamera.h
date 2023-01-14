@@ -36,6 +36,14 @@ public:
     State_disconnecting,
   };
 
+  enum ExposureStatus
+  {
+    Exposure_idle = 0, // idle states, you can start exposure now
+    Exposure_working, // exposing
+    Exposure_success, // exposure finished and waiting for download
+    Exposure_failed, //exposure failed, you need to start exposure again
+  };
+
   QImagingCamera(QObject * parent = nullptr);
 
   virtual QString display_name() const = 0;
@@ -68,6 +76,8 @@ public:
 Q_SIGNALS:
   void stateChanged(QImagingCamera::State oldSate, QImagingCamera::State newState);
   void frameReceived();
+  void exposureStateUpdate(QImagingCamera::ExposureStatus status,
+      double exposure, double elapsed);
 
 protected:
   virtual bool device_is_connected() const = 0;

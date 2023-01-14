@@ -40,6 +40,7 @@ protected:
   void restoreState();
   void setupMainMenu();
   void setupMainToolbar();
+  void setupStatusbar();
   void setupImagerSettings();
   void setupFrameProcessorControls();
   void setupFocusGraph();
@@ -74,8 +75,8 @@ protected:
   QToolButton * showMtfControlButton_ = nullptr;
   QLabel * statistics_ctl = nullptr;
   QLabel * mousepos_ctl = nullptr;
+  QLabel * exposure_status_ctl = nullptr;
   QMenu displayOptionsMenu_;
-
 
   QToolBar * manToolbar_ = nullptr;
   QMenu * menuFile_ = nullptr;

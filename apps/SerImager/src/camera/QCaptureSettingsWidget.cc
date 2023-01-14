@@ -47,42 +47,6 @@ void init_resources()
   }
 }
 
-
-////QSpinBox *num_rounds_ctl
-//template<class CtrlType>
-//class QNamedControl:
-//    public QFrame
-//{
-//public:
-//  typedef QNamedControl ThisClass;
-//  typedef QFrame Base;
-//
-//  QNamedControl(const QString & label, QWidget * parent = nullptr) :
-//    Base(parent)
-//  {
-//
-//    hbox_ = new QHBoxLayout(this);
-//    hbox_->setContentsMargins(0, 0, 0, 0);
-//    hbox_->addWidget(label_ctl = new QLabel(label), 0, Qt::AlignLeft);
-//    hbox_->addWidget(control_ = new CtrlType(this), 0, Qt::AlignLeft);
-//  }
-//
-//  QLabel * label () const
-//  {
-//    return label_ctl;
-//  }
-//
-//  CtrlType * control() const
-//  {
-//    return control_;
-//  }
-//
-//protected:
-//  QHBoxLayout * hbox_ = nullptr;
-//  QLabel * label_ctl = nullptr;
-//  CtrlType * control_ = nullptr;
-//};
-
 } // namespace
 
 
@@ -120,80 +84,80 @@ void QCameraCaptureControl::populateCaptureLimitsCombobox()
 {
   static const c_capture_limits default_capture_limits[] = {
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = -1 // unlimited
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 1 // 1 s
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 2
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 5
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 10
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 15
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 30
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 60
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 90
       },
       {
-          .type = c_capture_limits::by_time,
+          .type = c_capture_limits::ByTime,
           .value = 120
       },
 
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 100
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 300
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 500
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 1000
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 1500
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 2000
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 3000
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 5000
       },
       {
-          .type = c_capture_limits::by_number_of_frames,
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 10000
       },
 

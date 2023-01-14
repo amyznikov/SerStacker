@@ -6,6 +6,7 @@
  */
 
 #include "QASICamera.h"
+#include <core/get_time.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -447,25 +448,90 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
   if( frm ) {
     INSTRUMENT_REGION("ASIGetVideoData");
 
+    ASI_ERROR_CODE status;
+
+    ASI_BOOL auto_exposure = ASI_FALSE;
+    long exposure = 0;
+
+    status =
+        ASIGetControlValue(camInfo_.CameraID, ASI_EXPOSURE,
+            &exposure,
+            &auto_exposure);
+
+    if( status ) {
+      CF_ERROR("ASIGetControlValue(ASI_EXPOSURE) fails: status=%d (%s)",
+          status, toString(status));
+    }
+    else {
+      CF_DEBUG("ASI_EXPOSURE: %ld (us) auto=%d",
+          exposure, auto_exposure);
+    }
+
+    const bool is_long_exposure =
+        exposure > 1 * 1000 * 1000;
+
+    const double exposure_time_ms =
+        exposure * 1e-3;
+
+    const double start_time_ms =
+        get_realtime_ms();
+
+    if( is_long_exposure ) {
+      Q_EMIT exposureStateUpdate(Exposure_working,
+          exposure_time_ms, 0);
+    }
+
     while (is_asi_open_ && current_state_ == State_started) {
 
-      ASI_ERROR_CODE status =
+      status =
           ASIGetVideoData(camInfo_.CameraID,
               (uint8_t*) frm->data(),
               frm->size(),
-              100);
+              500);
 
       if( status == ASI_SUCCESS ) {
+
+        if( is_long_exposure ) {
+          Q_EMIT exposureStateUpdate(Exposure_success,
+              exposure_time_ms,
+              get_realtime_ms() - start_time_ms);
+        }
+
         return frm;
       }
 
       if( status == ASI_ERROR_TIMEOUT ) {
-        // CF_DEBUG("ASI_ERROR_TIMEOUT");
+
+        ASI_EXPOSURE_STATUS expStatus =
+            ASI_EXP_IDLE;
+
+        status =
+            ASIGetExpStatus(camInfo_.CameraID,
+                &expStatus);
+
+        if( status || expStatus != ASI_EXP_WORKING ) {
+          CF_DEBUG("ASIGetExpStatus: %s, expStatus=%d", toString(status), expStatus);
+          break;
+        }
+
+        if( is_long_exposure ) {
+          Q_EMIT exposureStateUpdate(Exposure_working,
+              exposure_time_ms,
+              get_realtime_ms() - start_time_ms);
+        }
+
         continue;
       }
 
       CF_DEBUG("ASIGetVideoData: status=%d (%s) is_open_=%d data: %p size=%d ", status, toString(status), is_asi_open_,
           frm->data(), frm->size());
+
+      if( is_long_exposure ) {
+        Q_EMIT exposureStateUpdate(Exposure_failed,
+            exposure_time_ms,
+            get_realtime_ms() - start_time_ms);
+      }
+
       break;
     }
 

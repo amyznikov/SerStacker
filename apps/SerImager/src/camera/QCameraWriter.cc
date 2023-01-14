@@ -21,9 +21,9 @@ const c_enum_member* members_of<serimager::c_capture_limits::TYPE>()
   using namespace serimager;
 
   static constexpr c_enum_member members[] = {
-      { c_capture_limits::by_time, "by_time", "" },
-      { c_capture_limits::by_number_of_frames, "by_number_of_frames", "" },
-      { c_capture_limits::by_time }
+      { c_capture_limits::ByTime, "ByTime", "" },
+      { c_capture_limits::ByNumberOfFrames, "ByNumberOfFrames", "" },
+      { c_capture_limits::ByTime }
   };
 
   return members;
@@ -121,9 +121,9 @@ QString toQString(const c_capture_limits & limits)
   }
 
   switch (limits.type) {
-    case c_capture_limits::by_time:
+    case c_capture_limits::ByTime:
       return QString("%1 sec").arg(limits.value);
-    case c_capture_limits::by_number_of_frames:
+    case c_capture_limits::ByNumberOfFrames:
       return QString("%1 frames").arg(limits.value);
   }
 
@@ -369,7 +369,7 @@ void QCameraWriter::writerThreadProc()
     int start_index = -1;
 
     const double max_capture_duration =
-        capture_limits_.type == c_capture_limits::by_time ?
+        capture_limits_.type == c_capture_limits::ByTime ?
             capture_limits_.value * 1000 :
             -1;
 
@@ -483,12 +483,12 @@ void QCameraWriter::writerThreadProc()
 
       if( capture_limits_.value > 0 ) {
 
-        if( capture_limits_.type == c_capture_limits::by_time ) {
+        if( capture_limits_.type == c_capture_limits::ByTime ) {
           if( capture_duration_ >= max_capture_duration ) {
             break;
           }
         }
-        else if( capture_limits_.type == c_capture_limits::by_number_of_frames ) {
+        else if( capture_limits_.type == c_capture_limits::ByNumberOfFrames ) {
           if( num_saved_frames_ >= capture_limits_.value ) {
             break;
           }

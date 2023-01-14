@@ -241,7 +241,7 @@ c_frame_registration::ecc_image_preprocessor_function create_ecc_image_preproces
 
   if( image_processing_options.ecc_image_processor ) {
 
-    const c_image_processor::ptr &processor =
+    const c_image_processor::sptr &processor =
         image_processing_options.ecc_image_processor;
 
     if( processor ) {

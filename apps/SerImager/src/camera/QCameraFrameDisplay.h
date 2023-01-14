@@ -12,6 +12,7 @@
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
+#include <gui/widgets/QSettingsWidget.h>
 #include "QImagingCamera.h"
 
 namespace serimager {
@@ -68,7 +69,7 @@ public:
   const QCameraFrameMtfDisplayFunction * mtfDisplayFunction() const;
   QCameraFrameMtfDisplayFunction * mtfDisplayFunction();
 
-  void setFrameProcessor(const c_image_processor::ptr & processor);
+  void setFrameProcessor(const c_image_processor::sptr & processor);
 
   void setShowROI(bool show);
   bool showROI() const;
@@ -96,7 +97,6 @@ protected:
   QImagingCamera::sptr camera_;
   QCameraFrameMtfDisplayFunction mtfDisplayFunction_;
 
-  //std::mutex mutex_;
   enum WorkerState {
     Worker_Idle,
     Worker_Starting,
@@ -112,6 +112,55 @@ protected:
   mutable QGraphicsRectShape * roiItem_ = nullptr;
 
 };
+
+
+class QDisplayFrameProcessorSettingsWidget :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QDisplayFrameProcessorSettingsWidget ThisClass;
+  typedef QSettingsWidget Base;
+
+  QDisplayFrameProcessorSettingsWidget(QWidget * parent = nullptr);
+
+  void setDisplay(QCameraFrameDisplay * display);
+  QCameraFrameDisplay* display() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  QCameraFrameDisplay * display_ = nullptr;
+  QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
+};
+
+class QDisplayFrameProcessorSettingsDialogBox :
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QDisplayFrameProcessorSettingsDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QDisplayFrameProcessorSettingsDialogBox(QWidget * parent = nullptr);
+
+  void setDisplay(QCameraFrameDisplay * display);
+  QCameraFrameDisplay* display() const;
+
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+
+protected:
+  void closeEvent(QCloseEvent *) override;
+  void showEvent(QShowEvent *e) override;
+  void hideEvent(QHideEvent *e) override;
+
+protected:
+  QVBoxLayout * lv_ = nullptr;
+  QDisplayFrameProcessorSettingsWidget * setiingsWidget_ = nullptr;
+};
+
 
 } /* namespace qserimager */
 

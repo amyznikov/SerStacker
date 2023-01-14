@@ -78,8 +78,8 @@ bool c_input_sequence::deserialize(c_config_setting settings)
   all_sources_.clear();
   enabled_sources_.clear();
 
-  LOAD_PROPERTY(settings, this, auto_debayer);
-  LOAD_PROPERTY(settings, this, auto_apply_color_matrix);
+  LOAD_PROPERTY(settings, *this, auto_debayer);
+  LOAD_PROPERTY(settings, *this, auto_apply_color_matrix);
 
   c_config_setting sources_list =
       settings["sources"];

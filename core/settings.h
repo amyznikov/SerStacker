@@ -515,9 +515,9 @@ bool libconfig_parse_flags(c_config_setting settings,
 
 #define LOAD_PROPERTY(cfg, obj, prop) \
   if ( true ) { \
-    auto v = (obj)->prop(); \
+    auto v = (obj).prop(); \
     if ( ::load_settings(cfg, #prop,  &v) ) { \
-      (obj)->set_##prop(v); \
+      (obj).set_##prop(v); \
     }\
   }
 

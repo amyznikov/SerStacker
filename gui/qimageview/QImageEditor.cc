@@ -47,13 +47,13 @@ cv::Mat & QImageEditor::inputMask()
   return inputMask_;
 }
 
-void QImageEditor::set_current_processor(const c_image_processor::ptr & processor)
+void QImageEditor::set_current_processor(const c_image_processor::sptr & processor)
 {
   current_processor_ = processor;
   updateImage();
 }
 
-const c_image_processor::ptr & QImageEditor::current_processor() const
+const c_image_processor::sptr & QImageEditor::current_processor() const
 {
   return current_processor_;
 }

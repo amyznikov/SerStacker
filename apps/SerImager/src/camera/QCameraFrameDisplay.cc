@@ -158,7 +158,7 @@ DEBAYER_ALGORITHM QCameraFrameDisplay::debayer_algorithm()
 }
 
 
-void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::ptr & processor)
+void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::sptr & processor)
 {
   mtfDisplayFunction_.mutex().lock();
   Base::current_processor_ = processor;
@@ -449,5 +449,93 @@ void QCameraFrameDisplay::workerThread()
 
   workerState_ = Worker_Idle;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QDisplayFrameProcessorSettingsWidget::QDisplayFrameProcessorSettingsWidget(QWidget * parent) :
+    Base("QDisplayFrameProcessorSettings", parent)
+{
+  debayer_ctl =
+      add_enum_combobox<DEBAYER_ALGORITHM>(
+          "Debayer:",
+          [this](DEBAYER_ALGORITHM v) {
+            if ( display_ ) {
+              display_->set_debayer_algorithm(v);
+            }
+          },
+          [this](DEBAYER_ALGORITHM * v) {
+            if ( display_ ) {
+              *v = display_->debayer_algorithm();
+              return true;
+            }
+            return false;
+          });
+
+  debayer_ctl->setWhatsThis("Selected debayer algorithm for bayer patterns:");
+
+
+  updateControls();
+}
+
+void QDisplayFrameProcessorSettingsWidget::setDisplay(QCameraFrameDisplay * display)
+{
+  display_ = display;
+  updateControls();
+}
+
+QCameraFrameDisplay* QDisplayFrameProcessorSettingsWidget::display() const
+{
+  return display_;
+}
+
+void QDisplayFrameProcessorSettingsWidget::onupdatecontrols()
+{
+  if ( !display_ ) {
+    setEnabled(false);
+  }
+  else {
+    Base::onupdatecontrols();
+    setEnabled(true);
+   }
+}
+
+
+QDisplayFrameProcessorSettingsDialogBox::QDisplayFrameProcessorSettingsDialogBox(QWidget * parent) :
+    Base(parent)
+{
+  setWindowTitle("Frame Display Settings");
+
+  lv_ = new QVBoxLayout(this);
+  lv_->addWidget(setiingsWidget_ = new QDisplayFrameProcessorSettingsWidget(this));
+}
+
+void QDisplayFrameProcessorSettingsDialogBox::setDisplay(QCameraFrameDisplay * display)
+{
+  setiingsWidget_->setDisplay(display);
+}
+
+QCameraFrameDisplay* QDisplayFrameProcessorSettingsDialogBox::display() const
+{
+  return setiingsWidget_->display();
+}
+
+void QDisplayFrameProcessorSettingsDialogBox::closeEvent(QCloseEvent * e)
+{
+  hide();
+}
+
+void QDisplayFrameProcessorSettingsDialogBox::showEvent(QShowEvent *e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QDisplayFrameProcessorSettingsDialogBox::hideEvent(QHideEvent *e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
 
 } /* namespace qserimager */

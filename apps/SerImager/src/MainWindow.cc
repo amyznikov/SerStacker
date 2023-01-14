@@ -15,6 +15,25 @@ namespace serimager {
 #define ICON_display          ":/qserimager/icons/display.png"
 #define ICON_roi              ":/qserimager/icons/roi.png"
 
+
+
+namespace {
+
+template<class Obj, typename Fn>
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
+    Obj * receiver, Fn fn)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+
+  QObject::connect(action, &QAction::triggered, receiver, fn);
+
+  return action;
+}
+
+}
+
 MainWindow::MainWindow(QWidget * parent) :
    Base(parent)
 {
@@ -30,11 +49,12 @@ MainWindow::MainWindow(QWidget * parent) :
   setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
 
 
-  setupMainMenuBar();
+  setupMainMenu();
   setupFocusGraph();
   setupIndigoFocuser();
   setupImagerSettings();
   setupFrameProcessorControls();
+  setupMainToolbar();
 
   restoreState();
 
@@ -98,9 +118,11 @@ void MainWindow::restoreState()
   Base::restoreState(settings.value("MainWindow/State").toByteArray());
 }
 
-void MainWindow::setupMainMenuBar()
+void MainWindow::setupMainMenu()
 {
   menuBar()->setNativeMenuBar(false);
+
+  ///////////////////////////////////////////////////////////////////
 
   menuFile_ =
       menuBar()->addMenu("&File");
@@ -110,69 +132,58 @@ void MainWindow::setupMainMenuBar()
     close();
   });
 
+  ///////////////////////////////////////////////////////////////////
 
   menuView_ =
       menuBar()->addMenu("&View");
 
+  /////////////////////////////////////
 
-  //////////////
+  menuView_->addAction(showRoiAction_ =
+      createCheckableAction(getIcon(ICON_roi),
+          "Show ROI",
+          "Show / Hide ROI rectangle",
+          centralDisplay_,
+          &QCameraFrameDisplay::setShowROI));
 
+  showRoiAction_->setChecked(centralDisplay_->showROI());
+
+
+  /////////////////////////////////////
+
+  menuView_->addAction(showMtfControlAction_ =
+      createCheckableAction(getIcon(ICON_histogram),
+          "Display Options...",
+          "Show / Hide Display Options",
+          this,
+          &ThisClass::onShowMtfControlActionTriggered));
+
+
+
+  /////////////////////////////////////
+
+
+
+}
+
+void MainWindow::setupMainToolbar()
+{
   menuBar()->setCornerWidget(manToolbar_ =
       new QToolBar(this),
       Qt::TopRightCorner);
 
   manToolbar_->setContentsMargins(0, 0, 0, 0);
   manToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  manToolbar_->setIconSize(QSize(16, 16));
+  manToolbar_->setIconSize(QSize(18, 18));
 
-  //////////////
+  ///////////////////////////////////////////////////////////////////
+  manToolbar_->addAction(showRoiAction_);
+  manToolbar_->addAction(showFrameProcessorAction_);
+  manToolbar_->addAction(showMtfControlAction_);
 
-  manToolbar_->addAction(showRoiAction_ =
-      new QAction(getIcon(ICON_roi),
-          "Show ROI"));
-
-  showRoiAction_->setToolTip("Show / Hide ROI rectangle");
-  showRoiAction_->setCheckable(true);
-  showRoiAction_->setChecked(centralDisplay_->showROI());
-  menuView_->addAction(showRoiAction_);
-
-  connect(showRoiAction_, &QAction::triggered,
-      centralDisplay_, &QCameraFrameDisplay::setShowROI);
-
-  //////////////
-
-
-
-  manToolbar_->addAction(showMtfControlAction_ =
-      new QAction(getIcon(ICON_histogram),
-          "Display Options..."));
-
-  showMtfControlAction_->setToolTip("Show / Hide display options");
-  showMtfControlAction_->setCheckable(true);
-  menuView_->addAction(showMtfControlAction_);
-
-  connect(showMtfControlAction_, &QAction::triggered,
-      [this](bool checked) {
-
-        if ( checked && !mtfControl_ ) {
-
-          mtfControl_ = new QMtfControlDialogBox(this);
-          mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
-
-          connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
-              showMtfControlAction_, &QAction::setChecked);
-
-        }
-
-        mtfControl_->setVisible(checked);
-      });
-
-
-  //////////////
-
-
-
+  ///////////////////////////////////////////////////////////////////
 }
+
 
 void MainWindow::setupImagerSettings()
 {
@@ -183,9 +194,8 @@ void MainWindow::setupImagerSettings()
 
   imagerSettingsDock_->setObjectName("imagerSettingsDock_");
 
-  if ( menuView_ )  {
-    menuView_ ->addAction(imagerSettingsDock_->toggleViewAction());
-  }
+  menuView_->addAction(showCameraControlsAction_ =
+      imagerSettingsDock_->toggleViewAction());
 
   imagerSettings_ctl->setCameraWriter(&cameraWriter_);
 
@@ -226,7 +236,6 @@ void MainWindow::setupFrameProcessorControls()
   showFrameProcessorAction_ = frameProcessorDock_->toggleViewAction();
   showFrameProcessorAction_->setIcon(getIcon(ICON_display));
   showFrameProcessorAction_->setToolTip("Show / Hide video frame processing options");
-  manToolbar_->insertAction(showMtfControlAction_, showFrameProcessorAction_);
 
 
   connect(frameProcessor_ctl, &QImageProcessorSelector::parameterChanged,
@@ -235,17 +244,14 @@ void MainWindow::setupFrameProcessorControls()
       });
 
 
-  QAction * showDisplaysSettingsAction =
-      frameProcessor_ctl->showDisplaysSettingsAction();
+  if ( (showdisplayFrameProcessorSettingsAction_  = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
 
-  if ( showDisplaysSettingsAction ) {
+    showdisplayFrameProcessorSettingsAction_->setCheckable(true);
+    showdisplayFrameProcessorSettingsAction_->setChecked(false);
+    showdisplayFrameProcessorSettingsAction_->setEnabled(true);
 
-    showDisplaysSettingsAction->setCheckable(true);
-    showDisplaysSettingsAction->setChecked(false);
-    showDisplaysSettingsAction->setEnabled(true);
-
-    connect(showDisplaysSettingsAction, &QAction::triggered,
-        this, &ThisClass::onShowDisplaysSettingsActionTriggered);
+    connect(showdisplayFrameProcessorSettingsAction_, &QAction::triggered,
+        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
   }
 
 
@@ -343,11 +349,44 @@ void MainWindow::setupIndigoFocuser()
 #endif // HAVE_INDIGO
 }
 
-void MainWindow::onShowDisplaysSettingsActionTriggered(bool checked)
+void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked)
 {
+  if( checked ) {
+    if( !displayFrameProcessorSettingsDialogBox_ ) {
+
+      displayFrameProcessorSettingsDialogBox_ = new QDisplayFrameProcessorSettingsDialogBox(this);
+      displayFrameProcessorSettingsDialogBox_->setDisplay(centralDisplay_);
+
+      connect(displayFrameProcessorSettingsDialogBox_, &QDisplayFrameProcessorSettingsDialogBox::visibilityChanged,
+          [this](bool visible) {
+            if ( showdisplayFrameProcessorSettingsAction_ ) {
+              showdisplayFrameProcessorSettingsAction_->setChecked(visible);
+            }
+          });
+    }
+
+    displayFrameProcessorSettingsDialogBox_->show();
+  }
+  else if( displayFrameProcessorSettingsDialogBox_ ) {
+    displayFrameProcessorSettingsDialogBox_->hide();
+  }
 
 }
 
+void MainWindow::onShowMtfControlActionTriggered(bool checked)
+{
+  if ( checked && !mtfControl_ ) {
+
+    mtfControl_ = new QMtfControlDialogBox(this);
+    mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
+
+    connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
+        showMtfControlAction_, &QAction::setChecked);
+
+  }
+
+  mtfControl_->setVisible(checked);
+}
 
 
 } /* namespace qserimager */

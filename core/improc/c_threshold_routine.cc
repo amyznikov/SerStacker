@@ -140,8 +140,8 @@ bool c_threshold_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, threshold_type);
-  LOAD_PROPERTY(settings, this, threshold_value);
+  LOAD_PROPERTY(settings, *this, threshold_type);
+  LOAD_PROPERTY(settings, *this, threshold_value);
 
   return true;
 }

@@ -153,7 +153,7 @@ protected:
 QString saveImageFileAs(QWidget * parent,
     const cv::Mat & currentImage,
     const cv::Mat & currentMask,
-    const c_image_processor::ptr & currentProcesor = nullptr,
+    const c_image_processor::sptr & currentProcesor = nullptr,
     const QString & fileName = "");
 
 #endif /* __QImageSaveOptions_h__ */

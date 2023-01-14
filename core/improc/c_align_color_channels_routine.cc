@@ -166,12 +166,12 @@ bool c_align_color_channels_routine::deserialize(c_config_setting settings)
   settings.get("enable_threshold", &enable_threshold_);
   settings.get("threshold", &threshold_);
 
-  LOAD_PROPERTY(settings, &algorithm_, motion_type);
-  LOAD_PROPERTY(settings, &algorithm_, interpolation);
-  LOAD_PROPERTY(settings, &algorithm_, smooth_sigma);
-  LOAD_PROPERTY(settings, &algorithm_, eps);
-  LOAD_PROPERTY(settings, &algorithm_, max_iterations);
-  LOAD_PROPERTY(settings, &algorithm_, update_step_scale);
+  LOAD_PROPERTY(settings, algorithm_, motion_type);
+  LOAD_PROPERTY(settings, algorithm_, interpolation);
+  LOAD_PROPERTY(settings, algorithm_, smooth_sigma);
+  LOAD_PROPERTY(settings, algorithm_, eps);
+  LOAD_PROPERTY(settings, algorithm_, max_iterations);
+  LOAD_PROPERTY(settings, algorithm_, update_step_scale);
 
   return true;
 }

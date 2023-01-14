@@ -110,13 +110,13 @@ bool c_affine_transform_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, rotation);
-  LOAD_PROPERTY(settings, this, translation);
-  LOAD_PROPERTY(settings, this, scale);
-  LOAD_PROPERTY(settings, this, interpolation);
-  LOAD_PROPERTY(settings, this, border_type);
-  LOAD_PROPERTY(settings, this, border_value);
-  LOAD_PROPERTY(settings, this, resize_mode);
+  LOAD_PROPERTY(settings, *this, rotation);
+  LOAD_PROPERTY(settings, *this, translation);
+  LOAD_PROPERTY(settings, *this, scale);
+  LOAD_PROPERTY(settings, *this, interpolation);
+  LOAD_PROPERTY(settings, *this, border_type);
+  LOAD_PROPERTY(settings, *this, border_value);
+  LOAD_PROPERTY(settings, *this, resize_mode);
 
   return true;
 }

@@ -28,8 +28,8 @@ bool c_scale_channels_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, bias);
-  LOAD_PROPERTY(settings, this, stretch);
+  LOAD_PROPERTY(settings, *this, bias);
+  LOAD_PROPERTY(settings, *this, stretch);
 
   return true;
 }

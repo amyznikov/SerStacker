@@ -55,14 +55,14 @@ bool QImageProcessorsCollection::empty()
   return c_image_processor_collection::default_instance()->empty();
 }
 
-const c_image_processor::ptr & QImageProcessorsCollection::item(int pos)
+const c_image_processor::sptr & QImageProcessorsCollection::item(int pos)
 {
   return c_image_processor_collection::default_instance()->at(pos);
 }
 
 
 
-void QImageProcessorsCollection::add(const c_image_processor::ptr & p, bool emit_notify)
+void QImageProcessorsCollection::add(const c_image_processor::sptr & p, bool emit_notify)
 {
   c_image_processor_collection::default_instance()->emplace_back(p);
 
@@ -71,7 +71,7 @@ void QImageProcessorsCollection::add(const c_image_processor::ptr & p, bool emit
   }
 }
 
-bool QImageProcessorsCollection::insert(int pos, const c_image_processor::ptr & p, bool emit_notify)
+bool QImageProcessorsCollection::insert(int pos, const c_image_processor::sptr & p, bool emit_notify)
 {
   if( pos < 0 || pos >= size() ) {
     CF_FATAL("POSSIBLE APP BUG: attempt to insert into position %d when array size=%d", pos, size());
@@ -87,7 +87,7 @@ bool QImageProcessorsCollection::insert(int pos, const c_image_processor::ptr & 
   return true;
 }
 
-bool QImageProcessorsCollection::remove(const c_image_processor::ptr & p, bool emit_notify)
+bool QImageProcessorsCollection::remove(const c_image_processor::sptr & p, bool emit_notify)
 {
   c_image_processor_collection::iterator pos =
       c_image_processor_collection::default_instance()->find(p);
@@ -120,7 +120,7 @@ bool QImageProcessorsCollection::remove_at(int pos, bool emit_notify)
   return true;
 }
 
-int QImageProcessorsCollection::indexof(const c_image_processor::ptr & p)
+int QImageProcessorsCollection::indexof(const c_image_processor::sptr & p)
 {
   c_image_processor_collection::iterator pos =
       c_image_processor_collection::default_instance()->find(p);
@@ -165,7 +165,7 @@ QImageProcessorSelectionCombo::QImageProcessorSelectionCombo(QWidget * parent) :
   refresh();
 }
 
-c_image_processor::ptr QImageProcessorSelectionCombo::processor(int index) const
+c_image_processor::sptr QImageProcessorSelectionCombo::processor(int index) const
 {
   if ( index < 1 || (index = QImageProcessorsCollection::indexof(currentText()) ) < 0 ) {
     return nullptr;
@@ -174,7 +174,7 @@ c_image_processor::ptr QImageProcessorSelectionCombo::processor(int index) const
   return QImageProcessorsCollection::item(index);
 }
 
-bool QImageProcessorSelectionCombo::setCurrentProcessor(const c_image_processor::ptr & processor)
+bool QImageProcessorSelectionCombo::setCurrentProcessor(const c_image_processor::sptr & processor)
 {
   int current_index = 0; // "None" in refresh()
   if ( processor && (current_index = findText(processor->cname())) < 0) {
@@ -186,7 +186,7 @@ bool QImageProcessorSelectionCombo::setCurrentProcessor(const c_image_processor:
   return currentIndex() > 0;
 }
 
-c_image_processor::ptr QImageProcessorSelectionCombo::currentProcessor() const
+c_image_processor::sptr QImageProcessorSelectionCombo::currentProcessor() const
 {
   return processor(currentIndex());
 }
@@ -208,7 +208,7 @@ void QImageProcessorSelectionCombo::refresh()
 
   for ( int i = 0, n = QImageProcessorsCollection::size(); i < n; ++i ) {
 
-    const c_image_processor::ptr processor =
+    const c_image_processor::sptr processor =
         QImageProcessorsCollection::item(i);
 
     if( processor ) {

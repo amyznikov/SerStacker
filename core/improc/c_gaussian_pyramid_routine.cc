@@ -53,7 +53,7 @@ bool c_gaussian_pyramid_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, scales);
+  LOAD_PROPERTY(settings, *this, scales);
 
   return true;
 }

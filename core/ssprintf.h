@@ -150,7 +150,7 @@ bool fromString(const std::string & s, std::pair<T1, T2> * v)
 struct c_enum_member {
   int value;
   const char * name;
-  const char * tooltip;
+  const char * comment;
 };
 
 typedef const c_enum_member * (*get_enum_members_proc)();
@@ -185,6 +185,23 @@ typename std::enable_if<std::is_enum<enum_type>::value,
     for ( int i = 0; members[i].name && *members[i].name; ++i ) {
       if ( members[i].value == v ) {
         return members[i].name;
+      }
+    }
+  }
+  return "";
+}
+
+template<class enum_type>
+typename std::enable_if<std::is_enum<enum_type>::value,
+  const char *>::type comment_for(const enum_type & v)
+{
+  const c_enum_member * members =
+      members_of<enum_type>();
+
+  if ( members ) {
+    for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+      if ( members[i].value == v ) {
+        return members[i].comment ? members[i].comment : "";
       }
     }
   }

@@ -43,7 +43,8 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
   DEBAYER_GB,       // Use GaussianBlur() interpolation
-  DEBAYER_GBNR      // Use GaussianBlur() interpolation with simple bad pixels filtering
+  DEBAYER_GBNR,     // Use GaussianBlur() interpolation with simple bad pixels filtering
+  DEBAYER_MATRIX    // Don't debayer but create BGR color bayer matrix image
 };
 
 
@@ -64,6 +65,13 @@ bool is_bayer_pattern(enum COLORID colorid);
 bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst,
     enum COLORID colorid);
 
+
+/** @brief
+ * Extract bayer src into dense 3-channel BGR dst matrix with .
+ * The output size of dst is the same as src
+ */
+bool extract_bayer_matrix(cv::InputArray src, cv::OutputArray dst,
+    enum COLORID colorid);
 
 /** @brief
  * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix.

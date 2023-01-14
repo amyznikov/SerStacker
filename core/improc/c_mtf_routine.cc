@@ -55,9 +55,9 @@ bool c_mtf_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, shadows);
-  LOAD_PROPERTY(settings, this, highlights);
-  LOAD_PROPERTY(settings, this, midtones);
+  LOAD_PROPERTY(settings, *this, shadows);
+  LOAD_PROPERTY(settings, *this, highlights);
+  LOAD_PROPERTY(settings, *this, midtones);
 
   return true;
 }

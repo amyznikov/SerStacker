@@ -136,12 +136,12 @@ bool c_fit_jovian_ellipse_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, hlines);
-  LOAD_PROPERTY(settings, this, normalization_scale);
-  LOAD_PROPERTY(settings, this, normalization_blur);
-  LOAD_PROPERTY(settings, this, gradient_blur);
-  LOAD_PROPERTY(settings, this, stdev_factor);
-  LOAD_PROPERTY(settings, this, display);
+  LOAD_PROPERTY(settings, *this, hlines);
+  LOAD_PROPERTY(settings, *this, normalization_scale);
+  LOAD_PROPERTY(settings, *this, normalization_blur);
+  LOAD_PROPERTY(settings, *this, gradient_blur);
+  LOAD_PROPERTY(settings, *this, stdev_factor);
+  LOAD_PROPERTY(settings, *this, display);
 
   return true;
 }

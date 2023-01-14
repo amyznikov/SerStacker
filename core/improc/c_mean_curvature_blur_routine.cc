@@ -47,7 +47,7 @@ bool c_mean_curvature_blur_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, iterations);
+  LOAD_PROPERTY(settings, *this, iterations);
   return true;
 }
 

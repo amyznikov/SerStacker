@@ -153,10 +153,10 @@ bool c_type_convert_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, ddepth);
-  LOAD_PROPERTY(settings, this, alpha);
-  LOAD_PROPERTY(settings, this, beta);
-  LOAD_PROPERTY(settings, this, auto_scale);
+  LOAD_PROPERTY(settings, *this, ddepth);
+  LOAD_PROPERTY(settings, *this, alpha);
+  LOAD_PROPERTY(settings, *this, beta);
+  LOAD_PROPERTY(settings, *this, auto_scale);
 
   return true;
 }

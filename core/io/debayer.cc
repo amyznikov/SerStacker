@@ -37,37 +37,39 @@ template<>
 const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 {
   static constexpr c_enum_member members[] = {
-      {DEBAYER_DISABLE, "DISABLE", ""},
-      {DEBAYER_GB,    "GB",   "SerStacker GaussianBlur() interpolation"},
-      {DEBAYER_GBNR,  "GBNR", "SerStacker GaussianBlur() interpolation with simple bad pixels filtering"},
-      {DEBAYER_EA,    "EA",   "OpenCV EA (edge aware) interpolation with cv::demosaicing()"},
-      {DEBAYER_VNG,   "VNG",  "OpenCV VNG interpolation with cv::demosaicing()"},
-      {DEBAYER_NN,    "NN",   "OpenCV nearest-neighboor interpolation with cv::demosaicing()"},
+      {DEBAYER_DISABLE, "DISABLE", "DEBAYER_DISABLE: Don't debayer"},
+      {DEBAYER_GB,    "GB",     "DEBAYER_GB: SerStacker GaussianBlur() interpolation"},
+      {DEBAYER_GBNR,  "GBNR",   "DEBAYER_GBNR: SerStacker GaussianBlur() interpolation with simple bad pixels filtering"},
+      {DEBAYER_EA,    "EA",     "DEBAYER_EA: OpenCV EA (edge aware) interpolation with cv::demosaicing()"},
+      {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
+      {DEBAYER_NN,    "NN",     "DEBAYER_NN: OpenCV nearest-neighboor interpolation with cv::demosaicing()"},
+      {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer but create colored bayer matrix image"},
       {DEBAYER_GB, nullptr, } // must  be last
   };
   return members;
 }
 
 
+
+
+
+namespace {
+
 static DEBAYER_ALGORITHM g_default_debayer_algorithm =
     DEBAYER_GB;
 
-void set_default_debayer_algorithm(DEBAYER_ALGORITHM algo)
-{
-  g_default_debayer_algorithm = algo;
-}
-
-DEBAYER_ALGORITHM default_debayer_algorithm()
-{
-  return g_default_debayer_algorithm;
-}
-
-
+template<class T> inline constexpr T cvmax() { return 1; };
+template<> inline constexpr uint8_t cvmax<uint8_t>() { return UINT8_MAX; }
+template<> inline constexpr int8_t cvmax<int8_t>() { return INT8_MAX; }
+template<> inline constexpr uint16_t cvmax<uint16_t>() { return UINT16_MAX; }
+template<> inline constexpr int16_t cvmax<int16_t>() { return INT16_MAX; }
+template<> inline constexpr uint32_t cvmax<uint32_t>() { return UINT32_MAX; }
+template<> inline constexpr int32_t cvmax<int32_t>() { return INT32_MAX; }
 
 /** @brief
  * Max native value for given depth
  */
-static inline cv::Scalar depthmax(int depth)
+inline cv::Scalar depthmax(int depth)
 {
   switch ( depth ) {
   case CV_8U :
@@ -88,6 +90,21 @@ static inline cv::Scalar depthmax(int depth)
 
   return cv::Scalar::all(0);
 }
+
+} // namespace
+
+
+void set_default_debayer_algorithm(DEBAYER_ALGORITHM algo)
+{
+  g_default_debayer_algorithm = algo;
+}
+
+DEBAYER_ALGORITHM default_debayer_algorithm()
+{
+  return g_default_debayer_algorithm;
+}
+
+
 
 
 /** @brief
@@ -110,7 +127,6 @@ bool is_bayer_pattern(enum COLORID colorid)
   return false;
 }
 
-
 /** @brief
  * Extract src into 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ]
  * The output size of dst is twice smaller than src
@@ -120,246 +136,248 @@ static bool extract_bayer_planes_(cv::InputArray __src, cv::OutputArray __dst, e
 {
   typedef tbb::blocked_range<int> range;
 
-  if ( (__src.cols() & 0x1) || (__src.rows() & 0x1) || __src.channels() != 1 )  {
+  if( (__src.cols() & 0x1) || (__src.rows() & 0x1) || __src.channels() != 1 ) {
     CF_ERROR("Can not make debayer4planes_ for Uneven image size %dx%dx%d",
         __src.cols(), __src.rows(), __src.channels());
     return false;
   }
 
   const cv::Mat_<T> src = __src.getMat();
-  cv::Mat_<cv::Vec<T,4>> dst(src.size() / 2);
+  cv::Mat_<cv::Vec<T, 4>> dst(src.size() / 2);
 
-  switch ( colorid ) {
-  case COLORID_BAYER_RGGB : {
-    //  [ R  G1 ]
-    //  [ G2 B  ]
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            const int src_y = y * 2;
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = src[src_y][src_x];
-              const T src_g1 = src[src_y][src_x + 1];
-              const T src_g2 = src[src_y + 1][src_x];
-              const T src_b = src[src_y + 1][src_x + 1];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+  switch (colorid) {
+    case COLORID_BAYER_RGGB: {
+      //  [ R  G1 ]
+      //  [ G2 B  ]
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+              const int src_y = y * 2;
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = src[src_y][src_x];
+                const T src_g1 = src[src_y][src_x + 1];
+                const T src_g2 = src[src_y + 1][src_x];
+                const T src_b = src[src_y + 1][src_x + 1];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
-    break;
-  }
+          });
+      break;
+    }
 
-  case COLORID_BAYER_GRBG : {
-    //  [ G R ]
-    //  [ B G ]
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            const int src_y = y * 2;
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = src[src_y][src_x + 1];
-              const T src_g1 = src[src_y][src_x];
-              const T src_g2 = src[src_y + 1][src_x + 1];
-              const T src_b = src[src_y + 1][src_x];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+    case COLORID_BAYER_GRBG: {
+      //  [ G R ]
+      //  [ B G ]
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+              const int src_y = y * 2;
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = src[src_y][src_x + 1];
+                const T src_g1 = src[src_y][src_x];
+                const T src_g2 = src[src_y + 1][src_x + 1];
+                const T src_b = src[src_y + 1][src_x];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
-    break;
-  }
+          });
+      break;
+    }
 
-
-  case COLORID_BAYER_GBRG : {
-    //  [ G B ]
-    //  [ R G ]
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            const int src_y = y * 2;
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = src[src_y+1][src_x];
-              const T src_g1 = src[src_y][src_x];
-              const T src_g2 = src[src_y + 1][src_x + 1];
-              const T src_b = src[src_y][src_x+1];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+    case COLORID_BAYER_GBRG: {
+      //  [ G B ]
+      //  [ R G ]
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+              const int src_y = y * 2;
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = src[src_y+1][src_x];
+                const T src_g1 = src[src_y][src_x];
+                const T src_g2 = src[src_y + 1][src_x + 1];
+                const T src_b = src[src_y][src_x+1];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
-    break;
-  }
+          });
+      break;
+    }
 
-  case COLORID_BAYER_BGGR : {
-    //  [ B G ]
-    //  [ G R ]
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            const int src_y = y * 2;
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = src[src_y+1][src_x+1];
-              const T src_g1 = src[src_y][src_x+1];
-              const T src_g2 = src[src_y + 1][src_x];
-              const T src_b = src[src_y][src_x];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+    case COLORID_BAYER_BGGR: {
+      //  [ B G ]
+      //  [ G R ]
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+              const int src_y = y * 2;
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = src[src_y+1][src_x+1];
+                const T src_g1 = src[src_y][src_x+1];
+                const T src_g2 = src[src_y + 1][src_x];
+                const T src_b = src[src_y][src_x];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
-    break;
-  }
+          });
+      break;
+    }
 
-  case COLORID_BAYER_CYYM : {
-    //  [ R G ]
-    //  [ G B ]
-    //  cv::subtract(depthmax(src.depth()), src, dst);
-    //  cv::cvtColor(dst, dst, cv::COLOR_BayerRG2RGB);
-    //  B' =  0, 1, 0   B
-    //  G' =  1, 0, 0 * G
-    //  R' =  0, 0, 1   R
+    case COLORID_BAYER_CYYM: {
+      //  [ R G ]
+      //  [ G B ]
+      //  cv::subtract(depthmax(src.depth()), src, dst);
+      //  cv::cvtColor(dst, dst, cv::COLOR_BayerRG2RGB);
+      //  B' =  0, 1, 0   B
+      //  G' =  1, 0, 0 * G
+      //  R' =  0, 0, 1   R
 
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
 
-            const int src_y = y * 2;
-            const T dmax = depthmax(src.depth())[0];
+            constexpr T dmax = cvmax<T>();
 
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = dmax - src[src_y][src_x];
-              const T src_g1 = dmax - src[src_y][src_x + 1];
-              const T src_g2 = dmax - src[src_y + 1][src_x];
-              const T src_b = dmax - src[src_y + 1][src_x + 1];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+
+              const int src_y = y * 2;
+
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = dmax - src[src_y][src_x];
+                const T src_g1 = dmax - src[src_y][src_x + 1];
+                const T src_g2 = dmax - src[src_y + 1][src_x];
+                const T src_b = dmax - src[src_y + 1][src_x + 1];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
+          });
 
-    break;
-  }
+      break;
+    }
 
+    case COLORID_BAYER_YCMY: {
+      //  [ G R ]
+      //  [ B G ]
+      //  cv::subtract(depthmax(src.depth()), src, dst);
+      //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
+      //  B' = 0, 1, 0  B
+      //  G' = 1, 0, 0  G
+      //  R' = 0, 0, 1  R
 
-  case COLORID_BAYER_YCMY : {
-    //  [ G R ]
-    //  [ B G ]
-    //  cv::subtract(depthmax(src.depth()), src, dst);
-    //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
-    //  B' = 0, 1, 0  B
-    //  G' = 1, 0, 0  G
-    //  R' = 0, 0, 1  R
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
 
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            constexpr T dmax = cvmax<T>();
 
-            const int src_y = y * 2;
-            const T dmax = depthmax(src.depth())[0];
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
 
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = dmax - src[src_y][src_x + 1];
-              const T src_g1 = dmax - src[src_y][src_x];
-              const T src_g2 = dmax - src[src_y + 1][src_x + 1];
-              const T src_b = dmax - src[src_y + 1][src_x];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+              const int src_y = y * 2;
+
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = dmax - src[src_y][src_x + 1];
+                const T src_g1 = dmax - src[src_y][src_x];
+                const T src_g2 = dmax - src[src_y + 1][src_x + 1];
+                const T src_b = dmax - src[src_y + 1][src_x];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
+          });
 
+      break;
+    }
 
-    break;
-  }
+    case COLORID_BAYER_YMCY: {
+      //  [ G B ]
+      //  [ R G ]
+      //  cv::subtract(depthmax(src.depth()), src, dst);
+      //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
+      //  B' = 0, 1, 0  B
+      //  G' = 1, 0, 0  G
+      //  R' = 0, 0, 1  R
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
 
+            constexpr T dmax = cvmax<T>();
 
-  case COLORID_BAYER_YMCY : {
-    //  [ G B ]
-    //  [ R G ]
-    //  cv::subtract(depthmax(src.depth()), src, dst);
-    //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
-    //  B' = 0, 1, 0  B
-    //  G' = 1, 0, 0  G
-    //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
 
-            const int src_y = y * 2;
-            const T dmax = depthmax(src.depth())[0];
+              const int src_y = y * 2;
 
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = dmax - src[src_y+1][src_x];
-              const T src_g1 = dmax - src[src_y][src_x];
-              const T src_g2 = dmax - src[src_y + 1][src_x + 1];
-              const T src_b = dmax - src[src_y][src_x+1];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = dmax - src[src_y+1][src_x];
+                const T src_g1 = dmax - src[src_y][src_x];
+                const T src_g2 = dmax - src[src_y + 1][src_x + 1];
+                const T src_b = dmax - src[src_y][src_x+1];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
-    break;
-  }
+          });
+      break;
+    }
 
+    case COLORID_BAYER_MYYC: {
+      //  [ B G ]
+      //  [ G R ]
+      //   cv::subtract(depthmax(src.depth()), src, dst);
+      //   cv::cvtColor(dst, dst, cv::COLOR_BayerBG2RGB);
+      //  B' = 0, 1, 0  B
+      //  G' = 1, 0, 0  G
+      //  R' = 0, 0, 1  R
+      tbb::parallel_for(range(0, dst.rows, 256),
+          [&](const range & rrange) {
 
-  case COLORID_BAYER_MYYC : {
-    //  [ B G ]
-    //  [ G R ]
-    //   cv::subtract(depthmax(src.depth()), src, dst);
-    //   cv::cvtColor(dst, dst, cv::COLOR_BayerBG2RGB);
-    //  B' = 0, 1, 0  B
-    //  G' = 1, 0, 0  G
-    //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, dst.rows, 256),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            constexpr T dmax = cvmax<T>();
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
 
-            const int src_y = y * 2;
-            const T dmax = depthmax(src.depth())[0];
+              const int src_y = y * 2;
 
-            for ( int x = 0; x < dst.cols; ++x ) {
-              const int src_x = x * 2;
-              const T src_r = dmax - src[src_y+1][src_x+1];
-              const T src_g1 = dmax - src[src_y][src_x+1];
-              const T src_g2 = dmax - src[src_y + 1][src_x];
-              const T src_b = dmax - src[src_y][src_x];
-              dst[y][x][0] = src_r;
-              dst[y][x][1] = src_g1;
-              dst[y][x][2] = src_b;
-              dst[y][x][3] = src_g2;
+              for ( int x = 0; x < dst.cols; ++x ) {
+                const int src_x = x * 2;
+                const T src_r = dmax - src[src_y+1][src_x+1];
+                const T src_g1 = dmax - src[src_y][src_x+1];
+                const T src_g2 = dmax - src[src_y + 1][src_x];
+                const T src_b = dmax - src[src_y][src_x];
+                dst[y][x][0] = src_r;
+                dst[y][x][1] = src_g1;
+                dst[y][x][2] = src_b;
+                dst[y][x][3] = src_g2;
+              }
             }
-          }
-        });
-    break;
+          });
+      break;
+    }
+
+    default:
+      return false;
   }
 
-  default :
-    return false;
-  }
-
-  if ( __dst.fixedType() ) {
+  if( __dst.fixedType() ) {
     dst.convertTo(__dst, __dst.depth());
   }
   else {
@@ -781,11 +799,269 @@ static bool gbdemosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID col
 
 
 
+/** @brief
+ * Extract bayer src into dense 3-channel BGR dst matrix with .
+ * The output size of dst is the same as src
+ */
+
+template<class T>
+static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, enum COLORID colorid)
+{
+  typedef tbb::blocked_range<int> range;
+
+  if ( (__src.cols() & 0x1) || (__src.rows() & 0x1) || __src.channels() != 1 )  {
+    CF_ERROR("Can not make debayer4planes_ for Uneven image size %dx%dx%d",
+        __src.cols(), __src.rows(), __src.channels());
+    return false;
+  }
+
+  const cv::Mat_<T> src =
+      __src.getMat();
+
+  cv::Mat_<cv::Vec<T,3>>
+      dst(src.size());
+
+  static const auto R =
+      [](const T & v) {
+        return cv::Vec<T, 3>(0, 0, v);
+      };
+
+  static const auto G =
+      [](const T & v) {
+        return cv::Vec<T, 3>(0, v, 0);
+      };
+
+  static const auto B =
+      [](const T & v) {
+        return cv::Vec<T, 3>(v, 0, 0);
+      };
+
+  switch (colorid) {
+    case COLORID_BAYER_RGGB: {
+      //  [ R  G1 ]
+      //  [ G2 B  ]
+      tbb::parallel_for(range(0, src.rows / 2, 256),
+          [&](const range & rrange) {
+            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+              for ( int x = 0; x < src.cols / 2; ++x ) {
+                dst[2*y + 0][2*x + 0] = R(src[2*y + 0][2*x + 0]);
+                dst[2*y + 0][2*x + 1] = G(src[2*y + 0][2*x + 1]);
+                dst[2*y + 1][2*x + 0] = G(src[2*y + 1][2*x + 0]);
+                dst[2*y + 1][2*x + 1] = B(src[2*y + 1][2*x + 1]);
+              }
+            }
+          });
+      break;
+    }
+
+  case COLORID_BAYER_GRBG : {
+    //  [ G R ]
+    //  [ B G ]
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = G(src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = R(src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = B(src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = G(src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+    break;
+  }
+
+
+  case COLORID_BAYER_GBRG : {
+    //  [ G B ]
+    //  [ R G ]
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = G(src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = B(src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = R(src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = G(src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+    break;
+  }
+
+  case COLORID_BAYER_BGGR : {
+    //  [ B G ]
+    //  [ G R ]
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = B(src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = G(src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = G(src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = R(src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+    break;
+  }
+
+  case COLORID_BAYER_CYYM : {
+    //  [ R G ]
+    //  [ G B ]
+    //  cv::subtract(depthmax(src.depth()), src, dst);
+    //  cv::cvtColor(dst, dst, cv::COLOR_BayerRG2RGB);
+    //  B' =  0, 1, 0   B
+    //  G' =  1, 0, 0 * G
+    //  R' =  0, 0, 1   R
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+
+          constexpr T M = cvmax<T>();
+
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = R(M - src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = G(M - src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = G(M - src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = B(M - src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+    break;
+  }
+
+
+  case COLORID_BAYER_YCMY : {
+    //  [ G R ]
+    //  [ B G ]
+    //  cv::subtract(depthmax(src.depth()), src, dst);
+    //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
+    //  B' = 0, 1, 0  B
+    //  G' = 1, 0, 0  G
+    //  R' = 0, 0, 1  R
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+
+          constexpr T M = cvmax<T>();
+
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = G(M - src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = R(M - src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = B(M - src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = G(M - src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+
+    break;
+  }
+
+
+  case COLORID_BAYER_YMCY : {
+    //  [ G B ]
+    //  [ R G ]
+    //  cv::subtract(depthmax(src.depth()), src, dst);
+    //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
+    //  B' = 0, 1, 0  B
+    //  G' = 1, 0, 0  G
+    //  R' = 0, 0, 1  R
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+
+          constexpr T M = cvmax<T>();
+
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = G(M - src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = B(M - src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = R(M - src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = G(M - src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+
+    break;
+  }
+
+
+  case COLORID_BAYER_MYYC : {
+    //  [ B G ]
+    //  [ G R ]
+    //   cv::subtract(depthmax(src.depth()), src, dst);
+    //   cv::cvtColor(dst, dst, cv::COLOR_BayerBG2RGB);
+    //  B' = 0, 1, 0  B
+    //  G' = 1, 0, 0  G
+    //  R' = 0, 0, 1  R
+    tbb::parallel_for(range(0, src.rows / 2, 256),
+        [&](const range & rrange) {
+
+          constexpr T M = cvmax<T>();
+
+          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
+            for ( int x = 0; x < src.cols / 2; ++x ) {
+              dst[2*y + 0][2*x + 0] = B(M - src[2*y + 0][2*x + 0]);
+              dst[2*y + 0][2*x + 1] = G(M - src[2*y + 0][2*x + 1]);
+              dst[2*y + 1][2*x + 0] = G(M - src[2*y + 1][2*x + 0]);
+              dst[2*y + 1][2*x + 1] = R(M - src[2*y + 1][2*x + 1]);
+            }
+          }
+        });
+
+    break;
+  }
+
+  default :
+    return false;
+  }
+
+  if ( __dst.fixedType() ) {
+    dst.convertTo(__dst, __dst.depth());
+  }
+  else {
+    __dst.move(dst);
+  }
+
+  return true;
+}
+
+/** @brief
+ * Extract bayer src into dense 3-channel BGR dst matrix with .
+ * The output size of dst is the same as src
+ */
+bool extract_bayer_matrix(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid)
+{
+  switch (src.depth()) {
+    case CV_8U:
+      return extract_bayer_matrix_<uint8_t>(src, dst, colorid);
+    case CV_8S:
+      return extract_bayer_matrix_<int8_t>(src, dst, colorid);
+    case CV_16U:
+      return extract_bayer_matrix_<uint16_t>(src, dst, colorid);
+    case CV_16S:
+      return extract_bayer_matrix_<int16_t>(src, dst, colorid);
+    case CV_32S:
+      return extract_bayer_matrix_<int32_t>(src, dst, colorid);
+    case CV_32F:
+      return extract_bayer_matrix_<float>(src, dst, colorid);
+    case CV_64F:
+      return extract_bayer_matrix_<double>(src, dst, colorid);
+  }
+  return false;
+}
+
+
 static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
 {
   if ( algo == DEBAYER_GB || algo == DEBAYER_GBNR ) {
     return gbdemosaic(src, dst, colorid, algo == DEBAYER_GBNR);
   }
+
+  if( algo == DEBAYER_MATRIX ) {
+    return extract_bayer_matrix(src, dst, colorid);
+  }
+
 
   if ( algo == DEBAYER_VNG && src.depth() != CV_8U ) {
     //  OpenCV(4.6.0) /modules/imgproc/src/demosaicing.cpp:1740:
@@ -825,7 +1101,7 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
       cv::demosaicing(src, dst, cv::COLOR_BayerGR2BGR_EA);
       break;
     default :
-      CF_DEBUG("Unknown  debayer algorithm=%d requested", algo);
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
       return false;
     }
     break;
@@ -842,7 +1118,7 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
       cv::demosaicing(src, dst, cv::COLOR_BayerGB2BGR_EA);
       break;
     default :
-      CF_DEBUG("Unknown  debayer algorithm=%d requested", algo);
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
       return false;
     }
     break;
@@ -859,7 +1135,7 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
       cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_EA);
       break;
     default :
-      CF_DEBUG("Unknown  debayer algorithm=%d requested", algo);
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
       return false;
     }
     break;
@@ -887,6 +1163,8 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
     }
     return true;
   }
+
+
 
   switch ( colorid ) {
 

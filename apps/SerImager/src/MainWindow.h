@@ -38,7 +38,8 @@ public:
 protected:
   void saveState();
   void restoreState();
-  void setupMainMenuBar();
+  void setupMainMenu();
+  void setupMainToolbar();
   void setupImagerSettings();
   void setupFrameProcessorControls();
   void setupFocusGraph();
@@ -46,7 +47,8 @@ protected:
 
 protected Q_SLOTS:
   void onCameraWriterStatisticsUpdate();
-  void onShowDisplaysSettingsActionTriggered(bool checked);
+  void onShowMtfControlActionTriggered(bool checked);
+  void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -57,6 +59,7 @@ protected:
 
   QImagerSettingsWidget * imagerSettings_ctl = nullptr;
   QCameraControlDock * imagerSettingsDock_ = nullptr;
+  QAction * showCameraControlsAction_ = nullptr;
 
   QCameraFrameProcessorSelector * frameProcessor_ctl = nullptr;
   QCustomDockWidget * frameProcessorDock_ = nullptr;
@@ -67,16 +70,20 @@ protected:
   QCameraFocusMeasureThread * focusMeasureThread_ = nullptr;
 
   QMtfControlDialogBox * mtfControl_ = nullptr;
+  QAction * showMtfControlAction_ = nullptr;
+  QToolButton * showMtfControlButton_ = nullptr;
   QLabel * statistics_ctl = nullptr;
   QLabel * mousepos_ctl = nullptr;
+  QMenu displayOptionsMenu_;
 
 
   QToolBar * manToolbar_ = nullptr;
   QMenu * menuFile_ = nullptr;
   QMenu * menuView_ = nullptr;
-  QAction * showMtfControlAction_ = nullptr;
   QAction * showRoiAction_ = nullptr;
 
+  QAction * showdisplayFrameProcessorSettingsAction_ = nullptr;
+  QDisplayFrameProcessorSettingsDialogBox * displayFrameProcessorSettingsDialogBox_ = nullptr;
 
 #if HAVE_INDIGO
   QIndigoClient * indigoClient_ = nullptr;

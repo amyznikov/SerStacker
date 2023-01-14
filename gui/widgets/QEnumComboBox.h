@@ -23,41 +23,16 @@ public:
   typedef QEnumComboBoxBase ThsClass;
   typedef QComboBox Base;
 
-  QEnumComboBoxBase(QWidget * parent = 0) :
-      Base(parent)
-  {
-    setEditable(false);
-    connect(this, SIGNAL(currentIndexChanged(int)),
-        this, SIGNAL(currentItemChanged(int)));
-  }
+  QEnumComboBoxBase(QWidget * parent = 0);
+  QEnumComboBoxBase(const c_enum_member * membs, QWidget * parent = 0);
 
-  QEnumComboBoxBase(const c_enum_member * membs, QWidget * parent = 0) :
-      Base(parent)
-  {
-    setEditable(false);
-    setupItems(membs);
-    connect(this, SIGNAL(currentIndexChanged(int)),
-        this, SIGNAL(currentItemChanged(int)));
-  }
+  void setupItems(const c_enum_member * membs);
 
-  void setupItems(const c_enum_member * membs)
-  {
-    if( membs ) {
-      while (membs->name && *membs->name) {
-        Base::addItem(membs->name, (int) (membs->value));
-        if( membs->tooltip ) {
-          Base::setItemData(count() - 1, QString(membs->tooltip), Qt::ToolTipRole);
-        }
-        ++membs;
-      }
-    }
-  }
-
-
-signals:
+Q_SIGNALS:
   void currentItemChanged(int index);
 
-
+protected:
+  QCompleter * completer_ = nullptr;
 };
 
 

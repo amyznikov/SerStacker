@@ -185,9 +185,9 @@ bool c_histogram_normalization_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, normalization_type);
-  LOAD_PROPERTY(settings, this, offset);
-  LOAD_PROPERTY(settings, this, stretch);
+  LOAD_PROPERTY(settings, *this, normalization_type);
+  LOAD_PROPERTY(settings, *this, offset);
+  LOAD_PROPERTY(settings, *this, stretch);
 
   return true;
 }

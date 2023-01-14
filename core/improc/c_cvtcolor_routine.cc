@@ -9,58 +9,6 @@
 #include <core/ssprintf.h>
 
 
-c_cvtcolor_routine::c_class_factory c_cvtcolor_routine::class_factory;
-
-c_cvtcolor_routine::c_cvtcolor_routine(bool enabled) :
-    base(&class_factory, enabled)
-{
-}
-
-c_cvtcolor_routine::ptr c_cvtcolor_routine::create(bool enabled)
-{
-  return ptr (new this_class(enabled));
-}
-
-void c_cvtcolor_routine::set_conversion(enum cv::ColorConversionCodes v)
-{
-  code_ = v;
-}
-
-enum cv::ColorConversionCodes c_cvtcolor_routine::conversion() const
-{
-  return code_;
-}
-
-bool c_cvtcolor_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
-{
-  if ( code_ != cv::COLOR_COLORCVT_MAX ) {
-    cv::cvtColor(image.getMat(), image, code_);
-  }
-  return true;
-}
-
-bool c_cvtcolor_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  settings.get("code", &code_);
-
-  return true;
-}
-
-bool c_cvtcolor_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  settings.set("code", code_);
-
-  return true;
-}
-
 template<>
 const c_enum_member* members_of<cv::ColorConversionCodes>()
 {

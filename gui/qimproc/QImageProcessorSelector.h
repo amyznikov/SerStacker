@@ -23,7 +23,7 @@ public:
 
   QImageProcessorSelector(QWidget * parent = nullptr);
 
-  c_image_processor::ptr current_processor() const;
+  c_image_processor::sptr current_processor() const;
 
   bool imageProcessingEnabled() const;
 
@@ -44,7 +44,7 @@ protected Q_SLOTS:
   void addCopyOfCurrentProcessor();
 
 protected:
-  c_image_processor::ptr current_processor_;
+  c_image_processor::sptr current_processor_;
 
   QVBoxLayout * lv_ = nullptr;
   QToolBar * toolbar_ctl = nullptr;

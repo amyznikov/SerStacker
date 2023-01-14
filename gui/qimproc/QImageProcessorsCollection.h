@@ -24,12 +24,12 @@ public:
   static bool save();
   static int size();
   static bool empty();
-  static const c_image_processor::ptr & item(int pos);
-  static void add(const c_image_processor::ptr & p, bool emit_notify = true);
-  static bool insert(int pos, const c_image_processor::ptr & p, bool emit_notify = true);
-  static bool remove(const c_image_processor::ptr & p, bool emit_notify = true);
+  static const c_image_processor::sptr & item(int pos);
+  static void add(const c_image_processor::sptr & p, bool emit_notify = true);
+  static bool insert(int pos, const c_image_processor::sptr & p, bool emit_notify = true);
+  static bool remove(const c_image_processor::sptr & p, bool emit_notify = true);
   static bool remove_at(int pos, bool emit_notify = true);
-  static int indexof(const c_image_processor::ptr & p);
+  static int indexof(const c_image_processor::sptr & p);
   static int indexof(const std::string & name);
   static int indexof(const QString & name);
 
@@ -57,9 +57,9 @@ public:
 
   QImageProcessorSelectionCombo(QWidget * parent = Q_NULLPTR);
 
-  bool setCurrentProcessor(const c_image_processor::ptr & processor);
-  c_image_processor::ptr currentProcessor() const;
-  c_image_processor::ptr processor(int index) const;
+  bool setCurrentProcessor(const c_image_processor::sptr & processor);
+  c_image_processor::sptr currentProcessor() const;
+  c_image_processor::sptr processor(int index) const;
 
 public slots:
   void refresh();

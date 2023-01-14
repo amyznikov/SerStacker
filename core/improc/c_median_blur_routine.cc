@@ -86,10 +86,10 @@ bool c_median_blur_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, weightType);
-  LOAD_PROPERTY(settings, this, radius);
-  LOAD_PROPERTY(settings, this, sigma);
-  LOAD_PROPERTY(settings, this, ignore_mask);
+  LOAD_PROPERTY(settings, *this, weightType);
+  LOAD_PROPERTY(settings, *this, radius);
+  LOAD_PROPERTY(settings, *this, sigma);
+  LOAD_PROPERTY(settings, *this, ignore_mask);
 
   return true;
 }

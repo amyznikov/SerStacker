@@ -173,13 +173,13 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
   updateControls();
 }
 
-void QImageProcessorChainEditor::set_current_processor(const c_image_processor::ptr & p)
+void QImageProcessorChainEditor::set_current_processor(const c_image_processor::sptr & p)
 {
   current_processor_ = p;
   updateControls();
 }
 
-const c_image_processor::ptr & QImageProcessorChainEditor::current_processor() const
+const c_image_processor::sptr & QImageProcessorChainEditor::current_processor() const
 {
   return current_processor_;
 }
@@ -295,8 +295,11 @@ void QImageProcessorChainEditor::onMoveCurrentProcessorDown()
 
           const c_image_processor_routine::ptr routine = *pos;
 
-          current_processor_->erase(pos);
-          current_processor_->insert(pos + 1, routine);
+          if( true ) {
+            c_image_processor::edit_lock lock(current_processor_);
+            current_processor_->erase(pos);
+            current_processor_->insert(pos + 1, routine);
+          }
 
           const bool isExpanded =
               currentItem->isExpanded();
@@ -342,8 +345,11 @@ void QImageProcessorChainEditor::onMoveCurrentProcessorUp()
 
           const c_image_processor_routine::ptr routine = *pos;
 
-          current_processor_->erase(pos);
-          current_processor_->insert(pos - 1, routine);
+          if( true ) {
+            c_image_processor::edit_lock lock(current_processor_);
+            current_processor_->erase(pos);
+            current_processor_->insert(pos - 1, routine);
+          }
 
           const bool isExpanded =
               currentItem->isExpanded();
@@ -404,11 +410,17 @@ void QImageProcessorChainEditor::onAddImageProcessor()
 
   QWaitCursor wait(this);
 
-  if( !current_routine ) {
-    current_processor_->insert(current_processor_->begin(), new_routine);
-  }
-  else {
-    current_processor_->insert(current_processor_->find(current_routine) + 1, new_routine);
+  if( true ) {
+    c_image_processor::edit_lock lock(current_processor_);
+
+    if( !current_routine ) {
+      current_processor_->insert(current_processor_->begin(),
+          new_routine);
+    }
+    else {
+      current_processor_->insert(current_processor_->find(current_routine) + 1,
+          new_routine);
+    }
   }
 
   QTreeWidgetItem * newItem =
@@ -438,7 +450,10 @@ void QImageProcessorChainEditor::onRemoveCurrentImageProcessor()
 
       if( pos != current_processor_->end() ) {
 
-        current_processor_->erase(pos);
+        if( true ) {
+          c_image_processor::edit_lock lock(current_processor_);
+          current_processor_->erase(pos);
+        }
 
         delete currentItem;
 

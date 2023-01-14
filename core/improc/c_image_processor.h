@@ -205,35 +205,50 @@ protected:
     typedef class_name this_class; \
     typedef c_image_processor_routine base; \
     typedef std::shared_ptr<this_class> ptr; \
-    static struct c_class_factory : public base::class_factory { \
+    struct c_class_factory : public base::class_factory { \
       c_class_factory() : \
         base::class_factory(#class_name, display_name, tooltip , factory([]() {return ptr(new this_class());})) {} \
-    } class_factory; \
+    }; \
     \
-    class_name(bool enabled = true); \
-    static ptr create(bool enabled = true); \
-    bool serialize(c_config_setting settings) const override; \
-    bool deserialize(c_config_setting settings) override; \
-    bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+    static const c_class_factory* class_factory_instance() { \
+      static c_class_factory class_factory_instance_; \
+      return &class_factory_instance_; \
+    } \
+    class_name(bool enabled = true) : \
+      base(class_factory_instance(), enabled) { \
+    } \
+    static ptr create(bool enabled = true) { \
+        return ptr(new this_class(enabled)); \
+    } \
 
 
 class c_image_processor :
     public std::vector<c_image_processor_routine::ptr>
 {
-  std::string name_;
-  mutable std::string filename_;
-  bool enable_debug_messages_ = false;
-
 public:
   typedef c_image_processor this_class;
   typedef std::vector<c_image_processor_routine::ptr> base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
+
+  struct edit_lock:
+      public std::unique_lock<std::mutex>
+  {
+    typedef edit_lock this_class;
+    typedef std::unique_lock<std::mutex> base;
+    edit_lock(const sptr & ) : base(emutex())
+    {
+    }
+    edit_lock(const c_image_processor * ) : base(emutex())
+    {
+    }
+  };
+
 
   c_image_processor(const std::string & objname, const std::string & filename = "");
 
-  static ptr create(const std::string & objname);
-  static ptr load(const std::string & filename);
-  static ptr deserialize(c_config_setting settings);
+  static sptr create(const std::string & objname);
+  static sptr load(const std::string & filename);
+  static sptr deserialize(c_config_setting settings);
 
   bool save(const std::string & path_or_filename = "",
       const std::string & objname = "" ,
@@ -288,15 +303,25 @@ public:
     return enable_debug_messages_;
   }
 
+  static std::mutex & emutex()
+  {
+    static std::mutex emutex_;
+    return emutex_;
+  }
+
+protected:
+  std::string name_;
+  mutable std::string filename_;
+  bool enable_debug_messages_ = false;
 };
 
 
 class c_image_processor_collection :
-    public std::vector<c_image_processor::ptr>
+    public std::vector<c_image_processor::sptr>
 {
 public:
   typedef c_image_processor_collection this_class;
-  typedef std::vector<c_image_processor::ptr> base;
+  typedef std::vector<c_image_processor::sptr> base;
   typedef std::shared_ptr<this_class> ptr;
 
   static ptr create();
@@ -311,10 +336,10 @@ public:
   iterator find(const std::string & name);
   const_iterator find(const std::string & name) const;
 
-  c_image_processor::ptr get(const std::string & name) const;
+  c_image_processor::sptr get(const std::string & name) const;
 
-  iterator find(const c_image_processor::ptr &);
-  const_iterator find(const c_image_processor::ptr &) const;
+  iterator find(const c_image_processor::sptr &);
+  const_iterator find(const c_image_processor::sptr &) const;
 
 
   static const std::string & default_processor_collection_path();

@@ -145,12 +145,12 @@ bool c_remove_sharp_artifacts_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, erode_radius);
-  LOAD_PROPERTY(settings, this, noise_scale);
-  LOAD_PROPERTY(settings, this, mask_blur_radius);
-  LOAD_PROPERTY(settings, this, edge_blur_radius);
-  LOAD_PROPERTY(settings, this, show_mask);
-  LOAD_PROPERTY(settings, this, show_blured_image);
+  LOAD_PROPERTY(settings, *this, erode_radius);
+  LOAD_PROPERTY(settings, *this, noise_scale);
+  LOAD_PROPERTY(settings, *this, mask_blur_radius);
+  LOAD_PROPERTY(settings, *this, edge_blur_radius);
+  LOAD_PROPERTY(settings, *this, show_mask);
+  LOAD_PROPERTY(settings, *this, show_blured_image);
 
   return true;
 }

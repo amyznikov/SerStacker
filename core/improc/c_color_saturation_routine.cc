@@ -45,7 +45,7 @@ bool c_color_saturation_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, scales);
+  LOAD_PROPERTY(settings, *this, scales);
 
   return true;
 }

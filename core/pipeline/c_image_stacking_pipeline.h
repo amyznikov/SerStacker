@@ -170,10 +170,10 @@ struct c_frame_registration_options
 
 struct c_image_processing_options
 {
-  c_image_processor::ptr input_image_processor;
-  c_image_processor::ptr ecc_image_processor;
-  c_image_processor::ptr aligned_image_processor;
-  c_image_processor::ptr accumulated_image_processor;
+  c_image_processor::sptr input_image_processor;
+  c_image_processor::sptr ecc_image_processor;
+  c_image_processor::sptr aligned_image_processor;
+  c_image_processor::sptr accumulated_image_processor;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

@@ -328,7 +328,7 @@ QCheckBox * QImageSaveOptionsDialog::saveProcessorConfigCtl() const
 QString saveImageFileAs(QWidget * parent,
     const cv::Mat & currentImage,
     const cv::Mat & currentMask,
-    const c_image_processor::ptr & currentProcesor,
+    const c_image_processor::sptr & currentProcesor,
     const QString & fileName)
 {
 

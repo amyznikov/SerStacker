@@ -134,7 +134,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
           Q_EMIT parameterChanged();
         }
 
-        const c_image_processor::ptr & processor =
+        const c_image_processor::sptr & processor =
             chain_ctl->current_processor();
         if ( processor ) {
           processor->save();
@@ -163,7 +163,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
   updateControls();
 }
 
-c_image_processor::ptr QImageProcessorSelector::current_processor() const
+c_image_processor::sptr QImageProcessorSelector::current_processor() const
 {
   return enable_ctl->isChecked() ? current_processor_ : nullptr;
 }
@@ -183,7 +183,7 @@ void QImageProcessorSelector::onupdatecontrols()
   selector_ctl->clear();
 
   for ( size_t i = 0, n = QImageProcessorsCollection::size(); i < n; ++i ) {
-    const c_image_processor::ptr & processor = QImageProcessorsCollection::item(i);
+    const c_image_processor::sptr & processor = QImageProcessorsCollection::item(i);
     if ( processor ) {
       selector_ctl->addItem(processor->cname(), QVariant((int) (i)));
       selector_ctl->setItemData(i, processor->cfilename(), Qt::ToolTipRole);
@@ -216,7 +216,7 @@ void QImageProcessorSelector::onProcessorSelectorCurrentIndexChanged(int)
 
 void QImageProcessorSelector::updatecurrentprocessor()
 {
-  c_image_processor::ptr selected_processor;
+  c_image_processor::sptr selected_processor;
 
   if( !QImageProcessorsCollection::empty() ) {
 
@@ -259,7 +259,7 @@ void QImageProcessorSelector::addProcessor()
       continue;
     }
 
-    c_image_processor::ptr processor =
+    c_image_processor::sptr processor =
         c_image_processor::create(processorName.toStdString());
 
     if ( !processor ) {

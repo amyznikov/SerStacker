@@ -39,6 +39,7 @@
 #include "c_local_contrast_map_routine.h"
 #include "c_cvtcolor_routine.h"
 #include "c_equalize_hist_routine.h"
+#include "c_extract_channel_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -116,10 +117,10 @@ void c_image_processor_routine::register_all()
     register_class_factory(&c_fit_jovian_ellipse_routine::class_factory);
     register_class_factory(&c_threshold_routine::class_factory);
     register_class_factory(&c_desaturate_edges_routine::class_factory);
-    register_class_factory(&c_local_contrast_map_routine::class_factory);
-    register_class_factory(&c_cvtcolor_routine::class_factory);
-    register_class_factory(&c_equalize_hist_routine::class_factory);
-
+    register_class_factory(c_local_contrast_map_routine::class_factory_instance());
+    register_class_factory(c_cvtcolor_routine::class_factory_instance());
+    register_class_factory(c_equalize_hist_routine::class_factory_instance());
+    register_class_factory(c_extract_channel_routine::class_factory_instance());
   }
 }
 
@@ -129,12 +130,12 @@ c_image_processor::c_image_processor(const std::string & objname, const std::str
 {
 }
 
-c_image_processor::ptr c_image_processor::create(const std::string & objname)
+c_image_processor::sptr c_image_processor::create(const std::string & objname)
 {
-  return ptr(new this_class(objname));
+  return sptr(new this_class(objname));
 }
 
-c_image_processor::ptr c_image_processor::load(const std::string & filename)
+c_image_processor::sptr c_image_processor::load(const std::string & filename)
 {
   c_config cfg(filename);
 
@@ -163,7 +164,7 @@ c_image_processor::ptr c_image_processor::load(const std::string & filename)
     return nullptr;
   }
 
-  c_image_processor::ptr obj = deserialize(root);
+  c_image_processor::sptr obj = deserialize(root);
   if ( obj ) {
     obj->filename_ = filename;
   }
@@ -171,7 +172,7 @@ c_image_processor::ptr c_image_processor::load(const std::string & filename)
   return obj;
 }
 
-c_image_processor::ptr c_image_processor::deserialize(c_config_setting settings)
+c_image_processor::sptr c_image_processor::deserialize(c_config_setting settings)
 {
   std::string objname;
 
@@ -180,7 +181,7 @@ c_image_processor::ptr c_image_processor::deserialize(c_config_setting settings)
     return nullptr;
   }
 
-  ptr obj = create(objname);
+  sptr obj = create(objname);
   if ( !obj ) {
     CF_ERROR("c_image_processor::create(objname=%s) fails", objname.c_str());
     return nullptr;
@@ -330,37 +331,29 @@ c_image_processor::const_iterator c_image_processor::find(const c_image_processo
 
 bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray mask) const
 {
-  for ( const c_image_processor_routine::ptr & processor : *this ) {
-    if ( processor && processor->enabled() ) {
+  c_image_processor::edit_lock lock(this);
 
-      if ( enable_debug_messages_ ) {
-
-        double min, max;
-        cv::minMaxLoc(image, &min, &max);
-
-        CF_DEBUG(" [%s] input range: min=%g max=%g",
-            processor->class_name().c_str(),
-            min, max);
-      }
+  for ( const c_image_processor_routine::ptr & routine : *this ) {
+    if ( routine && routine->enabled() ) {
 
       try {
 
-        processor->emit_preprocess_notify(image, mask);
+        routine->emit_preprocess_notify(image, mask);
 
-        if ( !processor->process(image, mask) ) {
+        if ( !routine->process(image, mask) ) {
 
           CF_ERROR("[%s] processor->process() fails",
-              processor->class_name().c_str());
+              routine->class_name().c_str());
         }
 
-        processor->emit_postprocess_notify(image, mask);
+        routine->emit_postprocess_notify(image, mask);
       }
 
       catch( const cv::Exception &e ) {
         CF_ERROR("OpenCV Exception in '%s' : %s\n"
             "%s() : %d\n"
             "file : %s\n",
-            processor->class_name().c_str(),
+            routine->class_name().c_str(),
             e.err.c_str(), ///< error description
             e.func.c_str(),///< function name. Available only when the compiler supports getting it
             e.line,///< line number in the source file where the error has occurred
@@ -370,13 +363,13 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
 
       catch( const std::exception &e ) {
         CF_ERROR("std::exception in '%s': %s\n",
-            processor->class_name().c_str(),
+            routine->class_name().c_str(),
             e.what());
       }
 
       catch( ... ) {
         CF_ERROR("unknown exception in '%s'",
-            processor->class_name().c_str());
+            routine->class_name().c_str());
       }
     }
   }
@@ -477,7 +470,7 @@ bool c_image_processor_collection::save(const std::string & output_path) const
     return  false;
   }
 
-  for ( const c_image_processor::ptr & processor : *this ) {
+  for ( const c_image_processor::sptr & processor : *this ) {
     if ( processor && !processor->name().empty() ) {
 
       const std::string filename =
@@ -503,7 +496,7 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
   }
 
   for ( const std::string & filename : filenames ) {
-    c_image_processor::ptr processor = c_image_processor::load(filename);
+    c_image_processor::sptr processor = c_image_processor::load(filename);
     if ( !processor ) {
       CF_ERROR("c_image_processor::load(filename='%s') fails", filename.c_str());
     }
@@ -514,7 +507,7 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
 
   if ( size() > 1 ) {
     std::sort(begin(), end(),
-        [](const c_image_processor::ptr & prev, const c_image_processor::ptr & next) {
+        [](const c_image_processor::sptr & prev, const c_image_processor::sptr & next) {
           return prev->name() < next->name();
         });
   }
@@ -573,7 +566,7 @@ bool c_image_processor_collection::deserialize(c_config_setting settings)
         processors_list_item.get_element(i);
 
     if ( processor_item && processor_item.isGroup() ) {
-      c_image_processor::ptr processor = c_image_processor::deserialize(processor_item);
+      c_image_processor::sptr processor = c_image_processor::deserialize(processor_item);
       if ( processor ) {
         emplace_back(processor);
       }
@@ -582,7 +575,7 @@ bool c_image_processor_collection::deserialize(c_config_setting settings)
 
   if ( size() > 1 ) {
     std::sort(begin(), end(),
-        [](const c_image_processor::ptr & prev, const c_image_processor::ptr & next) {
+        [](const c_image_processor::sptr & prev, const c_image_processor::sptr & next) {
           return prev->name() < next->name();
         });
   }
@@ -599,7 +592,7 @@ bool c_image_processor_collection::serialize(c_config_setting settings) const
   c_config_setting processors_list_item =
       settings.add_list("processors");
 
-  for ( const c_image_processor::ptr & processor : *this ) {
+  for ( const c_image_processor::sptr & processor : *this ) {
     if ( processor && !processor->serialize(processors_list_item.add_element(CONFIG_TYPE_GROUP)) ) {
       return false;
     }
@@ -611,7 +604,7 @@ bool c_image_processor_collection::serialize(c_config_setting settings) const
 c_image_processor_collection::iterator c_image_processor_collection::find(const std::string & name)
 {
   return std::find_if(begin(), end(),
-      [name]( const c_image_processor::ptr & p) {
+      [name]( const c_image_processor::sptr & p) {
         return p->name() == name;
       });
 }
@@ -619,22 +612,22 @@ c_image_processor_collection::iterator c_image_processor_collection::find(const 
 c_image_processor_collection::const_iterator c_image_processor_collection::find(const std::string & name) const
 {
   return std::find_if(begin(), end(),
-      [name]( const c_image_processor::ptr & p) {
+      [name]( const c_image_processor::sptr & p) {
         return p->name() == name;
       });
 }
 
-c_image_processor_collection::iterator c_image_processor_collection::find(const c_image_processor::ptr & p)
+c_image_processor_collection::iterator c_image_processor_collection::find(const c_image_processor::sptr & p)
 {
   return std::find(begin(), end(), p);
 }
 
-c_image_processor_collection::const_iterator c_image_processor_collection::find(const c_image_processor::ptr & p)  const
+c_image_processor_collection::const_iterator c_image_processor_collection::find(const c_image_processor::sptr & p)  const
 {
   return std::find(begin(), end(), p);
 }
 
-c_image_processor::ptr c_image_processor_collection::get(const std::string & name) const
+c_image_processor::sptr c_image_processor_collection::get(const std::string & name) const
 {
   const_iterator pos = find(name);
   return pos == end() ? nullptr : *pos;

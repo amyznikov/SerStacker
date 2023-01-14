@@ -68,7 +68,7 @@ bool c_radial_polysharp_routine::deserialize(c_config_setting settings)
     return false;
   }
 
-  LOAD_PROPERTY(settings, this, coeffs);
+  LOAD_PROPERTY(settings, *this, coeffs);
 
   return true;
 }

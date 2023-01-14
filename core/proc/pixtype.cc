@@ -65,3 +65,21 @@ bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval
 
   return true;
 }
+
+
+double get_maxval_for_pixel_depth(int ddepth)
+{
+  switch ( ddepth ) {
+  case CV_8U :
+    return UINT8_MAX;
+  case CV_8S :
+    return INT8_MAX;
+  case CV_16U :
+    return UINT16_MAX;
+  case CV_16S :
+    return INT16_MAX;
+  case CV_32S :
+    return INT32_MAX;
+  }
+  return 1;
+}

@@ -67,17 +67,20 @@ public:
       QWidget * parent = nullptr );
 
 protected:
+  void populate_supported_image_formats();
+  void populate_supported_bins();
+  void populate_available_frame_sizes(int iBin = 0);
   void onupdatecontrols() override;
-  void updateFrameSizeCtl(const QRect & rc);
-  void updateImageFormatCtl(ASI_IMG_TYPE iFormat);
-  void setBinningCtl(int iBin);
+
+  //void update_image_format_ctl(ASI_IMG_TYPE iFormat);
+  //void add_available_frame_size(const QRect & rc);
+
+  //void setBinningCtl(int iBin);
 
 protected Q_SLOTS:
   void onUpdateControls();
-  void onFrameSizeChanged(int);
-  void onImageFormatCtlChanged(int);
-  void onImageBinningCtlChanged(int);
-  void onSetCameraROI();
+  void onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);
+  void setCameraROI();
 
 protected:
   QASICamera::sptr camera_;
@@ -87,17 +90,17 @@ protected:
   QComboBox * binning_ctl = nullptr;
 };
 
-class QASICameraExtraSettingsWidget :
+class QASICameraExtraContolsWidget :
     public QSettingsWidget
 {
   Q_OBJECT;
 public:
-  typedef QASICameraExtraSettingsWidget ThisClass;
+  typedef QASICameraExtraContolsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QASICameraExtraSettingsWidget(const QASICamera::sptr & camera,
+  QASICameraExtraContolsWidget(const QASICamera::sptr & camera,
       QWidget * parent = nullptr);
-  ~QASICameraExtraSettingsWidget();
+  ~QASICameraExtraContolsWidget();
 
 protected:
   void createControls();
@@ -126,9 +129,9 @@ public:
 
 
 protected:
-  void createControls();
-  void onload(QSettings & settings) override;
+  void create_controls();
   void onupdatecontrols() override;
+  void onload(QSettings & settings) override;
 
 protected Q_SLOTS:
   void onCameraStateChanged();
@@ -138,7 +141,7 @@ protected:
   QASIROIControlWidget * roi_ctl = nullptr;
   QASIControlWidget * exposure_ctl = nullptr;
   QASIControlWidget * gain_ctl = nullptr;
-  QASICameraExtraSettingsWidget * extraSettings_ctl = nullptr;
+  QASICameraExtraContolsWidget * extraSettings_ctl = nullptr;
 };
 
 struct QASIExposureScaleParams

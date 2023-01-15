@@ -74,7 +74,7 @@ public:
   }
 
 Q_SIGNALS:
-  void stateChanged(QImagingCamera::State oldSate, QImagingCamera::State newState);
+  void stateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);
   void exposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void frameReceived();
 

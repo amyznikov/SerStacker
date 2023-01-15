@@ -8,14 +8,11 @@
 #include "MainWindow.h"
 #include <gui/widgets/style.h>
 
-
 namespace serimager {
 
 #define ICON_histogram        ":/qserimager/icons/histogram.png"
 #define ICON_display          ":/qserimager/icons/display.png"
 #define ICON_roi              ":/qserimager/icons/roi.png"
-
-
 
 namespace {
 
@@ -40,49 +37,54 @@ QWidget* addStretch(QToolBar * toolbar)
   return stretch;
 }
 
+QWidget* createStretch()
+{
+  QWidget *stretch = new QWidget();
+  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  return stretch;
+}
+
 }
 
 MainWindow::MainWindow(QWidget * parent) :
-   Base(parent)
+    Base(parent)
 {
   setWindowIcon(getIcon(":/qserimager/icons/app-icon.png"));
 
   setCentralWidget(centralDisplay_ = new QCameraFrameDisplay(this));
 
-
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
-  setCorner( Qt::TopLeftCorner, Qt::LeftDockWidgetArea );
-  setCorner( Qt::TopRightCorner, Qt::RightDockWidgetArea );
-  setCorner( Qt::BottomLeftCorner, Qt::LeftDockWidgetArea );
-  setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
-
+  setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+  setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+  setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+  setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 
   setupStatusbar();
   setupMainMenu();
   setupFocusGraph();
   setupIndigoFocuser();
   setupImagerSettings();
-  setupFrameProcessorControls();
+  setupDisplayProcessingControls();
   setupMainToolbar();
 
   restoreState();
 
   QApplication::instance()->installEventFilter(this);
 
-  //mousepos_ctl->setFrameShape(QFrame::Box);
-
   connect(centralDisplay_, &QCameraFrameDisplay::onMouseMove,
       [this](QMouseEvent * e) {
         mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
       });
+  connect(centralDisplay_, &QCameraFrameDisplay::onMouseLeaveEvent,
+      [this](QEvent * e) {
+        mousepos_ctl->setText("");
+      });
 }
-
 
 MainWindow::~MainWindow()
 {
   saveState();
 }
-
 
 bool MainWindow::eventFilter(QObject * watched, QEvent * event)
 {
@@ -123,16 +125,6 @@ void MainWindow::restoreState()
   Base::restoreState(settings.value("MainWindow/State").toByteArray());
 }
 
-void MainWindow::setupStatusbar()
-{
-  QStatusBar * sb =
-      statusBar();
-
-  sb->addWidget(mousepos_ctl = new QLabel(this));
-  sb->addWidget(exposure_status_ctl = new QLabel(this));
-  sb->addWidget(statistics_ctl = new QLabel("", this));
-}
-
 void MainWindow::setupMainMenu()
 {
   menuBar()->setNativeMenuBar(false);
@@ -163,7 +155,6 @@ void MainWindow::setupMainMenu()
 
   showRoiAction_->setChecked(centralDisplay_->showROI());
 
-
   /////////////////////////////////////
 
   menuView_->addAction(showMtfControlAction_ =
@@ -173,11 +164,7 @@ void MainWindow::setupMainMenu()
           this,
           &ThisClass::onShowMtfControlActionTriggered));
 
-
-
   /////////////////////////////////////
-
-
 
 }
 
@@ -199,6 +186,14 @@ void MainWindow::setupMainToolbar()
   ///////////////////////////////////////////////////////////////////
 }
 
+void MainWindow::setupStatusbar()
+{
+  QStatusBar *sb = statusBar();
+
+  sb->addWidget(exposure_status_ctl = new QLabel(this));
+  sb->addWidget(mousepos_ctl = new QLabel(this));
+  sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
+}
 
 void MainWindow::setupImagerSettings()
 {
@@ -218,40 +213,31 @@ void MainWindow::setupImagerSettings()
       [this]() {
 
         const QImagingCamera::sptr & camera =
-            imagerSettings_ctl->selectedCamera();
+        imagerSettings_ctl->selectedCamera();
 
         centralDisplay_->setCamera(camera);
         focusMeasureThread_->setCamera(camera);
 
         if ( camera ) {
-          connect(camera.get(), &QImagingCamera::exposureStateUpdate,
-              [this](QImagingCamera::ExposureStatus status, double exposure, double elapsed) {
-
-                exposure_status_ctl->setText(
-                    QString::asprintf("Exposure: %s elapsed: %.1f / %.1f",
-                        toString(status),
-                        elapsed * 1e-3,
-                        exposure * 1e-3));
-
-              });
+          connect(camera.get(), &QImagingCamera::exposureStatusUpdate,
+              this, &ThisClass::onExposureStatusUpdate,
+              Qt::QueuedConnection);
         }
       });
 
-
-  connect(&cameraWriter_, &QCameraWriter::statisticsUpdate,
-      this, &ThisClass:: onCameraWriterStatisticsUpdate,
+  connect(&cameraWriter_, &QCameraWriter::statusUpdate,
+      this, &ThisClass::onCameraWriterStatussUpdate,
       Qt::QueuedConnection);
-
 
 }
 
-void MainWindow::setupFrameProcessorControls()
+void MainWindow::setupDisplayProcessingControls()
 {
   frameProcessorDock_ =
       addCustomDock(this,
           Qt::RightDockWidgetArea,
           "frameProcessorDock_",
-          "Processing options...",
+          "Display Processing Options",
           frameProcessor_ctl = new QCameraFrameProcessorSelector(this),
           menuView_);
 
@@ -259,16 +245,14 @@ void MainWindow::setupFrameProcessorControls()
 
   showFrameProcessorAction_ = frameProcessorDock_->toggleViewAction();
   showFrameProcessorAction_->setIcon(getIcon(ICON_display));
-  showFrameProcessorAction_->setToolTip("Show / Hide video frame processing options");
-
+  showFrameProcessorAction_->setToolTip("Show / Hide display frame processing options");
 
   connect(frameProcessor_ctl, &QImageProcessorSelector::parameterChanged,
       [this]() {
         centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
       });
 
-
-  if ( (showdisplayFrameProcessorSettingsAction_  = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
+  if( (showdisplayFrameProcessorSettingsAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
 
     showdisplayFrameProcessorSettingsAction_->setCheckable(true);
     showdisplayFrameProcessorSettingsAction_->setChecked(false);
@@ -277,26 +261,23 @@ void MainWindow::setupFrameProcessorControls()
     connect(showdisplayFrameProcessorSettingsAction_, &QAction::triggered,
         this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
   }
-
-
 }
 
-void MainWindow::onCameraWriterStatisticsUpdate()
+void MainWindow::onCameraWriterStatussUpdate()
 {
-  const int cdrops = cameraWriter_.camera() ?
+  const int capture_drops = cameraWriter_.camera() ?
       cameraWriter_.camera()->drops() : 0;
 
-  const int wdrops =
+  const int write_drops =
       cameraWriter_.num_dropped_frames();
 
-  statistics_ctl->setText(QString("/round: %1 /time: %2 s /frames: %3 /drops: %4:%5")
+  capture_status_ctl->setText(QString("/Round: %1 /time: %2 s /frames: %3 /drops: %4:%5")
       .arg(cameraWriter_.round())
       .arg(cvRound(cameraWriter_.capture_duration() / 1000))
       .arg(cameraWriter_.num_saved_frames())
-      .arg(wdrops)
-      .arg(cdrops));
+      .arg(write_drops)
+      .arg(capture_drops));
 }
-
 
 void MainWindow::setupFocusGraph()
 {
@@ -335,10 +316,11 @@ void MainWindow::setupIndigoFocuser()
 #if HAVE_INDIGO
 
   static bool inidigo_initialized = false;
-  if ( !inidigo_initialized ) {
+  if( !inidigo_initialized ) {
 
-    if ( !indigoClient_ ) {
-      indigoClient_ = new QIndigoClient("SerImager", this);
+    if( !indigoClient_ ) {
+      indigoClient_ =
+          new QIndigoClient("SerImager", this);
     }
 
     /* This shall be set only before connecting */
@@ -399,18 +381,38 @@ void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked
 
 void MainWindow::onShowMtfControlActionTriggered(bool checked)
 {
-  if ( checked && !mtfControl_ ) {
+  if( checked && !mtfControl_ ) {
 
     mtfControl_ = new QMtfControlDialogBox(this);
     mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
 
     connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
         showMtfControlAction_, &QAction::setChecked);
-
   }
 
   mtfControl_->setVisible(checked);
 }
 
+void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed)
+{
+  switch (status) {
+    case QImagingCamera::Exposure_working:
+      exposure_status_ctl->setText(QString::asprintf("Exp: %.1f / %.1f [s]", elapsed * 1e-3, exposure * 1e-3));
+      exposure_status_ctl->show();
+      break;
+    case QImagingCamera::Exposure_success:
+      exposure_status_ctl->setText(QString::asprintf("Exp: %.1f [s] OK", exposure * 1e-3));
+      exposure_status_ctl->show();
+      break;
+    case QImagingCamera::Exposure_failed:
+      exposure_status_ctl->setText(QString::asprintf("Exp: %.1f [s] FAILED", exposure * 1e-3));
+      exposure_status_ctl->show();
+      break;
+    case QImagingCamera::Exposure_idle:
+      exposure_status_ctl->setText("");
+      exposure_status_ctl->hide();
+      break;
+  }
+}
 
-} /* namespace qserimager */
+} /* namespace serimager */

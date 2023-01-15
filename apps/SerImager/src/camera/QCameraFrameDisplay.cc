@@ -10,6 +10,7 @@
 #include <core/mtf/mtf-histogram.h>
 #include <core/proc/histogram.h>
 #include <core/proc/minmax.h>
+#include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
 
 namespace {
@@ -23,6 +24,7 @@ typedef std::unique_lock<std::mutex>
 inline int get_bpp(int ddepth)
 {
   switch (ddepth) {
+
     case CV_8U:
     case CV_8S:
       return 8;
@@ -53,26 +55,13 @@ std::mutex & QCameraFrameMtfDisplayFunction::mutex()
   return mutex_;
 }
 
-//void QCameraFrameMtfDisplayFunction::setCurrentImage(cv::InputArray image, cv::InputArray mask)
-//{
-//  // must be locked by caller
-//  //c_unique_lock lock(mutex_);
-//  Base::setCurrentImage(image, mask);
-//}
-
 void QCameraFrameMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
 {
   c_unique_lock lock(mutex_);
   Base::getInputDataRange(minval, maxval);
 }
 
-void QCameraFrameMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-{
-  c_unique_lock lock(mutex_);
-  Base::getInputHistogramm(H, hmin, hmax);
-}
-
-void QCameraFrameMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+void QCameraFrameMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
 {
   INSTRUMENT_REGION("");
 
@@ -80,23 +69,84 @@ void QCameraFrameMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, doub
 
     cv::Mat image, mask;
 
+    double scale = 1.0;
+    double offset = 0.0;
+
     mutex_.lock();
     isBusy_ = true;
-    imageViewer_->displayImage().copyTo(image);
+
+    const cv::Mat & currentImage =
+        imageViewer_->currentImage();
+
+    if ( currentImage.depth() == CV_8U ) {
+      currentImage.copyTo(image);
+    }
+    else {
+      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+      currentImage.convertTo(image, scale, offset);
+    }
+
     imageViewer_->currentMask().copyTo(mask);
     mutex_.unlock();
 
     create_histogram(image, mask,
         H,
-        hmin, hmax,
+        output_hmin, output_hmax,
         256,
         false,
         false);
 
+    mutex_.lock();
+    isBusy_ = false;
+    mutex_.unlock();
+
+    (*output_hmin -= offset) /= scale;
+    (*output_hmax -= offset) /= scale;
+  }
+}
+
+void QCameraFrameMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
+{
+  INSTRUMENT_REGION("");
+
+  if ( imageViewer_ ) {
+
+    cv::Mat image, mask;
+
+    double scale = 1.0;
+    double offset = 0.0;
+
+    mutex_.lock();
+    isBusy_ = true;
+
+    const cv::Mat & currentImage =
+        imageViewer_->displayImage();
+
+    if ( currentImage.depth() == CV_8U ) {
+      currentImage.copyTo(image);
+    }
+    else {
+      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+      currentImage.convertTo(image, scale, offset);
+    }
+
+    imageViewer_->currentMask().copyTo(mask);
+    mutex_.unlock();
+
+    create_histogram(image, mask,
+        H,
+        output_hmin, output_hmax,
+        256,
+        false,
+        false);
+
+    (*output_hmin -= offset) /= scale;
+    (*output_hmax -= offset) /= scale;
 
     mutex_.lock();
     isBusy_ = false;
     mutex_.unlock();
+
   }
 }
 
@@ -121,7 +171,8 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
 
   connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
       [this]() {
-        if (workerState_ == Worker_Idle) {
+        // if (workerState_ == Worker_Idle)
+        {
           Base::updateImage();
         }
       });
@@ -163,10 +214,11 @@ void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::sptr & proc
   mtfDisplayFunction_.mutex().lock();
   Base::current_processor_ = processor;
 
-  if( this->workerState_ == Worker_Idle ) {
-    CF_DEBUG("updateImage()");
+  //if( this->workerState_ == Worker_Idle )
+  {
     updateImage();
   }
+
   mtfDisplayFunction_.mutex().unlock();
 }
 
@@ -393,23 +445,12 @@ void QCameraFrameDisplay::workerThread()
           current_processor_->process(currentImage, currentMask);
         }
 
-        const QMtfDisplay::DisplayParams &opts =
-            mtfDisplayFunction_.displayParams();
 
-        const bool needColormap =
-            opts.colormap != COLORMAP_NONE &&
-              displayImage.channels() == 1;
-
-        mtfDisplayFunction_.applyMtf(currentImage,
-            needColormap ? cv::noArray() : currentMask,
-                displayImage,
-                CV_8U);
-
-        if ( needColormap ) {
-          mtfDisplayFunction_.applyColorMap(displayImage,
-              currentMask,
-              displayImage);
-        }
+        mtfDisplayFunction_.createDisplayImage(
+            currentImage,
+            currentMask,
+            displayImage,
+            CV_8U);
 
         pixmap =
             createPixmap(displayImage, true,

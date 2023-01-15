@@ -28,7 +28,7 @@ const c_enum_member * members_of<PIXEL_DEPTH>()
 
 bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval)
 {
-  switch ( ddepth ) {
+  switch (CV_MAT_DEPTH(ddepth)) {
   case CV_8U :
     *minval = 0;
     *maxval = UINT8_MAX;
@@ -69,7 +69,7 @@ bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval
 
 double get_maxval_for_pixel_depth(int ddepth)
 {
-  switch ( ddepth ) {
+  switch (CV_MAT_DEPTH(ddepth)) {
   case CV_8U :
     return UINT8_MAX;
   case CV_8S :
@@ -82,4 +82,22 @@ double get_maxval_for_pixel_depth(int ddepth)
     return INT32_MAX;
   }
   return 1;
+}
+
+/**
+ *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
+ *  dst = src * scale  + offset;
+ */
+bool get_scale_offset(int src_depth, int dst_depth, double * scale, double * offset)
+{
+  double srcmin, srcmax;
+  double dstmin, dstmax;
+
+  get_data_range_for_pixel_depth(src_depth, &srcmin, &srcmax);
+  get_data_range_for_pixel_depth(dst_depth, &dstmin, &dstmax);
+
+  *scale = (dstmax - dstmin) / (srcmax - srcmin);
+  *offset = dstmin - *scale * srcmin;
+
+  return true;
 }

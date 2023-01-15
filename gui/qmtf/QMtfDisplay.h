@@ -72,9 +72,9 @@ public:
   void loadParameters();
   void saveParameters() const;
 
-  virtual void getInputDataRange(double * minval, double * maxval) const = 0;
-  virtual void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) = 0;
-  virtual void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) = 0;
+  virtual void getInputDataRange(double * output_minval, double * output_maxval) const = 0;
+  virtual void getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
+  virtual void getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
 
 
 Q_SIGNALS:

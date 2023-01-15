@@ -39,11 +39,13 @@ public:
   void scrollView(int dx, int dy);
 
 
-signals:
+Q_SIGNALS:
   void onMouseMove(QMouseEvent * e);
   void onMousePressEvent(QMouseEvent * e);
   void onMouseReleaseEvent(QMouseEvent * e);
   void onMouseDoubleClick(QMouseEvent * e);
+  void onMouseEnterEvent(QEvent *e);
+  void onMouseLeaveEvent(QEvent *e);
   void scaleChanged(int currentScale);
 
 protected:
@@ -52,6 +54,8 @@ protected:
   void mouseMoveEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
+  void enterEvent(QEvent *event) override;
+  void leaveEvent(QEvent *event) override;
 
 protected:
   QPoint prevMouseScrollPos_;

@@ -87,6 +87,7 @@ void QImagerSettingsWidget::onSelectedCameraChanged()
 
   QCameraWriter *writer =
       captureSettings_ctl->cameraWriter();
+
   if( writer ) {
     writer->setCamera(selectedCamera);
   }

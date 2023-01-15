@@ -51,8 +51,14 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
       this, &ThisClass::onMouseReleaseEvent);
   connect(view_, &QImageSceneView::onMouseDoubleClick,
       this, &ThisClass::onMouseDoubleClick);
+  connect(view_, &QImageSceneView::onMouseEnterEvent,
+      this, &ThisClass::onMouseEnterEvent);
+  connect(view_, &QImageSceneView::onMouseLeaveEvent,
+      this, &ThisClass::onMouseLeaveEvent);
   connect(view_, &QImageSceneView::scaleChanged,
       this, &ThisClass::onScaleChanged);
+
+
 
   undoEditMaskActionShortcut_ = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Z), this);
   connect(undoEditMaskActionShortcut_, &QShortcut::activated,
@@ -514,51 +520,9 @@ void QImageViewer::updateCursor()
   static const QCursor defaultCursor =
       view_->cursor();
 
-  if ( !enableEditMask_ ) {
-    view_->setCursor(defaultCursor);
-  }
-  else {
-    view_->setCursor(Qt::CursorShape::CrossCursor);
-
-//    const int imageSize =
-//        std::min(65, std::max(17, 2 * editMaskPenRadius_ + 1));
-//
-//    QImage image(imageSize, imageSize, QImage::Format_Mono);
-//    QPainter image_painter(&image);
-//    QPen imagePen(Qt::black);
-//
-//    imagePen.setWidth(1);
-//    image_painter.setPen(imagePen);
-//    image_painter.fillRect(0, 0, imageSize, imageSize, QBrush(Qt::white));
-//
-//
-//
-//    QImage mask(imageSize, imageSize, QImage::Format_Mono);
-//    QPainter mask_painter(&mask);
-//    QPen maskPen(Qt::black);
-//
-//    maskPen.setWidth(2);
-//    mask_painter.setPen(maskPen);
-//    mask_painter.fillRect(0, 0, imageSize, imageSize, QBrush(Qt::white));
-//
-//
-//    switch (editMaskPenShape_) {
-//    case PenShape_circle:
-//      image_painter.drawEllipse(0, 0, imageSize - 1, imageSize - 1);
-//      mask_painter.drawEllipse(0, 0, imageSize - 1, imageSize - 1);
-//      break;
-//    default:
-//      image_painter.drawRect(0, 0, imageSize - 1, imageSize - 1);
-//      mask_painter.drawRect(0, 0, imageSize - 1, imageSize - 1);
-//      break;
-//    }
-//
-//    image_painter.drawRect(imageSize / 2 - 2, imageSize / 2 - 2, 4, 4);
-//    mask_painter.fillRect(imageSize / 2 - 2, imageSize / 2 - 2, 5, 5, Qt::black);
-//
-//    setCursor(QCursor(QBitmap::fromImage(image), QBitmap::fromImage(mask),
-//        imageSize / 2, imageSize / 2));
-  }
+  view_->setCursor(enableEditMask_ ?
+      Qt::CursorShape::CrossCursor :
+      defaultCursor);
 }
 
 void QImageViewer::editMask(QMouseEvent * e)

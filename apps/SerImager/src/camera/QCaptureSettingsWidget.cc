@@ -50,7 +50,7 @@ void init_resources()
 } // namespace
 
 
-QCameraCaptureControl::QCameraCaptureControl(QWidget * parent) :
+QCaptureLimitsControl::QCaptureLimitsControl(QWidget * parent) :
     Base(parent)
 {
 
@@ -64,23 +64,24 @@ QCameraCaptureControl::QCameraCaptureControl(QWidget * parent) :
   h1_->setContentsMargins(0, 0, 0, 0);
   h1_->addWidget(limitsSelection_ctl = new QComboBox(this), 1000);
   h1_->addWidget(startStop_ctl = new QToolButton(this), 1);
+
   limitsSelection_ctl->setEditable(false);
   limitsSelection_ctl->setFocusPolicy(Qt::StrongFocus);
+
   startStop_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
   startStop_ctl->setIcon(icon_start_capture);
 
-
   populateCaptureLimitsCombobox();
+
+  connect(limitsSelection_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+      this, &ThisClass::onLimitsSelectionChanged);
 
   connect(startStop_ctl, &QToolButton::clicked,
       this, &ThisClass::onStartStopButtonClicked);
 
-  //  connect(limitsSelection_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-  //      this, &ThisClass::onLimitsSelectionChanged);
-
 }
 
-void QCameraCaptureControl::populateCaptureLimitsCombobox()
+void QCaptureLimitsControl::populateCaptureLimitsCombobox()
 {
   static const c_capture_limits default_capture_limits[] = {
       {
@@ -176,27 +177,26 @@ void QCameraCaptureControl::populateCaptureLimitsCombobox()
 
 }
 
-bool QCameraCaptureControl::getSelectedCaptureLimits(c_capture_limits * c)
+bool QCaptureLimitsControl::getSelectedCaptureLimits(c_capture_limits * c)
 {
   int cursel =
       limitsSelection_ctl->currentIndex();
 
   if( cursel >= 0 ) {
     *c = limitsSelection_ctl->itemData(cursel).value<c_capture_limits>();
-    CF_DEBUG("capture limits: type=%s value=%d", toString(c->type), c->value);
     return true;
   }
 
   return false;
 }
 
-QCameraWriter * QCameraCaptureControl::cameraWriter() const
+QCameraWriter * QCaptureLimitsControl::cameraWriter() const
 {
   return writer_;
 }
 
 
-void QCameraCaptureControl::setCameraWriter(QCameraWriter * writer)
+void QCaptureLimitsControl::setCameraWriter(QCameraWriter * writer)
 {
   if ( writer_ ) {
     disconnect(writer, nullptr, this, nullptr);
@@ -217,12 +217,12 @@ void QCameraCaptureControl::setCameraWriter(QCameraWriter * writer)
   updateControls();
 }
 
-void QCameraCaptureControl::onUpdateControls()
+void QCaptureLimitsControl::onUpdateControls()
 {
   updateControls();
 }
 
-void QCameraCaptureControl::onupdatecontrols()
+void QCaptureLimitsControl::onupdatecontrols()
 {
   if( !writer_ ) {
     setEnabled(false);
@@ -258,7 +258,7 @@ void QCameraCaptureControl::onupdatecontrols()
   }
 }
 
-void QCameraCaptureControl::onStartStopButtonClicked()
+void QCaptureLimitsControl::onStartStopButtonClicked()
 {
   if( writer_ ) {
 
@@ -280,12 +280,13 @@ void QCameraCaptureControl::onStartStopButtonClicked()
   }
 }
 
-void QCameraCaptureControl::onLimitsSelectionChanged(int)
+void QCaptureLimitsControl::onLimitsSelectionChanged(int)
 {
   if( writer_ && writer_->state() == QCameraWriter::Idle ) {
     c_capture_limits c;
     if( getSelectedCaptureLimits(&c) ) {
       writer_->setCaptureLimits(c);
+      Q_EMIT captureLimitChanged();
     }
   }
 }
@@ -297,14 +298,22 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 
   form->setLabelAlignment(Qt::AlignLeft);
 
-  capture_ctl =
-      add_widget<QCameraCaptureControl>("Limit:");
+  captureLimits_ctl =
+      add_widget<QCaptureLimitsControl>("Limit:");
+
+  connect(captureLimits_ctl, &QCaptureLimitsControl::captureLimitChanged,
+      [this]() {
+        updateControls();
+        saveCaptureLimits();
+      });
 
   num_rounds_ctl =
       add_spinbox("Rounds:",
           [this](int value) {
             if ( writer_ ) {
-              writer_->setRounds(value);
+              writer_->setNumRounds(value);
+              save_parameter(PREFIX, "numRounds",
+                  writer_->numRounds());
             }
           });
 
@@ -316,6 +325,8 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
           [this](int value) {
             if ( writer_ ) {
               writer_->setIntervalBetweenRounds(value);
+              save_parameter(PREFIX, "intervalBetweenRounds",
+                  writer_->intervalBetweenRounds());
             }
           });
 
@@ -324,19 +335,16 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 
   form->addRow(outpuPath_ctl =
       new QBrowsePathCombo("Output path:",
+          QFileDialog::AcceptSave,
           QFileDialog::Directory,
           this));
-
-  outpuPath_ctl->setAcceptMode(
-      QFileDialog::AcceptSave);
 
   connect(outpuPath_ctl, &QBrowsePathCombo::pathSelected,
       [this](const QString & path) {
         if ( writer_ ) {
-
-          CF_DEBUG("pathSelected: %s", path.toUtf8().constData());
-
           writer_->setOutputDirectoty(path);
+          save_parameter(PREFIX, "outputDirectoty",
+              writer_->outputDirectoty());
         }
       });
 
@@ -359,9 +367,12 @@ void QCaptureSettingsWidget::setCameraWriter(QCameraWriter * writer)
     disconnect(writer, nullptr, this, nullptr);
   }
 
-  capture_ctl->setCameraWriter(writer_ = writer);
+  captureLimits_ctl->setCameraWriter(writer_ = writer);
 
   if( (writer_ = writer) ) {
+
+    loadParameters();
+
     connect(writer_, &QCameraWriter::stateChanged,
         this, &ThisClass::updateControls);
   }
@@ -377,25 +388,79 @@ void QCaptureSettingsWidget::onupdatecontrols()
   }
   else {
 
-    num_rounds_ctl->setValue(writer_->rounds());
-    interval_between_rounds_ctl->setValue(writer_->intervalBetweenRounds());
-    outpuPath_ctl->setCurrentPath(writer_->outputDirectoty(), false);
+    const bool is_unlimited =
+        writer_->captureLimits().value < 0;
 
-    if ( writer_->state() == QCameraWriter::State::Idle ) {
-      num_rounds_ctl->setEnabled(true);
-      interval_between_rounds_ctl->setEnabled(true);
-      outpuPath_ctl->setEnabled(true);
-    }
-    else {
-      num_rounds_ctl->setEnabled(false);
-      interval_between_rounds_ctl->setEnabled(false);
-      outpuPath_ctl->setEnabled(false);
-    }
+    num_rounds_ctl->setValue(writer_->numRounds());
+    num_rounds_ctl->setEnabled(!is_unlimited);
+
+    interval_between_rounds_ctl->setValue(writer_->intervalBetweenRounds());
+    interval_between_rounds_ctl->setEnabled(!is_unlimited);
+
+    outpuPath_ctl->setCurrentPath(writer_->outputDirectoty(), false);
+    outpuPath_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle);
+
 
     setEnabled(true);
   }
 }
 
+void QCaptureSettingsWidget::onload(QSettings & settings)
+{
+  if( writer_ ) {
 
+    QString outputDirectoty = writer_->outputDirectoty();
+    if( load_parameter(settings, PREFIX, "outputDirectoty", &outputDirectoty) ) {
+      writer_->setOutputDirectoty(outputDirectoty);
+    }
+
+    int numRounds = writer_->numRounds();
+    if( load_parameter(settings, PREFIX, "numRounds", &numRounds) ) {
+      writer_->setNumRounds(numRounds);
+    }
+
+    int intervalBetweenRounds = writer_->intervalBetweenRounds();
+    if( load_parameter(settings, PREFIX, "intervalBetweenRounds", &intervalBetweenRounds) ) {
+      writer_->setIntervalBetweenRounds(intervalBetweenRounds);
+    }
+
+    loadCaptureLimits(settings);
+  }
+}
+
+void QCaptureSettingsWidget::saveCaptureLimits()
+{
+  if ( writer_ ) {
+
+    QSettings settings;
+
+    const c_capture_limits limits =
+        writer_->captureLimits();
+
+    settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_type"),
+        toString(limits.type));
+
+    settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_value"),
+        limits.value);
+  }
+}
+
+void QCaptureSettingsWidget::loadCaptureLimits(QSettings & settings)
+{
+  if ( writer_ ) {
+
+    c_capture_limits limits =
+        writer_->captureLimits();
+
+    load_parameter(settings, PREFIX, "capture_limits_type",
+        &limits.type);
+
+    load_parameter(settings, PREFIX, "capture_limits_value",
+        &limits.value);
+
+    writer_->setCaptureLimits(limits);
+  }
+
+}
 
 } /* namespace serimager */

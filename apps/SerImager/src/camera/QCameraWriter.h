@@ -66,8 +66,8 @@ public:
   void setCaptureLimits(const c_capture_limits & limits);
   const c_capture_limits & captureLimits() const;
 
-  void setRounds(int v);
-  int rounds() const;
+  void setNumRounds(int v);
+  int numRounds() const;
 
   void setIntervalBetweenRounds(int v);
   int intervalBetweenRounds() const;
@@ -83,7 +83,7 @@ public:
 
 Q_SIGNALS:
   void stateChanged();
-  void statisticsUpdate();
+  void statusUpdate();
 
 protected Q_SLOTS:
   void onCameraStateChanged(QImagingCamera::State oldState,
@@ -101,8 +101,10 @@ protected:
   QString output_directoty_;
   QString output_file_name_;
   FORMAT output_format_ = FORMAT::SER;
-  int rounds_ = 1;
-  int interval_between_rounds_ = 0;
+
+  std::atomic<int> numRounds_ = 1;
+  std::atomic<int> interval_between_rounds_ = 0;
+
   State current_state_ = State::Idle;
   int last_index_ = -1;
   int num_saved_frames_ = 0;

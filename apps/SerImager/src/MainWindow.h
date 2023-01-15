@@ -42,14 +42,15 @@ protected:
   void setupMainToolbar();
   void setupStatusbar();
   void setupImagerSettings();
-  void setupFrameProcessorControls();
+  void setupDisplayProcessingControls();
   void setupFocusGraph();
   void setupIndigoFocuser();
 
 protected Q_SLOTS:
-  void onCameraWriterStatisticsUpdate();
+  void onCameraWriterStatussUpdate();
   void onShowMtfControlActionTriggered(bool checked);
   void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
+  void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -73,7 +74,7 @@ protected:
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;
   QToolButton * showMtfControlButton_ = nullptr;
-  QLabel * statistics_ctl = nullptr;
+  QLabel * capture_status_ctl = nullptr;
   QLabel * mousepos_ctl = nullptr;
   QLabel * exposure_status_ctl = nullptr;
   QMenu displayOptionsMenu_;

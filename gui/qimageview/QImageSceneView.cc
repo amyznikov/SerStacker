@@ -273,6 +273,18 @@ void QImageSceneView::mouseDoubleClickEvent(QMouseEvent *e)
   Q_EMIT onMouseDoubleClick(e);
 }
 
+void QImageSceneView::enterEvent(QEvent *e)
+{
+  Base::enterEvent(e);
+  Q_EMIT onMouseEnterEvent(e);
+}
+
+void QImageSceneView::leaveEvent(QEvent *e)
+{
+  Base::leaveEvent(e);
+  Q_EMIT onMouseLeaveEvent(e);
+}
+
 //
 //void QImageSceneView::setShapesVisible(bool v)
 //{

@@ -23,7 +23,8 @@ public:
     c_class_factory() :
         base::class_factory("color_saturation",
             "color saturation",
-            "Scale color saturation",
+            "Multi-Scale color saturation.\n"
+            "Based on gimp_rgb_to_hsl() and OpenCV image pyramid.",
             factory([]() {return ptr(new this_class());})) {}
   } class_factory;
 

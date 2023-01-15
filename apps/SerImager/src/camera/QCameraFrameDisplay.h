@@ -39,7 +39,6 @@ public:
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
-/*  void getDisplayImage(cv::OutputArray image, int ddepth = -1) override;*/
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::OutputArray displayImage, int ddepth = CV_8U) override;
 

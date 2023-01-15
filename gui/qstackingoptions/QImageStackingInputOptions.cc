@@ -94,6 +94,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
   form->addRow(darkbayer_filename_ctl =
       new QBrowsePathCombo("DarkBayer:",
+          QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           this));
 
@@ -110,6 +111,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
 
   form->addRow(missing_pixel_mask_filename_ctl =
       new QBrowsePathCombo("MIssing pixels mask:",
+          QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           this));
 

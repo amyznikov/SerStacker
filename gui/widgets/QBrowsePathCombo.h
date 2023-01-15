@@ -22,8 +22,9 @@ public:
   typedef QBrowsePathCombo ThisClass;
   typedef QWidget Base;
 
-  QBrowsePathCombo(QWidget *parent = Q_NULLPTR);
-  QBrowsePathCombo(const QString & label, QFileDialog::FileMode mode = QFileDialog::AnyFile, QWidget *parent = Q_NULLPTR);
+  QBrowsePathCombo(QWidget *parent = nullptr);
+  QBrowsePathCombo(const QString & label, QFileDialog::AcceptMode acceptMode,
+      QFileDialog::FileMode mode = QFileDialog::AnyFile,  QWidget *parent = nullptr);
 
   void setShowDirsOnly(bool v);
   bool showDirsOnly() const;
@@ -55,9 +56,9 @@ private slots:
   void currentTextChanged(const QString &);
 
 private:
-  QLabel * label = Q_NULLPTR;
-  QComboBox * combo = Q_NULLPTR;
-  QToolButton * button = Q_NULLPTR;
+  QLabel * label = nullptr;
+  QComboBox * combo = nullptr;
+  QToolButton * button = nullptr;
   QString fileDialogCaption;
   QString labelText_;
   QFileDialog::FileMode fileMode_ = QFileDialog::AnyFile;

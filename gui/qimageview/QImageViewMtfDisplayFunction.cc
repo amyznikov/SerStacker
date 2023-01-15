@@ -135,7 +135,7 @@ void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImag
 
   if ( !currentImage.empty() ) {
 
-    DisplayParams & opts =
+    const DisplayParams & opts =
         displayParams();
 
     const bool needColormap =

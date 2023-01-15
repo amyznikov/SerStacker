@@ -194,14 +194,14 @@ QCameraWriter::FORMAT QCameraWriter::outputFormat() const
   return output_format_;
 }
 
-void QCameraWriter::setRounds(int v)
+void QCameraWriter::setNumRounds(int v)
 {
-  rounds_ = v;
+  numRounds_ = v;
 }
 
-int QCameraWriter::rounds() const
+int QCameraWriter::numRounds() const
 {
-  return rounds_;
+  return numRounds_;
 }
 
 void QCameraWriter::setIntervalBetweenRounds(int v)
@@ -352,7 +352,7 @@ void QCameraWriter::writerThreadProc()
         return false;
       };
 
-  for( round_ = 0; round_ < rounds_ ; ++round_ ) {
+  for( round_ = 0; round_ < numRounds_ ; ++round_ ) {
 
     c_video_frame_writer *writer =
         nullptr;
@@ -373,7 +373,7 @@ void QCameraWriter::writerThreadProc()
             capture_limits_.value * 1000 :
             -1;
 
-    Q_EMIT statisticsUpdate();
+    Q_EMIT statusUpdate();
 
     while (current_state_ == State::Active) {
 
@@ -387,7 +387,7 @@ void QCameraWriter::writerThreadProc()
 
       if( std::chrono::duration_cast<std::chrono::seconds>(now - start_time) >= std::chrono::seconds(1) ) {
         start_time = now;
-        Q_EMIT statisticsUpdate();
+        Q_EMIT statusUpdate();
       }
 
       const auto timeout =
@@ -501,7 +501,7 @@ void QCameraWriter::writerThreadProc()
       delete writer;
     }
 
-    Q_EMIT statisticsUpdate();
+    Q_EMIT statusUpdate();
 
     for ( int i = 0; i < interval_between_rounds_; ++i ) {
       if ( current_state_ != State::Active || c->state() != QImagingCamera::State_started ) {
@@ -517,7 +517,7 @@ void QCameraWriter::writerThreadProc()
   }
 
   setState(State::Idle);
-  Q_EMIT statisticsUpdate();
+  Q_EMIT statusUpdate();
 }
 
 } /* namespace serimager

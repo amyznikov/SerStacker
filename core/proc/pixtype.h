@@ -29,4 +29,11 @@ bool get_data_range_for_pixel_depth(int ddepth,
 
 double get_maxval_for_pixel_depth(int ddepth);
 
+/**
+ *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
+ *  dst = src * scale  + offset;
+ */
+bool get_scale_offset(int src_depth, int dst_depth,
+    double * scale, double * offset);
+
 #endif /* __pixtype_h__ */

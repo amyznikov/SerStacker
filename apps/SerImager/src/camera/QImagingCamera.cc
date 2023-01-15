@@ -103,8 +103,6 @@ void QImagingCamera::setState(State newState, const QString & reason)
     const State oldState =
         current_state_;
 
-    CF_DEBUG("%s -> %s", toString(oldState), toString(newState));
-
     current_state_ = newState;
 
     if( !reason.isEmpty() ) {

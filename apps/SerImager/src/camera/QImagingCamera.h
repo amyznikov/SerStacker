@@ -75,9 +75,8 @@ public:
 
 Q_SIGNALS:
   void stateChanged(QImagingCamera::State oldSate, QImagingCamera::State newState);
+  void exposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void frameReceived();
-  void exposureStateUpdate(QImagingCamera::ExposureStatus status,
-      double exposure, double elapsed);
 
 protected:
   virtual bool device_is_connected() const = 0;

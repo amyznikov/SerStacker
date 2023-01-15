@@ -436,6 +436,8 @@ void QASICamera::device_stop()
         status,
         toString(status));
   }
+
+  Q_EMIT exposureStatusUpdate(Exposure_idle, 0, 0);
 }
 
 QCameraFrame::sptr QASICamera::device_recv_frame()
@@ -451,7 +453,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
     ASI_ERROR_CODE status;
 
     ASI_BOOL auto_exposure = ASI_FALSE;
-    long exposure = 0;
+    long exposure = -1;
 
     status =
         ASIGetControlValue(camInfo_.CameraID, ASI_EXPOSURE,
@@ -461,10 +463,6 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
     if( status ) {
       CF_ERROR("ASIGetControlValue(ASI_EXPOSURE) fails: status=%d (%s)",
           status, toString(status));
-    }
-    else {
-      CF_DEBUG("ASI_EXPOSURE: %ld (us) auto=%d",
-          exposure, auto_exposure);
     }
 
     const bool is_long_exposure =
@@ -477,7 +475,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
         get_realtime_ms();
 
     if( is_long_exposure ) {
-      Q_EMIT exposureStateUpdate(Exposure_working,
+      Q_EMIT exposureStatusUpdate(Exposure_working,
           exposure_time_ms, 0);
     }
 
@@ -492,7 +490,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
       if( status == ASI_SUCCESS ) {
 
         if( is_long_exposure ) {
-          Q_EMIT exposureStateUpdate(Exposure_success,
+          Q_EMIT exposureStatusUpdate(Exposure_success,
               exposure_time_ms,
               get_realtime_ms() - start_time_ms);
         }
@@ -515,7 +513,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
         }
 
         if( is_long_exposure ) {
-          Q_EMIT exposureStateUpdate(Exposure_working,
+          Q_EMIT exposureStatusUpdate(Exposure_working,
               exposure_time_ms,
               get_realtime_ms() - start_time_ms);
         }
@@ -527,7 +525,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
           frm->data(), frm->size());
 
       if( is_long_exposure ) {
-        Q_EMIT exposureStateUpdate(Exposure_failed,
+        Q_EMIT exposureStatusUpdate(Exposure_failed,
             exposure_time_ms,
             get_realtime_ms() - start_time_ms);
       }

@@ -16,19 +16,26 @@
 
 namespace serimager {
 
-class QCameraCaptureControl:
+/**
+ * Provides Combobox for capture limits selection
+ * and start / stop capture buttons
+ * */
+class QCaptureLimitsControl:
     public QWidget,
     public HasUpdateControls
 {
   Q_OBJECT;
 public:
-  typedef QCameraCaptureControl ThisClass;
+  typedef QCaptureLimitsControl ThisClass;
   typedef QWidget Base;
 
-  QCameraCaptureControl(QWidget * parent = nullptr);
+  QCaptureLimitsControl(QWidget * parent = nullptr);
 
   void setCameraWriter(QCameraWriter * writer);
   QCameraWriter * cameraWriter() const;
+
+Q_SIGNALS:
+  void captureLimitChanged();
 
 protected:
   void populateCaptureLimitsCombobox();
@@ -65,11 +72,14 @@ public:
 
 protected:
   void onupdatecontrols() override;
+  void onload(QSettings & settings) override;
+  void saveCaptureLimits();
+  void loadCaptureLimits(QSettings & settings);
 
 
 protected:
   QCameraWriter *writer_ = nullptr;
-  QCameraCaptureControl * capture_ctl = nullptr;
+  QCaptureLimitsControl * captureLimits_ctl = nullptr;
   QSpinBox *num_rounds_ctl = nullptr;
   QSpinBox *interval_between_rounds_ctl = nullptr;
   QBrowsePathCombo * outpuPath_ctl = nullptr;

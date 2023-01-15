@@ -37,8 +37,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   form->addRow(output_directory_ctl =
       new QBrowsePathCombo("Output directory:",
+          QFileDialog::AcceptSave,
           QFileDialog::AnyFile,
           this));
+
   output_directory_ctl->setShowDirsOnly(true);
 
 
@@ -66,7 +68,8 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
           });
 
   form->addRow(output_preprocessed_frames_path_ctl =
-      new QBrowsePathCombo("Preprocessd frames file name:",
+      new QBrowsePathCombo("Preprocessed frames file name:",
+          QFileDialog::AcceptSave,
           QFileDialog::AnyFile,
           this));
 
@@ -96,6 +99,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   form->addRow(output_aligned_frames_path_ctl =
       new QBrowsePathCombo("Aligned frames file name:",
+          QFileDialog::AcceptSave,
           QFileDialog::AnyFile,
           this));
 
@@ -124,6 +128,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   form->addRow(output_ecc_frames_path_ctl =
     new QBrowsePathCombo("ECC frames file name:",
+        QFileDialog::AcceptSave,
         QFileDialog::AnyFile,
         this));
 
@@ -153,6 +158,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   form->addRow(output_processed_aligned_frames_path_ctl =
       new QBrowsePathCombo("Processed aligned frames file name:",
+          QFileDialog::AcceptSave,
           QFileDialog::AnyFile,
           this));
 
@@ -180,6 +186,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   form->addRow(output_accumulation_masks_path_ctl =
       new QBrowsePathCombo("Accumulation masks file name:",
+          QFileDialog::AcceptSave,
           QFileDialog::AnyFile,
           this));
 

@@ -63,7 +63,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupMainMenu();
   setupFocusGraph();
   setupIndigoFocuser();
-  setupImagerSettings();
+  setupCameraControls();
   setupDisplayProcessingControls();
   setupMainToolbar();
 
@@ -74,11 +74,37 @@ MainWindow::MainWindow(QWidget * parent) :
   connect(centralDisplay_, &QCameraFrameDisplay::onMouseMove,
       [this](QMouseEvent * e) {
         mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
+        mousepos_ctl->show();
       });
+
   connect(centralDisplay_, &QCameraFrameDisplay::onMouseLeaveEvent,
       [this](QEvent * e) {
-        mousepos_ctl->setText("");
+        mousepos_ctl->hide();
       });
+
+  connect(centralDisplay_, &QCameraFrameDisplay::roiChanged,
+      [this](const QRect & rc) {
+
+        const QImagingCamera::sptr & currentCamera = cameraControls_ctl->selectedCamera();
+        if ( currentCamera ) {
+          currentCamera->setRoi(rc);
+        }
+
+        mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
+            .arg(rc.x())
+            .arg(rc.y())
+            .arg(rc.width())
+            .arg(rc.height()));
+      });
+
+  connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
+      [this]() {
+        const QImagingCamera::sptr & currentCamera = cameraControls_ctl->selectedCamera();
+        if ( currentCamera ) {
+          currentCamera->setRoi(centralDisplay_->roi());
+        }
+      });
+
 }
 
 MainWindow::~MainWindow()
@@ -195,25 +221,25 @@ void MainWindow::setupStatusbar()
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
 }
 
-void MainWindow::setupImagerSettings()
+void MainWindow::setupCameraControls()
 {
   addDockWidget(Qt::RightDockWidgetArea,
-      imagerSettingsDock_ =
-          new QCameraControlDock("Camera controls", this,
-              imagerSettings_ctl = new QImagerSettingsWidget(this)));
+      cameraControlsDock_ =
+          new QImagingCameraControlsDock("Camera controls", this,
+              cameraControls_ctl = new QImagingCameraControlsWidget(this)));
 
-  imagerSettingsDock_->setObjectName("imagerSettingsDock_");
+  cameraControlsDock_->setObjectName("imagerSettingsDock_");
 
   menuView_->addAction(showCameraControlsAction_ =
-      imagerSettingsDock_->toggleViewAction());
+      cameraControlsDock_->toggleViewAction());
 
-  imagerSettings_ctl->setCameraWriter(&cameraWriter_);
+  cameraControls_ctl->setCameraWriter(&cameraWriter_);
 
-  connect(imagerSettings_ctl, &QImagerSettingsWidget::selectedCameraChanged,
+  connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
       [this]() {
 
         const QImagingCamera::sptr & camera =
-        imagerSettings_ctl->selectedCamera();
+        cameraControls_ctl->selectedCamera();
 
         centralDisplay_->setCamera(camera);
         focusMeasureThread_->setCamera(camera);
@@ -226,7 +252,7 @@ void MainWindow::setupImagerSettings()
       });
 
   connect(&cameraWriter_, &QCameraWriter::statusUpdate,
-      this, &ThisClass::onCameraWriterStatussUpdate,
+      this, &ThisClass::onCameraWriterStatusUpdate,
       Qt::QueuedConnection);
 
 }
@@ -263,7 +289,7 @@ void MainWindow::setupDisplayProcessingControls()
   }
 }
 
-void MainWindow::onCameraWriterStatussUpdate()
+void MainWindow::onCameraWriterStatusUpdate()
 {
   const int capture_drops = cameraWriter_.camera() ?
       cameraWriter_.camera()->drops() : 0;
@@ -293,22 +319,7 @@ void MainWindow::setupFocusGraph()
           menuView_);
 
   focusGraphDock_->hide();
-
   focusGraph_->setFocusMeasureThread(focusMeasureThread_);
-  focusMeasureThread_->setRoi(centralDisplay_->roi());
-
-  connect(centralDisplay_, &QCameraFrameDisplay::roiChanged,
-      [this](const QRect & rc) {
-
-        focusMeasureThread_->setRoi(rc);
-
-        mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
-            .arg(rc.x())
-            .arg(rc.y())
-            .arg(rc.width())
-            .arg(rc.height()));
-      });
-
 }
 
 void MainWindow::setupIndigoFocuser()

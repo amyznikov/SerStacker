@@ -11,9 +11,9 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/qmtf/QMtfControl.h>
+#include "camera/QImagingCameraControlsWidget.h"
 #include "QCameraFrameProcessorSelector.h"
 #include "QCameraFrameDisplay.h"
-#include "QImagerSettingsWidget.h"
 #include "QFocusGraph.h"
 
 #define HAVE_INDIGO 1
@@ -41,13 +41,13 @@ protected:
   void setupMainMenu();
   void setupMainToolbar();
   void setupStatusbar();
-  void setupImagerSettings();
+  void setupCameraControls();
   void setupDisplayProcessingControls();
   void setupFocusGraph();
   void setupIndigoFocuser();
 
 protected Q_SLOTS:
-  void onCameraWriterStatussUpdate();
+  void onCameraWriterStatusUpdate();
   void onShowMtfControlActionTriggered(bool checked);
   void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
@@ -59,8 +59,8 @@ protected:
   QCameraFrameDisplay * centralDisplay_ = nullptr;
   QCameraWriter cameraWriter_;
 
-  QImagerSettingsWidget * imagerSettings_ctl = nullptr;
-  QCameraControlDock * imagerSettingsDock_ = nullptr;
+  QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
+  QImagingCameraControlsDock * cameraControlsDock_ = nullptr;
   QAction * showCameraControlsAction_ = nullptr;
 
   QCameraFrameProcessorSelector * frameProcessor_ctl = nullptr;

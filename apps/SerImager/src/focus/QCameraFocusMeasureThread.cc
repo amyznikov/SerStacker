@@ -83,17 +83,6 @@ const c_local_contrast_measure & QCameraFocusMeasureThread::measure() const
   return measure_;
 }
 
-
-const QRect & QCameraFocusMeasureThread::roi() const
-{
-  return roi_;
-}
-
-void QCameraFocusMeasureThread::setRoi(const QRect & roi)
-{
-  roi_ = roi;
-}
-
 int QCameraFocusMeasureThread::maxMeasurements() const
 {
   return max_measurements_;
@@ -172,6 +161,7 @@ void QCameraFocusMeasureThread::run()
             frame->index();
 
         if( index > last_frame_index_ ) {
+
           last_frame_index_ = index;
           bpp = frame->bpp();
           colorid = frame->colorid();
@@ -179,8 +169,11 @@ void QCameraFocusMeasureThread::run()
           const cv::Mat & frame_image =
               frame->image();
 
-          cv::Rect roi(roi_.x() & ~0x1, roi_.y() & ~0x1,
-              roi_.width() & ~0x1, roi_.height() & ~0x1);
+          const QRect rect =
+              camera_->roi();
+
+          cv::Rect roi(rect.x() & ~0x1, rect.y() & ~0x1,
+              rect.width() & ~0x1, rect.height() & ~0x1);
 
           if ( roi.x + roi.width <= 0 ) {
             roi.width = 0;

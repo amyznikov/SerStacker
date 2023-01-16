@@ -38,9 +38,6 @@ public:
   c_local_contrast_measure & measure();
   const c_local_contrast_measure & measure() const;
 
-  void setRoi(const QRect & roi);
-  const QRect & roi() const;
-
   int maxMeasurements() const;
 
   const QVector<double> & measurements(int channel) const;
@@ -50,7 +47,6 @@ public:
   int bpp() const;
 
   QMutex & mutex();
-
 
 public Q_SLOTS:
   void setEnabled(bool v);
@@ -68,7 +64,6 @@ protected:
   QImagingCamera::sptr camera_;
   QMutex mutex_;
   QVector<double> measurements_[MAX_CHANNELS];
-  QRect roi_;
   int max_measurements_ = 100;
   bool isEnabled_ = false;
 

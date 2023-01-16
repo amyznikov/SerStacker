@@ -5,7 +5,8 @@
  *      Author: amyznikov
  */
 
-#include "QImagerSettingsWidget.h"
+#include "QImagingCameraControlsWidget.h"
+
 #include <core/debug.h>
 
 namespace serimager {
@@ -25,7 +26,7 @@ QScrollArea* createScrollableWrap(QWidget * w, QWidget * parent = nullptr)
 
 }
 
-QImagerSettingsWidget::QImagerSettingsWidget(QWidget * parent) :
+QImagingCameraControlsWidget::QImagingCameraControlsWidget(QWidget * parent) :
     Base(parent)
 {
   layout_ = new QVBoxLayout(this);
@@ -46,12 +47,12 @@ QImagerSettingsWidget::QImagerSettingsWidget(QWidget * parent) :
   updateControls();
 }
 
-const QImagingCamera::sptr &QImagerSettingsWidget::selectedCamera() const
+const QImagingCamera::sptr &QImagingCameraControlsWidget::selectedCamera() const
 {
   return cameraSelection_ctl->selectedCamera();
 }
 
-void QImagerSettingsWidget::setCameraWriter(QCameraWriter * writer)
+void QImagingCameraControlsWidget::setCameraWriter(QCameraWriter * writer)
 {
   if( writer ) {
     writer->setCamera(selectedCamera());
@@ -59,16 +60,16 @@ void QImagerSettingsWidget::setCameraWriter(QCameraWriter * writer)
   captureSettings_ctl->setCameraWriter(writer);
 }
 
-QCameraWriter * QImagerSettingsWidget::cameraWriter() const
+QCameraWriter * QImagingCameraControlsWidget::cameraWriter() const
 {
   return captureSettings_ctl->cameraWriter();
 }
 
-void QImagerSettingsWidget::onupdatecontrols()
+void QImagingCameraControlsWidget::onupdatecontrols()
 {
 }
 
-void QImagerSettingsWidget::onSelectedCameraChanged()
+void QImagingCameraControlsWidget::onSelectedCameraChanged()
 {
   if( cameraControls_ctl ) {
     settings_ctl->removeWidget(cameraControls_ctl);
@@ -95,7 +96,8 @@ void QImagerSettingsWidget::onSelectedCameraChanged()
   Q_EMIT selectedCameraChanged();
 }
 
-QCameraControlDock::QCameraControlDock(const QString & title, QWidget * parent, QImagerSettingsWidget * view) :
+QImagingCameraControlsDock::QImagingCameraControlsDock(const QString & title, QWidget * parent,
+    QImagingCameraControlsWidget * view) :
     Base(title, parent, view)
 {
 }

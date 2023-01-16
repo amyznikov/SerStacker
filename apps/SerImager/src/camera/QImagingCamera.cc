@@ -119,6 +119,32 @@ void QImagingCamera::onStateCanged(State oldSate, State newState)
 }
 
 
+std::shared_mutex & QImagingCamera::mutex()
+{
+  return mtx_;
+}
+
+std::condition_variable_any & QImagingCamera::condvar()
+{
+  return condvar_;
+}
+
+const std::deque<QCameraFrame::sptr> & QImagingCamera::deque() const
+{
+  return deque_;
+}
+
+void QImagingCamera::setRoi(const QRect & roi)
+{
+  roi_ = roi;
+  Q_EMIT roiChanged(roi);
+}
+
+const QRect & QImagingCamera::roi() const
+{
+  return roi_;
+}
+
 bool QImagingCamera::connect()
 {
   unique_lock lock(mtx_);

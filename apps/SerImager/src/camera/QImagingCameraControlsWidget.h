@@ -19,16 +19,16 @@
 
 namespace serimager {
 
-class QImagerSettingsWidget:
+class QImagingCameraControlsWidget:
     public QFrame,
     public HasUpdateControls
 {
   Q_OBJECT;
 public:
-  typedef QImagerSettingsWidget ThisClass;
+  typedef QImagingCameraControlsWidget ThisClass;
   typedef QFrame Base;
 
-  QImagerSettingsWidget(QWidget * parent = nullptr);
+  QImagingCameraControlsWidget(QWidget * parent = nullptr);
 
   const QImagingCamera::sptr &selectedCamera() const;
 
@@ -54,15 +54,16 @@ protected:
 };
 
 
-class QCameraControlDock :
+class QImagingCameraControlsDock :
     public QCustomDockWidget
 {
   Q_OBJECT;
 public:
-  typedef QCameraControlDock ThisClass;
+  typedef QImagingCameraControlsDock ThisClass;
   typedef QCustomDockWidget Base;
 
-  QCameraControlDock(const QString & title, QWidget * parent, QImagerSettingsWidget * view);
+  QImagingCameraControlsDock(const QString & title, QWidget * parent,
+      QImagingCameraControlsWidget * view);
 
 protected:
 };

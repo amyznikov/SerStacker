@@ -38,7 +38,7 @@ public:
 
   enum ExposureStatus
   {
-    Exposure_idle = 0, // idle states, you can start exposure now
+    Exposure_idle = 0, // idle state, you can start exposure now
     Exposure_working, // exposing
     Exposure_success, // exposure finished and waiting for download
     Exposure_failed, //exposure failed, you need to start exposure again
@@ -53,30 +53,23 @@ public:
   State state() const;
   const QString & reason() const;
 
+  const QRect & roi() const;
+  void setRoi(const QRect & roi);
+
   bool connect();
   void disconnect();
   bool start();
   void stop();
 
-  std::shared_mutex & mutex()
-  {
-    return mtx_;
-  }
-
-  std::condition_variable_any & condvar()
-  {
-    return condvar_;
-  }
-
-  const std::deque<QCameraFrame::sptr> & deque() const
-  {
-    return deque_;
-  }
+  std::shared_mutex & mutex();
+  std::condition_variable_any & condvar();
+  const std::deque<QCameraFrame::sptr> & deque() const;
 
 Q_SIGNALS:
   void stateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);
   void exposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void frameReceived();
+  void roiChanged(const QRect & );
 
 protected:
   virtual bool device_is_connected() const = 0;
@@ -99,13 +92,15 @@ protected:
 
   State current_state_ = State_disconnected;
   QString stateChangeReason_;
+
+  QRect roi_;
 };
 
 std::string fourccToString (uint32_t fourcc);
 QString fourccToQString (uint32_t fourcc);
 
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 Q_DECLARE_METATYPE(serimager::QImagingCamera::sptr);
 Q_DECLARE_METATYPE(serimager::QImagingCamera::State);

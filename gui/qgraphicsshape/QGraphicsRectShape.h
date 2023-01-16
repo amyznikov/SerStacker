@@ -24,6 +24,9 @@ public:
   QGraphicsRectShape(const QString & name, const QString & description, QGraphicsItem *parent = nullptr);
   QGraphicsRectShape(const QString & name, const QString & description, const QRectF & rect, QGraphicsItem *parent = nullptr);
 
+  void setResizable(bool v);
+  bool resizable() const;
+
   void setRect(const QRectF & rc);
   const QRectF & rect() const;
   QRectF sceneRect() const;
@@ -32,12 +35,8 @@ public:
   void setCosmeticPen(const QColor & color, int width = 1 );
   const QPen & pen() const;
 
-
   void setBrush(const QBrush & brush);
   const QBrush & brush() const;
-
-  void setResizable(bool v);
-  bool resizable() const;
 
 protected:
   void updateGeometry();

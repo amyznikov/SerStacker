@@ -7,6 +7,7 @@
 
 #include "QShapesButton.h"
 #include "QGraphicsRectShape.h"
+#include "QGraphicsLineShape.h"
 #include <gui/qimageview/QImageScene.h>
 #include <core/debug.h>
 
@@ -62,21 +63,6 @@ QShapesButton::QShapesButton(QWidget * parent)
         }
       });
 
-
-  popup_.addAction(line_icon,
-      "Add line ...",
-      [this]() {
-//        if ( sceneView_ ) {
-//          sceneView_->addLineShape();
-//          if ( !isChecked() ) {
-//            setChecked(true);
-//          }
-//          else {
-//            sceneView_->shapesVisible();
-//          }
-//        }
-      });
-
   popup_.addAction(rectangle_icon,
       "Add rectangle ...",
       [this]() {
@@ -118,6 +104,56 @@ QShapesButton::QShapesButton(QWidget * parent)
           }
         }
   });
+
+  popup_.addAction(line_icon,
+      "Add line ...",
+      [this]() {
+        if ( sceneView_ ) {
+
+          QGraphicsScene * scene =
+              sceneView_->scene();
+
+          if ( scene ) {
+
+            const QRect rc1 =
+                sceneView_->rect();
+
+            const QPoint center =
+                rc1.center();
+
+
+            const double L =
+                std::max(20, std::max( rc1.width(), rc1.height()) / 6 );
+
+            const QPointF p1 =
+                sceneView_->mapToScene(QPoint(center.x() - L, center.y() - L));
+
+            const QPointF p2 =
+                sceneView_->mapToScene(QPoint(center.x() + L, center.y() + L));
+
+
+            QGraphicsLineShape *shape =
+                new QGraphicsLineShape(p1, p2);
+
+            shape->setVisible(true);
+            shape->setFlag(QGraphicsItem::ItemIsMovable, true);
+            shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+            shape->setPen(pen_);
+            scene->addItem(shape);
+
+            QImageScene * imageScene =
+                dynamic_cast<QImageScene * >(scene);
+
+            if ( imageScene ) {
+              connect(shape, &QGraphicsShape::itemChanged,
+                  imageScene, &QImageScene::graphicsItemChanged,
+                  Qt::QueuedConnection);
+            }
+
+          }
+        }
+    });
+
 
   popup_.addSeparator();
   popup_.addAction(delete_icon,

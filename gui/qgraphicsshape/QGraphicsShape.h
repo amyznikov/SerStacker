@@ -45,6 +45,13 @@ Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);
   void populateContextMenuReuested(const QGraphicsSceneContextMenuEvent * event, QMenu * menu);
 
+public:  // frequently used utilities
+  static double distance(const QPointF & p1, const QPointF & p2);
+  static double distance(const QPoint & p1, const QPoint & p2);
+  static double distance_from_point_to_line(const QPointF & p, const QPointF & lp1, const QPointF & lp2);
+  static double distance_from_point_to_line(const QPoint & p, const QPoint & lp1, const QPoint & lp2);
+  static double distance_from_point_to_line(const QPointF & p, const QLineF & line);
+
 protected:
   Q_DISABLE_COPY(QGraphicsShape);
   QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;

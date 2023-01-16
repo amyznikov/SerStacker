@@ -301,6 +301,55 @@ QPainterPath QGraphicsShape::shapeFromPath(const QPainterPath &path, const QPen 
   return p;
 }
 
+double QGraphicsShape::distance(const QPointF & p1, const QPointF & p2)
+{
+  return sqrt((p1.x() - p2.x()) * (p1.x() - p2.x()) + (p1.y() - p2.y()) * (p1.y() - p2.y()));
+}
+
+double QGraphicsShape::distance(const QPoint & p1, const QPoint & p2)
+{
+  return sqrt((p1.x() - p2.x()) * (p1.x() - p2.x()) + (p1.y() - p2.y()) * (p1.y() - p2.y()));
+}
+
+// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+double QGraphicsShape::distance_from_point_to_line(const QPointF & p, const QPointF & lp1, const QPointF & lp2)
+{
+  const QPointF &p1 = lp1;
+  const QPointF &p2 = lp2;
+
+  const double x0 = p.x();
+  const double y0 = p.y();
+  const double x1 = p1.x();
+  const double y1 = p1.y();
+  const double x2 = p2.x();
+  const double y2 = p2.y();
+
+  return fabs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1)) / sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
+// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+double QGraphicsShape::distance_from_point_to_line(const QPoint & p, const QPoint & lp1, const QPoint & lp2)
+{
+  const QPoint &p1 = lp1;
+  const QPoint &p2 = lp2;
+
+  const double x0 = p.x();
+  const double y0 = p.y();
+  const double x1 = p1.x();
+  const double y1 = p1.y();
+  const double x2 = p2.x();
+  const double y2 = p2.y();
+
+  return fabs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1)) / sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
+// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+double QGraphicsShape::distance_from_point_to_line(const QPointF & p, const QLineF & line)
+{
+  return distance_from_point_to_line(p, line.p1(), line.p2());
+}
+
+
 //
 //
 /////////////////////////

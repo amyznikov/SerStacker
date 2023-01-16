@@ -166,13 +166,13 @@ bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::Inp
   c_pixinsight_mtf *mtf =
       &opts.mtf;
 
-  double imin, imax;
+  c_mtf_adjustment a;
 
-  adjustMtfInputRange(mtf, currentImage, currentMask, &imin, &imax);
+  adjustMtfRange(mtf, currentImage, currentMask, &a);
 
   mtf->apply(currentImage, displayImage, ddepth);
 
-  restoreMtfInputRange(mtf, imin, imax);
+  restoreMtfRange(mtf, a);
 
   if ( currentMask.size() == currentImage.size() ) {
     displayImage.setTo(0, ~currentMask.getMat());

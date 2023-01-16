@@ -63,34 +63,48 @@ void QMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colo
   }
 }
 
-void QMtfDisplay::adjustMtfInputRange(c_midtones_transfer_function * mtf,
+void QMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
     cv::InputArray currentImage, cv::InputArray currentMask,
-    double * imin, double * imax) const
+    c_mtf_adjustment * a) const
 {
-  mtf->get_input_range(imin, imax);
+  if ( !currentImage.empty() ) {
 
-  if( *imin >= *imax && !currentImage.empty() ) {
+    mtf->get_input_range(&a->imin, &a->imax);
 
-    double adjusted_min, adjusted_max;
+    if( a->imin >= a->imax ) {
 
-    const int cdepth =
-        currentImage.depth();
+      double adjusted_min, adjusted_max;
 
-    if( cdepth == CV_32F || cdepth == CV_64F ) {
-      getminmax(currentImage, &adjusted_min, &adjusted_max, currentMask);
+      const int cdepth =
+          currentImage.depth();
+
+      if( cdepth == CV_32F || cdepth == CV_64F ) {
+        getminmax(currentImage, &adjusted_min, &adjusted_max, currentMask);
+      }
+      else {
+        c_midtones_transfer_function::suggest_levels_range(cdepth, &adjusted_min, &adjusted_max);
+      }
+
+      mtf->set_input_range(adjusted_min, adjusted_max);
+      a->adjusted_inputs = true;
     }
-    else {
-      c_midtones_transfer_function::suggest_levels_range(cdepth, &adjusted_min, &adjusted_max);
-    }
 
-    mtf->set_input_range(adjusted_min, adjusted_max);
+    if( currentImage.type() == CV_32FC2 || currentImage.type() == CV_64FC2 ) {
+      // assume this is an optical flow image
+      mtf->get_output_range(&a->omin, &a->omax);
+      mtf->set_output_range(a->imin, a->imax);
+      a->adjusted_outputs = true;
+    }
   }
 }
 
-void QMtfDisplay::restoreMtfInputRange(c_midtones_transfer_function *mtf, double imin, double imax) const
+void QMtfDisplay::restoreMtfRange(c_midtones_transfer_function *mtf, const c_mtf_adjustment & a) const
 {
-  if( imin >= imax ) {
-    mtf->set_input_range(imin, imax);
+  if ( a.adjusted_inputs ) {
+    mtf->set_input_range(a.imin, a.imax);
+  }
+  if ( a.adjusted_outputs ) {
+    mtf->set_output_range(a.omin, a.omax);
   }
 }
 

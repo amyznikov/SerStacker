@@ -7,6 +7,7 @@
 
 #include "autoclip.h"
 #include <tbb/tbb.h>
+#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 
@@ -299,6 +300,7 @@ static bool build_histogram(cv::InputArray input_image,
     bool cumulative,
     bool scaled)
 {
+
   if ( input_image.empty() ) {
     return false;
   }
@@ -312,7 +314,6 @@ static bool build_histogram(cv::InputArray input_image,
   if ( channel >= cn ) {
     return false;
   }
-
 
   if ( bins > 65536 ) {
     bins = 65536;
@@ -328,7 +329,6 @@ static bool build_histogram(cv::InputArray input_image,
       break;
     }
   }
-
 
   double range_min = input_output_range_min ? * input_output_range_min : -1;
   double range_max = input_output_range_max ? * input_output_range_max : -1;
@@ -392,7 +392,6 @@ static bool build_histogram(cv::InputArray input_image,
     return false;
   }
 
-
   const float range[] = { (float)range_min, (float)range_max };
   const float * ranges[] = { range };
   const int sizes[] = { bins };
@@ -414,13 +413,11 @@ static bool build_histogram(cv::InputArray input_image,
           false);
     }
     catch (const std::exception & e) {
-      CF_ERROR("cv::calcHist( fails: %s", e.what());
+      CF_ERROR("cv::calcHist() fails: %s", e.what());
       return false;
     }
-
   }
   else {
-
     cv::Mat tmp;
 
     output_histogram.create(bins, cn);
@@ -462,7 +459,6 @@ static bool build_histogram(cv::InputArray input_image,
         output_histogram);
   }
 
-
   if ( 0 ) {
     FILE * fp = fopen("hdbg.txt", "w");
     if ( fp ) {
@@ -485,7 +481,6 @@ static bool build_histogram(cv::InputArray input_image,
     }
 
   }
-
 
   return true;
 }
@@ -568,9 +563,15 @@ bool compute_clip_levels(cv::InputArray image, cv::InputArray mask, double plo, 
   if ( image.channels() == 1 ) {
     src = image.getMat();
   }
-  else {
+  else if (image.channels() == 3 )  {
     cv::cvtColor(image, src, cv::COLOR_BGR2GRAY);
   }
+  else {
+    reduce_color_channels(image, src,
+        cv::REDUCE_AVG,
+        CV_32F);
+  }
+
 
   if ( !mask.empty() ) {
     if ( mask.channels() == 1 ) {

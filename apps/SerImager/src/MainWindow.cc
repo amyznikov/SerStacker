@@ -44,6 +44,32 @@ QWidget* createStretch()
   return stretch;
 }
 
+
+namespace {
+
+QString qsprintf(const char * format, ...)
+  Q_ATTRIBUTE_FORMAT_PRINTF(1, 0);
+
+QString qsprintf(const char * format, ...)
+{
+  va_list arglist;
+  va_start(arglist, format);
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+  QString msg;
+  msg.vsprintf(format, arglist);
+#else
+  QString msg = QString::vasprintf(format, arglist);
+#endif
+
+  va_end(arglist);
+
+  return msg;
+}
+
+
+}
+
 }
 
 MainWindow::MainWindow(QWidget * parent) :

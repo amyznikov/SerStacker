@@ -12,6 +12,7 @@
 #include <gui/qstackingthread/QStackingThread.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
+#include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
 #include <core/io/load_image.h>
@@ -50,6 +51,31 @@ static QPixmap getPixmap(const QString & name)
   return QPixmap(QString(":/gui/icons/%1").arg(name));
 }
 
+
+namespace {
+
+QString qsprintf(const char * format, ...)
+  Q_ATTRIBUTE_FORMAT_PRINTF(1, 0);
+
+QString qsprintf(const char * format, ...)
+{
+  va_list arglist;
+  va_start(arglist, format);
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+  QString msg;
+  msg.vsprintf(format, arglist);
+#else
+  QString msg = QString::vasprintf(format, arglist);
+#endif
+
+  va_end(arglist);
+
+  return msg;
+}
+
+
+}
 
 
 
@@ -770,28 +796,23 @@ void MainWindow::configureImageViewerToolbars()
   connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
       [this, statusbar](QGraphicsItem * item) {
 
-        //QGraphicsLineItem * lineItem = nullptr;
+        QGraphicsLineShape * lineShape = nullptr;
         QGraphicsRectShape * rectShape = nullptr;
 
-//        if ( (lineItem = dynamic_cast<QGraphicsLineItem * >(shape)) ) {
-//
-//          const QLineF line = lineItem->line();
-//          const QPointF p1 = lineItem->pos() + line.p1();
-//          const QPointF p2 = lineItem->pos() + line.p2();
-//          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
-//          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
-//
-//#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-//          QString msg;
-//          statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-//                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
-//#else
-//          statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-//                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI ));
-//#endif
-//        }
-        // else
-        if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
+        if ( (lineShape = dynamic_cast<QGraphicsLineShape * >(item)) ) {
+
+          const QLineF line = lineShape->sceneLine();
+
+          const QPointF p1 = line.p1();
+          const QPointF p2 = line.p2();
+          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+
+          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+
+        }
+        else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
 
           const QRectF rect = rectShape->mapToScene(rectShape->rect()).boundingRect();
           const QPointF p1 = rect.topLeft();
@@ -799,16 +820,9 @@ void MainWindow::configureImageViewerToolbars()
           const double width = rect.width();
           const double height = rect.height();
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-          QString msg;
-          statusbar->showMessage(msg.sprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
-                  p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
-#else
-          statusbar->showMessage(QString::asprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
-                  p1.x(), p1.y(), p2.x(), p2.y(), width, height ));
-#endif
+          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
+                  p1.x(), p1.y(), p2.x(), p2.y(), width, height));
         }
-
       });
 }
 

@@ -39,10 +39,12 @@ bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool invert_
   cv::cartToPolar(uv[0], uv[1], mag, ang, true);
 
   if ( maxmotion > 0 ) {
-    cv::threshold(mag, mag, maxmotion, maxmotion, cv::THRESH_TRUNC);
+    cv::threshold(mag, mag, maxmotion, maxmotion,
+        cv::THRESH_TRUNC);
   }
 
-  cv::normalize(mag, mag, 0, 1, cv::NORM_MINMAX);
+  cv::normalize(mag, mag, 0, 1,
+      cv::NORM_MINMAX);
 
   const cv::Mat hsv[3] = {
       ang,
@@ -51,7 +53,8 @@ bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool invert_
   };
 
   cv::merge(hsv, 3, dst);
-  cv::cvtColor(dst, dst, cv::COLOR_HSV2RGB);
+  //cv::cvtColor(dst, dst, cv::COLOR_HSV2RGB);
+  cv::cvtColor(dst, dst, cv::COLOR_HSV2BGR);
   dst.convertTo(dst, CV_8U, 255);
 
   return true;
@@ -62,7 +65,7 @@ bool cv2qt(cv::InputArray __src, QImage * dst, bool rgbswap)
 {
   cv::Mat src;
 
-  if ( __src.channels() == 2 ) {  // treat as optical flow marrix
+  if ( __src.channels() == 2 ) {  // treat as optical flow image
     flow2HSV(__src, src, 0, true);
     rgbswap = false;
   }

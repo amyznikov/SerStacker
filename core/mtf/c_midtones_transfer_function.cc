@@ -22,9 +22,7 @@ static bool apply__(const cv::Mat & src, cv::Mat & dst,
   const double s = (omax - omin) / (imax - imin);
 
   tbb::parallel_for(tbb_range(0, ny, 256),
-      [&src, &dst, nx, imin, omin, s]
-
-      (const tbb_range & r) {
+      [&src, &dst, nx, imin, omin, omax, s] (const tbb_range & r) {
 
         for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 
@@ -32,7 +30,8 @@ static bool apply__(const cv::Mat & src, cv::Mat & dst,
           T2 * dstp = dst.ptr<T2>(y);
 
           for ( int x = 0; x < nx; ++x ) {
-            dstp[x] = cv::saturate_cast<T2>(omin + (srcp[x] - imin) * s);
+            dstp[x] = cv::saturate_cast<T2>(std::max(omin, std::min(omax,
+                omin + (srcp[x] - imin) * s)));
           }
         }
       });
@@ -222,15 +221,19 @@ bool c_midtones_transfer_function::apply(cv::InputArray src_image,
     src_max = input_range_[1];
   }
 
-
   if ( output_range_[0] >= output_range_[1] ) {
-    suggest_levels_range(ddepth,
+      suggest_levels_range(ddepth,
         &dst_min, &dst_max);
   }
   else {
     dst_min = output_range_[0];
     dst_max = output_range_[1];
   }
+
+//  if ( src.channels() == 2  ) { // assume this is optical flow, keep the input range for correct visualization
+//    cv::minMaxLoc(src, &dst_min, &dst_max);
+//  }
+
 
   imin = src_min + shadows_ * (src_max - src_min);
   imax = src_min + highlights_ * (src_max - src_min);

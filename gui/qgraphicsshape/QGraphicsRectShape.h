@@ -31,12 +31,24 @@ public:
   const QRectF & rect() const;
   QRectF sceneRect() const;
 
+  void setCenter(const QPointF & p);
+  QPointF center() const;
+
+  void setFixOnSceneCenter(bool v);
+  bool fixOnSceneCenter() const;
+
   void setPen(const QPen & pen);
   void setCosmeticPen(const QColor & color, int width = 1 );
   const QPen & pen() const;
 
   void setBrush(const QBrush & brush);
   const QBrush & brush() const;
+
+  void setPenWidth(int v);
+  int penWidth() const;
+
+  void setPenColor(const QColor & color);
+  QColor penColor() const;
 
 protected:
   void updateGeometry();
@@ -46,6 +58,9 @@ protected:
   void mousePressEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseMoveEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
+  void onSceneChange() override;
+  void onSceneHasChanged() override;
+  void onSceneRectChanged(const QRectF &rect);
 
 protected:
 
@@ -69,6 +84,7 @@ protected:
   QBrush brush_;
   MouseAction currentMouseAction_ = MouseAction_None;
   bool itemIsResizable_ = true;
+  bool fixOnSceneCenter_ = true;
   int handleSize_ = 0;
   int hitDstance_ = 15;
 

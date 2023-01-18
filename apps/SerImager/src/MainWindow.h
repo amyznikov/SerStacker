@@ -11,6 +11,8 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/qmtf/QMtfControl.h>
+#include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
+#include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "QCameraFrameProcessorSelector.h"
 #include "QCameraFrameDisplay.h"
@@ -42,6 +44,7 @@ protected:
   void setupMainToolbar();
   void setupStatusbar();
   void setupCameraControls();
+  void setupShapeOptions();
   void setupDisplayProcessingControls();
   void setupFocusGraph();
   void setupIndigoFocuser();
@@ -82,7 +85,23 @@ protected:
   QToolBar * manToolbar_ = nullptr;
   QMenu * menuFile_ = nullptr;
   QMenu * menuView_ = nullptr;
-  QAction * showRoiAction_ = nullptr;
+  QMenu * menuViewShapes_ = nullptr;
+
+  QAction * showRectShapeAction_ = nullptr;
+  QToolButton * rectShapeActionsButton_ = nullptr;
+  QGraphicsRectShapeSettingsDialogBox * rectShapeOptionsDialogBox_ = nullptr;
+  QMenu rectShapeActionsMenu_;
+
+  QAction * showTargetShapeAction_ = nullptr;
+  QToolButton * targetShapeActionsButton_ = nullptr;
+  QGraphicsTargetShapeSettingsDialogBox * targetShapeOptionsDialogBox_ = nullptr;
+  QMenu targetShapeActionsMenu_;
+
+  QAction * showLineShapeAction_ = nullptr;
+
+  QToolButton * lineShapeActionsButton_ = nullptr;
+  QMenu lineShapeActionsMenu_;
+
 
   QAction * showdisplayFrameProcessorSettingsAction_ = nullptr;
   QDisplayFrameProcessorSettingsDialogBox * displayFrameProcessorSettingsDialogBox_ = nullptr;

@@ -459,54 +459,76 @@ inline QString toQString(const QPoint & v)
 }
 
 template<class T>
-inline void save_parameter(const QString & prefix, const char * name, const T & value ) {
+inline void save_parameter(const QString & prefix, const char * name, const T & value )
+{
   QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(name), toQString(value));
 }
 
-inline void save_parameter(const QString & prefix, const char * name, const QString & value ) {
+inline void save_parameter(const QString & prefix, const char * name, const QColor & value )
+{
+  QSettings settings;
+  settings.setValue(QString("%1/%2").arg(prefix).arg(name), QVariant::fromValue(value));
+}
+
+inline void save_parameter(const QString & prefix, const char * name, const QString & value )
+{
   QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(name), value);
 }
 
-inline void save_parameter(const QString & prefix, const char * name, const std::string & value ) {
+inline void save_parameter(const QString & prefix, const char * name, const std::string & value )
+{
   QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(name), value.c_str());
 }
 
-inline void save_parameter(const QString & prefix, const char * name, bool value ) {
+inline void save_parameter(const QString & prefix, const char * name, bool value )
+{
   QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(name), value);
 }
 
 template<class T>
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * value)
+{
   return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), value);
 }
 
 template<class T> // mainly for custom enums
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * value, const T & defval) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * value, const T & defval)
+{
   * value = fromStdString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString().toStdString(), defval);
   return true;
 }
 
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, bool * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, bool * value)
+{
   return *value = settings.value(QString("%1/%2").arg(prefix).arg(name), * value).toBool(), true;
 }
 
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, int * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, QColor * value)
+{
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).value<QColor>();
+  return true;
+}
+
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, int * value)
+{
   bool ok;
   *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toInt(&ok);
   return ok;
 }
 
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, float * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, float * value)
+{
   bool ok;
   *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toFloat(&ok);
   return ok;
 }
 
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, double * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, double * value)
+{
   bool ok;
   *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toDouble(&ok);
   return ok;
@@ -514,32 +536,38 @@ inline bool load_parameter(const QSettings & settings, const QString & prefix, c
 
 
 template<class T>
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * x, T * y) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * x, T * y)
+{
   return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), x, y);
 }
 
 template<class T>
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  T * x, T * y, T * z) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  T * x, T * y, T * z)
+{
   return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), x, y, z);
 }
 
 template<class T>
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  T * x, T * y, T * z, T * w) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  T * x, T * y, T * z, T * w)
+{
   return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), x, y, z, w);
 }
 
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, QString * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, QString * value)
+{
   *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toString();
   return true;
 }
 
-inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, std::string * value) {
+inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, std::string * value)
+{
   *value = settings.value(QString("%1/%2").arg(prefix).arg(name), value->c_str()).toString().toStdString();
   return true;
 }
 
 template<class T>
-inline int load_parameter_array(const QSettings & settings, const QString & prefix, const char * name, T * x, int nmax) {
+inline int load_parameter_array(const QSettings & settings, const QString & prefix, const char * name, T * x, int nmax)
+{
   QString s = settings.value(QString("%1/%2").arg(prefix).arg(name)).toString();
   return s.isEmpty() ? 0 : fromString(s, x, nmax);
 }

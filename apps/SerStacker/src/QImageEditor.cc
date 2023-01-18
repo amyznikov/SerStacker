@@ -23,6 +23,7 @@ QImageEditor::QImageEditor(QWidget * parent) :
       &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
       Qt::QueuedConnection);
 
+  scene()->setBackgroundBrush(Qt::darkGray);
 }
 
 QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction()

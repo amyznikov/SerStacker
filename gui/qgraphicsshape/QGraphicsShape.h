@@ -58,6 +58,8 @@ protected:
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
   void contextMenuEvent(QGraphicsSceneContextMenuEvent * event) override;
   virtual bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu);
+  virtual void onSceneChange();
+  virtual void onSceneHasChanged();
 
 protected:
   QString name_;

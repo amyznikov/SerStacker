@@ -79,9 +79,13 @@ QShapesButton::QShapesButton(QWidget * parent)
             QPoint center =
                 rc1.center();
 
-            QRect rc2(center.x() - std::max(10, rc1.width()/4),
-                center.y() - std::max(10, rc1.height()/4),
-                rc1.width() / 2, rc1.height() / 2);
+            const int w =
+                std::max(10, rc1.width() / 2);
+
+            const int h =
+                std::max(10, rc1.height() / 2);
+
+            QRect rc2(center.x() - w/2, center.y() - h/2, w, h);
 
             QGraphicsRectShape *shape =
                 new QGraphicsRectShape(sceneView_->mapToScene(rc2).boundingRect());

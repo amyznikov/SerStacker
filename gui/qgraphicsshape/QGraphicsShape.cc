@@ -137,6 +137,14 @@ bool QGraphicsShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e
   return menu.actions().count() != n;
 }
 
+void QGraphicsShape::onSceneChange()
+{
+}
+
+void QGraphicsShape::onSceneHasChanged()
+{
+}
+
 QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & value)
 {
 //    CF_DEBUG("%s: '%s' : change=%s inUpdatingPos_=%d",
@@ -158,6 +166,7 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
       if( !inUpdatingPos() ) {
         // updateGeo();
       }
+      onSceneChange();
       break;
 
     case ItemSceneChange:
@@ -193,10 +202,9 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
           ignoreTransformation_->setParentItem(myParentItem);
           ignoreTransformation_->setZValue(this->zValue());
         }
-
-        // updateProjected(dynamic_cast<QGeoScene*>(newScene));
       }
 
+      onSceneHasChanged();
       break;
     }
 

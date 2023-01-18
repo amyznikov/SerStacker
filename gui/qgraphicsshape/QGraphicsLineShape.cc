@@ -293,3 +293,30 @@ void QGraphicsLineShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
   Base::mouseReleaseEvent(e);
 }
 
+bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
+{
+  if ( !lockP1Action_ ) {
+
+    lockP1Action_ = new QAction("Lock P1", this);
+    lockP1Action_->setCheckable(true);
+    lockP1Action_->setChecked(lockP1_);
+
+    connect(lockP1Action_, &QAction::triggered,
+        this, &ThisClass::setLockP1);
+  }
+
+  if ( !lockP2Action_ ) {
+    lockP2Action_ = new QAction("Lock P2", this);
+    lockP2Action_->setCheckable(true);
+    lockP2Action_->setChecked(lockP2_);
+
+    connect(lockP2Action_, &QAction::triggered,
+        this, &ThisClass::setLockP2);
+  }
+
+  menu.addAction(lockP1Action_);
+  menu.addAction(lockP2Action_);
+
+  return true;
+}
+

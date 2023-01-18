@@ -12,6 +12,8 @@
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
+#include <gui/qgraphicsshape/QGraphicsLineShape.h>
+#include <gui/qgraphicsshape/QGraphicsTargetShape.h>
 #include <gui/widgets/QSettingsWidget.h>
 #include "QImagingCamera.h"
 
@@ -70,14 +72,17 @@ public:
 
   void setFrameProcessor(const c_image_processor::sptr & processor);
 
-  void setShowROI(bool show);
-  bool showROI() const;
-  QRect roi() const;
+//  void setShowROI(bool show);
+//  bool showROI() const;
+//  QRect roi() const;
+
+  QGraphicsRectShape * rectShape() const;
+  QGraphicsLineShape * lineShape() const;
+  QGraphicsTargetShape * targetShape() const;
 
 
 Q_SIGNALS:
   void pixmapChanged();
-  void roiChanged(const QRect & rc);
 
 protected Q_SLOTS:
   void onPixmapChanged();
@@ -88,7 +93,8 @@ protected:
   void startWorkerThread();
   void stopWorkerThread();
   void workerThread();
-  void createFocusRoiRectItem();
+  void createShapes();
+  //void createFocusRoiRectItem();
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 
@@ -108,7 +114,9 @@ protected:
   int bpp_ = 0;
   QPixmap pixmap_;
 
-  mutable QGraphicsRectShape * roiItem_ = nullptr;
+  QGraphicsRectShape * rectShape_ = nullptr;
+  QGraphicsLineShape * lineShape_ = nullptr;
+  QGraphicsTargetShape * targetShape_ = nullptr;
 
 };
 

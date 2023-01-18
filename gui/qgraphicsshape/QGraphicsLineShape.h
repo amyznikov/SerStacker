@@ -50,12 +50,15 @@ protected:
   void mousePressEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseMoveEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
+  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
 
 protected:
   QLineF line_;
   QRectF boundingRect_;
   QPainterPath shape_;
   QPen pen_;
+  QAction * lockP1Action_ = nullptr;
+  QAction * lockP2Action_ = nullptr;
 
   enum MouseAction {
     MouseAction_None = 0,

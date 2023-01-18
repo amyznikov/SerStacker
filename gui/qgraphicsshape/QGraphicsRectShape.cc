@@ -52,6 +52,20 @@ QRectF QGraphicsRectShape::sceneRect() const
   return mapToScene(rect_).boundingRect();
 }
 
+void QGraphicsRectShape::setCenter(const QPointF & p)
+{
+  if (rect_.center() != p ) {
+    prepareGeometryChange();
+    rect_.moveCenter(p);
+    updateGeometry();
+    update();
+  }
+}
+
+QPointF QGraphicsRectShape::center() const
+{
+  return rect_.center();
+}
 
 void QGraphicsRectShape::setPen(const QPen & pen)
 {
@@ -71,6 +85,31 @@ void QGraphicsRectShape::setCosmeticPen(const QColor & color, int width )
   setPen(pen);
 }
 
+void QGraphicsRectShape::setPenWidth(int v)
+{
+  if ( pen_.width() != v ) {
+    prepareGeometryChange();
+    pen_.setWidth(v);
+    updateGeometry();
+    update();
+  }
+}
+
+int QGraphicsRectShape::penWidth() const
+{
+  return pen_.width();
+}
+
+void QGraphicsRectShape::setPenColor(const QColor & color)
+{
+  pen_.setColor(color);
+  update();
+}
+
+QColor QGraphicsRectShape::penColor() const
+{
+  return pen_.color();
+}
 
 const QPen & QGraphicsRectShape::pen() const
 {
@@ -247,10 +286,12 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
   }
 
   // Try move
-  if( (flags() & ItemIsMovable) && (e->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier)) ) {
-    Base::mousePressEvent(e);
-    e->accept();
-    return;
+  if( !fixOnSceneCenter_ ) {
+    if( (flags() & ItemIsMovable) && (e->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier)) ) {
+      Base::mousePressEvent(e);
+      e->accept();
+      return;
+    }
   }
 
   e->ignore();
@@ -262,7 +303,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
     if( (flags() & ItemIsMovable) && e->modifiers() == Qt::ShiftModifier ) {
       Base::mouseMoveEvent(e);
-      e->accept();
+      e->ignore();
       return;
     }
 
@@ -274,56 +315,140 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
       switch (currentMouseAction_) {
         case MouseAction_MoveTop:
-          if( pos.y() <= rect_.bottom() - 1 ) {
-            rect_.setTop(pos.y());
+          if( pos.y() < rect_.bottom() - 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setTop(pos.y());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setTop(pos.y());
+              rect_.setBottom(2 * center.y() - pos.y());
+            }
           }
           break;
         case MouseAction_MoveRight:
-          if( pos.x() >= rect_.left() + 1 ) {
-            rect_.setRight(pos.x());
+          if( pos.x() > rect_.left() + 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setRight(pos.x());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setRight(pos.x());
+              rect_.setLeft(2 * center.x() - pos.x());
+            }
           }
           break;
         case MouseAction_MoveBottom:
-          if( pos.y() >= rect_.top() + 1 ) {
-            rect_.setBottom(pos.y());
+          if( pos.y() > rect_.top() + 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setBottom(pos.y());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setBottom(pos.y());
+              rect_.setTop(2 * center.y() - pos.y());
+            }
           }
           break;
         case MouseAction_MoveLeft:
           if( pos.x() <= rect_.right() - 1 ) {
-            rect_.setLeft(pos.x());
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setLeft(pos.x());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setLeft(pos.x());
+              rect_.setRight(2 * center.x() - pos.x());
+            }
           }
           break;
 
         case MouseAction_MoveTopLeft:
-          if( pos.y() <= rect_.bottom() - 1 ) {
-            rect_.setTop(pos.y());
+          if( pos.y() < rect_.bottom() - 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setTop(pos.y());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setTop(pos.y());
+              rect_.setBottom(2 * center.y() - pos.y());
+            }
           }
-          if( pos.x() <= rect_.right() - 1 ) {
-            rect_.setLeft(pos.x());
+          if( pos.x() < rect_.right() - 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setLeft(pos.x());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setLeft(pos.x());
+              rect_.setRight(2 * center.x() - pos.x());
+            }
           }
           break;
         case MouseAction_MoveTopRight:
-          if( pos.y() <= rect_.bottom() - 1 ) {
-            rect_.setTop(pos.y());
+          if( pos.y() < rect_.bottom() - 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setTop(pos.y());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setTop(pos.y());
+              rect_.setBottom(2 * center.y() - pos.y());
+            }
           }
           if( pos.x() >= rect_.left() + 1 ) {
-            rect_.setRight(pos.x());
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setRight(pos.x());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setRight(pos.x());
+              rect_.setLeft(2 * center.x() - pos.x());
+            }
           }
           break;
         case MouseAction_MoveBottomRight:
-          if( pos.y() >= rect_.top() + 1 ) {
-            rect_.setBottom(pos.y());
+          if( pos.y() > rect_.top() + 1 ) {
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setBottom(pos.y());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setBottom(pos.y());
+              rect_.setTop(2 * center.y() - pos.y());
+            }
           }
           if( pos.x() >= rect_.left() + 1 ) {
-            rect_.setRight(pos.x());
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setRight(pos.x());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setRight(pos.x());
+              rect_.setLeft(2 * center.x() - pos.x());
+            }
           }
           break;
         case MouseAction_MoveBottomLeft:
           if( pos.y() >= rect_.top() + 1 ) {
-            rect_.setBottom(pos.y());
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setBottom(pos.y());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setBottom(pos.y());
+              rect_.setTop(2 * center.y() - pos.y());
+            }
           }
           if( pos.x() <= rect_.right() - 1 ) {
-            rect_.setLeft(pos.x());
+            if ( !fixOnSceneCenter_ ) {
+              rect_.setLeft(pos.x());
+            }
+            else {
+              const QPointF center = rect_.center();
+              rect_.setLeft(pos.x());
+              rect_.setRight(2 * center.x() - pos.x());
+            }
           }
           break;
         default:
@@ -332,7 +457,20 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
       }
 
       if( hasChanges ) {
+
         prepareGeometryChange();
+
+        if ( rect_.width() < 1 ) {
+          const QPointF center = rect_.center();
+          rect_.setWidth(1);
+          rect_.moveCenter(center);
+        }
+        if ( rect_.height() < 1 ) {
+          const QPointF center = rect_.center();
+          rect_.setHeight(1);
+          rect_.moveCenter(center);
+        }
+
         updateGeometry();
         update();
 
@@ -340,11 +478,11 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           Q_EMIT itemChanged(this);
         }
       }
-      else if( (flags() & ItemIsMovable) ) {
+      else if( !fixOnSceneCenter_ && (flags() & ItemIsMovable)  ) {
         Base::mouseMoveEvent(e);
       }
 
-      e->accept();
+      e->ignore();
       return;
     }
   }
@@ -360,3 +498,65 @@ void QGraphicsRectShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
   Base::mouseReleaseEvent(e);
 }
 
+
+bool QGraphicsRectShape::fixOnSceneCenter() const
+{
+  return fixOnSceneCenter_;
+}
+
+void QGraphicsRectShape::setFixOnSceneCenter(bool v)
+{
+  if( fixOnSceneCenter_ != v ) {
+
+    fixOnSceneCenter_ = v;
+
+    QGraphicsScene *scene =
+        this->scene();
+
+    if( scene ) {
+
+      if( !fixOnSceneCenter_ ) {
+        scene->disconnect(this);
+      }
+      else {
+        connect(scene, &QGraphicsScene::sceneRectChanged,
+            this, &ThisClass::onSceneRectChanged);
+      }
+
+      if( fixOnSceneCenter_ ) {
+        setCenter(mapFromScene(scene->sceneRect().center()));
+      }
+    }
+  }
+}
+
+void QGraphicsRectShape::onSceneChange()
+{
+  QGraphicsScene * scene =
+      this->scene();
+
+  if ( scene ) {
+    scene->disconnect(this);
+  }
+}
+
+void QGraphicsRectShape::onSceneHasChanged()
+{
+  if( fixOnSceneCenter_ ) {
+
+    QGraphicsScene *scene =
+        this->scene();
+
+    if( scene ) {
+      connect(scene, &QGraphicsScene::sceneRectChanged,
+          this, &ThisClass::onSceneRectChanged);
+    }
+  }
+}
+
+void QGraphicsRectShape::onSceneRectChanged(const QRectF &rect)
+{
+  if ( fixOnSceneCenter_ ) {
+    setCenter(mapFromScene(rect.center()));
+  }
+}

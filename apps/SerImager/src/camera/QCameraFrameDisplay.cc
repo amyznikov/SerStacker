@@ -181,7 +181,7 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
       &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
       Qt::QueuedConnection);
 
-  createFocusRoiRectItem();
+  createShapes();
 }
 
 QCameraFrameDisplay::~QCameraFrameDisplay()
@@ -249,6 +249,20 @@ const QImagingCamera::sptr & QCameraFrameDisplay::camera() const
   return camera_;
 }
 
+QGraphicsRectShape * QCameraFrameDisplay::rectShape() const
+{
+  return rectShape_;
+}
+
+QGraphicsLineShape * QCameraFrameDisplay::lineShape() const
+{
+  return lineShape_;
+}
+
+QGraphicsTargetShape * QCameraFrameDisplay::targetShape() const
+{
+  return targetShape_;
+}
 
 void QCameraFrameDisplay::onCameraStateChanged(QImagingCamera::State oldSate,
     QImagingCamera::State newState)
@@ -318,9 +332,9 @@ void QCameraFrameDisplay::onPixmapChanged()
   scene()->setImage(pixmap_);
 }
 
-void QCameraFrameDisplay::createFocusRoiRectItem()
+void QCameraFrameDisplay::  createShapes()
 {
-  if( !roiItem_ ) {
+  if( !rectShape_ ) {
 
     QRectF rect;
 
@@ -342,37 +356,58 @@ void QCameraFrameDisplay::createFocusRoiRectItem()
       }
     }
 
-    roiItem_ = new QGraphicsRectShape(rect);
-    roiItem_->setResizable(true);
-    roiItem_->setFlag(QGraphicsItem::ItemIsMovable, true);
-    roiItem_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-    roiItem_->setCosmeticPen(Qt::red);
-    roiItem_->setVisible(false);
-    scene_->addItem(roiItem_);
+    rectShape_ = new QGraphicsRectShape(rect);
+    rectShape_->setResizable(true);
+    rectShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    rectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    rectShape_->setCosmeticPen(Qt::red);
+    rectShape_->setVisible(false);
+    scene_->addItem(rectShape_);
 
-    connect(roiItem_, &QGraphicsRectShape::itemChanged,
-        [this]() {
-          const QRectF rc = roiItem_->sceneRect();
-          Q_EMIT roiChanged(QRect(rc.x(), rc.y(), rc.width(), rc.height()));
-        });
+//    connect(rectShape_, &QGraphicsRectShape::itemChanged,
+//        [this]() {
+//          const QRectF rc = rectShape_->sceneRect();
+//          Q_EMIT rectShapeChanged(QRect(rc.x(), rc.y(), rc.width(), rc.height()));
+//        });
   }
+
+
+  if ( !lineShape_ ) {
+
+    lineShape_ = new QGraphicsLineShape(-100, -100, 100, 100);
+    lineShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    lineShape_->setCosmeticPen(Qt::green);
+    lineShape_->setVisible(false);
+    scene_->addItem(lineShape_);
+  }
+
+
+  if ( !targetShape_ ) {
+    targetShape_ = new QGraphicsTargetShape();
+    targetShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    targetShape_->setCosmeticPen(Qt::red);
+    targetShape_->setVisible(false);
+    scene_->addItem(targetShape_);
+  }
+
+
 }
 
-void QCameraFrameDisplay::setShowROI(bool show)
-{
-  roiItem_->setVisible(show);
-}
-
-bool QCameraFrameDisplay::showROI() const
-{
-  return roiItem_->isVisible();
-}
-
-QRect QCameraFrameDisplay::roi() const
-{
-  const QRectF rc = roiItem_->sceneRect();
-  return QRect(rc.x(), rc.y(), rc.width(), rc.height());
-}
+//void QCameraFrameDisplay::setShowROI(bool show)
+//{
+//  rectShape_->setVisible(show);
+//}
+//
+//bool QCameraFrameDisplay::showROI() const
+//{
+//  return rectShape_->isVisible();
+//}
+//
+//QRect QCameraFrameDisplay::roi() const
+//{
+//  const QRectF rc = rectShape_->sceneRect();
+//  return QRect(rc.x(), rc.y(), rc.width(), rc.height());
+//}
 
 
 void QCameraFrameDisplay::workerThread()
@@ -577,6 +612,8 @@ void QDisplayFrameProcessorSettingsDialogBox::hideEvent(QHideEvent *e)
   Base::hideEvent(e);
   Q_EMIT visibilityChanged(isVisible());
 }
+
+
 
 
 } /* namespace qserimager */

@@ -12,7 +12,10 @@ namespace serimager {
 
 #define ICON_histogram        ":/qserimager/icons/histogram.png"
 #define ICON_display          ":/qserimager/icons/display.png"
+#define ICON_shapes           ":/qserimager/icons/shapes.png"
 #define ICON_roi              ":/qserimager/icons/roi.png"
+#define ICON_line             ":/qserimager/icons/line.png"
+#define ICON_target           ":/qserimager/icons/target.png"
 
 namespace {
 
@@ -29,6 +32,41 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
   return action;
 }
 
+template<typename Slot>
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+
+  QObject::connect(action, &QAction::triggered, slot);
+
+  return action;
+}
+
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+
+  return action;
+}
+
+QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(defaultAction->icon());
+  tb->setText(defaultAction->text());
+  tb->setToolTip(defaultAction->toolTip());
+  tb->setCheckable(defaultAction->isCheckable());
+  tb->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
+  tb->setDefaultAction(defaultAction);
+  tb->setMenu(menu);
+  return tb;
+}
+
 QWidget* addStretch(QToolBar * toolbar)
 {
   QWidget *stretch = new QWidget();
@@ -43,9 +81,6 @@ QWidget* createStretch()
   stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   return stretch;
 }
-
-
-namespace {
 
 QString qsprintf(const char * format, ...)
   Q_ATTRIBUTE_FORMAT_PRINTF(1, 0);
@@ -67,10 +102,7 @@ QString qsprintf(const char * format, ...)
   return msg;
 }
 
-
-}
-
-}
+} // namespace
 
 MainWindow::MainWindow(QWidget * parent) :
     Base(parent)
@@ -91,7 +123,9 @@ MainWindow::MainWindow(QWidget * parent) :
   setupIndigoFocuser();
   setupCameraControls();
   setupDisplayProcessingControls();
+  setupShapeOptions();
   setupMainToolbar();
+
 
   restoreState();
 
@@ -108,28 +142,6 @@ MainWindow::MainWindow(QWidget * parent) :
         mousepos_ctl->hide();
       });
 
-  connect(centralDisplay_, &QCameraFrameDisplay::roiChanged,
-      [this](const QRect & rc) {
-
-        const QImagingCamera::sptr & currentCamera = cameraControls_ctl->selectedCamera();
-        if ( currentCamera ) {
-          currentCamera->setRoi(rc);
-        }
-
-        mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
-            .arg(rc.x())
-            .arg(rc.y())
-            .arg(rc.width())
-            .arg(rc.height()));
-      });
-
-  connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
-      [this]() {
-        const QImagingCamera::sptr & currentCamera = cameraControls_ctl->selectedCamera();
-        if ( currentCamera ) {
-          currentCamera->setRoi(centralDisplay_->roi());
-        }
-      });
 
 }
 
@@ -196,16 +208,44 @@ void MainWindow::setupMainMenu()
   menuView_ =
       menuBar()->addMenu("&View");
 
+
   /////////////////////////////////////
 
-  menuView_->addAction(showRoiAction_ =
-      createCheckableAction(getIcon(ICON_roi),
-          "Show ROI",
-          "Show / Hide ROI rectangle",
-          centralDisplay_,
-          &QCameraFrameDisplay::setShowROI));
+  menuViewShapes_ =
+      menuView_->addMenu(getIcon(ICON_shapes),
+          "Shapes");
 
-  showRoiAction_->setChecked(centralDisplay_->showROI());
+  menuViewShapes_->addAction(showRectShapeAction_ =
+      createCheckableAction(getIcon(ICON_roi),
+          "ROI Rectangle",
+          "Show / Hide ROI rectangle",
+          [this](bool checked) {
+            centralDisplay_->rectShape()->setVisible(checked);
+          }));
+
+
+  menuViewShapes_->addAction(showLineShapeAction_ =
+      createCheckableAction(getIcon(ICON_line),
+          "Line Shape",
+          "Show / Hide Line Shape",
+          [this](bool checked) {
+            centralDisplay_->lineShape()->setVisible(checked);
+          }));
+
+
+  menuViewShapes_->addAction(showTargetShapeAction_ =
+      createCheckableAction(getIcon(ICON_target),
+          "Target Shape",
+          "Show / Hide Target Shape",
+          [this](bool checked) {
+            centralDisplay_->targetShape()->setVisible(checked);
+          }));
+
+
+  showRectShapeAction_->setChecked(centralDisplay_->rectShape()->isVisible());
+  showLineShapeAction_->setChecked(centralDisplay_->lineShape()->isVisible());
+  showTargetShapeAction_->setChecked(centralDisplay_->targetShape()->isVisible());
+
 
   /////////////////////////////////////
 
@@ -218,6 +258,106 @@ void MainWindow::setupMainMenu()
 
   /////////////////////////////////////
 
+
+}
+
+void MainWindow::setupShapeOptions()
+{
+  QAction * action;
+
+  //
+  // Rect (ROI) shape
+  //
+  rectShapeOptionsDialogBox_ =
+      new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
+          centralDisplay_->rectShape(),
+          this);
+
+  rectShapeOptionsDialogBox_->loadParameters();
+
+  rectShapeActionsMenu_.addAction(
+      action = createCheckableAction(QIcon(),
+          "Options..",
+          "Configure ROI rectangle options",
+          [this](bool checked) {
+            rectShapeOptionsDialogBox_->setVisible(checked);
+          }));
+
+  connect(rectShapeOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+      [action](bool visible) {
+        action->setChecked(visible);
+      });
+
+  connect(centralDisplay_->rectShape(), &QGraphicsShape::itemChanged,
+      [this]() {
+
+        QGraphicsRectShape * shape =
+            centralDisplay_->rectShape();
+
+        const QRectF rc =
+            shape->sceneRect();
+
+        const QImagingCamera::sptr & currentCamera =
+            cameraControls_ctl->selectedCamera();
+
+        if ( currentCamera ) {
+          currentCamera->setRoi(QRect(rc.x(), rc.y(),
+                  rc.width(), rc.height()));
+        }
+
+        mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
+            .arg(rc.x())
+            .arg(rc.y())
+            .arg(rc.width())
+            .arg(rc.height()));
+      });
+
+  connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
+      [this]() {
+
+        const QImagingCamera::sptr & currentCamera =
+            cameraControls_ctl->selectedCamera();
+
+        if ( currentCamera ) {
+
+          const QRectF rc =
+              centralDisplay_->rectShape()->sceneRect();
+
+          currentCamera->setRoi(QRect(rc.x(), rc.y(),
+                  rc.width(), rc.height()));
+        }
+      });
+
+
+  //
+  // Target shape
+  //
+
+  targetShapeOptionsDialogBox_ =
+      new QGraphicsTargetShapeSettingsDialogBox("Target shape options",
+          centralDisplay_->targetShape(),
+          this);
+
+  targetShapeOptionsDialogBox_->loadParameters();
+
+  targetShapeActionsMenu_.addAction(
+      action = createCheckableAction(QIcon(),
+          "Options..",
+          "Configure target shape options",
+          [this](bool checked) {
+            targetShapeOptionsDialogBox_->setVisible(checked);
+          }));
+
+  connect(targetShapeOptionsDialogBox_, &QGraphicsTargetShapeSettingsDialogBox::visibilityChanged,
+      [action](bool visible) {
+        action->setChecked(visible);
+      });
+
+  //
+  // Line shape
+  //
+
+  lineShapeActionsMenu_.addAction("Center on image");
 }
 
 void MainWindow::setupMainToolbar()
@@ -228,14 +368,33 @@ void MainWindow::setupMainToolbar()
 
   manToolbar_->setContentsMargins(0, 0, 0, 0);
   manToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  manToolbar_->setIconSize(QSize(18, 18));
+  manToolbar_->setIconSize(QSize(32, 18));
 
   ///////////////////////////////////////////////////////////////////
-  manToolbar_->addAction(showRoiAction_);
+
+  manToolbar_->addWidget(rectShapeActionsButton_ =
+      createToolButtonWithPopupMenu(showRectShapeAction_,
+          &rectShapeActionsMenu_));
+
+  manToolbar_->addWidget(lineShapeActionsButton_ =
+      createToolButtonWithPopupMenu(showLineShapeAction_,
+          &lineShapeActionsMenu_));
+
+  manToolbar_->addWidget(targetShapeActionsButton_ =
+      createToolButtonWithPopupMenu(showTargetShapeAction_,
+          &targetShapeActionsMenu_));
+
+
+
+
+  ///////////////////////////////////////////////////////////////////
+
+
   manToolbar_->addAction(showFrameProcessorAction_);
   manToolbar_->addAction(showMtfControlAction_);
 
   ///////////////////////////////////////////////////////////////////
+
 }
 
 void MainWindow::setupStatusbar()
@@ -451,5 +610,8 @@ void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, d
       break;
   }
 }
+
+
+
 
 } /* namespace serimager */

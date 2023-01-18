@@ -81,6 +81,32 @@ void QGraphicsLineShape::setCosmeticPen(const QColor & color, int width )
   setPen(pen);
 }
 
+void QGraphicsLineShape::setPenWidth(int v)
+{
+  if ( pen_.width() != v ) {
+    prepareGeometryChange();
+    pen_.setWidth(v);
+    updateGeometry();
+    update();
+  }
+}
+
+int QGraphicsLineShape::penWidth() const
+{
+  return pen_.width();
+}
+
+void QGraphicsLineShape::setPenColor(const QColor & color)
+{
+  pen_.setColor(color);
+  update();
+}
+
+QColor QGraphicsLineShape::penColor() const
+{
+  return pen_.color();
+}
+
 const QPen & QGraphicsLineShape::pen() const
 {
   return pen_;
@@ -214,26 +240,38 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
       case MouseAction_MoveP1:
         if( !lockP1_ ) {
+
           prepareGeometryChange();
           line_.setP1(e->pos());
           updateGeometry();
           update();
+
+          if( flags() & ItemSendsGeometryChanges ) {
+            Q_EMIT itemChanged(this);
+          }
+
         }
-        e->accept();
+        e->ignore();
         return;
 
       case MouseAction_MoveP2:
         if( !lockP2_ ) {
+
           prepareGeometryChange();
           line_.setP2(e->pos());
           updateGeometry();
           update();
+
+          if( flags() & ItemSendsGeometryChanges ) {
+            Q_EMIT itemChanged(this);
+          }
         }
-        e->accept();
+        e->ignore();
         return;
 
       default:
         if( lockP1_ ) {
+
           prepareGeometryChange();
 
           const QPointF p1 = line_.p1();
@@ -250,11 +288,16 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           updateGeometry();
           update();
 
-          e->accept();
+          if( flags() & ItemSendsGeometryChanges ) {
+            Q_EMIT itemChanged(this);
+          }
+
+          e->ignore();
           return;
         }
 
         if( lockP2_ ) {
+
           prepareGeometryChange();
 
           const QPointF p2 = line_.p2();
@@ -271,7 +314,11 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           updateGeometry();
           update();
 
-          e->accept();
+          if( flags() & ItemSendsGeometryChanges ) {
+            Q_EMIT itemChanged(this);
+          }
+
+          e->ignore();
           return;
         }
 
@@ -279,7 +326,6 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
             MouseAction_MoveWholeLine;
 
         Base::mouseMoveEvent(e);
-        e->accept();
         return;
     }
   }

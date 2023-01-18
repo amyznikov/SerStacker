@@ -305,11 +305,8 @@ void MainWindow::setupShapeOptions()
                   rc.width(), rc.height()));
         }
 
-        mousepos_ctl->setText(QString("ROI: x= %1 y= %2 w= %3 h= %4")
-            .arg(rc.x())
-            .arg(rc.y())
-            .arg(rc.width())
-            .arg(rc.height()));
+        mousepos_ctl->setText(qsprintf("ROI: x= %g y= %g w= %g h= %g center= (%g %g)",
+                rc.x(), rc.y(), rc.width(), rc.height(), rc.center().x(), rc.center().y() ));
       });
 
   connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
@@ -353,11 +350,48 @@ void MainWindow::setupShapeOptions()
         action->setChecked(visible);
       });
 
+
   //
   // Line shape
   //
+  lineShapeOptionsDialogBox_ =
+      new QGraphicsLineShapeSettingsDialogBox("Line shape options",
+          centralDisplay_->lineShape(),
+          this);
 
-  lineShapeActionsMenu_.addAction("Center on image");
+  lineShapeOptionsDialogBox_->loadParameters();
+
+  lineShapeActionsMenu_.addAction(
+      action = createCheckableAction(QIcon(),
+          "Options..",
+          "Configure line shape options",
+          [this](bool checked) {
+    lineShapeOptionsDialogBox_->setVisible(checked);
+          }));
+
+  connect(lineShapeOptionsDialogBox_, &QGraphicsLineShapeSettingsDialogBox::visibilityChanged,
+      [action](bool visible) {
+        action->setChecked(visible);
+      });
+
+
+  connect(centralDisplay_->lineShape(), &QGraphicsShape::itemChanged,
+      [this]() {
+
+        QGraphicsLineShape * shape =
+            centralDisplay_->lineShape();
+
+        const QLineF line = shape->sceneLine();
+
+        const QPointF p1 = line.p1();
+        const QPointF p2 = line.p2();
+        const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+        const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+
+        mousepos_ctl->setText(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+      });
+
 }
 
 void MainWindow::setupMainToolbar()

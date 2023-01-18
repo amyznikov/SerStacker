@@ -13,6 +13,7 @@
 #include <gui/qmtf/QMtfControl.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
+#include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "QCameraFrameProcessorSelector.h"
 #include "QCameraFrameDisplay.h"
@@ -98,10 +99,9 @@ protected:
   QMenu targetShapeActionsMenu_;
 
   QAction * showLineShapeAction_ = nullptr;
-
   QToolButton * lineShapeActionsButton_ = nullptr;
+  QGraphicsLineShapeSettingsDialogBox * lineShapeOptionsDialogBox_ = nullptr;
   QMenu lineShapeActionsMenu_;
-
 
   QAction * showdisplayFrameProcessorSettingsAction_ = nullptr;
   QDisplayFrameProcessorSettingsDialogBox * displayFrameProcessorSettingsDialogBox_ = nullptr;

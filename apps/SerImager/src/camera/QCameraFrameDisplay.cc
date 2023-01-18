@@ -376,6 +376,7 @@ void QCameraFrameDisplay::  createShapes()
 
     lineShape_ = new QGraphicsLineShape(-100, -100, 100, 100);
     lineShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    lineShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     lineShape_->setCosmeticPen(Qt::green);
     lineShape_->setVisible(false);
     scene_->addItem(lineShape_);

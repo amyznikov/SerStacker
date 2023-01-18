@@ -36,6 +36,12 @@ public:
   void setCosmeticPen(const QColor & color, int width = 1);
   const QPen& pen() const;
 
+  void setPenWidth(int v);
+  int penWidth() const;
+
+  void setPenColor(const QColor & color);
+  QColor penColor() const;
+
   void setLockP1( bool v);
   bool lockP1() const;
 

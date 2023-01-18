@@ -72,10 +72,6 @@ public:
 
   void setFrameProcessor(const c_image_processor::sptr & processor);
 
-//  void setShowROI(bool show);
-//  bool showROI() const;
-//  QRect roi() const;
-
   QGraphicsRectShape * rectShape() const;
   QGraphicsLineShape * lineShape() const;
   QGraphicsTargetShape * targetShape() const;

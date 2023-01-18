@@ -1,29 +1,33 @@
 # SerStacker
 Highly experimental code for planetary images stacking with OpenCV.
 
+This code is intendend mainly for my experimentation.
+It is totally bugged and constantly changed. 
+
 ## Example pictures
-
-Compare jovian images captured with two different tubes, processed and derotated with SerStacker.
-
-![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
-
 
 Jovian rotation captured at 2022-10-21 19:30 UTC with Arsenal-GSO N305/1200 f/4, ocular projection using x10 objective lens from microscope.
 
-
 https://user-images.githubusercontent.com/1285263/197896096-c0db0918-69b4-436a-8746-0a7f94ff5705.mov
-
-
-
 
 
 Montes Alpes and Mare Frigoris.
 ![MontesAlpes](./debug/MontesAlpes.2021-09-26-2327_8-CapObj-32F.jpg)
 
 
+Compare jovian images captured with two different tubes, processed and derotated with SerStacker.
 
-This code is intendend mainly for my experimentation.
-It is totally bugged and constantly changed. 
+![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
+
+
+SerImager Screen Shoot.
+
+![SerImager](./debug/SerImager1.png)
+
+SerStacker Screen Shoot.
+
+![SerStacker](./debug/SerStacker1.png)
+
 
 Examples of stacked images on my flickr account : 
   https://www.flickr.com/photos/116211323@N02/.

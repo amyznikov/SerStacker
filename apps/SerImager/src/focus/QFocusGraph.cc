@@ -169,8 +169,6 @@ void QFocusGraph::updateFocusGraph()
 
 void QFocusGraph::updatePenColors(enum COLORID colorid)
 {
-  CF_DEBUG("colorid=%s", toString(colorid));
-
   static const QColor *selectedColors = nullptr;
 
   if( is_bayer_pattern(colorid) ) {
@@ -321,6 +319,7 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
           [this](double v) {
             if ( focusMeasureThread_ ) {
               focusMeasureThread_->measure().set_eps(v);
+              focusMeasureThread_->save_parameters();
             }
           },
           [this](double * v) {
@@ -337,6 +336,7 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
           [this](int v) {
             if ( focusMeasureThread_ ) {
               focusMeasureThread_->measure().set_dscale(v);
+              focusMeasureThread_->save_parameters();
             }
           },
           [this](int * v) {
@@ -347,17 +347,18 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
             return false;
           });
 
-  threshold_ctl =
-      add_numeric_box<double>(
-          "threshold",
-          [this](double v ) {
+  avgchannel_ctl =
+      add_checkbox(
+          "avgchannel",
+          [this](bool v ) {
             if ( focusMeasureThread_ ) {
-              focusMeasureThread_->measure().set_threshold(v);
+              focusMeasureThread_->measure().set_avgchannel(v);
+              focusMeasureThread_->save_parameters();
             }
           },
-          [this](double * v) {
+          [this](bool * v) {
             if ( focusMeasureThread_ ) {
-              *v = focusMeasureThread_->measure().threshold();
+              *v = focusMeasureThread_->measure().avgchannel();
               return true;
             }
             return false;

@@ -48,6 +48,9 @@ public:
 
   QMutex & mutex();
 
+  void load_parameters();
+  void save_parameters();
+
 public Q_SLOTS:
   void setEnabled(bool v);
 

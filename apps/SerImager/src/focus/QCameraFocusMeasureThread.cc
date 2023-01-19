@@ -14,17 +14,35 @@
 
 namespace serimager {
 
-//static cv::Scalar compute_dogs_metric(cv::InputArray image)
-//{
-//  cv::Mat dogs;
-//  compute_dogsmap(image, dogs, 3, 3, 3, 0);
-//  return cv::mean(dogs);
-//}
+namespace {
+
+QString qsprintf(const char * format, ...)
+  Q_ATTRIBUTE_FORMAT_PRINTF(1, 0);
+
+QString qsprintf(const char * format, ...)
+{
+  va_list arglist;
+  va_start(arglist, format);
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+  QString msg;
+  msg.vsprintf(format, arglist);
+#else
+  QString msg = QString::vasprintf(format, arglist);
+#endif
+
+  va_end(arglist);
+
+  return msg;
+}
+
+} // namespace
 
 
 QCameraFocusMeasureThread::QCameraFocusMeasureThread(QObject * parent) :
   Base(parent)
 {
+  load_parameters();
 }
 
 QCameraFocusMeasureThread::~QCameraFocusMeasureThread()
@@ -95,7 +113,7 @@ const QVector<double> & QCameraFocusMeasureThread::measurements(int channel) con
 
 enum COLORID QCameraFocusMeasureThread::colorid() const
 {
-  return colorid_;
+  return measure_.avgchannel() ? COLORID_MONO : colorid_;
 }
 
 int QCameraFocusMeasureThread::bpp() const
@@ -106,6 +124,31 @@ int QCameraFocusMeasureThread::bpp() const
 QMutex & QCameraFocusMeasureThread::mutex()
 {
   return mutex_;
+}
+
+void QCameraFocusMeasureThread::load_parameters()
+{
+  static constexpr const char * prefix =
+      "FocusMeasure";
+
+  QSettings settings;
+
+  measure_.set_avgchannel(settings.value(qsprintf("%s/avgchannel", prefix), measure_.avgchannel()).value<bool>());
+  measure_.set_dscale(settings.value(qsprintf("%s/dscale", prefix), measure_.dscale()).value<int>());
+  measure_.set_eps(settings.value(qsprintf("%s/eps", prefix), measure_.eps()).value<double>());
+}
+
+void QCameraFocusMeasureThread::save_parameters()
+{
+  static constexpr const char * prefix =
+      "FocusMeasure";
+
+  QSettings settings;
+
+  settings.setValue(qsprintf("%s/avgchannel", prefix), measure_.avgchannel());
+  settings.setValue(qsprintf("%s/dscale", prefix), measure_.dscale());
+  settings.setValue(qsprintf("%s/eps", prefix), measure_.eps());
+
 }
 
 void QCameraFocusMeasureThread::onCameraStateChanged()
@@ -119,8 +162,6 @@ void QCameraFocusMeasureThread::onCameraStateChanged()
 
 void QCameraFocusMeasureThread::run()
 {
-  CF_DEBUG("ENTER");
-
   if( true ) {
 
     QMutexLocker lock(&mutex_);
@@ -224,17 +265,6 @@ void QCameraFocusMeasureThread::run()
         cv::Scalar v =
             measure_.compute(image);
 
-//        cv::Scalar v =
-//            c_local_contrast_measure::compute_contrast_map(image,
-//                cv::noArray(),
-//                eps_,
-//                dscale_);
-
-//        cv::Scalar v =
-//            compute_dogs_metric(image);
-
-
-
         lock.relock();
 
         while (data_size >= max_measurements_) {
@@ -248,7 +278,8 @@ void QCameraFocusMeasureThread::run()
           --data_size;
         }
 
-        for( int i = 0; i < image.channels(); ++i ) {
+        const int cn = measure_.avgchannel() ? 1 : image.channels();
+        for( int i = 0; i < cn; ++i ) {
           measurements_[i].push_back(v[i]);
         }
 
@@ -270,8 +301,6 @@ void QCameraFocusMeasureThread::run()
 
     lock.relock();
   }
-
-  CF_DEBUG("LEAVE");
 }
 
 

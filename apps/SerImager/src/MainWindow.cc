@@ -7,6 +7,7 @@
 
 #include "MainWindow.h"
 #include <gui/widgets/style.h>
+#include <gui/widgets/qsprintf.h>
 
 namespace serimager {
 
@@ -80,26 +81,6 @@ QWidget* createStretch()
   QWidget *stretch = new QWidget();
   stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   return stretch;
-}
-
-QString qsprintf(const char * format, ...)
-  Q_ATTRIBUTE_FORMAT_PRINTF(1, 0);
-
-QString qsprintf(const char * format, ...)
-{
-  va_list arglist;
-  va_start(arglist, format);
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-  QString msg;
-  msg.vsprintf(format, arglist);
-#else
-  QString msg = QString::vasprintf(format, arglist);
-#endif
-
-  va_end(arglist);
-
-  return msg;
 }
 
 } // namespace
@@ -461,7 +442,7 @@ void MainWindow::setupCameraControls()
         cameraControls_ctl->selectedCamera();
 
         centralDisplay_->setCamera(camera);
-        focusMeasureThread_->setCamera(camera);
+        focusMeasure_->setCamera(camera);
 
         if ( camera ) {
           connect(camera.get(), &QImagingCamera::exposureStatusUpdate,
@@ -526,8 +507,8 @@ void MainWindow::onCameraWriterStatusUpdate()
 
 void MainWindow::setupFocusGraph()
 {
-  focusMeasureThread_ =
-      new QCameraFocusMeasureThread(this);
+  focusMeasure_ =
+      new QCameraFocusMeasure(this);
 
   focusGraphDock_ =
       addDock<QFocusGraphDock>(this,
@@ -538,7 +519,7 @@ void MainWindow::setupFocusGraph()
           menuView_);
 
   focusGraphDock_->hide();
-  focusGraph_->setFocusMeasureThread(focusMeasureThread_);
+  focusGraph_->setFocusMeasureProvider(focusMeasure_);
 }
 
 void MainWindow::setupIndigoFocuser()

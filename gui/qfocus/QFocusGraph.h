@@ -13,9 +13,7 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qcustomdock/QCustomDock.h>
 #include <gui/qcustomplot/qcustomplot.h>
-#include "QCameraFocusMeasureThread.h"
-
-namespace serimager {
+#include "QFocusMeasureProvider.h"
 
 class QFocusGraphSettingsDialogBox;
 
@@ -23,15 +21,14 @@ class QFocusGraph :
     public QWidget
 {
   Q_OBJECT;
-
 public:
   typedef QFocusGraph ThisClass;
   typedef QWidget Base;
 
   QFocusGraph(QWidget * parent = nullptr);
 
-  void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
-  QCameraFocusMeasureThread * focusMeasureThread() const;
+  void setFocusMeasureProvider(QFocusMeasureProvider * provider);
+  QFocusMeasureProvider * focusMeasureProvider() const;
 
 protected Q_SLOTS:
   void clearFocusGraph();
@@ -43,11 +40,11 @@ protected:
   void updatePenColors(enum COLORID colorid);
 
 protected:
-  QCameraFocusMeasureThread * focusMeasureThread_ = nullptr;
+  QFocusMeasureProvider * provider_ = nullptr;
 
   QVBoxLayout * vl_ = nullptr;
   QCustomPlot * plot_ = nullptr;
-  QCPGraph *graphs_[QCameraFocusMeasureThread::MAX_CHANNELS] = { nullptr };
+  QCPGraph *graphs_[QFocusMeasureProvider::MAX_CHANNELS] = { nullptr };
   enum COLORID last_colorid_ = COLORID_UNKNOWN;
 
   //QMenu actionsMenu_;
@@ -70,7 +67,6 @@ public:
 
 protected:
   //QToolButton *menuButton_ = nullptr;
-
 };
 
 
@@ -83,14 +79,14 @@ public:
 
   QFocusGraphSettingsWidget(QWidget * parent = nullptr);
 
-  void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
-  QCameraFocusMeasureThread * focusMeasureThread() const;
+  void setFocusMeasureProvider(QFocusMeasureProvider * provider);
+  QFocusMeasureProvider * focusMeasureProvider() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  QCameraFocusMeasureThread * focusMeasureThread_ = nullptr;
+  QFocusMeasureProvider * provider_ = nullptr;
   QNumberEditBox * eps_ctl = nullptr;
   QNumberEditBox * dscale_ctl = nullptr;
   QCheckBox * avgchannel_ctl = nullptr;
@@ -107,8 +103,8 @@ public:
 
   QFocusGraphSettingsDialogBox(QWidget * parent = nullptr);
 
-  void setFocusMeasureThread(QCameraFocusMeasureThread * thread);
-  QCameraFocusMeasureThread * focusMeasureThread() const;
+  void setFocusMeasureProvider(QFocusMeasureProvider * provider);
+  QFocusMeasureProvider * focusMeasureProvider() const;
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);
@@ -123,7 +119,5 @@ protected:
   QFocusGraphSettingsWidget * settings_ctl = nullptr;
 };
 
-
-} /* namespace serimager */
 
 #endif /* __QFocusGraph_h__ */

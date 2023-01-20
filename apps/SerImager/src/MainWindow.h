@@ -14,10 +14,11 @@
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
+#include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "QCameraFrameProcessorSelector.h"
 #include "QCameraFrameDisplay.h"
-#include "QFocusGraph.h"
+#include "QCameraFocusMeasure.h"
 
 #define HAVE_INDIGO 1
 #if HAVE_INDIGO
@@ -71,9 +72,9 @@ protected:
   QCustomDockWidget * frameProcessorDock_ = nullptr;
   QAction * showFrameProcessorAction_ = nullptr;
 
+  QCameraFocusMeasure * focusMeasure_ = nullptr;
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;
-  QCameraFocusMeasureThread * focusMeasureThread_ = nullptr;
 
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;

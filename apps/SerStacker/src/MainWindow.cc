@@ -9,6 +9,8 @@
 #include <gui/widgets/QToolbarSpacer.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/style.h>
+#include <gui/widgets/qsprintf.h>
 #include <gui/qstackingthread/QStackingThread.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
@@ -22,62 +24,77 @@ namespace qserstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-#define ICON_reload       "reload"
-#define ICON_prev         "prev"
-#define ICON_next         "next"
-#define ICON_like         "like"
-#define ICON_dislike      "dislike"
-#define ICON_close        "close"
-#define ICON_histogram    "histogram"
-#define ICON_marker_blue  "marker-blue"
-#define ICON_reference    "reference"
-#define ICON_options      "options"
-#define ICON_mask         "mask"
-#define ICON_frame        "frame"
-#define ICON_badframe     "badframe"
+#define ICON_reload       ":/gui/icons/reload"
+#define ICON_prev         ":/gui/icons/prev"
+#define ICON_next         ":/gui/icons/next"
+#define ICON_like         ":/gui/icons/like"
+#define ICON_dislike      ":/gui/icons/dislike"
+#define ICON_close        ":/gui/icons/close"
+#define ICON_histogram    ":/gui/icons/histogram"
+#define ICON_marker_blue  ":/gui/icons/marker-blue"
+#define ICON_reference    ":/gui/icons/reference"
+#define ICON_options      ":/gui/icons/options"
+#define ICON_mask         ":/gui/icons/mask"
+#define ICON_frame        ":/gui/icons/frame"
+#define ICON_badframe     ":/gui/icons/badframe"
+#define ICON_roi          ":/icons/roi.png"
+
+#define ICON_copy         ":/gui/icons/copy"
+#define ICON_delete       ":/gui/icons/delete"
 
 
-#define ICON_copy         "copy"
-#define ICON_delete       "delete"
+namespace  {
 
-
-static QIcon getIcon(const QString & name)
+template<class Obj, typename Fn>
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
+    Obj * receiver, Fn fn)
 {
-  return QIcon(QString(":/gui/icons/%1").arg(name));
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+
+  QObject::connect(action, &QAction::triggered, receiver, fn);
+
+  return action;
 }
 
-static QPixmap getPixmap(const QString & name)
+template<typename Slot>
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot)
 {
-  return QPixmap(QString(":/gui/icons/%1").arg(name));
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+
+  QObject::connect(action, &QAction::triggered, slot);
+
+  return action;
 }
 
-
-namespace {
-
-QString qsprintf(const char * format, ...)
-  Q_ATTRIBUTE_FORMAT_PRINTF(1, 0);
-
-QString qsprintf(const char * format, ...)
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip)
 {
-  va_list arglist;
-  va_start(arglist, format);
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-  QString msg;
-  msg.vsprintf(format, arglist);
-#else
-  QString msg = QString::vasprintf(format, arglist);
-#endif
+  return action;
+}
 
-  va_end(arglist);
-
-  return msg;
+QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(defaultAction->icon());
+  tb->setText(defaultAction->text());
+  tb->setToolTip(defaultAction->toolTip());
+  tb->setCheckable(defaultAction->isCheckable());
+  tb->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
+  tb->setDefaultAction(defaultAction);
+  tb->setMenu(menu);
+  return tb;
 }
 
 
-}
-
-
+}  // namespace
 
 
 MainWindow::MainWindow()
@@ -421,11 +438,13 @@ MainWindow::MainWindow()
 
   ///////////////////////////////////
 
-  restoreGeometry();
-  restoreState();
   configureImageViewerToolbars();
   configureTextViewerToolbars();
   configureCloudViewerToolbars();
+  setupFocusGraph();
+  setupRoiOptions();
+  restoreGeometry();
+  restoreState();
 
 
   //  image_processors_->load(c_image_processor_collection::default_processor_collection_path());
@@ -814,6 +833,8 @@ void MainWindow::configureImageViewerToolbars()
         }
         else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
 
+          CF_DEBUG("QImageScene::graphicsItemChanged");
+
           const QRectF rect = rectShape->mapToScene(rectShape->rect()).boundingRect();
           const QPointF p1 = rect.topLeft();
           const QPointF p2 = rect.bottomRight();
@@ -975,6 +996,94 @@ void MainWindow::createImageViewOptionsControl()
 
     imageViewOptionsDlgBox->show();
   }
+}
+
+void MainWindow::setupFocusGraph()
+{
+  focusMeasure_ =
+      new QImageFocusMeasure(this);
+
+  focusGraphDock_ =
+      addDock<QFocusGraphDock>(this,
+          Qt::RightDockWidgetArea,
+          "focusGraphDock_",
+          "Focus Graph",
+          focusGraph_ = new QFocusGraph(this),
+          viewMenu);
+
+  focusGraphDock_->hide();
+  focusGraph_->setFocusMeasureProvider(focusMeasure_);
+
+
+  connect(imageEditor, &QImageFileEditor::onInputImageLoad,
+      [this](const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp) {
+        if ( focusMeasure_->enabled() ) {
+          focusMeasure_->measure(image, colorid, bpp,
+              imageEditor->roiRectShape()->isceneRect());
+        }
+      });
+
+}
+
+void MainWindow::setupRoiOptions()
+{
+  QAction * action;
+
+  //
+  // Rect (ROI) shape
+  //
+  rectShapeOptionsDialogBox_ =
+      new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
+          imageEditor->roiRectShape(),
+          this);
+
+  rectShapeOptionsDialogBox_->loadParameters();
+
+  rectShapeActionsMenu_.addAction(
+      action = createCheckableAction(QIcon(),
+          "Options..",
+          "Configure ROI rectangle options",
+          [this](bool checked) {
+            rectShapeOptionsDialogBox_->setVisible(checked);
+          }));
+
+  connect(rectShapeOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+      [action](bool visible) {
+        action->setChecked(visible);
+      });
+
+  connect(imageEditor->roiRectShape(), &QGraphicsShape::itemChanged,
+      [this]() {
+
+        QGraphicsRectShape * shape =
+            imageEditor->roiRectShape();
+
+        const QRectF rc =
+            shape->sceneRect();
+
+        imageEditor->statusbar()->showMessage(qsprintf(
+                "ROI: x= %g y= %g w= %g h= %g center= (%g %g)",
+                rc.x(), rc.y(), rc.width(), rc.height(),
+                rc.center().x(), rc.center().y() ));
+      });
+
+
+  QToolBar * toolbar = imageEditor->embedToolbar();
+  if ( toolbar ) {
+
+    showRectShapeAction_ =
+        createCheckableAction(getIcon(ICON_roi),
+            "ROI Rectangle",
+            "Show / Hide ROI rectangle",
+            [this](bool checked) {
+              imageEditor->roiRectShape()->setVisible(checked);
+            });
+
+    toolbar->addWidget(rectShapeActionsButton_ =
+        createToolButtonWithPopupMenu(showRectShapeAction_,
+            &rectShapeActionsMenu_));
+  }
+
 }
 
 void MainWindow::openImage(const QString & abspath)

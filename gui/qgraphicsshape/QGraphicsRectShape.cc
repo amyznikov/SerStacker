@@ -52,6 +52,12 @@ QRectF QGraphicsRectShape::sceneRect() const
   return mapToScene(rect_).boundingRect();
 }
 
+QRect QGraphicsRectShape::isceneRect() const
+{
+  const QRectF sceneRect = this->sceneRect();
+  return QRect((int) (sceneRect.x()), (int) (sceneRect.y()), (int) (sceneRect.width()), (int) (sceneRect.height()));
+}
+
 void QGraphicsRectShape::setCenter(const QPointF & p)
 {
   if (rect_.center() != p ) {

@@ -1,5 +1,8 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
 	<file>icons/jup.png</file>
+	
+	<file>icons/dark/roi.png</file>
+	<file>icons/light/roi.png</file>
 </qresource>
 </RCC>

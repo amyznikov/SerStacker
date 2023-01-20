@@ -304,7 +304,7 @@ void c_input_sequence::close(bool also_clear)
   total_frames_ = -1;
   current_source_ = -1;
   current_global_pos_ = -1;
-  last_pixel_depth_ = 0;
+  last_bpp_ = 0;
   last_colorid_ = COLORID_UNKNOWN;
   last_color_matrix_ = cv::Matx33f::eye();
   has_last_color_matrix_ = false;
@@ -439,7 +439,7 @@ int c_input_sequence::global_pos(int source_index, int source_frame_index) const
 
 bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * output_mask)
 {
-  last_pixel_depth_ = 0;
+  last_bpp_ = 0;
   last_colorid_ = COLORID_UNKNOWN;
   has_last_color_matrix_ = false;
 
@@ -448,13 +448,13 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     return false;
   }
 
-  if ( !source->read(output_frame, &last_colorid_, &last_pixel_depth_) ) {
+  if ( !source->read(output_frame, &last_colorid_, &last_bpp_) ) {
     return false;
   }
 
 
   if ( is_bayer_pattern(last_colorid_) ) {
-    if ( output_mask ) { // not clear the meaning of alpha maskk with bayer pattern
+    if ( output_mask ) { // not clear the meaning of alpha mask with bayer pattern
       output_mask->release();
     }
 
@@ -508,9 +508,9 @@ enum COLORID c_input_sequence::colorid() const
   return last_colorid_;
 }
 
-int c_input_sequence::pixel_depth() const
+int c_input_sequence::bpp() const
 {
-  return last_pixel_depth_;
+  return last_bpp_;
 }
 
 const cv::Matx33f & c_input_sequence::color_matrix() const

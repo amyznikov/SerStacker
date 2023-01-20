@@ -14,6 +14,7 @@ QImageFileEditor::QImageFileEditor(QImageScene * scene, QWidget * parent) :
 {
   input_sequence_ = c_input_sequence::create();
   //input_sequence_->set_auto_debayer(DEBAYER_GB);
+  input_sequence_->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence_->set_auto_apply_color_matrix(true);
 
   Base::layout_->insertWidget(2, playControls =
@@ -148,6 +149,14 @@ void QImageFileEditor::loadNextFrame()
       QWaitCursor wait(this, current_source->size() == 1);
 
       input_sequence_->read(inputImage_, &inputMask_);
+
+      Q_EMIT onInputImageLoad(inputImage_, inputMask_, input_sequence_->colorid(), input_sequence_->bpp());
+
+      if( true ) {
+        if( is_bayer_pattern(input_sequence_->colorid()) ) {
+          debayer(inputImage_, inputImage_, input_sequence_->colorid(), DEBAYER_DEFAULT);
+        }
+      }
 
       updateImage();
       setCurrentFileName(current_source->filename().c_str());

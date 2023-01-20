@@ -18,6 +18,9 @@
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include <gui/qimageview/QImageViewOptions.h>
+#include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
+#include <gui/qfocus/QFocusGraph.h>
+#include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
 
@@ -51,9 +54,11 @@ private:
   void configureCloudViewerToolbars();
   void createDisplaySettingsControl();
   void createImageViewOptionsControl();
+  void setupFocusGraph();
+  void setupRoiOptions();
   bool eventFilter(QObject *watched, QEvent *event) override;
 
-public slots:
+public Q_SLOTS:
   void onSaveCurrentImageAs();
   void onSaveCurrentDisplayImageAs();
   void onSaveCurrentImageMask();
@@ -61,7 +66,7 @@ public slots:
   void onLoadStackConfig();
   void onViewGeneralSettings();
 
-private slots:
+private Q_SLOTS:
   void updateWindowTittle();
   void openImage(const QString & abspath);
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
@@ -106,6 +111,17 @@ private:
 
   QCustomDockWidget * imageProcessorSelectorDock = nullptr;
   QImageProcessorSelector * imageProcessorSelector = nullptr;
+
+
+  QImageFocusMeasure * focusMeasure_ = nullptr;
+  QFocusGraph * focusGraph_ = nullptr;
+  QFocusGraphDock * focusGraphDock_ = nullptr;
+
+  QAction * showRectShapeAction_ = nullptr;
+  QToolButton * rectShapeActionsButton_ = nullptr;
+  QGraphicsRectShapeSettingsDialogBox * rectShapeOptionsDialogBox_ = nullptr;
+  QMenu rectShapeActionsMenu_;
+
 
   QMenu * fileMenu = nullptr;
   QMenu * viewMenu = nullptr;

@@ -172,7 +172,7 @@ QCameraFrameDisplay::QCameraFrameDisplay(QWidget * parent) :
   connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
       [this]() {
         // if (workerState_ == Worker_Idle)
-        {
+        if ( !mtfDisplayFunction_.isBusy() )  {
           Base::updateImage();
         }
       });
@@ -215,11 +215,12 @@ void QCameraFrameDisplay::setFrameProcessor(const c_image_processor::sptr & proc
   Base::current_processor_ = processor;
 
   //if( this->workerState_ == Worker_Idle )
-  {
+  if ( !mtfDisplayFunction_.isBusy() ) {
     updateImage();
   }
 
   mtfDisplayFunction_.mutex().unlock();
+
 }
 
 
@@ -332,7 +333,7 @@ void QCameraFrameDisplay::onPixmapChanged()
   scene()->setImage(pixmap_);
 }
 
-void QCameraFrameDisplay::  createShapes()
+void QCameraFrameDisplay::createShapes()
 {
   if( !rectShape_ ) {
 

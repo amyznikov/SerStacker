@@ -65,7 +65,7 @@ public:
   int current_pos() const;
   int global_pos(int source_index, int source_frame_index) const;
 
-  int pixel_depth() const;
+  int bpp() const;
   enum COLORID colorid() const;
   const cv::Matx33f & color_matrix() const;
   bool has_color_matrix() const;
@@ -93,7 +93,7 @@ protected:
 
 
   enum COLORID last_colorid_ = COLORID_UNKNOWN;
-  int last_pixel_depth_ = 0;
+  int last_bpp_ = 0;
   cv::Matx33f last_color_matrix_ = cv::Matx33f::eye() ;
   bool has_last_color_matrix_ = false;
 };

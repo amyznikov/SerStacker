@@ -11,6 +11,7 @@
 
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
+#include <gui/qgraphicsshape/QGraphicsRectShape.h>
 
 namespace qserstacker {
 
@@ -27,8 +28,14 @@ public:
   QImageViewMtfDisplayFunction * mtfDisplayFunction();
   const QImageViewMtfDisplayFunction * mtfDisplayFunction() const;
 
+  QGraphicsRectShape * roiRectShape() const;
+
+protected:
+  void createRoiRectShape();
+
 protected:
   QImageViewMtfDisplayFunction mtfDisplayFunction_;
+  QGraphicsRectShape * roiRectShape_ = nullptr;
 };
 
 } /* namespace qserstacker */

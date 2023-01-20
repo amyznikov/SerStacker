@@ -9,7 +9,6 @@
 #include <gui/widgets/style.h>
 #include <core/ssprintf.h>
 
-namespace serimager {
 
 #define ICON_menu         ":/qfocus/icons/menu.png"
 #define ICON_chart        ":/qfocus/icons/chart.png"
@@ -22,6 +21,8 @@ namespace serimager {
 QFocusGraph::QFocusGraph(QWidget * parent) :
     Base(parent)
 {
+  Q_INIT_RESOURCE(qfocus_resources);
+
   vl_ = new QVBoxLayout(this);
   vl_->addWidget(plot_ = new QCustomPlot(this));
 
@@ -29,12 +30,10 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
   pen.setWidth(2);
   pen.setCosmetic(true);
 
-  for( int i = 0; i < QCameraFocusMeasureThread::MAX_CHANNELS; ++i ) {
+  for( int i = 0; i < QFocusMeasureProvider::MAX_CHANNELS; ++i ) {
     graphs_[i] = plot_->addGraph();
     graphs_[i]->setPen(pen);
   }
-
-  plot_->setBackground(QBrush(QColor(0, 0, 0, 0)));
 
   QPen axis_pen(QColor(150, 150, 150));
   plot_->xAxis->setBasePen(axis_pen);
@@ -44,8 +43,12 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
   plot_->yAxis->setTickPen(axis_pen);
   plot_->yAxis->setSubTickPen(axis_pen);
   plot_->xAxis->setRange(0, 120);
-  plot_->xAxis->setTickLabelColor(QColor(255, 255, 255));
-  plot_->yAxis->setTickLabelColor(QColor(255, 255, 255));
+
+  if( iconStyleSelector().contains("light", Qt::CaseInsensitive) ) {
+    plot_->setBackground(QBrush(QColor(0, 0, 0, 0)));
+    plot_->xAxis->setTickLabelColor(QColor(255, 255, 255));
+    plot_->yAxis->setTickLabelColor(QColor(255, 255, 255));
+  }
 
   ///////////////////////////////////////////////////////////////////
 
@@ -65,7 +68,7 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
         else {
 
           settings_ctl = new QFocusGraphSettingsDialogBox (this);
-          settings_ctl->setFocusMeasureThread(focusMeasureThread_);
+          settings_ctl->setFocusMeasureProvider(provider_);
 
           connect(settings_ctl, &QFocusGraphSettingsDialogBox::visibilityChanged,
               showSettingsAction_, &QAction::setChecked);
@@ -86,8 +89,8 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
   enableFocusTrackAction_->setChecked(false);
   connect(enableFocusTrackAction_, &QAction::triggered,
       [this](bool checked) {
-        if ( focusMeasureThread_ ) {
-          focusMeasureThread_->setEnabled(checked && isVisible());
+        if ( provider_ ) {
+          provider_->setEnabled(checked && isVisible());
         }
       });
 
@@ -95,29 +98,29 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
   ///////////////////////////////////////////////////////////////////
 }
 
-void QFocusGraph::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
+void QFocusGraph::setFocusMeasureProvider(QFocusMeasureProvider * provider)
 {
-  if( focusMeasureThread_ ) {
-    focusMeasureThread_->disconnect(this);
+  if( provider_ ) {
+    provider_->disconnect(this);
   }
 
-  if( (focusMeasureThread_ = thread) ) {
+  if( (provider_ = provider) ) {
 
-    connect(focusMeasureThread_, &QCameraFocusMeasureThread::dataChanged,
+    connect(provider_, &QFocusMeasureProvider::dataChanged,
         this, &ThisClass::updateFocusGraph,
         Qt::QueuedConnection);
 
-    focusMeasureThread_->setEnabled(isVisible() && enableFocusTrackAction_->isChecked());
+    provider_->setEnabled(isVisible() && enableFocusTrackAction_->isChecked());
   }
 
   if( settings_ctl ) {
-    settings_ctl->setFocusMeasureThread(focusMeasureThread_);
+    settings_ctl->setFocusMeasureProvider(provider_);
   }
 }
 
-QCameraFocusMeasureThread * QFocusGraph::focusMeasureThread() const
+QFocusMeasureProvider * QFocusGraph::focusMeasureProvider() const
 {
-  return focusMeasureThread_;
+  return provider_;
 }
 
 
@@ -126,7 +129,7 @@ void QFocusGraph::clearFocusGraph()
   static const QVector<double> empty_keys;
   static const QVector<double> empty_values;
 
-  for( int i = 0; i < QCameraFocusMeasureThread::MAX_CHANNELS; ++i ) {
+  for( int i = 0; i < QFocusMeasureProvider::MAX_CHANNELS; ++i ) {
     graphs_[i]->setData(empty_keys, empty_values);
   }
 
@@ -135,16 +138,16 @@ void QFocusGraph::clearFocusGraph()
 
 void QFocusGraph::updateFocusGraph()
 {
-  if ( focusMeasureThread_ ) {
+  if ( provider_ ) {
 
-    QMutexLocker lock(&focusMeasureThread_->mutex());
+    QMutexLocker lock(&provider_->mutex());
 
     QVector<double> keys;
 
-    for( int i = 0; i < QCameraFocusMeasureThread::MAX_CHANNELS; ++i ) {
+    for( int i = 0; i < QFocusMeasureProvider::MAX_CHANNELS; ++i ) {
 
       const QVector<double> &values =
-          focusMeasureThread_->measurements(i);
+          provider_->measurements(i);
 
       keys.clear();
 
@@ -158,7 +161,7 @@ void QFocusGraph::updateFocusGraph()
     plot_->yAxis->rescale();
 
 
-    enum COLORID colorid = focusMeasureThread_->colorid();
+    enum COLORID colorid = provider_->colorid();
     if ( colorid != last_colorid_ )  {
       updatePenColors(last_colorid_ = colorid);
     }
@@ -173,7 +176,7 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
 
   if( is_bayer_pattern(colorid) ) {
     // extract_bayer_planes() always orders output channels as[ R G1 B G2 ].
-    static const QColor colors[QCameraFocusMeasureThread::MAX_CHANNELS] = {
+    static const QColor colors[QFocusMeasureProvider::MAX_CHANNELS] = {
         Qt::red,
         Qt::green,
         Qt::blue,
@@ -185,7 +188,7 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
 
     switch (colorid) {
       case COLORID_MONO: {
-        static const QColor colors[QCameraFocusMeasureThread::MAX_CHANNELS] = {
+        static const QColor colors[QFocusMeasureProvider::MAX_CHANNELS] = {
             Qt::lightGray,
             Qt::lightGray,
             Qt::lightGray,
@@ -196,7 +199,7 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
         break;
 
       case COLORID_RGB: {
-        static const QColor colors[QCameraFocusMeasureThread::MAX_CHANNELS] = {
+        static const QColor colors[QFocusMeasureProvider::MAX_CHANNELS] = {
             Qt::red,
             Qt::green,
             Qt::blue,
@@ -207,7 +210,7 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
         break;
 
       case COLORID_BGR: {
-        static const QColor colors[QCameraFocusMeasureThread::MAX_CHANNELS] = {
+        static const QColor colors[QFocusMeasureProvider::MAX_CHANNELS] = {
             Qt::blue,
             Qt::red,
             Qt::green,
@@ -219,7 +222,7 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
 
       case COLORID_BGRA:
         default: {
-        static const QColor colors[QCameraFocusMeasureThread::MAX_CHANNELS] = {
+        static const QColor colors[QFocusMeasureProvider::MAX_CHANNELS] = {
             Qt::blue,
             Qt::red,
             Qt::green,
@@ -235,7 +238,7 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
   pen.setWidth(3);
   pen.setCosmetic(true);
 
-  for( int i = 0; i < QCameraFocusMeasureThread::MAX_CHANNELS; ++i ) {
+  for( int i = 0; i < QFocusMeasureProvider::MAX_CHANNELS; ++i ) {
     pen.setColor(selectedColors[i]);
     graphs_[i]->setPen(pen);
   }
@@ -246,8 +249,8 @@ void QFocusGraph::showEvent(QShowEvent *event)
 {
   Base::showEvent(event);
 
-  if ( focusMeasureThread_ ) {
-    focusMeasureThread_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
+  if ( provider_ ) {
+    provider_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
   }
 
 }
@@ -256,8 +259,8 @@ void QFocusGraph::hideEvent(QHideEvent *event)
 {
   Base::hideEvent(event);
 
-  if ( focusMeasureThread_ ) {
-    focusMeasureThread_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
+  if ( provider_ ) {
+    provider_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
   }
 }
 
@@ -279,32 +282,6 @@ QFocusGraphDock::QFocusGraphDock(const QString & title, QWidget * parent, QFocus
           bar->addButton(action);
     }
 
-
-
-//    menuButton_ =
-//        Base::titleBar()->addButton(getIcon(ICON_menu),
-//            "FocusGraph actions...");
-//
-//    connect(menuButton_, &QToolButton::clicked,
-//        [this]() {
-//
-//          QFocusGraph * fg =
-//              dynamic_cast<QFocusGraph * >(this->widget());
-//
-//          if ( fg ) {
-//
-//            QMenu & menu =
-//                fg->actionsMenu();
-//
-//            if ( !menu.isEmpty() ) {
-//
-//              menu.exec(menuButton_->mapToGlobal(
-//                  QPoint(menuButton_->width()/2,
-//                      menuButton_->height()/2)));
-//
-//            }
-//          }
-//        });
   }
 }
 
@@ -317,14 +294,14 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
       add_numeric_box<double>(
           "eps",
           [this](double v) {
-            if ( focusMeasureThread_ ) {
-              focusMeasureThread_->measure().set_eps(v);
-              focusMeasureThread_->save_parameters();
+            if ( provider_ ) {
+              provider_->measure().set_eps(v);
+              provider_->save_parameters();
             }
           },
           [this](double * v) {
-            if ( focusMeasureThread_ ) {
-              *v = focusMeasureThread_->measure().eps();
+            if ( provider_ ) {
+              *v = provider_->measure().eps();
               return true;
             }
             return false;
@@ -334,14 +311,14 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
       add_numeric_box<int>(
           "dscale",
           [this](int v) {
-            if ( focusMeasureThread_ ) {
-              focusMeasureThread_->measure().set_dscale(v);
-              focusMeasureThread_->save_parameters();
+            if ( provider_ ) {
+              provider_->measure().set_dscale(v);
+              provider_->save_parameters();
             }
           },
           [this](int * v) {
-            if ( focusMeasureThread_ ) {
-              *v = focusMeasureThread_->measure().dscale();
+            if ( provider_ ) {
+              *v = provider_->measure().dscale();
               return true;
             }
             return false;
@@ -351,14 +328,14 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
       add_checkbox(
           "avgchannel",
           [this](bool v ) {
-            if ( focusMeasureThread_ ) {
-              focusMeasureThread_->measure().set_avgchannel(v);
-              focusMeasureThread_->save_parameters();
+            if ( provider_ ) {
+              provider_->measure().set_avgchannel(v);
+              provider_->save_parameters();
             }
           },
           [this](bool * v) {
-            if ( focusMeasureThread_ ) {
-              *v = focusMeasureThread_->measure().avgchannel();
+            if ( provider_ ) {
+              *v = provider_->measure().avgchannel();
               return true;
             }
             return false;
@@ -368,22 +345,22 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
   updateControls();
 }
 
-void QFocusGraphSettingsWidget::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
+void QFocusGraphSettingsWidget::setFocusMeasureProvider(QFocusMeasureProvider * provider)
 {
-  focusMeasureThread_ = thread;
+  provider_ = provider;
   updateControls();
 }
 
-QCameraFocusMeasureThread * QFocusGraphSettingsWidget::focusMeasureThread() const
+QFocusMeasureProvider * QFocusGraphSettingsWidget::focusMeasureProvider() const
 {
-  return focusMeasureThread_;
+  return provider_;
 }
 
 void QFocusGraphSettingsWidget::onupdatecontrols()
 {
   Base::onupdatecontrols();
 
-  if ( !focusMeasureThread_ ) {
+  if ( !provider_ ) {
     setEnabled(false);
   }
   else {
@@ -402,14 +379,14 @@ QFocusGraphSettingsDialogBox::QFocusGraphSettingsDialogBox(QWidget * parent) :
   lv_->addWidget(settings_ctl = new QFocusGraphSettingsWidget(this));
 }
 
-void QFocusGraphSettingsDialogBox::setFocusMeasureThread(QCameraFocusMeasureThread * thread)
+void QFocusGraphSettingsDialogBox::setFocusMeasureProvider(QFocusMeasureProvider * provider)
 {
-  settings_ctl->setFocusMeasureThread(thread);
+  settings_ctl->setFocusMeasureProvider(provider);
 }
 
-QCameraFocusMeasureThread * QFocusGraphSettingsDialogBox::focusMeasureThread() const
+QFocusMeasureProvider * QFocusGraphSettingsDialogBox::focusMeasureProvider() const
 {
-  return settings_ctl->focusMeasureThread();
+  return settings_ctl->focusMeasureProvider();
 }
 
 void QFocusGraphSettingsDialogBox::showEvent(QShowEvent *e)
@@ -432,4 +409,3 @@ void QFocusGraphSettingsDialogBox::closeEvent(QCloseEvent *)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-} /* namespace serimager */

@@ -15,8 +15,8 @@
 
 static const char borderless_style[] = ""
     "QToolButton { border: none; }"
-//    "QToolButton:checked { background-color: darkgray; border: none; }"
-    "QToolButton:checked { background-color: black; border: none; }"
+    "QToolButton:checked { background-color: darkgray; border: none; }"
+//    "QToolButton:checked { background-color: black; border: none; }"
     ;
 
 

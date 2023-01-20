@@ -34,7 +34,10 @@ public:
   void closeCurrentSequence();
   const c_input_sequence::ptr & input_sequence() const;
 
-protected slots:
+Q_SIGNALS:
+  void onInputImageLoad(const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp);
+
+protected Q_SLOTS:
   void startDisplay();
   void loadNextFrame();
   void onSeek(int pos);

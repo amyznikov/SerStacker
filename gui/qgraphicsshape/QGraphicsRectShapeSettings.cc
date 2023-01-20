@@ -129,13 +129,17 @@ QGraphicsRectShapeSettingsDialogBox::QGraphicsRectShapeSettingsDialogBox(const Q
 {
   setWindowTitle(title);
 
-  QVBoxLayout * vbox =
+  QVBoxLayout * lv =
       new QVBoxLayout(this);
 
-  vbox->addWidget(settigs_ctl =
+  lv->setSizeConstraint(QLayout::SetFixedSize);
+
+  lv->addWidget(settigs_ctl =
       new QGraphicsRectShapeSettings(this));
 
   settigs_ctl->setShape(shape);
+
+  loadParameters();
 }
 
 

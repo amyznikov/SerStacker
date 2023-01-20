@@ -1,0 +1,20 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qimagestats">
+
+	<file>icons/light/add.png</file>
+	<file>icons/dark/add.png</file>
+
+	<file>icons/light/clear.png</file>
+	<file>icons/dark/clear.png</file>
+
+	<file>icons/light/copy.png</file>
+	<file>icons/dark/copy.png</file>
+
+	<file>icons/light/save.png</file>
+	<file>icons/dark/save.png</file>
+
+	<file>icons/light/select.png</file>
+	<file>icons/dark/select.png</file>
+
+</qresource>
+</RCC>

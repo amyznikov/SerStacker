@@ -204,6 +204,8 @@ QGraphicsTargetShapeSettingsDialogBox::QGraphicsTargetShapeSettingsDialogBox(con
       new QGraphicsTargetShapeSettings(this));
 
   settigs_ctl->setShape(shape);
+
+  loadParameters();
 }
 
 

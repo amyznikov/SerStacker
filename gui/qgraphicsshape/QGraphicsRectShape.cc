@@ -7,6 +7,7 @@
 
 #include "QGraphicsRectShape.h"
 #include <float.h>
+#include <limits.h>
 #include <core/debug.h>
 
 QGraphicsRectShape::QGraphicsRectShape(QGraphicsItem * parent) :

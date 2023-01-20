@@ -20,6 +20,7 @@
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qfocus/QFocusGraph.h>
+#include <gui/qimagestats/QImageStatistics.h>
 #include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
@@ -117,10 +118,11 @@ private:
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;
 
-  QAction * showRectShapeAction_ = nullptr;
-  QToolButton * rectShapeActionsButton_ = nullptr;
-  QGraphicsRectShapeSettingsDialogBox * rectShapeOptionsDialogBox_ = nullptr;
-  QMenu rectShapeActionsMenu_;
+  QAction * showRoiAction_ = nullptr;
+  QToolButton * roiActionsButton_ = nullptr;
+  QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
+  QImageStatisticsDisplayDialogBox * imageStatisticsDialogBox_ = nullptr;
+  QMenu roiActionsMenu_;
 
 
   QMenu * fileMenu = nullptr;

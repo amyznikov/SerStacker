@@ -156,6 +156,8 @@ QGraphicsLineShapeSettingsDialogBox::QGraphicsLineShapeSettingsDialogBox(const Q
       new QGraphicsLineShapeSettings(this));
 
   settigs_ctl->setShape(shape);
+
+  loadParameters();
 }
 
 

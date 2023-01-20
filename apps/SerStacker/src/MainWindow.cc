@@ -37,10 +37,12 @@ namespace qserstacker {
 #define ICON_mask         ":/gui/icons/mask"
 #define ICON_frame        ":/gui/icons/frame"
 #define ICON_badframe     ":/gui/icons/badframe"
-#define ICON_roi          ":/icons/roi.png"
 
 #define ICON_copy         ":/gui/icons/copy"
 #define ICON_delete       ":/gui/icons/delete"
+
+#define ICON_roi          ":/icons/roi.png"
+#define ICON_metrics      ":/icons/metrics.png"
 
 
 namespace  {
@@ -1029,28 +1031,58 @@ void MainWindow::setupRoiOptions()
 {
   QAction * action;
 
-  //
-  // Rect (ROI) shape
-  //
-  rectShapeOptionsDialogBox_ =
+  ///
+
+  roiOptionsDialogBox_ =
       new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
           imageEditor->roiRectShape(),
           this);
 
-  rectShapeOptionsDialogBox_->loadParameters();
+  roiOptionsDialogBox_->loadParameters();
 
-  rectShapeActionsMenu_.addAction(
-      action = createCheckableAction(QIcon(),
+  roiActionsMenu_.addAction(action =
+      createCheckableAction(QIcon(),
           "Options..",
           "Configure ROI rectangle options",
           [this](bool checked) {
-            rectShapeOptionsDialogBox_->setVisible(checked);
+            roiOptionsDialogBox_->setVisible(checked);
           }));
 
-  connect(rectShapeOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
-      [action](bool visible) {
+  connect(roiOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+      [this, action](bool visible) {
         action->setChecked(visible);
+        if ( visible ) {
+          imageEditor->roiRectShape()->setVisible(true);
+        }
       });
+
+
+  ///
+
+  imageStatisticsDialogBox_ =
+      new QImageStatisticsDisplayDialogBox("Measure...",
+          this);
+
+  imageStatisticsDialogBox_->display()->loadParameters();
+
+
+  roiActionsMenu_.addAction(action =
+      createCheckableAction(QIcon(ICON_metrics),
+          "Measure..",
+          "Measure image statistics in selected ROI",
+          [this](bool checked) {
+            imageStatisticsDialogBox_->setVisible(checked);
+          }));
+
+  connect(imageStatisticsDialogBox_, &QImageStatisticsDisplayDialogBox::visibilityChanged,
+      [this, action](bool visible) {
+        action->setChecked(visible);
+        if ( visible ) {
+          imageEditor->roiRectShape()->setVisible(true);
+        }
+      });
+
+  ///
 
   connect(imageEditor->roiRectShape(), &QGraphicsShape::itemChanged,
       [this]() {
@@ -1068,10 +1100,12 @@ void MainWindow::setupRoiOptions()
       });
 
 
+  ///
+
   QToolBar * toolbar = imageEditor->embedToolbar();
   if ( toolbar ) {
 
-    showRectShapeAction_ =
+    showRoiAction_ =
         createCheckableAction(getIcon(ICON_roi),
             "ROI Rectangle",
             "Show / Hide ROI rectangle",
@@ -1079,9 +1113,9 @@ void MainWindow::setupRoiOptions()
               imageEditor->roiRectShape()->setVisible(checked);
             });
 
-    toolbar->addWidget(rectShapeActionsButton_ =
-        createToolButtonWithPopupMenu(showRectShapeAction_,
-            &rectShapeActionsMenu_));
+    toolbar->addWidget(roiActionsButton_ =
+        createToolButtonWithPopupMenu(showRoiAction_,
+            &roiActionsMenu_));
   }
 
 }

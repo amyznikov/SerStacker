@@ -254,8 +254,6 @@ void MainWindow::setupShapeOptions()
           centralDisplay_->rectShape(),
           this);
 
-  rectShapeOptionsDialogBox_->loadParameters();
-
   rectShapeActionsMenu_.addAction(
       action = createCheckableAction(QIcon(),
           "Options..",
@@ -265,8 +263,12 @@ void MainWindow::setupShapeOptions()
           }));
 
   connect(rectShapeOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
-      [action](bool visible) {
+      [this, action](bool visible) {
         action->setChecked(visible);
+        if ( visible ) {
+          centralDisplay_->rectShape()->setVisible(true);
+          showRectShapeAction_->setChecked(true);
+        }
       });
 
   connect(centralDisplay_->rectShape(), &QGraphicsShape::itemChanged,
@@ -286,7 +288,7 @@ void MainWindow::setupShapeOptions()
                   rc.width(), rc.height()));
         }
 
-        mousepos_ctl->setText(qsprintf("ROI: x= %g y= %g w= %g h= %g center= (%g %g)",
+        mousepos_ctl->setText(qsprintf("ROI: x= %g y= %g size= [%g x %g] center= (%g %g)",
                 rc.x(), rc.y(), rc.width(), rc.height(), rc.center().x(), rc.center().y() ));
       });
 
@@ -316,8 +318,6 @@ void MainWindow::setupShapeOptions()
           centralDisplay_->targetShape(),
           this);
 
-  targetShapeOptionsDialogBox_->loadParameters();
-
   targetShapeActionsMenu_.addAction(
       action = createCheckableAction(QIcon(),
           "Options..",
@@ -327,8 +327,12 @@ void MainWindow::setupShapeOptions()
           }));
 
   connect(targetShapeOptionsDialogBox_, &QGraphicsTargetShapeSettingsDialogBox::visibilityChanged,
-      [action](bool visible) {
+      [this, action](bool visible) {
         action->setChecked(visible);
+        if ( visible ) {
+          centralDisplay_->targetShape()->setVisible(true);
+          showTargetShapeAction_->setChecked(true);
+        }
       });
 
 
@@ -340,19 +344,21 @@ void MainWindow::setupShapeOptions()
           centralDisplay_->lineShape(),
           this);
 
-  lineShapeOptionsDialogBox_->loadParameters();
-
   lineShapeActionsMenu_.addAction(
       action = createCheckableAction(QIcon(),
           "Options..",
           "Configure line shape options",
           [this](bool checked) {
-    lineShapeOptionsDialogBox_->setVisible(checked);
+            lineShapeOptionsDialogBox_->setVisible(checked);
           }));
 
   connect(lineShapeOptionsDialogBox_, &QGraphicsLineShapeSettingsDialogBox::visibilityChanged,
-      [action](bool visible) {
+      [this, action](bool visible) {
         action->setChecked(visible);
+        if ( visible ) {
+          centralDisplay_->lineShape()->setVisible(true);
+          showLineShapeAction_->setChecked(visible);
+        }
       });
 
 

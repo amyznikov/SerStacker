@@ -425,11 +425,25 @@ MainWindow::MainWindow()
 
   static const auto enableFileMenuActions =
       [this]() {
-        saveImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
-        saveDisplayImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->displayImage().empty());
-        copyDisplayImageAction->setEnabled(imageEditor->isVisible() && !imageEditor->displayImage().empty());
-        saveImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentMask().empty());
-        loadImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
+
+        const bool isvisible =
+            imageEditor->isVisible();
+
+        saveImageAsAction->setEnabled(isvisible && !imageEditor->currentImage().empty());
+        saveDisplayImageAsAction->setEnabled(isvisible && !imageEditor->displayImage().empty());
+        copyDisplayImageAction->setEnabled(isvisible && !imageEditor->displayImage().empty());
+        saveImageMaskAction->setEnabled(isvisible && !imageEditor->currentMask().empty());
+        loadImageMaskAction->setEnabled(isvisible && !imageEditor->currentImage().empty());
+
+        if ( imageStatisticsDialogBox_ && imageStatisticsDialogBox_->isVisible() ) {
+          if ( !isvisible ) {
+            imageStatisticsDialogBox_->setImage(cv::noArray(), cv::noArray());
+          }
+          else {
+            imageStatisticsDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
+          }
+        }
+
       };
 
   connect(imageEditor, &QImageEditor::currentImageChanged,
@@ -686,6 +700,12 @@ void MainWindow::configureImageViewerToolbars()
         if ( badframeAction->isChecked() != checked ) {
           badframeAction->setChecked(checked);
         }
+
+        if ( imageStatisticsDialogBox_->isVisible() ) {
+          imageStatisticsDialogBox_->setImage(imageEditor->currentImage(),
+              imageEditor->currentMask());
+        }
+
       });
 
   /////////////////////
@@ -800,10 +820,10 @@ void MainWindow::configureImageViewerToolbars()
 
 
   /////////////////////
-  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
-  action->setShortcut(QKeySequence::Cancel);
-  action->setToolTip("Close window");
-  connect(action, &QAction::triggered, [this]() {
+  toolbar->addAction(closeImageViewAction_ = new QAction(getIcon(ICON_close), "Close"));
+  closeImageViewAction_->setShortcut(QKeySequence::Cancel);
+  closeImageViewAction_->setToolTip("Close window");
+  connect(closeImageViewAction_, &QAction::triggered, [this]() {
     centralStackedWidget->setCurrentWidget(thumbnailsView);
   });
 
@@ -1077,8 +1097,13 @@ void MainWindow::setupRoiOptions()
   connect(imageStatisticsDialogBox_, &QImageStatisticsDisplayDialogBox::visibilityChanged,
       [this, action](bool visible) {
         action->setChecked(visible);
-        if ( visible ) {
+        if ( !visible ) {
+          imageStatisticsDialogBox_->setImage(cv::noArray(), cv::noArray());
+        }
+        else {
           imageEditor->roiRectShape()->setVisible(true);
+          imageStatisticsDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
+          imageStatisticsDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
         }
       });
 
@@ -1089,6 +1114,10 @@ void MainWindow::setupRoiOptions()
 
         QGraphicsRectShape * shape =
             imageEditor->roiRectShape();
+
+        if ( imageStatisticsDialogBox_->isVisible() ) {
+          imageStatisticsDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
+        }
 
         const QRectF rc =
             shape->sceneRect();
@@ -1113,7 +1142,8 @@ void MainWindow::setupRoiOptions()
               imageEditor->roiRectShape()->setVisible(checked);
             });
 
-    toolbar->addWidget(roiActionsButton_ =
+    toolbar->insertWidget(closeImageViewAction_,
+        roiActionsButton_ =
         createToolButtonWithPopupMenu(showRoiAction_,
             &roiActionsMenu_));
   }

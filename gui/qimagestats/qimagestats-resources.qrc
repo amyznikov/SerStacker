@@ -16,5 +16,7 @@
 	<file>icons/light/select.png</file>
 	<file>icons/dark/select.png</file>
 
+	<file>icons/measure.png</file>
+
 </qresource>
 </RCC>

@@ -141,6 +141,7 @@ private:
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;
   QAction * viewGeneralSettingsAction = nullptr;
+  QAction * closeImageViewAction_ = nullptr;
 
 };
 

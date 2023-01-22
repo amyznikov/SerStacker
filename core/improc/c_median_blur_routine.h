@@ -16,33 +16,49 @@ class c_median_blur_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_median_blur_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_median_blur_routine,  "median_blur",
+      "Calls <strong>weightedMedianFilter()</strong>");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("median_blur", "median blur", "weighted median blur",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_radius(int v)
+  {
+    radius_ = v;
+  }
 
-  c_median_blur_routine(bool enabled = true);
-  static ptr create(bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  int radius() const
+  {
+    return radius_;
+  }
 
-  void set_radius(int v);
-  int radius() const;
+  void set_sigma(double v)
+  {
+    sigma_ = v;
+  }
 
-  void set_sigma(double v);
-  double sigma() const;
+  double sigma() const
+  {
+    return sigma_;
+  }
 
-  void set_weightType(cv::ximgproc::WMFWeightType);
-  cv::ximgproc::WMFWeightType weightType() const;
+  void set_weightType(cv::ximgproc::WMFWeightType v)
+  {
+    weightType_ = v;
+  }
 
-  void set_ignore_mask(bool v);
-  bool ignore_mask() const;
+  cv::ximgproc::WMFWeightType weightType() const
+  {
+    return weightType_;
+  }
+
+  void set_ignore_mask(bool v)
+  {
+    ignore_mask_ = v;
+  }
+
+  bool ignore_mask() const
+  {
+    return ignore_mask_;
+  }
+
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
@@ -51,6 +67,20 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "Sigma color");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "Ignore alpha mask");
   }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, radius);
+      SERIALIZE_PROPERTY(settings, save, *this, sigma);
+      SERIALIZE_PROPERTY(settings, save, *this, weightType);
+      SERIALIZE_PROPERTY(settings, save, *this, ignore_mask);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
   cv::ximgproc::WMFWeightType weightType_ = cv::ximgproc::WMF_OFF;

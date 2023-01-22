@@ -15,9 +15,8 @@ class c_histogram_normalization_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_histogram_normalization_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_histogram_normalization_routine,
+      "histogram_normalization", "histogram normalization");
 
   enum histogram_normalization_type {
     normalize_mean,
@@ -25,29 +24,35 @@ public:
     normalize_mode
   };
 
+  void set_normalization_type(histogram_normalization_type v)
+  {
+    normalization_type_ = v;
+  }
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("histogram_normalization", "histogram_normalization", "histogram_normalization",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  histogram_normalization_type normalization_type() const
+  {
+    return normalization_type_;
+  }
 
+  void set_stretch(const cv::Scalar & v)
+  {
+    stretch_ = v;
+  }
 
-  c_histogram_normalization_routine(bool enabled = true);
+  const cv::Scalar & stretch() const
+  {
+    return stretch_;
+  }
 
-  static ptr create(bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void set_offset(const cv::Scalar & v)
+  {
+    offset_ = v;
+  }
 
-  void set_normalization_type(histogram_normalization_type v);
-  histogram_normalization_type normalization_type() const;
-
-  void set_stretch(const cv::Scalar & v);
-  const cv::Scalar & stretch() const;
-
-  void set_offset(const cv::Scalar & v);
-  const cv::Scalar & offset() const;
+  const cv::Scalar & offset() const
+  {
+    return offset_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
@@ -55,6 +60,19 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch, "stretch");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, offset, "offset");
   }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, normalization_type);
+      SERIALIZE_PROPERTY(settings, save, *this, stretch);
+      SERIALIZE_PROPERTY(settings, save, *this, offset);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
   histogram_normalization_type normalization_type_ = normalize_mean;

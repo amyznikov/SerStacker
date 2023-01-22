@@ -15,39 +15,46 @@ class c_gaussian_pyramid_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_gaussian_pyramid_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_pyramid_routine,
+      "gaussian_pyramid", "Scale gaussian pyramid layers");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("gaussian_pyramid",
-            "gaussian pyramid",
-            "Scale gaussian pyramid layers",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_scales(const std::vector<double> & scales)
+  {
+    scales_ = scales;
+  }
 
+  const std::vector<double> & scales() const
+  {
+    return scales_;
+  }
 
-  c_gaussian_pyramid_routine(bool enabled = true);
+  void set_borderType(cv::BorderTypes v)
+  {
+    borderType_ = v;
+  }
 
-  static ptr create(bool enabled = true);
-  static ptr create(const std::vector<double> & scales, bool enabled = true);
-
-  bool serialize(c_config_setting settings) const override;
-  bool deserialize(c_config_setting settings) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-
-  void set_scales(const std::vector<double> & scales);
-  const std::vector<double> & scales() const;
-
-  void set_borderType(cv::BorderTypes v);
-  cv::BorderTypes borderType() const;
+  cv::BorderTypes borderType() const
+  {
+    return borderType_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, scales, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, borderType, "");
   }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, scales);
+      SERIALIZE_PROPERTY(settings, save, *this, borderType);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
   std::vector<double> scales_;

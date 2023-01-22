@@ -12,53 +12,50 @@
 #include <core/mtf/c_pixinsight_mtf.h>
 #include "c_image_processor.h"
 
-class c_mtf_routine
-    : public c_image_processor_routine
+class c_mtf_routine :
+    public c_image_processor_routine
 {
 public:
-  typedef c_mtf_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_mtf_routine,
+      "mtf", "mtf");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("mtf", "mtf", "mtf",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  c_pixinsight_mtf & mtf()
+  {
+    return mtf_;
+  }
 
+  const c_pixinsight_mtf & mtf() const
+  {
+    return mtf_;
+  }
 
-  c_mtf_routine(bool enabled = true);
-
-  static ptr create(bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-
-  c_pixinsight_mtf & mtf();
-
-  const c_pixinsight_mtf & mtf() const;
-
-  void set_shadows(double v) {
+  void set_shadows(double v)
+  {
     mtf_.set_shadows(v);
   }
 
-  double shadows() const {
+  double shadows() const
+  {
     return mtf_.shadows();
   }
 
-  void set_highlights(double v) {
+  void set_highlights(double v)
+  {
     mtf_.set_highlights(v);
   }
 
-  double highlights() const {
+  double highlights() const
+  {
     return mtf_.highlights();
   }
 
-  void set_midtones(double v) {
+  void set_midtones(double v)
+  {
     mtf_.set_midtones(v);
   }
 
-  double midtones() const {
+  double midtones() const
+  {
     return mtf_.midtones();
   }
 
@@ -67,6 +64,22 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, shadows, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, highlights, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, midtones, "");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, shadows);
+      SERIALIZE_PROPERTY(settings, save, *this, highlights);
+      SERIALIZE_PROPERTY(settings, save, *this, midtones);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    return mtf_.apply(image, image);
   }
 
 protected:

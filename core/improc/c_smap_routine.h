@@ -10,43 +10,69 @@
 #define __c_smap_routine_h__
 
 #include "c_image_processor.h"
+#include <core/proc/smap.h>
 
-class c_smap_routine
-    : public c_image_processor_routine
+class c_smap_routine :
+    public c_image_processor_routine
 {
 public:
-  typedef c_smap_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_smap_routine,
+      "smap", "smap");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("smap", "smap", "smap",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_lksize(int v)
+  {
+    lksize_ = v;
+  }
 
-  c_smap_routine(bool enabled = true);
+  int lksize() const
+  {
+    return lksize_;
+  }
 
-  static ptr create(bool enabled = true);
-  static ptr create(int lksize, int scale_size, double minv, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void set_scale_size(int v)
+  {
+    scale_size_ = v;
+  }
 
-  void set_lksize(int );
-  int lksize() const;
+  int scale_size() const
+  {
+    return scale_size_;
+  }
 
-  void set_scale_size(int);
-  int scale_size() const;
+  void set_minv(double v)
+  {
+    minv_ = v;
+  }
 
-  void set_minv(double);
-  double minv() const;
+  double minv() const
+  {
+    return minv_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, lksize, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, scale_size, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, minv, "");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, lksize);
+      SERIALIZE_PROPERTY(settings, save, *this, scale_size);
+      SERIALIZE_PROPERTY(settings, save, *this, minv);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    cv::Mat1f smap;
+    compute_smap(image, smap, lksize_, scale_size_, minv_);
+    image.move(smap);
+    return true;
   }
 
 protected:

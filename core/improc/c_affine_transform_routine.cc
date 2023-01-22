@@ -20,20 +20,6 @@ const c_enum_member * members_of<c_affine_transform_routine::image_resize_mode>(
   return members;
 }
 
-
-//c_affine_transform_routine::c_class_factory c_affine_transform_routine::class_factory;
-
-
-c_affine_transform_routine::c_affine_transform_routine(bool enabled) :
-    base(class_factory_instance(), enabled)
-{
-}
-
-c_affine_transform_routine::ptr c_affine_transform_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
 void c_affine_transform_routine::set_resize_mode(image_resize_mode v)
 {
   resize_mode_ = v;
@@ -104,38 +90,19 @@ const cv::Size2f c_affine_transform_routine::scale() const
   return scale_;
 }
 
-bool c_affine_transform_routine::deserialize(c_config_setting settings)
+bool c_affine_transform_routine::serialize(c_config_setting settings, bool save)
 {
-  if ( !base::deserialize(settings) ) {
-    return false;
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, rotation);
+    SERIALIZE_PROPERTY(settings, save, *this, translation);
+    SERIALIZE_PROPERTY(settings, save, *this, scale);
+    SERIALIZE_PROPERTY(settings, save, *this, interpolation);
+    SERIALIZE_PROPERTY(settings, save, *this, border_type);
+    SERIALIZE_PROPERTY(settings, save, *this, border_value);
+    SERIALIZE_PROPERTY(settings, save, *this, resize_mode);
+    return true;
   }
-
-  LOAD_PROPERTY(settings, *this, rotation);
-  LOAD_PROPERTY(settings, *this, translation);
-  LOAD_PROPERTY(settings, *this, scale);
-  LOAD_PROPERTY(settings, *this, interpolation);
-  LOAD_PROPERTY(settings, *this, border_type);
-  LOAD_PROPERTY(settings, *this, border_value);
-  LOAD_PROPERTY(settings, *this, resize_mode);
-
-  return true;
-}
-
-bool c_affine_transform_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  SAVE_PROPERTY(settings, *this, rotation);
-  SAVE_PROPERTY(settings, *this, translation);
-  SAVE_PROPERTY(settings, *this, scale);
-  SAVE_PROPERTY(settings, *this, interpolation);
-  SAVE_PROPERTY(settings, *this, border_type);
-  SAVE_PROPERTY(settings, *this, border_value);
-  SAVE_PROPERTY(settings, *this, resize_mode);
-
-  return true;
+  return false;
 }
 
 bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

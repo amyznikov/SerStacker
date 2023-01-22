@@ -15,29 +15,8 @@ class c_desaturate_edges_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_desaturate_edges_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("desaturate_edges", "desaturate_edges", "desaturate planetary dsk edges",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
-
-
-  c_desaturate_edges_routine(bool enabled = true);
-  c_desaturate_edges_routine(double w, bool enabled = true);
-
-  static ptr create(bool enabled = true);
-  static ptr create(double weight, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-
-  bool compute_planetary_disk_weights(const cv::Mat & src_ecc_image,
-      const cv::Mat & src_mask,
-      cv::Mat1f & weights) const;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_desaturate_edges_routine,
+      "desaturate_edges", "Desaturate color on planetary dsk edges");
 
   void set_alpha(double v);
   double alpha() const;
@@ -67,6 +46,25 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, show_weights, "");
   }
 
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, alpha);
+      SERIALIZE_PROPERTY(settings, save, *this, gbsigma);
+      SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
+      SERIALIZE_PROPERTY(settings, save, *this, blur_radius);
+      SERIALIZE_PROPERTY(settings, save, *this, l1norm);
+      SERIALIZE_PROPERTY(settings, save, *this, show_weights);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+
+  bool compute_planetary_disk_weights(const cv::Mat & src_ecc_image,
+      const cv::Mat & src_mask,
+      cv::Mat1f & weights) const;
 
 protected:
   double alpha_ = 0.5;

@@ -15,33 +15,99 @@ class c_pyrdown_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_pyrdown_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_pyrdown_routine, "pyrDown",
+      "Calls <strong>cv::pyrDown()</strong> or <strong>cv::pyrUp()</strong> on image");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("pyrdown", "pyrdown", "pyrdown",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_count(int v)
+  {
+    count_ = v;
+  }
 
-  c_pyrdown_routine(int count = 1 , bool enabled = true);
+  int count() const
+  {
+    return count_;
+  }
 
-  static ptr create(int count = 1, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void set_borderType(cv::BorderTypes v)
+  {
+    borderType_ = v;
+  }
 
-  void set_count(int v);
-  int count() const;
-
-  void set_borderType(cv::BorderTypes v);
-  cv::BorderTypes borderType() const;
+  cv::BorderTypes borderType() const
+  {
+    return borderType_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, count, "count of times for pyDown (negative value for pyrUp instead)");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, borderType, "enum cv::BorderTypes");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, count);
+      SERIALIZE_PROPERTY(settings, save, *this, borderType);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    if( count_ > 0 ) {
+
+      const bool trivialMask =
+          mask.empty() || cv::countNonZero(mask) == mask.size().area();
+
+      for( int i = 0; i < count_ && std::min(image.cols(), image.rows()) > 3; ++i ) {
+
+        cv::pyrDown(image, image, cv::Size(), borderType_);
+
+        if( !trivialMask ) {
+          cv::pyrDown(mask, mask, cv::Size(), borderType_);
+        }
+      }
+
+      if( !mask.empty() ) {
+
+        if( !trivialMask ) {
+          cv::compare(mask, 255, mask, cv::CMP_GE);
+        }
+        else {
+          cv::resize(mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
+        }
+      }
+
+    }
+    else if( count_ < 0 ) {
+
+      const bool trivialMask =
+          mask.empty() || cv::countNonZero(mask) == mask.size().area();
+
+      for( int i = 0; i < -count_ && std::max(image.cols(), image.rows()) < 16000; ++i ) {
+
+        cv::pyrUp(image, image, cv::Size(), borderType_);
+
+        if( !trivialMask ) {
+          cv::pyrUp(mask, mask, cv::Size(), borderType_);
+        }
+
+      }
+
+      if( !mask.empty() ) {
+
+        if( !trivialMask ) {
+          cv::compare(mask, 255, mask, cv::CMP_GE);
+        }
+        else {
+          cv::resize(mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
+        }
+      }
+    }
+
+    return true;
   }
 
 protected:

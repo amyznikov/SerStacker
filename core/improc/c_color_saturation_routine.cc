@@ -7,61 +7,6 @@
 
 #include "c_color_saturation_routine.h"
 #include <core/proc/color_saturation.h>
-#include <core/io/save_image.h>
-
-c_color_saturation_routine::c_class_factory c_color_saturation_routine::class_factory;
-
-c_color_saturation_routine::c_color_saturation_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_color_saturation_routine::ptr c_color_saturation_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
-c_color_saturation_routine::ptr c_color_saturation_routine::create(const std::vector<double> & scales, bool enabled)
-{
-  ptr obj(new this_class(enabled));
-  obj->set_scales(scales);
-  return obj;
-}
-
-void c_color_saturation_routine::set_scales(const std::vector<double> & scales)
-{
-  scales_ = scales;
-}
-
-const std::vector<double> & c_color_saturation_routine::scales() const
-{
-  return scales_;
-}
-
-
-bool c_color_saturation_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, scales);
-
-  return true;
-}
-
-bool c_color_saturation_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  if ( !SAVE_PROPERTY(settings, *this, scales) ) {
-    CF_ERROR("APP BUG: SAVE_PROPERTY(scales) fails");
-  }
-
-  return true;
-}
 
 bool c_color_saturation_routine::process(cv::InputOutputArray _image, cv::InputOutputArray mask)
 {

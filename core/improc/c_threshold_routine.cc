@@ -7,6 +7,8 @@
 
 #include "c_threshold_routine.h"
 #include <core/proc/threshold.h>
+#include <core/proc/reduce_channels.h>
+
 #include <core/ssprintf.h>
 
 
@@ -35,55 +37,62 @@ const c_enum_member* members_of<THRESHOLD_TYPE>()
   return members;
 }
 
-
-c_threshold_routine::c_class_factory c_threshold_routine::class_factory;
-
-c_threshold_routine::c_threshold_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_threshold_routine::ptr c_threshold_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
 bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  bool handled = true;
+  int cmpop = -1;
 
   switch (threshold_type_) {
     case THRESHOLD_TYPE_CMP_GT:
-      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_GT);
+      cmpop = cv::CMP_GT;
       break;
     case THRESHOLD_TYPE_CMP_GE:
-      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_GE);
+      cmpop = cv::CMP_GE;
       break;
     case THRESHOLD_TYPE_CMP_LT:
-      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_LT);
+      cmpop = cv::CMP_LT;
       break;
     case THRESHOLD_TYPE_CMP_LE:
-      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_LE);
+      cmpop = cv::CMP_LE;
       break;
     case THRESHOLD_TYPE_CMP_EQ:
-      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_EQ);
+      cmpop = cv::CMP_EQ;
       break;
     case THRESHOLD_TYPE_CMP_NE:
-      cv::compare(image.getMat(), threshold_value_, image, cv::CMP_NE);
+      cmpop = cv::CMP_NE;
       break;
     default:
-      handled = false;
       break;
   }
 
-  if ( handled ) {
+  if( cmpop >= 0 ) {
+    if( !modify_mask_ ) {
+      cv::compare(image.getMat(), threshold_value_, image, cmpop);
+    }
+    else if( mask.empty() ) {
+      cv::compare(image.getMat(), threshold_value_, mask, cmpop);
+      if( mask.channels() > 1 ) {
+        reduce_color_channels(mask, mask, cv::REDUCE_MIN);
+      }
+    }
+    else {
+      cv::Mat m;
+      cv::compare(image.getMat(), threshold_value_, m, cmpop);
+      if( mask.channels() > 1 ) {
+        reduce_color_channels(mask, mask, cv::REDUCE_MIN);
+      }
+      if( m.channels() > 1 ) {
+        reduce_color_channels(m, m, cv::REDUCE_MIN);
+      }
+      cv::bitwise_and(m, mask, mask);
+    }
+
     return true;
   }
 
-
   std::vector<cv::Mat> channels;
+  cv::Mat M;
 
-  if ( image.channels() == 1 ) {
+  if( image.channels() == 1 ) {
     channels = image.getMat();
   }
   else {
@@ -91,90 +100,70 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
   }
 
   for( int i = 0, n = channels.size(); i < n; ++i ) {
+
+    double threshold_value = 0;
+
     switch (threshold_type_) {
-    case THRESHOLD_TYPE_OTSU:
-      cv::compare(channels[i], get_otsu_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_TRIANGLE:
-      cv::compare(channels[i], get_triangle_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_MOMENTS:
-      cv::compare(channels[i], get_moments_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_ISODATA:
-      cv::compare(channels[i], get_isodata_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_HUANG:
-      cv::compare(channels[i], get_huang_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_YEN:
-      cv::compare(channels[i], get_yen_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_MEAN:
-      cv::compare(channels[i], cv::mean(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    case THRESHOLD_TYPE_MINIMUM:
-      cv::compare(channels[i], get_minimum_threshold(channels[i], mask), channels[i], cv::CMP_GT);
-      break;
-    default:
-      break;
+      case THRESHOLD_TYPE_OTSU:
+        threshold_value = get_otsu_threshold(channels[i], mask);
+        break;
+      case THRESHOLD_TYPE_TRIANGLE:
+        threshold_value = get_triangle_threshold(channels[i], mask);
+        break;
+      case THRESHOLD_TYPE_MOMENTS:
+        threshold_value = get_moments_threshold(channels[i], mask);
+        break;
+      case THRESHOLD_TYPE_ISODATA:
+        threshold_value = get_isodata_threshold(channels[i], mask);
+        break;
+      case THRESHOLD_TYPE_HUANG:
+        threshold_value = get_huang_threshold(channels[i], mask);
+        break;
+      case THRESHOLD_TYPE_YEN:
+        threshold_value = get_yen_threshold(channels[i], mask);
+        break;
+      case THRESHOLD_TYPE_MEAN:
+        threshold_value = cv::mean(channels[i], mask)[0];
+        break;
+      case THRESHOLD_TYPE_MINIMUM:
+        threshold_value = get_minimum_threshold(channels[i], mask);
+        break;
+      default:
+        continue;
     }
+
+    cv::compare(channels[i], threshold_value, channels[i], cv::CMP_GT);
   }
 
-  if ( channels.size() == 1 ) {
-    channels[0].convertTo(image, image.depth());
+
+  if( channels.size() == 1 ) {
+    M = channels[0];
   }
   else {
-    cv::Mat T;
-    cv::merge(channels, T);
-    T.convertTo(image, image.depth());
+    cv::merge(channels, M);
   }
 
+  if( !modify_mask_ ) {
+    M.convertTo(image, image.depth());
+  }
+  else if( mask.empty() ) {
+    if( M.channels() > 1 ) {
+      reduce_color_channels(M, mask, cv::REDUCE_MIN);
+    }
+    else {
+      mask.move(M);
+    }
+  }
+  else {
+    if( mask.channels() > 1 ) {
+      reduce_color_channels(mask, mask, cv::REDUCE_MIN);
+    }
+    if( M.channels() > 1 ) {
+      reduce_color_channels(M, M, cv::REDUCE_MIN);
+    }
+    cv::bitwise_and(M, mask, mask);
+  }
 
   return true;
 }
 
-bool c_threshold_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, threshold_type);
-  LOAD_PROPERTY(settings, *this, threshold_value);
-
-  return true;
-}
-
-bool c_threshold_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  SAVE_PROPERTY(settings, *this, threshold_type);
-  SAVE_PROPERTY(settings, *this, threshold_value);
-
-  return true;
-}
-
-
-void c_threshold_routine::set_threshold_type(THRESHOLD_TYPE v)
-{
-  threshold_type_ = v;
-}
-
-THRESHOLD_TYPE c_threshold_routine::threshold_type() const
-{
-  return threshold_type_;
-}
-
-void c_threshold_routine::set_threshold_value(double v)
-{
-  threshold_value_ = v;
-}
-
-double c_threshold_routine::threshold_value() const
-{
-  return threshold_value_;
-}

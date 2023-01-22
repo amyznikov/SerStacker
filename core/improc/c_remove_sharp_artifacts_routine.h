@@ -15,22 +15,9 @@ class c_remove_sharp_artifacts_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_remove_sharp_artifacts_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("remove_sharp_artifacts", "remove some unsharp mask artifacts", "remove some unsharp mask artifacts",
-            factory([]() {return ptr(new this_class());}))
-    {
-    }
-  } class_factory;
-
-
-  c_remove_sharp_artifacts_routine(bool enabled = true);
-
-  static ptr create(bool enabled = true);
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_remove_sharp_artifacts_routine,
+      "remove_sharp_artifacts",
+      "Remove some unsharp mask artifacts");
 
   void set_erode_radius(const cv::Size & v);
   const cv::Size & erode_radius() const;
@@ -50,9 +37,6 @@ public:
   void set_show_blured_image(bool v);
   bool show_blured_image() const;
 
-  bool serialize(c_config_setting settings) const override;
-  bool deserialize(c_config_setting settings) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
@@ -63,6 +47,22 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, show_mask, "show objects mask instead of processing");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, show_blured_image, "show blured image instead of processing");
   }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, erode_radius);
+      SERIALIZE_PROPERTY(settings, save, *this, mask_blur_radius);
+      SERIALIZE_PROPERTY(settings, save, *this, edge_blur_radius);
+      SERIALIZE_PROPERTY(settings, save, *this, noise_scale);
+      SERIALIZE_PROPERTY(settings, save, *this, show_mask);
+      SERIALIZE_PROPERTY(settings, save, *this, show_blured_image);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
   cv::Size erode_radius_ = cv::Size(5, 5);

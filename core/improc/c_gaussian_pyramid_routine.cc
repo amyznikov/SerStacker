@@ -8,69 +8,6 @@
 #include "c_gaussian_pyramid_routine.h"
 #include <numeric>
 
-c_gaussian_pyramid_routine::c_class_factory c_gaussian_pyramid_routine::class_factory;
-
-c_gaussian_pyramid_routine::c_gaussian_pyramid_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_gaussian_pyramid_routine::ptr c_gaussian_pyramid_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
-c_gaussian_pyramid_routine::ptr c_gaussian_pyramid_routine::create(const std::vector<double> & scales, bool enabled)
-{
-  ptr obj(new this_class(enabled));
-  obj->set_scales(scales);
-  return obj;
-}
-
-void c_gaussian_pyramid_routine::set_scales(const std::vector<double> & scales)
-{
-  scales_ = scales;
-}
-
-const std::vector<double> & c_gaussian_pyramid_routine::scales() const
-{
-  return scales_;
-}
-
-void c_gaussian_pyramid_routine::set_borderType(cv::BorderTypes v)
-{
-  borderType_ = v;
-}
-
-cv::BorderTypes c_gaussian_pyramid_routine::borderType() const
-{
-  return borderType_;
-}
-
-bool c_gaussian_pyramid_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, scales);
-
-  return true;
-}
-
-bool c_gaussian_pyramid_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  if ( !SAVE_PROPERTY(settings, *this, scales) ) {
-    CF_ERROR("APP BUG: SAVE_PROPERTY(scales) fails");
-  }
-
-  return true;
-}
-
 bool c_gaussian_pyramid_routine::process(cv::InputOutputArray _image, cv::InputOutputArray mask)
 {
   if( scales_.size() < 2 ) {

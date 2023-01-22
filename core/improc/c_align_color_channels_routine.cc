@@ -8,32 +8,32 @@
 #include "c_align_color_channels_routine.h"
 #include <core/proc/reduce_channels.h>
 
-c_align_color_channels_routine::c_class_factory c_align_color_channels_routine::class_factory;
-
-c_align_color_channels_routine::c_align_color_channels_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-  algorithm_.set_motion_type(ECC_MOTION_TRANSLATION);
-}
-
-c_align_color_channels_routine::ptr c_align_color_channels_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
-c_align_color_channels_routine::ptr c_align_color_channels_routine::create(int ecc_reference_channel,
-    ECC_MOTION_TYPE ecc_motion_type, double ecc_eps, bool enabled)
-{
-  ptr obj(new this_class(enabled));
-  obj->set_reference_channel(ecc_reference_channel);
-
-  c_align_color_channels & algorithm = obj->algorithm();
-  algorithm.set_motion_type(ecc_motion_type);
-  algorithm.set_eps(ecc_eps);
-
-  return obj;
-}
-
+//c_align_color_channels_routine::c_class_factory c_align_color_channels_routine::class_factory;
+//
+//c_align_color_channels_routine::c_align_color_channels_routine(bool enabled)
+//  : base(&class_factory, enabled)
+//{
+//  algorithm_.set_motion_type(ECC_MOTION_TRANSLATION);
+//}
+//
+//c_align_color_channels_routine::ptr c_align_color_channels_routine::create(bool enabled)
+//{
+//  return ptr(new this_class(enabled));
+//}
+//
+//c_align_color_channels_routine::ptr c_align_color_channels_routine::create(int ecc_reference_channel,
+//    ECC_MOTION_TYPE ecc_motion_type, double ecc_eps, bool enabled)
+//{
+//  ptr obj(new this_class(enabled));
+//  obj->set_reference_channel(ecc_reference_channel);
+//
+//  c_align_color_channels & algorithm = obj->algorithm();
+//  algorithm.set_motion_type(ecc_motion_type);
+//  algorithm.set_eps(ecc_eps);
+//
+//  return obj;
+//}
+//
 
 void c_align_color_channels_routine::set_reference_channel(int v)
 {
@@ -156,43 +156,39 @@ bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::Inp
   return algorithm_.align(reference_channel_, image, image, smask);
 }
 
-bool c_align_color_channels_routine::deserialize(c_config_setting settings)
+//bool c_align_color_channels_routine::deserialize(c_config_setting settings)
+//{
+//  if ( !base::deserialize(settings) ) {
+//    return false;
+//  }
+//
+//  settings.get("reference_channel", &reference_channel_);
+//  settings.get("enable_threshold", &enable_threshold_);
+//  settings.get("threshold", &threshold_);
+//
+//  LOAD_PROPERTY(settings, algorithm_, motion_type);
+//  LOAD_PROPERTY(settings, algorithm_, interpolation);
+//  LOAD_PROPERTY(settings, algorithm_, smooth_sigma);
+//  LOAD_PROPERTY(settings, algorithm_, eps);
+//  LOAD_PROPERTY(settings, algorithm_, max_iterations);
+//  LOAD_PROPERTY(settings, algorithm_, update_step_scale);
+//
+//  return true;
+//}
+
+bool c_align_color_channels_routine::serialize(c_config_setting settings, bool save)
 {
-  if ( !base::deserialize(settings) ) {
-    return false;
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, reference_channel);
+    SERIALIZE_PROPERTY(settings, save, *this, enable_threshold);
+    SERIALIZE_PROPERTY(settings, save, *this, threshold);
+    SERIALIZE_PROPERTY(settings, save, algorithm_, motion_type);
+    SERIALIZE_PROPERTY(settings, save, algorithm_, interpolation);
+    SERIALIZE_PROPERTY(settings, save, algorithm_, smooth_sigma);
+    SERIALIZE_PROPERTY(settings, save, algorithm_, eps);
+    SERIALIZE_PROPERTY(settings, save, algorithm_, max_iterations);
+    SERIALIZE_PROPERTY(settings, save, algorithm_, update_step_scale);
+    return true;
   }
-
-  settings.get("reference_channel", &reference_channel_);
-  settings.get("enable_threshold", &enable_threshold_);
-  settings.get("threshold", &threshold_);
-
-  LOAD_PROPERTY(settings, algorithm_, motion_type);
-  LOAD_PROPERTY(settings, algorithm_, interpolation);
-  LOAD_PROPERTY(settings, algorithm_, smooth_sigma);
-  LOAD_PROPERTY(settings, algorithm_, eps);
-  LOAD_PROPERTY(settings, algorithm_, max_iterations);
-  LOAD_PROPERTY(settings, algorithm_, update_step_scale);
-
-  return true;
-}
-
-bool c_align_color_channels_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  settings.set("reference_channel", reference_channel_);
-  settings.set("enable_threshold", enable_threshold_);
-  settings.set("threshold", threshold_);
-
-  SAVE_PROPERTY(settings, algorithm_, motion_type);
-  SAVE_PROPERTY(settings, algorithm_, interpolation);
-  SAVE_PROPERTY(settings, algorithm_, smooth_sigma);
-  SAVE_PROPERTY(settings, algorithm_, eps);
-  SAVE_PROPERTY(settings, algorithm_, max_iterations);
-  SAVE_PROPERTY(settings, algorithm_, update_step_scale);
-
-
-  return true;
+  return false;
 }

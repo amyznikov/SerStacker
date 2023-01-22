@@ -19,23 +19,7 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_equalize_hist_routine,
       "equalize_hist", "Calls cv::equalizeHist()");
 
-  bool deserialize(c_config_setting settings)
-  {
-    if ( !base::deserialize(settings) ) {
-      return false;
-    }
-    return true;
-  }
-
-  bool serialize(c_config_setting settings) const
-  {
-    if ( !base::serialize(settings) ) {
-      return false;
-    }
-    return true;
-  }
-
-  bool process(cv::InputOutputArray _image, cv::InputOutputArray mask)
+  bool process(cv::InputOutputArray _image, cv::InputOutputArray mask) override
   {
     cv::Mat image;
 

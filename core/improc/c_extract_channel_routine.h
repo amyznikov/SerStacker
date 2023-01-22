@@ -68,32 +68,17 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, output_depth_scale, "optional output depth scale");
   }
 
-  bool serialize(c_config_setting settings) const
+  bool serialize(c_config_setting settings, bool save) override
   {
-    if( !base::serialize(settings) ) {
-      return false;
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, output_channel);
+      SERIALIZE_PROPERTY(settings, save, *this, output_depth);
+      SERIALIZE_PROPERTY(settings, save, *this, output_scale);
+      SERIALIZE_PROPERTY(settings, save, *this, output_depth_scale);
+
+      return true;
     }
-
-    SAVE_PROPERTY(settings, *this, output_channel);
-    SAVE_PROPERTY(settings, *this, output_depth);
-    SAVE_PROPERTY(settings, *this, output_scale);
-    SAVE_PROPERTY(settings, *this, output_depth_scale);
-
-    return true;
-  }
-
-  bool deserialize(c_config_setting settings)
-  {
-    if( !base::deserialize(settings) ) {
-      return false;
-    }
-
-    LOAD_PROPERTY(settings, *this, output_channel);
-    LOAD_PROPERTY(settings, *this, output_depth);
-    LOAD_PROPERTY(settings, *this, output_scale);
-    LOAD_PROPERTY(settings, *this, output_depth_scale);
-
-    return true;
+    return false;
   }
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -105,7 +90,6 @@ public:
         output_depth_,
         output_depth_scale_);
   }
-
 
 protected:
   enum color_channel_type output_channel_ = color_channel_gray;

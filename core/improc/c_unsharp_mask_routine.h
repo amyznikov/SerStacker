@@ -10,42 +10,54 @@
 #define __c_unsharp_mask_routine_h__
 
 #include "c_image_processor.h"
+#include <core/proc/unsharp_mask.h>
 
-class c_unsharp_mask_routine
-: public c_image_processor_routine
+class c_unsharp_mask_routine :
+    public c_image_processor_routine
 {
 public:
-  typedef c_unsharp_mask_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_unsharp_mask_routine,
+      "unsharp_mask", "Apply unsharp mask to image");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("unsharp_mask", "unsharp mask", "unsharp mask",
-            factory([]() {return ptr(new this_class());}))
-    {
-    }
-  } class_factory;
+  void set_sigma(double v)
+  {
+    sigma_ = v;
+  }
 
-  c_unsharp_mask_routine(bool enabled = true);
+  double sigma() const
+  {
+    return sigma_;
+  }
 
-  static ptr create(bool enabled = true);
-  static ptr create(double sigma, double alpha = 0.9, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void set_alpha(double v)
+  {
+    alpha_ = v;
+  }
 
-  void set_sigma(double v);
-  double sigma() const;
+  double alpha() const
+  {
+    return alpha_;
+  }
 
-  void set_alpha(double v);
-  double alpha() const;
+  void set_outmin(double v)
+  {
+    outmin_ = v;
+  }
 
-  void set_outmin(double v);
-  double outmin() const;
+  double outmin() const
+  {
+    return outmin_;
+  }
 
-  void set_outmax(double v);
-  double outmax() const;
+  void set_outmax(double v)
+  {
+    outmax_ = v;
+  }
+
+  double outmax() const
+  {
+    return outmax_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
@@ -53,6 +65,24 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, outmin, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, outmax, "");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, sigma);
+      SERIALIZE_PROPERTY(settings, save, *this, alpha);
+      SERIALIZE_PROPERTY(settings, save, *this, outmin);
+      SERIALIZE_PROPERTY(settings, save, *this, outmax);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    unsharp_mask(image, mask, image, sigma_, alpha_, outmin_, outmax_);
+    return true;
   }
 
 protected:

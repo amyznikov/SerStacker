@@ -9,9 +9,6 @@
 #define __c_image_processor_h__
 
 #include <opencv2/opencv.hpp>
-#include <core/proc/normalize.h>
-#include <core/proc/estimate_noise.h>
-#include <core/proc/smap.h>
 #include <core/settings/opencv_settings.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -117,8 +114,11 @@ public:
 
   static ptr create(const std::string & class_name);
   static ptr create(c_config_setting settings);
-  virtual bool deserialize(c_config_setting settings);
-  virtual bool serialize(c_config_setting settings) const;
+
+  virtual bool serialize(c_config_setting settings, bool save);
+
+  //  virtual bool deserialize(c_config_setting settings);
+  //  virtual bool serialize(c_config_setting settings) const;
 
   const std::string & class_name() const
   {

@@ -9,8 +9,6 @@
 #include <core/proc/cdiffs.h>
 #include <core/ssprintf.h>
 
-c_fit_jovian_ellipse_routine::c_class_factory c_fit_jovian_ellipse_routine::class_factory;
-
 template<>
 const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
 {
@@ -32,16 +30,6 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
   };
 
   return members;
-}
-
-c_fit_jovian_ellipse_routine::c_fit_jovian_ellipse_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_fit_jovian_ellipse_routine::ptr c_fit_jovian_ellipse_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
 }
 
 void c_fit_jovian_ellipse_routine::set_display(display_type v)
@@ -114,36 +102,20 @@ const c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector() const
   return &detector_;
 }
 
-bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings) const
+bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool save)
 {
-  if ( !base::serialize(settings) ) {
-    return false;
+  if( base::serialize(settings, save) ) {
+
+    SERIALIZE_PROPERTY(settings, save, *this, hlines);
+    SERIALIZE_PROPERTY(settings, save, *this, normalization_scale);
+    SERIALIZE_PROPERTY(settings, save, *this, normalization_blur);
+    SERIALIZE_PROPERTY(settings, save, *this, gradient_blur);
+    SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
+    SERIALIZE_PROPERTY(settings, save, *this, display);
+
+    return true;
   }
-
-  SAVE_PROPERTY(settings, *this, hlines);
-  SAVE_PROPERTY(settings, *this, normalization_scale);
-  SAVE_PROPERTY(settings, *this, normalization_blur);
-  SAVE_PROPERTY(settings, *this, gradient_blur);
-  SAVE_PROPERTY(settings, *this, stdev_factor);
-  SAVE_PROPERTY(settings, *this, display);
-
-  return true;
-}
-
-bool c_fit_jovian_ellipse_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, hlines);
-  LOAD_PROPERTY(settings, *this, normalization_scale);
-  LOAD_PROPERTY(settings, *this, normalization_blur);
-  LOAD_PROPERTY(settings, *this, gradient_blur);
-  LOAD_PROPERTY(settings, *this, stdev_factor);
-  LOAD_PROPERTY(settings, *this, display);
-
-  return true;
+  return false;
 }
 
 //

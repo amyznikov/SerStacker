@@ -6,9 +6,9 @@
  */
 
 #include "c_histogram_normalization_routine.h"
-//#include <core/proc/median.h>
 #include <core/proc/histogram.h>
 #include <core/ssprintf.h>
+//#include <core/proc/median.h>
 
 
 //static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
@@ -132,77 +132,6 @@ const c_enum_member * members_of<c_histogram_normalization_routine::histogram_no
   };
 
   return members;
-}
-
-
-c_histogram_normalization_routine::c_class_factory c_histogram_normalization_routine::class_factory;
-
-
-
-c_histogram_normalization_routine::c_histogram_normalization_routine(bool enabled) :
-    base(&class_factory, enabled)
-{
-}
-
-c_histogram_normalization_routine::ptr c_histogram_normalization_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
-void c_histogram_normalization_routine::set_normalization_type(histogram_normalization_type v)
-{
-  normalization_type_ = v;
-}
-
-c_histogram_normalization_routine::histogram_normalization_type c_histogram_normalization_routine::normalization_type() const
-{
-  return normalization_type_;
-}
-
-void c_histogram_normalization_routine::set_offset(const cv::Scalar & v)
-{
-  offset_ = v;
-}
-
-const cv::Scalar & c_histogram_normalization_routine::offset() const
-{
-  return offset_;
-}
-
-void c_histogram_normalization_routine::set_stretch(const cv::Scalar & v)
-{
-  stretch_ = v;
-}
-
-const cv::Scalar & c_histogram_normalization_routine::stretch() const
-{
-  return stretch_;
-}
-
-bool c_histogram_normalization_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, normalization_type);
-  LOAD_PROPERTY(settings, *this, offset);
-  LOAD_PROPERTY(settings, *this, stretch);
-
-  return true;
-}
-
-bool c_histogram_normalization_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  SAVE_PROPERTY(settings, *this, normalization_type);
-  SAVE_PROPERTY(settings, *this, offset);
-  SAVE_PROPERTY(settings, *this, stretch);
-
-  return true;
 }
 
 bool c_histogram_normalization_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

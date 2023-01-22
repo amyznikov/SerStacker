@@ -15,34 +15,58 @@ class c_rotate_image_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_rotate_image_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_rotate_image_routine,
+       "rotate", "Call <strong>cv::rotate()</strong> on image");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("rotate", "rotate image", "rotate image",
-            factory([]() {return ptr(new this_class());}))
-    {
-    }
-  } class_factory;
+  void set_rotation_angle(double degrees)
+  {
+    rotation_angle_ = degrees;
+  }
 
-
-  c_rotate_image_routine(bool enabled = true);
-
-  static ptr create(bool enabled = true);
-
-  void set_rotation_angle(double degrees);
-  double rotation_angle() const;
-
-
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  double rotation_angle() const
+  {
+    return rotation_angle_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, rotation_angle, "rotation angle in degrees");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, rotation_angle);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    if ( rotation_angle_ != 0  ) {
+
+      if ( rotation_angle_ == 90 || rotation_angle_ == -270  ) {
+        cv::rotate(image, image, cv::ROTATE_90_CLOCKWISE);
+        if ( mask.needed() ) {
+          cv::rotate(mask, mask, cv::ROTATE_90_CLOCKWISE);
+        }
+      }
+      else if ( rotation_angle_ == -90 || rotation_angle_ == 270 ) {
+        cv::rotate(image.getMat(), image, cv::ROTATE_90_COUNTERCLOCKWISE);
+        if ( mask.needed() ) {
+          cv::rotate(mask, mask, cv::ROTATE_90_COUNTERCLOCKWISE);
+        }
+      }
+      else if ( rotation_angle_ == 180 || rotation_angle_ == -180 ) {
+        cv::rotate(image.getMat(), image, cv::ROTATE_180);
+        if ( mask.needed() ) {
+          cv::rotate(mask, mask, cv::ROTATE_180);
+        }
+      }
+    }
+
+    return true;
   }
 
 protected:

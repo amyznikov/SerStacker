@@ -10,41 +10,66 @@
 #define __c_radial_polysharp_routine_h__
 
 #include "c_image_processor.h"
+#include <core/proc/fft.h>
 
 class c_radial_polysharp_routine :
     public c_image_processor_routine
 {
 public:
-  typedef c_radial_polysharp_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_radial_polysharp_routine, "polysharp",
+      "fft radial poly sharp");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("polysharp", "polysharp", "fft radial poly sharp",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_coeffs(std::vector<double> & v)
+  {
+    coeffs_ = v;
+  }
 
+  const std::vector<double> & coeffs() const
+  {
+    return coeffs_;
+  }
 
-  c_radial_polysharp_routine(bool enabled = true);
+  std::vector<double> & coeffs()
+  {
+    return coeffs_;
+  }
 
-  void set_coeffs(std::vector<double> & v);
-  const std::vector<double> & coeffs() const;
-  std::vector<double> & coeffs();
+  const std::vector<double> & profile_before() const
+  {
+    return profile_before_;
+  }
 
-  const std::vector<double> & profile_before() const;
-  const std::vector<double> & profile_after() const;
-  const std::vector<double> & profile_poly() const;
+  const std::vector<double> & profile_after() const
+  {
+    return profile_after_;
+  }
 
-  static ptr create(bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  const std::vector<double> & profile_poly() const
+  {
+    return profile_poly_;
+  }
+
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, coeffs, "");
   }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, coeffs);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    fftRadialPolySharp(image, image, coeffs_, profile_before_, profile_after_, profile_poly_);
+    return true;
+  }
+
 
 protected:
   std::vector<double> profile_before_;

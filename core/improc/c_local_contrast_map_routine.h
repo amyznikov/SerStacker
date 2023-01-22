@@ -56,30 +56,15 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, avgchannel, "");
   }
 
-  bool serialize(c_config_setting settings) const override
+  bool serialize(c_config_setting settings, bool save) override
   {
-    if ( !base::serialize(settings) ) {
-      return false;
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, eps);
+      SERIALIZE_PROPERTY(settings, save, *this, dscale);
+      SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
+      return true;
     }
-
-    SAVE_PROPERTY(settings, *this, eps);
-    SAVE_PROPERTY(settings, *this, dscale);
-    SAVE_PROPERTY(settings, *this, avgchannel);
-
-    return true;
-  }
-
-  bool deserialize(c_config_setting settings) override
-  {
-    if ( !base::deserialize(settings) ) {
-      return false;
-    }
-
-    LOAD_PROPERTY(settings, *this, eps);
-    LOAD_PROPERTY(settings, *this, dscale);
-    LOAD_PROPERTY(settings, *this, avgchannel);
-
-    return true;
+    return false;
   }
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override

@@ -12,27 +12,12 @@
 #include <core/proc/align_channels.h>
 #include "c_image_processor.h"
 
-class c_align_color_channels_routine
-    : public c_image_processor_routine
+class c_align_color_channels_routine :
+    public c_image_processor_routine
 {
 public:
-  typedef c_align_color_channels_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("align_color_channels", "align_color_channels", "align_color_channels",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
-
-  c_align_color_channels_routine(bool enabled = true);
-
-  static ptr create(bool enabled = true);
-  static ptr create(int ecc_reference_channel, ECC_MOTION_TYPE ecc_motion_type, double ecc_eps, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_align_color_channels_routine,
+      "align_color_channels", "Align color channels to reference one");
 
   void set_reference_channel(int v);
   int reference_channel() const;
@@ -76,6 +61,10 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, smooth_sigma, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, update_step_scale, "");
   }
+
+  bool serialize(c_config_setting settings, bool save) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+
 
 protected:
   c_align_color_channels algorithm_;

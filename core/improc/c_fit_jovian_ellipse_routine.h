@@ -16,9 +16,8 @@ class c_fit_jovian_ellipse_routine :
     public c_image_processor_routine
 {
 public:
-  typedef c_fit_jovian_ellipse_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fit_jovian_ellipse_routine,
+       "fit_jovian_ellipse", "detect planetary disk and fit jovian ellipse");
 
   enum display_type {
     display_detected_planetary_disk_mask,
@@ -34,17 +33,6 @@ public:
     display_normalized_image,
     display_final_ellipse_fit,
   };
-
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("fit_jovian_ellipse", "fit_jovian_ellipse", "detect planetary disk and fit jovian ellipse",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
-
-
-  c_fit_jovian_ellipse_routine(bool enabled = true);
-
-  static ptr create(bool enabled = true);
 
   void set_display(display_type v);
   display_type display() const;
@@ -67,12 +55,6 @@ public:
   c_jovian_ellipse_detector * detector();
   const c_jovian_ellipse_detector * detector() const;
 
-  bool serialize(c_config_setting settings) const override;
-  bool deserialize(c_config_setting settings) override;
-
-  bool process(cv::InputOutputArray image,
-      cv::InputOutputArray mask = cv::noArray()) override;
-
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "stdev_factor");
@@ -81,6 +63,9 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, hlines, "hlines");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
   }
+
+  bool serialize(c_config_setting settings, bool save) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
   display_type display_type_ = display_final_ellipse_fit;

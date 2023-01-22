@@ -16,7 +16,7 @@ class c_cvtcolor_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_cvtcolor_routine,
-      "cvtcolor_routine", "Calls cv::cvtColor()");
+      "cvtcolor", "Calls cv::cvtColor()");
 
   void set_conversion(enum cv::ColorConversionCodes v)
   {
@@ -33,28 +33,14 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, conversion, "enum cv::ColorConversionCodes");
   }
 
-  bool deserialize(c_config_setting settings)
+  bool serialize(c_config_setting settings, bool save) override
   {
-    if ( !base::deserialize(settings) ) {
-      return false;
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, conversion);
+      return true;
     }
-
-    LOAD_PROPERTY(settings, *this, conversion);
-
-    return true;
+    return false;
   }
-
-  bool serialize(c_config_setting settings) const
-  {
-    if ( !base::serialize(settings) ) {
-      return false;
-    }
-
-    SAVE_PROPERTY(settings, *this, conversion);
-
-    return true;
-  }
-
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
   {

@@ -470,13 +470,13 @@ QImageProcessorSettingsControl * QImageProcessorSettingsControl::create(const c_
 {
   QImageProcessorSettingsControl * widget = nullptr;
 
-  if( processor->classfactory() == &c_radial_polysharp_routine::class_factory ) {
+  if( processor->classfactory() == c_radial_polysharp_routine::class_factory_instance() ) {
     widget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor), parent);
   }
-  else if( processor->classfactory() == &c_fit_jovian_ellipse_routine::class_factory ) {
+  else if( processor->classfactory() == c_fit_jovian_ellipse_routine::class_factory_instance() ) {
     widget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor), parent);
   }
-  else if( processor->classfactory() == &c_mtf_routine::class_factory ) {
+  else if( processor->classfactory() == c_mtf_routine::class_factory_instance() ) {
     widget = new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(processor), parent);
   }
   else {

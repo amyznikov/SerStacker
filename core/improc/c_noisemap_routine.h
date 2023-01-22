@@ -10,26 +10,24 @@
 #define __c_noisemap_routine_h__
 
 #include "c_image_processor.h"
+#include <core/proc/estimate_noise.h>
 
-class c_noisemap_routine
-    : public c_image_processor_routine
+class c_noisemap_routine:
+    public c_image_processor_routine
 {
 public:
-  typedef c_noisemap_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_noisemap_routine,
+      "noisemap",
+      " Estimate the standard deviation of the noise in a gray-scale image.<br>"
+      "  J. Immerkr, Fast Noise Variance Estimation,<br>"
+      "  Computer Vision and Image Understanding,<br>"
+      "  Vol. 64, No. 2, pp. 300-302, Sep. 1996");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("noisemap", "noise map", "noise map",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
-
-  c_noisemap_routine(bool enabled = true);
-  static ptr create(bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    create_noise_map(image.getMatRef(), image.getMatRef(), mask);
+    return true;
+  }
 };
 
 

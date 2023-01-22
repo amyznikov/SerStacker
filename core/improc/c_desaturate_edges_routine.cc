@@ -10,31 +10,6 @@
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 
-c_desaturate_edges_routine::c_class_factory c_desaturate_edges_routine::class_factory;
-
-c_desaturate_edges_routine::c_desaturate_edges_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_desaturate_edges_routine::c_desaturate_edges_routine(double w, bool enabled)
-  : base(&class_factory, enabled),
-    alpha_(w)
-{
-}
-
-
-c_desaturate_edges_routine::ptr c_desaturate_edges_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
-c_desaturate_edges_routine::ptr c_desaturate_edges_routine::create(double w, bool enabled)
-{
-  return ptr(new this_class(w, enabled));
-}
-
-
 void c_desaturate_edges_routine::set_alpha(double v)
 {
   alpha_ = v;
@@ -93,40 +68,6 @@ void c_desaturate_edges_routine::set_l1norm(bool v)
 bool c_desaturate_edges_routine::l1norm() const
 {
   return l1norm_;
-}
-
-
-bool c_desaturate_edges_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  settings.get("alpha", &alpha_);
-  settings.get("gbsigma", &gbsigma_);
-  settings.get("stdev_factor", &stdev_factor_);
-  settings.get("blur_radius", &blur_radius_);
-  settings.get("l1norm", &l1norm_);
-  settings.get("show_weights", &show_weights_);
-
-
-  return true;
-}
-
-bool c_desaturate_edges_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  settings.set("alpha", alpha_);
-  settings.set("gbsigma", gbsigma_);
-  settings.set("stdev_factor", stdev_factor_);
-  settings.set("blur_radius", blur_radius_);
-  settings.set("l1norm", l1norm_);
-  settings.set("show_weights", show_weights_);
-
-  return true;
 }
 
 bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & src_image, const cv::Mat & src_mask,

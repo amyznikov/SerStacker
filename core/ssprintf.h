@@ -183,7 +183,7 @@ typename std::enable_if<std::is_enum<enum_type>::value,
 
   if ( members ) {
     for ( int i = 0; members[i].name && *members[i].name; ++i ) {
-      if ( members[i].value == v ) {
+      if ( members[i].value == (int)(v) ) {
         return members[i].name;
       }
     }

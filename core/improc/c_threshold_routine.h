@@ -32,39 +32,65 @@ class c_threshold_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_threshold_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_threshold_routine,
+      "threshold",
+      "Uses <strong>cv::compare()</strong> or <strong>cv::threshold()</strong> to threshold image.<br>"
+      "Each color channel is processed independently");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("threshold", "threshold",
-            "Uses <strong>cv::compare()</strong> or <strong>cv::threshold()</strong> to threshold image.<br>"
-            "Each color channel is processed independently",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_threshold_type(THRESHOLD_TYPE v)
+  {
+    threshold_type_ = v;
+  }
 
-  c_threshold_routine(bool enabled = true);
-  static ptr create(bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  THRESHOLD_TYPE threshold_type() const
+  {
+    return threshold_type_;
+  }
 
-  void set_threshold_type(THRESHOLD_TYPE v);
-  THRESHOLD_TYPE threshold_type() const;
+  void set_threshold_value(double v)
+  {
+    threshold_value_ = v;
+  }
 
-  void set_threshold_value(double v);
-  double threshold_value() const;
+  double threshold_value() const
+  {
+    return threshold_value_;
+  }
+
+  void set_modify_mask(bool v)
+  {
+    modify_mask_ = v;
+  }
+
+  bool modify_mask() const
+  {
+    return modify_mask_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_type, "Threshold type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Threshold value");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Compare value");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, modify_mask, "Modify mask instead of image");
   }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, threshold_type);
+      SERIALIZE_PROPERTY(settings, save, *this, threshold_value);
+      SERIALIZE_PROPERTY(settings, save, *this, modify_mask);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
   double threshold_value_ = 0;
   THRESHOLD_TYPE threshold_type_ = THRESHOLD_TYPE_OTSU;
+  bool modify_mask_ = false;
 };
 
 #endif /* __c_threshold_routine_h__ */

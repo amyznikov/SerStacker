@@ -8,18 +8,6 @@
 #include "c_gradient_routine.h"
 
 
-c_gradient_routine::c_class_factory c_gradient_routine::class_factory;
-
-c_gradient_routine::c_gradient_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_gradient_routine::ptr c_gradient_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
 bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   static thread_local const cv::Matx<float, 1, 5> K(
@@ -42,21 +30,3 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
   return true;
 }
 
-
-bool c_gradient_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  return true;
-}
-
-bool c_gradient_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  return true;
-}

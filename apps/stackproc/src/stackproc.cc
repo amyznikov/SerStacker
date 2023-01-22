@@ -137,8 +137,10 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      processor.emplace_back(c_unsharp_mask_routine::create(
-              sigma, amount));
+      c_unsharp_mask_routine::ptr p = c_unsharp_mask_routine::create();
+      p->set_sigma(sigma);
+      p->set_alpha(amount);
+      processor.emplace_back(p);
 
     }
 
@@ -166,9 +168,10 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      processor.emplace_back(c_histogram_white_balance_routine::create(
-              lclip, hclip));
-
+      c_histogram_white_balance_routine::ptr p = c_histogram_white_balance_routine::create();
+      p->set_lclip(lclip);
+      p->set_hclip(hclip);
+      processor.emplace_back(p);
     }
 
 
@@ -186,8 +189,10 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      processor.emplace_back(c_rangeclip_routine::create(
-              min, max));
+      c_rangeclip_routine::ptr p = c_rangeclip_routine::create();
+      p->set_min(min);
+      p->set_max(max);
+      processor.emplace_back(p);
 
     }
 
@@ -206,8 +211,11 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      processor.emplace_back(c_range_normalize_routine::create(
-              min, max));
+      c_range_normalize_routine::ptr p = c_range_normalize_routine::create();
+      p->set_output_min(min);
+      p->set_output_max(max);
+
+      processor.emplace_back(p);
 
     }
 
@@ -265,11 +273,12 @@ int main(int argc, char *argv[])
       }
 
 
-      processor.emplace_back(
-          c_align_color_channels_routine::create(
-              ecc_reference_channel,
-              ecc_motion_type,
-              ecc_eps));
+      c_align_color_channels_routine::ptr p = c_align_color_channels_routine::create();
+      p->set_reference_channel(ecc_reference_channel);
+      p->set_motion_type(ecc_motion_type);
+      p->set_eps(ecc_eps);
+
+      processor.emplace_back(p);
 
     }
 

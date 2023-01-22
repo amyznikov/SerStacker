@@ -15,35 +15,14 @@ class c_affine_transform_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_affine_transform_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
-
   enum image_resize_mode {
     resize_keep,
     resize_adjust,
     resize_scale,
   };
 
-  struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("affine_transform", "geometrical affine transform", "geometrical affine transform",
-            factory([]() {return ptr(new this_class());}))
-    {
-    }
-  };
-
-  static const c_class_factory* class_factory_instance()
-  {
-    static c_class_factory class_factory_instance_;
-    return &class_factory_instance_;
-  }
-
-
-  c_affine_transform_routine(bool enabled = true);
-
-  static ptr create(bool enabled = true);
-
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_affine_transform_routine,
+      "affine_transform", "Apply affine transform to image");
 
   void set_rotation(double v);
   double rotation() const;
@@ -66,10 +45,6 @@ public:
   void set_border_value(const cv::Scalar & v);
   const cv::Scalar & border_value() const;
 
-  bool serialize(c_config_setting settings) const override;
-  bool deserialize(c_config_setting settings) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, translation, "image translation in pixels before rotation/scale");
@@ -81,6 +56,8 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, border_value, "border_value");
   }
 
+  bool serialize(c_config_setting setting, bool save) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   static bool create_transformation_remap(cv::Mat2f & dst,
       const cv::Size & src_image_size,

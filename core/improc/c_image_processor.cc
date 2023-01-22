@@ -40,6 +40,7 @@
 #include "c_cvtcolor_routine.h"
 #include "c_equalize_hist_routine.h"
 #include "c_extract_channel_routine.h"
+#include "c_absdiff_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -87,40 +88,42 @@ void c_image_processor_routine::register_all()
 
     registered = true;
 
-    register_class_factory(&c_align_color_channels_routine::class_factory);
-    register_class_factory(&c_anscombe_routine::class_factory);
-    register_class_factory(&c_autoclip_routine::class_factory);
-    register_class_factory(&c_histogram_white_balance_routine::class_factory);
-    register_class_factory(&c_mtf_routine::class_factory);
-    register_class_factory(&c_noisemap_routine::class_factory);
-    register_class_factory(&c_range_normalize_routine::class_factory);
-    register_class_factory(&c_rangeclip_routine::class_factory);
-    register_class_factory(&c_smap_routine::class_factory);
-    register_class_factory(&c_dogsmap_routine::class_factory);
-    register_class_factory(&c_unsharp_mask_routine::class_factory);
-    register_class_factory(&c_gradient_routine::class_factory);
-    register_class_factory(&c_scale_channels_routine::class_factory);
-    register_class_factory(&c_type_convert_routine::class_factory);
-    register_class_factory(&c_color_saturation_routine::class_factory);
-    register_class_factory(&c_inpaint_routine::class_factory);
-    register_class_factory(&c_radial_polysharp_routine::class_factory);
-    register_class_factory(&c_auto_correlation_routine::class_factory);
-    register_class_factory(&c_gaussian_filter_routine::class_factory);
-    register_class_factory(&c_rotate_image_routine::class_factory);
+    register_class_factory(c_align_color_channels_routine::class_factory_instance());
+    register_class_factory(c_anscombe_routine::class_factory_instance());
+    register_class_factory(c_autoclip_routine::class_factory_instance());
+    register_class_factory(c_histogram_white_balance_routine::class_factory_instance());
+    register_class_factory(c_mtf_routine::class_factory_instance());
+    register_class_factory(c_noisemap_routine::class_factory_instance());
+    register_class_factory(c_range_normalize_routine::class_factory_instance());
+    register_class_factory(c_rangeclip_routine::class_factory_instance());
+    register_class_factory(c_smap_routine::class_factory_instance());
+    register_class_factory(c_dogsmap_routine::class_factory_instance());
+    register_class_factory(c_unsharp_mask_routine::class_factory_instance());
+    register_class_factory(c_gradient_routine::class_factory_instance());
+    register_class_factory(c_scale_channels_routine::class_factory_instance());
+    register_class_factory(c_type_convert_routine::class_factory_instance());
+    register_class_factory(c_color_saturation_routine::class_factory_instance());
+    register_class_factory(c_inpaint_routine::class_factory_instance());
+    register_class_factory(c_radial_polysharp_routine::class_factory_instance());
+    register_class_factory(c_auto_correlation_routine::class_factory_instance());
+    register_class_factory(c_gaussian_filter_routine::class_factory_instance());
+    register_class_factory(c_rotate_image_routine::class_factory_instance());
     register_class_factory(c_affine_transform_routine::class_factory_instance());
-    register_class_factory(&c_histogram_normalization_routine::class_factory);
-    register_class_factory(&c_pyrdown_routine::class_factory);
-    register_class_factory(&c_gaussian_pyramid_routine::class_factory);
-    register_class_factory(&c_median_blur_routine::class_factory);
-    register_class_factory(&c_remove_sharp_artifacts_routine::class_factory);
-    register_class_factory(&c_mean_curvature_blur_routine::class_factory);
-    register_class_factory(&c_fit_jovian_ellipse_routine::class_factory);
-    register_class_factory(&c_threshold_routine::class_factory);
-    register_class_factory(&c_desaturate_edges_routine::class_factory);
+    register_class_factory(c_histogram_normalization_routine::class_factory_instance());
+    register_class_factory(c_pyrdown_routine::class_factory_instance());
+    register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
+    register_class_factory(c_median_blur_routine::class_factory_instance());
+    register_class_factory(c_remove_sharp_artifacts_routine::class_factory_instance());
+    register_class_factory(c_mean_curvature_blur_routine::class_factory_instance());
+    register_class_factory(c_fit_jovian_ellipse_routine::class_factory_instance());
+    register_class_factory(c_threshold_routine::class_factory_instance());
+    register_class_factory(c_desaturate_edges_routine::class_factory_instance());
     register_class_factory(c_local_contrast_map_routine::class_factory_instance());
     register_class_factory(c_cvtcolor_routine::class_factory_instance());
     register_class_factory(c_equalize_hist_routine::class_factory_instance());
     register_class_factory(c_extract_channel_routine::class_factory_instance());
+    register_class_factory(c_absdiff_routine::class_factory_instance());
+
   }
 }
 
@@ -309,7 +312,7 @@ bool c_image_processor::serialize(c_config_setting settings, const std::string &
   for( const c_image_processor_routine::ptr &routine : *this ) {
     if( routine ) {
       if( routine->enabled() || incude_disabled_functions ) {
-        if( !routine->serialize(chain.add_element(CONFIG_TYPE_GROUP)) ) {
+        if( !routine->serialize(chain.add_element(CONFIG_TYPE_GROUP), true) ) {
           return false;
         }
       }
@@ -401,8 +404,8 @@ c_image_processor_routine::ptr c_image_processor_routine::create(c_config_settin
     return nullptr;
   }
 
-  if ( !routine->deserialize(settings) ) {
-    CF_ERROR("routine->load(routine=%s, c_config_setting) fails", objname.c_str());
+  if ( !routine->serialize(settings, false) ) {
+    CF_ERROR("routine->serialize(routine=%s, c_config_setting, save=false) fails", objname.c_str());
     return nullptr;
   }
 
@@ -430,28 +433,34 @@ c_image_processor_routine::ptr c_image_processor_routine::create(const std::stri
 }
 
 
-bool c_image_processor_routine::deserialize(c_config_setting settings)
+//bool c_image_processor_routine::deserialize(c_config_setting settings)
+//{
+//  if ( !settings ) {
+//    CF_ERROR("c_image_processor_routine::load(c_config_setting) : settings is null");
+//    return false;
+//  }
+//
+//  settings.get("enabled", &enabled_);
+//
+//  return true;
+//}
+
+bool c_image_processor_routine::serialize(c_config_setting settings, bool save)
 {
   if ( !settings ) {
-    CF_ERROR("c_image_processor_routine::load(c_config_setting) : settings is null");
+    CF_ERROR("c_image_processor_routine settings is null");
     return false;
   }
 
-  settings.get("enabled", &enabled_);
-
-  return true;
-}
-
-bool c_image_processor_routine::serialize(c_config_setting settings) const
-{
-  if ( !settings ) {
-    return false;
+  if ( save ) {
+    settings.set("routine", class_name());
+    settings.set("display_name", display_name());
+    settings.set("tooltip", tooltip());
+    settings.set("enabled", enabled());
   }
-
-  settings.set("routine", class_name());
-  settings.set("display_name", display_name());
-  settings.set("tooltip", tooltip());
-  settings.set("enabled", enabled());
+  else {
+    settings.get("enabled", &enabled_);
+  }
 
   return true;
 }

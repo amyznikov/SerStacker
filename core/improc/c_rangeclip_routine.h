@@ -12,39 +12,52 @@
 #include "c_image_processor.h"
 #include <core/proc/autoclip.h>
 
-class c_rangeclip_routine
-    : public c_image_processor_routine
+class c_rangeclip_routine :
+    public c_image_processor_routine
 {
 public:
-  typedef c_rangeclip_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_rangeclip_routine,
+      "rangeclip", "rangeclip");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("rangeclip", "rangeclip", "rangeclip",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_min(double v)
+  {
+    min_ = v;
+  }
 
+  double min() const
+  {
+    return min_;
+  }
 
-  c_rangeclip_routine(bool enabled = true);
+  void set_max(double v)
+  {
+    max_ = v;
+  }
 
-  static ptr create(bool enabled = true);
-  static ptr create(double min, double max, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-
-  void set_min(double v);
-  double min() const;
-
-  void set_max(double v);
-  double max() const;
+  double max() const
+  {
+    return max_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, min, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, max, "");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, min);
+      SERIALIZE_PROPERTY(settings, save, *this, max);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    return clip_range(image.getMatRef(), min_, max_/*, mask.getMat()*/);
   }
 
 protected:

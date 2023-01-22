@@ -9,39 +9,64 @@
 #define __c_gaussian_filter_routine_h__
 
 #include "c_image_processor.h"
+#include <core/proc/c_gaussian_filter.h>
 
 class c_gaussian_filter_routine:
     public c_image_processor_routine
 {
 public:
-  typedef c_gaussian_filter_routine this_class;
-  typedef c_image_processor_routine base;
-  typedef std::shared_ptr<this_class> ptr;
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_filter_routine,
+      "gaussian_filter", "gaussian_filter");
 
-  static struct c_class_factory : public base::class_factory {
-    c_class_factory() :
-        base::class_factory("gaussian_filter", "gaussian_filter", "gaussian filter",
-            factory([]() {return ptr(new this_class());})) {}
-  } class_factory;
+  void set_sigma(double v)
+  {
+    sigma_ = v;
+  }
 
-  c_gaussian_filter_routine(bool enabled = true);
-  static ptr create(bool enabled = true);
-  static ptr create(double sigma, bool enabled = true);
-  bool deserialize(c_config_setting settings) override;
-  bool serialize(c_config_setting settings) const override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  double sigma() const
+  {
+    return sigma_;
+  }
 
-  double sigma() const;
-  void set_sigma(double v);
+  void set_ignore_mask(bool v)
+  {
+    ignore_mask_ = v;
+  }
 
-  void set_ignore_mask(bool v);
-  bool ignore_mask() const;
-
+  bool ignore_mask() const
+  {
+    return ignore_mask_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "Gaussian kernel sigma");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "Ignore alpha mask");
+  }
+
+  bool serialize(c_config_setting settings, bool save) override
+  {
+    if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, sigma);
+      SERIALIZE_PROPERTY(settings, save, *this, ignore_mask);
+      return true;
+    }
+    return false;
+  }
+
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
+  {
+    if ( ignore_mask_ || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
+      c_gaussian_filter(sigma_, sigma_).apply(image.getMat(), cv::noArray(), image, cv::BORDER_REFLECT101);
+    }
+    else {
+      cv::Mat tmp;
+      image.getMat().copyTo(tmp);
+      tmp.setTo(0, ~mask.getMat());
+      c_gaussian_filter(sigma_, sigma_).apply(tmp, mask, image, cv::BORDER_REFLECT101);
+    }
+
+    return true;
   }
 
 protected:

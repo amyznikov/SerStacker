@@ -9,8 +9,6 @@
 #include <core/proc/estimate_noise.h>
 #include <core/proc/reduce_channels.h>
 
-c_remove_sharp_artifacts_routine::c_class_factory c_remove_sharp_artifacts_routine::class_factory;
-
 
 template<class T>
 static void wadd_(cv::InputOutputArray image, cv::InputArray _src, const cv::Mat1f & w)
@@ -66,16 +64,6 @@ static void wadd(cv::InputOutputArray image, cv::InputArray src, const cv::Mat1f
     wadd_<double>(image, src, w);
     break;
   }
-}
-
-c_remove_sharp_artifacts_routine::c_remove_sharp_artifacts_routine(bool enabled) :
-    base(&class_factory, enabled)
-{
-}
-
-c_remove_sharp_artifacts_routine::ptr c_remove_sharp_artifacts_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
 }
 
 void c_remove_sharp_artifacts_routine::set_erode_radius(const cv::Size & v)
@@ -139,37 +127,6 @@ bool c_remove_sharp_artifacts_routine::show_blured_image() const
   return show_blured_image_;
 }
 
-bool c_remove_sharp_artifacts_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, erode_radius);
-  LOAD_PROPERTY(settings, *this, noise_scale);
-  LOAD_PROPERTY(settings, *this, mask_blur_radius);
-  LOAD_PROPERTY(settings, *this, edge_blur_radius);
-  LOAD_PROPERTY(settings, *this, show_mask);
-  LOAD_PROPERTY(settings, *this, show_blured_image);
-
-  return true;
-}
-
-bool c_remove_sharp_artifacts_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  SAVE_PROPERTY(settings, *this, erode_radius);
-  SAVE_PROPERTY(settings, *this, noise_scale);
-  SAVE_PROPERTY(settings, *this, mask_blur_radius);
-  SAVE_PROPERTY(settings, *this, edge_blur_radius);
-  SAVE_PROPERTY(settings, *this, show_mask);
-  SAVE_PROPERTY(settings, *this, show_blured_image);
-
-  return true;
-}
 
 bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {

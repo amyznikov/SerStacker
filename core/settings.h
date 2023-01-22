@@ -524,4 +524,15 @@ bool libconfig_parse_flags(c_config_setting settings,
 #define SAVE_PROPERTY(cfg, obj, prop) \
   ::save_settings(cfg, #prop, (obj).prop())
 
+#define SERIALIZE_PROPERTY(cfg, save, obj, prop) \
+  if ((save)) { \
+    ::save_settings(cfg, #prop, (obj).prop()); \
+  }\
+  else { \
+    auto v = (obj).prop(); \
+    if ( ::load_settings(cfg, #prop,  &v) ) { \
+      (obj).set_##prop(v); \
+    }\
+  }
+
 #endif /* __libconfig_settings__h__ */

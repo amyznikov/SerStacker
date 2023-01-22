@@ -8,8 +8,6 @@
 #include "c_median_blur_routine.h"
 #include <core/proc/normalize.h>
 
-c_median_blur_routine::c_class_factory c_median_blur_routine::class_factory;
-
 template<>
 const c_enum_member * members_of<cv::ximgproc::WMFWeightType>()
 {
@@ -26,86 +24,6 @@ const c_enum_member * members_of<cv::ximgproc::WMFWeightType>()
   };
 
   return members;
-}
-
-
-c_median_blur_routine::c_median_blur_routine(bool enabled)
-  : base(&class_factory, enabled)
-{
-}
-
-c_median_blur_routine::ptr c_median_blur_routine::create(bool enabled)
-{
-  return ptr(new this_class(enabled));
-}
-
-void c_median_blur_routine::set_radius(int v)
-{
-  radius_ = v;
-}
-
-int c_median_blur_routine::radius() const
-{
-  return radius_;
-}
-
-void c_median_blur_routine::set_sigma(double v)
-{
-  sigma_ = v;
-}
-
-double c_median_blur_routine::sigma() const
-{
-  return sigma_;
-}
-
-void c_median_blur_routine::set_weightType(cv::ximgproc::WMFWeightType v)
-{
-  weightType_ = v;
-}
-
-cv::ximgproc::WMFWeightType c_median_blur_routine::weightType() const
-{
-  return weightType_;
-}
-
-void c_median_blur_routine::set_ignore_mask(bool v)
-{
-  ignore_mask_ = v;
-}
-
-bool c_median_blur_routine::ignore_mask() const
-{
-  return ignore_mask_;
-}
-
-
-bool c_median_blur_routine::deserialize(c_config_setting settings)
-{
-  if ( !base::deserialize(settings) ) {
-    return false;
-  }
-
-  LOAD_PROPERTY(settings, *this, weightType);
-  LOAD_PROPERTY(settings, *this, radius);
-  LOAD_PROPERTY(settings, *this, sigma);
-  LOAD_PROPERTY(settings, *this, ignore_mask);
-
-  return true;
-}
-
-bool c_median_blur_routine::serialize(c_config_setting settings) const
-{
-  if ( !base::serialize(settings) ) {
-    return false;
-  }
-
-  SAVE_PROPERTY(settings, *this, weightType);
-  SAVE_PROPERTY(settings, *this, radius);
-  SAVE_PROPERTY(settings, *this, sigma);
-  SAVE_PROPERTY(settings, *this, ignore_mask);
-
-  return true;
 }
 
 bool c_median_blur_routine::process(cv::InputOutputArray _image, cv::InputOutputArray _mask)
@@ -134,7 +52,6 @@ bool c_median_blur_routine::process(cv::InputOutputArray _image, cv::InputOutput
       break;
     }
   }
-
 
  weightedMedianFilter(joint, _image, _image, radius_, sigma_, weightType_, mask);
 

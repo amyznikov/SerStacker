@@ -7,6 +7,7 @@
 
 #include "QImageStatistics.h"
 #include <gui/widgets/style.h>
+#include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/debug.h>
 
@@ -134,6 +135,8 @@ void QImageStatisticsDisplay::setupTableView()
   table_->setColumnCount(labels.size());
   table_->setHorizontalHeaderLabels(labels);
   table_->setRowCount(1);
+  table_->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
+  table_->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
   //table_->resizeColumnsToContents();
 
   for( int i = 0, j = 0, n = measures_.size(); i < n; ++i ) {
@@ -148,6 +151,12 @@ void QImageStatisticsDisplay::setupTableView()
     }
   }
 
+  connect(table_, &QTableWidget::currentCellChanged,
+      this, &ThisClass::onTableViewCurrentCellChanged);
+
+  table_->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+  connect(table_, &QTableWidget::customContextMenuRequested,
+      this, &ThisClass::onTableViewContextMenuRequested);
 }
 
 
@@ -219,8 +228,8 @@ void QImageStatisticsDisplay::measure()
   const cv::Mat image = image_(rc);
   const cv::Mat mask = mask_.empty() ? cv::Mat() : mask_(rc);
 
-  if( incrementalMeasurementsAction_->isChecked() ) {
-
+  if( table_->rowCount() < 1 ) {
+    table_->setRowCount(1);
   }
 
   int r = -1;
@@ -253,6 +262,7 @@ void QImageStatisticsDisplay::measure()
 
   if( r >= 0 && incrementalMeasurementsAction_->isChecked() ) {
     table_->insertRow(r + 1);
+    table_->setCurrentCell(r, 0);
   }
 }
 
@@ -277,6 +287,45 @@ void QImageStatisticsDisplay::onupdatecontrols()
   }
 
 }
+
+void QImageStatisticsDisplay::onTableViewContextMenuRequested(const QPoint &pos)
+{
+  QMenu menu;
+
+
+  menu.addAction("Select all",
+      [this]() {
+        table_->selectAll();
+      });
+
+  if( table_->selectionModel()->hasSelection() ) {
+
+    menu.addAction("Delete selected rows",
+        [this]() {
+          QWaitCursor wait(this);
+
+          QItemSelectionModel * model = table_->selectionModel();
+          const QModelIndex parent = QModelIndex();
+          for ( int i = table_->rowCount()-1; i >= 0; --i ) {
+            if ( model->isRowSelected(i, parent) ) {
+              table_->removeRow(i);
+            }
+          }
+        });
+  }
+
+
+  if ( !menu.isEmpty() ) {
+    menu.exec(table_->viewport()->mapToGlobal(pos));
+  }
+
+}
+
+void QImageStatisticsDisplay::onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+
+}
+
 
 
 void QImageStatisticsDisplay::loadParameters()

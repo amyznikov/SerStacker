@@ -74,6 +74,9 @@ protected:
   void setupTableView();
   void adjustCurrentRoi(cv::Rect * rc) const;
   void onupdatecontrols() override;
+  void onTableViewContextMenuRequested(const QPoint &pos);
+  void onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
 
 protected:
   cv::Mat image_;

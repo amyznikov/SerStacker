@@ -13,24 +13,34 @@
 
 
 template<>
+const c_enum_member* members_of<cv::CmpTypes>()
+{
+  static constexpr c_enum_member members[] = {
+      { cv::CMP_EQ, "EQ", "src is equal to value" },
+      { cv::CMP_GT, "GT", "src is greater than value" },
+      { cv::CMP_GE, "GE", "src is greater than or equal to  value" },
+      { cv::CMP_LT, "LT", "src is less than  value" },
+      { cv::CMP_LE, "LE", "src is less than or equal to  value" },
+      { cv::CMP_NE, "NE", "src is not equal to  value" },
+      { cv::CMP_GT },
+  };
+
+  return members;
+}
+
+template<>
 const c_enum_member* members_of<THRESHOLD_TYPE>()
 {
   static constexpr c_enum_member members[] = {
-      { THRESHOLD_TYPE_CMP_GT, "GT", "" },
-      { THRESHOLD_TYPE_CMP_GE, "GE", "" },
-      { THRESHOLD_TYPE_CMP_LT, "LT", "" },
-      { THRESHOLD_TYPE_CMP_LE, "LE", "" },
-      { THRESHOLD_TYPE_CMP_EQ, "EQ", "" },
-      { THRESHOLD_TYPE_CMP_NE, "NE", "" },
-
-      { THRESHOLD_TYPE_OTSU, "OTSU", "OTSU" },
-      { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "TRIANGLE" },
-      { THRESHOLD_TYPE_MOMENTS, "MOMENTS", "MOMENTS" },
-      { THRESHOLD_TYPE_ISODATA, "ISODATA", "ISODATA" },
-      { THRESHOLD_TYPE_HUANG, "HUANG", "HUANG" },
-      { THRESHOLD_TYPE_YEN, "YEN", "YEN" },
-      { THRESHOLD_TYPE_MEAN, "MEAN", "MEAN" },
-      { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "MINIMUM" },
+      { THRESHOLD_TYPE_VALUE, "VALUE", "Use user-specified value for compare operation"},
+      { THRESHOLD_TYPE_OTSU, "OTSU", "Use Otsu algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "Use Triangle algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_MOMENTS, "MOMENTS", "Use MOMENTS algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_ISODATA, "ISODATA", "Use ISODATA algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_HUANG, "HUANG", "Use HUANG algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_YEN, "YEN", "Use YEN algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_MEAN, "MEAN", "Select pixels with values above mean value" },
+      { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "Use MINIMUM algorithm to choose the optimal threshold value" },
       { THRESHOLD_TYPE_OTSU }
   };
 
@@ -39,69 +49,22 @@ const c_enum_member* members_of<THRESHOLD_TYPE>()
 
 bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  int cmpop = -1;
-
-  switch (threshold_type_) {
-    case THRESHOLD_TYPE_CMP_GT:
-      cmpop = cv::CMP_GT;
-      break;
-    case THRESHOLD_TYPE_CMP_GE:
-      cmpop = cv::CMP_GE;
-      break;
-    case THRESHOLD_TYPE_CMP_LT:
-      cmpop = cv::CMP_LT;
-      break;
-    case THRESHOLD_TYPE_CMP_LE:
-      cmpop = cv::CMP_LE;
-      break;
-    case THRESHOLD_TYPE_CMP_EQ:
-      cmpop = cv::CMP_EQ;
-      break;
-    case THRESHOLD_TYPE_CMP_NE:
-      cmpop = cv::CMP_NE;
-      break;
-    default:
-      break;
-  }
-
-  if( cmpop >= 0 ) {
-    if( !modify_mask_ ) {
-      cv::compare(image.getMat(), threshold_value_, image, cmpop);
-    }
-    else if( mask.empty() ) {
-      cv::compare(image.getMat(), threshold_value_, mask, cmpop);
-      if( mask.channels() > 1 ) {
-        reduce_color_channels(mask, mask, cv::REDUCE_MIN);
-      }
-    }
-    else {
-      cv::Mat m;
-      cv::compare(image.getMat(), threshold_value_, m, cmpop);
-      if( mask.channels() > 1 ) {
-        reduce_color_channels(mask, mask, cv::REDUCE_MIN);
-      }
-      if( m.channels() > 1 ) {
-        reduce_color_channels(m, m, cv::REDUCE_MIN);
-      }
-      cv::bitwise_and(m, mask, mask);
-    }
-
-    return true;
-  }
-
   std::vector<cv::Mat> channels;
-  cv::Mat M;
 
-  if( image.channels() == 1 ) {
-    channels = image.getMat();
+  const int cn =
+      image.channels();
+
+  if( cn == 1 ) {
+    channels.emplace_back(image.getMat());
   }
   else {
     cv::split(image, channels);
   }
 
-  for( int i = 0, n = channels.size(); i < n; ++i ) {
+  for ( int i = 0; i < cn; ++i ) {
 
-    double threshold_value = 0;
+    double threshold_value =
+        threshold_value_;
 
     switch (threshold_type_) {
       case THRESHOLD_TYPE_OTSU:
@@ -129,39 +92,39 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
         threshold_value = get_minimum_threshold(channels[i], mask);
         break;
       default:
-        continue;
+        break;
     }
 
-    cv::compare(channels[i], threshold_value, channels[i], cv::CMP_GT);
-  }
-
-
-  if( channels.size() == 1 ) {
-    M = channels[0];
-  }
-  else {
-    cv::merge(channels, M);
+    cv::compare(channels[i], threshold_value, channels[i], compare_);
   }
 
   if( !modify_mask_ ) {
-    M.convertTo(image, image.depth());
-  }
-  else if( mask.empty() ) {
-    if( M.channels() > 1 ) {
-      reduce_color_channels(M, mask, cv::REDUCE_MIN);
+    if( cn == 1 ) {
+      image.move(channels[0]);
     }
     else {
-      mask.move(M);
+      cv::merge(channels, image);
+    }
+  }
+  else if( mask.empty() ) {
+    if( cn == 1 ) {
+      mask.move(channels[0]);
+    }
+    else {
+      cv::merge(channels, mask);
+      reduce_color_channels(mask, mask, cv::REDUCE_MIN);
     }
   }
   else {
     if( mask.channels() > 1 ) {
       reduce_color_channels(mask, mask, cv::REDUCE_MIN);
     }
-    if( M.channels() > 1 ) {
-      reduce_color_channels(M, M, cv::REDUCE_MIN);
+    if( cn > 1 ) {
+      for( int i = 1; i < cn; ++i ) {
+        cv::bitwise_and(channels[0], channels[i], channels[0]);
+      }
     }
-    cv::bitwise_and(M, mask, mask);
+    cv::bitwise_and(channels[0], mask, mask);
   }
 
   return true;

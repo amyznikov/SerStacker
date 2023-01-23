@@ -12,12 +12,7 @@
 #include "c_image_processor.h"
 
 enum THRESHOLD_TYPE {
-  THRESHOLD_TYPE_CMP_GT,
-  THRESHOLD_TYPE_CMP_LT,
-  THRESHOLD_TYPE_CMP_GE,
-  THRESHOLD_TYPE_CMP_LE,
-  THRESHOLD_TYPE_CMP_EQ,
-  THRESHOLD_TYPE_CMP_NE,
+  THRESHOLD_TYPE_VALUE,
   THRESHOLD_TYPE_OTSU,
   THRESHOLD_TYPE_TRIANGLE,
   THRESHOLD_TYPE_MOMENTS,
@@ -34,8 +29,18 @@ class c_threshold_routine:
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_threshold_routine,
       "threshold",
-      "Uses <strong>cv::compare()</strong> or <strong>cv::threshold()</strong> to threshold image.<br>"
+      "Uses <strong>cv::compare()</strong> to threshold image. "
       "Each color channel is processed independently");
+
+  void set_compare(cv::CmpTypes v)
+  {
+    compare_ = v;
+  }
+
+  cv::CmpTypes compare() const
+  {
+    return compare_;
+  }
 
   void set_threshold_type(THRESHOLD_TYPE v)
   {
@@ -69,14 +74,16 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, compare, "Compare operation");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_type, "Threshold type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Compare value");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Threshold value");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, modify_mask, "Modify mask instead of image");
   }
 
   bool serialize(c_config_setting settings, bool save) override
   {
     if( base::serialize(settings, save) ) {
+      SERIALIZE_PROPERTY(settings, save, *this, compare);
       SERIALIZE_PROPERTY(settings, save, *this, threshold_type);
       SERIALIZE_PROPERTY(settings, save, *this, threshold_value);
       SERIALIZE_PROPERTY(settings, save, *this, modify_mask);
@@ -88,9 +95,10 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
+  cv::CmpTypes compare_ = cv::CMP_GT;
+  THRESHOLD_TYPE threshold_type_ = THRESHOLD_TYPE_VALUE;
   double threshold_value_ = 0;
-  THRESHOLD_TYPE threshold_type_ = THRESHOLD_TYPE_OTSU;
-  bool modify_mask_ = false;
+  bool modify_mask_ = true;
 };
 
 #endif /* __c_threshold_routine_h__ */

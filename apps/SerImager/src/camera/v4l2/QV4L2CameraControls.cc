@@ -413,12 +413,11 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
 void QV4L2CameraExtraSettingsWidget::createControls()
 {
-
-  if ( camera_ ) {
+  if( camera_ && controls_.empty() ) {
 
     c_update_controls_lock lock(this);
 
-    cv4l_fd & device =
+    cv4l_fd &device =
         camera_->device();
 
     v4l2_query_ext_ctrl q = { 0 };
@@ -426,8 +425,8 @@ void QV4L2CameraExtraSettingsWidget::createControls()
     while (device.query_ext_ctrl(q, true) == 0) {
       if( !(q.flags & V4L2_CTRL_FLAG_DISABLED) ) {
 
-        QWidget * ctrl = add_ex_ctrl(device, q);
-        if ( ctrl ) {
+        QWidget *ctrl = add_ex_ctrl(device, q);
+        if( ctrl ) {
           controls_.append(ctrl);
         }
       }

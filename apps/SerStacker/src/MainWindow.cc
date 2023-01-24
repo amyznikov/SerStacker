@@ -202,9 +202,22 @@ MainWindow::~MainWindow()
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
   if ( event->type() == QEvent::Wheel) {
-    const QComboBox * combo = dynamic_cast<const QComboBox*>(watched);
-    if ( combo && !combo->isEditable() ) {
-      return true;
+
+    if( const auto *combo = dynamic_cast<const QComboBox*>(watched) ) {
+      if( !combo->hasFocus() ) {
+        return true;
+      }
+    }
+    //  spin_ctl->setFocusPolicy(Qt::FocusPolicy::StrongFocus) not works
+    else if( const auto *spin = dynamic_cast<const QSpinBox*>(watched) ) {
+      if( !spin->hasFocus() ) {
+        return true;
+      }
+    }
+    else if( const auto *slider = dynamic_cast<const QSlider*>(watched) ) {
+      if( !slider->hasFocus() ) {
+        return true;
+      }
     }
   }
 

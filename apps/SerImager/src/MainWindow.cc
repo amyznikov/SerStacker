@@ -136,7 +136,7 @@ bool MainWindow::eventFilter(QObject * watched, QEvent * event)
   if( event->type() == QEvent::Wheel ) {
 
     if( const auto *combo = dynamic_cast<const QComboBox*>(watched) ) {
-      if( !combo->isEditable() ) {
+      if( !combo->hasFocus() ) {
         return true;
       }
     }

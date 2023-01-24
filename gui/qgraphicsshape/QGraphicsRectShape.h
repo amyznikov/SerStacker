@@ -85,7 +85,7 @@ protected:
   QBrush brush_;
   MouseAction currentMouseAction_ = MouseAction_None;
   bool itemIsResizable_ = true;
-  bool fixOnSceneCenter_ = true;
+  bool fixOnSceneCenter_ = false;
   int handleSize_ = 0;
   int hitDstance_ = 15;
 

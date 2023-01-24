@@ -37,6 +37,7 @@
 #include "c_threshold_routine.h"
 #include "c_desaturate_edges_routine.h"
 #include "c_local_contrast_map_routine.h"
+#include "c_lpg_map_routine.h"
 #include "c_cvtcolor_routine.h"
 #include "c_equalize_hist_routine.h"
 #include "c_extract_channel_routine.h"
@@ -119,6 +120,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_threshold_routine::class_factory_instance());
     register_class_factory(c_desaturate_edges_routine::class_factory_instance());
     register_class_factory(c_local_contrast_map_routine::class_factory_instance());
+    register_class_factory(c_lpg_map_routine::class_factory_instance());
     register_class_factory(c_cvtcolor_routine::class_factory_instance());
     register_class_factory(c_equalize_hist_routine::class_factory_instance());
     register_class_factory(c_extract_channel_routine::class_factory_instance());

@@ -96,6 +96,7 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
             shape->setPen(pen_);
             scene->addItem(shape);
+            shapes_.append(shape);
 
             QImageScene * imageScene =
                 dynamic_cast<QImageScene * >(scene);
@@ -145,6 +146,7 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
             shape->setPen(pen_);
             scene->addItem(shape);
+            shapes_.append(shape);
 
             QImageScene * imageScene =
                 dynamic_cast<QImageScene * >(scene);
@@ -166,22 +168,14 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
       [this]() {
         if ( sceneView_ ) {
 
-          QGraphicsScene * scene =
-              sceneView_->scene();
-
+          QGraphicsScene * scene = sceneView_->scene();
           if ( scene ) {
 
-            QList<QGraphicsItem *> items =
-                scene->items();
-
-            for ( QGraphicsItem * item : items ) {
-
-              QGraphicsShape * shape =
-                  dynamic_cast<QGraphicsShape * >(item);
-              if ( shape ) {
-                scene->removeItem(shape);
-              }
+            for ( QGraphicsShape * shape : shapes_ ) {
+              scene->removeItem(shape);
             }
+
+            shapes_.clear();
           }
         }
       });

@@ -10,6 +10,7 @@
 #define __QShapesButton__
 
 #include <QtWidgets/QtWidgets>
+#include "QGraphicsShape.h"
 
 class QShapesButton
     : public QToolButton
@@ -29,6 +30,7 @@ protected:
   QMenu popup_;
   QGraphicsView * sceneView_ = nullptr;
   QPen pen_;
+  QList<QGraphicsShape *> shapes_;
 };
 
 #endif /* __QShapesButton__ */

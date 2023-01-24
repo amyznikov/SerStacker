@@ -7,13 +7,12 @@
 
 #include "QStackTreeViewDock.h"
 
-QStackTreeViewDock::QStackTreeViewDock(const QString &title, QWidget * parent)
-    : Base(title, parent)
+QStackTreeViewDock::QStackTreeViewDock(const QString &title, QWidget * parent) :
+  Base(title, parent)
 {
-  Base::setWidget(sequencesView_ = new QStackTree(this));
+  Base::setWidget(treeView_ = new QStackTree(this));
 
-
-  const QList<QAction *> actions = sequencesView_->toolbarActions();
+  const QList<QAction *> actions = treeView_->toolbarActions();
   for ( int i = 0, n = actions.size(); i < n; ++i ) {
     titleBar()->addButton(actions[n - i - 1]);
   }
@@ -21,13 +20,10 @@ QStackTreeViewDock::QStackTreeViewDock(const QString &title, QWidget * parent)
 }
 
 
-QStackTree * QStackTreeViewDock::sequencesView() const
+QStackTree * QStackTreeViewDock::treeView() const
 {
-  return sequencesView_;
+  return treeView_;
 }
-
-
-
 
 QStackTreeViewDock * addSequencesTreeDock(QMainWindow * parent,
     Qt::DockWidgetArea area,

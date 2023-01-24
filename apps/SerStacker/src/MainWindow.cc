@@ -7,12 +7,10 @@
 
 #include "MainWindow.h"
 #include <gui/widgets/QToolbarSpacer.h>
-#include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <gui/qstackingthread/QStackingThread.h>
-#include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
@@ -47,9 +45,30 @@ namespace qserstacker {
 
 namespace  {
 
+inline bool is_visible(QWidget * w)
+{
+  return w && w->isVisible();
+}
+
+template<typename Slot>
+QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot, QShortcut * shortcut = nullptr)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+
+  QObject::connect(action, &QAction::triggered, slot);
+
+  if( shortcut ) {
+    QObject::connect(shortcut, &QShortcut::activated,
+        action, &QAction::trigger);
+  }
+
+  return action;
+}
+
+
 template<class Obj, typename Fn>
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
-    Obj * receiver, Fn fn)
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Obj * receiver, Fn fn)
 {
   QAction *action = new QAction(icon, text);
   action->setToolTip(tooltip);
@@ -61,13 +80,18 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
 }
 
 template<typename Slot>
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot)
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot, QShortcut * shortcut = nullptr)
 {
   QAction *action = new QAction(icon, text);
   action->setToolTip(tooltip);
   action->setCheckable(true);
 
   QObject::connect(action, &QAction::triggered, slot);
+
+  if( shortcut ) {
+    QObject::connect(shortcut, &QShortcut::activated,
+        action, &QAction::trigger);
+  }
 
   return action;
 }
@@ -102,18 +126,6 @@ QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu
 MainWindow::MainWindow()
 {
 
-  static const auto createScrollableWrap =
-      [](QWidget * w, QWidget * parent = nullptr) -> QScrollArea *
-  {
-    QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setWidget(w);
-    return scrollArea;
-  };
-
-
   setWindowIcon(QIcon(":/icons/jup.png"));
   updateWindowTittle();
 
@@ -138,15 +150,6 @@ MainWindow::MainWindow()
 
 
   ///////////////////////////////////
-  // Setup main menu items
-
-  menuBar()->setNativeMenuBar(false);
-  fileMenu = menuBar()->addMenu("&File");
-  editMenu = menuBar()->addMenu("&Edit");
-  viewMenu = menuBar()->addMenu("&View");
-
-
-  ///////////////////////////////////
   // Setup docking views
 
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
@@ -156,102 +159,22 @@ MainWindow::MainWindow()
   setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
 
 
-  setupFileSystemTreeDock();
+  setupMainMenu();
+  setupFileSystemTreeView();
   setupThumbnailsView();
+  setupStackTreeView();
+  setupStackOptionsView();
+  setupImageProcessorSelector();
+  setupImageEditor();
+  setupTextViewer();
+  stupCloudViewer();
+  setupFocusGraph();
+  setupRoiOptions();
 
 
-  stackTreeDock = addSequencesTreeDock(this, Qt::LeftDockWidgetArea,
-      "sequencesTreeDock",
-      "Sequences",
-      viewMenu);
+  tabifyDockWidget(fileSystemTreeDock, stackTreeDock);
+  tabifyDockWidget(stackTreeDock, imageProcessorSelectorDock);
 
-  stackTreeView =
-      stackTreeDock->sequencesView();
-
-  imageProcessorSelectorDock = addCustomDock(this,
-      Qt::LeftDockWidgetArea,
-      "imageProcessorSettingsDock",
-      "Image Processing",
-      imageProcessorSelector = new QImageProcessorSelector(this), //createScrollableWrap(imageProcessorSelector = new QImageProcessorSelector(this)),
-      viewMenu);
-
-  //tabifyDockWidget(fileSystemTreeDock, stackTreeDock);
-  //tabifyDockWidget(stackTreeDock, imageProcessorSelectorDock);
-
-
-  ///////////////////////////////////
-  // Configure events
-
-
-  connect(stackTreeView, &QStackTree::currentItemChanged,
-      this, &ThisClass::onStackTreeCurrentItemChanged);
-
-  connect(stackTreeView, &QStackTree::itemDoubleClicked,
-      this, &ThisClass::onStackTreeItemDoubleClicked);
-
-  connect(stackTreeView, &QStackTree::showStackOptionsClicked,
-      this, &ThisClass::onShowStackOptionsClicked);
-
-  connect(stackOptionsView, &QStackOptions::closeWindowRequested,
-      [this]() {
-        if ( !QStackingThread::isRunning() ) {
-          if ( thumbnailsView ) {
-            centralStackedWidget->setCurrentWidget(thumbnailsView);
-          }
-        }
-        else {
-          centralStackedWidget->setCurrentWidget(imageEditor);
-          stackProgressView->setImageViewer(imageEditor);
-        }
-      });
-
-
-  connect(stackOptionsView, &QStackOptions::applyInputOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyInputOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyFrameUpscaleOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyFrameRegistrationOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyFrameAccumulationOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::applyOutputOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyOutputOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::applyAllStackOptionsToAllRequested,
-      stackTreeView, & QStackTree::applyAllStackOptionsToAll);
-
-  connect(stackOptionsView, &QStackOptions::stackNameChanged,
-      [this](const c_image_stacking_options::ptr & stack) {
-        stackTreeView->updateStackName(stack);
-        saveCurrentWork();
-    });
-
-  connect(stackOptionsView, &QStackOptions::stackOptionsChanged,
-      this, &ThisClass::saveCurrentWork );
-
-  connect(stackTreeView, &QStackTree::stackNameChanged,
-      [this] (const c_image_stacking_options::ptr & stack) {
-        if ( stackOptionsView->currentStack() == stack ) {
-          stackOptionsView->updateControls();
-        }
-        saveCurrentWork();
-      });
-
-  connect(stackTreeView, &QStackTree::stackCollectionChanged,
-        this, &ThisClass::saveCurrentWork );
-
-  connect(stackTreeView, &QStackTree::stackSourcesChanged,
-      this, &ThisClass::saveCurrentWork );
-//
-//  connect(stackTreeView, &QStackTree::stackDeleted,
-//      this, &ThisClass::saveCurrentWork );
 
   connect(QStackingThread::singleton(), &QStackingThread::started,
       this, &ThisClass::onStackingThreadStarted);
@@ -259,123 +182,14 @@ MainWindow::MainWindow()
   connect(QStackingThread::singleton(), &QStackingThread::finished,
       this, &ThisClass::onStackingThreadFinished);
 
-  connect(imageProcessorSelector, &QImageProcessorSelector::parameterChanged,
-      [this]() {
-        imageEditor->set_current_processor(imageProcessorSelector->current_processor());
-      });
 
-
-  ///////////////////////////////////
-
-  QShortcut * shortcut;
-
-  if ( imageEditor ) {
-    fileMenu->addAction(saveImageAsAction = new QAction("Save current image as..."));
-    saveImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
-    connect(saveImageAsAction, &QAction::triggered, this, &ThisClass::onSaveCurrentImageAs);
-
-
-    fileMenu->addAction(saveDisplayImageAsAction = new QAction("Save current display image as..."));
-    saveDisplayImageAsAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
-    connect(saveDisplayImageAsAction, &QAction::triggered, this, &ThisClass::onSaveCurrentDisplayImageAs);
-
-
-    fileMenu->addAction(saveImageMaskAction = new QAction("Save current image mask..."));
-    saveImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentMask().empty());
-    connect(saveImageMaskAction, &QAction::triggered, this, &ThisClass::onSaveCurrentImageMask);
-
-    fileMenu->addAction(loadImageMaskAction = new QAction("Set current image mask from file..."));
-    loadImageMaskAction->setEnabled(imageEditor->isVisible() && !imageEditor->currentImage().empty());
-    connect(loadImageMaskAction, &QAction::triggered, this, &ThisClass::onLoadCurrentImageMask);
-  }
-
-
-  fileMenu->addSeparator();
-  fileMenu->addAction(loadStackAction =
-      new QAction("Load stack config..."));
-  connect(loadStackAction, &QAction::triggered,
-      this, &ThisClass::onLoadStackConfig);
-
-
-  fileMenu->addSeparator();
-  fileMenu->addAction(quitAppAction = new QAction("Quit"));
-  connect(quitAppAction, &QAction::triggered, []() {
-    QApplication::quit();
-  });
-
-
-
-  if ( imageEditor ) {
-    imageEditor->addAction(copyDisplayImageAction = new QAction("Copy display image to clipboard", imageEditor));
-    editMenu->addAction(copyDisplayImageAction);
-    shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C), imageEditor);
-    connect(shortcut, &QShortcut::activated, copyDisplayImageAction, &QAction::trigger);
-    editMenu->addAction(copyDisplayImageAction);
-  }
-
-  viewMenu->addAction(viewGeneralSettingsAction = new QAction("General Settings..."));
-  viewGeneralSettingsAction->setCheckable(true);
-  connect(viewGeneralSettingsAction, &QAction::triggered,
-      this, &ThisClass::onViewGeneralSettings);
-
-
-  connect(copyDisplayImageAction, &QAction::triggered,
-      [this]() {
-        if ( imageEditor && imageEditor->isVisible() ) {
-          imageEditor->copyDisplayImageToClipboard();
-        }
-      });
-
-
-  static const auto enableFileMenuActions =
-      [this]() {
-
-        const bool isvisible =
-            imageEditor->isVisible();
-
-        saveImageAsAction->setEnabled(isvisible && !imageEditor->currentImage().empty());
-        saveDisplayImageAsAction->setEnabled(isvisible && !imageEditor->displayImage().empty());
-        copyDisplayImageAction->setEnabled(isvisible && !imageEditor->displayImage().empty());
-        saveImageMaskAction->setEnabled(isvisible && !imageEditor->currentMask().empty());
-        loadImageMaskAction->setEnabled(isvisible && !imageEditor->currentImage().empty());
-
-        if ( imageStatisticsDialogBox_ && imageStatisticsDialogBox_->isVisible() ) {
-          if ( !isvisible ) {
-            imageStatisticsDialogBox_->setImage(cv::noArray(), cv::noArray());
-          }
-          else {
-            imageStatisticsDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
-          }
-        }
-
-      };
-
-  if ( imageEditor ) {
-    connect(imageEditor, &QImageEditor::currentImageChanged,
-        enableFileMenuActions);
-
-    connect(imageEditor, &QImageViewer::visibilityChanged,
-        enableFileMenuActions);
-  }
-
-  ///////////////////////////////////
-
-  configureImageViewerToolbars();
-  configureTextViewerToolbars();
-  configureCloudViewerToolbars();
-  setupFocusGraph();
-  setupRoiOptions();
   restoreState();
 
-
-#if 1
   imageEditor->set_current_processor(imageProcessorSelector->current_processor());
-
   stacklist_->load();
   stackTreeView->set_stacklist(stacklist_);
 
   QApplication::instance()->installEventFilter(this);
-#endif
 
 }
 
@@ -401,20 +215,6 @@ void MainWindow::updateWindowTittle()
 {
   setWindowTitle("SerStacker");
 }
-
-//void MainWindow::saveGeometry()
-//{
-//  QSettings settings;
-//  settings.setValue("MainWindow/Geometry", Base::saveGeometry());
-//  settings.setValue("MainWindow/State", Base::saveState());
-//}
-//
-//void MainWindow::restoreGeometry()
-//{
-//  QSettings settings;
-//  Base::restoreGeometry(settings.value("MainWindow/Geometry").toByteArray());
-//  Base::restoreState(settings.value("MainWindow/State").toByteArray());
-//}
 
 void MainWindow::saveState()
 {
@@ -443,520 +243,131 @@ void MainWindow::restoreState()
 
 }
 
-void MainWindow::configureTextViewerToolbars()
+void MainWindow::setupMainMenu()
 {
-  QToolBar * toolbar;
-  QAction * action;
-  QLabel * imageNameLabel;
-  QLabel * imageSizeLabel;
-  QShortcut * shortcut;
+  QMenuBar * menuBar =
+      this->menuBar();
 
-  toolbar = textViewer->toolbar();
+  menuBar->setNativeMenuBar(false);
 
-  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
-  action->setToolTip("Load previous image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
-  connect(action, &QAction::triggered, [this]() {
-    if ( thumbnailsView ) {
-      thumbnailsView->selectPrevIcon();
-    }
-  });
+  menuFile_ = menuBar->addMenu("&File");
+  menuEdit_ = menuBar->addMenu("&Edit");
+  menuView_ = menuBar->addMenu("&View");
 
 
-  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
-  action->setToolTip("Load next image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
-  connect(action, &QAction::triggered, [this]() {
-    if ( thumbnailsView ) {
-      thumbnailsView->selectNextIcon();
-    }
-  });
+  //
+  // File
+  //
+
+  menuFile_->addAction(reloadCurrentFileAction_ =
+      createAction(getIcon(ICON_reload),
+          "Reload",
+          "Reload current file from disk (Ctrl+R)",
+          [this]() {
+            QWidget * w = centralStackedWidget->currentWidget();
+            if ( w == imageEditor ) {
+              imageEditor->openImage(imageEditor->currentFileName());
+            }
+            else if ( w == textViewer ) {
+              textViewer->showTextFile(textViewer->currentFileName());
+            }
+            else if ( w == thumbnailsView ) {
+              thumbnailsView->reload();
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_R),
+              this, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  menuFile_->addAction(selectPreviousFileAction_ =
+      createAction(getIcon(ICON_prev),
+          "Previous (Ctrl+PgUp)",
+          "Select previous file (Ctrl+PgUp)",
+          [this]() {
+            thumbnailsView->selectPrevIcon();
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp),
+              this, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  menuFile_->addAction(selectNextFileAction_ =
+      createAction(getIcon(ICON_next),
+          "Next (Ctrl+PgDown)",
+          "Select next file (Ctrl+PgUp)",
+          [this]() {
+            thumbnailsView->selectNextIcon();
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown),
+              this, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  menuFile_->addSeparator();
+
+  saveImageAsAction =
+      menuFile_->addAction("Save current image as...",
+          this, &ThisClass::onSaveCurrentImageAs);
+
+  saveImageAsAction->setEnabled(is_visible(imageEditor) &&
+      !imageEditor->currentImage().empty());
+
+  saveDisplayImageAsAction =
+      menuFile_->addAction("Save current display image as...",
+          this, &ThisClass::onSaveCurrentDisplayImageAs);
+
+  saveDisplayImageAsAction->setEnabled(is_visible(imageEditor) &&
+      !imageEditor->currentImage().empty());
+
+  saveImageMaskAction =
+      menuFile_->addAction("Save current image mask...",
+          this, &ThisClass::onSaveCurrentImageMask);
+
+  saveImageMaskAction->setEnabled(is_visible(imageEditor) &&
+      !imageEditor->currentMask().empty());
+
+  loadImageMaskAction =
+      menuFile_->addAction("Set current image mask from file...",
+          this, &ThisClass::onLoadCurrentImageMask);
+
+  loadImageMaskAction->setEnabled(is_visible(imageEditor) &&
+      !imageEditor->currentImage().empty());
+
+  menuFile_->addSeparator();
+
+  loadStackAction =
+      menuFile_->addAction("Load stack config...",
+          this, &ThisClass::onLoadStackConfig);
 
 
-  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
-  action->setToolTip("Reaload current image from disk");
-  connect(action, &QAction::triggered, [this]() {
-    textViewer->showTextFile(textViewer->currentFileName());
-  });
+  menuFile_->addSeparator();
+
+  quitAppAction =
+      menuFile_->addAction("Quit",
+          this, &ThisClass::close);
 
 
-  toolbar->addSeparator();
+  //
+  // Edit
+  //
 
-
-  toolbar->addWidget(imageNameLabel = new QLabel(""));
-  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-  toolbar->addSeparator();
-
-  const auto onTextViewerCurrentSourceChanged =
-      [this, imageNameLabel] () {
-
-    const QString abspath = textViewer->currentFileName();
-    imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-
-  };
-
-  connect(textViewer, &QTextFileViewer::currentFileNameChanged,
-      onTextViewerCurrentSourceChanged);
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(new QToolbarSpacer());
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
-  action->setShortcut(QKeySequence::Cancel);
-  action->setToolTip("Close window");
-  connect(action, &QAction::triggered, [this]() {
-    textViewer->clear();
-    if ( thumbnailsView ) {
-      centralStackedWidget->setCurrentWidget(thumbnailsView);
-    }
-  });
+  //
+  // View
+  //
+  menuView_->addAction(viewGeneralSettingsAction =
+      createCheckableAction(QIcon(),
+          "General Settings...",
+          "Configure general app options",
+          this, &ThisClass::onViewGeneralSettings));
 
 }
 
 
-void MainWindow::configureImageViewerToolbars()
-{
-  QToolBar * toolbar;
-  QStatusBar * statusbar;
-  QAction * action;
-  QLabel * imageNameLabel;
-  QLabel * imageSizeLabel;
-  QShortcut * shortcut;
-  QScaleSelectionButton * scaleSelectionCtl;
-  QShapesButton * shapesCtl;
-
-  toolbar = imageEditor->embedToolbar();
-  statusbar = imageEditor->embedStatusbar();
-
-  /////////////////////
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
-  action->setToolTip("Load previous image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
-  connect(action, &QAction::triggered, [this]() {
-    if ( thumbnailsView ) {
-      thumbnailsView->selectPrevIcon();
-    }
-  });
-
-  /////////////////////
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
-  action->setToolTip("Load next image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
-  connect(action, &QAction::triggered, [this]() {
-    if ( thumbnailsView ) {
-      thumbnailsView->selectNextIcon();
-    }
-  });
-
-  /////////////////////
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
-  action->setToolTip("Reaload current image from disk");
-  connect(action, &QAction::triggered, [this]() {
-    imageEditor->openImage(imageEditor->currentFileName());
-  });
-
-  /////////////////////
-
-  toolbar->addSeparator();
-
-  /////////////////////
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_dislike), "Bad"));
-  action->setToolTip("Move current image to the .bads subfolder (Ctrl+DEL)");
-  action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Delete));
-  connect(action, &QAction::triggered, [this]() {
-    if ( imageEditor->isVisible() ) {
-      if ( thumbnailsView ) {
-        thumbnailsView->moveToBads(imageEditor->currentFileName());
-      }
-    }
-  });
-
-
-  /////////////////////
-
-  static QIcon badframeIcon;
-  badframeIcon.addPixmap(getPixmap(ICON_frame), QIcon::Normal, QIcon::Off);
-  badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
-  toolbar->addAction(badframeAction = new QAction(badframeIcon, "Bad Frame"));
-  badframeAction->setCheckable(true);
-  badframeAction->setToolTip("Mark/Unmark current frame as bad (Ctrl+A)");
-  badframeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_A));
-
-  connect(badframeAction, &QAction::triggered, [this](bool checked) {
-    if ( imageEditor->isVisible() ) {
-
-      const c_input_sequence::ptr & input_sequence =
-          imageEditor->input_sequence();
-
-      if ( input_sequence ) {
-
-        c_input_source::ptr source =
-            input_sequence->current_source();
-
-        if ( source ) {
-          source->set_badframe(input_sequence->current_pos() - 1, checked);
-          source->save_badframes();
-        }
-      }
-    }
-  });
-
-  connect(imageEditor, &QImageEditor::currentImageChanged,
-      [this]() {
-
-        bool checked = false;
-
-        const c_input_sequence::ptr & input_sequence =
-            imageEditor->input_sequence();
-
-        if ( input_sequence ) {
-
-          c_input_source::ptr source =
-              input_sequence->current_source();
-
-          if ( source ) {
-            checked = source->is_badframe(
-                input_sequence->current_pos() - 1);
-          }
-        }
-
-        if ( badframeAction->isChecked() != checked ) {
-          badframeAction->setChecked(checked);
-        }
-
-        if ( imageStatisticsDialogBox_->isVisible() ) {
-          imageStatisticsDialogBox_->setImage(imageEditor->currentImage(),
-              imageEditor->currentMask());
-        }
-
-      });
-
-  /////////////////////
-
-
-  toolbar->addAction(setReferenceFrameAction = new QAction(getIcon(ICON_reference), "Make reference"));
-  setReferenceFrameAction->setToolTip("Make this frame reference");
-  //  setReferenceFrameAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
-  connect(setReferenceFrameAction, &QAction::triggered, [this]() {
-    if ( imageEditor->isVisible() && stackTreeView->isVisible() ) {
-
-      c_input_source::ptr selectedSource;
-      c_image_stacking_options::ptr selectedStack;
-
-      selectedSource = stackTreeView->getCurrentInputSource(&selectedStack);
-      if ( selectedSource && selectedStack ) {
-        const c_input_sequence::ptr & currentSequence = imageEditor->input_sequence();
-        if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
-          selectedStack->master_frame_options().master_source_path = selectedSource->filename();
-          selectedStack->master_frame_options().master_frame_index = currentSequence->current_pos() - 1;
-        }
-      }
-    }
-  });
-
-  /////////////////////
-
-  toolbar->addSeparator();
-
-
-
-  toolbar->addWidget(imageNameLabel = new QLabel(""));
-  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-  /////////////////////
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(imageSizeLabel = new QLabel(""));
-  imageSizeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-  connect(imageEditor, &QImageEditor::currentImageChanged,
-      [this, imageNameLabel, imageSizeLabel]() {
-
-        const QString abspath = imageEditor->currentFileName();
-        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-        imageSizeLabel->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
-
-        if ( mtfControl && mtfControl->isVisible() ) {
-          if ( imageEditor->currentFileName().isEmpty() ) {
-            mtfControl->setWindowTitle("Adjust Display Levels ...");
-          }
-          else {
-            mtfControl->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-          }
-        }
-      });
-
-  /////////////////////
-
-  toolbar->addSeparator();
-  toolbar->addWidget(new QToolbarSpacer());
-
-  /////////////////////
-
-  toolbar->addAction(editMaskAction = new QAction(getIcon(ICON_mask), "mask"));
-  editMaskAction->setToolTip("View/edit image mask");
-  editMaskAction->setCheckable(true);
-  editMaskAction->setChecked(imageEditor->displayType() == QImageViewer::DisplayMask);
-  //  editMaskAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_M));
-  connect(editMaskAction, &QAction::triggered,
-      [this](bool checked) {
-        if ( imageEditor->isVisible() ) {
-
-          if ( checked ) {
-            createImageViewOptionsControl();
-          }
-          else if ( imageViewOptionsDlgBox )  {
-            delete imageViewOptionsDlgBox;
-            imageViewOptionsDlgBox = nullptr;
-          }
-
-          //imageEditor->setDisplayType(checked ? QImageViewer::DisplayMask : QImageViewer::DisplayImage);
-        }
-      });
-
-
-  /////////////////////
-
-  toolbar->addWidget(shapesCtl = new QShapesButton(this));
-  shapesCtl->setSceneView(imageEditor->sceneView());
-
-
-  /////////////////////
-
-  toolbar->addAction(displaySettingsMenuAction = new QAction(getIcon(ICON_histogram), "Display options..."));
-  displaySettingsMenuAction->setToolTip("Adjust display options");
-  displaySettingsMenuAction->setCheckable(true);
-  displaySettingsMenuAction->setChecked(false);
-  connect(displaySettingsMenuAction, &QAction::triggered,
-      this, &ThisClass::onDisplaySettingsMenuActionClicked);
-
-
-  /////////////////////
-
-  toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton(this));
-  scaleSelectionCtl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
-  connect(scaleSelectionCtl, &QScaleSelectionButton::scaleChanged,
-      [this](int v) {
-        imageEditor->setViewScale(v);
-      });
-
-
-  /////////////////////
-  toolbar->addAction(closeImageViewAction_ = new QAction(getIcon(ICON_close), "Close"));
-  closeImageViewAction_->setShortcut(QKeySequence::Cancel);
-  closeImageViewAction_->setToolTip("Close window");
-  connect(closeImageViewAction_, &QAction::triggered, [this]() {
-    if ( thumbnailsView ) {
-      centralStackedWidget->setCurrentWidget(thumbnailsView);
-    }
-  });
-
-  connect(imageEditor, &QImageFileEditor::onMouseMove,
-      [this, statusbar](QMouseEvent * e) {
-        statusbar->showMessage(imageEditor->statusStringForPixel(e->pos()));
-    });
-
-  /////////////////////
-
-  connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
-      [this, statusbar](QGraphicsItem * item) {
-
-        QGraphicsLineShape * lineShape = nullptr;
-        QGraphicsRectShape * rectShape = nullptr;
-
-        if ( (lineShape = dynamic_cast<QGraphicsLineShape * >(item)) ) {
-
-          const QLineF line = lineShape->sceneLine();
-
-          const QPointF p1 = line.p1();
-          const QPointF p2 = line.p2();
-          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
-          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
-
-          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
-
-        }
-        else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
-
-          const QRectF rect = rectShape->mapToScene(rectShape->rect()).boundingRect();
-          const QPointF p1 = rect.topLeft();
-          const QPointF p2 = rect.bottomRight();
-          const double width = rect.width();
-          const double height = rect.height();
-
-          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
-                  p1.x(), p1.y(), p2.x(), p2.y(), width, height));
-        }
-      });
-}
-
-
-void MainWindow::configureCloudViewerToolbars()
-{
-#if HAVE_QGLViewer
-  QToolBar * toolbar;
-  QAction * action;
-  QLabel * imageNameLabel;
-  QLabel * imageSizeLabel;
-  QShortcut * shortcut;
-
-  toolbar = cloudViewer->toolbar();
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
-  action->setToolTip("Load previous image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
-  connect(action, &QAction::triggered, [this]() {
-    thumbnailsView->selectPrevIcon();
-  });
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
-  action->setToolTip("Load next image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
-  connect(action, &QAction::triggered, [this]() {
-    thumbnailsView->selectNextIcon();
-  });
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
-  action->setToolTip("Reaload current image from disk");
-  connect(action, &QAction::triggered, [this]() {
-    QWaitCursor wait(this);
-    cloudViewer->openPlyFile(cloudViewer->currentFileName());
-  });
-
-
-  toolbar->addSeparator();
-
-
-  toolbar->addWidget(imageNameLabel = new QLabel(""));
-  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-  toolbar->addSeparator();
-
-  const auto onCloudViewerCurrentSourceChanged =
-      [this, imageNameLabel] () {
-        const QString abspath = cloudViewer->currentFileName();
-        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-      };
-
-  connect(cloudViewer, &QCloudViewer::currentFileNameChanged,
-      onCloudViewerCurrentSourceChanged);
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(new QToolbarSpacer());
-
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_options), "Options"));
-  action->setToolTip("Configure cloud view options");
-  action->setCheckable(true);
-  action->setChecked(false);
-  connect(action, &QAction::triggered,
-      [this, action](bool checked) {
-
-        if ( checked && !cloudViewSettingsDialogBox ) {
-
-          cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
-          cloudViewSettingsDialogBox->setCloudViewer(cloudViewer);
-          connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
-              action, &QAction::setChecked);
-        }
-
-        if ( cloudViewSettingsDialogBox ) {
-          if ( !checked ) {
-            cloudViewSettingsDialogBox->hide();
-          }
-          else {
-            cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
-            cloudViewSettingsDialogBox->showNormal();
-          }
-        }
-      });
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
-  action->setShortcut(QKeySequence::Cancel);
-  action->setToolTip("Close window");
-  connect(action, &QAction::triggered, [this]() {
-    cloudViewer->clear();
-    centralStackedWidget->setCurrentWidget(thumbnailsView);
-  });
-
-#endif
-}
-
-void MainWindow::createDisplaySettingsControl()
-{
-  if( !mtfControl ) {
-
-    mtfControl = new QMtfControlDialogBox(this);
-    mtfControl->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
-
-    connect(mtfControl, &QMtfControlDialogBox::visibilityChanged,
-        [this](bool visible) {
-          displaySettingsMenuAction->setChecked(visible);
-        });
-  }
-
-}
-
-void MainWindow::onDisplaySettingsMenuActionClicked(bool checked)
-{
-  if( !checked ) {
-    if( mtfControl && mtfControl->isVisible() ) {
-      mtfControl->hide();
-    }
-  }
-  else {
-    createDisplaySettingsControl();
-    if( !mtfControl->isVisible() ) {
-      mtfControl->show();
-    }
-  }
-}
-
-void MainWindow::createImageViewOptionsControl()
-{
-  if( !imageViewOptionsDlgBox ) {
-
-    imageViewOptionsDlgBox = new QImageViewOptionsDlgBox(this);
-    imageViewOptionsDlgBox->setImageViewer(imageEditor);
-
-    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged,
-        [this](bool visible) {
-          if ( editMaskAction->isChecked() != visible ) {
-            editMaskAction->setChecked(visible);
-          }
-        });
-
-    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
-        [this](int) {
-          delete imageViewOptionsDlgBox;
-          imageViewOptionsDlgBox = nullptr;
-        });
-
-    imageViewOptionsDlgBox->show();
-  }
-}
-
-void MainWindow::setupFileSystemTreeDock()
+void MainWindow::setupFileSystemTreeView()
 {
   fileSystemTreeDock =
       addFileSystemTreeDock(this, Qt::LeftDockWidgetArea,
           "fileSystemTreeDock",
           "Directory Tree",
-          viewMenu);
+          menuView_);
 
   fileSystemTreeDock->raise();
 
@@ -1085,6 +496,522 @@ void MainWindow::setupThumbnailsView()
   }
 }
 
+void MainWindow::setupStackTreeView()
+{
+  stackTreeDock =
+      addSequencesTreeDock(this,
+          Qt::LeftDockWidgetArea,
+          "sequencesTreeDock",
+          "Sequences",
+          menuView_);
+
+  stackTreeView =
+      stackTreeDock->treeView();
+
+  connect(stackTreeView, &QStackTree::currentItemChanged,
+      this, &ThisClass::onStackTreeCurrentItemChanged);
+
+  connect(stackTreeView, &QStackTree::itemDoubleClicked,
+      this, &ThisClass::onStackTreeItemDoubleClicked);
+
+  connect(stackTreeView, &QStackTree::showStackOptionsClicked,
+      this, &ThisClass::onShowStackOptionsClicked);
+
+  connect(stackTreeView, &QStackTree::stackCollectionChanged,
+        this, &ThisClass::saveCurrentWork );
+
+  connect(stackTreeView, &QStackTree::stackSourcesChanged,
+      this, &ThisClass::saveCurrentWork);
+
+  connect(stackTreeView, &QStackTree::stackNameChanged,
+      [this] (const c_image_stacking_options::ptr & stack) {
+        if ( stackOptionsView->currentStack() == stack ) {
+          stackOptionsView->updateControls();
+        }
+        saveCurrentWork();
+      });
+
+}
+
+void MainWindow::setupStackOptionsView()
+{
+  connect(stackOptionsView, &QStackOptions::closeWindowRequested,
+      [this]() {
+        if ( !QStackingThread::isRunning() ) {
+          centralStackedWidget->setCurrentWidget(thumbnailsView);
+        }
+        else {
+          centralStackedWidget->setCurrentWidget(imageEditor);
+          stackProgressView->setImageViewer(imageEditor);
+        }
+      });
+
+  connect(stackOptionsView, &QStackOptions::applyInputOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyInputOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyFrameUpscaleOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyFrameRegistrationOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyFrameAccumulationOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyOutputOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyOutputOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::applyAllStackOptionsToAllRequested,
+      stackTreeView, &QStackTree::applyAllStackOptionsToAll);
+
+  connect(stackOptionsView, &QStackOptions::stackNameChanged,
+      [this](const c_image_stacking_options::ptr & stack) {
+        stackTreeView->updateStackName(stack);
+        saveCurrentWork();
+      });
+
+  connect(stackOptionsView, &QStackOptions::stackOptionsChanged,
+      this, &ThisClass::saveCurrentWork);
+}
+
+void MainWindow::setupImageProcessorSelector()
+{
+  imageProcessorSelectorDock =
+      addCustomDock(this,
+          Qt::LeftDockWidgetArea,
+          "imageProcessorSettingsDock",
+          "Image Processing",
+          imageProcessorSelector = new QImageProcessorSelector(this),
+          menuView_);
+
+  connect(imageProcessorSelector, &QImageProcessorSelector::parameterChanged,
+      [this]() {
+        if ( imageEditor ) {
+          imageEditor->set_current_processor(imageProcessorSelector->current_processor());
+        }
+      });
+}
+
+void MainWindow::setupImageEditor()
+{
+  QToolBar *toolbar;
+  QStatusBar *statusbar;
+
+  toolbar = imageEditor->embedToolbar();
+  statusbar = imageEditor->embedStatusbar();
+
+  imageEditor->addAction(copyDisplayImageAction =
+      createAction(QIcon(),
+          "Copy display image to clipboard (Ctrl+c)",
+          "Copy display image to clipboard (Ctrl+c)",
+          [this]() {
+            imageEditor->copyDisplayImageToClipboard();
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+              imageEditor, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  menuEdit_->addAction(copyDisplayImageAction);
+
+  connect(imageEditor, &QImageEditor::currentImageChanged,
+      this, &ThisClass::onImageEditorCurrentImageChanged);
+
+  connect(imageEditor, &QImageViewer::visibilityChanged,
+      this, &ThisClass::onImageEditorVisibilityChanged);
+
+
+  ///
+  /// Configure image editor toolbar
+  ///
+
+  static QIcon badframeIcon;
+  if( badframeIcon.isNull() ) {
+    badframeIcon.addPixmap(getPixmap(ICON_frame), QIcon::Normal, QIcon::Off);
+    badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
+  }
+
+  toolbar->addAction(selectPreviousFileAction_);
+  toolbar->addAction(selectNextFileAction_);
+  toolbar->addAction(reloadCurrentFileAction_);
+
+  toolbar->addSeparator();
+
+  toolbar->addAction(createAction(getIcon(ICON_dislike),
+      "Bad",
+      "Move current image to the .bads subfolder (Ctrl+DEL)",
+      [this]() {
+        thumbnailsView->moveToBads(imageEditor->currentFileName());
+      },
+      new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Delete),
+          imageEditor, nullptr, nullptr,
+          Qt::WindowShortcut)));
+
+  toolbar->addAction(badframeAction =
+      createCheckableAction(badframeIcon,
+          "Bad Frame",
+          "Mark / Unmark current frame as bad (Ctrl+A)",
+          [this](bool checked) {
+            if ( imageEditor->isVisible() ) {
+
+              const c_input_sequence::ptr & input_sequence = imageEditor->input_sequence();
+              if ( input_sequence ) {
+
+                c_input_source::ptr source = input_sequence->current_source();
+                if ( source ) {
+                  source->set_badframe(input_sequence->current_pos() - 1, checked);
+                  source->save_badframes();
+                }
+              }
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_A),
+              imageEditor, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  toolbar->addAction(setReferenceFrameAction =
+      createAction(getIcon(ICON_reference),
+          "Make reference",
+          "Make this frame reference",
+          [this]() {
+            if ( imageEditor->isVisible() && stackTreeView->isVisible() ) {
+
+              c_input_source::ptr selectedSource;
+              c_image_stacking_options::ptr selectedStack;
+
+              selectedSource = stackTreeView->getCurrentInputSource(&selectedStack);
+              if ( selectedSource && selectedStack ) {
+                const c_input_sequence::ptr & currentSequence = imageEditor->input_sequence();
+                if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
+                  selectedStack->master_frame_options().master_source_path = selectedSource->filename();
+                  selectedStack->master_frame_options().master_frame_index = currentSequence->current_pos() - 1;
+                }
+              }
+            }
+          }));
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(imageNameLabel_ctl = new QLabel(""));
+  imageNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(imageSizeLabel_ctl = new QLabel(""));
+  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  toolbar->addSeparator();
+  toolbar->addWidget(new QToolbarSpacer());
+
+  toolbar->addAction(editMaskAction =
+      createCheckableAction(getIcon(ICON_mask),
+          "Mask",
+          "View / Edit image mask",
+          [this](bool checked) {
+            if ( imageEditor->isVisible() ) {
+
+              if ( checked ) {
+                createImageViewOptionsControl();
+              }
+              else if ( imageViewOptionsDlgBox ) {
+                delete imageViewOptionsDlgBox;
+                imageViewOptionsDlgBox = nullptr;
+              }
+            }
+          }));
+
+  toolbar->addWidget(shapesCtl =
+      new QShapesButton(imageEditor->sceneView(),
+          this));
+
+  toolbar->addAction(displaySettingsMenuAction =
+      createCheckableAction(getIcon(ICON_histogram),
+          "Display options...",
+          "Adjust display options",
+          this, &ThisClass::onDisplaySettingsMenuActionClicked));
+
+  toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton(this));
+  scaleSelectionCtl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
+  connect(scaleSelectionCtl, &QScaleSelectionButton::scaleChanged,
+      [this](int v) {
+        imageEditor->setViewScale(v);
+      });
+
+  toolbar->addAction(closeImageViewAction_ =
+      createAction(getIcon(ICON_close),
+          "Close",
+          "Close window",
+          [this]() {
+            centralStackedWidget->setCurrentWidget(thumbnailsView);
+          },
+          new QShortcut(QKeySequence::Cancel,
+              imageEditor, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  connect(imageEditor, &QImageFileEditor::onMouseMove,
+      [this, statusbar](QMouseEvent * e) {
+        statusbar->showMessage(imageEditor->statusStringForPixel(e->pos()));
+      });
+
+  connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
+      [this, statusbar](QGraphicsItem * item) {
+
+        QGraphicsLineShape * lineShape = nullptr;
+        QGraphicsRectShape * rectShape = nullptr;
+
+        if ( (lineShape = dynamic_cast<QGraphicsLineShape * >(item)) ) {
+
+          const QLineF line = lineShape->sceneLine();
+
+          const QPointF p1 = line.p1();
+          const QPointF p2 = line.p2();
+          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+
+          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+
+        }
+        else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
+
+          const QRectF rect = rectShape->mapToScene(rectShape->rect()).boundingRect();
+          const QPointF p1 = rect.topLeft();
+          const QPointF p2 = rect.bottomRight();
+          const double width = rect.width();
+          const double height = rect.height();
+
+          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
+                  p1.x(), p1.y(), p2.x(), p2.y(), width, height));
+        }
+      });
+
+}
+
+
+void MainWindow::setupTextViewer()
+{
+  QToolBar *toolbar;
+  QLabel *imageNameLabel;
+  QLabel *imageSizeLabel;
+
+  toolbar = textViewer->toolbar();
+
+  toolbar->addAction(selectPreviousFileAction_);
+  toolbar->addAction(selectNextFileAction_);
+  toolbar->addAction(reloadCurrentFileAction_);
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(imageNameLabel = new QLabel(""));
+  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  toolbar->addSeparator();
+
+  const auto onTextViewerCurrentSourceChanged =
+      [this, imageNameLabel]() {
+
+        const QString abspath = textViewer->currentFileName();
+        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+
+      };
+
+  connect(textViewer, &QTextFileViewer::currentFileNameChanged,
+      onTextViewerCurrentSourceChanged);
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(new QToolbarSpacer());
+
+  toolbar->addAction(createAction(getIcon(ICON_close),
+      "Close",
+      "Close window",
+      [this]() {
+        textViewer->clear();
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      },
+      new QShortcut(QKeySequence::Cancel,
+          textViewer, nullptr, nullptr,
+          Qt::WindowShortcut)));
+
+}
+
+
+void MainWindow::onImageEditorCurrentImageChanged()
+{
+  const bool isvisible =
+      imageEditor->isVisible();
+
+  onImageEditorVisibilityChanged(isvisible);
+
+  if ( isvisible ) {
+
+    const QString abspath =
+        imageEditor->currentFileName();
+
+    imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+    imageSizeLabel_ctl->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
+
+    if ( is_visible(mtfControl) ) {
+      if ( imageEditor->currentFileName().isEmpty() ) {
+        mtfControl->setWindowTitle("Adjust Display Levels ...");
+      }
+      else {
+        mtfControl->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+      }
+    }
+  }
+}
+
+void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
+{
+  const bool hasimage =
+      !imageEditor->currentImage().empty();
+
+  const bool hasmask =
+      !imageEditor->currentMask().empty();
+
+  const bool hasdisplayimage =
+      !imageEditor->displayImage().empty();
+
+  saveImageAsAction->setEnabled(isvisible && hasimage);
+  saveDisplayImageAsAction->setEnabled(isvisible && hasdisplayimage);
+  copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
+  saveImageMaskAction->setEnabled(isvisible && hasmask);
+  loadImageMaskAction->setEnabled(isvisible && hasimage);
+
+  if( is_visible(measureDialogBox_) ) {
+    if( !isvisible ) {
+      measureDialogBox_->setImage(cv::noArray(), cv::noArray());
+    }
+    else {
+      measureDialogBox_->setImage(imageEditor->currentImage(),
+          imageEditor->currentMask());
+    }
+  }
+
+  bool check_badframe_action = false;
+
+  if( isvisible ) {
+
+    const c_input_sequence::ptr &input_sequence =
+        imageEditor->input_sequence();
+
+    if( input_sequence ) {
+
+      c_input_source::ptr source =
+          input_sequence->current_source();
+
+      if( source ) {
+        check_badframe_action =
+            source->is_badframe(input_sequence->current_pos() - 1);
+      }
+    }
+  }
+
+  if( badframeAction->isChecked() != check_badframe_action ) {
+    badframeAction->setChecked(check_badframe_action);
+  }
+}
+
+
+void MainWindow::stupCloudViewer()
+{
+#if HAVE_QGLViewer
+  QToolBar * toolbar;
+  QAction * action;
+  QLabel * imageNameLabel_ctl;
+  QLabel * imageSizeLabel_ctl;
+  QShortcut * shortcut;
+
+  toolbar = cloudViewer->toolbar();
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
+  action->setToolTip("Load previous image from list");
+  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
+  connect(action, &QAction::triggered, [this]() {
+    thumbnailsView->selectPrevIcon();
+  });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
+  action->setToolTip("Load next image from list");
+  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
+  connect(action, &QAction::triggered, [this]() {
+    thumbnailsView->selectNextIcon();
+  });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
+  action->setToolTip("Reaload current image from disk");
+  connect(action, &QAction::triggered, [this]() {
+    QWaitCursor wait(this);
+    cloudViewer->openPlyFile(cloudViewer->currentFileName());
+  });
+
+
+  toolbar->addSeparator();
+
+
+  toolbar->addWidget(imageNameLabel_ctl = new QLabel(""));
+  imageNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  toolbar->addSeparator();
+
+  const auto onCloudViewerCurrentSourceChanged =
+      [this, imageNameLabel_ctl] () {
+        const QString abspath = cloudViewer->currentFileName();
+        imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+      };
+
+  connect(cloudViewer, &QCloudViewer::currentFileNameChanged,
+      onCloudViewerCurrentSourceChanged);
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(new QToolbarSpacer());
+
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_options), "Options"));
+  action->setToolTip("Configure cloud view options");
+  action->setCheckable(true);
+  action->setChecked(false);
+  connect(action, &QAction::triggered,
+      [this, action](bool checked) {
+
+        if ( checked && !cloudViewSettingsDialogBox ) {
+
+          cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
+          cloudViewSettingsDialogBox->setCloudViewer(cloudViewer);
+          connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
+              action, &QAction::setChecked);
+        }
+
+        if ( cloudViewSettingsDialogBox ) {
+          if ( !checked ) {
+            cloudViewSettingsDialogBox->hide();
+          }
+          else {
+            cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
+            cloudViewSettingsDialogBox->showNormal();
+          }
+        }
+      });
+
+
+  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
+  action->setShortcut(QKeySequence::Cancel);
+  action->setToolTip("Close window");
+  connect(action, &QAction::triggered, [this]() {
+    cloudViewer->clear();
+    centralStackedWidget->setCurrentWidget(thumbnailsView);
+  });
+
+#endif
+}
+
 void MainWindow::setupFocusGraph()
 {
   focusMeasure_ =
@@ -1096,7 +1023,7 @@ void MainWindow::setupFocusGraph()
           "focusGraphDock_",
           "Focus Graph",
           focusGraph_ = new QFocusGraph(this),
-          viewMenu);
+          menuView_);
 
   focusGraphDock_->hide();
   focusGraph_->setFocusMeasureProvider(focusMeasure_);
@@ -1144,11 +1071,11 @@ void MainWindow::setupRoiOptions()
 
   ///
 
-  imageStatisticsDialogBox_ =
+  measureDialogBox_ =
       new QImageStatisticsDisplayDialogBox("Measure...",
           this);
 
-  imageStatisticsDialogBox_->display()->loadParameters();
+  measureDialogBox_->display()->loadParameters();
 
 
   roiActionsMenu_.addAction(action =
@@ -1156,19 +1083,19 @@ void MainWindow::setupRoiOptions()
           "Measure..",
           "Measure image statistics in selected ROI",
           [this](bool checked) {
-            imageStatisticsDialogBox_->setVisible(checked);
+            measureDialogBox_->setVisible(checked);
           }));
 
-  connect(imageStatisticsDialogBox_, &QImageStatisticsDisplayDialogBox::visibilityChanged,
+  connect(measureDialogBox_, &QImageStatisticsDisplayDialogBox::visibilityChanged,
       [this, action](bool visible) {
         action->setChecked(visible);
         if ( !visible ) {
-          imageStatisticsDialogBox_->setImage(cv::noArray(), cv::noArray());
+          measureDialogBox_->setImage(cv::noArray(), cv::noArray());
         }
         else {
           imageEditor->roiRectShape()->setVisible(true);
-          imageStatisticsDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
-          imageStatisticsDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
+          measureDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
+          measureDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
         }
       });
 
@@ -1180,8 +1107,8 @@ void MainWindow::setupRoiOptions()
         QGraphicsRectShape * shape =
             imageEditor->roiRectShape();
 
-        if ( imageStatisticsDialogBox_->isVisible() ) {
-          imageStatisticsDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
+        if ( measureDialogBox_->isVisible() ) {
+          measureDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
         }
 
         const QRectF rc =
@@ -1196,7 +1123,7 @@ void MainWindow::setupRoiOptions()
 
   ///
 
-  QToolBar * toolbar = imageEditor->embedToolbar();
+  QToolBar * toolbar = imageEditor->toolbar();
   if ( toolbar ) {
 
     showRoiAction_ =
@@ -1214,6 +1141,62 @@ void MainWindow::setupRoiOptions()
   }
 
 }
+
+
+void MainWindow::createDisplaySettingsControl()
+{
+  if( !mtfControl ) {
+
+    mtfControl = new QMtfControlDialogBox(this);
+    mtfControl->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+
+    connect(mtfControl, &QMtfControlDialogBox::visibilityChanged,
+        [this](bool visible) {
+          displaySettingsMenuAction->setChecked(visible);
+        });
+  }
+
+}
+
+void MainWindow::onDisplaySettingsMenuActionClicked(bool checked)
+{
+  if( !checked ) {
+    if( mtfControl && mtfControl->isVisible() ) {
+      mtfControl->hide();
+    }
+  }
+  else {
+    createDisplaySettingsControl();
+    if( !mtfControl->isVisible() ) {
+      mtfControl->show();
+    }
+  }
+}
+
+void MainWindow::createImageViewOptionsControl()
+{
+  if( !imageViewOptionsDlgBox ) {
+
+    imageViewOptionsDlgBox = new QImageViewOptionsDlgBox(this);
+    imageViewOptionsDlgBox->setImageViewer(imageEditor);
+
+    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged,
+        [this](bool visible) {
+          if ( editMaskAction->isChecked() != visible ) {
+            editMaskAction->setChecked(visible);
+          }
+        });
+
+    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
+        [this](int) {
+          delete imageViewOptionsDlgBox;
+          imageViewOptionsDlgBox = nullptr;
+        });
+
+    imageViewOptionsDlgBox->show();
+  }
+}
+
 
 void MainWindow::openImage(const QString & abspath)
 {

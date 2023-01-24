@@ -13,8 +13,8 @@
 
 class QStackTreeView;
 
-class QStackTree
-  : public QWidget
+class QStackTree :
+    public QWidget
 {
   Q_OBJECT;
 public:
@@ -100,12 +100,10 @@ protected:
     ProcessSingleStack,
     ProcessBatch,
   } currentProcessingMode_ = ProcessIdle;
-
-  //bool updatingControls_ = false;
 };
 
-class QStackTreeView
-    : public QTreeWidget
+class QStackTreeView :
+    public QTreeWidget
 {
   Q_OBJECT;
 public:

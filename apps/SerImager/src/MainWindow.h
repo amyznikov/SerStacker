@@ -20,7 +20,6 @@
 #include "QCameraFrameDisplay.h"
 #include "QCameraFocusMeasure.h"
 
-#define HAVE_INDIGO 1
 #if HAVE_INDIGO
 # include "focus/indigo/QIndigoFocuserWidget.h"
 #endif

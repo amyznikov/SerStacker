@@ -690,21 +690,27 @@ void QStackTreeView::dropEvent(QDropEvent *e)
   Qt::DropAction action = Qt::IgnoreAction;
 
 
-  if ( !e->mimeData()->hasUrls() ) {
+  if( !e->mimeData()->hasUrls() ) {
     return;
   }
 
-  if ( (selectedItem = Base::itemAt(e->pos())) ) {
-    switch ( selectedItem->type() ) {
-    case ItemType_Stack :
-      stackItem = dynamic_cast<QStackItem *>(selectedItem);
-      break;
-    case ItemType_InputSource :
-      stackItem = dynamic_cast<QStackItem *>(selectedItem->parent());
-      break;
-    default :
-      CF_DEBUG("selectedItem->type()=%d", selectedItem->type());
-      break;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  const QPoint epos = e->position().toPoint();
+#else
+  const QPoint epos = e->pos();
+#endif
+
+  if( (selectedItem = Base::itemAt(epos)) ) {
+    switch (selectedItem->type()) {
+      case ItemType_Stack:
+        stackItem = dynamic_cast<QStackItem*>(selectedItem);
+        break;
+      case ItemType_InputSource:
+        stackItem = dynamic_cast<QStackItem*>(selectedItem->parent());
+        break;
+      default:
+        CF_DEBUG("selectedItem->type()=%d", selectedItem->type());
+        break;
     }
   }
 
@@ -712,7 +718,13 @@ void QStackTreeView::dropEvent(QDropEvent *e)
       setUpdatingControls(true);
 
 
-  if ( stackItem || (e->keyboardModifiers() & Qt::ControlModifier) ) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  const Qt::KeyboardModifiers keyboardModifiers = e->modifiers();
+#else
+  const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
+#endif
+
+  if ( stackItem || (keyboardModifiers & Qt::ControlModifier) ) {
     //
     // Add dropped items to single stack
     //
@@ -888,7 +900,13 @@ bool QStackTreeView::dropSource(QDropEvent *e, const QUrl & url, QStackItem * ta
           }
           else if ( target_sequence->indexof(source_file_name) < 0 ) {
 
-            if ( !(e->keyboardModifiers() & Qt::ControlModifier) ) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+            const Qt::KeyboardModifiers keyboardModifiers = e->modifiers();
+#else
+            const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
+#endif
+
+            if( !(keyboardModifiers & Qt::ControlModifier) ) {
               sourceStackItem->removeChild(inputSourceItem);
               source_sequence->remove_source(sourceIndex);
               delete inputSourceItem;
@@ -929,9 +947,15 @@ int QStackTreeView::dropSources(QDropEvent *e, QStackItem * targetStackItem, QTr
     targetSourceItem = dynamic_cast<QStackTreeView::QInputSourceItem * >(targetItem);
   }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  const Qt::KeyboardModifiers keyboardModifiers = e->modifiers();
+#else
+  const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
+#endif
 
   const QList<QUrl> urls = e->mimeData()->urls();
-  const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
+
+
 
   bool drop_confirmed = false;
 

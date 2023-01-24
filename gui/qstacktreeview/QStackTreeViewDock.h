@@ -12,8 +12,8 @@
 #include <gui/qcustomdock/QCustomDock.h>
 #include "QStackTree.h"
 
-class QStackTreeViewDock
-    : public QCustomDockWidget
+class QStackTreeViewDock :
+    public QCustomDockWidget
 {
   Q_OBJECT;
 public:
@@ -21,13 +21,13 @@ public:
   typedef QCustomDockWidget Base;
 
   QStackTreeViewDock(const QString &title,
-      QWidget * parent = Q_NULLPTR);
+      QWidget * parent = nullptr);
 
 
-  QStackTree * sequencesView() const;
+  QStackTree * treeView() const;
 
 protected:
-  QStackTree * sequencesView_ = Q_NULLPTR;
+  QStackTree * treeView_ = nullptr;
 };
 
 

@@ -18,9 +18,11 @@
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include <gui/qimageview/QImageViewOptions.h>
+#include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qfocus/QFocusGraph.h>
 #include <gui/qimagestats/QImageStatistics.h>
+#include <gui/widgets/QScaleSelectionButton.h>
 #include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
@@ -46,19 +48,22 @@ public:
   ~MainWindow();
 
 private:
-  //void saveGeometry();
-  //void restoreGeometry();
   void saveState();
   void restoreState();
-  void configureImageViewerToolbars();
-  void configureTextViewerToolbars();
-  void configureCloudViewerToolbars();
-  void createDisplaySettingsControl();
-  void createImageViewOptionsControl();
-  void setupFileSystemTreeDock();
+  void setupMainMenu();
+  void setupFileSystemTreeView();
   void setupThumbnailsView();
+  void setupStackTreeView();
+  void setupStackOptionsView();
+  void setupImageProcessorSelector();
+  void setupImageEditor();
+  void setupTextViewer();
+  void stupCloudViewer();
   void setupFocusGraph();
   void setupRoiOptions();
+
+  void createDisplaySettingsControl();
+  void createImageViewOptionsControl();
   bool eventFilter(QObject *watched, QEvent *event) override;
 
 public Q_SLOTS:
@@ -72,6 +77,8 @@ public Q_SLOTS:
 private Q_SLOTS:
   void updateWindowTittle();
   void openImage(const QString & abspath);
+  void onImageEditorCurrentImageChanged();
+  void onImageEditorVisibilityChanged(bool visible);
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
   void onStackTreeCurrentItemChanged(const c_image_stacking_options::ptr & currentStack,
@@ -123,13 +130,13 @@ private:
   QAction * showRoiAction_ = nullptr;
   QToolButton * roiActionsButton_ = nullptr;
   QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
-  QImageStatisticsDisplayDialogBox * imageStatisticsDialogBox_ = nullptr;
+  QImageStatisticsDisplayDialogBox * measureDialogBox_ = nullptr;
   QMenu roiActionsMenu_;
 
 
-  QMenu * fileMenu = nullptr;
-  QMenu * viewMenu = nullptr;
-  QMenu * editMenu = nullptr;
+  QMenu * menuFile_ = nullptr;
+  QMenu * menuEdit_ = nullptr;
+  QMenu * menuView_ = nullptr;
 
   QAction * quitAppAction = nullptr;
   QAction * saveImageAsAction = nullptr;
@@ -144,6 +151,15 @@ private:
   QAction * badframeAction = nullptr;
   QAction * viewGeneralSettingsAction = nullptr;
   QAction * closeImageViewAction_ = nullptr;
+
+  QAction * selectPreviousFileAction_ = nullptr;
+  QAction * selectNextFileAction_ = nullptr;
+  QAction * reloadCurrentFileAction_ = nullptr;
+
+  QLabel * imageNameLabel_ctl = nullptr;
+  QLabel * imageSizeLabel_ctl = nullptr;
+  QScaleSelectionButton * scaleSelectionCtl = nullptr;
+  QShapesButton * shapesCtl = nullptr;
 
 };
 

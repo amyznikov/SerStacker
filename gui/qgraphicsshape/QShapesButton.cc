@@ -27,8 +27,9 @@ static QIcon line_icon;
 static QIcon rectangle_icon;
 static QIcon delete_icon;
 
-QShapesButton::QShapesButton(QWidget * parent)
-  : Base(parent)
+
+QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
+    Base(parent)
 {
   Q_INIT_RESOURCE(qimageview_resources);
 
@@ -187,6 +188,14 @@ QShapesButton::QShapesButton(QWidget * parent)
 
   setPopupMode(QToolButton::MenuButtonPopup);
   setMenu(&popup_);
+
+  setSceneView(view);
+}
+
+
+QShapesButton::QShapesButton(QWidget * parent) :
+    ThisClass(nullptr, parent)
+{
 }
 
 void QShapesButton::setSceneView(QGraphicsView * sceneView)

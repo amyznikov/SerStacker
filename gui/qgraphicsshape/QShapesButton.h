@@ -19,7 +19,8 @@ public:
   typedef QShapesButton ThisClass;
   typedef QToolButton Base;
 
-  QShapesButton(QWidget * parent = Q_NULLPTR);
+  QShapesButton(QWidget * parent = nullptr);
+  QShapesButton(QGraphicsView * view, QWidget * parent = nullptr);
 
   void setSceneView(QGraphicsView * view);
   QGraphicsView * sceneView() const;

@@ -29,17 +29,6 @@ endif()
 
 file(GLOB_RECURSE CURRENT_SOURCES *.c *.cc *.cpp)
 file(GLOB_RECURSE CURRENT_HEADERS *.h *.hpp)
-#file(GLOB_RECURSE QRC_FILES *.qrc)
-#
-#foreach(QRC_FILE ${QRC_FILES})
-#	if ( "${QT_VERSION}" STREQUAL "6" )
-#		message("XXXXX qt6_add_resources(${QRC_FILE}")
-#		qt6_add_resources(CURRENT_SOURCES ${QRC_FILE})
-#	else()
-#		message("XXXXX qt5_add_resources(${QRC_FILE}")
-#		qt5_add_resources(CURRENT_SOURCES ${QRC_FILE})
-#	endif()
-#endforeach()
 
 
 target_sources(${PROJECT_NAME} PRIVATE ${CURRENT_SOURCES} ${CURRENT_HEADERS} )

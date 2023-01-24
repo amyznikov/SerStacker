@@ -58,9 +58,7 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
   connect(view_, &QImageSceneView::scaleChanged,
       this, &ThisClass::onScaleChanged);
 
-
-
-  undoEditMaskActionShortcut_ = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Z), this);
+  undoEditMaskActionShortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), this);
   connect(undoEditMaskActionShortcut_, &QShortcut::activated,
       this, &ThisClass::undoEditMask);
 }

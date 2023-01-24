@@ -8,6 +8,7 @@
 #include "QPointCloud.h"
 #include <core/debug.h>
 
+#if HAVE_QGLViewer // Should come from CMakeLists.txt
 
 bool loadPlyFile(const QString & filename, QPointCloud * cloud)
 {
@@ -104,3 +105,6 @@ __end :
   return cloud;
 
 }
+
+
+#endif // HAVE_QGLViewer

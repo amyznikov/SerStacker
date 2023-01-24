@@ -54,8 +54,13 @@ protected:
   void mouseMoveEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
-  void enterEvent(QEvent *event) override;
   void leaveEvent(QEvent *event) override;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  void enterEvent(QEnterEvent *event) override;
+#else
+  void enterEvent(QEvent *event) override;
+#endif
+
 
 protected:
   QPoint prevMouseScrollPos_;

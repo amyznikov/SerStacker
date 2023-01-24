@@ -273,11 +273,19 @@ void QImageSceneView::mouseDoubleClickEvent(QMouseEvent *e)
   Q_EMIT onMouseDoubleClick(e);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+void QImageSceneView::enterEvent(QEnterEvent *e)
+{
+  Base::enterEvent(e);
+  Q_EMIT onMouseEnterEvent(e);
+}
+#else
 void QImageSceneView::enterEvent(QEvent *e)
 {
   Base::enterEvent(e);
   Q_EMIT onMouseEnterEvent(e);
 }
+#endif
 
 void QImageSceneView::leaveEvent(QEvent *e)
 {
@@ -285,140 +293,3 @@ void QImageSceneView::leaveEvent(QEvent *e)
   Q_EMIT onMouseLeaveEvent(e);
 }
 
-//
-//void QImageSceneView::setShapesVisible(bool v)
-//{
-//  shapesVisible_ = v;
-//
-//  QImageScene * scene = imageScene();
-//  if( scene ) {
-//
-//    const QList<QGraphicsItem*> items =
-//        scene->items();
-//
-//    const QGraphicsPixmapItem * bgitem =
-//        scene->pixmap();
-//
-//    for( QGraphicsItem *item : items ) {
-//      if( item != bgitem ) {
-//        item->setVisible(v);
-//      }
-//    }
-//
-//    update();
-//  }
-//}
-
-//bool QImageSceneView::shapesVisible() const
-//{
-//  return shapesVisible_;
-//}
-
-//void QImageSceneView::deleteAllShapes()
-//{
-//  QImageScene * scene = imageScene();
-//  if( scene ) {
-//
-//    const QList<QGraphicsItem*> items = scene->items();
-//    const QGraphicsPixmapItem *bgitem = scene->pixmap();
-//
-//    for( QGraphicsItem *item : items ) {
-//      if( item != bgitem ) {
-//        QGraphicsShape *shape =
-//            dynamic_cast<QGraphicsShape*>(item);
-//        if( shape ) {
-//          Q_EMIT graphicsShapeDeleted(shape);
-//        }
-//        delete item;
-//      }
-//    }
-//    update();
-//  }
-//}
-
-//void QImageSceneView::addLineShape()
-//{
-//  QImageScene * scene = imageScene();
-//  if ( scene ) {
-//
-//    QPen pen(Qt::yellow);
-//    pen.setWidth(1);
-//    pen.setCosmetic(true);
-//
-//    const QRect viewrect =
-//        this->rect();
-//
-//    const QPointF viewCenterOnScene =
-//        mapToScene(viewrect.center());
-//
-//    QRectF rc(0, 0, 64, 64);
-//
-//    QGraphicsLineShape * item =
-//        new QGraphicsLineShape(rc.x(), rc.y(),
-//            rc.width(), rc.height());
-//
-//    item->setPen(pen);
-//
-//    item->setFlags(item->flags()
-//        | QGraphicsItem::ItemIsMovable
-//        | QGraphicsItem::ItemSendsGeometryChanges
-//        | QGraphicsItem::ItemSendsScenePositionChanges
-//        /*| QGraphicsItem::ItemIsSelectable*/
-//        /*| QGraphicsItem::ItemIsFocusable*/);
-//
-//
-//    item->setPos(viewCenterOnScene.x() - rc.width() / 2,
-//        viewCenterOnScene.y() - rc.height() / 2);
-//
-//    scene->addItem(item);
-//    update();
-//
-//    connect(item, &QGraphicsShape::itemChanged,
-//        this, &ThisClass::graphicsShapeChanged);
-//
-//    Q_EMIT graphicsShapeAdded(item);
-//  }
-//
-//}
-//
-//void QImageSceneView::addRectShape()
-//{
-//  QImageScene * scene = imageScene();
-//  if ( scene ) {
-//
-//    QPen pen(Qt::yellow);
-//    pen.setWidth(1);
-//    pen.setCosmetic(true);
-//
-//    const QRect viewrect =
-//        this->rect();
-//
-//    const QPointF viewCenterOnScene =
-//        mapToScene(viewrect.center());
-//
-//    QRectF rc(0, 0, 64, 64);
-//
-//    QGraphicsRectShape * item =
-//        new QGraphicsRectShape(rc);
-//
-//    item->setPen(pen);
-//
-//    item->setFlags(item->flags()
-//        | QGraphicsItem::ItemIsMovable
-//        | QGraphicsItem::ItemSendsGeometryChanges
-//        | QGraphicsItem::ItemSendsScenePositionChanges
-//        /*| QGraphicsItem::ItemIsSelectable */
-//        /*| QGraphicsItem::ItemIsFocusable*/);
-//
-//    item->setPos(viewCenterOnScene.x() - item->rect().width() / 2,
-//        viewCenterOnScene.y() - item->rect().height() / 2);
-//
-//    scene->addItem(item);
-//    update();
-//
-//    connect(item, &QGraphicsShape::itemChanged,
-//        this, &ThisClass::graphicsShapeChanged);
-//
-//    Q_EMIT graphicsShapeAdded(item);
-//  }
-//}

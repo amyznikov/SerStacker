@@ -13,16 +13,14 @@ QImageFileEditor::QImageFileEditor(QImageScene * scene, QWidget * parent) :
   Base(scene, parent)
 {
   input_sequence_ = c_input_sequence::create();
-  //input_sequence_->set_auto_debayer(DEBAYER_GB);
   input_sequence_->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence_->set_auto_apply_color_matrix(true);
 
-  Base::layout_->insertWidget(2, playControls =
+  Base::layout_->addWidget(playControls =
       new QPlaySequenceControl(this));
 
   connect(playControls, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
-
 }
 
 QImageFileEditor::QImageFileEditor(QWidget * parent) :
@@ -82,13 +80,13 @@ void QImageFileEditor::openImages(const QStringList & pathfilenames)
 
 void QImageFileEditor::closeCurrentSequence()
 {
-  if ( playControls->state() != QPlaySequenceControl::Stopped ) {
+  if( playControls->state() != QPlaySequenceControl::Stopped ) {
     playControls->setState(QPlaySequenceControl::Stopped);
   }
 
   playControls->hide();
 
-  if ( input_sequence_->is_open() ) {
+  if( input_sequence_->is_open() ) {
     input_sequence_->close(true);
   }
 
@@ -118,7 +116,7 @@ void QImageFileEditor::startDisplay()
     return;
   }
 
-  if ( num_frames > 1 ) {
+  if( num_frames > 1 ) {
     playControls->show();
     playControls->setSeekRange(0, num_frames - 1);
     playControls->setCurpos(0);

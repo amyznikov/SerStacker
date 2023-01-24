@@ -17,13 +17,10 @@ endif()
 message(STATUS "v4l2: ${V4L2_INCLUDES} ${V4LCONVERT_INCLUDES};  ${V4LCONVERT_LIB} ${V4L2_LIB}")
 
 
-file(GLOB_RECURSE CURRENT_SOURCES *.c *.cc *.cpp)
-file(GLOB_RECURSE CURRENT_HEADERS *.h *.hpp)
+file(GLOB_RECURSE SOURCES *.c *.cc *.cpp)
+file(GLOB_RECURSE HEADERS *.h *.hpp)
 file(GLOB QRC_FILES *.qrc )
-foreach(QRC_FILE ${QRC_FILES})
-	qt5_add_resources(CURRENT_RESOURCES ${QRC_FILE})
-endforeach()
 
-target_sources(${PROJECT_NAME} PRIVATE ${CURRENT_SOURCES} ${CURRENT_HEADERS})
+target_sources(${PROJECT_NAME} PRIVATE ${SOURCES} ${HEADERS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${V4LCONVERT_LIB} ${V4L2_LIB})
 

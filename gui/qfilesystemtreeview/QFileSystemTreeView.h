@@ -12,8 +12,11 @@
 #define ___QFileSystemTreeView__h___
 
 #include <QtWidgets/QtWidgets>
-#include <QtWidgets/QFileSystemModel>
-
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+# include <QtGui/QFileSystemModel>
+#else
+# include <QtWidgets/QFileSystemModel>
+#endif
 
 class QFileSystemTreeView;
 class QFileSystemCustomTreeView;

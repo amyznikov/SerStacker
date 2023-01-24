@@ -14,8 +14,8 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class QBrowsePathCombo
-    : public QWidget
+class QBrowsePathCombo :
+    public QWidget
 {
   Q_OBJECT;
 public:

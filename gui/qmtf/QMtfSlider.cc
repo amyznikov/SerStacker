@@ -159,7 +159,11 @@ void QMtfSlider::mousePressEvent(QMouseEvent *e)
 
     if ( e->buttons() == Qt::LeftButton  || e->buttons() == Qt::RightButton ) {
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+      const QPointF posf = e->position();
+#else
       const QPointF posf = e->localPos();
+#endif
       const QPoint pos(posf.x(), posf.y());
 
       int search_order[3];
@@ -238,9 +242,16 @@ void QMtfSlider::mouseMoveEvent(QMouseEvent *e)
     return;
   }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  if ( (new_sliding_pos = e->position().x()) == sliding_pos ) {
+    return;
+  }
+#else
   if ( (new_sliding_pos = e->localPos().x()) == sliding_pos ) {
     return;
   }
+#endif
+
 
   Slider & shadows = sliders[SLIDER_SHADOWS];
   Slider & highlights = sliders[SLIDER_HIGHLIGHTS];

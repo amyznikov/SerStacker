@@ -22,14 +22,11 @@ endif()
 include_directories(${ASI_SDK_DIR}/include)
 set(asi_driver_library ${CMAKE_CURRENT_SOURCE_DIR}/${ASI_SDK_DIR}/lib/${ASI_TARGET_ARCH}/${asi_libfilename})
 
-file(GLOB CURRENT_SOURCES *.c *.cc *.cpp)
-file(GLOB CURRENT_HEADERS *.h *.hpp)
+file(GLOB SOURCES *.c *.cc *.cpp)
+file(GLOB HEADERS *.h *.hpp)
 file(GLOB QRC_FILES *.qrc )
-foreach(QRC_FILE ${QRC_FILES})
-	qt5_add_resources(CURRENT_RESOURCES ${QRC_FILE})
-endforeach()
 
-target_sources(${PROJECT_NAME} PRIVATE ${CURRENT_SOURCES} ${CURRENT_HEADERS})
+target_sources(${PROJECT_NAME} PRIVATE ${SOURCES} ${HEADERS})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   target_link_libraries(${PROJECT_NAME} PRIVATE ${asi_driver_library} usb-1.0)

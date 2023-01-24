@@ -7,8 +7,8 @@
 
 #include "QPlaySequenceControl.h"
 
-QPlaySequenceControl::QPlaySequenceControl(QWidget * parent)
-  : Base(parent)
+QPlaySequenceControl::QPlaySequenceControl(QWidget * parent) :
+  Base(parent)
 {
   QBoxLayout * layout = new QHBoxLayout(this);
 
@@ -116,7 +116,7 @@ void QPlaySequenceControl::onSpinValueChanged(int newpos)
     updatingControls = false;
 
     if ( !disableEmitSignals ) {
-      emit onSeek(newpos);
+      Q_EMIT onSeek(newpos);
     }
   }
 
@@ -131,7 +131,7 @@ void QPlaySequenceControl::onSliderValueChanged(int newpos)
     updatingControls = false;
 
     if ( !disableEmitSignals ) {
-      emit onSeek(newpos);
+      Q_EMIT onSeek(newpos);
     }
   }
 }

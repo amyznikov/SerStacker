@@ -31,6 +31,8 @@ endif ()
 message(STATUS "Detected architecture: ${APP_ARCH}")
 
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 
 # ----------------------------------------------------------------------------
 # OpenCV
@@ -47,6 +49,7 @@ if ( OpenCV_xfeatures2d_FOUND )
 endif()	
 set(enable_OpenCV TRUE)
 message (STATUS "OpenCV_LIBS=${OpenCV_LIBS}")
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 
 # ----------------------------------------------------------------------------
@@ -56,9 +59,11 @@ unset(CFITSIO_INCLUDE_DIRS CACHE)
 unset(CFITSIO_LIBRARY CACHE)
 find_path(CFITSIO_INCLUDE_DIRS fitsio2.h)
 find_library(CFITSIO_LIBRARY cfitsio)
+
 if( CFITSIO_INCLUDE_DIRS AND CFITSIO_LIBRARY ) 
     message(STATUS "cfitsio FOUND: CFITSIO_INCLUDE_DIRS=${CFITSIO_INCLUDE_DIRS} CFITSIO_LIBRARY=${CFITSIO_LIBRARY}")
     add_definitions(-DHAVE_CFITSIO=1)
+	include_directories(${CFITSIO_INCLUDE_DIRS})
 else()
 	
     message(WARNING "Can not locate cfitsio library under search parth.
@@ -78,9 +83,11 @@ unset(LIBRAW_INCLUDE_DIRS CACHE)
 unset(LIBRAW_LIBRARY CACHE)
 find_path(LIBRAW_INCLUDE_DIRS libraw/libraw.h)
 find_library(LIBRAW_LIBRARY raw)
+
 if( LIBRAW_INCLUDE_DIRS AND LIBRAW_LIBRARY ) 
     message(STATUS "libraw FOUND: LIBRAW_INCLUDE_DIRS=${LIBRAW_INCLUDE_DIRS} LIBRAW_LIBRARY=${LIBRAW_LIBRARY}")
     add_definitions(-DHAVE_LIBRAW=1)
+	include_directories(${LIBRAW_INCLUDE_DIRS})    
 else()
     message(WARNING "Can not locate libraw directory under search path.
       Install please libraw package (ubuntu: libraw-dev, archliux: libraw, windows: https://www.libraw.org/)")
@@ -112,9 +119,10 @@ if ( NOT OPENRAW_INCLUDE_DIRS )
       	archliux: libopenraw
       	windows: https://libopenraw.freedesktop.org")
 else()
-  set(OPENRAW_LIBS openraw)
-  add_definitions(-DHAVE_LIBOPENRAW=1)
-  message(STATUS "libopenraw: ${OPENRAW_INCLUDE_DIRS}")
+	set(OPENRAW_LIBS openraw)
+	add_definitions(-DHAVE_LIBOPENRAW=1)
+	include_directories(${OPENRAW_INCLUDE_DIRS})
+	message(STATUS "libopenraw: ${OPENRAW_INCLUDE_DIRS}")  
 endif()
 
 
@@ -125,6 +133,8 @@ find_package(TIFF)
 if ( NOT TIFF_FOUND )
   message(FATAL_ERROR "TIFF package is mandatory but is not found in your system. 
   	Install please libtiff package.")
+else()
+	include_directories(${TIFF_INCLUDE_DIR})
 endif()
 
 
@@ -186,6 +196,7 @@ endif()
 
 set(FFMPEG_INCLUDE_DIRS ${SWSCALE_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
 set(FFMPEG_LIBRARIES ${SWSCALE_LIBRARY} ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY})
+include_directories(${FFMPEG_INCLUDE_DIRS})
 
 
 # ----------------------------------------------------------------------------
@@ -279,6 +290,7 @@ if ( NOT LIBCONFIG_LIBRARIES )
   endif()
 endif()
 
+include_directories(${LIBCONFIG_INCLUDE_DIRS})
 message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LIBCONFIG_LIBRARIES}")
 
 
@@ -286,115 +298,121 @@ message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LI
 # QGLViewer (optional, for glddm team)
 #
 set(HAVE_QGLViewer FALSE)  
-find_package(QGLViewer QUIET)
-if ( NOT QGLViewer_FOUND )
+unset (QGLViewer_FOUND)
 
-	set(QGLVIEWER_INCLUDE_DIRS "")
-	set(QGLVIEWER_LIBRARY "")
-
-    message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
-    	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
-        To support this functionality install pleaae fresh version of QGLViewer from AUR or from sources: \n \
-        \n \
-         wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
-         tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \
-         cd libQGLViewer-2.7.1/QGLViewer && \\ \n \
-         qmake && \\ \n \
-         make && \\ \n \
-         sudo make install && \\ \n \
-         make clean\ \n \
-     ")
-
-else()
-	# OpenGL is required for QGLViewer
-	# This option should affect only OpenGL-dependent targets
-	# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
-	# (usually libOpenGL.so and libGLX.so).
-	if( ${CMAKE_VERSION} VERSION_GREATER "3.10" AND NOT OpenGL_GL_PREFERENCE )
-	    set(OpenGL_GL_PREFERENCE GLVND)
-	endif()
+if ( FALSE )
+	find_package(QGLViewer QUIET)
+	if ( NOT QGLViewer_FOUND )
 	
-	find_package(OpenGL QUIET)
-	if ( NOT OpenGL_FOUND )
-        message(WARNING "OpenGL package is not found, disabling QGLViewer")
-        set(QGLVIEWER_INCLUDE_DIRS)
-        set(QGLVIEWER_LIBRARY)
-        set(OPENGL_INCLUDE_DIR)
-        set(OPENGL_LIBRARY_DIR)
-        set(OPENGL_LIBRARIES)
-        set(QGLViewer_FOUND FALSE)
-    else ()
-        find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
-        if ( NOT freeglut_h_found ) 
-            message(WARNING "OpenGL package is not found, disabling QGLViewer")
-            set(QGLVIEWER_INCLUDE_DIRS)
-            set(QGLVIEWER_LIBRARY)
-            set(OPENGL_INCLUDE_DIR)
-            set(OPENGL_LIBRARY_DIR)
-            set(OPENGL_LIBRARIES)
-            set(QGLViewer_FOUND FALSE)
-        else()
-            set(HAVE_QGLViewer TRUE)
-            add_definitions(-DHAVE_QGLViewer=1)
-
-            # Fixing GLEW PATH on OSX
-            if (APPLE)
-                find_path( GLEW_INCLUDE_DIR GL/glew.h
-                    /usr/local/include
-                    /usr/local/Cellar/glew/2.1.0/include
-                    /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
-                    ${OPENGL_LIBRARY_DIR}
-                )
-                find_library( GLEW_GLEW_LIBRARY GLEW
-                    /usr/local/lib
-                    /usr/openwin/lib
-                    /usr/X11R6/lib
-                    /usr/local/Cellar/glew/2.1.0/lib
-                )
-                set( GLEW_FOUND TRUE )
-                if(NOT GLEW_GLEW_LIBRARY)
-                    set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
-                    set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
-                    set(GLEW_FOUND FALSE )
-                endif()
-            endif (APPLE)
-        endif()
-    endif()
+		set(QGLVIEWER_INCLUDE_DIRS "")
+		set(QGLVIEWER_LIBRARY "")
+	
+	    message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
+	    	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
+	        To support this functionality install pleaae fresh version of QGLViewer from AUR or from sources: \n \
+	        \n \
+	         wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
+	         tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \
+	         cd libQGLViewer-2.7.1/QGLViewer && \\ \n \
+	         qmake && \\ \n \
+	         make && \\ \n \
+	         sudo make install && \\ \n \
+	         make clean\ \n \
+	     ")
+	
+	else()
+		set(QT_VERSION 5)
+	
+		# OpenGL is required for QGLViewer
+		# This option should affect only OpenGL-dependent targets
+		# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
+		# (usually libOpenGL.so and libGLX.so).
+		if( ${CMAKE_VERSION} VERSION_GREATER "3.10" AND NOT OpenGL_GL_PREFERENCE )
+		    set(OpenGL_GL_PREFERENCE GLVND)
+		endif()
+		
+		find_package(OpenGL QUIET)
+		if ( NOT OpenGL_FOUND )
+	        message(WARNING "OpenGL package is not found, disabling QGLViewer")
+	        set(QGLVIEWER_INCLUDE_DIRS)
+	        set(QGLVIEWER_LIBRARY)
+	        set(OPENGL_INCLUDE_DIR)
+	        set(OPENGL_LIBRARY_DIR)
+	        set(OPENGL_LIBRARIES)
+	        set(QGLViewer_FOUND FALSE)
+	    else ()
+	        find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
+	        if ( NOT freeglut_h_found ) 
+	            message(WARNING "OpenGL package is not found, disabling QGLViewer")
+	            set(QGLVIEWER_INCLUDE_DIRS)
+	            set(QGLVIEWER_LIBRARY)
+	            set(OPENGL_INCLUDE_DIR)
+	            set(OPENGL_LIBRARY_DIR)
+	            set(OPENGL_LIBRARIES)
+	            set(QGLViewer_FOUND FALSE)
+	        else()
+	            set(HAVE_QGLViewer TRUE)
+	            add_definitions(-DHAVE_QGLViewer=1)
+	
+	            # Fixing GLEW PATH on OSX
+	            if (APPLE)
+	                find_path( GLEW_INCLUDE_DIR GL/glew.h
+	                    /usr/local/include
+	                    /usr/local/Cellar/glew/2.1.0/include
+	                    /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
+	                    ${OPENGL_LIBRARY_DIR}
+	                )
+	                find_library( GLEW_GLEW_LIBRARY GLEW
+	                    /usr/local/lib
+	                    /usr/openwin/lib
+	                    /usr/X11R6/lib
+	                    /usr/local/Cellar/glew/2.1.0/lib
+	                )
+	                set( GLEW_FOUND TRUE )
+	                if(NOT GLEW_GLEW_LIBRARY)
+	                    set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
+	                    set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
+	                    set(GLEW_FOUND FALSE )
+	                endif()
+	            endif (APPLE)
+	        endif()
+	    endif()	    
+	endif()
 endif()
 
 
 # ----------------------------------------------------------------------------
-# Qt5
+# Qt
 #
-set(Qt5_REQUIRED_COMPONENTS Core Gui Widgets Xml PrintSupport Multimedia MultimediaWidgets) #  
-if ( QGLViewer_FOUND )
-	set(Qt5_REQUIRED_COMPONENTS ${Qt5_REQUIRED_COMPONENTS} OpenGL)
+#set(QT_VERSION 5)
+unset(QT_VERSION)
+if ( NOT QT_VERSION )
+  if ( QGLViewer_FOUND )
+    set(QT_VERSION 5) # Foce QT version to 5 until QGLViewer will available for Qt6 
+  else()
+
+    find_package(Qt6 COMPONENTS Core QUIET)
+	if (NOT Qt6_FOUND)
+	    set(QT_VERSION 5 CACHE STRING "Qt version")
+	else()
+	    set(QT_VERSION 6 CACHE STRING "Qt version")
+	endif()
+  endif()
 endif()
 
-find_package(Qt5 5.10 COMPONENTS ${Qt5_REQUIRED_COMPONENTS}) 
+set(Qt_REQUIRED_COMPONENTS Core Gui Widgets Xml PrintSupport Multimedia MultimediaWidgets) #  
+if ( QGLViewer_FOUND )
+	set(Qt_REQUIRED_COMPONENTS ${Qt_REQUIRED_COMPONENTS} OpenGL)
+endif()
 
-message(STATUS "QGLViewer_FOUND= ${QGLViewer_FOUND}")
-message(STATUS "Qt5_REQUIRED_COMPONENTS= ${Qt5_REQUIRED_COMPONENTS}")
 
-foreach ( module ${Qt5_REQUIRED_MODULES} )
-    find_package(${module} ${Qt5_MINIMUM_VERSION_REQUIRED})
-    if ( NOT ${module}_FOUND )
-        message( FATAL_ERROR "${module} ${Qt5_MINIMUM_VERSION_REQUIRED} NOT FOUND")
-    endif()
+find_package(Qt${QT_VERSION} COMPONENTS ${Qt_REQUIRED_COMPONENTS}) 
+message( STATUS "Qt=Qt${QT_VERSION}")
+
+foreach( module ${Qt_REQUIRED_COMPONENTS} )
+	get_target_property(QtModuleIncludePath Qt${QT_VERSION}::${module} INTERFACE_INCLUDE_DIRECTORIES)
+	include_directories(${QtModuleIncludePath})
 endforeach()
-
-
-
-# ----------------------------------------------------------------------------
-set(CORE_INCLUDES
-	${CMAKE_CURRENT_SOURCE_DIR}
-	${LIBCONFIG_INCLUDE_DIRS}
-	${OpenCV_INCLUDE_DIRS}
-	${CFITSIO_INCLUDE_DIRS}
-	${FFMPEG_INCLUDE_DIRS}
-	${LIBRAW_INCLUDE_DIRS}
-	${OPENRAW_INCLUDE_DIRS}
-	${TIFF_INCLUDE_DIR})
 
 set(CORE_LIBRARIES
 	core
@@ -421,6 +439,12 @@ add_subdirectory(apps)
 add_custom_target(libs)
 add_dependencies(libs core)
 #add_dependencies(libs gui)
+
+message("XXX INCLUDE_DIRECTORIES:")
+get_property(dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
+foreach(dir ${dirs})
+	message("XX ${dir}")  
+endforeach()
 
 
 add_custom_target(uninstall

@@ -9,66 +9,42 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_LINK_WHAT_YOU_USE OFF)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 
+file(GLOB_RECURSE CURRENT_SOURCES src/*.c src/*.cc src/*.cpp)
+file(GLOB_RECURSE CURRENT_HEADERS src/*.h src/*.hpp)
+file(GLOB_RECURSE QRC_FILES src/*.qrc )
 
-set(SRC 
-  ${CMAKE_CURRENT_SOURCE_DIR}/src)
+foreach(QRC_FILE ${QRC_FILES})
+	if ( "${QT_VERSION}" STREQUAL "6" )
+		qt6_add_resources(CURRENT_SOURCES ${QRC_FILE})
+	else()
+		qt5_add_resources(CURRENT_SOURCES ${QRC_FILE})
+	endif()
+endforeach()
 
+add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
-set(APP_INCLUDES 
-  ${SRC} 
-  ${CORE_INCLUDES} 
-  ${OPENGL_INCLUDE_DIR} 
-  ${QGLVIEWER_INCLUDE_DIRS} 
-  Qt5::Widgets
-  Qt5::OpenGL
-  Qt5::Xml
-  Qt5::PrintSupport)
-
-include_directories(${APP_INCLUDES})
-
-set(APP_LIBRARIES 
+target_link_libraries(${PROJECT_NAME} PRIVATE
   gui
-  ${QGLVIEWER_LIBRARY}
-  Qt5::Widgets
-  Qt5::OpenGL
-  Qt5::Multimedia
-  Qt5::MultimediaWidgets 
-  Qt5::Xml
-  Qt5::PrintSupport
-  ${OPENGL_LIBRARIES}
+  Qt${QT_VERSION}::Core
+  Qt${QT_VERSION}::Gui
+  Qt${QT_VERSION}::Widgets
+  Qt${QT_VERSION}::Multimedia
+  Qt${QT_VERSION}::MultimediaWidgets 
+  Qt${QT_VERSION}::Xml
+  Qt${QT_VERSION}::PrintSupport
   ${CORE_LIBRARIES})
 
-#  v4lconvert
-#  v4l2
-
-file(GLOB_RECURSE SOURCE_FILES
-	${SRC}/*.c
-	${SRC}/*.cc
-	${SRC}/*.cpp)
-
-file(GLOB_RECURSE HEADER_FILES
-	${SRC}/*.h
-	${SRC}/*.hpp)
-
-if( EXISTS ${SRC}/app-resources.qrc )
-	qt5_add_resources(RESOURCE_FILES
-		${SRC}/app-resources.qrc)
-endif()
-
-
-
-add_executable(${PROJECT_NAME}
-	${SOURCE_FILES}
-	${HEADER_FILES}
-	${RESOURCE_FILES})
-
-target_link_libraries(${PROJECT_NAME}
-	${APP_LIBRARIES})
+if ( QGLViewer_FOUND )
+  target_link_libraries(${PROJECT_NAME} 
+    ${QGLVIEWER_LIBRARY}
+  	Qt::OpenGL 
+  	${OPENGL_LIBRARIES} )
+endif()  
 
 
 # Install
@@ -78,14 +54,14 @@ set(MY_DESKTOP_ENTRY_PATH ${CMAKE_INSTALL_PREFIX}/share/applications)
 set(MY_DESKTOP_ENTRY_COMMENT "${PROJECT_NAME}")
 set(MY_APP_ICONS_PATH ${CMAKE_INSTALL_PREFIX}/share/app-install/icons)
 
-if( EXISTS ${SRC}/app.desktop.in)
-	configure_file(${SRC}/app.desktop.in
+if( EXISTS src/app.desktop.in)
+	configure_file(src/app.desktop.in
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.desktop
 		@ONLY)
 endif()
 
-if(EXISTS ${SRC}/app-icon.png)
-	configure_file(${SRC}/app-icon.png
+if(EXISTS src/app-icon.png)
+	configure_file(src/app-icon.png
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.png
 		COPYONLY)
 endif()

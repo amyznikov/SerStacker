@@ -34,8 +34,8 @@ namespace qserstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-class MainWindow
-    : public QMainWindow
+class MainWindow :
+    public QMainWindow
 {
   Q_OBJECT;
 public:
@@ -46,8 +46,8 @@ public:
   ~MainWindow();
 
 private:
-  void saveGeometry();
-  void restoreGeometry();
+  //void saveGeometry();
+  //void restoreGeometry();
   void saveState();
   void restoreState();
   void configureImageViewerToolbars();
@@ -55,6 +55,8 @@ private:
   void configureCloudViewerToolbars();
   void createDisplaySettingsControl();
   void createImageViewOptionsControl();
+  void setupFileSystemTreeDock();
+  void setupThumbnailsView();
   void setupFocusGraph();
   void setupRoiOptions();
   bool eventFilter(QObject *watched, QEvent *event) override;

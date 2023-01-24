@@ -26,7 +26,6 @@ QImageEditor::QImageEditor(QWidget * parent) :
   scene()->setBackgroundBrush(Qt::darkGray);
 
   createRoiRectShape();
-
 }
 
 QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction()

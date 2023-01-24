@@ -10,8 +10,8 @@
 
 #include <QtWidgets/QtWidgets>
 
-class QPlaySequenceControl
-    : public QWidget
+class QPlaySequenceControl :
+    public QWidget
 {
   Q_OBJECT;
 public:
@@ -31,7 +31,7 @@ public:
   void setSeekRange(int min,  int max);
   void setCurpos(int pos);
 
-signals:
+Q_SIGNALS:
   void onSeek(int pos);
 
 protected:

@@ -357,7 +357,7 @@ QString toString(const T x[], int nmax)
   for ( int i = 0; i < nmax; ++i ) {
     s.append(toString(x[i]));
     if ( i < nmax - 1 ) {
-      s.append(';');
+      s.append(";");
     }
   }
   return s;
@@ -366,15 +366,11 @@ QString toString(const T x[], int nmax)
 template<class T>
 inline bool fromString(const QString & text, std::vector<T> * v)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-  const QStringList tokens =
-      text.split(QRegExp("[ ;:\t\n]"),
-          Qt::SkipEmptyParts);
-#else
-  const QStringList tokens =
-      text.split(QRegExp("[ ;:\t\n]"),
-          QString::SkipEmptyParts);
-#endif
+  std::vector<std::string> tokens;
+
+  strsplit(text.toUtf8().constData(),
+      tokens,
+      "[ ;:\t\n]");
 
   v->clear();
   v->reserve(tokens.size());
@@ -403,25 +399,30 @@ inline QString toQString(const std::vector<T> & v)
 
 inline bool fromString(const QString & text, QSize * v)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-  const QStringList tokens =
-      text.split(QRegExp("[ x;:\t\n]"),
-          Qt::SkipEmptyParts);
-#else
-  const QStringList tokens =
-      text.split(QRegExp("[ x;:\t\n]"),
-          QString::SkipEmptyParts);
-#endif
+  std::vector<std::string> tokens;
 
-  bool wok = false;
-  bool hok = false;
+  strsplit(text.toUtf8().constData(),
+      tokens,
+      "[ x;:\t\n]");
 
-  if( tokens.size() == 2 ) {
-    v->setWidth(tokens[0].toInt(&wok));
-    v->setHeight(tokens[1].toInt(&hok));
+  if( tokens.size() != 2 ) {
+    return false;
   }
 
-  return wok && hok;
+  int w, h;
+
+  if( sscanf(tokens[0].c_str(), "%d", &w) != 1 ) {
+    return false;
+  }
+
+  if( sscanf(tokens[1].c_str(), "%d", &h) != 1 ) {
+    return false;
+  }
+
+  v->setWidth(w);
+  v->setHeight(h);
+
+  return true;
 }
 
 inline QString toQString(const QSize & v)
@@ -432,25 +433,30 @@ inline QString toQString(const QSize & v)
 
 inline bool fromString(const QString & text, QPoint * v)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-  const QStringList tokens =
-      text.split(QRegExp("[ ;:\t\n]"),
-          Qt::SkipEmptyParts);
-#else
-  const QStringList tokens =
-      text.split(QRegExp("[ ;:\t\n]"),
-          QString::SkipEmptyParts);
-#endif
+  std::vector<std::string> tokens;
 
-  bool wok = false;
-  bool hok = false;
+  strsplit(text.toUtf8().constData(),
+      tokens,
+      "[ ;:\t\n]");
 
-  if( tokens.size() == 2 ) {
-    v->setX(tokens[0].toInt(&wok));
-    v->setY(tokens[1].toInt(&hok));
+  if( tokens.size() != 2 ) {
+    return false;
   }
 
-  return wok && hok;
+  int x, y;
+
+  if( sscanf(tokens[0].c_str(), "%d", &x) != 1 ) {
+    return false;
+  }
+
+  if( sscanf(tokens[1].c_str(), "%d", &y) != 1 ) {
+    return false;
+  }
+
+  v->setX(x);
+  v->setY(y);
+
+  return true;
 }
 
 inline QString toQString(const QPoint & v)
@@ -462,75 +468,75 @@ template<class T>
 inline void save_parameter(const QString & prefix, const char * name, const T & value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), toQString(value));
+  settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), toQString(value));
 }
 
 inline void save_parameter(const QString & prefix, const char * name, const QColor & value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), QVariant::fromValue(value));
+  settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), QVariant::fromValue(value));
 }
 
 inline void save_parameter(const QString & prefix, const char * name, const QString & value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), value);
+  settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), value);
 }
 
 inline void save_parameter(const QString & prefix, const char * name, const std::string & value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), value.c_str());
+  settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), value.c_str());
 }
 
 inline void save_parameter(const QString & prefix, const char * name, bool value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), value);
+  settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), value);
 }
 
 template<class T>
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * value)
 {
-  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), value);
+  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), "").toString(), value);
 }
 
 template<class T> // mainly for custom enums
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * value, const T & defval)
 {
-  * value = fromStdString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString().toStdString(), defval);
+  * value = fromStdString(settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), "").toString().toStdString(), defval);
   return true;
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, bool * value)
 {
-  return *value = settings.value(QString("%1/%2").arg(prefix).arg(name), * value).toBool(), true;
+  return *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), * value).toBool(), true;
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, QColor * value)
 {
-  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).value<QColor>();
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), *value).value<QColor>();
   return true;
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, int * value)
 {
   bool ok;
-  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toInt(&ok);
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), *value).toInt(&ok);
   return ok;
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, float * value)
 {
   bool ok;
-  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toFloat(&ok);
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), *value).toFloat(&ok);
   return ok;
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, double * value)
 {
   bool ok;
-  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toDouble(&ok);
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), *value).toDouble(&ok);
   return ok;
 }
 
@@ -538,40 +544,38 @@ inline bool load_parameter(const QSettings & settings, const QString & prefix, c
 template<class T>
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, T * x, T * y)
 {
-  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), x, y);
+  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), "").toString(), x, y);
 }
 
 template<class T>
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  T * x, T * y, T * z)
 {
-  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), x, y, z);
+  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), "").toString(), x, y, z);
 }
 
 template<class T>
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  T * x, T * y, T * z, T * w)
 {
-  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), x, y, z, w);
+  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), "").toString(), x, y, z, w);
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, QString * value)
 {
-  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), *value).toString();
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), *value).toString();
   return true;
 }
 
 inline bool load_parameter(const QSettings & settings, const QString & prefix, const char * name, std::string * value)
 {
-  *value = settings.value(QString("%1/%2").arg(prefix).arg(name), value->c_str()).toString().toStdString();
+  *value = settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), value->c_str()).toString().toStdString();
   return true;
 }
 
 template<class T>
 inline int load_parameter_array(const QSettings & settings, const QString & prefix, const char * name, T * x, int nmax)
 {
-  QString s = settings.value(QString("%1/%2").arg(prefix).arg(name)).toString();
+  QString s = settings.value(QString("%1/%2").arg(prefix).arg(QString(name))).toString();
   return s.isEmpty() ? 0 : fromString(s, x, nmax);
 }
-
-
 
 #endif /* __settings_widgets_h__ */

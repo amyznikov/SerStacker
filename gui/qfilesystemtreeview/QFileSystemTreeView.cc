@@ -327,7 +327,13 @@ void QFileSystemCustomTreeView::dropEvent(QDropEvent * e)
     return Base::dropEvent(e);
   }
 
-  if ( !(index = indexAt(e->pos())).isValid() ) {
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+  const QPoint pos = e->position().toPoint();
+#else
+  const QPoint pos = e->pos();
+#endif
+
+  if ( !(index = indexAt(pos)).isValid() ) {
     return Base::dropEvent(e);
   }
 
@@ -354,7 +360,7 @@ void QFileSystemCustomTreeView::dropEvent(QDropEvent * e)
       menu.addAction(linkAction = new QAction("Link here", this));
     }
 
-    if ( !(act = menu.exec(viewport()->mapToGlobal(e->pos()))) ) {
+    if ( !(act = menu.exec(viewport()->mapToGlobal(pos))) ) {
       e->setDropAction(Qt::IgnoreAction);
     }
     else if ( act == copyAction ) {

@@ -16,12 +16,13 @@ QBrowsePathCombo::QBrowsePathCombo(QWidget *parent)
   construct();
 }
 
-QBrowsePathCombo :: QBrowsePathCombo(const QString & label_, QFileDialog::AcceptMode acceptMode, QFileDialog::FileMode mode, QWidget *parent)
-  : Base(parent),
-  fileDialogCaption(label_),
-  labelText_(label_),
-  fileMode_(mode),
-  acceptMode_(acceptMode)
+QBrowsePathCombo::QBrowsePathCombo(const QString & label_, QFileDialog::AcceptMode acceptMode,
+    QFileDialog::FileMode mode, QWidget * parent) :
+    Base(parent),
+    fileDialogCaption(label_),
+    labelText_(label_),
+    fileMode_(mode),
+    acceptMode_(acceptMode)
 {
   construct();
 }

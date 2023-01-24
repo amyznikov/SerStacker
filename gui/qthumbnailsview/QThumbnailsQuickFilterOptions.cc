@@ -6,7 +6,12 @@
  */
 
 #include "QThumbnailsQuickFilterOptions.h"
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+//# include <QtCore5Compat/QRegExp>
+#endif
+
 #include <core/debug.h>
+
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
 # define MatchRegularExpression MatchRegExp
@@ -113,7 +118,12 @@ bool matchQuickFilter(const QString & text,
 #endif
 
      case Qt::MatchWildcard : {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+       matchStatus = QRegularExpression::fromWildcard(QStringView(pattern), cs).match(text).hasMatch();
+#else
        matchStatus = QRegExp(pattern, cs, QRegExp::Wildcard).exactMatch(text);
+#endif
+
        break;
      }
 
@@ -202,7 +212,7 @@ void QThumbnailsQuickFilterOptions::loadSavedFilters()
   if ( !savedFilters.empty() ) {
     setUpdatingControls(true);
 
-    for( int i = 0, n = std::min(20, savedFilters.count()); i < n; ++i ) {
+    for( int i = 0, n = std::min(20, (int) savedFilters.size()); i < n; ++i ) {
       searchText_ctl->addItem(savedFilters[i]);
     }
 

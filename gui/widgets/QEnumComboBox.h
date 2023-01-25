@@ -32,6 +32,9 @@ Q_SIGNALS:
   void currentItemChanged(int index);
 
 protected:
+  void wheelEvent(QWheelEvent *e) override;
+
+protected:
   QCompleter * completer_ = nullptr;
 };
 

@@ -22,6 +22,7 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
 
   setEditable(true);
   setInsertPolicy(QComboBox::NoInsert);
+  setFocusPolicy(Qt::StrongFocus);
 
   completer_ = new QCompleter(this);
   completer_->setModel(this->model());
@@ -72,5 +73,11 @@ void QEnumComboBoxBase::setupItems(const c_enum_member * membs)
       ++membs;
     }
   }
+}
+
+void QEnumComboBoxBase::wheelEvent(QWheelEvent *e)
+{
+  // CF_DEBUG("wheelEvent");
+  e->accept();
 }
 

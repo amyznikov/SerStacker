@@ -157,6 +157,7 @@ QImageProcessorSelectionCombo::QImageProcessorSelectionCombo(QWidget * parent) :
   setEditable(false);
   setMinimumContentsLength(12);
   setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  setFocusPolicy(Qt::StrongFocus);
 
 
   connect(QImageProcessorsCollection::instance(), &QImageProcessorsCollection::collectionChanged,

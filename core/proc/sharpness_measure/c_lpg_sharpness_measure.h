@@ -27,19 +27,23 @@ public:
   void set_dscale(int v);
   int dscale() const;
 
+  void set_uscale(int v);
+  int uscale() const;
+
   void set_avgchannel(bool v);
   bool avgchannel() const;
 
-  cv::Scalar compute(cv::InputArray image) override;
-  cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) override;
+  cv::Scalar compute(cv::InputArray image) const override;
+  cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const override;
 
   static cv::Scalar compute_lpg_map(cv::InputArray image, cv::OutputArray output_map,
-      double lw, double gw, int dscale, bool avgchannel);
+      double lw, double gw, int uscale, int dscale, bool avgchannel);
 
 protected:
-  double laplacian_weight_ = 10;
+  double laplacian_weight_ = 5;
   double gradient_weight_ = 1;
   int dscale_ = 1;
+  int uscale_ = 1;
   bool avgchannel_ = true;
 
 };

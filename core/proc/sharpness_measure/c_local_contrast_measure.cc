@@ -186,13 +186,13 @@ bool c_local_contrast_measure::avgchannel() const
   return avgchannel_;
 }
 
-cv::Scalar c_local_contrast_measure::compute(cv::InputArray image)
+cv::Scalar c_local_contrast_measure::compute(cv::InputArray image) const
 {
   return compute_contrast_map(image, cv::noArray(),
       eps_, dscale_, avgchannel_);
 }
 
-cv::Scalar c_local_contrast_measure::create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map)
+cv::Scalar c_local_contrast_measure::create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const
 {
   return compute_contrast_map(image, output_map,
       eps_, dscale_, avgchannel_);

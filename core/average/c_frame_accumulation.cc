@@ -19,7 +19,8 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
     double scale, int ddepth)
 {
 
-  const int cn = acc.channels();
+  const int cn =
+      acc.channels();
 
   if ( rdata.needed() ) {
     rdata.create(acc.size(), CV_MAKETYPE(ddepth, cn));
@@ -29,7 +30,6 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
     rmask.create(acc.size(), CV_8UC1);
   }
 
-
   typedef tbb::blocked_range<int> range;
   const int grain_size = 512;
 
@@ -38,66 +38,188 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
     cv::Mat & D = rdata.getMatRef();
     cv::Mat & M = rmask.getMatRef();
 
-    tbb::parallel_for(range(0, acc.rows, grain_size),
-        [&acc, &weights, &D, &M, cn](const range & r ) {
-          for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+    if( acc.channels() == 1 && weights.channels() == 1 ) {
 
-            const T1 * accp = acc.ptr<const T1>(y);
-            const T1 * weightsp = weights.ptr<const T1>(y);
+      tbb::parallel_for(range(0, acc.rows, grain_size),
+          [&acc, &weights, &D, &M, cn](const range & r) {
+            for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 
-            T2 * resp = D.ptr<T2>(y);
-            uint8_t * mskp = M.ptr<uint8_t>(y);
+              const T1 * accp =
+                  acc.ptr<const T1>(y);
 
-            for ( int x = 0, n = acc.cols; x < n; ++x ) {
-              const double w = weightsp[x];
-              if ( w > 0 ) {
-                mskp[x] = 255;
-                for ( int c = 0; c < cn; ++c ) {
-                  resp[x * cn + c ] = cv::saturate_cast<T2> (accp[x * cn + c ] / w );
+              const T1 * wp =
+                  weights.ptr<const T1>(y);
+
+              T2 * resp =
+                  D.ptr<T2>(y);
+
+              uint8_t * mskp =
+                  M.ptr<uint8_t>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                if ( wp[x] > 0 ) {
+                  resp[x] = cv::saturate_cast<T2> (accp[x] / wp[x]);
+                  mskp[x] = 255;
                 }
-              }
-              else {
-                mskp[x] = 0;
-                for ( int c = 0; c < cn; ++c ) {
-                  resp[x * cn + c ] = 0;
+                else {
+                  mskp[x] = 0;
+                  resp[x] = 0;
                 }
               }
             }
-          }
-        });
+          });
+
+    }
+
+    else if ( acc.channels() == weights.channels() ) {
+
+      tbb::parallel_for(range(0, acc.rows, grain_size),
+          [&acc, &weights, &D, &M, cn](const range & r) {
+            for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+
+              const T1 * accp =
+                  acc.ptr<const T1>(y);
+
+              const T1 * wp =
+                  weights.ptr<const T1>(y);
+
+              T2 * resp =
+                  D.ptr<T2>(y);
+
+              uint8_t * mskp =
+                  M.ptr<uint8_t>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                mskp[x] = 255;
+                for ( int c = 0; c < cn; ++c ) {
+                  if ( wp[x * cn + c] > 0 ) {
+                    resp[x * cn + c ] = cv::saturate_cast<T2> (accp[x * cn + c ] / wp[x * cn + c]);
+                  }
+                  else {
+                    mskp[x] = 0;
+                    resp[x * cn + c ] = 0;
+                  }
+                }
+              }
+            }
+          });
+
+    }
+    else if (weights.channels() == 1) {
+
+      tbb::parallel_for(range(0, acc.rows, grain_size),
+          [&acc, &weights, &D, &M, cn](const range & r ) {
+            for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+
+              const T1 * accp = acc.ptr<const T1>(y);
+              const T1 * weightsp = weights.ptr<const T1>(y);
+
+              T2 * resp = D.ptr<T2>(y);
+              uint8_t * mskp = M.ptr<uint8_t>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                const double w = weightsp[x];
+                if ( w > 0 ) {
+                  mskp[x] = 255;
+                  for ( int c = 0; c < cn; ++c ) {
+                    resp[x * cn + c ] = cv::saturate_cast<T2> (accp[x * cn + c ] / w );
+                  }
+                }
+                else {
+                  mskp[x] = 0;
+                  for ( int c = 0; c < cn; ++c ) {
+                    resp[x * cn + c ] = 0;
+                  }
+                }
+              }
+            }
+          });
+
+    }
+    else {
+      CF_ERROR("Unsupported combination of acc (%d) and weights (%d) channels",
+          acc.channels(), weights.channels());
+      return false;
+    }
 
   }
   else if ( rdata.needed() ) {
 
     cv::Mat & D = rdata.getMatRef();
 
-    tbb::parallel_for(range(0, acc.rows, grain_size),
-        [&acc, &weights, &D, cn](const range & r ) {
-          for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+    if ( acc.channels() == weights.channels() ) {
 
-            const T1 * accp = acc.ptr<const T1>(y);
-            const T1 * weightsp = weights.ptr<const T1>(y);
-            T2 * resp = D.ptr<T2>(y);
+      tbb::parallel_for(range(0, acc.rows, grain_size),
+          [&acc, &weights, &D, cn](const range & r) {
+            for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 
-            for ( int x = 0, n = acc.cols; x < n; ++x ) {
-              const double w = weightsp[x];
-              if ( w > 0 ) {
+              const T1 * accp =
+                  acc.ptr<const T1>(y);
+
+              const T1 * wp =
+                  weights.ptr<const T1>(y);
+
+              T2 * resp =
+                  D.ptr<T2>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
                 for ( int c = 0; c < cn; ++c ) {
-                  resp[x * cn + c ] = cv::saturate_cast<T2> (accp[x * cn + c ] / w );
-                }
-              }
-              else {
-                for ( int c = 0; c < cn; ++c ) {
-                  resp[x * cn + c ] = 0;
+                  if ( wp[x * cn + c] > 0 ) {
+                    resp[x * cn + c ] = cv::saturate_cast<T2> (accp[x * cn + c ] / wp[x * cn + c]);
+                  }
+                  else {
+                    resp[x * cn + c ] = 0;
+                  }
                 }
               }
             }
-          }
-        });
+          });
+
+    }
+    else if (weights.channels() == 1) {
+
+      tbb::parallel_for(range(0, acc.rows, grain_size),
+          [&acc, &weights, &D, cn](const range & r ) {
+            for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+
+              const T1 * accp = acc.ptr<const T1>(y);
+              const T1 * weightsp = weights.ptr<const T1>(y);
+
+              T2 * resp = D.ptr<T2>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                const double w = weightsp[x];
+                if ( w > 0 ) {
+                  for ( int c = 0; c < cn; ++c ) {
+                    resp[x * cn + c ] = cv::saturate_cast<T2> (accp[x * cn + c ] / w );
+                  }
+                }
+                else {
+                  for ( int c = 0; c < cn; ++c ) {
+                    resp[x * cn + c ] = 0;
+                  }
+                }
+              }
+            }
+          });
+
+    }
+    else {
+      CF_ERROR("Unsupported combination of acc (%d) and weights (%d) channels",
+          acc.channels(), weights.channels());
+      return false;
+    }
 
   }
   else if ( rmask.needed() ) {
-    cv::compare(weights, 0, rmask, cv::CMP_GT);
+    if ( weights.channels() == 1 ) {
+      cv::compare(weights, 0, rmask, cv::CMP_GT);
+    }
+    else {
+      cv::Mat tmp;
+      reduce_color_channels(weights, tmp, cv::REDUCE_MIN);
+      cv::compare(tmp, 0, rmask, cv::CMP_GT);
+    }
   }
 
   return true;
@@ -253,15 +375,22 @@ template<class T1, class T2, class T3>
 static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
     cv::Mat & acc, cv::Mat & counter, int accdepth)
 {
-
-  if ( acc.empty() || counter.empty() ) {
+  if( acc.empty() || counter.empty() ) {
     acc.create(src.size(), CV_MAKETYPE(accdepth, src.channels()));
-    counter.create(src.size(), acc.depth());
+    counter.create(src.size(), CV_MAKETYPE(accdepth, weights.channels()));
     acc.setTo(0);
     counter.setTo(0);
   }
 
   const int cn = acc.channels();
+
+  if( weights.channels() != counter.channels() ) {
+    CF_ERROR("Number of channels in weight mask was changed: "
+        "counter.channels=%d weights.channels=%d",
+        counter.channels(), weights.channels());
+    return false;
+  }
+
 
   typedef tbb::blocked_range<int> range;
   const int grain_size = 512;
@@ -269,8 +398,10 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
   const cv::Mat S = src.getMat();
   const cv::Mat W = weights.getMat();
 
-  tbb::parallel_for(range(0, S.rows, grain_size),
-        [&S, &W, &acc, &counter, cn](const range & r ) {
+  if( src.channels() == 1 && weights.channels() == 1 ) {
+
+    tbb::parallel_for(range(0, S.rows, grain_size),
+        [&S, &W, &acc, &counter](const range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 
             const T1 * sp = S.ptr<const T1>(y);
@@ -280,16 +411,60 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
             T3 * cntp = counter.ptr<T3>(y);
 
             for ( int x = 0, n = acc.cols; x < n; ++x ) {
-              const double w = wp[x];
-              if ( w > 0 ) {
-                cntp[x] += w;
-                for ( int c = 0; c < cn; ++c ) {
-                  accp[x * cn + c] += sp[x * cn + c] * w;
-                }
+              cntp[x] += wp[x];
+              accp[x] += sp[x] * wp[x];
+            }
+          }
+        });
+
+  }
+  else if( src.channels() == weights.channels() ) {
+
+    tbb::parallel_for(range(0, S.rows, grain_size),
+        [&S, &W, &acc, &counter, cn](const range & r) {
+          for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+
+            const T1 * sp = S.ptr<const T1>(y);
+            const T2 * wp = W.ptr<const T2>(y);
+
+            T3 * accp = acc.ptr<T3>(y);
+            T3 * cntp = counter.ptr<T3>(y);
+
+            for ( int x = 0, n = acc.cols; x < n; ++x ) {
+              for ( int c = 0; c < cn; ++c ) {
+                cntp[x * cn + c] += wp[x * cn + c];
+                accp[x * cn + c] += sp[x * cn + c] * wp[x * cn + c];
               }
             }
           }
-  });
+        });
+  }
+  else if( weights.channels() == 1 ) {
+
+    tbb::parallel_for(range(0, S.rows, grain_size),
+        [&S, &W, &acc, &counter, cn](const range & r) {
+          for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+
+            const T1 * sp = S.ptr<const T1>(y);
+            const T2 * wp = W.ptr<const T2>(y);
+
+            T3 * accp = acc.ptr<T3>(y);
+            T3 * cntp = counter.ptr<T3>(y);
+
+            for ( int x = 0, n = acc.cols; x < n; ++x ) {
+              cntp[x] += wp[x];
+              for ( int c = 0; c < cn; ++c ) {
+                accp[x * cn + c] += sp[x * cn + c] * wp[x];
+              }
+            }
+          }
+        });
+  }
+  else {
+    CF_ERROR("Unsupported combination of image (%d) and weights (%d) channels",
+        src.channels(), weights.channels());
+    return false;
+  }
 
 
   return true;
@@ -737,7 +912,7 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray mask)
 {
   if ( accumulator_.empty() || counter_.empty() ) {
     accumulator_.create(src.size(), CV_MAKETYPE(accdepth, src.channels()));
-    counter_.create(src.size(), accdepth);
+    counter_.create(src.size(), CV_MAKETYPE(accdepth, mask.channels()));
     accumulator_.setTo(0);
     counter_.setTo(0);
     accumulated_frames_ = 0;
@@ -759,22 +934,10 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray mask)
           mask.cols(), mask.rows());
       return false;
     }
-
-    if ( mask.channels() != 1 ) {
-      CF_ERROR("ERROR in weigthed_frame_average: mask must be 1-channel binary or floating point matrix");
-      return false;
-    }
-
-#if 0
-    double min, max;
-    cv::minMaxLoc(mask, &min, &max);
-    CF_DEBUG("mask: min=%g max=%g depth=%d", min, max, mask.depth());
-#endif
   }
 
 
-
-  if ( mask.empty() || mask.depth() == CV_8U ) {
+  if ( mask.empty() || mask.type() == CV_8UC1 ) {
     cv::add(accumulator_, src, accumulator_, mask, accumulator_.type());
     cv::add(counter_, 1, counter_, mask, counter_.type());
   }

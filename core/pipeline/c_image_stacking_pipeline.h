@@ -14,6 +14,7 @@
 #include <core/average/c_frame_accumulation.h>
 #include <core/registration/c_frame_registration.h>
 #include <core/proc/c_anscombe_transform.h>
+#include <core/proc/focus.h>
 #include <core/improc/c_image_processor.h>
 #include <core/feature2d/feature2d.h>
 #include <core/settings.h>
@@ -144,13 +145,7 @@ struct c_frame_accumulation_options
   enum frame_accumulation_method accumulation_method  =
       frame_accumulation_weighted_average;
 
-//  int lksize = 0;
-//  int scale_size = 3;
-//  double minv = 1;
-  double s1 = 2;
-  double s2 = 4;
-  double minv = 1e-9;
-  int scale = -1;
+  c_lpg_sharpness_measure lpg_;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

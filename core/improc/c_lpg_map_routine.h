@@ -51,6 +51,16 @@ public:
     return m_.dscale();
   }
 
+  void set_uscale(int v)
+  {
+    m_.set_uscale(v);
+  }
+
+  int uscale() const
+  {
+    return m_.uscale();
+  }
+
   void set_avgchannel(bool v)
   {
     m_.set_avgchannel(v);
@@ -66,6 +76,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, laplacian_weight, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, gradient_weight, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, dscale, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, uscale, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, avgchannel, "");
   }
 
@@ -75,6 +86,7 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, laplacian_weight);
       SERIALIZE_PROPERTY(settings, save, *this, gradient_weight);
       SERIALIZE_PROPERTY(settings, save, *this, dscale);
+      SERIALIZE_PROPERTY(settings, save, *this, uscale);
       SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
       return true;
     }

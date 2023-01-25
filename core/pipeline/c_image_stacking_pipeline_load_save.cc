@@ -440,14 +440,12 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
 bool c_frame_accumulation_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "accumulation_method", accumulation_method );
-//  save_settings(settings, "lksize", lksize );
-//  save_settings(settings, "scale_size", scale_size);
-//  save_settings(settings, "minv", minv);
 
-  save_settings(settings, "s1", s1);
-  save_settings(settings, "s2", s2);
-  save_settings(settings, "minv", minv);
-  save_settings(settings, "scale", scale);
+  SAVE_PROPERTY(settings, lpg_, laplacian_weight);
+  SAVE_PROPERTY(settings, lpg_, gradient_weight);
+  SAVE_PROPERTY(settings, lpg_, dscale);
+  SAVE_PROPERTY(settings, lpg_, uscale);
+  SAVE_PROPERTY(settings, lpg_, avgchannel);
 
   return true;
 }
@@ -459,14 +457,12 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
   }
 
   load_settings(settings, "accumulation_method", &accumulation_method );
-//  load_settings(settings, "lksize", &lksize );
-//  load_settings(settings, "scale_size", &scale_size);
-//  load_settings(settings, "minv", &minv);
 
-  load_settings(settings, "s1", &s1);
-  load_settings(settings, "s2", &s2);
-  load_settings(settings, "minv", &minv);
-  load_settings(settings, "scale", &scale);
+  LOAD_PROPERTY(settings, lpg_, laplacian_weight);
+  LOAD_PROPERTY(settings, lpg_, gradient_weight);
+  LOAD_PROPERTY(settings, lpg_, dscale);
+  LOAD_PROPERTY(settings, lpg_, uscale);
+  LOAD_PROPERTY(settings, lpg_, avgchannel);
 
   return true;
 }

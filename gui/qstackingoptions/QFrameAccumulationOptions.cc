@@ -6,20 +6,21 @@
  */
 
 #include "QFrameAccumulationOptions.h"
+#include <gui/widgets/style.h>
 #include <core/debug.h>
 
 
-#define ICON_check_all      "check_all"
+#define ICON_check_all      ":/qstackingoptions/icons/check_all"
 
 //static const char borderless_style[] = ""
 //    "QToolButton { border: none; } "
 //    "QToolButton::menu-indicator { image: none; }"
 //    "";
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+//}
 
 QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
     Base("QFrameAccumulationOptions", parent)
@@ -52,59 +53,50 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
 //            }
 //          });
 //
-  s1_ctl =
-      add_numeric_box<double>("s1:",
+  lw_ctl =
+      add_numeric_box<double>("lw:",
           [this](double v) {
-            if ( options_ && v != options_->s1 ) {
-              options_->s1 = v;
+            if ( options_ && v != options_->lpg_.laplacian_weight() ) {
+              options_->lpg_.set_laplacian_weight(v);
               emit parameterChanged();
             }
           });
 
-  s2_ctl =
-      add_numeric_box<double>("s2:",
+  gw_ctl =
+      add_numeric_box<double>("gw:",
           [this](double v) {
-            if ( options_ && v != options_->s2 ) {
-              options_->s2 = v;
+            if ( options_ && v != options_->lpg_.gradient_weight() ) {
+              options_->lpg_.set_gradient_weight(v);
               emit parameterChanged();
             }
           });
 
-  minv_ctl =
-      add_numeric_box<double>("minv:",
+  dscale_ctl =
+      add_numeric_box<double>("dscale:",
           [this](double v) {
-            if ( options_ && v != options_->minv ) {
-              options_->minv = v;
+            if ( options_ && v != options_->lpg_.dscale() ) {
+              options_->lpg_.set_dscale(v);
               emit parameterChanged();
             }
           });
 
-  scale_ctl =
-      add_numeric_box<int>("scale:",
+  uscale_ctl =
+      add_numeric_box<double>("uscale:",
           [this](double v) {
-            if ( options_ && v != options_->scale ) {
-              options_->scale = v;
+            if ( options_ && v != options_->lpg_.uscale() ) {
+              options_->lpg_.set_uscale(v);
               emit parameterChanged();
             }
           });
 
-
-
-
-//  applyToAll_ctl = new QToolButton(this);
-//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-//  applyToAll_ctl->setIconSize(QSize(16,16));
-////  applyToAll_ctl->setStyleSheet(borderless_style);
-//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-//  connect(applyToAll_ctl, &QToolButton::clicked,
-//      [this]() {
-//        if ( options_ ) {
-//          emit applyFrameAccumulationOptionsToAllRequested(*options_);
-//        }
-//      });
-//
-//  form->addRow(applyToAll_ctl);
+  avgc_ctl =
+      add_checkbox("avgc:",
+          [this](bool checked) {
+            if ( options_ &&  options_->lpg_.avgchannel() != checked ) {
+              options_->lpg_.set_avgchannel(checked);
+              emit parameterChanged();
+            }
+          });
 
   setEnabled(false);
 }
@@ -129,14 +121,12 @@ void QFrameAccumulationOptions::onupdatecontrols()
   else {
 
     accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
-//    lksize_ctl->setValue(options_->lksize);
-//    scale_size_ctl->setValue(options_->scale_size);
-//    minv_ctl->setValue(options_->minv);
 
-    s1_ctl->setValue(options_->s1);
-    s2_ctl->setValue(options_->s2);
-    minv_ctl->setValue(options_->minv);
-    scale_ctl->setValue(options_->scale);
+    lw_ctl->setValue(options_->lpg_.laplacian_weight());
+    gw_ctl->setValue(options_->lpg_.gradient_weight());
+    dscale_ctl->setValue(options_->lpg_.dscale());
+    uscale_ctl->setValue(options_->lpg_.uscale());
+    avgc_ctl->setChecked(options_->lpg_.avgchannel());
 
     setEnabled(true);
   }

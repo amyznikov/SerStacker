@@ -92,6 +92,37 @@ const c_enum_member * members_of<master_frame_selection_method>()
 
 namespace {
 
+bool multiply_weights(cv::InputArray mask, cv::InputArray weights, cv::OutputArray dst, double scale = 1, int dtype = -1)
+{
+  if( mask.channels() == weights.channels() ) {
+    cv::multiply(mask, weights, dst, scale, dtype);
+  }
+  else if( mask.channels() == 1 ) {
+    std::vector<cv::Mat> channels;
+    cv::split(weights, channels);
+    for( int c = 0, cn = weights.channels(); c < cn; ++c ) {
+      cv::multiply(mask, channels[c], channels[c], scale, dtype);
+    }
+    cv::merge(channels, dst);
+  }
+  else if( weights.channels() == 1 ) {
+    std::vector<cv::Mat> channels;
+    cv::split(mask, channels);
+    for( int c = 0, cn = mask.channels(); c < cn; ++c ) {
+      cv::multiply(channels[c], weights, channels[c], scale, dtype);
+    }
+    cv::merge(channels, dst);
+  }
+  else {
+    CF_ERROR("Unsupported combination of mask (%d) and weights (%d) channels",
+        mask.channels(), weights.channels());
+    return false;
+  }
+
+  return true;
+}
+
+
 static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
 {
   cv::Mat2f rmap(uv.size());
@@ -1935,9 +1966,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
 bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::ptr & input_sequence, int startpos, int endpos)
 {
-  cv::Mat current_frame, current_mask;
+  cv::Mat current_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
-  cv::Mat1f current_weights;
 
   c_video_writer output_preprocessed_frames_writer;
   c_video_writer output_aligned_frames_writer;
@@ -2155,12 +2185,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
         if( !current_weights.empty() ) {
 
-          CF_DEBUG("H: current_weights=%dx%d %d channels, current_mask=%dx%d %d channels",
-              current_weights.cols, current_weights.rows, current_weights.channels(),
-              current_mask.cols, current_mask.rows, current_mask.channels());
-
           if ( !current_mask.empty() ) {
-            cv::multiply(current_mask, current_weights, current_weights,
+            multiply_weights(current_mask, current_weights, current_weights,
                 current_mask.depth() == CV_8U ?
                     1. / 255 : 1,
                 CV_32F);
@@ -2258,10 +2284,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               registration_options.image_registration_options.interpolation,
               ECC_BORDER_CONSTANT);
 
-//          cv::divide(current_weights, reference_weights_,
-//              current_weights);
-
-          cv::multiply(current_mask, current_weights, current_weights,
+          multiply_weights(current_mask, current_weights, current_weights,
               current_mask.depth() == CV_8U ?
                   1. / 255 : 1,
               CV_32F);
@@ -2708,7 +2731,7 @@ bool c_image_stacking_pipeline::weights_required() const
       options_->accumulation_options();
 
   return opts.accumulation_method == frame_accumulation_weighted_average &&
-      opts.s1 > 0 && opts.s2 > 0 && opts.scale >= 0;
+      opts.lpg_.dscale() >= 0 && (opts.lpg_.laplacian_weight() > 0 || opts.lpg_.gradient_weight() > 0);
 }
 
 void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
@@ -2716,11 +2739,16 @@ void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::M
   const c_frame_accumulation_options & acc_options =
       options_->accumulation_options();
 
-  compute_dogsmap(src, dst,
-      acc_options.s1,
-      acc_options.s2,
-      acc_options.scale,
-      acc_options.minv);
+  acc_options.lpg_.create_sharpeness_map(src, dst);
+  if ( !srcmask.empty() ) {
+    dst.setTo(0, ~srcmask);
+  }
+
+//  compute_dogsmap(src, dst,
+//      acc_options.s1,
+//      acc_options.s2,
+//      acc_options.scale,
+//      acc_options.minv);
 
 //  compute_smap(src, dst,
 //      acc_options.lksize,

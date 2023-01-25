@@ -23,7 +23,7 @@ public:
   typedef QFrameAccumulationOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QFrameAccumulationOptions(QWidget * parent = Q_NULLPTR);
+  QFrameAccumulationOptions(QWidget * parent = nullptr);
 
   void set_accumulation_options(c_frame_accumulation_options * options);
   const c_frame_accumulation_options * accumulation_options() const;
@@ -36,17 +36,14 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  c_frame_accumulation_options * options_ = Q_NULLPTR;
-  QFrameAccumulationMethodCombo * accumulation_method_ctl = Q_NULLPTR;
-//  QNumberEditBox * lksize_ctl = Q_NULLPTR;
-//  QNumberEditBox * scale_size_ctl = Q_NULLPTR;
-//  QNumberEditBox * minv_ctl = Q_NULLPTR;
-//  QToolButton * applyToAll_ctl = Q_NULLPTR;
+  c_frame_accumulation_options * options_ = nullptr;
+  QFrameAccumulationMethodCombo * accumulation_method_ctl = nullptr;
 
-  QNumberEditBox * s1_ctl = Q_NULLPTR;
-  QNumberEditBox * s2_ctl = Q_NULLPTR;
-  QNumberEditBox * minv_ctl = Q_NULLPTR;
-  QNumberEditBox * scale_ctl = Q_NULLPTR;
+  QNumberEditBox * lw_ctl = nullptr;
+  QNumberEditBox * gw_ctl = nullptr;
+  QNumberEditBox * dscale_ctl = nullptr;
+  QNumberEditBox * uscale_ctl = nullptr;
+  QCheckBox * avgc_ctl = nullptr;
 
 };
 

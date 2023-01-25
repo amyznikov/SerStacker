@@ -18,8 +18,8 @@ public:
 
   virtual ~c_image_sharpness_measure() = default;
 
-  virtual cv::Scalar compute(cv::InputArray image) = 0;
-  virtual cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) = 0;
+  virtual cv::Scalar compute(cv::InputArray image) const = 0;
+  virtual cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const = 0;
 };
 
 #endif /* __c_image_sharpness_measure_h__ */

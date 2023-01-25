@@ -145,23 +145,35 @@ int c_lpg_sharpness_measure::dscale() const
   return dscale_;
 }
 
+void c_lpg_sharpness_measure::set_uscale(int v)
+{
+  uscale_ = v;
+}
+
+int c_lpg_sharpness_measure::uscale() const
+{
+  return uscale_;
+}
+
 bool c_lpg_sharpness_measure::avgchannel() const
 {
   return avgchannel_;
 }
 
-cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image)
+cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
 {
-  return compute_lpg_map(image, cv::noArray(), laplacian_weight_, gradient_weight_, dscale_, avgchannel_);
+  return compute_lpg_map(image, cv::noArray(), laplacian_weight_, gradient_weight_,
+      dscale_, uscale_, avgchannel_);
 }
 
-cv::Scalar c_lpg_sharpness_measure::create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map)
+cv::Scalar c_lpg_sharpness_measure::create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return compute_lpg_map(image, output_map, laplacian_weight_, gradient_weight_, dscale_, avgchannel_);
+  return compute_lpg_map(image, output_map, laplacian_weight_, gradient_weight_,
+      dscale_, uscale_, avgchannel_);
 }
 
 cv::Scalar c_lpg_sharpness_measure::compute_lpg_map(cv::InputArray image, cv::OutputArray output_map,
-    double lw, double gw, int dscale, bool avgchannel)
+    double lw, double gw, int dscale, int uscale, bool avgchannel)
 {
   INSTRUMENT_REGION("");
 
@@ -210,9 +222,15 @@ cv::Scalar c_lpg_sharpness_measure::compute_lpg_map(cv::InputArray image, cv::Ou
           CV_MAKETYPE(CV_32F, avgchannel ? 1 : src.channels()));
     }
     else {
+
+      if( uscale > 0 && uscale > dscale ) {
+        downscale(m, m, uscale - std::max(0, dscale));
+      }
+
       if( m.size() != src.size() ) {
         upscale(m, src.size());
       }
+
       output_map.move(m);
     }
   }

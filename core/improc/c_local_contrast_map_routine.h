@@ -21,32 +21,32 @@ public:
 
   void set_eps(double v)
   {
-    eps_ = v;
+    m_.set_eps(v);
   }
 
   double eps() const
   {
-    return eps_;
+    return m_.eps();
   }
 
   void set_dscale(int v)
   {
-    dscale_ = v;
+    m_.set_dscale(v);
   }
 
   int dscale() const
   {
-    return dscale_;
+    return m_.dscale();
   }
 
   void set_avgchannel(bool v)
   {
-    avgchannel_ = v;
+    m_.set_avgchannel(v);
   }
 
   bool avgchannel() const
   {
-    return avgchannel_;
+    return m_.avgchannel();
   }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
@@ -69,14 +69,12 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    c_local_contrast_measure::compute_contrast_map(image.getMat(), image, eps_, dscale_, avgchannel_);
+    m_.compute_contrast_map(image.getMat(), image);
     return true;
   }
 
 protected:
-  double eps_ = 1e-6;
-  int dscale_ = 0;
-  bool avgchannel_ = true;
+  c_local_contrast_measure m_;
 };
 
 #endif /* __c_local_contrast_map_routine_h__ */

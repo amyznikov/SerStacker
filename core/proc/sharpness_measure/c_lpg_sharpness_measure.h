@@ -37,7 +37,7 @@ public:
       double lw, double gw, int dscale, bool avgchannel);
 
 protected:
-  double laplacian_weight_ = 1;
+  double laplacian_weight_ = 10;
   double gradient_weight_ = 1;
   int dscale_ = 1;
   bool avgchannel_ = true;

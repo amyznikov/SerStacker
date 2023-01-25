@@ -22,43 +22,43 @@ public:
 
   void set_laplacian_weight(double v)
   {
-    laplacian_weight_  =v;
+    m_.set_laplacian_weight(v);
   }
 
   double laplacian_weight() const
   {
-    return laplacian_weight_;
+    return m_.laplacian_weight();
   }
 
   void set_gradient_weight(double v)
   {
-    gradient_weight_  =v;
+    m_.set_gradient_weight(v);
   }
 
   double gradient_weight() const
   {
-    return gradient_weight_;
+    return m_.gradient_weight();
   }
 
 
   void set_dscale(int v)
   {
-    dscale_ = v;
+    m_.set_dscale(v);
   }
 
   int dscale() const
   {
-    return dscale_;
+    return m_.dscale();
   }
 
   void set_avgchannel(bool v)
   {
-    avgchannel_ = v;
+    m_.set_avgchannel(v);
   }
 
   bool avgchannel() const
   {
-    return avgchannel_;
+    return m_.avgchannel();
   }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
@@ -83,18 +83,12 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    c_lpg_sharpness_measure::compute_lpg_map(image.getMat(), image,
-        laplacian_weight_, gradient_weight_, dscale_, avgchannel_);
-
+    m_.create_sharpeness_map(image.getMat(), image);
     return true;
   }
 
 protected:
-  double laplacian_weight_ = 1;
-  double gradient_weight_ = 1;
-  int dscale_ = 0;
-  bool avgchannel_ = true;
-
+  c_lpg_sharpness_measure m_;
 };
 
 #endif /* __c_lpg_map_routine_h__ */

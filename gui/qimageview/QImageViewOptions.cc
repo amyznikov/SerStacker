@@ -6,15 +6,12 @@
  */
 
 #include "QImageViewOptions.h"
+#include <gui/widgets/style.h>
 
-#define ICON_pen     "pen16"
-#define ICON_circle  "circle"
-#define ICON_square  "square"
+#define ICON_pen     ":/qimageview/icons/pen16.png"
+#define ICON_circle  ":/qimageview/icons/circle.png"
+#define ICON_square  ":/qimageview/icons/square.png"
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qimageview/icons/%1").arg(name));
-}
 
 QImageViewOptions::QImageViewOptions(QWidget * parent) :
   Base("QImageViewModeOptions", parent)

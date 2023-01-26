@@ -735,7 +735,7 @@ void MainWindow::setupImageEditor()
             }
           }));
 
-  toolbar->addWidget(shapesCtl =
+  toolbar->addWidget(shapes_ctl =
       new QShapesButton(imageEditor->sceneView(),
           this));
 
@@ -745,9 +745,9 @@ void MainWindow::setupImageEditor()
           "Adjust display options",
           this, &ThisClass::onDisplaySettingsMenuActionClicked));
 
-  toolbar->addWidget(scaleSelectionCtl = new QScaleSelectionButton(this));
-  scaleSelectionCtl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
-  connect(scaleSelectionCtl, &QScaleSelectionButton::scaleChanged,
+  toolbar->addWidget(scaleSelection_ctl = new QScaleSelectionButton(this));
+  scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
+  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged,
       [this](int v) {
         imageEditor->setViewScale(v);
       });

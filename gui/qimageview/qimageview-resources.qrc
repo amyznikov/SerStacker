@@ -1,12 +1,13 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/qimageview">
-	<file>icons/shapes.png</file>
-	<file>icons/line.png</file>
-	<file>icons/rectangle.png</file>
-	<file>icons/delete.png</file>
-	<file>icons/pen16.png</file>
-	<file>icons/pen64.png</file>
-	<file>icons/circle.png</file>
-	<file>icons/square.png</file>
+	<file>icons/dark/pen16.png</file>
+	<file>icons/light/pen16.png</file>
+	
+	<file>icons/dark/circle.png</file>
+	<file>icons/light/circle.png</file>
+	
+	<file>icons/dark/square.png</file>
+	<file>icons/light/square.png</file>
+
 </qresource>
 </RCC>

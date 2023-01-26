@@ -7,63 +7,32 @@
 
 #include "QImageSceneView.h"
 #include <core/debug.h>
-//
-//// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-////static double distance_from_point_to_line(const QPointF & p, const QLineF & l)
-////{
-////  const QPointF p1 = l.p1();
-////  const QPointF p2 = l.p2();
-////
-////  const double x0 = p.x();
-////  const double y0 = p.y();
-////  const double x1 = p1.x();
-////  const double y1 = p1.y();
-////  const double x2 = p2.x();
-////  const double y2 = p2.y();
-////
-////  return fabs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1)) / sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-////}
-//
-//static double distance_from_point_to_line(const QPointF & p, const QPointF & lp1, const QPointF & lp2)
-//{
-//  const QPointF & p1 = lp1;
-//  const QPointF p2 = lp2;
-//
-//  const double x0 = p.x();
-//  const double y0 = p.y();
-//  const double x1 = p1.x();
-//  const double y1 = p1.y();
-//  const double x2 = p2.x();
-//  const double y2 = p2.y();
-//
-//  return fabs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1)) / sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-//}
-//
+
 QImageSceneView::QImageSceneView(QWidget *parent)
     : Base(parent)
 {
-  //setScene(scene_ = new QImageScene(this));
-  //scene_->setBackgroundBrush(QBrush(Qt::darkGray, Qt::SolidPattern));
-
   setMouseTracking(true);
 
   QShortcut * shortcut;
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
 
-  shortcut = new QShortcut(QKeySequence("Ctrl++"), this,
-      [this]() {
-        zoom(+1);
-      }, Qt::WidgetShortcut);
+  shortcut =
+      new QShortcut(QKeySequence("Ctrl++"), this,
+          [this]() {
+            zoom(+1);
+          }, Qt::WidgetShortcut);
 
-  shortcut = new QShortcut(QKeySequence("Ctrl+-"), this,
-      [this]() {
-        zoom(-1);
-      }, Qt::WidgetShortcut);
+  shortcut =
+      new QShortcut(QKeySequence("Ctrl+-"), this,
+          [this]() {
+            zoom(-1);
+          }, Qt::WidgetShortcut);
 
-  shortcut = new QShortcut(QKeySequence("Ctrl+0"), this,
-      this, &ThisClass::resetZoom,
-      Qt::WidgetShortcut);
+  shortcut =
+      new QShortcut(QKeySequence("Ctrl+0"), this,
+          this, &ThisClass::resetZoom,
+          Qt::WidgetShortcut);
 
 #else
   shortcut =

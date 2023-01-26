@@ -8,19 +8,16 @@
 #include "QShapesButton.h"
 #include "QGraphicsRectShape.h"
 #include "QGraphicsLineShape.h"
+#include <gui/widgets/style.h>
 #include <gui/qimageview/QImageScene.h>
 #include <core/debug.h>
 
 
-#define ICON_shapes     "shapes"
-#define ICON_line       "line"
-#define ICON_rectangle  "rectangle"
-#define ICON_delete     "delete"
+#define ICON_shapes     ":/qgraphicsshape/icons/shapes.png"
+#define ICON_line       ":/qgraphicsshape/icons/line.png"
+#define ICON_rectangle  ":/qgraphicsshape/icons/rectangle.png"
+#define ICON_delete     ":/qgraphicsshape/icons/delete.png"
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qimageview/icons/%1").arg(name));
-}
 
 static QIcon shapes_icon;
 static QIcon line_icon;
@@ -31,7 +28,7 @@ static QIcon delete_icon;
 QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
     Base(parent)
 {
-  Q_INIT_RESOURCE(qimageview_resources);
+  Q_INIT_RESOURCE(qgraphicsshape_resources);
 
   if ( shapes_icon.isNull() ) {
     shapes_icon = getIcon(ICON_shapes);
@@ -209,7 +206,6 @@ void QShapesButton::setSceneView(QGraphicsView * sceneView)
     setEnabled(false);
   }
   else {
-    //setChecked(sceneView_->shapesVisible());
     setEnabled(true);
   }
 }
@@ -221,7 +217,7 @@ QGraphicsView * QShapesButton::sceneView() const
 
 void QShapesButton::onPopulateGraphicsShapeContextMenu(QGraphicsShape* shape, const QGraphicsSceneContextMenuEvent * event, QMenu * menu)
 {
-  menu->addAction("Delete this object",
+  menu->addAction("Delete object",
       [this, shape]() {
         if ( sceneView_ ) {
           QGraphicsScene * scene = sceneView_->scene();

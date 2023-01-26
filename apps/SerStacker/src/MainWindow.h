@@ -158,8 +158,8 @@ private:
 
   QLabel * imageNameLabel_ctl = nullptr;
   QLabel * imageSizeLabel_ctl = nullptr;
-  QScaleSelectionButton * scaleSelectionCtl = nullptr;
-  QShapesButton * shapesCtl = nullptr;
+  QScaleSelectionButton * scaleSelection_ctl = nullptr;
+  QShapesButton * shapes_ctl = nullptr;
 
 };
 

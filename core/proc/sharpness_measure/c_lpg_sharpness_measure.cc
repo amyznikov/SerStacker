@@ -189,38 +189,31 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray outp
 
   compute_gradient(s, g);
 
-  if( k > 0 ) {
-    cv::scaleAdd(l, k, g, m);
+  if( k <= 0 ) {
+    cv::multiply(g, g, m);
   }
   else {
-    m = g;
+    cv::scaleAdd(l, k, g, m);
+    cv::multiply(m, m, m);
   }
 
   if( output_sharpness_metric ) {
 
     *output_sharpness_metric =
-        m.empty() ? cv::Scalar::all(0) :
-            cv::mean(m);
+        cv::mean(m);
   }
 
   if( output_map.needed() ) {
 
-    if( m.empty() ) {
-      output_map.create(src.size(),
-          CV_MAKETYPE(CV_32F, avgchannel ? 1 : src.channels()));
+    if( uscale > 0 && uscale > dscale ) {
+      downscale(m, m, uscale - std::max(0, dscale));
     }
-    else {
 
-      if( uscale > 0 && uscale > dscale ) {
-        downscale(m, m, uscale - std::max(0, dscale));
-      }
-
-      if( m.size() != src.size() ) {
-        upscale(m, src.size());
-      }
-
-      output_map.move(m);
+    if( m.size() != src.size() ) {
+      upscale(m, src.size());
     }
+
+    output_map.move(m);
   }
 
   return true;

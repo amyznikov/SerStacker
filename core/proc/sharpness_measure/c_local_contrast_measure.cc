@@ -31,28 +31,28 @@ static void compute_gradient(const cv::Mat & src, cv::Mat & g, double delta = 0)
   cv::magnitude(gx, gy, g);
 }
 
-
-// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
-static void compute_laplacian(const cv::Mat & src, cv::Mat & l, double delta)
-{
-  static float k[5 * 5] = {
-      0, 0, -1, 0, 0,
-      0, -1, -2, -1, 0,
-      -1, -2, 16, -2, -1,
-      0, -1, -2, -1, 0,
-      0, 0, -1, 0, 0,
-  };
-
-  static const cv::Mat1f K =
-      cv::Mat1f(5, 5, k) / 16.;
-
-  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  //cv::multiply(l, l, l);
-  cv::absdiff(l, 0, l);
-  if( delta > 0 ) {
-    cv::add(l, delta, l);
-  }
-}
+//
+//// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
+//static void compute_laplacian(const cv::Mat & src, cv::Mat & l, double delta)
+//{
+//  static float k[5 * 5] = {
+//      0, 0, -1, 0, 0,
+//      0, -1, -2, -1, 0,
+//      -1, -2, 16, -2, -1,
+//      0, -1, -2, -1, 0,
+//      0, 0, -1, 0, 0,
+//  };
+//
+//  static const cv::Mat1f K =
+//      cv::Mat1f(5, 5, k) / 16.;
+//
+//  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  //cv::multiply(l, l, l);
+//  cv::absdiff(l, 0, l);
+//  if( delta > 0 ) {
+//    cv::add(l, delta, l);
+//  }
+//}
 
 
 
@@ -194,8 +194,13 @@ bool c_local_contrast_measure::avgchannel() const
 
 cv::Scalar c_local_contrast_measure::compute(cv::InputArray image) const
 {
-  return compute(image, cv::noArray(),
-      eps_, dscale_, avgchannel_);
+  cv::Scalar rv;
+
+  compute(image, cv::noArray(),
+      eps_, dscale_, avgchannel_,
+      &rv);
+
+  return rv;
 }
 
 bool c_local_contrast_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
@@ -203,66 +208,3 @@ bool c_local_contrast_measure::create_map(cv::InputArray image, cv::OutputArray 
   return compute(image, output_map,
       eps_, dscale_, avgchannel_);
 }
-
-#if 0
-static void compute_fft(const cv::Mat & src, cv::Mat & dst)
-{
-
-  static const auto prepare_channel =
-      [](cv::Mat & img) {
-
-        cv::Mat1f image = img;
-
-        for ( int y = 0; y < image.rows; ++y ) {
-          for ( int x = 0; x < image.cols; ++x ) {
-            if( (x + y) & 0x1 ) {
-              image[y][x] = -image[y][x];
-            }
-          }
-        }
-      };
-
-  std::vector<cv::Mat> channels;
-
-  const int cn =
-      src.channels();
-
-  if ( cn == 1 ) {
-    channels.emplace_back(src);
-  }
-  else {
-    cv::split(src, channels);
-  }
-
-  //cv::Scalar ww = cv::Scalar::all(0);
-  dst.create(src.size(), CV_MAKETYPE(CV_32F, cn));
-
-
-  for ( int c = 0; c < cn; ++c ) {
-
-    prepare_channel(channels[c]); // instead of fftSwapQuadrants(channels[c]);
-
-    cv::dft(channels[c], channels[c],
-        cv::DFT_COMPLEX_OUTPUT);
-
-    cv::Mat2f s =
-        channels[c];
-
-    for( int y = 0; y < s.rows; ++y ) {
-
-      float *dstp = dst.ptr<float>(y) + c;
-
-      for( int x = 0; x < s.cols; ++x ) {
-
-        const float re = s[y][x][0];
-        const float im = s[y][x][1];
-        const float w = sqrt(re * re + im * im);
-        //ww[c] += w;
-        dstp[x * cn] = w;
-      }
-    }
-  }
-
-  //cv::divide(dst, ww, dst);
-}
-#endif

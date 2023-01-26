@@ -29,7 +29,7 @@ QStackingSettingsWidget::QStackingSettingsWidget(QWidget * parent)
           [this](const QString & text) {
             if ( stack_ && !text.isEmpty() ) {
               stack_->set_name(text.toStdString());
-              emit stackNameChanged(stack_);
+              Q_EMIT stackNameChanged(stack_);
             }
           });
 
@@ -194,7 +194,7 @@ QStackOptions::QStackOptions(QWidget * parent)
   connect(action, &QAction::triggered,
       [this]() {
         if ( stackSettings_ctl->currentStack() ) {
-          emit applyAllStackOptionsToAllRequested(stackSettings_ctl->currentStack());
+          Q_EMIT applyAllStackOptionsToAllRequested(stackSettings_ctl->currentStack());
         }
       });
 

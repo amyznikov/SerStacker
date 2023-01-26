@@ -59,8 +59,8 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
 
   connect(this, &QToolButton::toggled,
       [this](bool checked) {
-        if ( sceneView_ ) {
-         // sceneView_->setShapesVisible(checked);
+        for ( QGraphicsShape * shape : shapes_ ) {
+          shape->setVisible(checked);
         }
       });
 
@@ -95,6 +95,10 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
             shape->setPen(pen_);
+
+            connect(shape, &QGraphicsShape::populateContextMenuReuested,
+                this, &ThisClass::onPopulateGraphicsShapeContextMenu);
+
             scene->addItem(shape);
             shapes_.append(shape);
 
@@ -107,6 +111,7 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
                   Qt::QueuedConnection);
             }
 
+            setChecked(true);
           }
         }
   });
@@ -145,6 +150,10 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
             shape->setPen(pen_);
+
+            connect(shape, &QGraphicsShape::populateContextMenuReuested,
+                this, &ThisClass::onPopulateGraphicsShapeContextMenu);
+
             scene->addItem(shape);
             shapes_.append(shape);
 
@@ -157,6 +166,7 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
                   Qt::QueuedConnection);
             }
 
+            setChecked(true);
           }
         }
     });
@@ -173,6 +183,7 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
 
             for ( QGraphicsShape * shape : shapes_ ) {
               scene->removeItem(shape);
+              delete shape;
             }
 
             shapes_.clear();
@@ -207,3 +218,20 @@ QGraphicsView * QShapesButton::sceneView() const
 {
   return sceneView_;
 }
+
+void QShapesButton::onPopulateGraphicsShapeContextMenu(QGraphicsShape* shape, const QGraphicsSceneContextMenuEvent * event, QMenu * menu)
+{
+  menu->addAction("Delete this object",
+      [this, shape]() {
+        if ( sceneView_ ) {
+          QGraphicsScene * scene = sceneView_->scene();
+          if ( scene ) {
+            shapes_.removeOne(shape);
+            scene->removeItem(shape);
+            delete shape;
+          }
+        }
+      });
+
+}
+

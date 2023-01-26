@@ -21,13 +21,13 @@ public:
   typedef QMasterFrameOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QMasterFrameOptions(QWidget * parent = Q_NULLPTR);
+  QMasterFrameOptions(QWidget * parent = nullptr);
 
   void set_master_frame_options(c_master_frame_options * options, const c_input_sequence::ptr & available_sources);
   const c_master_frame_options * master_frame_options() const;
   const c_input_sequence::ptr & input_sequence() const;
 
-signals:
+Q_SIGNALS:
   //void applyMasterFrameSettingsToAllRequested(const c_master_frame_options & options);
 
 protected:
@@ -37,7 +37,7 @@ protected:
   void updateMasterSourceBasingOnComboboxItemIndex(int comboboxItemIndex);
   void updateMasterFrameIndex();
 
-protected slots:
+protected Q_SLOTS:
   void onMasterSourceComboCurrentIndexChanged(int);
   void onMasterFrameSeletionMethodChaned(master_frame_selection_method v);
   void onSpinBoxValueChanged(int value);
@@ -52,23 +52,23 @@ protected slots:
   void onApplyInputFramePprocessorCheckboxStateChanged(int);
 
 protected:
-  c_master_frame_options * options_ = Q_NULLPTR;
+  c_master_frame_options * options_ = nullptr;
   c_input_sequence::ptr input_sequence_;
 
-  QComboBox * masterSource_ctl = Q_NULLPTR;
-  QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = Q_NULLPTR;
-  QSpinBox * masterFrameIndex_ctl = Q_NULLPTR;
-  QCheckBox * apply_input_frame_processors_ctl = Q_NULLPTR;
-  QCheckBox * generateMasterFrame_ctl = Q_NULLPTR;
-  QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = Q_NULLPTR;
-  QNumberEditBox * eccFlowScale_ctl = Q_NULLPTR;
-  QNumberEditBox * master_sharpen_factor_ctl = Q_NULLPTR;
-  QNumberEditBox * accumulated_sharpen_factor_ctl = Q_NULLPTR;
+  QComboBox * masterSource_ctl = nullptr;
+  QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = nullptr;
+  QSpinBox * masterFrameIndex_ctl = nullptr;
+  QCheckBox * apply_input_frame_processors_ctl = nullptr;
+  QCheckBox * generateMasterFrame_ctl = nullptr;
+  QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = nullptr;
+  QNumberEditBox * eccFlowScale_ctl = nullptr;
+  QNumberEditBox * master_sharpen_factor_ctl = nullptr;
+  QNumberEditBox * accumulated_sharpen_factor_ctl = nullptr;
 
-  //QCheckBox * compensateMasterFlow_ctl = Q_NULLPTR;
-  QCheckBox * saveMasterFrame_ctl = Q_NULLPTR;
+  //QCheckBox * compensateMasterFlow_ctl = nullptr;
+  QCheckBox * saveMasterFrame_ctl = nullptr;
 
-  //QToolButton * applyToAll_ctl = Q_NULLPTR;
+  //QToolButton * applyToAll_ctl = nullptr;
   int previousComboboxItemIndex = -1;
 
 };

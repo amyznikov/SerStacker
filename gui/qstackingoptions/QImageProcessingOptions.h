@@ -21,7 +21,7 @@ public:
   typedef QImageProcessingOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QImageProcessingOptions(QWidget * parent = Q_NULLPTR);
+  QImageProcessingOptions(QWidget * parent = nullptr);
 
   void set_image_processing_options(c_image_processing_options * options);
   c_image_processing_options * image_processing_options() const;
@@ -30,11 +30,11 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  c_image_processing_options * options_ = Q_NULLPTR;
-  QImageProcessorSelectionCombo * input_image_processor_ctl = Q_NULLPTR;
-  QImageProcessorSelectionCombo * ecc_image_processor_ctl = Q_NULLPTR;
-  QImageProcessorSelectionCombo * aligned_image_processor_ctl = Q_NULLPTR;
-  QImageProcessorSelectionCombo * accumulated_image_processor_ctl = Q_NULLPTR;
+  c_image_processing_options * options_ = nullptr;
+  QImageProcessorSelectionCombo * input_image_processor_ctl = nullptr;
+  QImageProcessorSelectionCombo * ecc_image_processor_ctl = nullptr;
+  QImageProcessorSelectionCombo * aligned_image_processor_ctl = nullptr;
+  QImageProcessorSelectionCombo * accumulated_image_processor_ctl = nullptr;
 };
 
 

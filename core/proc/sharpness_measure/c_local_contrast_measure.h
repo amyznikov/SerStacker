@@ -28,10 +28,11 @@ public:
   bool avgchannel() const;
 
   cv::Scalar compute(cv::InputArray image) const override;
-  cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const override;
+  bool create_map(cv::InputArray image, cv::OutputArray output_map) const override;
 
-  static cv::Scalar compute_contrast_map(cv::InputArray image, cv::OutputArray output_contrast_map,
-      double eps = 1e-3, int dscale = 1, bool avgchannel = false);
+  static bool compute(cv::InputArray image, cv::OutputArray output_contrast_map,
+      double eps = 1e-3, int dscale = 1, bool avgchannel = false,
+      cv::Scalar * output_sharpness_measure = nullptr);
 
 protected:
   int dscale_ = 1;

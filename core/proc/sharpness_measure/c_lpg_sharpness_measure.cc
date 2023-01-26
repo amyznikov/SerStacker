@@ -152,16 +152,19 @@ bool c_lpg_sharpness_measure::avgchannel() const
 
 cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
 {
-  return create_map(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_);
+  cv::Scalar rv;
+  compute(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_, &rv);
+  return rv;
 }
 
-cv::Scalar c_lpg_sharpness_measure::create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const
+bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return create_map(image, output_map, k_, dscale_, uscale_, avgchannel_);
+  return compute(image, output_map, k_, dscale_, uscale_, avgchannel_, nullptr);
 }
 
-cv::Scalar c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map,
-    double k, int dscale, int uscale, bool avgchannel)
+bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
+    double k, int dscale, int uscale, bool avgchannel,
+    cv::Scalar * output_sharpness_metric)
 {
   INSTRUMENT_REGION("");
 
@@ -193,9 +196,12 @@ cv::Scalar c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputA
     m = g;
   }
 
-  const cv::Scalar rv =
-      m.empty() ? cv::Scalar::all(0) :
-          cv::mean(m);
+  if( output_sharpness_metric ) {
+
+    *output_sharpness_metric =
+        m.empty() ? cv::Scalar::all(0) :
+            cv::mean(m);
+  }
 
   if( output_map.needed() ) {
 
@@ -217,5 +223,5 @@ cv::Scalar c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputA
     }
   }
 
-  return rv;
+  return true;
 }

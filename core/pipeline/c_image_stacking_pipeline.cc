@@ -2724,15 +2724,11 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
 
 bool c_image_stacking_pipeline::weights_required() const
 {
-//  return options_->accumulation_options().accumulation_method == frame_accumulation_weighted_average &&
-//      options_->accumulation_options().lksize > 0;
-
   const c_frame_accumulation_options & opts =
       options_->accumulation_options();
 
   return opts.accumulation_method == frame_accumulation_weighted_average &&
-      //opts.m_.dscale() >= 0 && (opts.m_.laplacian_weight() > 0 || opts.m_.gradient_weight() > 0);
-      opts.m_.dscale() >= 0;
+      opts.m_.dscale() >= 0 && opts.m_.k() >= 0;
 }
 
 void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
@@ -2740,7 +2736,7 @@ void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::M
   const c_frame_accumulation_options & acc_options =
       options_->accumulation_options();
 
-  acc_options.m_.create_sharpeness_map(src, dst);
+  acc_options.m_.create_map(src, dst);
   if ( !srcmask.empty() ) {
     dst.setTo(0, ~srcmask);
   }

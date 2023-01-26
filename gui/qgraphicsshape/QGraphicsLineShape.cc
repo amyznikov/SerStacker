@@ -363,6 +363,9 @@ bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
   menu.addAction(lockP1Action_);
   menu.addAction(lockP2Action_);
 
+  menu.addSeparator();
+  Base::popuateContextMenu(e, menu);
+
   return true;
 }
 

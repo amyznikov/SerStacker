@@ -10,33 +10,34 @@
 #include <core/settings/opencv_settings.h>
 #include <core/debug.h>
 
-#define ICON_check_all      "check_all"
+//#define ICON_check_all      "check_all"
+//
+////static const char borderless_style[] = ""
+////    "QToolButton { border: none; } "
+////    "QToolButton::menu-indicator { image: none; }"
+////    "";
+//
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+//}
+//
 
-//static const char borderless_style[] = ""
-//    "QToolButton { border: none; } "
-//    "QToolButton::menu-indicator { image: none; }"
-//    "";
 
-static QIcon getIcon(const QString & name)
+QROISelectionOptions::QROISelectionOptions(QWidget * parent) :
+  Base("QROISelectionOptions", parent)
 {
-  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-}
 
-
-
-QROISelectionOptions::QROISelectionOptions(QWidget * parent)
-  : Base("QROISelectionOptions", parent)
-{
-
-  selectionMethod_ctl = add_enum_combobox<roi_selection_method>(
-      "ROI selection:",
-      [this](roi_selection_method v) {
-        if ( options_ && v != options_->method ) {
-          options_->method = v;
-          updateROIControls();
-          emit parameterChanged();
-        }
-      });
+  selectionMethod_ctl =
+      add_enum_combobox<roi_selection_method>(
+          "ROI selection:",
+          [this](roi_selection_method v) {
+            if ( options_ && v != options_->method ) {
+              options_->method = v;
+              updateROIControls();
+              emit parameterChanged();
+            }
+          });
 
   planetaryDiskSize_ctl =
       add_numeric_box<cv::Size>("Crop size WxH [px]:",

@@ -20,20 +20,20 @@
 
 
 
-class QStackingSettingsWidget
-    : public QSettingsWidget
+class QStackingSettingsWidget :
+    public QSettingsWidget
 {
   Q_OBJECT;
 public:
   typedef QStackingSettingsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QStackingSettingsWidget(QWidget * parent = Q_NULLPTR);
+  QStackingSettingsWidget(QWidget * parent = nullptr);
 
   void setCurrentStack(const c_image_stacking_options::ptr & options);
   const c_image_stacking_options::ptr & currentStack() const;
 
-signals:
+Q_SIGNALS:
   void stackOptionsChanged();
   void stackNameChanged(const c_image_stacking_options::ptr & stack);
   void applyInputOptionsToAllRequested(const c_input_options & stack);
@@ -50,33 +50,33 @@ protected:
 protected:
   c_image_stacking_options::ptr stack_;
 
-  QLineEditBox * stackName_ctl = Q_NULLPTR;
-  QImageStackingInputOptions * inputOptions_ctl = Q_NULLPTR;
-  QROISelectionOptions * roiSelection_ctl = Q_NULLPTR;
-  QFrameUpscaleOptions * upscaleOptions_ctl = Q_NULLPTR;
-  QFrameRegistrationOptions * frameRegistration_ctl = Q_NULLPTR;
-  QFrameAccumulationOptions * frameAccumulation_ctl = Q_NULLPTR;
-  QImageProcessingOptions * imageProcessingOptions_ctl = Q_NULLPTR;
-  QStackOutputOptions * outputOptions_ctl = Q_NULLPTR;
+  QLineEditBox * stackName_ctl = nullptr;
+  QImageStackingInputOptions * inputOptions_ctl = nullptr;
+  QROISelectionOptions * roiSelection_ctl = nullptr;
+  QFrameUpscaleOptions * upscaleOptions_ctl = nullptr;
+  QFrameRegistrationOptions * frameRegistration_ctl = nullptr;
+  QFrameAccumulationOptions * frameAccumulation_ctl = nullptr;
+  QImageProcessingOptions * imageProcessingOptions_ctl = nullptr;
+  QStackOutputOptions * outputOptions_ctl = nullptr;
 };
 
 
-class QStackOptions
-    : public QWidget
+class QStackOptions :
+    public QWidget
 {
   Q_OBJECT;
 public:
   typedef QStackOptions ThisClass;
   typedef QWidget Base;
 
-  QStackOptions(QWidget * parent = Q_NULLPTR);
+  QStackOptions(QWidget * parent = nullptr);
 
   void setCurrentStack(const c_image_stacking_options::ptr & options);
   const c_image_stacking_options::ptr & currentStack() const;
 
   void updateControls();
 
-signals:
+Q_SIGNALS:
   void stackOptionsChanged();
   void stackNameChanged(const c_image_stacking_options::ptr & stack);
   void closeWindowRequested();
@@ -91,10 +91,10 @@ signals:
   void applyAllStackOptionsToAllRequested(const c_image_stacking_options::ptr & stack);
 
 protected:
-  QVBoxLayout * layout_ = Q_NULLPTR;
-  QToolBar * toolbar_ = Q_NULLPTR;
-  QStackingSettingsWidget * stackSettings_ctl = Q_NULLPTR;
-  QScrollArea * scrollArea_ = Q_NULLPTR;
+  QVBoxLayout * layout_ = nullptr;
+  QToolBar * toolbar_ = nullptr;
+  QStackingSettingsWidget * stackSettings_ctl = nullptr;
+  QScrollArea * scrollArea_ = nullptr;
 };
 
 #endif /* __QStackingOptions_h__ */

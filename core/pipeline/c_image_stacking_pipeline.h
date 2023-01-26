@@ -146,7 +146,12 @@ struct c_frame_accumulation_options
       frame_accumulation_weighted_average;
 
   c_lpg_sharpness_measure m_;
-  //c_harris_sharpness_measure m_;
+
+  c_frame_accumulation_options()
+  {
+    // disable this feature by default
+    m_.set_dscale(-1);
+  }
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

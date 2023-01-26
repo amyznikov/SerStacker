@@ -23,6 +23,8 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
   setEditable(true);
   setInsertPolicy(QComboBox::NoInsert);
   setFocusPolicy(Qt::StrongFocus);
+  setSizeAdjustPolicy(AdjustToContents);
+  setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
 
   completer_ = new QCompleter(this);
   completer_->setModel(this->model());

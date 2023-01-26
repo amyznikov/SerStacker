@@ -23,8 +23,8 @@
 //}
 
 
-QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
-  : Base("QStackingMasterFrameSettings", parent)
+QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
+  Base("QStackingMasterFrameSettings", parent)
 {
 
   Q_INIT_RESOURCE(qstackingoptions_resources);
@@ -33,6 +33,8 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
   masterSource_ctl->setEditable(false);
   masterSource_ctl->setDuplicatesEnabled(true);
   masterSource_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  masterSource_ctl->setFocusPolicy(Qt::StrongFocus);
+
   connect(masterSource_ctl, SIGNAL(currentIndexChanged(int)),
       this, SLOT(onMasterSourceComboCurrentIndexChanged(int)));
 
@@ -48,6 +50,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent)
 
   masterFrameIndex_ctl = new QSpinBox(this);
   masterFrameIndex_ctl->setKeyboardTracking(false);
+  masterFrameIndex_ctl->setFocusPolicy(Qt::StrongFocus);
   connect(masterFrameIndex_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onSpinBoxValueChanged(int)));
 
@@ -407,7 +410,7 @@ QString QMasterFrameOptions::browseForMasterFrame()
 
     filter.append("Regular images (");
     for ( const std::string & s : c_regular_image_input_source::suffixes() ) {
-      filter.append(QString("*%1 ").arg(s.c_str()));
+      filter.append(QString("*%1 ").arg(QString(s.c_str())));
     }
     filter.append(");;");
 

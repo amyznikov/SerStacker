@@ -62,6 +62,7 @@ void QBrowsePathCombo::construct(void)
 
   combo->setEditable(true);
   combo->setDuplicatesEnabled(false);
+  combo->setFocusPolicy(Qt::StrongFocus);
   combo->setMinimumContentsLength(24);
   combo->setMaxCount(30);
 

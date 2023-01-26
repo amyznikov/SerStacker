@@ -36,15 +36,16 @@ public:
   bool avgchannel() const;
 
   cv::Scalar compute(cv::InputArray image) const override;
-  cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const override;
+  bool create_map(cv::InputArray image, cv::OutputArray output_map) const override;
 
-  static cv::Scalar create_map(cv::InputArray image, cv::OutputArray output_map,
-      double k, int dscale, int uscale, bool avgchannel);
+  static bool compute(cv::InputArray image, cv::OutputArray output_map,
+      double k, int dscale, int uscale, bool avgchannel,
+      cv::Scalar * output_sharpness_metric);
 
 protected:
-  double k_ = 6;
+  double k_ = 5;
   int dscale_ = 1;
-  int uscale_ = 2;
+  int uscale_ = 3;
   bool avgchannel_ = true;
 
 };

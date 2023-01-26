@@ -355,6 +355,7 @@ public:
       const std::function<void(EnumType)> & setfn = std::function<void(EnumType)>())
   {
     typedef QEnumComboBox<EnumType> CombomoxType;
+
     CombomoxType * ctl = new CombomoxType(this);
     form->addRow(name, ctl);
 
@@ -375,7 +376,8 @@ public:
   QEnumComboBox<EnumType>* add_enum_combobox(QFormLayout * form, const QString & name,
       const std::function<void(EnumType)> & setfn, const std::function<bool(EnumType*)> & getfn)
   {
-    QEnumComboBox<EnumType> *ctl = add_enum_combobox(form, name, setfn);
+    QEnumComboBox<EnumType> *ctl =
+        add_enum_combobox(form, name, setfn);
 
     if( getfn ) {
 
@@ -418,6 +420,7 @@ public:
       const std::function<void(int, ComboBoxType*)> & setfn = std::function<void(int, ComboBoxType*)>())
   {
     ComboBoxType *ctl = new ComboBoxType();
+    ctl->setFocusPolicy(Qt::StrongFocus);
     form->addRow(name, ctl);
 
     if( setfn ) {
@@ -439,7 +442,9 @@ public:
       const std::function<void(int, ComboBoxType*)> & setfn,
       const std::function<bool(int*, ComboBoxType*)> & getfn)
   {
-    ComboBoxType *ctl = add_combobox(form, name, setfn);
+    ComboBoxType *ctl =
+        add_combobox(form, name, setfn);
+
     if( getfn ) {
 
       QMetaObject::Connection conn =

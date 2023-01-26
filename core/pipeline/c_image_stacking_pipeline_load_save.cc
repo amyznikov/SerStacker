@@ -441,8 +441,6 @@ bool c_frame_accumulation_options::serialize(c_config_setting settings) const
 {
   save_settings(settings, "accumulation_method", accumulation_method );
 
-//  SAVE_PROPERTY(settings, m_, laplacian_weight);
-//  SAVE_PROPERTY(settings, m_, gradient_weight);
   SAVE_PROPERTY(settings, m_, k);
   SAVE_PROPERTY(settings, m_, dscale);
   SAVE_PROPERTY(settings, m_, uscale);
@@ -459,8 +457,6 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
 
   load_settings(settings, "accumulation_method", &accumulation_method );
 
-//  LOAD_PROPERTY(settings, m_, laplacian_weight);
-//  LOAD_PROPERTY(settings, m_, gradient_weight);
   LOAD_PROPERTY(settings, m_, k);
   LOAD_PROPERTY(settings, m_, dscale);
   LOAD_PROPERTY(settings, m_, uscale);

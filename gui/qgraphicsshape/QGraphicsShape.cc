@@ -69,7 +69,6 @@ QGraphicsShape::QGraphicsShape(const QString & name, const QString & description
 
 QGraphicsShape::~QGraphicsShape()
 {
-
 }
 
 void QGraphicsShape::setName(const QString& name)
@@ -132,7 +131,7 @@ bool QGraphicsShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e
   const int n =
       menu.actions().count();
 
-  Q_EMIT populateContextMenuReuested(event, &menu);
+  Q_EMIT populateContextMenuReuested(this, event, &menu);
 
   return menu.actions().count() != n;
 }

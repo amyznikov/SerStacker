@@ -10,27 +10,27 @@
 #include <gui/widgets/settings.h>
 #include <core/debug.h>
 
-#define ICON_check_all      "check_all"
+//#define ICON_check_all      "check_all"
+//
+////static const char borderless_style[] = ""
+////    "QToolButton { border: none; } "
+////    "QToolButton::menu-indicator { image: none; }"
+////    "";
+//
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+//}
 
-//static const char borderless_style[] = ""
-//    "QToolButton { border: none; } "
-//    "QToolButton::menu-indicator { image: none; }"
-//    "";
-
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-}
-
-QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
-  : Base("QImageStackingInputOptions", parent)
+QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
+  Base("QImageStackingInputOptions", parent)
 {
   start_frame_index_ctl =
       add_numeric_box<int>("Start frame index:",
           [this](int v) {
             if ( options_ && options_->start_frame_index != v ) {
               options_->start_frame_index = v;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -40,7 +40,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](int v) {
             if ( options_ && options_->max_input_frames != v ) {
               options_->max_input_frames = v;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -49,7 +49,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && checked != options_->filter_bad_pixels ) {
               options_->filter_bad_pixels = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -58,7 +58,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](double v) {
             if ( options_ && options_->hot_pixels_variation_threshold != v ) {
               options_->hot_pixels_variation_threshold = v;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -67,7 +67,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && checked != options_->drop_bad_asi_frames ) {
               options_->drop_bad_asi_frames = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -76,7 +76,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && checked != options_->enable_color_maxtrix ) {
               options_->enable_color_maxtrix = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -86,7 +86,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](anscombe_method v) {
             if ( options_ && v != options_->anscombe ) {
               options_->anscombe = v;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -103,7 +103,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->darkbayer_filename =
               darkbayer_filename_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -121,7 +121,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->missing_pixel_mask_filename =
               missing_pixel_mask_filename_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -131,7 +131,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && checked != options_->missing_pixels_marked_black ) {
               options_->missing_pixels_marked_black = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -140,24 +140,24 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && checked != options_->inpaint_missing_pixels ) {
               options_->inpaint_missing_pixels = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
-  applyToAll_ctl = new QToolButton(this);
-  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  applyToAll_ctl->setIconSize(QSize(16,16));
-  //applyToAll_ctl->setStyleSheet(borderless_style);
-  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-  connect(applyToAll_ctl, &QToolButton::clicked,
-      [this]() {
-        if ( options_ ) {
-          emit applyInputOptionsToAllRequested(*options_);
-        }
-      });
-
-  form->addRow(applyToAll_ctl);
+//  applyToAll_ctl = new QToolButton(this);
+//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//  applyToAll_ctl->setIconSize(QSize(16,16));
+//  //applyToAll_ctl->setStyleSheet(borderless_style);
+//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
+//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
+//  connect(applyToAll_ctl, &QToolButton::clicked,
+//      [this]() {
+//        if ( options_ ) {
+//          Q_EMIT applyInputOptionsToAllRequested(*options_);
+//        }
+//      });
+//
+//  form->addRow(applyToAll_ctl);
 }
 
 void QImageStackingInputOptions::set_input_options(c_input_options * options)

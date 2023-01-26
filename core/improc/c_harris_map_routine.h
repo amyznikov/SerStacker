@@ -81,7 +81,7 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    m_.create_sharpeness_map(image.getMat(), image);
+    m_.create_map(image.getMat(), image);
     return true;
   }
 

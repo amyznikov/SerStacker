@@ -28,7 +28,7 @@ public:
   void set_input_options(c_input_options * options);
   c_input_options * input_options() const;
 
-signals:
+Q_SIGNALS:
   void applyInputOptionsToAllRequested(const c_input_options & options);
 
 protected:
@@ -52,7 +52,7 @@ protected:
   QNumberEditBox * start_frame_index_ctl = Q_NULLPTR;
   QNumberEditBox * max_input_frames_ctl = Q_NULLPTR;
 
-  QToolButton * applyToAll_ctl = Q_NULLPTR;
+//  QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 
 #endif /* __QImageStackingInputOptions_h__ */

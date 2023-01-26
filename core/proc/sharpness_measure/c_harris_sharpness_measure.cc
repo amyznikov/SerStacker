@@ -168,17 +168,19 @@ bool c_harris_sharpness_measure::avgchannel() const
 
 cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image) const
 {
-  return compute(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_);
+  cv::Scalar rv;
+  compute(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_, &rv);
+  return rv;
 }
 
-cv::Scalar c_harris_sharpness_measure::create_sharpeness_map(cv::InputArray image,
-    cv::OutputArray output_map) const
+bool c_harris_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
   return compute(image, output_map, k_, dscale_, uscale_, avgchannel_);
 }
 
-cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
-    double k, int dscale, int uscale, bool avgchannel)
+bool c_harris_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
+    double k, int dscale, int uscale, bool avgchannel,
+    cv::Scalar * output_sharpness_measure)
 {
   INSTRUMENT_REGION("");
 
@@ -199,9 +201,11 @@ cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image, cv::OutputA
 
   compute_harris_map(s, k, m);
 
-  const cv::Scalar rv =
-      m.empty() ? cv::Scalar::all(0) :
-          cv::mean(m);
+  if( output_sharpness_measure ) {
+    *output_sharpness_measure =
+        m.empty() ? cv::Scalar::all(0) :
+            cv::mean(m);
+  }
 
   if( output_map.needed() ) {
 
@@ -224,5 +228,5 @@ cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image, cv::OutputA
   }
 
 
-  return rv;
+  return true;
 }

@@ -25,12 +25,12 @@ public:
   typedef QROISelectionOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QROISelectionOptions(QWidget * parent = Q_NULLPTR);
+  QROISelectionOptions(QWidget * parent = nullptr);
 
   void set_roi_selection_options(c_roi_selection_options * options);
   const c_roi_selection_options * roi_selection_options() const;
 
-signals:
+Q_SIGNALS:
   void applyROISelectionOptionsToAllRequested(
       const c_roi_selection_options & options);
 
@@ -39,13 +39,13 @@ protected:
   void updateROIControls();
 
 protected:
-  c_roi_selection_options * options_ = Q_NULLPTR;
-  QROISelectionMethodCombo * selectionMethod_ctl = Q_NULLPTR;
-  QNumberEditBox * rectangeROI_ctl = Q_NULLPTR;
-  QNumberEditBox * planetaryDiskSize_ctl = Q_NULLPTR;
-  QNumberEditBox * planetaryDiskGbSigma_ctl = Q_NULLPTR;
-  QNumberEditBox * planetaryDiskStdevFactor_ctl = Q_NULLPTR;
-//  QToolButton * applyToAll_ctl = Q_NULLPTR;
+  c_roi_selection_options * options_ = nullptr;
+  QROISelectionMethodCombo * selectionMethod_ctl = nullptr;
+  QNumberEditBox * rectangeROI_ctl = nullptr;
+  QNumberEditBox * planetaryDiskSize_ctl = nullptr;
+  QNumberEditBox * planetaryDiskGbSigma_ctl = nullptr;
+  QNumberEditBox * planetaryDiskStdevFactor_ctl = nullptr;
+//  QToolButton * applyToAll_ctl = nullptr;
 };
 
 #endif /* __QROISelectionOptions_h__ */

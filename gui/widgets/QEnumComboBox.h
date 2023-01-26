@@ -15,8 +15,8 @@
 
 // QEnumCombobox<> can't emit events
 //  because Q_OBJECT templates are not well supported by Qt
-class QEnumComboBoxBase
-  : public QComboBox
+class QEnumComboBoxBase :
+    public QComboBox
 {
   Q_OBJECT;
 public:
@@ -49,8 +49,8 @@ public:
   typedef QEnumComboBoxBase Base;
   typedef E ItemType;
 
-  QEnumComboBox(QWidget * parent)
-    : Base(parent)
+  QEnumComboBox(QWidget * parent) :
+    Base(parent)
   {
     setupItems(members_of<E>());
   }

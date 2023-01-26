@@ -43,7 +43,9 @@ public:
 
 Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);
-  void populateContextMenuReuested(const QGraphicsSceneContextMenuEvent * event, QMenu * menu);
+  void populateContextMenuReuested(QGraphicsShape* shape,
+      const QGraphicsSceneContextMenuEvent * event,
+      QMenu * menu);
 
 public:  // frequently used utilities
   static double distance(const QPointF & p1, const QPointF & p2);

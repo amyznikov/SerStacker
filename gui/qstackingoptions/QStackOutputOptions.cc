@@ -9,23 +9,23 @@
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/debug.h>
 
-#define ICON_close          "close"
-#define ICON_check_all      "check_all"
+//#define ICON_close          "close"
+//#define ICON_check_all      "check_all"
+//
+////static const char borderless_style[] = ""
+////    "QToolButton { border: none; } "
+////    "QToolButton::menu-indicator { image: none; }"
+////    "";
+//
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
+//}
+//
 
-//static const char borderless_style[] = ""
-//    "QToolButton { border: none; } "
-//    "QToolButton::menu-indicator { image: none; }"
-//    "";
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-}
-
-
-
-QStackOutputOptions::QStackOutputOptions(QWidget * parent)
-  : Base("QStackingDebugOptions", parent)
+QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
+  Base("QStackingDebugOptions", parent)
 {
   Q_INIT_RESOURCE(qstackingoptions_resources);
 
@@ -49,7 +49,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->output_options().output_directory =
               output_directory_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -63,7 +63,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ && options_->output_options().save_preprocessed_frames != checked ) {
               options_->output_options().save_preprocessed_frames = checked;
               output_preprocessed_frames_path_ctl->setEnabled(options_->output_options().save_preprocessed_frames);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -78,7 +78,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->output_options().output_preprocessed_frames_filename =
               output_preprocessed_frames_path_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -93,7 +93,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ && options_->output_options().save_aligned_frames != checked ) {
               options_->output_options().save_aligned_frames = checked;
               output_aligned_frames_path_ctl->setEnabled(options_->output_options().save_aligned_frames);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -108,7 +108,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->output_options().output_aligned_frames_filename =
               output_aligned_frames_path_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -122,7 +122,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         if ( options_ && options_->output_options().save_ecc_frames != checked ) {
           options_->output_options().save_ecc_frames = checked;
           output_ecc_frames_path_ctl->setEnabled(options_->output_options().save_ecc_frames);
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -137,7 +137,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
       if ( options_ && !updatingControls() ) {
         options_->output_options().output_ecc_frames_filename =
             output_ecc_frames_path_ctl->currentPath().toStdString();
-        emit parameterChanged();
+        Q_EMIT parameterChanged();
       }
     });
 
@@ -152,7 +152,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ && options_->output_options().save_processed_aligned_frames != checked  ) {
               options_->output_options().save_processed_aligned_frames = checked;
               output_processed_aligned_frames_path_ctl->setEnabled(options_->output_options().save_processed_aligned_frames);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -167,7 +167,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->output_options().output_postprocessed_frames_filename =
               output_processed_aligned_frames_path_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -180,7 +180,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ && options_->output_options().save_accumulation_masks != checked  ) {
               options_->output_options().save_accumulation_masks = checked;
               output_accumulation_masks_path_ctl->setEnabled(options_->output_options().save_accumulation_masks);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -195,7 +195,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
         if ( options_ && !updatingControls() ) {
           options_->output_options().output_accumulation_masks_filename =
               output_accumulation_masks_path_ctl->currentPath().toStdString();
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         }
       });
 
@@ -207,7 +207,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && options_->output_options().write_image_mask_as_alpha_channel != checked ) {
               options_->output_options().write_image_mask_as_alpha_channel = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -220,7 +220,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
           [this](bool checked) {
             if ( options_ && options_->output_options(). dump_reference_data_for_debug != checked ) {
               options_->output_options(). dump_reference_data_for_debug = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -232,7 +232,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
             if ( options_ && options_->output_options(). debug_frame_registration != checked ) {
               options_->output_options().debug_frame_registration = checked;
               debug_frame_registration_frame_indexes_ctl->setEnabled(checked);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -241,7 +241,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
           [this](const QString & s) {
             if ( options_ ) {
               if ( fromString(s, &options_->output_options().debug_frame_registration_frame_indexes)) {
-                emit parameterChanged();
+                Q_EMIT parameterChanged();
               }
             }
           });
@@ -249,23 +249,23 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent)
 
   ///
 
-
-  applyToAll_ctl = new QToolButton(this);
-  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  applyToAll_ctl->setIconSize(QSize(16,16));
-  //applyToAll_ctl->setStyleSheet(borderless_style);
-  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-  form->addRow(applyToAll_ctl);
-  connect(applyToAll_ctl, &QToolButton::clicked,
-      [this]() {
-        if ( options_ ) {
-          emit applyOutputOptionsToAllRequested(options_->output_options());
-        }
-      });
-
-
-  ///
+//
+//  applyToAll_ctl = new QToolButton(this);
+//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//  applyToAll_ctl->setIconSize(QSize(16,16));
+//  //applyToAll_ctl->setStyleSheet(borderless_style);
+//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
+//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
+//  form->addRow(applyToAll_ctl);
+//  connect(applyToAll_ctl, &QToolButton::clicked,
+//      [this]() {
+//        if ( options_ ) {
+//          Q_EMIT applyOutputOptionsToAllRequested(options_->output_options());
+//        }
+//      });
+//
+//
+//  ///
 
   setEnabled(false);
 }

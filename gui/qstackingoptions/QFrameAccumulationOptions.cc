@@ -53,20 +53,29 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
 //            }
 //          });
 //
-  lw_ctl =
-      add_numeric_box<double>("lw:",
-          [this](double v) {
-            if ( options_ && v != options_->lpg_.laplacian_weight() ) {
-              options_->lpg_.set_laplacian_weight(v);
-              emit parameterChanged();
-            }
-          });
+//  lw_ctl =
+//      add_numeric_box<double>("lw:",
+//          [this](double v) {
+//            if ( options_ && v != options_->m_.laplacian_weight() ) {
+//              options_->m_.set_laplacian_weight(v);
+//              emit parameterChanged();
+//            }
+//          });
+//
+//  gw_ctl =
+//      add_numeric_box<double>("gw:",
+//          [this](double v) {
+//            if ( options_ && v != options_->m_.gradient_weight() ) {
+//              options_->m_.set_gradient_weight(v);
+//              emit parameterChanged();
+//            }
+//          });
 
-  gw_ctl =
-      add_numeric_box<double>("gw:",
+  k_ctl =
+      add_numeric_box<double>("k:",
           [this](double v) {
-            if ( options_ && v != options_->lpg_.gradient_weight() ) {
-              options_->lpg_.set_gradient_weight(v);
+            if ( options_ && v != options_->m_.k() ) {
+              options_->m_.set_k(v);
               emit parameterChanged();
             }
           });
@@ -74,8 +83,8 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
   dscale_ctl =
       add_numeric_box<double>("dscale:",
           [this](double v) {
-            if ( options_ && v != options_->lpg_.dscale() ) {
-              options_->lpg_.set_dscale(v);
+            if ( options_ && v != options_->m_.dscale() ) {
+              options_->m_.set_dscale(v);
               emit parameterChanged();
             }
           });
@@ -83,8 +92,8 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
   uscale_ctl =
       add_numeric_box<double>("uscale:",
           [this](double v) {
-            if ( options_ && v != options_->lpg_.uscale() ) {
-              options_->lpg_.set_uscale(v);
+            if ( options_ && v != options_->m_.uscale() ) {
+              options_->m_.set_uscale(v);
               emit parameterChanged();
             }
           });
@@ -92,8 +101,8 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
   avgc_ctl =
       add_checkbox("avgc:",
           [this](bool checked) {
-            if ( options_ &&  options_->lpg_.avgchannel() != checked ) {
-              options_->lpg_.set_avgchannel(checked);
+            if ( options_ &&  options_->m_.avgchannel() != checked ) {
+              options_->m_.set_avgchannel(checked);
               emit parameterChanged();
             }
           });
@@ -122,11 +131,12 @@ void QFrameAccumulationOptions::onupdatecontrols()
 
     accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
 
-    lw_ctl->setValue(options_->lpg_.laplacian_weight());
-    gw_ctl->setValue(options_->lpg_.gradient_weight());
-    dscale_ctl->setValue(options_->lpg_.dscale());
-    uscale_ctl->setValue(options_->lpg_.uscale());
-    avgc_ctl->setChecked(options_->lpg_.avgchannel());
+//    lw_ctl->setValue(options_->m_.laplacian_weight());
+//    gw_ctl->setValue(options_->m_.gradient_weight());
+    k_ctl->setValue(options_->m_.k());
+    dscale_ctl->setValue(options_->m_.dscale());
+    uscale_ctl->setValue(options_->m_.uscale());
+    avgc_ctl->setChecked(options_->m_.avgchannel());
 
     setEnabled(true);
   }

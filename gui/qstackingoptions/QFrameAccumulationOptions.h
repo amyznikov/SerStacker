@@ -40,7 +40,8 @@ protected:
   QFrameAccumulationMethodCombo * accumulation_method_ctl = nullptr;
 
   QNumberEditBox * lw_ctl = nullptr;
-  QNumberEditBox * gw_ctl = nullptr;
+  //QNumberEditBox * gw_ctl = nullptr;
+  QNumberEditBox * k_ctl = nullptr;
   QNumberEditBox * dscale_ctl = nullptr;
   QNumberEditBox * uscale_ctl = nullptr;
   QCheckBox * avgc_ctl = nullptr;

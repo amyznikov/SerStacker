@@ -1,24 +1,23 @@
 /*
- * c_lpg_map_routine.h
+ * c_harris_map_routine.h
  *
- *  Created on: Jan 24, 2023
+ *  Created on: Jan 25, 2023
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_lpg_map_routine_h__
-#define __c_lpg_map_routine_h__
+#ifndef __c_harris_map_routine_h__
+#define __c_harris_map_routine_h__
 
+#include "../proc/sharpness_measure/c_harris_sharpness_measure.h"
 #include "c_image_processor.h"
-#include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
 
-
-class c_lpg_map_routine:
+class c_harris_map_routine:
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_lpg_map_routine,
-      "lpg_map", "<strong>lap * k + grad</strong><br>Weighted sum of laplacian and gradient modules ");
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_harris_map_routine,
+      "hessian_map", "hessian map");
 
   void set_k(double v)
   {
@@ -87,7 +86,8 @@ public:
   }
 
 protected:
-  c_lpg_sharpness_measure m_;
+  c_harris_sharpness_measure m_;
+
 };
 
-#endif /* __c_lpg_map_routine_h__ */
+#endif /* __c_harris_map_routine_h__ */

@@ -145,7 +145,8 @@ struct c_frame_accumulation_options
   enum frame_accumulation_method accumulation_method  =
       frame_accumulation_weighted_average;
 
-  c_lpg_sharpness_measure lpg_;
+  c_lpg_sharpness_measure m_;
+  //c_harris_sharpness_measure m_;
 
   bool serialize(c_config_setting settings) const;
   bool deserialize(c_config_setting settings);

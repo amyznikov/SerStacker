@@ -1,54 +1,69 @@
 /*
- * c_lpg_sharpness_measure.cc
+ * c_harris_sharpness_measure.cc
  *
- *  Created on: Jan 24, 2023
+ *  Created on: Jan 25, 2023
  *      Author: amyznikov
  */
 
-#include "c_lpg_sharpness_measure.h"
+#include "c_harris_sharpness_measure.h"
 #include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 
-static void compute_gradient(const cv::Mat & src, cv::Mat & g)
+
+static void compute_harris_map(const cv::Mat & src, double k, cv::Mat & M)
 {
   INSTRUMENT_REGION("");
 
-  static thread_local const cv::Matx<float, 1, 5> K(
+  static thread_local const cv::Matx<float, 1, 5> Kx(
       (+1.f / 12),
       (-8.f / 12),
       0.f,
       (+8.f / 12),
       (-1.f / 12));
 
+  static thread_local const cv::Matx<float, 5, 1> Ky = Kx.t();
+
+
   constexpr int ddepth = CV_32F;
 
-  cv::Mat gx, gy;
+//  cv::Mat gxx, gyy, gxy, D, T;
 
-  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
-  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
-  cv::add(gx.mul(gx), gy.mul(gy), g);
+//  cv::filter2D(src, gxx, ddepth, Kx, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+//  cv::filter2D(src, gyy, ddepth, Ky, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+//
+//  cv::multiply(gxx, gyy, gxy);
+//  cv::multiply(gxx, gxx, gxx);
+//  cv::multiply(gyy, gyy, gyy);
+
+
+  cv::Mat gx, gy, gxx, gyy, gxy, D, T;
+  cv::filter2D(src, gx, ddepth, Kx, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+  cv::filter2D(src, gy, ddepth, Ky, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+
+  cv::filter2D(gx, gxx, ddepth, Kx, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+  cv::filter2D(gy, gyy, ddepth, Ky, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+
+  cv::filter2D(gx, gxy, ddepth, Ky, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+
+  // Eigenvectors and eigenvalues of real symmetric matrices.pdf
+  // A = | a b |
+  //     | b d |
+  //
+
+  const cv::Mat & a = gxx;
+  const cv::Mat & b = gxy;
+  const cv::Mat & d = gyy;
+
+  // Determinant D:
+  cv::absdiff(a.mul(b), b.mul(b), D);
+
+  // Trace T:
+  cv::add(a, d, T); //  T = a + d;
+
+  // Metric: D + k * T * T
+  cv::scaleAdd(T.mul(T), k, D, M);
 }
-
-
-// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
-static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
-{
-  static float k[5 * 5] = {
-      0, 0, -1, 0, 0,
-      0, -1, -2, -1, 0,
-      -1, -2, 16, -2, -1,
-      0, -1, -2, -1, 0,
-      0, 0, -1, 0, 0,
-  };
-
-  static const cv::Mat1f K =
-      cv::Mat1f(5, 5, k) / 16.;
-
-  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::multiply(l, l, l);
-}
-
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
 {
@@ -110,57 +125,59 @@ static double maxval(int ddepth)
 }
 
 
-void c_lpg_sharpness_measure::set_k(double v)
+
+void c_harris_sharpness_measure::set_k(double v)
 {
   k_ = v;
 }
 
-double c_lpg_sharpness_measure::k() const
+double c_harris_sharpness_measure::k() const
 {
   return k_;
 }
 
-void c_lpg_sharpness_measure::set_avgchannel(bool v)
-{
-  avgchannel_ = v;
-}
-
-void c_lpg_sharpness_measure::set_dscale(int v)
+void c_harris_sharpness_measure::set_dscale(int v)
 {
   dscale_ = v;
 }
 
-int c_lpg_sharpness_measure::dscale() const
+int c_harris_sharpness_measure::dscale() const
 {
   return dscale_;
 }
 
-void c_lpg_sharpness_measure::set_uscale(int v)
+void c_harris_sharpness_measure::set_uscale(int v)
 {
   uscale_ = v;
 }
 
-int c_lpg_sharpness_measure::uscale() const
+int c_harris_sharpness_measure::uscale() const
 {
   return uscale_;
 }
 
-bool c_lpg_sharpness_measure::avgchannel() const
+void c_harris_sharpness_measure::set_avgchannel(bool v)
+{
+  avgchannel_ = v;
+}
+
+bool c_harris_sharpness_measure::avgchannel() const
 {
   return avgchannel_;
 }
 
-cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
+cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image) const
 {
-  return create_map(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_);
+  return compute(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_);
 }
 
-cv::Scalar c_lpg_sharpness_measure::create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const
+cv::Scalar c_harris_sharpness_measure::create_sharpeness_map(cv::InputArray image,
+    cv::OutputArray output_map) const
 {
-  return create_map(image, output_map, k_, dscale_, uscale_, avgchannel_);
+  return compute(image, output_map, k_, dscale_, uscale_, avgchannel_);
 }
 
-cv::Scalar c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map,
+cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
     double k, int dscale, int uscale, bool avgchannel)
 {
   INSTRUMENT_REGION("");
@@ -180,18 +197,7 @@ cv::Scalar c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputA
     downscale(s, s, dscale);
   }
 
-  if( k > 0 ) {
-    compute_laplacian(s, l);
-  }
-
-  compute_gradient(s, g);
-
-  if( k > 0 ) {
-    cv::scaleAdd(l, k, g, m);
-  }
-  else {
-    m = g;
-  }
+  compute_harris_map(s, k, m);
 
   const cv::Scalar rv =
       m.empty() ? cv::Scalar::all(0) :
@@ -216,6 +222,7 @@ cv::Scalar c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputA
       output_map.move(m);
     }
   }
+
 
   return rv;
 }

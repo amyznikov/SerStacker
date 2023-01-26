@@ -3,6 +3,11 @@
  *
  *  Created on: Jan 24, 2023
  *      Author: amyznikov
+ *
+ * Experiments with weighted sum of squares of laplacian and gradient.
+ *
+ * Tests on microphotography focal stacking images seems to give good result.
+ *
  */
 
 #pragma once
@@ -18,11 +23,8 @@ public:
   typedef c_lpg_sharpness_measure this_class;
   typedef c_image_sharpness_measure base;
 
-  void set_laplacian_weight(double v);
-  double laplacian_weight() const;
-
-  void set_gradient_weight(double v);
-  double gradient_weight() const;
+  void set_k(double v);
+  double k() const;
 
   void set_dscale(int v);
   int dscale() const;
@@ -36,14 +38,13 @@ public:
   cv::Scalar compute(cv::InputArray image) const override;
   cv::Scalar create_sharpeness_map(cv::InputArray image, cv::OutputArray output_map) const override;
 
-  static cv::Scalar compute_lpg_map(cv::InputArray image, cv::OutputArray output_map,
-      double lw, double gw, int uscale, int dscale, bool avgchannel);
+  static cv::Scalar create_map(cv::InputArray image, cv::OutputArray output_map,
+      double k, int dscale, int uscale, bool avgchannel);
 
 protected:
-  double laplacian_weight_ = 5;
-  double gradient_weight_ = 1;
+  double k_ = 6;
   int dscale_ = 1;
-  int uscale_ = 1;
+  int uscale_ = 2;
   bool avgchannel_ = true;
 
 };

@@ -43,7 +43,7 @@ public:
 
 Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);
-  void populateContextMenuReuested(QGraphicsShape* shape,
+  void populateContextMenuReuested(QGraphicsShape* _this,
       const QGraphicsSceneContextMenuEvent * event,
       QMenu * menu);
 

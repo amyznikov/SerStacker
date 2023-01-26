@@ -32,6 +32,9 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
             return false;
           });
 
+  fixOnSceneCenter_ctl->setToolTip("Uncheck this button and use "
+      "Shift + LeftMouseButton + MouseMove to position this object on scene.");
+
   baseRadius_ctl =
       add_numeric_box<double>(""
           "Base radius:",

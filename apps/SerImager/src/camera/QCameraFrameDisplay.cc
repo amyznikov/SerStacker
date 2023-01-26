@@ -387,6 +387,7 @@ void QCameraFrameDisplay::createShapes()
   if ( !targetShape_ ) {
     targetShape_ = new QGraphicsTargetShape();
     targetShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    targetShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     targetShape_->setCosmeticPen(Qt::red);
     targetShape_->setVisible(false);
     scene_->addItem(targetShape_);
@@ -394,23 +395,6 @@ void QCameraFrameDisplay::createShapes()
 
 
 }
-
-//void QCameraFrameDisplay::setShowROI(bool show)
-//{
-//  rectShape_->setVisible(show);
-//}
-//
-//bool QCameraFrameDisplay::showROI() const
-//{
-//  return rectShape_->isVisible();
-//}
-//
-//QRect QCameraFrameDisplay::roi() const
-//{
-//  const QRectF rc = rectShape_->sceneRect();
-//  return QRect(rc.x(), rc.y(), rc.width(), rc.height());
-//}
-
 
 void QCameraFrameDisplay::workerThread()
 {

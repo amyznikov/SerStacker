@@ -336,6 +336,18 @@ void MainWindow::setupShapeOptions()
       });
 
 
+  connect(centralDisplay_->targetShape(), &QGraphicsShape::itemChanged,
+      [this]() {
+
+        const QGraphicsTargetShape * shape =
+            centralDisplay_->targetShape();
+
+        const QPointF cp =
+            shape->mapToScene(shape->center());
+
+        mousepos_ctl->setText(qsprintf("Center: (%g %g)", cp.x(), cp.y()));
+      });
+
   //
   // Line shape
   //

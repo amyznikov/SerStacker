@@ -19,6 +19,9 @@ Compare jovian images captured with two different tubes, processed and derotated
 
 ![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
 
+Test for focus stacking using weighet average. The pixel weight was computes as `W(x,y) = (6 * laplacian(x,y) ^2 +  gradient(x,y)^2) ^ 2.`
+![focus_stack_example1](./debug/focus-stack/focus_stack_example1.mov)
+
 
 SerImager Screen Shoot.
 
@@ -44,6 +47,11 @@ The primary distribution is Arch Linux https://archlinux.org,  with fresh KDE en
 So I expect more or less fresh versions of Qt5, OpenCV and other dependency packages. 
 I have no posibility to test the build frequently on older versions of dependency packages 
 like Ubuntu, Windows etch.  
+
+	```
+		$ mkdir build && cd build && cmake -DQT_VERSION=5 .. && make -j 4
+	```
+
 
 	Qt5 >= 5.10  (qt5-base qt5-declarative qt5-imageformats qt5-multimedia qt5-graphicaleffects)
 	OpenCV >= 4.2

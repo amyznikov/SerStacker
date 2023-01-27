@@ -46,7 +46,7 @@ Jovian derotation+blend quick demo video:
 ## Build deps
 
 The primary distribution is Arch Linux https://archlinux.org,  with fresh KDE environment. 
-So I expect more or less fresh versions of Qt5, OpenCV and other dependency packages. 
+So I expect more or less fresh versions of Qt5/Qt6, OpenCV and other dependency packages. 
 I have no posibility to test the build frequently on older versions of dependency packages 
 like Ubuntu, Windows etch.  
 

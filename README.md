@@ -19,8 +19,10 @@ Compare jovian images captured with two different tubes, processed and derotated
 
 ![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
 
-Test for focus stacking using weighet average. The pixel weight was computes as `W(x,y) = (6 * laplacian(x,y) ^2 +  gradient(x,y)^2) ^ 2.`
-![focus_stack_example1](./debug/focus-stack/focus_stack_example1.mov)
+Test for microphotography focus stacking using simple weighted average of input frames. The pixel weights were computed as `W(x,y) = (6 * laplacian(x,y) ^2 +  gradient(x,y)^2) ^ 2.`. The left pane is raw input from microscope with manually driven focus, the right is incremental average with some contrast and sharpenning enhacement.
+
+https://user-images.githubusercontent.com/1285263/214982057-40cfd789-abfb-456f-b039-4115a8ff66d1.mov
+
 
 
 SerImager Screen Shoot.

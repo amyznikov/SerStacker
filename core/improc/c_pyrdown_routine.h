@@ -111,7 +111,7 @@ public:
   }
 
 protected:
-  int count_;
+  int count_ = 1;
   cv::BorderTypes borderType_ = cv::BORDER_DEFAULT;
 };
 

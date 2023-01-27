@@ -174,6 +174,7 @@ struct c_image_processing_options
   c_image_processor::sptr input_image_processor;
   c_image_processor::sptr ecc_image_processor;
   c_image_processor::sptr aligned_image_processor;
+  c_image_processor::sptr incremental_frame_processor;
   c_image_processor::sptr accumulated_image_processor;
 
   bool serialize(c_config_setting settings) const;
@@ -188,6 +189,7 @@ struct c_image_stacking_output_options {
   std::string output_aligned_frames_filename;
   std::string output_ecc_frames_filename;
   std::string output_postprocessed_frames_filename;
+  std::string output_incremental_frames_filename;
   std::string output_accumulation_masks_filename;
 
   bool save_preprocessed_frames = false;
@@ -195,6 +197,7 @@ struct c_image_stacking_output_options {
   bool save_ecc_frames = false;
   bool save_processed_aligned_frames = false;
   bool save_accumulation_masks = false;
+  bool save_incremental_frames = false;
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 
@@ -406,6 +409,9 @@ protected:
       c_video_writer & output_writer) const;
 
   void save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_video_writer & output_writer) const;
+
+  void save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_video_writer & output_writer) const;
 
   void save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,

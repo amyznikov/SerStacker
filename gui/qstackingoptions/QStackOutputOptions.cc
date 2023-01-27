@@ -171,6 +171,32 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
         }
       });
 
+  ///
+
+  save_accumulated_frames_ctl =
+      add_named_checkbox("Save (incremental) accumulated frames",
+          [this](bool checked) {
+            if ( options_ && options_->output_options().save_incremental_frames != checked  ) {
+              options_->output_options().save_incremental_frames = checked;
+              output_accumulated_frames_path_ctl->setEnabled(options_->output_options().save_incremental_frames);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  form->addRow(output_accumulated_frames_path_ctl =
+      new QBrowsePathCombo("Accumulated frames file name:",
+          QFileDialog::AcceptSave,
+          QFileDialog::AnyFile,
+          this));
+
+  connect(output_accumulated_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+      [this] () {
+        if ( options_ && !updatingControls() ) {
+          options_->output_options().output_incremental_frames_filename =
+              output_accumulated_frames_path_ctl->currentPath().toStdString();
+          Q_EMIT parameterChanged();
+        }
+      });
 
   ///
 
@@ -309,6 +335,10 @@ void QStackOutputOptions::onupdatecontrols()
     output_processed_aligned_frames_path_ctl->setCurrentPath(output_options.output_postprocessed_frames_filename.c_str());
     output_processed_aligned_frames_path_ctl->setEnabled(output_options.save_processed_aligned_frames);
 
+    save_accumulated_frames_ctl->setChecked(output_options.save_incremental_frames);
+    output_accumulated_frames_path_ctl->setCurrentPath(output_options.output_incremental_frames_filename.c_str());
+    output_accumulated_frames_path_ctl->setEnabled(output_options.save_incremental_frames);
+
     save_accumulation_masks_ctl->setChecked(output_options.save_accumulation_masks);
     output_accumulation_masks_path_ctl->setCurrentPath(output_options.output_accumulation_masks_filename.c_str());
     output_accumulation_masks_path_ctl->setEnabled(output_options.save_accumulation_masks);
@@ -316,12 +346,9 @@ void QStackOutputOptions::onupdatecontrols()
     write_image_mask_as_alpha_channel_ctl->setChecked(output_options.write_image_mask_as_alpha_channel);
     dump_reference_data_for_debug_ctl->setChecked(output_options.dump_reference_data_for_debug);
 
-    debug_frame_registration_ctl->setChecked(
-        output_options.debug_frame_registration);
-    debug_frame_registration_frame_indexes_ctl->setValue(
-        output_options.debug_frame_registration_frame_indexes);
-    debug_frame_registration_frame_indexes_ctl->setEnabled(
-        output_options.debug_frame_registration);
+    debug_frame_registration_ctl->setChecked(output_options.debug_frame_registration);
+    debug_frame_registration_frame_indexes_ctl->setValue(output_options.debug_frame_registration_frame_indexes);
+    debug_frame_registration_frame_indexes_ctl->setEnabled(output_options.debug_frame_registration);
 
 
     setEnabled(true);

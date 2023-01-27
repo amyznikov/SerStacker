@@ -1974,6 +1974,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
   c_video_writer output_ecc_writer;
   c_video_writer output_postprocessed_frames_writer;
   c_video_writer output_accumulation_masks_writer;
+  c_video_writer output_incremental_frame_writer;
 
   const c_input_options & input_options =
       options_->input_options();
@@ -2363,6 +2364,46 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
       ++accumulated_frames_;
       emit_accumulator_changed();
+
+      if ( canceled() ) {
+        break;
+      }
+
+
+      if( !master_frame_generation_ && output_options.save_incremental_frames ) {
+
+        cv::Mat accumulated_frame, accumulated_mask;
+
+        if( true ) {
+          lock_guard lock(accumulator_lock_);
+          if( !frame_accumulation_->compute(accumulated_frame, accumulated_mask) ) {
+            CF_ERROR("ERROR: frame_accumulation->compute() fails");
+          }
+        }
+
+        if( canceled() ) {
+          break;
+        }
+
+        if( !accumulated_frame.empty() ) {
+
+          const c_image_processor::sptr &proc =
+              image_processing_options.incremental_frame_processor;
+
+          if( proc && !proc->process(accumulated_frame, accumulated_mask) ) {
+            CF_ERROR("image processor '%s' fails", proc->cname());
+          }
+          else {
+            save_incremental_frame(accumulated_frame, accumulated_mask,
+                output_incremental_frame_writer);
+          }
+
+          if( canceled() ) {
+            break;
+          }
+        }
+      }
+
     }
 
     /////////////////////////////////////
@@ -3026,6 +3067,56 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
 
   output_writer.write(current_frame, current_mask,
       output_options.write_image_mask_as_alpha_channel);
+}
+
+void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulated_frame, const cv::Mat & accumulated_mask,
+    c_video_writer & output_writer) const
+{
+  const c_image_stacking_output_options & output_options =
+      options_->output_options();
+
+  if ( !output_options.save_incremental_frames ) {
+    return;
+  }
+
+  if ( !output_writer.isOpened() ) {
+
+    std::string pathfilename =
+        output_options.output_incremental_frames_filename;
+
+    if ( pathfilename.empty() ) {
+      pathfilename = ssprintf("%s.acc.avi",
+          options_->cname());
+    }
+
+    if ( !is_absolute_path(pathfilename)  ) {
+      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+          pathfilename.c_str());
+    }
+
+    if ( !create_path(get_parent_directory(pathfilename)) ) {
+      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
+      return;
+    }
+
+
+
+    output_writer.open(pathfilename,
+        accumulated_frame.size(),
+        accumulated_frame.channels() > 1);
+
+    if ( !output_writer.isOpened() ) {
+
+      CF_ERROR("Can not open output writer '%s'",
+          pathfilename.c_str());
+
+      return;
+    }
+  }
+
+  output_writer.write(accumulated_frame, accumulated_mask,
+      output_options.write_image_mask_as_alpha_channel);
+
 }
 
 void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,

@@ -17,7 +17,7 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
             if( options_ ) {
               options_->input_image_processor =
               combo->processor(index);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -28,7 +28,7 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
             if( options_ ) {
               options_->ecc_image_processor =
               combo->processor(index);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -37,9 +37,18 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
           "Aligned image processor:",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
-              options_->aligned_image_processor =
-              combo->processor(index);
-              emit parameterChanged();
+              options_->aligned_image_processor = combo->processor(index);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  incremental_frame_processor_ctl =
+      add_combobox<QImageProcessorSelectionCombo>(
+          "Incremental frame processor:",
+          [this](int index, QImageProcessorSelectionCombo * combo) {
+            if( options_ ) {
+              options_->incremental_frame_processor = combo->processor(index);
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -48,9 +57,8 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
           "Accumulated image processor:",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
-              options_->accumulated_image_processor =
-              combo->processor(index);
-              emit parameterChanged();
+              options_->accumulated_image_processor = combo->processor(index);
+              Q_EMIT parameterChanged();
             }
           });
 

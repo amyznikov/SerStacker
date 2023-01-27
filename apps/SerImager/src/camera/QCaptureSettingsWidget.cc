@@ -68,8 +68,15 @@ QCaptureLimitsControl::QCaptureLimitsControl(QWidget * parent) :
   limitsSelection_ctl->setEditable(false);
   limitsSelection_ctl->setFocusPolicy(Qt::StrongFocus);
 
+  startStop_ctl->setToolTip("Start / Stop capture (Ctrl + W)");
   startStop_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
   startStop_ctl->setIcon(icon_start_capture);
+
+  startStopSortuct_ =
+      new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_W), this,
+          this, &ThisClass::onStartStopButtonClicked,
+          Qt::WindowShortcut);
+
 
   populateCaptureLimitsCombobox();
 
@@ -78,6 +85,8 @@ QCaptureLimitsControl::QCaptureLimitsControl(QWidget * parent) :
 
   connect(startStop_ctl, &QToolButton::clicked,
       this, &ThisClass::onStartStopButtonClicked);
+
+
 
 }
 

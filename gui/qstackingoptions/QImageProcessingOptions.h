@@ -34,6 +34,7 @@ protected:
   QImageProcessorSelectionCombo * input_image_processor_ctl = nullptr;
   QImageProcessorSelectionCombo * ecc_image_processor_ctl = nullptr;
   QImageProcessorSelectionCombo * aligned_image_processor_ctl = nullptr;
+  QImageProcessorSelectionCombo * incremental_frame_processor_ctl = nullptr;
   QImageProcessorSelectionCombo * accumulated_image_processor_ctl = nullptr;
 };
 

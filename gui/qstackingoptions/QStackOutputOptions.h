@@ -51,6 +51,9 @@ protected:
   QCheckBox * save_postprocessed_frames_ctl = nullptr;
   QBrowsePathCombo * output_processed_aligned_frames_path_ctl = nullptr;
 
+  QCheckBox * save_accumulated_frames_ctl = nullptr;
+  QBrowsePathCombo * output_accumulated_frames_path_ctl = nullptr;
+
   QCheckBox * save_accumulation_masks_ctl = nullptr;
   QBrowsePathCombo * output_accumulation_masks_path_ctl = nullptr;
 

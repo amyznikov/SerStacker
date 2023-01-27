@@ -54,6 +54,7 @@ protected:
   QHBoxLayout *h1_ = nullptr;
   QComboBox *limitsSelection_ctl = nullptr;
   QToolButton *startStop_ctl = nullptr;
+  QShortcut * startStopSortuct_ = nullptr;
 };
 
 class QCaptureSettingsWidget:

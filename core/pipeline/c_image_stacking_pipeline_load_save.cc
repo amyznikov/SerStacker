@@ -641,6 +641,9 @@ bool c_image_processing_options::serialize(c_config_setting settings) const
   if( aligned_image_processor ) {
     save_settings(settings, "aligned_image_processor", aligned_image_processor->name());
   }
+  if ( incremental_frame_processor ) {
+    save_settings(settings, "incremental_frame_processor", incremental_frame_processor->name());
+  }
   if( accumulated_image_processor ) {
     save_settings(settings, "accumulated_image_processor", accumulated_image_processor->name());
   }
@@ -659,6 +662,9 @@ bool c_image_processing_options::deserialize(c_config_setting settings)
   }
   if ( load_settings(settings, "aligned_image_processor", &s) && !s.empty() ) {
     aligned_image_processor = c_image_processor_collection::default_instance()->get(s);
+  }
+  if ( load_settings(settings, "incremental_frame_processor", &s) && !s.empty() ) {
+    incremental_frame_processor = c_image_processor_collection::default_instance()->get(s);
   }
   if ( load_settings(settings, "accumulated_image_processor", &s) && !s.empty() ) {
     accumulated_image_processor = c_image_processor_collection::default_instance()->get(s);
@@ -682,7 +688,9 @@ bool c_image_stacking_output_options::serialize(c_config_setting settings) const
   save_settings(settings, "save_aligned_frames", save_aligned_frames);
   save_settings(settings, "save_ecc_frames", save_ecc_frames);
   save_settings(settings, "save_processed_aligned_frames", save_processed_aligned_frames);
+  save_settings(settings, "save_incremental_frames", save_incremental_frames);
   save_settings(settings, "save_accumulation_masks", save_accumulation_masks);
+
 
   save_settings(settings, "dump_reference_data_for_debug", dump_reference_data_for_debug);
   save_settings(settings, "write_image_mask_as_alpha_channel", write_image_mask_as_alpha_channel);
@@ -710,6 +718,7 @@ bool c_image_stacking_output_options::deserialize(c_config_setting settings)
   load_settings(settings, "save_aligned_frames", &save_aligned_frames);
   load_settings(settings, "save_ecc_frames", &save_ecc_frames);
   load_settings(settings, "save_processed_aligned_frames", &save_processed_aligned_frames);
+  load_settings(settings, "save_incremental_frames", &save_incremental_frames);
   load_settings(settings, "save_accumulation_masks", &save_accumulation_masks);
 
 

@@ -98,6 +98,15 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
             }
           });
 
+  square_ctl =
+      add_checkbox("squared:",
+          [this](bool checked) {
+            if ( options_ &&  options_->m_.squared() != checked ) {
+              options_->m_.set_squared(checked);
+              emit parameterChanged();
+            }
+          });
+
   avgc_ctl =
       add_checkbox("avgc:",
           [this](bool checked) {
@@ -136,6 +145,7 @@ void QFrameAccumulationOptions::onupdatecontrols()
     k_ctl->setValue(options_->m_.k());
     dscale_ctl->setValue(options_->m_.dscale());
     uscale_ctl->setValue(options_->m_.uscale());
+    square_ctl->setChecked(options_->m_.squared());
     avgc_ctl->setChecked(options_->m_.avgchannel());
 
     setEnabled(true);

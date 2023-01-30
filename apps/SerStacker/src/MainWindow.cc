@@ -606,6 +606,16 @@ void MainWindow::setupImageProcessorSelector()
           imageEditor->set_current_processor(imageProcessorSelector->current_processor());
         }
       });
+
+  if( (showImageProcessorSettingsAction_ = imageProcessorSelector->showDisplaysSettingsAction()) ) {
+    showImageProcessorSettingsAction_->setVisible(false);
+    //    showImageProcessorSettingsAction_->setCheckable(true);
+    //    showImageProcessorSettingsAction_->setChecked(false);
+    //    showImageProcessorSettingsAction_->setEnabled(true);
+    //    connect(showImageProcessorSettingsAction_, &QAction::triggered,
+    //        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
+  }
+
 }
 
 void MainWindow::setupImageEditor()
@@ -1672,6 +1682,7 @@ void MainWindow::onViewGeneralSettings()
 {
   if ( !appSettingsDlgBox ) {
     appSettingsDlgBox = new QGeneralAppSettingsDialogBox(this);
+    appSettingsDlgBox->setImageEditor(imageEditor);
   }
 
   if ( !appSettingsDlgBox->isVisible() ){

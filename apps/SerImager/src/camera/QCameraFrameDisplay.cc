@@ -452,11 +452,14 @@ void QCameraFrameDisplay::workerThread()
         INSTRUMENT_REGION("convert");
 
         if( is_bayer_pattern(colorid_) ) {
-          debayer(inputImage, inputImage, colorid_, debayer_algorithm_);
-        }
 
+          debayer(inputImage, inputImage, colorid_,
+              debayer_algorithm_);
+        }
         else if( colorid_ == COLORID_RGB ) {
-          cv::cvtColor(inputImage, inputImage, cv::COLOR_RGB2BGR);
+
+          cv::cvtColor(inputImage, inputImage,
+              cv::COLOR_RGB2BGR);
         }
 
         // editImage(image, cv::noArray(), false);

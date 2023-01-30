@@ -50,6 +50,16 @@ public:
     return m_.uscale();
   }
 
+  void set_squared(bool v)
+  {
+    m_.set_squared(v);
+  }
+
+  bool squared() const
+  {
+    return m_.squared();
+  }
+
   void set_avgchannel(bool v)
   {
     m_.set_avgchannel(v);
@@ -65,6 +75,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, k, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, dscale, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, uscale, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, squared, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, avgchannel, "");
   }
 
@@ -74,6 +85,7 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, k);
       SERIALIZE_PROPERTY(settings, save, *this, dscale);
       SERIALIZE_PROPERTY(settings, save, *this, uscale);
+      SERIALIZE_PROPERTY(settings, save, *this, squared);
       SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
       return true;
     }

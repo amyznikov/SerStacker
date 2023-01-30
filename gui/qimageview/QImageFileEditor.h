@@ -12,8 +12,8 @@
 #include "QPlaySequenceControl.h"
 #include <core/io/c_input_sequence.h>
 
-class QImageFileEditor
-    : public QImageEditor
+class QImageFileEditor :
+    public QImageEditor
 {
   Q_OBJECT;
 public:
@@ -30,12 +30,16 @@ public:
   void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/) override;
   void editImage(cv::InputArray image, cv::InputArray mask, bool make_copy = false) override;
 
-
   void closeCurrentSequence();
+
   const c_input_sequence::ptr & input_sequence() const;
+
+  void setDebayerAlgorithm(DEBAYER_ALGORITHM algo);
+  DEBAYER_ALGORITHM debayerAlgorithm() const;
 
 Q_SIGNALS:
   void onInputImageLoad(const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp);
+  void debayerAlgorithmChanged();
 
 protected Q_SLOTS:
   void startDisplay();
@@ -49,6 +53,7 @@ protected:
 protected:
   c_input_sequence::ptr input_sequence_;
   QPlaySequenceControl * playControls = nullptr;
+  DEBAYER_ALGORITHM debayerAlgorithm_ = DEBAYER_DEFAULT;
 };
 
 #endif /* __QImageFileEditor_h__ */

@@ -40,7 +40,7 @@ void QCameraFocusMeasure::CameraMonitorThread::run()
   cv::Mat image;
   enum COLORID colorid = COLORID_UNKNOWN;
   int bpp = 0;
-  int last_frame_index_ = -1;
+  int last_processed_frame_index_ = -1;
   int data_size = 0;
 
   while (p_->enabled() && p_->camera_ && p_->camera_->state() == QImagingCamera::State_started) {
@@ -63,9 +63,9 @@ void QCameraFocusMeasure::CameraMonitorThread::run()
         const int index =
             frame->index();
 
-        if( index > last_frame_index_ ) {
+        if( index > last_processed_frame_index_ ) {
 
-          last_frame_index_ = index;
+          last_processed_frame_index_ = index;
           bpp = frame->bpp();
           colorid = frame->colorid();
 
@@ -86,21 +86,21 @@ void QCameraFocusMeasure::CameraMonitorThread::run()
       }
       else {
 
-        if( is_bayer_pattern(colorid) ) {
-          if( !extract_bayer_planes(image, image, colorid) ) {
-            CF_ERROR("extract_bayer_planes() fails");
-          }
+        if( is_bayer_pattern(colorid) && !extract_bayer_planes(image, image, colorid) ) {
+          CF_ERROR("extract_bayer_planes() fails");
         }
 
         cv::Scalar v =
             p_->measure_.compute(image);
 
-        const int cn = p_->measure_.avgchannel() ? 1 :
-            image.channels();
+        const int cn =
+            p_->measure_.avgchannel() ? 1 :
+                image.channels();
 
         lock.relock();
 
         if( cn != p_->cn_ ) {
+          // clear old measurements if number of channels changed
 
           p_->cn_ = cn;
 
@@ -113,6 +113,7 @@ void QCameraFocusMeasure::CameraMonitorThread::run()
         }
         else {
 
+          // check data array size
           while (data_size >= p_->max_measurements_) {
 
             for( int i = 0; i < MAX_CHANNELS; ++i ) {
@@ -125,6 +126,7 @@ void QCameraFocusMeasure::CameraMonitorThread::run()
           }
         }
 
+        // append new measurements
         for( int i = 0; i < cn; ++i ) {
           p_->measurements_[i].push_back(v[i]);
         }

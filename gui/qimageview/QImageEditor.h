@@ -11,8 +11,8 @@
 #include "QImageViewer.h"
 #include <core/improc/c_image_processor.h>
 
-class QImageEditor
-    : public QImageViewer
+class QImageEditor :
+    public QImageViewer
 {
   Q_OBJECT;
 public:
@@ -34,8 +34,7 @@ public:
   cv::Mat & inputMask();
   const cv::Mat & inputMask() const;
 
-
-public slots:
+public Q_SLOTS:
   void updateImage();
 
 protected:

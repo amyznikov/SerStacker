@@ -299,6 +299,8 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray current_mask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat ecc_image;
   cv::Mat ecc_mask;
   cv::Mat eccflow_mask;
@@ -1186,6 +1188,7 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
+  INSTRUMENT_REGION("");
 
   bool enable_jovian_derotation =
       options_.jovian_derotation.enabled;

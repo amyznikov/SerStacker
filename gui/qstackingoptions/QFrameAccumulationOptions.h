@@ -43,6 +43,7 @@ protected:
   QNumberEditBox * k_ctl = nullptr;
   QNumberEditBox * dscale_ctl = nullptr;
   QNumberEditBox * uscale_ctl = nullptr;
+  QCheckBox * square_ctl = nullptr;
   QCheckBox * avgc_ctl = nullptr;
 
 };

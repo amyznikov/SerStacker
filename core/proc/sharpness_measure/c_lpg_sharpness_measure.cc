@@ -34,6 +34,8 @@ static void compute_gradient(const cv::Mat & src, cv::Mat & g)
 // https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
 static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
 {
+  INSTRUMENT_REGION("");
+
   static float k[5 * 5] = {
       0, 0, -1, 0, 0,
       0, -1, -2, -1, 0,
@@ -120,10 +122,6 @@ double c_lpg_sharpness_measure::k() const
   return k_;
 }
 
-void c_lpg_sharpness_measure::set_avgchannel(bool v)
-{
-  avgchannel_ = v;
-}
 
 void c_lpg_sharpness_measure::set_dscale(int v)
 {
@@ -140,9 +138,25 @@ void c_lpg_sharpness_measure::set_uscale(int v)
   uscale_ = v;
 }
 
+
 int c_lpg_sharpness_measure::uscale() const
 {
   return uscale_;
+}
+
+void c_lpg_sharpness_measure::set_squared(bool v)
+{
+  squared_ = v;
+}
+
+bool c_lpg_sharpness_measure::squared() const
+{
+  return squared_;
+}
+
+void c_lpg_sharpness_measure::set_avgchannel(bool v)
+{
+  avgchannel_ = v;
 }
 
 bool c_lpg_sharpness_measure::avgchannel() const
@@ -153,17 +167,17 @@ bool c_lpg_sharpness_measure::avgchannel() const
 cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
 {
   cv::Scalar rv;
-  compute(image, cv::noArray(), k_, dscale_, uscale_, avgchannel_, &rv);
+  compute(image, cv::noArray(), k_, dscale_, uscale_, squared_, avgchannel_, &rv);
   return rv;
 }
 
 bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return compute(image, output_map, k_, dscale_, uscale_, avgchannel_, nullptr);
+  return compute(image, output_map, k_, dscale_, uscale_, squared_, avgchannel_, nullptr);
 }
 
 bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
-    double k, int dscale, int uscale, bool avgchannel,
+    double k, int dscale, int uscale, bool squared, bool avgchannel,
     cv::Scalar * output_sharpness_metric)
 {
   INSTRUMENT_REGION("");
@@ -190,11 +204,18 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray outp
   compute_gradient(s, g);
 
   if( k <= 0 ) {
-    cv::multiply(g, g, m);
+    if ( squared ) {
+      cv::multiply(g, g, m);
+    }
+    else {
+      m = g;
+    }
   }
   else {
     cv::scaleAdd(l, k, g, m);
-    cv::multiply(m, m, m);
+    if ( squared ) {
+      cv::multiply(m, m, m);
+    }
   }
 
   if( output_sharpness_metric ) {

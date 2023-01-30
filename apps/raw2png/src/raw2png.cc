@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
       continue;
     }
 
-    if ( is_bayer_pattern(colorid) && !debayer(current_image, current_image, colorid, DEBAYER_GBNR)  ) {
+    if ( is_bayer_pattern(colorid) && !debayer(current_image, current_image, colorid, DEBAYER_NN2)  ) {
       CF_ERROR("debayer(%s) fails", current_file_name.c_str());
       continue;
     }

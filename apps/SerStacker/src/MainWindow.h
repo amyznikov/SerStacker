@@ -122,7 +122,6 @@ private:
   QCustomDockWidget * imageProcessorSelectorDock = nullptr;
   QImageProcessorSelector * imageProcessorSelector = nullptr;
 
-
   QImageFocusMeasure * focusMeasure_ = nullptr;
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;
@@ -155,6 +154,7 @@ private:
   QAction * selectPreviousFileAction_ = nullptr;
   QAction * selectNextFileAction_ = nullptr;
   QAction * reloadCurrentFileAction_ = nullptr;
+  QAction * showImageProcessorSettingsAction_ = nullptr;
 
   QLabel * imageNameLabel_ctl = nullptr;
   QLabel * imageSizeLabel_ctl = nullptr;

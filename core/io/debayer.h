@@ -40,11 +40,11 @@ enum DEBAYER_ALGORITHM {
 
   DEBAYER_DISABLE,  // Don't debayer
   DEBAYER_NN,       // Use OpenCV nearest-neighboor interpolation with cv::demosaicing()
+  DEBAYER_NN2,      // SerStacker nearest-neighboor interpolation with nninterpolate()
+  DEBAYER_NNR,    // SerStacker nearest-neighboor interpolation with nninterpolate() and midian-bease noise reduction
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
-  DEBAYER_GB,       // Use GaussianBlur() interpolation
-  DEBAYER_GBNR,     // Use GaussianBlur() interpolation with simple bad pixels filtering
-  DEBAYER_MATRIX    // Don't debayer but create BGR color bayer matrix image
+  DEBAYER_MATRIX,   // Don't debayer but create BGR color bayer matrix image
 };
 
 
@@ -82,17 +82,17 @@ bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst,
 
 
 /** @brief
- * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix using GB interpolaton.
+ * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix using NN2 interpolaton.
  * The output size of dst is twce large to src
  */
-bool gbinterpolation(cv::InputArray src, cv::OutputArray dst,
+bool nninterpolation(cv::InputArray src, cv::OutputArray dst,
     enum COLORID colorid);
 
 /** @brief
  * Bayer Demosaicing
  */
 bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
-    enum DEBAYER_ALGORITHM algo = DEBAYER_GB);
+    enum DEBAYER_ALGORITHM algo = DEBAYER_NN);
 
 /** @brief
  * Check for ZWO ASI specific horizontal stripe artifact

@@ -21,7 +21,6 @@
 #include "c_scale_channels_routine.h"
 #include "c_type_convert_routine.h"
 #include "c_color_saturation_routine.h"
-#include "c_inpaint_routine.h"
 #include "c_radial_polysharp_routine.h"
 #include "c_auto_correlation_routine.h"
 #include "c_gaussian_filter_routine.h"
@@ -43,6 +42,8 @@
 #include "c_equalize_hist_routine.h"
 #include "c_extract_channel_routine.h"
 #include "c_absdiff_routine.h"
+#include "c_average_pyramid_inpaint_routine.h"
+#include "c_linear_interpolation_inpaint_routine.h"
 #include <core/readdir.h>
 #include <atomic>
 
@@ -105,7 +106,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_scale_channels_routine::class_factory_instance());
     register_class_factory(c_type_convert_routine::class_factory_instance());
     register_class_factory(c_color_saturation_routine::class_factory_instance());
-    register_class_factory(c_inpaint_routine::class_factory_instance());
+    register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
+    register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());
     register_class_factory(c_radial_polysharp_routine::class_factory_instance());
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_filter_routine::class_factory_instance());

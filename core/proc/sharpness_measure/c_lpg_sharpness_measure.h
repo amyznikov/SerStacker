@@ -32,6 +32,9 @@ public:
   void set_uscale(int v);
   int uscale() const;
 
+  void set_squared(bool v);
+  bool squared() const;
+
   void set_avgchannel(bool v);
   bool avgchannel() const;
 
@@ -39,13 +42,14 @@ public:
   bool create_map(cv::InputArray image, cv::OutputArray output_map) const override;
 
   static bool compute(cv::InputArray image, cv::OutputArray output_map,
-      double k, int dscale, int uscale, bool avgchannel,
+      double k, int dscale, int uscale, bool squared, bool avgchannel,
       cv::Scalar * output_sharpness_metric);
 
 protected:
   double k_ = 5;
   int dscale_ = 1;
   int uscale_ = 3;
+  bool squared_ = true;
   bool avgchannel_ = true;
 
 };

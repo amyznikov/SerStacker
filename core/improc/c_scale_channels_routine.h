@@ -145,8 +145,8 @@ public:
 
 
 protected:
-  cv::Scalar bias_;
-  cv::Scalar stretch_;
+  cv::Scalar bias_ = cv::Scalar::all(0);
+  cv::Scalar stretch_ = cv::Scalar::all(1);
 };
 
 #endif /* __c_scale_channels_routine_h__ */

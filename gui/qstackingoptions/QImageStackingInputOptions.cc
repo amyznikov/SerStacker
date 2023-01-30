@@ -110,7 +110,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
 
   form->addRow(missing_pixel_mask_filename_ctl =
-      new QBrowsePathCombo("MIssing pixels mask:",
+      new QBrowsePathCombo("Missing pixels mask:",
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           this));
@@ -136,28 +136,13 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
           });
 
   inpaint_missing_pixels_ctl =
-      add_checkbox("Inpaint missing pixels with feasible values",
+      add_checkbox("Fill missing pixels with feasible values",
           [this](bool checked) {
             if ( options_ && checked != options_->inpaint_missing_pixels ) {
               options_->inpaint_missing_pixels = checked;
               Q_EMIT parameterChanged();
             }
           });
-
-//  applyToAll_ctl = new QToolButton(this);
-//  applyToAll_ctl->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-//  applyToAll_ctl->setIconSize(QSize(16,16));
-//  //applyToAll_ctl->setStyleSheet(borderless_style);
-//  applyToAll_ctl->setIcon(getIcon(ICON_check_all));
-//  applyToAll_ctl->setText("Copy these parameters to all currently selected in treeview");
-//  connect(applyToAll_ctl, &QToolButton::clicked,
-//      [this]() {
-//        if ( options_ ) {
-//          Q_EMIT applyInputOptionsToAllRequested(*options_);
-//        }
-//      });
-//
-//  form->addRow(applyToAll_ctl);
 }
 
 void QImageStackingInputOptions::set_input_options(c_input_options * options)

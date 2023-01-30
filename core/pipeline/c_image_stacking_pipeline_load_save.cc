@@ -444,6 +444,7 @@ bool c_frame_accumulation_options::serialize(c_config_setting settings) const
   SAVE_PROPERTY(settings, m_, k);
   SAVE_PROPERTY(settings, m_, dscale);
   SAVE_PROPERTY(settings, m_, uscale);
+  SAVE_PROPERTY(settings, m_, squared);
   SAVE_PROPERTY(settings, m_, avgchannel);
 
   return true;
@@ -460,6 +461,7 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
   LOAD_PROPERTY(settings, m_, k);
   LOAD_PROPERTY(settings, m_, dscale);
   LOAD_PROPERTY(settings, m_, uscale);
+  LOAD_PROPERTY(settings, m_, squared);
   LOAD_PROPERTY(settings, m_, avgchannel);
 
   return true;

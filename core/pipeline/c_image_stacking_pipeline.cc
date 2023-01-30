@@ -94,6 +94,8 @@ namespace {
 
 bool multiply_weights(cv::InputArray mask, cv::InputArray weights, cv::OutputArray dst, double scale = 1, int dtype = -1)
 {
+  INSTRUMENT_REGION("");
+
   if( mask.channels() == weights.channels() ) {
     cv::multiply(mask, weights, dst, scale, dtype);
   }
@@ -154,6 +156,7 @@ static cv::Mat2f compute_turbulent_flow(
     const cv::Mat2f & current_remap
     /*,const cv::Mat1b & mask*/)
 {
+  INSTRUMENT_REGION("");
 
   cv::Mat2f uv;
   double tx = 0, ty = 0;
@@ -1367,24 +1370,7 @@ bool c_image_stacking_pipeline::actual_run()
       upscale_image(options_->upscale_options().upscale_option,
           reference_frame, reference_mask,
           reference_frame, reference_mask);
-
-//      if( !reference_weights_.empty() ) {
-//        upscale_image(options_->upscale_options().upscale_option,
-//            reference_weights_, cv::noArray(),
-//            reference_weights_, cv::noArray());
-//
-//        CF_DEBUG("Reference weights: %dx%d depth=%d channels=%d",
-//            reference_weights_.cols, reference_weights_.rows,
-//            reference_weights_.depth(),
-//            reference_weights_.channels());
-//      }
     }
-
-//    if ( output_options.debug_frame_registration ) {
-//      frame_registration_->set_enable_debug(true);
-//      frame_registration_->set_debug_path(ssprintf("%s/debug-registration-reference",
-//          output_directory_.c_str()));
-//    }
 
     if( output_options.debug_frame_registration ) {
       frame_registration_->set_debug_path(ssprintf("%s/debug/reference_frame",
@@ -1408,18 +1394,6 @@ bool c_image_stacking_pipeline::actual_run()
       frame_registration_->set_debug_path("");
     }
 
-//    if( upscale_required(frame_upscale_after_align) ) {
-//
-//      upscale_image(options_->upscale_options().upscale_option,
-//          reference_weights_, cv::noArray(),
-//          reference_weights_, cv::noArray());
-//
-//      CF_DEBUG("Reference weights: %dx%d depth=%d channels=%d",
-//          reference_weights_.cols, reference_weights_.rows,
-//          reference_weights_.depth(),
-//          reference_weights_.channels());
-//    }
-
     if ( output_options.debug_frame_registration && frame_registration_->options().eccflow.enabled  ) {
 
       const c_ecch_flow & eccflow =
@@ -1435,11 +1409,6 @@ bool c_image_stacking_pipeline::actual_run()
         save_image(pyramid[i].reference_image, ssprintf("%s/eccref.%02u.tiff", debugpath.c_str(), i));
       }
     }
-
-
-//    if ( output_options.debug_frame_registration ) {
-//      frame_registration_->set_enable_debug(false);
-//    }
 
 
     if( registration_options.accumulate_and_compensate_turbulent_flow ) {
@@ -1508,9 +1477,15 @@ bool c_image_stacking_pipeline::actual_run()
         return false;
       }
 
+#if 1
+      linear_interpolation_inpaint(accumulated_image,
+          accumulated_mask,
+          accumulated_image);
+#else
       average_pyramid_inpaint(accumulated_image,
           accumulated_mask,
           accumulated_image);
+#endif
     }
 
 
@@ -1710,6 +1685,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     cv::Mat & reference_frame,
     cv::Mat & reference_mask)
 {
+  INSTRUMENT_REGION("");
+
   const c_input_options & input_options =
       options_->input_options();
 
@@ -1850,10 +1827,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
       return false;
     }
 
-    if ( max_frames_to_stack > input_sequence->size() ) {
-      max_frames_to_stack = input_sequence->size();
-    }
-
     const int startpos =
         std::max(0, std::max(input_options.start_frame_index,
             master_frame_index - max_frames_to_stack / 2));
@@ -1861,6 +1834,15 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
     const int endpos =
         std::min( startpos + max_frames_to_stack,
             input_sequence->size());
+
+    if ( max_frames_to_stack > input_sequence->size() ) {
+      max_frames_to_stack = input_sequence->size();
+    }
+
+    CF_DEBUG("input_options.start_frame_index=%d master_frame_index=%d max_frames_to_stack=%d input_sequence->size()=%d",
+        input_options.start_frame_index, master_frame_index,
+        max_frames_to_stack,
+        input_sequence->size());
 
     if ( !process_input_sequence(input_sequence, startpos, endpos) ) {
       CF_ERROR("process_input_sequence() fails");
@@ -1886,10 +1868,15 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
-
+#if 1
+      linear_interpolation_inpaint(reference_frame,
+          reference_mask,
+          reference_frame);
+#else
       average_pyramid_inpaint(reference_frame,
           reference_mask,
           reference_frame);
+#endif
 
       // sharpen reference image
       if ( sharpness_norm_accumulation_ ) {
@@ -1966,6 +1953,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::p
 
 bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::ptr & input_sequence, int startpos, int endpos)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat current_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
 
@@ -2003,7 +1992,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
   }
 
   total_frames_ = endpos - startpos;
-  CF_DEBUG("total_frames_=%d", total_frames_);
+  CF_DEBUG("startpos=%d endpos=%d total_frames_=%d", startpos, endpos, total_frames_);
 
   if ( total_frames_ < 1 ) {
     CF_ERROR("INPUT ERROR: Num frames to process = %d is less than 1", total_frames_);
@@ -2026,6 +2015,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       break;
     }
 
+    INSTRUMENT_REGION("body");
 
     t0 = start_time = get_realtime_ms();
 
@@ -2093,9 +2083,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     if ( master_frame_generation_ && current_frame.channels() > 1 ) {
 
-      bool fOk = extract_channel(current_frame, current_frame,
-          cv::noArray(), cv::noArray(),
-          options_->frame_registration_options().image_registration_options.registration_channel);
+      bool fOk =
+          extract_channel(current_frame, current_frame,
+              cv::noArray(), cv::noArray(),
+              options_->frame_registration_options().image_registration_options.registration_channel);
 
       if ( !fOk ) {
         CF_ERROR("extract_channel(registration_channel=%d) fails",
@@ -2239,18 +2230,33 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         if ( flow_accumulation_ ) {
 
           const cv::Mat2f turbulence =
-              compute_turbulent_flow(
-                  frame_registration_->options().motion_type,
+              compute_turbulent_flow(frame_registration_->options().motion_type,
                   frame_registration_->current_transform(),
-                  frame_registration_->current_remap()/*,
-                   current_mask_*/);
+                  frame_registration_->current_remap());
 
-          if ( turbulence.empty() ) {
+          if( turbulence.empty() ) {
             CF_ERROR("compute_turbulence_flow() fails");
           }
           else {
-            flow_accumulation_->add(turbulence/*,
-                current_mask_*/);
+
+            if( flow_accumulation_->accumulated_frames() < 1 ) {
+
+              const bool fOk =
+                  flow_accumulation_->initialze(turbulence.size(),
+                      turbulence.type(),
+                      CV_8UC1);
+
+              if( !fOk ) {
+                CF_ERROR("flow_accumulation_->initialze() fails");
+                break;
+              }
+
+              CF_DEBUG("turbulence.depth = %d", turbulence.depth());
+              if( !flow_accumulation_->add(turbulence) ) {
+                CF_ERROR("flow_accumulation_->add(turbulence) fails");
+                break;
+              }
+            }
           }
 
           if( canceled() ) {
@@ -2356,6 +2362,21 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       if ( true ) {
         lock_guard lock(accumulator_lock_);
 
+        if( frame_accumulation_->accumulated_frames() < 1 ) {
+
+          const bool fok =
+              frame_accumulation_->initialze(current_frame.size(),
+                  current_frame.type(),
+                  current_mask.empty() ? CV_8UC1 :
+                      current_mask.type());
+
+          if( !fok ) {
+            CF_ERROR("frame_accumulation_->initialze() fails");
+            return false;
+          }
+        }
+
+        CF_DEBUG("current_frame.depth=%d current_mask.depth=%d", current_frame.depth(), current_mask.depth());
         if ( !frame_accumulation_->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;
@@ -2446,6 +2467,8 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
     const c_input_options & input_options,
     cv::Mat & output_image, cv::Mat & output_mask) const
 {
+  INSTRUMENT_REGION("");
+
   input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
 
@@ -2480,12 +2503,9 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
     if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-
       CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-
-      // return true with empty output image
       output_image.release();
-      return true;
+      return true; // return true with empty output image
     }
 
     if ( input_options.filter_bad_pixels ) {
@@ -2498,32 +2518,68 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
   }
   else {
 
-    extract_bayer_planes(output_image, output_image,
-        input_sequence->colorid());
+    DEBAYER_ALGORITHM algo =
+        default_debayer_algorithm();
 
-    if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+    switch (algo) {
 
-      CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+      case DEBAYER_DISABLE:
+        output_image.convertTo(output_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+        break;
 
-      // return true with empty output image
-      output_image.release();
-      return true;
+      case DEBAYER_NN:
+        case DEBAYER_VNG:
+        case DEBAYER_EA:
+        if( !debayer(output_image, output_image, input_sequence->colorid(), algo) ) {
+          CF_ERROR("debayer() fails");
+          return false;
+        }
+        if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+          output_image.release();
+          return true; // return true with empty output image
+        }
+        if ( input_options.filter_bad_pixels ) {
+          remove_bad_pixels(output_image, input_options, true);
+        }
+        output_image.convertTo(output_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+        break;
+
+      case DEBAYER_NN2:
+        case DEBAYER_NNR:
+        if( !extract_bayer_planes(output_image, output_image, input_sequence->colorid()) ) {
+          CF_ERROR("extract_bayer_planes() fails");
+          return false;
+        }
+        if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+          output_image.release();
+          return true; // return true with empty output image
+        }
+        if( input_options.filter_bad_pixels ) {
+          remove_bad_pixels(output_image, input_options, true);
+        }
+
+        output_image.convertTo(output_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+
+        if ( !nninterpolation(output_image, output_image, input_sequence->colorid()) ) {
+          CF_ERROR("nninterpolation() fails");
+          return false;
+        }
+
+        break;
+
+      default:
+        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
+            algo, toString(algo));
+        return false;
     }
-
-
-    if ( input_options.filter_bad_pixels ) {
-      remove_bad_pixels(output_image, input_options, true);
-    }
-
-    output_image.convertTo(output_image, CV_32F,
-        1. / ((1 << input_sequence->bpp())));
-
-    gbinterpolation(output_image, output_image,
-        input_sequence->colorid());
-
   }
 
-  if ( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() ) {
+  if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {
     cv::transform(output_image, output_image,
         input_sequence->color_matrix());
   }
@@ -2556,8 +2612,13 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::ptr & i
   }
 
   if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
+#if 1
+    linear_interpolation_inpaint(output_image, output_mask,
+        output_image);
+#else
     average_pyramid_inpaint(output_image, output_mask,
         output_image);
+#endif
   }
 
 
@@ -2578,6 +2639,7 @@ bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::ptr & ro
     return true;
   }
 
+  INSTRUMENT_REGION("");
 
   cv::Rect ROI;
 
@@ -2604,6 +2666,8 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
     const c_input_options & input_optons,
     bool isbayer)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat medianImage, variationImage, meanVariationImage;
   double minimal_mean_variation_for_very_smooth_images;
 
@@ -2637,6 +2701,8 @@ void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
     cv::InputArray srcmap,
     cv::OutputArray dstmap)
 {
+  INSTRUMENT_REGION("");
+
   switch (scale) {
   case frame_upscale_x15:
   {
@@ -2673,6 +2739,8 @@ void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
     cv::InputArray srcmap,
     cv::OutputArray dstmap)
 {
+  INSTRUMENT_REGION("");
+
   switch (scale) {
   case frame_upscale_x15:
   {
@@ -2713,6 +2781,7 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
     cv::InputArray src, cv::InputArray srcmask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
+  INSTRUMENT_REGION("");
 
   switch (scale) {
   case frame_upscale_x15:
@@ -2774,6 +2843,8 @@ bool c_image_stacking_pipeline::weights_required() const
 
 void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
 {
+  INSTRUMENT_REGION("");
+
   const c_frame_accumulation_options & acc_options =
       options_->accumulation_options();
 
@@ -2782,27 +2853,13 @@ void c_image_stacking_pipeline::compute_weights(const cv::Mat & src, const cv::M
     dst.setTo(0, ~srcmask);
   }
 
-//  compute_dogsmap(src, dst,
-//      acc_options.s1,
-//      acc_options.s2,
-//      acc_options.scale,
-//      acc_options.minv);
-
-//  compute_smap(src, dst,
-//      acc_options.lksize,
-//      acc_options.scale_size,
-//      acc_options.minv);
-
-//  double min, max;
-//  cv::minMaxLoc(dst, &min, &max);
-//  CF_DEBUG("smap: min=%g max=%g acc_options: lksize=%d scale_size=%d minv=%g", min, max,
-//      acc_options.lksize,
-//      acc_options.scale_size,
-//      acc_options.minv);
+  CF_DEBUG("dst: %dx%d depth=%d channels=%d", dst.cols, dst.rows, dst.depth(), dst.channels());
 }
 
 void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel)
 {
+  INSTRUMENT_REGION("");
+
   cv::divide(wc, wref, wrel);
   if ( mc.size() == wrel.size() ) {
     wrel.setTo(0, ~mc);
@@ -2814,6 +2871,8 @@ void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, con
 double c_image_stacking_pipeline::compute_image_noise(const cv::Mat & image, const cv::Mat & mask,
     color_channel_type channel)
 {
+  INSTRUMENT_REGION("");
+
   double estimated_noise_level;
 
   if ( image.channels() == 1 ) {
@@ -2840,7 +2899,13 @@ bool c_image_stacking_pipeline::compute_accumulated_image(cv::OutputArray dst, c
     }
 
     if ( frame_accumulation_ ) {
-      return frame_accumulation_->compute(dst, dstmask);
+
+      if( !frame_accumulation_->compute(dst, dstmask) ) {
+        CF_ERROR("frame_accumulation_->compute() fails");
+        return false;
+      }
+
+      return true;
     }
   }
 
@@ -2865,6 +2930,8 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
     const c_image_stacking_output_options & output_options,
     const cv::Mat & output_image, const cv::Mat & output_mask)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat image_to_write;
 
   if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
@@ -3174,6 +3241,8 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
 int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence::ptr & input_sequence) const
 {
+  INSTRUMENT_REGION("");
+
   const c_input_options &input_options =
       options_->input_options();
 

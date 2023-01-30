@@ -11,6 +11,9 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <core/io/debayer.h>
+#include "QImageEditor.h"
+
+namespace qserstacker {
 
 class QGeneralAppSettingsWidget :
     public QSettingsWidget
@@ -20,14 +23,19 @@ public:
   typedef QGeneralAppSettingsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QGeneralAppSettingsWidget(QWidget * parent = Q_NULLPTR);
+  QGeneralAppSettingsWidget(QWidget * parent = nullptr);
+
+  void setImageEditor(QImageEditor * imageEditor);
+  QImageEditor * imageEditor() const;
 
 protected:
   void onload(QSettings & settings) override;
   void onupdatecontrols() override;
 
 protected:
-  QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = Q_NULLPTR;
+  QImageEditor * imageEditor_ = nullptr;
+  QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
+  QEnumComboBox<DEBAYER_ALGORITHM> * editor_debayer_ctl = nullptr;
 };
 
 
@@ -39,12 +47,14 @@ public:
   typedef QGeneralAppSettingsDialogBox ThisClass;
   typedef QDialog Base;
 
-  QGeneralAppSettingsDialogBox(QWidget * parent = Q_NULLPTR);
+  QGeneralAppSettingsDialogBox(QWidget * parent = nullptr);
+
+  void setImageEditor(QImageEditor * imageEditor);
+  QImageEditor * imageEditor() const;
 
 protected:
-protected:
-  QGeneralAppSettingsWidget * appSettingsWidget_ = Q_NULLPTR;
+  QGeneralAppSettingsWidget * appSettingsWidget_ = nullptr;
 };
 
-
+} // namespace qserstacker
 #endif /* __QAppSettings_h__ */

@@ -28,6 +28,18 @@ QImageFileEditor::QImageFileEditor(QWidget * parent) :
 {
 }
 
+void QImageFileEditor::setDebayerAlgorithm(DEBAYER_ALGORITHM algo)
+{
+  debayerAlgorithm_ = algo;
+  CF_DEBUG("debayerAlgorithm_='%s'", toString(debayerAlgorithm_));
+  Q_EMIT debayerAlgorithmChanged();
+}
+
+DEBAYER_ALGORITHM QImageFileEditor::debayerAlgorithm() const
+{
+  return debayerAlgorithm_;
+}
+
 const c_input_sequence::ptr & QImageFileEditor::input_sequence() const
 {
   return input_sequence_;
@@ -148,12 +160,13 @@ void QImageFileEditor::loadNextFrame()
 
       input_sequence_->read(inputImage_, &inputMask_);
 
-      Q_EMIT onInputImageLoad(inputImage_, inputMask_, input_sequence_->colorid(), input_sequence_->bpp());
+      Q_EMIT onInputImageLoad(inputImage_, inputMask_,
+          input_sequence_->colorid(),
+          input_sequence_->bpp());
 
-      if( true ) {
-        if( is_bayer_pattern(input_sequence_->colorid()) ) {
-          debayer(inputImage_, inputImage_, input_sequence_->colorid(), DEBAYER_DEFAULT);
-        }
+      if( is_bayer_pattern(input_sequence_->colorid()) ) {
+        debayer(inputImage_, inputImage_, input_sequence_->colorid(),
+            debayerAlgorithm_);
       }
 
       updateImage();

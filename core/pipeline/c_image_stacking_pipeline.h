@@ -417,7 +417,6 @@ protected:
   void save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_video_writer & output_writer) const;
 
-
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons,
       bool isbayer);

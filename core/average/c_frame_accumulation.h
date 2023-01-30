@@ -18,6 +18,7 @@ public:
 
   virtual ~c_frame_accumulation() = default;
 
+  virtual bool initialze(const cv::Size & image_size, int acctype, int weightstype) = 0;
   virtual bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) = 0;
   virtual bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const = 0;
   virtual void release() = 0;
@@ -31,8 +32,8 @@ protected:
   int accumulated_frames_ = 0;
 };
 
-class c_frame_weigthed_average
-    : public c_frame_accumulation
+class c_frame_weigthed_average :
+    public c_frame_accumulation
 {
 public:
   typedef c_frame_weigthed_average this_class;
@@ -41,6 +42,10 @@ public:
 
   static constexpr int accdepth = CV_32F;
 
+  c_frame_weigthed_average();
+  c_frame_weigthed_average(const cv::Size & image_size, int acctype, int weightstype);
+
+  bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void release() override;
@@ -62,6 +67,7 @@ public:
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
+  bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void release() override;

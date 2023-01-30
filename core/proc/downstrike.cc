@@ -6,6 +6,7 @@
  */
 #include "downstrike.h"
 #include <tbb/tbb.h>
+#include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 using namespace cv;
@@ -164,7 +165,9 @@ static void downstrike_uneven_mc(const cv::Mat & src, cv::Mat & _dst)
  * */
 void downstrike_even(cv::InputArray _src, cv::Mat & dst)
 {
-  const Mat src = _src.getMat();
+  INSTRUMENT_REGION("");
+
+ const Mat src = _src.getMat();
 
   if ( src.channels() > 1 ) {
     downstrike_even_mc(src, dst);
@@ -483,6 +486,8 @@ static void upject_uneven_mc(const Mat & src, Mat & _dst, Size dstSize, Mat * _z
  * */
 void upject_even(cv::InputArray _src, Mat & dst, Size dstSize, Mat * _zmask, int zmdepth)
 {
+  INSTRUMENT_REGION("");
+
   const Mat src = _src.getMat();
 
   if ( src.channels() > 1 ) {

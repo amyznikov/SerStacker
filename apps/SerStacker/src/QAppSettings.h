@@ -52,6 +52,13 @@ public:
   void setImageEditor(QImageEditor * imageEditor);
   QImageEditor * imageEditor() const;
 
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+
+protected:
+  void showEvent(QShowEvent * e) override;
+  void hideEvent(QHideEvent * e) override;
+
 protected:
   QGeneralAppSettingsWidget * appSettingsWidget_ = nullptr;
 };

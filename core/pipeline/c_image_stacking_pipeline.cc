@@ -1524,10 +1524,6 @@ bool c_image_stacking_pipeline::actual_run()
                 options_->master_frame_options().accumulated_sharpen_factor
                     * sqrt(frame_accumulation_->accumulated_frames());
 
-            CF_DEBUG("sharpenScale=%g accumulated_frames=%d",
-                sharpenScale,
-                frame_accumulation_->accumulated_frames());
-
             fftSharpenR1(accumulated_image, accumulated_image,
                 sharpenScale, false);
 
@@ -2250,12 +2246,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
                 CF_ERROR("flow_accumulation_->initialze() fails");
                 break;
               }
+            }
 
-              CF_DEBUG("turbulence.depth = %d", turbulence.depth());
-              if( !flow_accumulation_->add(turbulence) ) {
-                CF_ERROR("flow_accumulation_->add(turbulence) fails");
-                break;
-              }
+            if( !flow_accumulation_->add(turbulence) ) {
+              CF_ERROR("flow_accumulation_->add(turbulence) fails");
+              break;
             }
           }
 

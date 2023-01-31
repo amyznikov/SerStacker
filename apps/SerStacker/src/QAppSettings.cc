@@ -27,6 +27,20 @@ QImageEditor * QGeneralAppSettingsDialogBox::imageEditor() const
   return appSettingsWidget_->imageEditor();
 }
 
+void QGeneralAppSettingsDialogBox::showEvent(QShowEvent * e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QGeneralAppSettingsDialogBox::hideEvent(QHideEvent * e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+
+
 QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
     Base("QGeneralAppSettingsWidget", parent)
 {

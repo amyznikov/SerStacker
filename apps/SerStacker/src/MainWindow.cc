@@ -1680,9 +1680,11 @@ void MainWindow::onLoadStackConfig()
 
 void MainWindow::onViewGeneralSettings()
 {
-  if ( !appSettingsDlgBox ) {
+  if( !appSettingsDlgBox ) {
     appSettingsDlgBox = new QGeneralAppSettingsDialogBox(this);
     appSettingsDlgBox->setImageEditor(imageEditor);
+    connect(appSettingsDlgBox, &QGeneralAppSettingsDialogBox::visibilityChanged,
+        viewGeneralSettingsAction, &QAction::setChecked);
   }
 
   if ( !appSettingsDlgBox->isVisible() ){
@@ -1691,10 +1693,6 @@ void MainWindow::onViewGeneralSettings()
   else {
     appSettingsDlgBox->hide();
   }
-
-  viewGeneralSettingsAction->setChecked(
-      appSettingsDlgBox->isVisible());
-
 }
 
 

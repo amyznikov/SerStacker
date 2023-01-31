@@ -54,10 +54,26 @@ static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
 {
-  cv::pyrDown(src, dst, cv::Size(), border_mode);
-  for( int l = 1; l < level; ++l ) {
-    cv::pyrDown(dst, dst, cv::Size(), border_mode);
+  if( std::min(src.cols(), src.rows()) < 4 ) {
+    src.copyTo(dst);
   }
+  else {
+
+    cv::pyrDown(src, dst, cv::Size(), border_mode);
+
+    if( std::min(dst.cols, dst.rows) >= 4 ) {
+
+      for( int l = 1; l < level; ++l ) {
+
+        cv::pyrDown(dst, dst, cv::Size(), border_mode);
+
+        if( std::min(dst.cols, dst.rows) < 4 ) {
+          break;
+        }
+      }
+    }
+  }
+
   return true;
 }
 

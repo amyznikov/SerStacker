@@ -15,7 +15,7 @@
 #include <core/proc/inpaint.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/fft.h>
-#include <core/proc/smap.h>
+#include <core/proc/focus.h>
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
 #include <core/readdir.h>
@@ -3326,6 +3326,14 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
 
     case master_frame_best_of_100_in_middle: {
 
+      c_lpg_sharpness_measure measure;
+
+      measure.set_k(6);
+      measure.set_dscale(1);
+      measure.set_uscale(6);
+      measure.set_avgchannel(true);
+      measure.set_squared(false);
+
       constexpr int max_frames_to_scan = 200;
 
       CF_DEBUG("Scan %d frames around of middle %d",
@@ -3339,6 +3347,9 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
       else {
         start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
       }
+
+      input_sequence->set_auto_debayer(DEBAYER_DISABLE);
+      input_sequence->set_auto_apply_color_matrix(false);
 
       backup_current_pos = input_sequence->current_pos();
       input_sequence->seek(start_pos);
@@ -3354,7 +3365,10 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
       for( current_index = 0; processed_frames_ < total_frames_;
           processed_frames_ = ++current_index, emit_status_changed() ) {
 
-        read_input_frame(input_sequence, input_options, image, mask);
+        if ( !input_sequence->read(image, &mask) ) {
+          CF_FATAL("input_sequence->read() fails\n");
+          return false;
+        }
 
         if( canceled() ) {
           break;
@@ -3362,18 +3376,33 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
 
         if( !image.empty() ) {
 
-          compute_dogsmap(image, dogs, 3, 3, 3, 0);
+          if( is_bayer_pattern(input_sequence->colorid()) ) {
+            if( !extract_bayer_planes(image, image, input_sequence->colorid()) ) {
+              CF_ERROR("extract_bayer_planes() fails");
+              return false;
+            }
+          }
 
-          if( (current_metric = cv::mean(dogs, mask)[0]) > best_metric ) {
+          current_metric =
+              measure.compute(image)[0];
+
+          if( current_metric > best_metric ) {
+
             best_metric = current_metric;
             best_index = current_index;
+
+            if( is_bayer_pattern(input_sequence->colorid()) ) {
+              if( !nninterpolation(image, image, input_sequence->colorid()) ) {
+                CF_ERROR("nninterpolation() fails");
+                return false;
+              }
+            }
 
             accumulator_lock_.lock();
             image.copyTo(selected_master_frame_);
             mask.copyTo(selected_master_frame_mask_);
             accumulator_lock_.unlock();
 
-            //CF_DEBUG("best: index=%d  metric: %g", best_index + start_pos, best_metric);
             set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
                 "BEST: INDEX=%d METRIC: %g",
                 best_index + start_pos,

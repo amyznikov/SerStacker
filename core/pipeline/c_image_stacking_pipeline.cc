@@ -86,6 +86,21 @@ const c_enum_member * members_of<master_frame_selection_method>()
   return members;
 }
 
+template<>
+const c_enum_member* members_of<STACKING_STAGE>()
+{
+  static constexpr c_enum_member members[] = {
+      { stacking_stage_idle, "idle", "idle" },
+      { stacking_stage_initialize, "initialize", "initialize" },
+      { stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },
+      { stacking_stage_generate_reference_frame, "generate_reference_frame", "generate reference frame" },
+      { stacking_stage_in_progress, "stacking_in_progress", "stacking in progress" },
+      { stacking_stage_finishing, "finishing", "finishing" },
+      { stacking_stage_idle },
+  };
+
+  return members;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -755,9 +770,23 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+c_image_stacking_pipeline::c_image_stacking_pipeline()
+{
+}
+
+c_image_stacking_pipeline::~c_image_stacking_pipeline()
+{
+  set_canceled(true);
+}
+
 const c_image_stacking_options::ptr & c_image_stacking_pipeline::options() const
 {
   return options_;
+}
+
+const c_anscombe_transform & c_image_stacking_pipeline::anscombe() const
+{
+  return anscombe_;
 }
 
 void c_image_stacking_pipeline::set_canceled(bool canceled)
@@ -768,6 +797,21 @@ void c_image_stacking_pipeline::set_canceled(bool canceled)
 bool c_image_stacking_pipeline::canceled() const
 {
   return canceled_;
+}
+
+STACKING_STAGE c_image_stacking_pipeline::stacking_stage() const
+{
+  return stacking_stage_;
+}
+
+void c_image_stacking_pipeline::set_stacking_stage(STACKING_STAGE stage)
+{
+  const STACKING_STAGE oldstage = stacking_stage_;
+
+  if ( stage != oldstage ) {
+    stacking_stage_ = stage;
+    emit_stacking_stage_changed(oldstage, stage);
+  }
 }
 
 int c_image_stacking_pipeline::total_frames() const
@@ -858,6 +902,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   bool fOk = false;
 
   try {
+
+    set_stacking_stage(stacking_stage_initialize);
 
     if ( !(fOk = initialize(options)) ) {
       CF_ERROR("initialize() fails");
@@ -993,7 +1039,7 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
   }
 
 
-
+  set_stacking_stage(stacking_stage_finishing);
 
   try {
     cleanup();
@@ -1025,6 +1071,8 @@ bool c_image_stacking_pipeline::run(const c_image_stacking_options::ptr & option
 
     CF_ERROR("Unknown exception catched in c_image_stacking_pipeline::cleanup()\n");
   }
+
+  set_stacking_stage(stacking_stage_idle);
 
   return fOk;
 }
@@ -1299,12 +1347,16 @@ bool c_image_stacking_pipeline::actual_run()
       return false;
     }
 
+    set_stacking_stage(stacking_stage_select_master_frame_index);
+
     master_frame_index =
         select_master_frame_index(input_sequence);
 
     if ( canceled() ) {
       return false;
     }
+
+    set_stacking_stage(stacking_stage_generate_reference_frame);
 
     set_status_msg("CREATE REFERENCE FRAME ...");
 
@@ -1354,11 +1406,6 @@ bool c_image_stacking_pipeline::actual_run()
           reference_mask);
     }
 
-
-
-//    if ( weights_required() ) {
-//      compute_weights(reference_frame, reference_mask, reference_weights_);
-//    }
 
     if ( !(frame_registration_ = options_->create_frame_registration()) ) {
       CF_FATAL("options_->create_frame_registration() fails");
@@ -1422,6 +1469,8 @@ bool c_image_stacking_pipeline::actual_run()
 
   /////////////////////////////////////////////////////////////////////////////
 
+  set_stacking_stage(stacking_stage_in_progress);
+
   if ( accumulation_options.accumulation_method != frame_accumulation_none ) {
 
     lock_guard lock(accumulator_lock_);
@@ -1459,6 +1508,7 @@ bool c_image_stacking_pipeline::actual_run()
     return false;
   }
 
+  set_stacking_stage(stacking_stage_finishing);
   set_status_msg("FINISHING ...");
 
 
@@ -2907,6 +2957,22 @@ bool c_image_stacking_pipeline::compute_accumulated_image(cv::OutputArray dst, c
   return false;
 }
 
+bool c_image_stacking_pipeline::get_selected_master_frame(cv::OutputArray dst, cv::OutputArray dstmask) const
+{
+  lock_guard lock(accumulator_lock_);
+
+  if( dst.needed() ) {
+    selected_master_frame_.copyTo(dst);
+  }
+
+  if( dstmask.needed() ) {
+    selected_master_frame_mask_.copyTo(dstmask);
+  }
+
+  return true;
+}
+
+
 bool c_image_stacking_pipeline::upscale_required(frame_upscale_stage current_stage) const
 {
   if ( master_frame_generation_  ) {
@@ -3233,8 +3299,7 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
 }
 
-
-int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence::ptr & input_sequence) const
+int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence::ptr & input_sequence)
 {
   INSTRUMENT_REGION("");
 
@@ -3246,75 +3311,84 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
 
   int selected_master_frame_index = 0;
 
+  selected_master_frame_.release();
+  selected_master_frame_mask_.release();
+
   switch (master_options.master_selection_method) {
 
-  case master_frame_specific_index:
-    selected_master_frame_index = master_options.master_frame_index;
-    break;
+    case master_frame_specific_index:
+      selected_master_frame_index = master_options.master_frame_index;
+      break;
 
-  case master_frame_middle_index:
-    selected_master_frame_index = input_sequence->size() / 2;
-    break;
+    case master_frame_middle_index:
+      selected_master_frame_index = input_sequence->size() / 2;
+      break;
 
-  case master_frame_best_of_100_in_middle: {
+    case master_frame_best_of_100_in_middle: {
 
-    constexpr int max_frames_to_scan = 200;
+      constexpr int max_frames_to_scan = 200;
 
-    CF_DEBUG("Scan %d frames around of middle %d", max_frames_to_scan, input_sequence->size() / 2);
+      CF_DEBUG("Scan %d frames around of middle %d",
+          max_frames_to_scan, input_sequence->size() / 2);
 
+      int start_pos, backup_current_pos;
 
-
-    int start_pos, backup_current_pos;
-
-    if( input_sequence->size() <= max_frames_to_scan ) {
-      start_pos = 0;
-    }
-    else {
-      start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
-    }
-
-    backup_current_pos = input_sequence->current_pos();
-    input_sequence->seek(start_pos);
-
-    cv::Mat image, mask, dogs;
-    int current_index, best_index = 0;
-    double current_metric, best_metric = 0;
-
-    total_frames_ = max_frames_to_scan;
-    processed_frames_ = 0;
-    emit_status_changed();
-
-    for ( current_index = 0; processed_frames_ < total_frames_; processed_frames_ = ++current_index, emit_status_changed() ) {
-
-      read_input_frame(input_sequence, input_options, image, mask);
-
-      if ( canceled() ) {
-        break;
+      if( input_sequence->size() <= max_frames_to_scan ) {
+        start_pos = 0;
+      }
+      else {
+        start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
       }
 
-      if ( !image.empty() ) {
+      backup_current_pos = input_sequence->current_pos();
+      input_sequence->seek(start_pos);
 
-        compute_dogsmap(image, dogs, 3, 3, 3, 0);
+      cv::Mat image, mask, dogs;
+      int current_index, best_index = 0;
+      double current_metric, best_metric = 0;
 
-        if( (current_metric = cv::mean(dogs, mask)[0]) > best_metric ) {
-          best_metric = current_metric;
-          best_index = current_index;
+      total_frames_ = max_frames_to_scan;
+      processed_frames_ = 0;
+      emit_status_changed();
 
-          //CF_DEBUG("best: index=%d  metric: %g", best_index + start_pos, best_metric);
-          set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
-              "BEST: INDEX=%d METRIC: %g",
-              best_index + start_pos,
-              best_metric));
+      for( current_index = 0; processed_frames_ < total_frames_;
+          processed_frames_ = ++current_index, emit_status_changed() ) {
 
+        read_input_frame(input_sequence, input_options, image, mask);
+
+        if( canceled() ) {
+          break;
+        }
+
+        if( !image.empty() ) {
+
+          compute_dogsmap(image, dogs, 3, 3, 3, 0);
+
+          if( (current_metric = cv::mean(dogs, mask)[0]) > best_metric ) {
+            best_metric = current_metric;
+            best_index = current_index;
+
+            accumulator_lock_.lock();
+            image.copyTo(selected_master_frame_);
+            mask.copyTo(selected_master_frame_mask_);
+            accumulator_lock_.unlock();
+
+            //CF_DEBUG("best: index=%d  metric: %g", best_index + start_pos, best_metric);
+            set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
+                "BEST: INDEX=%d METRIC: %g",
+                best_index + start_pos,
+                best_metric));
+
+            emit_selected_master_frame_changed();
+          }
         }
       }
+
+      selected_master_frame_index = best_index + start_pos;
+      input_sequence->seek(backup_current_pos);
+
+      break;
     }
-
-    selected_master_frame_index = best_index + start_pos;
-    input_sequence->seek(backup_current_pos);
-
-    break;
-  }
   }
 
   return selected_master_frame_index;

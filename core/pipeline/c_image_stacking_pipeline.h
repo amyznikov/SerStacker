@@ -52,6 +52,16 @@ enum master_frame_selection_method {
   master_frame_best_of_100_in_middle,
 };
 
+
+enum STACKING_STAGE {
+  stacking_stage_idle = 0,
+  stacking_stage_initialize,
+  stacking_stage_select_master_frame_index,
+  stacking_stage_generate_reference_frame,
+  stacking_stage_in_progress,
+  stacking_stage_finishing
+};
+
 struct c_input_options
 {
   std::string darkbayer_filename;
@@ -287,7 +297,6 @@ protected:
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
-
 };
 
 
@@ -335,37 +344,32 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
 public:
-  c_image_stacking_pipeline()
-  {
-  }
-
-  virtual ~c_image_stacking_pipeline()
-  {
-    set_canceled(true);
-  }
-
-
-  bool run(const c_image_stacking_options::ptr & stacking_options);
+  c_image_stacking_pipeline();
+  virtual ~c_image_stacking_pipeline();
 
   void set_canceled(bool canceled);
   bool canceled() const;
 
-  const c_image_stacking_options::ptr & options() const;
+  STACKING_STAGE stacking_stage() const;
 
-  const c_anscombe_transform & anscombe() const
-  {
-    return anscombe_;
-  }
+  const c_image_stacking_options::ptr & options() const;
+  const c_anscombe_transform & anscombe() const;
 
   int total_frames() const;
   int processed_frames() const;
   int accumulated_frames() const;
   std::string status_message() const ;
 
+  bool run(const c_image_stacking_options::ptr & stacking_options);
+
   bool compute_accumulated_image(cv::OutputArray dst,
       cv::OutputArray dstmask=cv::noArray()) const ;
 
+  bool get_selected_master_frame(cv::OutputArray dst,
+      cv::OutputArray dstmask=cv::noArray()) const;
+
 protected:
+  void set_stacking_stage(STACKING_STAGE stage);
 
   void set_status_msg(const std::string & msg) const;
 
@@ -380,7 +384,7 @@ protected:
   bool process_input_sequence(const c_input_sequence::ptr & input_sequence,
       int startpos, int endpos);
 
-  int select_master_frame_index(const c_input_sequence::ptr & input_sequence) const;
+  int select_master_frame_index(const c_input_sequence::ptr & input_sequence);
 
   bool read_input_frame(const c_input_sequence::ptr & input_sequence,
       const c_input_options & input_options,
@@ -440,9 +444,10 @@ protected:
 
   bool upscale_required(frame_upscale_stage current_stage) const;
 
+  virtual void emit_stacking_stage_changed(STACKING_STAGE oldstage, STACKING_STAGE newstage) const {}
   virtual void emit_status_changed() const {}
   virtual void emit_accumulator_changed() const {}
-
+  virtual void emit_selected_master_frame_changed() const {}
 
 protected:
 
@@ -450,6 +455,8 @@ protected:
 
   c_image_stacking_options::ptr options_;
   c_input_sequence::ptr input_sequence_;
+
+  STACKING_STAGE stacking_stage_ = stacking_stage_idle;
 
   volatile bool canceled_ = false;
   bool master_frame_generation_ = false;
@@ -461,11 +468,13 @@ protected:
   double ecc_normalization_noise_ = 0;
   double reference_sharpness_ = 0;
 
-  mutable int total_frames_ = 0;
-  mutable int processed_frames_ = 0;
+  int total_frames_ = 0;
+  int processed_frames_ = 0;
 
   cv::Mat darkbayer_;
   cv::Mat missing_pixel_mask_;
+  cv::Mat selected_master_frame_;
+  cv::Mat selected_master_frame_mask_;
   //cv::Mat1f reference_weights_;
 
   mutable std::string statusmsg_;

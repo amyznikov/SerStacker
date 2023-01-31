@@ -8,26 +8,18 @@
 #include "QStackingThread.h"
 #include <core/debug.h>
 
-QStackingThread::c_stacking_thread_impl::c_stacking_thread_impl(QStackingThread * _qobj)
-  : qobj(_qobj)
+QStackingThread::QStackingThread() :
+    pipeline_(this)
 {
 }
-
-
-QStackingThread::QStackingThread()
-  : pipeline_(this)
-{
-
-}
-
 
 QStackingThread * QStackingThread::singleton()
 {
-  static QStackingThread * const instance = new QStackingThread();
+  static QStackingThread * const instance =
+      new QStackingThread();
+
   return instance;
 }
-
-
 
 void QStackingThread::lock()
 {
@@ -72,13 +64,6 @@ void QStackingThread::cancel()
 {
   emit singleton()->finishing();
   singleton()->pipeline_.set_canceled(true);
-
-  // It seems there is a bug with non-queued signal/slot connection somewhere in GUI,
-  // sometimes the loop gets locked on a mutex.
-  // Will fix this later.
-  //  while ( ((Base*) singleton())->isRunning() ) {
-  //    msleep(100);
-  //  }
 }
 
 

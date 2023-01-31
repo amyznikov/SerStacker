@@ -58,6 +58,10 @@ QStackProgressView::QStackProgressView(QWidget * parent) :
       this, &ThisClass::onAccumulatorChanged,
       Qt::QueuedConnection);
 
+  connect(QStackingThread::singleton(), &QStackingThread::selectedMasterFrameChanged,
+      this, &ThisClass::onSelectedMasterFrameChanged,
+      Qt::QueuedConnection);
+
   if( QStackingThread::isRunning() ) {
     onStackingThreadStarted();
   }
@@ -89,7 +93,7 @@ void QStackProgressView::timerEvent(QTimerEvent *event)
 
 void QStackProgressView::onStackingThreadStarted()
 {
-  hasCurrentImageUpdates_ = false;
+  accumuatorImageChanged_ = false;
   timerId = startTimer(1000, Qt::VeryCoarseTimer);
 
 }
@@ -122,13 +126,17 @@ void QStackProgressView::onStatusChanged()
 
 void QStackProgressView::onAccumulatorChanged()
 {
-  hasCurrentImageUpdates_ = true;
+  accumuatorImageChanged_ = true;
 }
 
+void QStackProgressView::onSelectedMasterFrameChanged()
+{
+  selectedMasterFrameChanged_ = true;
+}
 
 void QStackProgressView::updateAccumulatedImageDisplay(bool force)
 {
-  if ( !force && !hasCurrentStatisticsUpdates_ && !hasCurrentImageUpdates_ ) {
+  if ( !force && !hasCurrentStatisticsUpdates_ && !accumuatorImageChanged_ && !selectedMasterFrameChanged_ ) {
     return;
   }
 
@@ -162,7 +170,8 @@ void QStackProgressView::updateAccumulatedImageDisplay(bool force)
     Q_EMIT progressTextChanged();
   }
 
-  if ( (force || hasCurrentImageUpdates_) && imageViewer_ && imageViewer_->isVisible() ) {
+
+  if( (force || accumuatorImageChanged_ || selectedMasterFrameChanged_) && imageViewer_ && imageViewer_->isVisible() ) {
 
     updatingDisplay_ = true;
 
@@ -171,21 +180,24 @@ void QStackProgressView::updateAccumulatedImageDisplay(bool force)
     cv::Mat currentImage;
     cv::Mat currentMask;
 
-    if( pipeline->compute_accumulated_image(currentImage, currentMask) ) {
-
-      if( pipeline->anscombe().method() != anscombe_none ) {
-        pipeline->anscombe().inverse(currentImage, currentImage);
-      }
-
-      imageViewer_->setCurrentFileName(pipeline->options()->cname());
-      imageViewer_->editImage(currentImage, currentMask);
+    if( selectedMasterFrameChanged_ ) {
+      pipeline->get_selected_master_frame(currentImage, currentMask);
     }
+    else {
+      pipeline->compute_accumulated_image(currentImage, currentMask);
+    }
+
+    if( !currentImage.empty() && pipeline->anscombe().method() != anscombe_none ) {
+      pipeline->anscombe().inverse(currentImage, currentImage);
+    }
+
+    imageViewer_->setCurrentFileName(pipeline->options()->cname());
+    imageViewer_->editImage(currentImage, currentMask);
   }
 
-  //pipeline->unlock();
-
   hasCurrentStatisticsUpdates_ = false;
-  hasCurrentImageUpdates_ = false;
+  accumuatorImageChanged_ = false;
+  selectedMasterFrameChanged_ = false;
   updatingDisplay_ = false;
 }
 

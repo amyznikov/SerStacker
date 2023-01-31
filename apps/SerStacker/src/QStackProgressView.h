@@ -44,6 +44,7 @@ protected Q_SLOTS:
   void onStackingThreadFinished();
   void onStatusChanged();
   void onAccumulatorChanged();
+  void onSelectedMasterFrameChanged();
 
 protected:
   QHBoxLayout * layout_ = nullptr;
@@ -53,7 +54,8 @@ protected:
 
   int timerId = 0;
   bool hasCurrentStatisticsUpdates_ = false;
-  bool hasCurrentImageUpdates_ = false;
+  bool accumuatorImageChanged_ = false;
+  bool selectedMasterFrameChanged_ = false;
   bool updatingDisplay_ = false;
 };
 

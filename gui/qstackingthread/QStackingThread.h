@@ -11,8 +11,8 @@
 #include <QtCore/QtCore>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
-class QStackingThread
-    : public QThread
+class QStackingThread :
+    public QThread
 {
   Q_OBJECT;
 public:
@@ -41,27 +41,49 @@ public:
   static const c_image_stacking_options::ptr & currentStack();
 
 
-signals:
-  void accumulatorChanged();
+Q_SIGNALS:
+  void stackingStageChanged(STACKING_STAGE oldstage, STACKING_STAGE newstage);
+  void selectedMasterFrameChanged();
   void statusChanged();
+  void accumulatorChanged();
   void finishing();
 
 protected:
 
-  class c_stacking_thread_impl: public c_image_stacking_pipeline {
+  class c_stacking_thread_impl:
+      public c_image_stacking_pipeline
+  {
     QStackingThread * qobj;
+
   public:
     typedef c_stacking_thread_impl this_class;
     typedef std::shared_ptr<this_class> ptr;
 
-    c_stacking_thread_impl(QStackingThread * qobj);
-
-protected:
-    void emit_status_changed() const override {
-      emit qobj->statusChanged();
+    c_stacking_thread_impl(QStackingThread * _qobj) :
+        qobj(_qobj)
+    {
     }
-    void emit_accumulator_changed() const override {
-      emit qobj->accumulatorChanged();
+
+  protected:
+    void emit_status_changed() const override
+    {
+      Q_EMIT qobj->statusChanged();
+    }
+
+    void emit_accumulator_changed() const override
+    {
+      Q_EMIT qobj->accumulatorChanged();
+    }
+
+    void emit_stacking_stage_changed(STACKING_STAGE oldstage, STACKING_STAGE newstage) const override
+    {
+      CF_DEBUG("%s -> %s", toString(oldstage), toString(newstage));
+      Q_EMIT qobj->stackingStageChanged(oldstage, newstage);
+    }
+
+    void emit_selected_master_frame_changed() const override
+    {
+      Q_EMIT qobj->selectedMasterFrameChanged();
     }
   };
 
@@ -74,5 +96,6 @@ protected:
   c_stacking_thread_impl pipeline_;
 };
 
+Q_DECLARE_METATYPE(STACKING_STAGE);
 
 #endif /* __QStackingThread_h__ */

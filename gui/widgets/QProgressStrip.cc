@@ -122,7 +122,7 @@ const QString & QProgressStrip::text() const
 QSize QProgressStrip::sizeHint() const
 {
   const QString s =
-      text_.isEmpty() ? " XXXXXX/XXXXXX/XXXXXX/ " :
+      text_.isEmpty() ? " XXXXXX / XXXXXX / XXXXXX/ " :
           text_;
 
   QFontMetrics fm(Base::font());
@@ -138,9 +138,11 @@ QSize QProgressStrip::minimumSizeHint() const
 void QProgressStrip::paintEvent(QPaintEvent * event)
 {
   QPainter p(this);
-  QRect rc(0, 0, width(), height());
+  QRect rc(0, 0, width() - 1, height() - 1);
 
-  p.fillRect(rc, bgBrush_);
+  if ( bgBrush_.style() != Qt::NoBrush ) {
+    p.fillRect(rc, bgBrush_);
+  }
 
   const int n =
       strips_.size();

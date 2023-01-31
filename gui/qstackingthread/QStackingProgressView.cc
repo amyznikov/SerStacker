@@ -8,6 +8,7 @@
 #include "QStackingProgressView.h"
 #include "QStackingThread.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/qsprintf.h>
 #include <core/proc/inpaint.h>
 #include <core/debug.h>
 
@@ -24,6 +25,13 @@ QStackingProgressView::QStackingProgressView(QWidget * parent)
 
   progressLabel_ = new QLabel("INITIALIZATION...");
   layout_->addWidget(progressLabel_);
+
+  progressStrip_ = new QProgressStrip(this);
+  progressStrip_->setNumStrips(2);
+  progressStrip_->setBrush(0, Qt::yellow);
+  progressStrip_->setBrush(1, Qt::green);
+  layout_->addWidget(progressStrip_);
+
 
   //
   connect(QStackingThread::singleton(), &QStackingThread::started,
@@ -131,10 +139,19 @@ void QStackingProgressView::updateAccumulatedImageDisplay(bool force)
   if ( force || hasCurrentStatisticsUpdates_ ) {
 
     statusLabel_->setText(pipeline->status_message().c_str());
+
     progressLabel_->setText(QString("F %1 / %2 / %3").
         arg(pipeline->accumulated_frames()).
         arg(pipeline->processed_frames()).
             arg(pipeline->total_frames()));
+
+    progressStrip_->setRange(0, pipeline->total_frames());
+    progressStrip_->setValue(0, pipeline->processed_frames());
+    progressStrip_->setValue(1, pipeline->accumulated_frames());
+    progressStrip_->setText(qsprintf("%d/%d/%d",
+        pipeline->accumulated_frames(),
+        pipeline->processed_frames(),
+        pipeline->total_frames()));
   }
 
   if ( (force || hasCurrentImageUpdates_) && imageViewer_ && imageViewer_->isVisible() ) {

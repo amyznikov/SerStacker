@@ -133,7 +133,7 @@ MainWindow::MainWindow()
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
   centralStackedWidget->addWidget(imageEditor = new QImageEditor(this));
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
-  centralStackedWidget->addWidget(stackOptionsView = new QStackOptions(this));
+  centralStackedWidget->addWidget(stackOptionsView_ = new QStackOptions(this));
 
 #if HAVE_QGLViewer
   centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
@@ -371,8 +371,29 @@ void MainWindow::setupMainMenu()
           "Configure general app options",
           this, &ThisClass::onViewGeneralSettings));
 
+
+  stackProgressView_ = new QStackProgressView(this);
+  menuBar->setCornerWidget(stackProgressView_, Qt::TopRightCorner );
+  stackProgressView_->hide();
+
+  connect(stackProgressView_, &QStackProgressView::progressTextChanged,
+      this, &ThisClass::onStackProgressViewTextChanged,
+      Qt::QueuedConnection);
+
 }
 
+void MainWindow::onStackProgressViewTextChanged()
+{
+  // FIXME : this is ugly temporary hotfix
+
+  const QSize hint = stackProgressView_->sizeHint();
+  const QSize size = stackProgressView_->size();
+
+  // CF_DEBUG("sizeHint: %dx%d size=%dx%d", hint.width(), hint.height(), size.width(), size.height());
+  if( size != hint ) {
+    menuBar()->adjustSize();
+  }
+}
 
 void MainWindow::setupFileSystemTreeView()
 {
@@ -387,8 +408,8 @@ void MainWindow::setupFileSystemTreeView()
   connect(fileSystemTreeDock, &QFileSystemTreeDock::currentDirectoryChanged,
       [this](const QString & abspath) {
 
-        if ( stackProgressView ) {
-          stackProgressView->setImageViewer(nullptr);
+        if ( stackProgressView_ ) {
+          stackProgressView_->setImageViewer(nullptr);
         }
         if ( imageEditor ) {
           imageEditor->clear();
@@ -410,8 +431,8 @@ void MainWindow::setupFileSystemTreeView()
   connect(fileSystemTreeDock, &QFileSystemTreeDock::directoryItemPressed,
       [this](const QString & abspath) {
 
-        if ( stackProgressView ) {
-          stackProgressView->setImageViewer(nullptr);
+        if ( stackProgressView_ ) {
+          stackProgressView_->setImageViewer(nullptr);
         }
         if ( imageEditor ) {
           imageEditor->clear();
@@ -446,8 +467,8 @@ void MainWindow::setupThumbnailsView()
 
     connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested,
         [this](const QString & abspath) {
-          if ( stackProgressView ) {
-            stackProgressView->setImageViewer(nullptr);
+          if ( stackProgressView_ ) {
+            stackProgressView_->setImageViewer(nullptr);
           }
           if ( imageEditor ) {
             imageEditor->clear();
@@ -470,8 +491,8 @@ void MainWindow::setupThumbnailsView()
     connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
         [this](const QString & abspath) {
 
-          if ( stackProgressView ) {
-            stackProgressView->setImageViewer(nullptr);
+          if ( stackProgressView_ ) {
+            stackProgressView_->setImageViewer(nullptr);
           }
 
           if ( imageEditor ) {
@@ -538,8 +559,8 @@ void MainWindow::setupStackTreeView()
 
   connect(stackTreeView, &QStackTree::stackNameChanged,
       [this] (const c_image_stacking_options::ptr & stack) {
-        if ( stackOptionsView->currentStack() == stack ) {
-          stackOptionsView->updateControls();
+        if ( stackOptionsView_->currentStack() == stack ) {
+          stackOptionsView_->updateControls();
         }
         saveCurrentWork();
       });
@@ -548,45 +569,45 @@ void MainWindow::setupStackTreeView()
 
 void MainWindow::setupStackOptionsView()
 {
-  connect(stackOptionsView, &QStackOptions::closeWindowRequested,
+  connect(stackOptionsView_, &QStackOptions::closeWindowRequested,
       [this]() {
         if ( !QStackingThread::isRunning() ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
         }
         else {
           centralStackedWidget->setCurrentWidget(imageEditor);
-          stackProgressView->setImageViewer(imageEditor);
+          stackProgressView_->setImageViewer(imageEditor);
         }
       });
 
-  connect(stackOptionsView, &QStackOptions::applyInputOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyInputOptionsToAllRequested,
       stackTreeView, &QStackTree::applyInputOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyROISelectionOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyROISelectionOptionsToAllRequested,
       stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
       stackTreeView, &QStackTree::applyFrameUpscaleOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
       stackTreeView, &QStackTree::applyFrameRegistrationOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
       stackTreeView, &QStackTree::applyFrameAccumulationOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyOutputOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyOutputOptionsToAllRequested,
       stackTreeView, &QStackTree::applyOutputOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::applyAllStackOptionsToAllRequested,
+  connect(stackOptionsView_, &QStackOptions::applyAllStackOptionsToAllRequested,
       stackTreeView, &QStackTree::applyAllStackOptionsToAll);
 
-  connect(stackOptionsView, &QStackOptions::stackNameChanged,
+  connect(stackOptionsView_, &QStackOptions::stackNameChanged,
       [this](const c_image_stacking_options::ptr & stack) {
         stackTreeView->updateStackName(stack);
         saveCurrentWork();
       });
 
-  connect(stackOptionsView, &QStackOptions::stackOptionsChanged,
+  connect(stackOptionsView_, &QStackOptions::stackOptionsChanged,
       this, &ThisClass::saveCurrentWork);
 }
 
@@ -1077,7 +1098,7 @@ void MainWindow::setupRoiOptions()
 
   roiActionsMenu_.addAction(action =
       createCheckableAction(QIcon(),
-          "Options..",
+          "ROI Options..",
           "Configure ROI rectangle options",
           [this](bool checked) {
             roiOptionsDialogBox_->setVisible(checked);
@@ -1095,7 +1116,7 @@ void MainWindow::setupRoiOptions()
   ///
 
   measureDialogBox_ =
-      new QImageStatisticsDisplayDialogBox("Measure...",
+      new QImageStatisticsDisplayDialogBox("Measure ROI ...",
           this);
 
   measureDialogBox_->display()->loadParameters();
@@ -1103,7 +1124,7 @@ void MainWindow::setupRoiOptions()
 
   roiActionsMenu_.addAction(action =
       createCheckableAction(QIcon(ICON_metrics),
-          "Measure..",
+          "Measure ROI...",
           "Measure image statistics in selected ROI",
           [this](bool checked) {
             measureDialogBox_->setVisible(checked);
@@ -1225,8 +1246,8 @@ void MainWindow::openImage(const QString & abspath)
 {
   QWaitCursor wait(this);
 
-  if ( stackProgressView ) {
-    stackProgressView->setImageViewer(nullptr);
+  if ( stackProgressView_ ) {
+    stackProgressView_->setImageViewer(nullptr);
   }
 
   imageEditor->clear();
@@ -1312,24 +1333,24 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_stacking_options::p
     //QStackingThread::auto_lock lock;
 
     if ( selectedInputSource ) {
-      stackProgressView->setImageViewer(nullptr);
+      stackProgressView_->setImageViewer(nullptr);
       centralStackedWidget->setCurrentWidget(imageEditor);
       imageEditor->openImage(selectedInputSource->filename());
     }
     else if ( selectedStack ) {
 
       if ( selectedStack == QStackingThread::currentStack() ) {
-        stackProgressView->setImageViewer(imageEditor);
+        stackProgressView_->setImageViewer(imageEditor);
       }
       else {
 
-        stackProgressView->setImageViewer(nullptr);
+        stackProgressView_->setImageViewer(nullptr);
 
         QWidget * currentCentralWidget =
             centralStackedWidget->currentWidget();
 
-        if ( currentCentralWidget == stackOptionsView ) {
-          stackOptionsView->setCurrentStack(selectedStack);
+        if ( currentCentralWidget == stackOptionsView_ ) {
+          stackOptionsView_->setCurrentStack(selectedStack);
         }
         else if ( thumbnailsView && thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
@@ -1347,8 +1368,8 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_stacking_options::p
       thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false);
     }
     else {
-      stackOptionsView->setCurrentStack(selectedStack);
-      centralStackedWidget->setCurrentWidget(stackOptionsView);
+      stackOptionsView_->setCurrentStack(selectedStack);
+      centralStackedWidget->setCurrentWidget(stackOptionsView_);
     }
   }
 
@@ -1360,7 +1381,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_stacking_options::pt
   if ( QStackingThread::isRunning() ) {
 
     if ( selectedInputSource ) {
-      stackProgressView->setImageViewer(nullptr);
+      stackProgressView_->setImageViewer(nullptr);
       centralStackedWidget->setCurrentWidget(imageEditor);
       imageEditor->openImage(selectedInputSource->filename());
     }
@@ -1373,40 +1394,40 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_stacking_options::pt
 
         if ( currentCentralWidget == imageEditor ) {
 
-          if ( !stackProgressView->imageViewer() ) {
-            stackProgressView->setImageViewer(imageEditor);
+          if ( !stackProgressView_->imageViewer() ) {
+            stackProgressView_->setImageViewer(imageEditor);
           }
           else {
-            stackProgressView->setImageViewer(nullptr);
-            stackOptionsView->setCurrentStack(selectedStack);
-            centralStackedWidget->setCurrentWidget(stackOptionsView);
+            stackProgressView_->setImageViewer(nullptr);
+            stackOptionsView_->setCurrentStack(selectedStack);
+            centralStackedWidget->setCurrentWidget(stackOptionsView_);
           }
 
         }
-        else if ( currentCentralWidget == stackOptionsView ) {
+        else if ( currentCentralWidget == stackOptionsView_ ) {
           if ( thumbnailsView && thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
           else {
             centralStackedWidget->setCurrentWidget(imageEditor);
-            stackProgressView->setImageViewer(imageEditor);
+            stackProgressView_->setImageViewer(imageEditor);
           }
         }
         else {
           centralStackedWidget->setCurrentWidget(imageEditor);
-          stackProgressView->setImageViewer(imageEditor);
+          stackProgressView_->setImageViewer(imageEditor);
         }
       }
       else {
 
-        if ( currentCentralWidget == stackOptionsView ) {
+        if ( currentCentralWidget == stackOptionsView_ ) {
           if ( thumbnailsView && thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
         }
         else {
-          stackOptionsView->setCurrentStack(selectedStack);
-          centralStackedWidget->setCurrentWidget(stackOptionsView);
+          stackOptionsView_->setCurrentStack(selectedStack);
+          centralStackedWidget->setCurrentWidget(stackOptionsView_);
         }
       }
     }
@@ -1425,7 +1446,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_stacking_options::pt
     }
   }
   else if ( selectedStack ) {
-    if ( centralStackedWidget->currentWidget() == stackOptionsView ) {
+    if ( centralStackedWidget->currentWidget() == stackOptionsView_ ) {
       if ( thumbnailsView ) {
         if ( thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
@@ -1433,8 +1454,8 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_stacking_options::pt
       }
     }
     else {
-      stackOptionsView->setCurrentStack(selectedStack);
-      centralStackedWidget->setCurrentWidget(stackOptionsView);
+      stackOptionsView_->setCurrentStack(selectedStack);
+      centralStackedWidget->setCurrentWidget(stackOptionsView_);
     }
   }
 
@@ -1445,49 +1466,45 @@ void MainWindow::onShowStackOptionsClicked(const c_image_stacking_options::ptr &
 {
   if ( stack ) {
 
-    if ( stackProgressView ) {
-      stackProgressView->setImageViewer(nullptr);
+    if ( stackProgressView_ ) {
+      stackProgressView_->setImageViewer(nullptr);
     }
 
-    stackOptionsView->setCurrentStack(stack);
-    centralStackedWidget->setCurrentWidget(stackOptionsView);
+    stackOptionsView_->setCurrentStack(stack);
+    centralStackedWidget->setCurrentWidget(stackOptionsView_);
   }
 
 }
 
 void MainWindow::onStackingThreadStarted()
 {
-  if ( !stackProgressView ) {
-    stackProgressView = new QStackingProgressView(this);
-  }
-
   if ( centralStackedWidget->currentWidget() != imageEditor ) {
     centralStackedWidget->setCurrentWidget(imageEditor);
   }
 
   imageEditor->clear();
-  stackProgressView->setImageViewer(imageEditor);
+  stackProgressView_->setImageViewer(imageEditor);
 
-  if ( !stackProgressView->isVisible() ) {
-    stackProgressView->show();
+  if ( !stackProgressView_->isVisible() ) {
+    stackProgressView_->show();
   }
 }
 
 void MainWindow::onStackingThreadFinished()
 {
-  if ( stackProgressView ) {
+  if ( stackProgressView_ ) {
 
     // it may be that there is next task in queue,
     // don't blink with this dialog box
-    QTimer::singleShot(500,
+    QTimer::singleShot(1000,
         [this]() {
 
           if ( !QStackingThread::isRunning() ) {
-            if ( stackProgressView->isVisible() ) {
-              stackProgressView->hide();
+            if ( stackProgressView_->isVisible() ) {
+              stackProgressView_->hide();
             }
-            if ( stackOptionsView->isVisible() ) {
-              stackOptionsView->setEnabled(true);
+            if ( stackOptionsView_->isVisible() ) {
+              stackOptionsView_->setEnabled(true);
             }
           }
         });

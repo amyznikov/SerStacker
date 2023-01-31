@@ -461,8 +461,8 @@ protected:
   double ecc_normalization_noise_ = 0;
   double reference_sharpness_ = 0;
 
-  int total_frames_ = 0;
-  int processed_frames_ = 0;
+  mutable int total_frames_ = 0;
+  mutable int processed_frames_ = 0;
 
   cv::Mat darkbayer_;
   cv::Mat missing_pixel_mask_;

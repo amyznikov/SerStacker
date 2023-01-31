@@ -13,7 +13,7 @@
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qmtf/QMtfControl.h>
 #include <gui/qtextview/QTextFileViewer.h>
-#include <gui/qstackingthread/QStackingProgressView.h>
+//#include <gui/qstackingthread/QStackingProgressView.h>
 #include <gui/qstackingoptions/QStackOptions.h>
 #include <gui/qstacktreeview/QStackTreeViewDock.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
@@ -26,6 +26,7 @@
 #include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
+#include "QStackProgressView.h"
 
 #if HAVE_QGLViewer // Should come from CMakeLists.txt
 #include <gui/qcloudview/QCloudViewer.h>
@@ -73,6 +74,7 @@ public Q_SLOTS:
   void onLoadCurrentImageMask();
   void onLoadStackConfig();
   void onViewGeneralSettings();
+  void onStackProgressViewTextChanged();
 
 private Q_SLOTS:
   void updateWindowTittle();
@@ -111,8 +113,9 @@ private:
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
 #endif // HAVE_QGLViewer
 
-  QStackOptions * stackOptionsView = nullptr;
-  QStackingProgressView * stackProgressView = nullptr;
+  QStackProgressView * stackProgressView_ = nullptr;
+  QStackOptions * stackOptionsView_ = nullptr;
+  //QStackingProgressView * stackProgressView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
 

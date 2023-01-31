@@ -3280,7 +3280,11 @@ int c_image_stacking_pipeline::select_master_frame_index(const c_input_sequence:
     int current_index, best_index = 0;
     double current_metric, best_metric = 0;
 
-    for( current_index = 0; current_index < max_frames_to_scan; ++current_index ) {
+    total_frames_ = max_frames_to_scan;
+    processed_frames_ = 0;
+    emit_status_changed();
+
+    for ( current_index = 0; processed_frames_ < total_frames_; processed_frames_ = ++current_index, emit_status_changed() ) {
 
       read_input_frame(input_sequence, input_options, image, mask);
 

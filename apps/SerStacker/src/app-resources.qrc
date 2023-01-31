@@ -5,5 +5,11 @@
 	
 	<file>icons/dark/roi.png</file>
 	<file>icons/light/roi.png</file>
+	
+	<file>icons/dark/down_menu.png</file>
+	<file>icons/light/down_menu.png</file>
+	
+	<file>icons/dark/menu.png</file>
+	<file>icons/light/menu.png</file>
 </qresource>
 </RCC>

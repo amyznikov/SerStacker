@@ -10,6 +10,7 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/qimageview/QImageEditor.h>
+#include <gui/widgets/QProgressStrip.h>
 #include <core/improc/c_image_processor.h>
 
 class QStackingProgressView
@@ -20,7 +21,7 @@ public:
   typedef QStackingProgressView ThisClass;
   typedef QDialog Base;
 
-  QStackingProgressView(QWidget * parent = Q_NULLPTR);
+  QStackingProgressView(QWidget * parent = nullptr);
 
   void setImageViewer(QImageEditor * imageViewer);
   QImageEditor * imageViewer() const;
@@ -42,19 +43,16 @@ protected:
   void updateAccumulatedImageDisplay(bool force = false);
 
 protected:
-  QVBoxLayout * layout_ = Q_NULLPTR;
-  QLabel * statusLabel_ = Q_NULLPTR;
-  QLabel * progressLabel_ = Q_NULLPTR;
-  QImageEditor * imageViewer_ = Q_NULLPTR;
-  //  cv::Mat currentImage_;
-  //  cv::Mat currentMask_;
+  QVBoxLayout * layout_ = nullptr;
+  QLabel * statusLabel_ = nullptr;
+  QLabel * progressLabel_ = nullptr;
+  QProgressStrip * progressStrip_ = nullptr;
+  QImageEditor * imageViewer_ = nullptr;
+
   int timerId = 0;
   bool hasCurrentStatisticsUpdates_ = false;
   bool hasCurrentImageUpdates_ = false;
   bool updatingDisplay_ = false;
-
-  //c_image_processor_chain::ptr accumulatedImageProcessor_;
-
 };
 
 #endif /* __QStackingProgressView_h__ */

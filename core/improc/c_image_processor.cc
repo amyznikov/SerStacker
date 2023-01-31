@@ -15,8 +15,6 @@
 #include "c_noisemap_routine.h"
 #include "c_range_normalize_routine.h"
 #include "c_rangeclip_routine.h"
-#include "c_smap_routine.h"
-#include "c_dogsmap_routine.h"
 #include "c_unsharp_mask_routine.h"
 #include "c_scale_channels_routine.h"
 #include "c_type_convert_routine.h"
@@ -99,8 +97,6 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_noisemap_routine::class_factory_instance());
     register_class_factory(c_range_normalize_routine::class_factory_instance());
     register_class_factory(c_rangeclip_routine::class_factory_instance());
-    register_class_factory(c_smap_routine::class_factory_instance());
-    register_class_factory(c_dogsmap_routine::class_factory_instance());
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_scale_channels_routine::class_factory_instance());

@@ -47,6 +47,8 @@ public:
   QImagingCamera(QObject * parent = nullptr);
 
   virtual QString display_name() const = 0;
+  virtual QString parameters() const;
+
   virtual bool is_same_camera(const QImagingCamera::sptr & rhs) const = 0;
   virtual int drops() const = 0;
 

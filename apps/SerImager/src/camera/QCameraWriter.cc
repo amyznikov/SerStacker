@@ -80,6 +80,56 @@ struct c_ser_file_writer: c_video_frame_writer
   }
 };
 
+
+struct c_text_file_writer
+{
+  FILE * fp = nullptr;
+
+  c_text_file_writer()
+  {
+  }
+
+  c_text_file_writer(const std::string & filename)
+  {
+    if( !filename.empty() ) {
+      open(filename);
+    }
+  }
+
+  ~c_text_file_writer()
+  {
+    close();
+  }
+
+  bool open(const std::string & filename)
+  {
+    close();
+
+    if( !(fp = fopen(filename.c_str(), "w")) ) {
+      CF_ERROR("Can not write '%s' : %s", filename.c_str(), strerror(errno));
+    }
+    else {
+      fprintf(fp, "[SerImager]\n");
+    }
+
+    return fp != nullptr;
+  }
+
+  void close()
+  {
+    if ( fp ) {
+      fclose(fp);
+      fp = nullptr;
+    }
+  }
+
+  bool is_open() const
+  {
+    return fp != nullptr;
+  }
+};
+
+
 static QString getCurrentDateTimeString()
 {
   struct timespec t;
@@ -107,6 +157,38 @@ static QString getCurrentDateTimeString()
   char buf[256] = "";
 
   snprintf(buf, sizeof(buf) - 1, "%0.4d%0.2d%0.2d_%0.2d%0.2d%0.2d_GMT",
+      year, month, day, hour, min, sec);
+
+  return buf;
+}
+
+static QString getHumanReadableCurrentDateTimeString()
+{
+  struct timespec t;
+  struct tm *tm;
+
+  int year;
+  int month;
+  int day;
+  int hour;
+  int min;
+  int sec;
+  int msec;
+
+  clock_gettime(CLOCK_REALTIME, &t);
+  tm = gmtime(&t.tv_sec);
+
+  year = tm->tm_year + 1900;
+  month = tm->tm_mon + 1;
+  day = tm->tm_mday;
+  hour = tm->tm_hour;
+  min = tm->tm_min;
+  sec = tm->tm_sec;
+  // msec = t.tv_nsec / 1000000;
+
+  char buf[256] = "";
+
+  snprintf(buf, sizeof(buf) - 1, "%0.4d-%0.2d-%0.2d %0.2d:%0.2d:%0.2d GMT",
       year, month, day, hour, min, sec);
 
   return buf;
@@ -373,7 +455,18 @@ void QCameraWriter::writerThreadProc()
             capture_limits_.value * 1000 :
             -1;
 
+    const std::string camera_name =
+        camera->display_name().toStdString();
+
+    const std::string camera_parameters =
+        camera->parameters().toStdString();
+
     Q_EMIT statusUpdate();
+
+    c_text_file_writer text;
+    QString captureStartTime;
+    QString captureEndTime;
+
 
     while (current_state_ == State::Active) {
 
@@ -416,6 +509,9 @@ void QCameraWriter::writerThreadProc()
 
           if( !writer ) {
 
+            captureStartTime =
+                getHumanReadableCurrentDateTimeString();
+
             if( output_directoty_.isEmpty() ) {
               output_directoty_ =
                   "./capture";
@@ -448,6 +544,10 @@ void QCameraWriter::writerThreadProc()
               break;
             }
 
+            if( !text.open(ssprintf("%s.txt", output_file_name_.toStdString().c_str())) ) {
+              CF_ERROR("text.open('%s.txt') fails",
+                  output_file_name_.toStdString().c_str());
+            }
           }
 
           last_index_ = frame->index();
@@ -494,6 +594,24 @@ void QCameraWriter::writerThreadProc()
           }
         }
       }
+    }
+
+    captureEndTime =
+        getHumanReadableCurrentDateTimeString();
+
+    if ( text.is_open() ) {
+
+      fprintf(text.fp, "Round    = %d // Current capture round\n", round_);
+      fprintf(text.fp, "Rounds   = %d // Total capture rounds\n", (int)numRounds_);
+      fprintf(text.fp, "Start    = %s // Capture start time YYYY-MM-DD hh:mm:ss\n", captureStartTime.toUtf8().constData());
+      fprintf(text.fp, "End      = %s // Capture end time YYYY-MM-DD hh:mm:ss\n", captureEndTime.toUtf8().constData());
+      fprintf(text.fp, "Limit    = %s // Capture limit\n", toQString(capture_limits_).toUtf8().constData());
+      fprintf(text.fp, "Camera   = %s\n", camera_name.c_str());
+      fprintf(text.fp, "Frames   = %d // Number of recorded frames\n", num_saved_frames_);
+      fprintf(text.fp, "%s\n", camera_parameters.c_str());
+      fprintf(text.fp, "\n");
+
+      text.close();
     }
 
     if( writer ) {

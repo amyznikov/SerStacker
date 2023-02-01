@@ -177,6 +177,11 @@ QString QV4L2Camera::display_name() const
   return filename_;
 }
 
+QString QV4L2Camera::parameters() const
+{
+  return QString();
+}
+
 //bool QImagingCameraV4L2::check_status()
 //{
 //  return true;

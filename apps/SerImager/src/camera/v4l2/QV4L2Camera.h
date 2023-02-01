@@ -30,6 +30,8 @@ public:
   static sptr create(const QString & filename);
 
   QString display_name() const override;
+  QString parameters() const override;
+
   bool is_same_camera(const QImagingCamera::sptr & rhs) const override;
   int drops() const override;
   //bool check_status() override;

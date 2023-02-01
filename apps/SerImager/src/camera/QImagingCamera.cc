@@ -86,6 +86,11 @@ QImagingCamera::QImagingCamera(QObject * parent) :
   static const int r5 = qRegisterMetaType<serimager::QImagingCamera::State>("serimager::QImagingCamera::ExposureStatus");
 }
 
+QString QImagingCamera::parameters() const
+{
+  return QString();
+}
+
 QImagingCamera::State QImagingCamera::state() const
 {
   return current_state_;

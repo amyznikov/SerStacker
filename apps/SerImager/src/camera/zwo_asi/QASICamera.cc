@@ -40,6 +40,21 @@ const c_enum_member* members_of<ASI_ERROR_CODE>()
 }
 
 template<>
+const c_enum_member* members_of<ASI_BAYER_PATTERN>()
+{
+  static constexpr c_enum_member members[] = {
+      { ASI_BAYER_RG, "ASI_BAYER_RG" },
+      { ASI_BAYER_BG, "ASI_BAYER_BG" },
+      { ASI_BAYER_GR, "ASI_BAYER_GR" },
+      { ASI_BAYER_GB, "ASI_BAYER_GB" },
+      { (ASI_BAYER_PATTERN)(-1) }
+  };
+
+  return members;
+}
+
+
+template<>
 const c_enum_member* members_of<ASI_IMG_TYPE>()
 {
   static constexpr c_enum_member members[] = {
@@ -108,6 +123,164 @@ const ASI_CAMERA_INFO & QASICamera::cameraInfo() const
 QString QASICamera::display_name() const
 {
   return camInfo_.Name;
+}
+
+QString QASICamera::parameters() const
+{
+  if ( camInfo_.CameraID >= 0 ) {
+
+    //    int SupportedBins[16]; //1 means bin1 which is supported by every camera, 2 means bin 2 etc.. 0 is the end of supported binning method
+    //    ASI_IMG_TYPE SupportedVideoFormat[8]; //this array will content with the support output format type.IMG_END is the end of supported video format
+
+    static const auto exposure_string =
+        [](long asi_exposure) -> std::string {
+          if ( asi_exposure >= 1000000 ) {
+            return ssprintf("%g s // exposure in seconds", asi_exposure * 1e-6);
+          }
+          if ( asi_exposure >= 1000 ) {
+            return ssprintf("%g ms // exposure in ms", asi_exposure * 1e-3);
+          }
+          return ssprintf("%ld us // exposure in us", asi_exposure);
+        };
+
+
+    ASI_IMG_TYPE asiType = ASI_IMG_END;
+    int iWidth = 0;
+    int iHeight = 0;
+    int iX = -1;
+    int iY = -1;
+    int iBin = 0;
+
+    long exposure = -1;
+    ASI_BOOL auto_exposure = ASI_FALSE;
+
+    long gain = -1;
+    ASI_BOOL auto_gain = ASI_FALSE;
+
+    long gamma = -1;
+    ASI_BOOL auto_gamma;
+
+    long wb_r = -1;
+    ASI_BOOL auto_wb_r = ASI_FALSE;
+
+    long wb_b = -1;
+    ASI_BOOL auto_wb_b = ASI_FALSE;
+
+    long offset = 0;
+    ASI_BOOL auto_offset = ASI_FALSE;
+
+    long temperature = 0;
+    ASI_BOOL auto_temperature = ASI_FALSE;
+
+    ASIGetROIFormat(camInfo_.CameraID,
+        &iWidth,
+        &iHeight,
+        &iBin,
+        &asiType);
+
+    ASIGetStartPos(camInfo_.CameraID,
+        &iX,
+        &iY);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_EXPOSURE,
+        &exposure,
+        &auto_exposure);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_GAIN,
+        &gain,
+        &auto_gain);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_GAMMA,
+        &gamma,
+        &auto_gamma);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_WB_R,
+        &wb_r,
+        &auto_wb_r);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_WB_B,
+        &wb_b,
+        &auto_wb_b);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_OFFSET,
+        &offset,
+        &auto_offset);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_TEMPERATURE,
+        &temperature,
+        &auto_temperature);
+
+    std::string text =
+        ssprintf(""
+            "CameraName         = %s\n"
+            "CameraID           = %d\n"
+            "MaxHeight          = %ld // the max height of the camera\n"
+            "MaxWidth           = %ld //the max width of the camera\n"
+            "IsColorCam         = %d\n"
+            "BayerPattern       = %s\n"
+            "PixelSize          = %gum // the pixel size of the camera, unit is um\n"
+            "MechanicalShutter  = %d\n"
+            "ST4Port            = %d\n"
+            "IsCoolerCam        = %d\n"
+            "IsUSB3Host         = %d\n"
+            "IsUSB3Camera       = %d\n"
+            "ElecPerADU         = %g\n"
+            "BitDepth           = %d\n"
+            "IsTriggerCam       = %d\n"
+            "Format             = %s\n"
+            "Binning            = %d\n"
+            "iX                 = %d\n"
+            "iY                 = %d\n"
+            "iWidth             = %d\n"
+            "iHeight            = %d\n"
+            "Exposure           = %s\n"
+            "AutoExposure       = %d\n"
+            "Gain               = %ld\n"
+            "AutoGain           = %d\n"
+            "Gamma              = %ld\n"
+            "AutoGamma          = %d\n"
+            "WB_R               = %ld\n"
+            "AutoWB_R           = %d\n"
+            "WB_B               = %ld\n"
+            "AutoWB_B           = %d\n"
+            "Offset             = %ld\n"
+            "AutoOffset         = %d\n"
+            "Temperature        = %g\n"
+            "",
+            camInfo_.Name,
+            camInfo_.CameraID,
+            camInfo_.MaxHeight,
+            camInfo_.MaxWidth,
+            camInfo_.IsColorCam,
+            camInfo_.BayerPattern,
+            camInfo_.PixelSize,
+            camInfo_.MechanicalShutter,
+            camInfo_.ST4Port,
+            camInfo_.IsCoolerCam,
+            camInfo_.IsUSB3Host,
+            camInfo_.IsUSB3Camera,
+            camInfo_.ElecPerADU,
+            camInfo_.BitDepth,
+            camInfo_.IsTriggerCam,
+            toString(asiType),
+            iBin,
+            iX, iY,
+            iWidth, iHeight,
+            exposure_string(exposure).c_str(), auto_exposure,
+            gain, auto_gain,
+            gamma, auto_gamma,
+            wb_r, auto_wb_r,
+            wb_b, auto_wb_b,
+            offset, auto_offset,
+            0.1 * temperature
+            );
+
+    return QString(text.c_str());
+
+  }
+
+  return QString();
+
 }
 
 bool QASICamera::is_same_camera(const QImagingCamera::sptr & rhs) const

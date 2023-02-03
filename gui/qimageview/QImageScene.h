@@ -10,8 +10,8 @@
 
 #include <QtWidgets/QtWidgets>
 
-class QImageScene
-    : public QGraphicsScene
+class QImageScene :
+    public QGraphicsScene
 {
   Q_OBJECT;
 public:

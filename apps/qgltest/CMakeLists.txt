@@ -1,5 +1,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.20)
-project(SerImager CXX)
+project(qgltest CXX)
+
+# Disabe this app
+return()
 
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 17)
@@ -14,13 +17,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 set(CMAKE_LINK_WHAT_YOU_USE OFF)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
-#set(SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(UDEVRULES_INSTALL_DIR "/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
-set(FIRMWARE_INSTALL_BASEDIR "/lib/firmware/" CACHE STRING "Base directory for firmware files")
 
 
-file(GLOB CURRENT_SOURCES src/*.c src/*.cc src/*.cpp )
-file(GLOB CURRENT_HEADERS src/*.h src/*.hpp )
+file(GLOB_RECURSE CURRENT_SOURCES src/*.c src/*.cc src/*.cpp )
+file(GLOB_RECURSE CURRENT_HEADERS src/*.h src/*.hpp )
 file(GLOB_RECURSE QRC_FILES src/*.qrc )
 
 foreach(QRC_FILE ${QRC_FILES})
@@ -33,10 +33,8 @@ endforeach()
 
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
-include_directories(src/camera)
-add_subdirectory(src/camera)
-include_directories(src/focus)
-add_subdirectory(src/focus)
+include_directories(src/qglview)
+#add_subdirectory(src/qglview)
 
 
 
@@ -49,7 +47,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Qt${QT_VERSION}::MultimediaWidgets 
   Qt${QT_VERSION}::Xml
   Qt${QT_VERSION}::PrintSupport
-  ${CORE_LIBRARIES})
+  ${CORE_LIBRARIES}
+  GL)
 
 
 

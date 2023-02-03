@@ -11,8 +11,8 @@
 #include "QImageScene.h"
 #include "QImageDisplayFunction.h"
 
-class QImageSceneView
-    : public QGraphicsView
+class QImageSceneView :
+    public QGraphicsView
 {
   Q_OBJECT;
 public:

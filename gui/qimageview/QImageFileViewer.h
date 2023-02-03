@@ -12,8 +12,8 @@
 #include "QPlaySequenceControl.h"
 #include <core/io/c_input_sequence.h>
 
-class QImageFileViewer
-    : public QImageViewer
+class QImageFileViewer :
+    public QImageViewer
 {
   Q_OBJECT;
 public:

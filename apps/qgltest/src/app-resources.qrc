@@ -1,0 +1,43 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qgltest">
+	<file>icons/app-icon.png</file>
+
+	<file>icons/light/hourglass.png</file>
+	<file>icons/dark/hourglass.png</file>
+
+	<file>icons/light/play.png</file>
+	<file>icons/dark/play.png</file>
+
+	<file>icons/light/stop.png</file>
+	<file>icons/dark/stop.png</file>
+
+	<file>icons/light/info.png</file>
+	<file>icons/dark/info.png</file>
+
+	<file>icons/light/histogram.png</file>
+	<file>icons/dark/histogram.png</file>
+
+	<file>icons/light/display.png</file>
+	<file>icons/dark/display.png</file>
+
+	<file>icons/dark/shapes.png</file>
+	<file>icons/light/shapes.png</file>
+
+	<file>icons/dark/roi.png</file>
+	<file>icons/light/roi.png</file>
+
+	<file>icons/dark/line.png</file>
+	<file>icons/light/line.png</file>
+
+	<file>icons/dark/target.png</file>
+	<file>icons/light/target.png</file>
+	
+	<file>icons/connect.png</file>
+	<file>icons/disconnect.png</file>
+	<file>icons/start.png</file>
+	<file>icons/stop.png</file>
+	<file>icons/start-capture.png</file>
+	<file>icons/stop-capture.png</file>
+	
+</qresource>
+</RCC>

@@ -14,9 +14,11 @@
 #include <gui/widgets/QEnumComboBox.h>
 #include <gui/widgets/QLineEditBox.h>
 #include <gui/widgets/QExpandableGroupBox.h>
+#include <gui/widgets/QSliderSpinBox.h>
 #include <type_traits>
 #include <functional>
 #include <mutex>
+
 
 class QSettingsWidget
     : public QFrame
@@ -539,6 +541,73 @@ public:
     return add_spinbox(this->form, name, setfn, getfn);
   }
 
+
+  /////////////////////////////////////////////////////////////////////
+  template<class T>
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name,
+      const std::function<void(T)> & setfn = std::function<void(T)>())
+  {
+    typename QSliderSpinBox<T>::Type *ctl = new typename QSliderSpinBox<T>::Type();
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QObject::connect(ctl,
+          &QSliderSpinBox<T>::Type::valueChanged,
+          [this, ctl, setfn](T v) {
+            if ( !updatingControls() ) {
+              c_mutex_lock lock(this);
+              setfn(v);
+            }
+          });
+
+    }
+
+    return ctl;
+  }
+
+  template<class T>
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name,
+      const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
+  {
+    typename QSliderSpinBox<T>::Type *ctl =
+        add_sliderspinbox<T>(form, name, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                T v;
+                if ( getfn(&v) ) {
+                  ctl->setValue(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn]() {
+            QObject::disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+
+  template<class T>
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(const QString & name,
+      const std::function<void(T)> & setfn = std::function<void(T)>())
+  {
+    return add_sliderspinbox<T>(this->form, name, setfn);
+  }
+
+  template<class T>
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(const QString & name,
+      const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
+  {
+    return add_sliderspinbox<T>(this->form, name, setfn, getfn);
+  }
 
   /////////////////////////////////////////////////////////////////////
 

@@ -16,9 +16,9 @@
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
 #include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"
-#include "QCameraFrameProcessorSelector.h"
-#include "QCameraFrameDisplay.h"
-#include "QCameraFocusMeasure.h"
+#include "camera/QCameraFrameProcessorSelector.h"
+#include "camera/QCameraFrameDisplay.h"
+#include "focus/QCameraFocusMeasure.h"
 
 #if HAVE_INDIGO
 # include "focus/indigo/QIndigoFocuserWidget.h"

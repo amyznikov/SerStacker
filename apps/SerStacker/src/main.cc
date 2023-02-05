@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
   // Comment out this line if you want to allow OCL in OpenCV
   cv::ocl::setUseOpenCL(false);
 
-
   QApplication app(argc, argv);
+
   app.setOrganizationName(MY_COMPANY);
   app.setApplicationName(MY_APP);
 

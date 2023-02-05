@@ -6,70 +6,93 @@
  */
 
 #include "QCloudViewSettings.h"
-
-#if HAVE_QGLViewer // Should come from CMakeLists.txt
-
 #include <gui/widgets/settings.h>
 //#include "widgets/addctrl.h"
 #include <core/debug.h>
 
 
 
-QCloudViewSettings::QCloudViewSettings(QWidget * parent)
-  : Base("QCloudViewSettings", parent)
+QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
+  Base("QCloudViewSettings", parent)
 {
+  nearPlane_ctl =
+      add_numeric_box<double>("NearPlane",
+          [this](double v) -> bool {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->nearPlane() ) {
+              cloudViewer_->cloudView()->setNearPlane(v);
+              save_parameter(PREFIX, "nearPlane", cloudViewer_->cloudView()->nearPlane());
+              return true;
+            }
+            return false;
+          });
 
-  sceneRadius_ctl = add_numeric_box<double>("sceneRadius",
-      [this](double v) -> bool {
-        if ( cloudViewer_ && v > 0 ) {
-          cloudViewer_->setSceneRadius(v);
-          save_parameter(PREFIX, "sceneRadius", v);
-          return true;
-        }
-        return false;
-      });
+  farPlane_ctl =
+      add_numeric_box<double>("FarPlane:",
+          [this](double v) -> bool {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->farPlane() ) {
+              cloudViewer_->cloudView()->setFarPlane(v);
+              save_parameter(PREFIX, "farPlane", v);
+              return true;
+            }
+            return false;
+          });
+
+  sceneTarget_ctl =
+      add_numeric_box<QVector3D>("Target:",
+          [this](const QVector3D & v) -> bool {
+            if ( cloudViewer_ ) {
+              cloudViewer_->cloudView()->setTarget(v);
+              save_parameter(PREFIX, "target", cloudViewer_->cloudView()->target());
+              return true;
+            }
+            return false;
+          });
+
+  upDirection_ctl =
+      add_numeric_box<QVector3D>("Up:",
+          [this](const QVector3D & v) -> bool {
+            if ( cloudViewer_ ) {
+              cloudViewer_->cloudView()->setUpDirection(v);
+              save_parameter(PREFIX, "upDirection", cloudViewer_->cloudView()->upDirection());
+              return true;
+            }
+            return false;
+          });
+
+  sceneOrigin_ctl =
+      add_numeric_box<QVector3D>("Origin:",
+          [this](const QVector3D & v) -> bool {
+            if ( cloudViewer_ ) {
+              cloudViewer_->cloudView()->setSceneOrigin(v);
+              save_parameter(PREFIX, "SceneOrigin", cloudViewer_->cloudView()->sceneOrigin());
+              return true;
+            }
+            return false;
+          });
+
+  pointSize_ctl =
+      add_numeric_box<double>("pointSize",
+          [this](double v) -> bool {
+            if ( cloudViewer_ && v > 0 && v != cloudViewer_->cloudView()->pointSize() ) {
+              cloudViewer_->cloudView()->setPointSize(v);
+              save_parameter(PREFIX, "pointSize", v);
+              return true;
+            }
+            return false;
+          });
+
+  pointBrightness_ctl =
+      add_numeric_box<double>("pointBrightness",
+          [this](double v) -> bool {
+            if ( cloudViewer_ && v > 0 && v != cloudViewer_->cloudView()->pointBrightness() ) {
+              cloudViewer_->cloudView()->setPointBrightness(v);
+              save_parameter(PREFIX, "pointBrightness", cloudViewer_->cloudView()->pointBrightness());
+              return true;
+            }
+            return false;
+          });
 
 
-  sceneOrigin_ctl = add_numeric_box<QGLVector>("sceneOrigin",
-      [this](const QGLVector & v) -> bool {
-        if ( cloudViewer_ && v != cloudViewer_->sceneOrigin() ) {
-          cloudViewer_->setSceneOrigin(v);
-          save_parameter(PREFIX, "SceneOrigin", v);
-          return true;
-        }
-        return false;
-      });
-
-  pointSize_ctl = add_numeric_box<double>("pointSize",
-      [this](double v) -> bool {
-        if ( cloudViewer_ && v > 0 ) {
-          cloudViewer_->setPointSize(v);
-          save_parameter(PREFIX, "pointSize", v);
-          return true;
-        }
-        return false;
-      });
-
-  pointBrightness_ctl = add_numeric_box<double>("pointBrightness",
-      [this](double v) -> bool {
-        if ( cloudViewer_ && v > 0 ) {
-          cloudViewer_->setPointBrightness(v);
-          save_parameter(PREFIX, "pointBrightness", v);
-          return true;
-        }
-        return false;
-      });
-
-
-  sceneCenter_ctl = add_numeric_box<QGLVector>("sceneCenter",
-      [this](const QGLVector & v) -> bool {
-        if ( cloudViewer_ && v != cloudViewer_->sceneCenter() ) {
-          cloudViewer_->setSceneCenter(v);
-          save_parameter(PREFIX, "sceneCenter", v);
-          return true;
-        }
-        return false;
-      });
 
 
 //  add_expandable_groupbox(form, "Clouds",
@@ -91,31 +114,50 @@ void QCloudViewSettings::onload(QSettings & settings)
 {
   if ( cloudViewer_ ) {
 
-    double sceneRadius = cloudViewer_->sceneRadius();
-    if ( load_parameter(settings, PREFIX, "sceneRadius", &sceneRadius) ) {
-      cloudViewer_->setSceneRadius(sceneRadius);
+//    double sceneRadius = cloudViewer_->sceneRadius();
+//    if ( load_parameter(settings, PREFIX, "sceneRadius", &sceneRadius) ) {
+//      cloudViewer_->setSceneRadius(sceneRadius);
+//    }
+
+    QGLCloudViewer * cloudView =
+        cloudViewer_->cloudView();
+
+
+    double nearPlane = cloudView->nearPlane();
+    if ( load_parameter(settings, PREFIX, "nearPlane", &nearPlane) ) {
+      cloudView->setNearPlane(nearPlane);
     }
 
-    QGLVector sceneOrigin = cloudViewer_->sceneOrigin();
+    double farPlane = cloudView->farPlane();
+    if ( load_parameter(settings, PREFIX, "farPlane", &farPlane) ) {
+      cloudView->setFarPlane(farPlane);
+    }
+
+    QVector3D target = cloudView->target();
+    if ( load_parameter(settings, PREFIX, "target", &target) ) {
+      cloudView->setTarget(target);
+    }
+
+    QVector3D upDirection = cloudView->upDirection();
+    if ( load_parameter(settings, PREFIX, "upDirection", &upDirection) ) {
+      cloudView->setUpDirection(upDirection);
+    }
+
+    QVector3D sceneOrigin = cloudView->sceneOrigin();
     if ( load_parameter(settings, PREFIX, "sceneOrigin", &sceneOrigin) ) {
-      cloudViewer_->setSceneOrigin(sceneOrigin);
+      cloudView->setSceneOrigin(sceneOrigin);
     }
 
-    double pointSize = cloudViewer_->pointSize();
+    double pointSize = cloudView->pointSize();
     if ( load_parameter(settings, PREFIX, "pointSize", &pointSize) ) {
-      cloudViewer_->setPointSize(pointSize);
+      cloudView->setPointSize(pointSize);
     }
 
-    double pointBrightness = cloudViewer_->pointBrightness();
+    double pointBrightness = cloudView->pointBrightness();
     if ( load_parameter(settings, PREFIX, "pointBrightness", &pointBrightness) ) {
-      cloudViewer_->setPointBrightness(pointBrightness);
+      cloudView->setPointBrightness(pointBrightness);
     }
 
-
-    QGLVector sceneCenter = cloudViewer_->sceneCenter();
-    if ( load_parameter(settings, PREFIX, "sceneCenter", &sceneCenter) ) {
-      cloudViewer_->setSceneCenter(sceneCenter);
-    }
   }
 
 }
@@ -129,11 +171,17 @@ void QCloudViewSettings::onupdatecontrols()
   }
   else {
 
-    sceneRadius_ctl->setValue(cloudViewer_->sceneRadius());
-    sceneOrigin_ctl->setValue(toQString(cloudViewer_->sceneOrigin()));
-    pointSize_ctl->setValue(cloudViewer_->pointSize());
-    pointBrightness_ctl->setValue(cloudViewer_->pointBrightness());
-    sceneCenter_ctl->setValue(toString(cloudViewer_->sceneCenter()));
+    QGLCloudViewer * cloudView =
+        cloudViewer_->cloudView();
+
+
+    farPlane_ctl->setValue(toQString(cloudView->farPlane()));
+    nearPlane_ctl->setValue(toQString(cloudView->nearPlane()));
+    sceneTarget_ctl->setValue(toQString(cloudView->target()));
+    upDirection_ctl->setValue(toQString(cloudView->upDirection()));
+    sceneOrigin_ctl->setValue(toQString(cloudView->sceneOrigin()));
+    pointSize_ctl->setValue(cloudView->pointSize());
+    pointBrightness_ctl->setValue(cloudView->pointBrightness());
 
     refreshCloudList();
 
@@ -176,5 +224,3 @@ void QCloudViewSettingsDialogBox::hideEvent(QHideEvent *e)
   Base::hideEvent(e);
   emit visibilityChanged(isVisible());
 }
-
-#endif // HAVE_QGLViewer

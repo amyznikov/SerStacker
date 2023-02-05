@@ -12,18 +12,22 @@
 #define __QGLView_h__
 
 #include <QtGui/QtGui>
+#include <QtWidgets/QtWidgets>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 # include <QtOpenGLWidgets/QOpenGLWidget>
-#else
-# include <QtWidgets/QtWidgets>
 #endif
 
-namespace qgltest {
+// GLU was removed from Qt in version 4.8
+#ifdef Q_OS_MAC
+# include <OpenGL/glu.h>
+#else
+# include <GL/glu.h>
+#endif
 
 class QGLView :
   public QOpenGLWidget,
-  protected QOpenGLFunctions
+  protected QOpenGLExtraFunctions
 {
   Q_OBJECT;
 public:
@@ -48,9 +52,16 @@ public:
   void setFarPlane(double v);
   double farPlane() const;
 
+  void setTarget(const QVector3D & v);
+  const QVector3D & target() const;
+
+  void setUpDirection(const QVector3D & v);
+  const QVector3D & upDirection() const;
+
   void setPerspecitive(double fov_radians, double nearPlane, double farPlane);
 
   void cameraTo(const QVector3D & eye_pos, const QVector3D & target_pos, const QVector3D & up_direction);
+  void lookTo(const QVector3D &target);
 
   QPointF projectToScreen(const QVector3D & pos) const;
 
@@ -69,6 +80,9 @@ public:
   void printf(const QVector3D & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
   void printf(double x, double y, double z, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(6, 7);
 
+  void drawArrow(qreal length, qreal radius, int nbSubdivisions);
+  void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
+  void drawMainAxes();
 
 Q_SIGNALS:
   void eyeChanged();
@@ -111,6 +125,12 @@ protected:
 
 };
 
-} /* namespace qgltest */
+
+/**
+ * Fills m[4][4] with the OpenGL (column-major) representation of the QQuaternion rotation
+ * Return pointer to m[][]
+ * */
+GLfloat * getMatrix(const QQuaternion & q, float m[4][4]);
+
 
 #endif /* __QGLView_h__ */

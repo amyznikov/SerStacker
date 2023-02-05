@@ -8,28 +8,19 @@
 #pragma once
 #ifndef __QCloudViewer_h__
 #define __QCloudViewer_h__
-#if HAVE_QGLViewer // Should come from CMakeLists.txt
 
-#include <QtWidgets/QtWidgets>
-#include <QtOpenGL/QGLWidget>
-#include <QGLViewer/qglviewer.h>
+#include <gui/qglview/QGLView.h>
 #include "QPointCloud.h"
 
-
-using QGLVector = qglviewer::Vec;
-
-
-class QGLCloudViewer
-  : public QGLViewer
+class QGLCloudViewer :
+    public QGLView
 {
   Q_OBJECT;
 public:
   typedef QGLCloudViewer ThisClass;
-  typedef QGLViewer Base;
+  typedef QGLView Base;
 
-  QGLCloudViewer(QWidget* parent = Q_NULLPTR);
-
-  void setSceneRadius(qreal radius) override;
+  QGLCloudViewer(QWidget* parent = nullptr);
 
   void setPointSize(double v);
   double pointSize() const;
@@ -37,8 +28,8 @@ public:
   void setPointBrightness(double v);
   double pointBrightness() const;
 
-  void setSceneOrigin(const QGLVector & v);
-  QGLVector sceneOrigin() const;
+  void setSceneOrigin(const QVector3D & v);
+  QVector3D sceneOrigin() const;
 
   std::vector<QPointCloud::ptr> & clouds();
   const std::vector<QPointCloud::ptr> & clouds() const;
@@ -47,42 +38,46 @@ public:
   bool openPlyFile(const QString & pathFileName);
 
 protected:
-  void init() override;
-  void draw() override;
+  void glInit() override;
+  void glPreDraw() override;
+  void glDraw() override;
+  void glPostDraw() override;
 
 protected:
   std::vector<QPointCloud::ptr> clouds_;
-  QGLVector sceneOrigin_;
+  QVector3D sceneOrigin_;
   double pointSize_ = 2;
   double pointBrightness_ = 0;
 };
 
-class QCloudViewer
-    : public QWidget
+class QCloudViewer :
+    public QWidget
 {
   Q_OBJECT;
 public:
   typedef QCloudViewer ThisClass;
   typedef QWidget Base;
 
-  QCloudViewer(QWidget* parent = Q_NULLPTR);
+  QCloudViewer(QWidget* parent = nullptr);
 
   QToolBar * toolbar() const;
+  QGLCloudViewer * cloudView() const;
 
-  void setSceneRadius(qreal radius);
-  qreal sceneRadius() const;
 
-  void setSceneCenter(const QGLVector &center);
-  QGLVector sceneCenter() const;
+//  void setSceneRadius(qreal radius);
+//  qreal sceneRadius() const;
 
-  void setPointSize(double v);
-  double pointSize() const;
-
-  void setPointBrightness(double v);
-  double pointBrightness() const;
-
-  void setSceneOrigin(const QGLVector & v);
-  QGLVector sceneOrigin() const;
+//  void setSceneCenter(const QVector3D &center);
+//  QVector3D sceneCenter() const;
+//
+//  void setPointSize(double v);
+//  double pointSize() const;
+//
+//  void setPointBrightness(double v);
+//  double pointBrightness() const;
+//
+//  void setSceneOrigin(const QVector3D & v);
+//  QVector3D sceneOrigin() const;
 
   bool openPlyFile(const QString & pathFileName);
 
@@ -106,22 +101,21 @@ public:
     return glViewer_->cloud(index);
   }
 
-signals:
+Q_SIGNALS:
   void currentFileNameChanged();
 
 protected:
-  QVBoxLayout * layout_ = Q_NULLPTR;
-  QToolBar * toolbar_ = Q_NULLPTR;
-  QGLCloudViewer * glViewer_ = Q_NULLPTR;
+  QVBoxLayout * layout_ = nullptr;
+  QToolBar * toolbar_ = nullptr;
+  QGLCloudViewer * glViewer_ = nullptr;
   QString currentFileName_;
 };
 
 
-bool fromString(const QString & s, QGLVector * v);
-QString toQString(const QGLVector & v);
+bool fromString(const QString & s, QVector3D * v);
+QString toQString(const QVector3D & v);
 
-bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  QGLVector * v);
-void save_parameter(const QString & prefix, const char * name, const QGLVector & value );
+bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  QVector3D * v);
+void save_parameter(const QString & prefix, const char * name, const QVector3D & value );
 
-#endif // HAVE_QGLViewer
 #endif /* __QCloudViewer_h__ */

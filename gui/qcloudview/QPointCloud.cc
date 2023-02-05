@@ -8,8 +8,6 @@
 #include "QPointCloud.h"
 #include <core/debug.h>
 
-#if HAVE_QGLViewer // Should come from CMakeLists.txt
-
 bool loadPlyFile(const QString & filename, QPointCloud * cloud)
 {
   static const char * header_lines[] = {
@@ -105,6 +103,3 @@ __end :
   return cloud;
 
 }
-
-
-#endif // HAVE_QGLViewer

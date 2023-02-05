@@ -9,7 +9,7 @@
 #ifndef __QTestGLView_h__
 #define __QTestGLView_h__
 
-#include "qglview/QGLView.h"
+#include <gui/qglview/QGLView.h>
 
 namespace qgltest {
 
@@ -40,7 +40,6 @@ protected:
   void glCleanup() override;
 
 protected:
-
 };
 
 } /* namespace qgltest */

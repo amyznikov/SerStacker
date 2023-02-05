@@ -6,29 +6,37 @@
  */
 
 #include "QCloudViewer.h"
-#if HAVE_QGLViewer // Should come from CMakeLists.txt
-
 #include "QPointCloud.h"
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
-bool fromString(const QString & s, QGLVector * v)
+bool fromString(const QString & s, QVector3D * vec)
 {
-  return sscanf(s.toUtf8().data(), "%lf ; %lf ; %lf", &v->x, &v->y, &v->z) == 3;
+  double v[3];
+
+  if( sscanf(s.toUtf8().data(), "%lf ; %lf ; %lf", &v[0], &v[1], &v[2]) == 3 ) {
+
+    vec->setX(v[0]);
+    vec->setY(v[1]);
+    vec->setZ(v[2]);
+
+    return true;
+  }
+  return false;
 }
 
-QString toQString(const QGLVector & v)
+QString toQString(const QVector3D & v)
 {
-  return QString("%1;%2;%3").arg(v.x).arg(v.y).arg(v.z);
+  return QString("%1;%2;%3").arg(v.x()).arg(v.y()).arg(v.z());
 }
 
-bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  QGLVector * v)
+bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  QVector3D * v)
 {
   return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), v);
 }
 
-void save_parameter(const QString & prefix, const char * name, const QGLVector & value )
+void save_parameter(const QString & prefix, const char * name, const QVector3D & value )
 {
   QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(name), toQString(value));
@@ -38,10 +46,9 @@ void save_parameter(const QString & prefix, const char * name, const QGLVector &
 ///////////////////////////////////////////////////////////////////////////////
 
 
-QGLCloudViewer::QGLCloudViewer(QWidget* parent)
-  : Base(parent)
+QGLCloudViewer::QGLCloudViewer(QWidget* parent) :
+  Base(parent)
 {
-  //init();
 }
 
 
@@ -66,19 +73,19 @@ void QGLCloudViewer::clear()
   update();
 }
 
-void QGLCloudViewer::setSceneRadius(qreal radius)
-{
-  Base::setSceneRadius(radius);
-  update();
-}
+//void QGLCloudViewer::setSceneRadius(qreal radius)
+//{
+//  Base::setSceneRadius(radius);
+//  update();
+//}
 
-void QGLCloudViewer::setSceneOrigin(const QGLVector & v)
+void QGLCloudViewer::setSceneOrigin(const QVector3D & v)
 {
   sceneOrigin_ = v;
   update();
 }
 
-QGLVector QGLCloudViewer::sceneOrigin() const
+QVector3D QGLCloudViewer::sceneOrigin() const
 {
   return sceneOrigin_;
 }
@@ -106,26 +113,37 @@ double QGLCloudViewer::pointBrightness() const
 }
 
 
-void QGLCloudViewer::init()
+void QGLCloudViewer::glInit()
 {
-  setSceneRadius(100);
-  setSceneCenter(QGLVector(0.0, 0.0, 0.0));
-  setBackgroundColor(QColor(0, 0, 0));
+  Base::glInit();
+
+  setBackgroundColor(QColor(32, 32, 32));
+}
+
+void QGLCloudViewer::glPreDraw()
+{
+  Base::glPreDraw();
 
   glDisable(GL_LIGHTING);
   glDisable(GL_COLOR_MATERIAL);
-  glEnable(GL_PROGRAM_POINT_SIZE);
 
-  Base::init();
+  glEnable(GL_PROGRAM_POINT_SIZE);
+  glEnable(GL_DEPTH_TEST);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
+  //  CF_DEBUG("glIsEnabled(GL_DEPTH_TEST)=%d", glIsEnabled(GL_DEPTH_TEST));
 }
 
-
-void QGLCloudViewer::draw()
+void QGLCloudViewer::glPostDraw()
 {
-//  glPushMatrix();
+  Base::glPostDraw();
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glClearColor(0.0, 0.0, 0.0, 1.0);
+  glColor3ub(200, 200, 200);
+  drawMainAxes();
+}
+
+void QGLCloudViewer::glDraw()
+{
+  // CF_DEBUG("glIsEnabled(GL_DEPTH_TEST)=%d", glIsEnabled(GL_DEPTH_TEST));
 
   glPointSize(pointSize_);
 
@@ -169,16 +187,14 @@ void QGLCloudViewer::draw()
 
         const QPoint3D & p = points[j];
 
-        glVertex3d(p.x *  Sx - Tx - sceneOrigin_.x,
-            p.y * Sy - Ty - sceneOrigin_.y,
-            p.z * Sz - Tz - sceneOrigin_.z);
+        glVertex3d(p.x *  Sx - Tx - sceneOrigin_.x(),
+            p.y * Sy - Ty - sceneOrigin_.y(),
+            p.z * Sz - Tz - sceneOrigin_.z());
       }
 
       glEnd(/*GL_POINTS*/);
     }
   }
-
-//  glPopMatrix();
 }
 
 
@@ -220,63 +236,15 @@ QToolBar * QCloudViewer::toolbar() const
   return toolbar_;
 }
 
-
-void QCloudViewer::setSceneRadius(qreal radius)
+QGLCloudViewer * QCloudViewer::cloudView() const
 {
-  glViewer_->setSceneRadius(radius);
-}
-
-qreal QCloudViewer::sceneRadius() const
-{
-  return glViewer_->sceneRadius();
-}
-
-
-void QCloudViewer::setSceneCenter(const QGLVector &center)
-{
-  return glViewer_->setSceneCenter(center);
-}
-
-QGLVector QCloudViewer::sceneCenter() const
-{
-  return glViewer_->sceneCenter();
-}
-
-
-void QCloudViewer::setSceneOrigin(const QGLVector & v)
-{
-  glViewer_->setSceneOrigin(v);
-}
-
-QGLVector QCloudViewer::sceneOrigin() const
-{
-  return glViewer_->sceneOrigin();
-}
-
-void QCloudViewer::setPointSize(double v)
-{
-  glViewer_->setPointSize(v);
-}
-
-double QCloudViewer::pointSize() const
-{
-  return glViewer_->pointSize();
-}
-
-void QCloudViewer::setPointBrightness(double v)
-{
-  glViewer_->setPointBrightness(v);
-}
-
-double QCloudViewer::pointBrightness() const
-{
-  return glViewer_->pointBrightness();
+  return glViewer_;
 }
 
 void QCloudViewer::clear()
 {
   glViewer_->clear();
-  emit currentFileNameChanged();
+  Q_EMIT currentFileNameChanged();
 }
 
 bool QCloudViewer::openPlyFile(const QString & pathFileName)
@@ -306,4 +274,3 @@ const QString & QCloudViewer::currentFileName() const
 {
   return currentFileName_;
 }
-#endif // HAVE_QGLViewer

@@ -135,7 +135,6 @@ MainWindow::MainWindow()
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(stackOptionsView_ = new QStackOptions(this));
 
-#if HAVE_QGLViewer
   centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
   connect(centralStackedWidget, &QStackedWidget::currentChanged,
       [this]() {
@@ -145,7 +144,6 @@ MainWindow::MainWindow()
           }
         }
       });
-#endif // HAVE_QGLViewer
 
 
 
@@ -417,11 +415,9 @@ void MainWindow::setupFileSystemTreeView()
         if ( textViewer ) {
           textViewer->clear();
         }
-#if HAVE_QGLViewer
         if ( cloudViewer ) {
           cloudViewer->clear();
         }
-#endif
         if ( thumbnailsView ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
           thumbnailsView->displayPath(abspath);
@@ -440,11 +436,9 @@ void MainWindow::setupFileSystemTreeView()
         if ( textViewer ) {
           textViewer->clear();
         }
-#if HAVE_QGLViewer
         if ( cloudViewer ) {
           cloudViewer->clear();
         }
-#endif
 
         if ( thumbnailsView ) {
           if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
@@ -476,11 +470,9 @@ void MainWindow::setupThumbnailsView()
           if ( textViewer ) {
             textViewer->clear();
           }
-#if HAVE_QGLViewer
           if (cloudViewer) {
             cloudViewer->clear();
           }
-#endif
           if ( fileSystemTreeDock ) {
             fileSystemTreeDock->show(),
             fileSystemTreeDock->raise(),
@@ -490,33 +482,27 @@ void MainWindow::setupThumbnailsView()
 
     connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
         [this](const QString & abspath) {
-
           if ( stackProgressView_ ) {
             stackProgressView_->setImageViewer(nullptr);
           }
-
           if ( imageEditor ) {
             imageEditor->clear();
           }
           if ( textViewer ) {
             textViewer->clear();
           }
-#if HAVE_QGLViewer
           if (cloudViewer) {
             cloudViewer->clear();
           }
-#endif
-            if ( imageEditor && imageEditor->isVisible() ) {
-              openImage(abspath);
-            }
-            else if ( textViewer && textViewer->isVisible() ) {
-              openImage(abspath);
-            }
-#if HAVE_QGLViewer
-            else if ( cloudViewer && cloudViewer->isVisible() ) {
-              openImage(abspath);
-            }
-#endif
+          if ( imageEditor && imageEditor->isVisible() ) {
+            openImage(abspath);
+          }
+          else if ( textViewer && textViewer->isVisible() ) {
+            openImage(abspath);
+          }
+          else if ( cloudViewer && cloudViewer->isVisible() ) {
+            openImage(abspath);
+          }
     });
 
     connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
@@ -962,7 +948,6 @@ void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
 
 void MainWindow::stupCloudViewer()
 {
-#if HAVE_QGLViewer
   QToolBar * toolbar;
   QAction * action;
   QLabel * imageNameLabel_ctl;
@@ -1052,8 +1037,6 @@ void MainWindow::stupCloudViewer()
     cloudViewer->clear();
     centralStackedWidget->setCurrentWidget(thumbnailsView);
   });
-
-#endif
 }
 
 void MainWindow::setupFocusGraph()
@@ -1252,9 +1235,7 @@ void MainWindow::openImage(const QString & abspath)
 
   imageEditor->clear();
   textViewer->clear();
-#if HAVE_QGLViewer
   cloudViewer->clear();
-#endif
 
   const QString suffix =
       QFileInfo(abspath).suffix();
@@ -1264,7 +1245,7 @@ void MainWindow::openImage(const QString & abspath)
     textViewer->showTextFile(abspath);
   }
   else if ( isPlyFileSuffix(suffix) ) {
-#if HAVE_QGLViewer
+#if 1
     if ( cloudViewer->openPlyFile(abspath) ) {
       centralStackedWidget->setCurrentWidget(cloudViewer);
     }

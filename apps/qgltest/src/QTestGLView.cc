@@ -74,6 +74,11 @@ void QTestGLView::glCleanup()
 
 void QTestGLView::glDraw()
 {
+  glColor3ub(200, 200, 200);
+  drawMainAxes();
+  //drawArrow(QVector3D(0, 0, 0), QVector3D(40, 0, 0), 0.2, 8);
+
+
   glPointSize(10);
 
   glBegin(GL_POINTS);

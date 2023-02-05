@@ -1,5 +1,5 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.1.0)
-project(SerStacker CXX)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.20)
+project(SerImager CXX)
 
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 17)
@@ -9,13 +9,18 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# cmake_policy(SET CMP0079 NEW)
+set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 set(CMAKE_LINK_WHAT_YOU_USE OFF)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
+#set(SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(UDEVRULES_INSTALL_DIR "/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
+set(FIRMWARE_INSTALL_BASEDIR "/lib/firmware/" CACHE STRING "Base directory for firmware files")
 
-file(GLOB_RECURSE CURRENT_SOURCES src/*.c src/*.cc src/*.cpp)
-file(GLOB_RECURSE CURRENT_HEADERS src/*.h src/*.hpp)
+
+file(GLOB CURRENT_SOURCES src/*.c src/*.cc src/*.cpp )
+file(GLOB CURRENT_HEADERS src/*.h src/*.hpp )
 file(GLOB_RECURSE QRC_FILES src/*.qrc )
 
 foreach(QRC_FILE ${QRC_FILES})
@@ -28,7 +33,14 @@ endforeach()
 
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
-set(LIBRARIES  
+include_directories(src/camera)
+add_subdirectory(src/camera)
+include_directories(src/focus)
+add_subdirectory(src/focus)
+
+
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
   gui
   Qt${QT_VERSION}::Core
   Qt${QT_VERSION}::Gui
@@ -37,21 +49,12 @@ set(LIBRARIES
   Qt${QT_VERSION}::MultimediaWidgets 
   Qt${QT_VERSION}::Xml
   Qt${QT_VERSION}::PrintSupport
-  GLU
-  GL)
-
-if ( "${QT_VERSION}" STREQUAL "6" )
-set(LIBRARIES
-  ${LIBRARIES}
-  Qt${QT_VERSION}::OpenGLWidgets) 
-endif()
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  ${LIBRARIES}
   ${CORE_LIBRARIES})
 
 
+
 # Install
+
 
 set(MY_RUNTIME_PATH bin)
 set(MY_DESKTOP_ENTRY_PATH ${CMAKE_INSTALL_PREFIX}/share/applications)
@@ -64,8 +67,8 @@ if( EXISTS src/app.desktop.in)
 		@ONLY)
 endif()
 
-if(EXISTS src/app-icon.png)
-	configure_file(src/app-icon.png
+if(EXISTS src/icons/app-icon.png)
+	configure_file(src/icons/app-icon.png
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.png
 		COPYONLY)
 endif()

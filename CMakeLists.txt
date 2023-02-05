@@ -293,117 +293,115 @@ endif()
 include_directories(${LIBCONFIG_INCLUDE_DIRS})
 message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LIBCONFIG_LIBRARIES}")
 
-
-# ----------------------------------------------------------------------------
-# QGLViewer (optional, for glddm team)
 #
-set(HAVE_QGLViewer FALSE)  
-unset (QGLViewer_FOUND)
-
-if ( FALSE )
-	find_package(QGLViewer QUIET)
-	if ( NOT QGLViewer_FOUND )
-	
-		set(QGLVIEWER_INCLUDE_DIRS "")
-		set(QGLVIEWER_LIBRARY "")
-	
-	    message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
-	    	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
-	        To support this functionality install pleaae fresh version of QGLViewer from AUR or from sources: \n \
-	        \n \
-	         wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
-	         tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \
-	         cd libQGLViewer-2.7.1/QGLViewer && \\ \n \
-	         qmake && \\ \n \
-	         make && \\ \n \
-	         sudo make install && \\ \n \
-	         make clean\ \n \
-	     ")
-	
-	else()
-		set(QT_VERSION 5)
-	
-		# OpenGL is required for QGLViewer
-		# This option should affect only OpenGL-dependent targets
-		# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
-		# (usually libOpenGL.so and libGLX.so).
-		if( ${CMAKE_VERSION} VERSION_GREATER "3.10" AND NOT OpenGL_GL_PREFERENCE )
-		    set(OpenGL_GL_PREFERENCE GLVND)
-		endif()
-		
-		find_package(OpenGL QUIET)
-		if ( NOT OpenGL_FOUND )
-	        message(WARNING "OpenGL package is not found, disabling QGLViewer")
-	        set(QGLVIEWER_INCLUDE_DIRS)
-	        set(QGLVIEWER_LIBRARY)
-	        set(OPENGL_INCLUDE_DIR)
-	        set(OPENGL_LIBRARY_DIR)
-	        set(OPENGL_LIBRARIES)
-	        set(QGLViewer_FOUND FALSE)
-	    else ()
-	        find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
-	        if ( NOT freeglut_h_found ) 
-	            message(WARNING "OpenGL package is not found, disabling QGLViewer")
-	            set(QGLVIEWER_INCLUDE_DIRS)
-	            set(QGLVIEWER_LIBRARY)
-	            set(OPENGL_INCLUDE_DIR)
-	            set(OPENGL_LIBRARY_DIR)
-	            set(OPENGL_LIBRARIES)
-	            set(QGLViewer_FOUND FALSE)
-	        else()
-	            set(HAVE_QGLViewer TRUE)
-	            add_definitions(-DHAVE_QGLViewer=1)
-	
-	            # Fixing GLEW PATH on OSX
-	            if (APPLE)
-	                find_path( GLEW_INCLUDE_DIR GL/glew.h
-	                    /usr/local/include
-	                    /usr/local/Cellar/glew/2.1.0/include
-	                    /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
-	                    ${OPENGL_LIBRARY_DIR}
-	                )
-	                find_library( GLEW_GLEW_LIBRARY GLEW
-	                    /usr/local/lib
-	                    /usr/openwin/lib
-	                    /usr/X11R6/lib
-	                    /usr/local/Cellar/glew/2.1.0/lib
-	                )
-	                set( GLEW_FOUND TRUE )
-	                if(NOT GLEW_GLEW_LIBRARY)
-	                    set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
-	                    set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
-	                    set(GLEW_FOUND FALSE )
-	                endif()
-	            endif (APPLE)
-	        endif()
-	    endif()	    
-	endif()
-endif()
-
+## ----------------------------------------------------------------------------
+## QGLViewer (optional, for glddm team)
+##
+#set(HAVE_QGLViewer FALSE)  
+#unset (QGLViewer_FOUND)
+#
+#if ( FALSE )
+#	find_package(QGLViewer QUIET)
+#	if ( NOT QGLViewer_FOUND )
+#	
+#		set(QGLVIEWER_INCLUDE_DIRS "")
+#		set(QGLVIEWER_LIBRARY "")
+#	
+#	    message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
+#	    	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
+#	        To support this functionality install pleaae fresh version of QGLViewer from AUR or from sources: \n \
+#	        \n \
+#	         wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
+#	         tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \
+#	         cd libQGLViewer-2.7.1/QGLViewer && \\ \n \
+#	         qmake && \\ \n \
+#	         make && \\ \n \
+#	         sudo make install && \\ \n \
+#	         make clean\ \n \
+#	     ")
+#	
+#	else()
+#		set(QT_VERSION 5)
+#	
+#		# OpenGL is required for QGLViewer
+#		# This option should affect only OpenGL-dependent targets
+#		# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
+#		# (usually libOpenGL.so and libGLX.so).
+#		if( ${CMAKE_VERSION} VERSION_GREATER "3.10" AND NOT OpenGL_GL_PREFERENCE )
+#		    set(OpenGL_GL_PREFERENCE GLVND)
+#		endif()
+#		
+#		find_package(OpenGL QUIET)
+#		if ( NOT OpenGL_FOUND )
+#	        message(WARNING "OpenGL package is not found, disabling QGLViewer")
+#	        set(QGLVIEWER_INCLUDE_DIRS)
+#	        set(QGLVIEWER_LIBRARY)
+#	        set(OPENGL_INCLUDE_DIR)
+#	        set(OPENGL_LIBRARY_DIR)
+#	        set(OPENGL_LIBRARIES)
+#	        set(QGLViewer_FOUND FALSE)
+#	    else ()
+#	        find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
+#	        if ( NOT freeglut_h_found ) 
+#	            message(WARNING "OpenGL package is not found, disabling QGLViewer")
+#	            set(QGLVIEWER_INCLUDE_DIRS)
+#	            set(QGLVIEWER_LIBRARY)
+#	            set(OPENGL_INCLUDE_DIR)
+#	            set(OPENGL_LIBRARY_DIR)
+#	            set(OPENGL_LIBRARIES)
+#	            set(QGLViewer_FOUND FALSE)
+#	        else()
+#	            set(HAVE_QGLViewer TRUE)
+#	            add_definitions(-DHAVE_QGLViewer=1)
+#	
+#	            # Fixing GLEW PATH on OSX
+#	            if (APPLE)
+#	                find_path( GLEW_INCLUDE_DIR GL/glew.h
+#	                    /usr/local/include
+#	                    /usr/local/Cellar/glew/2.1.0/include
+#	                    /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
+#	                    ${OPENGL_LIBRARY_DIR}
+#	                )
+#	                find_library( GLEW_GLEW_LIBRARY GLEW
+#	                    /usr/local/lib
+#	                    /usr/openwin/lib
+#	                    /usr/X11R6/lib
+#	                    /usr/local/Cellar/glew/2.1.0/lib
+#	                )
+#	                set( GLEW_FOUND TRUE )
+#	                if(NOT GLEW_GLEW_LIBRARY)
+#	                    set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
+#	                    set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
+#	                    set(GLEW_FOUND FALSE )
+#	                endif()
+#	            endif (APPLE)
+#	        endif()
+#	    endif()	    
+#	endif()
+#endif()
+#
 
 # ----------------------------------------------------------------------------
 # Qt
 #
 #set(QT_VERSION 5)
-unset(QT_VERSION)
+#unset(QT_VERSION)
 if ( NOT QT_VERSION )
-  if ( QGLViewer_FOUND )
-    set(QT_VERSION 5) # Foce QT version to 5 until QGLViewer will available for Qt6 
-  else()
-
     find_package(Qt6 COMPONENTS Core QUIET)
 	if (NOT Qt6_FOUND)
 	    set(QT_VERSION 5 CACHE STRING "Qt version")
 	else()
 	    set(QT_VERSION 6 CACHE STRING "Qt version")
 	endif()
-  endif()
 endif()
 
-set(Qt_REQUIRED_COMPONENTS Core Gui Widgets Xml PrintSupport Multimedia MultimediaWidgets) #  
-if ( QGLViewer_FOUND )
-	set(Qt_REQUIRED_COMPONENTS ${Qt_REQUIRED_COMPONENTS} OpenGL)
+set(Qt_REQUIRED_COMPONENTS Core Gui Widgets Xml PrintSupport Multimedia MultimediaWidgets OpenGL )
+
+if ( "${QT_VERSION}" STREQUAL "6" )
+ set(Qt_REQUIRED_COMPONENTS ${Qt_REQUIRED_COMPONENTS} OpenGLWidgets)
 endif()
+
+
 
 
 find_package(Qt${QT_VERSION} COMPONENTS ${Qt_REQUIRED_COMPONENTS}) 
@@ -440,11 +438,11 @@ add_custom_target(libs)
 add_dependencies(libs core)
 #add_dependencies(libs gui)
 
-message("XXX INCLUDE_DIRECTORIES:")
-get_property(dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-	message("XX ${dir}")  
-endforeach()
+#message("XXX INCLUDE_DIRECTORIES:")
+#get_property(dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
+#foreach(dir ${dirs})
+#	message("XX ${dir}")  
+#endforeach()
 
 
 add_custom_target(uninstall

@@ -464,6 +464,46 @@ inline QString toQString(const QPoint & v)
   return QString("%1;%2").arg(v.x()).arg(v.y());
 }
 
+inline bool fromString(const QString & text, QVector3D * v)
+{
+  std::vector<std::string> tokens;
+
+  strsplit(text.toUtf8().constData(),
+      tokens,
+      "[ ;:\t\n]");
+
+  if( tokens.size() != 3 ) {
+    return false;
+  }
+
+  double x, y, z;
+
+  if( sscanf(tokens[0].c_str(), "%lf", &x) != 1 ) {
+    return false;
+  }
+
+  if( sscanf(tokens[1].c_str(), "%lf", &y) != 1 ) {
+    return false;
+  }
+
+  if( sscanf(tokens[1].c_str(), "%lf", &z) != 1 ) {
+    return false;
+  }
+
+  v->setX(x);
+  v->setY(y);
+  v->setY(z);
+
+  return true;
+}
+
+
+inline QString toQString(const QVector3D & v)
+{
+  return QString("%1;%2;%3").arg(v.x()).arg(v.y()).arg(v.z());
+}
+
+
 template<class T>
 inline void save_parameter(const QString & prefix, const char * name, const T & value )
 {

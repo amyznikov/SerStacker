@@ -156,13 +156,11 @@ QStringList getSupportedThumbnailsExtensions()
     suffixes.append(*textfiles++);
   }
 
-#if HAVE_QGLViewer
   const char ** plyfiles =
       thumbnail_plyfile_suffixes();
   while ( *plyfiles ) {
     suffixes.append(*plyfiles++);
   }
-#endif
 
 #if HAVE_CFITSIO
   suffixes.append("fits");

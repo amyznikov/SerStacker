@@ -13,8 +13,6 @@
 #include "QGLView.h"
 #include <core/debug.h>
 
-namespace qgltest {
-
 namespace {
 
 void toSpherical(const QVector3D & v, double * r, double * phi, double * theta)
@@ -38,6 +36,56 @@ inline int sign(T x)
 }
 
 } // namespace
+
+
+/**
+ * Fills m[4][4] with the OpenGL (column-major) representation of the QQuaternion rotation
+ * Return pointer to m[][]
+ * */
+GLfloat * getMatrix(const QQuaternion & q, float m[4][4])
+{
+  const float x = q.x();
+  const float y = q.y();
+  const float z = q.z();
+  const float w = q.scalar();
+
+  const qreal q00 = 2.0 * x * x;
+  const qreal q11 = 2.0 * y * y;
+  const qreal q22 = 2.0 * z * z;
+
+  const qreal q01 = 2.0 * x * y;
+  const qreal q02 = 2.0 * x * z;
+  const qreal q03 = 2.0 * x * w;
+
+  const qreal q12 = 2.0 * y * z;
+  const qreal q13 = 2.0 * y * w;
+
+  const qreal q23 = 2.0 * z * w;
+
+  m[0][0] = 1.0 - q11 - q22;
+  m[1][0] = q01 - q23;
+  m[2][0] = q02 + q13;
+
+  m[0][1] = q01 + q23;
+  m[1][1] = 1.0 - q22 - q00;
+  m[2][1] = q12 - q03;
+
+  m[0][2] = q02 - q13;
+  m[1][2] = q12 + q03;
+  m[2][2] = 1.0 - q11 - q00;
+
+  m[0][3] = 0.0f;
+  m[1][3] = 0.0f;
+  m[2][3] = 0.0f;
+
+  m[3][0] = 0.0f;
+  m[3][1] = 0.0f;
+  m[3][2] = 0.0f;
+  m[3][3] = 1.0f;
+
+  return (GLfloat *) m;
+}
+
 
 QGLView::QGLView(QWidget * parent) :
     Base(parent)
@@ -94,6 +142,8 @@ void QGLView::setNearPlane(double v)
   nearPlane_ = v;
   dirty_ = true;
   update();
+
+
 }
 
 double QGLView::nearPlane() const
@@ -111,6 +161,30 @@ void QGLView::setFarPlane(double v)
 double QGLView::farPlane() const
 {
   return farPlane_;
+}
+
+void QGLView::setTarget(const QVector3D & v)
+{
+  target_ = v;
+  dirty_ = true;
+  update();
+}
+
+const QVector3D & QGLView::target() const
+{
+  return target_;
+}
+
+void QGLView::setUpDirection(const QVector3D & v)
+{
+  updirection_ = v;
+  dirty_ = true;
+  update();
+}
+
+const QVector3D & QGLView::upDirection() const
+{
+  return updirection_;
 }
 
 void QGLView::setPerspecitive(double fov, double nearPlane, double farPlane)
@@ -133,6 +207,11 @@ void QGLView::cameraTo(const QVector3D & eye_pos,
   update();
 }
 
+void QGLView::lookTo(const QVector3D &target)
+{
+  setTarget(target);
+}
+
 QPointF QGLView::projectToScreen(const QVector3D & pos) const
 {
   // view port
@@ -143,7 +222,7 @@ QPointF QGLView::projectToScreen(const QVector3D & pos) const
 
   // normalized device coordinates
   const QVector3D ndc =
-      matrix_ * pos;
+      matrix_.map(pos);
 
   // window coordinates
   return QPointF(((ndc.x() + 1.0) / 2.0) * w + x,
@@ -165,7 +244,9 @@ void QGLView::initializeGL()
 void QGLView::resizeGL(int w, int h)
 {
   Base::resizeGL(w, h);
+  glViewport(0, 0, GLint(w), GLint(h));
   dirty_ = true;
+  update();
 }
 
 void QGLView::paintGL()
@@ -190,41 +271,34 @@ void QGLView::cleanupGL()
 void QGLView::glInit()
 {
   // Default colors
-  setForegroundColor(QColor(180, 180, 180));
-  setBackgroundColor(QColor(100, 100, 100));
+  setForegroundColor(QColor(200, 200, 200));
+  setBackgroundColor(QColor(32, 32, 32));
 }
 
 void QGLView::glPreDraw()
 {
-  glDisable(GL_LIGHTING);
-  glDisable(GL_COLOR_MATERIAL);
-  glEnable(GL_PROGRAM_POINT_SIZE);
-  glEnable(GL_DEPTH_TEST);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glClearColor(backgroundColor_.redF(),
-      backgroundColor_.greenF(),
-      backgroundColor_.blueF(),
-      backgroundColor_.alphaF());
-
-  glPushMatrix();
-  glMatrixMode(GL_PROJECTION);
-
   const int w = width();
   const int h = height();
 
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
   if( dirty_ && w > 0 && h > 0 ) {
 
-    glViewport(0, 0, GLint(w), GLint(h));
-
     matrix_.setToIdentity();
-    matrix_.perspective(fov_ * 180 / M_PI, GLfloat(w) / h, 1.f, 100.0f);
+    matrix_.perspective(fov_ * 180 / M_PI, GLfloat(w) / h, nearPlane_, farPlane_);
     matrix_.lookAt(eye_, target_, updirection_);
 
     dirty_ = false;
   }
 
+  glMatrixMode(GL_PROJECTION);
   glLoadMatrixf(matrix_.constData());
+
+  glClearColor(backgroundColor_.redF(),
+      backgroundColor_.greenF(),
+      backgroundColor_.blueF(),
+      backgroundColor_.alphaF());
 }
 
 void QGLView::glDraw()
@@ -233,7 +307,6 @@ void QGLView::glDraw()
 
 void QGLView::glPostDraw()
 {
-  glPopMatrix();
   glFlush();
 }
 
@@ -246,8 +319,8 @@ void QGLView::glCleanup()
 void QGLView::drawText(const QPointF & pos, const QFont & font, const QString & text)
 {
   // Retrieve last OpenGL color to use as a font color
-  GLdouble glColor[4];
-  glGetDoublev(GL_CURRENT_COLOR, glColor);
+  GLfloat glColor[4];
+  glGetFloatv(GL_CURRENT_COLOR, glColor);
 
   QColor fontColor(255 * glColor[0], 255 * glColor[1],
       255 * glColor[2], 255 * glColor[3]);
@@ -333,10 +406,68 @@ void QGLView::printf(double x, double y, double z, const QFont & font, const cha
   va_end(arglist);
 }
 
+void QGLView::drawArrow(qreal length, qreal radius, int nbSubdivisions)
+{
+  static GLUquadric *quadric =
+      gluNewQuadric();
+
+  if( radius < 0.0 ) {
+    radius = 0.05 * length;
+  }
+
+  const qreal head = 2.5 * (radius / length) + 0.1;
+  const qreal coneRadiusCoef = 4.0 - 5.0 * head;
+
+  gluCylinder(quadric, radius, radius, length * (1.0 - head / coneRadiusCoef), nbSubdivisions, 1);
+  glTranslated(0.0, 0.0, length * (1.0 - head));
+  gluCylinder(quadric, coneRadiusCoef * radius, 0.0, head * length, nbSubdivisions, 1);
+  glTranslated(0.0, 0.0, -length * (1.0 - head));
+
+}
+
+void QGLView::drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions)
+{
+  float m[4][4];
+
+  const QVector3D direction =
+      end - start;
+
+  glPushMatrix();
+
+  glTranslatef(start.x(), start.y(), start.z());
+
+  glMultMatrixf(getMatrix(QQuaternion::fromDirection(direction,
+      QVector3D(0, 0, 1)), m));
+
+  drawArrow(direction.length(), radius, nbSubdivisions);
+
+  glPopMatrix();
+}
+
+
+void QGLView::drawMainAxes()
+{
+  static const QFont font("Monospace", 12,
+      QFont::Weight::DemiBold);
+
+  qreal length = eye_.length() / 3;
+
+  drawArrow(QVector3D(0, 0, 0), QVector3D(length, 0, 0), length / 100, 8);
+  drawArrow(QVector3D(0, 0, 0), QVector3D(0, length, 0), length / 100, 8);
+  drawArrow(QVector3D(0, 0, 0), QVector3D(0, 0, length), length / 100, 8);
+
+  drawText(QVector3D(length, 0, 0), font, "X");
+  drawText(QVector3D(0, length, 0), font, "Y");
+  drawText(QVector3D(0, 0, length), font, "Z");
+}
 
 void QGLView::mousePressEvent(QMouseEvent *e)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+  prev_mouse_pos_ = e->position();
+#else
   prev_mouse_pos_ = e->localPos();
+#endif
   e->ignore();
 }
 
@@ -350,17 +481,21 @@ void QGLView::mouseDoubleClickEvent(QMouseEvent *e)
   e->ignore();
 }
 
-
 // temporary very stupid mouse move management,
 // may be consider also deformed Mouse Trackball algorithm instead ?
 void QGLView::mouseMoveEvent(QMouseEvent * e)
 {
-  if( e->buttons() == Qt::LeftButton ) {
+  if( e->buttons() ) {
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    const QPointF newpos = e->position();
+#else
     const QPointF newpos = e->localPos();
-    const QPointF delta = newpos - prev_mouse_pos_;
+#endif
 
-    if( e->modifiers() == Qt::ShiftModifier ) {
+    if( e->buttons() == Qt::RightButton ) {
+
+      const QPointF delta = newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
@@ -394,57 +529,75 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
         dirty_ = true;
         update();
       }
+
+      prev_mouse_pos_ = newpos;
     }
-    else {
+    else if( e->buttons() == Qt::LeftButton ) {
 
-      double r, phi, theta, newphi, newtheta;
-      toSpherical(eye_ - target_, &r, &phi, &theta);
+      const QPointF delta = newpos - prev_mouse_pos_;
 
-      newphi = phi - 5e-3 * sign(updirection_.z()) * delta.y();
-      newtheta = theta - 5e-3 * sign(updirection_.z()) * delta.x();
+      if( delta.x() || delta.y() ) {
 
-      if( newphi < 0 ) {
-        newphi = -newphi;
-        newtheta += M_PI;
-        updirection_ = -updirection_;
+        double r, phi, theta, newphi, newtheta;
+        toSpherical(eye_ - target_, &r, &phi, &theta);
+
+        newphi = phi - 5e-3 * sign(updirection_.z()) * delta.y();
+        newtheta = theta - 5e-3 * sign(updirection_.z()) * delta.x();
+
+        if( newphi < 0 ) {
+          newphi = -newphi;
+          newtheta += M_PI;
+          updirection_ = -updirection_;
+        }
+        else if( newphi >= M_PI ) {
+          newphi = 2 * M_PI - newphi;
+          newtheta += M_PI;
+          updirection_ = -updirection_;
+        }
+
+        eye_ = fromSpherical(r, newphi, newtheta) + target_;
+
+        dirty_ = true;
+        Q_EMIT eyeChanged();
+        update();
       }
-      else if( newphi >= M_PI ) {
-        newphi = 2 * M_PI - newphi;
-        newtheta += M_PI;
-        updirection_ = -updirection_;
-      }
 
-      eye_ = fromSpherical(r, newphi, newtheta) + target_;
-
-      dirty_ = true;
-
-      Q_EMIT eyeChanged();
-
-      update();
+      prev_mouse_pos_ = newpos;
     }
-
-    prev_mouse_pos_ = newpos;
   }
-
   e->accept();
-
 }
 
 #if QT_CONFIG(wheelevent)
-void QGLView::wheelEvent(QWheelEvent *e)
+void QGLView::wheelEvent(QWheelEvent * e)
 {
-  Base::wheelEvent(e);
+//  Base::wheelEvent(e);
 
-  QPoint delta = e->pixelDelta();
+  const double delta =
+      e->pixelDelta().y();
 
-  double L = eye_.length();
-  if( (L -= delta.y() / 100) > 0.5 ) {
-    eye_ *= L / eye_.length();
-    dirty_ = true;
-    update();
+  if( delta ) {
+
+    QVector3D forward = target_ - eye_;
+    QVector3D neweye = eye_ + 1e-2 * forward * delta / forward.length();
+    QVector3D newforward = target_ - neweye;
+
+    double p = QVector3D::dotProduct(newforward, forward);
+
+    if( p > 0 ) {
+      eye_ = neweye;
+      dirty_ = true;
+      update();
+    }
+    else if( QVector3D::dotProduct(newforward, forward) < 0 ) {
+      target_ += neweye - eye_;
+      eye_ = neweye;
+      dirty_ = true;
+      update();
+    }
+
   }
 
+  e->ignore();
 }
 #endif
-
-} /* namespace qgltest */

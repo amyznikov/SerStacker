@@ -9,8 +9,6 @@
 #ifndef __QPointCloud_h__
 #define __QPointCloud_h__
 
-#if HAVE_QGLViewer // Should come from CMakeLists.txt
-
 #include <QtGui/QtGui>
 #include <memory>
 
@@ -54,5 +52,4 @@ public:
 bool loadPlyFile(const QString & filename,
     QPointCloud * cloud);
 
-#endif // HAVE_QGLViewer
 #endif /* __QPointCloud_h__ */

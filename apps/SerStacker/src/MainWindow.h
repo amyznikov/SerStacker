@@ -28,10 +28,8 @@
 #include "QAppSettings.h"
 #include "QStackProgressView.h"
 
-#if HAVE_QGLViewer // Should come from CMakeLists.txt
 #include <gui/qcloudview/QCloudViewer.h>
 #include <gui/qcloudview/QCloudViewSettings.h>
-#endif // HAVE_QGLViewer
 
 namespace qserstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -108,10 +106,8 @@ private:
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
   QGeneralAppSettingsDialogBox * appSettingsDlgBox = nullptr;
 
-#if HAVE_QGLViewer
   QCloudViewer * cloudViewer = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
-#endif // HAVE_QGLViewer
 
   QStackProgressView * stackProgressView_ = nullptr;
   QStackOptions * stackOptionsView_ = nullptr;

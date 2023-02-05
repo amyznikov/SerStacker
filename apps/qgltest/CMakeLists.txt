@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.20)
 project(qgltest CXX)
 
 # Disabe this app
-return()
+# return()
 
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 17)
@@ -33,12 +33,8 @@ endforeach()
 
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
-include_directories(src/qglview)
-#add_subdirectory(src/qglview)
 
-
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
+set(LIBRARIES  
   gui
   Qt${QT_VERSION}::Core
   Qt${QT_VERSION}::Gui
@@ -47,8 +43,18 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Qt${QT_VERSION}::MultimediaWidgets 
   Qt${QT_VERSION}::Xml
   Qt${QT_VERSION}::PrintSupport
-  ${CORE_LIBRARIES}
+  GLU
   GL)
+
+if ( "${QT_VERSION}" STREQUAL "6" )
+set(LIBRARIES
+  ${LIBRARIES}
+  Qt${QT_VERSION}::OpenGLWidgets) 
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  ${LIBRARIES}
+  ${CORE_LIBRARIES})
 
 
 

@@ -119,7 +119,11 @@ protected:
   QVector3D eye_ = QVector3D(40, 30, 30);
   QVector3D target_ = QVector3D(0, 0, 0);
   QVector3D updirection_ = QVector3D(0, 0, 1);
-  QMatrix4x4 matrix_;
+
+  QMatrix4x4 mview_;
+  QMatrix4x4 mperspective_;
+  QMatrix4x4 mtotal_;
+
   QPointF prev_mouse_pos_;
   bool dirty_ = true;
 

@@ -222,7 +222,7 @@ QPointF QGLView::projectToScreen(const QVector3D & pos) const
 
   // normalized device coordinates
   const QVector3D ndc =
-      matrix_.map(pos);
+      mtotal_.map(pos);
 
   // window coordinates
   return QPointF(((ndc.x() + 1.0) / 2.0) * w + x,
@@ -285,15 +285,19 @@ void QGLView::glPreDraw()
 
   if( dirty_ && w > 0 && h > 0 ) {
 
-    matrix_.setToIdentity();
-    matrix_.perspective(fov_ * 180 / M_PI, GLfloat(w) / h, nearPlane_, farPlane_);
-    matrix_.lookAt(eye_, target_, updirection_);
+    mview_.setToIdentity();
+    mview_.lookAt(eye_, target_, updirection_);
+
+    mperspective_.setToIdentity();
+    mperspective_.perspective(fov_ * 180 / M_PI, GLfloat(w) / h, nearPlane_, farPlane_);
+
+    mtotal_ = mperspective_ * mview_;
 
     dirty_ = false;
   }
 
   glMatrixMode(GL_PROJECTION);
-  glLoadMatrixf(matrix_.constData());
+  glLoadMatrixf(mtotal_.constData());
 
   glClearColor(backgroundColor_.redF(),
       backgroundColor_.greenF(),
@@ -493,14 +497,14 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     const QPointF newpos = e->localPos();
 #endif
 
-    if( e->buttons() == Qt::RightButton ) {
+    if( e->buttons() == Qt::RightButton ) { // Shift camera left / top / right bottom by moving target_
 
       const QPointF delta = newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
         QMatrix4x4 minv =
-            matrix_.inverted();
+            mtotal_.inverted();
 
         const QVector3D v0 =
             minv.map(QVector3D(0.0, 0.0, 1.0));
@@ -532,34 +536,58 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
       prev_mouse_pos_ = newpos;
     }
-    else if( e->buttons() == Qt::LeftButton ) {
+    else if( e->buttons() == Qt::LeftButton ) { // Rotate camera around target_
 
       const QPointF delta = newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
-        double r, phi, theta, newphi, newtheta;
-        toSpherical(eye_ - target_, &r, &phi, &theta);
+        QMatrix4x4 minv = mview_.inverted();
 
-        newphi = phi - 5e-3 * sign(updirection_.z()) * delta.y();
-        newtheta = theta - 5e-3 * sign(updirection_.z()) * delta.x();
+        QVector3D forward = eye_ - target_;
 
-        if( newphi < 0 ) {
-          newphi = -newphi;
-          newtheta += M_PI;
-          updirection_ = -updirection_;
+        if ( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
+
+          const int signy = newpos.x() > width() / 2 ? +1 : -1;
+          const int signx = newpos.y() < height() / 2 ? +1 : -1;
+
+          QQuaternion Q =
+              QQuaternion::fromAxisAndAngle(forward,
+                  0.2 * (signy * delta.y() + signx * delta.x()));
+
+          updirection_ =
+              Q.rotatedVector(updirection_);
+
+          dirty_ = true;
+          Q_EMIT eyeChanged();
+          update();
+
         }
-        else if( newphi >= M_PI ) {
-          newphi = 2 * M_PI - newphi;
-          newtheta += M_PI;
-          updirection_ = -updirection_;
+        else { // Rotate camera around Up / Right axess
+
+          QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
+          QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+          QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
+          QVector3D Up = (TU - T0).normalized();
+          QVector3D Right = (TR - T0).normalized();
+
+          QQuaternion Q =
+              QQuaternion::fromAxisAndAngle(-Up * delta.x() - Right * delta.y(),
+                  0.2 * hypot(delta.x(), delta.y()));
+
+          QVector3D newForward =
+              Q.rotatedVector(forward);
+
+          T0 = minv.map(QVector3D(0, 0, newForward.length()));
+          TU = minv.map(QVector3D(0, 0.5, newForward.length()));
+          Up = (TU - T0).normalized();
+
+          eye_ = newForward + target_;
+          updirection_ = Up;
+          dirty_ = true;
+          Q_EMIT eyeChanged();
+          update();
         }
-
-        eye_ = fromSpherical(r, newphi, newtheta) + target_;
-
-        dirty_ = true;
-        Q_EMIT eyeChanged();
-        update();
       }
 
       prev_mouse_pos_ = newpos;

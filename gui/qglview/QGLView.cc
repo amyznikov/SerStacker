@@ -499,11 +499,12 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
     if( e->buttons() == Qt::RightButton ) { // Shift camera left / top / right bottom by moving target_
 
-      const QPointF delta = newpos - prev_mouse_pos_;
+      const QPointF delta =
+          newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
-        QMatrix4x4 minv =
+        const QMatrix4x4 minv =
             mtotal_.inverted();
 
         const QVector3D v0 =
@@ -511,20 +512,19 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
         if( delta.y() ) {
 
-          QVector3D vv =
-              minv.map(QVector3D(0.0, 0.1, 1.0)) - v0;
+          const QVector3D vv =
+              1e-2 * delta.y() * (minv.map(QVector3D(0.0, 0.1, 1.0)) - v0)
+                  .normalized();
 
-          vv *= 1e-2 * delta.y() / vv.length();
           target_ += vv;
           eye_ += vv;
         }
 
         if( delta.x() ) {
 
-          QVector3D vh =
-              minv.map(QVector3D(0.1, 0.0, 1.0)) - v0;
-
-          vh *= 1e-2 * delta.x() / vh.length();
+          const QVector3D vh =
+              1e-2 * delta.x() * (minv.map(QVector3D(0.1, 0.0, 1.0)) - v0)
+                  .normalized();
 
           target_ -= vh;
           eye_ -= vh;
@@ -538,32 +538,36 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     }
     else if( e->buttons() == Qt::LeftButton ) { // Rotate camera around target_
 
-      const QPointF delta = newpos - prev_mouse_pos_;
+      const QPointF delta =
+          newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
-        QMatrix4x4 minv = mview_.inverted();
+        const QMatrix4x4 minv =
+            mview_.inverted();
 
-        QVector3D forward = eye_ - target_;
+        const QVector3D forward =
+            eye_ - target_;
 
         if ( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
 
-          const int signy = newpos.x() > width() / 2 ? +1 : -1;
-          const int signx = newpos.y() < height() / 2 ? +1 : -1;
+          const int signy =
+              newpos.x() > width() / 2 ? +1 : -1;
 
-          QQuaternion Q =
-              QQuaternion::fromAxisAndAngle(forward,
-                  0.2 * (signy * delta.y() + signx * delta.x()));
+          const int signx =
+              newpos.y() < height() / 2 ? +1 : -1;
 
           updirection_ =
-              Q.rotatedVector(updirection_);
+              QQuaternion::fromAxisAndAngle(forward, 0.2 * (signy * delta.y() + signx * delta.x()))
+                  .rotatedVector(updirection_);
 
           dirty_ = true;
+
           Q_EMIT eyeChanged();
           update();
 
         }
-        else { // Rotate camera around Up / Right axess
+        else { // Rotate camera around of the up / right axes
 
           QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
           QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
@@ -571,12 +575,9 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
           QVector3D Up = (TU - T0).normalized();
           QVector3D Right = (TR - T0).normalized();
 
-          QQuaternion Q =
-              QQuaternion::fromAxisAndAngle(-Up * delta.x() - Right * delta.y(),
-                  0.2 * hypot(delta.x(), delta.y()));
-
           QVector3D newForward =
-              Q.rotatedVector(forward);
+              QQuaternion::fromAxisAndAngle(-Up * delta.x() - Right * delta.y(), 0.2 * hypot(delta.x(), delta.y()))
+                  .rotatedVector(forward);
 
           T0 = minv.map(QVector3D(0, 0, newForward.length()));
           TU = minv.map(QVector3D(0, 0.5, newForward.length()));
@@ -585,6 +586,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
           eye_ = newForward + target_;
           updirection_ = Up;
           dirty_ = true;
+
           Q_EMIT eyeChanged();
           update();
         }
@@ -599,31 +601,40 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 #if QT_CONFIG(wheelevent)
 void QGLView::wheelEvent(QWheelEvent * e)
 {
-//  Base::wheelEvent(e);
-
   const double delta =
       e->pixelDelta().y();
 
   if( delta ) {
 
-    QVector3D forward = target_ - eye_;
-    QVector3D neweye = eye_ + 1e-2 * forward * delta / forward.length();
-    QVector3D newforward = target_ - neweye;
+    const QVector3D forward =
+        target_ - eye_;
 
-    double p = QVector3D::dotProduct(newforward, forward);
+    const QVector3D neweye =
+        eye_ + 1e-2 * forward * delta / forward.length();
+
+    const QVector3D newforward =
+        target_ - neweye;
+
+    const double p =
+        QVector3D::dotProduct(newforward,
+            forward);
 
     if( p > 0 ) {
       eye_ = neweye;
       dirty_ = true;
+
+      Q_EMIT eyeChanged();
       update();
     }
-    else if( QVector3D::dotProduct(newforward, forward) < 0 ) {
+    else if( p < 0 ) {
+
       target_ += neweye - eye_;
       eye_ = neweye;
       dirty_ = true;
+
+      Q_EMIT eyeChanged();
       update();
     }
-
   }
 
   e->ignore();

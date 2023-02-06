@@ -12,6 +12,7 @@
 #include "sharpness_measure/c_harris_sharpness_measure.h"
 #include "sharpness_measure/c_local_contrast_measure.h"
 #include "sharpness_measure/c_lpg_sharpness_measure.h"
+#include "sharpness_measure/c_sharpness_norm_measure.h"
 
 enum SHARPNESS_MEASURE {
   SHARPNESS_MEASURE_LCM = 0,

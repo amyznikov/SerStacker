@@ -52,6 +52,9 @@ public:
   void setFarPlane(double v);
   double farPlane() const;
 
+  void setCameraPos(const QVector3D & eye);
+  const QVector3D & cameraPos() const;
+
   void setTarget(const QVector3D & v);
   const QVector3D & target() const;
 
@@ -63,22 +66,23 @@ public:
   void cameraTo(const QVector3D & eye_pos, const QVector3D & target_pos, const QVector3D & up_direction);
   void lookTo(const QVector3D &target);
 
-  QPointF projectToScreen(const QVector3D & pos) const;
+  //QVector3D projectToScreen(const QVector3D & pos) const;
+  bool projectToScreen(const QVector3D & pos, QPointF * screen_pos) const;
 
   void drawText(const QPointF & pos, const QFont &font, const QString &str);
   void drawText(double x, double y, const QFont &font, const QString &str);
   void drawText(const QVector3D & pos, const QFont &font, const QString &str);
   void drawText(double x, double y, double z, const QFont &font, const QString &str);
 
-  void vaprintf(const QPointF & pos, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(4, 0);
-  void vaprintf(double x, double y, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(5, 0);
-  void vasprintf(const QVector3D & pos, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(4, 0);
-  void vasprintf(double x, double y, double z, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(6, 0);
+  void glvaprintf(const QPointF & pos, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(4, 0);
+  void glvaprintf(double x, double y, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(5, 0);
+  void glvaprintf(const QVector3D & pos, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(4, 0);
+  void glvaprintf(double x, double y, double z, const QFont &font, const char * format, va_list arglist) Q_ATTRIBUTE_FORMAT_PRINTF(6, 0);
 
-  void printf(const QPointF & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
-  void printf(double x, double y, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(5, 6);
-  void printf(const QVector3D & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
-  void printf(double x, double y, double z, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(6, 7);
+  void glprintf(const QPointF & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
+  void glprintf(double x, double y, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(5, 6);
+  void glprintf(const QVector3D & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
+  void glprintf(double x, double y, double z, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(6, 7);
 
   void drawArrow(qreal length, qreal radius, int nbSubdivisions);
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
@@ -123,6 +127,14 @@ protected:
   QMatrix4x4 mview_;
   QMatrix4x4 mperspective_;
   QMatrix4x4 mtotal_;
+
+  // current view port, update in resizeGL()
+  struct {
+    int x = 0;
+    int y = 0;
+    int w = 1;
+    int h = 1;
+  } vp;
 
   QPointF prev_mouse_pos_;
   bool dirty_ = true;

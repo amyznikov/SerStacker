@@ -163,6 +163,18 @@ double QGLView::farPlane() const
   return farPlane_;
 }
 
+void QGLView::setCameraPos(const QVector3D & eye)
+{
+  eye_ = eye;
+  dirty_ = true;
+  update();
+}
+
+const QVector3D & QGLView::cameraPos() const
+{
+  return eye_;
+}
+
 void QGLView::setTarget(const QVector3D & v)
 {
   target_ = v;
@@ -174,6 +186,7 @@ const QVector3D & QGLView::target() const
 {
   return target_;
 }
+
 
 void QGLView::setUpDirection(const QVector3D & v)
 {
@@ -212,22 +225,23 @@ void QGLView::lookTo(const QVector3D &target)
   setTarget(target);
 }
 
-QPointF QGLView::projectToScreen(const QVector3D & pos) const
+bool QGLView::projectToScreen(const QVector3D & pos, QPointF * screen_pos) const
 {
-  // view port
-  const int x = 0;
-  const int y = 0;
-  const int w = width();
-  const int h = height();
-
   // normalized device coordinates
   const QVector3D ndc =
       mtotal_.map(pos);
 
-  // window coordinates
-  return QPointF(((ndc.x() + 1.0) / 2.0) * w + x,
-      ((1.0 - ndc.y()) / 2.0) * h + y);
+  if( ndc.z() < 1 && fabsf(ndc.x()) < 1 && fabsf(ndc.y()) < 1 ) {
+
+    // apply view port to compute window coordinates
+    screen_pos->setX(((ndc.x() + 1.0) / 2.0) * vp.w + vp.x);
+    screen_pos->setY(((1.0 - ndc.y()) / 2.0) * vp.h + vp.y);
+    return true;
+  }
+
+  return false;
 }
+
 
 
 void QGLView::initializeGL()
@@ -244,16 +258,22 @@ void QGLView::initializeGL()
 void QGLView::resizeGL(int w, int h)
 {
   Base::resizeGL(w, h);
-  glViewport(0, 0, GLint(w), GLint(h));
-  dirty_ = true;
-  update();
+
+  // update and save current viewport
+  if( w > 0 && h > 0 ) {
+    glViewport(vp.x = 0, vp.y = 0, GLint(vp.w = w), GLint(vp.h = h));
+    dirty_ = true;
+    update();
+  }
 }
 
 void QGLView::paintGL()
 {
-  glPreDraw();
-  glDraw();
-  glPostDraw();
+  if( vp.w > 1 && vp.h > 1 ) {
+    glPreDraw();
+    glDraw();
+    glPostDraw();
+  }
 }
 
 void QGLView::cleanupGL()
@@ -277,19 +297,16 @@ void QGLView::glInit()
 
 void QGLView::glPreDraw()
 {
-  const int w = width();
-  const int h = height();
-
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
-  if( dirty_ && w > 0 && h > 0 ) {
+  if( dirty_ && vp.w > 0 && vp.h > 0 ) {
 
     mview_.setToIdentity();
     mview_.lookAt(eye_, target_, updirection_);
 
     mperspective_.setToIdentity();
-    mperspective_.perspective(fov_ * 180 / M_PI, GLfloat(w) / h, nearPlane_, farPlane_);
+    mperspective_.perspective(fov_ * 180 / M_PI, GLfloat(vp.w) / vp.h, nearPlane_, farPlane_);
 
     mtotal_ = mperspective_ * mview_;
 
@@ -344,15 +361,21 @@ void QGLView::drawText(double x, double y, const QFont & font, const QString & t
 
 void QGLView::drawText(const QVector3D & pos, const QFont &font, const QString &text)
 {
-  drawText(projectToScreen(pos), font, text);
+  QPointF spos;
+  if( projectToScreen(pos, &spos) ) {
+    drawText(spos, font, text);
+  }
 }
 
 void QGLView::drawText(double x, double y, double z, const QFont &font, const QString &text)
 {
-  drawText(projectToScreen(QVector3D(x, y, z)), font, text);
+  QPointF spos;
+  if( projectToScreen(QVector3D(x, y, z), &spos) ) {
+    drawText(spos, font, text);
+  }
 }
 
-void QGLView::vaprintf(const QPointF & pos, const QFont &font, const char * format, va_list arglist)
+void QGLView::glvaprintf(const QPointF & pos, const QFont &font, const char * format, va_list arglist)
 {
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
   QString text;
@@ -363,51 +386,63 @@ void QGLView::vaprintf(const QPointF & pos, const QFont &font, const char * form
 #endif
 }
 
-void QGLView::vaprintf(double x, double y, const QFont & font, const char * format, va_list arglist)
+void QGLView::glvaprintf(double x, double y, const QFont & font, const char * format, va_list arglist)
 {
-  vaprintf(QPointF(x, y), font, format, arglist);
+  glvaprintf(QPointF(x, y), font, format, arglist);
 }
 
-void QGLView::vasprintf(const QVector3D & pos, const QFont &font, const char * format, va_list arglist)
+void QGLView::glvaprintf(const QVector3D & pos, const QFont & font, const char * format, va_list arglist)
 {
-  vaprintf(projectToScreen(pos), font, format, arglist);
+  QPointF spos;
+  if( projectToScreen(pos, &spos) ) {
+    glvaprintf(spos, font, format, arglist);
+  }
 }
 
-void QGLView::vasprintf(double x, double y, double z, const QFont &font, const char * format, va_list arglist)
+void QGLView::glvaprintf(double x, double y, double z, const QFont &font, const char * format, va_list arglist)
 {
-  vaprintf(projectToScreen(QVector3D(x,y, z)), font, format, arglist);
+  QPointF spos;
+  if( projectToScreen(QVector3D(x, y, z), &spos) ) {
+    glvaprintf(spos, font, format, arglist);
+  }
 }
 
-void QGLView::printf(const QPointF & pos, const QFont &font, const char * format, ...)
+void QGLView::glprintf(const QPointF & pos, const QFont &font, const char * format, ...)
 {
   va_list arglist;
   va_start(arglist, format);
-  vaprintf(pos, font, format, arglist);
+  glvaprintf(pos, font, format, arglist);
   va_end(arglist);
 }
 
-void QGLView::printf(double x, double y, const QFont &font, const char * format, ...)
+void QGLView::glprintf(double x, double y, const QFont &font, const char * format, ...)
 {
   va_list arglist;
   va_start(arglist, format);
-  vaprintf(QPointF(x,y), font, format, arglist);
+  glvaprintf(QPointF(x,y), font, format, arglist);
   va_end(arglist);
 }
 
-void QGLView::printf(const QVector3D & pos, const QFont &font, const char * format, ...)
+void QGLView::glprintf(const QVector3D & pos, const QFont &font, const char * format, ...)
 {
-  va_list arglist;
-  va_start(arglist, format);
-  vaprintf(projectToScreen(pos), font, format, arglist);
-  va_end(arglist);
+  QPointF spos;
+  if( projectToScreen(pos, &spos) ) {
+    va_list arglist;
+    va_start(arglist, format);
+    glvaprintf(spos, font, format, arglist);
+    va_end(arglist);
+  }
 }
 
-void QGLView::printf(double x, double y, double z, const QFont & font, const char * format, ...)
+void QGLView::glprintf(double x, double y, double z, const QFont & font, const char * format, ...)
 {
-  va_list arglist;
-  va_start(arglist, format);
-  vaprintf(projectToScreen(QVector3D(x, y, z)), font, format, arglist);
-  va_end(arglist);
+  QPointF spos;
+  if( projectToScreen(QVector3D(x, y, z), &spos) ) {
+    va_list arglist;
+    va_start(arglist, format);
+    glvaprintf(spos, font, format, arglist);
+    va_end(arglist);
+  }
 }
 
 void QGLView::drawArrow(qreal length, qreal radius, int nbSubdivisions)
@@ -497,65 +532,75 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     const QPointF newpos = e->localPos();
 #endif
 
-    if( e->buttons() == Qt::RightButton ) { // Shift camera left / top / right bottom by moving target_
+    if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
 
       const QPointF delta =
           newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
-        const QMatrix4x4 minv =
-            mtotal_.inverted();
+        const QVector3D forward =
+            eye_ - target_;
 
-        const QVector3D v0 =
-            minv.map(QVector3D(0.0, 0.0, 1.0));
+        const QMatrix4x4 minv =
+            mview_.inverted();
+
+        const QVector3D T0 =
+            minv.map(QVector3D(0, 0, forward.length()));
 
         if( delta.y() ) {
 
-          const QVector3D vv =
-              1e-2 * delta.y() * (minv.map(QVector3D(0.0, 0.1, 1.0)) - v0)
-                  .normalized();
+          const QVector3D TU =
+              minv.map(QVector3D(0, delta.y() / vp.h, forward.length()));
 
-          target_ += vv;
-          eye_ += vv;
+          const QVector3D Up =
+              (TU - T0) * std::max( (float)nearPlane_, forward.length());
+
+          target_ += Up;
+          eye_ += Up;
         }
 
         if( delta.x() ) {
 
-          const QVector3D vh =
-              1e-2 * delta.x() * (minv.map(QVector3D(0.1, 0.0, 1.0)) - v0)
-                  .normalized();
+          const QVector3D TR =
+              minv.map(QVector3D(-delta.x() / vp.w, 0, forward.length()));
 
-          target_ -= vh;
-          eye_ -= vh;
+          const QVector3D Right =
+              (TR - T0) * std::max((float) nearPlane_, forward.length());
+
+          target_ += Right;
+          eye_ += Right;
         }
 
         dirty_ = true;
+
+        Q_EMIT eyeChanged();
         update();
       }
 
       prev_mouse_pos_ = newpos;
     }
-    else if( e->buttons() == Qt::LeftButton ) { // Rotate camera around target_
+
+    else if( e->buttons() == Qt::LeftButton ) { // Rotate camera
 
       const QPointF delta =
           newpos - prev_mouse_pos_;
 
       if( delta.x() || delta.y() ) {
 
-        const QMatrix4x4 minv =
-            mview_.inverted();
-
         const QVector3D forward =
             eye_ - target_;
 
-        if ( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
+        const QMatrix4x4 minv =
+            mview_.inverted();
+
+        if( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
 
           const int signy =
-              newpos.x() > width() / 2 ? +1 : -1;
+              newpos.x() > vp.w / 2 ? +1 : -1;
 
           const int signx =
-              newpos.y() < height() / 2 ? +1 : -1;
+              newpos.y() < vp.h / 2 ? +1 : -1;
 
           updirection_ =
               QQuaternion::fromAxisAndAngle(forward, 0.2 * (signy * delta.y() + signx * delta.x()))
@@ -565,9 +610,9 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
           Q_EMIT eyeChanged();
           update();
-
         }
-        else { // Rotate camera around of the up / right axes
+
+        else { // Rotate camera around of the Up / Right axes
 
           QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
           QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
@@ -606,27 +651,15 @@ void QGLView::wheelEvent(QWheelEvent * e)
 
   if( delta ) {
 
-    const QVector3D forward =
-        target_ - eye_;
+    if( !e->modifiers() ) {
 
-    const QVector3D neweye =
-        eye_ + 1e-2 * forward * delta / forward.length();
+      // Move both camera and target forward / backward
 
-    const QVector3D newforward =
-        target_ - neweye;
+      const QVector3D forward =
+          target_ - eye_;
 
-    const double p =
-        QVector3D::dotProduct(newforward,
-            forward);
-
-    if( p > 0 ) {
-      eye_ = neweye;
-      dirty_ = true;
-
-      Q_EMIT eyeChanged();
-      update();
-    }
-    else if( p < 0 ) {
+      const QVector3D neweye =
+          eye_ + 1e-2 * forward * delta / forward.length();
 
       target_ += neweye - eye_;
       eye_ = neweye;
@@ -634,6 +667,43 @@ void QGLView::wheelEvent(QWheelEvent * e)
 
       Q_EMIT eyeChanged();
       update();
+
+    }
+    else if( e->modifiers() == Qt::ControlModifier ) {
+
+      // Move camera forward / backward
+
+      const QVector3D forward =
+          target_ - eye_;
+
+      const QVector3D neweye =
+          eye_ + 1e-2 * forward * delta / forward.length();
+
+      const QVector3D newforward =
+          target_ - neweye;
+
+      const double p =
+          QVector3D::dotProduct(newforward,
+              forward);
+
+      if( p > 0 ) {
+        // just move camera
+        eye_ = neweye;
+        dirty_ = true;
+
+        Q_EMIT eyeChanged();
+        update();
+      }
+      else if( p < 0 ) {
+        // don't allow camera to jump target
+
+        target_ += neweye - eye_;
+        eye_ = neweye;
+        dirty_ = true;
+
+        Q_EMIT eyeChanged();
+        update();
+      }
     }
   }
 

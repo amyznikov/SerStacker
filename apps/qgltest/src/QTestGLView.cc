@@ -121,9 +121,9 @@ void QTestGLView::glDraw()
   static QFont font("Monospace", 12);
   glColor3ub(255, 255, 0);
 
-  printf(20, 20, font, "time is %g ms", get_realtime_ms());
+  glprintf(20, 20, font, "time is %g ms", get_realtime_ms());
 
-  printf(12, 0, 0, font, "X");
+  glprintf(12, 0, 0, font, "X");
 
 }
 

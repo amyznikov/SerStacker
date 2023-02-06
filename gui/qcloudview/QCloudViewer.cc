@@ -130,7 +130,6 @@ void QGLCloudViewer::glPreDraw()
   glEnable(GL_PROGRAM_POINT_SIZE);
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
-  //  CF_DEBUG("glIsEnabled(GL_DEPTH_TEST)=%d", glIsEnabled(GL_DEPTH_TEST));
 }
 
 void QGLCloudViewer::glPostDraw()

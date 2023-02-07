@@ -2182,7 +2182,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     /////////////////////////////////////
 
     if ( sharpness_norm_accumulation_ ) {
-      sharpness_norm_accumulation_-> add(current_frame, current_mask);
+      sharpness_norm_accumulation_-> add(current_frame,
+          current_mask);
     }
 
     /////////////////////////////////////
@@ -2210,18 +2211,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
                 current_weights, cv::noArray());
           }
 
-        }
-
-        if( !current_weights.empty() ) {
-
-          if ( !current_mask.empty() ) {
-            multiply_weights(current_mask, current_weights, current_weights,
-                current_mask.depth() == CV_8U ?
-                    1. / 255 : 1,
-                CV_32F);
-          }
-
-          current_mask = current_weights;
         }
 
       }
@@ -2327,13 +2316,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               cv::noArray(), cv::noArray(),
               registration_options.image_registration_options.interpolation,
               ECC_BORDER_CONSTANT);
-
-          multiply_weights(current_mask, current_weights, current_weights,
-              current_mask.depth() == CV_8U ?
-                  1. / 255 : 1,
-              CV_32F);
-
-          current_mask = current_weights;
         }
       }
 
@@ -2384,6 +2366,21 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
 
     /////////////////////////////////////////////////////////////////////////////////
 
+    /////////////////////////////////////////////////////////////////////////////////
+    if( !current_weights.empty() ) {
+
+      if ( !current_mask.empty() ) {
+        multiply_weights(current_mask, current_weights, current_weights,
+            current_mask.depth() == CV_8U ?
+                1. / 255 : 1,
+            CV_32F);
+      }
+
+      current_mask = current_weights;
+    }
+    /////////////////////////////////////////////////////////////////////////////////
+
+
     if ( output_options.save_accumulation_masks ) {
 
       save_accumulation_mask(current_frame, current_mask,
@@ -2399,11 +2396,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       if ( true ) {
         lock_guard lock(accumulator_lock_);
 
-        // FIXME: This is temporary hack, fix it in correct way !
-        if ( !current_weights.empty() && current_mask.data != current_weights.data ) {
-          current_mask = current_weights;
-        }
-
         if( frame_accumulation_->accumulated_frames() < 1 ) {
 
           const bool fok =
@@ -2418,11 +2410,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           }
         }
 
-
-
         CF_DEBUG("current_frame.depth=%d current_mask.depth=%d", current_frame.depth(), current_mask.depth());
-
-
         if ( !frame_accumulation_->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;

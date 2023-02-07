@@ -213,8 +213,8 @@ bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-QCloudViewer::QCloudViewer(QWidget* parent)
-  : Base(parent)
+QCloudViewer::QCloudViewer(QWidget* parent) :
+    Base(parent)
 {
   layout_ = new QVBoxLayout(this);
   layout_->setContentsMargins(0, 0, 0, 0);

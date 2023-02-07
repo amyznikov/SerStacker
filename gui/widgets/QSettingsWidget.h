@@ -209,10 +209,11 @@ public:
           });
     }
 
-    QObject::connect(ctl, &QObject::destroyed,
-        [this, ctl]() {
-          QObject::disconnect(ctl, nullptr, this, nullptr);
-        });
+//    QObject::connect(ctl, &QObject::destroyed,
+//        [this, ctl]() {
+//          ctl->disconnect(this);
+//          // QObject::disconnect(ctl, nullptr, this, nullptr);
+//        });
 
     return ctl;
   }

@@ -280,8 +280,13 @@ void QGLView::cleanupGL()
 {
   Base::makeCurrent();
 
-  disconnect(context(), &QOpenGLContext::aboutToBeDestroyed,
-      this, &ThisClass::cleanupGL);
+  QOpenGLContext *ctx =
+      context();
+
+  if( ctx ) {
+    disconnect(ctx, &QOpenGLContext::aboutToBeDestroyed,
+        this, &ThisClass::cleanupGL);
+  }
 
   glCleanup();
 

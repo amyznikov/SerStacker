@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.20)
 project(qgltest CXX)
 
 # Disabe this app
-# return()
+return()
 
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 17)

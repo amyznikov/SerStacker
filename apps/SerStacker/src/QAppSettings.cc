@@ -72,7 +72,7 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
 void QGeneralAppSettingsWidget::setImageEditor(QImageEditor * imageEditor)
 {
   if (imageEditor_ ) {
-    disconnect(imageEditor_);
+    imageEditor_->disconnect(this);
   }
 
   if( (imageEditor_ = imageEditor) ) {

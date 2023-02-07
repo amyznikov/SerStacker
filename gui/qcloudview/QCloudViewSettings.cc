@@ -41,8 +41,8 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
       add_numeric_box<QVector3D>("Target:",
           [this](const QVector3D & v) -> bool {
             if ( cloudViewer_ ) {
-              cloudViewer_->cloudView()->setTarget(v);
-              save_parameter(PREFIX, "target", cloudViewer_->cloudView()->target());
+              cloudViewer_->cloudView()->setViewTargetPoint(v);
+              save_parameter(PREFIX, "target", cloudViewer_->cloudView()->viewTargetPoint());
               return true;
             }
             return false;
@@ -133,9 +133,9 @@ void QCloudViewSettings::onload(QSettings & settings)
       cloudView->setFarPlane(farPlane);
     }
 
-    QVector3D target = cloudView->target();
+    QVector3D target = cloudView->viewTargetPoint();
     if ( load_parameter(settings, PREFIX, "target", &target) ) {
-      cloudView->setTarget(target);
+      cloudView->setViewTargetPoint(target);
     }
 
     QVector3D upDirection = cloudView->upDirection();
@@ -177,7 +177,7 @@ void QCloudViewSettings::onupdatecontrols()
 
     farPlane_ctl->setValue(toQString(cloudView->farPlane()));
     nearPlane_ctl->setValue(toQString(cloudView->nearPlane()));
-    sceneTarget_ctl->setValue(toQString(cloudView->target()));
+    sceneTarget_ctl->setValue(toQString(cloudView->viewTargetPoint()));
     upDirection_ctl->setValue(toQString(cloudView->upDirection()));
     sceneOrigin_ctl->setValue(toQString(cloudView->sceneOrigin()));
     pointSize_ctl->setValue(cloudView->pointSize());

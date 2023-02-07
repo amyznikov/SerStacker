@@ -69,7 +69,7 @@ void QTestGLViewSettings::setGLView(QTestGLView * view)
 {
   glView_ = view;
 
-  connect(glView_, &QTestGLView::eyeChanged,
+  connect(glView_, &QTestGLView::viewPointChanged,
       [this]() {
         updateControls();
       });

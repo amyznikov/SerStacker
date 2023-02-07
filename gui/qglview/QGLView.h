@@ -52,21 +52,20 @@ public:
   void setFarPlane(double v);
   double farPlane() const;
 
-  void setCameraPos(const QVector3D & eye);
-  const QVector3D & cameraPos() const;
+  void setViewPoint(const QVector3D & eye);
+  const QVector3D & viewPoint() const;
 
-  void setTarget(const QVector3D & v);
-  const QVector3D & target() const;
+  void setViewTargetPoint(const QVector3D & v);
+  const QVector3D & viewTargetPoint() const;
 
   void setUpDirection(const QVector3D & v);
   const QVector3D & upDirection() const;
 
   void setPerspecitive(double fov_radians, double nearPlane, double farPlane);
 
-  void cameraTo(const QVector3D & eye_pos, const QVector3D & target_pos, const QVector3D & up_direction);
+  void cameraTo(const QVector3D & viewPoint, const QVector3D & viewTargetPoint, const QVector3D & viewUpDirection);
   void lookTo(const QVector3D &target);
 
-  //QVector3D projectToScreen(const QVector3D & pos) const;
   bool projectToScreen(const QVector3D & pos, QPointF * screen_pos) const;
 
   void drawText(const QPointF & pos, const QFont &font, const QString &str);
@@ -89,7 +88,7 @@ public:
   void drawMainAxes();
 
 Q_SIGNALS:
-  void eyeChanged();
+  void viewPointChanged();
 
 protected:
   virtual void glInit();
@@ -120,9 +119,9 @@ protected:
   double nearPlane_ = 1.0;
   double farPlane_ = 100.0;
 
-  QVector3D eye_ = QVector3D(40, 30, 30);
-  QVector3D target_ = QVector3D(0, 0, 0);
-  QVector3D updirection_ = QVector3D(0, 0, 1);
+  QVector3D viewPoint_ = QVector3D(40, 30, 30);
+  QVector3D viewTarget_ = QVector3D(0, 0, 0);
+  QVector3D viewUpDirection_ = QVector3D(0, 0, 1);
 
   QMatrix4x4 mview_;
   QMatrix4x4 mperspective_;
@@ -134,7 +133,7 @@ protected:
     int y = 0;
     int w = 1;
     int h = 1;
-  } vp;
+  } viewport;
 
   QPointF prev_mouse_pos_;
   bool dirty_ = true;

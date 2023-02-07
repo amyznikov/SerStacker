@@ -93,4 +93,26 @@ protected:
   int border_right_ = 0;
 };
 
+
+class c_laplacian_pyramid_focus_stacking :
+    public c_frame_accumulation
+{
+public:
+  typedef c_frame_accumulation_with_fft this_class;
+  typedef c_frame_accumulation base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
+  void release() override;
+  cv::Size accumulator_size() const override;
+
+protected:
+
+protected:
+  std::vector<cv::Mat> acc_;
+};
+
+
 #endif /* __c_frame_stacking_h__ */

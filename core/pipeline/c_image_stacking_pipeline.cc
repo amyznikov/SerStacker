@@ -2196,15 +2196,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       const bool generated_master_frame =
           !master_frame_generation_ && master_frame_options.generate_master_frame;
 
-//      CF_DEBUG("\nXXXXXXXX\n"
-//          "master_frame_index_=%d input_sequence->current_pos()=%d master_frame_generation_=%d\n"
-//          "is_master_frame = %d\n"
-//          "XXXXXXXXXX\n",
-//          master_frame_index_,
-//          input_sequence->current_pos(),
-//          master_frame_generation_,
-//          is_master_frame);
-
       if ( is_master_frame && !generated_master_frame ) {
 
         if ( upscale_required(frame_upscale_after_align) ) {
@@ -2298,6 +2289,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               }
             }
 
+            CF_DEBUG("flow_accumulation_->add(turbulence)");
             if( !flow_accumulation_->add(turbulence) ) {
               CF_ERROR("flow_accumulation_->add(turbulence) fails");
               break;
@@ -2407,6 +2399,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
       if ( true ) {
         lock_guard lock(accumulator_lock_);
 
+        // FIXME: This is temporary hack, fix it in correct way !
+        if ( !current_weights.empty() && current_mask.data != current_weights.data ) {
+          current_mask = current_weights;
+        }
+
         if( frame_accumulation_->accumulated_frames() < 1 ) {
 
           const bool fok =
@@ -2421,7 +2418,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           }
         }
 
+
+
         CF_DEBUG("current_frame.depth=%d current_mask.depth=%d", current_frame.depth(), current_mask.depth());
+
+
         if ( !frame_accumulation_->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;

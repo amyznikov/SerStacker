@@ -7,9 +7,6 @@
 
 #include "c_gaussian_filter.h"
 #include <core/debug.h>
-#if HAVE_TBB
-# include <tbb/tbb.h>
-#endif
 
 c_gaussian_filter::c_gaussian_filter()
 {
@@ -33,8 +30,8 @@ double c_gaussian_filter::sigmay() const
 
 void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int ktype, cv::Size & ksize, double sigmax, double sigmay, double scale)
 {
-  const int kdepth = CV_MAT_DEPTH(ktype);
-
+  const int kdepth =
+      CV_MAT_DEPTH(ktype);
 
   // Automatic detection of kernel size from sigma if not specified
 
@@ -58,25 +55,24 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
 
   CV_Assert(ksize.width > 0 && ksize.width % 2 == 1 && ksize.height > 0 && ksize.height % 2 == 1);
 
-//  sigmax = std::max(sigmax, 0.);
-//  sigmay = std::max(sigmay, 0.);
-
-  if ( sigmax > 0 ) {
-    kx = cv::getGaussianKernel(ksize.width, sigmax, std::max(kdepth, CV_32F)) * scale;
+  if( sigmax > 0 ) {
+    kx = cv::getGaussianKernel(ksize.width, sigmax,
+        std::max(kdepth, CV_32F)) * scale;
   }
   else {
     kx = cv::Mat1f::ones(1, 1) * scale;
   }
 
   if ( sigmay > 0 ) {
-    ky = cv::getGaussianKernel(ksize.height, sigmay, std::max(kdepth, CV_32F)) * scale;
+    ky = cv::getGaussianKernel(ksize.height, sigmay,
+        std::max(kdepth, CV_32F)) * scale;
   }
   else {
     ky = cv::Mat1f::ones(1,1) * scale;
   }
 }
 
-void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst, int borderType, double zvalue, int ddepth) const
+void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst, int borderType, int ddepth) const
 {
   const cv::Size src_size =
       _src.size();
@@ -125,80 +121,15 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
       CV_32F,
       (1.0 / 255) * Kx_, Ky_,
       cv::Point(-1, -1),
-      0,
+      1e-12, // set to some small number to prevent division by zero below
       borderType);
-
 
   const cv::Mat1b src_mask =
       _mask.getMat();
 
+  if( gsrc.channels() != gmask.channels() ) {
+    cv::merge(std::vector<cv::Mat>(gsrc.channels(), gmask), gmask);
+  }
 
-#if !HAVE_TBB
-
-  const int cn =
-      gsrc.channels();
-
-    if ( cn > 1 ) {
-
-      std::vector<cv::Mat> channels(cn);
-
-      for ( int i = 0; i < cn ; ++i ) {
-        channels[i] = gmask;
-      }
-
-      cv::merge(channels, gmask);
-    }
-
-    cv::divide(gsrc, gmask, _dst, 1, ddepth);
-
-    _dst.setTo(0, ~src_mask);
-
-#else
-
-    typedef tbb::blocked_range<int> tbb_range;
-
-    tbb::parallel_for(tbb_range(0, gsrc.rows, 256),
-        [&](const tbb_range & range) {
-
-          const int cn =
-              gsrc.channels();
-
-          const double zv =
-              zvalue;
-
-          for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
-
-            float * gsrcp =
-                gsrc.ptr<float>(y);
-
-            const float * gmskp =
-                gmask.ptr<const float>(y);
-
-            const uint8_t * smskp =
-                src_mask[y];
-
-            for ( int x = 0, nx = gsrc.cols; x < nx; ++x, gsrcp += cn ) {
-
-              if ( smskp[x] ) {
-                for ( int c = 0; c < cn; ++c ) {
-                  gsrcp[c] /= gmskp[x];
-                }
-              }
-              else {
-                for ( int c = 0; c < cn; ++c ) {
-                  gsrcp[c] = zv;
-                }
-              }
-
-            }
-          }
-        });
-
-    if ( _dst.fixedType() && ddepth == _dst.depth() ) {
-      _dst.move(gsrc);
-    }
-    else {
-      gsrc.convertTo(_dst, ddepth);
-    }
-#endif
+  cv::divide(gsrc, gmask, _dst, 1, ddepth);
 }

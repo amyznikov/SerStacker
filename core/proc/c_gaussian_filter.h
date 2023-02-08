@@ -26,7 +26,7 @@ public:
 
   // The src pixels MUST be also set to 0 where _mask is 0
   void apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
-      int borderType = cv::BORDER_DEFAULT, double zvalue = 0, int ddepth=-1) const;
+      int borderType = cv::BORDER_DEFAULT, int ddepth=-1) const;
 
   double sigmax() const;
   double sigmay() const;

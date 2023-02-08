@@ -42,8 +42,16 @@ template<>
 const c_enum_member * members_of<frame_accumulation_method>()
 {
   static constexpr c_enum_member members[] = {
-      { frame_accumulation_weighted_average, "weighted_average", },
-      { frame_accumulation_fft, "fft", },
+
+      { frame_accumulation_weighted_average, "weighted_average",
+          "Simple weighted average with weights proportional to the smoothed sum of squared laplacian and gradient" },
+
+      { frame_accumulation_focus_stack, "focus_stack",
+          "Focus stacking based on paper of Wang and Chang 2011"},
+
+      { frame_accumulation_fft, "fft",
+          "Stupid experiments with fft-based stacking "},
+
       { frame_accumulation_none, "None", },
       { frame_accumulation_none, nullptr, },
   };
@@ -488,6 +496,8 @@ c_frame_accumulation::ptr c_image_stacking_options::create_frame_accumulation() 
   switch ( accumulation_options_.accumulation_method ) {
   case frame_accumulation_weighted_average:
     return c_frame_accumulation::ptr(new c_frame_weigthed_average());
+  case frame_accumulation_focus_stack:
+    return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking());
   case frame_accumulation_fft :
     return c_frame_accumulation::ptr(new c_frame_accumulation_with_fft());
   default :

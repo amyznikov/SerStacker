@@ -8,7 +8,8 @@
 #include "laplacian_pyramid.h"
 
 
-void build_laplacian_pyramid(cv::InputArray input_image, std::vector<cv::Mat> & pyramid, int minimum_image_size)
+void build_laplacian_pyramid(cv::InputArray input_image, std::vector<cv::Mat> & pyramid, int minimum_image_size,
+    cv::BorderTypes borderType)
 {
   pyramid.emplace_back();
   input_image.getMat().convertTo(pyramid.back(), CV_32F);
@@ -25,15 +26,16 @@ void build_laplacian_pyramid(cv::InputArray input_image, std::vector<cv::Mat> & 
     }
 
     cv::Mat filtered_image, upscaled_image;
-    cv::pyrDown(pyramid.back(), filtered_image);
-    cv::pyrUp(filtered_image, upscaled_image, pyramid.back().size());
+    cv::pyrDown(pyramid.back(), filtered_image, cv::Size(), borderType);
+    cv::pyrUp(filtered_image, upscaled_image, pyramid.back().size(), borderType);
     cv::subtract(pyramid.back(), upscaled_image, pyramid.back());
     pyramid.emplace_back(filtered_image);
   }
 }
 
 void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
-    const std::vector<cv::Mat> & pyramid)
+    const std::vector<cv::Mat> & pyramid,
+    cv::BorderTypes borderType)
 {
   cv::Mat current_image;
 
@@ -46,7 +48,7 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
 
     for( int i = pyrsize - 2; i >= 0; --i ) {
 
-      cv::pyrUp(current_image, current_image, pyramid[i].size());
+      cv::pyrUp(current_image, current_image, pyramid[i].size(), borderType);
       cv::add(current_image, pyramid[i], current_image);
     }
   }

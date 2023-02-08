@@ -404,7 +404,7 @@ void QImageProcessorChainEditor::onAddImageProcessor()
   new_routine = c_image_processor_routine::create(dlgbox->selectedClassFactory()->class_name);
   if( !new_routine ) {
     QMessageBox::critical(this, "ERROR", QString("c_image_processor_routine::create(%1) fails").
-        arg(dlgbox->selectedClassFactory()->class_name.c_str()));
+        arg(QString(dlgbox->selectedClassFactory()->class_name.c_str())));
     return;
   }
 

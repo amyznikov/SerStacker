@@ -30,7 +30,8 @@ enum roi_selection_method {
 enum frame_accumulation_method {
   frame_accumulation_none = -1,
   frame_accumulation_weighted_average = 0,
-  frame_accumulation_fft = 1,
+  frame_accumulation_focus_stack,
+  frame_accumulation_fft,
 };
 
 enum frame_upscale_stage {

@@ -33,13 +33,13 @@ QString toQString(const QVector3D & v)
 
 bool load_parameter(const QSettings & settings, const QString & prefix, const char * name,  QVector3D * v)
 {
-  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(name), "").toString(), v);
+  return fromString(settings.value(QString("%1/%2").arg(prefix).arg(QString(name)), "").toString(), v);
 }
 
 void save_parameter(const QString & prefix, const char * name, const QVector3D & value )
 {
   QSettings settings;
-  settings.setValue(QString("%1/%2").arg(prefix).arg(name), toQString(value));
+  settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), toQString(value));
 }
 
 

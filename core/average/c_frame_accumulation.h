@@ -24,7 +24,8 @@ public:
   virtual void release() = 0;
   virtual cv::Size accumulator_size() const = 0;
 
-  int accumulated_frames() const {
+  int accumulated_frames() const
+  {
     return accumulated_frames_;
   }
 
@@ -103,7 +104,7 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
+  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void release() override;
   cv::Size accumulator_size() const override;
@@ -111,7 +112,10 @@ public:
 protected:
 
 protected:
-  std::vector<cv::Mat> acc_;
+  std::vector<cv::Mat> acc;
+  cv::Size image_size_;
+  int acctype_ = CV_32F;
+  int weightstype_ = CV_8U;
 };
 
 

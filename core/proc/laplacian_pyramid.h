@@ -13,9 +13,11 @@
 
 void build_laplacian_pyramid(cv::InputArray input_image,
     std::vector<cv::Mat> & pyramid,
-    int minimum_image_size = 4);
+    int minimum_image_size = 4,
+    cv::BorderTypes borderType = cv::BORDER_DEFAULT);
 
 void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
-    const std::vector<cv::Mat> & pyramid);
+    const std::vector<cv::Mat> & pyramid,
+    cv::BorderTypes borderType = cv::BORDER_DEFAULT);
 
 #endif /* __laplacian_pyramid_h__ */

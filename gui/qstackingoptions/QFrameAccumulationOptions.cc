@@ -12,117 +12,46 @@
 
 #define ICON_check_all      ":/qstackingoptions/icons/check_all"
 
-//static const char borderless_style[] = ""
-//    "QToolButton { border: none; } "
-//    "QToolButton::menu-indicator { image: none; }"
-//    "";
-
-//static QIcon getIcon(const QString & name)
-//{
-//  return QIcon(QString(":/qstackingoptions/icons/%1").arg(name));
-//}
-
 QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
     Base("QFrameAccumulationOptions", parent)
 {
-
-  accumulation_method_ctl = add_enum_combobox<frame_accumulation_method>(
-      "Accumulation Method:",
-      [this](frame_accumulation_method v) {
-        if ( options_ && v != options_->accumulation_method ) {
-          options_->accumulation_method = v;
-          emit parameterChanged();
-        }
-      });
-
-//  lksize_ctl =
-//      add_numeric_box<int>("lksize:",
-//          [this](int v) {
-//            if ( options_ && v != options_->lksize ) {
-//              options_->lksize = v;
-//              emit parameterChanged();
-//            }
-//          });
-//
-//  scale_size_ctl =
-//      add_numeric_box<int>("scale:",
-//          [this](int v) {
-//            if ( options_ && v != options_->scale_size ) {
-//              options_->scale_size = v;
-//              emit parameterChanged();
-//            }
-//          });
-//
-//  lw_ctl =
-//      add_numeric_box<double>("lw:",
-//          [this](double v) {
-//            if ( options_ && v != options_->m_.laplacian_weight() ) {
-//              options_->m_.set_laplacian_weight(v);
-//              emit parameterChanged();
-//            }
-//          });
-//
-//  gw_ctl =
-//      add_numeric_box<double>("gw:",
-//          [this](double v) {
-//            if ( options_ && v != options_->m_.gradient_weight() ) {
-//              options_->m_.set_gradient_weight(v);
-//              emit parameterChanged();
-//            }
-//          });
-
-  k_ctl =
-      add_numeric_box<double>("k:",
-          [this](double v) {
-            if ( options_ && v != options_->m_.k() ) {
-              options_->m_.set_k(v);
-              emit parameterChanged();
+  accumulation_method_ctl =
+      add_enum_combobox<frame_accumulation_method>(
+          "Accumulation Method:",
+          [this](frame_accumulation_method v) {
+            if ( options_ && v != options_->accumulation_method ) {
+              options_->accumulation_method = v;
+              updatecurrentoptionswidget();
+              Q_EMIT parameterChanged();
             }
           });
 
-  dscale_ctl =
-      add_numeric_box<double>("dscale:",
-          [this](double v) {
-            if ( options_ && v != options_->m_.dscale() ) {
-              options_->m_.set_dscale(v);
-              emit parameterChanged();
-            }
-          });
+  stack_ctl = new QStackedWidget(this);
+  stack_ctl->setSizePolicy(QSizePolicy::Policy::Maximum, QSizePolicy::Policy::Maximum);
 
-  uscale_ctl =
-      add_numeric_box<double>("uscale:",
-          [this](double v) {
-            if ( options_ && v != options_->m_.uscale() ) {
-              options_->m_.set_uscale(v);
-              emit parameterChanged();
-            }
-          });
+  stack_ctl->addWidget(lpg_options_ctl =
+      new QLPGSharpnessMeasureOptions(this));
 
-  square_ctl =
-      add_checkbox("squared:",
-          [this](bool checked) {
-            if ( options_ &&  options_->m_.squared() != checked ) {
-              options_->m_.set_squared(checked);
-              emit parameterChanged();
-            }
-          });
+  stack_ctl->addWidget(focus_stack_options_ctl =
+      new QFocusStackingOptions(this));
 
-  avgc_ctl =
-      add_checkbox("avgc:",
-          [this](bool checked) {
-            if ( options_ &&  options_->m_.avgchannel() != checked ) {
-              options_->m_.set_avgchannel(checked);
-              emit parameterChanged();
-            }
-          });
+  form->addRow(stack_ctl);
 
-  setEnabled(false);
+  connect(lpg_options_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  connect(focus_stack_options_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  updateControls();
 }
 
 
 void QFrameAccumulationOptions::set_accumulation_options(c_frame_accumulation_options * options)
 {
   this->options_ = options;
+  lpg_options_ctl->set_accumulation_options(options);
+  focus_stack_options_ctl->set_accumulation_options(options);
   updateControls();
 }
 
@@ -137,11 +66,104 @@ void QFrameAccumulationOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-
     accumulation_method_ctl->setCurrentItem(options_->accumulation_method);
+    updatecurrentoptionswidget();
+    setEnabled(true);
+  }
 
-//    lw_ctl->setValue(options_->m_.laplacian_weight());
-//    gw_ctl->setValue(options_->m_.gradient_weight());
+  Base::onupdatecontrols();
+}
+
+void QFrameAccumulationOptions::updatecurrentoptionswidget()
+{
+  switch (accumulation_method_ctl->currentItem()) {
+    case frame_accumulation_weighted_average:
+      lpg_options_ctl->updateControls();
+      stack_ctl->setCurrentWidget(lpg_options_ctl);
+      stack_ctl->setEnabled(true);
+      break;
+    case frame_accumulation_focus_stack:
+      focus_stack_options_ctl->updateControls();
+      stack_ctl->setCurrentWidget(focus_stack_options_ctl);
+      stack_ctl->setEnabled(true);
+      break;
+    default:
+      stack_ctl->setEnabled(false);
+      break;
+  }
+}
+
+
+QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(QWidget * parent) :
+    Base("QLPGSharpnessMeasureOptions", parent)
+{
+  k_ctl =
+      add_numeric_box<double>("k:",
+          [this](double v) {
+            if ( options_ && v != options_->m_.k() ) {
+              options_->m_.set_k(v);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  dscale_ctl =
+      add_numeric_box<double>("dscale:",
+          [this](double v) {
+            if ( options_ && v != options_->m_.dscale() ) {
+              options_->m_.set_dscale(v);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  uscale_ctl =
+      add_numeric_box<double>("uscale:",
+          [this](double v) {
+            if ( options_ && v != options_->m_.uscale() ) {
+              options_->m_.set_uscale(v);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  square_ctl =
+      add_checkbox("squared:",
+          [this](bool checked) {
+            if ( options_ &&  options_->m_.squared() != checked ) {
+              options_->m_.set_squared(checked);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  avgc_ctl =
+      add_checkbox("avgc:",
+          [this](bool checked) {
+            if ( options_ &&  options_->m_.avgchannel() != checked ) {
+              options_->m_.set_avgchannel(checked);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  updateControls();
+}
+
+
+void QLPGSharpnessMeasureOptions::set_accumulation_options(c_frame_accumulation_options * options)
+{
+  options_ = options;
+  updateControls();
+}
+
+const c_frame_accumulation_options * QLPGSharpnessMeasureOptions::accumulation_options() const
+{
+  return options_;
+}
+
+void QLPGSharpnessMeasureOptions::onupdatecontrols()
+{
+  if ( !options_ ) {
+    setEnabled(false);
+  }
+  else {
+
     k_ctl->setValue(options_->m_.k());
     dscale_ctl->setValue(options_->m_.dscale());
     uscale_ctl->setValue(options_->m_.uscale());
@@ -150,6 +172,34 @@ void QFrameAccumulationOptions::onupdatecontrols()
 
     setEnabled(true);
   }
+}
+
+
+QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
+    Base("QFocusStackingOptions", parent)
+{
+}
+
+void QFocusStackingOptions::set_accumulation_options(c_frame_accumulation_options * options)
+{
+  options_ = options;
+  updateControls();
+}
+
+const c_frame_accumulation_options * QFocusStackingOptions::accumulation_options() const
+{
+  return options_;
+}
+
+void QFocusStackingOptions::onupdatecontrols()
+{
+  if ( !options_ ) {
+    setEnabled(false);
+  }
+  else {
+    setEnabled(true);
+  }
 
   Base::onupdatecontrols();
 }
+

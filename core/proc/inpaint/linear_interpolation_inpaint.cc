@@ -387,16 +387,12 @@ void linear_interpolation_inpaint(cv::InputArray _src, cv::InputArray _mask, cv:
   _src.copyTo(himage);
   _mask.copyTo(mask);
 
-  while (42) {
+  while (cv::countNonZero(mask) < mask.size().area()) {
 
     himage.copyTo(vimage);
     interpolate_holes_h(himage, mask, hdists);
     interpolate_holes_v(vimage, mask, vdists);
     fill_holes(himage, vimage, hdists, vdists, mask);
-
-    if( cv::countNonZero(mask) == mask.size().area() ) {
-      break;
-    }
   }
 
   dst.move(himage);

@@ -178,6 +178,75 @@ void QLPGSharpnessMeasureOptions::onupdatecontrols()
 QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
     Base("QFocusStackingOptions", parent)
 {
+
+  fusion_ctl =
+      add_enum_combobox<c_laplacian_pyramid_focus_stacking::fusing_policy>(
+          "fusion method:",
+          [this](c_laplacian_pyramid_focus_stacking::fusing_policy v) {
+            if ( options_ && options_->fs_.fusing_policy != v ) {
+              options_->fs_.fusing_policy = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](c_laplacian_pyramid_focus_stacking::fusing_policy * v) {
+            if ( options_ ) {
+              *v = options_->fs_.fusing_policy;
+              return true;
+
+            }
+            return false;
+          });
+
+  enable_inpaint_ctl =
+      add_checkbox("Inpaint mask holes",
+          [this](bool checked) {
+            if ( options_ && options_->fs_.inpaint_mask_holes != checked ) {
+              options_->fs_.inpaint_mask_holes = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              * checked = options_->fs_.inpaint_mask_holes;
+              return true;
+            }
+            return false;
+          });
+
+  kradius_ctl =
+      add_numeric_box<int>("kradius [pix]",
+          [this](int v) {
+            if ( options_ && options_->fs_.kradius != v ) {
+              options_->fs_.kradius = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->fs_.kradius;
+              return true;
+            }
+            return false;
+          });
+
+  ksigma_ctl =
+      add_numeric_box<double>("ksigma [pix]",
+          [this](double v) {
+            if ( options_ && options_->fs_.ksigma != v ) {
+              options_->fs_.ksigma = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) -> bool {
+            if ( options_ ) {
+              *v = options_->fs_.ksigma;
+              return true;
+            }
+            return false;
+          });
+
+
+  updateControls();
 }
 
 void QFocusStackingOptions::set_accumulation_options(c_frame_accumulation_options * options)

@@ -439,30 +439,51 @@ bool c_master_frame_options::deserialize(c_config_setting settings)
 ///////////////////////////////////////////////////////////////////////////////
 bool c_frame_accumulation_options::serialize(c_config_setting settings) const
 {
+  c_config_setting section;
+
   save_settings(settings, "accumulation_method", accumulation_method );
 
-  SAVE_PROPERTY(settings, m_, k);
-  SAVE_PROPERTY(settings, m_, dscale);
-  SAVE_PROPERTY(settings, m_, uscale);
-  SAVE_PROPERTY(settings, m_, squared);
-  SAVE_PROPERTY(settings, m_, avgchannel);
+
+  section = settings.add_group("c_lpg_sharpness_measure");
+  SAVE_PROPERTY(section, m_, k);
+  SAVE_PROPERTY(section, m_, dscale);
+  SAVE_PROPERTY(section, m_, uscale);
+  SAVE_PROPERTY(section, m_, squared);
+  SAVE_PROPERTY(section, m_, avgchannel);
+
+  section = settings.add_group("c_laplacian_pyramid_focus_stacking");
+  SAVE_OPTION(section, fs_, fusing_policy);
+  SAVE_OPTION(section, fs_, inpaint_mask_holes);
+  SAVE_OPTION(section, fs_, kradius);
+  SAVE_OPTION(section, fs_, inpaint_mask_holes);
 
   return true;
 }
 
 bool c_frame_accumulation_options::deserialize(c_config_setting settings)
 {
+  c_config_setting section;
+
   if ( !settings.isGroup() ) {
     return false;
   }
 
   load_settings(settings, "accumulation_method", &accumulation_method );
 
-  LOAD_PROPERTY(settings, m_, k);
-  LOAD_PROPERTY(settings, m_, dscale);
-  LOAD_PROPERTY(settings, m_, uscale);
-  LOAD_PROPERTY(settings, m_, squared);
-  LOAD_PROPERTY(settings, m_, avgchannel);
+  if( (section = settings["c_lpg_sharpness_measure"]).isGroup() ) {
+    LOAD_PROPERTY(settings, m_, k);
+    LOAD_PROPERTY(settings, m_, dscale);
+    LOAD_PROPERTY(settings, m_, uscale);
+    LOAD_PROPERTY(settings, m_, squared);
+    LOAD_PROPERTY(settings, m_, avgchannel);
+  }
+
+  if( (section = settings["c_laplacian_pyramid_focus_stacking"]).isGroup() ) {
+    LOAD_OPTION(section, fs_, fusing_policy);
+    LOAD_OPTION(section, fs_, inpaint_mask_holes);
+    LOAD_OPTION(section, fs_, kradius);
+    LOAD_OPTION(section, fs_, inpaint_mask_holes);
+  }
 
   return true;
 }
@@ -472,21 +493,18 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
 {
   c_config_setting section, subsection;
 
-#define SAVE(s, name) \
-  save_settings(section, #name, s.name)
-
   section = settings;
-  SAVE(image_registration_options, enable_frame_registration);
-  SAVE(image_registration_options, motion_type);
-  SAVE(image_registration_options, registration_channel);
-  SAVE(image_registration_options, interpolation);
-  SAVE(image_registration_options, border_mode);
-  SAVE(image_registration_options, border_value);
+  SAVE_OPTION(section, image_registration_options, enable_frame_registration);
+  SAVE_OPTION(section, image_registration_options, motion_type);
+  SAVE_OPTION(section, image_registration_options, registration_channel);
+  SAVE_OPTION(section, image_registration_options, interpolation);
+  SAVE_OPTION(section, image_registration_options, border_mode);
+  SAVE_OPTION(section, image_registration_options, border_value);
   save_settings(section, "accumulate_and_compensate_turbulent_flow", accumulate_and_compensate_turbulent_flow);
 
   section = settings.add_group("feature_registration");
-  SAVE(image_registration_options.feature_registration, enabled);
-  SAVE(image_registration_options.feature_registration, scale);
+  SAVE_OPTION(section, image_registration_options.feature_registration, enabled);
+  SAVE_OPTION(section, image_registration_options.feature_registration, scale);
   save_settings(section.add_group("sparse_feature_extractor"),
       image_registration_options.feature_registration.sparse_feature_extractor);
   save_settings(section.add_group("sparse_feature_matcher"),
@@ -495,52 +513,51 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   // save_settings(group, "align_planetary_disk_masks", planetary_disk_options.align_planetary_disk_masks);
 
   section = settings.add_group("ecc");
-  SAVE(image_registration_options.ecc, enabled);
-  SAVE(image_registration_options.ecc, scale);
-  SAVE(image_registration_options.ecc, eps);
-  SAVE(image_registration_options.ecc, min_rho);
-  SAVE(image_registration_options.ecc, input_smooth_sigma);
-  SAVE(image_registration_options.ecc, reference_smooth_sigma);
-  SAVE(image_registration_options.ecc, update_step_scale);
-  SAVE(image_registration_options.ecc, normalization_noise);
-  SAVE(image_registration_options.ecc, normalization_scale);
-  SAVE(image_registration_options.ecc, max_iterations);
-  SAVE(image_registration_options.ecc, ecch_minimum_image_size);
-  SAVE(image_registration_options.ecc, enable_ecch);
-  SAVE(image_registration_options.ecc, replace_planetary_disk_with_mask);
-  SAVE(image_registration_options.ecc, planetary_disk_mask_stdev_factor);
+  SAVE_OPTION(section, image_registration_options.ecc, enabled);
+  SAVE_OPTION(section, image_registration_options.ecc, scale);
+  SAVE_OPTION(section, image_registration_options.ecc, eps);
+  SAVE_OPTION(section, image_registration_options.ecc, min_rho);
+  SAVE_OPTION(section, image_registration_options.ecc, input_smooth_sigma);
+  SAVE_OPTION(section, image_registration_options.ecc, reference_smooth_sigma);
+  SAVE_OPTION(section, image_registration_options.ecc, update_step_scale);
+  SAVE_OPTION(section, image_registration_options.ecc, normalization_noise);
+  SAVE_OPTION(section, image_registration_options.ecc, normalization_scale);
+  SAVE_OPTION(section, image_registration_options.ecc, max_iterations);
+  SAVE_OPTION(section, image_registration_options.ecc, ecch_minimum_image_size);
+  SAVE_OPTION(section, image_registration_options.ecc, enable_ecch);
+  SAVE_OPTION(section, image_registration_options.ecc, replace_planetary_disk_with_mask);
+  SAVE_OPTION(section, image_registration_options.ecc, planetary_disk_mask_stdev_factor);
 
 
   section = settings.add_group("eccflow");
-  SAVE(image_registration_options.eccflow, enabled);
-  SAVE(image_registration_options.eccflow, update_multiplier);
-  SAVE(image_registration_options.eccflow, input_smooth_sigma);
-  SAVE(image_registration_options.eccflow, reference_smooth_sigma);
-  SAVE(image_registration_options.eccflow, max_iterations);
-  SAVE(image_registration_options.eccflow, support_scale);
-  SAVE(image_registration_options.eccflow, normalization_scale);
+  SAVE_OPTION(section, image_registration_options.eccflow, enabled);
+  SAVE_OPTION(section, image_registration_options.eccflow, update_multiplier);
+  SAVE_OPTION(section, image_registration_options.eccflow, input_smooth_sigma);
+  SAVE_OPTION(section, image_registration_options.eccflow, reference_smooth_sigma);
+  SAVE_OPTION(section, image_registration_options.eccflow, max_iterations);
+  SAVE_OPTION(section, image_registration_options.eccflow, support_scale);
+  SAVE_OPTION(section, image_registration_options.eccflow, normalization_scale);
 
   section = settings.add_group("jovian_derotation");
-  SAVE(image_registration_options.jovian_derotation, enabled);
-  //SAVE(image_registration_options.jovian_derotation, align_planetary_disk_masks);
-  SAVE(image_registration_options.jovian_derotation, min_rotation);
-  SAVE(image_registration_options.jovian_derotation, max_rotation);
-  SAVE(image_registration_options.jovian_derotation, num_orientations);
-  SAVE(image_registration_options.jovian_derotation, eccflow_support_scale);
-  SAVE(image_registration_options.jovian_derotation, eccflow_normalization_scale);
-  SAVE(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
-  SAVE(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
-  SAVE(image_registration_options.jovian_derotation, derotate_all_frames);
-  SAVE(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
-  SAVE(image_registration_options.jovian_derotation.ellipse, stdev_factor);
-  SAVE(image_registration_options.jovian_derotation.ellipse, normalization_scale);
-  SAVE(image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
-  SAVE(image_registration_options.jovian_derotation.ellipse, normalization_blur);
-  SAVE(image_registration_options.jovian_derotation.ellipse, gradient_blur);
-  SAVE(image_registration_options.jovian_derotation.ellipse, hlines);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, enabled);
+  //SAVE_OPTION(section, image_registration_options.jovian_derotation, align_planetary_disk_masks);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, min_rotation);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, max_rotation);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, num_orientations);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, eccflow_support_scale);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, eccflow_normalization_scale);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, stdev_factor);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_scale);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_blur);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, gradient_blur);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, hlines);
 
 
-#undef SAVE
   return true;
 }
 
@@ -552,22 +569,19 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
 
   c_config_setting section = settings;
 
-#define LOAD(s, name) \
-  load_settings(section, #name, &s.name)
-
-  LOAD(image_registration_options, enable_frame_registration);
-  LOAD(image_registration_options, motion_type);
-  LOAD(image_registration_options, registration_channel);
-  LOAD(image_registration_options, interpolation);
-  LOAD(image_registration_options, border_mode);
-  LOAD(image_registration_options, border_value);
+  LOAD_OPTION(section, image_registration_options, enable_frame_registration);
+  LOAD_OPTION(section, image_registration_options, motion_type);
+  LOAD_OPTION(section, image_registration_options, registration_channel);
+  LOAD_OPTION(section, image_registration_options, interpolation);
+  LOAD_OPTION(section, image_registration_options, border_mode);
+  LOAD_OPTION(section, image_registration_options, border_value);
   load_settings(section, "accumulate_and_compensate_turbulent_flow",
       &accumulate_and_compensate_turbulent_flow);
 
 
   if( (section = settings["feature_registration"]).isGroup() ) {
-    LOAD(image_registration_options.feature_registration, enabled);
-    LOAD(image_registration_options.feature_registration, scale);
+    LOAD_OPTION(section, image_registration_options.feature_registration, enabled);
+    LOAD_OPTION(section, image_registration_options.feature_registration, scale);
     if( section["sparse_feature_extractor"] ) {
       load_settings(section["sparse_feature_extractor"],
           &image_registration_options.feature_registration.sparse_feature_extractor);
@@ -581,50 +595,50 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
   // load_settings(ection, "align_planetary_disk_masks", &planetary_disk_options.align_planetary_disk_masks);
 
   if( (section = settings["ecc"]).isGroup() ) {
-    LOAD(image_registration_options.ecc, enabled);
-    LOAD(image_registration_options.ecc, scale);
-    LOAD(image_registration_options.ecc, eps);
-    LOAD(image_registration_options.ecc, min_rho);
-    LOAD(image_registration_options.ecc, input_smooth_sigma);
-    LOAD(image_registration_options.ecc, reference_smooth_sigma);
-    LOAD(image_registration_options.ecc, update_step_scale);
-    LOAD(image_registration_options.ecc, normalization_noise);
-    LOAD(image_registration_options.ecc, normalization_scale);
-    LOAD(image_registration_options.ecc, max_iterations);
-    LOAD(image_registration_options.ecc, ecch_minimum_image_size);
-    LOAD(image_registration_options.ecc, enable_ecch);
-    LOAD(image_registration_options.ecc, replace_planetary_disk_with_mask);
-    LOAD(image_registration_options.ecc, planetary_disk_mask_stdev_factor);
+    LOAD_OPTION(section, image_registration_options.ecc, enabled);
+    LOAD_OPTION(section, image_registration_options.ecc, scale);
+    LOAD_OPTION(section, image_registration_options.ecc, eps);
+    LOAD_OPTION(section, image_registration_options.ecc, min_rho);
+    LOAD_OPTION(section, image_registration_options.ecc, input_smooth_sigma);
+    LOAD_OPTION(section, image_registration_options.ecc, reference_smooth_sigma);
+    LOAD_OPTION(section, image_registration_options.ecc, update_step_scale);
+    LOAD_OPTION(section, image_registration_options.ecc, normalization_noise);
+    LOAD_OPTION(section, image_registration_options.ecc, normalization_scale);
+    LOAD_OPTION(section, image_registration_options.ecc, max_iterations);
+    LOAD_OPTION(section, image_registration_options.ecc, ecch_minimum_image_size);
+    LOAD_OPTION(section, image_registration_options.ecc, enable_ecch);
+    LOAD_OPTION(section, image_registration_options.ecc, replace_planetary_disk_with_mask);
+    LOAD_OPTION(section, image_registration_options.ecc, planetary_disk_mask_stdev_factor);
   }
 
   if( (section = settings["eccflow"]).isGroup() ) {
-    LOAD(image_registration_options.eccflow, enabled);
-    LOAD(image_registration_options.eccflow, update_multiplier);
-    LOAD(image_registration_options.eccflow, input_smooth_sigma);
-    LOAD(image_registration_options.eccflow, reference_smooth_sigma);
-    LOAD(image_registration_options.eccflow, max_iterations);
-    LOAD(image_registration_options.eccflow, support_scale);
-    LOAD(image_registration_options.eccflow, normalization_scale);
+    LOAD_OPTION(section, image_registration_options.eccflow, enabled);
+    LOAD_OPTION(section, image_registration_options.eccflow, update_multiplier);
+    LOAD_OPTION(section, image_registration_options.eccflow, input_smooth_sigma);
+    LOAD_OPTION(section, image_registration_options.eccflow, reference_smooth_sigma);
+    LOAD_OPTION(section, image_registration_options.eccflow, max_iterations);
+    LOAD_OPTION(section, image_registration_options.eccflow, support_scale);
+    LOAD_OPTION(section, image_registration_options.eccflow, normalization_scale);
   }
 
   if( (section = settings["jovian_derotation"]).isGroup() ) {
-    LOAD(image_registration_options.jovian_derotation, enabled);
-    //LOAD(image_registration_options.jovian_derotation, align_planetary_disk_masks);
-    LOAD(image_registration_options.jovian_derotation, min_rotation);
-    LOAD(image_registration_options.jovian_derotation, max_rotation);
-    LOAD(image_registration_options.jovian_derotation, num_orientations);
-    LOAD(image_registration_options.jovian_derotation, eccflow_support_scale);
-    LOAD(image_registration_options.jovian_derotation, eccflow_normalization_scale);
-    LOAD(image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
-    LOAD(image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
-    LOAD(image_registration_options.jovian_derotation, derotate_all_frames);
-    LOAD(image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
-    LOAD(image_registration_options.jovian_derotation.ellipse, stdev_factor);
-    LOAD(image_registration_options.jovian_derotation.ellipse, normalization_scale);
-    LOAD(image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
-    LOAD(image_registration_options.jovian_derotation.ellipse, normalization_blur);
-    LOAD(image_registration_options.jovian_derotation.ellipse, gradient_blur);
-    LOAD(image_registration_options.jovian_derotation.ellipse, hlines);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, enabled);
+    //LOAD_OPTION(section, image_registration_options.jovian_derotation, align_planetary_disk_masks);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, min_rotation);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, max_rotation);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, num_orientations);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, eccflow_support_scale);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, eccflow_normalization_scale);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, eccflow_max_pyramid_level);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, rotate_jovian_disk_horizontally);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, stdev_factor);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_scale);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_blur);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, gradient_blur);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, hlines);
   }
 
   return true;

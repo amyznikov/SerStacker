@@ -136,10 +136,6 @@ void QStackProgressView::onSelectedMasterFrameChanged()
 
 void QStackProgressView::updateAccumulatedImageDisplay(bool force)
 {
-  if ( !force && !hasCurrentStatisticsUpdates_ && !accumuatorImageChanged_ && !selectedMasterFrameChanged_ ) {
-    return;
-  }
-
   c_image_stacking_pipeline * pipeline =
           QStackingThread::pipeline();
 
@@ -147,16 +143,11 @@ void QStackProgressView::updateAccumulatedImageDisplay(bool force)
     return;
   }
 
-  //pipeline->lock();
+  if ( !force && !hasCurrentStatisticsUpdates_ && !accumuatorImageChanged_ && !selectedMasterFrameChanged_ ) {
+    return;
+  }
 
   if ( force || hasCurrentStatisticsUpdates_ ) {
-
-//    statusLabel_->setText(pipeline->status_message().c_str());
-//
-//    progressLabel_->setText(QString("F %1 / %2 / %3").
-//        arg(pipeline->accumulated_frames()).
-//        arg(pipeline->processed_frames()).
-//            arg(pipeline->total_frames()));
 
     progressStrip_ctl->setRange(0, pipeline->total_frames());
     progressStrip_ctl->setValue(0, pipeline->processed_frames());
@@ -177,22 +168,36 @@ void QStackProgressView::updateAccumulatedImageDisplay(bool force)
 
     QWaitCursor wait(this);
 
-    cv::Mat currentImage;
-    cv::Mat currentMask;
 
-    if( selectedMasterFrameChanged_ ) {
-      pipeline->get_selected_master_frame(currentImage, currentMask);
+    if( pipeline->stacking_stage() == stacking_stage_idle ) {
+
+      std::string output_file_name =
+          pipeline->output_file_name();
+
+      if ( !output_file_name.empty() ) {
+        imageViewer_->openImage(output_file_name);
+      }
+
     }
     else {
-      pipeline->compute_accumulated_image(currentImage, currentMask);
-    }
 
-    if( !currentImage.empty() && pipeline->anscombe().method() != anscombe_none ) {
-      pipeline->anscombe().inverse(currentImage, currentImage);
-    }
+      cv::Mat currentImage;
+      cv::Mat currentMask;
 
-    imageViewer_->setCurrentFileName(pipeline->options()->cname());
-    imageViewer_->editImage(currentImage, currentMask);
+      if( selectedMasterFrameChanged_ ) {
+        pipeline->get_selected_master_frame(currentImage, currentMask);
+      }
+      else {
+        pipeline->compute_accumulated_image(currentImage, currentMask);
+      }
+
+      if( !currentImage.empty() && pipeline->anscombe().method() != anscombe_none ) {
+        pipeline->anscombe().inverse(currentImage, currentImage);
+      }
+
+      imageViewer_->setCurrentFileName(pipeline->options()->cname());
+      imageViewer_->editImage(currentImage, currentMask);
+    }
   }
 
   hasCurrentStatisticsUpdates_ = false;

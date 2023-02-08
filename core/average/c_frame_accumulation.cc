@@ -6,10 +6,12 @@
  */
 
 #include "c_frame_accumulation.h"
+#include <tbb/tbb.h>
 #include <core/proc/fft.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/laplacian_pyramid.h>
-#include <tbb/tbb.h>
+#include <core/proc/inpaint/linear_interpolation_inpaint.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 
@@ -1072,6 +1074,182 @@ const cv::Mat & c_frame_weigthed_average::counter() const
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<>
+const c_enum_member* members_of<c_laplacian_pyramid_focus_stacking::fusing_policy>()
+{
+  static constexpr c_enum_member members[] = {
+
+      { c_laplacian_pyramid_focus_stacking::select_max_energy, "select_max_energy",
+          "select max laplacian energy" },
+
+      { c_laplacian_pyramid_focus_stacking::weighted_average, "weighted_average",
+          "average with weighting by laplacian energy" },
+
+      { c_laplacian_pyramid_focus_stacking::select_max_energy },
+  };
+  return members;
+}
+
+
+c_laplacian_pyramid_focus_stacking::c_laplacian_pyramid_focus_stacking(const options & opts) :
+    opts_(opts)
+{
+}
+
+bool c_laplacian_pyramid_focus_stacking::initialze(const cv::Size & image_size, int acctype, int weightstype)
+{
+  acc.clear();
+  G.release();
+  image_size_ = image_size;
+  acctype_ = acctype;
+  weightstype_ = weightstype;
+  accumulated_frames_ = 0;
+  return true;
+}
+
+bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray mask)
+{
+  const cv::Mat image =
+      src.getMat();
+
+  if( image.size() != image_size_ ) {
+
+    CF_ERROR("Input image size %dx%d not match: expected %dx%d",
+        image.cols, image.rows,
+        image_size_.width, image_size_.height);
+
+    return false;
+  }
+
+  if( opts_.inpaint_mask_holes ) {
+    linear_interpolation_inpaint(image, mask, image);
+  }
+
+  if( acc.empty() ) {
+    build_laplacian_pyramid(image, acc, 8);
+    ++accumulated_frames_;
+    return true;
+  }
+
+  if( image.channels() != acc.front().channels() ) {
+    CF_ERROR("Number of channels in input image %d not match to accumulator channels %d",
+        image.channels(), acc.front().channels());
+    return false;
+  }
+
+  std::vector<cv::Mat> pyr;
+  build_laplacian_pyramid(image, pyr, 8);
+
+  const int pyrsize =
+      pyr.size();
+
+  if( pyrsize != acc.size() ) {
+    CF_ERROR("UNEXPECTED APP BUG: current pyramid size %zu not match to acc pyramid size %zu",
+        pyr.size(), acc.size());
+    return false;
+  }
+
+  static const auto graystdev =
+      [](const cv::Mat & image) -> double {
+        cv::Scalar m, s;
+        cv::meanStdDev(image, m, s);
+        double sv = s[0];
+        for ( int i = 1, cn = image.channels(); i < cn; ++i ) {
+          sv += s[i];
+        }
+        return sv;
+      };
+
+  const double sv[2] = {
+      graystdev(acc.back()),
+      graystdev(pyr.back())
+  };
+
+  cv::addWeighted(acc.back(), sv[0] / (sv[0] + sv[1]),
+      pyr.back(), sv[1] / (sv[0] + sv[1]),
+      0,
+      acc.back());
+
+  cv::Mat w[2];
+
+  const int cn =
+      image.channels();
+
+
+  if( G.empty() && (opts_.ksigma > 0 || opts_.kradius > 0) ) {
+
+    G =
+        cv::getGaussianKernel(std::max(0, 2 * opts_.kradius + 1),
+            std::max(0., opts_.ksigma),
+            CV_32F);
+  }
+
+
+  for( int i = pyrsize - 2; i >= 0; --i ) {
+
+    switch (opts_.fusing_policy) {
+      case select_max_energy: {
+
+        cv::absdiff(acc[i], 0, w[0]);
+        cv::absdiff(pyr[i], 0, w[1]);
+
+        if( !G.empty() ) {
+          cv::sepFilter2D(w[0], w[0], -1, G, G, cv::Point(-1, -1));
+          cv::sepFilter2D(w[1], w[1], -1, G, G, cv::Point(-1, -1));
+        }
+
+        pyr[i].copyTo(acc[i], w[1] > w[0]);
+        break;
+      }
+
+      default: {
+        cv::Mat ww;
+
+        cv::multiply(acc[i], acc[i], w[0]);
+        cv::multiply(pyr[i], pyr[i], w[1]);
+
+        if( !G.empty() ) {
+          cv::sepFilter2D(w[0], w[0], -1, G, G, cv::Point(-1, -1), 1e-12);
+          cv::sepFilter2D(w[1], w[1], -1, G, G, cv::Point(-1, -1), 1e-12);
+          cv::add(w[0], w[1], ww);
+        }
+        else {
+          cv::add(w[0], w[1], ww);
+          cv::add(ww, cv::Scalar::all(2e-12), ww);
+        }
+
+        cv::multiply(acc[i], w[0], acc[i]);
+        cv::multiply(pyr[i], w[1], pyr[i]);
+        cv::add(acc[i], pyr[i], acc[i]);
+        cv::divide(acc[i], ww, acc[i]);
+        break;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+{
+  reconstruct_laplacian_pyramid(avg, acc);
+  return true;
+}
+
+void c_laplacian_pyramid_focus_stacking::release()
+{
+  acc.clear();
+  G.release();
+  accumulated_frames_ = 0;
+}
+
+cv::Size c_laplacian_pyramid_focus_stacking::accumulator_size() const
+{
+  return image_size_;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1080,40 +1258,6 @@ bool c_frame_accumulation_with_fft::initialze(const cv::Size & /*image_size*/, i
   accumulators_.clear();
   weights_.clear();
   return true;
-
-//  const int cn =
-//      (acctype >> CV_CN_SHIFT) + 1;
-//
-//  fftSize_ = fftGetOptimalSize(image_size, cv::Size(0,0), false);
-//
-//  CF_DEBUG("src_size=%dx%d fftSize_=%dx%d",
-//      image_size.width, image_size.height,
-//      fftSize_.width, fftSize_.height);
-//
-//
-//  if ( image_size == fftSize_ ) {
-//    rc_.x = rc_.y = rc_.width = rc_.height = 0;
-//  }
-//  else {
-//    border_top_ = (fftSize_.height - image_size.height) / 2;
-//    border_bottom_ = (fftSize_.height - image_size.height - border_top_);
-//    border_left_ = (fftSize_.width - image_size.width) / 2;
-//    border_right_ = (fftSize_.width - image_size.width - border_left_);
-//    rc_ = cv::Rect(border_left_, border_top_, image_size.width, image_size.height);
-//  }
-//
-//  accumulators_.resize(cn);
-//  weights_.resize(cn);
-//
-//  for ( int i = 0; i < cn; ++i ) {
-//
-//    accumulators_[i].create(channels[i].size(), channels[i].type());
-//    accumulators_[i].setTo(0);
-//
-//    weights_[i].create(weights[i].size(), weights[i].type());
-//    weights_[i].setTo(0);
-//  }
-
 }
 
 bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
@@ -1138,7 +1282,8 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
     cv::split(src.getMat(), channels);
   }
 
-  const cv::Size src_size = channels[0].size();
+  const cv::Size src_size =
+      channels[0].size();
 
   if ( accumulators_.empty() ) {
 
@@ -1400,119 +1545,6 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
   dst = std::move(cmag);
 
   return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool c_laplacian_pyramid_focus_stacking::initialze(const cv::Size & image_size, int acctype, int weightstype)
-{
-  acc.clear();
-  image_size_ = image_size;
-  acctype_ = acctype;
-  weightstype_ = weightstype;
-  accumulated_frames_ = 0;
-  return true;
-}
-
-
-bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray mask)
-{
-  const cv::Mat image =
-      src.getMat();
-
-  if( image.size() != image_size_ ) {
-
-    CF_ERROR("Input image size %dx%d not match: expected %dx%d",
-        image.cols, image.rows,
-        image_size_.width, image_size_.height);
-
-    return false;
-  }
-
-  if( acc.empty() ) {
-    build_laplacian_pyramid(image, acc, 8);
-    ++accumulated_frames_;
-    return true;
-  }
-
-  if( image.channels() != acc.front().channels() ) {
-    CF_ERROR("Number of channels in input image %d not match to accumulator channels %d",
-        image.channels(), acc.front().channels());
-    return false;
-  }
-
-  std::vector<cv::Mat> pyr;
-  build_laplacian_pyramid(image, pyr, 8);
-
-  const int pyrsize =
-      pyr.size();
-
-  if( pyrsize != acc.size() ) {
-    CF_ERROR("UNEXPECTED APP BUG: current pyramid size %zu not match to acc pyramid size %zu",
-        pyr.size(), acc.size());
-    return false;
-  }
-
-  static const auto graystdev =
-      [](const cv::Mat & image) -> double {
-        cv::Scalar m, s;
-        cv::meanStdDev(image, m, s);
-        double sv = s[0];
-        for ( int i = 1, cn = image.channels(); i < cn; ++i ) {
-          sv += s[i];
-        }
-        return sv;
-      };
-
-  const double sv[2] = {
-      graystdev(acc.back()),
-      graystdev(pyr.back())
-  };
-
-  cv::addWeighted(acc.back(), sv[0] / (sv[0] + sv[1]),
-      pyr.back(), sv[1] / (sv[0] + sv[1]),
-      0,
-      acc.back());
-
-
-  cv::Mat w[2];
-
-  const int cn =
-      image.channels();
-
-  for( int i = pyrsize - 2; i >= 0; --i ) {
-
-
-    cv::absdiff(acc[i], 0, w[0]);
-    cv::absdiff(pyr[i], 0, w[1]);
-
-    if( false ) {
-      static const cv::Mat1f G = cv::getGaussianKernel(3, 0, CV_32F);
-      cv::sepFilter2D(w[0], w[0], -1, G, G, cv::Point(-1, -1), 0);
-      cv::sepFilter2D(w[1], w[1], -1, G, G, cv::Point(-1, -1), 0);
-    }
-
-    pyr[i].copyTo(acc[i], w[1] > w[0]);
-  }
-
-  return true;
-}
-
-bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
-{
-  reconstruct_laplacian_pyramid(avg, acc);
-  return true;
-}
-
-void c_laplacian_pyramid_focus_stacking::release()
-{
-  acc.clear();
-  accumulated_frames_ = 0;
-}
-
-cv::Size c_laplacian_pyramid_focus_stacking::accumulator_size() const
-{
-  return image_size_;
 }
 
 

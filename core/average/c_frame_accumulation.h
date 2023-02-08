@@ -60,6 +60,47 @@ protected:
 };
 
 
+
+class c_laplacian_pyramid_focus_stacking :
+    public c_frame_accumulation
+{
+public:
+  typedef c_laplacian_pyramid_focus_stacking this_class;
+  typedef c_frame_accumulation base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  enum fusing_policy {
+    select_max_energy,
+    weighted_average
+  };
+
+  struct options {
+    enum fusing_policy fusing_policy = select_max_energy;
+    bool inpaint_mask_holes = true;
+    int kradius = 0;
+    double ksigma = 0;
+  };
+
+  c_laplacian_pyramid_focus_stacking(const options & opts);
+
+  bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
+  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
+  void release() override;
+  cv::Size accumulator_size() const override;
+
+protected:
+
+protected:
+  options opts_;
+  std::vector<cv::Mat> acc;
+  cv::Size image_size_;
+  int acctype_ = CV_32F;
+  int weightstype_ = CV_8U;
+  cv::Mat1f G;
+};
+
+
 class c_frame_accumulation_with_fft :
     public c_frame_accumulation
 {
@@ -92,30 +133,6 @@ protected:
   int border_bottom_ = 0;
   int border_left_ = 0;
   int border_right_ = 0;
-};
-
-
-class c_laplacian_pyramid_focus_stacking :
-    public c_frame_accumulation
-{
-public:
-  typedef c_frame_accumulation_with_fft this_class;
-  typedef c_frame_accumulation base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
-  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void release() override;
-  cv::Size accumulator_size() const override;
-
-protected:
-
-protected:
-  std::vector<cv::Mat> acc;
-  cv::Size image_size_;
-  int acctype_ = CV_32F;
-  int weightstype_ = CV_8U;
 };
 
 

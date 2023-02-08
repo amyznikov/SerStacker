@@ -497,7 +497,7 @@ c_frame_accumulation::ptr c_image_stacking_options::create_frame_accumulation() 
   case frame_accumulation_weighted_average:
     return c_frame_accumulation::ptr(new c_frame_weigthed_average());
   case frame_accumulation_focus_stack:
-    return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking());
+    return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(accumulation_options_.fs_));
   case frame_accumulation_fft :
     return c_frame_accumulation::ptr(new c_frame_accumulation_with_fft());
   default :
@@ -838,6 +838,11 @@ int c_image_stacking_pipeline::accumulated_frames() const
 {
   lock_guard lock(accumulator_lock_);
   return frame_accumulation_ ? frame_accumulation_->accumulated_frames() : 0;
+}
+
+std::string c_image_stacking_pipeline::output_file_name() const
+{
+  return output_file_name_;
 }
 
 void c_image_stacking_pipeline::gather_badframe_indexes()
@@ -1649,7 +1654,7 @@ bool c_image_stacking_pipeline::actual_run()
 
 
     CF_DEBUG("Saving '%s'", output_file_name.c_str());
-    if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
+    if ( !write_image(output_file_name_ = output_file_name, output_options, accumulated_image, accumulated_mask) ) {
       CF_ERROR("write_image('%s') fails", output_file_name.c_str());
     }
 
@@ -1668,7 +1673,7 @@ bool c_image_stacking_pipeline::actual_run()
                 output_file_name_postfix_.c_str());
 
         CF_DEBUG("Saving '%s'", output_file_name.c_str());
-        if ( !write_image(output_file_name, output_options, accumulated_image, accumulated_mask) ) {
+        if ( !write_image(output_file_name_ = output_file_name, output_options, accumulated_image, accumulated_mask) ) {
           CF_ERROR("write_image('%s') fails", output_file_name.c_str());
         }
       }

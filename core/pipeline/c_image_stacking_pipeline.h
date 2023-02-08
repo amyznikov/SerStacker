@@ -157,11 +157,11 @@ struct c_frame_accumulation_options
       frame_accumulation_weighted_average;
 
   c_lpg_sharpness_measure m_;
+  c_laplacian_pyramid_focus_stacking::options fs_;
 
   c_frame_accumulation_options()
   {
-    // disable this feature by default
-    m_.set_dscale(-1);
+    m_.set_dscale(-1); // disable this feature by default
   }
 
   bool serialize(c_config_setting settings) const;
@@ -359,6 +359,7 @@ public:
   int total_frames() const;
   int processed_frames() const;
   int accumulated_frames() const;
+  std::string output_file_name() const;
   std::string status_message() const ;
 
   bool run(const c_image_stacking_options::ptr & stacking_options);
@@ -465,6 +466,7 @@ protected:
   bool external_master_frame_ = false;
 
   std::string output_directory_;
+  std::string output_file_name_;
 
   double ecc_normalization_noise_ = 0;
   double reference_sharpness_ = 0;

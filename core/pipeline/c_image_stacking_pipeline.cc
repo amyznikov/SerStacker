@@ -153,23 +153,39 @@ static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
   cv::Mat2f rmap(uv.size());
 
   typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, rmap.rows, 256),
-      [&rmap, &uv, &mask](const range &r) {
-        const int nx = rmap.cols;
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < nx; ++x ) {
-            if ( mask[y][x] ) {
+
+  if( mask.empty() /*|| cv::countNonZero(mask) == mask.size().area()*/ ) {
+
+    tbb::parallel_for(range(0, rmap.rows, 256),
+        [&rmap, &uv](const range & r) {
+          const int nx = rmap.cols;
+          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+            for ( int x = 0; x < nx; ++x ) {
               rmap[y][x][0] = x - uv[y][x][0];
               rmap[y][x][1] = y - uv[y][x][1];
             }
-            else {
-              rmap[y][x][0] = x;
-              rmap[y][x][1] = y;
+          }
+        });
+  }
+  else {
+
+    tbb::parallel_for(range(0, rmap.rows, 256),
+        [&rmap, &uv, &mask](const range & r) {
+          const int nx = rmap.cols;
+          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+            for ( int x = 0; x < nx; ++x ) {
+              if ( mask[y][x] ) {
+                rmap[y][x][0] = x - uv[y][x][0];
+                rmap[y][x][1] = y - uv[y][x][1];
+              }
+              else {
+                rmap[y][x][0] = x;
+                rmap[y][x][1] = y;
+              }
             }
           }
-        }
-      });
-
+        });
+  }
   return rmap;
 }
 
@@ -1626,10 +1642,13 @@ bool c_image_stacking_pipeline::actual_run()
         cv::remap(accumulated_image, accumulated_image, accumulated_flow,
             cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
 
-        cv::remap(accumulated_mask, accumulated_mask, accumulated_flow,
-            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        if( !accumulated_mask.empty() ) {
 
-        cv::compare(accumulated_mask, 255, accumulated_mask, cv::CMP_GE);
+          cv::remap(accumulated_mask, accumulated_mask, accumulated_flow,
+              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+
+          cv::compare(accumulated_mask, 255, accumulated_mask, cv::CMP_GE);
+        }
 
         if ( sharpenScale > 0 ) {
 
@@ -3084,7 +3103,9 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
     }
 
     if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
+      CF_ERROR("ERROR: create_path() fails for '%s' : %s",
+          pathfilename.c_str(),
+          strerror(errno));
       return;
     }
 

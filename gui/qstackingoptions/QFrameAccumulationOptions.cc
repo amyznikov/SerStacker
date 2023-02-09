@@ -50,7 +50,7 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
 void QFrameAccumulationOptions::set_accumulation_options(c_frame_accumulation_options * options)
 {
   this->options_ = options;
-  lpg_options_ctl->set_accumulation_options(options);
+  lpg_options_ctl->set_measure_options(options ? &options->m_ : nullptr);
   focus_stack_options_ctl->set_accumulation_options(options);
   updateControls();
 }
@@ -94,86 +94,6 @@ void QFrameAccumulationOptions::updatecurrentoptionswidget()
 }
 
 
-QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(QWidget * parent) :
-    Base("QLPGSharpnessMeasureOptions", parent)
-{
-  k_ctl =
-      add_numeric_box<double>("k:",
-          [this](double v) {
-            if ( options_ && v != options_->m_.k() ) {
-              options_->m_.set_k(v);
-              Q_EMIT parameterChanged();
-            }
-          });
-
-  dscale_ctl =
-      add_numeric_box<double>("dscale:",
-          [this](double v) {
-            if ( options_ && v != options_->m_.dscale() ) {
-              options_->m_.set_dscale(v);
-              Q_EMIT parameterChanged();
-            }
-          });
-
-  uscale_ctl =
-      add_numeric_box<double>("uscale:",
-          [this](double v) {
-            if ( options_ && v != options_->m_.uscale() ) {
-              options_->m_.set_uscale(v);
-              Q_EMIT parameterChanged();
-            }
-          });
-
-  square_ctl =
-      add_checkbox("squared:",
-          [this](bool checked) {
-            if ( options_ &&  options_->m_.squared() != checked ) {
-              options_->m_.set_squared(checked);
-              Q_EMIT parameterChanged();
-            }
-          });
-
-  avgc_ctl =
-      add_checkbox("avgc:",
-          [this](bool checked) {
-            if ( options_ &&  options_->m_.avgchannel() != checked ) {
-              options_->m_.set_avgchannel(checked);
-              Q_EMIT parameterChanged();
-            }
-          });
-
-  updateControls();
-}
-
-
-void QLPGSharpnessMeasureOptions::set_accumulation_options(c_frame_accumulation_options * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-const c_frame_accumulation_options * QLPGSharpnessMeasureOptions::accumulation_options() const
-{
-  return options_;
-}
-
-void QLPGSharpnessMeasureOptions::onupdatecontrols()
-{
-  if ( !options_ ) {
-    setEnabled(false);
-  }
-  else {
-
-    k_ctl->setValue(options_->m_.k());
-    dscale_ctl->setValue(options_->m_.dscale());
-    uscale_ctl->setValue(options_->m_.uscale());
-    square_ctl->setChecked(options_->m_.squared());
-    avgc_ctl->setChecked(options_->m_.avgchannel());
-
-    setEnabled(true);
-  }
-}
-
 
 QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
     Base("QFocusStackingOptions", parent)
@@ -193,6 +113,23 @@ QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
               *v = options_->fs_.fusing_policy;
               return true;
 
+            }
+            return false;
+          });
+
+
+  avgchannel_ctl =
+      add_checkbox("Average color channels:",
+          [this](bool checked) {
+            if ( options_ && options_->fs_.avgchannel != checked ) {
+              options_->fs_.avgchannel = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              * checked = options_->fs_.avgchannel;
+              return true;
             }
             return false;
           });

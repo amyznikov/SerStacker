@@ -1098,6 +1098,13 @@ c_laplacian_pyramid_focus_stacking::c_laplacian_pyramid_focus_stacking(const opt
 {
 }
 
+cv::Mat c_laplacian_pyramid_focus_stacking::duplicate_channels(const cv::Mat & src, int cn)
+{
+  cv::Mat m;
+  cv::merge(std::vector<cv::Mat>(cn, src), m);
+  return m;
+}
+
 bool c_laplacian_pyramid_focus_stacking::initialze(const cv::Size & image_size, int acctype, int weightstype)
 {
   acc.clear();
@@ -1109,8 +1116,63 @@ bool c_laplacian_pyramid_focus_stacking::initialze(const cv::Size & image_size, 
   return true;
 }
 
+
 bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray mask)
 {
+  static const auto graystdev =
+      [](const cv::Mat & image) -> double {
+        cv::Scalar m, s;
+        cv::meanStdDev(image, m, s);
+        double sv = s[0];
+        for ( int i = 1, cn = image.channels(); i < cn; ++i ) {
+          sv += s[i];
+        }
+        return sv;
+      };
+
+  static const auto apply_mask =
+      [](std::vector<cv::Mat> & lpyr, cv::InputArray m) {
+
+        if( !m.empty() && m.type() == CV_8UC1 ) {
+
+          std::vector<cv::Mat> mskpyr;
+
+          cv::buildPyramid(m, mskpyr, lpyr.size() - 1);
+
+          for( int i = 0, n = mskpyr.size(); i < n - 1; ++i ) {
+            cv::compare(mskpyr[i], 255, mskpyr[i], cv::CMP_LT);
+            if( !cv::countNonZero(mskpyr[i]) ) {
+              break;
+            }
+            lpyr[i].setTo(0, mskpyr[i]);
+          }
+        }
+      };
+
+  static const auto compute_energy =
+      [](cv::Mat & lap, cv::Mat & w, const cv::Mat & G, bool avgc) {
+
+        if ( !avgc || lap.channels() == 1 ) {
+          cv::multiply(lap, lap, w);
+        }
+        else {
+          reduce_color_channels(lap, w, cv::REDUCE_SUM);
+          cv::multiply(w, w, w);
+        }
+
+        if ( !G.empty() ) {
+          cv::sepFilter2D(w, w, -1, G, G, cv::Point(-1, -1), 1e-12);
+        }
+
+        if ( lap.channels() == w.channels() ) {
+          cv::multiply(lap, w, lap);
+        }
+        else {
+          cv::multiply(lap, duplicate_channels(w, lap.channels()), lap);
+        }
+      };
+
+
   const cv::Mat image =
       src.getMat();
 
@@ -1128,7 +1190,25 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
   }
 
   if( acc.empty() ) {
+
+    if( G.empty() && (opts_.ksigma > 0 || opts_.kradius > 0) ) {
+
+      G = cv::getGaussianKernel(std::max(0, 2 * opts_.kradius + 1),
+          std::max(0., opts_.ksigma),
+          CV_32F);
+    }
+
     build_laplacian_pyramid(image, acc, 8);
+    apply_mask(acc, mask);
+
+    if( opts_.fusing_policy == weighted_average ) {
+
+      wwp.resize(acc.size() - 1);
+      for( int i = 0, n = acc.size(); i < n - 1; ++i ) {
+        compute_energy(acc[i], wwp[i], G, opts_.avgchannel);
+      }
+    }
+
     ++accumulated_frames_;
     return true;
   }
@@ -1139,8 +1219,13 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
     return false;
   }
 
+
   std::vector<cv::Mat> pyr;
+  cv::Mat w[2], ww, m;
+
   build_laplacian_pyramid(image, pyr, 8);
+  apply_mask(pyr, mask);
+
 
   const int pyrsize =
       pyr.size();
@@ -1150,17 +1235,6 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
         pyr.size(), acc.size());
     return false;
   }
-
-  static const auto graystdev =
-      [](const cv::Mat & image) -> double {
-        cv::Scalar m, s;
-        cv::meanStdDev(image, m, s);
-        double sv = s[0];
-        for ( int i = 1, cn = image.channels(); i < cn; ++i ) {
-          sv += s[i];
-        }
-        return sv;
-      };
 
   const double sv[2] = {
       graystdev(acc.back()),
@@ -1172,22 +1246,10 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
       0,
       acc.back());
 
-  cv::Mat w[2];
-
   const int cn =
       image.channels();
 
-
-  if( G.empty() && (opts_.ksigma > 0 || opts_.kradius > 0) ) {
-
-    G =
-        cv::getGaussianKernel(std::max(0, 2 * opts_.kradius + 1),
-            std::max(0., opts_.ksigma),
-            CV_32F);
-  }
-
-
-  for( int i = pyrsize - 2; i >= 0; --i ) {
+  for( int i = 0; i < pyrsize - 1; ++i ) {
 
     switch (opts_.fusing_policy) {
       case select_max_energy: {
@@ -1200,41 +1262,54 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
           cv::sepFilter2D(w[1], w[1], -1, G, G, cv::Point(-1, -1));
         }
 
-        pyr[i].copyTo(acc[i], w[1] > w[0]);
+        cv::compare(w[1], w[0], m, cv::CMP_GT);
+        pyr[i].copyTo(acc[i], m);
+
         break;
       }
 
-      default: {
-        cv::Mat ww;
-
-        cv::multiply(acc[i], acc[i], w[0]);
-        cv::multiply(pyr[i], pyr[i], w[1]);
-
-        if( !G.empty() ) {
-          cv::sepFilter2D(w[0], w[0], -1, G, G, cv::Point(-1, -1), 1e-12);
-          cv::sepFilter2D(w[1], w[1], -1, G, G, cv::Point(-1, -1), 1e-12);
-          cv::add(w[0], w[1], ww);
-        }
-        else {
-          cv::add(w[0], w[1], ww);
-          cv::add(ww, cv::Scalar::all(2e-12), ww);
-        }
-
-        cv::multiply(acc[i], w[0], acc[i]);
-        cv::multiply(pyr[i], w[1], pyr[i]);
-        cv::add(acc[i], pyr[i], acc[i]);
-        cv::divide(acc[i], ww, acc[i]);
+      case weighted_average:
+        default: {
+        compute_energy(pyr[i], ww, G, opts_.avgchannel);
+        cv::add(pyr[i], acc[i], acc[i]);
+        cv::add(ww, wwp[i], wwp[i]);
         break;
       }
     }
   }
 
+  ++accumulated_frames_;
+
   return true;
 }
 
-bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::OutputArray mask,
+    double dscale, int ddepth) const
 {
-  reconstruct_laplacian_pyramid(avg, acc);
+  switch (opts_.fusing_policy) {
+    case select_max_energy:
+      reconstruct_laplacian_pyramid(avg, acc);
+      break;
+
+    case weighted_average:
+      default:
+      if( !acc.empty() ) {
+        std::vector<cv::Mat> lpyr(acc.size());
+        cv::Mat w;
+        for( int i = 0, n = acc.size(); i < n - 1; ++i ) {
+          if( acc[i].channels() == wwp[i].channels() ) {
+            cv::divide(acc[i], wwp[i], lpyr[i]);
+          }
+          else {
+            cv::divide(acc[i], duplicate_channels(wwp[i], acc[i].channels()), lpyr[i]);
+          }
+        }
+        lpyr.back() = acc.back();
+        reconstruct_laplacian_pyramid(avg, lpyr);
+      }
+      break;
+  }
+
   return true;
 }
 

@@ -77,6 +77,7 @@ public:
   struct options {
     enum fusing_policy fusing_policy = select_max_energy;
     bool inpaint_mask_holes = true;
+    bool avgchannel = true;
     int kradius = 0;
     double ksigma = 0;
   };
@@ -90,10 +91,12 @@ public:
   cv::Size accumulator_size() const override;
 
 protected:
+  static cv::Mat duplicate_channels(const cv::Mat & src, int cn);
 
 protected:
   options opts_;
   std::vector<cv::Mat> acc;
+  std::vector<cv::Mat> wwp;
   cv::Size image_size_;
   int acctype_ = CV_32F;
   int weightstype_ = CV_8U;

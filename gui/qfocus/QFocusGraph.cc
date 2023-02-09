@@ -9,12 +9,10 @@
 #include <gui/widgets/style.h>
 #include <core/ssprintf.h>
 
-
 #define ICON_menu         ":/qfocus/icons/menu.png"
 #define ICON_chart        ":/qfocus/icons/chart.png"
 #define ICON_roi          ":/qfocus/icons/roi.png"
 #define ICON_options      ":/qfocus/icons/options.png"
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,7 +92,6 @@ QFocusGraph::QFocusGraph(QWidget * parent) :
         }
       });
 
-
   ///////////////////////////////////////////////////////////////////
 }
 
@@ -118,11 +115,10 @@ void QFocusGraph::setFocusMeasureProvider(QFocusMeasureProvider * provider)
   }
 }
 
-QFocusMeasureProvider * QFocusGraph::focusMeasureProvider() const
+QFocusMeasureProvider* QFocusGraph::focusMeasureProvider() const
 {
   return provider_;
 }
-
 
 void QFocusGraph::clearFocusGraph()
 {
@@ -138,7 +134,7 @@ void QFocusGraph::clearFocusGraph()
 
 void QFocusGraph::updateFocusGraph()
 {
-  if ( provider_ ) {
+  if( provider_ ) {
 
     QMutexLocker lock(&provider_->mutex());
 
@@ -160,9 +156,8 @@ void QFocusGraph::updateFocusGraph()
 
     plot_->yAxis->rescale();
 
-
     enum COLORID colorid = provider_->colorid();
-    if ( colorid != last_colorid_ )  {
+    if( colorid != last_colorid_ ) {
       updatePenColors(last_colorid_ = colorid);
     }
 
@@ -244,22 +239,21 @@ void QFocusGraph::updatePenColors(enum COLORID colorid)
   }
 }
 
-
-void QFocusGraph::showEvent(QShowEvent *event)
+void QFocusGraph::showEvent(QShowEvent * event)
 {
   Base::showEvent(event);
 
-  if ( provider_ ) {
+  if( provider_ ) {
     provider_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
   }
 
 }
 
-void QFocusGraph::hideEvent(QHideEvent *event)
+void QFocusGraph::hideEvent(QHideEvent * event)
 {
   Base::hideEvent(event);
 
-  if ( provider_ ) {
+  if( provider_ ) {
     provider_->setEnabled(enableFocusTrackAction_->isChecked() && isVisible());
   }
 }
@@ -274,7 +268,7 @@ QFocusGraphDock::QFocusGraphDock(const QString & title, QWidget * parent, QFocus
     const QList<QAction*> actions =
         view->actions();
 
-    QCustomDockTitleBar * bar =
+    QCustomDockTitleBar *bar =
         titleBar();
 
     for( QAction *action : actions ) {
@@ -290,57 +284,50 @@ QFocusGraphDock::QFocusGraphDock(const QString & title, QWidget * parent, QFocus
 QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
     Base("QFocusGraphSettings", parent)
 {
-  eps_ctl =
-      add_numeric_box<double>(
-          "eps",
-          [this](double v) {
-            if ( provider_ ) {
-              provider_->measure().set_eps(v);
-              provider_->save_parameters();
+
+  sharpness_measure_ctl =
+      add_enum_combobox<SHARPNESS_MEASURE>(
+          "Focus measure method:",
+          [this](SHARPNESS_MEASURE v) {
+            if ( provider_ && provider_->measure().method() != v ) {
+              provider_->measure().set_method(v);
+              updatestackedwidget();
+              Q_EMIT parameterChanged();
             }
           },
-          [this](double * v) {
+          [this](SHARPNESS_MEASURE * v) {
             if ( provider_ ) {
-              *v = provider_->measure().eps();
+              *v = provider_->measure().method();
               return true;
             }
             return false;
           });
 
-  dscale_ctl =
-      add_numeric_box<int>(
-          "dscale",
-          [this](int v) {
-            if ( provider_ ) {
-              provider_->measure().set_dscale(v);
-              provider_->save_parameters();
-            }
-          },
-          [this](int * v) {
-            if ( provider_ ) {
-              *v = provider_->measure().dscale();
-              return true;
-            }
-            return false;
-          });
+  stack_ctl = new QStackedWidget(this);
+  stack_ctl->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
 
-  avgchannel_ctl =
-      add_checkbox(
-          "avgchannel",
-          [this](bool v ) {
-            if ( provider_ ) {
-              provider_->measure().set_avgchannel(v);
-              provider_->save_parameters();
-            }
-          },
-          [this](bool * v) {
-            if ( provider_ ) {
-              *v = provider_->measure().avgchannel();
-              return true;
-            }
-            return false;
-          });
+  stack_ctl->addWidget(localContrastMeasure_ctl = new QLocalContrastMeasureOptions(this));
+  stack_ctl->addWidget(sharpnessNormMeasure_ctl = new QSharpnessNormMeasureOptions(this));
+  stack_ctl->addWidget(normalizedVarianceMeasure_ctl = new QNormalizedVarianceMeasureOptions(this));
+  stack_ctl->addWidget(lpgSharpnessMeasure_ctl = new QLPGSharpnessMeasureOptions(this));
+  stack_ctl->addWidget(harrisSharpnessMeasure_ctl = new QHarrisSharpnessMeasureOptions(this));
 
+  form->addRow(stack_ctl);
+
+  connect(localContrastMeasure_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  connect(sharpnessNormMeasure_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  connect(normalizedVarianceMeasure_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  connect(lpgSharpnessMeasure_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  connect(harrisSharpnessMeasure_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
 
   updateControls();
 }
@@ -348,25 +335,77 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
 void QFocusGraphSettingsWidget::setFocusMeasureProvider(QFocusMeasureProvider * provider)
 {
   provider_ = provider;
+
+  localContrastMeasure_ctl->set_measure_options(provider ?
+      &provider->measure().local_contrast_measure() :
+      nullptr);
+
+  sharpnessNormMeasure_ctl->set_measure_options(provider ?
+      &provider->measure().sharpness_norm_measure() :
+      nullptr);
+
+  normalizedVarianceMeasure_ctl->set_measure_options(provider ?
+      &provider->measure().normalized_variance_measure() :
+      nullptr);
+
+  lpgSharpnessMeasure_ctl->set_measure_options(provider ?
+      &provider->measure().lpg_measure() :
+      nullptr);
+
+  harrisSharpnessMeasure_ctl->set_measure_options(provider ?
+      &provider->measure().harris_measure() :
+      nullptr);
+
   updateControls();
 }
 
-QFocusMeasureProvider * QFocusGraphSettingsWidget::focusMeasureProvider() const
+QFocusMeasureProvider* QFocusGraphSettingsWidget::focusMeasureProvider() const
 {
   return provider_;
+}
+
+void QFocusGraphSettingsWidget::onload(QSettings & settings)
+{
+  Base::onload(settings);
 }
 
 void QFocusGraphSettingsWidget::onupdatecontrols()
 {
   Base::onupdatecontrols();
 
-  if ( !provider_ ) {
+  if( !provider_ ) {
     setEnabled(false);
   }
   else {
+    updatestackedwidget();
     setEnabled(true);
   }
 }
+
+void QFocusGraphSettingsWidget::updatestackedwidget()
+{
+  switch (sharpness_measure_ctl->currentItem()) {
+    case SHARPNESS_MEASURE_LCM:
+      stack_ctl->setCurrentWidget(localContrastMeasure_ctl);
+      break;
+    case SHARPNESS_MEASURE_LPG:
+      stack_ctl->setCurrentWidget(lpgSharpnessMeasure_ctl);
+      break;
+    case SHARPNESS_MEASURE_HARRIS:
+      stack_ctl->setCurrentWidget(harrisSharpnessMeasure_ctl);
+      break;
+    case SHARPNESS_MEASURE_NORMALIZED_VARIANCE:
+      stack_ctl->setCurrentWidget(normalizedVarianceMeasure_ctl);
+      break;
+    case SHARPNESS_MEASURE_SHARPNESS_NORM:
+      stack_ctl->setCurrentWidget(sharpnessNormMeasure_ctl);
+      break;
+    default:
+      stack_ctl->setCurrentWidget(nullptr);
+      break;
+  }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -384,28 +423,27 @@ void QFocusGraphSettingsDialogBox::setFocusMeasureProvider(QFocusMeasureProvider
   settings_ctl->setFocusMeasureProvider(provider);
 }
 
-QFocusMeasureProvider * QFocusGraphSettingsDialogBox::focusMeasureProvider() const
+QFocusMeasureProvider* QFocusGraphSettingsDialogBox::focusMeasureProvider() const
 {
   return settings_ctl->focusMeasureProvider();
 }
 
-void QFocusGraphSettingsDialogBox::showEvent(QShowEvent *e)
+void QFocusGraphSettingsDialogBox::showEvent(QShowEvent * e)
 {
   Base::showEvent(e);
   Q_EMIT visibilityChanged(isVisible());
 }
 
-void QFocusGraphSettingsDialogBox::hideEvent(QHideEvent *e)
+void QFocusGraphSettingsDialogBox::hideEvent(QHideEvent * e)
 {
   Base::hideEvent(e);
   Q_EMIT visibilityChanged(isVisible());
 }
 
-void QFocusGraphSettingsDialogBox::closeEvent(QCloseEvent *)
+void QFocusGraphSettingsDialogBox::closeEvent(QCloseEvent*)
 {
   hide();
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

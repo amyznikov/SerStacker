@@ -91,7 +91,7 @@ void QCameraFocusMeasure::CameraMonitorThread::run()
         }
 
         cv::Scalar v =
-            p_->measure_.compute(image);
+            p_->measure_.measure(image);
 
         const int cn =
             p_->measure_.avgchannel() ? 1 :

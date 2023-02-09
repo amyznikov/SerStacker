@@ -27,16 +27,6 @@ static void compute_harris_map(const cv::Mat & src, double k, cv::Mat & M)
 
   constexpr int ddepth = CV_32F;
 
-//  cv::Mat gxx, gyy, gxy, D, T;
-
-//  cv::filter2D(src, gxx, ddepth, Kx, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
-//  cv::filter2D(src, gyy, ddepth, Ky, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
-//
-//  cv::multiply(gxx, gyy, gxy);
-//  cv::multiply(gxx, gxx, gxx);
-//  cv::multiply(gyy, gyy, gyy);
-
-
   cv::Mat gx, gy, gxx, gyy, gxy, D, T;
   cv::filter2D(src, gx, ddepth, Kx, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
   cv::filter2D(src, gy, ddepth, Ky, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
@@ -56,7 +46,7 @@ static void compute_harris_map(const cv::Mat & src, double k, cv::Mat & M)
   const cv::Mat & d = gyy;
 
   // Determinant D:
-  cv::absdiff(a.mul(b), b.mul(b), D);
+  cv::absdiff(a.mul(d), b.mul(b), D);
 
   // Trace T:
   cv::add(a, d, T); //  T = a + d;

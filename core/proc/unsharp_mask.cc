@@ -494,9 +494,16 @@ double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,
 
   cv::Mat lpass;
 
-  cv::sepFilter2D(src, lpass, src.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REFLECT101);
+  cv::sepFilter2D(src, lpass,
+      src.depth(),
+      G, G,
+      cv::Point(-1, -1),
+      0,
+      cv::BORDER_REFLECT101);
 
-  double v = cv::norm(src, lpass, normType, mask);
+  double v =
+      cv::norm(src, lpass, normType,
+          mask);
 
   if( mask.size() == src.size() ) {
     v /= cv::countNonZero(mask);

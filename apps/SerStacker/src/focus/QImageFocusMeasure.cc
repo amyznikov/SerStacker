@@ -32,7 +32,7 @@ void QImageFocusMeasure::measure(const cv::Mat & frame, COLORID colorid, int bpp
       }
 
       cv::Scalar v =
-          measure_.compute(image);
+          measure_.measure(image);
 
       const int cn =
           measure_.avgchannel() ? 1 :

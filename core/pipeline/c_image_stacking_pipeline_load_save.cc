@@ -454,6 +454,7 @@ bool c_frame_accumulation_options::serialize(c_config_setting settings) const
   section = settings.add_group("c_laplacian_pyramid_focus_stacking");
   SAVE_OPTION(section, fs_, fusing_policy);
   SAVE_OPTION(section, fs_, inpaint_mask_holes);
+  SAVE_OPTION(section, fs_, avgchannel);
   SAVE_OPTION(section, fs_, kradius);
   SAVE_OPTION(section, fs_, inpaint_mask_holes);
 
@@ -481,6 +482,7 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
   if( (section = settings["c_laplacian_pyramid_focus_stacking"]).isGroup() ) {
     LOAD_OPTION(section, fs_, fusing_policy);
     LOAD_OPTION(section, fs_, inpaint_mask_holes);
+    LOAD_OPTION(section, fs_, avgchannel);
     LOAD_OPTION(section, fs_, kradius);
     LOAD_OPTION(section, fs_, inpaint_mask_holes);
   }

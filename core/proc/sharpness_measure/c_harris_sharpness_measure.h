@@ -4,7 +4,7 @@
  *  Created on: Jan 25, 2023
  *      Author: amyznikov
  *
- *  Unsuccessful experiments (with improvisations) with approach from paper:
+ *  Experiments (with some improvisations) with approach from paper:
  *
  *  FocusALL: Focal Stacking of Microscopic Images Using Modified Harris Corner Response Measure.
  *   Madhu S. Sigdel,* Madhav Sigdel,* Semih Dinç,* Imren Dinç,* Marc L. Pusey,† and Ramazan S. Aygün*

@@ -10,12 +10,12 @@
 #define __QFrameAccumulationOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/qfocus/QLPGSharpnessMeasureOptions.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
 typedef QEnumComboBox<frame_accumulation_method>
   QFrameAccumulationMethodCombo;
 
-class QLPGSharpnessMeasureOptions;
 class QFocusStackingOptions;
 
 class QFrameAccumulationOptions :
@@ -47,33 +47,6 @@ protected:
   QFocusStackingOptions * focus_stack_options_ctl = nullptr;;
 };
 
-class QLPGSharpnessMeasureOptions :
-    public QSettingsWidget
-{
-  Q_OBJECT;
-public:
-  typedef QLPGSharpnessMeasureOptions ThisClass;
-  typedef QSettingsWidget Base;
-
-  QLPGSharpnessMeasureOptions(QWidget * parent = nullptr);
-
-  void set_accumulation_options(c_frame_accumulation_options * options);
-  const c_frame_accumulation_options * accumulation_options() const;
-
-protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_frame_accumulation_options * options_ = nullptr;
-
-  QNumberEditBox * lw_ctl = nullptr;
-  QNumberEditBox * k_ctl = nullptr;
-  QNumberEditBox * dscale_ctl = nullptr;
-  QNumberEditBox * uscale_ctl = nullptr;
-  QCheckBox * square_ctl = nullptr;
-  QCheckBox * avgc_ctl = nullptr;
-
-};
 
 class QFocusStackingOptions :
     public QSettingsWidget
@@ -94,6 +67,7 @@ protected:
 protected:
   c_frame_accumulation_options * options_ = nullptr;
   QEnumComboBox<c_laplacian_pyramid_focus_stacking::fusing_policy> * fusion_ctl = nullptr;
+  QCheckBox * avgchannel_ctl = nullptr;
   QCheckBox * enable_inpaint_ctl = nullptr;
   QNumberEditBox * kradius_ctl = nullptr;
   QNumberEditBox * ksigma_ctl = nullptr;

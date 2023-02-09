@@ -27,8 +27,8 @@ public:
 
   QFocusMeasureProvider(QObject * parent = nullptr );
 
-  c_local_contrast_measure & measure();
-  const c_local_contrast_measure & measure() const;
+  c_camera_focus_measure & measure();
+  const c_camera_focus_measure & measure() const;
 
   int maxMeasurements() const;
 
@@ -58,7 +58,7 @@ protected:
 
 protected:
   QString sprefix_;
-  c_local_contrast_measure measure_;
+  c_camera_focus_measure measure_;
   QMutex mutex_;
   QVector<double> measurements_[MAX_CHANNELS];
   int max_measurements_ = 100;

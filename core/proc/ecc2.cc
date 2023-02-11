@@ -426,16 +426,7 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     // calculate Hessian and its inverse
     compute_hessian_matrix(jac, H, number_of_parameters_);
 
-    if ( !cv::invert(H, Hinv, cv::DECOMP_CHOLESKY) ) {
-      CF_ERROR("[iteration %d] cv::invert(Hessian, cv::DECOMP_CHOLESKY) fails", num_iterations_);
-
-      CF_DEBUG("cv::countNonZero(jac)=%d", cv::countNonZero(jac));
-      for ( int r = 0, nr = Hinv.rows; r < nr; ++r ) {
-        for ( int c = 0, nc = Hinv.cols; c < nc; ++c ) {
-          CF_DEBUG("H(%3d, %3d) = %+g", r, c, H(r, c));
-        }
-      }
-
+    if ( !cv::invert(H, H, cv::DECOMP_CHOLESKY) ) {
       failed = true;
       break;
     }
@@ -450,24 +441,7 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     project_error_image(jac, e, ep, number_of_parameters_);
 
     // compute update parameters
-    dp = -update_step_scale_ * (Hinv * ep);
-
-//    CF_DEBUG("--------------------");
-//
-//    CF_DEBUG("ep: %dx%d", ep.rows, ep.cols);
-//    for ( int r = 0, nr = ep.rows; r < nr; ++r ) {
-//      for ( int c = 0, nc = ep.cols; c < nc; ++c ) {
-//        CF_DEBUG("ep(%3d, %3d) = %+g", r, c, ep(r, c));
-//      }
-//    }
-//
-//    CF_DEBUG("H: %dx%d", ep.rows, ep.cols);
-//    for ( int r = 0, nr = H.rows; r < nr; ++r ) {
-//      for ( int c = 0, nc = H.cols; c < nc; ++c ) {
-//        CF_DEBUG("H(%3d, %3d) = %+g", r, c, H(r, c));
-//      }
-//    }
-//    CF_DEBUG("--------------------");
+    dp = -update_step_scale_ * (H * ep);
 
     // update warping matrix
     if( !transfrom_->update_forward_additive(dp, &current_eps_, f.size()) ) {
@@ -1667,16 +1641,12 @@ bool c_ecc_euclidean_transform::create_steepest_descent_images(const cv::Mat1f &
       });
 
 
-
-  //CF_DEBUG("Tx: %+g Ty: %+g angle: %+g scale: %+g", Tx_, Ty_, angle_ * 180 / M_PI, scale_);
-
-
   return true;
 }
 
 bool c_ecc_euclidean_transform::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
-  const  int n =
+  const int n =
       num_adustable_parameters();
 
   if( p.rows != n || p.cols != 1 ) {
@@ -1690,20 +1660,18 @@ bool c_ecc_euclidean_transform::update_forward_additive(const cv::Mat1f & p, flo
   float ds = 0;
   int i = 0;
 
-  if ( !fix_translation_ ) {
+  if( !fix_translation_ ) {
     dx = p(i++, 0);
     dy = p(i++, 0);
   }
 
-  if ( !fix_rotation_ ) {
+  if( !fix_rotation_ ) {
     da = p(i++, 0);
   }
 
-  if ( !fix_scale_ ) {
+  if( !fix_scale_ ) {
     ds = p(i++, 0);
   }
-
-  CF_DEBUG("Tx:(%+g %+g) Ty:(%+g %+g) angle:(%+g %+g) scale:(%+g %+g)", Tx_, dx, Ty_, dy, angle_ * 180 / M_PI, da  * 180 / M_PI, scale_, ds);
 
   Tx_ += dx;
   Ty_ += dy;

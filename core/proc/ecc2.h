@@ -159,7 +159,6 @@ public:
   bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) override;
 
 protected:
-  // Tx, Ty, angle, scale
   float a[4] = { 0, 0, 0, 1 };
   float & Tx_ = a[0];
   float & Ty_ = a[1];
@@ -421,7 +420,7 @@ protected:
   cv::Mat1f gw; // warped input image
   cv::Mat1f gx, gy, gxw, gyw; // input image derivatives
   cv::Mat1f jac;  // jacobian [f.rows * numberOfParameters][f.cols]
-  cv::Mat1f H, Hinv; // Hessian matrix and its inverse
+  cv::Mat1f H; // Hessian matrix and its inverse
   cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1]
   cv::Mat1f e, ep;  // error image and it's projection
 };

@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
   bool fix_translation = false;
   bool fix_rotation = false;
   bool fix_scale = false;
+  bool estimate_translation_first = false;
 
   for ( int i = 1; i < argc; ++i ) {
 
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 
       fprintf(stdout, "Test for ecc2 align.\n"
           "Usage:\n"
-          "   alpha <input_image1> <input_image2> [-o <output_directory>] [-h] [-t] [-r] [-s] \n"
+          "   alpha <input_image1> <input_image2> [-o <output_directory>] [-h] [-t] [-r] [-s] [-et] \n"
           "\n");
 
       return 0;
@@ -77,6 +78,12 @@ int main(int argc, char *argv[])
       fix_scale = true;
       continue;
     }
+
+    if( strcmp(argv[i], "-et") == 0 ) {
+      estimate_translation_first = true;
+      continue;
+    }
+
 
     if( strcmp(argv[i], "-o") == 0 ) {
       if( ++i >= argc ) {
@@ -129,14 +136,23 @@ int main(int argc, char *argv[])
     output_directory = "./ecc2";
   }
 
+  c_ecc_euclidean_transform transform;
+  c_ecc2_forward_additive ecc(&transform);
+  c_ecch2 ecch (&ecc);
+
+  ecc.set_min_rho(0.5);
+  ecc.set_update_step_scale(1);
+  ecc.set_eps(0.1);
+  ecc.set_max_iterations(100);
+
+  ecch.set_minimum_image_size(8);
+
   cv::Vec2f T;
 
-  if ( true ) {
+  if ( estimate_translation_first ) {
 
-    c_ecc_translation_transform transform(T);
-    c_ecc2_forward_additive ecc(&transform);
-    c_ecch2 ecch(&ecc);
-    ecch.set_minimum_image_size(2);
+    transform.set_fix_rotation(true);
+    transform.set_fix_scale(true);
 
     if( !ecch.set_reference_image(grays[0], masks[0]) ) {
       CF_ERROR("ecch.set_reference_image() fails");
@@ -148,40 +164,35 @@ int main(int argc, char *argv[])
       return 1;
     }
 
-    T = transform.translation();
+    CF_DEBUG("ESTIMATION: failed=%d iterations=%d / %d rho = %g / %g  eps=%g / %g",
+        ecc.failed(),
+        ecc.num_iterations(), ecc.max_iterations(),
+        ecc.rho(), ecc.min_rho(),
+        ecc.current_eps(), ecc.eps());
 
-    CF_DEBUG("tx=%g ty=%g\n===========================\n", T[0], T[1]);
+    T = transform.translation();
+    CF_DEBUG("ESTIMATED tx=%g ty=%g\n===========================\n", T[0], T[1]);
+
+    transform.set_fix_rotation(false);
+    transform.set_fix_scale(false);
   }
 
 
-  //c_ecc_translation_transform transform(0, 0);
-  c_ecc_euclidean_transform transform(0, 0, 0, 1);
-  //c_ecc_affine_transform transform;
-   //c_ecc_homography_transform transform;
-  //c_ecc_quadratic_transform transform;
-
-  transform.set_translation(-T);
   transform.set_fix_translation(fix_translation);
   transform.set_fix_rotation(fix_rotation);
   transform.set_fix_scale(fix_scale);
 
-  c_ecc2_forward_additive ecc(&transform);
-  ecc.set_min_rho(0.5);
-  ecc.set_update_step_scale(1);
-
   if( coarse_to_fine ) {
 
-    c_ecch2 ecch(&ecc);
-
-    ecch.set_minimum_image_size(4);
-
-    if( !ecch.set_reference_image(grays[0], masks[0]) ) {
+    if( !estimate_translation_first && !ecch.set_reference_image(grays[0], masks[0]) ) {
       CF_ERROR("ecch.set_reference_image() fails");
       return 1;
     }
 
+    //ecch.set_minimum_image_size(16);
+
     if( !ecch.align(grays[1], masks[1]) ) {
-      CF_ERROR("ecch.set_reference_image() fails");
+      CF_ERROR("ecch.align() fails");
     }
   }
   else {
@@ -201,18 +212,22 @@ int main(int argc, char *argv[])
     }
   }
 
-  CF_DEBUG("ecc: iterations=%d / %d rho = %g / %g  eps=%g / %g",
+  CF_DEBUG("ecc: failed=%d iterations=%d / %d rho = %g / %g  eps=%g / %g",
+      ecc.failed(),
       ecc.num_iterations(), ecc.max_iterations(),
       ecc.rho(), ecc.min_rho(),
       ecc.current_eps(), ecc.eps());
 
 
   T = transform.translation();
-  CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
-      "===========================\n",
-      T[0], T[1],
-      transform.rotation() * 180 / CV_PI,
-      transform.scale());
+//  CF_DEBUG("Tx=%g Ty=%g\n"
+//      "===========================\n",
+//      T[0], T[1]);
+    CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
+        "===========================\n",
+        T[0], T[1],
+        transform.rotation() * 180 / CV_PI,
+        transform.scale());
 
   if ( !ecc.current_remap().empty() ) {
 

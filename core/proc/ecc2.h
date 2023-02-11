@@ -72,45 +72,43 @@ public:
   virtual bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
   virtual bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
 };
-
-/**
- * Image translation:
- *  x' = x + Tx
- *  y' = y + Ty
- */
-class c_ecc_translation_transform :
-    public c_ecc_transform
-{
-public:
-  typedef c_ecc_translation_transform this_class;
-  typedef c_ecc_transform base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_ecc_translation_transform(float Tx = 0, float Ty = 0);
-  c_ecc_translation_transform(const cv::Vec2f & t);
-
-  void set_translation(const cv::Vec2f & v);
-  const cv::Vec2f & translation() const;
-
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-
-  cv::Mat1f scale(const cv::Mat1f & p, double factor) const override;
-
-  int  num_adustable_parameters() const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
-  bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const override;
-  bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) override;
-  bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) override;
-
-protected:
-  cv::Vec2f T_;
-};
+//
+///**
+// * Image translation:
+// *  x' = x + Tx
+// *  y' = y + Ty
+// */
+//class c_ecc_translation_transform :
+//    public c_ecc_transform
+//{
+//public:
+//  typedef c_ecc_translation_transform this_class;
+//  typedef c_ecc_transform base;
+//  typedef std::shared_ptr<this_class> sptr;
+//
+//  c_ecc_translation_transform(float Tx = 0, float Ty = 0);
+//  c_ecc_translation_transform(const cv::Vec2f & t);
+//
+//  void set_translation(const cv::Vec2f & v);
+//  const cv::Vec2f & translation() const;
+//
+//  cv::Mat1f parameters() const override;
+//  bool set_parameters(const cv::Mat1f & p) override;
+//
+//  cv::Mat1f scale(const cv::Mat1f & p, double factor) const override;
+//
+//  int  num_adustable_parameters() const override;
+//  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+//  bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const override;
+//  bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) override;
+//  bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) override;
+//
+//protected:
+//  cv::Vec2f T_;
+//};
 
 /**
  * Image Euclidean transform with optional scale, rotation and translation :
- *  x' =  scale * cos(angle) * x - scale * sin(angle) * y + Tx
- *  y' =  scale * sin(angle) * x + scale * cos(angle) * y + Ty
  *
  *  x' =  scale * ( cos(angle) * (x - tx) - sin(angle) * (y - ty))
  *  y' =  scale * ( sin(angle) * (x - tx) + cos(angle) * (y - ty))
@@ -345,6 +343,8 @@ public:
   virtual bool align_to_reference(cv::InputArray inputImage,
       cv::InputArray inputMask = cv::noArray()) = 0;
 
+  bool failed() const;
+
   double rho() const;
   double current_eps() const;
   int num_iterations() const;
@@ -361,6 +361,7 @@ protected:
   c_ecc_transform * transfrom_ = nullptr;
 
   enum ECC2_INTERPOLATION_METHOD interpolation_ = ECC2_INTER_LINEAR;
+  bool failed_ = false;
 
   int num_iterations_  = 0;
   int max_iterations_ = 30;

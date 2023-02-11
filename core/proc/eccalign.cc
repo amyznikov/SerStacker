@@ -1854,7 +1854,9 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
     else {
       P = P * dP;
 
-      sincos(P(1, 0), &sa, &ca);
+      // sincos(P(1, 0), &sa, &ca);
+      sincos(std::asin(P(1, 0)), &sa, &ca);
+
 
       W(0,0) = ca;
       W(0,1) = -sa;
@@ -1907,7 +1909,8 @@ static bool update_warp_matrix_inverse_composite(int motion_type, cv::Mat1f & W,
       P = P * dP;
 
       scale = hypot(P(0, 0), P(1, 0));
-      sincos(P(1, 0) / scale, &sa, &ca);
+      //sincos(P(1, 0) / scale, &sa, &ca);
+      sincos(std::asin(P(1, 0)) / scale, &sa, &ca);
 
       // FIXME: Check if this is corect
       scale = hypot(W(0, 0), W(1, 0)) - deltaP(3, 0);
@@ -2185,27 +2188,6 @@ double c_ecc_align::update_step_scale() const
 {
   return update_step_scale_;
 }
-
-
-//void c_ecc_align::set_pyramid_normalization_level(int v)
-//{
-//  pyramid_normalization_level_ = v;
-//}
-//
-//int c_ecc_align::pyramid_normalization_level() const
-//{
-//  return pyramid_normalization_level_;
-//}
-//
-//void c_ecc_align::set_pyramid_normalization_regularization_term(double v)
-//{
-//  pyramid_normalization_regularization_term_ = v;
-//}
-//
-//double c_ecc_align::pyramid_normalization_regularization_term() const
-//{
-//  return pyramid_normalization_regularization_term_;
-//}
 
 double c_ecc_align::rho() const
 {

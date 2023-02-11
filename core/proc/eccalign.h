@@ -230,8 +230,8 @@ protected:
 //          Simon Baker et.all.
 // "Parametric Image Alignment Using Enhanced Correlation Coefficient Maximization",
 //          Georgios D. Evangelidis and Emmanouil Z. Psarakis
-class c_ecc_forward_additive
-    : public c_ecc_align
+class c_ecc_forward_additive :
+    public c_ecc_align
 {
 public:
   typedef c_ecc_forward_additive this_class;
@@ -276,8 +276,8 @@ protected:
 // Formula (5) from the paper
 //  "Fast, Robust and Accurate Digital Image Correlation Calculation Without Redundant Computations" B. Pan, K. Li, W. Tong
 //  <http://www.ncorr.com/download/publications/panfast.pdf>
-class c_ecc_inverse_compositional
-    : public c_ecc_align
+class c_ecc_inverse_compositional :
+    public c_ecc_align
 {
 public:
   typedef c_ecc_inverse_compositional this_class;

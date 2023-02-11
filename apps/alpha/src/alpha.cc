@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
   ecc.set_min_rho(0.5);
   ecc.set_update_step_scale(1);
-  ecc.set_eps(0.1);
+  ecc.set_max_eps(0.1);
   ecc.set_max_iterations(100);
 
   ecch.set_minimum_image_size(8);
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
         ecc.failed(),
         ecc.num_iterations(), ecc.max_iterations(),
         ecc.rho(), ecc.min_rho(),
-        ecc.current_eps(), ecc.eps());
+        ecc.eps(), ecc.max_eps());
 
     T = transform.translation();
     CF_DEBUG("ESTIMATED tx=%g ty=%g\n===========================\n", T[0], T[1]);
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
       CF_DEBUG("iterations=%d / %d rho = %g / %g  eps=%g / %g",
           ecc.num_iterations(), ecc.max_iterations(),
           ecc.rho(), ecc.min_rho(),
-          ecc.current_eps(), ecc.eps());
+          ecc.eps(), ecc.max_eps());
 
     }
   }
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
       ecc.failed(),
       ecc.num_iterations(), ecc.max_iterations(),
       ecc.rho(), ecc.min_rho(),
-      ecc.current_eps(), ecc.eps());
+      ecc.eps(), ecc.max_eps());
 
 
   T = transform.translation();

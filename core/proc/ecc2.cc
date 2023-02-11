@@ -254,14 +254,14 @@ int c_ecc2::max_iterations() const
   return this->max_iterations_;
 }
 
-void c_ecc2::set_eps(double v)
+void c_ecc2::set_max_eps(double v)
 {
-  this->eps_ = v;
+  this->max_eps_ = v;
 }
 
-double c_ecc2::eps() const
+double c_ecc2::max_eps() const
 {
-  return this->eps_;
+  return this->max_eps_;
 }
 
 void c_ecc2::set_min_rho(double v)
@@ -330,9 +330,9 @@ int c_ecc2::num_iterations() const
   return this->num_iterations_;
 }
 
-double c_ecc2::current_eps() const
+double c_ecc2::eps() const
 {
-  return current_eps_;
+  return eps_;
 }
 
 const cv::Mat2f & c_ecc2::current_remap() const
@@ -368,12 +368,11 @@ void c_ecc2::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
     }
     else {
 
-      const cv::Mat1b mask =
-          src_mask.getMat();
-
       cv::Mat1f fmask;
 
-      mask.convertTo(fmask, fmask.type(), 1. / 255);
+      src_mask.getMat().convertTo(fmask,
+          fmask.type(),
+          1. / 255);
 
       cv::sepFilter2D(src, dst, dst.depth(),
           G, G,
@@ -500,22 +499,20 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     return false;
   }
 
-  if( !inputMask.empty() ) {
-    if( inputMask.type() != CV_8UC1 || inputMask.size() != inputImage.size() ) {
-      CF_ERROR("input mask must CV_8UC1 type of the same size as input image");
-      failed_ = true;
-      return false;
-    }
+  if( !inputMask.empty() && (inputMask.type() != CV_8UC1 || inputMask.size() != inputImage.size()) ) {
+    CF_ERROR("input mask must CV_8UC1 type of the same size as input image");
+    failed_ = true;
+    return false;
   }
 
   num_iterations_ = -1;
   rho_ = -1;
-  if( eps_ <= 0 ) {
-    eps_ = 1e-3;
+  if( max_eps_ <= 0 ) {
+    max_eps_ = 1e-3;
   }
 
-  if( (number_of_parameters_ = transfrom_->num_adustable_parameters()) < 1 ) {
-    CF_FATAL("transfrom_->get_num_params() return %d", number_of_parameters_);
+  if( (nparams_ = transfrom_->num_adustable_parameters()) < 1 ) {
+    CF_FATAL("transfrom_->num_adustable_parameters() return %d", nparams_);
     failed_ = true;
     return false;
   }
@@ -547,11 +544,12 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     INSTRUMENT_REGION("iterate");
 
     // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
-    if ( !transfrom_->create_remap(current_remap_, f.size()) ) {
-      CF_ERROR("transfrom_->create_remap() fails");
+    if( !transfrom_->create_remap(current_remap_, f.size()) ) {
+      CF_ERROR("[i %d] transfrom_->create_remap() fails", num_iterations_);
       failed_ = true;
       break;
     }
+
     cv::remap(g, gw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
     cv::remap(gx, gxw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
     cv::remap(gy, gyw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
@@ -562,7 +560,6 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     }
 
     cv::bitwise_not(wmask, iwmask);
-
     gxw.setTo(0, iwmask);
     gyw.setTo(0, iwmask);
 
@@ -575,9 +572,10 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     transfrom_->create_steepest_descent_images(gxw, gyw, jac);
 
     // calculate Hessian and its inverse
-    ecc_compute_hessian_matrix(jac, H, number_of_parameters_);
+    ecc_compute_hessian_matrix(jac, H, nparams_);
 
-    if ( !cv::invert(H, H, cv::DECOMP_CHOLESKY) ) {
+    if( !cv::invert(H, H, cv::DECOMP_CHOLESKY) ) {
+      CF_ERROR("[i %d] cv::invert(H) fails", num_iterations_);
       failed_ = true;
       break;
     }
@@ -589,40 +587,48 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     e.setTo(0, iwmask);
 
     // compute projected error
-    ecc_project_error_image(jac, e, ep, number_of_parameters_);
+    ecc_project_error_image(jac, e, ep, nparams_);
 
     // compute update parameters
     dp = -update_step_scale_ * (H * ep);
 
     // update warping matrix
-    if( !transfrom_->update_forward_additive(dp, &current_eps_, f.size()) ) {
-      CF_ERROR("transfrom_->update_forward_additive() fails");
+    if( !transfrom_->update_forward_additive(dp, &eps_, f.size()) ) {
+      CF_ERROR("[i %d] transfrom_->update_forward_additive() fails", num_iterations_);
       failed_ = true;
+      break;
     }
 
-    if( current_eps_ < eps_ || num_iterations_ == max_iterations_ || failed_ ) {
+    if( eps_ < max_eps_ || num_iterations_ == max_iterations_ ) {
 
       const int wmask_area =
           cv::countNonZero(wmask);
 
-      if( wmask_area <= number_of_parameters_ ) {
-        CF_ERROR("bad wmask area: nnz=%d / %d  < %d", wmask_area, wmask.size().area(), number_of_parameters_ + 1);
+      if( wmask_area <= nparams_ ) {
+
+        CF_ERROR("[i %d] Bad wmask area: nnz=%d / %d  < %d", num_iterations_,
+            wmask_area, wmask.size().area(),
+            nparams_ + 1);
+
         failed_ = 1;
       }
       else {
         cv::subtract(f, fMean, e), e.setTo(0, iwmask);
         cv::subtract(gw, gMean, gw), gw.setTo(0, iwmask);
+        rho_ = e.dot(gw) / (wmask_area * fStd[0] * gStd[0]);
 
-        rho_ = e.dot(gw) / ( wmask_area * fStd[0] * gStd[0]);
-
-        if ( isnan(rho_) || rho_ == 1 ) {
-          CF_ERROR("[iteration %d] e.dot() returns %g. current_eps_=%g nnz(wmask)=%d", num_iterations_, rho_, current_eps_, cv::countNonZero(wmask));
+        if( isnan(rho_) ) {
+          CF_ERROR("[i %d] e.dot() returns rho=%g. eps_=%g nnz(wmask)=%d / %d",
+              num_iterations_,
+              rho_,
+              eps_,
+              wmask_area,
+              wmask.size().area());
         }
       }
 
       break;
     }
-
   }
 
   return !failed_ && rho_ > 0;
@@ -682,14 +688,14 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
   failed_ = false;
   num_iterations_ = -1;
   rho_ = -1;
-  if ( eps_ <= 0 ) {
-    eps_ = 1e-3;
+  if ( max_eps_ <= 0 ) {
+    max_eps_ = 1e-3;
   }
 
 
-  if ( (number_of_parameters_ = transfrom_->num_adustable_parameters()) < 1 ) {
+  if ( (nparams_ = transfrom_->num_adustable_parameters()) < 1 ) {
     CF_ERROR("c_ecc2_inverse_compositional: transfrom_->get_num_params() returns %d",
-        number_of_parameters_);
+        nparams_);
     failed_ = true;
     return false;
   }
@@ -722,14 +728,14 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
 
   jac_.copyTo(jac);
 
-  for ( int i = 0; i < number_of_parameters_; ++i ) {
+  for ( int i = 0; i < nparams_; ++i ) {
     jac.rowRange(i * f.rows, (i + 1) * f.rows).setTo(0, iwmask);
   }
 
 
   // Compute the Hessian matrix H = ∑x[▽f*∂W/∂p]^T*[▽f*∂W/∂p] and it's inverse
   //project_onto_jacobian(jac, jac, H, number_of_parameters_);
-  ecc_compute_hessian_matrix(jac, H, number_of_parameters_);
+  ecc_compute_hessian_matrix(jac, H, nparams_);
   cv::invert(H, H, cv::DECOMP_CHOLESKY);
   H *= -update_step_scale_;
 
@@ -786,20 +792,20 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
     //
     // compute update parameters
     //
-    ecc_project_error_image(jac, e, ep, number_of_parameters_);  // ep now contains projected error
+    ecc_project_error_image(jac, e, ep, nparams_);  // ep now contains projected error
     dp = (H * ep) * square(nnz0 / nnz1);
 
     //
     // update warping parameters
     //
-    if ( !transfrom_->update_inverse_composite(dp, &current_eps_, f.size()) ) {
+    if ( !transfrom_->update_inverse_composite(dp, &eps_, f.size()) ) {
       CF_ERROR("transfrom_->update_inverse_composite() fails");
       failed_ = true;
       break;
     }
 
     // check eps
-    if ( current_eps_ < eps_ || num_iterations_ == max_iterations_ || failed_ ) {
+    if ( eps_ < max_eps_ || num_iterations_ == max_iterations_ || failed_ ) {
       cv::subtract(f, fMean, e), e.setTo(0, iwmask);
       cv::subtract(gw, gMean, gw), gw.setTo(0, iwmask);
       rho_ = e.dot(gw) / (nnz1 * fStd[0] * gStd[0]);
@@ -1019,7 +1025,7 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
       CF_DEBUG("L[%2d/%d] : align fails: size=%dx%d num_iterations=%d rho=%g eps=%g", i,
           transform_pyramid_.size(),
           image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
-          method_->num_iterations(), method_->rho(), method_->current_eps());
+          method_->num_iterations(), method_->rho(), method_->eps());
 
       continue;
     }
@@ -2648,5 +2654,80 @@ bool c_ecc_quadratic_transform::update_inverse_composite(const cv::Mat1f & p, fl
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
+//
+//
+//// convert image to 32-bit float with optional gaussian smoothing
+//void c_ecc2::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
+//    double smooth_sigma, bool force_create_mask,
+//    cv::Mat1f & dst, cv::Mat1b & dst_mask) const
+//{
+//  INSTRUMENT_REGION("");
+//
+//  if ( smooth_sigma <= 0 ) {
+//    src.getMat().convertTo(dst, dst.depth());
+//  }
+//  else {
+//
+//    const cv::Mat1f G =
+//        cv::getGaussianKernel(2 * ((int) (4 * smooth_sigma)) + 1,
+//            smooth_sigma);
+//
+//    if ( src_mask.empty() ) {
+//
+//      cv::sepFilter2D(src, dst, dst.depth(),
+//          G, G,
+//          cv::Point(-1, -1),
+//          0,
+//          cv::BORDER_REPLICATE);
+//
+//    }
+//    else {
+//
+//      const cv::Mat1b mask =
+//          src_mask.getMat();
+//
+//      cv::Mat1f fmask;
+//
+//      mask.convertTo(fmask, fmask.type(), 1. / 255);
+//
+//      cv::sepFilter2D(src, dst, dst.depth(),
+//          G, G,
+//          cv::Point(-1, -1),
+//          0,
+//          cv::BORDER_REPLICATE);
+//
+//      cv::sepFilter2D(fmask, fmask, fmask.depth(),
+//          G, G,
+//          cv::Point(-1, -1),
+//          +1e-12,
+//          cv::BORDER_REPLICATE);
+//
+//      cv::divide(dst, fmask, dst);
+//    }
+//  }
+//
+//
+//  if ( !src_mask.empty() ) {
+//
+//    if ( cv::countNonZero(src_mask) == src_mask.size().area() ) {
+//      src_mask.copyTo(dst_mask);
+//    }
+//    else { // may need to protect some border near mask edges because of differentiation
+//
+//      cv::erode(src_mask, dst_mask, cv::Mat1b(5, 5, 255),
+//          cv::Point(-1, -1), 1,
+//          cv::BORDER_REPLICATE);
+//
+//    }
+//  }
+//  else if ( force_create_mask ) {
+//    dst_mask.create(src.size());
+//    dst_mask.setTo(255);
+//  }
+//  else {
+//    // ensure it is empty
+//    dst_mask.release();
+//  }
+//}
+//
 

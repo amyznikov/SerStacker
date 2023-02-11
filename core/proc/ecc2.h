@@ -315,8 +315,8 @@ public:
   void set_max_iterations(int v);
   int max_iterations() const;
 
-  void set_eps(double v);
-  double eps() const;
+  void set_max_eps(double v);
+  double max_eps() const;
 
   void set_min_rho(double v);
   double min_rho() const;
@@ -344,10 +344,10 @@ public:
       cv::InputArray inputMask = cv::noArray()) = 0;
 
   bool failed() const;
-
   double rho() const;
-  double current_eps() const;
+  double eps() const;
   int num_iterations() const;
+
   const cv::Mat2f & current_remap() const;
 
 
@@ -370,13 +370,13 @@ protected:
   float input_smooth_sigma_ = 1;
   float update_step_scale_ = 1.f;
 
-  float eps_ = 0.2f;
+  float max_eps_ = 0.2f;
   float min_rho_ = 0.75f;
-  float current_eps_ = FLT_MAX;
+  float eps_ = FLT_MAX;
   float rho_ = -1;
 
   cv::Mat2f current_remap_;
-  int number_of_parameters_ = 0;
+  int nparams_ = 0;
 
 };
 

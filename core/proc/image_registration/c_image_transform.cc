@@ -1,0 +1,615 @@
+/*
+ * c_image_transform.cc
+ *
+ *  Created on: Feb 11, 2023
+ *      Author: amyznikov
+ */
+
+#include "c_image_transform.h"
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+#include <tbb/tbb.h>
+#endif
+#include <core/debug.h>
+
+namespace {
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+typedef tbb::blocked_range<int> tbb_range;
+constexpr int tbb_block_size = 512;
+#endif
+} // namespace
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+c_euclidean_image_transform::c_euclidean_image_transform(float Tx, float Ty, float angle, float scale)
+{
+  Tx_ = Tx;
+  Ty_ = Ty;
+  angle_ = angle;
+  scale_ = scale;
+}
+
+c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & T, float angle, float scale)
+{
+  Tx_ = T[0];
+  Ty_ = T[1];
+  angle_ = angle;
+  scale_ = scale;
+}
+
+void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)
+{
+  Tx_ = v[0];
+  Ty_ = v[1];
+}
+
+cv::Vec2f c_euclidean_image_transform::translation() const
+{
+  return cv::Vec2f(Tx_, Ty_);
+}
+
+void c_euclidean_image_transform::set_rotation(float v)
+{
+  angle_ = v;
+}
+
+float c_euclidean_image_transform::rotation() const
+{
+  return angle_;
+}
+
+void c_euclidean_image_transform::set_scale(float v)
+{
+  scale_ = v;
+}
+
+float c_euclidean_image_transform::scale() const
+{
+  return scale_;
+}
+
+cv::Mat1f c_euclidean_image_transform::parameters() const
+{
+  return cv::Mat1f(4, 1, (float*)a).clone();
+}
+
+bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  if( p.rows == 4 && p.cols == 1 ) {
+    Tx_ = p(0, 0);
+    Ty_ = p(1, 0);
+    angle_ = p(2, 0);
+    scale_ = p(3, 0);
+    return true;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 4x1", p.rows, p.cols);
+  return false;
+}
+
+cv::Mat1f c_euclidean_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+{
+  if( p.rows == 4 && p.cols == 1 ) {
+
+    cv::Mat1f ss =
+        p.clone();
+
+    ss(0, 0) *= factor;
+    ss(1, 0) *= factor;
+
+    return ss;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 4x1", p.rows, p.cols);
+  return cv::Mat1f();
+}
+
+bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+{
+  //  Wx =  scale * ( ca * (x - tx) - sa * (y - ty))
+  //  Wy =  scale * ( sa * (x - tx) + ca * (y - ty))
+
+  INSTRUMENT_REGION("");
+
+  const float tx = Tx_;
+  const float ty = Ty_;
+  const float ca = std::cos(angle_);
+  const float sa = std::sin(angle_);
+  const float scale = scale_;
+
+  map.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+
+  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
+      [&map, tx, ty, sa, ca, scale](const tbb_range & r) {
+
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+
+          cv::Vec2f * m = map[y];
+
+          for ( int x = 0; x < map.cols; ++x ) {
+
+            m[x][0] = scale * (ca * (x - tx) - sa * (y - ty));
+            m[x][1] = scale * (sa * (x - tx) + ca * (y - ty));
+          }
+        }
+      });
+
+#else
+
+  for ( int y = 0; y < map.rows; ++y ) {
+
+    cv::Vec2f * m = map[y];
+
+    for ( int x = 0; x < map.cols; ++x ) {
+
+      m[x][0] = scale_transfrom * (ca * (x - tx) - sa * (y - ty));
+      m[x][1] = scale_transfrom * (sa * (x - tx) + ca * (y - ty));
+    }
+  }
+
+#endif // TBB
+
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+c_affine_image_transform::c_affine_image_transform()
+{
+}
+
+c_affine_image_transform::c_affine_image_transform(const float _a[2][3])
+{
+  memcpy(this->a, _a, sizeof(this->a));
+}
+
+c_affine_image_transform::c_affine_image_transform(const cv::Matx23f & _a)
+{
+  memcpy(this->a, _a.val, sizeof(this->a));
+}
+
+c_affine_image_transform::c_affine_image_transform(const cv::Mat1f & a)
+{
+  if( a.rows != 2 || a.cols != 3 || a.channels() != 1 ) {
+    CF_ERROR("APP BUG: argument must be 2x3 single channel 32-bit floating point matrix.\n"
+        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
+  }
+  else {
+
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 3; ++j ) {
+        this->a[i][j] = a[i][j];
+      }
+    }
+  }
+}
+
+c_affine_image_transform::c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12)
+{
+  a[0][0] = a00;
+  a[0][1] = a01;
+  a[0][2] = a02;
+
+  a[1][0] = a10;
+  a[1][1] = a11;
+  a[1][2] = a12;
+}
+
+
+void c_affine_image_transform::set_translation(const cv::Vec2f & v)
+{
+  Tx_ = v[0];
+  Ty_ = v[1];
+}
+
+cv::Vec2f c_affine_image_transform::translation() const
+{
+  return cv::Vec2f(Tx_, Ty_);
+}
+
+
+cv::Mat1f c_affine_image_transform::parameters() const
+{
+  return cv::Mat1f(2, 3, (float*) a).clone();
+}
+
+bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  if( p.rows == 2 && p.cols == 3 ) {
+
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 3; ++j ) {
+        a[i][j] = p[i][j];
+      }
+    }
+
+    return true;
+  }
+
+  if( p.rows == 6 && p.cols == 1 ) {
+
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 3; ++j ) {
+        a[i][j] = p(i * 3 + j, 0);
+      }
+    }
+    return true;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x3", p.rows, p.cols);
+  return false;
+}
+
+cv::Mat1f c_affine_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+{
+  if( p.rows == 2 && p.cols == 3 ) {
+
+    cv::Mat1f sp(2, 3);
+
+    sp(0, 0) = p(0, 0);
+    sp(0, 1) = p(0, 1);
+    sp(0, 2) = p(0, 2) * factor;
+    sp(1, 0) = p(1, 0);
+    sp(1, 1) = p(1, 1);
+    sp(1, 2) = p(1, 2) * factor;
+
+    return sp;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x3", p.rows, p.cols);
+  return cv::Mat1f();
+}
+
+bool c_affine_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+{
+  // Wx =  a00 * x + a01 * y + a02
+  // Wy =  a11 * x + a11 * y + a12
+
+  map.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+
+  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
+      [this, &map](const tbb_range & r) {
+
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+
+          cv::Vec2f * m = map[y];
+
+          for ( int x = 0; x < map.cols; ++x ) {
+
+            m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2];
+            m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2];
+          }
+        }
+      });
+
+#else
+
+  for ( int y = 0; y < map.rows; ++y ) {
+
+    cv::Vec2f * m = map[y];
+
+    for ( int x = 0; x < map.cols; ++x ) {
+
+      m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2];
+      m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2];
+    }
+  }
+
+#endif // TBB
+
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+c_homography_image_transform::c_homography_image_transform()
+{
+}
+
+c_homography_image_transform::c_homography_image_transform(const float a[3][3])
+{
+  memcpy(this->a, a, sizeof(this->a));
+}
+
+c_homography_image_transform::c_homography_image_transform(const cv::Matx33f & a)
+{
+  memcpy(this->a, a.val, sizeof(this->a));
+}
+
+c_homography_image_transform::c_homography_image_transform(const cv::Mat1f & a)
+{
+  if( a.rows != 3 || a.cols != 3 || a.channels() != 1 ) {
+    CF_ERROR("APP BUG: argument must be 3x3 single channel 32-bit floating point matrix.\n"
+        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
+  }
+  else {
+
+    for( int i = 0; i < 3; ++i ) {
+      for( int j = 0; j < 3; ++j ) {
+        this->a[i][j] = a[i][j];
+      }
+    }
+  }
+}
+
+c_homography_image_transform::c_homography_image_transform(float a00, float a01, float a02,
+    float a10, float a11, float a12,
+    float a20, float a21, float a22)
+{
+  a[0][0] = a00;
+  a[0][1] = a01;
+  a[0][2] = a02;
+
+  a[1][0] = a10;
+  a[1][1] = a11;
+  a[1][2] = a12;
+
+  a[2][0] = a20;
+  a[2][1] = a21;
+  a[2][2] = a22;
+}
+
+void c_homography_image_transform::set_translation(const cv::Vec2f & v)
+{
+  Tx_ = v[0];
+  Ty_ = v[1];
+}
+
+cv::Vec2f c_homography_image_transform::translation() const
+{
+  return cv::Vec2f(Tx_, Ty_);
+}
+
+cv::Mat1f c_homography_image_transform::parameters() const
+{
+  return cv::Mat1f(3, 3, (float*) a).clone();
+}
+
+bool c_homography_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  if( p.rows == 3 && p.cols == 3 ) {
+    for( int i = 0; i < 3; ++i ) {
+      for( int j = 0; j < 3; ++j ) {
+        a[i][j] = p[i][j];
+      }
+    }
+    return true;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 3x3", p.rows, p.cols);
+  return false;
+}
+
+cv::Mat1f c_homography_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+{
+  if( p.rows == 3 && p.cols == 3 ) {
+
+    cv::Mat1f sp(3, 3);
+
+    sp(0, 0) = p(0, 0);
+    sp(0, 1) = p(0, 1);
+    sp(0, 2) = p(0, 2) * factor;
+
+    sp(1, 0) = p(1, 0);
+    sp(1, 1) = p(1, 1);
+    sp(1, 2) = p(1, 2) * factor;
+
+    sp(2, 0) = p(2, 0) / factor;
+    sp(2, 1) = p(2, 1) / factor;
+    sp(2, 2) = p(2, 2);
+
+    return sp;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 3x3", p.rows, p.cols);
+  return cv::Mat1f();
+}
+
+bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+{
+  map.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+
+  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
+      [this, &map](const tbb_range & r) {
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+          cv::Vec2f * m = map[y];
+
+          for ( int x = 0; x < map.cols; ++x ) {
+
+            float w = a[2][0] * x + a[2][1] * y + a[2][2];
+            if ( w ) {
+              w = 1 / w;
+            }
+            else {
+              w = 1;
+            }
+
+            m[x][0] = (a[0][0] * x + a[0][1] * y + a[0][2]) * w;
+            m[x][1] = (a[1][0] * x + a[1][1] * y + a[1][2]) * w;
+          }
+        }
+      });
+
+#else
+
+  for( int y = 0; y < map.rows; ++y ) {
+
+    cv::Vec2f *m = map[y];
+
+    for( int x = 0; x < map.cols; ++x ) {
+
+      float w = a[2][0] * x + a[2][1] * y + a[2][2];
+      if( w ) {
+        w = 1 / w;
+      }
+      else {
+        w = 1;
+      }
+
+      m[x][0] = (a[0][0] * x + a[0][1] * y + a[0][2]) * w;
+      m[x][1] = (a[1][0] * x + a[1][1] * y + a[1][2]) * w;
+    }
+  }
+
+#endif
+
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+c_quadratic_image_transform::c_quadratic_image_transform()
+{
+
+}
+
+c_quadratic_image_transform::c_quadratic_image_transform(const float a[2][6])
+{
+  memcpy(this->a, a, sizeof(this->a));
+}
+
+c_quadratic_image_transform::c_quadratic_image_transform(const cv::Matx<float, 2, 6> & a)
+{
+  memcpy(this->a, a.val, sizeof(this->a));
+}
+
+c_quadratic_image_transform::c_quadratic_image_transform(const cv::Mat1f & a)
+{
+  if( a.rows != 2 || a.cols != 6 || a.channels() != 1 ) {
+    CF_ERROR("APP BUG: argument must be 2x6 single channel 32-bit floating point matrix.\n"
+        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
+  }
+  else {
+
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 6; ++j ) {
+        this->a[i][j] = a[i][j];
+      }
+    }
+  }
+}
+
+c_quadratic_image_transform::c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
+    float a10, float a11, float a12, float a13, float a14, float a15)
+{
+  a[0][0] = a00;
+  a[0][1] = a01;
+  a[0][2] = a02;
+  a[0][3] = a03;
+  a[0][4] = a04;
+  a[0][5] = a05;
+
+  a[1][0] = a10;
+  a[1][1] = a11;
+  a[1][2] = a12;
+  a[1][3] = a13;
+  a[1][4] = a14;
+  a[1][5] = a15;
+}
+
+
+void c_quadratic_image_transform::set_translation(const cv::Vec2f & v)
+{
+  Tx_ = v[0];
+  Ty_ = v[1];
+}
+
+cv::Vec2f c_quadratic_image_transform::translation() const
+{
+  return cv::Vec2f (Tx_, Ty_);
+}
+
+cv::Mat1f c_quadratic_image_transform::parameters() const
+{
+  return cv::Mat1f(2, 6, (float*) a).clone();
+}
+
+bool c_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  if( p.rows == 2 && p.cols == 6 ) {
+
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 6; ++j ) {
+        a[i][j] = p[i][j];
+      }
+    }
+
+    return true;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", p.rows, p.cols);
+  return false;
+}
+
+cv::Mat1f c_quadratic_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+{
+  if( p.rows == 2 && p.cols == 6 ) {
+
+    cv::Mat1f sp(2, 6);
+
+    sp(0, 0) = p(0, 0);
+    sp(0, 1) = p(0, 1);
+    sp(0, 2) = p(0, 2) * factor;
+    sp(0, 3) = p(0, 3) / factor;
+    sp(0, 4) = p(0, 4) / factor;
+    sp(0, 5) = p(0, 5) / factor;
+
+    sp(1, 0) = p(1, 0);
+    sp(1, 1) = p(1, 1);
+    sp(1, 2) = p(1, 2) * factor;
+    sp(1, 3) = p(1, 3) / factor;
+    sp(1, 4) = p(1, 4) / factor;
+    sp(1, 5) = p(1, 5) / factor;
+
+    return sp;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", p.rows, p.cols);
+  return cv::Mat1f();
+}
+
+bool c_quadratic_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+{
+  map.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
+      [this, &map](const tbb_range & r) {
+
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+
+          cv::Vec2f * m = map[y];
+
+          for ( int x = 0; x < map.cols; ++x ) {
+            m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2] + a[0][3] * x * y + a[0][4] * x * x + a[0][5] * y * y;
+            m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2] + a[1][3] * x * y + a[1][4] * x * x + a[1][5] * y * y;
+          }
+        }
+      });
+#else
+
+  for( int y = 0; y < map.rows; ++y ) {
+    cv::Vec2f * m = map[y];
+
+    for ( int x = 0; x < map.cols; ++x ) {
+      m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2] + a[0][3] * x * y + a[0][4] * x * x + a[0][5] * y * y;
+      m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2] + a[1][3] * x * y + a[1][4] * x * x + a[1][5] * y * y;
+    }
+  }
+
+#endif // TBB
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////

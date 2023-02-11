@@ -11,6 +11,8 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+namespace ecc2 {
+
 namespace {
 
 typedef tbb::blocked_range<int> tbb_range;
@@ -228,121 +230,121 @@ void ecc_project_error_image(const cv::Mat1f & jac, const cv::Mat & error_image,
 
 /////////////////////////////////////////
 
-c_ecc2::c_ecc2( c_ecc_transform * transfrom) :
-    transfrom_(transfrom)
+c_ecc_align::c_ecc_align( c_ecc_motion_model * transfrom) :
+    model_(transfrom)
 {
 }
 
-void c_ecc2::set_transform(c_ecc_transform * transfrom)
+void c_ecc_align::set_model(c_ecc_motion_model * transfrom)
 {
-  transfrom_ = transfrom;
+  model_ = transfrom;
 }
 
-c_ecc_transform * c_ecc2::transfrom() const
+c_ecc_motion_model * c_ecc_align::model() const
 {
-  return transfrom_;
+  return model_;
 }
 
 
-void c_ecc2::set_max_iterations(int v)
+void c_ecc_align::set_max_iterations(int v)
 {
   this->max_iterations_ = v;
 }
 
-int c_ecc2::max_iterations() const
+int c_ecc_align::max_iterations() const
 {
   return this->max_iterations_;
 }
 
-void c_ecc2::set_max_eps(double v)
+void c_ecc_align::set_max_eps(double v)
 {
   this->max_eps_ = v;
 }
 
-double c_ecc2::max_eps() const
+double c_ecc_align::max_eps() const
 {
   return this->max_eps_;
 }
 
-void c_ecc2::set_min_rho(double v)
+void c_ecc_align::set_min_rho(double v)
 {
   min_rho_ = v;
 }
 
-double c_ecc2::min_rho() const
+double c_ecc_align::min_rho() const
 {
   return min_rho_;
 }
 
 
-void c_ecc2::set_interpolation(enum ECC2_INTERPOLATION_METHOD  v)
+void c_ecc_align::set_interpolation(enum ECC_INTERPOLATION_METHOD  v)
 {
   interpolation_ = v;
 }
 
-enum ECC2_INTERPOLATION_METHOD c_ecc2::interpolation() const
+enum ECC_INTERPOLATION_METHOD c_ecc_align::interpolation() const
 {
   return interpolation_;
 }
 
-void c_ecc2::set_input_smooth_sigma(double v)
+void c_ecc_align::set_input_smooth_sigma(double v)
 {
   input_smooth_sigma_ = v;
 }
 
-double c_ecc2::input_smooth_sigma() const
+double c_ecc_align::input_smooth_sigma() const
 {
   return input_smooth_sigma_;
 }
 
-void c_ecc2::set_reference_smooth_sigma(double v)
+void c_ecc_align::set_reference_smooth_sigma(double v)
 {
   reference_smooth_sigma_ = v;
 }
 
-double c_ecc2::reference_smooth_sigma() const
+double c_ecc_align::reference_smooth_sigma() const
 {
   return reference_smooth_sigma_;
 }
 
-void c_ecc2::set_update_step_scale(double v)
+void c_ecc_align::set_update_step_scale(double v)
 {
   update_step_scale_ = v;
 }
 
-double c_ecc2::update_step_scale() const
+double c_ecc_align::update_step_scale() const
 {
   return update_step_scale_;
 }
 
-bool c_ecc2::failed() const
+bool c_ecc_align::failed() const
 {
   return this->failed_;
 }
 
-double c_ecc2::rho() const
+double c_ecc_align::rho() const
 {
   return this->rho_;
 }
 
-int c_ecc2::num_iterations() const
+int c_ecc_align::num_iterations() const
 {
   return this->num_iterations_;
 }
 
-double c_ecc2::eps() const
+double c_ecc_align::eps() const
 {
   return eps_;
 }
 
-const cv::Mat2f & c_ecc2::current_remap() const
+const cv::Mat2f & c_ecc_align::current_remap() const
 {
   return current_remap_;
 }
 
 
 // convert image to 32-bit float with optional gaussian smoothing
-void c_ecc2::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
+void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
     double smooth_sigma, bool force_create_mask,
     cv::Mat1f & dst, cv::Mat1b & dst_mask) const
 {
@@ -420,32 +422,32 @@ void c_ecc2::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
 /////////////////////////////////////////
 
 
-c_ecc2_forward_additive::c_ecc2_forward_additive(c_ecc_transform * transfrom) :
+c_ecc_forward_additive::c_ecc_forward_additive(c_ecc_motion_model * transfrom) :
     base(transfrom)
 {
 }
 
-const cv::Mat1f & c_ecc2_forward_additive::input_image() const
+const cv::Mat1f & c_ecc_forward_additive::input_image() const
 {
   return g;
 }
 
-const cv::Mat1f & c_ecc2_forward_additive::reference_image() const
+const cv::Mat1f & c_ecc_forward_additive::reference_image() const
 {
   return f;
 }
 
-const cv::Mat1b & c_ecc2_forward_additive::input_mask() const
+const cv::Mat1b & c_ecc_forward_additive::input_mask() const
 {
   return gmask;
 }
 
-const cv::Mat1b & c_ecc2_forward_additive::reference_mask() const
+const cv::Mat1b & c_ecc_forward_additive::reference_mask() const
 {
   return fmask;
 }
 
-bool c_ecc2_forward_additive::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_ecc_forward_additive::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   INSTRUMENT_REGION("");
 
@@ -468,7 +470,7 @@ bool c_ecc2_forward_additive::set_reference_image(cv::InputArray referenceImage,
   return true;
 }
 
-bool c_ecc2_forward_additive::align(cv::InputArray inputImage, cv::InputArray referenceImage,
+bool c_ecc_forward_additive::align(cv::InputArray inputImage, cv::InputArray referenceImage,
     cv::InputArray inputMask, cv::InputArray referenceMask)
 {
   INSTRUMENT_REGION("");
@@ -481,13 +483,13 @@ bool c_ecc2_forward_additive::align(cv::InputArray inputImage, cv::InputArray re
   return align_to_reference(inputImage, inputMask);
 }
 
-bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::InputArray inputMask)
+bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage, cv::InputArray inputMask)
 {
   INSTRUMENT_REGION("");
 
   failed_ = false;
 
-  if( !transfrom_ ) {
+  if( !model_ ) {
     CF_ERROR("Pointer to image transformation interface was not set");
     failed_ = true;
     return false;
@@ -511,8 +513,8 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     max_eps_ = 1e-3;
   }
 
-  if( (nparams_ = transfrom_->num_adustable_parameters()) < 1 ) {
-    CF_FATAL("transfrom_->num_adustable_parameters() return %d", nparams_);
+  if( (nparams_ = model_->num_adustable_parameters()) < 1 ) {
+    CF_FATAL("model_->num_adustable_parameters() return %d", nparams_);
     failed_ = true;
     return false;
   }
@@ -544,8 +546,8 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     INSTRUMENT_REGION("iterate");
 
     // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
-    if( !transfrom_->create_remap(current_remap_, f.size()) ) {
-      CF_ERROR("[i %d] transfrom_->create_remap() fails", num_iterations_);
+    if( !model_->create_remap(current_remap_, f.size()) ) {
+      CF_ERROR("[i %d] model_->create_remap() fails", num_iterations_);
       failed_ = true;
       break;
     }
@@ -569,7 +571,7 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     stdev_ratio = gStd[0] / fStd[0];
 
     // create steepest descent images
-    transfrom_->create_steepest_descent_images(gxw, gyw, jac);
+    model_->create_steepest_descent_images(gxw, gyw, jac);
 
     // calculate Hessian and its inverse
     ecc_compute_hessian_matrix(jac, H, nparams_);
@@ -593,8 +595,8 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
     dp = -update_step_scale_ * (H * ep);
 
     // update warping matrix
-    if( !transfrom_->update_forward_additive(dp, &eps_, f.size()) ) {
-      CF_ERROR("[i %d] transfrom_->update_forward_additive() fails", num_iterations_);
+    if( !model_->update_forward_additive(dp, &eps_, f.size()) ) {
+      CF_ERROR("[i %d] model_->update_forward_additive() fails", num_iterations_);
       failed_ = true;
       break;
     }
@@ -637,22 +639,22 @@ bool c_ecc2_forward_additive::align_to_reference(cv::InputArray inputImage, cv::
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_ecc2_inverse_compositional::c_ecc2_inverse_compositional(c_ecc_transform * transfrom) :
+c_ecc_inverse_compositional::c_ecc_inverse_compositional(c_ecc_motion_model * transfrom) :
     base(transfrom)
 {
 }
 
-const cv::Mat1f & c_ecc2_inverse_compositional::input_image() const
+const cv::Mat1f & c_ecc_inverse_compositional::input_image() const
 {
   return g;
 }
 
-const cv::Mat1f & c_ecc2_inverse_compositional::reference_image() const
+const cv::Mat1f & c_ecc_inverse_compositional::reference_image() const
 {
   return f;
 }
 
-bool c_ecc2_inverse_compositional::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_ecc_inverse_compositional::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   // Convert reference image to floating point,
   // Pre-Evaluate the gradient ∇T of reference image T(x),
@@ -662,15 +664,15 @@ bool c_ecc2_inverse_compositional::set_reference_image(cv::InputArray referenceI
 
   ecc_differentiate(f, fx, fy);
 
-  if( !transfrom_->create_steepest_descent_images(fx, fy, jac_) ) {
-    CF_ERROR("transfrom_->compute_jacobian() fails");
+  if( !model_->create_steepest_descent_images(fx, fy, jac_) ) {
+    CF_ERROR("model_->compute_jacobian() fails");
     return false;
   }
 
   return true;
 }
 
-bool c_ecc2_inverse_compositional::align(cv::InputArray inputImage, cv::InputArray referenceImage,
+bool c_ecc_inverse_compositional::align(cv::InputArray inputImage, cv::InputArray referenceImage,
     cv::InputArray inputMask, cv::InputArray referenceMask)
 {
   num_iterations_ = -1, rho_ = -1;
@@ -681,7 +683,7 @@ bool c_ecc2_inverse_compositional::align(cv::InputArray inputImage, cv::InputArr
   return align_to_reference(inputImage, inputMask);
 }
 
-bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage, cv::InputArray inputMask)
+bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, cv::InputArray inputMask)
 {
   cv::Mat1f jac;
 
@@ -693,8 +695,8 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
   }
 
 
-  if ( (nparams_ = transfrom_->num_adustable_parameters()) < 1 ) {
-    CF_ERROR("c_ecc2_inverse_compositional: transfrom_->get_num_params() returns %d",
+  if ( (nparams_ = model_->num_adustable_parameters()) < 1 ) {
+    CF_ERROR("c_ecc2_inverse_compositional: model_->get_num_params() returns %d",
         nparams_);
     failed_ = true;
     return false;
@@ -706,8 +708,8 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
   prepare_input_image(inputImage, inputMask, input_smooth_sigma_, true, g, gmask);
 
   // Assume the initial warp matrix p is good enough to avoid the hessian matrix evaluation on each iteration
-  if ( !transfrom_->create_remap(current_remap_, f.size()) ) {
-    CF_ERROR("c_ecc2_inverse_compositional: transfrom_->create_remap() fails");
+  if ( !model_->create_remap(current_remap_, f.size()) ) {
+    CF_ERROR("c_ecc2_inverse_compositional: model_->create_remap() fails");
     return false;
   }
 
@@ -755,8 +757,8 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
     }
     else {
 
-      if ( !transfrom_->create_remap(current_remap_, f.size()) ) {
-        CF_ERROR("c_ecc2_inverse_compositional: transfrom_->create_remap() fails");
+      if ( !model_->create_remap(current_remap_, f.size()) ) {
+        CF_ERROR("c_ecc2_inverse_compositional: model_->create_remap() fails");
         failed_ = true;
         break;
       }
@@ -798,8 +800,8 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
     //
     // update warping parameters
     //
-    if ( !transfrom_->update_inverse_composite(dp, &eps_, f.size()) ) {
-      CF_ERROR("transfrom_->update_inverse_composite() fails");
+    if ( !model_->update_inverse_composite(dp, &eps_, f.size()) ) {
+      CF_ERROR("model_->update_inverse_composite() fails");
       failed_ = true;
       break;
     }
@@ -818,47 +820,47 @@ bool c_ecc2_inverse_compositional::align_to_reference(cv::InputArray inputImage,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_ecch2::c_ecch2(c_ecc2 * method) :
+c_ecch::c_ecch(c_ecc_align * method) :
     method_(method)
 {
 }
 
-void c_ecch2::set_method(c_ecc2 * method)
+void c_ecch::set_method(c_ecc_align * method)
 {
   method_ = method;
 }
 
-c_ecc2 * c_ecch2::method() const
+c_ecc_align * c_ecch::method() const
 {
   return method_;
 }
 
-void c_ecch2::set_minimum_image_size(int v)
+void c_ecch::set_minimum_image_size(int v)
 {
   minimum_image_size_ = v;
 }
 
-int c_ecch2::minimum_image_size() const
+int c_ecch::minimum_image_size() const
 {
   return minimum_image_size_;
 }
 
-const std::vector<cv::Mat> & c_ecch2::image_pyramid(int index) const
+const std::vector<cv::Mat> & c_ecch::image_pyramid(int index) const
 {
   return image_pyramids_[index];
 }
 
-const std::vector<cv::Mat> & c_ecch2::mask_pyramid(int index) const
+const std::vector<cv::Mat> & c_ecch::mask_pyramid(int index) const
 {
   return mask_pyramids_[index];
 }
 
-const std::vector<cv::Mat1f> & c_ecch2::transform_pyramid() const
+const std::vector<cv::Mat1f> & c_ecch::transform_pyramid() const
 {
   return transform_pyramid_;
 }
 
-bool c_ecch2::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_ecch::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   INSTRUMENT_REGION("");
 
@@ -916,11 +918,11 @@ bool c_ecch2::set_reference_image(cv::InputArray referenceImage, cv::InputArray 
   return true;
 }
 
-bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
+bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
 {
   INSTRUMENT_REGION("");
 
-  c_ecc_transform *transform;
+  c_ecc_motion_model *model;
 
   constexpr int C = current_image_index;
   constexpr int R = reference_image_index;
@@ -930,7 +932,7 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
     return false;
   }
 
-  if( !(transform = method_->transfrom()) ) {
+  if( !(model = method_->model()) ) {
     CF_ERROR("c_ecch2: image transform not specified");
     return false;
   }
@@ -946,7 +948,7 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
   }
 
   cv::Mat1f T =
-      transform->parameters();
+      model->parameters();
 
   if( T.empty() ) {
     CF_ERROR("c_ecch2: method_->transfrom()->parameters() returns empty matrix");
@@ -997,7 +999,7 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
       cv::compare(cmask, 255, cmask, cv::CMP_GE);
     }
 
-    transform_pyramid_.emplace_back(transform->scale(transform_pyramid_.back(), 0.5));
+    transform_pyramid_.emplace_back(model->scale_transfrom(transform_pyramid_.back(), 0.5));
     if( transform_pyramid_.back().empty() ) {
       CF_ERROR("transform->scale() fails");
       return false;
@@ -1009,7 +1011,7 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
 
   for( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
 
-    if( !transform->set_parameters(transform_pyramid_[i]) ) {
+    if( !model->set_parameters(transform_pyramid_[i]) ) {
       CF_ERROR("L[%d] transform->set_parameters() fails", i);
       return false;
     }
@@ -1037,7 +1039,7 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
     }
 
     // i > 0
-    if( (transform_pyramid_[i - 1] = transform->scale(transform->parameters(), 2)).empty() ) {
+    if( (transform_pyramid_[i - 1] = model->scale_transfrom(model->parameters(), 2)).empty() ) {
       CF_ERROR("L[%d] transform->scale() fails", i);
       return false;
     }
@@ -1048,99 +1050,99 @@ bool c_ecch2::align(cv::InputArray inputImage, cv::InputArray inputMask)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void c_ecch2_flow::set_support_scale(int v)
+void c_eccflow::set_support_scale(int v)
 {
   support_scale_ = v;
 }
 
-int c_ecch2_flow::support_scale() const
+int c_eccflow::support_scale() const
 {
   return support_scale_;
 }
 
-void c_ecch2_flow::set_max_iterations(int v)
+void c_eccflow::set_max_iterations(int v)
 {
   max_iterations_ = v;
 }
 
-int c_ecch2_flow::max_iterations() const
+int c_eccflow::max_iterations() const
 {
   return max_iterations_;
 }
 
-void c_ecch2_flow::set_update_multiplier(double v)
+void c_eccflow::set_update_multiplier(double v)
 {
   update_multiplier_ = v;
 }
 
-double c_ecch2_flow::update_multiplier() const
+double c_eccflow::update_multiplier() const
 {
   return update_multiplier_;
 }
 
-void c_ecch2_flow::set_normalization_scale(int v)
+void c_eccflow::set_normalization_scale(int v)
 {
   normalization_scale_ = v;
 }
 
-int c_ecch2_flow::normalization_scale() const
+int c_eccflow::normalization_scale() const
 {
   return normalization_scale_;
 }
 
-void c_ecch2_flow::set_input_smooth_sigma(double v)
+void c_eccflow::set_input_smooth_sigma(double v)
 {
   input_smooth_sigma_ = v;
 }
 
-double c_ecch2_flow::input_smooth_sigma() const
+double c_eccflow::input_smooth_sigma() const
 {
   return input_smooth_sigma_;
 }
 
-void c_ecch2_flow::set_reference_smooth_sigma(double v)
+void c_eccflow::set_reference_smooth_sigma(double v)
 {
   reference_smooth_sigma_ = v;
 }
 
-double c_ecch2_flow::reference_smooth_sigma() const
+double c_eccflow::reference_smooth_sigma() const
 {
   return reference_smooth_sigma_;
 }
 
-void c_ecch2_flow::set_max_pyramid_level(int v)
+void c_eccflow::set_max_pyramid_level(int v)
 {
   max_pyramid_level_ = v;
 }
 
-int c_ecch2_flow::max_pyramid_level() const
+int c_eccflow::max_pyramid_level() const
 {
   return max_pyramid_level_;
 }
 
-const cv::Mat1f & c_ecch2_flow::reference_image() const
+const cv::Mat1f & c_eccflow::reference_image() const
 {
   static const cv::Mat1f empty_stub;
   return pyramid_.empty() ?  empty_stub : pyramid_.front().reference_image;
 }
 
-const cv::Mat1b & c_ecch2_flow::reference_mask() const
+const cv::Mat1b & c_eccflow::reference_mask() const
 {
   static const cv::Mat1b empty_stub;
   return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
 }
 
-const cv::Mat2f & c_ecch2_flow::current_uv() const
+const cv::Mat2f & c_eccflow::current_uv() const
 {
   return cuv;
 }
 
-const std::vector<c_ecch2_flow::pyramid_entry> & c_ecch2_flow::current_pyramid() const
+const std::vector<c_eccflow::pyramid_entry> & c_eccflow::current_pyramid() const
 {
   return pyramid_;
 }
 
-bool c_ecch2_flow::convert_input_images(cv::InputArray src, cv::InputArray src_mask,
+bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask,
     cv::Mat1f & dst, cv::Mat1b & dst_mask) const
 {
   if ( src.depth() == dst.depth() ) {
@@ -1161,7 +1163,7 @@ bool c_ecch2_flow::convert_input_images(cv::InputArray src, cv::InputArray src_m
 }
 
 
-void c_ecch2_flow::pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const
+void c_eccflow::pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const
 {
   int normalization_scale = this->normalization_scale_;
   if ( normalization_scale == 0 ) {
@@ -1190,7 +1192,7 @@ void c_ecch2_flow::pnormalize(cv::InputArray src, cv::InputArray mask, cv::Outpu
 }
 
 
-bool c_ecch2_flow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
+bool c_eccflow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
 {
   const int level = support_scale_;
 
@@ -1213,7 +1215,7 @@ bool c_ecch2_flow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
 }
 
 
-bool c_ecch2_flow::compute_uv(pyramid_entry & e,
+bool c_eccflow::compute_uv(pyramid_entry & e,
     cv::Mat2f & outuv) const
 {
   cv::Mat1f worker_image;
@@ -1336,14 +1338,14 @@ bool c_ecch2_flow::compute_uv(pyramid_entry & e,
 }
 
 
-bool c_ecch2_flow::compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
+bool c_eccflow::compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
     cv::InputArray inputMask, cv::InputArray referenceMask)
 {
   set_reference_image(referenceImage, referenceMask);
   return compute(inputImage, rmap, inputMask);
 }
 
-bool c_ecch2_flow::set_reference_image(cv::InputArray referenceImage,
+bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
     cv::InputArray referenceMask)
 {
 
@@ -1475,7 +1477,7 @@ bool c_ecch2_flow::set_reference_image(cv::InputArray referenceImage,
 
 
 // FIXME: Make sure at caller side that both reference and current image are pre-inpained for missing pixels!!!!
-bool c_ecch2_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
+bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
 {
   INSTRUMENT_REGION("");
 
@@ -1608,1126 +1610,5 @@ bool c_ecch2_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::Inpu
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-cv::Mat1f c_ecc_transform::scale(const cv::Mat1f & p, double factor) const
-{
-  return cv::Mat1f();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  x' =  scale * ( cos(angle) * (x - tx) - sin(angle) * (y - ty))
-//  y' =  scale * ( sin(angle) * (x - tx) + cos(angle) * (y - ty))
-//
-c_ecc_euclidean_transform::c_ecc_euclidean_transform(float Tx, float Ty, float angle, float scale)
-{
-  Tx_ = Tx;
-  Ty_ = Ty;
-  angle_ = angle;
-  scale_ = scale;
-}
-
-c_ecc_euclidean_transform::c_ecc_euclidean_transform(const cv::Vec2f & T, float angle, float scale)
-{
-  Tx_ = T[0];
-  Ty_ = T[1];
-  angle_ = angle;
-  scale_ = scale;
-}
-
-void c_ecc_euclidean_transform::set_translation(const cv::Vec2f & v)
-{
-  Tx_ = v[0];
-  Ty_ = v[1];
-}
-
-cv::Vec2f c_ecc_euclidean_transform::translation() const
-{
-  return cv::Vec2f(Tx_, Ty_);
-}
-
-void c_ecc_euclidean_transform::set_rotation(float v)
-{
-  angle_ = v;
-}
-
-float c_ecc_euclidean_transform::rotation() const
-{
-  return angle_;
-}
-
-void c_ecc_euclidean_transform::set_scale(float v)
-{
-  scale_ = v;
-}
-
-float c_ecc_euclidean_transform::scale() const
-{
-  return scale_;
-}
-
-void c_ecc_euclidean_transform::set_fix_translation(bool v)
-{
-  fix_translation_ = v;
-}
-
-bool c_ecc_euclidean_transform::fix_translation() const
-{
-  return fix_translation_;
-}
-
-void c_ecc_euclidean_transform::set_fix_rotation(bool v)
-{
-  fix_rotation_ = v;
-}
-
-bool c_ecc_euclidean_transform::fix_rotation() const
-{
-  return fix_rotation_;
-}
-
-void c_ecc_euclidean_transform::set_fix_scale(bool v)
-{
-  fix_scale_ = v;
-}
-
-bool c_ecc_euclidean_transform::fix_scale() const
-{
-  return fix_scale_;
-}
-
-cv::Mat1f c_ecc_euclidean_transform::parameters() const
-{
-  return cv::Mat1f(4, 1, (float*)a).clone();
-}
-
-bool c_ecc_euclidean_transform::set_parameters(const cv::Mat1f & p)
-{
-  if( p.rows == 4 && p.cols == 1 ) {
-    Tx_ = p(0, 0);
-    Ty_ = p(1, 0);
-    angle_ = p(2, 0);
-    scale_ = p(3, 0);
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 4x1", p.rows, p.cols);
-  return false;
-}
-
-cv::Mat1f c_ecc_euclidean_transform::scale(const cv::Mat1f & p, double factor) const
-{
-  if( p.rows == 4 && p.cols == 1 ) {
-
-    cv::Mat1f ss =
-        p.clone();
-
-    ss(0, 0) *= factor;
-    ss(1, 0) *= factor;
-
-    return ss;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 4x1", p.rows, p.cols);
-  return cv::Mat1f();
-}
-
-
-bool c_ecc_euclidean_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
-{
-  INSTRUMENT_REGION("");
-
-  map.create(size);
-
-  //  Wx =  scale * ( ca * (x - tx) - sa * (y - ty))
-  //  Wy =  scale * ( sa * (x - tx) + ca * (y - ty))
-
-  const float tx = Tx_;
-  const float ty = Ty_;
-  const float ca = std::cos(angle_);
-  const float sa = std::sin(angle_);
-  const float scale = scale_;
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [&map, tx, ty, sa, ca, scale](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          for ( int x = 0; x < map.cols; ++x ) {
-
-            m[x][0] = scale * (ca * (x - tx) - sa * (y - ty));
-            m[x][1] = scale * (sa * (x - tx) + ca * (y - ty));
-          }
-        }
-      });
-
-  return true;
-}
-
-int c_ecc_euclidean_transform:: num_adustable_parameters() const
-{
-  int n = 0;
-
-  if ( !fix_translation_ ) {
-    n += 2;
-  }
-
-  if ( !fix_rotation_ ) {
-    n += 1;
-  }
-
-  if ( !fix_scale_ ) {
-    n += 1;
-  }
-
-  return n;
-}
-
-
-bool c_ecc_euclidean_transform::create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const
-{
-  INSTRUMENT_REGION("");
-
-  // STEEPEST DESCENT IMAGES:
-  //  [ gx * dWx / dp0 + gy * dWy / dp0]
-  //  [ gx * dWx / dp1 + gy * dWy / dp1]
-  //  ...
-  //  [ gx * dWx / dpn + gy * dWy / dpn]
-
-  // W([x,y], p):
-  //  Wx =  scale * ( ca * (x - tx) - sa * (y - ty))
-  //  Wy =  scale * ( sa * (x - tx) + ca * (y - ty))
-
-  // dWx / dtx = scale * ( -ca )
-  // dWx / dty = scale * ( +sa )
-  // dWx / da = scale * ( -sa * (x - tx) - ca * (y - ty))
-  // dWx / ds = (ca * (x - tx) - sa * (y - ty))
-
-  // dWy / dtx = scale * ( -sa )
-  // dWy / dty = scale * ( -ca )
-  // dWy / da = scale * ( ca * (x - tx) - sa * (y - ty))
-  // dWy / ds = (sa * (x - tx) + ca * (y - ty))
-
-
-  const  int n =
-      num_adustable_parameters();
-
-  if ( n < 1 ) {
-    CF_ERROR("All parameters are fixed, can not compute steepest_descent_images");
-    return false;
-  }
-
-  const int w = gx.cols;
-  const int h = gx.rows;
-
-
-  dst.create(h * n, w);
-
-  tbb::parallel_for(tbb_range(0, h, tbb_block_size),
-      [ this, w, h, &gx, &gy, &dst](const tbb_range & r) {
-
-        const float tx = Tx_;
-        const float ty = Ty_;
-        const float scale = scale_;
-        const float sa = std::sin(angle_);
-        const float ca = std::cos(angle_);
-
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-
-          int i = 0;
-
-          const float yy = y - ty;
-
-          if( !fix_translation_ ) {
-
-            for ( int x = 0; x < w; ++x ) {
-              const float xx = x - tx;
-              dst[y + 0 * h][x] = -scale * ( gx[y][x] * ca - gy[y][x] * sa );
-              dst[y + 1 * h][x] = -scale * ( gx[y][x] * sa + gy[y][x] * ca );
-            }
-
-            i += 2;
-          }
-
-          if( !fix_rotation_ ) {
-
-            for ( int x = 0; x < w; ++x ) {
-              const float xx = x - tx;
-              dst[y + i * h][x] = scale * ( -gx[y][x] * ( sa * xx + ca * yy) + gy[y][x] * (ca * xx - sa * yy) );
-            }
-
-            i += 1;
-          }
-
-          if( !fix_scale_ ) {
-
-            for ( int x = 0; x < w; ++x ) {
-              const float xx = x - tx;
-              dst[y + i * h][x] = gx[y][x] * (ca * xx - sa * yy) + gy[y][x] * (sa * xx + ca * yy);
-            }
-          }
-
-        }
-      });
-
-
-  return true;
-}
-
-bool c_ecc_euclidean_transform::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  INSTRUMENT_REGION("");
-
-  const int n =
-      num_adustable_parameters();
-
-  if( p.rows != n || p.cols != 1 ) {
-    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, n);
-    return false;
-  }
-
-  float dx = 0;
-  float dy = 0;
-  float da = 0;
-  float ds = 0;
-  int i = 0;
-
-  if( !fix_translation_ ) {
-    dx = p(i++, 0);
-    dy = p(i++, 0);
-  }
-
-  if( !fix_rotation_ ) {
-    da = p(i++, 0);
-  }
-
-  if( !fix_scale_ ) {
-    ds = p(i++, 0);
-  }
-
-  Tx_ += dx;
-  Ty_ += dy;
-  angle_ += da;
-  scale_ += ds;
-
-  if( e ) {
-    const float sa = sin(da);
-    *e = sqrt(square(dx) + square(dy) +
-        square(size.width * sa) + square(size.height * sa) +
-        square(std::max(size.width, size.height) * ds));
-  }
-
-  return true;
-}
-
-bool c_ecc_euclidean_transform::update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & imageSize)
-{
-  return false;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Image affine transform with scale:
- *  x' =  a00 * x + a01 * y + a02
- *  y' =  a10 * x + a11 * y + a12
- *
- */
-c_ecc_affine_transform::c_ecc_affine_transform()
-{
-}
-
-c_ecc_affine_transform::c_ecc_affine_transform(const float _a[2][3])
-{
-  memcpy(this->a, _a, sizeof(this->a));
-}
-
-c_ecc_affine_transform::c_ecc_affine_transform(const cv::Matx23f & _a)
-{
-  memcpy(this->a, _a.val, sizeof(this->a));
-}
-
-c_ecc_affine_transform::c_ecc_affine_transform(const cv::Mat1f & a)
-{
-  if( a.rows != 2 || a.cols != 3 || a.channels() != 1 ) {
-    CF_ERROR("APP BUG: argument must be 2x3 single channel 32-bit floating point matrix.\n"
-        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
-  }
-  else {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        this->a[i][j] = a[i][j];
-      }
-    }
-  }
-}
-
-c_ecc_affine_transform::c_ecc_affine_transform(float a00, float a01, float a02, float a10, float a11, float a12)
-{
-  a[0][0] = a00;
-  a[0][1] = a01;
-  a[0][2] = a02;
-
-  a[1][0] = a10;
-  a[1][1] = a11;
-  a[1][2] = a12;
-}
-
-void c_ecc_affine_transform::set_translation(const cv::Vec2f & v)
-{
-  a[0][2] = v[0];
-  a[1][2] = v[1];
-}
-
-cv::Vec2f c_ecc_affine_transform::translation() const
-{
-  return cv::Vec2f(a[0][2], a[1][2]);
-}
-
-cv::Mat1f c_ecc_affine_transform::parameters() const
-{
-  return cv::Mat1f(2, 3, (float*) a).clone();
-}
-
-bool c_ecc_affine_transform::set_parameters(const cv::Mat1f & p)
-{
-  if( p.rows == 2 && p.cols == 3 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        a[i][j] = p[i][j];
-      }
-    }
-
-    return true;
-  }
-
-  if( p.rows == 6 && p.cols == 1 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        a[i][j] = p(i * 3 + j, 0);
-      }
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x3", p.rows, p.cols);
-  return false;
-}
-
-cv::Mat1f c_ecc_affine_transform::scale(const cv::Mat1f & p, double factor) const
-{
-  if( p.rows == 2 && p.cols == 3 ) {
-
-    cv::Mat1f sp(2, 3);
-
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-
-    return sp;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x3", p.rows, p.cols);
-  return cv::Mat1f();
-}
-
-
-bool c_ecc_affine_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
-{
-  // Map:
-  //  x' =  a00 * x + a01 * y + a02
-  // y' =  a11 * x + a11 * y + a12
-
-  map.create(size);
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          for ( int x = 0; x < map.cols; ++x ) {
-
-            m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2];
-            m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2];
-          }
-        }
-      });
-
-  return true;
-}
-
-int c_ecc_affine_transform::num_adustable_parameters() const
-{
-  return 6;
-}
-
-bool c_ecc_affine_transform::create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const
-{
-  // SDI:
-  //  [ gx * dWx/dp0 + gy * dWy/dp0]
-  //  [ gx * dWx/dp1 + gy * dWy/dp1]
-  //  ...
-  //  [ gx * dWx/dpn + gy * dWy/dpn]
-
-  // Map:
-  // *  x' =  a00 * x + a01 * y + a02
-  // *  y' =  a10 * x + a11 * y + a12
-
-  // dWx/da00 = x
-  // dWx/da01 = y
-  // dWx/da02 = 1
-  // dWx/da10 = 0
-  // dWx/da11 = 0
-  // dWx/da12 = 0
-
-  // dWy/da00 = 0
-  // dWy/da01 = 0
-  // dWy/da02 = 0
-  // dWy/da10 = x
-  // dWy/da11 = y
-  // dWy/da12 = 1
-
-  const int w = gx.cols;
-  const int h = gx.rows;
-
-  dst.create(h * 6, w);
-
-  tbb::parallel_for(tbb_range(0, h, tbb_block_size),
-      [w, h, &gx, &gy, &dst](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < w; ++x ) {
-
-            dst[y + 0 * h][x] = gx[y][x] * x;   // a00
-            dst[y + 1 * h][x] = gx[y][x] * y;   // a01
-            dst[y + 2 * h][x] = gx[y][x];       // a02
-
-            dst[y + 3 * h][x] = gy[y][x] * x;   // a10
-            dst[y + 4 * h][x] = gy[y][x] * y;   // a11
-            dst[y + 5 * h][x] = gy[y][x];       // a12
-          }
-        }
-      });
-
-  return true;
-}
-
-bool c_ecc_affine_transform::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  a[0][0] += p(0, 0);
-  a[0][1] += p(1, 0);
-  a[0][2] += p(2, 0);
-
-  a[1][0] += p(3, 0);
-  a[1][1] += p(4, 0);
-  a[1][2] += p(5, 0);
-
-  if( e ) {
-    *e = sqrt(square(p(2, 0)) + square(p(5, 0)) +
-        square(size.width * p(0, 0)) + square(size.width * p(3, 0)) +
-        square(size.height * p(1, 0)) + square(size.height * p(4, 0)));
-  }
-
-  return true;
-}
-
-bool c_ecc_affine_transform::update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  const float a00 = p(0, 0);
-  const float a01 = p(1, 0);
-  const float a02 = p(2, 0);
-
-  const float a10 = p(3, 0);
-  const float a11 = p(4, 0);
-  const float a12 = p(5, 0);
-
-  cv::Matx33f P(
-      a[0][0], a[0][1], a[0][2],
-      a[1][0], a[1][1], a[1][2],
-        0,     0,      1);
-
-  cv::Matx33f dP(
-      1 + a00, a01, a02,
-      a10, 1 + a11, a12,
-      0, 0, 1);
-
-  bool isok = false;
-
-  dP = dP.inv(cv::DECOMP_LU, &isok);
-  if ( !isok ) {
-    CF_ERROR("dP.inv() fails");
-    return false;
-  }
-
-  P = P * dP;
-
-  a[0][0] = P(0, 0);
-  a[0][1] = P(0, 1);
-  a[0][2] = P(0, 2);
-
-  a[1][0] = P(1, 0);
-  a[1][1] = P(1, 1);
-  a[1][2] = P(1, 2);
-
-
-  if( e ) {
-    *e = sqrt(square(a02) + square(12) +
-        square(size.width * a00) + square(size.width * a10) +
-        square(size.height * a01) + square(size.height * a11));
-  }
-
-  return true;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/**
- * Image homography transform:
- * w  =  (x * a20 + y * a21 + a22)
- * x' =  (x * a00 + y * a01 + a02) / w
- * y' =  (x * a10 + y * a11 + a12) / w
- */
-
-c_ecc_homography_transform::c_ecc_homography_transform()
-{
-}
-
-c_ecc_homography_transform::c_ecc_homography_transform(const float a[3][3])
-{
-  memcpy(this->a, a, sizeof(this->a));
-}
-
-c_ecc_homography_transform::c_ecc_homography_transform(const cv::Matx33f & a)
-{
-  memcpy(this->a, a.val, sizeof(this->a));
-}
-
-c_ecc_homography_transform::c_ecc_homography_transform(const cv::Mat1f & a)
-{
-  if( a.rows != 3 || a.cols != 3 || a.channels() != 1 ) {
-    CF_ERROR("APP BUG: argument must be 3x3 single channel 32-bit floating point matrix.\n"
-        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
-  }
-  else {
-
-    for( int i = 0; i < 3; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        this->a[i][j] = a[i][j];
-      }
-    }
-  }
-}
-
-c_ecc_homography_transform::c_ecc_homography_transform(float a00, float a01, float a02,
-    float a10, float a11, float a12,
-    float a20, float a21, float a22)
-{
-  a[0][0] = a00;
-  a[0][1] = a01;
-  a[0][2] = a02;
-
-  a[1][0] = a10;
-  a[1][1] = a11;
-  a[1][2] = a12;
-
-  a[2][0] = a20;
-  a[2][1] = a21;
-  a[2][2] = a22;
-}
-
-void c_ecc_homography_transform::set_translation(const cv::Vec2f & v)
-{
-  a[0][2] = v[0];
-  a[1][2] = v[1];
-}
-
-cv::Vec2f c_ecc_homography_transform::translation() const
-{
-  return cv::Vec2f(a[0][2], a[1][2]);
-}
-
-cv::Mat1f c_ecc_homography_transform::parameters() const
-{
-  return cv::Mat1f(3, 3, (float*) a).clone();
-}
-
-bool c_ecc_homography_transform::set_parameters(const cv::Mat1f & p)
-{
-  if( p.rows == 3 && p.cols == 3 ) {
-    for( int i = 0; i < 3; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        a[i][j] = p[i][j];
-      }
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 3x3", p.rows, p.cols);
-  return false;
-}
-
-cv::Mat1f c_ecc_homography_transform::scale(const cv::Mat1f & p, double factor) const
-{
-  if( p.rows == 3 && p.cols == 3 ) {
-
-    cv::Mat1f sp(3, 3);
-
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-
-    sp(2, 0) = p(2, 0) / factor;
-    sp(2, 1) = p(2, 1) / factor;
-    sp(2, 2) = p(2, 2);
-
-    return sp;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 3x3", p.rows, p.cols);
-  return cv::Mat1f();
-}
-
-bool c_ecc_homography_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
-{
-  map.create(size);
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          for ( int x = 0; x < map.cols; ++x ) {
-
-            float w = a[2][0] * x + a[2][1] * y + a[2][2];
-            if ( w ) {
-              w = 1 / w;
-            }
-            else {
-              w = 1;
-            }
-
-            m[x][0] = (a[0][0] * x + a[0][1] * y + a[0][2]) * w;
-            m[x][1] = (a[1][0] * x + a[1][1] * y + a[1][2]) * w;
-          }
-        }
-      });
-
-  return true;
-}
-
-int c_ecc_homography_transform::num_adustable_parameters() const
-{
-  return 8;
-}
-
-
-bool c_ecc_homography_transform::create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const
-{
-  // w  =  (x * a20 + y * a21 + a22)
-  // x' =  (x * a00 + y * a01 + a02) / w
-  // y' =  (x * a10 + y * a11 + a12) / w
-
-  const int w = gx.cols;
-  const int h = gx.rows;
-
-  dst.create(h * 8, w);
-
-  tbb::parallel_for(tbb_range(0, h, tbb_block_size),
-      [this, w, h, &gx, &gy, &dst](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < w; ++x ) {
-
-            const float den = 1.f / (x * a[2][0] + y * a[2][1] + 1.f );
-            const float hatX = -(x * a[0][0] + y * a[0][1] + a[0][2]) * den;
-            const float hatY = -(x * a[1][0] + y * a[1][1] + a[1][2]) * den;
-
-            const float ggx = gx[y][x] * den;
-            const float ggy = gy[y][x] * den;
-            const float gg = hatX * ggx + hatY * ggy;
-
-            dst[y + 0 * h ][x] = ggx * x;
-            dst[y + 1 * h ][x] = ggy * x;
-            dst[y + 2 * h ][x] = gg * x;
-            dst[y + 3 * h ][x] = ggx * y;
-            dst[y + 4 * h ][x] = ggy * y;
-            dst[y + 5 * h ][x] = gg * y;
-            dst[y + 6 * h ][x] = ggx;
-            dst[y + 7 * h ][x] = ggy;
-          }
-        }
-      });
-
-  return true;
-}
-
-bool c_ecc_homography_transform::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  // w  =  (x * a20 + y * a21 + a22)
-  // x' =  (x * a00 + y * a01 + a02) / w
-  // y' =  (x * a10 + y * a11 + a12) / w
-
-  a[0][0] += p(0, 0);
-  a[0][1] += p(3, 0);
-  a[0][2] += p(6, 0);
-  a[1][0] += p(1, 0);
-  a[1][1] += p(4, 0);
-  a[1][2] += p(7, 0);
-  a[2][0] += p(2, 0);
-  a[2][1] += p(5, 0);
-
-  if( e ) {
-    // FIXME?: this estimate does not account for w
-    *e = sqrt(square(p(6, 0)) + square(p(7, 0)) +
-        square(size.width * p(0, 0)) + square(size.height * p(3, 0)) +
-        square(size.width * p(1, 0)) + square(size.height * p(4, 0)));
-  }
-
-  return true;
-}
-
-bool c_ecc_homography_transform::update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  //  x' =  (x * a00 + y * a01 + a02) / w
-  //  y' =  (x * a10 + y * a11 + a12) / w
-  //  w  =  (x * a20 + y * a21 + a22)
-
-  //  a[0][0] => p(0, 0);
-  //  a[0][1] => p(3, 0);
-  //  a[0][2] => p(6, 0);
-  //  a[1][0] => p(1, 0);
-  //  a[1][1] => p(4, 0);
-  //  a[1][2] => p(7, 0);
-  //  a[2][0] => p(2, 0);
-  //  a[2][1] => p(5, 0);
-  //  a[2][2] => 1;
-
-  cv::Matx33f P(
-      a[0][0], a[0][1], a[0][2],
-      a[1][0], a[1][1], a[1][2],
-      a[2][0], a[2][1], 1.0);
-
-  cv::Matx33f dP(
-      1 + p(0, 0), p(3, 0), p(6, 0),
-      p(1, 0), 1 + p(4, 0), p(7, 0),
-      p(2, 0), p(5, 0), 1.);
-
-  bool isok = false;
-
-  dP = dP.inv(cv::DECOMP_LU, &isok);
-  if( !isok ) {
-    CF_ERROR("dP.inv() fails");
-    return false;
-  }
-
-  P = P * dP;
-
-  a[0][0] = P(0, 0);
-  a[0][1] = P(0, 1);
-  a[0][2] = P(0, 2);
-
-  a[1][0] = P(1, 0);
-  a[1][1] = P(1, 1);
-  a[1][2] = P(1, 2);
-
-  a[2][0] = P(2, 0);
-  a[2][1] = P(2, 1);
-  a[2][2] = 1;
-
-  if( e ) {
-    *e = sqrt(square(p(6, 0)) + square(p(7, 0)) +
-        square(size.width * p(0, 0)) + square(size.height * p(3, 0)) +
-        square(size.width * p(1, 0)) + square(size.height * p(4, 0)));
-  }
-
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-c_ecc_quadratic_transform::c_ecc_quadratic_transform()
-{
-}
-
-c_ecc_quadratic_transform::c_ecc_quadratic_transform(const float a[2][6])
-{
-  memcpy(this->a, a, sizeof(this->a));
-}
-
-c_ecc_quadratic_transform::c_ecc_quadratic_transform(const cv::Matx<float, 2, 6> & a)
-{
-  memcpy(this->a, a.val, sizeof(this->a));
-}
-
-c_ecc_quadratic_transform::c_ecc_quadratic_transform(const cv::Mat1f & a)
-{
-  if( a.rows != 2 || a.cols != 6 || a.channels() != 1 ) {
-    CF_ERROR("APP BUG: argument must be 2x6 single channel 32-bit floating point matrix.\n"
-        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
-  }
-  else {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 6; ++j ) {
-        this->a[i][j] = a[i][j];
-      }
-    }
-  }
-}
-
-c_ecc_quadratic_transform::c_ecc_quadratic_transform(float a00, float a01, float a02, float a03, float a04, float a05,
-    float a10, float a11, float a12, float a13, float a14, float a15)
-{
-  a[0][0] = a00;
-  a[0][1] = a01;
-  a[0][2] = a02;
-  a[0][3] = a03;
-  a[0][4] = a04;
-  a[0][5] = a05;
-
-  a[1][0] = a10;
-  a[1][1] = a11;
-  a[1][2] = a12;
-  a[1][3] = a13;
-  a[1][4] = a14;
-  a[1][5] = a15;
-}
-
-cv::Mat1f c_ecc_quadratic_transform::parameters() const
-{
-  return cv::Mat1f(2, 6, (float*) a).clone();
-}
-
-bool c_ecc_quadratic_transform::set_parameters(const cv::Mat1f & p)
-{
-  if( p.rows == 2 && p.cols == 6 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 6; ++j ) {
-        a[i][j] = p[i][j];
-      }
-    }
-
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", p.rows, p.cols);
-  return false;
-}
-
-cv::Mat1f c_ecc_quadratic_transform::scale(const cv::Mat1f & p, double factor) const
-{
-  if( p.rows == 2 && p.cols == 6 ) {
-
-    cv::Mat1f sp(2, 6);
-
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-    sp(0, 3) = p(0, 3) / factor;
-    sp(0, 4) = p(0, 4) / factor;
-    sp(0, 5) = p(0, 5) / factor;
-
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-    sp(1, 3) = p(1, 3) / factor;
-    sp(1, 4) = p(1, 4) / factor;
-    sp(1, 5) = p(1, 5) / factor;
-
-    return sp;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", p.rows, p.cols);
-  return cv::Mat1f();
-}
-
-bool c_ecc_quadratic_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
-{
-  map.create(size);
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          for ( int x = 0; x < map.cols; ++x ) {
-            m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2] + a[0][3] * x * y + a[0][4] * x * x + a[0][5] * y * y;
-            m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2] + a[1][3] * x * y + a[1][4] * x * x + a[1][5] * y * y;
-          }
-        }
-      });
-
-  return true;
-}
-
-int  c_ecc_quadratic_transform::num_adustable_parameters() const
-{
-  return 12;
-}
-
-bool c_ecc_quadratic_transform::create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const
-{
-  // x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
-  // y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
-
-  const int w = gx.cols;
-  const int h = gx.rows;
-
-  dst.create(h * 12, w);
-
-  tbb::parallel_for(tbb_range(0, h, tbb_block_size),
-      [w, h, &gx, &gy, &dst](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < w; ++x ) {
-            dst[y + 0 * h][x] = gx[y][x] * x;
-            dst[y + 1 * h][x] = gy[y][x] * x;
-            dst[y + 2 * h][x] = gx[y][x] * y;
-            dst[y + 3 * h][x] = gy[y][x] * y;
-            dst[y + 4 * h][x] = gx[y][x];
-            dst[y + 5 * h][x] = gy[y][x];
-            dst[y + 6 * h][x] = gx[y][x] * x * y;
-            dst[y + 7 * h][x] = gy[y][x] * x * y;
-            dst[y + 8 * h][x] = gx[y][x] * x * x;
-            dst[y + 9 * h][x] = gy[y][x] * x * x;
-            dst[y + 10 * h][x] = gx[y][x] * y * y;
-            dst[y + 11 * h][x] = gy[y][x] * y * y;
-          }
-        }
-      });
-
-  return true;
-}
-
-bool c_ecc_quadratic_transform::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  // x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
-  // y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
-
-  a[0][0] += p(0, 0);
-  a[0][1] += p(2, 0);
-  a[0][2] += p(4, 0);
-  a[0][3] += p(6, 0);
-  a[0][4] += p(8, 0);
-  a[0][5] += p(10, 0);
-
-  a[1][0] += p(1, 0);
-  a[1][1] += p(3, 0);
-  a[1][2] += p(5, 0);
-  a[1][3] += p(7, 0);
-  a[1][4] += p(9, 0);
-  a[1][5] += p(11, 0);
-
-  if( e ) {
-    *e = sqrt(square(p(4, 0)) + square(p(5, 0)) +
-        square(size.width * p(0, 0)) + square(size.height * p(2, 0)) +
-        square(size.width * p(1, 0)) + square(size.height * p(3, 0)) +
-        square(size.width * size.height * p(6, 0)) + square(size.width * size.height * p(7, 0)) +
-        square(size.width * size.width * p(8, 0)) + square(size.width * size.width * p(9, 0)) +
-        square(size.height * size.height * p(10, 0)) + square(size.height * size.height * p(11, 0)));
-  }
-
-  return true;
-}
-
-bool c_ecc_quadratic_transform::update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size)
-{
-  return false;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//
-//// convert image to 32-bit float with optional gaussian smoothing
-//void c_ecc2::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
-//    double smooth_sigma, bool force_create_mask,
-//    cv::Mat1f & dst, cv::Mat1b & dst_mask) const
-//{
-//  INSTRUMENT_REGION("");
-//
-//  if ( smooth_sigma <= 0 ) {
-//    src.getMat().convertTo(dst, dst.depth());
-//  }
-//  else {
-//
-//    const cv::Mat1f G =
-//        cv::getGaussianKernel(2 * ((int) (4 * smooth_sigma)) + 1,
-//            smooth_sigma);
-//
-//    if ( src_mask.empty() ) {
-//
-//      cv::sepFilter2D(src, dst, dst.depth(),
-//          G, G,
-//          cv::Point(-1, -1),
-//          0,
-//          cv::BORDER_REPLICATE);
-//
-//    }
-//    else {
-//
-//      const cv::Mat1b mask =
-//          src_mask.getMat();
-//
-//      cv::Mat1f fmask;
-//
-//      mask.convertTo(fmask, fmask.type(), 1. / 255);
-//
-//      cv::sepFilter2D(src, dst, dst.depth(),
-//          G, G,
-//          cv::Point(-1, -1),
-//          0,
-//          cv::BORDER_REPLICATE);
-//
-//      cv::sepFilter2D(fmask, fmask, fmask.depth(),
-//          G, G,
-//          cv::Point(-1, -1),
-//          +1e-12,
-//          cv::BORDER_REPLICATE);
-//
-//      cv::divide(dst, fmask, dst);
-//    }
-//  }
-//
-//
-//  if ( !src_mask.empty() ) {
-//
-//    if ( cv::countNonZero(src_mask) == src_mask.size().area() ) {
-//      src_mask.copyTo(dst_mask);
-//    }
-//    else { // may need to protect some border near mask edges because of differentiation
-//
-//      cv::erode(src_mask, dst_mask, cv::Mat1b(5, 5, 255),
-//          cv::Point(-1, -1), 1,
-//          cv::BORDER_REPLICATE);
-//
-//    }
-//  }
-//  else if ( force_create_mask ) {
-//    dst_mask.create(src.size());
-//    dst_mask.setTo(255);
-//  }
-//  else {
-//    // ensure it is empty
-//    dst_mask.release();
-//  }
-//}
-//
+} // namespace ecc2
 

@@ -26,9 +26,14 @@
 #include <core/proc/inpaint.h>
 #include <tbb/tbb.h>
 #include <core/proc/laplacian_pyramid.h>
-#include <core/proc/ecc2.h>
+#include <core/proc/image_registration/ecc2.h>
+#include <core/proc/image_registration/c_euclidean_ecc_motion_model.h>
+#include <core/proc/image_registration/c_affine_ecc_motion_model.h>
+#include <core/proc/image_registration/c_quadratic_ecc_motion_model.h>
+#include <core/proc/image_registration/c_homography_ecc_motion_model.h>
 #include <core/debug.h>
 
+using namespace ecc2;
 
 
 int main(int argc, char *argv[])
@@ -136,9 +141,9 @@ int main(int argc, char *argv[])
     output_directory = "./ecc2";
   }
 
-  c_ecc_euclidean_transform transform;
-  c_ecc2_forward_additive ecc(&transform);
-  c_ecch2 ecch (&ecc);
+  c_euclidean_ecc_motion_model model;
+  ecc2::c_ecc_forward_additive ecc(&model);
+  ecc2::c_ecch ecch (&ecc);
 
   ecc.set_min_rho(0.5);
   ecc.set_update_step_scale(1);
@@ -151,8 +156,8 @@ int main(int argc, char *argv[])
 
   if ( estimate_translation_first ) {
 
-    transform.set_fix_rotation(true);
-    transform.set_fix_scale(true);
+    model.set_fix_rotation(true);
+    model.set_fix_scale(true);
 
     if( !ecch.set_reference_image(grays[0], masks[0]) ) {
       CF_ERROR("ecch.set_reference_image() fails");
@@ -170,17 +175,17 @@ int main(int argc, char *argv[])
         ecc.rho(), ecc.min_rho(),
         ecc.eps(), ecc.max_eps());
 
-    T = transform.translation();
+    T = model.translation();
     CF_DEBUG("ESTIMATED tx=%g ty=%g\n===========================\n", T[0], T[1]);
 
-    transform.set_fix_rotation(false);
-    transform.set_fix_scale(false);
+    model.set_fix_rotation(false);
+    model.set_fix_scale(false);
   }
 
 
-  transform.set_fix_translation(fix_translation);
-  transform.set_fix_rotation(fix_rotation);
-  transform.set_fix_scale(fix_scale);
+  model.set_fix_translation(fix_translation);
+  model.set_fix_rotation(fix_rotation);
+  model.set_fix_scale(fix_scale);
 
   if( coarse_to_fine ) {
 
@@ -219,15 +224,15 @@ int main(int argc, char *argv[])
       ecc.eps(), ecc.max_eps());
 
 
-  T = transform.translation();
+  T = model.translation();
 //  CF_DEBUG("Tx=%g Ty=%g\n"
 //      "===========================\n",
 //      T[0], T[1]);
     CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
         "===========================\n",
         T[0], T[1],
-        transform.rotation() * 180 / CV_PI,
-        transform.scale());
+        model.rotation() * 180 / CV_PI,
+        model.scale());
 
   if ( !ecc.current_remap().empty() ) {
 

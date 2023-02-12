@@ -34,6 +34,14 @@ int c_affine_ecc_motion_model::num_adustable_parameters() const
 
 bool c_affine_ecc_motion_model::create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const
 {
+  INSTRUMENT_REGION("");
+
+  if( !transform_ ) {
+    CF_ERROR("c_affine_ecc_motion_model: "
+        "pointer to c_affine_image_transform is NULL");
+    return false;
+  }
+
   // SDI:
   //  [ gx * dWx/dp0 + gy * dWy/dp0]
   //  [ gx * dWx/dp1 + gy * dWy/dp1]
@@ -91,13 +99,26 @@ bool c_affine_ecc_motion_model::create_steepest_descent_images(const cv::Mat1f &
 
 bool c_affine_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
-  a[0][0] += p(0, 0);
-  a[0][1] += p(1, 0);
-  a[0][2] += p(2, 0);
+  INSTRUMENT_REGION("");
 
-  a[1][0] += p(3, 0);
-  a[1][1] += p(4, 0);
-  a[1][2] += p(5, 0);
+  if( !transform_ ) {
+    CF_ERROR("c_affine_ecc_motion_model: "
+        "pointer to c_affine_image_transform is NULL");
+    return false;
+  }
+
+  cv::Matx23f a =
+      transform_->affine_matrix();
+
+  a(0,0) += p(0, 0);
+  a(0,1) += p(1, 0);
+  a(0,2) += p(2, 0);
+
+  a(1,0) += p(3, 0);
+  a(1,1) += p(4, 0);
+  a(1,2) += p(5, 0);
+
+  transform_->set_affine_matrix(a);
 
   if( e ) {
     *e = sqrt(square(p(2, 0)) + square(p(5, 0)) +
@@ -110,6 +131,14 @@ bool c_affine_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, flo
 
 bool c_affine_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
+  INSTRUMENT_REGION("");
+
+  if( !transform_ ) {
+    CF_ERROR("c_affine_ecc_motion_model: "
+        "pointer to c_affine_image_transform is NULL");
+    return false;
+  }
+
   const float a00 = p(0, 0);
   const float a01 = p(1, 0);
   const float a02 = p(2, 0);
@@ -118,9 +147,12 @@ bool c_affine_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p, fl
   const float a11 = p(4, 0);
   const float a12 = p(5, 0);
 
+  cv::Matx23f a =
+      transform_->affine_matrix();
+
   cv::Matx33f P(
-      a[0][0], a[0][1], a[0][2],
-      a[1][0], a[1][1], a[1][2],
+      a(0,0), a(0,1), a(0,2),
+      a(1,0), a(1,1), a(1,2),
         0,     0,      1);
 
   cv::Matx33f dP(
@@ -138,13 +170,15 @@ bool c_affine_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p, fl
 
   P = P * dP;
 
-  a[0][0] = P(0, 0);
-  a[0][1] = P(0, 1);
-  a[0][2] = P(0, 2);
+  a(0,0) = P(0, 0);
+  a(0,1) = P(0, 1);
+  a(0,2) = P(0, 2);
 
-  a[1][0] = P(1, 0);
-  a[1][1] = P(1, 1);
-  a[1][2] = P(1, 2);
+  a(1,0) = P(1, 0);
+  a(1,1) = P(1, 1);
+  a(1,2) = P(1, 2);
+
+  transform_->set_affine_matrix(a);
 
 
   if( e ) {

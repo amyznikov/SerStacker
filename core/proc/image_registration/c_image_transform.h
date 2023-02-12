@@ -19,6 +19,13 @@
 # define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
 
+#ifndef Matx26f_defined
+#define Matx26f_defined 1
+namespace cv {
+typedef cv::Matx<float, 2, 6> Matx26f;
+}
+#endif
+
 
 class c_image_transform
 {
@@ -98,11 +105,13 @@ public:
   c_affine_image_transform();
   c_affine_image_transform(const float a[2][3]);
   c_affine_image_transform(const cv::Matx23f & a);
-  c_affine_image_transform(const cv::Mat1f & a);
   c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12);
 
   void set_translation(const cv::Vec2f & v);
   cv::Vec2f translation() const;
+
+  void set_affine_matrix(const cv::Matx23f & a);
+  const cv::Matx23f& affine_matrix() const;
 
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;
@@ -110,12 +119,7 @@ public:
   bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
 
 protected:
-  float a[2][3] = {
-      { 1, 0, 0 },
-      { 0, 1, 0 }
-  };
-  float & Tx_ = a[0][2];
-  float & Ty_ = a[1][2];
+  cv::Matx23f a = cv::Matx23f::eye();
 };
 
 
@@ -145,19 +149,18 @@ public:
   void set_translation(const cv::Vec2f & v);
   cv::Vec2f translation() const;
 
+  void set_homography_matrix(const cv::Matx33f & a);
+  const cv::Matx33f& homography_matrix() const;
+
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;
   cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
   bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
 
 protected:
-  float a[3][3] = {
-      { 1, 0, 0 },
-      { 0, 1, 0 },
-      { 0, 0, 1 }
-  };
-  float &Tx_ = a[0][2];
-  float &Ty_ = a[1][2];
+  cv::Matx33f a = cv::Matx33f::eye();
+  float &Tx_ = a(0, 2);
+  float &Ty_ = a(1, 2);
 };
 
 
@@ -178,13 +181,15 @@ public:
 
   c_quadratic_image_transform();
   c_quadratic_image_transform(const float a[2][6]);
-  c_quadratic_image_transform(const cv::Matx<float, 2, 6> & a);
-  c_quadratic_image_transform(const cv::Mat1f & a);
+  c_quadratic_image_transform(const cv::Matx26f & a);
   c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
       float a10, float a11, float a12, float a13, float a14, float a15);
 
   void set_translation(const cv::Vec2f & v);
   cv::Vec2f translation() const;
+
+  void set_matrix(const cv::Matx26f & a);
+  const cv::Matx26f & matrix() const;
 
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;
@@ -192,14 +197,9 @@ public:
   bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
 
 protected:
-  float a[2][6] = {
-      { 1, 0, 0, 0, 0, 0 },
-      { 0, 1, 0, 0, 0, 0 },
-  };
-
-  float & Tx_ = a[0][2];
-  float & Ty_ = a[1][2];
-
+  cv::Matx26f a = cv::Matx26f::eye();
+  float &Tx_ = a(0, 2);
+  float &Ty_ = a(1, 2);
 };
 
 

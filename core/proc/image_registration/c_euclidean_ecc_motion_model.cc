@@ -52,6 +52,12 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
 {
   INSTRUMENT_REGION("");
 
+  if( !transform_ ) {
+    CF_ERROR("c_euclidean_ecc_motion_model: "
+        "pointer to c_euclidean_image_transform is NULL");
+    return false;
+  }
+
   // STEEPEST DESCENT IMAGES:
   //  [ gx * dWx / dp0 + gy * dWy / dp0]
   //  [ gx * dWx / dp1 + gy * dWy / dp1]
@@ -84,12 +90,13 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
   const int w = gx.cols;
   const int h = gx.rows;
 
-
-  const float tx = Tx_;
-  const float ty = Ty_;
-  const float scale = scale_;
-  const float sa = std::sin(angle_);
-  const float ca = std::cos(angle_);
+  const cv::Vec2f T = transform_->translation();
+  const float tx = T[0];
+  const float ty = T[1];
+  const float angle = transform_->rotation();
+  const float scale = transform_->scale();
+  const float sa = std::sin(angle);
+  const float ca = std::cos(angle);
 
   dst.create(h * n, w);
 
@@ -142,9 +149,15 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
   return true;
 }
 
-bool c_euclidean_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
+        bool c_euclidean_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
   INSTRUMENT_REGION("");
+
+  if( !transform_ ) {
+    CF_ERROR("c_euclidean_ecc_motion_model: "
+        "pointer to c_euclidean_image_transform is NULL");
+    return false;
+  }
 
   const int n =
       num_adustable_parameters();
@@ -161,22 +174,23 @@ bool c_euclidean_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, 
   int i = 0;
 
   if( !fix_translation_ ) {
+
     dx = p(i++, 0);
     dy = p(i++, 0);
+
+    transform_->set_translation(transform_->translation() +
+        cv::Vec2f(dx, dy));
   }
 
   if( !fix_rotation_ ) {
     da = p(i++, 0);
+    transform_->set_rotation(transform_->rotation() + da);
   }
 
   if( !fix_scale_ ) {
     ds = p(i++, 0);
+    transform_->set_scale(transform_->scale() + ds);
   }
-
-  Tx_ += dx;
-  Ty_ += dy;
-  angle_ += da;
-  scale_ += ds;
 
   if( e ) {
     const float sa = sin(da);

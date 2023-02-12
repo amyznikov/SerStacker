@@ -12,59 +12,46 @@
 #include "c_image_transform.h"
 #include "ecc2.h"
 
-class c_homography_ecc_motion_model :
-    public c_homography_image_transform,
-    public ecc2::c_ecc_motion_model
+class c_homography_ecc_motion_model:
+    public c_ecc_motion_model
 {
 public:
   typedef c_homography_ecc_motion_model this_class;
-  typedef c_homography_image_transform transform;
-  typedef c_ecc_motion_model motion_model;
+  typedef c_ecc_motion_model base;
 
-  c_homography_ecc_motion_model()
+  c_homography_ecc_motion_model(c_homography_image_transform * transform = nullptr) :
+      transform_(transform)
   {
   }
 
-  c_homography_ecc_motion_model(const float a[3][3]) :
-      transform(a)
+  void set_transform(c_homography_image_transform * transform)
   {
+    transform_ = transform;
   }
 
-  c_homography_ecc_motion_model(const cv::Matx33f & a) :
-      transform(a)
+  c_homography_image_transform* transform() const
   {
-  }
-
-  c_homography_ecc_motion_model(const cv::Mat1f & a) :
-      transform(a)
-  {
-  }
-
-  c_homography_ecc_motion_model(float a00, float a01, float a02,
-      float a10, float a11, float a12,
-      float a20, float a21, float a22) :
-      transform(a00, a01, a02, a10, a11, a12, a20, a21, a22)
-  {
+    return transform_;
   }
 
   cv::Mat1f parameters() const override
   {
-    return transform::parameters();
+    return transform_ ? transform_->parameters() : cv::Mat1f();
   }
 
   bool set_parameters(const cv::Mat1f & p) override
   {
-    return transform::set_parameters(p);
+    return transform_ ? transform_->set_parameters(p) : false;
   }
 
   cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override
   {
-    return transform::scale_transfrom(p, factor);
+    return transform_ ? transform_->scale_transfrom(p, factor) : cv::Mat1f();
   }
 
   bool create_remap(cv::Mat2f & map, const cv::Size & size) const override
   {
-    return transform::create_remap(map, size);
+    return transform_ ? transform_->create_remap(map, size) : false;
   }
 
 public: // c_ecc_motion_model
@@ -74,7 +61,7 @@ public: // c_ecc_motion_model
   bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) override;
 
 protected:
-
+  c_homography_image_transform *transform_ = nullptr;
 };
 
 #endif /* __c_homography_ecc_motion_model_h__ */

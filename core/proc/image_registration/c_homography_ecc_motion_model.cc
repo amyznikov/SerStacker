@@ -36,6 +36,14 @@ int c_homography_ecc_motion_model::num_adustable_parameters() const
 
 bool c_homography_ecc_motion_model::create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const
 {
+  INSTRUMENT_REGION("");
+
+  if( !transform_ ) {
+    CF_ERROR("c_homography_ecc_motion_model: "
+        "pointer to c_homography_image_transform is NULL");
+    return false;
+  }
+
   // w  =  (x * a20 + y * a21 + a22)
   // x' =  (x * a00 + y * a01 + a02) / w
   // y' =  (x * a10 + y * a11 + a12) / w
@@ -43,20 +51,23 @@ bool c_homography_ecc_motion_model::create_steepest_descent_images(const cv::Mat
   const int w = gx.cols;
   const int h = gx.rows;
 
+  const cv::Matx33f a =
+      transform_->homography_matrix();
+
   dst.create(h * 8, w);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
   tbb::parallel_for(tbb_range(0, h, tbb_block_size),
-      [this, w, h, &gx, &gy, &dst](const tbb_range & r) {
+      [a, w, h, &gx, &gy, &dst](const tbb_range & r) {
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
 #else
         for ( int y = 0; y < h; ++y ) {
 #endif
           for ( int x = 0; x < w; ++x ) {
 
-            const float den = 1.f / (x * a[2][0] + y * a[2][1] + 1.f );
-            const float hatX = -(x * a[0][0] + y * a[0][1] + a[0][2]) * den;
-            const float hatY = -(x * a[1][0] + y * a[1][1] + a[1][2]) * den;
+            const float den = 1.f / (x * a(2,0) + y * a(2,1) + 1.f );
+            const float hatX = -(x * a(0,0) + y * a(0,1) + a(0,2)) * den;
+            const float hatY = -(x * a(1,0) + y * a(1,1) + a(1,2)) * den;
 
             const float ggx = gx[y][x] * den;
             const float ggy = gy[y][x] * den;
@@ -82,18 +93,31 @@ bool c_homography_ecc_motion_model::create_steepest_descent_images(const cv::Mat
 
 bool c_homography_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
+  INSTRUMENT_REGION("");
+
+  if( !transform_ ) {
+    CF_ERROR("c_homography_ecc_motion_model: "
+        "pointer to c_homography_image_transform is NULL");
+    return false;
+  }
+
   // w  =  (x * a20 + y * a21 + a22)
   // x' =  (x * a00 + y * a01 + a02) / w
   // y' =  (x * a10 + y * a11 + a12) / w
 
-  a[0][0] += p(0, 0);
-  a[0][1] += p(3, 0);
-  a[0][2] += p(6, 0);
-  a[1][0] += p(1, 0);
-  a[1][1] += p(4, 0);
-  a[1][2] += p(7, 0);
-  a[2][0] += p(2, 0);
-  a[2][1] += p(5, 0);
+  cv::Matx33f a =
+      transform_->homography_matrix();
+
+  a(0,0) += p(0, 0);
+  a(0,1) += p(3, 0);
+  a(0,2) += p(6, 0);
+  a(1,0) += p(1, 0);
+  a(1,1) += p(4, 0);
+  a(1,2) += p(7, 0);
+  a(2,0) += p(2, 0);
+  a(2,1) += p(5, 0);
+
+  transform_->set_homography_matrix(a);
 
   if( e ) {
     // FIXME?: this estimate does not account for w
@@ -107,24 +131,36 @@ bool c_homography_ecc_motion_model::update_forward_additive(const cv::Mat1f & p,
 
 bool c_homography_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
+  INSTRUMENT_REGION("");
+
+  if( !transform_ ) {
+    CF_ERROR("c_homography_ecc_motion_model: "
+        "pointer to c_homography_image_transform is NULL");
+    return false;
+  }
+
+
   //  x' =  (x * a00 + y * a01 + a02) / w
   //  y' =  (x * a10 + y * a11 + a12) / w
   //  w  =  (x * a20 + y * a21 + a22)
 
-  //  a[0][0] => p(0, 0);
-  //  a[0][1] => p(3, 0);
-  //  a[0][2] => p(6, 0);
-  //  a[1][0] => p(1, 0);
-  //  a[1][1] => p(4, 0);
-  //  a[1][2] => p(7, 0);
-  //  a[2][0] => p(2, 0);
-  //  a[2][1] => p(5, 0);
-  //  a[2][2] => 1;
+  //  a(0,0) => p(0, 0);
+  //  a(0,1) => p(3, 0);
+  //  a(0,2) => p(6, 0);
+  //  a(1,0) => p(1, 0);
+  //  a(1,1) => p(4, 0);
+  //  a(1,2) => p(7, 0);
+  //  a(2,0) => p(2, 0);
+  //  a(2,1) => p(5, 0);
+  //  a(2,2) => 1;
+
+  cv::Matx33f a =
+      transform_->homography_matrix();
 
   cv::Matx33f P(
-      a[0][0], a[0][1], a[0][2],
-      a[1][0], a[1][1], a[1][2],
-      a[2][0], a[2][1], 1.0);
+      a(0,0), a(0,1), a(0,2),
+      a(1,0), a(1,1), a(1,2),
+      a(2,0), a(2,1), 1.0);
 
   cv::Matx33f dP(
       1 + p(0, 0), p(3, 0), p(6, 0),
@@ -141,17 +177,19 @@ bool c_homography_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p
 
   P = P * dP;
 
-  a[0][0] = P(0, 0);
-  a[0][1] = P(0, 1);
-  a[0][2] = P(0, 2);
+  a(0,0) = P(0, 0);
+  a(0,1) = P(0, 1);
+  a(0,2) = P(0, 2);
 
-  a[1][0] = P(1, 0);
-  a[1][1] = P(1, 1);
-  a[1][2] = P(1, 2);
+  a(1,0) = P(1, 0);
+  a(1,1) = P(1, 1);
+  a(1,2) = P(1, 2);
 
-  a[2][0] = P(2, 0);
-  a[2][1] = P(2, 1);
-  a[2][2] = 1;
+  a(2,0) = P(2, 0);
+  a(2,1) = P(2, 1);
+  a(2,2) = 1;
+
+  transform_->set_homography_matrix(a);
 
   if( e ) {
     *e = sqrt(square(p(6, 0)) + square(p(7, 0)) +

@@ -161,57 +161,51 @@ c_affine_image_transform::c_affine_image_transform()
 
 c_affine_image_transform::c_affine_image_transform(const float _a[2][3])
 {
-  memcpy(this->a, _a, sizeof(this->a));
+  memcpy(this->a.val, _a, sizeof(this->a.val));
 }
 
 c_affine_image_transform::c_affine_image_transform(const cv::Matx23f & _a)
 {
-  memcpy(this->a, _a.val, sizeof(this->a));
-}
-
-c_affine_image_transform::c_affine_image_transform(const cv::Mat1f & a)
-{
-  if( a.rows != 2 || a.cols != 3 || a.channels() != 1 ) {
-    CF_ERROR("APP BUG: argument must be 2x3 single channel 32-bit floating point matrix.\n"
-        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
-  }
-  else {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        this->a[i][j] = a[i][j];
-      }
-    }
-  }
+  this->a = _a;
 }
 
 c_affine_image_transform::c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12)
 {
-  a[0][0] = a00;
-  a[0][1] = a01;
-  a[0][2] = a02;
+  a(0,0) = a00;
+  a(0,1) = a01;
+  a(0,2) = a02;
 
-  a[1][0] = a10;
-  a[1][1] = a11;
-  a[1][2] = a12;
+  a(1,0) = a10;
+  a(1,1) = a11;
+  a(1,2) = a12;
 }
 
 
 void c_affine_image_transform::set_translation(const cv::Vec2f & v)
 {
-  Tx_ = v[0];
-  Ty_ = v[1];
+  a(0, 2) = v[0];
+  a(1, 2) = v[1];
 }
 
 cv::Vec2f c_affine_image_transform::translation() const
 {
-  return cv::Vec2f(Tx_, Ty_);
+  return cv::Vec2f(a(0, 2), a(1, 2));
 }
 
 
+void c_affine_image_transform::set_affine_matrix(const cv::Matx23f & a)
+{
+  this->a = a;
+}
+
+const cv::Matx23f& c_affine_image_transform::affine_matrix() const
+{
+  return a;
+}
+
 cv::Mat1f c_affine_image_transform::parameters() const
 {
-  return cv::Mat1f(2, 3, (float*) a).clone();
+  return cv::Mat1f(a.rows, a.cols, (float*) a.val).clone();
 }
 
 bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
@@ -220,7 +214,7 @@ bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
 
     for( int i = 0; i < 2; ++i ) {
       for( int j = 0; j < 3; ++j ) {
-        a[i][j] = p[i][j];
+        a(i,j) = p[i][j];
       }
     }
 
@@ -231,7 +225,7 @@ bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
 
     for( int i = 0; i < 2; ++i ) {
       for( int j = 0; j < 3; ++j ) {
-        a[i][j] = p(i * 3 + j, 0);
+        a(i,j) = p(i * 3 + j, 0);
       }
     }
     return true;
@@ -279,8 +273,8 @@ bool c_affine_image_transform::create_remap(cv::Mat2f & map, const cv::Size & si
 
           for ( int x = 0; x < map.cols; ++x ) {
 
-            m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2];
-            m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2];
+            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
+            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
           }
         }
       });
@@ -293,8 +287,8 @@ bool c_affine_image_transform::create_remap(cv::Mat2f & map, const cv::Size & si
 
     for ( int x = 0; x < map.cols; ++x ) {
 
-      m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2];
-      m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2];
+      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
+      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
     }
   }
 
@@ -312,45 +306,29 @@ c_homography_image_transform::c_homography_image_transform()
 
 c_homography_image_transform::c_homography_image_transform(const float a[3][3])
 {
-  memcpy(this->a, a, sizeof(this->a));
+  memcpy(this->a.val, a, sizeof(this->a.val));
 }
 
 c_homography_image_transform::c_homography_image_transform(const cv::Matx33f & a)
 {
-  memcpy(this->a, a.val, sizeof(this->a));
-}
-
-c_homography_image_transform::c_homography_image_transform(const cv::Mat1f & a)
-{
-  if( a.rows != 3 || a.cols != 3 || a.channels() != 1 ) {
-    CF_ERROR("APP BUG: argument must be 3x3 single channel 32-bit floating point matrix.\n"
-        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
-  }
-  else {
-
-    for( int i = 0; i < 3; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        this->a[i][j] = a[i][j];
-      }
-    }
-  }
+  this->a = a;
 }
 
 c_homography_image_transform::c_homography_image_transform(float a00, float a01, float a02,
     float a10, float a11, float a12,
     float a20, float a21, float a22)
 {
-  a[0][0] = a00;
-  a[0][1] = a01;
-  a[0][2] = a02;
+  a(0,0) = a00;
+  a(0,1) = a01;
+  a(0,2) = a02;
 
-  a[1][0] = a10;
-  a[1][1] = a11;
-  a[1][2] = a12;
+  a(1,0) = a10;
+  a(1,1) = a11;
+  a(1,2) = a12;
 
-  a[2][0] = a20;
-  a[2][1] = a21;
-  a[2][2] = a22;
+  a(2,0) = a20;
+  a(2,1) = a21;
+  a(2,2) = a22;
 }
 
 void c_homography_image_transform::set_translation(const cv::Vec2f & v)
@@ -364,9 +342,19 @@ cv::Vec2f c_homography_image_transform::translation() const
   return cv::Vec2f(Tx_, Ty_);
 }
 
+void c_homography_image_transform::set_homography_matrix(const cv::Matx33f & a)
+{
+  this->a = a;
+}
+
+const cv::Matx33f& c_homography_image_transform::homography_matrix() const
+{
+  return this->a;
+}
+
 cv::Mat1f c_homography_image_transform::parameters() const
 {
-  return cv::Mat1f(3, 3, (float*) a).clone();
+  return cv::Mat1f(3, 3, (float*) a.val).clone();
 }
 
 bool c_homography_image_transform::set_parameters(const cv::Mat1f & p)
@@ -374,7 +362,7 @@ bool c_homography_image_transform::set_parameters(const cv::Mat1f & p)
   if( p.rows == 3 && p.cols == 3 ) {
     for( int i = 0; i < 3; ++i ) {
       for( int j = 0; j < 3; ++j ) {
-        a[i][j] = p[i][j];
+        a(i, j) = p[i][j];
       }
     }
     return true;
@@ -422,7 +410,7 @@ bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size 
 
           for ( int x = 0; x < map.cols; ++x ) {
 
-            float w = a[2][0] * x + a[2][1] * y + a[2][2];
+            float w = a(2,0) * x + a(2,1) * y + a(2,2);
             if ( w ) {
               w = 1 / w;
             }
@@ -430,8 +418,8 @@ bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size 
               w = 1;
             }
 
-            m[x][0] = (a[0][0] * x + a[0][1] * y + a[0][2]) * w;
-            m[x][1] = (a[1][0] * x + a[1][1] * y + a[1][2]) * w;
+            m[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) * w;
+            m[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) * w;
           }
         }
       });
@@ -444,7 +432,7 @@ bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size 
 
     for( int x = 0; x < map.cols; ++x ) {
 
-      float w = a[2][0] * x + a[2][1] * y + a[2][2];
+      float w = a(2,0) * x + a(2,1) * y + a(2,2);
       if( w ) {
         w = 1 / w;
       }
@@ -452,8 +440,8 @@ bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size 
         w = 1;
       }
 
-      m[x][0] = (a[0][0] * x + a[0][1] * y + a[0][2]) * w;
-      m[x][1] = (a[1][0] * x + a[1][1] * y + a[1][2]) * w;
+      m[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) * w;
+      m[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) * w;
     }
   }
 
@@ -472,46 +460,31 @@ c_quadratic_image_transform::c_quadratic_image_transform()
 
 c_quadratic_image_transform::c_quadratic_image_transform(const float a[2][6])
 {
-  memcpy(this->a, a, sizeof(this->a));
+  memcpy(this->a.val, a, sizeof(this->a.val));
 }
 
-c_quadratic_image_transform::c_quadratic_image_transform(const cv::Matx<float, 2, 6> & a)
+c_quadratic_image_transform::c_quadratic_image_transform(const cv::Matx26f & a)
 {
-  memcpy(this->a, a.val, sizeof(this->a));
+  this->a = a;
 }
 
-c_quadratic_image_transform::c_quadratic_image_transform(const cv::Mat1f & a)
-{
-  if( a.rows != 2 || a.cols != 6 || a.channels() != 1 ) {
-    CF_ERROR("APP BUG: argument must be 2x6 single channel 32-bit floating point matrix.\n"
-        "Actual argument is %dx%d %d channels", a.rows, a.cols, a.channels());
-  }
-  else {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 6; ++j ) {
-        this->a[i][j] = a[i][j];
-      }
-    }
-  }
-}
 
 c_quadratic_image_transform::c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
     float a10, float a11, float a12, float a13, float a14, float a15)
 {
-  a[0][0] = a00;
-  a[0][1] = a01;
-  a[0][2] = a02;
-  a[0][3] = a03;
-  a[0][4] = a04;
-  a[0][5] = a05;
+  a(0,0) = a00;
+  a(0,1) = a01;
+  a(0,2) = a02;
+  a(0,3) = a03;
+  a(0,4) = a04;
+  a(0,5) = a05;
 
-  a[1][0] = a10;
-  a[1][1] = a11;
-  a[1][2] = a12;
-  a[1][3] = a13;
-  a[1][4] = a14;
-  a[1][5] = a15;
+  a(1,0) = a10;
+  a(1,1) = a11;
+  a(1,2) = a12;
+  a(1,3) = a13;
+  a(1,4) = a14;
+  a(1,5) = a15;
 }
 
 
@@ -526,9 +499,19 @@ cv::Vec2f c_quadratic_image_transform::translation() const
   return cv::Vec2f (Tx_, Ty_);
 }
 
+void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)
+{
+  this->a = a;
+}
+
+const cv::Matx26f & c_quadratic_image_transform::matrix() const
+{
+  return this->a;
+}
+
 cv::Mat1f c_quadratic_image_transform::parameters() const
 {
-  return cv::Mat1f(2, 6, (float*) a).clone();
+  return cv::Mat1f(2, 6, (float*) a.val).clone();
 }
 
 bool c_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
@@ -537,7 +520,7 @@ bool c_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
 
     for( int i = 0; i < 2; ++i ) {
       for( int j = 0; j < 6; ++j ) {
-        a[i][j] = p[i][j];
+        a(i,j) = p[i][j];
       }
     }
 
@@ -588,8 +571,8 @@ bool c_quadratic_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
           cv::Vec2f * m = map[y];
 
           for ( int x = 0; x < map.cols; ++x ) {
-            m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2] + a[0][3] * x * y + a[0][4] * x * x + a[0][5] * y * y;
-            m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2] + a[1][3] * x * y + a[1][4] * x * x + a[1][5] * y * y;
+            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
+            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
           }
         }
       });
@@ -599,8 +582,8 @@ bool c_quadratic_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
     cv::Vec2f * m = map[y];
 
     for ( int x = 0; x < map.cols; ++x ) {
-      m[x][0] = a[0][0] * x + a[0][1] * y + a[0][2] + a[0][3] * x * y + a[0][4] * x * x + a[0][5] * y * y;
-      m[x][1] = a[1][0] * x + a[1][1] * y + a[1][2] + a[1][3] * x * y + a[1][4] * x * x + a[1][5] * y * y;
+      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
+      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
     }
   }
 

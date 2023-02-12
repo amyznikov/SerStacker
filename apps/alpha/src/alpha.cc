@@ -27,10 +27,7 @@
 #include <tbb/tbb.h>
 #include <core/proc/laplacian_pyramid.h>
 #include <core/proc/image_registration/ecc2.h>
-#include <core/proc/image_registration/c_euclidean_ecc_motion_model.h>
-#include <core/proc/image_registration/c_affine_ecc_motion_model.h>
-#include <core/proc/image_registration/c_quadratic_ecc_motion_model.h>
-#include <core/proc/image_registration/c_homography_ecc_motion_model.h>
+#include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/debug.h>
 
 using namespace ecc2;
@@ -141,8 +138,15 @@ int main(int argc, char *argv[])
     output_directory = "./ecc2";
   }
 
-  c_euclidean_ecc_motion_model model;
-  ecc2::c_ecc_forward_additive ecc(&model);
+//  c_euclidean_image_transform transform;
+//  c_euclidean_ecc_motion_model model(&transform);
+
+  c_affine_image_transform transform;
+
+  c_affine_ecc_motion_model::sptr model =
+      create_ecc_motion_model(&transform);
+
+  ecc2::c_ecc_forward_additive ecc(model.get());
   ecc2::c_ecch ecch (&ecc);
 
   ecc.set_min_rho(0.5);
@@ -156,8 +160,8 @@ int main(int argc, char *argv[])
 
   if ( estimate_translation_first ) {
 
-    model.set_fix_rotation(true);
-    model.set_fix_scale(true);
+//    model.set_fix_rotation(true);
+//    model.set_fix_scale(true);
 
     if( !ecch.set_reference_image(grays[0], masks[0]) ) {
       CF_ERROR("ecch.set_reference_image() fails");
@@ -175,17 +179,17 @@ int main(int argc, char *argv[])
         ecc.rho(), ecc.min_rho(),
         ecc.eps(), ecc.max_eps());
 
-    T = model.translation();
+    T = transform.translation();
     CF_DEBUG("ESTIMATED tx=%g ty=%g\n===========================\n", T[0], T[1]);
 
-    model.set_fix_rotation(false);
-    model.set_fix_scale(false);
+//    model.set_fix_rotation(false);
+//    model.set_fix_scale(false);
   }
 
 
-  model.set_fix_translation(fix_translation);
-  model.set_fix_rotation(fix_rotation);
-  model.set_fix_scale(fix_scale);
+//  model.set_fix_translation(fix_translation);
+//  model.set_fix_rotation(fix_rotation);
+//  model.set_fix_scale(fix_scale);
 
   if( coarse_to_fine ) {
 
@@ -224,15 +228,15 @@ int main(int argc, char *argv[])
       ecc.eps(), ecc.max_eps());
 
 
-  T = model.translation();
-//  CF_DEBUG("Tx=%g Ty=%g\n"
-//      "===========================\n",
-//      T[0], T[1]);
-    CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
-        "===========================\n",
-        T[0], T[1],
-        model.rotation() * 180 / CV_PI,
-        model.scale());
+  T = transform.translation();
+  CF_DEBUG("Tx=%g Ty=%g\n"
+      "===========================\n",
+      T[0], T[1]);
+//    CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
+//        "===========================\n",
+//        T[0], T[1],
+//        transform.rotation() * 180 / CV_PI,
+//        transform.scale());
 
   if ( !ecc.current_remap().empty() ) {
 

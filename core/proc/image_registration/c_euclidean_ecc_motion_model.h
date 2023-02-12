@@ -57,36 +57,6 @@ public:
 
 public: // c_ecc_motion_model
 
-  void set_fix_translation(bool v)
-  {
-    fix_translation_ = v;
-  }
-
-  bool fix_translation() const
-  {
-    return fix_translation_;
-  }
-
-  void set_fix_rotation(bool v)
-  {
-    fix_rotation_ = v;
-  }
-
-  bool fix_rotation() const
-  {
-    return fix_rotation_;
-  }
-
-  void set_fix_scale(bool v)
-  {
-    fix_scale_ = v;
-  }
-
-  bool fix_scale() const
-  {
-    return fix_scale_;
-  }
-
   int num_adustable_parameters() const override;
   bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const override;
   bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) override;
@@ -94,9 +64,6 @@ public: // c_ecc_motion_model
 
 protected:
   c_euclidean_image_transform * transform_ = nullptr;
-  bool fix_translation_ = false;
-  bool fix_rotation_ = false;
-  bool fix_scale_ = false;
 };
 
 #endif /* __c_euclidean_ecc_motion_model_h__ */

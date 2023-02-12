@@ -71,6 +71,15 @@ public:
   void set_scale(float v);
   float scale() const;
 
+  void set_fix_translation(bool v);
+  bool fix_translation() const;
+
+  void set_fix_rotation(bool v);
+  bool fix_rotation() const;
+
+  void set_fix_scale(bool v);
+  bool fix_scale() const;
+
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;
   cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
@@ -82,6 +91,10 @@ protected:
   float & Ty_ = a[1];
   float & angle_ = a[2];
   float & scale_ = a[3];
+
+  bool fix_translation_ = false;
+  bool fix_rotation_ = false;
+  bool fix_scale_ = false;
 };
 
 
@@ -190,6 +203,8 @@ public:
 
   void set_matrix(const cv::Matx26f & a);
   const cv::Matx26f & matrix() const;
+
+  void set_affine_matrix(const cv::Matx23f & a);
 
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;

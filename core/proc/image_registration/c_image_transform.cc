@@ -67,6 +67,36 @@ float c_euclidean_image_transform::scale() const
   return scale_;
 }
 
+void c_euclidean_image_transform::set_fix_translation(bool v)
+{
+  fix_translation_ = v;
+}
+
+bool c_euclidean_image_transform::fix_translation() const
+{
+  return c_euclidean_image_transform::fix_translation_;
+}
+
+void c_euclidean_image_transform::set_fix_rotation(bool v)
+{
+  fix_rotation_ = v;
+}
+
+bool c_euclidean_image_transform::fix_rotation() const
+{
+  return fix_rotation_;
+}
+
+void c_euclidean_image_transform::set_fix_scale(bool v)
+{
+  fix_scale_ = v;
+}
+
+bool c_euclidean_image_transform::fix_scale() const
+{
+  return fix_scale_;
+}
+
 cv::Mat1f c_euclidean_image_transform::parameters() const
 {
   return cv::Mat1f(4, 1, (float*)a).clone();
@@ -507,6 +537,15 @@ void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)
 const cv::Matx26f & c_quadratic_image_transform::matrix() const
 {
   return this->a;
+}
+
+void c_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
+{
+  for ( int i = 0; i < 2; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      this->a(i, j) = a(i, j);
+    }
+  }
 }
 
 cv::Mat1f c_quadratic_image_transform::parameters() const

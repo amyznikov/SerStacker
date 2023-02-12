@@ -656,19 +656,19 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 void QGLView::wheelEvent(QWheelEvent * e)
 {
   const double delta =
-      e->pixelDelta().y();
+      e->angleDelta().y();
 
   if( delta ) {
 
     if( !e->modifiers() ) {
 
-      // Move both camera and target forward / backward
+      // Move both camera and viewTarget_ forward / backward
 
       const QVector3D forward =
           viewTarget_ - viewPoint_;
 
       const QVector3D neweye =
-          viewPoint_ + 1e-2 * forward * delta / forward.length();
+          viewPoint_ + 1e-4 * forward * delta;  // / forward.length();
 
       viewTarget_ += neweye - viewPoint_;
       viewPoint_ = neweye;
@@ -680,39 +680,53 @@ void QGLView::wheelEvent(QWheelEvent * e)
     }
     else if( e->modifiers() == Qt::ControlModifier ) {
 
-      // Move camera forward / backward
+      // Move viewTarget_ only (the effect is mouse sensitivity adjustment)
 
       const QVector3D forward =
           viewTarget_ - viewPoint_;
 
-      const QVector3D neweye =
-          viewPoint_ + 1e-2 * forward * delta / forward.length();
+      const QVector3D newtarget =
+          viewTarget_ + 1e-3 * forward * delta; // / forward.length();
 
       const QVector3D newforward =
-          viewTarget_ - neweye;
+          newtarget - viewPoint_;
 
       const double p =
           QVector3D::dotProduct(newforward,
               forward);
 
-      if( p > 0 ) {
-        // just move camera
-        viewPoint_ = neweye;
+      if ( p > 0 &&  newforward.length() > nearPlane_ ) {
+        viewTarget_ = newtarget;
         dirty_ = true;
-
         Q_EMIT viewPointChanged();
         update();
       }
-      else if( p < 0 ) {
-        // don't allow camera to jump target
 
-        viewTarget_ += neweye - viewPoint_;
-        viewPoint_ = neweye;
-        dirty_ = true;
 
-        Q_EMIT viewPointChanged();
-        update();
-      }
+//      const double p =
+//          QVector3D::dotProduct(newforward,
+//              forward);
+//
+//      CF_DEBUG("forward=%g newforward=%g p=%g", forward.length(), newforward.length(), p);
+//
+//      if( p > 0 ) {
+//        // just move target
+//        viewTarget_ = newtarget;
+//        dirty_ = true;
+//
+//        Q_EMIT viewPointChanged();
+//        update();
+//      }
+//      else if( p < 0 ) {
+//        // don't allow camera to jump target
+//
+//        viewPoint_ += newtarget - viewTarget_;
+//        viewTarget_ = newtarget;
+//        dirty_ = true;
+//
+//        Q_EMIT viewPointChanged();
+//        update();
+//      }
     }
   }
 

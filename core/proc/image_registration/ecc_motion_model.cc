@@ -16,6 +16,10 @@ c_ecc_motion_model::sptr create_ecc_motion_model(c_image_transform * transform)
   }
   else {
 
+    if( c_translation_image_transform *t = dynamic_cast<c_translation_image_transform*>(transform) ) {
+      return c_ecc_motion_model::sptr(new c_translation_ecc_motion_model(t));
+    }
+
     if( c_euclidean_image_transform *t = dynamic_cast<c_euclidean_image_transform*>(transform) ) {
       return c_ecc_motion_model::sptr(new c_euclidean_ecc_motion_model(t));
     }
@@ -32,7 +36,7 @@ c_ecc_motion_model::sptr create_ecc_motion_model(c_image_transform * transform)
       return c_ecc_motion_model::sptr(new c_quadratic_ecc_motion_model(t));
     }
 
-    CF_ERROR("Unknow c_image_transform type specified");
+    CF_ERROR("Unknown c_image_transform type %s specified", typeid(*transform).name());
   }
 
   return nullptr;

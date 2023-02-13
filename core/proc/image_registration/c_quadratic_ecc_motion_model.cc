@@ -13,11 +13,11 @@
 
 
 namespace {
-
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 typedef tbb::blocked_range<int> tbb_range;
 constexpr int tbb_block_size = 512;
 #endif
+} // namespace
 
 template<class T>
 static inline T square(T x)
@@ -25,10 +25,7 @@ static inline T square(T x)
   return x * x;
 }
 
-} // namespace
-
-
-int  c_quadratic_ecc_motion_model::num_adustable_parameters() const
+int c_quadratic_ecc_motion_model::num_adustable_parameters() const
 {
   return 12;
 }

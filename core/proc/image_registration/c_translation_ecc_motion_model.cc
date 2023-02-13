@@ -13,21 +13,17 @@
 
 
 namespace {
-
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 typedef tbb::blocked_range<int> tbb_range;
 constexpr int tbb_block_size = 512;
 #endif
+} // namespace
 
 template<class T>
 static inline T square(T x)
 {
   return x * x;
 }
-
-} // namespace
-
-
 
 int c_translation_ecc_motion_model::num_adustable_parameters() const
 {
@@ -61,14 +57,6 @@ bool c_translation_ecc_motion_model::create_steepest_descent_images(const cv::Ma
   // dWy / dty = 1
 
 
-  const  int n =
-      num_adustable_parameters();
-
-  if ( n < 1 ) {
-    CF_ERROR("All parameters are fixed, can not compute steepest_descent_images");
-    return false;
-  }
-
   const int w = gx.cols;
   const int h = gx.rows;
 
@@ -76,7 +64,7 @@ bool c_translation_ecc_motion_model::create_steepest_descent_images(const cv::Ma
   const float tx = T[0];
   const float ty = T[1];
 
-  dst.create(h * n, w);
+  dst.create(h * 2, w);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
   tbb::parallel_for(tbb_range(0, h, tbb_block_size),

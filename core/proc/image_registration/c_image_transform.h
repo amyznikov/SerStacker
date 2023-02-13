@@ -83,10 +83,10 @@ protected:
 
 
 /**
- * Euclidean image transform with optional translation, rotation and scale :
+ * Euclidean image transform relative to center [Cx, Cy] with optional translation, rotation and scale:
  *
- *  x' =  s * (cos(angle) * x  - sin(angle) * y) + tx
- *  y' =  s * (sin(angle) * x  + cos(angle) * y) + ty
+ *  x' =  s * (cos(angle) * (x-Cx) - sin(angle) * (y-Cy)) + tx
+ *  y' =  s * (sin(angle) * (x-Cx) + cos(angle) * (y-Cy)) + ty
  *
  *  For the signs of angles see opencv doc for estimateAffinePartial2D()
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -101,9 +101,13 @@ public:
 
   c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1);
   c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1);
+  c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle = 0, float scale = 1);
 
   void set_translation(const cv::Vec2f & v) override;
   cv::Vec2f translation() const  override;
+
+  void set_center(const cv::Vec2f & v);
+  cv::Vec2f center() const;
 
   void set_rotation(float v);
   float rotation() const;
@@ -126,16 +130,19 @@ public:
   bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
 
 protected:
-  float a[4] = { 0, 0, 0, 1 };
+  float a[6] = { 0, 0, 0, 1, 0, 0 };
   float & Tx_ = a[0];
   float & Ty_ = a[1];
   float & angle_ = a[2];
   float & scale_ = a[3];
+  float & Cx_ = a[4];
+  float & Cy_ = a[5];
 
   bool fix_translation_ = false;
   bool fix_rotation_ = false;
   bool fix_scale_ = false;
 };
+
 
 
 

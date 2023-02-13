@@ -14,6 +14,8 @@
 #include <core/get_time.h>
 #include <core/debug.h>
 
+#include <core/proc/eccalign.h>
+
 
 static void extract_matched_positions(const std::vector<cv::KeyPoint> & current_keypoints, const std::vector<cv::KeyPoint> & reference_keypoints,
     const std::vector<cv::DMatch > & matches,

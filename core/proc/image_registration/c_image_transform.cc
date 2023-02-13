@@ -153,6 +153,16 @@ c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & T, fl
   scale_ = scale;
 }
 
+c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle, float scale)
+{
+  Tx_ = T[0];
+  Ty_ = T[1];
+  angle_ = angle;
+  scale_ = scale;
+  Cx_ = C[0];
+  Cy_ = C[1];
+}
+
 void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)
 {
   Tx_ = v[0];
@@ -162,6 +172,17 @@ void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)
 cv::Vec2f c_euclidean_image_transform::translation() const
 {
   return cv::Vec2f(Tx_, Ty_);
+}
+
+void c_euclidean_image_transform::set_center(const cv::Vec2f & v)
+{
+  Cx_ = v[0];
+  Cy_ = v[1];
+}
+
+cv::Vec2f c_euclidean_image_transform::center() const
+{
+  return cv::Vec2f(Cx_, Cy_);
 }
 
 void c_euclidean_image_transform::set_rotation(float v)
@@ -216,37 +237,41 @@ bool c_euclidean_image_transform::fix_scale() const
 
 cv::Mat1f c_euclidean_image_transform::parameters() const
 {
-  return cv::Mat1f(4, 1, (float*)a).clone();
+  return cv::Mat1f(6, 1, (float*)a).clone();
 }
 
 bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  if( p.rows == 4 && p.cols == 1 ) {
+  if( p.rows == 6 && p.cols == 1 ) {
     Tx_ = p(0, 0);
     Ty_ = p(1, 0);
     angle_ = p(2, 0);
     scale_ = p(3, 0);
+    Cx_ = p(4, 0);
+    Cy_ = p(5, 0);
     return true;
   }
 
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 4x1", p.rows, p.cols);
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 6x1", p.rows, p.cols);
   return false;
 }
 
 cv::Mat1f c_euclidean_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
 {
-  if( p.rows == 4 && p.cols == 1 ) {
+  if( p.rows == 6 && p.cols == 1 ) {
 
     cv::Mat1f ss =
         p.clone();
 
     ss(0, 0) *= factor;
     ss(1, 0) *= factor;
+    ss(4, 0) *= factor;
+    ss(5, 0) *= factor;
 
     return ss;
   }
 
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 4x1", p.rows, p.cols);
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 6x1", p.rows, p.cols);
   return cv::Mat1f();
 }
 
@@ -257,6 +282,8 @@ bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
 
   INSTRUMENT_REGION("");
 
+  const float cx = Cx_;
+  const float cy = Cy_;
   const float tx = Tx_;
   const float ty = Ty_;
   const float ca = std::cos(angle_);
@@ -268,16 +295,20 @@ bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 
   tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [&map, tx, ty, sa, ca, s](const tbb_range & r) {
+      [&map, cx, cy, tx, ty, sa, ca, s](const tbb_range & r) {
 
         for ( int y = r.begin(); y < r.end(); ++y ) {
 
           cv::Vec2f * m = map[y];
 
+          const float yy = y - cy;
+
           for ( int x = 0; x < map.cols; ++x ) {
 
-            m[x][0] = s * (ca * x - sa * y) + tx;
-            m[x][1] = s * (sa * x + ca * y) + ty;
+            const float xx = x - cx;
+
+            m[x][0] = s * (ca * xx - sa * yy) + tx;
+            m[x][1] = s * (sa * xx + ca * yy) + ty;
           }
 
         }
@@ -289,10 +320,14 @@ bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
 
     cv::Vec2f * m = map[y];
 
+    const float yy = y - cy;
+
     for ( int x = 0; x < map.cols; ++x ) {
 
-      m[x][0] = s * (ca * x - sa * y) + tx;
-      m[x][1] = s * (sa * x + ca * y) + ty;
+      const float xx = x - cx;
+
+      m[x][0] = s * (ca * xx - sa * yy) + tx;
+      m[x][1] = s * (sa * xx + ca * yy) + ty;
     }
 
   }

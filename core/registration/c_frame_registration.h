@@ -10,7 +10,6 @@
 
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
-//#include <core/proc/eccalign.h>
 #include <core/proc/image_registration/image_transform.h>
 #include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/proc/jupiter.h>

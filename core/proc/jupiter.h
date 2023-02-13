@@ -10,7 +10,9 @@
 #define __jupiter_h__
 
 #include <opencv2/opencv.hpp>
-#include "eccalign.h"
+#include <core/proc/image_registration/image_transform.h>
+#include <core/proc/image_registration/ecc_motion_model.h>
+
 
 
 /**
@@ -215,9 +217,7 @@ protected:
   cv::Mat1f current_wmask_;
   cv::Mat2f current_remap_;
 
-//  c_ecc_forward_additive ecc_;
-//  c_ecch ecch_;
-  c_ecch_flow eccflow_;
+  ecc2::c_eccflow eccflow_;
   c_jovian_ellipse_detector planetary_detector_;
 
   double min_rotation_ = -30 * CV_PI / 180;

@@ -18,7 +18,6 @@
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/planetary-disk-detection.h>
-#include <core/proc/jupiter.h>
 #include <core/proc/fft.h>
 #include <core/settings.h>
 #include <core/readdir.h>

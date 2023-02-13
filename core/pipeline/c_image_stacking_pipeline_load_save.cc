@@ -558,7 +558,6 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
   SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_blur);
   SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, gradient_blur);
-  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, hlines);
 
 
   return true;
@@ -642,7 +641,6 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
     LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_blur);
     LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, gradient_blur);
-    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, hlines);
   }
 
   return true;

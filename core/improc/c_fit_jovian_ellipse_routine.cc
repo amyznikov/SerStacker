@@ -42,16 +42,6 @@ c_fit_jovian_ellipse_routine::display_type c_fit_jovian_ellipse_routine::display
   return display_type_;
 }
 
-void c_fit_jovian_ellipse_routine::set_hlines(const std::vector<float> & hlines)
-{
-  detector_.set_hlines(hlines);
-}
-
-const std::vector<float> & c_fit_jovian_ellipse_routine::hlines() const
-{
-  return detector_.hlines();
-}
-
 void c_fit_jovian_ellipse_routine::set_normalization_scale(int v)
 {
   return detector_.set_normalization_scale(v);
@@ -106,7 +96,6 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
 {
   if( base::serialize(settings, save) ) {
 
-    SERIALIZE_PROPERTY(settings, save, *this, hlines);
     SERIALIZE_PROPERTY(settings, save, *this, normalization_scale);
     SERIALIZE_PROPERTY(settings, save, *this, normalization_blur);
     SERIALIZE_PROPERTY(settings, save, *this, gradient_blur);
@@ -147,12 +136,12 @@ static void rotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & 
   cv::Point2f pts[4];
   rc.points(pts);
 
-  for (int i = 0; i < 4; i++) {
-   cv::line(image, pts[i], pts[(i+1)%4], color, thickness, lineType, shift);
+  for( int i = 0; i < 4; i++ ) {
+    cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);
   }
 
-  cv::line(image, (pts[0]+pts[1])*0.5, (pts[2]+pts[3])*0.5, color, thickness, lineType, shift);
-  cv::line(image, (pts[1]+pts[2])*0.5, (pts[0]+pts[3])*0.5, color, thickness, lineType, shift);
+  cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color, thickness, lineType, shift);
+  cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
 }
 
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -173,7 +162,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
 
   cv::Mat tmp;
 
-  detector_.detect_planetary_disk(image, mask);
+  detector_.detect_jovian_disk(image, mask);
 
   switch (display_type_) {
 

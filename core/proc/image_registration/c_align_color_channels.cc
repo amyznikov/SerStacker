@@ -1,12 +1,14 @@
 /*
- * align_channels.cc
+ * c_align_color_channels.cc
  *
  *  Created on: Jul 11, 2021
  *      Author: amyznikov
+ *
+ *  Use of ECC for color channels alignment in multi-channel images
  */
 
-#include "align_channels.h"
-#include <core/proc/image_registration/ecc_motion_model.h>
+#include "c_align_color_channels.h"
+#include "ecc_motion_model.h"
 #include <core/debug.h>
 
 void c_align_color_channels::set_motion_type(IMAGE_MOTION_TYPE motion_type)

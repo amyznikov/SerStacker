@@ -82,15 +82,6 @@ QJovianEllipseDetectorSettings::QJovianEllipseDetectorSettings(QWidget * parent)
             }
           });
 
-  hlines_ctl =
-      add_numeric_box<std::vector<float>>("hlines",
-          [this](const std::vector<float> & v) {
-            if ( options_ ) {
-              options_->hlines = v;
-              emit parameterChanged();
-            }
-          });
-
   force_reference_ellipse_ctl =
       add_checkbox("force reference ellipse",
           [this](bool checked) {
@@ -123,7 +114,6 @@ void QJovianEllipseDetectorSettings::onupdatecontrols()
     normalization_scale_ctl->setValue(options_->normalization_scale);
     normalization_blur_ctl->setValue(options_->normalization_blur);
     gradient_blur_ctl->setValue(options_->gradient_blur);
-    hlines_ctl->setValue(options_->hlines);
     force_reference_ellipse_ctl->setChecked(options_->force_reference_ellipse);
 
     setEnabled(true);

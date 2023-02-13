@@ -1,23 +1,24 @@
 /*
- * align_channels.h
+ * c_align_color_channels.h
  *
  *  Created on: Jul 11, 2021
  *      Author: amyznikov
  *
- *   Use of eccalign for color channels alignment
+ *  Use of ECC for color channels alignment in multi-channel images
  */
 
 #pragma once
 #ifndef __align_channels_h__
 #define __align_channels_h__
 
-// #include "eccalign.h"
+#include "image_transform.h"
+#include "ecc2.h"
 
-#include <core/proc/image_registration/image_transform.h>
-#include <core/proc/image_registration/ecc2.h>
-
-class c_align_color_channels {
-
+/**
+ *  Use of ECC for color channels alignment in multi-channel images
+ *  */
+class c_align_color_channels
+{
 public:
   c_align_color_channels() = default;
 
@@ -51,12 +52,14 @@ public:
   const c_image_transform::sptr & computed_transform(int channel_index) const;
 
   bool align(int reference_channel_index,
-      cv::InputArray src, cv::OutputArray dst,
+      cv::InputArray src,
+      cv::OutputArray dst,
       cv::InputArray srcmask = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray() );
 
   bool align(cv::InputArray single_channel_reference_image,
-      cv::InputArray src, cv::OutputArray dst,
+      cv::InputArray src,
+      cv::OutputArray dst,
       cv::InputArray reference_mask = cv::noArray(),
       cv::InputArray srcmask = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray() );

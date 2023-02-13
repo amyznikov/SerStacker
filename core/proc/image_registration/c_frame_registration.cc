@@ -14,22 +14,83 @@
 #include <core/get_time.h>
 #include <core/debug.h>
 
-#include <core/proc/eccalign.h>
+//#include <core/proc/eccalign.h>
 
 
-static void extract_matched_positions(const std::vector<cv::KeyPoint> & current_keypoints, const std::vector<cv::KeyPoint> & reference_keypoints,
+namespace {
+
+void extract_matched_positions(const std::vector<cv::KeyPoint> & current_keypoints,
+    const std::vector<cv::KeyPoint> & reference_keypoints,
     const std::vector<cv::DMatch > & matches,
     std::vector<cv::Point2f> * current_positions,
     std::vector<cv::Point2f> * reference_positions )
 {
   current_positions->clear(), current_positions->reserve(matches.size());
   reference_positions->clear(), reference_positions->reserve(matches.size());
+
   for ( const auto & m : matches ) {
     current_positions->emplace_back(current_keypoints[m.queryIdx].pt);
     reference_positions->emplace_back(reference_keypoints[m.trainIdx].pt);
   }
 }
 
+
+/*
+ * Pyramid down to specific level
+ */
+bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
+{
+  cv::pyrDown(src, dst, cv::Size(), border_mode);
+  for ( int l = 1; l < level; ++l ) {
+    cv::pyrDown(dst, dst, cv::Size(), border_mode);
+  }
+  return true;
+}
+
+/*
+ * Pyramid up to specific size
+ */
+bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
+{
+  const cv::Size inputSize =
+      image.size();
+
+  if ( inputSize != dstSize ) {
+
+    std::vector<cv::Size> spyramid;
+
+    spyramid.emplace_back(dstSize);
+
+    while ( 42 ) {
+
+      const cv::Size nextSize((spyramid.back().width + 1) / 2,
+          (spyramid.back().height + 1) / 2);
+
+      if ( nextSize == inputSize ) {
+        break;
+      }
+
+      if ( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+
+        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+            nextSize.width, nextSize.height,
+            inputSize.width, inputSize.height);
+
+        return false;
+      }
+
+      spyramid.emplace_back(nextSize);
+    }
+
+    for ( int i = spyramid.size() - 1; i >= 0; --i ) {
+      cv::pyrUp(image, image, spyramid[i]);
+    }
+  }
+
+  return true;
+}
+
+} // namespace
 
 c_frame_registration::c_frame_registration() :
   ecch_(&ecc_)

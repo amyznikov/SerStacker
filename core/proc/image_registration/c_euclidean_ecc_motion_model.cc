@@ -67,18 +67,18 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
   //  [ gx * dWx / dpn + gy * dWy / dpn]
 
   // W([x,y], p):
-  //  Wx =  s * ( ca * x - sa * y ) + tx
-  //  Wy =  s * ( sa * x + ca * y ) + ty
+  //  Wx =  s * ( ca * (x-cx) - sa * (y-cy) ) + tx
+  //  Wy =  s * ( sa * (x-cx) + ca * (y-cy) ) + ty
 
   // dWx / dtx = 1
   // dWx / dty = 0
-  // dWx / da  = - s * (sa * x + ca * y)
-  // dWx / ds  = ( ca * x - sa * y )
+  // dWx / da  = - s * (sa * (x-cx) + ca * (y-cy))
+  // dWx / ds  = ( ca * (x-cx) - sa * (y-cy) )
 
   // dWy / dtx = 0
   // dWy / dty = 1
-  // dWy / da  = s * (ca * x - sa * y)
-  // dWy / ds  = ( sa * x + ca * y )
+  // dWy / da  = s * (ca * (x-cx) - sa * (y-cy))
+  // dWy / ds  = ( sa * (x-cx) + ca * (y-cy) )
 
 
   const  int n =

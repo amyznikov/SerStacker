@@ -5,7 +5,7 @@
  *      Author: amyznikov
  */
 
-#include <core/proc/geo-reconstruction.h>
+#include "geo-reconstruction.h"
 #include <core/debug.h>
 
 #if HAVE_TBB

@@ -10,7 +10,7 @@
 #define __QJovianEllipseDetectorSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/proc/jupiter.h>
+#include <core/proc/image_registration/c_jovian_derotation.h>
 
 class QJovianEllipseDetectorSettings:
     public QSettingsWidget
@@ -20,13 +20,13 @@ public:
   typedef QJovianEllipseDetectorSettings ThisClass;
   typedef QSettingsWidget Base;
 
-  QJovianEllipseDetectorSettings(QWidget * parent = Q_NULLPTR);
+  QJovianEllipseDetectorSettings(QWidget * parent = nullptr);
 
   void set_jovian_ellipse_detector_options(c_jovian_ellipse_detector_options * options);
   c_jovian_ellipse_detector_options * jovian_ellipse_detector_options() const;
 
 
-public slots:
+public Q_SLOTS:
   void copyParametersToClipboard();
   void pasteParametersFromClipboard();
 
@@ -34,14 +34,13 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  c_jovian_ellipse_detector_options * options_ = Q_NULLPTR;
-  QNumberEditBox * stdev_factor_ctl = Q_NULLPTR;
-  QNumberEditBox * normalization_scale_ctl = Q_NULLPTR;
-  QNumberEditBox * normalization_blur_ctl = Q_NULLPTR;
-  QNumberEditBox * gradient_blur_ctl = Q_NULLPTR;
-  QNumberEditBox * hlines_ctl = Q_NULLPTR;
-  QCheckBox * force_reference_ellipse_ctl = Q_NULLPTR;
-  QToolBar * toolbar_ctl = Q_NULLPTR;
+  c_jovian_ellipse_detector_options * options_ = nullptr;
+  QNumberEditBox * stdev_factor_ctl = nullptr;
+  QNumberEditBox * normalization_scale_ctl = nullptr;
+  QNumberEditBox * normalization_blur_ctl = nullptr;
+  QNumberEditBox * gradient_blur_ctl = nullptr;
+  QCheckBox * force_reference_ellipse_ctl = nullptr;
+  QToolBar * toolbar_ctl = nullptr;
 };
 
 #endif /* __QJovianEllipseDetectorSettings_h__ */

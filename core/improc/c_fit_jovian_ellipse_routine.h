@@ -9,8 +9,8 @@
 #ifndef __c_fit_jovian_ellipse_routine_h__
 #define __c_fit_jovian_ellipse_routine_h__
 
+#include <core/proc/image_registration/c_jovian_derotation.h>
 #include "c_image_processor.h"
-#include <core/proc/jupiter.h>
 
 class c_fit_jovian_ellipse_routine :
     public c_image_processor_routine
@@ -37,9 +37,6 @@ public:
   void set_display(display_type v);
   display_type display() const;
 
-  void set_hlines(const std::vector<float> & hlines);
-  const std::vector<float> & hlines() const;
-
   void set_stdev_factor(double v);
   double stdev_factor() const;
 
@@ -60,7 +57,6 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "stdev_factor");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_scale, "normalization_scale");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_blur, "normalization_blur");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, hlines, "hlines");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
   }
 

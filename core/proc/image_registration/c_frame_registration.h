@@ -10,9 +10,9 @@
 
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
-#include <core/proc/image_registration/image_transform.h>
-#include <core/proc/image_registration/ecc_motion_model.h>
-#include <core/proc/jupiter.h>
+#include "c_jovian_derotation.h"
+#include "image_transform.h"
+#include "ecc_motion_model.h"
 
 struct c_feature_based_registration_options {
   bool enabled = true;

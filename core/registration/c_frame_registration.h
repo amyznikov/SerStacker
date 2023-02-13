@@ -10,7 +10,9 @@
 
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
-#include <core/proc/eccalign.h>
+//#include <core/proc/eccalign.h>
+#include <core/proc/image_registration/image_transform.h>
+#include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/proc/jupiter.h>
 
 struct c_feature_based_registration_options {
@@ -31,8 +33,9 @@ struct c_ecc_registration_options {
   double normalization_noise = 0.01;
   int normalization_scale = 0;
   int max_iterations = 15;
-  int ecch_minimum_image_size = 32;
+  int ecch_minimum_image_size = 16;
   bool enable_ecch = false;
+  bool ecch_estimate_translation_first = true;
   bool replace_planetary_disk_with_mask = false;
   double planetary_disk_mask_stdev_factor = 0.5;
 };
@@ -66,10 +69,12 @@ struct c_image_registration_options {
 
   bool enable_frame_registration = true;
 
-  ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
+  //ECC_MOTION_TYPE motion_type = ECC_MOTION_TRANSLATION;
+  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_EUCLIDEAN;
+
   color_channel_type registration_channel = color_channel_gray;
-  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
-  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
+  enum ecc2::ECC_INTERPOLATION_METHOD interpolation = ecc2::ECC_INTER_LINEAR;
+  enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
   struct c_feature_based_registration_options feature_registration;
@@ -113,22 +118,22 @@ public:
   c_frame_registration();
   c_frame_registration(const c_image_registration_options & optsions);
 
+  void set_debug_path(const std::string & v);
+  const std::string & debug_path() const;
+
   c_image_registration_options & options();
   const c_image_registration_options & options() const;
 
-//  void set_enable_debug(bool v);
-//  bool enable_debug() const;
-
-  void set_debug_path(const std::string & v);
-  const std::string & debug_path() const;
+  void set_image_transform(const c_image_transform::sptr & transform);
+  const c_image_transform::sptr & image_transform() const;
 
   virtual c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
   const c_sparse_feature_extractor::ptr & set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor);
   const c_sparse_feature_extractor::ptr & keypoints_extractor() const;
 
-  const c_ecc_forward_additive & ecc() const;
-  const c_ecch & ecch() const;
-  const c_ecch_flow & eccflow() const;
+  const ecc2::c_ecc_forward_additive & ecc() const;
+  const ecc2::c_ecch & ecch() const;
+  const ecc2::c_eccflow & eccflow() const;
   const c_jovian_derotation & jovian_derotation() const;
 
   void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
@@ -136,13 +141,13 @@ public:
 
   const c_image_registration_status & status() const;
 
-
-
 public: // ops
   virtual ~c_frame_registration() = default;
 
   virtual bool setup_reference_frame(cv::InputArray image,
       cv::InputArray msk = cv::noArray());
+
+  virtual bool create_image_transfrom();
 
   virtual bool register_frame(cv::InputArray src, cv::InputArray srcmask,
       cv::OutputArray dst = cv::noArray(), cv::OutputArray dstmask = cv::noArray());
@@ -150,16 +155,16 @@ public: // ops
   virtual bool remap(cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
-      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
+      enum ecc2::ECC_INTERPOLATION_METHOD interpolation_method = ecc2::ECC_INTER_UNKNOWN,
+      enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
   virtual bool custom_remap(const cv::Mat2f & rmap,
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
-      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
+      enum ecc2::ECC_INTERPOLATION_METHOD interpolation_method = ecc2::ECC_INTER_UNKNOWN,
+      enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
 public: // artifacts
@@ -173,7 +178,7 @@ public: // artifacts
   const cv::Mat & current_ecc_image() const;
   const cv::Mat & current_ecc_mask() const;
 
-  const cv::Mat1f & current_transform() const;
+  //const cv::Mat1f & current_transform() const;
   const cv::Mat2f & current_remap() const;
 
 protected:
@@ -202,7 +207,7 @@ protected:
 
   virtual bool estimate_feature_transform(cv::InputArray current_feature_image,
       cv::InputArray current_feature_mask,
-      cv::Mat1f * current_transform);
+      c_image_transform * current_transform);
 
   virtual bool detect_and_match_keypoints(cv::InputArray current_feature_image,
       cv::InputArray current_feature_mask,
@@ -217,8 +222,8 @@ protected:
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
-      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
+      enum ecc2::ECC_INTERPOLATION_METHOD interpolation_method = ecc2::ECC_INTER_UNKNOWN,
+      enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
 protected:
@@ -252,13 +257,17 @@ protected:
   std::vector<cv::Point2f> matched_current_positions_;
   std::vector<cv::Point2f> matched_reference_positions_;
 
-  c_ecch ecch_;
-  c_ecc_forward_additive ecc_;
-  c_ecch_flow eccflow_;
+  c_image_transform::sptr image_transform_;
+  cv::Mat1f image_transform_defaut_parameters_;
+
+  ecc2::c_ecch ecch_;
+  ecc2::c_ecc_forward_additive ecc_;
+  ecc2::c_eccflow eccflow_;
+  c_ecc_motion_model::sptr ecc_motion_model_;
+
   c_jovian_derotation jovian_derotation_;
   ecc_image_preprocessor_function ecc_image_preprocessor_;
 
-  cv::Mat1f current_transform_;
   cv::Mat2f current_remap_;
 
   c_image_registration_status current_status_;

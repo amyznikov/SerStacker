@@ -655,7 +655,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 #if QT_CONFIG(wheelevent)
 void QGLView::wheelEvent(QWheelEvent * e)
 {
-  const double delta =
+  const int delta =
       e->angleDelta().y();
 
   if( delta ) {

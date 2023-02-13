@@ -249,6 +249,7 @@ protected:
   QNumberEditBox * normalization_scale_ctl = nullptr;
   QNumberEditBox * max_iterations_ctl = nullptr;
   QCheckBox * enable_ecch_ctl = nullptr;
+  QCheckBox * ecch_estimate_translation_first_ctl = nullptr;
   QNumberEditBox * ecch_minimum_image_size_ctl = nullptr;
   QCheckBox * replace_planetary_disk_with_mask_ctl = nullptr;
   QNumberEditBox * planetary_disk_mask_stdev_factor_ctl = nullptr;
@@ -333,10 +334,10 @@ class QImageRegistrationOptions :
 public:
   typedef QImageRegistrationOptions ThisClass;
   typedef QSettingsWidget Base;
-  typedef QEnumComboBox<ECC_MOTION_TYPE> QEccMotionTypeCombo;
+  typedef QEnumComboBox<IMAGE_MOTION_TYPE> QMotionTypeCombo;
   typedef QEnumComboBox<color_channel_type> QRegistrationColorChannelCombo;
-  typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
-  typedef QEnumComboBox<ECC_BORDER_MODE> QEccBorderModeCombo;
+  typedef QEnumComboBox<ecc2::ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
+  typedef QEnumComboBox<ecc2::ECC_BORDER_MODE> QEccBorderModeCombo;
 
   QImageRegistrationOptions(QWidget * parent = nullptr);
 
@@ -349,7 +350,7 @@ protected:
 protected:
   c_image_stacking_options::ptr stack_options_;
   c_frame_registration_options * options_ = nullptr;
-  QEccMotionTypeCombo * motion_type_ctl = nullptr;
+  QMotionTypeCombo * motion_type_ctl = nullptr;
   QRegistrationColorChannelCombo * registration_channel_ctl = nullptr;
   QEccInterpolatioMethodCombo * interpolation_method_ctl = nullptr;
   QEccBorderModeCombo * border_mode_ctl = nullptr;

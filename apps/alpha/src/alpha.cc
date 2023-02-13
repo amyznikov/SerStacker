@@ -26,9 +26,242 @@
 #include <core/proc/inpaint.h>
 #include <tbb/tbb.h>
 #include <core/proc/laplacian_pyramid.h>
+#include <core/proc/image_registration/ecc2.h>
+#include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/debug.h>
 
+using namespace ecc2;
 
+
+int main(int argc, char *argv[])
+{
+  std::string input_file_names[2];
+  std::string output_directory;
+  std::string output_file_name;
+
+  cv::Mat images[2];
+  cv::Mat grays[2];
+  cv::Mat masks[2];
+
+  bool coarse_to_fine = false;
+  bool fix_translation = false;
+  bool fix_rotation = false;
+  bool fix_scale = false;
+  bool estimate_translation_first = false;
+
+  for ( int i = 1; i < argc; ++i ) {
+
+    if ( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
+
+      fprintf(stdout, "Test for ecc2 align.\n"
+          "Usage:\n"
+          "   alpha <input_image1> <input_image2> [-o <output_directory>] [-h] [-t] [-r] [-s] [-et] \n"
+          "\n");
+
+      return 0;
+    }
+
+    if( strcmp(argv[i], "-h") == 0 ) {
+      coarse_to_fine = true;
+      continue;
+    }
+
+    if( strcmp(argv[i], "-t") == 0 ) {
+      fix_translation = true;
+      continue;
+    }
+
+    if( strcmp(argv[i], "-r") == 0 ) {
+      fix_rotation = true;
+      continue;
+    }
+
+    if( strcmp(argv[i], "-s") == 0 ) {
+      fix_scale = true;
+      continue;
+    }
+
+    if( strcmp(argv[i], "-et") == 0 ) {
+      estimate_translation_first = true;
+      continue;
+    }
+
+
+    if( strcmp(argv[i], "-o") == 0 ) {
+      if( ++i >= argc ) {
+        fprintf(stderr, "Output directory name expected after %s argument\n", argv[i - 1]);
+        return 1;
+      }
+
+      output_directory = argv[i];
+      continue;
+    }
+
+    if ( input_file_names[0].empty() ) {
+      input_file_names[0] = argv[i];
+      continue;
+    }
+
+    if ( input_file_names[1].empty() ) {
+      input_file_names[1] = argv[i];
+      continue;
+    }
+
+    fprintf(stderr, "Invalid argument: %s\n", argv[i]);
+    return 1;
+  }
+
+  if( input_file_names[0].empty() || input_file_names[1].empty() ) {
+    fprintf(stderr, "Two input images expected\n");
+    return 1;
+  }
+
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
+
+
+  for ( int i  = 0; i < 2; ++i ) {
+    if ( !load_image(input_file_names[i], images[i], masks[i]) ) {
+      CF_ERROR("load_image('%s') fails", input_file_names[i].c_str());
+      return 1;
+    }
+
+    if ( images[i].channels() == 3 ) {
+      cv::cvtColor(images[i], grays[i], cv::COLOR_BGR2GRAY);
+    }
+    else {
+      grays[i] = images[i];
+    }
+  }
+
+  if ( output_directory.empty() ) {
+    output_directory = "./ecc2";
+  }
+
+//  c_euclidean_image_transform transform;
+//  c_euclidean_ecc_motion_model model(&transform);
+
+  c_affine_image_transform transform;
+
+  c_affine_ecc_motion_model::sptr model =
+      create_ecc_motion_model(&transform);
+
+  ecc2::c_ecc_forward_additive ecc(model.get());
+  ecc2::c_ecch ecch (&ecc);
+
+  ecc.set_min_rho(0.5);
+  ecc.set_update_step_scale(1);
+  ecc.set_max_eps(0.1);
+  ecc.set_max_iterations(100);
+
+  ecch.set_minimum_image_size(8);
+
+  cv::Vec2f T;
+
+  if ( estimate_translation_first ) {
+
+//    model.set_fix_rotation(true);
+//    model.set_fix_scale(true);
+
+    if( !ecch.set_reference_image(grays[0], masks[0]) ) {
+      CF_ERROR("ecch.set_reference_image() fails");
+      return 1;
+    }
+
+    if( !ecch.align(grays[1], masks[1]) ) {
+      CF_ERROR("ecch.set_reference_image() fails");
+      return 1;
+    }
+
+    CF_DEBUG("ESTIMATION: failed=%d iterations=%d / %d rho = %g / %g  eps=%g / %g",
+        ecc.failed(),
+        ecc.num_iterations(), ecc.max_iterations(),
+        ecc.rho(), ecc.min_rho(),
+        ecc.eps(), ecc.max_eps());
+
+    T = transform.translation();
+    CF_DEBUG("ESTIMATED tx=%g ty=%g\n===========================\n", T[0], T[1]);
+
+//    model.set_fix_rotation(false);
+//    model.set_fix_scale(false);
+  }
+
+
+//  model.set_fix_translation(fix_translation);
+//  model.set_fix_rotation(fix_rotation);
+//  model.set_fix_scale(fix_scale);
+
+  if( coarse_to_fine ) {
+
+    if( !estimate_translation_first && !ecch.set_reference_image(grays[0], masks[0]) ) {
+      CF_ERROR("ecch.set_reference_image() fails");
+      return 1;
+    }
+
+    //ecch.set_minimum_image_size(16);
+
+    if( !ecch.align(grays[1], masks[1]) ) {
+      CF_ERROR("ecch.align() fails");
+    }
+  }
+  else {
+
+    if( !ecc.set_reference_image(grays[0], masks[0]) ) {
+      CF_ERROR("ecc.set_reference_image() fails");
+      return 1;
+    }
+
+    if( !ecc.align_to_reference(grays[1], masks[1]) ) {
+      CF_ERROR("ecc.align_to_reference() fails");
+      CF_DEBUG("iterations=%d / %d rho = %g / %g  eps=%g / %g",
+          ecc.num_iterations(), ecc.max_iterations(),
+          ecc.rho(), ecc.min_rho(),
+          ecc.eps(), ecc.max_eps());
+
+    }
+  }
+
+  CF_DEBUG("ecc: failed=%d iterations=%d / %d rho = %g / %g  eps=%g / %g",
+      ecc.failed(),
+      ecc.num_iterations(), ecc.max_iterations(),
+      ecc.rho(), ecc.min_rho(),
+      ecc.eps(), ecc.max_eps());
+
+
+  T = transform.translation();
+  CF_DEBUG("Tx=%g Ty=%g\n"
+      "===========================\n",
+      T[0], T[1]);
+//    CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
+//        "===========================\n",
+//        T[0], T[1],
+//        transform.rotation() * 180 / CV_PI,
+//        transform.scale());
+
+  if ( !ecc.current_remap().empty() ) {
+
+    cv::remap(images[1], images[1],
+        ecc.current_remap(),
+        cv::noArray(),
+        ecc.interpolation(),
+        cv::BORDER_CONSTANT);
+
+    if( !save_image(images[0], ssprintf("%s/image0.tiff", output_directory.c_str())) ) {
+      CF_ERROR("save_image(images[0]) fails");
+      return 1;
+    }
+
+    if( !save_image(images[1], ssprintf("%s/image1.tiff", output_directory.c_str())) ) {
+      CF_ERROR("save_image(images[1]) fails");
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+
+#if 0
 
 int main(int argc, char *argv[])
 {
@@ -118,4 +351,5 @@ int main(int argc, char *argv[])
 
   return 0;
 }
+#endif
 

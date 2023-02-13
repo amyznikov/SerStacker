@@ -160,6 +160,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
         QPixmap::fromImage(qimage, flags);
 
   }
+#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
   else if( image.type() == CV_16UC1 ) {
 
     QImage qimage ( image.data,
@@ -171,6 +172,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
         QPixmap::fromImage(qimage, flags);
 
   }
+#endif
 
   else {
 

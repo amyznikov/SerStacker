@@ -31,7 +31,7 @@ QHammingDistanceFeature2dMatcherOptions::QHammingDistanceFeature2dMatcherOptions
           [this](int value) {
             if ( options_ && options_->max_acceptable_distance != value ) {
               options_->max_acceptable_distance = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -72,7 +72,7 @@ QFlannBasedFeature2dMatcherOptions::QFlannBasedFeature2dMatcherOptions(QWidget *
             if ( options_ && options_->index.type != value ) {
               options_->index.type = value;
               update_matcher_specific_controls();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -81,7 +81,7 @@ QFlannBasedFeature2dMatcherOptions::QFlannBasedFeature2dMatcherOptions(QWidget *
           [this](cvflann::flann_distance_t value) {
             if ( options_ && options_->distance_type != value ) {
               options_->distance_type = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -90,7 +90,7 @@ QFlannBasedFeature2dMatcherOptions::QFlannBasedFeature2dMatcherOptions(QWidget *
           [this](double value) {
             if ( options_ && options_->lowe_ratio != value ) {
               options_->lowe_ratio = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -196,7 +196,7 @@ void QFlannBasedFeature2dMatcherOptions::update_matcher_specific_controls()
       break;
     }
 
-    emit populatecontrols();
+    Q_EMIT populatecontrols();
 
 #undef ADD_FLANN_INDEX_CTL
   }
@@ -212,7 +212,7 @@ QTriangleMatcherOptions::QTriangleMatcherOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->eps != value ) {
               options_->eps = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -251,7 +251,7 @@ QSnormBasedFeature2dMatcherOptions::QSnormBasedFeature2dMatcherOptions(QWidget *
           [this](int value) {
             if ( options_ && options_->max_acceptable_distance != value ) {
               options_->max_acceptable_distance = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -260,7 +260,7 @@ QSnormBasedFeature2dMatcherOptions::QSnormBasedFeature2dMatcherOptions(QWidget *
           [this](int value) {
             if ( options_ && options_->lowe_ratio != value ) {
               options_->lowe_ratio = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -303,7 +303,7 @@ QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
             if ( options_ && options_->type != value ) {
               options_->type = value;
               show_current_matcher_controls();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -472,8 +472,8 @@ QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
             if ( options_ && options_->type != value ) {
               options_->type = value;
               update_detector_specific_controls();
-              emit detectorTypeChanged();
-              emit parameterChanged();
+              Q_EMIT detectorTypeChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -482,7 +482,7 @@ QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->max_keypoints != value ) {
               options_->max_keypoints = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 }
@@ -695,7 +695,7 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
       break;
     }
 
-    emit populatecontrols();
+    Q_EMIT populatecontrols();
 
 #undef ADD_CTL
   }
@@ -715,7 +715,7 @@ QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * paren
             if ( options_ && options_->use_detector_options != checked ) {
               options_->use_detector_options = checked;
               update_descriptor_specific_controls();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -726,7 +726,7 @@ QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * paren
             if ( options_ && options_->type != value ) {
               options_->type = value;
               update_descriptor_specific_controls();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 }
@@ -904,7 +904,7 @@ void QSparseFeatureDescriptorOptions::update_descriptor_specific_controls()
       break;
     }
 
-    emit populatecontrols();
+    Q_EMIT populatecontrols();
 #undef ADD_CTL
   }
 }
@@ -921,7 +921,7 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
               update_controls_state();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -930,7 +930,7 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
           [this](double value) {
             if ( options_ && options_->scale != value ) {
               options_->scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1027,7 +1027,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
               update_controls_state();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1036,7 +1036,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->scale != value ) {
               options_->scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1045,7 +1045,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->eps != value ) {
               options_->eps = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1054,7 +1054,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->min_rho != value ) {
               options_->min_rho = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1063,7 +1063,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->input_smooth_sigma != value ) {
               options_->input_smooth_sigma = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1072,7 +1072,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->reference_smooth_sigma != value ) {
               options_->reference_smooth_sigma = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1081,7 +1081,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->update_step_scale != value ) {
               options_->update_step_scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1090,7 +1090,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->normalization_noise != value ) {
               options_->normalization_noise = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1099,7 +1099,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->normalization_scale != value ) {
               options_->normalization_scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1108,7 +1108,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->max_iterations != value ) {
               options_->max_iterations = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1118,16 +1118,27 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             if ( options_ && options_->enable_ecch != checked ) {
               options_->enable_ecch = checked;
               ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
-              emit parameterChanged();
+              ecch_estimate_translation_first_ctl->setEnabled(options_->enable_ecch);
+              Q_EMIT parameterChanged();
             }
           }));
+
+  controls.append(ecch_estimate_translation_first_ctl =
+      add_checkbox("Estimate translation first",
+          [this](bool checked) {
+            if ( options_ && options_->ecch_estimate_translation_first != checked ) {
+              options_->ecch_estimate_translation_first = checked;
+              Q_EMIT parameterChanged();
+            }
+          }));
+
 
   controls.append(ecch_minimum_image_size_ctl =
       add_numeric_box<int>("ecch_minimum_image_size",
           [this](int value) {
             if ( options_ && options_->ecch_minimum_image_size != value ) {
               options_->ecch_minimum_image_size = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1137,7 +1148,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             if ( options_ && options_->replace_planetary_disk_with_mask != checked ) {
               options_->replace_planetary_disk_with_mask = checked;
               planetary_disk_mask_stdev_factor_ctl->setEnabled(checked);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1146,7 +1157,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->planetary_disk_mask_stdev_factor != value ) {
               options_->planetary_disk_mask_stdev_factor = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1181,9 +1192,14 @@ void QEccRegistrationOptions::onupdatecontrols()
     normalization_noise_ctl->setValue(options_->normalization_noise);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     max_iterations_ctl->setValue(options_->max_iterations);
+
     enable_ecch_ctl->setChecked(options_->enable_ecch);
+    ecch_estimate_translation_first_ctl->setChecked(options_->ecch_estimate_translation_first);
     ecch_minimum_image_size_ctl->setValue(options_->ecch_minimum_image_size);
+
     ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
+    ecch_estimate_translation_first_ctl->setEnabled(options_->enable_ecch);
+
     replace_planetary_disk_with_mask_ctl->setChecked(options_->replace_planetary_disk_with_mask);
     planetary_disk_mask_stdev_factor_ctl->setEnabled(options_->replace_planetary_disk_with_mask);
     planetary_disk_mask_stdev_factor_ctl->setValue(options_->planetary_disk_mask_stdev_factor);
@@ -1216,7 +1232,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
               update_controls_state();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1227,7 +1243,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->support_scale != value ) {
               options_->support_scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1236,7 +1252,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->input_smooth_sigma != value ) {
               options_->input_smooth_sigma = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1245,7 +1261,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->reference_smooth_sigma != value ) {
               options_->reference_smooth_sigma = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1254,7 +1270,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->update_multiplier != value ) {
               options_->update_multiplier = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1263,7 +1279,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->max_iterations != value ) {
               options_->max_iterations = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1272,7 +1288,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->normalization_scale != value ) {
               options_->normalization_scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 }
@@ -1328,7 +1344,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
               update_controls_state();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1342,7 +1358,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->min_rotation != (value *= M_PI / 180) ) {
               options_->min_rotation = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1351,7 +1367,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->max_rotation != (value *= M_PI / 180) ) {
               options_->max_rotation = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1360,7 +1376,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](int value) {
             if ( options_ && options_->num_orientations != value ) {
               options_->num_orientations = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1370,7 +1386,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 //          [this](bool checked) {
 //            if ( options_ && options_->align_planetary_disk_masks != checked ) {
 //              options_->align_planetary_disk_masks = checked;
-//              emit parameterChanged();
+//              Q_EMIT parameterChanged();
 //            }
 //          }));
 
@@ -1379,7 +1395,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->eccflow_support_scale != value ) {
               options_->eccflow_support_scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1388,7 +1404,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->eccflow_normalization_scale != value ) {
               options_->eccflow_normalization_scale = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1397,7 +1413,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->eccflow_max_pyramid_level != value ) {
               options_->eccflow_max_pyramid_level = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1407,7 +1423,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             if ( options_ && options_->derotate_all_frames != checked ) {
               options_->derotate_all_frames = checked;
               derotate_all_frames_max_context_size_ctl->setEnabled(checked);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1416,7 +1432,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](double value) {
             if ( options_ && options_->derotate_all_frames_max_context_size != value ) {
               options_->derotate_all_frames_max_context_size = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1425,7 +1441,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](bool checked) {
             if ( options_ && options_->rotate_jovian_disk_horizontally != checked ) {
               options_->rotate_jovian_disk_horizontally = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           }));
 
@@ -1485,11 +1501,11 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
     Base("QImageRegistrationOptions", parent)
 {
   motion_type_ctl =
-      add_enum_combobox<ECC_MOTION_TYPE>("Motion type:",
-          [this](ECC_MOTION_TYPE value) {
+      add_enum_combobox<IMAGE_MOTION_TYPE>("Motion type:",
+          [this](IMAGE_MOTION_TYPE value) {
             if ( options_ && options_->image_registration_options.motion_type != value ) {
               options_->image_registration_options.motion_type = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1499,27 +1515,27 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           [this](color_channel_type value) {
             if ( options_ && options_->image_registration_options.registration_channel != value ) {
               options_->image_registration_options.registration_channel = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
   interpolation_method_ctl =
-      add_enum_combobox<ECC_INTERPOLATION_METHOD>(
+      add_enum_combobox<ecc2::ECC_INTERPOLATION_METHOD>(
           "Interpolation method:",
-          [this](ECC_INTERPOLATION_METHOD value) {
+          [this](ecc2::ECC_INTERPOLATION_METHOD value) {
             if ( options_ && options_->image_registration_options.interpolation != value) {
               options_->image_registration_options.interpolation = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
   border_mode_ctl =
-      add_enum_combobox<ECC_BORDER_MODE>(
+      add_enum_combobox<ecc2::ECC_BORDER_MODE>(
           "Border mode:",
-          [this](ECC_BORDER_MODE value) {
+          [this](ecc2::ECC_BORDER_MODE value) {
             if ( options_ && options_->image_registration_options.border_mode != value ) {
               options_->image_registration_options.border_mode = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1529,7 +1545,7 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           [this](const cv::Scalar & value) {
             if ( options_ && options_->image_registration_options.border_value != value ) {
               options_->image_registration_options.border_value = value;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1610,7 +1626,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
             if ( options_ && options_->image_registration_options.enable_frame_registration != checked ) {
               options_->image_registration_options.enable_frame_registration = checked;
               update_controls_visibility();
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
@@ -1625,7 +1641,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
           [this](bool checked) {
             if ( options_ && options_->accumulate_and_compensate_turbulent_flow != checked ) {
               options_->accumulate_and_compensate_turbulent_flow = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 

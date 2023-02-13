@@ -472,11 +472,11 @@ bool c_frame_accumulation_options::deserialize(c_config_setting settings)
   load_settings(settings, "accumulation_method", &accumulation_method );
 
   if( (section = settings["c_lpg_sharpness_measure"]).isGroup() ) {
-    LOAD_PROPERTY(settings, m_, k);
-    LOAD_PROPERTY(settings, m_, dscale);
-    LOAD_PROPERTY(settings, m_, uscale);
-    LOAD_PROPERTY(settings, m_, squared);
-    LOAD_PROPERTY(settings, m_, avgchannel);
+    LOAD_PROPERTY(section, m_, k);
+    LOAD_PROPERTY(section, m_, dscale);
+    LOAD_PROPERTY(section, m_, uscale);
+    LOAD_PROPERTY(section, m_, squared);
+    LOAD_PROPERTY(section, m_, avgchannel);
   }
 
   if( (section = settings["c_laplacian_pyramid_focus_stacking"]).isGroup() ) {
@@ -525,8 +525,9 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE_OPTION(section, image_registration_options.ecc, normalization_noise);
   SAVE_OPTION(section, image_registration_options.ecc, normalization_scale);
   SAVE_OPTION(section, image_registration_options.ecc, max_iterations);
-  SAVE_OPTION(section, image_registration_options.ecc, ecch_minimum_image_size);
   SAVE_OPTION(section, image_registration_options.ecc, enable_ecch);
+  SAVE_OPTION(section, image_registration_options.ecc, ecch_minimum_image_size);
+  SAVE_OPTION(section, image_registration_options.ecc, ecch_estimate_translation_first);
   SAVE_OPTION(section, image_registration_options.ecc, replace_planetary_disk_with_mask);
   SAVE_OPTION(section, image_registration_options.ecc, planetary_disk_mask_stdev_factor);
 
@@ -607,8 +608,9 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD_OPTION(section, image_registration_options.ecc, normalization_noise);
     LOAD_OPTION(section, image_registration_options.ecc, normalization_scale);
     LOAD_OPTION(section, image_registration_options.ecc, max_iterations);
-    LOAD_OPTION(section, image_registration_options.ecc, ecch_minimum_image_size);
     LOAD_OPTION(section, image_registration_options.ecc, enable_ecch);
+    LOAD_OPTION(section, image_registration_options.ecc, ecch_minimum_image_size);
+    LOAD_OPTION(section, image_registration_options.ecc, ecch_estimate_translation_first);
     LOAD_OPTION(section, image_registration_options.ecc, replace_planetary_disk_with_mask);
     LOAD_OPTION(section, image_registration_options.ecc, planetary_disk_mask_stdev_factor);
   }

@@ -67,11 +67,11 @@ void filter2D(int stype, int dtype, int kernel_type,
 
 }
 }
-
-static inline double square(double x)
-{
-  return x * x;
-}
+//
+//static inline double square(double x)
+//{
+//  return x * x;
+//}
 
 //
 
@@ -109,27 +109,27 @@ static inline void doFilter2D(const cv::Mat & src, cv::Mat & dst, int ddepth,
 #endif
 }
 
-/*
- * Five-point approximation to first order image derivative.
- *  <https://en.wikipedia.org/wiki/Numerical_differentiation>
- * */
-static void differentiate(cv::InputArray _src, cv::Mat & gx, cv::Mat & gy, int ddepth = -1)
-{
-  static thread_local const cv::Matx<float, 1, 5> K(
-      (+1.f / 12),
-      (-8.f / 12),
-      0.f,
-      (+8.f / 12),
-      (-1.f / 12));
-
-  if( ddepth < 0 ) {
-    ddepth = std::max(_src.depth(), CV_32F);
-  }
-
-  const cv::Mat &src = _src.getMat();
-  doFilter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  doFilter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-}
+///*
+// * Five-point approximation to first order image derivative.
+// *  <https://en.wikipedia.org/wiki/Numerical_differentiation>
+// * */
+//static void differentiate(cv::InputArray _src, cv::Mat & gx, cv::Mat & gy, int ddepth = -1)
+//{
+//  static thread_local const cv::Matx<float, 1, 5> K(
+//      (+1.f / 12),
+//      (-8.f / 12),
+//      0.f,
+//      (+8.f / 12),
+//      (-1.f / 12));
+//
+//  if( ddepth < 0 ) {
+//    ddepth = std::max(_src.depth(), CV_32F);
+//  }
+//
+//  const cv::Mat &src = _src.getMat();
+//  doFilter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  doFilter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//}
 
 void create_jovian_rotation_remap(double rotation_angle,
     const cv::RotatedRect & E,
@@ -471,21 +471,28 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 
   if( !debug_path_.empty() ) {
 
-    cv::Matx23f T =
-        createEuclideanTransform(
-            reference_ellipse_.center.x, reference_ellipse_.center.y,
-            current_ellipse_.center.x, current_ellipse_.center.y,
-            current_ellipse_.size.width / reference_ellipse_.size.width,
-            initial_orientation,
-            CV_32F);
+    c_euclidean_image_transform transform(
+        cv::Vec2f(reference_ellipse_.center.x, reference_ellipse_.center.y),
+        cv::Vec2f(current_ellipse_.center.x, current_ellipse_.center.y),
+        initial_orientation,
+        current_ellipse_.size.width / reference_ellipse_.size.width);
+
+//    cv::Matx23f T =
+//        createEuclideanTransform(
+//            reference_ellipse_.center.x, reference_ellipse_.center.y,
+//            current_ellipse_.center.x, current_ellipse_.center.y,
+//            current_ellipse_.size.width / reference_ellipse_.size.width,
+//            initial_orientation,
+//            CV_32F);
 
     cv::Mat tmp;
-
-    cv::Mat rmap =
-        createRemap(ECC_MOTION_EUCLIDEAN_SCALED,
-            T,
-            reference_gray_image_.size(),
-            CV_32F);
+    cv::Mat2f rmap;
+    transform.create_remap(rmap, reference_gray_image_.size());
+//    cv::Mat rmap =
+//        createRemap(ECC_MOTION_EUCLIDEAN_SCALED,
+//            T,
+//            reference_gray_image_.size(),
+//            CV_32F);
 
     cv::remap(current_normalized_image_, tmp, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
     cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));

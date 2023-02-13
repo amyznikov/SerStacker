@@ -18,4 +18,10 @@
 c_ecc_motion_model::sptr create_ecc_motion_model(c_image_transform * transform);
 
 
+inline c_ecc_motion_model::sptr create_ecc_motion_model(const c_image_transform::sptr & transform)
+{
+  return create_ecc_motion_model(transform.get());
+}
+
+
 #endif /* __ecc_motion_model_h__ */

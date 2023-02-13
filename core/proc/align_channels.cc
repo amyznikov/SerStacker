@@ -6,26 +6,37 @@
  */
 
 #include "align_channels.h"
+#include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/debug.h>
 
-void c_align_color_channels::set_motion_type(ECC_MOTION_TYPE motion_type)
+void c_align_color_channels::set_motion_type(IMAGE_MOTION_TYPE motion_type)
 {
-  ecc_.set_motion_type(motion_type);
+  motion_type_ = motion_type;
 }
 
-ECC_MOTION_TYPE c_align_color_channels::motion_type() const
+IMAGE_MOTION_TYPE  c_align_color_channels::motion_type() const
 {
-  return (ECC_MOTION_TYPE )ecc_.motion_type();
+  return motion_type_;
 }
 
-void c_align_color_channels::set_interpolation(enum ECC_INTERPOLATION_METHOD flags)
+void c_align_color_channels::set_interpolation(enum ecc2::ECC_INTERPOLATION_METHOD flags)
 {
-  ecc_.set_image_interpolation_method(flags);
+  interpolation_ = flags;
 }
 
-enum ECC_INTERPOLATION_METHOD c_align_color_channels::interpolation() const
+enum ecc2::ECC_INTERPOLATION_METHOD c_align_color_channels::interpolation() const
 {
-  return ecc_.image_interpolation_method();
+  return interpolation_;
+}
+
+void c_align_color_channels::set_border_mode(enum ecc2::ECC_BORDER_MODE border_mode)
+{
+  border_mode_ = border_mode;
+}
+
+enum ecc2::ECC_BORDER_MODE c_align_color_channels::border_mode() const
+{
+  return border_mode_;
 }
 
 void c_align_color_channels::set_border_value(const cv::Scalar & v)
@@ -41,43 +52,45 @@ const cv::Scalar & c_align_color_channels::border_value() const
 
 void c_align_color_channels::set_max_iterations(int v)
 {
-  ecc_.set_max_iterations(v);
+  max_iterations_ = v;
 }
 
 int c_align_color_channels::max_iterations() const
 {
-  return ecc_.max_iterations();
+  return max_iterations_;
 }
 
 void c_align_color_channels::set_smooth_sigma(double v)
 {
-  ecc_.set_reference_smooth_sigma(v);
-  ecc_.set_input_smooth_sigma(v);
+//  ecc_.set_reference_smooth_sigma(v);
+//  ecc_.set_input_smooth_sigma(v);
+  smooth_sigma_ = v;
 }
 
 double c_align_color_channels::smooth_sigma() const
 {
-  return ecc_.reference_smooth_sigma();
+  //return ecc_.reference_smooth_sigma();
+  return smooth_sigma_;
 }
 
 void c_align_color_channels::set_update_step_scale(double v)
 {
-  ecc_.set_update_step_scale(v);
+  update_step_scale_ = v;
 }
 
 double c_align_color_channels::update_step_scale() const
 {
-  return ecc_.update_step_scale();
+  return update_step_scale_;
 }
 
 void c_align_color_channels::set_eps(double v)
 {
-  ecc_.set_eps(v);
+  eps_ = v;
 }
 
 double c_align_color_channels::eps() const
 {
-  return ecc_.eps();
+  return eps_;
 }
 
 double c_align_color_channels::computed_rho(int channel_index) const
@@ -95,21 +108,21 @@ int c_align_color_channels::computed_iterations(int channel_index) const
   return computed_iterations_[channel_index];
 }
 
-
-const cv::Mat & c_align_color_channels::computed_transform(int channel_index) const
+const c_image_transform::sptr & c_align_color_channels::computed_transform(int channel_index) const
 {
   return computed_transforms_[channel_index];
 }
 
-c_ecc_forward_additive & c_align_color_channels::ecc()
-{
-  return ecc_;
-}
-
-const c_ecc_forward_additive & c_align_color_channels::ecc() const
-{
-  return ecc_;
-}
+//ecc2::c_ecc_forward_additive & c_align_color_channels::ecc()
+//{
+//  return ecc_;
+//}
+//
+//const ecc2::c_ecc_forward_additive & c_align_color_channels::ecc() const
+//{
+//  return ecc_;
+//}
+//
 
 bool c_align_color_channels::align(int reference_channel,
     cv::InputArray src, cv::OutputArray dst,
@@ -142,7 +155,7 @@ bool c_align_color_channels::align(int reference_channel,
     computed_eps_.emplace_back(0);
     computed_rhos_.emplace_back(1);
     computed_iterations_.emplace_back(0);
-    computed_transforms_.emplace_back(createEyeTransform(motion_type()));
+    computed_transforms_.emplace_back(nullptr);
 
     return true;
   }
@@ -187,16 +200,30 @@ bool c_align_color_channels::align(int reference_channel,
   computed_rhos_.resize(cn);
   computed_transforms_.resize(cn);
   computed_iterations_.resize(cn);
-  ecc_.set_reference_image(channels[reference_channel],
-      masks[reference_channel]);
+
+  ecc2::c_ecc_forward_additive ecc;
+
+  ecc.set_interpolation(interpolation_);
+  ecc.set_update_step_scale(update_step_scale_);
+  ecc.set_reference_smooth_sigma(smooth_sigma_);
+  ecc.set_input_smooth_sigma(smooth_sigma_);
+  ecc.set_max_iterations(max_iterations_);
+  ecc.set_max_eps(eps_);
+
+  if( !ecc.set_reference_image(channels[reference_channel], masks[reference_channel]) ) {
+    CF_ERROR("ecc.set_reference_image(reference_channel=%d) fails");
+    return false;
+  }
 
   for ( int i = 0; i < cn; ++i ) {
+
+    computed_transforms_[i] =
+        create_image_transform(motion_type_);
 
     if ( i == reference_channel ) {
       computed_eps_[i] = 0;
       computed_rhos_[i] = 1;
       computed_iterations_[i] = 0;
-      computed_transforms_[i] = createEyeTransform(motion_type());
 
       if ( dst.needed() || dstmask.needed() ) {
         if ( masks[i].empty() ) {
@@ -207,92 +234,87 @@ bool c_align_color_channels::align(int reference_channel,
     }
     else {
 
-      bool fOk;
+      c_ecc_motion_model::sptr model =
+          create_ecc_motion_model(computed_transforms_[i]);
 
-      fOk = ecc_.align_to_reference(
-          channels[i],
-          computed_transforms_[i],
-          masks[i]);
+      ecc.set_model(model.get());
 
-      computed_eps_[i] = ecc_.current_eps();
-      computed_rhos_[i] = ecc_.rho();
-      computed_iterations_[i] = ecc_.num_iterations();
-
-      if ( !fOk ) {
-        CF_ERROR("ecc_.align_to_reference() %d-> %d fails: nbiters=%d rho=%g eps=%g",
+      if( !ecc.align_to_reference(channels[i], masks[i]) ) {
+        CF_ERROR("ecc.align_to_reference() %d-> %d fails: failed=%d iterations=%d rho=%g eps=%g",
             i,
             reference_channel,
-            ecc_.num_iterations(),
-            ecc_.rho(),
-            ecc_.current_eps());
+            ecc.failed(),
+            ecc.num_iterations(),
+            ecc.rho(),
+            ecc.eps());
       }
+
+      computed_eps_[i] = ecc.eps();
+      computed_rhos_[i] = ecc.rho();
+      computed_iterations_[i] = ecc.num_iterations();
 
       if ( dst.needed() ) {
 
-        cv::remap(channels[i], channels[i], ecc_.current_remap(), cv::noArray(),
-            interpolation(),
-            cv::BORDER_REPLICATE,
+        cv::remap(channels[i], channels[i],
+            ecc.current_remap(),
+            cv::noArray(),
+            interpolation_,
+            border_mode_,
             border_value_[i]);
 
       }
 
-      if ( dst.needed() || dstmask.needed() ) {
-        if ( masks[i].empty() ) {
-          cv::remap(cv::Mat1b(src.size(), 255), masks[i], ecc_.current_remap(), cv::noArray(),
-              cv::INTER_AREA,
-              cv::BORDER_REPLICATE,
-              0);
-        }
-        else {
-          cv::remap(masks[i], masks[i], ecc_.current_remap(), cv::noArray(),
-              cv::INTER_AREA,
-              cv::BORDER_REPLICATE,
-              0);
-        }
+      if( dstmask.needed() ) {
 
-        cv::compare(masks[i], 200, masks[i],
-            cv::CMP_GE);
+        cv::remap(masks[i].empty() ? cv::Mat1b(src.size(), 255) : masks[i],
+            masks[i],
+            ecc.current_remap(),
+            cv::noArray(),
+            cv::INTER_AREA,
+            cv::BORDER_REPLICATE,
+            0);
 
+        cv::compare(masks[i], 255, masks[i], cv::CMP_GE);
       }
     }
   }
 
-  if ( dst.needed() || dstmask.needed() ) {
+  if( dst.needed() ) {
 
-    if ( cn == 1 ) {
-      cumulative_mask = masks[0];
+    if( cn == 1 ) {
+
+      cumulative_image =
+          channels[0];
     }
     else {
+
+      cv::merge(channels, cn,
+          cumulative_image);
+    }
+
+    dst.move(cumulative_image);
+  }
+
+  if( dstmask.needed() ) {
+
+    if( cn == 1 ) {
+
+      cumulative_mask =
+          masks[0];
+    }
+    else {
+
       cv::bitwise_and(masks[0], masks[1], cumulative_mask);
-      for ( int i = 2; i < cn; ++i ) {
+      for( int i = 2; i < cn; ++i ) {
         cv::bitwise_and(masks[i], cumulative_mask, cumulative_mask);
       }
     }
 
-    if ( dst.needed() ) {
-
-      if ( cn == 1 ) {
-        cumulative_image = channels[0];
-      }
-      else {
-        cv::merge(channels, cn, cumulative_image);
-      }
-
-      //      cumulative_image.setTo(border_value_,
-      //          ~cumulative_mask);
-
-      dst.move(cumulative_image);
-    }
-
-    if ( dstmask.needed() ) {
-      dstmask.move(cumulative_mask);
-    }
+    dstmask.move(cumulative_mask);
   }
-
 
   return true;
 }
-
 
 bool c_align_color_channels::align(cv::InputArray reference_image,
     cv::InputArray src, cv::OutputArray dst,
@@ -305,40 +327,39 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
   computed_transforms_.clear();
   computed_iterations_.clear();
 
-  if ( reference_image.channels() != 1 ) {
+  if( reference_image.channels() != 1 ) {
     CF_ERROR("Invalid argument: reference_image must have only single channel");
     return false;
   }
 
-  if ( !reference_mask.empty() ) {
+  if( !reference_mask.empty() ) {
 
-    if ( reference_mask.channels() != 1 ) {
+    if( reference_mask.channels() != 1 ) {
       CF_ERROR("Invalid argument: reference_mask must have only single channel");
       return false;
     }
 
-    if ( reference_mask.size() != reference_image.size() ) {
+    if( reference_mask.size() != reference_image.size() ) {
       CF_ERROR("Invalid argument: referencve image (%dx%d) and mask (%dx%d) sizes not match",
           reference_image.cols(), reference_image.rows(), reference_mask.cols(), reference_mask.rows());
       return false;
     }
   }
 
-  if ( !srcmask.empty() ) {
+  if( !srcmask.empty() ) {
 
-    if ( srcmask.size() != src.size()  ) {
+    if( srcmask.size() != src.size() ) {
       CF_ERROR("Invalid argument: input image (%dx%d) and mask (%dx%d) sizes not match",
           src.cols(), src.rows(), srcmask.cols(), srcmask.rows());
       return false;
     }
 
-    if ( srcmask.channels() > 1 && srcmask.channels() != src.channels()  ) {
+    if( srcmask.channels() > 1 && srcmask.channels() != src.channels() ) {
       CF_ERROR("Invalid argument: number of input image (%d) and mask (%d) channels not match",
           src.channels(), srcmask.channels());
       return false;
     }
   }
-
 
   const int cn = src.channels();
 
@@ -349,12 +370,12 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 
   cv::split(src.getMat(), channels);
 
-  if ( !srcmask.empty() ) {
-    if ( srcmask.channels() > 1 ) {
+  if( !srcmask.empty() ) {
+    if( srcmask.channels() > 1 ) {
       cv::split(srcmask.getMat(), masks);
     }
     else {
-      for ( int i = 0; i < cn; ++i ) {
+      for( int i = 0; i < cn; ++i ) {
         srcmask.copyTo(masks[i]);
       }
     }
@@ -364,90 +385,102 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
   computed_rhos_.resize(cn);
   computed_transforms_.resize(cn);
   computed_iterations_.resize(cn);
-  ecc_.set_reference_image(reference_image,
-      reference_mask);
 
-  for ( int i = 0; i < cn; ++i ) {
 
-    bool fOk = ecc_.align_to_reference(
-        channels[i],
-        computed_transforms_[i],
-        masks[i]);
+  ecc2::c_ecc_forward_additive ecc;
 
-    computed_eps_[i] = ecc_.current_eps();
-    computed_rhos_[i] = ecc_.rho();
-    computed_iterations_[i] = ecc_.num_iterations();
+  ecc.set_interpolation(interpolation_);
+  ecc.set_update_step_scale(update_step_scale_);
+  ecc.set_reference_smooth_sigma(smooth_sigma_);
+  ecc.set_input_smooth_sigma(smooth_sigma_);
+  ecc.set_max_iterations(max_iterations_);
+  ecc.set_max_eps(eps_);
 
-    if ( !fOk ) {
-      CF_ERROR("ecc_.align_to_reference() channel %d fails: nbiters=%d rho=%g eps=%g",
+  if( !ecc.set_reference_image(reference_image, reference_mask) ) {
+    CF_ERROR("ecc.set_reference_image() fails");
+    return false;
+  }
+
+
+  for( int i = 0; i < cn; ++i ) {
+
+    c_ecc_motion_model::sptr model =
+        create_ecc_motion_model(computed_transforms_[i] =
+            create_image_transform(motion_type_));
+
+    ecc.set_model(model.get());
+
+    if( ! ecc.align_to_reference( channels[i], masks[i]) ) {
+      CF_ERROR("ecc.align_to_reference() fails: failed=%d iterations=%d rho=%g eps=%g",
           i,
-          ecc_.num_iterations(),
-          ecc_.rho(),
-          ecc_.current_eps());
+          ecc.failed(),
+          ecc.num_iterations(),
+          ecc.rho(),
+          ecc.eps());
     }
 
-    if ( dst.needed() ) {
+    computed_eps_[i] = ecc.eps();
+    computed_rhos_[i] = ecc.rho();
+    computed_iterations_[i] = ecc.num_iterations();
 
-      cv::remap(channels[i], channels[i], ecc_.current_remap(), cv::noArray(),
-          interpolation(),
-          cv::BORDER_CONSTANT,
+    if( dst.needed() ) {
+
+      cv::remap(channels[i], channels[i],
+          ecc.current_remap(),
+          cv::noArray(),
+          interpolation_,
+          border_mode_,
           border_value_[i]);
 
     }
 
-    if ( dst.needed() || dstmask.needed() ) {
-      if ( masks[i].empty() ) {
-        cv::remap(cv::Mat1b(src.size(), 255), masks[i], ecc_.current_remap(), cv::noArray(),
-            cv::INTER_AREA,
-            cv::BORDER_CONSTANT,
-            0);
-      }
-      else {
-        cv::remap(masks[i], masks[i], ecc_.current_remap(), cv::noArray(),
-            cv::INTER_AREA,
-            cv::BORDER_CONSTANT,
-            0);
-      }
+    if( dstmask.needed() ) {
+
+      cv::remap(masks[i].empty() ? cv::Mat1b(src.size(), 255) : masks[i],
+          masks[i],
+          ecc.current_remap(),
+          cv::noArray(),
+          cv::INTER_AREA,
+          cv::BORDER_CONSTANT,
+          0);
 
       cv::compare(masks[i], 255, masks[i],
           cv::CMP_EQ);
-
     }
   }
 
-  if ( dst.needed() || dstmask.needed() ) {
+  if( dst.needed() ) {
 
-    if ( cn == 1 ) {
-      cumulative_mask = masks[0];
+    if( cn == 1 ) {
+
+      cumulative_image =
+          channels[0];
     }
     else {
+      cv::merge(channels, cn,
+          cumulative_image);
+    }
+
+    dst.move(cumulative_image);
+  }
+
+  if( dstmask.needed() ) {
+
+    if( cn == 1 ) {
+
+      cumulative_mask =
+          masks[0];
+    }
+    else {
+
       cv::bitwise_and(masks[0], masks[1], cumulative_mask);
-      for ( int i = 2; i < cn; ++i ) {
+      for( int i = 2; i < cn; ++i ) {
         cv::bitwise_and(masks[i], cumulative_mask, cumulative_mask);
       }
     }
 
-    if ( dst.needed() ) {
-
-      if ( cn == 1 ) {
-        cumulative_image = channels[0];
-      }
-      else {
-        cv::merge(channels, cn, cumulative_image);
-      }
-
-      cumulative_image.setTo(border_value_,
-          ~cumulative_mask);
-
-      dst.move(cumulative_image);
-    }
-
-    if ( dstmask.needed() ) {
-      dstmask.move(cumulative_mask);
-    }
+    dstmask.move(cumulative_mask);
   }
 
-
   return true;
-
 }

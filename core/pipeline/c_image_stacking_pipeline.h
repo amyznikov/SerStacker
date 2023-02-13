@@ -204,11 +204,17 @@ struct c_image_stacking_output_options {
   std::string output_accumulation_masks_filename;
 
   bool save_preprocessed_frames = false;
+  bool save_preprocessed_frame_mapping = false;
   bool save_aligned_frames = false;
+  bool save_aligned_frame_mapping = false;
   bool save_ecc_frames = false;
+  bool save_ecc_frame_mapping = false;
   bool save_processed_aligned_frames = false;
+  bool save_processed_aligned_frame_mapping = false;
   bool save_accumulation_masks = false;
+  bool save_accumulation_masks_frame_mapping = false;
   bool save_incremental_frames = false;
+  bool save_incremental_frame_mapping = false;
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 
@@ -406,22 +412,22 @@ protected:
   class c_video_writer;
 
   void save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer) const;
+      c_video_writer & output_writer, int seqindex) const;
 
   void save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer) const;
+      c_video_writer & output_writer, int seqindex) const;
 
   void save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer) const;
+      c_video_writer & output_writer, int seqindex ) const;
 
   void save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer) const;
+      c_video_writer & output_writer, int seqindex) const;
 
   void save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer) const;
+      c_video_writer & output_writer, int seqindex) const;
 
   void save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer) const;
+      c_video_writer & output_writer, int seqindex) const;
 
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons,

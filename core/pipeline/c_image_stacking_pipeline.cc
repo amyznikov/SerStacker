@@ -189,123 +189,43 @@ static cv::Mat2f flow2remap(const cv::Mat2f &uv, const cv::Mat1b & mask)
   return rmap;
 }
 
-static cv::Mat2f compute_turbulent_flow(
-    ECC_MOTION_TYPE current_motion_type,
-    const cv::Mat1f & current_transfrorm,
-    const cv::Mat2f & current_remap
-    /*,const cv::Mat1b & mask*/)
+static cv::Mat2f compute_turbulent_flow(const c_image_transform * current_transform, const cv::Mat2f & current_remap )
 {
   INSTRUMENT_REGION("");
 
   cv::Mat2f uv;
-  double tx = 0, ty = 0;
 
-  // TODO: Extract also rotation component, because telescope mount sometimes could drift with FOV rotation as well.
-
-  if ( !getTranslationComponents(current_motion_type, current_transfrorm, &tx, &ty) ) {
-    CF_ERROR("getTranslationComponent(current_motion_type=%d) fails", current_motion_type);
-    return uv;
-  }
+  const cv::Vec2f T =
+      current_transform->translation();
 
   uv.create(current_remap.size());
 
   typedef tbb::blocked_range<int> range;
   tbb::parallel_for(range(0, current_remap.rows, 256),
-      [&current_remap, &uv/*, &mask*/, tx, ty](const range &r) {
+      [&current_remap, &uv, T](const range & r) {
+
         const int nx = current_remap.cols;
+
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+
           for ( int x = 0; x < nx; ++x ) {
 
-//            if ( mask[y][x] ) {
-//              uv[y][x][0] = current_remap[y][x][0] - x - tx;
-//              uv[y][x][1] = current_remap[y][x][1] - y - ty;
-//            }
-//            else {
-//              uv[y][x][0] = 0;
-//              uv[y][x][1] = 0;
-//            }
+            if ( current_remap[y][x][0] >= 0 && current_remap[y][x][1] >= 0 ) {
+              uv[y][x][0] = current_remap[y][x][0] - x - T[0];
+              uv[y][x][1] = current_remap[y][x][1] - y - T[1];
+            }
+            else {
+              uv[y][x][0] = 0;
+              uv[y][x][1] = 0;
+            }
 
-        if ( current_remap[y][x][0] >= 0 && current_remap[y][x][1] >= 0 ) {
-          uv[y][x][0] = current_remap[y][x][0] - x - tx;
-          uv[y][x][1] = current_remap[y][x][1] - y - ty;
+          }
         }
-        else {
-          uv[y][x][0] = 0;
-          uv[y][x][1] = 0;
-        }
-
-      }
-    }
-  });
+      });
 
   return uv;
 }
 
-
-// acc = (acc * n + cur ) / (n + 1);
-
-//template<class T>
-//static inline void average_add_(cv::Mat & acc, cv::Mat1f & cnt, const cv::Mat & cf, const cv::Mat1b & cm)
-//{
-//  const int cn = acc.channels();
-//
-//  if( cm.empty() ) {
-//    for( int y = 0; y < acc.rows; ++y ) {
-//      T *accp = acc.ptr<T>(y);
-//      const T *srcp = cf.ptr<const T>(y);
-//
-//      for( int x = 0; x < acc.cols; ++x ) {
-//        for( int c = 0; c < cn; ++c ) {
-//          accp[x * cn + c] = (accp[x * cn + c] * cnt[y][x] + srcp[x * cn + c]) / (cnt[y][x] + 1);
-//          ++cnt[y][x];
-//        }
-//      }
-//    }
-//  }
-//  else {
-//
-//    for( int y = 0; y < acc.rows; ++y ) {
-//      T *accp = acc.ptr<T>(y);
-//      const T *srcp = cf.ptr<const T>(y);
-//
-//      for( int x = 0; x < acc.cols; ++x ) {
-//        if( cm[y][x] ) {
-//          for( int c = 0; c < cn; ++c ) {
-//            accp[x * cn + c] = (accp[x * cn + c] * cnt[y][x] + srcp[x * cn + c]) / (cnt[y][x] + 1);
-//            ++cnt[y][x];
-//          }
-//        }
-//      }
-//    }
-//  }
-//}
-//
-//static inline void average_add(cv::Mat & acc, cv::Mat1f & cntr, const cv::Mat & cf, const cv::Mat1b & cm)
-//{
-//  switch (acc.depth()) {
-//    case CV_8U:
-//      average_add_<uint8_t>(acc, cntr, cf, cm);
-//      break;
-//    case CV_8S:
-//      average_add_<int8_t>(acc, cntr, cf, cm);
-//      break;
-//    case CV_16U:
-//      average_add_<uint16_t>(acc, cntr, cf, cm);
-//      break;
-//    case CV_16S:
-//      average_add_<int16_t>(acc, cntr, cf, cm);
-//      break;
-//    case CV_32S:
-//      average_add_<int32_t>(acc, cntr, cf, cm);
-//      break;
-//    case CV_32F:
-//      average_add_<float>(acc, cntr, cf, cm);
-//      break;
-//    case CV_64F:
-//      average_add_<double>(acc, cntr, cf, cm);
-//      break;
-//  }
-//}
 
 c_frame_registration::ecc_image_preprocessor_function create_ecc_image_preprocessor(
     const c_image_processing_options & image_processing_options)
@@ -647,7 +567,7 @@ public:
     close();
   }
 
-  bool open(const std::string & filename, const cv::Size & frameSize, bool color)
+  bool open(const std::string & filename, const cv::Size & frameSize, bool color, bool write_frame_mapping )
   {
     output_file_name = filename;
     output_type = output_type_unknown;
@@ -698,6 +618,24 @@ public:
     }
     }
 
+    if ( frame_mapping_fp ) {
+      fclose(frame_mapping_fp);
+      frame_mapping_fp = nullptr;
+    }
+
+    if ( write_frame_mapping ) {
+
+      std::string mapfilename =
+          ssprintf("%s.map.txt", filename.c_str());
+
+      if( !(frame_mapping_fp = fopen(mapfilename.c_str(), "w")) ) {
+        CF_ERROR("fopen('%s') fails : %s", strerror(errno));
+      }
+      else {
+        fprintf(frame_mapping_fp, "seqidx\tfrmidx\n");
+      }
+    }
+
     return true;
   }
 
@@ -715,7 +653,7 @@ public:
     return false;
   }
 
-  bool write(cv::InputArray currenFrame, cv::InputArray currentMask, bool with_alpha_mask = true)
+  bool write(cv::InputArray currenFrame, cv::InputArray currentMask, bool with_alpha_mask, int seqindex)
   {
     switch ( output_type ) {
     case output_type_video :
@@ -765,6 +703,12 @@ public:
       return false;
     }
 
+    if ( frame_mapping_fp ) {
+      fprintf(frame_mapping_fp, "%5d\t%d\n",
+          seqindex, current_frame_index);
+    }
+
+    current_input_sequence_index = seqindex;
     ++current_frame_index;
     return true;
   }
@@ -774,7 +718,14 @@ public:
     aviVideo.release();
     serVideo.close();
     tmp.release();
+
+    if ( frame_mapping_fp ) {
+      fclose(frame_mapping_fp);
+      frame_mapping_fp = nullptr;
+    }
+
     output_type = output_type_unknown;
+
   }
 
 protected:
@@ -790,8 +741,9 @@ protected:
   } output_type = output_type_unknown;
 
   std::string output_file_name;
+  FILE * frame_mapping_fp = nullptr;
   int current_frame_index = 0;
-
+  int current_input_sequence_index = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1133,7 +1085,9 @@ bool c_image_stacking_pipeline::initialize(const c_image_stacking_options::ptr &
     total_frames_ = 0;
     processed_frames_ = 0;
     output_file_name_postfix_.clear();
+    output_file_name_.clear();
     //reference_sharpness_ = 0;
+
 
     statusmsg_.clear();
 
@@ -1474,10 +1428,10 @@ bool c_image_stacking_pipeline::actual_run()
 
     if ( output_options.debug_frame_registration && frame_registration_->options().eccflow.enabled  ) {
 
-      const c_ecch_flow & eccflow =
+      const ecc2::c_eccflow &eccflow =
           frame_registration_->eccflow();
 
-      const std::vector<c_ecch_flow::pyramid_entry> & pyramid =
+      const std::vector<ecc2::c_eccflow::pyramid_entry> & pyramid =
           eccflow.current_pyramid();
 
       const std::string debugpath =
@@ -1490,7 +1444,7 @@ bool c_image_stacking_pipeline::actual_run()
 
 
     if( registration_options.accumulate_and_compensate_turbulent_flow ) {
-      if( registration_options.image_registration_options.motion_type > ECC_MOTION_EUCLIDEAN ||
+      if( registration_options.image_registration_options.motion_type > IMAGE_MOTION_EUCLIDEAN ||
           registration_options.image_registration_options.eccflow.enabled ) {
         flow_accumulation_.reset(new c_frame_weigthed_average());
       }
@@ -1589,6 +1543,7 @@ bool c_image_stacking_pipeline::actual_run()
         CF_ERROR("ERROR: flow_accumulation_->compute() fails");
       }
       else {
+
 
         if ( options_->master_frame_options().accumulated_sharpen_factor > 0 ) {
           if ( frame_accumulation_->accumulated_frames() > 1 ) {
@@ -2153,7 +2108,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     if ( !master_frame_generation_ ) {
 
       save_preprocessed_frame(current_frame, current_mask,
-          output_preprocessed_frames_writer);
+          output_preprocessed_frames_writer,
+          input_sequence->current_pos() - 1);
 
       if ( canceled() ) {
         break;
@@ -2290,8 +2246,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         if ( flow_accumulation_ ) {
 
           const cv::Mat2f turbulence =
-              compute_turbulent_flow(frame_registration_->options().motion_type,
-                  frame_registration_->current_transform(),
+              compute_turbulent_flow(frame_registration_->image_transform().get(),
                   frame_registration_->current_remap());
 
           if( turbulence.empty() ) {
@@ -2339,7 +2294,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
             current_mask, current_mask,
             registration_options.image_registration_options.interpolation,
             master_frame_generation_ ?
-                ECC_BORDER_REFLECT101 :
+                ecc2::ECC_BORDER_REFLECT101 :
                 registration_options.image_registration_options.border_mode,
             registration_options.image_registration_options.border_value);
 
@@ -2349,22 +2304,26 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               current_weights, current_weights,
               cv::noArray(), cv::noArray(),
               registration_options.image_registration_options.interpolation,
-              ECC_BORDER_CONSTANT);
+              ecc2::ECC_BORDER_CONSTANT);
         }
       }
 
       if ( !master_frame_generation_ ) {
 
         save_aligned_frame(current_frame, current_mask,
-            output_aligned_frames_writer);
+            output_aligned_frames_writer,
+            input_sequence->current_pos() - 1);
 
         if ( canceled() ) {
           break;
         }
 
         if ( !frame_registration_->current_ecc_image().empty() ) {
-          save_ecc_frame(frame_registration_->current_ecc_image(), frame_registration_->current_ecc_mask(),
-              output_ecc_writer);
+
+          save_ecc_frame(frame_registration_->current_ecc_image(),
+              frame_registration_->current_ecc_mask(),
+              output_ecc_writer,
+              input_sequence->current_pos() - 1);
         }
 
         if ( canceled() ) {
@@ -2382,7 +2341,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
         if( output_options.save_processed_aligned_frames ) {
 
           save_postprocessed_frame(current_frame, current_mask,
-              output_postprocessed_frames_writer);
+              output_postprocessed_frames_writer,
+              input_sequence->current_pos() - 1);
 
           if ( canceled() ) {
             break;
@@ -2418,7 +2378,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
     if ( output_options.save_accumulation_masks ) {
 
       save_accumulation_mask(current_frame, current_mask,
-          output_accumulation_masks_writer);
+          output_accumulation_masks_writer,
+          input_sequence->current_pos() - 1);
 
       if ( canceled() ) {
         break;
@@ -2444,7 +2405,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           }
         }
 
-        CF_DEBUG("current_frame.depth=%d current_mask.depth=%d", current_frame.depth(), current_mask.depth());
         if ( !frame_accumulation_->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;
@@ -2484,7 +2444,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
           }
           else {
             save_incremental_frame(accumulated_frame, accumulated_mask,
-                output_incremental_frame_writer);
+                output_incremental_frame_writer,
+                input_sequence->current_pos() - 1);
           }
 
           if( canceled() ) {
@@ -3031,7 +2992,8 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
 
 
 void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer) const
+    c_video_writer & output_writer,
+    int seqindex) const
 {
   const c_image_stacking_output_options & output_options =
       options_->output_options();
@@ -3062,7 +3024,8 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
 
     output_writer.open(pathfilename,
         current_frame.size(),
-        current_frame.channels() > 1);
+        current_frame.channels() > 1,
+        output_options.save_preprocessed_frame_mapping);
 
     if ( !output_writer.isOpened() ) {
 
@@ -3074,11 +3037,13 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
   }
 
   output_writer.write(current_frame, current_mask,
-      output_options.write_image_mask_as_alpha_channel);
+      output_options.write_image_mask_as_alpha_channel,
+      seqindex);
 }
 
 void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer) const
+    c_video_writer & output_writer,
+    int seqindex ) const
 {
   const c_image_stacking_output_options & output_options =
       options_->output_options();
@@ -3111,7 +3076,8 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
 
     output_writer.open(pathfilename,
         current_frame.size(),
-        current_frame.channels() > 1);
+        current_frame.channels() > 1,
+        output_options.save_aligned_frame_mapping);
 
     if ( !output_writer.isOpened() ) {
 
@@ -3123,11 +3089,14 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
   }
 
   output_writer.write(current_frame, current_mask,
-      output_options.write_image_mask_as_alpha_channel);
+      output_options.write_image_mask_as_alpha_channel,
+      seqindex);
+
 }
 
 void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer) const
+    c_video_writer & output_writer,
+    int seqindex) const
 {
   const c_image_stacking_output_options & output_options =
       options_->output_options();
@@ -3158,7 +3127,8 @@ void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
 
     output_writer.open(pathfilename,
         current_frame.size(),
-        current_frame.channels() > 1);
+        current_frame.channels() > 1,
+        output_options.save_ecc_frame_mapping);
 
     if ( !output_writer.isOpened() ) {
 
@@ -3170,13 +3140,15 @@ void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
   }
 
   output_writer.write(current_frame, current_mask,
-      output_options.write_image_mask_as_alpha_channel);
+      output_options.write_image_mask_as_alpha_channel,
+      seqindex);
 
 }
 
 
 void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer) const
+    c_video_writer & output_writer,
+    int seqindex) const
 {
   const c_image_stacking_output_options & output_options =
       options_->output_options();
@@ -3207,7 +3179,8 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
 
     output_writer.open(pathfilename,
         current_frame.size(),
-        current_frame.channels() > 1);
+        current_frame.channels() > 1,
+        output_options.save_processed_aligned_frame_mapping);
 
     if ( !output_writer.isOpened() ) {
 
@@ -3219,11 +3192,13 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
   }
 
   output_writer.write(current_frame, current_mask,
-      output_options.write_image_mask_as_alpha_channel);
+      output_options.write_image_mask_as_alpha_channel,
+      seqindex);
 }
 
 void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulated_frame, const cv::Mat & accumulated_mask,
-    c_video_writer & output_writer) const
+    c_video_writer & output_writer,
+    int seqindex) const
 {
   const c_image_stacking_output_options & output_options =
       options_->output_options();
@@ -3256,7 +3231,8 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
 
     output_writer.open(pathfilename,
         accumulated_frame.size(),
-        accumulated_frame.channels() > 1);
+        accumulated_frame.channels() > 1,
+        output_options.save_incremental_frame_mapping);
 
     if ( !output_writer.isOpened() ) {
 
@@ -3268,12 +3244,14 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
   }
 
   output_writer.write(accumulated_frame, accumulated_mask,
-      output_options.write_image_mask_as_alpha_channel);
+      output_options.write_image_mask_as_alpha_channel,
+      seqindex);
 
 }
 
 void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer) const
+    c_video_writer & output_writer,
+    int seqindex) const
 {
   const c_image_stacking_output_options & output_options =
       options_->output_options();
@@ -3304,7 +3282,8 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
     output_writer.open(pathfilename,
         current_frame.size(),
-        false);
+        false,
+        output_options.save_accumulation_masks_frame_mapping);
 
     if ( !output_writer.isOpened() ) {
 
@@ -3316,10 +3295,10 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
   }
 
   if ( !current_mask.empty() ) {
-    output_writer.write(current_mask, cv::noArray());
+    output_writer.write(current_mask, cv::noArray(), false, seqindex);
   }
   else {
-    output_writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray());
+    output_writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray(), false, seqindex);
   }
 
 }

@@ -18,6 +18,123 @@ constexpr int tbb_block_size = 512;
 #endif
 } // namespace
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+c_translation_image_transform::c_translation_image_transform(float Tx, float Ty)
+{
+  Tx_ = Tx;
+  Ty_ = Ty;
+}
+
+c_translation_image_transform::c_translation_image_transform(const cv::Vec2f & T)
+{
+  Tx_ = T[0];
+  Ty_ = T[1];
+}
+
+void c_translation_image_transform::set_translation(const cv::Vec2f & T)
+{
+  Tx_ = T[0];
+  Ty_ = T[1];
+
+}
+
+cv::Vec2f c_translation_image_transform::translation() const
+{
+  return cv::Vec2f(Tx_, Ty_);
+}
+
+cv::Mat1f c_translation_image_transform::parameters() const
+{
+  return cv::Mat1f(2, 1, (float*)a).clone();
+}
+
+bool c_translation_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  if ( p.rows == 2 && p.cols == 1 ) {
+    Tx_ = p(0, 0);
+    Ty_ = p(1, 0);
+    return true;
+  }
+
+  if ( p.rows == 1 && p.cols == 2 ) {
+    Tx_ = p(0, 0);
+    Ty_ = p(0, 1);
+    return true;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
+  return false;
+}
+
+cv::Mat1f c_translation_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+{
+  if( p.rows == 2 && p.cols == 1 ) {
+
+    cv::Mat1f ss =
+        p.clone();
+
+    ss(0, 0) *= factor;
+    ss(1, 0) *= factor;
+
+    return ss;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
+  return cv::Mat1f();
+}
+
+bool c_translation_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+{
+  //  Wx =  x + tx
+  //  Wy =  y + ty
+
+  INSTRUMENT_REGION("");
+
+  const float tx = Tx_;
+  const float ty = Ty_;
+
+  map.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+
+  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
+      [&map, tx, ty](const tbb_range & r) {
+
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+
+          cv::Vec2f * m = map[y];
+
+          for ( int x = 0; x < map.cols; ++x ) {
+
+            m[x][0] = x + tx;
+            m[x][1] = y + ty;
+
+          }
+        }
+      });
+
+#else
+
+  for ( int y = 0; y < map.rows; ++y ) {
+
+    cv::Vec2f * m = map[y];
+
+    for ( int x = 0; x < map.cols; ++x ) {
+
+      m[x][0] = x + tx;
+      m[x][1] = y + ty;
+    }
+
+  }
+
+#endif // TBB
+
+  return true;
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_euclidean_image_transform::c_euclidean_image_transform(float Tx, float Ty, float angle, float scale)
@@ -135,8 +252,8 @@ cv::Mat1f c_euclidean_image_transform::scale_transfrom(const cv::Mat1f & p, doub
 
 bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
 {
-  //  Wx =  scale * ( ca * (x - tx) - sa * (y - ty))
-  //  Wy =  scale * ( sa * (x - tx) + ca * (y - ty))
+  //  Wx =  s * ( ca * x  - sa * y ) + tx
+  //  Wy =  s * ( sa * x  + ca * y ) + ty
 
   INSTRUMENT_REGION("");
 
@@ -144,14 +261,14 @@ bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
   const float ty = Ty_;
   const float ca = std::cos(angle_);
   const float sa = std::sin(angle_);
-  const float scale = scale_;
+  const float s = scale_;
 
   map.create(size);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 
   tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [&map, tx, ty, sa, ca, scale](const tbb_range & r) {
+      [&map, tx, ty, sa, ca, s](const tbb_range & r) {
 
         for ( int y = r.begin(); y < r.end(); ++y ) {
 
@@ -159,9 +276,10 @@ bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
 
           for ( int x = 0; x < map.cols; ++x ) {
 
-            m[x][0] = scale * (ca * (x - tx) - sa * (y - ty));
-            m[x][1] = scale * (sa * (x - tx) + ca * (y - ty));
+            m[x][0] = s * (ca * x - sa * y) + tx;
+            m[x][1] = s * (sa * x + ca * y) + ty;
           }
+
         }
       });
 
@@ -173,9 +291,10 @@ bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size &
 
     for ( int x = 0; x < map.cols; ++x ) {
 
-      m[x][0] = scale_transfrom * (ca * (x - tx) - sa * (y - ty));
-      m[x][1] = scale_transfrom * (sa * (x - tx) + ca * (y - ty));
+      m[x][0] = s * (ca * x - sa * y) + tx;
+      m[x][1] = s * (sa * x + ca * y) + ty;
     }
+
   }
 
 #endif // TBB
@@ -546,6 +665,13 @@ void c_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
       this->a(i, j) = a(i, j);
     }
   }
+}
+
+cv::Matx23f c_quadratic_image_transform::affine_matrix() const
+{
+  return cv::Matx23f(
+      a(0, 0), a(0, 1), a(0, 2),
+      a(1, 0), a(1, 1), a(1, 2));
 }
 
 cv::Mat1f c_quadratic_image_transform::parameters() const

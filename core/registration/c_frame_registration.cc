@@ -55,6 +55,49 @@ const c_image_registration_options & c_frame_registration::options() const
   return options_;
 }
 
+void c_frame_registration::set_image_transform(const c_image_transform::sptr & transform)
+{
+  if( (image_transform_ = transform) ) {
+    image_transform_defaut_parameters_ =
+        image_transform_->parameters();
+  }
+}
+
+const c_image_transform::sptr & c_frame_registration::image_transform() const
+{
+  return image_transform_;
+}
+
+bool c_frame_registration::create_image_transfrom()
+{
+  if( !image_transform_ ) {
+
+    if( !(image_transform_ = ::create_image_transform(options_.motion_type)) ) {
+
+      CF_ERROR("create_image_transform(type=%s (%d)) fails",
+          toString(options_.motion_type),
+          options_.motion_type);
+
+      return false;
+    }
+
+    image_transform_defaut_parameters_ =
+        image_transform_->parameters();
+
+
+    if( options_.ecc.enabled && options_.ecc.scale > 0 ) {
+
+      if ( !(ecc_motion_model_ = create_ecc_motion_model(image_transform_.get())) ) {
+        CF_ERROR("create_ecc_motion_model() fails");
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+
 const cv::Mat & c_frame_registration::reference_feature_image() const
 {
   return reference_feature_image_;
@@ -95,10 +138,10 @@ const cv::Mat & c_frame_registration::current_ecc_mask() const
   return ecc_.input_mask();
 }
 
-const cv::Mat1f & c_frame_registration::current_transform() const
-{
-  return current_transform_;
-}
+//const cv::Mat1f & c_frame_registration::current_transform() const
+//{
+//  return current_transform_;
+//}
 
 const cv::Mat2f & c_frame_registration::current_remap() const
 {
@@ -120,17 +163,17 @@ const c_sparse_feature_extractor::ptr & c_frame_registration::keypoints_extracto
   return this->keypoints_extractor_;
 }
 
-const c_ecc_forward_additive & c_frame_registration::ecc() const
+const ecc2::c_ecc_forward_additive & c_frame_registration::ecc() const
 {
   return this->ecc_;
 }
 
-const c_ecch & c_frame_registration::ecch() const
+const ecc2::c_ecch & c_frame_registration::ecch() const
 {
   return this->ecch_;
 }
 
-const c_ecch_flow & c_frame_registration::eccflow() const
+const ecc2::c_eccflow & c_frame_registration::eccflow() const
 {
   return this->eccflow_;
 }
@@ -206,7 +249,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
     if( options_.ecc.enabled && options_.ecc.scale > 0 ) {
 
-      ecc_.set_eps(options_.ecc.eps);
+      ecc_.set_max_eps(options_.ecc.eps);
       ecc_.set_min_rho(options_.ecc.min_rho);
       ecc_.set_input_smooth_sigma(options_.ecc.input_smooth_sigma);
       ecc_.set_reference_smooth_sigma(options_.ecc.reference_smooth_sigma);
@@ -312,9 +355,17 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   start_time = get_realtime_ms();
 
+
+  if( !create_image_transfrom() ) {
+    CF_ERROR("create_image_transfrom() fails");
+    return false;
+  }
+
+  image_transform_->set_parameters(image_transform_defaut_parameters_);
+
   current_frame_size_ = current_image.size();
-  current_transform_ = createEyeTransform(options_.motion_type);
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
+
 
   /////////////////////////////////////////////////////////////////////////////
   if( options_.feature_registration.enabled && options_.feature_registration.scale > 0 ) {
@@ -328,7 +379,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     current_status_.timings.extract_feature_image =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
 
-    if( !estimate_feature_transform(current_feature_image_, current_feature_mask_, &current_transform_) ) {
+    if( !estimate_feature_transform(current_feature_image_, current_feature_mask_, image_transform_.get()) ) {
       CF_ERROR("estimate_feature_transform() fails");
       return false;
     }
@@ -339,8 +390,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     have_transform = true;
   }
 
-  /////////////////////////////////////////////////////////////////////////////
 
+  /////////////////////////////////////////////////////////////////////////////
   if( options_.eccflow.enabled || (options_.ecc.enabled && options_.ecc.scale > 0) ) {
 
     if( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
@@ -365,9 +416,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     if( have_transform && options_.ecc.scale != 1 ) {
 
-      scaleTransform(options_.motion_type,
-          current_transform_,
-          options_.ecc.scale);
+      if( !image_transform_->scale_transfrom(options_.ecc.scale) ) {
+        CF_ERROR("image_transform_->scale_transfrom(%g) fails", options_.ecc.scale);
+        return false;
+      }
 
     }
 
@@ -379,44 +431,103 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_ecc_mask = ecc_mask;
     }
     else if( options_.ecc.scale < 1 ) {
-      cv::resize(ecc_image, current_ecc_image, cv::Size(), options_.ecc.scale, options_.ecc.scale, cv::INTER_AREA);
+
+      cv::resize(ecc_image, current_ecc_image,
+          cv::Size(),
+          options_.ecc.scale,
+          options_.ecc.scale,
+          cv::INTER_AREA);
     }
     else {
-      cv::resize(ecc_image, current_ecc_image, cv::Size(), options_.ecc.scale, options_.ecc.scale,
+
+      cv::resize(ecc_image, current_ecc_image,
+          cv::Size(),
+          options_.ecc.scale,
+          options_.ecc.scale,
           cv::INTER_LINEAR_EXACT);
     }
 
     if( !ecc_mask.empty() && current_ecc_mask.size() != current_ecc_image.size() ) {
-      cv::resize(ecc_mask, current_ecc_mask, current_ecc_image.size(), 0, 0, cv::INTER_LINEAR);
-      cv::compare(current_ecc_mask, 255, current_ecc_mask, cv::CMP_GE);
+
+      cv::resize(ecc_mask, current_ecc_mask,
+          current_ecc_image.size(),
+          0, 0,
+          cv::INTER_LINEAR);
+
+      cv::compare(current_ecc_mask, 255, current_ecc_mask,
+          cv::CMP_GE);
+
     }
 
-    ecc_.set_motion_type(options_.motion_type);
+    ecc_.set_model(ecc_motion_model_.get());
 
-    if ( !options_.ecc.enable_ecch ) {
-      if( !ecc_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask) ) {
-        CF_ERROR("ecc_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
+    if( !options_.ecc.enable_ecch ) {
+
+      if( !ecc_.align_to_reference(current_ecc_image, current_ecc_mask) ) {
+
+        CF_ERROR("ERROR: ecc_.align_to_reference() fails: failed=%d rho=%g/%g eps=%g/%g iterations=%d/%d",
+            ecc_.failed(),
             ecc_.rho(), ecc_.min_rho(),
-            ecc_.current_eps(), ecc_.eps(),
+            ecc_.eps(), ecc_.max_eps(),
             ecc_.num_iterations(), ecc_.max_iterations());
         return false;
       }
+
     }
     else {
-      if( !ecch_.align_to_reference(current_ecc_image, current_transform_, current_ecc_mask) ) {
-        CF_ERROR("ecch_.align_to_reference() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
+
+      if( options_.ecc.ecch_estimate_translation_first ) {
+
+        c_translation_image_transform transform (image_transform_->translation());
+        c_translation_ecc_motion_model model(&transform);
+
+        ecc_.set_model(&model);
+
+        if( !ecch_.align(current_ecc_image, current_ecc_mask) ) {
+
+          CF_ERROR("ERROR: ecch_.align() fails for translation estimate: "
+              "failed=%d rho=%g/%g eps=%g/%g iterations=%d/%d",
+              ecch_.method()->failed(),
+              ecch_.method()->rho(), ecch_.method()->min_rho(),
+              ecch_.method()->eps(), ecch_.method()->max_eps(),
+              ecch_.method()->num_iterations(), ecch_.method()->max_iterations()
+              );
+
+
+          ecc_.set_model(ecc_motion_model_.get());
+
+          return false;
+        }
+
+        ecc_.set_model(ecc_motion_model_.get());
+        image_transform_->set_translation(transform.translation());
+      }
+
+      cv::Vec2f T = image_transform_->translation();
+      CF_DEBUG("ECCH translation = (%+g %+g)", T[0], T[1]);
+
+
+      if( !ecch_.align(current_ecc_image, current_ecc_mask) ) {
+
+        CF_ERROR("ecch_.align() fails: failed:%d rho=%g/%g eps=%g/%g iterations=%d/%d",
+            ecc_.failed(),
             ecc_.rho(), ecc_.min_rho(),
-            ecc_.current_eps(), ecc_.eps(),
+            ecc_.eps(), ecc_.max_eps(),
             ecc_.num_iterations(), ecc_.max_iterations());
+
         return false;
       }
     }
 
-    if( options_.ecc.scale != 1 ) {
+    if( ecc_.rho() < ecc_.min_rho() ) {
+      CF_ERROR("ECC align failed: rho=%g < min_rho=%g", ecc_.rho(), ecc_.min_rho());
+      return false;
+    }
 
-      scaleTransform(options_.motion_type,
-          current_transform_,
-          1. / options_.ecc.scale);
+    if( options_.ecc.scale != 1 && !image_transform_->scale_transfrom(1. / options_.ecc.scale) ) {
+
+      CF_ERROR("image_transform_->scale_transfrom(factor=%g) fails", 1. / options_.ecc.scale);
+      return false;
     }
 
     current_status_.timings.ecc_align =
@@ -429,10 +540,18 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   t0 = get_realtime_ms();
 
-  createRemap(options_.motion_type,
-      current_transform_,
-      current_remap_,
-      reference_frame_size_);
+  if( !image_transform_->create_remap(current_remap_, reference_frame_size_) ) {
+    CF_ERROR("image_transform_->create_remap(size=%dx%d) fails",
+        reference_frame_size_.width, reference_frame_size_.height);
+    return false;
+  }
+
+  if( current_remap_.size() != reference_frame_size_ ) {
+    CF_ERROR("APP BUG: image_transform_->create_remap(size=%dx%d) returns unexpected map size %d%d",
+        reference_frame_size_.width, reference_frame_size_.height,
+        current_remap_.cols, current_remap_.rows);
+    return false;
+  }
 
   current_status_.timings.create_remap =
       get_realtime_ms() - t0;
@@ -501,7 +620,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_status_.timings.extract_ecc_image,
 
       ecc_.rho(), ecc_.min_rho(),
-      ecc_.current_eps(), ecc_.eps(),
+      ecc_.eps(), ecc_.max_eps(),
       ecc_.num_iterations(), ecc_.max_iterations(),
       current_status_.timings.ecc_align, current_status_.timings.ecc_align / (ecc_.num_iterations() + 1),
 
@@ -803,7 +922,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
 }
 
 bool c_frame_registration::estimate_feature_transform(cv::InputArray current_feature_image, cv::InputArray current_feature_mask,
-    cv::Mat1f * current_transform)
+    c_image_transform * current_transform)
 {
   if( options_.feature_registration.sparse_feature_extractor.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
 
@@ -853,18 +972,12 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
       planetary_disk_current_centroid_ /= options_.feature_registration.scale;
     }
 
-    const cv::Point2f current_translation =
+    const cv::Point2f T =
         planetary_disk_current_centroid_ - planetary_disk_reference_centroid_;
 
-    *current_transform =
-        createTranslationTransform(current_translation.x,
-            current_translation.y);
+    current_transform->set_translation(cv::Vec2f(T.x, T.y));
 
-    if( options_.motion_type != ECC_MOTION_TRANSLATION ) {
-      *current_transform =
-          expandAffineTransform(current_transform_,
-              options_.motion_type);
-    }
+
   }
   else {
 
@@ -880,162 +993,17 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
       return false;
     }
 
-    ///////////////
-
-    switch (options_.motion_type) {
-    case ECC_MOTION_TRANSLATION:
-      // TODO: move this code into to estimateTranslation2D()
-      if( matched_reference_positions_.size() == 1 ) {
-        *current_transform = createTranslationTransform(
-            matched_current_positions_[0].x - matched_reference_positions_[0].x,
-            matched_current_positions_[0].y - matched_reference_positions_[0].y);
-      }
-      else if( matched_reference_positions_.size() == 2 ) {
-        *current_transform = createTranslationTransform(
-            0.5 * (matched_current_positions_[0].x - matched_reference_positions_[0].x + matched_current_positions_[1].x
-                - matched_reference_positions_[1].x),
-            0.5 * (matched_current_positions_[0].y - matched_reference_positions_[0].y + matched_current_positions_[1].y
-                - matched_reference_positions_[1].y));
-      }
-      else {
-
-        const uint n = matched_current_positions_.size();
-        std::vector<bool> blacklist(n, false);
-
-        double mx = 0, my = 0, sx = 0, sy = 0;
-        int c = 0;
-
-        for( int iteration = 0; iteration < 10; ++iteration ) {
-
-          mx = 0, my = 0, sx = 0, sy = 0;
-          c = 0;
-
-          for( uint i = 0; i < n; ++i ) {
-            if( !blacklist[i] ) {
-
-              const double dx =
-                  matched_current_positions_[i].x - matched_reference_positions_[i].x;
-
-              const double dy =
-                  matched_current_positions_[i].y - matched_reference_positions_[i].y;
-
-              mx += dx;
-              my += dy;
-              sx += dx * dx;
-              sy += dy * dy;
-              ++c;
-            }
-          }
-
-          if( c < 1 ) {
-            CF_ERROR("PROBLEM: ALL FEATURES ARE BLACKLISTED ON ITEARATION %d", iteration);
-            return false;
-          }
-
-          mx /= c;
-          my /= c;
-          sx = sqrt(fabs(sx / c - mx * mx));
-          sy = sqrt(fabs(sy / c - my * my));
-
-          int blacklisted = 0;
-
-          for( uint i = 0; i < n; ++i ) {
-            if( !blacklist[i] ) {
-
-              const double dx =
-                  matched_current_positions_[i].x - matched_reference_positions_[i].x;
-
-              const double dy =
-                  matched_current_positions_[i].y - matched_reference_positions_[i].y;
-
-              if( fabs(dx - mx) > 3 * sx || fabs(dy - my) > 3 * sy ) {
-                blacklist[i] = true;
-                ++blacklisted;
-              }
-            }
-          }
-
-          CF_DEBUG("FEATURES ITEARATION %d: c=%d mx=%g my=%g sx=%g sy=%g blacklisted=%d",
-              iteration, c, mx, my, sx, sy, blacklisted);
-
-          if( !blacklisted ) {
-            break;
-          }
-        }
-
-        *current_transform = createTranslationTransform(mx, my);
-      }
-
-      break;
-
-    case ECC_MOTION_EUCLIDEAN:
-      if( current_matches_.size() < 2 ) {
-        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
-        return false;
-      }
-
-      *current_transform = cv::estimateAffinePartial2D(matched_reference_positions_, matched_current_positions_,
-          cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
-
-      if( current_transform->empty() ) {
-        CF_ERROR("estimateAffinePartial2D() fails");
-        return false;
-      }
-
-      break;
-
-    case ECC_MOTION_EUCLIDEAN_SCALED: // FIXME: update this code to estimate ECC_MOTION_EUCLIDEAN_SCALED CORRECTLY !!!!
-    case ECC_MOTION_AFFINE:
-      case ECC_MOTION_QUADRATIC:
-
-      if( current_matches_.size() < 3 ) {
-        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
-        return false;
-      }
-
-      *current_transform = cv::estimateAffine2D(matched_reference_positions_, matched_current_positions_,
-          cv::noArray(), cv::LMEDS, 7, 2000, 0.95, 10);
-
-      if( current_transform->empty() ) {
-        CF_ERROR("estimateAffine2D() fails");
-        return false;
-      }
-
-      if( options_.motion_type == ECC_MOTION_QUADRATIC ) {
-        *current_transform =
-            expandAffineTransform(*current_transform,
-                options_.motion_type);
-      }
-      break;
-
-    case ECC_MOTION_HOMOGRAPHY:
-
-      if( current_matches_.size() < 3 ) {
-        CF_ERROR("Not enough key points matches: %zu", current_matches_.size());
-        return false;
-      }
-
-      *current_transform = cv::findHomography(matched_reference_positions_, matched_current_positions_,
-          cv::LMEDS, 5, cv::noArray(), 2000, 0.95);
-
-      if( current_transform->empty() ) {
-        CF_ERROR("findHomography() fails");
-        return false;
-      }
-
-      break;
-
-    default:
-      CF_ERROR("Invalid motion tyoe %d specified", options_.motion_type);
+    if( !estimate_image_transform(current_transform, matched_current_positions_, matched_reference_positions_) ) {
+      CF_ERROR("estimate_image_transform() fails");
       return false;
     }
 
     if( options_.feature_registration.scale != 1 ) {
 
-      scaleTransform(options_.motion_type,
-          *current_transform,
-          1. / options_.feature_registration.scale);
-
+      if( !current_transform->scale_transfrom(1. / options_.feature_registration.scale) ) {
+        CF_ERROR("scale_transfrom() fails");
+        return false;
+      }
     }
   }
 
@@ -1108,8 +1076,8 @@ bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_fea
 bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
-    enum ECC_INTERPOLATION_METHOD interpolation_flags,
-    enum ECC_BORDER_MODE border_mode,
+    enum ecc2::ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ecc2::ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   cv::Mat src = _src.getMat();
@@ -1184,8 +1152,8 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
 bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
-    enum ECC_INTERPOLATION_METHOD interpolation_flags,
-    enum ECC_BORDER_MODE border_mode,
+    enum ecc2::ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ecc2::ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   INSTRUMENT_REGION("");
@@ -1287,8 +1255,8 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
 
 bool c_frame_registration::remap(cv::InputArray src, cv::OutputArray dst,
     cv::InputArray src_mask, cv::OutputArray dst_mask,
-    enum ECC_INTERPOLATION_METHOD interpolation_flags,
-    enum ECC_BORDER_MODE border_mode,
+    enum ecc2::ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ecc2::ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   return custom_remap(current_remap_,

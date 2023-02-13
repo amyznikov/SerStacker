@@ -35,21 +35,60 @@ public:
 
   virtual ~c_image_transform() = default;
 
+  virtual void set_translation(const cv::Vec2f & T) = 0;
+  virtual cv::Vec2f translation() const = 0;
+
   virtual cv::Mat1f parameters() const = 0;
   virtual bool set_parameters(const cv::Mat1f & p) = 0;
   virtual cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const = 0;
 
   virtual bool create_remap(cv::Mat2f & map, const cv::Size & size) const = 0;
+
+  bool scale_transfrom(double factor)
+  {
+    return set_parameters(scale_transfrom(parameters(), factor));
+  }
+
+};
+
+/**
+ * Translation transform
+ *  x' = x + tx
+ *  y' = y + ty
+ */
+class c_translation_image_transform:
+    public c_image_transform
+{
+public:
+  typedef c_translation_image_transform this_class;
+  typedef c_image_transform base;
+  typedef std::shared_ptr<this_class> sptr;
+
+  c_translation_image_transform(float Tx = 0, float Ty = 0);
+  c_translation_image_transform(const cv::Vec2f & T);
+
+  void set_translation(const cv::Vec2f & v) override;
+  cv::Vec2f translation() const override;
+
+  cv::Mat1f parameters() const override;
+  bool set_parameters(const cv::Mat1f & p) override;
+  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
+  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+
+protected:
+  float a[2] = { 0, 0 };
+  float & Tx_ = a[0];
+  float & Ty_ = a[1];
 };
 
 
 /**
  * Euclidean image transform with optional translation, rotation and scale :
  *
- *  x' =  scale * ( cos(angle) * (x - tx) - sin(angle) * (y - ty))
- *  y' =  scale * ( sin(angle) * (x - tx) + cos(angle) * (y - ty))
+ *  x' =  s * (cos(angle) * x  - sin(angle) * y) + tx
+ *  y' =  s * (sin(angle) * x  + cos(angle) * y) + ty
  *
- *  For the signs of angles see opencv doc
+ *  For the signs of angles see opencv doc for estimateAffinePartial2D()
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
  */
 class c_euclidean_image_transform :
@@ -58,12 +97,13 @@ class c_euclidean_image_transform :
 public:
   typedef c_euclidean_image_transform this_class;
   typedef c_image_transform base;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1);
   c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1);
 
-  void set_translation(const cv::Vec2f & v);
-  cv::Vec2f translation() const;
+  void set_translation(const cv::Vec2f & v) override;
+  cv::Vec2f translation() const  override;
 
   void set_rotation(float v);
   float rotation() const;
@@ -120,11 +160,12 @@ public:
   c_affine_image_transform(const cv::Matx23f & a);
   c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12);
 
-  void set_translation(const cv::Vec2f & v);
-  cv::Vec2f translation() const;
 
   void set_affine_matrix(const cv::Matx23f & a);
   const cv::Matx23f& affine_matrix() const;
+
+  void set_translation(const cv::Vec2f & v) override;
+  cv::Vec2f translation() const  override;
 
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;
@@ -159,11 +200,11 @@ public:
       float a10, float a11, float a12,
       float a20, float a21, float a22);
 
-  void set_translation(const cv::Vec2f & v);
-  cv::Vec2f translation() const;
-
   void set_homography_matrix(const cv::Matx33f & a);
   const cv::Matx33f& homography_matrix() const;
+
+  void set_translation(const cv::Vec2f & v) override;
+  cv::Vec2f translation() const override;
 
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;
@@ -198,13 +239,14 @@ public:
   c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
       float a10, float a11, float a12, float a13, float a14, float a15);
 
-  void set_translation(const cv::Vec2f & v);
-  cv::Vec2f translation() const;
-
   void set_matrix(const cv::Matx26f & a);
   const cv::Matx26f & matrix() const;
 
   void set_affine_matrix(const cv::Matx23f & a);
+  cv::Matx23f affine_matrix() const;
+
+  void set_translation(const cv::Vec2f & v) override;
+  cv::Vec2f translation() const override;
 
   cv::Mat1f parameters() const override;
   bool set_parameters(const cv::Mat1f & p) override;

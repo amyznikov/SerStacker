@@ -11,7 +11,48 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+
+
+
+template<>
+const c_enum_member * members_of<ecc2::ECC_INTERPOLATION_METHOD>()
+{
+  using namespace ecc2;
+  static constexpr c_enum_member members[] = {
+      { ECC_INTER_LINEAR, "LINEAR", "" },
+      { ECC_INTER_LINEAR_EXACT, "LINEAR_EXACT", "" },
+      { ECC_INTER_AREA, "AREA", "" },
+      { ECC_INTER_CUBIC, "CUBIC", "" },
+      { ECC_INTER_LANCZOS4, "LANCZOS4", "" },
+      { ECC_INTER_NEAREST, "NEAREST", "" },
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4,5,0)
+      { ECC_INTER_NEAREST_EXACT, "NEAREST_EXACT", "" },
+#endif
+      { ECC_INTER_NEAREST, nullptr, nullptr }  // must be last
+  };
+  return members;
+}
+
+template<>
+const c_enum_member * members_of<ecc2::ECC_BORDER_MODE>()
+{
+  using namespace ecc2;
+  static constexpr c_enum_member members[] = {
+      { ECC_BORDER_REFLECT101, "BORDER_REFLECT101", },
+      { ECC_BORDER_REFLECT, "BORDER_REFLECT", },
+      { ECC_BORDER_REPLICATE, "BORDER_REPLICATE", },
+      { ECC_BORDER_WRAP, "BORDER_WRAP", },
+      { ECC_BORDER_CONSTANT, "BORDER_CONSTANT", },
+      { ECC_BORDER_TRANSPARENT, "BORDER_TRANSPARENT", },
+      { ECC_BORDER_ISOLATED, "BORDER_ISOLATED", },
+      { ECC_BORDER_DEFAULT, nullptr, }  // must be last
+  };
+  return members;
+}
+
+
 namespace ecc2 {
+
 
 namespace {
 

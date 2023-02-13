@@ -71,18 +71,18 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
   //  [ gx * dWx / dpn + gy * dWy / dpn]
 
   // W([x,y], p):
-  //  Wx =  scale * ( ca * (x - tx) - sa * (y - ty))
-  //  Wy =  scale * ( sa * (x - tx) + ca * (y - ty))
+  //  Wx =  s * ( ca * x - sa * y ) + tx
+  //  Wy =  s * ( sa * x + ca * y ) + ty
 
-  // dWx / dtx = scale * ( -ca )
-  // dWx / dty = scale * ( +sa )
-  // dWx / da = scale * ( -sa * (x - tx) - ca * (y - ty))
-  // dWx / ds = (ca * (x - tx) - sa * (y - ty))
+  // dWx / dtx = 1
+  // dWx / dty = 0
+  // dWx / da  = - s * (sa * x + ca * y)
+  // dWx / ds  = ( ca * x - sa * y )
 
-  // dWy / dtx = scale * ( -sa )
-  // dWy / dty = scale * ( -ca )
-  // dWy / da = scale * ( ca * (x - tx) - sa * (y - ty))
-  // dWy / ds = (sa * (x - tx) + ca * (y - ty))
+  // dWy / dtx = 0
+  // dWy / dty = 1
+  // dWy / da  = s * (ca * x - sa * y)
+  // dWy / ds  = ( sa * x + ca * y )
 
 
   const  int n =
@@ -100,7 +100,7 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
   const float tx = T[0];
   const float ty = T[1];
   const float angle = transform_->rotation();
-  const float scale = transform_->scale();
+  const float s = transform_->scale();
   const float sa = std::sin(angle);
   const float ca = std::cos(angle);
   const bool fix_translation = transform_->fix_translation();
@@ -112,7 +112,7 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
 #if HAVE_TBB && !defined(Q_MOC_RUN)
   tbb::parallel_for(tbb_range(0, h, tbb_block_size),
       [ fix_translation, fix_rotation, fix_scale,
-        w, h, tx, ty, ca, sa, scale,
+        w, h, tx, ty, ca, sa, s,
         &gx, &gy, &dst] (const tbb_range & r) {
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
 #else
@@ -120,14 +120,11 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
 #endif // TBB
           int i = 0;
 
-          const float yy = y - ty;
-
           if( !fix_translation ) {
 
             for ( int x = 0; x < w; ++x ) {
-              const float xx = x - tx;
-              dst[y + 0 * h][x] = -scale * ( gx[y][x] * ca - gy[y][x] * sa );
-              dst[y + 1 * h][x] = -scale * ( gx[y][x] * sa + gy[y][x] * ca );
+              dst[y + 0 * h][x] = gx[y][x];
+              dst[y + 1 * h][x] = gy[y][x];
             }
 
             i += 2;
@@ -136,8 +133,7 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
           if( !fix_rotation ) {
 
             for ( int x = 0; x < w; ++x ) {
-              const float xx = x - tx;
-              dst[y + i * h][x] = scale * ( -gx[y][x] * ( sa * xx + ca * yy) + gy[y][x] * (ca * xx - sa * yy) );
+              dst[y + i * h][x] = s * ( -gx[y][x] * (sa * x + ca * y) + gy[y][x] * (ca * x - sa * y));
             }
 
             i += 1;
@@ -146,8 +142,7 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
           if( !fix_scale ) {
 
             for ( int x = 0; x < w; ++x ) {
-              const float xx = x - tx;
-              dst[y + i * h][x] = gx[y][x] * (ca * xx - sa * yy) + gy[y][x] * (sa * xx + ca * yy);
+              dst[y + i * h][x] = gx[y][x] * (ca * x - sa * y) + gy[y][x] * (sa * x + ca * y);
             }
           }
 
@@ -160,7 +155,7 @@ bool c_euclidean_ecc_motion_model::create_steepest_descent_images(const cv::Mat1
   return true;
 }
 
-        bool c_euclidean_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
+bool c_euclidean_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size)
 {
   INSTRUMENT_REGION("");
 

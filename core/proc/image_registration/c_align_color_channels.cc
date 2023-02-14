@@ -21,22 +21,22 @@ IMAGE_MOTION_TYPE  c_align_color_channels::motion_type() const
   return motion_type_;
 }
 
-void c_align_color_channels::set_interpolation(enum ecc2::ECC_INTERPOLATION_METHOD flags)
+void c_align_color_channels::set_interpolation(enum ECC_INTERPOLATION_METHOD flags)
 {
   interpolation_ = flags;
 }
 
-enum ecc2::ECC_INTERPOLATION_METHOD c_align_color_channels::interpolation() const
+enum ECC_INTERPOLATION_METHOD c_align_color_channels::interpolation() const
 {
   return interpolation_;
 }
 
-void c_align_color_channels::set_border_mode(enum ecc2::ECC_BORDER_MODE border_mode)
+void c_align_color_channels::set_border_mode(enum ECC_BORDER_MODE border_mode)
 {
   border_mode_ = border_mode;
 }
 
-enum ecc2::ECC_BORDER_MODE c_align_color_channels::border_mode() const
+enum ECC_BORDER_MODE c_align_color_channels::border_mode() const
 {
   return border_mode_;
 }
@@ -115,12 +115,12 @@ const c_image_transform::sptr & c_align_color_channels::computed_transform(int c
   return computed_transforms_[channel_index];
 }
 
-//ecc2::c_ecc_forward_additive & c_align_color_channels::ecc()
+//c_ecc_forward_additive & c_align_color_channels::ecc()
 //{
 //  return ecc_;
 //}
 //
-//const ecc2::c_ecc_forward_additive & c_align_color_channels::ecc() const
+//const c_ecc_forward_additive & c_align_color_channels::ecc() const
 //{
 //  return ecc_;
 //}
@@ -203,7 +203,7 @@ bool c_align_color_channels::align(int reference_channel,
   computed_transforms_.resize(cn);
   computed_iterations_.resize(cn);
 
-  ecc2::c_ecc_forward_additive ecc;
+  c_ecc_forward_additive ecc;
 
   ecc.set_interpolation(interpolation_);
   ecc.set_update_step_scale(update_step_scale_);
@@ -389,7 +389,7 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
   computed_iterations_.resize(cn);
 
 
-  ecc2::c_ecc_forward_additive ecc;
+  c_ecc_forward_additive ecc;
 
   ecc.set_interpolation(interpolation_);
   ecc.set_update_step_scale(update_step_scale_);

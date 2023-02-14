@@ -25,28 +25,6 @@
 
 
 
-// Base interface
-class c_ecc_motion_model
-{
-public:
-  typedef c_ecc_motion_model this_class;
-  typedef std::shared_ptr<this_class> sptr;
-
-  virtual ~c_ecc_motion_model() = default;
-
-  virtual cv::Mat1f parameters() const = 0;
-  virtual bool set_parameters(const cv::Mat1f & p) = 0;
-  virtual cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const = 0;
-  virtual bool create_remap(cv::Mat2f & map, const cv::Size & size) const = 0;
-
-  virtual int  num_adustable_parameters() const = 0;
-  virtual bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const = 0;
-  virtual bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
-  virtual bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
-};
-
-
-namespace ecc2 {
 
 // For the images destined for later sharpening use only LINEAR and AREA interpolation
 // to prevent high-frequency moire patterns.
@@ -76,6 +54,28 @@ enum ECC_BORDER_MODE {
   ECC_BORDER_ISOLATED    = cv::BORDER_ISOLATED
 };
 
+
+
+
+// Base interface
+class c_ecc_motion_model
+{
+public:
+  typedef c_ecc_motion_model this_class;
+  typedef std::shared_ptr<this_class> sptr;
+
+  virtual ~c_ecc_motion_model() = default;
+
+  virtual cv::Mat1f parameters() const = 0;
+  virtual bool set_parameters(const cv::Mat1f & p) = 0;
+  virtual cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const = 0;
+  virtual bool create_remap(cv::Mat2f & map, const cv::Size & size) const = 0;
+
+  virtual int  num_adustable_parameters() const = 0;
+  virtual bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const = 0;
+  virtual bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
+  virtual bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
+};
 
 /**
  * Base interface to both forward-additive and
@@ -368,5 +368,4 @@ protected:
   cv::Mat2f cuv;
 };
 
-} // namespace ecc2
 #endif /* __ecc2_h__ */

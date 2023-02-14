@@ -1428,10 +1428,10 @@ bool c_image_stacking_pipeline::actual_run()
 
     if ( output_options.debug_frame_registration && frame_registration_->options().eccflow.enabled  ) {
 
-      const ecc2::c_eccflow &eccflow =
+      const c_eccflow &eccflow =
           frame_registration_->eccflow();
 
-      const std::vector<ecc2::c_eccflow::pyramid_entry> & pyramid =
+      const std::vector<c_eccflow::pyramid_entry> & pyramid =
           eccflow.current_pyramid();
 
       const std::string debugpath =
@@ -2294,7 +2294,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
             current_mask, current_mask,
             registration_options.image_registration_options.interpolation,
             master_frame_generation_ ?
-                ecc2::ECC_BORDER_REFLECT101 :
+                ECC_BORDER_REFLECT101 :
                 registration_options.image_registration_options.border_mode,
             registration_options.image_registration_options.border_value);
 
@@ -2304,7 +2304,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::p
               current_weights, current_weights,
               cv::noArray(), cv::noArray(),
               registration_options.image_registration_options.interpolation,
-              ecc2::ECC_BORDER_CONSTANT);
+              ECC_BORDER_CONSTANT);
         }
       }
 

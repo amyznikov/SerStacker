@@ -15,9 +15,8 @@
 
 
 template<>
-const c_enum_member * members_of<ecc2::ECC_INTERPOLATION_METHOD>()
+const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
 {
-  using namespace ecc2;
   static constexpr c_enum_member members[] = {
       { ECC_INTER_LINEAR, "LINEAR", "" },
       { ECC_INTER_LINEAR_EXACT, "LINEAR_EXACT", "" },
@@ -34,9 +33,8 @@ const c_enum_member * members_of<ecc2::ECC_INTERPOLATION_METHOD>()
 }
 
 template<>
-const c_enum_member * members_of<ecc2::ECC_BORDER_MODE>()
+const c_enum_member * members_of<ECC_BORDER_MODE>()
 {
-  using namespace ecc2;
   static constexpr c_enum_member members[] = {
       { ECC_BORDER_REFLECT101, "BORDER_REFLECT101", },
       { ECC_BORDER_REFLECT, "BORDER_REFLECT", },
@@ -49,9 +47,6 @@ const c_enum_member * members_of<ecc2::ECC_BORDER_MODE>()
   };
   return members;
 }
-
-
-namespace ecc2 {
 
 
 namespace {
@@ -743,8 +738,6 @@ bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, 
     return false;
   }
 
-  //inputOutputWarpMatrix.getMat().convertTo(p, p.type());
-
   // Convert input image (to be aligned) to floating point and create the mask
   prepare_input_image(inputImage, inputMask, input_smooth_sigma_, true, g, gmask);
 
@@ -777,7 +770,6 @@ bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, 
 
 
   // Compute the Hessian matrix H = ∑x[▽f*∂W/∂p]^T*[▽f*∂W/∂p] and it's inverse
-  //project_onto_jacobian(jac, jac, H, number_of_parameters_);
   ecc_compute_hessian_matrix(jac, H, nparams_);
   cv::invert(H, H, cv::DECOMP_CHOLESKY);
   H *= -update_step_scale_;
@@ -1456,7 +1448,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
         }
     );
 
-    // fixme: this regularization therm estimation seems crazy
+    // FIXME: this regularization therm estimation seems crazy
     const double RegularizationTerm =
         pow(1e-5 * noise_level / (1 << current_level), 4);
 
@@ -1569,14 +1561,23 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
 
   for ( int i = 1, n = pyramid_.size(); i < n; ++i ) {
 
-    const pyramid_entry & prev_scale = pyramid_[i - 1];
-    pyramid_entry & next_scale = pyramid_[i];
+    const pyramid_entry & prev_scale =
+        pyramid_[i - 1];
 
-    const cv::Size prev_image_size = prev_scale.current_image.size();
-    const cv::Size next_image_size((prev_image_size.width + 1) / 2, (prev_image_size.height + 1) / 2);
+    pyramid_entry & next_scale =
+        pyramid_[i];
 
-    const cv::Size prev_rmap_size = prev_scale.rmap.size();
-    const cv::Size next_rmap_size((prev_rmap_size.width + 1) / 2, (prev_rmap_size.height + 1) / 2);
+    const cv::Size prev_image_size =
+        prev_scale.current_image.size();
+
+    const cv::Size next_image_size((prev_image_size.width + 1) / 2,
+        (prev_image_size.height + 1) / 2);
+
+    const cv::Size prev_rmap_size =
+        prev_scale.rmap.size();
+
+    const cv::Size next_rmap_size((prev_rmap_size.width + 1) / 2,
+        (prev_rmap_size.height + 1) / 2);
 
     next_scale.current_mask.release();
 
@@ -1650,6 +1651,3 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-} // namespace ecc2
-

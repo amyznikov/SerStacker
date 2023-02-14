@@ -160,7 +160,7 @@ bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image
   typename c_ecc_motion<ImageTransformType>::motion_model
     motion_model(transform);
 
-  ecc2::c_ecc_forward_additive ecc(&motion_model);
+  c_ecc_forward_additive ecc(&motion_model);
 
   ecc.set_max_eps(0.1);
   ecc.set_min_rho(0.5);

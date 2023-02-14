@@ -86,7 +86,7 @@ protected:
   cv::Mat1f current_wmask_;
   cv::Mat2f current_remap_;
 
-  ecc2::c_eccflow eccflow_;
+  c_eccflow eccflow_;
   c_jovian_ellipse_detector planetary_detector_;
 
   double min_rotation_ = -30 * CV_PI / 180;

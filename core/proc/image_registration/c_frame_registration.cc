@@ -223,17 +223,17 @@ const c_sparse_feature_extractor::ptr & c_frame_registration::keypoints_extracto
   return this->keypoints_extractor_;
 }
 
-const ecc2::c_ecc_forward_additive & c_frame_registration::ecc() const
+const c_ecc_forward_additive & c_frame_registration::ecc() const
 {
   return this->ecc_;
 }
 
-const ecc2::c_ecch & c_frame_registration::ecch() const
+const c_ecch & c_frame_registration::ecch() const
 {
   return this->ecch_;
 }
 
-const ecc2::c_eccflow & c_frame_registration::eccflow() const
+const c_eccflow & c_frame_registration::eccflow() const
 {
   return this->eccflow_;
 }
@@ -1136,8 +1136,8 @@ bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_fea
 bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
-    enum ecc2::ECC_INTERPOLATION_METHOD interpolation_flags,
-    enum ecc2::ECC_BORDER_MODE border_mode,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   cv::Mat src = _src.getMat();
@@ -1212,8 +1212,8 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
 bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
     cv::InputArray _src_mask, cv::OutputArray dst_mask,
-    enum ecc2::ECC_INTERPOLATION_METHOD interpolation_flags,
-    enum ecc2::ECC_BORDER_MODE border_mode,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   INSTRUMENT_REGION("");
@@ -1315,8 +1315,8 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
 
 bool c_frame_registration::remap(cv::InputArray src, cv::OutputArray dst,
     cv::InputArray src_mask, cv::OutputArray dst_mask,
-    enum ecc2::ECC_INTERPOLATION_METHOD interpolation_flags,
-    enum ecc2::ECC_BORDER_MODE border_mode,
+    enum ECC_INTERPOLATION_METHOD interpolation_flags,
+    enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
   return custom_remap(current_remap_,

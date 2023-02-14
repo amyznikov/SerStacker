@@ -336,8 +336,8 @@ public:
   typedef QSettingsWidget Base;
   typedef QEnumComboBox<IMAGE_MOTION_TYPE> QMotionTypeCombo;
   typedef QEnumComboBox<color_channel_type> QRegistrationColorChannelCombo;
-  typedef QEnumComboBox<ecc2::ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
-  typedef QEnumComboBox<ecc2::ECC_BORDER_MODE> QEccBorderModeCombo;
+  typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
+  typedef QEnumComboBox<ECC_BORDER_MODE> QEccBorderModeCombo;
 
   QImageRegistrationOptions(QWidget * parent = nullptr);
 

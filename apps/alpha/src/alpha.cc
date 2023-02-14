@@ -27,8 +27,115 @@
 #include <core/proc/image_registration/ecc2.h>
 #include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/debug.h>
-
-using namespace ecc2;
+//
+//namespace {
+//
+//class c_jovian_derotation_transform :
+//    public c_image_transform
+//{
+//  typedef c_jovian_derotation_transform this_class;
+//  typedef c_image_transform base;
+//
+//  void set_translation(const cv::Vec2f & T) override;
+//  cv::Vec2f translation() const  override;
+//
+//  cv::Mat1f parameters() const  override;
+//  bool set_parameters(const cv::Mat1f & p)  override;
+//  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const  override;
+//
+//  bool create_remap(cv::Mat2f & map, const cv::Size & size) const  override;
+//
+//protected:
+//  cv::RotatedRect rc_;
+//  float l_ = 0;
+//
+//};
+//
+////
+////void create_jovian_rotation_remap2(double l,
+////    const cv::RotatedRect & E,
+////    const cv::Matx23d & R2I,
+////    const cv::Size & size,
+////    cv::Mat2f & rmap,
+////    cv::Mat1f & wmask)
+//
+//bool c_jovian_derotation_transform::create_remap(cv::Mat2f & rmap, const cv::Size & size) const
+//{
+//  //             rc_                    r2i
+//  // ellipse_pos -> reference_image_pos -> current_image_pos
+//
+//  // x' = R2I(0, 0) * xx + R2I(0, 1) * yy + R2I(0, 2)
+//  // y' = R2I(1, 0) * xx + R2I(1, 1) * yy + R2I(1, 2)
+//
+//  // x' = r2i00 * (xe * ca - ye * sa + x0) + r2i01 * (xe * sa + ye * ca + y0) + r2i02
+//  // y' = r2i10 * (xe * ca - ye * sa + x0) + r2i11 * (xe * sa + ye * ca + y0) + R2I12
+//
+//  // x' = r2i00 * xe * ca - r2i00 * ye * sa + r2i00 * x0 + r2i01 * xe * sa + r2i01 * ye * ca + r2i01 * y0 + r2i02
+//  // y' = r2i10 * xe * ca - r2i00 * ye * sa + r2i00 * x0 + r2i11 * xe * sa + r2i01 * ye * ca + r2i01 * y0 + R2I12
+//
+//  // x' = r2i00 * xe * ca + r2i01 * xe * sa + r2i01 * ye * ca - r2i00 * ye * sa + r2i00 * x0  + r2i01 * y0 + r2i02
+//  // y' = r2i10 * xe * ca + r2i11 * xe * sa + r2i01 * ye * ca - r2i00 * ye * sa + r2i00 * x0  + r2i01 * y0 + R2I12
+//
+//  // x' = (r2i00 * ca + r2i01 * sa) * xe + (r2i01 * ca - r2i00 * sa)* ye    + r2i00 * x0  + r2i01 * y0 + r2i02
+//  // y' = (r2i10 * ca + r2i11 * sa) * xe + (r2i01 * ca - r2i00 * sa)* ye    + r2i00 * x0  + r2i01 * y0 + R2I12
+//
+//  INSTRUMENT_REGION("");
+//
+//  const float ca =
+//      cos(rc_.angle * CV_PI / 180);
+//
+//  const float sa =
+//      sin(rc_.angle * CV_PI / 180);
+//
+//  rmap.create(size);
+//  //wmask.create(size);
+//
+//  typedef tbb::blocked_range<int> tbb_range;
+//
+//  const float A = rc_.size.width / 2;
+//  const float B = rc_.size.height / 2;
+//  const float x0 = rc_.center.x;
+//  const float y0 = rc_.center.y;
+//
+//  for( int y = 0, ymax = size.height; y < ymax; ++y ) {
+//    for( int x = 0; x < size.width; ++x ) {
+//
+//      double xe = (+ca * (x - x0) + sa * (y - y0)) / A;
+//      double ye = (-sa * (x - x0) + ca * (y - y0)) / B;
+//
+//      if( xe * xe + ye * ye >= 1 ) {
+//        rmap[y][x][0] = -1;
+//        rmap[y][x][1] = -1;
+//        //wmask[y][x] = 0;
+//        continue;
+//      }
+//
+//      const double q = sqrt(1. - ye * ye);
+//      const double phi = asin(xe / q) + l_;
+//
+//      if( (phi <= -CV_PI / 2) || (phi >= CV_PI / 2) ) {
+//        rmap[y][x][0] = -1;
+//        rmap[y][x][1] = -1;
+//        //wmask[y][x] = 0;
+//        continue;
+//      }
+//
+//      xe = A * q * sin(phi);
+//      ye = B * ye;
+//
+//      const double xx = xe * ca - ye * sa + x0;
+//      const double yy = xe * sa + ye * ca + y0;
+//
+//      rmap[y][x][0] = R2I(0, 0) * xx + R2I(0, 1) * yy + R2I(0, 2);
+//      rmap[y][x][1] = R2I(1, 0) * xx + R2I(1, 1) * yy + R2I(1, 2);
+//      //wmask[y][x] = cos(phi);
+//    }
+//  }
+//
+//  return true;
+//}
+//
+//}
 
 
 int main(int argc, char *argv[])
@@ -144,8 +251,8 @@ int main(int argc, char *argv[])
   c_affine_ecc_motion_model::sptr model =
       create_ecc_motion_model(&transform);
 
-  ecc2::c_ecc_forward_additive ecc(model.get());
-  ecc2::c_ecch ecch (&ecc);
+  c_ecc_forward_additive ecc(model.get());
+  c_ecch ecch (&ecc);
 
   ecc.set_min_rho(0.5);
   ecc.set_update_step_scale(1);

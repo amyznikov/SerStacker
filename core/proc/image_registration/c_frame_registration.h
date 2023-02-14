@@ -72,8 +72,8 @@ struct c_image_registration_options {
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_EUCLIDEAN;
 
   color_channel_type registration_channel = color_channel_gray;
-  enum ecc2::ECC_INTERPOLATION_METHOD interpolation = ecc2::ECC_INTER_LINEAR;
-  enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_REFLECT101;
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
+  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
   struct c_feature_based_registration_options feature_registration;
@@ -130,9 +130,9 @@ public:
   const c_sparse_feature_extractor::ptr & set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor);
   const c_sparse_feature_extractor::ptr & keypoints_extractor() const;
 
-  const ecc2::c_ecc_forward_additive & ecc() const;
-  const ecc2::c_ecch & ecch() const;
-  const ecc2::c_eccflow & eccflow() const;
+  const c_ecc_forward_additive & ecc() const;
+  const c_ecch & ecch() const;
+  const c_eccflow & eccflow() const;
   const c_jovian_derotation & jovian_derotation() const;
 
   void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
@@ -154,16 +154,16 @@ public: // ops
   virtual bool remap(cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      enum ecc2::ECC_INTERPOLATION_METHOD interpolation_method = ecc2::ECC_INTER_UNKNOWN,
-      enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_UNKNOWN,
+      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
   virtual bool custom_remap(const cv::Mat2f & rmap,
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      enum ecc2::ECC_INTERPOLATION_METHOD interpolation_method = ecc2::ECC_INTER_UNKNOWN,
-      enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_UNKNOWN,
+      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
 public: // artifacts
@@ -221,8 +221,8 @@ protected:
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
       cv::OutputArray dst_mask = cv::noArray(),
-      enum ecc2::ECC_INTERPOLATION_METHOD interpolation_method = ecc2::ECC_INTER_UNKNOWN,
-      enum ecc2::ECC_BORDER_MODE border_mode = ecc2::ECC_BORDER_UNKNOWN,
+      enum ECC_INTERPOLATION_METHOD interpolation_method = ECC_INTER_UNKNOWN,
+      enum ECC_BORDER_MODE border_mode = ECC_BORDER_UNKNOWN,
       const cv::Scalar & border_value = cv::Scalar()) const;
 
 protected:
@@ -259,9 +259,9 @@ protected:
   c_image_transform::sptr image_transform_;
   cv::Mat1f image_transform_defaut_parameters_;
 
-  ecc2::c_ecch ecch_;
-  ecc2::c_ecc_forward_additive ecc_;
-  ecc2::c_eccflow eccflow_;
+  c_ecch ecch_;
+  c_ecc_forward_additive ecc_;
+  c_eccflow eccflow_;
   c_ecc_motion_model::sptr ecc_motion_model_;
 
   c_jovian_derotation jovian_derotation_;

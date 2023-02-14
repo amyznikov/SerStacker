@@ -59,22 +59,22 @@ public:
     return algorithm_.motion_type();
   }
 
-  void set_interpolation(enum ecc2::ECC_INTERPOLATION_METHOD flags)
+  void set_interpolation(enum ECC_INTERPOLATION_METHOD flags)
   {
     return algorithm_.set_interpolation(flags);
   }
 
-  enum ecc2::ECC_INTERPOLATION_METHOD interpolation() const
+  enum ECC_INTERPOLATION_METHOD interpolation() const
   {
     return algorithm_.interpolation();
   }
 
-  void set_border_mode(enum ecc2::ECC_BORDER_MODE border_mode)
+  void set_border_mode(enum ECC_BORDER_MODE border_mode)
   {
     algorithm_.set_border_mode(border_mode);
   }
 
-  enum ecc2::ECC_BORDER_MODE border_mode() const
+  enum ECC_BORDER_MODE border_mode() const
   {
     return algorithm_.border_mode();
   }

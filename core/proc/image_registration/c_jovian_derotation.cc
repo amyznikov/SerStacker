@@ -10,7 +10,9 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-#include <tbb/tbb.h>
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+# include <tbb/tbb.h>
+#endif
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT
@@ -47,25 +49,6 @@
 # endif
 #endif
 
-namespace cv {
-namespace hal {
-
-void filter2D(int stype, int dtype, int kernel_type,
-    uchar * src_data, size_t src_step,
-    uchar * dst_data, size_t dst_step,
-    int width, int height,
-    int full_width, int full_height,
-    int offset_x, int offset_y,
-    uchar * kernel_data, size_t kernel_step,
-    int kernel_width, int kernel_height,
-    int anchor_x, int anchor_y,
-    double delta, int borderType,
-    bool isSubmatrix);
-
-}
-}
-
-
 void create_jovian_rotation_remap(double l,
     const cv::RotatedRect & E,
     const cv::Matx23d & R2I,
@@ -75,27 +58,33 @@ void create_jovian_rotation_remap(double l,
 {
   INSTRUMENT_REGION("");
 
-  double sa, ca;
-  sincos(E.angle * CV_PI / 180, &sa, &ca);
+  const float ca =
+      std::cos(E.angle * CV_PI / 180);
+
+  const float sa =
+      std::sin(E.angle * CV_PI / 180);
+
+  const float A = E.size.width / 2;
+  const float B = E.size.height /2;
+  const float x0 = E.center.x;
+  const float y0 = E.center.y;
 
   rmap.create(size);
   wmask.create(size);
 
+#if 0 // HAVE_TBB && !defined(Q_MOC_RUN)
   typedef tbb::blocked_range<int> tbb_range;
-
   tbb::parallel_for(tbb_range(0, size.height, 64),
-      [E, R2I, sa, ca, l, &rmap, &wmask](const tbb_range & r) {
-
-        const double A = 0.5 * E.size.width;
-        const double B = 0.5 * E.size.height;
-        const double x0 = E.center.x;
-        const double y0 = E.center.y;
-
+      [A, B, x0, y0, R2I, ca, sa, l, &rmap, &wmask](const tbb_range & r) {
         for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
-          for ( int x = 0; x < rmap.cols; ++x ) {
+#else
+        for ( int y = 0; y < size.height; ++y ) {
+#endif
 
-            double xe = ((x - x0) * ca + (y - y0) * sa) / A;
-            double ye = (-(x - x0) * sa + (y - y0) * ca) / B;
+          for ( int x = 0; x < size.width; ++x ) {
+
+            float xe = ((x - x0) * ca + (y - y0) * sa) / A;
+            float ye = (-(x - x0) * sa + (y - y0) * ca) / B;
 
             if ( xe * xe + ye * ye >= 1 ) {
               rmap[y][x][0] = -1;
@@ -104,8 +93,8 @@ void create_jovian_rotation_remap(double l,
               continue;
             }
 
-            const double q = sqrt(1. - ye * ye);
-            const double phi = asin(xe / q) + l;
+            const float q = sqrt(1. - ye * ye);
+            const float phi = asin(xe / q) + l;
 
             if ( (phi <= -CV_PI / 2) || (phi >= CV_PI / 2) ) {
               rmap[y][x][0] = -1;
@@ -117,15 +106,18 @@ void create_jovian_rotation_remap(double l,
             xe = A * q * sin(phi);
             ye = B * ye;
 
-            const double xx = xe * ca - ye * sa + x0;
-            const double yy = xe * sa + ye * ca + y0;
+            const float xx = xe * ca - ye * sa + x0;
+            const float yy = xe * sa + ye * ca + y0;
 
             rmap[y][x][0] = R2I(0, 0) * xx + R2I(0, 1) * yy + R2I(0, 2);
             rmap[y][x][1] = R2I(1, 0) * xx + R2I(1, 1) * yy + R2I(1, 2);
             wmask[y][x] = cos(phi);
           }
         }
+
+#if 0 // HAVE_TBB && !defined(Q_MOC_RUN)
       });
+#endif
 
 }
 

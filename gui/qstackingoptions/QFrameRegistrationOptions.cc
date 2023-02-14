@@ -1520,9 +1520,9 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           });
 
   interpolation_method_ctl =
-      add_enum_combobox<ecc2::ECC_INTERPOLATION_METHOD>(
+      add_enum_combobox<ECC_INTERPOLATION_METHOD>(
           "Interpolation method:",
-          [this](ecc2::ECC_INTERPOLATION_METHOD value) {
+          [this](ECC_INTERPOLATION_METHOD value) {
             if ( options_ && options_->image_registration_options.interpolation != value) {
               options_->image_registration_options.interpolation = value;
               Q_EMIT parameterChanged();
@@ -1530,9 +1530,9 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           });
 
   border_mode_ctl =
-      add_enum_combobox<ecc2::ECC_BORDER_MODE>(
+      add_enum_combobox<ECC_BORDER_MODE>(
           "Border mode:",
-          [this](ecc2::ECC_BORDER_MODE value) {
+          [this](ECC_BORDER_MODE value) {
             if ( options_ && options_->image_registration_options.border_mode != value ) {
               options_->image_registration_options.border_mode = value;
               Q_EMIT parameterChanged();

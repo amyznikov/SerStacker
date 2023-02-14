@@ -25,11 +25,11 @@ public:
   void set_motion_type(IMAGE_MOTION_TYPE motion_type);
   IMAGE_MOTION_TYPE motion_type() const;
 
-  void set_interpolation(enum ecc2::ECC_INTERPOLATION_METHOD method);
-  enum ecc2::ECC_INTERPOLATION_METHOD interpolation() const;
+  void set_interpolation(enum ECC_INTERPOLATION_METHOD method);
+  enum ECC_INTERPOLATION_METHOD interpolation() const;
 
-  void set_border_mode(enum ecc2::ECC_BORDER_MODE border_mode);
-  enum ecc2::ECC_BORDER_MODE border_mode() const;
+  void set_border_mode(enum ECC_BORDER_MODE border_mode);
+  enum ECC_BORDER_MODE border_mode() const;
 
   void set_border_value(const cv::Scalar & border_value);
   const cv::Scalar & border_value() const;
@@ -66,8 +66,8 @@ public:
 
 protected:
   IMAGE_MOTION_TYPE motion_type_ = IMAGE_MOTION_TRANSLATION;
-  enum ecc2::ECC_INTERPOLATION_METHOD interpolation_ = ecc2::ECC_INTER_LINEAR;
-  enum ecc2::ECC_BORDER_MODE border_mode_ = ecc2::ECC_BORDER_REPLICATE;
+  enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
+  enum ECC_BORDER_MODE border_mode_ = ECC_BORDER_REPLICATE;
   cv::Scalar border_value_ = cv::Scalar();
   int max_iterations_ = 30;
   double smooth_sigma_ = 1;

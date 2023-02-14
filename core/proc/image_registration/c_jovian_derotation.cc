@@ -1,20 +1,16 @@
 /*
- * jupiter.cc
+ * c_jovian_derotation.cc
  *
  *  Created on: Sep 7, 2021
  *      Author: amyznikov
  */
 
+#include "c_jovian_derotation.h"
 #include <core/io/save_image.h>
-#include <core/proc/planetary-disk-detection.h>
-#include <core/proc/morphology.h>
-#include <core/proc/geo-reconstruction.h>
-#include <tbb/tbb.h>
-#include <core/proc/eccalign.h>
-
 #include <core/ssprintf.h>
 #include <core/debug.h>
-#include "c_jovian_derotation.h"
+
+#include <tbb/tbb.h>
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT
@@ -68,71 +64,9 @@ void filter2D(int stype, int dtype, int kernel_type,
 
 }
 }
-//
-//static inline double square(double x)
-//{
-//  return x * x;
-//}
 
-//
 
-static inline void doFilter2D(const cv::Mat & src, cv::Mat & dst, int ddepth,
-    cv::InputArray kernel, const cv::Point & anchor,
-    double delta = 0, int borderType = cv::BORDER_REFLECT)
-{
-#if ( CV_VERSION_CURRRENT < CV_VERSION_INT(3,4,0) )
-  cv::filter2D(src, dst, ddepth, kernel, anchor, delta, borderType);
-#else
-
-  if( src.data == dst.data ) { // in-place filtering is not supported by this routine
-    CF_FATAL("APP BUG: Inplace doFilter2D() is not supported by this function. "
-        "Fix your source code.");
-    exit(1);
-  }
-
-  if( ddepth < 0 ) {
-    ddepth = src.depth();
-  }
-
-  dst.create(src.size(), CV_MAKETYPE(ddepth, src.channels()));
-
-  const cv::Point ofs(0, 0);
-  const cv::Size wsz(src.cols, src.rows);
-  const cv::Mat K = kernel.getMat();
-
-  cv::hal::filter2D(src.type(), dst.type(), K.type(),
-      src.data, src.step, dst.data, dst.step,
-      dst.cols, dst.rows, wsz.width, wsz.height, ofs.x, ofs.y,
-      K.data, K.step, K.cols, K.rows,
-      anchor.x, anchor.y,
-      delta, borderType, src.isSubmatrix());
-
-#endif
-}
-
-///*
-// * Five-point approximation to first order image derivative.
-// *  <https://en.wikipedia.org/wiki/Numerical_differentiation>
-// * */
-//static void differentiate(cv::InputArray _src, cv::Mat & gx, cv::Mat & gy, int ddepth = -1)
-//{
-//  static thread_local const cv::Matx<float, 1, 5> K(
-//      (+1.f / 12),
-//      (-8.f / 12),
-//      0.f,
-//      (+8.f / 12),
-//      (-1.f / 12));
-//
-//  if( ddepth < 0 ) {
-//    ddepth = std::max(_src.depth(), CV_32F);
-//  }
-//
-//  const cv::Mat &src = _src.getMat();
-//  doFilter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//  doFilter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//}
-
-void create_jovian_rotation_remap(double rotation_angle,
+void create_jovian_rotation_remap(double l,
     const cv::RotatedRect & E,
     const cv::Matx23d & R2I,
     const cv::Size & size,
@@ -150,7 +84,7 @@ void create_jovian_rotation_remap(double rotation_angle,
   typedef tbb::blocked_range<int> tbb_range;
 
   tbb::parallel_for(tbb_range(0, size.height, 64),
-      [E, R2I, sa, ca, rotation_angle, &rmap, &wmask](const tbb_range & r) {
+      [E, R2I, sa, ca, l, &rmap, &wmask](const tbb_range & r) {
 
         const double A = 0.5 * E.size.width;
         const double B = 0.5 * E.size.height;
@@ -171,7 +105,7 @@ void create_jovian_rotation_remap(double rotation_angle,
             }
 
             const double q = sqrt(1. - ye * ye);
-            const double phi = asin(xe / q) + rotation_angle;
+            const double phi = asin(xe / q) + l;
 
             if ( (phi <= -CV_PI / 2) || (phi >= CV_PI / 2) ) {
               rmap[y][x][0] = -1;
@@ -288,15 +222,6 @@ int c_jovian_derotation::max_eccflow_pyramid_level(int v)
   return eccflow_max_pyramid_level_;
 }
 
-//void c_jovian_derotation::set_hlines(const std::vector<float> & hlines)
-//{
-//  planetary_detector_.set_hlines(hlines);
-//}
-//
-//const std::vector<float>& c_jovian_derotation::hlines() const
-//{
-//  return planetary_detector_.hlines();
-//}
 
 void c_jovian_derotation::set_force_reference_ellipse(bool v)
 {
@@ -475,25 +400,12 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     c_euclidean_image_transform transform(
         cv::Vec2f(reference_ellipse_.center.x, reference_ellipse_.center.y),
         cv::Vec2f(current_ellipse_.center.x, current_ellipse_.center.y),
-        initial_orientation,
+        -initial_orientation,
         current_ellipse_.size.width / reference_ellipse_.size.width);
-
-//    cv::Matx23f T =
-//        createEuclideanTransform(
-//            reference_ellipse_.center.x, reference_ellipse_.center.y,
-//            current_ellipse_.center.x, current_ellipse_.center.y,
-//            current_ellipse_.size.width / reference_ellipse_.size.width,
-//            initial_orientation,
-//            CV_32F);
 
     cv::Mat tmp;
     cv::Mat2f rmap;
     transform.create_remap(rmap, reference_gray_image_.size());
-//    cv::Mat rmap =
-//        createRemap(ECC_MOTION_EUCLIDEAN_SCALED,
-//            T,
-//            reference_gray_image_.size(),
-//            CV_32F);
 
     cv::remap(current_normalized_image_, tmp, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
     cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
@@ -503,6 +415,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
     save_image(tmp, ssprintf("%s/rmap_current_gray_image_.tiff", debug_path_.c_str()));
   }
+
 
   cv::Mat1f current_rotated_normalized_image;
   cv::Mat1f current_difference_image;
@@ -520,12 +433,11 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
           initial_orientation + (j - num_orientations / 2) * orientation_step;
 
       const cv::Matx23f Tj =
-          createEuclideanTransform(
-              reference_ellipse_.center.x, reference_ellipse_.center.y,
-              current_ellipse_.center.x, current_ellipse_.center.y,
-              current_ellipse_.size.width / reference_ellipse_.size.width,
-              current_orientation,
-              CV_32F);
+          create_euclidean_transform(
+              cv::Vec2f(reference_ellipse_.center.x, reference_ellipse_.center.y),
+              cv::Vec2f(current_ellipse_.center.x, current_ellipse_.center.y),
+              -current_orientation,
+              current_ellipse_.size.width / reference_ellipse_.size.width);
 
       create_jovian_rotation_remap(l,
           reference_ellipse_,
@@ -583,13 +495,13 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       best_cost, best_rotation_index, best_rotation * 180 / CV_PI,
       best_orientation * 180 / CV_PI);
 
+
   cv::Matx23f T =
-      createEuclideanTransform(
-          reference_ellipse_.center.x, reference_ellipse_.center.y,
-          current_ellipse_.center.x, current_ellipse_.center.y,
-          current_ellipse_.size.width / reference_ellipse_.size.width,
-          best_orientation,
-          CV_32F);
+      create_euclidean_transform(
+          cv::Vec2f(reference_ellipse_.center.x, reference_ellipse_.center.y),
+          cv::Vec2f(current_ellipse_.center.x, current_ellipse_.center.y),
+          -best_orientation,
+          current_ellipse_.size.width / reference_ellipse_.size.width);
 
   create_jovian_rotation_remap(best_rotation,
       reference_ellipse_,

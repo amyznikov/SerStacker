@@ -147,21 +147,21 @@ static void rotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & 
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
 
-  static const auto atan2 =
-      [](const cv::Mat1f & Nx, const cv::Mat1f & Ny, cv::Mat1f & angle) {
-
-        angle.create(Nx.size());
-        for ( int y = 0; y < Nx.rows; ++y ) {
-          for ( int x = 0; x < Nx.cols; ++x ) {
-            angle[y][x] = std::atan2 (Ny[y][x], Nx[y][x]) * 180 / CV_PI;
-          }
-        }
-
-      };
-
+//  static const auto atan2 =
+//      [](const cv::Mat1f & Nx, const cv::Mat1f & Ny, cv::Mat1f & angle) {
+//
+//        angle.create(Nx.size());
+//        for ( int y = 0; y < Nx.rows; ++y ) {
+//          for ( int x = 0; x < Nx.cols; ++x ) {
+//            angle[y][x] = std::atan2 (Ny[y][x], Nx[y][x]) * 180 / CV_PI;
+//          }
+//        }
+//
+//      };
 
   cv::Mat tmp;
 
+  detector_.set_enable_debug_images(true);
   detector_.detect_jovian_disk(image, mask);
 
   switch (display_type_) {

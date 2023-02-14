@@ -35,6 +35,9 @@ public:
   void set_gradient_blur(double v);
   double gradient_blur() const;
 
+  void set_enable_debug_images(bool v);
+  bool enable_debug_images() const;
+
   void set_options(const c_jovian_ellipse_detector_options & v);
   const c_jovian_ellipse_detector_options & options() const;
   c_jovian_ellipse_detector_options & options();
@@ -58,6 +61,7 @@ public:
 
 protected:
   c_jovian_ellipse_detector_options options_;
+  bool enable_debug_images_ = false;
 
   cv::RotatedRect ellipse_;
   cv::Mat detected_planetary_disk_mask_;

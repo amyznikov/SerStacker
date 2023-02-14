@@ -7,9 +7,7 @@
 
 #include "QCameraFocusMeasure.h"
 #include <gui/widgets/qsprintf.h>
-#include <core/proc/eccalign.h>
 #include <core/proc/morphology.h>
-#include <core/proc/smap.h>
 #include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 

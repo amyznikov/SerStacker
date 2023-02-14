@@ -15,9 +15,10 @@
 bool pyramid_downscale(cv::InputArray src,
     cv::Mat & dst,
     int max_levels,
-    int border_mode);
+    int borderType = cv::BORDER_DEFAULT);
 
 bool pyramid_upscale(cv::Mat & image,
-    const cv::Size & dstSize);
+    const cv::Size & dstSize,
+    int borderType = cv::BORDER_DEFAULT );
 
 #endif /* __pyrscale_h__ */

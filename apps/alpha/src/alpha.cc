@@ -5,7 +5,6 @@
  *      Author: amyznikov
  */
 
-#include <core/proc/eccalign.h>
 #include <core/improc/c_image_processor.h>
 #include <core/improc/c_unsharp_mask_routine.h>
 #include <core/improc/c_align_color_channels_routine.h>

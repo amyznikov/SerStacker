@@ -143,7 +143,14 @@ protected:
   bool fix_scale_ = false;
 };
 
+inline cv::Matx23f create_euclidean_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle = 0, float scale = 1)
+{
+  const float ca = scale * std::cos(angle);
+  const float sa = scale * std::sin(angle);
 
+  return cv::Matx23f(ca, -sa, T[0] - (ca * C[0] - sa * C[1]),
+      sa, ca, T[1] - (sa * C[0] + ca * C[1]));
+}
 
 
 /**

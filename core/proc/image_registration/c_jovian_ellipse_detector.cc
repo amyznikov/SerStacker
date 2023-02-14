@@ -153,24 +153,11 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
 }
 
 
-template<class TransformType>
-struct c_ecc_transform;
 
-template<>
-struct c_ecc_transform<c_translation_image_transform> {
-  typedef c_translation_ecc_motion_model motion_model;
-};
-
-template<>
-struct c_ecc_transform<c_euclidean_image_transform> {
-  typedef c_euclidean_ecc_motion_model motion_model;
-};
-
-
-template<class TransformType>
-bool align_images_ecc(TransformType * transform, cv::InputArray input_image, cv::InputArray reference_image)
+template<class ImageTransformType>
+bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image, cv::InputArray reference_image)
 {
-  typename c_ecc_transform<TransformType>::motion_model
+  typename c_ecc_motion<ImageTransformType>::motion_model
     motion_model(transform);
 
   ecc2::c_ecc_forward_additive ecc(&motion_model);
@@ -237,6 +224,16 @@ void c_jovian_ellipse_detector::set_gradient_blur(double v)
 double c_jovian_ellipse_detector::gradient_blur() const
 {
   return options_.gradient_blur;
+}
+
+void c_jovian_ellipse_detector::set_enable_debug_images(bool v)
+{
+  enable_debug_images_ = v;
+}
+
+bool c_jovian_ellipse_detector::enable_debug_images() const
+{
+  return enable_debug_images_;
 }
 
 void c_jovian_ellipse_detector::set_options(const c_jovian_ellipse_detector_options & v)
@@ -376,7 +373,6 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
   initial_artifial_ellipse_edge_.setTo(0);
 
   double A = 0.5 * ellipseAMS_.size.width;
-  //double B = 0.5 * ellipseAMS_.size.height;
   double B = A * jovian_polar_to_equatorial_axis_ratio;
 
   cv::RotatedRect rc(ellipseAMS_.center, cv::Size(2 * A, 2 * B), 0);
@@ -384,16 +380,17 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
   cv::ellipse(initial_artifial_ellipse_edge_, rc, 1, 1, cv::LINE_AA);
   cv::GaussianBlur(initial_artifial_ellipse_edge_, initial_artifial_ellipse_edge_, cv::Size(), 1, 1);
 
-  cv::Mat2f rmap;
 
   c_euclidean_image_transform transform(cv::Vec2f(ellipseAMS_.center.x, ellipseAMS_.center.y),
       cv::Vec2f(ellipseAMS_.center.x, ellipseAMS_.center.y),
       -ellipseAMS_.angle * CV_PI / 180,
       1);
 
-  { // for debug
+  cv::Mat2f rmap;
 
-    CF_DEBUG("H");
+  if ( enable_debug_images_ ) {
+    // for debug
+
     transform.create_remap(rmap,
         initial_artifial_ellipse_edge_.size());
 
@@ -402,27 +399,21 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
         rmap,
         cv::noArray(),
         cv::INTER_LINEAR);
-    CF_DEBUG("H");
   }
-
-  CF_DEBUG("H");
 
   if( !align_images_ecc(&transform, initial_artifial_ellipse_edge_, detected_planetary_disk_edge_) ) {
     CF_ERROR("align_images_ecc(artifical_ellipse) fails");
     return false;
   }
 
-  CF_DEBUG("H");
   transform.create_remap(rmap,
       initial_artifial_ellipse_edge_.size());
-  CF_DEBUG("H");
 
   cv::remap(initial_artifial_ellipse_edge_,
       aligned_artifial_ellipse_edge_,
       rmap,
       cv::noArray(),
       cv::INTER_LINEAR);
-  CF_DEBUG("H");
 
   cv::compare(aligned_artifial_ellipse_edge_, 0.1,
       aligned_artifial_ellipse_edge_mask_,

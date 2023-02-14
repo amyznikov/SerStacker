@@ -23,5 +23,32 @@ inline c_ecc_motion_model::sptr create_ecc_motion_model(const c_image_transform:
   return create_ecc_motion_model(transform.get());
 }
 
+template<class TransformType>
+struct c_ecc_motion;
+
+template<>
+struct c_ecc_motion<c_translation_image_transform> {
+  typedef c_translation_ecc_motion_model motion_model;
+};
+
+template<>
+struct c_ecc_motion<c_euclidean_image_transform> {
+  typedef c_euclidean_ecc_motion_model motion_model;
+};
+
+template<>
+struct c_ecc_motion<c_affine_image_transform> {
+  typedef c_affine_ecc_motion_model motion_model;
+};
+
+template<>
+struct c_ecc_motion<c_homography_image_transform> {
+  typedef c_homography_ecc_motion_model motion_model;
+};
+
+template<>
+struct c_ecc_motion<c_quadratic_image_transform> {
+  typedef c_quadratic_ecc_motion_model motion_model;
+};
 
 #endif /* __ecc_motion_model_h__ */

@@ -1,5 +1,5 @@
 /*
- * jupiter.h
+ * c_jovian_derotation.h
  *
  *  Created on: Sep 7, 2021
  *      Author: amyznikov
@@ -26,7 +26,6 @@ public:
   bool compute(cv::InputArray input_image,
       cv::InputArray input_mask = cv::noArray());
 
-
   void set_jovian_detector_options(const c_jovian_ellipse_detector_options & v);
   const c_jovian_ellipse_detector_options & jovian_detector_options() const;
 
@@ -49,9 +48,6 @@ public:
 
   void set_eccflow_max_pyramid_level(int v);
   int max_eccflow_pyramid_level(int v);
-
-//  void set_hlines(const std::vector<float> & hlines);
-//  const std::vector<float> & hlines() const;
 
   void set_force_reference_ellipse(bool v);
   bool force_reference_ellipse() const;
@@ -145,7 +141,7 @@ protected:
   FIXME: generalize ref2input_transform to allow arbitrary
         remaps between reference and input images
  */
-void create_jovian_rotation_remap(double rotation_angle,
+void create_jovian_rotation_remap(double longitude_rotation_angle,
     const cv::RotatedRect & ellipse,
     const cv::Matx23d & ref2input_affine_transform,
     const cv::Size & remap_size,

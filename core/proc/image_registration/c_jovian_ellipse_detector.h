@@ -63,7 +63,9 @@ protected:
   cv::Mat1b aligned_artifial_ellipse_edge_mask_;
   cv::Mat1b aligned_artifial_ellipse_mask_;
   cv::RotatedRect ellipseAMS2_;
-
 };
+
+cv::Rect compute_ellipse_bounding_box(const cv::RotatedRect & rc);
+cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & rc, const cv::Size & total_image_size, int margin = -1);
 
 #endif /* __c_jovian_ellipse_detector_h__ */

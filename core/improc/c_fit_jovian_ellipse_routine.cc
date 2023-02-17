@@ -73,34 +73,19 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
   return false;
 }
 
-//
-///*
-// * Five-point approximation to first order image derivative.
-// *  <https://en.wikipedia.org/wiki/Numerical_differentiation>
-// * */
-//static void differentiate(cv::InputArray _src, cv::Mat & gx, cv::Mat & gy, int ddepth)
-//{
-//  static thread_local const cv::Matx<float, 1, 5> K(
-//      (+1.f / 12),
-//      (-8.f / 12),
-//        0.f,
-//      (+8.f / 12),
-//      (-1.f / 12));
-//
-//  if ( ddepth < 0 ) {
-//    ddepth = std::max(_src.depth(), CV_32F);
-//  }
-//
-//  const cv::Mat & src = _src.getMat();
-//  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//}
-
 static void rotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & rc,
     const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
 {
+
+  if ( 1 ) {
+    cv::rectangle(image, compute_ellipse_bounding_box(rc),
+        cv::Scalar(0, 0, 1),
+        3);
+  }
+
   cv::Point2f pts[4];
   rc.points(pts);
+
 
   for( int i = 0; i < 4; i++ ) {
     cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);

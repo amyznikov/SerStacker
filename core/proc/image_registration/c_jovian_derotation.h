@@ -29,8 +29,8 @@ public:
   void set_jovian_detector_options(const c_jovian_ellipse_detector_options & v);
   const c_jovian_ellipse_detector_options & jovian_detector_options() const;
 
-  void set_pyramid_minimum_ellipse_size(int v);
-  int pyramid_minimum_ellipse_size() const;
+  void set_max_pyramid_level(int v);
+  int max_pyramid_level() const;
 
   // set mininum rotation angle for best rotation search range.
   void set_min_rotation(double v);
@@ -73,6 +73,9 @@ protected:
       const cv::Mat1f & rotation_mask,
       cv::Mat1f * difference_image = nullptr) ;
 
+  static int estimate_max_pyramid_level(const cv::RotatedRect & ellipse,
+      int pyramid_minimum_ellipse_size);
+
 protected:
 
   cv::RotatedRect reference_ellipse_;
@@ -92,7 +95,7 @@ protected:
 
   double min_rotation_ = -30 * CV_PI / 180;
   double max_rotation_ = +30 * CV_PI / 180;
-  int pyramid_minimum_ellipse_size_ = 128;
+  int max_pyramid_level_ = -1;
   int num_orientations_ = 3;
   int eccflow_support_scale_ = 4;
   int eccflow_normalization_scale_ = 0;

@@ -1355,11 +1355,11 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
   connect(detector_setting_ctl, &QJovianEllipseDetectorSettings::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  controls.append(pyramid_minimum_ellipse_size_ctl =
-      add_numeric_box<int>("Pyr. Min. Image size [px]:",
+  controls.append(max_pyramid_level_ctl =
+      add_numeric_box<int>("max pyramid level:",
           [this](int value) {
-            if ( options_ && options_->pyramid_minimum_ellipse_size != value ) {
-              options_->pyramid_minimum_ellipse_size = value;
+            if ( options_ && options_->max_pyramid_level != value ) {
+              options_->max_pyramid_level = value;
               Q_EMIT parameterChanged();
             }
           }));
@@ -1480,7 +1480,7 @@ void QJovianDerotationOptions::onupdatecontrols()
   }
   else {
     enableJovianDerotation_ctl->setChecked(options_->enabled);
-    pyramid_minimum_ellipse_size_ctl->setValue(options_->pyramid_minimum_ellipse_size);
+    max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
     num_orientations_ctl->setValue(options_->num_orientations);

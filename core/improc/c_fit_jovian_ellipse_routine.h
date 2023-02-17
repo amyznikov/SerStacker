@@ -30,7 +30,6 @@ public:
     display_aligned_artifial_ellipse_mask,
     display_planetary_disk_ellipseAMS2,
     display_gray_image,
-    display_normalized_image,
     display_final_ellipse_fit,
   };
 
@@ -40,23 +39,12 @@ public:
   void set_stdev_factor(double v);
   double stdev_factor() const;
 
-  void set_normalization_scale(int v);
-  int normalization_scale() const;
-
-  void set_normalization_blur(double v);
-  double normalization_blur() const;
-
-  void set_gradient_blur(double v);
-  double gradient_blur() const;
-
   c_jovian_ellipse_detector * detector();
   const c_jovian_ellipse_detector * detector() const;
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "stdev_factor");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_scale, "normalization_scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_blur, "normalization_blur");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
   }
 

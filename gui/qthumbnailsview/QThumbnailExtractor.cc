@@ -71,7 +71,7 @@ void QThumbnailExtractor::run()
 
   if( !currentImagePathFileName_.isEmpty() ) {
 
-    emit extracted(rid,
+    Q_EMIT extracted(rid,
         loadThumbnailIcon(currentImagePathFileName_, thumbSize_),
         currentImagePathFileName_);
 

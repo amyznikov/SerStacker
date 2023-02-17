@@ -10,8 +10,8 @@
 
 #include <QtGui/QtGui>
 
-class QThumbnailExtractor
-    : public QThread
+class QThumbnailExtractor :
+    public QThread
 {
   Q_OBJECT;
 public:
@@ -31,7 +31,7 @@ public:
   void cancel();
   bool canceled() const;
 
-signals:
+Q_SIGNALS:
   void extracted(int reqId, const QIcon & icon, const QString & iconPathFileName);
 
 private:

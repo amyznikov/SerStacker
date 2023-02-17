@@ -10,14 +10,13 @@
 
 #include <QtCore/QtCore>
 
-class QSearchImageFiles
-    : public QThread
+class QSearchImageFiles :
+    public QThread
 {
   Q_OBJECT;
 public:
   typedef QSearchImageFiles ThisClass;
   typedef QThread Base;
-
 
   QSearchImageFiles();
   ~QSearchImageFiles();
@@ -27,7 +26,7 @@ public:
   void cancel();
   bool canceled() const;
 
-signals:
+Q_SIGNALS:
   void imageFound(int reqId, const QString & imagePathFileName);
 
 private:

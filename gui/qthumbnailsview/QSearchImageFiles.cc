@@ -63,7 +63,7 @@ void QSearchImageFiles::run()
 
   while ( !cancel_requested_ && iterator.hasNext() ) {
 
-    emit imageFound(rid, iterator.next());
+    Q_EMIT imageFound(rid, iterator.next());
 
     QThread::yieldCurrentThread();
   }

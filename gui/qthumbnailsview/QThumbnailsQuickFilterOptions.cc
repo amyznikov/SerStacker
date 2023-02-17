@@ -32,16 +32,6 @@ const c_enum_member * members_of<Qt::MatchFlag>()
   };
   return members;
 }
-//
-//const struct QtMatchingFlags_desc QtMatchingFlags[] = {
-//    {"Wildcard", Qt::MatchWildcard},
-//    {"Contains", Qt::MatchContains },
-//    {"StartsWith", Qt::MatchStartsWith},
-//    {"EndsWith", Qt::MatchEndsWith},
-//    {"Exact", Qt::MatchExactly},
-//    {"RegExp", Qt::MatchRegularExpression},
-//    {nullptr, (Qt::MatchFlag)(0)}
-//};
 
 
 QString toQString(Qt::MatchFlags v)
@@ -110,7 +100,7 @@ bool matchQuickFilter(const QString & text,
        break;
      }
 
-#if !(QT_DEPRECATED_SINCE(5, 15))
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
      case Qt::MatchRegExp : {
        matchStatus = QRegExp(pattern, cs, QRegExp::RegExp).exactMatch(text);
        break;
@@ -150,19 +140,21 @@ bool matchQuickFilter(const QString & text,
 }
 
 
-QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
-  : Base("QThumbnailsQuickFilterOptions", parent)
+QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent) :
+    Base("QThumbnailsQuickFilterOptions", parent)
 {
 
   searchText_ctl = new QComboBox(this);
   searchText_ctl->setEditable(true);
-#if !(QT_DEPRECATED_SINCE(5, 13))
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 13, 0)
   searchText_ctl->setAutoCompletion(true);
 #else
   QCompleter *completer = new QCompleter(this);
   completer->setModel(searchText_ctl->model());
   searchText_ctl->setCompleter(completer);
 #endif
+
   searchText_ctl->setMinimumContentsLength(32);
   searchText_ctl->setInsertPolicy(QComboBox::InsertAtTop);
 
@@ -172,23 +164,27 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent)
   connect(searchText_ctl, &QComboBox::currentTextChanged,
       this, &ThisClass::onSearchTextChanged);
 
+  connect(searchText_ctl,static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+      this, &ThisClass::onSearchTextCurrentIndexChanged);
+
+
   matchingFlags_ctl = add_enum_combobox<Qt::MatchFlag>(
       "Matching type:",
       [this](Qt::MatchFlags) {
-        emit parameterChanged();
+        Q_EMIT parameterChanged();
       });
 
   caseSensitivity_ctl =
       add_checkbox("Case sensitive",
           [this] (bool) {
-            emit parameterChanged();
+            Q_EMIT parameterChanged();
           });
 
 
   invertMatch_ctl =
       add_checkbox("Invert match",
         [this] (bool) {
-          emit parameterChanged();
+          Q_EMIT parameterChanged();
         });
 
   loadSavedFilters();
@@ -244,10 +240,25 @@ void QThumbnailsQuickFilterOptions::saveFilters()
 
 }
 
+void QThumbnailsQuickFilterOptions::onSearchTextCurrentIndexChanged(int index)
+{
+  if( index > 0 && !updatingControls() ) {
+
+    c_update_controls_lock lock(this);
+
+    const QString text =
+        searchText_ctl->currentText();
+
+    searchText_ctl->removeItem(index);
+    searchText_ctl->insertItem(0, text);
+    searchText_ctl->setEditText(text);
+  }
+}
+
 void QThumbnailsQuickFilterOptions::onSearchTextChanged(const QString & s)
 {
   if ( !updatingControls() )  {
-    emit parameterChanged();
+    Q_EMIT parameterChanged();
   }
 
 }

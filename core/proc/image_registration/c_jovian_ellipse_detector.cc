@@ -186,16 +186,6 @@ bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image
 } // namespace
 
 
-void c_jovian_ellipse_detector::set_normalization_scale(int v)
-{
-  options_.normalization_scale = v;
-}
-
-int c_jovian_ellipse_detector::normalization_scale() const
-{
-  return options_.normalization_scale;
-}
-
 void c_jovian_ellipse_detector::set_stdev_factor(double v)
 {
   options_.stdev_factor = v;
@@ -204,26 +194,6 @@ void c_jovian_ellipse_detector::set_stdev_factor(double v)
 double c_jovian_ellipse_detector::stdev_factor() const
 {
   return options_.stdev_factor;
-}
-
-void c_jovian_ellipse_detector::set_normalization_blur(double v)
-{
-  options_.normalization_blur = v;
-}
-
-double c_jovian_ellipse_detector::normalization_blur() const
-{
-  return options_.normalization_blur;
-}
-
-void c_jovian_ellipse_detector::set_gradient_blur(double v)
-{
-  options_.gradient_blur = v;
-}
-
-double c_jovian_ellipse_detector::gradient_blur() const
-{
-  return options_.gradient_blur;
 }
 
 void c_jovian_ellipse_detector::set_enable_debug_images(bool v)
@@ -304,11 +274,6 @@ const cv::RotatedRect& c_jovian_ellipse_detector::planetary_disk_ellipse() const
 const cv::Mat& c_jovian_ellipse_detector::gray_image() const
 {
   return gray_image_;
-}
-
-const cv::Mat& c_jovian_ellipse_detector::normalized_image() const
-{
-  return normalized_image_;
 }
 
 bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::InputArray _mask)
@@ -445,35 +410,6 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
   }
   else {
     cv::cvtColor(_image, gray_image_, cv::COLOR_BGR2GRAY);
-  }
-
-  if( options_.normalization_scale < 0 ) {
-    gray_image_.copyTo(normalized_image_);
-  }
-  else {
-    cv::Mat mean;
-
-    cv::meanStdDev(gray_image_, m, s,
-        aligned_artifial_ellipse_mask_);
-
-    if( options_.normalization_scale == 0 ) {
-      cv::subtract(gray_image_, m, mean);
-    }
-    else {
-      pyramid_downscale(gray_image_, mean, options_.normalization_scale, cv::BORDER_REPLICATE);
-      pyramid_upscale(mean, gray_image_.size());
-      cv::subtract(gray_image_, mean, mean);
-    }
-
-    cv::multiply(mean, 1. / s[0], normalized_image_);
-  }
-
-  if( options_.normalization_blur > 0 ) {
-    cv::GaussianBlur(normalized_image_,
-        normalized_image_,
-        cv::Size(),
-        options_.normalization_blur,
-        options_.normalization_blur);
   }
 
   return true;

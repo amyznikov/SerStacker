@@ -546,6 +546,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   //SAVE_OPTION(section, image_registration_options.jovian_derotation, align_planetary_disk_masks);
   SAVE_OPTION(section, image_registration_options.jovian_derotation, min_rotation);
   SAVE_OPTION(section, image_registration_options.jovian_derotation, max_rotation);
+  SAVE_OPTION(section, image_registration_options.jovian_derotation, pyramid_minimum_ellipse_size);
   SAVE_OPTION(section, image_registration_options.jovian_derotation, num_orientations);
   SAVE_OPTION(section, image_registration_options.jovian_derotation, eccflow_support_scale);
   SAVE_OPTION(section, image_registration_options.jovian_derotation, eccflow_normalization_scale);
@@ -554,10 +555,7 @@ bool c_frame_registration_options::serialize(c_config_setting settings) const
   SAVE_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames);
   SAVE_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
   SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, stdev_factor);
-  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_scale);
   SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
-  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_blur);
-  SAVE_OPTION(section, image_registration_options.jovian_derotation.ellipse, gradient_blur);
 
 
   return true;
@@ -629,6 +627,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     //LOAD_OPTION(section, image_registration_options.jovian_derotation, align_planetary_disk_masks);
     LOAD_OPTION(section, image_registration_options.jovian_derotation, min_rotation);
     LOAD_OPTION(section, image_registration_options.jovian_derotation, max_rotation);
+    LOAD_OPTION(section, image_registration_options.jovian_derotation, pyramid_minimum_ellipse_size);
     LOAD_OPTION(section, image_registration_options.jovian_derotation, num_orientations);
     LOAD_OPTION(section, image_registration_options.jovian_derotation, eccflow_support_scale);
     LOAD_OPTION(section, image_registration_options.jovian_derotation, eccflow_normalization_scale);
@@ -637,10 +636,7 @@ bool c_frame_registration_options::deserialize(c_config_setting settings)
     LOAD_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames);
     LOAD_OPTION(section, image_registration_options.jovian_derotation, derotate_all_frames_max_context_size);
     LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, stdev_factor);
-    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_scale);
     LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, force_reference_ellipse);
-    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, normalization_blur);
-    LOAD_OPTION(section, image_registration_options.jovian_derotation.ellipse, gradient_blur);
   }
 
   return true;

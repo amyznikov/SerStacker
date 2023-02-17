@@ -381,6 +381,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
     jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
     jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
+    jovian_derotation_.set_pyramid_minimum_ellipse_size(options_.jovian_derotation.pyramid_minimum_ellipse_size);
     jovian_derotation_.set_num_orientations(options_.jovian_derotation.num_orientations);
     jovian_derotation_.set_force_reference_ellipse(options_.jovian_derotation.ellipse.force_reference_ellipse);
     jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);

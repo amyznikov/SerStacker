@@ -24,7 +24,6 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
 
       { c_fit_jovian_ellipse_routine::display_planetary_disk_ellipseAMS2, "planetary_disk_ellipseAMS2", },
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
-      { c_fit_jovian_ellipse_routine::display_normalized_image, "normalized_image", },
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, nullptr, },
   };
@@ -42,16 +41,6 @@ c_fit_jovian_ellipse_routine::display_type c_fit_jovian_ellipse_routine::display
   return display_type_;
 }
 
-void c_fit_jovian_ellipse_routine::set_normalization_scale(int v)
-{
-  return detector_.set_normalization_scale(v);
-}
-
-int c_fit_jovian_ellipse_routine::normalization_scale() const
-{
-  return detector_.normalization_scale();
-}
-
 void c_fit_jovian_ellipse_routine::set_stdev_factor(double v)
 {
   detector_.set_stdev_factor(v);
@@ -60,26 +49,6 @@ void c_fit_jovian_ellipse_routine::set_stdev_factor(double v)
 double c_fit_jovian_ellipse_routine::stdev_factor() const
 {
   return detector_.stdev_factor();
-}
-
-void c_fit_jovian_ellipse_routine::set_normalization_blur(double v)
-{
-  return detector_.set_normalization_blur(v);
-}
-
-double c_fit_jovian_ellipse_routine::normalization_blur() const
-{
-  return detector_.normalization_blur();
-}
-
-void c_fit_jovian_ellipse_routine::set_gradient_blur(double v)
-{
-  return detector_.set_gradient_blur(v);
-}
-
-double c_fit_jovian_ellipse_routine::gradient_blur() const
-{
-  return detector_.gradient_blur();
 }
 
 c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector()
@@ -96,9 +65,6 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
 {
   if( base::serialize(settings, save) ) {
 
-    SERIALIZE_PROPERTY(settings, save, *this, normalization_scale);
-    SERIALIZE_PROPERTY(settings, save, *this, normalization_blur);
-    SERIALIZE_PROPERTY(settings, save, *this, gradient_blur);
     SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
     SERIALIZE_PROPERTY(settings, save, *this, display);
 
@@ -200,12 +166,6 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
 
   case display_gray_image:
     cv::cvtColor(detector_.gray_image(), image, cv::COLOR_GRAY2BGR);
-    rotatedRectange(image, detector_.ellipseAMS2(), CV_RGB(0, 1, 0), 1);
-    cv::ellipse(image, detector_.ellipseAMS2(), CV_RGB(0, 0, 1), 1);
-    break;
-
-  case display_normalized_image:
-    cv::cvtColor(detector_.normalized_image(), image, cv::COLOR_GRAY2BGR);
     rotatedRectange(image, detector_.ellipseAMS2(), CV_RGB(0, 1, 0), 1);
     cv::ellipse(image, detector_.ellipseAMS2(), CV_RGB(0, 0, 1), 1);
     break;

@@ -1352,6 +1352,17 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       detector_setting_ctl = new QJovianEllipseDetectorSettings(this));
   controls.append(detector_setting_ctl);
 
+  connect(detector_setting_ctl, &QJovianEllipseDetectorSettings::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  controls.append(pyramid_minimum_ellipse_size_ctl =
+      add_numeric_box<int>("Pyr. Min. Image size [px]:",
+          [this](int value) {
+            if ( options_ && options_->pyramid_minimum_ellipse_size != value ) {
+              options_->pyramid_minimum_ellipse_size = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
 
   controls.append(min_rotation_ctl =
       add_numeric_box<double>("min_rotation [deg]:",
@@ -1371,6 +1382,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           }));
 
+
+
   controls.append(num_orientations_ctl =
       add_numeric_box<int>("num_orientations:",
           [this](int value) {
@@ -1379,6 +1392,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
               Q_EMIT parameterChanged();
             }
           }));
+
 
 
 //  controls.append(align_planetary_disk_masks_ctl =
@@ -1466,6 +1480,7 @@ void QJovianDerotationOptions::onupdatecontrols()
   }
   else {
     enableJovianDerotation_ctl->setChecked(options_->enabled);
+    pyramid_minimum_ellipse_size_ctl->setValue(options_->pyramid_minimum_ellipse_size);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
     num_orientations_ctl->setValue(options_->num_orientations);

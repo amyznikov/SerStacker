@@ -12,13 +12,6 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/addctrl.h>
 
-//
-//const extern struct QtMatchingFlags_desc {
-//  const char * name;
-//  Qt::MatchFlags value;
-//} QtMatchingFlags[];
-//
-
 QString toQString(Qt::MatchFlags m);
 
 Qt::MatchFlags fromQString(const QString & s,
@@ -31,20 +24,6 @@ bool matchQuickFilter(const QString & text,
 
 typedef QEnumComboBox<Qt::MatchFlag> QThumbnailsQuickFilterMatchingFlagsCombo;
 
-//class QThumbnailsQuickFilterMatchingFlagsCombo
-//    : public QEnumComboBox<Qt::MatchFlag>
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QEnumComboBox<Qt::MatchFlag> Base;
-//
-//  QThumbnailsQuickFilterMatchingFlagsCombo(QWidget * parent = Q_NULLPTR)
-//      : Base(parent)
-//    {}
-//
-//};
-//
-
 class QThumbnailsQuickFilterOptions
     : public QSettingsWidget
 {
@@ -53,7 +32,7 @@ public:
   typedef QThumbnailsQuickFilterOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QThumbnailsQuickFilterOptions(QWidget * parent = Q_NULLPTR);
+  QThumbnailsQuickFilterOptions(QWidget * parent = nullptr);
   ~QThumbnailsQuickFilterOptions();
 
   void setSearchText(const QString & v);
@@ -69,25 +48,26 @@ protected:
   void loadSavedFilters();
   void saveFilters();
 
-protected slots:
+protected Q_SLOTS:
+  void onSearchTextCurrentIndexChanged(int);
   void onSearchTextChanged(const QString & );
 protected:
-  QComboBox * searchText_ctl = Q_NULLPTR;
-  QThumbnailsQuickFilterMatchingFlagsCombo * matchingFlags_ctl = Q_NULLPTR;
-  QCheckBox * caseSensitivity_ctl = Q_NULLPTR;
-  QCheckBox * invertMatch_ctl = Q_NULLPTR;
+  QComboBox * searchText_ctl = nullptr;
+  QThumbnailsQuickFilterMatchingFlagsCombo * matchingFlags_ctl = nullptr;
+  QCheckBox * caseSensitivity_ctl = nullptr;
+  QCheckBox * invertMatch_ctl = nullptr;
 };
 
 
-class QThumbnailsQuickFilterDialogBox
-    : public QDialog
+class QThumbnailsQuickFilterDialogBox :
+    public QDialog
 {
   Q_OBJECT;
 public:
   typedef QThumbnailsQuickFilterDialogBox ThisClass;
   typedef QDialog Base;
 
-  QThumbnailsQuickFilterDialogBox(QWidget * parent = Q_NULLPTR);
+  QThumbnailsQuickFilterDialogBox(QWidget * parent = nullptr);
 
 public:
   void setSearchText(const QString & v);
@@ -99,11 +79,11 @@ public:
   void setInvertMatch(bool v);
   bool invertMatch() const;
 
-signals:
+Q_SIGNALS:
   void parameterChanged();
 
 protected:
-  QThumbnailsQuickFilterOptions * form_ = Q_NULLPTR;
+  QThumbnailsQuickFilterOptions * form_ = nullptr;
 };
 
 

@@ -55,33 +55,6 @@ QJovianEllipseDetectorSettings::QJovianEllipseDetectorSettings(QWidget * parent)
             }
           });
 
-  normalization_scale_ctl =
-      add_numeric_box<int>("normalization_scale",
-          [this](int v) {
-            if ( options_ && options_->normalization_scale != v ) {
-              options_->normalization_scale = v;
-              emit parameterChanged();
-            }
-          });
-
-  normalization_blur_ctl =
-      add_numeric_box<float>("normalization_blur",
-          [this](float v) {
-            if ( options_ && options_->normalization_blur != v ) {
-              options_->normalization_blur = v;
-              emit parameterChanged();
-            }
-          });
-
-  gradient_blur_ctl =
-      add_numeric_box<float>("gradient_blur",
-          [this](float v) {
-            if ( options_ && options_->gradient_blur != v ) {
-              options_->gradient_blur = v;
-              emit parameterChanged();
-            }
-          });
-
   force_reference_ellipse_ctl =
       add_checkbox("force reference ellipse",
           [this](bool checked) {
@@ -111,9 +84,6 @@ void QJovianEllipseDetectorSettings::onupdatecontrols()
   else {
 
     stdev_factor_ctl->setValue(options_->stdev_factor);
-    normalization_scale_ctl->setValue(options_->normalization_scale);
-    normalization_blur_ctl->setValue(options_->normalization_blur);
-    gradient_blur_ctl->setValue(options_->gradient_blur);
     force_reference_ellipse_ctl->setChecked(options_->force_reference_ellipse);
 
     setEnabled(true);

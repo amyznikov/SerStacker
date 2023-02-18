@@ -133,45 +133,13 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
   const cv::Matx23f a =
       affine_matrix;
 
-
-  // convert to SerStacker representation of the translation
-  /*
-  s * ( ca * (x-ttx) - sa * ( y - tty) )
-  s * ( sa * (x-ttx) + ca * ( y - tty) )
-
-
-  s * ( ca * x - ca * ttx - sa * y + sa * tty )
-  s * ( sa * x - sa * ttx + ca * y - ca * tty )
-
-  s * ( ca * x - sa * y - ca * ttx + sa * tty )
-  s * ( sa * x + ca * y - sa * ttx - ca * tty )
-
-  s * ( ca * x - sa * y       - (ca * ttx - sa * tty) )
-  s * ( sa * x + ca * y       - (sa * ttx + ca * tty) )
-
-
-  tx = - s * ( ca * ttx - sa * tty )
-  ty = - s * ( sa * ttx + ca * tty )
-
-  tx = - ( s * ca * ttx - s * sa * tty )
-  ty = - ( s * sa * ttx + s * ca * tty )
-
-  -[tx] = ( s * ca  - s * sa ) [ ttx ]
-  -[ty] = ( s * sa  + s * ca ) [ ttx ]
-
-  [ttx] = - | s * ca  - s * sa |^-1  [tx]
-  [tty] = - | s * sa  + s * ca |     [ty]
-
-   */
   const float scale =
       std::sqrt(a(0, 0) * a(0, 0) + a(0, 1) * a(0, 1));
 
   const float angle =
-      std::atan2(a(1, 0), a(1, 1));
+      std::atan2(a(1, 0), a(0, 0));
 
-  const cv::Vec2f T =
-      cv::Matx22f(a(0, 0), a(0, 1), a(1, 0), a(1, 1)).inv() * cv::Vec2f(-a(0, 2), -a(1, 2));
-
+  const cv::Vec2f T(a(0, 2), a(1, 2));
 
   transform->set_translation(T);
   transform->set_rotation(angle);
@@ -179,19 +147,147 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
   return true;
 }
 
-//bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
-//    const std::vector<cv::Point2f> & matched_current_positions_,
-//    const std::vector<cv::Point2f> & matched_reference_positions_)
-//{
+// Finding optimal rotation and translation between corresponding 3D points
+// <http://nghiaho.com/?page_id=671>
 //
-//  // a:
-//  // [ ca * s   -sa * s  tx ]
-//  // [ sa * s    ca * s  ty ]
-//
-//
-//
-//
-//}
+// @sa: https://en.wikipedia.org/wiki/Kabsch_algorithm
+// @sa: https://math.stackexchange.com/questions/77462/finding-transformation-matrix-between-two-2d-coordinate-frames-pixel-plane-to
+bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions)
+{
+#if 1
+  return false; // not finished yet
+#else
+
+  // matched_current_positions[i] =
+  //  Rotation * matched_reference_positions[i] + Translation
+
+  // a:
+  // [ ca * s   -sa * s  tx ]
+  // [ sa * s    ca * s  ty ]
+
+  std::vector<cv::Vec2d> cpoints1;
+  std::vector<cv::Vec2d> cpoints2;
+  cv::Mat1b mask;
+
+  cv::Matx22d Rotation;
+  cv::Vec2d Translation;
+
+  double cloud_scale = 0;
+  double rmse = 0;
+  int num_inliers = 0;
+
+  static const auto toVec2d =
+      [](const cv::Scalar & s) -> cv::Vec2d {
+      return cv::Vec2d(s[0], s[1]);
+  };
+
+  mask.create(matched_current_positions.size(), 1);
+  mask.setTo(255);
+
+  for ( int i = 0, n = matched_current_positions.size(); i < n; ++i ) {
+    cpoints1.emplace_back(cv::Vec2d(matched_current_positions[i].x, matched_current_positions[i].y));
+  }
+  for ( int i = 0, n = matched_current_positions.size(); i < n; ++i ) {
+    cpoints2.emplace_back(cv::Vec2d(matched_reference_positions[i].x, matched_reference_positions[i].y));
+  }
+
+
+  for ( int iteration = 0; iteration < 10; ++iteration ) {
+
+    const cv::Vec2d t1 =
+        toVec2d(cv::mean(cv::Mat(cpoints1), mask));
+
+    const cv::Vec2d t2 =
+        toVec2d(cv::mean(cv::Mat(cpoints2), mask));
+
+    cv::Matx22d C = cv::Matx22d::zeros();
+    cv::Matx22d u, v, R;
+    cv::Matx21d w;
+
+    // Compute cloud scale and covariance matrix for input points.
+    num_inliers = 0;
+    for ( int k = 0, K = cpoints1.size(); k < K; ++k ) {
+      if ( mask[k][0] ) {
+
+        const cv::Vec2d p1 = cpoints1[k] - t1;
+        const cv::Vec2d p2 = cpoints2[k] - t2;
+
+        cloud_scale += cv::norm(p1, cv::NORM_L2SQR);
+        cloud_scale += cv::norm(p2, cv::NORM_L2SQR);
+        ++num_inliers;
+
+        for ( int i = 0; i < 3; ++i ) {
+          for ( int j = 0; j < 3; ++j ) {
+            C(i, j) += p2[i] * p1[j];
+          }
+        }
+      }
+    }
+
+    if ( num_inliers < 3 ) {
+      CF_ERROR("ERROR: Not enough number of inliers: %d.\n"
+          "At leat 3 points required\n",
+          num_inliers);
+      return false;
+    }
+
+    cloud_scale /= (2 * num_inliers);
+
+    // Use SVD to compute R and T
+    cv::SVD::compute(C, w, u, v);
+    R = u * v;
+
+    if ( cv::determinant(R) < 0 ) {
+      R -= u.col(1) * (v.row(1) * 2.0);
+    }
+
+    const cv::Matx33d M(
+        R(0, 0), R(0, 1), 0,
+        R(1, 0), R(1, 1), 0,
+        0,       0,       1);
+
+    const cv::Matx33d T1(
+        1, 0, -t1[0],
+        0, 1, -t1[1],
+        0, 0,  1);
+
+    const cv::Matx33d T2(
+        1, 0, t2[0],
+        0, 1, t2[1],
+        0, 0, 1);
+
+    const cv::Matx33d RT4 =
+        T2 * M * T1;
+
+    (cv::Mat(RT4)(cv::Rect(0, 0, 2, 2))).
+        convertTo(Rotation, CV_64F,
+        1. / RT4(2, 2));
+
+    (cv::Mat(RT4)(cv::Rect(2, 0, 1, 2))).
+        convertTo(Translation, CV_64F,
+        1. / RT4(2, 2));
+
+
+    CF_DEBUG("Rotation: {"
+        "%+g %+g \n"
+        "%+g %+g \n"
+        "|\n",
+        Rotation(0,0), Rotation(0,1),
+        Rotation(1,0), Rotation(1,1));
+
+    CF_DEBUG("Translation: { %+g %+g}");
+    return false;
+
+    //transform->set_
+  }
+
+
+
+  return false;
+#endif
+}
 
 bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
@@ -418,6 +514,10 @@ bool estimate_image_transform(c_image_transform * transform,
   if ( !transform ) {
     CF_ERROR("No image transform specified");
     return false;
+  }
+
+  if( c_translation_image_transform *t = dynamic_cast<c_translation_image_transform*>(transform) ) {
+    return estimate_translation(t, matched_current_positions_, matched_reference_positions_);
   }
 
   if( c_euclidean_image_transform *t = dynamic_cast<c_euclidean_image_transform*>(transform) ) {

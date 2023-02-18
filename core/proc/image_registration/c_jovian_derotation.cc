@@ -451,7 +451,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   }
 
 
-  double initial_orientation =
+  const double initial_orientation =
       (reference_ellipse_.angle - current_ellipse_.angle) * CV_PI / 180;
 
   double best_orientation =

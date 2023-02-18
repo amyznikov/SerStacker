@@ -254,6 +254,7 @@ public:
       float a10, float a11, float a12, float a13, float a14, float a15);
 
   void set_matrix(const cv::Matx26f & a);
+  void set_matrix(const cv::Mat1f & a);
   const cv::Matx26f & matrix() const;
 
   void set_affine_matrix(const cv::Matx23f & a);

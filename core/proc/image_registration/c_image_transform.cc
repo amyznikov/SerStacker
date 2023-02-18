@@ -688,6 +688,27 @@ void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)
   this->a = a;
 }
 
+void c_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
+{
+  if( a.rows == 6 && a.cols == 2 ) {
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 6; ++j ) {
+        this->a(i, j) = a[j][i];
+      }
+    }
+  }
+  else if( a.rows == 2 && a.cols == 6 ) {
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 6; ++j ) {
+        this->a(i, j) = a[i][j];
+      }
+    }
+  }
+  else {
+    CF_ERROR("Invalid matrix size %dx%d. Must be 2x6", a.rows, a.cols);
+  }
+}
+
 const cv::Matx26f & c_quadratic_image_transform::matrix() const
 {
   return this->a;

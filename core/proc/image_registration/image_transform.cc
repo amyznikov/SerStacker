@@ -14,8 +14,8 @@ const c_enum_member * members_of<IMAGE_MOTION_TYPE>()
 {
   static constexpr c_enum_member members[] = {
       { IMAGE_MOTION_TRANSLATION, "TRANSLATION", "translation" },
-      { IMAGE_MOTION_EUCLIDEAN, "EUCLIDEAN", "rotation + translation" },
-      { IMAGE_MOTION_SCALED_EUCLIDEAN, "SCALED_EUCLIDEAN", "scale * rotation + translation" },
+      { IMAGE_MOTION_EUCLIDEAN, "EUCLIDEAN", "Rotation + Translation" },
+      { IMAGE_MOTION_SCALED_EUCLIDEAN, "SCALED_EUCLIDEAN", "Scale * Rotation + Translation" },
       { IMAGE_MOTION_AFFINE, "AFFINE", "AFFINE" },
       { IMAGE_MOTION_HOMOGRAPHY, "HOMOGRAPHY", "HOMOGRAPHY" },
       { IMAGE_MOTION_QUADRATIC, "QUADRATIC", "QUADRATIC" },

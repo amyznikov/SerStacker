@@ -113,7 +113,7 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
 {
 
   if( matched_current_positions.size() < 2 ) {
-    CF_ERROR("Not enough key points matches: %zu", matched_current_positions.size());
+    CF_ERROR("Not enough key point matches: %zu", matched_current_positions.size());
     return false;
   }
 
@@ -141,6 +141,19 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
 
   const cv::Vec2f T(a(0, 2), a(1, 2));
 
+  CF_DEBUG("Rotation: {\n"
+         "%+g %+g \n"
+         "%+g %+g \n"
+         "}\n"
+         "angle = %+g deg\n",
+         a(0,0), a(0,1),
+         a(1,0), a(1,1),
+         angle * 180 / CV_PI);
+
+
+     CF_DEBUG("Translation:{ %+g %+g}",
+         T[0], T[1]);
+
   transform->set_translation(T);
   transform->set_rotation(angle);
   transform->set_scale(scale);
@@ -156,70 +169,59 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions)
 {
-#if 1
-  return false; // not finished yet
-#else
-
   // matched_current_positions[i] =
   //  Rotation * matched_reference_positions[i] + Translation
-
   // a:
-  // [ ca * s   -sa * s  tx ]
-  // [ sa * s    ca * s  ty ]
+  // [ ca  -sa  tx ]
+  // [ sa   ca  ty ]
 
-  std::vector<cv::Vec2d> cpoints1;
-  std::vector<cv::Vec2d> cpoints2;
+  const std::vector<cv::Point2f> & cpoints1 = matched_reference_positions;
+  const std::vector<cv::Point2f> & cpoints2 = matched_current_positions;
   cv::Mat1b mask;
+  std::vector<float> residuals;
 
-  cv::Matx22d Rotation;
-  cv::Vec2d Translation;
+  cv::Matx22f Rotation;
+  cv::Vec2f Translation;
+
 
   double cloud_scale = 0;
   double rmse = 0;
   int num_inliers = 0;
 
-  static const auto toVec2d =
-      [](const cv::Scalar & s) -> cv::Vec2d {
-      return cv::Vec2d(s[0], s[1]);
+  static const auto toVec2f =
+      [](const cv::Scalar & s) -> cv::Vec2f {
+      return cv::Vec2f(s[0], s[1]);
   };
 
   mask.create(matched_current_positions.size(), 1);
   mask.setTo(255);
 
-  for ( int i = 0, n = matched_current_positions.size(); i < n; ++i ) {
-    cpoints1.emplace_back(cv::Vec2d(matched_current_positions[i].x, matched_current_positions[i].y));
-  }
-  for ( int i = 0, n = matched_current_positions.size(); i < n; ++i ) {
-    cpoints2.emplace_back(cv::Vec2d(matched_reference_positions[i].x, matched_reference_positions[i].y));
-  }
-
-
   for ( int iteration = 0; iteration < 10; ++iteration ) {
 
-    const cv::Vec2d t1 =
-        toVec2d(cv::mean(cv::Mat(cpoints1), mask));
+    const cv::Vec2f t1 =
+        toVec2f(cv::mean(cv::Mat(cpoints1), mask));
 
-    const cv::Vec2d t2 =
-        toVec2d(cv::mean(cv::Mat(cpoints2), mask));
+    const cv::Vec2f t2 =
+        toVec2f(cv::mean(cv::Mat(cpoints2), mask));
 
-    cv::Matx22d C = cv::Matx22d::zeros();
-    cv::Matx22d u, v, R;
-    cv::Matx21d w;
+    cv::Matx22f C = cv::Matx22f::zeros();
+    cv::Matx22f u, v, R;
+    cv::Matx21f w;
 
     // Compute cloud scale and covariance matrix for input points.
     num_inliers = 0;
     for ( int k = 0, K = cpoints1.size(); k < K; ++k ) {
       if ( mask[k][0] ) {
 
-        const cv::Vec2d p1 = cpoints1[k] - t1;
-        const cv::Vec2d p2 = cpoints2[k] - t2;
+        const cv::Vec2f p1(cpoints1[k].x - t1[0], cpoints1[k].y - t1[1]);
+        const cv::Vec2f p2(cpoints2[k].x - t2[0], cpoints2[k].y - t2[1]);
 
         cloud_scale += cv::norm(p1, cv::NORM_L2SQR);
         cloud_scale += cv::norm(p2, cv::NORM_L2SQR);
         ++num_inliers;
 
-        for ( int i = 0; i < 3; ++i ) {
-          for ( int j = 0; j < 3; ++j ) {
+        for ( int i = 0; i < 2; ++i ) {
+          for ( int j = 0; j < 2; ++j ) {
             C(i, j) += p2[i] * p1[j];
           }
         }
@@ -243,56 +245,100 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
       R -= u.col(1) * (v.row(1) * 2.0);
     }
 
-    const cv::Matx33d M(
+    const cv::Matx33f M(
         R(0, 0), R(0, 1), 0,
         R(1, 0), R(1, 1), 0,
         0,       0,       1);
 
-    const cv::Matx33d T1(
+    const cv::Matx33f T1(
         1, 0, -t1[0],
         0, 1, -t1[1],
         0, 0,  1);
 
-    const cv::Matx33d T2(
+    const cv::Matx33f T2(
         1, 0, t2[0],
         0, 1, t2[1],
         0, 0, 1);
 
-    const cv::Matx33d RT4 =
+    const cv::Matx33f RT =
         T2 * M * T1;
 
-    (cv::Mat(RT4)(cv::Rect(0, 0, 2, 2))).
-        convertTo(Rotation, CV_64F,
-        1. / RT4(2, 2));
+    (cv::Mat(RT)(cv::Rect(0, 0, 2, 2))).
+        convertTo(Rotation, CV_32F,
+        1. / RT(2, 2));
 
-    (cv::Mat(RT4)(cv::Rect(2, 0, 1, 2))).
-        convertTo(Translation, CV_64F,
-        1. / RT4(2, 2));
+    (cv::Mat(RT)(cv::Rect(2, 0, 1, 2))).
+        convertTo(Translation, CV_32F,
+        1. / RT(2, 2));
 
+    const float angle =
+        std::atan2(Rotation(1, 0), Rotation(0, 0));
 
-    CF_DEBUG("Rotation: {"
+    CF_DEBUG("Rotation: {\n"
         "%+g %+g \n"
         "%+g %+g \n"
-        "|\n",
+        "}\n"
+        "angle = %+g deg\n"
+        "Translation:{ %+g %+g}\n",
         Rotation(0,0), Rotation(0,1),
-        Rotation(1,0), Rotation(1,1));
+        Rotation(1,0), Rotation(1,1),
+        angle * 180 / CV_PI,
+        Translation[0], Translation[1]);
 
-    CF_DEBUG("Translation: { %+g %+g}");
-    return false;
+    transform->set_rotation(angle);
+    transform->set_translation(Translation);
 
-    //transform->set_
+    // Compute RMSE
+    rmse = 0;
+    residuals.resize(cpoints1.size());
+
+    for( int k = 0, K = cpoints1.size(); k < K; ++k ) {
+      if( mask[k][0] ) {
+
+        const cv::Vec2f p1(Rotation * cv::Vec2f(cpoints1[k].x, cpoints1[k].y) + Translation);
+        const cv::Vec2f p2(cpoints2[k].x, cpoints2[k].y);
+        const double residual = cv::norm(p2, p1, cv::NORM_L2SQR);
+        rmse += residual;
+        residuals[k] = residual;
+      }
+    }
+
+    rmse /= num_inliers;
+
+    CF_DEBUG("[%d] num_inliers=%d cloud_scale=%g rmse=%g", iteration, num_inliers,
+        sqrt(cloud_scale), sqrt(rmse));
+
+
+    const double rmse_threshold = 1e-6;
+    if( rmse / cloud_scale < rmse_threshold ) {
+      CF_DEBUG("[%d] break on small rmss  %g on threshold %g", iteration,
+          sqrt(rmse / cloud_scale), sqrt(rmse_threshold));
+      break;
+    }
+
+    int num_outliers = 0;
+    for( int k = 0, K = cpoints1.size(); k < K; ++k ) {
+      if( mask[k][0] ) {
+        if( residuals[k] > 8 * rmse ) {
+          mask[k][0] = 0;
+          ++num_outliers;
+        }
+      }
+    }
+
+    if( num_outliers < 1 ) {
+      CF_DEBUG("[%d] break on num_outliers=%d", iteration, num_outliers);
+      return true;
+    }
   }
 
-
-
-  return false;
-#endif
+  return true;
 }
-
 bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions_)
 {
+
   const bool estimate_translation_only =
       !transform->fix_translation() && transform->fix_rotation() && transform->fix_scale();
 
@@ -302,6 +348,21 @@ bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
         matched_current_positions_,
         matched_reference_positions_);
   }
+
+
+
+
+  const bool estimate_translation_and_rotation_only =
+      !transform->fix_translation() && !transform->fix_rotation() && transform->fix_scale();
+
+  if ( estimate_translation_and_rotation_only ) {
+
+    return estimate_translation_and_rotation(transform,
+        matched_current_positions_,
+        matched_reference_positions_);
+  }
+
+
 
 
   const bool estimate_translation_rotation_and_scale =
@@ -318,15 +379,6 @@ bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
   CF_ERROR("APP BUG: Some constraints are not yet coded");
 
 
-  const bool estimate_translation_and_rotation_only =
-      !transform->fix_translation() && !transform->fix_rotation() && transform->fix_scale();
-
-  if ( estimate_translation_and_rotation_only ) {
-
-
-
-    return false;
-  }
 
 
   const bool estimate_translation_and_scale =

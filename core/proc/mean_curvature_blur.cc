@@ -3,6 +3,8 @@
  *
  *  Created on: Aug 1, 2022
  *      Author: amyznikov
+ *
+ * Derived from gegl/operations/common/mean-curvature-blur.c
  */
 
 #include "mean_curvature_blur.h"
@@ -61,9 +63,10 @@ static void mean_curvature_flow(const cv::Mat & src_image, cv::Mat & dst_image)
 
             const float n = dx2 * dyy + dy2 * dxx - 2. * dx * dy * dxy;
             const float d = std::sqrt(std::pow(dx2 + dy2, 3));
-            const float mean_curvature = n / d;
-
-            CENTER(dst) += magnitude * mean_curvature / 4;
+            if ( d ) {
+              const float mean_curvature = n / d;
+              CENTER(dst) += magnitude * mean_curvature / 4;
+            }
           }
         }
       }

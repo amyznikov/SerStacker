@@ -806,14 +806,21 @@ void MainWindow::setupImageEditor()
         }
         else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
 
-          const QRectF rect = rectShape->mapToScene(rectShape->rect()).boundingRect();
-          const QPointF p1 = rect.topLeft();
-          const QPointF p2 = rect.bottomRight();
-          const double width = rect.width();
-          const double height = rect.height();
+          const QRectF rc = rectShape->mapToScene(rectShape->rect()).boundingRect();
 
-          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  %g x %g",
-                  p1.x(), p1.y(), p2.x(), p2.y(), width, height));
+          const QPointF p1 = rc.topLeft();
+          const QPointF p2 = rc.bottomRight();
+          const QPointF center = rc.center();
+          const double width = rc.width();
+          const double height = rc.height();
+
+          statusbar->showMessage(
+              qsprintf("RECT: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
+                  p1.x(), p1.y(),
+                  p2.x(), p2.y(),
+                  width, height,
+                  center.x(), center.y()));
+
         }
       });
 
@@ -1141,10 +1148,18 @@ void MainWindow::setupRoiOptions()
         const QRectF rc =
             shape->sceneRect();
 
-        imageEditor->statusbar()->showMessage(qsprintf(
-                "ROI: x= %g y= %g w= %g h= %g center= (%g %g)",
-                rc.x(), rc.y(), rc.width(), rc.height(),
-                rc.center().x(), rc.center().y() ));
+        const QPointF p1 = rc.topLeft();
+        const QPointF p2 = rc.bottomRight();
+        const QPointF center = rc.center();
+        const double width = rc.width();
+        const double height = rc.height();
+
+        imageEditor->statusbar()->showMessage(
+            qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
+                p1.x(), p1.y(),
+                p2.x(), p2.y(),
+                width, height,
+                center.x(), center.y()));
       });
 
 

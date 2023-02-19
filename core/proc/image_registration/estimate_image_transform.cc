@@ -177,41 +177,40 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
 
   const std::vector<cv::Point2f> & cpoints1 = matched_reference_positions;
   const std::vector<cv::Point2f> & cpoints2 = matched_current_positions;
-  cv::Mat1b mask;
   std::vector<float> residuals;
+  cv::Mat1b inliers;
 
   cv::Matx22f Rotation;
   cv::Vec2f Translation;
 
-
-  double cloud_scale = 0;
-  double rmse = 0;
-  int num_inliers = 0;
-
-  static const auto toVec2f =
-      [](const cv::Scalar & s) -> cv::Vec2f {
-      return cv::Vec2f(s[0], s[1]);
-  };
-
-  mask.create(matched_current_positions.size(), 1);
-  mask.setTo(255);
+  inliers.create(matched_current_positions.size(), 1);
+  inliers.setTo(255);
 
   for ( int iteration = 0; iteration < 10; ++iteration ) {
 
+    static const auto toVec2f =
+        [](const cv::Scalar & s) -> cv::Vec2f {
+        return cv::Vec2f(s[0], s[1]);
+    };
+
     const cv::Vec2f t1 =
-        toVec2f(cv::mean(cv::Mat(cpoints1), mask));
+        toVec2f(cv::mean(cv::Mat(cpoints1), inliers));
 
     const cv::Vec2f t2 =
-        toVec2f(cv::mean(cv::Mat(cpoints2), mask));
+        toVec2f(cv::mean(cv::Mat(cpoints2), inliers));
 
     cv::Matx22f C = cv::Matx22f::zeros();
     cv::Matx22f u, v, R;
     cv::Matx21f w;
 
+    double cloud_scale = 0;
+    double rmse = 0;
+    int num_inliers = 0;
+
     // Compute cloud scale and covariance matrix for input points.
     num_inliers = 0;
     for ( int k = 0, K = cpoints1.size(); k < K; ++k ) {
-      if ( mask[k][0] ) {
+      if ( inliers[k][0] ) {
 
         const cv::Vec2f p1(cpoints1[k].x - t1[0], cpoints1[k].y - t1[1]);
         const cv::Vec2f p2(cpoints2[k].x - t2[0], cpoints2[k].y - t2[1]);
@@ -279,7 +278,7 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
         "%+g %+g \n"
         "}\n"
         "angle = %+g deg\n"
-        "Translation:{ %+g %+g}\n",
+        "Translation: { %+g %+g}\n",
         Rotation(0,0), Rotation(0,1),
         Rotation(1,0), Rotation(1,1),
         angle * 180 / CV_PI,
@@ -293,7 +292,7 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
     residuals.resize(cpoints1.size());
 
     for( int k = 0, K = cpoints1.size(); k < K; ++k ) {
-      if( mask[k][0] ) {
+      if( inliers[k][0] ) {
 
         const cv::Vec2f p1(Rotation * cv::Vec2f(cpoints1[k].x, cpoints1[k].y) + Translation);
         const cv::Vec2f p2(cpoints2[k].x, cpoints2[k].y);
@@ -318,22 +317,25 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
 
     int num_outliers = 0;
     for( int k = 0, K = cpoints1.size(); k < K; ++k ) {
-      if( mask[k][0] ) {
+      if( inliers[k][0] ) {
         if( residuals[k] > 8 * rmse ) {
-          mask[k][0] = 0;
+          inliers[k][0] = 0;
           ++num_outliers;
         }
       }
     }
 
+    CF_DEBUG("[%d] num_outliers=%d", iteration, num_outliers);
+
     if( num_outliers < 1 ) {
-      CF_DEBUG("[%d] break on num_outliers=%d", iteration, num_outliers);
-      return true;
+      break;
     }
   }
 
   return true;
 }
+
+
 bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions_)

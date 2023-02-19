@@ -74,6 +74,11 @@ void QImageEditor::createRoiRectShape()
     roiRectShape_->setCosmeticPen(Qt::red);
     roiRectShape_->setVisible(false);
     roiRectShape_->setFixOnSceneCenter(true);
+
+    roiRectShape_->setToolTip("ROI rectangle:\n"
+        "Shift + LeftMouseButton for move\n"
+        "Ctrl + LeftMouseButton for resize\n");
+
     scene_->addItem(roiRectShape_);
   }
 

@@ -1178,8 +1178,15 @@ void MainWindow::setupRoiOptions()
 
     toolbar->insertWidget(closeImageViewAction_,
         roiActionsButton_ =
-        createToolButtonWithPopupMenu(showRoiAction_,
-            &roiActionsMenu_));
+            createToolButtonWithPopupMenu(showRoiAction_,
+                &roiActionsMenu_));
+
+    connect(imageEditor->roiRectShape(), &QGraphicsObject::visibleChanged,
+        [this]() {
+          showRoiAction_->setChecked(imageEditor->roiRectShape()->isVisible());
+        });
+
+    showRoiAction_->setChecked(imageEditor->roiRectShape()->isVisible());
   }
 
 }

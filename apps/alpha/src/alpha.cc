@@ -27,377 +27,433 @@
 #include <core/proc/image_registration/ecc2.h>
 #include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/debug.h>
-//
-//namespace {
-//
-//class c_jovian_derotation_transform :
-//    public c_image_transform
-//{
-//  typedef c_jovian_derotation_transform this_class;
-//  typedef c_image_transform base;
-//
-//  void set_translation(const cv::Vec2f & T) override;
-//  cv::Vec2f translation() const  override;
-//
-//  cv::Mat1f parameters() const  override;
-//  bool set_parameters(const cv::Mat1f & p)  override;
-//  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const  override;
-//
-//  bool create_remap(cv::Mat2f & map, const cv::Size & size) const  override;
-//
-//protected:
-//  cv::RotatedRect rc_;
-//  float l_ = 0;
-//
-//};
-//
-////
-////void create_jovian_rotation_remap2(double l,
-////    const cv::RotatedRect & E,
-////    const cv::Matx23d & R2I,
-////    const cv::Size & size,
-////    cv::Mat2f & rmap,
-////    cv::Mat1f & wmask)
-//
-//bool c_jovian_derotation_transform::create_remap(cv::Mat2f & rmap, const cv::Size & size) const
-//{
-//  //             rc_                    r2i
-//  // ellipse_pos -> reference_image_pos -> current_image_pos
-//
-//  // x' = R2I(0, 0) * xx + R2I(0, 1) * yy + R2I(0, 2)
-//  // y' = R2I(1, 0) * xx + R2I(1, 1) * yy + R2I(1, 2)
-//
-//  // x' = r2i00 * (xe * ca - ye * sa + x0) + r2i01 * (xe * sa + ye * ca + y0) + r2i02
-//  // y' = r2i10 * (xe * ca - ye * sa + x0) + r2i11 * (xe * sa + ye * ca + y0) + R2I12
-//
-//  // x' = r2i00 * xe * ca - r2i00 * ye * sa + r2i00 * x0 + r2i01 * xe * sa + r2i01 * ye * ca + r2i01 * y0 + r2i02
-//  // y' = r2i10 * xe * ca - r2i00 * ye * sa + r2i00 * x0 + r2i11 * xe * sa + r2i01 * ye * ca + r2i01 * y0 + R2I12
-//
-//  // x' = r2i00 * xe * ca + r2i01 * xe * sa + r2i01 * ye * ca - r2i00 * ye * sa + r2i00 * x0  + r2i01 * y0 + r2i02
-//  // y' = r2i10 * xe * ca + r2i11 * xe * sa + r2i01 * ye * ca - r2i00 * ye * sa + r2i00 * x0  + r2i01 * y0 + R2I12
-//
-//  // x' = (r2i00 * ca + r2i01 * sa) * xe + (r2i01 * ca - r2i00 * sa)* ye    + r2i00 * x0  + r2i01 * y0 + r2i02
-//  // y' = (r2i10 * ca + r2i11 * sa) * xe + (r2i01 * ca - r2i00 * sa)* ye    + r2i00 * x0  + r2i01 * y0 + R2I12
-//
-//  INSTRUMENT_REGION("");
-//
-//  const float ca =
-//      cos(rc_.angle * CV_PI / 180);
-//
-//  const float sa =
-//      sin(rc_.angle * CV_PI / 180);
-//
-//  rmap.create(size);
-//  //wmask.create(size);
-//
-//  typedef tbb::blocked_range<int> tbb_range;
-//
-//  const float A = rc_.size.width / 2;
-//  const float B = rc_.size.height / 2;
-//  const float x0 = rc_.center.x;
-//  const float y0 = rc_.center.y;
-//
-//  for( int y = 0, ymax = size.height; y < ymax; ++y ) {
-//    for( int x = 0; x < size.width; ++x ) {
-//
-//      double xe = (+ca * (x - x0) + sa * (y - y0)) / A;
-//      double ye = (-sa * (x - x0) + ca * (y - y0)) / B;
-//
-//      if( xe * xe + ye * ye >= 1 ) {
-//        rmap[y][x][0] = -1;
-//        rmap[y][x][1] = -1;
-//        //wmask[y][x] = 0;
-//        continue;
-//      }
-//
-//      const double q = sqrt(1. - ye * ye);
-//      const double phi = asin(xe / q) + l_;
-//
-//      if( (phi <= -CV_PI / 2) || (phi >= CV_PI / 2) ) {
-//        rmap[y][x][0] = -1;
-//        rmap[y][x][1] = -1;
-//        //wmask[y][x] = 0;
-//        continue;
-//      }
-//
-//      xe = A * q * sin(phi);
-//      ye = B * ye;
-//
-//      const double xx = xe * ca - ye * sa + x0;
-//      const double yy = xe * sa + ye * ca + y0;
-//
-//      rmap[y][x][0] = R2I(0, 0) * xx + R2I(0, 1) * yy + R2I(0, 2);
-//      rmap[y][x][1] = R2I(1, 0) * xx + R2I(1, 1) * yy + R2I(1, 2);
-//      //wmask[y][x] = cos(phi);
-//    }
-//  }
-//
-//  return true;
-//}
-//
-//}
 
-
-int main(int argc, char *argv[])
+class c_ply_file
 {
-  std::string input_file_names[2];
-  std::string output_directory;
-  std::string output_file_name;
+public:
+  typedef c_ply_file this_class;
 
-  cv::Mat images[2];
-  cv::Mat grays[2];
-  cv::Mat masks[2];
+  enum ply_file_format
+  {
+    ply_format_unknown = -1,
+    ply_format_ascii,
+    ply_format_binary_little_endian,
+    ply_format_binary_big_endian,
+  };
 
-  bool coarse_to_fine = false;
-  bool fix_translation = false;
-  bool fix_rotation = false;
-  bool fix_scale = false;
-  bool estimate_translation_first = false;
+  // http://paulbourke.net/dataformats/ply/
+  // https://en.wikipedia.org/wiki/PLY_(file_format)
+  enum ply_property_type
+  {
+    ply_property_unknown = -1,
+    ply_property_int8,    //      character                 1
+    ply_property_uint8,   //      unsigned character        1
+    ply_property_int16,   //      short integer             2
+    ply_property_uint16,  //      unsigned short integer    2
+    ply_property_int32,   //      integer                   4
+    ply_property_uint32,  //      unsigned integer          4
+    ply_property_float32, //      single-precision float    4
+    ply_property_float64, //      double-precision float    8
+  };
 
-  for ( int i = 1; i < argc; ++i ) {
+  struct property {
+    std::string name;
+    ply_property_type type = ply_property_unknown;
+    ply_property_type list_size_type = ply_property_unknown;
+  };
 
-    if ( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
+  struct element {
+    std::string name;
+    std::vector<property> properties;
+    int size = 0;
+  };
 
-      fprintf(stdout, "Test for ecc2 align.\n"
-          "Usage:\n"
-          "   alpha <input_image1> <input_image2> [-o <output_directory>] [-h] [-t] [-r] [-s] [-et] \n"
-          "\n");
-
-      return 0;
-    }
-
-    if( strcmp(argv[i], "-h") == 0 ) {
-      coarse_to_fine = true;
-      continue;
-    }
-
-    if( strcmp(argv[i], "-t") == 0 ) {
-      fix_translation = true;
-      continue;
-    }
-
-    if( strcmp(argv[i], "-r") == 0 ) {
-      fix_rotation = true;
-      continue;
-    }
-
-    if( strcmp(argv[i], "-s") == 0 ) {
-      fix_scale = true;
-      continue;
-    }
-
-    if( strcmp(argv[i], "-et") == 0 ) {
-      estimate_translation_first = true;
-      continue;
-    }
-
-
-    if( strcmp(argv[i], "-o") == 0 ) {
-      if( ++i >= argc ) {
-        fprintf(stderr, "Output directory name expected after %s argument\n", argv[i - 1]);
-        return 1;
-      }
-
-      output_directory = argv[i];
-      continue;
-    }
-
-    if ( input_file_names[0].empty() ) {
-      input_file_names[0] = argv[i];
-      continue;
-    }
-
-    if ( input_file_names[1].empty() ) {
-      input_file_names[1] = argv[i];
-      continue;
-    }
-
-    fprintf(stderr, "Invalid argument: %s\n", argv[i]);
-    return 1;
+  const std::string & filename() const
+  {
+    return filename_;
   }
 
-  if( input_file_names[0].empty() || input_file_names[1].empty() ) {
-    fprintf(stderr, "Two input images expected\n");
-    return 1;
+  enum ply_file_format format() const
+  {
+    return format_;
   }
 
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
-
-
-  for ( int i  = 0; i < 2; ++i ) {
-    if ( !load_image(input_file_names[i], images[i], masks[i]) ) {
-      CF_ERROR("load_image('%s') fails", input_file_names[i].c_str());
-      return 1;
-    }
-
-    if ( images[i].channels() == 3 ) {
-      cv::cvtColor(images[i], grays[i], cv::COLOR_BGR2GRAY);
-    }
-    else {
-      grays[i] = images[i];
-    }
+  const std::vector<element>& elems() const
+  {
+    return elems_;
   }
 
-  if ( output_directory.empty() ) {
-    output_directory = "./ecc2";
+  const struct element & elem(int index) const
+  {
+    return elems_[index];
   }
 
-//  c_euclidean_image_transform transform;
-//  c_euclidean_ecc_motion_model model(&transform);
+  static enum ply_property_type parse_property_type(const std::string & text)
+  {
+    const char *s = text.c_str();
 
-  c_affine_image_transform transform;
-
-  c_affine_ecc_motion_model::sptr model =
-      create_ecc_motion_model(&transform);
-
-  c_ecc_forward_additive ecc(model.get());
-  c_ecch ecch (&ecc);
-
-  ecc.set_min_rho(0.5);
-  ecc.set_update_step_scale(1);
-  ecc.set_max_eps(0.1);
-  ecc.set_max_iterations(100);
-
-  ecch.set_minimum_image_size(8);
-
-  cv::Vec2f T;
-
-  if ( estimate_translation_first ) {
-
-//    model.set_fix_rotation(true);
-//    model.set_fix_scale(true);
-
-    if( !ecch.set_reference_image(grays[0], masks[0]) ) {
-      CF_ERROR("ecch.set_reference_image() fails");
-      return 1;
+    if( strcasecmp(s, "char") == 0 || strcasecmp(s, "int8") == 0 ) {
+      return ply_property_int8; // character  1 byte
+    }
+    if( strcasecmp(s, "uchar") == 0 || strcasecmp(s, "uint8") == 0 ) {
+      return ply_property_uint8; // unsigned character  1 byte
+    }
+    if( strcasecmp(s, "short") == 0 || strcasecmp(s, "int16") == 0 ) {
+      return ply_property_int16; // short integer 2 bytes
+    }
+    if( strcasecmp(s, "ushort") == 0 || strcasecmp(s, "uint16") == 0 ) {
+      return ply_property_uint16; // unsigned short integer 2 bytes
+    }
+    if( strcasecmp(s, "int") == 0 || strcasecmp(s, "int32") == 0 ) {
+      return ply_property_int32; // integer  4 bytes
+    }
+    if( strcasecmp(s, "uint") == 0 || strcasecmp(s, "uint32") == 0 ) {
+      return ply_property_uint32; // unsigned integer  4 bytes
+    }
+    if( strcasecmp(s, "float") == 0 || strcasecmp(s, "float32") == 0 ) {
+      return ply_property_float32; // single-precision float 4 bytes
+    }
+    if( strcasecmp(s, "double") == 0 || strcasecmp(s, "float64") == 0 ) {
+      return ply_property_float64; // double-precision float 8 bytes
     }
 
-    if( !ecch.align(grays[1], masks[1]) ) {
-      CF_ERROR("ecch.set_reference_image() fails");
-      return 1;
-    }
-
-    CF_DEBUG("ESTIMATION: failed=%d iterations=%d / %d rho = %g / %g  eps=%g / %g",
-        ecc.failed(),
-        ecc.num_iterations(), ecc.max_iterations(),
-        ecc.rho(), ecc.min_rho(),
-        ecc.eps(), ecc.max_eps());
-
-    T = transform.translation();
-    CF_DEBUG("ESTIMATED tx=%g ty=%g\n===========================\n", T[0], T[1]);
-
-//    model.set_fix_rotation(false);
-//    model.set_fix_scale(false);
+    return ply_property_unknown;
   }
 
+  virtual ~c_ply_file() = default;
 
-//  model.set_fix_translation(fix_translation);
-//  model.set_fix_rotation(fix_rotation);
-//  model.set_fix_scale(fix_scale);
-
-  if( coarse_to_fine ) {
-
-    if( !estimate_translation_first && !ecch.set_reference_image(grays[0], masks[0]) ) {
-      CF_ERROR("ecch.set_reference_image() fails");
-      return 1;
-    }
-
-    //ecch.set_minimum_image_size(16);
-
-    if( !ecch.align(grays[1], masks[1]) ) {
-      CF_ERROR("ecch.align() fails");
-    }
-  }
-  else {
-
-    if( !ecc.set_reference_image(grays[0], masks[0]) ) {
-      CF_ERROR("ecc.set_reference_image() fails");
-      return 1;
-    }
-
-    if( !ecc.align_to_reference(grays[1], masks[1]) ) {
-      CF_ERROR("ecc.align_to_reference() fails");
-      CF_DEBUG("iterations=%d / %d rho = %g / %g  eps=%g / %g",
-          ecc.num_iterations(), ecc.max_iterations(),
-          ecc.rho(), ecc.min_rho(),
-          ecc.eps(), ecc.max_eps());
-
-    }
+protected:
+  c_ply_file()
+  {
   }
 
-  CF_DEBUG("ecc: failed=%d iterations=%d / %d rho = %g / %g  eps=%g / %g",
-      ecc.failed(),
-      ecc.num_iterations(), ecc.max_iterations(),
-      ecc.rho(), ecc.min_rho(),
-      ecc.eps(), ecc.max_eps());
-
-
-  T = transform.translation();
-  CF_DEBUG("Tx=%g Ty=%g\n"
-      "===========================\n",
-      T[0], T[1]);
-//    CF_DEBUG("Tx=%g Ty=%g angle=%g scale=%g\n"
-//        "===========================\n",
-//        T[0], T[1],
-//        transform.rotation() * 180 / CV_PI,
-//        transform.scale());
-
-  if ( !ecc.current_remap().empty() ) {
-
-    cv::remap(images[1], images[1],
-        ecc.current_remap(),
-        cv::noArray(),
-        ecc.interpolation(),
-        cv::BORDER_CONSTANT);
-
-    if( !save_image(images[0], ssprintf("%s/image0.tiff", output_directory.c_str())) ) {
-      CF_ERROR("save_image(images[0]) fails");
-      return 1;
-    }
-
-    if( !save_image(images[1], ssprintf("%s/image1.tiff", output_directory.c_str())) ) {
-      CF_ERROR("save_image(images[1]) fails");
-      return 1;
-    }
+  c_ply_file(const std::string & filename) :
+    filename_(filename)
+  {
   }
 
-  return 0;
+protected:
+  std::string filename_;
+  enum ply_file_format format_ = ply_format_unknown;
+  std::vector<struct element> elems_;
+};
+
+class c_ply_reader :
+    public c_ply_file
+{
+public:
+  typedef c_ply_reader this_class;
+  typedef c_ply_file base;
+
+  c_ply_reader();
+  c_ply_reader(const std::string & filename);
+  ~c_ply_reader() override;
+
+  bool open(const std::string & filename = "");
+  bool is_open() const;
+  void close();
+
+protected:
+  void set_format(enum ply_file_format format);
+  static bool read_line(FILE * fp, std::vector<std::string> * tokens);
+
+
+protected:
+  FILE * fp = nullptr;
+};
+
+
+c_ply_reader::c_ply_reader()
+{
+}
+
+c_ply_reader::c_ply_reader(const std::string & filename) :
+    base(filename)
+{
+}
+
+c_ply_reader::~c_ply_reader()
+{
+  close();
+}
+
+void c_ply_reader::close()
+{
+  if ( fp ) {
+    fclose(fp);
+    fp = nullptr;
+  }
+}
+
+bool c_ply_reader::is_open() const
+{
+  return fp != nullptr;
+}
+
+void c_ply_reader::set_format(enum ply_file_format format)
+{
+  this->format_ = format;
 }
 
 
-#if 0
+bool c_ply_reader::read_line(FILE * fp, std::vector<std::string> * tokens)
+{
+  int ch;
+  std::string token;
+
+  tokens->clear();
+
+  while ((ch = fgetc(fp)) != EOF) {
+
+    if( ch == '\n' ) {
+      break;
+    }
+
+    if( !isspace(ch) ) {
+      token.append(1, ch);
+    }
+    else if( !token.empty() ) {
+      tokens->emplace_back(token);
+      token.clear();
+    }
+  }
+
+  if( !token.empty() ) {
+    tokens->emplace_back(token);
+    token.clear();
+  }
+
+  return !EOF || !tokens->empty();
+}
+
+bool c_ply_reader::open(const std::string & filename)
+{
+  std::vector<std::string> tokens;
+  struct element elem;
+  struct property prop;
+  bool fOk = false;
+  bool end_header = false;
+
+  close();
+  elems_.clear();
+  set_format(ply_format_unknown);
+
+  if ( !filename.empty() ) {
+    this->filename_ = filename;
+  }
+
+  if( this->filename_.empty() ) {
+    CF_ERROR("No input ply file name specified");
+    return false;
+  }
+
+  if( !(fp = fopen(this->filename_.c_str(), "rb")) ) {
+    CF_ERROR("fopen('%s', mode='rb') fails: %s",
+        this->filename_.c_str(),
+        strerror(errno));
+    return false;
+  }
+
+  if( !read_line(fp, &tokens) || tokens.empty() ) {
+    CF_ERROR("readline() fails for ply header: %s", strerror(errno));
+    goto end;
+  }
+
+  if( strcasecmp(tokens[0].c_str(), "ply") != 0 ) {
+    CF_ERROR("Not a ply file: first line starts from '%s'", tokens[0].c_str());
+    goto end;
+  }
+
+  for( int line = 2; read_line(fp, &tokens); ++line ) {
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    if( tokens.empty() ) {
+      continue; // empty line
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    if( strcasecmp(tokens[0].c_str(), "comment") == 0 ) {
+      continue;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    if( strcasecmp(tokens[0].c_str(), "format") == 0 ) {
+
+      if( strcasecmp(tokens[1].c_str(), "ascii") == 0 ) {
+        set_format(ply_format_ascii);
+      }
+      else if( strcasecmp(tokens[1].c_str(), "binary_little_endian") == 0 ) {
+        set_format(ply_format_binary_little_endian);
+      }
+      else if( strcasecmp(tokens[1].c_str(), "binary_big_endian") == 0 ) {
+        set_format(ply_format_binary_big_endian);
+      }
+      else {
+        CF_ERROR("Not supported ply file format '%s' at line %d", tokens[1].c_str(), line);
+        goto end;
+      }
+
+      continue;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    while (strcasecmp(tokens[0].c_str(), "element") == 0) {
+
+      elem.properties.clear();
+
+      if( tokens[0].size() < 3 ) {
+        CF_ERROR("Invalid element specification at line '%d'", line);
+        goto end;
+      }
+
+      elem.name = tokens[1];
+      if( sscanf(tokens[2].c_str(), "%d", &elem.size) != 1 ) {
+        CF_ERROR("Can not parse element size '%s' at line '%d'", tokens[2].c_str(), line);
+        goto end;
+      }
+
+      /////////////////////////////////////////////////////////////////////////////////////////////
+      for( ++line; read_line(fp, &tokens); ++line ) {
+
+        if ( tokens.empty() ) {
+          continue;
+        }
+
+        if( strcasecmp(tokens[0].c_str(), "comment") == 0 ) {
+          continue;
+        }
+
+        if( strcasecmp(tokens[0].c_str(), "property") == 0 ) {
+
+          if( tokens.size() < 3 ) {
+            CF_ERROR("Parse error at line %d", line);
+            goto end;
+          }
+
+          else if( strcasecmp(tokens[1].c_str(), "list") != 0 ) {
+            prop.name = tokens[2];
+            if( (prop.type = parse_property_type(tokens[1])) == ply_property_unknown ) {
+              CF_ERROR("Parse error at line %d", line);
+              goto end;
+            }
+          }
+
+          else if( tokens.size() < 5 ) {
+            CF_ERROR("Parse error at line %d", line);
+            goto end;
+          }
+
+          else {
+            prop.name = tokens[4];
+
+            if( (prop.list_size_type = parse_property_type(tokens[2])) == ply_property_unknown ) {
+              CF_ERROR("Parse error at line %d", line);
+              goto end;
+            }
+
+            if( (prop.type = parse_property_type(tokens[3])) == ply_property_unknown ) {
+              CF_ERROR("Parse error at line %d", line);
+              goto end;
+            }
+          }
+
+          elem.properties.emplace_back(prop);
+          continue;
+        } // property
+
+        break;
+      }
+
+      elems_.emplace_back(elem);
+    } // while ("element")
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    if( strcasecmp(tokens[0].c_str(), "end_header") == 0 ) {
+      end_header = true; // end of ply header
+      break;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CF_WARNING("WARNING: Ignore unparsed keyword '%s' at line %d of '%s'",
+        tokens[0].c_str(),
+        line,
+        filename_.c_str());
+  }
+
+  if( !end_header ) {
+    CF_ERROR("The 'end_header' keyword not found in ply file '%s'.\n"
+        "Bad ply file format ?",
+        this->filename_.c_str());
+    goto end;
+  }
+
+  if( this->format_ == ply_format_unknown ) {
+    CF_ERROR("The ply file format was not correctly specified in file header.\n"
+        "Bad ply file format ?",
+        this->filename_.c_str());
+    goto end;
+  }
+
+
+  fOk = true;
+
+end:
+  if ( !fOk ) {
+    close();
+  }
+
+  return fOk;
+}
+
+template<>
+const c_enum_member* members_of<c_ply_file::ply_file_format>()
+{
+  static constexpr c_enum_member members[] {
+      { c_ply_file::ply_format_ascii, "ascii", "ascii 1.0" },
+      { c_ply_file::ply_format_binary_little_endian, "binary_little_endian", "binary little endian 1.0" },
+      { c_ply_file::ply_format_binary_big_endian, "binary_big_endian", "binary big endian 1.0" },
+      { c_ply_file::ply_format_unknown },
+  };
+
+  return members;
+}
+
+template<>
+const c_enum_member* members_of<c_ply_file::ply_property_type>()
+{
+  static constexpr c_enum_member members[] {
+      { c_ply_file::ply_property_int8, "int8", "character 1 byte" },
+      { c_ply_file::ply_property_uint8, "uint8", "unsigned character 1 byte" },
+      { c_ply_file::ply_property_int16, "int16", "short integer 2 bytes" },
+      { c_ply_file::ply_property_uint16, "uint16", "unsigned short integer 2 bytes" },
+      { c_ply_file::ply_property_int32, "int32", "integer 4 bytes" },
+      { c_ply_file::ply_property_uint32, "uint32", "unsigned integer 4 bytes" },
+      { c_ply_file::ply_property_float32, "float32", "single-precision float 4 bytes" },
+      { c_ply_file::ply_property_float64, "float64", "double-precision float 8 bytes" },
+      { c_ply_file::ply_property_unknown },
+  };
+
+  return members;
+}
+
+
 
 int main(int argc, char *argv[])
 {
   std::string input_file_name;
-  std::string output_file_name;
-  std::string output_directory;
-
-  cv::Mat image;
-  std::vector<cv::Mat> pyramid;
-
 
   for ( int i = 1; i < argc; ++i ) {
 
     if ( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
 
-      fprintf(stdout, "Test for Laplacian pyramid.\n"
+      fprintf(stdout, "Test for ply file read.\n"
           "Usage:\n"
-          "   alpha <input_image> [-o <output_directory>]\n"
+          "   alpha <input_ply_file.ply>\n"
           "\n");
 
       return 0;
-    }
-
-    if( strcmp(argv[i], "-o") == 0 ) {
-      if( ++i >= argc ) {
-        fprintf(stderr, "Output directory name expected after %s argument\n", argv[i - 1]);
-        return 1;
-      }
-
-      output_directory = argv[i];
-      continue;
     }
 
     if ( input_file_name.empty() ) {
@@ -410,7 +466,7 @@ int main(int argc, char *argv[])
   }
 
   if( input_file_name.empty() ) {
-    fprintf(stderr, "No input file specified\n");
+    fprintf(stderr, "input ply file expected\n");
     return 1;
   }
 
@@ -418,43 +474,42 @@ int main(int argc, char *argv[])
   cf_set_loglevel(CF_LOG_DEBUG);
 
 
-  if ( !load_image(input_file_name, image) ) {
-    CF_ERROR("load_image('%s') fails", input_file_name.c_str());
+  c_ply_reader ply;
+
+  if ( !ply.open(input_file_name) ) {
+    CF_ERROR("ply.open('%s') fails", input_file_name.c_str());
     return 1;
   }
 
+  CF_DEBUG("ply.open() ok, ply format: %s", toString(ply.format()) );
 
-  build_laplacian_pyramid(image, pyramid);
+  CF_DEBUG("Elements: count=%zu", ply.elems().size());
 
-  if ( output_directory.empty() ) {
-    output_directory = "./pyramid";
-  }
+  for ( int i = 0, n = ply.elems().size(); i < n; ++i ) {
 
-  for ( int i = 0, n = pyramid.size(); i < n; ++i ) {
+    const c_ply_file::element & elem =
+        ply.elem(i);
 
-    output_file_name =
-        ssprintf("%s/L%03d.tiff",
-            output_directory.c_str(), i);
+    CF_DEBUG("elem[%d]: name=%s size=%d properties.size=%zu",
+        i,
+        elem.name.c_str(),
+        elem.size,
+        elem.properties.size());
 
-    if ( !save_image(pyramid[i], output_file_name) ) {
-      CF_ERROR("save_image('%s') fails", output_file_name.c_str());
-      return 1;
+    for ( int j = 0, m = elem.properties.size(); j < m; ++j ) {
+
+      const c_ply_file::property & p =
+          elem.properties[j];
+
+      CF_DEBUG("   prop[%d]: name=%s type=%s lst=%s", j, p.name.c_str(), toString(p.type), toString(p.list_size_type));
+
     }
+
   }
 
 
-  cv::Mat reconstructed_image;
-  reconstruct_laplacian_pyramid(reconstructed_image, pyramid);
-
-  output_file_name =
-      ssprintf("%s/reconstructed_image.tiff", output_directory.c_str());
-
-  if ( !save_image(reconstructed_image, output_file_name) ) {
-    CF_ERROR("save_image('%s') fails", output_file_name.c_str());
-    return 1;
-  }
 
   return 0;
 }
-#endif
+
 

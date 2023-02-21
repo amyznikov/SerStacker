@@ -150,6 +150,18 @@ QStringList getSupportedThumbnailsExtensions()
   suffixes.append("flo");
   suffixes.append("ser");
   suffixes.append("exr");
+  suffixes.append("hdr");
+  suffixes.append("pic");
+  suffixes.append("jp2");
+  suffixes.append("pbm");
+  suffixes.append("pgm");
+  suffixes.append("ppm");
+  suffixes.append("pxm");
+  suffixes.append("pnm");
+  suffixes.append("sr");
+  suffixes.append("ras");
+  suffixes.append("pfm");
+
 
   const char ** textfiles =
       thumbnail_textfile_suffixes();

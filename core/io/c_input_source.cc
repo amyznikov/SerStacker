@@ -505,11 +505,16 @@ const std::vector<std::string> & c_regular_image_input_source::suffixes()
   static const std::vector<std::string> suffixes_ = {
       ".tif", ".tiff",
       ".png",
-      ".jpg", ".jpeg",
+      ".exr",
+      ".hdr", ".pic",
+      ".jpg", ".jpeg", ".jp2",
       ".bmp", ".dib",
       ".ppm", ".pgm",
       ".webp",
       ".flo",
+      ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",  // Portable image format
+      ".sr", ".ras",      // Sun rasters
+      ".pfm",
   };
 
   return suffixes_;

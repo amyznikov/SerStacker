@@ -113,21 +113,21 @@ public:
     return -1;
   }
 
-  int datasize(const property & prop) const
-  {
-    if ( prop.list_size_type == ply_property_unknown ) {
-      return datasize(prop.type);
-    }
-
-    //return datasize(prop.
-
-  }
+//  int datasize(const property & prop) const
+//  {
+//    if ( prop.list_size_type == ply_property_unknown ) {
+//      return datasize(prop.type);
+//    }
+//
+//    //return datasize(prop.
+//
+//  }
 
   int datasize(const element & elem) const
   {
     switch (format_) {
       case ply_format_ascii:
-        return elem.size(); // return number of lines
+        return elem.size; // return number of lines
 
       case ply_format_binary_little_endian:
       case ply_format_binary_big_endian: {
@@ -672,7 +672,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  CF_DEBUG("ply.open() ok, ply format: %s", toString(ply.format()) );
+
+  CF_DEBUG("ply format: %s", toString(ply.format()) );
 
   CF_DEBUG("Elements: count=%zu", ply.elems().size());
 
@@ -698,6 +699,12 @@ int main(int argc, char *argv[])
 
   }
 
+
+  const c_ply_file::element *e = ply.find_element("vertex");
+  if( !e ) {
+    CF_ERROR("element 'vertex' nor found in ply file");
+    return 1;
+  }
 
 
 //  start_data_pos

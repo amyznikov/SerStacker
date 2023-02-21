@@ -88,10 +88,70 @@ public:
     return elems_[index];
   }
 
-  static enum ply_property_type parse_property_type(const std::string & text)
+  static int datasize(const ply_property_type & prop_type)
   {
-    const char *s = text.c_str();
+    switch (prop_type) {
+      case ply_property_int8:    //      character                 1
+        return 1;
+      case ply_property_uint8:   //      unsigned character        1
+        return 1;
+      case ply_property_int16:   //      short integer             2
+        return 2;
+      case ply_property_uint16:  //      unsigned short integer    2
+        return 2;
+      case ply_property_int32:   //      integer                   4
+        return 4;
+      case ply_property_uint32:  //      unsigned integer          4
+        return 4;
+      case ply_property_float32: //      single-precision float    4
+        return 4;
+      case ply_property_float64: //      double-precision float    8
+        return 8;
+      default:
+        break;
+    }
+    return -1;
+  }
 
+  int datasize(const property & prop) const
+  {
+    if ( prop.list_size_type == ply_property_unknown ) {
+      return datasize(prop.type);
+    }
+
+    //return datasize(prop.
+
+  }
+
+  int datasize(const element & elem) const
+  {
+    switch (format_) {
+      case ply_format_ascii:
+        return elem.size(); // return number of lines
+
+      case ply_format_binary_little_endian:
+      case ply_format_binary_big_endian: {
+
+        int propsize = 0;
+        int size = 0;
+
+        for ( int i = 0, n = elem.properties.size(); i < n; ++i ) {
+
+        }
+
+
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    return -1;
+  }
+
+  static enum ply_property_type parse_property_type(const char * s)
+  {
     if( strcasecmp(s, "char") == 0 || strcasecmp(s, "int8") == 0 ) {
       return ply_property_int8; // character  1 byte
     }
@@ -120,6 +180,41 @@ public:
     return ply_property_unknown;
   }
 
+  static enum ply_property_type parse_property_type(const std::string & text)
+  {
+    return parse_property_type(text.c_str());
+  }
+
+
+  const element* find_element(const std::string & name, int * filepos = nullptr) const
+  {
+//    const char * s = name.c_str();
+//    const element * e = nullptr;
+//    int datapos = 0;
+//
+//    for( int i = 0, n = elems_.size(); i < n; ++i ) {
+//
+//      const element &elem =
+//          elems_[i];
+//
+//      if( strcasecmp(elem.name.c_str(), s) == 0 ) {
+//        break;
+//      }
+//
+//      datapos +=
+//      start_line +=
+//          elem.size();
+//    }
+//
+//    if( start_line < 0 ) {
+//      CF_ERROR("Element 'vertex' not found");
+//      return false;
+//    }
+
+    return nullptr;
+
+  }
+
   virtual ~c_ply_file() = default;
 
 protected:
@@ -138,6 +233,8 @@ protected:
   std::vector<struct element> elems_;
 };
 
+
+
 class c_ply_reader :
     public c_ply_file
 {
@@ -153,15 +250,52 @@ public:
   bool is_open() const;
   void close();
 
+//  template<class T>
+//  bool read_vertices(std::vector<T> & pts,
+//      const std::vector<std::string> & props = {"x", "y", "z"});
+
 protected:
   void set_format(enum ply_file_format format);
   static bool read_line(FILE * fp, std::vector<std::string> * tokens);
 
+//  template<class ContainerType>
+//  bool read_vertices_ascii(FILE * fp, ContainerType & c);
 
 protected:
   FILE * fp = nullptr;
+  int start_data_pos = -1;
 };
 
+template<>
+const c_enum_member* members_of<c_ply_file::ply_file_format>()
+{
+  static constexpr c_enum_member members[] {
+      { c_ply_file::ply_format_ascii, "ascii", "ascii 1.0" },
+      { c_ply_file::ply_format_binary_little_endian, "binary_little_endian", "binary little endian 1.0" },
+      { c_ply_file::ply_format_binary_big_endian, "binary_big_endian", "binary big endian 1.0" },
+      { c_ply_file::ply_format_unknown },
+  };
+
+  return members;
+}
+
+template<>
+const c_enum_member* members_of<c_ply_file::ply_property_type>()
+{
+  static constexpr c_enum_member members[] {
+      { c_ply_file::ply_property_int8, "int8", "character 1 byte" },
+      { c_ply_file::ply_property_uint8, "uint8", "unsigned character 1 byte" },
+      { c_ply_file::ply_property_int16, "int16", "short integer 2 bytes" },
+      { c_ply_file::ply_property_uint16, "uint16", "unsigned short integer 2 bytes" },
+      { c_ply_file::ply_property_int32, "int32", "integer 4 bytes" },
+      { c_ply_file::ply_property_uint32, "uint32", "unsigned integer 4 bytes" },
+      { c_ply_file::ply_property_float32, "float32", "single-precision float 4 bytes" },
+      { c_ply_file::ply_property_float64, "float64", "double-precision float 8 bytes" },
+      { c_ply_file::ply_property_unknown },
+  };
+
+  return members;
+}
 
 c_ply_reader::c_ply_reader()
 {
@@ -237,6 +371,7 @@ bool c_ply_reader::open(const std::string & filename)
   close();
   elems_.clear();
   set_format(ply_format_unknown);
+  start_data_pos = -1;
 
   if ( !filename.empty() ) {
     this->filename_ = filename;
@@ -371,6 +506,7 @@ bool c_ply_reader::open(const std::string & filename)
     ///////////////////////////////////////////////////////////////////////////////////////////////
     if( strcasecmp(tokens[0].c_str(), "end_header") == 0 ) {
       end_header = true; // end of ply header
+      start_data_pos = ftell(fp);
       break;
     }
 
@@ -407,41 +543,96 @@ end:
   return fOk;
 }
 
-template<>
-const c_enum_member* members_of<c_ply_file::ply_file_format>()
-{
-  static constexpr c_enum_member members[] {
-      { c_ply_file::ply_format_ascii, "ascii", "ascii 1.0" },
-      { c_ply_file::ply_format_binary_little_endian, "binary_little_endian", "binary little endian 1.0" },
-      { c_ply_file::ply_format_binary_big_endian, "binary_big_endian", "binary big endian 1.0" },
-      { c_ply_file::ply_format_unknown },
-  };
 
-  return members;
-}
-
-template<>
-const c_enum_member* members_of<c_ply_file::ply_property_type>()
-{
-  static constexpr c_enum_member members[] {
-      { c_ply_file::ply_property_int8, "int8", "character 1 byte" },
-      { c_ply_file::ply_property_uint8, "uint8", "unsigned character 1 byte" },
-      { c_ply_file::ply_property_int16, "int16", "short integer 2 bytes" },
-      { c_ply_file::ply_property_uint16, "uint16", "unsigned short integer 2 bytes" },
-      { c_ply_file::ply_property_int32, "int32", "integer 4 bytes" },
-      { c_ply_file::ply_property_uint32, "uint32", "unsigned integer 4 bytes" },
-      { c_ply_file::ply_property_float32, "float32", "single-precision float 4 bytes" },
-      { c_ply_file::ply_property_float64, "float64", "double-precision float 8 bytes" },
-      { c_ply_file::ply_property_unknown },
-  };
-
-  return members;
-}
-
+//template<class T>
+//bool c_ply_reader::read_vertices(std::vector<T> & pts, const std::vector<std::string> & props)
+//{
+//  if( !is_open() ) {
+//    CF_ERROR("ply file is not open");
+//    return false;
+//  }
+//
+//  switch (format_) {
+//
+//    case ply_format_ascii: {
+//
+//      return read_vertices_ascii(fp, c);
+//    }
+//
+//    case ply_format_binary_big_endian:
+//      break;
+//    case ply_format_binary_little_endian:
+//      break;
+//    default:
+//      break;
+//  }
+//
+//  return false;
+//}
+//
+//template<class ContainerType>
+//bool c_ply_reader::read_vertices_ascii(FILE * fp, ContainerType & c)
+//{
+//  int start_line = -1;
+//  int num_lines = -1;
+//
+//  // search the 'vertex' element
+//
+//  start_line = 0;
+//  for ( int i = 0, n = elems_.size() ; i < n; ++i ) {
+//
+//    const element & elem =
+//        elems_[i];
+//
+//    if ( strcasecmp(elem.name.c_str(), "vertex") == 0 ) {
+//      num_lines =
+//          elem.size();
+//      break;
+//    }
+//
+//    start_line +=
+//        elem.size();
+//  }
+//
+//  if ( start_line < 0 ) {
+//    CF_ERROR("Element 'vertex' not found");
+//    return false;
+//  }
+//
+//  fseek(fp, start_data_pos, SEEK_SET);
+//
+//  // skip lines
+//  for( int i = 0; i < start_line; ++i ) {
+//
+//    int c;
+//    while ((c = fgetc(fp)) != EOF && c != '\n') {
+//    }
+//
+//    if( c == EOF ) {
+//      CF_ERROR("Unexpected en of file");
+//      return false;
+//    }
+//  }
+//
+//  // read vertices
+//  for( int i = 0; i < num_lines; ++i ) {
+//
+//  }
+//
+//
+//  return false;
+//}
+//
+//
 
 
 int main(int argc, char *argv[])
 {
+
+  fprintf(stdout, "0x%0X (%d)\n", '\n', '\n');
+  return 0;
+
+
   std::string input_file_name;
 
   for ( int i = 1; i < argc; ++i ) {
@@ -507,6 +698,9 @@ int main(int argc, char *argv[])
 
   }
 
+
+
+//  start_data_pos
 
 
   return 0;

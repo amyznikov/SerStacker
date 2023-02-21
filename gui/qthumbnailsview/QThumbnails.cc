@@ -149,6 +149,7 @@ QStringList getSupportedThumbnailsExtensions()
   suffixes.append("tif");
   suffixes.append("flo");
   suffixes.append("ser");
+  suffixes.append("exr");
 
   const char ** textfiles =
       thumbnail_textfile_suffixes();

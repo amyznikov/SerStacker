@@ -121,6 +121,10 @@ protected:
   virtual void gather_badframe_indexes();
   virtual bool is_bad_frame_index(int global_pos) const;
 
+  virtual bool initialize_pipeline();
+  virtual void cleanup_pipeline();
+  virtual bool run_pipeline();
+
 protected:
   static std::vector<factory_item> registered_classes_;
 

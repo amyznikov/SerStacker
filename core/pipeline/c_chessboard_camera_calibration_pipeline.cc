@@ -234,168 +234,6 @@ void c_chessboard_camera_calibration_pipeline::update_output_path()
   }
 }
 
-
-bool c_chessboard_camera_calibration_pipeline::initialize()
-{
-  CF_DEBUG("Initializing '%s'...", cname());
-
-  cancel(false);
-
-
-  if (true ) {
-
-    total_frames_ = 0;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
-
-    statusmsg_.clear();
-
-    isTemplateFound_ = false;
-    current_image_points_.clear();
-    current_object_points_.clear();
-
-    image_points_.clear();
-    object_points_.clear();
-
-    current_camera_matrix_.release();
-    current_dist_coeffs_.release();
-    current_std_deviations_.release();
-    current_per_view_errors_.release();
-    current_undistortion_remap_.release();
-
-    calibration_flags_ = calibration_options_.calibration_flags;
-    //mNeedTuning = calibration_options_.auto_tune_calibration_flags;
-    mConfIntervalsState = false;
-    mCoverageQualityState = false;
-  }
-
-  if ( chessboard_size_.width < 2 || chessboard_size_.height < 2 ) {
-    CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_size_.width, chessboard_size_.height);
-    set_status_msg("ERROR: Invalid chessboard_size specified");
-    return false;
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  if ( !input_sequence_ || input_sequence_->empty() ) {
-    set_status_msg("ERROR: empty input sequence specified");
-    return false;
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  gather_badframe_indexes();
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  update_output_path();
-
-  /////////////////////////////////////////////////////////////////////////////
-
-
-  return true;
-}
-
-void c_chessboard_camera_calibration_pipeline::cleanup()
-{
-  lock_guard lock(accumulator_lock_);
-
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
-
-  current_image_points_.clear();
-  current_object_points_.clear();
-
-  image_points_.clear();
-  object_points_.clear();
-
-}
-
-bool c_chessboard_camera_calibration_pipeline::run()
-{
-
-  bool fOk = false;
-
-  try {
-
-    set_pipeline_stage(chessboard_camera_calibration_initialize);
-
-    if ( !(fOk = initialize()) ) {
-      CF_ERROR("initialize() fails");
-    }
-    else if( !(fOk = actual_run()) ) {
-      CF_ERROR("actual_run() fails");
-    }
-
-  }
-  catch (const cv::Exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("OpenCV Exception catched in c_chessboard_camera_calibration_pipeline::run():\n"
-        "%s\n"
-        "%s() : %d\n"
-        "file : %s\n",
-        e.err.c_str(), ///< error description
-        e.func.c_str(),///< function name. Available only when the compiler supports getting it
-        e.line,///< line number in the source file where the error has occurred
-        e.file.c_str()///< source file name where the error has occurred
-        );
-  }
-  catch (const std::exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("std::exception catched in c_chessboard_camera_calibration_pipeline::run(): %s\n",
-        e.what());
-  }
-  catch (...) {
-
-    fOk = false;
-
-    CF_ERROR("Unknown exception catched in c_chessboard_camera_calibration_pipeline::run()\n");
-  }
-
-
-  set_pipeline_stage(chessboard_camera_calibration_finishing);
-
-  try {
-    cleanup();
-  }
-  catch (const cv::Exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("OpenCV Exception catched in c_chessboard_camera_calibration_pipeline::cleanup():\n"
-        "%s\n"
-        "%s() : %d\n"
-        "file : %s\n",
-        e.err.c_str(), ///< error description
-        e.func.c_str(),///< function name. Available only when the compiler supports getting it
-        e.line,///< line number in the source file where the error has occurred
-        e.file.c_str()///< source file name where the error has occurred
-        );
-  }
-  catch (const std::exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("std::exception catched in c_chessboard_camera_calibration_pipeline::cleanup(): %s\n",
-        e.what());
-  }
-  catch (...) {
-
-    fOk = false;
-
-    CF_ERROR("Unknown exception catched in c_chessboard_camera_calibration_pipeline::cleanup()\n");
-  }
-
-  set_pipeline_stage(chessboard_camera_calibration_idle);
-
-  return false;
-}
-
 bool c_chessboard_camera_calibration_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     cv::Mat & output_image, cv::Mat & output_mask) const
 {
@@ -861,7 +699,57 @@ bool c_chessboard_camera_calibration_pipeline::save_current_camera_parameters() 
 }
 
 
-bool c_chessboard_camera_calibration_pipeline::actual_run()
+bool c_chessboard_camera_calibration_pipeline::initialize_pipeline()
+{
+  set_pipeline_stage(chessboard_camera_calibration_initialize);
+
+  if ( !base::initialize_pipeline() ) {
+    CF_ERROR("c_chessboard_camera_calibration_pipeline: base::initialize() fails");
+    return false;
+  }
+
+  isTemplateFound_ = false;
+  current_image_points_.clear();
+  current_object_points_.clear();
+
+  image_points_.clear();
+  object_points_.clear();
+
+  current_camera_matrix_.release();
+  current_dist_coeffs_.release();
+  current_std_deviations_.release();
+  current_per_view_errors_.release();
+  current_undistortion_remap_.release();
+
+  calibration_flags_ = calibration_options_.calibration_flags;
+  mConfIntervalsState = false;
+  mCoverageQualityState = false;
+
+  if ( chessboard_size_.width < 2 || chessboard_size_.height < 2 ) {
+    CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_size_.width, chessboard_size_.height);
+    set_status_msg("ERROR: Invalid chessboard_size specified");
+    return false;
+  }
+
+  return true;
+}
+
+void c_chessboard_camera_calibration_pipeline::cleanup_pipeline()
+{
+  set_pipeline_stage(chessboard_camera_calibration_finishing);
+
+  base::cleanup_pipeline();
+
+  current_image_points_.clear();
+  current_object_points_.clear();
+
+  image_points_.clear();
+  object_points_.clear();
+
+  set_pipeline_stage(chessboard_camera_calibration_idle);
+}
+
+bool c_chessboard_camera_calibration_pipeline::run_pipeline()
 {
   CF_DEBUG("Starting '%s' ...",
       cname());

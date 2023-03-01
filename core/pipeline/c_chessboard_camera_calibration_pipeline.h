@@ -119,7 +119,6 @@ public:
   c_chessboard_camera_calibration_output_options & output_options();
   const c_chessboard_camera_calibration_output_options & output_options() const;
 
-  bool run() override;
   bool serialize(c_config_setting setting, bool save) override;
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
@@ -129,8 +128,9 @@ public:
   c_notification<void(CHESSBOARD_CAMERA_CALIBRATION_STAGE oldstage, CHESSBOARD_CAMERA_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
 
 protected:
-  bool initialize();
-  void cleanup();
+  bool initialize_pipeline()override;
+  void cleanup_pipeline() override;
+  bool run_pipeline() override;
   void update_output_path() override;
   void set_pipeline_stage(CHESSBOARD_CAMERA_CALIBRATION_STAGE stage);
   bool read_input_frame(const c_input_sequence::sptr & input_sequence, cv::Mat & output_image, cv::Mat & output_mask) const;
@@ -142,7 +142,6 @@ protected:
   void filter_frames();
   void update_state();
   bool save_current_camera_parameters() const;
-  bool actual_run();
 
 protected:
   cv::Size chessboard_size_ = cv::Size(9, 6);

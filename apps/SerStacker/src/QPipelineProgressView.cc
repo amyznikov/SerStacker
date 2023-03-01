@@ -109,10 +109,11 @@ void QPipelineProgressView::onStackingThreadStarted()
     if( const c_image_stacking_pipeline::sptr image_stacking =
         std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
 
-//      on_stacking_stage_changed =
-//          image_stacking->on_stacking_stage_changed.add(
-//              [this](STACKING_STAGE oldstage, STACKING_STAGE newstage) {
-//              });
+      on_stacking_stage_changed =
+          image_stacking->on_stacking_stage_changed.add(
+              [this](STACKING_STAGE oldstage, STACKING_STAGE newstage) {
+                accumuatorImageChanged_ = true;
+              });
 
       on_accumulator_changed =
           image_stacking->on_accumulator_changed.add([this]() {
@@ -193,7 +194,7 @@ void QPipelineProgressView::onStackingThreadFinished()
     timerId = 0;
   }
 
-  updateAccumulatedImageDisplay();
+  updateAccumulatedImageDisplay(true);
 
   QApplication::restoreOverrideCursor();
 }
@@ -238,6 +239,8 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
         std::string output_file_name =
             image_stacking->output_file_name();
+
+        CF_DEBUG("output_file_name: %s", output_file_name.c_str());
 
         if( !output_file_name.empty() ) {
           imageViewer_->openImage(output_file_name);

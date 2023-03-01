@@ -484,215 +484,14 @@ const c_image_processing_options & c_image_stacking_pipeline::image_processing_o
   return image_processing_options_;
 }
 
-
-
-bool c_image_stacking_pipeline::run()
+bool c_image_stacking_pipeline::initialize_pipeline()
 {
-  bool fOk = false;
+  set_stacking_stage(stacking_stage_initialize);
 
-  try {
-
-    set_stacking_stage(stacking_stage_initialize);
-
-    if ( !(fOk = initialize()) ) {
-      CF_ERROR("initialize() fails");
-    }
-    else {
-
-      const c_jovian_derotation_options & jovian_derotation =
-          frame_registration_options().image_registration_options.jovian_derotation;
-
-      const bool do_jovian_derotaton_for_each_frame =
-          jovian_derotation.enabled &&
-              jovian_derotation.derotate_all_frames &&
-              jovian_derotation.derotate_all_frames_max_context_size > 0;
-
-      if ( !do_jovian_derotaton_for_each_frame ) {
-
-        if( !(fOk = actual_run()) ) {
-          CF_ERROR("actual_run() fails");
-        }
-      }
-      else {
-
-        // save options
-
-        const std::string backup_master_source =
-            master_source_;
-
-        const int backup_master_frame_index =
-            master_frame_index_;
-
-        const c_master_frame_options backup_master_options =
-            master_frame_options();
-
-        const c_input_options backup_input_options =
-            input_options();
-
-
-        try {
-
-          const int num_sources =
-              input_sequence()->sources().size();
-
-          const int max_context_size =
-              std::min(num_sources, jovian_derotation.derotate_all_frames_max_context_size);
-
-
-          c_master_frame_options & master_options =
-              master_frame_options();
-
-//          c_input_options & input_options =
-//              input_options();
-
-          master_options.master_selection_method = master_frame_specific_index;
-          master_frame_index_ = 0;
-          input_options_.max_input_frames = max_context_size;
-
-          for( int master_source = 0; master_source < num_sources; ++master_source ) {
-
-            CF_DEBUG("\n\n=============================================\n\n"
-                "SELECT master_source %d / %d",
-                master_source,
-                num_sources);
-
-            master_source_ =
-                input_sequence()->source(master_source)->filename();
-
-            if( max_context_size == num_sources ) {
-              input_options_.start_frame_index = 0;
-            }
-            else if( (input_options_.start_frame_index = master_source - max_context_size / 2) < 0 ) {
-              input_options_.start_frame_index = 0;
-            }
-            else if( input_options_.start_frame_index + max_context_size >= num_sources ) {
-              input_options_.start_frame_index = num_sources - max_context_size - 1;
-            }
-
-            output_file_name_postfix_ =
-                ssprintf(".F%03d",
-                    master_source);
-
-            if( !(fOk = actual_run()) ) {
-              CF_ERROR("actual_run() fails for master_source=%d", master_source);
-            }
-          }
-
-        }
-        catch (...) {
-          CF_ERROR("Exception in jovian loop");
-
-          // restore options
-
-          input_options_ =
-              backup_input_options;
-
-          master_frame_options() =
-              backup_master_options;
-
-          master_source_=
-              backup_master_source;
-
-          master_frame_index_ =
-              backup_master_frame_index;
-
-          throw;
-        }
-
-        // restore options
-
-        input_options_ =
-            backup_input_options;
-
-        master_frame_options() =
-            backup_master_options;
-
-        master_source_=
-            backup_master_source;
-
-        master_frame_index_ =
-            backup_master_frame_index;
-
-      }
-
-    }
-
+  if ( !base::initialize_pipeline() ) {
+    CF_ERROR("c_image_stacking_pipeline: base::initialize() fails" );
+    return false;
   }
-  catch (const cv::Exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("OpenCV Exception catched in c_image_stacking_pipeline::run():\n"
-        "%s\n"
-        "%s() : %d\n"
-        "file : %s\n",
-        e.err.c_str(), ///< error description
-        e.func.c_str(),///< function name. Available only when the compiler supports getting it
-        e.line,///< line number in the source file where the error has occurred
-        e.file.c_str()///< source file name where the error has occurred
-        );
-  }
-  catch (const std::exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("std::exception catched in c_image_stacking_pipeline::run(): %s\n",
-        e.what());
-  }
-  catch (...) {
-
-    fOk = false;
-
-    CF_ERROR("Unknown exception catched in c_image_stacking_pipeline::run()\n");
-  }
-
-
-  set_stacking_stage(stacking_stage_finishing);
-
-  try {
-    cleanup();
-  }
-  catch (const cv::Exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("OpenCV Exception catched in c_image_stacking_pipeline::cleanup():\n"
-        "%s\n"
-        "%s() : %d\n"
-        "file : %s\n",
-        e.err.c_str(), ///< error description
-        e.func.c_str(),///< function name. Available only when the compiler supports getting it
-        e.line,///< line number in the source file where the error has occurred
-        e.file.c_str()///< source file name where the error has occurred
-        );
-  }
-  catch (const std::exception & e) {
-
-    fOk = false;
-
-    CF_ERROR("std::exception catched in c_image_stacking_pipeline::cleanup(): %s\n",
-        e.what());
-  }
-  catch (...) {
-
-    fOk = false;
-
-    CF_ERROR("Unknown exception catched in c_image_stacking_pipeline::cleanup()\n");
-  }
-
-  set_stacking_stage(stacking_stage_idle);
-
-  return fOk;
-}
-
-bool c_image_stacking_pipeline::initialize()
-{
-
-  CF_DEBUG("Initializing '%s: %s'...", csequence_name(), cname());
-
-
-  cancel(false);
-
 
   if (true ) {
 
@@ -704,13 +503,8 @@ bool c_image_stacking_pipeline::initialize()
     master_frame_index_ = -1;
     ecc_normalization_noise_ = 0;
 
-    total_frames_ = 0;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
     output_file_name_postfix_.clear();
     output_file_name_.clear();
-
-    statusmsg_.clear();
 
     roi_selection_.reset();
     frame_registration_.reset();
@@ -718,25 +512,8 @@ bool c_image_stacking_pipeline::initialize()
     flow_accumulation_.reset();
   }
 
-  /////////////////////////////////////////////////////////////////////////////
-
-  if ( !input_sequence_ || input_sequence_->empty() ) {
-    set_status_msg("ERROR: empty input sequence specified");
-    return false;
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  update_output_path();
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  gather_badframe_indexes();
-  /////////////////////////////////////////////////////////////////////////////
 
   anscombe_.set_method(input_options().anscombe);
-
-  /////////////////////////////////////////////////////////////////////////////
 
   if ( roi_selection_options().method != roi_selection_none ) {
     if ( !(roi_selection_ = create_roi_selection()) ) {
@@ -772,17 +549,15 @@ bool c_image_stacking_pipeline::initialize()
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////////
 
   return true;
 }
 
 
-void c_image_stacking_pipeline::cleanup()
+void c_image_stacking_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
+  set_stacking_stage(stacking_stage_finishing);
+  base::cleanup_pipeline();
 
   roi_selection_.reset();
 
@@ -800,10 +575,130 @@ void c_image_stacking_pipeline::cleanup()
 
   missing_pixel_mask_.release();
   darkbayer_.release();
+
+  set_stacking_stage(stacking_stage_idle);
+}
+
+bool c_image_stacking_pipeline::run_pipeline()
+{
+  bool fOk = false;
+
+  const c_jovian_derotation_options &jovian_derotation =
+      frame_registration_options().image_registration_options.jovian_derotation;
+
+  const bool do_jovian_derotaton_for_each_frame =
+      jovian_derotation.enabled &&
+          jovian_derotation.derotate_all_frames &&
+          jovian_derotation.derotate_all_frames_max_context_size > 0;
+
+  if( !do_jovian_derotaton_for_each_frame ) {
+
+    if( !(fOk = run_image_stacking()) ) {
+      CF_ERROR("run_image_stacking() fails");
+    }
+  }
+  else {
+
+    // save options
+
+    const std::string backup_master_source =
+        master_source_;
+
+    const int backup_master_frame_index =
+        master_frame_index_;
+
+    const c_master_frame_options backup_master_options =
+        master_frame_options();
+
+    const c_input_options backup_input_options =
+        input_options();
+
+    try {
+
+      const int num_sources =
+          input_sequence()->sources().size();
+
+      const int max_context_size =
+          std::min(num_sources, jovian_derotation.derotate_all_frames_max_context_size);
+
+      c_master_frame_options &master_options =
+          master_frame_options();
+
+      master_options.master_selection_method = master_frame_specific_index;
+      master_frame_index_ = 0;
+      input_options_.max_input_frames = max_context_size;
+
+      for( int master_source = 0; master_source < num_sources; ++master_source ) {
+
+        CF_DEBUG("\n\n=============================================\n\n"
+            "SELECT master_source %d / %d",
+            master_source,
+            num_sources);
+
+        master_source_ =
+            input_sequence()->source(master_source)->filename();
+
+        if( max_context_size == num_sources ) {
+          input_options_.start_frame_index = 0;
+        }
+        else if( (input_options_.start_frame_index = master_source - max_context_size / 2) < 0 ) {
+          input_options_.start_frame_index = 0;
+        }
+        else if( input_options_.start_frame_index + max_context_size >= num_sources ) {
+          input_options_.start_frame_index = num_sources - max_context_size - 1;
+        }
+
+        output_file_name_postfix_ =
+            ssprintf(".F%03d",
+                master_source);
+
+        if( !(fOk = run_image_stacking()) ) {
+          CF_ERROR("run_image_stacking() fails for master_source=%d", master_source);
+        }
+      }
+
+    }
+    catch( ... ) {
+      CF_ERROR("Exception in jovian loop");
+
+      // restore options
+
+      input_options_ =
+          backup_input_options;
+
+      master_frame_options() =
+          backup_master_options;
+
+      master_source_ =
+          backup_master_source;
+
+      master_frame_index_ =
+          backup_master_frame_index;
+
+      throw;
+    }
+
+    // restore options
+
+    input_options_ =
+        backup_input_options;
+
+    master_frame_options() =
+        backup_master_options;
+
+    master_source_ =
+        backup_master_source;
+
+    master_frame_index_ =
+        backup_master_frame_index;
+
+  }
+
+  return fOk;
 }
 
 
-bool c_image_stacking_pipeline::actual_run()
+bool c_image_stacking_pipeline::run_image_stacking()
 {
   std::string output_file_name;
   cv::Mat2f upscaled_remap;

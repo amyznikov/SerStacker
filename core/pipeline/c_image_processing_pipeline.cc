@@ -354,11 +354,6 @@ bool c_image_processing_pipeline::is_bad_frame_index(int global_pos) const
   return false;
 }
 
-bool c_image_processing_pipeline::run()
-{
-  CF_ERROR("c_image_processing_pipeline: Abstract method called");
-  return false;
-}
 
 bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
 {
@@ -374,6 +369,114 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
 
   return true;
 }
+
+bool c_image_processing_pipeline::run()
+{
+
+  bool fOk = false;
+
+  try {
+
+    if ( !(fOk = initialize_pipeline()) ) {
+      CF_ERROR("initialize() fails");
+    }
+    else if( !(fOk = run_pipeline()) ) {
+      CF_ERROR("actual_run() fails");
+    }
+
+  }
+  catch (const cv::Exception & e) {
+
+    fOk = false;
+
+    CF_ERROR("OpenCV Exception catched in c_image_processing_pipeline::run():\n"
+        "%s\n"
+        "%s() : %d\n"
+        "file : %s\n",
+        e.err.c_str(), ///< error description
+        e.func.c_str(),///< function name. Available only when the compiler supports getting it
+        e.line,///< line number in the source file where the error has occurred
+        e.file.c_str()///< source file name where the error has occurred
+        );
+  }
+  catch (const std::exception & e) {
+
+    fOk = false;
+    CF_ERROR("std::exception catched in c_image_processing_pipeline::run(): %s\n", e.what());
+  }
+  catch (...) {
+    fOk = false;
+    CF_ERROR("Unknown exception catched in c_image_processing_pipeline::run()\n");
+  }
+
+
+  try {
+    cleanup_pipeline();
+  }
+  catch (const cv::Exception & e) {
+
+    fOk = false;
+
+    CF_ERROR("OpenCV Exception catched in c_image_processing_pipeline::cleanup():\n"
+        "%s\n"
+        "%s() : %d\n"
+        "file : %s\n",
+        e.err.c_str(), ///< error description
+        e.func.c_str(),///< function name. Available only when the compiler supports getting it
+        e.line,///< line number in the source file where the error has occurred
+        e.file.c_str()///< source file name where the error has occurred
+        );
+  }
+  catch (const std::exception & e) {
+    fOk = false;
+    CF_ERROR("std::exception catched in c_image_processing_pipeline::cleanup(): %s\n", e.what());
+  }
+  catch (...) {
+    fOk = false;
+    CF_ERROR("Unknown exception catched in c_image_processing_pipeline::cleanup()\n");
+  }
+
+  return fOk;
+}
+
+
+bool c_image_processing_pipeline::initialize_pipeline()
+{
+  CF_DEBUG("Initializing '%s: %s'...", csequence_name(), cname());
+
+  cancel(false);
+
+  if ( !input_sequence_ || input_sequence_->empty() ) {
+    set_status_msg("ERROR: empty input sequence specified");
+    return false;
+  }
+
+  total_frames_ = 0;
+  processed_frames_ = 0;
+  accumulated_frames_ = 0;
+  statusmsg_.clear();
+
+
+  update_output_path();
+
+  gather_badframe_indexes();
+
+  return true;
+}
+
+void c_image_processing_pipeline::cleanup_pipeline()
+{
+  if ( input_sequence_ ) {
+    input_sequence_->close();
+  }
+}
+
+bool c_image_processing_pipeline::run_pipeline()
+{
+  CF_ERROR("c_image_processing_pipeline: Abstract run_pipeline() called");
+  return false;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

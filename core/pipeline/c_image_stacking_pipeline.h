@@ -306,16 +306,14 @@ public:
 
   bool serialize(c_config_setting setting, bool save) override;
 
-  bool run() override;
-
 protected:
   void set_stacking_stage(STACKING_STAGE stage);
   void update_output_path() override;
 
-
-  bool initialize();
-  bool actual_run();
-  void cleanup();
+  bool initialize_pipeline() override;
+  void cleanup_pipeline() override;
+  bool run_pipeline() override;
+  bool run_image_stacking();
 
   bool create_reference_frame(const c_input_sequence::sptr & input_sequence,
       int master_frame_index, int max_frames_to_stack,

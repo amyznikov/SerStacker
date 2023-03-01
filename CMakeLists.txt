@@ -37,7 +37,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # ----------------------------------------------------------------------------
 # OpenCV
 set(OpenCV_MINIMUM_VERSION_REQUIRED "4.2")
-find_package(OpenCV REQUIRED COMPONENTS core imgproc ximgproc imgcodecs features2d flann video videoio objdetect xobjdetect OPTIONAL_COMPONENTS xfeatures2d highgui ) # freetype
+find_package(OpenCV REQUIRED COMPONENTS core imgproc ximgproc imgcodecs features2d flann video videoio objdetect xobjdetect OPTIONAL_COMPONENTS xfeatures2d ) # freetype
 if((OpenCV_VERSION VERSION_LESS ${OpenCV_MINIMUM_VERSION_REQUIRED}) )
    message(FATAL_ERROR "ERROR: OpenCV version >= ${OpenCV_MINIMUM_VERSION_REQUIRED} is required but '${OpenCV_VERSION}' is found")
    return()

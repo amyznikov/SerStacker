@@ -688,7 +688,7 @@ bool c_image_stacking_pipeline::run()
 bool c_image_stacking_pipeline::initialize()
 {
 
-  CF_DEBUG("Initializing '%s'...", cname());
+  CF_DEBUG("Initializing '%s: %s'...", csequence_name(), cname());
 
 
   cancel(false);
@@ -811,8 +811,8 @@ bool c_image_stacking_pipeline::actual_run()
   bool fOk;
 
 
-  CF_DEBUG("Starting '%s' ...",
-      cname());
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
 
   const c_frame_registration_options & registration_options =
       frame_registration_options_;
@@ -822,7 +822,7 @@ bool c_image_stacking_pipeline::actual_run()
 
   CF_ERROR("FIXME: Not saving pipeline config !");
   //  save(ssprintf("%s/%s.cfg",
-  //      output_directory_.c_str(),
+  //      output_path_.c_str(),
   //      cname()));
 
 
@@ -951,7 +951,7 @@ bool c_image_stacking_pipeline::actual_run()
             frame_registration_options().image_registration_options.registration_channel);
 
     if ( master_options.save_master_frame ) {
-      write_image(ssprintf("%s/%s-master.tiff", output_directory_.c_str(), cname()),
+      write_image(ssprintf("%s/%s-master.tiff", output_path_.c_str(), csequence_name()),
           output_options_,
           reference_frame,
           reference_mask);
@@ -972,7 +972,7 @@ bool c_image_stacking_pipeline::actual_run()
 
     if( output_options_.debug_frame_registration ) {
       frame_registration_->set_debug_path(ssprintf("%s/debug/reference_frame",
-          output_directory_.c_str()));
+          output_path_.c_str()));
     }
 
     if( image_processing_options_.ecc_image_processor && master_options.apply_input_frame_processors  ) {
@@ -1001,7 +1001,7 @@ bool c_image_stacking_pipeline::actual_run()
           eccflow.current_pyramid();
 
       const std::string debugpath =
-          ssprintf("%s/eccdebug", output_directory_.c_str());
+          ssprintf("%s/eccdebug", output_path_.c_str());
 
       for ( uint i = 0, n = pyramid.size(); i < n; ++i ) {
         save_image(pyramid[i].reference_image, ssprintf("%s/eccref.%02u.tiff", debugpath.c_str(), i));
@@ -1116,7 +1116,7 @@ bool c_image_stacking_pipeline::actual_run()
 
             if ( output_options_.dump_reference_data_for_debug ) {
               write_image(ssprintf("%s/%s-before-sharpen.tiff",
-                  output_directory_.c_str(), cname()),
+                  output_path_.c_str(), csequence_name()),
                   output_options_,
                   accumulated_image,
                   accumulated_mask);
@@ -1141,15 +1141,15 @@ bool c_image_stacking_pipeline::actual_run()
         if ( output_options_.dump_reference_data_for_debug ) {
 
           save_image(flow_accumulation_->counter(),
-              ssprintf("%s/%s-masterflow-counter.tiff", output_directory_.c_str(),
-                  cname()));
+              ssprintf("%s/%s-masterflow-counter.tiff", output_path_.c_str(),
+                  csequence_name()));
 
           save_image(accumulated_flow,
-              ssprintf("%s/%s-masterflow.flo", output_directory_.c_str(),
-                  cname()));
+              ssprintf("%s/%s-masterflow.flo", output_path_.c_str(),
+                  csequence_name()));
 
           write_image(ssprintf("%s/%s-before-flow_compensation.tiff",
-              output_directory_.c_str(), cname()),
+              output_path_.c_str(), csequence_name()),
               output_options_,
               accumulated_image,
               accumulated_mask);
@@ -1185,8 +1185,8 @@ bool c_image_stacking_pipeline::actual_run()
 
       output_file_name =
           ssprintf("%s/%s%s.32F.tiff",
-              output_directory_.c_str(),
-              cname(),
+              output_path_.c_str(),
+              csequence_name(),
               output_file_name_postfix_.c_str());
     }
 
@@ -1208,8 +1208,8 @@ bool c_image_stacking_pipeline::actual_run()
 
         output_file_name =
             ssprintf("%s/%s%s.32F.PP.tiff",
-                output_directory_.c_str(),
-                cname(),
+                output_path_.c_str(),
+                csequence_name(),
                 output_file_name_postfix_.c_str());
 
         CF_DEBUG("Saving '%s'", output_file_name.c_str());
@@ -1260,8 +1260,8 @@ bool c_image_stacking_pipeline::actual_run()
 //
 //      output_file_name =
 //          ssprintf("%s/%s%s.32F.PPR.tiff",
-//              output_directory_.c_str(),
-//              cname(),
+//              output_path_.c_str(),
+//              csequence_name(),
 //              output_file_name_postfix_.c_str());
 //
 //      CF_DEBUG("Saving '%s'", output_file_name.c_str());
@@ -1495,8 +1495,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 
           save_image(reference_frame,
               ssprintf("%s/%s-initial_reference_frame.tiff",
-                  output_directory_.c_str(),
-                  cname()));
+                  output_path_.c_str(),
+                  csequence_name()));
         }
 
         if ( alpha < 1 ) {
@@ -1517,8 +1517,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
             if ( !master_options.save_master_frame ) {
 
               save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
-                  output_directory_.c_str(),
-                  cname()));
+                  output_path_.c_str(),
+                  csequence_name()));
 
             }
           }
@@ -1760,7 +1760,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
           if ( output_options_.debug_frame_registration_frame_indexes.empty()  ) {
             frame_registration_->set_debug_path(ssprintf("%s/debug/registration-%d",
-                output_directory_.c_str(), input_sequence->current_pos() - 1));
+                output_path_.c_str(), input_sequence->current_pos() - 1));
           }
           else {
 
@@ -1774,7 +1774,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
             }
             else {
               frame_registration_->set_debug_path(ssprintf("%s/debug/registration-%d",
-                  output_directory_.c_str(), *pos));
+                  output_path_.c_str(), *pos));
             }
           }
 
@@ -2572,13 +2572,14 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
     std::string pathfilename =
         output_options_.output_preprocessed_frames_filename;
 
-    if ( pathfilename.empty() ) {
-      pathfilename = ssprintf("%s-preproc.avi",
-          cname());
+    if( pathfilename.empty() ) {
+      pathfilename =
+          ssprintf("%s-preproc.avi",
+              csequence_name());
     }
 
     if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
           pathfilename.c_str());
     }
 
@@ -2622,13 +2623,14 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
     std::string pathfilename =
         output_options_.output_aligned_frames_filename;
 
-    if ( pathfilename.empty() ) {
-      pathfilename = ssprintf("%s-aligned.avi",
-          cname());
+    if( pathfilename.empty() ) {
+      pathfilename =
+          ssprintf("%s-aligned.avi",
+              csequence_name());
     }
 
     if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
           pathfilename.c_str());
     }
 
@@ -2675,13 +2677,14 @@ void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
     std::string pathfilename =
         output_options_.output_ecc_frames_filename;
 
-    if ( pathfilename.empty() ) {
-      pathfilename = ssprintf("%s-ecc.avi",
-          cname());
+    if( pathfilename.empty() ) {
+      pathfilename =
+          ssprintf("%s-ecc.avi",
+              csequence_name());
     }
 
     if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
           pathfilename.c_str());
     }
 
@@ -2727,13 +2730,14 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
     std::string pathfilename =
         output_options_.output_postprocessed_frames_filename;
 
-    if ( pathfilename.empty() ) {
-      pathfilename = ssprintf("%s-postproc.avi",
-          cname());
+    if( pathfilename.empty() ) {
+      pathfilename =
+          ssprintf("%s-postproc.avi",
+              csequence_name());
     }
 
     if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
           pathfilename.c_str());
     }
 
@@ -2777,13 +2781,14 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
     std::string pathfilename =
         output_options_.output_incremental_frames_filename;
 
-    if ( pathfilename.empty() ) {
-      pathfilename = ssprintf("%s.acc.avi",
-          cname());
+    if( pathfilename.empty() ) {
+      pathfilename =
+          ssprintf("%s.acc.avi",
+              csequence_name());
     }
 
     if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
           pathfilename.c_str());
     }
 
@@ -2827,13 +2832,14 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
     std::string pathfilename =
         output_options_.output_accumulation_masks_filename;
 
-    if ( pathfilename.empty() ) {
-      pathfilename = ssprintf("%s-masks.avi",
-          cname());
+    if( pathfilename.empty() ) {
+      pathfilename =
+          ssprintf("%s-masks.avi",
+              csequence_name());
     }
 
     if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_directory_.c_str(),
+      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
           pathfilename.c_str());
     }
 

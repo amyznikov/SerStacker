@@ -86,6 +86,10 @@ public: // pipeline methods
   const std::string & name() const;
   const char * cname() const;
 
+  void set_sequence_name(const std::string & v);
+  const std::string& sequence_name() const;
+  const char * csequence_name() const;
+
   // void set_input_sequence(const c_input_sequence::sptr& input_sequence);
   const c_input_sequence::sptr& input_sequence() const;
 
@@ -122,6 +126,7 @@ protected:
 
 protected:
   std::string name_;
+  std::string sequence_name_;
   c_input_sequence::sptr input_sequence_;
   std::vector<uint> badframes_; // global indexes
   std::string output_directory_;

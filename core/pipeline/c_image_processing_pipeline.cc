@@ -158,6 +158,21 @@ const char* c_image_processing_pipeline::cname() const
   return name_.c_str();
 }
 
+void c_image_processing_pipeline::set_sequence_name(const std::string & v)
+{
+  sequence_name_ = v;
+}
+
+const std::string& c_image_processing_pipeline::sequence_name() const
+{
+  return sequence_name_;
+}
+
+const char * c_image_processing_pipeline::csequence_name() const
+{
+  return sequence_name_.c_str();
+}
+
 void c_image_processing_pipeline::set_output_directory(const std::string & output_directory)
 {
   output_directory_ = output_directory;
@@ -352,6 +367,7 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
   }
 
   SERIALIZE_PROPERTY(setting, save, *this, name);
+  SERIALIZE_PROPERTY(setting, save, *this, sequence_name);
   SERIALIZE_PROPERTY(setting, save, *this, output_directory);
   SERIALIZE_PROPERTY(setting, save, *this, master_source);
   SERIALIZE_PROPERTY(setting, save, *this, master_frame_index);
@@ -369,6 +385,12 @@ c_image_sequence::c_image_sequence(const std::string & name) :
 void c_image_sequence::set_name(const std::string & name)
 {
   name_ = name;
+
+  for( const auto &pipeline : pipelines_ ) {
+    if( pipeline ) {
+      pipeline->set_sequence_name(name);
+    }
+  }
 }
 
 const std::string& c_image_sequence::name() const

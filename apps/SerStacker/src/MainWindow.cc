@@ -563,12 +563,7 @@ void MainWindow::setupStackTreeView()
       this, &ThisClass::saveCurrentWork);
 
   connect(sequencesTreeView, &QImageSequenceTree::imageSequenceNameChanged,
-      [this] (const c_image_sequence::sptr & sequence) {
-        if ( pipelineOptionsView->current_sequence() == sequence ) {
-          // pipelineOptionsView->updateControls();
-        }
-        saveCurrentWork();
-      });
+      this, &ThisClass::saveCurrentWork);
 
 }
 

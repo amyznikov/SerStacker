@@ -147,8 +147,8 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
 
   if( pipeline ) {
 
-    if( c_chessboard_camera_calibration_pipeline::sptr camera_calibration =
-        std::dynamic_pointer_cast<c_chessboard_camera_calibration_pipeline>(pipeline) ) {
+    if( c_camera_calibration_pipeline::sptr camera_calibration =
+        std::dynamic_pointer_cast<c_camera_calibration_pipeline>(pipeline) ) {
 
       currentWidget = cameraCalibrationOptions_ctl;
       cameraCalibrationOptions_ctl->set_current_pipeline(camera_calibration);

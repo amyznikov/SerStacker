@@ -1,5 +1,5 @@
 /*
- * c_chessboard_camera_calibration_pipeline.h
+ * c_camera_calibration_pipeline.h
  *
  *  Created on: Feb 22, 2023
  *      Author: amyznikov
@@ -15,12 +15,12 @@
 #include <core/proc/chessboard/chessboard_detection.h>
 #include <core/proc/chessboard/chessboard_camera_calibration.h>
 
-enum CHESSBOARD_CAMERA_CALIBRATION_STAGE {
-  chessboard_camera_calibration_idle = 0,
-  chessboard_camera_calibration_initialize,
-  chessboard_camera_calibration_detect_chessboard_corners,
-  chessboard_camera_calibration_in_progress,
-  chessboard_camera_calibration_finishing
+enum CAMERA_CALIBRATION_STAGE {
+  camera_calibration_idle = 0,
+  camera_calibration_initialize,
+  camera_calibration_detect_chessboard_corners,
+  camera_calibration_in_progress,
+  camera_calibration_finishing
 };
 
 enum CAMERA_CALIBRATION_FLAGS
@@ -46,7 +46,7 @@ enum CAMERA_CALIBRATION_FLAGS
   CAMERA_CALIBRATION_USE_LU = cv::CALIB_USE_LU, //!< use LU instead of SVD decomposition for solving. much faster but potentially less precise
 };
 
-struct c_chessboard_camera_calibration_input_options
+struct c_camera_calibration_input_options
 {
   int start_frame_index = 0;
   int max_input_frames = -1;
@@ -55,7 +55,7 @@ struct c_chessboard_camera_calibration_input_options
   bool enable_color_maxtrix = true;
 };
 
-struct c_chessboard_camera_calibration_options
+struct c_camera_calibration_options
 {
   int min_frames = 3;
   int max_frames = 50;
@@ -69,25 +69,25 @@ struct c_chessboard_camera_calibration_options
   double filter_alpha = 0.1;
 };
 
-struct c_chessboard_camera_calibration_output_options
+struct c_camera_calibration_output_options
 {
   bool save_rectified_images = false;
   std::string rectified_images_file_name;
 };
 
 
-class c_chessboard_camera_calibration_pipeline :
+class c_camera_calibration_pipeline :
     public c_image_processing_pipeline
 {
 public:
-  typedef c_chessboard_camera_calibration_pipeline this_class;
+  typedef c_camera_calibration_pipeline this_class;
   typedef c_image_processing_pipeline base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_chessboard_camera_calibration_pipeline(const std::string & name,
+  c_camera_calibration_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
 
-  ~c_chessboard_camera_calibration_pipeline();
+  ~c_camera_calibration_pipeline();
 
   const std::string & get_class_name() const override
   {
@@ -107,17 +107,17 @@ public:
   void set_chessboard_cell_size(const cv::Size2f & v);
   const cv::Size2f & chessboard_cell_size() const;
 
-  c_chessboard_camera_calibration_input_options & input_options();
-  const c_chessboard_camera_calibration_input_options & input_options() const;
+  c_camera_calibration_input_options & input_options();
+  const c_camera_calibration_input_options & input_options() const;
 
   c_chessboard_corners_detection_options & chessboard_corners_detection_options();
   const c_chessboard_corners_detection_options & chessboard_corners_detection_options() const;
 
-  c_chessboard_camera_calibration_options & calibration_options();
-  const c_chessboard_camera_calibration_options & calibration_options() const;
+  c_camera_calibration_options & calibration_options();
+  const c_camera_calibration_options & calibration_options() const;
 
-  c_chessboard_camera_calibration_output_options & output_options();
-  const c_chessboard_camera_calibration_output_options & output_options() const;
+  c_camera_calibration_output_options & output_options();
+  const c_camera_calibration_output_options & output_options() const;
 
   bool serialize(c_config_setting setting, bool save) override;
 
@@ -125,14 +125,14 @@ public:
 
   c_notification<void()> on_current_frame_changed;
   c_notification<void()> on_accumulator_changed;
-  c_notification<void(CHESSBOARD_CAMERA_CALIBRATION_STAGE oldstage, CHESSBOARD_CAMERA_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
+  c_notification<void(CAMERA_CALIBRATION_STAGE oldstage, CAMERA_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
 
 protected:
   bool initialize_pipeline()override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   void update_output_path() override;
-  void set_pipeline_stage(CHESSBOARD_CAMERA_CALIBRATION_STAGE stage);
+  void set_pipeline_stage(CAMERA_CALIBRATION_STAGE stage);
   bool read_input_frame(const c_input_sequence::sptr & input_sequence, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool detect_chessboard(const cv::Mat &frame);
   void update_undistortion_remap();
@@ -148,12 +148,12 @@ protected:
   cv::Size2f chessboard_cell_size_ = cv::Size2f(0.09, 0.09);
 
   cv::Mat missing_pixel_mask_;
-  c_chessboard_camera_calibration_input_options input_options_;
+  c_camera_calibration_input_options input_options_;
   c_chessboard_corners_detection_options chessboard_corners_detection_options_;
-  c_chessboard_camera_calibration_options calibration_options_;
-  c_chessboard_camera_calibration_output_options output_options_;
+  c_camera_calibration_options calibration_options_;
+  c_camera_calibration_output_options output_options_;
 
-  CHESSBOARD_CAMERA_CALIBRATION_STAGE pipeline_stage_ = chessboard_camera_calibration_idle;
+  CAMERA_CALIBRATION_STAGE pipeline_stage_ = camera_calibration_idle;
 
   mutable std::mutex accumulator_lock_;
   cv::Mat current_frame_;

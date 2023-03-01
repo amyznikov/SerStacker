@@ -76,13 +76,13 @@ QCameraCalibrationInputOptions::QCameraCalibrationInputOptions(QWidget * parent)
 
 }
 
-void QCameraCalibrationInputOptions::set_current_pipeline(const c_chessboard_camera_calibration_pipeline::sptr & pipeline)
+void QCameraCalibrationInputOptions::set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_chessboard_camera_calibration_pipeline::sptr& QCameraCalibrationInputOptions::current_pipeline() const
+const c_camera_calibration_pipeline::sptr& QCameraCalibrationInputOptions::current_pipeline() const
 {
   return pipeline_;
 }

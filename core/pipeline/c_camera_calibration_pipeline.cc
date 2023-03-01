@@ -1,5 +1,5 @@
 /*
- * c_chessboard_camera_calibration_pipeline.cc
+ * c_camera_calibration_pipeline.cc
  *
  *  Created on: Feb 22, 2023
  *      Author: amyznikov
@@ -7,7 +7,7 @@
  *  Based on /opencv/apps/interactive-calibration
  */
 
-#include "c_chessboard_camera_calibration_pipeline.h"
+#include "c_camera_calibration_pipeline.h"
 #include <core/settings/opencv_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/readdir.h>
@@ -17,15 +17,15 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<>
-const c_enum_member* members_of<CHESSBOARD_CAMERA_CALIBRATION_STAGE>()
+const c_enum_member* members_of<CAMERA_CALIBRATION_STAGE>()
 {
   static constexpr c_enum_member members[] = {
-      { chessboard_camera_calibration_idle, "idle", "" },
-      { chessboard_camera_calibration_initialize, "initialize", "" },
-      { chessboard_camera_calibration_detect_chessboard_corners, "detect_chessboard_corners", "" },
-      { chessboard_camera_calibration_in_progress, "in_progress", "" },
-      { chessboard_camera_calibration_finishing, "finishing", "" },
-      { chessboard_camera_calibration_idle }
+      { camera_calibration_idle, "idle", "" },
+      { camera_calibration_initialize, "initialize", "" },
+      { camera_calibration_detect_chessboard_corners, "detect_chessboard_corners", "" },
+      { camera_calibration_in_progress, "in_progress", "" },
+      { camera_calibration_finishing, "finishing", "" },
+      { camera_calibration_idle }
   };
 
   return members;
@@ -66,78 +66,78 @@ const c_enum_member* members_of<CAMERA_CALIBRATION_FLAGS>()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-c_chessboard_camera_calibration_pipeline::c_chessboard_camera_calibration_pipeline(const std::string & name,
+c_camera_calibration_pipeline::c_camera_calibration_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
 }
 
-c_chessboard_camera_calibration_pipeline::~c_chessboard_camera_calibration_pipeline()
+c_camera_calibration_pipeline::~c_camera_calibration_pipeline()
 {
   cancel();
 }
 
-void c_chessboard_camera_calibration_pipeline::set_chessboard_size(const cv::Size & v)
+void c_camera_calibration_pipeline::set_chessboard_size(const cv::Size & v)
 {
   chessboard_size_ = v;
 }
 
-const cv::Size& c_chessboard_camera_calibration_pipeline::chessboard_size() const
+const cv::Size& c_camera_calibration_pipeline::chessboard_size() const
 {
   return chessboard_size_;
 }
 
-void c_chessboard_camera_calibration_pipeline::set_chessboard_cell_size(const cv::Size2f & v)
+void c_camera_calibration_pipeline::set_chessboard_cell_size(const cv::Size2f & v)
 {
   chessboard_cell_size_ = v;
 }
 
-const cv::Size2f & c_chessboard_camera_calibration_pipeline::chessboard_cell_size() const
+const cv::Size2f & c_camera_calibration_pipeline::chessboard_cell_size() const
 {
   return chessboard_cell_size_;
 }
 
-c_chessboard_camera_calibration_input_options & c_chessboard_camera_calibration_pipeline::input_options()
+c_camera_calibration_input_options & c_camera_calibration_pipeline::input_options()
 {
   return input_options_;
 }
 
-const c_chessboard_camera_calibration_input_options & c_chessboard_camera_calibration_pipeline::input_options() const
+const c_camera_calibration_input_options & c_camera_calibration_pipeline::input_options() const
 {
   return input_options_;
 }
 
-c_chessboard_corners_detection_options & c_chessboard_camera_calibration_pipeline::chessboard_corners_detection_options()
+c_chessboard_corners_detection_options & c_camera_calibration_pipeline::chessboard_corners_detection_options()
 {
   return chessboard_corners_detection_options_;
 }
 
-const c_chessboard_corners_detection_options & c_chessboard_camera_calibration_pipeline::chessboard_corners_detection_options() const
+const c_chessboard_corners_detection_options & c_camera_calibration_pipeline::chessboard_corners_detection_options() const
 {
   return chessboard_corners_detection_options_;
 }
 
-c_chessboard_camera_calibration_options & c_chessboard_camera_calibration_pipeline::calibration_options()
+c_camera_calibration_options & c_camera_calibration_pipeline::calibration_options()
 {
   return calibration_options_;
 }
 
-const c_chessboard_camera_calibration_options & c_chessboard_camera_calibration_pipeline::calibration_options() const
+const c_camera_calibration_options & c_camera_calibration_pipeline::calibration_options() const
 {
   return calibration_options_;
 }
 
-c_chessboard_camera_calibration_output_options& c_chessboard_camera_calibration_pipeline::output_options()
+c_camera_calibration_output_options& c_camera_calibration_pipeline::output_options()
 {
   return output_options_;
 }
 
-const c_chessboard_camera_calibration_output_options& c_chessboard_camera_calibration_pipeline::output_options() const
+const c_camera_calibration_output_options& c_camera_calibration_pipeline::output_options() const
 {
   return output_options_;
 }
 
-bool c_chessboard_camera_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
+bool c_camera_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
 {
   lock_guard lock(accumulator_lock_);
   display_frame_.copyTo(frame);
@@ -145,7 +145,7 @@ bool c_chessboard_camera_calibration_pipeline::get_display_image(cv::OutputArray
   return true;
 }
 
-bool c_chessboard_camera_calibration_pipeline::serialize(c_config_setting settings, bool save)
+bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
 
@@ -186,7 +186,7 @@ bool c_chessboard_camera_calibration_pipeline::serialize(c_config_setting settin
 }
 
 
-void c_chessboard_camera_calibration_pipeline::set_pipeline_stage(CHESSBOARD_CAMERA_CALIBRATION_STAGE stage)
+void c_camera_calibration_pipeline::set_pipeline_stage(CAMERA_CALIBRATION_STAGE stage)
 {
   const auto oldstage = pipeline_stage_;
 
@@ -197,7 +197,7 @@ void c_chessboard_camera_calibration_pipeline::set_pipeline_stage(CHESSBOARD_CAM
 
 }
 
-void c_chessboard_camera_calibration_pipeline::update_output_path()
+void c_camera_calibration_pipeline::update_output_path()
 {
   if( output_directory_.empty() ) {
 
@@ -234,7 +234,7 @@ void c_chessboard_camera_calibration_pipeline::update_output_path()
   }
 }
 
-bool c_chessboard_camera_calibration_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
+bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     cv::Mat & output_image, cv::Mat & output_mask) const
 {
   lock_guard lock(accumulator_lock_);
@@ -344,7 +344,7 @@ bool c_chessboard_camera_calibration_pipeline::read_input_frame(const c_input_se
 }
 
 
-bool c_chessboard_camera_calibration_pipeline::detect_chessboard(const cv::Mat &frame)
+bool c_camera_calibration_pipeline::detect_chessboard(const cv::Mat &frame)
 {
 
   isTemplateFound_ =
@@ -378,7 +378,7 @@ bool c_chessboard_camera_calibration_pipeline::detect_chessboard(const cv::Mat &
   return isTemplateFound_;
 }
 
-void c_chessboard_camera_calibration_pipeline::update_undistortion_remap()
+void c_camera_calibration_pipeline::update_undistortion_remap()
 {
   cv::initUndistortRectifyMap(current_camera_matrix_,
       current_dist_coeffs_,
@@ -392,7 +392,7 @@ void c_chessboard_camera_calibration_pipeline::update_undistortion_remap()
 }
 
 
-void c_chessboard_camera_calibration_pipeline::update_display_image()
+void c_camera_calibration_pipeline::update_display_image()
 {
   if( true ) {
 
@@ -426,7 +426,7 @@ void c_chessboard_camera_calibration_pipeline::update_display_image()
   on_accumulator_changed();
 }
 
-double c_chessboard_camera_calibration_pipeline::estimate_grid_subset_quality(size_t excludedIndex) const
+double c_camera_calibration_pipeline::estimate_grid_subset_quality(size_t excludedIndex) const
 {
   int gridSize = 10;
   int xGridStep = current_frame_.cols / gridSize;
@@ -453,7 +453,7 @@ double c_chessboard_camera_calibration_pipeline::estimate_grid_subset_quality(si
   return mean[0] / (stdDev[0] + 1e-7);
 }
 
-double c_chessboard_camera_calibration_pipeline::estimate_coverage_quality() const
+double c_camera_calibration_pipeline::estimate_coverage_quality() const
 {
   int gridSize = 10;
   int xGridStep = current_frame_.cols / gridSize;
@@ -478,7 +478,7 @@ double c_chessboard_camera_calibration_pipeline::estimate_coverage_quality() con
   return mean[0] / (stdDev[0] + 1e-7);
 }
 
-void c_chessboard_camera_calibration_pipeline::filter_frames()
+void c_camera_calibration_pipeline::filter_frames()
 {
   const size_t nbframes =
       image_points_.size();
@@ -546,7 +546,7 @@ void c_chessboard_camera_calibration_pipeline::filter_frames()
 }
 
 
-void c_chessboard_camera_calibration_pipeline::update_state()
+void c_camera_calibration_pipeline::update_state()
 {
   cv::Mat &cameraMatrix =
       current_camera_matrix_;
@@ -654,7 +654,7 @@ void c_chessboard_camera_calibration_pipeline::update_state()
 }
 
 
-bool c_chessboard_camera_calibration_pipeline::save_current_camera_parameters() const
+bool c_camera_calibration_pipeline::save_current_camera_parameters() const
 {
   if( current_camera_matrix_.empty() ) {
     return true; // nothing to save yet
@@ -699,9 +699,9 @@ bool c_chessboard_camera_calibration_pipeline::save_current_camera_parameters() 
 }
 
 
-bool c_chessboard_camera_calibration_pipeline::initialize_pipeline()
+bool c_camera_calibration_pipeline::initialize_pipeline()
 {
-  set_pipeline_stage(chessboard_camera_calibration_initialize);
+  set_pipeline_stage(camera_calibration_initialize);
 
   if ( !base::initialize_pipeline() ) {
     CF_ERROR("c_chessboard_camera_calibration_pipeline: base::initialize() fails");
@@ -734,9 +734,9 @@ bool c_chessboard_camera_calibration_pipeline::initialize_pipeline()
   return true;
 }
 
-void c_chessboard_camera_calibration_pipeline::cleanup_pipeline()
+void c_camera_calibration_pipeline::cleanup_pipeline()
 {
-  set_pipeline_stage(chessboard_camera_calibration_finishing);
+  set_pipeline_stage(camera_calibration_finishing);
 
   base::cleanup_pipeline();
 
@@ -746,10 +746,10 @@ void c_chessboard_camera_calibration_pipeline::cleanup_pipeline()
   image_points_.clear();
   object_points_.clear();
 
-  set_pipeline_stage(chessboard_camera_calibration_idle);
+  set_pipeline_stage(camera_calibration_idle);
 }
 
-bool c_chessboard_camera_calibration_pipeline::run_pipeline()
+bool c_camera_calibration_pipeline::run_pipeline()
 {
   CF_DEBUG("Starting '%s' ...",
       cname());

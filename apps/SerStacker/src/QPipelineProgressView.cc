@@ -11,7 +11,7 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
-#include <core/pipeline/c_chessboard_camera_calibration_pipeline.h>
+#include <core/pipeline/c_camera_calibration_pipeline.h>
 
 namespace qserstacker {
 
@@ -127,8 +127,8 @@ void QPipelineProgressView::onStackingThreadStarted()
 
 
     }
-    else if ( const c_chessboard_camera_calibration_pipeline::sptr camera_calibration =
-        std::dynamic_pointer_cast<c_chessboard_camera_calibration_pipeline>(pipeline) ) {
+    else if ( const c_camera_calibration_pipeline::sptr camera_calibration =
+        std::dynamic_pointer_cast<c_camera_calibration_pipeline>(pipeline) ) {
 
 //      on_pipeline_stage_changed =
 //          camera_calibration->on_pipeline_stage_changed.add(
@@ -169,8 +169,8 @@ void QPipelineProgressView::onStackingThreadFinishing()
       image_stacking->on_accumulator_changed.remove(on_accumulator_changed);
       image_stacking->on_selected_master_frame_changed.remove(on_selected_master_frame_changed);
     }
-    else if ( const c_chessboard_camera_calibration_pipeline::sptr camera_calibration =
-        std::dynamic_pointer_cast<c_chessboard_camera_calibration_pipeline>(pipeline) ) {
+    else if ( const c_camera_calibration_pipeline::sptr camera_calibration =
+        std::dynamic_pointer_cast<c_camera_calibration_pipeline>(pipeline) ) {
 
       camera_calibration->on_accumulator_changed.remove(on_accumulator_changed);
       camera_calibration->on_current_frame_changed.remove(on_current_frame_changed);
@@ -268,8 +268,8 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
       }
     }
 
-    else if( const c_chessboard_camera_calibration_pipeline::sptr camera_calibration =
-        std::dynamic_pointer_cast<c_chessboard_camera_calibration_pipeline>(pipeline) ) {
+    else if( const c_camera_calibration_pipeline::sptr camera_calibration =
+        std::dynamic_pointer_cast<c_camera_calibration_pipeline>(pipeline) ) {
 
       updatingDisplay_ = true;
 

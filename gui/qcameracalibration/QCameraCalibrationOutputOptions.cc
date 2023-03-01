@@ -70,13 +70,13 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
   updateControls();
 }
 
-void QCameraCalibrationOutputOptions::set_current_pipeline(const c_chessboard_camera_calibration_pipeline::sptr & pipeline)
+void QCameraCalibrationOutputOptions::set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_chessboard_camera_calibration_pipeline::sptr & QCameraCalibrationOutputOptions::current_pipeline() const
+const c_camera_calibration_pipeline::sptr & QCameraCalibrationOutputOptions::current_pipeline() const
 {
   return pipeline_;
 }

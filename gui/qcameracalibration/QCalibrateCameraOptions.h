@@ -10,7 +10,7 @@
 #define __QCalibrateCameraOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/pipeline/c_chessboard_camera_calibration_pipeline.h>
+#include <core/pipeline/c_camera_calibration_pipeline.h>
 
 class QCalibrateCameraOptions :
     public QSettingsWidget
@@ -21,14 +21,14 @@ public:
 
   QCalibrateCameraOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_chessboard_camera_calibration_pipeline::sptr & pipeline);
-  const c_chessboard_camera_calibration_pipeline::sptr & current_pipeline() const;
+  void set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline);
+  const c_camera_calibration_pipeline::sptr & current_pipeline() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_chessboard_camera_calibration_pipeline::sptr pipeline_;
+  c_camera_calibration_pipeline::sptr pipeline_;
 
   QNumberEditBox * min_frames_ctl = nullptr;
   QNumberEditBox * max_frames_ctl = nullptr;

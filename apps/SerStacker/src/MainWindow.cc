@@ -17,7 +17,7 @@
 #include <gui/qpipelinethread/QImageProcessingPipeline.h>
 #include <core/io/load_image.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
-#include <core/pipeline/c_chessboard_camera_calibration_pipeline.h>
+#include <core/pipeline/c_camera_calibration_pipeline.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -268,10 +268,10 @@ void MainWindow::setupPipelineTypes()
       });
 
   c_image_processing_pipeline::register_class(
-      c_chessboard_camera_calibration_pipeline::class_name(),
+      c_camera_calibration_pipeline::class_name(),
       "c_camera_calibration_pipeline",
       [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new c_chessboard_camera_calibration_pipeline(name, input_sequence));
+        return c_image_processing_pipeline::sptr(new c_camera_calibration_pipeline(name, input_sequence));
       });
 
 

@@ -8,6 +8,7 @@
 #include "opencv_settings.h"
 
 
+
 bool load_settings(c_config_setting settings, cv::TermCriteria * t)
 {
   c_config_setting p;
@@ -35,3 +36,15 @@ bool load_settings(c_config_setting settings, cv::TermCriteria * t)
   return true;
 }
 
+bool save_settings(c_config_setting settings, const cv::TermCriteria & t)
+{
+  if ( t.type & cv::TermCriteria::COUNT ) {
+    save_settings(settings, "maxCount", t.maxCount);
+  }
+
+  if ( t.type & cv::TermCriteria::EPS ) {
+    save_settings(settings, "eps", t.epsilon);
+  }
+
+  return true;
+}

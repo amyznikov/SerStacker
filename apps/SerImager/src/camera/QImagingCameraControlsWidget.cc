@@ -82,7 +82,7 @@ void QImagingCameraControlsWidget::onSelectedCameraChanged()
 
   if( selectedCamera ) {
     if( (cameraControls_ctl = QCameraControlsWidget::create(selectedCamera, this)) ) {
-      settings_ctl->insertWidget(0, cameraControls_ctl);
+      settings_ctl->insertRow(0, cameraControls_ctl);
     }
   }
 

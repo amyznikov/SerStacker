@@ -524,6 +524,12 @@ bool libconfig_parse_flags(c_config_setting settings,
 #define SAVE_PROPERTY(cfg, obj, prop) \
   ::save_settings(cfg, #prop, (obj).prop())
 
+#define SAVE_OPTION(cfg, obj, prop) \
+  ::save_settings(cfg, #prop, obj.prop)
+
+#define LOAD_OPTION(cfg, obj, prop) \
+  ::load_settings(cfg, #prop, &(obj).prop)
+
 #define SERIALIZE_PROPERTY(cfg, save, obj, prop) \
   if ((save)) { \
     ::save_settings(cfg, #prop, (obj).prop()); \
@@ -535,10 +541,27 @@ bool libconfig_parse_flags(c_config_setting settings,
     }\
   }
 
-#define SAVE_OPTION(cfg, obj, prop) \
-  ::save_settings(cfg, #prop, obj.prop)
+#define SERIALIZE_OPTION(cfg, save, obj, prop) \
+  if ( cfg ) { \
+    if ((save)) { \
+      ::save_settings((cfg), #prop, obj.prop); \
+    }\
+    else { \
+      ::load_settings((cfg), #prop, &obj.prop); \
+    } \
+  }
 
-#define LOAD_OPTION(cfg, obj, prop) \
-  ::load_settings(cfg, #prop, &obj.prop)
+#define SERIALIZE_OBJECT(cfg, save, obj) \
+  if ( cfg ) { \
+    if ((save)) { \
+      ::save_settings((cfg), (obj)); \
+    }\
+    else { \
+      ::load_settings((cfg), &(obj)); \
+    } \
+  }
+
+#define SERIALIZE_GROUP(settings, save, name) \
+      ((save) ? settings.add_group(name) : settings[name])
 
 #endif /* __libconfig_settings__h__ */

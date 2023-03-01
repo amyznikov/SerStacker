@@ -40,7 +40,7 @@ DEBAYER_ALGORITHM QImageFileEditor::debayerAlgorithm() const
   return debayerAlgorithm_;
 }
 
-const c_input_sequence::ptr & QImageFileEditor::input_sequence() const
+const c_input_sequence::sptr & QImageFileEditor::input_sequence() const
 {
   return input_sequence_;
 }

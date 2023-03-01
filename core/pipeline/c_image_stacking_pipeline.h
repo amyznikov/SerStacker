@@ -8,7 +8,8 @@
 #ifndef __c_stacking_pipeline_h__
 #define __c_stacking_pipeline_h__
 
-#include <core/io/c_input_sequence.h>
+#include "c_image_processing_pipeline.h"
+
 #include <core/roi_selection/c_roi_rectangle_selection.h>
 #include <core/roi_selection/c_planetary_disk_selection.h>
 #include <core/average/c_frame_accumulation.h>
@@ -101,13 +102,9 @@ struct c_master_frame_options
   master_frame_selection_method master_selection_method =
       master_frame_specific_index;
 
-  std::string master_source_path;
-  int master_frame_index = 0; // relative, in master source
-
-
   bool apply_input_frame_processors = true;
   bool generate_master_frame = true;
-  int max_input_frames_to_generate_master_frame = 3000;
+  int max_frames_to_generate_master_frame = 3000;
   int eccflow_scale = 0;
   double master_sharpen_factor = 0.5;
   double accumulated_sharpen_factor = 1;
@@ -194,7 +191,7 @@ struct c_image_processing_options
 
 struct c_image_stacking_output_options {
 
-  std::string output_directory;
+  //std::string output_directory;
 
   std::string output_preprocessed_frames_filename;
   std::string output_aligned_frames_filename;
@@ -226,149 +223,80 @@ struct c_image_stacking_output_options {
 };
 
 
-class c_image_stacking_options
-{
-public:
-  typedef c_image_stacking_options this_class;
-  typedef std::shared_ptr<this_class> ptr;
 
-  static ptr create(const std::string & name = "");
-
-  void set_name(const std::string & name);
-  const std::string & name() const;
-  const char * cname() const;
-
-  void set_input_sequence(const c_input_sequence::ptr & sequence);
-  const c_input_sequence::ptr & input_sequence() const;
-
-  const std::vector<c_input_source::ptr> & input_sources() const;
-  c_input_source::ptr add_input_source(const std::string & pathfilename);
-  bool add_input_sources(const std::vector<std::string> & pathfilenames);
-  void remove_input_source(const c_input_source::ptr & source);
-
-  c_input_options & input_options();
-  const c_input_options & input_options() const;
-
-  c_roi_selection_options & roi_selection_options();
-  const c_roi_selection_options & roi_selection_options() const;
-  c_roi_selection::ptr create_roi_selection() const;
-
-  c_frame_upscale_options & upscale_options();
-  const c_frame_upscale_options & upscale_options() const;
-
-  c_sparse_feature_extractor_options & sparse_feature_extractor_options();
-  const c_sparse_feature_extractor_options & sparse_feature_extractor_options() const;
-
-  c_sparse_feature_detector_options & sparse_feature_detector_options();
-  const c_sparse_feature_detector_options & sparse_feature_detector_options() const;
-
-  c_sparse_feature_descriptor_options & sparse_feature_descriptor_options() ;
-  const c_sparse_feature_descriptor_options & sparse_feature_descriptor_options() const;
-
-  c_master_frame_options & master_frame_options();
-  const c_master_frame_options & master_frame_options() const;
-
-  c_frame_registration_options & frame_registration_options();
-  const c_frame_registration_options & frame_registration_options() const;
-  c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
-  c_frame_registration::sptr create_frame_registration() const;
-
-  c_frame_accumulation_options & accumulation_options();
-  const c_frame_accumulation_options & accumulation_options() const;
-  c_frame_accumulation::ptr create_frame_accumulation() const;
-
-  c_image_stacking_output_options & output_options();
-  const c_image_stacking_output_options & output_options() const;
-
-  c_image_processing_options & image_processing_options();
-  const c_image_processing_options & image_processing_options() const;
-
-  std::string get_displaypatch() const;
-
-  static ptr load(const std::string & cfgfilename);
-  bool save(const std::string & cfgfilename) const;
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
-
-
-protected:
-  c_image_stacking_options(const std::string & name = "");
-
-  std::string name_;
-  c_input_sequence::ptr input_sequence_;
-  c_input_options input_options_;
-  c_roi_selection_options roi_selection_options_;
-  c_frame_upscale_options upscale_options_;
-  c_frame_registration_options frame_registration_options_;
-  c_frame_accumulation_options accumulation_options_;
-  c_image_stacking_output_options output_options_;
-  c_image_processing_options image_processing_options_;
-};
-
-
-class c_image_stacks_collection
-{
-public:
-  typedef c_image_stacks_collection this_class;
-  typedef std::shared_ptr<this_class> ptr;
-
-  static ptr create();
-
-  size_t size() const;
-
-  const std::vector<c_image_stacking_options::ptr> & items() const;
-  c_image_stacking_options::ptr item(size_t index) const;
-  c_image_stacking_options::ptr item(const std::string & name) const;
-
-  void add(const c_image_stacking_options::ptr & stack);
-  bool remove(const c_image_stacking_options::ptr & stack);
-  void set(int pos, const c_image_stacking_options::ptr & stack);
-
-  ssize_t indexof(const c_image_stacking_options::ptr & stack) const;
-  ssize_t indexof(const std::string & name) const;
-
-  bool save(const std::string & cfgfilename = "") const;
-  bool load(const std::string & cfgfilename = "");
-
-  static const std::string & default_config_filename();
-  static void set_default_config_filename(const std::string & v);
-
-
-protected:
-  c_image_stacks_collection();
-
-  std::vector<c_image_stacking_options::ptr> stacks_;
-  mutable std::string filename_;
-  static std::string default_config_filename_;
-};
-
-
-class c_image_stacking_pipeline
+class c_image_stacking_pipeline :
+    public c_image_processing_pipeline
 {
 public:
   typedef c_image_stacking_pipeline this_class;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef c_image_processing_pipeline base;
+  typedef std::shared_ptr<this_class> sptr;
 
-public:
-  c_image_stacking_pipeline();
-  virtual ~c_image_stacking_pipeline();
 
-  void set_canceled(bool canceled);
-  bool canceled() const;
+  c_image_stacking_pipeline(const std::string & name,
+      const c_input_sequence::sptr & input_sequence);
+  ~c_image_stacking_pipeline();
+
+  const std::string & get_class_name() const override
+  {
+    return class_name();
+  }
+
+  static const std::string & class_name()
+  {
+    static const std::string classname_ =
+        "image_stacking";
+    return classname_;
+  }
+
+
+  c_notification<void(STACKING_STAGE oldstage, STACKING_STAGE newstage)> on_stacking_stage_changed;
+  c_notification<void()> on_accumulator_changed;
+  c_notification<void()> on_selected_master_frame_changed;
+
 
   STACKING_STAGE stacking_stage() const;
 
-  const c_image_stacking_options::ptr & options() const;
   const c_anscombe_transform & anscombe() const;
 
-  int total_frames() const;
-  int processed_frames() const;
-  int accumulated_frames() const;
-  std::string output_file_name() const;
-  std::string status_message() const ;
+  c_input_options& input_options();
+  const c_input_options& input_options() const;
 
-  bool run(const c_image_stacking_options::ptr & stacking_options);
+  c_roi_selection_options& roi_selection_options();
+  const c_roi_selection_options& roi_selection_options() const;
+  c_roi_selection::ptr create_roi_selection() const;
+
+  c_frame_upscale_options& upscale_options();
+  const c_frame_upscale_options& upscale_options() const;
+
+  c_sparse_feature_extractor_options& sparse_feature_extractor_options();
+  const c_sparse_feature_extractor_options& sparse_feature_extractor_options() const;
+
+  c_sparse_feature_detector_options& sparse_feature_detector_options();
+  const c_sparse_feature_detector_options& sparse_feature_detector_options() const;
+
+  c_sparse_feature_descriptor_options& sparse_feature_descriptor_options();
+  const c_sparse_feature_descriptor_options& sparse_feature_descriptor_options() const;
+
+  c_master_frame_options& master_frame_options();
+  const c_master_frame_options& master_frame_options() const;
+
+  c_frame_registration_options& frame_registration_options();
+  const c_frame_registration_options& frame_registration_options() const;
+  c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
+  c_frame_registration::sptr create_frame_registration() const;
+
+  c_frame_accumulation_options& accumulation_options();
+  const c_frame_accumulation_options& accumulation_options() const;
+  c_frame_accumulation::ptr create_frame_accumulation() const;
+
+  c_image_stacking_output_options& output_options();
+  const c_image_stacking_output_options& output_options() const;
+
+  c_image_processing_options& image_processing_options();
+  const c_image_processing_options& image_processing_options() const;
+
+  std::string output_file_name() const;
 
   bool compute_accumulated_image(cv::OutputArray dst,
       cv::OutputArray dstmask=cv::noArray()) const ;
@@ -376,27 +304,30 @@ public:
   bool get_selected_master_frame(cv::OutputArray dst,
       cv::OutputArray dstmask=cv::noArray()) const;
 
+  bool serialize(c_config_setting setting, bool save) override;
+
+  bool run() override;
+
 protected:
   void set_stacking_stage(STACKING_STAGE stage);
+  void update_output_path() override;
 
-  void set_status_msg(const std::string & msg) const;
 
-  bool initialize(const c_image_stacking_options::ptr & options);
+  bool initialize();
   bool actual_run();
   void cleanup();
 
-  bool create_reference_frame(const c_input_sequence::ptr & input_sequence,
+  bool create_reference_frame(const c_input_sequence::sptr & input_sequence,
       int master_frame_index, int max_frames_to_stack,
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
 
-  bool process_input_sequence(const c_input_sequence::ptr & input_sequence,
+  bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
       int startpos, int endpos);
 
-  int select_master_frame_index(const c_input_sequence::ptr & input_sequence);
+  int select_master_frame(const c_input_sequence::sptr & input_sequence);
 
-  bool read_input_frame(const c_input_sequence::ptr & input_sequence,
-      const c_input_options & input_options,
-      cv::Mat & output_reference_image, cv::Mat & output_reference_mask) const;
+  bool read_input_frame(const c_input_sequence::sptr & input_sequence,
+      cv::Mat & output_image, cv::Mat & output_mask) const;
 
   static bool select_image_roi(const c_roi_selection::ptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
@@ -406,10 +337,6 @@ protected:
       const c_image_stacking_output_options & output_options,
       const cv::Mat & output_image,
       const cv::Mat & output_mask);
-
-
-
-  class c_video_writer;
 
   void save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_video_writer & output_writer, int seqindex) const;
@@ -452,42 +379,33 @@ protected:
 
   bool upscale_required(frame_upscale_stage current_stage) const;
 
-  virtual void emit_stacking_stage_changed(STACKING_STAGE oldstage, STACKING_STAGE newstage) const {}
-  virtual void emit_status_changed() const {}
-  virtual void emit_accumulator_changed() const {}
-  virtual void emit_selected_master_frame_changed() const {}
-
 protected:
 
-  using lock_guard = std::lock_guard<std::mutex>;
+  c_input_options input_options_;
+  c_roi_selection_options roi_selection_options_;
+  c_frame_upscale_options upscale_options_;
+  c_frame_registration_options frame_registration_options_;
+  c_frame_accumulation_options accumulation_options_;
+  c_image_stacking_output_options output_options_;
+  c_image_processing_options image_processing_options_;
 
-  c_image_stacking_options::ptr options_;
-  c_input_sequence::ptr input_sequence_;
+
 
   STACKING_STAGE stacking_stage_ = stacking_stage_idle;
 
-  volatile bool canceled_ = false;
   bool master_frame_generation_ = false;
   int master_frame_index_ = -1;
   bool external_master_frame_ = false;
 
-  std::string output_directory_;
   std::string output_file_name_;
 
   double ecc_normalization_noise_ = 0;
   double reference_sharpness_ = 0;
 
-  int total_frames_ = 0;
-  int processed_frames_ = 0;
-
   cv::Mat darkbayer_;
   cv::Mat missing_pixel_mask_;
   cv::Mat selected_master_frame_;
   cv::Mat selected_master_frame_mask_;
-  //cv::Mat1f reference_weights_;
-
-  mutable std::string statusmsg_;
-  mutable std::mutex status_lock_;
 
   c_anscombe_transform anscombe_;
   c_roi_selection::ptr roi_selection_;
@@ -500,9 +418,6 @@ protected:
   mutable std::mutex accumulator_lock_;
 
   mutable std::string output_file_name_postfix_;
-
-  std::vector<uint> badframes_; // global indexes
-  void gather_badframe_indexes();
 };
 
 #endif /* __c_stacking_pipeline_h__ */

@@ -282,6 +282,95 @@ typename std::enable_if<std::is_enum<enum_type>::value,
 }
 
 
+inline std::string flagsToString(int flags, const c_enum_member * membs)
+{
+  std::string s;
+
+  if( membs ) {
+    for( ; membs->name && *membs->name; ++membs ) {
+
+      if( flags & membs->value ) {
+
+        if( !s.empty() ) {
+          s += " | ";
+        }
+
+        s += membs->name;
+      }
+    }
+  }
+
+  return s;
+}
+
+
+template<class enum_type>
+typename std::enable_if<std::is_enum_v<enum_type>,
+  std::string>::type flagsToString(int flags)
+{
+  return flagsToString(flags, members_of<enum_type>());
+}
+
+
+inline int flagsFromString(const std::string & s, const c_enum_member *membs)
+{
+
+  int flags = 0;
+
+  if( membs ) {
+
+    std::vector<std::string> tokens =
+        strsplit(s, "| \r\n\t");
+
+    for ( const std::string & token : tokens ) {
+
+      const char * s =
+          token.c_str();
+
+      for ( int i = 0; membs[i].name && *membs[i].name; ++i ) {
+        if ( strcasecmp(membs[i].name, s) == 0 ) {
+          flags |= membs[i].value;
+          break;
+        }
+      }
+    }
+  }
+
+  return flags;
+}
+
+template<class enum_type>
+typename std::enable_if<std::is_enum_v<enum_type>,
+  int>::type flagsFromString(const std::string & s)
+{
+
+  int flags = 0;
+
+  const c_enum_member *membs =
+      members_of<enum_type>();
+
+  if( membs ) {
+
+    std::vector<std::string> tokens =
+        strsplit(s, "| \r\n\t");
+
+    for ( const std::string & token : tokens ) {
+
+      const char * s =
+          token.c_str();
+
+      for ( int i = 0; membs[i].name && *membs[i].name; ++i ) {
+        if ( strcasecmp(membs[i].name, s) == 0 ) {
+          flags |= membs[i].value;
+          break;
+        }
+      }
+    }
+  }
+
+  return flags;
+}
+
 
 template<class T>
 inline std::string toString(const std::vector<T> & v) {

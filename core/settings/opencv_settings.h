@@ -20,6 +20,7 @@ template<class T> struct c_config_type_traits<cv::Rect_<T>> { static constexpr i
 template<class T, int cn> struct c_config_type_traits<cv::Vec<T, cn>> { static constexpr int type = CONFIG_TYPE_ARRAY; };
 template<class T, int m, int n> struct c_config_type_traits<cv::Matx<T, m, n>> { static constexpr int type = CONFIG_TYPE_ARRAY; };
 
+
 template<class T>
 inline bool save_settings(c_config_setting item, const cv::Size_<T> & value)
 {
@@ -224,5 +225,8 @@ inline bool load_settings(c_config_setting array, cv::Matx<T, m, n> * value)
 
 bool load_settings(c_config_setting settings,
     cv::TermCriteria * t);
+
+bool save_settings(c_config_setting settings,
+    const cv::TermCriteria & t);
 
 #endif /* __opencv_settings_h__ */

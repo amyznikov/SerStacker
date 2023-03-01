@@ -30,7 +30,7 @@ QImageFileViewer::QImageFileViewer(QWidget * parent) :
 {
 }
 
-const c_input_sequence::ptr & QImageFileViewer::input_sequence() const
+const c_input_sequence::sptr & QImageFileViewer::input_sequence() const
 {
   return input_sequence_;
 }

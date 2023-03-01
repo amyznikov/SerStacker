@@ -33,7 +33,7 @@ public:
 
   QString currentFileName() const;
 
-  const c_input_sequence::ptr & input_sequence() const;
+  const c_input_sequence::sptr & input_sequence() const;
 
 signals:
   void currentImageChanged();
@@ -48,7 +48,7 @@ protected:
   void hideEvent(QHideEvent *event) override;
 
 protected:
-  c_input_sequence::ptr input_sequence_;
+  c_input_sequence::sptr input_sequence_;
   QPlaySequenceControl * playControls = nullptr;
 };
 

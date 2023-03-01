@@ -19,6 +19,9 @@ enum c_image_processor_routine_gui_ctl_type {
   c_image_processor_routine_gui_ctl_numeric_text_box = 0,
   c_image_processor_routine_gui_ctl_check_box,
   c_image_processor_routine_gui_ctl_enum_combobox,
+  c_image_processor_routine_gui_ctl_flags_chkbox,
+  c_image_processor_routine_gui_ctl_begin_group,
+  c_image_processor_routine_gui_ctl_end_group,
 };
 
 struct c_image_processor_routine_ctrl {
@@ -30,7 +33,7 @@ struct c_image_processor_routine_ctrl {
   std::function<void (const std::string &)> set_value;
 };
 
-#define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
+#define ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, cname, desc) \
   if ( true ) { \
     c_image_processor_routine_gui_ctl_type ctype; \
     if( std::is_enum<decltype(param())>::value ) { \
@@ -43,7 +46,7 @@ struct c_image_processor_routine_ctrl {
       ctype = c_image_processor_routine_gui_ctl_numeric_text_box; \
     } \
     c_image_processor_routine_ctrl tmp = { \
-        .name = #param, \
+        .name = #cname, \
         .tooltip = desc, \
         .ctl_type = ctype, \
         .get_enum_members = get_members_of<decltype(param())>(), \
@@ -56,6 +59,49 @@ struct c_image_processor_routine_ctrl {
       if( fromString(s, &v) ) { \
         set_##param(v); \
       } \
+    }; \
+    (ctls)->emplace_back(tmp); \
+  }
+
+#define ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, param, cname, enumtype, desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+        .name = #cname, \
+        .tooltip = desc, \
+        .ctl_type = c_image_processor_routine_gui_ctl_flags_chkbox, \
+        .get_enum_members = get_members_of<enumtype>(), \
+    }; \
+    tmp.get_value = [this](void) { \
+        return toString(param()); \
+      }; \
+    tmp.set_value = [this](const std::string & s) { \
+      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      if( fromString(s, &v) ) { \
+        set_##param(v); \
+      } \
+    }; \
+    (ctls)->emplace_back(tmp); \
+  }
+
+#define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
+    ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, param, desc)
+
+#define ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, cname, desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+        .name = cname, \
+        .tooltip = desc, \
+        .ctl_type = c_image_processor_routine_gui_ctl_begin_group, \
+    }; \
+    (ctls)->emplace_back(tmp); \
+  }
+
+#define END_IMAGE_PROCESSOR_CTRL_GROUP(ctls) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+        .name = "", \
+        .tooltip = "", \
+        .ctl_type = c_image_processor_routine_gui_ctl_end_group, \
     }; \
     (ctls)->emplace_back(tmp); \
   }

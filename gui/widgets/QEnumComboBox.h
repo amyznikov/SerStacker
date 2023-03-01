@@ -23,8 +23,8 @@ public:
   typedef QEnumComboBoxBase ThsClass;
   typedef QComboBox Base;
 
-  QEnumComboBoxBase(QWidget * parent = 0);
-  QEnumComboBoxBase(const c_enum_member * membs, QWidget * parent = 0);
+  QEnumComboBoxBase(QWidget * parent = nullptr);
+  QEnumComboBoxBase(const c_enum_member * membs, QWidget * parent = nullptr);
 
   void setupItems(const c_enum_member * membs);
 
@@ -40,8 +40,8 @@ protected:
 
 
 template<class E>
-class QEnumComboBox
-  : public QEnumComboBoxBase
+class QEnumComboBox :
+    public QEnumComboBoxBase
 {
 
 public:
@@ -49,7 +49,7 @@ public:
   typedef QEnumComboBoxBase Base;
   typedef E ItemType;
 
-  QEnumComboBox(QWidget * parent) :
+  QEnumComboBox(QWidget * parent = nullptr) :
     Base(parent)
   {
     setupItems(members_of<E>());
@@ -74,18 +74,6 @@ public:
 
 };
 
-
-template<class T, class E>
-inline bool applySetting(const QString & optName, QEnumComboBox<E> * combo, T * obj,  bool (T::*fn)(E))
-{
-  E v = combo->currentItem();
-  if ( !(obj->*fn)(v) ) {
-    QMessageBox::critical(combo, "ERROR", QString("Invalid %1 specified").arg(optName));
-    combo->setFocus();
-    return false;
-  }
-  return true;
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////

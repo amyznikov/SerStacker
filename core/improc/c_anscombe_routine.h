@@ -29,15 +29,27 @@ public:
     return anscombe_.method();
   }
 
+  void set_invert(bool v)
+  {
+    invert_ = v;
+  }
+
+  bool invert() const
+  {
+    return invert_;
+  }
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, method, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, invert, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, anscombe_, method);
+      SERIALIZE_PROPERTY(settings, save, *this, invert);
       return true;
     }
     return false;
@@ -45,12 +57,19 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
-    anscombe_.apply(image.getMatRef(), image.getMatRef());
+    if ( invert_ ) {
+      anscombe_.inverse(image.getMatRef(), image.getMatRef());
+    }
+    else {
+      anscombe_.apply(image.getMatRef(), image.getMatRef());
+    }
+
     return true;
   }
 
 protected:
   c_anscombe_transform anscombe_;
+  bool invert_ = false;
 };
 
 

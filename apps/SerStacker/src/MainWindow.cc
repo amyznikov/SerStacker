@@ -10,12 +10,14 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
-#include <gui/qstackingthread/QStackingThread.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
+#include <gui/qpipelinethread/QImageProcessingPipeline.h>
 #include <core/io/load_image.h>
+#include <core/pipeline/c_image_stacking_pipeline.h>
+#include <core/pipeline/c_chessboard_camera_calibration_pipeline.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -133,7 +135,7 @@ MainWindow::MainWindow()
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
   centralStackedWidget->addWidget(imageEditor = new QImageEditor(this));
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
-  centralStackedWidget->addWidget(stackOptionsView_ = new QStackOptions(this));
+  centralStackedWidget->addWidget(pipelineOptionsView = new QPipelineOptionsView(this));
 
   centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
   connect(centralStackedWidget, &QStackedWidget::currentChanged,
@@ -157,6 +159,7 @@ MainWindow::MainWindow()
   setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
 
 
+  setupPipelineTypes();
   setupMainMenu();
   setupFileSystemTreeView();
   setupThumbnailsView();
@@ -170,22 +173,22 @@ MainWindow::MainWindow()
   setupRoiOptions();
 
 
-  tabifyDockWidget(fileSystemTreeDock, stackTreeDock);
-  tabifyDockWidget(stackTreeDock, imageProcessorSelectorDock);
+  tabifyDockWidget(fileSystemTreeDock, sequencesTreeDock);
+  tabifyDockWidget(sequencesTreeDock, imageProcessorSelectorDock);
 
 
-  connect(QStackingThread::singleton(), &QStackingThread::started,
+  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::started,
       this, &ThisClass::onStackingThreadStarted);
 
-  connect(QStackingThread::singleton(), &QStackingThread::finished,
+  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::finished,
       this, &ThisClass::onStackingThreadFinished);
 
 
   restoreState();
 
   imageEditor->set_current_processor(imageProcessorSelector->current_processor());
-  stacklist_->load();
-  stackTreeView->set_stacklist(stacklist_);
+  image_sequences_->load();
+  sequencesTreeView->set_image_sequence_collection(image_sequences_);
 
   QApplication::instance()->installEventFilter(this);
 
@@ -251,6 +254,26 @@ void MainWindow::restoreState()
     fileSystemTreeDock->displayPath(settings.value(
         "fileSystemTree/absoluteFilePath").toString());
   }
+
+}
+
+void MainWindow::setupPipelineTypes()
+{
+
+  c_image_processing_pipeline::register_class(
+      c_image_stacking_pipeline::class_name(),
+      "c_image_stacking_pipeline",
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new c_image_stacking_pipeline(name, input_sequence));
+      });
+
+  c_image_processing_pipeline::register_class(
+      c_chessboard_camera_calibration_pipeline::class_name(),
+      "c_camera_calibration_pipeline",
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new c_chessboard_camera_calibration_pipeline(name, input_sequence));
+      });
+
 
 }
 
@@ -370,11 +393,11 @@ void MainWindow::setupMainMenu()
           this, &ThisClass::onViewGeneralSettings));
 
 
-  stackProgressView_ = new QStackProgressView(this);
-  menuBar->setCornerWidget(stackProgressView_, Qt::TopRightCorner );
-  stackProgressView_->hide();
+  pipelineProgressView = new QPipelineProgressView(this);
+  menuBar->setCornerWidget(pipelineProgressView, Qt::TopRightCorner );
+  pipelineProgressView->hide();
 
-  connect(stackProgressView_, &QStackProgressView::progressTextChanged,
+  connect(pipelineProgressView, &QPipelineProgressView::progressTextChanged,
       this, &ThisClass::onStackProgressViewTextChanged,
       Qt::QueuedConnection);
 
@@ -384,8 +407,8 @@ void MainWindow::onStackProgressViewTextChanged()
 {
   // FIXME : this is ugly temporary hotfix
 
-  const QSize hint = stackProgressView_->sizeHint();
-  const QSize size = stackProgressView_->size();
+  const QSize hint = pipelineProgressView->sizeHint();
+  const QSize size = pipelineProgressView->size();
 
   // CF_DEBUG("sizeHint: %dx%d size=%dx%d", hint.width(), hint.height(), size.width(), size.height());
   if( size != hint ) {
@@ -406,8 +429,8 @@ void MainWindow::setupFileSystemTreeView()
   connect(fileSystemTreeDock, &QFileSystemTreeDock::currentDirectoryChanged,
       [this](const QString & abspath) {
 
-        if ( stackProgressView_ ) {
-          stackProgressView_->setImageViewer(nullptr);
+        if ( pipelineProgressView ) {
+          pipelineProgressView->setImageViewer(nullptr);
         }
         if ( imageEditor ) {
           imageEditor->clear();
@@ -418,17 +441,16 @@ void MainWindow::setupFileSystemTreeView()
         if ( cloudViewer ) {
           cloudViewer->clear();
         }
-        if ( thumbnailsView ) {
-          centralStackedWidget->setCurrentWidget(thumbnailsView);
-          thumbnailsView->displayPath(abspath);
-        }
+
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+        thumbnailsView->displayPath(abspath);
       });
 
   connect(fileSystemTreeDock, &QFileSystemTreeDock::directoryItemPressed,
       [this](const QString & abspath) {
 
-        if ( stackProgressView_ ) {
-          stackProgressView_->setImageViewer(nullptr);
+        if ( pipelineProgressView ) {
+          pipelineProgressView->setImageViewer(nullptr);
         }
         if ( imageEditor ) {
           imageEditor->clear();
@@ -440,12 +462,10 @@ void MainWindow::setupFileSystemTreeView()
           cloudViewer->clear();
         }
 
-        if ( thumbnailsView ) {
-          if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
-            centralStackedWidget->setCurrentWidget(thumbnailsView);
-            if ( thumbnailsView->currentPath() != abspath ) {
-              thumbnailsView->displayPath(abspath);
-            }
+        if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
+          centralStackedWidget->setCurrentWidget(thumbnailsView);
+          if ( thumbnailsView->currentPath() != abspath ) {
+            thumbnailsView->displayPath(abspath);
           }
         }
       });
@@ -457,96 +477,95 @@ void MainWindow::setupFileSystemTreeView()
 
 void MainWindow::setupThumbnailsView()
 {
-  if ( thumbnailsView ) {
 
-    connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested,
-        [this](const QString & abspath) {
-          if ( stackProgressView_ ) {
-            stackProgressView_->setImageViewer(nullptr);
-          }
-          if ( imageEditor ) {
-            imageEditor->clear();
-          }
-          if ( textViewer ) {
-            textViewer->clear();
-          }
-          if (cloudViewer) {
-            cloudViewer->clear();
-          }
-          if ( fileSystemTreeDock ) {
-            fileSystemTreeDock->show(),
-            fileSystemTreeDock->raise(),
-            fileSystemTreeDock->displayPath(abspath);
-          }
-    });
+  connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested,
+      [this](const QString & abspath) {
+        if ( pipelineProgressView ) {
+          pipelineProgressView->setImageViewer(nullptr);
+        }
+        if ( imageEditor ) {
+          imageEditor->clear();
+        }
+        if ( textViewer ) {
+          textViewer->clear();
+        }
+        if (cloudViewer) {
+          cloudViewer->clear();
+        }
+        if ( fileSystemTreeDock ) {
+          fileSystemTreeDock->show(),
+          fileSystemTreeDock->raise(),
+          fileSystemTreeDock->displayPath(abspath);
+        }
+      });
 
-    connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
-        [this](const QString & abspath) {
-          if ( stackProgressView_ ) {
-            stackProgressView_->setImageViewer(nullptr);
-          }
-          if ( imageEditor ) {
-            imageEditor->clear();
-          }
-          if ( textViewer ) {
-            textViewer->clear();
-          }
-          if (cloudViewer) {
-            cloudViewer->clear();
-          }
-          if ( imageEditor && imageEditor->isVisible() ) {
-            openImage(abspath);
-          }
-          else if ( textViewer && textViewer->isVisible() ) {
-            openImage(abspath);
-          }
-          else if ( cloudViewer && cloudViewer->isVisible() ) {
-            openImage(abspath);
-          }
-    });
+  connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
+      [this](const QString & abspath) {
+        if ( pipelineProgressView ) {
+          pipelineProgressView->setImageViewer(nullptr);
+        }
+        if ( imageEditor ) {
+          imageEditor->clear();
+        }
+        if ( textViewer ) {
+          textViewer->clear();
+        }
+        if (cloudViewer) {
+          cloudViewer->clear();
+        }
+        if ( imageEditor && imageEditor->isVisible() ) {
+          openImage(abspath);
+        }
+        else if ( textViewer && textViewer->isVisible() ) {
+          openImage(abspath);
+        }
+        else if ( cloudViewer && cloudViewer->isVisible() ) {
+          openImage(abspath);
+        }
+      });
 
-    connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
-        this, &ThisClass::openImage);
+  connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
+      this, &ThisClass::openImage);
 
-    connect(thumbnailsView, &QThumbnailsView::iconEnterPressed,
-        this, &ThisClass::openImage);
+  connect(thumbnailsView, &QThumbnailsView::iconEnterPressed,
+      this, &ThisClass::openImage);
 
-    connect(thumbnailsView, &QThumbnailsView::customContextMenuRequested,
-        this, &ThisClass::onThumbnailsViewCustomContextMenuRequested);
-  }
+  connect(thumbnailsView, &QThumbnailsView::customContextMenuRequested,
+      this, &ThisClass::onThumbnailsViewCustomContextMenuRequested);
+
 }
 
 void MainWindow::setupStackTreeView()
 {
-  stackTreeDock =
-      addSequencesTreeDock(this,
+  sequencesTreeDock =
+      addImageSequenceTreeDock(this,
           Qt::LeftDockWidgetArea,
           "sequencesTreeDock",
           "Sequences",
           menuView_);
 
-  stackTreeView =
-      stackTreeDock->treeView();
+  sequencesTreeView =
+      sequencesTreeDock->treeView();
 
-  connect(stackTreeView, &QStackTree::currentItemChanged,
+  connect(sequencesTreeView, &QImageSequenceTree::currentItemChanged,
       this, &ThisClass::onStackTreeCurrentItemChanged);
 
-  connect(stackTreeView, &QStackTree::itemDoubleClicked,
+  connect(sequencesTreeView, &QImageSequenceTree::itemDoubleClicked,
       this, &ThisClass::onStackTreeItemDoubleClicked);
 
-  connect(stackTreeView, &QStackTree::showStackOptionsClicked,
-      this, &ThisClass::onShowStackOptionsClicked);
+  connect(sequencesTreeView, &QImageSequenceTree::showImageSequenceOptionsClicked,
+      this, &ThisClass::onShowImageSequenceOptions);
 
-  connect(stackTreeView, &QStackTree::stackCollectionChanged,
+  connect(sequencesTreeView, &QImageSequenceTree::imageSequenceCollectionChanged,
         this, &ThisClass::saveCurrentWork );
 
-  connect(stackTreeView, &QStackTree::stackSourcesChanged,
+  connect(sequencesTreeView, &QImageSequenceTree::imageSequenceSourcesChanged,
       this, &ThisClass::saveCurrentWork);
 
-  connect(stackTreeView, &QStackTree::stackNameChanged,
-      [this] (const c_image_stacking_options::ptr & stack) {
-        if ( stackOptionsView_->currentStack() == stack ) {
-          stackOptionsView_->updateControls();
+  connect(sequencesTreeView, &QImageSequenceTree::imageSequenceNameChanged,
+      [this] (const c_image_sequence::sptr & sequence) {
+        if ( pipelineOptionsView->current_sequence() == sequence ) {
+          // pipelineOptionsView->updateControls();
         }
         saveCurrentWork();
       });
@@ -555,45 +574,45 @@ void MainWindow::setupStackTreeView()
 
 void MainWindow::setupStackOptionsView()
 {
-  connect(stackOptionsView_, &QStackOptions::closeWindowRequested,
+  connect(pipelineOptionsView, &QPipelineOptionsView::closeWindowRequested,
       [this]() {
-        if ( !QStackingThread::isRunning() ) {
+        if ( !QImageProcessingPipeline::isRunning() ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
         }
         else {
           centralStackedWidget->setCurrentWidget(imageEditor);
-          stackProgressView_->setImageViewer(imageEditor);
+          pipelineProgressView->setImageViewer(imageEditor);
         }
       });
 
-  connect(stackOptionsView_, &QStackOptions::applyInputOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyInputOptionsToAll);
+//  connect(stackOptionsView_, &QStackOptions::applyInputOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyInputOptionsToAll);
+//
+//  connect(stackOptionsView_, &QStackOptions::applyROISelectionOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyROISelectionOptionsToAll);
+//
+//  connect(stackOptionsView_, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyFrameUpscaleOptionsToAll);
+//
+//  connect(stackOptionsView_, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyFrameRegistrationOptionsToAll);
+//
+//  connect(stackOptionsView_, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyFrameAccumulationOptionsToAll);
+//
+//  connect(stackOptionsView_, &QStackOptions::applyOutputOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyOutputOptionsToAll);
+//
+//  connect(stackOptionsView_, &QStackOptions::applyAllStackOptionsToAllRequested,
+//      sequencesTreeView, &QImageSequenceTree::applyAllStackOptionsToAll);
 
-  connect(stackOptionsView_, &QStackOptions::applyROISelectionOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyROISelectionOptionsToAll);
+//  connect(stackOptionsView, &QStackOptions::stackNameChanged,
+//      [this](const c_image_stacking_options::ptr & stack) {
+//        sequencesTreeView->updateStackName(stack);
+//        saveCurrentWork();
+//      });
 
-  connect(stackOptionsView_, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyFrameUpscaleOptionsToAll);
-
-  connect(stackOptionsView_, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyFrameRegistrationOptionsToAll);
-
-  connect(stackOptionsView_, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyFrameAccumulationOptionsToAll);
-
-  connect(stackOptionsView_, &QStackOptions::applyOutputOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyOutputOptionsToAll);
-
-  connect(stackOptionsView_, &QStackOptions::applyAllStackOptionsToAllRequested,
-      stackTreeView, &QStackTree::applyAllStackOptionsToAll);
-
-  connect(stackOptionsView_, &QStackOptions::stackNameChanged,
-      [this](const c_image_stacking_options::ptr & stack) {
-        stackTreeView->updateStackName(stack);
-        saveCurrentWork();
-      });
-
-  connect(stackOptionsView_, &QStackOptions::stackOptionsChanged,
+  connect(pipelineOptionsView, &QPipelineOptionsView::parameterChanged,
       this, &ThisClass::saveCurrentWork);
 }
 
@@ -686,7 +705,7 @@ void MainWindow::setupImageEditor()
           [this](bool checked) {
             if ( imageEditor->isVisible() ) {
 
-              const c_input_sequence::ptr & input_sequence = imageEditor->input_sequence();
+              const c_input_sequence::sptr & input_sequence = imageEditor->input_sequence();
               if ( input_sequence ) {
 
                 c_input_source::ptr source = input_sequence->current_source();
@@ -706,17 +725,37 @@ void MainWindow::setupImageEditor()
           "Make reference",
           "Make this frame reference",
           [this]() {
-            if ( imageEditor->isVisible() && stackTreeView->isVisible() ) {
+            if ( imageEditor->isVisible() && sequencesTreeView->isVisible() ) {
 
-              c_input_source::ptr selectedSource;
-              c_image_stacking_options::ptr selectedStack;
+              c_input_source::ptr selected_source;
+              c_image_sequence::sptr selected_sequence;
 
-              selectedSource = stackTreeView->getCurrentInputSource(&selectedStack);
-              if ( selectedSource && selectedStack ) {
-                const c_input_sequence::ptr & currentSequence = imageEditor->input_sequence();
-                if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
-                  selectedStack->master_frame_options().master_source_path = selectedSource->filename();
-                  selectedStack->master_frame_options().master_frame_index = currentSequence->current_pos() - 1;
+              selected_source =
+                  sequencesTreeView->getCurrentInputSource(
+                      &selected_sequence);
+
+              if ( selected_source && selected_sequence ) {
+
+                const c_input_sequence::sptr & currentSequence =
+                    imageEditor->input_sequence();
+
+                if ( currentSequence && currentSequence->current_source()->filename() == selected_source->filename() ) {
+
+                  const c_image_processing_pipeline::sptr pipeline =
+                      selected_sequence->current_pipeline();
+
+                  if ( pipeline ) {
+                    pipeline->set_master_source(selected_source->filename());
+                    pipeline->set_master_frame_index(currentSequence->current_pos() - 1);
+                  }
+                  else {
+
+                    QMessageBox::warning(this, "warning",
+                        qsprintf("No current pipeline is selected,\n"
+                            "master frame is not assigned\n"
+                            " %s: %d",
+                            __FILE__, __LINE__) );
+                  }
                 }
               }
             }
@@ -932,7 +971,7 @@ void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
 
   if( isvisible ) {
 
-    const c_input_sequence::ptr &input_sequence =
+    const c_input_sequence::sptr &input_sequence =
         imageEditor->input_sequence();
 
     if( input_sequence ) {
@@ -1251,8 +1290,8 @@ void MainWindow::openImage(const QString & abspath)
 {
   QWaitCursor wait(this);
 
-  if ( stackProgressView_ ) {
-    stackProgressView_->setImageViewer(nullptr);
+  if ( pipelineProgressView ) {
+    pipelineProgressView->setImageViewer(nullptr);
   }
 
   imageEditor->clear();
@@ -1317,164 +1356,125 @@ void MainWindow::onFileSystemTreeCustomContextMenuRequested(const QPoint & pos,
 
 
 
-void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint &pos)
+void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
 {
-  if ( thumbnailsView ) {
-    QMenu poupupMenu;
-    thumbnailsView->populateContextMenu(&poupupMenu, pos);
-    if ( !poupupMenu.isEmpty() ) {
-      poupupMenu.exec(thumbnailsView->contextMenuPosToGlobal(pos));
-    }
+  QMenu poupupMenu;
+  thumbnailsView->populateContextMenu(&poupupMenu, pos);
+  if( !poupupMenu.isEmpty() ) {
+    poupupMenu.exec(thumbnailsView->contextMenuPosToGlobal(pos));
   }
 }
 
-void MainWindow::onStackTreeCurrentItemChanged(const c_image_stacking_options::ptr & selectedStack,
-    const c_input_source::ptr & selectedInputSource)
+void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source)
 {
-  if ( QStackingThread::isRunning() ) {
-
-    //QStackingThread::auto_lock lock;
-
-    if ( selectedInputSource ) {
-      stackProgressView_->setImageViewer(nullptr);
-      centralStackedWidget->setCurrentWidget(imageEditor);
-      imageEditor->openImage(selectedInputSource->filename());
-    }
-    else if ( selectedStack ) {
-
-      if ( selectedStack == QStackingThread::currentStack() ) {
-        stackProgressView_->setImageViewer(imageEditor);
-      }
-      else {
-
-        stackProgressView_->setImageViewer(nullptr);
-
-        QWidget * currentCentralWidget =
-            centralStackedWidget->currentWidget();
-
-        if ( currentCentralWidget == stackOptionsView_ ) {
-          stackOptionsView_->setCurrentStack(selectedStack);
-        }
-        else if ( thumbnailsView && thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
-          centralStackedWidget->setCurrentWidget(thumbnailsView);
-        }
-      }
-    }
-
-  }
-  else if ( selectedInputSource ) {
+  if ( source ) {
     centralStackedWidget->setCurrentWidget(imageEditor);
-    imageEditor->openImage(selectedInputSource->filename());
+    imageEditor->openImage(source->filename());
   }
-  else if ( selectedStack ) {
-    if ( thumbnailsView && centralStackedWidget->currentWidget() == thumbnailsView ) {
-      thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false);
+  else if ( sequence ) {
+    if ( centralStackedWidget->currentWidget() == thumbnailsView ) {
+      thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false);
     }
     else {
-      stackOptionsView_->setCurrentStack(selectedStack);
-      centralStackedWidget->setCurrentWidget(stackOptionsView_);
+      pipelineOptionsView->set_current_sequence(sequence);
+      centralStackedWidget->setCurrentWidget(pipelineOptionsView);
     }
   }
 
 }
 
-void MainWindow::onStackTreeItemDoubleClicked(const c_image_stacking_options::ptr & selectedStack,
-    const c_input_source::ptr & selectedInputSource)
+void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source)
 {
-  if ( QStackingThread::isRunning() ) {
+  if ( QImageProcessingPipeline::isRunning() ) {
 
-    if ( selectedInputSource ) {
-      stackProgressView_->setImageViewer(nullptr);
+    if ( source ) {
+      pipelineProgressView->setImageViewer(nullptr);
       centralStackedWidget->setCurrentWidget(imageEditor);
-      imageEditor->openImage(selectedInputSource->filename());
+      imageEditor->openImage(source->filename());
     }
-    else if ( selectedStack ) {
+    else if ( sequence ) {
 
       QWidget * currentCentralWidget =
           centralStackedWidget->currentWidget();
 
-      if ( selectedStack == QStackingThread::currentStack() ) {
+      if ( sequence == QImageProcessingPipeline::current_sequence() ) {
 
         if ( currentCentralWidget == imageEditor ) {
 
-          if ( !stackProgressView_->imageViewer() ) {
-            stackProgressView_->setImageViewer(imageEditor);
+          if ( !pipelineProgressView->imageViewer() ) {
+            pipelineProgressView->setImageViewer(imageEditor);
           }
           else {
-            stackProgressView_->setImageViewer(nullptr);
-            stackOptionsView_->setCurrentStack(selectedStack);
-            centralStackedWidget->setCurrentWidget(stackOptionsView_);
+            pipelineProgressView->setImageViewer(nullptr);
+            pipelineOptionsView->set_current_sequence(sequence);
+            centralStackedWidget->setCurrentWidget(pipelineOptionsView);
           }
 
         }
-        else if ( currentCentralWidget == stackOptionsView_ ) {
-          if ( thumbnailsView && thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
+        else if ( currentCentralWidget == pipelineOptionsView ) {
+          if ( thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false) ) {
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
           else {
             centralStackedWidget->setCurrentWidget(imageEditor);
-            stackProgressView_->setImageViewer(imageEditor);
+            pipelineProgressView->setImageViewer(imageEditor);
           }
         }
         else {
           centralStackedWidget->setCurrentWidget(imageEditor);
-          stackProgressView_->setImageViewer(imageEditor);
+          pipelineProgressView->setImageViewer(imageEditor);
         }
       }
       else {
 
-        if ( currentCentralWidget == stackOptionsView_ ) {
-          if ( thumbnailsView && thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
+        if ( currentCentralWidget == pipelineOptionsView ) {
+          if ( thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false) ) {
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
         }
         else {
-          stackOptionsView_->setCurrentStack(selectedStack);
-          centralStackedWidget->setCurrentWidget(stackOptionsView_);
+          pipelineOptionsView->set_current_sequence(sequence);
+          centralStackedWidget->setCurrentWidget(pipelineOptionsView);
         }
       }
     }
 
   }
-  else if ( selectedInputSource ) {
+  else if ( source ) {
     if ( centralStackedWidget->currentWidget() == imageEditor ) {
-      if ( thumbnailsView ) {
-        centralStackedWidget->setCurrentWidget(thumbnailsView);
-        thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false);
-      }
+      centralStackedWidget->setCurrentWidget(thumbnailsView);
+      thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false);
     }
     else {
       centralStackedWidget->setCurrentWidget(imageEditor);
-      imageEditor->openImage(selectedInputSource->filename());
+      imageEditor->openImage(source->filename());
     }
   }
-  else if ( selectedStack ) {
-    if ( centralStackedWidget->currentWidget() == stackOptionsView_ ) {
-      if ( thumbnailsView ) {
-        if ( thumbnailsView->setCurrentPath(selectedStack->get_displaypatch().c_str(), false) ) {
-          centralStackedWidget->setCurrentWidget(thumbnailsView);
-        }
+  else if ( sequence ) {
+    if ( centralStackedWidget->currentWidget() == pipelineOptionsView ) {
+      if( thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false) ) {
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
       }
     }
     else {
-      stackOptionsView_->setCurrentStack(selectedStack);
-      centralStackedWidget->setCurrentWidget(stackOptionsView_);
+      pipelineOptionsView->set_current_sequence(sequence);
+      centralStackedWidget->setCurrentWidget(pipelineOptionsView);
     }
   }
 
 }
 
 
-void MainWindow::onShowStackOptionsClicked(const c_image_stacking_options::ptr & stack)
+void MainWindow::onShowImageSequenceOptions(const c_image_sequence::sptr & sequence)
 {
-  if ( stack ) {
+  if ( sequence ) {
 
-    if ( stackProgressView_ ) {
-      stackProgressView_->setImageViewer(nullptr);
+    if ( pipelineProgressView ) {
+      pipelineProgressView->setImageViewer(nullptr);
     }
 
-    stackOptionsView_->setCurrentStack(stack);
-    centralStackedWidget->setCurrentWidget(stackOptionsView_);
+    pipelineOptionsView->set_current_sequence(sequence);
+    centralStackedWidget->setCurrentWidget(pipelineOptionsView);
   }
 
 }
@@ -1486,28 +1486,28 @@ void MainWindow::onStackingThreadStarted()
   }
 
   imageEditor->clear();
-  stackProgressView_->setImageViewer(imageEditor);
+  pipelineProgressView->setImageViewer(imageEditor);
 
-  if ( !stackProgressView_->isVisible() ) {
-    stackProgressView_->show();
+  if ( !pipelineProgressView->isVisible() ) {
+    pipelineProgressView->show();
   }
 }
 
 void MainWindow::onStackingThreadFinished()
 {
-  if ( stackProgressView_ ) {
+  if ( pipelineProgressView ) {
 
     // it may be that there is next task in queue,
     // don't blink with this dialog box
     QTimer::singleShot(1000,
         [this]() {
 
-          if ( !QStackingThread::isRunning() ) {
-            if ( stackProgressView_->isVisible() ) {
-              stackProgressView_->hide();
+          if ( !QImageProcessingPipeline::isRunning() ) {
+            if ( pipelineProgressView->isVisible() ) {
+              pipelineProgressView->hide();
             }
-            if ( stackOptionsView_->isVisible() ) {
-              stackOptionsView_->setEnabled(true);
+            if ( pipelineOptionsView->isVisible() ) {
+              pipelineOptionsView->setEnabled(true);
             }
           }
         });
@@ -1609,7 +1609,12 @@ void MainWindow::onLoadCurrentImageMask()
 
 void MainWindow::saveCurrentWork()
 {
-  stacklist_->save();
+  if( image_sequences_->indexof(pipelineOptionsView->current_sequence()) < 0 ) {
+    pipelineOptionsView->set_current_sequence(nullptr);
+  }
+
+  CF_DEBUG("image_sequences_->save()");
+  image_sequences_->save();
 }
 
 void MainWindow::onLoadStackConfig()
@@ -1646,10 +1651,10 @@ void MainWindow::onLoadStackConfig()
 
   for ( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
 
-    c_image_stacking_options::ptr stack =
-        c_image_stacking_options::load(selectedFileNames[i].toStdString());
+    c_image_sequence::sptr sequence =
+        c_image_sequence::load(selectedFileNames[i].toStdString());
 
-    if ( !stack ) {
+    if ( !sequence ) {
 
       if ( i == n - 1 ) {
         QMessageBox::critical(this,
@@ -1673,9 +1678,9 @@ void MainWindow::onLoadStackConfig()
     }
 
 
-    int pos = stacklist_->indexof(stack->name());
+    int pos = image_sequences_->indexof(sequence->name());
     if ( pos < 0 ) {
-      stacklist_->add(stack);
+      image_sequences_->add(sequence);
       hasChanges = true;
     }
     else {
@@ -1683,18 +1688,18 @@ void MainWindow::onLoadStackConfig()
       const int responce =
           QMessageBox::critical(this, "ERROR",
               QString("Stack with name '%1' already exists.\n"
-                  "Replace existing ?").arg(QString(stack->cname())),
+                  "Replace existing ?").arg(QString(sequence->cname())),
               QMessageBox::Yes | QMessageBox::No);
 
       if ( responce == QMessageBox::Yes  ) {
-        stacklist_->set(pos, stack);
+        image_sequences_->set(pos, sequence);
         hasChanges = true;
       }
     }
   }
 
   if ( hasChanges ) {
-    stackTreeView->refresh();
+    sequencesTreeView->refresh();
   }
 }
 

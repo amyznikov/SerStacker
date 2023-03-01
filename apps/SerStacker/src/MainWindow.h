@@ -13,23 +13,21 @@
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qmtf/QMtfControl.h>
 #include <gui/qtextview/QTextFileViewer.h>
-//#include <gui/qstackingthread/QStackingProgressView.h>
-#include <gui/qstackingoptions/QStackOptions.h>
-#include <gui/qstacktreeview/QStackTreeViewDock.h>
+#include <gui/qcloudview/QCloudViewer.h>
+#include <gui/qcloudview/QCloudViewSettings.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
+#include <gui/qimagesequencetreeview/QImageSequenceTreeDock.h>
 #include <gui/qfocus/QFocusGraph.h>
 #include <gui/qimagestats/QImageStatistics.h>
 #include <gui/widgets/QScaleSelectionButton.h>
+#include <gui/qpipelineoptions/QPipelineOptionsView.h>
 #include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
-#include "QStackProgressView.h"
-
-#include <gui/qcloudview/QCloudViewer.h>
-#include <gui/qcloudview/QCloudViewSettings.h>
+#include "QPipelineProgressView.h"
 
 namespace qserstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -49,6 +47,7 @@ public:
 private:
   void saveState();
   void restoreState();
+  void setupPipelineTypes();
   void setupMainMenu();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
@@ -81,22 +80,21 @@ private Q_SLOTS:
   void onImageEditorVisibilityChanged(bool visible);
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
-  void onStackTreeCurrentItemChanged(const c_image_stacking_options::ptr & currentStack,
-      const c_input_source::ptr & currentInputSource);
-  void onStackTreeItemDoubleClicked(const c_image_stacking_options::ptr & stack,
-      const c_input_source::ptr & inputSource);
+  void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source);
+  void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source);
   void onDisplaySettingsMenuActionClicked(bool checked);
 
 //  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);
 //  void onCurrentInputSourceChanged(const c_input_source::ptr & input_source);
-  void onShowStackOptionsClicked(const c_image_stacking_options::ptr & ppline);
+  void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
   void onStackingThreadStarted();
   void onStackingThreadFinished();
 
   void saveCurrentWork();
 
 private:
-  c_image_stacks_collection::ptr stacklist_ = c_image_stacks_collection::create();
+  c_image_sequence_collection::sptr image_sequences_ =
+      c_image_sequence_collection::sptr(new c_image_sequence_collection());
 
   QStackedWidget * centralStackedWidget = nullptr;
   QMtfControlDialogBox * mtfControl = nullptr;
@@ -109,14 +107,13 @@ private:
   QCloudViewer * cloudViewer = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
 
-  QStackProgressView * stackProgressView_ = nullptr;
-  QStackOptions * stackOptionsView_ = nullptr;
-  //QStackingProgressView * stackProgressView = nullptr;
+  QPipelineProgressView * pipelineProgressView = nullptr;
+  QPipelineOptionsView * pipelineOptionsView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
 
-  QStackTreeViewDock * stackTreeDock = nullptr;
-  QStackTree * stackTreeView = nullptr;
+  QImageSequenceTree * sequencesTreeView = nullptr;
+  QImageSequenceTreeDock * sequencesTreeDock = nullptr;
 
   QCustomDockWidget * imageProcessorSelectorDock = nullptr;
   QImageProcessorSelector * imageProcessorSelector = nullptr;

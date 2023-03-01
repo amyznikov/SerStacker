@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 
 static void average_frames(const std::string & input_file_name, const std::string & output_file_name)
 {
-  c_input_sequence::ptr input_sequence =
+  c_input_sequence::sptr input_sequence =
       c_input_sequence::create(input_file_name);
 
   if( !input_sequence ) {

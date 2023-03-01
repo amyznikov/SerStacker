@@ -15,7 +15,7 @@
 #include "ecc_motion_model.h"
 
 struct c_feature_based_registration_options {
-  bool enabled = true;
+  bool enabled = false;
   double scale = 0.5;
   c_sparse_feature_extractor_options sparse_feature_extractor;
   c_feature2d_matcher_options sparse_feature_matcher;
@@ -23,7 +23,7 @@ struct c_feature_based_registration_options {
 
 struct c_ecc_registration_options {
   bool enabled = true;
-  double scale = 1.;
+  double scale = 0.5;
   double eps = 0.2;
   double min_rho = 0.8;
   double input_smooth_sigma = 1.0;
@@ -33,7 +33,7 @@ struct c_ecc_registration_options {
   int normalization_scale = 0;
   int max_iterations = 15;
   int ecch_minimum_image_size = 16;
-  bool enable_ecch = false;
+  bool enable_ecch = true;
   bool ecch_estimate_translation_first = true;
   bool replace_planetary_disk_with_mask = false;
   double planetary_disk_mask_stdev_factor = 0.5;

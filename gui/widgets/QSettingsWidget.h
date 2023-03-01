@@ -12,6 +12,7 @@
 #include <QtWidgets/QtWidgets>
 #include <gui/widgets/settings.h>
 #include <gui/widgets/QEnumComboBox.h>
+#include <gui/widgets/QFlagsEditBox.h>
 #include <gui/widgets/QLineEditBox.h>
 #include <gui/widgets/QExpandableGroupBox.h>
 #include <gui/widgets/QSliderSpinBox.h>
@@ -20,8 +21,8 @@
 #include <mutex>
 
 
-class QSettingsWidget
-    : public QFrame
+class QSettingsWidget :
+    public QFrame
 {
   Q_OBJECT;
 
@@ -53,7 +54,7 @@ public:
   };
 
 
-  QSettingsWidget(const QString & prefix, QWidget * parent = Q_NULLPTR);
+  QSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
 
   void setSettingsPrefix(const QString & v);
   const QString& settingsPrefix() const;
@@ -83,18 +84,24 @@ protected:
 public:
 
   /////////////////////////////////////////////////////////////////////
-  void removeWidget( QWidget * w)
+  void removeWidget(QWidget * w)
   {
-    if ( form ) {
-      form->removeWidget(w);
-    }
+    form->removeWidget(w);
   }
 
-  void insertWidget(int row, QWidget * w)
+  void addRow(const QString & label, QWidget * field)
   {
-    if ( form ) {
-      form->insertRow(row, w);
-    }
+    form->addRow(label, field);
+  }
+
+  void insertRow(int row, QWidget * w)
+  {
+    form->insertRow(row, w);
+  }
+
+  int rowCount() const
+  {
+    return form->rowCount();
   }
 
   /////////////////////////////////////////////////////////////////////
@@ -111,15 +118,22 @@ public:
 
 
     if ( setfn ) {
-      QObject::connect(ctl, &QNumberEditBox::textChanged,
-          [this, ctl, setfn]() {
-            if ( !updatingControls() && setfn ) {
-              T v;
-              if ( fromString(ctl->text(), &v) ) {
-                c_mutex_lock lock(this);
-                setfn(v);
-              }
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QNumberEditBox::textChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() && setfn ) {
+                  T v;
+                  if ( fromString(ctl->text(), &v) ) {
+                    c_mutex_lock lock(this);
+                    setfn(v);
+                  }
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
     return ctl;
@@ -143,18 +157,19 @@ public:
     if( getfn ) {
 
       QMetaObject::Connection conn =
-          QObject::connect(this, &ThisClass::populatecontrols,
-              [ctl, getfn]() {
-                T v;
-                if ( getfn(&v) ) {
-                  ctl->setValue(v);
-                }
-              });
+        QObject::connect(this, &ThisClass::populatecontrols,
+            [ctl, getfn]() {
+              T v;
+              if ( getfn(&v) ) {
+                ctl->setValue(v);
+              }
+            });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
+
     }
 
     return ctl;
@@ -190,30 +205,39 @@ public:
     form->addRow(name, ctl);
 
     if( setfn ) {
-      QObject::connect(ctl, &QLineEditBox::textChanged,
-          [this, ctl, setfn]() {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(ctl->text());
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QLineEditBox::textChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->text());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
     if( getfn ) {
-      QObject::connect(this, &ThisClass::populatecontrols,
-          [ctl, getfn]() {
-            QString v;
-            if ( getfn(&v) ) {
-              ctl->setText(v);
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                QString v;
+                if ( getfn(&v) ) {
+                  ctl->setText(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
-//    QObject::connect(ctl, &QObject::destroyed,
-//        [this, ctl]() {
-//          ctl->disconnect(this);
-//          // QObject::disconnect(ctl, nullptr, this, nullptr);
-//        });
 
     return ctl;
   }
@@ -246,12 +270,19 @@ public:
     form->addRow(name, ctl);
 
     if( setfn ) {
-      QObject::connect(ctl, &QCheckBox::stateChanged,
-          [this, setfn](int state) {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(state==Qt::Checked);
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QCheckBox::stateChanged,
+              [this, setfn](int state) {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(state==Qt::Checked);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -275,8 +306,8 @@ public:
               });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -304,12 +335,19 @@ public:
     form->addRow(ctl);
 
     if( setfn ) {
-      QObject::connect(ctl, &QCheckBox::stateChanged,
-          [this, setfn](int state) {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(state==Qt::Checked);
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QCheckBox::stateChanged,
+              [this, setfn](int state) {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(state==Qt::Checked);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -333,8 +371,8 @@ public:
               });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -363,12 +401,19 @@ public:
     form->addRow(name, ctl);
 
     if( setfn ) {
-      QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
-          [this, ctl, setfn]() {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(ctl->currentItem());
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->currentItem());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -394,8 +439,8 @@ public:
               });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -418,6 +463,80 @@ public:
 
   /////////////////////////////////////////////////////////////////////
 
+  template<class EnumType>
+  QFlagsEditBox<EnumType> * add_flags_editbox(QFormLayout * form, const QString & name,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
+  {
+    QFlagsEditBox<EnumType> *ctl =
+        new QFlagsEditBox<EnumType>(this);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QFlagsEditBoxBase::flagsChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->flags());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  template<class EnumType>
+  QFlagsEditBox<EnumType>* add_flags_editbox(QFormLayout * form, const QString & name,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  {
+    QFlagsEditBox<EnumType> *ctl =
+        add_flags_editbox<EnumType>(form, name, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                int v = 0;
+                if ( getfn(&v) ) {
+                  ctl->setFlags(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+
+  template<class EnumType>
+  QFlagsEditBox<EnumType> * add_flags_editbox(const QString & name,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
+  {
+    return add_flags_editbox<EnumType>(this->form, name, setfn);
+  }
+
+  template<class EnumType>
+  QFlagsEditBox<EnumType> * add_flags_editbox(const QString & name,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  {
+    return add_flags_editbox<EnumType>(this->form, name, setfn, getfn);
+  }
+
+
+  /////////////////////////////////////////////////////////////////////
+
   template<class ComboBoxType = QComboBox>
   ComboBoxType* add_combobox(QFormLayout * form, const QString & name,
       const std::function<void(int, ComboBoxType*)> & setfn = std::function<void(int, ComboBoxType*)>())
@@ -427,13 +546,20 @@ public:
     form->addRow(name, ctl);
 
     if( setfn ) {
-      QObject::connect(ctl,
-          static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-          [this, ctl, setfn](int v) {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(v, ctl);
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl,
+              static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+              [this, ctl, setfn](int v) {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(v, ctl);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -460,8 +586,8 @@ public:
               });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -493,13 +619,20 @@ public:
     form->addRow(name, ctl);
 
     if( setfn ) {
-      QObject::connect(ctl,
-          static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-          [this, ctl, setfn](int v) {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(v);
-            }
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl,
+              static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+              [this, ctl, setfn](int v) {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -524,8 +657,8 @@ public:
               });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -554,15 +687,20 @@ public:
 
     if( setfn ) {
 
-      QObject::connect(ctl,
-          &QSliderSpinBox<T>::Type::valueChanged,
-          [this, ctl, setfn](T v) {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(v);
-            }
-          });
+      QMetaObject::Connection conn =
+          QObject::connect(ctl,
+              &QSliderSpinBox<T>::Type::valueChanged,
+              [this, ctl, setfn](T v) {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(v);
+                }
+              });
 
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
     }
 
     return ctl;
@@ -587,8 +725,8 @@ public:
               });
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
     }
 
@@ -669,10 +807,9 @@ public:
               onclick);
 
       QObject::connect(ctl, &QObject::destroyed,
-          [conn]() {
-            QObject::disconnect(conn);
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
           });
-
     }
 
     return ctl;
@@ -716,10 +853,10 @@ public:
 
 protected:
   QString PREFIX;
-  QFormLayout *form = Q_NULLPTR;
+  QFormLayout *form = nullptr;
 
 private:
-  std::mutex *mtx_ = Q_NULLPTR;
+  std::mutex *mtx_ = nullptr;
   int updatingControls_ = 0;
 };
 

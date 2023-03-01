@@ -110,6 +110,16 @@ QAction * createAction(const QIcon &icon, const QString &text, const QString &to
 }
 
 
+QScrollArea* createScrollableWrap(QWidget * w, QWidget * parent = nullptr)
+{
+  QScrollArea *scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+  scrollArea->setWidgetResizable(true);
+  scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+  scrollArea->setFrameShape(QFrame::NoFrame);
+  scrollArea->setWidget(w);
+  return scrollArea;
+}
+
 }  // namespace
 
 
@@ -131,7 +141,6 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
           "Move selected processor down",
           this,
           &ThisClass::onMoveCurrentProcessorDown));
-
 
   addAction(moveUpAction_ =
       createAction(getIcon(ICON_move_up),
@@ -215,14 +224,17 @@ QTreeWidgetItem * QImageProcessorChainEditor::insertProcessorItem(int index, con
       QImageProcessorSettingsControl::create(routine,
           this);
 
+
   if ( ctrl ) {
+
+    //ctrl->setAutoFillBackground(true);
 
     QImageProcessorOptionsItem * subitem =
         new QImageProcessorOptionsItem(routine);
 
     item->addChild(subitem);
 
-    tree_ctl->setItemWidget(subitem, 0, ctrl);
+    tree_ctl->setItemWidget(subitem, 0, createScrollableWrap(ctrl));
 
     connect(ctrl, &QImageProcessorSettingsControl::parameterChanged,
         this, &ThisClass::parameterChanged,
@@ -506,46 +518,127 @@ void QImageProcessorSettingsControl::setupControls()
   }
 
   std::vector<struct c_image_processor_routine_ctrl> params;
+
+  std::vector<QExpandableGroupBox*> groups;
+  std::vector<QSettingsWidget*> gsettings;
+
+  QExpandableGroupBox * group = nullptr;
+  QSettingsWidget * groupSettings = nullptr;
+
   processor_->get_parameters(&params);
 
   for( const struct c_image_processor_routine_ctrl &p : params ) {
 
     switch (p.ctl_type) {
-      case c_image_processor_routine_gui_ctl_numeric_text_box: {
 
-        QNumberEditBox *ctl = new QNumberEditBox(this);
-        form->addRow(p.name.c_str(), ctl);
+      case c_image_processor_routine_gui_ctl_begin_group: {
+
+        if ( group ) {
+          groups.emplace_back(group);
+          gsettings.emplace_back(groupSettings);
+        }
+
+        group =
+            add_expandable_groupbox(p.name.c_str(),
+                groupSettings = new QSettingsWidget(""),
+                100);
+
+        group->expand();
+
+        break;
+      }
+
+      case c_image_processor_routine_gui_ctl_end_group: {
+
+        if( groups.empty() ) {
+          group = nullptr;
+          groupSettings = nullptr;
+        }
+        else {
+          group = groups.back();
+          groupSettings = gsettings.back();
+          groups.pop_back();
+          gsettings.pop_back();
+        }
+
+        break;
+      }
+
+      case c_image_processor_routine_gui_ctl_flags_chkbox: {
+
+        QFlagsEditBoxBase * ctl =
+            new QFlagsEditBoxBase();
 
         ctl->setToolTip(p.tooltip.c_str());
 
+        if( p.get_enum_members ) {
+          ctl->setupItems(p.get_enum_members());
+        }
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
         if( p.set_value ) {
 
-          QMetaObject::Connection conn =
-              QObject::connect(ctl, &QNumberEditBox::textChanged,
-                  [this, ctl, p]() {
-                    if ( !updatingControls() ) {
-                      p.set_value(ctl->text().toStdString());
-                      Q_EMIT parameterChanged();
-                    }
-                  });
-
-          QObject::connect(ctl, &QObject::destroyed,
-              [conn]() {
-                QObject::disconnect(conn);
+          QObject::connect(ctl, &QFlagsEditBoxBase::flagsChanged,
+              [this, ctl, p](int flags) {
+                if ( !updatingControls() ) {
+                  p.set_value(toString(flags));
+                  Q_EMIT parameterChanged();
+                }
               });
         }
 
         if( p.get_value ) {
-          QMetaObject::Connection conn =
-              QObject::connect(this, &ThisClass::populatecontrols,
-                  [ctl, p]() {
-                    ctl->setText(p.get_value().c_str());
-                  });
 
-          QObject::connect(ctl, &QObject::destroyed,
-              [conn]() {
-                QObject::disconnect(conn);
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                int flags = ctl->flags();
+                if ( fromString(p.get_value(), &flags)) {
+                  ctl->setFlags(flags);
+                }
               });
+        }
+
+        break;
+
+      }
+
+      case c_image_processor_routine_gui_ctl_numeric_text_box: {
+
+        QNumberEditBox *ctl =
+            new QNumberEditBox();
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.set_value ) {
+
+            QObject::connect(ctl, &QNumberEditBox::textChanged,
+                [this, ctl, p]() {
+                  if ( !updatingControls() ) {
+                    p.set_value(ctl->text().toStdString());
+                    Q_EMIT parameterChanged();
+                  }
+                });
+
+        }
+
+        if( p.get_value ) {
+            QObject::connect(this, &ThisClass::populatecontrols,
+                [ctl, p]() {
+                  ctl->setText(p.get_value().c_str());
+                });
         }
 
         break;
@@ -553,43 +646,41 @@ void QImageProcessorSettingsControl::setupControls()
 
       case c_image_processor_routine_gui_ctl_enum_combobox: {
 
-        QEnumComboBoxBase *ctl = new QEnumComboBoxBase(this);
-        form->addRow(p.name.c_str(), ctl);
+        QEnumComboBoxBase *ctl =
+            new QEnumComboBoxBase();
+
         ctl->setToolTip(p.tooltip.c_str());
 
         if( p.get_enum_members ) {
           ctl->setupItems(p.get_enum_members());
         }
 
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
         if( p.set_value ) {
 
-          QMetaObject::Connection conn =
-              QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
-                  [this, ctl, p]() {
-                    if ( !updatingControls() ) {
-                      p.set_value(ctl->currentText().toStdString());
-                      Q_EMIT parameterChanged();
-                    }
-                  });
+            QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+                [this, ctl, p]() {
+                  if ( !updatingControls() ) {
+                    p.set_value(ctl->currentText().toStdString());
+                    Q_EMIT parameterChanged();
+                  }
+                });
 
-          QObject::connect(ctl, &QObject::destroyed,
-              [conn]() {
-                QObject::disconnect(conn);
-              });
         }
 
         if( p.get_value ) {
 
-          QMetaObject::Connection conn =
-              QObject::connect(this, &ThisClass::populatecontrols,
-                  [ctl, p]() {
-                    ctl->setCurrentText(p.get_value().c_str());
-                  });
+            QObject::connect(this, &ThisClass::populatecontrols,
+                [ctl, p]() {
+                  ctl->setCurrentText(p.get_value().c_str());
+                });
 
-          QObject::connect(ctl, &QObject::destroyed,
-              [conn]() {
-                QObject::disconnect(conn);
-              });
         }
 
         break;
@@ -597,42 +688,40 @@ void QImageProcessorSettingsControl::setupControls()
 
       case c_image_processor_routine_gui_ctl_check_box: {
 
-        QCheckBox *ctl = new QCheckBox(this);
-        form->addRow(p.name.c_str(), ctl);
+        QCheckBox *ctl =
+            new QCheckBox();
 
         ctl->setToolTip(p.tooltip.c_str());
 
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
         if( p.set_value ) {
 
-          QMetaObject::Connection conn =
-              QObject::connect(ctl, &QCheckBox::stateChanged,
-                  [this, ctl, p](int state) {
-                    if ( !updatingControls() ) {
-                      p.set_value(state == Qt::Checked ? "1" : "0");
-                      Q_EMIT parameterChanged();
-                    }
-                  });
+            QObject::connect(ctl, &QCheckBox::stateChanged,
+                [this, ctl, p](int state) {
+                  if ( !updatingControls() ) {
+                    p.set_value(state == Qt::Checked ? "1" : "0");
+                    Q_EMIT parameterChanged();
+                  }
+                });
 
-          QObject::connect(ctl, &QObject::destroyed,
-              [conn]() {
-                QObject::disconnect(conn);
-              });
         }
 
         if( p.get_value ) {
-          QMetaObject::Connection conn =
-              QObject::connect(this, &ThisClass::populatecontrols,
-                  [ctl, p]() {
-                    bool checked = false;
-                    if ( fromString(p.get_value(), &checked) ) {
-                      ctl->setChecked(checked);
-                    }
-                  });
 
-          QObject::connect(ctl, &QObject::destroyed,
-              [conn]() {
-                QObject::disconnect(conn);
-              });
+            QObject::connect(this, &ThisClass::populatecontrols,
+                [ctl, p]() {
+                  bool checked = false;
+                  if ( fromString(p.get_value(), &checked) ) {
+                    ctl->setChecked(checked);
+                  }
+                });
+
         }
         break;
       }

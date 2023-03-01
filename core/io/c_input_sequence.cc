@@ -16,14 +16,14 @@ c_input_sequence::~c_input_sequence()
   close(true);
 }
 
-c_input_sequence::ptr c_input_sequence::create()
+c_input_sequence::sptr c_input_sequence::create()
 {
-  return c_input_sequence::ptr(new c_input_sequence());
+  return c_input_sequence::sptr(new c_input_sequence());
 }
 
-c_input_sequence::ptr c_input_sequence::create(const std::string & sourcefilename)
+c_input_sequence::sptr c_input_sequence::create(const std::string & sourcefilename)
 {
-  c_input_sequence::ptr obj ( new c_input_sequence() );
+  c_input_sequence::sptr obj ( new c_input_sequence() );
 
   if ( !sourcefilename.empty() && !obj->add_source(sourcefilename) ) {
     return nullptr;
@@ -31,9 +31,9 @@ c_input_sequence::ptr c_input_sequence::create(const std::string & sourcefilenam
   return obj;
 }
 
-c_input_sequence::ptr c_input_sequence::create(const std::vector<std::string> & sourcefilenames)
+c_input_sequence::sptr c_input_sequence::create(const std::vector<std::string> & sourcefilenames)
 {
-  c_input_sequence::ptr obj(new c_input_sequence());
+  c_input_sequence::sptr obj(new c_input_sequence());
 
   if ( sourcefilenames.empty() ) {
     return obj;

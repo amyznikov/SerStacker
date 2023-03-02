@@ -568,7 +568,13 @@ void MainWindow::setupStackTreeView()
         this, &ThisClass::saveCurrentWork );
 
   connect(sequencesTreeView, &QImageSequenceTree::imageSequenceSourcesChanged,
-      this, &ThisClass::saveCurrentWork);
+      [this](const c_image_sequence::sptr & sequence) {
+        if ( pipelineOptionsView->isVisible() && pipelineOptionsView->current_sequence() == sequence ) {
+          // fixme: temporary hack to force update options views
+          pipelineOptionsView->set_current_sequence(sequence);
+        }
+        saveCurrentWork();
+  });
 
   connect(sequencesTreeView, &QImageSequenceTree::imageSequenceNameChanged,
       this, &ThisClass::saveCurrentWork);
@@ -1616,7 +1622,6 @@ void MainWindow::saveCurrentWork()
     pipelineOptionsView->set_current_sequence(nullptr);
   }
 
-  CF_DEBUG("image_sequences_->save()");
   image_sequences_->save();
 }
 

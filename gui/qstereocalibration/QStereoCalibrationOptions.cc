@@ -48,7 +48,6 @@ QStereoCalibrationOptions::QStereoCalibrationOptions(QWidget * parent) :
   connect(inputOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-
   add_expandable_groupbox("Chessboard Corners Detection",
       chessboardCornersDetection_ctl = new QChessboardCornersDetectionOptions(this));
   connect(chessboardCornersDetection_ctl, &QSettingsWidget::parameterChanged,

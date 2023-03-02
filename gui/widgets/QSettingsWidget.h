@@ -579,7 +579,7 @@ public:
       QMetaObject::Connection conn =
           QObject::connect(this, &ThisClass::populatecontrols,
               [ctl, getfn]() {
-                int v;
+                int v = -1;
                 if ( getfn(&v, ctl) ) {
                   ctl->setCurrentIndex(v);
                 }

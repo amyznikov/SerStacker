@@ -26,9 +26,13 @@ public:
 
 protected:
   void onupdatecontrols() override;
+  void populatesources();
 
 protected:
   c_stereo_calibration_pipeline::sptr pipeline_;
+
+  QComboBox * left_source_ctl = nullptr;
+  QComboBox * right_source_ctl = nullptr;
 
   QNumberEditBox * start_frame_index_ctl = nullptr;
   QNumberEditBox * max_input_frames_ctl = nullptr;

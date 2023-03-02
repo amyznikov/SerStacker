@@ -144,6 +144,8 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
   SERIALIZE_PROPERTY(settings, save, *this, chessboard_cell_size);
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
+    SERIALIZE_OPTION(section, save, input_options_, left_stereo_source);
+    SERIALIZE_OPTION(section, save, input_options_, right_stereo_source);
     SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
     SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
     SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);

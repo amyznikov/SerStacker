@@ -7,10 +7,90 @@
 
 #include "QStereoCalibrationInputOptions.h"
 
-
 QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent) :
     Base("QStereoCalibrationInputOptions", parent)
 {
+
+  left_source_ctl =
+      add_combobox<QComboBox>("Left camera source:",
+
+          [this](int index, QComboBox * combo) {
+            if ( pipeline_ ) {
+              pipeline_->input_options().left_stereo_source =
+                  combo->itemData(index).toString().toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+
+          [this](int * index, QComboBox * combo) {
+
+            * index = -1;
+
+            if ( pipeline_ && pipeline_->input_sequence() ) {
+
+              const c_stereo_calibration_input_options & opts =
+                  pipeline_->input_options();
+
+              if( !opts.left_stereo_source.empty() ) {
+
+                const std::vector<c_input_source::sptr> &sources =
+                    pipeline_->input_sequence()->sources();
+
+                for( int i = 0, n = sources.size(); i < n; ++i ) {
+                  if( opts.left_stereo_source == sources[i]->filename() ) {
+                    *index = i;
+                    return true;
+                  }
+                }
+              }
+
+              return true;
+            }
+            return false;
+          });
+
+  left_source_ctl->setEditable(false);
+
+
+  right_source_ctl =
+      add_combobox<QComboBox>("Right camera source:",
+
+          [this](int index, QComboBox * combo) {
+            if ( pipeline_ ) {
+              pipeline_->input_options().right_stereo_source =
+                  combo->itemData(index).toString().toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+
+          [this](int * index, QComboBox * combo) {
+            * index = -1;
+
+            if ( pipeline_ && pipeline_->input_sequence() ) {
+
+              const c_stereo_calibration_input_options & opts =
+                  pipeline_->input_options();
+
+              if( !opts.right_stereo_source.empty() ) {
+
+                const std::vector<c_input_source::sptr> &sources =
+                    pipeline_->input_sequence()->sources();
+
+                for( int i = 0, n = sources.size(); i < n; ++i ) {
+                  if( opts.right_stereo_source == sources[i]->filename() ) {
+                    *index = i;
+                    return true;
+                  }
+                }
+              }
+
+              return true;
+            }
+            return false;
+          });
+
+  right_source_ctl->setEditable(false);
+
   start_frame_index_ctl =
       add_numeric_box<int>("start_frame_index:",
           [this](int value) {
@@ -75,6 +155,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
             return false;
           });
 
+  updateControls();
 }
 
 void QStereoCalibrationInputOptions::set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline)
@@ -88,9 +169,44 @@ const c_stereo_calibration_pipeline::sptr& QStereoCalibrationInputOptions::curre
   return pipeline_;
 }
 
+void QStereoCalibrationInputOptions::populatesources()
+{
+  c_update_controls_lock lock(this);
+
+  left_source_ctl->clear();
+  right_source_ctl->clear();
+
+  if ( !pipeline_ || !pipeline_->input_sequence() ) {
+    left_source_ctl->setEnabled(false);
+    right_source_ctl->setEnabled(false);
+  }
+  else {
+
+    const c_input_sequence::sptr &input_sequence =
+        pipeline_->input_sequence();
+
+    const std::vector<c_input_source::sptr> &sources =
+        input_sequence->sources();
+
+    for( const c_input_source::sptr &source : sources ) {
+
+      const QString filename =
+          QFileInfo(source->cfilename()).fileName();
+
+      left_source_ctl->addItem(filename, QString(source->cfilename()));
+      right_source_ctl->addItem(filename, QString(source->cfilename()));
+    }
+
+    left_source_ctl->setEnabled(true);
+    right_source_ctl->setEnabled(true);
+  }
+}
+
 void QStereoCalibrationInputOptions::onupdatecontrols()
 {
-  if( !pipeline_ ) {
+  populatesources();
+
+  if( !pipeline_ || !pipeline_->input_sequence() ) {
     setEnabled(false);
   }
   else {

@@ -43,6 +43,7 @@
 #include "c_average_pyramid_inpaint_routine.h"
 #include "c_linear_interpolation_inpaint_routine.h"
 #include "c_find_chessboard_corners_routine.h"
+#include "c_bilateral_filter_routine.h"
 
 #include <core/readdir.h>
 #include <atomic>
@@ -128,6 +129,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_extract_channel_routine::class_factory_instance());
     register_class_factory(c_absdiff_routine::class_factory_instance());
     register_class_factory(c_find_chessboard_corners_routine::class_factory_instance());
+    register_class_factory(c_bilateral_filter_routine::class_factory_instance());
 
   }
 }

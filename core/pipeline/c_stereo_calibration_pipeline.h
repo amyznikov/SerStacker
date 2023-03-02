@@ -133,7 +133,7 @@ protected:
   void update_output_path() override;
   void set_pipeline_stage(STEREO_CALIBRATION_STAGE stage);
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
-  bool detect_chessboard(const cv::Mat &frame);
+  bool detect_chessboard(const cv::Mat &frame, std::vector<cv::Point2f> & corners_);
   void update_undistortion_remap();
   void update_display_image();
 
@@ -150,14 +150,22 @@ protected:
   STEREO_CALIBRATION_STAGE pipeline_stage_ = stereo_calibration_idle;
 
   mutable std::mutex accumulator_lock_;
+
+  c_input_source::sptr input_sources_[2];
+
   cv::Mat current_frames_[2];
   cv::Mat current_masks_[2];
+
+  std::vector<cv::Point2f> current_image_points_[2];
+  std::vector<cv::Point3f> current_object_points_[2];
+  bool is_chessboard_found_ = false;
+
+
+  mutable std::mutex display_lock_;
   cv::Mat display_frame_;
   cv::Mat display_mask_;
 
   double current_total_avg_err_ = 0;
-
-  bool is_chessboard_found_ = false;
   int calibration_flags_ = 0;
 };
 

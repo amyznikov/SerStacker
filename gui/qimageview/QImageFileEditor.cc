@@ -151,7 +151,7 @@ void QImageFileEditor::loadNextFrame()
 {
   if ( input_sequence_ && input_sequence_->is_open() ) {
 
-    c_input_source::ptr current_source =
+    c_input_source::sptr current_source =
         input_sequence_->current_source();
 
     if ( current_source ) {

@@ -59,7 +59,7 @@ bool c_input_sequence::serialize(c_config_setting settings) const
   c_config_setting sources_list =
       settings.add_list("sources");
 
-  for ( const c_input_source::ptr & source : all_sources_ ) {
+  for ( const c_input_source::sptr & source : all_sources_ ) {
     if ( source )  {
 
       c_config_setting group =
@@ -106,7 +106,7 @@ bool c_input_sequence::deserialize(c_config_setting settings)
       }
 
       if ( !filename.empty() ) {
-        c_input_source::ptr source = c_input_source::create(filename);
+        c_input_source::sptr source = c_input_source::create(filename);
         if ( !source ) {
           CF_ERROR("c_input_source::create(filename='%s') fails", filename.c_str());
         }
@@ -142,32 +142,32 @@ bool c_input_sequence::auto_apply_color_matrix() const
   return auto_apply_color_matrix_;
 }
 
-const std::vector<c_input_source::ptr> & c_input_sequence::sources() const
+const std::vector<c_input_source::sptr> & c_input_sequence::sources() const
 {
   return all_sources_;
 }
 
-const c_input_source::ptr & c_input_sequence::source(int index) const
+const c_input_source::sptr & c_input_sequence::source(int index) const
 {
   return all_sources_[index];
 }
 
 
-int c_input_sequence::indexof(const c_input_source::ptr & source,
-    const std::vector<c_input_source::ptr> & list)
+int c_input_sequence::indexof(const c_input_source::sptr & source,
+    const std::vector<c_input_source::sptr> & list)
 {
-  std::vector<c_input_source::ptr>::const_iterator ii =
+  std::vector<c_input_source::sptr>::const_iterator ii =
       std::find(list.begin(), list.end(), source);
 
   return ii == list.end() ? -1 : ii - list.begin();
 }
 
 int c_input_sequence::indexof(const std::string & pathfilename,
-    const std::vector<c_input_source::ptr> & list)
+    const std::vector<c_input_source::sptr> & list)
 {
-  std::vector<c_input_source::ptr>::const_iterator ii =
+  std::vector<c_input_source::sptr>::const_iterator ii =
       std::find_if(list.begin(), list.end(),
-          [&pathfilename](const c_input_source::ptr & source) -> bool {
+          [&pathfilename](const c_input_source::sptr & source) -> bool {
             return source->filename() == pathfilename;
           });
 
@@ -180,24 +180,24 @@ int c_input_sequence::indexof(const std::string & pathfilename) const
   return indexof(pathfilename, all_sources_);
 }
 
-int c_input_sequence::indexof(const c_input_source::ptr & source) const
+int c_input_sequence::indexof(const c_input_source::sptr & source) const
 {
   return indexof(source, all_sources_);
 }
 
 
-c_input_source::ptr c_input_sequence::source(const std::string & pathfilename) const
+c_input_source::sptr c_input_sequence::source(const std::string & pathfilename) const
 {
   const int pos = indexof(pathfilename);
   return pos >= 0 ? all_sources_[pos] : nullptr;
 }
 
 
-c_input_source::ptr c_input_sequence::add_source(const std::string & pathfilename, int pos)
+c_input_source::sptr c_input_sequence::add_source(const std::string & pathfilename, int pos)
 {
   close();
 
-  c_input_source::ptr source = c_input_source::create(pathfilename);
+  c_input_source::sptr source = c_input_source::create(pathfilename);
   if ( !source ) {
     CF_ERROR("c_input_source::create(pathfilename=%s) fails", pathfilename.c_str());
     return nullptr;
@@ -228,7 +228,7 @@ void c_input_sequence::remove_source(int pos)
 {
   if ( pos >= 0 && pos < all_sources_.size() ) {
 
-    c_input_source::ptr p =
+    c_input_source::sptr p =
         all_sources_[pos];
 
     all_sources_.erase(all_sources_.begin() + pos);
@@ -236,11 +236,11 @@ void c_input_sequence::remove_source(int pos)
 }
 
 
-void c_input_sequence::remove_source(const c_input_source::ptr & source)
+void c_input_sequence::remove_source(const c_input_source::sptr & source)
 {
   if ( source ) {
 
-    const std::vector<c_input_source::ptr>::iterator ii =
+    const std::vector<c_input_source::sptr>::iterator ii =
         std::find(all_sources_.begin(), all_sources_.end(), source);
 
     if ( ii != all_sources_.end() ) {
@@ -272,7 +272,7 @@ bool c_input_sequence::open()
 
   total_frames_ = 0;
 
-  for ( c_input_source::ptr & s : all_sources_ ) {
+  for ( c_input_source::sptr & s : all_sources_ ) {
     if ( s->enabled() ) {
       enabled_sources_.emplace_back(s);
       s->set_global_pos(total_frames_);
@@ -357,7 +357,7 @@ bool c_input_sequence::seek(int global_pos)
   int required_source_ = -1;
 
   for ( int i = 0, n = enabled_sources_.size(); i < n; ++i ) {
-    const c_input_source::ptr & s = enabled_sources_[i];
+    const c_input_source::sptr & s = enabled_sources_[i];
     if ( global_pos >= s->global_pos() && global_pos < s->global_pos() + s->size() ) {
       required_source_ = i;
       source_pos = global_pos - s->global_pos();
@@ -397,7 +397,7 @@ int c_input_sequence::current_pos() const
   return current_global_pos_;
 }
 
-c_input_source::ptr c_input_sequence::current_source() const
+c_input_source::sptr c_input_sequence::current_source() const
 {
   return current_source_ >= 0 && current_source_ < (int) enabled_sources_.size() ? enabled_sources_[current_source_] : nullptr;
 }
@@ -443,7 +443,7 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
   last_colorid_ = COLORID_UNKNOWN;
   has_last_color_matrix_ = false;
 
-  c_input_source::ptr source = current_source();
+  c_input_source::sptr source = current_source();
   if ( !source ) {
     return false;
   }

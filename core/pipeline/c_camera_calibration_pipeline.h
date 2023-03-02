@@ -13,12 +13,10 @@
 
 #include "c_image_processing_pipeline.h"
 #include <core/proc/chessboard/chessboard_detection.h>
-#include <core/proc/chessboard/chessboard_camera_calibration.h>
 
 enum CAMERA_CALIBRATION_STAGE {
   camera_calibration_idle = 0,
   camera_calibration_initialize,
-  camera_calibration_detect_chessboard_corners,
   camera_calibration_in_progress,
   camera_calibration_finishing
 };
@@ -55,7 +53,7 @@ struct c_camera_calibration_input_options
   bool enable_color_maxtrix = true;
 };
 
-struct c_camera_calibration_options
+struct c_calibrate_camera_options
 {
   int min_frames = 3;
   int max_frames = 50;
@@ -97,7 +95,7 @@ public:
   static const std::string & class_name()
   {
     static const std::string classname_ =
-        "chessboard_calibration";
+        "camera_calibration";
     return classname_;
   }
 
@@ -113,8 +111,8 @@ public:
   c_chessboard_corners_detection_options & chessboard_corners_detection_options();
   const c_chessboard_corners_detection_options & chessboard_corners_detection_options() const;
 
-  c_camera_calibration_options & calibration_options();
-  const c_camera_calibration_options & calibration_options() const;
+  c_calibrate_camera_options & calibrate_camera_options();
+  const c_calibrate_camera_options & calibrate_camera_options() const;
 
   c_camera_calibration_output_options & output_options();
   const c_camera_calibration_output_options & output_options() const;
@@ -150,7 +148,7 @@ protected:
   cv::Mat missing_pixel_mask_;
   c_camera_calibration_input_options input_options_;
   c_chessboard_corners_detection_options chessboard_corners_detection_options_;
-  c_camera_calibration_options calibration_options_;
+  c_calibrate_camera_options calibration_options_;
   c_camera_calibration_output_options output_options_;
 
   CAMERA_CALIBRATION_STAGE pipeline_stage_ = camera_calibration_idle;
@@ -173,12 +171,10 @@ protected:
   std::vector<std::vector<cv::Point2f> > image_points_;
   std::vector< std::vector<cv::Point3f> > object_points_;
 
-  bool isTemplateFound_ = false;
+  bool is_chessboard_found_ = false;
   int calibration_flags_ = 0;
-  //unsigned mMinFramesNum;
-  //bool mNeedTuning = false;
-  bool mConfIntervalsState = false;
-  bool mCoverageQualityState = false;
+  bool confIntervalsState_ = false;
+  bool coverageQualityState_ = false;
 
 
 };

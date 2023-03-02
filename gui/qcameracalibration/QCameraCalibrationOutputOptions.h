@@ -33,7 +33,7 @@ protected:
   QBrowsePathCombo * output_directory_ctl = nullptr;
   QCheckBox * save_rectified_images_ctl = nullptr;
   QLineEditBox * rectified_images_file_name_ctl = nullptr;
-
 };
+
 
 #endif /* __QCameraCalibrationOutputOptions_h__ */

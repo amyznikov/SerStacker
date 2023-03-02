@@ -43,16 +43,16 @@ public:
   typedef QInputSourceTreeItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QInputSourceTreeItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent = nullptr );
+  QInputSourceTreeItem(const c_input_source::sptr & input_source, QTreeWidgetItem * parent = nullptr );
 
-  const c_input_source::ptr & input_source() const;
-  void set_input_source(const c_input_source::ptr & input_source ) ;
+  const c_input_source::sptr & input_source() const;
+  void set_input_source(const c_input_source::sptr & input_source ) ;
 
   void setCkecked(bool v);
   void updateCheckState();
 
 protected:
-  c_input_source::ptr input_source_;
+  c_input_source::sptr input_source_;
 };
 
 
@@ -126,7 +126,7 @@ public:
   void set_image_sequence_collection(const c_image_sequence_collection::sptr & image_sequence_collection);
   const c_image_sequence_collection::sptr & image_sequence_collection() const;
 
-  c_input_source::ptr getCurrentInputSource(c_image_sequence::sptr * parent_sequence = nullptr) const;
+  c_input_source::sptr getCurrentInputSource(c_image_sequence::sptr * parent_sequence = nullptr) const;
 
 
   void refresh();
@@ -136,8 +136,8 @@ public:
 
 Q_SIGNALS:
   void imageSequenceCollectionChanged();
-  void currentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::ptr & inputSource);
-  void itemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::ptr & inputSource);
+  void currentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & inputSource);
+  void itemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & inputSource);
   void showImageSequenceOptionsClicked(const c_image_sequence::sptr & sequence);
   void imageSequenceNameChanged(const c_image_sequence::sptr & sequence);
   void imageSequenceSourcesChanged(const c_image_sequence::sptr & sequence);

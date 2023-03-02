@@ -80,9 +80,6 @@ struct c_input_options
 
   int start_frame_index = 0;
   int max_input_frames = 0;
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
 };
 
 struct c_roi_selection_options
@@ -92,9 +89,6 @@ struct c_roi_selection_options
   cv::Rect rectangle_roi_selection;
   double planetary_disk_gbsigma = 1;
   double planetary_disk_stdev_factor = 0.25;
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
 };
 
 struct c_master_frame_options
@@ -109,9 +103,6 @@ struct c_master_frame_options
   double master_sharpen_factor = 0.5;
   double accumulated_sharpen_factor = 1;
   bool save_master_frame = true;
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
 };
 
 struct c_frame_upscale_options
@@ -141,11 +132,6 @@ struct c_frame_upscale_options
     }
     return 1.0;
   }
-
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
-
 };
 
 struct c_frame_accumulation_options
@@ -160,9 +146,6 @@ struct c_frame_accumulation_options
   {
     m_.set_dscale(-1); // disable this feature by default
   }
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
 };
 
 
@@ -171,9 +154,6 @@ struct c_frame_registration_options
   c_master_frame_options master_frame_options;
   c_image_registration_options image_registration_options;
   bool accumulate_and_compensate_turbulent_flow = true;
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
 };
 
 
@@ -217,9 +197,6 @@ struct c_image_stacking_output_options {
 
   bool debug_frame_registration = false;
   std::vector<int> debug_frame_registration_frame_indexes;
-
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
 };
 
 

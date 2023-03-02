@@ -18,6 +18,7 @@
 #include <core/io/load_image.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 #include <core/pipeline/c_camera_calibration_pipeline.h>
+#include <core/pipeline/c_stereo_calibration_pipeline.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -272,6 +273,13 @@ void MainWindow::setupPipelineTypes()
       "c_camera_calibration_pipeline",
       [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
         return c_image_processing_pipeline::sptr(new c_camera_calibration_pipeline(name, input_sequence));
+      });
+
+  c_image_processing_pipeline::register_class(
+      c_stereo_calibration_pipeline::class_name(),
+      "c_stereo_calibration_pipeline",
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new c_stereo_calibration_pipeline(name, input_sequence));
       });
 
 
@@ -703,7 +711,7 @@ void MainWindow::setupImageEditor()
               const c_input_sequence::sptr & input_sequence = imageEditor->input_sequence();
               if ( input_sequence ) {
 
-                c_input_source::ptr source = input_sequence->current_source();
+                c_input_source::sptr source = input_sequence->current_source();
                 if ( source ) {
                   source->set_badframe(input_sequence->current_pos() - 1, checked);
                   source->save_badframes();
@@ -722,7 +730,7 @@ void MainWindow::setupImageEditor()
           [this]() {
             if ( imageEditor->isVisible() && sequencesTreeView->isVisible() ) {
 
-              c_input_source::ptr selected_source;
+              c_input_source::sptr selected_source;
               c_image_sequence::sptr selected_sequence;
 
               selected_source =
@@ -971,7 +979,7 @@ void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
 
     if( input_sequence ) {
 
-      c_input_source::ptr source =
+      c_input_source::sptr source =
           input_sequence->current_source();
 
       if( source ) {
@@ -1360,7 +1368,7 @@ void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
   }
 }
 
-void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source)
+void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
   if ( source ) {
     centralStackedWidget->setCurrentWidget(imageEditor);
@@ -1378,7 +1386,7 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & se
 
 }
 
-void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source)
+void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
   if ( QImageProcessingPipeline::isRunning() ) {
 

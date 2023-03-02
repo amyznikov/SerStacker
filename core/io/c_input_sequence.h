@@ -31,24 +31,24 @@ public:
   void set_auto_apply_color_matrix(bool v);
   bool auto_apply_color_matrix() const;
 
-  c_input_source::ptr add_source(const std::string & pathfilename, int insert_pos = -1);
+  c_input_source::sptr add_source(const std::string & pathfilename, int insert_pos = -1);
   bool add_sources(const std::vector<std::string> & pathfilenames);
 
   void remove_source(int index);
-  void remove_source(const c_input_source::ptr & source);
+  void remove_source(const c_input_source::sptr & source);
   void remove_source(const std::string & sourcefilename);
 
-  const std::vector<c_input_source::ptr> & sources() const;
-  const c_input_source::ptr & source(int index) const;
-  c_input_source::ptr source(const std::string & pathfilename) const;
+  const std::vector<c_input_source::sptr> & sources() const;
+  const c_input_source::sptr & source(int index) const;
+  c_input_source::sptr source(const std::string & pathfilename) const;
 
   int indexof(const std::string & pathfilename) const;
-  int indexof(const c_input_source::ptr & source) const;
+  int indexof(const c_input_source::sptr & source) const;
 
   static int indexof(const std::string & pathfilename,
-      const std::vector<c_input_source::ptr> & list) ;
-  static int indexof(const c_input_source::ptr & source,
-      const std::vector<c_input_source::ptr> & list);
+      const std::vector<c_input_source::sptr> & list) ;
+  static int indexof(const c_input_source::sptr & source,
+      const std::vector<c_input_source::sptr> & list);
 
   void clear();
   bool empty() const;
@@ -61,7 +61,7 @@ public:
   bool read(cv::Mat & output_frame,
       cv::Mat * output_mask = nullptr);
 
-  c_input_source::ptr current_source() const;
+  c_input_source::sptr current_source() const;
   int current_pos() const;
   int global_pos(int source_index, int source_frame_index) const;
 
@@ -81,8 +81,8 @@ protected:
 
 protected:
 
-  std::vector<c_input_source::ptr> all_sources_;
-  std::vector<c_input_source::ptr> enabled_sources_;
+  std::vector<c_input_source::sptr> all_sources_;
+  std::vector<c_input_source::sptr> enabled_sources_;
 
   enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_DEFAULT; // DEBAYER_GBNR;
   bool auto_apply_color_matrix_ = true;

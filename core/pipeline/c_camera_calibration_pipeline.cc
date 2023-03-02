@@ -22,7 +22,6 @@ const c_enum_member* members_of<CAMERA_CALIBRATION_STAGE>()
   static constexpr c_enum_member members[] = {
       { camera_calibration_idle, "idle", "" },
       { camera_calibration_initialize, "initialize", "" },
-      { camera_calibration_detect_chessboard_corners, "detect_chessboard_corners", "" },
       { camera_calibration_in_progress, "in_progress", "" },
       { camera_calibration_finishing, "finishing", "" },
       { camera_calibration_idle }
@@ -117,12 +116,12 @@ const c_chessboard_corners_detection_options & c_camera_calibration_pipeline::ch
   return chessboard_corners_detection_options_;
 }
 
-c_camera_calibration_options & c_camera_calibration_pipeline::calibration_options()
+c_calibrate_camera_options & c_camera_calibration_pipeline::calibrate_camera_options()
 {
   return calibration_options_;
 }
 
-const c_camera_calibration_options & c_camera_calibration_pipeline::calibration_options() const
+const c_calibrate_camera_options & c_camera_calibration_pipeline::calibrate_camera_options() const
 {
   return calibration_options_;
 }
@@ -179,8 +178,6 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_OPTION(section, save, output_options_, save_rectified_images);
     SERIALIZE_OPTION(section, save, output_options_, rectified_images_file_name);
   }
-
-  CF_DEBUG("H");
 
   return true;
 }
@@ -347,7 +344,7 @@ bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::spt
 bool c_camera_calibration_pipeline::detect_chessboard(const cv::Mat &frame)
 {
 
-  isTemplateFound_ =
+  is_chessboard_found_ =
       find_chessboard_corners(frame,
           chessboard_size_,
           current_image_points_,
@@ -370,12 +367,12 @@ bool c_camera_calibration_pipeline::detect_chessboard(const cv::Mat &frame)
 //        isTemplateFound_);
 //  }
 
-  if( !isTemplateFound_ ) {
+  if( !is_chessboard_found_ ) {
     CF_ERROR("find_chessboard_corners() fails");
     return false;
   }
 
-  return isTemplateFound_;
+  return is_chessboard_found_;
 }
 
 void c_camera_calibration_pipeline::update_undistortion_remap()
@@ -419,7 +416,7 @@ void c_camera_calibration_pipeline::update_display_image()
       cv::drawChessboardCorners(display_frame_,
           chessboard_size_,
           current_image_points_,
-          isTemplateFound_);
+          is_chessboard_found_);
     }
   }
 
@@ -579,13 +576,13 @@ void c_camera_calibration_pipeline::update_state()
       }
     }
 
-    mConfIntervalsState =
+    confIntervalsState_ =
         fConfState && cConfState && dConfState;
   }
 
 
   if( image_points_.size() > calibration_options_.min_frames ) {
-    mCoverageQualityState = estimate_coverage_quality() > 1.8 ? true : false;
+    coverageQualityState_ = estimate_coverage_quality() > 1.8 ? true : false;
   }
 
   if( calibration_options_.auto_tune_calibration_flags && image_points_.size() > calibration_options_.min_frames ) {
@@ -708,7 +705,7 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
     return false;
   }
 
-  isTemplateFound_ = false;
+  is_chessboard_found_ = false;
   current_image_points_.clear();
   current_object_points_.clear();
 
@@ -722,8 +719,8 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
   current_undistortion_remap_.release();
 
   calibration_flags_ = calibration_options_.calibration_flags;
-  mConfIntervalsState = false;
-  mCoverageQualityState = false;
+  confIntervalsState_ = false;
+  coverageQualityState_ = false;
 
   if ( chessboard_size_.width < 2 || chessboard_size_.height < 2 ) {
     CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_size_.width, chessboard_size_.height);

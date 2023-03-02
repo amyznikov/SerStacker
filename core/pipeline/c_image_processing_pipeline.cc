@@ -307,12 +307,12 @@ void c_image_processing_pipeline::gather_badframe_indexes()
       return;
     }
 
-    const std::vector<c_input_source::ptr> &sources =
+    const std::vector<c_input_source::sptr> &sources =
         input_sequence_->sources();
 
     for( uint source_index = 0, n = sources.size(); source_index < n; ++source_index ) {
 
-      const c_input_source::ptr source =
+      const c_input_source::sptr source =
           input_sequence_->source(source_index);
 
       if( source ) {

@@ -17,7 +17,7 @@ class c_input_source
 {
 public:
   typedef c_input_source this_class;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   enum source_type {
     UNKNOWN = 0,
@@ -32,9 +32,9 @@ public:
 #endif
   };
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
-  static ptr create(source_type type,
+  static sptr create(source_type type,
       const std::string & filename);
 
   static enum source_type suggest_source_type(
@@ -167,11 +167,11 @@ class c_fits_input_source
 public:
   typedef c_fits_input_source this_class;
   typedef c_input_source base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_fits_input_source(const std::string & filename);
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
   static const std::vector<std::string> & suffixes();
 
@@ -256,11 +256,11 @@ class c_raw_image_input_source
 public:
   typedef c_raw_image_input_source this_class;
   typedef c_input_source base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_raw_image_input_source(const std::string & filename);
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
   static const std::vector<std::string> & suffixes();
 

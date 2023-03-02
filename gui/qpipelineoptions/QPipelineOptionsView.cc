@@ -88,6 +88,11 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
   connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+  stereoCalibrationOptions_ctl = new QStereoCalibrationOptions(this);
+  stereoCalibrationOptions_ctl->setVisible(false);
+  connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
 }
 
 void QPipelineOptionsView::set_current_sequence(const c_image_sequence::sptr & image_sequence)
@@ -117,6 +122,7 @@ void QPipelineOptionsView::set_current_sequence(const c_image_sequence::sptr & i
 
     if( !current_pipeline ) {
       pipelineSelector_ctl->setCurrentIndex(-1);
+      updateCurrentSettingsWidget(nullptr);
     }
     else {
 
@@ -147,19 +153,27 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
 
   if( pipeline ) {
 
-    if( c_camera_calibration_pipeline::sptr camera_calibration =
+    if( c_image_stacking_pipeline::sptr image_stacking =
+        std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
+
+      currentWidget = imageStackingOptions_ctl;
+      imageStackingOptions_ctl->set_current_pipeline(image_stacking);
+    }
+
+    else if( c_camera_calibration_pipeline::sptr camera_calibration =
         std::dynamic_pointer_cast<c_camera_calibration_pipeline>(pipeline) ) {
 
       currentWidget = cameraCalibrationOptions_ctl;
       cameraCalibrationOptions_ctl->set_current_pipeline(camera_calibration);
     }
 
-    else if( c_image_stacking_pipeline::sptr image_stacking =
-        std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
+    else if( c_stereo_calibration_pipeline::sptr stereo_calibration =
+        std::dynamic_pointer_cast<c_stereo_calibration_pipeline>(pipeline) ) {
 
-      currentWidget = imageStackingOptions_ctl;
-      imageStackingOptions_ctl->set_current_pipeline(image_stacking);
+      currentWidget = stereoCalibrationOptions_ctl;
+      stereoCalibrationOptions_ctl->set_current_pipeline(stereo_calibration);
     }
+
   }
 
 
@@ -176,7 +190,6 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
       scrollArea_ctl->widget()->show();
     }
   }
-
 
   if ( currentWidget ) {
 

@@ -48,9 +48,9 @@ c_input_source::c_input_source(enum source_type type, const std::string & filena
 {
 }
 
-c_input_source::ptr c_input_source::create(source_type type, const std::string & filename)
+c_input_source::sptr c_input_source::create(source_type type, const std::string & filename)
 {
-  c_input_source::ptr obj;
+  c_input_source::sptr obj;
 
   if ( !filename.empty() ) {
 
@@ -127,14 +127,14 @@ enum c_input_source::source_type c_input_source::suggest_source_type(
   return type;
 }
 
-c_input_source::ptr c_input_source::create(const std::string & filename)
+c_input_source::sptr c_input_source::create(const std::string & filename)
 {
   enum source_type type =
       suggest_source_type(filename);
 
   if( type != c_input_source::UNKNOWN ) {
 
-    c_input_source::ptr source =
+    c_input_source::sptr source =
         c_input_source::create(type, filename);
 
     if( source ) {
@@ -341,10 +341,10 @@ c_fits_input_source::c_fits_input_source(const std::string & filename)
 {
 }
 
-c_fits_input_source::ptr c_fits_input_source::create(const std::string & filename)
+c_fits_input_source::sptr c_fits_input_source::create(const std::string & filename)
 {
   if ( file_exists(filename) && !is_directory(filename) ) {
-    c_fits_input_source::ptr obj(new c_fits_input_source(filename));
+    c_fits_input_source::sptr obj(new c_fits_input_source(filename));
     obj->size_ = 1;
     return obj;
   }
@@ -604,10 +604,10 @@ c_raw_image_input_source::c_raw_image_input_source(const std::string & filename)
 {
 }
 
-c_raw_image_input_source::ptr c_raw_image_input_source::create(const std::string & filename)
+c_raw_image_input_source::sptr c_raw_image_input_source::create(const std::string & filename)
 {
   if ( file_exists(filename) && !is_directory(filename) ) {
-    c_raw_image_input_source::ptr obj(new c_raw_image_input_source(filename));
+    c_raw_image_input_source::sptr obj(new c_raw_image_input_source(filename));
     obj->size_ = 1;
     return obj;
   }

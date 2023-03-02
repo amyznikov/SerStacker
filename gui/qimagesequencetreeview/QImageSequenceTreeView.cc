@@ -43,7 +43,7 @@ void QImageSequenceTreeItem::refreshInputSources()
   }
 
   if ( image_sequence_ && image_sequence_->input_sequence() ) {
-    for ( const c_input_source::ptr & input_source : image_sequence_->input_sequence()->sources() ) {
+    for ( const c_input_source::sptr & input_source : image_sequence_->input_sequence()->sources() ) {
       new QInputSourceTreeItem(input_source, this);
     }
   }
@@ -66,18 +66,18 @@ void QImageSequenceTreeItem::set_image_sequence(const c_image_sequence::sptr & i
 }
 
 
-QInputSourceTreeItem::QInputSourceTreeItem(const c_input_source::ptr & input_source, QTreeWidgetItem * parent) :
+QInputSourceTreeItem::QInputSourceTreeItem(const c_input_source::sptr & input_source, QTreeWidgetItem * parent) :
     Base(parent, (int) QInputSourceTreeItemType)
 {
   set_input_source(input_source);
 }
 
-const c_input_source::ptr & QInputSourceTreeItem::input_source() const
+const c_input_source::sptr & QInputSourceTreeItem::input_source() const
 {
   return input_source_;
 }
 
-void QInputSourceTreeItem::set_input_source(const c_input_source::ptr & input_source)
+void QInputSourceTreeItem::set_input_source(const c_input_source::sptr & input_source)
 {
   if ( (input_source_ = input_source) ) {
 
@@ -423,7 +423,7 @@ void QImageSequenceTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 //          }
         }
 
-        c_input_source::ptr input_source =
+        c_input_source::sptr input_source =
             inputSourceItem->input_source();
 
         if ( input_source ) {
@@ -563,7 +563,7 @@ void QImageSequenceTreeView::mouseMoveEvent(QMouseEvent * e)
     const QImageSequenceTreeItem *parentItem =
         dynamic_cast<const QImageSequenceTreeItem*>(inputSourceItem->parent());
 
-    const c_input_source::ptr &input_source =
+    const c_input_source::sptr &input_source =
         inputSourceItem->input_source();
 
     const c_image_sequence::sptr &image_sequence =
@@ -781,7 +781,7 @@ bool QImageSequenceTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageS
         const int targetIndex = (!targetSourceItem) ? -1 :
             target_sequence->indexof(targetSourceItem->input_source());
 
-        c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
+        c_input_source::sptr input_source = target_sequence->add_source(pathfilename, targetIndex);
         if (  input_source ) {
 
           targetSequenceItem->insertChild( target_sequence->indexof(input_source),
@@ -816,7 +816,7 @@ bool QImageSequenceTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageS
               source_sequence->remove_source(sourceIndex);
               delete inputSourceItem;
 
-              c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+              c_input_source::sptr input_source = target_sequence->add_source(source_file_name, targetIndex);
               if (  input_source ) {
 
                 targetSequenceItem->insertChild(target_sequence->indexof(input_source),
@@ -840,7 +840,7 @@ bool QImageSequenceTreeView::dropSource(QDropEvent *e, const QUrl & url, QImageS
               delete inputSourceItem;
             }
 
-            c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+            c_input_source::sptr input_source = target_sequence->add_source(source_file_name, targetIndex);
             if (  input_source ) {
 
               targetSequenceItem->insertChild(target_sequence->indexof(input_source),
@@ -918,7 +918,7 @@ int QImageSequenceTreeView::dropSources(QDropEvent *e, QImageSequenceTreeItem * 
           const int targetIndex = (!targetSourceItem) ? -1 :
               target_sequence->indexof(targetSourceItem->input_source());
 
-          c_input_source::ptr input_source = target_sequence->add_source(pathfilename, targetIndex);
+          c_input_source::sptr input_source = target_sequence->add_source(pathfilename, targetIndex);
           if (  input_source ) {
 
             targetSequenceItem->insertChild(target_sequence->indexof(input_source),
@@ -974,7 +974,7 @@ int QImageSequenceTreeView::dropSources(QDropEvent *e, QImageSequenceTreeItem * 
                 source_sequence->remove_source(sourceIndex);
                 delete inputSourceItem;
 
-                c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+                c_input_source::sptr input_source = target_sequence->add_source(source_file_name, targetIndex);
                 if (  input_source ) {
 
                   targetSequenceItem->insertChild(target_sequence->indexof(input_source),
@@ -996,7 +996,7 @@ int QImageSequenceTreeView::dropSources(QDropEvent *e, QImageSequenceTreeItem * 
                 delete inputSourceItem;
               }
 
-              c_input_source::ptr input_source = target_sequence->add_source(source_file_name, targetIndex);
+              c_input_source::sptr input_source = target_sequence->add_source(source_file_name, targetIndex);
               if (  input_source ) {
 
                 targetSequenceItem->insertChild(target_sequence->indexof(input_source),
@@ -1227,7 +1227,7 @@ const QList<QAction *> & QImageSequenceTree::toolbarActions() const
   return toolbarActions_;
 }
 
-c_input_source::ptr QImageSequenceTree::getCurrentInputSource(c_image_sequence::sptr * parent_sequence) const
+c_input_source::sptr QImageSequenceTree::getCurrentInputSource(c_image_sequence::sptr * parent_sequence) const
 {
   QTreeWidgetItem * currentItem =
       treeView_->currentItem();
@@ -1238,7 +1238,7 @@ c_input_source::ptr QImageSequenceTree::getCurrentInputSource(c_image_sequence::
 
     case QInputSourceTreeItemType: {
 
-      c_input_source::ptr inputSource;
+      c_input_source::sptr inputSource;
 
       QInputSourceTreeItem * inputSourceItem =
           dynamic_cast<QInputSourceTreeItem *>(currentItem);

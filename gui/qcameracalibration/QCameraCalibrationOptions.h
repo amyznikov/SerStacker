@@ -10,9 +10,9 @@
 #define __QCameraCalibrationOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/qchessboardcorners/QChessboardCornersDetectionOptions.h>
 #include <core/pipeline/c_camera_calibration_pipeline.h>
 #include "QCameraCalibrationInputOptions.h"
-#include "QChessboardCornersDetectionOptions.h"
 #include "QCalibrateCameraOptions.h"
 #include "QCameraCalibrationOutputOptions.h"
 

@@ -1,26 +1,26 @@
 /*
- * QCalibrateCameraOptions.cc
+ * QStereoCalibrateOptions.cc
  *
- *  Created on: Feb 28, 2023
+ *  Created on: Mar 2, 2023
  *      Author: amyznikov
  */
 
-#include "QCalibrateCameraOptions.h"
+#include "QStereoCalibrateOptions.h"
 
-QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
-    Base("QCalibrateCameraOptions", parent)
+QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
+    Base("QStereoCalibrateOptions", parent)
 {
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
           [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->calibrate_camera_options().min_frames = value;
+              pipeline_->stereo_calibrate_options().min_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->calibrate_camera_options().min_frames;
+              * value = pipeline_->stereo_calibrate_options().min_frames;
               return true;
             }
             return false;
@@ -30,13 +30,13 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
       add_numeric_box<int>("max_frames:",
           [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->calibrate_camera_options().max_frames = value;
+              pipeline_->stereo_calibrate_options().max_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->calibrate_camera_options().max_frames;
+              * value = pipeline_->stereo_calibrate_options().max_frames;
               return true;
             }
             return false;
@@ -47,7 +47,7 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
           [this](int value) {
             if ( pipeline_ ) {
               cv::TermCriteria & t =
-                  pipeline_->calibrate_camera_options().solverTerm;
+                  pipeline_->stereo_calibrate_options().solverTerm;
               if ( (t.maxCount = value) > 0 ) {
                 t.type |= cv::TermCriteria::COUNT;
               }
@@ -59,7 +59,7 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->calibrate_camera_options().solverTerm.maxCount;
+              * value = pipeline_->stereo_calibrate_options().solverTerm.maxCount;
               return true;
             }
             return false;
@@ -70,7 +70,7 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
           [this](double value) {
             if ( pipeline_ ) {
               cv::TermCriteria & t =
-                  pipeline_->calibrate_camera_options().solverTerm;
+                  pipeline_->stereo_calibrate_options().solverTerm;
               if ( (t.epsilon = value) >= 0 ) {
                 t.type |= cv::TermCriteria::EPS;
               }
@@ -82,23 +82,23 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
           },
           [this](double * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->calibrate_camera_options().solverTerm.epsilon;
+              * value = pipeline_->stereo_calibrate_options().solverTerm.epsilon;
               return true;
             }
             return false;
           });
 
   calibration_flags_ctl =
-      add_flags_editbox<CAMERA_CALIBRATION_FLAGS>("calibration_flags:",
+      add_flags_editbox<STEREO_CALIBRATION_FLAGS>("calibration_flags:",
           [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->calibrate_camera_options().calibration_flags = value;
+              pipeline_->stereo_calibrate_options().calibration_flags = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->calibrate_camera_options().calibration_flags;
+              * value = pipeline_->stereo_calibrate_options().calibration_flags;
               return true;
             }
             return false;
@@ -108,13 +108,13 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
       add_checkbox("auto_tune_calibration_flags",
           [this](bool checked) {
             if ( pipeline_ ) {
-              pipeline_->calibrate_camera_options().auto_tune_calibration_flags = checked;
+              pipeline_->stereo_calibrate_options().auto_tune_calibration_flags = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked ) {
             if ( pipeline_ ) {
-              * checked = pipeline_->calibrate_camera_options().auto_tune_calibration_flags;
+              * checked = pipeline_->stereo_calibrate_options().auto_tune_calibration_flags;
               return true;
             }
             return false;
@@ -124,13 +124,13 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
       add_numeric_box<double>("filter_alpha:",
           [this](double value) {
             if ( pipeline_ ) {
-              pipeline_->calibrate_camera_options().filter_alpha = value;
+              pipeline_->stereo_calibrate_options().filter_alpha = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->calibrate_camera_options().filter_alpha;
+              * value = pipeline_->stereo_calibrate_options().filter_alpha;
               return true;
             }
             return false;
@@ -140,18 +140,18 @@ QCalibrateCameraOptions::QCalibrateCameraOptions(QWidget * parent) :
   updateControls();
 }
 
-void QCalibrateCameraOptions::set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline)
+void QStereoCalibrateOptions::set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_camera_calibration_pipeline::sptr& QCalibrateCameraOptions::current_pipeline() const
+const c_stereo_calibration_pipeline::sptr& QStereoCalibrateOptions::current_pipeline() const
 {
   return pipeline_;
 }
 
-void QCalibrateCameraOptions::onupdatecontrols()
+void QStereoCalibrateOptions::onupdatecontrols()
 {
   if( !pipeline_ ) {
     setEnabled(false);

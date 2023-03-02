@@ -222,7 +222,7 @@ void QMasterFrameOptions::updateMasterFrameIndex()
     const c_input_sequence::sptr & input_sequence =
         current_pipeline_->input_sequence();
 
-    c_input_source::ptr source;
+    c_input_source::sptr source;
 
     if ( input_sequence && (source = input_sequence->source(current_pipeline_->master_source())) ) {
       if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {

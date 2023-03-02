@@ -751,9 +751,9 @@ bool c_image_stacking_pipeline::run_image_stacking()
     }
     else {
 
-      std::vector<c_input_source::ptr>::const_iterator source_pos =
+      std::vector<c_input_source::sptr>::const_iterator source_pos =
           std::find_if(this->input_sequence()->sources().begin(), this->input_sequence()->sources().end(),
-              [this](const c_input_source::ptr & s ) -> bool {
+              [this](const c_input_source::sptr & s ) -> bool {
                 return s->filename() == master_source_;
               });
 

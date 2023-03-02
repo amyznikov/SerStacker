@@ -80,8 +80,8 @@ private Q_SLOTS:
   void onImageEditorVisibilityChanged(bool visible);
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
-  void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source);
-  void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::ptr & source);
+  void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
+  void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void onDisplaySettingsMenuActionClicked(bool checked);
 
 //  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);

@@ -11,7 +11,8 @@
 
 #include "c_image_processing_pipeline.h"
 #include <core/proc/chessboard/chessboard_detection.h>
-#include <core/proc/camera_calibration/camera_calibration.h>
+#include <core/proc/camera_calibration/stereo_calibrate.h>
+
 
 enum STEREO_CALIBRATION_STAGE {
   stereo_calibration_idle = 0,
@@ -117,6 +118,7 @@ protected:
   double estimate_grid_subset_quality(int excludedIndex) const;
   void filter_frames();
   void update_state();
+  bool save_current_camera_parameters() const;
 
 protected:
   cv::Size chessboard_size_ = cv::Size(9, 6);

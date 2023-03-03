@@ -643,6 +643,13 @@ void c_stereo_calibration_pipeline::update_state()
   }
 }
 
+
+bool c_stereo_calibration_pipeline::save_current_camera_parameters() const
+{
+
+}
+
+
 void c_stereo_calibration_pipeline::update_display_image()
 {
   if ( true ) {

@@ -13,7 +13,7 @@
 
 #include "c_image_processing_pipeline.h"
 #include <core/proc/chessboard/chessboard_detection.h>
-#include <core/proc/camera_calibration/camera_calibration.h>
+#include <core/proc/camera_calibration/calibrate_camera.h>
 
 enum CAMERA_CALIBRATION_STAGE {
   camera_calibration_idle = 0,
@@ -35,7 +35,7 @@ struct c_calibrate_camera_options
 {
   int min_frames = 3;
   int max_frames = 50;
-  int calibration_flags = 0; // enum CAMERA_CALIBRATION_FLAGS
+  int calibration_flags = CAMERA_CALIB_USE_INTRINSIC_GUESS;
   bool auto_tune_calibration_flags = true;
 
   cv::TermCriteria solverTerm =
@@ -139,12 +139,15 @@ protected:
 
   std::vector<cv::Point2f> current_image_points_;
   std::vector<cv::Point3f> current_object_points_;
-  cv::Mat current_camera_matrix_;
-  cv::Mat current_dist_coeffs_;
-  cv::Mat current_std_deviations_;
-  cv::Mat current_per_view_errors_;
+
+  c_camera_intrinsics intrinsics_;
+  cv::Mat1d stdDeviations_;
+  cv::Mat1d perViewErrors_;
   cv::Mat2f current_undistortion_remap_;
   double rmse_ = 0;
+
+  bool intrinsics_initialized_ = false;
+
 
   std::vector<std::vector<cv::Point2f> > image_points_;
   std::vector<std::vector<cv::Point3f> > object_points_;

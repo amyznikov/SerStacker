@@ -346,10 +346,10 @@ bool c_camera_calibration_pipeline::detect_chessboard(const cv::Mat &frame)
 
 void c_camera_calibration_pipeline::update_undistortion_remap()
 {
-  cv::initUndistortRectifyMap(current_camera_matrix_,
-      current_dist_coeffs_,
+  cv::initUndistortRectifyMap(intrinsics_.camera_matrix,
+      intrinsics_.dist_coeffs,
       cv::noArray(),
-      cv::getOptimalNewCameraMatrix(current_camera_matrix_, current_dist_coeffs_,
+      cv::getOptimalNewCameraMatrix(intrinsics_.camera_matrix, intrinsics_.dist_coeffs,
           current_frame_.size(), 0.0, current_frame_.size()),
       current_frame_.size(),
       CV_32FC2,
@@ -446,20 +446,23 @@ double c_camera_calibration_pipeline::estimate_coverage_quality() const
 
 void c_camera_calibration_pipeline::filter_frames()
 {
-  const size_t nbframes =
-      image_points_.size();
+  const int nbframes =
+      object_points_.size();
 
-  CF_DEBUG("nbframes = %zu", nbframes);
+  const int nbframesmax =
+      std::max(1, std::max(calibration_options_.min_frames, calibration_options_.max_frames));
 
-  if( nbframes != current_per_view_errors_.total() ) {
+  CF_DEBUG("nbframes = %d / nbframesmax = %d", nbframes, nbframesmax);
 
-    if ( nbframes > 1 ) {
-      CF_ERROR("APP BUG: image_points_.size()=%zu != current_per_view_errors_.total()=%zu",
-          image_points_.size(),
-          current_per_view_errors_.total());
+  if( nbframes != perViewErrors_.rows ) {
+
+    if( nbframes > 1 ) {
+      CF_ERROR("APP BUG: nbframes=%d != perViewErrors_.rows=%d",
+          nbframes,
+          perViewErrors_.rows);
     }
 
-    if( nbframes > calibration_options_.max_frames ) {
+    if( nbframes > nbframesmax ) {
       image_points_.erase(image_points_.begin());
       object_points_.erase(object_points_.begin());
     }
@@ -467,7 +470,7 @@ void c_camera_calibration_pipeline::filter_frames()
     return;
   }
 
-  if( nbframes > std::max(1, calibration_options_.max_frames) ) {
+  if( nbframes > nbframesmax ) {
 
     double worstValue = -HUGE_VAL;
     double maxQuality = estimate_grid_subset_quality(nbframes);
@@ -483,7 +486,7 @@ void c_camera_calibration_pipeline::filter_frames()
           estimate_grid_subset_quality(i) - maxQuality;
 
       const double currentValue =
-          current_per_view_errors_.at<double>((int) i) * alpha + gridQDelta * (1. - alpha);
+          perViewErrors_[i][0] * alpha + gridQDelta * (1. - alpha);
 
       if( currentValue > worstValue ) {
         worstValue = currentValue;
@@ -494,30 +497,29 @@ void c_camera_calibration_pipeline::filter_frames()
     image_points_.erase(image_points_.begin() + worstElemIndex);
     object_points_.erase(object_points_.begin() + worstElemIndex);
 
-    cv::Mat newErrorsVec =
-        cv::Mat((int) nbframes - 1, 1, CV_64F);
+    cv::Mat1d newErrorsVec(nbframes - 1, 1);
 
-    std::copy(current_per_view_errors_.ptr<double>(0),
-        current_per_view_errors_.ptr<double>((int) worstElemIndex),
-        newErrorsVec.ptr<double>(0));
+    std::copy(perViewErrors_[0],
+        perViewErrors_[worstElemIndex],
+        newErrorsVec[0]);
 
-    if( (int) worstElemIndex < (int) nbframes - 1 ) {
-      std::copy(current_per_view_errors_.ptr<double>((int) worstElemIndex + 1),
-          current_per_view_errors_.ptr<double>((int) nbframes),
-          newErrorsVec.ptr<double>((int) worstElemIndex));
+    if( worstElemIndex < nbframes - 1 ) {
+      std::copy(perViewErrors_[worstElemIndex + 1],
+          perViewErrors_[nbframes],
+          newErrorsVec[worstElemIndex]);
     }
 
-    current_per_view_errors_ = newErrorsVec;
+    perViewErrors_ = newErrorsVec;
   }
 }
 
 
 void c_camera_calibration_pipeline::update_state()
 {
-  cv::Mat &cameraMatrix =
-      current_camera_matrix_;
+  cv::Matx33d &cameraMatrix =
+      intrinsics_.camera_matrix;
 
-  if( !cameraMatrix.empty() ) {
+  if( true) {
 
     const double relErrEps = 0.05;
     static const double sigmaMult = 1.96;
@@ -527,20 +529,20 @@ void c_camera_calibration_pipeline::update_state()
     bool dConfState = true;
 
     const cv::Mat &S =
-        current_std_deviations_;
+        stdDeviations_;
 
-    if( sigmaMult * S.at<double>(0) / cameraMatrix.at<double>(0, 0) < relErrEps &&
-        sigmaMult * S.at<double>(1) / cameraMatrix.at<double>(1, 1) < relErrEps ) {
+    if( sigmaMult * S.at<double>(0) / cameraMatrix(0, 0) < relErrEps &&
+        sigmaMult * S.at<double>(1) / cameraMatrix(1, 1) < relErrEps ) {
       fConfState = true;
     }
 
-    if( sigmaMult * S.at<double>(2) / cameraMatrix.at<double>(0, 2) < relErrEps &&
-        sigmaMult * S.at<double>(3) / cameraMatrix.at<double>(1, 2) < relErrEps ) {
+    if( sigmaMult * S.at<double>(2) / cameraMatrix(0, 2) < relErrEps &&
+        sigmaMult * S.at<double>(3) / cameraMatrix(1, 2) < relErrEps ) {
       cConfState = true;
     }
 
     for( int i = 0; i < 5; i++ ) {
-      if( S.at<double>(4 + i) / fabs(current_dist_coeffs_.at<double>(i)) > 1 ) {
+      if( S.at<double>(4 + i) / fabs(intrinsics_.dist_coeffs[i]) > 1 ) {
         dConfState = false;
       }
     }
@@ -556,17 +558,17 @@ void c_camera_calibration_pipeline::update_state()
 
   if( calibration_options_.auto_tune_calibration_flags && image_points_.size() > calibration_options_.min_frames ) {
 
-    if( !(calibration_flags_ & cv::CALIB_FIX_ASPECT_RATIO) && !cameraMatrix.empty() ) {
+    if( !(calibration_flags_ & cv::CALIB_FIX_ASPECT_RATIO) ) {
 
       const double fDiff =
-          fabs(cameraMatrix.at<double>(0, 0) - cameraMatrix.at<double>(1, 1));
+          fabs(cameraMatrix(0, 0) - cameraMatrix(1, 1));
 
       const cv::Mat &S =
-          current_std_deviations_;
+          stdDeviations_;
 
       if( fDiff < 3 * S.at<double>(0) && fDiff < 3 * S.at<double>(1) ) {
         calibration_flags_ |= cv::CALIB_FIX_ASPECT_RATIO;
-        cameraMatrix.at<double>(0, 0) = cameraMatrix.at<double>(1, 1);
+        cameraMatrix(0, 0) = cameraMatrix(1, 1);
       }
     }
 
@@ -574,21 +576,22 @@ void c_camera_calibration_pipeline::update_state()
 
       const double eps = 0.005;
 
-      const cv::Mat &D =
-          current_dist_coeffs_;
+      const std::vector<double> &D =
+          intrinsics_.dist_coeffs;
 
-      if( fabs(D.at<double>(2)) < eps && fabs(D.at<double>(3)) < eps )
+      if( D.size() > 3 && fabs(D[2]) < eps && fabs(D[3]) < eps ) {
         calibration_flags_ |= cv::CALIB_ZERO_TANGENT_DIST;
+      }
     }
 
     if( !(calibration_flags_ & cv::CALIB_FIX_K1) ) {
 
       const double eps = 0.005;
 
-      const cv::Mat &D =
-          current_dist_coeffs_;
+      const std::vector<double> &D =
+          intrinsics_.dist_coeffs;
 
-      if( fabs(D.at<double>(0)) < eps ) {
+      if( D.size() > 0 && fabs(D[0]) < eps ) {
         calibration_flags_ |= cv::CALIB_FIX_K1;
       }
     }
@@ -597,10 +600,10 @@ void c_camera_calibration_pipeline::update_state()
 
       const double eps = 0.005;
 
-      const cv::Mat &D =
-          current_dist_coeffs_;
+      const std::vector<double> &D =
+          intrinsics_.dist_coeffs;
 
-      if( fabs(D.at<double>(1)) < eps ) {
+      if( D.size() > 1 && fabs(D[1]) < eps ) {
         calibration_flags_ |= cv::CALIB_FIX_K2;
       }
     }
@@ -609,10 +612,10 @@ void c_camera_calibration_pipeline::update_state()
 
       const double eps = 0.005;
 
-      const cv::Mat &D =
-          current_dist_coeffs_;
+      const std::vector<double> &D =
+          intrinsics_.dist_coeffs;
 
-      if( fabs(D.at<double>(4)) < eps ) {
+      if( D.size() > 4 && fabs(D[4]) < eps ) {
         calibration_flags_ |= cv::CALIB_FIX_K3;
       }
     }
@@ -622,10 +625,6 @@ void c_camera_calibration_pipeline::update_state()
 
 bool c_camera_calibration_pipeline::save_current_camera_parameters() const
 {
-  if( current_camera_matrix_.empty() ) {
-    return true; // nothing to save yet
-  }
-
   if( !create_path(output_path_) ) {
     CF_ERROR("create_path('%s') fails: %s ", output_path_.c_str(), strerror(errno));
     return false;
@@ -653,10 +652,10 @@ bool c_camera_calibration_pipeline::save_current_camera_parameters() const
   parametersWriter << "calibration_flags" << flagsToString<CAMERA_CALIBRATION_FLAGS>(calibration_flags_);
 
   parametersWriter << "cameraResolution" << current_frame_.size();
-  parametersWriter << "cameraMatrix" << current_camera_matrix_;
-  parametersWriter << "cameraMatrix_std_dev" << current_std_deviations_.rowRange(cv::Range(0, 4));
-  parametersWriter << "dist_coeffs" << current_dist_coeffs_;
-  parametersWriter << "dist_coeffs_std_dev" << current_std_deviations_.rowRange(cv::Range(4, 9));
+  parametersWriter << "cameraMatrix" << intrinsics_.camera_matrix;
+  parametersWriter << "cameraMatrix_std_dev" << stdDeviations_.rowRange(cv::Range(0, 4));
+  parametersWriter << "dist_coeffs" << intrinsics_.dist_coeffs;
+  parametersWriter << "dist_coeffs_std_dev" << stdDeviations_.rowRange(cv::Range(4, 9));
   parametersWriter << "avg_reprojection_error" << rmse_;
 
   parametersWriter.release();
@@ -681,15 +680,16 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
   image_points_.clear();
   object_points_.clear();
 
-  current_camera_matrix_.release();
-  current_dist_coeffs_.release();
-  current_std_deviations_.release();
-  current_per_view_errors_.release();
+  intrinsics_.camera_matrix = cv::Matx33d::zeros();
+  intrinsics_.dist_coeffs.clear();
+  stdDeviations_.release();
+  perViewErrors_.release();
   current_undistortion_remap_.release();
 
   calibration_flags_ = calibration_options_.calibration_flags;
   confIntervalsState_ = false;
   coverageQualityState_ = false;
+  intrinsics_initialized_ = false;
 
   if ( chessboard_size_.width < 2 || chessboard_size_.height < 2 ) {
     CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_size_.width, chessboard_size_.height);
@@ -699,6 +699,19 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
   if ( !(chessboard_cell_size_.width > 0) || !(chessboard_cell_size_.height > 0)  ) {
     CF_ERROR("Invalid chessboard_cell_size_: %gx%g", chessboard_cell_size_.width, chessboard_cell_size_.height);
     return false;
+  }
+
+  current_object_points_.clear();
+  current_object_points_.reserve(chessboard_size_.area());
+
+  for( int i = 0; i < chessboard_size_.height; ++i ) {
+    for( int j = 0; j < chessboard_size_.width; ++j ) {
+
+      current_object_points_.emplace_back(
+          j * chessboard_cell_size_.width,
+          i * chessboard_cell_size_.height,
+          0.f);
+    }
   }
 
   return true;
@@ -715,6 +728,14 @@ void c_camera_calibration_pipeline::cleanup_pipeline()
 
   image_points_.clear();
   object_points_.clear();
+
+  stdDeviations_.release();
+  perViewErrors_.release();
+  current_undistortion_remap_.release();
+
+  current_frame_.release();
+  current_mask_.release();
+
 
   set_pipeline_stage(camera_calibration_idle);
 }
@@ -791,54 +812,63 @@ bool c_camera_calibration_pipeline::run_pipeline()
       continue;
     }
 
-    if( current_object_points_.empty() ) {
-
-      current_object_points_.reserve(chessboard_size_.area());
-
-      for( int i = 0; i < chessboard_size_.height; ++i ) {
-        for( int j = 0; j < chessboard_size_.width; ++j ) {
-
-          current_object_points_.emplace_back(
-              j * chessboard_cell_size_.width,
-              i * chessboard_cell_size_.height,
-              0.f);
-        }
-      }
-    }
-
-
     image_points_.emplace_back(current_image_points_);
     object_points_.emplace_back(current_object_points_);
 
     if ( image_points_.size() >= calibration_options_.min_frames ) {
 
+      const cv::Size image_size =
+          current_frame_.size();
+
+      if( !intrinsics_initialized_ ) {
+
+        if( !(calibration_options_.calibration_flags & CAMERA_CALIB_USE_INTRINSIC_GUESS) ) {
+
+          intrinsics_.image_size = image_size;
+          intrinsics_.camera_matrix = cv::Matx33d::zeros();
+          intrinsics_.dist_coeffs.clear();
+          intrinsics_initialized_ = true;
+        }
+
+        else {
+
+          intrinsics_initialized_ =
+              init_camera_intrinsics(intrinsics_,
+                  object_points_,
+                  image_points_,
+                  image_size);
+
+          if( !intrinsics_initialized_ ) {
+            CF_ERROR("init_camera_intrinsics() fails");
+            continue;
+          }
+        }
+      }
+
+
       rmse_ =
-          cv::calibrateCamera(object_points_,
+          calibrate_camera(object_points_,
               image_points_,
-              current_frame_.size(),
-              current_camera_matrix_,
-              current_dist_coeffs_,
-              cv::noArray(), cv::noArray(),
-              current_std_deviations_,
-              cv::noArray(),
-              current_per_view_errors_,
+              intrinsics_,
               calibration_flags_,
-              calibration_options_.solverTerm);
+              calibration_options_.solverTerm,
+              nullptr,
+              nullptr,
+              &stdDeviations_,
+              nullptr,
+              &perViewErrors_);
 
-
-      const cv::Matx33d M =
-          current_camera_matrix_;
+      const cv::Matx33d & M =
+          intrinsics_.camera_matrix;
 
       CF_DEBUG("calibrateCamera:\n"
-          "current_total_avg_err_ = %g\n"
-          "current_camera_matrix_ = %dx%d : {\n"
+          "rmse = %g\n"
+          "M: {\n"
           "  %+g %+g %+g\n"
           "  %+g %+g %+g\n"
           "  %+g %+g %+g\n"
           "}\n",
           rmse_,
-          current_camera_matrix_.rows,
-          current_camera_matrix_.cols,
           M(0,0), M(0,1), M(0,2),
           M(1,0), M(1,1), M(1,2),
           M(2,0), M(2,1), M(2,2));
@@ -864,7 +894,7 @@ bool c_camera_calibration_pipeline::run_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  if( output_options_.save_rectified_images ) {
+  if( !canceled() && output_options_.save_rectified_images ) {
 
     if( current_undistortion_remap_.empty() ) {
       CF_ERROR("current_undistortion_remap is empty, can not create rectified images");

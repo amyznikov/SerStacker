@@ -64,8 +64,6 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             return false;
           });
 
-  rectified_images_file_name_ctl->setEnabled(save_rectified_images_ctl->isChecked());
-
   ///
 
   updateControls();
@@ -89,9 +87,11 @@ void QStereoCalibrationOutputOptions::onupdatecontrols()
   }
   else {
 
-    output_directory_ctl->setCurrentPath(pipeline_->output_directory().c_str(), false);
-
     Base::onupdatecontrols();
+
+    output_directory_ctl->setCurrentPath(pipeline_->output_directory().c_str(), false);
+    rectified_images_file_name_ctl->setEnabled(save_rectified_images_ctl->isChecked());
+
     setEnabled(true);
   }
 }

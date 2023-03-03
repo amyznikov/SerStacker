@@ -646,7 +646,36 @@ void c_stereo_calibration_pipeline::update_state()
 
 bool c_stereo_calibration_pipeline::save_current_camera_parameters() const
 {
+  //
+  // Save computed intrinsics and extrinsics into yml
+  //
 
+  if( !create_path(output_path_) ) {
+    CF_ERROR("create_path('%s') fails: %s ", output_path_.c_str(), strerror(errno));
+    return false;
+  }
+
+  const std::string intrinsics_file_name =
+      ssprintf("%s/stereo_intrinsics.%s.yml",
+          output_path_.c_str(),
+          csequence_name());
+
+  if( !write_stereo_camera_intrinsics_yml(stereo_intrinsics_, intrinsics_file_name) ) {
+    CF_ERROR("ERROR: save_stereo_camera_intrinsics_yml('%s') fails",
+        intrinsics_file_name.c_str());
+  }
+
+  const std::string extrinsics_file_name =
+      ssprintf("%s/stereo_extrinsics.%s.yml",
+          output_path_.c_str(),
+          csequence_name());
+
+  if( !write_stereo_camera_extrinsics_yml(stereo_extrinsics_, extrinsics_file_name) ) {
+    CF_ERROR("ERROR: save_stereo_camera_extrinsics_yml('%s') fails",
+        extrinsics_file_name.c_str());
+  }
+
+  return true;
 }
 
 
@@ -856,7 +885,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   for ( int i = 0; i < 2; ++i ) {
     if ( !input_sources_[i]->open() ) {
-      CF_ERROR("ERROR: can not open inputg source '%s'", input_sources_[i]->cfilename());
+      CF_ERROR("ERROR: can not open input source '%s'", input_sources_[i]->cfilename());
       return false;
     }
   }
@@ -896,7 +925,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
-  bool fok;
+  bool fOk;
 
   for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
 
@@ -910,21 +939,21 @@ bool c_stereo_calibration_pipeline::run_pipeline()
       break;
     }
 
-    fok = true;
+    fOk = true;
     for( int i = 0; i < 2; ++i ) {
 
       if( !read_input_frame(input_sources_[i], current_frames_[i], current_masks_[i]) ) {
         CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
-        fok = false;
+        fOk = false;
         break;
       }
     }
 
-    if ( !fok || canceled() ) {
+    if ( !fOk || canceled() ) {
       break;
     }
 
-    fok = true;
+    fOk = true;
 
     for( int i = 0; i < 2; ++i ) {
       current_image_points_[i].clear();
@@ -933,12 +962,12 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     for( int i = 0; i < 2; ++i ) {
       if( canceled() || !detect_chessboard(current_frames_[i], current_image_points_[i]) ) {
         CF_ERROR("detect_chessboard() fails for source %d", i);
-        fok = false;
+        fOk = false;
         break;
       }
     }
 
-    if ( !fok ) {
+    if ( !fOk ) {
       continue;
     }
 
@@ -952,7 +981,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
       const cv::Size image_size =
           current_frames_[0].size();
 
-      fok = false;
+      fOk = false;
 
       if( !stereo_intrinsics_initialized_ ) {
 
@@ -988,7 +1017,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
       CF_DEBUG("done with RMS error=%g",  rmse_);
 
-      fok = rmse_ >= 0;
+      fOk = rmse_ >= 0;
 
       const cv::Matx33d &M0 =
           stereo_intrinsics_.camera[0].camera_matrix;
@@ -1016,7 +1045,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
           M1(1, 0), M1(1, 1), M1(1, 2),
           M1(2, 0), M1(2, 1), M1(2, 2));
 
-      if( !fok || canceled() ) {
+      if( !fOk || canceled() ) {
         continue;
       }
 
@@ -1026,16 +1055,150 @@ bool c_stereo_calibration_pipeline::run_pipeline()
         break;
       }
 
+      if( !save_current_camera_parameters() ) {
+        CF_ERROR("save_current_camera_parameters() fails");
+        return false;
+      }
+
+      if( canceled() ) {
+        break;
+      }
+
       update_undistortion_remap();
     }
-
-    update_display_image();
 
     if( canceled() ) {
       break;
     }
+
+    update_display_image();
   }
 
+  for ( int i = 0; i < 2; ++i ) {
+    input_sources_[i]->close();
+  }
+
+  if( !canceled() && output_options_.save_rectified_images ) {
+
+    c_video_writer writer;
+
+    std::string output_file_name =
+        output_options_.rectified_images_file_name;
+
+    if( output_file_name.empty() ) {
+
+      output_file_name =
+          ssprintf("%s/%s.rectified.avi",
+              output_path_.c_str(),
+              csequence_name());
+    }
+    else {
+
+      std::string file_directory;
+      std::string file_name;
+      std::string file_suffix;
+
+      split_pathfilename(output_file_name,
+          &file_directory,
+          &file_name,
+          &file_suffix);
+
+      if( file_directory.empty() ) {
+        file_directory = output_path_;
+      }
+      else if( !is_absolute_path(file_directory) ) {
+        file_directory =
+            ssprintf("%s/%s",
+                output_path_.c_str(),
+                file_directory.c_str());
+      }
+
+      if( file_name.empty() ) {
+        file_name =
+            ssprintf("%s.rectified",
+                csequence_name());
+      }
+
+      if( file_suffix.empty() ) {
+        file_suffix = ".avi";
+      }
+
+      output_file_name =
+          ssprintf("%s/%s%s",
+              file_directory.c_str(),
+              file_name.c_str(),
+              file_suffix.c_str());
+    }
+
+
+    for( int i = 0; i < 2; ++i ) {
+      if( !input_sources_[i]->open() ) {
+        CF_ERROR("ERROR: can not open input source '%s'", input_sources_[i]->cfilename());
+        return false;
+      }
+    }
+
+    CF_DEBUG("Saving %s...", output_file_name.c_str());
+
+    total_frames_ = input_sources_[0]->size();
+    processed_frames_ = 0;
+    accumulated_frames_ = 0;
+
+    for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+
+      if( canceled() ) {
+        break;
+      }
+
+      fOk = true;
+
+      for( int i = 0; i < 2; ++i ) {
+
+        if( !read_input_frame(input_sources_[i], current_frames_[i], current_masks_[i]) ) {
+          CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
+          fOk = false;
+          break;
+        }
+
+        if( canceled() ) {
+          break;
+        }
+      }
+
+      if( !fOk || canceled() ) {
+        break;
+      }
+
+      update_display_image();
+
+      if( canceled() ) {
+        break;
+      }
+
+      if( !writer.is_open() ) {
+
+        fOk =
+            writer.open(output_file_name,
+                display_frame_.size(),
+                display_frame_.channels() > 1,
+                false);
+
+        if( !fOk ) {
+          CF_ERROR("writer.open('%s') fails", output_file_name.c_str());
+          return false;
+        }
+      }
+
+      if( !writer.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+        CF_ERROR("c_video_writer: write(fails)");
+        break;
+      }
+
+      if( canceled() ) {
+        break;
+      }
+    }
+  }
 
   return true;
 }

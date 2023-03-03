@@ -37,7 +37,7 @@ struct c_stereo_calibrate_options
 {
   int min_frames = 3;
   int max_frames = 50;
-  int calibration_flags = STEREO_CALIB_USE_INTRINSIC_GUESS;// | STEREO_CALIB_USE_EXTRINSIC_GUESS;
+  int calibration_flags = STEREO_CALIB_USE_INTRINSIC_GUESS;
   bool auto_tune_calibration_flags = true;
 
   cv::TermCriteria solverTerm =

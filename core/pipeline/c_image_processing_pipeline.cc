@@ -964,6 +964,18 @@ bool c_video_writer::open(const std::string & filename, const cv::Size & frameSi
   output_type = output_type_unknown;
   current_frame_index = 0;
 
+  if ( filename.empty() ) {
+    CF_ERROR("c_video_writer: No output file name specified");
+    return false;
+  }
+
+  if( !create_path(get_parent_directory(filename)) ) {
+    CF_ERROR("c_video_writer: create_path('%s') fails: %s",
+        filename.c_str(),
+        strerror(errno));
+    return false;
+  }
+
   switch (c_input_source::suggest_source_type(filename)) {
     case c_input_source::SER: {
 

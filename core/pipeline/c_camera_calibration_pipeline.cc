@@ -631,9 +631,9 @@ bool c_camera_calibration_pipeline::save_current_camera_parameters() const
   }
 
   std::string output_file_name =
-      ssprintf("%s/calib.%s.xml",
+      ssprintf("%s/calib.%s.yml",
           output_path_.c_str(),
-          cname());
+          csequence_name());
 
   cv::FileStorage parametersWriter(output_file_name, cv::FileStorage::WRITE);
 
@@ -878,19 +878,31 @@ bool c_camera_calibration_pipeline::run_pipeline()
       }
 
       update_state();
-      update_undistortion_remap();
-      update_display_image();
+
+      if ( canceled() ) {
+        break;
+      }
 
       if ( !save_current_camera_parameters() ) {
         CF_ERROR("save_current_camera_parameters() fails");
         return false;
       }
+
+      update_undistortion_remap();
+
+      if ( canceled() ) {
+        break;
+      }
+
+      update_display_image();
     }
 
     if ( canceled() ) {
       break;
     }
   }
+
+  input_sequence_->close();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -906,23 +918,54 @@ bool c_camera_calibration_pipeline::run_pipeline()
       std::string output_file_name =
           output_options_.rectified_images_file_name;
 
+      std::string output_file_name =
+          output_options_.rectified_images_file_name;
+
       if( output_file_name.empty() ) {
 
         output_file_name =
             ssprintf("%s/%s.rectified.avi",
                 output_path_.c_str(),
-                cname());
+                csequence_name());
       }
-      else if( !is_absolute_path(output_file_name) ) {
+      else {
+
+        std::string file_directory;
+        std::string file_name;
+        std::string file_suffix;
+
+        split_pathfilename(output_file_name,
+            &file_directory,
+            &file_name,
+            &file_suffix);
+
+        if( file_directory.empty() ) {
+          file_directory = output_path_;
+        }
+        else if( !is_absolute_path(file_directory) ) {
+          file_directory =
+              ssprintf("%s/%s",
+                  output_path_.c_str(),
+                  file_directory.c_str());
+        }
+
+        if( file_name.empty() ) {
+          file_name =
+              ssprintf("%s.rectified",
+                  csequence_name());
+        }
+
+        if( file_suffix.empty() ) {
+          file_suffix = ".avi";
+        }
 
         output_file_name =
-            ssprintf("%s/%s",
-                output_path_.c_str(),
-                output_file_name.c_str());
-
+            ssprintf("%s/%s%s",
+                file_directory.c_str(),
+                file_name.c_str(),
+                file_suffix.c_str());
       }
 
-      input_sequence_->close();
 
       CF_DEBUG("Saving %s...", output_file_name.c_str());
 

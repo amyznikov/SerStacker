@@ -648,6 +648,47 @@ inline std::string toString(const cv::Rect_<T> & v) {
   return ssprintf("%g;%g;%g;%g", (double)v.x, (double)v.y, (double)v.width, (double)v.height);
 }
 
+template<class T, int m, int n>
+std::string toString(const cv::Matx<T, m, n> & mat)
+{
+  std::string s;
+  for ( int i = 0; i < m; ++i ) {
+    for ( int j = 0; j < n; ++j ) {
+      s += toString(mat(i, j));
+      if ( j < n - 1 ) {
+        s += "\t";
+      }
+    }
+    s += "\n";
+  }
+
+  return s;
+}
+
+template<class T, int m, int n>
+bool fromString(const std::string & s, cv::Matx<T, m, n> * mat)
+{
+  std::vector<std::string> tokens =
+      strsplit(s, " \t\n\r");
+
+  if ( tokens.size() != m * n ) {
+    return false;
+  }
+
+  T v;
+  for ( int i = 0; i < m; ++i ) {
+    for ( int j = 0; j < n; ++j ) {
+      if ( !fromString(tokens[i * n + j], &v) ) {
+        return false;
+      }
+      mat(i, j) = v;
+    }
+  }
+
+  return true;
+}
+
+
 template<>
 inline const c_enum_member * members_of<cv::InterpolationFlags>()
 {
@@ -685,6 +726,8 @@ inline const c_enum_member * members_of<cv::BorderTypes>()
 
   return members;
 }
+
+
 #endif // CV_VERSION
 
 

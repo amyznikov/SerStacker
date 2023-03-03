@@ -22,6 +22,7 @@ enum c_image_processor_routine_gui_ctl_type {
   c_image_processor_routine_gui_ctl_flags_chkbox,
   c_image_processor_routine_gui_ctl_begin_group,
   c_image_processor_routine_gui_ctl_end_group,
+  // c_image_processor_routine_gui_ctl_matrix_box,
 };
 
 struct c_image_processor_routine_ctrl {

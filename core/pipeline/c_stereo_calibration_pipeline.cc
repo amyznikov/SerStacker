@@ -29,35 +29,6 @@ const c_enum_member* members_of<STEREO_CALIBRATION_STAGE>()
 
   return members;
 }
-
-template<>
-const c_enum_member* members_of<STEREO_CALIBRATION_FLAGS>()
-{
-  static constexpr c_enum_member members[] = {
-      {STEREO_CALIB_FIX_INTRINSIC, "FIX_INTRINSIC","Fix cameraMatrix? and distCoeffs? so that only R, T, E, and F matrices are estimated."},
-      {STEREO_CALIB_USE_INTRINSIC_GUESS, "USE_INTRINSIC_GUESS"," Optimize some or all of the intrinsic parameters according to the specified flags. Initial values are provided by the user."},
-      {STEREO_CALIB_USE_EXTRINSIC_GUESS, "USE_EXTRINSIC_GUESS"," R and T contain valid initial values that are optimized further. Otherwise R and T are initialized to the median value of the pattern views (each dimension separately)."},
-      {STEREO_CALIB_FIX_PRINCIPAL_POINT, "FIX_PRINCIPAL_POINT"," Fix the principal points during the optimization."},
-      {STEREO_CALIB_FIX_FOCAL_LENGTH, "FIX_FOCAL_LENGTH"," Fix f(j)x and f(j)y ."},
-      {STEREO_CALIB_FIX_ASPECT_RATIO, "FIX_ASPECT_RATIO"," Optimize f(j)y . Fix the ratio f(j)x/f(j)y"},
-      {STEREO_CALIB_SAME_FOCAL_LENGTH, "SAME_FOCAL_LENGTH"," Enforce f(0)x=f(1)x and f(0)y=f(1)y ."},
-      {STEREO_CALIB_ZERO_TANGENT_DIST, "ZERO_TANGENT_DIST"," Set tangential distortion coefficients for each camera to zeros and fix there."},
-      {STEREO_CALIB_FIX_K1, "FIX_K1","Do not change the corresponding radial distortion coefficient during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_FIX_K2, "FIX_K2","Do not change the corresponding radial distortion coefficient during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_FIX_K3, "FIX_K3","Do not change the corresponding radial distortion coefficient during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_FIX_K4, "FIX_K4","Do not change the corresponding radial distortion coefficient during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_FIX_K5, "FIX_K5","Do not change the corresponding radial distortion coefficient during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_FIX_K6, "FIX_K6","Do not change the corresponding radial distortion coefficient during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_RATIONAL_MODEL, "RATIONAL_MODEL"," Enable coefficients k4, k5, and k6. To provide the backward compatibility, this extra flag should be explicitly specified to make the calibration function use the rational model and return 8 coefficients. If the flag is not set, the function computes and returns only 5 distortion coefficients."},
-      {STEREO_CALIB_THIN_PRISM_MODEL, "THIN_PRISM_MODEL"," Coefficients s1, s2, s3 and s4 are enabled. To provide the backward compatibility, this extra flag should be explicitly specified to make the calibration function use the thin prism model and return 12 coefficients. If the flag is not set, the function computes and returns only 5 distortion coefficients."},
-      {STEREO_CALIB_FIX_S1_S2_S3_S4, "FIX_S1_S2_S3_S4"," The thin prism distortion coefficients are not changed during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      {STEREO_CALIB_TILTED_MODEL, "TILTED_MODEL"," Coefficients tauX and tauY are enabled. To provide the backward compatibility, this extra flag should be explicitly specified to make the calibration function use the tilted sensor model and return 14 coefficients. If the flag is not set, the function computes and returns only 5 distortion coefficients."},
-      {STEREO_CALIB_FIX_TAUX_TAUY, "FIX_TAUX_TAUY"," The coefficients of the tilted sensor model are not changed during the optimization. If CALIB_USE_INTRINSIC_GUESS is set, the coefficient from the supplied distCoeffs matrix is used. Otherwise, it is set to 0."},
-      { 0 }
-  };
-
-  return members;
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -383,6 +354,39 @@ bool c_stereo_calibration_pipeline::detect_chessboard(const cv::Mat &frame, std:
 
 void c_stereo_calibration_pipeline::update_undistortion_remap()
 {
+  const cv::Size & image_size =
+      stereo_intrinsics_.camera[0].image_size;
+
+  create_stereo_rectification(image_size,
+      stereo_intrinsics_,
+      stereo_extrinsics_,
+      -1,
+      rmaps_,
+      &new_stereo_intrinsics_,
+      &new_stereo_extrinsics,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr);
+
+}
+
+
+void c_stereo_calibration_pipeline::filter_frames()
+{
+  const int nmax =
+      std::max(1, std::max(calibration_options_.min_frames,
+          calibration_options_.max_frames));
+
+  CF_DEBUG("object_points_.size()=%zu / %zu", object_points_.size(), nmax);
+
+
+  if ( object_points_.size() > nmax ) {
+    object_points_.erase(object_points_.begin());
+    image_points_[0].erase(image_points_[0].begin());
+    image_points_[1].erase(image_points_[1].begin());
+  }
+
 }
 
 
@@ -427,30 +431,44 @@ void c_stereo_calibration_pipeline::update_display_image()
       rc1 = cv::Rect(0, sizes[0].height, sizes[1].width, sizes[1].height);
     }
 
-    current_frames_[0].copyTo(display_frame_(rc0));
-    current_frames_[1].copyTo(display_frame_(rc1));
+    if( !rmaps_[0].empty() ) {
 
-    if( display_frame_.channels() == 1 ) {
-      if( !current_image_points_[0].empty() || !current_image_points_[1].empty() ) {
-        cv::cvtColor(display_frame_, display_frame_,
-            cv::COLOR_GRAY2BGR);
+      cv::remap(current_frames_[0], display_frame_(rc0),
+          rmaps_[0], cv::noArray(),
+          cv::INTER_LINEAR);
+
+      cv::remap(current_frames_[1], display_frame_(rc1),
+          rmaps_[1], cv::noArray(),
+          cv::INTER_LINEAR);
+
+    }
+    else {
+
+      current_frames_[0].copyTo(display_frame_(rc0));
+      current_frames_[1].copyTo(display_frame_(rc1));
+
+      if( display_frame_.channels() == 1 ) {
+        if( !current_image_points_[0].empty() || !current_image_points_[1].empty() ) {
+          cv::cvtColor(display_frame_, display_frame_,
+              cv::COLOR_GRAY2BGR);
+        }
       }
-    }
 
-    if( !current_image_points_[0].empty() ) {
-      cv::drawChessboardCorners(display_frame_(rc0),
-          chessboard_size_,
-          current_image_points_[0],
-          true);
-    }
+      if( !current_image_points_[0].empty() ) {
+        cv::drawChessboardCorners(display_frame_(rc0),
+            chessboard_size_,
+            current_image_points_[0],
+            true);
+      }
 
-    if( !current_image_points_[1].empty() ) {
-      cv::drawChessboardCorners(display_frame_(rc1),
-          chessboard_size_,
-          current_image_points_[1],
-          true);
-    }
+      if( !current_image_points_[1].empty() ) {
+        cv::drawChessboardCorners(display_frame_(rc1),
+            chessboard_size_,
+            current_image_points_[1],
+            true);
+      }
 
+    }
   }
 
   on_accumulator_changed();
@@ -465,15 +483,24 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
     return false;
   }
 
-  is_chessboard_found_ = false;
+  /////////////////////////////////////////////////////////////////////////////
+
   calibration_flags_ = calibration_options_.calibration_flags;
+  stereo_intrinsics_initialized_ = false;
+
+  /////////////////////////////////////////////////////////////////////////////
 
   if ( chessboard_size_.width < 2 || chessboard_size_.height < 2 ) {
     CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_size_.width, chessboard_size_.height);
-    set_status_msg("ERROR: Invalid chessboard_size specified");
     return false;
   }
 
+  if ( !(chessboard_cell_size_.width > 0) || !(chessboard_cell_size_.height > 0)  ) {
+    CF_ERROR("Invalid chessboard_cell_size_: %gx%g", chessboard_cell_size_.width, chessboard_cell_size_.height);
+    return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
 
   if ( input_options_.left_stereo_source.empty() ) {
     CF_ERROR("ERROR: No left stereo source specified");
@@ -485,6 +512,8 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
     return false;
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+
   input_sources_[0] =
       input_sequence_->source(input_options_.left_stereo_source);
 
@@ -493,7 +522,6 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
         input_options_.left_stereo_source.c_str());
     return false;
   }
-
 
   input_sources_[1] =
       input_sequence_->source(input_options_.right_stereo_source);
@@ -504,6 +532,20 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
     return false;
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  current_object_points_.clear();
+  current_object_points_.reserve(chessboard_size_.area());
+
+  for( int i = 0; i < chessboard_size_.height; ++i ) {
+    for( int j = 0; j < chessboard_size_.width; ++j ) {
+
+      current_object_points_.emplace_back(
+          j * chessboard_cell_size_.width,
+          i * chessboard_cell_size_.height,
+          0.f);
+    }
+  }
+
 
   return true;
 }
@@ -512,14 +554,34 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
 {
   set_pipeline_stage(stereo_calibration_finishing);
 
-  base::cleanup_pipeline();
+  object_points_.clear();
+  current_object_points_.clear();
+  rvecs_.clear();
+  tvecs_.clear();
+  perViewErrors_.release();
 
   for ( int i = 0; i < 2; ++i ) {
+
+    image_points_[i].clear();
+    current_image_points_[i].clear();
+    current_frames_[i].release();
+    current_masks_[i].release();
+    rmaps_[i].release();
+
     if ( input_sources_[i] ) {
       input_sources_[i]->close();
       input_sources_[i].reset();
     }
   }
+
+
+  if( true ) {
+    lock_guard lock(display_lock_);
+    display_frame_.release();
+    display_mask_.release();
+  }
+
+  base::cleanup_pipeline();
 
   set_pipeline_stage(stereo_calibration_idle);
 }
@@ -575,6 +637,11 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
 
+    if ( canceled() ) {
+      break;
+    }
+
+    filter_frames();
 
     if ( canceled() ) {
       break;
@@ -601,23 +668,103 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     }
 
     for( int i = 0; i < 2; ++i ) {
-      if( !detect_chessboard(current_frames_[i], current_image_points_[i]) ) {
+      if( canceled() || !detect_chessboard(current_frames_[i], current_image_points_[i]) ) {
         CF_ERROR("detect_chessboard() fails for source %d", i);
         fok = false;
         break;
       }
     }
 
-    update_display_image();
-
-    if( !(is_chessboard_found_ = fok) ) {
+    if ( !fok ) {
       continue;
     }
 
-    if ( canceled() ) {
-      break;
+
+    image_points_[0].emplace_back(current_image_points_[0]);
+    image_points_[1].emplace_back(current_image_points_[1]);
+    object_points_.emplace_back(current_object_points_);
+
+    if( object_points_.size() >= std::max(1, calibration_options_.min_frames) ) {
+
+      const cv::Size image_size =
+          current_frames_[0].size();
+
+      fok = false;
+
+      if( !stereo_intrinsics_initialized_ ) {
+
+        stereo_intrinsics_initialized_ =
+            init_camera_intrinsics(stereo_intrinsics_,
+                object_points_,
+                image_points_[0],
+                image_points_[1],
+                image_size,
+                1);
+
+        if ( !stereo_intrinsics_initialized_ ) {
+          CF_ERROR("init_camera_intrinsics() fails");
+          continue;
+        }
+      }
+
+
+      CF_DEBUG("Running stereo calibration ...");
+
+      rmse_ =
+          stereo_calibrate(object_points_,
+              image_points_[0], image_points_[1],
+              stereo_intrinsics_,
+              stereo_extrinsics_,
+              calibration_flags_,
+              calibration_options_.solverTerm,
+              &E_,
+              &F_,
+              &rvecs_,
+              &tvecs_,
+              &perViewErrors_);
+
+      CF_DEBUG("done with RMS error=%g",  rmse_);
+
+      fok = rmse_ >= 0;
+
+      const cv::Matx33d &M0 =
+          stereo_intrinsics_.camera[0].camera_matrix;
+
+      const cv::Matx33d &M1 =
+          stereo_intrinsics_.camera[1].camera_matrix;
+
+      CF_DEBUG("\nM0: {\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "}\n"
+
+          "\nM1: {\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "}\n",
+
+      M0(0, 0), M0(0, 1), M0(0, 2),
+          M0(1, 0), M0(1, 1), M0(1, 2),
+          M0(2, 0), M0(2, 1), M0(2, 2),
+
+          M1(0, 0), M1(0, 1), M1(0, 2),
+          M1(1, 0), M1(1, 1), M1(1, 2),
+          M1(2, 0), M1(2, 1), M1(2, 2));
+
+      if( !fok || canceled() ) {
+        continue;
+      }
+
+      update_undistortion_remap();
     }
 
+    update_display_image();
+
+    if( canceled() ) {
+      break;
+    }
   }
 
 

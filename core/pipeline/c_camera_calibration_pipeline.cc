@@ -29,37 +29,6 @@ const c_enum_member* members_of<CAMERA_CALIBRATION_STAGE>()
 
   return members;
 }
-
-template<>
-const c_enum_member* members_of<CAMERA_CALIBRATION_FLAGS>()
-{
-  static constexpr c_enum_member members[] = {
-      { CAMERA_CALIBRATION_USE_INTRINSIC_GUESS, "USE_INTRINSIC_GUESS", "" },
-      { CAMERA_CALIBRATION_FIX_ASPECT_RATIO, "FIX_ASPECT_RATIO", "" },
-      { CAMERA_CALIBRATION_FIX_PRINCIPAL_POINT, "FIX_PRINCIPAL_POINT", "" },
-      { CAMERA_CALIBRATION_ZERO_TANGENT_DIST, "ZERO_TANGENT_DIST", "" },
-      { CAMERA_CALIBRATION_FIX_FOCAL_LENGTH, "FIX_FOCAL_LENGTH", "" },
-      { CAMERA_CALIBRATION_FIX_K1, "FIX_K1", "" },
-      { CAMERA_CALIBRATION_FIX_K2, "FIX_K2", "" },
-      { CAMERA_CALIBRATION_FIX_K3, "FIX_K3", "" },
-      { CAMERA_CALIBRATION_FIX_K4, "FIX_K4", "" },
-      { CAMERA_CALIBRATION_FIX_K5, "FIX_K5", "" },
-      { CAMERA_CALIBRATION_FIX_K6, "FIX_K6", "" },
-      { CAMERA_CALIBRATION_RATIONAL_MODEL, "RATIONAL_MODEL", "" },
-      { CAMERA_CALIBRATION_THIN_PRISM_MODEL, "THIN_PRISM_MODEL", "" },
-      { CAMERA_CALIBRATION_FIX_S1_S2_S3_S4, "FIX_S1_S2_S3_S4", "" },
-      { CAMERA_CALIBRATION_TILTED_MODEL, "TILTED_MODEL", "" },
-      { CAMERA_CALIBRATION_FIX_TAUX_TAUY, "FIX_TAUX_TAUY", "" },
-      { CAMERA_CALIBRATION_USE_QR, "USE_QR",
-          "Use QR instead of SVD decomposition for solving. Faster but potentially less precise" }, //!<
-      { CAMERA_CALIBRATION_FIX_TANGENT_DIST, "FIX_TANGENT_DIST", "" },
-      { CAMERA_CALIBRATION_USE_LU, "USE_LU",
-          "Use LU instead of SVD decomposition for solving. much faster but potentially less precise" },
-      { 0 }
-  };
-
-  return members;
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -688,7 +657,7 @@ bool c_camera_calibration_pipeline::save_current_camera_parameters() const
   parametersWriter << "cameraMatrix_std_dev" << current_std_deviations_.rowRange(cv::Range(0, 4));
   parametersWriter << "dist_coeffs" << current_dist_coeffs_;
   parametersWriter << "dist_coeffs_std_dev" << current_std_deviations_.rowRange(cv::Range(4, 9));
-  parametersWriter << "avg_reprojection_error" << current_total_avg_err_;
+  parametersWriter << "avg_reprojection_error" << rmse_;
 
   parametersWriter.release();
 
@@ -724,7 +693,11 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
 
   if ( chessboard_size_.width < 2 || chessboard_size_.height < 2 ) {
     CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_size_.width, chessboard_size_.height);
-    set_status_msg("ERROR: Invalid chessboard_size specified");
+    return false;
+  }
+
+  if ( !(chessboard_cell_size_.width > 0) || !(chessboard_cell_size_.height > 0)  ) {
+    CF_ERROR("Invalid chessboard_cell_size_: %gx%g", chessboard_cell_size_.width, chessboard_cell_size_.height);
     return false;
   }
 
@@ -839,9 +812,7 @@ bool c_camera_calibration_pipeline::run_pipeline()
 
     if ( image_points_.size() >= calibration_options_.min_frames ) {
 
-      int calibrationFlags_ = 0;
-
-      current_total_avg_err_ =
+      rmse_ =
           cv::calibrateCamera(object_points_,
               image_points_,
               current_frame_.size(),
@@ -865,7 +836,7 @@ bool c_camera_calibration_pipeline::run_pipeline()
           "  %+g %+g %+g\n"
           "  %+g %+g %+g\n"
           "}\n",
-          current_total_avg_err_,
+          rmse_,
           current_camera_matrix_.rows,
           current_camera_matrix_.cols,
           M(0,0), M(0,1), M(0,2),

@@ -11,35 +11,13 @@
 
 #include "c_image_processing_pipeline.h"
 #include <core/proc/chessboard/chessboard_detection.h>
+#include <core/proc/camera_calibration/camera_calibration.h>
 
 enum STEREO_CALIBRATION_STAGE {
   stereo_calibration_idle = 0,
   stereo_calibration_initialize,
   stereo_calibration_in_progress,
   stereo_calibration_finishing
-};
-
-enum STEREO_CALIBRATION_FLAGS
-{
-  STEREO_CALIB_FIX_INTRINSIC = cv::CALIB_FIX_INTRINSIC,
-  STEREO_CALIB_USE_INTRINSIC_GUESS = cv::CALIB_USE_INTRINSIC_GUESS,
-  STEREO_CALIB_USE_EXTRINSIC_GUESS = cv::CALIB_USE_EXTRINSIC_GUESS,
-  STEREO_CALIB_FIX_PRINCIPAL_POINT = cv::CALIB_FIX_PRINCIPAL_POINT,
-  STEREO_CALIB_FIX_FOCAL_LENGTH = cv::CALIB_FIX_FOCAL_LENGTH,
-  STEREO_CALIB_FIX_ASPECT_RATIO = cv::CALIB_FIX_ASPECT_RATIO,
-  STEREO_CALIB_SAME_FOCAL_LENGTH = cv::CALIB_SAME_FOCAL_LENGTH,
-  STEREO_CALIB_ZERO_TANGENT_DIST = cv::CALIB_ZERO_TANGENT_DIST,
-  STEREO_CALIB_FIX_K1 = cv::CALIB_FIX_K1,
-  STEREO_CALIB_FIX_K2 = cv::CALIB_FIX_K2,
-  STEREO_CALIB_FIX_K3 = cv::CALIB_FIX_K3,
-  STEREO_CALIB_FIX_K4 = cv::CALIB_FIX_K4,
-  STEREO_CALIB_FIX_K5 = cv::CALIB_FIX_K5,
-  STEREO_CALIB_FIX_K6 = cv::CALIB_FIX_K6,
-  STEREO_CALIB_RATIONAL_MODEL = cv::CALIB_RATIONAL_MODEL,
-  STEREO_CALIB_THIN_PRISM_MODEL = cv::CALIB_THIN_PRISM_MODEL,
-  STEREO_CALIB_FIX_S1_S2_S3_S4 = cv::CALIB_FIX_S1_S2_S3_S4,
-  STEREO_CALIB_TILTED_MODEL = cv::CALIB_TILTED_MODEL,
-  STEREO_CALIB_FIX_TAUX_TAUY = cv::CALIB_FIX_TAUX_TAUY,
 };
 
 struct c_stereo_calibration_input_options
@@ -58,7 +36,7 @@ struct c_stereo_calibrate_options
 {
   int min_frames = 3;
   int max_frames = 50;
-  int calibration_flags = 0; // enum STEREO_CALIBRATION_FLAGS
+  int calibration_flags = STEREO_CALIB_USE_INTRINSIC_GUESS;// | STEREO_CALIB_USE_EXTRINSIC_GUESS;
   bool auto_tune_calibration_flags = true;
 
   cv::TermCriteria solverTerm =
@@ -136,6 +114,7 @@ protected:
   bool detect_chessboard(const cv::Mat &frame, std::vector<cv::Point2f> & corners_);
   void update_undistortion_remap();
   void update_display_image();
+  void filter_frames();
 
 protected:
   cv::Size chessboard_size_ = cv::Size(9, 6);
@@ -157,15 +136,30 @@ protected:
   cv::Mat current_masks_[2];
 
   std::vector<cv::Point2f> current_image_points_[2];
-  std::vector<cv::Point3f> current_object_points_[2];
-  bool is_chessboard_found_ = false;
+  std::vector<cv::Point3f> current_object_points_;
 
+  std::vector<std::vector<cv::Point2f> > image_points_[2];
+  std::vector<std::vector<cv::Point3f> > object_points_;
+
+  c_stereo_camera_intrinsics stereo_intrinsics_;
+  c_stereo_camera_extrinsics stereo_extrinsics_;
+  bool stereo_intrinsics_initialized_ = false;
+
+
+  c_stereo_camera_intrinsics new_stereo_intrinsics_;
+  c_stereo_camera_extrinsics new_stereo_extrinsics;
+  cv::Mat2f rmaps_[2];
+  cv::Matx33d E_;
+  cv::Matx33d F_;
+  std::vector<cv::Vec3d> rvecs_;
+  std::vector<cv::Vec3d> tvecs_;
+  cv::Mat1d perViewErrors_;
 
   mutable std::mutex display_lock_;
   cv::Mat display_frame_;
   cv::Mat display_mask_;
 
-  double current_total_avg_err_ = 0;
+  double rmse_ = 0;
   int calibration_flags_ = 0;
 };
 

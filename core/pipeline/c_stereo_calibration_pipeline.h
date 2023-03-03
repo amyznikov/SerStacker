@@ -114,7 +114,9 @@ protected:
   bool detect_chessboard(const cv::Mat &frame, std::vector<cv::Point2f> & corners_);
   void update_undistortion_remap();
   void update_display_image();
+  double estimate_grid_subset_quality(int excludedIndex) const;
   void filter_frames();
+  void update_state();
 
 protected:
   cv::Size chessboard_size_ = cv::Size(9, 6);

@@ -372,28 +372,284 @@ void c_stereo_calibration_pipeline::update_undistortion_remap()
 }
 
 
+double c_stereo_calibration_pipeline::estimate_grid_subset_quality(int excludedIndex) const
+{
+  const cv::Size image_size = current_frames_[0].size();
+
+  const int gridSize = 10;
+  const int xGridStep = image_size.width / gridSize;
+  const int yGridStep = image_size.height / gridSize;
+  const int stride = gridSize * gridSize;
+
+  std::vector<int> pointsInCell(2 * stride);
+
+  std::fill(pointsInCell.begin(), pointsInCell.end(), 0);
+
+  for( int k = 0; k < object_points_.size(); k++ )
+    if( k != excludedIndex ) {
+
+      for( int i = 0; i < 2; ++i ) {
+
+        for( const auto &p : image_points_[i][k] ) {
+
+          int ii = (int) (p.x / xGridStep);
+          int jj = (int) (p.y / yGridStep);
+
+          pointsInCell[ii * gridSize + jj]++;
+          pointsInCell[ii * gridSize + jj + stride]++;
+        }
+      }
+
+    }
+
+  cv::Scalar mean, stdDev;
+  cv::meanStdDev(pointsInCell, mean, stdDev);
+
+  return mean[0] / (stdDev[0] + 1e-7);
+}
+
 void c_stereo_calibration_pipeline::filter_frames()
 {
-  const int nmax =
+  const int nbframes =
+      object_points_.size();
+
+  const int nbframesmax =
       std::max(1, std::max(calibration_options_.min_frames,
           calibration_options_.max_frames));
 
-  CF_DEBUG("object_points_.size()=%zu / %zu", object_points_.size(), nmax);
+  CF_DEBUG("nbframes = %d / %d", nbframes, nbframesmax);
 
+  if( nbframes != perViewErrors_.rows ) {
 
-  if ( object_points_.size() > nmax ) {
-    object_points_.erase(object_points_.begin());
-    image_points_[0].erase(image_points_[0].begin());
-    image_points_[1].erase(image_points_[1].begin());
+    if( nbframes > 1 ) {
+      CF_ERROR("APP BUG: object_points_.size()=%zu != current_per_view_errors_.total()=%zu",
+          object_points_.size(),
+          perViewErrors_.rows);
+    }
+
+    if( nbframes > nbframesmax ) {
+      image_points_[0].erase(image_points_[0].begin());
+      image_points_[1].erase(image_points_[1].begin());
+      object_points_.erase(object_points_.begin());
+    }
+
+    return;
   }
 
+
+  if ( nbframes > nbframesmax ) {
+
+    double worstValue = -HUGE_VAL;
+    double maxQuality = estimate_grid_subset_quality(nbframes);
+
+    int worstElemIndex = 0;
+
+    const double alpha =
+        calibration_options_.filter_alpha;
+
+    for( size_t i = 0; i < nbframes; i++ ) {
+
+      const double gridQDelta =
+          estimate_grid_subset_quality(i) - maxQuality;
+
+      const double currentValue =
+          (perViewErrors_[i][0] + perViewErrors_[i][1]) * alpha + gridQDelta * (1. - alpha);
+
+      if( currentValue > worstValue ) {
+        worstValue = currentValue;
+        worstElemIndex = i;
+      }
+    }
+
+    CF_DEBUG("XXX worstElemIndex=%d", worstElemIndex);
+
+    image_points_[0].erase(image_points_[0].begin() + worstElemIndex);
+    image_points_[1].erase(image_points_[1].begin() + worstElemIndex);
+    object_points_.erase(object_points_.begin() + worstElemIndex);
+
+    cv::Mat1f newErrorsVec(nbframes - 1, perViewErrors_.cols);
+
+    std::copy(perViewErrors_[0],
+        perViewErrors_[worstElemIndex],
+        newErrorsVec[0]);
+
+    if( worstElemIndex < nbframes - 1 ) {
+      std::copy(perViewErrors_[worstElemIndex + 1],
+          perViewErrors_[nbframes],
+          newErrorsVec[worstElemIndex]);
+    }
+
+    perViewErrors_ = newErrorsVec;
+  }
 }
 
+void c_stereo_calibration_pipeline::update_state()
+{
+//  cv::Mat &cameraMatrix =
+//      current_camera_matrix_;
+//
+//  if( !cameraMatrix.empty() ) {
+//
+//    const double relErrEps = 0.05;
+//    static const double sigmaMult = 1.96;
+//
+//    bool fConfState = false;
+//    bool cConfState = false;
+//    bool dConfState = true;
+//
+//    const cv::Mat &S =
+//        current_std_deviations_;
+//
+//    if( sigmaMult * S.at<double>(0) / cameraMatrix.at<double>(0, 0) < relErrEps &&
+//        sigmaMult * S.at<double>(1) / cameraMatrix.at<double>(1, 1) < relErrEps ) {
+//      fConfState = true;
+//    }
+//
+//    if( sigmaMult * S.at<double>(2) / cameraMatrix.at<double>(0, 2) < relErrEps &&
+//        sigmaMult * S.at<double>(3) / cameraMatrix.at<double>(1, 2) < relErrEps ) {
+//      cConfState = true;
+//    }
+//
+//    for( int i = 0; i < 5; i++ ) {
+//      if( S.at<double>(4 + i) / fabs(current_dist_coeffs_.at<double>(i)) > 1 ) {
+//        dConfState = false;
+//      }
+//    }
+//
+//    confIntervalsState_ =
+//        fConfState && cConfState && dConfState;
+//  }
+//
+//
+//  if( object_points_.size() > calibration_options_.min_frames ) {
+//    coverageQualityState_ = estimate_coverage_quality() > 1.8 ? true : false;
+//  }
+
+  if( calibration_options_.auto_tune_calibration_flags && object_points_.size() > calibration_options_.min_frames ) {
+
+//    if( !(calibration_flags_ & cv::CALIB_FIX_ASPECT_RATIO) ) {
+//
+//      bool fix_aspect_ratio = true;
+//
+//      for( int i = 0; i < 2; ++i ) {
+//
+//        const cv::Matx33d & C =
+//            stereo_intrinsics_.camera[i].camera_matrix;
+//
+//        const double fDiff =
+//            fabs(C(0, 0) - C(1, 1));
+//
+//        //        if( fDiff < 3 * S.at<double>(0) && fDiff < 3 * S.at<double>(1) ) {
+//        //        }
+//      }
+
+//      const cv::Mat &S =
+//          current_std_deviations_;
+//
+//      if( fDiff < 3 * S.at<double>(0) && fDiff < 3 * S.at<double>(1) ) {
+//        calibration_flags_ |= cv::CALIB_FIX_ASPECT_RATIO;
+//        cameraMatrix.at<double>(0, 0) = cameraMatrix.at<double>(1, 1);
+//      }
+//    }
+
+    if( !(calibration_flags_ & cv::CALIB_ZERO_TANGENT_DIST) ) {
+
+      const double eps = 0.005;
+
+      bool fix_zero_tangent_dist = true;
+
+      for( int i = 0; i < 2; ++i ) {
+
+        const std::vector<double> &D =
+            stereo_intrinsics_.camera[i].dist_coeffs;
+
+        if( (D.size() > 3) && (fabs(D[2]) > eps || fabs(D[3]) > eps) ) {
+          fix_zero_tangent_dist = false;
+          break;
+        }
+      }
+
+      if( fix_zero_tangent_dist ) {
+        calibration_flags_ |= cv::CALIB_ZERO_TANGENT_DIST;
+      }
+    }
+
+    if( !(calibration_flags_ & cv::CALIB_FIX_K1) ) {
+
+      const double eps = 0.005;
+
+      bool fix_k1 = true;
+
+      for( int i = 0; i < 2; ++i ) {
+
+        const std::vector<double> &D =
+            stereo_intrinsics_.camera[i].dist_coeffs;
+
+        if( (D.size() > 0) && (fabs(D[0]) > eps) ) {
+          fix_k1 = false;
+          break;
+        }
+      }
+
+      if( fix_k1 ) {
+        calibration_flags_ |= cv::CALIB_FIX_K1;
+      }
+    }
+
+
+    if( !(calibration_flags_ & cv::CALIB_FIX_K2) ) {
+
+      const double eps = 0.005;
+
+      bool fix_k2 = true;
+
+      for( int i = 0; i < 2; ++i ) {
+
+        const std::vector<double> &D =
+            stereo_intrinsics_.camera[i].dist_coeffs;
+
+        if( (D.size() > 1) && (fabs(D[1]) > eps) ) {
+          fix_k2 = false;
+          break;
+        }
+      }
+
+      if( fix_k2 ) {
+        calibration_flags_ |= cv::CALIB_FIX_K2;
+      }
+    }
+
+    if( !(calibration_flags_ & cv::CALIB_FIX_K3) ) {
+
+      const double eps = 0.005;
+
+      bool fix_k3 = true;
+
+      for( int i = 0; i < 2; ++i ) {
+
+        const std::vector<double> &D =
+            stereo_intrinsics_.camera[i].dist_coeffs;
+
+        if( (D.size() > 4) && (fabs(D[4]) > eps) ) {
+          fix_k3 = false;
+          break;
+        }
+      }
+
+      if( fix_k3 ) {
+        calibration_flags_ |= cv::CALIB_FIX_K3;
+      }
+    }
+  }
+}
 
 void c_stereo_calibration_pipeline::update_display_image()
 {
   if ( true ) {
     lock_guard lock(display_lock_);
+
+    accumulated_frames_ =
+        object_points_.size();
 
     const cv::Size sizes[2] = {
         current_frames_[0].size(),
@@ -755,6 +1011,12 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
       if( !fok || canceled() ) {
         continue;
+      }
+
+      update_state();
+
+      if( canceled() ) {
+        break;
       }
 
       update_undistortion_remap();

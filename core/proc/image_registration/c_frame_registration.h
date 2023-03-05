@@ -14,6 +14,7 @@
 #include "image_transform.h"
 #include "ecc_motion_model.h"
 
+
 struct c_feature_based_registration_options {
   bool enabled = false;
   double scale = 0.5;

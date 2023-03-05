@@ -269,22 +269,6 @@ c_image_stacking_pipeline::~c_image_stacking_pipeline()
   cancel(true);
 }
 
-
-STACKING_STAGE c_image_stacking_pipeline::stacking_stage() const
-{
-  return stacking_stage_;
-}
-
-void c_image_stacking_pipeline::set_stacking_stage(STACKING_STAGE stage)
-{
-  const STACKING_STAGE oldstage = stacking_stage_;
-
-  if ( stage != oldstage ) {
-    stacking_stage_ = stage;
-    on_stacking_stage_changed(oldstage, stage);
-  }
-}
-
 void c_image_stacking_pipeline::update_output_path()
 {
   if( output_directory_.empty() ) {
@@ -486,7 +470,7 @@ const c_image_processing_options & c_image_stacking_pipeline::image_processing_o
 
 bool c_image_stacking_pipeline::initialize_pipeline()
 {
-  set_stacking_stage(stacking_stage_initialize);
+  set_pipeline_stage(stacking_stage_initialize);
 
   if ( !base::initialize_pipeline() ) {
     CF_ERROR("c_image_stacking_pipeline: base::initialize() fails" );
@@ -556,7 +540,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
 
 void c_image_stacking_pipeline::cleanup_pipeline()
 {
-  set_stacking_stage(stacking_stage_finishing);
+  set_pipeline_stage(stacking_stage_finishing);
   base::cleanup_pipeline();
 
   roi_selection_.reset();
@@ -576,7 +560,7 @@ void c_image_stacking_pipeline::cleanup_pipeline()
   missing_pixel_mask_.release();
   darkbayer_.release();
 
-  set_stacking_stage(stacking_stage_idle);
+  set_pipeline_stage(stacking_stage_idle);
 }
 
 bool c_image_stacking_pipeline::run_pipeline()
@@ -793,7 +777,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    set_stacking_stage(stacking_stage_select_master_frame_index);
+    set_pipeline_stage(stacking_stage_select_master_frame_index);
 
     master_frame_index =
         select_master_frame(input_sequence);
@@ -802,7 +786,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    set_stacking_stage(stacking_stage_generate_reference_frame);
+    set_pipeline_stage(stacking_stage_generate_reference_frame);
 
     set_status_msg("CREATE REFERENCE FRAME ...");
 
@@ -915,7 +899,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  set_stacking_stage(stacking_stage_in_progress);
+  set_pipeline_stage(stacking_stage_in_progress);
 
   if ( accumulation_options_.accumulation_method != frame_accumulation_none ) {
 
@@ -954,7 +938,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
     return false;
   }
 
-  set_stacking_stage(stacking_stage_finishing);
+  set_pipeline_stage(stacking_stage_finishing);
   set_status_msg("FINISHING ...");
 
 

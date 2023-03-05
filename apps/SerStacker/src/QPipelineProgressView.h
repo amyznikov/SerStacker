@@ -60,11 +60,9 @@ protected:
 
   c_slotptr on_status_changed;
   c_slotptr on_accumulator_changed;
-
-  c_slotptr on_stacking_stage_changed;
-  c_slotptr on_selected_master_frame_changed;
-
   c_slotptr on_pipeline_stage_changed;
+
+  c_slotptr on_selected_master_frame_changed;
   c_slotptr on_current_frame_changed;
 };
 

@@ -19,6 +19,7 @@
 #include <core/pipeline/c_image_stacking_pipeline.h>
 #include <core/pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline.h>
+#include <core/pipeline/c_rstereo_calibration_pipeline.h>
 #include <core/debug.h>
 
 namespace qserstacker {
@@ -282,6 +283,12 @@ void MainWindow::setupPipelineTypes()
         return c_image_processing_pipeline::sptr(new c_stereo_calibration_pipeline(name, input_sequence));
       });
 
+  c_image_processing_pipeline::register_class(
+      c_rstereo_calibration_pipeline::class_name(),
+      "c_rstereo_calibration_pipeline",
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new c_rstereo_calibration_pipeline(name, input_sequence));
+      });
 
 }
 

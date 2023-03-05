@@ -171,8 +171,6 @@ struct c_image_processing_options
 
 struct c_image_stacking_output_options {
 
-  //std::string output_directory;
-
   std::string output_preprocessed_frames_filename;
   std::string output_aligned_frames_filename;
   std::string output_ecc_frames_filename;
@@ -227,12 +225,8 @@ public:
   }
 
 
-  c_notification<void(STACKING_STAGE oldstage, STACKING_STAGE newstage)> on_stacking_stage_changed;
   c_notification<void()> on_accumulator_changed;
   c_notification<void()> on_selected_master_frame_changed;
-
-
-  STACKING_STAGE stacking_stage() const;
 
   const c_anscombe_transform & anscombe() const;
 
@@ -284,7 +278,6 @@ public:
   bool serialize(c_config_setting setting, bool save) override;
 
 protected:
-  void set_stacking_stage(STACKING_STAGE stage);
   void update_output_path() override;
 
   bool initialize_pipeline() override;
@@ -363,10 +356,6 @@ protected:
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
-
-
-
-  STACKING_STAGE stacking_stage_ = stacking_stage_idle;
 
   bool master_frame_generation_ = false;
   int master_frame_index_ = -1;

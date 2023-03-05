@@ -219,6 +219,22 @@ bool c_image_processing_pipeline::canceled() const
   return canceled_;
 }
 
+void c_image_processing_pipeline::set_pipeline_stage(int newstage)
+{
+  const auto oldstage =
+      pipeline_stage_;
+
+  if( newstage != oldstage ) {
+    pipeline_stage_ = newstage;
+    on_pipeline_stage_changed(oldstage, newstage);
+  }
+}
+
+int c_image_processing_pipeline::pipeline_stage() const
+{
+  return pipeline_stage_;
+}
+
 void c_image_processing_pipeline::set_status_msg(const std::string & msg) const
 {
   if( true ) {

@@ -358,23 +358,12 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
               descriptors,
               useProvidedKeypoints);
     }
-
-    if ( keypoints.size() < 1 ) {
-      CF_ERROR("No keypoints detected on image");
-      return false;
-    }
   }
   else {
 
     detector_->detect(image,
         keypoints,
         mask);
-
-    if ( keypoints.size() < 1 ) {
-      CF_ERROR("No keypoints detected on image");
-      return false;
-    }
-
 
     if ( max_keypoints_ > 0 && (int)keypoints.size() > max_keypoints_ ) {
 

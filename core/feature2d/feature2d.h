@@ -14,7 +14,6 @@
 #include "feature_extraction.h"  // Sparse feature extraction
 #include "feature_matching.h"   // Sparse feature matching
 
-
 /**
  * draw_matched_positions()
  *

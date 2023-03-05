@@ -151,18 +151,6 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
   return true;
 }
 
-
-void c_camera_calibration_pipeline::set_pipeline_stage(CAMERA_CALIBRATION_STAGE stage)
-{
-  const auto oldstage = pipeline_stage_;
-
-  if ( stage != oldstage ) {
-    pipeline_stage_ = stage;
-    on_pipeline_stage_changed(oldstage, stage);
-  }
-
-}
-
 void c_camera_calibration_pipeline::update_output_path()
 {
   if( output_directory_.empty() ) {
@@ -914,9 +902,6 @@ bool c_camera_calibration_pipeline::run_pipeline()
     else {
 
       c_video_writer writer;
-
-      std::string output_file_name =
-          output_options_.rectified_images_file_name;
 
       std::string output_file_name =
           output_options_.rectified_images_file_name;

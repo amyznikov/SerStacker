@@ -9,7 +9,6 @@
 #define __QStackingMasterFrameSettings_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QLineEditBox.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
@@ -23,11 +22,8 @@ public:
 
   QMasterFrameOptions(QWidget * parent = nullptr);
 
-  //void set_master_frame_options(c_master_frame_options * options, const c_input_sequence::sptr & available_sources);
   void set_current_pipeline(const c_image_stacking_pipeline::sptr & current_pipeline);
   const c_image_stacking_pipeline::sptr & current_pipeline() const;
-  //const c_master_frame_options * master_frame_options() const;
-  //const c_input_sequence::sptr & input_sequence() const;
 
 protected:
   void onupdatecontrols() override;
@@ -45,7 +41,6 @@ protected Q_SLOTS:
   void onMasterSharpenFactorChanged();
   void onAccumulatedSharpenFactorChanged();
 
-  //void onAccumulateMasterFlowCheckboxStateChanged(int);
   void onSaveMasterFrameCheckboxStateChanged(int);
   void onMaxFramesForMasterFrameGenerationChanged();
   void onApplyInputFramePprocessorCheckboxStateChanged(int);

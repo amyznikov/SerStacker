@@ -110,7 +110,6 @@ protected:
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   void update_output_path() override;
-  void set_pipeline_stage(STEREO_CALIBRATION_STAGE stage);
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool detect_chessboard(const cv::Mat &frame, std::vector<cv::Point2f> & corners_);
   void update_undistortion_remap();

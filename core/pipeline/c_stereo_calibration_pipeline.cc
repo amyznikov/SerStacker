@@ -185,18 +185,7 @@ void c_stereo_calibration_pipeline::update_output_path()
 
   if( output_path_.empty() ) {
     output_path_ =
-        "./stereo-calib";
-  }
-}
-
-
-void c_stereo_calibration_pipeline::set_pipeline_stage(STEREO_CALIBRATION_STAGE stage)
-{
-  const auto oldstage = pipeline_stage_;
-
-  if ( stage != oldstage ) {
-    pipeline_stage_ = stage;
-    on_pipeline_stage_changed(oldstage, stage);
+        "./calib";
   }
 }
 
@@ -771,7 +760,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
   set_pipeline_stage(stereo_calibration_initialize);
 
   if ( !base::initialize_pipeline() ) {
-    CF_ERROR("c_chessboard_camera_calibration_pipeline: base::initialize() fails");
+    CF_ERROR("base::initialize() fails");
     return false;
   }
 
@@ -880,8 +869,8 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
 
 bool c_stereo_calibration_pipeline::run_pipeline()
 {
-  CF_DEBUG("Starting '%s' ...",
-      cname());
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
 
   for ( int i = 0; i < 2; ++i ) {
     if ( !input_sources_[i]->open() ) {
@@ -916,6 +905,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     return false;
   }
 
+
   for( int i = 0; i < 2; ++i ) {
     if( !input_sources_[i]->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sources_[%d]->seek(start_pos=%d) fails", i, start_pos);
@@ -923,6 +913,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     }
   }
 
+  set_pipeline_stage(stereo_calibration_in_progress);
   set_status_msg("RUNNING ...");
 
   bool fOk;

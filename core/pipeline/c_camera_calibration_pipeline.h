@@ -108,7 +108,6 @@ protected:
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   void update_output_path() override;
-  void set_pipeline_stage(CAMERA_CALIBRATION_STAGE stage);
   bool read_input_frame(const c_input_sequence::sptr & input_sequence, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool detect_chessboard(const cv::Mat &frame);
   void update_undistortion_remap();

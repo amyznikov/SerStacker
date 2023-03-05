@@ -93,6 +93,10 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
   connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+  rstereoCalibrationOptions_ctl = new QRStereoCalibrationOptions(this);
+  rstereoCalibrationOptions_ctl->setVisible(false);
+  connect(rstereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
 }
 
 void QPipelineOptionsView::set_current_sequence(const c_image_sequence::sptr & image_sequence)
@@ -174,6 +178,12 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
       stereoCalibrationOptions_ctl->set_current_pipeline(stereo_calibration);
     }
 
+    else if( c_rstereo_calibration_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+
+      currentWidget = rstereoCalibrationOptions_ctl;
+      rstereoCalibrationOptions_ctl->set_current_pipeline(rstereo_calibration);
+    }
   }
 
 

@@ -13,6 +13,7 @@
 #include <core/pipeline/c_image_stacking_pipeline.h>
 #include <core/pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline.h>
+#include <core/pipeline/c_rstereo_calibration_pipeline.h>
 
 namespace qserstacker {
 
@@ -108,15 +109,15 @@ void QPipelineProgressView::onStackingThreadStarted()
           hasCurrentStatisticsUpdates_ = true;
         });
 
+    on_pipeline_stage_changed =
+        pipeline->on_pipeline_stage_changed.add(
+            [this](int oldstage, int newstage) {
+              accumuatorImageChanged_ = true;
+            });
+
 
     if( const c_image_stacking_pipeline::sptr image_stacking =
         std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
-
-      on_stacking_stage_changed =
-          image_stacking->on_stacking_stage_changed.add(
-              [this](STACKING_STAGE oldstage, STACKING_STAGE newstage) {
-                accumuatorImageChanged_ = true;
-              });
 
       on_accumulator_changed =
           image_stacking->on_accumulator_changed.add([this]() {
@@ -133,11 +134,6 @@ void QPipelineProgressView::onStackingThreadStarted()
     else if ( const c_camera_calibration_pipeline::sptr camera_calibration =
         std::dynamic_pointer_cast<c_camera_calibration_pipeline>(pipeline) ) {
 
-//      on_pipeline_stage_changed =
-//          camera_calibration->on_pipeline_stage_changed.add(
-//              [this](CHESSBOARD_CAMERA_CALIBRATION_STAGE, CHESSBOARD_CAMERA_CALIBRATION_STAGE) {
-//              });
-
       on_current_frame_changed =
           camera_calibration->on_current_frame_changed.add([this]() {
             accumuatorImageChanged_ = true;
@@ -153,11 +149,6 @@ void QPipelineProgressView::onStackingThreadStarted()
     else if ( const c_stereo_calibration_pipeline::sptr stereo_calibration =
         std::dynamic_pointer_cast<c_stereo_calibration_pipeline>(pipeline) ) {
 
-//      on_pipeline_stage_changed =
-//          stereo_calibration->on_pipeline_stage_changed.add(
-//              [this](CHESSBOARD_CAMERA_CALIBRATION_STAGE, CHESSBOARD_CAMERA_CALIBRATION_STAGE) {
-//              });
-
       on_current_frame_changed =
           stereo_calibration->on_current_frame_changed.add([this]() {
             accumuatorImageChanged_ = true;
@@ -170,11 +161,23 @@ void QPipelineProgressView::onStackingThreadStarted()
 
     }
 
+    else if ( const c_rstereo_calibration_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+
+      on_current_frame_changed =
+          rstereo_calibration->on_current_frame_changed.add([this]() {
+            accumuatorImageChanged_ = true;
+          });
+
+      on_accumulator_changed =
+          rstereo_calibration->on_accumulator_changed.add([this]() {
+            accumuatorImageChanged_ = true;
+          });
+
+    }
 
 
   }
-
-  CF_DEBUG("H");
 
   timerId = startTimer(1000, Qt::VeryCoarseTimer);
 }
@@ -187,11 +190,11 @@ void QPipelineProgressView::onStackingThreadFinishing()
   if ( pipeline ) {
 
     pipeline->on_status_changed.remove(on_status_changed);
+    pipeline->on_pipeline_stage_changed.remove(on_pipeline_stage_changed);
 
     if( const c_image_stacking_pipeline::sptr image_stacking =
         std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
 
-      image_stacking->on_stacking_stage_changed.remove(on_stacking_stage_changed);
       image_stacking->on_accumulator_changed.remove(on_accumulator_changed);
       image_stacking->on_selected_master_frame_changed.remove(on_selected_master_frame_changed);
     }
@@ -209,6 +212,14 @@ void QPipelineProgressView::onStackingThreadFinishing()
 
       stereo_calibration->on_accumulator_changed.remove(on_accumulator_changed);
       stereo_calibration->on_current_frame_changed.remove(on_current_frame_changed);
+
+    }
+
+    else if ( const c_rstereo_calibration_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+
+      rstereo_calibration->on_accumulator_changed.remove(on_accumulator_changed);
+      rstereo_calibration->on_current_frame_changed.remove(on_current_frame_changed);
 
     }
 
@@ -273,7 +284,7 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
       QWaitCursor wait(this);
 
-      if( image_stacking->stacking_stage() == stacking_stage_idle ) {
+      if( image_stacking->pipeline_stage() == stacking_stage_idle ) {
 
         std::string output_file_name =
             image_stacking->output_file_name();
@@ -341,6 +352,23 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
       }
     }
 
+    else if( const c_rstereo_calibration_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+
+
+      QWaitCursor wait(this);
+
+      if ( accumuatorImageChanged_ ) {
+
+        cv::Mat currentImage;
+        cv::Mat currentMask;
+
+        rstereo_calibration->get_display_image(currentImage, currentMask);
+        imageViewer_->setCurrentFileName(pipeline->cname());
+        imageViewer_->editImage(currentImage, currentMask);
+
+      }
+    }
 
     hasCurrentStatisticsUpdates_ = false;
     accumuatorImageChanged_ = false;

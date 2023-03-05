@@ -105,6 +105,7 @@ public: // pipeline methods
   int total_frames() const;
   int processed_frames() const;
   int accumulated_frames() const;
+  int pipeline_stage() const;
   std::string status_message() const ;
 
   bool canceled() const;
@@ -112,10 +113,12 @@ public: // pipeline methods
   virtual bool run();
   virtual bool serialize(c_config_setting setting, bool save);
 
+  c_notification<void(int oldstage, int newstage)> on_pipeline_stage_changed;
   c_notification<void(const std::string & statusmsg)> on_status_msg_changed;
   c_notification<void()> on_status_changed;
 
 protected:
+  void set_pipeline_stage(int stage);
   void set_status_msg(const std::string & msg) const;
   virtual void update_output_path();
   virtual void gather_badframe_indexes();
@@ -145,6 +148,8 @@ protected:
 
   mutable std::string statusmsg_;
   mutable std::mutex status_lock_;
+
+  int pipeline_stage_ = 0;
 
   volatile bool canceled_ = false;
 };

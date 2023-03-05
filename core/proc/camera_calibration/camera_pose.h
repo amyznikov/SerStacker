@@ -305,6 +305,14 @@ bool recover_camera_pose_from_essential_matrix(
 /**
  * @brief estimate_camera_pose_and_derotation_homography()
  *
+ * Estimate camera pose for forward / backward moving monocular camera.
+ *
+ * This method is not appropriate for stereo camera calibration because
+ * it uses distances from points to corresponding epipolar lines as metric.
+ *
+ * For true stereo camera this metric is not sensitive to small epipole changes
+ * when epipole is very far away from image center (~ at left or right infinity).
+ *
  * This routine calls @ref estimate_essential_matrix() in order to
  * find essential matrix from sparse feature matches and recover pose of current camera relative to reference camera.
  *

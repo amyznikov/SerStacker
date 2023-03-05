@@ -732,6 +732,15 @@ bool recover_camera_pose_from_essential_matrix(
 /**
  * @brief estimate_camera_pose_and_derotation_homography()
  *
+ * Estimate camera pose for forward / backward moving monocular camera.
+ *
+ * This method is not appropriate for stereo camera calibration because
+ * it uses distances from points to corresponding epipolar lines as metric.
+ *
+ * For true stereo camera this metric is not sensitive to small epipole changes
+ * when epipole is very far away from image center (~ at left or right infinity).
+ *
+ *
  * This routine calls @ref estimate_essential_matrix() in order to
  * find essential matrix from sparse feature matches and recover pose of current camera relative to reference camera.
  *
@@ -953,3 +962,82 @@ bool estimate_camera_pose_and_derotation_homography(
   return true;
 }
 
+
+
+/**
+ * Compute two (left and right) epipoles from given fundamental matrix F.
+ * Return false if epipoles can not be computed.
+ *
+ * CSE486, Penn State Robert Collins
+ * Lecture 19: Essential and Fundamental Matrices
+ * http://www.cse.psu.edu/~rtc12/CSE486/lecture19.pdf
+ */
+bool compute_epipoles(const cv::Matx33d & F, cv::Point2d * e1, cv::Point2d * e2)
+{
+
+#if 1
+
+  /*
+   * SVD-based solution is a little faster
+   */
+
+  try {
+
+    cv::SVD svd(F);
+
+    if ( e1 ) {
+      const cv::Matx13d e = svd.vt.row(2);
+      e1->x = e(0, 0) / e(0, 2);
+      e1->y = e(0, 1) / e(0, 2);
+    }
+
+    if ( e2 ) {
+      const cv::Matx31d e = svd.u.col(2);
+      e2->x = e(0, 0) / e(2, 0);
+      e2->y = e(1, 0) / e(2, 0);
+    }
+
+    return true;
+  }
+  catch (const std::exception & e) {
+    CF_ERROR("cv::SVD() fails in %s(): %s", __func__, e.what());
+  }
+  catch (...) {
+    CF_ERROR("cv::SVD() fails in %s()", __func__);
+  }
+
+#else
+
+  /*
+   * EigenVectors-based solution
+   */
+
+  try {
+
+    cv::Matx33d eigenvectors;
+    std::vector<double> eigenvalues;
+
+    if ( e1 ) {
+      cv::eigen(F.t() * F, eigenvalues, eigenvectors);
+      e1->x = eigenvectors(2, 0) / eigenvectors(2, 2);
+      e1->y = eigenvectors(2, 1) / eigenvectors(2, 2);
+    }
+
+    if ( e2 ) {
+      cv::eigen(F * F.t(), eigenvalues, eigenvectors);
+      e2->x = eigenvectors(2, 0) / eigenvectors(2, 2);
+      e2->y = eigenvectors(2, 1) / eigenvectors(2, 2);
+    }
+
+    return true;
+  }
+  catch (const std::exception & e) {
+    CF_ERROR("cv::eigen() fails in %s(): %s", __func__, e.what());
+  }
+  catch (...) {
+    CF_ERROR("cv::eigen() fails in %s()", __func__);
+  }
+#endif
+
+  return false;
+}

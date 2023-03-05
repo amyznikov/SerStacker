@@ -533,14 +533,20 @@ void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
         sizes[0].height + sizes[1].height);
 
 
-    cv::Mat tmp = current_frame_.images[1];
+    cv::Mat tmp;
 
-//    // Apply derotation homography to current frame
-//    cv::warpPerspective(current_frame_.images[1], tmp,
-//        currentDerotationHomography,
-//        current_frame_.images[1].size(),
-//        cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
-//        cv::BORDER_CONSTANT);
+    if( !calibration_options_.enable_calibration ) {
+      tmp = current_frame_.images[1];
+    }
+    else {
+
+      // Apply derotation homography to current frame
+      cv::warpPerspective(current_frame_.images[1], tmp,
+          currentDerotationHomography,
+          current_frame_.images[1].size(),
+          cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
+          cv::BORDER_CONSTANT);
+    }
 
 
     const cv::Rect rc0(0, 0, sizes[0].width, sizes[0].height);      // tl image[0]
@@ -822,7 +828,7 @@ void c_rstereo_calibration_pipeline::cleanup_pipeline()
   set_pipeline_stage(rstereo_calibration_idle);
 }
 
-bool c_rstereo_calibration_pipeline::run_pipeline()
+bool c_rstereo_calibration_pipeline::run_calibration()
 {
   c_video_writer progress_writer;
 
@@ -922,6 +928,39 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
         }
 
         CF_DEBUG("RMSE = %g", rmse);
+
+        //
+        // Compute epipoles from fundamental matrix
+        //
+
+        cv::Point2d current_epipoles_[2]; // current epipoles location
+        cv::Point2d current_epipole_; // current average epipole location
+
+        compute_epipoles(currentFundamentalMatrix,
+            current_epipoles_);
+
+        CF_DEBUG("EPIPOLES: E0:(%+g %+g) E1:(%+g %+g)",
+            current_epipoles_[0].x, current_epipoles_[0].y,
+            current_epipoles_[1].x, current_epipoles_[1].y);
+
+
+        current_epipole_ =
+            0.5 * (current_epipoles_[0] + current_epipoles_[1]);
+
+        const double distance =
+            hypot(current_epipoles_[0].x - current_epipoles_[1].x, current_epipoles_[0].y - current_epipoles_[1].y);
+
+        if( distance > 1 ) {
+          CF_WARNING("\nWARNING!\n"
+              "Something looks POOR: Computed epipoles differ after derotation:\n"
+              "E0 = {%g %g}\n"
+              "E1 = {%g %g}\n"
+              "Eavg={%g %g}\n",
+              current_epipoles_[0].x, current_epipoles_[0].y,
+              current_epipoles_[1].x, current_epipoles_[1].y,
+              current_epipole_.x, current_epipole_.y);
+        }
+
       }
     }
 
@@ -985,10 +1024,51 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     if( !fOK ) {
       CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
     }
+    else {
+      //
+      // Compute epipoles from fundamental matrix
+      //
+
+      cv::Point2d current_epipoles_[2]; // current epipoles location
+      cv::Point2d current_epipole_; // current average epipole location
+
+      compute_epipoles(currentFundamentalMatrix,
+          current_epipoles_);
+
+      CF_DEBUG("EPIPOLES: E0:(%+g %+g) E1:(%+g %+g)",
+          current_epipoles_[0].x, current_epipoles_[0].y,
+          current_epipoles_[1].x, current_epipoles_[1].y);
+
+      current_epipole_ =
+          0.5 * (current_epipoles_[0] + current_epipoles_[1]);
+
+      const double distance =
+          hypot(current_epipoles_[0].x - current_epipoles_[1].x, current_epipoles_[0].y - current_epipoles_[1].y);
+
+      if( distance > 1 ) {
+        CF_WARNING("\nWARNING!\n"
+            "Something looks POOR: Computed epipoles differ after derotation:\n"
+            "E0 = {%g %g}\n"
+            "E1 = {%g %g}\n"
+            "Eavg={%g %g}\n",
+            current_epipoles_[0].x, current_epipoles_[0].y,
+            current_epipoles_[1].x, current_epipoles_[1].y,
+            current_epipole_.x, current_epipole_.y);
+      }
+
+    }
   }
 
 ///////////
+  return !canceled();
+}
 
+bool c_rstereo_calibration_pipeline::run_pipeline()
+{
+
+  if ( calibration_options_.enable_calibration && !run_calibration() ) {
+    return false;
+  }
 
 
   //////////////////////////////////////////////////////
@@ -997,6 +1077,7 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     set_status_msg("WRITE RECTIFIED VIDEO ...");
 
     c_video_writer writer;
+    bool fOK;
 
     std::string output_file_name =
         generate_video_file_name(output_options_.rectified_images_file_name,

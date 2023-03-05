@@ -10,6 +10,24 @@
 QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
     Base("QRStereoCalibrateOptions", parent)
 {
+
+  enable_calibration_ctl =
+      add_checkbox("enable calibration",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_calibrate_options().enable_calibration = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              * checked = pipeline_->stereo_calibrate_options().enable_calibration;
+              return true;
+            }
+            return false;
+          });
+
+
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
           [this](int value) {

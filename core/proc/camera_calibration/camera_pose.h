@@ -205,6 +205,26 @@ inline cv::Matx<C, 3, 3> rotation_between_vectors(const cv::Vec<C, 3> & v1, cons
 }
 
 
+/**
+ * Compute two (left and right) epipoles from given fundamental matrix F.
+ * Return false if epipoles can not be computed.
+ *
+ * CSE486, Penn State Robert Collins
+ * Lecture 19: Essential and Fundamental Matrices
+ * http://www.cse.psu.edu/~rtc12/CSE486/lecture19.pdf
+ */
+bool compute_epipoles(const cv::Matx33d & F, cv::Point2d * e1, cv::Point2d * e2);
+
+/**
+ * compute_epipoles()
+ * @overload
+ */
+inline bool compute_epipoles(const cv::Matx33d & F, cv::Point2d e[2])
+{
+  return compute_epipoles(F, &e[0], &e[1]);
+}
+
+
 /*
  * estimate_essential_matrix()
  *

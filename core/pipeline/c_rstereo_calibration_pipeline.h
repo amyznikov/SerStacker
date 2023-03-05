@@ -43,6 +43,7 @@ struct c_rstereo_feature2d_options {
 
 struct c_rstereo_calibrate_options
 {
+  bool enable_calibration = true;
   int min_frames = 3;
   int max_frames = 50;
   double filter_alpha = 0.3;
@@ -103,6 +104,7 @@ protected:
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+  bool run_calibration();
   void update_output_path() override;
   bool open_input_streams();
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;

@@ -30,6 +30,7 @@ protected:
 protected:
   c_rstereo_calibration_pipeline::sptr pipeline_;
 
+  QCheckBox * enable_calibration_ctl = nullptr;
   QNumberEditBox * min_frames_ctl = nullptr;
   QNumberEditBox * max_frames_ctl = nullptr;
   //QNumberEditBox * max_iterations_ctl = nullptr;

@@ -30,6 +30,7 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
   return members;
 }
 
+
 /**
  * Use cv::LMSolver to refine camera pose estimated from essential matrix
  */
@@ -104,7 +105,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     }
 
     /**
-     * computes rhs error for the specified vector of parameters
+     * computes rhs errors for specified vector of parameters
      */
     bool compute(const cv::Mat1d & p, cv::Mat1d & rhs) const
     {
@@ -135,18 +136,15 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
               build_rotation(A),
               T);
 
-      if( inliers.empty() ) {
+      if( inliers.empty() ) { // case when no inliers mask
 
-        // case when no inliers mask
         for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
-
           rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
               current_keypoints[i], reference_keypoints[i]);
         }
       }
-      else {
+      else { // case when inliers mask is provided
 
-        // case when inliers mask is provided
         for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
           if( inliers[i][0] ) {
             rhs[j++][0] = distance_from_point_to_corresponding_epipolar_line(F,
@@ -186,6 +184,8 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
       if( J.needed() ) {
 
+        // numerical estimation of partial derivatives
+
         cv::Mat1d rhs1(numInliers, 1);
         cv::Mat1d rhs2(numInliers, 1);
 
@@ -194,7 +194,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
         cv::Mat1d PP = P.clone();
 
-        const double eps = 1e-3;
+        const double eps = 1e-4;
 
         for( int j = 0; j < PP.rows; ++j ) {
 
@@ -223,7 +223,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
 
   /*
-   * Find the translation component of maximal magnitude to fix it
+   * Find the translation component of maximal magnitude and fix it
    * iTmax = argmax(i, abs( T[i] ) )
   */
   double Tfix = T(0);
@@ -235,7 +235,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   }
 
   /*
-   * Pack parameters into cv::Mat1d
+   * Pack parameters into cv::Mat1d for levmar
    * */
   cv::Mat1d p(5, 1);
 
@@ -263,7 +263,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   int iterations =
       lm->run(p);
 
-  CF_DEBUG("lm->run(): iterations= %d", iterations);
+  CF_DEBUG("lm->run(): %d iterations", iterations);
 
   /*
    * Unpack parameters from cv::Mat1d
@@ -574,7 +574,7 @@ bool recover_camera_pose(const cv::Matx33d & camera_matrix,
           return v / cv::norm(v);
         };
 
-    // Assume that T is alreasy normed:  cv::norm(T) == 1.
+    // Assume that T is already normed:  cv::norm(T) == 1.
     // For each input pair of points this quick test checks the angles
     // of the triangle formed by the baseline and normalized camera coordinates
     // of these points.
@@ -833,7 +833,7 @@ bool estimate_camera_pose_and_derotation_homography(
   if ( !M.empty() ) {
     mask = M.getMatRef();
 
-    CF_DEBUG("estimate_essential_matrix: initial inliers=%d/%d",
+    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
         cv::countNonZero(mask),
         mask.rows);
 
@@ -906,7 +906,7 @@ bool estimate_camera_pose_and_derotation_homography(
   }
 
   //
-  // Return to caller everything requsted
+  // Return to caller everything requested
   //
   if ( M.needed() && M.empty() ) {
     if ( M.kind() == cv::_InputArray::KindFlag::MAT ) {
@@ -945,6 +945,7 @@ bool estimate_camera_pose_and_derotation_homography(
       * outputEssentialMatrix = E;
     }
   }
+
   if ( outputFundamentalMatrix ) {
     * outputFundamentalMatrix =
         compose_fundamental_matrix(E, camera_matrix) * H.inv() ;

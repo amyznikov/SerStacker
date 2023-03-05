@@ -120,21 +120,21 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
 //            return false;
 //          });
 //
-//  filter_alpha_ctl =
-//      add_numeric_box<double>("filter_alpha:",
-//          [this](double value) {
-//            if ( pipeline_ ) {
-//              pipeline_->stereo_calibrate_options().filter_alpha = value;
-//              Q_EMIT parameterChanged();
-//            }
-//          },
-//          [this](double * value) {
-//            if ( pipeline_ ) {
-//              * value = pipeline_->stereo_calibrate_options().filter_alpha;
-//              return true;
-//            }
-//            return false;
-//          });
+  filter_alpha_ctl =
+      add_numeric_box<double>("filter_alpha:",
+          [this](double value) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_calibrate_options().filter_alpha = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->stereo_calibrate_options().filter_alpha;
+              return true;
+            }
+            return false;
+          });
 
 
   updateControls();

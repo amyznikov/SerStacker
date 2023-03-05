@@ -45,7 +45,7 @@ struct c_rstereo_calibrate_options
 {
   int min_frames = 3;
   int max_frames = 50;
-  double filter_alpha = 0.1;
+  double filter_alpha = 0.3;
 };
 
 struct c_rstereo_calibration_output_options
@@ -152,6 +152,7 @@ protected:
   c_stereo_frame current_frame_;
 
   std::vector<std::vector<cv::Point2f>> matched_positions[2];
+  std::vector<double> perViewErrors_;
 
 
 
@@ -164,7 +165,6 @@ protected:
   cv::Mat2f rmap_;
   cv::Matx33d E_;
   cv::Matx33d F_;
-  //cv::Mat1d perViewErrors_;
 
   mutable std::mutex display_lock_;
   cv::Mat display_frame_;

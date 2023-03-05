@@ -4,6 +4,9 @@ Highly experimental code for planetary images stacking with OpenCV.
 This code is intendend mainly for my experimentation.
 It is totally bugged and constantly changed. 
 
+I use it as preliminary experimentall mess.
+
+
 ## Example pictures
 
 Jovian rotation captured at 2022-10-21 19:30 UTC with Arsenal-GSO N305/1200 f/4, ocular projection using x10 objective lens from microscope.

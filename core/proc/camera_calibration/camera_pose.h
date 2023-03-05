@@ -110,15 +110,40 @@ inline cv::Matx<C, 3, 3> compose_fundamental_matrix(const cv::Matx<C, 3, 3> & E,
  *  distance_from_point_to_corresponding_epipolar_line()
  *  Compute distance between reference pixel rp and epipolar line corresponding to pixel cp of current image
  */
-template<class CF, class CP >
-inline double distance_from_point_to_corresponding_epipolar_line(const cv::Matx<CF, 3, 3> & F,
-    const cv::Point_<CP> & cp, const cv::Point_<CP > & rp)
+template<class MT, class PT >
+inline double distance_from_point_to_corresponding_epipolar_line(const cv::Matx<MT, 3, 3> & F,
+    const cv::Point_<PT> & cp, const cv::Point_<PT> & rp)
 {
-  const cv::Vec<CF, 3> cvec(cp.x, cp.y, 1);
-  const cv::Vec<CF, 3> rvec(rp.x, rp.y, 1);
-  const cv::Vec<CF, 3> line = F * cvec;
+  const cv::Vec<MT, 3> cvec(cp.x, cp.y, 1);
+  const cv::Vec<MT, 3> rvec(rp.x, rp.y, 1);
+  const cv::Vec<MT, 3> line = F * cvec;
   return rvec.dot(line) / sqrt(line(0) * line(0) + line(1) * line(1));
 }
+
+/** @brief
+ *  compute_distances_from_points_to_corresponding_epipolar_lines()
+ *
+ *  Compute array of residual distances from points to corresponding epipolar lines.
+ *  Used to estimate rms error and in levmar solver.
+ */
+template<class MT, class PT>
+inline void compute_distances_from_points_to_corresponding_epipolar_lines(cv::Mat1d & rhs,
+    const cv::Matx<MT, 3, 3> & F,
+    const std::vector<cv::Point_<PT> > & current_keypoints,
+    const std::vector<cv::Point_<PT> > & reference_keypoints)
+{
+  const int n =
+      current_keypoints.size();
+
+  rhs.create(n, 1);
+
+  for( int i = 0; i < n; ++i ) {
+    rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
+        current_keypoints[i], reference_keypoints[i]);
+  }
+
+}
+
 
 
 /** @brief camera_direction()

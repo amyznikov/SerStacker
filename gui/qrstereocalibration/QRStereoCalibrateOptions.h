@@ -36,7 +36,7 @@ protected:
   //QNumberEditBox * eps_ctl = nullptr;
   //QFlagsEditBox<RSTEREO_CALIBRATION_FLAGS> * calibration_flags_ctl = nullptr;
   //QCheckBox * auto_tune_calibration_flags_ctl = nullptr;
-  //QNumberEditBox * filter_alpha_ctl = nullptr;
+  QNumberEditBox * filter_alpha_ctl = nullptr;
 };
 
 #endif /* __QRStereoCalibrateOptions_h__ */

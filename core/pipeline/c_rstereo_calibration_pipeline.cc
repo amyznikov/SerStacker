@@ -94,6 +94,7 @@ bool c_rstereo_calibration_pipeline::serialize(c_config_setting settings, bool s
   if( (section = SERIALIZE_GROUP(settings, save, "calibration_options")) ) {
     SERIALIZE_OPTION(section, save, calibration_options_, min_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, max_frames);
+    SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -538,14 +539,12 @@ void c_rstereo_calibration_pipeline::filter_frames()
       matched_positions[0].size();
 
   const int nbframesmax =
-      std::max(1, std::max(calibration_options_.min_frames, calibration_options_.max_frames));
+      std::max(1, std::max(calibration_options_.min_frames,
+          calibration_options_.max_frames));
 
   accumulated_frames_ = nbframes;
 
   if( nbframes > nbframesmax ) {
-    //    for ( int i = 0; i < 2; ++i ) {
-    //      matched_positions[i].erase(matched_positions[i].begin());
-    //    }
 
     double worstValue = -HUGE_VAL;
     double maxQuality = estimate_grid_subset_quality(nbframes);
@@ -560,9 +559,9 @@ void c_rstereo_calibration_pipeline::filter_frames()
       const double gridQDelta =
           estimate_grid_subset_quality(i) - maxQuality;
 
-      const double currentValue = gridQDelta;
-      // const double currentValue =
-      //  (perViewErrors_[i][0] + perViewErrors_[i][1]) * alpha + gridQDelta * (1. - alpha);
+      const double currentValue =
+          perViewErrors_.empty() ? gridQDelta :
+              perViewErrors_[i] * alpha + gridQDelta * (1. - alpha);
 
       if( currentValue > worstValue ) {
         worstValue = currentValue;
@@ -570,24 +569,14 @@ void c_rstereo_calibration_pipeline::filter_frames()
       }
     }
 
-    CF_DEBUG("XXX worstElemIndex=%d", worstElemIndex);
+    CF_DEBUG("XXX worstElemIndex=%d worstValue=%g", worstElemIndex, worstValue);
 
     matched_positions[0].erase(matched_positions[0].begin() + worstElemIndex);
     matched_positions[1].erase(matched_positions[1].begin() + worstElemIndex);
 
-//    cv::Mat1f newErrorsVec(nbframes - 1, perViewErrors_.cols);
-//
-//    std::copy(perViewErrors_[0],
-//        perViewErrors_[worstElemIndex],
-//        newErrorsVec[0]);
-//
-//    if( worstElemIndex < nbframes - 1 ) {
-//      std::copy(perViewErrors_[worstElemIndex + 1],
-//          perViewErrors_[nbframes],
-//          newErrorsVec[worstElemIndex]);
-//    }
-//
-//    perViewErrors_ = newErrorsVec;
+    if ( !perViewErrors_.empty() ) {
+      perViewErrors_.erase(perViewErrors_.begin() + worstElemIndex);
+    }
 
   }
 
@@ -745,7 +734,7 @@ void c_rstereo_calibration_pipeline::cleanup_pipeline()
   }
 
   current_frame_.matches.clear();
-  //perViewErrors_.release();
+  perViewErrors_.clear();
   rmap_.release();
   display_frame_.release();
   display_mask_.release();
@@ -768,6 +757,16 @@ void c_rstereo_calibration_pipeline::cleanup_pipeline()
 bool c_rstereo_calibration_pipeline::run_pipeline()
 {
   c_video_writer progress_writer;
+
+  // FIXME: Hardcoded Camera Matrix
+  // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
+  // .image_size = cv::Size(1242, 375),
+  const cv::Matx33d camera_matrix_ =
+      cv::Matx33d(
+          7.215377e+02, 0.000000e+00, 6.095593e+02,
+          0.000000e+00, 7.215377e+02, 1.728540e+02,
+          0.000000e+00, 0.000000e+00, 1.000000e+00);
+
 
   CF_DEBUG("Starting '%s: %s' ...",
       csequence_name(), cname());
@@ -817,8 +816,45 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
       CF_ERROR("Not enough matched positions: %zu", current_frame_.matched_positions[0].size());
     }
     else {
-      for( int i = 0; i < 2; ++i ) {
-        matched_positions[i].emplace_back(current_frame_.matched_positions[i]);
+
+      cv::Matx33d fundamentalMatrix;
+      cv::Mat1b inliers;
+
+      fOK =
+          estimate_camera_pose_and_derotation_homography(
+              camera_matrix_,
+              current_frame_.matched_positions[1],
+              current_frame_.matched_positions[0],
+              EMM_LMEDS,
+              nullptr,
+              nullptr,
+              nullptr,
+              nullptr,
+              &fundamentalMatrix,
+              nullptr,
+              inliers);
+
+      if( !fOK ) {
+        CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
+      }
+      else {
+
+        cv::Mat1d rhs;
+
+        compute_distances_from_points_to_corresponding_epipolar_lines(rhs,
+            fundamentalMatrix,
+            current_frame_.matched_positions[1],
+            current_frame_.matched_positions[0]);
+
+        const double rmse =
+            sqrt(cv::mean(rhs.mul(rhs), inliers)[0]);
+
+        perViewErrors_.emplace_back(rmse);
+        for( int i = 0; i < 2; ++i ) {
+          matched_positions[i].emplace_back(current_frame_.matched_positions[i]);
+        }
+
+        CF_DEBUG("RMSE = %g", rmse);
       }
     }
 
@@ -865,13 +901,6 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
       CF_DEBUG("matched_points[%d].size=%zu", i, matched_points[i].size());
     }
 
-    // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
-    // .image_size = cv::Size(1242, 375),
-    const cv::Matx33d camera_matrix_ =
-        cv::Matx33d(
-            7.215377e+02, 0.000000e+00, 6.095593e+02,
-            0.000000e+00, 7.215377e+02, 1.728540e+02,
-            0.000000e+00, 0.000000e+00, 1.000000e+00);
 
     cv::Vec3d EulerAnges;
     cv::Vec3d TranslationVector;

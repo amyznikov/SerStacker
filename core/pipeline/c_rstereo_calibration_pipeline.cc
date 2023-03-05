@@ -119,7 +119,8 @@ void c_rstereo_calibration_pipeline::update_output_path()
   if( output_directory_.empty() ) {
 
     std::string parent_directory =
-        get_parent_directory(input_sequence_->source(0)->filename());
+        input_sequence_->sources().empty() ? "." :
+            get_parent_directory(input_sequence_->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -133,7 +134,8 @@ void c_rstereo_calibration_pipeline::update_output_path()
   else if( !is_absolute_path(output_directory_) ) {
 
     std::string parent_directory =
-        get_parent_directory(input_sequence_->source(0)->filename());
+        input_sequence_->sources().empty() ? "." :
+            get_parent_directory(input_sequence_->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -430,6 +432,91 @@ bool c_rstereo_calibration_pipeline::read_input_frame(const c_input_source::sptr
 void c_rstereo_calibration_pipeline::update_remap()
 {
 }
+//
+//void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
+//{
+//  if ( !current_frame_.images[0].empty() ) {
+//
+//    lock_guard lock(display_lock_);
+//
+//    const cv::Size sizes[2] =  {
+//        current_frame_.images[0].size(),
+//        current_frame_.images[1].size(),
+//    };
+//
+//    const cv::Size size(sizes[0].width + sizes[1].width,
+//        std::max(sizes[0].height, sizes[1].height));
+//
+//    CF_DEBUG("size: %dx%d", size.width, size.height);
+//
+//    const cv::Rect rc0(0,0, sizes[0].width, sizes[0].height);
+//    const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height);
+//
+//    display_frame_.create(size, current_frame_.images[0].type());
+//
+//    current_frame_.images[0].copyTo(display_frame_(rc0));
+//    // current_frame_.images[1].copyTo(display_frame_(rc1));
+//
+//    //
+//    // Apply derotation homography to current frame
+//    //
+//
+//    cv::warpPerspective(current_frame_.images[1], display_frame_(rc1),
+//        currentDerotationHomography,
+//        rc1.size(),
+//        cv::INTER_LINEAR, // cv::INTER_LINEAR introduces blur on kitti images
+//        cv::BORDER_CONSTANT);
+//
+//
+//    if( display_frame_.channels() == 1 ) {
+//      cv::cvtColor(display_frame_, display_frame_, cv::COLOR_GRAY2BGR);
+//    }
+//
+//    if( drawpoints ) {
+//
+//      cv::Mat3b display = display_frame_;
+//
+//      std::vector<cv::Point2f> warped_matched_positions;
+//
+//      CF_DEBUG("matched_positions: %zu -> %zu", current_frame_.matched_positions[0].size(),
+//          current_frame_.matched_positions[1].size());
+//
+//      const int nvecs = matched_positions[0].size();
+//
+//      if( nvecs > 0 ) {
+//
+//        for( int i = 0; i < nvecs; ++i ) {
+//
+//          cv::perspectiveTransform(matched_positions[1][i],
+//              warped_matched_positions,
+//              currentDerotationHomography);
+//
+//          for( int j = 0, m = matched_positions[0][i].size(); j < m; ++j ) {
+//
+//            cv::Vec3b c(std::max(32, rand() % 255), std::max(32, rand() % 255), std::max(32, rand() % 255));
+//
+//            const cv::Point2f &p1 =
+//                matched_positions[0][i][j];
+//
+////            const cv::Point2f &p2 =
+////                matched_positions[1][i][j] + cv::Point2f(sizes[0].width, 0);
+//            const cv::Point2f &p2 =
+//                warped_matched_positions[j] + cv::Point2f(sizes[0].width, 0);
+//
+////            display[(int) (p1.y)][(int) (p1.x)] = c;
+////            display[(int) (p2.y)][(int) (p2.x)] = c;
+//            cv::circle(display, p1, 1, c, 1);
+//            cv::circle(display, p2, 1, c, 1);
+//
+//
+//          }
+//        }
+//      }
+//    }
+//  }
+//
+//  on_accumulator_changed();
+//}
 
 void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
 {
@@ -438,60 +525,41 @@ void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
     lock_guard lock(display_lock_);
 
     const cv::Size sizes[2] =  {
-        current_frame_.images[0].size(),
-        current_frame_.images[1].size(),
+      current_frame_.images[0].size(),
+      current_frame_.images[1].size(),
     };
 
     const cv::Size size(sizes[0].width + sizes[1].width,
-        std::max(sizes[0].height, sizes[1].height));
+        sizes[0].height + sizes[1].height);
 
-    CF_DEBUG("size: %dx%d", size.width, size.height);
 
-    const cv::Rect rc0(0,0, sizes[0].width, sizes[0].height);
-    const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height);
+    cv::Mat tmp = current_frame_.images[1];
+
+//    // Apply derotation homography to current frame
+//    cv::warpPerspective(current_frame_.images[1], tmp,
+//        currentDerotationHomography,
+//        current_frame_.images[1].size(),
+//        cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
+//        cv::BORDER_CONSTANT);
+
+
+    const cv::Rect rc0(0, 0, sizes[0].width, sizes[0].height);      // tl image[0]
+    const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height); // tr image[1]
+    const cv::Rect rc2(0, sizes[0].height, sizes[1].width, sizes[1].height); // bl image[1]
+    const cv::Rect rc3(sizes[0].width, sizes[0].height, sizes[1].width, sizes[1].height); // br blend
+
 
     display_frame_.create(size, current_frame_.images[0].type());
-
     current_frame_.images[0].copyTo(display_frame_(rc0));
-    current_frame_.images[1].copyTo(display_frame_(rc1));
+    tmp.copyTo(display_frame_(rc1));
+    tmp.copyTo(display_frame_(rc2));
+    cv::addWeighted(current_frame_.images[0], 0.5, tmp, 0.5, 0, display_frame_(rc3));
+
 
     if( display_frame_.channels() == 1 ) {
       cv::cvtColor(display_frame_, display_frame_, cv::COLOR_GRAY2BGR);
     }
 
-    if( drawpoints ) {
-
-      cv::Mat3b display = display_frame_;
-
-      CF_DEBUG("matched_positions: %zu -> %zu", current_frame_.matched_positions[0].size(),
-          current_frame_.matched_positions[1].size());
-
-      const int nvecs = matched_positions[0].size();
-
-      if( nvecs > 0 ) {
-
-        for( int i = 0; i < nvecs; ++i ) {
-
-          for( int j = 0, m = matched_positions[0][i].size(); j < m; ++j ) {
-
-            cv::Vec3b c(std::max(32, rand() % 255), std::max(32, rand() % 255), std::max(32, rand() % 255));
-
-            const cv::Point2f &p1 =
-                matched_positions[0][i][j];
-
-            const cv::Point2f &p2 =
-                matched_positions[1][i][j] + cv::Point2f(sizes[0].width, 0);
-
-//            display[(int) (p1.y)][(int) (p1.x)] = c;
-//            display[(int) (p2.y)][(int) (p2.x)] = c;
-            cv::circle(display, p1, 1, c, 1);
-            cv::circle(display, p2, 1, c, 1);
-
-
-          }
-        }
-      }
-    }
   }
 
   on_accumulator_changed();
@@ -817,7 +885,6 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     }
     else {
 
-      cv::Matx33d fundamentalMatrix;
       cv::Mat1b inliers;
 
       fOK =
@@ -826,12 +893,12 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
               current_frame_.matched_positions[1],
               current_frame_.matched_positions[0],
               EMM_LMEDS,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr,
-              &fundamentalMatrix,
-              nullptr,
+              &currentEulerAnges,
+              &currentTranslationVector,
+              &currentRotationMatrix,
+              &currentEssentialMatrix,
+              &currentFundamentalMatrix,
+              &currentDerotationHomography,
               inliers);
 
       if( !fOK ) {
@@ -842,7 +909,7 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
         cv::Mat1d rhs;
 
         compute_distances_from_points_to_corresponding_epipolar_lines(rhs,
-            fundamentalMatrix,
+            currentFundamentalMatrix,
             current_frame_.matched_positions[1],
             current_frame_.matched_positions[0]);
 
@@ -901,26 +968,18 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
       CF_DEBUG("matched_points[%d].size=%zu", i, matched_points[i].size());
     }
 
-
-    cv::Vec3d EulerAnges;
-    cv::Vec3d TranslationVector;
-    cv::Matx33d RotationMatrix;
-    cv::Matx33d EssentialMatrix;
-    cv::Matx33d FundamentalMatrix;
-    cv::Matx33d DerotationHomography;
-
     fOK =
         estimate_camera_pose_and_derotation_homography(
             camera_matrix_,
             matched_points[1],
             matched_points[0],
             EMM_LMEDS,
-            &EulerAnges,
-            &TranslationVector,
-            &RotationMatrix,
-            &EssentialMatrix,
-            &FundamentalMatrix,
-            &DerotationHomography,
+            &currentEulerAnges,
+            &currentTranslationVector,
+            &currentRotationMatrix,
+            &currentEssentialMatrix,
+            &currentFundamentalMatrix,
+            &currentDerotationHomography,
             cv::noArray());
 
     if( !fOK ) {

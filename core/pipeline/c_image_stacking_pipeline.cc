@@ -274,7 +274,8 @@ void c_image_stacking_pipeline::update_output_path()
   if( output_directory_.empty() ) {
 
     std::string parent_directory =
-        get_parent_directory(input_sequence_->source(0)->filename());
+        input_sequence_->sources().empty() ? "." :
+            get_parent_directory(input_sequence_->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -288,7 +289,8 @@ void c_image_stacking_pipeline::update_output_path()
   else if( !is_absolute_path(output_directory_) ) {
 
     std::string parent_directory =
-        get_parent_directory(input_sequence_->source(0)->filename());
+        input_sequence_->sources().empty() ? "." :
+            get_parent_directory(input_sequence_->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";

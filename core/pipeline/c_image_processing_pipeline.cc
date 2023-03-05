@@ -176,7 +176,9 @@ const char * c_image_processing_pipeline::csequence_name() const
 void c_image_processing_pipeline::set_output_directory(const std::string & output_directory)
 {
   output_directory_ = output_directory;
-  update_output_path();
+  if ( input_sequence_ ) {
+    update_output_path();
+  }
 }
 
 const std::string& c_image_processing_pipeline::output_directory() const
@@ -276,7 +278,8 @@ void c_image_processing_pipeline::update_output_path()
   if( output_directory_.empty() ) {
 
     std::string parent_directory =
-        get_parent_directory(input_sequence_->source(0)->filename());
+        input_sequence_->sources().empty() ? "." :
+            get_parent_directory(input_sequence_->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -291,7 +294,8 @@ void c_image_processing_pipeline::update_output_path()
   else if( !is_absolute_path(output_directory_) ) {
 
     std::string parent_directory =
-        get_parent_directory(input_sequence_->source(0)->filename());
+        input_sequence_->sources().empty() ? "." :
+            get_parent_directory(input_sequence_->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -308,7 +312,6 @@ void c_image_processing_pipeline::update_output_path()
         ssprintf("./%s",
             cname());
   }
-
 }
 
 void c_image_processing_pipeline::gather_badframe_indexes()
@@ -675,8 +678,6 @@ bool c_image_sequence::serialize(c_config_setting settings, bool save)
       input_sequence_ = c_input_sequence::create();
       input_sequence_->deserialize(section);
     }
-
-    CF_DEBUG("load pipelines");
 
     if( (section = settings["pipelines"]) && section.isList() ) {
 

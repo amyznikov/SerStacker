@@ -153,6 +153,12 @@ protected:
 
   std::vector<std::vector<cv::Point2f>> matched_positions[2];
   std::vector<double> perViewErrors_;
+  cv::Vec3d currentEulerAnges;
+  cv::Vec3d currentTranslationVector;
+  cv::Matx33d currentRotationMatrix;
+  cv::Matx33d currentEssentialMatrix;
+  cv::Matx33d currentFundamentalMatrix;
+  cv::Matx33d currentDerotationHomography;
 
 
 

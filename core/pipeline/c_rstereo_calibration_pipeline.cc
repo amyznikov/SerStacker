@@ -666,62 +666,6 @@ bool c_rstereo_calibration_pipeline::save_current_camera_parameters() const
   return false;
 }
 
-std::string c_rstereo_calibration_pipeline::generate_video_file_name(const std::string & ufilename, const std::string & postfix)  const
-{
-  std::string output_file_name =
-      ufilename;
-
-  if( output_file_name.empty() ) {
-
-    output_file_name =
-        ssprintf("%s/%s.%s.avi",
-            output_path_.c_str(),
-            csequence_name(),
-            postfix.c_str());
-  }
-  else {
-
-    std::string file_directory;
-    std::string file_name;
-    std::string file_suffix;
-
-    split_pathfilename(output_file_name,
-        &file_directory,
-        &file_name,
-        &file_suffix);
-
-    if( file_directory.empty() ) {
-      file_directory = output_path_;
-    }
-    else if( !is_absolute_path(file_directory) ) {
-      file_directory =
-          ssprintf("%s/%s",
-              output_path_.c_str(),
-              file_directory.c_str());
-    }
-
-    if( file_name.empty() ) {
-      file_name =
-          ssprintf("%s.%s",
-              csequence_name(),
-              postfix.c_str());
-    }
-
-    if( file_suffix.empty() ) {
-      file_suffix = ".avi";
-    }
-
-    output_file_name =
-        ssprintf("%s/%s%s",
-            file_directory.c_str(),
-            file_name.c_str(),
-            file_suffix.c_str());
-  }
-
-  return output_file_name;
-}
-
-
 bool c_rstereo_calibration_pipeline::initialize_pipeline()
 {
   set_pipeline_stage(rstereo_calibration_initialize);
@@ -970,8 +914,10 @@ bool c_rstereo_calibration_pipeline::run_calibration()
 
       if( !progress_writer.is_open() ) {
 
-        std::string output_file_name =
-            generate_video_file_name("", "progress");
+        const std::string output_file_name =
+            generate_video_file_name("",
+                "progress",
+                ".avi");
 
         fOK =
             progress_writer.open(output_file_name,
@@ -1079,9 +1025,10 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     c_video_writer writer;
     bool fOK;
 
-    std::string output_file_name =
+    const std::string output_file_name =
         generate_video_file_name(output_options_.rectified_images_file_name,
-            "rectified");
+            "rectified",
+            ".avi");
 
 
     for( int i = 0; i < 2; ++i ) {

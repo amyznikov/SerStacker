@@ -116,7 +116,6 @@ protected:
   void filter_frames();
   void update_state();
   bool save_current_camera_parameters() const;
-  std::string generate_video_file_name(const std::string & ufilename, const std::string & postfix) const;
 
 protected:
 

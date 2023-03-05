@@ -102,6 +102,10 @@ public: // pipeline methods
   void set_master_frame_index(int v);
   int master_frame_index() const;
 
+  virtual std::string generate_video_file_name(const std::string & ufilename,
+      const std::string & postfix,
+      const std::string & suffix) const;
+
   int total_frames() const;
   int processed_frames() const;
   int accumulated_frames() const;

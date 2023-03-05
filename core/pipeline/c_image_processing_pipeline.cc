@@ -216,6 +216,70 @@ void c_image_processing_pipeline::cancel(bool v)
   canceled_ = v;
 }
 
+
+std::string c_image_processing_pipeline::generate_video_file_name(const std::string & ufilename,
+    const std::string & postfix,
+    const std::string & suffix)  const
+{
+  std::string output_file_name =
+      ufilename;
+
+  if( output_file_name.empty() ) {
+
+    output_file_name =
+        ssprintf("%s/%s.%s%s",
+            output_path_.c_str(),
+            csequence_name(),
+            postfix.c_str(),
+            suffix.empty() ? ".avi" :
+                suffix.c_str());
+  }
+  else {
+
+    std::string file_directory;
+    std::string file_name;
+    std::string file_suffix;
+
+    split_pathfilename(output_file_name,
+        &file_directory,
+        &file_name,
+        &file_suffix);
+
+    if( file_directory.empty() ) {
+      file_directory = output_path_;
+    }
+    else if( !is_absolute_path(file_directory) ) {
+      file_directory =
+          ssprintf("%s/%s",
+              output_path_.c_str(),
+              file_directory.c_str());
+    }
+
+    if( file_name.empty() ) {
+      file_name =
+          ssprintf("%s.%s",
+              csequence_name(),
+              postfix.c_str());
+    }
+
+    if( file_suffix.empty() ) {
+      file_suffix =
+          suffix.empty() ? ".avi" :
+              suffix;
+    }
+
+    output_file_name =
+        ssprintf("%s/%s%s",
+            file_directory.c_str(),
+            file_name.c_str(),
+            file_suffix.c_str());
+  }
+
+  return output_file_name;
+}
+
+
+
 bool c_image_processing_pipeline::canceled() const
 {
   return canceled_;

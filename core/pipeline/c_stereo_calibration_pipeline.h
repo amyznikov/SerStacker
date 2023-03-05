@@ -50,8 +50,13 @@ struct c_stereo_calibrate_options
 
 struct c_stereo_calibration_output_options
 {
-  bool save_rectified_images = false;
-  std::string rectified_images_file_name;
+  std::string rectified_frames_file_name;
+  std::string stereo_rectified_frames_file_name;
+  std::string quad_rectified_frames_file_name;
+
+  bool save_rectified_frames = false;
+  bool save_stereo_rectified_frames = false;
+  bool save_quad_rectified_frames = false;
 };
 
 class c_stereo_calibration_pipeline:
@@ -109,6 +114,8 @@ protected:
   bool initialize_pipeline()override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+  bool run_stereo_calibration();
+  bool write_output_videos();
   void update_output_path() override;
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool detect_chessboard(const cv::Mat &frame, std::vector<cv::Point2f> & corners_);

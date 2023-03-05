@@ -137,8 +137,14 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
-    SERIALIZE_OPTION(section, save, output_options_, save_rectified_images);
-    SERIALIZE_OPTION(section, save, output_options_, rectified_images_file_name);
+    SERIALIZE_OPTION(section, save, output_options_, save_rectified_frames);
+    SERIALIZE_OPTION(section, save, output_options_, rectified_frames_file_name);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_stereo_rectified_frames);
+    SERIALIZE_OPTION(section, save, output_options_, stereo_rectified_frames_file_name);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_quad_rectified_frames);
+    SERIALIZE_OPTION(section, save, output_options_, quad_rectified_frames_file_name);
   }
 
   return true;
@@ -869,10 +875,8 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
   set_pipeline_stage(stereo_calibration_idle);
 }
 
-bool c_stereo_calibration_pipeline::run_pipeline()
+bool c_stereo_calibration_pipeline::run_stereo_calibration()
 {
-  CF_DEBUG("Starting '%s: %s' ...",
-      csequence_name(), cname());
 
   for ( int i = 0; i < 2; ++i ) {
     if ( !input_sources_[i]->open() ) {
@@ -1071,126 +1075,229 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     input_sources_[i]->close();
   }
 
-  if( !canceled() && output_options_.save_rectified_images ) {
+  return !canceled();
+}
 
-    c_video_writer writer;
+bool c_stereo_calibration_pipeline::write_output_videos()
+{
+  if( !output_options_.save_rectified_frames &&
+      !output_options_.save_stereo_rectified_frames &&
+      !output_options_.save_quad_rectified_frames ) {
+    return true;
+  }
 
-    std::string output_file_name =
-        output_options_.rectified_images_file_name;
+  c_video_writer video_writer[2];
+  c_video_writer stereo_writer;
+  c_video_writer quad_writer;
 
-    if( output_file_name.empty() ) {
+  cv::Size sizes[2];
+  cv::Size stereo_size;
+  cv::Size quad_size;
 
-      output_file_name =
-          ssprintf("%s/%s.rectified.avi",
-              output_path_.c_str(),
-              csequence_name());
+
+  for( int i = 0; i < 2; ++i ) {
+    if( !input_sources_[i]->open() ) {
+      CF_ERROR("ERROR: can not open input source '%s'",
+          input_sources_[i]->cfilename());
+      return false;
     }
-    else {
+  }
 
-      std::string file_directory;
-      std::string file_name;
-      std::string file_suffix;
+  CF_DEBUG("Saving debug videos...");
 
-      split_pathfilename(output_file_name,
-          &file_directory,
-          &file_name,
-          &file_suffix);
+  total_frames_ = input_sources_[0]->size();
+  processed_frames_ = 0;
+  accumulated_frames_ = 0;
 
-      if( file_directory.empty() ) {
-        file_directory = output_path_;
-      }
-      else if( !is_absolute_path(file_directory) ) {
-        file_directory =
-            ssprintf("%s/%s",
-                output_path_.c_str(),
-                file_directory.c_str());
-      }
+  bool fOK;
 
-      if( file_name.empty() ) {
-        file_name =
-            ssprintf("%s.rectified",
-                csequence_name());
-      }
+  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
 
-      if( file_suffix.empty() ) {
-        file_suffix = ".avi";
-      }
-
-      output_file_name =
-          ssprintf("%s/%s%s",
-              file_directory.c_str(),
-              file_name.c_str(),
-              file_suffix.c_str());
+    if( canceled() ) {
+      break;
     }
-
 
     for( int i = 0; i < 2; ++i ) {
-      if( !input_sources_[i]->open() ) {
-        CF_ERROR("ERROR: can not open input source '%s'", input_sources_[i]->cfilename());
-        return false;
+      if( !(fOK = read_input_frame(input_sources_[i], current_frames_[i], current_masks_[i])) ) {
+        CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
+        break;
+      }
+      if( canceled() ) {
+        break;
       }
     }
 
-    CF_DEBUG("Saving %s...", output_file_name.c_str());
+    if( !fOK || canceled() ) {
+      break;
+    }
 
-    total_frames_ = input_sources_[0]->size();
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    sizes[0] = current_frames_[0].size();
+    sizes[1] = current_frames_[1].size();
 
-    for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+    cv::remap(current_frames_[0], current_frames_[0],
+        rmaps_[0], cv::noArray(),
+        cv::INTER_LINEAR);
 
-      if( canceled() ) {
-        break;
-      }
+    cv::remap(current_frames_[1], current_frames_[1],
+        rmaps_[1], cv::noArray(),
+        cv::INTER_LINEAR);
 
-      fOk = true;
 
-      for( int i = 0; i < 2; ++i ) {
+    if ( output_options_.save_rectified_frames ) {
 
-        if( !read_input_frame(input_sources_[i], current_frames_[i], current_masks_[i]) ) {
-          CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
-          fOk = false;
-          break;
-        }
+      if( !video_writer[0].is_open() ) {
 
-        if( canceled() ) {
-          break;
-        }
-      }
+        std::string output_file_name =
+            generate_video_file_name(output_options_.rectified_frames_file_name,
+                "rect-left",
+                ".avi");
 
-      if( !fOk || canceled() ) {
-        break;
-      }
-
-      update_display_image();
-
-      if( canceled() ) {
-        break;
-      }
-
-      if( !writer.is_open() ) {
-
-        fOk =
-            writer.open(output_file_name,
-                display_frame_.size(),
-                display_frame_.channels() > 1,
+        fOK =
+            video_writer[0].open(output_file_name,
+                current_frames_[0].size(),
+                current_frames_[0].channels() > 1,
                 false);
 
-        if( !fOk ) {
-          CF_ERROR("writer.open('%s') fails", output_file_name.c_str());
+        if( !fOK ) {
+          CF_ERROR("video_writer[0].open('%s') fails",
+              output_file_name.c_str());
           return false;
         }
       }
 
-      if( !writer.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
-        CF_ERROR("c_video_writer: write(fails)");
-        break;
+      if ( !video_writer[0].write( current_frames_[0], cv::noArray(), false, processed_frames_ ) ) {
+        CF_ERROR("video_writer[0].write() fails");
+        return false;
       }
 
-      if( canceled() ) {
-        break;
+
+      if( !video_writer[1].is_open() ) {
+
+        std::string output_file_name =
+            generate_video_file_name(output_options_.rectified_frames_file_name,
+                "rect-right",
+                ".avi");
+
+        fOK =
+            video_writer[1].open(output_file_name,
+                current_frames_[1].size(),
+                current_frames_[1].channels() > 1,
+                false);
+
+        if( !fOK ) {
+          CF_ERROR("video_writer[1].open('%s') fails",
+              output_file_name.c_str());
+          return false;
+        }
+      }
+
+      if ( !video_writer[1].write( current_frames_[1], cv::noArray(), false, processed_frames_ ) ) {
+        CF_ERROR("video_writer[1].write() fails");
+        return false;
       }
     }
+
+
+    if ( output_options_.save_stereo_rectified_frames ) {
+
+      if( !stereo_writer.is_open() ) {
+
+        std::string output_file_name =
+            generate_video_file_name(output_options_.stereo_rectified_frames_file_name,
+                "stereo",
+                ".avi");
+
+        stereo_size.width = sizes[0].width + sizes[1].width;
+        stereo_size.height = std::max(sizes[0].height, sizes[1].height);
+
+        fOK =
+            stereo_writer.open(output_file_name,
+                stereo_size,
+                current_frames_[0].channels() > 1,
+                false);
+
+        if( !fOK ) {
+          CF_ERROR("double_writer.open('%s') fails",
+              output_file_name.c_str());
+          return false;
+        }
+      }
+
+      const cv::Rect rc0(0, 0, sizes[0].width, sizes[0].height);
+      const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height);
+
+      display_frame_.create(stereo_size, current_frames_[0].type());
+      current_frames_[0].copyTo(display_frame_(rc0));
+      current_frames_[1].copyTo(display_frame_(rc1));
+
+      if ( !stereo_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
+        CF_ERROR("stereo_writer.write() fails");
+        return false;
+      }
+    }
+
+    if ( output_options_.save_quad_rectified_frames ) {
+
+      if( !quad_writer.is_open() ) {
+
+        std::string output_file_name =
+            generate_video_file_name(output_options_.quad_rectified_frames_file_name,
+                "quad",
+                ".avi");
+
+        quad_size.width = sizes[0].width + sizes[1].width;
+        quad_size.height = sizes[0].height + sizes[1].height;
+
+        fOK =
+            quad_writer.open(output_file_name,
+                quad_size,
+                current_frames_[0].channels() > 1,
+                false);
+
+        if( !fOK ) {
+          CF_ERROR("quad_writer.open('%s') fails",
+              output_file_name.c_str());
+          return false;
+        }
+      }
+
+      const cv::Rect rc0(0, 0, sizes[0].width, sizes[0].height); // tl -> 0
+      const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height); // tr -> 1
+      const cv::Rect rc2(0, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> 1
+      const cv::Rect rc3(sizes[0].width, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> blend
+
+      display_frame_.create(quad_size, current_frames_[0].type());
+      current_frames_[0].copyTo(display_frame_(rc0));
+      current_frames_[1].copyTo(display_frame_(rc1));
+      current_frames_[1].copyTo(display_frame_(rc2));
+      cv::addWeighted(current_frames_[0], 0.5, current_frames_[1], 0.5, 0, display_frame_(rc3));
+
+      if ( !quad_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
+        CF_ERROR("quad_writer.write() fails");
+        return false;
+      }
+    }
+
+    if( canceled() ) {
+      break;
+    }
+  }
+
+
+  return true;
+}
+
+bool c_stereo_calibration_pipeline::run_pipeline()
+{
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
+
+  if( !run_stereo_calibration() ) {
+    return false;
+  }
+
+  if ( !write_output_videos() ) {
+    return false;
   }
 
   return true;

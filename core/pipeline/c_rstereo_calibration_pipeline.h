@@ -53,6 +53,9 @@ struct c_rstereo_calibration_output_options
 {
   bool save_rectified_images = false;
   std::string rectified_images_file_name;
+
+  bool save_motion_poses = false;
+  std::string motion_poses_file_name;
 };
 
 class c_rstereo_calibration_pipeline:
@@ -104,7 +107,8 @@ protected:
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
-  bool run_calibration();
+  void reset_input_frames();
+  bool run_stereo_calibration();
   void update_output_path() override;
   bool open_input_streams();
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
@@ -112,10 +116,16 @@ protected:
   bool detect_and_match_keypoints();
   void update_remap();
   void update_display_image(bool drawpoints =  true);
+  bool write_progress_video(c_video_writer & w);
   double estimate_grid_subset_quality(int excludedIndex) const;
   void filter_frames();
   void update_state();
   bool save_current_camera_parameters() const;
+
+  double compute_stereo_pose(const std::vector<cv::Point2f> & current_keypoints,
+      const std::vector<cv::Point2f> & reference_keypoints);
+
+  void compute_motion_pose();
 
 protected:
 
@@ -143,24 +153,40 @@ protected:
   c_rstereo_calibrate_options calibration_options_;
   c_rstereo_calibration_output_options output_options_;
 
+  // FIXME: Hardcoded default Camera Matrix
+  // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
+  // for .image_size = cv::Size(1242, 375),
+  cv::Matx33d cameraMatrix =
+      cv::Matx33d(
+          7.215377e+02, 0.000000e+00, 6.095593e+02,
+          0.000000e+00, 7.215377e+02, 1.728540e+02,
+          0.000000e+00, 0.000000e+00, 1.000000e+00);
+
   mutable std::mutex accumulator_lock_;
 
   c_input_source::sptr input_sources_[2];
+  c_stereo_frame input_frames_[2];
 
   c_sparse_feature_extractor::ptr keypoints_extractor_;
   c_feature2d_matcher::ptr keypoints_matcher_;
 
-  c_stereo_frame current_frame_;
+  c_stereo_frame * current_frame_ = nullptr;
+  c_stereo_frame * previous_frame_ = nullptr;
+  cv::Vec3d motionEulerAnges[2];
+  cv::Vec3d motionTranslation[2];
+  cv::Point2d motionEpipoles[2][2];
+  bool haveMotionPose[2] = {false, false};
 
-  std::vector<std::vector<cv::Point2f>> matched_positions[2];
+
+  std::vector<std::vector<cv::Point2f>> matched_stereo_positions[2];
   std::vector<double> perViewErrors_;
+
   cv::Vec3d currentEulerAnges;
   cv::Vec3d currentTranslationVector;
   cv::Matx33d currentRotationMatrix;
   cv::Matx33d currentEssentialMatrix;
   cv::Matx33d currentFundamentalMatrix;
   cv::Matx33d currentDerotationHomography;
-
 
 
   c_stereo_camera_intrinsics stereo_intrinsics_;
@@ -179,6 +205,9 @@ protected:
 
   double rmse_ = 0;
   int calibration_flags_ = 0;
+
+  FILE * epipolefp_ = nullptr;
+  int epipolefidx_ = 0;
 };
 
 #endif /* __c_rstereo_calibration_pipeline_h__ */

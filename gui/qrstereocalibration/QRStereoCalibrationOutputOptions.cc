@@ -66,6 +66,41 @@ QRStereoCalibrationOutputOptions::QRStereoCalibrationOutputOptions(QWidget * par
 
   ///
 
+  save_motion_poses_ctl =
+      add_checkbox("Save motion poses",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().save_motion_poses = checked;
+              motion_poses_file_name_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              *checked = pipeline_->output_options().save_motion_poses;
+              return true;
+            }
+            return false;
+          });
+
+  motion_poses_file_name_ctl =
+      add_textbox("motion_poses_file_name:",
+          [this](const QString & value) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().motion_poses_file_name = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( pipeline_ ) {
+              *value = pipeline_->output_options().motion_poses_file_name.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  ///
+
   updateControls();
 }
 
@@ -91,6 +126,7 @@ void QRStereoCalibrationOutputOptions::onupdatecontrols()
 
     output_directory_ctl->setCurrentPath(pipeline_->output_directory().c_str(), false);
     rectified_images_file_name_ctl->setEnabled(save_rectified_images_ctl->isChecked());
+    motion_poses_file_name_ctl->setEnabled(save_motion_poses_ctl->isChecked());
 
     setEnabled(true);
   }

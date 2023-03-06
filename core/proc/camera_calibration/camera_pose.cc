@@ -471,11 +471,11 @@ bool recover_camera_pose(const cv::Matx33d & camera_matrix,
       pose_hypothesis[i].ngood =
           cv::countNonZero(masks[i]);
 
-      CF_DEBUG("pose[%d] ngood=%d T=(%g %g %g)", i,
-          pose_hypothesis[i].ngood,
-          pose_hypothesis[i].T(0),
-          pose_hypothesis[i].T(1),
-          pose_hypothesis[i].T(2));
+//      CF_DEBUG("pose[%d] ngood=%d T=(%g %g %g)", i,
+//          pose_hypothesis[i].ngood,
+//          pose_hypothesis[i].T(0),
+//          pose_hypothesis[i].T(1),
+//          pose_hypothesis[i].T(2));
     }
 
     if ( pose_hypothesis[0].ngood >= pose_hypothesis[1].ngood ) {
@@ -973,13 +973,13 @@ bool estimate_camera_pose_and_derotation_homography(
   //
   if( true /*is_levmar_enabled() */) {
 
-    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
-        "A = (%+g %+g %+g)\n"
-        "T = (%+g %+g %+g)\n"
-        "\n",
-        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-        T(0), T(1), T(2));
-
+//    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
+//        "A = (%+g %+g %+g)\n"
+//        "T = (%+g %+g %+g)\n"
+//        "\n",
+//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
+//        T(0), T(1), T(2));
+//
     fOk =
         lm_refine_camera_pose(A, T,
             camera_matrix,
@@ -987,13 +987,13 @@ bool estimate_camera_pose_and_derotation_homography(
             reference_keypoints,
             mask);
 
-    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
-        "A = (%+g %+g %+g)\n"
-        "T = (%+g %+g %+g)\n"
-        "\n",
-        fOk,
-        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-        T(0), T(1), T(2));
+//    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
+//        "A = (%+g %+g %+g)\n"
+//        "T = (%+g %+g %+g)\n"
+//        "\n",
+//        fOk,
+//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
+//        T(0), T(1), T(2));
   }
 
   //
@@ -1163,38 +1163,6 @@ static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
 
       }
 
-//      cv::Point2d E[2]; // current epipoles location
-//      compute_epipoles(F, E);
-//
-//      if( isinf(E[0].x) || isnan(E[0].x) ) {
-//        E[0].x = signbit(E[0].x) ? - FLT_MAX : FLT_MAX;
-//      }
-//
-//      if( isinf(E[1].x) || isnan(E[1].x) ) {
-//        E[1].x = signbit(E[1].x) ? - FLT_MAX : FLT_MAX;
-//      }
-//
-//      if( isinf(E[0].y) || isnan(E[0].y) ) {
-//        E[0].y = signbit(E[0].y) ? - FLT_MAX : FLT_MAX;
-//      }
-//
-//      if( isinf(E[1].y) || isnan(E[1].y) ) {
-//        E[1].y = signbit(E[1].y) ? - FLT_MAX : FLT_MAX;
-//      }
-//
-//      const double alpha = numInliers / 10.;
-//
-//      rhs[numInliers][0] =
-//          alpha * (E[0].x + E[1].x) /
-//              (fabs(E[0].x) + fabs(E[1].x));
-//
-//      rhs[numInliers + 1][0] =
-//          alpha * (E[0].y + E[1].y) /
-//              (fabs(E[0].y) + fabs(E[1].y));
-//
-//
-//      CF_DEBUG("rhsx=%g rhsy=%g", rhs[numInliers][0], rhs[numInliers + 1][0]);
-//
       return true;
     }
 
@@ -1212,7 +1180,9 @@ static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
     {
-      const int nrhs = numInliers;// + 2;
+      const int nrhs =
+          numInliers;
+
       err.create(nrhs, 1, CV_64F);
 
       const cv::Mat1d P =
@@ -1416,12 +1386,12 @@ bool rectify_stereo_pose(
   //
   if( true /*is_levmar_enabled() */) {
 
-    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
-        "A = (%+g %+g %+g)\n"
-        "T = (%+g %+g %+g)\n"
-        "\n",
-        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-        T(0), T(1), T(2));
+//    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
+//        "A = (%+g %+g %+g)\n"
+//        "T = (%+g %+g %+g)\n"
+//        "\n",
+//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
+//        T(0), T(1), T(2));
 
     fOk =
         lm_refine_stereo_pose(A, T,
@@ -1430,13 +1400,13 @@ bool rectify_stereo_pose(
             reference_keypoints,
             mask);
 
-    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
-        "A = (%+g %+g %+g)\n"
-        "T = (%+g %+g %+g)\n"
-        "\n",
-        fOk,
-        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-        T(0), T(1), T(2));
+//    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
+//        "A = (%+g %+g %+g)\n"
+//        "T = (%+g %+g %+g)\n"
+//        "\n",
+//        fOk,
+//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
+//        T(0), T(1), T(2));
   }
 
   //

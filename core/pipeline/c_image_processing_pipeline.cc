@@ -217,10 +217,14 @@ void c_image_processing_pipeline::cancel(bool v)
 }
 
 
-std::string c_image_processing_pipeline::generate_video_file_name(const std::string & ufilename,
+std::string c_image_processing_pipeline::generate_output_file_name(const std::string & ufilename,
     const std::string & postfix,
     const std::string & suffix)  const
 {
+  //    std::string outfilename =
+  //        ssprintf("%s/%s.epipoles.txt",
+  //            output_path_.c_str(), csequence_name());
+
   std::string output_file_name =
       ufilename;
 

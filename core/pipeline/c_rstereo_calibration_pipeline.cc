@@ -100,6 +100,8 @@ bool c_rstereo_calibration_pipeline::serialize(c_config_setting settings, bool s
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, output_options_, save_rectified_images);
     SERIALIZE_OPTION(section, save, output_options_, rectified_images_file_name);
+    SERIALIZE_OPTION(section, save, output_options_, save_motion_poses);
+    SERIALIZE_OPTION(section, save, output_options_, motion_poses_file_name);
   }
 
   return true;
@@ -210,7 +212,7 @@ bool c_rstereo_calibration_pipeline::read_stereo_frame()
       return false;
     }
 
-    if( !read_input_frame(input_sources_[i], current_frame_.images[i], current_frame_.masks[i]) ) {
+    if( !read_input_frame(input_sources_[i], current_frame_->images[i], current_frame_->masks[i]) ) {
       CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
       return false;
     }
@@ -222,12 +224,12 @@ bool c_rstereo_calibration_pipeline::read_stereo_frame()
 bool c_rstereo_calibration_pipeline::detect_and_match_keypoints()
 {
   for( int i = 0; i < 2; ++i ) {
-    current_frame_.keypoints[i].clear();
-    current_frame_.descriptors[i].release();
-    current_frame_.matched_positions[i].clear();
+    current_frame_->keypoints[i].clear();
+    current_frame_->descriptors[i].release();
+    current_frame_->matched_positions[i].clear();
   }
 
-  current_frame_.matches.clear();
+  current_frame_->matches.clear();
 
   //current_frame_.matched_inliers.clear();
 
@@ -244,10 +246,10 @@ bool c_rstereo_calibration_pipeline::detect_and_match_keypoints()
     }
 
     bool fOK =
-        keypoints_extractor_->detectAndCompute(current_frame_.images[i],
-            current_frame_.masks[i],
-            current_frame_.keypoints[i],
-            current_frame_.descriptors[i]);
+        keypoints_extractor_->detectAndCompute(current_frame_->images[i],
+            current_frame_->masks[i],
+            current_frame_->keypoints[i],
+            current_frame_->descriptors[i]);
 
     if( !fOK ) {
       CF_ERROR("keypoints_extractor_->detectAndCompute() fails");
@@ -266,25 +268,25 @@ bool c_rstereo_calibration_pipeline::detect_and_match_keypoints()
 
   // from left image
   const std::vector<cv::KeyPoint> &reference_keypoints =
-      current_frame_.keypoints[0];
+      current_frame_->keypoints[0];
 
   const cv::Mat &reference_descriptors =
-      current_frame_.descriptors[0];
+      current_frame_->descriptors[0];
 
   std::vector<cv::Point2f> &reference_positions =
-      current_frame_.matched_positions[0];
+      current_frame_->matched_positions[0];
 
   // from right image
   const std::vector<cv::KeyPoint> &current_keypoints =
-      current_frame_.keypoints[1];
+      current_frame_->keypoints[1];
 
   const cv::Mat &current_descriptors =
-      current_frame_.descriptors[1];
+      current_frame_->descriptors[1];
 
   std::vector<cv::Point2f> &current_positions =
-      current_frame_.matched_positions[1];
+      current_frame_->matched_positions[1];
 
-  if( current_frame_.keypoints[0].empty() || current_frame_.keypoints[1].empty() ) {
+  if( current_frame_->keypoints[0].empty() || current_frame_->keypoints[1].empty() ) {
     CF_ERROR("No keypoints to match on current stereo pair");
   }
   else {
@@ -301,7 +303,7 @@ bool c_rstereo_calibration_pipeline::detect_and_match_keypoints()
             current_descriptors,
             reference_keypoints,
             reference_descriptors,
-            &current_frame_.matches,
+            &current_frame_->matches,
             &current_positions,
             &reference_positions);
 
@@ -520,13 +522,13 @@ void c_rstereo_calibration_pipeline::update_remap()
 
 void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
 {
-  if ( !current_frame_.images[0].empty() ) {
+  if ( current_frame_ && !current_frame_->images[0].empty() ) {
 
     lock_guard lock(display_lock_);
 
     const cv::Size sizes[2] =  {
-      current_frame_.images[0].size(),
-      current_frame_.images[1].size(),
+        current_frame_->images[0].size(),
+        current_frame_->images[1].size(),
     };
 
     const cv::Size size(sizes[0].width + sizes[1].width,
@@ -536,14 +538,14 @@ void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
     cv::Mat tmp;
 
     if( !calibration_options_.enable_calibration ) {
-      tmp = current_frame_.images[1];
+      tmp = current_frame_->images[1];
     }
     else {
 
       // Apply derotation homography to current frame
-      cv::warpPerspective(current_frame_.images[1], tmp,
+      cv::warpPerspective(current_frame_->images[1], tmp,
           currentDerotationHomography,
-          current_frame_.images[1].size(),
+          current_frame_->images[1].size(),
           cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
           cv::BORDER_CONSTANT);
     }
@@ -555,11 +557,11 @@ void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
     const cv::Rect rc3(sizes[0].width, sizes[0].height, sizes[1].width, sizes[1].height); // br blend
 
 
-    display_frame_.create(size, current_frame_.images[0].type());
-    current_frame_.images[0].copyTo(display_frame_(rc0));
+    display_frame_.create(size, current_frame_->images[0].type());
+    current_frame_->images[0].copyTo(display_frame_(rc0));
     tmp.copyTo(display_frame_(rc1));
     tmp.copyTo(display_frame_(rc2));
-    cv::addWeighted(current_frame_.images[0], 0.5, tmp, 0.5, 0, display_frame_(rc3));
+    cv::addWeighted(current_frame_->images[0], 0.5, tmp, 0.5, 0, display_frame_(rc3));
 
 
     if( display_frame_.channels() == 1 ) {
@@ -571,9 +573,38 @@ void c_rstereo_calibration_pipeline::update_display_image(bool drawpoints)
   on_accumulator_changed();
 }
 
+bool c_rstereo_calibration_pipeline::write_progress_video(c_video_writer & progress_writer)
+{
+  if( !progress_writer.is_open() ) {
+
+    const std::string output_file_name =
+        generate_output_file_name("",
+            "progress",
+            ".avi");
+
+    bool fOK =
+        progress_writer.open(output_file_name,
+            display_frame_.size(),
+            display_frame_.channels() > 1,
+            false);
+
+    if( !fOK ) {
+      CF_ERROR("progress_writer.open('%s') fails", output_file_name.c_str());
+      return false;
+    }
+  }
+
+  if( !progress_writer.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+    CF_ERROR("c_video_writer: write(fails)");
+    return false;
+  }
+
+  return true;
+}
+
 double c_rstereo_calibration_pipeline::estimate_grid_subset_quality(int excludedIndex) const
 {
-  const cv::Size image_size = current_frame_.images[0].size();
+  const cv::Size image_size = current_frame_->images[0].size();
 
   const int gridSize = 10;
   const int xGridStep = image_size.width / gridSize;
@@ -584,12 +615,12 @@ double c_rstereo_calibration_pipeline::estimate_grid_subset_quality(int excluded
 
   std::fill(pointsInCell.begin(), pointsInCell.end(), 0);
 
-  for( int k = 0; k < matched_positions[0].size(); k++ )
+  for( int k = 0; k < matched_stereo_positions[0].size(); k++ )
     if( k != excludedIndex ) {
 
       for( int i = 0; i < 2; ++i ) {
 
-        for( const auto &p : matched_positions[i][k] ) {
+        for( const auto &p : matched_stereo_positions[i][k] ) {
 
           int ii = (int) (p.x / xGridStep);
           int jj = (int) (p.y / yGridStep);
@@ -610,7 +641,7 @@ double c_rstereo_calibration_pipeline::estimate_grid_subset_quality(int excluded
 void c_rstereo_calibration_pipeline::filter_frames()
 {
   const int nbframes =
-      matched_positions[0].size();
+      matched_stereo_positions[0].size();
 
   const int nbframesmax =
       std::max(1, std::max(calibration_options_.min_frames,
@@ -645,8 +676,8 @@ void c_rstereo_calibration_pipeline::filter_frames()
 
     CF_DEBUG("XXX worstElemIndex=%d worstValue=%g", worstElemIndex, worstValue);
 
-    matched_positions[0].erase(matched_positions[0].begin() + worstElemIndex);
-    matched_positions[1].erase(matched_positions[1].begin() + worstElemIndex);
+    matched_stereo_positions[0].erase(matched_stereo_positions[0].begin() + worstElemIndex);
+    matched_stereo_positions[1].erase(matched_stereo_positions[1].begin() + worstElemIndex);
 
     if ( !perViewErrors_.empty() ) {
       perViewErrors_.erase(perViewErrors_.begin() + worstElemIndex);
@@ -727,6 +758,27 @@ bool c_rstereo_calibration_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
+  current_frame_ = &input_frames_[0];
+  previous_frame_ = &input_frames_[1];
+
+
+  if ( output_options_.save_motion_poses ) {
+
+    std::string outfilename =
+        generate_output_file_name(output_options_.motion_poses_file_name,
+            "poses",
+            ".txt");
+
+    epipolefidx_ = 0;
+
+    if( !(epipolefp_ = fopen(outfilename.c_str(), "w")) ) {
+      CF_ERROR("Can not write '%s' : %s", outfilename.c_str(), strerror(errno));
+      return false;
+    }
+
+    fprintf(epipolefp_, "fidx\tdEx\tdEy\tdAx\tdAy\tdAz\tTx\tTy\tTz\n");
+  }
+
 
   return true;
 }
@@ -735,28 +787,40 @@ void c_rstereo_calibration_pipeline::cleanup_pipeline()
 {
   set_pipeline_stage(rstereo_calibration_finishing);
 
-  for ( int i = 0; i < 2; ++i ) {
+  if ( epipolefp_ ) {
+    fclose(epipolefp_);
+    epipolefp_ = nullptr;
+  }
 
-    if ( input_sources_[i] ) {
+
+  current_frame_ = nullptr;
+  previous_frame_ = nullptr;
+
+  for( int i = 0; i < 2; ++i ) {
+
+    if( input_sources_[i] ) {
       input_sources_[i]->close();
       input_sources_[i].reset();
     }
 
-    current_frame_.images[i].release();
-    current_frame_.masks[i].release();
-    current_frame_.keypoints[i].clear();
-    current_frame_.descriptors[i].release();
-    current_frame_.matched_positions[i].clear();
+    matched_stereo_positions[i].clear();
+    input_frames_[i].matches.clear();
 
-    matched_positions[i].clear();
+    for( int j = 0; j < 2; ++j ) {
+
+      input_frames_[i].images[j].release();
+      input_frames_[i].masks[j].release();
+      input_frames_[i].keypoints[j].clear();
+      input_frames_[i].descriptors[j].release();
+      input_frames_[i].matched_positions[j].clear();
+    }
+
   }
 
-  current_frame_.matches.clear();
   perViewErrors_.clear();
   rmap_.release();
   display_frame_.release();
   display_mask_.release();
-
 
   if( true ) {
     lock_guard lock(display_lock_);
@@ -772,19 +836,181 @@ void c_rstereo_calibration_pipeline::cleanup_pipeline()
   set_pipeline_stage(rstereo_calibration_idle);
 }
 
-bool c_rstereo_calibration_pipeline::run_calibration()
+void c_rstereo_calibration_pipeline::reset_input_frames()
+{
+  for ( int i = 0; i < 2; ++i ) {
+
+    input_frames_[i].matches.clear();
+
+    for ( int j = 0; j < 2; ++j ) {
+      input_frames_[i].images[j].release();
+      input_frames_[i].masks[j].release();
+      input_frames_[i].keypoints[j].clear();
+      input_frames_[i].descriptors[j].release();
+      input_frames_[i].matched_positions[j].clear();
+
+    }
+  }
+
+  current_frame_ = & input_frames_[0];
+  previous_frame_ = & input_frames_[1];
+}
+
+double c_rstereo_calibration_pipeline::compute_stereo_pose(
+    const std::vector<cv::Point2f> & current_keypoints,
+    const std::vector<cv::Point2f> & reference_keypoints)
+{
+  cv::Mat1b inliers;
+  double rmse = -1;
+  bool fOK;
+
+  fOK =
+      rectify_stereo_pose(
+          cameraMatrix,
+          current_keypoints,
+          reference_keypoints,
+          EMM_LMEDS,
+          &currentEulerAnges,
+          &currentTranslationVector,
+          &currentRotationMatrix,
+          &currentEssentialMatrix,
+          &currentFundamentalMatrix,
+          &currentDerotationHomography,
+          inliers);
+
+  if( !fOK ) {
+    CF_ERROR("rectify_stereo_pose() fails");
+  }
+  else {
+
+    CF_DEBUG("currentEulerAnges: (%+.3f %+.3f %+.3f)",
+        currentEulerAnges(0) * 180 / CV_PI,
+        currentEulerAnges(1) * 180 / CV_PI,
+        currentEulerAnges(2) * 180 / CV_PI);
+
+
+    cv::Mat1d rhs;
+
+    compute_distances_from_points_to_corresponding_epipolar_lines(rhs,
+        currentFundamentalMatrix,
+        current_keypoints,
+        reference_keypoints);
+
+    rmse = sqrt(cv::mean(rhs.mul(rhs), inliers)[0]);
+  }
+
+  return rmse;
+}
+
+
+void c_rstereo_calibration_pipeline::compute_motion_pose()
+{
+  haveMotionPose[0] = haveMotionPose[1] = false;
+
+  if( !current_frame_->matches.empty() && !previous_frame_->matches.empty() ) {
+
+    //cv::Vec3d EulerAnges[2];
+    cv::Vec3d TranslationVector[2];
+    cv::Matx33d RotationMatrix[2];
+    cv::Matx33d EssentialMatrix[2];
+    cv::Matx33d FundamentalMatrix[2];
+    cv::Matx33d DerotationHomography[2];
+
+    cv::Vec3d dA, T;
+    cv::Point2d dE;
+
+    std::vector<cv::Point2f> current_positions;
+    std::vector<cv::Point2f> reference_positions;
+
+    for( int i = 0; i < 2; ++i ) {
+
+      current_positions.clear();
+      reference_positions.clear();
+
+      const size_t num_matches =
+          match_keypoints(keypoints_matcher_,
+              current_frame_->keypoints[i],
+              current_frame_->descriptors[i],
+              previous_frame_->keypoints[i],
+              previous_frame_->descriptors[i],
+              &current_frame_->matches,
+              &current_positions,
+              &reference_positions);
+
+      if( num_matches < 8 ) {
+        CF_ERROR("match_keypoints() fails: num_matches=%d", num_matches);
+        continue;
+      }
+
+
+      bool fOK =
+          estimate_camera_pose_and_derotation_homography(
+              cameraMatrix,
+              current_positions,
+              reference_positions,
+              EMM_LMEDS,
+              &motionEulerAnges[i],
+              &TranslationVector[i],
+              &RotationMatrix[i],
+              &EssentialMatrix[i],
+              &FundamentalMatrix[i],
+              &DerotationHomography[i],
+              cv::noArray());
+
+      if ( !fOK ) {
+        CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
+      }
+      else {
+        haveMotionPose[i] =
+            compute_epipoles(FundamentalMatrix[i],
+                motionEpipoles[i]);
+      }
+    }
+
+    CF_DEBUG("MOTION_POSE:\n"
+        "A[0] = (%+g %+g %+g)\n"
+        "A[1] = (%+g %+g %+g)\n"
+        "E[0] = (%+g %+g) (%+g %+g)\n"
+        "E[1] = (%+g %+g) (%+g %+g)\n"
+        "\n",
+        motionEulerAnges[0](0) * 180 / CV_PI, motionEulerAnges[0](1) * 180 / CV_PI, motionEulerAnges[0](2) * 180 / CV_PI,
+        motionEulerAnges[1](0) * 180 / CV_PI, motionEulerAnges[1](1) * 180 / CV_PI, motionEulerAnges[1](2) * 180 / CV_PI,
+        motionEpipoles[0][0].x, motionEpipoles[0][0].y, motionEpipoles[0][1].x, motionEpipoles[0][1].y,
+        motionEpipoles[1][0].x, motionEpipoles[1][0].y, motionEpipoles[1][1].x, motionEpipoles[1][1].y);
+
+    if( epipolefp_ ) {
+
+      dA = (motionEulerAnges[0] - motionEulerAnges[1]) * 180 / CV_PI;
+      T = 0.5 * (TranslationVector[0] + TranslationVector[1]);
+      dE = (motionEpipoles[0][0] - motionEpipoles[1][0]);
+
+
+      fprintf(epipolefp_, "%6d"
+
+          "\t%+9.2f\t%+9.2f"
+
+          "\t%+9.3f\t%+9.3f\t%+9.3f"
+
+          "\t%+12.6f\t%+12.6f\t%+16.6f"
+          "\n",
+          epipolefidx_++,
+
+          dE.x, dE.y,
+
+          dA[0], dA[1], dA[2],
+
+          T[0], T[1], T[2]
+          );
+
+      fflush(epipolefp_);
+    }
+
+  }
+}
+
+bool c_rstereo_calibration_pipeline::run_stereo_calibration()
 {
   c_video_writer progress_writer;
-
-  // FIXME: Hardcoded Camera Matrix
-  // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
-  // .image_size = cv::Size(1242, 375),
-  const cv::Matx33d camera_matrix_ =
-      cv::Matx33d(
-          7.215377e+02, 0.000000e+00, 6.095593e+02,
-          0.000000e+00, 7.215377e+02, 1.728540e+02,
-          0.000000e+00, 0.000000e+00, 1.000000e+00);
-
 
   CF_DEBUG("Starting '%s: %s' ...",
       csequence_name(), cname());
@@ -803,6 +1029,8 @@ bool c_rstereo_calibration_pipeline::run_calibration()
   set_status_msg("RUNNING ...");
 
   bool fOK;
+
+  reset_input_frames();
 
   for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
 
@@ -830,144 +1058,63 @@ bool c_rstereo_calibration_pipeline::run_calibration()
       break;
     }
 
-    if( current_frame_.matched_positions[0].size() < 5 ) {
-      CF_ERROR("Not enough matched positions: %zu", current_frame_.matched_positions[0].size());
+    if( current_frame_->matched_positions[0].size() < 8 ) {
+      CF_ERROR("Not enough matched positions: %zu", current_frame_->matched_positions[0].size());
     }
     else {
 
-      cv::Mat1b inliers;
+      const double rmse =
+          compute_stereo_pose(current_frame_->matched_positions[1],
+              current_frame_->matched_positions[0]);
 
-      fOK =
-          rectify_stereo_pose(
-              camera_matrix_,
-              current_frame_.matched_positions[1],
-              current_frame_.matched_positions[0],
-              EMM_LMEDS,
-              &currentEulerAnges,
-              &currentTranslationVector,
-              &currentRotationMatrix,
-              &currentEssentialMatrix,
-              &currentFundamentalMatrix,
-              &currentDerotationHomography,
-              inliers);
-
-      if( !fOK ) {
-        CF_ERROR("rectify_stereo_pose() fails");
+      if ( rmse < 0 ) {
+        CF_ERROR("compute_stereo_pose() fails");
       }
       else {
 
-        cv::Mat1d rhs;
-
-        compute_distances_from_points_to_corresponding_epipolar_lines(rhs,
-            currentFundamentalMatrix,
-            current_frame_.matched_positions[1],
-            current_frame_.matched_positions[0]);
-
-        const double rmse =
-            sqrt(cv::mean(rhs.mul(rhs), inliers)[0]);
+        CF_DEBUG("RMSE = %g", rmse);
 
         perViewErrors_.emplace_back(rmse);
         for( int i = 0; i < 2; ++i ) {
-          matched_positions[i].emplace_back(current_frame_.matched_positions[i]);
-        }
-
-        CF_DEBUG("RMSE = %g", rmse);
-
-        //
-        // Compute epipoles from fundamental matrix
-        //
-
-        cv::Point2d current_epipoles_[2]; // current epipoles location
-        cv::Point2d current_epipole_; // current average epipole location
-
-        compute_epipoles(currentFundamentalMatrix,
-            current_epipoles_);
-
-        CF_DEBUG("EPIPOLES: E0:(%+g %+g) E1:(%+g %+g)",
-            current_epipoles_[0].x, current_epipoles_[0].y,
-            current_epipoles_[1].x, current_epipoles_[1].y);
-
-
-        current_epipole_ =
-            0.5 * (current_epipoles_[0] + current_epipoles_[1]);
-
-        const double distance =
-            hypot(current_epipoles_[0].x - current_epipoles_[1].x, current_epipoles_[0].y - current_epipoles_[1].y);
-
-        if( distance > 1 ) {
-          CF_WARNING("\nWARNING!\n"
-              "Something looks POOR: Computed epipoles differ after derotation:\n"
-              "E0 = {%g %g}\n"
-              "E1 = {%g %g}\n"
-              "Eavg={%g %g}\n",
-              current_epipoles_[0].x, current_epipoles_[0].y,
-              current_epipoles_[1].x, current_epipoles_[1].y,
-              current_epipole_.x, current_epipole_.y);
+          matched_stereo_positions[i].emplace_back(current_frame_->matched_positions[i]);
         }
 
       }
     }
+
+    compute_motion_pose();
 
     update_display_image();
 
-    if( true ) {
-
-      if( !progress_writer.is_open() ) {
-
-        const std::string output_file_name =
-            generate_video_file_name("",
-                "progress",
-                ".avi");
-
-        fOK =
-            progress_writer.open(output_file_name,
-                display_frame_.size(),
-                display_frame_.channels() > 1,
-                false);
-
-        if( !fOK ) {
-          CF_ERROR("progress_writer.open('%s') fails", output_file_name.c_str());
-          return false;
-        }
-      }
-
-      if( !progress_writer.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
-        CF_ERROR("c_video_writer: write(fails)");
-        return false;
-      }
+    if ( !write_progress_video(progress_writer) ) {
+      CF_ERROR("write_progress_video() fails");
+      return false;
     }
+
+    std::swap(current_frame_, previous_frame_);
   }
+
 
   for ( int i = 0; i < 2; ++i ) {
     input_sources_[i]->close();
   }
 
-////////////
-  if( !canceled() && matched_positions[0].size() > 0 /* std::max(1, calibration_options_.min_frames)*/ ) {
+  ////////////
+  if( !canceled() && matched_stereo_positions[0].size() > 0 /* std::max(1, calibration_options_.min_frames)*/) {
 
     std::vector<cv::Point2f> matched_points[2];
     for( int i = 0; i < 2; ++i ) {
-      for( const std::vector<cv::Point2f> &v : matched_positions[i] ) {
+      for( const std::vector<cv::Point2f> &v : matched_stereo_positions[i] ) {
         matched_points[i].insert(matched_points[i].end(), v.begin(), v.end());
       }
       CF_DEBUG("matched_points[%d].size=%zu", i, matched_points[i].size());
     }
 
-    fOK =
-        rectify_stereo_pose(
-            camera_matrix_,
-            matched_points[1],
-            matched_points[0],
-            EMM_LMEDS,
-            &currentEulerAnges,
-            &currentTranslationVector,
-            &currentRotationMatrix,
-            &currentEssentialMatrix,
-            &currentFundamentalMatrix,
-            &currentDerotationHomography,
-            cv::noArray());
+    const double rmse =
+        compute_stereo_pose(matched_points[1],
+            matched_points[0]);
 
-    if( !fOK ) {
+    if( rmse < 0 ) {
       CF_ERROR("rectify_stereo_pose() fails");
     }
     else {
@@ -976,7 +1123,6 @@ bool c_rstereo_calibration_pipeline::run_calibration()
       //
 
       cv::Point2d current_epipoles_[2]; // current epipoles location
-      cv::Point2d current_epipole_; // current average epipole location
 
       compute_epipoles(currentFundamentalMatrix,
           current_epipoles_);
@@ -985,9 +1131,6 @@ bool c_rstereo_calibration_pipeline::run_calibration()
           current_epipoles_[0].x, current_epipoles_[0].y,
           current_epipoles_[1].x, current_epipoles_[1].y);
 
-      current_epipole_ =
-          0.5 * (current_epipoles_[0] + current_epipoles_[1]);
-
       const double distance =
           hypot(current_epipoles_[0].x - current_epipoles_[1].x, current_epipoles_[0].y - current_epipoles_[1].y);
 
@@ -995,13 +1138,10 @@ bool c_rstereo_calibration_pipeline::run_calibration()
         CF_WARNING("\nWARNING!\n"
             "Something looks POOR: Computed epipoles differ after derotation:\n"
             "E0 = {%g %g}\n"
-            "E1 = {%g %g}\n"
-            "Eavg={%g %g}\n",
+            "E1 = {%g %g}\n",
             current_epipoles_[0].x, current_epipoles_[0].y,
-            current_epipoles_[1].x, current_epipoles_[1].y,
-            current_epipole_.x, current_epipole_.y);
+            current_epipoles_[1].x, current_epipoles_[1].y);
       }
-
     }
   }
 
@@ -1012,7 +1152,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
 bool c_rstereo_calibration_pipeline::run_pipeline()
 {
 
-  if ( calibration_options_.enable_calibration && !run_calibration() ) {
+  if ( calibration_options_.enable_calibration && !run_stereo_calibration() ) {
     return false;
   }
 
@@ -1026,7 +1166,7 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     bool fOK;
 
     const std::string output_file_name =
-        generate_video_file_name(output_options_.rectified_images_file_name,
+        generate_output_file_name(output_options_.rectified_images_file_name,
             "rectified",
             ".avi");
 
@@ -1044,6 +1184,8 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     processed_frames_ = 0;
     accumulated_frames_ = 0;
 
+    reset_input_frames();
+
     for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
 
       if( canceled() ) {
@@ -1054,8 +1196,8 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
 
       for( int i = 0; i < 2; ++i ) {
 
-        cv::Mat & image = current_frame_.images[i];
-        cv::Mat & mask = current_frame_.masks[i];
+        cv::Mat & image = current_frame_->images[i];
+        cv::Mat & mask = current_frame_->masks[i];
 
         if( !read_input_frame(input_sources_[i], image, mask) ) {
           CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
@@ -1108,4 +1250,38 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
 
   return true;
 }
+
+
+
+////
+//// Compute epipoles from fundamental matrix
+////
+//
+//cv::Point2d current_epipoles_[2]; // current epipoles location
+//cv::Point2d current_epipole_; // current average epipole location
+//
+//compute_epipoles(currentFundamentalMatrix,
+//    current_epipoles_);
+//
+//CF_DEBUG("EPIPOLES: E0:(%+g %+g) E1:(%+g %+g)",
+//    current_epipoles_[0].x, current_epipoles_[0].y,
+//    current_epipoles_[1].x, current_epipoles_[1].y);
+//
+//
+//current_epipole_ =
+//    0.5 * (current_epipoles_[0] + current_epipoles_[1]);
+//
+//const double distance =
+//    hypot(current_epipoles_[0].x - current_epipoles_[1].x, current_epipoles_[0].y - current_epipoles_[1].y);
+//
+//if( distance > 1 ) {
+//  CF_WARNING("\nWARNING!\n"
+//      "Something looks POOR: Computed epipoles differ after derotation:\n"
+//      "E0 = {%g %g}\n"
+//      "E1 = {%g %g}\n"
+//      "Eavg={%g %g}\n",
+//      current_epipoles_[0].x, current_epipoles_[0].y,
+//      current_epipoles_[1].x, current_epipoles_[1].y,
+//      current_epipole_.x, current_epipole_.y);
+//}
 

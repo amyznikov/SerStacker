@@ -32,8 +32,12 @@ protected:
 protected:
   c_rstereo_calibration_pipeline::sptr pipeline_;
   QBrowsePathCombo * output_directory_ctl = nullptr;
+
   QCheckBox * save_rectified_images_ctl = nullptr;
   QLineEditBox * rectified_images_file_name_ctl = nullptr;
+
+  QCheckBox * save_motion_poses_ctl = nullptr;
+  QLineEditBox * motion_poses_file_name_ctl = nullptr;
 };
 
 #endif /* __QRStereoCalibrationOutputOptions_h__ */

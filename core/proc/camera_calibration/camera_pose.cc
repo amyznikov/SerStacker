@@ -1150,6 +1150,7 @@ static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
           rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
               current_keypoints[i], reference_keypoints[i]);
         }
+
       }
       else { // case when inliers mask is provided
 
@@ -1159,17 +1160,41 @@ static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
                 current_keypoints[i], reference_keypoints[i]);
           }
         }
+
       }
 
-      cv::Point2d current_epipoles_[2]; // current epipoles location
-      compute_epipoles(F, current_epipoles_);
-
-      const double alpha = numInliers;
-
-      rhs[numInliers][0] = alpha * (current_epipoles_[0].x - current_epipoles_[1].x);
-      rhs[numInliers + 1][0] = alpha * (current_epipoles_[0].y - current_epipoles_[1].y);
-
-
+//      cv::Point2d E[2]; // current epipoles location
+//      compute_epipoles(F, E);
+//
+//      if( isinf(E[0].x) || isnan(E[0].x) ) {
+//        E[0].x = signbit(E[0].x) ? - FLT_MAX : FLT_MAX;
+//      }
+//
+//      if( isinf(E[1].x) || isnan(E[1].x) ) {
+//        E[1].x = signbit(E[1].x) ? - FLT_MAX : FLT_MAX;
+//      }
+//
+//      if( isinf(E[0].y) || isnan(E[0].y) ) {
+//        E[0].y = signbit(E[0].y) ? - FLT_MAX : FLT_MAX;
+//      }
+//
+//      if( isinf(E[1].y) || isnan(E[1].y) ) {
+//        E[1].y = signbit(E[1].y) ? - FLT_MAX : FLT_MAX;
+//      }
+//
+//      const double alpha = numInliers / 10.;
+//
+//      rhs[numInliers][0] =
+//          alpha * (E[0].x + E[1].x) /
+//              (fabs(E[0].x) + fabs(E[1].x));
+//
+//      rhs[numInliers + 1][0] =
+//          alpha * (E[0].y + E[1].y) /
+//              (fabs(E[0].y) + fabs(E[1].y));
+//
+//
+//      CF_DEBUG("rhsx=%g rhsy=%g", rhs[numInliers][0], rhs[numInliers + 1][0]);
+//
       return true;
     }
 
@@ -1187,7 +1212,7 @@ static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
     {
-      const int nrhs = numInliers + 2;
+      const int nrhs = numInliers;// + 2;
       err.create(nrhs, 1, CV_64F);
 
       const cv::Mat1d P =
@@ -1260,7 +1285,7 @@ static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
           inliers));
 
   cv::Ptr<cv::LMSolver> lm =
-      cv::LMSolver::create(cb, 200);
+      cv::LMSolver::create(cb, 200, 1e-9);
 
   int iterations =
       lm->run(p);

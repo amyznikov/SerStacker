@@ -190,11 +190,11 @@ void c_stereo_calibration_pipeline::update_output_path()
             parent_directory.c_str(),
             output_directory_.c_str());
   }
-
-  if( output_path_.empty() ) {
+  else {
     output_path_ =
-        "./calib";
+        output_directory_;
   }
+
 }
 
 

@@ -301,10 +301,9 @@ void c_image_stacking_pipeline::update_output_path()
             parent_directory.c_str(),
             output_directory_.c_str());
   }
-
-  if( output_path_.empty() ) {
+  else {
     output_path_ =
-        "./stacks";
+        output_directory_;
   }
 }
 
@@ -535,7 +534,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     }
   }
 
-
+  CF_DEBUG("Output path='%s'", this->output_path_.c_str());
   return true;
 }
 

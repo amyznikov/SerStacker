@@ -146,11 +146,11 @@ void c_rstereo_calibration_pipeline::update_output_path()
             parent_directory.c_str(),
             output_directory_.c_str());
   }
-
-  if( output_path_.empty() ) {
+  else {
     output_path_ =
-        "./rstereo";
+        output_directory_;
   }
+
 }
 
 bool c_rstereo_calibration_pipeline::open_input_streams()
@@ -838,7 +838,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
       cv::Mat1b inliers;
 
       fOK =
-          estimate_camera_pose_and_derotation_homography(
+          rectify_stereo_pose(
               camera_matrix_,
               current_frame_.matched_positions[1],
               current_frame_.matched_positions[0],
@@ -852,7 +852,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
               inliers);
 
       if( !fOK ) {
-        CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
+        CF_ERROR("rectify_stereo_pose() fails");
       }
       else {
 
@@ -954,7 +954,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
     }
 
     fOK =
-        estimate_camera_pose_and_derotation_homography(
+        rectify_stereo_pose(
             camera_matrix_,
             matched_points[1],
             matched_points[0],
@@ -968,7 +968,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
             cv::noArray());
 
     if( !fOK ) {
-      CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
+      CF_ERROR("rectify_stereo_pose() fails");
     }
     else {
       //

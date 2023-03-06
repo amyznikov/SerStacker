@@ -31,265 +31,85 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
 }
 
 
+
 /**
- * Use cv::LMSolver to refine camera pose estimated from essential matrix
+ * Compute two (left and right) epipoles from given fundamental matrix F.
+ * Return false if epipoles can not be computed.
+ *
+ * CSE486, Penn State Robert Collins
+ * Lecture 19: Essential and Fundamental Matrices
+ * http://www.cse.psu.edu/~rtc12/CSE486/lecture19.pdf
  */
-static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
-    const cv::Matx33d & camera_matrix,
-    const std::vector<cv::Point2f> & current_keypoints,
-    const std::vector<cv::Point2f> & reference_keypoints,
-    const cv::Mat1b & inliers)
+bool compute_epipoles(const cv::Matx33d & F, cv::Point2d * e1, cv::Point2d * e2)
 {
 
-  if ( current_keypoints.size() != reference_keypoints.size() ) {
-
-    CF_ERROR("Invalid args: reference_positions.size()=%zu not equal to current_positions.size()=%zu",
-        reference_keypoints.size(), current_keypoints.size());
-
-    return false;
-  }
-
-  if ( !inliers.empty() ) {
-
-    if ( inliers.type() != CV_8UC1 ) {
-
-      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1",
-          inliers.type());
-
-      return false;
-    }
-
-    if ( inliers.rows != (int)reference_keypoints.size() ) {
-
-      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%d",
-          inliers.rows, reference_keypoints.size());
-
-      return false;
-    }
-  }
-
-  class LMSolverCallback:
-      public cv::LMSolver::Callback
-  {
-    cv::Matx33d camera_matrix;
-    cv::Matx33d camera_matrix_t_inv;
-    cv::Matx33d camera_matrix_inv;
-    const std::vector<cv::Point2f> & current_keypoints;
-    const std::vector<cv::Point2f> & reference_keypoints;
-    const cv::Mat1b & inliers;
-    int numInliers;
-    const double Tfix;
-    const int iTfix;
-
-  public:
-    LMSolverCallback(const cv::Matx33d & _camera_matrix,
-        const std::vector<cv::Point2f> & _current_keypoints,
-        const std::vector<cv::Point2f> & _reference_keypoints,
-        const cv::Mat1b & _inliers,
-        const double _Tfix,
-        const int _iTfix ) :
-
-        camera_matrix(_camera_matrix),
-        current_keypoints(_current_keypoints),
-        reference_keypoints(_reference_keypoints),
-        inliers(_inliers),
-        Tfix(_Tfix),
-        iTfix(_iTfix),
-        numInliers(_inliers.empty() ? _current_keypoints.size() : cv::countNonZero(_inliers))
-    {
-      camera_matrix_t_inv =
-          camera_matrix.t().inv();
-
-      camera_matrix_inv =
-          camera_matrix.inv();
-    }
-
-    /**
-     * computes rhs errors for specified vector of parameters
-     */
-    bool compute(const cv::Mat1d & p, cv::Mat1d & rhs) const
-    {
-      const cv::Vec3d A(p[0][0], p[1][0], p[2][0]);
-
-      cv::Vec3d T;
-
-      switch (iTfix) {
-        case 0:
-          T = cv::Vec3d(Tfix, p[3][0], p[4][0]);
-          break;
-        case 1:
-          T = cv::Vec3d(p[3][0], Tfix, p[4][0]);
-          break;
-        case 2:
-          T = cv::Vec3d(p[3][0], p[4][0], Tfix);
-          break;
-        default:
-          CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
-          return false;
-      }
-
-      T *= 1. / cv::norm(T);
-
-      const cv::Matx33d F =
-          compose_fundamental_matrix(camera_matrix_t_inv,
-              camera_matrix_inv,
-              build_rotation(A),
-              T);
-
-      if( inliers.empty() ) { // case when no inliers mask
-
-        for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
-          rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
-              current_keypoints[i], reference_keypoints[i]);
-        }
-      }
-      else { // case when inliers mask is provided
-
-        for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
-          if( inliers[i][0] ) {
-            rhs[j++][0] = distance_from_point_to_corresponding_epipolar_line(F,
-                current_keypoints[i], reference_keypoints[i]);
-          }
-        }
-      }
-
-      return true;
-    }
-
-    /**
-     computes error and Jacobian for the specified vector of parameters
-
-     @param param the current vector of parameters
-     @param err output vector of errors: err_i = actual_f_i - ideal_f_i
-     @param J output Jacobian: J_ij = d(ideal_f_i)/d(param_j)
-
-     when J=noArray(), it means that it does not need to be computed.
-     Dimensionality of error vector and param vector can be different.
-     The callback should explicitly allocate (with "create" method) each output array
-     (unless it's noArray()).
-     */
-    bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
-    {
-      err.create(numInliers, 1, CV_64F);
-
-      const cv::Mat1d P =
-          param.getMat();
-
-      cv::Mat1d rhs =
-          err.getMat();
-
-      if ( !compute(P, rhs) ) {
-        return false;
-      }
-
-      if( J.needed() ) {
-
-        // numerical estimation of partial derivatives
-
-        cv::Mat1d rhs1(numInliers, 1);
-        cv::Mat1d rhs2(numInliers, 1);
-
-        J.create(numInliers, P.rows, CV_64F);
-        cv::Mat1d jac = J.getMatRef();
-
-        cv::Mat1d PP = P.clone();
-
-        const double eps = 1e-4;
-
-        for( int j = 0; j < PP.rows; ++j ) {
-
-          const double v =
-              PP[j][0];
-
-          const double delta =
-              std::max(1e-6, eps * std::abs(v));
-
-          PP[j][0] = v + delta;
-          compute(PP, rhs1);
-
-          PP[j][0] = v - delta;
-          compute(PP, rhs2);
-
-          cv::subtract(rhs1, rhs2, jac.col(j));
-          cv::multiply(jac.col(j), 0.5 / delta, jac.col(j));
-
-          PP[j][0] = v;
-        }
-      }
-
-      return true;
-    }
-  };
-
+#if 1
 
   /*
-   * Find the translation component of maximal magnitude and fix it
-   * iTmax = argmax(i, abs( T[i] ) )
-  */
-  double Tfix = T(0);
-  int iTfix = 0;
-  for ( int i = 1; i < 3; ++i ) {
-    if ( fabs(T[i]) > fabs(Tfix) ) {
-      Tfix = T[iTfix = i];
+   * SVD-based solution is a little faster
+   */
+
+  try {
+
+    cv::SVD svd(F);
+
+    if ( e1 ) {
+      const cv::Matx13d e = svd.vt.row(2);
+      e1->x = e(0, 0) / e(0, 2);
+      e1->y = e(0, 1) / e(0, 2);
     }
+
+    if ( e2 ) {
+      const cv::Matx31d e = svd.u.col(2);
+      e2->x = e(0, 0) / e(2, 0);
+      e2->y = e(1, 0) / e(2, 0);
+    }
+
+    return true;
   }
+  catch (const std::exception & e) {
+    CF_ERROR("cv::SVD() fails in %s(): %s", __func__, e.what());
+  }
+  catch (...) {
+    CF_ERROR("cv::SVD() fails in %s()", __func__);
+  }
+
+#else
 
   /*
-   * Pack parameters into cv::Mat1d for levmar
-   * */
-  cv::Mat1d p(5, 1);
+   * EigenVectors-based solution
+   */
 
-  p[0][0] = A(0);
-  p[1][0] = A(1);
-  p[2][0] = A(2);
-  for ( int i = 0, j = 3; i < 3; ++i ) {
-    if ( i != iTfix ) {
-      p[j++][0] = T[i];
+  try {
+
+    cv::Matx33d eigenvectors;
+    std::vector<double> eigenvalues;
+
+    if ( e1 ) {
+      cv::eigen(F.t() * F, eigenvalues, eigenvectors);
+      e1->x = eigenvectors(2, 0) / eigenvectors(2, 2);
+      e1->y = eigenvectors(2, 1) / eigenvectors(2, 2);
     }
+
+    if ( e2 ) {
+      cv::eigen(F * F.t(), eigenvalues, eigenvectors);
+      e2->x = eigenvectors(2, 0) / eigenvectors(2, 2);
+      e2->y = eigenvectors(2, 1) / eigenvectors(2, 2);
+    }
+
+    return true;
   }
-
-  const cv::Ptr<cv::LMSolver::Callback> cb(
-      new LMSolverCallback(
-          camera_matrix,
-          current_keypoints,
-          reference_keypoints,
-          inliers,
-          Tfix,
-          iTfix));
-
-  cv::Ptr<cv::LMSolver> lm =
-      cv::LMSolver::create(cb, 200);
-
-  int iterations =
-      lm->run(p);
-
-  CF_DEBUG("lm->run(): %d iterations", iterations);
-
-  /*
-   * Unpack parameters from cv::Mat1d
-   * */
-
-  A(0) = p[0][0];
-  A(1) = p[1][0];
-  A(2) = p[2][0];
-
-  switch (iTfix) {
-    case 0:
-      T = cv::Vec3d(Tfix, p[3][0], p[4][0]);
-      break;
-    case 1:
-      T = cv::Vec3d(p[3][0], Tfix, p[4][0]);
-      break;
-    case 2:
-      T = cv::Vec3d(p[3][0], p[4][0], Tfix);
-      break;
-    default:
-      CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
-      return false;
+  catch (const std::exception & e) {
+    CF_ERROR("cv::eigen() fails in %s(): %s", __func__, e.what());
   }
+  catch (...) {
+    CF_ERROR("cv::eigen() fails in %s()", __func__);
+  }
+#endif
 
-  return true;
+  return false;
 }
+
 
 
 /*
@@ -729,6 +549,268 @@ bool recover_camera_pose_from_essential_matrix(
   return true;
 }
 
+
+
+/**
+ * Use cv::LMSolver to refine camera pose estimated from essential matrix
+ */
+static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
+    const cv::Matx33d & camera_matrix,
+    const std::vector<cv::Point2f> & current_keypoints,
+    const std::vector<cv::Point2f> & reference_keypoints,
+    const cv::Mat1b & inliers)
+{
+
+  if ( current_keypoints.size() != reference_keypoints.size() ) {
+
+    CF_ERROR("Invalid args: reference_positions.size()=%zu not equal to current_positions.size()=%zu",
+        reference_keypoints.size(), current_keypoints.size());
+
+    return false;
+  }
+
+  if ( !inliers.empty() ) {
+
+    if ( inliers.type() != CV_8UC1 ) {
+
+      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1",
+          inliers.type());
+
+      return false;
+    }
+
+    if ( inliers.rows != (int)reference_keypoints.size() ) {
+
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%d",
+          inliers.rows, reference_keypoints.size());
+
+      return false;
+    }
+  }
+
+  class LMSolverCallback:
+      public cv::LMSolver::Callback
+  {
+    cv::Matx33d camera_matrix;
+    cv::Matx33d camera_matrix_t_inv;
+    cv::Matx33d camera_matrix_inv;
+    const std::vector<cv::Point2f> & current_keypoints;
+    const std::vector<cv::Point2f> & reference_keypoints;
+    const cv::Mat1b & inliers;
+    int numInliers;
+    const double Tfix;
+    const int iTfix;
+
+  public:
+    LMSolverCallback(const cv::Matx33d & _camera_matrix,
+        const std::vector<cv::Point2f> & _current_keypoints,
+        const std::vector<cv::Point2f> & _reference_keypoints,
+        const cv::Mat1b & _inliers,
+        const double _Tfix,
+        const int _iTfix ) :
+
+        camera_matrix(_camera_matrix),
+        current_keypoints(_current_keypoints),
+        reference_keypoints(_reference_keypoints),
+        inliers(_inliers),
+        Tfix(_Tfix),
+        iTfix(_iTfix),
+        numInliers(_inliers.empty() ? _current_keypoints.size() : cv::countNonZero(_inliers))
+    {
+      camera_matrix_t_inv =
+          camera_matrix.t().inv();
+
+      camera_matrix_inv =
+          camera_matrix.inv();
+    }
+
+    /**
+     * computes rhs errors for specified vector of parameters
+     */
+    bool compute(const cv::Mat1d & p, cv::Mat1d & rhs) const
+    {
+      const cv::Vec3d A(p[0][0], p[1][0], p[2][0]);
+
+      cv::Vec3d T;
+
+      switch (iTfix) {
+        case 0:
+          T = cv::Vec3d(Tfix, p[3][0], p[4][0]);
+          break;
+        case 1:
+          T = cv::Vec3d(p[3][0], Tfix, p[4][0]);
+          break;
+        case 2:
+          T = cv::Vec3d(p[3][0], p[4][0], Tfix);
+          break;
+        default:
+          CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
+          return false;
+      }
+
+      T *= 1. / cv::norm(T);
+
+      const cv::Matx33d F =
+          compose_fundamental_matrix(camera_matrix_t_inv,
+              camera_matrix_inv,
+              build_rotation(A),
+              T);
+
+      if( inliers.empty() ) { // case when no inliers mask
+
+        for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
+          rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
+              current_keypoints[i], reference_keypoints[i]);
+        }
+      }
+      else { // case when inliers mask is provided
+
+        for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
+          if( inliers[i][0] ) {
+            rhs[j++][0] = distance_from_point_to_corresponding_epipolar_line(F,
+                current_keypoints[i], reference_keypoints[i]);
+          }
+        }
+      }
+
+      return true;
+    }
+
+    /**
+     computes error and Jacobian for the specified vector of parameters
+
+     @param param the current vector of parameters
+     @param err output vector of errors: err_i = actual_f_i - ideal_f_i
+     @param J output Jacobian: J_ij = d(ideal_f_i)/d(param_j)
+
+     when J=noArray(), it means that it does not need to be computed.
+     Dimensionality of error vector and param vector can be different.
+     The callback should explicitly allocate (with "create" method) each output array
+     (unless it's noArray()).
+     */
+    bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
+    {
+      err.create(numInliers, 1, CV_64F);
+
+      const cv::Mat1d P =
+          param.getMat();
+
+      cv::Mat1d rhs =
+          err.getMat();
+
+      if ( !compute(P, rhs) ) {
+        return false;
+      }
+
+      if( J.needed() ) {
+
+        // numerical estimation of partial derivatives
+
+        cv::Mat1d rhs1(numInliers, 1);
+        cv::Mat1d rhs2(numInliers, 1);
+
+        J.create(numInliers, P.rows, CV_64F);
+        cv::Mat1d jac = J.getMatRef();
+
+        cv::Mat1d PP = P.clone();
+
+        const double eps = 1e-4;
+
+        for( int j = 0; j < PP.rows; ++j ) {
+
+          const double v =
+              PP[j][0];
+
+          const double delta =
+              std::max(1e-6, eps * std::abs(v));
+
+          PP[j][0] = v + delta;
+          compute(PP, rhs1);
+
+          PP[j][0] = v - delta;
+          compute(PP, rhs2);
+
+          cv::subtract(rhs1, rhs2, jac.col(j));
+          cv::multiply(jac.col(j), 0.5 / delta, jac.col(j));
+
+          PP[j][0] = v;
+        }
+      }
+
+      return true;
+    }
+  };
+
+
+  /*
+   * Find the translation component of maximal magnitude and fix it
+   * iTmax = argmax(i, abs( T[i] ) )
+  */
+  double Tfix = T(0);
+  int iTfix = 0;
+  for ( int i = 1; i < 3; ++i ) {
+    if ( fabs(T[i]) > fabs(Tfix) ) {
+      Tfix = T[iTfix = i];
+    }
+  }
+
+  /*
+   * Pack parameters into cv::Mat1d for levmar
+   * */
+  cv::Mat1d p(5, 1);
+
+  p[0][0] = A(0);
+  p[1][0] = A(1);
+  p[2][0] = A(2);
+  for ( int i = 0, j = 3; i < 3; ++i ) {
+    if ( i != iTfix ) {
+      p[j++][0] = T[i];
+    }
+  }
+
+  const cv::Ptr<cv::LMSolver::Callback> cb(
+      new LMSolverCallback(
+          camera_matrix,
+          current_keypoints,
+          reference_keypoints,
+          inliers,
+          Tfix,
+          iTfix));
+
+  cv::Ptr<cv::LMSolver> lm =
+      cv::LMSolver::create(cb, 200);
+
+  int iterations =
+      lm->run(p);
+
+  CF_DEBUG("lm->run(): %d iterations", iterations);
+
+  /*
+   * Unpack parameters from cv::Mat1d
+   * */
+
+  A(0) = p[0][0];
+  A(1) = p[1][0];
+  A(2) = p[2][0];
+
+  switch (iTfix) {
+    case 0:
+      T = cv::Vec3d(Tfix, p[3][0], p[4][0]);
+      break;
+    case 1:
+      T = cv::Vec3d(p[3][0], Tfix, p[4][0]);
+      break;
+    case 2:
+      T = cv::Vec3d(p[3][0], p[4][0], Tfix);
+      break;
+    default:
+      CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
+      return false;
+  }
+
+  return true;
+}
+
 /**
  * @brief estimate_camera_pose_and_derotation_homography()
  *
@@ -964,80 +1046,419 @@ bool estimate_camera_pose_and_derotation_homography(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////
+
+
 /**
- * Compute two (left and right) epipoles from given fundamental matrix F.
- * Return false if epipoles can not be computed.
- *
- * CSE486, Penn State Robert Collins
- * Lecture 19: Essential and Fundamental Matrices
- * http://www.cse.psu.edu/~rtc12/CSE486/lecture19.pdf
+ * Use cv::LMSolver to refine camera pose estimated from essential matrix
  */
-bool compute_epipoles(const cv::Matx33d & F, cv::Point2d * e1, cv::Point2d * e2)
+static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
+    const cv::Matx33d & camera_matrix,
+    const std::vector<cv::Point2f> & current_keypoints,
+    const std::vector<cv::Point2f> & reference_keypoints,
+    const cv::Mat1b & inliers)
 {
 
-#if 1
+  if ( current_keypoints.size() != reference_keypoints.size() ) {
+
+    CF_ERROR("Invalid args: reference_positions.size()=%zu not equal to current_positions.size()=%zu",
+        reference_keypoints.size(), current_keypoints.size());
+
+    return false;
+  }
+
+  if ( !inliers.empty() ) {
+
+    if ( inliers.type() != CV_8UC1 ) {
+
+      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1",
+          inliers.type());
+
+      return false;
+    }
+
+    if ( inliers.rows != (int)reference_keypoints.size() ) {
+
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%d",
+          inliers.rows, reference_keypoints.size());
+
+      return false;
+    }
+  }
+
+  class LMSolverCallback:
+      public cv::LMSolver::Callback
+  {
+    cv::Matx33d camera_matrix;
+    const cv::Vec3d T;
+    cv::Matx33d camera_matrix_t_inv;
+    cv::Matx33d camera_matrix_inv;
+    const std::vector<cv::Point2f> & current_keypoints;
+    const std::vector<cv::Point2f> & reference_keypoints;
+    const cv::Mat1b & inliers;
+    int numInliers;
+
+  public:
+    LMSolverCallback(const cv::Matx33d & _camera_matrix,
+        const cv::Vec3d & _T,
+        const std::vector<cv::Point2f> & _current_keypoints,
+        const std::vector<cv::Point2f> & _reference_keypoints,
+        const cv::Mat1b & _inliers) :
+
+        camera_matrix(_camera_matrix),
+        T(_T),
+        current_keypoints(_current_keypoints),
+        reference_keypoints(_reference_keypoints),
+        inliers(_inliers),
+        numInliers(_inliers.empty() ? _current_keypoints.size() : cv::countNonZero(_inliers))
+    {
+      camera_matrix_t_inv =
+          camera_matrix.t().inv();
+
+      camera_matrix_inv =
+          camera_matrix.inv();
+    }
+
+    /**
+     * computes rhs errors for specified vector of parameters
+     */
+    bool compute(const cv::Mat1d & p, cv::Mat1d & rhs) const
+    {
+      const cv::Vec3d A(p[0][0], p[1][0], p[2][0]);
+
+      const cv::Matx33d F =
+          compose_fundamental_matrix(camera_matrix_t_inv,
+              camera_matrix_inv,
+              build_rotation(A),
+              T);
+
+      if( inliers.empty() ) { // case when no inliers mask
+
+        for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
+          rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
+              current_keypoints[i], reference_keypoints[i]);
+        }
+      }
+      else { // case when inliers mask is provided
+
+        for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
+          if( inliers[i][0] ) {
+            rhs[j++][0] = distance_from_point_to_corresponding_epipolar_line(F,
+                current_keypoints[i], reference_keypoints[i]);
+          }
+        }
+      }
+
+      cv::Point2d current_epipoles_[2]; // current epipoles location
+      compute_epipoles(F, current_epipoles_);
+
+      const double alpha = numInliers;
+
+      rhs[numInliers][0] = alpha * (current_epipoles_[0].x - current_epipoles_[1].x);
+      rhs[numInliers + 1][0] = alpha * (current_epipoles_[0].y - current_epipoles_[1].y);
+
+
+      return true;
+    }
+
+    /**
+     computes error and Jacobian for the specified vector of parameters
+
+     @param param the current vector of parameters
+     @param err output vector of errors: err_i = actual_f_i - ideal_f_i
+     @param J output Jacobian: J_ij = d(ideal_f_i)/d(param_j)
+
+     when J=noArray(), it means that it does not need to be computed.
+     Dimensionality of error vector and param vector can be different.
+     The callback should explicitly allocate (with "create" method) each output array
+     (unless it's noArray()).
+     */
+    bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
+    {
+      const int nrhs = numInliers + 2;
+      err.create(nrhs, 1, CV_64F);
+
+      const cv::Mat1d P =
+          param.getMat();
+
+      cv::Mat1d rhs =
+          err.getMat();
+
+      if ( !compute(P, rhs) ) {
+        return false;
+      }
+
+      if( J.needed() ) {
+
+        // numerical estimation of partial derivatives
+
+        cv::Mat1d rhs1(nrhs, 1);
+        cv::Mat1d rhs2(nrhs, 1);
+
+        J.create(nrhs, P.rows, CV_64F);
+        cv::Mat1d jac = J.getMatRef();
+
+        cv::Mat1d PP = P.clone();
+
+        const double eps = 1e-4;
+
+        for( int j = 0; j < PP.rows; ++j ) {
+
+          const double v =
+              PP[j][0];
+
+          const double delta =
+              std::max(1e-6, eps * std::abs(v));
+
+          PP[j][0] = v + delta;
+          compute(PP, rhs1);
+
+          PP[j][0] = v - delta;
+          compute(PP, rhs2);
+
+          cv::subtract(rhs1, rhs2, jac.col(j));
+          cv::multiply(jac.col(j), 0.5 / delta, jac.col(j));
+
+          PP[j][0] = v;
+        }
+      }
+
+      return true;
+    }
+  };
+
 
   /*
-   * SVD-based solution is a little faster
-   */
+   * Pack parameters into cv::Mat1d for levmar
+   * */
+  cv::Mat1d p(3, 1);
 
-  try {
+  p[0][0] = A(0);
+  p[1][0] = A(1);
+  p[2][0] = A(2);
 
-    cv::SVD svd(F);
+  T = cv::Vec3d(-1, 0, 0);
 
-    if ( e1 ) {
-      const cv::Matx13d e = svd.vt.row(2);
-      e1->x = e(0, 0) / e(0, 2);
-      e1->y = e(0, 1) / e(0, 2);
-    }
+  const cv::Ptr<cv::LMSolver::Callback> cb(
+      new LMSolverCallback(
+          camera_matrix,
+          T,
+          current_keypoints,
+          reference_keypoints,
+          inliers));
 
-    if ( e2 ) {
-      const cv::Matx31d e = svd.u.col(2);
-      e2->x = e(0, 0) / e(2, 0);
-      e2->y = e(1, 0) / e(2, 0);
-    }
+  cv::Ptr<cv::LMSolver> lm =
+      cv::LMSolver::create(cb, 200);
 
-    return true;
-  }
-  catch (const std::exception & e) {
-    CF_ERROR("cv::SVD() fails in %s(): %s", __func__, e.what());
-  }
-  catch (...) {
-    CF_ERROR("cv::SVD() fails in %s()", __func__);
-  }
+  int iterations =
+      lm->run(p);
 
-#else
+  CF_DEBUG("lm->run(): %d iterations", iterations);
 
   /*
-   * EigenVectors-based solution
-   */
+   * Unpack parameters from cv::Mat1d
+   * */
 
-  try {
+  A(0) = p[0][0];
+  A(1) = p[1][0];
+  A(2) = p[2][0];
 
-    cv::Matx33d eigenvectors;
-    std::vector<double> eigenvalues;
+  return true;
+}
+/**
+ * Test
+ */
 
-    if ( e1 ) {
-      cv::eigen(F.t() * F, eigenvalues, eigenvectors);
-      e1->x = eigenvectors(2, 0) / eigenvectors(2, 2);
-      e1->y = eigenvectors(2, 1) / eigenvectors(2, 2);
+bool rectify_stereo_pose(
+    /* in */ const cv::Matx33d & camera_matrix,
+    /* in */ const std::vector<cv::Point2f> & current_keypoints,
+    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
+    /* in */ ESSENTIAL_MATRIX_ESTIMATION_METHOD emm,
+    /* out, opt */ cv::Vec3d * outputEulerAnges,
+    /* out, opt */ cv::Vec3d * outputTranslationVector,
+    /* out, opt */ cv::Matx33d * outputRotationMatrix,
+    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
+    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
+    /* out, opt */ cv::Matx33d * outputDerotationHomography,
+    /* in, out, opt */ cv::InputOutputArray M)
+{
+
+  INSTRUMENT_REGION("");
+
+  // Check input arguments
+  const int min_matched_points_required = 5;
+
+  if ( (int)reference_keypoints.size() < min_matched_points_required ) {
+
+    CF_ERROR("Invalid args: reference_keypoints.size()=%zu must be >= %d",
+        reference_keypoints.size(),
+        min_matched_points_required);
+
+    return false;
+  }
+
+  if ( current_keypoints.size() != reference_keypoints.size() ) {
+
+    CF_ERROR("Invalid args: current_keypoints.size()=%zu not equal to reference_keypoints.size()=%zu ",
+        current_keypoints.size(), reference_keypoints.size());
+
+    return false;
+  }
+
+  if ( M.needed() ) {
+
+    if ( M.fixedType() && M.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1", M.type());
+      return false;
     }
 
-    if ( e2 ) {
-      cv::eigen(F * F.t(), eigenvalues, eigenvectors);
-      e2->x = eigenvectors(2, 0) / eigenvectors(2, 2);
-      e2->y = eigenvectors(2, 1) / eigenvectors(2, 2);
+    if ( !M.empty() && M.rows() != (int) current_keypoints.size() ) {
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d is invalid. Must be %zu", M.rows(), current_keypoints.size());
+      return false;
     }
+  }
 
-    return true;
-  }
-  catch (const std::exception & e) {
-    CF_ERROR("cv::eigen() fails in %s(): %s", __func__, e.what());
-  }
-  catch (...) {
-    CF_ERROR("cv::eigen() fails in %s()", __func__);
-  }
-#endif
+  //
+  // Go on
+  //
 
-  return false;
+  cv::Matx33d R, E, H;
+  cv::Vec3d A, T;
+  cv::Mat1b mask;
+  bool fOk;
+
+  if ( !M.empty() ) {
+    mask = M.getMatRef();
+
+    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
+        cv::countNonZero(mask),
+        mask.rows);
+
+  }
+  //
+  // Estimate essential matrix
+  //
+
+  fOk =
+      estimate_essential_matrix(&E,
+          camera_matrix,
+          current_keypoints,
+          reference_keypoints,
+          mask,
+          emm);
+
+  if ( !fOk ) {
+    CF_ERROR("estimate_essential_matrix() fails");
+    return false;
+  }
+
+  CF_DEBUG("estimate_essential_matrix: inliers=%d/%d",
+      cv::countNonZero(mask),
+      mask.rows);
+
+  //
+  // Decompose essential matrix and recover relative pose
+  //
+  fOk =
+      recover_camera_pose_from_essential_matrix(E,
+          camera_matrix,
+          current_keypoints,
+          reference_keypoints,
+          nullptr,
+          &A,
+          &T,
+          mask);
+
+  if ( !fOk ) {
+    CF_ERROR("recover_camera_pose_from_essential_matrix() fails");
+    return false;
+  }
+
+  //
+  // Update camera pose using levmar if enabled
+  //
+  if( true /*is_levmar_enabled() */) {
+
+    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
+        "A = (%+g %+g %+g)\n"
+        "T = (%+g %+g %+g)\n"
+        "\n",
+        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
+        T(0), T(1), T(2));
+
+    fOk =
+        lm_refine_stereo_pose(A, T,
+            camera_matrix,
+            current_keypoints,
+            reference_keypoints,
+            mask);
+
+    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
+        "A = (%+g %+g %+g)\n"
+        "T = (%+g %+g %+g)\n"
+        "\n",
+        fOk,
+        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
+        T(0), T(1), T(2));
+  }
+
+  //
+  // Return to caller everything requested
+  //
+  if ( M.needed() && M.empty() ) {
+    if ( M.kind() == cv::_InputArray::KindFlag::MAT ) {
+      M.move(mask);
+    }
+    else {
+      mask.copyTo(M);
+    }
+  }
+
+  if ( outputEulerAnges ) {
+    *outputEulerAnges = A;
+  }
+
+  if ( outputTranslationVector ) {
+    * outputTranslationVector = T;
+  }
+
+  if ( outputRotationMatrix || outputEssentialMatrix || outputDerotationHomography || outputFundamentalMatrix ) {
+    R = build_rotation(A);
+    if ( outputRotationMatrix ) {
+      * outputRotationMatrix = R;
+    }
+  }
+
+  if ( outputDerotationHomography || outputFundamentalMatrix  ) {
+    H = camera_matrix * R * camera_matrix.inv();
+    if ( outputDerotationHomography ) {
+      * outputDerotationHomography = H;
+    }
+  }
+
+  if ( outputEssentialMatrix || outputFundamentalMatrix ) {
+    E = compose_essential_matrix(R, T);
+    if ( outputEssentialMatrix ) {
+      * outputEssentialMatrix = E;
+    }
+  }
+
+  if ( outputFundamentalMatrix ) {
+    * outputFundamentalMatrix =
+        compose_fundamental_matrix(E, camera_matrix) * H.inv() ;
+  }
+  return true;
+
 }

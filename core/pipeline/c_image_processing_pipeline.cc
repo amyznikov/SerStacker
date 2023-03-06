@@ -370,12 +370,11 @@ void c_image_processing_pipeline::update_output_path()
             parent_directory.c_str(),
             output_directory_.c_str());
   }
-
-  if( output_path_.empty() ) {
+  else {
     output_path_ =
-        ssprintf("./%s",
-            cname());
+        output_directory_;
   }
+
 }
 
 void c_image_processing_pipeline::gather_badframe_indexes()

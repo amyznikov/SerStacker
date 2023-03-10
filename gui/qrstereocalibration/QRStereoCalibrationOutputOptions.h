@@ -33,11 +33,17 @@ protected:
   c_rstereo_calibration_pipeline::sptr pipeline_;
   QBrowsePathCombo * output_directory_ctl = nullptr;
 
-  QCheckBox * save_rectified_images_ctl = nullptr;
-  QLineEditBox * rectified_images_file_name_ctl = nullptr;
+  QCheckBox * save_progress_video_ctl = nullptr;
+  QLineEditBox * progress_video_filename_ctl = nullptr;
+
+  QCheckBox * save_rectified_video_ctl = nullptr;
+  QLineEditBox * rectified_video_filename_ctl = nullptr;
+
+  QCheckBox * save_stereo_matches_video_ctl = nullptr;
+  QLineEditBox * stereo_matches_video_filename_ctl = nullptr;
 
   QCheckBox * save_motion_poses_ctl = nullptr;
-  QLineEditBox * motion_poses_file_name_ctl = nullptr;
+  QLineEditBox * motion_poses_filename_ctl = nullptr;
 };
 
 #endif /* __QRStereoCalibrationOutputOptions_h__ */

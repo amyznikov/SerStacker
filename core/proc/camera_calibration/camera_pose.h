@@ -105,6 +105,39 @@ inline cv::Matx<C, 3, 3> compose_fundamental_matrix(const cv::Matx<C, 3, 3> & E,
   return camera_matrix1.t().inv() * E * camera_matrix0.inv();
 }
 
+/** @brief
+ *  apply_homography()
+ */
+template<class MT, class PT>
+inline cv::Vec<MT, 3> apply_homography(const cv::Matx<MT, 3, 3> & H, const cv::Vec<PT, 3> & cp)
+{
+  cv::Vec<MT, 3> v = H * cp;
+  return v(2) ? v / v(2) : v;
+}
+
+/** @brief
+ *  apply_homography()
+ */
+template<class MT, class PT>
+inline cv::Point_<MT> apply_homography(const cv::Matx<MT, 3, 3> & H, const cv::Point_<PT> & cp)
+{
+  cv::Vec<MT, 3> v = H * cv::Vec<MT, 3>(cp.x, cp.y, 1);
+  return v(2) ? cv::Point_<MT>(v(0) / v(2), v(1) / v(2)) : cv::Point_<MT>(v(0), v(1));
+}
+
+
+/** @brief
+ *  compute_epipolar_line()
+ *
+ *  The returned line is given as
+ *     a*x + b*y + c = 0
+ */
+template<class MT, class PT>
+inline cv::Vec<MT, 3> compute_epipolar_line(const cv::Matx<MT, 3, 3> & F, const cv::Point_<PT> & cp)
+{
+  return F * cv::Vec<MT, 3>(cp.x, cp.y, 1);
+}
+
 
 /** @brief
  *  distance_from_point_to_corresponding_epipolar_line()
@@ -302,31 +335,42 @@ bool recover_camera_pose_from_essential_matrix(
     cv::InputOutputArray inliers);
 
 
+
 /**
  * @brief estimate_camera_pose_and_derotation_homography()
  *
  * Estimate camera pose for forward / backward moving monocular camera.
  *
- * This method is not appropriate for stereo camera calibration because
+ * This method is not much appropriate for stereo camera calibration because
  * it uses distances from points to corresponding epipolar lines as metric.
- *
  * For true stereo camera this metric is not sensitive to small epipole changes
  * when epipole is very far away from image center (~ at left or right infinity).
+ *
  *
  * This routine calls @ref estimate_essential_matrix() in order to
  * find essential matrix from sparse feature matches and recover pose of current camera relative to reference camera.
  *
  * On the output it returns :
- *    EulerAnges of rotation matrix R in radians;
- *    Normalized translation vector T of current camera relative to reference camera;
- *    Rotation matrix R of current camera relative to reference camera;
- *    Derotation homography matrix H current camera relative to reference camera;
- *    Essential matrix E of current camera relative to reference camera;
- *    Fundamental matrix F of current camera relative to reference camera after derotation with homography H;
+ *    - EulerAnges of rotation matrix R in radians,
+ *        can be used to rotate CURRENT image to REFERENSE;
  *
- * The derotation homography matrix H can be used later to derotate and rectify RGB frames or sparse feature positions.
+ *    - Normalized translation vector T of CURRENT camera relative to REFERENCE camera;
  *
- * In order to apply H to current RGB image use:
+ *    - Rotation matrix R of CURRENT camera relative to REFERENCE camera,
+ *        can be used to rotate CURRENT image to REFERENSE;
+ *
+ *    - Derotation homography matrix H of CURRENT camera relative to REFERENCE camera,
+ *              can be used to rotate CURRENT image to REFERENSE;
+ *
+ *    - Essential matrix E of CURRENT camera relative to REFERENCE camera;
+ *
+ *    - Fundamental matrix F of CURRENT camera relative to REFERENCE camera
+ *        AFTER derotation with homography H;
+ *
+ * The derotation homography matrix H can be used later to derotate and rectify CURRENT RGB frame
+ * or sparse feature positions.
+ *
+ * In order to apply H to CURRENT RGB image use:
  * @code
  *    cv::Mat derotated_current_image;
  *    cv::warpPerspective(current_image, derotated_current_image,
@@ -336,7 +380,7 @@ bool recover_camera_pose_from_essential_matrix(
  *      cv::BORDER_CONSTANT);
  * @endcode
  *
- * In order to apply H to current sparse points use:
+ * In order to apply H to CURRENT sparse points use:
  * @code
  *    std::vector<cv::Point2f> derotated_current_keypoints;
  *    cv::perspectiveTransform(current_keypoints,
@@ -355,22 +399,6 @@ bool recover_camera_pose_from_essential_matrix(
  * @see <https://en.wikipedia.org/wiki/Homography_(computer_vision)>
  */
 bool estimate_camera_pose_and_derotation_homography(
-    /* in */ const cv::Matx33d & camera_matrix,
-    /* in */ const std::vector<cv::Point2f> & current_keypoints,
-    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
-    /* in */ ESSENTIAL_MATRIX_ESTIMATION_METHOD emm,
-    /* out, opt */ cv::Vec3d * outputEulerAnges,
-    /* out, opt */ cv::Vec3d * outputTranslationVector,
-    /* out, opt */ cv::Matx33d * outputRotationMatrix,
-    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
-    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
-    /* out, opt */ cv::Matx33d * outputDerotationHomography,
-    /* in, out, opt */ cv::InputOutputArray M);
-
-/**
- * Experimental Test
- */
-bool rectify_stereo_pose(
     /* in */ const cv::Matx33d & camera_matrix,
     /* in */ const std::vector<cv::Point2f> & current_keypoints,
     /* in */ const std::vector<cv::Point2f> & reference_keypoints,

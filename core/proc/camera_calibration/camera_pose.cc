@@ -3,9 +3,13 @@
  *
  *  Created on: Mar 4, 2023
  *      Author: amyznikov
+ *
+ *  @sa https://towardsdatascience.com/a-comprehensive-tutorial-on-stereo-geometry-and-stereo-rectification-with-python-7f368b09924a
+ *
  */
 
 #include "camera_pose.h"
+#include <core/proc/levmar.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -549,8 +553,6 @@ bool recover_camera_pose_from_essential_matrix(
   return true;
 }
 
-
-
 /**
  * Use cv::LMSolver to refine camera pose estimated from essential matrix
  */
@@ -588,8 +590,8 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     }
   }
 
-  class LMSolverCallback:
-      public cv::LMSolver::Callback
+  class c_levmar_solver_callback:
+      public c_levmar_solver::callback
   {
     cv::Matx33d camera_matrix;
     cv::Matx33d camera_matrix_t_inv;
@@ -602,12 +604,12 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     const int iTfix;
 
   public:
-    LMSolverCallback(const cv::Matx33d & _camera_matrix,
+    c_levmar_solver_callback(const cv::Matx33d & _camera_matrix,
         const std::vector<cv::Point2f> & _current_keypoints,
         const std::vector<cv::Point2f> & _reference_keypoints,
         const cv::Mat1b & _inliers,
-        const double _Tfix,
-        const int _iTfix ) :
+        double _Tfix,
+        int _iTfix ) :
 
         camera_matrix(_camera_matrix),
         current_keypoints(_current_keypoints),
@@ -615,7 +617,8 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
         inliers(_inliers),
         Tfix(_Tfix),
         iTfix(_iTfix),
-        numInliers(_inliers.empty() ? _current_keypoints.size() : cv::countNonZero(_inliers))
+        numInliers(_inliers.empty() ? _current_keypoints.size() :
+            cv::countNonZero(_inliers))
     {
       camera_matrix_t_inv =
           camera_matrix.t().inv();
@@ -625,41 +628,41 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     }
 
     /**
-     * computes rhs errors for specified vector of parameters
+     * compute rhs errors for specified vector of parameters
      */
-    bool compute(const cv::Mat1d & p, cv::Mat1d & rhs) const
+    bool compute(const std::vector<double> & p, std::vector<double> & rhs, cv::Mat1d * , bool * ) const override
     {
-      const cv::Vec3d A(p[0][0], p[1][0], p[2][0]);
+      const cv::Vec3d A(p[0], p[1], p[2]);
 
       cv::Vec3d T;
 
       switch (iTfix) {
         case 0:
-          T = cv::Vec3d(Tfix, p[3][0], p[4][0]);
+          T = cv::Vec3d(Tfix, p[3], p[4]);
           break;
         case 1:
-          T = cv::Vec3d(p[3][0], Tfix, p[4][0]);
+          T = cv::Vec3d(p[3], Tfix, p[4]);
           break;
         case 2:
-          T = cv::Vec3d(p[3][0], p[4][0], Tfix);
+          T = cv::Vec3d(p[3], p[4], Tfix);
           break;
         default:
           CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
           return false;
       }
 
-      T *= 1. / cv::norm(T);
-
       const cv::Matx33d F =
           compose_fundamental_matrix(camera_matrix_t_inv,
               camera_matrix_inv,
               build_rotation(A),
-              T);
+              T / cv::norm(T));
+
+      rhs.resize(numInliers);
 
       if( inliers.empty() ) { // case when no inliers mask
 
         for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
-          rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
+          rhs[i] = distance_from_point_to_corresponding_epipolar_line(F,
               current_keypoints[i], reference_keypoints[i]);
         }
       }
@@ -667,7 +670,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
         for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
           if( inliers[i][0] ) {
-            rhs[j++][0] = distance_from_point_to_corresponding_epipolar_line(F,
+            rhs[j++] = distance_from_point_to_corresponding_epipolar_line(F,
                 current_keypoints[i], reference_keypoints[i]);
           }
         }
@@ -676,69 +679,6 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       return true;
     }
 
-    /**
-     computes error and Jacobian for the specified vector of parameters
-
-     @param param the current vector of parameters
-     @param err output vector of errors: err_i = actual_f_i - ideal_f_i
-     @param J output Jacobian: J_ij = d(ideal_f_i)/d(param_j)
-
-     when J=noArray(), it means that it does not need to be computed.
-     Dimensionality of error vector and param vector can be different.
-     The callback should explicitly allocate (with "create" method) each output array
-     (unless it's noArray()).
-     */
-    bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
-    {
-      err.create(numInliers, 1, CV_64F);
-
-      const cv::Mat1d P =
-          param.getMat();
-
-      cv::Mat1d rhs =
-          err.getMat();
-
-      if ( !compute(P, rhs) ) {
-        return false;
-      }
-
-      if( J.needed() ) {
-
-        // numerical estimation of partial derivatives
-
-        cv::Mat1d rhs1(numInliers, 1);
-        cv::Mat1d rhs2(numInliers, 1);
-
-        J.create(numInliers, P.rows, CV_64F);
-        cv::Mat1d jac = J.getMatRef();
-
-        cv::Mat1d PP = P.clone();
-
-        const double eps = 1e-4;
-
-        for( int j = 0; j < PP.rows; ++j ) {
-
-          const double v =
-              PP[j][0];
-
-          const double delta =
-              std::max(1e-6, eps * std::abs(v));
-
-          PP[j][0] = v + delta;
-          compute(PP, rhs1);
-
-          PP[j][0] = v - delta;
-          compute(PP, rhs2);
-
-          cv::subtract(rhs1, rhs2, jac.col(j));
-          cv::multiply(jac.col(j), 0.5 / delta, jac.col(j));
-
-          PP[j][0] = v;
-        }
-      }
-
-      return true;
-    }
   };
 
 
@@ -757,56 +697,56 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   /*
    * Pack parameters into cv::Mat1d for levmar
    * */
-  cv::Mat1d p(5, 1);
+  std::vector<double> p(5);
 
-  p[0][0] = A(0);
-  p[1][0] = A(1);
-  p[2][0] = A(2);
+  p[0] = A(0);
+  p[1] = A(1);
+  p[2] = A(2);
   for ( int i = 0, j = 3; i < 3; ++i ) {
     if ( i != iTfix ) {
-      p[j++][0] = T[i];
+      p[j++] = T[i];
     }
   }
 
-  const cv::Ptr<cv::LMSolver::Callback> cb(
-      new LMSolverCallback(
+  c_levmar_solver lm(100, 1e-7);
+
+  int iterations =
+      lm.run(c_levmar_solver_callback(
           camera_matrix,
           current_keypoints,
           reference_keypoints,
           inliers,
           Tfix,
-          iTfix));
+          iTfix),
+          p);
 
-  cv::Ptr<cv::LMSolver> lm =
-      cv::LMSolver::create(cb, 200);
-
-  int iterations =
-      lm->run(p);
-
-  CF_DEBUG("lm->run(): %d iterations", iterations);
+  CF_DEBUG("lm.run(): %d iterations",
+      iterations);
 
   /*
    * Unpack parameters from cv::Mat1d
    * */
 
-  A(0) = p[0][0];
-  A(1) = p[1][0];
-  A(2) = p[2][0];
+  A(0) = p[0];
+  A(1) = p[1];
+  A(2) = p[2];
 
   switch (iTfix) {
     case 0:
-      T = cv::Vec3d(Tfix, p[3][0], p[4][0]);
+      T = cv::Vec3d(Tfix, p[3], p[4]);
       break;
     case 1:
-      T = cv::Vec3d(p[3][0], Tfix, p[4][0]);
+      T = cv::Vec3d(p[3], Tfix, p[4]);
       break;
     case 2:
-      T = cv::Vec3d(p[3][0], p[4][0], Tfix);
+      T = cv::Vec3d(p[3], p[4], Tfix);
       break;
     default:
       CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
       return false;
   }
+
+  T /= cv::norm(T);
 
   return true;
 }
@@ -816,9 +756,8 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
  *
  * Estimate camera pose for forward / backward moving monocular camera.
  *
- * This method is not appropriate for stereo camera calibration because
+ * This method is not much appropriate for stereo camera calibration because
  * it uses distances from points to corresponding epipolar lines as metric.
- *
  * For true stereo camera this metric is not sensitive to small epipole changes
  * when epipole is very far away from image center (~ at left or right infinity).
  *
@@ -827,16 +766,26 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
  * find essential matrix from sparse feature matches and recover pose of current camera relative to reference camera.
  *
  * On the output it returns :
- *    EulerAnges of rotation matrix R in radians;
- *    Normalized translation vector T of current camera relative to reference camera;
- *    Rotation matrix R of current camera relative to reference camera;
- *    Derotation homography matrix H current camera relative to reference camera;
- *    Essential matrix E of current camera relative to reference camera;
- *    Fundamental matrix F of current camera relative to reference camera after derotation with homography H;
+ *    - EulerAnges of rotation matrix R in radians,
+ *        can be used to rotate CURRENT image to REFERENSE;
  *
- * The derotation homography matrix H can be used later to derotate and rectify RGB frames or sparse feature positions.
+ *    - Normalized translation vector T of CURRENT camera relative to REFERENCE camera;
  *
- * In order to apply H to current RGB image use:
+ *    - Rotation matrix R of CURRENT camera relative to REFERENCE camera,
+ *        can be used to rotate CURRENT image to REFERENSE;
+ *
+ *    - Derotation homography matrix H of CURRENT camera relative to REFERENCE camera,
+ *              can be used to rotate CURRENT image to REFERENSE;
+ *
+ *    - Essential matrix E of CURRENT camera relative to REFERENCE camera;
+ *
+ *    - Fundamental matrix F of CURRENT camera relative to REFERENCE camera
+ *        AFTER derotation with homography H;
+ *
+ * The derotation homography matrix H can be used later to derotate and rectify CURRENT RGB frame
+ * or sparse feature positions.
+ *
+ * In order to apply H to CURRENT RGB image use:
  * @code
  *    cv::Mat derotated_current_image;
  *    cv::warpPerspective(current_image, derotated_current_image,
@@ -846,7 +795,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
  *      cv::BORDER_CONSTANT);
  * @endcode
  *
- * In order to apply H to current sparse points use:
+ * In order to apply H to CURRENT sparse points use:
  * @code
  *    std::vector<cv::Point2f> derotated_current_keypoints;
  *    cv::perspectiveTransform(current_keypoints,
@@ -971,29 +920,13 @@ bool estimate_camera_pose_and_derotation_homography(
   //
   // Update camera pose using levmar if enabled
   //
-  if( true /*is_levmar_enabled() */) {
-
-//    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
-//        "A = (%+g %+g %+g)\n"
-//        "T = (%+g %+g %+g)\n"
-//        "\n",
-//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-//        T(0), T(1), T(2));
-//
+  if( true ) {
     fOk =
         lm_refine_camera_pose(A, T,
             camera_matrix,
             current_keypoints,
             reference_keypoints,
             mask);
-
-//    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
-//        "A = (%+g %+g %+g)\n"
-//        "T = (%+g %+g %+g)\n"
-//        "\n",
-//        fOk,
-//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-//        T(0), T(1), T(2));
   }
 
   //
@@ -1044,416 +977,3 @@ bool estimate_camera_pose_and_derotation_homography(
   return true;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-////////////////////////////////////////////
-
-
-/**
- * Use cv::LMSolver to refine camera pose estimated from essential matrix
- */
-static bool lm_refine_stereo_pose(cv::Vec3d & A, cv::Vec3d & T,
-    const cv::Matx33d & camera_matrix,
-    const std::vector<cv::Point2f> & current_keypoints,
-    const std::vector<cv::Point2f> & reference_keypoints,
-    const cv::Mat1b & inliers)
-{
-
-  if ( current_keypoints.size() != reference_keypoints.size() ) {
-
-    CF_ERROR("Invalid args: reference_positions.size()=%zu not equal to current_positions.size()=%zu",
-        reference_keypoints.size(), current_keypoints.size());
-
-    return false;
-  }
-
-  if ( !inliers.empty() ) {
-
-    if ( inliers.type() != CV_8UC1 ) {
-
-      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1",
-          inliers.type());
-
-      return false;
-    }
-
-    if ( inliers.rows != (int)reference_keypoints.size() ) {
-
-      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%d",
-          inliers.rows, reference_keypoints.size());
-
-      return false;
-    }
-  }
-
-  class LMSolverCallback:
-      public cv::LMSolver::Callback
-  {
-    cv::Matx33d camera_matrix;
-    const cv::Vec3d T;
-    cv::Matx33d camera_matrix_t_inv;
-    cv::Matx33d camera_matrix_inv;
-    const std::vector<cv::Point2f> & current_keypoints;
-    const std::vector<cv::Point2f> & reference_keypoints;
-    const cv::Mat1b & inliers;
-    int numInliers;
-
-  public:
-    LMSolverCallback(const cv::Matx33d & _camera_matrix,
-        const cv::Vec3d & _T,
-        const std::vector<cv::Point2f> & _current_keypoints,
-        const std::vector<cv::Point2f> & _reference_keypoints,
-        const cv::Mat1b & _inliers) :
-
-        camera_matrix(_camera_matrix),
-        T(_T),
-        current_keypoints(_current_keypoints),
-        reference_keypoints(_reference_keypoints),
-        inliers(_inliers),
-        numInliers(_inliers.empty() ? _current_keypoints.size() : cv::countNonZero(_inliers))
-    {
-      camera_matrix_t_inv =
-          camera_matrix.t().inv();
-
-      camera_matrix_inv =
-          camera_matrix.inv();
-    }
-
-    /**
-     * computes rhs errors for specified vector of parameters
-     */
-    bool compute(const cv::Mat1d & p, cv::Mat1d & rhs) const
-    {
-      const cv::Vec3d A(p[0][0], p[1][0], p[2][0]);
-
-      const cv::Matx33d F =
-          compose_fundamental_matrix(camera_matrix_t_inv,
-              camera_matrix_inv,
-              build_rotation(A),
-              T);
-
-      if( inliers.empty() ) { // case when no inliers mask
-
-        for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
-          rhs[i][0] = distance_from_point_to_corresponding_epipolar_line(F,
-              current_keypoints[i], reference_keypoints[i]);
-        }
-
-      }
-      else { // case when inliers mask is provided
-
-        for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
-          if( inliers[i][0] ) {
-            rhs[j++][0] = distance_from_point_to_corresponding_epipolar_line(F,
-                current_keypoints[i], reference_keypoints[i]);
-          }
-        }
-
-      }
-
-      return true;
-    }
-
-    /**
-     computes error and Jacobian for the specified vector of parameters
-
-     @param param the current vector of parameters
-     @param err output vector of errors: err_i = actual_f_i - ideal_f_i
-     @param J output Jacobian: J_ij = d(ideal_f_i)/d(param_j)
-
-     when J=noArray(), it means that it does not need to be computed.
-     Dimensionality of error vector and param vector can be different.
-     The callback should explicitly allocate (with "create" method) each output array
-     (unless it's noArray()).
-     */
-    bool compute(cv::InputArray param, cv::OutputArray err, cv::OutputArray J) const override
-    {
-      const int nrhs =
-          numInliers;
-
-      err.create(nrhs, 1, CV_64F);
-
-      const cv::Mat1d P =
-          param.getMat();
-
-      cv::Mat1d rhs =
-          err.getMat();
-
-      if ( !compute(P, rhs) ) {
-        return false;
-      }
-
-      if( J.needed() ) {
-
-        // numerical estimation of partial derivatives
-
-        cv::Mat1d rhs1(nrhs, 1);
-        cv::Mat1d rhs2(nrhs, 1);
-
-        J.create(nrhs, P.rows, CV_64F);
-        cv::Mat1d jac = J.getMatRef();
-
-        cv::Mat1d PP = P.clone();
-
-        const double eps = 1e-4;
-
-        for( int j = 0; j < PP.rows; ++j ) {
-
-          const double v =
-              PP[j][0];
-
-          const double delta =
-              std::max(1e-6, eps * std::abs(v));
-
-          PP[j][0] = v + delta;
-          compute(PP, rhs1);
-
-          PP[j][0] = v - delta;
-          compute(PP, rhs2);
-
-          cv::subtract(rhs1, rhs2, jac.col(j));
-          cv::multiply(jac.col(j), 0.5 / delta, jac.col(j));
-
-          PP[j][0] = v;
-        }
-      }
-
-      return true;
-    }
-  };
-
-
-  /*
-   * Pack parameters into cv::Mat1d for levmar
-   * */
-  cv::Mat1d p(3, 1);
-
-  p[0][0] = A(0);
-  p[1][0] = A(1);
-  p[2][0] = A(2);
-
-  T = cv::Vec3d(-1, 0, 0);
-
-  const cv::Ptr<cv::LMSolver::Callback> cb(
-      new LMSolverCallback(
-          camera_matrix,
-          T,
-          current_keypoints,
-          reference_keypoints,
-          inliers));
-
-  cv::Ptr<cv::LMSolver> lm =
-      cv::LMSolver::create(cb, 200, 1e-9);
-
-  int iterations =
-      lm->run(p);
-
-  CF_DEBUG("lm->run(): %d iterations", iterations);
-
-  /*
-   * Unpack parameters from cv::Mat1d
-   * */
-
-  A(0) = p[0][0];
-  A(1) = p[1][0];
-  A(2) = p[2][0];
-
-  return true;
-}
-/**
- * Test
- */
-
-bool rectify_stereo_pose(
-    /* in */ const cv::Matx33d & camera_matrix,
-    /* in */ const std::vector<cv::Point2f> & current_keypoints,
-    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
-    /* in */ ESSENTIAL_MATRIX_ESTIMATION_METHOD emm,
-    /* out, opt */ cv::Vec3d * outputEulerAnges,
-    /* out, opt */ cv::Vec3d * outputTranslationVector,
-    /* out, opt */ cv::Matx33d * outputRotationMatrix,
-    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
-    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
-    /* out, opt */ cv::Matx33d * outputDerotationHomography,
-    /* in, out, opt */ cv::InputOutputArray M)
-{
-
-  INSTRUMENT_REGION("");
-
-  // Check input arguments
-  const int min_matched_points_required = 5;
-
-  if ( (int)reference_keypoints.size() < min_matched_points_required ) {
-
-    CF_ERROR("Invalid args: reference_keypoints.size()=%zu must be >= %d",
-        reference_keypoints.size(),
-        min_matched_points_required);
-
-    return false;
-  }
-
-  if ( current_keypoints.size() != reference_keypoints.size() ) {
-
-    CF_ERROR("Invalid args: current_keypoints.size()=%zu not equal to reference_keypoints.size()=%zu ",
-        current_keypoints.size(), reference_keypoints.size());
-
-    return false;
-  }
-
-  if ( M.needed() ) {
-
-    if ( M.fixedType() && M.type() != CV_8UC1 ) {
-      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1", M.type());
-      return false;
-    }
-
-    if ( !M.empty() && M.rows() != (int) current_keypoints.size() ) {
-      CF_ERROR("Invalid args: inliers_mask.rows()=%d is invalid. Must be %zu", M.rows(), current_keypoints.size());
-      return false;
-    }
-  }
-
-  //
-  // Go on
-  //
-
-  cv::Matx33d R, E, H;
-  cv::Vec3d A, T;
-  cv::Mat1b mask;
-  bool fOk;
-
-  if ( !M.empty() ) {
-    mask = M.getMatRef();
-
-    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
-        cv::countNonZero(mask),
-        mask.rows);
-
-  }
-  //
-  // Estimate essential matrix
-  //
-
-  fOk =
-      estimate_essential_matrix(&E,
-          camera_matrix,
-          current_keypoints,
-          reference_keypoints,
-          mask,
-          emm);
-
-  if ( !fOk ) {
-    CF_ERROR("estimate_essential_matrix() fails");
-    return false;
-  }
-
-  CF_DEBUG("estimate_essential_matrix: inliers=%d/%d",
-      cv::countNonZero(mask),
-      mask.rows);
-
-  //
-  // Decompose essential matrix and recover relative pose
-  //
-  fOk =
-      recover_camera_pose_from_essential_matrix(E,
-          camera_matrix,
-          current_keypoints,
-          reference_keypoints,
-          nullptr,
-          &A,
-          &T,
-          mask);
-
-  if ( !fOk ) {
-    CF_ERROR("recover_camera_pose_from_essential_matrix() fails");
-    return false;
-  }
-
-  //
-  // Update camera pose using levmar if enabled
-  //
-  if( true /*is_levmar_enabled() */) {
-
-//    CF_DEBUG("\nbefore lm_refine_camera_pose:\n"
-//        "A = (%+g %+g %+g)\n"
-//        "T = (%+g %+g %+g)\n"
-//        "\n",
-//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-//        T(0), T(1), T(2));
-
-    fOk =
-        lm_refine_stereo_pose(A, T,
-            camera_matrix,
-            current_keypoints,
-            reference_keypoints,
-            mask);
-
-//    CF_DEBUG("\nafter lm_refine_camera_pose: %d\n"
-//        "A = (%+g %+g %+g)\n"
-//        "T = (%+g %+g %+g)\n"
-//        "\n",
-//        fOk,
-//        A(0) * 180 / CV_PI, A(1) * 180 / CV_PI, A(2) * 180 / CV_PI,
-//        T(0), T(1), T(2));
-  }
-
-  //
-  // Return to caller everything requested
-  //
-  if ( M.needed() && M.empty() ) {
-    if ( M.kind() == cv::_InputArray::KindFlag::MAT ) {
-      M.move(mask);
-    }
-    else {
-      mask.copyTo(M);
-    }
-  }
-
-  if ( outputEulerAnges ) {
-    *outputEulerAnges = A;
-  }
-
-  if ( outputTranslationVector ) {
-    * outputTranslationVector = T;
-  }
-
-  if ( outputRotationMatrix || outputEssentialMatrix || outputDerotationHomography || outputFundamentalMatrix ) {
-    R = build_rotation(A);
-    if ( outputRotationMatrix ) {
-      * outputRotationMatrix = R;
-    }
-  }
-
-  if ( outputDerotationHomography || outputFundamentalMatrix  ) {
-    H = camera_matrix * R * camera_matrix.inv();
-    if ( outputDerotationHomography ) {
-      * outputDerotationHomography = H;
-    }
-  }
-
-  if ( outputEssentialMatrix || outputFundamentalMatrix ) {
-    E = compose_essential_matrix(R, T);
-    if ( outputEssentialMatrix ) {
-      * outputEssentialMatrix = E;
-    }
-  }
-
-  if ( outputFundamentalMatrix ) {
-    * outputFundamentalMatrix =
-        compose_fundamental_matrix(E, camera_matrix) * H.inv() ;
-  }
-  return true;
-
-}

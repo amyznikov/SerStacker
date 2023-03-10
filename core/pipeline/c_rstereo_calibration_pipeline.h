@@ -51,11 +51,17 @@ struct c_rstereo_calibrate_options
 
 struct c_rstereo_calibration_output_options
 {
-  bool save_rectified_images = false;
-  std::string rectified_images_file_name;
+  bool save_progress_video = false;
+  std::string progress_video_filename;
+
+  bool save_rectified_video = false;
+  std::string rectified_video_filename;
+
+  bool save_stereo_matches_video = false;
+  std::string stereo_matches_video_filename;
 
   bool save_motion_poses = false;
-  std::string motion_poses_file_name;
+  std::string motion_poses_filename;
 };
 
 class c_rstereo_calibration_pipeline:
@@ -104,28 +110,21 @@ public:
   c_notification<void()> on_accumulator_changed;
 
 protected:
+  void update_output_path() override;
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+  bool run_calibration();
+
   void reset_input_frames();
-  bool run_stereo_calibration();
-  void update_output_path() override;
   bool open_input_streams();
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool read_stereo_frame();
-  bool detect_and_match_keypoints();
-  void update_remap();
-  void update_display_image(bool drawpoints =  true);
+  bool detect_keypoints();
+
+  void update_display_image(bool applyHomography = false, bool drawmatches = false, int stream_pos = -1);
   bool write_progress_video(c_video_writer & w);
-  double estimate_grid_subset_quality(int excludedIndex) const;
-  void filter_frames();
-  void update_state();
   bool save_current_camera_parameters() const;
-
-  double compute_stereo_pose(const std::vector<cv::Point2f> & current_keypoints,
-      const std::vector<cv::Point2f> & reference_keypoints);
-
-  void compute_motion_pose();
 
 protected:
 
@@ -141,10 +140,23 @@ protected:
     // Keypoints and matches()
     std::vector<cv::KeyPoint> keypoints[2]; // current (left) and reference (right) keypoints
     cv::Mat descriptors[2]; // current (left) and reference (right) descriptors
-    std::vector<cv::DMatch> matches; // matches between left and right frame sparse features (keypoints)
+    //std::vector<cv::DMatch> matches; // matches between left and right frame sparse features (keypoints)
     //std::vector<uint8_t> matched_inliers; // mask for matched inliers
-    std::vector<cv::Point2f> matched_positions[2];
+    //std::vector<cv::Point2f> matched_positions[2];
   };
+
+  struct c_motion_pose {
+    cv::Point2d E[2]; // [left/right]
+    cv::Vec3d T[2]; // [left/right]
+    double rmse[2];   // [left/right]
+    std::vector<cv::Point2f> matched_positions[2]; // [left/right]
+    int stream_pos;
+  };
+
+  bool compute_motion_pose(int camera_index, c_motion_pose * pose) const;
+  bool detect_current_stereo_matches(c_motion_pose * pose);
+
+  std::vector<c_motion_pose> motion_poses_;
 
 
   cv::Mat missing_pixel_mask_;
@@ -172,22 +184,9 @@ protected:
 
   c_stereo_frame * current_frame_ = nullptr;
   c_stereo_frame * previous_frame_ = nullptr;
-  cv::Vec3d motionEulerAnges[2];
-  cv::Vec3d motionTranslation[2];
-  cv::Point2d motionEpipoles[2][2];
-  bool haveMotionPose[2] = {false, false};
 
-
-  std::vector<std::vector<cv::Point2f>> matched_stereo_positions[2];
-  std::vector<double> perViewErrors_;
-
-  cv::Vec3d currentEulerAnges;
-  cv::Vec3d currentTranslationVector;
-  cv::Matx33d currentRotationMatrix;
-  cv::Matx33d currentEssentialMatrix;
-  cv::Matx33d currentFundamentalMatrix;
-  cv::Matx33d currentDerotationHomography;
-
+  cv::Matx33d rectificationHomography[2];
+  bool haveRectificationHomography = false;
 
   c_stereo_camera_intrinsics stereo_intrinsics_;
   c_stereo_camera_extrinsics stereo_extrinsics_;
@@ -206,8 +205,8 @@ protected:
   double rmse_ = 0;
   int calibration_flags_ = 0;
 
-  FILE * epipolefp_ = nullptr;
-  int epipolefidx_ = 0;
+  FILE * posesfp_ = nullptr;
+  void dump_motion_pose(const c_motion_pose & pose);
 };
 
 #endif /* __c_rstereo_calibration_pipeline_h__ */

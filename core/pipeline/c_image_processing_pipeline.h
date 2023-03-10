@@ -51,7 +51,7 @@ public: // output writer utility class
   public:
     ~c_video_writer();
     bool is_open() const;
-    bool open(const std::string & filename, const cv::Size & frameSize, bool color, bool write_frame_mapping);
+    bool open(const std::string & filename, const cv::Size & frameSize, bool color, bool write_frame_mapping = false);
     bool write(cv::InputArray currenFrame, cv::InputArray currentMask, bool with_alpha_mask, int seqindex);
     void close();
 

@@ -31,34 +31,104 @@ QRStereoCalibrationOutputOptions::QRStereoCalibrationOutputOptions(QWidget * par
 
   ///
 
-  save_rectified_images_ctl =
-      add_checkbox("Save rectified frames",
+  save_progress_video_ctl =
+      add_checkbox("Save progress frames",
           [this](bool checked) {
             if ( pipeline_ ) {
-              pipeline_->output_options().save_rectified_images = checked;
-              rectified_images_file_name_ctl->setEnabled(checked);
+              pipeline_->output_options().save_progress_video = checked;
+              progress_video_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
             if ( pipeline_ ) {
-              *checked = pipeline_->output_options().save_rectified_images;
+              *checked = pipeline_->output_options().save_progress_video;
               return true;
             }
             return false;
           });
 
-  rectified_images_file_name_ctl =
-      add_textbox("rectified_images_file_name:",
+  progress_video_filename_ctl =
+      add_textbox("progress_images_file_name:",
           [this](const QString & value) {
             if ( pipeline_ ) {
-              pipeline_->output_options().rectified_images_file_name = value.toStdString();
+              pipeline_->output_options().progress_video_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
             if ( pipeline_ ) {
-              *value = pipeline_->output_options().rectified_images_file_name.c_str();
+              *value = pipeline_->output_options().progress_video_filename.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  ///
+
+  save_rectified_video_ctl =
+      add_checkbox("Save rectified frames",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().save_rectified_video = checked;
+              rectified_video_filename_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              *checked = pipeline_->output_options().save_rectified_video;
+              return true;
+            }
+            return false;
+          });
+
+  rectified_video_filename_ctl =
+      add_textbox("rectified video filename:",
+          [this](const QString & value) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().rectified_video_filename = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( pipeline_ ) {
+              *value = pipeline_->output_options().rectified_video_filename.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  ///
+
+  save_stereo_matches_video_ctl =
+      add_checkbox("Save stereo matches",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().save_stereo_matches_video = checked;
+              stereo_matches_video_filename_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              *checked = pipeline_->output_options().save_stereo_matches_video;
+              return true;
+            }
+            return false;
+          });
+
+  stereo_matches_video_filename_ctl =
+      add_textbox("stereo matches filename:",
+          [this](const QString & value) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().stereo_matches_video_filename = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( pipeline_ ) {
+              *value = pipeline_->output_options().stereo_matches_video_filename.c_str();
               return true;
             }
             return false;
@@ -71,7 +141,7 @@ QRStereoCalibrationOutputOptions::QRStereoCalibrationOutputOptions(QWidget * par
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_motion_poses = checked;
-              motion_poses_file_name_ctl->setEnabled(checked);
+              motion_poses_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
@@ -83,17 +153,17 @@ QRStereoCalibrationOutputOptions::QRStereoCalibrationOutputOptions(QWidget * par
             return false;
           });
 
-  motion_poses_file_name_ctl =
+  motion_poses_filename_ctl =
       add_textbox("motion_poses_file_name:",
           [this](const QString & value) {
             if ( pipeline_ ) {
-              pipeline_->output_options().motion_poses_file_name = value.toStdString();
+              pipeline_->output_options().motion_poses_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
             if ( pipeline_ ) {
-              *value = pipeline_->output_options().motion_poses_file_name.c_str();
+              *value = pipeline_->output_options().motion_poses_filename.c_str();
               return true;
             }
             return false;
@@ -125,8 +195,10 @@ void QRStereoCalibrationOutputOptions::onupdatecontrols()
     Base::onupdatecontrols();
 
     output_directory_ctl->setCurrentPath(pipeline_->output_directory().c_str(), false);
-    rectified_images_file_name_ctl->setEnabled(save_rectified_images_ctl->isChecked());
-    motion_poses_file_name_ctl->setEnabled(save_motion_poses_ctl->isChecked());
+    progress_video_filename_ctl->setEnabled(save_progress_video_ctl->isChecked());
+    rectified_video_filename_ctl->setEnabled(save_rectified_video_ctl->isChecked());
+    stereo_matches_video_filename_ctl->setEnabled(save_stereo_matches_video_ctl->isChecked());
+    motion_poses_filename_ctl->setEnabled(save_motion_poses_ctl->isChecked());
 
     setEnabled(true);
   }

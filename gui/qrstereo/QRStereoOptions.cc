@@ -1,19 +1,19 @@
 /*
- * QRStereoCalibrationOptions.cc
+ * QRStereoOptions.cc
  *
  *  Created on: Mar 2, 2023
  *      Author: amyznikov
  */
 
-#include "QRStereoCalibrationOptions.h"
+#include "QRStereoOptions.h"
 
 
-QRStereoCalibrationOptions::QRStereoCalibrationOptions(QWidget * parent) :
+QRStereoOptions::QRStereoOptions(QWidget * parent) :
   Base("QCameraCalibrationSettings", parent)
 {
 
   add_expandable_groupbox("Input options",
-      inputOptions_ctl = new QRStereoCalibrationInputOptions(this));
+      inputOptions_ctl = new QRStereoInputOptions(this));
   connect(inputOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
@@ -28,7 +28,7 @@ QRStereoCalibrationOptions::QRStereoCalibrationOptions(QWidget * parent) :
       this, &ThisClass::parameterChanged);
 
   add_expandable_groupbox("Output Options",
-      outputOptions_ctl = new QRStereoCalibrationOutputOptions(this));
+      outputOptions_ctl = new QRStereoOutputOptions(this));
   connect(outputOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
@@ -37,18 +37,18 @@ QRStereoCalibrationOptions::QRStereoCalibrationOptions(QWidget * parent) :
 }
 
 
-void QRStereoCalibrationOptions::set_current_pipeline(const c_rstereo_calibration_pipeline::sptr & pipeline)
+void QRStereoOptions::set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_rstereo_calibration_pipeline::sptr & QRStereoCalibrationOptions::current_pipeline() const
+const c_regular_stereo_pipeline::sptr & QRStereoOptions::current_pipeline() const
 {
   return pipeline_;
 }
 
-void QRStereoCalibrationOptions::onupdatecontrols()
+void QRStereoOptions::onupdatecontrols()
 {
   if ( !pipeline_ ) {
 

@@ -15,30 +15,44 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
       add_checkbox("enable calibration",
           [this](bool checked) {
             if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().enable_calibration = checked;
+              pipeline_->calibration_options().enable_calibration = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
             if ( pipeline_ ) {
-              * checked = pipeline_->stereo_calibrate_options().enable_calibration;
+              * checked = pipeline_->calibration_options().enable_calibration;
               return true;
             }
             return false;
           });
 
+  form->addRow("Calibration file name:",
+      calibration_config_filename_ctl =
+          new QBrowsePathCombo("",
+              QFileDialog::AcceptMode::AcceptOpen,
+              QFileDialog::ExistingFile));
+
+  connect(calibration_config_filename_ctl, &QBrowsePathCombo::pathChanged,
+      [this]() {
+        if ( pipeline_ && !updatingControls() ) {
+          pipeline_->calibration_options(). calibration_config_filename =
+              calibration_config_filename_ctl->currentPath().toStdString();
+          Q_EMIT parameterChanged();
+        }
+      });
 
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
           [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().min_frames = value;
+              pipeline_->calibration_options().min_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().min_frames;
+              * value = pipeline_->calibration_options().min_frames;
               return true;
             }
             return false;
@@ -48,13 +62,13 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
       add_numeric_box<int>("max_frames:",
           [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().max_frames = value;
+              pipeline_->calibration_options().max_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().max_frames;
+              * value = pipeline_->calibration_options().max_frames;
               return true;
             }
             return false;
@@ -142,13 +156,13 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
       add_numeric_box<double>("filter_alpha:",
           [this](double value) {
             if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().filter_alpha = value;
+              pipeline_->calibration_options().filter_alpha = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().filter_alpha;
+              * value = pipeline_->calibration_options().filter_alpha;
               return true;
             }
             return false;
@@ -158,13 +172,13 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
   updateControls();
 }
 
-void QRStereoCalibrateOptions::set_current_pipeline(const c_rstereo_calibration_pipeline::sptr & pipeline)
+void QRStereoCalibrateOptions::set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_rstereo_calibration_pipeline::sptr& QRStereoCalibrateOptions::current_pipeline() const
+const c_regular_stereo_pipeline::sptr& QRStereoCalibrateOptions::current_pipeline() const
 {
   return pipeline_;
 }

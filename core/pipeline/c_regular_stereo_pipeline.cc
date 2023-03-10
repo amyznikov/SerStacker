@@ -1,11 +1,11 @@
 /*
- * c_rstereo_calibration_pipeline.cc
+ * c_regular_stereo_pipeline.cc
  *
  *  Created on: Mar 4, 2023
  *      Author: amyznikov
  */
 
-#include "c_rstereo_calibration_pipeline.h"
+#include "c_regular_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/proc/camera_calibration/camera_pose.h>
@@ -13,7 +13,32 @@
 #include <core/readdir.h>
 #include <core/debug.h>
 
-c_rstereo_calibration_pipeline::c_rstereo_calibration_pipeline(const std::string & name,
+
+#define CATCH(fn) \
+  catch( const cv::Exception &e ) { \
+    CF_ERROR("OpenCV exception %s in %s():\n" \
+        "%s\n" \
+        "%s() : %d\n" \
+        "file : %s\n", \
+        fn, \
+        __func__, \
+        e.err.c_str(), \
+        e.func.c_str(), \
+        e.line, \
+        e.file.c_str() \
+        ); \
+  } \
+  catch( const std::exception &e ) { \
+    CF_ERROR("std::exception %s in %s(): %s\n", fn, __func__, e.what()); \
+  } \
+  catch( ... ) { \
+    CF_ERROR("Unknown exception %s in %s()\n", fn, __func__); \
+  }
+
+
+
+
+c_regular_stereo_pipeline::c_regular_stereo_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
@@ -22,52 +47,62 @@ c_rstereo_calibration_pipeline::c_rstereo_calibration_pipeline(const std::string
   feature2d_options_.sparse_feature_matcher.type = FEATURE2D_MATCHER_AUTO_SELECT;
 }
 
-c_rstereo_calibration_pipeline::~c_rstereo_calibration_pipeline()
+c_regular_stereo_pipeline::~c_regular_stereo_pipeline()
 {
   cancel();
 }
 
-c_rstereo_calibration_input_options & c_rstereo_calibration_pipeline::input_options()
+c_regular_stereo_input_options & c_regular_stereo_pipeline::input_options()
 {
   return input_options_;
 }
 
-const c_rstereo_calibration_input_options & c_rstereo_calibration_pipeline::input_options() const
+const c_regular_stereo_input_options & c_regular_stereo_pipeline::input_options() const
 {
   return input_options_;
 }
 
-c_rstereo_feature2d_options & c_rstereo_calibration_pipeline::feature2d_options()
+c_regular_stereo_feature2d_options & c_regular_stereo_pipeline::feature2d_options()
 {
   return feature2d_options_;
 }
 
-const c_rstereo_feature2d_options & c_rstereo_calibration_pipeline::feature2d_options() const
+const c_regular_stereo_feature2d_options & c_regular_stereo_pipeline::feature2d_options() const
 {
   return feature2d_options_;
 }
 
-c_rstereo_calibrate_options & c_rstereo_calibration_pipeline::stereo_calibrate_options()
+c_regular_stereo_calibratie_options & c_regular_stereo_pipeline::calibration_options()
 {
   return calibration_options_;
 }
 
-const c_rstereo_calibrate_options & c_rstereo_calibration_pipeline::stereo_calibrate_options() const
+const c_regular_stereo_calibratie_options & c_regular_stereo_pipeline::calibration_options() const
 {
   return calibration_options_;
 }
 
-c_rstereo_calibration_output_options & c_rstereo_calibration_pipeline::output_options()
+c_regular_stereo_matching_options & c_regular_stereo_pipeline::stereo_matching_options()
+{
+  return stereo_matching_options_;
+}
+
+const c_regular_stereo_matching_options & c_regular_stereo_pipeline::stereo_matching_options() const
+{
+  return stereo_matching_options_;
+}
+
+c_regular_stereo_output_options & c_regular_stereo_pipeline::output_options()
 {
   return output_options_;
 }
 
-const c_rstereo_calibration_output_options & c_rstereo_calibration_pipeline::output_options() const
+const c_regular_stereo_output_options & c_regular_stereo_pipeline::output_options() const
 {
   return output_options_;
 }
 
-bool c_rstereo_calibration_pipeline::serialize(c_config_setting settings, bool save)
+bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
 
@@ -83,6 +118,7 @@ bool c_rstereo_calibration_pipeline::serialize(c_config_setting settings, bool s
     SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
     SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
     SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
+    SERIALIZE_OPTION(section, save, input_options_, cameraMatrix);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
@@ -92,18 +128,31 @@ bool c_rstereo_calibration_pipeline::serialize(c_config_setting settings, bool s
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "calibration_options")) ) {
+    SERIALIZE_OPTION(section, save, calibration_options_, enable_calibration);
+    SERIALIZE_OPTION(section, save, calibration_options_, calibration_config_filename);
     SERIALIZE_OPTION(section, save, calibration_options_, min_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, max_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "stereo_matching_options")) ) {
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, enable_stereo_matchning);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, max_disparity);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, max_scale);
+  }
+
+
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
+
+    SERIALIZE_OPTION(section, save, output_options_, save_calibration_config_file);
+    SERIALIZE_OPTION(section, save, output_options_, calibration_config_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
     SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
 
-    SERIALIZE_OPTION(section, save, output_options_, save_rectified_video);
-    SERIALIZE_OPTION(section, save, output_options_, rectified_video_filename);
+    SERIALIZE_OPTION(section, save, output_options_, save_rectified_videos);
+    SERIALIZE_OPTION(section, save, output_options_, left_rectified_video_filename);
+    SERIALIZE_OPTION(section, save, output_options_, right_rectified_video_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_stereo_matches_video);
     SERIALIZE_OPTION(section, save, output_options_, stereo_matches_video_filename);
@@ -117,15 +166,18 @@ bool c_rstereo_calibration_pipeline::serialize(c_config_setting settings, bool s
 }
 
 
-bool c_rstereo_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
+bool c_regular_stereo_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
 {
   lock_guard lock(display_lock_);
+
+  //update_display_image(applyHomography, drawmatches, stream_pos)
+
   display_frame_.copyTo(frame);
   mask.release();
   return true;
 }
 
-void c_rstereo_calibration_pipeline::update_output_path()
+void c_regular_stereo_pipeline::update_output_path()
 {
   if( output_directory_.empty() ) {
 
@@ -164,7 +216,7 @@ void c_rstereo_calibration_pipeline::update_output_path()
 
 }
 
-bool c_rstereo_calibration_pipeline::open_input_streams()
+bool c_regular_stereo_pipeline::open_input_streams()
 {
   for ( int i = 0; i < 2; ++i ) {
     if ( !input_sources_[i]->open() ) {
@@ -212,7 +264,7 @@ bool c_rstereo_calibration_pipeline::open_input_streams()
   return true;
 }
 
-bool c_rstereo_calibration_pipeline::read_stereo_frame()
+bool c_regular_stereo_pipeline::read_stereo_frame()
 {
   for( int i = 0; i < 2; ++i ) {
 
@@ -227,10 +279,37 @@ bool c_rstereo_calibration_pipeline::read_stereo_frame()
     }
   }
 
+  if( current_frame_->images[0].size() != current_frame_->images[1].size() ) {
+    CF_ERROR("INPUT ERROR: Left (%dx%d) and right (%dx%d) image sizes not equal.\n"
+        "Different image sizes are not yet supported",
+        current_frame_->images[0].cols, current_frame_->images[0].rows,
+        current_frame_->images[1].cols, current_frame_->images[1].rows);
+    return false;
+  }
+
+  if( current_frame_->images[0].channels() != current_frame_->images[1].channels() ) {
+    CF_ERROR("INPUT ERROR: Left (%d) and right (%d) number of image channels not equal.\n"
+        "Different image types are not yet supported",
+        current_frame_->images[0].channels(),
+        current_frame_->images[1].channels());
+    return false;
+  }
+
+  if( intrinsics_.image_size.empty() ) {
+    intrinsics_.image_size =
+        current_frame_->images[0].size();
+  }
+  else if( intrinsics_.image_size != current_frame_->images[0].size() ) {
+    CF_ERROR("INPUT ERROR: Frame size change (%dx%d) -> (%dx%d) not supported\n",
+        intrinsics_.image_size.width, intrinsics_.image_size.height,
+        current_frame_->images[0].cols, current_frame_->images[0].rows);
+    return false;
+  }
+
   return true;
 }
 
-bool c_rstereo_calibration_pipeline::detect_keypoints()
+bool c_regular_stereo_pipeline::detect_keypoints()
 {
   for( int i = 0; i < 2; ++i ) {
     current_frame_->keypoints[i].clear();
@@ -276,7 +355,7 @@ bool c_rstereo_calibration_pipeline::detect_keypoints()
   return true;
 }
 
-bool c_rstereo_calibration_pipeline::read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const
+bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const
 {
   lock_guard lock(display_lock_);
 
@@ -393,11 +472,12 @@ bool c_rstereo_calibration_pipeline::read_input_frame(const c_input_source::sptr
 }
 
 
-void c_rstereo_calibration_pipeline::update_display_image(bool applyHomography, bool drawmatches, int stream_pos)
+void c_regular_stereo_pipeline::update_display_image(bool applyHomography, bool drawmatches, int stream_pos)
 {
+  lock_guard lock(display_lock_);
+
   if ( current_frame_ && !current_frame_->images[0].empty() ) {
 
-    lock_guard lock(display_lock_);
 
     const cv::Size sizes[2] =  {
         current_frame_->images[0].size(),
@@ -503,7 +583,7 @@ void c_rstereo_calibration_pipeline::update_display_image(bool applyHomography, 
   on_accumulator_changed();
 }
 
-bool c_rstereo_calibration_pipeline::write_progress_video(c_video_writer & progress_writer)
+bool c_regular_stereo_pipeline::write_progress_video(c_video_writer & progress_writer)
 {
   if ( output_options_.save_progress_video ) {
 
@@ -535,12 +615,107 @@ bool c_rstereo_calibration_pipeline::write_progress_video(c_video_writer & progr
   return true;
 }
 
-bool c_rstereo_calibration_pipeline::save_current_camera_parameters() const
+std::string c_regular_stereo_pipeline::get_calibraton_config_output_filename() const
 {
+  std::string output_file_name =
+      calibration_options_.calibration_config_filename;
+
+  if( output_file_name.empty() ) {
+    output_file_name =
+        ssprintf("%s/regular_stereto_calib.%s.yml",
+            output_path_.c_str(),
+            csequence_name());
+  }
+  else if( !is_absolute_path(output_file_name) ) {
+    output_file_name =
+        ssprintf("%s/%s",
+            output_path_.c_str(),
+            output_file_name.c_str());
+  }
+
+  return output_file_name ;
+}
+
+bool c_regular_stereo_pipeline::save_calibration_config_file() const
+{
+  std::string output_file_name =
+      get_calibraton_config_output_filename();
+
+  if( !create_path(get_parent_directory(output_file_name)) ) {
+    CF_ERROR("create_path('%s') fails: %s ", output_file_name.c_str(), strerror(errno));
+    return false;
+  }
+
+  cv::FileStorage fs(output_file_name, cv::FileStorage::WRITE);
+
+  if( !fs.isOpened() ) {
+    CF_ERROR("cv::FileStorage('%s') fails: %s ",
+        output_file_name.c_str(),
+        strerror(errno));
+    return false;
+  }
+
+  time_t rawtime;
+  time(&rawtime);
+  char buf[256];
+  strftime(buf, sizeof(buf) - 1, "%c", localtime(&rawtime));
+
+  fs << "calibrationDate" << buf;
+
+  fs << "cameraResolution" << intrinsics_.image_size;
+  fs << "cameraMatrix" << intrinsics_.camera_matrix;
+  fs << "dist_coeffs" << intrinsics_.dist_coeffs;
+  fs << "rectificationHomography0" << rectificationHomography[0];
+  fs << "rectificationHomography1" << rectificationHomography[1];
+
+  fs.release();
+
+  return true;
+
+
   return false;
 }
 
-bool c_rstereo_calibration_pipeline::initialize_pipeline()
+bool c_regular_stereo_pipeline::load_calibration_config_file()
+{
+  std::string filename =
+      calibration_options_.calibration_config_filename;
+
+  if( filename.empty() && calibration_options_.enable_calibration ) {
+    filename = get_calibraton_config_output_filename();
+  }
+
+  if ( filename.empty() ) {
+    CF_ERROR("INPUT ERROR: No input calibraton cofig file name spcefied");
+    return false;
+  }
+
+  try {
+
+    cv::FileStorage fs(filename, cv::FileStorage::READ);
+
+    if( !fs.isOpened() ) {
+      CF_ERROR("Error: can not open the extrinsics parameters "
+          "from input file '%s'", filename.c_str());
+    }
+    else {
+
+      fs["cameraResolution"] >> intrinsics_.image_size;
+      fs["cameraMatrix"] >> intrinsics_.camera_matrix;
+      fs["dist_coeffs"] >> intrinsics_.dist_coeffs;
+      fs["rectificationHomography0"] >> rectificationHomography[0];
+      fs["rectificationHomography1"] >> rectificationHomography[1];
+
+      return true;
+    }
+  }
+  CATCH(__func__);
+
+  return false;
+}
+
+
+bool c_regular_stereo_pipeline::initialize_pipeline()
 {
   set_pipeline_stage(rstereo_calibration_initialize);
 
@@ -588,6 +763,13 @@ bool c_rstereo_calibration_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
+  if( !calibration_options_.enable_calibration && !load_calibration_config_file() ) {
+    CF_ERROR("load_calibration_cofig_file() fails");
+    return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+
   if( !(keypoints_extractor_ = create_sparse_feature_extractor(feature2d_options_.sparse_feature_extractor)) ) {
     CF_ERROR("ERROR: create_sparse_feature_extractor() fails");
     return false;
@@ -603,6 +785,17 @@ bool c_rstereo_calibration_pipeline::initialize_pipeline()
   current_frame_ = &input_frames_[0];
   previous_frame_ = &input_frames_[1];
   haveRectificationHomography = false;
+
+  const cv::Matx23d & C =
+      input_options_.cameraMatrix;
+
+  intrinsics_.camera_matrix = cv::Matx33d(
+      C(0, 0), C(0, 1), C(0, 2),
+      C(1, 0), C(1, 1), C(1, 2),
+      0, 0, 1);
+
+  intrinsics_.image_size.width =
+      intrinsics_.image_size.height = -1;
 
 
   if ( output_options_.save_motion_poses ) {
@@ -634,7 +827,7 @@ bool c_rstereo_calibration_pipeline::initialize_pipeline()
   return true;
 }
 
-void c_rstereo_calibration_pipeline::dump_motion_pose(const c_motion_pose & pose)
+void c_regular_stereo_pipeline::dump_motion_pose(const c_motion_pose & pose)
 {
   if( posesfp_ ) {
 
@@ -665,7 +858,7 @@ void c_rstereo_calibration_pipeline::dump_motion_pose(const c_motion_pose & pose
 }
 
 
-void c_rstereo_calibration_pipeline::cleanup_pipeline()
+void c_regular_stereo_pipeline::cleanup_pipeline()
 {
   set_pipeline_stage(rstereo_calibration_finishing);
 
@@ -714,7 +907,7 @@ void c_rstereo_calibration_pipeline::cleanup_pipeline()
   set_pipeline_stage(rstereo_calibration_idle);
 }
 
-void c_rstereo_calibration_pipeline::reset_input_frames()
+void c_regular_stereo_pipeline::reset_input_frames()
 {
   for ( int i = 0; i < 2; ++i ) {
 
@@ -781,7 +974,7 @@ void c_rstereo_calibration_pipeline::reset_input_frames()
 //}
 
 
-bool c_rstereo_calibration_pipeline::compute_motion_pose(int camera_index, c_motion_pose * pose) const
+bool c_regular_stereo_pipeline::compute_motion_pose(int camera_index, c_motion_pose * pose) const
 {
   std::vector<cv::Point2f> current_positions;
   std::vector<cv::Point2f> previous_positions;
@@ -824,7 +1017,7 @@ bool c_rstereo_calibration_pipeline::compute_motion_pose(int camera_index, c_mot
 
   bool fOK =
       estimate_camera_pose_and_derotation_homography(
-          cameraMatrix,
+          intrinsics_.camera_matrix,
           current_positions,
           previous_positions,
           EMM_LMEDS,
@@ -877,7 +1070,7 @@ bool c_rstereo_calibration_pipeline::compute_motion_pose(int camera_index, c_mot
   return true;
 }
 
-bool c_rstereo_calibration_pipeline::detect_current_stereo_matches(c_motion_pose * pose)
+bool c_regular_stereo_pipeline::detect_current_stereo_matches(c_motion_pose * pose)
 {
   cv::Mat1d rhs;
   cv::Mat1b inliers;
@@ -928,9 +1121,15 @@ bool c_rstereo_calibration_pipeline::detect_current_stereo_matches(c_motion_pose
   return true;
 }
 
-bool c_rstereo_calibration_pipeline::run_calibration()
+bool c_regular_stereo_pipeline::run_calibration()
 {
+  if( !calibration_options_.enable_calibration ) {
+    CF_WARNING("rstereo calibration is disabled, skipped");
+    return true;
+  }
+
   c_video_writer progress_video_writer;
+  bool fOK;
 
   CF_DEBUG("Starting '%s: %s' ...",
       csequence_name(), cname());
@@ -948,7 +1147,6 @@ bool c_rstereo_calibration_pipeline::run_calibration()
   set_pipeline_stage(rstereo_calibration_in_progress);
   set_status_msg("RUNNING ...");
 
-  bool fOK;
 
   reset_input_frames();
 
@@ -1185,7 +1383,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
 
       bool fOK =
           estimate_camera_pose_and_derotation_homography(
-              cameraMatrix,
+              intrinsics_.camera_matrix,
               matched_stereo_positions[0],
               matched_stereo_positions[1],
               EMM_LMEDS,
@@ -1204,7 +1402,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
 
       Fbefore =
           compose_fundamental_matrix(Ebefore,
-              cameraMatrix);
+              intrinsics_.camera_matrix);
 
       compute_epipoles(Fbefore, EpipolesBefore);
       compute_epipoles(Fafter, EpipolesAfter);
@@ -1226,8 +1424,8 @@ bool c_rstereo_calibration_pipeline::run_calibration()
       cv::Matx33d Rr =
           build_rotation(0., -asin(T(2)), 0.);
 
-      const cv::Matx33d &C = cameraMatrix;
-      const cv::Matx33d Ci = cameraMatrix.inv();
+      const cv::Matx33d &C = intrinsics_.camera_matrix;
+      const cv::Matx33d Ci = intrinsics_.camera_matrix.inv();
 
       cv::Matx33d H[2] = {
           C * Rr * R * Ci,
@@ -1248,8 +1446,12 @@ bool c_rstereo_calibration_pipeline::run_calibration()
       rectificationHomography[1] = H[1];
       haveRectificationHomography = true;
 
+      if( !save_calibration_config_file() ) {
+        CF_ERROR("ERROR: save_current_camera_parameters() fails");
+        return false;
+      }
 
-      if( true ) {
+      if( false ) {
 
         inliers.release();
 
@@ -1260,7 +1462,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
 
         fOK =
             estimate_camera_pose_and_derotation_homography(
-                cameraMatrix,
+                intrinsics_.camera_matrix,
                 matched_stereo_positions[0],
                 matched_stereo_positions[1],
                 EMM_LMEDS,
@@ -1279,7 +1481,7 @@ bool c_rstereo_calibration_pipeline::run_calibration()
 
         Fbefore =
             compose_fundamental_matrix(Ebefore,
-                cameraMatrix);
+                intrinsics_.camera_matrix);
 
         compute_epipoles(Fbefore, EpipolesBefore);
         compute_epipoles(Fafter, EpipolesAfter);
@@ -1302,27 +1504,28 @@ bool c_rstereo_calibration_pipeline::run_calibration()
     }
   }
 
+  for( int i = 0; i < 2; ++i ) {
+    input_sources_[i]->close();
+  }
+
 ///////////
   return !canceled();
 }
 
-bool c_rstereo_calibration_pipeline::run_pipeline()
+bool c_regular_stereo_pipeline::save_rectified_videos()
 {
+  if( output_options_.save_rectified_videos || output_options_.save_stereo_matches_video ) {
 
-  if ( calibration_options_.enable_calibration && !run_calibration() ) {
-    return false;
-  }
-
-  if ( canceled() ) {
-    return false;
-  }
-
-
-  //////////////////////////////////////////////////////
-  if( output_options_.save_rectified_video || output_options_.save_stereo_matches_video ) {
-
-    c_video_writer rectified_video;
     c_video_writer stereo_matches_video;
+
+    c_video_writer rectified_videos[2];
+
+    std::string rectified_videos_output_filenames[2] = {
+        output_options_.rectified_video_filenames[0],
+        output_options_.rectified_video_filenames[1]
+    };
+
+
     bool fOK;
 
     set_status_msg("WRITE OUTPUT VIDEOS ...");
@@ -1336,30 +1539,42 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
     }
 
 
-    if ( output_options_.save_rectified_video ) {
+    if ( output_options_.save_rectified_videos ) {
 
-      const std::string output_file_name =
-          generate_output_file_name(output_options_.rectified_video_filename,
-              "rectified",
-              ".avi");
+      static const std::string postfix[2] = {
+          ".rectifed.left",
+          ".rectifed.right"
+      };
 
-      if( !rectified_video.open(output_file_name, display_frame_.size(), true) ) {
-        CF_ERROR("recified_video_writer.open('%s') fails", output_file_name.c_str());
-        return false;
+      for( int i = 0; i < 2; ++i ) {
+
+        if( !rectified_videos_output_filenames[i].empty() ) {
+          rectified_videos_output_filenames[i] =
+              generate_output_file_name(rectified_videos_output_filenames[i],
+                  postfix[i],
+                  ".avi");
+        }
+        else {
+          std::string filename;
+
+          split_pathfilename(input_sources_[i]->filename(),
+              nullptr,
+              &filename,
+              nullptr,
+              true);
+
+          rectified_videos_output_filenames[i] =
+              ssprintf("%s/%s.%s.avi",
+                  output_path_.c_str(),
+                  filename.c_str(),
+                  postfix[i].c_str());
+        }
+
       }
     }
 
     if ( output_options_.save_stereo_matches_video ) {
 
-      const std::string output_file_name =
-          generate_output_file_name(output_options_.rectified_video_filename,
-              "stereo_matches",
-              ".avi");
-
-      if( !stereo_matches_video.open(output_file_name, display_frame_.size(), true) ) {
-        CF_ERROR("stereo_matches_video_writer.open('%s') fails", output_file_name.c_str());
-        return false;
-      }
     }
 
 
@@ -1387,33 +1602,51 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
       fOK = true;
 
 
-      if( output_options_.save_rectified_video ) {
-
-        update_display_image(true, false);
+      if( output_options_.save_rectified_videos ) {
 
         cv::Mat tmp;
 
-        if( display_frame_.channels() == 3 ) {
-          tmp = display_frame_;
-        }
-        else {
-          cv::cvtColor(display_frame_, tmp, cv::COLOR_GRAY2BGR);
-        }
+        for( int i = 0; i < 2; ++i ) {
 
-        if( !rectified_video.write(tmp, cv::noArray(), false, processed_frames_) ) {
-          CF_ERROR("rectified_video_writer.write() fails");
-          return false;
-        }
+          if( !haveRectificationHomography ) {
+            tmp = current_frame_->images[i];
+          }
+          else {
+            cv::warpPerspective(current_frame_->images[i], tmp,
+                rectificationHomography[i],
+                current_frame_->images[i].size(),
+                cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
+                cv::BORDER_CONSTANT);
+          }
 
-        if( canceled() ) {
-          break;
+
+          if( !rectified_videos[i].is_open() ) {
+
+            const cv::Size size =
+                tmp.size();
+
+            bool is_color =
+                tmp.channels() > 1;
+
+            if( !rectified_videos[i].open(rectified_videos_output_filenames[i], size, is_color) ) {
+              CF_ERROR("recified_video_writer.open('%s') fails", rectified_videos_output_filenames[i].c_str());
+              return false;
+            }
+          }
+
+
+          if( !rectified_videos[i].write(tmp, cv::noArray(), false, processed_frames_) ) {
+            CF_ERROR("rectified_video_writer.write() fails");
+            return false;
+          }
+
+          if( canceled() ) {
+            break;
+          }
         }
       }
 
-
       if( output_options_.save_stereo_matches_video ) {
-
-        cv::Mat tmp;
 
         update_display_image(false, false, processed_frames_);
 
@@ -1421,18 +1654,24 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
           break;
         }
 
-        if( display_frame_.channels() == 3 ) {
-          tmp = display_frame_;
-        }
-        else {
-          cv::cvtColor(display_frame_, tmp, cv::COLOR_GRAY2BGR);
+        if( !stereo_matches_video.is_open() ) {
+
+          const std::string output_file_name =
+              generate_output_file_name(output_options_.stereo_matches_video_filename,
+                  "stereo_matches",
+                  ".avi");
+
+          if( !stereo_matches_video.open(output_file_name, display_frame_.size(), display_frame_.channels() > 1) ) {
+            CF_ERROR("stereo_matches_video_writer.open('%s') fails", output_file_name.c_str());
+            return false;
+          }
         }
 
         if( canceled() ) {
           break;
         }
 
-        if( !stereo_matches_video.write(tmp, cv::noArray(), false, processed_frames_) ) {
+        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
           return false;
         }
@@ -1443,28 +1682,140 @@ bool c_rstereo_calibration_pipeline::run_pipeline()
 
         update_display_image(true, false, processed_frames_);
 
-        if( canceled() ) {
-          break;
-        }
-
-        if( display_frame_.channels() == 3 ) {
-          tmp = display_frame_;
-        }
-        else {
-          cv::cvtColor(display_frame_, tmp, cv::COLOR_GRAY2BGR);
-        }
-
-        if( canceled() ) {
-          break;
-        }
-
-        if( !stereo_matches_video.write(tmp, cv::noArray(), false, processed_frames_) ) {
+        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
           return false;
         }
 
+        if( canceled() ) {
+          break;
+        }
+
       }
     }
+
+    for( int i = 0; i < 2; ++i ) {
+      input_sources_[i]->close();
+    }
+
+  }
+
+  return !canceled();
+}
+
+bool c_regular_stereo_pipeline::run_stereo_matching()
+{
+
+  if( !stereo_matching_options_.enable_stereo_matchning ) {
+    return true;
+  }
+
+  c_regular_stereo_matcher matcher;
+  cv::Mat2f matches;
+  bool fOK;
+
+  matcher.set_max_disparity(stereo_matching_options_.max_disparity);
+  matcher.set_max_scale(stereo_matching_options_.max_scale);
+
+  if ( !open_input_streams() ) {
+    CF_ERROR("ERROR: open_input_streams() fails");
+    return false;
+  }
+
+  reset_input_frames();
+
+  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+
+    if( canceled() ) {
+      break;
+    }
+
+    if ( !read_stereo_frame() ) {
+      CF_ERROR("read_stereo_frame() fails");
+      break;
+    }
+
+    if( canceled() ) {
+      return false;
+    }
+
+
+    for ( int i = 0; i < 2; ++i ) {
+
+      const cv::Size image_size =
+          current_frame_->images[i].size();
+
+      cv::warpPerspective(current_frame_->images[i], current_frame_->images[i],
+          rectificationHomography[i],
+          image_size,
+          cv::INTER_LINEAR,
+          cv::BORDER_REPLICATE);
+
+      if( canceled() ) {
+        return false;
+      }
+
+      cv::warpPerspective(cv::Mat1b(image_size, 255), current_frame_->masks[i],
+          rectificationHomography[i],
+          image_size,
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+
+      if( canceled() ) {
+        return false;
+      }
+
+      cv::compare(current_frame_->masks[i], 0, current_frame_->masks[i],
+          cv::CMP_GE);
+    }
+
+    if( canceled() ) {
+      return false;
+    }
+
+    fOK =
+        matcher.match(current_frame_->images[0], current_frame_->masks[0],
+            current_frame_->images[1], current_frame_->masks[1],
+            matches);
+
+    if ( !fOK )  {
+      CF_ERROR("matcher.match() fails");
+      return false;
+    }
+
+    //CF_DEBUG()
+  }
+
+  return true;
+}
+
+bool c_regular_stereo_pipeline::run_pipeline()
+{
+  if( !run_calibration() ) {
+    return false;
+  }
+
+  if( canceled() ) {
+    return false;
+  }
+
+  if( !load_calibration_config_file() ) {
+    CF_ERROR("load_calibration_config_file() fails");
+    return false;
+  }
+
+  if( canceled() ) {
+    return false;
+  }
+
+  if( !save_rectified_videos() ) {
+    CF_ERROR("save_rectified_videos() fails");
+    return false;
+  }
+
+  if ( !run_stereo_matching() ) {
+    CF_ERROR("run_stereo_matching() fails");
+    return false;
   }
 
 

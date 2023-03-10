@@ -10,7 +10,8 @@
 #define __QRStereoCalibrateOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/pipeline/c_rstereo_calibration_pipeline.h>
+#include <gui/widgets/QBrowsePathCombo.h>
+#include <core/pipeline/c_regular_stereo_pipeline.h>
 
 class QRStereoCalibrateOptions :
     public QSettingsWidget
@@ -21,16 +22,18 @@ public:
 
   QRStereoCalibrateOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_rstereo_calibration_pipeline::sptr & pipeline);
-  const c_rstereo_calibration_pipeline::sptr & current_pipeline() const;
+  void set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline);
+  const c_regular_stereo_pipeline::sptr & current_pipeline() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_rstereo_calibration_pipeline::sptr pipeline_;
+  c_regular_stereo_pipeline::sptr pipeline_;
 
   QCheckBox * enable_calibration_ctl = nullptr;
+  QBrowsePathCombo * calibration_config_filename_ctl = nullptr;
+
   QNumberEditBox * min_frames_ctl = nullptr;
   QNumberEditBox * max_frames_ctl = nullptr;
   //QNumberEditBox * max_iterations_ctl = nullptr;

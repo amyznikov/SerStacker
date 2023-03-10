@@ -221,10 +221,6 @@ std::string c_image_processing_pipeline::generate_output_file_name(const std::st
     const std::string & postfix,
     const std::string & suffix)  const
 {
-  //    std::string outfilename =
-  //        ssprintf("%s/%s.epipoles.txt",
-  //            output_path_.c_str(), csequence_name());
-
   std::string output_file_name =
       ufilename;
 

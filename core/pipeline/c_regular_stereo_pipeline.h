@@ -1,18 +1,18 @@
 /*
- * c_rstereo_calibration_pipeline.h
+ * c_regular_stereo_pipeline.h
  *
  *  Created on: Mar 4, 2023
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_rstereo_calibration_pipeline_h__
-#define __c_rstereo_calibration_pipeline_h__
+#ifndef __c_regular_stereo_pipeline_h__
+#define __c_regular_stereo_pipeline_h__
 
 #include "c_image_processing_pipeline.h"
-#include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/feature2d/feature2d.h>
-
+#include <core/proc/camera_calibration/camera_calibration.h>
+#include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 enum RSTEREO_CALIBRATION_STAGE {
   rstereo_calibration_idle = 0,
@@ -21,7 +21,7 @@ enum RSTEREO_CALIBRATION_STAGE {
   rstereo_calibration_finishing
 };
 
-struct c_rstereo_calibration_input_options
+struct c_regular_stereo_input_options
 {
   std::string left_stereo_source;
   std::string right_stereo_source;
@@ -31,31 +31,53 @@ struct c_rstereo_calibration_input_options
 
   bool inpaint_missing_pixels = true;
   bool enable_color_maxtrix = true;
+
+  // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
+  // for .image_size = cv::Size(1242, 375),
+  cv::Matx23d cameraMatrix = cv::Matx23d(
+      7.215377e+02, 0.000000e+00, 6.095593e+02,
+      0.000000e+00, 7.215377e+02, 1.728540e+02);
 };
 
 
-struct c_rstereo_feature2d_options {
+struct c_regular_stereo_feature2d_options {
   double scale = 0.5;
   c_sparse_feature_extractor_options sparse_feature_extractor;
   c_feature2d_matcher_options sparse_feature_matcher;
 };
 
 
-struct c_rstereo_calibrate_options
+struct c_regular_stereo_calibratie_options
 {
   bool enable_calibration = true;
+  std::string calibration_config_filename; // input
+
   int min_frames = 3;
   int max_frames = 50;
   double filter_alpha = 0.3;
+
 };
 
-struct c_rstereo_calibration_output_options
+struct c_regular_stereo_matching_options
 {
+  bool enable_stereo_matchning = true;
+
+  int max_disparity = 128;
+  int max_scale = 2;
+};
+
+struct c_regular_stereo_output_options
+{
+  bool save_calibration_config_file = true;
+  std::string calibration_config_filename; // output
+
   bool save_progress_video = false;
   std::string progress_video_filename;
 
-  bool save_rectified_video = false;
-  std::string rectified_video_filename;
+  bool save_rectified_videos = false;
+  std::string rectified_video_filenames[2];
+  std::string & left_rectified_video_filename = rectified_video_filenames[0];
+  std::string & right_rectified_video_filename = rectified_video_filenames[0];
 
   bool save_stereo_matches_video = false;
   std::string stereo_matches_video_filename;
@@ -64,18 +86,18 @@ struct c_rstereo_calibration_output_options
   std::string motion_poses_filename;
 };
 
-class c_rstereo_calibration_pipeline:
+class c_regular_stereo_pipeline:
     public c_image_processing_pipeline
 {
 public:
-  typedef c_rstereo_calibration_pipeline this_class;
+  typedef c_regular_stereo_pipeline this_class;
   typedef c_image_processing_pipeline base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_rstereo_calibration_pipeline(const std::string & name,
+  c_regular_stereo_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
 
-  ~c_rstereo_calibration_pipeline();
+  ~c_regular_stereo_pipeline();
 
   const std::string & get_class_name() const override
   {
@@ -90,17 +112,20 @@ public:
     return classname_;
   }
 
-  c_rstereo_calibration_input_options & input_options();
-  const c_rstereo_calibration_input_options & input_options() const;
+  c_regular_stereo_input_options & input_options();
+  const c_regular_stereo_input_options & input_options() const;
 
-  c_rstereo_feature2d_options & feature2d_options();
-  const c_rstereo_feature2d_options & feature2d_options() const;
+  c_regular_stereo_feature2d_options & feature2d_options();
+  const c_regular_stereo_feature2d_options & feature2d_options() const;
 
-  c_rstereo_calibrate_options & stereo_calibrate_options();
-  const c_rstereo_calibrate_options & stereo_calibrate_options() const;
+  c_regular_stereo_calibratie_options & calibration_options();
+  const c_regular_stereo_calibratie_options & calibration_options() const;
 
-  c_rstereo_calibration_output_options & output_options();
-  const c_rstereo_calibration_output_options & output_options() const;
+  c_regular_stereo_matching_options & stereo_matching_options();
+  const c_regular_stereo_matching_options & stereo_matching_options() const;
+
+  c_regular_stereo_output_options & output_options();
+  const c_regular_stereo_output_options & output_options() const;
 
   bool serialize(c_config_setting setting, bool save) override;
 
@@ -115,6 +140,7 @@ protected:
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   bool run_calibration();
+  bool run_stereo_matching();
 
   void reset_input_frames();
   bool open_input_streams();
@@ -124,7 +150,11 @@ protected:
 
   void update_display_image(bool applyHomography = false, bool drawmatches = false, int stream_pos = -1);
   bool write_progress_video(c_video_writer & w);
-  bool save_current_camera_parameters() const;
+
+  std::string get_calibraton_config_output_filename() const;
+  bool load_calibration_config_file();
+  bool save_calibration_config_file() const;
+  bool save_rectified_videos();
 
 protected:
 
@@ -140,9 +170,6 @@ protected:
     // Keypoints and matches()
     std::vector<cv::KeyPoint> keypoints[2]; // current (left) and reference (right) keypoints
     cv::Mat descriptors[2]; // current (left) and reference (right) descriptors
-    //std::vector<cv::DMatch> matches; // matches between left and right frame sparse features (keypoints)
-    //std::vector<uint8_t> matched_inliers; // mask for matched inliers
-    //std::vector<cv::Point2f> matched_positions[2];
   };
 
   struct c_motion_pose {
@@ -160,19 +187,14 @@ protected:
 
 
   cv::Mat missing_pixel_mask_;
-  c_rstereo_calibration_input_options input_options_;
-  c_rstereo_feature2d_options feature2d_options_;
-  c_rstereo_calibrate_options calibration_options_;
-  c_rstereo_calibration_output_options output_options_;
+  c_regular_stereo_input_options input_options_;
+  c_regular_stereo_feature2d_options feature2d_options_;
+  c_regular_stereo_calibratie_options calibration_options_;
+  c_regular_stereo_matching_options stereo_matching_options_;
+  c_regular_stereo_output_options output_options_;
 
-  // FIXME: Hardcoded default Camera Matrix
-  // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
-  // for .image_size = cv::Size(1242, 375),
-  cv::Matx33d cameraMatrix =
-      cv::Matx33d(
-          7.215377e+02, 0.000000e+00, 6.095593e+02,
-          0.000000e+00, 7.215377e+02, 1.728540e+02,
-          0.000000e+00, 0.000000e+00, 1.000000e+00);
+  c_camera_intrinsics intrinsics_;
+  //cv::Matx33d cameraMatrix;
 
   mutable std::mutex accumulator_lock_;
 
@@ -209,4 +231,4 @@ protected:
   void dump_motion_pose(const c_motion_pose & pose);
 };
 
-#endif /* __c_rstereo_calibration_pipeline_h__ */
+#endif /* __c_regular_stereo_pipeline_h__ */

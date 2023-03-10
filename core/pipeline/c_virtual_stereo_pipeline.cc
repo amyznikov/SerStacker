@@ -5,7 +5,7 @@
  *      Author: amyznikov
  */
 
-#include "c_virtual_stereo_pipeline.h"
+#include "c_vstereo_pipeline.h"
 
 c_virtual_stereo_pipeline::c_virtual_stereo_pipeline()
 {

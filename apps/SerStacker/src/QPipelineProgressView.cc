@@ -13,7 +13,7 @@
 #include <core/pipeline/c_image_stacking_pipeline.h>
 #include <core/pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline.h>
-#include <core/pipeline/c_rstereo_calibration_pipeline.h>
+#include <core/pipeline/c_regular_stereo_pipeline.h>
 
 namespace qserstacker {
 
@@ -161,8 +161,8 @@ void QPipelineProgressView::onStackingThreadStarted()
 
     }
 
-    else if ( const c_rstereo_calibration_pipeline::sptr rstereo_calibration =
-        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+    else if ( const c_regular_stereo_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_regular_stereo_pipeline>(pipeline) ) {
 
       on_current_frame_changed =
           rstereo_calibration->on_current_frame_changed.add([this]() {
@@ -215,8 +215,8 @@ void QPipelineProgressView::onStackingThreadFinishing()
 
     }
 
-    else if ( const c_rstereo_calibration_pipeline::sptr rstereo_calibration =
-        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+    else if ( const c_regular_stereo_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_regular_stereo_pipeline>(pipeline) ) {
 
       rstereo_calibration->on_accumulator_changed.remove(on_accumulator_changed);
       rstereo_calibration->on_current_frame_changed.remove(on_current_frame_changed);
@@ -352,8 +352,8 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
       }
     }
 
-    else if( const c_rstereo_calibration_pipeline::sptr rstereo_calibration =
-        std::dynamic_pointer_cast<c_rstereo_calibration_pipeline>(pipeline) ) {
+    else if( const c_regular_stereo_pipeline::sptr rstereo_calibration =
+        std::dynamic_pointer_cast<c_regular_stereo_pipeline>(pipeline) ) {
 
 
       QWaitCursor wait(this);

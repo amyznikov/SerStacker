@@ -1,13 +1,33 @@
 /*
- * QRStereoCalibrationInputOptions.cc
+ * QRStereoOptions.cc
  *
  *  Created on: Mar 2, 2023
  *      Author: amyznikov
  */
 
-#include "QRStereoCalibrationInputOptions.h"
+#include "QRStereoInputOptions.h"
 
-QRStereoCalibrationInputOptions::QRStereoCalibrationInputOptions(QWidget * parent) :
+
+QPlainTextEdit * createCameraMatrixEditBox(QWidget * parent)
+{
+  QPlainTextEdit * edit =
+      new QPlainTextEdit(parent);
+
+  const int maxHeight =
+      5 * QFontMetrics(edit->font()).lineSpacing();
+
+  edit->setMaximumHeight(maxHeight);
+  edit->setFixedHeight(maxHeight);
+  edit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+  edit->setLineWrapMode(QPlainTextEdit::NoWrap);
+  edit->setWordWrapMode(QTextOption::WrapMode::NoWrap);
+
+  return edit;
+}
+
+
+
+QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
     Base("QRStereoCalibrationInputOptions", parent)
 {
 
@@ -28,7 +48,7 @@ QRStereoCalibrationInputOptions::QRStereoCalibrationInputOptions(QWidget * paren
 
             if ( pipeline_ && pipeline_->input_sequence() ) {
 
-              const c_rstereo_calibration_input_options & opts =
+              const c_regular_stereo_input_options & opts =
                   pipeline_->input_options();
 
               if( !opts.left_stereo_source.empty() ) {
@@ -68,7 +88,7 @@ QRStereoCalibrationInputOptions::QRStereoCalibrationInputOptions(QWidget * paren
 
             if ( pipeline_ && pipeline_->input_sequence() ) {
 
-              const c_rstereo_calibration_input_options & opts =
+              const c_regular_stereo_input_options & opts =
                   pipeline_->input_options();
 
               if( !opts.right_stereo_source.empty() ) {
@@ -155,21 +175,27 @@ QRStereoCalibrationInputOptions::QRStereoCalibrationInputOptions(QWidget * paren
             return false;
           });
 
+//  form->addRow("Left Camera Matrix:",
+//      leftCameraMatrixEditBox_ctl = createCameraMatrixEditBox(this));
+//
+//  form->addRow("Right Camera Matrix:",
+//      rightCameraMatrixEditBox_ctl = createCameraMatrixEditBox(this));
+
   updateControls();
 }
 
-void QRStereoCalibrationInputOptions::set_current_pipeline(const c_rstereo_calibration_pipeline::sptr & pipeline)
+void QRStereoInputOptions::set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_rstereo_calibration_pipeline::sptr& QRStereoCalibrationInputOptions::current_pipeline() const
+const c_regular_stereo_pipeline::sptr& QRStereoInputOptions::current_pipeline() const
 {
   return pipeline_;
 }
 
-void QRStereoCalibrationInputOptions::populatesources()
+void QRStereoInputOptions::populatesources()
 {
   c_update_controls_lock lock(this);
 
@@ -202,7 +228,7 @@ void QRStereoCalibrationInputOptions::populatesources()
   }
 }
 
-void QRStereoCalibrationInputOptions::onupdatecontrols()
+void QRStereoInputOptions::onupdatecontrols()
 {
   populatesources();
 

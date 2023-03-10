@@ -13,7 +13,7 @@
 #include <gui/qimagestacking/QImageStackingOptions.h>
 #include <gui/qcameracalibration/QCameraCalibrationOptions.h>
 #include <gui/qstereocalibration/QStereoCalibrationOptions.h>
-#include <gui/qrstereocalibration/QRStereoCalibrationOptions.h>
+#include <gui/qrstereo/QRStereoOptions.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 
 class QPipelineOptionsView:
@@ -59,7 +59,7 @@ protected:
   QImageStackingOptions * imageStackingOptions_ctl = nullptr;
   QCameraCalibrationOptions * cameraCalibrationOptions_ctl = nullptr;
   QStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
-  QRStereoCalibrationOptions * rstereoCalibrationOptions_ctl = nullptr;
+  QRStereoOptions * rstereoCalibrationOptions_ctl = nullptr;
 
   QMenu menu_;
   bool updatingControls_ = false;

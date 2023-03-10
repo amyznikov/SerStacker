@@ -620,13 +620,13 @@ bool c_camera_calibration_pipeline::save_current_camera_parameters() const
   }
 
   std::string output_file_name =
-      ssprintf("%s/calib.%s.yml",
+      ssprintf("%s/camera_calib.%s.yml",
           output_path_.c_str(),
           csequence_name());
 
-  cv::FileStorage parametersWriter(output_file_name, cv::FileStorage::WRITE);
+  cv::FileStorage fs(output_file_name, cv::FileStorage::WRITE);
 
-  if( !parametersWriter.isOpened() ) {
+  if( !fs.isOpened() ) {
     CF_ERROR("cv::FileStorage('%s') fails: %s ", output_file_name.c_str(), strerror(errno));
     return false;
   }
@@ -636,18 +636,18 @@ bool c_camera_calibration_pipeline::save_current_camera_parameters() const
   char buf[256];
   strftime(buf, sizeof(buf) - 1, "%c", localtime(&rawtime));
 
-  parametersWriter << "calibrationDate" << buf;
-  parametersWriter << "framesCount" << (int) object_points_.size();
-  parametersWriter << "calibration_flags" << flagsToString<CAMERA_CALIBRATION_FLAGS>(calibration_flags_);
+  fs << "calibrationDate" << buf;
+  fs << "framesCount" << (int) object_points_.size();
+  fs << "calibration_flags" << flagsToString<CAMERA_CALIBRATION_FLAGS>(calibration_flags_);
 
-  parametersWriter << "cameraResolution" << current_frame_.size();
-  parametersWriter << "cameraMatrix" << intrinsics_.camera_matrix;
-  parametersWriter << "cameraMatrix_std_dev" << stdDeviations_.rowRange(cv::Range(0, 4));
-  parametersWriter << "dist_coeffs" << intrinsics_.dist_coeffs;
-  parametersWriter << "dist_coeffs_std_dev" << stdDeviations_.rowRange(cv::Range(4, 9));
-  parametersWriter << "avg_reprojection_error" << rmse_;
+  fs << "cameraResolution" << current_frame_.size();
+  fs << "cameraMatrix" << intrinsics_.camera_matrix;
+  fs << "cameraMatrix_std_dev" << stdDeviations_.rowRange(cv::Range(0, 4));
+  fs << "dist_coeffs" << intrinsics_.dist_coeffs;
+  fs << "dist_coeffs_std_dev" << stdDeviations_.rowRange(cv::Range(4, 9));
+  fs << "avg_reprojection_error" << rmse_;
 
-  parametersWriter.release();
+  fs.release();
 
   return true;
 }

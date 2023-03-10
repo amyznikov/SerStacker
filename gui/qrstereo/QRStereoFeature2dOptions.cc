@@ -47,13 +47,13 @@ QRStereoFeature2dOptions::QRStereoFeature2dOptions(QWidget * parent) :
 
 }
 
-void QRStereoFeature2dOptions::set_feature2d_options(c_rstereo_feature2d_options * options)
+void QRStereoFeature2dOptions::set_feature2d_options(c_regular_stereo_feature2d_options * options)
 {
   options_ = options;
   updateControls();
 }
 
-c_rstereo_feature2d_options * QRStereoFeature2dOptions::feature2d_options() const
+c_regular_stereo_feature2d_options * QRStereoFeature2dOptions::feature2d_options() const
 {
   return options_;
 }

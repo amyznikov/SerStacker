@@ -49,7 +49,11 @@ void QBrowsePathCombo::construct(void)
 
   vbox = new QVBoxLayout(this);
   vbox->setContentsMargins(0,0,0,0);
-  vbox->addWidget(label = new QLabel(labelText_), 0, Qt::AlignLeft);
+
+  if ( !labelText_.isEmpty() ) {
+    vbox->addWidget(label = new QLabel(labelText_), 0, Qt::AlignLeft);
+  }
+
   vbox->addLayout(hbox = new QHBoxLayout(), 0);
   hbox->setContentsMargins(0,0,0,0);
 
@@ -65,6 +69,8 @@ void QBrowsePathCombo::construct(void)
   combo->setFocusPolicy(Qt::StrongFocus);
   combo->setMinimumContentsLength(24);
   combo->setMaxCount(30);
+  combo->setPlaceholderText("auto");
+  combo->lineEdit()->setPlaceholderText("auto");
 
   button->setText(tr("Browse..."));
 
@@ -168,6 +174,9 @@ void QBrowsePathCombo::setCurrentPath(const QString & path, bool emitHasChages)
 {
   enableEmitChagesEvent_ = emitHasChages;
   combo->setCurrentText(path);
+  if ( path.isEmpty() ) {
+    combo->setCurrentIndex(-1);
+  }
   if ( !emitHasChages ) {
     setHasChanges(false);
   }

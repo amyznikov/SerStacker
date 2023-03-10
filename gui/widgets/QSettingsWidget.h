@@ -249,18 +249,6 @@ public:
     return add_textbox(form, name, setfn, getfn);
   }
 
-//  QLineEditBox* add_textbox(const QString & name,
-//      const std::function<void(const QString&)> & setfn = std::function<void(const QString&)>())
-//  {
-//    return add_textbox(this->form, name, setfn);
-//  }
-//
-//  QLineEditBox* add_textbox(const QString & name, const std::function<void(const QString&)> & setfn,
-//      const std::function<bool(QString *)> & getfn = std::function<bool( QString*)>())
-//  {
-//    return add_textbox(this->form, name, setfn);
-//  }
-
   /////////////////////////////////////////////////////////////////////
 
   QCheckBox* add_checkbox(QFormLayout * form, const QString & name,

@@ -116,6 +116,7 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, input_options_, right_stereo_source);
     SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
     SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
+    SERIALIZE_OPTION(section, save, input_options_, convert_to_grayscale);
     SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
     SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
     SERIALIZE_OPTION(section, save, input_options_, cameraMatrix);
@@ -139,6 +140,9 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, stereo_matching_options_, enable_stereo_matchning);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, max_disparity);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, max_scale);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, save_debug_images);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, process_only_debug_frames);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, debug_frames);
   }
 
 
@@ -466,6 +470,10 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
 
   if ( !output_mask.empty() && input_options_.inpaint_missing_pixels ) {
     linear_interpolation_inpaint(output_image, output_mask, output_image);
+  }
+
+  if( input_options_.convert_to_grayscale && output_image.channels() != 1 ) {
+    cv::cvtColor(output_image, output_image, cv::COLOR_BGR2GRAY);
   }
 
   return true;
@@ -1739,8 +1747,38 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       return false;
     }
 
+    if( stereo_matching_options_.process_only_debug_frames || stereo_matching_options_.save_debug_images ) {
+
+      const auto pos =
+          std::find(stereo_matching_options_.debug_frames.begin(),
+              stereo_matching_options_.debug_frames.end(),
+              processed_frames_);
+
+      if( pos == stereo_matching_options_.debug_frames.end() ) {
+
+        if( stereo_matching_options_.process_only_debug_frames ) {
+          continue;
+        }
+
+        matcher.set_debug_direcory("");
+      }
+
+      else if( stereo_matching_options_.save_debug_images ) {
+
+        matcher.set_debug_direcory(
+            ssprintf("%s/debug/match%05d",
+                output_path_.c_str(),
+                processed_frames_));
+      }
+
+    }
+
 
     for ( int i = 0; i < 2; ++i ) {
+
+      if( canceled() ) {
+        return false;
+      }
 
       const cv::Size image_size =
           current_frame_->images[i].size();
@@ -1783,7 +1821,6 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       return false;
     }
 
-    //CF_DEBUG()
   }
 
   return true;

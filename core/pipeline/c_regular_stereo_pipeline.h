@@ -29,6 +29,7 @@ struct c_regular_stereo_input_options
   int start_frame_index = 0;
   int max_input_frames = -1;
 
+  bool convert_to_grayscale = false;
   bool inpaint_missing_pixels = true;
   bool enable_color_maxtrix = true;
 
@@ -64,6 +65,11 @@ struct c_regular_stereo_matching_options
 
   int max_disparity = 128;
   int max_scale = 2;
+
+  bool save_debug_images = false;
+  bool process_only_debug_frames = false;
+  std::vector<int> debug_frames;
+
 };
 
 struct c_regular_stereo_output_options

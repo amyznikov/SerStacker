@@ -18,13 +18,18 @@ QRStereoOptions::QRStereoOptions(QWidget * parent) :
       this, &ThisClass::parameterChanged);
 
   add_expandable_groupbox("Feature2D options",
-      registration_options_ctl = new QRStereoFeature2dOptions(this));
-  connect(registration_options_ctl, &QSettingsWidget::parameterChanged,
+      feature2DOptions_ctl = new QRStereoFeature2dOptions(this));
+  connect(feature2DOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
   add_expandable_groupbox("Calibrate Options",
       stereoCalibrateOptions_ctl = new QRStereoCalibrateOptions(this));
   connect(stereoCalibrateOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  add_expandable_groupbox("Stereo Matching",
+      stereoMatchingOptions_ctl = new QRStereoMatchingOptions(this));
+  connect(stereoMatchingOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
   add_expandable_groupbox("Output Options",
@@ -55,15 +60,17 @@ void QRStereoOptions::onupdatecontrols()
     setEnabled(false);
 
     inputOptions_ctl->set_current_pipeline(nullptr);
+    feature2DOptions_ctl->set_feature2d_options(nullptr);
     stereoCalibrateOptions_ctl->set_current_pipeline(nullptr);
+    stereoMatchingOptions_ctl->set_current_pipeline(nullptr);
     outputOptions_ctl->set_current_pipeline(nullptr);
-    registration_options_ctl->set_feature2d_options(nullptr);
   }
   else {
 
     inputOptions_ctl->set_current_pipeline(pipeline_);
-    registration_options_ctl->set_feature2d_options(&pipeline_->feature2d_options());
+    feature2DOptions_ctl->set_feature2d_options(&pipeline_->feature2d_options());
     stereoCalibrateOptions_ctl->set_current_pipeline(pipeline_);
+    stereoMatchingOptions_ctl->set_current_pipeline(pipeline_);
     outputOptions_ctl->set_current_pipeline(pipeline_);
 
     Base::onupdatecontrols();

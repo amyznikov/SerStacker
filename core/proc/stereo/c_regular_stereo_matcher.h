@@ -30,9 +30,14 @@ public:
   void set_max_scale(int v);
   int max_scale() const;
 
+  void set_debug_direcory(const std::string & v);
+  const std::string & debug_direcory() const;
+
 protected:
   int max_disparity_ = 128;
   int max_scale_ = 2;
+
+  std::string debug_direcory_;
 };
 
 #endif /* __c_regular_stereo_matcher_h__ */

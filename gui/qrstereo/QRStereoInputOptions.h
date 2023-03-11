@@ -36,6 +36,8 @@ protected:
 
   QNumberEditBox * start_frame_index_ctl = nullptr;
   QNumberEditBox * max_input_frames_ctl = nullptr;
+
+  QCheckBox * convert_to_grayscale_ctl = nullptr;
   QCheckBox * enable_color_maxtrix_ctl = nullptr;
   QCheckBox * inpaint_missing_pixels_ctl = nullptr;
 

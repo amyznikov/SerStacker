@@ -59,6 +59,55 @@ QRStereoMatchingOptions::QRStereoMatchingOptions(QWidget * parent) :
             return false;
           });
 
+  save_debug_images_ctl =
+      add_checkbox("save_debug_images",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_matching_options().save_debug_images = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              * checked = pipeline_->stereo_matching_options().save_debug_images;
+              return true;
+            }
+            return false;
+          });
+
+  process_only_debug_frames_ctl =
+      add_checkbox("process_only_debug_frames",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_matching_options().process_only_debug_frames = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              * checked = pipeline_->stereo_matching_options().process_only_debug_frames;
+              return true;
+            }
+            return false;
+          });
+
+  debug_frames_ctl =
+      add_numeric_box<std::vector<int>>("debug frames:",
+          [this](const std::vector<int> & value) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_matching_options().debug_frames = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](std::vector<int> * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->stereo_matching_options().debug_frames;
+              return true;
+            }
+            return false;
+          });
+
+
   updateControls();
 }
 

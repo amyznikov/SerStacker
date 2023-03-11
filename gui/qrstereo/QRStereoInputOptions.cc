@@ -143,6 +143,22 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
             return false;
           });
 
+  convert_to_grayscale_ctl =
+      add_checkbox("convert_to_grayscale",
+          [this](bool value) {
+            if ( pipeline_ ) {
+              pipeline_->input_options().convert_to_grayscale = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->input_options().convert_to_grayscale;
+              return true;
+            }
+            return false;
+          });
+
   inpaint_missing_pixels_ctl =
       add_checkbox("inpaint_missing_pixels",
           [this](bool value) {

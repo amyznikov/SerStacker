@@ -1803,7 +1803,8 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
         return false;
       }
 
-      cv::compare(current_frame_->masks[i], 0, current_frame_->masks[i],
+      cv::compare(current_frame_->masks[i], 255,
+          current_frame_->masks[i],
           cv::CMP_GE);
     }
 

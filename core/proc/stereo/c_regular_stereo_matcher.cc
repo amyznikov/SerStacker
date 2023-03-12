@@ -86,70 +86,111 @@ bool c_regular_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray
     return false;
   }
 
-  const cv::Size size =
-      currentImage.size();
+  std::vector<cv::Mat> currentImagePyramid;
+  std::vector<cv::Mat> referenceImagePyramid;
+  std::vector<cv::Mat1b> currentMaskPyramid;
+  std::vector<cv::Mat1b> referenceMaskPyramid;
 
-  const cv::Mat queryImage =
-      currentImage.getMat();
+  std::vector<cv::Mat1b> dispPyramid;
 
-  const cv::Mat1b queryMask =
-      currentMask.empty() ? cv::Mat1b(queryImage.size(), 255) :
-          currentMask.getMat();
+  cv::buildPyramid(currentImage, currentImagePyramid, max_scale_);
+  cv::buildPyramid(currentMask.empty() ? cv::Mat1b(currentImage.size(), 255) :
+      currentMask, currentMaskPyramid, max_scale_);
+  for( uint i = 1, n = currentMaskPyramid.size(); i < n; ++i ) {
+    cv::compare(currentMaskPyramid[i], 255, currentMaskPyramid[i], cv::CMP_GE);
+  }
 
-  const cv::Mat trainImage =
-      referenceImage.getMat();
+  cv::buildPyramid(referenceImage, referenceImagePyramid, max_scale_);
+  cv::buildPyramid(referenceMask.empty() ? cv::Mat1b(referenceImage.size(), 255) :
+      referenceMask, referenceMaskPyramid, max_scale_);
+  for( uint i = 1, n = referenceMaskPyramid.size(); i < n; ++i ) {
+    cv::compare(referenceMaskPyramid[i], 255, referenceMaskPyramid[i], cv::CMP_GE);
+  }
 
-  const cv::Mat1b trainMask =
-      referenceMask.empty() ? cv::Mat1b(trainImage.size(), 255) :
-          referenceMask.getMat();
-
-  const cv::Mat1f G =
+  static const cv::Mat1f G =
       cv::getGaussianKernel(7, 1, CV_32F);
 
-  cv::Mat D, Dmin;
-  cv::Mat1b DM;
-  cv::Mat1b M;
-  cv::Mat1b Disp;
+  for( uint scale = 0, nscales = currentImagePyramid.size(); scale < nscales; ++scale ) {
 
-  for( int disparity = 0; disparity < max_disparity_; ++disparity ) {
+    const cv::Mat &queryImage =
+        currentImagePyramid[scale];
 
-    const cv::Rect qrc(disparity, 0, size.width - disparity, size.height);
-    const cv::Rect rrc(0, 0, size.width - disparity, size.height);
+    const cv::Mat &trainImage =
+        referenceImagePyramid[scale];
 
-    const cv::Mat Q = queryImage(qrc);
-    const cv::Mat1b QM = queryMask(qrc);
+    const cv::Mat1b &queryMask =
+        currentMaskPyramid[scale];
 
-    const cv::Mat R = trainImage(rrc);
-    const cv::Mat1b RM = trainMask(rrc);
+    const cv::Mat1b &trainMask =
+        referenceMaskPyramid[scale];
 
-    cv::absdiff(Q, R, D);
-    cv::bitwise_and(QM, RM, DM);
-    cv::sepFilter2D(D, D, -1, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    if( D.channels() != 1 ) {
-      cv::cvtColor(D, D, cv::COLOR_BGR2GRAY);
+    const cv::Size size =
+        queryImage.size();
+
+    const int max_disparity =
+        max_disparity_ / (1 << scale);
+
+    cv::Mat E, Emin;
+    cv::Mat1b M, EM;
+
+    dispPyramid.emplace_back(size, (uint8_t) (max_disparity_));
+
+
+    for( int disparity = 0; disparity < max_disparity; ++disparity ) {
+
+      const cv::Rect qrc(disparity, 0, size.width - disparity, size.height);
+      const cv::Rect rrc(0, 0, size.width - disparity, size.height);
+
+      const cv::Mat Q = queryImage(qrc);
+      const cv::Mat1b QM = queryMask(qrc);
+
+      const cv::Mat T = trainImage(rrc);
+      const cv::Mat1b TM = trainMask(rrc);
+
+      // compute error image
+      cv::absdiff(Q, T, E);
+      cv::sepFilter2D(E, E, -1, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+      if( E.channels() != 1 ) {
+        cv::cvtColor(E, E, cv::COLOR_BGR2GRAY);
+      }
+
+      // create minimum error image if empty
+      if( disparity == 0 ) {
+        Emin.create(size, E.depth());
+        Emin.setTo(maxval_for_pixel_depth(E.depth()));
+      }
+
+
+      // compare current and minimum error images
+      cv::compare(E, Emin(rrc), M, cv::CMP_LT);
+      cv::bitwise_and(QM, M, M);
+      cv::bitwise_and(TM, M, M);
+      E.copyTo(Emin(rrc), M);
+      dispPyramid[scale](rrc).setTo(disparity, M);
+
+      if( !debug_direcory_.empty() ) {
+        save_image(E, ssprintf("%s/scale%02d/D.%04d.tiff",
+            debug_direcory_.c_str(),
+            scale,
+            disparity));
+      }
     }
-
-    if ( Dmin.empty() ) {
-      Dmin.create(size, D.depth());
-      Dmin.setTo(maxval_for_pixel_depth(D.depth()));
-      Disp.create(size);
-      Disp.setTo(0);
-    }
-
-    cv::compare(D, Dmin(rrc), M, cv::CMP_LT);
-    D.copyTo(Dmin(rrc), M);
-    Disp(rrc).setTo(disparity, M);
 
     if( !debug_direcory_.empty() ) {
-      save_image(D, ssprintf("%s/D.%04d.tiff",
-          debug_direcory_.c_str(), disparity));
+      save_image(dispPyramid[scale], ssprintf("%s/scale%02d/Disparity.tiff",
+          debug_direcory_.c_str(),
+          scale));
+      save_image(currentImagePyramid[scale], currentMaskPyramid[scale],
+          ssprintf("%s/scale%02d/Q.tiff",
+              debug_direcory_.c_str(),
+              scale));
+      save_image(referenceImagePyramid[scale], referenceMaskPyramid[scale],
+          ssprintf("%s/scale%02d/T.tiff",
+              debug_direcory_.c_str(),
+              scale));
     }
   }
 
-  if( !debug_direcory_.empty() ) {
-    save_image(Disp, ssprintf("%s/Disparity.tiff",
-        debug_direcory_.c_str()));
-  }
 
   return true;
 }

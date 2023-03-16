@@ -159,17 +159,17 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
   ///
 
   save_stereo_matches_video_ctl =
-      add_checkbox("Save stereo matches",
+      add_checkbox("Save match progress video",
           [this](bool checked) {
             if ( pipeline_ ) {
-              pipeline_->output_options().save_stereo_matches_video = checked;
-              stereo_matches_video_filename_ctl->setEnabled(checked);
+              pipeline_->output_options().save_stereo_match_progress_video = checked;
+              stereo_match_progress_video_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
             if ( pipeline_ ) {
-              *checked = pipeline_->output_options().save_stereo_matches_video;
+              *checked = pipeline_->output_options().save_stereo_match_progress_video;
               return true;
             }
             return false;
@@ -232,6 +232,43 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   ///
 
+  save_stereo_match_progress_video_ctl =
+      add_checkbox("Save match progress video:",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().save_stereo_match_progress_video = checked;
+              stereo_match_progress_video_filename_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              *checked = pipeline_->output_options().save_stereo_match_progress_video;
+              return true;
+            }
+            return false;
+          });
+
+  stereo_match_progress_video_filename_ctl =
+      add_textbox("match progress filename:",
+          [this](const QString & value) {
+            if ( pipeline_ ) {
+              pipeline_->output_options().stereo_match_progress_video_filename = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( pipeline_ ) {
+              *value = pipeline_->output_options().stereo_match_progress_video_filename.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  stereo_match_progress_video_filename_ctl->setPlaceholderText("auto");
+
+  ///
+
   updateControls();
 }
 
@@ -262,6 +299,7 @@ void QRStereoOutputOptions::onupdatecontrols()
     right_rectified_video_filename_ctl->setEnabled(save_rectified_video_ctl->isChecked());
     stereo_matches_video_filename_ctl->setEnabled(save_stereo_matches_video_ctl->isChecked());
     motion_poses_filename_ctl->setEnabled(save_motion_poses_ctl->isChecked());
+    stereo_match_progress_video_filename_ctl->setEnabled(save_stereo_match_progress_video_ctl->isChecked());
 
     setEnabled(true);
   }

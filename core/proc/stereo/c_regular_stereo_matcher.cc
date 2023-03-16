@@ -213,7 +213,7 @@ void c_regular_stereo_matcher::set_debug_points(const std::vector<cv::Point> & v
 template<class MT>
 bool c_regular_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
-    cv::Mat2f & outputMatches)
+    cv::Mat1w & outputMatches, cv::Mat1b * outputMask)
 {
   INSTRUMENT_REGION("");
 
@@ -390,10 +390,10 @@ bool c_regular_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Input
 
       else if( qsize == 3 ) {
 
-        const MatType & p =
+        const MatType &p =
             *q[qsize - 2];
 
-        const MatType & l =
+        const MatType &l =
             *q[qsize - 3];
 
         const cv::Mat1w *pdisp =
@@ -488,6 +488,16 @@ bool c_regular_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Input
               debug_directory_.c_str(),
               scale));
     }
+
+    if( scale == 0 ) {
+
+      outputMatches =
+          disparityPyramid.back();
+
+      if( outputMask ) {
+        *outputMask = dispMask;
+      }
+    }
   }
 
   return true;
@@ -496,7 +506,7 @@ bool c_regular_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Input
 
 bool c_regular_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
-    cv::Mat2f & outputMatches)
+    cv::Mat1w & outputMatches, cv::Mat1b * outputMask)
 {
 
   if( currentImage.size() != referenceImage.size() ) {
@@ -521,19 +531,19 @@ bool c_regular_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray
 
   switch (currentImage.depth()) {
     case CV_8U:
-      return match_impl<uint8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<uint8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     case CV_8S:
-      return match_impl<int8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<int8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     case CV_16U:
-      return match_impl<uint16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<uint16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     case CV_16S:
-      return match_impl<int16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<int16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     case CV_32S:
-      return match_impl<int32_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<int32_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     case CV_32F:
-      return match_impl<float>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<float>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     case CV_64F:
-      return match_impl<double>(currentImage, currentMask, referenceImage, referenceMask, outputMatches);
+      return match_impl<double>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
     default:
       CF_ERROR("ERROR: Not supported image depth %d", currentImage.depth());
       break;
@@ -542,245 +552,4 @@ bool c_regular_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray
   return false;
 }
 
-
-#if 0
-bool c_regular_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
-    cv::InputArray referenceImage, cv::InputArray referenceMask,
-    cv::Mat2f & outputMatches)
-{
-  const bool enable_debug_point =
-      !debug_points_.empty();
-
-  FILE * debug_points_fp = nullptr;
-
-  INSTRUMENT_REGION("");
-
-  if( currentImage.size() != referenceImage.size() ) {
-    CF_ERROR("current (%dx%d) and reference (%dxd) image sizes not match",
-        currentImage.cols(), currentImage.rows(),
-        referenceImage.cols(), referenceImage.rows());
-    return false;
-  }
-
-  if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
-    CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
-        debug_directory_.c_str(), strerror(errno));
-    return false;
-  }
-
-  std::vector<cv::Mat> currentImagePyramid;
-  std::vector<cv::Mat> referenceImagePyramid;
-  std::vector<cv::Mat1b> currentMaskPyramid;
-  std::vector<cv::Mat1b> referenceMaskPyramid;
-  std::vector<cv::Mat1w> disparityPyramid;
-
-
-  cv::buildPyramid(currentImage, currentImagePyramid, max_scale_);
-  cv::buildPyramid(currentMask.empty() ? cv::Mat1b(currentImage.size(), 255) :
-      currentMask, currentMaskPyramid, max_scale_);
-  for( uint i = 1, n = currentMaskPyramid.size(); i < n; ++i ) {
-    cv::compare(currentMaskPyramid[i], 255, currentMaskPyramid[i], cv::CMP_GE);
-  }
-
-  cv::buildPyramid(referenceImage, referenceImagePyramid, max_scale_);
-  cv::buildPyramid(referenceMask.empty() ? cv::Mat1b(referenceImage.size(), 255) :
-      referenceMask, referenceMaskPyramid, max_scale_);
-  for( uint i = 1, n = referenceMaskPyramid.size(); i < n; ++i ) {
-    cv::compare(referenceMaskPyramid[i], 255, referenceMaskPyramid[i], cv::CMP_GE);
-  }
-
-
-  double ksigma;
-  int ksize;
-
-  if ( kernel_radius_ > 0 && kernel_sigma_ > 0 ) {
-    ksize = 2 * kernel_radius_ + 1;
-    ksigma = kernel_sigma_;
-  }
-  else if( kernel_radius_ > 0 ) {
-    ksize = 2 * kernel_radius_ + 1;
-    ksigma = std::max(0.75, kernel_radius_ / 4.);
-  }
-  else {
-    ksize = 7;
-    ksigma = 1;
-  }
-
-  const cv::Mat1f G =
-      cv::getGaussianKernel(ksize, ksigma, CV_32F);
-
-  for( int scale = max_scale_; scale >= 0; --scale ) {
-
-    const cv::Mat &queryImage =
-        currentImagePyramid[scale];
-
-    const cv::Mat &trainImage =
-        referenceImagePyramid[scale];
-
-    const cv::Mat1b &queryMask =
-        currentMaskPyramid[scale];
-
-    cv::Mat1b &trainMask =
-        referenceMaskPyramid[scale];
-
-    const cv::Size max_image_size =
-        trainImage.size();
-
-    c_error_history_track track(max_image_size,
-        trainImage.depth());
-
-    disparityPyramid.emplace_back(
-        cv::Mat1w(max_image_size,
-            (uint16_t) (UINT16_MAX)));
-
-    cv::Mat1w & disp =
-        disparityPyramid.back();
-
-    const int max_disparity =
-        max_disparity_ >> scale;
-
-    if ( enable_debug_point && !debug_directory_.empty() ) {
-
-      std::string dbgfilename =
-          ssprintf("%s/dbgp.%03d.txt", debug_directory_.c_str(),
-              scale);
-
-      if( !(debug_points_fp = fopen(dbgfilename.c_str(), "w")) ) {
-        CF_ERROR("fopen('%s') fails: %s", dbgfilename.c_str(),
-            strerror(errno));
-        return false;
-      }
-
-      for( int i = 0, n = debug_points_.size(); i < n; ++i ) {
-        fprintf(debug_points_fp, "disp%d\te%d%s", i, i, i == n - 1 ? "\n" : "\t");
-      }
-    }
-
-
-    cv::Mat E, Ef;
-    cv::Mat Emin;
-    cv::Mat1b M;
-
-    for( int disparity = 0; disparity < max_disparity; ++disparity ) {
-
-      const cv::Rect qrc(disparity, 0, max_image_size.width - disparity, max_image_size.height);
-      const cv::Rect rrc(0, 0, max_image_size.width - disparity, max_image_size.height);
-
-      const cv::Mat Q = queryImage(qrc);
-      const cv::Mat1b QM = queryMask(qrc);
-
-      const cv::Mat T = trainImage(rrc);
-      const cv::Mat1b TM = trainMask(rrc);
-
-      cv::bitwise_and(QM, TM, M);
-
-      // compute error image
-      cv::absdiff(Q, T, E);
-
-      cv::Mat & EE =
-          track.push_next();
-
-      if( E.channels() == 1 ) {
-        cv::sepFilter2D(E, EE(rrc), E.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-      }
-      else {
-        cv::sepFilter2D(E, Ef, E.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-        cv::cvtColor(Ef, EE(rrc), cv::COLOR_BGR2GRAY);
-      }
-
-      if( debug_points_fp ) {
-
-        const cv::Mat &c =
-            track.back();
-
-        for( int i = 0, n = debug_points_.size(); i < n; ++i ) {
-
-          const cv::Point & p =
-              debug_points_[i];
-
-          const int xx = p.x >> scale;
-          const int yy = p.y >> scale;
-
-          const float e =
-              xx >= 0 && xx < c.cols && yy >= 0 && yy < c.rows ?
-                  pixvalue(c, yy, xx) :
-                  -1.f;
-
-          fprintf(debug_points_fp, "%d\t%g%s",
-              disparity, e,
-              i == n - 1 ?
-                  "\n" :
-                  "\t");
-        }
-      }
-
-      if ( track.size() == 1 ) {
-        track.back().copyTo(Emin);
-      }
-      else {
-        update_track(disparity, track, rrc, M, Emin, disparityPyramid);
-      }
-
-      if( !debug_directory_.empty() ) {
-
-        if ( true ) {
-
-          cv::Mat EE(max_image_size, track.back().type(), cv::Scalar::all(0));
-
-          track.back()(rrc).copyTo(EE(rrc));
-          save_image(EE, ssprintf("%s/scale%02d/E/E.%04d.tiff",
-              debug_directory_.c_str(),
-              scale,
-              disparity));
-        }
-
-        if ( true ) {
-
-          cv::Mat B(max_image_size, Q.type(), cv::Scalar::all(0));
-
-          cv::addWeighted(Q, 0.5, T, 0.5, 0, B(rrc));
-
-          save_image(B, ssprintf("%s/scale%02d/B/B.%04d.tiff",
-              debug_directory_.c_str(),
-              scale,
-              disparity));
-
-        }
-
-      }
-    }
-
-    if( debug_points_fp ) {
-      fclose(debug_points_fp);
-    }
-
-    cv::Mat1b dispMask = disp < UINT16_MAX;
-    disp.setTo(0, ~dispMask);
-
-    if( !debug_directory_.empty() ) {
-      save_image(currentImagePyramid[scale], currentMaskPyramid[scale],
-          ssprintf("%s/scale%02d/Q.tiff",
-              debug_directory_.c_str(),
-              scale));
-      save_image(referenceImagePyramid[scale], referenceMaskPyramid[scale],
-          ssprintf("%s/scale%02d/T.tiff",
-              debug_directory_.c_str(),
-              scale));
-
-      save_image(disp, dispMask,
-          ssprintf("%s/scale%02d/disps.tiff",
-              debug_directory_.c_str(),
-              scale));
-
-      save_image(Emin, dispMask,
-          ssprintf("%s/scale%02d/errs.tiff",
-              debug_directory_.c_str(),
-              scale));
-    }
-  }
-
-
-  return true;
-}
-#endif
 

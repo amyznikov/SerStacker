@@ -107,6 +107,10 @@ struct c_regular_stereo_output_options
 
   bool save_motion_poses = false;
   std::string motion_poses_filename;
+
+  bool save_stereo_match_progress_video = false;
+  std::string stereo_match_progress_video_filename;
+
 };
 
 class c_regular_stereo_pipeline:
@@ -174,8 +178,13 @@ protected:
   bool read_stereo_frame();
   bool detect_keypoints();
 
-  void update_display_image(bool applyHomography = false, bool drawmatches = false, int stream_pos = -1);
-  bool write_progress_video(c_video_writer & w);
+  void update_calibration_display_image(bool applyHomography = false, bool drawmatches = false, int stream_pos = -1);
+  bool write_calibration_progress_video(c_video_writer & w);
+
+  void update_disparity_map_display_image(const cv::Mat & currentFrame, const cv::Mat & referenceFrame,
+      const cv::Mat1w & disparityMap,
+      const cv::Mat1b & disparityMask,
+      int max_disparity);
 
   std::string get_calibraton_config_output_filename() const;
   bool load_calibration_config_file();

@@ -9,6 +9,8 @@
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/proc/camera_calibration/camera_pose.h>
+#include <core/proc/pixtype.h>
+#include <core/proc/colormap.h>
 #include <core/io/load_image.h>
 #include <core/readdir.h>
 #include <core/debug.h>
@@ -178,6 +180,9 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, output_options_, save_motion_poses);
     SERIALIZE_OPTION(section, save, output_options_, motion_poses_filename);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_stereo_match_progress_video);
+    SERIALIZE_OPTION(section, save, output_options_, stereo_match_progress_video_filename);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
@@ -512,7 +517,7 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
 }
 
 
-void c_regular_stereo_pipeline::update_display_image(bool applyHomography, bool drawmatches, int stream_pos)
+void c_regular_stereo_pipeline::update_calibration_display_image(bool applyHomography, bool drawmatches, int stream_pos)
 {
   lock_guard lock(display_lock_);
 
@@ -623,7 +628,77 @@ void c_regular_stereo_pipeline::update_display_image(bool applyHomography, bool 
   on_accumulator_changed();
 }
 
-bool c_regular_stereo_pipeline::write_progress_video(c_video_writer & progress_writer)
+
+void c_regular_stereo_pipeline::update_disparity_map_display_image(const cv::Mat & currentFrame,
+    const cv::Mat & referenceFrame,
+    const cv::Mat1w & disparityMap,
+    const cv::Mat1b & disparityMask,
+    int max_disparity)
+{
+
+  static const auto convertToBGR =
+      [](cv::InputArray src, cv::OutputArray & dst) {
+
+        if ( src.depth() == CV_8U ) {
+          if ( src.channels() == 1 ) {
+            cv::cvtColor(src, dst, cv::COLOR_GRAY2BGR);
+          }
+          else {
+            src.copyTo(dst);
+          }
+        }
+        else {
+
+          double alpha, beta;
+
+          get_scale_offset(src.depth(), CV_8U,
+              &alpha,
+              &beta);
+
+          src.getMat().convertTo(dst, CV_8U, alpha, beta);
+
+          if ( dst.channels() == 1 ) {
+            cv::cvtColor(dst, dst, cv::COLOR_GRAY2BGR);
+          }
+        }
+      };
+
+  cv::Mat images[2];
+  cv::Mat dispMap;
+
+  cv::pyrDown(currentFrame, images[0]);
+  cv::pyrDown(referenceFrame, images[1]);
+
+  const cv::Size size0 =
+      images[0].size();
+
+  const cv::Size size1 =
+      images[1].size();
+
+  const cv::Size map_size =
+      disparityMap.size();
+
+  const cv::Size total_display_size(std::max(size0.width + size1.width, map_size.width),
+      std::max(size0.height, size1.height) + map_size.height);
+
+  const cv::Rect rc0(0, 0, size0.width, size0.height);
+  const cv::Rect rc1(size0.width, 0, size1.width, size1.height);
+  const cv::Rect rc2(0, rc1.height, map_size.width, map_size.height);
+
+  disparityMap.convertTo(dispMap, CV_8U, 255. / max_disparity, 0);
+  apply_colormap(dispMap, dispMap, COLORMAP_TURBO);
+  dispMap.setTo(0, ~disparityMask);
+
+  display_frame_.create(total_display_size, CV_8UC3);
+  convertToBGR(images[0], display_frame_(rc0));
+  convertToBGR(images[1], display_frame_(rc1));
+  dispMap.copyTo(display_frame_(rc2));
+
+  on_accumulator_changed();
+}
+
+
+bool c_regular_stereo_pipeline::write_calibration_progress_video(c_video_writer & progress_writer)
 {
   if ( output_options_.save_progress_video ) {
 
@@ -1253,13 +1328,13 @@ bool c_regular_stereo_pipeline::run_calibration()
       break;
     }
 
-    update_display_image();
+    update_calibration_display_image();
 
     if ( canceled() ) {
       break;
     }
 
-    if ( !write_progress_video(progress_video_writer) ) {
+    if ( !write_calibration_progress_video(progress_video_writer) ) {
       CF_ERROR("write_progress_video() fails");
       return false;
     }
@@ -1690,7 +1765,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
       if( output_options_.save_stereo_matches_video ) {
 
-        update_display_image(false, false, processed_frames_);
+        update_calibration_display_image(false, false, processed_frames_);
 
         if( canceled() ) {
           break;
@@ -1722,7 +1797,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
           break;
         }
 
-        update_display_image(true, false, processed_frames_);
+        update_calibration_display_image(true, false, processed_frames_);
 
         if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
@@ -1753,9 +1828,13 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
   }
 
   c_regular_stereo_matcher matcher;
-  cv::Mat2f matches;
   cv::Mat images[2];
   cv::Mat masks[2];
+
+  cv::Mat1w disparityMap;
+  cv::Mat1b disparityMask;
+
+  c_video_writer progress_video;
 
   bool fOK;
 
@@ -1859,11 +1938,12 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       }
     }
 
-    if ( !image_processing_options_.stereo_match_preprocessor ) {
+    if( !image_processing_options_.stereo_match_preprocessor ) {
       fOK =
           matcher.match(current_frame_->images[0], current_frame_->masks[0],
               current_frame_->images[1], current_frame_->masks[1],
-              matches);
+              disparityMap,
+              &disparityMask);
     }
     else {
 
@@ -1879,7 +1959,8 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       fOK =
           matcher.match(images[0], masks[0],
               images[1], masks[1],
-              matches);
+              disparityMap,
+              &disparityMask);
     }
 
     if ( !fOK )  {
@@ -1887,6 +1968,37 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       return false;
     }
 
+    if( canceled() ) {
+      return false;
+    }
+
+    update_disparity_map_display_image(current_frame_->images[0], current_frame_->images[1],
+        disparityMap, disparityMask,
+        std::max(10, matcher.max_disparity() * 3 / 4));
+
+    if( canceled() ) {
+      return false;
+    }
+
+    if ( output_options_.save_stereo_match_progress_video ) {
+
+      std::string output_file_name =
+          generate_output_file_name(output_options_.stereo_match_progress_video_filename,
+              "match_progress",
+              ".avi");
+
+      if ( !progress_video.is_open() ) {
+        if( !progress_video.open(output_file_name, display_frame_.size(), display_frame_.channels() > 1) ) {
+          CF_ERROR("progress_video.open('%s') fails", output_file_name.c_str());
+          return false;
+        }
+      }
+
+      if ( !progress_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+        CF_ERROR("progress_video.write() fails");
+        return false;
+      }
+    }
   }
 
   return true;

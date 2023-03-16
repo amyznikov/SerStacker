@@ -48,6 +48,9 @@ protected:
 
   QCheckBox * save_motion_poses_ctl = nullptr;
   QLineEditBox * motion_poses_filename_ctl = nullptr;
+
+  QCheckBox * save_stereo_match_progress_video_ctl = nullptr;
+  QLineEditBox * stereo_match_progress_video_filename_ctl = nullptr;
 };
 
 #endif /* __QRStereoOutputOptions_h__ */

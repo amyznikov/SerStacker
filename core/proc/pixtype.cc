@@ -6,6 +6,7 @@
  */
 
 #include "pixtype.h"
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 
 template<>

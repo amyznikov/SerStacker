@@ -22,7 +22,7 @@ public:
 
   bool match(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat2f & outputMatches);
+      cv::Mat1w & outputMatches, cv::Mat1b * outputMask);
 
   void set_max_disparity(int v);
   int max_disparity() const;
@@ -46,7 +46,7 @@ protected:
   template<class MT>
   bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat2f & outputMatches);
+      cv::Mat1w & outputMatches, cv::Mat1b * outputMask);
 
 protected:
   int max_disparity_ = 128;

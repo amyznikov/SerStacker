@@ -13,6 +13,7 @@
 #include <core/feature2d/feature2d.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
+#include <core/improc/c_image_processor.h>
 
 enum RSTEREO_CALIBRATION_STAGE {
   rstereo_calibration_idle = 0,
@@ -74,8 +75,15 @@ struct c_regular_stereo_matching_options
   std::vector<int> debug_frames;
   std::vector<cv::Point> debug_points;
 
-
 };
+
+struct c_regular_stereo_image_processing_options
+{
+  c_image_processor::sptr input_image_processor;
+  c_image_processor::sptr stereo_match_preprocessor;
+  c_image_processor::sptr output_image_processor;
+};
+
 
 struct c_regular_stereo_output_options
 {
@@ -87,8 +95,12 @@ struct c_regular_stereo_output_options
 
   bool save_rectified_videos = false;
   std::string rectified_video_filenames[2];
-  std::string & left_rectified_video_filename = rectified_video_filenames[0];
-  std::string & right_rectified_video_filename = rectified_video_filenames[0];
+
+  std::string & left_rectified_video_filename =
+      rectified_video_filenames[0];
+
+  std::string & right_rectified_video_filename =
+      rectified_video_filenames[0];
 
   bool save_stereo_matches_video = false;
   std::string stereo_matches_video_filename;
@@ -134,6 +146,9 @@ public:
 
   c_regular_stereo_matching_options & stereo_matching_options();
   const c_regular_stereo_matching_options & stereo_matching_options() const;
+
+  c_regular_stereo_image_processing_options & image_processing_options() ;
+  const c_regular_stereo_image_processing_options & image_processing_options() const;
 
   c_regular_stereo_output_options & output_options();
   const c_regular_stereo_output_options & output_options() const;
@@ -202,6 +217,7 @@ protected:
   c_regular_stereo_feature2d_options feature2d_options_;
   c_regular_stereo_calibratie_options calibration_options_;
   c_regular_stereo_matching_options stereo_matching_options_;
+  c_regular_stereo_image_processing_options image_processing_options_;
   c_regular_stereo_output_options output_options_;
 
   c_camera_intrinsics intrinsics_;

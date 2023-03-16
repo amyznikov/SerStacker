@@ -13,6 +13,7 @@
 #include "QRStereoFeature2dOptions.h"
 #include "QRStereoCalibrateOptions.h"
 #include "QRStereoMatchingOptions.h"
+#include "QRStereoImageProcessingOptions.h"
 #include "QRStereoOutputOptions.h"
 
 
@@ -37,6 +38,7 @@ protected:
   QRStereoFeature2dOptions * feature2DOptions_ctl = nullptr;
   QRStereoCalibrateOptions * stereoCalibrateOptions_ctl = nullptr;
   QRStereoMatchingOptions * stereoMatchingOptions_ctl = nullptr;
+  QRStereoImageProcessingOptions * imageProcessingOptions_ctl = nullptr;
   QRStereoOutputOptions * outputOptions_ctl = nullptr;
 };
 

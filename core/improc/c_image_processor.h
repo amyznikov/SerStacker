@@ -401,6 +401,18 @@ protected:
 
 
 
+#define SERIALIZE_IMAGE_PROCESSOR(settings, save, obj, proc) \
+  if( (save) ) { \
+    if ( (obj).proc ) { \
+      save_settings(settings, #proc, ((obj).proc)->name()); \
+    }\
+  } \
+  else { \
+    std::string s; \
+    if( load_settings(settings, #proc, &s) && !s.empty() ) { \
+      (obj).proc = c_image_processor_collection::default_instance()->get(s); \
+    } \
+  }
 
 
 

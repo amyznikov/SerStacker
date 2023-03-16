@@ -32,6 +32,11 @@ QRStereoOptions::QRStereoOptions(QWidget * parent) :
   connect(stereoMatchingOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+  add_expandable_groupbox("Image Processing",
+      imageProcessingOptions_ctl = new QRStereoImageProcessingOptions(this));
+  connect(imageProcessingOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
   add_expandable_groupbox("Output Options",
       outputOptions_ctl = new QRStereoOutputOptions(this));
   connect(outputOptions_ctl, &QSettingsWidget::parameterChanged,
@@ -63,6 +68,7 @@ void QRStereoOptions::onupdatecontrols()
     feature2DOptions_ctl->set_feature2d_options(nullptr);
     stereoCalibrateOptions_ctl->set_current_pipeline(nullptr);
     stereoMatchingOptions_ctl->set_current_pipeline(nullptr);
+    imageProcessingOptions_ctl->set_current_pipeline(nullptr);
     outputOptions_ctl->set_current_pipeline(nullptr);
   }
   else {
@@ -71,6 +77,7 @@ void QRStereoOptions::onupdatecontrols()
     feature2DOptions_ctl->set_feature2d_options(&pipeline_->feature2d_options());
     stereoCalibrateOptions_ctl->set_current_pipeline(pipeline_);
     stereoMatchingOptions_ctl->set_current_pipeline(pipeline_);
+    imageProcessingOptions_ctl->set_current_pipeline(pipeline_);
     outputOptions_ctl->set_current_pipeline(pipeline_);
 
     Base::onupdatecontrols();

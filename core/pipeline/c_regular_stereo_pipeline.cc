@@ -92,6 +92,16 @@ const c_regular_stereo_matching_options & c_regular_stereo_pipeline::stereo_matc
   return stereo_matching_options_;
 }
 
+c_regular_stereo_image_processing_options & c_regular_stereo_pipeline::image_processing_options()
+{
+  return image_processing_options_;
+}
+
+const c_regular_stereo_image_processing_options & c_regular_stereo_pipeline::image_processing_options() const
+{
+  return image_processing_options_;
+}
+
 c_regular_stereo_output_options & c_regular_stereo_pipeline::output_options()
 {
   return output_options_;
@@ -168,6 +178,12 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, output_options_, save_motion_poses);
     SERIALIZE_OPTION(section, save, output_options_, motion_poses_filename);
+  }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, input_image_processor);
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, stereo_match_preprocessor);
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, output_image_processor);
   }
 
   return true;
@@ -312,6 +328,18 @@ bool c_regular_stereo_pipeline::read_stereo_frame()
         intrinsics_.image_size.width, intrinsics_.image_size.height,
         current_frame_->images[0].cols, current_frame_->images[0].rows);
     return false;
+  }
+
+  if( image_processing_options_.input_image_processor ) {
+    for( int i = 0; i < 2; ++i ) {
+      cv::Mat &image = current_frame_->images[i];
+      cv::Mat &mask = current_frame_->masks[i];
+
+      if( !image_processing_options_.input_image_processor->process(image, mask) ) {
+        CF_ERROR("ERROR: input_image_processor->process() fails for stereo frame %d", i);
+        return false;
+      }
+    }
   }
 
   return true;
@@ -1726,6 +1754,9 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
   c_regular_stereo_matcher matcher;
   cv::Mat2f matches;
+  cv::Mat images[2];
+  cv::Mat masks[2];
+
   bool fOK;
 
   matcher.set_max_disparity(stereo_matching_options_.max_disparity);
@@ -1828,10 +1859,28 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       }
     }
 
-    fOK =
-        matcher.match(current_frame_->images[0], current_frame_->masks[0],
-            current_frame_->images[1], current_frame_->masks[1],
-            matches);
+    if ( !image_processing_options_.stereo_match_preprocessor ) {
+      fOK =
+          matcher.match(current_frame_->images[0], current_frame_->masks[0],
+              current_frame_->images[1], current_frame_->masks[1],
+              matches);
+    }
+    else {
+
+      for( int i = 0; i < 2; ++i ) {
+        current_frame_->images[i].copyTo(images[i]);
+        current_frame_->masks[i].copyTo(masks[i]);
+        if( !image_processing_options_.stereo_match_preprocessor->process(images[i], masks[i]) ) {
+          CF_ERROR("stereo_match_preprocessor->process() fails for stereo frame %d", i);
+          return false;
+        }
+      }
+
+      fOK =
+          matcher.match(images[0], masks[0],
+              images[1], masks[1],
+              matches);
+    }
 
     if ( !fOK )  {
       CF_ERROR("matcher.match() fails");

@@ -27,6 +27,24 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
             return false;
           });
 
+
+  apply_stereo_rectification_ctl =
+      add_checkbox("apply rectification",
+          [this](bool checked) {
+            if ( pipeline_ ) {
+              pipeline_->calibration_options().apply_stereo_rectification = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              * checked = pipeline_->calibration_options().apply_stereo_rectification;
+              return true;
+            }
+            return false;
+          });
+
+
   form->addRow("Calibration file name:",
       calibration_config_filename_ctl =
           new QBrowsePathCombo("",

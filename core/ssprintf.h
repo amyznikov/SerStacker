@@ -385,15 +385,16 @@ inline std::string toString(const std::vector<T> & v) {
 }
 
 template<class T>
-inline bool fromString(const std::string & s, std::vector<T> * v)
+typename std::enable_if<std::is_scalar_v<T>,
+    bool>::type fromString(const std::string & s, std::vector<T> * v)
 {
   const std::vector<std::string> tokens =
       strsplit(s, " \t\n;:");
 
   v->clear(), v->reserve(tokens.size());
-  for ( int i = 0, n = tokens.size(); i < n; ++i ) {
+  for( int i = 0, n = tokens.size(); i < n; ++i ) {
     T value;
-    if ( !fromString(tokens[i], &value) ) {
+    if( !fromString(tokens[i], &value) ) {
       return false;
     }
     v->emplace_back(value);
@@ -402,6 +403,24 @@ inline bool fromString(const std::string & s, std::vector<T> * v)
   return true;
 }
 
+template<class T>
+typename std::enable_if<!std::is_scalar_v<T>,
+    bool>::type fromString(const std::string & s, std::vector<T> * v)
+{
+  const std::vector<std::string> tokens =
+      strsplit(s, "|");
+
+  v->clear(), v->reserve(tokens.size());
+  for( int i = 0, n = tokens.size(); i < n; ++i ) {
+    T value;
+    if( !fromString(tokens[i], &value) ) {
+      return false;
+    }
+    v->emplace_back(value);
+  }
+
+  return true;
+}
 
 // opencv types
 #ifdef CV_VERSION

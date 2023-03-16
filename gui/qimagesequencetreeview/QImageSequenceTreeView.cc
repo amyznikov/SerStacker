@@ -928,6 +928,7 @@ int QImageSequenceTreeView::dropSources(QDropEvent *e, QImageSequenceTreeItem * 
           }
         }
       }
+
     }
 
     else  {

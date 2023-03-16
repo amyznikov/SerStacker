@@ -364,13 +364,40 @@ QString toString(const T x[], int nmax)
 }
 
 template<class T>
-inline bool fromString(const QString & text, std::vector<T> * v)
+typename std::enable_if<std::is_scalar_v<T>,
+  bool>::type fromString(const QString & text, std::vector<T> * v)
 {
   std::vector<std::string> tokens;
 
   strsplit(text.toUtf8().constData(),
       tokens,
       "[ ;:\t\n]");
+
+  v->clear();
+  v->reserve(tokens.size());
+
+  T value;
+
+  for( int i = 0, n = tokens.size(); i < n; ++i ) {
+    if( !fromString(tokens[i], &value) ) {
+      return false;
+    }
+    v->emplace_back(value);
+  }
+
+  return true; // !v->empty();
+}
+
+
+template<class T>
+typename std::enable_if<!std::is_scalar_v<T>,
+  bool>::type fromString(const QString & text, std::vector<T> * v)
+{
+  std::vector<std::string> tokens;
+
+  strsplit(text.toUtf8().constData(),
+      tokens,
+      "|");
 
   v->clear();
   v->reserve(tokens.size());
@@ -388,11 +415,23 @@ inline bool fromString(const QString & text, std::vector<T> * v)
 }
 
 template<class T>
-inline QString toQString(const std::vector<T> & v)
+typename std::enable_if<std::is_scalar_v<T>,
+  QString>::type toQString(const std::vector<T> & v)
 {
   QString s;
-  for ( uint i = 0, n = v.size(); i < n; ++i ) {
-    s.append(QString("%1 ; ").arg(v[i]));
+  for( uint i = 0, n = v.size(); i < n; ++i ) {
+    s.append(QString("%1 ; ").arg(toQString(v[i])));
+  }
+  return s;
+}
+
+template<class T>
+typename std::enable_if<!std::is_scalar_v<T>,
+  QString>::type toQString(const std::vector<T> & v)
+{
+  QString s;
+  for( uint i = 0, n = v.size(); i < n; ++i ) {
+    s.append(QString("%1| ").arg(toQString(v[i])));
   }
   return s;
 }

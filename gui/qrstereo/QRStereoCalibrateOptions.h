@@ -32,6 +32,7 @@ protected:
   c_regular_stereo_pipeline::sptr pipeline_;
 
   QCheckBox * enable_calibration_ctl = nullptr;
+  QCheckBox * apply_stereo_rectification_ctl = nullptr;
   QBrowsePathCombo * calibration_config_filename_ctl = nullptr;
 
   QNumberEditBox * min_frames_ctl = nullptr;

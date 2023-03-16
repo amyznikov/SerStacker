@@ -34,9 +34,12 @@ protected:
   QCheckBox * enable_stereo_matching_ctl = nullptr;
   QNumberEditBox * max_disparity_ctl = nullptr;
   QNumberEditBox * max_scale_ctl = nullptr;
+  QNumberEditBox * kernel_radius_ctl = nullptr;
+  QNumberEditBox * kernel_sigma_ctl = nullptr;
   QCheckBox * save_debug_images_ctl = nullptr;
   QCheckBox * process_only_debug_frames_ctl = nullptr;
   QNumberEditBox * debug_frames_ctl = nullptr;
+  QNumberEditBox * debug_points_ctl = nullptr;
 
 };
 

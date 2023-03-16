@@ -51,6 +51,7 @@ struct c_regular_stereo_feature2d_options {
 struct c_regular_stereo_calibratie_options
 {
   bool enable_calibration = true;
+  bool apply_stereo_rectification = true;
   std::string calibration_config_filename; // input
 
   int min_frames = 3;
@@ -65,10 +66,14 @@ struct c_regular_stereo_matching_options
 
   int max_disparity = 128;
   int max_scale = 2;
+  int kernel_radius = 3;
+  double kernel_sigma = 1;
 
   bool save_debug_images = false;
   bool process_only_debug_frames = false;
   std::vector<int> debug_frames;
+  std::vector<cv::Point> debug_points;
+
 
 };
 
@@ -218,7 +223,7 @@ protected:
 
   c_stereo_camera_intrinsics stereo_intrinsics_;
   c_stereo_camera_extrinsics stereo_extrinsics_;
-  bool stereo_intrinsics_initialized_ = false;
+  //bool stereo_intrinsics_initialized_ = false;
 
   c_stereo_camera_intrinsics new_stereo_intrinsics_;
   c_stereo_camera_extrinsics new_stereo_extrinsics;

@@ -26,7 +26,6 @@ QRStereoMatchingOptions::QRStereoMatchingOptions(QWidget * parent) :
             return false;
           });
 
-
   max_disparity_ctl =
       add_numeric_box<int>("max_disparity:",
           [this](int value) {
@@ -54,6 +53,38 @@ QRStereoMatchingOptions::QRStereoMatchingOptions(QWidget * parent) :
           [this](int * value) {
             if ( pipeline_ ) {
               * value = pipeline_->stereo_matching_options().max_scale;
+              return true;
+            }
+            return false;
+          });
+
+  kernel_radius_ctl =
+      add_numeric_box<int>("kernel_radius:",
+          [this](int value) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_matching_options().kernel_radius = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->stereo_matching_options().kernel_radius;
+              return true;
+            }
+            return false;
+          });
+
+  kernel_sigma_ctl =
+      add_numeric_box<double>("kernel_sigma:",
+          [this](double value) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_matching_options().kernel_sigma = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->stereo_matching_options().kernel_sigma;
               return true;
             }
             return false;
@@ -102,6 +133,22 @@ QRStereoMatchingOptions::QRStereoMatchingOptions(QWidget * parent) :
           [this](std::vector<int> * value) {
             if ( pipeline_ ) {
               * value = pipeline_->stereo_matching_options().debug_frames;
+              return true;
+            }
+            return false;
+          });
+
+  debug_points_ctl =
+      add_numeric_box<std::vector<cv::Point>>("debug points:",
+          [this](const std::vector<cv::Point> & value) {
+            if ( pipeline_ ) {
+              pipeline_->stereo_matching_options().debug_points = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](std::vector<cv::Point> * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->stereo_matching_options().debug_points;
               return true;
             }
             return false;

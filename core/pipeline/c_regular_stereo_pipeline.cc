@@ -130,6 +130,7 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "calibration_options")) ) {
     SERIALIZE_OPTION(section, save, calibration_options_, enable_calibration);
+    SERIALIZE_OPTION(section, save, calibration_options_, apply_stereo_rectification);
     SERIALIZE_OPTION(section, save, calibration_options_, calibration_config_filename);
     SERIALIZE_OPTION(section, save, calibration_options_, min_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, max_frames);
@@ -140,9 +141,12 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, stereo_matching_options_, enable_stereo_matchning);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, max_disparity);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, max_scale);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, kernel_radius);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, kernel_sigma);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, save_debug_images);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, process_only_debug_frames);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, debug_frames);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, debug_points);
   }
 
 
@@ -694,7 +698,7 @@ bool c_regular_stereo_pipeline::load_calibration_config_file()
   }
 
   if ( filename.empty() ) {
-    CF_ERROR("INPUT ERROR: No input calibraton cofig file name spcefied");
+    CF_ERROR("INPUT ERROR: No input calibration config file name specified");
     return false;
   }
 
@@ -703,7 +707,7 @@ bool c_regular_stereo_pipeline::load_calibration_config_file()
     cv::FileStorage fs(filename, cv::FileStorage::READ);
 
     if( !fs.isOpened() ) {
-      CF_ERROR("Error: can not open the extrinsics parameters "
+      CF_ERROR("Error: can not load extrinsic parameters "
           "from input file '%s'", filename.c_str());
     }
     else {
@@ -713,6 +717,8 @@ bool c_regular_stereo_pipeline::load_calibration_config_file()
       fs["dist_coeffs"] >> intrinsics_.dist_coeffs;
       fs["rectificationHomography0"] >> rectificationHomography[0];
       fs["rectificationHomography1"] >> rectificationHomography[1];
+
+      haveRectificationHomography = true;
 
       return true;
     }
@@ -734,9 +740,6 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  stereo_intrinsics_initialized_ = false;
-
-  /////////////////////////////////////////////////////////////////////////////
 
 
   if ( input_options_.left_stereo_source.empty() ) {
@@ -770,22 +773,25 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   }
 
   /////////////////////////////////////////////////////////////////////////////
-
-  if( !calibration_options_.enable_calibration && !load_calibration_config_file() ) {
-    CF_ERROR("load_calibration_cofig_file() fails");
-    return false;
+  if( calibration_options_.apply_stereo_rectification ) {
+    if( !calibration_options_.enable_calibration && !load_calibration_config_file() ) {
+      CF_ERROR("load_calibration_cofig_file() fails");
+      return false;
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
+  if( calibration_options_.enable_calibration ) {
 
-  if( !(keypoints_extractor_ = create_sparse_feature_extractor(feature2d_options_.sparse_feature_extractor)) ) {
-    CF_ERROR("ERROR: create_sparse_feature_extractor() fails");
-    return false;
-  }
+    if( !(keypoints_extractor_ = create_sparse_feature_extractor(feature2d_options_.sparse_feature_extractor)) ) {
+      CF_ERROR("ERROR: create_sparse_feature_extractor() fails");
+      return false;
+    }
 
-  if( !(keypoints_matcher_ = create_sparse_feature_matcher(feature2d_options_.sparse_feature_matcher)) ) {
-    CF_ERROR("ERROR: create_sparse_feature_matcher() fails");
-    return false;
+    if( !(keypoints_matcher_ = create_sparse_feature_matcher(feature2d_options_.sparse_feature_matcher)) ) {
+      CF_ERROR("ERROR: create_sparse_feature_matcher() fails");
+      return false;
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -805,8 +811,7 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   intrinsics_.image_size.width =
       intrinsics_.image_size.height = -1;
 
-
-  if ( output_options_.save_motion_poses ) {
+  if ( calibration_options_.enable_calibration && output_options_.save_motion_poses ) {
 
     std::string outfilename =
         generate_output_file_name(output_options_.motion_poses_filename,
@@ -1616,7 +1621,8 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
         for( int i = 0; i < 2; ++i ) {
 
-          if( !haveRectificationHomography ) {
+
+          if( !calibration_options_.apply_stereo_rectification || !haveRectificationHomography ) {
             tmp = current_frame_->images[i];
           }
           else {
@@ -1724,6 +1730,14 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
   matcher.set_max_disparity(stereo_matching_options_.max_disparity);
   matcher.set_max_scale(stereo_matching_options_.max_scale);
+  matcher.set_kernel_radius(stereo_matching_options_.kernel_radius);
+  matcher.set_kernel_sigma(stereo_matching_options_.kernel_sigma);
+  matcher.set_max_scale(stereo_matching_options_.max_scale);
+  matcher.set_debug_points(stereo_matching_options_.debug_points);
+
+
+  double kernel_sigma_ = 1;
+  int kernel_radius_ = 3;
 
   if ( !open_input_streams() ) {
     CF_ERROR("ERROR: open_input_streams() fails");
@@ -1760,12 +1774,12 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
           continue;
         }
 
-        matcher.set_debug_direcory("");
+        matcher.set_debug_directory("");
       }
 
       else if( stereo_matching_options_.save_debug_images ) {
 
-        matcher.set_debug_direcory(
+        matcher.set_debug_directory(
             ssprintf("%s/debug/match%05d",
                 output_path_.c_str(),
                 processed_frames_));
@@ -1773,43 +1787,45 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
     }
 
+    if( calibration_options_.apply_stereo_rectification ) {
 
-    for ( int i = 0; i < 2; ++i ) {
+      for( int i = 0; i < 2; ++i ) {
+
+        if( canceled() ) {
+          return false;
+        }
+
+        const cv::Size image_size =
+            current_frame_->images[i].size();
+
+        cv::warpPerspective(current_frame_->images[i], current_frame_->images[i],
+            rectificationHomography[i],
+            image_size,
+            cv::INTER_LINEAR,
+            cv::BORDER_REPLICATE);
+
+        if( canceled() ) {
+          return false;
+        }
+
+        cv::warpPerspective(cv::Mat1b(image_size, 255), current_frame_->masks[i],
+            rectificationHomography[i],
+            image_size,
+            cv::INTER_LINEAR,
+            cv::BORDER_CONSTANT);
+
+        if( canceled() ) {
+          return false;
+        }
+
+        cv::compare(current_frame_->masks[i], 255,
+            current_frame_->masks[i],
+            cv::CMP_GE);
+      }
 
       if( canceled() ) {
         return false;
       }
-
-      const cv::Size image_size =
-          current_frame_->images[i].size();
-
-      cv::warpPerspective(current_frame_->images[i], current_frame_->images[i],
-          rectificationHomography[i],
-          image_size,
-          cv::INTER_LINEAR,
-          cv::BORDER_REPLICATE);
-
-      if( canceled() ) {
-        return false;
-      }
-
-      cv::warpPerspective(cv::Mat1b(image_size, 255), current_frame_->masks[i],
-          rectificationHomography[i],
-          image_size,
-          cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT);
-
-      if( canceled() ) {
-        return false;
-      }
-
-      cv::compare(current_frame_->masks[i], 255,
-          current_frame_->masks[i],
-          cv::CMP_GE);
-    }
-
-    if( canceled() ) {
-      return false;
     }
 
     fOK =
@@ -1837,7 +1853,7 @@ bool c_regular_stereo_pipeline::run_pipeline()
     return false;
   }
 
-  if( !load_calibration_config_file() ) {
+  if( calibration_options_.apply_stereo_rectification && !load_calibration_config_file() ) {
     CF_ERROR("load_calibration_config_file() fails");
     return false;
   }

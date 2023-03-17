@@ -84,19 +84,25 @@ protected:
 public:
 
   /////////////////////////////////////////////////////////////////////
-  void removeWidget(QWidget * w)
-  {
-    form->removeWidget(w);
-  }
 
   void addRow(const QString & label, QWidget * field)
   {
     form->addRow(label, field);
   }
 
+  void addRow(QWidget * field)
+  {
+    form->addRow(field);
+  }
+
   void insertRow(int row, QWidget * w)
   {
     form->insertRow(row, w);
+  }
+
+  void removeWidget(QWidget * w)
+  {
+    form->removeWidget(w);
   }
 
   int rowCount() const

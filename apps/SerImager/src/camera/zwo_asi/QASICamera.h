@@ -19,7 +19,7 @@
 
 namespace serimager {
 
-class QASICamera:
+class QASICamera :
     public QImagingCamera
 {
 public:
@@ -66,6 +66,6 @@ protected:
   bool is_asi_open_ = false;
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QASICamera_h__ */

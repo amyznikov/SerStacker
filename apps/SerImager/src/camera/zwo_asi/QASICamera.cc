@@ -729,4 +729,4 @@ bool QASICamera::create_frame_buffers(const cv::Size & imageSize, int cvType, en
   return true;
 }
 
-} /* namespace qserimager */
+} /* namespace serimager */

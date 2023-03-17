@@ -32,6 +32,9 @@
 	<file>icons/dark/target.png</file>
 	<file>icons/light/target.png</file>
 	
+	<file>icons/dark/menu.png</file>
+	<file>icons/light/menu.png</file>
+	
 	<file>icons/connect.png</file>
 	<file>icons/disconnect.png</file>
 	<file>icons/start.png</file>

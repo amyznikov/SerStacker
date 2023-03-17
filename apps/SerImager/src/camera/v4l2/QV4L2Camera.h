@@ -16,7 +16,7 @@
 
 namespace serimager {
 
-class QV4L2Camera:
+class QV4L2Camera :
     public QImagingCamera
 {
 public:
@@ -24,7 +24,7 @@ public:
   typedef QImagingCamera Base;
   typedef std::shared_ptr<ThisClass> sptr;
 
-  QV4L2Camera(const QString & filename);
+  QV4L2Camera(const QString & filename, QObject * parent = nullptr);
   ~QV4L2Camera();
 
   static sptr create(const QString & filename);
@@ -34,7 +34,6 @@ public:
 
   bool is_same_camera(const QImagingCamera::sptr & rhs) const override;
   int drops() const override;
-  //bool check_status() override;
 
   static QList<QImagingCamera::sptr> detectCameras();
 
@@ -93,6 +92,6 @@ protected:
 
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QV4L2Camera_h__ */

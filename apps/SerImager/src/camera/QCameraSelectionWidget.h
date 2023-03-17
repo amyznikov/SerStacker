@@ -36,6 +36,7 @@ protected Q_SLOTS:
   void onConnectionStatusCtrlClicked();
   void onStartStopCtrlClicked();
   void onCameraInfoCtrlClicked();
+  void onMenuCtrlClicked();
   void onUpdateControls();
 
 protected:
@@ -43,7 +44,7 @@ protected:
   void timerEvent(QTimerEvent *event) override;
 
 protected:
-  QImagingCamera::sptr getSelectedCamera() const;
+  QImagingCamera::sptr getSelectedCamera();
   void refreshCameras();
 
 protected:
@@ -54,7 +55,8 @@ protected:
   QComboBox * cameraSelection_ctl = nullptr;
   QToolButton * connectionStatus_ctl = nullptr;
   QToolButton * startStop_ctl = nullptr;
-  QToolButton * cameraInfo_ctl = nullptr;
+  //QToolButton * cameraInfo_ctl = nullptr;
+  QToolButton * menu_ctl = nullptr;
 };
 
 } /* namespace qserimager */

@@ -13,7 +13,8 @@
 namespace serimager {
 
 
-QV4L2Camera::QV4L2Camera(const QString & filename) :
+QV4L2Camera::QV4L2Camera(const QString & filename,  QObject * parent) :
+    Base(parent),
     filename_(filename)
 {
 }

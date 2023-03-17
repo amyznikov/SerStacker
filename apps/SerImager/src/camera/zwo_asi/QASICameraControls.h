@@ -123,10 +123,8 @@ public:
   typedef QASICameraControls ThisClass;
   typedef QCameraControlsWidget Base;
 
-  QASICameraControls(const QASICamera::sptr & camera,
-      QWidget * parent = nullptr);
+  QASICameraControls(const QASICamera::sptr & camera, QWidget * parent = nullptr);
   ~QASICameraControls();
-
 
 protected:
   void create_controls();

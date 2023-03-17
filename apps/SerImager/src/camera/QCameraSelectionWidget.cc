@@ -10,7 +10,9 @@
 #include <core/debug.h>
 #include "v4l2/QV4L2Camera.h"
 #include "zwo_asi/QASICamera.h"
-// #include <gui/widgets/QWaitCursor.h>
+#include "ffmpeg/QFFMPEGCamera.h"
+#include "ffmpeg/QFFStreams.h"
+
 
 namespace serimager {
 
@@ -24,6 +26,7 @@ namespace {
 #define ICON_info           ":/qserimager/icons/info.png"
 #define ICON_connect        ":/qserimager/icons/connect.png"
 #define ICON_disconnect     ":/qserimager/icons/disconnect.png"
+#define ICON_menu           ":/qserimager/icons/menu.png"
 
 
 static QIcon icon_hourglass;
@@ -32,6 +35,8 @@ static QIcon icon_stop;
 static QIcon icon_info;
 static QIcon icon_connect;
 static QIcon icon_disconnect;
+static QIcon icon_menu;
+
 
 void enableControl(QAbstractButton * w, bool enabled)
 {
@@ -71,6 +76,10 @@ static void init_resources()
   if( icon_disconnect.isNull() ) {
     icon_disconnect = getIcon(ICON_disconnect);
   }
+  if( icon_menu.isNull() ) {
+    icon_menu = getIcon(ICON_menu);
+  }
+
 }
 
 } // namespace
@@ -112,9 +121,9 @@ QCameraSelectionWidget::QCameraSelectionWidget(QWidget * parent) :
           "Start / Stop camera capture",
           this));
 
-  layout_->addWidget(cameraInfo_ctl =
-      create_toolbutton(icon_info,
-          "Show selected camera info",
+  layout_->addWidget(menu_ctl =
+      create_toolbutton(icon_menu,
+          "Options...",
           this));
 
   connect(cameraSelection_ctl, SIGNAL(currentIndexChanged(int)),
@@ -126,8 +135,9 @@ QCameraSelectionWidget::QCameraSelectionWidget(QWidget * parent) :
   connect(startStop_ctl, &QToolButton::clicked,
       this, &ThisClass::onStartStopCtrlClicked);
 
-  connect(cameraInfo_ctl, &QToolButton::clicked,
-      this, &ThisClass::onCameraInfoCtrlClicked);
+  connect(menu_ctl, &QToolButton::clicked,
+      this, &ThisClass::onMenuCtrlClicked);
+
 
   updateControls();
 
@@ -140,10 +150,16 @@ const QImagingCamera::sptr & QCameraSelectionWidget::selectedCamera() const
   return selectedCamera_;
 }
 
-QImagingCamera::sptr QCameraSelectionWidget::getSelectedCamera() const
+QImagingCamera::sptr QCameraSelectionWidget::getSelectedCamera()
 {
-  const int cursel = cameraSelection_ctl->currentIndex();
-  return cursel >= 0 ? cameraSelection_ctl->itemData(cursel).value<QImagingCamera::sptr>() : nullptr;
+  const int cursel =
+      cameraSelection_ctl->currentIndex();
+
+  if( cursel < 0 ) {
+    return nullptr;
+  }
+
+  return cameraSelection_ctl->itemData(cursel).value<QImagingCamera::sptr>();
 }
 
 void QCameraSelectionWidget::onCameraSelectionCurrentIndexChanged(int index)
@@ -231,6 +247,53 @@ void QCameraSelectionWidget::onCameraInfoCtrlClicked()
 
 }
 
+void QCameraSelectionWidget::onMenuCtrlClicked()
+{
+  QMenu menu;
+  QAction * action;
+
+  static QFFStreamsDialogBox *ffStreamsDialogBox = nullptr;
+
+  /////////////
+
+  menu.addAction(action = new QAction("FFmpeg streams..."));
+
+  action->setCheckable(true);
+  action->setChecked(ffStreamsDialogBox && ffStreamsDialogBox->isVisible());
+
+  connect(action, &QAction::triggered,
+      [this](bool checked) {
+
+        if ( !checked ) {
+          if ( ffStreamsDialogBox && ffStreamsDialogBox->isVisible() ) {
+            ffStreamsDialogBox->hide();
+          }
+        }
+        else {
+          if( !ffStreamsDialogBox ) {
+            ffStreamsDialogBox = new QFFStreamsDialogBox(this);
+          }
+          else if( ffStreamsDialogBox->parent() != this ) {
+            ffStreamsDialogBox->setParent(this);
+          }
+
+          if( !ffStreamsDialogBox->isVisible() ) {
+            ffStreamsDialogBox->show();
+          }
+
+          ffStreamsDialogBox->setFocus();
+        }
+
+      });
+
+  /////////////
+
+  menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width() / 2, menu_ctl->height() / 2)));
+
+
+
+}
+
 void QCameraSelectionWidget::timerEvent(QTimerEvent *event)
 {
   if( selectedCamera_ && selectedCamera_->state() != QImagingCamera::State_disconnected ) {
@@ -257,11 +320,12 @@ void QCameraSelectionWidget::onupdatecontrols()
 
   setEnabled(true);
 
+  enableControl(menu_ctl, true);
+
   if ( !selectedCamera_ ) {
     cameraSelection_ctl->setEnabled(cameraSelection_ctl->count() > 0);
     enableControl(connectionStatus_ctl, false, icon_hourglass);
     enableControl(startStop_ctl, false, icon_hourglass);
-    enableControl(cameraInfo_ctl, false);
   }
   else {
 
@@ -270,43 +334,36 @@ void QCameraSelectionWidget::onupdatecontrols()
         cameraSelection_ctl->setEnabled(true);
         enableControl(connectionStatus_ctl, true, icon_connect);
         enableControl(startStop_ctl, false, icon_start);
-        enableControl(cameraInfo_ctl, false);
         break;
       case QImagingCamera::State_connecting:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_hourglass);
         enableControl(startStop_ctl, false, icon_start);
-        enableControl(cameraInfo_ctl, false);
         break;
       case QImagingCamera::State_connected:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_disconnect);
         enableControl(startStop_ctl, true, icon_start);
-        enableControl(cameraInfo_ctl, true);
         break;
       case QImagingCamera::State_starting:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_disconnect);
         enableControl(startStop_ctl, true, icon_stop);
-        enableControl(cameraInfo_ctl, true);
         break;
       case QImagingCamera::State_started:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_disconnect);
         enableControl(startStop_ctl, true, icon_stop);
-        enableControl(cameraInfo_ctl, true);
         break;
       case QImagingCamera::State_stopping:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_disconnect);
         enableControl(startStop_ctl, false, icon_hourglass);
-        enableControl(cameraInfo_ctl, true);
         break;
       case QImagingCamera::State_disconnecting:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_hourglass);
         enableControl(startStop_ctl, false, icon_connect);
-        enableControl(cameraInfo_ctl, false);
         break;
     }
   }
@@ -318,6 +375,7 @@ void QCameraSelectionWidget::refreshCameras()
 
   detectedCameras.append(QASICamera::detectCameras());
   detectedCameras.append(QV4L2Camera::detectCameras());
+  detectedCameras.append(QFFStreams::streams());
 
   //
   // Remove disappeared cameras
@@ -328,7 +386,6 @@ void QCameraSelectionWidget::refreshCameras()
         cameraSelection_ctl->itemData(i).value<QImagingCamera::sptr>();
 
     if( !c2 ) {
-      CF_ERROR("APP BUG: c2 is null for item %d", i);
       continue;
     }
 
@@ -362,12 +419,20 @@ void QCameraSelectionWidget::refreshCameras()
           cameraSelection_ctl->itemData(i).value<QImagingCamera::sptr>();
 
       if( !c2 ) {
-        CF_ERROR("APP BUG: c2 is null for item %d", i);
         continue;
       }
 
       if( c2->is_same_camera(c1) ) {
+
         missing = false;
+
+        const QString displayName =
+            c1->display_name();
+
+        if( cameraSelection_ctl->itemText(i) != displayName ) {
+          cameraSelection_ctl->setItemText(i, displayName);
+        }
+
         break;
       }
     }
@@ -379,6 +444,17 @@ void QCameraSelectionWidget::refreshCameras()
           QVariant::fromValue(c1));
     }
   }
+
+
+//  int index = cameraSelection_ctl->findData(QVariant::fromValue((int) ADD_FFMPEG_STREAM));
+//  if( index >= 0 && index != cameraSelection_ctl->count() - 1 ) {
+//    cameraSelection_ctl->removeItem(index);
+//  }
+//  if( index < 0 ) {
+//    cameraSelection_ctl->addItem("FFMPEG stream ...",
+//        QVariant::fromValue((int) ADD_FFMPEG_STREAM));
+//  }
+
 
 }
 

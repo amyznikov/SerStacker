@@ -29,7 +29,7 @@ public:
     setText(toQString(v));
   }
 
-signals:
+Q_SIGNALS:
   void textChanged();
 
 protected:

@@ -37,14 +37,29 @@ public:
     return image_;
   }
 
+  cv::Mat & image()
+  {
+    return image_;
+  }
+
   double ts() const
   {
     return ts_;
   }
 
+  void set_ts(double ts)
+  {
+    ts_ = ts;
+  }
+
   int index() const
   {
     return index_;
+  }
+
+  void set_index(int index)
+  {
+    index_ = index;
   }
 
   enum COLORID colorid() const
@@ -65,19 +80,6 @@ public:
   int size() const
   {
     return size_;
-  }
-
-protected:
-  friend class QImagingCamera;
-
-  void set_ts(double ts)
-  {
-    ts_ = ts;
-  }
-
-  void set_index(int index)
-  {
-    index_ = index;
   }
 
 protected:

@@ -55,7 +55,12 @@ protected:
   QCameraFrame::sptr device_recv_frame() override;
 
 protected:
-  bool create_frame_buffers(const cv::Size & imageSize, int cvType, enum COLORID colorid, int bpp,  int num_buffers);
+  bool create_frame_buffers(const cv::Size & imageSize,
+      int cvType,
+      enum COLORID colorid,
+      int bpp,
+      int num_buffers);
+
   void asi_close();
   void qpool(const QCameraFrame::sptr & );
   QCameraFrame::sptr dqpool();

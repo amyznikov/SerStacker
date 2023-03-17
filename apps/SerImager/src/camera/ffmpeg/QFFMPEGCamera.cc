@@ -95,17 +95,57 @@ bool QFFMPEGCamera::device_is_connected() const
 
 bool QFFMPEGCamera::device_connect()
 {
-  return false;
+  if( !ffmpeg_.is_open() ) {
+
+    bool fOk =
+        ffmpeg_.open(url_.toStdString(),
+            opts_.toStdString());
+
+    if( !fOk ) {
+      CF_ERROR("ffmpeg_.open() fails");
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void QFFMPEGCamera::device_disconnect()
 {
-  return ;
+  return ffmpeg_.close();
 }
 
 bool QFFMPEGCamera::device_start()
 {
-  return false;
+  if ( !ffmpeg_.is_open() ) {
+    CF_ERROR("ERROR: ffmpeg_ is not open");
+    return false;
+  }
+
+  cv::Mat frame;
+  int64_t pts;
+
+  if( !ffmpeg_.read(frame, &pts) ) {
+    CF_ERROR("ffmpeg_.read() fails");
+    return false;
+  }
+
+  CF_DEBUG("frame: %dx%d channels=%d",
+      frame.cols,
+      frame.rows,
+      frame.channels());
+
+  enum COLORID colorid =
+      frame.channels() == 1 ?
+          COLORID_MONO :
+          COLORID_BGR;
+
+  if ( !create_frame_buffers(frame.size(), frame.type(), colorid, 8, 4) ) {
+    CF_ERROR("create_frame_buffers() fails");
+    return false;
+  }
+
+  return true;
 }
 
 void QFFMPEGCamera::device_stop()
@@ -115,17 +155,71 @@ void QFFMPEGCamera::device_stop()
 
 int QFFMPEGCamera::device_max_qsize()
 {
-  return 0;
+  return p_.size() / 2;
 }
 
-void QFFMPEGCamera::device_release_frame(const QCameraFrame::sptr & queue)
+void QFFMPEGCamera::device_release_frame(const QCameraFrame::sptr & frame)
 {
-  return ;
+  qpool(frame);
 }
 
 QCameraFrame::sptr QFFMPEGCamera::device_recv_frame()
 {
-  return nullptr;
+  QCameraFrame::sptr frm =
+      dqpool();
+
+  if( frm ) {
+
+    int64_t pts;
+
+    if( !ffmpeg_.read(frm->image(), &pts) ) {
+      CF_ERROR("ffmpeg_.read() fails");
+      qpool(frm);
+      return nullptr;
+    }
+
+    frm->set_ts(pts);
+  }
+
+  return frm;
+}
+
+bool QFFMPEGCamera::create_frame_buffers(const cv::Size & imageSize,
+    int cvType,
+    enum COLORID colorid,
+    int bpp,
+    int num_buffers)
+{
+  p_.clear();
+
+  for( int i = 0; i < num_buffers; ++i ) {
+    p_.emplace_back(QCameraFrame::create(imageSize,
+        cvType, colorid, bpp));
+  }
+
+  return true;
+}
+
+void QFFMPEGCamera::qpool(const QCameraFrame::sptr & frame)
+{
+  if( frame ) {
+    p_.emplace_back(frame);
+  }
+}
+
+QCameraFrame::sptr QFFMPEGCamera::dqpool()
+{
+  if( p_.empty() ) {
+    CF_ERROR("APP BUG: frame pool pool devastation, must not happen");
+    return nullptr;
+  }
+
+  QCameraFrame::sptr frm =
+      p_.back();
+
+  p_.pop_back();
+
+  return frm;
 }
 
 

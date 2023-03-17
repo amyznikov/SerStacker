@@ -59,14 +59,25 @@ protected:
   bool device_start() override;
   void device_stop() override;
   int device_max_qsize() override;
-  void device_release_frame(const QCameraFrame::sptr & queue) override;
+  void device_release_frame(const QCameraFrame::sptr & frame) override;
   QCameraFrame::sptr device_recv_frame() override;
+
+protected:
+  bool create_frame_buffers(const cv::Size & imageSize,
+      int cvType,
+      enum COLORID colorid,
+      int bpp,
+      int num_buffers);
+
+  void qpool(const QCameraFrame::sptr & );
+  QCameraFrame::sptr dqpool();
 
 protected:
   c_ffmpeg_reader ffmpeg_;
   QString name_;
   QString url_;
   QString opts_;
+  std::vector<QCameraFrame::sptr> p_;
 };
 
 struct QFFMPEGCameraParameters {

@@ -6,37 +6,40 @@
  */
 
 #include "QLineEditBox.h"
+#include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
-QLineEditBox::QLineEditBox(QWidget *parent)
-  : Base(parent)
+QLineEditBox::QLineEditBox(QWidget *parent) :
+  ThisClass("", parent)
 {
-  construct();
 }
 
-QLineEditBox::QLineEditBox(const QString & s, QWidget *parent)
-  : Base(s, parent)
+QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
+    Base(parent)
 {
-  construct();
-}
+  layout_ = new QHBoxLayout(this);
+  layout_->setContentsMargins(0, 0, 0, 0);
 
-void QLineEditBox::construct(void)
-{
-  connect(this, &Base::editingFinished,
+  layout_->addWidget(lineEdit_ = new QLineEdit(s, this), 10000);
+
+  connect(lineEdit_, &QLineEdit::editingFinished,
       [this] () {
-        if ( Base::text() != previousText ) {
+        if ( lineEdit_->text() != previousText ) {
           if ( this->hasFocus() ) {
-            previousText = text();
+            previousText = lineEdit_->text();
           }
-          emit textChanged();
+          Q_EMIT textChanged();
         }
       });
+
 }
+
 
 void QLineEditBox::focusInEvent(QFocusEvent* e)
 {
-  previousText = Base::text();
+  CF_DEBUG("focusInEvent");
+  previousText = lineEdit_->text();
   Base::focusInEvent(e);
 }
 

@@ -88,6 +88,7 @@ public:
 
 
   static const std::vector<std::string> & supported_input_formats();
+  static const std::vector<std::string> & supported_decoders();
 
   void set_stream_name(const std::string & v);
   const std::string & stream_name() const;
@@ -123,7 +124,7 @@ protected:
 /**
  * c_ffmpeg_writer
  *
- * Based on code exampe
+ * Based on code example
  *  <https://ffmpeg.org/doxygen/0.6/output-example_8c-source.html>
  */
 class c_ffmpeg_writer
@@ -152,6 +153,7 @@ public:
 
   ///@brief access to lists of supported formats
   static const std::vector<std::string> & supported_output_formats();
+  static const std::vector<std::string> & supported_encoders();
   static const AVPixelFormat * supported_codec_pix_formats(AVCodecID codec_id);
 
 protected:

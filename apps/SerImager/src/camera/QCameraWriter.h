@@ -11,7 +11,7 @@
 
 #include <QtCore/QtCore>
 #include "QImagingCamera.h"
-
+#include <core/proc/stereo/stereo_stream.h>
 
 namespace serimager {
 
@@ -63,14 +63,25 @@ public:
   void setOutputFormat(FORMAT v);
   FORMAT outputFormat() const;
 
+  void setFFmpegOptions(const QString & opts);
+  const QString & ffmpegOptions() const;
+
   void setCaptureLimits(const c_capture_limits & limits);
   const c_capture_limits & captureLimits() const;
+
+  void set_enable_split_stereo_stream(bool v);
+  bool enable_split_stereo_stream() const;
+
+  c_stereo_stream_options & stereo_stream_options();
+  const c_stereo_stream_options & stereo_stream_options() const;
 
   void setNumRounds(int v);
   int numRounds() const;
 
   void setIntervalBetweenRounds(int v);
   int intervalBetweenRounds() const;
+
+
 
   State state() const;
   int num_saved_frames() const;
@@ -100,7 +111,12 @@ protected:
   c_capture_limits capture_limits_;
   QString output_directoty_;
   QString output_file_name_;
+
   FORMAT output_format_ = FORMAT::SER;
+  QString ffmpeg_options_ = "-c ffv1 -f avi";
+
+  bool enable_split_stereo_stream_ = false;
+  c_stereo_stream_options stereo_stream_options_;
 
   std::atomic<int> numRounds_ = 1;
   std::atomic<int> interval_between_rounds_ = 0;

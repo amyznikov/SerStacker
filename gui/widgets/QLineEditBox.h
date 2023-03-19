@@ -14,19 +14,126 @@
 
 #define NUMERICAL_FIELD_DEFAULT_MAX_WIDTH  128
 
-class QLineEditBox
-  : public QLineEdit
+class QLineEditBox :
+    public QWidget
 {
   Q_OBJECT;
 public:
   typedef QLineEditBox ThisClass;
-  typedef QLineEdit Base;
-  explicit QLineEditBox(QWidget *parent = Q_NULLPTR);
-  explicit QLineEditBox(const QString &, QWidget *parent = Q_NULLPTR);
+  typedef QWidget Base;
+
+  explicit QLineEditBox(QWidget *parent = nullptr);
+  explicit QLineEditBox(const QString &, QWidget *parent = nullptr);
 
   template<class T>
-  void setValue(const T & v) {
+  void setValue(const T & v)
+  {
     setText(toQString(v));
+  }
+
+  void setText(const QString & text)
+  {
+    lineEdit_->setText(text);
+  }
+
+  QString text() const
+  {
+    return lineEdit_->text();
+  }
+
+  QString displayText() const
+  {
+    return lineEdit_->displayText();
+  }
+
+  QString placeholderText() const
+  {
+    return lineEdit_->placeholderText();
+  }
+
+  void setPlaceholderText(const QString & text)
+  {
+    return lineEdit_->setPlaceholderText(text);
+  }
+
+  QString inputMask() const
+  {
+    return lineEdit_->inputMask();
+  }
+
+  void setInputMask(const QString &inputMask)
+  {
+    return lineEdit_->setInputMask(inputMask);
+  }
+
+  int maxLength() const
+  {
+    return lineEdit_->maxLength();
+  }
+
+  void setMaxLength(int v)
+  {
+    return lineEdit_->setMaxLength(v);
+  }
+
+  void setFrame(bool v)
+  {
+    return lineEdit_->setFrame(v);
+  }
+
+  bool hasFrame() const
+  {
+    return lineEdit_->hasFrame();
+  }
+
+  void setClearButtonEnabled(bool enable)
+  {
+    return lineEdit_->setClearButtonEnabled(enable);
+  }
+
+  bool isClearButtonEnabled() const
+  {
+    return lineEdit_->isClearButtonEnabled();
+  }
+
+  QLineEdit::EchoMode echoMode() const
+  {
+    return lineEdit_->echoMode();
+  }
+
+  void setEchoMode(QLineEdit::EchoMode v)
+  {
+    return lineEdit_->setEchoMode(v);
+  }
+
+  bool isReadOnly() const
+  {
+    return lineEdit_->isReadOnly();
+  }
+
+  void setReadOnly(bool v)
+  {
+    return lineEdit_->setReadOnly(v);
+  }
+
+  bool isModified() const
+  {
+    return lineEdit_->isModified();
+  }
+
+  void setModified(bool v)
+  {
+    return lineEdit_->setModified(v);
+  }
+
+  QHBoxLayout * layout() const
+  {
+    return layout_;
+  }
+
+  QLineEdit * lineEdit() const
+  {
+    return lineEdit_;
   }
 
 Q_SIGNALS:
@@ -34,26 +141,32 @@ Q_SIGNALS:
 
 protected:
   void focusInEvent(QFocusEvent* e) override;
+
+protected:
+  QHBoxLayout * layout_ = nullptr;
+  QLineEdit * lineEdit_ = nullptr;
+
 private:
-  void construct(void);
   QString previousText;
 };
 
-class QNumberEditBox
-  : public QLineEditBox
+class QNumberEditBox :
+    public QLineEditBox
 {
   Q_OBJECT;
 public:
+  typedef QNumberEditBox ThisClass;
   typedef QLineEditBox Base;
-  explicit QNumberEditBox(QWidget *parent = Q_NULLPTR)
-    : Base(parent) {
-      setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
-    }
 
-  explicit QNumberEditBox(const QString & s, QWidget *parent = Q_NULLPTR)
-    : Base(s, parent) {
-      setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
-    }
+  explicit QNumberEditBox(QWidget *parent = nullptr) : Base(parent)
+  {
+    lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
+  }
+
+  explicit QNumberEditBox(const QString & s, QWidget * parent = nullptr) : Base(s, parent)
+  {
+    lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
+  }
 };
 
 #endif /* __QLineEditBox_h__ */

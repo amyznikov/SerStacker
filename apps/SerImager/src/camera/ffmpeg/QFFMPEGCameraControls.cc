@@ -47,11 +47,6 @@ QFFMPEGCameraControls::QFFMPEGCameraControls(const QFFMPEGCamera::sptr & camera,
 
   if( camera_ ) {
 
-
-    if( camera_->state() >= QImagingCamera::State_connected ) {
-      // create_controls();
-    }
-
     connect(camera_.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged,
         Qt::QueuedConnection);
@@ -69,7 +64,7 @@ QFFMPEGCameraControls::~QFFMPEGCameraControls()
 
 void QFFMPEGCameraControls::onCameraStateChanged()
 {
-
+  updateControls();
 }
 
 void QFFMPEGCameraControls::onupdatecontrols()
@@ -82,6 +77,12 @@ void QFFMPEGCameraControls::onupdatecontrols()
     Base::onupdatecontrols();
 
     url_ctl->setUrl(camera_->url());
+
+    const bool enable_controls =
+        camera_->state() == QImagingCamera::State_disconnected;
+
+    url_ctl->setEnabled(enable_controls);
+    options_ctl->setEnabled(enable_controls);
 
     setEnabled(true);
   }

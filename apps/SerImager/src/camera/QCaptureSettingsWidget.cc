@@ -7,6 +7,7 @@
 
 #include "QCaptureSettingsWidget.h"
 #include <gui/widgets/style.h>
+#include <core/io/c_ffmpeg_file.h>
 
 #define ICON_start_capture        ":/qserimager/icons/start-capture.png"
 #define ICON_stop_capture         ":/qserimager/icons/stop-capture.png"
@@ -300,6 +301,111 @@ void QCaptureLimitsControl::onLimitsSelectionChanged(int)
   }
 }
 
+QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
+    Base("QStereoStreamCaptureOptions", parent)
+{
+  enable_split_stereo_stream_ctl =
+      add_checkbox("Split stereo stream:",
+          [this](bool checked) {
+            if ( writer_ ) {
+              writer_->set_enable_split_stereo_stream(checked);
+              stereo_stream_layout_type_ctl->setEnabled(writer_->enable_split_stereo_stream());
+              enable_swap_cameras_ctl->setEnabled(writer_->enable_split_stereo_stream());
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( writer_ ) {
+              * checked = writer_->enable_split_stereo_stream();
+              return true;
+            }
+            return false;
+          });
+
+  stereo_stream_layout_type_ctl =
+      add_enum_combobox<stereo_stream_layout_type>("stereo frame layout:",
+          [this](stereo_stream_layout_type v) {
+            if ( writer_ ) {
+              writer_->stereo_stream_options().layout_type = v;
+              Q_EMIT parameterChanged();
+            }
+
+          },
+          [this](stereo_stream_layout_type * v) {
+            if ( writer_ ) {
+              *v = writer_->stereo_stream_options().layout_type;
+              return true;
+            }
+            return false;
+          });
+
+  enable_swap_cameras_ctl =
+      add_checkbox("Swap cameras:",
+          [this](bool checked) {
+            if ( writer_ ) {
+              writer_->stereo_stream_options().swap_cameras = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( writer_ ) {
+              * checked = writer_->stereo_stream_options().swap_cameras;
+              return true;
+            }
+            return false;
+          });
+
+
+  downscale_panes_ctl =
+      add_checkbox("Swap cameras:",
+          [this](bool checked) {
+            if ( writer_ ) {
+              writer_->stereo_stream_options().downscale_panes = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( writer_ ) {
+              * checked = writer_->stereo_stream_options().downscale_panes;
+              return true;
+            }
+            return false;
+          });
+
+
+  updateControls();
+}
+
+void QStereoStreamCaptureOptions::setCameraWriter(QCameraWriter * writer)
+{
+  writer_ = writer;
+  updateControls();
+}
+
+QCameraWriter * QStereoStreamCaptureOptions::cameraWriter() const
+{
+  return writer_;
+}
+
+void QStereoStreamCaptureOptions::onupdatecontrols()
+{
+  if ( !writer_  ) {
+    setEnabled(false);
+  }
+  else {
+
+    Base::onupdatecontrols();
+
+    stereo_stream_layout_type_ctl->setEnabled(writer_->enable_split_stereo_stream());
+    enable_swap_cameras_ctl->setEnabled(writer_->enable_split_stereo_stream());
+    downscale_panes_ctl->setEnabled(writer_->enable_split_stereo_stream());
+
+    setEnabled(true);
+  }
+}
+
+
+
 
 QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
     Base("QCaptureSettingsWidget", parent)
@@ -357,11 +463,93 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
         }
       });
 
+  output_format_ctl =
+      add_enum_combobox<QCameraWriter::FORMAT>("Output format:",
+          [this](QCameraWriter::FORMAT value) {
+            if ( writer_ ) {
+              writer_->setOutputFormat(value);
+              avi_options_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle &&
+                  writer_->outputFormat() == QCameraWriter::FORMAT::AVI);
+              save_parameter(PREFIX, "outputFormat",
+                  writer_->outputFormat());
+            }
+          });
+
+  avi_options_ctl =
+      add_textbox("ffmpeg options:",
+          [this](const QString & value) {
+            if ( writer_ ) {
+              writer_->setFFmpegOptions(value);
+              save_parameter(PREFIX, "ffmpegOptions",
+                  writer_->ffmpegOptions());
+            }
+          });
+
+
+  avi_options_menubutton_ctl = new QToolButton();
+  avi_options_menubutton_ctl->setText("...");
+  avi_options_ctl->layout()->addWidget(avi_options_menubutton_ctl);
+  connect(avi_options_menubutton_ctl, &QToolButton::clicked,
+      this, &ThisClass::onAviOptionsMenuButtonClicked);
+
+
+
+  add_expandable_groupbox("Stereo",
+      stereo_stream_ctl = new QStereoStreamCaptureOptions());
+
   updateControls();
 }
 
-QCaptureSettingsWidget::~QCaptureSettingsWidget()
+
+void QCaptureSettingsWidget::onAviOptionsMenuButtonClicked()
 {
+  QMenu menu;
+  QAction * action = nullptr;
+
+
+  menu.addAction(action = new QAction("List available encoders..."));
+  connect(action, &QAction::triggered,
+      []() {
+
+        static QPlainTextEdit * codecListTextBox = nullptr;
+
+        if ( !codecListTextBox ) {
+
+          const std::vector<std::string> & supported_encoders =
+              c_ffmpeg_writer::supported_encoders();
+
+          QString text = "Tags:\n"
+              "I - AV_CODEC_PROP_INTRA_ONLY, Codec uses only intra compression.\n"
+              "L - AV_CODEC_PROP_LOSSY, Codec supports lossy compression. A codec may support both lossy and lossless compression modes\n"
+              "S - AV_CODEC_PROP_LOSSLESS, Codec supports lossless compression. \n"
+              "\n"
+              "";
+
+          for ( const auto & s : supported_encoders ) {
+            text.append(s.c_str());
+            text.append("\n");
+          }
+
+
+          codecListTextBox = new QPlainTextEdit(text, QApplication::activeWindow());
+          codecListTextBox->setWindowFlag(Qt::WindowType::Dialog);
+          codecListTextBox->setFont(QFont("Monospace", 14));
+          codecListTextBox->setWordWrapMode(QTextOption::WrapMode::NoWrap);
+          codecListTextBox->setWindowTitle("Supported ffmpeg video encoders");
+        }
+
+
+        codecListTextBox->show();
+        codecListTextBox->raise();
+        codecListTextBox->setFocus();
+      });
+
+
+  menu.exec(avi_options_menubutton_ctl->mapToGlobal(
+      QPoint(avi_options_menubutton_ctl->width() / 2,
+          avi_options_menubutton_ctl->height() / 2)));
+
+
 }
 
 
@@ -377,6 +565,7 @@ void QCaptureSettingsWidget::setCameraWriter(QCameraWriter * writer)
   }
 
   captureLimits_ctl->setCameraWriter(writer_ = writer);
+  stereo_stream_ctl->setCameraWriter(writer_);
 
   if( (writer_ = writer) ) {
 
@@ -409,6 +598,12 @@ void QCaptureSettingsWidget::onupdatecontrols()
     outpuPath_ctl->setCurrentPath(writer_->outputDirectoty(), false);
     outpuPath_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle);
 
+    output_format_ctl->setValue(writer_->outputFormat());
+    output_format_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle);
+
+    avi_options_ctl->setValue(writer_->ffmpegOptions());
+    avi_options_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle &&
+        writer_->outputFormat() == QCameraWriter::FORMAT::AVI);
 
     setEnabled(true);
   }
@@ -417,6 +612,11 @@ void QCaptureSettingsWidget::onupdatecontrols()
 void QCaptureSettingsWidget::onload(QSettings & settings)
 {
   if( writer_ ) {
+
+    QCameraWriter::FORMAT outputFormat = writer_->outputFormat();
+    if( load_parameter(settings, PREFIX, "outputFormat", &outputFormat) ) {
+      writer_->setOutputFormat(outputFormat);
+    }
 
     QString outputDirectoty = writer_->outputDirectoty();
     if( load_parameter(settings, PREFIX, "outputDirectoty", &outputDirectoty) ) {

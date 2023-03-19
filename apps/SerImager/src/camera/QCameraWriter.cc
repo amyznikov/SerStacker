@@ -10,6 +10,7 @@
 #include <core/io/c_ffmpeg_file.h>
 #include <core/io/c_ser_file.h>
 #include <core/ssprintf.h>
+#include <gui/widgets/qsprintf.h>
 #include <core/readdir.h>
 #include <chrono>
 #include <core/debug.h>
@@ -29,32 +30,45 @@ const c_enum_member* members_of<serimager::c_capture_limits::TYPE>()
   return members;
 }
 
+template<>
+const c_enum_member* members_of<serimager::QCameraWriter::FORMAT>()
+{
+  using namespace serimager;
+  static constexpr c_enum_member members[] = {
+      { QCameraWriter::SER, "SER", "" },
+      { QCameraWriter::AVI, "AVI", "" },
+      { QCameraWriter::IMAGES, "IMAGES", "" },
+      { QCameraWriter::SER }
+  };
+
+  return members;
+}
+
 
 namespace serimager {
 
 namespace {
 
-struct c_video_frame_writer
+class c_video_frame_writer
 {
-
-  virtual bool create(const QString & filename, int image_width, int image_height,
-      enum COLORID color_id, int bits_per_plane) = 0;
+public:
+  //virtual bool create(const QString & filename, int image_width, int image_height, enum COLORID color_id, int bits_per_plane) = 0;
   virtual bool is_open() const = 0;
   virtual bool write(const QCameraFrame::sptr & frame) = 0;
-  virtual bool close() = 0;
+  virtual void close() = 0;
   virtual ~c_video_frame_writer() = default;
 };
 
-struct c_ser_file_writer: c_video_frame_writer
+struct c_ser_file_writer:
+    c_video_frame_writer
 {
   c_ser_writer ser;
 
-  bool create(const QString & filename, int image_width, int image_height,
-      enum COLORID color_id, int bits_per_plane) override
+  bool create(const QString & filename, const cv::Size & frame_size, enum COLORID color_id, int bits_per_plane)
   {
     return ser.create(filename.toStdString(),
-        image_width,
-        image_height,
+        frame_size.width,
+        frame_size.height,
         color_id,
         bits_per_plane);
   }
@@ -69,12 +83,194 @@ struct c_ser_file_writer: c_video_frame_writer
     return ser.write(frame->image(), frame->ts());
   }
 
-  virtual bool close() override
+  virtual void close() override
   {
-    return ser.close();
+    ser.close();
   }
 
   ~c_ser_file_writer()
+  {
+    close();
+  }
+};
+
+struct c_avi_file_writer:
+    c_video_frame_writer
+{
+  c_ffmpeg_writer ffmpeg;
+
+  bool create(const QString & filename, const QString & ffopts, const cv::Size & frame_size,
+      enum COLORID color_id, int /*bits_per_plane*/)
+  {
+    const bool is_color =
+        color_id == COLORID_RGB || color_id == COLORID_BGR;
+
+    return ffmpeg.open(filename.toStdString(),
+        frame_size,
+        is_color,
+        ffopts.toStdString());  // "-c huffyuv -f avi"
+  }
+
+  bool is_open() const override
+  {
+    return ffmpeg.is_open();
+  }
+
+  bool write(const QCameraFrame::sptr & frame) override
+  {
+    return ffmpeg.write(frame->image(), frame->ts());
+  }
+
+  virtual void close() override
+  {
+    ffmpeg.close();
+  }
+
+  ~c_avi_file_writer()
+  {
+    close();
+  }
+};
+
+struct c_avi_stereo_writer:
+    c_video_frame_writer
+{
+  c_ffmpeg_writer ffmpegs[2];
+  cv::Rect src_panes[2];
+  cv::Size output_size;
+  stereo_stream_layout_type frame_layout = stereo_stream_layout_horizontal_split;
+  bool downscale_panes = false;
+
+  bool create(const QString & filename, const QString & ffopts,
+      const cv::Size & src_frame_size,
+      stereo_stream_layout_type frame_layout,
+      bool swap_cameras,
+      bool downscale_panes,
+      enum COLORID color_id)
+  {
+    const bool is_color =
+        color_id == COLORID_RGB || color_id == COLORID_BGR;
+
+
+    this->downscale_panes =
+        downscale_panes;
+
+    this->frame_layout =
+        frame_layout;
+
+    std::string filenames[2] = {
+        ssprintf("%s.left.avi", filename.toUtf8().constData()),
+        ssprintf("%s.right.avi", filename.toUtf8().constData()),
+    };
+
+    switch (frame_layout) {
+      case stereo_stream_layout_horizontal_split:
+        src_panes[0].x = 0;
+        src_panes[0].y = 0;
+        src_panes[0].width = src_frame_size.width / 2;
+        src_panes[0].height = src_frame_size.height;
+        src_panes[1].x = src_frame_size.width / 2;
+        src_panes[1].y = 0;
+        src_panes[1].width = src_frame_size.width / 2;
+        src_panes[1].height = src_frame_size.height;
+
+        if ( downscale_panes ) {
+          output_size.width = src_frame_size.width / 2;
+          output_size.height = src_frame_size.height / 2;
+        }
+        else {
+          output_size.width = src_frame_size.width / 2;
+          output_size.height = src_frame_size.height;
+        }
+
+        break;
+
+      case stereo_stream_layout_vertical_split:
+        src_panes[0].x = 0;
+        src_panes[0].y = 0;
+        src_panes[0].width = src_frame_size.width;
+        src_panes[0].height = src_frame_size.height / 2;
+
+        src_panes[1].x = 0;
+        src_panes[1].y = src_frame_size.height / 2;
+        src_panes[1].width = src_frame_size.width;
+        src_panes[1].height = src_frame_size.height / 2;
+
+        if ( downscale_panes ) {
+          output_size.width = src_frame_size.width / 2;
+          output_size.height = src_frame_size.height / 2;
+        }
+        else {
+          output_size.width = src_frame_size.width;
+          output_size.height = src_frame_size.height / 2;
+        }
+
+        break;
+    }
+
+    if( swap_cameras ) {
+      std::swap(src_panes[0], src_panes[1]);
+    }
+
+
+    for ( int i = 0; i < 2; ++i ) {
+
+      bool fok =
+          ffmpegs[i].open(filenames[i],
+              output_size,
+              is_color,
+              ffopts.toStdString()); // "-c huffyuv -f avi"
+
+      if ( !fok ) {
+        CF_ERROR("ffmpegs[i=%d].open('%s') fails", i, filenames[i].c_str());
+        close();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool is_open() const override
+  {
+    return ffmpegs[0].is_open() && ffmpegs[1].is_open();
+  }
+
+  bool write(const QCameraFrame::sptr & frame) override
+  {
+    cv::Mat images[2];
+
+    if( !downscale_panes ) {
+      images[0] = frame->image()(src_panes[0]);
+      images[1] = frame->image()(src_panes[1]);
+    }
+    else {
+      for( int i = 0; i < 2; ++i ) {
+        cv::resize(frame->image()(src_panes[i]), images[i],
+            output_size,
+            0, 0,
+            cv::INTER_LINEAR);
+      }
+    }
+
+    for ( int i = 0; i < 2; ++i ) {
+      if ( !ffmpegs[i].write(images[i], frame->ts()) ) {
+        CF_ERROR("ffmpegs[i=%d].write() fails", i);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  virtual void close() override
+  {
+    for ( int i = 0; i < 2; ++i ) {
+      ffmpegs[i].close();
+    }
+  }
+
+  ~c_avi_stereo_writer()
   {
     close();
   }
@@ -246,6 +442,26 @@ const QImagingCamera::sptr& QCameraWriter::camera() const
   return camera_;
 }
 
+void QCameraWriter::set_enable_split_stereo_stream(bool v)
+{
+  enable_split_stereo_stream_ = v;
+}
+
+bool QCameraWriter::enable_split_stereo_stream() const
+{
+  return enable_split_stereo_stream_;
+}
+
+c_stereo_stream_options & QCameraWriter::stereo_stream_options()
+{
+  return stereo_stream_options_;
+}
+
+const c_stereo_stream_options & QCameraWriter::stereo_stream_options() const
+{
+  return stereo_stream_options_;
+}
+
 void QCameraWriter::setCaptureLimits(const c_capture_limits & limits)
 {
   capture_limits_ = limits;
@@ -274,6 +490,17 @@ void QCameraWriter::setOutputFormat(FORMAT v)
 QCameraWriter::FORMAT QCameraWriter::outputFormat() const
 {
   return output_format_;
+}
+
+
+void QCameraWriter::setFFmpegOptions(const QString & opts)
+{
+  ffmpeg_options_ = opts;
+}
+
+const QString& QCameraWriter::ffmpegOptions() const
+{
+  return ffmpeg_options_;
 }
 
 void QCameraWriter::setNumRounds(int v)
@@ -362,6 +589,93 @@ void QCameraWriter::stop()
 
 void QCameraWriter::writerThreadProc()
 {
+
+  static const auto create_video_writer =
+      [](QCameraWriter * _this, const QCameraFrame::sptr &frame) -> c_video_frame_writer* {
+
+        c_video_frame_writer * writer = nullptr;
+
+        switch (_this->output_format_) {
+          case QCameraWriter::FORMAT::SER: {
+
+            _this->output_file_name_ =
+                QString("%1/%2.ser") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
+
+            c_ser_file_writer * w = new c_ser_file_writer();
+
+            if( w->create(_this->output_file_name_, frame->image().size(), frame->colorid(), frame->bpp()) ) {
+              writer = w;
+            }
+            else {
+              CF_ERROR("c_ser_file_writer::create('%s') fails",
+                  _this->output_file_name_.toUtf8().constData());
+              delete w;
+            }
+
+            break;
+          }
+
+          case QCameraWriter::FORMAT::AVI: {
+
+            if ( _this->enable_split_stereo_stream_ ) {
+
+              _this->output_file_name_ =
+                  QString("%1/%2") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
+
+              c_avi_stereo_writer * w = new c_avi_stereo_writer();
+
+              const bool fOk = w->create(_this->output_file_name_,
+                  _this->ffmpeg_options_,
+                  frame->image().size(),
+                  _this->stereo_stream_options_.layout_type,
+                  _this->stereo_stream_options_.swap_cameras,
+                  _this->stereo_stream_options_.downscale_panes,
+                  frame->colorid() );
+
+              if ( fOk ) {
+                writer = w;
+              }
+              else {
+                CF_ERROR("c_avi_stereo_writer::create('%s') fails",
+                    _this->output_file_name_.toUtf8().constData());
+                delete w;
+              }
+            }
+            else {
+
+              _this->output_file_name_ =
+                  QString("%1/%2.avi") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
+
+              c_avi_file_writer * w = new c_avi_file_writer();
+
+              bool fOk = w->create(_this->output_file_name_,
+                  _this->ffmpeg_options_,
+                  frame->image().size(),
+                  frame->colorid(),
+                  frame->bpp());
+
+              if ( fOk ) {
+                writer = w;
+              }
+              else {
+                CF_ERROR("c_avi_file_writer::create('%s') fails",
+                    _this->output_file_name_.toUtf8().constData());
+                delete w;
+              }
+            }
+
+            break;
+          }
+          default:
+            CF_ERROR("Invalid output format %d requested", _this->output_format_);
+            break;
+        }
+
+        return writer;
+      };
+
+
+
   c_unique_lock lock(mtx_);
 
   QImagingCamera::sptr camera =
@@ -435,6 +749,12 @@ void QCameraWriter::writerThreadProc()
       };
 
   for( round_ = 0; round_ < numRounds_ ; ++round_ ) {
+
+
+    if ( enable_split_stereo_stream_ ) {
+
+    }
+
 
     c_video_frame_writer *writer =
         nullptr;
@@ -525,24 +845,12 @@ void QCameraWriter::writerThreadProc()
               break;
             }
 
-            output_file_name_ =
-                QString("%1/%2.ser")
-                    .arg(output_directoty_)
-                    .arg(getCurrentDateTimeString());
-
-            writer = new c_ser_file_writer();
-
-            fok = writer->create(output_file_name_,
-                frame->image().cols,
-                frame->image().rows,
-                frame->colorid(),
-                frame->bpp());
-
-            if( !fok ) {
-              CF_ERROR("writer->create('%s') fails",
-                  output_file_name_.toStdString().c_str());
+            if ( !(writer = create_video_writer(this, frame)) ) {
+              CF_ERROR("create_video_writer() fails");
+              fok = false;
               break;
             }
+
 
             if( !text.open(ssprintf("%s.txt", output_file_name_.toStdString().c_str())) ) {
               CF_ERROR("text.open('%s.txt') fails",

@@ -393,7 +393,6 @@ QList<QImagingCamera::sptr> QASICamera::detectCameras()
 
 void QASICamera::qpool(const QCameraFrame::sptr & frame)
 {
-  INSTRUMENT_REGION("");
   if( frame ) {
     p_.emplace_back(frame);
   }

@@ -57,16 +57,40 @@ protected:
   QShortcut * startStopSortuct_ = nullptr;
 };
 
+
+class QStereoStreamCaptureOptions :
+    public QSettingsWidget
+{
+public:
+  typedef QStereoStreamCaptureOptions ThisClass;
+  typedef QSettingsWidget Base;
+
+  QStereoStreamCaptureOptions(QWidget * parent = nullptr);
+
+  void setCameraWriter(QCameraWriter * writer);
+  QCameraWriter * cameraWriter() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  QCameraWriter *writer_ = nullptr;
+  QCheckBox * enable_split_stereo_stream_ctl = nullptr;
+  QEnumComboBox<stereo_stream_layout_type> * stereo_stream_layout_type_ctl = nullptr;
+  QCheckBox * enable_swap_cameras_ctl = nullptr;
+  QCheckBox * downscale_panes_ctl = nullptr;
+};
+
+
+
 class QCaptureSettingsWidget:
     public QSettingsWidget
 {
-  Q_OBJECT;
 public:
   typedef QCaptureSettingsWidget ThisClass;
   typedef QSettingsWidget Base;
 
   QCaptureSettingsWidget(QWidget * parent = nullptr);
-  ~QCaptureSettingsWidget();
 
   void setCameraWriter(QCameraWriter * writer);
   QCameraWriter * cameraWriter() const;
@@ -76,6 +100,7 @@ protected:
   void onload(QSettings & settings) override;
   void saveCaptureLimits();
   void loadCaptureLimits(QSettings & settings);
+  void onAviOptionsMenuButtonClicked();
 
 
 protected:
@@ -84,6 +109,10 @@ protected:
   QSpinBox *num_rounds_ctl = nullptr;
   QSpinBox *interval_between_rounds_ctl = nullptr;
   QBrowsePathCombo * outpuPath_ctl = nullptr;
+  QEnumComboBox<QCameraWriter::FORMAT> * output_format_ctl = nullptr;
+  QLineEditBox * avi_options_ctl = nullptr;
+  QToolButton * avi_options_menubutton_ctl = nullptr;
+  QStereoStreamCaptureOptions * stereo_stream_ctl = nullptr;
 };
 
 } /* namespace serimager */

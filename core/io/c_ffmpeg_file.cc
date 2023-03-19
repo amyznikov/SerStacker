@@ -29,6 +29,8 @@ typedef c_ffmpeg_reader::timeout_interrupt_callback
 static std::mutex g_mtx;
 static std::vector<std::string> g_supported_input_formats;
 static std::vector<std::string> g_supported_output_formats;
+static std::vector<std::string> g_supported_video_decoders;
+static std::vector<std::string> g_supported_video_encoders;
 
 static int64_t ffmpeg_gettime_us()
 {
@@ -405,6 +407,8 @@ static void ensure_ffmpeg_initialized()
 
     const AVInputFormat * iformat = nullptr;
     const AVOutputFormat * oformat = nullptr;
+    const AVCodecDescriptor *codec_desc = nullptr;
+
     void * opaque = nullptr;
     static const char delims[] = ", \t";
     char * tok;
@@ -485,6 +489,62 @@ static void ensure_ffmpeg_initialized()
       }
     }
 #endif
+
+    std::vector<const AVCodecDescriptor *> encoders;
+    std::vector<const AVCodecDescriptor *> decoders;
+
+    while ((codec_desc = avcodec_descriptor_next(codec_desc))) {
+      if( codec_desc->type == AVMEDIA_TYPE_VIDEO ) {
+
+        if( avcodec_find_encoder(codec_desc->id) ) {
+          encoders.emplace_back(codec_desc);
+        }
+
+        if( avcodec_find_decoder(codec_desc->id) ) {
+          decoders.emplace_back(codec_desc);
+        }
+      }
+    }
+
+    std::sort(encoders.begin(), encoders.end(),
+        [](const AVCodecDescriptor * prev, const AVCodecDescriptor * next) {
+          return strcasecmp(prev->name, next->name) < 0;
+        });
+
+    std::sort(decoders.begin(), decoders.end(),
+        [](const AVCodecDescriptor * prev, const AVCodecDescriptor * next) {
+          return strcasecmp(prev->name, next->name) < 0;
+        });
+
+    for ( const AVCodecDescriptor * desc: encoders ) {
+      const std::string props =
+          ssprintf("%s%s%s",
+              (desc->props & AV_CODEC_PROP_INTRA_ONLY) ? "I" : ".",
+              (desc->props & AV_CODEC_PROP_LOSSY) ? "L" : ".",
+              (desc->props & AV_CODEC_PROP_LOSSLESS) ? "S" : ".");
+
+      g_supported_video_encoders.emplace_back(
+          ssprintf("%s %s %s",
+              props.c_str(),
+              desc->name,
+              desc->long_name ? desc->long_name : ""));
+    }
+
+    for ( const AVCodecDescriptor * desc: decoders ) {
+      const std::string props =
+          ssprintf("%s%s%s",
+              (desc->props & AV_CODEC_PROP_INTRA_ONLY) ? "I" : ".",
+              (desc->props & AV_CODEC_PROP_LOSSY) ? "L" : ".",
+              (desc->props & AV_CODEC_PROP_LOSSLESS) ? "S" : ".");
+
+      g_supported_video_decoders.emplace_back(
+          ssprintf("%s %s %s",
+              props.c_str(),
+              desc->name,
+              desc->long_name ? desc->long_name : ""));
+    }
+
+
     already_initialized = true;
   }
 }
@@ -496,6 +556,12 @@ const std::vector<std::string> & c_ffmpeg_reader::supported_input_formats()
 {
   ensure_ffmpeg_initialized();
   return g_supported_input_formats;
+}
+
+const std::vector<std::string> & c_ffmpeg_reader::supported_decoders()
+{
+  ensure_ffmpeg_initialized();
+  return g_supported_video_decoders;
 }
 
 c_ffmpeg_reader::~c_ffmpeg_reader()
@@ -608,6 +674,10 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
   video_stream_index = -1;
 
   ensure_ffmpeg_initialized();
+
+  CF_DEBUG("c_ffmpeg_reader options: '%s'",
+      input_options.c_str());
+
 
   if ( (status = ffmpeg_parse_options(input_options, true, &opts)) ) {
     CF_ERROR("[%s] ffmpeg_parse_options() fails: %s", stream_name_.c_str(), averr2str(status));
@@ -886,15 +956,21 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, int64_t * outpts)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-c_ffmpeg_writer::~c_ffmpeg_writer()
-{
-  close();
-}
-
 const std::vector<std::string> & c_ffmpeg_writer::supported_output_formats()
 {
   ensure_ffmpeg_initialized();
   return g_supported_input_formats;
+}
+
+const std::vector<std::string> & c_ffmpeg_writer::supported_encoders()
+{
+  ensure_ffmpeg_initialized();
+  return g_supported_video_encoders;
+}
+
+c_ffmpeg_writer::~c_ffmpeg_writer()
+{
+  close();
 }
 
 const AVPixelFormat * c_ffmpeg_writer::supported_codec_pix_formats(AVCodecID codec_id)

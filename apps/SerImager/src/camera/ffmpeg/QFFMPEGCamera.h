@@ -74,12 +74,18 @@ protected:
 
 protected:
   c_ffmpeg_reader ffmpeg_;
+
   QString name_;
   QString url_;
-  QString opts_;
+  QString opts_ = "-nobuffer -nodelay";
+
   std::vector<QCameraFrame::sptr> p_;
 };
 
+/**
+ * This struct is just used to serialize QFFMPEGCamera parameters
+ * into QSettings data stream
+ * */
 struct QFFMPEGCameraParameters {
   QString name;
   QString url;
@@ -87,8 +93,13 @@ struct QFFMPEGCameraParameters {
 };
 
 
-
 } /* namespace serimager */
+
+
+
+/*
+ * must be declared outside of any namespace
+ * */
 
 Q_DECLARE_METATYPE(serimager::QFFMPEGCamera::sptr);
 Q_DECLARE_METATYPE(serimager::QFFMPEGCameraParameters);
@@ -113,7 +124,7 @@ inline QDataStream& operator << (QDataStream & out, const QList<serimager::QFFMP
   return out;
 }
 
-inline QDataStream& operator >>(QDataStream & in, QList<serimager::QFFMPEGCameraParameters> & list)
+inline QDataStream& operator >> (QDataStream & in, QList<serimager::QFFMPEGCameraParameters> & list)
 {
   list.clear();
 

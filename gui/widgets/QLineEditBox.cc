@@ -8,6 +8,43 @@
 #include "QLineEditBox.h"
 #include <core/debug.h>
 
+namespace {
+
+class QCustomLineEdit :
+    public QLineEdit
+{
+public:
+  typedef QCustomLineEdit ThisClass;
+  typedef QLineEdit Base;
+
+  QCustomLineEdit(const QString & text, QWidget * parent = nullptr) :
+    Base(text, parent)
+  {
+  }
+
+  const QString & previousText() const
+  {
+    return previousText_;
+  }
+
+  void setPreviousText(const QString & s)
+  {
+    previousText_ = s;
+  }
+
+protected:
+  void focusInEvent(QFocusEvent *e) override
+  {
+    previousText_ = Base::text();
+    Base::focusInEvent(e);
+  }
+
+protected:
+  QString previousText_;
+};
+
+} /* namespace */
+
 ///////////////////////////////////////////////////////////////////////////////
 
 QLineEditBox::QLineEditBox(QWidget *parent) :
@@ -21,27 +58,22 @@ QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
   layout_ = new QHBoxLayout(this);
   layout_->setContentsMargins(0, 0, 0, 0);
 
-  layout_->addWidget(lineEdit_ = new QLineEdit(s, this), 10000);
+  QCustomLineEdit * custom_edit =
+      new QCustomLineEdit(s, this);
 
-  connect(lineEdit_, &QLineEdit::editingFinished,
-      [this] () {
-        if ( lineEdit_->text() != previousText ) {
+  layout_->addWidget(lineEdit_ = custom_edit,
+      10000, Qt::AlignLeft);
+
+  connect(custom_edit, &QLineEdit::editingFinished,
+      [this, custom_edit] () {
+        if ( custom_edit->text() != custom_edit->previousText() ) {
           if ( this->hasFocus() ) {
-            previousText = lineEdit_->text();
+            custom_edit->setPreviousText(custom_edit->text());
           }
           Q_EMIT textChanged();
         }
       });
 
 }
-
-
-void QLineEditBox::focusInEvent(QFocusEvent* e)
-{
-  CF_DEBUG("focusInEvent");
-  previousText = lineEdit_->text();
-  Base::focusInEvent(e);
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////

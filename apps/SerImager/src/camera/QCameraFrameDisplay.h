@@ -90,7 +90,8 @@ protected:
   void stopWorkerThread();
   void workerThread();
   void createShapes();
-  //void createFocusRoiRectItem();
+
+protected:
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 

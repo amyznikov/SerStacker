@@ -140,14 +140,8 @@ Q_SIGNALS:
   void textChanged();
 
 protected:
-  void focusInEvent(QFocusEvent* e) override;
-
-protected:
   QHBoxLayout * layout_ = nullptr;
   QLineEdit * lineEdit_ = nullptr;
-
-private:
-  QString previousText;
 };
 
 class QNumberEditBox :

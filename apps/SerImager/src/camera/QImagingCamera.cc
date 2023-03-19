@@ -52,6 +52,7 @@ namespace serimager {
 std::string fourccToString(uint32_t fourcc)
 {
   std::string s;
+
   const char *p =
       (const char*) &fourcc;
 

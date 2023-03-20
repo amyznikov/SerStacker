@@ -30,6 +30,8 @@ public:
   QASICamera(const ASI_CAMERA_INFO & camInfo,
       QObject * parent = nullptr);
 
+  ~QASICamera();
+
   static sptr create(const ASI_CAMERA_INFO & camInfo,
       QObject * parent = nullptr);
 

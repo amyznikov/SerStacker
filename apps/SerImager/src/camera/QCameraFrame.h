@@ -12,7 +12,6 @@
 #include <opencv2/opencv.hpp>
 #include <core/io/debayer.h>
 #include <memory>
-#include <core/debug.h>
 
 namespace serimager {
 

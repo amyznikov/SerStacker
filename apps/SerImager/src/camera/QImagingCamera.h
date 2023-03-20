@@ -45,6 +45,7 @@ public:
   };
 
   QImagingCamera(QObject * parent = nullptr);
+  ~QImagingCamera();
 
   virtual QString display_name() const = 0;
   virtual QString parameters() const;
@@ -84,6 +85,7 @@ protected:
   virtual QCameraFrame::sptr device_recv_frame() = 0;
 
 protected:
+  void finish();
   void setState(State newState, const QString & reason = QString());
   virtual void onStateCanged(QImagingCamera::State oldSate, QImagingCamera::State newState);
 

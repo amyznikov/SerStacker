@@ -17,7 +17,8 @@
 #include <core/debug.h>
 
 
-QImageEditor::QImageEditor(QWidget * parent) : Base(parent)
+QImageEditor::QImageEditor(QWidget * parent) :
+  Base(parent)
 {
 }
 

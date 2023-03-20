@@ -309,8 +309,7 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
           [this](bool checked) {
             if ( writer_ ) {
               writer_->set_enable_split_stereo_stream(checked);
-              stereo_stream_layout_type_ctl->setEnabled(writer_->enable_split_stereo_stream());
-              enable_swap_cameras_ctl->setEnabled(writer_->enable_split_stereo_stream());
+              update_control_states();
               Q_EMIT parameterChanged();
             }
           },
@@ -357,7 +356,7 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
 
 
   downscale_panes_ctl =
-      add_checkbox("Swap cameras:",
+      add_checkbox("Downscale panes:",
           [this](bool checked) {
             if ( writer_ ) {
               writer_->stereo_stream_options().downscale_panes = checked;
@@ -387,6 +386,13 @@ QCameraWriter * QStereoStreamCaptureOptions::cameraWriter() const
   return writer_;
 }
 
+void QStereoStreamCaptureOptions::update_control_states()
+{
+  stereo_stream_layout_type_ctl->setEnabled(writer_->enable_split_stereo_stream());
+  enable_swap_cameras_ctl->setEnabled(writer_->enable_split_stereo_stream());
+  downscale_panes_ctl->setEnabled(writer_->enable_split_stereo_stream());
+}
+
 void QStereoStreamCaptureOptions::onupdatecontrols()
 {
   if ( !writer_  ) {
@@ -395,10 +401,7 @@ void QStereoStreamCaptureOptions::onupdatecontrols()
   else {
 
     Base::onupdatecontrols();
-
-    stereo_stream_layout_type_ctl->setEnabled(writer_->enable_split_stereo_stream());
-    enable_swap_cameras_ctl->setEnabled(writer_->enable_split_stereo_stream());
-    downscale_panes_ctl->setEnabled(writer_->enable_split_stereo_stream());
+    update_control_states();
 
     setEnabled(true);
   }

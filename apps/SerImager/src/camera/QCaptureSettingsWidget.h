@@ -72,6 +72,7 @@ public:
 
 protected:
   void onupdatecontrols() override;
+  void update_control_states();
 
 protected:
   QCameraWriter *writer_ = nullptr;

@@ -110,6 +110,11 @@ QASICamera::QASICamera(const ASI_CAMERA_INFO & camInfo, QObject * parent) :
 {
 }
 
+QASICamera::~QASICamera()
+{
+  finish();
+}
+
 QASICamera::sptr QASICamera::create(const ASI_CAMERA_INFO & camInfo, QObject * parent)
 {
   return sptr(new ThisClass(camInfo, parent));

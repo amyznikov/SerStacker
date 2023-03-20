@@ -6,6 +6,7 @@
  */
 
 #include "QFFMPEGCamera.h"
+#include <core/debug.h>
 
 namespace serimager {
 
@@ -24,6 +25,8 @@ QFFMPEGCamera::QFFMPEGCamera(const QString & name, const QString & url, const QS
 
 QFFMPEGCamera::~QFFMPEGCamera()
 {
+  finish();
+  ffmpeg_.close();
 }
 
 void QFFMPEGCamera::setName(const QString & name)

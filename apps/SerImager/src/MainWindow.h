@@ -17,8 +17,9 @@
 #include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "camera/QCameraFrameProcessorSelector.h"
-#include "camera/QCameraFrameDisplay.h"
 #include "focus/QCameraFocusMeasure.h"
+#include "QLivePipeline.h"
+#include "QVideoFrameDisplay.h"
 
 #if HAVE_INDIGO
 # include "focus/indigo/QIndigoFocuserWidget.h"
@@ -53,14 +54,15 @@ protected:
 protected Q_SLOTS:
   void onCameraWriterStatusUpdate();
   void onShowMtfControlActionTriggered(bool checked);
-  void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
+  //void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
 
 protected:
-  QCameraFrameDisplay * centralDisplay_ = nullptr;
+  QLivePipelineThread * liveView_ = nullptr;
+  QVideoFrameDisplay * centralDisplay_ = nullptr;
   QCameraWriter cameraWriter_;
 
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
@@ -103,8 +105,8 @@ protected:
   QGraphicsLineShapeSettingsDialogBox * lineShapeOptionsDialogBox_ = nullptr;
   QMenu lineShapeActionsMenu_;
 
-  QAction * showdisplayFrameProcessorSettingsAction_ = nullptr;
-  QDisplayFrameProcessorSettingsDialogBox * displayFrameProcessorSettingsDialogBox_ = nullptr;
+  // QAction * showdisplayFrameProcessorSettingsAction_ = nullptr;
+  // QDisplayFrameProcessorSettingsDialogBox * displayFrameProcessorSettingsDialogBox_ = nullptr;
 
 #if HAVE_INDIGO
   QIndigoClient * indigoClient_ = nullptr;

@@ -21,6 +21,8 @@ QV4L2Camera::QV4L2Camera(const QString & filename,  QObject * parent) :
 
 QV4L2Camera::~QV4L2Camera()
 {
+  finish();
+
   if( device_.g_fd() >= 0 ) {
     device_.close();
   }
@@ -537,7 +539,7 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
           CF_ERROR("poll() fails: status=%d (%s)", status, strerror(status));
         }
 
-        CF_DEBUG("poll: status=%d revents=0x%0X", status, pfd.revents);
+        // CF_DEBUG("poll: status=%d revents=0x%0X", status, pfd.revents);
 
         if( pfd.revents & POLLIN ) {
 

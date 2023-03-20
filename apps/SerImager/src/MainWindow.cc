@@ -90,13 +90,15 @@ MainWindow::MainWindow(QWidget * parent) :
 {
   setWindowIcon(getIcon(":/qserimager/icons/app-icon.png"));
 
-  setCentralWidget(centralDisplay_ = new QCameraFrameDisplay(this));
-
+  setCentralWidget(centralDisplay_ = new QVideoFrameDisplay(this));
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
+
+  liveView_ = new QLivePipelineThread(this);
+  liveView_->setDisplay(centralDisplay_);
 
   setupStatusbar();
   setupMainMenu();
@@ -112,13 +114,13 @@ MainWindow::MainWindow(QWidget * parent) :
 
   QApplication::instance()->installEventFilter(this);
 
-  connect(centralDisplay_, &QCameraFrameDisplay::onMouseMove,
+  connect(centralDisplay_, &QVideoFrameDisplay::onMouseMove,
       [this](QMouseEvent * e) {
         mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
         mousepos_ctl->show();
       });
 
-  connect(centralDisplay_, &QCameraFrameDisplay::onMouseLeaveEvent,
+  connect(centralDisplay_, &QVideoFrameDisplay::onMouseLeaveEvent,
       [this](QEvent * e) {
         mousepos_ctl->hide();
       });
@@ -457,12 +459,13 @@ void MainWindow::setupCameraControls()
       [this]() {
 
         const QImagingCamera::sptr & camera =
-        cameraControls_ctl->selectedCamera();
+            cameraControls_ctl->selectedCamera();
 
-        centralDisplay_->setCamera(camera);
+        liveView_->setCamera(camera);
         focusMeasure_->setCamera(camera);
 
         if ( camera ) {
+
           connect(camera.get(), &QImagingCamera::exposureStatusUpdate,
               this, &ThisClass::onExposureStatusUpdate,
               Qt::QueuedConnection);
@@ -496,15 +499,15 @@ void MainWindow::setupDisplayProcessingControls()
         centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
       });
 
-  if( (showdisplayFrameProcessorSettingsAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
-
-    showdisplayFrameProcessorSettingsAction_->setCheckable(true);
-    showdisplayFrameProcessorSettingsAction_->setChecked(false);
-    showdisplayFrameProcessorSettingsAction_->setEnabled(true);
-
-    connect(showdisplayFrameProcessorSettingsAction_, &QAction::triggered,
-        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
-  }
+//  if( (showdisplayFrameProcessorSettingsAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
+//
+//    showdisplayFrameProcessorSettingsAction_->setCheckable(true);
+//    showdisplayFrameProcessorSettingsAction_->setChecked(false);
+//    showdisplayFrameProcessorSettingsAction_->setEnabled(true);
+//
+//    connect(showdisplayFrameProcessorSettingsAction_, &QAction::triggered,
+//        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
+//  }
 }
 
 void MainWindow::onCameraWriterStatusUpdate()
@@ -584,29 +587,29 @@ void MainWindow::setupIndigoFocuser()
 #endif // HAVE_INDIGO
 }
 
-void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked)
-{
-  if( checked ) {
-    if( !displayFrameProcessorSettingsDialogBox_ ) {
-
-      displayFrameProcessorSettingsDialogBox_ = new QDisplayFrameProcessorSettingsDialogBox(this);
-      displayFrameProcessorSettingsDialogBox_->setDisplay(centralDisplay_);
-
-      connect(displayFrameProcessorSettingsDialogBox_, &QDisplayFrameProcessorSettingsDialogBox::visibilityChanged,
-          [this](bool visible) {
-            if ( showdisplayFrameProcessorSettingsAction_ ) {
-              showdisplayFrameProcessorSettingsAction_->setChecked(visible);
-            }
-          });
-    }
-
-    displayFrameProcessorSettingsDialogBox_->show();
-  }
-  else if( displayFrameProcessorSettingsDialogBox_ ) {
-    displayFrameProcessorSettingsDialogBox_->hide();
-  }
-
-}
+//void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked)
+//{
+//  if( checked ) {
+//    if( !displayFrameProcessorSettingsDialogBox_ ) {
+//
+//      displayFrameProcessorSettingsDialogBox_ = new QDisplayFrameProcessorSettingsDialogBox(this);
+//      displayFrameProcessorSettingsDialogBox_->setDisplay(centralDisplay_);
+//
+//      connect(displayFrameProcessorSettingsDialogBox_, &QDisplayFrameProcessorSettingsDialogBox::visibilityChanged,
+//          [this](bool visible) {
+//            if ( showdisplayFrameProcessorSettingsAction_ ) {
+//              showdisplayFrameProcessorSettingsAction_->setChecked(visible);
+//            }
+//          });
+//    }
+//
+//    displayFrameProcessorSettingsDialogBox_->show();
+//  }
+//  else if( displayFrameProcessorSettingsDialogBox_ ) {
+//    displayFrameProcessorSettingsDialogBox_->hide();
+//  }
+//
+//}
 
 void MainWindow::onShowMtfControlActionTriggered(bool checked)
 {

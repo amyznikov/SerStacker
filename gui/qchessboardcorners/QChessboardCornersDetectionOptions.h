@@ -138,6 +138,9 @@ protected:
 protected:
   c_chessboard_corners_detection_options * options_ = nullptr;
 
+  QNumberEditBox * chessboardSize_ctl = nullptr;
+  QNumberEditBox * chessboardCellSize_ctl = nullptr;
+
   QEnumComboBox<FindChessboardCornersMethod> * cornersDetectionMethod_ctl = nullptr;
   QFindChessboardCornersOptions * findChessboardCornersOptions_ctl = nullptr;
   QFindChessboardCornersSBOptions * findChessboardCornersSBOptions_ctl = nullptr;

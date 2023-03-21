@@ -313,8 +313,39 @@ QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget *
     ThisClass("QChessboardCornersDetectionOptions", parent)
 {
 
+  chessboardSize_ctl =
+      add_numeric_box<cv::Size>("Chessboard Size:",
+          [this](const cv::Size & size) {
+            if ( options_ ) {
+              options_->chessboard_size = size;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Size * size) {
+            if ( options_ ) {
+              *size = options_->chessboard_size;
+              return true;
+            }
+            return false;
+          });
+
+  add_numeric_box<cv::Size2f>("Chessboard Cell Size [m]:",
+      [this](const cv::Size2f & size) {
+        if ( options_ ) {
+          options_->chessboard_cell_size = size;
+          Q_EMIT parameterChanged();
+        }
+      },
+      [this](cv::Size2f * size) {
+        if ( options_ ) {
+          *size = options_->chessboard_cell_size;
+          return true;
+        }
+        return false;
+      });
+
   cornersDetectionMethod_ctl =
-      add_enum_combobox<FindChessboardCornersMethod>("Chessboard Corners Detection Method:",
+      add_enum_combobox<FindChessboardCornersMethod>("Chessboard Detection:",
           [this](FindChessboardCornersMethod value) {
             if ( options_ ) {
               options_->method = value;
@@ -387,8 +418,9 @@ void QChessboardCornersDetectionOptions::onupdatecontrols()
     cornerSubPixOptions_ctl->set_options(&options_->cornerSubPix);
     bilateralFilterOptions_ctl->set_options(&options_->bilateralFilter);
 
+    Base::onupdatecontrols();
+
     setEnabled(true);
   }
 
-  Base::onupdatecontrols();
 }

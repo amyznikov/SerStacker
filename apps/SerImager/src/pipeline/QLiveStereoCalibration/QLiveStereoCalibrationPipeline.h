@@ -9,7 +9,8 @@
 #ifndef __QStereoCalibrationLivePipeline_h__
 #define __QStereoCalibrationLivePipeline_h__
 
-#include "../../QLivePipeline.h"
+#include "QLivePipeline.h"
+#include <core/pipeline/stereo_calibration/c_stereo_calibration.h>
 
 namespace serimager {
 
@@ -22,12 +23,18 @@ public:
 
   QLiveStereoCalibrationPipeline(const QString & name, QObject * parent = nullptr);
 
+  c_stereo_calibration & stereo_calibration();
+  const c_stereo_calibration & stereo_calibration() const;
+
   bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) override;
   bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) override;
+
 
 protected:
   cv::Mat displayImage_;
   COLORID displayColorid_ = COLORID_UNKNOWN;
+
+  c_stereo_calibration stereo_calibration_;
 };
 
 } /* namespace serimager */

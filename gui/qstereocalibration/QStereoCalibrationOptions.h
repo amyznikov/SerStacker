@@ -25,17 +25,14 @@ public:
 
   QStereoCalibrationOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline);
-  const c_stereo_calibration_pipeline::sptr & current_pipeline() const;
+  void set_options(c_stereo_calibration * options);
+  c_stereo_calibration *  options() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_stereo_calibration_pipeline::sptr pipeline_;
-  QNumberEditBox * chessboardSize_ctl = nullptr;
-  QNumberEditBox * chessboardCellSize_ctl = nullptr;
-  QStereoCalibrationInputOptions * inputOptions_ctl = nullptr;
+  c_stereo_calibration * options_ = nullptr;
   QChessboardCornersDetectionOptions * chessboardCornersDetection_ctl = nullptr;
   QStereoCalibrateOptions * stereoCalibrateOptions_ctl = nullptr;
   QStereoCalibrationOutputOptions * outputOptions_ctl = nullptr;

@@ -88,7 +88,7 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
   connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  stereoCalibrationOptions_ctl = new QStereoCalibrationOptions(this);
+  stereoCalibrationOptions_ctl = new QStereoCalibrationPipelineOptions(this);
   stereoCalibrationOptions_ctl->setVisible(false);
   connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);

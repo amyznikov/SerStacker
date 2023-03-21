@@ -15,6 +15,16 @@ QLiveStereoCalibrationPipeline::QLiveStereoCalibrationPipeline(const QString & n
 
 }
 
+c_stereo_calibration & QLiveStereoCalibrationPipeline::stereo_calibration()
+{
+  return stereo_calibration_;
+}
+
+const c_stereo_calibration & QLiveStereoCalibrationPipeline::stereo_calibration() const
+{
+  return stereo_calibration_;
+}
+
 bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID colorid, int bpp)
 {
   cv::Mat currentImage;

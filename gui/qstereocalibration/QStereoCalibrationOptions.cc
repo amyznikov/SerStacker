@@ -10,45 +10,7 @@
 QStereoCalibrationOptions::QStereoCalibrationOptions(QWidget * parent) :
   Base("QCameraCalibrationSettings", parent)
 {
-
-  chessboardSize_ctl =
-      add_numeric_box<cv::Size>("Chessboard Size:",
-          [this](const cv::Size & size) {
-            if ( pipeline_ ) {
-              pipeline_->set_chessboard_size(size);
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](cv::Size * size) {
-            if ( pipeline_ ) {
-              *size = pipeline_->chessboard_size();
-              return true;
-            }
-            return false;
-          });
-
-  add_numeric_box<cv::Size2f>("Chessboard Cell Size [m]:",
-      [this](const cv::Size2f & size) {
-        if ( pipeline_ ) {
-          pipeline_->set_chessboard_cell_size(size);
-          Q_EMIT parameterChanged();
-        }
-      },
-      [this](cv::Size2f * size) {
-        if ( pipeline_ ) {
-          *size = pipeline_->chessboard_cell_size();
-          return true;
-        }
-        return false;
-      });
-
-
-  add_expandable_groupbox("Input options",
-      inputOptions_ctl = new QStereoCalibrationInputOptions(this));
-  connect(inputOptions_ctl, &QSettingsWidget::parameterChanged,
-      this, &ThisClass::parameterChanged);
-
-  add_expandable_groupbox("Chessboard Corners Detection",
+  add_expandable_groupbox("Chessboard Detection Options",
       chessboardCornersDetection_ctl = new QChessboardCornersDetectionOptions(this));
   connect(chessboardCornersDetection_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
@@ -68,37 +30,34 @@ QStereoCalibrationOptions::QStereoCalibrationOptions(QWidget * parent) :
 }
 
 
-void QStereoCalibrationOptions::set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline)
+void QStereoCalibrationOptions::set_options(c_stereo_calibration * options)
 {
-  pipeline_ = pipeline;
+  options_ = options;
   updateControls();
 }
 
-const c_stereo_calibration_pipeline::sptr & QStereoCalibrationOptions::current_pipeline() const
+c_stereo_calibration * QStereoCalibrationOptions::options() const
 {
-  return pipeline_;
+  return options_;
 }
 
 void QStereoCalibrationOptions::onupdatecontrols()
 {
-  if ( !pipeline_ ) {
+  if ( !options_ ) {
 
     setEnabled(false);
 
-    inputOptions_ctl->set_current_pipeline(nullptr);
     chessboardCornersDetection_ctl->set_chessboard_corners_detection_options(nullptr);
-    stereoCalibrateOptions_ctl->set_current_pipeline(nullptr);
-    outputOptions_ctl->set_current_pipeline(nullptr);
+    stereoCalibrateOptions_ctl->set_options(nullptr);
+    outputOptions_ctl->set_options(nullptr);
   }
   else {
 
-    inputOptions_ctl->set_current_pipeline(pipeline_);
-
     chessboardCornersDetection_ctl->set_chessboard_corners_detection_options(
-        &pipeline_->chessboard_corners_detection_options());
+        &options_->chessboard_detection_options());
 
-    stereoCalibrateOptions_ctl->set_current_pipeline(pipeline_);
-    outputOptions_ctl->set_current_pipeline(pipeline_);
+    stereoCalibrateOptions_ctl->set_options(&options_->stereo_calibrate_options());
+    outputOptions_ctl->set_options(&options_->output_options());
 
     Base::onupdatecontrols();
     setEnabled(true);

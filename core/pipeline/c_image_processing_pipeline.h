@@ -93,8 +93,8 @@ public: // pipeline methods
   // void set_input_sequence(const c_input_sequence::sptr& input_sequence);
   const c_input_sequence::sptr& input_sequence() const;
 
-  void set_output_directory(const std::string & output_directory);
-  const std::string & output_directory() const;
+  virtual void set_output_directory(const std::string & output_directory);
+  virtual const std::string & output_directory() const;
 
   void set_master_source(const std::string & master_source_path);
   const std::string & master_source() const;

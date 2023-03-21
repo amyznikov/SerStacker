@@ -6,6 +6,7 @@
  */
 
 #include "QLivePipeline.h"
+#include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/proc/pixtype.h>
@@ -467,6 +468,15 @@ QLivePipelineSelectionWidget::QLivePipelineSelectionWidget(QWidget * parent) :
           "Options",
           "Show / Hide options"));
 
+
+  scrollArea_ctl = new QScrollArea(this);
+  scrollArea_ctl->setWidgetResizable(true);
+  scrollArea_ctl->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+  scrollArea_ctl->setFrameShape(QFrame::NoFrame);
+  layout_->addWidget(scrollArea_ctl, 1000);
+
+
+
   connect(combobox_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
       this, &ThisClass::onPipelinesComboboxCurrentIndexChanged);
 
@@ -521,18 +531,57 @@ void QLivePipelineSelectionWidget::onupdatecontrols()
 
 void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
 {
-  CF_DEBUG("H");
+  QWidget *currentWidget = nullptr;
+
+  QLivePipeline* pipeline = selectedPipeline();
+
+  if ( pipeline ) {
+
+    if( QLiveStereoCalibrationPipeline *stereoCalibration =
+        dynamic_cast<QLiveStereoCalibrationPipeline*>(pipeline) ) {
+
+      if( !stereoCalibrationOptions_ctl ) {
+        stereoCalibrationOptions_ctl = new QLiveStereoCalibrationOptions(this);
+      }
+
+      currentWidget = stereoCalibrationOptions_ctl;
+      stereoCalibrationOptions_ctl->setPipeline(stereoCalibration);
+    }
+
+  }
+
+  if( scrollArea_ctl->widget() != currentWidget ) {
+
+    if( scrollArea_ctl->widget() ) {
+      scrollArea_ctl->widget()->hide();
+    }
+
+    scrollArea_ctl->takeWidget();
+    scrollArea_ctl->setWidget(currentWidget);
+
+    if( scrollArea_ctl->widget() ) {
+      scrollArea_ctl->widget()->show();
+    }
+  }
+
+//  if ( currentWidget ) {
+//
+//    if ( QImageProcessingPipeline::isRunning() && pipeline == QImageProcessingPipeline::current_pipeline() ) {
+//      currentWidget->setEnabled(false);
+//    }
+//    else {
+//      currentWidget->setEnabled(true);
+//    }
+//  }
 
 }
 
 void QLivePipelineSelectionWidget::onStartStopCtlClicked()
 {
-  CF_DEBUG("H");
-
-  QLivePipeline * selectedPipeline =
+  QLivePipeline * currentPipeline =
       this->selectedPipeline();
 
-  CF_DEBUG("selectedPipeline: %p", selectedPipeline);
+  CF_DEBUG("selectedPipeline: %p", currentPipeline);
 
 }
 

@@ -389,6 +389,9 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
 {
   c_config_setting section;
 
+  SAVE_OPTION(settings, options, chessboard_size);
+  SAVE_OPTION(settings, options, chessboard_cell_size);
+
   SAVE_OPTION(settings, options, method);
 
   if( (section = settings.add_group("findChessboardCorners")) ) {
@@ -421,6 +424,9 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
 bool load_settings(c_config_setting settings, c_chessboard_corners_detection_options * options)
 {
   c_config_setting section;
+
+  LOAD_OPTION(settings, *options, chessboard_size);
+  LOAD_OPTION(settings, *options, chessboard_cell_size);
 
   LOAD_OPTION(settings, *options, method);
 

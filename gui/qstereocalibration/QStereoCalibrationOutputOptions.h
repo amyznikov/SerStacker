@@ -12,7 +12,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QBrowsePathCombo.h>
-#include <core/pipeline/c_stereo_calibration_pipeline.h>
+#include <core/pipeline/stereo_calibration/c_stereo_calibration.h>
 
 class QStereoCalibrationOutputOptions :
     public QSettingsWidget
@@ -23,14 +23,15 @@ public:
 
   QStereoCalibrationOutputOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline);
-  const c_stereo_calibration_pipeline::sptr & current_pipeline() const;
+  void set_options(c_stereo_calibration_output_options * options);
+  c_stereo_calibration_output_options * options() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_stereo_calibration_pipeline::sptr pipeline_;
+  c_stereo_calibration_output_options * options_ = nullptr;
+
   QBrowsePathCombo * output_directory_ctl = nullptr;
 
   QCheckBox * save_rectified_images_ctl = nullptr;

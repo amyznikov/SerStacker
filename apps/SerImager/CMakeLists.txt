@@ -33,6 +33,7 @@ endforeach()
 
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
+include_directories(src)
 include_directories(src/camera)
 add_subdirectory(src/camera)
 include_directories(src/focus)

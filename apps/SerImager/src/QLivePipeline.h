@@ -147,6 +147,8 @@ class QLivePipelineSettingsWidget :
 };
 
 
+class QLiveStereoCalibrationOptions;
+
 class QLivePipelineSelectionWidget :
     public QFrame,
     public HasUpdateControls
@@ -186,6 +188,10 @@ protected:
   QComboBox * combobox_ctl = nullptr;
   QToolButton * startStop_ctl = nullptr;
   QToolButton * menuButton_ctl = nullptr;
+
+  QScrollArea * scrollArea_ctl = nullptr;
+  QLiveStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
+
 };
 
 

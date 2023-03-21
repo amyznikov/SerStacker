@@ -12,7 +12,7 @@
 #include <QtWidgets/QtWidgets>
 #include <gui/qimagestacking/QImageStackingOptions.h>
 #include <gui/qcameracalibration/QCameraCalibrationOptions.h>
-#include <gui/qstereocalibration/QStereoCalibrationOptions.h>
+#include <gui/qstereocalibration/QStereoCalibrationPipelineOptions.h>
 #include <gui/qrstereo/QRStereoOptions.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 
@@ -58,7 +58,7 @@ protected:
   QScrollArea * scrollArea_ctl = nullptr;
   QImageStackingOptions * imageStackingOptions_ctl = nullptr;
   QCameraCalibrationOptions * cameraCalibrationOptions_ctl = nullptr;
-  QStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
+  QStereoCalibrationPipelineOptions * stereoCalibrationOptions_ctl = nullptr;
   QRStereoOptions * rstereoCalibrationOptions_ctl = nullptr;
 
   QMenu menu_;

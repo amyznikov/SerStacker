@@ -13,14 +13,14 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
           [this](int value) {
-            if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().min_frames = value;
+            if ( options_ ) {
+              options_->min_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().min_frames;
+            if ( options_ ) {
+              * value = options_->min_frames;
               return true;
             }
             return false;
@@ -29,14 +29,14 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   max_frames_ctl =
       add_numeric_box<int>("max_frames:",
           [this](int value) {
-            if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().max_frames = value;
+            if ( options_ ) {
+              options_->max_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().max_frames;
+            if ( options_ ) {
+              * value = options_->max_frames;
               return true;
             }
             return false;
@@ -45,9 +45,9 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   max_iterations_ctl =
       add_numeric_box<int>("max_iterations:",
           [this](int value) {
-            if ( pipeline_ ) {
+            if ( options_ ) {
               cv::TermCriteria & t =
-                  pipeline_->stereo_calibrate_options().solverTerm;
+                  options_->solverTerm;
               if ( (t.maxCount = value) > 0 ) {
                 t.type |= cv::TermCriteria::COUNT;
               }
@@ -58,8 +58,8 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
             }
           },
           [this](int * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().solverTerm.maxCount;
+            if ( options_ ) {
+              * value = options_->solverTerm.maxCount;
               return true;
             }
             return false;
@@ -68,9 +68,9 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   eps_ctl =
       add_numeric_box<double>("eps:",
           [this](double value) {
-            if ( pipeline_ ) {
+            if ( options_ ) {
               cv::TermCriteria & t =
-                  pipeline_->stereo_calibrate_options().solverTerm;
+                  options_->solverTerm;
               if ( (t.epsilon = value) >= 0 ) {
                 t.type |= cv::TermCriteria::EPS;
               }
@@ -81,8 +81,8 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
             }
           },
           [this](double * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().solverTerm.epsilon;
+            if ( options_ ) {
+              * value = options_->solverTerm.epsilon;
               return true;
             }
             return false;
@@ -91,14 +91,14 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   calibration_flags_ctl =
       add_flags_editbox<STEREO_CALIBRATION_FLAGS>("calibration_flags:",
           [this](int value) {
-            if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().calibration_flags = value;
+            if ( options_ ) {
+              options_->calibration_flags = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().calibration_flags;
+            if ( options_ ) {
+              * value = options_->calibration_flags;
               return true;
             }
             return false;
@@ -107,14 +107,14 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   auto_tune_calibration_flags_ctl =
       add_checkbox("auto_tune_calibration_flags",
           [this](bool checked) {
-            if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().auto_tune_calibration_flags = checked;
+            if ( options_ ) {
+              options_->auto_tune_calibration_flags = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked ) {
-            if ( pipeline_ ) {
-              * checked = pipeline_->stereo_calibrate_options().auto_tune_calibration_flags;
+            if ( options_ ) {
+              * checked = options_->auto_tune_calibration_flags;
               return true;
             }
             return false;
@@ -123,14 +123,14 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   filter_alpha_ctl =
       add_numeric_box<double>("filter_alpha:",
           [this](double value) {
-            if ( pipeline_ ) {
-              pipeline_->stereo_calibrate_options().filter_alpha = value;
+            if ( options_ ) {
+              options_->filter_alpha = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->stereo_calibrate_options().filter_alpha;
+            if ( options_ ) {
+              * value = options_->filter_alpha;
               return true;
             }
             return false;
@@ -140,20 +140,20 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
   updateControls();
 }
 
-void QStereoCalibrateOptions::set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline)
+void QStereoCalibrateOptions::set_options(c_stereo_calibrate_options * options)
 {
-  pipeline_ = pipeline;
+  options_ = options;
   updateControls();
 }
 
-const c_stereo_calibration_pipeline::sptr& QStereoCalibrateOptions::current_pipeline() const
+c_stereo_calibrate_options * QStereoCalibrateOptions::options() const
 {
-  return pipeline_;
+  return options_;
 }
 
 void QStereoCalibrateOptions::onupdatecontrols()
 {
-  if( !pipeline_ ) {
+  if( !options_ ) {
     setEnabled(false);
   }
   else {

@@ -61,8 +61,11 @@ QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
   QCustomLineEdit * custom_edit =
       new QCustomLineEdit(s, this);
 
-  layout_->addWidget(lineEdit_ = custom_edit,
-      10000, Qt::AlignLeft);
+
+  custom_edit->setSizePolicy(QSizePolicy::Expanding,
+      QSizePolicy::Preferred);
+
+  layout_->addWidget(lineEdit_ = custom_edit, 1000);
 
   connect(custom_edit, &QLineEdit::editingFinished,
       [this, custom_edit] () {

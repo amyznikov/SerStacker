@@ -19,7 +19,7 @@
 #include "camera/QCameraFrameProcessorSelector.h"
 #include "focus/QCameraFocusMeasure.h"
 #include "QLivePipeline.h"
-#include "QVideoFrameDisplay.h"
+
 
 #if HAVE_INDIGO
 # include "focus/indigo/QIndigoFocuserWidget.h"
@@ -47,6 +47,7 @@ protected:
   void setupStatusbar();
   void setupCameraControls();
   void setupShapeOptions();
+  void setupLivePipelineControls();
   void setupDisplayProcessingControls();
   void setupFocusGraph();
   void setupIndigoFocuser();
@@ -64,18 +65,32 @@ protected:
   QLivePipelineThread * liveView_ = nullptr;
   QVideoFrameDisplay * centralDisplay_ = nullptr;
   QCameraWriter cameraWriter_;
+  QLivePipelineCollection pipelineCollection_;
+
+
 
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
   QImagingCameraControlsDock * cameraControlsDock_ = nullptr;
   QAction * showCameraControlsAction_ = nullptr;
 
+
+
+  QLivePipelineSelectionWidget * pipelineSelector_ctl = nullptr;
+  QCustomDockWidget * pipelineSelectorDock_ = nullptr;
+  QAction * showPipelineSelectorAction_ = nullptr;
+
+
+
   QCameraFrameProcessorSelector * frameProcessor_ctl = nullptr;
   QCustomDockWidget * frameProcessorDock_ = nullptr;
   QAction * showFrameProcessorAction_ = nullptr;
 
+
+
   QCameraFocusMeasure * focusMeasure_ = nullptr;
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;
+
 
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;
@@ -85,10 +100,14 @@ protected:
   QLabel * exposure_status_ctl = nullptr;
   QMenu displayOptionsMenu_;
 
+
+
   QToolBar * manToolbar_ = nullptr;
   QMenu * menuFile_ = nullptr;
   QMenu * menuView_ = nullptr;
   QMenu * menuViewShapes_ = nullptr;
+
+
 
   QAction * showRectShapeAction_ = nullptr;
   QToolButton * rectShapeActionsButton_ = nullptr;

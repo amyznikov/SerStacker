@@ -6,6 +6,7 @@
  */
 
 #include "MainWindow.h"
+#include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationPipeline.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -17,6 +18,7 @@ namespace serimager {
 #define ICON_roi              ":/qserimager/icons/roi.png"
 #define ICON_line             ":/qserimager/icons/line.png"
 #define ICON_target           ":/qserimager/icons/target.png"
+#define ICON_process          ":/qserimager/icons/process.png"
 
 namespace {
 
@@ -105,6 +107,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupFocusGraph();
   setupIndigoFocuser();
   setupCameraControls();
+  setupLivePipelineControls();
   setupDisplayProcessingControls();
   setupShapeOptions();
   setupMainToolbar();
@@ -475,6 +478,38 @@ void MainWindow::setupCameraControls()
   connect(&cameraWriter_, &QCameraWriter::statusUpdate,
       this, &ThisClass::onCameraWriterStatusUpdate,
       Qt::QueuedConnection);
+
+}
+
+void MainWindow::setupLivePipelineControls()
+{
+  pipelineCollection_.addPipelineType("StereoCalibration",
+      "LIve Stereo Camera Calibration",
+      [](const QString & name) {
+        return new QLiveStereoCalibrationPipeline(name);
+      });
+
+
+  pipelineSelectorDock_ =
+      addCustomDock(this,
+          Qt::RightDockWidgetArea,
+          "pipelineSelectorDock_",
+          "Live Pipelines",
+          pipelineSelector_ctl = new QLivePipelineSelectionWidget(this),
+          menuView_);
+
+  pipelineSelectorDock_->hide();
+
+  showPipelineSelectorAction_ = pipelineSelectorDock_->toggleViewAction();
+  showPipelineSelectorAction_->setIcon(getIcon(ICON_process));
+  showPipelineSelectorAction_->setToolTip("Show / Hide live pipelines");
+
+  pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
+
+  connect(pipelineSelector_ctl, &QLivePipelineSelectionWidget::parameterChanged,
+      [this]() {
+        // centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
+      });
 
 }
 

@@ -85,6 +85,21 @@ double get_maxval_for_pixel_depth(int ddepth)
   return 1;
 }
 
+int get_max_bpp_for_pixel_depth(int ddepth)
+{
+  switch (CV_MAT_DEPTH(ddepth)) {
+  case CV_8U :
+  case CV_8S :
+    return UINT8_WIDTH;
+  case CV_16U :
+  case CV_16S :
+    return UINT16_WIDTH;
+  case CV_32S :
+    return INT32_WIDTH;
+  }
+  return 0;
+}
+
 /**
  *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
  *  dst = src * scale  + offset;
@@ -102,3 +117,52 @@ bool get_scale_offset(int src_depth, int dst_depth, double * scale, double * off
 
   return true;
 }
+
+/**
+ *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
+ *  dst = src * scale  + offset;
+ */
+
+/**
+ *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
+ *  dst = src * scale  + offset;
+ */
+bool get_scale_offset(int src_depth, int src_bpp, int dst_depth, double * scale, double * offset)
+{
+  double srcmin, srcmax;
+  double dstmin, dstmax;
+
+  get_data_range_for_pixel_depth(src_depth, &srcmin, &srcmax);
+  get_data_range_for_pixel_depth(dst_depth, &dstmin, &dstmax);
+
+  *scale = (dstmax - dstmin) / (srcmax - srcmin);
+  *offset = dstmin - *scale * srcmin;
+
+  if( src_bpp > 0 ) {
+
+    switch (CV_MAT_DEPTH(src_depth)) {
+      case CV_8U:
+        case CV_8S:
+        if( src_bpp < UINT8_WIDTH ) {
+          *scale *= (1 << (UINT8_WIDTH - src_bpp));
+        }
+        break;
+
+      case CV_16U:
+        case CV_16S:
+        if( src_bpp < UINT16_WIDTH ) {
+          *scale *= (1 << (UINT16_WIDTH - src_bpp));
+        }
+        break;
+
+      case CV_32S:
+        if( src_bpp < UINT32_WIDTH ) {
+          *scale *= (1 << (UINT32_WIDTH - src_bpp));
+        }
+        break;
+    }
+  }
+
+  return true;
+}
+

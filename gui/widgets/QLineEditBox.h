@@ -154,12 +154,12 @@ public:
 
   explicit QNumberEditBox(QWidget *parent = nullptr) : Base(parent)
   {
-    lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
+    // lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
   }
 
   explicit QNumberEditBox(const QString & s, QWidget * parent = nullptr) : Base(s, parent)
   {
-    lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
+    //lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
   }
 };
 

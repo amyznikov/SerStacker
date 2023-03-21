@@ -35,12 +35,22 @@
 	<file>icons/dark/menu.png</file>
 	<file>icons/light/menu.png</file>
 	
+	<file>icons/dark/add.png</file>
+	<file>icons/light/add.png</file>
+
+	<file>icons/dark/delete.png</file>
+	<file>icons/light/delete.png</file>
+	
+	<file>icons/dark/rename.png</file>
+	<file>icons/light/rename.png</file>
+
 	<file>icons/connect.png</file>
 	<file>icons/disconnect.png</file>
 	<file>icons/start.png</file>
 	<file>icons/stop.png</file>
 	<file>icons/start-capture.png</file>
 	<file>icons/stop-capture.png</file>
+	<file>icons/process.png</file>
 	
 </qresource>
 </RCC>

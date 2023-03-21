@@ -141,12 +141,6 @@ protected:
 };
 
 
-class QLivePipelineSettingsWidget :
-    public QSettingsWidget
-{
-};
-
-
 class QLiveStereoCalibrationOptions;
 
 class QLivePipelineSelectionWidget :
@@ -163,6 +157,9 @@ public:
   void setPipelineCollection(QLivePipelineCollection * pipelines);
   QLivePipelineCollection * pipelines() const;
 
+  void setLiveThread(QLivePipelineThread * liveThread);
+  QLivePipelineThread * liveThread() const;
+
   QLivePipeline * selectedPipeline() const;
 
 Q_SIGNALS:
@@ -175,6 +172,7 @@ protected Q_SLOTS:
   void onAddLivePipelineClicked();
   void onRemoveLivePipelineClicked();
   void onRenameLivePipelineClicked();
+  void onLiveThreadStateChanged();
 
 protected:
   void onupdatecontrols() override;
@@ -182,6 +180,7 @@ protected:
 
 protected:
   QLivePipelineCollection * pipelineCollection_ = nullptr;
+  QLivePipelineThread * liveThread_ = nullptr;
 
   QVBoxLayout * layout_ = nullptr;
   QToolBar * toolbar_ctl = nullptr;

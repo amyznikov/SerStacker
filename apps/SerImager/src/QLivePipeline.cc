@@ -94,6 +94,10 @@ bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int s
     src_colorid = COLORID_BGR;
   }
 
+  //if ( src_colorid )
+
+
+
   return true;
 }
 
@@ -208,6 +212,8 @@ void QLivePipelineThread::finish(bool wait)
 
 void QLivePipelineThread::run()
 {
+  CF_DEBUG("enter");
+
   cv::Mat inputImage;
   bool haveInputImage;
 
@@ -260,6 +266,7 @@ void QLivePipelineThread::run()
 
     QThread::msleep(30);
   }
+  CF_DEBUG("leave");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -489,6 +496,32 @@ QLivePipelineSelectionWidget::QLivePipelineSelectionWidget(QWidget * parent) :
   updateControls();
 }
 
+void QLivePipelineSelectionWidget::setLiveThread(QLivePipelineThread * liveThread)
+{
+  if( liveThread_ ) {
+    liveThread_->disconnect(this);
+  }
+
+  if ( (liveThread_  = liveThread) ) {
+
+    connect(liveThread_, &QThread::started,
+        this, &ThisClass::onLiveThreadStateChanged);
+
+    connect(liveThread_, &QThread::finished,
+        this, &ThisClass::onLiveThreadStateChanged);
+
+  }
+
+  updateControls();
+}
+
+
+QLivePipelineThread * QLivePipelineSelectionWidget::liveThread() const
+{
+  return liveThread_;
+}
+
+
 void QLivePipelineSelectionWidget::setPipelineCollection(QLivePipelineCollection * pipelines)
 {
   pipelineCollection_ = pipelines;
@@ -500,6 +533,8 @@ QLivePipelineCollection * QLivePipelineSelectionWidget::pipelines() const
 {
   return pipelineCollection_;
 }
+
+
 
 QLivePipeline* QLivePipelineSelectionWidget::selectedPipeline() const
 {
@@ -518,12 +553,60 @@ void QLivePipelineSelectionWidget::populatepipelines()
   }
 }
 
+void QLivePipelineSelectionWidget::onLiveThreadStateChanged()
+{
+  updateControls();
+}
+
 void QLivePipelineSelectionWidget::onupdatecontrols()
 {
-  if ( !pipelineCollection_ ) {
+  if ( !pipelineCollection_ || !liveThread_ ) {
     setEnabled(false);
   }
   else {
+
+    if ( liveThread_->currentPipeline() ) {
+
+      QWidget * w = scrollArea_ctl->widget();
+      if ( w ) {
+        w->setEnabled(false);
+      }
+
+      combobox_ctl->setEnabled(false);
+      menuButton_ctl->setEnabled(false);
+
+      startStop_ctl->setIcon(getIcon(ICON_stop));
+      startStop_ctl->setEnabled(true);
+
+    }
+    else if( liveThread_->camera() && liveThread_->camera()->state() == QImagingCamera::State_started ) {
+
+      QWidget *w = scrollArea_ctl->widget();
+      if( w ) {
+        w->setEnabled(true);
+      }
+
+      combobox_ctl->setEnabled(true);
+      menuButton_ctl->setEnabled(true);
+
+      startStop_ctl->setIcon(getIcon(ICON_start));
+      startStop_ctl->setEnabled(true);
+    }
+    else {
+      QWidget *w = scrollArea_ctl->widget();
+      if( w ) {
+        w->setEnabled(true);
+      }
+
+      combobox_ctl->setEnabled(true);
+      menuButton_ctl->setEnabled(true);
+
+      startStop_ctl->setIcon(getIcon(ICON_start));
+      startStop_ctl->setEnabled(false);
+
+    }
+
+
     setEnabled(true);
   }
 }
@@ -578,11 +661,21 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
 
 void QLivePipelineSelectionWidget::onStartStopCtlClicked()
 {
-  QLivePipeline * currentPipeline =
-      this->selectedPipeline();
+  if( liveThread_ ) {
 
-  CF_DEBUG("selectedPipeline: %p", currentPipeline);
+    if( liveThread_->currentPipeline() ) {
+      CF_DEBUG("liveThread_->startPipeline(nullptr)");
+      liveThread_->startPipeline(nullptr);
+    }
+    else {
+      QLivePipeline *pipeline = selectedPipeline();
 
+      CF_DEBUG("liveThread_->startPipeline(pipeline=%p)", pipeline);
+
+      liveThread_->startPipeline(pipeline);
+    }
+
+  }
 }
 
 void QLivePipelineSelectionWidget::onMenuCtlClicked()

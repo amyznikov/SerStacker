@@ -12,7 +12,6 @@ namespace serimager {
 QLiveStereoCalibrationPipeline::QLiveStereoCalibrationPipeline(const QString & name, QObject * parent) :
     Base(name, parent)
 {
-
 }
 
 c_stereo_calibration & QLiveStereoCalibrationPipeline::stereo_calibration()
@@ -33,10 +32,12 @@ bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID
       colorid == COLORID_MONO ? COLORID_MONO :
           COLORID_BGR;
 
-  if( !Base::convertImage(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
-    CF_ERROR("convertInputImage() fails");
-    return false;
-  }
+//  if( !Base::convertImage(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
+//    CF_ERROR("convertInputImage() fails");
+//    return false;
+//  }
+
+  image.copyTo(currentImage);
 
   displayImage_ =
       currentImage;

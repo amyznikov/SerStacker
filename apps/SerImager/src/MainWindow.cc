@@ -505,6 +505,7 @@ void MainWindow::setupLivePipelineControls()
   showPipelineSelectorAction_->setToolTip("Show / Hide live pipelines");
 
   pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
+  pipelineSelector_ctl->setLiveThread(liveView_);
 
   connect(pipelineSelector_ctl, &QLivePipelineSelectionWidget::parameterChanged,
       [this]() {

@@ -153,6 +153,7 @@ bool QFFMPEGCamera::device_start()
 
 void QFFMPEGCamera::device_stop()
 {
+
   return ;
 }
 

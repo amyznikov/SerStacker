@@ -6,6 +6,7 @@
  */
 
 #include "MainWindow.h"
+#include "camera/ffmpeg/QFFStreams.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationPipeline.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
@@ -93,25 +94,27 @@ MainWindow::MainWindow(QWidget * parent) :
   setWindowIcon(getIcon(":/qserimager/icons/app-icon.png"));
 
   setCentralWidget(centralDisplay_ = new QVideoFrameDisplay(this));
+
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 
+  QFFStreams::load();
   liveView_ = new QLivePipelineThread(this);
   liveView_->setDisplay(centralDisplay_);
 
+
   setupStatusbar();
   setupMainMenu();
-  setupFocusGraph();
   setupIndigoFocuser();
   setupCameraControls();
+  setupFocusGraph();
   setupLivePipelineControls();
   setupDisplayProcessingControls();
   setupShapeOptions();
   setupMainToolbar();
-
 
   restoreState();
 
@@ -127,7 +130,6 @@ MainWindow::MainWindow(QWidget * parent) :
       [this](QEvent * e) {
         mousepos_ctl->hide();
       });
-
 
 }
 

@@ -9,10 +9,17 @@
 
 namespace serimager {
 
-QList<QImagingCamera::sptr> QFFStreams::streams_;
-
 QFFStreams * QFFStreams::instance()
 {
+  static bool initialized = false;
+  if ( !initialized ) {
+    qRegisterMetaTypeStreamOperators<QFFMPEGCameraParameters>("QFFMPEGCameraParameters");
+    qRegisterMetaTypeStreamOperators<serimager::QFFMPEGCameraParameters>("serimager::QFFMPEGCameraParameters");
+    qRegisterMetaTypeStreamOperators<QList<QFFMPEGCameraParameters>>("QList<QFFMPEGCameraParameters>");
+    qRegisterMetaTypeStreamOperators<QList<serimager::QFFMPEGCameraParameters>>("QList<serimager::QFFMPEGCameraParameters>");
+    initialized = true;
+  }
+
   static QFFStreams * instance_ =
       new QFFStreams();
 
@@ -25,33 +32,24 @@ QFFStreams::QFFStreams()
 
 const QList<QImagingCamera::sptr> & QFFStreams::streams()
 {
-  static bool initialized = false;
-  if ( !initialized ) {
-
-    qRegisterMetaTypeStreamOperators<QFFMPEGCameraParameters>("QFFMPEGCameraParameters");
-    qRegisterMetaTypeStreamOperators<QFFMPEGCameraParameters>("serimager::QFFMPEGCameraParameters");
-    qRegisterMetaTypeStreamOperators<QList<QFFMPEGCameraParameters>>("QList<QFFMPEGCameraParameters>");
-    qRegisterMetaTypeStreamOperators<QList<QFFMPEGCameraParameters>>("QList<serimager::QFFMPEGCameraParameters>");
-
-    QFFStreams::load();
-    initialized = true;
-  }
-
-  return streams_;
+  return instance()->streams_;
 }
 
 void QFFStreams::add(const QFFMPEGCamera::sptr & stream)
 {
-  streams_.append(stream);
-  save();
+  instance()->streams_.append(stream);
+  instance()->save();
   Q_EMIT instance()->streamsChaged();
 }
 
 void QFFStreams::remove(const QFFMPEGCamera::sptr & stream)
 {
-  for( auto ii = streams_.begin(); ii != streams_.end(); ++ii ) {
+  QList<QImagingCamera::sptr> & streams =
+      instance()->streams_;
+
+  for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
     if( ii->get() == stream.get() ) {
-      streams_.erase(ii);
+      streams.erase(ii);
       Q_EMIT instance()->streamsChaged();
       return;
     }
@@ -60,7 +58,10 @@ void QFFStreams::remove(const QFFMPEGCamera::sptr & stream)
 
 bool QFFStreams::exist(const QImagingCamera::sptr & stream)
 {
-  for( auto ii = streams_.begin(); ii != streams_.end(); ++ii ) {
+  const QList<QImagingCamera::sptr> & streams =
+      instance()->streams_;
+
+  for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
     if( ii->get() == stream.get() ) {
       return true;
     }
@@ -71,7 +72,10 @@ bool QFFStreams::exist(const QImagingCamera::sptr & stream)
 
 bool QFFStreams::exist(const QString & streamName)
 {
-  for( auto ii = streams_.begin(); ii != streams_.end(); ++ii ) {
+  const QList<QImagingCamera::sptr> & streams =
+      instance()->streams_;
+
+  for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
 
     const QFFMPEGCamera::sptr camera =
         std::dynamic_pointer_cast<QFFMPEGCamera>(*ii);
@@ -87,27 +91,12 @@ bool QFFStreams::exist(const QString & streamName)
 
 void QFFStreams::save()
 {
-
-//  if ( true ) {
-//
-//    QFFMPEGCameraParameters p = {
-//        .name = "test1",
-//        .url = "test2",
-//        .opts = "test3",
-//    };
-//
-//    CF_DEBUG("XXXX H");
-//
-//    QSettings().setValue("QFFMPEGCameraParameters",
-//        QVariant::fromValue(p));
-//
-//    CF_DEBUG("XXXX H");
-//  }
-
+  const QList<QImagingCamera::sptr> & streams =
+      instance()->streams_;
 
   QList<QFFMPEGCameraParameters> cameras;
 
-  for( const QImagingCamera::sptr &stream : streams_ ) {
+  for( const QImagingCamera::sptr &stream : streams ) {
 
     const QFFMPEGCamera::sptr camera =
         std::dynamic_pointer_cast<QFFMPEGCamera>(stream);
@@ -127,36 +116,22 @@ void QFFStreams::save()
 
   QSettings().setValue("QFFStreams",
       QVariant::fromValue(cameras));
-
 }
 
 void QFFStreams::load()
 {
-//  if( true ) {
-//
-//    QFFMPEGCameraParameters p;
-//
-//    CF_DEBUG("YYYYY H");
-//
-//    p =
-//        QSettings().value("QFFMPEGCameraParameters",
-//            QVariant::fromValue(QFFMPEGCameraParameters()))
-//              .value<QFFMPEGCameraParameters>();
-//
-//    CF_DEBUG("YYYYY H: p.name= %s", p.name.toUtf8().constData());
-//  }
-
-
+  QList<QImagingCamera::sptr> & streams =
+      instance()->streams_;
 
   const QList<QFFMPEGCameraParameters> cameras =
       QSettings().value("QFFStreams",
           QVariant::fromValue(QList<QFFMPEGCameraParameters>()))
             .value<QList<QFFMPEGCameraParameters>>();
 
-  streams_.clear();
+  streams.clear();
 
   for( const QFFMPEGCameraParameters &c : cameras ) {
-    streams_.append(QFFMPEGCamera::create(c.name, c.url, c.opts));
+    streams.append(QFFMPEGCamera::create(c.name, c.url, c.opts));
   }
 
   Q_EMIT instance()->streamsChaged();

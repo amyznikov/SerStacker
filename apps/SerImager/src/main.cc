@@ -62,9 +62,12 @@ int main(int argc, char * argv[])
   }
 
   MainWindow mainWindow;
+
   mainWindow.show();
   mainWindow.activateWindow();
   mainWindow.raise();
+
+  CF_DEBUG("H");
 
   return app.exec();
 }

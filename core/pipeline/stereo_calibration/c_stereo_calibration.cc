@@ -114,7 +114,8 @@ bool c_stereo_calibration::serialize(c_config_setting settings, bool save)
 
 bool c_stereo_calibration::initialize()
 {
-  calibration_flags_ = calibration_options_.calibration_flags;
+  best_calibration_flags_ = calibration_flags_ = calibration_options_.calibration_flags;
+  best_subset_quality_ = HUGE_VAL;
   stereo_intrinsics_initialized_ = false;
 
   if ( chessboard_detection_options_.chessboard_size.width < 2 || chessboard_detection_options_.chessboard_size.height < 2 ) {
@@ -220,6 +221,10 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
         CF_ERROR("init_camera_intrinsics() fails");
         return true; // wait for next frame
       }
+
+      if( canceled() ) {
+        return false;
+      }
     }
 
     CF_DEBUG("Running stereo calibration ...");
@@ -237,9 +242,31 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
             &tvecs_,
             &perViewErrors_);
 
-    CF_DEBUG("done with RMS error=%g", rmse_);
+    CF_DEBUG("done with RMSE=%g", rmse_);
 
-    fOk = rmse_ >= 0;
+    if( (fOk = rmse_ >= 0) ) {
+
+      const double subset_quality =
+          estimate_subset_quality();
+
+      CF_DEBUG("subset_quality=%g", subset_quality);
+
+      if( subset_quality < best_subset_quality_ ) {
+        best_intrinsics_ = stereo_intrinsics_;
+        best_extrinsics_ = stereo_extrinsics_;
+        best_calibration_flags_ = calibration_flags_;
+        best_subset_quality_ = subset_quality;
+
+        if( !save_current_camera_parameters() ) {
+          CF_ERROR("save_current_camera_parameters() fails");
+          return false;
+        }
+
+        if( canceled() ) {
+          return false;
+        }
+      }
+    }
 
     const cv::Matx33d &M0 =
         stereo_intrinsics_.camera[0].camera_matrix;
@@ -259,7 +286,7 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
         "  %+g %+g %+g\n"
         "}\n",
 
-    M0(0, 0), M0(0, 1), M0(0, 2),
+        M0(0, 0), M0(0, 1), M0(0, 2),
         M0(1, 0), M0(1, 1), M0(1, 2),
         M0(2, 0), M0(2, 1), M0(2, 2),
 
@@ -271,22 +298,23 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
       return true; // wait for next frame
     }
 
+    filter_frames();
+
+    if( canceled() ) {
+      return false;
+    }
+
     update_state();
 
     if( canceled() ) {
       return false;
     }
 
-    if( !save_current_camera_parameters() ) {
-      CF_ERROR("save_current_camera_parameters() fails");
-      return false;
-    }
+    update_undistortion_remap();
 
     if( canceled() ) {
       return false;
     }
-
-    update_undistortion_remap();
   }
 
   return true;
@@ -317,7 +345,7 @@ bool c_stereo_calibration::detect_chessboard(const cv::Mat & frame, std::vector<
       chessboard_detection_options_);
 }
 
-double c_stereo_calibration::estimate_grid_subset_quality(int excludedIndex) const
+void c_stereo_calibration::estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const
 {
   const cv::Size image_size = current_frames_[0].size();
 
@@ -350,7 +378,56 @@ double c_stereo_calibration::estimate_grid_subset_quality(int excludedIndex) con
   cv::Scalar mean, stdDev;
   cv::meanStdDev(pointsInCell, mean, stdDev);
 
-  return mean[0] / (stdDev[0] + 1e-7);
+  if ( m ) {
+    *m = mean[0];
+  }
+  if ( s ) {
+    *s = stdDev[0];
+  }
+}
+
+double c_stereo_calibration::estimate_grid_subset_quality(int excludedIndex) const
+{
+  double mean, stdev;
+
+  estimate_grid_meanstdev(&mean, &stdev,
+      excludedIndex);
+
+  return mean / (stdev + 1e-7);
+}
+
+double c_stereo_calibration::estimate_subset_quality() const
+{
+  const int nbframes =
+      object_points_.size();
+
+  if( nbframes > 0 ) {
+
+    double grid_mean, grid_stdev;
+
+    estimate_grid_meanstdev(&grid_mean, &grid_stdev, nbframes);
+
+    const double grid_quality =
+        grid_stdev / grid_mean;
+
+
+    double rmse_quality = 0;
+    for( size_t i = 0; i < nbframes; i++ ) {
+      rmse_quality += (perViewErrors_[i][0] + perViewErrors_[i][1]);
+    }
+    rmse_quality /= nbframes;
+
+
+    const double alpha =
+        calibration_options_.filter_alpha;
+
+    CF_DEBUG("grid: mean=%g stdev=%g quality=%g ; rmse: %g",
+        grid_mean, grid_stdev, grid_quality, rmse_quality);
+
+    return 0.5 * rmse_quality * alpha + grid_quality * (1 - alpha);
+  }
+
+  return 0;
 }
 
 void c_stereo_calibration::filter_frames()
@@ -593,11 +670,11 @@ void c_stereo_calibration::update_state()
 void c_stereo_calibration::update_undistortion_remap()
 {
   const cv::Size & image_size =
-      stereo_intrinsics_.camera[0].image_size;
+      best_intrinsics_.camera[0].image_size;
 
   create_stereo_rectification(image_size,
-      stereo_intrinsics_,
-      stereo_extrinsics_,
+      best_intrinsics_,
+      best_extrinsics_,
       -1,
       rmaps_,
       &new_stereo_intrinsics_,
@@ -616,73 +693,60 @@ void c_stereo_calibration::update_display_image()
       current_frames_[1].size(),
   };
 
-  const cv::Size size1(sizes[0].width + sizes[1].width,
-      std::max(sizes[0].height, sizes[1].height));
+  const cv::Rect roi[4] = {
+      cv::Rect(0, 0, sizes[0].width, sizes[0].height), // top left
+      cv::Rect(sizes[0].width, 0, sizes[1].width, sizes[1].height), // top right
+      cv::Rect(0, std::max(sizes[0].height, sizes[1].height), sizes[0].width, sizes[0].height), // bottom left
+      cv::Rect(sizes[0].width, std::max(sizes[0].height, sizes[1].height), sizes[1].width, sizes[1].height), // bottom right
+      };
 
-  const float side_ratio1 =
-      (float) std::min(size1.width, size1.height) /
-          (float) std::max(size1.width, size1.height);
+  const cv::Size displaySize(
+      sizes[0].width + sizes[1].width,
+      2 * std::max(sizes[0].height, sizes[1].height));
 
-  const cv::Size size2(std::max(sizes[0].width, sizes[1].width),
-      sizes[0].height + sizes[1].height);
+  display_frame_.create(displaySize, current_frames_[0].type());
 
-  const float side_ratio2 =
-      (float) std::min(size2.width, size2.height) /
-          (float) std::max(size2.width, size2.height);
+  current_frames_[0].copyTo(display_frame_(roi[0]));
+  current_frames_[1].copyTo(display_frame_(roi[1]));
 
-  cv::Rect rc0, rc1;
-
-  if( side_ratio1 * 2 > side_ratio2 ) {
-
-    display_frame_.create(size1, current_frames_[0].type());
-    rc0 = cv::Rect(0, 0, sizes[0].width, sizes[0].height);
-    rc1 = cv::Rect(sizes[0].width, 0, sizes[1].width, sizes[1].height);
-
+  if( rmaps_[0].empty() ) {
+    current_frames_[0].copyTo(display_frame_(roi[2]));
+    current_frames_[1].copyTo(display_frame_(roi[3]));
   }
   else {
-
-    display_frame_.create(size2, current_frames_[0].type());
-    rc0 = cv::Rect(0, 0, sizes[0].width, sizes[0].height);
-    rc1 = cv::Rect(0, sizes[0].height, sizes[1].width, sizes[1].height);
-  }
-
-  if( !rmaps_[0].empty() ) {
-
-    cv::remap(current_frames_[0], display_frame_(rc0),
+    cv::remap(current_frames_[0], display_frame_(roi[2]),
         rmaps_[0], cv::noArray(),
         cv::INTER_LINEAR);
 
-    cv::remap(current_frames_[1], display_frame_(rc1),
+    cv::remap(current_frames_[1], display_frame_(roi[3]),
         rmaps_[1], cv::noArray(),
         cv::INTER_LINEAR);
-
   }
-  else {
 
-    current_frames_[0].copyTo(display_frame_(rc0));
-    current_frames_[1].copyTo(display_frame_(rc1));
+  if( !current_image_points_[0].empty() ) {
 
-    if( display_frame_.channels() == 1 ) {
-      if( !current_image_points_[0].empty() || !current_image_points_[1].empty() ) {
-        cv::cvtColor(display_frame_, display_frame_,
-            cv::COLOR_GRAY2BGR);
-      }
+    if ( display_frame_.channels() == 1 ) {
+      cv::cvtColor(display_frame_, display_frame_, cv::COLOR_GRAY2BGR);
     }
 
-    if( !current_image_points_[0].empty() ) {
-      cv::drawChessboardCorners(display_frame_(rc0),
-          chessboard_detection_options_.chessboard_size,
-          current_image_points_[0],
-          true);
-    }
-
-    if( !current_image_points_[1].empty() ) {
-      cv::drawChessboardCorners(display_frame_(rc1),
-          chessboard_detection_options_.chessboard_size,
-          current_image_points_[1],
-          true);
-    }
+    cv::drawChessboardCorners(display_frame_(roi[0]),
+        chessboard_detection_options_.chessboard_size,
+        current_image_points_[0],
+        true);
   }
+
+  if( !current_image_points_[1].empty() ) {
+
+    if ( display_frame_.channels() == 1 ) {
+      cv::cvtColor(display_frame_, display_frame_, cv::COLOR_GRAY2BGR);
+    }
+
+    cv::drawChessboardCorners(display_frame_(roi[1]),
+        chessboard_detection_options_.chessboard_size,
+        current_image_points_[1],
+        true);
+  }
+
 }
 
 bool c_stereo_calibration::save_current_camera_parameters() const
@@ -694,7 +758,7 @@ bool c_stereo_calibration::save_current_camera_parameters() const
       return false;
     }
 
-    if( !write_stereo_camera_intrinsics_yml(stereo_intrinsics_, output_intrinsics_filename_) ) {
+    if( !write_stereo_camera_intrinsics_yml(best_intrinsics_, output_intrinsics_filename_) ) {
       CF_ERROR("ERROR: save_stereo_camera_intrinsics_yml('%s') fails",
           output_intrinsics_filename_.c_str());
       return false;
@@ -708,7 +772,7 @@ bool c_stereo_calibration::save_current_camera_parameters() const
       return false;
     }
 
-    if( !write_stereo_camera_extrinsics_yml(stereo_extrinsics_, output_extrinsics_filename_) ) {
+    if( !write_stereo_camera_extrinsics_yml(best_extrinsics_, output_extrinsics_filename_) ) {
       CF_ERROR("ERROR: save_stereo_camera_extrinsics_yml('%s') fails",
           output_extrinsics_filename_.c_str());
     }

@@ -28,8 +28,8 @@ public:
 
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
-  bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) override;
-  bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) override;
+  bool process_frame(const cv::Mat & image, COLORID colorid, int bpp) override;
+  bool get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp) override;
 
   bool serialize(c_config_setting settings, bool save) override;
 

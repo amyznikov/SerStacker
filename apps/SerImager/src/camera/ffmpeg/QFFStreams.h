@@ -109,7 +109,7 @@ protected: // Indented to be a singleton
   QFFStreams();
 
 protected:
-  static QList<QImagingCamera::sptr> streams_;
+  QList<QImagingCamera::sptr> streams_;
 };
 
 

@@ -37,11 +37,11 @@ public:
   virtual bool initialize_pipeline();
   virtual void cleanup_pipeline();
 
-  virtual bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) = 0;
-  virtual bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) = 0;
-  virtual bool convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
+  virtual bool process_frame(const cv::Mat & image, COLORID colorid, int bpp) = 0;
+  virtual bool get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp) = 0;
+  virtual bool convert_image(const cv::Mat & src, COLORID src_colorid, int src_bpp,
       cv::Mat * dst_image, COLORID dst_colorid, int ddepth) const;
-  virtual QString createOutputPath(const QString & output_ditectory) const;
+  virtual QString create_output_path(const QString & output_ditectory) const;
 
 
 protected:

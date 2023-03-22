@@ -79,7 +79,7 @@ void QLivePipeline::cleanup_pipeline()
 }
 
 
-bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
+bool QLivePipeline::convert_image(const cv::Mat & src, COLORID src_colorid, int src_bpp,
     cv::Mat * dst, COLORID dst_colorid, int dst_depth) const
 {
   const cv::Mat *s = nullptr;
@@ -217,7 +217,7 @@ bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int s
   return true;
 }
 
-QString QLivePipeline::createOutputPath(const QString & output_ditectory) const
+QString QLivePipeline::create_output_path(const QString & output_ditectory) const
 {
   QString output_path;
 
@@ -368,6 +368,9 @@ void QLivePipelineThread::run()
 
   while (!finish_) {
 
+
+    haveInputImage = false;
+
     if( 42 ) {
 
       QImagingCamera::shared_lock lock(camera_->mutex());
@@ -402,12 +405,12 @@ void QLivePipelineThread::run()
       }
       else {
 
-        if ( !pipeline_->processFrame(inputImage, colorid, bpp) ) {
+        if ( !pipeline_->process_frame(inputImage, colorid, bpp) ) {
           CF_ERROR("pipeline_->processFrame() fails");
           break;
         }
 
-        if ( !pipeline_->getDisplayImage(&inputImage, &colorid, &bpp) ) {
+        if ( !pipeline_->get_display_image(&inputImage, &colorid, &bpp) ) {
           CF_ERROR("pipeline_->getDisplayImage() fails");
           break;
         }

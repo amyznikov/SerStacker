@@ -87,6 +87,10 @@ protected:
   virtual bool save_current_camera_parameters() const;
 
 protected:
+  double estimate_subset_quality() const;
+  void estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const;
+
+protected:
   c_chessboard_corners_detection_options chessboard_detection_options_;
   c_stereo_calibrate_options calibration_options_;
   c_stereo_calibration_output_options output_options_;
@@ -104,7 +108,13 @@ protected:
 
   c_stereo_camera_intrinsics stereo_intrinsics_;
   c_stereo_camera_extrinsics stereo_extrinsics_;
+  int calibration_flags_ = 0;
   bool stereo_intrinsics_initialized_ = false;
+
+  c_stereo_camera_intrinsics best_intrinsics_;
+  c_stereo_camera_extrinsics best_extrinsics_;
+  int best_calibration_flags_ = 0;
+  double best_subset_quality_ = HUGE_VAL;
 
 
   c_stereo_camera_intrinsics new_stereo_intrinsics_;
@@ -116,7 +126,6 @@ protected:
   std::vector<cv::Vec3d> tvecs_;
   cv::Mat1d perViewErrors_;
   double rmse_ = 0;
-  int calibration_flags_ = 0;
 
   cv::Mat display_frame_;
   cv::Mat display_mask_;

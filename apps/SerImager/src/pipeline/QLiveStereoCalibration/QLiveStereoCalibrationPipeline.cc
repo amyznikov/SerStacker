@@ -49,7 +49,7 @@ bool QLiveStereoCalibrationPipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   output_path_ =
-      createOutputPath(stereo_calibration_.output_options().output_directory.c_str());
+      create_output_path(stereo_calibration_.output_options().output_directory.c_str());
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -80,7 +80,7 @@ void QLiveStereoCalibrationPipeline::cleanup_pipeline()
 }
 
 
-bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID colorid, int bpp)
+bool QLiveStereoCalibrationPipeline::process_frame(const cv::Mat & image, COLORID colorid, int bpp)
 {
   cv::Mat currentImage;
   cv::Mat frames[2];
@@ -91,7 +91,7 @@ bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID
       colorid == COLORID_MONO ? COLORID_MONO :
           COLORID_BGR;
 
-  if( !Base::convertImage(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
+  if( !Base::convert_image(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
     CF_ERROR("convertInputImage() fails");
     return false;
   }
@@ -113,7 +113,7 @@ bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID
   return true;
 }
 
-bool QLiveStereoCalibrationPipeline::getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int * bpp)
+bool QLiveStereoCalibrationPipeline::get_display_image(cv::Mat * displayImage, COLORID * colorid, int * bpp)
 {
   *colorid = displayColorid_;
   *bpp = 8;

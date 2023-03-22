@@ -292,6 +292,18 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
   return true;
 }
 
+
+bool c_stereo_calibration::get_display_image(cv::Mat *display_frame, cv::Mat * display_mask)
+{
+  if ( display_frame ) {
+    display_frame_.copyTo(*display_frame);
+  }
+  if ( display_mask ) {
+    display_mask_.copyTo(*display_mask);
+  }
+  return true;
+}
+
 bool c_stereo_calibration::canceled()
 {
   return false;

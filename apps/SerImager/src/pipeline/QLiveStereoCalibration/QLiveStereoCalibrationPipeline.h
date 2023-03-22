@@ -26,16 +26,21 @@ public:
   c_stereo_calibration & stereo_calibration();
   const c_stereo_calibration & stereo_calibration() const;
 
+  bool initialize_pipeline() override;
+  void cleanup_pipeline() override;
   bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) override;
   bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) override;
 
   bool serialize(c_config_setting settings, bool save) override;
 
 protected:
-  cv::Mat displayImage_;
+
+protected:
+  //cv::Mat displayImage_;
   COLORID displayColorid_ = COLORID_UNKNOWN;
 
   c_stereo_calibration stereo_calibration_;
+  QString output_path_;
 };
 
 } /* namespace serimager */

@@ -39,9 +39,53 @@ bool QLiveStereoCalibrationPipeline::serialize(c_config_setting settings, bool s
   return true;
 }
 
+bool QLiveStereoCalibrationPipeline::initialize_pipeline()
+{
+  if ( !Base::initialize_pipeline() ) {
+    CF_ERROR("base::initialize() fails");
+    return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+
+  output_path_ =
+      createOutputPath(stereo_calibration_.output_options().output_directory.c_str());
+
+  /////////////////////////////////////////////////////////////////////////////
+
+  stereo_calibration_.set_output_intrinsics_filename(
+      ssprintf("%s/stereo_intrinsics.%s.yml",
+          output_path_.toUtf8().constData(),
+          name_.toUtf8().constData()));
+
+  stereo_calibration_.set_output_extrinsics_filename(
+      ssprintf("%s/stereo_extrinsics.%s.yml",
+          output_path_.toUtf8().constData(),
+          name_.toUtf8().constData()));
+
+  if ( !stereo_calibration_.initialize() ) {
+    CF_ERROR("stereo_calibration_.initialize() fails");
+    return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+
+  return true;
+}
+
+void QLiveStereoCalibrationPipeline::cleanup_pipeline()
+{
+  stereo_calibration_.cleanup();
+  Base::cleanup_pipeline();
+}
+
+
 bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID colorid, int bpp)
 {
   cv::Mat currentImage;
+  cv::Mat frames[2];
+  cv::Mat masks[2];
+  cv::Rect roi[2];
 
   displayColorid_ =
       colorid == COLORID_MONO ? COLORID_MONO :
@@ -52,19 +96,35 @@ bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID
     return false;
   }
 
-//  image.copyTo(currentImage);
 
-  displayImage_ =
-      currentImage;
+  roi[0] = cv::Rect(0, 0, currentImage.cols / 2, currentImage.rows);
+  roi[1] = cv::Rect(currentImage.cols / 2, 0, currentImage.cols / 2, currentImage.rows);
+  frames[0] = currentImage(roi[0]);
+  frames[1] = currentImage(roi[1]);
+
+  if ( !stereo_calibration_.process_stereo_frame(frames, masks) ) {
+    CF_ERROR("stereo_calibration_.process_stereo_frame() fails");
+    return false;
+  }
+
+  //  displayImage_ =
+  //      currentImage;
 
   return true;
 }
 
 bool QLiveStereoCalibrationPipeline::getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int * bpp)
 {
-  *displayImage = displayImage_;
   *colorid = displayColorid_;
   *bpp = 8;
+
+  stereo_calibration_.update_display_image();
+
+  if( !stereo_calibration_.get_display_image(displayImage, nullptr) ) {
+    CF_ERROR("stereo_calibration_.get_display_image() fails");
+    return false;
+  }
+
   return true;
 }
 

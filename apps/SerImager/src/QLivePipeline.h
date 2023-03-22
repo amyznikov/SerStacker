@@ -30,16 +30,23 @@ public:
   void setName(const QString & name);
   const QString & name() const;
 
-  virtual bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) = 0;
-  virtual bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) = 0;
-
-  virtual bool convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
-      cv::Mat * dst_image, COLORID dst_colorid, int ddepth) const;
+  virtual void set_canceled(bool v);
+  virtual bool canceled();
 
   virtual bool serialize(c_config_setting settings, bool save);
+  virtual bool initialize_pipeline();
+  virtual void cleanup_pipeline();
+
+  virtual bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) = 0;
+  virtual bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) = 0;
+  virtual bool convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
+      cv::Mat * dst_image, COLORID dst_colorid, int ddepth) const;
+  virtual QString createOutputPath(const QString & output_ditectory) const;
+
 
 protected:
   QString name_;
+  std::atomic_bool canceled_ = false;
 };
 
 

@@ -58,6 +58,27 @@ bool QLivePipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
+bool QLivePipeline::canceled()
+{
+  return canceled_;
+}
+
+void QLivePipeline::set_canceled(bool v)
+{
+  canceled_ = v;
+}
+
+bool QLivePipeline::initialize_pipeline()
+{
+  canceled_ = false;
+  return true;
+}
+
+void QLivePipeline::cleanup_pipeline()
+{
+}
+
+
 bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
     cv::Mat * dst, COLORID dst_colorid, int dst_depth) const
 {
@@ -196,6 +217,30 @@ bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int s
   return true;
 }
 
+QString QLivePipeline::createOutputPath(const QString & output_ditectory) const
+{
+  QString output_path;
+
+  if( output_ditectory.isEmpty() ) {
+
+    output_path =
+        qsprintf("./%s",
+            name_.toUtf8().constData());
+  }
+  else if( !is_absolute_path(output_ditectory.toUtf8().constData()) ) {
+
+    output_path =
+        qsprintf("./%s",
+            output_ditectory.toUtf8().constData());
+  }
+  else {
+    output_path =
+        output_ditectory;
+  }
+
+  return output_path;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QLivePipelineThread::QLivePipelineThread(QObject * parent) :
@@ -316,6 +361,11 @@ void QLivePipelineThread::run()
   int bpp;
   COLORID colorid;
 
+  if( pipeline_ && !pipeline_->initialize_pipeline() ) {
+    CF_ERROR("pipeline_->initialize_pipeline() fails");
+    return;
+  }
+
   while (!finish_) {
 
     if( 42 ) {
@@ -351,16 +401,29 @@ void QLivePipelineThread::run()
         display_->showVideoFrame(inputImage, colorid, bpp);
       }
       else {
-        pipeline_->processFrame(inputImage, colorid, bpp);
-        pipeline_->getDisplayImage(&inputImage, &colorid, &bpp);
+
+        if ( !pipeline_->processFrame(inputImage, colorid, bpp) ) {
+          CF_ERROR("pipeline_->processFrame() fails");
+          break;
+        }
+
+        if ( !pipeline_->getDisplayImage(&inputImage, &colorid, &bpp) ) {
+          CF_ERROR("pipeline_->getDisplayImage() fails");
+          break;
+        }
+
         display_->showVideoFrame(inputImage, colorid, bpp);
       }
-
-
     }
 
     QThread::msleep(30);
   }
+
+  if ( pipeline_ ) {
+    CF_DEBUG("pipeline_->cleanup_pipeline()");
+    pipeline_->cleanup_pipeline();
+  }
+
   CF_DEBUG("leave");
 }
 

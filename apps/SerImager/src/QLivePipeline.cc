@@ -10,6 +10,7 @@
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/proc/pixtype.h>
+#include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -52,10 +53,15 @@ const QString & QLivePipeline::name() const
   return name_;
 }
 
+bool QLivePipeline::serialize(c_config_setting settings, bool save)
+{
+  return true;
+}
+
 bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
     cv::Mat * dst, COLORID dst_colorid, int dst_depth) const
 {
-  const cv::Mat *bayer = nullptr;
+  const cv::Mat *s = nullptr;
   int max_bpp;
 
   if( dst_colorid != src_colorid ) {
@@ -65,38 +71,127 @@ bool QLivePipeline::convertImage(const cv::Mat & src, COLORID src_colorid, int s
           toString(dst_colorid));
       return false;
     }
-
   }
 
   if( dst_depth < 0 ) {
     dst_depth = src.depth();
   }
 
-  if( src.depth() != dst_depth ) {
-
-    double scale, offset;
-    get_scale_offset(src.depth(), src_bpp, dst_depth, &scale, &offset);
-    src.convertTo(*dst, dst_depth, scale, offset);
-    bayer = dst;
-
+  if( !is_bayer_pattern(src_colorid) ) {
+    s = &src;
   }
-  else if( src_bpp > 0 && src_bpp < (max_bpp = get_max_bpp_for_pixel_depth(src.depth())) ) {
-    // scale required
-    src.convertTo(*dst, dst_depth, 1 << (max_bpp - src_bpp), 0);
-    bayer = dst;
+  else if( !debayer(src, *dst, src_colorid) ) {
+    CF_ERROR("debayer(src_colorid=%s) fails", toString(src_colorid));
+    return false;
   }
   else {
-    bayer = &src;
-  }
-
-  if( is_bayer_pattern(src_colorid) ) {
-    debayer(*bayer, *dst, src_colorid);
+    s = dst;
     src_colorid = COLORID_BGR;
   }
 
-  //if ( src_colorid )
+  if( s->depth() != dst_depth ) {
 
+    double scale, offset;
+    get_scale_offset(s->depth(), src_bpp, dst_depth, &scale, &offset);
+    s->convertTo(*dst, dst_depth, scale, offset);
+  }
+  else if( src_bpp > 0 && src_bpp < (max_bpp = get_max_bpp_for_pixel_depth(s->depth())) ) {
+    // scale required
+    s->convertTo(*dst, dst_depth, 1 << (max_bpp - src_bpp), 0);
+  }
 
+  if( src_colorid == dst_colorid ) {
+    if( s != dst ) {
+      s->copyTo(*dst);
+    }
+  }
+  else {
+    switch (src_colorid) {
+      case COLORID_MONO:
+
+        switch (dst_colorid) {
+          case COLORID_MONO:
+            s->copyTo(*dst);
+            break;
+          case COLORID_RGB:
+            cv::cvtColor(*s, *dst, cv::COLOR_GRAY2RGB);
+            break;
+          case COLORID_BGR:
+            cv::cvtColor(*s, *dst, cv::COLOR_GRAY2BGR);
+            break;
+          case COLORID_BGRA:
+            cv::cvtColor(*s, *dst, cv::COLOR_GRAY2BGRA);
+            break;
+          default:
+            s->copyTo(*dst);
+            break;
+        }
+        break;
+
+      case COLORID_RGB:
+        switch (dst_colorid) {
+          case COLORID_MONO:
+            cv::cvtColor(*s, *dst, cv::COLOR_RGB2GRAY);
+            break;
+          case COLORID_RGB:
+            s->copyTo(*dst);
+            break;
+          case COLORID_BGR:
+            cv::cvtColor(*s, *dst, cv::COLOR_RGB2BGR);
+            break;
+          case COLORID_BGRA:
+            cv::cvtColor(*s, *dst, cv::COLOR_RGB2BGRA);
+            break;
+          default:
+            s->copyTo(*dst);
+            break;
+        }
+        break;
+
+      case COLORID_BGR:
+        switch (dst_colorid) {
+          case COLORID_MONO:
+            cv::cvtColor(*s, *dst, cv::COLOR_BGR2GRAY);
+            break;
+          case COLORID_RGB:
+            cv::cvtColor(*s, *dst, cv::COLOR_BGR2RGB);
+            break;
+          case COLORID_BGR:
+            s->copyTo(*dst);
+            break;
+          case COLORID_BGRA:
+            cv::cvtColor(*s, *dst, cv::COLOR_BGR2BGRA);
+            break;
+          default:
+            s->copyTo(*dst);
+            break;
+        }
+        break;
+
+      case COLORID_BGRA:
+        switch (dst_colorid) {
+          case COLORID_MONO:
+            cv::cvtColor(*s, *dst, cv::COLOR_BGRA2GRAY);
+            break;
+          case COLORID_RGB:
+            cv::cvtColor(*s, *dst, cv::COLOR_BGRA2RGB);
+            break;
+          case COLORID_BGR:
+            cv::cvtColor(*s, *dst, cv::COLOR_BGRA2BGR);
+            break;
+          case COLORID_BGRA:
+            s->copyTo(*dst);
+            break;
+          default:
+            s->copyTo(*dst);
+            break;
+        }
+        break;
+      default:
+        s->copyTo(*dst);
+        break;
+    }
+  }
 
   return true;
 }
@@ -339,14 +434,189 @@ QLivePipeline * QLivePipelineCollection::findPipeline(const QString & name) cons
 }
 
 
-void QLivePipelineCollection::load()
-{
+std::string QLivePipelineCollection::default_config_filename_ =
+    "~/.config/SerImager/pipelines.cfg";
 
+void QLivePipelineCollection::load(const std::string & cfgfilename)
+{
+  std::string filename;
+
+  if( !cfgfilename.empty() ) {
+    filename = cfgfilename;
+  }
+  else if( !config_filename_.empty() ) {
+    filename = config_filename_;
+  }
+  else {
+    filename = default_config_filename_;
+  }
+
+  if( (filename = expand_path(filename)).empty() ) {
+    CF_ERROR("No output config file name specified for QLivePipelineCollection::load()");
+    return;
+  }
+
+  // CF_DEBUG("Loading '%s' ...", filename.c_str());
+
+  c_config cfg(filename);
+
+  if( !cfg.read() ) {
+    CF_FATAL("QLivePipelineCollection: cfg.read('%s') fails",
+        filename.c_str());
+    return;
+  }
+
+  std::string object_class;
+  if( !load_settings(cfg.root(), "object_class", &object_class) ) {
+    CF_FATAL("[%s] load_settings(object_class) fails", filename.c_str());
+    return;
+  }
+
+  if( object_class != "QLivePipelineCollection" ) {
+    CF_FATAL("Incorrect object_class='%s' from file '%s'",
+        object_class.c_str(), filename.c_str());
+    return;
+  }
+
+  c_config_setting section =
+      cfg.root().get("items");
+
+  if( !section || !section.isList() ) {
+    CF_FATAL("section 'items' is not found in file '%s''",
+        filename.c_str());
+    return;
+  }
+
+  const int n =
+      section.length();
+
+  // FIXME: very crazy hack  !!!!!
+  for( auto p : *this ) {
+    delete p;
+  }
+  Base::clear();
+  Base::reserve(n);
+
+  for( int i = 0; i < n; ++i ) {
+
+    c_config_setting item =
+        section.get_element(i);
+
+    if( item && item.isGroup() ) {
+
+      std::string objtype, objname;
+
+      QLivePipeline *obj = nullptr;
+
+      if( !load_settings(item, "objtype", &objtype) || objtype.empty() ) {
+        CF_ERROR("load_settings(objtype) fails for item %d", i);
+        continue;
+      }
+
+      if( !load_settings(item, "objname", &objname) || objname.empty() ) {
+        CF_ERROR("load_settings(objname) fails for item %d", i);
+        continue;
+      }
+
+      if( objtype == "QLiveStereoCalibrationPipeline" ) {
+        obj = new QLiveStereoCalibrationPipeline(objname.c_str());
+      }
+      else {
+        CF_ERROR("Unknown objtype '%s' specified for item %d", objtype.c_str(), i);
+        continue;
+      }
+
+      if( !obj->serialize(item, false) ) {
+        CF_ERROR("obj->serialize() fails for item index %d (%s:%s)", i,
+            objtype.c_str(), objname.c_str());
+        delete obj;
+        continue;
+      }
+
+      Base::append(obj);
+    }
+  }
+
+  config_filename_ = filename;
 }
 
-void QLivePipelineCollection::save()
+void QLivePipelineCollection::save(const std::string & cfgfilename) const
 {
+  std::string filename;
 
+  if( !cfgfilename.empty() ) {
+    filename = cfgfilename;
+  }
+  else if( !config_filename_.empty() ) {
+    filename = config_filename_;
+  }
+  else {
+    filename = default_config_filename_;
+  }
+
+  if( (filename = expand_path(filename)).empty() ) {
+    CF_ERROR("No output config file name specified for QLivePipelineCollection::save()");
+    return;
+  }
+
+  CF_DEBUG("Saving '%s' ...",
+      filename.c_str());
+
+  c_config cfg(filename);
+
+  time_t t = time(0);
+
+  if( !save_settings(cfg.root(), "object_class", std::string("QLivePipelineCollection")) ) {
+    CF_FATAL("save_settings(object_class) fails");
+    return;
+  }
+
+  if( !save_settings(cfg.root(), "created", asctime(localtime(&t))) ) {
+    CF_FATAL("save_settings() fails");
+    return;
+  }
+
+  c_config_setting section =
+      cfg.root().add_list("items");
+
+  for ( QLivePipeline * obj : *this ) {
+
+    std::string objtype;
+
+    if( dynamic_cast<QLiveStereoCalibrationPipeline*>(obj) ) {
+      objtype = "QLiveStereoCalibrationPipeline";
+    }
+    else {
+      CF_ERROR("FIXME: implement adequate class factory please !!!!");
+      continue;
+    }
+
+    c_config_setting item =
+        section.add_group();
+
+    if ( !save_settings(item, "objtype", objtype) ) {
+      CF_ERROR("save_settings(objtype) fails");
+      continue;
+    }
+
+    if ( !save_settings(item, "objname", obj->name().toStdString()) ) {
+      CF_ERROR("save_settings(objname) fails");
+      continue;
+    }
+
+    if( !obj->serialize(item, true) ) {
+      CF_ERROR("obj->serialize(ty[e=%s name=%s) fails", objtype, obj->name().toUtf8().constData());
+      continue;
+    }
+
+  }
+
+  if( !cfg.write() ) {
+    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
+    return;
+  }
+
+  config_filename_ = filename;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -625,6 +895,13 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
 
       if( !stereoCalibrationOptions_ctl ) {
         stereoCalibrationOptions_ctl = new QLiveStereoCalibrationOptions(this);
+        connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( pipelineCollection_ ) {
+                CF_DEBUG("pipelineCollection_->save()");
+                pipelineCollection_->save();
+              }
+            });
       }
 
       currentWidget = stereoCalibrationOptions_ctl;

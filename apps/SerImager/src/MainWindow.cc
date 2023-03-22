@@ -504,6 +504,7 @@ void MainWindow::setupLivePipelineControls()
   showPipelineSelectorAction_->setIcon(getIcon(ICON_process));
   showPipelineSelectorAction_->setToolTip("Show / Hide live pipelines");
 
+  pipelineCollection_.load();
   pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
   pipelineSelector_ctl->setLiveThread(liveView_);
 

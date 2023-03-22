@@ -24,6 +24,21 @@ const c_stereo_calibration & QLiveStereoCalibrationPipeline::stereo_calibration(
   return stereo_calibration_;
 }
 
+bool QLiveStereoCalibrationPipeline::serialize(c_config_setting settings, bool save)
+{
+  if ( !Base::serialize(settings, save) ) {
+    CF_ERROR("QLiveStereoCalibrationPipeline::Base::serialize() fails");
+    return false;
+  }
+
+  if ( !stereo_calibration_.serialize(settings, save) ) {
+    CF_ERROR("stereo_calibration_.serialize() fails");
+    return false;
+  }
+
+  return true;
+}
+
 bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID colorid, int bpp)
 {
   cv::Mat currentImage;
@@ -32,12 +47,12 @@ bool QLiveStereoCalibrationPipeline::processFrame(const cv::Mat & image, COLORID
       colorid == COLORID_MONO ? COLORID_MONO :
           COLORID_BGR;
 
-//  if( !Base::convertImage(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
-//    CF_ERROR("convertInputImage() fails");
-//    return false;
-//  }
+  if( !Base::convertImage(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
+    CF_ERROR("convertInputImage() fails");
+    return false;
+  }
 
-  image.copyTo(currentImage);
+//  image.copyTo(currentImage);
 
   displayImage_ =
       currentImage;

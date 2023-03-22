@@ -229,7 +229,7 @@ bool load_settings(c_config_setting settings,
 bool save_settings(c_config_setting settings,
     const c_hamming_distance_feature2d_matcher_options & options);
 
-bool load_sett3ings(c_config_setting settings,
+bool load_settings(c_config_setting settings,
     c_hamming_distance_feature2d_matcher_options * options);
 
 bool save_settings(c_config_setting settings,

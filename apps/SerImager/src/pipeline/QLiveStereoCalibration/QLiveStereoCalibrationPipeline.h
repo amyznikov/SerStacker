@@ -29,6 +29,7 @@ public:
   bool processFrame(const cv::Mat & image, COLORID colorid, int bpp) override;
   bool getDisplayImage(cv::Mat * displayImage, COLORID * colorid, int *bpp) override;
 
+  bool serialize(c_config_setting settings, bool save) override;
 
 protected:
   cv::Mat displayImage_;

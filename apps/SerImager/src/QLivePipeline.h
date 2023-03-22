@@ -11,6 +11,7 @@
 
 #include <QtCore/QtCore>
 #include <gui/widgets/UpdateControls.h>
+#include <core/settings/opencv_settings.h>
 #include "camera/QImagingCamera.h"
 #include "QVideoFrameDisplay.h"
 
@@ -34,6 +35,8 @@ public:
 
   virtual bool convertImage(const cv::Mat & src, COLORID src_colorid, int src_bpp,
       cv::Mat * dst_image, COLORID dst_colorid, int ddepth) const;
+
+  virtual bool serialize(c_config_setting settings, bool save);
 
 protected:
   QString name_;
@@ -133,11 +136,13 @@ public:
 
   QLivePipeline * findPipeline(const QString & name) const;
 
-  void load();
-  void save();
+  void load(const std::string & cfgfilename = "");
+  void save(const std::string & cfgfilename = "") const;
 
 protected:
   QList<PipelineType*>  pipelineTypes_;
+  mutable std::string config_filename_;
+  static std::string default_config_filename_;
 };
 
 

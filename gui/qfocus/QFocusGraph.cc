@@ -155,6 +155,7 @@ void QFocusGraph::updateFocusGraph()
     }
 
     plot_->yAxis->rescale();
+    plot_->xAxis->setRange(0, 1.2 * std::max(keys.size(), provider_->maxMeasurements()));
 
     enum COLORID colorid = provider_->colorid();
     if( colorid != last_colorid_ ) {
@@ -302,6 +303,23 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
             }
             return false;
           });
+
+  max_measurements_ctl =
+      add_numeric_box<int>("history size:",
+          [this](int v) {
+            if ( provider_ && provider_->maxMeasurements() != v ) {
+              provider_->setMaxMeasurements(v);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( provider_ ) {
+              * v = provider_->maxMeasurements();
+              return true;
+            }
+            return false;
+          });
+
 
   stack_ctl = new QStackedWidget(this);
   stack_ctl->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);

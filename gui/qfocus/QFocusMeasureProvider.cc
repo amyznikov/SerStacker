@@ -25,6 +25,12 @@ const c_camera_focus_measure& QFocusMeasureProvider::measure() const
   return measure_;
 }
 
+void QFocusMeasureProvider::setMaxMeasurements(int nmax)
+{
+  max_measurements_ = std::max(3, nmax);
+  save_parameters();
+}
+
 int QFocusMeasureProvider::maxMeasurements() const
 {
   return max_measurements_;
@@ -66,11 +72,12 @@ void QFocusMeasureProvider::load_parameters()
     sprefix_ = "FocusMeasure";
   }
 
-//  QSettings settings;
+  QSettings settings;
+  setMaxMeasurements(settings.value(qsprintf("%s/maxMeasurements", sprefix_), maxMeasurements()).toInt());
 
-//  measure_.set_avgchannel(settings.value(qsprintf("%s/avgchannel", sprefix_), measure_.avgchannel()).value<bool>());
-//  measure_.set_dscale(settings.value(qsprintf("%s/dscale", sprefix_), measure_.dscale()).value<int>());
-//  measure_.set_eps(settings.value(qsprintf("%s/eps", sprefix_), measure_.eps()).value<double>());
+  //  measure_.set_avgchannel(settings.value(qsprintf("%s/avgchannel", sprefix_), measure_.avgchannel()).toBool());
+  //  measure_.set_dscale(settings.value(qsprintf("%s/dscale", sprefix_), measure_.dscale()).value<int>());
+  //  measure_.set_eps(settings.value(qsprintf("%s/eps", sprefix_), measure_.eps()).value<double>());
 }
 
 void QFocusMeasureProvider::save_parameters()
@@ -79,7 +86,8 @@ void QFocusMeasureProvider::save_parameters()
     sprefix_ = "FocusMeasure";
   }
 
-//  QSettings settings;
+  QSettings settings;
+  settings.setValue(qsprintf("%s/maxMeasurements", sprefix_), maxMeasurements());
 
 //  settings.setValue(qsprintf("%s/avgchannel", sprefix_), measure_.avgchannel());
 //  settings.setValue(qsprintf("%s/dscale", sprefix_), measure_.dscale());

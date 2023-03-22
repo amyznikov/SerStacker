@@ -30,6 +30,7 @@ public:
   c_camera_focus_measure & measure();
   const c_camera_focus_measure & measure() const;
 
+  void setMaxMeasurements(int nmax);
   int maxMeasurements() const;
 
   const QVector<double> & measurements(int channel) const;

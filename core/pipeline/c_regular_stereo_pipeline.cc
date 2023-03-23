@@ -205,45 +205,45 @@ bool c_regular_stereo_pipeline::get_display_image(cv::OutputArray frame, cv::Out
   mask.release();
   return true;
 }
-
-void c_regular_stereo_pipeline::update_output_path()
-{
-  if( output_directory_.empty() ) {
-
-    std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path_ =
-        ssprintf("%s/rstereo",
-            parent_directory.c_str());
-
-  }
-  else if( !is_absolute_path(output_directory_) ) {
-
-    std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path_ =
-        ssprintf("%s/%s",
-            parent_directory.c_str(),
-            output_directory_.c_str());
-  }
-  else {
-    output_path_ =
-        output_directory_;
-  }
-
-}
+//
+//void c_regular_stereo_pipeline::update_output_path()
+//{
+//  if( output_directory_.empty() ) {
+//
+//    std::string parent_directory =
+//        input_sequence_->sources().empty() ? "." :
+//            get_parent_directory(input_sequence_->source(0)->filename());
+//
+//    if( parent_directory.empty() ) {
+//      parent_directory = ".";
+//    }
+//
+//    output_path_ =
+//        ssprintf("%s/rstereo",
+//            parent_directory.c_str());
+//
+//  }
+//  else if( !is_absolute_path(output_directory_) ) {
+//
+//    std::string parent_directory =
+//        input_sequence_->sources().empty() ? "." :
+//            get_parent_directory(input_sequence_->source(0)->filename());
+//
+//    if( parent_directory.empty() ) {
+//      parent_directory = ".";
+//    }
+//
+//    output_path_ =
+//        ssprintf("%s/%s",
+//            parent_directory.c_str(),
+//            output_directory_.c_str());
+//  }
+//  else {
+//    output_path_ =
+//        output_directory_;
+//  }
+//
+//}
 
 bool c_regular_stereo_pipeline::open_input_streams()
 {

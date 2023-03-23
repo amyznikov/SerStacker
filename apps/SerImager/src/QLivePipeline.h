@@ -41,7 +41,7 @@ public:
   virtual bool get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp) = 0;
   virtual bool convert_image(const cv::Mat & src, COLORID src_colorid, int src_bpp,
       cv::Mat * dst_image, COLORID dst_colorid, int ddepth) const;
-  virtual QString create_output_path(const QString & output_ditectory) const;
+  virtual QString create_output_path(const QString & output_directory) const;
 
 
 protected:

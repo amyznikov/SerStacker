@@ -269,43 +269,43 @@ c_image_stacking_pipeline::~c_image_stacking_pipeline()
   cancel(true);
 }
 
-void c_image_stacking_pipeline::update_output_path()
-{
-  if( output_directory_.empty() ) {
-
-    std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path_ =
-        ssprintf("%s/stacks",
-            parent_directory.c_str());
-
-  }
-  else if( !is_absolute_path(output_directory_) ) {
-
-    std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path_ =
-        ssprintf("%s/%s",
-            parent_directory.c_str(),
-            output_directory_.c_str());
-  }
-  else {
-    output_path_ =
-        output_directory_;
-  }
-}
+//void c_image_stacking_pipeline::update_output_path()
+//{
+//  if( output_directory_.empty() ) {
+//
+//    std::string parent_directory =
+//        input_sequence_->sources().empty() ? "." :
+//            get_parent_directory(input_sequence_->source(0)->filename());
+//
+//    if( parent_directory.empty() ) {
+//      parent_directory = ".";
+//    }
+//
+//    output_path_ =
+//        ssprintf("%s/stacks",
+//            parent_directory.c_str());
+//
+//  }
+//  else if( !is_absolute_path(output_directory_) ) {
+//
+//    std::string parent_directory =
+//        input_sequence_->sources().empty() ? "." :
+//            get_parent_directory(input_sequence_->source(0)->filename());
+//
+//    if( parent_directory.empty() ) {
+//      parent_directory = ".";
+//    }
+//
+//    output_path_ =
+//        ssprintf("%s/%s",
+//            parent_directory.c_str(),
+//            output_directory_.c_str());
+//  }
+//  else {
+//    output_path_ =
+//        output_directory_;
+//  }
+//}
 
 std::string c_image_stacking_pipeline::output_file_name() const
 {

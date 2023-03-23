@@ -151,44 +151,6 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
   return true;
 }
 
-void c_camera_calibration_pipeline::update_output_path()
-{
-  if( output_directory_.empty() ) {
-
-    std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path_ =
-        ssprintf("%s/calib",
-            parent_directory.c_str());
-
-  }
-  else if( !is_absolute_path(output_directory_) ) {
-
-    std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path_ =
-        ssprintf("%s/%s",
-            parent_directory.c_str(),
-            output_directory_.c_str());
-  }
-  else {
-    output_path_ =
-        output_directory_;
-  }
-}
-
 bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     cv::Mat & output_image, cv::Mat & output_mask) const
 {

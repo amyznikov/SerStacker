@@ -751,12 +751,16 @@ void c_stereo_calibration::update_display_image()
 
 bool c_stereo_calibration::save_current_camera_parameters() const
 {
+  CF_DEBUG("output_intrinsics_filename_: %s", output_intrinsics_filename_.c_str());
+
   if( !output_intrinsics_filename_.empty() ) {
 
     if( !create_path(get_parent_directory(output_intrinsics_filename_)) ) {
       CF_ERROR("create_path('%s') fails: %s", output_intrinsics_filename_.c_str(), strerror(errno));
       return false;
     }
+
+    CF_DEBUG("saving output_intrinsics_filename_: %s", output_intrinsics_filename_.c_str());
 
     if( !write_stereo_camera_intrinsics_yml(best_intrinsics_, output_intrinsics_filename_) ) {
       CF_ERROR("ERROR: save_stereo_camera_intrinsics_yml('%s') fails",

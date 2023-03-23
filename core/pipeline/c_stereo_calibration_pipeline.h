@@ -72,7 +72,7 @@ protected:
   bool run_pipeline() override;
   bool run_stereo_calibration();
   bool write_output_videos();
-  void update_output_path() override;
+  //void update_output_path() override;
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
   void update_display_image() override;
 

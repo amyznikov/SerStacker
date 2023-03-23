@@ -124,7 +124,7 @@ public: // pipeline methods
 protected:
   void set_pipeline_stage(int stage);
   void set_status_msg(const std::string & msg) const;
-  virtual void update_output_path();
+  virtual std::string create_output_path(const std::string & output_directory) const;
   virtual void gather_badframe_indexes();
   virtual bool is_bad_frame_index(int global_pos) const;
 

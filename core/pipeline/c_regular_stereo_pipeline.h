@@ -165,7 +165,7 @@ public:
   c_notification<void()> on_accumulator_changed;
 
 protected:
-  void update_output_path() override;
+  //void update_output_path() override;
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;

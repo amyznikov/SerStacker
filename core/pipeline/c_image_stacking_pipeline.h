@@ -278,7 +278,7 @@ public:
   bool serialize(c_config_setting setting, bool save) override;
 
 protected:
-  void update_output_path() override;
+  //void update_output_path() override;
 
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;

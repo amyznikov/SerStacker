@@ -217,25 +217,25 @@ bool QLivePipeline::convert_image(const cv::Mat & src, COLORID src_colorid, int 
   return true;
 }
 
-QString QLivePipeline::create_output_path(const QString & output_ditectory) const
+QString QLivePipeline::create_output_path(const QString & output_directory) const
 {
   QString output_path;
 
-  if( output_ditectory.isEmpty() ) {
+  if( output_directory.isEmpty() ) {
 
     output_path =
         qsprintf("./%s",
             name_.toUtf8().constData());
   }
-  else if( !is_absolute_path(output_ditectory.toUtf8().constData()) ) {
+  else if( !is_absolute_path(output_directory.toUtf8().constData()) ) {
 
     output_path =
         qsprintf("./%s",
-            output_ditectory.toUtf8().constData());
+            output_directory.toUtf8().constData());
   }
   else {
     output_path =
-        output_ditectory;
+        output_directory;
   }
 
   return output_path;

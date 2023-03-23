@@ -46,12 +46,12 @@ public:
   bool hasChanges(void) const;
   void setHasChanges(bool f);
 
-signals:
+Q_SIGNALS:
   void pathSelected(const QString & path); // selected by 'browse button using QFileDialog
   void pathChanged(); // any change
 
 
-private slots:
+private Q_SLOTS:
   void onBrowseForPath(void);
   void currentTextChanged(const QString &);
 

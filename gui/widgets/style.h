@@ -10,7 +10,7 @@
 #define _gui_style_h__
 
 #include <QtGui/QtGui>
-
+#include <QtWidgets/QtWidgets>
 
 
 void setIconStyleSelector(const QString & selector);
@@ -18,7 +18,5 @@ const QString & iconStyleSelector();
 
 QIcon getIcon(const QString & name);
 QPixmap getPixmap(const QString & name);
-
-
 
 #endif /* _gui_style_h__ */

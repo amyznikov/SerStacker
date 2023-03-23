@@ -6,12 +6,13 @@
  */
 
 #include <gui/widgets/QBrowsePathCombo.h>
+#include <gui/widgets/style.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
-QBrowsePathCombo::QBrowsePathCombo(QWidget *parent)
-  : Base(parent)
+QBrowsePathCombo::QBrowsePathCombo(QWidget *parent) :
+  Base(parent)
 {
   construct();
 }
@@ -113,6 +114,7 @@ QFileDialog::AcceptMode QBrowsePathCombo::acceptMode() const
   return acceptMode_;
 }
 
+
 void QBrowsePathCombo::onBrowseForPath(void)
 {
   QString title = fileDialogCaption.isEmpty() ? labelText_ : fileDialogCaption;
@@ -122,17 +124,30 @@ void QBrowsePathCombo::onBrowseForPath(void)
     case QFileDialog::Directory: {
       QFileInfo fileInfo(path);
       QString dir = fileInfo.isDir() ? path : fileInfo.filePath();
-      path = QFileDialog::getExistingDirectory(this, title, dir);
+      path = QFileDialog::getExistingDirectory(this, title, dir, QFileDialog::DontUseNativeDialog);
       break;
     }
+
     default:
       switch (acceptMode_) {
         case QFileDialog::AcceptOpen:
-          path = QFileDialog::getOpenFileName(this, title, path);
+          path = QFileDialog::getOpenFileName(this,
+              title,
+              path,
+              QString(),
+              nullptr,
+              QFileDialog::DontUseNativeDialog);
           break;
+
         case QFileDialog::AcceptSave:
-          path = QFileDialog::getSaveFileName(this, title, path);
+          path = QFileDialog::getSaveFileName(this,
+              title,
+              path,
+              QString(),
+              nullptr,
+              QFileDialog::DontUseNativeDialog);
           break;
+
         default:
           path.clear();
           break;

@@ -10,6 +10,7 @@
 #include "QRadialPolySharpSettings.h"
 #include "QJovianEllipseSettings.h"
 #include "QMtfSettings.h"
+#include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
 
@@ -725,6 +726,45 @@ void QImageProcessorSettingsControl::setupControls()
         }
         break;
       }
+
+
+      case c_image_processor_routine_gui_ctl_flags_browse_for_existing_file: {
+
+        QBrowsePathCombo *ctl =
+            new QBrowsePathCombo("", QFileDialog::AcceptMode::AcceptOpen,
+                QFileDialog::ExistingFile);
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.set_value ) {
+
+          QObject::connect(ctl, &QBrowsePathCombo::pathSelected,
+              [this, ctl, p](const QString & path) {
+                if ( !updatingControls() ) {
+                  p.set_value(path.toStdString());
+                  Q_EMIT parameterChanged();
+                }
+              });
+
+        }
+
+        if( p.get_value ) {
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                ctl->setCurrentPath(p.get_value().c_str(), false);
+              });
+        }
+
+        break;
+      }
+
       default:
         break;
     }

@@ -36,6 +36,7 @@ int main(int argc, char * argv[])
     setIconStyleSelector("dark");
   }
   else {
+
     setIconStyleSelector("light");
 
     //  QFont font("SansSerif", 16, QFont::Medium);
@@ -60,6 +61,7 @@ int main(int argc, char * argv[])
     app.setStyleSheet(ts.readAll());
     f.close();
   }
+
 
   MainWindow mainWindow;
 

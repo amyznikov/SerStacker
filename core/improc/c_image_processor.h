@@ -20,6 +20,7 @@ enum c_image_processor_routine_gui_ctl_type {
   c_image_processor_routine_gui_ctl_check_box,
   c_image_processor_routine_gui_ctl_enum_combobox,
   c_image_processor_routine_gui_ctl_flags_chkbox,
+  c_image_processor_routine_gui_ctl_flags_browse_for_existing_file,
   c_image_processor_routine_gui_ctl_begin_group,
   c_image_processor_routine_gui_ctl_end_group,
   // c_image_processor_routine_gui_ctl_matrix_box,
@@ -83,6 +84,23 @@ struct c_image_processor_routine_ctrl {
     }; \
     (ctls)->emplace_back(tmp); \
   }
+
+#define ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, param, desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+      .name = #param, \
+      .tooltip = desc, \
+      .ctl_type = c_image_processor_routine_gui_ctl_flags_browse_for_existing_file, \
+    }; \
+    tmp.get_value = [this](void) { \
+        return param(); \
+    }; \
+    tmp.set_value = [this](const std::string & s) { \
+      set_##param(s); \
+    }; \
+   (ctls)->emplace_back(tmp); \
+  }
+
 
 #define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
     ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, param, desc)

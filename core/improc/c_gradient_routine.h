@@ -10,8 +10,8 @@
 
 #include "c_image_processor.h"
 
-class c_gradient_routine : public
-c_image_processor_routine
+class c_gradient_routine :
+    public c_image_processor_routine
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gradient_routine,

@@ -52,7 +52,6 @@ namespace {
 class c_video_frame_writer
 {
 public:
-  //virtual bool create(const QString & filename, int image_width, int image_height, enum COLORID color_id, int bits_per_plane) = 0;
   virtual bool is_open() const = 0;
   virtual bool write(const QCameraFrame::sptr & frame) = 0;
   virtual void close() = 0;

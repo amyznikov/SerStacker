@@ -11,6 +11,41 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
     Base("QStereoCalibrationInputOptions", parent)
 {
 
+  layout_type_ctl =
+      add_enum_combobox<stereo_calibration_input_frame_layout_type>("Stereo frame layout:",
+          [this](stereo_calibration_input_frame_layout_type value) {
+            if ( pipeline_ && pipeline_->input_options().layout_type != value ) {
+              pipeline_->input_options().layout_type = value;
+              updatesourcecontrols();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](stereo_calibration_input_frame_layout_type * value) {
+            if ( pipeline_ ) {
+              * value = pipeline_->input_options().layout_type;
+              return true;
+            }
+            return false;
+          });
+
+
+  swap_cameras_ctl =
+      add_checkbox("Swap cameras:",
+          [this](bool checked) {
+            if ( pipeline_ && pipeline_->input_options().swap_cameras != checked ) {
+              pipeline_->input_options().swap_cameras = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( pipeline_ ) {
+              * checked = pipeline_->input_options().swap_cameras;
+              return true;
+            }
+            return false;
+          });
+
+
   left_source_ctl =
       add_combobox<QComboBox>("Left camera source:",
 
@@ -197,9 +232,23 @@ void QStereoCalibrationInputOptions::populatesources()
       right_source_ctl->addItem(filename, QString(source->cfilename()));
     }
 
+    updatesourcecontrols();
+  }
+}
+
+void QStereoCalibrationInputOptions::updatesourcecontrols()
+{
+  if( pipeline_->input_options().layout_type == stereo_calibration_frame_layout_separate_sources ) {
     left_source_ctl->setEnabled(true);
     right_source_ctl->setEnabled(true);
+    swap_cameras_ctl->setEnabled(false);
   }
+  else {
+    left_source_ctl->setEnabled(true);
+    right_source_ctl->setEnabled(false);
+    swap_cameras_ctl->setEnabled(true);
+  }
+
 }
 
 void QStereoCalibrationInputOptions::onupdatecontrols()
@@ -212,6 +261,8 @@ void QStereoCalibrationInputOptions::onupdatecontrols()
   else {
 
     Base::onupdatecontrols();
+    updatesourcecontrols();
+
     setEnabled(true);
   }
 }

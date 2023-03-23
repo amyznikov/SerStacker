@@ -16,7 +16,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
   addRow(output_directory_ctl =
       new QBrowsePathCombo("Output directory:",
           QFileDialog::AcceptSave,
-          QFileDialog::AnyFile,
+          QFileDialog::Directory,
           this));
 
   output_directory_ctl->setShowDirsOnly(true);
@@ -64,6 +64,8 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             return false;
           });
 
+  rectified_images_file_name_ctl->setPlaceholderText("auto");
+
   ///
 
   save_stereo_rectified_frames_ctl =
@@ -99,6 +101,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             return false;
           });
 
+  stereo_rectified_frames_file_name_ctl->setPlaceholderText("auto");
 
   ///
 
@@ -134,6 +137,8 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             }
             return false;
           });
+
+  quad_rectified_frames_file_name_ctl->setPlaceholderText("auto");
 
   ///
 

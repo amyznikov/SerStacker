@@ -11,9 +11,21 @@
 
 #include "c_image_processing_pipeline.h"
 #include "stereo_calibration/c_stereo_calibration.h"
+#include <core/proc/stereo/stereo_stream.h>
+
+enum stereo_calibration_input_frame_layout_type {
+  stereo_calibration_frame_layout_horizontal,
+  stereo_calibration_frame_layout_vertical,
+  stereo_calibration_frame_layout_separate_sources,
+};
 
 struct c_stereo_calibration_input_options
 {
+  stereo_calibration_input_frame_layout_type layout_type =
+      stereo_calibration_frame_layout_horizontal;
+
+  bool swap_cameras = false;
+
   std::string left_stereo_source;
   std::string right_stereo_source;
 
@@ -72,9 +84,12 @@ protected:
   bool run_pipeline() override;
   bool run_stereo_calibration();
   bool write_output_videos();
-  //void update_output_path() override;
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
+  bool read_stereo_frame();
   void update_display_image() override;
+  void close_input_source();
+  bool open_input_source();
+  bool seek_input_source(int pos);
 
 protected:
 

@@ -675,10 +675,6 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
 
   ensure_ffmpeg_initialized();
 
-  CF_DEBUG("c_ffmpeg_reader options: '%s'",
-      input_options.c_str());
-
-
   if ( (status = ffmpeg_parse_options(input_options, true, &opts)) ) {
     CF_ERROR("[%s] ffmpeg_parse_options() fails: %s", stream_name_.c_str(), averr2str(status));
     goto end;

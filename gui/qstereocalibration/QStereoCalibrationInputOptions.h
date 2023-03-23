@@ -27,9 +27,13 @@ public:
 protected:
   void onupdatecontrols() override;
   void populatesources();
+  void updatesourcecontrols();
 
 protected:
   c_stereo_calibration_pipeline::sptr pipeline_;
+
+  QEnumComboBox<stereo_calibration_input_frame_layout_type> * layout_type_ctl = nullptr;
+  QCheckBox * swap_cameras_ctl = nullptr;
 
   QComboBox * left_source_ctl = nullptr;
   QComboBox * right_source_ctl = nullptr;

@@ -30,7 +30,7 @@ struct c_stereo_calibrate_options
       cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
           50, 1e-7);
 
-  double filter_alpha = 0.1;
+  double filter_alpha = 0.5;
 };
 
 

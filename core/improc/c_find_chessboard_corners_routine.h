@@ -29,6 +29,16 @@ public:
     DisplayVHarrisImage
   };
 
+  void set_stereo(bool v)
+  {
+    stereo_ = v;
+  }
+
+  bool stereo() const
+  {
+    return stereo_;
+  }
+
   void set_boardSize(const cv::Size & v)
   {
     boardSize_ = v;
@@ -193,10 +203,12 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, stereo, "Set to true for horizontal layout stereo frame");
+
     ADD_IMAGE_PROCESSOR_CTRL2(ctls, display_type, Display, "");
 
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, boardSize, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, method, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, boardSize, "Set chessboard size width x height");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, method, "Set chessboard corners detection method");
 
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCorners", "");
       ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_max_scales, max_scales, "");
@@ -232,6 +244,7 @@ public:
       c_config_setting section;
 
       SERIALIZE_PROPERTY(settings, save, *this, display_type);
+      SERIALIZE_PROPERTY(settings, save, *this, stereo);
       SERIALIZE_PROPERTY(settings, save, *this, boardSize);
 
       SERIALIZE_PROPERTY(settings, save, *this, method);
@@ -323,20 +336,48 @@ public:
       return true;
     }
 
-    if( !find_chessboard_corners(image, size, corners, options_) ) {
-      return true;
+    if( !stereo_ ) {
+
+      if( find_chessboard_corners(image, size, corners, options_) ) {
+
+        if( image.channels() == 1 ) {
+          cv::cvtColor(image, image,
+              cv::COLOR_GRAY2BGR);
+        }
+
+        cv::drawChessboardCorners(image,
+            size,
+            corners,
+            true);
+      }
+
     }
+    else {
 
+      if( image.channels() == 1 ) {
+        cv::cvtColor(image, image,
+            cv::COLOR_GRAY2BGR);
+      }
 
-    if ( image.channels() == 1 ) {
-      cv::cvtColor(image, image,
-          cv::COLOR_GRAY2BGR);
+      cv::Mat img =
+          image.getMat();
+
+      const cv::Rect rc[2] = {
+          cv::Rect(0, 0, img.cols / 2, img.rows),
+          cv::Rect(img.cols / 2, 0, img.cols / 2, img.rows)
+      };
+
+      for ( int i = 0; i < 2; ++i ) {
+
+        if( find_chessboard_corners(img(rc[i]), size, corners, options_) ) {
+
+          cv::drawChessboardCorners(img(rc[i]),
+              size,
+              corners,
+              true);
+        }
+      }
     }
-
-    cv::drawChessboardCorners(image,
-        size,
-        corners,
-        true);
 
     return true;
   }
@@ -345,6 +386,7 @@ protected:
   cv::Size boardSize_;
   c_chessboard_corners_detection_options options_;
   enum DisplayType display_type_ = DisplayCorners;
+  bool stereo_ = false;
 };
 
 #endif /* __c_find_chessboard_corners_routine_h__ */

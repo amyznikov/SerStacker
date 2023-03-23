@@ -115,7 +115,8 @@ bool QFFMPEGCamera::device_connect()
 
 void QFFMPEGCamera::device_disconnect()
 {
-  return ffmpeg_.close();
+  ffmpeg_.close();
+
 }
 
 bool QFFMPEGCamera::device_start()
@@ -153,7 +154,6 @@ bool QFFMPEGCamera::device_start()
 
 void QFFMPEGCamera::device_stop()
 {
-
   return ;
 }
 

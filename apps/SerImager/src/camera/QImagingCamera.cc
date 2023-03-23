@@ -90,7 +90,7 @@ QImagingCamera::QImagingCamera(QObject * parent) :
 
 QImagingCamera::~QImagingCamera()
 {
-  finish();
+  // don't call finish() because of pure virtual functions calls
 }
 
 void QImagingCamera::finish()
@@ -192,12 +192,15 @@ bool QImagingCamera::connect()
 
     unique_lock lock(mtx_);
 
-    if ( current_state_ == State_connecting && device_is_connected() ) {
-      setState(State_connected);
+    if ( !device_is_connected() ) {
+      setState(State_disconnected, strerror(errno));
+    }
+    else if (current_state_ != State_connecting ) { // interrupted externally
+      device_disconnect();
+      setState(State_disconnected, "interrupted");
     }
     else {
-      setState(State_disconnected,
-          strerror(errno));
+      setState(State_connected);
     }
 
   }).detach();
@@ -205,68 +208,82 @@ bool QImagingCamera::connect()
   return true;
 }
 
-void QImagingCamera::disconnect()
-{
-  unique_lock lock(mtx_);
 
-  switch (current_state_) {
-    case State_disconnected:
-      case State_disconnecting:
-      break;
-
-      case State_connected:
-      case State_starting:
-      case State_started:
-        setState(State_disconnecting);
-        lock.unlock();
-        device_disconnect();
-        lock.lock();
-        setState(State_disconnected);
-        break;
-
-    case State_connecting:
-      case State_stopping:
-      break;
-  }
-}
 
 bool QImagingCamera::start()
 {
   unique_lock lock(mtx_);
 
-  switch (current_state_) {
-    case State_disconnected:
-    case State_disconnecting:
-    case State_connecting:
-    case State_stopping:
+  if( current_state_ == State_starting || current_state_ == State_started ) {
+    return true;
+  }
+
+  if( current_state_ != State_connected ) {
     CF_ERROR("Inappropriate state: %s",
         toString(current_state_));
     return false;
-
-    case State_starting:
-    case State_started:
-    return true;
-
-    case State_connected:
-      break;
   }
 
   setState(State_starting);
 
   std::thread([this]() {
 
+    const auto finish_thread = [this]() {
+      switch (current_state_) {
+        case State_disconnected:
+        if ( device_is_connected() ) {
+          disconnect();
+        }
+        break;
+
+        case State_connecting:
+        CF_ERROR("FATAL APP BUG: Unexpected state '%s'", toString(current_state_));
+        device_disconnect();
+        setState(State_disconnected);
+        break;
+
+        case State_connected:
+        if ( !device_is_connected() ) {
+          CF_ERROR("FATAL APP BUG: Device is not connected but current state state is '%s'",
+              toString(current_state_));
+        }
+        break;
+
+        case State_starting:
+        setState(device_is_connected() ? State_connected : State_disconnected);
+        break;
+
+        case State_started:
+          setState(device_is_connected() ? State_connected : State_disconnected);
+        break;
+
+        case State_stopping:
+        setState(device_is_connected() ? State_connected : State_disconnected);
+        break;
+
+        case State_disconnecting:
+        if ( device_is_connected() ) {
+          device_disconnect();
+        }
+        setState(State_disconnected);
+        break;
+      }
+    };
+
+
     int index = 0;
 
     if( !device_start() ) {
+      CF_ERROR("device_start() fails");
       unique_lock lock(mtx_);
-      setState(device_is_connected() ? State_connected : State_disconnected,
-          "device_start() fails");
+      finish_thread();
       return;
     }
 
     unique_lock lock(mtx_);
     if ( current_state_ != State_starting ) {
-      setState(device_is_connected() ? State_connected : State_disconnected);
+      CF_ERROR("interrupted start");
+      finish_thread();
       return;
     }
 
@@ -276,8 +293,6 @@ bool QImagingCamera::start()
         device_max_qsize();
 
     while ( current_state_ == State_started ) {
-
-      INSTRUMENT_REGION("mainloop");
 
       lock.unlock();
 
@@ -308,12 +323,9 @@ bool QImagingCamera::start()
     }
 
     device_stop();
+    finish_thread();
     deque_.clear();
     condvar_.notify_all();
-
-    setState(device_is_connected() ? State_connected : State_disconnected,
-        strerror(errno));
-
 
   }).detach();
 
@@ -338,6 +350,65 @@ void QImagingCamera::stop()
       break;
   }
 }
+
+
+void QImagingCamera::disconnect()
+{
+  unique_lock lock(mtx_);
+
+  //  CF_DEBUG("enter: state=%s", toString(current_state_));
+
+  switch (current_state_) {
+    case State_connecting:
+      // just send signal to QImagingCamera::connect()
+      setState(State_disconnecting);
+      break;
+
+    case State_starting:
+      // just send signal to QImagingCamera::start()
+      setState(State_disconnecting);
+      break;
+
+    case State_connected:
+      setState(State_disconnecting);
+      lock.unlock();
+      device_disconnect();
+      lock.lock();
+      setState(State_disconnected);
+      break;
+
+    case State_started:
+      setState(State_disconnecting);
+      break;
+
+    case State_stopping:
+
+      while (current_state_ != State_connected && current_state_ != State_disconnected) {
+        lock.unlock();
+        // CF_DEBUG("usleep(50 * 1000): current_state_=%s", toString(current_state_));
+        usleep(50 * 1000);
+        lock.lock();
+      }
+
+      if( device_is_connected() ) {
+        device_disconnect();
+      }
+
+      setState(State_disconnected);
+      break;
+
+    case State_disconnecting:
+      break;
+
+    case State_disconnected:
+      break;
+
+  }
+
+  // CF_DEBUG("leave: state=%s device_is_connected()=%d", toString(current_state_), device_is_connected());
+}
+
+
 
 
 } /* namespace qserimager */

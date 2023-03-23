@@ -490,6 +490,7 @@ bool c_stereo_calibration_pipeline::seek_input_source(int pos)
 
 bool c_stereo_calibration_pipeline::run_stereo_calibration()
 {
+  c_video_writer progress_writer;
 
   if ( !open_input_source() ) {
     CF_ERROR("ERROR: open_input_source() fails");
@@ -549,6 +550,36 @@ bool c_stereo_calibration_pipeline::run_stereo_calibration()
     }
 
     update_display_image();
+
+    if ( output_options_.save_calibration_progress_video ) {
+
+      if( !progress_writer.is_open() ) {
+
+        std::string output_file_name =
+            generate_output_file_name(output_options_.calibration_progress_filename,
+                "progress",
+                ".avi");
+
+        bool fOK =
+            progress_writer.open(output_file_name,
+                display_frame_.size(),
+                display_frame_.channels() > 1,
+                false);
+
+        if( !fOK ) {
+          CF_ERROR("display_frame_.open('%s') fails",
+              output_file_name.c_str());
+          return false;
+        }
+      }
+
+      if ( !progress_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
+        CF_ERROR("display_frame_.write() fails");
+        return false;
+      }
+      //
+    }
+
   }
 
   close_input_source();
@@ -617,7 +648,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       if( !video_writer[0].is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.rectified_frames_file_name,
+            generate_output_file_name(output_options_.rectified_frames_filename,
                 "rect-left",
                 ".avi");
 
@@ -643,7 +674,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       if( !video_writer[1].is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.rectified_frames_file_name,
+            generate_output_file_name(output_options_.rectified_frames_filename,
                 "rect-right",
                 ".avi");
 
@@ -672,7 +703,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       if( !stereo_writer.is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.stereo_rectified_frames_file_name,
+            generate_output_file_name(output_options_.stereo_rectified_frames_filename,
                 "stereo",
                 ".avi");
 
@@ -710,7 +741,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       if( !quad_writer.is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.quad_rectified_frames_file_name,
+            generate_output_file_name(output_options_.quad_rectified_frames_filename,
                 "quad",
                 ".avi");
 

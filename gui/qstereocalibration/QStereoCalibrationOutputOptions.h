@@ -34,14 +34,17 @@ protected:
 
   QBrowsePathCombo * output_directory_ctl = nullptr;
 
+  QCheckBox * save_calibration_progress_video_ctl = nullptr;
+  QLineEditBox * calibration_progress_filename_ctl = nullptr;
+
   QCheckBox * save_rectified_images_ctl = nullptr;
-  QLineEditBox * rectified_images_file_name_ctl = nullptr;
+  QLineEditBox * rectified_images_filename_ctl = nullptr;
 
   QCheckBox * save_stereo_rectified_frames_ctl = nullptr;
-  QLineEditBox * stereo_rectified_frames_file_name_ctl = nullptr;
+  QLineEditBox * stereo_rectified_frames_filename_ctl = nullptr;
 
   QCheckBox * save_quad_rectified_frames_ctl = nullptr;
-  QLineEditBox * quad_rectified_frames_file_name_ctl = nullptr;
+  QLineEditBox * quad_rectified_frames_filename_ctl = nullptr;
 
 
 };

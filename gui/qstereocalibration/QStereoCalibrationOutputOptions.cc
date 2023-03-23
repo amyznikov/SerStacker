@@ -31,12 +31,49 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   ///
 
+  save_calibration_progress_video_ctl =
+      add_checkbox("Save progress video:",
+          [this](bool checked) {
+            if ( options_ ) {
+              options_->save_calibration_progress_video = checked;
+              calibration_progress_filename_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->save_calibration_progress_video;
+              return true;
+            }
+            return false;
+          });
+
+  calibration_progress_filename_ctl =
+      add_textbox("Progress video filename:",
+          [this](const QString & value) {
+            if ( options_ ) {
+              options_->calibration_progress_filename = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( options_ ) {
+              *value = options_->calibration_progress_filename.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  calibration_progress_filename_ctl->setPlaceholderText("auto");
+
+  ///
+
   save_rectified_images_ctl =
       add_checkbox("Save rectified frames",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_rectified_frames = checked;
-              rectified_images_file_name_ctl->setEnabled(checked);
+              rectified_images_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
@@ -48,23 +85,23 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             return false;
           });
 
-  rectified_images_file_name_ctl =
-      add_textbox("rectified_images_file_name:",
+  rectified_images_filename_ctl =
+      add_textbox("Rectified frames filename:",
           [this](const QString & value) {
             if ( options_ ) {
-              options_->rectified_frames_file_name = value.toStdString();
+              options_->rectified_frames_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
             if ( options_ ) {
-              *value = options_->rectified_frames_file_name.c_str();
+              *value = options_->rectified_frames_filename.c_str();
               return true;
             }
             return false;
           });
 
-  rectified_images_file_name_ctl->setPlaceholderText("auto");
+  rectified_images_filename_ctl->setPlaceholderText("auto");
 
   ///
 
@@ -73,7 +110,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
           [this](bool checked) {
             if ( options_ ) {
               options_->save_stereo_rectified_frames = checked;
-              stereo_rectified_frames_file_name_ctl->setEnabled(checked);
+              stereo_rectified_frames_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
@@ -85,32 +122,32 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             return false;
           });
 
-  stereo_rectified_frames_file_name_ctl =
-      add_textbox("stereo rectified frames file name:",
+  stereo_rectified_frames_filename_ctl =
+      add_textbox("Stereo frames file name:",
           [this](const QString & value) {
             if ( options_ ) {
-              options_->stereo_rectified_frames_file_name = value.toStdString();
+              options_->stereo_rectified_frames_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
             if ( options_ ) {
-              *value = options_->stereo_rectified_frames_file_name.c_str();
+              *value = options_->stereo_rectified_frames_filename.c_str();
               return true;
             }
             return false;
           });
 
-  stereo_rectified_frames_file_name_ctl->setPlaceholderText("auto");
+  stereo_rectified_frames_filename_ctl->setPlaceholderText("auto");
 
   ///
 
   save_quad_rectified_frames_ctl =
-      add_checkbox("Save quad rectified frames",
+      add_checkbox("Save quad frames",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_quad_rectified_frames = checked;
-              quad_rectified_frames_file_name_ctl->setEnabled(checked);
+              quad_rectified_frames_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
@@ -122,23 +159,23 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
             return false;
           });
 
-  quad_rectified_frames_file_name_ctl =
-      add_textbox("quad rectified frames file name:",
+  quad_rectified_frames_filename_ctl =
+      add_textbox("Quad frames file name:",
           [this](const QString & value) {
             if ( options_ ) {
-              options_->quad_rectified_frames_file_name = value.toStdString();
+              options_->quad_rectified_frames_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
             if ( options_ ) {
-              *value = options_->quad_rectified_frames_file_name.c_str();
+              *value = options_->quad_rectified_frames_filename.c_str();
               return true;
             }
             return false;
           });
 
-  quad_rectified_frames_file_name_ctl->setPlaceholderText("auto");
+  quad_rectified_frames_filename_ctl->setPlaceholderText("auto");
 
   ///
 
@@ -167,9 +204,10 @@ void QStereoCalibrationOutputOptions::onupdatecontrols()
     Base::onupdatecontrols();
 
     output_directory_ctl->setCurrentPath(options_->output_directory.c_str(), false);
-    rectified_images_file_name_ctl->setEnabled(save_rectified_images_ctl->isChecked());
-    stereo_rectified_frames_file_name_ctl->setEnabled(save_stereo_rectified_frames_ctl->isChecked());
-    quad_rectified_frames_file_name_ctl->setEnabled(save_quad_rectified_frames_ctl->isChecked());
+    calibration_progress_filename_ctl->setEnabled(save_calibration_progress_video_ctl->isChecked());
+    rectified_images_filename_ctl->setEnabled(save_rectified_images_ctl->isChecked());
+    stereo_rectified_frames_filename_ctl->setEnabled(save_stereo_rectified_frames_ctl->isChecked());
+    quad_rectified_frames_filename_ctl->setEnabled(save_quad_rectified_frames_ctl->isChecked());
 
     setEnabled(true);
   }

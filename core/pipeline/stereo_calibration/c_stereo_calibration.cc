@@ -99,13 +99,16 @@ bool c_stereo_calibration::serialize(c_config_setting settings, bool save)
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
     SERIALIZE_OPTION(section, save, output_options_, save_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, rectified_frames_file_name);
+    SERIALIZE_OPTION(section, save, output_options_, rectified_frames_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_stereo_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, stereo_rectified_frames_file_name);
+    SERIALIZE_OPTION(section, save, output_options_, stereo_rectified_frames_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_quad_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, quad_rectified_frames_file_name);
+    SERIALIZE_OPTION(section, save, output_options_, quad_rectified_frames_filename);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_calibration_progress_video);
+    SERIALIZE_OPTION(section, save, output_options_, calibration_progress_filename);
   }
 
   return true;

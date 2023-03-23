@@ -37,13 +37,15 @@ struct c_stereo_calibrate_options
 struct c_stereo_calibration_output_options
 {
   std::string output_directory;
-  std::string rectified_frames_file_name;
-  std::string stereo_rectified_frames_file_name;
-  std::string quad_rectified_frames_file_name;
+  std::string rectified_frames_filename;
+  std::string stereo_rectified_frames_filename;
+  std::string quad_rectified_frames_filename;
+  std::string calibration_progress_filename;
 
   bool save_rectified_frames = false;
   bool save_stereo_rectified_frames = false;
   bool save_quad_rectified_frames = false;
+  bool save_calibration_progress_video = false;
 };
 
 class c_stereo_calibration

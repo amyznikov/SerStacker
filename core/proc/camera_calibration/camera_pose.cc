@@ -21,6 +21,7 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
       { EMM_LMEDS, "LMEDS", "least-median of squares algorithm" },
       { EMM_RANSAC, "RANSAC", "RANSAC algorithm" },
       { EMM_RHO, "RHO", "RHO algorithm" },
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 5, 0)
       { EMM_USAC_DEFAULT, "USAC_DEFAULT", "USAC algorithm, default settings" },
       { EMM_USAC_PARALLEL, "USAC_PARALLEL", "USAC, parallel version" },
       { EMM_USAC_FM_8PTS, "USAC_FM_8PTS", "USAC, fundamental matrix 8 points" },
@@ -28,6 +29,7 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
       { EMM_USAC_ACCURATE, "USAC_ACCURATE", "USAC, accurate settings" },
       { EMM_USAC_PROSAC, "USAC_PROSAC", "USAC, sorted points, runs PROSAC" },
       { EMM_USAC_MAGSAC, "USAC_MAGSAC", "USAC, runs MAGSAC++" },
+#endif
       { EMM_LMEDS, nullptr, "" },
   };
 

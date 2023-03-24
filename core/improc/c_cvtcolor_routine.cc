@@ -310,11 +310,6 @@ const c_enum_member* members_of<cv::ColorConversionCodes>()
       { COLOR_BayerBGGR2RGB_VNG, "COLOR_BayerBGGR2RGB_VNG", "" }, //
       { COLOR_BayerGBRG2RGB_VNG, "COLOR_BayerGBRG2RGB_VNG", "" }, //
 
-      { COLOR_BayerRGGB2BGR_EA, "COLOR_BayerRGGB2BGR_EA", "" }, //
-      { COLOR_BayerGRBG2BGR_EA, "COLOR_BayerGRBG2BGR_EA", "" }, //
-      { COLOR_BayerBGGR2BGR_EA, "COLOR_BayerBGGR2BGR_EA", "" }, //
-      { COLOR_BayerGBRG2BGR_EA, "COLOR_BayerGBRG2BGR_EA", "" }, //
-
       { COLOR_BayerRGGB2BGRA, "COLOR_BayerRGGB2BGRA", "" }, //
       { COLOR_BayerGRBG2BGRA, "COLOR_BayerGRBG2BGRA", "" }, //
       { COLOR_BayerBGGR2BGRA, "COLOR_BayerBGGR2BGRA", "" }, //
@@ -324,6 +319,13 @@ const c_enum_member* members_of<cv::ColorConversionCodes>()
       { COLOR_BayerGRBG2RGBA, "COLOR_BayerGRBG2RGBA", "" }, //
       { COLOR_BayerBGGR2RGBA, "COLOR_BayerBGGR2RGBA", "" }, //
       { COLOR_BayerGBRG2RGBA, "COLOR_BayerGBRG2RGBA", "" }, //
+#endif
+
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 7, 0)
+      { COLOR_BayerRGGB2BGR_EA, "COLOR_BayerRGGB2BGR_EA", "" }, //
+      { COLOR_BayerGRBG2BGR_EA, "COLOR_BayerGRBG2BGR_EA", "" }, //
+      { COLOR_BayerBGGR2BGR_EA, "COLOR_BayerBGGR2BGR_EA", "" }, //
+      { COLOR_BayerGBRG2BGR_EA, "COLOR_BayerGBRG2BGR_EA", "" }, //
 #endif
 
       { COLOR_COLORCVT_MAX, },

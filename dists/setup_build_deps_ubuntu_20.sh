@@ -31,7 +31,7 @@ apt-get install -y \
 	libavutil-dev \
 	libswscale-dev \
 	libavdevice-dev \
-	exit 1
+	|| exit 1
 
 # libconfig
 (cd ${topdir} && \

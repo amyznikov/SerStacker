@@ -139,11 +139,18 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
 
   if( image.type() == CV_8UC3 ) {
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     QImage qimage(image.data,
         image.cols, image.rows,
         (int) (size_t) (image.step),
         rgbswap ? QImage::Format_BGR888 :
             QImage::Format_RGB888);
+#else
+
+    QImage qimage;
+    cv2qt(image, &qimage, rgbswap);
+
+#endif
 
     pixmap =
         QPixmap::fromImage(qimage, flags);
@@ -178,7 +185,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
 
     QImage qimage;
 
-    cv2qt(image, &qimage);
+    cv2qt(image, &qimage, rgbswap);
 
     pixmap =
         QPixmap::fromImage(qimage, flags);

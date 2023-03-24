@@ -12,6 +12,14 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+// OpenCV version macro
+#ifndef CV_VERSION_INT
+# define CV_VERSION_INT(a,b,c) (((a)<<16)|((b)<<8)|(c))
+#endif
+#ifndef CV_VERSION_CURRRENT
+# define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
+#endif
+
 template<>
 const c_enum_member * members_of<FindChessboardCornersMethod>()
 {

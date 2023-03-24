@@ -286,8 +286,8 @@ bool QV4L2Camera::device_start()
       srcFormat.fmt.pix.colorspace,
       srcFormat.fmt.pix.priv,
       srcFormat.fmt.pix.flags,
-      srcFormat.fmt.pix.quantization,
-      srcFormat.fmt.pix.xfer_func
+      (unsigned int)srcFormat.fmt.pix.quantization,
+      (unsigned int)srcFormat.fmt.pix.xfer_func
       );
 
   cvType_ = -1;
@@ -322,11 +322,13 @@ bool QV4L2Camera::device_start()
       colorid_ = COLORID_MONO;
       bpp_ = 12;
       break;
+#ifdef V4L2_PIX_FMT_Y14
     case V4L2_PIX_FMT_Y14: /* 14  Greyscale     */
       cvType_ = CV_16UC1;
       colorid_ = COLORID_MONO;
       bpp_ = 14;
       break;
+#endif
     case V4L2_PIX_FMT_Y16:/* 16  Greyscale     */
       cvType_ = CV_16UC1;
       colorid_ = COLORID_MONO;

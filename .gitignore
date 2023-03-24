@@ -31,6 +31,7 @@ __pycache__
 *.la
 *.a
 *.lib
+!apps/SerImager/src/camera/zwo_asi/**
 
 # Executables
 *.exe

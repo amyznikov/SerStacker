@@ -41,7 +41,6 @@ add_subdirectory(src/focus)
 add_subdirectory(src/pipeline)
 
 
-
 target_link_libraries(${PROJECT_NAME} PRIVATE
   gui
   Qt${QT_VERSION}::Core
@@ -63,14 +62,15 @@ set(MY_DESKTOP_ENTRY_PATH ${CMAKE_INSTALL_PREFIX}/share/applications)
 set(MY_DESKTOP_ENTRY_COMMENT "${PROJECT_NAME}")
 set(MY_APP_ICONS_PATH ${CMAKE_INSTALL_PREFIX}/share/app-install/icons)
 
-if( EXISTS src/app.desktop.in)
-	configure_file(src/app.desktop.in
+
+if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/app.desktop.in)
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/app.desktop.in
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.desktop
 		@ONLY)
 endif()
 
-if(EXISTS src/icons/app-icon.png)
-	configure_file(src/icons/app-icon.png
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/icons/app-icon.png)
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/icons/app-icon.png
 		${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.png
 		COPYONLY)
 endif()

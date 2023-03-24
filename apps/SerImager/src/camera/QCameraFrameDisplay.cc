@@ -605,4 +605,4 @@ void QDisplayFrameProcessorSettingsDialogBox::hideEvent(QHideEvent *e)
 
 
 
-} /* namespace qserimager */
+} /* namespace serimager */

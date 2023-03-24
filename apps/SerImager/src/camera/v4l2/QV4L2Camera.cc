@@ -708,4 +708,4 @@ int QV4L2Camera::device_max_qsize()
   return p_.size() / 2;
 }
 
-} /* namespace qserimager */
+} /* namespace serimager */

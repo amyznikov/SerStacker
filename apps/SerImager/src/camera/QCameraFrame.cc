@@ -9,4 +9,4 @@
 
 namespace serimager {
 
-} /* namespace qserimager */
+} /* namespace serimager */

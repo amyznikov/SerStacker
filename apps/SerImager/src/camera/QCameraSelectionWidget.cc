@@ -19,14 +19,14 @@ namespace serimager {
 ///////////////////////////////////////////////////////////
 namespace {
 
-#define ICON_hourglass      ":/qserimager/icons/hourglass.png"
-// #define ICON_start          ":/qserimager/icons/play.png"
-#define ICON_start          ":/qserimager/icons/start.png"
-#define ICON_stop           ":/qserimager/icons/stop.png"
-#define ICON_info           ":/qserimager/icons/info.png"
-#define ICON_connect        ":/qserimager/icons/connect.png"
-#define ICON_disconnect     ":/qserimager/icons/disconnect.png"
-#define ICON_menu           ":/qserimager/icons/menu.png"
+#define ICON_hourglass      ":/serimager/icons/hourglass.png"
+// #define ICON_start          ":/serimager/icons/play.png"
+#define ICON_start          ":/serimager/icons/start.png"
+#define ICON_stop           ":/serimager/icons/stop.png"
+#define ICON_info           ":/serimager/icons/info.png"
+#define ICON_connect        ":/serimager/icons/connect.png"
+#define ICON_disconnect     ":/serimager/icons/disconnect.png"
+#define ICON_menu           ":/serimager/icons/menu.png"
 
 
 static QIcon icon_hourglass;
@@ -459,4 +459,4 @@ void QCameraSelectionWidget::refreshCameras()
 }
 
 
-} /* namespace qserimager */
+} /* namespace serimager */

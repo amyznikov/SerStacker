@@ -29,7 +29,7 @@
 #include "QAppSettings.h"
 #include "QPipelineProgressView.h"
 
-namespace qserstacker {
+namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -161,5 +161,5 @@ private:
 
 
 ///////////////////////////////////////////////////////////////////////////////
-}  // namespace qserstacker
+}  // namespace serstacker
 #endif /* __qskystacker_main_window_h__ */

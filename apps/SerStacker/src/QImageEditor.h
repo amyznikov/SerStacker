@@ -13,7 +13,7 @@
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
 
-namespace qserstacker {
+namespace serstacker {
 
 class QImageEditor:
     public QImageFileEditor
@@ -38,6 +38,6 @@ protected:
   QGraphicsRectShape * roiRectShape_ = nullptr;
 };
 
-} /* namespace qserstacker */
+} /* namespace serstacker */
 
 #endif /* __qserstacker_image_editor_h__ */

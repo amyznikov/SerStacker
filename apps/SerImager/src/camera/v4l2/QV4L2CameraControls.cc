@@ -11,7 +11,7 @@
 #include <core/ssprintf.h>
 
 
-#define ICON_enterbutt        ":/qserimager/icons/enterbutt.png"
+#define ICON_enterbutt        ":/serimager/icons/enterbutt.png"
 
 template<>
 const c_enum_member* members_of<enum v4l2_ctrl_type>()
@@ -1045,4 +1045,4 @@ void QV4L2CameraControls::onFrameRateChanged(int index)
 }
 
 
-} /* namespace qserimager */
+} /* namespace serimager */

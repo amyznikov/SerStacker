@@ -11,7 +11,7 @@
 
 #include <gui/qfocus/QFocusMeasureProvider.h>
 
-namespace qserstacker {
+namespace serstacker {
 
 class QImageFocusMeasure:
     public QFocusMeasureProvider
@@ -27,6 +27,6 @@ public:
 
 };
 
-} /* namespace qserstacker */
+} /* namespace serstacker */
 
 #endif /* __QImageFocusMeasure_h__ */

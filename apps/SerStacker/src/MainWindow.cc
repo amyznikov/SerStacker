@@ -22,7 +22,7 @@
 #include <core/pipeline/c_regular_stereo_pipeline.h>
 #include <core/debug.h>
 
-namespace qserstacker {
+namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -43,8 +43,8 @@ namespace qserstacker {
 #define ICON_copy         ":/gui/icons/copy"
 #define ICON_delete       ":/gui/icons/delete"
 
-#define ICON_roi          ":/icons/roi.png"
-#define ICON_metrics      ":/icons/metrics.png"
+#define ICON_roi          ":/serstacker/icons/roi.png"
+#define ICON_metrics      ":/serstacker/icons/metrics.png"
 
 
 namespace  {
@@ -130,7 +130,7 @@ QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu
 MainWindow::MainWindow()
 {
 
-  setWindowIcon(QIcon(":/icons/jup.png"));
+  setWindowIcon(QIcon(":/serstacker/icons/app-icon.png"));
   updateWindowTittle();
 
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));

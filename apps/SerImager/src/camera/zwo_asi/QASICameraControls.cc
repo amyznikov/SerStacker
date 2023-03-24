@@ -1045,4 +1045,4 @@ void QASICameraControls::onupdatecontrols()
 }
 
 
-} /* namespace qserimager */
+} /* namespace serimager */

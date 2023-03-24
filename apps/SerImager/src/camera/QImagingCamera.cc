@@ -411,4 +411,4 @@ void QImagingCamera::disconnect()
 
 
 
-} /* namespace qserimager */
+} /* namespace serimager */

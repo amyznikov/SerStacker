@@ -13,7 +13,7 @@
 #define MY_COMPANY  "amyznikov"
 #define MY_APP      "SerStacker"
 
-using namespace qserstacker;
+using namespace serstacker;
 
 int main(int argc, char *argv[])
 {

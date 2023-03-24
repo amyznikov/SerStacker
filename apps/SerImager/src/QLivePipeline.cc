@@ -17,13 +17,13 @@
 namespace serimager {
 
 
-#define ICON_start            ":/qserimager/icons/start.png"
-#define ICON_stop             ":/qserimager/icons/stop.png"
-#define ICON_process          ":/qserimager/icons/process.png"
-#define ICON_menu             ":/qserimager/icons/menu.png"
-#define ICON_add              ":/qserimager/icons/add.png"
-#define ICON_delete           ":/qserimager/icons/delete.png"
-#define ICON_rename           ":/qserimager/icons/rename.png"
+#define ICON_start            ":/serimager/icons/start.png"
+#define ICON_stop             ":/serimager/icons/stop.png"
+#define ICON_process          ":/serimager/icons/process.png"
+#define ICON_menu             ":/serimager/icons/menu.png"
+#define ICON_add              ":/serimager/icons/add.png"
+#define ICON_delete           ":/serimager/icons/delete.png"
+#define ICON_rename           ":/serimager/icons/rename.png"
 
 namespace {
 

@@ -108,6 +108,6 @@ protected:
   int bpp_ = 0;
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QCameraFrameh__ */

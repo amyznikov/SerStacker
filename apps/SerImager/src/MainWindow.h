@@ -134,6 +134,6 @@ protected:
 #endif // HAVE_INDIGO
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __qserimager_MainWindow_h__ */

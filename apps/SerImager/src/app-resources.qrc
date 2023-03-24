@@ -1,5 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource prefix="/qserimager">
+<qresource prefix="/serimager">
 	<file>icons/app-icon.png</file>
 
 	<file>icons/light/hourglass.png</file>

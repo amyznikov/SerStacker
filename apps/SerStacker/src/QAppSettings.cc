@@ -7,7 +7,7 @@
 
 #include "QAppSettings.h"
 
-namespace qserstacker {
+namespace serstacker {
 
 
 QGeneralAppSettingsDialogBox::QGeneralAppSettingsDialogBox(QWidget * parent) :
@@ -111,5 +111,5 @@ void QGeneralAppSettingsWidget::onload(QSettings & settings)
 
 
 
-} // namespace qserstacker
+} // namespace serstacker
 

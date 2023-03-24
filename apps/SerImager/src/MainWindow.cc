@@ -13,13 +13,13 @@
 
 namespace serimager {
 
-#define ICON_histogram        ":/qserimager/icons/histogram.png"
-#define ICON_display          ":/qserimager/icons/display.png"
-#define ICON_shapes           ":/qserimager/icons/shapes.png"
-#define ICON_roi              ":/qserimager/icons/roi.png"
-#define ICON_line             ":/qserimager/icons/line.png"
-#define ICON_target           ":/qserimager/icons/target.png"
-#define ICON_process          ":/qserimager/icons/process.png"
+#define ICON_histogram        ":/serimager/icons/histogram.png"
+#define ICON_display          ":/serimager/icons/display.png"
+#define ICON_shapes           ":/serimager/icons/shapes.png"
+#define ICON_roi              ":/serimager/icons/roi.png"
+#define ICON_line             ":/serimager/icons/line.png"
+#define ICON_target           ":/serimager/icons/target.png"
+#define ICON_process          ":/serimager/icons/process.png"
 
 namespace {
 
@@ -91,7 +91,7 @@ QWidget* createStretch()
 MainWindow::MainWindow(QWidget * parent) :
     Base(parent)
 {
-  setWindowIcon(getIcon(":/qserimager/icons/app-icon.png"));
+  setWindowIcon(getIcon(":/serimager/icons/app-icon.png"));
 
   setCentralWidget(centralDisplay_ = new QVideoFrameDisplay(this));
 

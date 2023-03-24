@@ -9,8 +9,8 @@
 #include <gui/widgets/style.h>
 #include <core/io/c_ffmpeg_file.h>
 
-#define ICON_start_capture        ":/qserimager/icons/start-capture.png"
-#define ICON_stop_capture         ":/qserimager/icons/stop-capture.png"
+#define ICON_start_capture        ":/serimager/icons/start-capture.png"
+#define ICON_stop_capture         ":/serimager/icons/stop-capture.png"
 
 
 namespace serimager {

@@ -15,7 +15,7 @@
 #include <core/pipeline/c_stereo_calibration_pipeline.h>
 #include <core/pipeline/c_regular_stereo_pipeline.h>
 
-namespace qserstacker {
+namespace serstacker {
 
 #define ICON_menu      ":/icons/menu.png"
 
@@ -378,4 +378,4 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 }
 
 
-} // namespace qserstacker
+} // namespace serstacker

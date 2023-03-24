@@ -166,6 +166,6 @@ protected:
 };
 
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QCameraFrameDisplay_h__ */

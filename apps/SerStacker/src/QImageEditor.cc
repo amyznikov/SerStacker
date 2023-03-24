@@ -7,7 +7,7 @@
 
 #include "QImageEditor.h"
 
-namespace qserstacker {
+namespace serstacker {
 
 
 QImageEditor::QImageEditor(QWidget * parent) :
@@ -85,4 +85,4 @@ void QImageEditor::createRoiRectShape()
 }
 
 
-} /* namespace qserstacker */
+} /* namespace serstacker */

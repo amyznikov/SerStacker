@@ -59,6 +59,6 @@ protected:
   QToolButton * menu_ctl = nullptr;
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QCameraSelectionWidget_h__ */

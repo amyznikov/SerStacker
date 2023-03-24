@@ -102,4 +102,4 @@ QImagingCameraControlsDock::QImagingCameraControlsDock(const QString & title, QW
 {
 }
 
-} /* namespace qserimager */
+} /* namespace serimager */

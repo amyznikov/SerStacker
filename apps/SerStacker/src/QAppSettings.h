@@ -13,7 +13,7 @@
 #include <core/io/debayer.h>
 #include "QImageEditor.h"
 
-namespace qserstacker {
+namespace serstacker {
 
 class QGeneralAppSettingsWidget :
     public QSettingsWidget
@@ -63,5 +63,5 @@ protected:
   QGeneralAppSettingsWidget * appSettingsWidget_ = nullptr;
 };
 
-} // namespace qserstacker
+} // namespace serstacker
 #endif /* __QAppSettings_h__ */

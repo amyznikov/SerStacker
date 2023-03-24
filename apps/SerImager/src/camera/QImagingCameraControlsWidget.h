@@ -68,6 +68,6 @@ public:
 protected:
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QImagerSettingsWidget_h__ */

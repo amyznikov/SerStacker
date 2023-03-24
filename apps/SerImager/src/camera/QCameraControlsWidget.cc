@@ -35,4 +35,4 @@ QCameraControlsWidget * QCameraControlsWidget::create(const QImagingCamera::sptr
   return nullptr;
 }
 
-} /* namespace qserimager */
+} /* namespace serimager */

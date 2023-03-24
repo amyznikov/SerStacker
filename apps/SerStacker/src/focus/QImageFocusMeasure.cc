@@ -8,7 +8,7 @@
 #include "QImageFocusMeasure.h"
 #include <core/debug.h>
 
-namespace qserstacker {
+namespace serstacker {
 
 QImageFocusMeasure::QImageFocusMeasure(QObject * parent) :
     Base(parent)
@@ -81,4 +81,4 @@ void QImageFocusMeasure::measure(const cv::Mat & frame, COLORID colorid, int bpp
 }
 
 
-} /* namespace qserstacker */
+} /* namespace serstacker */

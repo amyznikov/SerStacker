@@ -14,7 +14,7 @@
 #include "QImageEditor.h"
 #include <core/notification.h>
 
-namespace qserstacker {
+namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
 class QPipelineProgressView:
@@ -67,6 +67,6 @@ protected:
 };
 
 
-} // namespace qserstacker
+} // namespace serstacker
 
 #endif /* __QPipelineProgressView_h__ */

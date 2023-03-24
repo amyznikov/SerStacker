@@ -28,6 +28,6 @@ protected:
   QCameraControlsWidget(QWidget * parent = nullptr);
 };
 
-} /* namespace qserimager */
+} /* namespace serimager */
 
 #endif /* __QCameraSettingsWidget_h__ */

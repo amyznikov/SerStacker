@@ -33,6 +33,7 @@ apt-get install -y \
 	libavdevice-dev \
 	v4l-utils \
 	libv4l-dev \
+	libusb-dev \
 	|| exit 1
 
 # libconfig

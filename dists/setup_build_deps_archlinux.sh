@@ -27,4 +27,6 @@ pacman -S \
 	cfitsio \
 	libraw \
 	libopenraw \
-	ffmpeg 
+	libusb \
+	v4l-utils \
+	ffmpeg

@@ -176,7 +176,7 @@ bool estimate_essential_matrix(cv::Matx33d * outputEsentialMatrix,
 
     if( inliers_mask.rows() != (int) matched_reference_keypoints.size() ) {
 
-      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%d",
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%zu",
           inliers_mask.rows(), matched_reference_keypoints.size());
 
       return false;
@@ -230,7 +230,7 @@ bool estimate_essential_matrix(cv::Matx33d * outputEsentialMatrix,
   const cv::Mat EE =
       cv::findEssentialMat(C, R,
           camera_matrix,
-          method,
+          (int)method,
           0.999,
           threshold,
           1000,
@@ -585,7 +585,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
     if ( inliers.rows != (int)reference_keypoints.size() ) {
 
-      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%d",
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%zu",
           inliers.rows, reference_keypoints.size());
 
       return false;

@@ -31,6 +31,8 @@ apt-get install -y \
 	libavutil-dev \
 	libswscale-dev \
 	libavdevice-dev \
+	v4l-utils \
+	libv4l-dev \
 	|| exit 1
 
 # libconfig

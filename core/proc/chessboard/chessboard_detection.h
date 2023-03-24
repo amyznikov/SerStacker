@@ -14,6 +14,14 @@
 #include <opencv2/opencv.hpp>
 #include <core/settings.h>
 
+// OpenCV version macro
+#ifndef CV_VERSION_INT
+# define CV_VERSION_INT(a,b,c) (((a)<<16)|((b)<<8)|(c))
+#endif
+#ifndef CV_VERSION_CURRRENT
+# define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
+#endif
+
 
 // Which method to use for findChessboardCorners
 enum FindChessboardCornersMethod {
@@ -29,8 +37,10 @@ enum FindChessboardCornersFlags
   FindChessboardCorners_FAST_CHECK = cv::CALIB_CB_FAST_CHECK,
   FindChessboardCorners_EXHAUSTIVE = cv::CALIB_CB_EXHAUSTIVE,
   FindChessboardCorners_ACCURACY = cv::CALIB_CB_ACCURACY,
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 3, 0)
   FindChessboardCorners_LARGER = cv::CALIB_CB_LARGER,
   FindChessboardCorners_MARKER = cv::CALIB_CB_MARKER,
+#endif
 };
 
 enum FindChessboardCornersSBFlags

@@ -22,6 +22,15 @@
 #include <core/debug.h>
 
 
+// OpenCV version macro
+#ifndef CV_VERSION_INT
+# define CV_VERSION_INT(a,b,c) (((a)<<16)|((b)<<8)|(c))
+#endif
+#ifndef CV_VERSION_CURRRENT
+# define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
+#endif
+
+
 /**
  * ssprintf()
  *  C-style std::string formating
@@ -720,8 +729,10 @@ inline const c_enum_member * members_of<cv::InterpolationFlags>()
       "method."},
       {cv::INTER_LANCZOS4, "LANCZOS4", "Lanczos interpolation over 8x8 neighborhood"},
       {cv::INTER_LINEAR_EXACT, "LINEAR_EXACT", "Bit exact bilinear interpolation"},
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 5, 0)
       {cv::INTER_NEAREST_EXACT, "NEAREST_EXACT", "Bit exact nearest neighbor interpolation. This will produce same results as "
       "the nearest neighbor method in PIL, scikit-image or Matlab."},
+#endif
       {cv::INTER_LINEAR},
   };
 

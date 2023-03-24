@@ -34,8 +34,10 @@ const c_enum_member* members_of<FindChessboardCornersFlags>()
       { FindChessboardCorners_FAST_CHECK, "FAST_CHECK", "cv::CALIB_CB_FAST_CHECK" },
       { FindChessboardCorners_EXHAUSTIVE, "EXHAUSTIVE", "cv::CALIB_CB_EXHAUSTIVE" },
       { FindChessboardCorners_ACCURACY, "ACCURACY", "cv::CALIB_CB_ACCURACY" },
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 3, 0)
       { FindChessboardCorners_LARGER, "LARGER", "cv::CALIB_CB_LARGER" },
       { FindChessboardCorners_MARKER, "MARKER", "cv::CALIB_CB_MARKER" },
+#endif
       { 0 }
   };
 

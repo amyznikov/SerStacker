@@ -227,6 +227,8 @@ bool estimate_essential_matrix(cv::Matx33d * outputEsentialMatrix,
 
   // cv::theRNG().state = 123456789;
 
+#if  CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 6, 0)
+
   const cv::Mat EE =
       cv::findEssentialMat(C, R,
           camera_matrix,
@@ -235,6 +237,18 @@ bool estimate_essential_matrix(cv::Matx33d * outputEsentialMatrix,
           threshold,
           1000,
           M);
+#else
+
+  const cv::Mat EE =
+      cv::findEssentialMat(C, R,
+          camera_matrix,
+          (int) method,
+          0.999,
+          threshold,
+          M);
+
+
+#endif
 
   if( EE.rows != 3 || EE.cols != 3 ) {
     CF_ERROR("cv::findEssentialMat() fails");

@@ -6,14 +6,18 @@
  */
 
 #include "QV4L2CameraControls.h"
+#include <linux/version.h>
 #include <gui/widgets/style.h>
 #include <core/ssprintf.h>
+
 
 #define ICON_enterbutt        ":/qserimager/icons/enterbutt.png"
 
 template<>
 const c_enum_member* members_of<enum v4l2_ctrl_type>()
 {
+  int xx = LINUX_VERSION_CODE;
+
   static constexpr c_enum_member members[] = {
       { V4L2_CTRL_TYPE_INTEGER, "V4L2_CTRL_TYPE_INTEGER", "" },
       { V4L2_CTRL_TYPE_BOOLEAN, "V4L2_CTRL_TYPE_BOOLEAN", "" },
@@ -30,28 +34,32 @@ const c_enum_member* members_of<enum v4l2_ctrl_type>()
       { V4L2_CTRL_TYPE_U8, "V4L2_CTRL_TYPE_U8", "" },
       { V4L2_CTRL_TYPE_U16, "V4L2_CTRL_TYPE_U16", "" },
       { V4L2_CTRL_TYPE_U32, "V4L2_CTRL_TYPE_U32", "" },
-      { V4L2_CTRL_TYPE_AREA, "V4L2_CTRL_TYPE_AREA", "" },
 
+
+
+
+
+
+
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,0,0)
+      { V4L2_CTRL_TYPE_AREA, "V4L2_CTRL_TYPE_AREA", "" },
       { V4L2_CTRL_TYPE_HDR10_CLL_INFO, "V4L2_CTRL_TYPE_HDR10_CLL_INFO", "" },
       { V4L2_CTRL_TYPE_HDR10_MASTERING_DISPLAY, "V4L2_CTRL_TYPE_HDR10_MASTERING_DISPLAY", "" },
-
       { V4L2_CTRL_TYPE_H264_SPS, "V4L2_CTRL_TYPE_H264_SPS", "" },
       { V4L2_CTRL_TYPE_H264_PPS, "V4L2_CTRL_TYPE_H264_PPS", "" },
       { V4L2_CTRL_TYPE_H264_SCALING_MATRIX, "V4L2_CTRL_TYPE_H264_SCALING_MATRIX", "" },
       { V4L2_CTRL_TYPE_H264_SLICE_PARAMS, "V4L2_CTRL_TYPE_H264_SLICE_PARAMS", "" },
       { V4L2_CTRL_TYPE_H264_DECODE_PARAMS, "V4L2_CTRL_TYPE_H264_DECODE_PARAMS", "" },
       { V4L2_CTRL_TYPE_H264_PRED_WEIGHTS, "V4L2_CTRL_TYPE_H264_PRED_WEIGHTS", "" },
-
       { V4L2_CTRL_TYPE_FWHT_PARAMS, "V4L2_CTRL_TYPE_FWHT_PARAMS", "" },
-
       { V4L2_CTRL_TYPE_VP8_FRAME, "V4L2_CTRL_TYPE_VP8_FRAME", "" },
-
       { V4L2_CTRL_TYPE_MPEG2_QUANTISATION, "V4L2_CTRL_TYPE_MPEG2_QUANTISATION", "" },
       { V4L2_CTRL_TYPE_MPEG2_SEQUENCE, "V4L2_CTRL_TYPE_MPEG2_SEQUENCE", "" },
       { V4L2_CTRL_TYPE_MPEG2_PICTURE, "V4L2_CTRL_TYPE_MPEG2_PICTURE", "" },
-
       { V4L2_CTRL_TYPE_VP9_COMPRESSED_HDR, "V4L2_CTRL_TYPE_VP9_COMPRESSED_HDR", "" },
       { V4L2_CTRL_TYPE_VP9_FRAME, "V4L2_CTRL_TYPE_VP9_FRAME", "" },
+#endif
       { (v4l2_ctrl_type) (0) }
   };
 
@@ -309,7 +317,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                 if ( camera_ ) {
                   int status = camera_->s_ext_ctrl(c.id, 1);
                   if ( status ) {
-                    CF_ERROR("s_ext_ctrl(%) fails: %d (%s) ", c.name,
+                    CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                         status, strerror(status));
                   }
                 }
@@ -328,7 +336,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                   int status = camera_->s_ext_ctrl(c.id, (__s64)value);
                   if ( status ) {
                     CF_ERROR("s_ext_ctrl(%s=%lld) fails: %d (%s)",
-                        c.name, value, status, strerror(status));
+                        c.name, (long long int)value, status, strerror(status));
                   }
                 }
               },
@@ -356,7 +364,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                 if ( camera_ ) {
                   int status = camera_->s_ext_ctrl(c.id, text);
                   if ( status != 0 ) {
-                    CF_ERROR("s_ext_ctrl(%) fails: %d (%s) ", c.name,
+                    CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                         status, strerror(status));
                   }
                 }},
@@ -366,7 +374,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                   if ( status == 0 ) {
                     return true;
                   }
-                  CF_ERROR("s_ext_ctrl(%) fails: %d (%s) ", c.name,
+                  CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                       status, strerror(status));
                 }
                 return false;
@@ -384,7 +392,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
             if ( camera_ ) {
               int status = camera_->s_ext_ctrl(c.id, text);
               if ( status != 0 ) {
-                CF_ERROR("s_ext_ctrl(%) fails: %d (%s) ", c.name,
+                CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                     status, strerror(status));
               }
             }
@@ -396,7 +404,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
               if ( status == 0 ) {
                 return true;
               }
-              CF_ERROR("s_ext_ctrl(%) fails: %d (%s) ", c.name,
+              CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                   status, strerror(status));
             }
             return false;

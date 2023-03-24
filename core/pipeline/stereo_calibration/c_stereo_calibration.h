@@ -124,8 +124,8 @@ protected:
   cv::Mat2f rmaps_[2];
   cv::Matx33d E_;
   cv::Matx33d F_;
-  std::vector<cv::Vec3d> rvecs_;
-  std::vector<cv::Vec3d> tvecs_;
+//  std::vector<cv::Vec3d> rvecs_;
+//  std::vector<cv::Vec3d> tvecs_;
   cv::Mat1d perViewErrors_;
   double rmse_ = 0;
 

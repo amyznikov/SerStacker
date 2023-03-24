@@ -153,8 +153,8 @@ void c_stereo_calibration::cleanup()
 {
   object_points_.clear();
   current_object_points_.clear();
-  rvecs_.clear();
-  tvecs_.clear();
+//  rvecs_.clear();
+//  tvecs_.clear();
   perViewErrors_.release();
 
   for ( int i = 0; i < 2; ++i ) {
@@ -241,8 +241,8 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
             calibration_options_.solverTerm,
             &E_,
             &F_,
-            &rvecs_,
-            &tvecs_,
+            // &rvecs_,
+            // &tvecs_,
             &perViewErrors_);
 
     CF_DEBUG("done with RMSE=%g", rmse_);

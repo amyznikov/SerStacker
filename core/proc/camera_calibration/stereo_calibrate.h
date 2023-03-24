@@ -78,8 +78,8 @@ double stereo_calibrate(cv::InputArrayOfArrays objectPoints,
     const cv::TermCriteria & term = cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 1e-6),
     /* out, opt */ cv::Matx33d * E = nullptr,
     /* out, opt */ cv::Matx33d * F = nullptr,
-    /* out, opt */ std::vector<cv::Vec3d> * rvecs = nullptr,
-    /* out, opt */ std::vector<cv::Vec3d> * tvecs = nullptr,
+//    /* out, opt */ std::vector<cv::Vec3d> * rvecs = nullptr,
+//    /* out, opt */ std::vector<cv::Vec3d> * tvecs = nullptr,
     /* out, opt */ cv::Mat1d * perViewErrors = nullptr );
 
 

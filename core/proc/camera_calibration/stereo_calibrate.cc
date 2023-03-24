@@ -121,14 +121,15 @@ double stereo_calibrate(cv::InputArrayOfArrays objectPoints,
     const cv::TermCriteria & term,
     /* out, opt */ cv::Matx33d * E,
     /* out, opt */ cv::Matx33d * F,
-    /* out, opt */ std::vector<cv::Vec3d> * rvecs,
-    /* out, opt */ std::vector<cv::Vec3d> * tvecs,
+//    /* out, opt */ std::vector<cv::Vec3d> * rvecs,
+//    /* out, opt */ std::vector<cv::Vec3d> * tvecs,
     /* out, opt */ cv::Mat1d * perViewErrors)
 {
   double rmse = -1;
 
   try {
 
+#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 7, 0)
     rmse =
         cv::stereoCalibrate(objectPoints,
             imagePoints1, imagePoints2,
@@ -138,11 +139,28 @@ double stereo_calibrate(cv::InputArrayOfArrays objectPoints,
             extrinsics.R, extrinsics.T,
             E ? *E : cv::noArray(),
             F ? * F : cv::noArray(),
-            rvecs ? *rvecs : cv::noArray(),
-            tvecs ? *tvecs : cv::noArray(),
+//            rvecs ? *rvecs : cv::noArray(),
+//            tvecs ? *tvecs : cv::noArray(),
+            cv::noArray(),
+            cv::noArray(),
             perViewErrors ? * perViewErrors : cv::noArray(),
             flags,
             term);
+#else
+    rmse =
+        cv::stereoCalibrate(objectPoints,
+            imagePoints1, imagePoints2,
+            intrinsics.camera[0].camera_matrix, intrinsics.camera[0].dist_coeffs,
+            intrinsics.camera[1].camera_matrix, intrinsics.camera[1].dist_coeffs,
+            intrinsics.camera[0].image_size,
+            extrinsics.R, extrinsics.T,
+            E ? *E : cv::noArray(),
+            F ? * F : cv::noArray(),
+            perViewErrors ? * perViewErrors : cv::noArray(),
+            flags,
+            term);
+#endif
+
   }
   CATCH("from cv::stereoCalibrate()");
 

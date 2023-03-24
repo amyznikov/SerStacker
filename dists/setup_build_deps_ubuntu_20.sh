@@ -23,7 +23,7 @@ apt-get install -y \
 	libopencv-dev \
 	freeglut3-dev \
 	libglew-dev \
-	libcfitsio-dev
+	libcfitsio-dev \
 	libraw-dev \
 	libopenraw-dev \
 	libavcodec-dev \

@@ -73,10 +73,12 @@ QCaptureLimitsControl::QCaptureLimitsControl(QWidget * parent) :
   startStop_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
   startStop_ctl->setIcon(icon_start_capture);
 
+#if QT_VERSION > QT_VERSION_CHECK(5, 16, 0)
   startStopSortuct_ =
       new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_W), this,
           this, &ThisClass::onStartStopButtonClicked,
           Qt::WindowShortcut);
+#endif
 
 
   populateCaptureLimitsCombobox();

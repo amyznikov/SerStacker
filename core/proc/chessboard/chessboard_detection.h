@@ -60,7 +60,7 @@ struct c_chessboard_corners_detection_options
 
   // Which method to use for findChessboardCorners
   enum FindChessboardCornersMethod method =
-      cv_findChessboardCornersSB;
+      cv_findChessboardCorners;
 
   // Parameters passed into cv::findChessboardCorners()
   // For details see OpenCV documentation for cv::findChessboardCorners()

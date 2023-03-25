@@ -93,6 +93,7 @@ bool c_stereo_calibration::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, calibration_options_, max_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, auto_tune_calibration_flags);
+    SERIALIZE_OPTION(section, save, calibration_options_, init_camera_matrix_2d);
     SERIALIZE_OPTION(section, save, calibration_options_, solverTerm);
   }
 
@@ -189,7 +190,7 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
 
   for( int i = 0; i < 2; ++i ) {
     if( canceled() || !detect_chessboard(current_frames_[i], current_image_points_[i]) ) {
-      CF_ERROR("detect_chessboard() fails for source %d", i);
+      // CF_ERROR("detect_chessboard() fails for source %d", i);
       fOk = false;
       break;
     }
@@ -210,7 +211,7 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
 
     fOk = false;
 
-    if( !stereo_intrinsics_initialized_ ) {
+    if( !stereo_intrinsics_initialized_ && calibration_options_.init_camera_matrix_2d ) {
 
       stereo_intrinsics_initialized_ =
           init_camera_intrinsics(stereo_intrinsics_,
@@ -228,9 +229,43 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
       if( canceled() ) {
         return false;
       }
+
+      const cv::Matx33d &M0 =
+          stereo_intrinsics_.camera[0].camera_matrix;
+
+      const cv::Matx33d &M1 =
+          stereo_intrinsics_.camera[1].camera_matrix;
+
+      CF_DEBUG("\nINITIAL M0: {\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "}\n"
+
+          "\nNITIAL M1: {\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "  %+g %+g %+g\n"
+          "}\n",
+
+          M0(0, 0), M0(0, 1), M0(0, 2),
+          M0(1, 0), M0(1, 1), M0(1, 2),
+          M0(2, 0), M0(2, 1), M0(2, 2),
+
+          M1(0, 0), M1(0, 1), M1(0, 2),
+          M1(1, 0), M1(1, 1), M1(1, 2),
+          M1(2, 0), M1(2, 1), M1(2, 2));
+
     }
 
     CF_DEBUG("Running stereo calibration ...");
+
+    if ( best_subset_quality_ < HUGE_VAL ) {
+      CF_DEBUG("USE best* as guess");
+      stereo_intrinsics_ = best_intrinsics_;
+      stereo_extrinsics_ = best_extrinsics_;
+      calibration_flags_ = best_calibration_flags_;
+    }
 
     rmse_ =
         stereo_calibrate(object_points_,
@@ -246,15 +281,24 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
             &perViewErrors_);
 
     CF_DEBUG("done with RMSE=%g", rmse_);
+    //    for ( int cc = 0; cc < perViewErrors_.rows; ++cc ) {
+    //      CF_DEBUG("ERRS[%d]= { %g %g }", cc, perViewErrors_[cc][0], perViewErrors_[cc][1]);
+    //    }
 
-    if( (fOk = rmse_ >= 0) ) {
+
+
+    if( (fOk = (rmse_ >= 0)) ) {
 
       const double subset_quality =
           estimate_subset_quality();
 
-      CF_DEBUG("subset_quality=%g", subset_quality);
+      stereo_intrinsics_initialized_ = true;
+
+      CF_DEBUG("subset_quality=%g best_subset_quality_=%g", subset_quality, best_subset_quality_);
 
       if( subset_quality < best_subset_quality_ ) {
+        CF_DEBUG("Copy to best*");
+
         best_intrinsics_ = stereo_intrinsics_;
         best_extrinsics_ = stereo_extrinsics_;
         best_calibration_flags_ = calibration_flags_;

@@ -163,6 +163,7 @@ MainWindow::MainWindow()
 
   setupPipelineTypes();
   setupMainMenu();
+  setupLogWidget();
   setupFileSystemTreeView();
   setupThumbnailsView();
   setupStackTreeView();
@@ -416,6 +417,20 @@ void MainWindow::setupMainMenu()
       this, &ThisClass::onStackProgressViewTextChanged,
       Qt::QueuedConnection);
 
+}
+
+
+void MainWindow::setupLogWidget()
+{
+  logwidgetDock_ =
+      addCustomDock(this,
+          Qt::BottomDockWidgetArea,
+          "logwidgetDock_",
+          "Debug log",
+          logwidget_ctl = new QLogWidget(this),
+          menuView_);
+
+  logwidgetDock_->hide();
 }
 
 void MainWindow::onStackProgressViewTextChanged()

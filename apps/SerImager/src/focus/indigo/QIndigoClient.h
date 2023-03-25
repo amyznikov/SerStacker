@@ -52,7 +52,7 @@ public:
       const char *items[],
       const double values[]);
 
-signals:
+Q_SIGNALS:
   void clientAttach();
   void clientDefineProperty(const indigo_device * device, const indigo_property * property, const QString & message);
   void clientUpdateProperty(const indigo_device * device, const indigo_property * property, const QString & message);

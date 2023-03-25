@@ -9,6 +9,7 @@
 #define __qskystacker_main_window_h__
 
 #include <QtWidgets/QtWidgets>
+#include <gui/qlogwidget/QLogWidget.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qmtf/QMtfControl.h>
@@ -49,6 +50,7 @@ private:
   void restoreState();
   void setupPipelineTypes();
   void setupMainMenu();
+  void setupLogWidget();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
   void setupStackTreeView();
@@ -103,6 +105,10 @@ private:
   QTextFileViewer * textViewer = nullptr;
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
   QGeneralAppSettingsDialogBox * appSettingsDlgBox = nullptr;
+
+
+  QLogWidget * logwidget_ctl = nullptr;
+  QCustomDockWidget * logwidgetDock_ = nullptr;
 
   QCloudViewer * cloudViewer = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;

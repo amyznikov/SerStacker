@@ -21,10 +21,11 @@ enum STEREO_CALIBRATION_STAGE {
 
 struct c_stereo_calibrate_options
 {
-  int min_frames = 3;
+  int min_frames = 10;
   int max_frames = 50;
-  int calibration_flags = STEREO_CALIB_USE_INTRINSIC_GUESS;
+  int calibration_flags = 0;// STEREO_CALIB_USE_INTRINSIC_GUESS;
   bool auto_tune_calibration_flags = true;
+  bool init_camera_matrix_2d = false;
 
   cv::TermCriteria solverTerm =
       cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,

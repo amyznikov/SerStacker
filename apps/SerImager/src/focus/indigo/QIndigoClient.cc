@@ -457,7 +457,7 @@ indigo_result QIndigoClient::indigo_client_attach(indigo_client *client)
 // callback called when client is attached to the bus
 indigo_result QIndigoClient::onClientAttach()
 {
-  emit clientAttach();
+  Q_EMIT clientAttach();
   return INDIGO_OK;
 }
 
@@ -484,7 +484,7 @@ indigo_result QIndigoClient::onClientDefineProperty(indigo_device *device,
      const char *message)
 {
 
-  emit clientDefineProperty(device, property, message);
+  Q_EMIT clientDefineProperty(device, property, message);
   return INDIGO_OK;
 }
 
@@ -508,7 +508,7 @@ indigo_result QIndigoClient::onClientUpdateProperty(indigo_device *device,
     indigo_property *property,
     const char *message)
 {
-  emit clientUpdateProperty(device, property, message);
+  Q_EMIT clientUpdateProperty(device, property, message);
   return INDIGO_OK;
 }
 
@@ -531,7 +531,7 @@ indigo_result QIndigoClient::onClientDeleteProperty(indigo_device *device,
     indigo_property *property,
     const char *message)
 {
-  emit clientDeleteProperty(device, property, message);
+  Q_EMIT clientDeleteProperty(device, property, message);
   return INDIGO_OK;
 }
 
@@ -551,7 +551,7 @@ indigo_result QIndigoClient::indigo_client_send_message(indigo_client *client,
 indigo_result QIndigoClient::onClientSendMessage(indigo_device *device,
     const char *message)
 {
-  emit clientSendMessage(device, message);
+  Q_EMIT clientSendMessage(device, message);
   return INDIGO_OK;
 }
 
@@ -567,7 +567,7 @@ indigo_result QIndigoClient::indigo_client_detach(indigo_client *client)
 // callback called when client is detached from the bus
 indigo_result QIndigoClient::onClientDetach()
 {
-  emit clientDetach();
+  Q_EMIT clientDetach();
   return INDIGO_OK;
 }
 

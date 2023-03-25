@@ -120,6 +120,23 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
             return false;
           });
 
+  init_camera_matrix_2d_ctl =
+      add_checkbox("initCameraMatrix2D:",
+          [this](bool checked) {
+            if ( options_ ) {
+              options_->init_camera_matrix_2d = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked ) {
+            if ( options_ ) {
+              * checked = options_->init_camera_matrix_2d;
+              return true;
+            }
+            return false;
+          });
+
+
   filter_alpha_ctl =
       add_numeric_box<double>("filter_alpha:",
           [this](double value) {

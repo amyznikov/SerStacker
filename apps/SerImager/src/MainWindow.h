@@ -14,6 +14,7 @@
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
+#include <gui/qlogwidget/QLogWidget.h>
 #include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "camera/QCameraFrameProcessorSelector.h"
@@ -45,6 +46,7 @@ protected:
   void setupMainMenu();
   void setupMainToolbar();
   void setupStatusbar();
+  void setupLogWidget();
   void setupCameraControls();
   void setupShapeOptions();
   void setupLivePipelineControls();
@@ -66,6 +68,10 @@ protected:
   QVideoFrameDisplay * centralDisplay_ = nullptr;
   QCameraWriter cameraWriter_;
   QLivePipelineCollection pipelineCollection_;
+
+
+  QLogWidget * logwidget_ctl = nullptr;
+  QCustomDockWidget * logwidgetDock_ = nullptr;
 
 
 
@@ -90,6 +96,7 @@ protected:
   QCameraFocusMeasure * focusMeasure_ = nullptr;
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;
+
 
 
   QMtfControlDialogBox * mtfControl_ = nullptr;

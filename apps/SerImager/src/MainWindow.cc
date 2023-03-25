@@ -98,8 +98,8 @@ MainWindow::MainWindow(QWidget * parent) :
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
-  setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
-  setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
+  setCorner(Qt::BottomLeftCorner, Qt::BottomDockWidgetArea);
+  setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
   QFFStreams::load();
   liveView_ = new QLivePipelineThread(this);
@@ -108,6 +108,7 @@ MainWindow::MainWindow(QWidget * parent) :
 
   setupStatusbar();
   setupMainMenu();
+  setupLogWidget();
   setupIndigoFocuser();
   setupCameraControls();
   setupFocusGraph();
@@ -444,6 +445,19 @@ void MainWindow::setupStatusbar()
   sb->addWidget(exposure_status_ctl = new QLabel(this));
   sb->addWidget(mousepos_ctl = new QLabel(this));
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
+}
+
+void MainWindow::setupLogWidget()
+{
+  logwidgetDock_ =
+      addCustomDock(this,
+          Qt::BottomDockWidgetArea,
+          "logwidgetDock_",
+          "Debug log",
+          logwidget_ctl = new QLogWidget(this),
+          menuView_);
+
+  logwidgetDock_->hide();
 }
 
 void MainWindow::setupCameraControls()

@@ -63,19 +63,19 @@ public:
     return classname_;
   }
 
+  c_notification<void()> on_current_frame_changed;
+  c_notification<void()> on_accumulator_changed;
+  c_notification<void(STEREO_CALIBRATION_STAGE oldstage, STEREO_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
+
+
   c_stereo_calibration_input_options & input_options();
   const c_stereo_calibration_input_options & input_options() const;
 
   void set_output_directory(const std::string & output_directory) override;
   const std::string & output_directory() const override;
 
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
-
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
-
-  c_notification<void()> on_current_frame_changed;
-  c_notification<void()> on_accumulator_changed;
-  c_notification<void(STEREO_CALIBRATION_STAGE oldstage, STEREO_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
 
 protected:
   bool canceled() override;

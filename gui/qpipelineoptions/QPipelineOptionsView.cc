@@ -83,7 +83,7 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
       this, &ThisClass::parameterChanged);
 
 
-  cameraCalibrationOptions_ctl = new QCameraCalibrationOptions(this);
+  cameraCalibrationOptions_ctl = new QCameraCalibrationPipelineOptions(this);
   cameraCalibrationOptions_ctl->setVisible(false);
   connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);

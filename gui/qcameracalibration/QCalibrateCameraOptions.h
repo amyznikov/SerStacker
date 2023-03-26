@@ -10,7 +10,7 @@
 #define __QCalibrateCameraOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/pipeline/c_camera_calibration_pipeline.h>
+#include <core/pipeline/camera_calibration/c_camera_calibration.h>
 
 class QCalibrateCameraOptions :
     public QSettingsWidget
@@ -21,14 +21,14 @@ public:
 
   QCalibrateCameraOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline);
-  const c_camera_calibration_pipeline::sptr & current_pipeline() const;
+  void set_options(c_calibrate_camera_options * options);
+  c_calibrate_camera_options * options() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_camera_calibration_pipeline::sptr pipeline_;
+  c_calibrate_camera_options * options_ = nullptr;
 
   QNumberEditBox * min_frames_ctl = nullptr;
   QNumberEditBox * max_frames_ctl = nullptr;

@@ -36,9 +36,7 @@ public:
 protected:
 
 protected:
-  //cv::Mat displayImage_;
   COLORID displayColorid_ = COLORID_UNKNOWN;
-
   c_stereo_calibration stereo_calibration_;
   QString output_path_;
 };

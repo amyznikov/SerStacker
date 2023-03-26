@@ -698,7 +698,7 @@ void c_regular_stereo_pipeline::update_disparity_map_display_image(const cv::Mat
 }
 
 
-bool c_regular_stereo_pipeline::write_calibration_progress_video(c_video_writer & progress_writer)
+bool c_regular_stereo_pipeline::write_calibration_progress_video(c_output_frame_writer & progress_writer)
 {
   if ( output_options_.save_progress_video ) {
 
@@ -722,7 +722,7 @@ bool c_regular_stereo_pipeline::write_calibration_progress_video(c_video_writer 
     }
 
     if( !progress_writer.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
-      CF_ERROR("c_video_writer: write(fails)");
+      CF_ERROR("c_output_frame_writer: write(fails)");
       return false;
     }
   }
@@ -1244,7 +1244,7 @@ bool c_regular_stereo_pipeline::run_calibration()
     return true;
   }
 
-  c_video_writer progress_video_writer;
+  c_output_frame_writer progress_video_writer;
   bool fOK;
 
   CF_DEBUG("Starting '%s: %s' ...",
@@ -1632,9 +1632,9 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 {
   if( output_options_.save_rectified_videos || output_options_.save_stereo_matches_video ) {
 
-    c_video_writer stereo_matches_video;
+    c_output_frame_writer stereo_matches_video;
 
-    c_video_writer rectified_videos[2];
+    c_output_frame_writer rectified_videos[2];
 
     std::string rectified_videos_output_filenames[2] = {
         output_options_.rectified_video_filenames[0],
@@ -1834,7 +1834,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
   cv::Mat1w disparityMap;
   cv::Mat1b disparityMask;
 
-  c_video_writer progress_video;
+  c_output_frame_writer progress_video;
 
   bool fOK;
 

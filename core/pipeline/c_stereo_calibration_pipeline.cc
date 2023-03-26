@@ -8,6 +8,7 @@
 #include "c_stereo_calibration_pipeline.h"
 #include <core/settings/opencv_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
+#include <core/io/c_output_frame_writer.h>
 #include <core/io/load_image.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
@@ -84,8 +85,7 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
 bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
 {
   lock_guard lock(display_lock_);
-  display_frame_.copyTo(frame);
-  mask.release();
+  c_stereo_calibration::get_display_image(display_frame_, display_mask_);
   return true;
 }
 
@@ -344,14 +344,10 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
 
 void c_stereo_calibration_pipeline::update_display_image()
 {
-  if( true ) {
-    lock_guard lock(display_lock_);
+  lock_guard lock(display_lock_);
 
-    accumulated_frames_ =
-        object_points_.size();
-
-    c_stereo_calibration::update_display_image();
-  }
+  accumulated_frames_ = object_points_.size();
+  c_stereo_calibration::update_display_image();
 
   on_accumulator_changed();
 }
@@ -490,7 +486,7 @@ bool c_stereo_calibration_pipeline::seek_input_source(int pos)
 
 bool c_stereo_calibration_pipeline::run_stereo_calibration()
 {
-  c_video_writer progress_writer;
+  c_output_frame_writer progress_writer;
 
   if ( !open_input_source() ) {
     CF_ERROR("ERROR: open_input_source() fails");
@@ -577,7 +573,7 @@ bool c_stereo_calibration_pipeline::run_stereo_calibration()
         CF_ERROR("display_frame_.write() fails");
         return false;
       }
-      //
+
     }
 
   }
@@ -595,9 +591,9 @@ bool c_stereo_calibration_pipeline::write_output_videos()
     return true;
   }
 
-  c_video_writer video_writer[2];
-  c_video_writer stereo_writer;
-  c_video_writer quad_writer;
+  c_output_frame_writer video_writer[2];
+  c_output_frame_writer stereo_writer;
+  c_output_frame_writer quad_writer;
 
   cv::Size sizes[2];
   cv::Size stereo_size;

@@ -9,13 +9,13 @@
 #define __c_stacking_pipeline_h__
 
 #include "c_image_processing_pipeline.h"
-
 #include <core/roi_selection/c_roi_rectangle_selection.h>
 #include <core/roi_selection/c_planetary_disk_selection.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/proc/focus.h>
+#include <core/io/c_output_frame_writer.h>
 #include <core/improc/c_image_processor.h>
 #include <core/feature2d/feature2d.h>
 #include <core/settings.h>
@@ -307,22 +307,22 @@ protected:
       const cv::Mat & output_mask);
 
   void save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer, int seqindex) const;
+      c_output_frame_writer & output_writer, int seqindex) const;
 
   void save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer, int seqindex) const;
+      c_output_frame_writer & output_writer, int seqindex) const;
 
   void save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer, int seqindex ) const;
+      c_output_frame_writer & output_writer, int seqindex ) const;
 
   void save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer, int seqindex) const;
+      c_output_frame_writer & output_writer, int seqindex) const;
 
   void save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer, int seqindex) const;
+      c_output_frame_writer & output_writer, int seqindex) const;
 
   void save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_video_writer & output_writer, int seqindex) const;
+      c_output_frame_writer & output_writer, int seqindex) const;
 
   static void remove_bad_pixels(cv::Mat & image,
       const c_input_options & input_optons,

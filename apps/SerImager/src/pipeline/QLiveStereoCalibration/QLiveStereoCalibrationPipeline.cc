@@ -120,7 +120,7 @@ bool QLiveStereoCalibrationPipeline::get_display_image(cv::Mat * displayImage, C
 
   stereo_calibration_.update_display_image();
 
-  if( !stereo_calibration_.get_display_image(displayImage, nullptr) ) {
+  if( !stereo_calibration_.get_display_image(*displayImage, cv::noArray()) ) {
     CF_ERROR("stereo_calibration_.get_display_image() fails");
     return false;
   }

@@ -14,6 +14,7 @@
 #include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 #include <core/improc/c_image_processor.h>
+#include <core/io/c_output_frame_writer.h>
 
 enum RSTEREO_CALIBRATION_STAGE {
   rstereo_calibration_idle = 0,
@@ -179,7 +180,7 @@ protected:
   bool detect_keypoints();
 
   void update_calibration_display_image(bool applyHomography = false, bool drawmatches = false, int stream_pos = -1);
-  bool write_calibration_progress_video(c_video_writer & w);
+  bool write_calibration_progress_video(c_output_frame_writer & w);
 
   void update_disparity_map_display_image(const cv::Mat & currentFrame, const cv::Mat & referenceFrame,
       const cv::Mat1w & disparityMap,

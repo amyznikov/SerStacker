@@ -76,9 +76,9 @@ public:
 
   virtual bool initialize();
   virtual void cleanup();
-  virtual bool process_stereo_frame(const cv::Mat images[2], cv::Mat masks[2]);
+  virtual bool process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2]);
   virtual void update_display_image();
-  virtual bool get_display_image(cv::Mat *display_frame, cv::Mat * display_mask);
+  virtual bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask);
 
 protected:
   virtual bool canceled();

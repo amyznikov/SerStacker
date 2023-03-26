@@ -1433,12 +1433,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   cv::Mat current_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
 
-  c_video_writer output_preprocessed_frames_writer;
-  c_video_writer output_aligned_frames_writer;
-  c_video_writer output_ecc_writer;
-  c_video_writer output_postprocessed_frames_writer;
-  c_video_writer output_accumulation_masks_writer;
-  c_video_writer output_incremental_frame_writer;
+  c_output_frame_writer output_preprocessed_frames_writer;
+  c_output_frame_writer output_aligned_frames_writer;
+  c_output_frame_writer output_ecc_writer;
+  c_output_frame_writer output_postprocessed_frames_writer;
+  c_output_frame_writer output_accumulation_masks_writer;
+  c_output_frame_writer output_incremental_frame_writer;
 
   const c_master_frame_options & master_options =
       master_frame_options();
@@ -2437,7 +2437,7 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
 
 
 void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer,
+    c_output_frame_writer & output_writer,
     int seqindex) const
 {
 //  const c_image_stacking_output_options & output_options =
@@ -2488,7 +2488,7 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
 }
 
 void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer,
+    c_output_frame_writer & output_writer,
     int seqindex ) const
 {
 //  const c_image_stacking_output_options & output_options =
@@ -2542,7 +2542,7 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
 }
 
 void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer,
+    c_output_frame_writer & output_writer,
     int seqindex) const
 {
 //  const c_image_stacking_output_options & output_options =
@@ -2595,7 +2595,7 @@ void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
 
 
 void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer,
+    c_output_frame_writer & output_writer,
     int seqindex) const
 {
 //  const c_image_stacking_output_options & output_options =
@@ -2646,7 +2646,7 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
 }
 
 void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulated_frame, const cv::Mat & accumulated_mask,
-    c_video_writer & output_writer,
+    c_output_frame_writer & output_writer,
     int seqindex) const
 {
 //  const c_image_stacking_output_options & output_options =
@@ -2700,7 +2700,7 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
 }
 
 void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_video_writer & output_writer,
+    c_output_frame_writer & output_writer,
     int seqindex) const
 {
   if ( !output_options_.save_accumulation_masks ) {

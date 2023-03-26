@@ -95,6 +95,7 @@ bool c_stereo_calibration::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, calibration_options_, auto_tune_calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, init_camera_matrix_2d);
     SERIALIZE_OPTION(section, save, calibration_options_, solverTerm);
+    SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -171,7 +172,7 @@ void c_stereo_calibration::cleanup()
   display_mask_.release();
 }
 
-bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat masks[2])
+bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2])
 {
   bool fOk = true;
 
@@ -368,13 +369,13 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], cv::Mat
 }
 
 
-bool c_stereo_calibration::get_display_image(cv::Mat *display_frame, cv::Mat * display_mask)
+bool c_stereo_calibration::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  if ( display_frame ) {
-    display_frame_.copyTo(*display_frame);
+  if ( display_frame.needed() ) {
+    display_frame_.copyTo(display_frame);
   }
-  if ( display_mask ) {
-    display_mask_.copyTo(*display_mask);
+  if ( display_mask.needed() ) {
+    display_mask_.copyTo(display_mask);
   }
   return true;
 }
@@ -773,7 +774,8 @@ void c_stereo_calibration::update_display_image()
   if( !current_image_points_[0].empty() ) {
 
     if ( display_frame_.channels() == 1 ) {
-      cv::cvtColor(display_frame_, display_frame_, cv::COLOR_GRAY2BGR);
+      cv::cvtColor(display_frame_, display_frame_,
+          cv::COLOR_GRAY2BGR);
     }
 
     cv::drawChessboardCorners(display_frame_(roi[0]),
@@ -785,7 +787,8 @@ void c_stereo_calibration::update_display_image()
   if( !current_image_points_[1].empty() ) {
 
     if ( display_frame_.channels() == 1 ) {
-      cv::cvtColor(display_frame_, display_frame_, cv::COLOR_GRAY2BGR);
+      cv::cvtColor(display_frame_, display_frame_,
+          cv::COLOR_GRAY2BGR);
     }
 
     cv::drawChessboardCorners(display_frame_(roi[1]),
@@ -798,8 +801,6 @@ void c_stereo_calibration::update_display_image()
 
 bool c_stereo_calibration::save_current_camera_parameters() const
 {
-  CF_DEBUG("output_intrinsics_filename_: %s", output_intrinsics_filename_.c_str());
-
   if( !output_intrinsics_filename_.empty() ) {
 
     if( !create_path(get_parent_directory(output_intrinsics_filename_)) ) {
@@ -822,6 +823,8 @@ bool c_stereo_calibration::save_current_camera_parameters() const
       CF_ERROR("create_path('%s') fails: %s", output_extrinsics_filename_.c_str(), strerror(errno));
       return false;
     }
+
+    CF_DEBUG("saving output_extrinsics_filename_: %s", output_extrinsics_filename_.c_str());
 
     if( !write_stereo_camera_extrinsics_yml(best_extrinsics_, output_extrinsics_filename_) ) {
       CF_ERROR("ERROR: save_stereo_camera_extrinsics_yml('%s') fails",

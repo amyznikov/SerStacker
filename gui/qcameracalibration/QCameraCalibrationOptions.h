@@ -26,17 +26,15 @@ public:
 
   QCameraCalibrationOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline);
-  const c_camera_calibration_pipeline::sptr & current_pipeline() const;
+  void set_options(c_camera_calibration * options);
+  c_camera_calibration * options() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_camera_calibration_pipeline::sptr current_pipeline_;
-  QNumberEditBox * chessboardSize_ctl = nullptr;
-  QNumberEditBox * chessboardCellSize_ctl = nullptr;
-  QCameraCalibrationInputOptions * inputOptions_ctl = nullptr;
+  c_camera_calibration * options_ = nullptr;
+  //QCameraCalibrationInputOptions * inputOptions_ctl = nullptr;
   QChessboardCornersDetectionOptions * chessboardCornersDetection_ctl = nullptr;
   QCalibrateCameraOptions * calibrateCameraOptions_ctl = nullptr;
   QCameraCalibrationOutputOptions * outputOptions_ctl = nullptr;

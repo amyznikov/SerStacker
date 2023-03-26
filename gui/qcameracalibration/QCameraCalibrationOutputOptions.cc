@@ -11,6 +11,7 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
   Base("QCameraCalibrationOutputOptions", parent)
 {
   ///
+
   form->addRow(output_directory_ctl =
       new QBrowsePathCombo("Output directory:",
           QFileDialog::AcceptSave,
@@ -22,75 +23,115 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
 
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
       [this] () {
-        if ( pipeline_ && !updatingControls() ) {
-          pipeline_->set_output_directory(output_directory_ctl->currentPath().toStdString());
+        if ( options_ && !updatingControls() ) {
+          options_->output_directory = output_directory_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
 
   ///
 
-  save_rectified_images_ctl =
+  save_rectified_frames_ctl =
       add_checkbox("Save rectified frames",
           [this](bool checked) {
-            if ( pipeline_ ) {
-              pipeline_->output_options().save_rectified_images = checked;
-              rectified_images_file_name_ctl->setEnabled(checked);
+            if ( options_ ) {
+              options_->save_rectified_frames = checked;
+              rectified_frames_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( pipeline_ ) {
-              *checked = pipeline_->output_options().save_rectified_images;
+            if ( options_ ) {
+              *checked = options_->save_rectified_frames;
               return true;
             }
             return false;
           });
 
-  rectified_images_file_name_ctl =
-      add_textbox("rectified_images_file_name:",
+  rectified_frames_filename_ctl =
+      add_textbox("Rectified video filename:",
           [this](const QString & value) {
-            if ( pipeline_ ) {
-              pipeline_->output_options().rectified_images_file_name = value.toStdString();
+            if ( options_ ) {
+              options_->rectified_frames_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
-            if ( pipeline_ ) {
-              *value = pipeline_->output_options().rectified_images_file_name.c_str();
+            if ( options_ ) {
+              *value = options_->rectified_frames_filename.c_str();
               return true;
             }
             return false;
           });
 
-  rectified_images_file_name_ctl->setEnabled(save_rectified_images_ctl->isChecked());
+  rectified_frames_filename_ctl->setPlaceholderText("auto");
+
+  ///
+
+  save_progress_video_ctl =
+      add_checkbox("Save progress video:",
+          [this](bool checked) {
+            if ( options_ ) {
+              options_->save_progress_video = checked;
+              progress_video_filename_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->save_progress_video;
+              return true;
+            }
+            return false;
+          });
+
+  progress_video_filename_ctl =
+      add_textbox("progress video filename:",
+          [this](const QString & value) {
+            if ( options_ ) {
+              options_->progress_video_filename = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( options_ ) {
+              *value = options_->progress_video_filename.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  progress_video_filename_ctl->setPlaceholderText("auto");
 
   ///
 
   updateControls();
 }
 
-void QCameraCalibrationOutputOptions::set_current_pipeline(const c_camera_calibration_pipeline::sptr & pipeline)
+void QCameraCalibrationOutputOptions::set_options(c_camera_calibration_output_options * options)
 {
-  pipeline_ = pipeline;
+  options_ = options;
   updateControls();
 }
 
-const c_camera_calibration_pipeline::sptr & QCameraCalibrationOutputOptions::current_pipeline() const
+c_camera_calibration_output_options * QCameraCalibrationOutputOptions::options() const
 {
-  return pipeline_;
+  return options_;
 }
 
 void QCameraCalibrationOutputOptions::onupdatecontrols()
 {
-  if( !pipeline_ ) {
+  if( !options_ ) {
     setEnabled(false);
   }
   else {
 
-    output_directory_ctl->setCurrentPath(pipeline_->output_directory().c_str(), false);
-
     Base::onupdatecontrols();
+
+    output_directory_ctl->setCurrentPath(options_->output_directory.c_str(), false);
+    rectified_frames_filename_ctl->setEnabled(options_->save_rectified_frames);
+    progress_video_filename_ctl->setEnabled(options_->save_progress_video);
+
     setEnabled(true);
   }
 }

@@ -154,6 +154,7 @@ protected:
 
 
 class QLiveStereoCalibrationOptions;
+class QLiveCameraCalibrationOptions;
 
 class QLivePipelineSelectionWidget :
     public QFrame,
@@ -202,6 +203,7 @@ protected:
 
   QScrollArea * scrollArea_ctl = nullptr;
   QLiveStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
+  QLiveCameraCalibrationOptions * cameraCalibrationOptions_ctl = nullptr;
 
 };
 

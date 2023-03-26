@@ -7,6 +7,7 @@
 
 #include "MainWindow.h"
 #include "camera/ffmpeg/QFFStreams.h"
+#include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationPipeline.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationPipeline.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
@@ -499,6 +500,12 @@ void MainWindow::setupCameraControls()
 
 void MainWindow::setupLivePipelineControls()
 {
+  pipelineCollection_.addPipelineType("CameraCalibration",
+      "LIve Camera Calibration",
+      [](const QString & name) {
+        return new QLiveCameraCalibrationPipeline(name);
+      });
+
   pipelineCollection_.addPipelineType("StereoCalibration",
       "LIve Stereo Camera Calibration",
       [](const QString & name) {

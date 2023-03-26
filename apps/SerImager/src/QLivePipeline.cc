@@ -6,6 +6,7 @@
  */
 
 #include "QLivePipeline.h"
+#include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationOptions.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
@@ -533,7 +534,7 @@ void QLivePipelineCollection::load(const std::string & cfgfilename)
   }
 
   std::string object_class;
-  if( !load_settings(cfg.root(), "object_class", &object_class) ) {
+  if( !load_settings(cfg.root(), "object_class", &object_class) || object_class.empty() ) {
     CF_FATAL("[%s] load_settings(object_class) fails", filename.c_str());
     return;
   }
@@ -586,6 +587,9 @@ void QLivePipelineCollection::load(const std::string & cfgfilename)
 
       if( objtype == "QLiveStereoCalibrationPipeline" ) {
         obj = new QLiveStereoCalibrationPipeline(objname.c_str());
+      }
+      else if( objtype == "QLiveCameraCalibrationPipeline" ) {
+        obj = new QLiveCameraCalibrationPipeline(objname.c_str());
       }
       else {
         CF_ERROR("Unknown objtype '%s' specified for item %d", objtype.c_str(), i);
@@ -651,6 +655,9 @@ void QLivePipelineCollection::save(const std::string & cfgfilename) const
 
     if( dynamic_cast<QLiveStereoCalibrationPipeline*>(obj) ) {
       objtype = "QLiveStereoCalibrationPipeline";
+    }
+    else if( dynamic_cast<QLiveCameraCalibrationPipeline*>(obj) ) {
+      objtype = "QLiveCameraCalibrationPipeline";
     }
     else {
       CF_ERROR("FIXME: implement adequate class factory please !!!!");
@@ -964,7 +971,6 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
         connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
             [this]() {
               if ( pipelineCollection_ ) {
-                CF_DEBUG("pipelineCollection_->save()");
                 pipelineCollection_->save();
               }
             });
@@ -973,6 +979,25 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
       currentWidget = stereoCalibrationOptions_ctl;
       stereoCalibrationOptions_ctl->setPipeline(stereoCalibration);
     }
+    else if( QLiveCameraCalibrationPipeline *cameraCalibration =
+        dynamic_cast<QLiveCameraCalibrationPipeline*>(pipeline) ) {
+
+      if( !cameraCalibrationOptions_ctl ) {
+        cameraCalibrationOptions_ctl = new QLiveCameraCalibrationOptions(this);
+        connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( pipelineCollection_ ) {
+                pipelineCollection_->save();
+              }
+            });
+      }
+
+      currentWidget = cameraCalibrationOptions_ctl;
+      cameraCalibrationOptions_ctl->setPipeline(cameraCalibration);
+    }
+
+
+
 
   }
 

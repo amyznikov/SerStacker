@@ -368,6 +368,7 @@ QAddPipelineDialogBox::QAddPipelineDialogBox(QWidget * parent) :
   form_->addRow("Name:", pipelineName_ctl = new QLineEditBox(this));
   form_->addRow("Type:", pipelineTypeSelector_ctl = new QComboBox(this));
   form_->addRow(pipelineTooltop_ctl = new QLabel(this));
+  pipelineTooltop_ctl->setTextFormat(Qt::RichText);
 
   form_->addRow(hbox_ = new QHBoxLayout());
   hbox_->addWidget(btnOk_ = new QPushButton("OK"));

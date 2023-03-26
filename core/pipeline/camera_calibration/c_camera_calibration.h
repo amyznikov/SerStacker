@@ -69,6 +69,8 @@ public:
   virtual bool process_frame(const cv::Mat & image, const cv::Mat & mask);
   virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
+  bool is_chessboard_found() const;
+
 protected:
   virtual bool canceled() const;
   virtual bool detect_chessboard(const cv::Mat &frame);

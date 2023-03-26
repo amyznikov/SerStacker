@@ -57,7 +57,7 @@ bool c_camera_calibration::canceled() const
   return false;
 }
 
-bool c_camera_calibration::detect_chessboard(const cv::Mat &frame)
+bool c_camera_calibration::detect_chessboard(const cv::Mat & frame)
 {
   is_chessboard_found_ =
       find_chessboard_corners(frame,
@@ -65,14 +65,13 @@ bool c_camera_calibration::detect_chessboard(const cv::Mat &frame)
           current_image_points_,
           chessboard_detection_options_);
 
-  if( !is_chessboard_found_ ) {
-    // CF_ERROR("find_chessboard_corners() fails");
-    return false;
-  }
-
   return is_chessboard_found_;
 }
 
+bool c_camera_calibration::is_chessboard_found() const
+{
+  return is_chessboard_found_;
+}
 
 void c_camera_calibration::filter_frames()
 {
@@ -698,4 +697,5 @@ bool c_camera_calibration::process_frame(const cv::Mat & image, const cv::Mat & 
 
   return true;
 }
+
 

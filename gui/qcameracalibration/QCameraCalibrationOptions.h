@@ -29,13 +29,16 @@ public:
   void set_options(c_camera_calibration * options);
   c_camera_calibration * options() const;
 
+  QChessboardCornersDetectionOptions * chessboardDetectionOptions() const;
+  QCalibrateCameraOptions * calibrateCameraOptions() const;
+  QCameraCalibrationOutputOptions * outputOptions() const;
+
 protected:
   void onupdatecontrols() override;
 
 protected:
   c_camera_calibration * options_ = nullptr;
-  //QCameraCalibrationInputOptions * inputOptions_ctl = nullptr;
-  QChessboardCornersDetectionOptions * chessboardCornersDetection_ctl = nullptr;
+  QChessboardCornersDetectionOptions * chessboardDetectionOptions_ctl = nullptr;
   QCalibrateCameraOptions * calibrateCameraOptions_ctl = nullptr;
   QCameraCalibrationOutputOptions * outputOptions_ctl = nullptr;
 };

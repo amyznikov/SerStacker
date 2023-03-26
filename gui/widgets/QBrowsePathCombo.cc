@@ -38,9 +38,6 @@ bool QBrowsePathCombo::showDirsOnly() const
   return showDirsOnly_;
 }
 
-//setOption(ShowDirsOnly, true)
-
-
 void QBrowsePathCombo::construct(void)
 {
   QVBoxLayout * vbox;
@@ -85,10 +82,6 @@ void QBrowsePathCombo::construct(void)
   connect(combo, SIGNAL(currentTextChanged(const QString &)),
       this, SLOT(currentTextChanged(const QString &)),
       Qt::DirectConnection);
-
-//  connect(combo, SIGNAL(editTextChanged(const QString &)),
-//      this, SLOT(editTextChanged(const QString &)),
-//      Qt::DirectConnection);
 }
 
 
@@ -160,8 +153,6 @@ void QBrowsePathCombo::onBrowseForPath(void)
 
   if( !path.isEmpty() ) {
     addPath(path, true);
-
-    CF_DEBUG("Q_EMIT pathSelected(%s)", path.toUtf8().constData());
     Q_EMIT pathSelected(path);
   }
 }

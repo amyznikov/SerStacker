@@ -38,7 +38,7 @@ protected:
 protected:
   COLORID displayColorid_ = COLORID_UNKNOWN;
   c_stereo_calibration stereo_calibration_;
-  QString output_path_;
+  std::string output_path_;
 };
 
 } /* namespace serimager */

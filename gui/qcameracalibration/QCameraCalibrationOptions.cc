@@ -10,14 +10,9 @@
 QCameraCalibrationOptions::QCameraCalibrationOptions(QWidget * parent) :
   Base("QCameraCalibrationSettings", parent)
 {
-//  add_expandable_groupbox("Input options",
-//      inputOptions_ctl = new QCameraCalibrationInputOptions(this));
-//  connect(inputOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-
   add_expandable_groupbox("Chessboard Corners Detection",
-      chessboardCornersDetection_ctl = new QChessboardCornersDetectionOptions(this));
-  connect(chessboardCornersDetection_ctl, &QSettingsWidget::parameterChanged,
+      chessboardDetectionOptions_ctl = new QChessboardCornersDetectionOptions(this));
+  connect(chessboardDetectionOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
   add_expandable_groupbox("Calibrate Options",
@@ -45,22 +40,34 @@ c_camera_calibration * QCameraCalibrationOptions::options() const
   return options_;
 }
 
+QChessboardCornersDetectionOptions * QCameraCalibrationOptions::chessboardDetectionOptions() const
+{
+  return chessboardDetectionOptions_ctl;
+}
+
+QCalibrateCameraOptions * QCameraCalibrationOptions::calibrateCameraOptions() const
+{
+  return calibrateCameraOptions_ctl;
+}
+
+QCameraCalibrationOutputOptions * QCameraCalibrationOptions::outputOptions() const\
+{
+  return outputOptions_ctl;
+}
+
 void QCameraCalibrationOptions::onupdatecontrols()
 {
   if ( !options_ ) {
 
     setEnabled(false);
 
-    //inputOptions_ctl->set_current_pipeline(nullptr);
-    chessboardCornersDetection_ctl->set_chessboard_corners_detection_options(nullptr);
+    chessboardDetectionOptions_ctl->set_chessboard_corners_detection_options(nullptr);
     calibrateCameraOptions_ctl->set_options(nullptr);
     outputOptions_ctl->set_options(nullptr);
   }
   else {
 
-    //inputOptions_ctl->set_current_pipeline(options_);
-
-    chessboardCornersDetection_ctl->set_chessboard_corners_detection_options(
+    chessboardDetectionOptions_ctl->set_chessboard_corners_detection_options(
         &options_->chessboard_corners_detection_options());
 
     calibrateCameraOptions_ctl->set_options(&options_->calibrate_camera_options());

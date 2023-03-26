@@ -51,6 +51,15 @@ public:
     return classname_;
   }
 
+  static const std::string & tooltip()
+  {
+    static const std::string tooltip_ =
+        "<strong>c_camera_calibration_pipeline.</strong><br>"
+        "This pipeline uses cv::calibrateCamera() for camera calibration<br>";
+    return tooltip_;
+  }
+
+
   c_camera_calibration_input_options & input_options();
   const c_camera_calibration_input_options & input_options() const;
 

@@ -63,6 +63,14 @@ public:
     return classname_;
   }
 
+  static const std::string & tooltip()
+  {
+    static const std::string tooltip_ =
+        "<strong>c_stereo_calibration_pipeline.</strong><br>"
+        "This pipeline uses cv::stereoCalibrate() for stereo camera calibration<br>";
+    return tooltip_;
+  }
+
   c_notification<void()> on_current_frame_changed;
   c_notification<void()> on_accumulator_changed;
   c_notification<void(STEREO_CALIBRATION_STAGE oldstage, STEREO_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;

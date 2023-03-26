@@ -49,18 +49,18 @@ bool QLiveStereoCalibrationPipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   output_path_ =
-      create_output_path(stereo_calibration_.output_options().output_directory.c_str());
+      create_output_path(stereo_calibration_.output_options().output_directory);
 
   /////////////////////////////////////////////////////////////////////////////
 
   stereo_calibration_.set_output_intrinsics_filename(
       ssprintf("%s/stereo_intrinsics.%s.yml",
-          output_path_.toUtf8().constData(),
+          output_path_.c_str(),
           name_.toUtf8().constData()));
 
   stereo_calibration_.set_output_extrinsics_filename(
       ssprintf("%s/stereo_extrinsics.%s.yml",
-          output_path_.toUtf8().constData(),
+          output_path_.c_str(),
           name_.toUtf8().constData()));
 
   if ( !stereo_calibration_.initialize() ) {
@@ -106,9 +106,6 @@ bool QLiveStereoCalibrationPipeline::process_frame(const cv::Mat & image, COLORI
     CF_ERROR("stereo_calibration_.process_stereo_frame() fails");
     return false;
   }
-
-  //  displayImage_ =
-  //      currentImage;
 
   return true;
 }

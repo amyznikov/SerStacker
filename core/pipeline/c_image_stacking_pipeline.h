@@ -224,6 +224,13 @@ public:
     return classname_;
   }
 
+  static const std::string & tooltip()
+  {
+    static const std::string tooltip_ =
+        "<strong>c_image_stacking_pipeline.</strong><br>"
+        "Generic pipeline for image stacking<br>";
+    return tooltip_;
+  }
 
   c_notification<void()> on_accumulator_changed;
   c_notification<void()> on_selected_master_frame_changed;

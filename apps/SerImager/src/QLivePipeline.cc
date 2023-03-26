@@ -218,21 +218,21 @@ bool QLivePipeline::convert_image(const cv::Mat & src, COLORID src_colorid, int 
   return true;
 }
 
-QString QLivePipeline::create_output_path(const QString & output_directory) const
+std::string QLivePipeline::create_output_path(const std::string & output_directory) const
 {
-  QString output_path;
+  std::string output_path;
 
-  if( output_directory.isEmpty() ) {
+  if( output_directory.empty() ) {
 
     output_path =
-        qsprintf("./%s",
+        ssprintf("./%s",
             name_.toUtf8().constData());
   }
-  else if( !is_absolute_path(output_directory.toUtf8().constData()) ) {
+  else if( !is_absolute_path(output_directory) ) {
 
     output_path =
-        qsprintf("./%s",
-            output_directory.toUtf8().constData());
+        ssprintf("./%s",
+            output_directory.c_str());
   }
   else {
     output_path =
@@ -240,6 +240,74 @@ QString QLivePipeline::create_output_path(const QString & output_directory) cons
   }
 
   return output_path;
+}
+
+
+std::string QLivePipeline::generate_output_file_name(const std::string & output_path,
+    const std::string & ufilename,
+    const std::string & postfix,
+    const std::string & suffix) const
+{
+  std::string output_file_name =
+      ufilename;
+
+  const std::string dateTimeString =
+      QDateTime::currentDateTime().toString("yyyy.MM.dd-hh:mm:ss").toStdString();
+
+  if( output_file_name.empty() ) {
+
+    output_file_name =
+        ssprintf("%s/%s.%s.%s%s",
+            output_path.c_str(),
+            name_.toUtf8().constData(),
+            dateTimeString.c_str(),
+            postfix.c_str(),
+            suffix.empty() ? ".avi" :
+                suffix.c_str());
+  }
+  else {
+
+    std::string file_directory;
+    std::string file_name;
+    std::string file_suffix;
+
+    split_pathfilename(output_file_name,
+        &file_directory,
+        &file_name,
+        &file_suffix);
+
+    if( file_directory.empty() ) {
+      file_directory = output_path;
+    }
+    else if( !is_absolute_path(file_directory) ) {
+      file_directory =
+          ssprintf("%s/%s",
+              output_path.c_str(),
+              file_directory.c_str());
+    }
+
+    if( file_name.empty() ) {
+      file_name =
+          ssprintf("%s.%s.%s",
+              name_.toUtf8().constData(),
+              dateTimeString.c_str(),
+              postfix.c_str());
+    }
+
+    if( file_suffix.empty() ) {
+      file_suffix =
+          suffix.empty() ? ".avi" :
+              suffix;
+    }
+
+    output_file_name =
+        ssprintf("%s/%s%s",
+            file_directory.c_str(),
+            file_name.c_str(),
+            file_suffix.c_str());
+  }
+
+  return output_file_name;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

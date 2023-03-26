@@ -15,7 +15,7 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
   form->addRow(output_directory_ctl =
       new QBrowsePathCombo("Output directory:",
           QFileDialog::AcceptSave,
-          QFileDialog::AnyFile,
+          QFileDialog::Directory,
           this));
 
   output_directory_ctl->setShowDirsOnly(true);

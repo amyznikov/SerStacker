@@ -139,8 +139,8 @@ bool c_output_frame_writer::open(const std::string & filename, const cv::Size & 
 
     case c_input_source::MOVIE: {
 
-      ffmpeg.open(filename, frameSize, // fourcc('H', 'F', 'Y', 'U')
-          color, "-c ffv1 -r 10");
+      ffmpeg.open(filename, frameSize,
+          color, "-c huffyuv -r 10"); // ffv1
 
       if( !ffmpeg.is_open() ) {
         CF_ERROR("Can not write aligned video file '%s'", filename.c_str());

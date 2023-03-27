@@ -11,8 +11,8 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
     Base("QImageProcessingOptions", parent)
 {
   input_image_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Input image processor:",
+      add_combobox<QImageProcessorSelectionCombo>("Input image processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->input_image_processor =
@@ -22,8 +22,8 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
           });
 
   ecc_image_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "ECC image processor:",
+      add_combobox<QImageProcessorSelectionCombo>("ECC image processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->ecc_image_processor =
@@ -33,8 +33,8 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
           });
 
   aligned_image_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Aligned image processor:",
+      add_combobox<QImageProcessorSelectionCombo>("Aligned image processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->aligned_image_processor = combo->processor(index);
@@ -43,8 +43,8 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
           });
 
   incremental_frame_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Incremental frame processor:",
+      add_combobox<QImageProcessorSelectionCombo>("Incremental frame processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->incremental_frame_processor = combo->processor(index);
@@ -53,8 +53,8 @@ QImageProcessingOptions::QImageProcessingOptions(QWidget * parent) :
           });
 
   accumulated_image_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Accumulated image processor:",
+      add_combobox<QImageProcessorSelectionCombo>("Accumulated image processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_->accumulated_image_processor = combo->processor(index);

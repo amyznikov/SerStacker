@@ -146,19 +146,11 @@ public:
   }
 
   template<class T>
-  QNumberEditBox * add_numeric_box(QFormLayout * form, const QString & name,
-      const std::function<void(T)> & setfn = std::function<void(T)>())
-  {
-    return add_numeric_box<T>(form, name, QString(), setfn);
-  }
-
-
-  template<class T>
-  QNumberEditBox * add_numeric_box(QFormLayout * form, const QString & name,
+  QNumberEditBox * add_numeric_box(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
   {
     QNumberEditBox * ctl =
-        add_numeric_box(form, name, setfn);
+        add_numeric_box(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -181,11 +173,11 @@ public:
     return ctl;
   }
 
-  template<class T>
-  QNumberEditBox * add_numeric_box(const QString & name, const std::function<void(T)> & setfn = std::function<void(T)>() )
-  {
-    return add_numeric_box<T>(this->form, name, setfn);
-  }
+//  template<class T>
+//  QNumberEditBox * add_numeric_box(const QString & name, const std::function<void(T)> & setfn = std::function<void(T)>() )
+//  {
+//    return add_numeric_box<T>(this->form, name, setfn);
+//  }
 
   template<class T>
   QNumberEditBox * add_numeric_box(const QString & name, const QString & tooltip, const std::function<void(T)> & setfn = std::function<void(T)>() )
@@ -194,19 +186,24 @@ public:
   }
 
   template<class T>
-  QNumberEditBox * add_numeric_box(const QString & name,const std::function<void(T)> & setfn , const std::function<bool(T*)> & getfn)
+  QNumberEditBox * add_numeric_box(const QString & name, const QString & tooltip,
+      const std::function<void(T)> & setfn,
+      const std::function<bool(T*)> & getfn)
   {
-    return add_numeric_box<T>(this->form, name, setfn, getfn);
+    return add_numeric_box<T>(this->form, name, tooltip, setfn, getfn);
   }
+
 
   /////////////////////////////////////////////////////////////////////
 
-  QLineEditBox* add_textbox(QFormLayout * form, const QString & name,
+  QLineEditBox* add_textbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(const QString&)> & setfn = std::function<void(const QString&)>(),
       const std::function<bool(QString*)> & getfn = std::function<bool(QString*)>())
   {
     QLineEditBox *ctl =
         new QLineEditBox();
+
+    ctl->setToolTip(tooltip);
 
     form->addRow(name, ctl);
 
@@ -248,19 +245,20 @@ public:
     return ctl;
   }
 
-  QLineEditBox* add_textbox(const QString & name,
+  QLineEditBox* add_textbox(const QString & name, const QString & tooltip,
       const std::function<void(const QString&)> & setfn = std::function<void(const QString&)>(),
       const std::function<bool(QString*)> & getfn = std::function<bool(QString*)>())
   {
-    return add_textbox(form, name, setfn, getfn);
+    return add_textbox(form, name, tooltip, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////
 
-  QCheckBox* add_checkbox(QFormLayout * form, const QString & name,
+  QCheckBox* add_checkbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(bool)> & setfn = std::function<void(bool)>())
   {
     QCheckBox *ctl = new QCheckBox(this);
+    ctl->setToolTip(tooltip);
     form->addRow(name, ctl);
 
     if( setfn ) {
@@ -283,10 +281,10 @@ public:
     return ctl;
   }
 
-  QCheckBox* add_checkbox(QFormLayout * form, const QString & name,
+  QCheckBox* add_checkbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(bool)> & setfn , const std::function<bool(bool*)> & getfn)
   {
-    QCheckBox *ctl = add_checkbox(form, name, setfn);
+    QCheckBox *ctl = add_checkbox(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -308,24 +306,28 @@ public:
     return ctl;
   }
 
-  QCheckBox * add_checkbox(const QString & name, const std::function<void(bool)> & setfn = std::function<void(bool)>() )
+  QCheckBox * add_checkbox(const QString & name, const QString & tooltip,
+      const std::function<void(bool)> & setfn = std::function<void(bool)>() )
   {
-    return add_checkbox(this->form, name, setfn);
+    return add_checkbox(this->form, name, tooltip, setfn);
   }
 
-  QCheckBox * add_checkbox(const QString & name, const std::function<void(bool)> & setfn, const std::function<bool(bool*)> & getfn)
+  QCheckBox * add_checkbox(const QString & name, const QString & tooltip,
+      const std::function<void(bool)> & setfn,
+      const std::function<bool(bool*)> & getfn)
   {
-    return add_checkbox(this->form, name, setfn, getfn);
+    return add_checkbox(this->form, name, tooltip, setfn, getfn);
   }
 
 
   /////////////////////////////////////////////////////////////////////
 
 
-  QCheckBox* add_named_checkbox(QFormLayout * form, const QString & name,
+  QCheckBox* add_named_checkbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(bool)> & setfn = std::function<void(bool)>())
   {
     QCheckBox *ctl = new QCheckBox(name, this);
+    ctl->setToolTip(tooltip);
     form->addRow(ctl);
 
     if( setfn ) {
@@ -348,10 +350,11 @@ public:
     return ctl;
   }
 
-  QCheckBox* add_named_checkbox(QFormLayout * form, const QString & name,
+  QCheckBox* add_named_checkbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(bool)> & setfn , const std::function<bool(bool*)> & getfn)
   {
-    QCheckBox *ctl = add_checkbox(form, name, setfn);
+    QCheckBox *ctl =
+        add_checkbox(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -373,25 +376,32 @@ public:
     return ctl;
   }
 
-  QCheckBox * add_named_checkbox(const QString & name, const std::function<void(bool)> & setfn = std::function<void(bool)>() )
+  QCheckBox * add_named_checkbox(const QString & name, const QString & tooltip,
+      const std::function<void(bool)> & setfn = std::function<void(bool)>() )
   {
-    return add_checkbox(this->form, name, setfn);
+    return add_checkbox(this->form, name, tooltip, setfn);
   }
 
-  QCheckBox * add_named_checkbox(const QString & name, const std::function<void(bool)> & setfn, const std::function<bool(bool*)> & getfn)
+  QCheckBox * add_named_checkbox(const QString & name, const QString & tooltip,
+      const std::function<void(bool)> & setfn,
+      const std::function<bool(bool*)> & getfn)
   {
-    return add_checkbox(this->form, name, setfn, getfn);
+    return add_checkbox(this->form, name, tooltip, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////
 
   template<class EnumType>
-  QEnumComboBox<EnumType> * add_enum_combobox(QFormLayout * form, const QString & name,
+  QEnumComboBox<EnumType> * add_enum_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(EnumType)> & setfn = std::function<void(EnumType)>())
   {
     typedef QEnumComboBox<EnumType> CombomoxType;
 
-    CombomoxType * ctl = new CombomoxType(this);
+    CombomoxType * ctl =
+        new CombomoxType(this);
+
+    ctl->setFocusPolicy(Qt::StrongFocus);
+    ctl->setToolTip(tooltip);
     form->addRow(name, ctl);
 
     if( setfn ) {
@@ -415,11 +425,11 @@ public:
   }
 
   template<class EnumType>
-  QEnumComboBox<EnumType>* add_enum_combobox(QFormLayout * form, const QString & name,
+  QEnumComboBox<EnumType>* add_enum_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(EnumType)> & setfn, const std::function<bool(EnumType*)> & getfn)
   {
     QEnumComboBox<EnumType> *ctl =
-        add_enum_combobox(form, name, setfn);
+        add_enum_combobox(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -442,27 +452,29 @@ public:
   }
 
   template<class EnumType>
-  QEnumComboBox<EnumType> * add_enum_combobox(const QString & name,
+  QEnumComboBox<EnumType> * add_enum_combobox(const QString & name, const QString & tooltip,
       const std::function<void(EnumType)> & setfn = std::function<void(EnumType)>())
   {
-    return add_enum_combobox<EnumType>(this->form, name, setfn);
+    return add_enum_combobox<EnumType>(this->form, name, tooltip, setfn);
   }
 
   template<class EnumType>
-  QEnumComboBox<EnumType> * add_enum_combobox(const QString & name,
+  QEnumComboBox<EnumType> * add_enum_combobox(const QString & name, const QString & tooltip,
       const std::function<void(EnumType)> & setfn, const std::function<bool(EnumType*)> & getfn)
   {
-    return add_enum_combobox<EnumType>(this->form, name, setfn, getfn);
+    return add_enum_combobox<EnumType>(this->form, name, tooltip, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////
 
   template<class EnumType>
-  QFlagsEditBox<EnumType> * add_flags_editbox(QFormLayout * form, const QString & name,
+  QFlagsEditBox<EnumType> * add_flags_editbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(int)> & setfn = std::function<void(int)>())
   {
     QFlagsEditBox<EnumType> *ctl =
         new QFlagsEditBox<EnumType>(this);
+
+    ctl->setToolTip(tooltip);
 
     form->addRow(name, ctl);
 
@@ -487,11 +499,11 @@ public:
   }
 
   template<class EnumType>
-  QFlagsEditBox<EnumType>* add_flags_editbox(QFormLayout * form, const QString & name,
+  QFlagsEditBox<EnumType>* add_flags_editbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
   {
     QFlagsEditBox<EnumType> *ctl =
-        add_flags_editbox<EnumType>(form, name, setfn);
+        add_flags_editbox<EnumType>(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -515,28 +527,32 @@ public:
 
 
   template<class EnumType>
-  QFlagsEditBox<EnumType> * add_flags_editbox(const QString & name,
+  QFlagsEditBox<EnumType> * add_flags_editbox(const QString & name, const QString & tooltip,
       const std::function<void(int)> & setfn = std::function<void(int)>())
   {
-    return add_flags_editbox<EnumType>(this->form, name, setfn);
+    return add_flags_editbox<EnumType>(this->form, name, tooltip, setfn);
   }
 
   template<class EnumType>
-  QFlagsEditBox<EnumType> * add_flags_editbox(const QString & name,
+  QFlagsEditBox<EnumType> * add_flags_editbox(const QString & name, const QString & tooltip,
       const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
   {
-    return add_flags_editbox<EnumType>(this->form, name, setfn, getfn);
+    return add_flags_editbox<EnumType>(this->form, name, tooltip, setfn, getfn);
   }
 
 
   /////////////////////////////////////////////////////////////////////
 
   template<class ComboBoxType = QComboBox>
-  ComboBoxType* add_combobox(QFormLayout * form, const QString & name,
+  ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(int, ComboBoxType*)> & setfn = std::function<void(int, ComboBoxType*)>())
   {
-    ComboBoxType *ctl = new ComboBoxType();
+    ComboBoxType *ctl =
+        new ComboBoxType();
+
     ctl->setFocusPolicy(Qt::StrongFocus);
+    ctl->setToolTip(tooltip);
+
     form->addRow(name, ctl);
 
     if( setfn ) {
@@ -561,12 +577,12 @@ public:
   }
 
   template<class ComboBoxType = QComboBox>
-  ComboBoxType* add_combobox(QFormLayout * form, const QString & name,
+  ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(int, ComboBoxType*)> & setfn,
       const std::function<bool(int*, ComboBoxType*)> & getfn)
   {
     ComboBoxType *ctl =
-        add_combobox(form, name, setfn);
+        add_combobox(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -589,17 +605,18 @@ public:
   }
 
   template<typename ComboBoxType = QComboBox>
-  ComboBoxType * add_combobox(const QString & name, const std::function<void(int, ComboBoxType*)> & setfn =
-      std::function<void(int, ComboBoxType*)>())
+  ComboBoxType * add_combobox(const QString & name, const QString & tooltip,
+      const std::function<void(int, ComboBoxType*)> & setfn = std::function<void(int, ComboBoxType*)>())
   {
-    return add_combobox<ComboBoxType>(this->form, name, setfn);
+    return add_combobox<ComboBoxType>(this->form, name, tooltip, setfn);
   }
 
   template<class ComboBoxType = QComboBox>
-  ComboBoxType * add_combobox(const QString & name, const std::function<void(int, ComboBoxType*)> & setfn,
+  ComboBoxType * add_combobox(const QString & name, const QString & tooltip,
+      const std::function<void(int, ComboBoxType*)> & setfn,
       const std::function<bool(int*, ComboBoxType*)> & getfn)
   {
-    return add_combobox<ComboBoxType>(this->form, name, setfn, getfn);
+    return add_combobox<ComboBoxType>(this->form, name, tooltip, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////
@@ -746,23 +763,23 @@ public:
 
   template<class T, class S, class G>
   typename std::enable_if<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value,
-  QNumberEditBox*>::type add_ctl(const QString & name, const S & setfn, const G & getfn)
+  QNumberEditBox*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
   {
-    return add_numeric_box<T>(name, setfn, getfn);
+    return add_numeric_box<T>(name, tooltip, setfn, getfn);
   }
 
   template<class T, class S, class G>
   typename std::enable_if<std::is_same<T, bool>::value,
-  QCheckBox*>::type add_ctl(const QString & name, const S & setfn, const G & getfn)
+  QCheckBox*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
   {
-    return add_checkbox(name, setfn, getfn);
+    return add_checkbox(name, tooltip, setfn, getfn);
   }
 
   template<class T, class S, class G>
   typename std::enable_if<std::is_enum<T>::value,
-  QEnumComboBox<T>*>::type add_ctl(const QString & name, const S & setfn, const G & getfn)
+  QEnumComboBox<T>*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
   {
-    return add_enum_combobox<T>(name, setfn, getfn);
+    return add_enum_combobox<T>(name, tooltip, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////

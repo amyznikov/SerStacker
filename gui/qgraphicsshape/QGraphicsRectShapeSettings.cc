@@ -17,6 +17,9 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
 {
   fixOnSceneCenter_ctl =
       add_checkbox("Fix on scene center",
+          "Uncheck this button and use "
+              "Shift + LeftMouseButton + MouseMove to position this object on scene."
+              "Ctrl + LeftMouseButton + MouseMove also allows to resize the object",
           [this](bool checked) {
             if ( shape_ ) {
               shape_->setFixOnSceneCenter(checked);
@@ -31,10 +34,6 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
             }
             return false;
           });
-
-  fixOnSceneCenter_ctl->setToolTip("Uncheck this button and use "
-      "Shift + LeftMouseButton + MouseMove to position this object on scene."
-      "Ctrl + LeftMouseButton + MouseMove also allows to resize the object");
 
   penColor_ctl =
       add_widget<QColorPickerButton>(

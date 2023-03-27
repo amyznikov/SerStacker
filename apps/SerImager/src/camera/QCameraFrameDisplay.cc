@@ -522,8 +522,8 @@ QDisplayFrameProcessorSettingsWidget::QDisplayFrameProcessorSettingsWidget(QWidg
     Base("QDisplayFrameProcessorSettings", parent)
 {
   debayer_ctl =
-      add_enum_combobox<DEBAYER_ALGORITHM>(
-          "Debayer:",
+      add_enum_combobox<DEBAYER_ALGORITHM>("Debayer:",
+          "Select debayer algorithm for bayer patterns:",
           [this](DEBAYER_ALGORITHM v) {
             if ( display_ ) {
               display_->set_debayer_algorithm(v);

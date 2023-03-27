@@ -15,6 +15,7 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
 {
   enableFeatureBasedRegistration_ctl =
       add_checkbox("Enable feature based registration",
+          "",
           [this](bool checked) {
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
@@ -25,6 +26,7 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
 
   controls.append(scale_ctl =
       add_numeric_box<double>("Image scale",
+          "",
           [this](double value) {
             if ( options_ && options_->scale != value ) {
               options_->scale = value;
@@ -118,6 +120,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 {
   enableEcc_ctl =
       add_checkbox("Enable ECC",
+          "",
           [this](bool checked) {
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
@@ -128,6 +131,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(scale_ctl =
       add_numeric_box<double>("image scale",
+          "",
           [this](double value) {
             if ( options_ && options_->scale != value ) {
               options_->scale = value;
@@ -137,6 +141,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(eps_ctl =
       add_numeric_box<double>("eps",
+          "",
           [this](double value) {
             if ( options_ && options_->eps != value ) {
               options_->eps = value;
@@ -146,6 +151,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(min_rho_ctl =
       add_numeric_box<double>("min_rho",
+          "",
           [this](double value) {
             if ( options_ && options_->min_rho != value ) {
               options_->min_rho = value;
@@ -155,6 +161,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(input_smooth_sigma_ctl =
       add_numeric_box<double>("input_smooth_sigma",
+          "",
           [this](double value) {
             if ( options_ && options_->input_smooth_sigma != value ) {
               options_->input_smooth_sigma = value;
@@ -164,6 +171,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(reference_smooth_sigma_ctl =
       add_numeric_box<double>("reference_smooth_sigma",
+          "",
           [this](double value) {
             if ( options_ && options_->reference_smooth_sigma != value ) {
               options_->reference_smooth_sigma = value;
@@ -173,6 +181,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(update_step_scale_ctl =
       add_numeric_box<double>("update_step_scale",
+          "",
           [this](double value) {
             if ( options_ && options_->update_step_scale != value ) {
               options_->update_step_scale = value;
@@ -182,6 +191,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(normalization_noise_ctl =
       add_numeric_box<double>("normalization_noise",
+          "",
           [this](double value) {
             if ( options_ && options_->normalization_noise != value ) {
               options_->normalization_noise = value;
@@ -191,6 +201,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(normalization_scale_ctl =
       add_numeric_box<int>("normalization_scale",
+          "",
           [this](int value) {
             if ( options_ && options_->normalization_scale != value ) {
               options_->normalization_scale = value;
@@ -200,6 +211,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(max_iterations_ctl =
       add_numeric_box<int>("max_iterations",
+          "",
           [this](int value) {
             if ( options_ && options_->max_iterations != value ) {
               options_->max_iterations = value;
@@ -209,6 +221,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(enable_ecch_ctl =
       add_checkbox("enable_ecch",
+          "",
           [this](bool checked) {
             if ( options_ && options_->enable_ecch != checked ) {
               options_->enable_ecch = checked;
@@ -220,6 +233,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(ecch_estimate_translation_first_ctl =
       add_checkbox("Estimate translation first",
+          "",
           [this](bool checked) {
             if ( options_ && options_->ecch_estimate_translation_first != checked ) {
               options_->ecch_estimate_translation_first = checked;
@@ -230,6 +244,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(ecch_minimum_image_size_ctl =
       add_numeric_box<int>("ecch_minimum_image_size",
+          "",
           [this](int value) {
             if ( options_ && options_->ecch_minimum_image_size != value ) {
               options_->ecch_minimum_image_size = value;
@@ -239,6 +254,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(replace_planetary_disk_with_mask_ctl =
       add_checkbox("replace_planetary_disk_with_mask",
+          "",
           [this](bool checked) {
             if ( options_ && options_->replace_planetary_disk_with_mask != checked ) {
               options_->replace_planetary_disk_with_mask = checked;
@@ -249,6 +265,7 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
   controls.append(planetary_disk_mask_stdev_factor_ctl =
       add_numeric_box<double>("stdev_factor",
+          "",
           [this](double value) {
             if ( options_ && options_->planetary_disk_mask_stdev_factor != value ) {
               options_->planetary_disk_mask_stdev_factor = value;
@@ -323,6 +340,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 {
   enableEccFlow_ctl =
       add_checkbox("Enable ECC flow",
+          "",
           [this](bool checked) {
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
@@ -335,6 +353,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
   controls.append(support_scale_ctl =
       add_numeric_box<int>("support_scale",
+          "",
           [this](int value) {
             if ( options_ && options_->support_scale != value ) {
               options_->support_scale = value;
@@ -344,6 +363,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
   controls.append(input_smooth_sigma_ctl =
       add_numeric_box<double>("input_smooth_sigma",
+          "",
           [this](double value) {
             if ( options_ && options_->input_smooth_sigma != value ) {
               options_->input_smooth_sigma = value;
@@ -353,6 +373,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
   controls.append(reference_smooth_sigma_ctl =
       add_numeric_box<double>("reference_smooth_sigma",
+          "",
           [this](double value) {
             if ( options_ && options_->reference_smooth_sigma != value ) {
               options_->reference_smooth_sigma = value;
@@ -362,6 +383,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
   controls.append(update_multiplier_ctl =
       add_numeric_box<double>("update_multiplier",
+          "",
           [this](double value) {
             if ( options_ && options_->update_multiplier != value ) {
               options_->update_multiplier = value;
@@ -371,6 +393,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
   controls.append(max_iterations_ctl =
       add_numeric_box<int>("max_iterations",
+          "",
           [this](int value) {
             if ( options_ && options_->max_iterations != value ) {
               options_->max_iterations = value;
@@ -380,6 +403,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
   controls.append(normalization_scale_ctl =
       add_numeric_box<int>("normalization_scale",
+          "",
           [this](int value) {
             if ( options_ && options_->normalization_scale != value ) {
               options_->normalization_scale = value;
@@ -435,6 +459,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 {
   enableJovianDerotation_ctl =
       add_checkbox("Enable Jovian Derotation",
+          "",
           [this](bool checked) {
             if ( options_ && options_->enabled != checked ) {
               options_->enabled = checked;
@@ -452,6 +477,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(max_pyramid_level_ctl =
       add_numeric_box<int>("max pyramid level:",
+          "",
           [this](int value) {
             if ( options_ && options_->max_pyramid_level != value ) {
               options_->max_pyramid_level = value;
@@ -461,6 +487,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(min_rotation_ctl =
       add_numeric_box<double>("min_rotation [deg]:",
+          "",
           [this](double value) {
             if ( options_ && options_->min_rotation != (value *= M_PI / 180) ) {
               options_->min_rotation = value;
@@ -470,6 +497,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(max_rotation_ctl =
       add_numeric_box<double>("max_rotation [deg]:",
+          "",
           [this](double value) {
             if ( options_ && options_->max_rotation != (value *= M_PI / 180) ) {
               options_->max_rotation = value;
@@ -481,6 +509,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(num_orientations_ctl =
       add_numeric_box<int>("num_orientations:",
+          "",
           [this](int value) {
             if ( options_ && options_->num_orientations != value ) {
               options_->num_orientations = value;
@@ -501,6 +530,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(eccflow_support_scale_ctl =
       add_numeric_box<int>("eccflow_support_scale:",
+          "",
           [this](double value) {
             if ( options_ && options_->eccflow_support_scale != value ) {
               options_->eccflow_support_scale = value;
@@ -510,6 +540,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(eccflow_normalization_scale_ctl =
       add_numeric_box<int>("eccflow_normalization_scale:",
+          "",
           [this](double value) {
             if ( options_ && options_->eccflow_normalization_scale != value ) {
               options_->eccflow_normalization_scale = value;
@@ -519,6 +550,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(eccflow_max_pyramid_level_ctl =
       add_numeric_box<int>("eccflow_max_pyramid_level:",
+          "",
           [this](double value) {
             if ( options_ && options_->eccflow_max_pyramid_level != value ) {
               options_->eccflow_max_pyramid_level = value;
@@ -528,6 +560,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(derotate_all_frames_ctl =
       add_checkbox("process all frames",
+          "",
           [this](bool checked) {
             if ( options_ && options_->derotate_all_frames != checked ) {
               options_->derotate_all_frames = checked;
@@ -538,6 +571,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(derotate_all_frames_max_context_size_ctl =
       add_numeric_box<int>("max_context_size:",
+          "",
           [this](double value) {
             if ( options_ && options_->derotate_all_frames_max_context_size != value ) {
               options_->derotate_all_frames_max_context_size = value;
@@ -547,6 +581,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   controls.append(align_jovian_disk_horizontally_ctl =
       add_checkbox("align_jovian_disk_horizontally",
+          "",
           [this](bool checked) {
             if ( options_ && options_->rotate_jovian_disk_horizontally != checked ) {
               options_->rotate_jovian_disk_horizontally = checked;
@@ -612,6 +647,7 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
 {
   motion_type_ctl =
       add_enum_combobox<IMAGE_MOTION_TYPE>("Motion type:",
+          "",
           [this](IMAGE_MOTION_TYPE value) {
             if ( options_ && options_->image_registration_options.motion_type != value ) {
               options_->image_registration_options.motion_type = value;
@@ -620,8 +656,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           });
 
   registration_channel_ctl =
-      add_enum_combobox<color_channel_type>(
-          "Registration channel:",
+      add_enum_combobox<color_channel_type>("Registration channel:",
+          "",
           [this](color_channel_type value) {
             if ( options_ && options_->image_registration_options.registration_channel != value ) {
               options_->image_registration_options.registration_channel = value;
@@ -630,8 +666,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           });
 
   interpolation_method_ctl =
-      add_enum_combobox<ECC_INTERPOLATION_METHOD>(
-          "Interpolation method:",
+      add_enum_combobox<ECC_INTERPOLATION_METHOD>("Interpolation method:",
+          "",
           [this](ECC_INTERPOLATION_METHOD value) {
             if ( options_ && options_->image_registration_options.interpolation != value) {
               options_->image_registration_options.interpolation = value;
@@ -640,8 +676,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           });
 
   border_mode_ctl =
-      add_enum_combobox<ECC_BORDER_MODE>(
-          "Border mode:",
+      add_enum_combobox<ECC_BORDER_MODE>("Border mode:",
+          "",
           [this](ECC_BORDER_MODE value) {
             if ( options_ && options_->image_registration_options.border_mode != value ) {
               options_->image_registration_options.border_mode = value;
@@ -650,8 +686,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           });
 
   border_value_ctl =
-      add_numeric_box<cv::Scalar>(
-          "Border Value",
+      add_numeric_box<cv::Scalar>("Border Value",
+          "",
           [this](const cv::Scalar & value) {
             if ( options_ && options_->image_registration_options.border_value != value ) {
               options_->image_registration_options.border_value = value;
@@ -732,6 +768,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
 {
   enable_frame_registration_ctl =
       add_checkbox("Enable image registration",
+          "",
           [this](bool checked) {
             if ( options_ && options_->image_registration_options.enable_frame_registration != checked ) {
               options_->image_registration_options.enable_frame_registration = checked;
@@ -748,6 +785,7 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
 
   accumulateAndCompensateTurbulentFlow_ctl =
       add_checkbox("accumulate and compensate turbulent flow",
+          "",
           [this](bool checked) {
             if ( options_ && options_->accumulate_and_compensate_turbulent_flow != checked ) {
               options_->accumulate_and_compensate_turbulent_flow = checked;

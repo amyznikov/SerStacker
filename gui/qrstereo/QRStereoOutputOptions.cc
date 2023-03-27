@@ -7,9 +7,8 @@
 
 #include "QRStereoOutputOptions.h"
 
-
 QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
-  Base("QRStereoCalibrationOutputOptions", parent)
+    Base("QRStereoCalibrationOutputOptions", parent)
 {
   ///
   form->addRow(output_directory_ctl =
@@ -20,9 +19,8 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   output_directory_ctl->setShowDirsOnly(true);
 
-
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( pipeline_ && !updatingControls() ) {
           pipeline_->set_output_directory(output_directory_ctl->currentPath().toStdString());
           Q_EMIT parameterChanged();
@@ -33,6 +31,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   save_calibration_config_file_ctl =
       add_checkbox("Save calibration file:",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_calibration_config_file = checked;
@@ -58,7 +57,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
       [this]() {
         if ( pipeline_ && !updatingControls() ) {
           pipeline_->output_options(). calibration_config_filename =
-              calibration_config_filename_ctl->currentPath().toStdString();
+          calibration_config_filename_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
@@ -67,6 +66,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   save_progress_video_ctl =
       add_checkbox("Save progress frames",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_progress_video = checked;
@@ -84,6 +84,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   progress_video_filename_ctl =
       add_textbox("progress_images_file_name:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ ) {
               pipeline_->output_options().progress_video_filename = value.toStdString();
@@ -104,6 +105,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   save_rectified_video_ctl =
       add_checkbox("Save rectified frames",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_rectified_videos = checked;
@@ -122,6 +124,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   left_rectified_video_filename_ctl =
       add_textbox("Left rectified video filename:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ ) {
               pipeline_->output_options().rectified_video_filenames[0] = value.toStdString();
@@ -140,6 +143,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   right_rectified_video_filename_ctl =
       add_textbox("Right rectified video filename:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ ) {
               pipeline_->output_options().rectified_video_filenames[1] = value.toStdString();
@@ -160,6 +164,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   save_stereo_matches_video_ctl =
       add_checkbox("Save match progress video",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_stereo_match_progress_video = checked;
@@ -177,6 +182,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   stereo_matches_video_filename_ctl =
       add_textbox("stereo matches filename:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ ) {
               pipeline_->output_options().stereo_matches_video_filename = value.toStdString();
@@ -197,6 +203,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   save_motion_poses_ctl =
       add_checkbox("Save motion poses",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_motion_poses = checked;
@@ -214,6 +221,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   motion_poses_filename_ctl =
       add_textbox("motion_poses_file_name:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ ) {
               pipeline_->output_options().motion_poses_filename = value.toStdString();
@@ -234,6 +242,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   save_stereo_match_progress_video_ctl =
       add_checkbox("Save match progress video:",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->output_options().save_stereo_match_progress_video = checked;
@@ -251,6 +260,7 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
 
   stereo_match_progress_video_filename_ctl =
       add_textbox("match progress filename:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ ) {
               pipeline_->output_options().stereo_match_progress_video_filename = value.toStdString();
@@ -278,7 +288,7 @@ void QRStereoOutputOptions::set_current_pipeline(const c_regular_stereo_pipeline
   updateControls();
 }
 
-const c_regular_stereo_pipeline::sptr & QRStereoOutputOptions::current_pipeline() const
+const c_regular_stereo_pipeline::sptr& QRStereoOutputOptions::current_pipeline() const
 {
   return pipeline_;
 }

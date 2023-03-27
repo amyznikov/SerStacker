@@ -19,6 +19,7 @@ QFindChessboardCornersOptions::QFindChessboardCornersOptions(const QString & pre
 {
   max_scales_ctl =
       add_numeric_box<int>("max_scales:",
+          "",
           [this](int value) {
             if ( options_ ) {
               options_->max_scales = value;
@@ -35,6 +36,7 @@ QFindChessboardCornersOptions::QFindChessboardCornersOptions(const QString & pre
 
   flags_ctl =
       add_flags_editbox<FindChessboardCornersFlags>("flags:",
+          "flags for cv::findChessboardCorners()",
           [this](int value) {
             if ( options_ ) {
               options_->flags = value;
@@ -79,6 +81,7 @@ QFindChessboardCornersSBOptions::QFindChessboardCornersSBOptions(const QString &
 {
   max_scales_ctl =
       add_numeric_box<int>("max_scales:",
+          "",
           [this](int value) {
             if ( options_ ) {
               options_->max_scales = value;
@@ -94,6 +97,7 @@ QFindChessboardCornersSBOptions::QFindChessboardCornersSBOptions(const QString &
 
   flags_ctl =
       add_flags_editbox<FindChessboardCornersSBFlags>("flags:",
+          "flags for cv::findChessboardCornersSB()",
           [this](int value) {
             if ( options_ ) {
               options_->flags = value;
@@ -138,6 +142,7 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
 
   winSize_ctl =
       add_numeric_box<cv::Size>("winSize",
+          "",
           [this](const cv::Size & value) {
             if ( options_ ) {
               options_->winSize = value;
@@ -154,6 +159,7 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
 
   zeroZone_ctl =
       add_numeric_box<cv::Size>("zeroZone",
+          "",
           [this](const cv::Size & value) {
             if ( options_ ) {
               options_->zeroZone = value;
@@ -171,6 +177,7 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
 
   maxIterations_ctl =
       add_numeric_box<int>("MaxIterations:",
+          "",
           [this](int value) {
             if ( options_ ) {
               if ( ( options_->termCriteria.maxCount = value) > 0 ) {
@@ -192,7 +199,8 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
 
   eps_ctl =
       add_numeric_box<double>("Eps:",
-          [this](double value) {
+          "",
+         [this](double value) {
             if ( options_ ) {
               if ( ( options_->termCriteria.epsilon = value) >= 0 ) {
                 options_->termCriteria.type |= cv::TermCriteria::EPS;
@@ -242,6 +250,7 @@ QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget
 {
   d_ctl =
       add_numeric_box<int>("d:",
+          "",
           [this](int value) {
             if ( options_ ) {
               options_->d = value;
@@ -258,6 +267,7 @@ QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget
 
   sigmaColor_ctl =
       add_numeric_box<double>("SigmaColor:",
+          "",
           [this](double value) {
             if ( options_ ) {
               options_->sigmaColor = value;
@@ -274,6 +284,7 @@ QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget
 
   sigmaSpace_ctl =
       add_numeric_box<double>("SigmaSpace:",
+          "",
           [this](double value) {
             if ( options_ ) {
               options_->sigmaSpace = value;
@@ -315,6 +326,7 @@ QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget *
 
   chessboardSize_ctl =
       add_numeric_box<cv::Size>("Chessboard Size:",
+          "",
           [this](const cv::Size & size) {
             if ( options_ ) {
               options_->chessboard_size = size;
@@ -329,23 +341,27 @@ QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget *
             return false;
           });
 
-  add_numeric_box<cv::Size2f>("Chessboard Cell Size [m]:",
-      [this](const cv::Size2f & size) {
-        if ( options_ ) {
-          options_->chessboard_cell_size = size;
-          Q_EMIT parameterChanged();
-        }
-      },
-      [this](cv::Size2f * size) {
-        if ( options_ ) {
-          *size = options_->chessboard_cell_size;
-          return true;
-        }
-        return false;
-      });
+  chessboardCellSize_ctl =
+      add_numeric_box<cv::Size2f>("Chessboard Cell Size [m]:",
+          "",
+          [this](const cv::Size2f & size) {
+            if ( options_ ) {
+              options_->chessboard_cell_size = size;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Size2f * size) {
+            if ( options_ ) {
+              *size = options_->chessboard_cell_size;
+              return true;
+            }
+            return false;
+          });
 
   cornersDetectionMethod_ctl =
-      add_enum_combobox<FindChessboardCornersMethod>("Chessboard Detection:",
+      add_enum_combobox<FindChessboardCornersMethod>(
+          "Chessboard Detection:",
+          "",
           [this](FindChessboardCornersMethod value) {
             if ( options_ ) {
               options_->method = value;

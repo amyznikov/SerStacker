@@ -48,19 +48,21 @@ QJovianEllipseDetectorSettings::QJovianEllipseDetectorSettings(QWidget * parent)
 
   stdev_factor_ctl =
       add_numeric_box<double>("stdev_factor",
+          "",
           [this](float v) {
             if ( options_ && options_->stdev_factor != v ) {
               options_->stdev_factor = v;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 
   force_reference_ellipse_ctl =
       add_checkbox("force reference ellipse",
+          "",
           [this](bool checked) {
             if ( options_ && options_->force_reference_ellipse != checked ) {
               options_->force_reference_ellipse = checked;
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 }

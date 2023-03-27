@@ -19,6 +19,7 @@ QSharpnessNormMeasureOptions::QSharpnessNormMeasureOptions(const QString & prefi
 
   norm_type_ctl =
       add_enum_combobox<NormType>("Norm type:",
+          "",
           [this](NormType v) {
             if ( options_ && options_->norm_type() != v ) {
               options_->set_norm_type(v);
@@ -35,6 +36,7 @@ QSharpnessNormMeasureOptions::QSharpnessNormMeasureOptions(const QString & prefi
 
   sigma_ctl =
       add_numeric_box<double>("Low-pass sigma [pix]:",
+          "",
           [this](double v) {
             if ( options_ && v > 0 && options_->sigma() != v ) {
               options_->set_sigma(v);

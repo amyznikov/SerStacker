@@ -33,6 +33,7 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
 
   save_rectified_frames_ctl =
       add_checkbox("Save rectified frames",
+          "",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_rectified_frames = checked;
@@ -50,6 +51,7 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
 
   rectified_frames_filename_ctl =
       add_textbox("Rectified video filename:",
+          "",
           [this](const QString & value) {
             if ( options_ ) {
               options_->rectified_frames_filename = value.toStdString();
@@ -70,6 +72,7 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
 
   save_progress_video_ctl =
       add_checkbox("Save progress video:",
+          "",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_progress_video = checked;
@@ -87,6 +90,7 @@ QCameraCalibrationOutputOptions::QCameraCalibrationOutputOptions(QWidget * paren
 
   progress_video_filename_ctl =
       add_textbox("progress video filename:",
+          "",
           [this](const QString & value) {
             if ( options_ ) {
               options_->progress_video_filename = value.toStdString();

@@ -23,12 +23,13 @@ void QJovianEllipseSettings::setupControls()
 
   display_ctl =
       add_enum_combobox<DisplayType>("Display",
+          "",
           [this](DisplayType v) {
             const c_fit_jovian_ellipse_routine::ptr routine =
                 std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor_);
             if ( routine ) {
               routine->set_display(v);
-              emit parameterChanged();
+              Q_EMIT parameterChanged();
             }
           });
 

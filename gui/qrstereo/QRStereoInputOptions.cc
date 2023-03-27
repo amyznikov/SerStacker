@@ -33,7 +33,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   left_source_ctl =
       add_combobox<QComboBox>("Left camera source:",
-
+          "",
           [this](int index, QComboBox * combo) {
             if ( pipeline_ ) {
               pipeline_->input_options().left_stereo_source =
@@ -74,7 +74,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   right_source_ctl =
       add_combobox<QComboBox>("Right camera source:",
-
+          "",
           [this](int index, QComboBox * combo) {
             if ( pipeline_ ) {
               pipeline_->input_options().right_stereo_source =
@@ -113,6 +113,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   start_frame_index_ctl =
       add_numeric_box<int>("start_frame_index:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->input_options().start_frame_index = value;
@@ -129,6 +130,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   max_input_frames_ctl =
       add_numeric_box<int>("max_input_frames:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->input_options().max_input_frames = value;
@@ -145,6 +147,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   convert_to_grayscale_ctl =
       add_checkbox("convert_to_grayscale",
+          "",
           [this](bool value) {
             if ( pipeline_ ) {
               pipeline_->input_options().convert_to_grayscale = value;
@@ -161,6 +164,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   inpaint_missing_pixels_ctl =
       add_checkbox("inpaint_missing_pixels",
+          "",
           [this](bool value) {
             if ( pipeline_ ) {
               pipeline_->input_options().inpaint_missing_pixels = value;
@@ -177,6 +181,7 @@ QRStereoInputOptions::QRStereoInputOptions(QWidget * parent) :
 
   enable_color_maxtrix_ctl =
       add_checkbox("enable_color_maxtrix",
+          "",
           [this](bool value) {
             if ( pipeline_ ) {
               pipeline_->input_options().enable_color_maxtrix = value;

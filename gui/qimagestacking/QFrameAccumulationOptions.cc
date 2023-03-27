@@ -17,8 +17,8 @@ QFrameAccumulationOptions::QFrameAccumulationOptions(QWidget * parent) :
     Base("QFrameAccumulationOptions", parent)
 {
   accumulation_method_ctl =
-      add_enum_combobox<frame_accumulation_method>(
-          "Accumulation Method:",
+      add_enum_combobox<frame_accumulation_method>("Accumulation Method:",
+          "",
           [this](frame_accumulation_method v) {
             if ( options_ && v != options_->accumulation_method ) {
               options_->accumulation_method = v;
@@ -101,8 +101,8 @@ QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
 {
 
   fusion_ctl =
-      add_enum_combobox<c_laplacian_pyramid_focus_stacking::fusing_policy>(
-          "fusion method:",
+      add_enum_combobox<c_laplacian_pyramid_focus_stacking::fusing_policy>("fusion method:",
+          "",
           [this](c_laplacian_pyramid_focus_stacking::fusing_policy v) {
             if ( options_ && options_->fs_.fusing_policy != v ) {
               options_->fs_.fusing_policy = v;
@@ -121,6 +121,7 @@ QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
 
   avgchannel_ctl =
       add_checkbox("Average color channels:",
+          "",
           [this](bool checked) {
             if ( options_ && options_->fs_.avgchannel != checked ) {
               options_->fs_.avgchannel = checked;
@@ -137,6 +138,7 @@ QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
 
   enable_inpaint_ctl =
       add_checkbox("Inpaint mask holes",
+          "",
           [this](bool checked) {
             if ( options_ && options_->fs_.inpaint_mask_holes != checked ) {
               options_->fs_.inpaint_mask_holes = checked;
@@ -153,6 +155,7 @@ QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
 
   kradius_ctl =
       add_numeric_box<int>("kradius [pix]",
+          "",
           [this](int v) {
             if ( options_ && options_->fs_.kradius != v ) {
               options_->fs_.kradius = v;
@@ -169,6 +172,7 @@ QFocusStackingOptions::QFocusStackingOptions(QWidget * parent) :
 
   ksigma_ctl =
       add_numeric_box<double>("ksigma [pix]",
+          "",
           [this](double v) {
             if ( options_ && options_->fs_.ksigma != v ) {
               options_->fs_.ksigma = v;

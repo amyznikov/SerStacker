@@ -15,8 +15,8 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent) :
 {
 
   selectionMethod_ctl =
-      add_enum_combobox<roi_selection_method>(
-          "ROI selection:",
+      add_enum_combobox<roi_selection_method>("ROI selection:",
+          "",
           [this](roi_selection_method v) {
             if ( options_ && v != options_->method ) {
               options_->method = v;
@@ -27,6 +27,7 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent) :
 
   planetaryDiskSize_ctl =
       add_numeric_box<cv::Size>("Crop size WxH [px]:",
+          "",
           [this](const cv::Size & v) {
             if ( options_ && v != options_->planetary_disk_crop_size ) {
               options_->planetary_disk_crop_size = v;
@@ -36,6 +37,7 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent) :
 
   rectangeROI_ctl =
       add_numeric_box<QString>("Rectangle L;T;WxH [px]:",
+          "",
           [this](const QString & v) {
 
             if ( options_ ) {
@@ -68,6 +70,7 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent) :
 
   planetaryDiskGbSigma_ctl =
       add_numeric_box<double>("gbsigma:",
+          "",
           [this](double v) {
             if ( options_ && v != options_->planetary_disk_gbsigma ) {
               options_->planetary_disk_gbsigma = v;
@@ -77,6 +80,7 @@ QROISelectionOptions::QROISelectionOptions(QWidget * parent) :
 
   planetaryDiskStdevFactor_ctl =
       add_numeric_box<double>("stdev_factor:",
+          "",
           [this](double v) {
             if ( options_ && v != options_->planetary_disk_stdev_factor ) {
               options_->planetary_disk_stdev_factor = v;

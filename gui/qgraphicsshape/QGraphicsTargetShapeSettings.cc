@@ -17,6 +17,8 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 {
   fixOnSceneCenter_ctl =
       add_checkbox("Fix on scene center",
+          "Uncheck this button and use "
+              "Shift + LeftMouseButton + MouseMove to position this object on scene.",
           [this](bool checked) {
             if ( shape_ ) {
               shape_->setFixOnSceneCenter(checked);
@@ -32,12 +34,10 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
             return false;
           });
 
-  fixOnSceneCenter_ctl->setToolTip("Uncheck this button and use "
-      "Shift + LeftMouseButton + MouseMove to position this object on scene.");
 
   baseRadius_ctl =
-      add_numeric_box<double>(""
-          "Base radius:",
+      add_numeric_box<double>("Base radius:",
+          "",
           [this](double v) {
             if ( shape_ ) {
               shape_->setBaseRadius(v);
@@ -54,8 +54,8 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 
 
   numRings_ctl =
-      add_numeric_box<int>(""
-          "Num rings:",
+      add_numeric_box<int>("Num rings:",
+          "",
           [this](int v) {
             if ( shape_ ) {
               shape_->setNumRings(v);
@@ -73,6 +73,7 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 
   showDiagonalRays_ctl =
       add_checkbox("Show diagonal rays",
+          "",
           [this](bool checked) {
             if ( shape_ ) {
               shape_->setShowDiagonalRays(checked);
@@ -89,8 +90,7 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 
 
   penColor_ctl =
-      add_widget<QColorPickerButton>(
-          "Pen Color");
+      add_widget<QColorPickerButton>("Pen Color");
 
   connect(penColor_ctl, &QColorPickerButton::colorSelected,
       [this]() {
@@ -101,8 +101,7 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
       });
 
   penWidth_ctl =
-      add_spinbox(""
-          "Pen Width:",
+      add_spinbox( "Pen Width:",
           [this](int v) {
             if ( shape_ ) {
               shape_->setPenWidth(v);

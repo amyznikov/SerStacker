@@ -289,6 +289,7 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
   sharpness_measure_ctl =
       add_enum_combobox<SHARPNESS_MEASURE>(
           "Focus measure method:",
+          "",
           [this](SHARPNESS_MEASURE v) {
             if ( provider_ && provider_->measure().method() != v ) {
               provider_->measure().set_method(v);
@@ -306,6 +307,7 @@ QFocusGraphSettingsWidget::QFocusGraphSettingsWidget(QWidget * parent) :
 
   max_measurements_ctl =
       add_numeric_box<int>("history size:",
+          "",
           [this](int v) {
             if ( provider_ && provider_->maxMeasurements() != v ) {
               provider_->setMaxMeasurements(v);

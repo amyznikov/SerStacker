@@ -9,13 +9,12 @@
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/debug.h>
 
-
 QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
-  Base("QStackingDebugOptions", parent)
+    Base("QStackingDebugOptions", parent)
 {
   Q_INIT_RESOURCE(qstackingoptions_resources);
 
-  if ( QImageProcessorsCollection::empty() ) {
+  if( QImageProcessorsCollection::empty() ) {
     QImageProcessorsCollection::load();
   }
 
@@ -29,9 +28,8 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   output_directory_ctl->setShowDirsOnly(true);
 
-
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
           current_pipeline_->set_output_directory(
               output_directory_ctl->currentPath().toStdString());
@@ -39,19 +37,19 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
         }
       });
 
-
-
   ///
 
   save_preprocessed_frames_ctl =
       add_named_checkbox("Save preprocessed (input) frames",
-          [this](bool checked) {
-            if ( current_pipeline_ && current_pipeline_->output_options().save_preprocessed_frames != checked ) {
-              current_pipeline_->output_options().save_preprocessed_frames = checked;
-              output_preprocessed_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_preprocessed_frames);
-              Q_EMIT parameterChanged();
-            }
-          });
+          "",
+          [this](
+              bool checked) {
+                if ( current_pipeline_ && current_pipeline_->output_options().save_preprocessed_frames != checked ) {
+                  current_pipeline_->output_options().save_preprocessed_frames = checked;
+                  output_preprocessed_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_preprocessed_frames);
+                  Q_EMIT parameterChanged();
+                }
+              });
 
   form->addRow(output_preprocessed_frames_path_ctl =
       new QBrowsePathCombo("Preprocessed frames file name:",
@@ -60,21 +58,21 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
           this));
 
   connect(output_preprocessed_frames_path_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
           current_pipeline_->output_options().output_preprocessed_frames_filename =
-              output_preprocessed_frames_path_ctl->currentPath().toStdString();
+          output_preprocessed_frames_path_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
 
   ///
 
-
   ///
 
   save_aligned_frames_ctl =
       add_named_checkbox("Save aligned frames",
+          "",
           [this](bool checked) {
             if ( current_pipeline_ && current_pipeline_->output_options().save_aligned_frames != checked ) {
               current_pipeline_->output_options().save_aligned_frames = checked;
@@ -90,10 +88,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
           this));
 
   connect(output_aligned_frames_path_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
           current_pipeline_->output_options().output_aligned_frames_filename =
-              output_aligned_frames_path_ctl->currentPath().toStdString();
+          output_aligned_frames_path_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
@@ -104,29 +102,29 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   save_ecc_frames_ctl =
       add_named_checkbox("Save ecc frames",
-      [this](bool checked) {
-        if ( current_pipeline_ && current_pipeline_->output_options().save_ecc_frames != checked ) {
-          current_pipeline_->output_options().save_ecc_frames = checked;
-          output_ecc_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_ecc_frames);
+          "",
+          [this](bool checked) {
+            if ( current_pipeline_ && current_pipeline_->output_options().save_ecc_frames != checked ) {
+              current_pipeline_->output_options().save_ecc_frames = checked;
+              output_ecc_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_ecc_frames);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  form->addRow(output_ecc_frames_path_ctl =
+      new QBrowsePathCombo("ECC frames file name:",
+          QFileDialog::AcceptSave,
+          QFileDialog::AnyFile,
+          this));
+
+  connect(output_ecc_frames_path_ctl, &QBrowsePathCombo::pathChanged,
+      [this]() {
+        if ( current_pipeline_ && !updatingControls() ) {
+          current_pipeline_->output_options().output_ecc_frames_filename =
+          output_ecc_frames_path_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
-
-  form->addRow(output_ecc_frames_path_ctl =
-    new QBrowsePathCombo("ECC frames file name:",
-        QFileDialog::AcceptSave,
-        QFileDialog::AnyFile,
-        this));
-
-  connect(output_ecc_frames_path_ctl, &QBrowsePathCombo::pathChanged,
-    [this] () {
-      if ( current_pipeline_ && !updatingControls() ) {
-        current_pipeline_->output_options().output_ecc_frames_filename =
-            output_ecc_frames_path_ctl->currentPath().toStdString();
-        Q_EMIT parameterChanged();
-      }
-    });
-
 
   ///
 
@@ -134,13 +132,15 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   save_postprocessed_frames_ctl =
       add_named_checkbox("Save processed aligned frames",
-          [this](bool checked) {
-            if ( current_pipeline_ && current_pipeline_->output_options().save_processed_aligned_frames != checked  ) {
-              current_pipeline_->output_options().save_processed_aligned_frames = checked;
-              output_processed_aligned_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_processed_aligned_frames);
-              Q_EMIT parameterChanged();
-            }
-          });
+          "",
+          [this](
+              bool checked) {
+                if ( current_pipeline_ && current_pipeline_->output_options().save_processed_aligned_frames != checked ) {
+                  current_pipeline_->output_options().save_processed_aligned_frames = checked;
+                  output_processed_aligned_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_processed_aligned_frames);
+                  Q_EMIT parameterChanged();
+                }
+              });
 
   form->addRow(output_processed_aligned_frames_path_ctl =
       new QBrowsePathCombo("Processed aligned frames file name:",
@@ -149,10 +149,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
           this));
 
   connect(output_processed_aligned_frames_path_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
           current_pipeline_->output_options().output_postprocessed_frames_filename =
-              output_processed_aligned_frames_path_ctl->currentPath().toStdString();
+          output_processed_aligned_frames_path_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
@@ -161,13 +161,15 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   save_accumulated_frames_ctl =
       add_named_checkbox("Save (incremental) accumulated frames",
-          [this](bool checked) {
-            if ( current_pipeline_ && current_pipeline_->output_options().save_incremental_frames != checked  ) {
-              current_pipeline_->output_options().save_incremental_frames = checked;
-              output_accumulated_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_incremental_frames);
-              Q_EMIT parameterChanged();
-            }
-          });
+          "",
+          [this](
+              bool checked) {
+                if ( current_pipeline_ && current_pipeline_->output_options().save_incremental_frames != checked ) {
+                  current_pipeline_->output_options().save_incremental_frames = checked;
+                  output_accumulated_frames_path_ctl->setEnabled(current_pipeline_->output_options().save_incremental_frames);
+                  Q_EMIT parameterChanged();
+                }
+              });
 
   form->addRow(output_accumulated_frames_path_ctl =
       new QBrowsePathCombo("Accumulated frames file name:",
@@ -176,10 +178,10 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
           this));
 
   connect(output_accumulated_frames_path_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
           current_pipeline_->output_options().output_incremental_frames_filename =
-              output_accumulated_frames_path_ctl->currentPath().toStdString();
+          output_accumulated_frames_path_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
@@ -188,13 +190,15 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   save_accumulation_masks_ctl =
       add_named_checkbox("Save accumulation masks",
-          [this](bool checked) {
-            if ( current_pipeline_ && current_pipeline_->output_options().save_accumulation_masks != checked  ) {
-              current_pipeline_->output_options().save_accumulation_masks = checked;
-              output_accumulation_masks_path_ctl->setEnabled(current_pipeline_->output_options().save_accumulation_masks);
-              Q_EMIT parameterChanged();
-            }
-          });
+          "",
+          [this](
+              bool checked) {
+                if ( current_pipeline_ && current_pipeline_->output_options().save_accumulation_masks != checked ) {
+                  current_pipeline_->output_options().save_accumulation_masks = checked;
+                  output_accumulation_masks_path_ctl->setEnabled(current_pipeline_->output_options().save_accumulation_masks);
+                  Q_EMIT parameterChanged();
+                }
+              });
 
   form->addRow(output_accumulation_masks_path_ctl =
       new QBrowsePathCombo("Accumulation masks file name:",
@@ -203,32 +207,32 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
           this));
 
   connect(output_accumulation_masks_path_ctl, &QBrowsePathCombo::pathChanged,
-      [this] () {
+      [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
           current_pipeline_->output_options().output_accumulation_masks_filename =
-              output_accumulation_masks_path_ctl->currentPath().toStdString();
+          output_accumulation_masks_path_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
 
   ///
 
-
   write_image_mask_as_alpha_channel_ctl =
       add_checkbox("Write image mask as alpha channel",
-          [this](bool checked) {
-            if ( current_pipeline_ && current_pipeline_->output_options().write_image_mask_as_alpha_channel != checked ) {
-              current_pipeline_->output_options().write_image_mask_as_alpha_channel = checked;
-              Q_EMIT parameterChanged();
-            }
-          });
-
+          "",
+          [this](
+              bool checked) {
+                if ( current_pipeline_ && current_pipeline_->output_options().write_image_mask_as_alpha_channel != checked ) {
+                  current_pipeline_->output_options().write_image_mask_as_alpha_channel = checked;
+                  Q_EMIT parameterChanged();
+                }
+              });
 
   ///
 
-
   dump_reference_data_for_debug_ctl =
       add_checkbox("Dump reference data for debug",
+          "",
           [this](bool checked) {
             if ( current_pipeline_ && current_pipeline_->output_options(). dump_reference_data_for_debug != checked ) {
               current_pipeline_->output_options(). dump_reference_data_for_debug = checked;
@@ -240,6 +244,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   debug_frame_registration_ctl =
       add_checkbox("Debug frame registration",
+          "",
           [this](bool checked) {
             if ( current_pipeline_ && current_pipeline_->output_options(). debug_frame_registration != checked ) {
               current_pipeline_->output_options().debug_frame_registration = checked;
@@ -250,6 +255,7 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
 
   debug_frame_registration_frame_indexes_ctl =
       add_textbox("Frame indexes to debug registration:",
+          "",
           [this](const QString & s) {
             if ( current_pipeline_ ) {
               if ( fromString(s, &current_pipeline_->output_options().debug_frame_registration_frame_indexes)) {
@@ -257,7 +263,6 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
               }
             }
           });
-
 
   ///
 
@@ -288,19 +293,19 @@ void QStackOutputOptions::set_current_pipeline(const c_image_stacking_pipeline::
   updateControls();
 }
 
-const c_image_stacking_pipeline::sptr & QStackOutputOptions::current_pipeline() const
+const c_image_stacking_pipeline::sptr& QStackOutputOptions::current_pipeline() const
 {
   return this->current_pipeline_;
 }
 
 void QStackOutputOptions::onupdatecontrols()
 {
-  if ( !current_pipeline_ ) {
+  if( !current_pipeline_ ) {
     setEnabled(false);
   }
   else {
 
-    c_image_stacking_output_options & output_options =
+    c_image_stacking_output_options &output_options =
         current_pipeline_->output_options();
 
     output_directory_ctl->setCurrentPath(current_pipeline_->output_directory().c_str(), false);
@@ -318,7 +323,8 @@ void QStackOutputOptions::onupdatecontrols()
     output_ecc_frames_path_ctl->setEnabled(output_options.save_ecc_frames);
 
     save_postprocessed_frames_ctl->setChecked(output_options.save_processed_aligned_frames);
-    output_processed_aligned_frames_path_ctl->setCurrentPath(output_options.output_postprocessed_frames_filename.c_str());
+    output_processed_aligned_frames_path_ctl->setCurrentPath(
+        output_options.output_postprocessed_frames_filename.c_str());
     output_processed_aligned_frames_path_ctl->setEnabled(output_options.save_processed_aligned_frames);
 
     save_accumulated_frames_ctl->setChecked(output_options.save_incremental_frames);
@@ -335,7 +341,6 @@ void QStackOutputOptions::onupdatecontrols()
     debug_frame_registration_ctl->setChecked(output_options.debug_frame_registration);
     debug_frame_registration_frame_indexes_ctl->setValue(output_options.debug_frame_registration_frame_indexes);
     debug_frame_registration_frame_indexes_ctl->setEnabled(output_options.debug_frame_registration);
-
 
     setEnabled(true);
   }

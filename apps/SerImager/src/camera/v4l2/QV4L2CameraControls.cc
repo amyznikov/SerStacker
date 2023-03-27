@@ -10,7 +10,6 @@
 #include <gui/widgets/style.h>
 #include <core/ssprintf.h>
 
-
 #define ICON_enterbutt        ":/serimager/icons/enterbutt.png"
 
 template<>
@@ -35,13 +34,6 @@ const c_enum_member* members_of<enum v4l2_ctrl_type>()
       { V4L2_CTRL_TYPE_U16, "V4L2_CTRL_TYPE_U16", "" },
       { V4L2_CTRL_TYPE_U32, "V4L2_CTRL_TYPE_U32", "" },
 
-
-
-
-
-
-
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6,0,0)
       { V4L2_CTRL_TYPE_AREA, "V4L2_CTRL_TYPE_AREA", "" },
       { V4L2_CTRL_TYPE_HDR10_CLL_INFO, "V4L2_CTRL_TYPE_HDR10_CLL_INFO", "" },
@@ -59,29 +51,25 @@ const c_enum_member* members_of<enum v4l2_ctrl_type>()
       { V4L2_CTRL_TYPE_MPEG2_PICTURE, "V4L2_CTRL_TYPE_MPEG2_PICTURE", "" },
       { V4L2_CTRL_TYPE_VP9_COMPRESSED_HDR, "V4L2_CTRL_TYPE_VP9_COMPRESSED_HDR", "" },
       { V4L2_CTRL_TYPE_VP9_FRAME, "V4L2_CTRL_TYPE_VP9_FRAME", "" },
-#endif
+      #endif
       { (v4l2_ctrl_type) (0) }
   };
 
   return members;
 }
 
-
 template<>
 const c_enum_member* members_of<enum v4l2_frmivaltypes>()
 {
   static constexpr c_enum_member members[] = {
-      {V4L2_FRMIVAL_TYPE_DISCRETE, "V4L2_FRMIVAL_TYPE_DISCRETE", ""},
-      {V4L2_FRMIVAL_TYPE_CONTINUOUS, "V4L2_FRMIVAL_TYPE_CONTINUOUS", ""},
-      {V4L2_FRMIVAL_TYPE_STEPWISE, "V4L2_FRMIVAL_TYPE_STEPWISE", ""},
-      {(enum v4l2_frmivaltypes)(0)}
+      { V4L2_FRMIVAL_TYPE_DISCRETE, "V4L2_FRMIVAL_TYPE_DISCRETE", "" },
+      { V4L2_FRMIVAL_TYPE_CONTINUOUS, "V4L2_FRMIVAL_TYPE_CONTINUOUS", "" },
+      { V4L2_FRMIVAL_TYPE_STEPWISE, "V4L2_FRMIVAL_TYPE_STEPWISE", "" },
+      { (enum v4l2_frmivaltypes) (0) }
   };
-
 
   return members;
 }
-
-
 
 namespace serimager {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +77,7 @@ namespace serimager {
 namespace {
 
 template<class C>
-typename std::enable_if<std::is_base_of_v<QWidget, C>, void >::type
+typename std::enable_if<std::is_base_of_v<QWidget, C>, void>::type
 remove_control(QFormLayout * form, C *& w)
 {
   if( w ) {
@@ -105,18 +93,17 @@ void enable_control(QWidget * w, bool enabled)
   }
 }
 
-void clearColorspace(cv4l_fmt &fmt)
+void clearColorspace(cv4l_fmt & fmt)
 {
   //if (m_colorspace->currentIndex() == 0)
-    fmt.s_colorspace(V4L2_COLORSPACE_DEFAULT);
+  fmt.s_colorspace(V4L2_COLORSPACE_DEFAULT);
   //if (m_xferFunc->currentIndex() == 0)
-    fmt.s_xfer_func(V4L2_XFER_FUNC_DEFAULT);
+  fmt.s_xfer_func(V4L2_XFER_FUNC_DEFAULT);
   //if (m_ycbcrEnc->currentIndex() == 0)
-    fmt.s_ycbcr_enc(V4L2_YCBCR_ENC_DEFAULT);
+  fmt.s_ycbcr_enc(V4L2_YCBCR_ENC_DEFAULT);
   //if (m_quantRange->currentIndex() == 0)
-    fmt.s_quantization(V4L2_QUANTIZATION_DEFAULT);
+  fmt.s_quantization(V4L2_QUANTIZATION_DEFAULT);
 }
-
 
 } // namespace
 
@@ -162,7 +149,6 @@ void QV4L2CameraExtraSettingsWidget::onload(QSettings & settings)
 {
 
 }
-
 
 void QV4L2CameraExtraSettingsWidget::onupdatecontrols()
 {
@@ -218,6 +204,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
       QCheckBox *ctrl =
           add_checkbox(c.name,
+              "",
               [this, c](bool checked) {
                 if ( camera_ ) {
                   int status = camera_->s_ext_ctrl(c.id, checked);
@@ -252,31 +239,31 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
       QComboBox *ctrl =
           add_combobox<QComboBox>(QString(c.name),
+              "",
+              [this, c](int index, QComboBox * combo) -> void {
+                if ( camera_ ) {
+                  int value = combo->itemData(index).value<int>();
+                  int status = camera_->s_ext_ctrl(c.id, value);
+                  if ( status ) {
+                    CF_ERROR("s_ext_ctrl(%s=%u) fails: %d (%s) ", c.name, value,
+                        status, strerror(status));
+                  }
+                }
+              },
 
-          [this, c](int index, QComboBox * combo) -> void {
-            if ( camera_ ) {
-              int value = combo->itemData(index).value<int>();
-              int status = camera_->s_ext_ctrl(c.id, value);
-              if ( status ) {
-                CF_ERROR("s_ext_ctrl(%s=%u) fails: %d (%s) ", c.name, value,
-                    status, strerror(status));
-              }
-            }
-          },
-
-          [this, c](int * index, QComboBox * combo) -> bool {
-            if ( camera_ ) {
-              int value;
-              int status = camera_->g_ext_ctrl(c.id, &value);
-              if ( status == 0 ) {
-                * index = combo->findData(QVariant::fromValue(value));
-                return true;
-              }
-              CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
-                  status, strerror(status));
-            }
-            return false;
-          });
+              [this, c](int * index, QComboBox * combo) -> bool {
+                if ( camera_ ) {
+                  int value;
+                  int status = camera_->g_ext_ctrl(c.id, &value);
+                  if ( status == 0 ) {
+                    * index = combo->findData(QVariant::fromValue(value));
+                    return true;
+                  }
+                  CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
+                      status, strerror(status));
+                }
+                return false;
+              });
 
       struct v4l2_querymenu qmenu;
 
@@ -331,6 +318,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
       QNumberEditBox *ctrl =
           add_numeric_box<int64_t>(c.name,
+              "",
               [this, c](int64_t value) {
                 if ( camera_ ) {
                   int status = camera_->s_ext_ctrl(c.id, (__s64)value);
@@ -360,6 +348,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
     case V4L2_CTRL_TYPE_BITMASK: {
       QLineEditBox *ctrl =
           add_textbox(c.name,
+              "",
               [this, c](const QString & text) {
                 if ( camera_ ) {
                   int status = camera_->s_ext_ctrl(c.id, text);
@@ -387,29 +376,29 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
     case V4L2_CTRL_TYPE_STRING: {
       QLineEditBox *ctrl =
           add_textbox(c.name,
+              "",
+              [this, c](const QString & text) {
+                if ( camera_ ) {
+                  int status = camera_->s_ext_ctrl(c.id, text);
+                  if ( status != 0 ) {
+                    CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
+                        status, strerror(status));
+                  }
+                }
+              },
 
-          [this, c](const QString & text) {
-            if ( camera_ ) {
-              int status = camera_->s_ext_ctrl(c.id, text);
-              if ( status != 0 ) {
-                CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
-                    status, strerror(status));
+              [this, c](QString * text) -> bool {
+                if ( camera_ ) {
+                  int status = camera_->g_ext_ctrl(c.id, text);
+                  if ( status == 0 ) {
+                    return true;
+                  }
+                  CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
+                      status, strerror(status));
+                }
+                return false;
               }
-            }
-          },
-
-          [this, c](QString * text) -> bool {
-            if ( camera_ ) {
-              int status = camera_->g_ext_ctrl(c.id, text);
-              if ( status == 0 ) {
-                return true;
-              }
-              CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
-                  status, strerror(status));
-            }
-            return false;
-          }
-          );
+              );
 
       ctrl->setMaxLength(c.maximum);
       return ctrl;
@@ -442,7 +431,6 @@ void QV4L2CameraExtraSettingsWidget::createControls()
   }
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 QV4L2CameraControls::QV4L2CameraControls(const QV4L2Camera::sptr & camera, QWidget * parent) :
@@ -469,7 +457,6 @@ QV4L2CameraControls::~QV4L2CameraControls()
         this, nullptr);
   }
 }
-
 
 void QV4L2CameraControls::onCameraStateChanged(QImagingCamera::State oldSate, QImagingCamera::State newState)
 {
@@ -527,7 +514,7 @@ void QV4L2CameraControls::onupdatecontrols()
 
     enable_control(extraControls_ctl, enable_extended_controls);
 
-    if ( extraControls_ctl && extraControls_ctl->isEnabled() ) {
+    if( extraControls_ctl && extraControls_ctl->isEnabled() ) {
       extraControls_ctl->updateControls();
     }
 
@@ -565,15 +552,18 @@ void QV4L2CameraControls::createControls()
   }
   else {
 
-    if ( videoInput_ctl ) {
+    if( videoInput_ctl ) {
       videoInput_ctl->clear();
     }
     else {
-      videoInput_ctl = add_combobox("Input:");
+      videoInput_ctl =
+          add_combobox("Input:",
+              "");
+
       videoInput_ctl->setEditable(false);
 
       connect(videoInput_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-         this, &ThisClass::onVideoInputChanged);
+          this, &ThisClass::onVideoInputChanged);
     }
 
     do {
@@ -586,7 +576,6 @@ void QV4L2CameraControls::createControls()
       }
     } while (device.enum_input(vin) == 0);
 
-
     __u32 input_index = 0;
     if( device.g_input(input_index) == 0 ) {
       videoInput_ctl->setCurrentIndex(input_index);
@@ -596,7 +585,7 @@ void QV4L2CameraControls::createControls()
 
   refreshFormats(device);
 
-  if ( !extraControls_ctl ) {
+  if( !extraControls_ctl ) {
 
     add_expandable_groupbox("Camera controls",
         extraControls_ctl = new QV4L2CameraExtraSettingsWidget(camera_, this));
@@ -641,7 +630,10 @@ void QV4L2CameraControls::refreshFormats(cv4l_fd & device)
     }
     else {
 
-      fmt_ctl = add_combobox("Format:");
+      fmt_ctl =
+          add_combobox("Format:",
+              "");
+
       fmt_ctl->setEditable(false);
       fmt_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
@@ -727,7 +719,7 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
   cv4l_fmt fmt;
   int status;
 
-  if( (status = device.g_fmt(fmt, type) ) ) {
+  if( (status = device.g_fmt(fmt, type)) ) {
 
     CF_ERROR("device.g_fmt() fails: status=%d (%s)",
         status, strerror(status));
@@ -746,7 +738,7 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
     const int height =
         fmt.g_height();
 
-    if ( (status = device.enum_framesizes(frmsize, fmt.g_pixelformat())) ) {
+    if( (status = device.enum_framesizes(frmsize, fmt.g_pixelformat())) ) {
       CF_ERROR("device.enum_framesizes() fails: status=%d (%s)",
           status, strerror(status));
     }
@@ -764,13 +756,15 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
       }
       else {
 
-        frameSize_ctl = add_combobox("Frame Size:");
+        frameSize_ctl =
+            add_combobox("Frame Size:",
+                "");
+
         frameSize_ctl->setEditable(false);
 
         connect(frameSize_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &ThisClass::onFrameSizeChanged);
       }
-
 
       do {
 
@@ -959,7 +953,11 @@ void QV4L2CameraControls::refreshFrameRates(cv4l_fd & device)
         frameRate_ctl->clear();
       }
       else {
-        frameRate_ctl = add_combobox("Frame Rate");
+
+        frameRate_ctl =
+            add_combobox("Frame Rate:",
+                "");
+
         frameRate_ctl->setEditable(false);
 
         connect(frameRate_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
@@ -986,7 +984,6 @@ void QV4L2CameraControls::refreshFrameRates(cv4l_fd & device)
         }
 
       } while (device.enum_frameintervals(frmival) == 0);
-
 
     }
   }
@@ -1043,6 +1040,5 @@ void QV4L2CameraControls::onFrameRateChanged(int index)
     }
   }
 }
-
 
 } /* namespace serimager */

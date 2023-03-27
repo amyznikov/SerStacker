@@ -14,6 +14,7 @@ QRStereoFeature2dOptions::QRStereoFeature2dOptions(QWidget * parent) :
 {
   controls.append(scale_ctl =
       add_numeric_box<double>("Image scale",
+          "",
           [this](double value) {
             if ( options_ && options_->scale != value ) {
               options_->scale = value;

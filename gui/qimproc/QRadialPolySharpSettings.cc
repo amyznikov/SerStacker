@@ -25,6 +25,7 @@ void QRadialPolySharpSettings::setupControls()
 
   coeffs_ctl =
       QSettingsWidget::add_textbox("coeffs:",
+          "",
           [this, routine](const QString & s) {
             std::vector<double> values;
             if ( fromString(s, &values)) {

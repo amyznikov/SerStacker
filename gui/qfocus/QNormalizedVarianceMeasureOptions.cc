@@ -17,6 +17,7 @@ QNormalizedVarianceMeasureOptions::QNormalizedVarianceMeasureOptions(const QStri
 {
   avgchannel_ctl =
       add_checkbox("Average color channels",
+          "",
           [this](bool checked) {
             if ( options_ && options_->avgchannel() != checked ) {
               options_->set_avgchannel(checked);

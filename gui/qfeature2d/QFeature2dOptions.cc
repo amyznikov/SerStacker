@@ -15,6 +15,7 @@ QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
   detectorType_ctl =
       add_enum_combobox<SPARSE_FEATURE_DETECTOR_TYPE>(
           "DETECTOR_TYPE",
+          "",
           [this](SPARSE_FEATURE_DETECTOR_TYPE value) {
             if ( options_ && options_->type != value ) {
               options_->type = value;
@@ -26,6 +27,7 @@ QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
 
   max_keypoints_ctl =
       add_numeric_box<int>("Max. key points:",
+          "",
           [this](int value) {
             if ( options_ && options_->max_keypoints != value ) {
               options_->max_keypoints = value;
@@ -77,6 +79,7 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
 
 #define ADD_CTL(f, name) \
     controls.append(add_ctl<decltype(options_->f.name)>(#name, \
+        "", \
         [this](decltype(options_->f.name) v){ \
           if ( options_ ) { \
             options_->f.name = v; \
@@ -258,6 +261,7 @@ QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * paren
 {
   useDetectorSettings_ctl =
       add_checkbox("Use detector settings",
+          "",
           [this](bool checked) {
             if ( options_ && options_->use_detector_options != checked ) {
               options_->use_detector_options = checked;
@@ -269,6 +273,7 @@ QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * paren
   descriptorType_ctl =
       add_enum_combobox<SPARSE_FEATURE_DESCRIPTOR_TYPE>(
           "DESCRIPTOR_TYPE",
+          "",
           [this](SPARSE_FEATURE_DESCRIPTOR_TYPE value) {
             if ( options_ && options_->type != value ) {
               options_->type = value;
@@ -318,6 +323,7 @@ void QSparseFeatureDescriptorOptions::update_descriptor_specific_controls()
 
 #define ADD_CTL(f, name) \
     controls.append(add_ctl<decltype(options_->f.name)>(#name, \
+        "", \
         [this](decltype(options_->f.name) v){ \
           if ( options_ ) { \
             options_->f.name = v; \
@@ -464,6 +470,7 @@ QHammingDistanceFeature2dMatcherOptions::QHammingDistanceFeature2dMatcherOptions
 {
   max_acceptable_distance_ctl =
       add_numeric_box<int>("max_acceptable_distance",
+          "",
           [this](int value) {
             if ( options_ && options_->max_acceptable_distance != value ) {
               options_->max_acceptable_distance = value;
@@ -504,6 +511,7 @@ QFlannBasedFeature2dMatcherOptions::QFlannBasedFeature2dMatcherOptions(QWidget *
 {
   flannIndexType_ctl =
       add_enum_combobox<FlannIndexType>("Flann Index Type:",
+          "",
           [this](FlannIndexType value) {
             if ( options_ && options_->index.type != value ) {
               options_->index.type = value;
@@ -514,6 +522,7 @@ QFlannBasedFeature2dMatcherOptions::QFlannBasedFeature2dMatcherOptions(QWidget *
 
   flannDistanceType_ctl =
       add_enum_combobox<cvflann::flann_distance_t>("Flann Distance Type:",
+          "",
           [this](cvflann::flann_distance_t value) {
             if ( options_ && options_->distance_type != value ) {
               options_->distance_type = value;
@@ -523,6 +532,7 @@ QFlannBasedFeature2dMatcherOptions::QFlannBasedFeature2dMatcherOptions(QWidget *
 
   lowe_ratio_ctl =
       add_numeric_box<double>("lowe_ratio",
+          "",
           [this](double value) {
             if ( options_ && options_->lowe_ratio != value ) {
               options_->lowe_ratio = value;
@@ -574,6 +584,7 @@ void QFlannBasedFeature2dMatcherOptions::update_matcher_specific_controls()
 
 #define ADD_FLANN_INDEX_CTL(f, name) \
     controls.append(add_ctl<decltype(options_->index.f.name)>(#name, \
+        "", \
         [this](decltype(options_->index.f.name) v){ \
           if ( options_ ) { \
             options_->index.f.name = v; \
@@ -645,6 +656,7 @@ QTriangleMatcherOptions::QTriangleMatcherOptions(QWidget * parent) :
 {
   eps_ctl =
       add_numeric_box<double>("eps",
+          "",
           [this](double value) {
             if ( options_ && options_->eps != value ) {
               options_->eps = value;
@@ -686,6 +698,7 @@ QSnormBasedFeature2dMatcherOptions::QSnormBasedFeature2dMatcherOptions(QWidget *
 {
   max_acceptable_distance_ctl =
       add_numeric_box<int>("max_acceptable_distance:",
+          "",
           [this](int value) {
             if ( options_ && options_->max_acceptable_distance != value ) {
               options_->max_acceptable_distance = value;
@@ -695,6 +708,7 @@ QSnormBasedFeature2dMatcherOptions::QSnormBasedFeature2dMatcherOptions(QWidget *
 
   lowe_ratio_ctl =
       add_numeric_box<double>("lowe_ratio:",
+          "",
           [this](int value) {
             if ( options_ && options_->lowe_ratio != value ) {
               options_->lowe_ratio = value;
@@ -737,6 +751,7 @@ QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
   sparseFeatureMatcherType_ctl =
       add_enum_combobox<FEATURE2D_MATCHER_TYPE>(
           "Feature matcher:",
+          "",
           [this](FEATURE2D_MATCHER_TYPE value) {
             if ( options_ && options_->type != value ) {
               options_->type = value;

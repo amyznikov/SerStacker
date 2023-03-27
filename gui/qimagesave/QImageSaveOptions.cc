@@ -70,8 +70,9 @@ const c_enum_member * members_of<QImageSaveFormat>()
 QImageSavePNGOptions::QImageSavePNGOptions(QWidget * parent) :
     Base("QImageSavePNGOptions", parent)
 {
-  pixtype_ctl = add_combobox(
-      "Pixel depth:");
+  pixtype_ctl =
+      add_combobox("Pixel depth:",
+          "");
 
   pixtype_ctl->addItem(toString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
   pixtype_ctl->addItem(toString(PIXEL_DEPTH_16U), QVariant::fromValue((int) (PIXEL_DEPTH_16U)));
@@ -105,11 +106,11 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
 {
   pixelDepth_ctl =
       add_enum_combobox<PIXEL_DEPTH>("Pixel type:",
-          [this](PIXEL_DEPTH v) {
-          });
+          "");
 
   compression_ctl = 
       add_combobox( "TIFF Compression: ",
+          "",
           std::function<void(int, QComboBox *)>());
 
 
@@ -122,7 +123,8 @@ QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
           default_tiff_compression())));
 
   embedAlphaMask_ctl =
-      add_checkbox("Embed alpha mask");
+      add_checkbox("Embed alpha mask",
+          "");
 
   embedAlphaMask_ctl->setChecked(true);
 }
@@ -170,8 +172,7 @@ QImageSaveJPEGOptions::QImageSaveJPEGOptions(QWidget * parent) :
 {
   quality_ctl = 
     add_numeric_box<double>("Jpeg quality",
-      [this](double v) {
-      });
+        "");
 
   quality_ctl->setValue(99);
 }
@@ -195,29 +196,31 @@ QImageSaveOptions::QImageSaveOptions(QWidget * parent) :
 {
   format_ctl =
       add_enum_combobox<QImageSaveFormat>("Format:",
+          "",
           [this](QImageSaveFormat format) {
 
-        switch (format) {
-          case QImageSaveTIFF:
-          stack_ctl->setVisible(true);
-          stack_ctl->setCurrentWidget(tiffOptions_ctl);
-          break;
-          case QImageSavePNG:
-          stack_ctl->setVisible(true);
-          stack_ctl->setCurrentWidget(pngOptions_ctl);
-          break;
-          case QImageSaveJPEG:
-          stack_ctl->setVisible(true);
-          stack_ctl->setCurrentWidget(jpegOptions_ctl);
-          break;
-          default:
-          stack_ctl->setVisible(false);
-          break;
-        }
-      });
+            switch (format) {
+              case QImageSaveTIFF:
+              stack_ctl->setVisible(true);
+              stack_ctl->setCurrentWidget(tiffOptions_ctl);
+              break;
+              case QImageSavePNG:
+              stack_ctl->setVisible(true);
+              stack_ctl->setCurrentWidget(pngOptions_ctl);
+              break;
+              case QImageSaveJPEG:
+              stack_ctl->setVisible(true);
+              stack_ctl->setCurrentWidget(jpegOptions_ctl);
+              break;
+              default:
+              stack_ctl->setVisible(false);
+              break;
+            }
+          });
 
   save_also_processor_config_ctl =
-      add_checkbox("Save also proc.cfg:");
+      add_checkbox("Save also proc.cfg:",
+          "");
 
   stack_ctl = add_widget<QStackedWidget>(QString());
   stack_ctl->addWidget(tiffOptions_ctl = new QImageSaveTIFFOptions());

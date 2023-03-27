@@ -12,8 +12,8 @@ QFrameUpscaleOptions::QFrameUpscaleOptions(QWidget * parent) :
 {
 
   upscale_option_ctl =
-      add_enum_combobox<frame_upscale_option>(
-          "Upscale:",
+      add_enum_combobox<frame_upscale_option>("Upscale:",
+          "",
           [this](frame_upscale_option v) {
             if ( options_ && v != options_->upscale_option ) {
               options_->upscale_option = upscale_option_ctl->currentItem();
@@ -22,8 +22,8 @@ QFrameUpscaleOptions::QFrameUpscaleOptions(QWidget * parent) :
           });
 
   upscale_stage_ctl =
-      add_enum_combobox<frame_upscale_stage>(
-          "Stage:",
+      add_enum_combobox<frame_upscale_stage>("Stage:",
+          "",
           [this](frame_upscale_stage v) {
             if ( options_ && v != options_->upscale_stage ) {
               options_->upscale_stage = upscale_stage_ctl->currentItem();

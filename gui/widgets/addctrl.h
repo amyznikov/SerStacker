@@ -12,51 +12,51 @@
 #include <gui/widgets/QEnumComboBox.h>
 #include <gui/widgets/QLineEditBox.h>
 
-QDockWidget * addDock(QMainWindow * parent,
-    Qt::DockWidgetArea area,
-    const QString & dockName,
-    const QString & title,
-    QWidget * clientWidget,
-    QMenu * viewMenu = Q_NULLPTR);
+//QDockWidget * addDock(QMainWindow * parent,
+//    Qt::DockWidgetArea area,
+//    const QString & dockName,
+//    const QString & title,
+//    QWidget * clientWidget,
+//    QMenu * viewMenu = Q_NULLPTR);
 
-template<class _Calable>
-inline QLineEditBox * insert_editbox(QFormLayout * form, int row, const char * parameter_name, _Calable && slot)
-{
-  QLineEditBox * ctl = new QLineEditBox();
-  form->insertRow(row, parameter_name, ctl);
-  QObject::connect(ctl, &QLineEditBox::textChanged, slot);
-  return ctl;
-}
-
-template<class _Calable>
-inline QNumberEditBox * add_numeric_box(QFormLayout * form, const char * parameter_name, _Calable && slot)
-{
-  QNumberEditBox * ctl = new QNumberEditBox();
-  form->addRow(parameter_name, ctl);
-  QObject::connect(ctl, &QLineEditBox::textChanged, slot);
-
-  return ctl;
-}
-
-template<class _Calable>
-inline QCheckBox * add_checkbox(QFormLayout * form, const char * parameter_name, _Calable && slot)
-{
-  QCheckBox * ctl = new QCheckBox(parameter_name);
-  form->addRow(ctl);
-  QObject::connect(ctl, &QCheckBox::stateChanged, slot);
-  return ctl;
-}
-
-template<class _Calable>
-inline QCheckBox * insert_checkbox(QFormLayout * form, int row, const char * parameter_name, _Calable && slot)
-{
-  QCheckBox * ctl = new QCheckBox(parameter_name);
-  form->insertRow(row, ctl);
-  QObject::connect(ctl, &QCheckBox::stateChanged, slot);
-  return ctl;
-}
-
-
+//template<class _Calable>
+//inline QLineEditBox * insert_editbox(QFormLayout * form, int row, const char * parameter_name, _Calable && slot)
+//{
+//  QLineEditBox * ctl = new QLineEditBox();
+//  form->insertRow(row, parameter_name, ctl);
+//  QObject::connect(ctl, &QLineEditBox::textChanged, slot);
+//  return ctl;
+//}
+//
+//template<class _Calable>
+//inline QNumberEditBox * add_numeric_box(QFormLayout * form, const char * parameter_name, _Calable && slot)
+//{
+//  QNumberEditBox * ctl = new QNumberEditBox();
+//  form->addRow(parameter_name, ctl);
+//  QObject::connect(ctl, &QLineEditBox::textChanged, slot);
+//
+//  return ctl;
+//}
+//
+//template<class _Calable>
+//inline QCheckBox * add_checkbox(QFormLayout * form, const char * parameter_name, _Calable && slot)
+//{
+//  QCheckBox * ctl = new QCheckBox(parameter_name);
+//  form->addRow(ctl);
+//  QObject::connect(ctl, &QCheckBox::stateChanged, slot);
+//  return ctl;
+//}
+//
+//template<class _Calable>
+//inline QCheckBox * insert_checkbox(QFormLayout * form, int row, const char * parameter_name, _Calable && slot)
+//{
+//  QCheckBox * ctl = new QCheckBox(parameter_name);
+//  form->insertRow(row, ctl);
+//  QObject::connect(ctl, &QCheckBox::stateChanged, slot);
+//  return ctl;
+//}
+//
+//
 
 
 template<class _Calable>

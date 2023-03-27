@@ -17,6 +17,7 @@ QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(const QString & prefix,
 {
   avgc_ctl =
       add_checkbox("Average color channels:",
+          "",
           [this](bool checked) {
             if ( options_ && options_->avgchannel() != checked ) {
               options_->set_avgchannel(checked);
@@ -26,6 +27,7 @@ QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(const QString & prefix,
 
   k_ctl =
       add_numeric_box<double>("k:",
+          "",
           [this](double v) {
             if ( options_ && v != options_->k() ) {
               options_->set_k(v);
@@ -35,6 +37,7 @@ QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(const QString & prefix,
 
   dscale_ctl =
       add_numeric_box<double>("dscale:",
+          "",
           [this](double v) {
             if ( options_ && v != options_->dscale() ) {
               options_->set_dscale(v);
@@ -44,6 +47,7 @@ QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(const QString & prefix,
 
   uscale_ctl =
       add_numeric_box<double>("uscale:",
+          "",
           [this](double v) {
             if ( options_ && v != options_->uscale() ) {
               options_->set_uscale(v);
@@ -53,6 +57,7 @@ QLPGSharpnessMeasureOptions::QLPGSharpnessMeasureOptions(const QString & prefix,
 
   square_ctl =
       add_checkbox("squared:",
+          "",
           [this](bool checked) {
             if ( options_ && options_->squared() != checked ) {
               options_->set_squared(checked);

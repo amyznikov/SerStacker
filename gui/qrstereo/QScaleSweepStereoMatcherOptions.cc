@@ -12,6 +12,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 {
   enable_stereo_matching_ctl =
       add_checkbox("enable stereo matching",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().enable_stereo_matchning = checked;
@@ -28,6 +29,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   max_disparity_ctl =
       add_numeric_box<int>("max_disparity:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().max_disparity = value;
@@ -44,6 +46,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   max_scale_ctl =
       add_numeric_box<int>("max_scale:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().max_scale = value;
@@ -60,6 +63,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   kernel_radius_ctl =
       add_numeric_box<int>("kernel_radius:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().kernel_radius = value;
@@ -76,6 +80,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   kernel_sigma_ctl =
       add_numeric_box<double>("kernel_sigma:",
+          "",
           [this](double value) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().kernel_sigma = value;
@@ -92,6 +97,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   save_debug_images_ctl =
       add_checkbox("save_debug_images",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().save_debug_images = checked;
@@ -108,6 +114,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   process_only_debug_frames_ctl =
       add_checkbox("process_only_debug_frames",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().process_only_debug_frames = checked;
@@ -124,6 +131,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   debug_frames_ctl =
       add_numeric_box<std::vector<int>>("debug frames:",
+          "",
           [this](const std::vector<int> & value) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().debug_frames = value;
@@ -140,6 +148,7 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
 
   debug_points_ctl =
       add_numeric_box<std::vector<cv::Point>>("debug points:",
+          "",
           [this](const std::vector<cv::Point> & value) {
             if ( pipeline_ ) {
               pipeline_->stereo_matching_options().debug_points = value;

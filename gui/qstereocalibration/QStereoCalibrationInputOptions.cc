@@ -13,6 +13,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   layout_type_ctl =
       add_enum_combobox<stereo_calibration_input_frame_layout_type>("Stereo frame layout:",
+          "",
           [this](stereo_calibration_input_frame_layout_type value) {
             if ( pipeline_ && pipeline_->input_options().layout_type != value ) {
               pipeline_->input_options().layout_type = value;
@@ -31,6 +32,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   swap_cameras_ctl =
       add_checkbox("Swap cameras:",
+          "",
           [this](bool checked) {
             if ( pipeline_ && pipeline_->input_options().swap_cameras != checked ) {
               pipeline_->input_options().swap_cameras = checked;
@@ -48,7 +50,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   left_source_ctl =
       add_combobox<QComboBox>("Left camera source:",
-
+          "",
           [this](int index, QComboBox * combo) {
             if ( pipeline_ ) {
               pipeline_->input_options().left_stereo_source =
@@ -89,7 +91,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   right_source_ctl =
       add_combobox<QComboBox>("Right camera source:",
-
+          "",
           [this](int index, QComboBox * combo) {
             if ( pipeline_ ) {
               pipeline_->input_options().right_stereo_source =
@@ -99,6 +101,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
           },
 
           [this](int * index, QComboBox * combo) {
+
             * index = -1;
 
             if ( pipeline_ && pipeline_->input_sequence() ) {
@@ -128,6 +131,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   start_frame_index_ctl =
       add_numeric_box<int>("start_frame_index:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->input_options().start_frame_index = value;
@@ -144,6 +148,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   max_input_frames_ctl =
       add_numeric_box<int>("max_input_frames:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->input_options().max_input_frames = value;
@@ -160,6 +165,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   inpaint_missing_pixels_ctl =
       add_checkbox("inpaint_missing_pixels",
+          "",
           [this](bool value) {
             if ( pipeline_ ) {
               pipeline_->input_options().inpaint_missing_pixels = value;
@@ -176,6 +182,7 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
   enable_color_maxtrix_ctl =
       add_checkbox("enable_color_maxtrix",
+          "",
           [this](bool value) {
             if ( pipeline_ ) {
               pipeline_->input_options().enable_color_maxtrix = value;

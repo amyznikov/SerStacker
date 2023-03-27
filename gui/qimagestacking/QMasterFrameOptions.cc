@@ -31,8 +31,8 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
 
 
   masterFrameSelectionMethod_ctl =
-      add_enum_combobox<master_frame_selection_method>(
-          "Frame selection:",
+      add_enum_combobox<master_frame_selection_method>("Frame selection:",
+          "",
           [this](master_frame_selection_method v) {
             onMasterFrameSeletionMethodChaned(v);
           });

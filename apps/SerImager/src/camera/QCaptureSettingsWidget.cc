@@ -308,6 +308,7 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
 {
   enable_split_stereo_stream_ctl =
       add_checkbox("Split stereo stream:",
+          "",
           [this](bool checked) {
             if ( writer_ ) {
               writer_->set_enable_split_stereo_stream(checked);
@@ -325,6 +326,7 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
 
   stereo_stream_layout_type_ctl =
       add_enum_combobox<stereo_stream_layout_type>("stereo frame layout:",
+          "",
           [this](stereo_stream_layout_type v) {
             if ( writer_ ) {
               writer_->stereo_stream_options().layout_type = v;
@@ -342,6 +344,7 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
 
   enable_swap_cameras_ctl =
       add_checkbox("Swap cameras:",
+          "",
           [this](bool checked) {
             if ( writer_ ) {
               writer_->stereo_stream_options().swap_cameras = checked;
@@ -359,6 +362,7 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
 
   downscale_panes_ctl =
       add_checkbox("Downscale panes:",
+          "",
           [this](bool checked) {
             if ( writer_ ) {
               writer_->stereo_stream_options().downscale_panes = checked;
@@ -470,6 +474,7 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 
   output_format_ctl =
       add_enum_combobox<QCameraWriter::FORMAT>("Output format:",
+          "",
           [this](QCameraWriter::FORMAT value) {
             if ( writer_ ) {
               writer_->setOutputFormat(value);
@@ -482,6 +487,7 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 
   avi_options_ctl =
       add_textbox("ffmpeg options:",
+          "",
           [this](const QString & value) {
             if ( writer_ ) {
               writer_->setFFmpegOptions(value);

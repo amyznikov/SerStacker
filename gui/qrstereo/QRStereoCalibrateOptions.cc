@@ -13,6 +13,7 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
 
   enable_calibration_ctl =
       add_checkbox("enable calibration",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->calibration_options().enable_calibration = checked;
@@ -30,6 +31,7 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
 
   apply_stereo_rectification_ctl =
       add_checkbox("apply rectification",
+          "",
           [this](bool checked) {
             if ( pipeline_ ) {
               pipeline_->calibration_options().apply_stereo_rectification = checked;
@@ -62,6 +64,7 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
 
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->calibration_options().min_frames = value;
@@ -78,6 +81,7 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
 
   max_frames_ctl =
       add_numeric_box<int>("max_frames:",
+          "",
           [this](int value) {
             if ( pipeline_ ) {
               pipeline_->calibration_options().max_frames = value;
@@ -172,6 +176,7 @@ QRStereoCalibrateOptions::QRStereoCalibrateOptions(QWidget * parent) :
 //
   filter_alpha_ctl =
       add_numeric_box<double>("filter_alpha:",
+          "",
           [this](double value) {
             if ( pipeline_ ) {
               pipeline_->calibration_options().filter_alpha = value;

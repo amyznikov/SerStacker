@@ -11,8 +11,8 @@ QRStereoImageProcessingOptions::QRStereoImageProcessingOptions(QWidget * parent)
   Base("QRStereoIImageProcessingOptions", parent)
 {
   input_image_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Input image processor:",
+      add_combobox<QImageProcessorSelectionCombo>("Input image processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( pipeline_ ) {
               pipeline_->image_processing_options().input_image_processor =
@@ -22,8 +22,8 @@ QRStereoImageProcessingOptions::QRStereoImageProcessingOptions(QWidget * parent)
           });
 
   stereo_match_preprocessor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Stereo match preprocessor:",
+      add_combobox<QImageProcessorSelectionCombo>("Stereo match preprocessor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( pipeline_ ) {
               pipeline_->image_processing_options().stereo_match_preprocessor =
@@ -33,8 +33,8 @@ QRStereoImageProcessingOptions::QRStereoImageProcessingOptions(QWidget * parent)
           });
 
   output_image_processor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>(
-          "Output image processor:",
+      add_combobox<QImageProcessorSelectionCombo>("Output image processor:",
+          "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( pipeline_ ) {
               pipeline_->image_processing_options().output_image_processor =

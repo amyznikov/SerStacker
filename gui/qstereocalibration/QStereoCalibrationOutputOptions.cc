@@ -33,6 +33,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_calibration_progress_video_ctl =
       add_checkbox("Save progress video:",
+          "",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_calibration_progress_video = checked;
@@ -50,6 +51,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   calibration_progress_filename_ctl =
       add_textbox("Progress video filename:",
+          "",
           [this](const QString & value) {
             if ( options_ ) {
               options_->calibration_progress_filename = value.toStdString();
@@ -70,6 +72,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_rectified_images_ctl =
       add_checkbox("Save rectified frames",
+          "",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_rectified_frames = checked;
@@ -87,6 +90,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   rectified_images_filename_ctl =
       add_textbox("Rectified frames filename:",
+          "",
           [this](const QString & value) {
             if ( options_ ) {
               options_->rectified_frames_filename = value.toStdString();
@@ -107,6 +111,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_stereo_rectified_frames_ctl =
       add_checkbox("Save stereo rectified frames",
+          "",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_stereo_rectified_frames = checked;
@@ -124,6 +129,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   stereo_rectified_frames_filename_ctl =
       add_textbox("Stereo frames file name:",
+          "",
           [this](const QString & value) {
             if ( options_ ) {
               options_->stereo_rectified_frames_filename = value.toStdString();
@@ -144,6 +150,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_quad_rectified_frames_ctl =
       add_checkbox("Save quad frames",
+          "",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_quad_rectified_frames = checked;
@@ -161,6 +168,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   quad_rectified_frames_filename_ctl =
       add_textbox("Quad frames file name:",
+          "",
           [this](const QString & value) {
             if ( options_ ) {
               options_->quad_rectified_frames_filename = value.toStdString();

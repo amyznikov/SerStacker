@@ -30,6 +30,7 @@ QFFMPEGCameraControls::QFFMPEGCameraControls(const QFFMPEGCamera::sptr & camera,
 
   options_ctl =
       add_textbox("Options:",
+          "",
           [this](const QString & value) {
             if ( camera_ ) {
               camera_->setOpts(value);

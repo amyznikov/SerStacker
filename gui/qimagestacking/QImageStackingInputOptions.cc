@@ -15,6 +15,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 {
   start_frame_index_ctl =
       add_numeric_box<int>("Start frame index:",
+          "",
           [this](int v) {
             if ( options_ && options_->start_frame_index != v ) {
               options_->start_frame_index = v;
@@ -25,6 +26,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   max_input_frames_ctl =
       add_numeric_box<int>("Max frames:",
+          "",
           [this](int v) {
             if ( options_ && options_->max_input_frames != v ) {
               options_->max_input_frames = v;
@@ -34,6 +36,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   enable_remove_bad_pixels_ctl =
       add_checkbox("Detect Bad Pixels",
+          "",
           [this](bool checked) {
             if ( options_ && checked != options_->filter_bad_pixels ) {
               options_->filter_bad_pixels = checked;
@@ -43,6 +46,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   bad_pixels_variation_threshold_ctl =
       add_numeric_box<double>("Bad Pixels Variation Threshold",
+          "",
           [this](double v) {
             if ( options_ && options_->hot_pixels_variation_threshold != v ) {
               options_->hot_pixels_variation_threshold = v;
@@ -52,6 +56,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   drop_bad_asi_frames_ctl =
       add_checkbox("Drop Corrupted ASI frames",
+          "",
           [this](bool checked) {
             if ( options_ && checked != options_->drop_bad_asi_frames ) {
               options_->drop_bad_asi_frames = checked;
@@ -61,6 +66,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   enable_color_maxtrix_ctl =
       add_checkbox("Apply color matrix if available",
+          "",
           [this](bool checked) {
             if ( options_ && checked != options_->enable_color_maxtrix ) {
               options_->enable_color_maxtrix = checked;
@@ -71,6 +77,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   anscombe_ctl =
       add_enum_combobox<anscombe_method>("Anscombe Transform:",
+          "",
           [this](anscombe_method v) {
             if ( options_ && v != options_->anscombe ) {
               options_->anscombe = v;
@@ -116,6 +123,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   missing_pixels_marked_black_ctl =
       add_checkbox("Missing pixels marked as black",
+          "",
           [this](bool checked) {
             if ( options_ && checked != options_->missing_pixels_marked_black ) {
               options_->missing_pixels_marked_black = checked;
@@ -125,6 +133,7 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
 
   inpaint_missing_pixels_ctl =
       add_checkbox("Fill missing pixels with feasible values",
+          "",
           [this](bool checked) {
             if ( options_ && checked != options_->inpaint_missing_pixels ) {
               options_->inpaint_missing_pixels = checked;

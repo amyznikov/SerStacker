@@ -27,6 +27,7 @@ QLiveCameraCalibrationOptions::QLiveCameraCalibrationOptions(QLiveCameraCalibrat
 
   save_frames_with_detected_chessboard_ctl =
       calibrationOptions_ctl->outputOptions()->add_checkbox("Save frames:",
+          "",
           [this](bool checked) {
             if ( pipeline_ && pipeline_->save_frames_with_detected_chessboard() != checked ) {
               pipeline_->set_save_frames_with_detected_chessboard(checked);
@@ -46,6 +47,7 @@ QLiveCameraCalibrationOptions::QLiveCameraCalibrationOptions(QLiveCameraCalibrat
 
   frames_with_detected_chessboard_filename_ctl =
       calibrationOptions_ctl->outputOptions()->add_textbox("filename:",
+          "",
           [this](const QString & value) {
             if ( pipeline_ && pipeline_->frames_with_detected_chessboard_filename() != value ) {
               pipeline_->set_frames_with_detected_chessboard_filename(value);

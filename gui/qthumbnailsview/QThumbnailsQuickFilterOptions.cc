@@ -168,14 +168,16 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent) :
       this, &ThisClass::onSearchTextCurrentIndexChanged);
 
 
-  matchingFlags_ctl = add_enum_combobox<Qt::MatchFlag>(
-      "Matching type:",
+  matchingFlags_ctl =
+      add_enum_combobox<Qt::MatchFlag>("Matching type:",
+          "",
       [this](Qt::MatchFlags) {
         Q_EMIT parameterChanged();
       });
 
   caseSensitivity_ctl =
       add_checkbox("Case sensitive",
+          "",
           [this] (bool) {
             Q_EMIT parameterChanged();
           });
@@ -183,6 +185,7 @@ QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent) :
 
   invertMatch_ctl =
       add_checkbox("Invert match",
+          "",
         [this] (bool) {
           Q_EMIT parameterChanged();
         });

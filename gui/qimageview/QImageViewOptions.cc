@@ -20,8 +20,8 @@ QImageViewOptions::QImageViewOptions(QWidget * parent) :
   Q_INIT_RESOURCE(qimageview_resources);
 
   displayType_ctl =
-      add_enum_combobox<QImageViewer::DisplayType>(
-          "Display",
+      add_enum_combobox<QImageViewer::DisplayType>("Display",
+          "",
           [this](QImageViewer::DisplayType v) {
             if ( imageViewer_ ) {
               imageViewer_->setDisplayType(v);
@@ -31,6 +31,7 @@ QImageViewOptions::QImageViewOptions(QWidget * parent) :
 
   transparentMask_ctl =
       add_checkbox("Transparent mask",
+          "",
           [this](bool checked) {
             if ( imageViewer_ ) {
               imageViewer_->setTransparentMask(checked);

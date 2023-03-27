@@ -16,7 +16,8 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
   Base("QCloudViewSettings", parent)
 {
   nearPlane_ctl =
-      add_numeric_box<double>("NearPlane",
+      add_numeric_box<double>("NearPlane:",
+          "",
           [this](double v) -> bool {
             if ( cloudViewer_ && v != cloudViewer_->cloudView()->nearPlane() ) {
               cloudViewer_->cloudView()->setNearPlane(v);
@@ -28,6 +29,7 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
 
   farPlane_ctl =
       add_numeric_box<double>("FarPlane:",
+          "",
           [this](double v) -> bool {
             if ( cloudViewer_ && v != cloudViewer_->cloudView()->farPlane() ) {
               cloudViewer_->cloudView()->setFarPlane(v);
@@ -39,6 +41,7 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
 
   sceneTarget_ctl =
       add_numeric_box<QVector3D>("Target:",
+          "",
           [this](const QVector3D & v) -> bool {
             if ( cloudViewer_ ) {
               cloudViewer_->cloudView()->setViewTargetPoint(v);
@@ -50,6 +53,7 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
 
   upDirection_ctl =
       add_numeric_box<QVector3D>("Up:",
+          "",
           [this](const QVector3D & v) -> bool {
             if ( cloudViewer_ ) {
               cloudViewer_->cloudView()->setUpDirection(v);
@@ -61,6 +65,7 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
 
   sceneOrigin_ctl =
       add_numeric_box<QVector3D>("Origin:",
+          "",
           [this](const QVector3D & v) -> bool {
             if ( cloudViewer_ ) {
               cloudViewer_->cloudView()->setSceneOrigin(v);
@@ -71,7 +76,8 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           });
 
   pointSize_ctl =
-      add_numeric_box<double>("pointSize",
+      add_numeric_box<double>("pointSize:",
+          "",
           [this](double v) -> bool {
             if ( cloudViewer_ && v > 0 && v != cloudViewer_->cloudView()->pointSize() ) {
               cloudViewer_->cloudView()->setPointSize(v);
@@ -83,6 +89,7 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
 
   pointBrightness_ctl =
       add_numeric_box<double>("pointBrightness",
+          "",
           [this](double v) -> bool {
             if ( cloudViewer_ && v > 0 && v != cloudViewer_->cloudView()->pointBrightness() ) {
               cloudViewer_->cloudView()->setPointBrightness(v);

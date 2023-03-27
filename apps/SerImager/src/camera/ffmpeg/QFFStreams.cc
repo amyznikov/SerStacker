@@ -311,6 +311,7 @@ QFFStreamsWidget::QFFStreamsWidget(QWidget * parent) :
   ///
   streamName_ctl =
       add_textbox("Name:",
+          "",
           [this](const QString & value) {
             if ( selectedStream_ ) {
               selectedStream_->setName(value);
@@ -341,6 +342,7 @@ QFFStreamsWidget::QFFStreamsWidget(QWidget * parent) :
 
   streamOpts_ctl =
       add_textbox("Options:",
+          "",
           [this](const QString & value) {
             if ( selectedStream_ ) {
               selectedStream_->setOpts(value);

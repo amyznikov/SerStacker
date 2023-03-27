@@ -17,6 +17,7 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
 {
   lockP1_ctl =
       add_checkbox("Lock P1",
+          "",
           [this](bool checked) {
             if ( shape_ ) {
               shape_->setLockP1(checked);
@@ -33,6 +34,7 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
 
   lockP2_ctl =
       add_checkbox("Lock P2",
+          "",
           [this](bool checked) {
             if ( shape_ ) {
               shape_->setLockP2(checked);

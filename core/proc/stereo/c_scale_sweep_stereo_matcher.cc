@@ -511,7 +511,7 @@ bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputA
 {
 
   if( currentImage.size() != referenceImage.size() ) {
-    CF_ERROR("current (%dx%d) and reference (%dxd) image sizes not match",
+    CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
         currentImage.cols(), currentImage.rows(),
         referenceImage.cols(), referenceImage.rows());
     return false;

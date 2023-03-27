@@ -32,7 +32,7 @@ protected:
 
   QNumberEditBox * minDisparity_ctl = nullptr;
   QNumberEditBox * numDisparities_ctl = nullptr;
-  QNumberEditBox * blockSize = 21;
+  QNumberEditBox * blockSize_ctl = nullptr;
 
   QNumberEditBox * speckleWindowSize_ctl = nullptr;
   QNumberEditBox * speckleRange_ctl = nullptr;

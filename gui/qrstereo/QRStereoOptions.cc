@@ -28,7 +28,7 @@ QRStereoOptions::QRStereoOptions(QWidget * parent) :
       this, &ThisClass::parameterChanged);
 
   add_expandable_groupbox("Stereo Matching",
-      stereoMatchingOptions_ctl = new QRStereoMatchingOptions(this));
+      stereoMatchingOptions_ctl = new QScaleSweepStereoMatcherOptions(this));
   connect(stereoMatchingOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 

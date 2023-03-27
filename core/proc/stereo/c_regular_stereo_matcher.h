@@ -1,8 +1,12 @@
 /*
  * c_regular_stereo_matcher.h
  *
- *  Created on: Mar 11, 2023
+ *  Created on: Mar 27, 2023
  *      Author: amyznikov
+ *
+ * https://learnopencv.com/depth-perception-using-stereo-camera-python-c
+ * https://amroamroamro.github.io/mexopencv/opencv/stereo_match_demo.html
+ * https://docs.opencv.org/3.4/dd/d53/tutorial_py_depthmap.html
  */
 
 #pragma once
@@ -10,52 +14,88 @@
 #define __c_regular_stereo_matcher_h__
 
 #include <opencv2/opencv.hpp>
-#include <memory>
+#include <opencv2/calib3d.hpp>
+#include "c_scale_sweep_stereo_matcher.h"
+
+enum stereo_matcher_type  {
+  stereo_matcher_cvStereoBM,
+  stereo_matcher_cvStereoSGBM,
+  // stereo_matcher_ScaleSweep,
+};
+
+struct c_cvStereoBM_options
+{
+  int minDisparity = 0;
+  int numDisparities = 0;
+  int blockSize = 21;
+
+  int speckleWindowSize = 0;
+  int speckleRange = 0;
+  int disp12MaxDiff = 0;
+
+  int preFilterType = 0;
+  int preFilterSize = 0;
+  int preFilterCap = 0;
+  int textureThreshold = 0;
+  int uniquenessRatio = 0;
+  int smallerBlockSize = 0;
+
+  cv::Rect roi1;
+  cv::Rect roi2;
+};
+
+enum StereoSGBM_Mode
+{
+  StereoSGBM_SGBM = cv::StereoSGBM::MODE_SGBM,
+  StereoSGBM_HH = cv::StereoSGBM::MODE_HH,
+  StereoSGBM_SGBM_3WAY = cv::StereoSGBM::MODE_SGBM_3WAY,
+  StereoSGBM_HH4 = cv::StereoSGBM::MODE_HH4
+};
+
+
+struct c_cvStereoSGBM_options
+{
+  int minDisparity = 0;
+  int numDisparities = 16;
+  int blockSize = 3;
+
+  int speckleWindowSize = 0;
+  int speckleRange = 0;
+  int disp12MaxDiff = 0;
+
+  int P1 = 0;
+  int P2 = 0;
+  int disp12MaxDiff = 0;
+  int preFilterCap = 0;
+  int uniquenessRatio = 0;
+  int speckleWindowSize = 0;
+  int speckleRange = 0;
+  StereoSGBM_Mode mode = StereoSGBM_SGBM;
+};
 
 class c_regular_stereo_matcher
 {
 public:
-
-  typedef c_regular_stereo_matcher this_clss;
-
   c_regular_stereo_matcher();
 
-  bool match(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat1w & outputMatches, cv::Mat1b * outputMask);
+  void set_matcher_type(stereo_matcher_type v);
+  stereo_matcher_type matcher_type() const;
 
-  void set_max_disparity(int v);
-  int max_disparity() const;
+  const c_cvStereoBM_options & cvStereoBM_options() const ;
+  c_cvStereoBM_options & cvStereoBM_options();
 
-  void set_max_scale(int v);
-  int max_scale() const;
-
-  void set_kernel_sigma(double v);
-  double kernel_sigma() const;
-
-  void set_kernel_radius(int v);
-  int kernel_radius() const;
-
-  void set_debug_directory(const std::string & v);
-  const std::string & debug_directory() const;
-
-  const std::vector<cv::Point>& debug_points() const;
-  void set_debug_points(const std::vector<cv::Point> & v);
+  const c_cvStereoSGBM_options & cvStereoSGBM_options() const;
+  c_cvStereoSGBM_options cvStereoSGBM_options();
 
 protected:
-  template<class MT>
-  bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat1w & outputMatches, cv::Mat1b * outputMask);
+  bool create_stereo_matcher();
 
 protected:
-  int max_disparity_ = 128;
-  int max_scale_ = 2;
-  double kernel_sigma_ = 1;
-  int kernel_radius_ = 3;
+  stereo_matcher_type matcher_type_ = stereo_matcher_cvStereoBM;
+  cv::Ptr<cv::StereoMatcher> matcher_;
 
-  std::string debug_directory_;
-  std::vector<cv::Point> debug_points_;
+  c_cvStereoBM_options cvStereoBM_options_;
+  c_cvStereoSGBM_options cvStereoSGBM_options_;
 };
 
 #endif /* __c_regular_stereo_matcher_h__ */

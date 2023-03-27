@@ -10,11 +10,13 @@
 #define __c_regular_stereo_pipeline_h__
 
 #include "c_image_processing_pipeline.h"
+#include "rstereo/c_regular_stereo.h"
+
 #include <core/feature2d/feature2d.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
-#include <core/proc/stereo/c_regular_stereo_matcher.h>
 #include <core/improc/c_image_processor.h>
 #include <core/io/c_output_frame_writer.h>
+#include <core/proc/stereo/c_scale_sweep_stereo_matcher.h>
 
 enum RSTEREO_CALIBRATION_STAGE {
   rstereo_calibration_idle = 0,

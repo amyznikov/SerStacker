@@ -1,25 +1,25 @@
 /*
- * QRStereoMatchingOptions.h
+ * QScaleSweepStereoMatcherOptions.h
  *
  *  Created on: Mar 11, 2023
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __QRStereoMatchingOptions_h__
-#define __QRStereoMatchingOptions_h__
+#ifndef __QScaleSweepStereoMatcherOptions_h__
+#define __QScaleSweepStereoMatcherOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <core/pipeline/c_regular_stereo_pipeline.h>
 
-class QRStereoMatchingOptions :
+class QScaleSweepStereoMatcherOptions :
     public QSettingsWidget
 {
 public:
-  typedef QRStereoMatchingOptions ThisClass;
+  typedef QScaleSweepStereoMatcherOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QRStereoMatchingOptions(QWidget * parent = nullptr);
+  QScaleSweepStereoMatcherOptions(QWidget * parent = nullptr);
 
   void set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline);
   const c_regular_stereo_pipeline::sptr & current_pipeline() const;
@@ -43,4 +43,4 @@ protected:
 
 };
 
-#endif /* __QRStereoMatchingOptions_h__ */
+#endif /* __QScaleSweepStereoMatcherOptions_h__ */

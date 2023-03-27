@@ -1,13 +1,13 @@
 /*
- * QRStereoMatchingOptions.cc
+ * QScaleSweepStereoMatcherOptions.cc
  *
  *  Created on: Mar 11, 2023
  *      Author: amyznikov
  */
 
-#include "QRStereoMatchingOptions.h"
+#include "QScaleSweepStereoMatcherOptions.h"
 
-QRStereoMatchingOptions::QRStereoMatchingOptions(QWidget * parent) :
+QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * parent) :
   Base("QRStereoMatchingOptions", parent)
 {
   enable_stereo_matching_ctl =
@@ -159,18 +159,18 @@ QRStereoMatchingOptions::QRStereoMatchingOptions(QWidget * parent) :
 }
 
 
-void QRStereoMatchingOptions::set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline)
+void QScaleSweepStereoMatcherOptions::set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline)
 {
   pipeline_ = pipeline;
   updateControls();
 }
 
-const c_regular_stereo_pipeline::sptr& QRStereoMatchingOptions::current_pipeline() const
+const c_regular_stereo_pipeline::sptr& QScaleSweepStereoMatcherOptions::current_pipeline() const
 {
   return pipeline_;
 }
 
-void QRStereoMatchingOptions::onupdatecontrols()
+void QScaleSweepStereoMatcherOptions::onupdatecontrols()
 {
   if( !pipeline_ ) {
     setEnabled(false);

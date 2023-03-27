@@ -492,7 +492,7 @@ void c_stereo_calibration::filter_frames()
   if( nbframes != perViewErrors_.rows ) {
 
     if( nbframes > 1 ) {
-      CF_ERROR("APP BUG: object_points_.size()=%zu != current_per_view_errors_.total()=%zu",
+      CF_ERROR("APP BUG: object_points_.size()=%zu != current_per_view_errors_.total()=%d",
           object_points_.size(),
           perViewErrors_.rows);
     }

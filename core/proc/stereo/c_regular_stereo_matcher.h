@@ -65,11 +65,8 @@ struct c_cvStereoSGBM_options
 
   int P1 = 0;
   int P2 = 0;
-  int disp12MaxDiff = 0;
   int preFilterCap = 0;
   int uniquenessRatio = 0;
-  int speckleWindowSize = 0;
-  int speckleRange = 0;
   StereoSGBM_Mode mode = StereoSGBM_SGBM;
 };
 

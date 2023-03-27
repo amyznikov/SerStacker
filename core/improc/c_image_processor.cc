@@ -48,9 +48,9 @@
 #include "c_homography_test_routine.h"
 #include "c_image_rectification_routine.h"
 #include "c_stereo_rectification_routine.h"
-
 #include <core/readdir.h>
 #include <atomic>
+#include "c_pnormalize_routine.h"
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -138,6 +138,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_homography_test_routine::class_factory_instance());
     register_class_factory(c_image_rectification_routine::class_factory_instance());
     register_class_factory(c_stereo_rectification_routine::class_factory_instance());
+    register_class_factory(c_pnormalize_routine::class_factory_instance());
   }
 }
 

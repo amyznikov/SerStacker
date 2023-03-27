@@ -77,6 +77,9 @@ public:
   bool startPipeline(QLivePipeline *pipeline);
   QLivePipeline* currentPipeline() const;
 
+  void setDebayer(DEBAYER_ALGORITHM algo);
+  DEBAYER_ALGORITHM debayer() const;
+
 Q_SIGNALS:
   void pipelineStarted(QLivePipeline *pipeline);
   void pipelineFinished(QLivePipeline *pipeline);
@@ -93,6 +96,7 @@ protected:
   QVideoFrameDisplay *display_ = nullptr;
   QLivePipeline * pipeline_ = nullptr;
 
+  std::atomic<DEBAYER_ALGORITHM> debayer_ = DEBAYER_NN;
   std::atomic_bool finish_ = false;
 };
 
@@ -210,6 +214,56 @@ protected:
   QLiveStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
   QLiveCameraCalibrationOptions * cameraCalibrationOptions_ctl = nullptr;
 
+};
+
+
+
+class QLiveThreadSettingsWidget :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QLiveThreadSettingsWidget ThisClass;
+  typedef QSettingsWidget Base;
+
+  QLiveThreadSettingsWidget(QWidget * parent = nullptr);
+  QLiveThreadSettingsWidget(QLivePipelineThread * liveThread, QWidget * parent = nullptr);
+
+  void setLiveThread(QLivePipelineThread * liveThread);
+  QLivePipelineThread * liveThread() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  QLivePipelineThread * liveThread_ = nullptr;
+  QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
+};
+
+class QLiveThreadSettingsDialogBox :
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QLiveThreadSettingsDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QLiveThreadSettingsDialogBox(QWidget * parent = nullptr);
+
+  void setLiveThread(QLivePipelineThread * liveThread);
+  QLivePipelineThread * liveThread() const;
+
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+
+protected:
+  void closeEvent(QCloseEvent *) override;
+  void showEvent(QShowEvent *e) override;
+  void hideEvent(QHideEvent *e) override;
+
+protected:
+  QVBoxLayout * layout_ = nullptr;
+  QLiveThreadSettingsWidget * setiingsWidget_ = nullptr;
 };
 
 

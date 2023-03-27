@@ -379,6 +379,17 @@ QLivePipeline* QLivePipelineThread::currentPipeline() const
   return pipeline_;
 }
 
+void QLivePipelineThread::setDebayer(DEBAYER_ALGORITHM algo)
+{
+  debayer_ = algo;
+}
+
+DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
+{
+  return debayer_;
+}
+
+
 bool QLivePipelineThread::startPipeline(QLivePipeline * pipeline)
 {
   if( isRunning() ) {
@@ -469,6 +480,12 @@ void QLivePipelineThread::run()
 
     if( haveInputImage ) {
 
+      if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
+        if( ::debayer(inputImage, inputImage, colorid) ) {
+          colorid = COLORID_BGR;
+        }
+      }
+
       if ( !pipeline_ ) {
         display_->showVideoFrame(inputImage, colorid, bpp);
       }
@@ -492,7 +509,6 @@ void QLivePipelineThread::run()
   }
 
   if ( pipeline_ ) {
-    CF_DEBUG("pipeline_->cleanup_pipeline()");
     pipeline_->cleanup_pipeline();
   }
 
@@ -1203,5 +1219,94 @@ void QLivePipelineSelectionWidget::onRenameLivePipelineClicked()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QWidget * parent)  :
+    ThisClass(nullptr, parent)
+{
+}
+
+QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveThread, QWidget * parent) :
+    Base("QDisplayFrameProcessorSettings", parent)
+{
+  debayer_ctl =
+      add_enum_combobox<DEBAYER_ALGORITHM>("Debayer:",
+          "Select debayer algorithm for bayer patterns",
+          [this](DEBAYER_ALGORITHM v) {
+            if ( liveThread_ ) {
+              liveThread_->setDebayer(v);
+            }
+          },
+          [this](DEBAYER_ALGORITHM * v) {
+            if ( liveThread_ ) {
+              *v = liveThread_->debayer();
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+void QLiveThreadSettingsWidget::setLiveThread(QLivePipelineThread * liveThread)
+{
+  liveThread_ = liveThread;
+  updateControls();
+}
+
+QLivePipelineThread * QLiveThreadSettingsWidget::liveThread() const
+{
+  return liveThread_;
+}
+
+void QLiveThreadSettingsWidget::onupdatecontrols()
+{
+  if( !liveThread_ ) {
+    setEnabled(false);
+  }
+  else {
+    Base::onupdatecontrols();
+    setEnabled(true);
+  }
+}
+
+QLiveThreadSettingsDialogBox::QLiveThreadSettingsDialogBox(QWidget * parent) :
+    Base(parent)
+{
+  setWindowTitle("Frame Display Settings");
+
+  layout_ = new QVBoxLayout(this);
+  layout_->addWidget(setiingsWidget_ = new QLiveThreadSettingsWidget(this));
+}
+
+
+void QLiveThreadSettingsDialogBox::setLiveThread(QLivePipelineThread * liveThread)
+{
+  setiingsWidget_->setLiveThread(liveThread);
+}
+
+QLivePipelineThread * QLiveThreadSettingsDialogBox::liveThread() const
+{
+  return setiingsWidget_->liveThread();
+}
+
+void QLiveThreadSettingsDialogBox::closeEvent(QCloseEvent * e)
+{
+  hide();
+}
+
+void QLiveThreadSettingsDialogBox::showEvent(QShowEvent *e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QLiveThreadSettingsDialogBox::hideEvent(QHideEvent *e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } /* namespace serimager */

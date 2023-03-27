@@ -23,5 +23,5 @@ file(GLOB QRC_FILES *.qrc )
 
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES} ${HEADERS})
 #target_link_libraries(${PROJECT_NAME} PRIVATE ${V4LCONVERT_LIB} ${V4L2_LIB})
-target_link_libraries(${PROJECT_NAME} PRIVATE -lv4lconvert -lv4l2)
+target_link_libraries(${PROJECT_NAME} PRIVATE v4lconvert v4l2)
 

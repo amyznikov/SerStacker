@@ -57,7 +57,7 @@ protected:
 protected Q_SLOTS:
   void onCameraWriterStatusUpdate();
   void onShowMtfControlActionTriggered(bool checked);
-  //void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
+  void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
 
 protected:
@@ -121,18 +121,24 @@ protected:
   QGraphicsRectShapeSettingsDialogBox * rectShapeOptionsDialogBox_ = nullptr;
   QMenu rectShapeActionsMenu_;
 
+
+
   QAction * showTargetShapeAction_ = nullptr;
   QToolButton * targetShapeActionsButton_ = nullptr;
   QGraphicsTargetShapeSettingsDialogBox * targetShapeOptionsDialogBox_ = nullptr;
   QMenu targetShapeActionsMenu_;
+
+
 
   QAction * showLineShapeAction_ = nullptr;
   QToolButton * lineShapeActionsButton_ = nullptr;
   QGraphicsLineShapeSettingsDialogBox * lineShapeOptionsDialogBox_ = nullptr;
   QMenu lineShapeActionsMenu_;
 
-  // QAction * showdisplayFrameProcessorSettingsAction_ = nullptr;
-  // QDisplayFrameProcessorSettingsDialogBox * displayFrameProcessorSettingsDialogBox_ = nullptr;
+
+  QAction * showLiveThreadSettingsDialogBoxAction_ = nullptr;
+  QLiveThreadSettingsDialogBox * liveThreadSettingsDialogBox_ = nullptr;
+
 
 #if HAVE_INDIGO
   QIndigoClient * indigoClient_ = nullptr;

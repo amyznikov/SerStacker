@@ -559,15 +559,15 @@ void MainWindow::setupDisplayProcessingControls()
         centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
       });
 
-//  if( (showdisplayFrameProcessorSettingsAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
-//
-//    showdisplayFrameProcessorSettingsAction_->setCheckable(true);
-//    showdisplayFrameProcessorSettingsAction_->setChecked(false);
-//    showdisplayFrameProcessorSettingsAction_->setEnabled(true);
-//
-//    connect(showdisplayFrameProcessorSettingsAction_, &QAction::triggered,
-//        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
-//  }
+  if( (showLiveThreadSettingsDialogBoxAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
+
+    showLiveThreadSettingsDialogBoxAction_->setCheckable(true);
+    showLiveThreadSettingsDialogBoxAction_->setChecked(false);
+    showLiveThreadSettingsDialogBoxAction_->setEnabled(true);
+
+    connect(showLiveThreadSettingsDialogBoxAction_, &QAction::triggered,
+        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
+  }
 }
 
 void MainWindow::onCameraWriterStatusUpdate()
@@ -647,29 +647,29 @@ void MainWindow::setupIndigoFocuser()
 #endif // HAVE_INDIGO
 }
 
-//void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked)
-//{
-//  if( checked ) {
-//    if( !displayFrameProcessorSettingsDialogBox_ ) {
-//
-//      displayFrameProcessorSettingsDialogBox_ = new QDisplayFrameProcessorSettingsDialogBox(this);
-//      displayFrameProcessorSettingsDialogBox_->setDisplay(centralDisplay_);
-//
-//      connect(displayFrameProcessorSettingsDialogBox_, &QDisplayFrameProcessorSettingsDialogBox::visibilityChanged,
-//          [this](bool visible) {
-//            if ( showdisplayFrameProcessorSettingsAction_ ) {
-//              showdisplayFrameProcessorSettingsAction_->setChecked(visible);
-//            }
-//          });
-//    }
-//
-//    displayFrameProcessorSettingsDialogBox_->show();
-//  }
-//  else if( displayFrameProcessorSettingsDialogBox_ ) {
-//    displayFrameProcessorSettingsDialogBox_->hide();
-//  }
-//
-//}
+void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked)
+{
+  if( checked ) {
+    if( !liveThreadSettingsDialogBox_ ) {
+
+      liveThreadSettingsDialogBox_ = new QLiveThreadSettingsDialogBox(this);
+      liveThreadSettingsDialogBox_->setLiveThread(liveView_);
+
+      connect(liveThreadSettingsDialogBox_, &QLiveThreadSettingsDialogBox::visibilityChanged,
+          [this](bool visible) {
+            if ( showLiveThreadSettingsDialogBoxAction_ ) {
+              showLiveThreadSettingsDialogBoxAction_->setChecked(visible);
+            }
+          });
+    }
+
+    liveThreadSettingsDialogBox_->show();
+  }
+  else if( liveThreadSettingsDialogBox_ ) {
+    liveThreadSettingsDialogBox_->hide();
+  }
+
+}
 
 void MainWindow::onShowMtfControlActionTriggered(bool checked)
 {

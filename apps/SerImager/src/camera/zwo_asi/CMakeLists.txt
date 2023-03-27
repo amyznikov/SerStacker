@@ -29,7 +29,7 @@ file(GLOB QRC_FILES *.qrc )
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES} ${HEADERS})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${asi_driver_library} -lusb-1.0)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${asi_driver_library} usb-1.0)
 endif()
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
 	target_link_libraries(${PROJECT_NAME} ${asi_driver_library} "-framework CoreFoundation" "-framework IOKit" -lobjc)

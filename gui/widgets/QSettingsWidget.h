@@ -401,7 +401,9 @@ public:
         new CombomoxType(this);
 
     ctl->setFocusPolicy(Qt::StrongFocus);
+    ctl->setWhatsThis(tooltip);
     ctl->setToolTip(tooltip);
+
     form->addRow(name, ctl);
 
     if( setfn ) {

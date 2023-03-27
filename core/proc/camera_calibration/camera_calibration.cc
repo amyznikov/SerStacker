@@ -10,6 +10,92 @@
 #include <core/debug.h>
 
 
+/**
+ * write_camera_intrinsics_yml()
+ *
+ * Write camera intrinsic parameters into yml file storage (intrinsics.yml)
+ */
+bool write_camera_intrinsics_yml(const c_camera_intrinsics & intrinsics, const std::string & ymlfile)
+{
+  cv::FileStorage fs(ymlfile, cv::FileStorage::WRITE);
+
+  if ( !fs.isOpened() ) {
+    CF_ERROR("Error: can not write the intrinsic parameters "
+        "into output file '%s'", ymlfile.c_str());
+    return false;
+  }
+
+  fs << "cameraResolution" << intrinsics.image_size;
+  fs << "cameraMatrix" << intrinsics.camera_matrix;
+  fs << "dist_coeffs" << intrinsics.dist_coeffs;
+  fs.release();
+
+  return true;
+}
+
+/**
+ * read_camera_intrinsics_yml()
+ *
+ * Read camera intrinsic parameters from yml file storage (intrinsics.yml)
+ */
+bool read_camera_intrinsics_yml(c_camera_intrinsics * intrinsics, const std::string & ymlfile)
+{
+  cv::FileStorage fs(ymlfile, cv::FileStorage::READ);
+
+  if ( !fs.isOpened() ) {
+    CF_ERROR("Error: can not open the extrinsics parameters "
+        "from input file '%s'", ymlfile.c_str());
+    return false;
+  }
+
+
+  if( fs["cameraResolution"].empty() ) {
+    CF_ERROR("'cameraResolution' not specified in YML file '%s'", ymlfile.c_str());
+    return false;
+  }
+  try {
+    fs["cameraResolution"] >> intrinsics->image_size;
+  }
+  catch( ... ) {
+    CF_ERROR("Error while reading image size 'cameraResolution' from specified yml file '%s'",
+        ymlfile.c_str());
+    return false;
+  }
+
+
+  if( fs["cameraMatrix"].empty() ) {
+    CF_ERROR("'cameraMatrix' not specified in YML file '%s'", ymlfile.c_str());
+    return false;
+  }
+  try {
+    fs["cameraMatrix"] >> intrinsics->camera_matrix;
+  }
+  catch( ... ) {
+    CF_ERROR("Error while reading 'cameraMatrix' from specified yml file '%s'",
+        ymlfile.c_str());
+    return false;
+  }
+
+
+  if( fs["dist_coeffs"].empty() ) {
+    CF_WARNING("WARNING: 'dist_coeffs' not specified in YML file '%s'", ymlfile.c_str());
+    intrinsics->dist_coeffs.clear();
+  }
+  else {
+    try {
+      fs["dist_coeffs"] >> intrinsics->dist_coeffs;
+    }
+    catch( ... ) {
+      CF_ERROR("Error while reading 'dist_coeffs' from specified yml file '%s'",
+          ymlfile.c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
 /*
  * save_stereo_camera_intrinsics_yml()
  *

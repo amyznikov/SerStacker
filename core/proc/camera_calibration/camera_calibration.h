@@ -38,6 +38,23 @@ struct c_stereo_camera_extrinsics {
 
 
 /**
+ * write_camera_intrinsics_yml()
+ *
+ * Write camera intrinsic parameters into yml file storage (intrinsics.yml)
+ */
+bool write_camera_intrinsics_yml(const c_camera_intrinsics & intrinsics,
+    const std::string & ymlfile);
+
+/**
+ * read_camera_intrinsics_yml()
+ *
+ * Read camera intrinsic parameters from yml file storage (intrinsics.yml)
+ */
+bool read_camera_intrinsics_yml(c_camera_intrinsics * intrinsics,
+    const std::string & ymlfile);
+
+
+/**
  * write_stereo_camera_intrinsics_yml()
  *
  * Write stereo camera intrinsic parameters into yml file storage (intrinsics.yml)

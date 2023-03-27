@@ -3,6 +3,15 @@
  *
  *  Created on: Mar 23, 2023
  *      Author: amyznikov
+ *
+ *  Apply stereo rectification to horizontally laid out stereo frame.
+ *
+ *  This routine will apply stereo rectification to horizontally laid out input stereo frame.
+ *
+ *  The rectification remap is constructed from data read from user-provided calibration YML files
+ *  created by OpenCV or stereo calibration pipeline.
+ *  For actual YML file format see c_stereo_calibration::save_current_camera_parameters()
+ *
  */
 
 #pragma once
@@ -18,7 +27,7 @@ class c_stereo_rectification_routine :
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_stereo_rectification_routine,
       "stereo_rectification",
-      "Apply stereo rectification to horizontal layout stereo frame");
+      "Apply stereo rectification to horizontal layout stereo frame.<br>");
 
   void set_intrinsics_filename(const std::string & v)
   {
@@ -44,8 +53,8 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics yml file");
-    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics yml file");
+    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics YML file");
+    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
 
   }
 
@@ -67,6 +76,10 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
   {
     if ( !stereo_calibration_initialized_ ) {
+
+      if( stereo_intrinsics_filename_.empty() || stereo_extrinsics_filename_.empty() ) {
+        return false;
+      }
 
       if( !read_stereo_camera_intrinsics_yml(&intrinsics_, stereo_intrinsics_filename_) ) {
         CF_ERROR("read_stereo_camera_intrinsics_yml('%s') fails",
@@ -99,8 +112,8 @@ public:
       stereo_calibration_initialized_ = true;
     }
 
-    cv::Mat img =
-        image.getMat();
+    cv::Mat & img =
+        image.getMatRef();
 
     const cv::Rect roi[2] = {
         cv::Rect(0, 0, img.cols / 2, img.rows),
@@ -114,10 +127,29 @@ public:
           cv::BORDER_CONSTANT);
     }
 
+
+    if( mask.needed() ) {
+
+      if( mask.empty() ) {
+        mask.create(image.size(), CV_8UC1);
+        mask.setTo(255);
+      }
+
+      cv::Mat &msk =
+          mask.getMatRef();
+
+      for( int i = 0; i < 2; ++i ) {
+        cv::remap(msk(roi[i]), msk(roi[i]),
+            rmaps[i], cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_CONSTANT);
+      }
+
+      cv::compare(msk, 254, mask, cv::CMP_GE);
+    }
+
     return true;
   }
-
-protected:
 
 protected:
   std::string stereo_intrinsics_filename_;

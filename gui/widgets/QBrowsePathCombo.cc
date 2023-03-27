@@ -67,11 +67,13 @@ void QBrowsePathCombo::construct(void)
   combo->setFocusPolicy(Qt::StrongFocus);
   combo->setMinimumContentsLength(24);
   combo->setMaxCount(30);
-  combo->lineEdit()->setPlaceholderText("auto");
 
+  if( acceptMode_ == QFileDialog::AcceptSave ) {
+    combo->lineEdit()->setPlaceholderText("auto");
 #if QT_VERSION >= QT_VERSION_CHECK(5, 16, 0)
-  combo->setPlaceholderText("auto");
+    combo->setPlaceholderText("auto");
 #endif
+  }
 
   button->setText(tr("Browse..."));
 

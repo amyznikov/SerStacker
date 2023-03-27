@@ -42,6 +42,8 @@ QLiveCameraCalibrationOptions::QLiveCameraCalibrationOptions(QLiveCameraCalibrat
             return false;
           });
 
+  save_frames_with_detected_chessboard_ctl->setToolTip("Save frames on which chessboard corners are detected");
+
   frames_with_detected_chessboard_filename_ctl =
       calibrationOptions_ctl->outputOptions()->add_textbox("filename:",
           [this](const QString & value) {
@@ -57,6 +59,8 @@ QLiveCameraCalibrationOptions::QLiveCameraCalibrationOptions(QLiveCameraCalibrat
             }
             return false;
           });
+
+  frames_with_detected_chessboard_filename_ctl->setToolTip("Output file name for frames with detected chesboard");
 
   setPipeline(pipeline);
 }

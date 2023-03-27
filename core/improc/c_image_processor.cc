@@ -46,6 +46,7 @@
 #include "c_bilateral_filter_routine.h"
 #include "c_color_transform_routine.h"
 #include "c_homography_test_routine.h"
+#include "c_image_rectification_routine.h"
 #include "c_stereo_rectification_routine.h"
 
 #include <core/readdir.h>
@@ -135,10 +136,10 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_bilateral_filter_routine::class_factory_instance());
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_homography_test_routine::class_factory_instance());
+    register_class_factory(c_image_rectification_routine::class_factory_instance());
     register_class_factory(c_stereo_rectification_routine::class_factory_instance());
   }
 }
-
 
 c_image_processor::c_image_processor(const std::string & objname, const std::string & filename ):
     name_(objname), filename_(filename)

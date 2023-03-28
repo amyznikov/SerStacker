@@ -182,32 +182,42 @@ void c_regular_stereo::update_display_image()
 
     cv::Mat disp;
 
+
     current_disparity_.convertTo(disp, CV_8U,
         255 / std::max(1., stereo_matcher_.currentMaxDisparity()));
 
     apply_colormap(disp, disp, COLORMAP_TURBO);
 
-    disp.copyTo(current_display_(roi[3]));
+    const int r =
+        stereo_matcher_.currentReferenceImageIndex();
 
-    if ( current_images_[0].type() == current_display_.type() ) {
-      cv::addWeighted(disp, 0.5, current_images_[0], 0.5, 0, current_display_(roi[2]));
+    const cv::Rect &blend_roi =
+        roi[2 + r];
+
+    const cv::Rect &disp_roi =
+        roi[2 + !r];
+
+    disp.copyTo(current_display_(disp_roi));
+
+    if ( current_images_[r].type() == current_display_.type() ) {
+      cv::addWeighted(disp, 0.5, current_images_[r], 0.5, 0, current_display_(blend_roi));
     }
-    else if ( current_images_[0].depth() == current_display_.depth() ) {
+    else if ( current_images_[r].depth() == current_display_.depth() ) {
       cv::Mat tmp;
-      cv::cvtColor(current_images_[0], tmp, cv::COLOR_GRAY2BGR);
-      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(roi[2]));
+      cv::cvtColor(current_images_[r], tmp, cv::COLOR_GRAY2BGR);
+      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(blend_roi));
     }
-    else if ( current_images_[0].channels() == current_display_.channels() ) {
+    else if ( current_images_[r].channels() == current_display_.channels() ) {
       cv::Mat tmp;
-      current_images_[0].convertTo(tmp, current_display_.depth());
-      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(roi[2]));
+      current_images_[r].convertTo(tmp, current_display_.depth());
+      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(blend_roi));
 
     }
     else {
       cv::Mat tmp;
-      cv::cvtColor(current_images_[0], tmp, cv::COLOR_GRAY2BGR);
+      cv::cvtColor(current_images_[r], tmp, cv::COLOR_GRAY2BGR);
       tmp.convertTo(tmp, current_display_.depth());
-      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(roi[2]));
+      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(blend_roi));
     }
   }
 

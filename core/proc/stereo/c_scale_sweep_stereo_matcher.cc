@@ -318,11 +318,14 @@ bool c_scale_sweep_stereo_matcher::match_impl(cv::InputArray currentImage, cv::I
           track.push_next();
 
       if( E.channels() == 1 ) {
-        cv::sepFilter2D(E, EE(rrc), E.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+        cv::sepFilter2D(E, EE(rrc), E.depth(), G, G, cv::Point(-1, -1), 0,
+            cv::BORDER_REPLICATE);
       }
       else {
-        cv::sepFilter2D(E, Ef, E.depth(), G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-        cv::cvtColor(Ef, EE(rrc), cv::COLOR_BGR2GRAY);
+        cv::sepFilter2D(E, Ef, E.depth(), G, G, cv::Point(-1, -1), 0,
+            cv::BORDER_REPLICATE);
+        cv::cvtColor(Ef, EE(rrc),
+            cv::COLOR_BGR2GRAY);
       }
 
       dump_debug_points(debug_points_fp,
@@ -557,8 +560,13 @@ void cScaleSweepStereoMatcher::compute(cv::InputArray left, cv::InputArray right
   cv::Mat1w outputMatches;
   cv::Mat1b outputMask;
 
-  base::match(left, cv::noArray(), right, cv::noArray(),
-      outputMatches, &outputMask);
+  if( base::match(left, cv::noArray(), right, cv::noArray(), outputMatches, &outputMask) ) {
+    outputMatches.convertTo(disparity, CV_32F);
+  }
+  else {
+    CF_ERROR("c_scale_sweep_stereo_matcher ::match() fails");
+    disparity.release();
+  }
 }
 
 int cScaleSweepStereoMatcher::getMinDisparity() const

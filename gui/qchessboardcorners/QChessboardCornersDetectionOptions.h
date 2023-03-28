@@ -34,7 +34,7 @@ protected:
 protected:
   c_findChessboardCorners_options * options_ = nullptr;
 
-  QNumberEditBox * max_scales_ctl = nullptr;
+  QNumericBox * max_scales_ctl = nullptr;
   QFlagsEditBox<FindChessboardCornersFlags> * flags_ctl = nullptr;
 };
 
@@ -60,7 +60,7 @@ protected:
 protected:
   c_findChessboardCornersSB_options * options_ = nullptr;
 
-  QNumberEditBox * max_scales_ctl = nullptr;
+  QNumericBox * max_scales_ctl = nullptr;
   QFlagsEditBox<FindChessboardCornersSBFlags> * flags_ctl = nullptr;
 };
 
@@ -86,10 +86,10 @@ protected:
 protected:
   c_cornerSubPix_options * options_ = nullptr;
 
-  QNumberEditBox * winSize_ctl = nullptr;
-  QNumberEditBox * zeroZone_ctl = nullptr;
-  QNumberEditBox * maxIterations_ctl = nullptr;
-  QNumberEditBox * eps_ctl = nullptr;
+  QNumericBox * winSize_ctl = nullptr;
+  QNumericBox * zeroZone_ctl = nullptr;
+  QNumericBox * maxIterations_ctl = nullptr;
+  QNumericBox * eps_ctl = nullptr;
 };
 
 class QBilateralFilterOptions :
@@ -114,9 +114,9 @@ protected:
 protected:
   c_bilateralFilter_options * options_ = nullptr;
 
-  QNumberEditBox * d_ctl = nullptr;
-  QNumberEditBox * sigmaColor_ctl = nullptr;
-  QNumberEditBox * sigmaSpace_ctl = nullptr;
+  QNumericBox * d_ctl = nullptr;
+  QNumericBox * sigmaColor_ctl = nullptr;
+  QNumericBox * sigmaSpace_ctl = nullptr;
 };
 
 class QChessboardCornersDetectionOptions :
@@ -138,8 +138,8 @@ protected:
 protected:
   c_chessboard_corners_detection_options * options_ = nullptr;
 
-  QNumberEditBox * chessboardSize_ctl = nullptr;
-  QNumberEditBox * chessboardCellSize_ctl = nullptr;
+  QNumericBox * chessboardSize_ctl = nullptr;
+  QNumericBox * chessboardCellSize_ctl = nullptr;
 
   QEnumComboBox<FindChessboardCornersMethod> * cornersDetectionMethod_ctl = nullptr;
   QFindChessboardCornersOptions * findChessboardCornersOptions_ctl = nullptr;

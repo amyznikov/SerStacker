@@ -69,8 +69,8 @@ protected:
   QEnumComboBox<c_laplacian_pyramid_focus_stacking::fusing_policy> * fusion_ctl = nullptr;
   QCheckBox * avgchannel_ctl = nullptr;
   QCheckBox * enable_inpaint_ctl = nullptr;
-  QNumberEditBox * kradius_ctl = nullptr;
-  QNumberEditBox * ksigma_ctl = nullptr;
+  QNumericBox * kradius_ctl = nullptr;
+  QNumericBox * ksigma_ctl = nullptr;
 
 };
 

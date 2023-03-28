@@ -70,7 +70,7 @@ public:
   double jpegQuality() const;
 
 protected:
-  QNumberEditBox * quality_ctl = Q_NULLPTR;
+  QNumericBox * quality_ctl = Q_NULLPTR;
 };
 
 

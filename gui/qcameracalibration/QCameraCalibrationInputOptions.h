@@ -30,8 +30,8 @@ protected:
 protected:
   c_camera_calibration_pipeline::sptr pipeline_;
 
-  QNumberEditBox * start_frame_index_ctl = nullptr;
-  QNumberEditBox * max_input_frames_ctl = nullptr;
+  QNumericBox * start_frame_index_ctl = nullptr;
+  QNumericBox * max_input_frames_ctl = nullptr;
   QCheckBox * enable_color_maxtrix_ctl = nullptr;
   QCheckBox * inpaint_missing_pixels_ctl = nullptr;
 

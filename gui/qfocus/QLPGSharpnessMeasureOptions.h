@@ -34,10 +34,10 @@ protected:
   c_lpg_sharpness_measure * options_ = nullptr;
 
   QCheckBox * avgc_ctl = nullptr;
-  QNumberEditBox * lw_ctl = nullptr;
-  QNumberEditBox * k_ctl = nullptr;
-  QNumberEditBox * dscale_ctl = nullptr;
-  QNumberEditBox * uscale_ctl = nullptr;
+  QNumericBox * lw_ctl = nullptr;
+  QNumericBox * k_ctl = nullptr;
+  QNumericBox * dscale_ctl = nullptr;
+  QNumericBox * uscale_ctl = nullptr;
   QCheckBox * square_ctl = nullptr;
 
 };

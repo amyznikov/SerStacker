@@ -30,18 +30,18 @@ protected:
 protected:
   c_cvStereoSGBM_options *options_ = nullptr;
 
-  QNumberEditBox *minDisparity_ctl = nullptr;
-  QNumberEditBox *numDisparities_ctl = nullptr;
-  QNumberEditBox *blockSize_ctl = nullptr;
+  QNumericBox *minDisparity_ctl = nullptr;
+  QNumericBox *numDisparities_ctl = nullptr;
+  QNumericBox *blockSize_ctl = nullptr;
 
-  QNumberEditBox *speckleWindowSize_ctl = nullptr;
-  QNumberEditBox *speckleRange_ctl = nullptr;
-  QNumberEditBox *disp12MaxDiff_ctl = nullptr;
+  QNumericBox *speckleWindowSize_ctl = nullptr;
+  QNumericBox *speckleRange_ctl = nullptr;
+  QNumericBox *disp12MaxDiff_ctl = nullptr;
 
-  QNumberEditBox *P1_ctl = nullptr;
-  QNumberEditBox *P2_ctl = nullptr;
-  QNumberEditBox *preFilterCap_ctl = nullptr;
-  QNumberEditBox *uniquenessRatio_ctl = nullptr;
+  QNumericBox *P1_ctl = nullptr;
+  QNumericBox *P2_ctl = nullptr;
+  QNumericBox *preFilterCap_ctl = nullptr;
+  QNumericBox *uniquenessRatio_ctl = nullptr;
 
   QEnumComboBox<StereoSGBM_Mode> *mode_ctl = nullptr;
 };

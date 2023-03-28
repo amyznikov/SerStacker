@@ -15,7 +15,8 @@ const c_enum_member* members_of<stereo_matcher_type>()
   static constexpr c_enum_member members[] = {
       { stereo_matcher_cvStereoBM, "StereoBM", "cv::StereoSGBM" },
       { stereo_matcher_cvStereoSGBM, "StereoSGBM", "cv::StereoSGBM" },
-      { stereo_matcher_cvStereoBM },
+      { stereo_matcher_ScaleSweep, "ScaleSweep", "cScaleSweepStereoMatcher" },
+      { stereo_matcher_cvStereoSGBM },
   };
 
   return members;
@@ -63,17 +64,17 @@ stereo_matcher_type c_regular_stereo_matcher::matcher_type() const
   return matcher_type_;
 }
 
-const c_cvStereoBM_options& c_regular_stereo_matcher::StereoBM() const
+const c_cvStereoBM_options& c_regular_stereo_matcher::StereoBMOptions() const
 {
   return cvStereoBM_options_;
 }
 
-c_cvStereoBM_options& c_regular_stereo_matcher::StereoBM()
+c_cvStereoBM_options& c_regular_stereo_matcher::StereoBMOptions()
 {
   return cvStereoBM_options_;
 }
 
-void c_regular_stereo_matcher::updateStereoBM()
+void c_regular_stereo_matcher::updateStereoBMOptions()
 {
   try {
     if( matcher_ ) {
@@ -108,17 +109,17 @@ void c_regular_stereo_matcher::updateStereoBM()
   }
 }
 
-const c_cvStereoSGBM_options& c_regular_stereo_matcher::StereoSGBM() const
+const c_cvStereoSGBM_options& c_regular_stereo_matcher::StereoSGBMOptions() const
 {
   return cvStereoSGBM_options_;
 }
 
-c_cvStereoSGBM_options & c_regular_stereo_matcher::StereoSGBM()
+c_cvStereoSGBM_options & c_regular_stereo_matcher::StereoSGBMOptions()
 {
   return cvStereoSGBM_options_;
 }
 
-void c_regular_stereo_matcher::updateStereoSGBM()
+void c_regular_stereo_matcher::updateStereoSGBMOptions()
 {
   try {
     if( matcher_ ) {
@@ -146,9 +147,51 @@ void c_regular_stereo_matcher::updateStereoSGBM()
     }
   }
   catch( const std::exception &e ) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoSGBM(): %s", e.what());
+    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoSGBM(): %s",
+        e.what());
   }
 }
+
+
+const c_ScaleSweep_options & c_regular_stereo_matcher::cScaleSweepOptions() const
+{
+  return cScaleSweep_options_;
+}
+
+c_ScaleSweep_options & c_regular_stereo_matcher::ScaleSweepOptions()
+{
+  return cScaleSweep_options_;
+}
+
+void c_regular_stereo_matcher::updateScaleSweepOptions()
+{
+  try {
+    if( matcher_ ) {
+
+      cScaleSweepStereoMatcher *m =
+          dynamic_cast<cScaleSweepStereoMatcher*>(matcher_.get());
+
+      if( m ) {
+
+        const c_ScaleSweep_options & opts =
+            cScaleSweep_options_;
+
+        m->set_max_disparity(opts.max_disparity);
+        m->set_max_scale(opts.max_scale);
+        m->set_kernel_sigma(opts.kernel_sigma);
+        m->set_kernel_radius(opts.kernel_radius);
+        m->set_debug_directory(opts.debug_directory);
+        m->set_debug_points(opts.debug_points);
+      }
+    }
+  }
+  catch( const std::exception &e ) {
+    CF_ERROR("Exception in c_regular_stereo_matcher::updateScaleSweepOptions(): %s",
+        e.what());
+  }
+
+}
+
 
 double c_regular_stereo_matcher::currentMaxDisparity() const
 {
@@ -157,9 +200,25 @@ double c_regular_stereo_matcher::currentMaxDisparity() const
       return cvStereoBM_options_.numDisparities;
     case stereo_matcher_cvStereoSGBM:
       return cvStereoSGBM_options_.numDisparities;
+    case stereo_matcher_ScaleSweep:
+      return cScaleSweep_options_.max_disparity;
   }
   return 16;
 }
+
+int c_regular_stereo_matcher::currentReferenceImageIndex() const
+{
+  switch (matcher_type_) {
+    case stereo_matcher_cvStereoBM:
+      return 0;
+    case stereo_matcher_cvStereoSGBM:
+      return 0;
+    case stereo_matcher_ScaleSweep:
+      return 1;
+  }
+  return 0;
+}
+
 
 bool c_regular_stereo_matcher::create_stereo_matcher()
 {
@@ -168,7 +227,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
     switch (matcher_type_) {
       case stereo_matcher_cvStereoBM: {
 
-        const c_cvStereoBM_options &opts =
+        const c_cvStereoBM_options & opts =
             cvStereoBM_options_;
 
         cv::Ptr<cv::StereoBM> m =
@@ -194,7 +253,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
 
       case stereo_matcher_cvStereoSGBM: {
 
-        const c_cvStereoSGBM_options &opts =
+        const c_cvStereoSGBM_options & opts =
             cvStereoSGBM_options_;
 
         cv::Ptr<cv::StereoSGBM> m =
@@ -209,6 +268,26 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
                 opts.speckleWindowSize,
                 opts.speckleRange,
                 opts.mode);
+
+        matcher_ = m;
+        break;
+      }
+
+
+      case stereo_matcher_ScaleSweep: {
+
+        cv::Ptr<cScaleSweepStereoMatcher> m =
+            cScaleSweepStereoMatcher::create();
+
+        const c_ScaleSweep_options & opts =
+            cScaleSweep_options_;
+
+        m->set_max_disparity(opts.max_disparity);
+        m->set_max_scale(opts.max_scale);
+        m->set_kernel_sigma(opts.kernel_sigma);
+        m->set_kernel_radius(opts.kernel_radius);
+        m->set_debug_directory(opts.debug_directory);
+        m->set_debug_points(opts.debug_points);
 
         matcher_ = m;
         break;
@@ -230,7 +309,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
 
 bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
 {
-  if ( !matcher_ && !create_stereo_matcher() ) {
+  if( !matcher_ && !create_stereo_matcher() ) {
     CF_ERROR("create_stereo_matcher() fails");
     return false;
   }
@@ -239,46 +318,52 @@ bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray righ
 
     cv::Mat images[2];
 
-    if ( left.channels() == 1 ) {
+    if( left.channels() == 1 ) {
       images[0] = left.getMat();
     }
     else {
-      cv::cvtColor(left,  images[0], cv::COLOR_BGR2GRAY);
+      cv::cvtColor(left, images[0], cv::COLOR_BGR2GRAY);
     }
 
-    if ( right.channels() == 1 ) {
+    if( right.channels() == 1 ) {
       images[1] = right.getMat();
     }
     else {
-      cv::cvtColor(right,  images[1], cv::COLOR_BGR2GRAY);
+      cv::cvtColor(right, images[1], cv::COLOR_BGR2GRAY);
     }
-
 
     matcher_->compute(images[0], images[1], disparity);
 
-    // These constands are copied from /opencv/modules/calib3d/src/stereobm.cpp
-    static constexpr int DISPARITY_SHIFT_16S = 4;
-    static constexpr int DISPARITY_SHIFT_32S = 8;
+    if( disparity.empty() ) {
+      CF_ERROR("matcher_->compute() fails");
+    }
+    else {
 
-    switch ( disparity.type() ) {
-    case CV_16SC1 :
-      disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_16S), 0);
-      break;
-    case CV_32SC1 :
-      disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_32S), 0);
-      break;
-    case CV_32FC1 :
-      //disps = disparity_map.getMat();
-      // disparity_map.getMat().copyTo(disps);
-      break;
-    default :
-      CF_ERROR("Invalid arg: the disparity map type=%d not supported. "
-          "Must be one of CV_32FC1, CV_16SC1, CV_32SC1");
-      return false;
+      // These constands are copied from /opencv/modules/calib3d/src/stereobm.cpp
+      static constexpr int DISPARITY_SHIFT_16S = 4;
+      static constexpr int DISPARITY_SHIFT_32S = 8;
+
+      switch (disparity.type()) {
+        case CV_16SC1:
+          disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_16S), 0);
+          break;
+        case CV_32SC1:
+          disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_32S), 0);
+          break;
+        case CV_32FC1:
+          //disps = disparity_map.getMat();
+          // disparity_map.getMat().copyTo(disps);
+          break;
+        default:
+          CF_ERROR("Invalid arg: the disparity map type=%d not supported. "
+              "Must be one of CV_32FC1, CV_16SC1, CV_32SC1");
+          return false;
+      }
     }
   }
-  catch (const std::exception & e) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::compute(): %s", e.what());
+  catch( const std::exception &e ) {
+    CF_ERROR("Exception in c_regular_stereo_matcher::compute(): %s",
+        e.what());
     return false;
   }
 
@@ -328,6 +413,19 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, preFilterCap);
     SERIALIZE_OPTION(section, save, opts, uniquenessRatio);
     SERIALIZE_OPTION(section, save, opts, mode);
+  }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "ScaleSweep")) ) {
+
+    c_ScaleSweep_options & opts  =
+        cScaleSweep_options_;
+
+    SERIALIZE_OPTION(section, save, opts, max_disparity);
+    SERIALIZE_OPTION(section, save, opts, max_scale);
+    SERIALIZE_OPTION(section, save, opts, kernel_sigma);
+    SERIALIZE_OPTION(section, save, opts, kernel_radius);
+    SERIALIZE_OPTION(section, save, opts, debug_directory);
+    SERIALIZE_OPTION(section, save, opts, debug_points);
   }
 
   return true;

@@ -37,7 +37,7 @@ protected slots:
 protected:
   c_feature_based_registration_options * options_ = nullptr;
   QCheckBox * enableFeatureBasedRegistration_ctl = nullptr;
-  QNumberEditBox * scale_ctl = nullptr;
+  QNumericBox * scale_ctl = nullptr;
   QSparseFeatureDetectorOptions * sparseFeatureDetectorOptions_ctl = nullptr;
   QSparseFeatureDescriptorOptions * sparseFeatureDescriptorOptions_ctl = nullptr;
   QSparseFeatureMatcherOptions * sparseFeatureMatcherOptions_ctl = nullptr;
@@ -65,20 +65,20 @@ protected:
 protected:
   c_ecc_registration_options * options_ = nullptr;
   QCheckBox * enableEcc_ctl = nullptr;
-  QNumberEditBox * scale_ctl = nullptr;
-  QNumberEditBox * eps_ctl = nullptr;
-  QNumberEditBox * min_rho_ctl = nullptr;
-  QNumberEditBox * input_smooth_sigma_ctl = nullptr;
-  QNumberEditBox * reference_smooth_sigma_ctl = nullptr;
-  QNumberEditBox * update_step_scale_ctl = nullptr;
-  QNumberEditBox * normalization_noise_ctl = nullptr;
-  QNumberEditBox * normalization_scale_ctl = nullptr;
-  QNumberEditBox * max_iterations_ctl = nullptr;
+  QNumericBox * scale_ctl = nullptr;
+  QNumericBox * eps_ctl = nullptr;
+  QNumericBox * min_rho_ctl = nullptr;
+  QNumericBox * input_smooth_sigma_ctl = nullptr;
+  QNumericBox * reference_smooth_sigma_ctl = nullptr;
+  QNumericBox * update_step_scale_ctl = nullptr;
+  QNumericBox * normalization_noise_ctl = nullptr;
+  QNumericBox * normalization_scale_ctl = nullptr;
+  QNumericBox * max_iterations_ctl = nullptr;
   QCheckBox * enable_ecch_ctl = nullptr;
   QCheckBox * ecch_estimate_translation_first_ctl = nullptr;
-  QNumberEditBox * ecch_minimum_image_size_ctl = nullptr;
+  QNumericBox * ecch_minimum_image_size_ctl = nullptr;
   QCheckBox * replace_planetary_disk_with_mask_ctl = nullptr;
-  QNumberEditBox * planetary_disk_mask_stdev_factor_ctl = nullptr;
+  QNumericBox * planetary_disk_mask_stdev_factor_ctl = nullptr;
   QWidgetList controls;
 };
 
@@ -103,12 +103,12 @@ protected:
 protected:
   c_eccflow_registration_options * options_ = nullptr;
   QCheckBox * enableEccFlow_ctl = nullptr;
-  QNumberEditBox * update_multiplier_ctl = nullptr;
-  QNumberEditBox * input_smooth_sigma_ctl = nullptr;
-  QNumberEditBox * reference_smooth_sigma_ctl = nullptr;
-  QNumberEditBox * max_iterations_ctl = nullptr;
-  QNumberEditBox * support_scale_ctl = nullptr;
-  QNumberEditBox * normalization_scale_ctl = nullptr;
+  QNumericBox * update_multiplier_ctl = nullptr;
+  QNumericBox * input_smooth_sigma_ctl = nullptr;
+  QNumericBox * reference_smooth_sigma_ctl = nullptr;
+  QNumericBox * max_iterations_ctl = nullptr;
+  QNumericBox * support_scale_ctl = nullptr;
+  QNumericBox * normalization_scale_ctl = nullptr;
   QWidgetList controls;
 };
 
@@ -133,20 +133,20 @@ protected:
 protected:
   c_jovian_derotation_options *options_ = nullptr;
   QCheckBox * enableJovianDerotation_ctl = nullptr;
-  QNumberEditBox * min_rotation_ctl = nullptr;
-  QNumberEditBox * max_rotation_ctl = nullptr;
-  QNumberEditBox * max_pyramid_level_ctl = nullptr;
-  QNumberEditBox * num_orientations_ctl = nullptr;
+  QNumericBox * min_rotation_ctl = nullptr;
+  QNumericBox * max_rotation_ctl = nullptr;
+  QNumericBox * max_pyramid_level_ctl = nullptr;
+  QNumericBox * num_orientations_ctl = nullptr;
 
 //  QNumberEditBox * normalization_scale_ctl = nullptr;
 //  QNumberEditBox * normalization_blur_ctl = nullptr;
-  QNumberEditBox * eccflow_support_scale_ctl = nullptr;
-  QNumberEditBox * eccflow_normalization_scale_ctl = nullptr;
-  QNumberEditBox * eccflow_max_pyramid_level_ctl = nullptr;
+  QNumericBox * eccflow_support_scale_ctl = nullptr;
+  QNumericBox * eccflow_normalization_scale_ctl = nullptr;
+  QNumericBox * eccflow_max_pyramid_level_ctl = nullptr;
   //QNumberEditBox * hlines_ctl = nullptr;
   //QCheckBox * align_planetary_disk_masks_ctl = nullptr;
   QCheckBox * derotate_all_frames_ctl = nullptr;
-  QNumberEditBox * derotate_all_frames_max_context_size_ctl = nullptr;
+  QNumericBox * derotate_all_frames_max_context_size_ctl = nullptr;
   QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
 
   QJovianEllipseDetectorSettings * detector_setting_ctl = nullptr;
@@ -181,7 +181,7 @@ protected:
   QRegistrationColorChannelCombo * registration_channel_ctl = nullptr;
   QEccInterpolatioMethodCombo * interpolation_method_ctl = nullptr;
   QEccBorderModeCombo * border_mode_ctl = nullptr;
-  QNumberEditBox * border_value_ctl = nullptr;
+  QNumericBox * border_value_ctl = nullptr;
 
   QMasterFrameOptions * masterFrameOptions_ctl = nullptr;
   QFeatureBasedRegistrationOptions * featureRegistrationOptions_ctl = nullptr;

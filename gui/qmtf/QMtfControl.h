@@ -64,7 +64,7 @@ protected:
   QVBoxLayout * vbox_ = nullptr;
   QToolBar * topToolbar_ctl = nullptr;
   QComboBox * displayType_ctl = nullptr;
-  QNumberEditBox * inputDataRange_ctl = nullptr;
+  QNumericBox * inputDataRange_ctl = nullptr;
   QToolButton * colormap_ctl = nullptr;
 
   QAction * resetMtfAction_ = nullptr;

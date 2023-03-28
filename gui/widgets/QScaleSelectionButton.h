@@ -10,8 +10,8 @@
 
 #include <QtWidgets/QtWidgets>
 
-class QScaleSelectionButton
-  : public QToolButton
+class QScaleSelectionButton :
+    public QToolButton
 {
   Q_OBJECT;
 public:
@@ -22,11 +22,11 @@ public:
 
   int currentScale() const;
 
-public slots:
+public Q_SLOTS:
   void setScaleRange(int min, int max);
   void setCurrentScale(int scale);
 
-signals:
+Q_SIGNALS:
   void scaleChanged(int currentScale);
 
 protected:

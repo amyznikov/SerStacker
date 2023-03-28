@@ -12,6 +12,7 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include "QStereoBMOptions.h"
 #include "QStereoSGBMOptions.h"
+#include "QScaleSweepOptions.h"
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 class QStereoMatcherOptions :
@@ -38,6 +39,7 @@ protected:
 
   QStereoBMOptions * stereoBMOptions_ctl = nullptr;
   QStereoSGBMOptions * stereoSGBMOptions_ctl = nullptr;
+  QScaleSweepOptions * scaleSweepOptions_ctl = nullptr;
 };
 
 #endif /* __QStereoMatcherOptions_h__ */

@@ -94,7 +94,7 @@ protected:
 protected:
   QFocusMeasureProvider *provider_ = nullptr;
   QEnumComboBox<SHARPNESS_MEASURE> * sharpness_measure_ctl = nullptr;
-  QNumberEditBox * max_measurements_ctl = nullptr;
+  QNumericBox * max_measurements_ctl = nullptr;
   QStackedWidget * stack_ctl = nullptr;
 
   QLocalContrastMeasureOptions * localContrastMeasure_ctl = nullptr;

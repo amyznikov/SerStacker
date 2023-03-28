@@ -54,10 +54,10 @@ protected:
   QSpinBox * masterFrameIndex_ctl = nullptr;
   QCheckBox * apply_input_frame_processors_ctl = nullptr;
   QCheckBox * generateMasterFrame_ctl = nullptr;
-  QNumberEditBox * maxFramesForMasterFrameGeneration_ctl = nullptr;
-  QNumberEditBox * eccFlowScale_ctl = nullptr;
-  QNumberEditBox * master_sharpen_factor_ctl = nullptr;
-  QNumberEditBox * accumulated_sharpen_factor_ctl = nullptr;
+  QNumericBox * maxFramesForMasterFrameGeneration_ctl = nullptr;
+  QNumericBox * eccFlowScale_ctl = nullptr;
+  QNumericBox * master_sharpen_factor_ctl = nullptr;
+  QNumericBox * accumulated_sharpen_factor_ctl = nullptr;
 
   //QCheckBox * compensateMasterFlow_ctl = nullptr;
   QCheckBox * saveMasterFrame_ctl = nullptr;

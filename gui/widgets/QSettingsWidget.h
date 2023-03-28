@@ -114,10 +114,10 @@ public:
   /////////////////////////////////////////////////////////////////////
 
   template<class T>
-  QNumberEditBox * add_numeric_box(QFormLayout * form, const QString & name, const QString & tooltip,
+  QNumericBox * add_numeric_box(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn = std::function<void(T)>())
   {
-    QNumberEditBox * ctl = new QNumberEditBox(this);
+    QNumericBox * ctl = new QNumericBox(this);
     if ( !tooltip.isEmpty() ) {
       ctl->setToolTip(tooltip);
     }
@@ -127,7 +127,7 @@ public:
     if ( setfn ) {
 
       QMetaObject::Connection conn =
-          QObject::connect(ctl, &QNumberEditBox::textChanged,
+          QObject::connect(ctl, &QNumericBox::textChanged,
               [this, ctl, setfn]() {
                 if ( !updatingControls() && setfn ) {
                   T v;
@@ -147,10 +147,10 @@ public:
   }
 
   template<class T>
-  QNumberEditBox * add_numeric_box(QFormLayout * form, const QString & name, const QString & tooltip,
+  QNumericBox * add_numeric_box(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
   {
-    QNumberEditBox * ctl =
+    QNumericBox * ctl =
         add_numeric_box(form, name, tooltip, setfn);
 
     if( getfn ) {
@@ -181,13 +181,13 @@ public:
 //  }
 
   template<class T>
-  QNumberEditBox * add_numeric_box(const QString & name, const QString & tooltip, const std::function<void(T)> & setfn = std::function<void(T)>() )
+  QNumericBox * add_numeric_box(const QString & name, const QString & tooltip, const std::function<void(T)> & setfn = std::function<void(T)>() )
   {
     return add_numeric_box<T>(this->form, name, tooltip, setfn);
   }
 
   template<class T>
-  QNumberEditBox * add_numeric_box(const QString & name, const QString & tooltip,
+  QNumericBox * add_numeric_box(const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn,
       const std::function<bool(T*)> & getfn)
   {
@@ -853,7 +853,7 @@ public:
 
   template<class T, class S, class G>
   typename std::enable_if<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value,
-  QNumberEditBox*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
+  QNumericBox*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
   {
     return add_numeric_box<T>(name, tooltip, setfn, getfn);
   }

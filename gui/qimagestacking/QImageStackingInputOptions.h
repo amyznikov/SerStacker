@@ -37,7 +37,7 @@ protected:
   c_input_options * options_ = Q_NULLPTR;
 
   QCheckBox * enable_remove_bad_pixels_ctl = Q_NULLPTR;
-  QNumberEditBox * bad_pixels_variation_threshold_ctl = Q_NULLPTR;
+  QNumericBox * bad_pixels_variation_threshold_ctl = Q_NULLPTR;
   QCheckBox * drop_bad_asi_frames_ctl = Q_NULLPTR;
 
   QCheckBox * enable_color_maxtrix_ctl = Q_NULLPTR;
@@ -48,8 +48,8 @@ protected:
   QCheckBox * missing_pixels_marked_black_ctl  = Q_NULLPTR;
   QCheckBox * inpaint_missing_pixels_ctl = Q_NULLPTR;
 
-  QNumberEditBox * start_frame_index_ctl = Q_NULLPTR;
-  QNumberEditBox * max_input_frames_ctl = Q_NULLPTR;
+  QNumericBox * start_frame_index_ctl = Q_NULLPTR;
+  QNumericBox * max_input_frames_ctl = Q_NULLPTR;
 
 //  QToolButton * applyToAll_ctl = Q_NULLPTR;
 };

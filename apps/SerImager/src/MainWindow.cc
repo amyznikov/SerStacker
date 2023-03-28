@@ -436,6 +436,13 @@ void MainWindow::setupMainToolbar()
   manToolbar_->addAction(showFrameProcessorAction_);
   manToolbar_->addAction(showMtfControlAction_);
 
+  manToolbar_->addWidget(displayScaleControl_ = new QScaleSelectionButton());
+  connect(displayScaleControl_, &QScaleSelectionButton::scaleChanged,
+      [this](int currentScale) {
+        centralDisplay_->setViewScale(currentScale);
+      });
+
+
   ///////////////////////////////////////////////////////////////////
 
 }

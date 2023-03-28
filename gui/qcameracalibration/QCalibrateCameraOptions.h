@@ -30,13 +30,13 @@ protected:
 protected:
   c_calibrate_camera_options * options_ = nullptr;
 
-  QNumberEditBox * min_frames_ctl = nullptr;
-  QNumberEditBox * max_frames_ctl = nullptr;
-  QNumberEditBox * max_iterations_ctl = nullptr;
-  QNumberEditBox * eps_ctl = nullptr;
+  QNumericBox * min_frames_ctl = nullptr;
+  QNumericBox * max_frames_ctl = nullptr;
+  QNumericBox * max_iterations_ctl = nullptr;
+  QNumericBox * eps_ctl = nullptr;
   QFlagsEditBox<CAMERA_CALIBRATION_FLAGS> * calibration_flags_ctl = nullptr;
   QCheckBox * auto_tune_calibration_flags_ctl = nullptr;
-  QNumberEditBox * filter_alpha_ctl = nullptr;
+  QNumericBox * filter_alpha_ctl = nullptr;
 };
 
 #endif /* __QCalibrateCameraOptions_h__ */

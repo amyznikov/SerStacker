@@ -36,13 +36,13 @@ protected:
 
 protected:
   QCloudViewer * cloudViewer_ = nullptr;
-  QNumberEditBox * nearPlane_ctl = nullptr;
-  QNumberEditBox * farPlane_ctl = nullptr;
-  QNumberEditBox * sceneTarget_ctl = nullptr;
-  QNumberEditBox * upDirection_ctl = nullptr;
-  QNumberEditBox * sceneOrigin_ctl = nullptr;
-  QNumberEditBox * pointSize_ctl = nullptr;
-  QNumberEditBox * pointBrightness_ctl = nullptr;
+  QNumericBox * nearPlane_ctl = nullptr;
+  QNumericBox * farPlane_ctl = nullptr;
+  QNumericBox * sceneTarget_ctl = nullptr;
+  QNumericBox * upDirection_ctl = nullptr;
+  QNumericBox * sceneOrigin_ctl = nullptr;
+  QNumericBox * pointSize_ctl = nullptr;
+  QNumericBox * pointBrightness_ctl = nullptr;
 
   //QPointCloudsSettingsControl * cloudsSettings_ctl = nullptr;
 

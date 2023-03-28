@@ -36,7 +36,7 @@ protected slots:
 
 protected:
   c_regular_stereo_feature2d_options * options_ = nullptr;
-  QNumberEditBox * scale_ctl = nullptr;
+  QNumericBox * scale_ctl = nullptr;
   QSparseFeatureDetectorOptions * sparseFeatureDetectorOptions_ctl = nullptr;
   QSparseFeatureDescriptorOptions * sparseFeatureDescriptorOptions_ctl = nullptr;
   QSparseFeatureMatcherOptions * sparseFeatureMatcherOptions_ctl = nullptr;

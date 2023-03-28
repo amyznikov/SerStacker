@@ -54,21 +54,21 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
   connect(generateMasterFrame_ctl, &QCheckBox::stateChanged,
       this, &ThisClass::onGenerateMasterFrameCheckboxStateChanged);
 
-  maxFramesForMasterFrameGeneration_ctl = new QNumberEditBox(this);
-  connect(maxFramesForMasterFrameGeneration_ctl, &QNumberEditBox::textChanged,
+  maxFramesForMasterFrameGeneration_ctl = new QNumericBox(this);
+  connect(maxFramesForMasterFrameGeneration_ctl, &QNumericBox::textChanged,
       this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
 
 
-  eccFlowScale_ctl = new QNumberEditBox(this);
-  connect(eccFlowScale_ctl, &QNumberEditBox::textChanged,
+  eccFlowScale_ctl = new QNumericBox(this);
+  connect(eccFlowScale_ctl, &QNumericBox::textChanged,
       this, &ThisClass::onEccFlowScaleChanged);
 
-  master_sharpen_factor_ctl = new QNumberEditBox(this);
-  connect(master_sharpen_factor_ctl, &QNumberEditBox::textChanged,
+  master_sharpen_factor_ctl = new QNumericBox(this);
+  connect(master_sharpen_factor_ctl, &QNumericBox::textChanged,
       this, &ThisClass::onMasterSharpenFactorChanged);
 
-  accumulated_sharpen_factor_ctl = new QNumberEditBox(this);
-  connect(accumulated_sharpen_factor_ctl, &QNumberEditBox::textChanged,
+  accumulated_sharpen_factor_ctl = new QNumericBox(this);
+  connect(accumulated_sharpen_factor_ctl, &QNumericBox::textChanged,
       this, &ThisClass::onAccumulatedSharpenFactorChanged);
 
 

@@ -611,8 +611,8 @@ void QImageProcessorSettingsControl::setupControls()
 
       case c_image_processor_routine_gui_ctl_numeric_text_box: {
 
-        QNumberEditBox *ctl =
-            new QNumberEditBox();
+        QNumericBox *ctl =
+            new QNumericBox();
 
         ctl->setToolTip(p.tooltip.c_str());
 
@@ -625,7 +625,7 @@ void QImageProcessorSettingsControl::setupControls()
 
         if( p.set_value ) {
 
-            QObject::connect(ctl, &QNumberEditBox::textChanged,
+            QObject::connect(ctl, &QNumericBox::textChanged,
                 [this, ctl, p]() {
                   if ( !updatingControls() ) {
                     p.set_value(ctl->text().toStdString());

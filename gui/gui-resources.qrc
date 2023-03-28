@@ -2,12 +2,18 @@
 <qresource prefix="/gui">
 	<file>icons/light/double-arrow-down.png</file>
 	<file>icons/dark/double-arrow-down.png</file>
+
 	<file>icons/light/double-arrow-left.png</file>
 	<file>icons/dark/double-arrow-left.png</file>
+
 	<file>icons/light/double-arrow-right.png</file>
 	<file>icons/dark/double-arrow-right.png</file>	
+
 	<file>icons/light/double-arrow-up.png</file>
 	<file>icons/dark/double-arrow-up.png</file>
+
+    <file>icons/light/zoom.png</file>
+    <file>icons/dark/zoom.png</file>
 
 	<file>icons/close.png</file>
 	<file>icons/copy.png</file>
@@ -19,7 +25,6 @@
 	<file>icons/reload.png</file>
 	<file>icons/histogram.png</file>
     <file>icons/marker-blue.png</file>
-    <file>icons/zoom.png</file>
     <file>icons/reference.png</file>
     <file>icons/options.png</file>
     <file>icons/mask.png</file>

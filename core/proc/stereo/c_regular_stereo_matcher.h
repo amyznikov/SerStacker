@@ -21,7 +21,7 @@
 enum stereo_matcher_type  {
   stereo_matcher_cvStereoBM,
   stereo_matcher_cvStereoSGBM,
-  // stereo_matcher_ScaleSweep,
+  stereo_matcher_ScaleSweep,
 };
 
 enum StereoBM_PreFilterType
@@ -77,6 +77,17 @@ struct c_cvStereoSGBM_options
   StereoSGBM_Mode mode = StereoSGBM_SGBM;
 };
 
+struct c_ScaleSweep_options
+{
+  int max_disparity = 128;
+  int max_scale = 2;
+  double kernel_sigma = 1;
+  int kernel_radius = 3;
+
+  std::string debug_directory;
+  std::vector<cv::Point> debug_points;
+};
+
 class c_regular_stereo_matcher
 {
 public:
@@ -85,15 +96,21 @@ public:
   void set_matcher_type(stereo_matcher_type v);
   stereo_matcher_type matcher_type() const;
 
-  const c_cvStereoBM_options & StereoBM() const ;
-  c_cvStereoBM_options & StereoBM();
-  void updateStereoBM();
+  const c_cvStereoBM_options & StereoBMOptions() const ;
+  c_cvStereoBM_options & StereoBMOptions();
+  void updateStereoBMOptions();
 
-  const c_cvStereoSGBM_options & StereoSGBM() const;
-  c_cvStereoSGBM_options & StereoSGBM();
-  void updateStereoSGBM();
+  const c_cvStereoSGBM_options & StereoSGBMOptions() const;
+  c_cvStereoSGBM_options & StereoSGBMOptions();
+  void updateStereoSGBMOptions();
+
+  const c_ScaleSweep_options & cScaleSweepOptions() const;
+  c_ScaleSweep_options & ScaleSweepOptions();
+  void updateScaleSweepOptions();
 
   double currentMaxDisparity() const;
+
+  int currentReferenceImageIndex() const;
 
   bool compute( cv::InputArray left, cv::InputArray right,
       cv::OutputArray disparity);
@@ -110,6 +127,7 @@ protected:
 
   c_cvStereoBM_options cvStereoBM_options_;
   c_cvStereoSGBM_options cvStereoSGBM_options_;
+  c_ScaleSweep_options cScaleSweep_options_;
 };
 
 #endif /* __c_regular_stereo_matcher_h__ */

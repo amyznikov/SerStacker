@@ -37,7 +37,7 @@ protected:
 protected:
   c_sparse_feature_detector_options *options_ = nullptr;
   QSparseFeatureDetectorTypeCombo * detectorType_ctl = nullptr;
-  QNumberEditBox * max_keypoints_ctl = nullptr;
+  QNumericBox * max_keypoints_ctl = nullptr;
   QWidgetList controls;
 };
 
@@ -84,7 +84,7 @@ protected:
 
 protected:
   c_hamming_distance_feature2d_matcher_options * options_ = nullptr;
-  QNumberEditBox * max_acceptable_distance_ctl = nullptr;
+  QNumericBox * max_acceptable_distance_ctl = nullptr;
 };
 
 class QFlannBasedFeature2dMatcherOptions :
@@ -110,7 +110,7 @@ protected:
   c_flann_based_feature2d_matcher_options * options_ = nullptr;
   QFlannIndexTypeCombo * flannIndexType_ctl = nullptr;
   QFlannDistanceTypeCombo * flannDistanceType_ctl = nullptr;
-  QNumberEditBox * lowe_ratio_ctl = nullptr;
+  QNumericBox * lowe_ratio_ctl = nullptr;
   QWidgetList controls;
 };
 
@@ -132,7 +132,7 @@ protected:
 
 protected:
   c_triangle_matcher_options * options_ = nullptr;
-  QNumberEditBox * eps_ctl = nullptr;
+  QNumericBox * eps_ctl = nullptr;
 };
 
 class QSnormBasedFeature2dMatcherOptions :
@@ -153,8 +153,8 @@ protected:
 
 protected:
   c_snorm_based_feature2d_matcher_options * options_ = nullptr;
-  QNumberEditBox * max_acceptable_distance_ctl = nullptr;
-  QNumberEditBox * lowe_ratio_ctl = nullptr;
+  QNumericBox * max_acceptable_distance_ctl = nullptr;
+  QNumericBox * lowe_ratio_ctl = nullptr;
 };
 
 

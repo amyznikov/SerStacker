@@ -316,7 +316,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
     case V4L2_CTRL_TYPE_INTEGER64: {
 
-      QNumberEditBox *ctrl =
+      QNumericBox *ctrl =
           add_numeric_box<int64_t>(c.name,
               "",
               [this, c](int64_t value) {

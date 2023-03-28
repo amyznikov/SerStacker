@@ -35,13 +35,13 @@ protected:
   QCheckBox * apply_stereo_rectification_ctl = nullptr;
   QBrowsePathCombo * calibration_config_filename_ctl = nullptr;
 
-  QNumberEditBox * min_frames_ctl = nullptr;
-  QNumberEditBox * max_frames_ctl = nullptr;
+  QNumericBox * min_frames_ctl = nullptr;
+  QNumericBox * max_frames_ctl = nullptr;
   //QNumberEditBox * max_iterations_ctl = nullptr;
   //QNumberEditBox * eps_ctl = nullptr;
   //QFlagsEditBox<RSTEREO_CALIBRATION_FLAGS> * calibration_flags_ctl = nullptr;
   //QCheckBox * auto_tune_calibration_flags_ctl = nullptr;
-  QNumberEditBox * filter_alpha_ctl = nullptr;
+  QNumericBox * filter_alpha_ctl = nullptr;
 };
 
 #endif /* __QRStereoCalibrateOptions_h__ */

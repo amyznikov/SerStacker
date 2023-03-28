@@ -144,20 +144,20 @@ protected:
   QLineEdit * lineEdit_ = nullptr;
 };
 
-class QNumberEditBox :
+class QNumericBox :
     public QLineEditBox
 {
   Q_OBJECT;
 public:
-  typedef QNumberEditBox ThisClass;
+  typedef QNumericBox ThisClass;
   typedef QLineEditBox Base;
 
-  explicit QNumberEditBox(QWidget *parent = nullptr) : Base(parent)
+  explicit QNumericBox(QWidget *parent = nullptr) : Base(parent)
   {
     // lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
   }
 
-  explicit QNumberEditBox(const QString & s, QWidget * parent = nullptr) : Base(s, parent)
+  explicit QNumericBox(const QString & s, QWidget * parent = nullptr) : Base(s, parent)
   {
     //lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
   }

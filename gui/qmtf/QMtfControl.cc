@@ -101,10 +101,10 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(displayType_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
       this, &ThisClass::onDisplayTypeCurrentItemChanged);
 
-  inputDataRange_ctl = new QNumberEditBox(this);
+  inputDataRange_ctl = new QNumericBox(this);
   inputDataRange_ctl->setToolTip("Set input data range (min/max clips)");
   topToolbar_ctl->addWidget(inputDataRange_ctl);
-  connect(inputDataRange_ctl, &QNumberEditBox::textChanged,
+  connect(inputDataRange_ctl, &QNumericBox::textChanged,
       this, &ThisClass::onInputDataRangeChanged);
 
 

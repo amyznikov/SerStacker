@@ -33,7 +33,7 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   connect(stereoBMOptions_ctl, &QStereoBMOptions::parameterChanged,
       [this]() {
         if ( stereo_matcher_ ) {
-          stereo_matcher_->updateStereoBM();
+          stereo_matcher_->updateStereoBMOptions();
         }
         Q_EMIT parameterChanged();
       });
@@ -44,10 +44,23 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   connect(stereoSGBMOptions_ctl, &QStereoSGBMOptions::parameterChanged,
       [this]() {
         if ( stereo_matcher_ ) {
-          stereo_matcher_->updateStereoSGBM();
+          stereo_matcher_->updateStereoSGBMOptions();
         }
         Q_EMIT parameterChanged();
       });
+
+
+  add_expandable_groupbox("ScaleSweep Options",
+      scaleSweepOptions_ctl = new QScaleSweepOptions());
+
+  connect(scaleSweepOptions_ctl, &QScaleSweepOptions::parameterChanged,
+      [this]() {
+        if ( stereo_matcher_ ) {
+          stereo_matcher_->updateScaleSweepOptions();
+        }
+        Q_EMIT parameterChanged();
+      });
+
 
   updateControls();
 }
@@ -69,8 +82,9 @@ void QStereoMatcherOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    stereoBMOptions_ctl->set_options(&stereo_matcher_->StereoBM());
-    stereoSGBMOptions_ctl->set_options(&stereo_matcher_->StereoSGBM());
+    stereoBMOptions_ctl->set_options(&stereo_matcher_->StereoBMOptions());
+    stereoSGBMOptions_ctl->set_options(&stereo_matcher_->StereoSGBMOptions());
+    scaleSweepOptions_ctl->set_options(&stereo_matcher_->ScaleSweepOptions());
     Base::onupdatecontrols();
     setEnabled(true);
   }

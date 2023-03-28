@@ -32,14 +32,14 @@ protected:
   c_regular_stereo_pipeline::sptr pipeline_;
 
   QCheckBox * enable_stereo_matching_ctl = nullptr;
-  QNumberEditBox * max_disparity_ctl = nullptr;
-  QNumberEditBox * max_scale_ctl = nullptr;
-  QNumberEditBox * kernel_radius_ctl = nullptr;
-  QNumberEditBox * kernel_sigma_ctl = nullptr;
+  QNumericBox * max_disparity_ctl = nullptr;
+  QNumericBox * max_scale_ctl = nullptr;
+  QNumericBox * kernel_radius_ctl = nullptr;
+  QNumericBox * kernel_sigma_ctl = nullptr;
   QCheckBox * save_debug_images_ctl = nullptr;
   QCheckBox * process_only_debug_frames_ctl = nullptr;
-  QNumberEditBox * debug_frames_ctl = nullptr;
-  QNumberEditBox * debug_points_ctl = nullptr;
+  QNumericBox * debug_frames_ctl = nullptr;
+  QNumericBox * debug_points_ctl = nullptr;
 
 };
 

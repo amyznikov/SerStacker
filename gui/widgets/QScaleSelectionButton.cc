@@ -6,13 +6,14 @@
  */
 
 #include "QScaleSelectionButton.h"
+#include <gui/widgets/style.h>
 
-#define ICON_zoom "zoom"
+#define ICON_zoom   ":/gui/icons/zoom"
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/gui/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/gui/icons/%1").arg(name));
+//}
 
 class QScaleSelectionButton::QPopupSlider
   : public QDialog
@@ -64,7 +65,7 @@ void QScaleSelectionButton::QPopupSlider::onValueChanged(int value)
 {
   lb_->setText(QString("%1").arg(value));
   enableFeedback_ = false;
-  emit ((QScaleSelectionButton*) parent())->scaleChanged(value);
+  Q_EMIT ((QScaleSelectionButton*) parent())->scaleChanged(value);
   enableFeedback_ = true;
 }
 

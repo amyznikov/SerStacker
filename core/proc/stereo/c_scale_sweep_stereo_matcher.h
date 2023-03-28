@@ -36,6 +36,9 @@ public:
   void set_kernel_radius(int v);
   int kernel_radius() const;
 
+  void set_normalization_scale(int v) ;
+  int normalization_scale() const;
+
   void set_debug_directory(const std::string & v);
   const std::string & debug_directory() const;
 
@@ -53,6 +56,7 @@ protected:
   int max_scale_ = 2;
   double kernel_sigma_ = 1;
   int kernel_radius_ = 3;
+  int pscale_ = 0;
 
   std::string debug_directory_;
   std::vector<cv::Point> debug_points_;

@@ -180,6 +180,7 @@ void c_regular_stereo_matcher::updateScaleSweepOptions()
         m->set_max_scale(opts.max_scale);
         m->set_kernel_sigma(opts.kernel_sigma);
         m->set_kernel_radius(opts.kernel_radius);
+        m->set_normalization_scale(opts.normalization_scale);
         m->set_debug_directory(opts.debug_directory);
         m->set_debug_points(opts.debug_points);
       }
@@ -286,6 +287,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
         m->set_max_scale(opts.max_scale);
         m->set_kernel_sigma(opts.kernel_sigma);
         m->set_kernel_radius(opts.kernel_radius);
+        m->set_normalization_scale(opts.normalization_scale);
         m->set_debug_directory(opts.debug_directory);
         m->set_debug_points(opts.debug_points);
 
@@ -424,6 +426,7 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, max_scale);
     SERIALIZE_OPTION(section, save, opts, kernel_sigma);
     SERIALIZE_OPTION(section, save, opts, kernel_radius);
+    SERIALIZE_OPTION(section, save, opts, normalization_scale);
     SERIALIZE_OPTION(section, save, opts, debug_directory);
     SERIALIZE_OPTION(section, save, opts, debug_points);
   }

@@ -6,7 +6,7 @@
  */
 
 #include "c_scale_sweep_stereo_matcher.h"
-
+#include <core/proc/pyrscale.h>
 #include <core/io/save_image.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
@@ -31,6 +31,25 @@ double maxval_for_pixel_depth(int ddepth)
       return INT32_MAX;
   }
   return FLT_MAX;
+}
+
+void pnormalize(const cv::Mat & src, cv::Mat & dst, int pscale)
+{
+  cv::Mat m;
+  cv::Scalar mean, stdev;
+  double f = 0;
+
+  pyramid_downscale(src, m, pscale, cv::BORDER_REPLICATE);
+  pyramid_upscale(m, src.size());
+  m.convertTo(m, CV_32F);
+  cv::subtract(src, m, m, cv::noArray(), CV_32F);
+
+  cv::meanStdDev(m, mean, stdev);
+  for( int i = 0, cn = src.channels(); i < cn; ++i ) {
+    f += stdev[i];
+  }
+
+  m.convertTo(dst, CV_8U, 24. * src.channels() / f, 128);
 }
 
 template<class T>
@@ -185,6 +204,16 @@ int c_scale_sweep_stereo_matcher::kernel_radius() const
   return kernel_radius_;
 }
 
+void c_scale_sweep_stereo_matcher::set_normalization_scale(int v)
+{
+  pscale_ = v;
+}
+
+int c_scale_sweep_stereo_matcher::normalization_scale() const
+{
+  return pscale_;
+}
+
 void c_scale_sweep_stereo_matcher::set_debug_directory(const std::string & v)
 {
   debug_directory_ = v;
@@ -225,18 +254,33 @@ bool c_scale_sweep_stereo_matcher::match_impl(cv::InputArray currentImage, cv::I
   std::vector<cv::Mat1b> referenceMaskPyramid;
   std::vector<cv::Mat1w> disparityPyramid;
 
+
   double ksigma;
   int ksize;
 
-  cv::buildPyramid(currentImage, currentImagePyramid, max_scale_);
-  cv::buildPyramid(currentMask.empty() ? cv::Mat1b(currentImage.size(), 255) :
+  const int pscale =
+      pscale_;
+
+  cv::Mat images[2];
+
+  if ( pscale < 1 ) {
+    images[0] = currentImage.getMat();
+    images[1] = referenceImage.getMat();
+  }
+  else {
+    pnormalize(currentImage.getMat(), images[0], pscale);
+    pnormalize(referenceImage.getMat(), images[1], pscale);
+  }
+
+  cv::buildPyramid(images[0], currentImagePyramid, max_scale_);
+  cv::buildPyramid(currentMask.empty() ? cv::Mat1b(images[0].size(), 255) :
       currentMask, currentMaskPyramid, max_scale_);
   for( uint i = 1, n = currentMaskPyramid.size(); i < n; ++i ) {
     cv::compare(currentMaskPyramid[i], 255, currentMaskPyramid[i], cv::CMP_GE);
   }
 
-  cv::buildPyramid(referenceImage, referenceImagePyramid, max_scale_);
-  cv::buildPyramid(referenceMask.empty() ? cv::Mat1b(referenceImage.size(), 255) :
+  cv::buildPyramid(images[1], referenceImagePyramid, max_scale_);
+  cv::buildPyramid(referenceMask.empty() ? cv::Mat1b(images[1].size(), 255) :
       referenceMask, referenceMaskPyramid, max_scale_);
   for( uint i = 1, n = referenceMaskPyramid.size(); i < n; ++i ) {
     cv::compare(referenceMaskPyramid[i], 255, referenceMaskPyramid[i], cv::CMP_GE);

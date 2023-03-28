@@ -83,6 +83,7 @@ struct c_ScaleSweep_options
   int max_scale = 2;
   double kernel_sigma = 1;
   int kernel_radius = 3;
+  int normalization_scale = 0;
 
   std::string debug_directory;
   std::vector<cv::Point> debug_points;

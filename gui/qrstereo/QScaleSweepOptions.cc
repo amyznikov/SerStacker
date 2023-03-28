@@ -78,6 +78,23 @@ QScaleSweepOptions::QScaleSweepOptions(QWidget * parent) :
             return false;
           });
 
+  normalization_scale_ctl =
+      add_numeric_box<int>("normalization",
+          "",
+          [this](int value) {
+            if ( options_ && options_->normalization_scale != value) {
+              options_->normalization_scale = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * value) {
+            if ( options_ ) {
+              * value = options_->normalization_scale;
+              return true;
+            }
+            return false;
+          });
+
   debug_directory_ctl =
       add_browse_for_path("",
           "debug_directory:",

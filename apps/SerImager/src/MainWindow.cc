@@ -9,6 +9,7 @@
 #include "camera/ffmpeg/QFFStreams.h"
 #include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationPipeline.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationPipeline.h"
+#include "pipeline/QLiveRegularStereo/QLiveRegularStereoPipeline.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -511,6 +512,13 @@ void MainWindow::setupLivePipelineControls()
       [](const QString & name) {
         return new QLiveStereoCalibrationPipeline(name);
       });
+
+  pipelineCollection_.addPipelineType("RegularStereo",
+      "LIve Stereo Matching",
+      [](const QString & name) {
+        return new QLiveRegularStereoPipeline(name);
+      });
+
 
 
   pipelineSelectorDock_ =

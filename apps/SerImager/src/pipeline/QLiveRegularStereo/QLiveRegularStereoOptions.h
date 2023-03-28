@@ -9,12 +9,34 @@
 #ifndef __QLiveRegularStereoOptions_h__
 #define __QLiveRegularStereoOptions_h__
 
+#include "QLiveRegularStereoPipeline.h"
+#include <gui/qrstereo/QRegularStereoOptions.h>
+
 namespace serimager {
 
-class QLiveRegularStereoOptions
+class QLiveRegularStereoOptions :
+    public QSettingsWidget
 {
+  Q_OBJECT;
 public:
-  QLiveRegularStereoOptions();
+  typedef QLiveRegularStereoOptions ThisClass;
+  typedef QSettingsWidget Base;
+
+  QLiveRegularStereoOptions(QWidget * parent = nullptr);
+  QLiveRegularStereoOptions(QLiveRegularStereoPipeline * pipeline_, QWidget * parent = nullptr);
+
+  void setPipeline(QLiveRegularStereoPipeline * pipeline);
+  QLiveRegularStereoPipeline * pipeline() const;
+
+protected Q_SLOTS:
+  void onLivePipelineStateChanged(bool isRunning);
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  QLiveRegularStereoPipeline * pipeline_ = nullptr;
+  QRegularStereoOptions * options_ctl = nullptr;
 };
 
 } /* namespace serimager */

@@ -38,7 +38,7 @@ protected:
   QNumberEditBox * speckleRange_ctl = nullptr;
   QNumberEditBox * disp12MaxDiff_ctl = nullptr;
 
-  QNumberEditBox * preFilterType_ctl = nullptr;
+  QEnumComboBox<StereoBM_PreFilterType> * preFilterType_ctl = nullptr;
   QNumberEditBox * preFilterSize_ctl = nullptr;
   QNumberEditBox * preFilterCap_ctl = nullptr;
   QNumberEditBox * textureThreshold_ctl = nullptr;

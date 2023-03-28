@@ -360,8 +360,6 @@ bool c_camera_calibration::get_display_image(cv::OutputArray display_frame, cv::
 
 void c_camera_calibration::update_display_image()
 {
-  CF_DEBUG("c_camera_calibration::update_display_image()");
-
   const cv::Size totalSize(current_frame_.cols * 2, current_frame_.rows);
 
   const cv::Rect roi[2] = {

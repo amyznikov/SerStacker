@@ -24,7 +24,7 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
   setInsertPolicy(QComboBox::NoInsert);
   setFocusPolicy(Qt::StrongFocus);
   setSizeAdjustPolicy(AdjustToContents);
-  setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+  setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred); // Maximum
 
   completer_ = new QCompleter(this);
   completer_->setModel(this->model());
@@ -32,6 +32,8 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
   completer_->setFilterMode(Qt::MatchContains);
   completer_->setCaseSensitivity(Qt::CaseInsensitive);
   setCompleter(completer_);
+
+  Base::updateGeometry();
 
   connect(this, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
       [this](int index) {
@@ -74,12 +76,19 @@ void QEnumComboBoxBase::setupItems(const c_enum_member * membs)
       }
       ++membs;
     }
+
+    Base::updateGeometry();
   }
 }
 
 void QEnumComboBoxBase::wheelEvent(QWheelEvent *e)
 {
-  // CF_DEBUG("wheelEvent");
   e->accept();
+}
+
+QSize QEnumComboBoxBase::sizeHint() const
+{
+  const QSize size = Base::sizeHint();
+  return QSize(size.width() + 16, size.height());
 }
 

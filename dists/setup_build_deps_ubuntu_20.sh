@@ -15,6 +15,7 @@ apt-get install -y \
 	cmake \
 	autoconf \
 	automake \
+	dpkg \
 	libtool \
 	qt5-default \
 	qtmultimedia5-dev \

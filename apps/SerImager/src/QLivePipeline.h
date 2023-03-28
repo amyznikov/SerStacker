@@ -30,6 +30,9 @@ public:
   void setName(const QString & name);
   const QString & name() const;
 
+  void set_running(bool v);
+  bool is_running() const;
+
   virtual void set_canceled(bool v);
   virtual bool canceled();
 
@@ -48,9 +51,12 @@ public:
       const std::string & postfix,
       const std::string & suffix) const;
 
+Q_SIGNALS:
+  void state_changed(bool is_running);
 
 protected:
   QString name_;
+  std::atomic_bool running_ = false;
   std::atomic_bool canceled_ = false;
 };
 
@@ -164,6 +170,7 @@ protected:
 
 class QLiveStereoCalibrationOptions;
 class QLiveCameraCalibrationOptions;
+class QLiveRegularStereoOptions;
 
 class QLivePipelineSelectionWidget :
     public QFrame,
@@ -213,6 +220,7 @@ protected:
   QScrollArea * scrollArea_ctl = nullptr;
   QLiveStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
   QLiveCameraCalibrationOptions * cameraCalibrationOptions_ctl = nullptr;
+  QLiveRegularStereoOptions * regularStereoOptions_ctl = nullptr;
 
 };
 

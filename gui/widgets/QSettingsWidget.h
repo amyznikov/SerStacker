@@ -16,6 +16,7 @@
 #include <gui/widgets/QLineEditBox.h>
 #include <gui/widgets/QExpandableGroupBox.h>
 #include <gui/widgets/QSliderSpinBox.h>
+#include <gui/widgets/QBrowsePathCombo.h>
 #include <type_traits>
 #include <functional>
 #include <mutex>
@@ -395,7 +396,8 @@ public:
   QEnumComboBox<EnumType> * add_enum_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(EnumType)> & setfn = std::function<void(EnumType)>())
   {
-    typedef QEnumComboBox<EnumType> CombomoxType;
+    typedef QEnumComboBox<EnumType>
+      CombomoxType;
 
     CombomoxType * ctl =
         new CombomoxType(this);
@@ -763,6 +765,92 @@ public:
 
   /////////////////////////////////////////////////////////////////////
 
+  QBrowsePathCombo * add_browse_for_path(QFormLayout * form, const QString & name, const QString & label,
+      QFileDialog::AcceptMode acceptMode,
+      QFileDialog::FileMode fileMode,
+      const std::function<void(const QString &)> & setfn = std::function<void(const QString &)>())
+  {
+    QBrowsePathCombo *ctl =
+        new QBrowsePathCombo(label, acceptMode, fileMode);
+
+    if ( name.isEmpty() ) {
+      form->addRow(ctl);
+    }
+    else {
+      form->addRow(name, ctl);
+    }
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl,
+              &QBrowsePathCombo::pathChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->currentPath());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QBrowsePathCombo * add_browse_for_path(QFormLayout * form, const QString & name, const QString & label,
+      QFileDialog::AcceptMode acceptMode,
+      QFileDialog::FileMode fileMode,
+      const std::function<void(const QString &)> & setfn,
+      const std::function<bool(QString*)> & getfn)
+  {
+    QBrowsePathCombo *ctl =
+        add_browse_for_path(form, name, label,
+            acceptMode, fileMode, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                QString v;
+                if ( getfn(&v) ) {
+                  ctl->setCurrentPath(v, false);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QBrowsePathCombo * add_browse_for_path(const QString & name, const QString & label,
+      QFileDialog::AcceptMode acceptMode,
+      QFileDialog::FileMode fileMode,
+      const std::function<void(const QString &)> & setfn)
+
+  {
+    return add_browse_for_path(form, name, label, acceptMode, fileMode, setfn);
+  }
+
+  QBrowsePathCombo * add_browse_for_path(const QString & name, const QString & label,
+      QFileDialog::AcceptMode acceptMode,
+      QFileDialog::FileMode fileMode,
+      const std::function<void(const QString &)> & setfn,
+      const std::function<bool(QString*)> & getfn)
+  {
+    return add_browse_for_path(form, name, label, acceptMode, fileMode, setfn, getfn);
+  }
+
+  /////////////////////////////////////////////////////////////////////
+
   template<class T, class S, class G>
   typename std::enable_if<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value,
   QNumberEditBox*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
@@ -862,7 +950,6 @@ public:
   }
 
   /////////////////////////////////////////////////////////////////////
-
 
 protected:
   QString PREFIX;

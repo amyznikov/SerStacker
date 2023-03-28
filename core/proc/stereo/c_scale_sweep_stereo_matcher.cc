@@ -14,7 +14,6 @@
 #include <deque>
 #include <core/debug.h>
 
-
 namespace {
 
 double maxval_for_pixel_depth(int ddepth)
@@ -48,7 +47,7 @@ public:
     }
   }
 
-  MatType & push_next()
+  MatType& push_next()
   {
     if( !p.empty() ) {
       q.emplace_back(p.back());
@@ -63,12 +62,12 @@ public:
     return *q.back();
   }
 
-  MatType & back()
+  MatType& back()
   {
     return *q.back();
   }
 
-  const MatType & back() const
+  const MatType& back() const
   {
     return *q.back();
   }
@@ -83,12 +82,10 @@ public:
     return q;
   }
 
-
 protected:
   std::deque<MatType*> q, p;
   MatType e[3];
 };
-
 
 static FILE* create_debug_points_fp(const std::string & debug_directory, int scale, int npoints)
 {
@@ -113,8 +110,6 @@ static FILE* create_debug_points_fp(const std::string & debug_directory, int sca
 
   return fp;
 }
-
-
 
 template<class MT>
 static void dump_debug_points(FILE * fp, int disparity, int scale, const cv::Mat_<MT> & E,
@@ -149,7 +144,6 @@ static void dump_debug_points(FILE * fp, int disparity, int scale, const cv::Mat
 c_scale_sweep_stereo_matcher::c_scale_sweep_stereo_matcher()
 {
 }
-
 
 void c_scale_sweep_stereo_matcher::set_max_disparity(int v)
 {
@@ -196,7 +190,7 @@ void c_scale_sweep_stereo_matcher::set_debug_directory(const std::string & v)
   debug_directory_ = v;
 }
 
-const std::string & c_scale_sweep_stereo_matcher::debug_directory() const
+const std::string& c_scale_sweep_stereo_matcher::debug_directory() const
 {
   return debug_directory_;
 }
@@ -504,7 +498,6 @@ bool c_scale_sweep_stereo_matcher::match_impl(cv::InputArray currentImage, cv::I
   return true;
 }
 
-
 bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat1w & outputMatches, cv::Mat1b * outputMask)
@@ -529,7 +522,6 @@ bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputA
     return false;
   }
 
-
   switch (currentImage.depth()) {
     case CV_8U:
       return match_impl<uint8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
@@ -553,4 +545,80 @@ bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputA
   return false;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
+cv::Ptr<cScaleSweepStereoMatcher> cScaleSweepStereoMatcher::create()
+{
+  return Ptr(new this_class());
+}
+
+void cScaleSweepStereoMatcher::compute(cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
+{
+  cv::Mat1w outputMatches;
+  cv::Mat1b outputMask;
+
+  base::match(left, cv::noArray(), right, cv::noArray(),
+      outputMatches, &outputMask);
+}
+
+int cScaleSweepStereoMatcher::getMinDisparity() const
+{
+  return 0;
+}
+
+void cScaleSweepStereoMatcher::setMinDisparity(int /*minDisparity*/)
+{
+  // ignore
+}
+
+int cScaleSweepStereoMatcher::getNumDisparities() const
+{
+  return base::max_disparity() + 1;
+}
+
+void cScaleSweepStereoMatcher::setNumDisparities(int numDisparities)
+{
+  return base::set_max_disparity(std::max(1, numDisparities - 1));
+}
+
+int cScaleSweepStereoMatcher::getBlockSize() const
+{
+  return 1;
+}
+
+void cScaleSweepStereoMatcher::setBlockSize(int /*blockSize*/)
+{
+  // ignore
+}
+
+int cScaleSweepStereoMatcher::getSpeckleWindowSize() const
+{
+  return 0;
+}
+
+void cScaleSweepStereoMatcher::setSpeckleWindowSize(int /*speckleWindowSize*/)
+{
+  // ignore
+}
+
+int cScaleSweepStereoMatcher::getSpeckleRange() const
+{
+  return 0;
+}
+
+void cScaleSweepStereoMatcher::setSpeckleRange(int /*speckleRange*/)
+{
+  // ignore
+}
+
+int cScaleSweepStereoMatcher::getDisp12MaxDiff() const
+{
+  return 0;
+}
+
+void cScaleSweepStereoMatcher::setDisp12MaxDiff(int /*disp12MaxDiff*/)
+{
+  // ignore
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////

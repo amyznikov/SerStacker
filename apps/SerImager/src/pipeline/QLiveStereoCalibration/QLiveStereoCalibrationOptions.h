@@ -17,7 +17,6 @@ namespace serimager {
 class QLiveStereoCalibrationOptions :
     public QSettingsWidget
 {
-//  Q_OBJECT;
 public:
   typedef QLiveStereoCalibrationOptions ThisClass;
   typedef QSettingsWidget Base;

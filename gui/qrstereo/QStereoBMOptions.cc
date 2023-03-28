@@ -12,8 +12,9 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
 {
   minDisparity_ctl =
       add_numeric_box<int>("minDisparity",
-          "Minimum possible disparity value. Normally, it is zero but sometimes "
-              "rectification algorithms can shift images, so this parameter needs to be adjusted accordingly",
+          "Minimum possible disparity value.\n"
+              "Normally, it is zero but sometimes rectification algorithms can shift images,\n"
+              "so this parameter needs to be adjusted accordingly",
           [this](int value) {
             if ( options_ && options_->minDisparity != value ) {
               options_->minDisparity = value;
@@ -30,9 +31,9 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
 
   numDisparities_ctl =
       add_numeric_box<int>("numDisparities",
-          "The disparity search range. For each pixel algorithm will find the best "
-              "disparity from 0 (default minimum disparity) to numDisparities. The search range can then be "
-              "shifted by changing the minimum disparity",
+          "The disparity search range.\n"
+              "For each pixel algorithm will find the best disparity from 0 (default minimum disparity) to numDisparities.\n"
+              "The search range can then be shifted by changing the minimum disparity",
           [this](int value) {
             if ( options_ && options_->numDisparities != value ) {
               options_->numDisparities = value;
@@ -49,9 +50,10 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
 
   blockSize_ctl =
       add_numeric_box<int>("blockSize",
-          "the linear size of the blocks compared by the algorithm. The size should be odd "
-              "(as the block is centered at the current pixel). Larger block size implies smoother, though less "
-              "accurate disparity map. Smaller block size gives more detailed disparity map, but there is higher "
+          "The linear size of the blocks compared by the algorithm.\n"
+              "The size should be odd (as the block is centered at the current pixel).\n"
+              "Larger block size implies smoother, though less accurate disparity map.\n"
+              "Smaller block size gives more detailed disparity map, but there is higher\n"
               "chance for algorithm to find a wrong correspondence.",
           [this](int value) {
             if ( options_ && options_->blockSize != value ) {
@@ -69,7 +71,9 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
 
   speckleWindowSize_ctl =
       add_numeric_box<int>("speckleWindowSize",
-          "",
+          "Maximum size of smooth disparity regions to consider their noise speckles and invalidate.\n"
+              "Set it to 0 to disable speckle filtering.\n"
+              "Otherwise, set it somewhere in the 50-200 range.",
           [this](int value) {
             if ( options_ && options_->speckleWindowSize != value ) {
               options_->speckleWindowSize = value;
@@ -86,7 +90,10 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
 
   speckleRange_ctl =
       add_numeric_box<int>("speckleRange",
-          "",
+          "Maximum disparity variation within each connected component.\n"
+              "If you do speckle  filtering, set the parameter to a positive value, \n"
+              "it will be implicitly multiplied by 16.\n"
+              "Normally, 1 or 2 is good enough.",
           [this](int value) {
             if ( options_ && options_->speckleRange != value ) {
               options_->speckleRange = value;
@@ -103,7 +110,8 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
 
   disp12MaxDiff_ctl =
       add_numeric_box<int>("disp12MaxDiff",
-          "",
+          "Maximum allowed difference (in integer pixel units) in the left-right disparity check.\n"
+              "Set it to a non-positive value to disable the check.",
           [this](int value) {
             if ( options_ && options_->disp12MaxDiff != value ) {
               options_->disp12MaxDiff = value;
@@ -119,15 +127,15 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
           });
 
   preFilterType_ctl =
-      add_numeric_box<int>("preFilterType",
+      add_enum_combobox<StereoBM_PreFilterType>("preFilterType",
           "",
-          [this](int value) {
+          [this](StereoBM_PreFilterType value) {
             if ( options_ && options_->preFilterType != value ) {
               options_->preFilterType = value;
               Q_EMIT parameterChanged();
             }
           },
-          [this](int * value) {
+          [this](StereoBM_PreFilterType * value) {
             if ( options_ ) {
               * value = options_->preFilterType;
               return true;

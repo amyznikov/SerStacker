@@ -35,7 +35,7 @@ public:
 
 protected:
   c_regular_stereo rstereo_;
-
+  COLORID displayColorid_ = COLORID_UNKNOWN;
 };
 
 } /* namespace serimager */

@@ -6,13 +6,67 @@
  */
 
 #include "QLiveRegularStereoOptions.h"
+#include <core/debug.h>
 
 namespace serimager {
 
-QLiveRegularStereoOptions::QLiveRegularStereoOptions()
+QLiveRegularStereoOptions::QLiveRegularStereoOptions(QWidget * parent) :
+  ThisClass(nullptr, parent)
 {
-  // TODO Auto-generated constructor stub
-
 }
+
+QLiveRegularStereoOptions::QLiveRegularStereoOptions(QLiveRegularStereoPipeline * pipeline, QWidget * parent) :
+    Base("", parent)
+{
+  addRow(options_ctl = new QRegularStereoOptions());
+  options_ctl->layout()->setContentsMargins(0, 0, 0, 0);
+  connect(options_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  setPipeline(pipeline);
+}
+
+void QLiveRegularStereoOptions::setPipeline(QLiveRegularStereoPipeline * pipeline)
+{
+
+  if ( pipeline_ ) {
+    pipeline_->disconnect(this);
+  }
+
+  if ( (pipeline_ = pipeline) ) {
+
+    connect(pipeline_, &QLivePipeline::state_changed,
+        this, &ThisClass::onLivePipelineStateChanged,
+        Qt::QueuedConnection);
+  }
+
+  updateControls();
+}
+
+QLiveRegularStereoPipeline * QLiveRegularStereoOptions::pipeline() const
+{
+  return pipeline_;
+}
+
+void QLiveRegularStereoOptions::onLivePipelineStateChanged(bool /*isRunning*/)
+{
+  updateControls();
+}
+
+void QLiveRegularStereoOptions::onupdatecontrols()
+{
+  if ( !pipeline_ ) {
+    setEnabled(false);
+    options_ctl->set_rstereo(nullptr);
+  }
+  else {
+
+    options_ctl->set_rstereo(&pipeline_->rstereo());
+    options_ctl->updateRunTimeStateControls(pipeline_->is_running());
+    Base::onupdatecontrols();
+    setEnabled(true);
+  }
+}
+
 
 } /* namespace serimager */

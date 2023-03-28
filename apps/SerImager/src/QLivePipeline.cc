@@ -8,6 +8,7 @@
 #include "QLivePipeline.h"
 #include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationOptions.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
+#include "pipeline/QLiveRegularStereo/QLiveRegularStereoOptions.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/proc/pixtype.h>
@@ -62,6 +63,19 @@ bool QLivePipeline::serialize(c_config_setting settings, bool save)
 bool QLivePipeline::canceled()
 {
   return canceled_;
+}
+
+void QLivePipeline::set_running(bool v)
+{
+  if( running_ != v ) {
+    running_ = v;
+    Q_EMIT state_changed(v);
+  }
+}
+
+bool QLivePipeline::is_running() const
+{
+  return running_;
 }
 
 void QLivePipeline::set_canceled(bool v)
@@ -441,9 +455,12 @@ void QLivePipelineThread::run()
   int bpp;
   COLORID colorid;
 
-  if( pipeline_ && !pipeline_->initialize_pipeline() ) {
-    CF_ERROR("pipeline_->initialize_pipeline() fails");
-    return;
+  if( pipeline_ ) {
+    if( !pipeline_->initialize_pipeline() ) {
+      CF_ERROR("pipeline_->initialize_pipeline() fails");
+      return;
+    }
+    pipeline_->set_running(true);
   }
 
   while (!finish_) {
@@ -510,6 +527,7 @@ void QLivePipelineThread::run()
 
   if ( pipeline_ ) {
     pipeline_->cleanup_pipeline();
+    pipeline_->set_running(false);
   }
 
   CF_DEBUG("leave");
@@ -675,6 +693,9 @@ void QLivePipelineCollection::load(const std::string & cfgfilename)
       else if( objtype == "QLiveCameraCalibrationPipeline" ) {
         obj = new QLiveCameraCalibrationPipeline(objname.c_str());
       }
+      else if( objtype == "QLiveRegularStereoPipeline" ) {
+        obj = new QLiveRegularStereoPipeline(objname.c_str());
+      }
       else {
         CF_ERROR("Unknown objtype '%s' specified for item %d", objtype.c_str(), i);
         continue;
@@ -713,8 +734,8 @@ void QLivePipelineCollection::save(const std::string & cfgfilename) const
     return;
   }
 
-  CF_DEBUG("Saving '%s' ...",
-      filename.c_str());
+//  CF_DEBUG("Saving '%s' ...",
+//      filename.c_str());
 
   c_config cfg(filename);
 
@@ -743,6 +764,10 @@ void QLivePipelineCollection::save(const std::string & cfgfilename) const
     else if( dynamic_cast<QLiveCameraCalibrationPipeline*>(obj) ) {
       objtype = "QLiveCameraCalibrationPipeline";
     }
+    else if( dynamic_cast<QLiveRegularStereoPipeline*>(obj) ) {
+      objtype = "QLiveRegularStereoPipeline";
+    }
+
     else {
       CF_ERROR("FIXME: implement adequate class factory please !!!!");
       continue;
@@ -895,7 +920,7 @@ QLivePipelineSelectionWidget::QLivePipelineSelectionWidget(QWidget * parent) :
   toolbar_ctl->addWidget(startStop_ctl =
       createToolbutton(getIcon(ICON_start),
           "Start",
-          "Start / Stop currenet pipeline"));
+          "Start / Stop current pipeline"));
 
   toolbar_ctl->addWidget(menuButton_ctl =
       createToolbutton(getIcon(ICON_menu),
@@ -992,38 +1017,7 @@ void QLivePipelineSelectionWidget::onupdatecontrols()
   }
   else {
 
-    if ( liveThread_->currentPipeline() ) {
-
-      QWidget * w = scrollArea_ctl->widget();
-      if ( w ) {
-        w->setEnabled(false);
-      }
-
-      combobox_ctl->setEnabled(false);
-      menuButton_ctl->setEnabled(false);
-
-      startStop_ctl->setIcon(getIcon(ICON_stop));
-      startStop_ctl->setEnabled(true);
-
-    }
-    else if( liveThread_->camera() && liveThread_->camera()->state() == QImagingCamera::State_started ) {
-
-      QWidget *w = scrollArea_ctl->widget();
-      if( w ) {
-        w->setEnabled(true);
-      }
-
-      combobox_ctl->setEnabled(true);
-      menuButton_ctl->setEnabled(true);
-
-      startStop_ctl->setIcon(getIcon(ICON_start));
-      startStop_ctl->setEnabled(true);
-    }
-    else {
-      QWidget *w = scrollArea_ctl->widget();
-      if( w ) {
-        w->setEnabled(true);
-      }
+    if ( !liveThread_->isRunning() ) {
 
       combobox_ctl->setEnabled(true);
       menuButton_ctl->setEnabled(true);
@@ -1033,6 +1027,24 @@ void QLivePipelineSelectionWidget::onupdatecontrols()
 
     }
 
+    else if ( liveThread_->currentPipeline() ) {
+
+      combobox_ctl->setEnabled(false);
+      menuButton_ctl->setEnabled(false);
+
+      startStop_ctl->setIcon(getIcon(ICON_stop));
+      startStop_ctl->setEnabled(true);
+
+    }
+
+    else {
+
+      combobox_ctl->setEnabled(true);
+      menuButton_ctl->setEnabled(true);
+
+      startStop_ctl->setIcon(getIcon(ICON_start));
+      startStop_ctl->setEnabled(selectedPipeline() != nullptr);
+    }
 
     setEnabled(true);
   }
@@ -1051,6 +1063,7 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
         dynamic_cast<QLiveStereoCalibrationPipeline*>(pipeline) ) {
 
       if( !stereoCalibrationOptions_ctl ) {
+
         stereoCalibrationOptions_ctl = new QLiveStereoCalibrationOptions(this);
         connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
             [this]() {
@@ -1063,10 +1076,12 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
       currentWidget = stereoCalibrationOptions_ctl;
       stereoCalibrationOptions_ctl->setPipeline(stereoCalibration);
     }
+
     else if( QLiveCameraCalibrationPipeline *cameraCalibration =
         dynamic_cast<QLiveCameraCalibrationPipeline*>(pipeline) ) {
 
       if( !cameraCalibrationOptions_ctl ) {
+
         cameraCalibrationOptions_ctl = new QLiveCameraCalibrationOptions(this);
         connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
             [this]() {
@@ -1080,7 +1095,23 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
       cameraCalibrationOptions_ctl->setPipeline(cameraCalibration);
     }
 
+    else if( QLiveRegularStereoPipeline * regularStereo =
+        dynamic_cast<QLiveRegularStereoPipeline*>(pipeline) ) {
 
+      if( !regularStereoOptions_ctl ) {
+
+        regularStereoOptions_ctl = new QLiveRegularStereoOptions(this);
+        connect(regularStereoOptions_ctl, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( pipelineCollection_ ) {
+                pipelineCollection_->save();
+              }
+            });
+      }
+
+      currentWidget = regularStereoOptions_ctl;
+      regularStereoOptions_ctl->setPipeline(regularStereo);
+    }
 
 
   }
@@ -1116,17 +1147,12 @@ void QLivePipelineSelectionWidget::onStartStopCtlClicked()
   if( liveThread_ ) {
 
     if( liveThread_->currentPipeline() ) {
-      CF_DEBUG("liveThread_->startPipeline(nullptr)");
       liveThread_->startPipeline(nullptr);
     }
     else {
       QLivePipeline *pipeline = selectedPipeline();
-
-      CF_DEBUG("liveThread_->startPipeline(pipeline=%p)", pipeline);
-
       liveThread_->startPipeline(pipeline);
     }
-
   }
 }
 

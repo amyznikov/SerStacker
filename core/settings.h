@@ -544,10 +544,10 @@ bool libconfig_parse_flags(c_config_setting settings,
 #define SERIALIZE_OPTION(cfg, save, obj, prop) \
   if ( cfg ) { \
     if ((save)) { \
-      ::save_settings((cfg), #prop, obj.prop); \
+      ::save_settings((cfg), #prop, (obj).prop); \
     }\
     else { \
-      ::load_settings((cfg), #prop, &obj.prop); \
+      ::load_settings((cfg), #prop, &(obj).prop); \
     } \
   }
 

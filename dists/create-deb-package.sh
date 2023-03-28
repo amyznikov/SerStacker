@@ -39,11 +39,12 @@ mkdir -p "${pkg_directory}/DEBIAN" && \
 	touch "${pkg_directory}/DEBIAN/control" \
 	|| exit 1
 
+
 echo "
 Package: ${pkg_name}
 Version: ${pkg_version}
 Architecture: ${pkg_architecture}
-Depends: libopencv-dev, qt5-default, libtiff-dev, libbtbb-dev
+Depends: qt5-default,qtmultimedia5,libbtbb,libtiff,libopencv,freeglut3,libglew,libcfitsio,libraw,libopenraw,libavcodec,libavformat,libavutil,libswscale,libavdevice,v4l-utils,libv4l,libusb
 Maintainer: Andrey Myznikov <andrey.myznikov@gmail.com>
 Description: SerStacker app.
 " > "${pkg_directory}/DEBIAN/control" \

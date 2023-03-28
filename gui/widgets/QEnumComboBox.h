@@ -33,6 +33,7 @@ Q_SIGNALS:
 
 protected:
   void wheelEvent(QWheelEvent *e) override;
+  QSize sizeHint() const override;
 
 protected:
   QCompleter * completer_ = nullptr;

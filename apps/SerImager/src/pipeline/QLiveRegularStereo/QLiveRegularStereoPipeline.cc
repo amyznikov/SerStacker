@@ -26,28 +26,80 @@ const c_regular_stereo & QLiveRegularStereoPipeline::rstereo() const
 
 bool QLiveRegularStereoPipeline::initialize_pipeline()
 {
-  return false;
+  if  ( !Base::initialize_pipeline() ) {
+    CF_ERROR("QLiveRegularStereoPipeline::Base::initialize_pipeline() fails");
+    return false;
+  }
+
+  if ( !rstereo_.initialize() ) {
+    CF_ERROR("rstereo_.initialize() fails");
+    return false;
+  }
+
+  return true;
 }
 
 void QLiveRegularStereoPipeline::cleanup_pipeline()
 {
-  return ;
+  rstereo_.cleanup();
+  Base::cleanup_pipeline();
 }
 
 bool QLiveRegularStereoPipeline::process_frame(const cv::Mat & image, COLORID colorid, int bpp)
 {
-  return false;
+  cv::Mat currentImage;
+  cv::Mat frames[2];
+  cv::Mat masks[2];
+  cv::Rect roi[2];
+
+  displayColorid_ =
+      colorid == COLORID_MONO ? COLORID_MONO :
+          COLORID_BGR;
+
+  if( !Base::convert_image(image, colorid, bpp, &currentImage, displayColorid_, CV_8U) ) {
+    CF_ERROR("convertInputImage() fails");
+    return false;
+  }
+
+
+  roi[0] = cv::Rect(0, 0, currentImage.cols / 2, currentImage.rows);
+  roi[1] = cv::Rect(currentImage.cols / 2, 0, currentImage.cols / 2, currentImage.rows);
+  frames[0] = currentImage(roi[0]);
+  frames[1] = currentImage(roi[1]);
+
+  if ( !rstereo_.process_stereo_frame(frames, masks) ) {
+    CF_ERROR("rstereo_.process_stereo_frame() fails");
+    return false;
+  }
+
+  return true;
+
 }
 
 bool QLiveRegularStereoPipeline::get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp)
 {
-  return false;
+  *colorid = displayColorid_;
+  *bpp = 8;
+
+  rstereo_.update_display_image();
+
+  if( !rstereo_.get_display_image(*displayImage, cv::noArray()) ) {
+    CF_ERROR("rstereo_.get_display_image() fails");
+    return false;
+  }
+
+  return true;
 }
 
 bool QLiveRegularStereoPipeline::serialize(c_config_setting settings, bool save)
 {
   if ( !Base::serialize(settings, save) ) {
     CF_ERROR("QLiveRegularStereoPipeline::Base::serialize() fails");
+    return false;
+  }
+
+  if ( !rstereo_.serialize(settings, save) ) {
+    CF_ERROR("rstereo_.serialize() fails");
     return false;
   }
 

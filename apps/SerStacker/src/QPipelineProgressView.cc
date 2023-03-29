@@ -97,8 +97,6 @@ void QPipelineProgressView::timerEvent(QTimerEvent *event)
 
 void QPipelineProgressView::onStackingThreadStarted()
 {
-  CF_DEBUG("H");
-
   c_image_processing_pipeline::sptr pipeline =
       QImageProcessingPipeline::current_pipeline();
 
@@ -249,6 +247,7 @@ void QPipelineProgressView::onStackingThreadFinished()
 
 void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 {
+
   const c_image_processing_pipeline::sptr & pipeline =
       QImageProcessingPipeline::current_pipeline();
 
@@ -256,7 +255,7 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
     return;
   }
 
-  if ( !force && !hasCurrentStatisticsUpdates_ && !selectedMasterFrameChanged_ ) {
+  if ( !force && !hasCurrentStatisticsUpdates_ && !selectedMasterFrameChanged_ && !accumuatorImageChanged_ ) {
     return;
   }
 
@@ -336,7 +335,6 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
     else if( const c_stereo_calibration_pipeline::sptr stereo_calibration =
         std::dynamic_pointer_cast<c_stereo_calibration_pipeline>(pipeline) ) {
-
 
       QWaitCursor wait(this);
 

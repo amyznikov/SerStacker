@@ -123,7 +123,7 @@ QStereoSGBMOptions::QStereoSGBMOptions(QWidget * parent) :
           });
 
   disp12MaxDiff_ctl =
-      add_numeric_box<int>("",
+      add_numeric_box<int>("disp12MaxDiff",
           "Maximum allowed difference (in integer pixel units) in the left-right disparity check.\n"
               "Set it to a non-positive value to disable the check.",
           [this](int value) {

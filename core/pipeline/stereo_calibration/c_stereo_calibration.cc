@@ -531,7 +531,7 @@ void c_stereo_calibration::filter_frames()
       }
     }
 
-    CF_DEBUG("XXX worstElemIndex=%d", worstElemIndex);
+    CF_DEBUG("worstElemIndex=%d", worstElemIndex);
 
     image_points_[0].erase(image_points_[0].begin() + worstElemIndex);
     image_points_[1].erase(image_points_[1].begin() + worstElemIndex);

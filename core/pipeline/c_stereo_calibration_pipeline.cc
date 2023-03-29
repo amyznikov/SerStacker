@@ -85,7 +85,7 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
 bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
 {
   lock_guard lock(display_lock_);
-  c_stereo_calibration::get_display_image(display_frame_, display_mask_);
+  c_stereo_calibration::get_display_image(frame, mask);
   return true;
 }
 

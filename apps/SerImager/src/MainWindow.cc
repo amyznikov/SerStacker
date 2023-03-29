@@ -437,6 +437,7 @@ void MainWindow::setupMainToolbar()
   manToolbar_->addAction(showMtfControlAction_);
 
   manToolbar_->addWidget(displayScaleControl_ = new QScaleSelectionButton());
+  displayScaleControl_->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
   connect(displayScaleControl_, &QScaleSelectionButton::scaleChanged,
       [this](int currentScale) {
         centralDisplay_->setViewScale(currentScale);

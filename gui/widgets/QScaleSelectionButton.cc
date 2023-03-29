@@ -8,7 +8,7 @@
 #include "QScaleSelectionButton.h"
 #include <gui/widgets/style.h>
 
-#define ICON_zoom   ":/gui/icons/zoom"
+#define ICON_zoom   ":/gui/icons/zoom.png"
 
 //static QIcon getIcon(const QString & name)
 //{

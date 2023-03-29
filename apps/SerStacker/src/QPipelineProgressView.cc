@@ -17,7 +17,7 @@
 
 namespace serstacker {
 
-#define ICON_menu      ":/icons/menu.png"
+#define ICON_menu      ":/serstacker/icons/menu.png"
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -27,18 +27,18 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
   layout_ = new QHBoxLayout(this);
   layout_->setContentsMargins(2, 2, 2, 2);
 
-  progressStrip_ctl = new QProgressStrip(this);
-  progressStrip_ctl->setNumStrips(2);
-  progressStrip_ctl->setBrush(0, Qt::yellow);
-  progressStrip_ctl->setBrush(1, Qt::green);
-  layout_->addWidget(progressStrip_ctl, 100);
+  progressStrip_ = new QProgressStrip(this);
+  progressStrip_->setNumStrips(2);
+  progressStrip_->setBrush(0, Qt::yellow);
+  progressStrip_->setBrush(1, Qt::green);
+  layout_->addWidget(progressStrip_, 100);
 
-  menuButton_ctl = new QToolButton(this);
-  menuButton_ctl->setContentsMargins(0, 0, 0, 0);
-  menuButton_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  menuButton_ctl->setIconSize(QSize(12, 12));
-  menuButton_ctl->setIcon(getIcon(ICON_menu));
-  layout_->addWidget(menuButton_ctl, 1);
+  menuButton_ = new QToolButton(this);
+  menuButton_->setContentsMargins(0, 0, 0, 0);
+  menuButton_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  menuButton_->setIconSize(QSize(12, 12));
+  menuButton_->setIcon(getIcon(ICON_menu));
+  layout_->addWidget(menuButton_, 1);
 
 
   //
@@ -261,11 +261,11 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
   if ( force || hasCurrentStatisticsUpdates_ ) {
 
-    progressStrip_ctl->setRange(0, pipeline->total_frames());
-    progressStrip_ctl->setValue(0, pipeline->processed_frames());
-    progressStrip_ctl->setValue(1, pipeline->accumulated_frames());
+    progressStrip_->setRange(0, pipeline->total_frames());
+    progressStrip_->setValue(0, pipeline->processed_frames());
+    progressStrip_->setValue(1, pipeline->accumulated_frames());
 
-    progressStrip_ctl->setText(qsprintf("%d/%d/%d",
+    progressStrip_->setText(qsprintf("%d/%d/%d",
         pipeline->accumulated_frames(),
         pipeline->processed_frames(),
         pipeline->total_frames()));

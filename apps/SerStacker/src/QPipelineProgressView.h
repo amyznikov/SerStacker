@@ -48,8 +48,8 @@ protected Q_SLOTS:
 
 protected:
   QHBoxLayout * layout_ = nullptr;
-  QProgressStrip * progressStrip_ctl = nullptr;
-  QToolButton * menuButton_ctl = nullptr;
+  QProgressStrip * progressStrip_ = nullptr;
+  QToolButton * menuButton_ = nullptr;
   QImageEditor * imageViewer_ = nullptr;
 
   int timerId = 0;

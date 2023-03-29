@@ -47,8 +47,8 @@ protected:
   void restoreState();
   void setupMainMenu();
   void setupMainToolbar();
-  void setupStatusbar();
   void setupLogWidget();
+  void setupStatusbar();
   void setupCameraControls();
   void setupShapeOptions();
   void setupLivePipelineControls();
@@ -104,6 +104,7 @@ protected:
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;
   QToolButton * showMtfControlButton_ = nullptr;
+  QToolButton * show_log_ctl = nullptr;
   QLabel * capture_status_ctl = nullptr;
   QLabel * mousepos_ctl = nullptr;
   QLabel * exposure_status_ctl = nullptr;

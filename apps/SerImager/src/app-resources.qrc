@@ -44,6 +44,9 @@
 	<file>icons/dark/rename.png</file>
 	<file>icons/light/rename.png</file>
 
+	<file>icons/light/log.png</file>
+	<file>icons/dark/log.png</file>
+
 	<file>icons/connect.png</file>
 	<file>icons/disconnect.png</file>
 	<file>icons/start.png</file>

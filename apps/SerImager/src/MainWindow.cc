@@ -22,6 +22,9 @@ namespace serimager {
 #define ICON_line             ":/serimager/icons/line.png"
 #define ICON_target           ":/serimager/icons/target.png"
 #define ICON_process          ":/serimager/icons/process.png"
+#define ICON_log              ":/serimager/icons/log.png"
+#define ICON_bayer            ":/gui/icons/bayer.png"
+
 
 namespace {
 
@@ -436,6 +439,8 @@ void MainWindow::setupMainToolbar()
   manToolbar_->addAction(showFrameProcessorAction_);
   manToolbar_->addAction(showMtfControlAction_);
 
+  ///////////////////////////////////////////////////////////////////
+
   manToolbar_->addWidget(displayScaleControl_ = new QScaleSelectionButton());
   displayScaleControl_->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
   connect(displayScaleControl_, &QScaleSelectionButton::scaleChanged,
@@ -446,11 +451,37 @@ void MainWindow::setupMainToolbar()
 
   ///////////////////////////////////////////////////////////////////
 
+  manToolbar_->addAction(showLiveThreadSettingsDialogBoxAction_ =
+      createCheckableAction(getIcon(ICON_bayer), "Bayer", "Configure debayer options",
+          this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered));
+
+  ///////////////////////////////////////////////////////////////////
 }
 
 void MainWindow::setupStatusbar()
 {
   QStatusBar *sb = statusBar();
+
+  sb->addWidget(show_log_ctl = new QToolButton());
+  show_log_ctl->setIcon(getIcon(ICON_log));
+  show_log_ctl->setIconSize(QSize(18, 16));
+  show_log_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  show_log_ctl->setToolTip("Show / Hide debug log window");
+  show_log_ctl->setCheckable(true);
+  show_log_ctl->setChecked(logwidgetDock_ && logwidgetDock_->isVisible());
+  connect(show_log_ctl, &QToolButton::clicked,
+      [this](bool checked) {
+        if ( logwidgetDock_ ) {
+          if ( !checked ) {
+            logwidgetDock_->hide();
+          }
+          else {
+            logwidgetDock_->show();
+            logwidgetDock_->raise();
+          }
+        }
+      });
+
 
   sb->addWidget(exposure_status_ctl = new QLabel(this));
   sb->addWidget(mousepos_ctl = new QLabel(this));
@@ -468,6 +499,13 @@ void MainWindow::setupLogWidget()
           menuView_);
 
   logwidgetDock_->hide();
+
+  connect(logwidgetDock_, &QCustomDockWidget::visibilityChanged,
+      [this](bool visible) {
+        if (show_log_ctl ) {
+          show_log_ctl->setChecked(visible);
+        }
+      });
 }
 
 void MainWindow::setupCameraControls()
@@ -575,15 +613,15 @@ void MainWindow::setupDisplayProcessingControls()
         centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
       });
 
-  if( (showLiveThreadSettingsDialogBoxAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
-
-    showLiveThreadSettingsDialogBoxAction_->setCheckable(true);
-    showLiveThreadSettingsDialogBoxAction_->setChecked(false);
-    showLiveThreadSettingsDialogBoxAction_->setEnabled(true);
-
-    connect(showLiveThreadSettingsDialogBoxAction_, &QAction::triggered,
-        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
-  }
+//  if( (showLiveThreadSettingsDialogBoxAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
+//
+//    showLiveThreadSettingsDialogBoxAction_->setCheckable(true);
+//    showLiveThreadSettingsDialogBoxAction_->setChecked(false);
+//    showLiveThreadSettingsDialogBoxAction_->setEnabled(true);
+//
+//    connect(showLiveThreadSettingsDialogBoxAction_, &QAction::triggered,
+//        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
+//  }
 }
 
 void MainWindow::onCameraWriterStatusUpdate()

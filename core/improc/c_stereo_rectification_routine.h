@@ -112,6 +112,7 @@ public:
       stereo_calibration_initialized_ = true;
     }
 
+
     cv::Mat & img =
         image.getMatRef();
 
@@ -121,10 +122,16 @@ public:
     };
 
     for ( int i = 0; i < 2; ++i ) {
-      cv::remap(img(roi[i]), img(roi[i]),
-          rmaps[i], cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT);
+
+      if ( rmaps[i].size() != roi[i].size() )  {
+        CF_ERROR("Image size not match");
+      }
+      else {
+        cv::remap(img(roi[i]), img(roi[i]),
+            rmaps[i], cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_CONSTANT);
+      }
     }
 
 
@@ -139,10 +146,15 @@ public:
           mask.getMatRef();
 
       for( int i = 0; i < 2; ++i ) {
-        cv::remap(msk(roi[i]), msk(roi[i]),
-            rmaps[i], cv::noArray(),
-            cv::INTER_LINEAR,
-            cv::BORDER_CONSTANT);
+        if ( rmaps[i].size() != roi[i].size() )  {
+          CF_ERROR("Image size not match");
+        }
+        else {
+          cv::remap(msk(roi[i]), msk(roi[i]),
+              rmaps[i], cv::noArray(),
+              cv::INTER_LINEAR,
+              cv::BORDER_CONSTANT);
+        }
       }
 
       cv::compare(msk, 254, mask, cv::CMP_GE);

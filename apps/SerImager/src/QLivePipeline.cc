@@ -26,6 +26,7 @@ namespace serimager {
 #define ICON_add              ":/serimager/icons/add.png"
 #define ICON_delete           ":/serimager/icons/delete.png"
 #define ICON_rename           ":/serimager/icons/rename.png"
+#define ICON_bayer            ":/gui/icons/bayer.png"
 
 namespace {
 
@@ -498,7 +499,7 @@ void QLivePipelineThread::run()
     if( haveInputImage ) {
 
       if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
-        if( ::debayer(inputImage, inputImage, colorid) ) {
+        if( ::debayer(inputImage, inputImage, colorid, debayer_) ) {
           colorid = COLORID_BGR;
         }
       }
@@ -1256,7 +1257,7 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
     Base("QDisplayFrameProcessorSettings", parent)
 {
   debayer_ctl =
-      add_enum_combobox<DEBAYER_ALGORITHM>("Debayer:",
+      add_enum_combobox<DEBAYER_ALGORITHM>("Default debayer:",
           "Select debayer algorithm for bayer patterns",
           [this](DEBAYER_ALGORITHM v) {
             if ( liveThread_ ) {
@@ -1299,7 +1300,8 @@ void QLiveThreadSettingsWidget::onupdatecontrols()
 QLiveThreadSettingsDialogBox::QLiveThreadSettingsDialogBox(QWidget * parent) :
     Base(parent)
 {
-  setWindowTitle("Frame Display Settings");
+  setWindowIcon(getIcon(ICON_bayer));
+  setWindowTitle("Frame Processor Options");
 
   layout_ = new QVBoxLayout(this);
   layout_->addWidget(setiingsWidget_ = new QLiveThreadSettingsWidget(this));

@@ -12,7 +12,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 {
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
-          "",
+          "Minimal frames accumulated to start stereo_calibrate()",
           [this](int value) {
             if ( options_ ) {
               options_->min_frames = value;
@@ -29,7 +29,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   max_frames_ctl =
       add_numeric_box<int>("max_frames:",
-          "",
+          "Maximal number of best frames to use with stereo_calibrate()",
           [this](int value) {
             if ( options_ ) {
               options_->max_frames = value;
@@ -46,7 +46,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   max_iterations_ctl =
       add_numeric_box<int>("max_iterations:",
-          "",
+          "Term criteria for cv::stereoCalibrate()",
           [this](int value) {
             if ( options_ ) {
               cv::TermCriteria & t =
@@ -70,7 +70,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   eps_ctl =
       add_numeric_box<double>("eps:",
-          "",
+          "Term criteria for cv::stereoCalibrate()",
           [this](double value) {
             if ( options_ ) {
               cv::TermCriteria & t =
@@ -94,7 +94,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   calibration_flags_ctl =
       add_flags_editbox<STEREO_CALIBRATION_FLAGS>("calibration_flags:",
-          "",
+          "Calibration flags for cv::stereoCalibrate()",
           [this](int value) {
             if ( options_ ) {
               options_->calibration_flags = value;
@@ -111,7 +111,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   auto_tune_calibration_flags_ctl =
       add_checkbox("auto_tune_calibration_flags",
-          "",
+          "Auto adjust some of calibration flags for cv::stereoCalibrate()",
           [this](bool checked) {
             if ( options_ ) {
               options_->auto_tune_calibration_flags = checked;
@@ -128,7 +128,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   init_camera_matrix_2d_ctl =
       add_checkbox("initCameraMatrix2D:",
-          "",
+          "Call cv::initCameraMatrix2D() to initialize camera matrix on start",
           [this](bool checked) {
             if ( options_ ) {
               options_->init_camera_matrix_2d = checked;
@@ -146,7 +146,8 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
 
   filter_alpha_ctl =
       add_numeric_box<double>("filter_alpha:",
-          "",
+          "Parameter for subset quality estimation:\n"
+          " SubsetQuality = RMSE_Quality * alpha + Coverage_Quality * (1-alpha) ",
           [this](double value) {
             if ( options_ ) {
               options_->filter_alpha = value;

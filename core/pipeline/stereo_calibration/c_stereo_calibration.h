@@ -120,8 +120,8 @@ protected:
   double best_subset_quality_ = HUGE_VAL;
 
 
-  c_stereo_camera_intrinsics new_stereo_intrinsics_;
-  c_stereo_camera_extrinsics new_stereo_extrinsics;
+  c_stereo_camera_intrinsics new_intrinsics_;
+  c_stereo_camera_extrinsics new_extrinsics_;
   cv::Mat2f rmaps_[2];
   cv::Matx33d E_;
   cv::Matx33d F_;

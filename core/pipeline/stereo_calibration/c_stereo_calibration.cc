@@ -119,6 +119,8 @@ bool c_stereo_calibration::serialize(c_config_setting settings, bool save)
 
 bool c_stereo_calibration::initialize()
 {
+  cleanup();
+
   best_calibration_flags_ = calibration_flags_ = calibration_options_.calibration_flags;
   best_subset_quality_ = HUGE_VAL;
   stereo_intrinsics_initialized_ = false;
@@ -147,6 +149,28 @@ bool c_stereo_calibration::initialize()
           0.f);
     }
   }
+
+  stereo_extrinsics_.R = cv::Matx33d::eye();
+  stereo_extrinsics_.T = cv::Vec3d::all(0);
+  best_extrinsics_.R = cv::Matx33d::eye();
+  best_extrinsics_.T = cv::Vec3d::all(0);
+  new_extrinsics_.R = cv::Matx33d::eye();
+  new_extrinsics_.T = cv::Vec3d::all(0);
+
+  for ( int i = 0; i < 2; ++i ) {
+    stereo_intrinsics_.camera[i].image_size = cv::Size(0, 0);
+    stereo_intrinsics_.camera[i].camera_matrix = cv::Matx33d::eye();
+    stereo_intrinsics_.camera[i].dist_coeffs.clear();
+
+    best_intrinsics_.camera[i].image_size = cv::Size(0, 0);
+    best_intrinsics_.camera[i].camera_matrix = cv::Matx33d::eye();
+    best_intrinsics_.camera[i].dist_coeffs.clear();
+
+    new_intrinsics_.camera[i].image_size = cv::Size(0, 0);
+    new_intrinsics_.camera[i].camera_matrix = cv::Matx33d::eye();
+    new_intrinsics_.camera[i].dist_coeffs.clear();
+  }
+
 
   return true;
 }
@@ -725,8 +749,8 @@ void c_stereo_calibration::update_undistortion_remap()
       best_extrinsics_,
       -1,
       rmaps_,
-      &new_stereo_intrinsics_,
-      &new_stereo_extrinsics,
+      &new_intrinsics_,
+      &new_extrinsics_,
       nullptr,
       nullptr,
       nullptr,

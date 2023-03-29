@@ -11,7 +11,6 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <core/pipeline/stereo_calibration/c_stereo_calibration.h>
-//#include <core/pipeline/c_stereo_calibration_pipeline.h>
 
 class QStereoCalibrateOptions :
     public QSettingsWidget

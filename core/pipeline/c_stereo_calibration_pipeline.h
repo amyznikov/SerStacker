@@ -90,7 +90,7 @@ protected:
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
-  bool run_stereo_calibration();
+  bool run_chessboard_corners_collection();
   bool write_output_videos();
   bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool read_stereo_frame();
@@ -98,6 +98,7 @@ protected:
   void close_input_source();
   bool open_input_source();
   bool seek_input_source(int pos);
+
 
 protected:
 

@@ -102,7 +102,7 @@ bool QLiveStereoCalibrationPipeline::process_frame(const cv::Mat & image, COLORI
   frames[0] = currentImage(roi[0]);
   frames[1] = currentImage(roi[1]);
 
-  if ( !stereo_calibration_.process_stereo_frame(frames, masks) ) {
+  if ( !stereo_calibration_.process_stereo_frame(frames, masks, false) ) {
     CF_ERROR("stereo_calibration_.process_stereo_frame() fails");
     return false;
   }

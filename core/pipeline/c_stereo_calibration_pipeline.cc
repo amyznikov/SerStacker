@@ -484,8 +484,52 @@ bool c_stereo_calibration_pipeline::seek_input_source(int pos)
 }
 
 
-bool c_stereo_calibration_pipeline::run_stereo_calibration()
+bool c_stereo_calibration_pipeline::run_pipeline()
 {
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
+
+  if ( !run_chessboard_corners_collection() ) {
+    CF_ERROR("run_chessboard_corners_collection() fails");
+    return false;
+  }
+
+  CF_DEBUG("update_stereo_calibration()...");
+  if ( !c_stereo_calibration::update_stereo_calibration() ) {
+    CF_ERROR("c_stereo_calibration::update_stereo_calibration() fails");
+    return false;
+  }
+
+  CF_DEBUG("update_state()...");
+  update_state();
+
+  if( canceled() ) {
+    return false;
+  }
+
+  CF_DEBUG("save_current_camera_parameters()...");
+  if( !save_current_camera_parameters() ) {
+    CF_ERROR("save_current_camera_parameters() fails");
+    return false;
+  }
+
+  if( canceled() ) {
+    return false;
+  }
+
+  if ( !write_output_videos() ) {
+    return false;
+  }
+
+  CF_DEBUG("leave");
+  return true;
+}
+
+bool c_stereo_calibration_pipeline::run_chessboard_corners_collection()
+{
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
+
   c_output_frame_writer progress_writer;
 
   if ( !open_input_source() ) {
@@ -540,7 +584,7 @@ bool c_stereo_calibration_pipeline::run_stereo_calibration()
       break;
     }
 
-    fOk = c_stereo_calibration::process_stereo_frame(current_frames_, current_masks_);
+    fOk = c_stereo_calibration::process_stereo_frame(current_frames_, current_masks_, true);
     if ( !fOk || canceled() ) {
       break;
     }
@@ -553,7 +597,7 @@ bool c_stereo_calibration_pipeline::run_stereo_calibration()
 
         std::string output_file_name =
             generate_output_file_name(output_options_.calibration_progress_filename,
-                "progress",
+                "coverage_progress",
                 ".avi");
 
         bool fOK =
@@ -590,6 +634,11 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       !output_options_.save_quad_rectified_frames ) {
     return true;
   }
+
+  CF_DEBUG("update_undistortion_remap()...");
+  update_undistortion_remap();
+
+  CF_DEBUG("Save rectified videos...");
 
   c_output_frame_writer video_writer[2];
   c_output_frame_writer stereo_writer;
@@ -783,21 +832,104 @@ bool c_stereo_calibration_pipeline::write_output_videos()
   return true;
 }
 
-bool c_stereo_calibration_pipeline::run_pipeline()
-{
-  CF_DEBUG("Starting '%s: %s' ...",
-      csequence_name(), cname());
-
-  if( !run_stereo_calibration() ) {
-    return false;
-  }
-
-  if ( !write_output_videos() ) {
-    return false;
-  }
-
-  return true;
-}
-
-
+//
+//
+//bool c_stereo_calibration_pipeline::run_stereo_calibration()
+//{
+//  c_output_frame_writer progress_writer;
+//
+//  if ( !open_input_source() ) {
+//    CF_ERROR("ERROR: open_input_source() fails");
+//    return false;
+//  }
+//
+//  const int start_pos =
+//      std::max(input_options_.start_frame_index, 0);
+//
+//  const int end_pos =
+//      input_options_.max_input_frames < 1 ?
+//          input_sources_[0]->size() :
+//          std::min(input_sources_[0]->size(),
+//              input_options_.start_frame_index + input_options_.max_input_frames);
+//
+//
+//  total_frames_ = end_pos - start_pos;
+//  processed_frames_ = 0;
+//  accumulated_frames_ = 0;
+//
+//  if( total_frames_ < 1 ) {
+//    CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
+//        total_frames_);
+//    return false;
+//  }
+//
+//  if( !seek_input_source(start_pos) ) {
+//    CF_ERROR("ERROR: seek_input_source(start_pos=%d) fails", start_pos);
+//    return false;
+//  }
+//
+//  set_pipeline_stage(stereo_calibration_in_progress);
+//  set_status_msg("RUNNING ...");
+//
+//  bool fOk = true;
+//
+//  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+//
+//    fOk = true;
+//
+//    if ( canceled() ) {
+//      break;
+//    }
+//
+//    if ( !read_stereo_frame() ) {
+//      CF_ERROR("read_stereo_frame() fails");
+//      break;
+//    }
+//
+//    if ( canceled() ) {
+//      break;
+//    }
+//
+//    fOk = c_stereo_calibration::process_stereo_frame(current_frames_, current_masks_, false);
+//    if ( !fOk || canceled() ) {
+//      break;
+//    }
+//
+//    update_display_image();
+//
+//    if ( output_options_.save_calibration_progress_video ) {
+//
+//      if( !progress_writer.is_open() ) {
+//
+//        std::string output_file_name =
+//            generate_output_file_name(output_options_.calibration_progress_filename,
+//                "progress",
+//                ".avi");
+//
+//        bool fOK =
+//            progress_writer.open(output_file_name,
+//                display_frame_.size(),
+//                display_frame_.channels() > 1,
+//                false);
+//
+//        if( !fOK ) {
+//          CF_ERROR("display_frame_.open('%s') fails",
+//              output_file_name.c_str());
+//          return false;
+//        }
+//      }
+//
+//      if ( !progress_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
+//        CF_ERROR("display_frame_.write() fails");
+//        return false;
+//      }
+//
+//    }
+//
+//  }
+//
+//  close_input_source();
+//
+//  return !canceled();
+//}
 

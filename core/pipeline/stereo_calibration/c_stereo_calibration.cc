@@ -196,9 +196,143 @@ void c_stereo_calibration::cleanup()
   display_mask_.release();
 }
 
-bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2])
+bool c_stereo_calibration::update_stereo_calibration()
 {
-  bool fOk = true;
+  if( !stereo_intrinsics_initialized_ && calibration_options_.init_camera_matrix_2d ) {
+
+    const cv::Size image_size =
+        current_frames_[0].size();
+
+    stereo_intrinsics_initialized_ =
+        init_camera_intrinsics(stereo_intrinsics_,
+            object_points_,
+            image_points_[0],
+            image_points_[1],
+            image_size,
+            1);
+
+    if( !stereo_intrinsics_initialized_ ) {
+      CF_ERROR("init_camera_intrinsics() fails");
+      return false; // wait for next frame
+    }
+
+    if( canceled() ) {
+      return false;
+    }
+
+    const cv::Matx33d &M0 =
+        stereo_intrinsics_.camera[0].camera_matrix;
+
+    const cv::Matx33d &M1 =
+        stereo_intrinsics_.camera[1].camera_matrix;
+
+    CF_DEBUG("\nINITIAL M0: {\n"
+        "  %+g %+g %+g\n"
+        "  %+g %+g %+g\n"
+        "  %+g %+g %+g\n"
+        "}\n"
+
+        "\nNITIAL M1: {\n"
+        "  %+g %+g %+g\n"
+        "  %+g %+g %+g\n"
+        "  %+g %+g %+g\n"
+        "}\n",
+
+    M0(0, 0), M0(0, 1), M0(0, 2),
+        M0(1, 0), M0(1, 1), M0(1, 2),
+        M0(2, 0), M0(2, 1), M0(2, 2),
+
+        M1(0, 0), M1(0, 1), M1(0, 2),
+        M1(1, 0), M1(1, 1), M1(1, 2),
+        M1(2, 0), M1(2, 1), M1(2, 2));
+  }
+
+  CF_DEBUG("Running stereo calibration ...");
+
+  if( best_subset_quality_ < HUGE_VAL ) {
+    CF_DEBUG("USE best* as guess");
+    stereo_intrinsics_ = best_intrinsics_;
+    stereo_extrinsics_ = best_extrinsics_;
+    calibration_flags_ = best_calibration_flags_;
+  }
+
+  rmse_ =
+      stereo_calibrate(object_points_,
+          image_points_[0], image_points_[1],
+          stereo_intrinsics_,
+          stereo_extrinsics_,
+          calibration_flags_,
+          calibration_options_.solverTerm,
+          &E_,
+          &F_,
+          // &rvecs_,
+          // &tvecs_,
+          &perViewErrors_);
+
+  CF_DEBUG("done with RMSE=%g", rmse_);
+  //    for ( int cc = 0; cc < perViewErrors_.rows; ++cc ) {
+  //      CF_DEBUG("ERRS[%d]= { %g %g }", cc, perViewErrors_[cc][0], perViewErrors_[cc][1]);
+  //    }
+
+  bool fOK =
+      rmse_ >= 0;
+
+  if( fOK ) {
+
+    const double subset_quality =
+        estimate_subset_quality();
+
+    stereo_intrinsics_initialized_ = true;
+
+    CF_DEBUG("subset_quality=%g best_subset_quality_=%g", subset_quality, best_subset_quality_);
+
+    if( subset_quality < best_subset_quality_ ) {
+      CF_DEBUG("Copy to best*");
+
+      best_intrinsics_ = stereo_intrinsics_;
+      best_extrinsics_ = stereo_extrinsics_;
+      best_calibration_flags_ = calibration_flags_;
+      best_subset_quality_ = subset_quality;
+
+      if( canceled() ) {
+        return false;
+      }
+    }
+  }
+
+  const cv::Matx33d &M0 =
+      stereo_intrinsics_.camera[0].camera_matrix;
+
+  const cv::Matx33d &M1 =
+      stereo_intrinsics_.camera[1].camera_matrix;
+
+  CF_DEBUG("\nM0: {\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "}\n"
+
+      "\nM1: {\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "}\n",
+
+  M0(0, 0), M0(0, 1), M0(0, 2),
+      M0(1, 0), M0(1, 1), M0(1, 2),
+      M0(2, 0), M0(2, 1), M0(2, 2),
+
+      M1(0, 0), M1(0, 1), M1(0, 2),
+      M1(1, 0), M1(1, 1), M1(1, 2),
+      M1(2, 0), M1(2, 1), M1(2, 2));
+
+  return fOK;
+}
+
+bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2],
+    bool only_collect_landmarks)
+{
+  bool fOK = true;
 
   for( int i = 0; i < 2; ++i ) {
     if( images[i].data != current_frames_[i].data ) {
@@ -216,12 +350,12 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], const c
   for( int i = 0; i < 2; ++i ) {
     if( canceled() || !detect_chessboard(current_frames_[i], current_image_points_[i]) ) {
       // CF_ERROR("detect_chessboard() fails for source %d", i);
-      fOk = false;
+      fOK = false;
       break;
     }
   }
 
-  if( !fOk ) {
+  if( !fOK ) {
     return true; // wait for next frame
   }
 
@@ -231,165 +365,45 @@ bool c_stereo_calibration::process_stereo_frame(const cv::Mat images[2], const c
 
   if( object_points_.size() >= std::max(1, calibration_options_.min_frames) ) {
 
-    const cv::Size image_size =
-        current_frames_[0].size();
+    fOK = false;
 
-    fOk = false;
+    if( only_collect_landmarks ) {
 
-    if( !stereo_intrinsics_initialized_ && calibration_options_.init_camera_matrix_2d ) {
+      filter_frames(true);
 
-      stereo_intrinsics_initialized_ =
-          init_camera_intrinsics(stereo_intrinsics_,
-              object_points_,
-              image_points_[0],
-              image_points_[1],
-              image_size,
-              1);
+    }
+    else if( (fOK = update_stereo_calibration()) ) {
 
-      if( !stereo_intrinsics_initialized_ ) {
-        CF_ERROR("init_camera_intrinsics() fails");
-        return true; // wait for next frame
+      if( canceled() ) {
+        return false;
+      }
+
+      filter_frames(false);
+
+      if( canceled() ) {
+        return false;
+      }
+
+      update_state();
+
+      if( canceled() ) {
+        return false;
+      }
+
+      if( !save_current_camera_parameters() ) {
+        CF_ERROR("save_current_camera_parameters() fails");
+        return false;
       }
 
       if( canceled() ) {
         return false;
       }
 
-      const cv::Matx33d &M0 =
-          stereo_intrinsics_.camera[0].camera_matrix;
-
-      const cv::Matx33d &M1 =
-          stereo_intrinsics_.camera[1].camera_matrix;
-
-      CF_DEBUG("\nINITIAL M0: {\n"
-          "  %+g %+g %+g\n"
-          "  %+g %+g %+g\n"
-          "  %+g %+g %+g\n"
-          "}\n"
-
-          "\nNITIAL M1: {\n"
-          "  %+g %+g %+g\n"
-          "  %+g %+g %+g\n"
-          "  %+g %+g %+g\n"
-          "}\n",
-
-          M0(0, 0), M0(0, 1), M0(0, 2),
-          M0(1, 0), M0(1, 1), M0(1, 2),
-          M0(2, 0), M0(2, 1), M0(2, 2),
-
-          M1(0, 0), M1(0, 1), M1(0, 2),
-          M1(1, 0), M1(1, 1), M1(1, 2),
-          M1(2, 0), M1(2, 1), M1(2, 2));
-
-    }
-
-    CF_DEBUG("Running stereo calibration ...");
-
-    if ( best_subset_quality_ < HUGE_VAL ) {
-      CF_DEBUG("USE best* as guess");
-      stereo_intrinsics_ = best_intrinsics_;
-      stereo_extrinsics_ = best_extrinsics_;
-      calibration_flags_ = best_calibration_flags_;
-    }
-
-    rmse_ =
-        stereo_calibrate(object_points_,
-            image_points_[0], image_points_[1],
-            stereo_intrinsics_,
-            stereo_extrinsics_,
-            calibration_flags_,
-            calibration_options_.solverTerm,
-            &E_,
-            &F_,
-            // &rvecs_,
-            // &tvecs_,
-            &perViewErrors_);
-
-    CF_DEBUG("done with RMSE=%g", rmse_);
-    //    for ( int cc = 0; cc < perViewErrors_.rows; ++cc ) {
-    //      CF_DEBUG("ERRS[%d]= { %g %g }", cc, perViewErrors_[cc][0], perViewErrors_[cc][1]);
-    //    }
-
-
-
-    if( (fOk = (rmse_ >= 0)) ) {
-
-      const double subset_quality =
-          estimate_subset_quality();
-
-      stereo_intrinsics_initialized_ = true;
-
-      CF_DEBUG("subset_quality=%g best_subset_quality_=%g", subset_quality, best_subset_quality_);
-
-      if( subset_quality < best_subset_quality_ ) {
-        CF_DEBUG("Copy to best*");
-
-        best_intrinsics_ = stereo_intrinsics_;
-        best_extrinsics_ = stereo_extrinsics_;
-        best_calibration_flags_ = calibration_flags_;
-        best_subset_quality_ = subset_quality;
-
-        if( !save_current_camera_parameters() ) {
-          CF_ERROR("save_current_camera_parameters() fails");
-          return false;
-        }
-
-        if( canceled() ) {
-          return false;
-        }
-      }
-    }
-
-    const cv::Matx33d &M0 =
-        stereo_intrinsics_.camera[0].camera_matrix;
-
-    const cv::Matx33d &M1 =
-        stereo_intrinsics_.camera[1].camera_matrix;
-
-    CF_DEBUG("\nM0: {\n"
-        "  %+g %+g %+g\n"
-        "  %+g %+g %+g\n"
-        "  %+g %+g %+g\n"
-        "}\n"
-
-        "\nM1: {\n"
-        "  %+g %+g %+g\n"
-        "  %+g %+g %+g\n"
-        "  %+g %+g %+g\n"
-        "}\n",
-
-        M0(0, 0), M0(0, 1), M0(0, 2),
-        M0(1, 0), M0(1, 1), M0(1, 2),
-        M0(2, 0), M0(2, 1), M0(2, 2),
-
-        M1(0, 0), M1(0, 1), M1(0, 2),
-        M1(1, 0), M1(1, 1), M1(1, 2),
-        M1(2, 0), M1(2, 1), M1(2, 2));
-
-    if( !fOk || canceled() ) {
-      return true; // wait for next frame
-    }
-
-    filter_frames();
-
-    if( canceled() ) {
-      return false;
-    }
-
-    update_state();
-
-    if( canceled() ) {
-      return false;
-    }
-
-    update_undistortion_remap();
-
-    if( canceled() ) {
-      return false;
+      update_undistortion_remap();
     }
   }
 
-  return true;
+  return !canceled();
 }
 
 
@@ -458,14 +472,14 @@ void c_stereo_calibration::estimate_grid_meanstdev(double * m, double * s, int e
   }
 }
 
-double c_stereo_calibration::estimate_grid_subset_quality(int excludedIndex) const
+double c_stereo_calibration::estimate_coverage_quality(int excludedIndex) const
 {
   double mean, stdev;
 
   estimate_grid_meanstdev(&mean, &stdev,
       excludedIndex);
 
-  return mean / (stdev + 1e-7);
+  return stdev / mean; // / (stdev + 1e-7);
 }
 
 double c_stereo_calibration::estimate_subset_quality() const
@@ -502,7 +516,7 @@ double c_stereo_calibration::estimate_subset_quality() const
   return 0;
 }
 
-void c_stereo_calibration::filter_frames()
+void c_stereo_calibration::filter_frames(bool only_collect_landmarks)
 {
   const int nbframes =
       object_points_.size();
@@ -511,9 +525,9 @@ void c_stereo_calibration::filter_frames()
       std::max(1, std::max(calibration_options_.min_frames,
           calibration_options_.max_frames));
 
-  CF_DEBUG("nbframes = %d / %d", nbframes, nbframesmax);
+  //CF_DEBUG("nbframes = %d / %d", nbframes, nbframesmax);
 
-  if( nbframes != perViewErrors_.rows ) {
+  if( !only_collect_landmarks && nbframes != perViewErrors_.rows ) {
 
     if( nbframes > 1 ) {
       CF_ERROR("APP BUG: object_points_.size()=%zu != current_per_view_errors_.total()=%d",
@@ -533,29 +547,56 @@ void c_stereo_calibration::filter_frames()
 
   if ( nbframes > nbframesmax ) {
 
-    double worstValue = -HUGE_VAL;
-    double maxQuality = estimate_grid_subset_quality(nbframes);
+    static const auto estimateRmeQuality =
+        [](const cv::Mat1d & perViewErrors) -> double {
+          double sum = 0;
+          for( int i = 0, n = perViewErrors.rows; i < n; ++i ) {
+            sum += (perViewErrors[i][0] + perViewErrors[i][1]);
+          }
+          return 0.5 * sum;
+        };
 
-    int worstElemIndex = 0;
 
     const double alpha =
         calibration_options_.filter_alpha;
 
-    for( size_t i = 0; i < nbframes; i++ ) {
+    const double totalRmeQuality =
+        only_collect_landmarks ? 0 :
+            estimateRmeQuality(perViewErrors_);
 
-      const double gridQDelta =
-          estimate_grid_subset_quality(i) - maxQuality;
+    const double totalCoverageQuality =
+        estimate_coverage_quality(nbframes);
 
-      const double currentValue =
-          (perViewErrors_[i][0] + perViewErrors_[i][1]) * alpha + gridQDelta * (1. - alpha);
+    double bestSubsetQuality = HUGE_VAL;
+    int worstElemIndex = 0;
 
-      if( currentValue > worstValue ) {
-        worstValue = currentValue;
+    for( int i = 0; i < nbframes; ++i ) {
+
+      const double currentCoverageQuality =
+          estimate_coverage_quality(i);
+
+      double currentSubsetQuality;
+
+      if ( only_collect_landmarks ) {
+        currentSubsetQuality =
+            currentCoverageQuality;
+      }
+      else {
+
+        const double currentRmseQuality =
+            (totalRmeQuality - 0.5 * (perViewErrors_[i][0] + perViewErrors_[i][1])) / (perViewErrors_.rows - 1);
+
+        currentSubsetQuality =
+            alpha * currentRmseQuality + (1. - alpha) * currentCoverageQuality;
+      }
+
+      if( currentSubsetQuality < bestSubsetQuality ) {
+        bestSubsetQuality = currentSubsetQuality;
         worstElemIndex = i;
       }
     }
 
-    CF_DEBUG("worstElemIndex=%d", worstElemIndex);
+    // CF_DEBUG("worstElemIndex=%d bestSubsetQuality=%g", worstElemIndex, bestSubsetQuality);
 
     image_points_[0].erase(image_points_[0].begin() + worstElemIndex);
     image_points_[1].erase(image_points_[1].begin() + worstElemIndex);
@@ -579,72 +620,7 @@ void c_stereo_calibration::filter_frames()
 
 void c_stereo_calibration::update_state()
 {
-//  cv::Mat &cameraMatrix =
-//      current_camera_matrix_;
-//
-//  if( !cameraMatrix.empty() ) {
-//
-//    const double relErrEps = 0.05;
-//    static const double sigmaMult = 1.96;
-//
-//    bool fConfState = false;
-//    bool cConfState = false;
-//    bool dConfState = true;
-//
-//    const cv::Mat &S =
-//        current_std_deviations_;
-//
-//    if( sigmaMult * S.at<double>(0) / cameraMatrix.at<double>(0, 0) < relErrEps &&
-//        sigmaMult * S.at<double>(1) / cameraMatrix.at<double>(1, 1) < relErrEps ) {
-//      fConfState = true;
-//    }
-//
-//    if( sigmaMult * S.at<double>(2) / cameraMatrix.at<double>(0, 2) < relErrEps &&
-//        sigmaMult * S.at<double>(3) / cameraMatrix.at<double>(1, 2) < relErrEps ) {
-//      cConfState = true;
-//    }
-//
-//    for( int i = 0; i < 5; i++ ) {
-//      if( S.at<double>(4 + i) / fabs(current_dist_coeffs_.at<double>(i)) > 1 ) {
-//        dConfState = false;
-//      }
-//    }
-//
-//    confIntervalsState_ =
-//        fConfState && cConfState && dConfState;
-//  }
-//
-//
-//  if( object_points_.size() > calibration_options_.min_frames ) {
-//    coverageQualityState_ = estimate_coverage_quality() > 1.8 ? true : false;
-//  }
-
   if( calibration_options_.auto_tune_calibration_flags && object_points_.size() > calibration_options_.min_frames ) {
-
-//    if( !(calibration_flags_ & cv::CALIB_FIX_ASPECT_RATIO) ) {
-//
-//      bool fix_aspect_ratio = true;
-//
-//      for( int i = 0; i < 2; ++i ) {
-//
-//        const cv::Matx33d & C =
-//            stereo_intrinsics_.camera[i].camera_matrix;
-//
-//        const double fDiff =
-//            fabs(C(0, 0) - C(1, 1));
-//
-//        //        if( fDiff < 3 * S.at<double>(0) && fDiff < 3 * S.at<double>(1) ) {
-//        //        }
-//      }
-
-//      const cv::Mat &S =
-//          current_std_deviations_;
-//
-//      if( fDiff < 3 * S.at<double>(0) && fDiff < 3 * S.at<double>(1) ) {
-//        calibration_flags_ |= cv::CALIB_FIX_ASPECT_RATIO;
-//        cameraMatrix.at<double>(0, 0) = cameraMatrix.at<double>(1, 1);
-//      }
-//    }
 
     if( !(calibration_flags_ & cv::CALIB_ZERO_TANGENT_DIST) ) {
 
@@ -689,7 +665,6 @@ void c_stereo_calibration::update_state()
         calibration_flags_ |= cv::CALIB_FIX_K1;
       }
     }
-
 
     if( !(calibration_flags_ & cv::CALIB_FIX_K2) ) {
 
@@ -785,7 +760,9 @@ void c_stereo_calibration::update_display_image()
     current_frames_[0].copyTo(display_frame_(roi[2]));
     current_frames_[1].copyTo(display_frame_(roi[3]));
   }
+
   else {
+
     cv::remap(current_frames_[0], display_frame_(roi[2]),
         rmaps_[0], cv::noArray(),
         cv::INTER_LINEAR);
@@ -821,6 +798,22 @@ void c_stereo_calibration::update_display_image()
         true);
   }
 
+  if( rmaps_[0].empty() ) {
+
+    // draw coverage
+
+    for ( int i = 0; i < 2; ++i ) {
+
+      cv::Mat3b display =
+          display_frame_(roi[i + 2]);
+
+      for( const std::vector<cv::Point2f> &corners : image_points_[i] ) {
+        for( const cv::Point2f &corner : corners ) {
+          cv::rectangle(display, cv::Rect(corner.x - 1, corner.y - 1, 3, 3), CV_RGB(0, 255, 0), -1, cv::LINE_8);
+        }
+      }
+    }
+  }
 }
 
 bool c_stereo_calibration::save_current_camera_parameters() const

@@ -467,3 +467,8 @@ bool c_camera_calibration_pipeline::run_pipeline()
   CF_DEBUG("FINISHED");
   return  true;
 }
+
+//bool c_camera_calibration_pipeline::run_chessboard_corners_collection()
+//{
+//}
+

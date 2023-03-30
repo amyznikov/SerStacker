@@ -79,6 +79,9 @@ protected:
   bool read_input_frame(const c_input_sequence::sptr & input_sequence, cv::Mat & output_image, cv::Mat & output_mask) const;
   void update_display_image() override;
 
+//protected:
+//  bool run_chessboard_corners_collection();
+
 protected:
 
   cv::Mat missing_pixel_mask_;

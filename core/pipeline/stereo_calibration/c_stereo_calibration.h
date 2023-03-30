@@ -76,15 +76,15 @@ public:
 
   virtual bool initialize();
   virtual void cleanup();
-  virtual bool process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2]);
+  virtual bool process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2], bool only_collect_landmarks);
   virtual void update_display_image();
   virtual bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask);
 
 protected:
   virtual bool canceled();
   virtual bool detect_chessboard(const cv::Mat &frame, std::vector<cv::Point2f> & corners_) const;
-  virtual double estimate_grid_subset_quality(int excludedIndex) const;
-  virtual void filter_frames();
+  virtual double estimate_coverage_quality(int excludedIndex) const;
+  virtual void filter_frames(bool only_collect_landmarks);
   virtual void update_state();
   virtual void update_undistortion_remap();
   virtual bool save_current_camera_parameters() const;
@@ -92,6 +92,7 @@ protected:
 protected:
   double estimate_subset_quality() const;
   void estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const;
+  bool update_stereo_calibration();
 
 protected:
   c_chessboard_corners_detection_options chessboard_detection_options_;

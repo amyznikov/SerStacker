@@ -35,8 +35,8 @@ protected:
   QNumericBox * max_iterations_ctl = nullptr;
   QNumericBox * eps_ctl = nullptr;
   QFlagsEditBox<STEREO_CALIBRATION_FLAGS> * calibration_flags_ctl = nullptr;
-  QCheckBox * auto_tune_calibration_flags_ctl = nullptr;
   QCheckBox * init_camera_matrix_2d_ctl = nullptr;
+  QCheckBox * auto_tune_calibration_flags_ctl = nullptr;
   QNumericBox * filter_alpha_ctl = nullptr;
 };
 

@@ -430,6 +430,8 @@ void MainWindow::setupLogWidget()
           menuView_);
 
   logwidgetDock_->hide();
+
+  // menuBar()
 }
 
 void MainWindow::onStackProgressViewTextChanged()

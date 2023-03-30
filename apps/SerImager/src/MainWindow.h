@@ -15,7 +15,6 @@
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
 #include <gui/widgets/QScaleSelectionButton.h>
-
 #include <gui/qlogwidget/QLogWidget.h>
 #include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"

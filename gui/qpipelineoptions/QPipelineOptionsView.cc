@@ -356,6 +356,47 @@ void QPipelineOptionsView::onRenamePipeline()
 {
   if( current_sequence_ ) {
 
+    const c_image_processing_pipeline::sptr &pipeline =
+        current_sequence_->current_pipeline();
+
+    if ( pipeline ) {
+
+      while ( 42 ) {
+
+        const std::string current_name =
+            pipeline->name();
+
+        const std::string new_name =
+            QInputDialog::getText(this,
+                "Rename Pipeline",
+                "New name:",
+                QLineEdit::Normal,
+                current_name.c_str()).toStdString();
+
+        if( new_name.empty() ) {
+          break;
+        }
+
+        if( !current_sequence_->find_pipeline(new_name) ) {
+
+          pipeline->set_name(new_name);
+
+          const int index = pipelineSelector_ctl->findText(current_name.c_str());
+          if( index >= 0 ) {
+            pipelineSelector_ctl->setItemText(index, new_name.c_str());
+          }
+
+          Q_EMIT parameterChanged();
+          break;
+        }
+
+        QMessageBox::warning(this,
+            "Rename Pipeline",
+            "Error: Pipeline '%s' already exists for this sequence.\n"
+                "Enter another name.");
+      }
+    }
+
   }
 }
 

@@ -8,10 +8,11 @@
 #include "c_stereo_calibration_pipeline.h"
 #include <core/settings/opencv_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
-#include <core/io/c_output_frame_writer.h>
 #include <core/io/load_image.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
+#include <chrono>
+#include <thread>
 #include <core/debug.h>
 
 
@@ -52,14 +53,14 @@ const c_stereo_calibration_input_options & c_stereo_calibration_pipeline::input_
   return input_options_;
 }
 
-void c_stereo_calibration_pipeline::set_output_directory(const std::string & output_directory)
+bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
 {
-  output_options_.output_directory = output_directory;
-}
-
-const std::string & c_stereo_calibration_pipeline::output_directory() const
-{
-  return output_options_.output_directory;
+  lock_guard lock(display_lock_);
+  if ( !c_stereo_calibration::get_display_image(frame, mask) ) {
+    CF_DEBUG("c_stereo_calibration::get_display_image() fails");
+    return false;
+  }
+  return true;
 }
 
 bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool save)
@@ -82,17 +83,8 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
   return c_stereo_calibration::serialize(settings, save);
 }
 
-bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
-{
-  lock_guard lock(display_lock_);
-  c_stereo_calibration::get_display_image(frame, mask);
-  return true;
-}
-
 bool c_stereo_calibration_pipeline::read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const
 {
-  lock_guard lock(display_lock_);
-
   INSTRUMENT_REGION("");
 
   enum COLORID colorid = COLORID_UNKNOWN;
@@ -205,16 +197,22 @@ bool c_stereo_calibration_pipeline::read_input_frame(const c_input_source::sptr 
   return true;
 }
 
-
-
 bool c_stereo_calibration_pipeline::read_stereo_frame()
 {
+  lock_guard lock(display_lock_);
+
   switch (input_options_.layout_type) {
     case stereo_calibration_frame_layout_separate_sources:
 
       for( int i = 0; i < 2; ++i ) {
 
-        if( !read_input_frame(input_sources_[i], current_frames_[i], current_masks_[i]) ) {
+        cv::Mat & frame =
+            current_frames_[i];
+
+        cv::Mat & mask =
+            current_masks_[i];
+
+        if( !read_input_frame(input_sources_[i], frame, mask) ) {
           CF_ERROR("ERROR: read_input_frame() fails for source %d", i);
           return false;
         }
@@ -240,18 +238,21 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
           cv::Rect(image.cols / 2, 0, image.cols / 2, image.rows)
       };
 
-      if ( !input_options_.swap_cameras ) {
+      if( !input_options_.swap_cameras ) {
+
         current_frames_[0] = image(roi[0]);
         current_frames_[1] = image(roi[1]);
-        if ( !mask.empty() ) {
+
+        if( !mask.empty() ) {
           current_masks_[0] = mask(roi[0]);
-          current_masks_[1] = mask(roi[1]);
+          current_masks_[0] = mask(roi[1]);
         }
       }
       else {
         current_frames_[0] = image(roi[1]);
         current_frames_[1] = image(roi[0]);
-        if ( !mask.empty() ) {
+
+        if( !mask.empty() ) {
           current_masks_[0] = mask(roi[1]);
           current_masks_[1] = mask(roi[0]);
         }
@@ -274,10 +275,12 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
           cv::Rect(0, image.rows / 2, image.cols, image.rows / 2)
       };
 
-      if ( !input_options_.swap_cameras ) {
+      if( !input_options_.swap_cameras ) {
+
         current_frames_[0] = image(roi[0]);
         current_frames_[1] = image(roi[1]);
-        if ( !mask.empty() ) {
+
+        if( !mask.empty() ) {
           current_masks_[0] = mask(roi[0]);
           current_masks_[1] = mask(roi[1]);
         }
@@ -285,7 +288,8 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
       else {
         current_frames_[0] = image(roi[1]);
         current_frames_[1] = image(roi[0]);
-        if ( !mask.empty() ) {
+
+        if( !mask.empty() ) {
           current_masks_[0] = mask(roi[1]);
           current_masks_[1] = mask(roi[0]);
         }
@@ -293,35 +297,43 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
 
       break;
     }
-
   }
 
-  if( current_frames_[0].size() != current_frames_[1].size() ) {
+  const cv::Mat & left_frame =
+      current_frames_[0];
+
+  const cv::Mat & right_frame =
+      current_frames_[1];
+
+  if( left_frame.size() != right_frame.size() ) {
     CF_ERROR("INPUT ERROR: Left (%dx%d) and right (%dx%d) image sizes not equal.\n"
         "Different image sizes are not yet supported",
-        current_frames_[0].cols, current_frames_[0].rows,
-        current_frames_[1].cols, current_frames_[1].rows);
+        left_frame.cols, left_frame.rows,
+        right_frame.cols, right_frame.rows);
     return false;
   }
 
-  if( current_frames_[0].channels() != current_frames_[1].channels() ) {
+  if( left_frame.channels() != right_frame.channels() ) {
     CF_ERROR("INPUT ERROR: Left (%d) and right (%d) number of image channels not equal.\n"
         "Different image types are not yet supported",
-        current_frames_[0].channels(),
-        current_frames_[1].channels());
+        left_frame.channels(),
+        right_frame.channels());
     return false;
   }
 
   for( int i = 0; i < 2; ++i ) {
 
-    if( stereo_intrinsics_.camera[i].image_size.empty() ) {
-      stereo_intrinsics_.camera[i].image_size =
-          current_frames_[i].size();
+    c_camera_intrinsics &intrinsics =
+        current_intrinsics_.camera[i];
+
+    if( intrinsics.image_size.empty() ) {
+      intrinsics.image_size =
+          current_frames_[0].size();
     }
-    else if( stereo_intrinsics_.camera[i].image_size != current_frames_[i].size() ) {
+    else if( intrinsics.image_size != current_frames_[0].size() ) {
       CF_ERROR("INPUT ERROR: Frame size change (%dx%d) -> (%dx%d) not supported\n",
-          stereo_intrinsics_.camera[i].image_size.width, stereo_intrinsics_.camera[i].image_size.height,
-          current_frames_[i].cols, current_frames_[i].rows);
+          intrinsics.image_size.width, intrinsics.image_size.height,
+          current_frames_[0].cols, current_frames_[0].rows);
       return false;
     }
   }
@@ -342,31 +354,22 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
   return true;
 }
 
-void c_stereo_calibration_pipeline::update_display_image()
-{
-  lock_guard lock(display_lock_);
-
-  accumulated_frames_ = object_points_.size();
-  c_stereo_calibration::update_display_image();
-
-  on_accumulator_changed();
-}
-
-bool c_stereo_calibration_pipeline::canceled()
+bool c_stereo_calibration_pipeline::canceled() const
 {
   return c_image_processing_pipeline::canceled();
 }
 
 bool c_stereo_calibration_pipeline::initialize_pipeline()
 {
-  set_pipeline_stage(stereo_calibration_initialize);
-
   if ( !base::initialize_pipeline() ) {
     CF_ERROR("base::initialize() fails");
     return false;
   }
 
   /////////////////////////////////////////////////////////////////////////////
+
+  output_path_ =
+      create_output_path(output_options().output_directory);
 
   c_stereo_calibration::set_output_intrinsics_filename(
       ssprintf("%s/stereo_intrinsics.%s.yml",
@@ -378,8 +381,15 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
           output_path_.c_str(),
           csequence_name()));
 
+  if( output_options().save_chessboard_frames ) {
+    c_stereo_calibration::set_chessboard_frames_filename(
+        generate_output_file_name(output_options().chessboard_frames_filename,
+            "chessboard",
+            ".avi"));
+  }
+
   if ( !c_stereo_calibration::initialize() ) {
-    CF_ERROR("c_stereo_calibration::initialize");
+    CF_ERROR("c_stereo_calibration::initialize() fails");
     return false;
   }
 
@@ -420,8 +430,6 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
 
 void c_stereo_calibration_pipeline::cleanup_pipeline()
 {
-  set_pipeline_stage(stereo_calibration_finishing);
-
   close_input_source();
 
   if( true ) {
@@ -430,8 +438,6 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
   }
 
   base::cleanup_pipeline();
-
-  set_pipeline_stage(stereo_calibration_idle);
 }
 
 void c_stereo_calibration_pipeline::close_input_source()
@@ -494,31 +500,18 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     return false;
   }
 
-  CF_DEBUG("update_stereo_calibration()...");
-  if ( !c_stereo_calibration::update_stereo_calibration() ) {
-    CF_ERROR("c_stereo_calibration::update_stereo_calibration() fails");
-    return false;
-  }
+  if ( calibration_options_.enable_calibration ) {
 
-  CF_DEBUG("update_state()...");
-  update_state();
+    CF_DEBUG("update_stereo_calibration()...");
 
-  if( canceled() ) {
-    return false;
-  }
+    if ( !c_stereo_calibration::update_calibration() ) {
+      CF_ERROR("c_stereo_calibration.update_stereo_calibration() fails");
+      return false;
+    }
 
-  CF_DEBUG("save_current_camera_parameters()...");
-  if( !save_current_camera_parameters() ) {
-    CF_ERROR("save_current_camera_parameters() fails");
-    return false;
-  }
-
-  if( canceled() ) {
-    return false;
-  }
-
-  if ( !write_output_videos() ) {
-    return false;
+    if ( !write_output_videos() ) {
+      return false;
+    }
   }
 
   CF_DEBUG("leave");
@@ -562,14 +555,13 @@ bool c_stereo_calibration_pipeline::run_chessboard_corners_collection()
     return false;
   }
 
-  set_pipeline_stage(stereo_calibration_in_progress);
   set_status_msg("RUNNING ...");
 
-  bool fOk = true;
+  bool fOK = true;
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
 
-    fOk = true;
+    fOK = true;
 
     if ( canceled() ) {
       break;
@@ -584,42 +576,56 @@ bool c_stereo_calibration_pipeline::run_chessboard_corners_collection()
       break;
     }
 
-    fOk = c_stereo_calibration::process_stereo_frame(current_frames_, current_masks_, true);
-    if ( !fOk || canceled() ) {
-      break;
+    if ( true ) {
+
+      lock_guard lock(display_lock_);
+
+      if ( !process_current_stereo_frame(false) ) {
+        break;
+      }
+
+      accumulated_frames_ =
+          object_points_.size();
+
     }
 
-    update_display_image();
 
-    if ( output_options_.save_calibration_progress_video ) {
 
-      if( !progress_writer.is_open() ) {
+    // give chance to GUI thread to call get_display_image()
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-        std::string output_file_name =
-            generate_output_file_name(output_options_.calibration_progress_filename,
-                "coverage_progress",
-                ".avi");
+    if ( output_options_.save_progress_video ) {
 
-        bool fOK =
-            progress_writer.open(output_file_name,
-                display_frame_.size(),
-                display_frame_.channels() > 1,
-                false);
+      cv::Mat image, mask;
 
-        if( !fOK ) {
-          CF_ERROR("display_frame_.open('%s') fails",
-              output_file_name.c_str());
+      if ( c_stereo_calibration::get_display_image(image, mask) ) {
+
+        if( !progress_writer.is_open() ) {
+
+          std::string output_file_name =
+              generate_output_file_name(output_options_.progress_video_filename,
+                  "coverage_progress",
+                  ".avi");
+
+          fOK =
+              progress_writer.open(output_file_name,
+                  image.size(),
+                  image.channels() > 1,
+                  false);
+
+          if( !fOK ) {
+            CF_ERROR("progress_writer.open('%s') fails",
+                output_file_name.c_str());
+            return false;
+          }
+        }
+
+        if ( !progress_writer.write(image, cv::noArray(), false, processed_frames_ ) ) {
+          CF_ERROR("progress_writer.write() fails");
           return false;
         }
       }
-
-      if ( !progress_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
-        CF_ERROR("display_frame_.write() fails");
-        return false;
-      }
-
     }
-
   }
 
   close_input_source();
@@ -647,6 +653,8 @@ bool c_stereo_calibration_pipeline::write_output_videos()
   cv::Size sizes[2];
   cv::Size stereo_size;
   cv::Size quad_size;
+  cv::Mat remapped_frames[2];
+  cv::Mat display_frame;
 
   if ( !open_input_source() ) {
     CF_ERROR("ERROR: open_input_source() fails");
@@ -661,7 +669,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
   bool fOK;
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+  for( ; processed_frames_ < total_frames_; ++processed_frames_,  ++accumulated_frames_, on_status_update() ) {
 
     if( canceled() ) {
       break;
@@ -676,74 +684,47 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       break;
     }
 
-    sizes[0] = current_frames_[0].size();
-    sizes[1] = current_frames_[1].size();
+    for( int i = 0; i < 2; ++i ) {
+      cv::remap(current_frames_[i], remapped_frames[i],
+          rmaps_[i], cv::noArray(),
+          cv::INTER_LINEAR);
+    }
 
-    cv::remap(current_frames_[0], current_frames_[0],
-        rmaps_[0], cv::noArray(),
-        cv::INTER_LINEAR);
+    sizes[0] = remapped_frames[0].size();
+    sizes[1] = remapped_frames[1].size();
 
-    cv::remap(current_frames_[1], current_frames_[1],
-        rmaps_[1], cv::noArray(),
-        cv::INTER_LINEAR);
+    if( output_options_.save_rectified_frames ) {
 
+      for( int i = 0; i < 2; ++i ) {
 
-    if ( output_options_.save_rectified_frames ) {
+        if( !video_writer[i].is_open() ) {
 
-      if( !video_writer[0].is_open() ) {
+          std::string output_file_name =
+              generate_output_file_name(output_options_.rectified_frames_filename,
+                  i == 0 ? "rect-left" : "rect-right",
+                  ".avi");
 
-        std::string output_file_name =
-            generate_output_file_name(output_options_.rectified_frames_filename,
-                "rect-left",
-                ".avi");
+          fOK =
+              video_writer[i].open(output_file_name,
+                  remapped_frames[i].size(),
+                  remapped_frames[i].channels() > 1,
+                  false);
 
-        fOK =
-            video_writer[0].open(output_file_name,
-                current_frames_[0].size(),
-                current_frames_[0].channels() > 1,
-                false);
+          if( !fOK ) {
+            CF_ERROR("video_writer[%d].open('%s') fails", i,
+                output_file_name.c_str());
+            return false;
+          }
+        }
 
-        if( !fOK ) {
-          CF_ERROR("video_writer[0].open('%s') fails",
-              output_file_name.c_str());
+        if( !video_writer[i].write(remapped_frames[0], cv::noArray(), false, processed_frames_) ) {
+          CF_ERROR("video_writer[%d].write() fails", i);
           return false;
         }
-      }
-
-      if ( !video_writer[0].write( current_frames_[0], cv::noArray(), false, processed_frames_ ) ) {
-        CF_ERROR("video_writer[0].write() fails");
-        return false;
-      }
-
-
-      if( !video_writer[1].is_open() ) {
-
-        std::string output_file_name =
-            generate_output_file_name(output_options_.rectified_frames_filename,
-                "rect-right",
-                ".avi");
-
-        fOK =
-            video_writer[1].open(output_file_name,
-                current_frames_[1].size(),
-                current_frames_[1].channels() > 1,
-                false);
-
-        if( !fOK ) {
-          CF_ERROR("video_writer[1].open('%s') fails",
-              output_file_name.c_str());
-          return false;
-        }
-      }
-
-      if ( !video_writer[1].write( current_frames_[1], cv::noArray(), false, processed_frames_ ) ) {
-        CF_ERROR("video_writer[1].write() fails");
-        return false;
       }
     }
 
-
-    if ( output_options_.save_stereo_rectified_frames ) {
+    if( output_options_.save_stereo_rectified_frames ) {
 
       if( !stereo_writer.is_open() ) {
 
@@ -758,7 +739,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         fOK =
             stereo_writer.open(output_file_name,
                 stereo_size,
-                current_frames_[0].channels() > 1,
+                remapped_frames[0].channels() > 1,
                 false);
 
         if( !fOK ) {
@@ -771,11 +752,11 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       const cv::Rect rc0(0, 0, sizes[0].width, sizes[0].height);
       const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height);
 
-      display_frame_.create(stereo_size, current_frames_[0].type());
-      current_frames_[0].copyTo(display_frame_(rc0));
-      current_frames_[1].copyTo(display_frame_(rc1));
+      display_frame.create(stereo_size, remapped_frames[0].type());
+      remapped_frames[0].copyTo(display_frame(rc0));
+      remapped_frames[1].copyTo(display_frame(rc1));
 
-      if ( !stereo_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
+      if( !stereo_writer.write(display_frame, cv::noArray(), false, processed_frames_) ) {
         CF_ERROR("stereo_writer.write() fails");
         return false;
       }
@@ -796,7 +777,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         fOK =
             quad_writer.open(output_file_name,
                 quad_size,
-                current_frames_[0].channels() > 1,
+                remapped_frames[0].channels() > 1,
                 false);
 
         if( !fOK ) {
@@ -811,13 +792,13 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       const cv::Rect rc2(0, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> 1
       const cv::Rect rc3(sizes[0].width, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> blend
 
-      display_frame_.create(quad_size, current_frames_[0].type());
-      current_frames_[0].copyTo(display_frame_(rc0));
-      current_frames_[1].copyTo(display_frame_(rc1));
-      current_frames_[1].copyTo(display_frame_(rc2));
-      cv::addWeighted(current_frames_[0], 0.5, current_frames_[1], 0.5, 0, display_frame_(rc3));
+      display_frame.create(quad_size, remapped_frames[0].type());
+      remapped_frames[0].copyTo(display_frame(rc0));
+      remapped_frames[1].copyTo(display_frame(rc1));
+      remapped_frames[1].copyTo(display_frame(rc2));
+      cv::addWeighted(remapped_frames[0], 0.5, remapped_frames[1], 0.5, 0, display_frame(rc3));
 
-      if ( !quad_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
+      if ( !quad_writer.write(display_frame, cv::noArray(), false, processed_frames_ ) ) {
         CF_ERROR("quad_writer.write() fails");
         return false;
       }
@@ -826,110 +807,13 @@ bool c_stereo_calibration_pipeline::write_output_videos()
     if( canceled() ) {
       break;
     }
+
+    // give change to GUI thread calling get_display_image()
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
 
   return true;
 }
 
-//
-//
-//bool c_stereo_calibration_pipeline::run_stereo_calibration()
-//{
-//  c_output_frame_writer progress_writer;
-//
-//  if ( !open_input_source() ) {
-//    CF_ERROR("ERROR: open_input_source() fails");
-//    return false;
-//  }
-//
-//  const int start_pos =
-//      std::max(input_options_.start_frame_index, 0);
-//
-//  const int end_pos =
-//      input_options_.max_input_frames < 1 ?
-//          input_sources_[0]->size() :
-//          std::min(input_sources_[0]->size(),
-//              input_options_.start_frame_index + input_options_.max_input_frames);
-//
-//
-//  total_frames_ = end_pos - start_pos;
-//  processed_frames_ = 0;
-//  accumulated_frames_ = 0;
-//
-//  if( total_frames_ < 1 ) {
-//    CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-//        total_frames_);
-//    return false;
-//  }
-//
-//  if( !seek_input_source(start_pos) ) {
-//    CF_ERROR("ERROR: seek_input_source(start_pos=%d) fails", start_pos);
-//    return false;
-//  }
-//
-//  set_pipeline_stage(stereo_calibration_in_progress);
-//  set_status_msg("RUNNING ...");
-//
-//  bool fOk = true;
-//
-//  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
-//
-//    fOk = true;
-//
-//    if ( canceled() ) {
-//      break;
-//    }
-//
-//    if ( !read_stereo_frame() ) {
-//      CF_ERROR("read_stereo_frame() fails");
-//      break;
-//    }
-//
-//    if ( canceled() ) {
-//      break;
-//    }
-//
-//    fOk = c_stereo_calibration::process_stereo_frame(current_frames_, current_masks_, false);
-//    if ( !fOk || canceled() ) {
-//      break;
-//    }
-//
-//    update_display_image();
-//
-//    if ( output_options_.save_calibration_progress_video ) {
-//
-//      if( !progress_writer.is_open() ) {
-//
-//        std::string output_file_name =
-//            generate_output_file_name(output_options_.calibration_progress_filename,
-//                "progress",
-//                ".avi");
-//
-//        bool fOK =
-//            progress_writer.open(output_file_name,
-//                display_frame_.size(),
-//                display_frame_.channels() > 1,
-//                false);
-//
-//        if( !fOK ) {
-//          CF_ERROR("display_frame_.open('%s') fails",
-//              output_file_name.c_str());
-//          return false;
-//        }
-//      }
-//
-//      if ( !progress_writer.write( display_frame_, cv::noArray(), false, processed_frames_ ) ) {
-//        CF_ERROR("display_frame_.write() fails");
-//        return false;
-//      }
-//
-//    }
-//
-//  }
-//
-//  close_input_source();
-//
-//  return !canceled();
-//}
 

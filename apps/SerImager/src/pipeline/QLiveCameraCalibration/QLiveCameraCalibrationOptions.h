@@ -33,9 +33,8 @@ protected:
 protected:
   QLiveCameraCalibrationPipeline * pipeline_ = nullptr;
   QCameraCalibrationOptions * calibrationOptions_ctl = nullptr;
-
-  QCheckBox * save_frames_with_detected_chessboard_ctl = nullptr;
-  QLineEditBox * frames_with_detected_chessboard_filename_ctl = nullptr;
+//  QCheckBox * save_frames_with_detected_chessboard_ctl = nullptr;
+//  QLineEditBox * frames_with_detected_chessboard_filename_ctl = nullptr;
 };
 
 } /* namespace serimager */

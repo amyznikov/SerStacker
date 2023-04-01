@@ -41,6 +41,11 @@ const c_regular_stereo_matcher& c_regular_stereo::stereo_matcher() const
   return stereo_matcher_;
 }
 
+bool c_regular_stereo::canceled() const
+{
+  return false;
+}
+
 bool c_regular_stereo::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
@@ -144,90 +149,93 @@ bool c_regular_stereo::process_stereo_frame(const cv::Mat images[2], const cv::M
   return true;
 }
 
-void c_regular_stereo::update_display_image()
-{
-  const cv::Size sizes[2] = {
-      current_images_[0].size(),
-      current_images_[1].size(),
-  };
-
-  const cv::Size totalSize(sizes[0].width + sizes[1].width,
-      2 * std::max(sizes[0].height, sizes[1].height));
-
-  const cv::Rect roi[4] = {
-      cv::Rect(0, 0, sizes[0].width, sizes[0].height),
-      cv::Rect(sizes[0].width, 0, sizes[1].width, sizes[1].height),
-      cv::Rect(0, std::max(sizes[0].height, sizes[1].height), sizes[0].width, sizes[0].height),
-      cv::Rect(sizes[0].width, std::max(sizes[0].height, sizes[1].height), sizes[1].width, sizes[1].height),
-  };
-
-  current_display_.create(totalSize,
-      CV_MAKETYPE(current_images_[0].depth(), 3));
-
-  for( int i = 0; i < 2; ++i ) {
-    if( current_images_[i].channels() == current_display_.channels() ) {
-      current_images_[i].copyTo(current_display_(roi[i]));
-    }
-    else {
-      cv::cvtColor(current_images_[i], current_display_(roi[i]),
-          cv::COLOR_GRAY2BGR);
-    }
-  }
-
-  if( current_display_.depth() != CV_8U ) {
-    current_display_.convertTo(current_display_, CV_8U);
-  }
-
-  if ( !current_disparity_.empty() ) {
-
-    cv::Mat disp;
-
-
-    current_disparity_.convertTo(disp, CV_8U,
-        255 / std::max(1., stereo_matcher_.currentMaxDisparity()));
-
-    apply_colormap(disp, disp, COLORMAP_TURBO);
-
-    const int r =
-        stereo_matcher_.currentReferenceImageIndex();
-
-    const cv::Rect &blend_roi =
-        roi[2 + r];
-
-    const cv::Rect &disp_roi =
-        roi[2 + !r];
-
-    disp.copyTo(current_display_(disp_roi));
-
-    if ( current_images_[r].type() == current_display_.type() ) {
-      cv::addWeighted(disp, 0.5, current_images_[r], 0.5, 0, current_display_(blend_roi));
-    }
-    else if ( current_images_[r].depth() == current_display_.depth() ) {
-      cv::Mat tmp;
-      cv::cvtColor(current_images_[r], tmp, cv::COLOR_GRAY2BGR);
-      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(blend_roi));
-    }
-    else if ( current_images_[r].channels() == current_display_.channels() ) {
-      cv::Mat tmp;
-      current_images_[r].convertTo(tmp, current_display_.depth());
-      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(blend_roi));
-
-    }
-    else {
-      cv::Mat tmp;
-      cv::cvtColor(current_images_[r], tmp, cv::COLOR_GRAY2BGR);
-      tmp.convertTo(tmp, current_display_.depth());
-      cv::addWeighted(disp, 0.5, tmp, 0.5, 0, current_display_(blend_roi));
-    }
-  }
-
-  return;
-}
 
 bool c_regular_stereo::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
+  if( current_images_[0].empty() || current_images_[1].empty() ) {
+    return false;
+  }
+
+  const cv::Size sizes[2] = {
+       current_images_[0].size(),
+       current_images_[1].size(),
+   };
+
+   const cv::Size totalSize(sizes[0].width + sizes[1].width,
+       2 * std::max(sizes[0].height, sizes[1].height));
+
+   const cv::Rect roi[4] = {
+       cv::Rect(0, 0, sizes[0].width, sizes[0].height),
+       cv::Rect(sizes[0].width, 0, sizes[1].width, sizes[1].height),
+       cv::Rect(0, std::max(sizes[0].height, sizes[1].height), sizes[0].width, sizes[0].height),
+       cv::Rect(sizes[0].width, std::max(sizes[0].height, sizes[1].height), sizes[1].width, sizes[1].height),
+   };
+
+   display_frame.create(totalSize,
+       CV_MAKETYPE(current_images_[0].depth(), 3));
+
+   cv::Mat & display_frame_ =
+       display_frame.getMatRef();
+
+   for( int i = 0; i < 2; ++i ) {
+     if( current_images_[i].channels() == display_frame_.channels() ) {
+       current_images_[i].copyTo(display_frame_(roi[i]));
+     }
+     else {
+       cv::cvtColor(current_images_[i], display_frame_(roi[i]),
+           cv::COLOR_GRAY2BGR);
+     }
+   }
+
+   if( display_frame_.depth() != CV_8U ) {
+     display_frame_.convertTo(display_frame_, CV_8U);
+   }
+
+   if ( !current_disparity_.empty() ) {
+
+     cv::Mat disp;
+
+
+     current_disparity_.convertTo(disp, CV_8U,
+         255 / std::max(1., stereo_matcher_.currentMaxDisparity()));
+
+     apply_colormap(disp, disp, COLORMAP_TURBO);
+
+     const int r =
+         stereo_matcher_.currentReferenceImageIndex();
+
+     const cv::Rect &blend_roi =
+         roi[2 + r];
+
+     const cv::Rect &disp_roi =
+         roi[2 + !r];
+
+     disp.copyTo(display_frame_(disp_roi));
+
+     if ( current_images_[r].type() == display_frame_.type() ) {
+       cv::addWeighted(disp, 0.5, current_images_[r], 0.5, 0, display_frame_(blend_roi));
+     }
+     else if ( current_images_[r].depth() == display_frame_.depth() ) {
+       cv::Mat tmp;
+       cv::cvtColor(current_images_[r], tmp, cv::COLOR_GRAY2BGR);
+       cv::addWeighted(disp, 0.5, tmp, 0.5, 0, display_frame_(blend_roi));
+     }
+     else if ( current_images_[r].channels() == display_frame_.channels() ) {
+       cv::Mat tmp;
+       current_images_[r].convertTo(tmp, display_frame_.depth());
+       cv::addWeighted(disp, 0.5, tmp, 0.5, 0, display_frame_(blend_roi));
+
+     }
+     else {
+       cv::Mat tmp;
+       cv::cvtColor(current_images_[r], tmp, cv::COLOR_GRAY2BGR);
+       tmp.convertTo(tmp, display_frame_.depth());
+       cv::addWeighted(disp, 0.5, tmp, 0.5, 0, display_frame_(blend_roi));
+     }
+   }
+
   if ( display_frame.needed() ) {
-    current_display_.copyTo(display_frame);
+    display_frame_.copyTo(display_frame);
   }
 
   if ( display_mask.needed() ) {
@@ -235,10 +243,5 @@ bool c_regular_stereo::get_display_image(cv::OutputArray display_frame, cv::Outp
   }
 
   return true;
-}
-
-bool c_regular_stereo::canceled()
-{
-  return false;
 }
 

@@ -36,7 +36,7 @@ bool QImageProcessorsCollection::load()
   if ( c_image_processor_collection::default_instance()->empty() ) {
     c_image_processor_collection::default_instance()->emplace_back(c_image_processor::create("Default"));
   }
-  emit instance()->collectionChanged();
+  Q_EMIT instance()->collectionChanged();
   return true;
 }
 
@@ -67,7 +67,7 @@ void QImageProcessorsCollection::add(const c_image_processor::sptr & p, bool emi
   c_image_processor_collection::default_instance()->emplace_back(p);
 
   if ( emit_notify ) {
-    emit instance_.collectionChanged();
+    Q_EMIT instance_.collectionChanged();
   }
 }
 
@@ -81,7 +81,7 @@ bool QImageProcessorsCollection::insert(int pos, const c_image_processor::sptr &
   c_image_processor_collection::default_instance()->insert(c_image_processor_collection::default_instance()->begin() + pos, p);
 
   if ( emit_notify ) {
-    emit instance_.collectionChanged();
+    Q_EMIT instance_.collectionChanged();
   }
 
   return true;
@@ -96,7 +96,7 @@ bool QImageProcessorsCollection::remove(const c_image_processor::sptr & p, bool 
     c_image_processor_collection::default_instance()->erase(pos);
 
     if ( emit_notify ) {
-      emit instance_.collectionChanged();
+      Q_EMIT instance_.collectionChanged();
     }
 
     return true;
@@ -114,7 +114,7 @@ bool QImageProcessorsCollection::remove_at(int pos, bool emit_notify)
 
   c_image_processor_collection::default_instance()->erase(c_image_processor_collection::default_instance()->begin() + pos);
   if ( emit_notify ) {
-    emit instance_.collectionChanged();
+    Q_EMIT instance_.collectionChanged();
   }
 
   return true;
@@ -231,7 +231,7 @@ void QImageProcessorSelectionCombo::refresh()
   }
 
   if ( currentText() != current_processor_name ) {
-    emit currentIndexChanged(currentIndex());
+    Q_EMIT currentIndexChanged(currentIndex());
   }
 }
 

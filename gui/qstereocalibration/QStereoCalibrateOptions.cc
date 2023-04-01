@@ -10,6 +10,29 @@
 QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
     Base("QStereoCalibrateOptions", parent)
 {
+
+  enable_calibration_ctl =
+      add_checkbox("Enable Calibration",
+          "Enable calls to stereo_calibrate().\n"
+              "When this option is disabled no actual calibration will done"
+              "but using 'Output options' you can just save frames on which landmarks are detected\n",
+          [this](bool checked) {
+            if ( options_ && options_->enable_calibration != checked ) {
+              options_->enable_calibration = checked;
+              updatecontrolstate();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              * checked = options_->enable_calibration;
+              return true;
+            }
+            return false;
+          });
+
+
+
   min_frames_ctl =
       add_numeric_box<int>("min_frames:",
           "Minimal frames accumulated to start stereo_calibrate()",
@@ -147,7 +170,7 @@ QStereoCalibrateOptions::QStereoCalibrateOptions(QWidget * parent) :
       add_numeric_box<double>("filter_alpha:",
           "Parameter for subset quality estimation:\n"
               " SubsetQuality = RMSE_Quality * alpha + Coverage_Quality * (1-alpha).\n"
-              " Ignored in live mode.",
+              " Used only in live mode.",
           [this](double value) {
             if ( options_ ) {
               options_->filter_alpha = value;
@@ -176,6 +199,24 @@ c_stereo_calibrate_options* QStereoCalibrateOptions::options() const
   return options_;
 }
 
+void QStereoCalibrateOptions::updatecontrolstate()
+{
+  if( options_ ) {
+
+    const bool enable_calibration =
+        options_->enable_calibration;
+
+    min_frames_ctl->setEnabled(enable_calibration);
+    max_frames_ctl->setEnabled(enable_calibration);
+    max_iterations_ctl->setEnabled(enable_calibration);
+    eps_ctl->setEnabled(enable_calibration);
+    calibration_flags_ctl->setEnabled(enable_calibration);
+    init_camera_matrix_2d_ctl->setEnabled(enable_calibration);
+    auto_tune_calibration_flags_ctl->setEnabled(enable_calibration);
+    filter_alpha_ctl->setEnabled(enable_calibration);
+  }
+}
+
 void QStereoCalibrateOptions::onupdatecontrols()
 {
   if( !options_ ) {
@@ -183,6 +224,7 @@ void QStereoCalibrateOptions::onupdatecontrols()
   }
   else {
 
+    updatecontrolstate();
     Base::onupdatecontrols();
     setEnabled(true);
   }

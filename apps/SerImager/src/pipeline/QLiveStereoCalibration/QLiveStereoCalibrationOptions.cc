@@ -31,7 +31,17 @@ QLiveStereoCalibrationOptions::QLiveStereoCalibrationOptions(QLiveStereoCalibrat
 
 void QLiveStereoCalibrationOptions::setPipeline(QLiveStereoCalibrationPipeline * pipeline)
 {
-  pipeline_ = pipeline;
+  if ( pipeline_ ) {
+    pipeline_->disconnect(this);
+  }
+
+  if ( (pipeline_ = pipeline) ) {
+
+    connect(pipeline_, &QLivePipeline::runningStateChanged,
+        this, &ThisClass::updateControls,
+        Qt::QueuedConnection);
+  }
+
   updateControls();
 }
 
@@ -49,10 +59,11 @@ void QLiveStereoCalibrationOptions::onupdatecontrols()
   }
   else {
 
-    stereoCalibrationOptions_ctl->set_options(&pipeline_->stereo_calibration());
+    stereoCalibrationOptions_ctl->set_options(&*pipeline_);
 
     Base::onupdatecontrols();
-    setEnabled(true);
+
+    setEnabled(!pipeline_->isRunning());
   }
 
 }

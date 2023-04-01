@@ -42,15 +42,16 @@
 #include "c_absdiff_routine.h"
 #include "c_average_pyramid_inpaint_routine.h"
 #include "c_linear_interpolation_inpaint_routine.h"
-#include "c_find_chessboard_corners_routine.h"
 #include "c_bilateral_filter_routine.h"
 #include "c_color_transform_routine.h"
 #include "c_homography_test_routine.h"
-#include "c_image_rectification_routine.h"
-#include "c_stereo_rectification_routine.h"
+#include "camera_calibration/c_find_chessboard_corners_routine.h"
+#include "camera_calibration/c_image_rectification_routine.h"
+#include "camera_calibration/c_stereo_rectification_routine.h"
+#include "c_pnormalize_routine.h"
 #include <core/readdir.h>
 #include <atomic>
-#include "c_pnormalize_routine.h"
+
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 

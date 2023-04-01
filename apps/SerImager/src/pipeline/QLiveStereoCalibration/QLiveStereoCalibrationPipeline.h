@@ -15,7 +15,8 @@
 namespace serimager {
 
 class QLiveStereoCalibrationPipeline:
-    public QLivePipeline
+    public QLivePipeline,
+    public c_stereo_calibration
 {
 public:
   typedef QLiveStereoCalibrationPipeline ThisClass;
@@ -23,21 +24,14 @@ public:
 
   QLiveStereoCalibrationPipeline(const QString & name, QObject * parent = nullptr);
 
-  c_stereo_calibration & stereo_calibration();
-  const c_stereo_calibration & stereo_calibration() const;
-
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool process_frame(const cv::Mat & image, COLORID colorid, int bpp) override;
   bool get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp) override;
-
   bool serialize(c_config_setting settings, bool save) override;
 
 protected:
-
-protected:
   COLORID displayColorid_ = COLORID_UNKNOWN;
-  c_stereo_calibration stereo_calibration_;
   std::string output_path_;
 };
 

@@ -56,7 +56,7 @@ void QStereoCalibrationOptions::onupdatecontrols()
     chessboardCornersDetection_ctl->set_chessboard_corners_detection_options(
         &options_->chessboard_detection_options());
 
-    stereoCalibrateOptions_ctl->set_options(&options_->stereo_calibrate_options());
+    stereoCalibrateOptions_ctl->set_options(&options_->calibration_options());
     outputOptions_ctl->set_options(&options_->output_options());
 
     Base::onupdatecontrols();

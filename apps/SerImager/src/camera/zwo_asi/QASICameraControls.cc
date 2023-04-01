@@ -586,7 +586,7 @@ void QASIROIControlWidget::populate_available_frame_sizes(int iBin)
       int iWidth = 0, iHeight = 0;
       ASI_IMG_TYPE iFormat = ASI_IMG_END;
 
-      int status =
+      ASI_ERROR_CODE status =
           ASIGetROIFormat(c.CameraID,
               &iWidth,
               &iHeight,

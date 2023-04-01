@@ -199,11 +199,17 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
     case output_type_video:
       if( ffmpeg.is_open() ) {
         if( currenFrame.depth() == CV_8U ) {
-          ffmpeg.write(currenFrame.getMat(), pts++);
+          if ( !ffmpeg.write(currenFrame.getMat(), pts++) ) {
+            CF_ERROR("ffmpeg.write() fails");
+            return false;
+          }
         }
         else {
           convert(currenFrame, tmp, CV_8U);
-          ffmpeg.write(tmp, pts++);
+          if ( !ffmpeg.write(tmp, pts++) ) {
+            CF_ERROR("ffmpeg.write() fails");
+            return false;
+          }
         }
       }
       break;
@@ -211,11 +217,17 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
     case output_type_ser:
       if( ser.is_open() ) {
         if ( currenFrame.depth() == CV_16U ) {
-          ser.write(currenFrame);
+          if ( !ser.write(currenFrame) ) {
+            CF_ERROR("ser.write() fails");
+            return false;
+          }
         }
         else {
           convert(currenFrame, tmp, CV_16U);
-          ser.write(tmp);
+          if ( !ser.write(tmp) ) {
+            CF_ERROR("ser.write() fails");
+            return false;
+          }
         }
       }
       break;

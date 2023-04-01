@@ -67,46 +67,34 @@ public:
   {
     static const std::string tooltip_ =
         "<strong>c_stereo_calibration_pipeline.</strong><br>"
-        "This pipeline uses cv::stereoCalibrate() for stereo camera calibration<br>";
+        "This pipeline uses cv::stereoCalibrate() <br>"
+        "for stereo camera calibration<br>";
     return tooltip_;
   }
 
-  c_notification<void()> on_current_frame_changed;
-  c_notification<void()> on_accumulator_changed;
-  c_notification<void(STEREO_CALIBRATION_STAGE oldstage, STEREO_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
-
-
   c_stereo_calibration_input_options & input_options();
   const c_stereo_calibration_input_options & input_options() const;
-
-  void set_output_directory(const std::string & output_directory) override;
-  const std::string & output_directory() const override;
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
 
 protected:
-  bool canceled() override;
+  bool canceled() const override;
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+  bool open_input_source();
+  void close_input_source();
+  bool seek_input_source(int pos);
+  bool read_stereo_frame();
+  bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
   bool run_chessboard_corners_collection();
   bool write_output_videos();
-  bool read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const;
-  bool read_stereo_frame();
-  void update_display_image() override;
-  void close_input_source();
-  bool open_input_source();
-  bool seek_input_source(int pos);
-
 
 protected:
-
-  cv::Mat missing_pixel_mask_;
   c_stereo_calibration_input_options input_options_;
   c_input_source::sptr input_sources_[2];
-
-  mutable std::mutex accumulator_lock_;
+  cv::Mat missing_pixel_mask_;
   mutable std::mutex display_lock_;
 };
 

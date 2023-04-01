@@ -66,15 +66,15 @@ bool QLivePipeline::canceled()
   return canceled_;
 }
 
-void QLivePipeline::set_running(bool v)
+void QLivePipeline::setRunning(bool v)
 {
   if( running_ != v ) {
     running_ = v;
-    Q_EMIT state_changed(v);
+    Q_EMIT runningStateChanged(v);
   }
 }
 
-bool QLivePipeline::is_running() const
+bool QLivePipeline::isRunning() const
 {
   return running_;
 }
@@ -267,7 +267,7 @@ std::string QLivePipeline::generate_output_file_name(const std::string & output_
       ufilename;
 
   const std::string dateTimeString =
-      QDateTime::currentDateTime().toString("yyyy.MM.dd-hh:mm:ss").toStdString();
+      QDateTime::currentDateTime().toString("yyyy.MM.dd-hh-mm-ss").toStdString();
 
   if( output_file_name.empty() ) {
 
@@ -331,6 +331,10 @@ QLivePipelineThread::QLivePipelineThread(QObject * parent) :
     Base(parent)
 {
 
+  connect(this, &ThisClass::restartAfterException,
+      this, &ThisClass::onRestartAfterException,
+      Qt::QueuedConnection);
+
 }
 
 QLivePipelineThread::~QLivePipelineThread()
@@ -355,16 +359,21 @@ void QLivePipelineThread::setCamera(const QImagingCamera::sptr & camera)
         this, nullptr);
   }
 
-  camera_ = camera;
   if( (camera_ = camera) ) {
 
     connect(camera_.get(), &QImagingCamera::stateChanged,
-        this, &ThisClass::onCameraStateChanged,
-        Qt::QueuedConnection);
+        this, &ThisClass::onCameraStateChanged/*,
+        Qt::QueuedConnection*/);
 
     startPipeline(pipeline_);
   }
 
+}
+
+void QLivePipelineThread::onRestartAfterException()
+{
+  finish(true);
+  startPipeline(nullptr);
 }
 
 void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
@@ -375,6 +384,7 @@ void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, Q
       break;
     default:
       finish(true);
+      pipeline_ = nullptr;
       break;
   }
 }
@@ -408,11 +418,13 @@ DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
 bool QLivePipelineThread::startPipeline(QLivePipeline * pipeline)
 {
   if( isRunning() ) {
+    CF_DEBUG("finish()");
     finish(true);
+    CF_DEBUG("finish() OK");
   }
 
-  this->pipeline_ = pipeline;
   this->finish_ = false;
+  this->pipeline_ = pipeline;
 
   if( !display_ ) {
     CF_ERROR("ERROR: no display was specified, can not start");
@@ -429,7 +441,10 @@ bool QLivePipelineThread::startPipeline(QLivePipeline * pipeline)
     return false;
   }
 
+  CF_DEBUG("Base::start()");
   Base::start();
+
+  CF_DEBUG("leave");
 
   return true;
 }
@@ -451,85 +466,106 @@ void QLivePipelineThread::run()
 
   cv::Mat inputImage;
   bool haveInputImage;
+  bool haveException = false;
 
   int last_frame_index = -1;
   int bpp;
   COLORID colorid;
 
+  try {
+
+    if( pipeline_ ) {
+      if( !pipeline_->initialize_pipeline() ) {
+        CF_ERROR("pipeline_->initialize_pipeline() fails");
+        return;
+      }
+      pipeline_->setRunning(true);
+    }
+
+    while (!finish_) {
+
+      haveInputImage = false;
+
+      if( 42 ) {
+
+        QImagingCamera::shared_lock lock(camera_->mutex());
+
+        const std::deque<QCameraFrame::sptr> &deque =
+            camera_->deque();
+
+        if( !deque.empty() ) {
+
+          const QCameraFrame::sptr &frame =
+              deque.back();
+
+          const int index =
+              frame->index();
+
+          if( index > last_frame_index ) {
+
+            last_frame_index = index;
+            bpp = frame->bpp();
+            colorid = frame->colorid();
+            frame->image().copyTo(inputImage);
+
+            haveInputImage = true;
+          }
+        }
+      }
+
+      if( haveInputImage ) {
+
+        if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
+          if( ::debayer(inputImage, inputImage, colorid, debayer_) ) {
+            colorid = COLORID_BGR;
+          }
+        }
+
+        if( !pipeline_ ) {
+          display_->showVideoFrame(inputImage, colorid, bpp);
+        }
+        else {
+
+          if( !pipeline_->process_frame(inputImage, colorid, bpp) ) {
+            CF_ERROR("pipeline_->processFrame() fails");
+            break;
+          }
+
+          if( !pipeline_->get_display_image(&inputImage, &colorid, &bpp) ) {
+            CF_ERROR("pipeline_->getDisplayImage() fails");
+            break;
+          }
+
+          display_->showVideoFrame(inputImage, colorid, bpp);
+        }
+      }
+
+      QThread::msleep(30);
+    }
+  }
+  catch( const std::exception &e )
+  {
+    haveException = true;
+    CF_ERROR("Exception in live thread : %s", e.what());
+  }
+
   if( pipeline_ ) {
-    if( !pipeline_->initialize_pipeline() ) {
-      CF_ERROR("pipeline_->initialize_pipeline() fails");
-      return;
+    try {
+      pipeline_->setRunning(false);
+      pipeline_->cleanup_pipeline();
     }
-    pipeline_->set_running(true);
+    catch( const std::exception &e )
+    {
+      haveException = true;
+      CF_ERROR("Exception in pipeline_->cleanup_pipeline() : %s", e.what());
+    }
   }
 
-  while (!finish_) {
 
-
-    haveInputImage = false;
-
-    if( 42 ) {
-
-      QImagingCamera::shared_lock lock(camera_->mutex());
-
-      const std::deque<QCameraFrame::sptr> &deque =
-          camera_->deque();
-
-      if( !deque.empty() ) {
-
-        const QCameraFrame::sptr &frame =
-            deque.back();
-
-        const int index =
-            frame->index();
-
-        if( index > last_frame_index ) {
-
-          last_frame_index = index;
-          bpp = frame->bpp();
-          colorid = frame->colorid();
-          frame->image().copyTo(inputImage);
-
-          haveInputImage = true;
-        }
-      }
-    }
-
-    if( haveInputImage ) {
-
-      if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
-        if( ::debayer(inputImage, inputImage, colorid, debayer_) ) {
-          colorid = COLORID_BGR;
-        }
-      }
-
-      if ( !pipeline_ ) {
-        display_->showVideoFrame(inputImage, colorid, bpp);
-      }
-      else {
-
-        if ( !pipeline_->process_frame(inputImage, colorid, bpp) ) {
-          CF_ERROR("pipeline_->processFrame() fails");
-          break;
-        }
-
-        if ( !pipeline_->get_display_image(&inputImage, &colorid, &bpp) ) {
-          CF_ERROR("pipeline_->getDisplayImage() fails");
-          break;
-        }
-
-        display_->showVideoFrame(inputImage, colorid, bpp);
-      }
-    }
-
-    QThread::msleep(30);
+  if ( haveException ) {
+    Q_EMIT restartAfterException(nullptr);
   }
 
-  if ( pipeline_ ) {
-    pipeline_->cleanup_pipeline();
-    pipeline_->set_running(false);
-  }
 
   CF_DEBUG("leave");
 }

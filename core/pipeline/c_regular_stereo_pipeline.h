@@ -18,13 +18,6 @@
 #include <core/io/c_output_frame_writer.h>
 #include <core/proc/stereo/c_scale_sweep_stereo_matcher.h>
 
-enum RSTEREO_CALIBRATION_STAGE {
-  rstereo_calibration_idle = 0,
-  rstereo_calibration_initialize,
-  rstereo_calibration_in_progress,
-  rstereo_calibration_finishing
-};
-
 struct c_regular_stereo_input_options
 {
   std::string left_stereo_source;
@@ -90,6 +83,8 @@ struct c_regular_stereo_image_processing_options
 
 struct c_regular_stereo_output_options
 {
+  std::string output_directory;
+
   bool save_calibration_config_file = true;
   std::string calibration_config_filename; // output
 
@@ -164,8 +159,8 @@ public:
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
-  c_notification<void()> on_current_frame_changed;
-  c_notification<void()> on_accumulator_changed;
+//  c_notification<void()> on_current_frame_changed;
+//  c_notification<void()> on_accumulator_changed;
 
 protected:
   //void update_output_path() override;

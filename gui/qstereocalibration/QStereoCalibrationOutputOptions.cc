@@ -31,19 +31,58 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   ///
 
+  save_chessboard_frames_ctl =
+      add_checkbox("Save chessboard frames:",
+          "Save frames with chessboard detected",
+          [this](bool checked) {
+            if ( options_ ) {
+              options_->save_chessboard_frames = checked;
+              chessboard_frames_filename_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->save_chessboard_frames;
+              return true;
+            }
+            return false;
+          });
+
+  chessboard_frames_filename_ctl =
+      add_textbox("Chessboard video filename:",
+          "Output file name for frames with chessboard detected",
+          [this](const QString & value) {
+            if ( options_ ) {
+              options_->chessboard_frames_filename = value.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * value) {
+            if ( options_ ) {
+              *value = options_->chessboard_frames_filename.c_str();
+              return true;
+            }
+            return false;
+          });
+
+  chessboard_frames_filename_ctl->setPlaceholderText("auto");
+
+  ///
+
   save_calibration_progress_video_ctl =
       add_checkbox("Save progress video:",
           "",
           [this](bool checked) {
             if ( options_ ) {
-              options_->save_calibration_progress_video = checked;
+              options_->save_progress_video = checked;
               calibration_progress_filename_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
             if ( options_ ) {
-              *checked = options_->save_calibration_progress_video;
+              *checked = options_->save_progress_video;
               return true;
             }
             return false;
@@ -54,13 +93,13 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
           "",
           [this](const QString & value) {
             if ( options_ ) {
-              options_->calibration_progress_filename = value.toStdString();
+              options_->progress_video_filename = value.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * value) {
             if ( options_ ) {
-              *value = options_->calibration_progress_filename.c_str();
+              *value = options_->progress_video_filename.c_str();
               return true;
             }
             return false;
@@ -72,7 +111,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_rectified_images_ctl =
       add_checkbox("Save rectified frames",
-          "",
+          "Save rectified frames in two separate left and right videos",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_rectified_frames = checked;
@@ -90,7 +129,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   rectified_images_filename_ctl =
       add_textbox("Rectified frames filename:",
-          "",
+          "Save rectified frames in two separate left and right videos",
           [this](const QString & value) {
             if ( options_ ) {
               options_->rectified_frames_filename = value.toStdString();
@@ -111,7 +150,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_stereo_rectified_frames_ctl =
       add_checkbox("Save stereo rectified frames",
-          "",
+          "Save rectified frames laid out horizontally into single video file ",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_stereo_rectified_frames = checked;
@@ -129,7 +168,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   stereo_rectified_frames_filename_ctl =
       add_textbox("Stereo frames file name:",
-          "",
+          "Save rectified frames laid out horizontally into single video file ",
           [this](const QString & value) {
             if ( options_ ) {
               options_->stereo_rectified_frames_filename = value.toStdString();
@@ -150,7 +189,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   save_quad_rectified_frames_ctl =
       add_checkbox("Save quad frames",
-          "",
+          "Save debug video with qual layout",
           [this](bool checked) {
             if ( options_ ) {
               options_->save_quad_rectified_frames = checked;
@@ -168,7 +207,7 @@ QStereoCalibrationOutputOptions::QStereoCalibrationOutputOptions(QWidget * paren
 
   quad_rectified_frames_filename_ctl =
       add_textbox("Quad frames file name:",
-          "",
+          "Save debug video with qual layout",
           [this](const QString & value) {
             if ( options_ ) {
               options_->quad_rectified_frames_filename = value.toStdString();

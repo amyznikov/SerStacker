@@ -10,70 +10,6 @@
 #include <core/readdir.h>
 #include <core/debug.h>
 
-//
-//namespace {
-//
-//bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval)
-//{
-//  switch (CV_MAT_DEPTH(ddepth)) {
-//  case CV_8U :
-//    *minval = 0;
-//    *maxval = UINT8_MAX;
-//    break;
-//  case CV_8S :
-//    *minval = INT8_MIN;
-//    *maxval = INT8_MAX;
-//    break;
-//  case CV_16U :
-//    *minval = 0;
-//    *maxval = UINT16_MAX;
-//    break;
-//  case CV_16S :
-//    *minval = INT16_MIN;
-//    *maxval = INT16_MAX;
-//    break;
-//  case CV_32S :
-//    *minval = INT32_MIN;
-//    *maxval = INT32_MAX;
-//    break;
-//  case CV_32F :
-//    *minval = 0;
-//    *maxval = 1;
-//    break;
-//  case CV_64F :
-//    *minval = 0;
-//    *maxval = 1;
-//    break;
-//  default:
-//    *minval = 0;
-//    *maxval = 1;
-//    return false;
-//  }
-//
-//  return true;
-//}
-//
-///**
-// *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
-// *  dst = src * scale  + offset;
-// */
-//bool get_scale_offset(int src_depth, int dst_depth, double * scale, double * offset)
-//{
-//  double srcmin, srcmax;
-//  double dstmin, dstmax;
-//
-//  get_data_range_for_pixel_depth(src_depth, &srcmin, &srcmax);
-//  get_data_range_for_pixel_depth(dst_depth, &dstmin, &dstmax);
-//
-//  *scale = (dstmax - dstmin) / (srcmax - srcmin);
-//  *offset = dstmin - *scale * srcmin;
-//
-//  return true;
-//}
-//
-//} // namespace
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 std::vector<c_image_processing_pipeline::factory_item> c_image_processing_pipeline::registered_classes_;
 
 c_image_processing_pipeline::factory_item::factory_item(const std::string & _class_name, const std::string & _tooltip,
@@ -171,16 +107,6 @@ const std::string& c_image_processing_pipeline::sequence_name() const
 const char * c_image_processing_pipeline::csequence_name() const
 {
   return sequence_name_.c_str();
-}
-
-void c_image_processing_pipeline::set_output_directory(const std::string & output_directory)
-{
-  output_directory_ = output_directory;
-}
-
-const std::string& c_image_processing_pipeline::output_directory() const
-{
-  return output_directory_;
 }
 
 void c_image_processing_pipeline::set_master_source(const std::string & master_source_path)
@@ -289,7 +215,7 @@ void c_image_processing_pipeline::set_pipeline_stage(int newstage)
 
   if( newstage != oldstage ) {
     pipeline_stage_ = newstage;
-    on_pipeline_stage_changed(oldstage, newstage);
+    on_status_update(); // (oldstage, newstage);
   }
 }
 
@@ -306,7 +232,8 @@ void c_image_processing_pipeline::set_status_msg(const std::string & msg) const
   }
 
   CF_DEBUG("STATUS: %s", msg.c_str());
-  on_status_msg_changed(statusmsg_);
+  on_status_update();
+  //on_status_msg_changed(statusmsg_);
 }
 
 std::string c_image_processing_pipeline::status_message() const
@@ -485,11 +412,15 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
 
   SERIALIZE_PROPERTY(setting, save, *this, name);
   SERIALIZE_PROPERTY(setting, save, *this, sequence_name);
-  SERIALIZE_PROPERTY(setting, save, *this, output_directory);
   SERIALIZE_PROPERTY(setting, save, *this, master_source);
   SERIALIZE_PROPERTY(setting, save, *this, master_frame_index);
 
   return true;
+}
+
+bool c_image_processing_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
+{
+  return false;
 }
 
 bool c_image_processing_pipeline::run()
@@ -578,8 +509,8 @@ bool c_image_processing_pipeline::initialize_pipeline()
   accumulated_frames_ = 0;
   statusmsg_.clear();
 
-  output_path_ =
-      create_output_path(output_directory());
+  //  output_path_ =
+  //      create_output_path(output_directory());
 
   gather_badframe_indexes();
 
@@ -628,16 +559,16 @@ const char* c_image_sequence::cname() const
   return name_.c_str();
 }
 
-std::string c_image_sequence::displaypatch() const
+std::string c_image_sequence::get_display_path() const
 {
   std::string path;
 
   if( input_sequence_ && input_sequence_->sources().size() > 0 ) {
     path = get_parent_directory(input_sequence_->source(0)->filename());
   }
-  else if( current_pipeline_ ) {
-    path = current_pipeline_->output_directory();
-  }
+//  else if( current_pipeline_ ) {
+//    path = current_pipeline_->output_directory();
+//  }
 
   return path;
 

@@ -269,44 +269,6 @@ c_image_stacking_pipeline::~c_image_stacking_pipeline()
   cancel(true);
 }
 
-//void c_image_stacking_pipeline::update_output_path()
-//{
-//  if( output_directory_.empty() ) {
-//
-//    std::string parent_directory =
-//        input_sequence_->sources().empty() ? "." :
-//            get_parent_directory(input_sequence_->source(0)->filename());
-//
-//    if( parent_directory.empty() ) {
-//      parent_directory = ".";
-//    }
-//
-//    output_path_ =
-//        ssprintf("%s/stacks",
-//            parent_directory.c_str());
-//
-//  }
-//  else if( !is_absolute_path(output_directory_) ) {
-//
-//    std::string parent_directory =
-//        input_sequence_->sources().empty() ? "." :
-//            get_parent_directory(input_sequence_->source(0)->filename());
-//
-//    if( parent_directory.empty() ) {
-//      parent_directory = ".";
-//    }
-//
-//    output_path_ =
-//        ssprintf("%s/%s",
-//            parent_directory.c_str(),
-//            output_directory_.c_str());
-//  }
-//  else {
-//    output_path_ =
-//        output_directory_;
-//  }
-//}
-
 std::string c_image_stacking_pipeline::output_file_name() const
 {
   return output_file_name_;
@@ -1462,7 +1424,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   processed_frames_ = 0;
   accumulated_frames_ = 0;
 
-  for ( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+  for ( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
 
     double t0, t1, start_time, total_time;
     double time_read = 0;
@@ -1854,7 +1816,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       accumulated_frames_ =
           frame_accumulation_->accumulated_frames();
 
-      on_accumulator_changed();
+      // on_accumulator_changed();
 
       if ( canceled() ) {
         set_status_msg("canceled");
@@ -1931,7 +1893,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         time_remap,
         time_accumulate);
 
-    on_status_changed();
+    on_status_update();
   }
 
   return true;
@@ -2361,45 +2323,47 @@ double c_image_stacking_pipeline::compute_image_noise(const cv::Mat & image, con
   return estimated_noise_level;
 }
 
-
-bool c_image_stacking_pipeline::compute_accumulated_image(cv::OutputArray dst, cv::OutputArray dstmask) const
+bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::OutputArray dst_mask)
 {
   lock_guard lock(accumulator_lock_);
 
-  if ( frame_accumulation_ ) {
+  switch (pipeline_stage_) {
+    case stacking_stage_idle:
+      break;
 
-    if ( frame_accumulation_->accumulated_frames() < 1 ) {
-      return false;
-    }
+    case stacking_stage_initialize:
+      break;
 
-    if ( frame_accumulation_ ) {
+    case stacking_stage_select_master_frame_index:
+      if( dst.needed() ) {
+        selected_master_frame_.copyTo(dst);
+      }
 
-      if( !frame_accumulation_->compute(dst, dstmask) ) {
-        CF_ERROR("frame_accumulation_->compute() fails");
-        return false;
+      if( dst_mask.needed() ) {
+        selected_master_frame_mask_.copyTo(dst_mask);
       }
 
       return true;
-    }
+
+    case stacking_stage_generate_reference_frame:
+      case stacking_stage_in_progress:
+      case stacking_stage_finishing:
+      if( frame_accumulation_ && frame_accumulation_->accumulated_frames() > 0 ) {
+        if( !frame_accumulation_->compute(dst, dst_mask) ) {
+          CF_ERROR("frame_accumulation_->compute() fails");
+          return false;
+        }
+        if( !dst.empty() && anscombe().method() != anscombe_none ) {
+          anscombe().inverse(dst.getMatRef(), dst.getMatRef());
+        }
+        return true;
+      }
+      break;
   }
 
   return false;
 }
 
-bool c_image_stacking_pipeline::get_selected_master_frame(cv::OutputArray dst, cv::OutputArray dstmask) const
-{
-  lock_guard lock(accumulator_lock_);
-
-  if( dst.needed() ) {
-    selected_master_frame_.copyTo(dst);
-  }
-
-  if( dstmask.needed() ) {
-    selected_master_frame_mask_.copyTo(dstmask);
-  }
-
-  return true;
-}
 
 
 bool c_image_stacking_pipeline::upscale_required(frame_upscale_stage current_stage) const
@@ -2810,10 +2774,10 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
       total_frames_ = max_frames_to_scan;
       processed_frames_ = 0;
       accumulated_frames_ = 0;
-      on_status_changed();
+      on_status_update();
 
       for( current_index = 0; processed_frames_ < total_frames_;
-          processed_frames_ = ++current_index, on_status_changed() ) {
+          processed_frames_ = ++current_index, on_status_update() ) {
 
         if ( !input_sequence->read(image, &mask) ) {
           CF_FATAL("input_sequence->read() fails\n");
@@ -2858,7 +2822,7 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
                 best_index + start_pos,
                 best_metric));
 
-            on_selected_master_frame_changed();
+            // on_selected_master_frame_changed();
           }
         }
       }
@@ -3052,6 +3016,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   // c_image_stacking_output_options output_options_;
   if( (section = get_group(settings, save, "output")) ) {
 
+    SERIALIZE_OPTION(section, save, output_options_, output_directoty);
     SERIALIZE_OPTION(section, save, output_options_, output_preprocessed_frames_filename);
     SERIALIZE_OPTION(section, save, output_options_, output_aligned_frames_filename);
     SERIALIZE_OPTION(section, save, output_options_, output_ecc_frames_filename);
@@ -3069,7 +3034,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, write_image_mask_as_alpha_channel);
   }
 
-  // c_image_processing_options image_processing_options_;
   if( (section = get_group(settings, save, "image_processing")) ) {
     if( save ) {
 

@@ -18,7 +18,7 @@
 #ifndef __c_image_rectification_routine_h__
 #define __c_image_rectification_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
 
 class c_image_rectification_routine :

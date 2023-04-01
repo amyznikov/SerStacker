@@ -16,23 +16,14 @@
 namespace serimager {
 
 class QLiveCameraCalibrationPipeline :
-    public QLivePipeline
-
+    public QLivePipeline,
+    public c_camera_calibration
 {
 public:
   typedef QLiveCameraCalibrationPipeline ThisClass;
   typedef QLivePipeline Base;
 
   QLiveCameraCalibrationPipeline(const QString & name, QObject * parent = nullptr);
-
-  c_camera_calibration & camera_calibration();
-  const c_camera_calibration & camera_calibration() const;
-
-  void set_save_frames_with_detected_chessboard(bool v);
-  bool save_frames_with_detected_chessboard() const;
-
-  void set_frames_with_detected_chessboard_filename(const QString & v);
-  const QString & frames_with_detected_chessboard_filename() const;
 
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
@@ -43,14 +34,7 @@ public:
 
 protected:
   COLORID displayColorid_ = COLORID_UNKNOWN;
-  c_camera_calibration camera_calibration_;
   std::string output_path_;
-
-  bool save_frames_with_detected_chessboard_ = false;
-  QString frames_with_detected_chessboard_filename_;
-
-  c_output_frame_writer frame_writer_;
-
 };
 
 } /* namespace serimager */

@@ -59,40 +59,29 @@ public:
     return tooltip_;
   }
 
-
   c_camera_calibration_input_options & input_options();
   const c_camera_calibration_input_options & input_options() const;
 
   bool serialize(c_config_setting setting, bool save) override;
-
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
-
-  c_notification<void()> on_current_frame_changed;
-  c_notification<void()> on_accumulator_changed;
-  c_notification<void(CAMERA_CALIBRATION_STAGE oldstage, CAMERA_CALIBRATION_STAGE newstage)> on_pipeline_stage_changed;
 
 protected:
   bool canceled() const override;
   bool initialize_pipeline()override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+  bool run_chessboard_corners_collection();
+  bool open_input_sequence();
+  void close_input_sequence();
+  bool seek_input_sequence(int pos);
   bool read_input_frame(const c_input_sequence::sptr & input_sequence, cv::Mat & output_image, cv::Mat & output_mask) const;
-  void update_display_image() override;
-
-//protected:
-//  bool run_chessboard_corners_collection();
+  bool write_output_videos();
 
 protected:
 
   cv::Mat missing_pixel_mask_;
   c_camera_calibration_input_options input_options_;
-
-  CAMERA_CALIBRATION_STAGE pipeline_stage_ = camera_calibration_idle;
-
-  mutable std::mutex accumulator_lock_;
-
-
-
+  mutable std::mutex display_lock_;
 };
 
 #endif /* __c_chessboard_camera_calibration_pipeline_h__ */

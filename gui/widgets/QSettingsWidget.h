@@ -65,12 +65,12 @@ public:
 
   void loadSettings(QSettings & settings);
 
-  void updateControls();
   virtual void setUpdatingControls(bool v);
   virtual bool updatingControls();
 
 public Q_SLOTS:
   void loadParameters();
+  void updateControls();
 
 Q_SIGNALS:
   void parameterChanged();

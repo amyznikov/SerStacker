@@ -171,6 +171,7 @@ struct c_image_processing_options
 
 struct c_image_stacking_output_options {
 
+  std::string output_directoty;
   std::string output_preprocessed_frames_filename;
   std::string output_aligned_frames_filename;
   std::string output_ecc_frames_filename;
@@ -232,8 +233,8 @@ public:
     return tooltip_;
   }
 
-  c_notification<void()> on_accumulator_changed;
-  c_notification<void()> on_selected_master_frame_changed;
+//  c_notification<void()> on_accumulator_changed;
+//  c_notification<void()> on_selected_master_frame_changed;
 
   const c_anscombe_transform & anscombe() const;
 
@@ -276,21 +277,19 @@ public:
 
   std::string output_file_name() const;
 
-  bool compute_accumulated_image(cv::OutputArray dst,
-      cv::OutputArray dstmask=cv::noArray()) const ;
-
-  bool get_selected_master_frame(cv::OutputArray dst,
-      cv::OutputArray dstmask=cv::noArray()) const;
+  bool get_display_image(cv::OutputArray frame,
+      cv::OutputArray mask) override;
 
   bool serialize(c_config_setting setting, bool save) override;
 
 protected:
-  //void update_output_path() override;
-
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   bool run_image_stacking();
+
+//  bool compute_accumulated_image(cv::OutputArray dst,
+//      cv::OutputArray dstmask=cv::noArray()) const ;
 
   bool create_reference_frame(const c_input_sequence::sptr & input_sequence,
       int master_frame_index, int max_frames_to_stack,

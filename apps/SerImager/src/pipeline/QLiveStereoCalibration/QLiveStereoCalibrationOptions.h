@@ -22,7 +22,8 @@ public:
   typedef QSettingsWidget Base;
 
   QLiveStereoCalibrationOptions(QWidget * parent = nullptr);
-  QLiveStereoCalibrationOptions(QLiveStereoCalibrationPipeline * pipeline_, QWidget * parent = nullptr);
+  QLiveStereoCalibrationOptions(QLiveStereoCalibrationPipeline * pipeline_,
+      QWidget * parent = nullptr);
 
   void setPipeline(QLiveStereoCalibrationPipeline * pipeline);
   QLiveStereoCalibrationPipeline * pipeline() const;

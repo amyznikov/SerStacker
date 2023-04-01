@@ -62,9 +62,6 @@ public: // pipeline methods
   // void set_input_sequence(const c_input_sequence::sptr& input_sequence);
   const c_input_sequence::sptr& input_sequence() const;
 
-  virtual void set_output_directory(const std::string & output_directory);
-  virtual const std::string & output_directory() const;
-
   void set_master_source(const std::string & master_source_path);
   const std::string & master_source() const;
 
@@ -81,14 +78,13 @@ public: // pipeline methods
   int pipeline_stage() const;
   std::string status_message() const ;
 
-  bool canceled() const;
+  virtual bool canceled() const;
   virtual void cancel(bool v = true);
   virtual bool run();
   virtual bool serialize(c_config_setting setting, bool save);
+  virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
-  c_notification<void(int oldstage, int newstage)> on_pipeline_stage_changed;
-  c_notification<void(const std::string & statusmsg)> on_status_msg_changed;
-  c_notification<void()> on_status_changed;
+  c_notification<void()> on_status_update;
 
 protected:
   void set_pipeline_stage(int stage);
@@ -109,7 +105,6 @@ protected:
   std::string sequence_name_;
   c_input_sequence::sptr input_sequence_;
   std::vector<uint> badframes_; // global indexes
-  std::string output_directory_;
   std::string output_path_;
 
   std::string master_source_;
@@ -142,9 +137,8 @@ public:
   const std::string & name() const;
   const char* cname() const;
 
-  std::string displaypatch() const;
+  std::string get_display_path() const;
 
-  //void set_input_sequence(const c_input_sequence::ptr & input_sequence);
   const c_input_sequence::sptr& input_sequence() const;
 
   void set_current_pipeline(const std::string & name);

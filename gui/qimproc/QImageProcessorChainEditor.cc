@@ -745,10 +745,10 @@ void QImageProcessorSettingsControl::setupControls()
 
         if( p.set_value ) {
 
-          QObject::connect(ctl, &QBrowsePathCombo::pathSelected,
-              [this, ctl, p](const QString & path) {
+          QObject::connect(ctl, &QBrowsePathCombo::pathChanged,
+              [this, ctl, p]() {
                 if ( !updatingControls() ) {
-                  p.set_value(path.toStdString());
+                  p.set_value(ctl->currentPath().toStdString());
                   Q_EMIT parameterChanged();
                 }
               });

@@ -9,7 +9,7 @@
 #ifndef __c_find_chessboard_corners_routine_h__
 #define __c_find_chessboard_corners_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/chessboard/chessboard_detection.h>
 
 class c_find_chessboard_corners_routine :

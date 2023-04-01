@@ -1003,6 +1003,9 @@ bool c_ffmpeg_writer::open(const std::string & output_filename,
   ensure_ffmpeg_initialized();
   close();
 
+  frames_written_ = 0;
+  start_pts_ = 0;
+
 
   /*
    * Get output file name

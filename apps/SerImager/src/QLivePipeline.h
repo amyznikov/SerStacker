@@ -30,8 +30,8 @@ public:
   void setName(const QString & name);
   const QString & name() const;
 
-  void set_running(bool v);
-  bool is_running() const;
+  void setRunning(bool v);
+  bool isRunning() const;
 
   virtual void set_canceled(bool v);
   virtual bool canceled();
@@ -42,17 +42,19 @@ public:
 
   virtual bool process_frame(const cv::Mat & image, COLORID colorid, int bpp) = 0;
   virtual bool get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp) = 0;
+
+Q_SIGNALS:
+  void runningStateChanged(bool isRunning);
+
+protected:
+  virtual std::string create_output_path(const std::string & output_directory) const;
   virtual bool convert_image(const cv::Mat & src, COLORID src_colorid, int src_bpp,
       cv::Mat * dst_image, COLORID dst_colorid, int ddepth) const;
-  virtual std::string create_output_path(const std::string & output_directory) const;
-
   virtual std::string generate_output_file_name(const std::string & output_path,
       const std::string & ufilename,
       const std::string & postfix,
       const std::string & suffix) const;
 
-Q_SIGNALS:
-  void state_changed(bool is_running);
 
 protected:
   QString name_;
@@ -86,13 +88,13 @@ public:
   void setDebayer(DEBAYER_ALGORITHM algo);
   DEBAYER_ALGORITHM debayer() const;
 
-Q_SIGNALS:
-  void pipelineStarted(QLivePipeline *pipeline);
-  void pipelineFinished(QLivePipeline *pipeline);
-
 protected Q_SLOTS:
+  void onRestartAfterException();
   void onCameraStateChanged(QImagingCamera::State oldState,
       QImagingCamera::State newState);
+
+Q_SIGNALS:
+  void restartAfterException(QPrivateSignal * );
 
 protected:
   void run() override;

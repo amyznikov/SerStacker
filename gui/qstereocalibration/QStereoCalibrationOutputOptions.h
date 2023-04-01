@@ -34,6 +34,9 @@ protected:
 
   QBrowsePathCombo * output_directory_ctl = nullptr;
 
+  QCheckBox * save_chessboard_frames_ctl = nullptr;
+  QLineEditBox * chessboard_frames_filename_ctl = nullptr;
+
   QCheckBox * save_calibration_progress_video_ctl = nullptr;
   QLineEditBox * calibration_progress_filename_ctl = nullptr;
 

@@ -28,16 +28,15 @@ public:
   c_regular_stereo_matcher& stereo_matcher();
   const c_regular_stereo_matcher& stereo_matcher() const;
 
-  bool serialize(c_config_setting settings, bool save);
+protected:
+  bool initialize();
+  void cleanup();
+  bool process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2]);
 
-  virtual bool initialize();
-  virtual void cleanup();
-  virtual bool process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2]);
-  virtual void update_display_image();
+  virtual bool canceled() const;
+  virtual bool serialize(c_config_setting settings, bool save);
   virtual bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask);
 
-protected:
-  virtual bool canceled();
 
 protected:
   std::string camera_intrinsics_yml_;
@@ -56,7 +55,7 @@ protected:
   cv::Mat current_images_[2];
   cv::Mat current_masks_[2];
   cv::Mat current_disparity_;
-  cv::Mat current_display_;
+  //cv::Mat current_display_;
 
 };
 

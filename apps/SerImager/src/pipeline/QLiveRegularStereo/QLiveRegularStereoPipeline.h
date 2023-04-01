@@ -15,16 +15,14 @@
 namespace serimager {
 
 class QLiveRegularStereoPipeline :
-    public QLivePipeline
+    public QLivePipeline,
+    public c_regular_stereo
 {
 public:
   typedef QLiveRegularStereoPipeline ThisClass;
   typedef QLivePipeline Base;
 
   QLiveRegularStereoPipeline(const QString & name, QObject * parent = nullptr);
-
-  c_regular_stereo & rstereo();
-  const c_regular_stereo & rstereo() const;
 
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
@@ -34,7 +32,6 @@ public:
   bool serialize(c_config_setting settings, bool save) override;
 
 protected:
-  c_regular_stereo rstereo_;
   COLORID displayColorid_ = COLORID_UNKNOWN;
 };
 

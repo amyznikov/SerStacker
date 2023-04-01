@@ -22,7 +22,8 @@ QRStereoOutputOptions::QRStereoOutputOptions(QWidget * parent) :
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
       [this]() {
         if ( pipeline_ && !updatingControls() ) {
-          pipeline_->set_output_directory(output_directory_ctl->currentPath().toStdString());
+          pipeline_->output_options().output_directory =
+              output_directory_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
@@ -302,7 +303,7 @@ void QRStereoOutputOptions::onupdatecontrols()
 
     Base::onupdatecontrols();
 
-    output_directory_ctl->setCurrentPath(pipeline_->output_directory().c_str(), false);
+    output_directory_ctl->setCurrentPath(pipeline_->output_options().output_directory.c_str(), false);
     calibration_config_filename_ctl->setEnabled(save_calibration_config_file_ctl->isChecked());
     progress_video_filename_ctl->setEnabled(save_progress_video_ctl->isChecked());
     left_rectified_video_filename_ctl->setEnabled(save_rectified_video_ctl->isChecked());

@@ -12,6 +12,11 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+c_camera_calibration::~c_camera_calibration()
+{
+  chessboard_video_writer_.close();
+}
+
 c_chessboard_corners_detection_options & c_camera_calibration::chessboard_corners_detection_options()
 {
   return chessboard_detection_options_;
@@ -52,9 +57,14 @@ const std::string& c_camera_calibration::output_intrinsics_filename() const
   return output_intrinsics_filename_;
 }
 
-bool c_camera_calibration::canceled() const
+void c_camera_calibration::set_chessboard_frames_filename(const std::string & v)
 {
-  return false;
+  chessboard_frames_filename_ = v;
+}
+
+const std::string & c_camera_calibration::chessboard_frames_filename() const
+{
+  return chessboard_frames_filename_;
 }
 
 bool c_camera_calibration::detect_chessboard(const cv::Mat & frame)
@@ -73,73 +83,112 @@ bool c_camera_calibration::is_chessboard_found() const
   return is_chessboard_found_;
 }
 
-void c_camera_calibration::filter_frames()
+void c_camera_calibration::filter_frames(bool only_landmarks)
 {
+  INSTRUMENT_REGION("");
+
   const int nbframes =
       object_points_.size();
 
   const int nbframesmax =
-      std::max(1, std::max(calibration_options_.min_frames, calibration_options_.max_frames));
+      std::max(1, std::max(calibration_options_.min_frames,
+          calibration_options_.max_frames));
 
-  CF_DEBUG("nbframes = %d / nbframesmax = %d", nbframes, nbframesmax);
+  //CF_DEBUG("nbframes = %d / %d", nbframes, nbframesmax);
 
-  if( nbframes != perViewErrors_.rows ) {
+  if( !only_landmarks && nbframes != perViewErrors_.rows ) {
 
     if( nbframes > 1 ) {
-      CF_ERROR("APP BUG: nbframes=%d != perViewErrors_.rows=%d",
-          nbframes,
+      CF_ERROR("APP BUG: object_points_.size()=%zu != current_per_view_errors_.total()=%d",
+          object_points_.size(),
           perViewErrors_.rows);
     }
 
     if( nbframes > nbframesmax ) {
-      image_points_.erase(image_points_.begin());
+      image_points_[0].erase(image_points_[0].begin());
+      image_points_[1].erase(image_points_[1].begin());
       object_points_.erase(object_points_.begin());
     }
 
     return;
   }
 
-  if( nbframes > nbframesmax ) {
 
-    double worstValue = -HUGE_VAL;
-    double maxQuality = estimate_grid_subset_quality(nbframes);
+  if ( nbframes > nbframesmax ) {
 
-    size_t worstElemIndex = 0;
+    static const auto estimateRmeQuality =
+        [](const cv::Mat1d & perViewErrors) -> double {
+          double sum = 0;
+          for( int i = 0, n = perViewErrors.rows; i < n; ++i ) {
+            sum += perViewErrors[i][0];
+          }
+          return sum;
+        };
+
 
     const double alpha =
         calibration_options_.filter_alpha;
 
-    for( size_t i = 0; i < nbframes; i++ ) {
+    const double totalRmeQuality =
+        only_landmarks ? 0 :
+            estimateRmeQuality(perViewErrors_);
 
-      const double gridQDelta =
-          estimate_grid_subset_quality(i) - maxQuality;
+    const double totalCoverageQuality =
+        estimate_coverage_quality(nbframes);
 
-      const double currentValue =
-          perViewErrors_[i][0] * alpha + gridQDelta * (1. - alpha);
+    double bestSubsetQuality = HUGE_VAL;
+    int worstElemIndex = 0;
 
-      if( currentValue > worstValue ) {
-        worstValue = currentValue;
+    for( int i = 0; i < nbframes; ++i ) {
+
+      const double currentCoverageQuality =
+          estimate_coverage_quality(i);
+
+      double currentSubsetQuality;
+
+      if ( only_landmarks ) {
+        currentSubsetQuality =
+            currentCoverageQuality;
+      }
+      else {
+
+        const double currentRmseQuality =
+            (totalRmeQuality - perViewErrors_[i][0]) / (perViewErrors_.rows - 1);
+
+        currentSubsetQuality =
+            alpha * currentRmseQuality + (1. - alpha) * currentCoverageQuality;
+      }
+
+      if( currentSubsetQuality < bestSubsetQuality ) {
+        bestSubsetQuality = currentSubsetQuality;
         worstElemIndex = i;
       }
     }
 
+    // CF_DEBUG("worstElemIndex=%d bestSubsetQuality=%g", worstElemIndex, bestSubsetQuality);
+
     image_points_.erase(image_points_.begin() + worstElemIndex);
     object_points_.erase(object_points_.begin() + worstElemIndex);
 
-    cv::Mat1d newErrorsVec(nbframes - 1, 1);
+    if ( nbframes == perViewErrors_.rows ) {
 
-    std::copy(perViewErrors_[0],
-        perViewErrors_[worstElemIndex],
-        newErrorsVec[0]);
+      cv::Mat1f newErrorsVec(nbframes - 1,
+          perViewErrors_.cols);
 
-    if( worstElemIndex < nbframes - 1 ) {
-      std::copy(perViewErrors_[worstElemIndex + 1],
-          perViewErrors_[nbframes],
-          newErrorsVec[worstElemIndex]);
+      std::copy(perViewErrors_[0],
+          perViewErrors_[worstElemIndex],
+          newErrorsVec[0]);
+
+      if( worstElemIndex < nbframes - 1 ) {
+        std::copy(perViewErrors_[worstElemIndex + 1],
+            perViewErrors_[nbframes],
+            newErrorsVec[worstElemIndex]);
+      }
+
+      perViewErrors_ = newErrorsVec;
     }
-
-    perViewErrors_ = newErrorsVec;
   }
+
 }
 
 
@@ -178,11 +227,6 @@ void c_camera_calibration::update_state()
 
     confIntervalsState_ =
         fConfState && cConfState && dConfState;
-  }
-
-
-  if( image_points_.size() > calibration_options_.min_frames ) {
-    coverageQualityState_ = estimate_coverage_quality() > 1.8 ? true : false;
   }
 
   if( calibration_options_.auto_tune_calibration_flags && image_points_.size() > calibration_options_.min_frames ) {
@@ -251,6 +295,7 @@ void c_camera_calibration::update_state()
   }
 }
 
+//
 void c_camera_calibration::estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const
 {
   int gridSize = 10;
@@ -284,18 +329,22 @@ void c_camera_calibration::estimate_grid_meanstdev(double * m, double * s, int e
   }
 }
 
-double c_camera_calibration::estimate_grid_subset_quality(size_t excludedIndex) const
-{
-  double m, s;
-  estimate_grid_meanstdev(&m, &s, excludedIndex);
-  return m / (s + 1e-7);
-}
+//double c_camera_calibration::estimate_grid_subset_quality(size_t excludedIndex) const
+//{
+//  double m, s;
+//  estimate_grid_meanstdev(&m, &s, excludedIndex);
+//  return m / (s + 1e-7);
+//}
 
-double c_camera_calibration::estimate_coverage_quality() const
+//
+double c_camera_calibration::estimate_coverage_quality(int excludedIndex) const
 {
-  double m, s;
-  estimate_grid_meanstdev(&m, &s, object_points_.size());
-  return m / (s + 1e-7);
+  double mean, stdev;
+
+  estimate_grid_meanstdev(&mean, &stdev,
+      excludedIndex);
+
+  return stdev / mean;
 }
 
 
@@ -333,7 +382,6 @@ double c_camera_calibration::estimate_subset_quality() const
   return 0;
 }
 
-
 void c_camera_calibration::update_undistortion_remap()
 {
   cv::initUndistortRectifyMap(best_intrinsics_.camera_matrix,
@@ -349,25 +397,23 @@ void c_camera_calibration::update_undistortion_remap()
 
 bool c_camera_calibration::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  if ( display_frame.needed() ) {
-    display_frame_.copyTo(display_frame);
+  if ( current_frame_.empty() ) {
+    return false;
   }
-  if ( display_mask.needed() ) {
-    display_mask_.copyTo(display_mask);
-  }
-  return true;
-}
 
-void c_camera_calibration::update_display_image()
-{
-  const cv::Size totalSize(current_frame_.cols * 2, current_frame_.rows);
+  const cv::Size totalSize(current_frame_.cols * 2,
+      current_frame_.rows);
 
   const cv::Rect roi[2] = {
       cv::Rect(0, 0, current_frame_.cols, current_frame_.rows),
       cv::Rect(current_frame_.cols, 0, current_frame_.cols, current_frame_.rows),
   };
 
-  display_frame_.create(totalSize, CV_MAKETYPE(current_frame_.depth(), 3));
+  display_frame.create(totalSize,
+      CV_MAKETYPE(current_frame_.depth(), 3));
+
+  cv::Mat & display_frame_ =
+      display_frame.getMatRef();
 
   if( current_frame_.channels() == 3 ) {
     current_frame_.copyTo(display_frame_(roi[0]));
@@ -385,7 +431,29 @@ void c_camera_calibration::update_display_image()
         is_chessboard_found_);
   }
 
-  if( current_undistortion_remap_.empty() ) {
+  if( !current_undistortion_remap_.empty() ) {
+
+    if( display_frame_.channels() == current_frame_.channels() ) {
+
+        cv::remap(current_frame_, display_frame_(roi[1]),
+            current_undistortion_remap_, cv::noArray(),
+            cv::INTER_LINEAR);
+    }
+    else {
+      cv::Mat tmp;
+
+      cv::remap(current_frame_, tmp,
+          current_undistortion_remap_, cv::noArray(),
+          cv::INTER_LINEAR);
+
+      cv::cvtColor(tmp, display_frame_(roi[1]),
+          cv::COLOR_GRAY2BGR);
+    }
+
+  }
+  else {
+
+    // draw coverage
 
     if( current_frame_.channels() == 3 ) {
       current_frame_.copyTo(display_frame_(roi[1]));
@@ -395,26 +463,28 @@ void c_camera_calibration::update_display_image()
           cv::COLOR_GRAY2BGR);
     }
 
+    cv::Mat3b display =
+        display_frame_(roi[1]);
+
+    for( const std::vector<cv::Point2f> &corners : image_points_ ) {
+      for( const cv::Point2f &corner : corners ) {
+
+        cv::rectangle(display, cv::Rect(corner.x - 1, corner.y - 1, 3, 3),
+            CV_RGB(0, 255, 0), -1,
+            cv::LINE_8);
+      }
+    }
   }
-  else if( display_frame_.channels() == current_frame_.channels() ) {
 
-    cv::remap(current_frame_, display_frame_(roi[1]),
-        current_undistortion_remap_, cv::noArray(),
-        cv::INTER_LINEAR);
+  if ( display_frame.needed() ) {
+    display_frame_.copyTo(display_frame);
   }
-  else {
-
-    cv::Mat tmp;
-
-    cv::remap(current_frame_, tmp,
-        current_undistortion_remap_, cv::noArray(),
-        cv::INTER_LINEAR);
-
-    cv::cvtColor(tmp, display_frame_(roi[1]),
-        cv::COLOR_GRAY2BGR);
+  if ( display_mask.needed() ) {
+    display_mask.release();
+    // display_mask_.copyTo(display_mask);
   }
+  return true;
 }
-
 
 bool c_camera_calibration::save_current_camera_parameters() const
 {
@@ -458,6 +528,11 @@ bool c_camera_calibration::save_current_camera_parameters() const
   return true;
 }
 
+bool c_camera_calibration::canceled() const
+{
+  return false;
+}
+
 bool c_camera_calibration::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
@@ -467,16 +542,21 @@ bool c_camera_calibration::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "calibration_options")) ) {
+    SERIALIZE_OPTION(section, save, calibration_options_, enable_calibration);
     SERIALIZE_OPTION(section, save, calibration_options_, min_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, max_frames);
     SERIALIZE_OPTION(section, save, calibration_options_, calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, auto_tune_calibration_flags);
+    SERIALIZE_OPTION(section, save, calibration_options_, init_camera_matrix_2d);
     SERIALIZE_OPTION(section, save, calibration_options_, solverTerm);
     SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_chessboard_frames);
+    SERIALIZE_OPTION(section, save, output_options_, chessboard_frames_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_rectified_frames);
     SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
@@ -490,23 +570,23 @@ bool c_camera_calibration::serialize(c_config_setting settings, bool save)
 
 bool c_camera_calibration::initialize()
 {
+  chessboard_video_writer_.close();
   current_image_points_.clear();
   current_object_points_.clear();
+  stdDeviations_.release();
+  perViewErrors_.release();
+  current_undistortion_remap_.release();
   image_points_.clear();
   object_points_.clear();
-
-  is_chessboard_found_ = false;
   intrinsics_initialized_ = false;
+  is_chessboard_found_ = false;
   confIntervalsState_ = false;
-  coverageQualityState_ = false;
+
   current_calibration_flags_ = calibration_options_.calibration_flags;
   best_subset_quality_ = HUGE_VAL;
 
   current_intrinsics_.camera_matrix = cv::Matx33d::zeros();
   current_intrinsics_.dist_coeffs.clear();
-  stdDeviations_.release();
-  perViewErrors_.release();
-  current_undistortion_remap_.release();
 
   if ( chessboard_detection_options_.chessboard_size.width < 2 || chessboard_detection_options_.chessboard_size.height < 2 ) {
     CF_ERROR("Invalid chessboard_size_: %dx%d", chessboard_detection_options_.chessboard_size.width,
@@ -520,7 +600,6 @@ bool c_camera_calibration::initialize()
     return false;
   }
 
-  current_object_points_.clear();
   current_object_points_.reserve(chessboard_detection_options_.chessboard_size.area());
 
   for( int i = 0; i < chessboard_detection_options_.chessboard_size.height; ++i ) {
@@ -538,21 +617,168 @@ bool c_camera_calibration::initialize()
 
 void c_camera_calibration::cleanup()
 {
+  chessboard_video_writer_.close();
   current_image_points_.clear();
   current_object_points_.clear();
-
-  image_points_.clear();
-  object_points_.clear();
-
   stdDeviations_.release();
   perViewErrors_.release();
   current_undistortion_remap_.release();
-
-  current_frame_.release();
-  current_mask_.release();
+  image_points_.clear();
+  object_points_.clear();
+  intrinsics_initialized_ = false;
+  is_chessboard_found_ = false;
+  confIntervalsState_ = false;
 }
 
-bool c_camera_calibration::process_frame(const cv::Mat & image, const cv::Mat & mask)
+
+bool c_camera_calibration::update_calibration()
+{
+  INSTRUMENT_REGION("");
+
+  const cv::Size image_size =
+      current_frame_.size();
+
+  if( !intrinsics_initialized_ ) {
+
+    if( !calibration_options_.init_camera_matrix_2d ) {
+
+      current_intrinsics_.image_size = image_size;
+      current_intrinsics_.camera_matrix = cv::Matx33d::zeros();
+      current_intrinsics_.dist_coeffs.clear();
+    }
+
+    else {
+
+      intrinsics_initialized_ =
+          init_camera_intrinsics(current_intrinsics_,
+              object_points_,
+              image_points_,
+              image_size);
+
+      if( !intrinsics_initialized_ ) {
+        CF_ERROR("init_camera_intrinsics() fails");
+        // update_display_image();
+        return true; // wait for next frame
+      }
+
+      if( canceled() ) {
+        return false;
+      }
+    }
+
+    best_intrinsics_ = current_intrinsics_;
+    best_calibration_flags_ = current_calibration_flags_;
+  }
+
+  if ( best_subset_quality_ < HUGE_VAL ) {
+    current_intrinsics_ = best_intrinsics_;
+    current_calibration_flags_ = best_calibration_flags_;
+  }
+
+  rmse_ =
+      calibrate_camera(object_points_,
+          image_points_,
+          current_intrinsics_,
+          current_calibration_flags_,
+          calibration_options_.solverTerm,
+          nullptr,
+          nullptr,
+          &stdDeviations_,
+          nullptr,
+          &perViewErrors_);
+
+  const cv::Matx33d & M =
+      current_intrinsics_.camera_matrix;
+
+  CF_DEBUG("\n"
+      "M: {\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "}\n"
+      "rmse = %g\n",
+      M(0, 0), M(0, 1), M(0, 2),
+      M(1, 0), M(1, 1), M(1, 2),
+      M(2, 0), M(2, 1), M(2, 2),
+      rmse_);
+
+  if ( canceled() ) {
+    return false;
+  }
+
+  if( rmse_ >= 0 ) {
+
+    intrinsics_initialized_ = true;
+
+    const double subset_quality =
+        estimate_subset_quality();
+
+    CF_DEBUG("subset_quality=%g best_subset_quality_=%g",
+        subset_quality, best_subset_quality_);
+
+    if( subset_quality < best_subset_quality_ ) {
+
+      best_intrinsics_ = current_intrinsics_;
+      best_calibration_flags_ = current_calibration_flags_;
+      best_subset_quality_ = subset_quality;
+
+      update_state();
+
+      if( canceled() ) {
+        return false;
+      }
+
+      if( !save_current_camera_parameters() ) {
+        CF_ERROR("save_current_camera_parameters() fails");
+        return false;
+      }
+
+      update_undistortion_remap();
+
+      if( canceled() ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool c_camera_calibration::process_current_frame(bool enable_calibration)
+{
+  if( current_frame_.empty() || !detect_chessboard(current_frame_) ) {
+    return true; // wait for next frame
+  }
+
+  if( output_options_.save_chessboard_frames && !write_chessboard_video() ) {
+    CF_ERROR("write_horizontal_stereo_video() fails");
+    return false;
+  }
+
+  image_points_.emplace_back(current_image_points_);
+  object_points_.emplace_back(current_object_points_);
+
+  if( image_points_.size() >= calibration_options_.min_frames ) {
+
+    if( !enable_calibration ) {
+
+      filter_frames(true);
+
+    }
+    else if( update_calibration() ) {
+
+      if ( canceled() ) {
+        return false;
+      }
+
+      filter_frames(false);
+    }
+  }
+
+  return true;
+}
+
+bool c_camera_calibration::process_frame(const cv::Mat & image, const cv::Mat & mask, bool enable_calibration)
 {
   if( &image != &current_frame_ ) {
     image.copyTo(current_frame_);
@@ -562,138 +788,40 @@ bool c_camera_calibration::process_frame(const cv::Mat & image, const cv::Mat & 
     mask.copyTo(current_mask_);
   }
 
-  if( !detect_chessboard(current_frame_) ) {
-    update_display_image();
+  return process_current_frame(enable_calibration);
+}
+
+
+bool c_camera_calibration::write_chessboard_video()
+{
+  if( chessboard_frames_filename_.empty() ) {
+    return true; // nothing to do
+  }
+
+  if ( current_frame_.empty() ) {
     return true; // wait for next frame
   }
 
-  filter_frames();
+  if( !chessboard_video_writer_.is_open() ) {
 
-  if ( canceled() ) {
-    return false;
-  }
+    bool fOK =
+        chessboard_video_writer_.open(chessboard_frames_filename_,
+            current_frame_.size(),
+            current_frame_.channels() > 1,
+            false);
 
-  image_points_.emplace_back(current_image_points_);
-  object_points_.emplace_back(current_object_points_);
-
-  if ( image_points_.size() >= calibration_options_.min_frames ) {
-
-    const cv::Size image_size =
-        current_frame_.size();
-
-    if( !intrinsics_initialized_ ) {
-
-      if( !calibration_options_.init_camera_matrix_2d ) {
-
-        current_intrinsics_.image_size = image_size;
-        current_intrinsics_.camera_matrix = cv::Matx33d::zeros();
-        current_intrinsics_.dist_coeffs.clear();
-      }
-
-      else {
-
-        intrinsics_initialized_ =
-            init_camera_intrinsics(current_intrinsics_,
-                object_points_,
-                image_points_,
-                image_size);
-
-        if( !intrinsics_initialized_ ) {
-          CF_ERROR("init_camera_intrinsics() fails");
-          update_display_image();
-          return true; // wait for next frame
-        }
-
-        if( canceled() ) {
-          return false;
-        }
-
-      }
-
-      best_intrinsics_ = current_intrinsics_;
-      best_calibration_flags_ = current_calibration_flags_;
-    }
-
-    if ( best_subset_quality_ < HUGE_VAL ) {
-      CF_DEBUG("USE best* as guess");
-      current_intrinsics_ = best_intrinsics_;
-      current_calibration_flags_ = best_calibration_flags_;
-    }
-
-    rmse_ =
-        calibrate_camera(object_points_,
-            image_points_,
-            current_intrinsics_,
-            current_calibration_flags_,
-            calibration_options_.solverTerm,
-            nullptr,
-            nullptr,
-            &stdDeviations_,
-            nullptr,
-            &perViewErrors_);
-
-    const cv::Matx33d & M =
-        current_intrinsics_.camera_matrix;
-
-    CF_DEBUG("calibrateCamera:\n"
-        "rmse = %g\n"
-        "M: {\n"
-        "  %+g %+g %+g\n"
-        "  %+g %+g %+g\n"
-        "  %+g %+g %+g\n"
-        "}\n",
-        rmse_,
-        M(0,0), M(0,1), M(0,2),
-        M(1,0), M(1,1), M(1,2),
-        M(2,0), M(2,1), M(2,2));
-
-    if ( canceled() ) {
+    if( !fOK ) {
+      CF_ERROR("chessboard_video_writer_.open('%s') fails",
+          chessboard_frames_filename_.c_str());
       return false;
     }
-
-    if( rmse_ >= 0 ) {
-
-      intrinsics_initialized_ = true;
-
-      const double subset_quality =
-          estimate_subset_quality();
-
-      CF_DEBUG("subset_quality=%g best_subset_quality_=%g", subset_quality, best_subset_quality_);
-
-      if( subset_quality < best_subset_quality_ ) {
-        CF_DEBUG("Copy to best*");
-
-        best_intrinsics_ = current_intrinsics_;
-        best_calibration_flags_ = current_calibration_flags_;
-        best_subset_quality_ = subset_quality;
-
-        update_state();
-
-        if( canceled() ) {
-          return false;
-        }
-
-        if( !save_current_camera_parameters() ) {
-          CF_ERROR("save_current_camera_parameters() fails");
-          return false;
-        }
-
-        update_undistortion_remap();
-
-        if( canceled() ) {
-          return false;
-        }
-      }
-    }
   }
 
-  if ( canceled() ) {
+  if ( !chessboard_video_writer_.write(current_frame_, cv::noArray(), false, 0) ) {
+    CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
-
-  update_display_image();
 
   return true;
 }
-
 

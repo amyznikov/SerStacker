@@ -11,19 +11,14 @@
 
 #include <core/proc/chessboard/chessboard_detection.h>
 #include <core/proc/camera_calibration/calibrate_camera.h>
-
-enum CAMERA_CALIBRATION_STAGE {
-  camera_calibration_idle = 0,
-  camera_calibration_initialize,
-  camera_calibration_in_progress,
-  camera_calibration_finishing
-};
+#include <core/io/c_output_frame_writer.h>
 
 struct c_calibrate_camera_options
 {
   int min_frames = 10;
   int max_frames = 50;
   int calibration_flags = CAMERA_CALIB_USE_INTRINSIC_GUESS;
+  bool enable_calibration = true;
   bool auto_tune_calibration_flags = true;
   bool init_camera_matrix_2d = true;
 
@@ -37,9 +32,11 @@ struct c_calibrate_camera_options
 struct c_camera_calibration_output_options
 {
   std::string output_directory;
+  std::string chessboard_frames_filename;
   std::string rectified_frames_filename;
   std::string progress_video_filename;
 
+  bool save_chessboard_frames = false;
   bool save_rectified_frames = false;
   bool save_progress_video = false;
 };
@@ -48,7 +45,7 @@ class c_camera_calibration
 {
 public:
   c_camera_calibration() = default;
-  virtual ~c_camera_calibration() = default;
+  virtual ~c_camera_calibration();
 
   c_chessboard_corners_detection_options & chessboard_corners_detection_options();
   const c_chessboard_corners_detection_options & chessboard_corners_detection_options() const;
@@ -59,32 +56,35 @@ public:
   c_camera_calibration_output_options & output_options();
   const c_camera_calibration_output_options & output_options() const;
 
+protected:
+
   void set_output_intrinsics_filename(const std::string & v);
   const std::string& output_intrinsics_filename() const;
 
-  bool serialize(c_config_setting settings, bool save);
+  void set_chessboard_frames_filename(const std::string & v);
+  const std::string & chessboard_frames_filename() const;
 
-  virtual bool initialize();
-  virtual void cleanup();
-  virtual bool process_frame(const cv::Mat & image, const cv::Mat & mask);
+  virtual bool canceled() const;
+  virtual bool serialize(c_config_setting settings, bool save);
   virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
+
+  bool initialize();
+  void cleanup();
+  bool process_frame(const cv::Mat & image, const cv::Mat & mask, bool enable_calibration);
+  bool process_current_frame(bool enable_calibration);
 
   bool is_chessboard_found() const;
 
-protected:
-  virtual bool canceled() const;
-  virtual bool detect_chessboard(const cv::Mat &frame);
-  virtual void estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const;
-  virtual double estimate_grid_subset_quality(size_t excludedIndex) const;
-  virtual double estimate_coverage_quality() const;
-  virtual double estimate_subset_quality() const;
-  virtual void filter_frames();
-  virtual void update_state();
-  virtual void update_undistortion_remap();
-  virtual void update_display_image();
-  virtual bool save_current_camera_parameters() const;
-
-protected:
+  bool detect_chessboard(const cv::Mat &frame);
+  void update_state();
+  void update_undistortion_remap();
+  bool save_current_camera_parameters() const;
+  void estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const; //
+  double estimate_coverage_quality(int excludedIndex) const; //
+  double estimate_subset_quality() const; //
+  void filter_frames(bool only_landmarks);//
+  bool update_calibration();
+  bool write_chessboard_video();
 
 protected:
   c_chessboard_corners_detection_options chessboard_detection_options_;
@@ -93,8 +93,6 @@ protected:
 
   cv::Mat current_frame_;
   cv::Mat current_mask_;
-  cv::Mat display_frame_;
-  cv::Mat display_mask_;
 
   std::vector<cv::Point2f> current_image_points_;
   std::vector<cv::Point3f> current_object_points_;
@@ -111,16 +109,18 @@ protected:
   double best_subset_quality_ = HUGE_VAL;
 
 
-
   std::vector<std::vector<cv::Point2f> > image_points_;
   std::vector<std::vector<cv::Point3f> > object_points_;
 
   bool intrinsics_initialized_ = false;
   bool is_chessboard_found_ = false;
   bool confIntervalsState_ = false;
-  bool coverageQualityState_ = false;
 
   std::string output_intrinsics_filename_;
+  std::string chessboard_frames_filename_;
+
+
+  c_output_frame_writer chessboard_video_writer_;
 };
 
 #endif /* __c_camera_calibration_h__ */

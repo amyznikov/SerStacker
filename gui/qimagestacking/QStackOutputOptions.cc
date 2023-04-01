@@ -10,7 +10,7 @@
 #include <core/debug.h>
 
 QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
-    Base("QStackingDebugOptions", parent)
+    Base("QStackOutputOptions", parent)
 {
   Q_INIT_RESOURCE(qstackingoptions_resources);
 
@@ -31,8 +31,8 @@ QStackOutputOptions::QStackOutputOptions(QWidget * parent) :
   connect(output_directory_ctl, &QBrowsePathCombo::pathChanged,
       [this]() {
         if ( current_pipeline_ && !updatingControls() ) {
-          current_pipeline_->set_output_directory(
-              output_directory_ctl->currentPath().toStdString());
+          current_pipeline_->output_options().output_directoty =
+              output_directory_ctl->currentPath().toStdString();
           Q_EMIT parameterChanged();
         }
       });
@@ -308,7 +308,7 @@ void QStackOutputOptions::onupdatecontrols()
     c_image_stacking_output_options &output_options =
         current_pipeline_->output_options();
 
-    output_directory_ctl->setCurrentPath(current_pipeline_->output_directory().c_str(), false);
+    output_directory_ctl->setCurrentPath(output_options.output_directoty.c_str(), false);
 
     save_preprocessed_frames_ctl->setChecked(output_options.save_preprocessed_frames);
     output_preprocessed_frames_path_ctl->setCurrentPath(output_options.output_preprocessed_frames_filename.c_str());

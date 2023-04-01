@@ -1405,7 +1405,7 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & se
   }
   else if ( sequence ) {
     if ( centralStackedWidget->currentWidget() == thumbnailsView ) {
-      thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false);
+      thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false);
     }
     else {
       pipelineOptionsView->set_current_sequence(sequence);
@@ -1444,7 +1444,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
         }
         else if ( currentCentralWidget == pipelineOptionsView ) {
-          if ( thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false) ) {
+          if ( thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false) ) {
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
           else {
@@ -1460,7 +1460,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
       else {
 
         if ( currentCentralWidget == pipelineOptionsView ) {
-          if ( thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false) ) {
+          if ( thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false) ) {
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
         }
@@ -1475,7 +1475,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
   else if ( source ) {
     if ( centralStackedWidget->currentWidget() == imageEditor ) {
       centralStackedWidget->setCurrentWidget(thumbnailsView);
-      thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false);
+      thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false);
     }
     else {
       centralStackedWidget->setCurrentWidget(imageEditor);
@@ -1484,7 +1484,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
   }
   else if ( sequence ) {
     if ( centralStackedWidget->currentWidget() == pipelineOptionsView ) {
-      if( thumbnailsView->setCurrentPath(sequence->displaypatch().c_str(), false) ) {
+      if( thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false) ) {
         centralStackedWidget->setCurrentWidget(thumbnailsView);
       }
     }

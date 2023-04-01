@@ -164,6 +164,8 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
 
+    SERIALIZE_OPTION(section, save, output_options_, output_directory);
+
     SERIALIZE_OPTION(section, save, output_options_, save_calibration_config_file);
     SERIALIZE_OPTION(section, save, output_options_, calibration_config_filename);
 
@@ -625,7 +627,7 @@ void c_regular_stereo_pipeline::update_calibration_display_image(bool applyHomog
     }
   }
 
-  on_accumulator_changed();
+ // on_accumulator_changed();
 }
 
 
@@ -694,7 +696,7 @@ void c_regular_stereo_pipeline::update_disparity_map_display_image(const cv::Mat
   convertToBGR(images[1], display_frame_(rc1));
   dispMap.copyTo(display_frame_(rc2));
 
-  on_accumulator_changed();
+  // on_accumulator_changed();
 }
 
 
@@ -834,15 +836,15 @@ bool c_regular_stereo_pipeline::load_calibration_config_file()
 
 bool c_regular_stereo_pipeline::initialize_pipeline()
 {
-  set_pipeline_stage(rstereo_calibration_initialize);
-
   if ( !base::initialize_pipeline() ) {
     CF_ERROR("base::initialize() fails");
     return false;
   }
 
-  /////////////////////////////////////////////////////////////////////////////
+  output_path_ =
+      create_output_path(output_options_.output_directory);
 
+  /////////////////////////////////////////////////////////////////////////////
 
 
   if ( input_options_.left_stereo_source.empty() ) {
@@ -976,8 +978,6 @@ void c_regular_stereo_pipeline::dump_motion_pose(const c_motion_pose & pose)
 
 void c_regular_stereo_pipeline::cleanup_pipeline()
 {
-  set_pipeline_stage(rstereo_calibration_finishing);
-
   if ( posesfp_ ) {
     fclose(posesfp_);
     posesfp_ = nullptr;
@@ -1019,8 +1019,6 @@ void c_regular_stereo_pipeline::cleanup_pipeline()
   keypoints_matcher_.reset();
 
   base::cleanup_pipeline();
-
-  set_pipeline_stage(rstereo_calibration_idle);
 }
 
 void c_regular_stereo_pipeline::reset_input_frames()
@@ -1260,13 +1258,12 @@ bool c_regular_stereo_pipeline::run_calibration()
     return false;
   }
 
-  set_pipeline_stage(rstereo_calibration_in_progress);
   set_status_msg("RUNNING ...");
 
 
   reset_input_frames();
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
 
     if ( canceled() ) {
       break;
@@ -1700,7 +1697,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
     reset_input_frames();
 
-    for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+    for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
 
       if( canceled() ) {
         break;
@@ -1856,7 +1853,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
   reset_input_frames();
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_changed() ) {
+  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
 
     if( canceled() ) {
       break;

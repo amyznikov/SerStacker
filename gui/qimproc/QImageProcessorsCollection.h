@@ -12,8 +12,8 @@
 #include <core/improc/c_image_processor.h>
 
 
-class QImageProcessorsCollection
-    : public QObject
+class QImageProcessorsCollection :
+    public QObject
 {
   Q_OBJECT;
 public:
@@ -36,7 +36,7 @@ public:
   // for QObject::connect()
   static QImageProcessorsCollection * instance();
 
-signals:
+Q_SIGNALS:
   void collectionChanged();
 
 protected:

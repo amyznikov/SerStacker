@@ -14,16 +14,6 @@ QLiveRegularStereoPipeline::QLiveRegularStereoPipeline(const QString & name, QOb
 {
 }
 
-c_regular_stereo & QLiveRegularStereoPipeline::rstereo()
-{
-  return rstereo_;
-}
-
-const c_regular_stereo & QLiveRegularStereoPipeline::rstereo() const
-{
-  return rstereo_;
-}
-
 bool QLiveRegularStereoPipeline::initialize_pipeline()
 {
   if  ( !Base::initialize_pipeline() ) {
@@ -31,8 +21,8 @@ bool QLiveRegularStereoPipeline::initialize_pipeline()
     return false;
   }
 
-  if ( !rstereo_.initialize() ) {
-    CF_ERROR("rstereo_.initialize() fails");
+  if ( !c_regular_stereo::initialize() ) {
+    CF_ERROR("c_regular_stereo::initialize() fails");
     return false;
   }
 
@@ -41,7 +31,7 @@ bool QLiveRegularStereoPipeline::initialize_pipeline()
 
 void QLiveRegularStereoPipeline::cleanup_pipeline()
 {
-  rstereo_.cleanup();
+  c_regular_stereo::cleanup();
   Base::cleanup_pipeline();
 }
 
@@ -67,8 +57,8 @@ bool QLiveRegularStereoPipeline::process_frame(const cv::Mat & image, COLORID co
   frames[0] = currentImage(roi[0]);
   frames[1] = currentImage(roi[1]);
 
-  if ( !rstereo_.process_stereo_frame(frames, masks) ) {
-    CF_ERROR("rstereo_.process_stereo_frame() fails");
+  if ( !c_regular_stereo::process_stereo_frame(frames, masks) ) {
+    CF_ERROR("c_regular_stereo::process_stereo_frame() fails");
     return false;
   }
 
@@ -81,10 +71,8 @@ bool QLiveRegularStereoPipeline::get_display_image(cv::Mat * displayImage, COLOR
   *colorid = displayColorid_;
   *bpp = 8;
 
-  rstereo_.update_display_image();
-
-  if( !rstereo_.get_display_image(*displayImage, cv::noArray()) ) {
-    CF_ERROR("rstereo_.get_display_image() fails");
+  if( !c_regular_stereo::get_display_image(*displayImage, cv::noArray()) ) {
+    CF_ERROR("c_regular_stereo::get_display_image() fails");
     return false;
   }
 
@@ -98,8 +86,8 @@ bool QLiveRegularStereoPipeline::serialize(c_config_setting settings, bool save)
     return false;
   }
 
-  if ( !rstereo_.serialize(settings, save) ) {
-    CF_ERROR("rstereo_.serialize() fails");
+  if ( !c_regular_stereo::serialize(settings, save) ) {
+    CF_ERROR("c_regular_stereo::serialize() fails");
     return false;
   }
 

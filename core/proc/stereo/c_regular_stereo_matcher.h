@@ -34,7 +34,7 @@ struct c_cvStereoBM_options
 {
   int minDisparity = 0;
   int numDisparities = 128;
-  int blockSize = 21;
+  int blockSize = 11;
 
   int speckleWindowSize = 0;
   int speckleRange = 0;
@@ -42,7 +42,7 @@ struct c_cvStereoBM_options
 
   StereoBM_PreFilterType preFilterType = StereoBM_PREFILTER_NORMALIZED_RESPONSE;
   int preFilterSize = 5;
-  int preFilterCap = 0;
+  int preFilterCap = 1;
   int textureThreshold = 0;
   int uniquenessRatio = 0;
   int smallerBlockSize = 0;
@@ -63,16 +63,16 @@ enum StereoSGBM_Mode
 struct c_cvStereoSGBM_options
 {
   int minDisparity = 0;
-  int numDisparities = 16;
-  int blockSize = 3;
+  int numDisparities = 80;
+  int blockSize = 11;
 
-  int speckleWindowSize = 0;
-  int speckleRange = 0;
+  int speckleWindowSize = 1;
+  int speckleRange = 1;
   int disp12MaxDiff = 0;
 
   int P1 = 0;
-  int P2 = 0;
-  int preFilterCap = 0;
+  int P2 = 256;
+  int preFilterCap = 1;
   int uniquenessRatio = 0;
   StereoSGBM_Mode mode = StereoSGBM_SGBM;
 };

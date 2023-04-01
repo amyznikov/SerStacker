@@ -25,11 +25,13 @@ public:
   c_stereo_calibrate_options* options() const;
 
 protected:
+  void updatecontrolstate();
   void onupdatecontrols() override;
 
 protected:
   c_stereo_calibrate_options * options_ = nullptr;
 
+  QCheckBox * enable_calibration_ctl = nullptr;
   QNumericBox * min_frames_ctl = nullptr;
   QNumericBox * max_frames_ctl = nullptr;
   QNumericBox * max_iterations_ctl = nullptr;

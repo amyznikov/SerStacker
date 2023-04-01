@@ -53,17 +53,9 @@ protected:
   QImageEditor * imageViewer_ = nullptr;
 
   int timerId = 0;
-  std::atomic<bool> hasCurrentStatisticsUpdates_ = false;
-  std::atomic<bool> accumuatorImageChanged_ = false;
-  std::atomic<bool> selectedMasterFrameChanged_ = false;
+  std::atomic<bool> hasStatusUpdates_ = false;
   std::atomic<bool> updatingDisplay_ = false;
-
-  c_slotptr on_status_changed;
-  c_slotptr on_accumulator_changed;
-  c_slotptr on_pipeline_stage_changed;
-
-  c_slotptr on_selected_master_frame_changed;
-  c_slotptr on_current_frame_changed;
+  c_slotptr on_status_update;
 };
 
 

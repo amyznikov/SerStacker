@@ -32,6 +32,9 @@ protected:
   c_camera_calibration_output_options * options_ = nullptr;
   QBrowsePathCombo * output_directory_ctl = nullptr;
 
+  QCheckBox * save_chessboard_frames_ctl = nullptr;
+  QLineEditBox * chessboard_frames_filename_ctl = nullptr;
+
   QCheckBox * save_rectified_frames_ctl = nullptr;
   QLineEditBox * rectified_frames_filename_ctl = nullptr;
 

@@ -312,22 +312,22 @@ protected:
       const cv::Mat & output_image,
       const cv::Mat & output_mask);
 
-  void save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+  bool save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;
 
-  void save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+  bool save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;
 
-  void save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+  bool save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex ) const;
 
-  void save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+  bool save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;
 
-  void save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+  bool save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;
 
-  void save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+  bool save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;
 
   static void remove_bad_pixels(cv::Mat & image,

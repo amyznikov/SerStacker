@@ -15,7 +15,6 @@
 class c_scale_sweep_stereo_matcher
 {
 public:
-
   typedef c_scale_sweep_stereo_matcher this_clss;
 
   c_scale_sweep_stereo_matcher();

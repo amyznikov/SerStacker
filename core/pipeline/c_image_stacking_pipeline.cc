@@ -440,6 +440,10 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     return false;
   }
 
+  output_path_ =
+      create_output_path(output_options_.output_directoty);
+
+
   if (true ) {
 
     lock_guard lock(accumulator_lock_);
@@ -1493,9 +1497,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     if ( !master_frame_generation_ ) {
 
-      save_preprocessed_frame(current_frame, current_mask,
+      if( !save_preprocessed_frame(current_frame, current_mask,
           output_preprocessed_frames_writer,
-          input_sequence->current_pos() - 1);
+          input_sequence->current_pos() - 1) ) {
+        CF_ERROR("save_preprocessed_frame() fails");
+        return false;
+      }
 
       if ( canceled() ) {
         set_status_msg("canceled");
@@ -1705,9 +1712,13 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       if ( !master_frame_generation_ ) {
 
-        save_aligned_frame(current_frame, current_mask,
+        if( !save_aligned_frame(current_frame, current_mask,
             output_aligned_frames_writer,
-            input_sequence->current_pos() - 1);
+            input_sequence->current_pos() - 1) ) {
+
+          CF_ERROR("save_aligned_frame() fails");
+          return false;
+        }
 
         if ( canceled() ) {
           set_status_msg("canceled");
@@ -1716,10 +1727,14 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
         if ( !frame_registration_->current_ecc_image().empty() ) {
 
-          save_ecc_frame(frame_registration_->current_ecc_image(),
+          if ( !save_ecc_frame(frame_registration_->current_ecc_image(),
               frame_registration_->current_ecc_mask(),
               output_ecc_writer,
-              input_sequence->current_pos() - 1);
+              input_sequence->current_pos() - 1) ) {
+
+            CF_ERROR("save_ecc_frame() fails");
+            return false;
+          }
         }
 
         if ( canceled() ) {
@@ -1738,9 +1753,13 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
         if( output_options_.save_processed_aligned_frames ) {
 
-          save_postprocessed_frame(current_frame, current_mask,
+          if( !save_postprocessed_frame(current_frame, current_mask,
               output_postprocessed_frames_writer,
-              input_sequence->current_pos() - 1);
+              input_sequence->current_pos() - 1) ) {
+
+            CF_ERROR("save_postprocessed_frame() fails");
+            return false;
+          }
 
           if ( canceled() ) {
             set_status_msg("canceled");
@@ -1777,9 +1796,13 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     if ( output_options_.save_accumulation_masks ) {
 
-      save_accumulation_mask(current_frame, current_mask,
+      if( !save_accumulation_mask(current_frame, current_mask,
           output_accumulation_masks_writer,
-          input_sequence->current_pos() - 1);
+          input_sequence->current_pos() - 1) ) {
+
+        CF_ERROR("save_accumulation_mask() fails");
+        return false;
+      }
 
       if ( canceled() ) {
         set_status_msg("canceled");
@@ -1847,11 +1870,15 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
           if( proc && !proc->process(accumulated_frame, accumulated_mask) ) {
             CF_ERROR("image processor '%s' fails", proc->cname());
+            return false;
           }
-          else {
-            save_incremental_frame(accumulated_frame, accumulated_mask,
-                output_incremental_frame_writer,
-                input_sequence->current_pos() - 1);
+
+          if( !save_incremental_frame(accumulated_frame, accumulated_mask,
+              output_incremental_frame_writer,
+              input_sequence->current_pos() - 1) ) {
+
+            CF_ERROR("save_incremental_frame() fails");
+            return false;
           }
 
           if( canceled() ) {
@@ -2400,15 +2427,13 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
 }
 
 
-void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
+bool c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_output_frame_writer & output_writer,
     int seqindex) const
 {
-//  const c_image_stacking_output_options & output_options =
-//      output_options();
 
   if ( !output_options_.save_preprocessed_frames ) {
-    return;
+    return true;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2429,7 +2454,7 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
 
     if ( !create_path(get_parent_directory(pathfilename)) ) {
       CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return;
+      return false;
     }
 
     output_writer.open(pathfilename,
@@ -2442,24 +2467,21 @@ void c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
 
-      return;
+      return false;
     }
   }
 
-  output_writer.write(current_frame, current_mask,
+  return output_writer.write(current_frame, current_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 }
 
-void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
+bool c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_output_frame_writer & output_writer,
     int seqindex ) const
 {
-//  const c_image_stacking_output_options & output_options =
-//      output_options();
-
   if ( !output_options_.save_aligned_frames ) {
-    return;
+    return true;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2482,7 +2504,7 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
       CF_ERROR("ERROR: create_path() fails for '%s' : %s",
           pathfilename.c_str(),
           strerror(errno));
-      return;
+      return false;
     }
 
     output_writer.open(pathfilename,
@@ -2495,25 +2517,23 @@ void c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
 
-      return;
+      return false;
     }
   }
 
-  output_writer.write(current_frame, current_mask,
+  return output_writer.write(current_frame, current_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 
 }
 
-void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
+bool c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_output_frame_writer & output_writer,
     int seqindex) const
 {
-//  const c_image_stacking_output_options & output_options =
-//      output_options();
 
   if ( !output_options_.save_ecc_frames ) {
-    return;
+    return true;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2534,7 +2554,7 @@ void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
 
     if ( !create_path(get_parent_directory(pathfilename)) ) {
       CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return;
+      return false;
     }
 
     output_writer.open(pathfilename,
@@ -2547,18 +2567,18 @@ void c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
 
-      return;
+      return false;
     }
   }
 
-  output_writer.write(current_frame, current_mask,
+  return output_writer.write(current_frame, current_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 
 }
 
 
-void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
+bool c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_output_frame_writer & output_writer,
     int seqindex) const
 {
@@ -2566,7 +2586,7 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
 //      output_options();
 
   if ( !output_options_.save_processed_aligned_frames ) {
-    return;
+    return true;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2587,7 +2607,7 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
 
     if ( !create_path(get_parent_directory(pathfilename)) ) {
       CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return;
+      return false;
     }
 
     output_writer.open(pathfilename,
@@ -2600,16 +2620,16 @@ void c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
 
-      return;
+      return false;
     }
   }
 
-  output_writer.write(current_frame, current_mask,
+  return output_writer.write(current_frame, current_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 }
 
-void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulated_frame, const cv::Mat & accumulated_mask,
+bool c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulated_frame, const cv::Mat & accumulated_mask,
     c_output_frame_writer & output_writer,
     int seqindex) const
 {
@@ -2617,7 +2637,7 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
 //      output_options();
 
   if ( !output_options_.save_incremental_frames ) {
-    return;
+    return true;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2638,7 +2658,7 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
 
     if ( !create_path(get_parent_directory(pathfilename)) ) {
       CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return;
+      return false;
     }
 
 
@@ -2653,22 +2673,22 @@ void c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
 
-      return;
+      return false;
     }
   }
 
-  output_writer.write(accumulated_frame, accumulated_mask,
+  return output_writer.write(accumulated_frame, accumulated_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 
 }
 
-void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
+bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_output_frame_writer & output_writer,
     int seqindex) const
 {
   if ( !output_options_.save_accumulation_masks ) {
-    return;
+    return false;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2689,7 +2709,7 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
     if ( !create_path(get_parent_directory(pathfilename)) ) {
       CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return;
+      return false;
     }
 
     output_writer.open(pathfilename,
@@ -2702,17 +2722,23 @@ void c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
 
-      return;
+      return false;
     }
   }
 
   if ( !current_mask.empty() ) {
-    output_writer.write(current_mask, cv::noArray(), false, seqindex);
+    if ( !output_writer.write(current_mask, cv::noArray(), false, seqindex) ) {
+      CF_ERROR("output_writer.write() fails");
+      return false;
+    }
   }
   else {
-    output_writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray(), false, seqindex);
+    if ( !output_writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray(), false, seqindex) ) {
+      CF_ERROR("output_writer.write() fails");
+      return false;
+    }
   }
-
+  return true;
 }
 
 int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr & input_sequence)

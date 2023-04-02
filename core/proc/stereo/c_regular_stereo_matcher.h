@@ -88,6 +88,7 @@ struct c_cvStereoSGBM_options
   StereoSGBM_Mode mode = StereoSGBM_SGBM;
 };
 
+
 struct c_ScaleSweep_options
 {
   int max_disparity = 128;
@@ -99,6 +100,84 @@ struct c_ScaleSweep_options
   std::string debug_directory;
   std::vector<cv::Point> debug_points;
 };
+
+
+#if HAVE_OpenCV_stereo
+
+enum StereoBinaryKernelType
+{
+  CV_DENSE_CENSUS = cv::stereo::CV_DENSE_CENSUS,
+  CV_SPARSE_CENSUS = cv::stereo::CV_SPARSE_CENSUS,
+  CV_CS_CENSUS = cv::stereo::CV_CS_CENSUS,
+  CV_MODIFIED_CS_CENSUS = cv::stereo::CV_MODIFIED_CS_CENSUS,
+  CV_MODIFIED_CENSUS_TRANSFORM = cv::stereo::CV_MODIFIED_CENSUS_TRANSFORM,
+  CV_MEAN_VARIATION = cv::stereo::CV_MEAN_VARIATION,
+  CV_STAR_KERNEL = cv::stereo::CV_STAR_KERNEL
+};
+
+enum StereoBinarySpeckleRemovalTechnique
+{
+  CV_SPECKLE_REMOVAL = cv::stereo::CV_SPECKLE_REMOVAL_ALGORITHM,
+  CV_SPECKLE_REMOVAL_AVG = cv::stereo::CV_SPECKLE_REMOVAL_AVG_ALGORITHM,
+};
+
+enum StereoBinarySubpixelInterpolationMethod
+{
+  CV_QUADRATIC_INTERPOLATION = cv::stereo::CV_QUADRATIC_INTERPOLATION,
+  CV_SIMETRICV_INTERPOLATION = cv::stereo::CV_SIMETRICV_INTERPOLATION
+};
+
+
+struct c_cvStereoBinaryOptions
+{
+  int minDisparity = 0;
+  int numDisparities = 80;
+  int blockSize = 9;
+  int speckleWindowSize = 0;
+  int speckleRange = 0;
+  int disp12MaxDiff = 1;
+};
+
+enum StereoBinaryBMPrefilterType
+{
+  StereoBinaryBM_PREFILTER_NORMALIZED_RESPONSE = cv::stereo::StereoBinaryBM::PREFILTER_NORMALIZED_RESPONSE,
+  StereoBinaryBM_PREFILTER_XSOBEL = cv::stereo::StereoBinaryBM::PREFILTER_XSOBEL
+};
+
+struct c_cvStereoBinaryBMOptions: c_cvStereoBinaryOptions
+{
+  StereoBinaryBMPrefilterType preFilterType = StereoBinaryBM_PREFILTER_NORMALIZED_RESPONSE;
+  int preFilterSize = 0;
+  int preFilterCap = 5;
+  int textureThreshold = 0;
+  int uniquenessRatio = 0;
+  int smallerBlockSize = 3;
+  int scalleFactor = 0;
+  StereoBinarySpeckleRemovalTechnique spekleRemovalTechnique = CV_SPECKLE_REMOVAL;
+  bool usePrefilter = false;
+  StereoBinaryKernelType kernelType = CV_MODIFIED_CENSUS_TRANSFORM;
+  int agregationWindowSize = 5;
+};
+
+enum StereoBinarySGBMMode {
+  StereoBinarySGBM_SGBM = cv::stereo::StereoBinarySGBM::MODE_SGBM,
+  StereoBinarySGBM_HH = cv::stereo::StereoBinarySGBM::MODE_HH
+};
+
+struct c_cvStereoBinarySGBMOptions: c_cvStereoBinaryOptions
+{
+  int preFilterCap = 0;
+  int uniquenessRatio = 0;
+  int P1 = 0;
+  int P2 = 0;
+  StereoBinarySGBMMode mode = StereoBinarySGBM_SGBM;
+  StereoBinarySpeckleRemovalTechnique spekleRemovalTechnique = CV_SPECKLE_REMOVAL;
+  StereoBinaryKernelType kernelType = CV_MODIFIED_CENSUS_TRANSFORM;
+  StereoBinarySubpixelInterpolationMethod subPixelInterpolationMethod = CV_QUADRATIC_INTERPOLATION;
+};
+
+#endif // HAVE_OpenCV_stereo
+
 
 class c_regular_stereo_matcher
 {
@@ -120,6 +199,14 @@ public:
   const cv::stereo::PropagationParameters & quasiDenseStereoOptions() const;
   cv::stereo::PropagationParameters & quasiDenseStereoOptions();
   void updateQuasiDenseStereoOptions();
+
+  const c_cvStereoBinaryBMOptions & StereoBinaryBMOptions() const;
+  c_cvStereoBinaryBMOptions & StereoBinaryBMOptions();
+  void updateStereoBinaryBMOptions();
+
+  const c_cvStereoBinarySGBMOptions & stereoBinarySGBMOptions() const;
+  c_cvStereoBinarySGBMOptions & stereoBinarySGBMOptions();
+  void updateStereoBinarySGBMOptions();
 #endif
 
   const c_ScaleSweep_options & cScaleSweepOptions() const;
@@ -138,19 +225,34 @@ public:
 
 protected:
   bool create_stereo_matcher(const cv::Size & image_size);
+  void reset_all_matchers();
 
 protected:
   stereo_matcher_type matcher_type_ = stereo_matcher_cvStereoBM;
-  cv::Ptr<cv::StereoMatcher> stereoMatcher_;
 
-  c_cvStereoBM_options cvStereoBM_options_;
-  c_cvStereoSGBM_options cvStereoSGBM_options_;
+  cv::Ptr<cv::StereoBM> stereoBM_;
+  c_cvStereoBM_options stereoBM_options_;
+
+  cv::Ptr<cv::StereoSGBM> stereoSGBM_;
+  c_cvStereoSGBM_options stereoSGBM_options_;
+
+  cv::Ptr<cScaleSweepStereoMatcher> scaleSweep_;
   c_ScaleSweep_options cScaleSweep_options_;
 
 #if HAVE_OpenCV_stereo
   cv::Ptr<cv::stereo::QuasiDenseStereo> quasiDenseStereo_;
   cv::stereo::PropagationParameters quasiDenseStereo_options_;
+  cv::Size quasiDenseStereo_image_size_;
+
+  cv::Ptr<cv::stereo::StereoBinaryBM> stereoBinaryBM_;
+  c_cvStereoBinaryBMOptions stereoBinaryBM_options_;
+
+  cv::Ptr<cv::stereo::StereoBinarySGBM> stereoBinarySGBM_;
+  c_cvStereoBinarySGBMOptions stereoBinarySGBM_options_;
+
 #endif
+
+
 
 };
 

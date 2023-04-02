@@ -11,6 +11,9 @@
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/proc/array2d.h>
+
+//#include <opencv2/stereo.hpp>
+
 #include <deque>
 #include <core/debug.h>
 
@@ -551,12 +554,6 @@ bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputA
 {
   ////////////
 
-  //cv::stereo
-
-
-  ////////////
-
-
   if( currentImage.size() != referenceImage.size() ) {
     CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
         currentImage.cols(), currentImage.rows(),
@@ -595,6 +592,12 @@ bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputA
       CF_ERROR("ERROR: Not supported image depth %d", currentImage.depth());
       break;
   }
+
+
+  // cv::stereo::censusTransform(image1, image2, kernelSize, dist1, dist2, type)
+
+
+
 
   return false;
 }

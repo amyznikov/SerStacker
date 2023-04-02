@@ -9,7 +9,7 @@
 #ifndef __c_align_color_channels_routine_h__
 #define __c_align_color_channels_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/image_registration/c_align_color_channels.h>
 
 class c_align_color_channels_routine :

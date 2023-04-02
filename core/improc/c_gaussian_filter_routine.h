@@ -8,7 +8,7 @@
 #ifndef __c_gaussian_filter_routine_h__
 #define __c_gaussian_filter_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/c_gaussian_filter.h>
 
 class c_gaussian_filter_routine:

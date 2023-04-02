@@ -10,7 +10,7 @@
 #define __c_mtf_routine_h__
 
 #include <core/mtf/c_pixinsight_mtf.h>
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 
 class c_mtf_routine :
     public c_image_processor_routine

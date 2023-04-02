@@ -9,7 +9,7 @@
 #ifndef __c_remove_sharp_artifacts_routine_h__
 #define __c_remove_sharp_artifacts_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 
 class c_remove_sharp_artifacts_routine:
     public c_image_processor_routine

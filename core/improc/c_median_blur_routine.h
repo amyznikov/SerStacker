@@ -9,7 +9,7 @@
 #ifndef __c_median_blur_routine_h__
 #define __c_median_blur_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <opencv2/ximgproc.hpp>
 
 class c_median_blur_routine:

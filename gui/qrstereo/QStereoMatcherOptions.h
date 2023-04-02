@@ -13,6 +13,11 @@
 #include "QStereoBMOptions.h"
 #include "QStereoSGBMOptions.h"
 #include "QScaleSweepOptions.h"
+
+#if HAVE_OpenCV_stereo
+# include "QQuasiDenseStereoOptions.h"
+#endif // HAVE_OpenCV_stereo
+
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 class QStereoMatcherOptions :
@@ -40,6 +45,10 @@ protected:
   QStereoBMOptions * stereoBMOptions_ctl = nullptr;
   QStereoSGBMOptions * stereoSGBMOptions_ctl = nullptr;
   QScaleSweepOptions * scaleSweepOptions_ctl = nullptr;
+
+#if HAVE_OpenCV_stereo
+  QQuasiDenseStereoOptions * quasiDenseStereoOptions_ctl = nullptr;
+#endif //HAVE_OpenCV_stereo
 };
 
 #endif /* __QStereoMatcherOptions_h__ */

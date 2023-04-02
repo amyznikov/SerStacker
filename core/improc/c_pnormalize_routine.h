@@ -11,7 +11,7 @@
 #ifndef __c_pnormalize_routine_h__
 #define __c_pnormalize_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/pyrscale.h>
 
 class c_pnormalize_routine :

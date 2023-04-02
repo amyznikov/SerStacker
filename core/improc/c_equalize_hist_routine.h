@@ -9,7 +9,7 @@
 #ifndef __c_equalize_hist_routine_h__
 #define __c_equalize_hist_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/pixtype.h>
 
 class c_equalize_hist_routine:

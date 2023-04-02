@@ -30,7 +30,7 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   add_expandable_groupbox("StereoBM Options",
       stereoBMOptions_ctl = new QStereoBMOptions());
 
-  connect(stereoBMOptions_ctl, &QStereoBMOptions::parameterChanged,
+  connect(stereoBMOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
         if ( stereo_matcher_ ) {
           stereo_matcher_->updateStereoBMOptions();
@@ -41,7 +41,7 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   add_expandable_groupbox("StereoSGBM Options",
       stereoSGBMOptions_ctl = new QStereoSGBMOptions());
 
-  connect(stereoSGBMOptions_ctl, &QStereoSGBMOptions::parameterChanged,
+  connect(stereoSGBMOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
         if ( stereo_matcher_ ) {
           stereo_matcher_->updateStereoSGBMOptions();
@@ -53,13 +53,27 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   add_expandable_groupbox("ScaleSweep Options",
       scaleSweepOptions_ctl = new QScaleSweepOptions());
 
-  connect(scaleSweepOptions_ctl, &QScaleSweepOptions::parameterChanged,
+  connect(scaleSweepOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
         if ( stereo_matcher_ ) {
           stereo_matcher_->updateScaleSweepOptions();
         }
         Q_EMIT parameterChanged();
       });
+
+
+#if HAVE_OpenCV_stereo
+  add_expandable_groupbox("QuasiDenseStereo Options",
+      quasiDenseStereoOptions_ctl = new QQuasiDenseStereoOptions());
+
+  connect(quasiDenseStereoOptions_ctl, &QSettingsWidget::parameterChanged,
+      [this]() {
+        if ( stereo_matcher_ ) {
+          stereo_matcher_->updateQuasiDenseStereoOptions();
+        }
+        Q_EMIT parameterChanged();
+      });
+#endif // HAVE_OpenCV_stereo
 
 
   updateControls();
@@ -85,6 +99,11 @@ void QStereoMatcherOptions::onupdatecontrols()
     stereoBMOptions_ctl->set_options(&stereo_matcher_->StereoBMOptions());
     stereoSGBMOptions_ctl->set_options(&stereo_matcher_->StereoSGBMOptions());
     scaleSweepOptions_ctl->set_options(&stereo_matcher_->ScaleSweepOptions());
+
+#if HAVE_OpenCV_stereo
+    quasiDenseStereoOptions_ctl->set_options(&stereo_matcher_->quasiDenseStereoOptions());
+#endif // HAVE_OpenCV_stereo
+
     Base::onupdatecontrols();
     setEnabled(true);
   }

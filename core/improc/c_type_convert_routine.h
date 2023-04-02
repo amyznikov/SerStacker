@@ -8,7 +8,7 @@
 #ifndef __c_type_convert_routine_h__
 #define __c_type_convert_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/pixtype.h>
 
 class c_type_convert_routine :

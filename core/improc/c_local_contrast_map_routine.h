@@ -9,7 +9,7 @@
 #ifndef __c_local_contrast_map_routine_h__
 #define __c_local_contrast_map_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/sharpness_measure/c_local_contrast_measure.h>
 
 class c_local_contrast_map_routine:

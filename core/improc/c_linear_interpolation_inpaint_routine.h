@@ -9,7 +9,7 @@
 #ifndef __c_linear_interpolation_inpaint_routine_h__
 #define __c_linear_interpolation_inpaint_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
 
 class c_linear_interpolation_inpaint_routine:

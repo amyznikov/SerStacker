@@ -13,8 +13,16 @@
 #ifndef __c_regular_stereo_matcher_h__
 #define __c_regular_stereo_matcher_h__
 
+// Must come from CMakeLists.txt
+// #define HAVE_OpenCV_stereo 1
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>
+
+#if HAVE_OpenCV_stereo
+# include <opencv2/stereo.hpp>
+#endif
+
 #include "c_scale_sweep_stereo_matcher.h"
 #include <core/settings/opencv_settings.h>
 
@@ -22,6 +30,9 @@ enum stereo_matcher_type  {
   stereo_matcher_cvStereoBM,
   stereo_matcher_cvStereoSGBM,
   stereo_matcher_ScaleSweep,
+#if HAVE_OpenCV_stereo
+  stereo_matcher_QuasiDenseStereo,
+#endif
 };
 
 enum StereoBM_PreFilterType
@@ -105,6 +116,12 @@ public:
   c_cvStereoSGBM_options & StereoSGBMOptions();
   void updateStereoSGBMOptions();
 
+#if HAVE_OpenCV_stereo
+  const cv::stereo::PropagationParameters & quasiDenseStereoOptions() const;
+  cv::stereo::PropagationParameters & quasiDenseStereoOptions();
+  void updateQuasiDenseStereoOptions();
+#endif
+
   const c_ScaleSweep_options & cScaleSweepOptions() const;
   c_ScaleSweep_options & ScaleSweepOptions();
   void updateScaleSweepOptions();
@@ -120,15 +137,21 @@ public:
 
 
 protected:
-  bool create_stereo_matcher();
+  bool create_stereo_matcher(const cv::Size & image_size);
 
 protected:
   stereo_matcher_type matcher_type_ = stereo_matcher_cvStereoBM;
-  cv::Ptr<cv::StereoMatcher> matcher_;
+  cv::Ptr<cv::StereoMatcher> stereoMatcher_;
 
   c_cvStereoBM_options cvStereoBM_options_;
   c_cvStereoSGBM_options cvStereoSGBM_options_;
   c_ScaleSweep_options cScaleSweep_options_;
+
+#if HAVE_OpenCV_stereo
+  cv::Ptr<cv::stereo::QuasiDenseStereo> quasiDenseStereo_;
+  cv::stereo::PropagationParameters quasiDenseStereo_options_;
+#endif
+
 };
 
 #endif /* __c_regular_stereo_matcher_h__ */

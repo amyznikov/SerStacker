@@ -9,7 +9,7 @@
 #ifndef __c_average_pyramid_inpaint_routine_h__
 #define __c_average_pyramid_inpaint_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/inpaint.h>
 
 class c_average_pyramid_inpaint_routine :

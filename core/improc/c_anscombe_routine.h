@@ -9,7 +9,7 @@
 #ifndef __c_anscombe_routine_h__
 #define __c_anscombe_routine_h__
 
-#include "c_image_processor.h"
+#include <core/improc/c_image_processor.h>
 #include <core/proc/c_anscombe_transform.h>
 
 class c_anscombe_routine

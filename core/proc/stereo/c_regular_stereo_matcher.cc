@@ -15,6 +15,9 @@ const c_enum_member* members_of<stereo_matcher_type>()
   static constexpr c_enum_member members[] = {
       { stereo_matcher_cvStereoBM, "StereoBM", "cv::StereoSGBM" },
       { stereo_matcher_cvStereoSGBM, "StereoSGBM", "cv::StereoSGBM" },
+#if HAVE_OpenCV_stereo
+      { stereo_matcher_QuasiDenseStereo, "QuasiDenseStereo", "cv::stereo::QuasiDenseStereo" },
+#endif
       { stereo_matcher_ScaleSweep, "ScaleSweep", "cScaleSweepStereoMatcher" },
       { stereo_matcher_cvStereoSGBM },
   };
@@ -51,12 +54,30 @@ const c_enum_member* members_of<StereoSGBM_Mode>()
 
 c_regular_stereo_matcher::c_regular_stereo_matcher()
 {
+#if HAVE_OpenCV_stereo
+  // copied from opencv_contrib/modules/stereo/src/quasi_dense_stereo.cpp
+  quasiDenseStereo_options_.borderX = 15;
+  quasiDenseStereo_options_.borderY = 15;
+  quasiDenseStereo_options_.corrWinSizeX = 5;
+  quasiDenseStereo_options_.corrWinSizeY = 5;
+  quasiDenseStereo_options_.correlationThreshold = (float)0.5;
+  quasiDenseStereo_options_.textrureThreshold = 200;
+  quasiDenseStereo_options_.neighborhoodSize = 5;
+  quasiDenseStereo_options_.disparityGradient = 1;
+  quasiDenseStereo_options_.lkTemplateSize = 3;
+  quasiDenseStereo_options_.lkPyrLvl = 3;
+  quasiDenseStereo_options_.lkTermParam1 = 3;
+  quasiDenseStereo_options_.lkTermParam2 = (float)0.003;
+  quasiDenseStereo_options_.gftQualityThres = (float)0.01;
+  quasiDenseStereo_options_.gftMinSeperationDist = 10;
+  quasiDenseStereo_options_.gftMaxNumFeatures = 500;
+#endif
 }
 
 void c_regular_stereo_matcher::set_matcher_type(stereo_matcher_type v)
 {
   matcher_type_ = v;
-  matcher_.reset();
+  stereoMatcher_.reset();
 }
 
 stereo_matcher_type c_regular_stereo_matcher::matcher_type() const
@@ -77,10 +98,10 @@ c_cvStereoBM_options& c_regular_stereo_matcher::StereoBMOptions()
 void c_regular_stereo_matcher::updateStereoBMOptions()
 {
   try {
-    if( matcher_ ) {
+    if( stereoMatcher_ ) {
 
       cv::StereoBM *m =
-          dynamic_cast<cv::StereoBM*>(matcher_.get());
+          dynamic_cast<cv::StereoBM*>(stereoMatcher_.get());
 
       if( m ) {
 
@@ -105,7 +126,9 @@ void c_regular_stereo_matcher::updateStereoBMOptions()
     }
   }
   catch( const std::exception &e ) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoBM(): %s", e.what());
+    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoBM():\n"
+        "%s",
+        e.what());
   }
 }
 
@@ -122,10 +145,10 @@ c_cvStereoSGBM_options & c_regular_stereo_matcher::StereoSGBMOptions()
 void c_regular_stereo_matcher::updateStereoSGBMOptions()
 {
   try {
-    if( matcher_ ) {
+    if( stereoMatcher_ ) {
 
       cv::StereoSGBM *m =
-          dynamic_cast<cv::StereoSGBM*>(matcher_.get());
+          dynamic_cast<cv::StereoSGBM*>(stereoMatcher_.get());
 
       if( m ) {
 
@@ -147,10 +170,39 @@ void c_regular_stereo_matcher::updateStereoSGBMOptions()
     }
   }
   catch( const std::exception &e ) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoSGBM(): %s",
+    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoSGBM():\n"
+        "%s",
         e.what());
   }
 }
+
+#if HAVE_OpenCV_stereo
+
+const cv::stereo::PropagationParameters & c_regular_stereo_matcher::quasiDenseStereoOptions() const
+{
+  return quasiDenseStereo_options_;
+}
+
+cv::stereo::PropagationParameters & c_regular_stereo_matcher::quasiDenseStereoOptions()
+{
+  return quasiDenseStereo_options_;
+}
+
+void c_regular_stereo_matcher::updateQuasiDenseStereoOptions()
+{
+  try {
+    if( quasiDenseStereo_ ) {
+      quasiDenseStereo_->Param = quasiDenseStereo_options_;
+    }
+  }
+  catch( const std::exception &e ) {
+    CF_ERROR("Exception in c_regular_stereo_matcher::updateStereoSGBM():\n"
+        "%s",
+        e.what());
+  }
+}
+
+#endif // HAVE_OpenCV_stereo
 
 
 const c_ScaleSweep_options & c_regular_stereo_matcher::cScaleSweepOptions() const
@@ -166,10 +218,10 @@ c_ScaleSweep_options & c_regular_stereo_matcher::ScaleSweepOptions()
 void c_regular_stereo_matcher::updateScaleSweepOptions()
 {
   try {
-    if( matcher_ ) {
+    if( stereoMatcher_ ) {
 
       cScaleSweepStereoMatcher *m =
-          dynamic_cast<cScaleSweepStereoMatcher*>(matcher_.get());
+          dynamic_cast<cScaleSweepStereoMatcher*>(stereoMatcher_.get());
 
       if( m ) {
 
@@ -187,7 +239,8 @@ void c_regular_stereo_matcher::updateScaleSweepOptions()
     }
   }
   catch( const std::exception &e ) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::updateScaleSweepOptions(): %s",
+    CF_ERROR("Exception in c_regular_stereo_matcher::updateScaleSweepOptions():\n"
+        "%s",
         e.what());
   }
 
@@ -201,10 +254,14 @@ double c_regular_stereo_matcher::currentMaxDisparity() const
       return cvStereoBM_options_.numDisparities;
     case stereo_matcher_cvStereoSGBM:
       return cvStereoSGBM_options_.numDisparities;
+#if HAVE_OpenCV_stereo
+    case stereo_matcher_QuasiDenseStereo:
+      return 128;
+#endif // HAVE_OpenCV_stereo
     case stereo_matcher_ScaleSweep:
       return cScaleSweep_options_.max_disparity;
   }
-  return 16;
+  return 64;
 }
 
 int c_regular_stereo_matcher::currentReferenceImageIndex() const
@@ -214,6 +271,10 @@ int c_regular_stereo_matcher::currentReferenceImageIndex() const
       return 0;
     case stereo_matcher_cvStereoSGBM:
       return 0;
+#if HAVE_OpenCV_stereo
+    case stereo_matcher_QuasiDenseStereo:
+      return 0;
+#endif // HAVE_OpenCV_stereo
     case stereo_matcher_ScaleSweep:
       return 1;
   }
@@ -221,9 +282,15 @@ int c_regular_stereo_matcher::currentReferenceImageIndex() const
 }
 
 
-bool c_regular_stereo_matcher::create_stereo_matcher()
+bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size)
 {
   try {
+
+#if HAVE_OpenCV_stereo
+    quasiDenseStereo_.reset();
+#endif
+
+    stereoMatcher_.reset();
 
     switch (matcher_type_) {
       case stereo_matcher_cvStereoBM: {
@@ -248,7 +315,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
         // m->setROI1(opts.roi1);
         // m->setROI2(opts.roi2);
 
-        matcher_ = m;
+        stereoMatcher_ = m;
         break;
       }
 
@@ -270,7 +337,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
                 opts.speckleRange,
                 opts.mode);
 
-        matcher_ = m;
+        stereoMatcher_ = m;
         break;
       }
 
@@ -291,9 +358,22 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
         m->set_debug_directory(opts.debug_directory);
         m->set_debug_points(opts.debug_points);
 
-        matcher_ = m;
+        stereoMatcher_ = m;
         break;
       }
+
+#if HAVE_OpenCV_stereo
+      case stereo_matcher_QuasiDenseStereo: {
+
+        quasiDenseStereo_ =
+            cv::stereo::QuasiDenseStereo::create(image_size);
+
+        quasiDenseStereo_->Param =
+            quasiDenseStereo_options_;
+
+        break;
+      }
+#endif // HAVE_OpenCV_stereo
 
       default:
         CF_ERROR("Unsupported matcher_type=%d specified",
@@ -302,7 +382,8 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
     }
   }
   catch( const std::exception &e ) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::create_stereo_matcher(): %s", e.what());
+    CF_ERROR("Exception in c_regular_stereo_matcher::create_stereo_matcher():\n"
+        "%s", e.what());
     return false;
   }
 
@@ -311,65 +392,93 @@ bool c_regular_stereo_matcher::create_stereo_matcher()
 
 bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
 {
-  if( !matcher_ && !create_stereo_matcher() ) {
-    CF_ERROR("create_stereo_matcher() fails");
-    return false;
-  }
-
   try {
+
+    if( !stereoMatcher_ && !create_stereo_matcher(left.size()) ) {
+      CF_ERROR("create_stereo_matcher() fails");
+      return false;
+    }
 
     cv::Mat images[2];
 
-    if( left.channels() == 1 ) {
+#if HAVE_OpenCV_stereo
+    if ( quasiDenseStereo_ ) {
+
       images[0] = left.getMat();
-    }
-    else {
-      cv::cvtColor(left, images[0], cv::COLOR_BGR2GRAY);
-    }
-
-    if( right.channels() == 1 ) {
       images[1] = right.getMat();
+
+      quasiDenseStereo_->process(images[0], images[1]);
+
+      cv::Mat disp =
+          quasiDenseStereo_->getDisparity();
+
+      CF_DEBUG("disp: %dx%d depth=%d channels=%d", disp.cols, disp.rows,
+          disp.depth(), disp.channels());
+
+      disparity.move(disp);
+
+      return true;
     }
-    else {
-      cv::cvtColor(right, images[1], cv::COLOR_BGR2GRAY);
-    }
+#endif // HAVE_OpenCV_stereo
 
-    matcher_->compute(images[0], images[1], disparity);
+    if ( stereoMatcher_ ) {
 
-    if( disparity.empty() ) {
-      CF_ERROR("matcher_->compute() fails");
-    }
-    else {
-
-      // These constands are copied from /opencv/modules/calib3d/src/stereobm.cpp
-      static constexpr int DISPARITY_SHIFT_16S = 4;
-      static constexpr int DISPARITY_SHIFT_32S = 8;
-
-      switch (disparity.type()) {
-        case CV_16SC1:
-          disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_16S), 0);
-          break;
-        case CV_32SC1:
-          disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_32S), 0);
-          break;
-        case CV_32FC1:
-          //disps = disparity_map.getMat();
-          // disparity_map.getMat().copyTo(disps);
-          break;
-        default:
-          CF_ERROR("Invalid arg: the disparity map type=%d not supported. "
-              "Must be one of CV_32FC1, CV_16SC1, CV_32SC1");
-          return false;
+      if( left.channels() == 1 ) {
+        images[0] = left.getMat();
       }
+      else {
+        cv::cvtColor(left, images[0], cv::COLOR_BGR2GRAY);
+      }
+
+      if( right.channels() == 1 ) {
+        images[1] = right.getMat();
+      }
+      else {
+        cv::cvtColor(right, images[1], cv::COLOR_BGR2GRAY);
+      }
+
+      stereoMatcher_->compute(images[0], images[1], disparity);
+
+      if( disparity.empty() ) {
+        CF_ERROR("matcher_->compute() fails");
+      }
+      else {
+
+        // These constands are copied from /opencv/modules/calib3d/src/stereobm.cpp
+        static constexpr int DISPARITY_SHIFT_16S = 4;
+        static constexpr int DISPARITY_SHIFT_32S = 8;
+
+        switch (disparity.type()) {
+          case CV_16SC1:
+            disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_16S), 0);
+            break;
+          case CV_32SC1:
+            disparity.getMat().convertTo(disparity, CV_32F, 1. / (1 << DISPARITY_SHIFT_32S), 0);
+            break;
+          case CV_32FC1:
+            //disps = disparity_map.getMat();
+            // disparity_map.getMat().copyTo(disps);
+            break;
+          default:
+            CF_ERROR("Invalid arg: the disparity map type=%d not supported. "
+                "Must be one of CV_32FC1, CV_16SC1, CV_32SC1");
+            return false;
+        }
+      }
+
+      return true;
     }
   }
   catch( const std::exception &e ) {
-    CF_ERROR("Exception in c_regular_stereo_matcher::compute(): %s",
+    CF_ERROR("Exception in c_regular_stereo_matcher::compute():\n"
+        "%s",
         e.what());
-    return false;
+  }
+  catch( ... ) {
+    CF_ERROR("Unknown Exception in c_regular_stereo_matcher::compute()");
   }
 
-  return true;
+  return false;
 }
 
 bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
@@ -417,6 +526,30 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, mode);
   }
 
+#if HAVE_OpenCV_stereo
+  if( (section = SERIALIZE_GROUP(settings, save, "QuasiDenseStereo")) ) {
+
+    cv::stereo::PropagationParameters &opts =
+        quasiDenseStereo_options_;
+
+    SERIALIZE_OPTION(section, save, opts, corrWinSizeX);
+    SERIALIZE_OPTION(section, save, opts, corrWinSizeY);
+    SERIALIZE_OPTION(section, save, opts, borderX);
+    SERIALIZE_OPTION(section, save, opts, borderY);
+    SERIALIZE_OPTION(section, save, opts, correlationThreshold);
+    SERIALIZE_OPTION(section, save, opts, textrureThreshold);
+    SERIALIZE_OPTION(section, save, opts, neighborhoodSize);
+    SERIALIZE_OPTION(section, save, opts, disparityGradient);
+    SERIALIZE_OPTION(section, save, opts, lkTemplateSize);
+    SERIALIZE_OPTION(section, save, opts, lkPyrLvl);
+    SERIALIZE_OPTION(section, save, opts, lkTermParam1);
+    SERIALIZE_OPTION(section, save, opts, lkTermParam2);
+    SERIALIZE_OPTION(section, save, opts, gftQualityThres);
+    SERIALIZE_OPTION(section, save, opts, gftMinSeperationDist);
+    SERIALIZE_OPTION(section, save, opts, gftMaxNumFeatures);
+  }
+#endif // HAVE_OpenCV_stereo
+
   if( (section = SERIALIZE_GROUP(settings, save, "ScaleSweep")) ) {
 
     c_ScaleSweep_options & opts  =
@@ -430,6 +563,7 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, debug_directory);
     SERIALIZE_OPTION(section, save, opts, debug_points);
   }
+
 
   return true;
 }

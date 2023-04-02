@@ -15,9 +15,9 @@
 
 #include <opencv2/opencv.hpp>
 
-#if HAVE_xfeatures2d
+#if HAVE_OpenCV_xfeatures2d
 # include <opencv2/xfeatures2d.hpp>
-#endif // HAVE_xfeatures2d
+#endif // HAVE_OpenCV_xfeatures2d
 
 #include "c_star_extractor.h"
 #define HAVE_STAR_EXTRACTOR 1
@@ -42,7 +42,7 @@
 #endif
 
 #if ( CV_VERSION_CURRRENT < CV_VERSION_INT(4,4,0) )
-#if HAVE_xfeatures2d
+#if HAVE_OpenCV_xfeatures2d
 using SIFT = xfeatures2d::SIFT;
 using SURF = xfeatures2d::SURF;
 
@@ -62,7 +62,7 @@ using SURF = xfeatures2d::SURF;
 #else
 using SIFT = cv::SIFT;
 #define HAVE_FEATURE2D_SIFT 1
-#if HAVE_xfeatures2d
+#if HAVE_OpenCV_xfeatures2d
 using SURF = cv::xfeatures2d::SURF;
 
 #define HAVE_FEATURE2D_BRIEF  1

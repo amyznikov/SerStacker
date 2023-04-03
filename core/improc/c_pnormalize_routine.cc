@@ -7,7 +7,7 @@
 
 #include "c_pnormalize_routine.h"
 
-void c_pnormalize_routine::pnormalize(const cv::Mat & src, cv::Mat & dst, int pscale)
+void c_pnormalize_routine::pnormalize(const cv::Mat & src, cv::Mat & dst, int pscale, PIXEL_DEPTH ddepth)
 {
   cv::Mat m;
   cv::Scalar mean, stdev;
@@ -24,14 +24,14 @@ void c_pnormalize_routine::pnormalize(const cv::Mat & src, cv::Mat & dst, int ps
     cv::cvtColor(m, m, cv::COLOR_GRAY2BGR);
   }
 
-  m.convertTo(m, CV_32F);
-  cv::subtract(src, m, m, cv::noArray(), CV_32F);
+  cv::subtract(src, m, dst, cv::noArray(), ddepth);
 
-  cv::meanStdDev(m, mean, stdev);
-  for( int i = 0, cn = src.channels(); i < cn; ++i ) {
-    f += stdev[i];
-  }
-
-  m.convertTo(dst, CV_8U, 24. * src.channels() / f, 128);
+//
+//  cv::meanStdDev(m, mean, stdev);
+//  for( int i = 0, cn = src.channels(); i < cn; ++i ) {
+//    f += stdev[i];
+//  }
+//
+//  m.convertTo(dst, CV_8U, 24. * src.channels() / f, 128);
 }
 

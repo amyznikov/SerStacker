@@ -12,6 +12,7 @@
 #define __c_pnormalize_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/pixtype.h>
 #include <core/proc/pyrscale.h>
 
 class c_pnormalize_routine :
@@ -31,16 +32,27 @@ public:
     return scale_;
   }
 
+  void set_ddepth(PIXEL_DEPTH v)
+  {
+    ddepth_ = v;
+  }
+
+  PIXEL_DEPTH ddepth() const
+  {
+    return ddepth_;
+  }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, scale, "Gaussian pyramid scale (max level)");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ddepth, "Destination image depth");
   }
 
   bool serialize(c_config_setting settings, bool save) override
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, scale);
+      SERIALIZE_PROPERTY(settings, save, *this, ddepth);
       return true;
     }
     return false;
@@ -49,38 +61,19 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     if( scale_ > 0 ) {
-
-      pnormalize(image.getMat(), image.getMatRef(), scale_);
-//
-//      if( image.depth() != CV_32F ) {
-//        image.getMat().convertTo(image, CV_32F);
-//      }
-//
-//
-//      pyramid_downscale(image, m, scale_, cv::BORDER_REPLICATE);
-//      pyramid_upscale(m, image.size());
-//      cv::subtract(image, m, m);
-//
-//      cv::Scalar mean, stdev;
-//      double f = 0;
-//
-//      cv::meanStdDev(m, mean, stdev, mask);
-//
-//      for( int i = 0, cn = image.channels(); i < cn; ++i ) {
-//        f += stdev[i];
-//      }
-//
-//      cv::multiply(m, cv::Scalar::all(1. / f), image);
+      pnormalize(image.getMat(), image.getMatRef(), scale_, ddepth_);
     }
 
     return true;
   }
 
-  static void pnormalize(const cv::Mat & src, cv::Mat & dst, int pscale);
+  static void pnormalize(const cv::Mat & src, cv::Mat & dst, int pscale, PIXEL_DEPTH ddepth);
 
 protected:
   // cv::Mat m;
   int scale_ = 3;
+  PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_32F;
+
 };
 
 #endif /* __c_pnormalize_routine_h__ */

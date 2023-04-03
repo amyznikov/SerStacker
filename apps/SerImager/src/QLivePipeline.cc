@@ -465,7 +465,6 @@ void QLivePipelineThread::run()
   CF_DEBUG("enter");
 
   cv::Mat inputImage;
-  bool haveInputImage;
   bool haveException = false;
 
   int last_frame_index = -1;
@@ -484,7 +483,7 @@ void QLivePipelineThread::run()
 
     while (!finish_) {
 
-      haveInputImage = false;
+      bool haveInputImage = false;
 
       if( 42 ) {
 

@@ -208,7 +208,8 @@ void QImageViewer::setCurrentFileName(const QString & newFileName)
 
 void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
 {
-  INSTRUMENT_REGION("");
+  // c_current_image_lock lock(this);
+
   editMaskUndoQueue_.clear();
 
   if( image.empty() ) {
@@ -435,10 +436,21 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
   char buf[2048] = "";
   int n = 0;
 
-  QPointF pos = view_->mapToScene(viewpos);
-  const int x = pos.x(), y = pos.y();
+  QPointF pos =
+      view_->mapToScene(viewpos);
 
-  n += snprintf(buf + n, sizeof(buf) - 1 - n, "x=%g y=%g", pos.x(), pos.y());
+  const int x =
+      pos.x();
+
+  const int y =
+      pos.y();
+
+  n += snprintf(buf + n, sizeof(buf) - 1 - n,
+      "x=%g y=%g",
+      pos.x(),
+      pos.y());
+
+  //c_current_image_lock lock(this);
 
   if ( !currentImageData_.empty() ) {
     n = sdump(currentImageData_, x, y, buf, sizeof(buf) - 1 - n, n);
@@ -525,6 +537,8 @@ void QImageViewer::updateCursor()
 
 void QImageViewer::editMask(QMouseEvent * e)
 {
+  //c_current_image_lock lock(this);
+
   if( !currentImage_.empty() ) {
 
     if( currentMask_.empty() ) {
@@ -571,10 +585,12 @@ void QImageViewer::editMask(QMouseEvent * e)
 
 void QImageViewer::undoEditMask()
 {
-  if ( !editMaskUndoQueue_.empty() ) {
+  //c_current_image_lock lock(this);
+
+  if( !editMaskUndoQueue_.empty() ) {
 
     cv::Mat mask = editMaskUndoQueue_.pop();
-    if ( mask.size() == currentImage_.size() ) {
+    if( mask.size() == currentImage_.size() ) {
       currentMask_ = mask;
       Q_EMIT currentImageChanged();
       updateDisplay();

@@ -31,7 +31,7 @@ public:
 
   enum OverlayMode {
     OverlayNone,
-    OverlayAdd,
+    OverlayAddWeighted,
     OverlayAbsdiff,
   };
 
@@ -214,7 +214,7 @@ public:
         break;
       }
 
-      case OverlayAdd: {
+      case OverlayAddWeighted: {
 
         const cv::Mat &left_image =
             images[0];
@@ -222,8 +222,8 @@ public:
         const cv::Mat &right_image =
             images[1];
 
-        image.create(right_image.size(),
-            right_image.type());
+        image.create(left_image.size(),
+            left_image.type());
 
         cv::Mat &dst_image =
             image.getMatRef();
@@ -233,7 +233,7 @@ public:
         cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
             0.5,
             right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
-            0, dst_image);
+            0, dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
 
         if( mask.needed() && !mask.empty() ) {
 
@@ -253,7 +253,7 @@ public:
 
           cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
               right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-              dst_mask);
+              dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
         }
 
         break;
@@ -267,8 +267,8 @@ public:
         const cv::Mat &right_image =
             images[1];
 
-        image.create(right_image.size(),
-            right_image.type());
+        image.create(left_image.size(),
+            left_image.type());
 
         cv::Mat &dst_image =
             image.getMatRef();
@@ -277,7 +277,7 @@ public:
 
         cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
             right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_image);
+            dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
 
         if( mask.needed() && !mask.empty() ) {
 
@@ -297,7 +297,7 @@ public:
 
           cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
               right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-              dst_mask);
+              dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
         }
 
         break;

@@ -89,6 +89,8 @@ void QImageEditor::updateImage()
 
     hasPendingUpdates_ = false;
 
+   // c_current_image_lock lock(this);
+
     if ( inputImage_.empty() ) {
       currentImage_.release();
       currentMask_.release();
@@ -103,7 +105,6 @@ void QImageEditor::updateImage()
         current_processor_->process(currentImage_, currentMask_);
       }
     }
-
 
     updateDisplay();
   }

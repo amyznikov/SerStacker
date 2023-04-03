@@ -79,12 +79,6 @@ public:
 
     cv::Mat dist1(gray.size(), CV_32SC1);
     cv::stereo::censusTransform(gray, kernel_size_, dist1, census_type_);
-
-//    CF_DEBUG("dist1: %dx%d depth=%d channels=%d",
-//        dist1.cols, dist1.rows,
-//        dist1.depth(),
-//        dist1.channels());
-
     dist1.copyTo(image);
 
     return true;

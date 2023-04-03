@@ -12,7 +12,7 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
 {
   static constexpr c_enum_member members[] = {
       { c_stereo_rectification_routine::OverlayNone, "None", "No overlay" },
-      { c_stereo_rectification_routine::OverlayAdd, "Add", "cv::addWeighted(left, right)" },
+      { c_stereo_rectification_routine::OverlayAddWeighted, "addWeighted", "cv::addWeighted(left, right)" },
       { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
       { c_stereo_rectification_routine::OverlayNone },
   };

@@ -262,9 +262,7 @@ void QVideoFrameDisplay::setFrameProcessor(const c_image_processor::sptr & proce
   }
 
   mtfDisplayFunction_.mutex().unlock();
-
 }
-
 
 QGraphicsRectShape * QVideoFrameDisplay::rectShape() const
 {
@@ -291,7 +289,6 @@ void QVideoFrameDisplay::hideEvent(QHideEvent *event)
   Base::hideEvent(event);
 }
 
-
 void QVideoFrameDisplay::onPixmapChanged()
 {
   c_unique_lock lock(mtfDisplayFunction_.mutex());
@@ -311,9 +308,14 @@ void QVideoFrameDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, 
     currentMask_ = inputMask_;
   }
   else {
-    inputImage_.copyTo(currentImage_);
-    inputMask_.copyTo(currentMask_);
-    current_processor_->process(currentImage_, currentMask_);
+
+    cv::Mat tmp_image, tmp_mask;
+
+    inputImage_.copyTo(tmp_image);
+    inputMask_.copyTo(tmp_mask);
+    current_processor_->process(tmp_image, tmp_mask);
+    currentImage_ = tmp_image;
+    currentMask_ = tmp_mask;
   }
 
   mtfDisplayFunction_.createDisplayImage(

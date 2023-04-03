@@ -14,9 +14,8 @@
 class QImageViewer:
     public QWidget
 {
-Q_OBJECT
-  ;
-  public:
+Q_OBJECT;
+public:
   typedef QImageViewer ThisClass;
   typedef QWidget Base;
 
@@ -128,6 +127,7 @@ protected:
   cv::Mat displayImage_;
   QImage qimage_;
 
+
   bool transparentMask_ = true;
   bool enableEditMask_ = false;
   int editMaskPenRadius_ = 5;
@@ -135,6 +135,23 @@ protected:
   // QAction * undoEditMaskAction_ = nullptr;
   QShortcut *undoEditMaskActionShortcut_ = nullptr;
   QStack<cv::Mat> editMaskUndoQueue_;
+
+
+  std::mutex currentImageLock_;
+
+  class c_current_image_lock:
+      public std::lock_guard<std::mutex>
+  {
+  public:
+    typedef c_current_image_lock this_class;
+    typedef std::lock_guard<std::mutex> base;
+
+    c_current_image_lock(QImageViewer * view) :
+        base(view->currentImageLock_)
+    {
+    }
+  };
+
 };
 
 #endif /* __QImageViewer_h__ */

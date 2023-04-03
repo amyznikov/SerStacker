@@ -18,9 +18,9 @@ QLiveRegularStereoOptions::QLiveRegularStereoOptions(QWidget * parent) :
 QLiveRegularStereoOptions::QLiveRegularStereoOptions(QLiveRegularStereoPipeline * pipeline, QWidget * parent) :
     Base("", parent)
 {
-  addRow(options_ctl = new QRegularStereoOptions());
-  options_ctl->layout()->setContentsMargins(0, 0, 0, 0);
-  connect(options_ctl, &QSettingsWidget::parameterChanged,
+  addRow(regularStereoOptions_ctl = new QRegularStereoOptions());
+  regularStereoOptions_ctl->layout()->setContentsMargins(0, 0, 0, 0);
+  connect(regularStereoOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
   setPipeline(pipeline);
@@ -58,12 +58,12 @@ void QLiveRegularStereoOptions::onupdatecontrols()
 {
   if ( !pipeline_ ) {
     setEnabled(false);
-    options_ctl->set_rstereo(nullptr);
+    regularStereoOptions_ctl->set_rstereo(nullptr);
   }
   else {
 
-    options_ctl->set_rstereo(&*pipeline_);
-    options_ctl->updateRunTimeStateControls(pipeline_->isRunning());
+    regularStereoOptions_ctl->set_rstereo(&*pipeline_);
+    regularStereoOptions_ctl->updateRunTimeStateControls(pipeline_->isRunning());
     Base::onupdatecontrols();
     setEnabled(true);
   }

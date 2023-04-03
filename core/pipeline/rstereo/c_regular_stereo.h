@@ -11,7 +11,16 @@
 
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
+#include <core/improc/c_image_processor.h>
 #include <core/settings/opencv_settings.h>
+
+struct c_regular_stereo_image_processing_options
+{
+  c_image_processor::sptr input_image_processor;
+  c_image_processor::sptr stereo_match_preprocessor;
+  c_image_processor::sptr output_image_processor;
+};
+
 
 class c_regular_stereo
 {
@@ -28,6 +37,9 @@ public:
   c_regular_stereo_matcher& stereo_matcher();
   const c_regular_stereo_matcher& stereo_matcher() const;
 
+  c_regular_stereo_image_processing_options & image_processing_options() ;
+  const c_regular_stereo_image_processing_options & image_processing_options() const;
+
 protected:
   bool initialize();
   void cleanup();
@@ -41,7 +53,10 @@ protected:
 protected:
   std::string camera_intrinsics_yml_;
   std::string camera_extrinsics_yml_;
+
   c_regular_stereo_matcher stereo_matcher_;
+  c_regular_stereo_image_processing_options image_processing_options_;
+
   c_stereo_camera_intrinsics stereo_intrinsics_;
   c_stereo_camera_extrinsics stereo_extrinsics_;
   c_stereo_camera_intrinsics new_intrinsics_;

@@ -12,6 +12,7 @@
 #include "QLiveRegularStereoPipeline.h"
 #include <gui/qrstereo/QRegularStereoOptions.h>
 
+
 namespace serimager {
 
 class QLiveRegularStereoOptions :
@@ -36,7 +37,7 @@ protected:
 
 protected:
   QLiveRegularStereoPipeline * pipeline_ = nullptr;
-  QRegularStereoOptions * options_ctl = nullptr;
+  QRegularStereoOptions * regularStereoOptions_ctl = nullptr;
 };
 
 } /* namespace serimager */

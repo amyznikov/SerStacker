@@ -57,13 +57,21 @@ bool QLiveRegularStereoPipeline::process_frame(const cv::Mat & image, COLORID co
   frames[0] = currentImage(roi[0]);
   frames[1] = currentImage(roi[1]);
 
+  if( image_processing_options_.input_image_processor ) {
+    for( int i = 0; i < 2; ++i ) {
+      if( !image_processing_options_.input_image_processor->process(frames[i], masks[i]) ) {
+        CF_ERROR("input_image_processor->process() fails");
+        return false;
+      }
+    }
+  }
+
   if ( !c_regular_stereo::process_stereo_frame(frames, masks) ) {
     CF_ERROR("c_regular_stereo::process_stereo_frame() fails");
     return false;
   }
 
   return true;
-
 }
 
 bool QLiveRegularStereoPipeline::get_display_image(cv::Mat * displayImage, COLORID * colorid, int *bpp)

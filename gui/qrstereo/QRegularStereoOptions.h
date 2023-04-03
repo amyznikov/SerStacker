@@ -10,6 +10,7 @@
 #define __QRegularStereoOptions_h__
 
 #include "QStereoMatcherOptions.h"
+#include "QRStereoImageProcessingOptions.h"
 #include <core/pipeline/rstereo/c_regular_stereo.h>
 
 class QRegularStereoOptions :
@@ -35,6 +36,8 @@ protected:
   QBrowsePathCombo * camera_intrinsics_yml_ctl = nullptr;
   QBrowsePathCombo * camera_extrinsics_yml_ctl = nullptr;
   QStereoMatcherOptions * stereoMatcherOptions_ctl = nullptr;
+  QRStereoImageProcessingOptions * imageProcessingOptions_ctl = nullptr;
+
 };
 
 #endif /* __QRegularStereoOptions_h__ */

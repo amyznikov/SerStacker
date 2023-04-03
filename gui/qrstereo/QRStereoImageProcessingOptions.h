@@ -11,7 +11,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
-#include <core/pipeline/c_regular_stereo_pipeline.h>
+#include <core/pipeline/rstereo/c_regular_stereo.h>
 
 class QRStereoImageProcessingOptions :
     public QSettingsWidget
@@ -22,15 +22,14 @@ public:
 
   QRStereoImageProcessingOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_regular_stereo_pipeline::sptr & pipeline);
-  const c_regular_stereo_pipeline::sptr & current_pipeline() const;
+  void set_options(c_regular_stereo_image_processing_options * options);
+  c_regular_stereo_image_processing_options * options() const;
 
 protected:
   void onupdatecontrols() override;
-  void populatesources();
 
 protected:
-  c_regular_stereo_pipeline::sptr pipeline_;
+  c_regular_stereo_image_processing_options * options_ = nullptr;
 
   QImageProcessorSelectionCombo * input_image_processor_ctl = nullptr;
   QImageProcessorSelectionCombo * stereo_match_preprocessor_ctl = nullptr;

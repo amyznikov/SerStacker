@@ -246,6 +246,8 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
           1, summ,
           CV_MAKETYPE(CV_32F, left_image.channels()));
 
+      cv::GaussianBlur(summ, summ, cv::Size(5, 5), 1, 1, cv::BORDER_REPLICATE);
+
       cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
           right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
           diff);

@@ -41,6 +41,16 @@ const c_regular_stereo_matcher& c_regular_stereo::stereo_matcher() const
   return stereo_matcher_;
 }
 
+c_regular_stereo_image_processing_options & c_regular_stereo::image_processing_options()
+{
+  return image_processing_options_;
+}
+
+const c_regular_stereo_image_processing_options & c_regular_stereo::image_processing_options() const
+{
+  return image_processing_options_;
+}
+
 bool c_regular_stereo::canceled() const
 {
   return false;
@@ -55,6 +65,12 @@ bool c_regular_stereo::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "stereo_matcher")) ) {
     stereo_matcher_.serialize(settings, save);
+  }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, input_image_processor);
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, stereo_match_preprocessor);
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, output_image_processor);
   }
 
   return true;

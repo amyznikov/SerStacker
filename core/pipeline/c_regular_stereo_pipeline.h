@@ -14,7 +14,6 @@
 
 #include <core/feature2d/feature2d.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
-#include <core/improc/c_image_processor.h>
 #include <core/io/c_output_frame_writer.h>
 #include <core/proc/stereo/c_scale_sweep_stereo_matcher.h>
 
@@ -38,7 +37,8 @@ struct c_regular_stereo_input_options
 };
 
 
-struct c_regular_stereo_feature2d_options {
+struct c_regular_stereo_feature2d_options
+{
   double scale = 0.5;
   c_sparse_feature_extractor_options sparse_feature_extractor;
   c_feature2d_matcher_options sparse_feature_matcher;
@@ -71,13 +71,6 @@ struct c_regular_stereo_matching_options
   std::vector<int> debug_frames;
   std::vector<cv::Point> debug_points;
 
-};
-
-struct c_regular_stereo_image_processing_options
-{
-  c_image_processor::sptr input_image_processor;
-  c_image_processor::sptr stereo_match_preprocessor;
-  c_image_processor::sptr output_image_processor;
 };
 
 

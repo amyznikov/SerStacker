@@ -68,7 +68,7 @@ void QRStereoOptions::onupdatecontrols()
     feature2DOptions_ctl->set_feature2d_options(nullptr);
     stereoCalibrateOptions_ctl->set_current_pipeline(nullptr);
     stereoMatchingOptions_ctl->set_current_pipeline(nullptr);
-    imageProcessingOptions_ctl->set_current_pipeline(nullptr);
+    imageProcessingOptions_ctl->set_options(nullptr);
     outputOptions_ctl->set_current_pipeline(nullptr);
   }
   else {
@@ -77,7 +77,7 @@ void QRStereoOptions::onupdatecontrols()
     feature2DOptions_ctl->set_feature2d_options(&pipeline_->feature2d_options());
     stereoCalibrateOptions_ctl->set_current_pipeline(pipeline_);
     stereoMatchingOptions_ctl->set_current_pipeline(pipeline_);
-    imageProcessingOptions_ctl->set_current_pipeline(pipeline_);
+    imageProcessingOptions_ctl->set_options(&pipeline_->image_processing_options());
     outputOptions_ctl->set_current_pipeline(pipeline_);
 
     Base::onupdatecontrols();

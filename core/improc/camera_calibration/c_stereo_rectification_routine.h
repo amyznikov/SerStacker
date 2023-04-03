@@ -29,6 +29,13 @@ public:
       "stereo_rectification",
       "Apply stereo rectification to horizontal layout stereo frame.<br>");
 
+  enum OverlayMode {
+    OverlayNone,
+    OverlayAdd,
+    OverlayAbsdiff,
+  };
+
+
   void set_intrinsics_filename(const std::string & v)
   {
     stereo_intrinsics_filename_  = v;
@@ -51,21 +58,32 @@ public:
     return stereo_extrinsics_filename_;
   }
 
-  void set_overlay_stereo_frames(bool v)
+  void set_overlay_mode(OverlayMode v)
   {
-    overlay_stereo_frames_ = v;
+    overlay_mode_ = v;
   }
 
-  bool overlay_stereo_frames() const
+  OverlayMode overlay_mode() const
   {
-    return overlay_stereo_frames_;
+    return overlay_mode_;
+  }
+
+  void set_overlay_offset(int v)
+  {
+    overlay_offset_ = v;
+  }
+
+  int overlay_offset() const
+  {
+    return overlay_offset_;
   }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_stereo_frames, "Overlay two stereo frames in one image with cv::addWeighted()");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_offset, "Shift left image before overlay");
   }
 
   bool serialize(c_config_setting settings, bool save) override
@@ -76,7 +94,8 @@ public:
 
       SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
       SERIALIZE_PROPERTY(settings, save, *this, extrinsics_filename);
-      SERIALIZE_PROPERTY(settings, save, *this, overlay_stereo_frames);
+      SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
+      SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
 
       return true;
     }
@@ -86,7 +105,7 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
   {
-    if ( !have_stereo_calibration_ ) {
+    if( !have_stereo_calibration_ ) {
 
       bool have_initrinsics = false;
       bool have_extrinsics = false;
@@ -127,123 +146,165 @@ public:
       }
     }
 
-
     const cv::Rect roi[2] = {
         cv::Rect(0, 0, image.cols() / 2, image.rows()),
         cv::Rect(image.cols() / 2, 0, image.cols() / 2, image.rows()),
     };
 
-    if ( !have_stereo_calibration_ ) {
+    cv::Mat images[2] = {};
+    cv::Mat masks[2] = {};
 
-      if ( overlay_stereo_frames_ ) {
+    if( !have_stereo_calibration_ ) {
 
-        const cv::Mat src =
-            image.getMat();
+      const cv::Mat src = image.getMat();
+      const cv::Mat msk = mask.getMat();
 
-        cv::addWeighted(src(roi[0]), 0.5,
-            src(roi[1]), 0.5,
-            0, image);
-
-        if ( mask.needed() && !mask.empty() ) {
-
-          const cv::Mat msk =
-              mask.getMat();
-
-          cv::bitwise_and(msk(roi[0]),
-              msk(roi[1]),
-              mask);
+      for( int i = 0; i < 2; ++i ) {
+        src(roi[i]).copyTo(images[i]);
+        if( mask.needed() && !mask.empty() ) {
+          msk(roi[i]).copyTo(masks[i]);
         }
       }
-
     }
 
     else {
 
+      const cv::Mat src = image.getMat();
+      const cv::Mat msk = mask.getMat();
+
       for( int i = 0; i < 2; ++i ) {
-        if( rmaps[i].size() != roi[i].size() ) {
-          CF_ERROR("Frame size not match to intrinsics");
-          return false;
-        }
-      }
 
-      if ( !overlay_stereo_frames_ ) {
+        cv::remap(src(roi[i]), images[i],
+            rmaps[i], cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_CONSTANT);
 
-        cv::Mat & img =
-            image.getMatRef();
+        if( mask.needed() && !mask.empty() ) {
 
-        for( int i = 0; i < 2; ++i ) {
-          cv::remap(img(roi[i]), img(roi[i]),
+          cv::remap(msk(roi[i]), masks[i],
               rmaps[i], cv::noArray(),
               cv::INTER_LINEAR,
               cv::BORDER_CONSTANT);
+
+          cv::compare(masks[i], 254, masks[i],
+              cv::CMP_GE);
+
         }
 
-        if( mask.needed() ) {
+      }
+    }
 
-          if( mask.empty() ) {
-            mask.create(image.size(), CV_8UC1);
-            mask.setTo(255);
+    switch (overlay_mode_) {
+
+      case OverlayNone: {
+
+        image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), images[0].type());
+        cv::Mat &dst = image.getMatRef();
+        for( int i = 0; i < 2; ++i ) {
+          images[i].copyTo(dst(roi[i]));
+        }
+
+        if( mask.needed() && !mask.empty() ) {
+          mask.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), masks[0].type());
+          cv::Mat &m = mask.getMatRef();
+          for( int i = 0; i < 2; ++i ) {
+            masks[i].copyTo(m(roi[i]));
           }
+        }
+        break;
+      }
 
-          cv::Mat &msk =
+      case OverlayAdd: {
+
+        const cv::Mat &left_image =
+            images[0];
+
+        const cv::Mat &right_image =
+            images[1];
+
+        image.create(right_image.size(),
+            right_image.type());
+
+        cv::Mat &dst_image =
+            image.getMatRef();
+
+        dst_image.setTo(0);
+
+        cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+            0.5,
+            right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
+            0, dst_image);
+
+        if( mask.needed() && !mask.empty() ) {
+
+          const cv::Mat &left_mask =
+              masks[0];
+
+          const cv::Mat &right_mask =
+              masks[1];
+
+          mask.create(right_mask.size(),
+              right_mask.type());
+
+          cv::Mat &dst_mask =
               mask.getMatRef();
 
-          for( int i = 0; i < 2; ++i ) {
-            cv::remap(msk(roi[i]), msk(roi[i]),
-                rmaps[i], cv::noArray(),
-                cv::INTER_LINEAR,
-                cv::BORDER_CONSTANT);
-          }
+          dst_mask.setTo(0);
 
-          cv::compare(msk, 254, mask, cv::CMP_GE);
+          cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+              right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+              dst_mask);
         }
-      }
-      else {
 
-        const cv::Mat & src_image =
+        break;
+      }
+
+      case OverlayAbsdiff: {
+
+        const cv::Mat &left_image =
+            images[0];
+
+        const cv::Mat &right_image =
+            images[1];
+
+        image.create(right_image.size(),
+            right_image.type());
+
+        cv::Mat &dst_image =
             image.getMatRef();
 
-        cv::Mat dst_image[2];
+        dst_image.setTo(0);
 
-        for( int i = 0; i < 2; ++i ) {
-          cv::remap(src_image(roi[i]), dst_image[i],
-              rmaps[i], cv::noArray(),
-              cv::INTER_LINEAR,
-              cv::BORDER_CONSTANT);
+        cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+            right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+            dst_image);
+
+        if( mask.needed() && !mask.empty() ) {
+
+          const cv::Mat &left_mask =
+              masks[0];
+
+          const cv::Mat &right_mask =
+              masks[1];
+
+          mask.create(right_mask.size(),
+              right_mask.type());
+
+          cv::Mat &dst_mask =
+              mask.getMatRef();
+
+          dst_mask.setTo(0);
+
+          cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+              right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+              dst_mask);
         }
 
-        cv::addWeighted(dst_image[0], 0.5,
-            dst_image[1], 0.5,
-            0, image);
-
-
-        if( mask.needed() ) {
-
-          cv::Mat src_mask[2];
-
-          if( mask.empty() ) {
-            for( int i = 0; i < 2; ++i ) {
-              src_mask[i] = cv::Mat1b(roi[i].size(), 255);
-            }
-          }
-          else {
-
-            cv::Mat &msk =
-                mask.getMatRef();
-
-            for( int i = 0; i < 2; ++i ) {
-              cv::remap(msk(roi[i]), src_mask[i],
-                  rmaps[i], cv::noArray(),
-                  cv::INTER_LINEAR,
-                  cv::BORDER_CONSTANT);
-              cv::compare(src_mask[i], 254, src_mask[i], cv::CMP_GE);
-            }
-
-          }
-
-          cv::bitwise_and(src_mask[0], src_mask[1], mask);
-        }
+        break;
       }
+
+      default:
+        break;
     }
 
     return true;
@@ -252,7 +313,8 @@ public:
 protected:
   std::string stereo_intrinsics_filename_;
   std::string stereo_extrinsics_filename_;
-  bool overlay_stereo_frames_ = false;
+  OverlayMode overlay_mode_ = OverlayNone;
+  int overlay_offset_ = 0;
 
   c_stereo_camera_intrinsics intrinsics_;
   c_stereo_camera_extrinsics extrinsics_;

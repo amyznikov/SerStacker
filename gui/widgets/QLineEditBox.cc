@@ -68,11 +68,9 @@ QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
   layout_->addWidget(lineEdit_ = custom_edit, 1000);
 
   connect(custom_edit, &QLineEdit::editingFinished,
-      [this, custom_edit] () {
+      [this, custom_edit]() {
         if ( custom_edit->text() != custom_edit->previousText() ) {
-          if ( this->hasFocus() ) {
-            custom_edit->setPreviousText(custom_edit->text());
-          }
+          custom_edit->setPreviousText(custom_edit->text());
           Q_EMIT textChanged();
         }
       });

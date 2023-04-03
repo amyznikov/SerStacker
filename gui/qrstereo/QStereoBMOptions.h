@@ -21,14 +21,14 @@ public:
 
   QStereoBMOptions(QWidget * parent = nullptr);
 
-  void set_options(c_cvStereoBM_options * options);
-  c_cvStereoBM_options * options() const;
+  void set_options(c_cvStereoBMOptions * options);
+  c_cvStereoBMOptions * options() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_cvStereoBM_options * options_ = nullptr;
+  c_cvStereoBMOptions * options_ = nullptr;
 
   QNumericBox * minDisparity_ctl = nullptr;
   QNumericBox * numDisparities_ctl = nullptr;

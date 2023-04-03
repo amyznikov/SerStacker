@@ -17,6 +17,8 @@ const c_enum_member* members_of<stereo_matcher_type>()
       { stereo_matcher_cvStereoSGBM, "StereoSGBM", "cv::StereoSGBM" },
 #if HAVE_OpenCV_stereo
       { stereo_matcher_QuasiDenseStereo, "QuasiDenseStereo", "cv::stereo::QuasiDenseStereo" },
+      { stereo_matcher_StereoBinaryBM, "StereoBinaryBM", "cv::stereo::StereoBinaryBM" },
+      { stereo_matcher_StereoBinarySGBM, "StereoBinarySGBM", "cv::stereo::StereoBinarySGBM" },
 #endif
       { stereo_matcher_ScaleSweep, "ScaleSweep", "cScaleSweepStereoMatcher" },
       { stereo_matcher_cvStereoSGBM },
@@ -154,12 +156,12 @@ stereo_matcher_type c_regular_stereo_matcher::matcher_type() const
   return matcher_type_;
 }
 
-const c_cvStereoBM_options& c_regular_stereo_matcher::StereoBMOptions() const
+const c_cvStereoBMOptions& c_regular_stereo_matcher::StereoBMOptions() const
 {
   return stereoBM_options_;
 }
 
-c_cvStereoBM_options& c_regular_stereo_matcher::StereoBMOptions()
+c_cvStereoBMOptions& c_regular_stereo_matcher::StereoBMOptions()
 {
   return stereoBM_options_;
 }
@@ -169,7 +171,7 @@ void c_regular_stereo_matcher::updateStereoBMOptions()
   try {
     if( stereoBM_ ) {
 
-      const c_cvStereoBM_options &opts =
+      const c_cvStereoBMOptions &opts =
           stereoBM_options_;
 
       stereoBM_->setNumDisparities(opts.numDisparities);
@@ -195,12 +197,12 @@ void c_regular_stereo_matcher::updateStereoBMOptions()
   }
 }
 
-const c_cvStereoSGBM_options& c_regular_stereo_matcher::StereoSGBMOptions() const
+const c_cvStereoSGBMOptions& c_regular_stereo_matcher::StereoSGBMOptions() const
 {
   return stereoSGBM_options_;
 }
 
-c_cvStereoSGBM_options & c_regular_stereo_matcher::StereoSGBMOptions()
+c_cvStereoSGBMOptions & c_regular_stereo_matcher::StereoSGBMOptions()
 {
   return stereoSGBM_options_;
 }
@@ -210,7 +212,7 @@ void c_regular_stereo_matcher::updateStereoSGBMOptions()
   try {
     if( stereoSGBM_ ) {
 
-      const c_cvStereoSGBM_options &opts =
+      const c_cvStereoSGBMOptions &opts =
           stereoSGBM_options_;
 
       stereoSGBM_->setMode(opts.mode);
@@ -273,6 +275,27 @@ void c_regular_stereo_matcher::updateStereoBinaryBMOptions()
 {
   try {
     if( stereoBinaryBM_ ) {
+
+      const c_cvStereoBinaryBMOptions &opts =
+          stereoBinaryBM_options_;
+
+      stereoBinaryBM_->setMinDisparity(opts.minDisparity);
+      stereoBinaryBM_->setNumDisparities(opts.numDisparities);
+      stereoBinaryBM_->setBlockSize(opts.blockSize);
+      stereoBinaryBM_->setSpeckleWindowSize(opts.speckleWindowSize);
+      stereoBinaryBM_->setSpeckleRange(opts.speckleRange);
+      stereoBinaryBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
+      stereoBinaryBM_->setPreFilterType(opts.preFilterType);
+      stereoBinaryBM_->setPreFilterSize(opts.preFilterSize);
+      stereoBinaryBM_->setPreFilterCap(opts.preFilterCap);
+      stereoBinaryBM_->setTextureThreshold(opts.textureThreshold);
+      stereoBinaryBM_->setUniquenessRatio(opts.uniquenessRatio);
+      stereoBinaryBM_->setSmallerBlockSize(opts.blockSize);
+      stereoBinaryBM_->setScalleFactor(opts.scalleFactor);
+      stereoBinaryBM_->setSpekleRemovalTechnique(opts.spekleRemovalTechnique);
+      stereoBinaryBM_->setUsePrefilter(opts.usePrefilter);
+      stereoBinaryBM_->setBinaryKernelType(opts.kernelType);
+      stereoBinaryBM_->setAgregationWindowSize(opts.agregationWindowSize);
     }
   }
   catch( const std::exception &e ) {
@@ -283,12 +306,12 @@ void c_regular_stereo_matcher::updateStereoBinaryBMOptions()
 }
 
 
-const c_cvStereoBinarySGBMOptions & c_regular_stereo_matcher::stereoBinarySGBMOptions() const
+const c_cvStereoBinarySGBMOptions & c_regular_stereo_matcher::StereoBinarySGBMOptions() const
 {
   return stereoBinarySGBM_options_;
 }
 
-c_cvStereoBinarySGBMOptions & c_regular_stereo_matcher::stereoBinarySGBMOptions()
+c_cvStereoBinarySGBMOptions & c_regular_stereo_matcher::StereoBinarySGBMOptions()
 {
   return stereoBinarySGBM_options_;
 }
@@ -297,6 +320,24 @@ void c_regular_stereo_matcher::updateStereoBinarySGBMOptions()
 {
   try {
     if( stereoBinarySGBM_ ) {
+
+      const c_cvStereoBinarySGBMOptions &opts =
+          stereoBinarySGBM_options_;
+
+      stereoBinarySGBM_->setMinDisparity(opts.minDisparity);
+      stereoBinarySGBM_->setNumDisparities(opts.numDisparities);
+      stereoBinarySGBM_->setBlockSize(opts.blockSize);
+      stereoBinarySGBM_->setSpeckleWindowSize(opts.speckleWindowSize);
+      stereoBinarySGBM_->setSpeckleRange(opts.speckleRange);
+      stereoBinarySGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
+      stereoBinarySGBM_->setPreFilterCap(opts.preFilterCap);
+      stereoBinarySGBM_->setUniquenessRatio(opts.uniquenessRatio);
+      stereoBinarySGBM_->setP1(opts.P1);
+      stereoBinarySGBM_->setP2(opts.P2);
+      stereoBinarySGBM_->setMode(opts.mode);
+      stereoBinarySGBM_->setSpekleRemovalTechnique(opts.spekleRemovalTechnique);
+      stereoBinarySGBM_->setBinaryKernelType(opts.kernelType);
+      stereoBinarySGBM_->setSubPixelInterpolationMethod(opts.subPixelInterpolationMethod);
     }
   }
   catch( const std::exception &e ) {
@@ -355,6 +396,10 @@ double c_regular_stereo_matcher::currentMaxDisparity() const
 #if HAVE_OpenCV_stereo
     case stereo_matcher_QuasiDenseStereo:
       return 128;
+    case stereo_matcher_StereoBinaryBM:
+      return stereoBinaryBM_options_.numDisparities;
+    case stereo_matcher_StereoBinarySGBM:
+      return stereoBinarySGBM_options_.numDisparities;
 #endif // HAVE_OpenCV_stereo
     case stereo_matcher_ScaleSweep:
       return cScaleSweep_options_.max_disparity;
@@ -372,6 +417,10 @@ int c_regular_stereo_matcher::currentReferenceImageIndex() const
 #if HAVE_OpenCV_stereo
     case stereo_matcher_QuasiDenseStereo:
       return 0;
+    case stereo_matcher_StereoBinaryBM:
+      return 0;
+    case stereo_matcher_StereoBinarySGBM:
+      return 0;
 #endif // HAVE_OpenCV_stereo
     case stereo_matcher_ScaleSweep:
       return 1;
@@ -387,6 +436,8 @@ void c_regular_stereo_matcher::reset_all_matchers()
   scaleSweep_.reset();
 #if HAVE_OpenCV_stereo
   quasiDenseStereo_.reset();
+  stereoBinaryBM_.reset();
+  stereoBinarySGBM_.reset();
 #endif
 }
 
@@ -400,7 +451,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
 
           reset_all_matchers();
 
-          const c_cvStereoBM_options &opts =
+          const c_cvStereoBMOptions &opts =
               stereoBM_options_;
 
           stereoBM_ =
@@ -428,7 +479,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
 
           reset_all_matchers();
 
-          const c_cvStereoSGBM_options &opts =
+          const c_cvStereoSGBMOptions &opts =
               stereoSGBM_options_;
 
           stereoSGBM_ =
@@ -482,7 +533,80 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
 
         }
         break;
+
+      case stereo_matcher_StereoBinaryBM:
+        if ( !stereoBinaryBM_ ) {
+
+          reset_all_matchers();
+
+          const c_cvStereoBinaryBMOptions &opts =
+              stereoBinaryBM_options_;
+
+          stereoBinaryBM_ =
+              cv::stereo::StereoBinaryBM::create(opts.numDisparities,
+                  opts.blockSize);
+
+          stereoBinaryBM_->setMinDisparity(opts.minDisparity);
+          stereoBinaryBM_->setNumDisparities(opts.numDisparities);
+          stereoBinaryBM_->setBlockSize(opts.blockSize);
+          stereoBinaryBM_->setSpeckleWindowSize(opts.speckleWindowSize);
+          stereoBinaryBM_->setSpeckleRange(opts.speckleRange);
+          stereoBinaryBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
+          stereoBinaryBM_->setPreFilterType(opts.preFilterType);
+          stereoBinaryBM_->setPreFilterSize(opts.preFilterSize);
+          stereoBinaryBM_->setPreFilterCap(opts.preFilterCap);
+          stereoBinaryBM_->setTextureThreshold(opts.textureThreshold);
+          stereoBinaryBM_->setUniquenessRatio(opts.uniquenessRatio);
+          stereoBinaryBM_->setSmallerBlockSize(opts.blockSize);
+          stereoBinaryBM_->setScalleFactor(opts.scalleFactor);
+          stereoBinaryBM_->setSpekleRemovalTechnique(opts.spekleRemovalTechnique);
+          stereoBinaryBM_->setUsePrefilter(opts.usePrefilter);
+          stereoBinaryBM_->setBinaryKernelType(opts.kernelType);
+          stereoBinaryBM_->setAgregationWindowSize(opts.agregationWindowSize);
+        }
+        break;
+
+      case stereo_matcher_StereoBinarySGBM:
+        if ( !stereoBinarySGBM_ ) {
+
+          reset_all_matchers();
+
+          const c_cvStereoBinarySGBMOptions &opts =
+              stereoBinarySGBM_options_;
+
+          stereoBinarySGBM_ =
+              cv::stereo::StereoBinarySGBM::create(
+                  opts.minDisparity,
+                  opts.numDisparities,
+                  opts.blockSize,
+                  opts.P1,
+                  opts.P2,
+                  opts.disp12MaxDiff,
+                  opts.preFilterCap,
+                  opts.uniquenessRatio,
+                  opts.speckleWindowSize,
+                  opts.speckleRange,
+                  opts.mode);
+
+          stereoBinarySGBM_->setMinDisparity(opts.minDisparity);
+          stereoBinarySGBM_->setNumDisparities(opts.numDisparities);
+          stereoBinarySGBM_->setBlockSize(opts.blockSize);
+          stereoBinarySGBM_->setSpeckleWindowSize(opts.speckleWindowSize);
+          stereoBinarySGBM_->setSpeckleRange(opts.speckleRange);
+          stereoBinarySGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
+          stereoBinarySGBM_->setPreFilterCap(opts.preFilterCap);
+          stereoBinarySGBM_->setUniquenessRatio(opts.uniquenessRatio);
+          stereoBinarySGBM_->setP1(opts.P1);
+          stereoBinarySGBM_->setP2(opts.P2);
+          stereoBinarySGBM_->setMode(opts.mode);
+          stereoBinarySGBM_->setSpekleRemovalTechnique(opts.spekleRemovalTechnique);
+          stereoBinarySGBM_->setBinaryKernelType(opts.kernelType);
+          stereoBinarySGBM_->setSubPixelInterpolationMethod(opts.subPixelInterpolationMethod);
+        }
+        break;
+
 #endif // HAVE_OpenCV_stereo
+
 
       default:
         CF_ERROR("Unsupported matcher_type=%d specified",
@@ -561,7 +685,6 @@ bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray righ
     }
 
     if( stereoSGBM_ ) {
-
       stereoSGBM_->compute(left, right, disp);
       return convertDisparityType(disp, disparity);
     }
@@ -586,6 +709,57 @@ bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray righ
 
       return true;
     }
+
+    if( stereoBinaryBM_ ) {
+
+      cv::Mat images[2];
+
+      if( left.channels() == 1 ) {
+        images[0] = left.getMat();
+      }
+      else {
+        cv::cvtColor(left, images[0],
+            cv::COLOR_BGR2GRAY);
+      }
+
+      if( right.channels() == 1 ) {
+        images[1] = right.getMat();
+      }
+      else {
+        cv::cvtColor(right, images[1],
+            cv::COLOR_BGR2GRAY);
+      }
+
+      stereoBinaryBM_->compute(images[0], images[1], disp);
+
+      return convertDisparityType(disp, disparity);
+    }
+
+    if( stereoBinarySGBM_ ) {
+
+      cv::Mat images[2];
+
+      if( left.channels() == 1 ) {
+        images[0] = left.getMat();
+      }
+      else {
+        cv::cvtColor(left, images[0],
+            cv::COLOR_BGR2GRAY);
+      }
+
+      if( right.channels() == 1 ) {
+        images[1] = right.getMat();
+      }
+      else {
+        cv::cvtColor(right, images[1],
+            cv::COLOR_BGR2GRAY);
+      }
+
+      stereoBinarySGBM_->compute(images[0], images[1], disp);
+
+      return convertDisparityType(disp, disparity);
+    }
+
 #endif // HAVE_OpenCV_stereo
 
     return false;
@@ -610,7 +784,7 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "StereoBM")) ) {
 
-    c_cvStereoBM_options & opts =
+    c_cvStereoBMOptions & opts =
         stereoBM_options_;
 
     SERIALIZE_OPTION(section, save, opts, minDisparity);
@@ -631,7 +805,7 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "StereoSGBM")) ) {
 
-    c_cvStereoSGBM_options & opts =
+    c_cvStereoSGBMOptions & opts =
         stereoSGBM_options_;
 
     SERIALIZE_OPTION(section, save, opts, minDisparity);
@@ -669,6 +843,54 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, gftMinSeperationDist);
     SERIALIZE_OPTION(section, save, opts, gftMaxNumFeatures);
   }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "StereoBinaryBM")) ) {
+
+    c_cvStereoBinaryBMOptions &opts =
+        stereoBinaryBM_options_;
+
+    SERIALIZE_OPTION(section, save, opts, minDisparity);
+    SERIALIZE_OPTION(section, save, opts, numDisparities);
+    SERIALIZE_OPTION(section, save, opts, blockSize);
+    SERIALIZE_OPTION(section, save, opts, speckleWindowSize);
+    SERIALIZE_OPTION(section, save, opts, speckleRange);
+    SERIALIZE_OPTION(section, save, opts, disp12MaxDiff);
+
+    SERIALIZE_OPTION(section, save, opts, preFilterType);
+    SERIALIZE_OPTION(section, save, opts, preFilterSize);
+    SERIALIZE_OPTION(section, save, opts, preFilterCap);
+    SERIALIZE_OPTION(section, save, opts, textureThreshold);
+    SERIALIZE_OPTION(section, save, opts, uniquenessRatio);
+    SERIALIZE_OPTION(section, save, opts, smallerBlockSize);
+    SERIALIZE_OPTION(section, save, opts, scalleFactor);
+    SERIALIZE_OPTION(section, save, opts, spekleRemovalTechnique);
+    SERIALIZE_OPTION(section, save, opts, usePrefilter);
+    SERIALIZE_OPTION(section, save, opts, kernelType);
+    SERIALIZE_OPTION(section, save, opts, agregationWindowSize);
+  }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "StereoBinarySGBM")) ) {
+
+    c_cvStereoBinarySGBMOptions &opts =
+        stereoBinarySGBM_options_;
+
+    SERIALIZE_OPTION(section, save, opts, minDisparity);
+    SERIALIZE_OPTION(section, save, opts, numDisparities);
+    SERIALIZE_OPTION(section, save, opts, blockSize);
+    SERIALIZE_OPTION(section, save, opts, speckleWindowSize);
+    SERIALIZE_OPTION(section, save, opts, speckleRange);
+    SERIALIZE_OPTION(section, save, opts, disp12MaxDiff);
+
+    SERIALIZE_OPTION(section, save, opts, preFilterCap);
+    SERIALIZE_OPTION(section, save, opts, uniquenessRatio);
+    SERIALIZE_OPTION(section, save, opts, P1);
+    SERIALIZE_OPTION(section, save, opts, P2);
+    SERIALIZE_OPTION(section, save, opts, mode);
+    SERIALIZE_OPTION(section, save, opts, spekleRemovalTechnique);
+    SERIALIZE_OPTION(section, save, opts, kernelType);
+    SERIALIZE_OPTION(section, save, opts, subPixelInterpolationMethod);
+  }
+
 #endif // HAVE_OpenCV_stereo
 
   if( (section = SERIALIZE_GROUP(settings, save, "ScaleSweep")) ) {

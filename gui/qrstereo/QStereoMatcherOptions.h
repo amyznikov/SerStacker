@@ -10,15 +10,17 @@
 #define __QStereoMatcherOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <core/proc/stereo/c_regular_stereo_matcher.h>
+
 #include "QStereoBMOptions.h"
 #include "QStereoSGBMOptions.h"
 #include "QScaleSweepOptions.h"
-
-#if HAVE_OpenCV_stereo
+#ifdef HAVE_OpenCV_stereo
 # include "QQuasiDenseStereoOptions.h"
+# include "QStereoBinarySGBMOptions.h"
+# include "QStereoBinaryBMOptions.h"
 #endif // HAVE_OpenCV_stereo
 
-#include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 class QStereoMatcherOptions :
     public QSettingsWidget
@@ -48,6 +50,8 @@ protected:
 
 #if HAVE_OpenCV_stereo
   QQuasiDenseStereoOptions * quasiDenseStereoOptions_ctl = nullptr;
+  QStereoBinarySGBMOptions * stereoBinarySGBMOptions_ctl = nullptr;
+  QStereoBinaryBMOptions * stereoBinaryBMOptions_ctl = nullptr;
 #endif //HAVE_OpenCV_stereo
 };
 

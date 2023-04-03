@@ -14,7 +14,7 @@
 #define __c_regular_stereo_matcher_h__
 
 // Must come from CMakeLists.txt
-// #define HAVE_OpenCV_stereo 1
+#define HAVE_OpenCV_stereo 1
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>
@@ -32,6 +32,8 @@ enum stereo_matcher_type  {
   stereo_matcher_ScaleSweep,
 #if HAVE_OpenCV_stereo
   stereo_matcher_QuasiDenseStereo,
+  stereo_matcher_StereoBinaryBM,
+  stereo_matcher_StereoBinarySGBM,
 #endif
 };
 
@@ -41,7 +43,7 @@ enum StereoBM_PreFilterType
   StereoBM_PREFILTER_XSOBEL = cv::StereoBM::PREFILTER_XSOBEL
 };
 
-struct c_cvStereoBM_options
+struct c_cvStereoBMOptions
 {
   int minDisparity = 0;
   int numDisparities = 128;
@@ -71,7 +73,7 @@ enum StereoSGBM_Mode
 };
 
 
-struct c_cvStereoSGBM_options
+struct c_cvStereoSGBMOptions
 {
   int minDisparity = 0;
   int numDisparities = 80;
@@ -127,7 +129,6 @@ enum StereoBinarySubpixelInterpolationMethod
   CV_SIMETRICV_INTERPOLATION = cv::stereo::CV_SIMETRICV_INTERPOLATION
 };
 
-
 struct c_cvStereoBinaryOptions
 {
   int minDisparity = 0;
@@ -147,9 +148,9 @@ enum StereoBinaryBMPrefilterType
 struct c_cvStereoBinaryBMOptions: c_cvStereoBinaryOptions
 {
   StereoBinaryBMPrefilterType preFilterType = StereoBinaryBM_PREFILTER_NORMALIZED_RESPONSE;
-  int preFilterSize = 0;
+  int preFilterSize = 5;
   int preFilterCap = 5;
-  int textureThreshold = 0;
+  int textureThreshold = 100;
   int uniquenessRatio = 0;
   int smallerBlockSize = 3;
   int scalleFactor = 0;
@@ -187,12 +188,12 @@ public:
   void set_matcher_type(stereo_matcher_type v);
   stereo_matcher_type matcher_type() const;
 
-  const c_cvStereoBM_options & StereoBMOptions() const ;
-  c_cvStereoBM_options & StereoBMOptions();
+  const c_cvStereoBMOptions & StereoBMOptions() const ;
+  c_cvStereoBMOptions & StereoBMOptions();
   void updateStereoBMOptions();
 
-  const c_cvStereoSGBM_options & StereoSGBMOptions() const;
-  c_cvStereoSGBM_options & StereoSGBMOptions();
+  const c_cvStereoSGBMOptions & StereoSGBMOptions() const;
+  c_cvStereoSGBMOptions & StereoSGBMOptions();
   void updateStereoSGBMOptions();
 
 #if HAVE_OpenCV_stereo
@@ -204,8 +205,8 @@ public:
   c_cvStereoBinaryBMOptions & StereoBinaryBMOptions();
   void updateStereoBinaryBMOptions();
 
-  const c_cvStereoBinarySGBMOptions & stereoBinarySGBMOptions() const;
-  c_cvStereoBinarySGBMOptions & stereoBinarySGBMOptions();
+  const c_cvStereoBinarySGBMOptions & StereoBinarySGBMOptions() const;
+  c_cvStereoBinarySGBMOptions & StereoBinarySGBMOptions();
   void updateStereoBinarySGBMOptions();
 #endif
 
@@ -231,10 +232,10 @@ protected:
   stereo_matcher_type matcher_type_ = stereo_matcher_cvStereoBM;
 
   cv::Ptr<cv::StereoBM> stereoBM_;
-  c_cvStereoBM_options stereoBM_options_;
+  c_cvStereoBMOptions stereoBM_options_;
 
   cv::Ptr<cv::StereoSGBM> stereoSGBM_;
-  c_cvStereoSGBM_options stereoSGBM_options_;
+  c_cvStereoSGBMOptions stereoSGBM_options_;
 
   cv::Ptr<cScaleSweepStereoMatcher> scaleSweep_;
   c_ScaleSweep_options cScaleSweep_options_;

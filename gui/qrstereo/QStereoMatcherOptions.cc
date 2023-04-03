@@ -63,6 +63,7 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
 
 
 #if HAVE_OpenCV_stereo
+
   add_expandable_groupbox("QuasiDenseStereo Options",
       quasiDenseStereoOptions_ctl = new QQuasiDenseStereoOptions());
 
@@ -73,8 +74,30 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
         }
         Q_EMIT parameterChanged();
       });
-#endif // HAVE_OpenCV_stereo
 
+  add_expandable_groupbox("StereoBinaryBM Options",
+      stereoBinaryBMOptions_ctl = new QStereoBinaryBMOptions());
+
+  connect(stereoBinaryBMOptions_ctl, &QSettingsWidget::parameterChanged,
+      [this]() {
+        if ( stereo_matcher_ ) {
+          stereo_matcher_->updateStereoBinaryBMOptions();
+        }
+        Q_EMIT parameterChanged();
+      });
+
+  add_expandable_groupbox("StereoBinarySGBM Options",
+      stereoBinarySGBMOptions_ctl = new QStereoBinarySGBMOptions());
+
+  connect(stereoBinarySGBMOptions_ctl, &QSettingsWidget::parameterChanged,
+      [this]() {
+        if ( stereo_matcher_ ) {
+          stereo_matcher_->updateStereoBinarySGBMOptions();
+        }
+        Q_EMIT parameterChanged();
+      });
+
+#endif // HAVE_OpenCV_stereo
 
   updateControls();
 }
@@ -102,6 +125,8 @@ void QStereoMatcherOptions::onupdatecontrols()
 
 #if HAVE_OpenCV_stereo
     quasiDenseStereoOptions_ctl->set_options(&stereo_matcher_->quasiDenseStereoOptions());
+    stereoBinarySGBMOptions_ctl->set_options(&stereo_matcher_->StereoBinarySGBMOptions());
+    stereoBinaryBMOptions_ctl->set_options(&stereo_matcher_->StereoBinaryBMOptions());
 #endif // HAVE_OpenCV_stereo
 
     Base::onupdatecontrols();

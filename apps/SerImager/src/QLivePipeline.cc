@@ -6,6 +6,7 @@
  */
 
 #include "QLivePipeline.h"
+#include "pipeline/QLiveImageProcessingPipeline/QLiveImageProcessingOptions.h"
 #include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationOptions.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
 #include "pipeline/QLiveRegularStereo/QLiveRegularStereoOptions.h"
@@ -732,6 +733,9 @@ void QLivePipelineCollection::load(const std::string & cfgfilename)
       else if( objtype == "QLiveRegularStereoPipeline" ) {
         obj = new QLiveRegularStereoPipeline(objname.c_str());
       }
+      else if( objtype == "QLiveImageProcessingPipeline" ) {
+        obj = new QLiveImageProcessingPipeline(objname.c_str());
+      }
       else {
         CF_ERROR("Unknown objtype '%s' specified for item %d", objtype.c_str(), i);
         continue;
@@ -803,6 +807,10 @@ void QLivePipelineCollection::save(const std::string & cfgfilename) const
     else if( dynamic_cast<QLiveRegularStereoPipeline*>(obj) ) {
       objtype = "QLiveRegularStereoPipeline";
     }
+    else if( dynamic_cast<QLiveImageProcessingPipeline*>(obj) ) {
+      objtype = "QLiveImageProcessingPipeline";
+    }
+
 
     else {
       CF_ERROR("FIXME: implement adequate class factory please !!!!");
@@ -1148,6 +1156,25 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
       currentWidget = regularStereoOptions_ctl;
       regularStereoOptions_ctl->setPipeline(regularStereo);
     }
+
+    else if( QLiveImageProcessingPipeline * genericPipeline =
+        dynamic_cast<QLiveImageProcessingPipeline*>(pipeline) ) {
+
+      if( !genericImageProcessingOptions_ctl ) {
+
+        genericImageProcessingOptions_ctl = new QLiveImageProcessingOptions(this);
+        connect(genericImageProcessingOptions_ctl, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( pipelineCollection_ ) {
+                pipelineCollection_->save();
+              }
+            });
+      }
+
+      currentWidget = genericImageProcessingOptions_ctl;
+      genericImageProcessingOptions_ctl->setPipeline(genericPipeline);
+    }
+
 
 
   }

@@ -170,6 +170,7 @@ protected:
 };
 
 
+class QLiveImageProcessingOptions;
 class QLiveStereoCalibrationOptions;
 class QLiveCameraCalibrationOptions;
 class QLiveRegularStereoOptions;
@@ -220,6 +221,7 @@ protected:
   QToolButton * menuButton_ctl = nullptr;
 
   QScrollArea * scrollArea_ctl = nullptr;
+  QLiveImageProcessingOptions * genericImageProcessingOptions_ctl = nullptr;
   QLiveStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
   QLiveCameraCalibrationOptions * cameraCalibrationOptions_ctl = nullptr;
   QLiveRegularStereoOptions * regularStereoOptions_ctl = nullptr;

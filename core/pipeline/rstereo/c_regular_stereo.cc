@@ -64,13 +64,13 @@ bool c_regular_stereo::serialize(c_config_setting settings, bool save)
   SERIALIZE_PROPERTY(settings, save, *this, camera_extrinsics_yml );
 
   if( (section = SERIALIZE_GROUP(settings, save, "stereo_matcher")) ) {
-    stereo_matcher_.serialize(settings, save);
+    stereo_matcher_.serialize(section, save);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
-    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, input_image_processor);
-    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, stereo_match_preprocessor);
-    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, output_image_processor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_image_processor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, stereo_match_preprocessor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, output_image_processor);
   }
 
   return true;

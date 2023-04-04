@@ -50,8 +50,8 @@ protected:
   void setupStatusbar();
   void setupCameraControls();
   void setupShapeOptions();
+  void setupImageProcessingControls();
   void setupLivePipelineControls();
-  void setupDisplayProcessingControls();
   void setupFocusGraph();
   void setupIndigoFocuser();
 

@@ -10,6 +10,7 @@
 #include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationPipeline.h"
 #include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationPipeline.h"
 #include "pipeline/QLiveRegularStereo/QLiveRegularStereoPipeline.h"
+#include "pipeline/QLiveImageProcessingPipeline/QLiveImageProcessingPipeline.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -117,8 +118,8 @@ MainWindow::MainWindow(QWidget * parent) :
   setupIndigoFocuser();
   setupCameraControls();
   setupFocusGraph();
+  setupImageProcessingControls();
   setupLivePipelineControls();
-  setupDisplayProcessingControls();
   setupShapeOptions();
   setupMainToolbar();
 
@@ -547,6 +548,12 @@ void MainWindow::setupCameraControls()
 
 void MainWindow::setupLivePipelineControls()
 {
+  pipelineCollection_.addPipelineType("Generic",
+      "Generic image processing",
+      [](const QString & name) {
+        return new QLiveImageProcessingPipeline(name);
+      });
+
   pipelineCollection_.addPipelineType("CameraCalibration",
       "LIve Camera Calibration",
       [](const QString & name) {
@@ -592,7 +599,7 @@ void MainWindow::setupLivePipelineControls()
 
 }
 
-void MainWindow::setupDisplayProcessingControls()
+void MainWindow::setupImageProcessingControls()
 {
   frameProcessorDock_ =
       addCustomDock(this,

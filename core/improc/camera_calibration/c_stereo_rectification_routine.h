@@ -36,6 +36,11 @@ public:
     OverlayContrast,
   };
 
+  enum SwapFramesMode {
+    SwapFramesNone,
+    SwapFramesBeforeRectification,
+    SwapFramesAfterRectification,
+  };
 
   void set_intrinsics_filename(const std::string & v)
   {
@@ -57,6 +62,16 @@ public:
   const std::string & extrinsics_filename() const
   {
     return stereo_extrinsics_filename_;
+  }
+
+  void set_swap_frames(SwapFramesMode v)
+  {
+    swap_frames_ = v;
+  }
+
+  SwapFramesMode swap_frames() const
+  {
+    return swap_frames_;
   }
 
   void set_overlay_mode(OverlayMode v)
@@ -83,6 +98,7 @@ public:
   {
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, swap_frames, "Swap Left and Right frames");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_offset, "Shift left image before overlay");
   }
@@ -95,6 +111,7 @@ public:
 
       SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
       SERIALIZE_PROPERTY(settings, save, *this, extrinsics_filename);
+      SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
 
@@ -112,6 +129,7 @@ protected:
   std::string stereo_intrinsics_filename_;
   std::string stereo_extrinsics_filename_;
   OverlayMode overlay_mode_ = OverlayNone;
+  SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
 
   c_stereo_camera_intrinsics intrinsics_;

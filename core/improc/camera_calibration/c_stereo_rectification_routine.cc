@@ -21,6 +21,22 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
   return members;
 }
 
+template<>
+const c_enum_member* members_of<c_stereo_rectification_routine::SwapFramesMode>()
+{
+  static constexpr c_enum_member members[] = {
+      { c_stereo_rectification_routine::SwapFramesNone, "None", "Don't swap frames" },
+      { c_stereo_rectification_routine::SwapFramesBeforeRectification, "Before",
+          "Swap camera frames before rectification" },
+      { c_stereo_rectification_routine::SwapFramesAfterRectification, "After",
+          "Swap camera frames after rectification)" },
+      { c_stereo_rectification_routine::SwapFramesNone },
+  };
+
+  return members;
+}
+
+
 bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( !have_stereo_calibration_ ) {
@@ -77,10 +93,21 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
     const cv::Mat src = image.getMat();
     const cv::Mat msk = mask.getMat();
 
-    for( int i = 0; i < 2; ++i ) {
-      src(roi[i]).copyTo(images[i]);
-      if( mask.needed() && !mask.empty() ) {
-        msk(roi[i]).copyTo(masks[i]);
+    if ( swap_frames_ == SwapFramesBeforeRectification ) {
+      for( int i = 0; i < 2; ++i ) {
+        src(roi[i]).copyTo(images[!i]);
+        if( mask.needed() && !mask.empty() ) {
+          msk(roi[i]).copyTo(masks[!i]);
+        }
+      }
+    }
+    else {
+
+      for( int i = 0; i < 2; ++i ) {
+        src(roi[i]).copyTo(images[i]);
+        if( mask.needed() && !mask.empty() ) {
+          msk(roi[i]).copyTo(masks[i]);
+        }
       }
     }
   }
@@ -90,25 +117,49 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
     const cv::Mat src = image.getMat();
     const cv::Mat msk = mask.getMat();
 
-    for( int i = 0; i < 2; ++i ) {
+    if ( swap_frames_ == SwapFramesBeforeRectification ) {
 
-      cv::remap(src(roi[i]), images[i],
-          rmaps[i], cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT);
+      for( int i = 0; i < 2; ++i ) {
 
-      if( mask.needed() && !mask.empty() ) {
-
-        cv::remap(msk(roi[i]), masks[i],
+        cv::remap(src(roi[i]), images[!i],
             rmaps[i], cv::noArray(),
             cv::INTER_LINEAR,
             cv::BORDER_CONSTANT);
 
-        cv::compare(masks[i], 254, masks[i],
-            cv::CMP_GE);
+        if( mask.needed() && !mask.empty() ) {
 
+          cv::remap(msk(roi[i]), masks[!i],
+              rmaps[i], cv::noArray(),
+              cv::INTER_LINEAR,
+              cv::BORDER_CONSTANT);
+
+          cv::compare(masks[!i], 254, masks[!i],
+              cv::CMP_GE);
+
+        }
       }
+    }
+    else {
 
+      for( int i = 0; i < 2; ++i ) {
+
+        cv::remap(src(roi[i]), images[i],
+            rmaps[i], cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_CONSTANT);
+
+        if( mask.needed() && !mask.empty() ) {
+
+          cv::remap(msk(roi[i]), masks[i],
+              rmaps[i], cv::noArray(),
+              cv::INTER_LINEAR,
+              cv::BORDER_CONSTANT);
+
+          cv::compare(masks[i], 254, masks[i],
+              cv::CMP_GE);
+
+        }
+      }
     }
   }
 
@@ -118,17 +169,35 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), images[0].type());
       cv::Mat &dst = image.getMatRef();
-      for( int i = 0; i < 2; ++i ) {
-        images[i].copyTo(dst(roi[i]));
+
+      if( swap_frames_ == SwapFramesAfterRectification ) {
+        for( int i = 0; i < 2; ++i ) {
+          images[i].copyTo(dst(roi[!i]));
+        }
+      }
+      else {
+        for( int i = 0; i < 2; ++i ) {
+          images[i].copyTo(dst(roi[i]));
+        }
       }
 
       if( mask.needed() && !mask.empty() ) {
+
         mask.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), masks[0].type());
         cv::Mat &m = mask.getMatRef();
-        for( int i = 0; i < 2; ++i ) {
-          masks[i].copyTo(m(roi[i]));
+
+        if( swap_frames_ == SwapFramesAfterRectification ) {
+          for( int i = 0; i < 2; ++i ) {
+            masks[i].copyTo(m(roi[!i]));
+          }
+        }
+        else {
+          for( int i = 0; i < 2; ++i ) {
+            masks[i].copyTo(m(roi[i]));
+          }
         }
       }
+
       break;
     }
 

@@ -299,7 +299,8 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
           images[1];
 
 
-      cv::Mat summ, diff;
+      cv::Mat summ;
+      cv::Mat diff;
 
       image.create(left_image.size(),
           CV_MAKETYPE(CV_32F, left_image.channels()));
@@ -309,17 +310,19 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       dst_image.setTo(0);
 
-      cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+      cv::addWeighted(cv::abs(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows))),
           0.5,
-          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
+          cv::abs(right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows))), 0.5,
           1, summ,
           CV_MAKETYPE(CV_32F, left_image.channels()));
 
-      cv::GaussianBlur(summ, summ, cv::Size(5, 5), 1, 1, cv::BORDER_REPLICATE);
+      cv::GaussianBlur(summ, summ, cv::Size(5, 5), 0, 0, cv::BORDER_REPLICATE);
 
       cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
           right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
           diff);
+
+      //dst_image = diff;
 
       cv::divide(diff, summ,
           dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),

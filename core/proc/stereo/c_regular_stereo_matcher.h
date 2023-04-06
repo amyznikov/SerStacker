@@ -23,7 +23,7 @@
 # include <opencv2/stereo.hpp>
 #endif
 
-#include "c_scale_sweep_stereo_matcher.h"
+#include "c_sweepscan_stereo_matcher.h"
 #include <core/settings/opencv_settings.h>
 
 enum stereo_matcher_type  {
@@ -237,7 +237,7 @@ protected:
   cv::Ptr<cv::StereoSGBM> stereoSGBM_;
   c_cvStereoSGBMOptions stereoSGBM_options_;
 
-  cv::Ptr<cScaleSweepStereoMatcher> scaleSweep_;
+  cv::Ptr<cSweepScanStereoMatcher> scaleSweep_;
   c_ScaleSweep_options cScaleSweep_options_;
 
 #if HAVE_OpenCV_stereo

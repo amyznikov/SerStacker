@@ -15,7 +15,7 @@
 #include <core/feature2d/feature2d.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/io/c_output_frame_writer.h>
-#include <core/proc/stereo/c_scale_sweep_stereo_matcher.h>
+#include "../proc/stereo/c_sweepscan_stereo_matcher.h"
 
 struct c_regular_stereo_input_options
 {

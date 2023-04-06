@@ -1824,7 +1824,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
     return true;
   }
 
-  c_scale_sweep_stereo_matcher matcher;
+  c_sweepscan_stereo_matcher matcher;
   cv::Mat images[2];
   cv::Mat masks[2];
 

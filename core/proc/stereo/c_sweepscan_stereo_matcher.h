@@ -1,23 +1,23 @@
 /*
- * c_scale_sweep_stereo_matcher.h
+ * c_sweepscan_stereo_matcher.h
  *
  *  Created on: Mar 11, 2023
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_scale_sweep_stereo_matcher_h__
-#define __c_scale_sweep_stereo_matcher_h__
+#ifndef __c_sweepscan_stereo_matcher_h__
+#define __c_sweepscan_stereo_matcher_h__
 
 #include <opencv2/opencv.hpp>
 #include <memory>
 
-class c_scale_sweep_stereo_matcher
+class c_sweepscan_stereo_matcher
 {
 public:
-  typedef c_scale_sweep_stereo_matcher this_clss;
+  typedef c_sweepscan_stereo_matcher this_clss;
 
-  c_scale_sweep_stereo_matcher();
+  c_sweepscan_stereo_matcher();
 
   bool match(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::InputArray referenceImage, cv::InputArray referenceMask,
@@ -62,17 +62,17 @@ protected:
 };
 
 
-class cScaleSweepStereoMatcher :
+class cSweepScanStereoMatcher :
     public cv::StereoMatcher,
-    public c_scale_sweep_stereo_matcher
+    public c_sweepscan_stereo_matcher
 {
 public:
-  typedef cScaleSweepStereoMatcher this_class;
-  typedef c_scale_sweep_stereo_matcher base;
+  typedef cSweepScanStereoMatcher this_class;
+  typedef c_sweepscan_stereo_matcher base;
   typedef cv::Ptr<this_class> Ptr;
 
-  cScaleSweepStereoMatcher() = default;
-  ~cScaleSweepStereoMatcher() = default;
+  cSweepScanStereoMatcher() = default;
+  ~cSweepScanStereoMatcher() = default;
 
   static cv::Ptr<this_class> create();
 
@@ -99,4 +99,4 @@ public:
 };
 
 
-#endif /* __c_scale_sweep_stereo_matcher_h__ */
+#endif /* __c_sweepscan_stereo_matcher_h__ */

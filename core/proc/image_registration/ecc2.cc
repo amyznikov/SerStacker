@@ -1651,3 +1651,637 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void c_ecc_stereo_flow::set_support_scale(int v)
+{
+  support_scale_ = v;
+}
+
+int c_ecc_stereo_flow::support_scale() const
+{
+  return support_scale_;
+}
+
+void c_ecc_stereo_flow::set_max_iterations(int v)
+{
+  max_iterations_ = v;
+}
+
+int c_ecc_stereo_flow::max_iterations() const
+{
+  return max_iterations_;
+}
+
+void c_ecc_stereo_flow::set_update_multiplier(double v)
+{
+  update_multiplier_ = v;
+}
+
+double c_ecc_stereo_flow::update_multiplier() const
+{
+  return update_multiplier_;
+}
+
+void c_ecc_stereo_flow::set_normalization_scale(int v)
+{
+  normalization_scale_ = v;
+}
+
+int c_ecc_stereo_flow::normalization_scale() const
+{
+  return normalization_scale_;
+}
+
+void c_ecc_stereo_flow::set_input_smooth_sigma(double v)
+{
+  input_smooth_sigma_ = v;
+}
+
+double c_ecc_stereo_flow::input_smooth_sigma() const
+{
+  return input_smooth_sigma_;
+}
+
+void c_ecc_stereo_flow::set_reference_smooth_sigma(double v)
+{
+  reference_smooth_sigma_ = v;
+}
+
+double c_ecc_stereo_flow::reference_smooth_sigma() const
+{
+  return reference_smooth_sigma_;
+}
+
+void c_ecc_stereo_flow::set_max_pyramid_level(int v)
+{
+  max_pyramid_level_ = v;
+}
+
+int c_ecc_stereo_flow::max_pyramid_level() const
+{
+  return max_pyramid_level_;
+}
+
+const cv::Mat1f & c_ecc_stereo_flow::reference_image() const
+{
+  static const cv::Mat1f empty_stub;
+  return pyramid_.empty() ?  empty_stub : pyramid_.front().reference_image;
+}
+
+const cv::Mat1b & c_ecc_stereo_flow::reference_mask() const
+{
+  static const cv::Mat1b empty_stub;
+  return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
+}
+
+const cv::Mat2f & c_ecc_stereo_flow::current_uv() const
+{
+  return cuv;
+}
+
+const std::vector<c_ecc_stereo_flow::pyramid_entry> & c_ecc_stereo_flow::current_pyramid() const
+{
+  return pyramid_;
+}
+
+bool c_ecc_stereo_flow::convert_input_images(cv::InputArray src_image, cv::InputArray src_mask,
+    cv::Mat1f & dst_image, cv::Mat1b & dst_mask) const
+{
+  if ( src_image.depth() == dst_image.depth() ) {
+    dst_image = src_image.getMat();
+  }
+  else {
+    src_image.getMat().convertTo(dst_image, dst_image.depth());
+  }
+
+  if ( src_mask.empty() || cv::countNonZero(src_mask) == src_mask.size().area() ) {
+    dst_mask.release();
+  }
+  else {
+    dst_mask = src_mask.getMat();
+  }
+
+  return true;
+}
+
+void c_ecc_stereo_flow::pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const
+{
+  int normalization_scale = this->normalization_scale_;
+  if ( normalization_scale == 0 ) {
+    src.copyTo(dst);
+    return;
+  }
+
+  if ( normalization_scale_ < 0 ) {
+    normalization_scale = support_scale_;
+  }
+
+  const int nscale =
+      std::max(normalization_scale_,
+          support_scale_);
+
+  cv::Mat mean;
+  cv::Scalar mv, sv;
+
+  ecc_downscale(src, mean, nscale, cv::BORDER_REPLICATE);
+  ecc_upscale(mean, src.size());
+  cv::subtract(src, mean, mean);
+
+  cv::meanStdDev(mean, mv, sv, mask);
+  cv::multiply(mean, 1./sv[0], dst);
+  //cv::GaussianBlur(mean, dst, cv::Size(3,3), 0, 0, cv::BORDER_REFLECT101);
+}
+
+bool c_ecc_stereo_flow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
+{
+  const int level = support_scale_;
+
+  cv::Size size = src.size();
+  for ( int i = 0; i < level; ++i ) {
+    size.width = (size.width + 1) / 2;
+    size.height = (size.height + 1) / 2;
+  }
+  cv::resize(src, dst, size, 0, 0, cv::INTER_AREA);
+
+  if ( ismask ) {
+    cv::compare(dst, 255, dst, cv::CMP_EQ);
+  }
+  else {
+    static thread_local const cv::Mat G = cv::getGaussianKernel(3, 0, CV_32F);
+    cv::sepFilter2D(dst, dst, -1, G, G, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
+    //cv::filter2D(dst, dst, -1, G, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
+  }
+
+  return true;
+}
+
+bool c_ecc_stereo_flow::pupscale(cv::Mat & image, cv::Size dstSize) const
+{
+  const cv::Size inputSize =
+      image.size();
+
+  if( inputSize != dstSize ) {
+
+    std::vector<cv::Size> sizes;
+
+    sizes.emplace_back(dstSize);
+
+    while (42) {
+
+      const cv::Size nextSize((sizes.back().width + 1) / 2,
+          (sizes.back().height + 1) / 2);
+
+      if( nextSize == inputSize ) {
+        break;
+      }
+
+      if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+            nextSize.width, nextSize.height,
+            inputSize.width, inputSize.height);
+        return false;
+      }
+
+      sizes.emplace_back(nextSize);
+    }
+
+    for( int i = sizes.size() - 1; i >= 0; --i ) {
+      pyrup(image, image, sizes[i]);
+    }
+  }
+
+  return true;
+
+}
+
+
+bool c_ecc_stereo_flow::compute_uv(pyramid_entry & e,
+    cv::Mat2f & outuv) const
+{
+  cv::Mat1f worker_image;
+  cv::Mat1f It, Itx, Ity;
+  cv::Mat1b M;
+
+  tbb::parallel_invoke(
+    [&e, &worker_image]() {
+      e.reference_image.copyTo(worker_image);
+      cv::remap(e.current_image, worker_image,
+          e.rmap, cv::noArray(),
+          cv::INTER_AREA,
+          cv::BORDER_TRANSPARENT);
+    },
+
+    [&e, &M]() {
+      if ( !e.current_mask.empty() ) {
+        cv::remap(e.current_mask, M,
+            e.rmap, cv::noArray(),
+            cv::INTER_NEAREST,
+            cv::BORDER_CONSTANT);
+      }
+    });
+
+
+  if ( !e.reference_mask.empty() ) {
+    if ( M.empty() ) {
+      e.reference_mask.copyTo(M);
+    }
+    else {
+      cv::bitwise_and(e.reference_mask, M, M);
+    }
+  }
+
+
+  const cv::Mat1f & I1 = worker_image;
+  const cv::Mat1f & I2 = e.reference_image;
+
+  cv::subtract(I2, I1, It, M);
+
+
+#if 0
+  cv::multiply(e.Ix, e.It, Itx);
+  pscale(Itx, Itx);
+
+  cv::multiply(e.Iy, e.It, Ity);
+  pscale(Ity, Ity);
+
+#else
+
+  tbb::parallel_invoke(
+
+    [this, &e, &It, &Itx]() {
+      cv::multiply(e.Ix, It, Itx);
+      pscale(Itx, Itx);
+    },
+
+    [this, &e, &It, &Ity]() {
+      cv::multiply(e.Iy, It, Ity);
+      pscale(Ity, Ity);
+    }
+  );
+#endif
+
+
+  //  a00 = Ixx;
+  //  a01 = Ixy;
+  //  a10 = Ixy;
+  //  a11 = Iyy;
+  //  b0  = 2 * Itx;
+  //  b1  = 2 * Ity;
+  //  D = a00 * a11 - a10 * a01
+  //  u = 1/D * (a11 * b0 - a01 * b1);
+  //  v = 1/D * (a00 * b1 - a10 * b0);
+
+  outuv.create(e.D.size());
+
+  CF_DEBUG("e.D.size=%dx%d Itx: %dx%d e.current_image: %dx%d e.current_mask: %dx%d",
+      e.D.cols, e.D.rows,
+      Itx.cols, Itx.rows,
+      e.current_image.cols, e.current_image.rows,
+      e.current_mask.cols, e.current_mask.rows);
+
+
+  typedef tbb::blocked_range<int> range;
+
+  tbb::parallel_for(range(0, outuv.rows, 256),
+      [&Itx, &e, &Ity, &outuv](const range & r) {
+
+        const cv::Mat4f & D = e.D;
+
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+          for ( int x = 0, nx = outuv.cols; x < nx; ++x ) {
+            const float & a00 = D[y][x][0];
+            const float & a01 = D[y][x][1];
+            const float & a10 = D[y][x][1];
+            const float & a11 = D[y][x][2];
+            const float & det = D[y][x][3];
+
+            const float & b0 = Itx[y][x];
+            const float & b1 = Ity[y][x];
+            outuv[y][x][0] = det * (a11 * b0 - a01 * b1);
+            outuv[y][x][1] = det * (a00 * b1 - a10 * b0);
+          }
+        }
+      });
+
+
+  if ( update_multiplier_ != 1 ) {
+    cv::multiply(outuv, update_multiplier_, outuv);
+  }
+
+  pupscale(outuv, I1.size());
+  if ( outuv.size() != I1.size() ) {
+    CF_ERROR("Invalid outuv size: %dx%d must be %dx%d", outuv.cols, outuv.rows, I1.cols, I1.rows);
+    return false;
+  }
+
+  return true;
+}
+
+
+bool c_ecc_stereo_flow::compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
+    cv::InputArray inputMask, cv::InputArray referenceMask)
+{
+  set_reference_image(referenceImage, referenceMask);
+  return compute(inputImage, rmap, inputMask);
+}
+
+bool c_ecc_stereo_flow::set_reference_image(cv::InputArray referenceImage,
+    cv::InputArray referenceMask)
+{
+
+  if ( !referenceMask.empty() ) {
+
+    if ( referenceMask.size() != referenceImage.size() ) {
+      CF_ERROR("Invalid reference mask size: %dx%d. Must be is %dx%d",
+          referenceMask.cols(), referenceMask.rows(),
+          referenceImage.cols(), referenceImage.rows());
+
+      return false;
+    }
+
+    if ( referenceMask.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid reference mask type: %d. Must be CV_8UC1",
+          referenceMask.type());
+      return false;
+    }
+  }
+
+
+  cv::Mat1f I, Ixx, Iyy, Ixy, DD;
+  cv::Mat1b M;
+
+  const double noise_level =
+      ecc_estimate_image_noise(referenceImage,
+          referenceMask);
+
+  pyramid_.clear();
+  pyramid_.reserve(20);
+
+  if ( !convert_input_images(referenceImage, referenceMask, I, M) ) {
+    CF_ERROR("convert_input_images() fails");
+    return false;
+  }
+
+  const int min_image_size =
+      std::min(std::max(referenceImage.cols(), referenceImage.rows()),
+          3 * (1 << (support_scale_)));
+
+  pyramid_.emplace_back();
+
+  pyramid_.back().reference_mask = M;
+
+  CF_DEBUG("min_image_size=%d", min_image_size);
+
+  for ( int current_level = 0; ; ++current_level ) {
+
+    pyramid_entry & current_scale = pyramid_.back();
+    const cv::Size currentSize = I.size();
+
+    pnormalize(I, current_scale.reference_mask,
+        current_scale.reference_image);
+
+    ecc_differentiate(current_scale.reference_image,
+        current_scale.Ix, current_scale.Iy);
+
+    tbb::parallel_invoke(
+        [this, &current_scale, &Ixx]() {
+          cv::multiply(current_scale.Ix, current_scale.Ix, Ixx);
+          pscale(Ixx, Ixx);
+        },
+        [this, &current_scale, &Ixy]() {
+          cv::multiply(current_scale.Ix, current_scale.Iy, Ixy);
+          pscale(Ixy, Ixy);
+        },
+        [this, &current_scale, &Iyy]() {
+          cv::multiply(current_scale.Iy, current_scale.Iy, Iyy);
+          pscale(Iyy, Iyy);
+        }
+    );
+
+    // FIXME: this regularization therm estimation seems crazy
+    const double RegularizationTerm =
+        pow(1e-5 * noise_level / (1 << current_level), 4);
+
+    cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
+    cv::add(DD, RegularizationTerm, DD);
+    cv::divide(1, DD, DD);
+
+    cv::Mat D_channels[4] = {
+        Ixx,
+        Ixy,
+        Iyy,
+        DD
+      };
+
+    cv::merge(D_channels, 4, current_scale.D);
+
+    const cv::Size nextSize((currentSize.width + 1) / 2, (currentSize.height + 1) / 2);
+
+    if ( nextSize.width < min_image_size || nextSize.height < min_image_size ) {
+      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
+          currentSize.width, currentSize.height,
+          nextSize.width, nextSize.height);
+      break;
+    }
+
+    if ( max_pyramid_level_ >= 0 && current_level >= max_pyramid_level_ ) {
+      break;
+    }
+
+    pyramid_.emplace_back();
+
+    if ( pyramid_[pyramid_.size()-2].reference_mask.empty() ) {
+      pyrdown(I, I, nextSize, cv::BORDER_REPLICATE);
+    }
+    else {
+
+      tbb::parallel_invoke(
+
+          [&I, nextSize]() {
+            pyrdown(I, I, nextSize, cv::BORDER_REPLICATE);
+          },
+
+          [this, &M, nextSize]() {
+            cv::resize(M, pyramid_.back().reference_mask, nextSize, 0, 0, cv::INTER_NEAREST);
+            if ( cv::countNonZero(pyramid_.back().reference_mask) == nextSize.area() ) {
+              pyramid_.back().reference_mask.release();
+            }
+          });
+    }
+  }
+
+  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
+      pyramid_.back().reference_image.cols,
+      pyramid_.back().reference_image.rows);
+
+  return true;
+}
+
+
+// FIXME: Make sure at caller side that both reference and current image are pre-inpained for missing pixels!!!!
+bool c_ecc_stereo_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
+{
+  INSTRUMENT_REGION("");
+
+  cv::Mat1f I;
+  cv::Mat1b M;
+  cv::Mat2f uv;
+
+  if ( pyramid_.empty() ) {
+    CF_ERROR("Invalid call to c_ecch2_flow::compute(): reference image was not set");
+    return false;
+  }
+
+  if( rmap.empty() ) {
+    ecc_create_identity_remap(rmap, pyramid_.front().reference_image.size());
+  }
+  else if( rmap.size() != pyramid_.front().reference_image.size() ) {
+    CF_ERROR("Invalid args to c_ecch2_flow::compute(): reference image and rmap sizes not match");
+    return false;
+  }
+
+  if ( !inputMask.empty() ) {
+
+    if ( inputMask.size() != inputImage.size() ) {
+      CF_ERROR("Invalid input mask size: %dx%d. Must be %dx%d",
+          inputMask.cols(), inputMask.rows(),
+          inputImage.cols(), inputImage.rows());
+
+      return false;
+    }
+
+    if ( inputMask.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid input mask type: %d. Must be CV_8UC1",
+          inputMask.type());
+      return false;
+    }
+  }
+
+  if ( !convert_input_images(inputImage, inputMask, I, M) ) {
+    CF_ERROR("convert_input_images() fails");
+    return false;
+  }
+
+  pyramid_.front().rmap = rmap; // attention to this!
+  pyramid_.front().current_mask = M;
+  pnormalize(I, M, pyramid_.front().current_image);
+
+  // FIXME: limit downscale steps by input image size too
+
+  for ( int i = 1, n = pyramid_.size(); i < n; ++i ) {
+
+    const pyramid_entry & prev_scale =
+        pyramid_[i - 1];
+
+    pyramid_entry & next_scale =
+        pyramid_[i];
+
+    const cv::Size prev_image_size =
+        prev_scale.current_image.size();
+
+    const cv::Size next_image_size((prev_image_size.width + 1) / 2,
+        (prev_image_size.height + 1) / 2);
+
+    const cv::Size prev_rmap_size =
+        prev_scale.rmap.size();
+
+    const cv::Size next_rmap_size((prev_rmap_size.width + 1) / 2,
+        (prev_rmap_size.height + 1) / 2);
+
+    next_scale.current_mask.release();
+
+    if ( !prev_scale.current_mask.empty()) {
+
+      cv::resize(M, next_scale.current_mask, next_image_size, 0, 0, cv::INTER_NEAREST);
+
+      if ( cv::countNonZero(next_scale.current_mask) == next_image_size.area() ) {
+        next_scale.current_mask.release();
+      }
+    }
+
+    tbb::parallel_invoke(
+
+        [this, &I, &prev_scale, &next_scale, next_image_size]() {
+          pyrdown(I, I, next_image_size, cv::BORDER_REPLICATE);
+          pnormalize(I, next_scale.current_mask, next_scale.current_image);
+        },
+
+
+        [&prev_scale, &next_scale, prev_image_size, next_image_size, next_rmap_size]() {
+
+          const cv::Scalar size_ratio((double) next_image_size.width / (double) prev_image_size.width,
+              (double) next_image_size.height / (double) prev_image_size.height);
+
+          pyrdown(prev_scale.rmap, next_scale.rmap, next_rmap_size, cv::BORDER_REPLICATE);
+          cv::multiply(next_scale.rmap, size_ratio, next_scale.rmap);
+        }
+    );
+
+  }
+
+
+  compute_uv(pyramid_.back(), cuv);
+
+  if ( pyramid_.size() == 1 ) {
+    cv::add(rmap, cuv, rmap);
+  }
+  else {
+
+    for ( int i = pyramid_.size() - 2; i >= 0; --i ) {
+
+      pyramid_entry & current_scale = pyramid_[i];
+      const pyramid_entry & prev_scale = pyramid_[i + 1];
+
+      const cv::Size current_image_size = current_scale.current_image.size();
+      const cv::Size prev_image_size = prev_scale.current_image.size();
+
+      const cv::Size current_rmap_size = current_scale.rmap.size();
+      const cv::Size prev_rmap_size = prev_scale.rmap.size();
+
+      const cv::Scalar size_ratio((double) current_image_size.width / (double) prev_image_size.width,
+          (double) current_image_size.height / (double) prev_image_size.height);
+
+      cv::multiply(cuv, size_ratio, cuv);
+      pyrup(cuv, cuv, current_rmap_size);
+      cv::add(current_scale.rmap, cuv, current_scale.rmap);
+
+      compute_uv(current_scale, uv);
+      if ( i == 0 ) { // at zero level the current_scale.rmap is referenced directly to output
+        cv::add(rmap, uv, rmap);
+      }
+      else {
+        cv::add(uv, cuv, cuv);
+      }
+    }
+  }
+
+  return true;
+}
+
+void c_ecc_stereo_flow::pyrdown(cv::InputArray src, cv::OutputArray dst,
+    const cv::Size & dstsize,
+    int borderType)
+{
+  const cv::Size size =
+      dstsize.empty() ? cv::Size((src.cols() + 1) / 2, (src.rows() + 1) / 2) :
+          dstsize;
+
+  cv::resize(src, dst, size, 0, 0,
+      cv::INTER_AREA);
+}
+
+void c_ecc_stereo_flow::pyrup(cv::InputArray src, cv::OutputArray dst,
+    const cv::Size & dstsize,
+    int borderType)
+{
+  const cv::Size size =
+      dstsize.empty() ? cv::Size(src.cols() * 2, src.rows() * 2) :
+          dstsize;
+
+  cv::resize(src, dst, size, 0, 0,
+      cv::INTER_LINEAR);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+

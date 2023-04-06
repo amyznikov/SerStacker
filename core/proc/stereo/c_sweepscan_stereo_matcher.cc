@@ -1,11 +1,12 @@
 /*
- * c_scale_sweep_stereo_matcher.cc
+ * c_sweepscan_stereo_matcher.cc
  *
  *  Created on: Mar 11, 2023
  *      Author: amyznikov
  */
 
-#include "c_scale_sweep_stereo_matcher.h"
+#include "c_sweepscan_stereo_matcher.h"
+
 #include <core/proc/pyrscale.h>
 #include <core/io/save_image.h>
 #include <core/readdir.h>
@@ -163,82 +164,82 @@ static void dump_debug_points(FILE * fp, int disparity, int scale, const cv::Mat
 
 }
 
-c_scale_sweep_stereo_matcher::c_scale_sweep_stereo_matcher()
+c_sweepscan_stereo_matcher::c_sweepscan_stereo_matcher()
 {
 }
 
-void c_scale_sweep_stereo_matcher::set_max_disparity(int v)
+void c_sweepscan_stereo_matcher::set_max_disparity(int v)
 {
   max_disparity_ = v;
 }
 
-int c_scale_sweep_stereo_matcher::max_disparity() const
+int c_sweepscan_stereo_matcher::max_disparity() const
 {
   return max_disparity_;
 }
 
-void c_scale_sweep_stereo_matcher::set_max_scale(int v)
+void c_sweepscan_stereo_matcher::set_max_scale(int v)
 {
   max_scale_ = v;
 }
 
-int c_scale_sweep_stereo_matcher::max_scale() const
+int c_sweepscan_stereo_matcher::max_scale() const
 {
   return max_scale_;
 }
 
-void c_scale_sweep_stereo_matcher::set_kernel_sigma(double v)
+void c_sweepscan_stereo_matcher::set_kernel_sigma(double v)
 {
   kernel_sigma_ = v;
 }
 
-double c_scale_sweep_stereo_matcher::kernel_sigma() const
+double c_sweepscan_stereo_matcher::kernel_sigma() const
 {
   return kernel_sigma_;
 }
 
-void c_scale_sweep_stereo_matcher::set_kernel_radius(int v)
+void c_sweepscan_stereo_matcher::set_kernel_radius(int v)
 {
   kernel_radius_ = v;
 }
 
-int c_scale_sweep_stereo_matcher::kernel_radius() const
+int c_sweepscan_stereo_matcher::kernel_radius() const
 {
   return kernel_radius_;
 }
 
-void c_scale_sweep_stereo_matcher::set_normalization_scale(int v)
+void c_sweepscan_stereo_matcher::set_normalization_scale(int v)
 {
   pscale_ = v;
 }
 
-int c_scale_sweep_stereo_matcher::normalization_scale() const
+int c_sweepscan_stereo_matcher::normalization_scale() const
 {
   return pscale_;
 }
 
-void c_scale_sweep_stereo_matcher::set_debug_directory(const std::string & v)
+void c_sweepscan_stereo_matcher::set_debug_directory(const std::string & v)
 {
   debug_directory_ = v;
 }
 
-const std::string& c_scale_sweep_stereo_matcher::debug_directory() const
+const std::string& c_sweepscan_stereo_matcher::debug_directory() const
 {
   return debug_directory_;
 }
 
-const std::vector<cv::Point>& c_scale_sweep_stereo_matcher::debug_points() const
+const std::vector<cv::Point>& c_sweepscan_stereo_matcher::debug_points() const
 {
   return debug_points_;
 }
 
-void c_scale_sweep_stereo_matcher::set_debug_points(const std::vector<cv::Point> & v)
+void c_sweepscan_stereo_matcher::set_debug_points(const std::vector<cv::Point> & v)
 {
   debug_points_ = v;
 }
 
 template<class MT>
-bool c_scale_sweep_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
+bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat1w & outputMatches, cv::Mat1b * outputMask)
 {
@@ -548,7 +549,7 @@ bool c_scale_sweep_stereo_matcher::match_impl(cv::InputArray currentImage, cv::I
   return true;
 }
 
-bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
+bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat1w & outputMatches, cv::Mat1b * outputMask)
 {
@@ -604,12 +605,12 @@ bool c_scale_sweep_stereo_matcher::match(cv::InputArray currentImage, cv::InputA
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-cv::Ptr<cScaleSweepStereoMatcher> cScaleSweepStereoMatcher::create()
+cv::Ptr<cSweepScanStereoMatcher> cSweepScanStereoMatcher::create()
 {
   return Ptr(new this_class());
 }
 
-void cScaleSweepStereoMatcher::compute(cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
+void cSweepScanStereoMatcher::compute(cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
 {
   cv::Mat1w outputMatches;
   cv::Mat1b outputMask;
@@ -623,62 +624,62 @@ void cScaleSweepStereoMatcher::compute(cv::InputArray left, cv::InputArray right
   }
 }
 
-int cScaleSweepStereoMatcher::getMinDisparity() const
+int cSweepScanStereoMatcher::getMinDisparity() const
 {
   return 0;
 }
 
-void cScaleSweepStereoMatcher::setMinDisparity(int /*minDisparity*/)
+void cSweepScanStereoMatcher::setMinDisparity(int /*minDisparity*/)
 {
   // ignore
 }
 
-int cScaleSweepStereoMatcher::getNumDisparities() const
+int cSweepScanStereoMatcher::getNumDisparities() const
 {
   return base::max_disparity() + 1;
 }
 
-void cScaleSweepStereoMatcher::setNumDisparities(int numDisparities)
+void cSweepScanStereoMatcher::setNumDisparities(int numDisparities)
 {
   return base::set_max_disparity(std::max(1, numDisparities - 1));
 }
 
-int cScaleSweepStereoMatcher::getBlockSize() const
+int cSweepScanStereoMatcher::getBlockSize() const
 {
   return 1;
 }
 
-void cScaleSweepStereoMatcher::setBlockSize(int /*blockSize*/)
+void cSweepScanStereoMatcher::setBlockSize(int /*blockSize*/)
 {
   // ignore
 }
 
-int cScaleSweepStereoMatcher::getSpeckleWindowSize() const
+int cSweepScanStereoMatcher::getSpeckleWindowSize() const
 {
   return 0;
 }
 
-void cScaleSweepStereoMatcher::setSpeckleWindowSize(int /*speckleWindowSize*/)
+void cSweepScanStereoMatcher::setSpeckleWindowSize(int /*speckleWindowSize*/)
 {
   // ignore
 }
 
-int cScaleSweepStereoMatcher::getSpeckleRange() const
+int cSweepScanStereoMatcher::getSpeckleRange() const
 {
   return 0;
 }
 
-void cScaleSweepStereoMatcher::setSpeckleRange(int /*speckleRange*/)
+void cSweepScanStereoMatcher::setSpeckleRange(int /*speckleRange*/)
 {
   // ignore
 }
 
-int cScaleSweepStereoMatcher::getDisp12MaxDiff() const
+int cSweepScanStereoMatcher::getDisp12MaxDiff() const
 {
   return 0;
 }
 
-void cScaleSweepStereoMatcher::setDisp12MaxDiff(int /*disp12MaxDiff*/)
+void cSweepScanStereoMatcher::setDisp12MaxDiff(int /*disp12MaxDiff*/)
 {
   // ignore
 }

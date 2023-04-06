@@ -503,7 +503,7 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
           reset_all_matchers();
 
           scaleSweep_ =
-              cScaleSweepStereoMatcher::create();
+              cSweepScanStereoMatcher::create();
 
           const c_ScaleSweep_options &opts =
               cScaleSweep_options_;

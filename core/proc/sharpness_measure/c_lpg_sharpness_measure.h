@@ -46,7 +46,7 @@ public:
       cv::Scalar * output_sharpness_metric);
 
 protected:
-  double k_ = 5;
+  double k_ = 2.5;
   int dscale_ = 1;
   int uscale_ = 3;
   bool squared_ = true;

@@ -17,8 +17,8 @@ apt-get install -y \
 	automake \
 	dpkg \
 	libtool \
-	qt5-default \
-	qtmultimedia5-dev \
+	qtbase5-dev qt5-qmake \
+	qtmultimedia5-dev qt5-image-formats-plugins \
 	libbtbb-dev \
 	libtiff-dev \
 	libopencv-dev \
@@ -41,6 +41,7 @@ if [ ! -f /usr/lib/x86_64-linux-gnu/libusb-1.0.so ]
 then 
    ln -s -f /usr/lib/x86_64-linux-gnu/libusb-1.0.so.0 /usr/lib/x86_64-linux-gnu/libusb-1.0.so
 fi
+   
 
 # libconfig
 if [ ! -d ${topdir}/libconfig ]

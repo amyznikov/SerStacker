@@ -15,42 +15,43 @@ pkg_revision="1"
 pkg_architecture=$(dpkg-architecture -q DEB_BUILD_ARCH)
 pkg_fullname="${pkg_name}_${pkg_version}-${pkg_revision}_${pkg_architecture}"
 
-
-# 1. Get current directory
+# Get current directory
 workdir=$(pwd)
 
-# 2. Create the package directory
+# set umask, may be actual for gl-specific laptops
+umask 0022
+
+# Create the package directory
 pkg_directory="${workdir}/${pkg_fullname}"
 mkdir -p "${pkg_directory}" \
 	|| exit 1
 
 
-# 3. install files into package directory
+# Install files into package directory
 make -C ../build install DESTDIR="${pkg_directory}" \
 	|| exit 1
 
-# 3. install files into package directory
+# Install additional files into package directory
 #make -C ../build install DESTDIR="${pkg_directory}" &&\
 #	cp /usr/local/lib/libconfig* "${pkg_directory}/usr/local/lib/" \
 #	|| exit 1
  
- # 4. Create the control file
+#  the control file
 mkdir -p "${pkg_directory}/DEBIAN" && \
 	touch "${pkg_directory}/DEBIAN/control" \
 	|| exit 1
-
 
 echo "
 Package: ${pkg_name}
 Version: ${pkg_version}
 Architecture: ${pkg_architecture}
-Depends: qt5-default,qtmultimedia5,libbtbb,libtiff,libopencv,freeglut3,libglew,libcfitsio,libraw,libopenraw,libavcodec,libavformat,libavutil,libswscale,libavdevice,v4l-utils,libv4l,libusb
+Depends: qtbase5-dev,qtmultimedia5-dev,qt5-image-formats-plugins,libbtbb-dev,libtiff-dev,libopencv-dev,freeglut3,libglew,libcfitsio-dev,libraw-dev,libopenraw-dev,libavcodec-dev,libavformat-dev,libavutil-dev,libswscale-dev,libavdevice-dev,v4l-utils,libv4l,libusb-dev
 Maintainer: Andrey Myznikov <andrey.myznikov@gmail.com>
 Description: SerStacker app.
 " > "${pkg_directory}/DEBIAN/control" \
 	|| exit 1
 
 	
-# 5. Build the deb package	
+# Build the deb package	
 dpkg-deb --build --root-owner-group "${pkg_directory}" \
 	|| exit 1

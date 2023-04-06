@@ -228,7 +228,8 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray outp
     }
   }
   else {
-    cv::scaleAdd(l, k, g, m);
+    cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
+    //cv::scaleAdd(l, k, g, m);
     if ( squared ) {
       cv::multiply(m, m, m);
     }

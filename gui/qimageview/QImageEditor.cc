@@ -6,15 +6,6 @@
  */
 
 #include "QImageEditor.h"
-#include "cv2qt.h"
-#include <gui/widgets/QWaitCursor.h>
-#include <core/improc/c_unsharp_mask_routine.h>
-#include <core/improc/c_anscombe_routine.h>
-#include <core/improc/c_autoclip_routine.h>
-#include <core/improc/c_noisemap_routine.h>
-#include <core/improc/c_align_color_channels_routine.h>
-#include <core/average/c_frame_accumulation.h>
-#include <core/debug.h>
 
 
 QImageEditor::QImageEditor(QWidget * parent) :
@@ -120,7 +111,7 @@ void QImageEditor::showEvent(QShowEvent *event)
   else {
     updateImage();
     QWidget::showEvent(event);
-    emit visibilityChanged(isVisible());
+    Q_EMIT visibilityChanged(isVisible());
   }
 }
 

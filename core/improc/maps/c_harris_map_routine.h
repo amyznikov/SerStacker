@@ -9,7 +9,7 @@
 #ifndef __c_harris_map_routine_h__
 #define __c_harris_map_routine_h__
 
-#include "../proc/sharpness_measure/c_harris_sharpness_measure.h"
+#include <core/proc/sharpness_measure/c_harris_sharpness_measure.h>
 #include <core/improc/c_image_processor.h>
 
 class c_harris_map_routine:

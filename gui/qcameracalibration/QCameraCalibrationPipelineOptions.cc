@@ -48,12 +48,12 @@ void QCameraCalibrationPipelineOptions::onupdatecontrols()
     setEnabled(false);
 
     inputOptions_ctl->set_current_pipeline(nullptr);
-    cameraCalibrationOptions_ctl->set_options(nullptr);
+    cameraCalibrationOptions_ctl->set_camera_calibration(nullptr);
   }
   else {
 
     inputOptions_ctl->set_current_pipeline(pipeline_);
-    cameraCalibrationOptions_ctl->set_options(&*pipeline_);
+    cameraCalibrationOptions_ctl->set_camera_calibration(&*pipeline_);
 
     Base::onupdatecontrols();
     setEnabled(true);

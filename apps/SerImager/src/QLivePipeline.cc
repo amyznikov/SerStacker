@@ -6,13 +6,13 @@
  */
 
 #include "QLivePipeline.h"
-#include "pipeline/QLiveImageProcessingPipeline/QLiveImageProcessingOptions.h"
-#include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationOptions.h"
-#include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
-#include "pipeline/QLiveRegularStereo/QLiveRegularStereoOptions.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
+#include <gui/qimageview/cv2qt.h>
+#include <core/mtf/mtf-histogram.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/minmax.h>
+#include <core/proc/histogram.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -40,7 +40,309 @@ typedef std::unique_lock<std::mutex>
 } // namespace
 
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+QLiveDisplayMtfFunction::QLiveDisplayMtfFunction(QImageViewer * imageViewer) :
+    Base(imageViewer, "QVideoFrameMtfDisplayFunction")
+{
+}
+
+void QLiveDisplayMtfFunction::getInputDataRange(double * minval, double * maxval) const
+{
+  c_unique_lock lock(mutex_);
+  Base::getInputDataRange(minval, maxval);
+}
+
+void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
+{
+  INSTRUMENT_REGION("");
+
+  if ( imageViewer_ ) {
+
+    cv::Mat image, mask;
+
+    double scale = 1.0;
+    double offset = 0.0;
+
+    mutex_.lock();
+    isBusy_ = true;
+
+    const cv::Mat & currentImage =
+        imageViewer_->currentImage();
+
+    if ( currentImage.depth() == CV_8U ) {
+      currentImage.copyTo(image);
+    }
+    else {
+      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+      currentImage.convertTo(image, scale, offset);
+    }
+
+    imageViewer_->currentMask().copyTo(mask);
+    mutex_.unlock();
+
+    create_histogram(image, mask,
+        H,
+        output_hmin, output_hmax,
+        256,
+        false,
+        false);
+
+    mutex_.lock();
+    isBusy_ = false;
+    mutex_.unlock();
+
+    (*output_hmin -= offset) /= scale;
+    (*output_hmax -= offset) /= scale;
+  }
+}
+
+void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
+{
+  INSTRUMENT_REGION("");
+
+  if ( imageViewer_ ) {
+
+    cv::Mat image, mask;
+
+    double scale = 1.0;
+    double offset = 0.0;
+
+    mutex_.lock();
+    isBusy_ = true;
+
+    const cv::Mat & currentImage =
+        imageViewer_->displayImage();
+
+    if ( currentImage.depth() == CV_8U ) {
+      currentImage.copyTo(image);
+    }
+    else {
+      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+      currentImage.convertTo(image, scale, offset);
+    }
+
+    imageViewer_->currentMask().copyTo(mask);
+    mutex_.unlock();
+
+    create_histogram(image, mask,
+        H,
+        output_hmin, output_hmax,
+        256,
+        false,
+        false);
+
+    (*output_hmin -= offset) /= scale;
+    (*output_hmax -= offset) /= scale;
+
+    mutex_.lock();
+    isBusy_ = false;
+    mutex_.unlock();
+
+  }
+}
+
+
+void QLiveDisplayMtfFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
+    cv::OutputArray displayImage, int ddepth)
+{
+  //  c_unique_lock lock(mutex_);
+  Base::createDisplayImage(currentImage, currentMask, displayImage, ddepth);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+QLiveDisplay::QLiveDisplay(QWidget * parent) :
+    Base(parent),
+    mtfDisplayFunction_(this)
+{
+  setDisplayFunction(&mtfDisplayFunction_);
+
+  connect(this, &ThisClass::pixmapChanged,
+      this, &ThisClass::onPixmapChanged,
+      Qt::QueuedConnection);
+
+  connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
+      [this]() {
+        if ( !mtfDisplayFunction_.isBusy() ) {
+          Base::updateImage();
+        }
+      });
+
+  connect(this, &ThisClass::displayImageChanged,
+      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
+      Qt::QueuedConnection);
+
+  createShapes();
+}
+
+QLiveDisplay::~QLiveDisplay()
+{
+
+}
+
+void QLiveDisplay::createShapes()
+{
+  if( !rectShape_ ) {
+
+    QRectF rect;
+
+    if( currentImage_.empty() ) {
+      rect.setRect(0, 0, 400, 400);
+    }
+    else {
+
+      rect.setRect(0, 0, currentImage_.cols, currentImage_.rows);
+
+      if( rect.width() > 400 ) {
+        rect.setX((rect.left() + rect.right()) / 2 - 200);
+        rect.setWidth(400);
+      }
+
+      if( rect.height() > 400 ) {
+        rect.setY((rect.top() + rect.bottom()) / 2 - 200);
+        rect.setHeight(400);
+      }
+    }
+
+    rectShape_ = new QGraphicsRectShape(rect);
+    rectShape_->setResizable(true);
+    rectShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    rectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    rectShape_->setCosmeticPen(Qt::red);
+    rectShape_->setVisible(false);
+    scene_->addItem(rectShape_);
+  }
+
+  if( !lineShape_ ) {
+
+    lineShape_ = new QGraphicsLineShape(-100, -100, 100, 100);
+    lineShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    lineShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    lineShape_->setCosmeticPen(Qt::green);
+    lineShape_->setVisible(false);
+    scene_->addItem(lineShape_);
+  }
+
+  if( !targetShape_ ) {
+    targetShape_ = new QGraphicsTargetShape();
+    targetShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    targetShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    targetShape_->setCosmeticPen(Qt::red);
+    targetShape_->setVisible(false);
+    scene_->addItem(targetShape_);
+  }
+
+}
+
+const QLiveDisplayMtfFunction * QLiveDisplay::mtfDisplayFunction() const
+{
+  return &mtfDisplayFunction_;
+}
+
+QLiveDisplayMtfFunction * QLiveDisplay::mtfDisplayFunction()
+{
+  return &mtfDisplayFunction_;
+}
+
+
+void QLiveDisplay::setFrameProcessor(const c_image_processor::sptr & processor)
+{
+  mtfDisplayFunction_.mutex().lock();
+  Base::current_processor_ = processor;
+
+  if ( !mtfDisplayFunction_.isBusy() ) {
+    updateImage();
+  }
+
+  mtfDisplayFunction_.mutex().unlock();
+}
+
+QGraphicsRectShape * QLiveDisplay::rectShape() const
+{
+  return rectShape_;
+}
+
+QGraphicsLineShape * QLiveDisplay::lineShape() const
+{
+  return lineShape_;
+}
+
+QGraphicsTargetShape * QLiveDisplay::targetShape() const
+{
+  return targetShape_;
+}
+
+void QLiveDisplay::showEvent(QShowEvent *event)
+{
+  Base::showEvent(event);
+}
+
+void QLiveDisplay::hideEvent(QHideEvent *event)
+{
+  Base::hideEvent(event);
+}
+
+void QLiveDisplay::onPixmapChanged()
+{
+  c_unique_lock lock(mtfDisplayFunction_.mutex());
+  scene()->setImage(pixmap_);
+}
+
+void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bpp)
+{
+  c_unique_lock mtflock(mtfDisplayFunction_.mutex());
+
+  image.copyTo(inputImage_);
+  inputMask_.release();
+
+
+  if( !current_processor_ || current_processor_->empty() ) {
+    c_current_image_lock lock(this);
+    currentImage_ = inputImage_;
+    currentMask_ = inputMask_;
+  }
+  else {
+
+    cv::Mat tmp_image, tmp_mask;
+
+    inputImage_.copyTo(tmp_image);
+    inputMask_.copyTo(tmp_mask);
+    current_processor_->process(tmp_image, tmp_mask);
+
+    c_current_image_lock lock(this);
+    currentImage_ = tmp_image;
+    currentMask_ = tmp_mask;
+  }
+
+  mtfDisplayFunction_.createDisplayImage(
+      currentImage_,
+      currentMask_,
+      displayImage_,
+      CV_8U);
+
+  pixmap_ =
+      createPixmap(displayImage_, true,
+          Qt::NoFormatConversion |
+              Qt::ThresholdDither |
+              Qt::ThresholdAlphaDither |
+              Qt::NoOpaqueDetection);
+
+  Q_EMIT pixmapChanged();
+
+  if ( !mtfDisplayFunction_.isBusy() ) {
+    Q_EMIT displayImageChanged();
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 QLivePipeline::QLivePipeline(const QString & name, QObject * parent) :
     Base(parent),
     name_(name)
@@ -390,12 +692,12 @@ void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, Q
   }
 }
 
-void QLivePipelineThread::setDisplay(QVideoFrameDisplay * display)
+void QLivePipelineThread::setDisplay(QLiveDisplay * display)
 {
   display_ = display;
 }
 
-QVideoFrameDisplay* QLivePipelineThread::display() const
+QLiveDisplay* QLivePipelineThread::display() const
 {
   return display_;
 }
@@ -577,46 +879,62 @@ const QList<QLivePipelineCollection::PipelineType*>& QLivePipelineCollection::pi
   return pipelineTypes_;
 }
 
-bool QLivePipelineCollection::addPipelineType(const QString & name, const QString & tooltip,
-    const PipelineType::factoryFunction & factory)
+bool QLivePipelineCollection::addPipelineClassFactory(const QString & className, const QString & tooltip,
+    const PipelineType::PipelineFactoryFunction & factory,
+    const PipelineType::SettingsFactoryFunction & settingsFactory)
 {
   const auto pos =
       std::find_if(pipelineTypes_.begin(), pipelineTypes_.end(),
-          [name](const PipelineType * obj) {
-            return obj->name() == name;
+          [className](const PipelineType * obj) {
+            return obj->className() == className;
           });
 
   if( pos != pipelineTypes_.end() ) {
     CF_ERROR("ERROR: Requested pipeline type '%s' already registered",
-        name.toUtf8().constData());
+        className.toUtf8().constData());
     return false;
   }
 
-  pipelineTypes_.append(new PipelineType(name, tooltip, factory));
+  pipelineTypes_.append(new PipelineType(className,
+      tooltip,
+      factory,
+      settingsFactory));
 
   return true;
 }
 
-QLivePipeline * QLivePipelineCollection::addPipeline(const QString & type, const QString & name)
+const QLivePipelineCollection::PipelineType * QLivePipelineCollection::findPipelineClassFactory(const QString & className) const
 {
   const auto pos =
       std::find_if(pipelineTypes_.begin(), pipelineTypes_.end(),
-          [type](const PipelineType * obj) {
-            return obj->name() == type;
+          [className](const PipelineType * obj) {
+            return obj->className() == className;
+          });
+
+  return pos == pipelineTypes_.end() ? nullptr : *pos;
+}
+
+
+QLivePipeline * QLivePipelineCollection::addPipeline(const QString & className, const QString & objName)
+{
+  const auto pos =
+      std::find_if(pipelineTypes_.begin(), pipelineTypes_.end(),
+          [className](const PipelineType * obj) {
+            return obj->className() == className;
           });
 
   if( pos == pipelineTypes_.end() ) {
     CF_ERROR("ERROR: pipeline type '%s' not registered",
-        type.toUtf8().constData());
+        className.toUtf8().constData());
     return nullptr;
   }
 
   QLivePipeline * pipeline =
-      (*pos)->createInstance(name);
+      (*pos)->createInstance(objName);
 
   if( !pipeline ) {
     CF_ERROR("ERROR: PipelineType->createInstance() fails for pipeline type '%s' name '%s'",
-        type.toUtf8().constData(), name.toUtf8().constData());
+        className.toUtf8().constData(), objName.toUtf8().constData());
     return nullptr;
   }
 
@@ -627,6 +945,21 @@ QLivePipeline * QLivePipelineCollection::addPipeline(const QString & type, const
 
   return pipeline;
 }
+
+bool QLivePipelineCollection::removePipeline(QLivePipeline * pipeline)
+{
+  const int pos =
+      indexOf(pipeline);
+
+  if ( pos >= 0 ) {
+    removeAt(pos);
+    save();
+    return true;
+  }
+
+  return false;
+}
+
 
 QLivePipeline * QLivePipelineCollection::findPipeline(const QString & name) const
 {
@@ -724,20 +1057,20 @@ void QLivePipelineCollection::load(const std::string & cfgfilename)
         continue;
       }
 
-      if( objtype == "QLiveStereoCalibrationPipeline" ) {
-        obj = new QLiveStereoCalibrationPipeline(objname.c_str());
+      const QString objClassName(objtype.c_str());
+
+      const auto * factory =
+          findPipelineClassFactory(objtype.c_str());
+
+      if( !factory ) {
+        CF_ERROR("ERROR: findPipelineClassFactory(objtype='%s') fails for item %d",
+            objtype.c_str(), i);
+        continue;
       }
-      else if( objtype == "QLiveCameraCalibrationPipeline" ) {
-        obj = new QLiveCameraCalibrationPipeline(objname.c_str());
-      }
-      else if( objtype == "QLiveRegularStereoPipeline" ) {
-        obj = new QLiveRegularStereoPipeline(objname.c_str());
-      }
-      else if( objtype == "QLiveImageProcessingPipeline" ) {
-        obj = new QLiveImageProcessingPipeline(objname.c_str());
-      }
-      else {
-        CF_ERROR("Unknown objtype '%s' specified for item %d", objtype.c_str(), i);
+
+      if( !(obj = factory->createInstance(objname.c_str())) ) {
+        CF_ERROR("ERROR: factory->createInstance(objtype='%s' objname='%s')  fails",
+            objtype.c_str(), objname.c_str());
         continue;
       }
 
@@ -796,24 +1129,12 @@ void QLivePipelineCollection::save(const std::string & cfgfilename) const
 
   for ( QLivePipeline * obj : *this ) {
 
-    std::string objtype;
+    std::string objtype =
+        obj->getClassName().toStdString();
 
-    if( dynamic_cast<QLiveStereoCalibrationPipeline*>(obj) ) {
-      objtype = "QLiveStereoCalibrationPipeline";
-    }
-    else if( dynamic_cast<QLiveCameraCalibrationPipeline*>(obj) ) {
-      objtype = "QLiveCameraCalibrationPipeline";
-    }
-    else if( dynamic_cast<QLiveRegularStereoPipeline*>(obj) ) {
-      objtype = "QLiveRegularStereoPipeline";
-    }
-    else if( dynamic_cast<QLiveImageProcessingPipeline*>(obj) ) {
-      objtype = "QLiveImageProcessingPipeline";
-    }
-
-
-    else {
-      CF_ERROR("FIXME: implement adequate class factory please !!!!");
+    if( objtype.empty() ) {
+      CF_ERROR("FIXME: obj->getClassName() returns empty string (objname='%s')",
+          obj->name().toUtf8().constData());
       continue;
     }
 
@@ -890,7 +1211,7 @@ QAddLivePipelineDialogBox::QAddLivePipelineDialogBox(QLivePipelineCollection * p
   hbox_->addWidget(btnCancel_ = new QPushButton("Cancel"));
 
   for( const auto &item : pipelineCollection->pipelineTypes() ) {
-    pipelineTypeSelector_ctl->addItem(item->name(),
+    pipelineTypeSelector_ctl->addItem(item->className(),
         QVariant::fromValue(QString(item->tooltip())));
   }
 
@@ -1040,12 +1361,11 @@ QLivePipeline* QLivePipelineSelectionWidget::selectedPipeline() const
 void QLivePipelineSelectionWidget::populatepipelines()
 {
   combobox_ctl->clear();
-  if ( pipelineCollection_ ) {
 
+  if ( pipelineCollection_ ) {
     for ( QLivePipeline * p : *pipelineCollection_ ) {
       combobox_ctl->addItem(p->name(), QVariant::fromValue(p));
     }
-
   }
 }
 
@@ -1097,86 +1417,48 @@ void QLivePipelineSelectionWidget::onupdatecontrols()
 
 void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
 {
-  QWidget *currentWidget = nullptr;
+  QLivePipelineSettingsWidget *currentWidget =
+      nullptr;
 
-  QLivePipeline* pipeline = selectedPipeline();
+  QLivePipeline* pipeline =
+      selectedPipeline();
 
   if ( pipeline ) {
 
-    if( QLiveStereoCalibrationPipeline *stereoCalibration =
-        dynamic_cast<QLiveStereoCalibrationPipeline*>(pipeline) ) {
+    const QString className =
+        pipeline->getClassName();
 
-      if( !stereoCalibrationOptions_ctl ) {
-
-        stereoCalibrationOptions_ctl = new QLiveStereoCalibrationOptions(this);
-        connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
-            [this]() {
-              if ( pipelineCollection_ ) {
-                pipelineCollection_->save();
-              }
+    const auto pos =
+        std::find_if(settingsWidgets_.begin(), settingsWidgets_.end(),
+            [className](const QLivePipelineSettingsWidget * obj) {
+              return className == obj->pipelineClassName();
             });
-      }
 
-      currentWidget = stereoCalibrationOptions_ctl;
-      stereoCalibrationOptions_ctl->setPipeline(stereoCalibration);
+    if ( pos != settingsWidgets_.end() ) {
+      currentWidget = *pos;
+    }
+    else {
+
+      const auto *factory =
+          pipelineCollection_->findPipelineClassFactory(className);
+
+      if( !factory ) {
+        CF_FATAL("PipelineClassFactory not regsistered for pipeline class '%s' name '%s'",
+            pipeline->getClassName().toUtf8().constData(),
+            pipeline->name().toUtf8().constData());
+      }
+      else if( !(currentWidget = factory->createSettingsWidgget(this)) ) {
+        CF_ERROR("factory->createSettingsWidgget() fails for pipeline class '%s' ",
+            className.toUtf8().constData());
+      }
+      else {
+        settingsWidgets_.append(currentWidget);
+      }
     }
 
-    else if( QLiveCameraCalibrationPipeline *cameraCalibration =
-        dynamic_cast<QLiveCameraCalibrationPipeline*>(pipeline) ) {
-
-      if( !cameraCalibrationOptions_ctl ) {
-
-        cameraCalibrationOptions_ctl = new QLiveCameraCalibrationOptions(this);
-        connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
-            [this]() {
-              if ( pipelineCollection_ ) {
-                pipelineCollection_->save();
-              }
-            });
-      }
-
-      currentWidget = cameraCalibrationOptions_ctl;
-      cameraCalibrationOptions_ctl->setPipeline(cameraCalibration);
+    if ( currentWidget ) {
+      currentWidget->setCurrentPipeline(pipeline);
     }
-
-    else if( QLiveRegularStereoPipeline * regularStereo =
-        dynamic_cast<QLiveRegularStereoPipeline*>(pipeline) ) {
-
-      if( !regularStereoOptions_ctl ) {
-
-        regularStereoOptions_ctl = new QLiveRegularStereoOptions(this);
-        connect(regularStereoOptions_ctl, &QSettingsWidget::parameterChanged,
-            [this]() {
-              if ( pipelineCollection_ ) {
-                pipelineCollection_->save();
-              }
-            });
-      }
-
-      currentWidget = regularStereoOptions_ctl;
-      regularStereoOptions_ctl->setPipeline(regularStereo);
-    }
-
-    else if( QLiveImageProcessingPipeline * genericPipeline =
-        dynamic_cast<QLiveImageProcessingPipeline*>(pipeline) ) {
-
-      if( !genericImageProcessingOptions_ctl ) {
-
-        genericImageProcessingOptions_ctl = new QLiveImageProcessingOptions(this);
-        connect(genericImageProcessingOptions_ctl, &QSettingsWidget::parameterChanged,
-            [this]() {
-              if ( pipelineCollection_ ) {
-                pipelineCollection_->save();
-              }
-            });
-      }
-
-      currentWidget = genericImageProcessingOptions_ctl;
-      genericImageProcessingOptions_ctl->setPipeline(genericPipeline);
-    }
-
-
-
   }
 
   if( scrollArea_ctl->widget() != currentWidget ) {
@@ -1192,16 +1474,6 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
       scrollArea_ctl->widget()->show();
     }
   }
-
-//  if ( currentWidget ) {
-//
-//    if ( QImageProcessingPipeline::isRunning() && pipeline == QImageProcessingPipeline::current_pipeline() ) {
-//      currentWidget->setEnabled(false);
-//    }
-//    else {
-//      currentWidget->setEnabled(true);
-//    }
-//  }
 
 }
 
@@ -1226,12 +1498,12 @@ void QLivePipelineSelectionWidget::onMenuCtlClicked()
   menu.addAction(getIcon(ICON_add), "Add pipeline...",
       this, &ThisClass::onAddLivePipelineClicked);
 
-  menu.addAction(getIcon(ICON_add), "Rename pipeline......",
+  menu.addAction(getIcon(ICON_rename), "Rename pipeline......",
       this, &ThisClass::onRenameLivePipelineClicked);
 
   menu.addSeparator();
 
-  menu.addAction(getIcon(ICON_add), "Delete pipeline...",
+  menu.addAction(getIcon(ICON_delete), "Delete pipeline...",
       this, &ThisClass::onRemoveLivePipelineClicked);
 
 
@@ -1299,12 +1571,93 @@ void QLivePipelineSelectionWidget::onAddLivePipelineClicked()
 
 void QLivePipelineSelectionWidget::onRemoveLivePipelineClicked()
 {
+  QLivePipeline* pipeline =
+      selectedPipeline();
 
+  if ( pipeline ) {
+
+    const int resp =
+        QMessageBox::warning(this, "Remove Live Pipeline",
+            qsprintf("Confirmation required:\n"
+                "Are you sure to remove pipeline %s ?",
+                pipeline->name().toUtf8().constData()),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+
+    if ( resp != QMessageBox::Yes ) {
+      return;
+    }
+
+    for( int i = 0, n = settingsWidgets_.size(); i < n; ++i ) {
+      if( settingsWidgets_[i]->currentPipeline() == pipeline ) {
+        settingsWidgets_[i]->setCurrentPipeline(nullptr);
+      }
+    }
+
+    if( !pipelineCollection_->removePipeline(pipeline) ) {
+      CF_ERROR("ERROR: pipelineCollection_->removePipeline('%s') fails",
+          pipeline->name().toUtf8().constData());
+    }
+
+    const int comboIndex =
+        combobox_ctl->findData(QVariant::fromValue(pipeline));
+
+    if ( comboIndex >= 0 ) {
+      combobox_ctl->removeItem(comboIndex);
+    }
+    else {
+      CF_ERROR("ERROR: combobox_ctl->findData(pipeline=%s) fails",
+          pipeline->name().toUtf8().constData());
+    }
+
+    delete pipeline;
+  }
 }
 
 void QLivePipelineSelectionWidget::onRenameLivePipelineClicked()
 {
+  QLivePipeline *pipeline =
+      selectedPipeline();
 
+  if( pipeline ) {
+
+    while (42) {
+
+      const QString currentName =
+          pipeline->name();
+
+      const QString newName =
+          QInputDialog::getText(this,
+              "Rename Pipeline",
+              "New name:",
+              QLineEdit::Normal,
+              currentName);
+
+      if( newName.isEmpty() ) {
+        break;
+      }
+
+      if( !pipelineCollection_->findPipeline(newName) ) {
+
+        pipeline->setName(newName);
+
+        const int index = combobox_ctl->findText(currentName);
+        if( index >= 0 ) {
+          combobox_ctl->setItemText(index, newName);
+        }
+
+        pipelineCollection_->save();
+
+        Q_EMIT parameterChanged();
+        break;
+      }
+
+      QMessageBox::warning(this,
+          "Rename Pipeline",
+          "Error: Pipeline '%s' already exists.\n"
+              "Enter another name.");
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

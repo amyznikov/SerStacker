@@ -7,10 +7,10 @@
 
 #include "MainWindow.h"
 #include "camera/ffmpeg/QFFStreams.h"
-#include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationPipeline.h"
-#include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationPipeline.h"
-#include "pipeline/QLiveRegularStereo/QLiveRegularStereoPipeline.h"
-#include "pipeline/QLiveImageProcessingPipeline/QLiveImageProcessingPipeline.h"
+#include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationOptions.h"
+#include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
+#include "pipeline/QLiveRegularStereo/QLiveRegularStereoOptions.h"
+#include "pipeline/QLiveImageProcessingPipeline/QLiveImageProcessingOptions.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -99,7 +99,7 @@ MainWindow::MainWindow(QWidget * parent) :
 {
   setWindowIcon(getIcon(":/serimager/icons/app-icon.png"));
 
-  setCentralWidget(centralDisplay_ = new QVideoFrameDisplay(this));
+  setCentralWidget(centralDisplay_ = new QLiveDisplay(this));
 
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
@@ -127,13 +127,13 @@ MainWindow::MainWindow(QWidget * parent) :
 
   QApplication::instance()->installEventFilter(this);
 
-  connect(centralDisplay_, &QVideoFrameDisplay::onMouseMove,
+  connect(centralDisplay_, &QLiveDisplay::onMouseMove,
       [this](QMouseEvent * e) {
         mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
         mousepos_ctl->show();
       });
 
-  connect(centralDisplay_, &QVideoFrameDisplay::onMouseLeaveEvent,
+  connect(centralDisplay_, &QLiveDisplay::onMouseLeaveEvent,
       [this](QEvent * e) {
         mousepos_ctl->hide();
       });
@@ -548,29 +548,48 @@ void MainWindow::setupCameraControls()
 
 void MainWindow::setupLivePipelineControls()
 {
-  pipelineCollection_.addPipelineType("Generic",
+  pipelineCollection_.addPipelineClassFactory(
+      QLiveImageProcessingPipeline::className(),
       "Generic image processing",
       [](const QString & name) {
         return new QLiveImageProcessingPipeline(name);
+      },
+      [](QWidget * parent) {
+        return new QLiveImageProcessingOptions(parent);
       });
 
-  pipelineCollection_.addPipelineType("CameraCalibration",
-      "LIve Camera Calibration",
+
+  pipelineCollection_.addPipelineClassFactory(
+      QLiveCameraCalibrationPipeline::className(),
+      "Live Camera Calibration",
       [](const QString & name) {
         return new QLiveCameraCalibrationPipeline(name);
-      });
+  },
+  [](QWidget * parent) {
+    return new QLiveCameraCalibrationOptions(parent);
+  });
 
-  pipelineCollection_.addPipelineType("StereoCalibration",
-      "LIve Stereo Camera Calibration",
+
+  pipelineCollection_.addPipelineClassFactory(
+      QLiveStereoCalibrationPipeline::className(),
+      "Live Stereo Camera Calibration",
       [](const QString & name) {
         return new QLiveStereoCalibrationPipeline(name);
-      });
+  },
+  [](QWidget * parent) {
+    return new QLiveStereoCalibrationOptions(parent);
+  });
 
-  pipelineCollection_.addPipelineType("RegularStereo",
-      "LIve Stereo Matching",
+
+  pipelineCollection_.addPipelineClassFactory(
+      QLiveRegularStereoPipeline::className(),
+      "Live Stereo Matching",
       [](const QString & name) {
         return new QLiveRegularStereoPipeline(name);
-      });
+  },
+  [](QWidget * parent) {
+    return new QLiveRegularStereoOptions(parent);
+  });
 
 
 

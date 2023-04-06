@@ -26,47 +26,16 @@ QLiveRegularStereoOptions::QLiveRegularStereoOptions(QLiveRegularStereoPipeline 
   setPipeline(pipeline);
 }
 
-void QLiveRegularStereoOptions::setPipeline(QLiveRegularStereoPipeline * pipeline)
-{
-  if ( pipeline_ ) {
-    pipeline_->disconnect(this);
-  }
-
-  if ( (pipeline_ = pipeline) ) {
-
-    connect(pipeline_, &QLivePipeline::runningStateChanged,
-        this, &ThisClass::onLivePipelineStateChanged,
-        Qt::QueuedConnection);
-  }
-
-  updateControls();
-}
-
-QLiveRegularStereoPipeline * QLiveRegularStereoOptions::pipeline() const
-{
-  return pipeline_;
-}
-
 void QLiveRegularStereoOptions::onLivePipelineStateChanged(bool isRunning)
 {
-  CF_DEBUG("isRunning=%d", isRunning);
-  updateControls();
-  CF_DEBUG("updateControls() OK");
+  regularStereoOptions_ctl->updateRunTimeStateControls(isRunning);
 }
 
-void QLiveRegularStereoOptions::onupdatecontrols()
+void QLiveRegularStereoOptions::update_pipeline_controls()
 {
-  if ( !pipeline_ ) {
-    setEnabled(false);
-    regularStereoOptions_ctl->set_rstereo(nullptr);
-  }
-  else {
-
-    regularStereoOptions_ctl->set_rstereo(&*pipeline_);
-    regularStereoOptions_ctl->updateRunTimeStateControls(pipeline_->isRunning());
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
+  regularStereoOptions_ctl->set_rstereo(&*pipeline_);
+  regularStereoOptions_ctl->updateRunTimeStateControls(pipeline_->isRunning());
+  setEnabled(true);
 }
 
 

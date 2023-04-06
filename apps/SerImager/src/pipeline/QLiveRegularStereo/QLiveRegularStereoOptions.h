@@ -16,27 +16,23 @@
 namespace serimager {
 
 class QLiveRegularStereoOptions :
-    public QSettingsWidget
+    public QLivePipelineSettings<QLiveRegularStereoPipeline>
 {
   Q_OBJECT;
 public:
   typedef QLiveRegularStereoOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QLivePipelineSettings<QLiveRegularStereoPipeline> Base;
 
   QLiveRegularStereoOptions(QWidget * parent = nullptr);
   QLiveRegularStereoOptions(QLiveRegularStereoPipeline * pipeline_, QWidget * parent = nullptr);
 
-  void setPipeline(QLiveRegularStereoPipeline * pipeline);
-  QLiveRegularStereoPipeline * pipeline() const;
+protected:
+  void update_pipeline_controls() override;
 
 protected Q_SLOTS:
   void onLivePipelineStateChanged(bool isRunning);
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  QLiveRegularStereoPipeline * pipeline_ = nullptr;
   QRegularStereoOptions * regularStereoOptions_ctl = nullptr;
 };
 

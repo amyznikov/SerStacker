@@ -26,40 +26,9 @@ QLiveImageProcessingOptions::QLiveImageProcessingOptions(QLiveImageProcessingPip
   setPipeline(pipeline);
 }
 
-
-void QLiveImageProcessingOptions::setPipeline(QLiveImageProcessingPipeline * pipeline)
+void QLiveImageProcessingOptions::update_pipeline_controls()
 {
-  if ( pipeline_ ) {
-    pipeline_->disconnect(this);
-  }
-
-  if ( (pipeline_ = pipeline) ) {
-//
-//    connect(pipeline_, &QLivePipeline::runningStateChanged,
-//        this, &ThisClass::onLivePipelineStateChanged,
-//        Qt::QueuedConnection);
-  }
-
-  updateControls();
-}
-
-QLiveImageProcessingPipeline * QLiveImageProcessingOptions::pipeline() const
-{
-  return pipeline_;
-}
-
-void QLiveImageProcessingOptions::onupdatecontrols()
-{
-  if ( !pipeline_ ) {
-    setEnabled(false);
-    genericOptions_ctl->set_pipeline(nullptr);
-  }
-  else {
-    genericOptions_ctl->set_pipeline(pipeline_);
-    //genericOptions_ctl->updateRunTimeStateControls(pipeline_->isRunning());
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
+  genericOptions_ctl->set_pipeline(pipeline_);
 }
 
 } // namespace serimager

@@ -29,13 +29,13 @@ QCameraCalibrationOptions::QCameraCalibrationOptions(QWidget * parent) :
 }
 
 
-void QCameraCalibrationOptions::set_options(c_camera_calibration * options)
+void QCameraCalibrationOptions::set_camera_calibration(c_camera_calibration * options)
 {
   options_ = options;
   updateControls();
 }
 
-c_camera_calibration * QCameraCalibrationOptions::options() const
+c_camera_calibration * QCameraCalibrationOptions::camera_calibration() const
 {
   return options_;
 }

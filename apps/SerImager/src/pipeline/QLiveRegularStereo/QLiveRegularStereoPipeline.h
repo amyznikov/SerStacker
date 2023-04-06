@@ -24,6 +24,17 @@ public:
 
   QLiveRegularStereoPipeline(const QString & name, QObject * parent = nullptr);
 
+  const QString & getClassName() const override
+  {
+    return className();
+  }
+
+  static const QString & className()
+  {
+    static const QString className_ = "RegularStereo";
+    return className_;
+  }
+
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool process_frame(const cv::Mat & image, COLORID colorid, int bpp) override;

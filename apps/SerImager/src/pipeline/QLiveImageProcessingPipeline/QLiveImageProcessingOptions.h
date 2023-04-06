@@ -15,27 +15,20 @@
 namespace serimager {
 
 class QLiveImageProcessingOptions :
-    public QSettingsWidget
+    public QLivePipelineSettings<QLiveImageProcessingPipeline>
 {
   Q_OBJECT;
 public:
   typedef QLiveImageProcessingOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QLivePipelineSettings<QLiveImageProcessingPipeline> Base;
 
   QLiveImageProcessingOptions(QWidget * parent = nullptr);
-  QLiveImageProcessingOptions(QLiveImageProcessingPipeline * pipeline_, QWidget * parent = nullptr);
-
-  void setPipeline(QLiveImageProcessingPipeline * pipeline);
-  QLiveImageProcessingPipeline * pipeline() const;
-
-//protected Q_SLOTS:
-//  void onLivePipelineStateChanged(bool isRunning);
+  QLiveImageProcessingOptions(QLiveImageProcessingPipeline * pipeline, QWidget * parent = nullptr);
 
 protected:
-  void onupdatecontrols() override;
+  void update_pipeline_controls() override;
 
 protected:
-  QLiveImageProcessingPipeline * pipeline_ = nullptr;
   QGenericImageProcessorOptions * genericOptions_ctl = nullptr;
 };
 

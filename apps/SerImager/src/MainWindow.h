@@ -66,7 +66,7 @@ protected:
 
 protected:
   QLivePipelineThread * liveView_ = nullptr;
-  QVideoFrameDisplay * centralDisplay_ = nullptr;
+  QLiveDisplay * centralDisplay_ = nullptr;
   QCameraWriter cameraWriter_;
   QLivePipelineCollection pipelineCollection_;
 

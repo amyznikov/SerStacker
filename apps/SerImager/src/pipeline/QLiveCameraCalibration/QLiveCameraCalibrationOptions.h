@@ -15,26 +15,20 @@
 namespace serimager {
 
 class QLiveCameraCalibrationOptions :
-    public QSettingsWidget
+    public QLivePipelineSettings<QLiveCameraCalibrationPipeline>
 {
 public:
   typedef QLiveCameraCalibrationOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef  QLivePipelineSettings<QLiveCameraCalibrationPipeline> Base;
 
   QLiveCameraCalibrationOptions(QWidget * parent = nullptr);
   QLiveCameraCalibrationOptions(QLiveCameraCalibrationPipeline * pipeline, QWidget * parent = nullptr);
 
-  void setPipeline(QLiveCameraCalibrationPipeline * pipeline);
-  QLiveCameraCalibrationPipeline * pipeline() const;
+protected:
+  void update_pipeline_controls() override;
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  QLiveCameraCalibrationPipeline * pipeline_ = nullptr;
   QCameraCalibrationOptions * calibrationOptions_ctl = nullptr;
-//  QCheckBox * save_frames_with_detected_chessboard_ctl = nullptr;
-//  QLineEditBox * frames_with_detected_chessboard_filename_ctl = nullptr;
 };
 
 } /* namespace serimager */

@@ -48,12 +48,12 @@ void QStereoCalibrationPipelineOptions::onupdatecontrols()
     setEnabled(false);
 
     inputOptions_ctl->set_current_pipeline(nullptr);
-    stereoCalibrationOptions_ctl->set_options(nullptr);
+    stereoCalibrationOptions_ctl->set_stereo_calibration(nullptr);
   }
   else {
 
     inputOptions_ctl->set_current_pipeline(pipeline_);
-    stereoCalibrationOptions_ctl->set_options(&*pipeline_);
+    stereoCalibrationOptions_ctl->set_stereo_calibration(&*pipeline_);
 
     Base::onupdatecontrols();
     setEnabled(true);

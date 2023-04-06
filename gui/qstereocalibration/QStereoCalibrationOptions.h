@@ -25,8 +25,8 @@ public:
 
   QStereoCalibrationOptions(QWidget * parent = nullptr);
 
-  void set_options(c_stereo_calibration * options);
-  c_stereo_calibration *  options() const;
+  void set_stereo_calibration(c_stereo_calibration * options);
+  c_stereo_calibration * stereo_calibration() const;
 
 protected:
   void onupdatecontrols() override;

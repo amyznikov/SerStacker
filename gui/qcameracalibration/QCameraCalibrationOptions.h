@@ -26,8 +26,8 @@ public:
 
   QCameraCalibrationOptions(QWidget * parent = nullptr);
 
-  void set_options(c_camera_calibration * options);
-  c_camera_calibration * options() const;
+  void set_camera_calibration(c_camera_calibration * options);
+  c_camera_calibration * camera_calibration() const;
 
   QChessboardCornersDetectionOptions * chessboardDetectionOptions() const;
   QCalibrateCameraOptions * calibrateCameraOptions() const;

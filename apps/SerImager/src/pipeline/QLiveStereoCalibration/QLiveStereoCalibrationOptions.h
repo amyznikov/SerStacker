@@ -15,24 +15,19 @@
 namespace serimager {
 
 class QLiveStereoCalibrationOptions :
-    public QSettingsWidget
+    public QLivePipelineSettings<QLiveStereoCalibrationPipeline>
 {
 public:
   typedef QLiveStereoCalibrationOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QLivePipelineSettings<QLiveStereoCalibrationPipeline> Base;
 
   QLiveStereoCalibrationOptions(QWidget * parent = nullptr);
-  QLiveStereoCalibrationOptions(QLiveStereoCalibrationPipeline * pipeline_,
-      QWidget * parent = nullptr);
-
-  void setPipeline(QLiveStereoCalibrationPipeline * pipeline);
-  QLiveStereoCalibrationPipeline * pipeline() const;
+  QLiveStereoCalibrationOptions(QLiveStereoCalibrationPipeline * pipeline, QWidget * parent = nullptr);
 
 protected:
-  void onupdatecontrols() override;
+  void update_pipeline_controls() override;
 
 protected:
-  QLiveStereoCalibrationPipeline * pipeline_ = nullptr;
   QStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
 };
 

@@ -29,43 +29,9 @@ QLiveStereoCalibrationOptions::QLiveStereoCalibrationOptions(QLiveStereoCalibrat
   setPipeline(pipeline);
 }
 
-void QLiveStereoCalibrationOptions::setPipeline(QLiveStereoCalibrationPipeline * pipeline)
+void QLiveStereoCalibrationOptions::update_pipeline_controls()
 {
-  if ( pipeline_ ) {
-    pipeline_->disconnect(this);
-  }
-
-  if ( (pipeline_ = pipeline) ) {
-
-    connect(pipeline_, &QLivePipeline::runningStateChanged,
-        this, &ThisClass::updateControls,
-        Qt::QueuedConnection);
-  }
-
-  updateControls();
-}
-
-QLiveStereoCalibrationPipeline * QLiveStereoCalibrationOptions::pipeline() const
-{
-  return pipeline_;
-}
-
-void QLiveStereoCalibrationOptions::onupdatecontrols()
-{
-  if ( !pipeline_ ) {
-    setEnabled(false);
-
-    stereoCalibrationOptions_ctl->set_options(nullptr);
-  }
-  else {
-
-    stereoCalibrationOptions_ctl->set_options(&*pipeline_);
-
-    Base::onupdatecontrols();
-
-    setEnabled(!pipeline_->isRunning());
-  }
-
+  stereoCalibrationOptions_ctl->set_stereo_calibration(pipeline_);
 }
 
 } /* namespace serimager */

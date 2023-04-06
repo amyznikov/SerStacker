@@ -170,7 +170,7 @@ inline double distance_from_point_to_corresponding_epipolar_line(const cv::Matx<
  *  compute_distances_from_points_to_corresponding_epipolar_lines()
  *
  *  Compute array of residual distances from points to corresponding epipolar lines.
- *  Used to estimate rms error and in levmar solver.
+ *  Used to estimate rms error in levmar solver.
  */
 template<class MT, class PT>
 inline void compute_distances_from_points_to_corresponding_epipolar_lines(cv::Mat1d & rhs,

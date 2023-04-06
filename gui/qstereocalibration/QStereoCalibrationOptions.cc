@@ -30,13 +30,13 @@ QStereoCalibrationOptions::QStereoCalibrationOptions(QWidget * parent) :
 }
 
 
-void QStereoCalibrationOptions::set_options(c_stereo_calibration * options)
+void QStereoCalibrationOptions::set_stereo_calibration(c_stereo_calibration * options)
 {
   options_ = options;
   updateControls();
 }
 
-c_stereo_calibration * QStereoCalibrationOptions::options() const
+c_stereo_calibration * QStereoCalibrationOptions::stereo_calibration() const
 {
   return options_;
 }

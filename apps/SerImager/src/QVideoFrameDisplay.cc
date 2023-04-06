@@ -297,13 +297,14 @@ void QVideoFrameDisplay::onPixmapChanged()
 
 void QVideoFrameDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bpp)
 {
-  c_unique_lock lock(mtfDisplayFunction_.mutex());
+  c_unique_lock mtflock(mtfDisplayFunction_.mutex());
 
   image.copyTo(inputImage_);
   inputMask_.release();
-  currentMask_.release();
+
 
   if( !current_processor_ || current_processor_->empty() ) {
+    c_current_image_lock lock(this);
     currentImage_ = inputImage_;
     currentMask_ = inputMask_;
   }
@@ -314,6 +315,8 @@ void QVideoFrameDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, 
     inputImage_.copyTo(tmp_image);
     inputMask_.copyTo(tmp_mask);
     current_processor_->process(tmp_image, tmp_mask);
+
+    c_current_image_lock lock(this);
     currentImage_ = tmp_image;
     currentMask_ = tmp_mask;
   }

@@ -213,25 +213,23 @@ void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv
   editMaskUndoQueue_.clear();
 
   if( image.empty() ) {
+    c_current_image_lock lock(this);
     currentImage_.release();
     currentMask_.release();
     currentImageData_.release();
   }
   else if( make_copy ) {
+    c_current_image_lock lock(this);
     image.getMat().copyTo(currentImage_);
     mask.getMat().copyTo(currentMask_);
     imageData.getMat().copyTo(currentImageData_);
   }
   else {
+    c_current_image_lock lock(this);
     currentImage_ = image.getMat();
     currentMask_ = mask.getMat();
     currentImageData_ = imageData.getMat();
   }
-
-//  if ( displayFunction_ ) {
-//    displayFunction_->setCurrentImage(currentImage_,
-//        currentMask_);
-//  }
 
   Q_EMIT currentImageChanged();
 }
@@ -280,26 +278,32 @@ void QImageViewer::createDisplayImage()
     currentMask_.copyTo(displayImage_);
   }
   else {
-    if ( currentImage_.empty() ) {
-      displayImage_.release();
-    }
-    else {
-      if ( !displayFunction_ ) {
-        currentImage_.copyTo(displayImage_);
+
+    if( true ) {
+      c_current_image_lock lock(this);
+
+      if( currentImage_.empty() ) {
+        displayImage_.release();
       }
-      else if ( currentImage_.channels() == 2  ) { // assume this is optical flow image
-        //displayImage_.release();
-        displayFunction_->createDisplayImage(currentImage_,
-            transparentMask_ ? cv::noArray() : currentMask_,
-            displayImage_,
-            currentImage_.depth());
-      }
-      else  {
-        // displayImage_.release();
-        displayFunction_->createDisplayImage(currentImage_,
-            transparentMask_ ? cv::noArray() : currentMask_,
-            displayImage_,
-            CV_8U);
+      else {
+
+        if( !displayFunction_ ) {
+          currentImage_.copyTo(displayImage_);
+        }
+        else if( currentImage_.channels() == 2 ) { // assume this is optical flow image
+          //displayImage_.release();
+          displayFunction_->createDisplayImage(currentImage_,
+              transparentMask_ ? cv::noArray() : currentMask_,
+              displayImage_,
+              currentImage_.depth());
+        }
+        else {
+          // displayImage_.release();
+          displayFunction_->createDisplayImage(currentImage_,
+              transparentMask_ ? cv::noArray() : currentMask_,
+              displayImage_,
+              CV_8U);
+        }
       }
     }
 
@@ -450,7 +454,7 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
       pos.x(),
       pos.y());
 
-  //c_current_image_lock lock(this);
+  c_current_image_lock lock(this);
 
   if ( !currentImageData_.empty() ) {
     n = sdump(currentImageData_, x, y, buf, sizeof(buf) - 1 - n, n);

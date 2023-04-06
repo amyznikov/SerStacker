@@ -85,7 +85,7 @@ void QImageFileViewer::closeCurrentSequence()
     input_sequence_->clear();
   }
 
-  emit currentImageChanged();
+  Q_EMIT currentImageChanged();
 }
 
 
@@ -138,9 +138,12 @@ void QImageFileViewer::loadNextFrame()
 
       QWaitCursor wait(this, current_source->size() == 1);
 
-      input_sequence_->read(currentImage_, &currentMask_);
+      if ( true ) {
+        c_current_image_lock lock(this);
+        input_sequence_->read(currentImage_, &currentMask_);
+      }
       Base::updateDisplay();
-      emit currentImageChanged();
+      Q_EMIT currentImageChanged();
     }
   }
 }

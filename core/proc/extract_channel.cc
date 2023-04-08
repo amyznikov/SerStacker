@@ -13,20 +13,21 @@ template<>
 const c_enum_member * members_of<color_channel_type>()
 {
   static constexpr c_enum_member members[] = {
-      { color_channel_0, "0", "" },
-      { color_channel_1, "1", "" },
-      { color_channel_2, "2", "" },
-      { color_channel_3, "3", "" },
-      { color_channel_4, "4", "" },
+      { color_channel_0, "0", "cv::extractChannel(0)" },
+      { color_channel_1, "1", "cv::extractChannel(1)" },
+      { color_channel_2, "2", "cv::extractChannel(2)" },
+      { color_channel_3, "3", "cv::extractChannel(3)" },
+      { color_channel_4, "4", "cv::extractChannel(4)" },
 
-      { color_channel_gray, "gray", },
-      { color_channel_luminance, "luminance (Lab)", },
-      { color_channel_red, "red", },
-      { color_channel_green, "green", },
-      { color_channel_blue, "blue", },
-      { color_channel_min_inensity, "min_inensity", },
-      { color_channel_max_inensity, "max_inensity", },
-      { color_channel_avg_inensity, "avg_inensity", },
+      { color_channel_gray, "gray", "cv::cvtColor(cv::COLOR_BGR2GRAY)"},
+      { color_channel_luminance, "luminance", "cv::cvtColor(cv::COLOR_BGR2LAB)->cv::extractChannel(0)"},
+      { color_channel_red, "red", "cv::extractChannel(2)"},
+      { color_channel_green, "green", "cv::extractChannel(1)" },
+      { color_channel_blue, "blue", "cv::extractChannel(0)"},
+      { color_channel_min_inensity, "min", "cv::reduce(cv::REDUCE_MIN)"},
+      { color_channel_max_inensity, "max", "cv::reduce(cv::REDUCE_MAX)"},
+      { color_channel_avg_inensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
+
 
       { color_channel_unknown, nullptr, }
   };

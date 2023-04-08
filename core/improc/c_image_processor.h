@@ -15,37 +15,38 @@
 
 class c_image_processor_routine;
 
-enum c_image_processor_routine_gui_ctl_type {
-  c_image_processor_routine_gui_ctl_numeric_text_box = 0,
-  c_image_processor_routine_gui_ctl_check_box,
-  c_image_processor_routine_gui_ctl_enum_combobox,
-  c_image_processor_routine_gui_ctl_flags_chkbox,
-  c_image_processor_routine_gui_ctl_flags_browse_for_existing_file,
-  c_image_processor_routine_gui_ctl_begin_group,
-  c_image_processor_routine_gui_ctl_end_group,
-  // c_image_processor_routine_gui_ctl_matrix_box,
+enum c_image_processor_ctl_type {
+  c_image_processor_ctl_numeric_box = 0,
+  c_image_processor_ctl_check_box,
+  c_image_processor_ctl_enum_combobox,
+  c_image_processor_ctl_flags_chkbox,
+  c_image_processor_ctl_browse_for_existing_file,
+  c_image_processor_ctl_begin_group,
+  c_image_processor_ctl_end_group,
+  c_image_processor_ctl_spinbox,
 };
 
 struct c_image_processor_routine_ctrl {
   const std::string name;
   const std::string tooltip;
-  c_image_processor_routine_gui_ctl_type ctl_type;
+  c_image_processor_ctl_type ctl_type;
   const c_enum_member * (*get_enum_members)() = nullptr;
   std::function<std::string(void)> get_value;
   std::function<void (const std::string &)> set_value;
+  double min = 0, max = 100, step = 1;
 };
 
 #define ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, cname, desc) \
   if ( true ) { \
-    c_image_processor_routine_gui_ctl_type ctype; \
+    c_image_processor_ctl_type ctype; \
     if( std::is_enum<decltype(param())>::value ) { \
-      ctype = c_image_processor_routine_gui_ctl_enum_combobox; \
+      ctype = c_image_processor_ctl_enum_combobox; \
     } \
     else if( std::is_same<decltype(param()), bool>::value ) { \
-      ctype = c_image_processor_routine_gui_ctl_check_box; \
+      ctype = c_image_processor_ctl_check_box; \
     } \
     else { \
-      ctype = c_image_processor_routine_gui_ctl_numeric_text_box; \
+      ctype = c_image_processor_ctl_numeric_box; \
     } \
     c_image_processor_routine_ctrl tmp = { \
         .name = #cname, \
@@ -59,6 +60,7 @@ struct c_image_processor_routine_ctrl {
     tmp.set_value = [this](const std::string & s) { \
       std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
       if( fromString(s, &v) ) { \
+        std::lock_guard<std::mutex> lock(this->mutex()); \
         set_##param(v); \
       } \
     }; \
@@ -70,7 +72,7 @@ struct c_image_processor_routine_ctrl {
     c_image_processor_routine_ctrl tmp = { \
         .name = #cname, \
         .tooltip = desc, \
-        .ctl_type = c_image_processor_routine_gui_ctl_flags_chkbox, \
+        .ctl_type = c_image_processor_ctl_flags_chkbox, \
         .get_enum_members = get_members_of<enumtype>(), \
     }; \
     tmp.get_value = [this](void) { \
@@ -79,6 +81,30 @@ struct c_image_processor_routine_ctrl {
     tmp.set_value = [this](const std::string & s) { \
       std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
       if( fromString(s, &v) ) { \
+        std::lock_guard<std::mutex> lock(this->mutex()); \
+        set_##param(v); \
+      } \
+    }; \
+    (ctls)->emplace_back(tmp); \
+  }
+
+#define ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, param, minvalue, maxvalue, stepvalue, desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+        .name = #param, \
+        .tooltip = desc, \
+        .ctl_type = c_image_processor_ctl_spinbox, \
+        .min = minvalue, \
+        .max = maxvalue, \
+        .step = stepvalue, \
+    }; \
+    tmp.get_value = [this](void) { \
+        return toString(param()); \
+      }; \
+    tmp.set_value = [this](const std::string & s) { \
+      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      if( fromString(s, &v) ) { \
+        std::lock_guard<std::mutex> lock(this->mutex()); \
         set_##param(v); \
       } \
     }; \
@@ -90,12 +116,13 @@ struct c_image_processor_routine_ctrl {
     c_image_processor_routine_ctrl tmp = { \
       .name = #param, \
       .tooltip = desc, \
-      .ctl_type = c_image_processor_routine_gui_ctl_flags_browse_for_existing_file, \
+      .ctl_type = c_image_processor_ctl_browse_for_existing_file, \
     }; \
     tmp.get_value = [this](void) { \
         return param(); \
     }; \
     tmp.set_value = [this](const std::string & s) { \
+      std::lock_guard<std::mutex> lock(this->mutex()); \
       set_##param(s); \
     }; \
    (ctls)->emplace_back(tmp); \
@@ -110,7 +137,7 @@ struct c_image_processor_routine_ctrl {
     c_image_processor_routine_ctrl tmp = { \
         .name = cname, \
         .tooltip = desc, \
-        .ctl_type = c_image_processor_routine_gui_ctl_begin_group, \
+        .ctl_type = c_image_processor_ctl_begin_group, \
     }; \
     (ctls)->emplace_back(tmp); \
   }
@@ -120,7 +147,7 @@ struct c_image_processor_routine_ctrl {
     c_image_processor_routine_ctrl tmp = { \
         .name = "", \
         .tooltip = "", \
-        .ctl_type = c_image_processor_routine_gui_ctl_end_group, \
+        .ctl_type = c_image_processor_ctl_end_group, \
     }; \
     (ctls)->emplace_back(tmp); \
   }
@@ -154,14 +181,14 @@ public:
   struct class_list_guard_lock
   {
     class_list_guard_lock() {
-      mtx().lock();
+      mutex().lock();
     }
 
     ~class_list_guard_lock() {
-      mtx().unlock();
+      mutex().unlock();
     }
 
-    static std::mutex & mtx() {
+    static std::mutex & mutex() {
       static std::mutex mtx_;
       return mtx_;
     }
@@ -176,14 +203,11 @@ public:
 
   virtual ~c_image_processor_routine() = default;
 
-
   static ptr create(const std::string & class_name);
   static ptr create(c_config_setting settings);
 
   virtual bool serialize(c_config_setting settings, bool save);
 
-  //  virtual bool deserialize(c_config_setting settings);
-  //  virtual bool serialize(c_config_setting settings) const;
 
   const std::string & class_name() const
   {
@@ -198,6 +222,11 @@ public:
   const std::string & tooltip() const
   {
     return class_factory_->tooltip;
+  }
+
+  std::mutex & mutex()
+  {
+    return mtx_;
   }
 
   void set_enabled(bool v)
@@ -263,6 +292,7 @@ protected:
   const class_factory * const class_factory_;
   notify_callback preprocess_notify_;
   notify_callback postprocess_notify_;
+  std::mutex mtx_;
   bool enabled_;
 };
 

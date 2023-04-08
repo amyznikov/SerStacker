@@ -23,7 +23,7 @@ public:
       Playing,
   };
 
-  QPlaySequenceControl(QWidget * parent = Q_NULLPTR);
+  QPlaySequenceControl(QWidget * parent = nullptr);
 
   void setState(State state);
   State state() const;
@@ -45,11 +45,11 @@ protected slots:
   void updateCurposLabel();
 
 protected:
-  QAbstractButton * playButton_ctl = Q_NULLPTR;
-  QSpinBox * curposSpin_ctl = Q_NULLPTR;
-  QAbstractSlider * curposSlider_ctl = Q_NULLPTR;
-  QLabel * curposLabel_ctl = Q_NULLPTR;
-  QComboBox * rateBox_ctl = Q_NULLPTR;
+  QAbstractButton * playButton_ctl = nullptr;
+  QSpinBox * curposSpin_ctl = nullptr;
+  QAbstractSlider * curposSlider_ctl = nullptr;
+  QLabel * curposLabel_ctl = nullptr;
+  QComboBox * rateBox_ctl = nullptr;
   State currentState = Stopped;
   int timerId = 0;
   bool disableEmitSignals = false;

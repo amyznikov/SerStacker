@@ -6,6 +6,7 @@
  */
 
 #include "c_stereo_rectification_routine.h"
+#include <core/proc/lpg.h>
 
 template<>
 const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
@@ -15,6 +16,7 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
       { c_stereo_rectification_routine::OverlayAddWeighted, "addWeighted", "cv::addWeighted(left, right)" },
       { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
       { c_stereo_rectification_routine::OverlayContrast, "Contrast", "cv::absdiff(left, right)/cv::addWeighted(left, right)" },
+      { c_stereo_rectification_routine::OverlayNCC, "NCC", "TEST" },
       { c_stereo_rectification_routine::OverlayNone },
   };
 
@@ -39,7 +41,7 @@ const c_enum_member* members_of<c_stereo_rectification_routine::SwapFramesMode>(
 
 bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( !have_stereo_calibration_ ) {
+  if( enable_rectification_ && !have_stereo_calibration_ ) {
 
     bool have_initrinsics = false;
     bool have_extrinsics = false;
@@ -88,7 +90,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
   cv::Mat images[2] = {};
   cv::Mat masks[2] = {};
 
-  if( !have_stereo_calibration_ ) {
+  if( !enable_rectification_ || !have_stereo_calibration_ ) {
 
     const cv::Mat src = image.getMat();
     const cv::Mat msk = mask.getMat();
@@ -322,8 +324,6 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
           right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
           diff);
 
-      //dst_image = diff;
-
       cv::divide(diff, summ,
           dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
           1, CV_MAKETYPE(CV_32F, left_image.channels()));
@@ -347,6 +347,51 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
             right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
             dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+      }
+
+      break;
+    }
+
+    case OverlayNCC: {
+
+      static const thread_local cv::Mat1f G =
+          cv::getGaussianKernel(21, 5.0, CV_32F);
+
+      cv::Mat m[2];
+
+      {
+        INSTRUMENT_REGION("SUBTRACT_MEAN");
+
+        for( int i = 0; i < 2; ++i ) {
+          cv::sepFilter2D(images[i], m[i], CV_32F, G, G);
+          cv::subtract(images[i], m[i], m[i], cv::noArray(), CV_32F);
+        }
+      }
+
+      const cv::Mat &left_image =
+          m[0];
+
+      const cv::Mat &right_image =
+          m[1];
+
+      image.create(left_image.size(),
+                CV_MAKETYPE(CV_32F, left_image.channels()));
+
+      cv::Mat &dst_image =
+          image.getMatRef();
+
+      dst_image.setTo(0);
+
+      {
+        INSTRUMENT_REGION("ABSDIFF");
+
+        cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+            right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+            dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+      }
+
+      if( mask.needed() && !mask.empty() ) {
+        mask.release();
       }
 
       break;

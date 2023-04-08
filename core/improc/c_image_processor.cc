@@ -15,6 +15,7 @@
 #include "color/c_extract_channel_routine.h"
 #include "color/c_histogram_normalization_routine.h"
 #include "color/c_scale_channels_routine.h"
+#include "color/c_color_diff_routine.h"
 
 #include "quicktests/c_census_transfrom_routine.h"
 #include "quicktests/c_homography_test_routine.h"
@@ -47,6 +48,7 @@
 #include "c_pyrdown_routine.h"
 #include "c_gaussian_pyramid_routine.h"
 #include "c_median_blur_routine.h"
+#include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
 #include "c_affine_transform_routine.h"
 #include "c_mean_curvature_blur_routine.h"
@@ -117,6 +119,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_scale_channels_routine::class_factory_instance());
+    register_class_factory(c_color_diff_routine::class_factory_instance());
     register_class_factory(c_type_convert_routine::class_factory_instance());
     register_class_factory(c_color_saturation_routine::class_factory_instance());
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
@@ -130,6 +133,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pyrdown_routine::class_factory_instance());
     register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
     register_class_factory(c_median_blur_routine::class_factory_instance());
+    register_class_factory(c_wmf_routine::class_factory_instance());
     register_class_factory(c_remove_sharp_artifacts_routine::class_factory_instance());
     register_class_factory(c_mean_curvature_blur_routine::class_factory_instance());
     register_class_factory(c_fit_jovian_ellipse_routine::class_factory_instance());
@@ -370,10 +374,15 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
 
         routine->emit_preprocess_notify(image, mask);
 
-        if ( !routine->process(image, mask) ) {
+        if ( true ) {
 
-          CF_ERROR("[%s] processor->process() fails",
-              routine->class_name().c_str());
+          std::lock_guard<std::mutex> lock(routine->mutex());
+
+          if ( !routine->process(image, mask) ) {
+
+            CF_ERROR("[%s] processor->process() fails",
+                routine->class_name().c_str());
+          }
         }
 
         routine->emit_postprocess_notify(image, mask);

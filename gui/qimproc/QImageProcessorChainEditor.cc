@@ -532,7 +532,7 @@ void QImageProcessorSettingsControl::setupControls()
 
     switch (p.ctl_type) {
 
-      case c_image_processor_routine_gui_ctl_begin_group: {
+      case c_image_processor_ctl_begin_group: {
 
         if ( group ) {
           groups.emplace_back(group);
@@ -549,7 +549,7 @@ void QImageProcessorSettingsControl::setupControls()
         break;
       }
 
-      case c_image_processor_routine_gui_ctl_end_group: {
+      case c_image_processor_ctl_end_group: {
 
         if( groups.empty() ) {
           group = nullptr;
@@ -565,7 +565,7 @@ void QImageProcessorSettingsControl::setupControls()
         break;
       }
 
-      case c_image_processor_routine_gui_ctl_flags_chkbox: {
+      case c_image_processor_ctl_flags_chkbox: {
 
         QFlagsEditBoxBase * ctl =
             new QFlagsEditBoxBase();
@@ -609,7 +609,7 @@ void QImageProcessorSettingsControl::setupControls()
 
       }
 
-      case c_image_processor_routine_gui_ctl_numeric_text_box: {
+      case c_image_processor_ctl_numeric_box: {
 
         QNumericBox *ctl =
             new QNumericBox();
@@ -645,7 +645,7 @@ void QImageProcessorSettingsControl::setupControls()
         break;
       }
 
-      case c_image_processor_routine_gui_ctl_enum_combobox: {
+      case c_image_processor_ctl_enum_combobox: {
 
         QEnumComboBoxBase *ctl =
             new QEnumComboBoxBase();
@@ -687,7 +687,7 @@ void QImageProcessorSettingsControl::setupControls()
         break;
       }
 
-      case c_image_processor_routine_gui_ctl_check_box: {
+      case c_image_processor_ctl_check_box: {
 
         QCheckBox *ctl =
             new QCheckBox();
@@ -728,7 +728,7 @@ void QImageProcessorSettingsControl::setupControls()
       }
 
 
-      case c_image_processor_routine_gui_ctl_flags_browse_for_existing_file: {
+      case c_image_processor_ctl_browse_for_existing_file: {
 
         QBrowsePathCombo *ctl =
             new QBrowsePathCombo("", QFileDialog::AcceptMode::AcceptOpen,
@@ -759,6 +759,50 @@ void QImageProcessorSettingsControl::setupControls()
           QObject::connect(this, &ThisClass::populatecontrols,
               [ctl, p]() {
                 ctl->setCurrentPath(p.get_value().c_str(), false);
+              });
+        }
+
+        break;
+      }
+
+      case c_image_processor_ctl_spinbox: {
+
+        QSpinBox * ctl =
+            new QSpinBox(this);
+
+        ctl->setToolTip(p.tooltip.c_str());
+        ctl->setKeyboardTracking(false);
+        ctl->setFocusPolicy(Qt::StrongFocus);
+        ctl->setAccelerated(true);
+        ctl->setButtonSymbols(QSpinBox::ButtonSymbols::UpDownArrows);
+        ctl->setStepType(QSpinBox::DefaultStepType);
+        ctl->setRange(p.min, p.max);
+        ctl->setSingleStep(p.step);
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.set_value ) {
+          QObject::connect(ctl, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+              [this, p](int value) {
+                if ( !updatingControls() ) {
+                  p.set_value(toString(value));
+                  Q_EMIT parameterChanged();
+                }
+              });
+        }
+
+        if( p.get_value ) {
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                int value;
+                if ( fromString(p.get_value(), &value) ) {
+                  ctl->setValue(value);
+                }
               });
         }
 

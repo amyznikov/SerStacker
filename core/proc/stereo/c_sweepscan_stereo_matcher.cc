@@ -594,12 +594,6 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
       break;
   }
 
-
-  // cv::stereo::censusTransform(image1, image2, kernelSize, dist1, dist2, type)
-
-
-
-
   return false;
 }
 

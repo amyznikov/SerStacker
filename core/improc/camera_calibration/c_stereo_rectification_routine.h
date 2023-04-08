@@ -34,6 +34,7 @@ public:
     OverlayAddWeighted,
     OverlayAbsdiff,
     OverlayContrast,
+    OverlayNCC,
   };
 
   enum SwapFramesMode {
@@ -41,6 +42,16 @@ public:
     SwapFramesBeforeRectification,
     SwapFramesAfterRectification,
   };
+
+  void set_enable_rectification(bool v)
+  {
+    enable_rectification_ = v;
+  }
+
+  bool enable_rectification() const
+  {
+    return enable_rectification_;
+  }
 
   void set_intrinsics_filename(const std::string & v)
   {
@@ -96,11 +107,12 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_rectification, "Enable image rectification");
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, swap_frames, "Swap Left and Right frames");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_offset, "Shift left image before overlay");
+    ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
   }
 
   bool serialize(c_config_setting settings, bool save) override
@@ -109,6 +121,7 @@ public:
 
       c_config_setting section;
 
+      SERIALIZE_PROPERTY(settings, save, *this, enable_rectification);
       SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
       SERIALIZE_PROPERTY(settings, save, *this, extrinsics_filename);
       SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
@@ -132,6 +145,7 @@ protected:
   SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
 
+  bool enable_rectification_ = true;
   c_stereo_camera_intrinsics intrinsics_;
   c_stereo_camera_extrinsics extrinsics_;
 

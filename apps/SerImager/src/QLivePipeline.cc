@@ -349,6 +349,11 @@ QLivePipeline::QLivePipeline(const QString & name, QObject * parent) :
 {
 }
 
+std::mutex& QLivePipeline::mutex()
+{
+  return mtx_;
+}
+
 void QLivePipeline::setName(const QString & name)
 {
   name_ = name;

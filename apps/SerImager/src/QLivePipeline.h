@@ -117,6 +117,8 @@ public:
 
   QLivePipeline(const QString & name, QObject * parent = nullptr);
 
+  std::mutex& mutex();
+
   virtual const QString & getClassName() const = 0;
 
   void setName(const QString & name);
@@ -124,6 +126,7 @@ public:
 
   void setRunning(bool v);
   bool isRunning() const;
+
 
   virtual void set_canceled(bool v);
   virtual bool canceled();
@@ -150,6 +153,7 @@ protected:
 
 protected:
   QString name_;
+  std::mutex mtx_;
   std::atomic_bool running_ = false;
   std::atomic_bool canceled_ = false;
 };
@@ -158,7 +162,6 @@ class QLivePipelineSettingsWidget :
     public QSettingsWidget
 {
   Q_OBJECT;
-
 public:
   typedef QLivePipelineSettingsWidget ThisClass;
   typedef QSettingsWidget Base;

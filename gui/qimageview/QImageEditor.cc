@@ -84,14 +84,14 @@ void QImageEditor::updateImage()
 
     if ( inputImage_.empty() ) {
 
-      c_current_image_lock lock(this);
+      current_image_lock lock(this);
       currentImage_.release();
       currentMask_.release();
       currentImageData_.release();
     }
     else {
 
-      c_current_image_lock lock(this);
+      current_image_lock lock(this);
 
       inputImage_.copyTo(currentImage_);
       inputMask_.copyTo(currentMask_);

@@ -26,8 +26,39 @@ namespace serimager {
 #define ICON_log              ":/serimager/icons/log.png"
 #define ICON_bayer            ":/gui/icons/bayer.png"
 
+#define ICON_measures         ":/qmeasure/icons/measure.png"
+//#define ICON_measure_menu         ":/qmeasure/icons/menu.png"
+#define ICON_measure_clear        ":/qmeasure/icons/clear.png"
+#define ICON_measure_chart        ":/qmeasure/icons/chart.png"
+//#define ICON_measure_roi          ":/qmeasure/icons/roi.png"
+#define ICON_measure_options      ":/qmeasure/icons/options.png"
+
 
 namespace {
+
+template<class Obj, typename Fn>
+QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip,
+    Obj * receiver, Fn fn)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+
+  QObject::connect(action, &QAction::triggered, receiver, fn);
+
+  return action;
+}
+
+template<typename Slot>
+QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+
+  QObject::connect(action, &QAction::triggered, slot);
+
+  return action;
+}
+
 
 template<class Obj, typename Fn>
 QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
@@ -118,6 +149,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupIndigoFocuser();
   setupCameraControls();
   setupFocusGraph();
+  setupMeasureGraph();
   setupImageProcessingControls();
   setupLivePipelineControls();
   setupShapeOptions();
@@ -304,6 +336,8 @@ void MainWindow::setupShapeOptions()
 
         mousepos_ctl->setText(qsprintf("ROI: x= %g y= %g size= [%g x %g] center= (%g %g)",
                 rc.x(), rc.y(), rc.width(), rc.height(), rc.center().x(), rc.center().y() ));
+
+        onUpdateMeasureGraph();
       });
 
   connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
@@ -665,6 +699,94 @@ void MainWindow::onCameraWriterStatusUpdate()
       .arg(write_drops)
       .arg(capture_drops));
 }
+
+void MainWindow::setupMeasureGraph()
+{
+  measureProvider_ =
+      new QMeasureProvider(this);
+
+  measureGraphDock_ =
+      addDock<QMeasureGraphDock>(this,
+          Qt::RightDockWidgetArea,
+          "measureGraphDock_",
+          "Measure Graph",
+          measureGraph_ = new QMeasureGraph(this),
+          menuView_);
+
+
+  measureActions_.addAction(enableMeasureTrackigAction_ =
+      createCheckableAction(getIcon(ICON_measure_chart),
+          "Enable tracking",
+          "Enable / Disable measure tracking",
+          [this](bool checked) {
+            enableMeasureTracking_ = checked;
+          }));
+
+  measureActions_.addAction(showMeasureSelectionDlgBoxAction_ =
+      createCheckableAction(getIcon(ICON_measures),
+          "Select measure...",
+          "Select measure to track",
+          [this](bool checked) {
+
+            if ( !checked ) {
+              if ( measureSelectionDlgBox_ ) {
+                measureSelectionDlgBox_->hide();
+              }
+            }
+            else {
+              if ( !measureSelectionDlgBox_ ) {
+
+                measureSelectionDlgBox_ =
+                new QSingeMeasureSelectionDialogBox("Select measure to track",
+                    measureProvider_,
+                    this);
+
+                connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::visibilityChanged,
+                    [this](bool visible) {
+                      showMeasureSelectionDlgBoxAction_->setChecked(visible);
+                    });
+              }
+
+              //measureSelectionDlgBox_->setParent(this);
+              measureSelectionDlgBox_->show();
+              measureSelectionDlgBox_->raise();
+              measureSelectionDlgBox_->setFocus();
+            }
+          }));
+
+  measureActions_.addAction(clearMeasuresAction_ =
+      createAction(getIcon(ICON_measure_clear),
+          "Clear measurements",
+          "Clear measurements",
+          [this]() {
+            measureProvider_->clear_measured_frames();
+          }));
+
+
+  measureGraphDock_->titleBar()->addButton(
+      createToolButtonWithPopupMenu(enableMeasureTrackigAction_,
+          &measureActions_));
+
+  measureGraphDock_->hide();
+  measureGraph_->setMeasureProvider(measureProvider_);
+
+  connect(centralDisplay_, &QImageViewer::currentImageChanged,
+      this, &ThisClass::onUpdateMeasureGraph);
+
+}
+
+void MainWindow::onUpdateMeasureGraph()
+{
+  if ( enableMeasureTracking_ && measureGraph_->isVisible() && centralDisplay_->rectShape()->isVisible() ) {
+
+    QImageViewer::current_image_lock lock(centralDisplay_);
+
+    measureProvider_->compute(centralDisplay_->currentImage(),
+        centralDisplay_->currentMask(),
+        centralDisplay_->rectShape()->iSceneRect());
+  }
+}
+
 
 void MainWindow::setupFocusGraph()
 {

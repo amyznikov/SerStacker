@@ -83,7 +83,7 @@ public:
   QGraphicsTargetShape * targetShape() const;
 
 Q_SIGNALS:
-  void pixmapChanged();
+  void pixmapChanged(QPrivateSignal * p = nullptr);
 
 protected Q_SLOTS:
   void onPixmapChanged();

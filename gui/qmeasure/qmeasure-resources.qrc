@@ -1,5 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource prefix="/qimagestats">
+<qresource prefix="/qmeasure">
 
 	<file>icons/light/add.png</file>
 	<file>icons/dark/add.png</file>
@@ -15,6 +15,9 @@
 
 	<file>icons/light/select.png</file>
 	<file>icons/dark/select.png</file>
+
+	<file>icons/light/chart.png</file>
+	<file>icons/dark/chart.png</file>
 
 	<file>icons/measure.png</file>
 

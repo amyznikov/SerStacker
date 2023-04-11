@@ -19,6 +19,19 @@ public:
   typedef QImageViewer ThisClass;
   typedef QWidget Base;
 
+  class current_image_lock:
+      public std::lock_guard<std::mutex>
+  {
+  public:
+    typedef current_image_lock this_class;
+    typedef std::lock_guard<std::mutex> base;
+
+    current_image_lock(QImageViewer * view) :
+        base(view->currentImageLock_)
+    {
+    }
+  };
+
   enum DisplayType
   {
     DisplayImage,
@@ -136,21 +149,7 @@ protected:
   QShortcut *undoEditMaskActionShortcut_ = nullptr;
   QStack<cv::Mat> editMaskUndoQueue_;
 
-
   std::mutex currentImageLock_;
-
-  class c_current_image_lock:
-      public std::lock_guard<std::mutex>
-  {
-  public:
-    typedef c_current_image_lock this_class;
-    typedef std::lock_guard<std::mutex> base;
-
-    c_current_image_lock(QImageViewer * view) :
-        base(view->currentImageLock_)
-    {
-    }
-  };
 
 };
 

@@ -30,7 +30,7 @@ public:
   void setRect(const QRectF & rc);
   const QRectF & rect() const;
   QRectF sceneRect() const;
-  QRect isceneRect() const;
+  QRect iSceneRect() const;
 
   void setCenter(const QPointF & p);
   QPointF center() const;

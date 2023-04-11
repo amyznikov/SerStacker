@@ -292,6 +292,7 @@ void QLiveDisplay::onPixmapChanged()
 {
   c_unique_lock lock(mtfDisplayFunction_.mutex());
   scene()->setImage(pixmap_);
+  Q_EMIT currentImageChanged();
 }
 
 void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bpp)
@@ -303,7 +304,7 @@ void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bp
 
 
   if( !current_processor_ || current_processor_->empty() ) {
-    c_current_image_lock lock(this);
+    current_image_lock lock(this);
     currentImage_ = inputImage_;
     currentMask_ = inputMask_;
   }
@@ -315,7 +316,7 @@ void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bp
     inputMask_.copyTo(tmp_mask);
     current_processor_->process(tmp_image, tmp_mask);
 
-    c_current_image_lock lock(this);
+    current_image_lock lock(this);
     currentImage_ = tmp_image;
     currentMask_ = tmp_mask;
   }

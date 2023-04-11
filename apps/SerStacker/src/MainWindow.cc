@@ -1138,7 +1138,7 @@ void MainWindow::setupFocusGraph()
       [this](const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp) {
         if ( focusMeasure_->enabled() ) {
           focusMeasure_->measure(image, colorid, bpp,
-              imageEditor->roiRectShape()->isceneRect());
+              imageEditor->roiRectShape()->iSceneRect());
         }
       });
 
@@ -1200,7 +1200,7 @@ void MainWindow::setupRoiOptions()
         else {
           imageEditor->roiRectShape()->setVisible(true);
           measureDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
-          measureDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
+          measureDialogBox_->setRoi(imageEditor->roiRectShape()->iSceneRect());
         }
       });
 
@@ -1213,7 +1213,7 @@ void MainWindow::setupRoiOptions()
             imageEditor->roiRectShape();
 
         if ( measureDialogBox_->isVisible() ) {
-          measureDialogBox_->setRoi(imageEditor->roiRectShape()->isceneRect());
+          measureDialogBox_->setRoi(imageEditor->roiRectShape()->iSceneRect());
         }
 
         const QRectF rc =

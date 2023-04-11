@@ -139,7 +139,7 @@ void QImageFileViewer::loadNextFrame()
       QWaitCursor wait(this, current_source->size() == 1);
 
       if ( true ) {
-        c_current_image_lock lock(this);
+        current_image_lock lock(this);
         input_sequence_->read(currentImage_, &currentMask_);
       }
       Base::updateDisplay();

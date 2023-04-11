@@ -22,9 +22,9 @@
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qimagesequencetreeview/QImageSequenceTreeDock.h>
 #include <gui/qfocus/QFocusGraph.h>
-#include <gui/qimagestats/QImageStatistics.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipelineoptions/QPipelineOptionsView.h>
+#include <gui/qmeasure/QImageStatistics.h>
 #include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"

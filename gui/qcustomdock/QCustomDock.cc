@@ -12,12 +12,22 @@
 #define ICON_dock       ":/qcustomdock/icons/dock.png"
 #define ICON_close      ":/qcustomdock/icons/close.png"
 
+static const char * borderless_style()
+{
+  static const char borderless_style_light[] = ""
+      "QToolButton { border: none; }"
+      "QToolButton:checked { background-color: black; border: none; }"
+      ;
 
-static const char borderless_style[] = ""
-    "QToolButton { border: none; }"
-    "QToolButton:checked { background-color: darkgray; border: none; }"
-//    "QToolButton:checked { background-color: black; border: none; }"
-    ;
+  static const char borderless_style_dark[] = ""
+      "QToolButton { border: none; }"
+      "QToolButton:checked { background-color: darkgray; border: none; }"
+      ;
+
+  return iconStyleSelector().contains("light", Qt::CaseInsensitive) ?
+    borderless_style_light : borderless_style_dark;
+
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -68,7 +78,7 @@ QCustomDockTitleBar::QCustomDockTitleBar(const QString & title)
   float_button_->setFocusPolicy(Qt::NoFocus);
   float_button_->setIconSize(QSize(16,16));
   float_button_->setIcon(getIcon(ICON_dock));
-  float_button_->setStyleSheet(borderless_style);
+  float_button_->setStyleSheet(borderless_style());
 
   connect(float_button_, &QToolButton::clicked,
       [this]() {
@@ -83,7 +93,7 @@ QCustomDockTitleBar::QCustomDockTitleBar(const QString & title)
   close_button_->setFocusPolicy(Qt::NoFocus);
   close_button_->setIconSize(QSize(16,16));
   close_button_->setIcon(getIcon(ICON_close));
-  close_button_->setStyleSheet(borderless_style);
+  close_button_->setStyleSheet(borderless_style());
 
   connect(close_button_, &QToolButton::clicked,
       [this]() {
@@ -100,13 +110,17 @@ QCustomDockTitleBarLabel * QCustomDockTitleBar::titleLabel() const
   return title_;
 }
 
-
-QToolButton * QCustomDockTitleBar::addButton(QToolButton * button)
+QToolButton* QCustomDockTitleBar::addButton(QToolButton * button)
 {
-  button->setIconSize(QSize(16,16));
+  if( button->popupMode() == QToolButton::ToolButtonPopupMode::MenuButtonPopup ) {
+    button->setIconSize(QSize(36, 16));
+  }
+  else {
+    button->setIconSize(QSize(16, 16));
+  }
 
-  if ( button->styleSheet().isEmpty() ) {
-    button->setStyleSheet(borderless_style);
+  if( button->styleSheet().isEmpty() ) {
+    button->setStyleSheet(borderless_style());
   }
 
   button->setFocusPolicy(Qt::NoFocus);
@@ -128,7 +142,7 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
       button->setFocusPolicy(Qt::NoFocus);
       button->setCheckable(action->isCheckable());
       button->setChecked(action->isChecked());
-      button->setStyleSheet(borderless_style);
+      button->setStyleSheet(borderless_style());
       button->setDefaultAction(action);
       layout_->insertWidget(1, button, 1, Qt::AlignRight);
     }
@@ -141,7 +155,7 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
 
       button = new QToolButton();
       button->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
-      button->setIconSize(QSize(16, 16));
+      button->setIconSize(QSize(32, 16));
       button->setFocusPolicy(Qt::NoFocus);
       button->setStyleSheet(borderless_style);
       button->setPopupMode(QToolButton::InstantPopup);
@@ -159,7 +173,6 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
           [action, button]() {
             button->setEnabled(action->isEnabled());
           });
-
     }
   }
 

@@ -14,8 +14,10 @@
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
-#include <gui/widgets/QScaleSelectionButton.h>
+#include <gui/qmeasure/QMeasureGraph.h>
+#include <gui/qmeasure/QMeasureSelection.h>
 #include <gui/qlogwidget/QLogWidget.h>
+#include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "camera/QCameraFrameProcessorSelector.h"
@@ -52,6 +54,7 @@ protected:
   void setupShapeOptions();
   void setupImageProcessingControls();
   void setupLivePipelineControls();
+  void setupMeasureGraph();
   void setupFocusGraph();
   void setupIndigoFocuser();
 
@@ -60,6 +63,7 @@ protected Q_SLOTS:
   void onShowMtfControlActionTriggered(bool checked);
   void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
+  void onUpdateMeasureGraph();
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -93,11 +97,20 @@ protected:
   QAction * showFrameProcessorAction_ = nullptr;
 
 
+  QMeasureProvider * measureProvider_ = nullptr;
+  QMeasureGraph * measureGraph_ = nullptr;
+  QMeasureGraphDock * measureGraphDock_ = nullptr;
+  QSingeMeasureSelectionDialogBox * measureSelectionDlgBox_ = nullptr;
+  QAction * showMeasureSelectionDlgBoxAction_ = nullptr;
+  QAction * enableMeasureTrackigAction_ = nullptr;
+  QAction * clearMeasuresAction_ = nullptr;
+  bool enableMeasureTracking_ = false;
+  QMenu measureActions_;
+
 
   QCameraFocusMeasure * focusMeasure_ = nullptr;
   QFocusGraph * focusGraph_ = nullptr;
   QFocusGraphDock * focusGraphDock_ = nullptr;
-
 
 
   QMtfControlDialogBox * mtfControl_ = nullptr;
@@ -110,12 +123,10 @@ protected:
   QMenu displayOptionsMenu_;
 
 
-
   QToolBar * manToolbar_ = nullptr;
   QMenu * menuFile_ = nullptr;
   QMenu * menuView_ = nullptr;
   QMenu * menuViewShapes_ = nullptr;
-
 
 
   QAction * showRectShapeAction_ = nullptr;
@@ -124,12 +135,10 @@ protected:
   QMenu rectShapeActionsMenu_;
 
 
-
   QAction * showTargetShapeAction_ = nullptr;
   QToolButton * targetShapeActionsButton_ = nullptr;
   QGraphicsTargetShapeSettingsDialogBox * targetShapeOptionsDialogBox_ = nullptr;
   QMenu targetShapeActionsMenu_;
-
 
 
   QAction * showLineShapeAction_ = nullptr;

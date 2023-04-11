@@ -5,18 +5,19 @@
  *      Author: amyznikov
  */
 
-#include "QImageStatistics.h"
+#include "../qmeasure/QImageStatistics.h"
+
 #include <gui/widgets/style.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/debug.h>
 
-#define ICON_add        ":/qimagestats/icons/add.png"
-#define ICON_clear      ":/qimagestats/icons/clear.png"
-#define ICON_copy       ":/qimagestats/icons/copy.png"
-#define ICON_save       ":/qimagestats/icons/save.png"
-#define ICON_select     ":/qimagestats/icons/select.png"
-#define ICON_measure    ":/qimagestats/icons/measure.png"
+#define ICON_add        ":/qmeasure/icons/add.png"
+#define ICON_clear      ":/qmeasure/icons/clear.png"
+#define ICON_copy       ":/qmeasure/icons/copy.png"
+#define ICON_save       ":/qmeasure/icons/save.png"
+#define ICON_select     ":/qmeasure/icons/select.png"
+#define ICON_measure    ":/qmeasure/icons/measure.png"
 
 
 //////////
@@ -25,7 +26,7 @@ QImageStatisticsDisplay::QImageStatisticsDisplay(QWidget * parent) :
   Base(parent)
 {
 
-  Q_INIT_RESOURCE(qimagestats_resources);
+  Q_INIT_RESOURCE(qmeasure_resources);
 
   lv_ = new QVBoxLayout(this);
   lv_->setContentsMargins(0,0,0,0);

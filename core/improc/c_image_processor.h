@@ -30,10 +30,10 @@ struct c_image_processor_routine_ctrl {
   const std::string name;
   const std::string tooltip;
   c_image_processor_ctl_type ctl_type;
+  double min = 0, max = 100, step = 1;
   const c_enum_member * (*get_enum_members)() = nullptr;
   std::function<std::string(void)> get_value;
   std::function<void (const std::string &)> set_value;
-  double min = 0, max = 100, step = 1;
 };
 
 #define ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, cname, desc) \

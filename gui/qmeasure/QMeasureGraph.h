@@ -27,6 +27,9 @@ public:
   void setMeasureProvider(QMeasureProvider * provider);
   QMeasureProvider* measureProvider() const;
 
+  void setCurrentMeasure(QMeasure * cm);
+  QMeasure * currentMeasure() const;
+
 protected Q_SLOTS:
   void clearGraphs();
   void updateGraphs();
@@ -38,6 +41,8 @@ protected:
 
 protected:
   QMeasureProvider* mp_ = nullptr;
+  QMeasure * cm_ = nullptr;
+
   QVBoxLayout *vl_ = nullptr;
   QCustomPlot *plot_ = nullptr;
   QCPGraph *graphs_[4] = { nullptr };

@@ -19,15 +19,6 @@ public:
   typedef QMeasureProvider ThisClass;
   typedef QObject Base;
 
-  struct MeasureOptions {
-    virtual ~MeasureOptions() = default;
-  };
-
-  typedef std::function<int(cv::InputArray, cv::InputArray, const cv::Rect&, cv::Scalar * output_value,
-      MeasureOptions * opts)> computefunc;
-
-  typedef std::function<QMeasureSettingsWidget* (QWidget * parent)> widgetfactory;
-
   struct MeasuredValue
   {
     const QMeasure * measure;
@@ -61,30 +52,27 @@ public:
 
   QMeasureProvider(QObject * parent = nullptr);
 
+  const std::set<QMeasure*> measures() const;
+
+
   bool compute(cv::InputArray image, cv::InputArray mask, const QRect & roi);
   bool compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi);
 
-  static QMeasure ** available_measures();
-
-  const std::set<QMeasure*> selected_measures() const;
-  void clear_selected_measures();
-  void add_selected_measure(QMeasure*);
+  const std::deque<MeasuredFrame> & measured_frames() const;
+  void clear_measured_frames();
 
   void set_max_measured_frames(int v);
   int max_measured_frames() const;
-
-  const std::deque<MeasuredFrame> & measured_frames() const;
-  void clear_measured_frames();
 
 Q_SIGNALS:
   void measurementsChanged();
 
 protected:
   std::deque<MeasuredFrame> measured_frames_;
-  std::set<QMeasure*> selected_measures_;
+  std::set<QMeasure*> measures_;
   int max_measured_frames_ = 200;
 
-  static QMeasure * available_measures_[];
+  //static QMeasure * available_measures_[];
 };
 
 #endif /* __QMeasureProvider_h__ */

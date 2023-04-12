@@ -15,6 +15,7 @@
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
 #include <gui/qmeasure/QMeasureGraph.h>
+#include <gui/qmeasure/QMeasureDisplay.h>
 #include <gui/qmeasure/QMeasureSelection.h>
 #include <gui/qlogwidget/QLogWidget.h>
 #include <gui/widgets/QScaleSelectionButton.h>
@@ -53,13 +54,14 @@ protected:
   void setupShapeOptions();
   void setupImageProcessingControls();
   void setupLivePipelineControls();
-  void setupMeasureGraph();
+  void setupMeasureDisplay();
   void setupIndigoFocuser();
 
 protected Q_SLOTS:
   void onCameraWriterStatusUpdate();
   void onShowMtfControlActionTriggered(bool checked);
   void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
+  void onShowMeasureDisplayActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void onUpdateMeasureGraph();
 
@@ -97,8 +99,10 @@ protected:
 
   QMeasureProvider * measureProvider_ = nullptr;
   QMeasureGraph * measureGraph_ = nullptr;
+  QMeasureDisplayDialogBox * measureDisplayDialogBox_ = nullptr;
   QMeasureGraphDock * measureGraphDock_ = nullptr;
   QSingeMeasureSelectionDialogBox * measureSelectionDlgBox_ = nullptr;
+  QAction * showMeasureDisplayDialogBoxAction_ = nullptr;
   QAction * showMeasureSelectionDlgBoxAction_ = nullptr;
   QAction * enableMeasureTrackigAction_ = nullptr;
   QAction * clearMeasuresAction_ = nullptr;

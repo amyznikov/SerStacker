@@ -36,6 +36,21 @@ public:
     return tooltip_;
   }
 
+  void set_enabled(bool v)
+  {
+    if ( v ) {
+      ++enabled_;
+    }
+    else if ( --enabled_ < 0 ) {
+      enabled_ = 0;
+    }
+  }
+
+  bool enabled() const
+  {
+    return enabled_ > 0;
+  }
+
   virtual bool hasOptions() const
   {
     return false;
@@ -75,6 +90,7 @@ public:
 protected:
   const QString name_;
   const QString tooltip_;
+  int enabled_ = 0;
 };
 
 Q_DECLARE_METATYPE(const QMeasure*);

@@ -89,6 +89,21 @@ QMeasureProvider* QMeasureGraph::measureProvider() const
   return mp_;
 }
 
+void QMeasureGraph::setCurrentMeasure(QMeasure * cm)
+{
+  if( !((cm_ = cm)) ) {
+    clearGraphs();
+  }
+  else {
+    updateGraphs();
+  }
+}
+
+QMeasure * QMeasureGraph::currentMeasure() const
+{
+  return cm_;
+}
+
 void QMeasureGraph::clearGraphs()
 {
   static const QVector<double> empty_keys;
@@ -105,13 +120,7 @@ void QMeasureGraph::updateGraphs()
 {
   using Frame = QMeasureProvider::MeasuredFrame;
 
-  if( mp_ ) {
-
-    const QMeasure *selected_measure =
-        mp_->selected_measures().empty() ? nullptr :
-            *mp_->selected_measures().begin();
-
-    if ( selected_measure ) {
+  if( cm_ && mp_ ) {
 
       QVector<double> keys[4];
       QVector<double> values[4];
@@ -120,7 +129,7 @@ void QMeasureGraph::updateGraphs()
 
       for( auto ii = mp_->measured_frames().begin(); ii != mp_->measured_frames().end(); ++i, ++ii ) {
         for( const auto &m : ii->measurements ) {
-          if ( m.measure == selected_measure && m.cn > 0 ) {
+          if ( m.measure == cm_ && m.cn > 0 ) {
             for ( int j = 0; j < m.cn; ++j ) {
               keys[j].append(i);
               values[j].append(m.value(j));
@@ -145,7 +154,6 @@ void QMeasureGraph::updateGraphs()
       //      }
 
       plot_->replot();
-    }
   }
 }
 

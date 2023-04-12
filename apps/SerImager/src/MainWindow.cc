@@ -148,7 +148,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupLogWidget();
   setupIndigoFocuser();
   setupCameraControls();
-  setupMeasureGraph();
+  setupMeasureDisplay();
   setupImageProcessingControls();
   setupLivePipelineControls();
   setupShapeOptions();
@@ -283,6 +283,14 @@ void MainWindow::setupMainMenu()
           &ThisClass::onShowMtfControlActionTriggered));
 
   /////////////////////////////////////
+
+  menuView_->addAction(showMeasureDisplayDialogBoxAction_ =
+      createCheckableAction(getIcon(ICON_measures),
+          "Measures",
+          "Show / Hide measures display",
+          this, &ThisClass::onShowMeasureDisplayActionTriggered));
+
+  ///////////////////////////////////////////////////////////////////
 
 
 }
@@ -488,6 +496,10 @@ void MainWindow::setupMainToolbar()
   manToolbar_->addAction(showLiveThreadSettingsDialogBoxAction_ =
       createCheckableAction(getIcon(ICON_bayer), "Bayer", "Configure debayer options",
           this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered));
+
+  ///////////////////////////////////////////////////////////////////
+
+  manToolbar_->addAction(showMeasureDisplayDialogBoxAction_);
 
   ///////////////////////////////////////////////////////////////////
 }
@@ -698,7 +710,7 @@ void MainWindow::onCameraWriterStatusUpdate()
       .arg(capture_drops));
 }
 
-void MainWindow::setupMeasureGraph()
+void MainWindow::setupMeasureDisplay()
 {
   measureProvider_ =
       new QMeasureProvider(this);
@@ -735,14 +747,19 @@ void MainWindow::setupMeasureGraph()
               if ( !measureSelectionDlgBox_ ) {
 
                 measureSelectionDlgBox_ =
-                new QSingeMeasureSelectionDialogBox("Select measure to track",
-                    measureProvider_,
-                    this);
+                    new QSingeMeasureSelectionDialogBox("Select measure to track",
+                        measureProvider_,
+                        this);
 
                 connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::visibilityChanged,
-                    [this](bool visible) {
-                      showMeasureSelectionDlgBoxAction_->setChecked(visible);
+                  showMeasureSelectionDlgBoxAction_, &QAction::setChecked);
+
+                connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::currentMeasureChanged,
+                    [this]() {
+                      measureGraph_->setCurrentMeasure(measureSelectionDlgBox_->currentMeasure());
                     });
+
+                measureGraph_->setCurrentMeasure(measureSelectionDlgBox_->currentMeasure());
               }
 
               //measureSelectionDlgBox_->setParent(this);
@@ -866,6 +883,31 @@ void MainWindow::onShowMtfControlActionTriggered(bool checked)
 
   mtfControl_->setVisible(checked);
 }
+
+void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
+{
+  if ( !checked ) {
+    if ( measureDisplayDialogBox_ ) {
+      measureDisplayDialogBox_->hide();
+    }
+  }
+  else {
+    if ( !measureDisplayDialogBox_ ) {
+
+      measureDisplayDialogBox_ = new QMeasureDisplayDialogBox(this);
+      measureDisplayDialogBox_->setMeasureProvider(measureProvider_);
+
+      connect(measureDisplayDialogBox_, &QMeasureDisplayDialogBox::visibilityChanged,
+          showMeasureDisplayDialogBoxAction_, &QAction::setChecked);
+    }
+
+    measureDisplayDialogBox_->show();
+    measureDisplayDialogBox_->raise();
+    measureDisplayDialogBox_->setFocus();
+  }
+
+}
+
 
 void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed)
 {

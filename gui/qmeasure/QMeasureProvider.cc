@@ -17,25 +17,24 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QMeasure * QMeasureProvider::available_measures_[] = {
-    new QMeasureMinValue(),   // 0
-    new QMeasureMaxValue(),   // 1
-    new QMeasureMeanValue(),  // 2
-    new QMeasureStdevValue(),
-    new QMeasureLPG(),
-    new QMeasureLC(),
-    new QMeasureHarrisCornerResponse(),
-    new QMeasureNormalizedVariance(),
-    new QMeasureSharpnessNorm(),
-    nullptr // end of array
-};
-
 QMeasureProvider::QMeasureProvider(QObject * parent) :
   Base(parent)
 {
+  measures_.emplace(new QMeasureMinValue());
+  measures_.emplace(new QMeasureMaxValue());
+  measures_.emplace(new QMeasureMeanValue());
+  measures_.emplace(new QMeasureStdevValue());
+  measures_.emplace(new QMeasureLPG());
+  measures_.emplace(new QMeasureLC());
+  measures_.emplace(new QMeasureHarrisCornerResponse());
+  measures_.emplace(new QMeasureNormalizedVariance());
+  measures_.emplace(new QMeasureSharpnessNorm());
+}
 
-  // QMeasureMeanValue
-  selected_measures_.emplace(available_measures_[2]);
+
+const std::set<QMeasure*> QMeasureProvider::measures() const
+{
+  return measures_;
 }
 
 const std::deque<QMeasureProvider::MeasuredFrame> & QMeasureProvider::measured_frames() const
@@ -72,15 +71,17 @@ bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const 
 
 bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi)
 {
-  if( !selected_measures_.empty() ) {
+  if( !measures_.empty() ) {
 
     MeasuredFrame frame;
     cv::Scalar v;
 
-    for( const QMeasure *m : selected_measures_ ) {
-      const int cn = m->compute(image, mask, roi, &v);
-      if( cn > 0 ) {
-        frame.measurements.emplace_back(m, v, cn);
+    for( const QMeasure *m : measures_ ) {
+      if( m->enabled() ) {
+        const int cn = m->compute(image, mask, roi, &v);
+        if( cn > 0 ) {
+          frame.measurements.emplace_back(m, v, cn);
+        }
       }
     }
 
@@ -99,22 +100,3 @@ bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const 
   return true;
 }
 
-QMeasure ** QMeasureProvider::available_measures()
-{
-  return available_measures_;
-}
-
-const std::set<QMeasure*> QMeasureProvider::selected_measures() const
-{
-  return selected_measures_;
-}
-
-void QMeasureProvider::clear_selected_measures()
-{
-  selected_measures_.clear();
-}
-
-void QMeasureProvider::add_selected_measure(QMeasure * m)
-{
-  selected_measures_.emplace(m);
-}

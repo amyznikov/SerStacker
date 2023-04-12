@@ -148,7 +148,6 @@ MainWindow::MainWindow(QWidget * parent) :
   setupLogWidget();
   setupIndigoFocuser();
   setupCameraControls();
-  setupFocusGraph();
   setupMeasureGraph();
   setupImageProcessingControls();
   setupLivePipelineControls();
@@ -564,7 +563,6 @@ void MainWindow::setupCameraControls()
             cameraControls_ctl->selectedCamera();
 
         liveView_->setCamera(camera);
-        focusMeasure_->setCamera(camera);
 
         if ( camera ) {
 
@@ -785,24 +783,6 @@ void MainWindow::onUpdateMeasureGraph()
         centralDisplay_->currentMask(),
         centralDisplay_->rectShape()->iSceneRect());
   }
-}
-
-
-void MainWindow::setupFocusGraph()
-{
-  focusMeasure_ =
-      new QCameraFocusMeasure(this);
-
-  focusGraphDock_ =
-      addDock<QFocusGraphDock>(this,
-          Qt::RightDockWidgetArea,
-          "focusGraphDock_",
-          "Focus Graph",
-          focusGraph_ = new QFocusGraph(this),
-          menuView_);
-
-  focusGraphDock_->hide();
-  focusGraph_->setFocusMeasureProvider(focusMeasure_);
 }
 
 void MainWindow::setupIndigoFocuser()

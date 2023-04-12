@@ -54,14 +54,14 @@ QSharpnessNormMeasureSettingsWidget::QSharpnessNormMeasureSettingsWidget(QWidget
       add_enum_combobox<NormType>("Norm type:",
           "",
           [this](NormType v) {
-            if ( options_ && options_->norm_type() != v ) {
-              options_->set_norm_type(v);
+            if ( measure_ && measure_->norm_type() != v ) {
+              measure_->set_norm_type(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](NormType * v) {
-            if ( options_ ) {
-              *v = options_->norm_type();
+            if ( measure_ ) {
+              *v = measure_->norm_type();
               return true;
             }
             return false;
@@ -71,14 +71,14 @@ QSharpnessNormMeasureSettingsWidget::QSharpnessNormMeasureSettingsWidget(QWidget
       add_numeric_box<double>("Low-pass sigma [pix]:",
           "",
           [this](double v) {
-            if ( options_ && v > 0 && options_->sigma() != v ) {
-              options_->set_sigma(v);
+            if ( measure_ && v > 0 && measure_->sigma() != v ) {
+              measure_->set_sigma(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              * v= options_->sigma();
+            if ( measure_ ) {
+              * v = measure_->sigma();
               return true;
             }
             return false;

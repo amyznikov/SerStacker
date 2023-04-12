@@ -18,10 +18,9 @@
 #include <gui/qmeasure/QMeasureSelection.h>
 #include <gui/qlogwidget/QLogWidget.h>
 #include <gui/widgets/QScaleSelectionButton.h>
-#include <gui/qfocus/QFocusGraph.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "camera/QCameraFrameProcessorSelector.h"
-#include "focus/QCameraFocusMeasure.h"
+//#include "focus/QCameraFocusMeasure.h"
 #include "QLivePipeline.h"
 
 
@@ -55,7 +54,6 @@ protected:
   void setupImageProcessingControls();
   void setupLivePipelineControls();
   void setupMeasureGraph();
-  void setupFocusGraph();
   void setupIndigoFocuser();
 
 protected Q_SLOTS:
@@ -106,12 +104,6 @@ protected:
   QAction * clearMeasuresAction_ = nullptr;
   bool enableMeasureTracking_ = false;
   QMenu measureActions_;
-
-
-  QCameraFocusMeasure * focusMeasure_ = nullptr;
-  QFocusGraph * focusGraph_ = nullptr;
-  QFocusGraphDock * focusGraphDock_ = nullptr;
-
 
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;

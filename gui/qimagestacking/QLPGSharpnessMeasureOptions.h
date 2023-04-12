@@ -39,7 +39,6 @@ protected:
   QNumericBox * dscale_ctl = nullptr;
   QNumericBox * uscale_ctl = nullptr;
   QCheckBox * square_ctl = nullptr;
-
 };
 
 

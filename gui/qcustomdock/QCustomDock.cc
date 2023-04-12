@@ -21,14 +21,29 @@ static const char * borderless_style()
 
   static const char borderless_style_dark[] = ""
       "QToolButton { border: none; }"
-      "QToolButton:checked { background-color: darkgray; border: none; }"
+      "QToolButton:checked { background-color: #C0C0C0; }"
+      "QToolButton[popupMode=\"1\"] { /* only for MenuButtonPopup */"
+      "    padding: 0px;"
+      "    padding-right: 14px;"
+      "}"
       ;
+
+  //
 
   return iconStyleSelector().contains("light", Qt::CaseInsensitive) ?
     borderless_style_light : borderless_style_dark;
 
 }
 
+//
+//static QWidget* addStretch(QToolBar * toolbar)
+//{
+//  QWidget *stretch = new QWidget();
+//  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+//  toolbar->addWidget(stretch);
+//  return stretch;
+//}
+//
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -69,16 +84,31 @@ QCustomDockTitleBar::QCustomDockTitleBar(const QString & title)
 {
   Q_INIT_RESOURCE(qcustomdock_resources);
 
+//  QVBoxLayout * l = new QVBoxLayout(this);
+//  l->setContentsMargins(0, 0, 0, 0);
+//
+//  tb_ = new  QToolBar(this);
+//  tb_->setStyleSheet(borderless_style());
+//  tb_->setIconSize(QSize(16, 16));
+//  tb_->setContentsMargins(0, 0, 0, 0);
+//
+//  l->addWidget(tb_);
+
   layout_ = new QHBoxLayout(this);
 
   layout_->addWidget(title_ = new QCustomDockTitleBarLabel(title), 1000, Qt::AlignLeft);
+  //tb_->addWidget(title_ = new QCustomDockTitleBarLabel(title));
   title_->setTextFormat(Qt::RichText);
 
+//  stretch_ = addStretch(tb_);
+//  separator_ = tb_->addSeparator();
+
   layout_->addWidget(float_button_ = new QToolButton(), 1, Qt::AlignRight);
+  //tb_->addWidget(float_button_ = new QToolButton());
+  float_button_->setStyleSheet(borderless_style());
   float_button_->setFocusPolicy(Qt::NoFocus);
   float_button_->setIconSize(QSize(16,16));
   float_button_->setIcon(getIcon(ICON_dock));
-  float_button_->setStyleSheet(borderless_style());
 
   connect(float_button_, &QToolButton::clicked,
       [this]() {
@@ -90,10 +120,11 @@ QCustomDockTitleBar::QCustomDockTitleBar(const QString & title)
 
 
   layout_->addWidget(close_button_ = new QToolButton(), 1, Qt::AlignRight);
+  //tb_->addWidget(close_button_ = new QToolButton());
+  close_button_->setStyleSheet(borderless_style());
   close_button_->setFocusPolicy(Qt::NoFocus);
   close_button_->setIconSize(QSize(16,16));
   close_button_->setIcon(getIcon(ICON_close));
-  close_button_->setStyleSheet(borderless_style());
 
   connect(close_button_, &QToolButton::clicked,
       [this]() {
@@ -112,19 +143,20 @@ QCustomDockTitleBarLabel * QCustomDockTitleBar::titleLabel() const
 
 QToolButton* QCustomDockTitleBar::addButton(QToolButton * button)
 {
+  if( button->styleSheet().isEmpty() ) {
+    button->setStyleSheet(borderless_style());
+  }
+
   if( button->popupMode() == QToolButton::ToolButtonPopupMode::MenuButtonPopup ) {
-    button->setIconSize(QSize(36, 16));
+    button->setIconSize(QSize(32, 16));
   }
   else {
     button->setIconSize(QSize(16, 16));
   }
 
-  if( button->styleSheet().isEmpty() ) {
-    button->setStyleSheet(borderless_style());
-  }
-
   button->setFocusPolicy(Qt::NoFocus);
   layout_->insertWidget(1, button, 1, Qt::AlignRight);
+  //tb_->insertWidget(separator_, button);
 
   return button;
 }
@@ -138,13 +170,14 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
     if( !menu ) {
 
       button = new QToolButton();
+      button->setStyleSheet(borderless_style());
       button->setIconSize(QSize(16, 16));
       button->setFocusPolicy(Qt::NoFocus);
       button->setCheckable(action->isCheckable());
       button->setChecked(action->isChecked());
-      button->setStyleSheet(borderless_style());
       button->setDefaultAction(action);
       layout_->insertWidget(1, button, 1, Qt::AlignRight);
+      //tb_->insertWidget(separator_, button);
     }
     else {
 
@@ -154,10 +187,10 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
           "";
 
       button = new QToolButton();
+      button->setStyleSheet(borderless_style);
       button->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
       button->setIconSize(QSize(32, 16));
       button->setFocusPolicy(Qt::NoFocus);
-      button->setStyleSheet(borderless_style);
       button->setPopupMode(QToolButton::InstantPopup);
       button->setMenu(menu);
       button->setDefaultAction(menu->defaultAction());
@@ -165,6 +198,7 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
       button->setIcon(action->icon());
 
       layout_->insertWidget(1, button, 1, Qt::AlignRight);
+      //tb_->insertWidget(separator_, button);
 
       connect(button, &QToolButton::triggered,
           button, &QToolButton::setDefaultAction);
@@ -201,11 +235,13 @@ QToolButton * QCustomDockTitleBar::addButton(const QString & icon, const QString
 QSize QCustomDockTitleBar::minimumSizeHint() const
 {
   return layout_->minimumSize();
+  //return tb_->minimumSize();
 }
 
 QSize QCustomDockTitleBar::sizeHint() const
 {
   return layout_->sizeHint();
+  //return tb_->sizeHint();
 }
 
 

@@ -21,11 +21,13 @@
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qimagesequencetreeview/QImageSequenceTreeDock.h>
-#include <gui/qfocus/QFocusGraph.h>
+#include <gui/qmeasure/QMeasureGraph.h>
+#include <gui/qmeasure/QMeasureSelection.h>
+//#include <gui/qfocus/QFocusGraph.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipelineoptions/QPipelineOptionsView.h>
 #include <gui/qmeasure/QImageStatistics.h>
-#include "focus/QImageFocusMeasure.h"
+//#include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
 #include "QPipelineProgressView.h"
@@ -59,7 +61,7 @@ private:
   void setupImageEditor();
   void setupTextViewer();
   void stupCloudViewer();
-  void setupFocusGraph();
+  void setupMeasureGraph();
   void setupRoiOptions();
 
   void createDisplaySettingsControl();
@@ -85,6 +87,7 @@ private Q_SLOTS:
   void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void onDisplaySettingsMenuActionClicked(bool checked);
+  void onUpdateMeasureGraph();
 
 //  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);
 //  void onCurrentInputSourceChanged(const c_input_source::ptr & input_source);
@@ -124,9 +127,19 @@ private:
   QCustomDockWidget * imageProcessorSelectorDock = nullptr;
   QImageProcessorSelector * imageProcessorSelector = nullptr;
 
-  QImageFocusMeasure * focusMeasure_ = nullptr;
-  QFocusGraph * focusGraph_ = nullptr;
-  QFocusGraphDock * focusGraphDock_ = nullptr;
+//  QImageFocusMeasure * focusMeasure_ = nullptr;
+//  QFocusGraph * focusGraph_ = nullptr;
+//  QFocusGraphDock * focusGraphDock_ = nullptr;
+  QMeasureProvider * measureProvider_ = nullptr;
+  QMeasureGraph * measureGraph_ = nullptr;
+  QMeasureGraphDock * measureGraphDock_ = nullptr;
+  QSingeMeasureSelectionDialogBox * measureSelectionDlgBox_ = nullptr;
+  QAction * showMeasureSelectionDlgBoxAction_ = nullptr;
+  QAction * enableMeasureTrackigAction_ = nullptr;
+  QAction * clearMeasuresAction_ = nullptr;
+  bool enableMeasureTracking_ = false;
+  QMenu measureActions_;
+
 
   QAction * showRoiAction_ = nullptr;
   QToolButton * roiActionsButton_ = nullptr;

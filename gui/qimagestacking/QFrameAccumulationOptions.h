@@ -10,7 +10,7 @@
 #define __QFrameAccumulationOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/qfocus/QLPGSharpnessMeasureOptions.h>
+#include "QLPGSharpnessMeasureOptions.h"
 #include <core/pipeline/c_image_stacking_pipeline.h>
 
 typedef QEnumComboBox<frame_accumulation_method>

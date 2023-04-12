@@ -46,6 +46,13 @@ namespace serstacker {
 #define ICON_roi          ":/serstacker/icons/roi.png"
 #define ICON_metrics      ":/serstacker/icons/metrics.png"
 
+#define ICON_measures         ":/qmeasure/icons/measure.png"
+//#define ICON_measure_menu         ":/qmeasure/icons/menu.png"
+#define ICON_measure_clear        ":/qmeasure/icons/clear.png"
+#define ICON_measure_chart        ":/qmeasure/icons/chart.png"
+//#define ICON_measure_roi          ":/qmeasure/icons/roi.png"
+#define ICON_measure_options      ":/qmeasure/icons/options.png"
+
 
 namespace  {
 
@@ -172,7 +179,7 @@ MainWindow::MainWindow()
   setupImageEditor();
   setupTextViewer();
   stupCloudViewer();
-  setupFocusGraph();
+  setupMeasureGraph();
   setupRoiOptions();
 
 
@@ -1117,32 +1124,94 @@ void MainWindow::stupCloudViewer()
   });
 }
 
-void MainWindow::setupFocusGraph()
+void MainWindow::setupMeasureGraph()
 {
-  focusMeasure_ =
-      new QImageFocusMeasure(this);
+  measureProvider_ =
+      new QMeasureProvider(this);
 
-  focusGraphDock_ =
-      addDock<QFocusGraphDock>(this,
+  measureGraphDock_ =
+      addDock<QMeasureGraphDock>(this,
           Qt::RightDockWidgetArea,
-          "focusGraphDock_",
-          "Focus Graph",
-          focusGraph_ = new QFocusGraph(this),
+          "measureGraphDock_",
+          "Measure Graph",
+          measureGraph_ = new QMeasureGraph(this),
           menuView_);
 
-  focusGraphDock_->hide();
-  focusGraph_->setFocusMeasureProvider(focusMeasure_);
+
+  measureActions_.addAction(enableMeasureTrackigAction_ =
+      createCheckableAction(getIcon(ICON_measure_chart),
+          "Enable tracking",
+          "Enable / Disable measure tracking",
+          [this](bool checked) {
+            enableMeasureTracking_ = checked;
+          }));
+
+  measureActions_.addAction(showMeasureSelectionDlgBoxAction_ =
+      createCheckableAction(getIcon(ICON_measures),
+          "Select measure...",
+          "Select measure to track",
+          [this](bool checked) {
+
+            if ( !checked ) {
+              if ( measureSelectionDlgBox_ ) {
+                measureSelectionDlgBox_->hide();
+              }
+            }
+            else {
+              if ( !measureSelectionDlgBox_ ) {
+
+                measureSelectionDlgBox_ =
+                new QSingeMeasureSelectionDialogBox("Select measure to track",
+                    measureProvider_,
+                    this);
+
+                connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::visibilityChanged,
+                    [this](bool visible) {
+                      showMeasureSelectionDlgBoxAction_->setChecked(visible);
+                    });
+              }
+
+              //measureSelectionDlgBox_->setParent(this);
+              measureSelectionDlgBox_->show();
+              measureSelectionDlgBox_->raise();
+              measureSelectionDlgBox_->setFocus();
+            }
+          }));
+
+  measureActions_.addAction(clearMeasuresAction_ =
+      createAction(getIcon(ICON_measure_clear),
+          "Clear measurements",
+          "Clear measurements",
+          [this]() {
+            measureProvider_->clear_measured_frames();
+          }));
 
 
-  connect(imageEditor, &QImageFileEditor::onInputImageLoad,
-      [this](const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp) {
-        if ( focusMeasure_->enabled() ) {
-          focusMeasure_->measure(image, colorid, bpp,
-              imageEditor->roiRectShape()->iSceneRect());
-        }
-      });
+  measureGraphDock_->titleBar()->addButton(
+      createToolButtonWithPopupMenu(enableMeasureTrackigAction_,
+          &measureActions_));
+
+  measureGraphDock_->hide();
+  measureGraph_->setMeasureProvider(measureProvider_);
+
+  connect(imageEditor, &QImageViewer::currentImageChanged,
+      this, &ThisClass::onUpdateMeasureGraph);
+
 
 }
+
+void MainWindow::onUpdateMeasureGraph()
+{
+  if ( enableMeasureTracking_ && measureGraph_->isVisible() && imageEditor->roiRectShape()->isVisible() ) {
+
+    QImageViewer::current_image_lock lock(imageEditor);
+
+    measureProvider_->compute(imageEditor->currentImage(),
+        imageEditor->currentMask(),
+        imageEditor->roiRectShape()->iSceneRect());
+  }
+}
+
 
 void MainWindow::setupRoiOptions()
 {
@@ -1231,6 +1300,8 @@ void MainWindow::setupRoiOptions()
                 p2.x(), p2.y(),
                 width, height,
                 center.x(), center.y()));
+
+        onUpdateMeasureGraph();
       });
 
 

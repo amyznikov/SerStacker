@@ -88,6 +88,9 @@ public: // required by QDockWidget
 
 protected:
   QHBoxLayout * layout_;
+//  QToolBar * tb_ = nullptr;
+//  QWidget * stretch_ = nullptr;
+//  QAction * separator_ = nullptr;
   QCustomDockTitleBarLabel * title_;
   QToolButton * close_button_;
   QToolButton * float_button_;

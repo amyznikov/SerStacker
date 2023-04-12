@@ -18,9 +18,9 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QMeasure * QMeasureProvider::available_measures_[] = {
-    new QMeasureMinValue(),
-    new QMeasureMaxValue(),
-    new QMeasureMeanValue(),
+    new QMeasureMinValue(),   // 0
+    new QMeasureMaxValue(),   // 1
+    new QMeasureMeanValue(),  // 2
     new QMeasureStdevValue(),
     new QMeasureLPG(),
     new QMeasureLC(),
@@ -33,6 +33,9 @@ QMeasure * QMeasureProvider::available_measures_[] = {
 QMeasureProvider::QMeasureProvider(QObject * parent) :
   Base(parent)
 {
+
+  // QMeasureMeanValue
+  selected_measures_.emplace(available_measures_[2]);
 }
 
 const std::deque<QMeasureProvider::MeasuredFrame> & QMeasureProvider::measured_frames() const

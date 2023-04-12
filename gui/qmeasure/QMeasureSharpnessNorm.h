@@ -37,7 +37,6 @@ public:
 
 protected:
   using NormType = c_sharpness_norm_measure::NormType;
-  c_sharpness_norm_measure * options_ = nullptr;
   QEnumComboBox<NormType> * norm_type_ctl = nullptr;
   QNumericBox * sigma_ctl = nullptr;
 };

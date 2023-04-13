@@ -50,29 +50,34 @@ public:
     }
   };
 
-  QMeasureProvider(QObject * parent = nullptr);
+  static QMeasureProvider * instance();
 
-  const std::set<QMeasure*> measures() const;
+  static const std::vector<QMeasure*> & measures();
 
+  static bool compute(cv::InputArray image, cv::InputArray mask, const QRect & roi);
+  static bool compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi);
 
-  bool compute(cv::InputArray image, cv::InputArray mask, const QRect & roi);
-  bool compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi);
+  static const std::set<const std::set<QMeasure*>*>& requested_measures();
+  static void request_measures(const std::set<QMeasure*> * r);
+  static void remove_measure_request(const std::set<QMeasure*> * r);
 
-  const std::deque<MeasuredFrame> & measured_frames() const;
-  void clear_measured_frames();
+  static const std::deque<MeasuredFrame> & measured_frames();
+  static void clear_measured_frames();
 
-  void set_max_measured_frames(int v);
-  int max_measured_frames() const;
+  static void set_max_measured_frames(int v);
+  static int max_measured_frames();
 
 Q_SIGNALS:
   void measurementsChanged();
 
 protected:
-  std::deque<MeasuredFrame> measured_frames_;
-  std::set<QMeasure*> measures_;
-  int max_measured_frames_ = 200;
+  QMeasureProvider(QObject * parent = nullptr);
 
-  //static QMeasure * available_measures_[];
+protected:
+  static std::set<const std::set<QMeasure*>*> requested_measures_;
+  static std::deque<MeasuredFrame> measured_frames_;
+  static std::vector<QMeasure*> measures_;
+  static int max_measured_frames_;
 };
 
 #endif /* __QMeasureProvider_h__ */

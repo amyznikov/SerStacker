@@ -17,7 +17,6 @@ class QMeasureSettingsWidget;
 class QMeasure
 {
 public:
-
   QMeasure(const QString & name, const QString & tooltip) :
       name_(name),
       tooltip_(tooltip)
@@ -34,21 +33,6 @@ public:
   const QString & tooltip() const
   {
     return tooltip_;
-  }
-
-  void set_enabled(bool v)
-  {
-    if ( v ) {
-      ++enabled_;
-    }
-    else if ( --enabled_ < 0 ) {
-      enabled_ = 0;
-    }
-  }
-
-  bool enabled() const
-  {
-    return enabled_ > 0;
   }
 
   virtual bool hasOptions() const
@@ -90,7 +74,6 @@ public:
 protected:
   const QString name_;
   const QString tooltip_;
-  int enabled_ = 0;
 };
 
 Q_DECLARE_METATYPE(const QMeasure*);

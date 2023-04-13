@@ -62,46 +62,21 @@ QMeasureGraph::QMeasureGraph(QWidget * parent) :
   ///////////////////////////////////////////////////////////////////
 }
 
-
-void QMeasureGraph::setMeasureProvider(QMeasureProvider * provider)
-{
-  if( mp_ ) {
-    mp_->disconnect(this);
-  }
-
-  if( (mp_ = provider) ) {
-
-    connect(mp_, &QMeasureProvider::measurementsChanged,
-        this, &ThisClass::updateGraphs,
-        Qt::QueuedConnection);
-
-    //mp_->setEnabled(isVisible() && enableTrackAction_->isChecked());
-  }
-
-//  if( settings_ctl ) {
-//    settings_ctl->setFocusMeasureProvider(provider_);
-//  }
-
-}
-
-QMeasureProvider* QMeasureGraph::measureProvider() const
-{
-  return mp_;
-}
-
 void QMeasureGraph::setCurrentMeasure(QMeasure * cm)
 {
-  if( !((cm_ = cm)) ) {
+  cm_.clear();
+  if ( cm ) {
+    cm_.emplace(cm);
+  }
+
+  updateEnableMeasurements();
+
+  if ( cm_.empty() ) {
     clearGraphs();
   }
   else {
     updateGraphs();
   }
-}
-
-QMeasure * QMeasureGraph::currentMeasure() const
-{
-  return cm_;
 }
 
 void QMeasureGraph::clearGraphs()
@@ -120,16 +95,21 @@ void QMeasureGraph::updateGraphs()
 {
   using Frame = QMeasureProvider::MeasuredFrame;
 
-  if( cm_ && mp_ ) {
+  if( !cm_.empty() ) {
 
-      QVector<double> keys[4];
-      QVector<double> values[4];
-      int max_key = 0;
-      int i = 0;
+    QVector<double> keys[4];
+    QVector<double> values[4];
+    int max_key = 0;
+    int i = 0;
 
-      for( auto ii = mp_->measured_frames().begin(); ii != mp_->measured_frames().end(); ++i, ++ii ) {
+    const QMeasure * cm = *cm_.begin();
+
+    for( auto ii = QMeasureProvider::measured_frames().begin();
+        ii != QMeasureProvider::measured_frames().end();
+        ++i, ++ii ) {
+
         for( const auto &m : ii->measurements ) {
-          if ( m.measure == cm_ && m.cn > 0 ) {
+          if ( m.measure == cm && m.cn > 0 ) {
             for ( int j = 0; j < m.cn; ++j ) {
               keys[j].append(i);
               values[j].append(m.value(j));
@@ -160,33 +140,47 @@ void QMeasureGraph::updateGraphs()
 void QMeasureGraph::showEvent(QShowEvent * event)
 {
   Base::showEvent(event);
+  updateEnableMeasurements();
 }
 
 void QMeasureGraph::hideEvent(QHideEvent * event)
 {
   Base::hideEvent(event);
+  updateEnableMeasurements();
 }
 
-// void QMeasureGraph::updatePenColors()
-// {
-// }
+void QMeasureGraph::updateEnableMeasurements()
+{
+  const bool enable =
+      !cm_.empty() &&
+          this->isVisible();
+
+  if( enable ) {
+    QMeasureProvider::request_measures(&cm_);
+    connect(QMeasureProvider::instance(), &QMeasureProvider::measurementsChanged,
+        this, &ThisClass::updateGraphs);
+  }
+  else {
+    QMeasureProvider::instance()->disconnect(this);
+    QMeasureProvider::remove_measure_request(&cm_);
+  }
+}
 
 
 QMeasureGraphDock::QMeasureGraphDock(const QString & title, QWidget * parent, QMeasureGraph * view) :
     Base(title, parent, view)
 {
-//  if( view ) {
-//
-//    const QList<QAction*> actions =
-//        view->actions();
-//
-//    QCustomDockTitleBar *bar =
-//        titleBar();
-//
-//    for( QAction *action : actions ) {
-//      QToolButton *tb =
-//          bar->addButton(action);
-//    }
-//
-//  }
+  if( view ) {
+
+    QCustomDockTitleBar *bar =
+        titleBar();
+
+    bar->addWidget(combobox_ctl = new QMeasureSelectionCombo());
+
+    connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,
+        [this, view]() {
+          view->setCurrentMeasure(combobox_ctl->currentMeasure());
+        });
+
+  }
 }

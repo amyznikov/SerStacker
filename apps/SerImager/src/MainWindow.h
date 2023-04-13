@@ -54,7 +54,7 @@ protected:
   void setupShapeOptions();
   void setupImageProcessingControls();
   void setupLivePipelineControls();
-  void setupMeasureDisplay();
+  void setupMeasures();
   void setupIndigoFocuser();
 
 protected Q_SLOTS:
@@ -97,17 +97,14 @@ protected:
   QAction * showFrameProcessorAction_ = nullptr;
 
 
-  QMeasureProvider * measureProvider_ = nullptr;
+  QMeasureDisplayDialogBox * measureDisplay_ = nullptr;
   QMeasureGraph * measureGraph_ = nullptr;
-  QMeasureDisplayDialogBox * measureDisplayDialogBox_ = nullptr;
   QMeasureGraphDock * measureGraphDock_ = nullptr;
-  QSingeMeasureSelectionDialogBox * measureSelectionDlgBox_ = nullptr;
-  QAction * showMeasureDisplayDialogBoxAction_ = nullptr;
-  QAction * showMeasureSelectionDlgBoxAction_ = nullptr;
-  QAction * enableMeasureTrackigAction_ = nullptr;
-  QAction * clearMeasuresAction_ = nullptr;
-  bool enableMeasureTracking_ = false;
-  QMenu measureActions_;
+  QToolButton * measureActionsToolButton_ = nullptr;
+  QAction * showMeasureDisplayAction_ = nullptr;
+  QAction * showMeasureGraphAction_ = nullptr;
+  QMenu measuresMenu_;
+
 
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;

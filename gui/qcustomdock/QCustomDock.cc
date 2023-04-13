@@ -231,6 +231,10 @@ QToolButton * QCustomDockTitleBar::addButton(const QString & icon, const QString
   return addButton(getIcon(icon), tooltip);
 }
 
+void QCustomDockTitleBar::addWidget(QWidget * w)
+{
+  layout_->insertWidget(1, w, 1, Qt::AlignRight);
+}
 
 QSize QCustomDockTitleBar::minimumSizeHint() const
 {

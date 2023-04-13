@@ -24,11 +24,7 @@ public:
 
   QMeasureGraph(QWidget * parent = nullptr);
 
-  void setMeasureProvider(QMeasureProvider * provider);
-  QMeasureProvider* measureProvider() const;
-
   void setCurrentMeasure(QMeasure * cm);
-  QMeasure * currentMeasure() const;
 
 protected Q_SLOTS:
   void clearGraphs();
@@ -37,11 +33,11 @@ protected Q_SLOTS:
 protected:
   void showEvent(QShowEvent * event) override;
   void hideEvent(QHideEvent * event) override;
+  void updateEnableMeasurements();
   //  void updatePenColors();
 
 protected:
-  QMeasureProvider* mp_ = nullptr;
-  QMeasure * cm_ = nullptr;
+  std::set<QMeasure*> cm_;
 
   QVBoxLayout *vl_ = nullptr;
   QCustomPlot *plot_ = nullptr;
@@ -63,6 +59,9 @@ public:
 
   QMeasureGraphDock(const QString & title, QWidget * parent,
       QMeasureGraph * view);
+
+protected:
+  QMeasureSelectionCombo * combobox_ctl = nullptr;
 };
 
 #endif /* __QMeasureGraph_h__ */

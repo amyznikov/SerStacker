@@ -27,11 +27,14 @@ namespace serimager {
 #define ICON_bayer            ":/gui/icons/bayer.png"
 
 #define ICON_measures         ":/qmeasure/icons/measure.png"
+#define ICON_measures_table   ":/qmeasure/icons/table.png"
+
 //#define ICON_measure_menu         ":/qmeasure/icons/menu.png"
 #define ICON_measure_clear        ":/qmeasure/icons/clear.png"
 #define ICON_measure_chart        ":/qmeasure/icons/chart.png"
 //#define ICON_measure_roi          ":/qmeasure/icons/roi.png"
 #define ICON_measure_options      ":/qmeasure/icons/options.png"
+
 
 
 namespace {
@@ -108,6 +111,24 @@ QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu
   return tb;
 }
 
+QToolButton* createToolButtonWithMenu(const QIcon & icon, const QString & text, const QString & tooltip, QMenu * menu)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+
+  if ( menu ) {
+    QObject::connect(tb, &QToolButton::clicked,
+        [tb, menu]() {
+          menu->exec(tb->mapToGlobal(QPoint( tb->width()/2, tb->height() - 2 )));
+        });
+  }
+
+  return tb;
+}
+
 QWidget* addStretch(QToolBar * toolbar)
 {
   QWidget *stretch = new QWidget();
@@ -148,7 +169,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupLogWidget();
   setupIndigoFocuser();
   setupCameraControls();
-  setupMeasureDisplay();
+  setupMeasures();
   setupImageProcessingControls();
   setupLivePipelineControls();
   setupShapeOptions();
@@ -284,8 +305,8 @@ void MainWindow::setupMainMenu()
 
   /////////////////////////////////////
 
-  menuView_->addAction(showMeasureDisplayDialogBoxAction_ =
-      createCheckableAction(getIcon(ICON_measures),
+  menuView_->addAction(showMeasureDisplayAction_ =
+      createCheckableAction(getIcon(ICON_measures_table),
           "Measures",
           "Show / Hide measures display",
           this, &ThisClass::onShowMeasureDisplayActionTriggered));
@@ -499,7 +520,13 @@ void MainWindow::setupMainToolbar()
 
   ///////////////////////////////////////////////////////////////////
 
-  manToolbar_->addAction(showMeasureDisplayDialogBoxAction_);
+  //manToolbar_->addAction(showMeasureDisplayDialogBoxAction_);
+
+  manToolbar_->addWidget(measureActionsToolButton_ =
+      createToolButtonWithMenu(getIcon(ICON_measures),
+          "Measures",
+          "Measures menu",
+          &measuresMenu_));
 
   ///////////////////////////////////////////////////////////////////
 }
@@ -710,11 +737,8 @@ void MainWindow::onCameraWriterStatusUpdate()
       .arg(capture_drops));
 }
 
-void MainWindow::setupMeasureDisplay()
+void MainWindow::setupMeasures()
 {
-  measureProvider_ =
-      new QMeasureProvider(this);
-
   measureGraphDock_ =
       addDock<QMeasureGraphDock>(this,
           Qt::RightDockWidgetArea,
@@ -723,67 +747,19 @@ void MainWindow::setupMeasureDisplay()
           measureGraph_ = new QMeasureGraph(this),
           menuView_);
 
+  showMeasureGraphAction_ = measureGraphDock_->toggleViewAction();
+  showMeasureGraphAction_->setIcon(getIcon(ICON_measure_chart));
 
-  measureActions_.addAction(enableMeasureTrackigAction_ =
-      createCheckableAction(getIcon(ICON_measure_chart),
-          "Enable tracking",
-          "Enable / Disable measure tracking",
-          [this](bool checked) {
-            enableMeasureTracking_ = checked;
-          }));
+  /////////
 
-  measureActions_.addAction(showMeasureSelectionDlgBoxAction_ =
-      createCheckableAction(getIcon(ICON_measures),
-          "Select measure...",
-          "Select measure to track",
-          [this](bool checked) {
+  measuresMenu_.addAction(showMeasureDisplayAction_);
+  measuresMenu_.addAction(showMeasureGraphAction_);
 
-            if ( !checked ) {
-              if ( measureSelectionDlgBox_ ) {
-                measureSelectionDlgBox_->hide();
-              }
-            }
-            else {
-              if ( !measureSelectionDlgBox_ ) {
+  measuresMenu_.addSeparator();
 
-                measureSelectionDlgBox_ =
-                    new QSingeMeasureSelectionDialogBox("Select measure to track",
-                        measureProvider_,
-                        this);
-
-                connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::visibilityChanged,
-                  showMeasureSelectionDlgBoxAction_, &QAction::setChecked);
-
-                connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::currentMeasureChanged,
-                    [this]() {
-                      measureGraph_->setCurrentMeasure(measureSelectionDlgBox_->currentMeasure());
-                    });
-
-                measureGraph_->setCurrentMeasure(measureSelectionDlgBox_->currentMeasure());
-              }
-
-              //measureSelectionDlgBox_->setParent(this);
-              measureSelectionDlgBox_->show();
-              measureSelectionDlgBox_->raise();
-              measureSelectionDlgBox_->setFocus();
-            }
-          }));
-
-  measureActions_.addAction(clearMeasuresAction_ =
-      createAction(getIcon(ICON_measure_clear),
-          "Clear measurements",
-          "Clear measurements",
-          [this]() {
-            measureProvider_->clear_measured_frames();
-          }));
-
-
-  measureGraphDock_->titleBar()->addButton(
-      createToolButtonWithPopupMenu(enableMeasureTrackigAction_,
-          &measureActions_));
+  /////////
 
   measureGraphDock_->hide();
-  measureGraph_->setMeasureProvider(measureProvider_);
 
   connect(centralDisplay_, &QImageViewer::currentImageChanged,
       this, &ThisClass::onUpdateMeasureGraph);
@@ -792,11 +768,11 @@ void MainWindow::setupMeasureDisplay()
 
 void MainWindow::onUpdateMeasureGraph()
 {
-  if ( enableMeasureTracking_ && measureGraph_->isVisible() && centralDisplay_->rectShape()->isVisible() ) {
+  if( !QMeasureProvider::requested_measures().empty() && centralDisplay_->rectShape()->isVisible() ) {
 
     QImageViewer::current_image_lock lock(centralDisplay_);
 
-    measureProvider_->compute(centralDisplay_->currentImage(),
+    QMeasureProvider::compute(centralDisplay_->currentImage(),
         centralDisplay_->currentMask(),
         centralDisplay_->rectShape()->iSceneRect());
   }
@@ -887,27 +863,26 @@ void MainWindow::onShowMtfControlActionTriggered(bool checked)
 void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
 {
   if ( !checked ) {
-    if ( measureDisplayDialogBox_ ) {
-      measureDisplayDialogBox_->hide();
+    if ( measureDisplay_ ) {
+      measureDisplay_->hide();
     }
   }
   else {
-    if ( !measureDisplayDialogBox_ ) {
+    if ( !measureDisplay_ ) {
 
-      measureDisplayDialogBox_ = new QMeasureDisplayDialogBox(this);
-      measureDisplayDialogBox_->setMeasureProvider(measureProvider_);
+      measureDisplay_ = new QMeasureDisplayDialogBox(this);
+      measureDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
 
-      connect(measureDisplayDialogBox_, &QMeasureDisplayDialogBox::visibilityChanged,
-          showMeasureDisplayDialogBoxAction_, &QAction::setChecked);
+      connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
+          showMeasureDisplayAction_, &QAction::setChecked);
     }
 
-    measureDisplayDialogBox_->show();
-    measureDisplayDialogBox_->raise();
-    measureDisplayDialogBox_->setFocus();
+    measureDisplay_->show();
+    measureDisplay_->raise();
+    measureDisplay_->setFocus();
   }
 
 }
-
 
 void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed)
 {

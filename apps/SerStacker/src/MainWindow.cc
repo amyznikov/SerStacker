@@ -1126,90 +1126,55 @@ void MainWindow::stupCloudViewer()
 
 void MainWindow::setupMeasureGraph()
 {
-  measureProvider_ =
-      new QMeasureProvider(this);
-
-  measureGraphDock_ =
-      addDock<QMeasureGraphDock>(this,
-          Qt::RightDockWidgetArea,
-          "measureGraphDock_",
-          "Measure Graph",
-          measureGraph_ = new QMeasureGraph(this),
-          menuView_);
-
-
-  measureActions_.addAction(enableMeasureTrackigAction_ =
-      createCheckableAction(getIcon(ICON_measure_chart),
-          "Enable tracking",
-          "Enable / Disable measure tracking",
-          [this](bool checked) {
-            enableMeasureTracking_ = checked;
-          }));
-
-  measureActions_.addAction(showMeasureSelectionDlgBoxAction_ =
-      createCheckableAction(getIcon(ICON_measures),
-          "Select measure...",
-          "Select measure to track",
-          [this](bool checked) {
-
-            if ( !checked ) {
-              if ( measureSelectionDlgBox_ ) {
-                measureSelectionDlgBox_->hide();
-              }
-            }
-            else {
-              if ( !measureSelectionDlgBox_ ) {
-
-                measureSelectionDlgBox_ =
-                new QSingeMeasureSelectionDialogBox("Select measure to track",
-                    measureProvider_,
-                    this);
-
-                connect(measureSelectionDlgBox_, &QSingeMeasureSelectionDialogBox::visibilityChanged,
-                    [this](bool visible) {
-                      showMeasureSelectionDlgBoxAction_->setChecked(visible);
-                    });
-              }
-
-              //measureSelectionDlgBox_->setParent(this);
-              measureSelectionDlgBox_->show();
-              measureSelectionDlgBox_->raise();
-              measureSelectionDlgBox_->setFocus();
-            }
-          }));
-
-  measureActions_.addAction(clearMeasuresAction_ =
-      createAction(getIcon(ICON_measure_clear),
-          "Clear measurements",
-          "Clear measurements",
-          [this]() {
-            measureProvider_->clear_measured_frames();
-          }));
-
-
-  measureGraphDock_->titleBar()->addButton(
-      createToolButtonWithPopupMenu(enableMeasureTrackigAction_,
-          &measureActions_));
-
-  measureGraphDock_->hide();
-  measureGraph_->setMeasureProvider(measureProvider_);
-
-  connect(imageEditor, &QImageViewer::currentImageChanged,
-      this, &ThisClass::onUpdateMeasureGraph);
-
-
+//  measureGraphDock_ =
+//      addDock<QMeasureGraphDock>(this,
+//          Qt::RightDockWidgetArea,
+//          "measureGraphDock_",
+//          "Measure Graph",
+//          measureGraph_ = new QMeasureGraph(this),
+//          menuView_);
+//
+//
+//  measureActions_.addAction(enableMeasureTrackigAction_ =
+//      createCheckableAction(getIcon(ICON_measure_chart),
+//          "Enable tracking",
+//          "Enable / Disable measure tracking",
+//          [this](bool checked) {
+//            enableMeasureTracking_ = checked;
+//          }));
+//
+//  measureActions_.addAction(clearMeasuresAction_ =
+//      createAction(getIcon(ICON_measure_clear),
+//          "Clear measurements",
+//          "Clear measurements",
+//          [this]() {
+//            measureProvider_->clear_measured_frames();
+//          }));
+//
+//
+//  measureGraphDock_->titleBar()->addButton(
+//      createToolButtonWithPopupMenu(enableMeasureTrackigAction_,
+//          &measureActions_));
+//
+//  measureGraphDock_->hide();
+//  measureGraph_->setMeasureProvider(measureProvider_);
+//
+//  connect(imageEditor, &QImageViewer::currentImageChanged,
+//      this, &ThisClass::onUpdateMeasureGraph);
+//
+//
 }
 
 void MainWindow::onUpdateMeasureGraph()
 {
-  if ( enableMeasureTracking_ && measureGraph_->isVisible() && imageEditor->roiRectShape()->isVisible() ) {
-
-    QImageViewer::current_image_lock lock(imageEditor);
-
-    measureProvider_->compute(imageEditor->currentImage(),
-        imageEditor->currentMask(),
-        imageEditor->roiRectShape()->iSceneRect());
-  }
+//  if ( enableMeasureTracking_ && measureGraph_->isVisible() && imageEditor->roiRectShape()->isVisible() ) {
+//
+//    QImageViewer::current_image_lock lock(imageEditor);
+//
+//    measureProvider_->compute(imageEditor->currentImage(),
+//        imageEditor->currentMask(),
+//        imageEditor->roiRectShape()->iSceneRect());
+//  }
 }
 
 

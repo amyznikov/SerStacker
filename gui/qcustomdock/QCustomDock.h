@@ -50,6 +50,7 @@ public:
   QToolButton * addButton(const QIcon & icon, const QString & tooltip = "");
   QToolButton * addButton(const QString & icon, const QString & tooltip = "");
 
+  void addWidget(QWidget * w);
 
   template<class _Calable>
   QToolButton * addButton(const QIcon & icon, const QString & tooltip, _Calable && slot)

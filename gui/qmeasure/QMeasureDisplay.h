@@ -14,8 +14,7 @@
 
 
 class QMeasureDisplay :
-    public QFrame,
-    public HasUpdateControls
+    public QFrame
 {
   Q_OBJECT;
 public:
@@ -24,20 +23,24 @@ public:
 
   QMeasureDisplay(QWidget * parent = nullptr);
 
-  void setMeasureProvider(QMeasureProvider * provider);
-  QMeasureProvider* measureProvider() const;
-
 protected:
   void setupToolbar();
   void setupTableView();
   void onSelectMeasuresClicked(bool checked);
 
 protected:
-  void onupdatecontrols() override;
   void updateVisibleColumns();
+  void updateMeasurements();
+  void updateEnableMeasurements();
 
 protected:
-  QMeasureProvider* mp_ = nullptr;
+  void showEvent(QShowEvent * e) override;
+  void hideEvent(QHideEvent * e) override;
+  void closeEvent(QCloseEvent * event) override;
+
+protected:
+  std::set<QMeasure*> cm_;
+
   QVBoxLayout * lv_ = nullptr;
   QToolBar * toolbar_ = nullptr;
   QTableWidget * table_ = nullptr;
@@ -47,8 +50,8 @@ protected:
   QAction * copyToClipboardAction_ = nullptr;
   QAction * clearTableAction_ = nullptr;
   QAction * selectMeasuresAction_ = nullptr;
-  QAction * incrementalMeasurementsAction_ = nullptr;
-  QAction * measureAction_ = nullptr;
+  QAction * incrementalModeAction_ = nullptr;
+  QAction * enableMeasureAction_ = nullptr;
 };
 
 
@@ -62,11 +65,6 @@ public:
 
   QMeasureDisplayDialogBox(QWidget * parent = nullptr);
   QMeasureDisplayDialogBox(const QString & title, QWidget * parent = nullptr);
-
-  void setMeasureProvider(QMeasureProvider * provider);
-  QMeasureProvider* measureProvider() const;
-
-  QMeasureDisplay * measureDisplay() const;
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);

@@ -17,27 +17,45 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::set<const std::set<QMeasure*>*> QMeasureProvider::requested_measures_;
+std::deque<QMeasureProvider::MeasuredFrame> QMeasureProvider::measured_frames_;
+std::vector<QMeasure*> QMeasureProvider::measures_;
+int QMeasureProvider::max_measured_frames_ = 200;
+
 QMeasureProvider::QMeasureProvider(QObject * parent) :
   Base(parent)
 {
-  measures_.emplace(new QMeasureMinValue());
-  measures_.emplace(new QMeasureMaxValue());
-  measures_.emplace(new QMeasureMeanValue());
-  measures_.emplace(new QMeasureStdevValue());
-  measures_.emplace(new QMeasureLPG());
-  measures_.emplace(new QMeasureLC());
-  measures_.emplace(new QMeasureHarrisCornerResponse());
-  measures_.emplace(new QMeasureNormalizedVariance());
-  measures_.emplace(new QMeasureSharpnessNorm());
 }
 
-
-const std::set<QMeasure*> QMeasureProvider::measures() const
+QMeasureProvider * QMeasureProvider::instance()
 {
+  static QMeasureProvider * instance_ =
+      new QMeasureProvider();
+
+  return instance_;
+}
+
+const std::vector<QMeasure*>& QMeasureProvider::measures()
+{
+  static std::mutex mtx_;
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if( measures_.empty() ) {
+    measures_.emplace_back(new QMeasureMinValue());
+    measures_.emplace_back(new QMeasureMaxValue());
+    measures_.emplace_back(new QMeasureMeanValue());
+    measures_.emplace_back(new QMeasureStdevValue());
+    measures_.emplace_back(new QMeasureLPG());
+    measures_.emplace_back(new QMeasureLC());
+    measures_.emplace_back(new QMeasureHarrisCornerResponse());
+    measures_.emplace_back(new QMeasureNormalizedVariance());
+    measures_.emplace_back(new QMeasureSharpnessNorm());
+  }
+
   return measures_;
 }
 
-const std::deque<QMeasureProvider::MeasuredFrame> & QMeasureProvider::measured_frames() const
+const std::deque<QMeasureProvider::MeasuredFrame> & QMeasureProvider::measured_frames()
 {
   return measured_frames_;
 }
@@ -45,7 +63,7 @@ const std::deque<QMeasureProvider::MeasuredFrame> & QMeasureProvider::measured_f
 void QMeasureProvider::clear_measured_frames()
 {
   measured_frames_.clear();
-  Q_EMIT measurementsChanged();
+  Q_EMIT instance()->measurementsChanged();
 }
 
 void QMeasureProvider::set_max_measured_frames(int v)
@@ -56,12 +74,27 @@ void QMeasureProvider::set_max_measured_frames(int v)
     measured_frames_.pop_front();
   }
 
-  Q_EMIT measurementsChanged();
+  Q_EMIT instance()->measurementsChanged();
 }
 
-int QMeasureProvider::max_measured_frames() const
+int QMeasureProvider::max_measured_frames()
 {
   return max_measured_frames_;
+}
+
+const std::set<const std::set<QMeasure*>*>& QMeasureProvider::requested_measures()
+{
+  return requested_measures_;
+}
+
+void QMeasureProvider::request_measures(const std::set<QMeasure*> * r)
+{
+  requested_measures_.emplace(r);
+}
+
+void QMeasureProvider::remove_measure_request(const std::set<QMeasure*> * r)
+{
+  requested_measures_.erase(r);
 }
 
 bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const QRect & roi)
@@ -71,29 +104,36 @@ bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const 
 
 bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi)
 {
-  if( !measures_.empty() ) {
+  if( !requested_measures_.empty() ) {
 
-    MeasuredFrame frame;
-    cv::Scalar v;
+    std::set<QMeasure*> requited_measures;
 
-    for( const QMeasure *m : measures_ ) {
-      if( m->enabled() ) {
+    for( const auto &r : requested_measures_ ) {
+      requited_measures.insert(r->begin(), r->end());
+    }
+
+    if ( !requited_measures.empty() ) {
+
+      MeasuredFrame frame;
+      cv::Scalar v;
+
+      for( const QMeasure *m : requited_measures ) {
         const int cn = m->compute(image, mask, roi, &v);
         if( cn > 0 ) {
           frame.measurements.emplace_back(m, v, cn);
         }
       }
-    }
 
-    if( !frame.empty() ) {
+      if( !frame.empty() ) {
 
-      measured_frames_.emplace_back(frame);
+        measured_frames_.emplace_back(frame);
 
-      while ( measured_frames_.size() > max_measured_frames_ ) {
-        measured_frames_.pop_front();
+        while ( measured_frames_.size() > max_measured_frames_ ) {
+          measured_frames_.pop_front();
+        }
+
+        Q_EMIT instance()->measurementsChanged();
       }
-
-      Q_EMIT measurementsChanged();
     }
   }
 

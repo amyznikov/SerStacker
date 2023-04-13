@@ -13,6 +13,23 @@
 #include <gui/widgets/UpdateControls.h>
 
 
+class QMeasureSelectionCombo :
+    public QComboBox
+{
+  Q_OBJECT;
+public:
+  typedef QMeasureSelectionCombo ThisClass;
+  typedef QComboBox Base;
+
+  QMeasureSelectionCombo(QWidget * parent = nullptr);
+
+  QMeasure * currentMeasure();
+
+Q_SIGNALS:
+  void currentMeasureChanged();
+};
+
+
 class QSingeMeasureSelectionWidget :
     public QSettingsWidget
 {
@@ -22,22 +39,19 @@ public:
   typedef QSettingsWidget Base;
 
   QSingeMeasureSelectionWidget(QWidget * parent = nullptr);
-  QSingeMeasureSelectionWidget(QMeasureProvider * mp, QWidget * parent = nullptr);
 
-  void setMeasureProvider(QMeasureProvider * mp);
-  QMeasureProvider * measureProvider() const;
-
+  void setCurrentMeasure(QMeasure * m);
   QMeasure * currentMeasure() const;
 
 Q_SIGNALS:
   void currentMeasureChanged();
 
 protected:
+  int indexOf(QMeasure * m) const;
   void onupdatecontrols();
   void updatesettingswidget();
 
 protected:
-  QMeasureProvider * mp_ = nullptr;
   QMeasure * cm_ = nullptr;
   QComboBox * combobox_ctl = nullptr;
   QLabel * tooltip_ctl = nullptr;
@@ -55,8 +69,8 @@ public:
   typedef QSingeMeasureSelectionDialogBox ThisClass;
   typedef QDialog Base;
 
-  QSingeMeasureSelectionDialogBox(QMeasureProvider * mp, QWidget * parent = nullptr);
-  QSingeMeasureSelectionDialogBox(const QString & title, QMeasureProvider * mp, QWidget * parent = nullptr);
+  QSingeMeasureSelectionDialogBox(QWidget * parent = nullptr);
+  QSingeMeasureSelectionDialogBox(const QString & title, QWidget * parent = nullptr);
 
   QMeasure * currentMeasure() const;
 
@@ -84,29 +98,25 @@ public:
   typedef QFrame Base;
 
   QMultiMeasureSelectionWidget(QWidget * parent = nullptr);
-  QMultiMeasureSelectionWidget(QMeasureProvider * mp, QWidget * parent = nullptr);
 
-  void setMeasureProvider(QMeasureProvider * mp);
-  QMeasureProvider * measureProvider() const;
+  void selectMeasures(std::set<QMeasure*> * r);
 
 Q_SIGNALS:
   void selectedMeasuresChanged();
 
 protected:
   void onupdatecontrols();
-  void updatesettingswidget();
   void onListViewItemChanged(QListWidgetItem *item);
   void onListViewCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
 
 protected:
-  QMeasureProvider * mp_ = nullptr;
+  std::set<QMeasure*> * cm_ = nullptr;
   QHBoxLayout * hbox_ = nullptr;
   QVBoxLayout * vbox_ = nullptr;
 
   QListWidget * listview_ctl = nullptr;
   QLabel * tooltip_ctl = nullptr;
   QNumericBox * maxMeasurements_ctl = nullptr;
-  //QScrollArea * scrollArea_ctl = nullptr;
   QMeasureSettingsWidget * cw_ = nullptr;
   QList<QMeasureSettingsWidget*> settingsWidgets_;
 };
@@ -121,11 +131,9 @@ public:
   typedef QDialog Base;
 
   QMultiMeasureSelectionDialogBox(QWidget * parent = nullptr);
-  QMultiMeasureSelectionDialogBox(QMeasureProvider * mp, QWidget * parent = nullptr);
-  QMultiMeasureSelectionDialogBox(const QString & title, QMeasureProvider * mp, QWidget * parent = nullptr);
+  QMultiMeasureSelectionDialogBox(const QString & title, QWidget * parent = nullptr);
 
-  void setMeasureProvider(QMeasureProvider * mp);
-  QMeasureProvider * measureProvider() const;
+  void selectMeasures(std::set<QMeasure*> * r);
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);

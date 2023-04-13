@@ -127,18 +127,9 @@ private:
   QCustomDockWidget * imageProcessorSelectorDock = nullptr;
   QImageProcessorSelector * imageProcessorSelector = nullptr;
 
-//  QImageFocusMeasure * focusMeasure_ = nullptr;
-//  QFocusGraph * focusGraph_ = nullptr;
-//  QFocusGraphDock * focusGraphDock_ = nullptr;
-  QMeasureProvider * measureProvider_ = nullptr;
-  QMeasureGraph * measureGraph_ = nullptr;
-  QMeasureGraphDock * measureGraphDock_ = nullptr;
-  QSingeMeasureSelectionDialogBox * measureSelectionDlgBox_ = nullptr;
-  QAction * showMeasureSelectionDlgBoxAction_ = nullptr;
-  QAction * enableMeasureTrackigAction_ = nullptr;
-  QAction * clearMeasuresAction_ = nullptr;
-  bool enableMeasureTracking_ = false;
-  QMenu measureActions_;
+//  QMeasureGraph * measureGraph_ = nullptr;
+//  QMeasureGraphDock * measureGraphDock_ = nullptr;
+//  QMenu measureActions_;
 
 
   QAction * showRoiAction_ = nullptr;

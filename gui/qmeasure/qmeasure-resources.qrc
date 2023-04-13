@@ -19,6 +19,9 @@
 	<file>icons/light/chart.png</file>
 	<file>icons/dark/chart.png</file>
 
+	<file>icons/light/table.png</file>
+	<file>icons/dark/table.png</file>
+
 	<file>icons/measure.png</file>
 
 </qresource>

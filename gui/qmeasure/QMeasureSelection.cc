@@ -6,12 +6,30 @@
  */
 #include "QMeasureSelection.h"
 
-QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QWidget * parent) :
-    ThisClass(nullptr, parent)
+QMeasureSelectionCombo::QMeasureSelectionCombo(QWidget * parent) :
+    Base(parent)
 {
+  setEditable(false);
+
+  addItem("NONE", QVariant::fromValue((QMeasure*) nullptr));
+
+  for( QMeasure *m : QMeasureProvider::measures() ) {
+    addItem(m->name(),
+        QVariant::fromValue(m));
+  }
+
+  connect(this, static_cast<void (QComboBox::*)(int)>( &QComboBox::currentIndexChanged ),
+      this, &ThisClass::currentMeasureChanged);
+
 }
 
-QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QMeasureProvider * mp, QWidget * parent) :
+QMeasure * QMeasureSelectionCombo::currentMeasure()
+{
+  return currentData().value<QMeasure*>();
+}
+
+
+QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QWidget * parent) :
   Base("", parent)
 {
   combobox_ctl =
@@ -22,18 +40,16 @@ QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QMeasureProvider * mp
             bool hasChanges = false;
 
             if ( cm_ ) {
-              cm_->set_enabled(false);
               cm_ = nullptr;
               hasChanges = true;
             }
 
-            if ( cursel >= 0 && mp_ ) {
+            if ( cursel >= 0 ) {
 
               if ( !(cm_ = combo->itemData(cursel).value<QMeasure *>())) {
                 tooltip_ctl->setText("");
               }
               else {
-                cm_->set_enabled(true);
                 tooltip_ctl->setText(cm_->tooltip());
                 hasChanges = true;
               }
@@ -43,7 +59,6 @@ QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QMeasureProvider * mp
 
             if ( hasChanges ) {
               Q_EMIT currentMeasureChanged();
-              //Q_EMIT parameterChanged();
             }
           });
 
@@ -53,17 +68,11 @@ QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QMeasureProvider * mp
       add_numeric_box<int>("Max measurements",
           "Set max queue size",
           [this](int value) {
-            if ( mp_ ) {
-              mp_->set_max_measured_frames(value);
-              Q_EMIT parameterChanged();
-            }
+            QMeasureProvider::set_max_measured_frames(value);
           },
           [this](int * value) {
-            if ( mp_ ) {
-              * value = mp_->max_measured_frames();
-              return true;
-            }
-            return false;
+            * value = QMeasureProvider::max_measured_frames();
+            return true;
           });
 
 
@@ -73,37 +82,27 @@ QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QMeasureProvider * mp
   scrollArea_ctl->setFrameShape(QFrame::NoFrame);
   addRow(scrollArea_ctl);
 
-  setMeasureProvider(mp);
-}
+  /////////////
 
-void QSingeMeasureSelectionWidget::setMeasureProvider(QMeasureProvider * mp)
-{
-  if ( cm_ ) {
-    cm_->set_enabled(false);
-    cm_ = nullptr;
+  for( QMeasure *m : QMeasureProvider::measures() ) {
+    combobox_ctl->addItem(m->name(),
+        QVariant::fromValue(m));
   }
 
-  combobox_ctl->clear();
-
-  if ( (mp_ = mp) ) {
-
-    const std::set<QMeasure*> & measures =
-        mp_->measures();
-
-    for ( QMeasure * m : measures ) {
-      combobox_ctl->addItem(m->name(),
-          QVariant::fromValue(m));
-    }
-  }
-
-  Q_EMIT currentMeasureChanged();
-
-  updateControls();
+  /////////////
 }
 
-QMeasureProvider * QSingeMeasureSelectionWidget::measureProvider() const
+int QSingeMeasureSelectionWidget::indexOf(QMeasure * m) const
 {
-  return mp_;
+  if( m ) {
+    return combobox_ctl->findData(QVariant::fromValue(m));
+  }
+  return -1;
+}
+
+void QSingeMeasureSelectionWidget::setCurrentMeasure(QMeasure * m)
+{
+  combobox_ctl->setCurrentIndex(indexOf(cm_ = m));
 }
 
 QMeasure * QSingeMeasureSelectionWidget::currentMeasure() const
@@ -113,13 +112,7 @@ QMeasure * QSingeMeasureSelectionWidget::currentMeasure() const
 
 void QSingeMeasureSelectionWidget::onupdatecontrols()
 {
-  if( !mp_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
+  Base::onupdatecontrols();
 }
 
 void QSingeMeasureSelectionWidget::updatesettingswidget()
@@ -164,13 +157,12 @@ void QSingeMeasureSelectionWidget::updatesettingswidget()
 
 
 
-QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(QMeasureProvider * mp, QWidget * parent) :
-    ThisClass("Select metric", mp, parent)
+QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(QWidget * parent) :
+    ThisClass("Select metric", parent)
 {
 }
 
-QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(const QString & title,
-    QMeasureProvider * mp, QWidget * parent) :
+QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(const QString & title, QWidget * parent) :
     Base(parent)
 {
   setWindowTitle(title);
@@ -187,7 +179,6 @@ QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(const QString &
   connect(measureSelection_ctl, &QSingeMeasureSelectionWidget::currentMeasureChanged,
       this, &ThisClass::currentMeasureChanged);
 
-  measureSelection_ctl->setMeasureProvider(mp);
 }
 
 QMeasure * QSingeMeasureSelectionDialogBox::currentMeasure() const
@@ -212,17 +203,11 @@ void QSingeMeasureSelectionDialogBox::closeEvent(QCloseEvent *)
   hide();
 }
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QWidget * parent) :
-    ThisClass(nullptr, parent)
-{
-}
-
-QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QMeasureProvider * mp, QWidget * parent) :
     Base(parent)
 {
-
   setMinimumSize(600, 400);
 
   vbox_ = new QVBoxLayout(this);
@@ -241,11 +226,23 @@ QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QMeasureProvider * mp
 
   hbox_->addWidget(listview_ctl);
 
-//  scrollArea_ctl = new QScrollArea();
-//  scrollArea_ctl->setWidgetResizable(true);
-//  scrollArea_ctl->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
-//  scrollArea_ctl->setFrameShape(QFrame::NoFrame);
-//  vbox_->addWidget(scrollArea_ctl, 1000);
+  /////////////////////////////////////
+
+  for( QMeasure *m : QMeasureProvider::measures() ) {
+
+    QListWidgetItem *item =
+        new QListWidgetItem(m->name());
+
+    item->setData(Qt::UserRole,
+        QVariant::fromValue(m));
+
+    item->setCheckState(Qt::Unchecked);
+
+    listview_ctl->addItem(item);
+  }
+
+  /////////////////////////////////////
+
 
   connect(listview_ctl, &QListWidget::itemChanged,
       this, &ThisClass::onListViewItemChanged);
@@ -253,79 +250,56 @@ QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QMeasureProvider * mp
   connect(listview_ctl, &QListWidget::currentItemChanged,
       this, &ThisClass::onListViewCurrentItemChanged);
 
-  setMeasureProvider(mp);
-}
-
-void QMultiMeasureSelectionWidget::setMeasureProvider(QMeasureProvider * mp)
-{
-  for ( int i = 0, n = listview_ctl->count(); i < n; ++i ) {
-
-    QListWidgetItem * item =
-        listview_ctl->item(i);
-
-    if ( item->checkState() == Qt::Checked ) {
-
-      QMeasure *m =
-          item->data(Qt::UserRole).value<QMeasure*>();
-
-      if ( m ) {
-        m->set_enabled(false);
-      }
-    }
-  }
-
-  listview_ctl->clear();
-
-  if( (mp_ = mp) ) {
-
-    const std::set<QMeasure*> & measures =
-        mp_->measures();
-
-    for ( QMeasure * m : measures ) {
-
-      QListWidgetItem * item =
-          new QListWidgetItem(m->name());
-
-      item->setData(Qt::UserRole,
-          QVariant::fromValue(m));
-
-      item->setCheckState(Qt::Unchecked);
-
-      listview_ctl->addItem(item);
-    }
-  }
 
   updateControls();
 }
 
-QMeasureProvider * QMultiMeasureSelectionWidget::measureProvider() const
+
+void QMultiMeasureSelectionWidget::selectMeasures(std::set<QMeasure*> * cm)
 {
-  return mp_;
+  cm_ = cm;
+  updateControls();
 }
 
 void QMultiMeasureSelectionWidget::onupdatecontrols()
 {
-  if ( !mp_ ) {
+  if( !cm_ ) {
     setEnabled(false);
   }
   else {
+
+
+    for ( int i = 0, n = listview_ctl->count(); i < n; ++i ) {
+
+      QListWidgetItem *item =
+          listview_ctl->item(i);
+
+      QMeasure *m =
+          item->data(Qt::UserRole).value<QMeasure *>();
+
+      item->setCheckState(cm_->find(m) != cm_->end() ? Qt::Checked :
+          Qt::Unchecked);
+    }
+
     setEnabled(true);
   }
 }
 
-void QMultiMeasureSelectionWidget::updatesettingswidget()
-{
-}
-
 void QMultiMeasureSelectionWidget::onListViewItemChanged(QListWidgetItem *item)
 {
-  if( item ) {
+  if( item && cm_ ) {
+
     QMeasure *m =
         item->data(Qt::UserRole).value<QMeasure*>();
-    if( m ) {
-      m->set_enabled(item->checkState() == Qt::Checked);
-      Q_EMIT selectedMeasuresChanged();
+
+    if( item->checkState() == Qt::Checked ) {
+      cm_->emplace(m);
     }
+    else {
+      cm_->erase(m);
+    }
+
+    Q_EMIT selectedMeasuresChanged();
   }
 }
 
@@ -386,34 +360,14 @@ void QMultiMeasureSelectionWidget::onListViewCurrentItemChanged(QListWidgetItem 
 
   }
 
-//  if( scrollArea_ctl->widget() != currentWidget ) {
-//
-//    if( scrollArea_ctl->widget() ) {
-//      scrollArea_ctl->widget()->hide();
-//    }
-//
-//    scrollArea_ctl->takeWidget();
-//    scrollArea_ctl->setWidget(currentWidget);
-//
-//    if( scrollArea_ctl->widget() ) {
-//      scrollArea_ctl->widget()->show();
-//    }
-//  }
-
-
 }
 
 QMultiMeasureSelectionDialogBox::QMultiMeasureSelectionDialogBox(QWidget * parent) :
-    ThisClass((QMeasureProvider*) nullptr, parent)
+    ThisClass("Select Measures", parent)
 {
 }
 
-QMultiMeasureSelectionDialogBox::QMultiMeasureSelectionDialogBox(QMeasureProvider * mp, QWidget * parent) :
-    ThisClass("Select Measures", mp, parent)
-{
-}
-
-QMultiMeasureSelectionDialogBox::QMultiMeasureSelectionDialogBox(const QString & title, QMeasureProvider * mp, QWidget * parent) :
+QMultiMeasureSelectionDialogBox::QMultiMeasureSelectionDialogBox(const QString & title, QWidget * parent) :
     Base(parent)
 {
   setWindowTitle(title);
@@ -430,17 +384,11 @@ QMultiMeasureSelectionDialogBox::QMultiMeasureSelectionDialogBox(const QString &
   connect(measureSelection_ctl, &QMultiMeasureSelectionWidget::selectedMeasuresChanged,
       this, &ThisClass::selectedMeasuresChanged);
 
-  measureSelection_ctl->setMeasureProvider(mp);
 }
 
-void QMultiMeasureSelectionDialogBox::setMeasureProvider(QMeasureProvider * mp)
+void QMultiMeasureSelectionDialogBox::selectMeasures(std::set<QMeasure*> * cm)
 {
-  measureSelection_ctl->setMeasureProvider(mp);
-}
-
-QMeasureProvider * QMultiMeasureSelectionDialogBox::measureProvider() const
-{
-  return measureSelection_ctl->measureProvider();
+  measureSelection_ctl->selectMeasures(cm);
 }
 
 void QMultiMeasureSelectionDialogBox::showEvent(QShowEvent * e)

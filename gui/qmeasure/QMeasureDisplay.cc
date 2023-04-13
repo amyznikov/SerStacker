@@ -32,24 +32,49 @@ QMeasureDisplay::QMeasureDisplay(QWidget * parent) :
 
   table_->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
   table_->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
+  table_->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
   table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
   setupToolbar();
-  updateControls();
-}
-
-void QMeasureDisplay::setMeasureProvider(QMeasureProvider * provider)
-{
-  mp_ = provider;
   setupTableView();
-  updateControls();
 }
 
-QMeasureProvider* QMeasureDisplay::measureProvider() const
+void QMeasureDisplay::updateEnableMeasurements()
 {
-  return mp_;
+  const bool enable =
+      !cm_.empty() &&
+      enableMeasureAction_->isChecked() &&
+          this->isVisible();
+
+  if( enable ) {
+    QMeasureProvider::request_measures(&cm_);
+    connect(QMeasureProvider::instance(), &QMeasureProvider::measurementsChanged,
+        this, &ThisClass::updateMeasurements);
+  }
+  else {
+    QMeasureProvider::instance()->disconnect(this);
+    QMeasureProvider::remove_measure_request(&cm_);
+  }
+
 }
 
+void QMeasureDisplay::showEvent(QShowEvent * e)
+{
+  Base::showEvent(e);
+  updateEnableMeasurements();
+}
+
+void QMeasureDisplay::hideEvent(QHideEvent * e)
+{
+  Base::hideEvent(e);
+  updateEnableMeasurements();
+}
+
+void QMeasureDisplay::closeEvent(QCloseEvent * e)
+{
+  QMeasureProvider::remove_measure_request(&cm_);
+  Base::closeEvent(e);
+}
 
 void QMeasureDisplay::setupToolbar()
 {
@@ -60,12 +85,8 @@ void QMeasureDisplay::setupToolbar()
   static const auto addAction =
       [](QToolBar * toolbar, const char * icon, const char * text, const char * tooltip, bool checkable) {
         QAction * action = toolbar->addAction(getIcon(icon), text);
-        if ( tooltip ) {
-          action->setToolTip(tooltip);
-        }
-        if ( checkable ) {
-          action->setCheckable(checkable);
-        }
+        action->setToolTip(tooltip);
+        action->setCheckable(checkable);
         return action;
       };
 
@@ -94,27 +115,23 @@ void QMeasureDisplay::setupToolbar()
           "Select measures",
           true);
 
-  incrementalMeasurementsAction_ =
+  incrementalModeAction_ =
       addAction(toolbar_, ICON_add,
           "Incremental",
-          "Add measurements",
+          "Incremental mode",
           true);
 
-  measureAction_ =
+  enableMeasureAction_ =
       addAction(toolbar_, ICON_measure,
           "Measure",
-          "Measure now",
-          false);
+          "Enable Measurements",
+          true);
 
   connect(selectMeasuresAction_, &QAction::triggered,
       this, &ThisClass::onSelectMeasuresClicked);
 
-
-  measureAction_->setEnabled(false);
-
-//  connect(measureAction_, &QAction::triggered,
-//      this, &ThisClass::measure);
-
+  connect(enableMeasureAction_, &QAction::triggered,
+      this, &ThisClass::updateEnableMeasurements);
 }
 
 
@@ -136,9 +153,11 @@ void QMeasureDisplay::onSelectMeasuresClicked(bool checked)
 
       connect(measureSelectorDialog_, &QMultiMeasureSelectionDialogBox::selectedMeasuresChanged,
           this, &ThisClass::updateVisibleColumns);
+
+      measureSelectorDialog_->selectMeasures(&cm_);
     }
 
-    measureSelectorDialog_->setMeasureProvider(mp_);
+    measureSelectorDialog_->selectMeasures(&cm_);
     measureSelectorDialog_->show();
     measureSelectorDialog_->raise();
     measureSelectorDialog_->setFocus();
@@ -148,12 +167,8 @@ void QMeasureDisplay::onSelectMeasuresClicked(bool checked)
 
 void QMeasureDisplay::setupTableView()
 {
-  if ( !mp_ ) {
-    return;
-  }
-
-  const std::set<QMeasure*> & measures =
-      mp_->measures();
+  const auto & measures =
+      QMeasureProvider::measures();
 
   int i = 0;
 
@@ -173,23 +188,114 @@ void QMeasureDisplay::setupTableView()
 
 void QMeasureDisplay::updateVisibleColumns()
 {
-  if  ( mp_ ) {
+  for( int i = 0, n = table_->columnCount(); i < n; ++i ) {
 
-    for ( int i = 0, n = table_->columnCount(); i < n; ++i )  {
+    QMeasure *m =
+        table_->horizontalHeaderItem(i)->data(Qt::UserRole).
+            value<QMeasure*>();
 
-      QMeasure * m =
-          table_->horizontalHeaderItem(i)->data(Qt::UserRole).value<QMeasure*>();
-
-      if ( m ) {
-        table_->setColumnHidden(i, !m->enabled());
-      }
-    }
+    table_->setColumnHidden(i,
+        cm_.find(m) == cm_.end());
   }
 }
 
-void QMeasureDisplay::onupdatecontrols()
+void QMeasureDisplay::updateMeasurements()
 {
-  setEnabled(mp_ != nullptr);
+  if ( !cm_.empty() ) {
+
+    const std::deque<QMeasureProvider::MeasuredFrame> &measured_frames =
+        QMeasureProvider::measured_frames();
+
+    if ( measured_frames.empty() ) {
+      table_->setRowCount(0);
+    }
+    else {
+      using MeasuredValue = QMeasureProvider::MeasuredValue;
+      using MeasuredFrame = QMeasureProvider::MeasuredFrame;
+
+      static const auto find_measurement =
+          [](const QMeasure * measure, const MeasuredFrame & frame) -> const MeasuredValue* {
+            for ( const MeasuredValue & v : frame.measurements ) {
+              if ( v.measure == measure ) {
+                return &v;
+              }
+            }
+            return nullptr;
+          };
+
+      const QMeasureProvider::MeasuredFrame & frame =
+          measured_frames.back();
+
+      const bool incremental_mode =
+          incrementalModeAction_->isChecked();
+
+      const int rc =
+          table_->rowCount();
+
+      bool row_inserted =
+          false;
+
+      for ( int i = 0, n = table_->columnCount(); i < n; ++i )  {
+        if ( !table_->isColumnHidden(i) ) {
+
+          const QMeasure *m =
+              table_->horizontalHeaderItem(i)->data(Qt::UserRole).
+                  value<QMeasure*>();
+
+          if ( m ) {
+
+            const MeasuredValue * v =
+                find_measurement(m, frame);
+
+            if( v && v->cn > 0 ) {
+
+              QString text =
+                  qsprintf("%+g", v->value(0));
+
+              for( int c = 1; c < v->cn; ++c ) {
+                text += qsprintf("; +%g", v->value(c));
+              }
+
+              if( incremental_mode ) {
+
+                if( !row_inserted ) {
+                  table_->insertRow(rc);
+                  row_inserted = true;
+                }
+
+                table_->setItem(rc, i,
+                    new QTableWidgetItem(text));
+              }
+              else {
+
+                if( rc != 1 ) {
+                  table_->setRowCount(1);
+                }
+
+                QTableWidgetItem *item =
+                    table_->item(0, i);
+
+                if( item ) {
+                  item->setText(text);
+                }
+                else {
+                  table_->setItem(0, i,
+                      new QTableWidgetItem(text));
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if ( row_inserted && table_->rowCount() > QMeasureProvider::max_measured_frames() ) {
+        table_->removeRow(0);
+      }
+
+      table_->scrollToBottom();
+    }
+  }
+
 }
 
 
@@ -210,21 +316,6 @@ QMeasureDisplayDialogBox::QMeasureDisplayDialogBox(const QString & title, QWidge
 
   lv->addWidget(measureDisplay_ =
       new QMeasureDisplay(this));
-}
-
-void QMeasureDisplayDialogBox::setMeasureProvider(QMeasureProvider * provider)
-{
-  return measureDisplay_->setMeasureProvider(provider);
-}
-
-QMeasureProvider* QMeasureDisplayDialogBox::measureProvider() const
-{
-  return measureDisplay_->measureProvider();
-}
-
-QMeasureDisplay * QMeasureDisplayDialogBox::measureDisplay() const
-{
-  return measureDisplay_;
 }
 
 void QMeasureDisplayDialogBox::showEvent(QShowEvent * e)

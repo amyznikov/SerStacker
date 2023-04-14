@@ -11,7 +11,7 @@ QMeasureSelectionCombo::QMeasureSelectionCombo(QWidget * parent) :
 {
   setEditable(false);
 
-  addItem("NONE", QVariant::fromValue((QMeasure*) nullptr));
+  //addItem("NONE", QVariant::fromValue((QMeasure*) nullptr));
 
   for( QMeasure *m : QMeasureProvider::measures() ) {
     addItem(m->name(),
@@ -27,116 +27,214 @@ QMeasure * QMeasureSelectionCombo::currentMeasure()
 {
   return currentData().value<QMeasure*>();
 }
+//
+//
+//QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QWidget * parent) :
+//  Base("", parent)
+//{
+//  combobox_ctl =
+//      add_combobox<QComboBox>("Measure:",
+//          "Select measurement",
+//          [this](int cursel, QComboBox * combo) {
+//
+//            bool hasChanges = false;
+//
+//            if ( cm_ ) {
+//              cm_ = nullptr;
+//              hasChanges = true;
+//            }
+//
+//            if ( cursel >= 0 ) {
+//
+//              if ( !(cm_ = combo->itemData(cursel).value<QMeasure *>())) {
+//                tooltip_ctl->setText("");
+//              }
+//              else {
+//                tooltip_ctl->setText(cm_->tooltip());
+//                hasChanges = true;
+//              }
+//
+//              updatesettingswidget();
+//            }
+//
+//            if ( hasChanges ) {
+//              Q_EMIT currentMeasureChanged();
+//            }
+//          });
+//
+//  addRow(tooltip_ctl = new QLabel(this));
+//
+//  maxMeasurements_ctl =
+//      add_numeric_box<int>("Max measurements",
+//          "Set max queue size",
+//          [this](int value) {
+//            QMeasureProvider::set_max_measured_frames(value);
+//          },
+//          [this](int * value) {
+//            * value = QMeasureProvider::max_measured_frames();
+//            return true;
+//          });
+//
+//
+//  scrollArea_ctl = new QScrollArea(this);
+//  scrollArea_ctl->setWidgetResizable(true);
+//  scrollArea_ctl->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+//  scrollArea_ctl->setFrameShape(QFrame::NoFrame);
+//  addRow(scrollArea_ctl);
+//
+//  /////////////
+//
+//  for( QMeasure *m : QMeasureProvider::measures() ) {
+//    combobox_ctl->addItem(m->name(),
+//        QVariant::fromValue(m));
+//  }
+//
+//  /////////////
+//}
+//
+//int QSingeMeasureSelectionWidget::indexOf(QMeasure * m) const
+//{
+//  if( m ) {
+//    return combobox_ctl->findData(QVariant::fromValue(m));
+//  }
+//  return -1;
+//}
+//
+//void QSingeMeasureSelectionWidget::setCurrentMeasure(QMeasure * m)
+//{
+//  combobox_ctl->setCurrentIndex(indexOf(cm_ = m));
+//}
+//
+//QMeasure * QSingeMeasureSelectionWidget::currentMeasure() const
+//{
+//  return cm_;
+//}
+//
+//void QSingeMeasureSelectionWidget::onupdatecontrols()
+//{
+//  Base::onupdatecontrols();
+//}
+//
+//void QSingeMeasureSelectionWidget::updatesettingswidget()
+//{
+//  QMeasureSettingsWidget *currentWidget =
+//      nullptr;
+//
+//  if( cm_ && cm_->hasOptions() ) {
+//
+//    const auto pos =
+//        std::find_if(settingsWidgets_.begin(), settingsWidgets_.end(),
+//            [this](const QMeasureSettingsWidget * obj) {
+//              return cm_ == obj->currentMeasure();
+//            });
+//
+//    if( pos != settingsWidgets_.end() ) {
+//      currentWidget = *pos;
+//    }
+//    else if( !(currentWidget = cm_->createSettingsWidget(this)) ) {
+//      CF_ERROR("cm_->createSettingsWidget() fails ");
+//    }
+//    else {
+//      settingsWidgets_.append(currentWidget);
+//      currentWidget->setCurrentMeasure(cm_);
+//    }
+//  }
+//
+//  if( scrollArea_ctl->widget() != currentWidget ) {
+//
+//    if( scrollArea_ctl->widget() ) {
+//      scrollArea_ctl->widget()->hide();
+//    }
+//
+//    scrollArea_ctl->takeWidget();
+//    scrollArea_ctl->setWidget(currentWidget);
+//
+//    if( scrollArea_ctl->widget() ) {
+//      scrollArea_ctl->widget()->show();
+//    }
+//  }
+//}
+//
 
 
-QSingeMeasureSelectionWidget::QSingeMeasureSelectionWidget(QWidget * parent) :
-  Base("", parent)
+QMeasureSettingsDialogBox::QMeasureSettingsDialogBox(QWidget * parent) :
+    ThisClass("Measure options", parent)
 {
-  combobox_ctl =
-      add_combobox<QComboBox>("Measure:",
-          "Select measurement",
-          [this](int cursel, QComboBox * combo) {
+}
 
-            bool hasChanges = false;
+QMeasureSettingsDialogBox::QMeasureSettingsDialogBox(const QString & title, QWidget * parent) :
+    Base(parent)
+{
+  setWindowTitle(title);
+  setMinimumWidth(QFontMetrics(font(), this).horizontalAdvance(title) + 200);
 
-            if ( cm_ ) {
-              cm_ = nullptr;
-              hasChanges = true;
-            }
+  layout_ = new QVBoxLayout(this);
+  layout_->addWidget(combobox_ctl = new QMeasureSelectionCombo(), 0, Qt::AlignTop);
+  layout_->addWidget(tooltip_ctl = new QLabel(), 0, Qt::AlignTop);
 
-            if ( cursel >= 0 ) {
-
-              if ( !(cm_ = combo->itemData(cursel).value<QMeasure *>())) {
-                tooltip_ctl->setText("");
-              }
-              else {
-                tooltip_ctl->setText(cm_->tooltip());
-                hasChanges = true;
-              }
-
-              updatesettingswidget();
-            }
-
-            if ( hasChanges ) {
-              Q_EMIT currentMeasureChanged();
-            }
-          });
-
-  addRow(tooltip_ctl = new QLabel(this));
-
-  maxMeasurements_ctl =
-      add_numeric_box<int>("Max measurements",
-          "Set max queue size",
-          [this](int value) {
-            QMeasureProvider::set_max_measured_frames(value);
-          },
-          [this](int * value) {
-            * value = QMeasureProvider::max_measured_frames();
-            return true;
-          });
-
+  // maxMeasurements_ctl
 
   scrollArea_ctl = new QScrollArea(this);
   scrollArea_ctl->setWidgetResizable(true);
   scrollArea_ctl->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
   scrollArea_ctl->setFrameShape(QFrame::NoFrame);
-  addRow(scrollArea_ctl);
+  layout_->addWidget(scrollArea_ctl, 1000);
 
-  /////////////
+  connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,
+      this, &ThisClass::onCurrentMeasureChanged);
 
-  for( QMeasure *m : QMeasureProvider::measures() ) {
-    combobox_ctl->addItem(m->name(),
-        QVariant::fromValue(m));
+  onCurrentMeasureChanged();
+}
+
+void QMeasureSettingsDialogBox::showEvent(QShowEvent * e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QMeasureSettingsDialogBox::hideEvent(QHideEvent * e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QMeasureSettingsDialogBox::closeEvent(QCloseEvent *)
+{
+  hide();
+}
+
+void QMeasureSettingsDialogBox::onCurrentMeasureChanged()
+{
+  QMeasureSettingsWidget *currentWidget = nullptr;
+
+  QMeasure * m =
+      combobox_ctl->currentMeasure();
+
+  if( !m ) {
+    tooltip_ctl->setText("");
   }
+  else {
 
-  /////////////
-}
+    tooltip_ctl->setText(m->tooltip());
 
-int QSingeMeasureSelectionWidget::indexOf(QMeasure * m) const
-{
-  if( m ) {
-    return combobox_ctl->findData(QVariant::fromValue(m));
-  }
-  return -1;
-}
+    if( m->hasOptions() ) {
 
-void QSingeMeasureSelectionWidget::setCurrentMeasure(QMeasure * m)
-{
-  combobox_ctl->setCurrentIndex(indexOf(cm_ = m));
-}
+      const auto pos =
+          std::find_if(widgets_.begin(), widgets_.end(),
+              [m](const QMeasureSettingsWidget * obj) {
+                return m == obj->currentMeasure();
+              });
 
-QMeasure * QSingeMeasureSelectionWidget::currentMeasure() const
-{
-  return cm_;
-}
-
-void QSingeMeasureSelectionWidget::onupdatecontrols()
-{
-  Base::onupdatecontrols();
-}
-
-void QSingeMeasureSelectionWidget::updatesettingswidget()
-{
-  QMeasureSettingsWidget *currentWidget =
-      nullptr;
-
-  if( cm_ && cm_->hasOptions() ) {
-
-    const auto pos =
-        std::find_if(settingsWidgets_.begin(), settingsWidgets_.end(),
-            [this](const QMeasureSettingsWidget * obj) {
-              return cm_ == obj->currentMeasure();
-            });
-
-    if( pos != settingsWidgets_.end() ) {
-      currentWidget = *pos;
-    }
-    else if( !(currentWidget = cm_->createSettingsWidget(this)) ) {
-      CF_ERROR("cm_->createSettingsWidget() fails ");
-    }
-    else {
-      settingsWidgets_.append(currentWidget);
-      currentWidget->setCurrentMeasure(cm_);
+      if( pos != widgets_.end() ) {
+        currentWidget = *pos;
+      }
+      else if( !(currentWidget = m->createSettingsWidget(this)) ) {
+        CF_ERROR("m->createSettingsWidget() fails ");
+      }
+      else {
+        widgets_.append(currentWidget);
+        currentWidget->setCurrentMeasure(m);
+      }
     }
   }
 
@@ -153,54 +251,6 @@ void QSingeMeasureSelectionWidget::updatesettingswidget()
       scrollArea_ctl->widget()->show();
     }
   }
-}
-
-
-
-QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(QWidget * parent) :
-    ThisClass("Select metric", parent)
-{
-}
-
-QSingeMeasureSelectionDialogBox::QSingeMeasureSelectionDialogBox(const QString & title, QWidget * parent) :
-    Base(parent)
-{
-  setWindowTitle(title);
-  setMinimumWidth(QFontMetrics(font(), this).horizontalAdvance(title) + 200);
-
-  QVBoxLayout *lv =
-      new QVBoxLayout(this);
-
-  // lv->setContentsMargins(0, 0, 0, 0);
-
-  lv->addWidget(measureSelection_ctl =
-      new QSingeMeasureSelectionWidget(this));
-
-  connect(measureSelection_ctl, &QSingeMeasureSelectionWidget::currentMeasureChanged,
-      this, &ThisClass::currentMeasureChanged);
-
-}
-
-QMeasure * QSingeMeasureSelectionDialogBox::currentMeasure() const
-{
-  return measureSelection_ctl->currentMeasure();
-}
-
-void QSingeMeasureSelectionDialogBox::showEvent(QShowEvent * e)
-{
-  Base::showEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QSingeMeasureSelectionDialogBox::hideEvent(QHideEvent * e)
-{
-  Base::hideEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QSingeMeasureSelectionDialogBox::closeEvent(QCloseEvent *)
-{
-  hide();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

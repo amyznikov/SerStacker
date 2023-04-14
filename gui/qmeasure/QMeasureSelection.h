@@ -30,53 +30,22 @@ Q_SIGNALS:
 };
 
 
-class QSingeMeasureSelectionWidget :
-    public QSettingsWidget
-{
-  Q_OBJECT;
-public:
-  typedef QSingeMeasureSelectionWidget ThisClass;
-  typedef QSettingsWidget Base;
-
-  QSingeMeasureSelectionWidget(QWidget * parent = nullptr);
-
-  void setCurrentMeasure(QMeasure * m);
-  QMeasure * currentMeasure() const;
-
-Q_SIGNALS:
-  void currentMeasureChanged();
-
-protected:
-  int indexOf(QMeasure * m) const;
-  void onupdatecontrols();
-  void updatesettingswidget();
-
-protected:
-  QMeasure * cm_ = nullptr;
-  QComboBox * combobox_ctl = nullptr;
-  QLabel * tooltip_ctl = nullptr;
-  QNumericBox * maxMeasurements_ctl = nullptr;
-  QScrollArea * scrollArea_ctl = nullptr;
-  QList<QMeasureSettingsWidget*> settingsWidgets_;
-};
-
-
-class QSingeMeasureSelectionDialogBox:
+class QMeasureSettingsDialogBox:
     public QDialog
 {
   Q_OBJECT;
 public:
-  typedef QSingeMeasureSelectionDialogBox ThisClass;
+  typedef QMeasureSettingsDialogBox ThisClass;
   typedef QDialog Base;
 
-  QSingeMeasureSelectionDialogBox(QWidget * parent = nullptr);
-  QSingeMeasureSelectionDialogBox(const QString & title, QWidget * parent = nullptr);
-
-  QMeasure * currentMeasure() const;
+  QMeasureSettingsDialogBox(QWidget * parent = nullptr);
+  QMeasureSettingsDialogBox(const QString & title, QWidget * parent = nullptr);
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);
-  void currentMeasureChanged();
+
+protected Q_SLOTS:
+  void onCurrentMeasureChanged();
 
 protected:
   void showEvent(QShowEvent * e) override;
@@ -84,7 +53,12 @@ protected:
   void closeEvent(QCloseEvent * event) override;
 
 protected:
-  QSingeMeasureSelectionWidget * measureSelection_ctl = nullptr;
+  QVBoxLayout * layout_ = nullptr;
+  QMeasureSelectionCombo * combobox_ctl = nullptr;
+  QLabel * tooltip_ctl = nullptr;
+  //QNumericBox * maxMeasurements_ctl = nullptr;
+  QScrollArea * scrollArea_ctl = nullptr;
+  QList<QMeasureSettingsWidget*> widgets_;
 };
 
 

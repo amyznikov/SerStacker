@@ -167,19 +167,38 @@ void QMeasureGraph::updateEnableMeasurements()
 }
 
 
-QMeasureGraphDock::QMeasureGraphDock(const QString & title, QWidget * parent, QMeasureGraph * view) :
-    Base(title, parent, view)
+namespace {
+
+class QMeasureGraphCombo:
+    public QMeasureSelectionCombo
 {
-  if( view ) {
+public:
+  typedef QMeasureGraphCombo ThisClass;
+  typedef QMeasureSelectionCombo Base;
+
+  QMeasureGraphCombo(QWidget * parent = nullptr) : Base(parent)
+  {
+    insertItem(0, "NONE", QVariant::fromValue((QMeasure*) nullptr));
+    setCurrentIndex(0);
+  }
+
+};
+
+} // namespace
+
+QMeasureGraphDock::QMeasureGraphDock(const QString & title, QWidget * parent, QMeasureGraph * graph) :
+    Base(title, parent, graph)
+{
+  if( graph ) {
 
     QCustomDockTitleBar *bar =
         titleBar();
 
-    bar->addWidget(combobox_ctl = new QMeasureSelectionCombo());
+    bar->addWidget(combobox_ctl = new QMeasureGraphCombo());
 
     connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,
-        [this, view]() {
-          view->setCurrentMeasure(combobox_ctl->currentMeasure());
+        [this, graph]() {
+          graph->setCurrentMeasure(combobox_ctl->currentMeasure());
         });
 
   }

@@ -23,6 +23,8 @@
 	<file>icons/dark/table.png</file>
 
 	<file>icons/measure.png</file>
+	<file>icons/options.png</file>
+	<file>icons/metrics.png</file>
 
 </qresource>
 </RCC>

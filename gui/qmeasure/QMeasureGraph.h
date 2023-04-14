@@ -34,7 +34,6 @@ protected:
   void showEvent(QShowEvent * event) override;
   void hideEvent(QHideEvent * event) override;
   void updateEnableMeasurements();
-  //  void updatePenColors();
 
 protected:
   std::set<QMeasure*> cm_;
@@ -45,7 +44,6 @@ protected:
 
   //  QAction *enableTrackAction_ = nullptr;
   //  QAction *showSettingsAction_ = nullptr;
-  // QFocusGraphSettingsDialogBox *settings_ctl = nullptr;
 
 };
 
@@ -58,7 +56,7 @@ public:
   typedef QCustomDockWidget Base;
 
   QMeasureGraphDock(const QString & title, QWidget * parent,
-      QMeasureGraph * view);
+      QMeasureGraph * graph);
 
 protected:
   QMeasureSelectionCombo * combobox_ctl = nullptr;

@@ -305,11 +305,21 @@ void MainWindow::setupMainMenu()
 
   /////////////////////////////////////
 
+  menuView_->addAction(showMeasureSettingsAction_ =
+      createCheckableAction(getIcon(ICON_measure_options),
+          "Measure Options",
+          "Show / Hide measure options",
+          this, &ThisClass::onShowMeasureSettingsActionTriggered));
+
+
+
   menuView_->addAction(showMeasureDisplayAction_ =
       createCheckableAction(getIcon(ICON_measures_table),
           "Measures",
           "Show / Hide measures display",
           this, &ThisClass::onShowMeasureDisplayActionTriggered));
+
+
 
   ///////////////////////////////////////////////////////////////////
 
@@ -752,6 +762,7 @@ void MainWindow::setupMeasures()
 
   /////////
 
+  measuresMenu_.addAction(showMeasureSettingsAction_);
   measuresMenu_.addAction(showMeasureDisplayAction_);
   measuresMenu_.addAction(showMeasureGraphAction_);
 
@@ -860,6 +871,29 @@ void MainWindow::onShowMtfControlActionTriggered(bool checked)
   mtfControl_->setVisible(checked);
 }
 
+void MainWindow::onShowMeasureSettingsActionTriggered(bool checked)
+{
+  if ( !checked ) {
+    if ( measureSettingsDisplay_ ) {
+      measureSettingsDisplay_->hide();
+    }
+  }
+  else {
+    if ( !measureSettingsDisplay_ ) {
+
+      measureSettingsDisplay_ = new QMeasureSettingsDialogBox(this);
+      // measureSettingsDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
+
+      connect(measureSettingsDisplay_, &QMeasureSettingsDialogBox::visibilityChanged,
+          showMeasureSettingsAction_, &QAction::setChecked);
+    }
+
+    measureSettingsDisplay_->show();
+    measureSettingsDisplay_->raise();
+    measureSettingsDisplay_->setFocus();
+  }
+}
+
 void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
 {
   if ( !checked ) {
@@ -881,7 +915,6 @@ void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
     measureDisplay_->raise();
     measureDisplay_->setFocus();
   }
-
 }
 
 void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed)

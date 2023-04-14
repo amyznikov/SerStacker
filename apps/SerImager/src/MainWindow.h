@@ -61,6 +61,7 @@ protected Q_SLOTS:
   void onCameraWriterStatusUpdate();
   void onShowMtfControlActionTriggered(bool checked);
   void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
+  void onShowMeasureSettingsActionTriggered(bool checked);
   void onShowMeasureDisplayActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void onUpdateMeasureGraph();
@@ -97,10 +98,12 @@ protected:
   QAction * showFrameProcessorAction_ = nullptr;
 
 
+  QMeasureSettingsDialogBox * measureSettingsDisplay_ = nullptr;
   QMeasureDisplayDialogBox * measureDisplay_ = nullptr;
   QMeasureGraph * measureGraph_ = nullptr;
   QMeasureGraphDock * measureGraphDock_ = nullptr;
   QToolButton * measureActionsToolButton_ = nullptr;
+  QAction * showMeasureSettingsAction_ = nullptr;
   QAction * showMeasureDisplayAction_ = nullptr;
   QAction * showMeasureGraphAction_ = nullptr;
   QMenu measuresMenu_;

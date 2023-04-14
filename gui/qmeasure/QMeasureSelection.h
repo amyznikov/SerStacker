@@ -54,9 +54,12 @@ protected:
 
 protected:
   QVBoxLayout * layout_ = nullptr;
+
+  QSettingsWidget * settinngs_ctl = nullptr;
   QMeasureSelectionCombo * combobox_ctl = nullptr;
   QLabel * tooltip_ctl = nullptr;
-  //QNumericBox * maxMeasurements_ctl = nullptr;
+  QNumericBox * maxMeasurements_ctl = nullptr;
+
   QScrollArea * scrollArea_ctl = nullptr;
   QList<QMeasureSettingsWidget*> widgets_;
 };

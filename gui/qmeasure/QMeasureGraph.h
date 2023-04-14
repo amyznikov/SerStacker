@@ -41,10 +41,6 @@ protected:
   QVBoxLayout *vl_ = nullptr;
   QCustomPlot *plot_ = nullptr;
   QCPGraph *graphs_[4] = { nullptr };
-
-  //  QAction *enableTrackAction_ = nullptr;
-  //  QAction *showSettingsAction_ = nullptr;
-
 };
 
 class QMeasureGraphDock:

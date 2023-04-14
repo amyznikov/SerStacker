@@ -169,8 +169,24 @@ QMeasureSettingsDialogBox::QMeasureSettingsDialogBox(const QString & title, QWid
   setMinimumWidth(QFontMetrics(font(), this).horizontalAdvance(title) + 200);
 
   layout_ = new QVBoxLayout(this);
-  layout_->addWidget(combobox_ctl = new QMeasureSelectionCombo(), 0, Qt::AlignTop);
-  layout_->addWidget(tooltip_ctl = new QLabel(), 0, Qt::AlignTop);
+
+  layout_->addWidget(settinngs_ctl = new QSettingsWidget("", this), 0, Qt::AlignTop);
+  settinngs_ctl->addRow("Measure:", combobox_ctl = new QMeasureSelectionCombo());
+  settinngs_ctl->addRow(tooltip_ctl = new QLabel());
+
+  maxMeasurements_ctl =
+      settinngs_ctl->add_numeric_box<int>("maxMeasurements",
+          "Set max measurements in queue",
+          [](int value) {
+            QMeasureProvider::set_max_measured_frames(value);
+          },
+          [](int * value) {
+            * value = QMeasureProvider::max_measured_frames();
+            return true;
+          });
+
+//  layout_->addWidget(combobox_ctl = new QMeasureSelectionCombo(), 0, Qt::AlignTop);
+//  layout_->addWidget(tooltip_ctl = new QLabel(), 0, Qt::AlignTop);
 
   // maxMeasurements_ctl
 
@@ -182,6 +198,9 @@ QMeasureSettingsDialogBox::QMeasureSettingsDialogBox(const QString & title, QWid
 
   connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,
       this, &ThisClass::onCurrentMeasureChanged);
+
+
+  settinngs_ctl->updateControls();
 
   onCurrentMeasureChanged();
 }

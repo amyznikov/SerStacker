@@ -133,6 +133,24 @@ QCustomDockTitleBar::QCustomDockTitleBar(const QString & title)
           parent->close();
         }
       });
+
+  connect(this, &QWidget::windowIconChanged,
+      [this](const QIcon & icon) {
+
+        if ( icon.isNull() ) {
+          if ( iconlb_ ) {
+            layout_->removeWidget(iconlb_);
+            delete iconlb_;
+            iconlb_ = nullptr;
+          }
+        }
+        else {
+          iconlb_ = new QLabel();
+          iconlb_->setPixmap(icon.pixmap(QSize(16, 16)));
+          layout_->insertWidget(0, iconlb_, 0, Qt::AlignLeft);
+        }
+      });
+
 }
 
 
@@ -250,8 +268,8 @@ QSize QCustomDockTitleBar::sizeHint() const
 
 
 
-QCustomDockWidget::QCustomDockWidget(const QString &title, QWidget *parent, QWidget * view, Qt::WindowFlags flags)
-    : Base(title, parent, flags)
+QCustomDockWidget::QCustomDockWidget(const QString &title, QWidget *parent, QWidget * view, Qt::WindowFlags flags) :
+    Base(title, parent, flags)
 {
   Base::setTitleBarWidget(new QCustomDockTitleBar(title));
   Base::setWidget(view);
@@ -264,7 +282,6 @@ QCustomDockWidget::QCustomDockWidget(const QString &title, QWidget *parent, QWid
           raise();
         }
       });
-
 }
 
 QCustomDockTitleBar * QCustomDockWidget::titleBar() const

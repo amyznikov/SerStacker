@@ -16,6 +16,7 @@
 
 namespace serimager {
 
+#define ICON_camera           ":/serimager/icons/camera.png"
 #define ICON_histogram        ":/serimager/icons/histogram.png"
 #define ICON_shapes           ":/serimager/icons/shapes.png"
 #define ICON_roi              ":/serimager/icons/roi.png"
@@ -386,9 +387,12 @@ void MainWindow::setupCameraControls()
               cameraControls_ctl = new QImagingCameraControlsWidget(this)));
 
   cameraControlsDock_->setObjectName("imagerSettingsDock_");
+  cameraControlsDock_->titleBar()->setWindowIcon(getIcon(ICON_camera));
 
   menuView_->addAction(showCameraControlsAction_ =
       cameraControlsDock_->toggleViewAction());
+
+  showCameraControlsAction_->setIcon(getIcon(ICON_camera));
 
   cameraControls_ctl->setCameraWriter(&cameraWriter_);
 
@@ -468,6 +472,9 @@ void MainWindow::setupLivePipelineControls()
           "Live Pipelines",
           pipelineSelector_ctl = new QLivePipelineSelectionWidget(this),
           menuView_);
+
+  pipelineSelectorDock_->titleBar()->setWindowIcon(getIcon(ICON_process));
+
 
   pipelineSelectorDock_->hide();
 

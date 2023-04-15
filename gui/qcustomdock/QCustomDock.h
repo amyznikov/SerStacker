@@ -15,8 +15,8 @@ class QCustomDockTitleBarLabel;
 class QCustomDockTitleBar;
 
 
-class QCustomDockWidget
-    : public QDockWidget
+class QCustomDockWidget :
+    public QDockWidget
 {
   Q_OBJECT;
 public:
@@ -33,8 +33,8 @@ public:
 
 
 
-class QCustomDockTitleBar
-    : public QWidget
+class QCustomDockTitleBar:
+    public QWidget
 {
   Q_OBJECT;
 public:
@@ -89,6 +89,7 @@ public: // required by QDockWidget
 
 protected:
   QHBoxLayout * layout_;
+  QLabel * iconlb_ = nullptr;
 //  QToolBar * tb_ = nullptr;
 //  QWidget * stretch_ = nullptr;
 //  QAction * separator_ = nullptr;
@@ -99,8 +100,8 @@ protected:
 
 
 
-class QCustomDockTitleBarLabel
-    : public QLabel
+class QCustomDockTitleBarLabel :
+    public QLabel
 {
   Q_OBJECT;
 public:

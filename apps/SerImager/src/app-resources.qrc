@@ -20,6 +20,9 @@
 	<file>icons/light/display.png</file>
 	<file>icons/dark/display.png</file>
 
+	<file>icons/light/camera.png</file>
+	<file>icons/dark/camera.png</file>
+
 	<file>icons/dark/shapes.png</file>
 	<file>icons/light/shapes.png</file>
 

@@ -10,6 +10,7 @@
 #define ICON_log                  ":/qlog/icons/log.png"
 #define ICON_histogram            ":/qmtf/icons/histogram_small.png"
 #define ICON_display              ":/qimproc/icons/display.png"
+#define ICON_process              ":/qimproc/icons/process.png"
 #define ICON_measures             ":/qmeasure/icons/measure.png"
 #define ICON_measures_table       ":/qmeasure/icons/table.png"
 #define ICON_measure_clear        ":/qmeasure/icons/clear.png"
@@ -120,6 +121,8 @@ void QMainAppWindow::setupLogWidget()
           logWidget_ctl = new QLogWidget(this),
           menuView_);
 
+  logWidgetDock_->titleBar()->setWindowIcon(getIcon(ICON_log));
+
   showLogWidgetAction_ = logWidgetDock_->toggleViewAction();
   showLogWidgetAction_->setIcon(getIcon(ICON_log));
 
@@ -148,8 +151,9 @@ void QMainAppWindow::setupImageProcessingControls()
           imageProcessor_ctl = new QImageProcessorSelector(this),
           menuView_);
 
+  imageProcessorDock_->titleBar()->setWindowIcon(getIcon(ICON_process));
   showImageProcessorAction_ = imageProcessorDock_->toggleViewAction();
-  showImageProcessorAction_->setIcon(getIcon(ICON_display));
+  showImageProcessorAction_->setIcon(getIcon(ICON_process));
   showImageProcessorAction_->setToolTip("Show / Hide display image processing controls");
 
   connect(showImageProcessorAction_, &QAction::triggered,
@@ -190,6 +194,8 @@ void QMainAppWindow::setupMeasures()
           "measureGraphDock_",
           "Measure Graph",
           measuresGraph_ = new QMeasureGraph(this));
+
+  measuresGraphDock_->titleBar()->setWindowIcon(getIcon(ICON_measure_chart));
 
   /////////
 

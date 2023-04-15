@@ -44,15 +44,6 @@ namespace serstacker {
 #define ICON_delete       ":/gui/icons/delete"
 
 #define ICON_roi          ":/serstacker/icons/roi.png"
-#define ICON_metrics      ":/serstacker/icons/metrics.png"
-
-#define ICON_measures         ":/qmeasure/icons/measure.png"
-//#define ICON_measure_menu         ":/qmeasure/icons/menu.png"
-#define ICON_measure_clear        ":/qmeasure/icons/clear.png"
-#define ICON_measure_chart        ":/qmeasure/icons/chart.png"
-//#define ICON_measure_roi          ":/qmeasure/icons/roi.png"
-#define ICON_measure_options      ":/qmeasure/icons/options.png"
-
 
 namespace  {
 
@@ -60,76 +51,6 @@ inline bool is_visible(QWidget * w)
 {
   return w && w->isVisible();
 }
-
-template<typename Slot>
-QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot, QShortcut * shortcut = nullptr)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-
-  QObject::connect(action, &QAction::triggered, slot);
-
-  if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
-  }
-
-  return action;
-}
-
-
-template<class Obj, typename Fn>
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Obj * receiver, Fn fn)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-  action->setCheckable(true);
-
-  QObject::connect(action, &QAction::triggered, receiver, fn);
-
-  return action;
-}
-
-template<typename Slot>
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot, QShortcut * shortcut = nullptr)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-  action->setCheckable(true);
-
-  QObject::connect(action, &QAction::triggered, slot);
-
-  if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
-  }
-
-  return action;
-}
-
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-  action->setCheckable(true);
-
-  return action;
-}
-
-QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu)
-{
-  QToolButton *tb = new QToolButton();
-  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  tb->setIcon(defaultAction->icon());
-  tb->setText(defaultAction->text());
-  tb->setToolTip(defaultAction->toolTip());
-  tb->setCheckable(defaultAction->isCheckable());
-  tb->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
-  tb->setDefaultAction(defaultAction);
-  tb->setMenu(menu);
-  return tb;
-}
-
 
 }  // namespace
 
@@ -145,8 +66,8 @@ MainWindow::MainWindow()
   centralStackedWidget->addWidget(imageEditor = new QImageEditor(this));
   centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(pipelineOptionsView = new QPipelineOptionsView(this));
-
   centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
+
   connect(centralStackedWidget, &QStackedWidget::currentChanged,
       [this]() {
         if ( cloudViewSettingsDialogBox && cloudViewSettingsDialogBox->isVisible() ) {
@@ -171,20 +92,23 @@ MainWindow::MainWindow()
   setupPipelineTypes();
   setupMainMenu();
   setupLogWidget();
+  setupMtfControls();
   setupFileSystemTreeView();
   setupThumbnailsView();
   setupStackTreeView();
   setupStackOptionsView();
-  setupImageProcessorSelector();
+  setupImageProcessingControls();
+  //setupImageProcessorSelector();
   setupImageEditor();
   setupTextViewer();
   stupCloudViewer();
-  setupMeasureGraph();
+  setupMeasures();
   setupRoiOptions();
 
 
   tabifyDockWidget(fileSystemTreeDock, sequencesTreeDock);
-  tabifyDockWidget(sequencesTreeDock, imageProcessorSelectorDock);
+  //tabifyDockWidget(sequencesTreeDock, imageProcessorSelectorDock);
+  tabifyDockWidget(sequencesTreeDock, imageProcessorDock_);
 
 
   connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::started,
@@ -196,43 +120,14 @@ MainWindow::MainWindow()
 
   restoreState();
 
-  imageEditor->set_current_processor(imageProcessorSelector->current_processor());
+  imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
   image_sequences_->load();
   sequencesTreeView->set_image_sequence_collection(image_sequences_);
-
-  QApplication::instance()->installEventFilter(this);
-
 }
 
 MainWindow::~MainWindow()
 {
   saveState();
-//  saveGeometry();
-}
-
-bool MainWindow::eventFilter(QObject *watched, QEvent *event)
-{
-  if ( event->type() == QEvent::Wheel) {
-
-    if( const auto *combo = dynamic_cast<const QComboBox*>(watched) ) {
-      if( !combo->hasFocus() ) {
-        return true;
-      }
-    }
-    //  spin_ctl->setFocusPolicy(Qt::FocusPolicy::StrongFocus) not works
-    else if( const auto *spin = dynamic_cast<const QSpinBox*>(watched) ) {
-      if( !spin->hasFocus() ) {
-        return true;
-      }
-    }
-    else if( const auto *slider = dynamic_cast<const QSlider*>(watched) ) {
-      if( !slider->hasFocus() ) {
-        return true;
-      }
-    }
-  }
-
-  return Base::eventFilter(watched, event);
 }
 
 void MainWindow::updateWindowTittle()
@@ -240,32 +135,26 @@ void MainWindow::updateWindowTittle()
   setWindowTitle("SerStacker");
 }
 
-void MainWindow::saveState()
+void MainWindow::onSaveState(QSettings & settings)
 {
-  QSettings settings;
+  Base::onSaveState(settings);
 
-  if ( fileSystemTreeDock ) {
+  if( fileSystemTreeDock ) {
     settings.setValue("fileSystemTree/absoluteFilePath",
         fileSystemTreeDock->currentAbsoluteFilePath());
   }
-
-  settings.setValue("MainWindow/Geometry", Base::saveGeometry());
-  settings.setValue("MainWindow/State", Base::saveState());
 }
 
-void MainWindow::restoreState()
+void MainWindow::onRestoreState(QSettings & settings)
 {
-  QSettings settings;
-
-  Base::restoreGeometry(settings.value("MainWindow/Geometry").toByteArray());
-  Base::restoreState(settings.value("MainWindow/State").toByteArray());
+  Base::onRestoreState(settings);
 
   if ( fileSystemTreeDock ) {
     fileSystemTreeDock->displayPath(settings.value(
         "fileSystemTree/absoluteFilePath").toString());
   }
-
 }
+
 
 void MainWindow::setupPipelineTypes()
 {
@@ -301,15 +190,7 @@ void MainWindow::setupPipelineTypes()
 
 void MainWindow::setupMainMenu()
 {
-  QMenuBar * menuBar =
-      this->menuBar();
-
-  menuBar->setNativeMenuBar(false);
-
-  menuFile_ = menuBar->addMenu("&File");
-  menuEdit_ = menuBar->addMenu("&Edit");
-  menuView_ = menuBar->addMenu("&View");
-
+  Base::setupMainMenu();
 
   //
   // File
@@ -416,29 +297,13 @@ void MainWindow::setupMainMenu()
 
 
   pipelineProgressView = new QPipelineProgressView(this);
-  menuBar->setCornerWidget(pipelineProgressView, Qt::TopRightCorner );
+  menuBar()->setCornerWidget(pipelineProgressView, Qt::TopRightCorner );
   pipelineProgressView->hide();
 
   connect(pipelineProgressView, &QPipelineProgressView::progressTextChanged,
       this, &ThisClass::onStackProgressViewTextChanged,
       Qt::QueuedConnection);
 
-}
-
-
-void MainWindow::setupLogWidget()
-{
-  logwidgetDock_ =
-      addCustomDock(this,
-          Qt::BottomDockWidgetArea,
-          "logwidgetDock_",
-          "Debug log",
-          logwidget_ctl = new QLogWidget(this),
-          menuView_);
-
-  logwidgetDock_->hide();
-
-  // menuBar()
 }
 
 void MainWindow::onStackProgressViewTextChanged()
@@ -655,34 +520,6 @@ void MainWindow::setupStackOptionsView()
       this, &ThisClass::saveCurrentWork);
 }
 
-void MainWindow::setupImageProcessorSelector()
-{
-  imageProcessorSelectorDock =
-      addCustomDock(this,
-          Qt::LeftDockWidgetArea,
-          "imageProcessorSettingsDock",
-          "Image Processing",
-          imageProcessorSelector = new QImageProcessorSelector(this),
-          menuView_);
-
-  connect(imageProcessorSelector, &QImageProcessorSelector::parameterChanged,
-      [this]() {
-        if ( imageEditor ) {
-          imageEditor->set_current_processor(imageProcessorSelector->current_processor());
-        }
-      });
-
-  if( (showImageProcessorSettingsAction_ = imageProcessorSelector->showDisplaysSettingsAction()) ) {
-    showImageProcessorSettingsAction_->setVisible(false);
-    //    showImageProcessorSettingsAction_->setCheckable(true);
-    //    showImageProcessorSettingsAction_->setChecked(false);
-    //    showImageProcessorSettingsAction_->setEnabled(true);
-    //    connect(showImageProcessorSettingsAction_, &QAction::triggered,
-    //        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
-  }
-
-}
-
 void MainWindow::setupImageEditor()
 {
   QToolBar *toolbar;
@@ -821,7 +658,7 @@ void MainWindow::setupImageEditor()
             if ( imageEditor->isVisible() ) {
 
               if ( checked ) {
-                createImageViewOptionsControl();
+                setupImageViewOptions();
               }
               else if ( imageViewOptionsDlgBox ) {
                 delete imageViewOptionsDlgBox;
@@ -834,11 +671,7 @@ void MainWindow::setupImageEditor()
       new QShapesButton(imageEditor->sceneView(),
           this));
 
-  toolbar->addAction(displaySettingsMenuAction =
-      createCheckableAction(getIcon(ICON_histogram),
-          "Display options...",
-          "Adjust display options",
-          this, &ThisClass::onDisplaySettingsMenuActionClicked));
+  toolbar->addAction(showMtfControlAction_);
 
   toolbar->addWidget(scaleSelection_ctl = new QScaleSelectionButton(this));
   scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
@@ -968,16 +801,39 @@ void MainWindow::onImageEditorCurrentImageChanged()
     imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
     imageSizeLabel_ctl->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
 
-    if ( is_visible(mtfControl) ) {
+    if ( is_visible(mtfControl_) ) {
+
+      if( mtfControl_->mtfDisplaySettings() != imageEditor->mtfDisplayFunction() ) {
+        mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+      }
+
       if ( imageEditor->currentFileName().isEmpty() ) {
-        mtfControl->setWindowTitle("Adjust Display Levels ...");
+        mtfControl_->setWindowTitle("Adjust Display Levels ...");
       }
       else {
-        mtfControl->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+        mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
       }
     }
+
+    updateMeasurements();
   }
 }
+
+void MainWindow::onImageProcessorParameterChanged()
+{
+  Base::onImageProcessorParameterChanged();
+  imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
+}
+
+void MainWindow::onMtfControlVisibilityChanged(bool visible)
+{
+  Base::onMtfControlVisibilityChanged(visible);
+
+  if( visible && is_visible(imageEditor) ) {
+    mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+  }
+}
+
 
 void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
 {
@@ -995,16 +851,6 @@ void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
   copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
   saveImageMaskAction->setEnabled(isvisible && hasmask);
   loadImageMaskAction->setEnabled(isvisible && hasimage);
-
-  if( is_visible(measureDialogBox_) ) {
-    if( !isvisible ) {
-      measureDialogBox_->setImage(cv::noArray(), cv::noArray());
-    }
-    else {
-      measureDialogBox_->setImage(imageEditor->currentImage(),
-          imageEditor->currentMask());
-    }
-  }
 
   bool check_badframe_action = false;
 
@@ -1124,59 +970,20 @@ void MainWindow::stupCloudViewer()
   });
 }
 
-void MainWindow::setupMeasureGraph()
+void MainWindow::updateMeasurements()
 {
-//  measureGraphDock_ =
-//      addDock<QMeasureGraphDock>(this,
-//          Qt::RightDockWidgetArea,
-//          "measureGraphDock_",
-//          "Measure Graph",
-//          measureGraph_ = new QMeasureGraph(this),
-//          menuView_);
-//
-//
-//  measureActions_.addAction(enableMeasureTrackigAction_ =
-//      createCheckableAction(getIcon(ICON_measure_chart),
-//          "Enable tracking",
-//          "Enable / Disable measure tracking",
-//          [this](bool checked) {
-//            enableMeasureTracking_ = checked;
-//          }));
-//
-//  measureActions_.addAction(clearMeasuresAction_ =
-//      createAction(getIcon(ICON_measure_clear),
-//          "Clear measurements",
-//          "Clear measurements",
-//          [this]() {
-//            measureProvider_->clear_measured_frames();
-//          }));
-//
-//
-//  measureGraphDock_->titleBar()->addButton(
-//      createToolButtonWithPopupMenu(enableMeasureTrackigAction_,
-//          &measureActions_));
-//
-//  measureGraphDock_->hide();
-//  measureGraph_->setMeasureProvider(measureProvider_);
-//
-//  connect(imageEditor, &QImageViewer::currentImageChanged,
-//      this, &ThisClass::onUpdateMeasureGraph);
-//
-//
-}
+  if( !QMeasureProvider::requested_measures().empty() && imageEditor->roiRectShape()->isVisible() ) {
 
-void MainWindow::onUpdateMeasureGraph()
-{
-//  if ( enableMeasureTracking_ && measureGraph_->isVisible() && imageEditor->roiRectShape()->isVisible() ) {
-//
-//    QImageViewer::current_image_lock lock(imageEditor);
-//
-//    measureProvider_->compute(imageEditor->currentImage(),
-//        imageEditor->currentMask(),
-//        imageEditor->roiRectShape()->iSceneRect());
-//  }
-}
+    QImageViewer::current_image_lock lock(imageEditor);
+    if ( !imageEditor->currentImage().empty() ) {
 
+      QMeasureProvider::compute(imageEditor->currentImage(),
+          imageEditor->currentMask(),
+          imageEditor->roiRectShape()->iSceneRect());
+
+    }
+  }
+}
 
 void MainWindow::setupRoiOptions()
 {
@@ -1207,36 +1014,9 @@ void MainWindow::setupRoiOptions()
         }
       });
 
-
-  ///
-
-  measureDialogBox_ =
-      new QImageStatisticsDisplayDialogBox("Measure ROI ...",
-          this);
-
-  measureDialogBox_->display()->loadParameters();
-
-
-  roiActionsMenu_.addAction(action =
-      createCheckableAction(QIcon(ICON_metrics),
-          "Measure ROI...",
-          "Measure image statistics in selected ROI",
-          [this](bool checked) {
-            measureDialogBox_->setVisible(checked);
-          }));
-
-  connect(measureDialogBox_, &QImageStatisticsDisplayDialogBox::visibilityChanged,
-      [this, action](bool visible) {
-        action->setChecked(visible);
-        if ( !visible ) {
-          measureDialogBox_->setImage(cv::noArray(), cv::noArray());
-        }
-        else {
-          imageEditor->roiRectShape()->setVisible(true);
-          measureDialogBox_->setImage(imageEditor->currentImage(), imageEditor->currentMask());
-          measureDialogBox_->setRoi(imageEditor->roiRectShape()->iSceneRect());
-        }
-      });
+  roiActionsMenu_.addAction(showMeasuresSettingsAction_);
+  roiActionsMenu_.addAction(showMeasuresDisplayAction_);
+  roiActionsMenu_.addAction(showMeasuresGraphAction_);
 
   ///
 
@@ -1245,10 +1025,6 @@ void MainWindow::setupRoiOptions()
 
         QGraphicsRectShape * shape =
             imageEditor->roiRectShape();
-
-        if ( measureDialogBox_->isVisible() ) {
-          measureDialogBox_->setRoi(imageEditor->roiRectShape()->iSceneRect());
-        }
 
         const QRectF rc =
             shape->sceneRect();
@@ -1266,7 +1042,7 @@ void MainWindow::setupRoiOptions()
                 width, height,
                 center.x(), center.y()));
 
-        onUpdateMeasureGraph();
+        updateMeasurements();
       });
 
 
@@ -1298,38 +1074,7 @@ void MainWindow::setupRoiOptions()
 
 }
 
-
-void MainWindow::createDisplaySettingsControl()
-{
-  if( !mtfControl ) {
-
-    mtfControl = new QMtfControlDialogBox(this);
-    mtfControl->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
-
-    connect(mtfControl, &QMtfControlDialogBox::visibilityChanged,
-        [this](bool visible) {
-          displaySettingsMenuAction->setChecked(visible);
-        });
-  }
-
-}
-
-void MainWindow::onDisplaySettingsMenuActionClicked(bool checked)
-{
-  if( !checked ) {
-    if( mtfControl && mtfControl->isVisible() ) {
-      mtfControl->hide();
-    }
-  }
-  else {
-    createDisplaySettingsControl();
-    if( !mtfControl->isVisible() ) {
-      mtfControl->show();
-    }
-  }
-}
-
-void MainWindow::createImageViewOptionsControl()
+void MainWindow::setupImageViewOptions()
 {
   if( !imageViewOptionsDlgBox ) {
 

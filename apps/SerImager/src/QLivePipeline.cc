@@ -1570,6 +1570,7 @@ void QLivePipelineSelectionWidget::onAddLivePipelineClicked()
       else {
         combobox_ctl->addItem(pipeline->name(), QVariant::fromValue(pipeline));
         combobox_ctl->setCurrentIndex(combobox_ctl->count() - 1);
+        startStop_ctl->setEnabled(liveThread_ && liveThread_->isRunning() );
       }
     }
   }
@@ -1617,6 +1618,11 @@ void QLivePipelineSelectionWidget::onRemoveLivePipelineClicked()
     }
 
     delete pipeline;
+
+    if ( combobox_ctl->currentIndex() < 0 ) {
+      startStop_ctl->setEnabled(false);
+    }
+
   }
 }
 

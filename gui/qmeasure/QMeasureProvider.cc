@@ -7,13 +7,13 @@
 
 #include "QMeasureProvider.h"
 #include "QMeasureMinMax.h"
-#include "QMeasureMeanValueStdev.h"
 #include "QMeasureLPG.h"
 #include "QMeasureLC.h"
 #include "QMeasureHarrisCornerResponse.h"
 #include "QMeasureNormalizedVariance.h"
 #include "QMeasureSharpnessNorm.h"
 #include <core/debug.h>
+#include "QMeasureMeanStdev.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -104,6 +104,10 @@ bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const 
 
 bool QMeasureProvider::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi)
 {
+  if( image.empty() ) {
+    return false;
+  }
+
   if( !requested_measures_.empty() ) {
 
     std::set<QMeasure*> requited_measures;

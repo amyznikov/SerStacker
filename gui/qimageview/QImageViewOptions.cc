@@ -25,8 +25,15 @@ QImageViewOptions::QImageViewOptions(QWidget * parent) :
           [this](QImageViewer::DisplayType v) {
             if ( imageViewer_ ) {
               imageViewer_->setDisplayType(v);
-              // emit parameterChanged();
+              // Q_EMIT parameterChanged();
             }
+          },
+          [this](QImageViewer::DisplayType * v) {
+            if ( imageViewer_ ) {
+              * v = imageViewer_->displayType();
+              return true;
+            }
+            return false;
           });
 
   transparentMask_ctl =
@@ -35,8 +42,31 @@ QImageViewOptions::QImageViewOptions(QWidget * parent) :
           [this](bool checked) {
             if ( imageViewer_ ) {
               imageViewer_->setTransparentMask(checked);
-              // emit parameterChanged();
+              // Q_EMIT parameterChanged();
             }
+          },
+          [this](bool * checked) {
+            if ( imageViewer_ ) {
+              * checked = imageViewer_->transparentMask();
+              return true;
+            }
+            return false;
+          });
+
+  blendAlpha_ctl =
+      add_numeric_box<double>("Bleand alpha",
+          "",
+          [this](double value) {
+            if ( imageViewer_ ) {
+              imageViewer_->setMaskBlendAlpha(value);
+            }
+          },
+          [this](double * value) {
+            if ( imageViewer_ ) {
+              * value = imageViewer_->maskBlendAlpha();
+              return true;
+            }
+            return false;
           });
 
   penOptions_ctl =
@@ -85,8 +115,8 @@ void QImageViewOptions::onupdatecontrols()
   }
   else {
 
-    displayType_ctl->setCurrentItem(imageViewer_->displayType());
-    transparentMask_ctl->setChecked(imageViewer_->transparentMask());
+    Base::onupdatecontrols();
+
     penOptions_ctl->setEnableEditMask(imageViewer_->enableEditMask());
     penOptions_ctl->setEditMaskPenRadius(imageViewer_->editMaskPenRadius());
     penOptions_ctl->setEditMaskPenShape(imageViewer_->editMaskPenShape());
@@ -137,13 +167,13 @@ QImageViewer * QImageViewOptionsDlgBox::imageViewer() const
 void QImageViewOptionsDlgBox::showEvent(QShowEvent *event)
 {
   Base::showEvent(event);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }
 
 void QImageViewOptionsDlgBox::hideEvent(QHideEvent *event)
 {
   Base::hideEvent(event);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -183,21 +213,21 @@ QPenOptionsControl::QPenOptionsControl(QWidget * parent)
   connect(enableEdit_ctl, &QToolButton::toggled,
       [this]() {
         if ( !updatingControls_ ) {
-          emit enableEditMaskChanged();
+          Q_EMIT enableEditMaskChanged();
         }
       });
 
   connect(penShape_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
       [this]() {
         if ( !updatingControls_ ) {
-          emit editMaskPenShapeChanged();
+          Q_EMIT editMaskPenShapeChanged();
         }
       });
 
   connect(penSize_ctl, &QComboBox::currentTextChanged,
       [this]() {
         if ( !updatingControls_ ) {
-          emit editMaskPenRadiusChanged();
+          Q_EMIT editMaskPenRadiusChanged();
         }
       });
 }

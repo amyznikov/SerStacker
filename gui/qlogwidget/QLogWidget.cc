@@ -11,7 +11,6 @@
 QLogWidget::QLogWidget(QWidget * parent) :
   Base(parent)
 {
-
   QVBoxLayout * vbox =
       new QVBoxLayout(this);
 

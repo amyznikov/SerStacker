@@ -164,6 +164,17 @@ QImageViewer::DisplayType QImageViewer::displayType() const
   return currentDisplayType_;
 }
 
+void QImageViewer::setMaskBlendAlpha(double v)
+{
+  maskBlendAlpha_ = v;
+  updateDisplay();
+}
+
+double QImageViewer::maskBlendAlpha() const
+{
+  return maskBlendAlpha_;
+}
+
 void QImageViewer::setTransparentMask(bool v)
 {
   transparentMask_ = v;
@@ -322,7 +333,11 @@ void QImageViewer::createDisplayImage()
         cv::merge(channels, cn, mask);
       }
 
-      cv::addWeighted(displayImage_, 0.5, mask, 0.5, 0, displayImage_, displayImage_.depth());
+      cv::addWeighted(displayImage_, maskBlendAlpha_,
+          mask, 1 - maskBlendAlpha_,
+          0,
+          displayImage_,
+          displayImage_.depth());
     }
 
   }

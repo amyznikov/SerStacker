@@ -5,7 +5,7 @@
  *      Author: amyznikov
  */
 
-#include "QMeasureMeanValueStdev.h"
+#include "QMeasureMeanStdev.h"
 
 QMeasureMeanValue::QMeasureMeanValue() :
   Base("Mean", "Compute mean value over image ROI")

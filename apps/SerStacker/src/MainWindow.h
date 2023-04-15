@@ -8,26 +8,18 @@
 #ifndef __qskystacker_main_window_h__
 #define __qskystacker_main_window_h__
 
-#include <QtWidgets/QtWidgets>
-#include <gui/qlogwidget/QLogWidget.h>
+#include <gui/mainwindow/QMainAppWindow.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
-#include <gui/qmtf/QMtfControl.h>
 #include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qcloudview/QCloudViewer.h>
 #include <gui/qcloudview/QCloudViewSettings.h>
-#include <gui/qimproc/QImageProcessorSelector.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qimagesequencetreeview/QImageSequenceTreeDock.h>
-#include <gui/qmeasure/QMeasureGraph.h>
-#include <gui/qmeasure/QMeasureSelection.h>
-//#include <gui/qfocus/QFocusGraph.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipelineoptions/QPipelineOptionsView.h>
-#include <gui/qmeasure/QImageStatistics.h>
-//#include "focus/QImageFocusMeasure.h"
 #include "QImageEditor.h"
 #include "QAppSettings.h"
 #include "QPipelineProgressView.h"
@@ -37,36 +29,29 @@ namespace serstacker {
 
 
 class MainWindow :
-    public QMainWindow
+    public QMainAppWindow
 {
   Q_OBJECT;
 public:
   typedef MainWindow ThisClass;
-  typedef QMainWindow Base;
+  typedef QMainAppWindow Base;
 
   MainWindow();
   ~MainWindow();
 
 private:
-  void saveState();
-  void restoreState();
   void setupPipelineTypes();
   void setupMainMenu();
-  void setupLogWidget();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
   void setupStackTreeView();
   void setupStackOptionsView();
-  void setupImageProcessorSelector();
+  //void setupImageProcessorSelector();
   void setupImageEditor();
   void setupTextViewer();
   void stupCloudViewer();
-  void setupMeasureGraph();
   void setupRoiOptions();
-
-  void createDisplaySettingsControl();
-  void createImageViewOptionsControl();
-  bool eventFilter(QObject *watched, QEvent *event) override;
+  void setupImageViewOptions();
 
 public Q_SLOTS:
   void onSaveCurrentImageAs();
@@ -86,32 +71,33 @@ private Q_SLOTS:
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
   void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
-  void onDisplaySettingsMenuActionClicked(bool checked);
-  void onUpdateMeasureGraph();
+  void updateMeasurements();
 
-//  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);
-//  void onCurrentInputSourceChanged(const c_input_source::ptr & input_source);
+  //  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);
+  //  void onCurrentInputSourceChanged(const c_input_source::ptr & input_source);
   void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
   void onStackingThreadStarted();
   void onStackingThreadFinished();
 
   void saveCurrentWork();
 
+private :
+  void onSaveState(QSettings & settings) override;
+  void onRestoreState(QSettings & settings) override;
+  void onMtfControlVisibilityChanged(bool visible) override;
+  void onImageProcessorParameterChanged() override;
+
 private:
   c_image_sequence_collection::sptr image_sequences_ =
       c_image_sequence_collection::sptr(new c_image_sequence_collection());
 
   QStackedWidget * centralStackedWidget = nullptr;
-  QMtfControlDialogBox * mtfControl = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
   QImageEditor * imageEditor = nullptr;
   QTextFileViewer * textViewer = nullptr;
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
   QGeneralAppSettingsDialogBox * appSettingsDlgBox = nullptr;
 
-
-  QLogWidget * logwidget_ctl = nullptr;
-  QCustomDockWidget * logwidgetDock_ = nullptr;
 
   QCloudViewer * cloudViewer = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
@@ -124,24 +110,12 @@ private:
   QImageSequenceTree * sequencesTreeView = nullptr;
   QImageSequenceTreeDock * sequencesTreeDock = nullptr;
 
-  QCustomDockWidget * imageProcessorSelectorDock = nullptr;
-  QImageProcessorSelector * imageProcessorSelector = nullptr;
-
-//  QMeasureGraph * measureGraph_ = nullptr;
-//  QMeasureGraphDock * measureGraphDock_ = nullptr;
-//  QMenu measureActions_;
-
 
   QAction * showRoiAction_ = nullptr;
   QToolButton * roiActionsButton_ = nullptr;
   QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
-  QImageStatisticsDisplayDialogBox * measureDialogBox_ = nullptr;
   QMenu roiActionsMenu_;
 
-
-  QMenu * menuFile_ = nullptr;
-  QMenu * menuEdit_ = nullptr;
-  QMenu * menuView_ = nullptr;
 
   QAction * quitAppAction = nullptr;
   QAction * saveImageAsAction = nullptr;
@@ -150,7 +124,7 @@ private:
   QAction * loadStackAction = nullptr;
   QAction * setReferenceFrameAction = nullptr;
   QAction * copyDisplayImageAction = nullptr;
-  QAction * displaySettingsMenuAction = nullptr;
+  //QAction * displaySettingsMenuAction = nullptr;
   QAction * editMaskAction = nullptr;
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;

@@ -35,6 +35,7 @@ protected:
 protected:
   QImageViewer * imageViewer_ = nullptr;
   DisplayTypeCombo * displayType_ctl = nullptr;
+  QNumericBox * blendAlpha_ctl = nullptr;
   QCheckBox * transparentMask_ctl = nullptr;
   QPenOptionsControl * penOptions_ctl = nullptr;
 };
@@ -55,7 +56,7 @@ public:
   void setImageViewer(QImageViewer * imageViewer);
   QImageViewer * imageViewer() const;
 
-signals:
+Q_SIGNALS:
   void visibilityChanged(bool visible);
 
 protected:

@@ -27,8 +27,6 @@ public:
 
   bool imageProcessingEnabled() const;
 
-  QAction * showDisplaysSettingsAction() const;
-
 Q_SIGNALS:
   void parameterChanged();
 
@@ -53,7 +51,6 @@ protected:
   QCheckBox * enable_ctl = nullptr;
   QComboBox * selector_ctl = nullptr;
   QToolButton * selectorMenu_ctl = nullptr;
-  QAction * showDisplaysSettingsAction_ = nullptr;
 };
 
 

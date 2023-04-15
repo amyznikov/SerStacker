@@ -38,6 +38,9 @@
 
 	<file>icons/light/config.png</file>
 	<file>icons/dark/config.png</file>
+
+	<file>icons/light/display.png</file>
+	<file>icons/dark/display.png</file>
 	
 </qresource>
 </RCC>

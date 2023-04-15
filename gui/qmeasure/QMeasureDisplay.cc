@@ -58,6 +58,7 @@ void QMeasureDisplay::updateEnableMeasurements()
 
 }
 
+
 void QMeasureDisplay::showEvent(QShowEvent * e)
 {
   Base::showEvent(e);
@@ -132,6 +133,9 @@ void QMeasureDisplay::setupToolbar()
 
   connect(enableMeasureAction_, &QAction::triggered,
       this, &ThisClass::updateEnableMeasurements);
+
+  enableMeasureAction_->setChecked(true);
+  updateEnableMeasurements();
 }
 
 
@@ -181,6 +185,14 @@ void QMeasureDisplay::setupTableView()
     ++i;
   }
 
+  table_->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+
+  connect(table_, &QTableWidget::currentCellChanged,
+      this, &ThisClass::onTableViewCurrentCellChanged);
+
+  connect(table_, &QTableWidget::customContextMenuRequested,
+      this, &ThisClass::onTableViewContextMenuRequested);
+
   table_->setRowCount(1);
 
   updateVisibleColumns();
@@ -197,6 +209,8 @@ void QMeasureDisplay::updateVisibleColumns()
     table_->setColumnHidden(i,
         cm_.find(m) == cm_.end());
   }
+
+  updateEnableMeasurements();
 }
 
 void QMeasureDisplay::updateMeasurements()
@@ -296,6 +310,86 @@ void QMeasureDisplay::updateMeasurements()
     }
   }
 
+}
+
+void QMeasureDisplay::onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+}
+
+void QMeasureDisplay::onTableViewContextMenuRequested(const QPoint &pos)
+{
+  QMenu menu;
+
+  menu.addAction("Select all",
+      [this]() {
+        table_->selectAll();
+      });
+
+  if( table_->selectionModel()->hasSelection() ) {
+
+    menu.addAction("Delete selected rows",
+        [this]() {
+          QWaitCursor wait(this);
+
+          QItemSelectionModel * model = table_->selectionModel();
+          const QModelIndex parent = QModelIndex();
+          for ( int i = table_->rowCount()-1; i >= 0; --i ) {
+            if ( model->isRowSelected(i, parent) ) {
+              table_->removeRow(i);
+            }
+          }
+        });
+
+    menu.addAction("Copy to clipboard",
+        [this]() {
+
+          QWaitCursor wait(this);
+
+          std::vector<int> visible_columns;
+
+          for ( int j = 0, nj = table_->columnCount(); j < nj; ++j ) {
+            if ( !table_->isColumnHidden(j) ) {
+              visible_columns.emplace_back(j);
+            }
+          }
+
+          if ( !visible_columns.empty() ) {
+
+            QString text;
+
+            QItemSelectionModel * model = table_->selectionModel();
+            const QModelIndex parent = QModelIndex();
+            for ( int i = 0, ni = table_->rowCount(); i < ni; ++i ) {
+              if ( model->isRowSelected(i, parent) ) {
+
+                for ( int j = 0, nj = visible_columns.size(); j < nj; ++j ) {
+
+                  const QTableWidgetItem * item =
+                  table_->item(i, visible_columns[j]);
+
+                  if ( item ) {
+                    text.append(item->text());
+                  }
+
+                  if ( j < nj - 1 ) {
+                    text.append("\t");
+                  }
+                }
+
+                text.append("\n");
+              }
+            }
+
+            QApplication::clipboard()->setText(text);
+          }
+        });
+
+  }
+
+
+  if ( !menu.isEmpty() ) {
+    menu.exec(table_->viewport()->mapToGlobal(pos));
+  }
 }
 
 

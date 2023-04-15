@@ -9,21 +9,14 @@
 #ifndef __qserimager_MainWindow_h__
 #define __qserimager_MainWindow_h__
 
-#include <QtWidgets/QtWidgets>
-#include <gui/qmtf/QMtfControl.h>
+#include <gui/mainwindow/QMainAppWindow.h>
+
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
-#include <gui/qmeasure/QMeasureGraph.h>
-#include <gui/qmeasure/QMeasureDisplay.h>
-#include <gui/qmeasure/QMeasureSelection.h>
-#include <gui/qlogwidget/QLogWidget.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include "camera/QImagingCameraControlsWidget.h"
-#include "camera/QCameraFrameProcessorSelector.h"
-//#include "focus/QCameraFocusMeasure.h"
 #include "QLivePipeline.h"
-
 
 #if HAVE_INDIGO
 # include "focus/indigo/QIndigoFocuserWidget.h"
@@ -32,42 +25,38 @@
 namespace serimager {
 
 class MainWindow:
-    public QMainWindow
+    public QMainAppWindow
 {
   Q_OBJECT;
 
 public:
   typedef MainWindow ThisClass;
-  typedef QMainWindow Base;
+  typedef QMainAppWindow Base;
 
   MainWindow(QWidget * parent = nullptr);
   ~MainWindow();
 
 protected:
-  void saveState();
-  void restoreState();
   void setupMainMenu();
   void setupMainToolbar();
-  void setupLogWidget();
   void setupStatusbar();
   void setupCameraControls();
   void setupShapeOptions();
-  void setupImageProcessingControls();
   void setupLivePipelineControls();
-  void setupMeasures();
   void setupIndigoFocuser();
 
 protected Q_SLOTS:
+  void onCurrentImageChanged();
   void onCameraWriterStatusUpdate();
-  void onShowMtfControlActionTriggered(bool checked);
-  void onShowDisplayFrameProcessorSettingsActionTriggered(bool checked);
-  void onShowMeasureSettingsActionTriggered(bool checked);
-  void onShowMeasureDisplayActionTriggered(bool checked);
+  void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
-  void onUpdateMeasureGraph();
+  void updateMeasurements();
 
 protected:
-  bool eventFilter(QObject *watched, QEvent *event) override;
+  void onSaveState(QSettings & settings) override;
+  void onRestoreState(QSettings & settings) override;
+  void onMtfControlVisibilityChanged(bool visible) override;
+  void onImageProcessorParameterChanged() override;
 
 protected:
   QLivePipelineThread * liveView_ = nullptr;
@@ -76,42 +65,16 @@ protected:
   QLivePipelineCollection pipelineCollection_;
 
 
-  QLogWidget * logwidget_ctl = nullptr;
-  QCustomDockWidget * logwidgetDock_ = nullptr;
-
-
-
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
   QImagingCameraControlsDock * cameraControlsDock_ = nullptr;
   QAction * showCameraControlsAction_ = nullptr;
-
 
 
   QLivePipelineSelectionWidget * pipelineSelector_ctl = nullptr;
   QCustomDockWidget * pipelineSelectorDock_ = nullptr;
   QAction * showPipelineSelectorAction_ = nullptr;
 
-
-
-  QCameraFrameProcessorSelector * frameProcessor_ctl = nullptr;
-  QCustomDockWidget * frameProcessorDock_ = nullptr;
-  QAction * showFrameProcessorAction_ = nullptr;
-
-
-  QMeasureSettingsDialogBox * measureSettingsDisplay_ = nullptr;
-  QMeasureDisplayDialogBox * measureDisplay_ = nullptr;
-  QMeasureGraph * measureGraph_ = nullptr;
-  QMeasureGraphDock * measureGraphDock_ = nullptr;
   QToolButton * measureActionsToolButton_ = nullptr;
-  QAction * showMeasureSettingsAction_ = nullptr;
-  QAction * showMeasureDisplayAction_ = nullptr;
-  QAction * showMeasureGraphAction_ = nullptr;
-  QMenu measuresMenu_;
-
-
-  QMtfControlDialogBox * mtfControl_ = nullptr;
-  QAction * showMtfControlAction_ = nullptr;
-  QToolButton * showMtfControlButton_ = nullptr;
   QToolButton * show_log_ctl = nullptr;
   QLabel * capture_status_ctl = nullptr;
   QLabel * mousepos_ctl = nullptr;
@@ -120,10 +83,7 @@ protected:
 
 
   QToolBar * manToolbar_ = nullptr;
-  QMenu * menuFile_ = nullptr;
-  QMenu * menuView_ = nullptr;
   QMenu * menuViewShapes_ = nullptr;
-
 
   QAction * showRectShapeAction_ = nullptr;
   QToolButton * rectShapeActionsButton_ = nullptr;
@@ -143,7 +103,7 @@ protected:
   QMenu lineShapeActionsMenu_;
 
 
-  QAction * showLiveThreadSettingsDialogBoxAction_ = nullptr;
+  QAction * showLiveThreadSettingsAction_ = nullptr;
   QLiveThreadSettingsDialogBox * liveThreadSettingsDialogBox_ = nullptr;
 
   QScaleSelectionButton * displayScaleControl_ = nullptr;

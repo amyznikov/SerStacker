@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qlog">
+	<file>icons/light/log.png</file>
+	<file>icons/dark/log.png</file>
+</qresource>
+</RCC>

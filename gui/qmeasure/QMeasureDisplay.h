@@ -32,6 +32,8 @@ protected:
   void updateVisibleColumns();
   void updateMeasurements();
   void updateEnableMeasurements();
+  void onTableViewContextMenuRequested(const QPoint &pos);
+  void onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
 protected:
   void showEvent(QShowEvent * e) override;

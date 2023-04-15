@@ -17,7 +17,6 @@
 namespace serimager {
 
 #define ICON_histogram        ":/serimager/icons/histogram.png"
-#define ICON_display          ":/serimager/icons/display.png"
 #define ICON_shapes           ":/serimager/icons/shapes.png"
 #define ICON_roi              ":/serimager/icons/roi.png"
 #define ICON_line             ":/serimager/icons/line.png"
@@ -27,124 +26,7 @@ namespace serimager {
 #define ICON_bayer            ":/gui/icons/bayer.png"
 
 #define ICON_measures         ":/qmeasure/icons/measure.png"
-#define ICON_measures_table   ":/qmeasure/icons/table.png"
 
-//#define ICON_measure_menu         ":/qmeasure/icons/menu.png"
-#define ICON_measure_clear        ":/qmeasure/icons/clear.png"
-#define ICON_measure_chart        ":/qmeasure/icons/chart.png"
-//#define ICON_measure_roi          ":/qmeasure/icons/roi.png"
-#define ICON_measure_options      ":/qmeasure/icons/options.png"
-
-
-
-namespace {
-
-template<class Obj, typename Fn>
-QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip,
-    Obj * receiver, Fn fn)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-
-  QObject::connect(action, &QAction::triggered, receiver, fn);
-
-  return action;
-}
-
-template<typename Slot>
-QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-
-  QObject::connect(action, &QAction::triggered, slot);
-
-  return action;
-}
-
-
-template<class Obj, typename Fn>
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
-    Obj * receiver, Fn fn)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-  action->setCheckable(true);
-
-  QObject::connect(action, &QAction::triggered, receiver, fn);
-
-  return action;
-}
-
-template<typename Slot>
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-  action->setCheckable(true);
-
-  QObject::connect(action, &QAction::triggered, slot);
-
-  return action;
-}
-
-QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip)
-{
-  QAction *action = new QAction(icon, text);
-  action->setToolTip(tooltip);
-  action->setCheckable(true);
-
-  return action;
-}
-
-QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu)
-{
-  QToolButton *tb = new QToolButton();
-  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  tb->setIcon(defaultAction->icon());
-  tb->setText(defaultAction->text());
-  tb->setToolTip(defaultAction->toolTip());
-  tb->setCheckable(defaultAction->isCheckable());
-  tb->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
-  tb->setDefaultAction(defaultAction);
-  tb->setMenu(menu);
-  return tb;
-}
-
-QToolButton* createToolButtonWithMenu(const QIcon & icon, const QString & text, const QString & tooltip, QMenu * menu)
-{
-  QToolButton *tb = new QToolButton();
-  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  tb->setIcon(icon);
-  tb->setText(text);
-  tb->setToolTip(tooltip);
-
-  if ( menu ) {
-    QObject::connect(tb, &QToolButton::clicked,
-        [tb, menu]() {
-          menu->exec(tb->mapToGlobal(QPoint( tb->width()/2, tb->height() - 2 )));
-        });
-  }
-
-  return tb;
-}
-
-QWidget* addStretch(QToolBar * toolbar)
-{
-  QWidget *stretch = new QWidget();
-  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  toolbar->addWidget(stretch);
-  return stretch;
-}
-
-QWidget* createStretch()
-{
-  QWidget *stretch = new QWidget();
-  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  return stretch;
-}
-
-} // namespace
 
 MainWindow::MainWindow(QWidget * parent) :
     Base(parent)
@@ -164,7 +46,6 @@ MainWindow::MainWindow(QWidget * parent) :
   liveView_->setDisplay(centralDisplay_);
 
 
-  setupStatusbar();
   setupMainMenu();
   setupLogWidget();
   setupIndigoFocuser();
@@ -174,10 +55,12 @@ MainWindow::MainWindow(QWidget * parent) :
   setupLivePipelineControls();
   setupShapeOptions();
   setupMainToolbar();
+  setupStatusbar();
 
   restoreState();
 
-  QApplication::instance()->installEventFilter(this);
+  connect(centralDisplay_, &QImageViewer::currentImageChanged,
+      this, &ThisClass::onCurrentImageChanged);
 
   connect(centralDisplay_, &QLiveDisplay::onMouseMove,
       [this](QMouseEvent * e) {
@@ -197,53 +80,21 @@ MainWindow::~MainWindow()
   saveState();
 }
 
-bool MainWindow::eventFilter(QObject * watched, QEvent * event)
+void MainWindow::onSaveState(QSettings & settings)
 {
-  if( event->type() == QEvent::Wheel ) {
-
-    if( const auto *combo = dynamic_cast<const QComboBox*>(watched) ) {
-      if( !combo->hasFocus() ) {
-        return true;
-      }
-    }
-    //  spin_ctl->setFocusPolicy(Qt::FocusPolicy::StrongFocus) not works
-    else if( const auto *spin = dynamic_cast<const QSpinBox*>(watched) ) {
-      if( !spin->hasFocus() ) {
-        return true;
-      }
-    }
-    else if( const auto *slider = dynamic_cast<const QSlider*>(watched) ) {
-      if( !slider->hasFocus() ) {
-        return true;
-      }
-    }
-  }
-
-  return Base::eventFilter(watched, event);
+  Base::onSaveState(settings);
 }
 
-void MainWindow::saveState()
+void MainWindow::onRestoreState(QSettings & settings)
 {
-  QSettings settings;
-  settings.setValue("MainWindow/Geometry", Base::saveGeometry());
-  settings.setValue("MainWindow/State", Base::saveState());
-}
-
-void MainWindow::restoreState()
-{
-  QSettings settings;
-  Base::restoreGeometry(settings.value("MainWindow/Geometry").toByteArray());
-  Base::restoreState(settings.value("MainWindow/State").toByteArray());
+  Base::onRestoreState(settings);
 }
 
 void MainWindow::setupMainMenu()
 {
-  menuBar()->setNativeMenuBar(false);
+  Base::setupMainMenu();
 
   ///////////////////////////////////////////////////////////////////
-
-  menuFile_ =
-      menuBar()->addMenu("&File");
 
   menuFile_->addSeparator();
   menuFile_->addAction("Quit", [this]() {
@@ -251,12 +102,6 @@ void MainWindow::setupMainMenu()
   });
 
   ///////////////////////////////////////////////////////////////////
-
-  menuView_ =
-      menuBar()->addMenu("&View");
-
-
-  /////////////////////////////////////
 
   menuViewShapes_ =
       menuView_->addMenu(getIcon(ICON_shapes),
@@ -304,26 +149,6 @@ void MainWindow::setupMainMenu()
           &ThisClass::onShowMtfControlActionTriggered));
 
   /////////////////////////////////////
-
-  menuView_->addAction(showMeasureSettingsAction_ =
-      createCheckableAction(getIcon(ICON_measure_options),
-          "Measure Options",
-          "Show / Hide measure options",
-          this, &ThisClass::onShowMeasureSettingsActionTriggered));
-
-
-
-  menuView_->addAction(showMeasureDisplayAction_ =
-      createCheckableAction(getIcon(ICON_measures_table),
-          "Measures",
-          "Show / Hide measures display",
-          this, &ThisClass::onShowMeasureDisplayActionTriggered));
-
-
-
-  ///////////////////////////////////////////////////////////////////
-
-
 }
 
 void MainWindow::setupShapeOptions()
@@ -375,7 +200,7 @@ void MainWindow::setupShapeOptions()
         mousepos_ctl->setText(qsprintf("ROI: x= %g y= %g size= [%g x %g] center= (%g %g)",
                 rc.x(), rc.y(), rc.width(), rc.height(), rc.center().x(), rc.center().y() ));
 
-        onUpdateMeasureGraph();
+        updateMeasurements();
       });
 
   connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
@@ -509,7 +334,7 @@ void MainWindow::setupMainToolbar()
   ///////////////////////////////////////////////////////////////////
 
 
-  manToolbar_->addAction(showFrameProcessorAction_);
+  manToolbar_->addAction(showImageProcessorAction_);
   manToolbar_->addAction(showMtfControlAction_);
 
   ///////////////////////////////////////////////////////////////////
@@ -524,9 +349,9 @@ void MainWindow::setupMainToolbar()
 
   ///////////////////////////////////////////////////////////////////
 
-  manToolbar_->addAction(showLiveThreadSettingsDialogBoxAction_ =
+  manToolbar_->addAction(showLiveThreadSettingsAction_ =
       createCheckableAction(getIcon(ICON_bayer), "Bayer", "Configure debayer options",
-          this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered));
+          this, &ThisClass::onShowLiveThreadSettingsActionTriggered));
 
   ///////////////////////////////////////////////////////////////////
 
@@ -546,49 +371,11 @@ void MainWindow::setupStatusbar()
   QStatusBar *sb = statusBar();
 
   sb->addWidget(show_log_ctl = new QToolButton());
-  show_log_ctl->setIcon(getIcon(ICON_log));
-  show_log_ctl->setIconSize(QSize(18, 16));
-  show_log_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  show_log_ctl->setToolTip("Show / Hide debug log window");
-  show_log_ctl->setCheckable(true);
-  show_log_ctl->setChecked(logwidgetDock_ && logwidgetDock_->isVisible());
-  connect(show_log_ctl, &QToolButton::clicked,
-      [this](bool checked) {
-        if ( logwidgetDock_ ) {
-          if ( !checked ) {
-            logwidgetDock_->hide();
-          }
-          else {
-            logwidgetDock_->show();
-            logwidgetDock_->raise();
-          }
-        }
-      });
-
-
   sb->addWidget(exposure_status_ctl = new QLabel(this));
   sb->addWidget(mousepos_ctl = new QLabel(this));
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
-}
 
-void MainWindow::setupLogWidget()
-{
-  logwidgetDock_ =
-      addCustomDock(this,
-          Qt::BottomDockWidgetArea,
-          "logwidgetDock_",
-          "Debug log",
-          logwidget_ctl = new QLogWidget(this),
-          menuView_);
-
-  logwidgetDock_->hide();
-
-  connect(logwidgetDock_, &QCustomDockWidget::visibilityChanged,
-      [this](bool visible) {
-        if (show_log_ctl ) {
-          show_log_ctl->setChecked(visible);
-        }
-      });
+  show_log_ctl->setDefaultAction(showLogWidgetAction_);
 }
 
 void MainWindow::setupCameraControls()
@@ -691,44 +478,20 @@ void MainWindow::setupLivePipelineControls()
   pipelineCollection_.load();
   pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
   pipelineSelector_ctl->setLiveThread(liveView_);
-
-  connect(pipelineSelector_ctl, &QLivePipelineSelectionWidget::parameterChanged,
-      [this]() {
-        // centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
-      });
-
 }
 
-void MainWindow::setupImageProcessingControls()
+void MainWindow::onImageProcessorParameterChanged()
 {
-  frameProcessorDock_ =
-      addCustomDock(this,
-          Qt::RightDockWidgetArea,
-          "frameProcessorDock_",
-          "Display Processing Options",
-          frameProcessor_ctl = new QCameraFrameProcessorSelector(this),
-          menuView_);
+  centralDisplay_->setFrameProcessor(imageProcessor_ctl->current_processor());
+}
 
-  frameProcessorDock_->hide();
+void MainWindow::onMtfControlVisibilityChanged(bool visible)
+{
+  Base::onMtfControlVisibilityChanged(visible);
 
-  showFrameProcessorAction_ = frameProcessorDock_->toggleViewAction();
-  showFrameProcessorAction_->setIcon(getIcon(ICON_display));
-  showFrameProcessorAction_->setToolTip("Show / Hide display frame processing options");
-
-  connect(frameProcessor_ctl, &QImageProcessorSelector::parameterChanged,
-      [this]() {
-        centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
-      });
-
-//  if( (showLiveThreadSettingsDialogBoxAction_ = frameProcessor_ctl->showDisplaysSettingsAction()) ) {
-//
-//    showLiveThreadSettingsDialogBoxAction_->setCheckable(true);
-//    showLiveThreadSettingsDialogBoxAction_->setChecked(false);
-//    showLiveThreadSettingsDialogBoxAction_->setEnabled(true);
-//
-//    connect(showLiveThreadSettingsDialogBoxAction_, &QAction::triggered,
-//        this, &ThisClass::onShowDisplayFrameProcessorSettingsActionTriggered);
-//  }
+  if( visible ) {
+    mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
+  }
 }
 
 void MainWindow::onCameraWriterStatusUpdate()
@@ -747,37 +510,13 @@ void MainWindow::onCameraWriterStatusUpdate()
       .arg(capture_drops));
 }
 
-void MainWindow::setupMeasures()
+
+void MainWindow::onCurrentImageChanged()
 {
-  measureGraphDock_ =
-      addDock<QMeasureGraphDock>(this,
-          Qt::RightDockWidgetArea,
-          "measureGraphDock_",
-          "Measure Graph",
-          measureGraph_ = new QMeasureGraph(this),
-          menuView_);
-
-  showMeasureGraphAction_ = measureGraphDock_->toggleViewAction();
-  showMeasureGraphAction_->setIcon(getIcon(ICON_measure_chart));
-
-  /////////
-
-  measuresMenu_.addAction(showMeasureSettingsAction_);
-  measuresMenu_.addAction(showMeasureDisplayAction_);
-  measuresMenu_.addAction(showMeasureGraphAction_);
-
-  measuresMenu_.addSeparator();
-
-  /////////
-
-  measureGraphDock_->hide();
-
-  connect(centralDisplay_, &QImageViewer::currentImageChanged,
-      this, &ThisClass::onUpdateMeasureGraph);
-
+  updateMeasurements();
 }
 
-void MainWindow::onUpdateMeasureGraph()
+void MainWindow::updateMeasurements()
 {
   if( !QMeasureProvider::requested_measures().empty() && centralDisplay_->rectShape()->isVisible() ) {
 
@@ -833,7 +572,7 @@ void MainWindow::setupIndigoFocuser()
 #endif // HAVE_INDIGO
 }
 
-void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked)
+void MainWindow::onShowLiveThreadSettingsActionTriggered(bool checked)
 {
   if( checked ) {
     if( !liveThreadSettingsDialogBox_ ) {
@@ -843,8 +582,8 @@ void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked
 
       connect(liveThreadSettingsDialogBox_, &QLiveThreadSettingsDialogBox::visibilityChanged,
           [this](bool visible) {
-            if ( showLiveThreadSettingsDialogBoxAction_ ) {
-              showLiveThreadSettingsDialogBoxAction_->setChecked(visible);
+            if ( showLiveThreadSettingsAction_ ) {
+              showLiveThreadSettingsAction_->setChecked(visible);
             }
           });
     }
@@ -857,65 +596,65 @@ void MainWindow::onShowDisplayFrameProcessorSettingsActionTriggered(bool checked
 
 }
 
-void MainWindow::onShowMtfControlActionTriggered(bool checked)
-{
-  if( checked && !mtfControl_ ) {
-
-    mtfControl_ = new QMtfControlDialogBox(this);
-    mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
-
-    connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
-        showMtfControlAction_, &QAction::setChecked);
-  }
-
-  mtfControl_->setVisible(checked);
-}
-
-void MainWindow::onShowMeasureSettingsActionTriggered(bool checked)
-{
-  if ( !checked ) {
-    if ( measureSettingsDisplay_ ) {
-      measureSettingsDisplay_->hide();
-    }
-  }
-  else {
-    if ( !measureSettingsDisplay_ ) {
-
-      measureSettingsDisplay_ = new QMeasureSettingsDialogBox(this);
-      // measureSettingsDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
-
-      connect(measureSettingsDisplay_, &QMeasureSettingsDialogBox::visibilityChanged,
-          showMeasureSettingsAction_, &QAction::setChecked);
-    }
-
-    measureSettingsDisplay_->show();
-    measureSettingsDisplay_->raise();
-    measureSettingsDisplay_->setFocus();
-  }
-}
-
-void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
-{
-  if ( !checked ) {
-    if ( measureDisplay_ ) {
-      measureDisplay_->hide();
-    }
-  }
-  else {
-    if ( !measureDisplay_ ) {
-
-      measureDisplay_ = new QMeasureDisplayDialogBox(this);
-      measureDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
-
-      connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
-          showMeasureDisplayAction_, &QAction::setChecked);
-    }
-
-    measureDisplay_->show();
-    measureDisplay_->raise();
-    measureDisplay_->setFocus();
-  }
-}
+//void MainWindow::onShowMtfControlActionTriggered(bool checked)
+//{
+//  if( checked && !mtfControl_ ) {
+//
+//    mtfControl_ = new QMtfControlDialogBox(this);
+//    mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
+//
+//    connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
+//        showMtfControlAction_, &QAction::setChecked);
+//  }
+//
+//  mtfControl_->setVisible(checked);
+//}
+//
+//void MainWindow::onShowMeasureSettingsActionTriggered(bool checked)
+//{
+//  if ( !checked ) {
+//    if ( measureSettingsDisplay_ ) {
+//      measureSettingsDisplay_->hide();
+//    }
+//  }
+//  else {
+//    if ( !measureSettingsDisplay_ ) {
+//
+//      measureSettingsDisplay_ = new QMeasureSettingsDialogBox(this);
+//      // measureSettingsDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
+//
+//      connect(measureSettingsDisplay_, &QMeasureSettingsDialogBox::visibilityChanged,
+//          showMeasureSettingsAction_, &QAction::setChecked);
+//    }
+//
+//    measureSettingsDisplay_->show();
+//    measureSettingsDisplay_->raise();
+//    measureSettingsDisplay_->setFocus();
+//  }
+//}
+//
+//void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
+//{
+//  if ( !checked ) {
+//    if ( measureDisplay_ ) {
+//      measureDisplay_->hide();
+//    }
+//  }
+//  else {
+//    if ( !measureDisplay_ ) {
+//
+//      measureDisplay_ = new QMeasureDisplayDialogBox(this);
+//      measureDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
+//
+//      connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
+//          showMeasureDisplayAction_, &QAction::setChecked);
+//    }
+//
+//    measureDisplay_->show();
+//    measureDisplay_->raise();
+//    measureDisplay_->setFocus();
+//  }
+//}
 
 void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed)
 {

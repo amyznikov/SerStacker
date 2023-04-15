@@ -3,6 +3,9 @@
 	<file>icons/light/histogram.png</file>
 	<file>icons/dark/histogram.png</file>
 	
+	<file>icons/light/histogram_small.png</file>
+	<file>icons/dark/histogram_small.png</file>
+	
 	<file>icons/light/histogram-log-scale.png</file>
 	<file>icons/dark/histogram-log-scale.png</file>
 	

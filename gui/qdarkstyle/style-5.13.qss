@@ -977,7 +977,8 @@ QToolButton {
 }
 
 QToolButton:checked {
-    background-color: #202020;
+    /*background-color: #202020;*/
+    background-color: #101010;
     border: 1px solid #202020;
 }
 

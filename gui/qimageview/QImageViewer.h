@@ -66,6 +66,9 @@ public:
   void setDisplayType(DisplayType v);
   DisplayType displayType() const;
 
+  void setMaskBlendAlpha(double v);
+  double maskBlendAlpha() const;
+
   void setTransparentMask(bool v);
   bool transparentMask() const;
 
@@ -135,6 +138,8 @@ protected:
 
   QImageDisplayFunction *displayFunction_ = nullptr;
   DisplayType currentDisplayType_ = DisplayImage;
+  double maskBlendAlpha_  = 0.9;
+
   QString currentFileName_;
   cv::Mat currentImage_, currentImageData_, currentMask_;
   cv::Mat displayImage_;
@@ -143,9 +148,8 @@ protected:
 
   bool transparentMask_ = true;
   bool enableEditMask_ = false;
-  int editMaskPenRadius_ = 5;
-  PenShape editMaskPenShape_ = PenShape_square;
-  // QAction * undoEditMaskAction_ = nullptr;
+  int editMaskPenRadius_ = 15;
+  PenShape editMaskPenShape_ = PenShape_circle;
   QShortcut *undoEditMaskActionShortcut_ = nullptr;
   QStack<cv::Mat> editMaskUndoQueue_;
 

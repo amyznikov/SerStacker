@@ -149,17 +149,6 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
     toolbar_ctl->addAction(action);
   }
 
-
-  showDisplaysSettingsAction_ =
-      toolbar_ctl->addAction(getIcon(ICON_config),
-          "Config...");
-
-  showDisplaysSettingsAction_->setToolTip(""
-      "Configure display and processing options");
-
-  showDisplaysSettingsAction_->setEnabled(false);
-
-
   updateControls();
 }
 
@@ -171,11 +160,6 @@ c_image_processor::sptr QImageProcessorSelector::current_processor() const
 bool QImageProcessorSelector::imageProcessingEnabled() const
 {
   return enable_ctl->isChecked();
-}
-
-QAction * QImageProcessorSelector::showDisplaysSettingsAction() const
-{
-  return showDisplaysSettingsAction_;
 }
 
 void QImageProcessorSelector::onupdatecontrols()

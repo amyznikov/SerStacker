@@ -19,6 +19,7 @@
 
 #include "quicktests/c_census_transfrom_routine.h"
 #include "quicktests/c_homography_test_routine.h"
+#include "quicktests/c_edgebox_routine.h"
 //#include "quicktests/c_pyramid_test_routine.h"
 
 #include "camera_calibration/c_find_chessboard_corners_routine.h"
@@ -150,6 +151,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_bilateral_filter_routine::class_factory_instance());
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_homography_test_routine::class_factory_instance());
+    register_class_factory(c_edgebox_routine::class_factory_instance());
     register_class_factory(c_image_rectification_routine::class_factory_instance());
     register_class_factory(c_stereo_rectification_routine::class_factory_instance());
     register_class_factory(c_pnormalize_routine::class_factory_instance());

@@ -27,8 +27,8 @@ enum c_image_processor_ctl_type {
 };
 
 struct c_image_processor_routine_ctrl {
-  const std::string name;
-  const std::string tooltip;
+  std::string name;
+  std::string tooltip;
   c_image_processor_ctl_type ctl_type;
   double min = 0, max = 100, step = 1;
   const c_enum_member * (*get_enum_members)() = nullptr;
@@ -48,22 +48,21 @@ struct c_image_processor_routine_ctrl {
     else { \
       ctype = c_image_processor_ctl_numeric_box; \
     } \
-    c_image_processor_routine_ctrl tmp = { \
-        .name = #cname, \
-        .tooltip = desc, \
-        .ctl_type = ctype, \
-        .get_enum_members = get_members_of<decltype(param())>(), \
-    }; \
-    tmp.get_value = [this](void) { \
+    c_image_processor_routine_ctrl tmp; \
+      tmp.name = #cname; \
+      tmp.tooltip = desc; \
+      tmp.ctl_type = ctype; \
+      tmp.get_enum_members = get_members_of<decltype(param())>(); \
+      tmp.get_value = [this](void) { \
         return toString(param()); \
       }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
-      if( fromString(s, &v) ) { \
-        std::lock_guard<std::mutex> lock(this->mutex()); \
-        set_##param(v); \
-      } \
-    }; \
+      tmp.set_value = [this](const std::string & s) { \
+        std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+        if( fromString(s, &v) ) { \
+          std::lock_guard<std::mutex> lock(this->mutex()); \
+          set_##param(v); \
+        } \
+      }; \
     (ctls)->emplace_back(tmp); \
   }
 

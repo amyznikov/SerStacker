@@ -50,6 +50,7 @@ public: // pipeline methods
   virtual ~c_image_processing_pipeline();
   virtual const std::string & get_class_name() const = 0;
 
+  virtual bool copyParameters(const sptr & dst);
 
   void set_name(const std::string & name);
   const std::string & name() const;

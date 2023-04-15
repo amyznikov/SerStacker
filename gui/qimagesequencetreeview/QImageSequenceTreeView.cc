@@ -1068,7 +1068,8 @@ QInputSourceTreeItem * QImageSequenceTreeView::findInputSourceItem(QImageSequenc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QImageSequenceTree::QImageSequenceTree(QWidget * parent) : Base(parent)
+QImageSequenceTree::QImageSequenceTree(QWidget * parent) :
+    Base(parent)
 {
   Q_INIT_RESOURCE(qstacktree_resources);
 
@@ -1076,37 +1077,29 @@ QImageSequenceTree::QImageSequenceTree(QWidget * parent) : Base(parent)
   toolbarActions_.append(addImageSequenceAction =
       new QAction(getIcon(ICON_add_pipeline),
           "Add stack"));
-  addImageSequenceAction->setToolTip(
-      "Add new image stack...");
-
+  addImageSequenceAction->setToolTip("Add new image stack...");
 
   //
   toolbarActions_.append(addSourcesAction =
       new QAction(getIcon(ICON_add_frames),
           "Add sources"));
-  addSourcesAction->setToolTip(
-      "Add sources to selected stack...");
+  addSourcesAction->setToolTip("Add sources to selected stack...");
   addSourcesAction->setEnabled(false);
-
 
 
   //
   toolbarActions_.append(deleteItemAction =
       new QAction(getIcon(ICON_delete_item),
           "Delete selected items"));
-  deleteItemAction->setToolTip(
-      "Delete selecteted items...");
+  deleteItemAction->setToolTip("Delete selected items...");
   deleteItemAction->setEnabled(false);
-
 
   //
   toolbarActions_.append(showStackOptionsAction =
       new QAction(getIcon(ICON_options),
           "Stack options"));
-  showStackOptionsAction->setToolTip(
-      "Show stacking options");
+  showStackOptionsAction->setToolTip("Show pipeline options");
   showStackOptionsAction->setEnabled(false);
-
 
   //
   toolbarActions_.append(startStackingMenuAction = new QAction("Start"));
@@ -1118,13 +1111,11 @@ QImageSequenceTree::QImageSequenceTree(QWidget * parent) : Base(parent)
   //startStackingMenu->setEnabled(false);
   startStackingMenuAction->setEnabled(false);
 
-
   //
   toolbarActions_.append(stopStacking =
       new QAction(getIcon(ICON_stop),
           "Stop"));
-  stopStacking->setToolTip(
-      "Cancel current stacking");
+  stopStacking->setToolTip("Cancel current pipeline");
   stopStacking->setEnabled(false);
 
 //  toolbarActions_.append(startStopStackingAction =
@@ -1288,6 +1279,22 @@ c_input_source::sptr QImageSequenceTree::getCurrentInputSource(c_image_sequence:
   }
 
   return nullptr;
+}
+
+void QImageSequenceTree::getSelectedSequences(std::vector<c_image_sequence::sptr> * sequences) const
+{
+  if( sequences ) {
+
+    for( int i = 0, n = treeView_->topLevelItemCount(); i < n; ++i ) {
+
+      QImageSequenceTreeItem *item =
+          dynamic_cast<QImageSequenceTreeItem*>(treeView_->topLevelItem(i));
+
+      if( item && item->isSelected() ) {
+        sequences->emplace_back(item->image_sequence());
+      }
+    }
+  }
 }
 
 void QImageSequenceTree::refresh()

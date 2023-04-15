@@ -233,9 +233,6 @@ public:
     return tooltip_;
   }
 
-//  c_notification<void()> on_accumulator_changed;
-//  c_notification<void()> on_selected_master_frame_changed;
-
   const c_anscombe_transform & anscombe() const;
 
   c_input_options& input_options();
@@ -281,6 +278,8 @@ public:
       cv::OutputArray mask) override;
 
   bool serialize(c_config_setting setting, bool save) override;
+
+  bool copyParameters(const c_image_processing_pipeline::sptr & dst) override;
 
 protected:
   bool initialize_pipeline() override;
@@ -363,8 +362,8 @@ protected:
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
 
-  bool master_frame_generation_ = false;
   int master_frame_index_ = -1;
+  bool master_frame_generation_ = false;
   bool external_master_frame_ = false;
 
   std::string output_file_name_;

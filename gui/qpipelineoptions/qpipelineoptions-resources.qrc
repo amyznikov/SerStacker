@@ -10,5 +10,8 @@
 	<file>icons/dark/down_menu.png</file>
 	<file>icons/light/down_menu.png</file>
 				
+	<file>icons/dark/check_all.png</file>
+	<file>icons/light/check_all.png</file>
+				
 </qresource>
 </RCC>

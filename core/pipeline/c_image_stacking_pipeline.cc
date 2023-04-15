@@ -3113,3 +3113,31 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   return true;
 }
+
+
+bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline::sptr & dst)
+{
+  if ( !base::copyParameters(dst) ) {
+    CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
+    return false;
+  }
+
+  c_image_stacking_pipeline::sptr p =
+      std::dynamic_pointer_cast<this_class>(dst);
+
+  if( !p ) {
+    CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
+        get_class_name().c_str());
+    return false;
+  }
+
+  p->input_options_ = this->input_options_;
+  p->roi_selection_options_ = this->roi_selection_options_;
+  p->upscale_options_ = this->upscale_options_;
+  p->frame_registration_options_ = this->frame_registration_options_;
+  p->accumulation_options_ = this->accumulation_options_;
+  p->output_options_ = this->output_options_;
+  p->image_processing_options_ = this->image_processing_options_;
+
+  return true;
+}

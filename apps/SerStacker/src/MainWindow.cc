@@ -489,35 +489,25 @@ void MainWindow::setupStackOptionsView()
         }
       });
 
-//  connect(stackOptionsView_, &QStackOptions::applyInputOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyInputOptionsToAll);
-//
-//  connect(stackOptionsView_, &QStackOptions::applyROISelectionOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyROISelectionOptionsToAll);
-//
-//  connect(stackOptionsView_, &QStackOptions::applyFrameUpscaleOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyFrameUpscaleOptionsToAll);
-//
-//  connect(stackOptionsView_, &QStackOptions::applyFrameRegistrationOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyFrameRegistrationOptionsToAll);
-//
-//  connect(stackOptionsView_, &QStackOptions::applyFrameAccumulationOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyFrameAccumulationOptionsToAll);
-//
-//  connect(stackOptionsView_, &QStackOptions::applyOutputOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyOutputOptionsToAll);
-//
-//  connect(stackOptionsView_, &QStackOptions::applyAllStackOptionsToAllRequested,
-//      sequencesTreeView, &QImageSequenceTree::applyAllStackOptionsToAll);
-
-//  connect(stackOptionsView, &QStackOptions::stackNameChanged,
-//      [this](const c_image_stacking_options::ptr & stack) {
-//        sequencesTreeView->updateStackName(stack);
-//        saveCurrentWork();
-//      });
-
   connect(pipelineOptionsView, &QPipelineOptionsView::parameterChanged,
       this, &ThisClass::saveCurrentWork);
+
+  connect(pipelineOptionsView, &QPipelineOptionsView::cloneCurrentPipelineRequested,
+      [this]() {
+
+        QWaitCursor wait (this);
+
+        std::vector<c_image_sequence::sptr> selected_sequences;
+
+        sequencesTreeView->getSelectedSequences(&selected_sequences);
+
+        if ( !selected_sequences.empty() ) {
+          if ( pipelineOptionsView->cloneCurrentPipeline(selected_sequences) ) {
+            saveCurrentWork();
+          }
+        }
+      });
+
 }
 
 void MainWindow::setupImageEditor()
@@ -1422,6 +1412,8 @@ void MainWindow::onLoadCurrentImageMask()
 
 void MainWindow::saveCurrentWork()
 {
+  QWaitCursor wait (this);
+
   if( image_sequences_->indexof(pipelineOptionsView->current_sequence()) < 0 ) {
     pipelineOptionsView->set_current_sequence(nullptr);
   }

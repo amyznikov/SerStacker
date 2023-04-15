@@ -79,6 +79,18 @@ c_image_processing_pipeline::~c_image_processing_pipeline()
 {
 }
 
+
+bool c_image_processing_pipeline::copyParameters(const sptr & dst)
+{
+  if ( !dst ) {
+    return false;
+  }
+
+  dst->name_ = this->name_;
+
+  return true;
+}
+
 void c_image_processing_pipeline::set_name(const std::string & name)
 {
   name_ = name;
@@ -632,6 +644,11 @@ void c_image_sequence::remove_pipeline(const c_image_processing_pipeline::sptr &
       std::find(pipelines_.begin(), pipelines_.end(), pipeline);
 
   if( pos != pipelines_.end() ) {
+
+    if ( *pos == current_pipeline_ ) {
+      current_pipeline_.reset();
+    }
+
     pipelines_.erase(pos);
   }
 }
@@ -645,6 +662,11 @@ void c_image_sequence::remove_pipeline(const std::string & name)
           });
 
   if( pos != pipelines_.end() ) {
+
+    if ( *pos == current_pipeline_ ) {
+      current_pipeline_.reset();
+    }
+
     pipelines_.erase(pos);
   }
 }

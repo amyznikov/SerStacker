@@ -29,9 +29,12 @@ public:
   void set_current_sequence(const c_image_sequence::sptr & image_sequence);
   const c_image_sequence::sptr & current_sequence() const;
 
+  bool cloneCurrentPipeline(const std::vector<c_image_sequence::sptr> & dst);
+
 Q_SIGNALS:
   void parameterChanged();
   void closeWindowRequested();
+  void cloneCurrentPipelineRequested();
 
 protected:
   void oncurrentpipelinechanged();
@@ -52,7 +55,8 @@ protected:
   QToolBar * toolbar_ = nullptr;
   QLabel * sequenceName_lb = nullptr;
   QComboBox * pipelineSelector_ctl = nullptr;
-  QToolButton * menuButton = nullptr;
+  QToolButton * menuButton_ctl = nullptr;
+  QToolButton * cloneButton_ctl = nullptr;
   QAction * close_ctl = nullptr;
 
   QScrollArea * scrollArea_ctl = nullptr;

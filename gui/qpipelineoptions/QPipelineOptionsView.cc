@@ -13,6 +13,7 @@
 
 #define ICON_close          ":/qpipelineoptions/icons/close"
 #define ICON_menu           ":/qpipelineoptions/icons/menu"
+#define ICON_checkall       ":/qpipelineoptions/icons/check_all"
 
 QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
   Base(parent)
@@ -47,13 +48,26 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
       this, &ThisClass::onPipelineSelectorCurrentIndexChanged);
 
 
-  toolbar_->addWidget(menuButton = new QToolButton());
-  menuButton->setText("Options...");
-  menuButton->setIcon(getIcon(ICON_menu));
-  menuButton->setToolTip("Add / Remove image processing pipelines");
-  menuButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  connect(menuButton, &QToolButton::clicked,
+  toolbar_->addWidget(menuButton_ctl = new QToolButton());
+  menuButton_ctl->setText("Options...");
+  menuButton_ctl->setIcon(getIcon(ICON_menu));
+  menuButton_ctl->setToolTip("Add / Remove image processing pipelines");
+  menuButton_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  connect(menuButton_ctl, &QToolButton::clicked,
       this, &ThisClass::onMenuButtonClicked);
+
+  toolbar_->addWidget(cloneButton_ctl = new QToolButton());
+  cloneButton_ctl->setText("Clone");
+  cloneButton_ctl->setIcon(getIcon(ICON_checkall));
+  cloneButton_ctl->setToolTip("Clone current pipeline / options into all selected image sequences");
+  cloneButton_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  connect(cloneButton_ctl, &QToolButton::clicked,
+      [this]() {
+        if( current_sequence_ && current_sequence_->current_pipeline() ) {
+          Q_EMIT cloneCurrentPipelineRequested();
+        }
+      });
+
 
   toolbar_->addSeparator();
 
@@ -215,7 +229,8 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
 
 void QPipelineOptionsView::enablecontrols(bool v)
 {
-  menuButton->setEnabled(v);
+  menuButton_ctl->setEnabled(v);
+  cloneButton_ctl->setEnabled(v && current_sequence_ && current_sequence_->current_pipeline());
   pipelineSelector_ctl->setEnabled(v && pipelineSelector_ctl->count() > 0);
 }
 
@@ -284,9 +299,9 @@ void QPipelineOptionsView::onMenuButtonClicked()
       menu_.addAction("Remove pipeline ...", this, &ThisClass::onRemovePipeline);
     }
 
-    menu_.exec(menuButton->mapToGlobal(QPoint(
-        menuButton->width() / 2,
-        menuButton->height() / 2)));
+    menu_.exec(menuButton_ctl->mapToGlobal(QPoint(
+        menuButton_ctl->width() / 2,
+        menuButton_ctl->height() / 2)));
   }
 }
 
@@ -346,10 +361,34 @@ void QPipelineOptionsView::onAddPipeline()
 
 void QPipelineOptionsView::onRemovePipeline()
 {
-  if( current_sequence_ ) {
+  if( current_sequence_ && current_sequence_->current_pipeline() ) {
 
+    const c_image_processing_pipeline::sptr pipeline =
+        current_sequence_->current_pipeline();
+
+    const int responce =
+        QMessageBox::warning(this,
+            "Remove Pipeline",
+            qsprintf("Are you sure to remove pipeline %s? ",
+                pipeline->name().c_str()),
+            QMessageBox::Yes | QMessageBox::No);
+
+    if ( responce != QMessageBox::Yes ) {
+      return;
+    }
+
+
+    current_sequence_->remove_pipeline(pipeline);
+
+    const int index =
+        pipelineSelector_ctl->findText(pipeline->name().c_str());
+
+    if ( index >= 0 ) {
+      pipelineSelector_ctl->removeItem(index);
+    }
+
+    Q_EMIT parameterChanged();
   }
-
 }
 
 void QPipelineOptionsView::onRenamePipeline()
@@ -399,6 +438,58 @@ void QPipelineOptionsView::onRenamePipeline()
 
   }
 }
+
+
+bool QPipelineOptionsView::cloneCurrentPipeline(const std::vector<c_image_sequence::sptr> & sequences)
+{
+  if( !current_sequence_ ) {
+    return false;
+  }
+
+  const c_image_processing_pipeline::sptr &current_pipeline =
+      current_sequence_->current_pipeline();
+  if( !current_pipeline ) {
+    return false;
+  }
+
+  bool has_changes = false;
+
+  for ( const c_image_sequence::sptr & seq : sequences ) {
+
+    c_image_processing_pipeline::sptr pipeline =
+        seq->find_pipeline(current_pipeline->name());
+
+    if( !pipeline ) {
+
+      pipeline =
+          c_image_processing_pipeline::create_instance(current_pipeline->get_class_name(),
+              current_pipeline->name(),
+              seq->input_sequence());
+
+      if( pipeline ) {
+        seq->add_pipeline(pipeline);
+      }
+      else {
+        CF_ERROR("c_image_processing_pipeline::create_instance() fails");
+        continue;
+      }
+    }
+
+    if( pipeline != current_pipeline ) {
+      if( !current_pipeline->copyParameters(pipeline) ) {
+        CF_ERROR("current_pipeline->copyParameters() fails for pipeline '%s'",
+            pipeline->get_class_name().c_str());
+        continue;
+      }
+
+      has_changes = true;
+    }
+  }
+
+
+  return has_changes;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 QAddPipelineDialogBox::QAddPipelineDialogBox(QWidget * parent) :

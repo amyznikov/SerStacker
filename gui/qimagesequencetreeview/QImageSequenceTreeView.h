@@ -133,6 +133,8 @@ public:
 
   const QList<QAction * > & toolbarActions() const;
 
+  void getSelectedSequences(std::vector<c_image_sequence::sptr> * sequences) const;
+
 
 Q_SIGNALS:
   void imageSequenceCollectionChanged();

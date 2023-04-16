@@ -50,6 +50,26 @@ public:
     return compute(image, mask, cv::Rect(roi.x(), roi.y(), roi.width(), roi.height()), output_value);
   }
 
+  int compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi, cv::Scalar * output_value) const
+  {
+    const cv::Mat src =
+        image.getMat();
+
+    const cv::Mat1b msk =
+        mask.getMat();
+
+    const int cn =
+        src.channels();
+
+    cv::Rect rc;
+
+    if( !adjust_roi(roi, src.size(), &rc) ) {
+      return 0;
+    }
+
+    return compute_measure(src(rc), msk.empty() ? cv::Mat() : msk(rc), output_value);
+  }
+
   static bool adjust_roi(const cv::Rect & src_roi, const cv::Size & image_size, cv::Rect * dst_roi)
   {
     const int l =
@@ -69,7 +89,8 @@ public:
     return !dst_roi->empty();
   }
 
-  virtual int compute(cv::InputArray, cv::InputArray, const cv::Rect&, cv::Scalar * output_value) const = 0;
+protected:
+  virtual int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const = 0;
 
 protected:
   const QString name_;

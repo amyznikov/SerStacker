@@ -21,9 +21,11 @@ public:
   typedef QMeasure Base;
 
   QMeasureNormalizedVariance();
-  int compute(cv::InputArray image, cv::InputArray mask, const cv::Rect& roi, cv::Scalar * value) const override;
   bool hasOptions() const override;
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 class QNormalizedVarianceSettingsWidget :

@@ -10,18 +10,8 @@
 #define __c_threshold_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/threshold.h>
 
-enum THRESHOLD_TYPE {
-  THRESHOLD_TYPE_VALUE,
-  THRESHOLD_TYPE_OTSU,
-  THRESHOLD_TYPE_TRIANGLE,
-  THRESHOLD_TYPE_MOMENTS,
-  THRESHOLD_TYPE_ISODATA,
-  THRESHOLD_TYPE_HUANG,
-  THRESHOLD_TYPE_YEN,
-  THRESHOLD_TYPE_MEAN,
-  THRESHOLD_TYPE_MINIMUM
-};
 
 class c_threshold_routine:
     public c_image_processor_routine

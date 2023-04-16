@@ -7,13 +7,14 @@
 
 #include "QMeasureProvider.h"
 #include "QMeasureMinMax.h"
+#include "QMeasureMeanStdev.h"
 #include "QMeasureLPG.h"
 #include "QMeasureLC.h"
 #include "QMeasureHarrisCornerResponse.h"
 #include "QMeasureNormalizedVariance.h"
 #include "QMeasureSharpnessNorm.h"
+#include "QMeasureNoise.h"
 #include <core/debug.h>
-#include "QMeasureMeanStdev.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -50,6 +51,7 @@ const std::vector<QMeasure*>& QMeasureProvider::measures()
     measures_.emplace_back(new QMeasureHarrisCornerResponse());
     measures_.emplace_back(new QMeasureNormalizedVariance());
     measures_.emplace_back(new QMeasureSharpnessNorm());
+    measures_.emplace_back(new QMeasureNoise());
   }
 
   return measures_;

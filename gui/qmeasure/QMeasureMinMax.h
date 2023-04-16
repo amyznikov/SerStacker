@@ -19,8 +19,9 @@ public:
   typedef QMeasure Base;
 
   QMeasureMinValue();
-  int compute(cv::InputArray, cv::InputArray, const cv::Rect&,
-      cv::Scalar * output_value) const override;
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 class QMeasureMaxValue :
@@ -31,8 +32,9 @@ public:
   typedef QMeasure Base;
 
   QMeasureMaxValue();
-  int compute(cv::InputArray, cv::InputArray, const cv::Rect&,
-      cv::Scalar * output_value) const override;
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 

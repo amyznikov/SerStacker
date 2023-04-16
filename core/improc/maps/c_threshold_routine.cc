@@ -6,9 +6,7 @@
  */
 
 #include "c_threshold_routine.h"
-#include <core/proc/threshold.h>
 #include <core/proc/reduce_channels.h>
-
 #include <core/ssprintf.h>
 
 
@@ -23,25 +21,6 @@ const c_enum_member* members_of<cv::CmpTypes>()
       { cv::CMP_LE, "LE", "src is less than or equal to  value" },
       { cv::CMP_NE, "NE", "src is not equal to  value" },
       { cv::CMP_GT },
-  };
-
-  return members;
-}
-
-template<>
-const c_enum_member* members_of<THRESHOLD_TYPE>()
-{
-  static constexpr c_enum_member members[] = {
-      { THRESHOLD_TYPE_VALUE, "VALUE", "Use user-specified value for compare operation"},
-      { THRESHOLD_TYPE_OTSU, "OTSU", "Use Otsu algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "Use Triangle algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_MOMENTS, "MOMENTS", "Use MOMENTS algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_ISODATA, "ISODATA", "Use ISODATA algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_HUANG, "HUANG", "Use HUANG algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_YEN, "YEN", "Use YEN algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_MEAN, "MEAN", "Select pixels with values above mean value" },
-      { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "Use MINIMUM algorithm to choose the optimal threshold value" },
-      { THRESHOLD_TYPE_OTSU }
   };
 
   return members;
@@ -63,39 +42,13 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
 
   for ( int i = 0; i < cn; ++i ) {
 
-    double threshold_value =
-        threshold_value_;
+    const double threshold_value =
+        get_threshold_value(channels[i], mask,
+            threshold_type_,
+            threshold_value_);
 
-    switch (threshold_type_) {
-      case THRESHOLD_TYPE_OTSU:
-        threshold_value = get_otsu_threshold(channels[i], mask);
-        break;
-      case THRESHOLD_TYPE_TRIANGLE:
-        threshold_value = get_triangle_threshold(channels[i], mask);
-        break;
-      case THRESHOLD_TYPE_MOMENTS:
-        threshold_value = get_moments_threshold(channels[i], mask);
-        break;
-      case THRESHOLD_TYPE_ISODATA:
-        threshold_value = get_isodata_threshold(channels[i], mask);
-        break;
-      case THRESHOLD_TYPE_HUANG:
-        threshold_value = get_huang_threshold(channels[i], mask);
-        break;
-      case THRESHOLD_TYPE_YEN:
-        threshold_value = get_yen_threshold(channels[i], mask);
-        break;
-      case THRESHOLD_TYPE_MEAN:
-        threshold_value = cv::mean(channels[i], mask)[0];
-        break;
-      case THRESHOLD_TYPE_MINIMUM:
-        threshold_value = get_minimum_threshold(channels[i], mask);
-        break;
-      default:
-        break;
-    }
-
-    cv::compare(channels[i], threshold_value, channels[i], compare_);
+    cv::compare(channels[i], threshold_value, channels[i],
+        compare_);
   }
 
   if( !modify_mask_ ) {

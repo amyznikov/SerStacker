@@ -12,26 +12,10 @@ QMeasureLC::QMeasureLC() :
 {
 }
 
-int QMeasureLC::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi, cv::Scalar * value) const
+int QMeasureLC::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
-  const cv::Mat src =
-      image.getMat();
-
-  const cv::Mat1b msk =
-      mask.getMat();
-
-  const int cn =
-      src.channels();
-
-  cv::Rect rc;
-
-  if( !adjust_roi(roi, src.size(), &rc) ) {
-    return 0;
-  }
-
-  *value = c_local_contrast_measure::compute(src(rc));
-
-  return avgchannel_ ? 1 : src.channels();
+  *output_value = c_local_contrast_measure::compute(image);
+  return avgchannel_ ? 1 : image.channels();
 }
 
 bool QMeasureLC::hasOptions() const

@@ -19,8 +19,9 @@ public:
   typedef QMeasure Base;
 
   QMeasureMeanValue();
-  int compute(cv::InputArray image, cv::InputArray mask, const cv::Rect& roi,
-      cv::Scalar * value) const override;
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 class QMeasureStdevValue:
@@ -31,8 +32,9 @@ public:
   typedef QMeasure Base;
 
   QMeasureStdevValue();
-  int compute(cv::InputArray image, cv::InputArray mask, const cv::Rect& roi,
-      cv::Scalar * value) const override;
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 #endif /* __QMeasureMeanStdev_h__ */

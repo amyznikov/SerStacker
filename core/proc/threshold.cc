@@ -8,8 +8,62 @@
 
 #include <core/proc/threshold.h>
 //#include <core/proc/normalize.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
+
+template<>
+const c_enum_member* members_of<THRESHOLD_TYPE>()
+{
+  static constexpr c_enum_member members[] = {
+      { THRESHOLD_TYPE_VALUE, "VALUE", "Use user-specified value for compare operation"},
+      { THRESHOLD_TYPE_OTSU, "OTSU", "Use Otsu algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "Use Triangle algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_MOMENTS, "MOMENTS", "Use MOMENTS algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_ISODATA, "ISODATA", "Use ISODATA algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_HUANG, "HUANG", "Use HUANG algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_YEN, "YEN", "Use YEN algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_MEAN, "MEAN", "Select pixels with values above mean value" },
+      { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "Use MINIMUM algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_OTSU }
+  };
+
+  return members;
+}
+
+double get_threshold_value(cv::InputArray image, cv::InputArray mask, THRESHOLD_TYPE threshold_type, double value)
+{
+  double threshold_value = value;
+
+  switch (threshold_type) {
+    case THRESHOLD_TYPE_OTSU:
+      threshold_value = get_otsu_threshold(image, mask);
+      break;
+    case THRESHOLD_TYPE_TRIANGLE:
+      threshold_value = get_triangle_threshold(image, mask);
+      break;
+    case THRESHOLD_TYPE_MOMENTS:
+      threshold_value = get_moments_threshold(image, mask);
+      break;
+    case THRESHOLD_TYPE_ISODATA:
+      threshold_value = get_isodata_threshold(image, mask);
+      break;
+    case THRESHOLD_TYPE_HUANG:
+      threshold_value = get_huang_threshold(image, mask);
+      break;
+    case THRESHOLD_TYPE_YEN:
+      threshold_value = get_yen_threshold(image, mask);
+      break;
+    case THRESHOLD_TYPE_MEAN:
+      threshold_value = cv::mean(image, mask)[0];
+      break;
+    case THRESHOLD_TYPE_MINIMUM:
+      threshold_value = get_minimum_threshold(image, mask);
+      break;
+  }
+
+  return threshold_value;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -12,26 +12,9 @@ QMeasureSharpnessNorm::QMeasureSharpnessNorm() :
 {
 }
 
-
-int QMeasureSharpnessNorm::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi, cv::Scalar * value) const
+int QMeasureSharpnessNorm::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
-  const cv::Mat src =
-      image.getMat();
-
-  const cv::Mat1b msk =
-      mask.getMat();
-
-  const int cn =
-      src.channels();
-
-  cv::Rect rc;
-
-  if( !adjust_roi(roi, src.size(), &rc) ) {
-    return 0;
-  }
-
-  (*value)[0] = c_sharpness_norm_measure::measure(src(rc), msk.empty() ? cv::noArray() : msk(rc));
-
+  (*output_value)[0] = c_sharpness_norm_measure::measure(image, mask);
   return 1;
 }
 
@@ -44,8 +27,6 @@ QMeasureSettingsWidget* QMeasureSharpnessNorm::createSettingsWidget(QWidget * pa
 {
   return new QSharpnessNormMeasureSettingsWidget(parent);
 }
-
-
 
 QSharpnessNormMeasureSettingsWidget::QSharpnessNormMeasureSettingsWidget(QWidget * parent) :
     Base(parent)

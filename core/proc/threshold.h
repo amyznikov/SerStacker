@@ -39,5 +39,22 @@ void huang_threshold(const cv::Mat & _src, cv::Mat & _dst, cv::InputArray _mask 
 
 void mean_threshold(cv::InputArray  _src, cv::Mat & _dst, cv::InputArray _mask = cv::noArray());
 
+
+enum THRESHOLD_TYPE {
+  THRESHOLD_TYPE_VALUE,
+  THRESHOLD_TYPE_OTSU,
+  THRESHOLD_TYPE_TRIANGLE,
+  THRESHOLD_TYPE_MOMENTS,
+  THRESHOLD_TYPE_ISODATA,
+  THRESHOLD_TYPE_HUANG,
+  THRESHOLD_TYPE_YEN,
+  THRESHOLD_TYPE_MEAN,
+  THRESHOLD_TYPE_MINIMUM
+};
+
+double get_threshold_value(cv::InputArray image, cv::InputArray mask,
+    THRESHOLD_TYPE threshold_type,
+    double value = 0);
+
 ///////////////////////////////////////////////////////////////////////////////
 #endif /* __glv_threshold_h__*/

@@ -12,29 +12,11 @@ QMeasureMeanValue::QMeasureMeanValue() :
 {
 }
 
-int QMeasureMeanValue::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect& roi, cv::Scalar * value) const
+int QMeasureMeanValue::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
-  const cv::Mat src =
-      image.getMat();
-
-  const cv::Mat1b msk =
-      mask.getMat();
-
-  const int cn =
-      src.channels();
-
-  cv::Rect rc;
-
-  if( !adjust_roi(roi, src.size(), &rc) ) {
-    return 0;
-  }
-
-  *value =
-      cv::mean(src(rc), msk.empty() ?
-          cv::noArray() :
-          msk(rc));
-
-  return cn;
+  *output_value =
+      cv::mean(image, mask);
+  return image.channels();
 }
 
 QMeasureStdevValue::QMeasureStdevValue() :
@@ -42,28 +24,9 @@ QMeasureStdevValue::QMeasureStdevValue() :
 {
 }
 
-int QMeasureStdevValue::compute(cv::InputArray image, cv::InputArray mask, const cv::Rect& roi, cv::Scalar * value) const
+int QMeasureStdevValue::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
-  const cv::Mat src =
-      image.getMat();
-
-  const cv::Mat1b msk =
-      mask.getMat();
-
-  const int cn =
-      src.channels();
-
-  cv::Rect rc;
-
-  if( !adjust_roi(roi, src.size(), &rc) ) {
-    return 0;
-  }
-
   cv::Scalar m;
-
-  cv::meanStdDev(src(rc), m, *value, msk.empty() ?
-      cv::noArray() :
-      msk(rc));
-
-  return cn;
+  cv::meanStdDev(image, m, *output_value, mask);
+  return image.channels();
 }

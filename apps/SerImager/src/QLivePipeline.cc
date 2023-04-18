@@ -1459,6 +1459,16 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
       }
       else {
         settingsWidgets_.append(currentWidget);
+
+        //  connect(currentWidget, &QLivePipelineSettingsWidget::parameterChanged,
+        //    this, &ThisClass::parameterChanged);
+
+        connect(currentWidget, &QLivePipelineSettingsWidget::parameterChanged,
+            [this]() {
+              if ( pipelineCollection_ ) {
+                pipelineCollection_->save();
+              }
+            });
       }
     }
 

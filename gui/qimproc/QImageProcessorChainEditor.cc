@@ -765,6 +765,44 @@ void QImageProcessorSettingsControl::setupControls()
         break;
       }
 
+      case c_image_processor_ctl_browse_for_directory: {
+
+        QBrowsePathCombo *ctl =
+            new QBrowsePathCombo("", QFileDialog::AcceptMode::AcceptOpen,
+                QFileDialog::Directory);
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.set_value ) {
+
+          QObject::connect(ctl, &QBrowsePathCombo::pathChanged,
+              [this, ctl, p]() {
+                if ( !updatingControls() ) {
+                  p.set_value(ctl->currentPath().toStdString());
+                  Q_EMIT parameterChanged();
+                }
+              });
+
+        }
+
+        if( p.get_value ) {
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                ctl->setCurrentPath(p.get_value().c_str(), false);
+              });
+        }
+
+        break;
+      }
+
+
       case c_image_processor_ctl_spinbox: {
 
         QSpinBox * ctl =

@@ -42,7 +42,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
   {
     cv::absdiff(image.getMat(), value_, image);
     return true;

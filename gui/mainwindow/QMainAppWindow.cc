@@ -151,9 +151,9 @@ void QMainAppWindow::setupImageProcessingControls()
           imageProcessor_ctl = new QImageProcessorSelector(this),
           menuView_);
 
-  imageProcessorDock_->titleBar()->setWindowIcon(getIcon(ICON_process));
+  imageProcessorDock_->titleBar()->setWindowIcon(getIcon(ICON_display));
   showImageProcessorAction_ = imageProcessorDock_->toggleViewAction();
-  showImageProcessorAction_->setIcon(getIcon(ICON_process));
+  showImageProcessorAction_->setIcon(getIcon(ICON_display));
   showImageProcessorAction_->setToolTip("Show / Hide display image processing controls");
 
   connect(showImageProcessorAction_, &QAction::triggered,

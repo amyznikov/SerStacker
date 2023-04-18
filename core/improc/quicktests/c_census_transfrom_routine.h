@@ -65,7 +65,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray())
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
   {
     cv::Mat gray;
 

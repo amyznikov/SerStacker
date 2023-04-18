@@ -94,7 +94,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
   {
     cv::Mat tmp;
     cv::bilateralFilter(image, tmp, d_, sigmaColor_, sigmaSpace_, borderType_);

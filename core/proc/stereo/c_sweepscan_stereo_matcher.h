@@ -9,19 +9,28 @@
 #ifndef __c_sweepscan_stereo_matcher_h__
 #define __c_sweepscan_stereo_matcher_h__
 
-#include <opencv2/opencv.hpp>
-#include <memory>
+#include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
 
 class c_sweepscan_stereo_matcher
 {
 public:
   typedef c_sweepscan_stereo_matcher this_clss;
 
+  enum OutputType {
+    OutputTextureMap,
+    OutputTextureMask,
+    OutputDisparityMap,
+  };
+
+
   c_sweepscan_stereo_matcher();
 
   bool match(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat1w & outputMatches, cv::Mat1b * outputMask);
+      cv::Mat & outputMatches, cv::Mat1b * outputMask);
+
+  void set_output_type(OutputType v);
+  OutputType output_type() const;
 
   void set_max_disparity(int v);
   int max_disparity() const;
@@ -44,13 +53,18 @@ public:
   const std::vector<cv::Point>& debug_points() const;
   void set_debug_points(const std::vector<cv::Point> & v);
 
+  const c_lpg_sharpness_measure & lpg() const;
+  c_lpg_sharpness_measure & lpg();
+
 protected:
   template<class MT>
   bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat1w & outputMatches, cv::Mat1b * outputMask);
+      cv::Mat & outputImage, cv::Mat1b * outputMask);
 
 protected:
+  OutputType output_type_ = OutputTextureMask;
+
   int max_disparity_ = 128;
   int max_scale_ = 2;
   double kernel_sigma_ = 1;
@@ -59,6 +73,8 @@ protected:
 
   std::string debug_directory_;
   std::vector<cv::Point> debug_points_;
+
+  c_lpg_sharpness_measure lpg_;
 };
 
 

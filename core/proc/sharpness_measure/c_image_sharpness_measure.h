@@ -10,6 +10,7 @@
 #define __c_image_sharpness_measure_h__
 
 #include <opencv2/opencv.hpp>
+#include <memory>
 
 class c_image_sharpness_measure
 {

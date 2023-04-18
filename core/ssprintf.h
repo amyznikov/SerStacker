@@ -381,56 +381,6 @@ typename std::enable_if<std::is_enum_v<enum_type>,
 }
 
 
-template<class T>
-inline std::string toString(const std::vector<T> & v) {
-  std::string s;
-  for ( int i = 0, n = v.size(); i < n; ++i ) {
-    s += toString(v[i]);
-    if ( i < n - 1 ) {
-      s += ";";
-    }
-  }
-  return s;
-}
-
-template<class T>
-typename std::enable_if<std::is_scalar_v<T>,
-    bool>::type fromString(const std::string & s, std::vector<T> * v)
-{
-  const std::vector<std::string> tokens =
-      strsplit(s, " \t\n;:");
-
-  v->clear(), v->reserve(tokens.size());
-  for( int i = 0, n = tokens.size(); i < n; ++i ) {
-    T value;
-    if( !fromString(tokens[i], &value) ) {
-      return false;
-    }
-    v->emplace_back(value);
-  }
-
-  return true;
-}
-
-template<class T>
-typename std::enable_if<!std::is_scalar_v<T>,
-    bool>::type fromString(const std::string & s, std::vector<T> * v)
-{
-  const std::vector<std::string> tokens =
-      strsplit(s, "|");
-
-  v->clear(), v->reserve(tokens.size());
-  for( int i = 0, n = tokens.size(); i < n; ++i ) {
-    T value;
-    if( !fromString(tokens[i], &value) ) {
-      return false;
-    }
-    v->emplace_back(value);
-  }
-
-  return true;
-}
-
 // opencv types
 #ifdef CV_VERSION
 
@@ -760,6 +710,57 @@ inline const c_enum_member * members_of<cv::BorderTypes>()
 
 #endif // CV_VERSION
 
+
+
+template<class T>
+inline std::string toString(const std::vector<T> & v) {
+  std::string s;
+  for ( int i = 0, n = v.size(); i < n; ++i ) {
+    s += toString(v[i]);
+    if ( i < n - 1 ) {
+      s += ";";
+    }
+  }
+  return s;
+}
+
+template<class T>
+typename std::enable_if<std::is_scalar_v<T>,
+    bool>::type fromString(const std::string & s, std::vector<T> * v)
+{
+  const std::vector<std::string> tokens =
+      strsplit(s, " \t\n;:");
+
+  v->clear(), v->reserve(tokens.size());
+  for( int i = 0, n = tokens.size(); i < n; ++i ) {
+    T value;
+    if( !fromString(tokens[i], &value) ) {
+      return false;
+    }
+    v->emplace_back(value);
+  }
+
+  return true;
+}
+
+template<class T>
+typename std::enable_if<!std::is_scalar_v<T>,
+    bool>::type fromString(const std::string & s, std::vector<T> * v)
+{
+  const std::vector<std::string> tokens =
+      strsplit(s, "|");
+
+  v->clear(), v->reserve(tokens.size());
+  for( int i = 0, n = tokens.size(); i < n; ++i ) {
+    T value;
+    if( !fromString(tokens[i], &value) ) {
+      return false;
+    }
+    v->emplace_back(value);
+  }
+
+  return true;
+}
 
 
 /**

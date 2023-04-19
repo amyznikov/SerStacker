@@ -20,6 +20,7 @@ public:
     OutputTextureMap,
     OutputTextureMask,
     OutputDisparityMap,
+    OutputErrorMap,
   };
 
 

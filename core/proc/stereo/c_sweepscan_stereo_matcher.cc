@@ -20,6 +20,10 @@
 #include <deque>
 #include <core/debug.h>
 
+namespace cv {
+  typedef Mat_<uint32_t> Mat1u;
+} // namespace cv
+
 namespace {
 
 double maxval_for_pixel_depth(int ddepth)
@@ -164,6 +168,54 @@ static void dump_debug_points(FILE * fp, int disparity, int scale, const cv::Mat
   }
 }
 
+//
+//static void compute_gradient(const cv::Mat & src, cv::Mat & gx, cv::Mat & gy)
+//{
+//  static thread_local const cv::Matx<float, 1, 5> K(
+//      (+1.f / 12),
+//      (-8.f / 12),
+//      0.f,
+//      (+8.f / 12),
+//      (-1.f / 12));
+//
+//  cv::filter2D(src, gx, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  gx.convertTo(gx, CV_8U, 0.5, 128);
+//
+//  cv::filter2D(src, gy, CV_32F, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  gy.convertTo(gy, CV_8U, 0.5, 128);
+//}
+//
+//static void compute_descriptors(const cv::Mat3b & image, cv::Mat1u & desc)
+//{
+//  cv::Mat s, gx, gy, c;
+//
+//  cv::GaussianBlur(image, s, cv::Size(11, 11), 2, 1.5, cv::BORDER_REPLICATE);
+//  compute_gradient(s, gx, gy);
+//  reduce_color_channels(gx, gx, cv::REDUCE_MAX);
+//  reduce_color_channels(gy, gy, cv::REDUCE_MAX);
+//  cv::cvtColor(s, c, cv::COLOR_BGR2HLS_FULL);
+//  cv::cvtColor(s, s, cv::COLOR_BGR2GRAY);
+//
+//  desc.create(s.size());
+//
+//  cv::Mat1b gs, ggx, ggy;
+//  cv::Mat3b gc;
+//
+//  for( int y = 0; y < s.rows; ++y ) {
+//    for( int x = 0; x < s.cols; ++x ) {
+//
+//      const uint32_t v =
+//          ((uint32_t) gs[y][x] << 24) |
+//              ((uint32_t) ggx[y][x] << 16) |
+//              ((uint32_t) ggy[y][x] << 8) |
+//              ((uint32_t) gc[y][x][0] << 0);
+//
+//      desc[y][x] = v;
+//    }
+//  }
+//}
+
+
 } // namespace
 
 
@@ -174,6 +226,7 @@ const c_enum_member* members_of<c_sweepscan_stereo_matcher::OutputType>()
       { c_sweepscan_stereo_matcher::OutputTextureMap, "TextureMap", "TextureMap" },
       { c_sweepscan_stereo_matcher::OutputTextureMask, "TextureMask", "TextureMask" },
       { c_sweepscan_stereo_matcher::OutputDisparityMap, "DisparityMap", "DisparityMap" },
+      { c_sweepscan_stereo_matcher::OutputErrorMap, "ErrorMap", "DisparityMap" },
       { c_sweepscan_stereo_matcher::OutputDisparityMap }
   };
 
@@ -288,30 +341,14 @@ bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Inp
 
   FILE *debug_points_fp = nullptr;
 
-  std::vector<cv::Mat> currentImagePyramid;
-  std::vector<cv::Mat> referenceImagePyramid;
-  std::vector<cv::Mat1b> currentMaskPyramid;
-  std::vector<cv::Mat1b> referenceMaskPyramid;
-  std::vector<cv::Mat1w> disparityPyramid;
-
-
   double ksigma;
   int ksize;
-
-  const int pscale =
-      pscale_;
 
   cv::Mat images[2];
   cv::Mat texture_map, texture_mask;
 
-  if ( pscale < 1 ) {
-    images[0] = currentImage.getMat();
-    images[1] = referenceImage.getMat();
-  }
-  else {
-    pnormalize(currentImage.getMat(), images[0], pscale);
-    pnormalize(referenceImage.getMat(), images[1], pscale);
-  }
+  images[0] = currentImage.getMat();
+  images[1] = referenceImage.getMat();
 
   if( lpg_.k() >= 0 ) {
 
@@ -371,23 +408,6 @@ bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Inp
     return true;
   }
 
-  cv::buildPyramid(images[0], currentImagePyramid, max_scale_);
-  if( !currentMask.empty() ) {
-    cv::buildPyramid(currentMask, currentMaskPyramid, max_scale_);
-    for( uint i = 1, n = currentMaskPyramid.size(); i < n; ++i ) {
-      cv::compare(currentMaskPyramid[i], 255, currentMaskPyramid[i], cv::CMP_GE);
-    }
-  }
-
-
-  cv::buildPyramid(images[1], referenceImagePyramid, max_scale_);
-  if( !referenceMask.empty() ) {
-    cv::buildPyramid(referenceMask, referenceMaskPyramid, max_scale_);
-    for( uint i = 1, n = referenceMaskPyramid.size(); i < n; ++i ) {
-      cv::compare(referenceMaskPyramid[i], 255, referenceMaskPyramid[i], cv::CMP_GE);
-    }
-  }
-
   if( kernel_radius_ > 0 && kernel_sigma_ > 0 ) {
     ksize = 2 * kernel_radius_ + 1;
     ksigma = kernel_sigma_;
@@ -403,246 +423,109 @@ bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Inp
 
   const cv::Mat1f G =
       cv::getGaussianKernel(ksize, ksigma, CV_32F);
-//
-//  for( int scale = max_scale_; scale >= 0; --scale ) {
-//
-//    const cv::Mat &queryImage =
-//        currentImagePyramid[scale];
-//
-//    const cv::Mat &trainImage =
-//        referenceImagePyramid[scale];
-//
-//    const cv::Mat1b &queryMask =
-//        currentMaskPyramid[scale];
-//
-//    cv::Mat1b &trainMask =
-//        referenceMaskPyramid[scale];
-//
-//    const cv::Size max_image_size =
-//        trainImage.size();
-//
-//    c_error_history_track<MT> track(max_image_size);
-//
-//    disparityPyramid.emplace_back(
-//        cv::Mat1w(max_image_size,
-//            (uint16_t) (UINT16_MAX)));
-//
-//    cv::Mat1w &disp =
-//        disparityPyramid.back();
-//
-//    const int max_disparity =
-//        max_disparity_ >> scale;
-//
-//    cv::Mat E, Ef;
-//    MatType Emin;
-//    cv::Mat1b M;
-//
-//    if( enable_debug_point && !debug_directory_.empty() ) {
-//      if( !create_debug_points_fp(debug_directory_, scale, debug_points_.size()) ) {
-//        CF_ERROR("create_debug_points_fp() fails");
-//        return false;
-//      }
-//    }
-//
-//    for( int disparity = 0; disparity < max_disparity; ++disparity ) {
-//
-//      const cv::Rect qrc(disparity, 0, max_image_size.width - disparity, max_image_size.height);
-//      const cv::Rect rrc(0, 0, max_image_size.width - disparity, max_image_size.height);
-//
-//      const cv::Mat Q = queryImage(qrc);
-//      const cv::Mat1b QM = queryMask(qrc);
-//
-//      const cv::Mat T = trainImage(rrc);
-//      const cv::Mat1b TM = trainMask(rrc);
-//
-//      cv::bitwise_and(QM, TM, M);
-//
-//      // compute error image
-//      cv::absdiff(Q, T, E);
-//
-//      MatType &EE =
-//          track.push_next();
-//
-//      if( E.channels() == 1 ) {
-//        cv::sepFilter2D(E, EE(rrc), E.depth(), G, G, cv::Point(-1, -1), 0,
-//            cv::BORDER_REPLICATE);
-//      }
-//      else {
-//        cv::sepFilter2D(E, Ef, E.depth(), G, G, cv::Point(-1, -1), 0,
-//            cv::BORDER_REPLICATE);
-//        cv::cvtColor(Ef, EE(rrc),
-//            cv::COLOR_BGR2GRAY);
-//      }
-//
-//      dump_debug_points(debug_points_fp,
-//          disparity,
-//          scale,
-//          track.back(),
-//          debug_points_);
-//
-//      const std::deque<MatType*> &q =
-//          track.deque();
-//
-//      const MatType &c =
-//          (*q.back());
-//
-//      const int qsize =
-//          q.size();
-//
-//      cv::Mat1w &disp =
-//          disparityPyramid.back();
-//
-//      if( qsize == 1 ) {
-//        c.copyTo(Emin);
-//      }
-//      else if( qsize == 2 ) {
-//
-//        const MatType &p =
-//            *q[qsize - 2];
-//
-//        const cv::Mat1w *pdisp =
-//            disparityPyramid.size() > 1 ?
-//                &disparityPyramid[disparityPyramid.size() - 2] :
-//                nullptr;
-//
-//        for( int y = 0; y < rrc.height; ++y ) {
-//          for( int x = 0; x < rrc.width; ++x ) {
-//            if( M[y][x] ) {
-//
-//              if( c[y][x] < Emin[y][x] ) {
-//                Emin[y][x] = c[y][x];
-//              }
-//              else if( c[y][x] > Emin[y][x] ) {
-//
-//                if( !pdisp ) {
-//                  disp[y][x] = disparity - 1;
-//                }
-//                else {
-//                  const int xx = x >> 1;
-//                  const int yy = y >> 1;
-//                  const int d = (disparity - 1) >> 1;
-//
-//                  if( std::abs((int) (*pdisp)[yy][xx] - d) <= 1 ) {
-//                    disp[y][x] = disparity - 1;
-//                  }
-//                }
-//              }
-//            }
-//          }
-//        }
-//      }
-//
-//      else if( qsize == 3 ) {
-//
-//        const MatType &p =
-//            *q[qsize - 2];
-//
-//        const MatType &l =
-//            *q[qsize - 3];
-//
-//        const cv::Mat1w *pdisp =
-//            disparityPyramid.size() > 1 ?
-//                &disparityPyramid[disparityPyramid.size() - 2] :
-//                nullptr;
-//
-//        for( int y = 0; y < rrc.height; ++y ) {
-//          for( int x = 0; x < rrc.width; ++x ) {
-//            if( M[y][x] ) {
-//
-//              if( c[y][x] < Emin[y][x] ) {
-//                Emin[y][x] = c[y][x];
-//                disp[y][x] = UINT16_MAX;
-//              }
-//              else if( c[y][x] > Emin[y][x] && p[y][x] == Emin[y][x] && l[y][x] > Emin[y][x] ) {
-//
-//                if( !pdisp ) {
-//                  disp[y][x] = disparity - 1;
-//                }
-//                else {
-//                  const int xx = x >> 1;
-//                  const int yy = y >> 1;
-//                  const int d = (disparity - 1) >> 1;
-//
-//                  if( std::abs((int) (*pdisp)[yy][xx] - d) <= 1 ) {
-//                    disp[y][x] = disparity - 1;
-//                  }
-//                }
-//              }
-//              else if( c[y][x] == Emin[y][x] ) {
-//                disp[y][x] = UINT16_MAX;
-//              }
-//            }
-//          }
-//        }
-//      }
-//
-//      if( !debug_directory_.empty() ) {
-//
-//        if( true ) {
-//
-//          cv::Mat EE(max_image_size, track.back().type(), cv::Scalar::all(0));
-//
-//          track.back()(rrc).copyTo(EE(rrc));
-//          save_image(EE, ssprintf("%s/scale%02d/E/E.%04d.tiff",
-//              debug_directory_.c_str(),
-//              scale,
-//              disparity));
-//        }
-//
-//        if( true ) {
-//
-//          cv::Mat B(max_image_size, T.type(), cv::Scalar::all(0));
-//
-//          cv::addWeighted(Q, 0.5, T, 0.5, 0, B(rrc));
-//
-//          save_image(B, ssprintf("%s/scale%02d/B/B.%04d.tiff",
-//              debug_directory_.c_str(),
-//              scale,
-//              disparity));
-//
-//        }
-//
-//      }
-//    }
-//
-//    if( debug_points_fp ) {
-//      fclose(debug_points_fp);
-//    }
-//
-//    cv::Mat1b dispMask = disp < UINT16_MAX;
-//    disp.setTo(0, ~dispMask);
-//
-//    if( !debug_directory_.empty() ) {
-//      save_image(currentImagePyramid[scale], currentMaskPyramid[scale],
-//          ssprintf("%s/scale%02d/Q.tiff",
-//              debug_directory_.c_str(),
-//              scale));
-//      save_image(referenceImagePyramid[scale], referenceMaskPyramid[scale],
-//          ssprintf("%s/scale%02d/T.tiff",
-//              debug_directory_.c_str(),
-//              scale));
-//
-//      save_image(disp, dispMask,
-//          ssprintf("%s/scale%02d/disps.tiff",
-//              debug_directory_.c_str(),
-//              scale));
-//
-//      save_image(Emin, dispMask,
-//          ssprintf("%s/scale%02d/errs.tiff",
-//              debug_directory_.c_str(),
-//              scale));
-//    }
-//
-//    if( scale == 0 ) {
-//
-//      outputMatches =
-//          disparityPyramid.back();
-//
-//      if( outputMask ) {
-//        *outputMask = dispMask;
-//      }
-//    }
-//  }
+
+  const cv::Mat &queryImage =
+      images[0];
+
+  const cv::Mat &trainImage =
+      images[1];
+
+  const cv::Size max_image_size =
+      trainImage.size();
+
+  std::deque<cv::Mat> Eq;
+  cv::Mat Emin, M1, M2, M3;
+  cv::Mat1s D(max_image_size, (int16_t)(-1));
+
+  if ( true ) {
+
+    INSTRUMENT_REGION("SCAN");
+
+    for( int disparity = 0; disparity < max_disparity_; ++disparity ) {
+
+      const cv::Rect qrc(disparity, 0,
+          max_image_size.width - disparity,
+          max_image_size.height);
+
+      const cv::Rect rrc(0, 0,
+          max_image_size.width - disparity,
+          max_image_size.height);
+
+      const cv::Mat Q =
+          queryImage(qrc);
+
+      const cv::Mat R =
+          trainImage(rrc);
+
+      // compute error image
+      cv::Mat E;
+
+      {
+        INSTRUMENT_REGION("ABSDIFF");
+        cv::absdiff(Q, R, E);
+      }
+
+      {
+        INSTRUMENT_REGION("sepFilter2D");
+        cv::sepFilter2D(E, E, E.depth(), G, G, cv::Point(-1, -1), 0,
+            cv::BORDER_REPLICATE);
+      }
+
+      if( E.channels() > 1 ) {
+        INSTRUMENT_REGION("cvtColor");
+        cv::cvtColor(E, E, cv::COLOR_BGR2GRAY);
+      }
+
+      Eq.emplace_back(E);
+
+      const int N =
+          Eq.size();
+
+      if( N == 1 ) {
+        E.copyTo(Emin);
+      }
+      else if( N == 2 ) {
+
+        const cv::Mat &En = Eq.back();
+        const cv::Mat Ec = Eq.front()(rrc);
+
+        En.copyTo(Emin(rrc), En < Emin(rrc));
+        D(rrc).setTo(disparity - 1, En > Ec);
+      }
+      else {
+
+        INSTRUMENT_REGION("COMP");
+
+        const cv::Mat &En = Eq[N - 1];
+        const cv::Mat Ec = Eq[N - 2](rrc);
+        const cv::Mat Ep = Eq[N - 3](rrc);
+        cv::Mat Em = Emin(rrc);
+
+        M1 = En < Em;
+        En.copyTo(Em, M1);
+
+        D(rrc).setTo(-1, M1);
+        D(rrc).setTo(disparity - 1, (En > Ec) & (Ep > Ec) & (Ec == Em) );
+      }
+
+      if ( Eq.size() > 2 ) {
+        Eq.pop_front();
+      }
+
+    }
+  }
+
+  if( output_type_ == OutputErrorMap ) {
+    Emin.copyTo(outputImage);
+  }
+  else if( output_type_ == OutputDisparityMap ) {
+    D.setTo(-1, ~texture_mask);
+    D.copyTo(outputImage);
+
+    if ( outputMask ) {
+      *outputMask = D >= 0;
+    }
+  }
 
   return true;
 }
@@ -777,3 +660,210 @@ void cSweepScanStereoMatcher::setDisp12MaxDiff(int /*disp12MaxDiff*/)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+
+template<class MT>
+bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
+    cv::InputArray referenceImage, cv::InputArray referenceMask,
+    cv::Mat & outputImage, cv::Mat1b * outputMask)
+{
+  INSTRUMENT_REGION("");
+
+  typedef cv::Mat_<MT> MatType;
+
+  const bool enable_debug_point =
+      !debug_points_.empty();
+
+  FILE *debug_points_fp = nullptr;
+
+  double ksigma;
+  int ksize;
+
+  cv::Mat images[2];
+  cv::Mat texture_map, texture_mask;
+
+  images[0] = currentImage.getMat();
+  images[1] = referenceImage.getMat();
+
+  if( lpg_.k() >= 0 ) {
+
+    INSTRUMENT_REGION("LPG");
+
+    lpg_.create_map(images[1], texture_map);
+    if( texture_map.channels() > 1 ) {
+      reduce_color_channels(texture_map, texture_map, cv::REDUCE_MAX);
+    }
+
+    cv::compare(texture_map, get_triangle_threshold(texture_map),
+        texture_mask,
+        cv::CMP_GT);
+  }
+
+  if( output_type_ == OutputTextureMap ) {
+
+    if( !texture_map.empty() ) {
+      outputImage = texture_map;
+    }
+    else {
+      outputImage.create(images[1].size(), CV_32F);
+      outputImage.setTo(0);
+    }
+
+    if( outputMask ) {
+      if( !texture_mask.empty() ) {
+        *outputMask = texture_mask;
+      }
+      else {
+        outputMask->release();
+      }
+    }
+
+    return true;
+  }
+
+  if( output_type_ == OutputTextureMask ) {
+
+    if( !texture_mask.empty() ) {
+      outputImage = texture_mask;
+    }
+    else {
+      outputImage.create(images[1].size(), CV_8UC1);
+      outputImage.setTo(255);
+    }
+
+    if( outputMask ) {
+      if( !texture_mask.empty() ) {
+        *outputMask = texture_mask;
+      }
+      else {
+        outputMask->release();
+      }
+    }
+
+    return true;
+  }
+
+  if( kernel_radius_ > 0 && kernel_sigma_ > 0 ) {
+    ksize = 2 * kernel_radius_ + 1;
+    ksigma = kernel_sigma_;
+  }
+  else if( kernel_radius_ > 0 ) {
+    ksize = 2 * kernel_radius_ + 1;
+    ksigma = std::max(0.75, kernel_radius_ / 4.);
+  }
+  else {
+    ksize = 7;
+    ksigma = 1;
+  }
+
+  const cv::Mat1f G =
+      cv::getGaussianKernel(ksize, ksigma, CV_32F);
+
+  const cv::Mat &queryImage =
+      images[0];
+
+  const cv::Mat &trainImage =
+      images[1];
+
+  const cv::Size max_image_size =
+      trainImage.size();
+
+  std::deque<cv::Mat> Eq;
+  cv::Mat Emin, M1, M2, M3;
+  cv::Mat1s D(max_image_size, (int16_t)(-1));
+
+  if ( true ) {
+
+    INSTRUMENT_REGION("SCAN");
+
+    for( int disparity = 0; disparity < max_disparity_; ++disparity ) {
+
+      const cv::Rect qrc(disparity, 0,
+          max_image_size.width - disparity,
+          max_image_size.height);
+
+      const cv::Rect rrc(0, 0,
+          max_image_size.width - disparity,
+          max_image_size.height);
+
+      const cv::Mat Q =
+          queryImage(qrc);
+
+      const cv::Mat R =
+          trainImage(rrc);
+
+      // compute error image
+      cv::Mat E;
+
+      {
+        INSTRUMENT_REGION("ABSDIFF");
+        cv::absdiff(Q, R, E);
+      }
+
+      {
+        INSTRUMENT_REGION("sepFilter2D");
+        cv::sepFilter2D(E, E, E.depth(), G, G, cv::Point(-1, -1), 0,
+            cv::BORDER_REPLICATE);
+      }
+
+      if( E.channels() > 1 ) {
+        INSTRUMENT_REGION("cvtColor");
+        cv::cvtColor(E, E, cv::COLOR_BGR2GRAY);
+      }
+
+      Eq.emplace_back(E);
+
+      const int N =
+          Eq.size();
+
+      if( N == 1 ) {
+        E.copyTo(Emin);
+      }
+      else if( N == 2 ) {
+
+        const cv::Mat &En = Eq.back();
+        const cv::Mat Ec = Eq.front()(rrc);
+
+        En.copyTo(Emin(rrc), En < Emin(rrc));
+        D(rrc).setTo(disparity - 1, En > Ec);
+      }
+      else {
+
+        INSTRUMENT_REGION("COMP");
+
+        const cv::Mat &En = Eq[N - 1];
+        const cv::Mat Ec = Eq[N - 2](rrc);
+        const cv::Mat Ep = Eq[N - 3](rrc);
+        cv::Mat Em = Emin(rrc);
+
+        M1 = En < Em;
+        En.copyTo(Em, M1);
+
+        D(rrc).setTo(-1, M1);
+        D(rrc).setTo(disparity - 1, (En > Ec) & (Ep > Ec) & (Ec == Em) );
+      }
+
+      if ( Eq.size() > 2 ) {
+        Eq.pop_front();
+      }
+
+    }
+  }
+
+  if( output_type_ == OutputErrorMap ) {
+    Emin.copyTo(outputImage);
+  }
+  else if( output_type_ == OutputDisparityMap ) {
+    D.setTo(-1, ~texture_mask);
+    D.copyTo(outputImage);
+
+    if ( outputMask ) {
+      *outputMask = D >= 0;
+    }
+  }
+
+  return true;
+}
+#endif
+

@@ -35,6 +35,7 @@ public:
     OverlayAbsdiff,
     OverlayContrast,
     OverlayNCC,
+    OverlaySSD,
   };
 
   enum SwapFramesMode {

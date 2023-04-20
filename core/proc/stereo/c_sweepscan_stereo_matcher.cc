@@ -257,6 +257,16 @@ int c_sweepscan_stereo_matcher::max_disparity() const
   return max_disparity_;
 }
 
+void c_sweepscan_stereo_matcher::set_ssflags(int v)
+{
+  ssflags_ = v;
+}
+
+int c_sweepscan_stereo_matcher::ssflags() const
+{
+  return ssflags_;
+}
+
 void c_sweepscan_stereo_matcher::set_max_scale(int v)
 {
   max_scale_ = v;
@@ -327,28 +337,248 @@ c_lpg_sharpness_measure & c_sweepscan_stereo_matcher::lpg()
   return lpg_;
 }
 
-template<class MT>
-bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
+//template<class MT>
+//bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
+//    cv::InputArray referenceImage, cv::InputArray referenceMask,
+//    cv::Mat & outputImage, cv::Mat1b * outputMask)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  typedef cv::Mat_<MT> MatType;
+//
+//  const bool enable_debug_point =
+//      !debug_points_.empty();
+//
+//  FILE *debug_points_fp = nullptr;
+//
+//  double ksigma;
+//  int ksize;
+//
+//  cv::Mat images[2];
+//  cv::Mat texture_map, texture_mask;
+//
+//  images[0] = currentImage.getMat();
+//  images[1] = referenceImage.getMat();
+//
+//  if( lpg_.k() >= 0 ) {
+//
+//    INSTRUMENT_REGION("LPG");
+//
+//    lpg_.create_map(images[1], texture_map);
+//    if( texture_map.channels() > 1 ) {
+//      reduce_color_channels(texture_map, texture_map, cv::REDUCE_MAX);
+//    }
+//
+//    cv::compare(texture_map, get_triangle_threshold(texture_map),
+//        texture_mask,
+//        cv::CMP_GT);
+//  }
+//
+//  if( output_type_ == OutputTextureMap ) {
+//
+//    if( !texture_map.empty() ) {
+//      outputImage = texture_map;
+//    }
+//    else {
+//      outputImage.create(images[1].size(), CV_32F);
+//      outputImage.setTo(0);
+//    }
+//
+//    if( outputMask ) {
+//      if( !texture_mask.empty() ) {
+//        *outputMask = texture_mask;
+//      }
+//      else {
+//        outputMask->release();
+//      }
+//    }
+//
+//    return true;
+//  }
+//
+//  if( output_type_ == OutputTextureMask ) {
+//
+//    if( !texture_mask.empty() ) {
+//      outputImage = texture_mask;
+//    }
+//    else {
+//      outputImage.create(images[1].size(), CV_8UC1);
+//      outputImage.setTo(255);
+//    }
+//
+//    if( outputMask ) {
+//      if( !texture_mask.empty() ) {
+//        *outputMask = texture_mask;
+//      }
+//      else {
+//        outputMask->release();
+//      }
+//    }
+//
+//    return true;
+//  }
+//
+//  if( kernel_radius_ > 0 && kernel_sigma_ > 0 ) {
+//    ksize = 2 * kernel_radius_ + 1;
+//    ksigma = kernel_sigma_;
+//  }
+//  else if( kernel_radius_ > 0 ) {
+//    ksize = 2 * kernel_radius_ + 1;
+//    ksigma = std::max(0.75, kernel_radius_ / 4.);
+//  }
+//  else {
+//    ksize = 7;
+//    ksigma = 1;
+//  }
+//
+//  const cv::Mat1f G =
+//      cv::getGaussianKernel(ksize, ksigma, CV_32F);
+//
+//  const cv::Mat &queryImage =
+//      images[0];
+//
+//  const cv::Mat &trainImage =
+//      images[1];
+//
+//  const cv::Size max_image_size =
+//      trainImage.size();
+//
+//  std::deque<cv::Mat> Eq;
+//  cv::Mat Emin, M1, M2, M3;
+//  cv::Mat1s D(max_image_size, (int16_t)(-1));
+//
+//  if ( true ) {
+//
+//    INSTRUMENT_REGION("SCAN");
+//
+//    for( int disparity = 0; disparity < max_disparity_; ++disparity ) {
+//
+//      const cv::Rect qrc(disparity, 0,
+//          max_image_size.width - disparity,
+//          max_image_size.height);
+//
+//      const cv::Rect rrc(0, 0,
+//          max_image_size.width - disparity,
+//          max_image_size.height);
+//
+//      const cv::Mat Q =
+//          queryImage(qrc);
+//
+//      const cv::Mat R =
+//          trainImage(rrc);
+//
+//      // compute error image
+//      cv::Mat E;
+//
+//      {
+//        INSTRUMENT_REGION("ABSDIFF");
+//        cv::absdiff(Q, R, E);
+//      }
+//
+//      {
+//        INSTRUMENT_REGION("sepFilter2D");
+//        cv::sepFilter2D(E, E, E.depth(), G, G, cv::Point(-1, -1), 0,
+//            cv::BORDER_REPLICATE);
+//      }
+//
+//      if( E.channels() > 1 ) {
+//        INSTRUMENT_REGION("cvtColor");
+//        cv::cvtColor(E, E, cv::COLOR_BGR2GRAY);
+//      }
+//
+//      Eq.emplace_back(E);
+//
+//      const int N =
+//          Eq.size();
+//
+//      if( N == 1 ) {
+//        E.copyTo(Emin);
+//      }
+//      else if( N == 2 ) {
+//
+//        const cv::Mat &En = Eq.back();
+//        const cv::Mat Ec = Eq.front()(rrc);
+//
+//        En.copyTo(Emin(rrc), En < Emin(rrc));
+//        D(rrc).setTo(disparity - 1, En > Ec);
+//      }
+//      else {
+//
+//        INSTRUMENT_REGION("COMP");
+//
+//        const cv::Mat &En = Eq[N - 1];
+//        const cv::Mat Ec = Eq[N - 2](rrc);
+//        const cv::Mat Ep = Eq[N - 3](rrc);
+//        cv::Mat Em = Emin(rrc);
+//
+//        M1 = En < Em;
+//        En.copyTo(Em, M1);
+//
+//        D(rrc).setTo(-1, M1);
+//        D(rrc).setTo(disparity - 1, (En > Ec) & (Ep > Ec) & (Ec == Em) );
+//      }
+//
+//      if ( Eq.size() > 2 ) {
+//        Eq.pop_front();
+//      }
+//
+//    }
+//  }
+//
+//  if( output_type_ == OutputErrorMap ) {
+//    Emin.copyTo(outputImage);
+//  }
+//  else if( output_type_ == OutputDisparityMap ) {
+//    D.setTo(-1, ~texture_mask);
+//    D.copyTo(outputImage);
+//
+//    if ( outputMask ) {
+//      *outputMask = D >= 0;
+//    }
+//  }
+//
+//  return true;
+//}
+
+bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat & outputImage, cv::Mat1b * outputMask)
 {
-  INSTRUMENT_REGION("");
+  ////////////
 
-  typedef cv::Mat_<MT> MatType;
+  if( currentImage.size() != referenceImage.size() ) {
+    CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
+        currentImage.cols(), currentImage.rows(),
+        referenceImage.cols(), referenceImage.rows());
+    return false;
+  }
 
-  const bool enable_debug_point =
-      !debug_points_.empty();
+  if( currentImage.type() != referenceImage.type() ) {
+    CF_ERROR("current (%d) and reference (%d) image types not match",
+        currentImage.type(), referenceImage.type());
+    return false;
+  }
 
-  FILE *debug_points_fp = nullptr;
+  if( currentImage.type() != CV_8UC3 ) {
+    CF_ERROR("unsupported image type %d. Must be CV_8UC3",
+        currentImage.type());
+    return false;
+  }
 
-  double ksigma;
-  int ksize;
+  if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
+    CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
+        debug_directory_.c_str(), strerror(errno));
+    return false;
+  }
 
-  cv::Mat images[2];
-  cv::Mat texture_map, texture_mask;
 
-  images[0] = currentImage.getMat();
-  images[1] = referenceImage.getMat();
+  const cv::Mat3b images[2] = {
+      currentImage.getMat(),
+      referenceImage.getMat()
+  };
+
+  cv::Mat texture_map;
+  cv::Mat1b texture_mask;
 
   if( lpg_.k() >= 0 ) {
 
@@ -408,174 +638,47 @@ bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Inp
     return true;
   }
 
-  if( kernel_radius_ > 0 && kernel_sigma_ > 0 ) {
-    ksize = 2 * kernel_radius_ + 1;
-    ksigma = kernel_sigma_;
-  }
-  else if( kernel_radius_ > 0 ) {
-    ksize = 2 * kernel_radius_ + 1;
-    ksigma = std::max(0.75, kernel_radius_ / 4.);
-  }
-  else {
-    ksize = 7;
-    ksigma = 1;
-  }
 
-  const cv::Mat1f G =
-      cv::getGaussianKernel(ksize, ksigma, CV_32F);
+  cv::Mat descs[2];
+  cv::Mat1w disps, errs;
 
-  const cv::Mat &queryImage =
-      images[0];
-
-  const cv::Mat &trainImage =
-      images[1];
-
-  const cv::Size max_image_size =
-      trainImage.size();
-
-  std::deque<cv::Mat> Eq;
-  cv::Mat Emin, M1, M2, M3;
-  cv::Mat1s D(max_image_size, (int16_t)(-1));
-
-  if ( true ) {
-
-    INSTRUMENT_REGION("SCAN");
-
-    for( int disparity = 0; disparity < max_disparity_; ++disparity ) {
-
-      const cv::Rect qrc(disparity, 0,
-          max_image_size.width - disparity,
-          max_image_size.height);
-
-      const cv::Rect rrc(0, 0,
-          max_image_size.width - disparity,
-          max_image_size.height);
-
-      const cv::Mat Q =
-          queryImage(qrc);
-
-      const cv::Mat R =
-          trainImage(rrc);
-
-      // compute error image
-      cv::Mat E;
-
-      {
-        INSTRUMENT_REGION("ABSDIFF");
-        cv::absdiff(Q, R, E);
-      }
-
-      {
-        INSTRUMENT_REGION("sepFilter2D");
-        cv::sepFilter2D(E, E, E.depth(), G, G, cv::Point(-1, -1), 0,
-            cv::BORDER_REPLICATE);
-      }
-
-      if( E.channels() > 1 ) {
-        INSTRUMENT_REGION("cvtColor");
-        cv::cvtColor(E, E, cv::COLOR_BGR2GRAY);
-      }
-
-      Eq.emplace_back(E);
-
-      const int N =
-          Eq.size();
-
-      if( N == 1 ) {
-        E.copyTo(Emin);
-      }
-      else if( N == 2 ) {
-
-        const cv::Mat &En = Eq.back();
-        const cv::Mat Ec = Eq.front()(rrc);
-
-        En.copyTo(Emin(rrc), En < Emin(rrc));
-        D(rrc).setTo(disparity - 1, En > Ec);
-      }
-      else {
-
-        INSTRUMENT_REGION("COMP");
-
-        const cv::Mat &En = Eq[N - 1];
-        const cv::Mat Ec = Eq[N - 2](rrc);
-        const cv::Mat Ep = Eq[N - 3](rrc);
-        cv::Mat Em = Emin(rrc);
-
-        M1 = En < Em;
-        En.copyTo(Em, M1);
-
-        D(rrc).setTo(-1, M1);
-        D(rrc).setTo(disparity - 1, (En > Ec) & (Ep > Ec) & (Ec == Em) );
-      }
-
-      if ( Eq.size() > 2 ) {
-        Eq.pop_front();
-      }
-
+  {
+    INSTRUMENT_REGION("ss_compute");
+    for( int i = 0; i < 2; ++i ) {
+      ssdesc_compute(images[i], descs[i], ssflags_);
     }
   }
 
-  if( output_type_ == OutputErrorMap ) {
-    Emin.copyTo(outputImage);
-  }
-  else if( output_type_ == OutputDisparityMap ) {
-    D.setTo(-1, ~texture_mask);
-    D.copyTo(outputImage);
-
-    if ( outputMask ) {
-      *outputMask = D >= 0;
-    }
+  {
+    INSTRUMENT_REGION("ss_match");
+    ssdesc_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask);
   }
 
-  return true;
-}
+  switch (output_type_) {
+    case OutputTextureMap:
+      outputImage.release();
+      if( outputMask ) {
+        outputMask->release();
+      }
+      break;
 
-bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
-    cv::InputArray referenceImage, cv::InputArray referenceMask,
-    cv::Mat & outputMatches, cv::Mat1b * outputMask)
-{
-  ////////////
+    case OutputTextureMask:
+      outputImage.release();
+      if( outputMask ) {
+        outputMask->release();
+      }
+      break;
 
-  if( currentImage.size() != referenceImage.size() ) {
-    CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
-        currentImage.cols(), currentImage.rows(),
-        referenceImage.cols(), referenceImage.rows());
-    return false;
-  }
+    case OutputDisparityMap:
+      outputImage = disps;
+      break;
 
-  if( currentImage.type() != referenceImage.type() ) {
-    CF_ERROR("current (%d) and reference (%d) image types not match",
-        currentImage.type(), referenceImage.type());
-    return false;
-  }
-
-  if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
-    CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
-        debug_directory_.c_str(), strerror(errno));
-    return false;
-  }
-
-  switch (currentImage.depth()) {
-    case CV_8U:
-      return match_impl<uint8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    case CV_8S:
-      return match_impl<int8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    case CV_16U:
-      return match_impl<uint16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    case CV_16S:
-      return match_impl<int16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    case CV_32S:
-      return match_impl<int32_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    case CV_32F:
-      return match_impl<float>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    case CV_64F:
-      return match_impl<double>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
-    default:
-      CF_ERROR("ERROR: Not supported image depth %d", currentImage.depth());
+    case OutputErrorMap:
+      outputImage = errs;
       break;
   }
 
-  return false;
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -865,5 +968,55 @@ bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::Inp
 
   return true;
 }
+
+
+bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
+    cv::InputArray referenceImage, cv::InputArray referenceMask,
+    cv::Mat & outputMatches, cv::Mat1b * outputMask)
+{
+  ////////////
+
+  if( currentImage.size() != referenceImage.size() ) {
+    CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
+        currentImage.cols(), currentImage.rows(),
+        referenceImage.cols(), referenceImage.rows());
+    return false;
+  }
+
+  if( currentImage.type() != referenceImage.type() ) {
+    CF_ERROR("current (%d) and reference (%d) image types not match",
+        currentImage.type(), referenceImage.type());
+    return false;
+  }
+
+  if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
+    CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
+        debug_directory_.c_str(), strerror(errno));
+    return false;
+  }
+
+  switch (currentImage.depth()) {
+    case CV_8U:
+      return match_impl<uint8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    case CV_8S:
+      return match_impl<int8_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    case CV_16U:
+      return match_impl<uint16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    case CV_16S:
+      return match_impl<int16_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    case CV_32S:
+      return match_impl<int32_t>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    case CV_32F:
+      return match_impl<float>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    case CV_64F:
+      return match_impl<double>(currentImage, currentMask, referenceImage, referenceMask, outputMatches, outputMask);
+    default:
+      CF_ERROR("ERROR: Not supported image depth %d", currentImage.depth());
+      break;
+  }
+
+  return false;
+}
+
 #endif
 

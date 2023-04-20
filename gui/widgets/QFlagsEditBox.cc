@@ -75,6 +75,10 @@ void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
               &fOk).trimmed();
 
           if ( !text.isEmpty() ) {
+
+            const int oldflags =
+                flags_;
+
             if ( text.startsWith("0x", Qt::CaseInsensitive ) ) {
               flags_ = text.toInt(&fOk, 16);
             }
@@ -86,6 +90,10 @@ void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
             }
 
             updateControls();
+
+            if ( flags_ != oldflags ) {
+              Q_EMIT flagsChanged(flags_);
+            }
           }
         });
 

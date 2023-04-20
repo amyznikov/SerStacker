@@ -113,6 +113,17 @@ static bool cmp(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst)
 
 int main(int argc, char *argv[])
 {
+
+  uint8_t a = 254;
+  uint8_t b = 1;
+  uint8_t c1 = a-b;
+  uint8_t c2 = b-a;
+
+  printf("a=%u b=%u c1=%u c2=%u\n", a, b, c1, c2);
+  return 0;
+
+
+
   std::string input_filenames[2];
 
   cv::Mat images[2];

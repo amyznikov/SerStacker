@@ -28,6 +28,9 @@ public:
   void set_max_disparity(int v);
   int max_disparity() const;
 
+  void set_ssflags(int v);
+  int ssflags() const;
+
   void set_max_scale(int v);
   int max_scale() const;
 

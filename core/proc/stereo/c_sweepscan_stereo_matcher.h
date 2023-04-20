@@ -10,6 +10,7 @@
 #define __c_sweepscan_stereo_matcher_h__
 
 #include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
+#include <core/proc/stereo/ssdesc.h>
 
 class c_sweepscan_stereo_matcher
 {
@@ -36,6 +37,9 @@ public:
   void set_max_disparity(int v);
   int max_disparity() const;
 
+  void set_ssflags(int v);
+  int ssflags() const;
+
   void set_max_scale(int v);
   int max_scale() const;
 
@@ -58,14 +62,15 @@ public:
   c_lpg_sharpness_measure & lpg();
 
 protected:
-  template<class MT>
-  bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::InputArray referenceImage, cv::InputArray referenceMask,
-      cv::Mat & outputImage, cv::Mat1b * outputMask);
+//  template<class MT>
+//  bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
+//      cv::InputArray referenceImage, cv::InputArray referenceMask,
+//      cv::Mat & outputImage, cv::Mat1b * outputMask);
 
 protected:
   OutputType output_type_ = OutputTextureMask;
 
+  int ssflags_ = sscmp_all;
   int max_disparity_ = 128;
   int max_scale_ = 2;
   double kernel_sigma_ = 1;

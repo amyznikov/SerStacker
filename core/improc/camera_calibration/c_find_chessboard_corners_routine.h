@@ -213,13 +213,13 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCorners", "");
       ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_max_scales, max_scales, "");
       //ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_flags, flags, "");
-      ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCorners_flags, flags, FindChessboardCornersFlags, "")
+      ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCorners_flags, "flags", FindChessboardCornersFlags, "")
     END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
 
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCornersSB", "");
       ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_max_scales, max_scales, "");
       //ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_flags, flags, "");
-      ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCornersSB_flags, flags, FindChessboardCornersSBFlags, "")
+      ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCornersSB_flags, "flags", FindChessboardCornersSBFlags, "")
     END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
 
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "cornerSubPix", "");

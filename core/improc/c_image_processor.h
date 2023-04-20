@@ -69,12 +69,11 @@ struct c_image_processor_routine_ctrl {
 
 #define ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, param, cname, enumtype, desc) \
   if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-        .name = #cname, \
-        .tooltip = desc, \
-        .ctl_type = c_image_processor_ctl_flags_chkbox, \
-        .get_enum_members = get_members_of<enumtype>(), \
-    }; \
+    c_image_processor_routine_ctrl tmp; \
+    tmp.name = cname, \
+    tmp.tooltip = desc; \
+    tmp.ctl_type = c_image_processor_ctl_flags_chkbox, \
+    tmp.get_enum_members = get_members_of<enumtype>(), \
     tmp.get_value = [this](void) { \
         return toString(param()); \
       }; \

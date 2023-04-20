@@ -58,6 +58,11 @@ void QMeasureDisplay::updateEnableMeasurements()
 
 }
 
+void QMeasureDisplay::clearMeasurements()
+{
+  table_->setRowCount(0);
+}
+
 
 void QMeasureDisplay::showEvent(QShowEvent * e)
 {
@@ -133,6 +138,10 @@ void QMeasureDisplay::setupToolbar()
 
   connect(enableMeasureAction_, &QAction::triggered,
       this, &ThisClass::updateEnableMeasurements);
+
+  connect(clearTableAction_, &QAction::triggered,
+      this, &ThisClass::clearMeasurements);
+
 
   enableMeasureAction_->setChecked(true);
   updateEnableMeasurements();

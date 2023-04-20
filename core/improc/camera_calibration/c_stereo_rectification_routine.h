@@ -19,7 +19,11 @@
 #define __c_stereo_rectification_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/stereo/ssdesc.h>
 #include <core/proc/camera_calibration/stereo_calibrate.h>
+#include <opencv2/xfeatures2d.hpp>
+
+
 
 class c_stereo_rectification_routine :
     public c_image_processor_routine
@@ -35,7 +39,9 @@ public:
     OverlayAbsdiff,
     OverlayContrast,
     OverlayNCC,
+    OverlayDisplaySSD,
     OverlaySSD,
+    // OverlayDAISY,
   };
 
   enum SwapFramesMode {
@@ -106,6 +112,16 @@ public:
     return overlay_offset_;
   }
 
+  void set_ssflags(int v)
+  {
+    ssflags_ = v;
+  }
+
+  int ssflags() const
+  {
+    return ssflags_;
+  }
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_rectification, "Enable image rectification");
@@ -113,6 +129,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, swap_frames, "Swap Left and Right frames");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
+    ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, ssflags, "ssflags", sscmpflags, "ssflags");
     ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
   }
 
@@ -128,6 +145,7 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
+      SERIALIZE_PROPERTY(settings, save, *this, ssflags);
 
       return true;
     }
@@ -145,6 +163,7 @@ protected:
   OverlayMode overlay_mode_ = OverlayNone;
   SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
+  int ssflags_ = sscmp_all;
 
   bool enable_rectification_ = true;
   c_stereo_camera_intrinsics intrinsics_;
@@ -152,6 +171,8 @@ protected:
 
   bool have_stereo_calibration_ = false;
   cv::Mat2f rmaps[2];
+
+  cv::Ptr<cv::xfeatures2d::DAISY> daisy_;
 };
 
 #endif /* __c_stereo_rectification_routine_h__ */

@@ -32,6 +32,7 @@ protected:
   void updateVisibleColumns();
   void updateMeasurements();
   void updateEnableMeasurements();
+  void clearMeasurements();
   void onTableViewContextMenuRequested(const QPoint &pos);
   void onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 

@@ -359,38 +359,41 @@ void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, 
   cv::Mat1w disp = disps.getMatRef();
   cv::Mat1w err = errs.getMatRef();
 
-  for( int y = 0; y < current_desc.rows; ++y ) {
+  tbb::parallel_for(tbb_range(0, current_desc.rows, 16),
+      [&](const tbb_range & r) {
 
-    const uint8_t * mskp = mask[y];
+        for( int y = r.begin(); y < r.end(); ++y ) {
 
-    const ssdesc *cssp = reinterpret_cast<const ssdesc*>(current_desc[y]);
-    const ssdesc *rssp = reinterpret_cast<const ssdesc*>(reference_desc[y]);
+          const uint8_t * mskp = mask[y];
 
-    uint8_t s, sbest;
+          const ssdesc *cssp = reinterpret_cast<const ssdesc*>(current_desc[y]);
+          const ssdesc *rssp = reinterpret_cast<const ssdesc*>(reference_desc[y]);
 
-    for( int x = 0; x < reference_desc.cols; ++x ) {
-      if( mskp[x] ) {
+          uint8_t sbest;
 
-        const ssdesc & rss =
-            rssp[x];
+          for( int x = 0; x < reference_desc.cols; ++x ) {
+            if( mskp[x] ) {
 
-        sbest =
-            absdiff(rss, cssp[x]);
+              const ssdesc & rss = rssp[x];
 
-        int xxbest = x;
+              uint8_t sbest = absdiff(rss, cssp[x]);
+              int xxbest = x;
 
-        for( int xx = x + 1, xxmax = std::min(x + max_disparity, current_desc.cols); xx < xxmax; ++xx ) {
+              for( int xx = x + 1, xxmax = std::min(x + max_disparity, current_desc.cols); xx < xxmax; ++xx ) {
 
-          if( (s = absdiff(rss, cssp[xx])) < sbest ) {
-            xxbest = xx;
-            sbest = s;
+                const uint8_t s = absdiff(rss, cssp[xx]);
+                if( s < sbest ) {
+                  xxbest = xx;
+                  sbest = s;
+                }
+
+              }
+
+              disp[y][x] = xxbest - x;
+              err[y][x] = sbest;
+            }
           }
-
         }
 
-        disp[y][x] = xxbest - x;
-        err[y][x] = sbest;
-      }
-    }
-  }
+      });
 }

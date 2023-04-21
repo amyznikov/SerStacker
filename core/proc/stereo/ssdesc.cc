@@ -297,7 +297,7 @@ void ssdesc_compare(cv::InputArray d1, cv::InputArray d2, cv::OutputArray dists)
 
 
 void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, int max_disparity,
-    cv::OutputArray disps, cv::OutputArray errs,
+    cv::OutputArray disps, cv::OutputArray costs,
     const cv::Mat1b & mask)
 {
   const cv::Mat4w current_desc = current_descs.getMat();
@@ -306,13 +306,13 @@ void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, 
   disps.create(reference_desc.size(), CV_16UC1);
   disps.setTo(0);
 
-  errs.create(reference_desc.size(), CV_16UC1);
-  errs.setTo(0);
+  costs.create(reference_desc.size(), CV_16UC1);
+  costs.setTo(0);
 
   //err.create(reference_desc.size(), CV_16U);
 
   cv::Mat1w disp = disps.getMatRef();
-  cv::Mat1w err = errs.getMatRef();
+  cv::Mat1w cost = costs.getMatRef();
 
   tbb::parallel_for(tbb_range(0, current_desc.rows, 16),
       [&](const tbb_range & r) {
@@ -324,28 +324,26 @@ void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, 
           const ssdesc *cssp = reinterpret_cast<const ssdesc*>(current_desc[y]);
           const ssdesc *rssp = reinterpret_cast<const ssdesc*>(reference_desc[y]);
 
-          uint8_t sbest;
-
           for( int x = 0; x < reference_desc.cols; ++x ) {
             if( mskp[x] ) {
 
               const ssdesc & rss = rssp[x];
 
-              uint8_t sbest = absdiff(rss, cssp[x]);
-              int xxbest = x;
+              uint8_t cbest = absdiff(rss, cssp[x]);
+              int xbest = x;
 
               for( int xx = x + 1, xxmax = std::min(x + max_disparity, current_desc.cols); xx < xxmax; ++xx ) {
 
-                const uint8_t s = absdiff(rss, cssp[xx]);
-                if( s < sbest ) {
-                  xxbest = xx;
-                  sbest = s;
+                const uint8_t c = absdiff(rss, cssp[xx]);
+                if( c < cbest ) {
+                  xbest = xx;
+                  cbest = c;
                 }
 
               }
 
-              disp[y][x] = xxbest - x;
-              err[y][x] = sbest;
+              disp[y][x] = xbest - x;
+              cost[y][x] = cbest;
             }
           }
         }

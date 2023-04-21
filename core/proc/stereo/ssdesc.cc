@@ -7,7 +7,9 @@
 
 #include "ssdesc.h"
 #include <tbb/tbb.h>
+#include <xmmintrin.h>
 #include <core/ssprintf.h>
+
 #include <core/debug.h>
 
 template<>
@@ -41,14 +43,20 @@ constexpr int ss_size = 15;
 // sizeof(ssdesc) = 8
 struct ssdesc
 {
-  uint8_t g;
-  uint8_t gx;
-  uint8_t gy;
-  uint8_t gxx;
-  uint8_t gyy;
-  uint8_t gxy;
-  uint8_t a;
-  uint8_t b;
+  union {
+    uint64_t u64;
+    uint8_t arr[8];
+    struct {
+      uint8_t g;
+      uint8_t gx;
+      uint8_t gy;
+      uint8_t gxx;
+      uint8_t gyy;
+      uint8_t gxy;
+      uint8_t a;
+      uint8_t b;
+    };
+  };
 };
 
 #pragma pack(pop)
@@ -77,24 +85,39 @@ void compute_gradients(const cv::Mat & src, cv::Mat1f & gx, cv::Mat1f & gy,
   cv::filter2D(gx, gxy, CV_32F, Kt, cv::Point(-1, -1), 0, border_type);
 }
 
-static inline uint8_t absdiff(uint8_t a, uint8_t b)
+//static inline uint8_t absdiff(uint8_t a, uint8_t b)
+//{
+//  return a > b ? a - b : b - a;
+//}
+
+static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
 {
-  return a > b ? a - b : b - a;
+  //  uint8_t s = absdiff(a.arr[0], b.arr[0]);
+  //  for( int i = 1; i < 8; ++i ) {
+  //    s = std::max(s, absdiff(a.arr[i], b.arr[i]));
+  //  }
+  //  return s;
+
+  const __m64 ma = _m_from_int64(a.u64);
+  const __m64 mb = _m_from_int64(b.u64);
+  ssdesc c;
+  c.u64 = _m_to_int64(_mm_sub_pi8(_mm_max_pu8(ma, mb), _mm_min_pu8(ma, mb)));
+
+//  ssdesc c;
+//  c.m64 = _mm_sub_pi8(_mm_max_pu8(a.m64, b.m64), _mm_min_pu8(a.m64, b.m64));
+
+  uint8_t s = c.arr[0];
+  for( int i = 1; i < 8; ++i ) {
+    if( c.arr[i] > s ) {
+      s = c.arr[i];
+    }
+  }
+
+  return s;
 }
 
-static inline uint16_t absdiff(const ssdesc & a, const ssdesc & b)
-{
-  return absdiff(a.g, b.g) +
-      absdiff(a.gx, b.gx) +
-      absdiff(a.gy, b.gy) +
-      absdiff(a.gxx, b.gxx) +
-      absdiff(a.gyy, b.gyy) +
-      absdiff(a.gxy, b.gxy) +
-      absdiff(a.a, b.a) +
-      absdiff(a.b, b.b);
-}
 
-}
+} // namespace
 
 void ssdesc_compute(const cv::Mat3b & image, cv::OutputArray & _desc, int flags)
 {
@@ -102,112 +125,152 @@ void ssdesc_compute(const cv::Mat3b & image, cv::OutputArray & _desc, int flags)
   cv::Mat1f gx, gy, gxx, gyy, gxy;
   std::vector<cv::Mat> lab;
 
-  cv::GaussianBlur(image, s, cv::Size(ss_size, ss_size), ss_sigma, ss_sigma, cv::BORDER_REPLICATE);
-  cv::cvtColor(s, s, cv::COLOR_BGR2Lab);
+  static const thread_local cv::Mat1f G = cv::getGaussianKernel(ss_size, ss_sigma, CV_32F);
+  cv::sepFilter2D(image, s, CV_32F, G, G);
+
+  //cv::GaussianBlur(image, s, cv::Size(ss_size, ss_size), ss_sigma, ss_sigma, cv::BORDER_REPLICATE);
+  //cv::cvtColor(s, s, cv::COLOR_BGR2Lab);
+  cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
+
   cv::split(s, lab);
 
-  const cv::Mat1b g = lab[0];
-  const cv::Mat1b a = lab[1];
-  const cv::Mat1b b = lab[2];
+  const cv::Mat1f g = lab[0];
+  const cv::Mat1f a = lab[1];
+  const cv::Mat1f b = lab[2];
 
   compute_gradients(g, gx, gy, gxx, gyy, gxy);
 
   cv::Mat4w desc(g.size(), cv::Vec4w(0, 0, 0, 0));
 
-  tbb::parallel_for(tbb_range(0, g.rows, tbb_grain_size),
-      [&](const tbb_range & r) {
+  if ( (flags & sscmp_all) == sscmp_all ) {
 
-        const int width = g.cols;
+    tbb::parallel_for(tbb_range(0, g.rows, tbb_grain_size),
+        [&](const tbb_range & r) {
 
-        for( int y = r.begin(); y < r.end(); ++y ) {
+          const int width = g.cols;
 
-          ssdesc *ssp = reinterpret_cast<ssdesc*>(desc[y]);
+          for( int y = r.begin(); y < r.end(); ++y ) {
 
-          for( int x = 0; x < width; ++x ) {
+            ssdesc *ssp = reinterpret_cast<ssdesc*>(desc[y]);
 
-            ssdesc & ss = ssp[x];
+            for( int x = 0; x < width; ++x ) {
 
-            if ( flags & sscmp_g ) {
+              ssdesc & ss = ssp[x];
               ss.g = (uint8_t) (g[y][x]);
-            }
-            if ( flags & sscmp_gx ) {
-              ss.gx = (uint8_t) (gx[y][x] * 2 + 128);
-            }
-            if ( flags & sscmp_gy ) {
-              ss.gy = (uint8_t) (gy[y][x] * 2 + 128);
-            }
-            if ( flags & sscmp_gxx ) {
-              ss.gxx = (uint8_t) (gxx[y][x] * 4 + 128);
-            }
-            if ( flags & sscmp_gyy ) {
-              ss.gyy = (uint8_t) (gyy[y][x] * 4 + 128);
-            }
-            if ( flags & sscmp_gxy ) {
-              ss.gxy = (uint8_t) (gxy[y][x] * 8 + 128);
-            }
-            if ( flags & sscmp_a ) {
-              ss.a = (uint8_t) (a[y][x]);
-            }
-            if ( flags & sscmp_b ) {
-              ss.b = (uint8_t) (b[y][x]);
+              ss.gx = (uint8_t) (gx[y][x] * 4 + 128);
+              ss.gy = (uint8_t) (gy[y][x] * 4 + 128);
+              ss.gxx = (uint8_t) (gxx[y][x] * 10 + 128);
+              ss.gyy = (uint8_t) (gyy[y][x] * 10 + 128);
+              ss.gxy = (uint8_t) (gxy[y][x] * 24 + 128);
+              ss.a = (uint8_t) (a[y][x] + 128);
+              ss.b = (uint8_t) (b[y][x] + 128);
             }
           }
-        }
 
-      });
+        });
+  }
+  else {
+
+    tbb::parallel_for(tbb_range(0, g.rows, tbb_grain_size),
+        [&](const tbb_range & r) {
+
+          const int width = g.cols;
+
+          for( int y = r.begin(); y < r.end(); ++y ) {
+
+            ssdesc *ssp = reinterpret_cast<ssdesc*>(desc[y]);
+
+            for( int x = 0; x < width; ++x ) {
+
+              ssdesc & ss = ssp[x];
+
+              if ( flags & sscmp_g ) {
+                ss.g = (uint8_t) (g[y][x]);
+              }
+              if ( flags & sscmp_gx ) {
+                ss.gx = (uint8_t) (gx[y][x] * 4 + 128);
+              }
+              if ( flags & sscmp_gy ) {
+                ss.gy = (uint8_t) (gy[y][x] * 4 + 128);
+              }
+              if ( flags & sscmp_gxx ) {
+                ss.gxx = (uint8_t) (gxx[y][x] * 10 + 128);
+              }
+              if ( flags & sscmp_gyy ) {
+                ss.gyy = (uint8_t) (gyy[y][x] * 10 + 128);
+              }
+              if ( flags & sscmp_gxy ) {
+                ss.gxy = (uint8_t) (gxy[y][x] * 24 + 128);
+              }
+              if ( flags & sscmp_a ) {
+                ss.a = (uint8_t) (a[y][x] + 128);
+              }
+              if ( flags & sscmp_b ) {
+                ss.b = (uint8_t) (b[y][x] + 128);
+              }
+            }
+          }
+
+        });
+  }
 
   _desc.move(desc);
 }
+//
+//void ssdesc_compute(const cv::Mat3b & image, cv::OutputArray & _desc)
+//{
+//  cv::Mat s;
+//  cv::Mat1f gx, gy, gxx, gyy, gxy;
+//  std::vector<cv::Mat> lab;
+//
+//  static const thread_local cv::Mat1f G = cv::getGaussianKernel(ss_size, ss_sigma, CV_32F) / 16.0;
+//  cv::sepFilter2D(image, s, CV_32F, G, G);
+//
+//  //cv::GaussianBlur(image, s, cv::Size(ss_size, ss_size), ss_sigma, ss_sigma, cv::BORDER_REPLICATE);
+//  //cv::cvtColor(s, s, cv::COLOR_BGR2Lab);
+//  cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
+//  cv::split(s, lab);
+//
+//  const cv::Mat1f g = lab[0];
+//  const cv::Mat1f a = lab[1];
+//  const cv::Mat1f b = lab[2];
+//
+//  compute_gradients(g, gx, gy, gxx, gyy, gxy);
+//
+//  cv::Mat4w desc(g.size()/*, cv::Vec4w(0, 0, 0, 0)*/);
+//
+//  tbb::parallel_for(tbb_range(0, g.rows, tbb_grain_size),
+//      [&](const tbb_range & r) {
+//
+//        const int width = g.cols;
+//
+//        constexpr float scale1 = 255.f / 100;
+//        constexpr float scale2 = 5;
+//
+//        for( int y = r.begin(); y < r.end(); ++y ) {
+//
+//          ssdesc *ssp = reinterpret_cast<ssdesc*>(desc[y]);
+//
+//          for( int x = 0; x < width; ++x ) {
+//
+//            ssdesc & ss = ssp[x];
+//            ss.g = (uint8_t) (g[y][x] * scale1);
+//            ss.gx = (uint8_t) (gx[y][x] * scale2 + 128);
+//            ss.gy = (uint8_t) (gy[y][x] * scale2 + 128);
+//            ss.gxx = (uint8_t) (gxx[y][x] * scale2 + 128);
+//            ss.gyy = (uint8_t) (gyy[y][x] * scale2 + 128);
+//            ss.gxy = (uint8_t) (gxy[y][x] * scale2 + 128);
+//            ss.a = (uint8_t) (a[y][x] + 128);
+//            ss.b = (uint8_t) (b[y][x] + 128);
+//          }
+//        }
+//
+//      });
+//
+//  _desc.move(desc);
+//}
 
-void ssdesc_compute(const cv::Mat3b & image, cv::OutputArray & _desc)
-{
-  cv::Mat s;
-  cv::Mat1f gx, gy, gxx, gyy, gxy;
-  std::vector<cv::Mat> lab;
-
-
-  cv::GaussianBlur(image, s, cv::Size(ss_size, ss_size), ss_sigma, ss_sigma, cv::BORDER_REPLICATE);
-  cv::cvtColor(s, s, cv::COLOR_BGR2Lab);
-  cv::split(s, lab);
-
-  const cv::Mat1b g = lab[0];
-  const cv::Mat1b a = lab[1];
-  const cv::Mat1b b = lab[2];
-
-  compute_gradients(g, gx, gy, gxx, gyy, gxy);
-
-  cv::Mat4w desc(g.size(), cv::Vec4w(0, 0, 0, 0));
-
-  tbb::parallel_for(tbb_range(0, g.rows, tbb_grain_size),
-      [&](const tbb_range & r) {
-
-        const int width = g.cols;
-
-        for( int y = r.begin(); y < r.end(); ++y ) {
-
-          ssdesc *ssp = reinterpret_cast<ssdesc*>(desc[y]);
-
-          for( int x = 0; x < width; ++x ) {
-
-            ssdesc & ss = ssp[x];
-            ss.g = (uint8_t) (g[y][x]);
-            ss.gx = (uint8_t) (gx[y][x] * 2 + 128);
-            ss.gy = (uint8_t) (gy[y][x] * 2 + 128);
-            ss.gxx = (uint8_t) (gxx[y][x] * 4 + 128);
-            ss.gyy = (uint8_t) (gyy[y][x] * 4 + 128);
-            ss.gxy = (uint8_t) (gxy[y][x] * 8 + 128);
-            ss.a = (uint8_t) (a[y][x]);
-            ss.b = (uint8_t) (b[y][x]);
-          }
-        }
-
-      });
-
-  _desc.move(desc);
-}
-
-
-void ssdesc_cvtfp32(const cv::Mat & _desc, cv::OutputArray output)
+void ssdesc_cvtfp32(const cv::Mat & _desc, cv::OutputArray output, int flags)
 {
   const cv::Mat4w desc = _desc;
 
@@ -216,21 +279,39 @@ void ssdesc_cvtfp32(const cv::Mat & _desc, cv::OutputArray output)
 
   for( int y = 0; y < desc.rows; ++y ) {
 
-    const ssdesc *ssp = reinterpret_cast<const ssdesc*>(desc[y]);
+    const ssdesc *ssp =
+        reinterpret_cast<const ssdesc*>(desc[y]);
 
     for( int x = 0; x < desc.cols; ++x ) {
 
       const ssdesc &ss = ssp[x];
 
-      const uint64_t v =
-          ((uint64_t) ss.g << (64 - 8)) |
-          ((uint64_t) ss.gx << (64 - 16)) |
-          ((uint64_t) ss.gy << (64 - 24)) |
-          ((uint64_t) ss.gxx << (64 - 32)) |
-          ((uint64_t) ss.gyy << (64 - 40)) |
-          ((uint64_t) ss.gxy << (64 - 48)) |
-          ((uint64_t) ss.a << (64 - 56)) |
-          ((uint64_t) ss.b << (64 - 64));
+      uint64_t v = 0;
+
+      if( flags & sscmp_g ) {
+        v = ss.g;
+      }
+      else if( flags & sscmp_gx ) {
+        v = ss.gx;
+      }
+      else if( flags & sscmp_gy ) {
+        v = ss.gy;
+      }
+      else if( flags & sscmp_gxx ) {
+        v = ss.gxx;
+      }
+      else if( flags & sscmp_gyy ) {
+        v = ss.gyy;
+      }
+      else if( flags & sscmp_gxy ) {
+        v = ss.gxy;
+      }
+      else if( flags & sscmp_a ) {
+        v = ss.a;
+      }
+      else if( flags & sscmp_b ) {
+        v = ss.b;
+      }
 
       dst[y][x] = v;
     }
@@ -285,7 +366,7 @@ void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, 
     const ssdesc *cssp = reinterpret_cast<const ssdesc*>(current_desc[y]);
     const ssdesc *rssp = reinterpret_cast<const ssdesc*>(reference_desc[y]);
 
-    uint16_t s, sbest;
+    uint8_t s, sbest;
 
     for( int x = 0; x < reference_desc.cols; ++x ) {
       if( mskp[x] ) {
@@ -300,39 +381,11 @@ void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, 
 
         for( int xx = x + 1, xxmax = std::min(x + max_disparity, current_desc.cols); xx < xxmax; ++xx ) {
 
-  //        if( (s = absdiff(rss, cssp[xx])) < sbest ) {
-  //          xxbest = xx;
-  //          sbest = s;
-  //        }
+          if( (s = absdiff(rss, cssp[xx])) < sbest ) {
+            xxbest = xx;
+            sbest = s;
+          }
 
-          const ssdesc &css = cssp[xx];
-
-          if( (s = absdiff(css.g, rss.g)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.gx, rss.gx)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.gy, rss.gy)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.gxx, rss.gxx)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.gyy, rss.gyy)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.gxy, rss.gxy)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.a, rss.a)) >= sbest ) {
-            continue;
-          }
-          if( (s += absdiff(css.b, rss.b)) >= sbest ) {
-            continue;
-          }
-          sbest = s;
-          xxbest = xx;
         }
 
         disp[y][x] = xxbest - x;

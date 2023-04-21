@@ -415,12 +415,12 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       if( swap_frames_ == SwapFramesAfterRectification ) {
         for( int i = 0; i < 2; ++i ) {
-          ssdesc_cvtfp32(descs[i], dst(roi[!i]));
+          ssdesc_cvtfp32(descs[i], dst(roi[!i]), ssflags_);
         }
       }
       else {
         for( int i = 0; i < 2; ++i ) {
-          ssdesc_cvtfp32(descs[i], dst(roi[i]));
+          ssdesc_cvtfp32(descs[i], dst(roi[i]), ssflags_);
         }
       }
 

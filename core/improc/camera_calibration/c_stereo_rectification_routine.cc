@@ -17,7 +17,6 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
       { c_stereo_rectification_routine::OverlayNone, "None", "No overlay" },
       { c_stereo_rectification_routine::OverlayAddWeighted, "addWeighted", "cv::addWeighted(left, right)" },
       { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
-      { c_stereo_rectification_routine::OverlayContrast, "Contrast", "cv::absdiff(left, right)/cv::addWeighted(left, right)" },
       { c_stereo_rectification_routine::OverlayNCC, "NCC", "NCC" },
       { c_stereo_rectification_routine::OverlayDisplaySSD, "DisplaySSD", "DisplaySSD" },
       { c_stereo_rectification_routine::OverlaySSD, "SSD", "SSD" },
@@ -223,10 +222,15 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       dst_image.setTo(0);
 
-      cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-          0.5,
+//      cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
+//          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
+//          0,
+//      dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+
+      cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
           right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
-          0, dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+          0,
+          dst_image(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
 
       if( mask.needed() && !mask.empty() ) {
 
@@ -244,9 +248,13 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
         dst_mask.setTo(0);
 
+//        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+//            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+//            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
         cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
             right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+            dst_mask(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+
       }
 
       break;
@@ -268,9 +276,13 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       dst_image.setTo(0);
 
+//      cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+//          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+//          dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
       cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
           right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-          dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+          dst_image(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+
 
       if( mask.needed() && !mask.empty() ) {
 
@@ -288,73 +300,17 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
         dst_mask.setTo(0);
 
+//        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+//            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+//            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
         cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
             right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+            dst_mask(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
       }
 
       break;
     }
 
-    case OverlayContrast: {
-
-      const cv::Mat &left_image =
-          images[0];
-
-      const cv::Mat &right_image =
-          images[1];
-
-
-      cv::Mat summ;
-      cv::Mat diff;
-
-      image.create(left_image.size(),
-          CV_MAKETYPE(CV_32F, left_image.channels()));
-
-      cv::Mat &dst_image =
-          image.getMatRef();
-
-      dst_image.setTo(0);
-
-      cv::addWeighted(cv::abs(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows))),
-          0.5,
-          cv::abs(right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows))), 0.5,
-          1, summ,
-          CV_MAKETYPE(CV_32F, left_image.channels()));
-
-      cv::GaussianBlur(summ, summ, cv::Size(5, 5), 0, 0, cv::BORDER_REPLICATE);
-
-      cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-          diff);
-
-      cv::divide(diff, summ,
-          dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-          1, CV_MAKETYPE(CV_32F, left_image.channels()));
-
-      if( mask.needed() && !mask.empty() ) {
-
-        const cv::Mat &left_mask =
-            masks[0];
-
-        const cv::Mat &right_mask =
-            masks[1];
-
-        mask.create(right_mask.size(),
-            right_mask.type());
-
-        cv::Mat &dst_mask =
-            mask.getMatRef();
-
-        dst_mask.setTo(0);
-
-        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
-      }
-
-      break;
-    }
 
     case OverlayNCC: {
 
@@ -389,9 +345,13 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       {
         INSTRUMENT_REGION("ABSDIFF");
 
+//        cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
+//            right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
+//            dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
         cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
             right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
+            dst_image(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+
       }
 
       if( mask.needed() && !mask.empty() ) {
@@ -402,25 +362,26 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
     }
 
     case OverlayDisplaySSD : {
+
       const cv::Mat3b left_image = images[0];
       const cv::Mat3b right_image = images[1];
 
-      cv::Mat descs[2];
+      c_ssa_array descs[2];
 
-      ssdesc_compute(left_image, descs[0], ssflags_);
-      ssdesc_compute(right_image, descs[1], ssflags_);
+      ssa_compute(left_image, descs[0], ssflags_);
+      ssa_compute(right_image, descs[1], ssflags_);
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
       cv::Mat &dst = image.getMatRef();
 
       if( swap_frames_ == SwapFramesAfterRectification ) {
         for( int i = 0; i < 2; ++i ) {
-          ssdesc_cvtfp32(descs[i], dst(roi[!i]), ssflags_);
+          ssa_cvtfp32(descs[i], dst(roi[!i]), ssflags_);
         }
       }
       else {
         for( int i = 0; i < 2; ++i ) {
-          ssdesc_cvtfp32(descs[i], dst(roi[i]), ssflags_);
+          ssa_cvtfp32(descs[i], dst(roi[i]), ssflags_);
         }
       }
 
@@ -432,13 +393,13 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       const cv::Mat3b left_image = images[0];
       const cv::Mat3b right_image = images[1];
 
-      cv::Mat left_desc, right_desc;
+      c_ssa_array left_desc, right_desc;
 
       {
-        INSTRUMENT_REGION("ssdesc_compute");
+        INSTRUMENT_REGION("ssa_compute");
 
-        ssdesc_compute(left_image, left_desc, ssflags_);
-        ssdesc_compute(right_image, right_desc, ssflags_);
+        ssa_compute(left_image, left_desc, ssflags_);
+        ssa_compute(right_image, right_desc, ssflags_);
       }
 
       image.create(left_image.size(),
@@ -450,11 +411,14 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       dst_image.setTo(0);
 
       {
-        INSTRUMENT_REGION("ssdesc_compare");
+        INSTRUMENT_REGION("ssa_compare");
 
-        ssdesc_compare(left_desc(cv::Rect(overlay_offset_, 0, left_desc.cols - overlay_offset_, left_desc.rows)),
-            right_desc(cv::Rect(0, 0, right_desc.cols - overlay_offset_, right_desc.rows)),
-            dst_image(cv::Rect(overlay_offset_, 0, left_desc.cols - overlay_offset_, left_desc.rows)));
+//        ssa_compare(left_desc, cv::Rect(overlay_offset_, 0, left_desc.cols() - overlay_offset_, left_desc.rows()),
+//            right_desc, cv::Rect(0, 0, right_desc.cols() - overlay_offset_, right_desc.rows()),
+//            dst_image(cv::Rect(overlay_offset_, 0, left_desc.cols() - overlay_offset_, left_desc.rows())));
+        ssa_compare(left_desc, cv::Rect(overlay_offset_, 0, left_desc.cols() - overlay_offset_, left_desc.rows()),
+            right_desc, cv::Rect(0, 0, right_desc.cols() - overlay_offset_, right_desc.rows()),
+            dst_image(cv::Rect(0, 0, left_desc.cols() - overlay_offset_, left_desc.rows())));
       }
 
       if( mask.needed() && !mask.empty() ) {
@@ -464,34 +428,6 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-//    case OverlayDAISY: {
-//
-//      const cv::Mat3b left_image = images[0];
-//      const cv::Mat3b right_image = images[1];
-//
-//      if ( !daisy_ ) {
-//        float radius = 15;
-//        int q_radius = 3;
-//        int q_theta = 8;
-//        int q_hist = 8;
-//        daisy_ = cv::xfeatures2d::DAISY::create(radius = 7, q_radius = 1, q_theta = 8, q_hist = 1);
-//      }
-//
-//      cv::Mat left_desc, right_desc;
-//
-//      {
-//        INSTRUMENT_REGION("daisy_compute");
-//        daisy_->compute(left_image, left_desc);
-//        daisy_->compute(right_image, right_desc);
-//      }
-//      CF_DEBUG("desc: %dx%d depth=%d channels=%d", left_desc.rows, left_desc.cols, left_desc.depth(), left_desc.channels());
-//
-//      if( mask.needed() && !mask.empty() ) {
-//        mask.release();
-//      }
-//
-//      break;
-//    }
 
     default:
       break;

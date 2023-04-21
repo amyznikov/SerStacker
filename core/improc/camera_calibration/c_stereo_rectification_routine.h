@@ -37,11 +37,9 @@ public:
     OverlayNone,
     OverlayAddWeighted,
     OverlayAbsdiff,
-    OverlayContrast,
     OverlayNCC,
     OverlayDisplaySSD,
     OverlaySSD,
-    // OverlayDAISY,
   };
 
   enum SwapFramesMode {

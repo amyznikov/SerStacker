@@ -639,19 +639,19 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   }
 
 
-  cv::Mat descs[2];
+  c_ssa_array descs[2];
   cv::Mat1w disps, errs;
 
   {
-    INSTRUMENT_REGION("ss_compute");
+    INSTRUMENT_REGION("ssa_compute");
     for( int i = 0; i < 2; ++i ) {
-      ssdesc_compute(images[i], descs[i], ssflags_);
+      ssa_compute(images[i], descs[i], ssflags_);
     }
   }
 
   {
-    INSTRUMENT_REGION("ss_match");
-    ssdesc_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask);
+    INSTRUMENT_REGION("ssa_match");
+    ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask);
   }
 
   switch (output_type_) {

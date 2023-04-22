@@ -20,7 +20,7 @@ public:
   virtual ~QImageDisplayFunction() = default;
 
   virtual void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::OutputArray displayImage, int ddepth = CV_8U) = 0;
+      cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) = 0;
 };
 
 #endif /* __QImageDisplayFunction_h__ */

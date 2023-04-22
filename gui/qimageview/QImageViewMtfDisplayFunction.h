@@ -31,7 +31,7 @@ public:
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::OutputArray displayImage, int ddepth = CV_8U) override;
+      cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
 
   bool applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::OutputArray displayImage, int ddepth = CV_8U);

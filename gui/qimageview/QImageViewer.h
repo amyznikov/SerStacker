@@ -81,6 +81,7 @@ public:
   const cv::Mat& currentImage() const;
   const cv::Mat& currentMask() const;
   const cv::Mat& currentImageData() const;
+  const cv::Mat& mtfImage() const;
   const cv::Mat& displayImage() const;
 
   QString currentFileName() const;
@@ -141,7 +142,7 @@ protected:
   double maskBlendAlpha_  = 0.9;
 
   QString currentFileName_;
-  cv::Mat currentImage_, currentImageData_, currentMask_;
+  cv::Mat currentImage_, mtfImage_, currentImageData_, currentMask_;
   cv::Mat displayImage_;
   QImage qimage_;
 

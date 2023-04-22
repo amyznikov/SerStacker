@@ -127,7 +127,6 @@ void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags,
     G = cv::getGaussianKernel(ss_size, ss_sigma, CV_32F);
   }
 
-
   cv::sepFilter2D(image, s, CV_32F, G, G);
   cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
 

@@ -201,6 +201,11 @@ const cv::Mat & QImageViewer::currentImageData() const
   return currentImageData_;
 }
 
+const cv::Mat& QImageViewer::mtfImage() const
+{
+  return mtfImage_;
+}
+
 const cv::Mat & QImageViewer::displayImage() const
 {
   return displayImage_;
@@ -305,6 +310,7 @@ void QImageViewer::createDisplayImage()
           //displayImage_.release();
           displayFunction_->createDisplayImage(currentImage_,
               transparentMask_ ? cv::noArray() : currentMask_,
+              mtfImage_,
               displayImage_,
               currentImage_.depth());
         }
@@ -312,6 +318,7 @@ void QImageViewer::createDisplayImage()
           // displayImage_.release();
           displayFunction_->createDisplayImage(currentImage_,
               transparentMask_ ? cv::noArray() : currentMask_,
+              mtfImage_,
               displayImage_,
               CV_8U);
         }

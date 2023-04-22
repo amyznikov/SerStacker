@@ -8,6 +8,7 @@
 #include "QImageViewMtfDisplayFunction.h"
 #include <core/mtf/mtf-histogram.h>
 #include <core/proc/histogram.h>
+#include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -98,38 +99,79 @@ void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double 
 
 void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
-  if( !imageViewer_ ) {
-    H.release();
-  }
-  else {
+//  if( !imageViewer_ ) {
+//    H.release();
+//  }
+//  else {
+//
+//    const cv::Mat &image =
+//        imageViewer_->currentImage();
+//
+//    const cv::Mat &mask =
+//        imageViewer_->currentMask();
+//
+//    if( image.empty() ) {
+//      H.release();
+//    }
+//    else {
+//
+//      DisplayParams & opts =
+//          displayParams();
+//
+//      create_output_histogram(&opts.mtf,
+//          image, mask,
+//          H,
+//          hmin, hmax,
+//          256,
+//          false,
+//          false);
+//    }
+//  }
 
-    const cv::Mat &image =
-        imageViewer_->currentImage();
+  if ( imageViewer_ ) {
 
-    const cv::Mat &mask =
-        imageViewer_->currentMask();
+    cv::Mat image, mask;
 
-    if( image.empty() ) {
-      H.release();
+    double scale = 1.0;
+    double offset = 0.0;
+
+//    mutex_.lock();
+//    isBusy_ = true;
+
+    const cv::Mat & currentImage =
+        imageViewer_->mtfImage();
+
+    if ( currentImage.depth() == CV_8U ) {
+      currentImage.copyTo(image);
     }
     else {
-
-      DisplayParams & opts =
-          displayParams();
-
-      create_output_histogram(&opts.mtf,
-          image, mask,
-          H,
-          hmin, hmax,
-          256,
-          false,
-          false);
+      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+      currentImage.convertTo(image, scale, offset);
     }
+
+    imageViewer_->currentMask().copyTo(mask);
+//    mutex_.unlock();
+
+    create_histogram(image, mask,
+        H,
+        hmin, hmax,
+        256,
+        false,
+        false);
+
+    (*hmin -= offset) /= scale;
+    (*hmax -= offset) /= scale;
+
+//    mutex_.lock();
+//    isBusy_ = false;
+//    mutex_.unlock();
+
   }
+
 }
 
 void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
-    cv::OutputArray displayImage, int ddepth)
+    cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth)
 {
   INSTRUMENT_REGION("");
 
@@ -144,10 +186,13 @@ void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImag
             ddepth == CV_8U;
 
     applyMtf(currentImage, needColormap ? cv::noArray() : currentMask,
-        displayImage, ddepth);
+        mtfImage, ddepth);
 
-    if ( needColormap && ! displayImage.empty() ) {
-      applyColorMap(displayImage, currentMask, displayImage);
+    if ( needColormap && !mtfImage.empty() ) {
+      applyColorMap(mtfImage, currentMask, displayImage);
+    }
+    else {
+      displayImage = mtfImage;
     }
   }
 }

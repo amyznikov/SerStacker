@@ -101,7 +101,8 @@ void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * out
 
 void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
 {
-  INSTRUMENT_REGION("");
+//  Base::getOutputHistogramm(H, output_hmin, output_hmax);
+//  INSTRUMENT_REGION("");
 
   if ( imageViewer_ ) {
 
@@ -114,7 +115,7 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     isBusy_ = true;
 
     const cv::Mat & currentImage =
-        imageViewer_->displayImage();
+        imageViewer_->mtfImage();
 
     if ( currentImage.depth() == CV_8U ) {
       currentImage.copyTo(image);
@@ -143,15 +144,6 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
 
   }
 }
-
-
-void QLiveDisplayMtfFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
-    cv::OutputArray displayImage, int ddepth)
-{
-  //  c_unique_lock lock(mutex_);
-  Base::createDisplayImage(currentImage, currentMask, displayImage, ddepth);
-}
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +316,7 @@ void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bp
   mtfDisplayFunction_.createDisplayImage(
       currentImage_,
       currentMask_,
+      mtfImage_,
       displayImage_,
       CV_8U);
 

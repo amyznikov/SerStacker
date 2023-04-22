@@ -49,9 +49,6 @@ public:
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
-  void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::OutputArray displayImage, int ddepth = CV_8U) override;
-
 protected:
   mutable std::mutex mutex_;
   bool isBusy_ = false;

@@ -65,7 +65,7 @@ void QBrowsePathCombo::construct(void)
   combo->setEditable(true);
   combo->setDuplicatesEnabled(false);
   combo->setFocusPolicy(Qt::StrongFocus);
-  combo->setMinimumContentsLength(24);
+  combo->setMinimumContentsLength(16);
   combo->setMaxCount(30);
 
   if( acceptMode_ == QFileDialog::AcceptSave ) {

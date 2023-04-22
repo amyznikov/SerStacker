@@ -108,6 +108,9 @@ protected:
 
   QScaleSelectionButton * displayScaleControl_ = nullptr;
 
+  QAction * copyDisplayImageAction = nullptr;
+
+
 #if HAVE_INDIGO
   QIndigoClient * indigoClient_ = nullptr;
   QIndigoFocuserWidget * indigoFocuser_ = nullptr;

@@ -366,10 +366,10 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       const cv::Mat3b left_image = images[0];
       const cv::Mat3b right_image = images[1];
 
-      c_ssa_array descs[2];
+      c_ssarray descs[2];
 
-      ssa_compute(left_image, descs[0], ssflags_);
-      ssa_compute(right_image, descs[1], ssflags_);
+      ssa_compute(left_image, descs[0], ssflags_, ss_sigma_, ss_radius_);
+      ssa_compute(right_image, descs[1], ssflags_, ss_sigma_, ss_radius_);
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
       cv::Mat &dst = image.getMatRef();
@@ -393,13 +393,13 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       const cv::Mat3b left_image = images[0];
       const cv::Mat3b right_image = images[1];
 
-      c_ssa_array left_desc, right_desc;
+      c_ssarray left_desc, right_desc;
 
       {
         INSTRUMENT_REGION("ssa_compute");
 
-        ssa_compute(left_image, left_desc, ssflags_);
-        ssa_compute(right_image, right_desc, ssflags_);
+        ssa_compute(left_image, left_desc, ssflags_, ss_sigma_, ss_radius_);
+        ssa_compute(right_image, right_desc, ssflags_, ss_sigma_, ss_radius_);
       }
 
       image.create(left_image.size(),

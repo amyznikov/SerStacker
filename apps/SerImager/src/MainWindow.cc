@@ -25,6 +25,7 @@ namespace serimager {
 #define ICON_process          ":/serimager/icons/process.png"
 #define ICON_log              ":/serimager/icons/log.png"
 #define ICON_bayer            ":/gui/icons/bayer.png"
+#define ICON_copy             ":/gui/icons/copy.png"
 
 #define ICON_measures         ":/qmeasure/icons/measure.png"
 
@@ -101,6 +102,18 @@ void MainWindow::setupMainMenu()
   menuFile_->addAction("Quit", [this]() {
     close();
   });
+
+
+  ///////////////////////////////////////////////////////////////////
+
+  menuEdit_->addAction(copyDisplayImageAction =
+      createAction(getIcon(ICON_copy),
+          "Copy display image to clipboard (Ctrl+c)",
+          "Copy display image to clipboard (Ctrl+c)",
+          centralDisplay_, &QImageViewer::copyDisplayImageToClipboard,
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+              centralDisplay_, nullptr, nullptr,
+              Qt::WindowShortcut)));
 
   ///////////////////////////////////////////////////////////////////
 

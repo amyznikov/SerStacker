@@ -28,6 +28,12 @@ public:
   void set_max_disparity(int v);
   int max_disparity() const;
 
+  void set_ss_sigma(double v);
+  double ss_sigma() const;
+
+  void set_ss_radius(int v);
+  int ss_radius() const;
+
   void set_ssflags(int v);
   int ssflags() const;
 

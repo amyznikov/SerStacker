@@ -120,6 +120,26 @@ public:
     return ssflags_;
   }
 
+  void set_ss_sigma(double v)
+  {
+    ss_sigma_ = v;
+  }
+
+  double ss_sigma() const
+  {
+    return ss_sigma_;
+  }
+
+  void set_ss_radius(int v)
+  {
+    ss_radius_ = v;
+  }
+
+  int ss_radius() const
+  {
+    return ss_radius_;
+  }
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_rectification, "Enable image rectification");
@@ -127,6 +147,8 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, swap_frames, "Swap Left and Right frames");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
     ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, ssflags, "ssflags", sscmpflags, "ssflags");
     ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
   }
@@ -144,6 +166,8 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
       SERIALIZE_PROPERTY(settings, save, *this, ssflags);
+      SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
+      SERIALIZE_PROPERTY(settings, save, *this, ss_radius);
 
       return true;
     }
@@ -162,6 +186,8 @@ protected:
   SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
   int ssflags_ = sscmp_all;
+  double ss_sigma_ = 2;
+  int ss_radius_ = 0;
 
   bool enable_rectification_ = true;
   c_stereo_camera_intrinsics intrinsics_;

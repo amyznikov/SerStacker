@@ -34,11 +34,7 @@ const c_enum_member* members_of<sscmpflags>()
 namespace {
 
 typedef tbb::blocked_range<int> tbb_range;
-const int tbb_grain_size = 256;
-
-constexpr double ss_sigma = 3;
-constexpr int ss_size = 15;
-
+const int tbb_grain_size = 128;
 
 void compute_gradients(const cv::Mat & src, cv::Mat1f & gx, cv::Mat1f & gy,
     cv::Mat1f & gxx, cv::Mat1f & gyy,
@@ -108,13 +104,29 @@ static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
 
 } // namespace
 
-void ssa_compute(const cv::Mat3b & image, c_ssa_array & ssa, int flags)
+void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags,
+    double ss_sigma, int ss_radius )
 {
   cv::Mat1f g, gx, gy, gxx, gyy, gxy;
   cv::Mat s;
 
-  static const thread_local cv::Mat1f G =
-      cv::getGaussianKernel(ss_size, ss_sigma, CV_32F);
+  if ( ss_sigma <= 0 ) {
+    ss_sigma = 2;
+  }
+  if ( ss_radius < 1 ) {
+    ss_radius =  (int)(3 * ss_sigma);
+  }
+
+  const int ss_size = 2 * ss_radius + 1;
+
+  static thread_local double old_ss_sigma = 0;
+  static thread_local cv::Mat1f G;
+
+  if ( ss_sigma != old_ss_sigma || ss_size != G.rows ) {
+    old_ss_sigma = ss_sigma;
+    G = cv::getGaussianKernel(ss_size, ss_sigma, CV_32F);
+  }
+
 
   cv::sepFilter2D(image, s, CV_32F, G, G);
   cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
@@ -140,14 +152,14 @@ void ssa_compute(const cv::Mat3b & image, c_ssa_array & ssa, int flags)
             for( int x = 0; x < width; ++x ) {
 
               ssdesc & ss = ssp[x];
-              ss.g =  (gab[y][x][0]);
-              ss.a = (gab[y][x][1] + 128);
-              ss.b = (gab[y][x][2] + 128);
-              ss.gx = (gx[y][x] * 4 + 128);
-              ss.gy = (gy[y][x] * 4 + 128);
-              ss.gxx = (gxx[y][x] * 10 + 128);
-              ss.gyy = (gyy[y][x] * 10 + 128);
-              ss.gxy = (gxy[y][x] * 24 + 128);
+              ss.g =  (uint8_t) (gab[y][x][0]);
+              ss.a = (uint8_t) (gab[y][x][1] + 128);
+              ss.b = (uint8_t) (gab[y][x][2] + 128);
+              ss.gx = (uint8_t) (gx[y][x] * 2 + 128);
+              ss.gy = (uint8_t) (gy[y][x] * 2 + 128);
+              ss.gxx = (uint8_t) (gxx[y][x] * 6 + 128);
+              ss.gyy = (uint8_t) (gyy[y][x] * 6 + 128);
+              ss.gxy = (uint8_t) (gxy[y][x] * 6 + 128);
             }
           }
 
@@ -169,28 +181,28 @@ void ssa_compute(const cv::Mat3b & image, c_ssa_array & ssa, int flags)
               ssdesc & ss = ssp[x];
 
               if ( flags & sscmp_g ) {
-                ss.g = (gab[y][x][0]);
+                ss.g = (uint8_t) (gab[y][x][0]);
               }
               if ( flags & sscmp_a ) {
-                ss.a = (gab[y][x][1] + 128);
+                ss.a = (uint8_t) (gab[y][x][1] + 128);
               }
               if ( flags & sscmp_b ) {
-                ss.b = (gab[y][x][2] + 128);
+                ss.b = (uint8_t) (gab[y][x][2] + 128);
               }
               if ( flags & sscmp_gx ) {
-                ss.gx = (gx[y][x] * 4 + 128);
+                ss.gx = (uint8_t) (gx[y][x] * 2 + 128);
               }
               if ( flags & sscmp_gy ) {
-                ss.gy = (gy[y][x] * 4 + 128);
+                ss.gy = (uint8_t) (gy[y][x] * 2 + 128);
               }
               if ( flags & sscmp_gxx ) {
-                ss.gxx = (gxx[y][x] * 10 + 128);
+                ss.gxx = (uint8_t) (gxx[y][x] * 6 + 128);
               }
               if ( flags & sscmp_gyy ) {
-                ss.gyy = (gyy[y][x] * 10 + 128);
+                ss.gyy = (uint8_t) (gyy[y][x] * 6 + 128);
               }
               if ( flags & sscmp_gxy ) {
-                ss.gxy = (gxy[y][x] * 24 + 128);
+                ss.gxy = (uint8_t) (gxy[y][x] * 6 + 128);
               }
             }
           }
@@ -199,7 +211,7 @@ void ssa_compute(const cv::Mat3b & image, c_ssa_array & ssa, int flags)
   }
 }
 
-void ssa_cvtfp32(const c_ssa_array & ssa, cv::OutputArray output, int flags)
+void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
 {
   if( output.empty() || output.size() != ssa.size() || output.type() != CV_32FC1 ) {
     output.create(ssa.size(), CV_32FC1);
@@ -250,8 +262,8 @@ void ssa_cvtfp32(const c_ssa_array & ssa, cv::OutputArray output, int flags)
 }
 
 
-void ssa_compare(const c_ssa_array & ssa1, const cv::Rect & rc1,
-    const c_ssa_array & ssa2, const cv::Rect & rc2,
+void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
+    const c_ssarray & ssa2, const cv::Rect & rc2,
     cv::OutputArray dists)
 {
   if ( rc1.width != rc2.width ) {
@@ -284,7 +296,7 @@ void ssa_compare(const c_ssa_array & ssa1, const cv::Rect & rc1,
   }
 }
 
-void ssa_match(const c_ssa_array & current_descs, const c_ssa_array & reference_descs, int max_disparity,
+void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,
     cv::OutputArray disps, cv::OutputArray costs,
     const cv::Mat1b & mask)
 {

@@ -40,6 +40,12 @@ public:
   void set_ssflags(int v);
   int ssflags() const;
 
+  void set_ss_sigma(double v);
+  double ss_sigma() const;
+
+  void set_ss_radius(int v);
+  int ss_radius() const;
+
   void set_max_scale(int v);
   int max_scale() const;
 
@@ -70,7 +76,10 @@ protected:
 protected:
   OutputType output_type_ = OutputTextureMask;
 
+  double ss_sigma_ = 2;
+  int ss_radius_ = 0;
   int ssflags_ = sscmp_all;
+
   int max_disparity_ = 128;
   int max_scale_ = 2;
   double kernel_sigma_ = 1;

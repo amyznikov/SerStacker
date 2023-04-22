@@ -52,42 +52,42 @@ struct ssdesc
 };
 #pragma pack(pop)
 
-class c_ssa_array :
+class c_ssarray :
     public c_array2d<ssdesc>
 {
 public :
-  typedef c_ssa_array this_class;
+  typedef c_ssarray this_class;
   typedef c_array2d<ssdesc> base;
 
-  c_ssa_array()
+  c_ssarray()
   {
   }
 
-  c_ssa_array(int rows, int cols)
+  c_ssarray(int rows, int cols)
   {
     create(rows, cols);
   }
 
-  c_ssa_array(const cv::Size & s)
+  c_ssarray(const cv::Size & s)
   {
     create(s);
   }
 
-  c_ssa_array(const c_ssa_array & rhs)
+  c_ssarray(const c_ssarray & rhs)
   {
     this_class :: operator = (rhs);
   }
 };
 
 
-void ssa_compute(const cv::Mat3b & image, c_ssa_array & ssa, int flags = sscmp_all);
-void ssa_cvtfp32(const c_ssa_array & ssa, cv::OutputArray output, int flags);
+void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags = sscmp_all, double ss_sigma = 2, int ss_radius = 0);
+void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags);
 
-void ssa_compare(const c_ssa_array & ssa1, const cv::Rect & rc1,
-    const c_ssa_array & ssa2, const cv::Rect & rc2,
+void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
+    const c_ssarray & ssa2, const cv::Rect & rc2,
     cv::OutputArray dists);
 
-void ssa_match(const c_ssa_array & current_descs, const c_ssa_array & reference_descs, int max_disparity,
+void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,
     cv::OutputArray disp, cv::OutputArray costs,
     const cv::Mat1b & mask);
 

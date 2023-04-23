@@ -35,8 +35,7 @@ enum sscmpflags
 struct ssdesc
 {
   union {
-    //uint64_t u64;
-    __m64 m64;
+    uint64_t u64;
     struct {
       uint8_t g;
       uint8_t a;

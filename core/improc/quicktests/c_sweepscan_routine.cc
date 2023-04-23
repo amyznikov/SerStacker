@@ -257,7 +257,8 @@ bool c_sweepscan_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     return false;
   }
 
-  image.move(m);
+  m.copyTo(image);
+  //image.move(m);
   if ( mask.needed() ) {
     //mask.move(mm);
     mask.release();

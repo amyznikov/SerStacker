@@ -37,7 +37,6 @@ struct ssdesc
   union {
     //uint64_t u64;
     __m64 m64;
-    //uint8_t arr[8];
     struct {
       uint8_t g;
       uint8_t a;

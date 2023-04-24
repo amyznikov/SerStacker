@@ -132,10 +132,10 @@ enum StereoBinarySubpixelInterpolationMethod
 struct c_cvStereoBinaryOptions
 {
   int minDisparity = 0;
-  int numDisparities = 80;
-  int blockSize = 9;
-  int speckleWindowSize = 0;
-  int speckleRange = 0;
+  int numDisparities = 128;
+  int blockSize = 7;
+  int speckleWindowSize = 400;
+  int speckleRange = 200;
   int disp12MaxDiff = 1;
 };
 
@@ -167,10 +167,10 @@ enum StereoBinarySGBMMode {
 
 struct c_cvStereoBinarySGBMOptions: c_cvStereoBinaryOptions
 {
-  int preFilterCap = 0;
-  int uniquenessRatio = 0;
-  int P1 = 0;
-  int P2 = 0;
+  int preFilterCap = 128;
+  int uniquenessRatio = 5;
+  int P1 = 100;
+  int P2 = 1000;
   StereoBinarySGBMMode mode = StereoBinarySGBM_SGBM;
   StereoBinarySpeckleRemovalTechnique spekleRemovalTechnique = CV_SPECKLE_REMOVAL;
   StereoBinaryKernelType kernelType = CV_MODIFIED_CENSUS_TRANSFORM;

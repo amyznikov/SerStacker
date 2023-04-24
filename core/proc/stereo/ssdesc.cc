@@ -98,9 +98,9 @@ static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
 
   for( int s = 1; s < scales; ++s ) {
 
-    y >>= 1;
-    xa >>= 1;
-    xb >>= 1;
+//    y >>= 1;
+//    xa >>= 1;
+//    xb >>= 1;
 
     if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb]))) > worst ) {
       break;
@@ -113,122 +113,131 @@ static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
 
 } // namespace
 
-void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags,
-    double ss_sigma, int ss_radius)
-{
-  cv::Mat1f g, gx, gy, gxx, gyy, gxy;
-  cv::Mat s;
-
-  if( ss_sigma <= 0 ) {
-    ss_sigma = 2;
-  }
-  if( ss_radius < 1 ) {
-    ss_radius = (int) (3 * ss_sigma);
-  }
-
-  const int ss_size = 2 * ss_radius + 1;
-
-  static thread_local double old_ss_sigma = 0;
-  static thread_local cv::Mat1f G;
-
-  if( ss_sigma != old_ss_sigma || ss_size != G.rows ) {
-    old_ss_sigma = ss_sigma;
-    G = cv::getGaussianKernel(ss_size, ss_sigma, CV_32F);
-  }
-
-  cv::sepFilter2D(image, s, CV_32F, G, G);
-  cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
-
-  cv::extractChannel(s, g, 0);
-  compute_gradients(g, gx, gy, gxx, gyy, gxy);
-
-  ssa.create(s.size());
-
-  const cv::Mat3f gab = s;
-
-  tbb::parallel_for(tbb_range(0, g.rows, tbb_grain_size),
-      [&](const tbb_range & r) {
-
-        const int width = g.cols;
-
-        for( int y = r.begin(); y < r.end(); ++y ) {
-
-          ssdesc *ssp = ssa[y];
-
-          if( (flags & sscmp_all) == sscmp_all ) {
-
-            for( int x = 0; x < width; ++x ) {
-
-              ssdesc & ss = ssp[x];
-
-              ss.g = (uint8_t) (gab[y][x][0]);
-              ss.a = (uint8_t) (gab[y][x][1] + 128);
-              ss.b = (uint8_t) (gab[y][x][2] + 128);
-              ss.gx = (uint8_t) (gx[y][x] + 128);
-              ss.gy = (uint8_t) (gy[y][x] + 128);
-              ss.gxx = (uint8_t) (gxx[y][x] + 128);
-              ss.gyy = (uint8_t) (gyy[y][x] + 128);
-              ss.gxy = (uint8_t) (gxy[y][x] + 128);
-            }
-
-          }
-          else {
-
-            memset(ssp, 0, sizeof(*ssp) * width);
-
-            for( int x = 0; x < width; ++x ) {
-
-              ssdesc & ss = ssp[x];
-
-              if ( flags & sscmp_g ) {
-                ss.g = (uint8_t) (gab[y][x][0]);
-              }
-              if ( flags & sscmp_a ) {
-                ss.a = (uint8_t) (gab[y][x][1] + 128);
-              }
-              if ( flags & sscmp_b ) {
-                ss.b = (uint8_t) (gab[y][x][2] + 128);
-              }
-              if ( flags & sscmp_gx ) {
-                ss.gx = (uint8_t) (gx[y][x] + 128);
-              }
-              if ( flags & sscmp_gy ) {
-                ss.gy = (uint8_t) (gy[y][x] + 128);
-              }
-              if ( flags & sscmp_gxx ) {
-                ss.gxx = (uint8_t) (gxx[y][x] + 128);
-              }
-              if ( flags & sscmp_gyy ) {
-                ss.gyy = (uint8_t) (gyy[y][x] + 128);
-              }
-              if ( flags & sscmp_gxy ) {
-                ss.gxy = (uint8_t) (gxy[y][x] + 128);
-              }
-            }
-          }
-        }
-      });
-
-}
-
 void ssa_pyramid(const cv::Mat3b & image,
     std::vector<c_ssarray> & pyramid,
     int maxlevel,
-    int flags,
-    double ss_sigma,
-    int ss_radius)
+    int flags)
 {
+  cv::Mat s;
+  cv::Mat1f g, a, b, gx, gy, gxx, gyy, gxy;
+  std::vector<cv::Size> sizes;
+
+//  CF_DEBUG("enter");
+
+  if( image.depth() == CV_32F ) {
+    cv::cvtColor(image, s, cv::COLOR_BGR2YCrCb);
+  }
+  else {
+    image.convertTo(s, CV_32F);
+    cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
+  }
+
   pyramid.clear();
   pyramid.resize(maxlevel + 1);
 
-  ssa_compute(image, pyramid[0], flags, ss_sigma, ss_radius);
+  for( int scale = 0; scale <= maxlevel; ++scale ) {
 
-  cv::Mat3b cimg;
+    if( scale > 0 ) {
+      cv::pyrDown(s, s);
+    }
 
-  for( int i = 1; i <= maxlevel; ++i ) {
-    cv::pyrDown(i == 1 ? image : cimg, cimg);
-    ssa_compute(cimg, pyramid[i], flags, ss_sigma, ss_radius);
+    sizes.emplace_back(s.size());
+
+    cv::extractChannel(s, g, 0);
+    cv::extractChannel(s, a, 1);
+    cv::extractChannel(s, b, 2);
+    compute_gradients(g, gx, gy, gxx, gyy, gxy);
+
+//    CF_DEBUG("------------");
+//    CF_DEBUG("scale = %d", scale);
+
+    for( int upscale = scale - 1; upscale >= 0; --upscale ) {
+
+      //CF_DEBUG("upscale = %d: g=%dx%d -> %dx%d", upscale, g.cols, g.rows, sizes[upscale].width, sizes[upscale].height);
+
+      cv::pyrUp(g, g, sizes[upscale]);
+      cv::pyrUp(a, a, sizes[upscale]);
+      cv::pyrUp(b, b, sizes[upscale]);
+      cv::pyrUp(gx, gx, sizes[upscale]);
+      cv::pyrUp(gy, gy, sizes[upscale]);
+      cv::pyrUp(gxx, gxx, sizes[upscale]);
+      cv::pyrUp(gyy, gyy, sizes[upscale]);
+      cv::pyrUp(gxy, gxy, sizes[upscale]);
+
+      //CF_DEBUG("OK");
+    }
+
+//    CF_DEBUG("------------");
+
+    c_ssarray &ssa = pyramid[scale];
+    ssa.create(image.size());
+
+    tbb::parallel_for(tbb_range(0, image.rows, tbb_grain_size),
+        [&](const tbb_range & r) {
+
+          const int width = image.cols;
+
+          for( int y = r.begin(); y < r.end(); ++y ) {
+
+            ssdesc *ssp = ssa[y];
+
+            if( (flags & sscmp_all) == sscmp_all ) {
+
+              for( int x = 0; x < width; ++x ) {
+
+                ssdesc & ss = ssp[x];
+
+                ss.g = (uint8_t) (g[y][x]);
+                ss.a = (uint8_t) (a[y][x] + 128);
+                ss.b = (uint8_t) (b[y][x] + 128);
+                ss.gx = (uint8_t) (gx[y][x] + 128);
+                ss.gy = (uint8_t) (gy[y][x] + 128);
+                ss.gxx = (uint8_t) (gxx[y][x] + 128);
+                ss.gyy = (uint8_t) (gyy[y][x] + 128);
+                ss.gxy = (uint8_t) (gxy[y][x] + 128);
+              }
+
+            }
+            else {
+
+              memset(ssp, 0, sizeof(*ssp) * width);
+
+              for( int x = 0; x < width; ++x ) {
+
+                ssdesc & ss = ssp[x];
+
+                if ( flags & sscmp_g ) {
+                  ss.g = (uint8_t) (g[y][x]);
+                }
+                if ( flags & sscmp_a ) {
+                  ss.a = (uint8_t) (a[y][x] + 128);
+                }
+                if ( flags & sscmp_b ) {
+                  ss.b = (uint8_t) (b[y][x] + 128);
+                }
+                if ( flags & sscmp_gx ) {
+                  ss.gx = (uint8_t) (gx[y][x] + 128);
+                }
+                if ( flags & sscmp_gy ) {
+                  ss.gy = (uint8_t) (gy[y][x] + 128);
+                }
+                if ( flags & sscmp_gxx ) {
+                  ss.gxx = (uint8_t) (gxx[y][x] + 128);
+                }
+                if ( flags & sscmp_gyy ) {
+                  ss.gyy = (uint8_t) (gyy[y][x] + 128);
+                }
+                if ( flags & sscmp_gxy ) {
+                  ss.gxy = (uint8_t) (gxy[y][x] + 128);
+                }
+              }
+            }
+          }
+        });
+
   }
+
+//  CF_DEBUG("leave");
 }
 
 
@@ -353,11 +362,10 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
           absdiff(ssa1[0][y + rc1.y][x + rc1.x],
               ssa2[0][y + rc2.y][x + rc2.x]);
 
-      for( int l = 1, s = 2; l < lmax; ++l, s *= 2 ) {
+      for( int l = 1; l < lmax; ++l ) {
 
-        d = std::max(d,
-            absdiff(ssa1[l][(y + rc1.y) / s][(x + rc1.x) / s],
-                ssa2[l][(y + rc2.y) / s][(x + rc2.x) / s]));
+        d = std::max(d, absdiff(ssa1[l][(y + rc1.y)][(x + rc1.x)],
+            ssa2[l][(y + rc2.y)][(x + rc2.x)]));
       }
 
       distances[y][x] = d;
@@ -472,7 +480,6 @@ void ssa_match(const std::vector<c_ssarray> & current_descs,
                 const uint8_t c = absdiff(rptrs, cptrs, x, xx, y, scales, cbest);
                 if( c < cbest ) {
                   xbest = xx;
-                  cbest = c;
                   if ( !(cbest = c) ) {
                     break;
                   }

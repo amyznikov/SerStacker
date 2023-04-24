@@ -39,6 +39,7 @@ public:
     OverlayAbsdiff,
     OverlayNCC,
     OverlayDisplaySSD,
+    OverlayBlendSSD,
     OverlaySSD,
   };
 

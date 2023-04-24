@@ -665,7 +665,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   {
     INSTRUMENT_REGION("ssa_compute");
     for( int i = 0; i < 2; ++i ) {
-      ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
+      ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
     }
   }
 

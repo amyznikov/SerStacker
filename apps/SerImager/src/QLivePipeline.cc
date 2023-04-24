@@ -720,9 +720,7 @@ DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
 bool QLivePipelineThread::startPipeline(QLivePipeline * pipeline)
 {
   if( isRunning() ) {
-    CF_DEBUG("finish()");
     finish(true);
-    CF_DEBUG("finish() OK");
   }
 
   this->finish_ = false;
@@ -743,10 +741,7 @@ bool QLivePipelineThread::startPipeline(QLivePipeline * pipeline)
     return false;
   }
 
-  CF_DEBUG("Base::start()");
   Base::start();
-
-  CF_DEBUG("leave");
 
   return true;
 }
@@ -828,13 +823,11 @@ void QLivePipelineThread::run()
         else {
 
           if( !pipeline_->process_frame(inputImage, colorid, bpp) ) {
-            CF_ERROR("pipeline_->processFrame() fails");
-            break;
+            throw std::runtime_error("pipeline_->processFrame() fails");
           }
 
           if( !pipeline_->get_display_image(&inputImage, &colorid, &bpp) ) {
-            CF_ERROR("pipeline_->getDisplayImage() fails");
-            break;
+            throw std::runtime_error("pipeline_->getDisplayImage() fails");
           }
 
           display_->showVideoFrame(inputImage, colorid, bpp);

@@ -19,6 +19,7 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
       { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
       { c_stereo_rectification_routine::OverlayNCC, "NCC", "NCC" },
       { c_stereo_rectification_routine::OverlayDisplaySSD, "DisplaySSD", "DisplaySSD" },
+      { c_stereo_rectification_routine::OverlayBlendSSD, "BlendSSD", "BlendSSD" },
       { c_stereo_rectification_routine::OverlaySSD, "SSD", "SSD" },
       // { c_stereo_rectification_routine::OverlayDAISY, "DAISY", "DAISY distance" },
       { c_stereo_rectification_routine::OverlayNone },
@@ -369,8 +370,8 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> pdescs[2];
       cv::Mat desc_images[2];
 
-      ssa_pyramid(left_image, pdescs[0], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
-      ssa_pyramid(right_image, pdescs[1], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
+      ssa_pyramid(left_image, pdescs[0], ss_maxlvl_, ss_flags_);
+      ssa_pyramid(right_image, pdescs[1], ss_maxlvl_, ss_flags_);
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
       cv::Mat &dst = image.getMatRef();
@@ -383,12 +384,44 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
           ssa_cvtfp32(pdescs[i].back(), desc_images[i], ss_flags_);
         }
 
-        for( int j = ss_maxlvl_; j > 0; --j ) {
-          cv::pyrUp(desc_images[i], desc_images[i], pdescs[i][j - 1].size());
-        }
-
         desc_images[i].copyTo(dst(roi[i]));
       }
+
+      break;
+    }
+
+    case OverlayBlendSSD: {
+
+      const cv::Mat3b left_image =
+          images[0];
+
+      const cv::Mat3b right_image =
+          images[1];
+
+      std::vector<c_ssarray> descs[2];
+      cv::Mat desc_images[2];
+
+      ssa_pyramid(left_image, descs[0], ss_maxlvl_, ss_flags_);
+      ssa_pyramid(right_image, descs[1], ss_maxlvl_, ss_flags_);
+
+      for( int i = 0; i < 2; ++i ) {
+        if( swap_frames_ == SwapFramesAfterRectification ) {
+          ssa_cvtfp32(descs[!i].back(), desc_images[i], ss_flags_);
+        }
+        else {
+          ssa_cvtfp32(descs[i].back(), desc_images[i], ss_flags_);
+        }
+      }
+
+      image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
+      cv::Mat &dst = image.getMatRef();
+      dst.setTo(0);
+
+      cv::addWeighted(desc_images[0](cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
+          desc_images[1](cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
+          0,
+          dst(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+
 
       break;
     }
@@ -406,7 +439,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         INSTRUMENT_REGION("ssa_pyramid");
 
         for ( int i = 0; i < 2; ++i ) {
-          ssa_pyramid(src_images[i], descs[i], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
+          ssa_pyramid(src_images[i], descs[i], ss_maxlvl_, ss_flags_);
         }
       }
 

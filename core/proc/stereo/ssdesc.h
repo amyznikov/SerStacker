@@ -107,11 +107,10 @@ void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_desc
     cv::OutputArray disp, cv::OutputArray costs,
     const cv::Mat1b & mask);
 
-//void ssdesc_compute(const cv::Mat3b & image, cv::OutputArray & _desc, int flags = sscmp_all);
-//void ssdesc_cvtfp32(const cv::Mat & desc, cv::OutputArray output, int flags);
-//void ssdesc_compare(cv::InputArray d1, cv::InputArray d2, cv::OutputArray dists);
-//void ssdesc_match(cv::InputArray current_descs, cv::InputArray reference_descs, int max_disparity,
-//    cv::OutputArray disp, cv::OutputArray costs,
-//    const cv::Mat1b & mask);
+void ssa_match(const std::vector<c_ssarray> & current_descs,
+    const std::vector<c_ssarray> & reference_descs, int max_disparity,
+    cv::OutputArray disp, cv::OutputArray costs,
+    const cv::Mat1b & mask);
+
 
 #endif /* __ssdesc_h__ */

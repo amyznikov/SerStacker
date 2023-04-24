@@ -91,6 +91,25 @@ static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
   return s;
 }
 
+static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
+    const ssdesc *const* b[/*scales*/], int xa, int xb, int y, int scales, uint8_t worst)
+{
+  uint8_t d = absdiff(a[0][y][xa], b[0][y][xb]);
+
+  for( int s = 1; s < scales; ++s ) {
+
+    y >>= 1;
+    xa >>= 1;
+    xb >>= 1;
+
+    if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb]))) > worst ) {
+      break;
+    }
+  }
+
+  return d;
+}
+
 
 } // namespace
 
@@ -331,14 +350,14 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
     for( int x = 0; x < rc1.width; ++x ) {
 
       uint8_t d =
-          absdiff(ssa1[0][y][x + rc1.x],
-                  ssa2[0][y][x + rc2.x]);
+          absdiff(ssa1[0][y + rc1.y][x + rc1.x],
+              ssa2[0][y + rc2.y][x + rc2.x]);
 
       for( int l = 1, s = 2; l < lmax; ++l, s *= 2 ) {
 
-        d =  std::max(d,
-            absdiff(ssa1[l][y / s][(x + rc1.x) / s],
-                    ssa2[l][y / s][(x + rc2.x) / s]));
+        d = std::max(d,
+            absdiff(ssa1[l][(y + rc1.y) / s][(x + rc1.x) / s],
+                ssa2[l][(y + rc2.y) / s][(x + rc2.x) / s]));
       }
 
       distances[y][x] = d;
@@ -346,6 +365,7 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
   }
 
 }
+
 
 
 void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,
@@ -361,37 +381,105 @@ void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_desc
   cv::Mat1w disp = disps.getMatRef();
   cv::Mat1w cost = costs.getMatRef();
 
-  tbb::parallel_for(tbb_range(0, current_descs.rows(), 16),
+  tbb::parallel_for(tbb_range(0, reference_descs.rows(), 16),
       [&](const tbb_range & r) {
 
         const int xmax = reference_descs.cols();
+
 
         for( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 
           const uint8_t * mskp = mask[y];
 
-          const ssdesc *cssp = current_descs[y];
           const ssdesc *rssp = reference_descs[y];
+          const ssdesc *cssp = current_descs[y];
 
           for( int x = 0; x < xmax; ++x ) {
             if( mskp[x] ) {
 
               const ssdesc & rss = rssp[x];
 
-              uint8_t cbest = absdiff(rss, cssp[x]);
-              int xxbest = x;
+              uint8_t cbest =
+                  absdiff(rss, cssp[x]);
+
+              int xbest = x;
 
               for( int xx = x + 1, xxmax = std::min(x + max_disparity, current_descs.cols()); xx < xxmax; ++xx ) {
 
-                const uint8_t c = absdiff(rss, cssp[xx]);
-                if( c < cbest ) {
-                  xxbest = xx;
-                  cbest = c;
-                }
+                const uint8_t c =
+                    absdiff(rss, cssp[xx]);
 
+                if( c < cbest ) {
+                  xbest = xx;
+                  if ( !(cbest = c) ) {
+                    break;
+                  }
+                }
               }
 
-              disp[y][x] = xxbest - x;
+              disp[y][x] = xbest - x;
+              cost[y][x] = cbest;
+            }
+          }
+        }
+      });
+}
+
+
+void ssa_match(const std::vector<c_ssarray> & current_descs,
+    const std::vector<c_ssarray> & reference_descs, int max_disparity,
+    cv::OutputArray disps, cv::OutputArray costs,
+    const cv::Mat1b & mask)
+{
+  disps.create(reference_descs[0].size(), CV_16UC1);
+  disps.setTo(0);
+
+  costs.create(reference_descs[0].size(), CV_16UC1);
+  costs.setTo(0);
+
+  cv::Mat1w disp = disps.getMatRef();
+  cv::Mat1w cost = costs.getMatRef();
+
+  const int scales =
+      reference_descs.size();
+
+  const ssdesc *const*rptrs[scales];
+  const ssdesc *const*cptrs[scales];
+
+  for( int s = 0; s < scales; ++s ) {
+    rptrs[s] = reference_descs[s].ptr();
+    cptrs[s] = current_descs[s].ptr();
+  }
+
+  tbb::parallel_for(tbb_range(0, reference_descs[0].rows(), 16),
+      [&](const tbb_range & r) {
+
+        const int rwidth = reference_descs[0].cols();
+        const int cwidth = current_descs[0].cols();
+
+        for( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+
+          const uint8_t * mskp = mask[y];
+
+          for( int x = 0; x < rwidth; ++x ) {
+            if( mskp[x] ) {
+
+              uint8_t cbest = absdiff(rptrs, cptrs, x, x, y, scales, UINT8_MAX);
+              int xbest = x;
+
+              for( int xx = x + 1, xxmax = std::min(x + max_disparity, cwidth); xx < xxmax; ++xx ) {
+
+                const uint8_t c = absdiff(rptrs, cptrs, x, xx, y, scales, cbest);
+                if( c < cbest ) {
+                  xbest = xx;
+                  cbest = c;
+                  if ( !(cbest = c) ) {
+                    break;
+                  }
+                }
+              }
+
+              disp[y][x] = xbest - x;
               cost[y][x] = cbest;
             }
           }

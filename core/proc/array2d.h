@@ -77,6 +77,18 @@ public:
     }
   }
 
+  // pointer to row pointers
+  const elem_type * const * ptr() const
+  {
+    return pp_;
+  }
+
+  // pointer to row pointers
+  elem_type ** ptr()
+  {
+    return pp_;
+  }
+
   const elem_type * operator [](int row) const
   {
     return pp_[row];

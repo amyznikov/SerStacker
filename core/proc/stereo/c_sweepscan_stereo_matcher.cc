@@ -259,12 +259,12 @@ int c_sweepscan_stereo_matcher::max_disparity() const
 
 void c_sweepscan_stereo_matcher::set_ssflags(int v)
 {
-  ssflags_ = v;
+  ss_flags_ = v;
 }
 
 int c_sweepscan_stereo_matcher::ssflags() const
 {
-  return ssflags_;
+  return ss_flags_;
 }
 
 void c_sweepscan_stereo_matcher::set_ss_sigma(double v)
@@ -289,12 +289,12 @@ int c_sweepscan_stereo_matcher::ss_radius() const
 
 void c_sweepscan_stereo_matcher::set_max_scale(int v)
 {
-  max_scale_ = v;
+  ss_maxlvl_ = v;
 }
 
 int c_sweepscan_stereo_matcher::max_scale() const
 {
-  return max_scale_;
+  return ss_maxlvl_;
 }
 
 void c_sweepscan_stereo_matcher::set_kernel_sigma(double v)
@@ -659,13 +659,13 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   }
 
 
-  c_ssarray descs[2];
+  std::vector<c_ssarray> descs[2];
   cv::Mat1w disps, errs;
 
   {
     INSTRUMENT_REGION("ssa_compute");
     for( int i = 0; i < 2; ++i ) {
-      ssa_compute(images[i], descs[i], ssflags_, ss_sigma_, ss_radius_);
+      ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
     }
   }
 

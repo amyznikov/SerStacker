@@ -78,10 +78,10 @@ protected:
 
   double ss_sigma_ = 2;
   int ss_radius_ = 0;
-  int ssflags_ = sscmp_all;
+  int ss_maxlvl_ = 3;
+  int ss_flags_ = sscmp_all;
 
   int max_disparity_ = 128;
-  int max_scale_ = 2;
   double kernel_sigma_ = 1;
   int kernel_radius_ = 3;
   int pscale_ = 0;

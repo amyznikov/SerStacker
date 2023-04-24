@@ -67,11 +67,11 @@ void compute_gradients(const cv::Mat & src, cv::Mat1f & gx, cv::Mat1f & gy,
 
 static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
 {
-  //  uint8_t s = absdiff(a.arr[0], b.arr[0]);
-  //  for( int i = 1; i < 8; ++i ) {
-  //    s = std::max(s, absdiff(a.arr[i], b.arr[i]));
-  //  }
-  //  return s;
+//    uint8_t s = absdiff(a.arr[0], b.arr[0]);
+//    for( int i = 1; i < 8; ++i ) {
+//      s = std::max(s, absdiff(a.arr[i], b.arr[i]));
+//    }
+//    return s;
 
   const __m64 ma = _m_from_int64(a.u64);
   const __m64 mb = _m_from_int64(b.u64);
@@ -145,15 +145,17 @@ void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags,
               ss.g = (uint8_t) (gab[y][x][0]);
               ss.a = (uint8_t) (gab[y][x][1] + 128);
               ss.b = (uint8_t) (gab[y][x][2] + 128);
-              ss.gx = (uint8_t) (gx[y][x] * 2 + 128);
-              ss.gy = (uint8_t) (gy[y][x] * 2 + 128);
-              ss.gxx = (uint8_t) (gxx[y][x] * 6 + 128);
-              ss.gyy = (uint8_t) (gyy[y][x] * 6 + 128);
-              ss.gxy = (uint8_t) (gxy[y][x] * 6 + 128);
+              ss.gx = (uint8_t) (gx[y][x] + 128);
+              ss.gy = (uint8_t) (gy[y][x] + 128);
+              ss.gxx = (uint8_t) (gxx[y][x] + 128);
+              ss.gyy = (uint8_t) (gyy[y][x] + 128);
+              ss.gxy = (uint8_t) (gxy[y][x] + 128);
             }
 
           }
           else {
+
+            memset(ssp, 0, sizeof(*ssp) * width);
 
             for( int x = 0; x < width; ++x ) {
 
@@ -169,19 +171,19 @@ void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags,
                 ss.b = (uint8_t) (gab[y][x][2] + 128);
               }
               if ( flags & sscmp_gx ) {
-                ss.gx = (uint8_t) (gx[y][x] * 2 + 128);
+                ss.gx = (uint8_t) (gx[y][x] + 128);
               }
               if ( flags & sscmp_gy ) {
-                ss.gy = (uint8_t) (gy[y][x] * 2 + 128);
+                ss.gy = (uint8_t) (gy[y][x] + 128);
               }
               if ( flags & sscmp_gxx ) {
-                ss.gxx = (uint8_t) (gxx[y][x] * 6 + 128);
+                ss.gxx = (uint8_t) (gxx[y][x] + 128);
               }
               if ( flags & sscmp_gyy ) {
-                ss.gyy = (uint8_t) (gyy[y][x] * 6 + 128);
+                ss.gyy = (uint8_t) (gyy[y][x] + 128);
               }
               if ( flags & sscmp_gxy ) {
-                ss.gxy = (uint8_t) (gxy[y][x] * 6 + 128);
+                ss.gxy = (uint8_t) (gxy[y][x] + 128);
               }
             }
           }
@@ -189,6 +191,28 @@ void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags,
       });
 
 }
+
+void ssa_pyramid(const cv::Mat3b & image,
+    std::vector<c_ssarray> & pyramid,
+    int maxlevel,
+    int flags,
+    double ss_sigma,
+    int ss_radius)
+{
+  pyramid.clear();
+  pyramid.resize(maxlevel + 1);
+
+  ssa_compute(image, pyramid[0], flags, ss_sigma, ss_radius);
+
+  cv::Mat3b cimg;
+
+  for( int i = 1; i <= maxlevel; ++i ) {
+    cv::pyrDown(i == 1 ? image : cimg, cimg);
+    ssa_compute(cimg, pyramid[i], flags, ss_sigma, ss_radius);
+  }
+}
+
+
 
 void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
 {
@@ -274,6 +298,55 @@ void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
     }
   }
 }
+
+
+void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
+    const std::vector<c_ssarray> & ssa2, const cv::Rect & rc2,
+    cv::OutputArray dists)
+{
+
+  if ( rc1.width != rc2.width ) {
+    CF_ERROR("ERROR: ROI WIDTH NOT MATCH");
+    return;
+  }
+
+  if ( rc1.height != rc2.height ) {
+    CF_ERROR("ERROR: ROI HEIGHT NOT MATCH");
+    return;
+  }
+
+
+  if( dists.empty() || dists.size() != rc1.size() || dists.type() != CV_32FC1 ) {
+    dists.create(rc1.size(), CV_32FC1);
+  }
+
+  cv::Mat1f distances =
+      dists.getMatRef();
+
+  const int lmax =
+      ssa1.size();
+
+  for( int y = 0; y < rc1.height; ++y ) {
+
+    for( int x = 0; x < rc1.width; ++x ) {
+
+      uint8_t d =
+          absdiff(ssa1[0][y][x + rc1.x],
+                  ssa2[0][y][x + rc2.x]);
+
+      for( int l = 1, s = 2; l < lmax; ++l, s *= 2 ) {
+
+        d =  std::max(d,
+            absdiff(ssa1[l][y / s][(x + rc1.x) / s],
+                    ssa2[l][y / s][(x + rc2.x) / s]));
+      }
+
+      distances[y][x] = d;
+    }
+  }
+
+}
+
 
 void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,
     cv::OutputArray disps, cv::OutputArray costs,

@@ -36,6 +36,7 @@ struct ssdesc
 {
   union {
     uint64_t u64;
+    // uint8_t arr[8];
     struct {
       uint8_t g;
       uint8_t a;
@@ -78,11 +79,28 @@ public :
 };
 
 
-void ssa_compute(const cv::Mat3b & image, c_ssarray & ssa, int flags = sscmp_all, double ss_sigma = 2, int ss_radius = 0);
+void ssa_compute(const cv::Mat3b & image,
+    c_ssarray & ssa,
+    int flags = sscmp_all,
+    double ss_sigma = 1,
+    int ss_radius = 0);
+
+void ssa_pyramid(const cv::Mat3b & image,
+    std::vector<c_ssarray> & pyramid,
+    int maxlevel,
+    int flags = sscmp_all,
+    double ss_sigma = 1,
+    int ss_radius = 0);
+
+
 void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags);
 
 void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
     const c_ssarray & ssa2, const cv::Rect & rc2,
+    cv::OutputArray dists);
+
+void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
+    const std::vector<c_ssarray> & ssa2, const cv::Rect & rc2,
     cv::OutputArray dists);
 
 void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,

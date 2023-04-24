@@ -366,23 +366,28 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       const cv::Mat3b left_image = images[0];
       const cv::Mat3b right_image = images[1];
 
-      c_ssarray descs[2];
+      std::vector<c_ssarray> pdescs[2];
+      cv::Mat desc_images[2];
 
-      ssa_compute(left_image, descs[0], ssflags_, ss_sigma_, ss_radius_);
-      ssa_compute(right_image, descs[1], ssflags_, ss_sigma_, ss_radius_);
+      ssa_pyramid(left_image, pdescs[0], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
+      ssa_pyramid(right_image, pdescs[1], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
       cv::Mat &dst = image.getMatRef();
 
-      if( swap_frames_ == SwapFramesAfterRectification ) {
-        for( int i = 0; i < 2; ++i ) {
-          ssa_cvtfp32(descs[i], dst(roi[!i]), ssflags_);
+      for( int i = 0; i < 2; ++i ) {
+        if( swap_frames_ == SwapFramesAfterRectification ) {
+          ssa_cvtfp32(pdescs[!i].back(), desc_images[i], ss_flags_);
         }
-      }
-      else {
-        for( int i = 0; i < 2; ++i ) {
-          ssa_cvtfp32(descs[i], dst(roi[i]), ssflags_);
+        else {
+          ssa_cvtfp32(pdescs[i].back(), desc_images[i], ss_flags_);
         }
+
+        for( int j = ss_maxlvl_; j > 0; --j ) {
+          cv::pyrUp(desc_images[i], desc_images[i], pdescs[i][j - 1].size());
+        }
+
+        desc_images[i].copyTo(dst(roi[i]));
       }
 
       break;
@@ -390,35 +395,43 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
     case OverlaySSD: {
 
-      const cv::Mat3b left_image = images[0];
-      const cv::Mat3b right_image = images[1];
+      const cv::Mat3b src_images[2] = {
+          images[0],
+          images[1]
+      };
 
-      c_ssarray left_desc, right_desc;
+      std::vector<c_ssarray> descs[2];
 
       {
-        INSTRUMENT_REGION("ssa_compute");
+        INSTRUMENT_REGION("ssa_pyramid");
 
-        ssa_compute(left_image, left_desc, ssflags_, ss_sigma_, ss_radius_);
-        ssa_compute(right_image, right_desc, ssflags_, ss_sigma_, ss_radius_);
+        for ( int i = 0; i < 2; ++i ) {
+          ssa_pyramid(src_images[i], descs[i], ss_maxlvl_, ss_flags_, ss_sigma_, ss_radius_);
+        }
       }
 
-      image.create(left_image.size(),
-                CV_MAKETYPE(CV_32F, 1));
+      image.create(src_images[0].size(),
+          CV_MAKETYPE(CV_32F, 1));
 
       cv::Mat &dst_image =
           image.getMatRef();
 
       dst_image.setTo(0);
 
+//      ssa_cvtfp32(descs[1].back(),
+//          dst_image(cv::Rect(0, 0, descs[1].back().cols(), descs[1].back().rows())),
+//          ss_flags_);
+
+//      ssa_cvtfp32(descs[0].back(),
+//          dst_image(cv::Rect(0, 0, descs[0].back().cols(), descs[0].back().rows())),
+//          ss_flags_);
+
       {
         INSTRUMENT_REGION("ssa_compare");
 
-//        ssa_compare(left_desc, cv::Rect(overlay_offset_, 0, left_desc.cols() - overlay_offset_, left_desc.rows()),
-//            right_desc, cv::Rect(0, 0, right_desc.cols() - overlay_offset_, right_desc.rows()),
-//            dst_image(cv::Rect(overlay_offset_, 0, left_desc.cols() - overlay_offset_, left_desc.rows())));
-        ssa_compare(left_desc, cv::Rect(overlay_offset_, 0, left_desc.cols() - overlay_offset_, left_desc.rows()),
-            right_desc, cv::Rect(0, 0, right_desc.cols() - overlay_offset_, right_desc.rows()),
-            dst_image(cv::Rect(0, 0, left_desc.cols() - overlay_offset_, left_desc.rows())));
+        ssa_compare(descs[0], cv::Rect(overlay_offset_, 0, images[0].cols - overlay_offset_, images[0].rows),
+            descs[1], cv::Rect(0, 0, images[1].cols - overlay_offset_, images[1].rows),
+            dst_image(cv::Rect(0, 0, images[0].cols - overlay_offset_, images[0].rows)));
       }
 
       if( mask.needed() && !mask.empty() ) {

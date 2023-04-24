@@ -110,14 +110,14 @@ public:
     return overlay_offset_;
   }
 
-  void set_ssflags(int v)
+  void set_ss_flags(int v)
   {
-    ssflags_ = v;
+    ss_flags_ = v;
   }
 
-  int ssflags() const
+  int ss_flags() const
   {
-    return ssflags_;
+    return ss_flags_;
   }
 
   void set_ss_sigma(double v)
@@ -140,6 +140,16 @@ public:
     return ss_radius_;
   }
 
+  void set_ss_maxlvl(int v)
+  {
+    ss_maxlvl_ = v;
+  }
+
+  int ss_maxlvl() const
+  {
+    return ss_maxlvl_;
+  }
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_rectification, "Enable image rectification");
@@ -149,7 +159,8 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
-    ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, ssflags, "ssflags", sscmpflags, "ssflags");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_maxlvl, "ss_maxlvl");
+    ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, ss_flags, "ssflags", sscmpflags, "ssflags");
     ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
   }
 
@@ -165,9 +176,10 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
-      SERIALIZE_PROPERTY(settings, save, *this, ssflags);
+      SERIALIZE_PROPERTY(settings, save, *this, ss_flags);
       SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
       SERIALIZE_PROPERTY(settings, save, *this, ss_radius);
+      SERIALIZE_PROPERTY(settings, save, *this, ss_maxlvl);
 
       return true;
     }
@@ -185,9 +197,10 @@ protected:
   OverlayMode overlay_mode_ = OverlayNone;
   SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
-  int ssflags_ = sscmp_all;
+  int ss_flags_ = sscmp_all;
   double ss_sigma_ = 2;
   int ss_radius_ = 0;
+  int ss_maxlvl_ = 4;
 
   bool enable_rectification_ = true;
   c_stereo_camera_intrinsics intrinsics_;

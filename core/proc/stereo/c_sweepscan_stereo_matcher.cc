@@ -357,213 +357,12 @@ c_lpg_sharpness_measure & c_sweepscan_stereo_matcher::lpg()
   return lpg_;
 }
 
-//template<class MT>
-//bool c_sweepscan_stereo_matcher::match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
-//    cv::InputArray referenceImage, cv::InputArray referenceMask,
-//    cv::Mat & outputImage, cv::Mat1b * outputMask)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  typedef cv::Mat_<MT> MatType;
-//
-//  const bool enable_debug_point =
-//      !debug_points_.empty();
-//
-//  FILE *debug_points_fp = nullptr;
-//
-//  double ksigma;
-//  int ksize;
-//
-//  cv::Mat images[2];
-//  cv::Mat texture_map, texture_mask;
-//
-//  images[0] = currentImage.getMat();
-//  images[1] = referenceImage.getMat();
-//
-//  if( lpg_.k() >= 0 ) {
-//
-//    INSTRUMENT_REGION("LPG");
-//
-//    lpg_.create_map(images[1], texture_map);
-//    if( texture_map.channels() > 1 ) {
-//      reduce_color_channels(texture_map, texture_map, cv::REDUCE_MAX);
-//    }
-//
-//    cv::compare(texture_map, get_triangle_threshold(texture_map),
-//        texture_mask,
-//        cv::CMP_GT);
-//  }
-//
-//  if( output_type_ == OutputTextureMap ) {
-//
-//    if( !texture_map.empty() ) {
-//      outputImage = texture_map;
-//    }
-//    else {
-//      outputImage.create(images[1].size(), CV_32F);
-//      outputImage.setTo(0);
-//    }
-//
-//    if( outputMask ) {
-//      if( !texture_mask.empty() ) {
-//        *outputMask = texture_mask;
-//      }
-//      else {
-//        outputMask->release();
-//      }
-//    }
-//
-//    return true;
-//  }
-//
-//  if( output_type_ == OutputTextureMask ) {
-//
-//    if( !texture_mask.empty() ) {
-//      outputImage = texture_mask;
-//    }
-//    else {
-//      outputImage.create(images[1].size(), CV_8UC1);
-//      outputImage.setTo(255);
-//    }
-//
-//    if( outputMask ) {
-//      if( !texture_mask.empty() ) {
-//        *outputMask = texture_mask;
-//      }
-//      else {
-//        outputMask->release();
-//      }
-//    }
-//
-//    return true;
-//  }
-//
-//  if( kernel_radius_ > 0 && kernel_sigma_ > 0 ) {
-//    ksize = 2 * kernel_radius_ + 1;
-//    ksigma = kernel_sigma_;
-//  }
-//  else if( kernel_radius_ > 0 ) {
-//    ksize = 2 * kernel_radius_ + 1;
-//    ksigma = std::max(0.75, kernel_radius_ / 4.);
-//  }
-//  else {
-//    ksize = 7;
-//    ksigma = 1;
-//  }
-//
-//  const cv::Mat1f G =
-//      cv::getGaussianKernel(ksize, ksigma, CV_32F);
-//
-//  const cv::Mat &queryImage =
-//      images[0];
-//
-//  const cv::Mat &trainImage =
-//      images[1];
-//
-//  const cv::Size max_image_size =
-//      trainImage.size();
-//
-//  std::deque<cv::Mat> Eq;
-//  cv::Mat Emin, M1, M2, M3;
-//  cv::Mat1s D(max_image_size, (int16_t)(-1));
-//
-//  if ( true ) {
-//
-//    INSTRUMENT_REGION("SCAN");
-//
-//    for( int disparity = 0; disparity < max_disparity_; ++disparity ) {
-//
-//      const cv::Rect qrc(disparity, 0,
-//          max_image_size.width - disparity,
-//          max_image_size.height);
-//
-//      const cv::Rect rrc(0, 0,
-//          max_image_size.width - disparity,
-//          max_image_size.height);
-//
-//      const cv::Mat Q =
-//          queryImage(qrc);
-//
-//      const cv::Mat R =
-//          trainImage(rrc);
-//
-//      // compute error image
-//      cv::Mat E;
-//
-//      {
-//        INSTRUMENT_REGION("ABSDIFF");
-//        cv::absdiff(Q, R, E);
-//      }
-//
-//      {
-//        INSTRUMENT_REGION("sepFilter2D");
-//        cv::sepFilter2D(E, E, E.depth(), G, G, cv::Point(-1, -1), 0,
-//            cv::BORDER_REPLICATE);
-//      }
-//
-//      if( E.channels() > 1 ) {
-//        INSTRUMENT_REGION("cvtColor");
-//        cv::cvtColor(E, E, cv::COLOR_BGR2GRAY);
-//      }
-//
-//      Eq.emplace_back(E);
-//
-//      const int N =
-//          Eq.size();
-//
-//      if( N == 1 ) {
-//        E.copyTo(Emin);
-//      }
-//      else if( N == 2 ) {
-//
-//        const cv::Mat &En = Eq.back();
-//        const cv::Mat Ec = Eq.front()(rrc);
-//
-//        En.copyTo(Emin(rrc), En < Emin(rrc));
-//        D(rrc).setTo(disparity - 1, En > Ec);
-//      }
-//      else {
-//
-//        INSTRUMENT_REGION("COMP");
-//
-//        const cv::Mat &En = Eq[N - 1];
-//        const cv::Mat Ec = Eq[N - 2](rrc);
-//        const cv::Mat Ep = Eq[N - 3](rrc);
-//        cv::Mat Em = Emin(rrc);
-//
-//        M1 = En < Em;
-//        En.copyTo(Em, M1);
-//
-//        D(rrc).setTo(-1, M1);
-//        D(rrc).setTo(disparity - 1, (En > Ec) & (Ep > Ec) & (Ec == Em) );
-//      }
-//
-//      if ( Eq.size() > 2 ) {
-//        Eq.pop_front();
-//      }
-//
-//    }
-//  }
-//
-//  if( output_type_ == OutputErrorMap ) {
-//    Emin.copyTo(outputImage);
-//  }
-//  else if( output_type_ == OutputDisparityMap ) {
-//    D.setTo(-1, ~texture_mask);
-//    D.copyTo(outputImage);
-//
-//    if ( outputMask ) {
-//      *outputMask = D >= 0;
-//    }
-//  }
-//
-//  return true;
-//}
-
 bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat & outputImage, cv::Mat1b * outputMask)
 {
+  INSTRUMENT_REGION("");
+
   ////////////
 
   if( currentImage.size() != referenceImage.size() ) {
@@ -579,12 +378,6 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
     return false;
   }
 
-  if( currentImage.type() != CV_8UC3 ) {
-    CF_ERROR("unsupported image type %d. Must be CV_8UC3",
-        currentImage.type());
-    return false;
-  }
-
   if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
     CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
         debug_directory_.c_str(), strerror(errno));
@@ -592,7 +385,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   }
 
 
-  const cv::Mat3b images[2] = {
+  const cv::Mat images[2] = {
       currentImage.getMat(),
       referenceImage.getMat()
   };
@@ -663,7 +456,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   cv::Mat1w disps, errs;
 
   {
-    INSTRUMENT_REGION("ssa_compute");
+    INSTRUMENT_REGION("ssa_pyramid");
     for( int i = 0; i < 2; ++i ) {
       ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
     }

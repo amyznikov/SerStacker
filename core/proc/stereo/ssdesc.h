@@ -14,20 +14,16 @@
 
 enum sscmpflags
 {
-  sscmp_g  = 0x01,
-  sscmp_a  = 0x02,
-  sscmp_b  = 0x04,
-  sscmp_gx = 0x08,
-  sscmp_gy = 0x10,
-  sscmp_gxx  = 0x20,
-  sscmp_gyy  = 0x40,
-  sscmp_gxy  = 0x80,
+  sscmp_g00  = 0x01,
+  sscmp_g01  = 0x02,
+  sscmp_g02  = 0x04,
+  sscmp_g03  = 0x08,
+  sscmp_g10  = 0x10,
+  sscmp_g11  = 0x20,
+  sscmp_g12  = 0x40,
+  sscmp_g13  = 0x80,
 
-  sscmp_all = \
-    sscmp_g | \
-    sscmp_a | sscmp_b | \
-    sscmp_gx | sscmp_gy | \
-    sscmp_gxx | sscmp_gyy | sscmp_gxy
+  sscmp_all = 0xFF
 };
 
 
@@ -36,17 +32,7 @@ struct ssdesc
 {
   union {
     uint64_t u64;
-    // uint8_t arr[8];
-    struct {
-      uint8_t g;
-      uint8_t a;
-      uint8_t b;
-      uint8_t gx;
-      uint8_t gy;
-      uint8_t gxx;
-      uint8_t gyy;
-      uint8_t gxy;
-    };
+    uint8_t  g[8];
   };
 };
 #pragma pack(pop)
@@ -78,13 +64,7 @@ public :
   }
 };
 
-
-//void ssa_compute(const cv::Mat3b & image,
-//    c_ssarray & ssa,
-//    int scale,
-//    int flags = sscmp_all);
-//
-void ssa_pyramid(const cv::Mat3b & image,
+void ssa_pyramid(const cv::Mat & image,
     std::vector<c_ssarray> & pyramid,
     int maxlevel,
     int flags = sscmp_all);

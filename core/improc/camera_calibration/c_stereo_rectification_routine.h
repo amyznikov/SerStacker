@@ -38,9 +38,9 @@ public:
     OverlayAddWeighted,
     OverlayAbsdiff,
     OverlayNCC,
-    OverlayDisplaySSD,
-    OverlayBlendSSD,
-    OverlaySSD,
+    OverlayDisplaySSA,
+    OverlayBlendSSA,
+    OverlaySSA,
   };
 
   enum SwapFramesMode {

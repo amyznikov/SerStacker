@@ -18,9 +18,9 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
       { c_stereo_rectification_routine::OverlayAddWeighted, "addWeighted", "cv::addWeighted(left, right)" },
       { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
       { c_stereo_rectification_routine::OverlayNCC, "NCC", "NCC" },
-      { c_stereo_rectification_routine::OverlayDisplaySSD, "DisplaySSD", "DisplaySSD" },
-      { c_stereo_rectification_routine::OverlayBlendSSD, "BlendSSD", "BlendSSD" },
-      { c_stereo_rectification_routine::OverlaySSD, "SSD", "SSD" },
+      { c_stereo_rectification_routine::OverlayDisplaySSA, "DisplaySSA", "DisplaySSA" },
+      { c_stereo_rectification_routine::OverlayBlendSSA, "BlendSSA", "BlendSSA" },
+      { c_stereo_rectification_routine::OverlaySSA, "SSA", "SSA" },
       // { c_stereo_rectification_routine::OverlayDAISY, "DAISY", "DAISY distance" },
       { c_stereo_rectification_routine::OverlayNone },
   };
@@ -362,10 +362,10 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlayDisplaySSD : {
+    case OverlayDisplaySSA : {
 
-      const cv::Mat3b left_image = images[0];
-      const cv::Mat3b right_image = images[1];
+      const cv::Mat left_image = images[0];
+      const cv::Mat right_image = images[1];
 
       std::vector<c_ssarray> pdescs[2];
       cv::Mat desc_images[2];
@@ -390,12 +390,12 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlayBlendSSD: {
+    case OverlayBlendSSA: {
 
-      const cv::Mat3b left_image =
+      const cv::Mat left_image =
           images[0];
 
-      const cv::Mat3b right_image =
+      const cv::Mat right_image =
           images[1];
 
       std::vector<c_ssarray> descs[2];
@@ -419,16 +419,16 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       cv::addWeighted(desc_images[0](cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
           desc_images[1](cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
-          -64,
+          0,
           dst(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
 
 
       break;
     }
 
-    case OverlaySSD: {
+    case OverlaySSA: {
 
-      const cv::Mat3b src_images[2] = {
+      const cv::Mat src_images[2] = {
           images[0],
           images[1]
       };

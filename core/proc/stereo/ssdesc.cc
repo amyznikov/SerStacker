@@ -12,18 +12,39 @@
 
 #include <core/debug.h>
 
+//  static float LoG[9 * 9] = {
+//      0.0f, 1.0f, 1.0f,   2.0f,   2.0f,   2.0f, 1.0f, 1.0f, 0.0f,
+//      1.0f, 2.0f, 4.0f,   5.0f,   5.0f,   5.0f, 4.0f, 2.0f, 1.0f,
+//      1.0f, 4.0f, 5.0f,   3.0f,   0.0f,   3.0f, 5.0f, 4.0f, 1.0f,
+//      2.0f, 5.0f, 3.0f, -12.0f, -24.0f, -12.0f, 3.0f, 5.0f, 2.0f,
+//      2.0f, 5.0f, 0.0f, -24.0f, -40.0f, -24.0f, 0.0f, 5.0f, 2.0f,
+//      2.0f, 5.0f, 3.0f, -12.0f, -24.0f, -12.0f, 3.0f, 5.0f, 2.0f,
+//      1.0f, 4.0f, 5.0f,   3.0f,   0.0f,   3.0f, 5.0f, 4.0f, 1.0f,
+//      1.0f, 2.0f, 4.0f,   5.0f,   5.0f,   5.0f, 4.0f, 2.0f, 1.0f,
+//      0.0f, 1.0f, 1.0f,   2.0f,   2.0f,   2.0f, 1.0f, 1.0f, 0.0f
+//  };
+//  static float L[7 * 7] = {
+//      0, 0, -1, -1, -1, 0, 0,
+//      0, -1, -3, -3, -3, -1, 0,
+//      -1, -3, 0, 7, 0, -3, -1,
+//      -1, -3, 7, 24, 7, -3, -1,
+//      -1, -3, 0, 7, 0, -3, -1,
+//      0, -1, -3, -3, -3, -1, 0,
+//      0, 0, -1, -1, -1, 0, 0
+//  };
+
 template<>
 const c_enum_member* members_of<sscmpflags>()
 {
   static constexpr c_enum_member members[] = {
-      {sscmp_g, "g", "g"},
-      {sscmp_a, "a", "a"},
-      {sscmp_b, "b", "b"},
-      {sscmp_gx, "gx", "gx"},
-      {sscmp_gy, "gy", "gy"},
-      {sscmp_gxx, "gxx", "gxx"},
-      {sscmp_gyy, "gyy", "gyy"},
-      {sscmp_gxy, "gxy", "gxy"},
+      {sscmp_g00, "g00", "g00"},
+      {sscmp_g01, "g01", "g01"},
+      {sscmp_g02, "g02", "g02"},
+      {sscmp_g03, "g03", "g03"},
+      {sscmp_g10, "g10", "g10"},
+      {sscmp_g11, "g11", "g11"},
+      {sscmp_g12, "g12", "g12"},
+      {sscmp_g13, "g13", "g13"},
       {sscmp_all},
   };
 
@@ -36,28 +57,99 @@ namespace {
 typedef tbb::blocked_range<int> tbb_range;
 const int tbb_grain_size = 128;
 
-void compute_gradients(const cv::Mat & src, cv::Mat1f & gx, cv::Mat1f & gy,
-    cv::Mat1f & gxx, cv::Mat1f & gyy,
-    cv::Mat1f & gxy)
+void compute_gradients(const cv::Mat & src, cv::Mat4b & g1, cv::Mat4b & g2)
 {
-  static const thread_local cv::Matx<float, 1, 5> K(
-      (+1.f / 12),
-      (-8.f / 12),
-      0.f,
-      (+8.f / 12),
-      (-1.f / 12));
 
-  static const thread_local cv::Matx<float, 5, 1> Kt =
-      K.t();
+  static float k1[4][5 * 5] = {
+      {
+          0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0,
+          +1./12, -2./3, 0, +2./3, -1./12,
+          0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0,
+      },
+      {
+          0, 0, 0, 0, -1./12,
+          0, 0, 0, +2./3, 0,
+          0, 0, 0, 0, 0,
+          0, -2./3, 0, 0, 0,
+          +1./12, 0, 0, 0, 0,
+      },
+      {
+          0, 0, -1./12, 0, 0,
+          0, 0, +2./3, 0, 0,
+          0, 0, 0, 0, 0,
+          0, 0, -2./3, 0, 0,
+          0, 0, +1./12, 0, 0,
+      },
+      {
+          -1./12, 0, 0, 0, 0,
+          0, +2./3, 0, 0, 0,
+          0, 0, 0, 0, 0,
+          0, 0, 0, -2./3, 0,
+          0, 0, 0, 0, +1./12,
+      },
+  };
 
-  constexpr cv::BorderTypes border_type =
-      cv::BORDER_REPLICATE;
+  static float k2[4][5 * 5] = {
+      {
+          0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0,
+          -1./12, 4./3, -5./ 2, 4./3, -1./ 12,
+          0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0,
+      },
+      {
+          0, 0, 0, 0, -1./12,
+          0, 0, 0, 4./3, 0,
+          0, 0, -5./2, 0, 0,
+          0, 4./3, 0, 0, 0,
+          -1./12, 0, 0, 0, 0,
+      },
+      {
+          0, 0, -1./12, 0, 0,
+          0, 0, 4./3, 0, 0,
+          0, 0, -5./2, 0, 0,
+          0, 0, 4./3, 0, 0,
+          0, 0, -1./12, 0, 0,
+      },
+      {
+          -1./12, 0, 0, 0, 0,
+          0, 4./3, 0, 0, 0,
+          0, 0, -5./2, 0, 0,
+          0, 0, 0, 4./3, 0,
+          0, 0, 0, 0, -1./12,
+      },
+  };
 
-  cv::filter2D(src, gx, CV_32F, K, cv::Point(-1, -1), 0, border_type);
-  cv::filter2D(src, gy, CV_32F, Kt, cv::Point(-1, -1), 0, border_type);
-  cv::filter2D(gx, gxx, CV_32F, K, cv::Point(-1, -1), 0, border_type);
-  cv::filter2D(gy, gyy, CV_32F, Kt, cv::Point(-1, -1), 0, border_type);
-  cv::filter2D(gx, gxy, CV_32F, Kt, cv::Point(-1, -1), 0, border_type);
+  static const thread_local cv::Matx<float, 5, 5> K1[4] = {
+      cv::Matx<float, 5, 5>(k1[0]),
+      cv::Matx<float, 5, 5>(k1[1]),
+      cv::Matx<float, 5, 5>(k1[2]),
+      cv::Matx<float, 5, 5>(k1[3]),
+  };
+
+  static const thread_local cv::Matx<float, 5, 5> K2[4] = {
+      cv::Matx<float, 5, 5>(k2[0]),
+      cv::Matx<float, 5, 5>(k2[1]),
+      cv::Matx<float, 5, 5>(k2[2]),
+      cv::Matx<float, 5, 5>(k2[3]),
+  };
+
+  std::vector<cv::Mat> gg[2] = {
+      std::vector<cv::Mat>(4),
+      std::vector<cv::Mat>(4)
+  };
+
+  for( int i = 0; i < 4; ++i ) {
+    cv::filter2D(src, gg[0][i], CV_8U, K1[i], cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  }
+  for( int i = 0; i < 4; ++i ) {
+    cv::filter2D(src, gg[1][i], CV_8U, K2[i], cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  }
+
+  cv::merge(gg[0], g1);
+  cv::merge(gg[1], g2);
 }
 
 //static inline uint8_t absdiff(uint8_t a, uint8_t b)
@@ -95,13 +187,7 @@ static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
     const ssdesc *const* b[/*scales*/], int xa, int xb, int y, int scales, uint8_t worst)
 {
   uint8_t d = absdiff(a[0][y][xa], b[0][y][xb]);
-
   for( int s = 1; s < scales; ++s ) {
-
-//    y >>= 1;
-//    xa >>= 1;
-//    xb >>= 1;
-
     if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb]))) > worst ) {
       break;
     }
@@ -113,23 +199,20 @@ static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
 
 } // namespace
 
-void ssa_pyramid(const cv::Mat3b & image,
+void ssa_pyramid(const cv::Mat & image,
     std::vector<c_ssarray> & pyramid,
     int maxlevel,
     int flags)
 {
   cv::Mat s;
-  cv::Mat1f g, a, b, gx, gy, gxx, gyy, gxy;
+  cv::Mat4b g[2];
   std::vector<cv::Size> sizes;
 
-//  CF_DEBUG("enter");
-
-  if( image.depth() == CV_32F ) {
-    cv::cvtColor(image, s, cv::COLOR_BGR2YCrCb);
+  if( image.channels() == 1 ) {
+    s = image;
   }
   else {
-    image.convertTo(s, CV_32F);
-    cv::cvtColor(s, s, cv::COLOR_BGR2YCrCb);
+    cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
   }
 
   pyramid.clear();
@@ -143,31 +226,12 @@ void ssa_pyramid(const cv::Mat3b & image,
 
     sizes.emplace_back(s.size());
 
-    cv::extractChannel(s, g, 0);
-    cv::extractChannel(s, a, 1);
-    cv::extractChannel(s, b, 2);
-    compute_gradients(g, gx, gy, gxx, gyy, gxy);
-
-//    CF_DEBUG("------------");
-//    CF_DEBUG("scale = %d", scale);
+    compute_gradients(s, g[0], g[1]);
 
     for( int upscale = scale - 1; upscale >= 0; --upscale ) {
-
-      //CF_DEBUG("upscale = %d: g=%dx%d -> %dx%d", upscale, g.cols, g.rows, sizes[upscale].width, sizes[upscale].height);
-
-      cv::pyrUp(g, g, sizes[upscale]);
-      cv::pyrUp(a, a, sizes[upscale]);
-      cv::pyrUp(b, b, sizes[upscale]);
-      cv::pyrUp(gx, gx, sizes[upscale]);
-      cv::pyrUp(gy, gy, sizes[upscale]);
-      cv::pyrUp(gxx, gxx, sizes[upscale]);
-      cv::pyrUp(gyy, gyy, sizes[upscale]);
-      cv::pyrUp(gxy, gxy, sizes[upscale]);
-
-      //CF_DEBUG("OK");
+      cv::pyrUp(g[0], g[0], sizes[upscale]);
+      cv::pyrUp(g[1], g[1], sizes[upscale]);
     }
-
-//    CF_DEBUG("------------");
 
     c_ssarray &ssa = pyramid[scale];
     ssa.create(image.size());
@@ -187,14 +251,12 @@ void ssa_pyramid(const cv::Mat3b & image,
 
                 ssdesc & ss = ssp[x];
 
-                ss.g = (uint8_t) (g[y][x]);
-                ss.a = (uint8_t) (a[y][x] + 128);
-                ss.b = (uint8_t) (b[y][x] + 128);
-                ss.gx = (uint8_t) (gx[y][x] + 128);
-                ss.gy = (uint8_t) (gy[y][x] + 128);
-                ss.gxx = (uint8_t) (gxx[y][x] + 128);
-                ss.gyy = (uint8_t) (gyy[y][x] + 128);
-                ss.gxy = (uint8_t) (gxy[y][x] + 128);
+                for ( int i = 0; i < 4; ++i ) {
+                  ss.g[i] = (uint8_t) g[0][y][x][i];
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = (uint8_t) g[1][y][x][i-4];
+                }
               }
 
             }
@@ -206,29 +268,15 @@ void ssa_pyramid(const cv::Mat3b & image,
 
                 ssdesc & ss = ssp[x];
 
-                if ( flags & sscmp_g ) {
-                  ss.g = (uint8_t) (g[y][x]);
+                for ( int i = 0; i < 4; ++i ) {
+                  if ( flags & (1<< i) ) {
+                    ss.g[i] = (uint8_t) g[0][y][x][i];
+                  }
                 }
-                if ( flags & sscmp_a ) {
-                  ss.a = (uint8_t) (a[y][x] + 128);
-                }
-                if ( flags & sscmp_b ) {
-                  ss.b = (uint8_t) (b[y][x] + 128);
-                }
-                if ( flags & sscmp_gx ) {
-                  ss.gx = (uint8_t) (gx[y][x] + 128);
-                }
-                if ( flags & sscmp_gy ) {
-                  ss.gy = (uint8_t) (gy[y][x] + 128);
-                }
-                if ( flags & sscmp_gxx ) {
-                  ss.gxx = (uint8_t) (gxx[y][x] + 128);
-                }
-                if ( flags & sscmp_gyy ) {
-                  ss.gyy = (uint8_t) (gyy[y][x] + 128);
-                }
-                if ( flags & sscmp_gxy ) {
-                  ss.gxy = (uint8_t) (gxy[y][x] + 128);
+                for ( int i = 4; i < 8; ++i ) {
+                  if ( flags & (1<< i) ) {
+                    ss.g[i] = (uint8_t) g[1][y][x][i-4];
+                  }
                 }
               }
             }
@@ -262,29 +310,11 @@ void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
 
       uint64_t v = 0;
 
-      if( flags & sscmp_g ) {
-        v = ss.g;
-      }
-      else if( flags & sscmp_a ) {
-        v = ss.a;
-      }
-      else if( flags & sscmp_b ) {
-        v = ss.b;
-      }
-      else if( flags & sscmp_gx ) {
-        v = ss.gx;
-      }
-      else if( flags & sscmp_gy ) {
-        v = ss.gy;
-      }
-      else if( flags & sscmp_gxx ) {
-        v = ss.gxx;
-      }
-      else if( flags & sscmp_gyy ) {
-        v = ss.gyy;
-      }
-      else if( flags & sscmp_gxy ) {
-        v = ss.gxy;
+      for( int i = 0; i < 8; ++i ) {
+        if( flags & (1 << i) ) {
+          v = ss.g[i];
+          break;
+        }
       }
 
       dst[y][x] = v;

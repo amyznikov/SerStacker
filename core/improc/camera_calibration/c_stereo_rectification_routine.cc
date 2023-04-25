@@ -413,13 +413,13 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         }
       }
 
-      image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
+      image.create(right_image.size(), CV_32F);
       cv::Mat &dst = image.getMatRef();
       dst.setTo(0);
 
       cv::addWeighted(desc_images[0](cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
           desc_images[1](cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
-          0,
+          -64,
           dst(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
 
 

@@ -737,6 +737,7 @@ bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray righ
 
     if( stereoBinarySGBM_ ) {
 
+
       cv::Mat images[2];
 
       if( left.channels() == 1 ) {
@@ -755,6 +756,7 @@ bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray righ
             cv::COLOR_BGR2GRAY);
       }
 
+      INSTRUMENT_REGION("BinarySGBM");
       stereoBinarySGBM_->compute(images[0], images[1], disp);
 
       return convertDisparityType(disp, disparity);

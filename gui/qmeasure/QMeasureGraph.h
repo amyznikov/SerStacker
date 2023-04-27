@@ -25,7 +25,8 @@ public:
   QMeasureGraph(QWidget * parent = nullptr);
 
   void setCurrentMeasure(QMeasure * cm);
-
+  //void clearMeasurements();
+;
 protected Q_SLOTS:
   void clearGraphs();
   void updateGraphs();
@@ -56,6 +57,7 @@ public:
 
 protected:
   QMeasureSelectionCombo * combobox_ctl = nullptr;
+  QToolButton * buttonClear_ctl = nullptr;
 };
 
 #endif /* __QMeasureGraph_h__ */

@@ -98,6 +98,10 @@ public:
   void setEditMaskPenShape(PenShape v);
   PenShape editMaskPenShape() const;
 
+  static bool adjustRoi(const cv::Rect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi);
+  static bool adjustRoi(const QRect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi);
+
+
 Q_SIGNALS:
   void onMouseMove(QMouseEvent * e);
   void onMousePressEvent(QMouseEvent * e);
@@ -125,6 +129,7 @@ protected:
 public Q_SLOTS:
   virtual void updateDisplay();
   void copyDisplayImageToClipboard();
+  void copyDisplayImageROIToClipboard(const QRect & roi);
   void handleMousePressEvent(QMouseEvent * e);
   void handleMouseMoveEvent(QMouseEvent * e);
   void editMask(QMouseEvent * e);

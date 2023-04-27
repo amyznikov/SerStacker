@@ -523,7 +523,12 @@ void MainWindow::setupImageEditor()
           "Copy display image to clipboard (Ctrl+c)",
           "Copy display image to clipboard (Ctrl+c)",
           [this]() {
-            imageEditor->copyDisplayImageToClipboard();
+            if ( imageEditor->roiRectShape()->isVisible() ) {
+              imageEditor->copyDisplayImageROIToClipboard(imageEditor->roiRectShape()->iSceneRect());
+            }
+            else {
+              imageEditor->copyDisplayImageToClipboard();
+            }
           },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
               imageEditor, nullptr, nullptr,

@@ -398,6 +398,21 @@ void QImageViewer::copyDisplayImageToClipboard()
   }
 }
 
+void QImageViewer::copyDisplayImageROIToClipboard(const QRect & roi)
+{
+  QClipboard *clipboard = QApplication::clipboard();
+  if( !clipboard ) {
+    QMessageBox::critical(this, "ERROR", "No application clipboard available");
+  }
+  else {
+    cv::Rect rc;
+    if( adjustRoi(roi, cv::Rect(0, 0, displayImage_.cols, displayImage_.rows), &rc) ) {
+      cv2qt(displayImage_(rc), &qimage_, true);
+      clipboard->setImage(qimage_);
+    }
+  }
+}
+
 
 template<class T>
 static int sdump_(const cv::Mat & image, int x, int y, char buf[], int bufsz, int n, const char * dtype, const char * fmt)
@@ -496,24 +511,24 @@ void QImageViewer::showEvent(QShowEvent *e)
 {
   updateDisplay();
   Base::showEvent(e);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }
 
 void QImageViewer::hideEvent(QHideEvent *e)
 {
   Base::hideEvent(e);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }
 
 void QImageViewer::focusInEvent(QFocusEvent *e)
 {
-  emit onFocusInEvent(e);
+  Q_EMIT onFocusInEvent(e);
   Base::focusInEvent(e);
 }
 
 void QImageViewer::focusOutEvent(QFocusEvent *e)
 {
-  emit onFocusOutEvent(e);
+  Q_EMIT onFocusOutEvent(e);
   Base::focusOutEvent(e);
 }
 
@@ -624,13 +639,42 @@ void QImageViewer::undoEditMask()
   }
 }
 
+
+bool QImageViewer::adjustRoi(const cv::Rect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi)
+{
+  const int l =
+      (std::min)(imageRect.x + imageRect.width - 1,
+          (std::max)(srcRoi.x, imageRect.x));
+
+  const int t =
+      (std::min)(imageRect.y + imageRect.height - 1,
+          (std::max)(srcRoi.y, imageRect.y));
+
+  const int r =
+      std::max(imageRect.x,
+          std::min(srcRoi.x + srcRoi.width - 1, imageRect.x + imageRect.width - 1));
+
+  const int b =
+      std::max(imageRect.y,
+          std::min(srcRoi.y + srcRoi.height - 1, imageRect.y + imageRect.height - 1));
+
+  return !(*dstRoi = cv::Rect(l, t, r - l + 1, b - t + 1)).empty();
+}
+
+bool QImageViewer::adjustRoi(const QRect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi)
+{
+  return adjustRoi(cv::Rect(srcRoi.x(), srcRoi.y(), srcRoi.width(), srcRoi.height()),
+      imageRect,
+      dstRoi);
+}
+
 void QImageViewer::handleMousePressEvent(QMouseEvent * e)
 {
   if( e->buttons() == Qt::LeftButton && enableEditMask_ ) {
     editMask(e);
   }
 
-  emit onMousePressEvent(e);
+  Q_EMIT onMousePressEvent(e);
 }
 
 void QImageViewer::handleMouseMoveEvent(QMouseEvent * e)
@@ -638,7 +682,7 @@ void QImageViewer::handleMouseMoveEvent(QMouseEvent * e)
   if( e->buttons() == Qt::LeftButton && enableEditMask_ ) {
     editMask(e);
   }
-  emit onMouseMove(e);
+  Q_EMIT onMouseMove(e);
 }
 
 

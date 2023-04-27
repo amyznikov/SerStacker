@@ -12,6 +12,8 @@
 //#define ICON_chart        ":/qmeasure/icons/chart.png"
 //#define ICON_roi          ":/qmeasure/icons/roi.png"
 //#define ICON_options      ":/qmeasure/icons/options.png"
+#define ICON_clear      ":/qmeasure/icons/clear_measurements.png"
+
 
 QMeasureGraph::QMeasureGraph(QWidget * parent) :
   Base(parent)
@@ -78,6 +80,12 @@ void QMeasureGraph::setCurrentMeasure(QMeasure * cm)
     updateGraphs();
   }
 }
+
+//void QMeasureGraph::clearMeasurements()
+//{
+//  QMeasureProvider::clear_measured_frames();
+//}
+
 
 void QMeasureGraph::clearGraphs()
 {
@@ -194,12 +202,24 @@ QMeasureGraphDock::QMeasureGraphDock(const QString & title, QWidget * parent, QM
     QCustomDockTitleBar *bar =
         titleBar();
 
-    bar->addWidget(combobox_ctl = new QMeasureGraphCombo());
+    bar->addButton(buttonClear_ctl = new QToolButton(this));
+    buttonClear_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    buttonClear_ctl->setIcon(getIcon(ICON_clear));
+    buttonClear_ctl->setText("clear");
+    buttonClear_ctl->setToolTip("Clear measurements");
+    connect(buttonClear_ctl, &QToolButton::clicked,
+        []() {
+          QMeasureProvider::clear_measured_frames();
+        });
 
+
+    bar->addWidget(combobox_ctl = new QMeasureGraphCombo());
     connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,
         [this, graph]() {
           graph->setCurrentMeasure(combobox_ctl->currentMeasure());
         });
+
+
 
   }
 }

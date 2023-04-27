@@ -12,7 +12,7 @@
 #include <core/debug.h>
 
 #define ICON_add        ":/qmeasure/icons/add.png"
-#define ICON_clear      ":/qmeasure/icons/clear.png"
+#define ICON_clear      ":/qmeasure/icons/clear_measurements.png"
 #define ICON_copy       ":/qmeasure/icons/copy.png"
 #define ICON_save       ":/qmeasure/icons/save.png"
 #define ICON_select     ":/qmeasure/icons/select.png"
@@ -97,6 +97,17 @@ void QMeasureDisplay::setupToolbar()
       };
 
 
+  static const auto addStretch =
+      [](QToolBar * toolbar) -> QWidget* {
+        QWidget *stretch = new QWidget();
+        stretch->setStyleSheet("*{background: none;}");
+        stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        toolbar->addWidget(stretch);
+        return stretch;
+      };
+
+
+
   saveToFileAction_ =
       addAction(toolbar_, ICON_save,
           "Save",
@@ -109,11 +120,7 @@ void QMeasureDisplay::setupToolbar()
           "Copy measurements to clipboard",
           false);
 
-  clearTableAction_ =
-      addAction(toolbar_, ICON_clear,
-          "Clear",
-          "Clear measurements",
-          false);
+  toolbar_->addSeparator();
 
   selectMeasuresAction_  =
       addAction(toolbar_, ICON_select,
@@ -132,6 +139,14 @@ void QMeasureDisplay::setupToolbar()
           "Measure",
           "Enable Measurements",
           true);
+
+  addStretch(toolbar_);
+
+  clearTableAction_ =
+      addAction(toolbar_, ICON_clear,
+          "Clear",
+          "Clear measurements",
+          false);
 
   connect(selectMeasuresAction_, &QAction::triggered,
       this, &ThisClass::onSelectMeasuresClicked);

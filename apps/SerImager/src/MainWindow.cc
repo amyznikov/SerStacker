@@ -106,11 +106,27 @@ void MainWindow::setupMainMenu()
 
   ///////////////////////////////////////////////////////////////////
 
+//  menuEdit_->addAction(copyDisplayImageAction =
+//      createAction(getIcon(ICON_copy),
+//          "Copy display image to clipboard (Ctrl+c)",
+//          "Copy display image to clipboard (Ctrl+c)",
+//          centralDisplay_, &QImageViewer::copyDisplayImageToClipboard,
+//          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+//              centralDisplay_, nullptr, nullptr,
+//              Qt::WindowShortcut)));
+
   menuEdit_->addAction(copyDisplayImageAction =
       createAction(getIcon(ICON_copy),
           "Copy display image to clipboard (Ctrl+c)",
           "Copy display image to clipboard (Ctrl+c)",
-          centralDisplay_, &QImageViewer::copyDisplayImageToClipboard,
+          [this]() {
+            if ( centralDisplay_->rectShape()->isVisible() ) {
+              centralDisplay_->copyDisplayImageROIToClipboard(centralDisplay_->rectShape()->iSceneRect());
+            }
+            else {
+              centralDisplay_->copyDisplayImageToClipboard();
+            }
+          },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
               centralDisplay_, nullptr, nullptr,
               Qt::WindowShortcut)));

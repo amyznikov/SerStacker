@@ -41,7 +41,7 @@ const int tbb_grain_size = 128;
 /*
  * https://en.wikipedia.org/wiki/Finite_difference_coefficient
  * */
-void compute_gradients(const cv::Mat & src, cv::Mat4b & g1, cv::Mat4b & g2)
+void compute_gradients(const cv::Mat & src, cv::Mat & g1, cv::Mat & g2, float delta = 128, int ddepth = CV_8U)
 {
 
 //  static float k1[4][5 * 5] = {
@@ -169,17 +169,17 @@ void compute_gradients(const cv::Mat & src, cv::Mat4b & g1, cv::Mat4b & g2)
   };
 
   static const thread_local cv::Matx<float, 5, 5> K1[4] = {
-      cv::Matx<float, 5, 5>(k1[0]) / 12.f,
-      cv::Matx<float, 5, 5>(k1[1]) / 12.f,
-      cv::Matx<float, 5, 5>(k1[2]) / 12.f,
-      cv::Matx<float, 5, 5>(k1[3]) / 12.f,
+      cv::Matx<float, 5, 5>(k1[0]) * 1.5 / 12.f,
+      cv::Matx<float, 5, 5>(k1[1]) * 1.5 / 12.f,
+      cv::Matx<float, 5, 5>(k1[2]) * 1.5 / 12.f,
+      cv::Matx<float, 5, 5>(k1[3]) * 1.5 / 12.f,
   };
 
   static const thread_local cv::Matx<float, 5, 5> K2[4] = {
-      cv::Matx<float, 5, 5>(k2[0]) / 14.f,
-      cv::Matx<float, 5, 5>(k2[1]) / 14.f,
-      cv::Matx<float, 5, 5>(k2[2]) / 14.f,
-      cv::Matx<float, 5, 5>(k2[3]) / 14.f,
+      cv::Matx<float, 5, 5>(k2[0]) * 1.5 / 14.f,
+      cv::Matx<float, 5, 5>(k2[1]) * 1.5 / 14.f,
+      cv::Matx<float, 5, 5>(k2[2]) * 1.5 / 14.f,
+      cv::Matx<float, 5, 5>(k2[3]) * 1.5 / 14.f,
   };
 
   std::vector<cv::Mat> gg[2] = {
@@ -188,10 +188,10 @@ void compute_gradients(const cv::Mat & src, cv::Mat4b & g1, cv::Mat4b & g2)
   };
 
   for( int i = 0; i < 4; ++i ) {
-    cv::filter2D(src, gg[0][i], CV_8U, K1[i], cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+    cv::filter2D(src, gg[0][i], ddepth, K1[i], cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
   }
   for( int i = 0; i < 4; ++i ) {
-    cv::filter2D(src, gg[1][i], CV_8U, K2[i], cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+    cv::filter2D(src, gg[1][i], ddepth, K2[i], cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
   }
 
   cv::merge(gg[0], g1);
@@ -245,11 +245,15 @@ static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
 
 } // namespace
 
+
 void ssa_pyramid(const cv::Mat & image,
     std::vector<c_ssarray> & pyramid,
     int maxlevel,
     int flags)
 {
+  // TODO:
+  // cv::stackBlur();
+
   cv::Mat s;
   cv::Mat4b g[2];
   std::vector<cv::Size> sizes;
@@ -264,7 +268,7 @@ void ssa_pyramid(const cv::Mat & image,
   pyramid.clear();
   pyramid.resize(maxlevel + 1);
 
-  for( int scale = 0; scale <= maxlevel; ++scale ) {
+  for( int scale = 0; scale <= maxlevel; ++scale) {
 
     if( scale > 0 ) {
       cv::pyrDown(s, s);
@@ -286,10 +290,13 @@ void ssa_pyramid(const cv::Mat & image,
         [&](const tbb_range & r) {
 
           const int width = image.cols;
+          constexpr uint8_t u128 = (uint8_t)128;
 
           for( int y = r.begin(); y < r.end(); ++y ) {
 
             ssdesc *ssp = ssa[y];
+
+
 
             if( (flags & sscmp_all) == sscmp_all ) {
 
@@ -297,11 +304,12 @@ void ssa_pyramid(const cv::Mat & image,
 
                 ssdesc & ss = ssp[x];
 
+                // TODO: implement this with SSE
                 for ( int i = 0; i < 4; ++i ) {
-                  ss.g[i] = (uint8_t) g[0][y][x][i];
+                  ss.g[i] = g[0][y][x][i] >= u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
                 }
                 for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = (uint8_t) g[1][y][x][i-4];
+                  ss.g[i] = g[1][y][x][i-4] >= u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
                 }
               }
 
@@ -316,12 +324,12 @@ void ssa_pyramid(const cv::Mat & image,
 
                 for ( int i = 0; i < 4; ++i ) {
                   if ( flags & (1<< i) ) {
-                    ss.g[i] = (uint8_t) g[0][y][x][i];
+                    ss.g[i] = g[0][y][x][i] > u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
                   }
                 }
                 for ( int i = 4; i < 8; ++i ) {
                   if ( flags & (1<< i) ) {
-                    ss.g[i] = (uint8_t) g[1][y][x][i-4];
+                    ss.g[i] = g[1][y][x][i-4] > u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
                   }
                 }
               }
@@ -333,7 +341,6 @@ void ssa_pyramid(const cv::Mat & image,
 
 //  CF_DEBUG("leave");
 }
-
 
 
 void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
@@ -460,7 +467,7 @@ void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_desc
   disps.setTo(0);
 
   costs.create(reference_descs.size(), CV_16UC1);
-  costs.setTo(0);
+  costs.setTo(UINT16_MAX);
 
   cv::Mat1w disp = disps.getMatRef();
   cv::Mat1w cost = costs.getMatRef();

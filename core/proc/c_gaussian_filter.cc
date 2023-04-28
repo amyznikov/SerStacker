@@ -35,6 +35,13 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
 
   // Automatic detection of kernel size from sigma if not specified
 
+  if( sigmax < 0 ) {
+    sigmax = sigmay > 0 ? sigmay : 0;
+  }
+  if( sigmay < 0 ) {
+    sigmay = sigmax > 0 ? sigmax : 0;
+  }
+
   if ( ksize.width <= 0 ) {
     if ( sigmax > 0 ) {
       ksize.width = cvRound(sigmax * (kdepth == CV_8U ? 3 : 4) * 2 + 1) | 1;
@@ -68,7 +75,7 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
         std::max(kdepth, CV_32F)) * scale;
   }
   else {
-    ky = cv::Mat1f::ones(1,1) * scale;
+    ky = cv::Mat1f::ones(1, 1) * scale;
   }
 }
 

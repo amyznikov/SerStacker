@@ -35,7 +35,7 @@ public:
 
   enum OverlayMode {
     OverlayNone,
-    OverlayAddWeighted,
+    OverlayBlend,
     OverlayAbsdiff,
     OverlayNCC,
     OverlayDisplaySSA,

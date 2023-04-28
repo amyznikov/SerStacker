@@ -357,6 +357,7 @@ c_lpg_sharpness_measure & c_sweepscan_stereo_matcher::lpg()
   return lpg_;
 }
 
+
 bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat & outputImage, cv::Mat1b * outputMask)
@@ -390,76 +391,59 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
       referenceImage.getMat()
   };
 
-  cv::Mat texture_map;
-  cv::Mat1b texture_mask;
-
-  if( lpg_.k() >= 0 ) {
-
-    INSTRUMENT_REGION("LPG");
-
-    lpg_.create_map(images[1], texture_map);
-    if( texture_map.channels() > 1 ) {
-      reduce_color_channels(texture_map, texture_map, cv::REDUCE_MAX);
-    }
-
-    cv::compare(texture_map, get_triangle_threshold(texture_map),
-        texture_mask,
-        cv::CMP_GT);
-  }
-
-  if( output_type_ == OutputTextureMap ) {
-
-    if( !texture_map.empty() ) {
-      outputImage = texture_map;
-    }
-    else {
-      outputImage.create(images[1].size(), CV_32F);
-      outputImage.setTo(0);
-    }
-
-    if( outputMask ) {
-      if( !texture_mask.empty() ) {
-        *outputMask = texture_mask;
-      }
-      else {
-        outputMask->release();
-      }
-    }
-
-    return true;
-  }
-
-  if( output_type_ == OutputTextureMask ) {
-
-    if( !texture_mask.empty() ) {
-      outputImage = texture_mask;
-    }
-    else {
-      outputImage.create(images[1].size(), CV_8UC1);
-      outputImage.setTo(255);
-    }
-
-    if( outputMask ) {
-      if( !texture_mask.empty() ) {
-        *outputMask = texture_mask;
-      }
-      else {
-        outputMask->release();
-      }
-    }
-
-    return true;
-  }
-
-
   std::vector<c_ssarray> descs[2];
   cv::Mat1w disps, errs;
+  cv::Mat1b texture_map;
+  cv::Mat1b texture_mask;
 
   {
     INSTRUMENT_REGION("ssa_pyramid");
     for( int i = 0; i < 2; ++i ) {
       ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
     }
+
+  }
+
+  {
+    INSTRUMENT_REGION("texture_map");
+    const c_ssarray &rdesc = descs[1][0];
+
+    texture_map.create(rdesc.size());
+
+    for( int y = 0; y < texture_map.rows; ++y ) {
+
+      const ssdesc *ssp = rdesc[y];
+
+      for( int x = 0; x < texture_map.cols; ++x ) {
+
+        const ssdesc &ss = ssp[x];
+
+        uint8_t maxv = ss.g[0];
+        for( int i = 1; i < 8; ++i ) {
+          maxv = std::max(maxv, ss.g[i]);
+        }
+        texture_map[y][x] = maxv;
+      }
+    }
+
+    cv::compare(texture_map, 3, texture_mask, cv::CMP_GT);
+
+    if ( output_type_ == OutputTextureMap ) {
+      outputImage = texture_map;
+      if( outputMask ) {
+        *outputMask = texture_mask;
+      }
+      return true;
+    }
+
+    if ( output_type_ == OutputTextureMask ) {
+      texture_mask.copyTo(outputImage);
+      if( outputMask ) {
+        *outputMask = texture_mask;
+      }
+      return true;
+    }
+
   }
 
   {
@@ -493,6 +477,144 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
 
   return true;
 }
+
+//
+//bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
+//    cv::InputArray referenceImage, cv::InputArray referenceMask,
+//    cv::Mat & outputImage, cv::Mat1b * outputMask)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  ////////////
+//
+//  if( currentImage.size() != referenceImage.size() ) {
+//    CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
+//        currentImage.cols(), currentImage.rows(),
+//        referenceImage.cols(), referenceImage.rows());
+//    return false;
+//  }
+//
+//  if( currentImage.type() != referenceImage.type() ) {
+//    CF_ERROR("current (%d) and reference (%d) image types not match",
+//        currentImage.type(), referenceImage.type());
+//    return false;
+//  }
+//
+//  if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
+//    CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
+//        debug_directory_.c_str(), strerror(errno));
+//    return false;
+//  }
+//
+//
+//  const cv::Mat images[2] = {
+//      currentImage.getMat(),
+//      referenceImage.getMat()
+//  };
+//
+//  cv::Mat texture_map;
+//  cv::Mat1b texture_mask;
+//
+//  if( lpg_.k() >= 0 ) {
+//
+//    INSTRUMENT_REGION("LPG");
+//
+//    lpg_.create_map(images[1], texture_map);
+//    if( texture_map.channels() > 1 ) {
+//      reduce_color_channels(texture_map, texture_map, cv::REDUCE_MAX);
+//    }
+//
+//    cv::compare(texture_map, get_triangle_threshold(texture_map),
+//        texture_mask,
+//        cv::CMP_GT);
+//  }
+//
+//  if( output_type_ == OutputTextureMap ) {
+//
+//    if( !texture_map.empty() ) {
+//      outputImage = texture_map;
+//    }
+//    else {
+//      outputImage.create(images[1].size(), CV_32F);
+//      outputImage.setTo(0);
+//    }
+//
+//    if( outputMask ) {
+//      if( !texture_mask.empty() ) {
+//        *outputMask = texture_mask;
+//      }
+//      else {
+//        outputMask->release();
+//      }
+//    }
+//
+//    return true;
+//  }
+//
+//  if( output_type_ == OutputTextureMask ) {
+//
+//    if( !texture_mask.empty() ) {
+//      outputImage = texture_mask;
+//    }
+//    else {
+//      outputImage.create(images[1].size(), CV_8UC1);
+//      outputImage.setTo(255);
+//    }
+//
+//    if( outputMask ) {
+//      if( !texture_mask.empty() ) {
+//        *outputMask = texture_mask;
+//      }
+//      else {
+//        outputMask->release();
+//      }
+//    }
+//
+//    return true;
+//  }
+//
+//
+//  std::vector<c_ssarray> descs[2];
+//  cv::Mat1w disps, errs;
+//
+//  {
+//    INSTRUMENT_REGION("ssa_pyramid");
+//    for( int i = 0; i < 2; ++i ) {
+//      ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
+//    }
+//  }
+//
+//  {
+//    INSTRUMENT_REGION("ssa_match");
+//    ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask);
+//  }
+//
+//  switch (output_type_) {
+//    case OutputTextureMap:
+//      outputImage.release();
+//      if( outputMask ) {
+//        outputMask->release();
+//      }
+//      break;
+//
+//    case OutputTextureMask:
+//      outputImage.release();
+//      if( outputMask ) {
+//        outputMask->release();
+//      }
+//      break;
+//
+//    case OutputDisparityMap:
+//      outputImage = disps;
+//      break;
+//
+//    case OutputErrorMap:
+//      outputImage = errs;
+//      break;
+//  }
+//
+//  return true;
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

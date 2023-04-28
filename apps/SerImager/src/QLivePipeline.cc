@@ -297,8 +297,10 @@ void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bp
 
   if( !current_processor_ || current_processor_->empty() ) {
     current_image_lock lock(this);
-    currentImage_ = inputImage_;
-    currentMask_ = inputMask_;
+    //    currentImage_ = inputImage_;
+    //    currentMask_ = inputMask_;
+    inputImage_.copyTo(currentImage_);
+    inputMask_.copyTo(currentMask_);
   }
   else {
 

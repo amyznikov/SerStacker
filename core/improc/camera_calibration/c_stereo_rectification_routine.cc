@@ -15,7 +15,7 @@ const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
 {
   static constexpr c_enum_member members[] = {
       { c_stereo_rectification_routine::OverlayNone, "None", "No overlay" },
-      { c_stereo_rectification_routine::OverlayAddWeighted, "addWeighted", "cv::addWeighted(left, right)" },
+      { c_stereo_rectification_routine::OverlayBlend, "Blend", "cv::addWeighted(left, right)" },
       { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
       { c_stereo_rectification_routine::OverlayNCC, "NCC", "NCC" },
       { c_stereo_rectification_routine::OverlayDisplaySSA, "DisplaySSA", "DisplaySSA" },
@@ -207,7 +207,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlayAddWeighted: {
+    case OverlayBlend: {
 
       const cv::Mat &left_image =
           images[0];

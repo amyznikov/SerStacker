@@ -41,8 +41,9 @@ const int tbb_grain_size = 128;
 /*
  * https://en.wikipedia.org/wiki/Finite_difference_coefficient
  * */
-void compute_gradients(const cv::Mat & src, cv::Mat & g1, cv::Mat & g2, float delta = 128, int ddepth = CV_8U)
+void compute_gradients(const cv::Mat & src, cv::Mat & g1, cv::Mat & g2/*, float scale*/, float delta = 128, int ddepth = CV_8U)
 {
+  INSTRUMENT_REGION("");
 
 //  static float k1[4][5 * 5] = {
 //      {
@@ -245,14 +246,13 @@ static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
 
 } // namespace
 
-
+#if 1
 void ssa_pyramid(const cv::Mat & image,
     std::vector<c_ssarray> & pyramid,
     int maxlevel,
     int flags)
 {
-  // TODO:
-  // cv::stackBlur();
+  INSTRUMENT_REGION("");
 
   cv::Mat s;
   cv::Mat4b g[2];
@@ -270,18 +270,216 @@ void ssa_pyramid(const cv::Mat & image,
 
   for( int scale = 0; scale <= maxlevel; ++scale) {
 
-    if( scale > 0 ) {
-      cv::pyrDown(s, s);
+    {
+      INSTRUMENT_REGION("pyrDown");
+      if( scale > 0 ) {
+        cv::pyrDown(s, s);
+      }
     }
 
     sizes.emplace_back(s.size());
 
     compute_gradients(s, g[0], g[1]);
 
-    for( int upscale = scale - 1; upscale >= 0; --upscale ) {
-      cv::pyrUp(g[0], g[0], sizes[upscale]);
-      cv::pyrUp(g[1], g[1], sizes[upscale]);
+    {
+      INSTRUMENT_REGION("pyrUp");
+      for( int upscale = scale - 1; upscale >= 0; --upscale ) {
+        cv::pyrUp(g[0], g[0], sizes[upscale]);
+        cv::pyrUp(g[1], g[1], sizes[upscale]);
+      }
     }
+
+    c_ssarray &ssa = pyramid[scale];
+    ssa.create(image.size());
+
+    {
+      INSTRUMENT_REGION("parallel_for");
+
+    tbb::parallel_for(tbb_range(0, image.rows, tbb_grain_size),
+        [&](const tbb_range & r) {
+
+          const int width = image.cols;
+          constexpr uint8_t u128 = (uint8_t)128;
+
+          for( int y = r.begin(); y < r.end(); ++y ) {
+
+            ssdesc *ssp = ssa[y];
+
+
+
+            if( (flags & sscmp_all) == sscmp_all ) {
+
+              for( int x = 0; x < width; ++x ) {
+
+                ssdesc & ss = ssp[x];
+
+                // TODO: implement this with SSE
+                for ( int i = 0; i < 4; ++i ) {
+                  ss.g[i] = g[0][y][x][i] >= u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = g[1][y][x][i-4] >= u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
+                }
+              }
+
+            }
+            else {
+
+              memset(ssp, 0, sizeof(*ssp) * width);
+
+              for( int x = 0; x < width; ++x ) {
+
+                ssdesc & ss = ssp[x];
+
+                for ( int i = 0; i < 4; ++i ) {
+                  if ( flags & (1<< i) ) {
+                    ss.g[i] = g[0][y][x][i] > u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
+                  }
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  if ( flags & (1<< i) ) {
+                    ss.g[i] = g[1][y][x][i-4] > u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
+                  }
+                }
+              }
+            }
+          }
+        });
+    }
+  }
+
+//  CF_DEBUG("leave");
+}
+#elif ( 1 )
+void ssa_pyramid(const cv::Mat & image,
+    std::vector<c_ssarray> & pyramid,
+    int maxlevel,
+    int flags)
+{
+  // TODO:
+  // cv::stackBlur();
+
+  cv::Mat s;
+  std::vector<cv::Mat4b> gpyr[2];
+  std::vector<cv::Size> sizes;
+
+  if( image.channels() == 1 ) {
+    s = image;
+  }
+  else {
+    cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
+  }
+
+  pyramid.clear();
+  pyramid.resize(maxlevel + 1);
+
+  gpyr[0].resize(maxlevel + 1);
+  gpyr[1].resize(maxlevel + 1);
+
+  for( int scale = 0; scale <= maxlevel; ++scale) {
+
+    if( scale > 0 ) {
+      cv::pyrDown(s, s);
+    }
+
+    sizes.emplace_back(s.size());
+    compute_gradients(s, gpyr[0][scale], gpyr[1][scale]);
+  }
+
+  for( int scale = 0; scale <= maxlevel; ++scale) {
+
+    const cv::Mat4b g[2] = {
+        gpyr[0][scale],
+        gpyr[1][scale]
+    };
+
+    c_ssarray &ssa = pyramid[scale];
+    ssa.create(g[0].size());
+
+    tbb::parallel_for(tbb_range(0, g[0].rows, tbb_grain_size),
+        [&](const tbb_range & r) {
+
+          const int width = g[0].cols;
+          constexpr uint8_t u128 = (uint8_t)128;
+
+          for( int y = r.begin(); y < r.end(); ++y ) {
+
+            ssdesc *ssp = ssa[y];
+
+            if( (flags & sscmp_all) == sscmp_all ) {
+
+              for( int x = 0; x < width; ++x ) {
+
+                ssdesc & ss = ssp[x];
+
+                // TODO: implement this with SSE
+                for ( int i = 0; i < 4; ++i ) {
+                  ss.g[i] = g[0][y][x][i] >= u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = g[1][y][x][i-4] >= u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
+                }
+              }
+
+            }
+            else {
+
+              memset(ssp, 0, sizeof(*ssp) * width);
+
+              for( int x = 0; x < width; ++x ) {
+
+                ssdesc & ss = ssp[x];
+
+                for ( int i = 0; i < 4; ++i ) {
+                  if ( flags & (1<< i) ) {
+                    ss.g[i] = g[0][y][x][i] > u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
+                  }
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  if ( flags & (1 << i) ) {
+                    ss.g[i] = g[1][y][x][i-4] > u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
+                  }
+                }
+              }
+            }
+          }
+        });
+
+  }
+
+//  CF_DEBUG("leave");
+}
+
+
+#else
+
+void ssa_pyramid(const cv::Mat & image,
+    std::vector<c_ssarray> & pyramid,
+    int maxlevel,
+    int flags)
+{
+  // TODO:
+  // cv::stackBlur();
+
+  cv::Mat s, sb;
+  cv::Mat4b g[2];
+  //std::vector<cv::Size> sizes;
+
+  if( image.channels() == 1 ) {
+    s = image;
+  }
+  else {
+    cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
+  }
+
+  pyramid.clear();
+  pyramid.resize(maxlevel + 1);
+
+  int r = 1;
+  for( int scale = 0; scale <= maxlevel; ++scale, r <<= 1 ) {
+
+    cv::stackBlur(s, sb, cv::Size(2 * r + 1, 2 * r + 1));
+    compute_gradients(sb, g[0], g[1], scale + 1);
 
     c_ssarray &ssa = pyramid[scale];
     ssa.create(image.size());
@@ -341,6 +539,7 @@ void ssa_pyramid(const cv::Mat & image,
 
 //  CF_DEBUG("leave");
 }
+#endif
 
 
 void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
@@ -447,8 +646,8 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
 
       for( int l = 1; l < lmax; ++l ) {
 
-        d = std::max(d, absdiff(ssa1[l][(y + rc1.y)][(x + rc1.x)],
-            ssa2[l][(y + rc2.y)][(x + rc2.x)]));
+        d = std::max(d, absdiff(ssa1[l][(y + rc1.y) ][(x + rc1.x) ],
+            ssa2[l][(y + rc2.y) ][(x + rc2.x) ]));
       }
 
       distances[y][x] = d;

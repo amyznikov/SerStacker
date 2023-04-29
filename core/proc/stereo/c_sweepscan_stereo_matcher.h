@@ -64,9 +64,6 @@ public:
   const std::vector<cv::Point>& debug_points() const;
   void set_debug_points(const std::vector<cv::Point> & v);
 
-  const c_lpg_sharpness_measure & lpg() const;
-  c_lpg_sharpness_measure & lpg();
-
 protected:
 //  template<class MT>
 //  bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
@@ -88,8 +85,6 @@ protected:
 
   std::string debug_directory_;
   std::vector<cv::Point> debug_points_;
-
-  c_lpg_sharpness_measure lpg_;
 };
 
 

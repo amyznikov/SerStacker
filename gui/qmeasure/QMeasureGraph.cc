@@ -41,13 +41,6 @@ QMeasureGraph::QMeasureGraph(QWidget * parent) :
   plot_->yAxis->setSubTickPen(axis_pen);
   plot_->xAxis->setRange(0, 120);
 
-  if( iconStyleSelector().contains("light", Qt::CaseInsensitive) ) {
-    plot_->setBackground(QBrush(QColor(0, 0, 0, 0)));
-    plot_->xAxis->setTickLabelColor(QColor(255, 255, 255));
-    plot_->yAxis->setTickLabelColor(QColor(255, 255, 255));
-  }
-
-
   static const QColor colors[4] = {
       Qt::blue,
       Qt::red,
@@ -62,6 +55,26 @@ QMeasureGraph::QMeasureGraph(QWidget * parent) :
   }
 
   ///////////////////////////////////////////////////////////////////
+
+  // add the text label at the top:
+  textLabel_ = new QCPItemText(plot_);
+  textLabel_->position->setType(QCPItemPosition::ptAxisRectRatio);
+  textLabel_->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
+  textLabel_->position->setCoords(0.05, 0.05); // lower right corner of axis rect
+  textLabel_->setText("");
+  textLabel_->setTextAlignment(Qt::AlignLeft);
+  textLabel_->setFont(QFont(font().family(), 12));
+  textLabel_->setPadding(QMargins(8, 0, 0, 0));
+
+  ///////////////////////////////////////////////////////////////////
+
+  if( iconStyleSelector().contains("light", Qt::CaseInsensitive) ) {
+    plot_->setBackground(QBrush(QColor(0, 0, 0, 0)));
+    plot_->xAxis->setTickLabelColor(QColor(255, 255, 255));
+    plot_->yAxis->setTickLabelColor(QColor(255, 255, 255));
+    textLabel_->setColor(Qt::yellow);
+  }
+
 }
 
 void QMeasureGraph::setCurrentMeasure(QMeasure * cm)
@@ -102,6 +115,7 @@ void QMeasureGraph::clearGraphs()
 void QMeasureGraph::updateGraphs()
 {
   using Frame = QMeasureProvider::MeasuredFrame;
+  using MeasuredValue = QMeasureProvider::MeasuredValue;
 
   if( !cm_.empty() ) {
 
@@ -111,6 +125,8 @@ void QMeasureGraph::updateGraphs()
     int i = 0;
 
     const QMeasure * cm = *cm_.begin();
+    const MeasuredValue * mlast = nullptr;
+
 
     for( auto ii = QMeasureProvider::measured_frames().begin();
         ii != QMeasureProvider::measured_frames().end();
@@ -119,6 +135,7 @@ void QMeasureGraph::updateGraphs()
         for( const auto &m : ii->measurements ) {
           if ( m.measure == cm && m.cn > 0 ) {
             for ( int j = 0; j < m.cn; ++j ) {
+              mlast = &m;
               keys[j].append(i);
               values[j].append(m.value(j));
               if ( i > max_key ) {
@@ -132,6 +149,40 @@ void QMeasureGraph::updateGraphs()
       for( i = 0; i < 4; ++i ) {
         graphs_[i]->setData(keys[i], values[i], true);
       }
+
+      if ( !mlast ) {
+        textLabel_->setText("");
+      }
+      else {
+        switch(mlast->cn) {
+          case 0:
+            textLabel_->setText("");
+            break;
+          case 1:
+            textLabel_->setText(ssprintf("%+g",
+                mlast->value[0]).c_str());
+            break;
+          case 2:
+            textLabel_->setText(ssprintf("%+g %+g",
+                mlast->value[0],
+                mlast->value[1]).c_str());
+            break;
+          case 3:
+            textLabel_->setText(ssprintf("%+g %+g %+g",
+                mlast->value[0],
+                mlast->value[1],
+                mlast->value[2]).c_str());
+            break;
+          case 4:
+            textLabel_->setText(ssprintf("%+g %+g %+g %+g",
+                mlast->value[0],
+                mlast->value[1],
+                mlast->value[2],
+                mlast->value[3]).c_str());
+            break;
+        }
+      }
+
 
       plot_->yAxis->rescale();
       plot_->xAxis->setRange(0, 1.2 * max_key);
@@ -208,18 +259,12 @@ QMeasureGraphDock::QMeasureGraphDock(const QString & title, QWidget * parent, QM
     buttonClear_ctl->setText("clear");
     buttonClear_ctl->setToolTip("Clear measurements");
     connect(buttonClear_ctl, &QToolButton::clicked,
-        []() {
-          QMeasureProvider::clear_measured_frames();
-        });
-
+        []{ QMeasureProvider::clear_measured_frames(); });
 
     bar->addWidget(combobox_ctl = new QMeasureGraphCombo());
     connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,
         [this, graph]() {
           graph->setCurrentMeasure(combobox_ctl->currentMeasure());
         });
-
-
-
   }
 }

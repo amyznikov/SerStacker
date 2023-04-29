@@ -55,22 +55,6 @@ public:
   void set_debug_points(const std::vector<cv::Point> & v);
   const std::vector<cv::Point>& debug_points() const;
 
-  // LPG
-  void set_lpg_k(double v);
-  double lpg_k() const;
-
-  void set_lpg_dscale(int v);
-  int lpg_dscale() const;
-
-  void set_lpg_uscale(int v);
-  int lpg_uscale() const;
-
-  void set_lpg_squared(bool v);
-  bool lpg_squared() const;
-
-  void set_lpg_avgchannel(bool v);
-  bool lpg_avgchannel() const;
-
   // routine
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;

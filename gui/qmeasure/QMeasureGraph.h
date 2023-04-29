@@ -25,8 +25,7 @@ public:
   QMeasureGraph(QWidget * parent = nullptr);
 
   void setCurrentMeasure(QMeasure * cm);
-  //void clearMeasurements();
-;
+
 protected Q_SLOTS:
   void clearGraphs();
   void updateGraphs();
@@ -42,6 +41,7 @@ protected:
   QVBoxLayout *vl_ = nullptr;
   QCustomPlot *plot_ = nullptr;
   QCPGraph *graphs_[4] = { nullptr };
+  QCPItemText * textLabel_ = nullptr;
 };
 
 class QMeasureGraphDock:

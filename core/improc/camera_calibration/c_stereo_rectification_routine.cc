@@ -384,6 +384,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
           ssa_cvtfp32(pdescs[i].back(), desc_images[i], ss_flags_);
         }
 
+        //cv::resize(desc_images[i], dst(roi[i]), roi[i].size(), 0, 0, cv::INTER_AREA);
         desc_images[i].copyTo(dst(roi[i]));
       }
 
@@ -411,6 +412,8 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         else {
           ssa_cvtfp32(descs[i].back(), desc_images[i], ss_flags_);
         }
+        // xx
+        //cv::resize(desc_images[i], desc_images[i], roi[i].size(), 0, 0, cv::INTER_AREA);
       }
 
       image.create(right_image.size(), CV_32F);

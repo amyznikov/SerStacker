@@ -120,56 +120,6 @@ const std::vector<cv::Point>& c_sweepscan_routine::debug_points() const
   return sm_.debug_points();
 }
 
-void c_sweepscan_routine::set_lpg_k(double v)
-{
-  return sm_.lpg().set_k(v);
-}
-
-double c_sweepscan_routine::lpg_k() const
-{
-  return sm_.lpg().k();
-}
-
-void c_sweepscan_routine::set_lpg_dscale(int v)
-{
-  return sm_.lpg().set_dscale(v);
-}
-
-int c_sweepscan_routine::lpg_dscale() const
-{
-  return sm_.lpg().dscale();
-}
-
-void c_sweepscan_routine::set_lpg_uscale(int v)
-{
-  return sm_.lpg().set_uscale(v);
-}
-
-int c_sweepscan_routine::lpg_uscale() const
-{
-  return sm_.lpg().uscale();
-}
-
-void c_sweepscan_routine::set_lpg_squared(bool v)
-{
-  return sm_.lpg().set_squared(v);
-}
-
-bool c_sweepscan_routine::lpg_squared() const
-{
-  return sm_.lpg().squared();
-}
-
-void c_sweepscan_routine::set_lpg_avgchannel(bool v)
-{
-  return sm_.lpg().set_avgchannel(v);
-}
-
-bool c_sweepscan_routine::lpg_avgchannel() const
-{
-  return sm_.lpg().avgchannel();
-}
-
 void c_sweepscan_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
 {
   ADD_IMAGE_PROCESSOR_CTRL(ctls, output_type, "output_type");
@@ -183,15 +133,6 @@ void c_sweepscan_routine::get_parameters(std::vector<struct c_image_processor_ro
   ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_scale, "normalization_scale") ;
   ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_DIRECTORY(ctls, debug_directory, "debug_directory");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, debug_points, "debug_points");
-
-  ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "lpg", "lpg");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, lpg_k, "k");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, lpg_dscale, "dscale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, lpg_uscale, "uscale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, lpg_squared, "squared");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, lpg_avgchannel, "avgchanne");
-  END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
-
 }
 
 bool c_sweepscan_routine::serialize(c_config_setting settings, bool save)
@@ -209,12 +150,6 @@ bool c_sweepscan_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(settings, save, *this, normalization_scale) ;
     SERIALIZE_PROPERTY(settings, save, *this, debug_directory);
     SERIALIZE_PROPERTY(settings, save, *this, debug_points);
-
-    SERIALIZE_PROPERTY(settings, save, *this, lpg_k);
-    SERIALIZE_PROPERTY(settings, save, *this, lpg_dscale);
-    SERIALIZE_PROPERTY(settings, save, *this, lpg_uscale);
-    SERIALIZE_PROPERTY(settings, save, *this, lpg_squared);
-    SERIALIZE_PROPERTY(settings, save, *this, lpg_avgchannel);
 
     return true;
   }

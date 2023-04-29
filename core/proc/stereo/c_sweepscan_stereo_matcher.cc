@@ -347,17 +347,6 @@ void c_sweepscan_stereo_matcher::set_debug_points(const std::vector<cv::Point> &
   debug_points_ = v;
 }
 
-const c_lpg_sharpness_measure & c_sweepscan_stereo_matcher::lpg() const
-{
-  return lpg_;
-}
-
-c_lpg_sharpness_measure & c_sweepscan_stereo_matcher::lpg()
-{
-  return lpg_;
-}
-
-
 bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat & outputImage, cv::Mat1b * outputMask)
@@ -396,13 +385,10 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   cv::Mat1b texture_map;
   cv::Mat1b texture_mask;
 
-  {
-    INSTRUMENT_REGION("ssa_pyramid");
-    for( int i = 0; i < 2; ++i ) {
-      ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
-    }
-
+  for( int i = 0; i < 2; ++i ) {
+    ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
   }
+
 
   {
     INSTRUMENT_REGION("texture_map");

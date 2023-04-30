@@ -32,6 +32,7 @@ protected:
 
 protected:
   QGraphicsRectShape * shape_ = nullptr;
+  QCheckBox * snapToPixelGrid_ctl = nullptr;
   QCheckBox * fixOnSceneCenter_ctl = nullptr;
   QColorPickerButton * penColor_ctl = nullptr;
   QSpinBox * penWidth_ctl = nullptr;

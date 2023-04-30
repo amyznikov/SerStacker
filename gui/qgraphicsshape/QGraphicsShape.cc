@@ -111,6 +111,16 @@ QPainter::RenderHints QGraphicsShape::renderHintsOff() const
   return renderHintsOff_;
 }
 
+void QGraphicsShape::setSnapToPixelGrid(bool v)
+{
+  snapToPixelGrid_ = v;
+}
+
+bool QGraphicsShape::snapToPixelGrid() const
+{
+  return snapToPixelGrid_;
+}
+
 void QGraphicsShape::setUpdatingPos(bool v)
 {
   if( v ) {

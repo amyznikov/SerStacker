@@ -8,7 +8,30 @@
 #include "QGraphicsRectShape.h"
 #include <float.h>
 #include <limits.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
+
+
+template<>
+const c_enum_member* members_of<QGraphicsRectShape::MouseAction>()
+{
+  static constexpr c_enum_member members[] = {
+      { QGraphicsRectShape::MouseAction_None, "None", "" },
+      { QGraphicsRectShape::MouseAction_MoveRect, "MoveRect", "" },
+      { QGraphicsRectShape::MouseAction_MoveTop, "MoveTop", "" },
+      { QGraphicsRectShape::MouseAction_MoveRight, "MoveRight", "" },
+      { QGraphicsRectShape::MouseAction_MoveBottom, "MoveBottom", "" },
+      { QGraphicsRectShape::MouseAction_MoveLeft, "MoveLeft", "" },
+      { QGraphicsRectShape::MouseAction_MoveTopLeft, "MoveTopLeft", "" },
+      { QGraphicsRectShape::MouseAction_MoveTopRight, "MoveTopRight", "" },
+      { QGraphicsRectShape::MouseAction_MoveBottomRight, "MoveBottomRight", "" },
+      { QGraphicsRectShape::MouseAction_MoveBottomLeft, "MoveBottomLeft", "" },
+      { QGraphicsRectShape::MouseAction_None}
+  };
+
+  return members;
+}
+
 
 QGraphicsRectShape::QGraphicsRectShape(QGraphicsItem * parent) :
     Base(parent)
@@ -191,6 +214,7 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
   if( e->buttons() == Qt::LeftButton ) {
 
     currentMouseAction_  = MouseAction_None;
+    mdelta_ = e->pos() - rect_.topLeft();
 
     if( itemIsResizable_ && e->modifiers() == Qt::ControlModifier) {
 
@@ -289,6 +313,13 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
           return;
         }
       }
+
+      if( !fixOnSceneCenter_ && (flags() & ItemIsMovable) ) {
+        currentMouseAction_ = MouseAction_MoveRect;
+      }
+
+      e->accept();
+      return;
     }
   }
 
@@ -309,161 +340,171 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
   if( e->buttons() == Qt::LeftButton ) {
 
     if( (flags() & ItemIsMovable) && e->modifiers() == Qt::ShiftModifier ) {
-      Base::mouseMoveEvent(e);
-      e->ignore();
-      return;
+      currentMouseAction_ = MouseAction_MoveRect;
     }
 
-    if( e->modifiers() == Qt::ControlModifier ) {
+    if ( currentMouseAction_ != MouseAction_None ) {
 
-      const QPointF pos = e->pos();
+      const QRectF oldrect =
+          this->rect_;
 
-      bool hasChanges = true;
+      if( currentMouseAction_ == MouseAction_MoveRect ) {
+        if( !snapToPixelGrid_ ) {
+          rect_.moveTo(e->pos() - mdelta_);
+        }
+        else {
+          rect_.moveTo(round(e->pos().x() - mdelta_.x()),
+              round(e->pos().y() - mdelta_.y()));
+        }
+      }
+      else {
 
-      switch (currentMouseAction_) {
-        case MouseAction_MoveTop:
-          if( pos.y() < rect_.bottom() - 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setTop(pos.y());
-            }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setTop(pos.y());
-              rect_.setBottom(2 * center.y() - pos.y());
-            }
-          }
-          break;
-        case MouseAction_MoveRight:
-          if( pos.x() > rect_.left() + 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setRight(pos.x());
-            }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setRight(pos.x());
-              rect_.setLeft(2 * center.x() - pos.x());
-            }
-          }
-          break;
-        case MouseAction_MoveBottom:
-          if( pos.y() > rect_.top() + 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setBottom(pos.y());
-            }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setBottom(pos.y());
-              rect_.setTop(2 * center.y() - pos.y());
-            }
-          }
-          break;
-        case MouseAction_MoveLeft:
-          if( pos.x() <= rect_.right() - 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setLeft(pos.x());
-            }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setLeft(pos.x());
-              rect_.setRight(2 * center.x() - pos.x());
-            }
-          }
-          break;
+        const QPointF pos = snapToPixelGrid_ ?
+            QPointF(round(e->pos().x()), round(e->pos().y())) :
+            e->pos();
 
-        case MouseAction_MoveTopLeft:
-          if( pos.y() < rect_.bottom() - 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setTop(pos.y());
+        switch (currentMouseAction_) {
+          case MouseAction_MoveTop:
+            if( pos.y() < rect_.bottom() - 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setTop(pos.y());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setTop(pos.y());
+                rect_.setBottom(2 * center.y() - pos.y());
+              }
             }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setTop(pos.y());
-              rect_.setBottom(2 * center.y() - pos.y());
+            break;
+          case MouseAction_MoveRight:
+            if( pos.x() > rect_.left() + 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setRight(pos.x());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setRight(pos.x());
+                rect_.setLeft(2 * center.x() - pos.x());
+              }
             }
-          }
-          if( pos.x() < rect_.right() - 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setLeft(pos.x());
+            break;
+          case MouseAction_MoveBottom:
+            if( pos.y() > rect_.top() + 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setBottom(pos.y());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setBottom(pos.y());
+                rect_.setTop(2 * center.y() - pos.y());
+              }
             }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setLeft(pos.x());
-              rect_.setRight(2 * center.x() - pos.x());
+            break;
+          case MouseAction_MoveLeft:
+            if( pos.x() <= rect_.right() - 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setLeft(pos.x());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setLeft(pos.x());
+                rect_.setRight(2 * center.x() - pos.x());
+              }
             }
-          }
-          break;
-        case MouseAction_MoveTopRight:
-          if( pos.y() < rect_.bottom() - 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setTop(pos.y());
+            break;
+
+          case MouseAction_MoveTopLeft:
+            if( pos.y() < rect_.bottom() - 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setTop(pos.y());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setTop(pos.y());
+                rect_.setBottom(2 * center.y() - pos.y());
+              }
             }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setTop(pos.y());
-              rect_.setBottom(2 * center.y() - pos.y());
+            if( pos.x() < rect_.right() - 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setLeft(pos.x());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setLeft(pos.x());
+                rect_.setRight(2 * center.x() - pos.x());
+              }
             }
-          }
-          if( pos.x() >= rect_.left() + 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setRight(pos.x());
+            break;
+          case MouseAction_MoveTopRight:
+            if( pos.y() < rect_.bottom() - 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setTop(pos.y());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setTop(pos.y());
+                rect_.setBottom(2 * center.y() - pos.y());
+              }
             }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setRight(pos.x());
-              rect_.setLeft(2 * center.x() - pos.x());
+            if( pos.x() >= rect_.left() + 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setRight(pos.x());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setRight(pos.x());
+                rect_.setLeft(2 * center.x() - pos.x());
+              }
             }
-          }
-          break;
-        case MouseAction_MoveBottomRight:
-          if( pos.y() > rect_.top() + 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setBottom(pos.y());
+            break;
+          case MouseAction_MoveBottomRight:
+            if( pos.y() > rect_.top() + 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setBottom(pos.y());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setBottom(pos.y());
+                rect_.setTop(2 * center.y() - pos.y());
+              }
             }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setBottom(pos.y());
-              rect_.setTop(2 * center.y() - pos.y());
+            if( pos.x() >= rect_.left() + 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setRight(pos.x());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setRight(pos.x());
+                rect_.setLeft(2 * center.x() - pos.x());
+              }
             }
-          }
-          if( pos.x() >= rect_.left() + 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setRight(pos.x());
+            break;
+          case MouseAction_MoveBottomLeft:
+            if( pos.y() >= rect_.top() + 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setBottom(pos.y());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setBottom(pos.y());
+                rect_.setTop(2 * center.y() - pos.y());
+              }
             }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setRight(pos.x());
-              rect_.setLeft(2 * center.x() - pos.x());
+            if( pos.x() <= rect_.right() - 1 ) {
+              if( !fixOnSceneCenter_ ) {
+                rect_.setLeft(pos.x());
+              }
+              else {
+                const QPointF center = rect_.center();
+                rect_.setLeft(pos.x());
+                rect_.setRight(2 * center.x() - pos.x());
+              }
             }
-          }
-          break;
-        case MouseAction_MoveBottomLeft:
-          if( pos.y() >= rect_.top() + 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setBottom(pos.y());
-            }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setBottom(pos.y());
-              rect_.setTop(2 * center.y() - pos.y());
-            }
-          }
-          if( pos.x() <= rect_.right() - 1 ) {
-            if ( !fixOnSceneCenter_ ) {
-              rect_.setLeft(pos.x());
-            }
-            else {
-              const QPointF center = rect_.center();
-              rect_.setLeft(pos.x());
-              rect_.setRight(2 * center.x() - pos.x());
-            }
-          }
-          break;
-        default:
-          hasChanges = false;
-          break;
+            break;
+        }
       }
 
-      if( hasChanges ) {
+      if( rect_ != oldrect ) {
 
         prepareGeometryChange();
 
@@ -485,13 +526,10 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           Q_EMIT itemChanged(this);
         }
       }
-      else if( !fixOnSceneCenter_ && (flags() & ItemIsMovable)  ) {
-        Base::mouseMoveEvent(e);
-      }
-
-      e->ignore();
-      return;
     }
+
+    e->ignore();
+    return;
   }
 
   Base::mouseMoveEvent(e);

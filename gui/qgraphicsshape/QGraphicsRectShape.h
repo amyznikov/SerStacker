@@ -19,6 +19,20 @@ public:
   typedef QGraphicsRectShape ThisClass;
   typedef QGraphicsShape Base;
 
+  enum MouseAction {
+    MouseAction_None,
+    MouseAction_MoveRect,
+    MouseAction_MoveTop,
+    MouseAction_MoveRight,
+    MouseAction_MoveBottom,
+    MouseAction_MoveLeft,
+    MouseAction_MoveTopLeft,
+    MouseAction_MoveTopRight,
+    MouseAction_MoveBottomRight,
+    MouseAction_MoveBottomLeft,
+  };
+
+
   QGraphicsRectShape(QGraphicsItem * parent = nullptr);
   QGraphicsRectShape(const QRectF & rect, QGraphicsItem * parent = nullptr);
   QGraphicsRectShape(const QString & name, const QString & description, QGraphicsItem *parent = nullptr);
@@ -65,29 +79,17 @@ protected:
 
 protected:
 
-  enum MouseAction {
-    MouseAction_None,
-    // MouseAction_MoveRect,
-    MouseAction_MoveTop,
-    MouseAction_MoveRight,
-    MouseAction_MoveBottom,
-    MouseAction_MoveLeft,
-    MouseAction_MoveTopLeft,
-    MouseAction_MoveTopRight,
-    MouseAction_MoveBottomRight,
-    MouseAction_MoveBottomLeft,
-  };
-
   QRectF rect_;
   QRectF boundingRect_;
   QPainterPath shape_;
   QPen pen_;
   QBrush brush_;
-  MouseAction currentMouseAction_ = MouseAction_None;
-  bool itemIsResizable_ = true;
-  bool fixOnSceneCenter_ = false;
   int handleSize_ = 0;
   int hitDstance_ = 15;
+  MouseAction currentMouseAction_ = MouseAction_None;
+  QPointF mdelta_;
+  bool itemIsResizable_ = true;
+  bool fixOnSceneCenter_ = false;
 
 
 

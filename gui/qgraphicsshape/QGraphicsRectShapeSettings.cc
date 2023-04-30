@@ -15,6 +15,25 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(QWidget * parent) :
 QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QWidget * parent) :
     Base(prefix, parent)
 {
+
+  snapToPixelGrid_ctl =
+      add_checkbox("Snap to grid",
+          "Snap to pixels grid",
+          [this](bool checked) {
+            if ( shape_ ) {
+              shape_->setSnapToPixelGrid(checked);
+            }
+            save_parameter(PREFIX, "snapToPixelGrid", shape_->snapToPixelGrid());
+          },
+          [this](bool * checked) {
+            if ( shape_ ) {
+              * checked = shape_->snapToPixelGrid();
+              return true;
+
+            }
+            return false;
+          });
+
   fixOnSceneCenter_ctl =
       add_checkbox("Fix on scene center",
           "Uncheck this button and use "

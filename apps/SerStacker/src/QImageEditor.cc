@@ -69,6 +69,7 @@ void QImageEditor::createRoiRectShape()
 
     roiRectShape_ = new QGraphicsRectShape(rect);
     roiRectShape_->setResizable(true);
+    roiRectShape_->setSnapToPixelGrid(true);
     roiRectShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
     roiRectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     roiRectShape_->setCosmeticPen(Qt::red);

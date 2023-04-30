@@ -204,6 +204,7 @@ void QLiveDisplay::createShapes()
 
     rectShape_ = new QGraphicsRectShape(rect);
     rectShape_->setResizable(true);
+    rectShape_->setSnapToPixelGrid(true);
     rectShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
     rectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     rectShape_->setCosmeticPen(Qt::red);

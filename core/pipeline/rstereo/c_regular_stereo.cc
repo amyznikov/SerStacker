@@ -69,7 +69,7 @@ bool c_regular_stereo::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_image_processor);
-    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, stereo_match_preprocessor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, remapped_image_processor);
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, output_image_processor);
   }
 
@@ -134,26 +134,73 @@ void c_regular_stereo::cleanup()
 
 bool c_regular_stereo::process_stereo_frame(const cv::Mat images[2], const cv::Mat masks[2])
 {
+  for( int i = 0; i < 2; ++i ) {
 
-  for ( int i = 0; i < 2; ++i ) {
     if ( rmaps_[i].empty() ) {
-      CF_ERROR("APP BUG: rmaps_[i=%d] is empty", i);
-      return false;
-    }
 
-    cv::remap(images[i], current_images_[i],
-        rmaps_[i], cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_REFLECT101);
+      images[i].copyTo(current_images_[i]);
+      masks[i].copyTo(current_masks_[i]);
 
-    if ( masks[i].empty() ) {
-      current_masks_[i].release();
+      if( image_processing_options_.input_image_processor ) {
+        if( !image_processing_options_.input_image_processor->process(current_images_[i], current_masks_[i]) ) {
+          CF_ERROR("input_image_processor->process(frame_index=%d) fails", i);
+          return false;
+        }
+      }
     }
-    else {
-      cv::remap(masks[i], current_masks_[i],
+    else if( !image_processing_options_.input_image_processor ) {
+
+      cv::remap(images[i], current_images_[i],
           rmaps_[i], cv::noArray(),
           cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT);
+          cv::BORDER_REFLECT101);
+
+      if( masks[i].empty() ) {
+        current_masks_[i].release();
+      }
+      else {
+        cv::remap(masks[i], current_masks_[i],
+            rmaps_[i], cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_REFLECT101);
+
+        cv::compare(current_masks_[i], 250,
+            current_masks_[i],
+            cv::CMP_GT);
+      }
+    }
+    else {
+
+      images[i].copyTo(current_images_[i]);
+      masks[i].copyTo(current_masks_[i]);
+
+      if( !image_processing_options_.input_image_processor->process(current_images_[i], current_masks_[i]) ) {
+        CF_ERROR("input_image_processor->process(frame_index=%d) fails", i);
+        return false;
+      }
+
+      cv::remap(current_images_[i], current_images_[i],
+          rmaps_[i], cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_REFLECT101);
+
+      if( !current_masks_[i].empty() ) {
+        cv::remap(current_masks_[i], current_masks_[i],
+            rmaps_[i], cv::noArray(),
+            cv::INTER_LINEAR,
+            cv::BORDER_REFLECT101);
+
+        cv::compare(current_masks_[i], 250,
+            current_masks_[i],
+            cv::CMP_GT);
+      }
+    }
+
+    if ( image_processing_options_.remapped_image_processor ) {
+      if( !image_processing_options_.remapped_image_processor->process(current_images_[i], current_masks_[i]) ) {
+        CF_ERROR("remapped_image_processor->process(frame_index=%d) fails", i);
+        return false;
+      }
     }
   }
 

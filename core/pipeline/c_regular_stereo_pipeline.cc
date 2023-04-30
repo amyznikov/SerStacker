@@ -189,7 +189,7 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, input_image_processor);
-    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, stereo_match_preprocessor);
+    SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, remapped_image_processor);
     SERIALIZE_IMAGE_PROCESSOR(settings, save, image_processing_options_, output_image_processor);
   }
 
@@ -1935,7 +1935,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       }
     }
 
-    if( !image_processing_options_.stereo_match_preprocessor ) {
+    if( !image_processing_options_.remapped_image_processor ) {
       fOK =
           matcher.match(current_frame_->images[0], current_frame_->masks[0],
               current_frame_->images[1], current_frame_->masks[1],
@@ -1947,7 +1947,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       for( int i = 0; i < 2; ++i ) {
         current_frame_->images[i].copyTo(images[i]);
         current_frame_->masks[i].copyTo(masks[i]);
-        if( !image_processing_options_.stereo_match_preprocessor->process(images[i], masks[i]) ) {
+        if( !image_processing_options_.remapped_image_processor->process(images[i], masks[i]) ) {
           CF_ERROR("stereo_match_preprocessor->process() fails for stereo frame %d", i);
           return false;
         }

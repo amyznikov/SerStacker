@@ -32,7 +32,7 @@ protected:
   c_regular_stereo_image_processing_options * options_ = nullptr;
 
   QImageProcessorSelectionCombo * input_image_processor_ctl = nullptr;
-  QImageProcessorSelectionCombo * stereo_match_preprocessor_ctl = nullptr;
+  QImageProcessorSelectionCombo * remapped_image_processor_ctl = nullptr;
   QImageProcessorSelectionCombo * output_image_processor_ctl = nullptr;
 };
 

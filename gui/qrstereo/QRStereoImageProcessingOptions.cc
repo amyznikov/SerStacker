@@ -21,12 +21,12 @@ QRStereoImageProcessingOptions::QRStereoImageProcessingOptions(QWidget * parent)
             }
           });
 
-  stereo_match_preprocessor_ctl =
-      add_combobox<QImageProcessorSelectionCombo>("Stereo match preprocessor:",
+  remapped_image_processor_ctl =
+      add_combobox<QImageProcessorSelectionCombo>("Remapped image processor:",
           "",
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
-              options_->stereo_match_preprocessor =
+              options_->remapped_image_processor =
                   combo->processor(index);
               Q_EMIT parameterChanged();
             }
@@ -66,8 +66,8 @@ void QRStereoImageProcessingOptions::onupdatecontrols()
       options_->input_image_processor.reset();
     }
 
-    if( !stereo_match_preprocessor_ctl->setCurrentProcessor(options_->stereo_match_preprocessor) ) {
-      options_->stereo_match_preprocessor.reset();
+    if( !remapped_image_processor_ctl->setCurrentProcessor(options_->remapped_image_processor) ) {
+      options_->remapped_image_processor.reset();
     }
 
     if( !output_image_processor_ctl->setCurrentProcessor(options_->output_image_processor) ) {

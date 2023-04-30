@@ -17,7 +17,7 @@
 struct c_regular_stereo_image_processing_options
 {
   c_image_processor::sptr input_image_processor;
-  c_image_processor::sptr stereo_match_preprocessor;
+  c_image_processor::sptr remapped_image_processor;
   c_image_processor::sptr output_image_processor;
 };
 

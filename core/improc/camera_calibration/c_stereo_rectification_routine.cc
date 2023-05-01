@@ -33,10 +33,10 @@ const c_enum_member* members_of<c_stereo_rectification_routine::SwapFramesMode>(
 {
   static constexpr c_enum_member members[] = {
       { c_stereo_rectification_routine::SwapFramesNone, "None", "Don't swap frames" },
-      { c_stereo_rectification_routine::SwapFramesBeforeRectification, "Before",
-          "Swap camera frames before rectification" },
       { c_stereo_rectification_routine::SwapFramesAfterRectification, "After",
           "Swap camera frames after rectification)" },
+      { c_stereo_rectification_routine::SwapFramesBeforeRectification, "Before",
+          "Swap camera frames before rectification" },
       { c_stereo_rectification_routine::SwapFramesNone },
   };
 

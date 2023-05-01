@@ -10,6 +10,7 @@
 #include "ssdesc.h"
 #include <tbb/tbb.h>
 #include <xmmintrin.h>
+#include <core/proc/gradient.h>
 #include <core/ssprintf.h>
 
 #include <core/debug.h>
@@ -22,10 +23,10 @@ const c_enum_member* members_of<sscmpflags>()
       {sscmp_g01, "g01", "g01"},
       {sscmp_g02, "g02", "g02"},
       {sscmp_g03, "g03", "g03"},
-      {sscmp_g10, "g10", "g10"},
-      {sscmp_g11, "g11", "g11"},
-      {sscmp_g12, "g12", "g12"},
-      {sscmp_g13, "g13", "g13"},
+      {sscmp_g04, "g04", "g04"},
+      {sscmp_g05, "g05", "g05"},
+      {sscmp_g06, "g06", "g06"},
+      {sscmp_g07, "g07", "g07"},
       {sscmp_all},
   };
 
@@ -41,162 +42,24 @@ const int tbb_grain_size = 128;
 /*
  * https://en.wikipedia.org/wiki/Finite_difference_coefficient
  * */
-void compute_gradients(const cv::Mat & src, cv::Mat & g1, cv::Mat & g2/*, float scale*/, float delta = 128, int ddepth = CV_8U)
+void compute_gradients(const cv::Mat & src, cv::Mat & g1, float delta = 128, int ddepth = CV_8U)
 {
-  INSTRUMENT_REGION("");
+  std::vector<cv::Mat> gg(4);
 
-//  static float k1[4][5 * 5] = {
-//      {
-//          0, 0, 0, 0, 0,
-//          0, 0, 0, 0, 0,
-//          +1./12, -2./3, 0, +2./3, -1./12,
-//          0, 0, 0, 0, 0,
-//          0, 0, 0, 0, 0,
-//      },
-//      {
-//          0, 0, 0, 0, -1./12,
-//          0, 0, 0, +2./3, 0,
-//          0, 0, 0, 0, 0,
-//          0, -2./3, 0, 0, 0,
-//          +1./12, 0, 0, 0, 0,
-//      },
-//      {
-//          0, 0, -1./12, 0, 0,
-//          0, 0, +2./3, 0, 0,
-//          0, 0, 0, 0, 0,
-//          0, 0, -2./3, 0, 0,
-//          0, 0, +1./12, 0, 0,
-//      },
-//      {
-//          -1./12, 0, 0, 0, 0,
-//          0, +2./3, 0, 0, 0,
-//          0, 0, 0, 0, 0,
-//          0, 0, 0, -2./3, 0,
-//          0, 0, 0, 0, +1./12,
-//      },
-//  };
-//  static float k2[4][5 * 5] = {
-//      {
-//          0, 0, 0, 0, 0,
-//          0, 0, 0, 0, 0,
-//          -1./12, 4./3, -5./ 2, 4./3, -1./ 12,
-//          0, 0, 0, 0, 0,
-//          0, 0, 0, 0, 0,
-//      },
-//      {
-//          0, 0, 0, 0, -1./12,
-//          0, 0, 0, 4./3, 0,
-//          0, 0, -5./2, 0, 0,
-//          0, 4./3, 0, 0, 0,
-//          -1./12, 0, 0, 0, 0,
-//      },
-//      {
-//          0, 0, -1./12, 0, 0,
-//          0, 0, 4./3, 0, 0,
-//          0, 0, -5./2, 0, 0,
-//          0, 0, 4./3, 0, 0,
-//          0, 0, -1./12, 0, 0,
-//      },
-//      {
-//          -1./12, 0, 0, 0, 0,
-//          0, 4./3, 0, 0, 0,
-//          0, 0, -5./2, 0, 0,
-//          0, 0, 0, 4./3, 0,
-//          0, 0, 0, 0, -1./12,
-//      },
-//  };
+  static float k12[] = { -1, -1, 0, +1, +1 };
+  static const cv::Matx<float, 1, 5> K12 = cv::Matx<float, 1, 5>(k12) * 1.5 / 4.0;
 
-  static float k1[4][5 * 5] = {
-      {
-         -.25, -.25,  0,  +.25,  +.25,
-          -.5,  -.5,  0,  +.5,   +.5,
-           -1,   -1,  0,   +1,   +1,
-          -.5,  -.5,  0,  +.5,   +.5,
-        -.25,  -.25,  0,  +.25,  +.25,
-      },
-      {
-          0, +.25, +.25, +.5, +1,
-          -.25, 0, +.5, +1, +.5,
-          -.25, -.5, 0, +.5, +.25,
-          -.5, -1, -.5, 0, +.25,
-          -1, -.5, -.25, -.25, 0,
+  static float k22[] = { 1,  1, -4, 1, 1 };
+  static const cv::Matx<float, 1, 5> K22 = cv::Matx<float, 1, 5>(k22) * 1.5 / 8.0;
 
-      },
-      {
-          +.25, +.5, +1, +.5, +.25,
-          +.25, +.5, +1, +.5, +.25,
-                0, 0, 0, 0, 0,
-          -.25, -.5, -1, -.5, -.25,
-          -.25, -.5, -1, -.5, -.25,
-      },
-      {
-            +1,  +.5,  +.25, +.25,   0,
-           +.5,   +1,  +.5,    0,  -.25,
-          +.25,  +.5,    0,  -.5,  -.25,
-          +.25,   0,   -.5,   -1,  -.5,
-           0,   -.25, -.25,  -.5,   -1,
-      },
-  };
+  cv::filter2D(src, gg[0], ddepth, K12, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gg[1], ddepth, K12.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gg[2], ddepth, K22, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gg[3], ddepth, K22.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
 
-  static float k2[4][5 * 5] = {
-      {
-          .25,  .25,    -1,   .25,   .25,
-           .5,   .5,    -2,    .5,    .5,
-            1,    1,    -4,     1,     1,
-           .5,   .5,    -2,    .5,    .5,
-          .25,  .25,    -1,   .25,   .25,
-      },
-      {
-           -1, .25,  .25,  .5,   1,
-          .25,  -2,   .5,   1,  .5,
-          .25,  .5,   -4,  .5, .25,
-           .5,   1,   .5,  -2, .25,
-            1,  .5,  .25, .25,  -1,
-      },
-      {
-         .25,  .5,   1,  .5, .25,
-         .25,  .5,   1,  .5, .25,
-          -1,  -2,  -4,  -2,  -1,
-         .25,  .5,   1,  .5, .25,
-         .25,  .5,   1,  .5, .25,
-      },
-      {
-           1,  .5, .25, .25,  -1,
-          .5,   1,  .5,  -2, .25,
-         .25,  .5,  -4,  .5, .25,
-         .25,  -2,  .5,   1,  .5,
-          -1, .25, .25,  .5,   1,
-      },
-  };
+  cv::merge(gg, g1);
 
-  static const thread_local cv::Matx<float, 5, 5> K1[4] = {
-      cv::Matx<float, 5, 5>(k1[0]) * 1.5 / 12.f,
-      cv::Matx<float, 5, 5>(k1[1]) * 1.5 / 12.f,
-      cv::Matx<float, 5, 5>(k1[2]) * 1.5 / 12.f,
-      cv::Matx<float, 5, 5>(k1[3]) * 1.5 / 12.f,
-  };
-
-  static const thread_local cv::Matx<float, 5, 5> K2[4] = {
-      cv::Matx<float, 5, 5>(k2[0]) * 1.5 / 14.f,
-      cv::Matx<float, 5, 5>(k2[1]) * 1.5 / 14.f,
-      cv::Matx<float, 5, 5>(k2[2]) * 1.5 / 14.f,
-      cv::Matx<float, 5, 5>(k2[3]) * 1.5 / 14.f,
-  };
-
-  std::vector<cv::Mat> gg[2] = {
-      std::vector<cv::Mat>(4),
-      std::vector<cv::Mat>(4)
-  };
-
-  for( int i = 0; i < 4; ++i ) {
-    cv::filter2D(src, gg[0][i], ddepth, K1[i], cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
-  }
-  for( int i = 0; i < 4; ++i ) {
-    cv::filter2D(src, gg[1][i], ddepth, K2[i], cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
-  }
-
-  cv::merge(gg[0], g1);
-  cv::merge(gg[1], g2);
+  cv::absdiff(g1, cv::Scalar::all(128), g1);
 }
 
 //static inline uint8_t absdiff(uint8_t a, uint8_t b)
@@ -254,15 +117,15 @@ void ssa_pyramid(const cv::Mat & image,
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat s;
-  cv::Mat4b g[2];
+  cv::Mat s, l;
+  cv::Mat4b g;
   std::vector<cv::Size> sizes;
 
   if( image.channels() == 1 ) {
     s = image;
   }
   else {
-    cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(image, s, cv::COLOR_BGR2YCrCb);
   }
 
   pyramid.clear();
@@ -279,13 +142,19 @@ void ssa_pyramid(const cv::Mat & image,
 
     sizes.emplace_back(s.size());
 
-    compute_gradients(s, g[0], g[1]);
+    if ( s.channels() == 1 ) {
+      l = s;
+    }
+    else {
+      cv::extractChannel(s,  l,  0);
+    }
+
+    compute_gradients(l, g);
 
     {
       INSTRUMENT_REGION("pyrUp");
       for( int upscale = scale - 1; upscale >= 0; --upscale ) {
-        cv::pyrUp(g[0], g[0], sizes[upscale]);
-        cv::pyrUp(g[1], g[1], sizes[upscale]);
+        cv::pyrUp(g, g, sizes[upscale]);
       }
     }
 
@@ -305,20 +174,17 @@ void ssa_pyramid(const cv::Mat & image,
 
             ssdesc *ssp = ssa[y];
 
-
-
             if( (flags & sscmp_all) == sscmp_all ) {
 
               for( int x = 0; x < width; ++x ) {
 
                 ssdesc & ss = ssp[x];
 
-                // TODO: implement this with SSE
                 for ( int i = 0; i < 4; ++i ) {
-                  ss.g[i] = g[0][y][x][i] >= u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
+                  ss.g[i] = g[y][x][i];
                 }
                 for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = g[1][y][x][i-4] >= u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
+                  ss.g[i] = 0;
                 }
               }
 
@@ -333,13 +199,11 @@ void ssa_pyramid(const cv::Mat & image,
 
                 for ( int i = 0; i < 4; ++i ) {
                   if ( flags & (1<< i) ) {
-                    ss.g[i] = g[0][y][x][i] > u128 ? g[0][y][x][i] - u128 : u128 - g[0][y][x][i];
+                    ss.g[i] = g[y][x][i];
                   }
                 }
                 for ( int i = 4; i < 8; ++i ) {
-                  if ( flags & (1<< i) ) {
-                    ss.g[i] = g[1][y][x][i-4] > u128 ? g[1][y][x][i-4] - u128 : u128 - g[1][y][x][i-4];
-                  }
+                  ss.g[i] = 0;
                 }
               }
             }

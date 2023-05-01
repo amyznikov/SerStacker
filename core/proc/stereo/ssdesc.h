@@ -18,10 +18,10 @@ enum sscmpflags
   sscmp_g01  = 0x02,
   sscmp_g02  = 0x04,
   sscmp_g03  = 0x08,
-  sscmp_g10  = 0x10,
-  sscmp_g11  = 0x20,
-  sscmp_g12  = 0x40,
-  sscmp_g13  = 0x80,
+  sscmp_g04  = 0x10,
+  sscmp_g05  = 0x20,
+  sscmp_g06  = 0x40,
+  sscmp_g07  = 0x80,
 
   sscmp_all = 0xFF
 };

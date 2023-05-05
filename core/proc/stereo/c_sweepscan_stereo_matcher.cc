@@ -267,6 +267,16 @@ int c_sweepscan_stereo_matcher::ssflags() const
   return ss_flags_;
 }
 
+void c_sweepscan_stereo_matcher::set_enable_reverse_checks(bool v)
+{
+  enable_reverse_checks_ = v;
+}
+
+bool c_sweepscan_stereo_matcher::enable_reverse_checks() const
+{
+  return enable_reverse_checks_;
+}
+
 void c_sweepscan_stereo_matcher::set_ss_sigma(double v)
 {
   ss_sigma_ = v;
@@ -347,6 +357,12 @@ void c_sweepscan_stereo_matcher::set_debug_points(const std::vector<cv::Point> &
   debug_points_ = v;
 }
 
+static inline uint8_t absv(uint8_t v)
+{
+  constexpr uint8_t u128 = (uint8_t) 128;
+  return v >= u128 ? v - u128 : 128 - v;
+}
+
 bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
     cv::Mat & outputImage, cv::Mat1b * outputMask)
@@ -404,10 +420,11 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
 
         const ssdesc &ss = ssp[x];
 
-        uint8_t maxv = ss.g[0];
-        for( int i = 1; i < 8; ++i ) {
-          maxv = std::max(maxv, ss.g[i]);
+        uint8_t maxv = absv(ss.g[0]);
+        for( int i = 1; i < 4; ++i ) {
+          maxv = std::max(maxv, absv(ss.g[i]));
         }
+
         texture_map[y][x] = maxv;
       }
     }
@@ -434,7 +451,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
 
   {
     INSTRUMENT_REGION("ssa_match");
-    ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask);
+    ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask, enable_reverse_checks_);
   }
 
   switch (output_type_) {

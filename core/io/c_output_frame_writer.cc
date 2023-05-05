@@ -206,6 +206,11 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
         }
         else {
           convert(currenFrame, tmp, CV_8U);
+
+          if( currentMask.type() == CV_8UC1 && currentMask.size() == tmp.size() ) {
+            tmp.setTo(0, ~currentMask.getMat());
+          }
+
           if ( !ffmpeg.write(tmp, pts++) ) {
             CF_ERROR("ffmpeg.write() fails");
             return false;

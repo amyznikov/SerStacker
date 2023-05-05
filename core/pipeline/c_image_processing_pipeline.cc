@@ -106,19 +106,19 @@ const char* c_image_processing_pipeline::cname() const
   return name_.c_str();
 }
 
-void c_image_processing_pipeline::set_sequence_name(const std::string & v)
-{
-  sequence_name_ = v;
-}
-
-const std::string& c_image_processing_pipeline::sequence_name() const
-{
-  return sequence_name_;
-}
+//void c_image_processing_pipeline::set_sequence_name(const std::string & v)
+//{
+//  sequence_name_ = v;
+//}
+//
+//const std::string& c_image_processing_pipeline::sequence_name() const
+//{
+//  return sequence_name_;
+//}
 
 const char * c_image_processing_pipeline::csequence_name() const
 {
-  return sequence_name_.c_str();
+  return input_sequence_ ? input_sequence_->cname() : "";
 }
 
 void c_image_processing_pipeline::set_master_source(const std::string & master_source_path)
@@ -423,7 +423,7 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
   }
 
   SERIALIZE_PROPERTY(setting, save, *this, name);
-  SERIALIZE_PROPERTY(setting, save, *this, sequence_name);
+  //SERIALIZE_PROPERTY(setting, save, *this, sequence_name);
   SERIALIZE_PROPERTY(setting, save, *this, master_source);
   SERIALIZE_PROPERTY(setting, save, *this, master_frame_index);
 
@@ -545,30 +545,34 @@ bool c_image_processing_pipeline::run_pipeline()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_image_sequence::c_image_sequence(const std::string & name) :
-    name_(name)
+c_image_sequence::c_image_sequence(const std::string & name)
 {
+  if ( input_sequence_ ) {
+    input_sequence_->set_name(name);
+  }
 }
 
 void c_image_sequence::set_name(const std::string & name)
 {
-  name_ = name;
-
-  for( const auto &pipeline : pipelines_ ) {
-    if( pipeline ) {
-      pipeline->set_sequence_name(name);
-    }
+  if ( input_sequence_ ) {
+    input_sequence_->set_name(name);
   }
+
+//  for( const auto &pipeline : pipelines_ ) {
+//    if( pipeline ) {
+//      pipeline->set_sequence_name(name);
+//    }
+//  }
 }
 
-const std::string& c_image_sequence::name() const
+std::string c_image_sequence::name() const
 {
-  return name_;
+  return input_sequence_ ? input_sequence_->name() : "";
 }
 
 const char* c_image_sequence::cname() const
 {
-  return name_.c_str();
+  return input_sequence_ ? input_sequence_->cname() : "";
 }
 
 std::string c_image_sequence::get_display_path() const
@@ -697,7 +701,7 @@ bool c_image_sequence::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
 
-  SERIALIZE_PROPERTY(settings, save, *this, name);
+  //SERIALIZE_PROPERTY(settings, save, *this, name);
 
   if( save ) {
 

@@ -9,5 +9,7 @@
 	<file>icons/down_b_arrow_icon.png</file>
 	<file>icons/up_b_arrow_icon.png</file>
 	<file>icons/apply_icon.png</file>
+	<file>icons/mc-dark.png</file>
+	<file>icons/mc-light.png</file>
 </qresource>
 </RCC>

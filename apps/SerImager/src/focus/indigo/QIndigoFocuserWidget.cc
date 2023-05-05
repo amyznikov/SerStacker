@@ -39,6 +39,7 @@
 #define ICON_down_arrow         "down_b_arrow_icon.png"
 #define ICON_up_arrow           "up_b_arrow_icon.png"
 #define ICON_apply              "apply_icon.png"
+#define ICON_mc                 ":/qindigo/icons/mc-light.png"
 
 static QIcon icon_apply;
 static QIcon icon_left_arrow;
@@ -49,12 +50,12 @@ static QIcon icon_down_arrow;
 static QIcon icon_up_arrow;
 static QIcon icon_goto_position;
 static QIcon icon_stop;
+//static QIcon icon_mc;
 
 static QIcon getIcon(const QString & name)
 {
   return QIcon(QString(":/qindigo/icons/%1").arg(name));
 }
-
 
 static void init_resources()
 {
@@ -87,6 +88,10 @@ static void init_resources()
   if( icon_up_arrow.isNull() ) {
     icon_up_arrow = getIcon(ICON_up_arrow);
   }
+//  if( icon_mc.isNull() ) {
+//    icon_mc = getIcon(ICON_mc);
+//  }
+
 }
 
 
@@ -307,10 +312,14 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
           focuserStepsMoveOutward4x_ctl = new QToolButton(this)
           ));
 
-#if QT_CONFIG(wheelevent)
   form->addRow("Enable mouse control:",
       enableMouse_ctl = new QCheckBox(this));
-#endif
+
+//#if QT_CONFIG(wheelevent)
+//#endif
+
+  form->addRow(mouseclick_ctl = new QIndigoFocuserMouseClickControl(this));
+  //mouseclick_ctl->setEnabled(enableMouse_ctl->isChecked());
 
 
   form->addRow(createFocuserStateStatusLabel(this,
@@ -399,6 +408,11 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
 
   connect(focuserStepsMoveOutward4x_ctl, &QToolButton::clicked,
       this, &ThisClass::onFocuserStepsMoveOutward4xClicked);
+
+  connect(enableMouse_ctl, &QCheckBox::stateChanged,
+      [this](int state) {
+        enableMouse_ctl->setEnabled(state==Qt::Checked);
+      });
 
   //////////////
 
@@ -515,9 +529,8 @@ void QIndigoFocuserWidget::onupdatecontrols()
       enableControl(focuserStepsMoveInward4x_ctl, false);
       enableControl(focuserStepsMoveOutward4x_ctl, false);
       enableControl(focuserSpeed_ctl, false);
-#if QT_CONFIG(wheelevent)
       enableControl(enableMouse_ctl, false);
-#endif
+      enableControl(mouseclick_ctl, false);
     }
     else if ( isMovingFocusNow() ) {
 
@@ -535,9 +548,7 @@ void QIndigoFocuserWidget::onupdatecontrols()
       enableControl(focuserStepsMoveInward4x_ctl, true, icon_stop);
       enableControl(focuserStepsMoveOutward4x_ctl, true, icon_stop);
       enableControl(focuserSpeed_ctl, true);
-#if QT_CONFIG(wheelevent)
       enableControl(enableMouse_ctl, false);
-#endif
     }
     else {
 
@@ -555,9 +566,8 @@ void QIndigoFocuserWidget::onupdatecontrols()
       enableControl(focuserStepsMoveInward4x_ctl, true, icon_double_left_arrow);
       enableControl(focuserStepsMoveOutward4x_ctl, true, icon_double_right_arrow);
       enableControl(focuserSpeed_ctl, true);
-#if QT_CONFIG(wheelevent)
       enableControl(enableMouse_ctl, true);
-#endif
+      enableControl(mouseclick_ctl, enableMouse_ctl->isChecked());
     }
 
 
@@ -1318,50 +1328,53 @@ void QIndigoFocuserWidget::onFocuserSpeedControlValueChanged(int value)
 
 
 
-void QIndigoFocuserWidget::mousePressEvent(QMouseEvent *event)
-{
-  if ( enableMouse_ctl->isChecked() && canMoveFocusNow() ) {
+//void QIndigoFocuserWidget::mousePressEvent(QMouseEvent *event)
+//{
+////  CF_DEBUG("H");
+//
+//  if ( enableMouse_ctl->isChecked() && canMoveFocusNow() ) {
+//
+//    if ( event->button() == Qt::MouseButton::LeftButton ) {
+//
+//      moveFocusToPosition(focuserPosition_ctl->minimum());
+//
+//      return;
+//    }
+//
+//    if ( event->button() == Qt::MouseButton::RightButton ) {
+//
+//      moveFocusToPosition(focuserPosition_ctl->maximum());
+//
+//      return;
+//
+//    }
+//
+//  }
+//
+//  Base::mousePressEvent(event);
+//}
 
-    if ( event->button() == Qt::MouseButton::LeftButton ) {
+//void QIndigoFocuserWidget::mouseReleaseEvent(QMouseEvent *event)
+//{
+//  //CF_DEBUG("H");
+//
+//  if ( isMovingFocusNow() ) {
+//    abortCurrentMotion();
+//    return;
+//  }
+//
+//  Base::mouseReleaseEvent(event);
+//}
 
-      moveFocusToPosition(focuserPosition_ctl->minimum());
-
-      return;
-    }
-
-    if ( event->button() == Qt::MouseButton::RightButton ) {
-
-      moveFocusToPosition(focuserPosition_ctl->maximum());
-
-      return;
-
-    }
-
-  }
-
-  Base::mousePressEvent(event);
-}
-
-void QIndigoFocuserWidget::mouseReleaseEvent(QMouseEvent *event)
-{
-  if ( isMovingFocusNow() ) {
-    abortCurrentMotion();
-    return;
-  }
-
-  Base::mouseReleaseEvent(event);
-}
-
-void QIndigoFocuserWidget::mouseDoubleClickEvent(QMouseEvent *event)
-{
-  //CF_DEBUG("H");
-  Base::mouseDoubleClickEvent(event);
-}
-
-void QIndigoFocuserWidget::mouseMoveEvent(QMouseEvent *event)
-{
-  Base::mouseMoveEvent(event);
-}
+//void QIndigoFocuserWidget::mouseDoubleClickEvent(QMouseEvent *event)
+//{
+//  Base::mouseDoubleClickEvent(event);
+//}
+//
+//void QIndigoFocuserWidget::mouseMoveEvent(QMouseEvent *event)
+//{
+//  Base::mouseMoveEvent(event);
+//}
 
 #if QT_CONFIG(wheelevent)
 void QIndigoFocuserWidget::wheelEvent(QWheelEvent * event)
@@ -1388,3 +1401,53 @@ void QIndigoFocuserWidget::wheelEvent(QWheelEvent * event)
   Base::wheelEvent(event);
 }
 #endif
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+QIndigoFocuserMouseClickControl::QIndigoFocuserMouseClickControl(QIndigoFocuserWidget * parent) :
+    Base(parent),
+    focuser_(parent)
+{
+  setPixmap(QPixmap(ICON_mc));
+}
+
+void QIndigoFocuserMouseClickControl::mousePressEvent(QMouseEvent * e)
+{
+  CF_DEBUG("H");
+
+  if( focuser_->enableMouse_ctl->isChecked() && focuser_->canMoveFocusNow() ) {
+
+    if( e->button() == Qt::MouseButton::LeftButton ) {
+
+      focuser_->moveFocusToPosition(focuser_->focuserPosition_ctl->minimum());
+
+      return;
+    }
+
+    if( e->button() == Qt::MouseButton::RightButton ) {
+
+      focuser_->moveFocusToPosition(focuser_->focuserPosition_ctl->maximum());
+
+      return;
+    }
+  }
+
+  e->ignore();
+  // Base::mousePressEvent(e);
+}
+
+void QIndigoFocuserMouseClickControl::mouseReleaseEvent(QMouseEvent *e)
+{
+  CF_DEBUG("H");
+
+  if ( focuser_->isMovingFocusNow() ) {
+    focuser_->abortCurrentMotion();
+    // return;
+  }
+
+  e->ignore();
+
+  //Base::mouseReleaseEvent(e);
+}
+
+

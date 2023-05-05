@@ -12,6 +12,8 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include "QIndigoClient.h"
 
+class QIndigoFocuserMouseClickControl;
+
 class QIndigoFocuserWidget:
     public QSettingsWidget
 {
@@ -19,6 +21,7 @@ class QIndigoFocuserWidget:
 public:
   typedef QIndigoFocuserWidget ThisClass;
   typedef QSettingsWidget Base;
+  friend class QIndigoFocuserMouseClickControl;
 
   typedef std::lock_guard<std::mutex>
     c_guard_lock;
@@ -180,10 +183,10 @@ protected:
   } focuser_temperature;
 
 protected: // overrides
-  void mousePressEvent(QMouseEvent *event) override;
-  void mouseReleaseEvent(QMouseEvent *event) override;
-  void mouseDoubleClickEvent(QMouseEvent *event) override;
-  void mouseMoveEvent(QMouseEvent *event) override;
+  //void mousePressEvent(QMouseEvent *event) override;
+  //void mouseReleaseEvent(QMouseEvent *event) override;
+//  void mouseDoubleClickEvent(QMouseEvent *event) override;
+//  void mouseMoveEvent(QMouseEvent *event) override;
 #if QT_CONFIG(wheelevent)
   void wheelEvent(QWheelEvent *event) override;
 #endif
@@ -191,6 +194,7 @@ protected: // overrides
 protected:
   QIndigoClient * client_ = nullptr;
   QString currentDeviceName_;
+  QIndigoFocuserMouseClickControl * mouseclick_ctl = nullptr;
   QLabel * status_ctl = nullptr;
   QLabel * temperature_ctl = nullptr;
   std::mutex mtx_;
@@ -203,7 +207,23 @@ protected:
 protected:
   static void on_indigo_log_message(const char *message);
   static QPlainTextEdit * logWidget_ctl;
+};
 
+class QIndigoFocuserMouseClickControl :
+    public QLabel
+{
+public:
+  typedef QIndigoFocuserMouseClickControl ThisClass;
+  typedef QLabel Base;
+
+  QIndigoFocuserMouseClickControl(QIndigoFocuserWidget * parent);
+
+protected:
+  void mousePressEvent(QMouseEvent *event) override;
+  void mouseReleaseEvent(QMouseEvent *event) override;
+
+protected:
+  QIndigoFocuserWidget * focuser_ = nullptr;
 };
 
 #endif /* __QIndigoFocuserWidget_h__ */

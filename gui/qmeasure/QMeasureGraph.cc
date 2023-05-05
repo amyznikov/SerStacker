@@ -43,8 +43,8 @@ QMeasureGraph::QMeasureGraph(QWidget * parent) :
 
   static const QColor colors[4] = {
       Qt::blue,
-      Qt::red,
       Qt::green,
+      Qt::red,
       Qt::darkYellow,
   };
 

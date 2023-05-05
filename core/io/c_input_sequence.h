@@ -25,6 +25,10 @@ public:
   static sptr create(const std::vector<std::string> & sourcefilename);
   virtual ~c_input_sequence();
 
+  void set_name(const std::string & name);
+  const std::string & name() const;
+  const char * cname() const;
+
   void set_auto_debayer(enum DEBAYER_ALGORITHM algo);
   enum DEBAYER_ALGORITHM auto_debayer() const;
 
@@ -80,6 +84,7 @@ protected:
   bool read_current_source(cv::Mat & output_frame, cv::Mat * output_mask);
 
 protected:
+  std::string name_;
 
   std::vector<c_input_source::sptr> all_sources_;
   std::vector<c_input_source::sptr> enabled_sources_;

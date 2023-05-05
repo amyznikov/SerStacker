@@ -47,10 +47,10 @@ void compute_gradients(const cv::Mat & src, cv::Mat & g1, float delta = 128, int
   std::vector<cv::Mat> gg(4);
 
   static float k12[] = { -1, -1, 0, +1, +1 };
-  static const cv::Matx<float, 1, 5> K12 = cv::Matx<float, 1, 5>(k12) * 1.5 / 4.0;
+  static const cv::Matx<float, 1, 5> K12 = cv::Matx<float, 1, 5>(k12) / 4.0;
 
   static float k22[] = { 1,  1, -4, 1, 1 };
-  static const cv::Matx<float, 1, 5> K22 = cv::Matx<float, 1, 5>(k22) * 1.5 / 8.0;
+  static const cv::Matx<float, 1, 5> K22 = cv::Matx<float, 1, 5>(k22) / 8.0;
 
   cv::filter2D(src, gg[0], ddepth, K12, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
   cv::filter2D(src, gg[1], ddepth, K12.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
@@ -59,7 +59,7 @@ void compute_gradients(const cv::Mat & src, cv::Mat & g1, float delta = 128, int
 
   cv::merge(gg, g1);
 
-  cv::absdiff(g1, cv::Scalar::all(128), g1);
+  //cv::absdiff(g1, cv::Scalar::all(128), g1);
 }
 
 //static inline uint8_t absdiff(uint8_t a, uint8_t b)
@@ -67,7 +67,7 @@ void compute_gradients(const cv::Mat & src, cv::Mat & g1, float delta = 128, int
 //  return a > b ? a - b : b - a;
 //}
 
-static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
+static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b, bool scmp)
 {
 //    uint8_t s = absdiff(a.arr[0], b.arr[0]);
 //    for( int i = 1; i < 8; ++i ) {
@@ -80,15 +80,19 @@ static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
 
   const union {
     __m64 m;
-    uint8_t arr[8];
+    uint8_t a[8];
   } u = {
       .m = _mm_sub_pi8(_mm_max_pu8(ma, mb), _mm_min_pu8(ma, mb))
   };
 
-  uint8_t s = u.arr[0];
-  for( int i = 1; i < 8; ++i ) {
-    s = std::max(s, u.arr[i]);
+  uint8_t s = u.a[0];
+  for( int i = 1; i < 4; ++i ) {
+    s = std::max(s, u.a[i]);
   }
+
+//  if ( scmp ) {
+//    s = std::max(s, std::min(u.a[4], u.a[5]));
+//  }
 
   return s;
 }
@@ -96,9 +100,9 @@ static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
 static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
     const ssdesc *const* b[/*scales*/], int xa, int xb, int y, int scales, uint8_t worst)
 {
-  uint8_t d = absdiff(a[0][y][xa], b[0][y][xb]);
+  uint8_t d = absdiff(a[0][y][xa], b[0][y][xb], true);
   for( int s = 1; s < scales; ++s ) {
-    if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb]))) > worst ) {
+    if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb], false))) > worst ) {
       break;
     }
   }
@@ -125,7 +129,11 @@ void ssa_pyramid(const cv::Mat & image,
     s = image;
   }
   else {
+    //cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
+    //cv::cvtColor(s, s, cv::COLOR_GRAY2BGR);
+
     cv::cvtColor(image, s, cv::COLOR_BGR2YCrCb);
+    //cv::cvtColor(image, s, cv::COLOR_BGR2Lab);
   }
 
   pyramid.clear();
@@ -164,6 +172,8 @@ void ssa_pyramid(const cv::Mat & image,
     {
       INSTRUMENT_REGION("parallel_for");
 
+      const cv::Mat3b lab = s;
+
     tbb::parallel_for(tbb_range(0, image.rows, tbb_grain_size),
         [&](const tbb_range & r) {
 
@@ -176,24 +186,59 @@ void ssa_pyramid(const cv::Mat & image,
 
             if( (flags & sscmp_all) == sscmp_all ) {
 
-              for( int x = 0; x < width; ++x ) {
+              for( int x = 0; x < 2; ++x ) {
+                ssdesc & ss = ssp[x];
+                for ( int i = 0; i < 4; ++i ) {
+                  ss.g[i] = g[y][x][i];
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = u128;
+                }
+              }
+
+              for( int x = 2; x < width - 2; ++x ) {
 
                 ssdesc & ss = ssp[x];
 
                 for ( int i = 0; i < 4; ++i ) {
                   ss.g[i] = g[y][x][i];
                 }
-                for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = 0;
-                }
+
+                ss.g[4] = ((lab[y][x-2][0]) + (lab[y][x-1][0]))>>1;
+                ss.g[5] = ((lab[y][x+2][0]) + (lab[y][x+1][0]))>>1;
+
+                ss.g[6] = u128;// ((lab[y][x-2][2]>>1) + (lab[y][x-1][2]>>1));
+                ss.g[7] = u128; // ((lab[y][x+2][2]>>1) + (lab[y][x+1][2]>>1));
               }
 
+              for( int x = width - 2 ; x < width; ++x ) {
+                ssdesc & ss = ssp[x];
+                for ( int i = 0; i < 4; ++i ) {
+                  ss.g[i] = g[y][x][i];
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = u128;
+                }
+              }
             }
             else {
 
               memset(ssp, 0, sizeof(*ssp) * width);
 
-              for( int x = 0; x < width; ++x ) {
+              for( int x = 0; x < 2; ++x ) {
+                ssdesc & ss = ssp[x];
+                for ( int i = 0; i < 4; ++i ) {
+                  if ( flags & (1<< i) ) {
+                    ss.g[i] = g[y][x][i];
+                  }
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = u128;
+                }
+              }
+
+
+              for( int x = 2; x < width - 2; ++x ) {
 
                 ssdesc & ss = ssp[x];
 
@@ -202,10 +247,33 @@ void ssa_pyramid(const cv::Mat & image,
                     ss.g[i] = g[y][x][i];
                   }
                 }
-                for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = 0;
+
+                if ( flags & (1 << 4) ) {
+                  ss.g[4] = ((lab[y][x-2][0]) + (lab[y][x-1][0]))>>1;
+                }
+                if ( flags & (1 << 5) ) {
+                  ss.g[5] = ((lab[y][x+2][0]) + (lab[y][x+1][0]))>>1;
+                }
+                if ( flags & (1 << 6) ) {
+                  ss.g[6] = u128;// ((lab[y][x-2][2]) + (lab[y][x-1][2]))>>1;
+                }
+                if ( flags & (1 << 7) ) {
+                  ss.g[7] = u128;// ((lab[y][x+2][2]) + (lab[y][x+1][2]))>>1;
                 }
               }
+
+              for( int x = width - 2 ; x < width; ++x ) {
+                ssdesc & ss = ssp[x];
+                for ( int i = 0; i < 4; ++i ) {
+                  if ( flags & (1 << i) ) {
+                    ss.g[i] = g[y][x][i];
+                  }
+                }
+                for ( int i = 4; i < 8; ++i ) {
+                  ss.g[i] = u128;
+                }
+              }
+
             }
           }
         });
@@ -438,40 +506,40 @@ void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
   }
 }
 
-
-void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
-    const c_ssarray & ssa2, const cv::Rect & rc2,
-    cv::OutputArray dists)
-{
-  if ( rc1.width != rc2.width ) {
-    CF_ERROR("ERROR: ROI WIDTH NOT MATCH");
-    return;
-  }
-
-  if ( rc1.height != rc2.height ) {
-    CF_ERROR("ERROR: ROI HEIGHT NOT MATCH");
-    return;
-  }
-
-
-  if( dists.empty() || dists.size() != rc1.size() || dists.type() != CV_32FC1 ) {
-    dists.create(rc1.size(), CV_32FC1);
-  }
-
-  cv::Mat1f distances =
-      dists.getMatRef();
-
-  for( int y = 0; y < rc1.height; ++y ) {
-
-    const ssdesc *ssp1 = ssa1[y + rc1.y];
-    const ssdesc *ssp2 = ssa2[y + rc2.y];
-
-    for( int x = 0; x < rc1.width; ++x ) {
-      distances[y][x] =
-          absdiff(ssp1[x + rc1.x], ssp2[x + rc2.x]);
-    }
-  }
-}
+//
+//void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
+//    const c_ssarray & ssa2, const cv::Rect & rc2,
+//    cv::OutputArray dists)
+//{
+//  if ( rc1.width != rc2.width ) {
+//    CF_ERROR("ERROR: ROI WIDTH NOT MATCH");
+//    return;
+//  }
+//
+//  if ( rc1.height != rc2.height ) {
+//    CF_ERROR("ERROR: ROI HEIGHT NOT MATCH");
+//    return;
+//  }
+//
+//
+//  if( dists.empty() || dists.size() != rc1.size() || dists.type() != CV_32FC1 ) {
+//    dists.create(rc1.size(), CV_32FC1);
+//  }
+//
+//  cv::Mat1f distances =
+//      dists.getMatRef();
+//
+//  for( int y = 0; y < rc1.height; ++y ) {
+//
+//    const ssdesc *ssp1 = ssa1[y + rc1.y];
+//    const ssdesc *ssp2 = ssa2[y + rc2.y];
+//
+//    for( int x = 0; x < rc1.width; ++x ) {
+//      distances[y][x] =
+//          absdiff(ssp1[x + rc1.x], ssp2[x + rc2.x]);
+//    }
+//  }
+//}
 
 
 void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
@@ -506,12 +574,13 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
 
       uint8_t d =
           absdiff(ssa1[0][y + rc1.y][x + rc1.x],
-              ssa2[0][y + rc2.y][x + rc2.x]);
+              ssa2[0][y + rc2.y][x + rc2.x],
+              true);
 
       for( int l = 1; l < lmax; ++l ) {
 
-        d = std::max(d, absdiff(ssa1[l][(y + rc1.y) ][(x + rc1.x) ],
-            ssa2[l][(y + rc2.y) ][(x + rc2.x) ]));
+        d = std::max(d, absdiff(ssa1[l][(y + rc1.y) ][(x + rc1.x)],
+            ssa2[l][(y + rc2.y) ][(x + rc2.x)], false));
       }
 
       distances[y][x] = d;
@@ -522,68 +591,71 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
 
 
 
-void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,
-    cv::OutputArray disps, cv::OutputArray costs,
-    const cv::Mat1b & mask)
-{
-  disps.create(reference_descs.size(), CV_16UC1);
-  disps.setTo(0);
-
-  costs.create(reference_descs.size(), CV_16UC1);
-  costs.setTo(UINT16_MAX);
-
-  cv::Mat1w disp = disps.getMatRef();
-  cv::Mat1w cost = costs.getMatRef();
-
-  tbb::parallel_for(tbb_range(0, reference_descs.rows(), 16),
-      [&](const tbb_range & r) {
-
-        const int xmax = reference_descs.cols();
-
-
-        for( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
-
-          const uint8_t * mskp = mask[y];
-
-          const ssdesc *rssp = reference_descs[y];
-          const ssdesc *cssp = current_descs[y];
-
-          for( int x = 0; x < xmax; ++x ) {
-            if( mskp[x] ) {
-
-              const ssdesc & rss = rssp[x];
-
-              uint8_t cbest =
-                  absdiff(rss, cssp[x]);
-
-              int xbest = x;
-
-              for( int xx = x + 1, xxmax = std::min(x + max_disparity, current_descs.cols()); xx < xxmax; ++xx ) {
-
-                const uint8_t c =
-                    absdiff(rss, cssp[xx]);
-
-                if( c < cbest ) {
-                  xbest = xx;
-                  if ( !(cbest = c) ) {
-                    break;
-                  }
-                }
-              }
-
-              disp[y][x] = xbest - x;
-              cost[y][x] = cbest;
-            }
-          }
-        }
-      });
-}
+//void ssa_match(const c_ssarray & current_descs, const c_ssarray & reference_descs, int max_disparity,
+//    cv::OutputArray disps, cv::OutputArray costs,
+//    const cv::Mat1b & mask)
+//{
+//  disps.create(reference_descs.size(), CV_16UC1);
+//  disps.setTo(0);
+//
+//  costs.create(reference_descs.size(), CV_16UC1);
+//  costs.setTo(UINT16_MAX);
+//
+//  cv::Mat1w disp = disps.getMatRef();
+//  cv::Mat1w cost = costs.getMatRef();
+//
+//  tbb::parallel_for(tbb_range(0, reference_descs.rows(), 16),
+//      [&](const tbb_range & r) {
+//
+//        const int ccols = current_descs.cols();
+//        const int rcols = reference_descs.cols();
+//
+//        for( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+//
+//          const uint8_t * mskp = mask[y];
+//
+//          const ssdesc *rssp = reference_descs[y];
+//          const ssdesc *cssp = current_descs[y];
+//
+//          for( int x = 0; x < rcols; ++x ) {
+//            if( mskp[x] ) {
+//
+//              const ssdesc & rss = rssp[x];
+//
+//              uint8_t cbest =
+//                  absdiff(rss, cssp[x],
+//                      true);
+//
+//              int xbest = x;
+//
+//              for( int xx = x + 1, xxmax = std::min(x + max_disparity, ccols); xx < xxmax; ++xx ) {
+//
+//                const uint8_t c =
+//                    absdiff(rss, cssp[xx],
+//                        true);
+//
+//                if( c < cbest ) {
+//                  xbest = xx;
+//                  if ( !(cbest = c) ) {
+//                    break;
+//                  }
+//                }
+//              }
+//
+//              disp[y][x] = xbest - x;
+//              cost[y][x] = cbest;
+//            }
+//          }
+//        }
+//      });
+//}
 
 
 void ssa_match(const std::vector<c_ssarray> & current_descs,
     const std::vector<c_ssarray> & reference_descs, int max_disparity,
     cv::OutputArray disps, cv::OutputArray costs,
-    const cv::Mat1b & mask)
+    const cv::Mat1b & mask,
+    bool enable_checks)
 {
   disps.create(reference_descs[0].size(), CV_16UC1);
   disps.setTo(0);
@@ -615,25 +687,55 @@ void ssa_match(const std::vector<c_ssarray> & current_descs,
 
           const uint8_t * mskp = mask[y];
 
-          for( int x = 0; x < rwidth; ++x ) {
-            if( mskp[x] ) {
+          struct rmatch {
+            int16_t rx = -1;
+            uint8_t score = UINT8_MAX;
+          } imatch[cwidth];
 
-              uint8_t cbest = absdiff(rptrs, cptrs, x, x, y, scales, UINT8_MAX);
-              int xbest = x;
 
-              for( int xx = x + 1, xxmax = std::min(x + max_disparity, cwidth); xx < xxmax; ++xx ) {
+          for( int xr = 0; xr < rwidth; ++xr ) {
+            if( mskp[xr] ) {
 
-                const uint8_t c = absdiff(rptrs, cptrs, x, xx, y, scales, cbest);
-                if( c < cbest ) {
-                  xbest = xx;
-                  if ( !(cbest = c) ) {
+              uint8_t best_score =
+                  absdiff(rptrs, cptrs,
+                      xr, xr, y, scales,
+                      UINT8_MAX);
+
+              int best_xc = xr;
+
+              for( int xc = xr + 1, xcm = std::min(xr + max_disparity, cwidth); xc < xcm; ++xc ) {
+
+                const uint8_t score =
+                    absdiff(rptrs, cptrs,
+                        xr, xc, y, scales,
+                        best_score);
+
+                if( score < best_score ) {
+                  best_xc = xc;
+                  if ( !(best_score = score) ) {
                     break;
                   }
                 }
               }
 
-              disp[y][x] = xbest - x;
-              cost[y][x] = cbest;
+              if ( !enable_checks ) {
+                disp[y][xr] = best_xc - xr;
+                cost[y][xr] = best_score;
+              }
+              else  if ( (imatch[best_xc].rx <= 0) ) {
+                disp[y][xr] = best_xc - xr;
+                cost[y][xr] = best_score;
+                imatch[best_xc].score = best_score;
+                imatch[best_xc].rx = xr;
+              }
+              else if ((best_score < imatch[best_xc].score)) {
+                disp[y][imatch[best_xc].rx] = 0;
+                cost[y][imatch[best_xc].rx] = 0;
+                disp[y][xr] = best_xc - xr;
+                cost[y][xr] = best_score;
+                imatch[best_xc].score = best_score;
+                imatch[best_xc].rx = xr;
+              }
             }
           }
         }

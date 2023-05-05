@@ -15,6 +15,7 @@
 #define ICON_measures_table       ":/qmeasure/icons/table.png"
 #define ICON_measure_clear        ":/qmeasure/icons/clear.png"
 #define ICON_measure_chart        ":/qmeasure/icons/chart.png"
+#define ICON_plot                 ":/qmeasure/icons/plot.png"
 #define ICON_measure_options      ":/qmeasure/icons/options.png"
 //#define ICON_measure_roi          ":/qmeasure/icons/roi.png"
 //#define ICON_measure_menu         ":/qmeasure/icons/menu.png"
@@ -311,18 +312,19 @@ void QMainAppWindow::onMeasuresGraphVisibilityChanged(bool visible)
 
 void QMainAppWindow::setupMtfControls()
 {
-  showMtfControlAction_ =
-      createCheckableAction(getIcon(ICON_histogram),
-          "Display Options...",
-          "Show / Hide Display Options",
-          this,
-          &ThisClass::onShowMtfControlActionTriggered);
+  if ( !showMtfControlAction_ ) {
+    showMtfControlAction_ =
+        createCheckableAction(getIcon(ICON_histogram),
+            "Display Options...",
+            "Show / Hide Display Options",
+            this,
+            &ThisClass::onShowMtfControlActionTriggered);
 
 
-  if( menuView_ ) {
-    menuView_->addAction(showMtfControlAction_);
+    if( menuView_ ) {
+      menuView_->addAction(showMtfControlAction_);
+    }
   }
-
 }
 
 void QMainAppWindow::onShowMtfControlActionTriggered(bool checked)
@@ -351,6 +353,57 @@ void QMainAppWindow::onMtfControlVisibilityChanged(bool visible)
 {
   if( showMtfControlAction_ ) {
     showMtfControlAction_->setChecked(visible);
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void QMainAppWindow::setupProfileGraph()
+{
+  if ( !showProfileGraphAction_ ) {
+
+    showProfileGraphAction_ =
+        createCheckableAction(getIcon(ICON_histogram),
+            "Plot Profile ...",
+            "Show / Hide plot profile widget",
+            this,
+            &ThisClass::onShowProfileGraphActionTriggered);
+
+
+    if( menuView_ ) {
+      menuView_->addAction(showProfileGraphAction_);
+    }
+
+  }
+}
+
+void QMainAppWindow::onShowProfileGraphActionTriggered(bool checked)
+{
+  if( !checked ) {
+    if( plotProfileDialogBox_ ) {
+      plotProfileDialogBox_->hide();
+    }
+  }
+  else {
+    if( !plotProfileDialogBox_ ) {
+
+      plotProfileDialogBox_ = new QProfileGraphDialogBox(this);
+      profileGraph_ctl_ = plotProfileDialogBox_->profileGraph();
+
+      connect(plotProfileDialogBox_, &QProfileGraphDialogBox::visibilityChanged,
+          this, &ThisClass::onPlotProfileDialogBoxVisibilityChanged);
+    }
+
+    plotProfileDialogBox_->show();
+    plotProfileDialogBox_->raise();
+    plotProfileDialogBox_->setFocus();
+  }
+}
+
+void QMainAppWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
+{
+  if( showProfileGraphAction_ ) {
+    showProfileGraphAction_->setChecked(visible);
   }
 }
 

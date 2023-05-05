@@ -7,6 +7,14 @@
 
 #include "c_image_processor.h"
 
+#include "pixel/c_absdiff_routine.h"
+#include "pixel/c_anscombe_routine.h"
+#include "pixel/c_mtf_routine.h"
+#include "pixel/c_range_normalize_routine.h"
+#include "pixel/c_rangeclip_routine.h"
+#include "pixel/c_pixel_func_routine.h"
+
+
 #include "color/c_histogram_white_balance_routine.h"
 #include "color/c_color_saturation_routine.h"
 #include "color/c_color_transform_routine.h"
@@ -16,6 +24,8 @@
 #include "color/c_histogram_normalization_routine.h"
 #include "color/c_scale_channels_routine.h"
 #include "color/c_color_diff_routine.h"
+#include "color/c_set_luminance_channel_routine.h"
+
 
 #include "quicktests/c_census_transfrom_routine.h"
 #include "quicktests/c_homography_test_routine.h"
@@ -37,11 +47,7 @@
 #include "maps/c_laplacian_routine.h"
 
 #include "c_align_color_channels_routine.h"
-#include "c_anscombe_routine.h"
 #include "c_autoclip_routine.h"
-#include "c_mtf_routine.h"
-#include "c_range_normalize_routine.h"
-#include "c_rangeclip_routine.h"
 #include "c_unsharp_mask_routine.h"
 #include "c_type_convert_routine.h"
 #include "c_radial_polysharp_routine.h"
@@ -56,7 +62,6 @@
 #include "c_mean_curvature_blur_routine.h"
 #include "c_fit_jovian_ellipse_routine.h"
 #include "c_equalize_hist_routine.h"
-#include "c_absdiff_routine.h"
 #include "c_average_pyramid_inpaint_routine.h"
 #include "c_linear_interpolation_inpaint_routine.h"
 #include "c_bilateral_filter_routine.h"
@@ -118,10 +123,12 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_noisemap_routine::class_factory_instance());
     register_class_factory(c_range_normalize_routine::class_factory_instance());
     register_class_factory(c_rangeclip_routine::class_factory_instance());
+    register_class_factory(c_pixel_func_routine::class_factory_instance());
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_scale_channels_routine::class_factory_instance());
     register_class_factory(c_color_diff_routine::class_factory_instance());
+    register_class_factory(c_set_luminance_channel_routine::class_factory_instance());
     register_class_factory(c_type_convert_routine::class_factory_instance());
     register_class_factory(c_color_saturation_routine::class_factory_instance());
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());

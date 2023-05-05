@@ -395,6 +395,13 @@ void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mas
         cv::getGaussianKernel(2 * ((int) (4 * smooth_sigma)) + 1,
             smooth_sigma);
 
+#if 1
+    cv::sepFilter2D(src, dst, dst.depth(),
+        G, G,
+        cv::Point(-1, -1),
+        0,
+        cv::BORDER_REPLICATE);
+#else
     if ( src_mask.empty() ) {
 
       cv::sepFilter2D(src, dst, dst.depth(),
@@ -426,6 +433,7 @@ void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mas
 
       cv::divide(dst, fmask, dst);
     }
+#endif
   }
 
 

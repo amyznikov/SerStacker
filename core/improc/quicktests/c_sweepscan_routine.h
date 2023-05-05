@@ -40,6 +40,9 @@ public:
   void set_max_scale(int v);
   int max_scale() const;
 
+  void set_enable_reverse_checks(bool v);
+  bool enable_reverse_checks() const;
+
   void set_kernel_sigma(double v);
   double kernel_sigma() const;
 

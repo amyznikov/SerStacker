@@ -224,6 +224,29 @@ QString QASICamera::parameters() const
             "IsColorCam         = %d\n"
             "BayerPattern       = %s\n"
             "PixelSize          = %gum // the pixel size of the camera, unit is um\n"
+
+            "Format             = %s\n"
+            "Binning            = %d\n"
+            "iX                 = %d\n"
+            "iY                 = %d\n"
+            "iWidth             = %d\n"
+            "iHeight            = %d\n"
+            "Exposure           = %s\n"
+            "Gain               = %ld\n"
+            "WB_R               = %ld\n"
+            "WB_B               = %ld\n"
+            "Gamma              = %ld\n"
+            "Offset             = %ld\n"
+
+            "AutoExposure       = %d\n"
+            "AutoGain           = %d\n"
+            "AutoGamma          = %d\n"
+            "AutoWB_R           = %d\n"
+            "AutoWB_B           = %d\n"
+            "AutoOffset         = %d\n"
+
+            "Temperature        = %g\n"
+
             "MechanicalShutter  = %d\n"
             "ST4Port            = %d\n"
             "IsCoolerCam        = %d\n"
@@ -232,25 +255,6 @@ QString QASICamera::parameters() const
             "ElecPerADU         = %g\n"
             "BitDepth           = %d\n"
             "IsTriggerCam       = %d\n"
-            "Format             = %s\n"
-            "Binning            = %d\n"
-            "iX                 = %d\n"
-            "iY                 = %d\n"
-            "iWidth             = %d\n"
-            "iHeight            = %d\n"
-            "Exposure           = %s\n"
-            "AutoExposure       = %d\n"
-            "Gain               = %ld\n"
-            "AutoGain           = %d\n"
-            "Gamma              = %ld\n"
-            "AutoGamma          = %d\n"
-            "WB_R               = %ld\n"
-            "AutoWB_R           = %d\n"
-            "WB_B               = %ld\n"
-            "AutoWB_B           = %d\n"
-            "Offset             = %ld\n"
-            "AutoOffset         = %d\n"
-            "Temperature        = %g\n"
             "",
             camInfo_.Name,
             camInfo_.CameraID,
@@ -259,6 +263,27 @@ QString QASICamera::parameters() const
             camInfo_.IsColorCam,
             camInfo_.BayerPattern,
             camInfo_.PixelSize,
+            toString(asiType),
+            iBin,
+            iX, iY,
+            iWidth, iHeight,
+
+            exposure_string(exposure).c_str(),
+            gain,
+            wb_r,
+            wb_b,
+            gamma,
+            offset,
+
+            auto_exposure,
+            auto_gain,
+            auto_gamma,
+            auto_wb_r,
+            auto_wb_b,
+            auto_offset,
+
+            0.1 * temperature,
+
             camInfo_.MechanicalShutter,
             camInfo_.ST4Port,
             camInfo_.IsCoolerCam,
@@ -266,18 +291,7 @@ QString QASICamera::parameters() const
             camInfo_.IsUSB3Camera,
             camInfo_.ElecPerADU,
             camInfo_.BitDepth,
-            camInfo_.IsTriggerCam,
-            toString(asiType),
-            iBin,
-            iX, iY,
-            iWidth, iHeight,
-            exposure_string(exposure).c_str(), auto_exposure,
-            gain, auto_gain,
-            gamma, auto_gamma,
-            wb_r, auto_wb_r,
-            wb_b, auto_wb_b,
-            offset, auto_offset,
-            0.1 * temperature
+            camInfo_.IsTriggerCam
             );
 
     return QString(text.c_str());

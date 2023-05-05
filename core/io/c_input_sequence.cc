@@ -50,9 +50,24 @@ c_input_sequence::sptr c_input_sequence::create(const std::vector<std::string> &
   return sources_added ? obj : nullptr;
 }
 
+void c_input_sequence::set_name(const std::string & name)
+{
+  name_ = name;
+}
+
+const std::string& c_input_sequence::name() const
+{
+  return name_;
+}
+
+const char* c_input_sequence::cname() const
+{
+  return name_.c_str();
+}
 
 bool c_input_sequence::serialize(c_config_setting settings) const
 {
+  SAVE_PROPERTY(settings, *this, name);
   SAVE_PROPERTY(settings, *this, auto_debayer);
   SAVE_PROPERTY(settings, *this, auto_apply_color_matrix);
 
@@ -78,6 +93,7 @@ bool c_input_sequence::deserialize(c_config_setting settings)
   all_sources_.clear();
   enabled_sources_.clear();
 
+  LOAD_PROPERTY(settings, *this, name);
   LOAD_PROPERTY(settings, *this, auto_debayer);
   LOAD_PROPERTY(settings, *this, auto_apply_color_matrix);
 

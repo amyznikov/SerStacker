@@ -1268,22 +1268,43 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       return false;
     }
 
-    const int startpos =
-        std::max(0, std::max(input_options_.start_frame_index,
-            master_frame_index - max_frames_to_stack / 2));
+    const int start_frame_index =
+        std::max(0, input_options_.start_frame_index);
 
-    const int endpos =
-        std::min( startpos + max_frames_to_stack,
-            input_sequence->size());
+    int startpos, endpos;
+
+    if( start_frame_index + max_frames_to_stack >= input_sequence->size() ) {
+      startpos = start_frame_index;
+      endpos = input_sequence->size();
+    }
+    else {
+
+      startpos =
+          std::max(start_frame_index,
+              master_frame_index - max_frames_to_stack / 2);
+
+      if( (endpos = startpos + max_frames_to_stack) >= input_sequence->size() ) {
+        startpos = std::max(start_frame_index, input_sequence->size() - max_frames_to_stack);
+        endpos = input_sequence->size();
+      }
+    }
+
 
     if ( max_frames_to_stack > input_sequence->size() ) {
       max_frames_to_stack = input_sequence->size();
     }
 
-    CF_DEBUG("input_options.start_frame_index=%d master_frame_index=%d max_frames_to_stack=%d input_sequence->size()=%d",
+    CF_DEBUG("input_options.start_frame_index=%d \n"
+        "master_frame_index=%d \n"
+        "max_frames_to_stack=%d \n"
+        "input_sequence->size()=%d\n"
+        "startpos=%d\n"
+        "endpos=%d\n",
         input_options_.start_frame_index, master_frame_index,
         max_frames_to_stack,
-        input_sequence->size());
+        input_sequence->size(),
+        startpos,
+        endpos);
 
     if ( !process_input_sequence(input_sequence, startpos, endpos) ) {
       CF_ERROR("process_input_sequence() fails");
@@ -2571,7 +2592,7 @@ bool c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
     }
   }
 
-  return output_writer.write(current_frame, current_mask,
+  return output_writer.write(current_frame, cv::noArray()/*current_mask*/,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 
@@ -3138,6 +3159,9 @@ bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline
   p->accumulation_options_ = this->accumulation_options_;
   p->output_options_ = this->output_options_;
   p->image_processing_options_ = this->image_processing_options_;
+
+
+  CF_DEBUG("Name='%s' csequence_name='%s'", name_.c_str(), csequence_name());
 
   return true;
 }

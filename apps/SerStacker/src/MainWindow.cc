@@ -92,6 +92,7 @@ MainWindow::MainWindow()
   setupPipelineTypes();
   setupMainMenu();
   setupLogWidget();
+  setupStatusbar();
   setupMtfControls();
   setupFileSystemTreeView();
   setupThumbnailsView();
@@ -104,6 +105,7 @@ MainWindow::MainWindow()
   stupCloudViewer();
   setupMeasures();
   setupRoiOptions();
+
 
 
   tabifyDockWidget(fileSystemTreeDock, sequencesTreeDock);
@@ -304,6 +306,15 @@ void MainWindow::setupMainMenu()
       this, &ThisClass::onStackProgressViewTextChanged,
       Qt::QueuedConnection);
 
+}
+
+void MainWindow::setupStatusbar()
+{
+  QStatusBar *sb = statusBar();
+
+  //  sb->addWidget(mousepos_ctl = new QLabel(this));
+  sb->addPermanentWidget(show_log_ctl = new QToolButton());
+  show_log_ctl->setDefaultAction(showLogWidgetAction_);
 }
 
 void MainWindow::onStackProgressViewTextChanged()
@@ -513,10 +524,10 @@ void MainWindow::setupStackOptionsView()
 void MainWindow::setupImageEditor()
 {
   QToolBar *toolbar;
-  QStatusBar *statusbar;
+  //QStatusBar *statusbar;
 
   toolbar = imageEditor->embedToolbar();
-  statusbar = imageEditor->embedStatusbar();
+  //statusbar = imageEditor->embedStatusbar();
 
   imageEditor->addAction(copyDisplayImageAction =
       createAction(QIcon(),
@@ -687,12 +698,12 @@ void MainWindow::setupImageEditor()
               Qt::WindowShortcut)));
 
   connect(imageEditor, &QImageFileEditor::onMouseMove,
-      [this, statusbar](QMouseEvent * e) {
-        statusbar->showMessage(imageEditor->statusStringForPixel(e->pos()));
+      [this](QMouseEvent * e) {
+        statusBar()->showMessage(imageEditor->statusStringForPixel(e->pos()));
       });
 
   connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
-      [this, statusbar](QGraphicsItem * item) {
+      [this](QGraphicsItem * item) {
 
         QGraphicsLineShape * lineShape = nullptr;
         QGraphicsRectShape * rectShape = nullptr;
@@ -706,7 +717,7 @@ void MainWindow::setupImageEditor()
           const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
           const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
 
-          statusbar->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+          statusBar()->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
                   p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
 
         }
@@ -720,7 +731,7 @@ void MainWindow::setupImageEditor()
           const double width = rc.width();
           const double height = rc.height();
 
-          statusbar->showMessage(
+          statusBar()->showMessage(
               qsprintf("RECT: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
                   p1.x(), p1.y(),
                   p2.x(), p2.y(),

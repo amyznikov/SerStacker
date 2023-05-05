@@ -456,7 +456,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   if( options_.eccflow.enabled || (options_.ecc.enabled && options_.ecc.scale > 0) ) {
 
     if( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
-      CF_ERROR("extract_ecc_image(current_image) fails");
+      CF_ERROR("create_current_ecc_image() fails");
       return false;
     }
 
@@ -464,6 +464,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     if( options_.ecc.replace_planetary_disk_with_mask ) {
       insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
     }
+
+//    {
+//      double min, max;
+//      cv::minMaxLoc(ecc_image, &min, &max);
+//      CF_DEBUG("ECC IMAGE: min=%g max=%g", min, max);
+//    }
+
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -758,6 +765,12 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
     cv::subtract(m, mean, m);
     cv::divide(m, stdev, m);
   }
+
+//  {
+//    double min, max;
+//    cv::minMaxLoc(dst, &min, &max);
+//    CF_DEBUG("ECC IMAGE: min=%g max=%g", min, max);
+//  }
 
   return true;
 }

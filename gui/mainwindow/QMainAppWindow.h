@@ -17,6 +17,7 @@
 #include <gui/qmeasure/QMeasureGraph.h>
 #include <gui/qmeasure/QMeasureDisplay.h>
 #include <gui/qmeasure/QMeasureSelection.h>
+#include <gui/qmeasure/QProfileGraph.h>
 #include <gui/widgets/style.h>
 
 class QMainAppWindow:
@@ -41,6 +42,7 @@ protected:
   void setupImageProcessingControls();
   void setupMeasures();
   void setupMtfControls();
+  void setupProfileGraph();
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -63,6 +65,9 @@ protected:
   virtual void onShowMeasureDisplayActionTriggered(bool checked);
   virtual void onMeasuresDisplayVisibilityChanged(bool visible);
   virtual void onMeasuresGraphVisibilityChanged(bool visible);
+
+  virtual void onShowProfileGraphActionTriggered(bool checked);
+  virtual void onPlotProfileDialogBoxVisibilityChanged(bool visible);
 
 protected:
   static QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu);
@@ -174,6 +179,10 @@ protected:
   QMenu measuresMenu_;
   // QToolButton * measureActionsToolButton_ = nullptr;
 
+
+  QProfileGraph * profileGraph_ctl_ = nullptr;
+  QProfileGraphDialogBox * plotProfileDialogBox_ = nullptr;
+  QAction * showProfileGraphAction_ = nullptr;
 
 };
 

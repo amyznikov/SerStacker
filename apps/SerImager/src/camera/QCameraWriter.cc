@@ -910,8 +910,8 @@ void QCameraWriter::writerThreadProc()
 
       fprintf(text.fp, "Round    = %d // Current capture round\n", round_);
       fprintf(text.fp, "Rounds   = %d // Total capture rounds\n", (int)numRounds_);
-      fprintf(text.fp, "Start    = %s // Capture start time YYYY-MM-DD hh:mm:ss\n", captureStartTime.toUtf8().constData());
-      fprintf(text.fp, "End      = %s // Capture end time YYYY-MM-DD hh:mm:ss\n", captureEndTime.toUtf8().constData());
+      fprintf(text.fp, "Start    = %s // Capture start time YYYY-MM-DD hh mm ss\n", captureStartTime.toUtf8().constData());
+      fprintf(text.fp, "End      = %s // Capture end time YYYY-MM-DD hh mm ss\n", captureEndTime.toUtf8().constData());
       fprintf(text.fp, "Limit    = %s // Capture limit\n", toQString(capture_limits_).toUtf8().constData());
       fprintf(text.fp, "Camera   = %s\n", camera_name.c_str());
       fprintf(text.fp, "Frames   = %d // Number of recorded frames\n", num_saved_frames_);

@@ -8,7 +8,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/improc/c_unsharp_mask_routine.h>
 #include <core/improc/c_align_color_channels_routine.h>
-#include <core/improc/c_rangeclip_routine.h>
+#include <core/improc/pixel/c_rangeclip_routine.h>
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
 #include <core/proc/estimate_noise.h>
@@ -22,7 +22,7 @@
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/proc/inpaint.h>
-#include <tbb/tbb.h>
+//#include <tbb/tbb.h>
 #include <core/proc/lpg.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/stereo/c_sweepscan_stereo_matcher.h>

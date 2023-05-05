@@ -344,7 +344,7 @@ void QPipelineOptionsView::onAddPipeline()
                 current_sequence_->input_sequence());
 
         if( pipeline ) {
-          pipeline->set_sequence_name(current_sequence_->name());
+          //pipeline->set_sequence_name(current_sequence_->name());
           current_sequence_->set_current_pipeline(pipeline);
           oncurrentpipelinechanged();
         }

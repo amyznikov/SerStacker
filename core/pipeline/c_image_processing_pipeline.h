@@ -56,8 +56,8 @@ public: // pipeline methods
   const std::string & name() const;
   const char * cname() const;
 
-  void set_sequence_name(const std::string & v);
-  const std::string& sequence_name() const;
+  //void set_sequence_name(const std::string & v);
+  //const std::string& sequence_name() const;
   const char * csequence_name() const;
 
   // void set_input_sequence(const c_input_sequence::sptr& input_sequence);
@@ -103,7 +103,7 @@ protected:
 
 protected:
   std::string name_;
-  std::string sequence_name_;
+  // std::string sequence_name_;
   c_input_sequence::sptr input_sequence_;
   std::vector<uint> badframes_; // global indexes
   std::string output_path_;
@@ -135,7 +135,7 @@ public:
   virtual ~c_image_sequence() = default;
 
   void set_name(const std::string & name);
-  const std::string & name() const;
+  std::string name() const;
   const char* cname() const;
 
   std::string get_display_path() const;
@@ -161,7 +161,7 @@ public:
 protected:
 
 protected:
-  std::string name_;
+  //std::string name_;
   c_input_sequence::sptr input_sequence_ = c_input_sequence::create();
   std::vector<c_image_processing_pipeline::sptr> pipelines_;
   c_image_processing_pipeline::sptr current_pipeline_;

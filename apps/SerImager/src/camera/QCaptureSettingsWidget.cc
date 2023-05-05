@@ -463,10 +463,10 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
           QFileDialog::Directory,
           this));
 
-  connect(outpuPath_ctl, &QBrowsePathCombo::pathSelected,
-      [this](const QString & path) {
+  connect(outpuPath_ctl, &QBrowsePathCombo::pathChanged,
+      [this]() {
         if ( writer_ ) {
-          writer_->setOutputDirectoty(path);
+          writer_->setOutputDirectoty(outpuPath_ctl->currentPath());
           save_parameter(PREFIX, "outputDirectoty",
               writer_->outputDirectoty());
         }

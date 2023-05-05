@@ -52,6 +52,7 @@ private:
   void stupCloudViewer();
   void setupRoiOptions();
   void setupImageViewOptions();
+  void setupStatusbar();
 
 public Q_SLOTS:
   void onSaveCurrentImageAs();
@@ -98,7 +99,6 @@ private:
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
   QGeneralAppSettingsDialogBox * appSettingsDlgBox = nullptr;
 
-
   QCloudViewer * cloudViewer = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
 
@@ -109,6 +109,7 @@ private:
 
   QImageSequenceTree * sequencesTreeView = nullptr;
   QImageSequenceTreeDock * sequencesTreeDock = nullptr;
+
 
 
   QAction * showRoiAction_ = nullptr;
@@ -140,6 +141,7 @@ private:
   QLabel * imageSizeLabel_ctl = nullptr;
   QScaleSelectionButton * scaleSelection_ctl = nullptr;
   QShapesButton * shapes_ctl = nullptr;
+  QToolButton * show_log_ctl = nullptr;
 
 };
 

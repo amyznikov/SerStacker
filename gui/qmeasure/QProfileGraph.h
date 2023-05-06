@@ -9,8 +9,11 @@
 #ifndef __QProfileGraph_h__
 #define __QProfileGraph_h__
 
-#include <QtWidgets/QtWidgets>
+#include <gui/widgets/QSettingsWidget.h>
 #include <gui/qcustomplot/qcustomplot.h>
+#include <opencv2/opencv.hpp>
+
+class QProfileGraphSettingsDialogBox;
 
 class QProfileGraph :
     public QWidget
@@ -22,22 +25,87 @@ public:
 
   QProfileGraph(QWidget * parent = nullptr);
 
+  void showProfilePlot(const QLineF & line, const cv::Mat & image);
+  void showProfilePlot(const QLine & line, const cv::Mat & image);
+
+  const QLine & currentLine() const;
+
+  void setFixXRange(bool v);
+  bool fixXRange() const;
+
+  void setFixYRange(bool v);
+  bool fixYRange() const;
+
+  void setXRangeMin(double v);
+  double xRangeMin() const;
+
+  void setXRangeMax(double v);
+  double xRangeMax() const;
+
+  void setYRangeMin(double v);
+  double yRangeMin() const;
+
+  void setYRangeMax(double v);
+  double yRangeMax() const;
+
+  void replot();
+
 Q_SIGNALS:
   void visibilityChanged(bool visble);
+  void xRangeRescaled();
+  void yRangeRescaled();
 
 protected Q_SLOTS:
-  void clearGraphs();
-  void updateGraphs();
+  void onShowSettingsActionTriggered(bool checked);
 
 protected:
   void showEvent(QShowEvent * event) override;
   void hideEvent(QHideEvent * event) override;
 
 protected:
-  QVBoxLayout *vl_ = nullptr;
+  QVBoxLayout * vl_ = nullptr;
+  QToolBar * toolbar_ = nullptr;
+  QAction * showSettingsAction_ = nullptr;
+  QProfileGraphSettingsDialogBox * plotSettings_ctl = nullptr;
+
+
   QCustomPlot *plot_ = nullptr;
   QCPGraph *graphs_[4] = { nullptr };
-  // QCPItemText * textLabel_ = nullptr;
+
+
+  QLine currentLine_;
+  bool fixXRange_ = false;
+  bool fixYRange_ = false;
+};
+
+
+class QProfileGraphSettings :
+    public QSettingsWidget
+{
+public:
+  typedef QProfileGraphSettings ThisClass;
+  typedef QSettingsWidget Base;
+
+  QProfileGraphSettings(QWidget * parent = nullptr);
+
+  void setProfileGraph(QProfileGraph * profileGraph);
+  QProfileGraph * profileGraph() const;
+
+protected:
+  void onupdatecontrols() override;
+  void onload(QSettings & settings) override;
+
+protected:
+  QProfileGraph * profileGraph_ = nullptr;
+
+  QCheckBox * fixXRange_ctl = nullptr;
+  QNumericBox * xRangeMin_ctl = nullptr;
+  QNumericBox * xRangeMax_ctl = nullptr;
+
+  QCheckBox * fixYRange_ctl = nullptr;
+  QNumericBox * yRangeMin_ctl = nullptr;
+  QNumericBox * yRangeMax_ctl = nullptr;
+
 };
 
 
@@ -62,7 +130,34 @@ protected:
   void hideEvent(QHideEvent * e) override;
 
 protected:
-  QProfileGraph * profileGraph_ctl = nullptr;
+  QProfileGraph *profileGraph_ctl = nullptr;
+};
+
+class QProfileGraphSettingsDialogBox :
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QProfileGraphSettingsDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QProfileGraphSettingsDialogBox(QWidget * parent);
+  QProfileGraphSettingsDialogBox(const QString & title, QWidget * parent);
+
+  void setProfileGraph(QProfileGraph * profileGraph);
+  QProfileGraph * profileGraph() const;
+
+  QProfileGraphSettings * settingsWidget() const;
+
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+
+protected:
+  void showEvent(QShowEvent * e) override;
+  void hideEvent(QHideEvent * e) override;
+
+protected:
+  QProfileGraphSettings * settingsWidget_ = nullptr;
 };
 
 #endif /* __QPofileGraph_h__ */

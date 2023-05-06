@@ -176,6 +176,7 @@ protected:
   QAction * showMeasuresSettingsAction_ = nullptr;
   QAction * showMeasuresDisplayAction_ = nullptr;
   QAction * showMeasuresGraphAction_ = nullptr;
+  QAction * measuresMenuAction_ = nullptr;
   QMenu measuresMenu_;
   // QToolButton * measureActionsToolButton_ = nullptr;
 

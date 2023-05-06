@@ -51,11 +51,13 @@ protected Q_SLOTS:
   void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void updateMeasurements();
+  void onCentralDisplayLineShapeChanged();
 
 protected:
   void onSaveState(QSettings & settings) override;
   void onRestoreState(QSettings & settings) override;
   void onMtfControlVisibilityChanged(bool visible) override;
+  void onPlotProfileDialogBoxVisibilityChanged(bool visible) override;
   void onImageProcessorParameterChanged() override;
 
 protected:

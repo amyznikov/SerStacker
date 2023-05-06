@@ -368,9 +368,10 @@ QMenu {
 }
 
 QMenu::separator {
-    height: 1px;
+    height: 2px;
     background-color: #505252;
-    color: #F0F0F0;
+    /* color: #F0F0F0; */
+    color: #FFFFFF;
     padding-left: 4px;
     margin-left: 0px;
     margin-right: 0px;
@@ -666,8 +667,13 @@ QStackedWidget {
 
 /* QToolBar --------------------------------------------------------------- */
 
+QToolBarStretch {
+	background-color: #404040;
+    border: none;
+}
+
 QToolBar {
-    background-color: #404040;
+	background-color: #404040; 
     border-bottom: 1px solid #202020;
     padding: 2px;
     font-weight: bold;

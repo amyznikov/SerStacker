@@ -225,9 +225,9 @@ void QMainAppWindow::setupMeasures()
   measuresMenu_.addSeparator();
 
   if( menuView_ ) {
-    QAction * menuAction = menuView_->addMenu(&measuresMenu_);
-    menuAction->setText("Measure");
-    menuAction->setIcon(getIcon(ICON_measures));
+    measuresMenuAction_ = menuView_->addMenu(&measuresMenu_);
+    measuresMenuAction_->setText("Measure");
+    measuresMenuAction_->setIcon(getIcon(ICON_measures));
   }
 
 
@@ -363,15 +363,19 @@ void QMainAppWindow::setupProfileGraph()
   if ( !showProfileGraphAction_ ) {
 
     showProfileGraphAction_ =
-        createCheckableAction(getIcon(ICON_histogram),
+        createCheckableAction(getIcon(ICON_plot),
             "Plot Profile ...",
             "Show / Hide plot profile widget",
             this,
             &ThisClass::onShowProfileGraphActionTriggered);
 
 
-    if( menuView_ ) {
-      menuView_->addAction(showProfileGraphAction_);
+    measuresMenu_.addAction(showProfileGraphAction_);
+
+    if( menuView_ && !measuresMenuAction_ ) {
+      measuresMenuAction_ = menuView_->addMenu(&measuresMenu_);
+      measuresMenuAction_->setText("Measure");
+      measuresMenuAction_->setIcon(getIcon(ICON_measures));
     }
 
   }

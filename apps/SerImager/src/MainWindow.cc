@@ -29,6 +29,15 @@ namespace serimager {
 
 #define ICON_measures         ":/qmeasure/icons/measure.png"
 
+namespace  {
+
+inline bool is_visible(QWidget * w)
+{
+  return w && w->isVisible();
+}
+
+}  // namespace
+
 
 MainWindow::MainWindow(QWidget * parent) :
     Base(parent)
@@ -58,6 +67,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupShapeOptions();
   setupMainToolbar();
   setupStatusbar();
+  setupProfileGraph();
 
   restoreState();
 
@@ -307,8 +317,11 @@ void MainWindow::setupShapeOptions()
 
   connect(lineShapeOptionsDialogBox_, &QGraphicsLineShapeSettingsDialogBox::visibilityChanged,
       [this, action](bool visible) {
+
         action->setChecked(visible);
+
         if ( visible ) {
+
           centralDisplay_->lineShape()->setVisible(true);
           showLineShapeAction_->setChecked(visible);
         }
@@ -316,22 +329,59 @@ void MainWindow::setupShapeOptions()
 
 
   connect(centralDisplay_->lineShape(), &QGraphicsShape::itemChanged,
-      [this]() {
+      this, &ThisClass::onCentralDisplayLineShapeChanged);
 
-        QGraphicsLineShape * shape =
-            centralDisplay_->lineShape();
+  connect(centralDisplay_->lineShape(), &QGraphicsShape::visibleChanged,
+      this, &ThisClass::onCentralDisplayLineShapeChanged);
 
-        const QLineF line = shape->sceneLine();
+}
 
-        const QPointF p1 = line.p1();
-        const QPointF p2 = line.p2();
-        const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
-        const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+void MainWindow::onCentralDisplayLineShapeChanged()
+{
+  QGraphicsLineShape *shape =
+      centralDisplay_->lineShape();
 
-        mousepos_ctl->setText(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
-      });
+  if( shape ) {
 
+    showLineShapeAction_->setChecked(shape->isVisible());
+
+    if( shape->isVisible() ) {
+
+      const QLineF line =
+          shape->sceneLine();
+
+      const QPointF p1 = line.p1();
+      const QPointF p2 = line.p2();
+      const double length = hypot(p2.x() - p1.x(), p2.y() - p1.y());
+      const double angle = atan2(p2.y() - p1.y(), p2.x() - p1.x());
+
+      mousepos_ctl->setText(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+          p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+
+      if( is_visible(profileGraph_ctl_) ) {
+
+        QImageViewer::current_image_lock lock(centralDisplay_);
+
+        profileGraph_ctl_->showProfilePlot(line,
+            centralDisplay_->currentImage());
+      }
+    }
+  }
+}
+
+void MainWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
+{
+  Base::onPlotProfileDialogBoxVisibilityChanged(visible);
+
+  if( is_visible(profileGraph_ctl_) ) {
+
+    QGraphicsLineShape *shape =
+        centralDisplay_->lineShape();
+
+    if( shape && !shape->isVisible() ) {
+      shape->setVisible(true);
+    }
+  }
 }
 
 void MainWindow::setupMainToolbar()
@@ -554,6 +604,14 @@ void MainWindow::onCurrentImageChanged()
 
 void MainWindow::updateMeasurements()
 {
+  if( is_visible(profileGraph_ctl_) ) {
+
+    QImageViewer::current_image_lock lock(centralDisplay_);
+
+    profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
+        centralDisplay_->currentImage());
+  }
+
   if( !QMeasureProvider::requested_measures().empty() && centralDisplay_->rectShape()->isVisible() ) {
 
     QImageViewer::current_image_lock lock(centralDisplay_);

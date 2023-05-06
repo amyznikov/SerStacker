@@ -132,6 +132,17 @@ bool QGraphicsLineShape::lockP2() const
   return lockP2_;
 }
 
+void QGraphicsLineShape::setArrowSize(double v)
+{
+  arrowSize_ = v;
+  update();
+}
+
+double QGraphicsLineShape::arrowSize() const
+{
+  return arrowSize_;
+}
+
 QRectF QGraphicsLineShape::boundingRect() const
 {
   return boundingRect_;
@@ -142,6 +153,18 @@ QPainterPath QGraphicsLineShape::shape() const
   return shape_;
 }
 
+
+static void compute_arrow(const QLineF & line, double arrowSize, QPointF * arrowP1, QPointF * arrowP2)
+{
+  const double angle = std::atan2(-line.dy(), line.dx());
+
+  *arrowP1 = line.p2() -
+      QPointF(sin(angle + M_PI / 3) * arrowSize, cos(angle + M_PI / 3) * arrowSize);
+
+  *arrowP2 = line.p2() -
+      QPointF(sin(angle + M_PI - M_PI / 3) * arrowSize, cos(angle + M_PI - M_PI / 3) * arrowSize);
+}
+
 void QGraphicsLineShape::updateGeometry()
 {
   QPainterPath path;
@@ -149,6 +172,17 @@ void QGraphicsLineShape::updateGeometry()
   path.moveTo(line_.p1());
   path.lineTo(line_.p2());
 
+  if( arrowSize_ > 1 ) {
+
+    QPointF arrowP1, arrowP2;
+    compute_arrow(line_, arrowSize_, &arrowP1, &arrowP2);
+
+    path.moveTo(arrowP1);
+    path.lineTo(line_.p2());
+
+    path.moveTo(arrowP2);
+    path.lineTo(line_.p2());
+  }
 
   QPen pen = pen_;
   pen.setWidth(hit_distance);
@@ -167,6 +201,16 @@ void QGraphicsLineShape::paint(QPainter * painter, const QStyleOptionGraphicsIte
 
   painter->setPen(pen_);
   painter->drawLine(line_);
+
+  if( arrowSize_ > 1 ) {
+
+    QPointF arrowP1, arrowP2;
+
+    compute_arrow(line_, arrowSize_, &arrowP1, &arrowP2);
+
+    painter->drawLine(arrowP1, line_.p2());
+    painter->drawLine(arrowP2, line_.p2());
+  }
 }
 
 void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)

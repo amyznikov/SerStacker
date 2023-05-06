@@ -105,6 +105,7 @@ MainWindow::MainWindow()
   stupCloudViewer();
   setupMeasures();
   setupRoiOptions();
+  setupProfileGraph();
 
 
 
@@ -720,6 +721,10 @@ void MainWindow::setupImageEditor()
           statusBar()->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
                   p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
 
+          if ( is_visible(profileGraph_ctl_) ) {
+            profileGraph_ctl_->showProfilePlot(line, imageEditor->currentImage());
+          }
+
         }
         else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
 
@@ -819,6 +824,12 @@ void MainWindow::onImageEditorCurrentImageChanged()
       else {
         mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
       }
+    }
+
+
+    if( is_visible(profileGraph_ctl_) ) {
+      profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
+          imageEditor->currentImage());
     }
 
     updateMeasurements();
@@ -981,6 +992,7 @@ void MainWindow::updateMeasurements()
   if( !QMeasureProvider::requested_measures().empty() && imageEditor->roiRectShape()->isVisible() ) {
 
     QImageViewer::current_image_lock lock(imageEditor);
+
     if ( !imageEditor->currentImage().empty() ) {
 
       QMeasureProvider::compute(imageEditor->currentImage(),

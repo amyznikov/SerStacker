@@ -48,6 +48,9 @@ public:
   void setLockP2( bool v);
   bool lockP2() const;
 
+  void setArrowSize(double v);
+  double arrowSize() const;
+
 protected:
   void updateGeometry();
   QRectF boundingRect() const override;
@@ -60,6 +63,7 @@ protected:
 
 protected:
   QLineF line_;
+  double arrowSize_ = 5;
   QRectF boundingRect_;
   QPainterPath shape_;
   QPen pen_;

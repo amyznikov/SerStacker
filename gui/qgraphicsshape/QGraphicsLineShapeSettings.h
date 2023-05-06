@@ -36,6 +36,7 @@ protected:
   QCheckBox * lockP2_ctl = nullptr;
   QColorPickerButton *penColor_ctl = nullptr;
   QSpinBox *penWidth_ctl = nullptr;
+  QSpinBox *arrowSize_ctl = nullptr;
 };
 
 

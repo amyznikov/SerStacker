@@ -28,6 +28,9 @@
 	<file>icons/light/clear_measurements.png</file>
 	<file>icons/dark/clear_measurements.png</file>
 
+	<file>icons/light/settings.png</file>
+	<file>icons/dark/settings.png</file>
+
 	<file>icons/measure.png</file>
 	<file>icons/options.png</file>
 	<file>icons/metrics.png</file>

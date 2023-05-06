@@ -63,6 +63,7 @@ void QColorPickerButton::updateIcon()
 void QColorPickerButton::onClicked()
 {
   QColorDialog dialog(color_, this);
+  dialog.setOption(QColorDialog::DontUseNativeDialog, true);
 
   if( dialog.exec() == QDialog::Accepted ) {
 
@@ -72,7 +73,6 @@ void QColorPickerButton::onClicked()
     if( newColor != color_ ) {
 
       color_ = newColor;
-
       updateIcon();
 
       Q_EMIT colorSelected();

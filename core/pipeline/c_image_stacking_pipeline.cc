@@ -1149,7 +1149,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   if ( !read_input_frame(input_sequence, reference_frame, reference_mask) ) {
-    CF_FATAL("read_input_frame(reference_frame) fails");
+    CF_FATAL("read_input_frame(reference_frame) fails for master_frame_index=%d",
+        master_frame_index);
     return false;
   }
 
@@ -1158,6 +1159,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   if ( reference_frame.empty() ) {
+    CF_ERROR("read_input_frame(reference_frame) returns empty frame for master_frame_index=%d",
+        master_frame_index);
     return false;
   }
 

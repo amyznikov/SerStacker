@@ -525,10 +525,8 @@ void MainWindow::setupStackOptionsView()
 void MainWindow::setupImageEditor()
 {
   QToolBar *toolbar;
-  //QStatusBar *statusbar;
 
   toolbar = imageEditor->embedToolbar();
-  //statusbar = imageEditor->embedStatusbar();
 
   imageEditor->addAction(copyDisplayImageAction =
       createAction(QIcon(),
@@ -1053,7 +1051,7 @@ void MainWindow::setupRoiOptions()
         const double width = rc.width();
         const double height = rc.height();
 
-        imageEditor->statusbar()->showMessage(
+        statusBar()->showMessage(
             qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
                 p1.x(), p1.y(),
                 p2.x(), p2.y(),

@@ -1065,7 +1065,7 @@ bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
 
     if( !fOk ) {
 
-      CF_DEBUG("L[%2d/%d] : align fails: size=%dx%d num_iterations=%d rho=%g eps=%g", i,
+      CF_DEBUG("L[%2d/%zu] : align fails: size=%dx%d num_iterations=%d rho=%g eps=%g", i,
           transform_pyramid_.size(),
           image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
           method_->num_iterations(), method_->rho(), method_->eps());

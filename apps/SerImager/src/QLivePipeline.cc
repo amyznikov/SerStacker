@@ -1147,14 +1147,16 @@ void QLivePipelineCollection::save(const std::string & cfgfilename) const
     }
 
     if( !obj->serialize(item, true) ) {
-      CF_ERROR("obj->serialize(ty[e=%s name=%s) fails", objtype, obj->name().toUtf8().constData());
+      CF_ERROR("obj->serialize(type=%s name=%s) fails", objtype.c_str(),
+          obj->name().toUtf8().constData());
       continue;
     }
 
   }
 
   if( !cfg.write() ) {
-    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
+    CF_FATAL("cfg.write('%s') fails",
+        cfg.filename().c_str());
     return;
   }
 

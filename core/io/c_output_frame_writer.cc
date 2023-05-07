@@ -174,7 +174,7 @@ bool c_output_frame_writer::open(const std::string & filename, const cv::Size & 
         ssprintf("%s.map.txt", filename.c_str());
 
     if( !(frame_mapping_fp = fopen(mapfilename.c_str(), "w")) ) {
-      CF_ERROR("fopen('%s') fails : %s", strerror(errno));
+      CF_ERROR("fopen('%s') fails : %s", mapfilename.c_str(), strerror(errno));
     }
     else {
       fprintf(frame_mapping_fp, "seqidx\tfrmidx\n");

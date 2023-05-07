@@ -213,7 +213,7 @@ bool c_align_color_channels::align(int reference_channel,
   ecc.set_max_eps(eps_);
 
   if( !ecc.set_reference_image(channels[reference_channel], masks[reference_channel]) ) {
-    CF_ERROR("ecc.set_reference_image(reference_channel=%d) fails");
+    CF_ERROR("ecc.set_reference_image(reference_channel=%d) fails", reference_channel);
     return false;
   }
 
@@ -413,7 +413,7 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
     ecc.set_model(model.get());
 
     if( ! ecc.align_to_reference( channels[i], masks[i]) ) {
-      CF_ERROR("ecc.align_to_reference() fails: failed=%d iterations=%d rho=%g eps=%g",
+      CF_ERROR("ecc.align_to_reference(channel=%d) fails: failed=%d iterations=%d rho=%g eps=%g",
           i,
           ecc.failed(),
           ecc.num_iterations(),

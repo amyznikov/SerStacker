@@ -261,8 +261,9 @@ QString QASICamera::parameters() const
             camInfo_.MaxHeight,
             camInfo_.MaxWidth,
             camInfo_.IsColorCam,
-            camInfo_.BayerPattern,
+            toString(camInfo_.BayerPattern),
             camInfo_.PixelSize,
+
             toString(asiType),
             iBin,
             iX, iY,

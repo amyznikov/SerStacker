@@ -263,8 +263,7 @@ bool QV4L2Camera::device_start()
         status, strerror(status));
   }
 
-  CF_DEBUG("m_capSrcFormat: '%s' %ux%u rate=%u/%u \n"
-      "type=%d\n"
+  CF_DEBUG("m_capSrcFormat: type=%u '%s' %ux%u rate=%u/%u \n"
       "width=%u\n"
       "height=%u\n"
       "field=%u\n"
@@ -276,18 +275,18 @@ bool QV4L2Camera::device_start()
       "quantization=%u\n"
       "xfer_func=%u\n"
       ,
+      srcFormat.type,
       fourccToString(srcFormat.g_pixelformat()).c_str(),
       srcFormat.g_width(), srcFormat.g_height(),
       interval.numerator, interval.denominator,
-      srcFormat.type,
       srcFormat.fmt.pix.field,
       srcFormat.fmt.pix.bytesperline,
       srcFormat.fmt.pix.sizeimage,
       srcFormat.fmt.pix.colorspace,
       srcFormat.fmt.pix.priv,
       srcFormat.fmt.pix.flags,
-      (unsigned int)srcFormat.fmt.pix.quantization,
-      (unsigned int)srcFormat.fmt.pix.xfer_func
+      srcFormat.fmt.pix.quantization,
+      srcFormat.fmt.pix.xfer_func
       );
 
   cvType_ = -1;

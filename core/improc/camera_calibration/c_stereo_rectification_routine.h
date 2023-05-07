@@ -21,7 +21,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/stereo/ssdesc.h>
 #include <core/proc/camera_calibration/stereo_calibrate.h>
-#include <opencv2/xfeatures2d.hpp>
+//#include <opencv2/xfeatures2d.hpp>
 
 
 
@@ -210,7 +210,7 @@ protected:
   bool have_stereo_calibration_ = false;
   cv::Mat2f rmaps[2];
 
-  cv::Ptr<cv::xfeatures2d::DAISY> daisy_;
+  //cv::Ptr<cv::xfeatures2d::DAISY> daisy_;
 };
 
 #endif /* __c_stereo_rectification_routine_h__ */

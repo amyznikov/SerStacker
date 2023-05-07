@@ -264,8 +264,6 @@ bool QV4L2Camera::device_start()
   }
 
   CF_DEBUG("m_capSrcFormat: type=%u '%s' %ux%u rate=%u/%u \n"
-      "width=%u\n"
-      "height=%u\n"
       "field=%u\n"
       "bytesperline=%u\n"
       "sizeimage=%u\n"

@@ -298,7 +298,8 @@ bool c_stereo_calibration::update_calibration()
 
       M1(0, 0), M1(0, 1), M1(0, 2),
       M1(1, 0), M1(1, 1), M1(1, 2),
-      M1(2, 0), M1(2, 1), M1(2, 2));
+      M1(2, 0), M1(2, 1), M1(2, 2),
+      rmse_);
 
   if( rmse_ >= 0 ) {
 

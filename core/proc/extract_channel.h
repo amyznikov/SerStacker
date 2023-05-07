@@ -29,6 +29,7 @@ enum color_channel_type {
   color_channel_min_inensity = color_channel_featured_begin + 5, // cv::reduce(min)
   color_channel_max_inensity = color_channel_featured_begin + 6, // cv::reduce(max)
   color_channel_avg_inensity = color_channel_featured_begin + 7, // cv::reduce(avg)
+  color_channel_max_color = color_channel_featured_begin + 8, // cv::reduce(max) - cv::reduce(min)
 };
 
 

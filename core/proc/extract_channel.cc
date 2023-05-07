@@ -27,7 +27,7 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_min_inensity, "min", "cv::reduce(cv::REDUCE_MIN)"},
       { color_channel_max_inensity, "max", "cv::reduce(cv::REDUCE_MAX)"},
       { color_channel_avg_inensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
-
+      { color_channel_max_color, "max_color", "max - min"},
 
       { color_channel_unknown, nullptr, }
   };
@@ -176,6 +176,25 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_AVG);
         converted_src = converted_src.reshape(0, src_rows);
       }
+      break;
+    }
+
+    case color_channel_max_color:{
+
+      const cv::Mat tmp =
+          scaled_src.isContinuous() ? scaled_src :
+              scaled_src.clone();
+
+      const int src_rows =
+          scaled_src.rows;
+
+      cv::Mat cmin, cmax;
+
+      cv::reduce(tmp.reshape(1, tmp.total()), cmin, 1, cv::REDUCE_MIN);
+      cv::reduce(tmp.reshape(1, tmp.total()), cmax, 1, cv::REDUCE_MAX);
+      cv::subtract(cmax, cmin, converted_src);
+      converted_src = converted_src.reshape(0, src_rows);
+
       break;
     }
 

@@ -644,7 +644,8 @@ bool c_regular_stereo_matcher::compute( cv::InputArray left, cv::InputArray righ
             break;
             default:
             CF_ERROR("Invalid arg: the disparity map type=%d not supported. "
-                "Must be one of CV_32FC1, CV_16SC1, CV_32SC1");
+                "Must be one of CV_32FC1, CV_16SC1, CV_32SC1",
+                src.type());
             return false;
           }
 

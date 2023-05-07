@@ -45,7 +45,7 @@ echo "
 Package: ${pkg_name}
 Version: ${pkg_version}
 Architecture: ${pkg_architecture}
-Depends: qtbase5-dev,qtmultimedia5-dev,qt5-image-formats-plugins,libbtbb-dev,libtiff-dev,libopencv-dev,freeglut3,libglew,libcfitsio-dev,libraw-dev,libopenraw-dev,libavcodec-dev,libavformat-dev,libavutil-dev,libswscale-dev,libavdevice-dev,v4l-utils,libv4l,libusb-dev
+Depends: qtbase5-dev,qtmultimedia5-dev,qt5-image-formats-plugins,libbtbb-dev,libtiff-dev,libopencv-dev,freeglut3,libglew2.2,libcfitsio-dev,libraw-dev,libopenraw-dev,libavcodec-dev,libavformat-dev,libavutil-dev,libswscale-dev,libavdevice-dev,v4l-utils,libv4l-0,libusb-dev
 Maintainer: Andrey Myznikov <andrey.myznikov@gmail.com>
 Description: SerStacker app.
 " > "${pkg_directory}/DEBIAN/control" \

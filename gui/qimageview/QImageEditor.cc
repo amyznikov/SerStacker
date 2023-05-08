@@ -53,6 +53,8 @@ const c_image_processor::sptr & QImageEditor::current_processor() const
 void QImageEditor::clear()
 {
   setCurrentImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
+  Q_EMIT currentImageChanged();
+  updateDisplay();
 }
 
 void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask, bool make_copy)
@@ -101,10 +103,10 @@ void QImageEditor::updateImage()
       }
     }
 
+    Q_EMIT currentImageChanged();
     updateDisplay();
   }
 
-  Q_EMIT currentImageChanged();
 }
 
 void QImageEditor::showEvent(QShowEvent *event)

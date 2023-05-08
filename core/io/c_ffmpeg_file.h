@@ -100,7 +100,7 @@ public:
 protected:
   std::string stream_name_;
   timeout_interrupt_callback tcb;
-  int64_t rcvtmo_ = 10 * 1000000; // 10 sec
+  int64_t rcvtmo_ = 20 * 1000000; // 10 sec
 
   int  video_stream_index = -1;
   AVFormatContext * ic = nullptr;

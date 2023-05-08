@@ -546,11 +546,15 @@ void MainWindow::setupImageEditor()
 
   menuEdit_->addAction(copyDisplayImageAction);
 
+  connect(imageEditor, &QImageViewer::visibilityChanged,
+      this, &ThisClass::onImageEditorVisibilityChanged);
+
+  connect(imageEditor, &QImageViewer::currentFileNameChanged,
+      this, &ThisClass::onImageEditorCurrentFileNameChanged);
+
   connect(imageEditor, &QImageEditor::currentImageChanged,
       this, &ThisClass::onImageEditorCurrentImageChanged);
 
-  connect(imageEditor, &QImageViewer::visibilityChanged,
-      this, &ThisClass::onImageEditorVisibilityChanged);
 
 
   ///
@@ -794,6 +798,28 @@ void MainWindow::setupTextViewer()
 
 }
 
+void MainWindow::onImageEditorCurrentFileNameChanged()
+{
+  const QString abspath =
+      imageEditor->currentFileName();
+
+  imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+  //imageSizeLabel_ctl->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
+
+  if ( is_visible(mtfControl_) ) {
+
+    if( mtfControl_->mtfDisplaySettings() != imageEditor->mtfDisplayFunction() ) {
+      mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+    }
+
+    if ( imageEditor->currentFileName().isEmpty() ) {
+      mtfControl_->setWindowTitle("Adjust Display Levels ...");
+    }
+    else {
+      mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+    }
+  }
+}
 
 void MainWindow::onImageEditorCurrentImageChanged()
 {
@@ -804,32 +830,14 @@ void MainWindow::onImageEditorCurrentImageChanged()
 
   if ( isvisible ) {
 
-    const QString abspath =
-        imageEditor->currentFileName();
-
-    imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
     imageSizeLabel_ctl->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
-
-    if ( is_visible(mtfControl_) ) {
-
-      if( mtfControl_->mtfDisplaySettings() != imageEditor->mtfDisplayFunction() ) {
-        mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
-      }
-
-      if ( imageEditor->currentFileName().isEmpty() ) {
-        mtfControl_->setWindowTitle("Adjust Display Levels ...");
-      }
-      else {
-        mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-      }
-    }
-
 
     if( is_visible(profileGraph_ctl_) ) {
       profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
           imageEditor->currentImage());
     }
 
+    // CF_DEBUG("C updateMeasurements()");
     updateMeasurements();
   }
 }
@@ -1058,6 +1066,7 @@ void MainWindow::setupRoiOptions()
                 width, height,
                 center.x(), center.y()));
 
+        //CF_DEBUG("C updateMeasurements()");
         updateMeasurements();
       });
 

@@ -169,8 +169,8 @@ void QImageFileEditor::loadNextFrame()
             debayerAlgorithm_);
       }
 
-      updateImage();
       setCurrentFileName(current_source->filename().c_str());
+      updateImage();
     }
   }
 }

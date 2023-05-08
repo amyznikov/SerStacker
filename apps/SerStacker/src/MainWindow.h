@@ -66,8 +66,9 @@ public Q_SLOTS:
 private Q_SLOTS:
   void updateWindowTittle();
   void openImage(const QString & abspath);
-  void onImageEditorCurrentImageChanged();
   void onImageEditorVisibilityChanged(bool visible);
+  void onImageEditorCurrentFileNameChanged();
+  void onImageEditorCurrentImageChanged();
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
   void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);

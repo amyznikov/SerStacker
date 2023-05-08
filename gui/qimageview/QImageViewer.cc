@@ -218,8 +218,10 @@ QString QImageViewer::currentFileName() const
 
 void QImageViewer::setCurrentFileName(const QString & newFileName)
 {
-  this->currentFileName_ = newFileName;
-  Q_EMIT currentImageChanged();
+  if( currentFileName_ != newFileName ) {
+    currentFileName_ = newFileName;
+    Q_EMIT currentFileNameChanged();
+  }
 }
 
 void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
@@ -247,7 +249,8 @@ void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv
     currentImageData_ = imageData.getMat();
   }
 
-  Q_EMIT currentImageChanged();
+//  CF_DEBUG("Q_EMIT currentImageChanged()");
+//  Q_EMIT currentImageChanged();
 }
 
 void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy)
@@ -619,8 +622,8 @@ void QImageViewer::editMask(QMouseEvent * e)
       break;
     }
 
-    Q_EMIT currentImageChanged();
     updateDisplay();
+    Q_EMIT currentImageChanged();
   }
 }
 

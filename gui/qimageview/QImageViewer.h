@@ -114,6 +114,7 @@ Q_SIGNALS:
   void onFocusOutEvent(QFocusEvent * e);
   void visibilityChanged(bool visible);
   void currentImageChanged();
+  void currentFileNameChanged();
   void displayImageChanged();
   void displayTypeChanged();
 

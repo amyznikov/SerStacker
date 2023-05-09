@@ -491,7 +491,6 @@ QCameraWriter::FORMAT QCameraWriter::outputFormat() const
   return output_format_;
 }
 
-
 void QCameraWriter::setFFmpegOptions(const QString & opts)
 {
   ffmpeg_options_ = opts;
@@ -500,6 +499,26 @@ void QCameraWriter::setFFmpegOptions(const QString & opts)
 const QString& QCameraWriter::ffmpegOptions() const
 {
   return ffmpeg_options_;
+}
+
+void QCameraWriter::setFilenamePrefix(const QString & v)
+{
+  filename_prefix_ = v;
+}
+
+const QString & QCameraWriter::filenamePrefix() const
+{
+  return filename_prefix_;
+}
+
+void QCameraWriter::setFilenameSuffix(const QString & v)
+{
+  filename_suffix_ = v;
+}
+
+const QString & QCameraWriter::filenameSuffix() const
+{
+  return filename_suffix_;
 }
 
 void QCameraWriter::setNumRounds(int v)
@@ -598,7 +617,11 @@ void QCameraWriter::writerThreadProc()
           case QCameraWriter::FORMAT::SER: {
 
             _this->output_file_name_ =
-                QString("%1/%2.ser") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
+                qsprintf("%s/%s%s%s.ser",
+                    _this->output_directoty_.toUtf8().constData(),
+                    _this->filename_prefix_.toUtf8().constData(),
+                    getCurrentDateTimeString().toUtf8().constData(),
+                    _this->filename_suffix_.toUtf8().constData());
 
             c_ser_file_writer * w = new c_ser_file_writer();
 
@@ -619,7 +642,14 @@ void QCameraWriter::writerThreadProc()
             if ( _this->enable_split_stereo_stream_ ) {
 
               _this->output_file_name_ =
-                  QString("%1/%2") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
+                  qsprintf("%s/%s%s%s",
+                      _this->output_directoty_.toUtf8().constData(),
+                      _this->filename_prefix_.toUtf8().constData(),
+                      getCurrentDateTimeString().toUtf8().constData(),
+                      _this->filename_suffix_.toUtf8().constData());
+
+              //  _this->output_file_name_ =
+              //    QString("%1/%2") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
 
               c_avi_stereo_writer * w = new c_avi_stereo_writer();
 
@@ -643,7 +673,15 @@ void QCameraWriter::writerThreadProc()
             else {
 
               _this->output_file_name_ =
-                  QString("%1/%2.avi") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
+                  qsprintf("%s/%s%s%s.avi",
+                      _this->output_directoty_.toUtf8().constData(),
+                      _this->filename_prefix_.toUtf8().constData(),
+                      getCurrentDateTimeString().toUtf8().constData(),
+                      _this->filename_suffix_.toUtf8().constData());
+
+
+              // _this->output_file_name_ =
+              //    QString("%1/%2.avi") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
 
               c_avi_file_writer * w = new c_avi_file_writer();
 

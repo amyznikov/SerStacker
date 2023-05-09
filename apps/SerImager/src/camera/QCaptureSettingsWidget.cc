@@ -496,14 +496,33 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
             }
           });
 
-
   avi_options_menubutton_ctl = new QToolButton();
   avi_options_menubutton_ctl->setText("...");
   avi_options_ctl->layout()->addWidget(avi_options_menubutton_ctl);
   connect(avi_options_menubutton_ctl, &QToolButton::clicked,
       this, &ThisClass::onAviOptionsMenuButtonClicked);
 
+  filenamePrefix_ctl =
+      add_textbox("Prefix:",
+          "Optional output file name prefix",
+          [this](const QString & value) {
+            if ( writer_ ) {
+              writer_->setFilenamePrefix(value);
+              save_parameter(PREFIX, "filenamePrefix",
+                  writer_->filenamePrefix());
+            }
+          });
 
+  filenameSuffix_ctl =
+      add_textbox("Suffix:",
+          "Optional output file name suffix",
+          [this](const QString & value) {
+            if ( writer_ ) {
+              writer_->setFilenameSuffix(value);
+              save_parameter(PREFIX, "filenameSuffix",
+                  writer_->filenameSuffix());
+            }
+          });
 
   add_expandable_groupbox("Stereo",
       stereo_stream_ctl = new QStereoStreamCaptureOptions());
@@ -632,6 +651,16 @@ void QCaptureSettingsWidget::onload(QSettings & settings)
     QString outputDirectoty = writer_->outputDirectoty();
     if( load_parameter(settings, PREFIX, "outputDirectoty", &outputDirectoty) ) {
       writer_->setOutputDirectoty(outputDirectoty);
+    }
+
+    QString filenamePrefix = writer_->filenamePrefix();
+    if( load_parameter(settings, PREFIX, "filenamePrefix", &filenamePrefix) ) {
+      writer_->setFilenamePrefix(filenamePrefix);
+    }
+
+    QString filenameSuffix = writer_->filenameSuffix();
+    if( load_parameter(settings, PREFIX, "filenameSuffix", &filenameSuffix) ) {
+      writer_->setFilenameSuffix(filenameSuffix);
     }
 
     int numRounds = writer_->numRounds();

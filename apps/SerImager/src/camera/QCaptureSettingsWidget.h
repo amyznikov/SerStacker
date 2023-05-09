@@ -114,6 +114,8 @@ protected:
   QLineEditBox * avi_options_ctl = nullptr;
   QToolButton * avi_options_menubutton_ctl = nullptr;
   QStereoStreamCaptureOptions * stereo_stream_ctl = nullptr;
+  QLineEditBox * filenamePrefix_ctl = nullptr;
+  QLineEditBox * filenameSuffix_ctl = nullptr;
 };
 
 } /* namespace serimager */

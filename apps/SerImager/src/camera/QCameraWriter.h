@@ -66,6 +66,12 @@ public:
   void setFFmpegOptions(const QString & opts);
   const QString & ffmpegOptions() const;
 
+  void setFilenamePrefix(const QString & );
+  const QString & filenamePrefix() const;
+
+  void setFilenameSuffix(const QString & );
+  const QString & filenameSuffix() const;
+
   void setCaptureLimits(const c_capture_limits & limits);
   const c_capture_limits & captureLimits() const;
 
@@ -111,6 +117,8 @@ protected:
   c_capture_limits capture_limits_;
   QString output_directoty_;
   QString output_file_name_;
+  QString filename_prefix_;
+  QString filename_suffix_;
 
   FORMAT output_format_ = FORMAT::SER;
   QString ffmpeg_options_ = "-c ffv1 -f avi";

@@ -2934,7 +2934,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   // c_frame_registration_options frame_registration_options_;
   if( (section = get_group(settings, save, "frame_registration")) ) {
 
-    SERIALIZE_OPTION(subsection, save, frame_registration_options_, accumulate_and_compensate_turbulent_flow);
+    SERIALIZE_OPTION(section, save, frame_registration_options_, accumulate_and_compensate_turbulent_flow);
 
     if( (subsection = get_group(section, save, "master_frame")) ) {
       SERIALIZE_OPTION(subsection, save, frame_registration_options_.master_frame_options, master_selection_method);

@@ -443,6 +443,7 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
   return true;
 }
 
+
 bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions_ )
@@ -466,6 +467,7 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
    *
    *
    * S2 = S1 * X
+   * CurPos = RefPos * X
    */
 
   std::vector<uint8_t> inliers(N, true);
@@ -480,21 +482,28 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
     for( int i = 0, j = 0; i < N; ++i ) {
       if( inliers[i] ) {
 
-        const float x =
+        const float x1 =
             matched_reference_positions_[i].x;
 
-        const float y =
+        const float y1 =
             matched_reference_positions_[i].y;
 
-        S1[j][0] = x;
-        S1[j][1] = y;
-        S1[j][2] = 1;
-        S1[j][3] = x * y;
-        S1[j][4] = x * x;
-        S1[j][5] = y * y;
+        const float x2 =
+            matched_current_positions_[i].x;
 
-        S2[j][0] = matched_current_positions_[i].x;
-        S2[j][1] = matched_current_positions_[i].y;
+        const float y2 =
+            matched_current_positions_[i].y;
+
+
+        S1[j][0] = x1;
+        S1[j][1] = y1;
+        S1[j][2] = 1;
+        S1[j][3] = x1 * y1;
+        S1[j][4] = x1 * x1;
+        S1[j][5] = y1 * y1;
+
+        S2[j][0] = x2;
+        S2[j][1] = y2;
 
         ++j;
       }
@@ -509,7 +518,7 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
         return false;
       }
 
-      transform->set_matrix(X);
+      transform->set_matrix(X.t());
 
       if ( n > 6 ) {
 
@@ -540,7 +549,7 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
           }
         }
 
-        CF_DEBUG("outliers : %d / %d / %d", outliers, n, N);
+        CF_DEBUG("outliers : %d / %d / %d sigma=%g", outliers, n, N, sqrt(s));
 
         if( outliers && (n -= outliers) >= 6 ) {
           continue;

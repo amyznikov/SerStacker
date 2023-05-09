@@ -13,6 +13,7 @@
 #include "pixel/c_range_normalize_routine.h"
 #include "pixel/c_rangeclip_routine.h"
 #include "pixel/c_pixel_func_routine.h"
+#include "pixel/c_image_calc_routine.h"
 
 
 #include "color/c_histogram_white_balance_routine.h"
@@ -124,6 +125,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_range_normalize_routine::class_factory_instance());
     register_class_factory(c_rangeclip_routine::class_factory_instance());
     register_class_factory(c_pixel_func_routine::class_factory_instance());
+    register_class_factory(c_image_calc_routine::class_factory_instance());
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_scale_channels_routine::class_factory_instance());

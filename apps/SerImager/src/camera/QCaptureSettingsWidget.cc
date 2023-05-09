@@ -635,6 +635,9 @@ void QCaptureSettingsWidget::onupdatecontrols()
     avi_options_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle &&
         writer_->outputFormat() == QCameraWriter::FORMAT::AVI);
 
+    filenamePrefix_ctl->setValue(writer_->filenamePrefix());
+    filenameSuffix_ctl->setValue(writer_->filenameSuffix());
+
     setEnabled(true);
   }
 }

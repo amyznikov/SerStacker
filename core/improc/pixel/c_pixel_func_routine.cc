@@ -30,6 +30,10 @@ const c_enum_member * members_of<c_pixel_func_routine::Function>()
       { c_pixel_func_routine::Function_asinh, "asinh", ""},
       { c_pixel_func_routine::Function_acosh, "acosh", ""},
 
+      { c_pixel_func_routine::Function_poly, "poly",
+          "Polynomial function:\n"
+              " p0 + p1 * x + p2 * x^2 + .. pn * x^n" },
+
 //      { c_pixel_func_routine::Function_, "", ""},
 //      { c_pixel_func_routine::Function_, "", ""},
 //      { c_pixel_func_routine::Function_, "", ""},
@@ -41,7 +45,7 @@ const c_enum_member * members_of<c_pixel_func_routine::Function>()
   return members;
 }
 
-static inline float sqr( float x)
+static inline double sqr( double x)
 {
   return x * x;
 }
@@ -114,6 +118,7 @@ void c_pixel_func_routine::get_parameters(std::vector<struct c_image_processor_r
   ADD_IMAGE_PROCESSOR_CTRL(ctls, c2, "c2");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, c3, "c3");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, c4, "c4");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, params, "params");
 }
 
 bool c_pixel_func_routine::serialize(c_config_setting settings, bool save)
@@ -124,6 +129,7 @@ bool c_pixel_func_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(settings, save, *this, c2);
     SERIALIZE_PROPERTY(settings, save, *this, c3);
     SERIALIZE_PROPERTY(settings, save, *this, c4);
+    SERIALIZE_PROPERTY(settings, save, *this, params);
     return true;
   }
   return false;
@@ -135,7 +141,7 @@ bool c_pixel_func_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     case Function_None:
       if( c1_ != 0 || c2_ != 1 || c3_ != 1 || c4_ != 0 ) {
         forEachPixel(image.getMatRef(),
-            [this](float v) {
+            [this](double v) {
               return c4_ + c3_ * (v - c1_) * c2_;
             });
       }
@@ -143,86 +149,110 @@ bool c_pixel_func_routine::process(cv::InputOutputArray image, cv::InputOutputAr
 
     case Function_sqrt:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c4_ + c3_ * std::sqrt(std::abs( (v - c1_) * c2_));
           });
       break;
 
     case Function_sqr:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c4_ + c3_ * sqr((v - c1_) * c2_);
           });
       break;
 
     case Function_abs:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c4_ + c3_ * std::abs((v - c1_) * c2_);
           });
       break;
 
     case Function_log:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c4_ + c3_ * std::log((v - c1_) * c2_);
           });
       break;
 
     case Function_exp:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c4_ + c3_ * std::exp((v - c1_) * c2_);
           });
       break;
 
     case Function_inv:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c4_ + c3_ / ((v - c1_) * c2_);
           });
       break;
 
     case Function_sin:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c3_ * std::sin((v - c1_) * c2_) + c4_;
           });
       break;
 
     case Function_cos:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c3_ * std::cos((v - c1_) * c2_) + c4_;
           });
       break;
 
     case Function_asin:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c3_ * std::asin((v - c1_) * c2_) + c4_;
           });
       break;
 
     case Function_acos:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c3_ * std::acos((v - c1_) * c2_) + c4_;
           });
       break;
 
     case Function_asinh:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c3_ * std::asinh((v - c1_) * c2_) + c4_;
           });
       break;
 
     case Function_acosh:
       forEachPixel(image.getMatRef(),
-          [this](float v) {
+          [this](double v) {
             return c3_ * std::acosh((v - c1_) * c2_) + c4_;
           });
+      break;
+
+    case Function_poly:
+      if( params_.size() > 0 ) {
+        forEachPixel(image.getMatRef(),
+            [this](double v) {
+
+              double s = params_[0];
+
+              if ( params_.size() > 1 ) {
+
+                const double x = (v - c1_) * c2_;
+                s += params_[1] * x;
+
+                double xx = x;
+                for ( int i = 2, n = params_.size(); i < n; ++i ) {
+                  xx *= x;
+                  s += params_[i] * xx;
+                }
+              }
+
+              return c3_ * s + c4_;
+            });
+      }
       break;
   }
 

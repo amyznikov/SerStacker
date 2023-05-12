@@ -1,0 +1,3 @@
+# Astro-Gadget focuser_focusdreampro
+# Copy this file into /etc/udev/rules.d/
+ACTION=="add", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", GROUP="users", MODE="0666"

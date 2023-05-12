@@ -411,7 +411,7 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
 
   connect(enableMouse_ctl, &QCheckBox::stateChanged,
       [this](int state) {
-        enableMouse_ctl->setEnabled(state==Qt::Checked);
+        mouseclick_ctl->setEnabled(state==Qt::Checked);
       });
 
   //////////////
@@ -1060,17 +1060,14 @@ void QIndigoFocuserWidget::onIndigoClientUpdateProperty(const indigo_device * de
 
 void QIndigoFocuserWidget::onIndigoClientDeleteProperty(const indigo_device * device, const indigo_property * property, const QString & message)
 {
-  // CF_DEBUG("H");
 }
 
 void QIndigoFocuserWidget::onIndigoClientSendMessage(const indigo_device * device, const char * message)
 {
-  // CF_DEBUG("H");
 }
 
 void QIndigoFocuserWidget::onIndigoClientDetach()
 {
-  // CF_DEBUG("H");
 }
 
 
@@ -1413,8 +1410,6 @@ QIndigoFocuserMouseClickControl::QIndigoFocuserMouseClickControl(QIndigoFocuserW
 
 void QIndigoFocuserMouseClickControl::mousePressEvent(QMouseEvent * e)
 {
-  CF_DEBUG("H");
-
   if( focuser_->enableMouse_ctl->isChecked() && focuser_->canMoveFocusNow() ) {
 
     if( e->button() == Qt::MouseButton::LeftButton ) {
@@ -1438,15 +1433,11 @@ void QIndigoFocuserMouseClickControl::mousePressEvent(QMouseEvent * e)
 
 void QIndigoFocuserMouseClickControl::mouseReleaseEvent(QMouseEvent *e)
 {
-  CF_DEBUG("H");
-
   if ( focuser_->isMovingFocusNow() ) {
     focuser_->abortCurrentMotion();
-    // return;
   }
 
   e->ignore();
-
   //Base::mouseReleaseEvent(e);
 }
 

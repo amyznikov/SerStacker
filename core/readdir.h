@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <dirent.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32

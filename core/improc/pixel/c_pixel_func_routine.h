@@ -33,6 +33,7 @@ public:
     Function_acos,
     Function_asinh,
     Function_acosh,
+    Function_pow,
     Function_poly,
   };
 

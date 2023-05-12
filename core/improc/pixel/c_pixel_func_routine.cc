@@ -30,6 +30,10 @@ const c_enum_member * members_of<c_pixel_func_routine::Function>()
       { c_pixel_func_routine::Function_asinh, "asinh", ""},
       { c_pixel_func_routine::Function_acosh, "acosh", ""},
 
+      { c_pixel_func_routine::Function_pow, "pow",
+          "Power function:\n"
+              "  V' =  pow(V, p0)" },
+
       { c_pixel_func_routine::Function_poly, "poly",
           "Polynomial function:\n"
               " p0 + p1 * x + p2 * x^2 + .. pn * x^n" },
@@ -229,6 +233,19 @@ bool c_pixel_func_routine::process(cv::InputOutputArray image, cv::InputOutputAr
           [this](double v) {
             return c3_ * std::acosh((v - c1_) * c2_) + c4_;
           });
+      break;
+
+    case Function_pow:
+      if ( params_.size() == 1 ) {
+
+        const double p =
+            params_[0] ;
+
+        forEachPixel(image.getMatRef(),
+            [this, p](double v) {
+              return c3_ * std::pow((v - c1_) * c2_, p) + c4_;
+            });
+      }
       break;
 
     case Function_poly:

@@ -205,7 +205,7 @@ protected:
 
   // INDIGO LOG
 protected:
-  static void on_indigo_log_message(const char *message);
+  static void on_indigo_log_message(indigo_log_levels level, const char *message);
   static QPlainTextEdit * logWidget_ctl;
 };
 

@@ -90,9 +90,10 @@ static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b, bool scmp)
     s = std::max(s, u.a[i]);
   }
 
-//  if ( scmp ) {
-//    s = std::max(s, std::min(u.a[4], u.a[5]));
-//  }
+  if ( scmp ) {
+    s = std::max(s, std::min(u.a[4], u.a[5]));
+    s = std::max(s, std::min(u.a[6], u.a[7]));
+  }
 
   return s;
 }
@@ -127,6 +128,10 @@ void ssa_pyramid(const cv::Mat & image,
 
   if( image.channels() == 1 ) {
     s = image;
+
+    CF_ERROR("ERROR: Color image required");
+    return;
+
   }
   else {
     //cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
@@ -207,8 +212,8 @@ void ssa_pyramid(const cv::Mat & image,
                 ss.g[4] = ((lab[y][x-2][0]) + (lab[y][x-1][0]))>>1;
                 ss.g[5] = ((lab[y][x+2][0]) + (lab[y][x+1][0]))>>1;
 
-                ss.g[6] = u128;// ((lab[y][x-2][2]>>1) + (lab[y][x-1][2]>>1));
-                ss.g[7] = u128; // ((lab[y][x+2][2]>>1) + (lab[y][x+1][2]>>1));
+                ss.g[6] = ((lab[y][x-2][2]>>1) + (lab[y][x-1][2]>>1));
+                ss.g[7] = ((lab[y][x+2][2]>>1) + (lab[y][x+1][2]>>1));
               }
 
               for( int x = width - 2 ; x < width; ++x ) {
@@ -223,7 +228,7 @@ void ssa_pyramid(const cv::Mat & image,
             }
             else {
 
-              memset(ssp, 0, sizeof(*ssp) * width);
+              memset(ssp, u128, sizeof(*ssp) * width);
 
               for( int x = 0; x < 2; ++x ) {
                 ssdesc & ss = ssp[x];
@@ -255,10 +260,10 @@ void ssa_pyramid(const cv::Mat & image,
                   ss.g[5] = ((lab[y][x+2][0]) + (lab[y][x+1][0]))>>1;
                 }
                 if ( flags & (1 << 6) ) {
-                  ss.g[6] = u128;// ((lab[y][x-2][2]) + (lab[y][x-1][2]))>>1;
+                  ss.g[6] = ((lab[y][x-2][2]) + (lab[y][x-1][2]))>>1;
                 }
                 if ( flags & (1 << 7) ) {
-                  ss.g[7] = u128;// ((lab[y][x+2][2]) + (lab[y][x+1][2]))>>1;
+                  ss.g[7] = ((lab[y][x+2][2]) + (lab[y][x+1][2]))>>1;
                 }
               }
 

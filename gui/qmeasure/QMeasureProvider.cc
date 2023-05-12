@@ -42,6 +42,7 @@ const std::vector<QMeasure*>& QMeasureProvider::measures()
   std::lock_guard<std::mutex> lock(mtx_);
 
   if( measures_.empty() ) {
+    measures_.emplace_back(new QMeasureCentralPixelValue());
     measures_.emplace_back(new QMeasureMinValue());
     measures_.emplace_back(new QMeasureMaxValue());
     measures_.emplace_back(new QMeasureMeanValue());

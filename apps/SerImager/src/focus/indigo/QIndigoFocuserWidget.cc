@@ -477,7 +477,7 @@ bool QIndigoFocuserWidget::canMoveFocusNow() const
 
 QPlainTextEdit * QIndigoFocuserWidget::logWidget_ctl = nullptr;
 
-void QIndigoFocuserWidget::on_indigo_log_message(const char *message)
+void QIndigoFocuserWidget::on_indigo_log_message(indigo_log_levels level, const char *message)
 {
   if( ThisClass::logWidget_ctl ) {
 
@@ -495,7 +495,7 @@ void QIndigoFocuserWidget::on_indigo_log_message(const char *message)
 
   }
   else if( indigo_log_message_handler && indigo_log_message_handler != &ThisClass::on_indigo_log_message ) {
-    indigo_log_message_handler(message);
+    indigo_log_message_handler(level, message);
   }
   else {
     fprintf(stderr, "%s\n", message);

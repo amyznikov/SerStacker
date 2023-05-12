@@ -174,6 +174,18 @@ protected:
   MeasureType *measure_ = nullptr;
 };
 
+class QMeasureCentralPixelValue:
+    public QMeasure
+{
+public:
+  typedef QMeasureCentralPixelValue ThisClass;
+  typedef QMeasure Base;
+
+  QMeasureCentralPixelValue();
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+};
 
 
 

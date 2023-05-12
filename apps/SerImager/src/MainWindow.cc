@@ -74,6 +74,7 @@ MainWindow::MainWindow(QWidget * parent) :
   connect(centralDisplay_, &QImageViewer::currentImageChanged,
       this, &ThisClass::onCurrentImageChanged);
 
+  // XX1
   connect(centralDisplay_, &QLiveDisplay::onMouseMove,
       [this](QMouseEvent * e) {
         mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
@@ -220,6 +221,7 @@ void MainWindow::setupShapeOptions()
         }
       });
 
+  // XX1
   connect(centralDisplay_->rectShape(), &QGraphicsShape::itemChanged,
       [this]() {
 
@@ -287,6 +289,7 @@ void MainWindow::setupShapeOptions()
       });
 
 
+  // XX1
   connect(centralDisplay_->targetShape(), &QGraphicsShape::itemChanged,
       [this]() {
 
@@ -341,6 +344,7 @@ void MainWindow::onCentralDisplayLineShapeChanged()
   QGraphicsLineShape *shape =
       centralDisplay_->lineShape();
 
+  // XX1
   if( shape ) {
 
     showLineShapeAction_->setChecked(shape->isVisible());

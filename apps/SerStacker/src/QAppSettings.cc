@@ -53,7 +53,7 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
               }
           });
 
-  editor_debayer_ctl =
+  editorDebayer_ctl =
       add_enum_combobox<DEBAYER_ALGORITHM>("Editor debayer algoritm:",
           "",
           [this](DEBAYER_ALGORITHM v) {
@@ -62,24 +62,55 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
               if ( algo != v ) {
                 imageEditor_->setDebayerAlgorithm(v);
               }
-
             }
           });
+
+  dropBadPixels_ctl =
+      add_checkbox("Drop Bad pixels",
+          "Set TRUE for bad pixel detection and filtering ",
+          [this](bool checked) {
+            if ( imageEditor_ && imageEditor_->dropBadPixels() != checked) {
+              imageEditor_->setDropBadPixels(checked);
+            }
+          });
+
+  badPixelsVariationThreshold_ctl =
+      add_numeric_box<double>("Bad pixels variation threshold",
+          "",
+          [this](double v) {
+            if ( imageEditor_ && imageEditor_->badPixelsVariationThreshold() != v) {
+              imageEditor_->setBadPixelsVariationThreshold(v);
+            }
+          });
+
 
   updateControls();
 }
 
 void QGeneralAppSettingsWidget::setImageEditor(QImageEditor * imageEditor)
 {
-  if (imageEditor_ ) {
+  if( imageEditor_ ) {
     imageEditor_->disconnect(this);
   }
 
   if( (imageEditor_ = imageEditor) ) {
+
     connect(imageEditor_, &QImageEditor::debayerAlgorithmChanged,
         [this]() {
           c_update_controls_lock lock(this);
-          editor_debayer_ctl->setValue(imageEditor_->debayerAlgorithm());
+          editorDebayer_ctl->setValue(imageEditor_->debayerAlgorithm());
+        });
+
+    connect(imageEditor_, &QImageEditor::dropBadPixelsChanged,
+        [this]() {
+          c_update_controls_lock lock(this);
+          dropBadPixels_ctl->setChecked(imageEditor_->dropBadPixels());
+        });
+
+    connect(imageEditor_, &QImageEditor::badPixelsVariationThresholdChanged,
+        [this]() {
+          c_update_controls_lock lock(this);
+          badPixelsVariationThreshold_ctl->setValue(imageEditor_->badPixelsVariationThreshold());
         });
   }
 
@@ -96,11 +127,18 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
   debayer_ctl->setValue(default_debayer_algorithm());
 
   if ( !imageEditor_ ) {
-    editor_debayer_ctl->setEnabled(false);
+    editorDebayer_ctl->setEnabled(false);
+    dropBadPixels_ctl->setEnabled(false);
+    badPixelsVariationThreshold_ctl->setEnabled(false);
   }
   else {
-    editor_debayer_ctl->setValue(imageEditor_->debayerAlgorithm());
-    editor_debayer_ctl->setEnabled(true);
+    editorDebayer_ctl->setValue(imageEditor_->debayerAlgorithm());
+    dropBadPixels_ctl->setChecked(imageEditor_->dropBadPixels());
+    badPixelsVariationThreshold_ctl->setValue(imageEditor_->badPixelsVariationThreshold());
+
+    editorDebayer_ctl->setEnabled(true);
+    dropBadPixels_ctl->setEnabled(true);
+    badPixelsVariationThreshold_ctl->setEnabled(true);
   }
 }
 

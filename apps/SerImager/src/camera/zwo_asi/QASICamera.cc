@@ -100,6 +100,38 @@ const c_enum_member* members_of<ASI_CAMERA_MODE>()
 }
 
 
+template<>
+const c_enum_member* members_of<ASI_CONTROL_TYPE>()
+{
+  static constexpr c_enum_member members[] = {
+      { ASI_GAIN, "GAIN", "" },
+      { ASI_EXPOSURE, "EXPOSURE", "" },
+      { ASI_GAMMA, "GAMMA", "" },
+      { ASI_WB_R, "WB_R", "" },
+      { ASI_WB_B, "WB_B", "" },
+      { ASI_OFFSET, "OFFSET", "" },
+      { ASI_BANDWIDTHOVERLOAD, "BANDWIDTHOVERLOAD", "" },
+      { ASI_OVERCLOCK, "OVERCLOCK", "" },
+      { ASI_TEMPERATURE, "TEMPERATURE", "" }, // return 10*temperature
+      { ASI_FLIP, "FLIP", "" },
+      { ASI_AUTO_MAX_GAIN, "AUTO_MAX_GAIN", "" },
+      { ASI_AUTO_MAX_EXP, "AUTO_MAX_EXP", "" }, //micro second
+      { ASI_AUTO_TARGET_BRIGHTNESS, "AUTO_TARGET_BRIGHTNESS", "" }, //target brightness
+      { ASI_HARDWARE_BIN, "HARDWARE_BIN", "" },
+      { ASI_HIGH_SPEED_MODE, "HIGH_SPEED_MODE", "" },
+      { ASI_COOLER_POWER_PERC, "COOLER_POWER_PERC", "" },
+      { ASI_TARGET_TEMP, "TARGET_TEMP", "" }, // not need *10
+      { ASI_COOLER_ON, "COOLER_ON", "" },
+      { ASI_MONO_BIN, "MONO_BIN", "" }, //lead to less grid at software bin mode for color camera
+      { ASI_FAN_ON, "FAN_ON", "" },
+      { ASI_PATTERN_ADJUST, "PATTERN_ADJUST", "" },
+      { ASI_ANTI_DEW_HEATER, "ANTI_DEW_HEATER", "" },
+      { -1 }
+  };
+
+  return members;
+}
+
 
 
 namespace serimager {

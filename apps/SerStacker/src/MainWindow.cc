@@ -292,11 +292,11 @@ void MainWindow::setupMainMenu()
   //
   // View
   //
-  menuView_->addAction(viewGeneralSettingsAction =
+  menuView_->addAction(viewInputOptionsAction =
       createCheckableAction(QIcon(),
-          "General Settings...",
-          "Configure general app options",
-          this, &ThisClass::onViewGeneralSettings));
+          "Input Options...",
+          "Configure general input options",
+          this, &ThisClass::onViewInputOptions));
 
 
   pipelineProgressView = new QPipelineProgressView(this);
@@ -1542,20 +1542,20 @@ void MainWindow::onLoadStackConfig()
   }
 }
 
-void MainWindow::onViewGeneralSettings()
+void MainWindow::onViewInputOptions()
 {
-  if( !appSettingsDlgBox ) {
-    appSettingsDlgBox = new QGeneralAppSettingsDialogBox(this);
-    appSettingsDlgBox->setImageEditor(imageEditor);
-    connect(appSettingsDlgBox, &QGeneralAppSettingsDialogBox::visibilityChanged,
-        viewGeneralSettingsAction, &QAction::setChecked);
+  if( !inputOptionsDlgBox ) {
+    inputOptionsDlgBox = new QGeneralAppSettingsDialogBox(this);
+    inputOptionsDlgBox->setImageEditor(imageEditor);
+    connect(inputOptionsDlgBox, &QGeneralAppSettingsDialogBox::visibilityChanged,
+        viewInputOptionsAction, &QAction::setChecked);
   }
 
-  if ( !appSettingsDlgBox->isVisible() ){
-    appSettingsDlgBox->show();
+  if ( !inputOptionsDlgBox->isVisible() ){
+    inputOptionsDlgBox->show();
   }
   else {
-    appSettingsDlgBox->hide();
+    inputOptionsDlgBox->hide();
   }
 }
 

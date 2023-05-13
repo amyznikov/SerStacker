@@ -7,6 +7,7 @@
 
 #include "QImageFileEditor.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <core/proc/bad_pixels.h>
 #include <core/debug.h>
 
 QImageFileEditor::QImageFileEditor(QImageScene * scene, QWidget * parent) :
@@ -31,13 +32,34 @@ QImageFileEditor::QImageFileEditor(QWidget * parent) :
 void QImageFileEditor::setDebayerAlgorithm(DEBAYER_ALGORITHM algo)
 {
   debayerAlgorithm_ = algo;
-  CF_DEBUG("debayerAlgorithm_='%s'", toString(debayerAlgorithm_));
   Q_EMIT debayerAlgorithmChanged();
 }
 
 DEBAYER_ALGORITHM QImageFileEditor::debayerAlgorithm() const
 {
   return debayerAlgorithm_;
+}
+
+void QImageFileEditor::setDropBadPixels(bool v)
+{
+  filterBadPixels_ = v;
+  Q_EMIT dropBadPixelsChanged();
+}
+
+bool QImageFileEditor::dropBadPixels() const
+{
+  return filterBadPixels_;
+}
+
+void QImageFileEditor::setBadPixelsVariationThreshold(double v)
+{
+  badPixelsVariationThreshold_ = v;
+  Q_EMIT badPixelsVariationThresholdChanged();
+}
+
+double QImageFileEditor::badPixelsVariationThreshold() const
+{
+  return badPixelsVariationThreshold_;
 }
 
 const c_input_sequence::sptr & QImageFileEditor::input_sequence() const
@@ -164,7 +186,23 @@ void QImageFileEditor::loadNextFrame()
           input_sequence_->colorid(),
           input_sequence_->bpp());
 
-      if( is_bayer_pattern(input_sequence_->colorid()) ) {
+
+      if ( filterBadPixels_ && badPixelsVariationThreshold_ > 0 ) {
+
+        if( !is_bayer_pattern(input_sequence_->colorid()) ) {
+          median_filter_hot_pixels(inputImage_, badPixelsVariationThreshold_, false);
+        }
+        else if( !extract_bayer_planes(inputImage_, inputImage_, input_sequence_->colorid()) ) {
+          CF_ERROR("ERROR: extract_bayer_planes() fails");
+        }
+        else {
+          median_filter_hot_pixels(inputImage_, badPixelsVariationThreshold_, true);
+          if( !nninterpolation(inputImage_, inputImage_, input_sequence_->colorid()) ) {
+            CF_ERROR("nninterpolation() fails");
+          }
+        }
+      }
+      else if( is_bayer_pattern(input_sequence_->colorid()) ) {
         debayer(inputImage_, inputImage_, input_sequence_->colorid(),
             debayerAlgorithm_);
       }

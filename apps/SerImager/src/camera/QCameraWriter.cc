@@ -861,64 +861,71 @@ void QCameraWriter::writerThreadProc()
 
       bool fok = true;
 
-      for( const QCameraFrame::sptr &frame : deque ) {
-        if( frame->index() > last_index_ ) {
+      if ( !deque.empty() ) {
 
-          if( !writer ) {
+        // Skip early buffered frames as they could be captured at different exposure / gain parameters
+        if( last_index_ < 0 ) {
+          last_index_ = deque.back()->index();
+        }
 
-            captureStartTime =
-                getHumanReadableCurrentDateTimeString();
+        for( const QCameraFrame::sptr &frame : deque ) {
+          if( frame->index() > last_index_ ) {
 
-            if( output_directoty_.isEmpty() ) {
-              output_directoty_ =
-                  "./capture";
+            if( !writer ) {
+
+              captureStartTime =
+                  getHumanReadableCurrentDateTimeString();
+
+              if( output_directoty_.isEmpty() ) {
+                output_directoty_ =
+                    "./capture";
+              }
+
+              if( !create_path(output_directoty_.toStdString()) ) {
+                CF_ERROR("create_path('%s') fails: %s",
+                    output_directoty_.toStdString().c_str(),
+                    strerror(errno));
+                fok = false;
+                break;
+              }
+
+              if( !(writer = create_video_writer(this, frame)) ) {
+                CF_ERROR("create_video_writer() fails");
+                fok = false;
+                break;
+              }
+
+              if( !text.open(ssprintf("%s.txt", output_file_name_.toStdString().c_str())) ) {
+                CF_ERROR("text.open('%s.txt') fails",
+                    output_file_name_.toStdString().c_str());
+              }
             }
 
-            if( !create_path(output_directoty_.toStdString()) ) {
-              CF_ERROR("create_path('%s') fails: %s",
-                  output_directoty_.toStdString().c_str(),
-                  strerror(errno));
-              fok = false;
-              break;
+            last_index_ = frame->index();
+            if( start_index < 0 ) {
+              start_index = last_index_;
             }
 
-            if ( !(writer = create_video_writer(this, frame)) ) {
-              CF_ERROR("create_video_writer() fails");
-              fok = false;
-              break;
+            last_ts = frame->ts();
+            if( !num_saved_frames_ ) {
+              start_ts = last_ts;
             }
 
-
-            if( !text.open(ssprintf("%s.txt", output_file_name_.toStdString().c_str())) ) {
-              CF_ERROR("text.open('%s.txt') fails",
+            if( !(fok = writer->write(frame)) ) {
+              CF_ERROR("writer->write('%s') fails",
                   output_file_name_.toStdString().c_str());
+              break;
             }
+
+            num_dropped_frames_ =
+                last_index_ - start_index - num_saved_frames_;
+
+            ++num_saved_frames_;
+
+            capture_duration_ =
+                last_ts - start_ts;
+
           }
-
-          last_index_ = frame->index();
-          if( start_index < 0 ) {
-            start_index = last_index_;
-          }
-
-          last_ts = frame->ts();
-          if( !num_saved_frames_ ) {
-            start_ts = last_ts;
-          }
-
-          if( !(fok = writer->write(frame)) ) {
-            CF_ERROR("writer->write('%s') fails",
-                output_file_name_.toStdString().c_str());
-            break;
-          }
-
-          num_dropped_frames_ =
-              last_index_ - start_index - num_saved_frames_;
-
-          ++num_saved_frames_;
-
-          capture_duration_ =
-              last_ts - start_ts;
-
         }
       }
 

@@ -278,7 +278,7 @@ void QASIControlWidget::setASIControlValue(long lValue, ASI_BOOL isAuto)
 //  CF_DEBUG("ASISetControlValue('%s' %ld auto=%d)",
 //      controlCaps_.Name, lValue, isAuto);
 
-  const ASI_ERROR_CODE status =
+  ASI_ERROR_CODE status =
       ASISetControlValue(iCameraID,
           controlCaps_.ControlType,
           lValue,
@@ -295,6 +295,25 @@ void QASIControlWidget::setASIControlValue(long lValue, ASI_BOOL isAuto)
 
     onupdatecontrols();
   }
+//  // test
+//  {
+//    CF_DEBUG("TEST:");
+//    status = ASISetControlValue(iCameraID, ASI_GAMMA, 100, ASI_FALSE);
+//
+//    CF_DEBUG("ASISetControlValue(ASI_GAMMA): status=%d", status);
+//
+//    long lValue = 0;
+//    ASI_BOOL bAuto = ASI_FALSE;
+//
+//    status = ASIGetControlValue(iCameraID,
+//        ASI_GAMMA,
+//        &lValue,
+//        &isAuto);
+//
+//    CF_DEBUG("ASIGetControlValue(ASI_GAMMA): status=%d lValue=%ld isAuto=%d", status, lValue, isAuto);
+//  }
+
+
 }
 
 bool QASIControlWidget::getASIControlValue(long * lValue, ASI_BOOL * isAuto)
@@ -829,7 +848,9 @@ void QASICameraExtraContolsWidget::createControls()
     return;
   }
 
-  CF_DEBUG("numControls = %d", numControls);
+
+  CF_DEBUG("QASICameraExtraContolsWidget: numControls = %d", numControls);
+
 
   for ( int iControlIndex = 0; iControlIndex < numControls; ++iControlIndex ) {
 
@@ -849,6 +870,11 @@ void QASICameraExtraContolsWidget::createControls()
       continue;
     }
 
+    // case ASI_GAMMA
+    //    CF_DEBUG("'%s' (id=%s) Writable =%d", ControlCaps.Name,
+    //        toString(ControlCaps.ControlType),
+    //        ControlCaps.IsWritable);
+
     if ( !ControlCaps.IsWritable ) {
       continue;
     }
@@ -857,6 +883,26 @@ void QASICameraExtraContolsWidget::createControls()
         ControlCaps.ControlType) != ignore_controls + num_ignore_controls ) {
       continue;
     }
+
+    QASIControlWidget *control =
+        new QASIControlWidget(iCameraID, ControlCaps, this);
+
+    form->addRow(ControlCaps.Name, control);
+    controls_.append(control);
+  }
+
+  {
+    ASI_CONTROL_CAPS ControlCaps = {
+        .Name = "Gamma",    // [64]; //the name of the Control like Exposure, Gain etc..
+        .Description = "Gamma", //[128]; //description of this control
+        .MaxValue = 200,
+        .MinValue = 0,
+        .DefaultValue = 50,
+        .IsAutoSupported = ASI_TRUE, //support auto set 1, don't support 0
+        .IsWritable = ASI_TRUE, //some control like temperature can only be read by some cameras
+        .ControlType = ASI_GAMMA,//this is used to get value and set value of the control
+        .Unused = "" // [32];
+        };
 
     QASIControlWidget *control =
         new QASIControlWidget(iCameraID, ControlCaps, this);
@@ -986,6 +1032,7 @@ void QASICameraControls::create_controls()
       }
 
       if( !ControlCaps.IsWritable ) {
+        CF_DEBUG("QASICameraControls: NOT Writable '%s' (id=%s)", ControlCaps.Name, toString(ControlCaps.ControlType)); // case ASI_GAMMA:
         continue;
       }
 

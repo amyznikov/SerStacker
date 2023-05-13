@@ -60,7 +60,7 @@ public Q_SLOTS:
   void onSaveCurrentImageMask();
   void onLoadCurrentImageMask();
   void onLoadStackConfig();
-  void onViewGeneralSettings();
+  void onViewInputOptions();
   void onStackProgressViewTextChanged();
 
 private Q_SLOTS:
@@ -98,7 +98,7 @@ private:
   QImageEditor * imageEditor = nullptr;
   QTextFileViewer * textViewer = nullptr;
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
-  QGeneralAppSettingsDialogBox * appSettingsDlgBox = nullptr;
+  QGeneralAppSettingsDialogBox * inputOptionsDlgBox = nullptr;
 
   QCloudViewer * cloudViewer = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
@@ -130,7 +130,7 @@ private:
   QAction * editMaskAction = nullptr;
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;
-  QAction * viewGeneralSettingsAction = nullptr;
+  QAction * viewInputOptionsAction = nullptr;
   QAction * closeImageViewAction_ = nullptr;
 
   QAction * selectPreviousFileAction_ = nullptr;

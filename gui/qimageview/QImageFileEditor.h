@@ -37,9 +37,17 @@ public:
   void setDebayerAlgorithm(DEBAYER_ALGORITHM algo);
   DEBAYER_ALGORITHM debayerAlgorithm() const;
 
+  void setDropBadPixels(bool v);
+  bool dropBadPixels() const;
+
+  void setBadPixelsVariationThreshold(double v);
+  double badPixelsVariationThreshold() const;
+
 Q_SIGNALS:
   void onInputImageLoad(const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp);
   void debayerAlgorithmChanged();
+  void dropBadPixelsChanged();
+  void badPixelsVariationThresholdChanged();
 
 protected Q_SLOTS:
   void startDisplay();
@@ -54,6 +62,8 @@ protected:
   c_input_sequence::sptr input_sequence_;
   QPlaySequenceControl * playControls = nullptr;
   DEBAYER_ALGORITHM debayerAlgorithm_ = DEBAYER_DEFAULT;
+  bool filterBadPixels_ = false;
+  double badPixelsVariationThreshold_ = 5;
 };
 
 #endif /* __QImageFileEditor_h__ */

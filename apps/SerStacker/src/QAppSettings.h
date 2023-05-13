@@ -35,7 +35,9 @@ protected:
 protected:
   QImageEditor * imageEditor_ = nullptr;
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
-  QEnumComboBox<DEBAYER_ALGORITHM> * editor_debayer_ctl = nullptr;
+  QEnumComboBox<DEBAYER_ALGORITHM> * editorDebayer_ctl = nullptr;
+  QCheckBox * dropBadPixels_ctl = nullptr;
+  QNumericBox * badPixelsVariationThreshold_ctl = nullptr;
 };
 
 

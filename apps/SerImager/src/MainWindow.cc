@@ -455,8 +455,8 @@ void MainWindow::setupStatusbar()
   QStatusBar *sb = statusBar();
 
   sb->addWidget(show_log_ctl = new QToolButton());
-  sb->addWidget(exposure_status_ctl = new QLabel(this));
   sb->addWidget(mousepos_ctl = new QLabel(this));
+  sb->addPermanentWidget(exposure_status_ctl = new QLabel(this));
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
 
   show_log_ctl->setDefaultAction(showLogWidgetAction_);
@@ -592,7 +592,7 @@ void MainWindow::onCameraWriterStatusUpdate()
   const int write_drops =
       cameraWriter_.num_dropped_frames();
 
-  capture_status_ctl->setText(QString("/Round: %1 /time: %2 s /frames: %3 /drops: %4:%5")
+  capture_status_ctl->setText(QString("|R: %1 |T: %2 s |F: %3 |D: %4:%5")
       .arg(cameraWriter_.round())
       .arg(cvRound(cameraWriter_.capture_duration() / 1000))
       .arg(cameraWriter_.num_saved_frames())
@@ -758,15 +758,15 @@ void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, d
 {
   switch (status) {
     case QImagingCamera::Exposure_working:
-      exposure_status_ctl->setText(QString::asprintf("Exp: %.1f / %.1f [s]", elapsed * 1e-3, exposure * 1e-3));
+      exposure_status_ctl->setText(QString::asprintf("E: %.1f / %.1f [s]", elapsed * 1e-3, exposure * 1e-3));
       exposure_status_ctl->show();
       break;
     case QImagingCamera::Exposure_success:
-      exposure_status_ctl->setText(QString::asprintf("Exp: %.1f [s] OK", exposure * 1e-3));
+      exposure_status_ctl->setText(QString::asprintf("E: %.1f [s] OK", exposure * 1e-3));
       exposure_status_ctl->show();
       break;
     case QImagingCamera::Exposure_failed:
-      exposure_status_ctl->setText(QString::asprintf("Exp: %.1f [s] FAILED", exposure * 1e-3));
+      exposure_status_ctl->setText(QString::asprintf("E: %.1f [s] FAILED", exposure * 1e-3));
       exposure_status_ctl->show();
       break;
     case QImagingCamera::Exposure_idle:

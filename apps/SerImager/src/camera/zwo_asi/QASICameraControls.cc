@@ -101,8 +101,8 @@ QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & Cont
     expscale_ctl->setEditable(false);
 
 
-    expscale_ctl->addItem("us ", QVariant::fromValue(QASIExposureScaleParams(controlCaps_.MinValue, 1000, 1)));
-    expscale_ctl->addItem("ms ", QVariant::fromValue(QASIExposureScaleParams(1, 1000, 1000)));
+    expscale_ctl->addItem("us ", QVariant::fromValue(QASIExposureScaleParams(controlCaps_.MinValue, 999, 1)));
+    expscale_ctl->addItem("ms ", QVariant::fromValue(QASIExposureScaleParams(1, 999, 1000)));
     expscale_ctl->addItem("sec", QVariant::fromValue(QASIExposureScaleParams(1, controlCaps_.MaxValue / 1000000, 1000000)));
     expscale_ctl->setCurrentIndex(1);
 
@@ -112,8 +112,7 @@ QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & Cont
 
   }
 
-  updateCtrlRanges();
-
+  updateCtrlRange();
   updateControls();
 }
 
@@ -129,19 +128,48 @@ void QASIControlWidget::onupdatecontrols()
     return;
   }
 
+  if( expscale_ctl ) {
+
+    for( int i = 0, n = expscale_ctl->count(); i < n; ++i ) {
+
+      const QASIExposureScaleParams p =
+          expscale_ctl->itemData(i).value<QASIExposureScaleParams>();
+
+      const long v = lValue / p.scale;
+
+      if( v >= p.minValue && v <= p.maxValue ) {
+
+        lValue = v;
+
+        if ( expscale_ctl->currentIndex() != i ) {
+          expscale_ctl->setCurrentIndex(i);
+          updateCtrlRange();
+        }
+
+        break;
+      }
+    }
+  }
+
   if ( value_ctl ) {
     value_ctl->setEnabled(!controlCaps_.IsAutoSupported || !isAuto);
-    value_ctl->setValue(lValue);
+    if ( value_ctl->value() != lValue ) {
+      value_ctl->setValue(lValue);
+    }
   }
 
   if ( slider_ctl ) {
     slider_ctl->setEnabled(!controlCaps_.IsAutoSupported || !isAuto);
-    slider_ctl->setValue(lValue);
+    if ( slider_ctl->value() != lValue ) {
+      slider_ctl->setValue(lValue);
+    }
   }
+
 
   if ( auto_ctl ) {
     auto_ctl->setChecked(isAuto);
   }
+
 }
 
 void QASIControlWidget::onValueCtlChanged(int)
@@ -224,12 +252,67 @@ void QASIControlWidget::onAutoCtlStateChanged(int )
 void QASIControlWidget::onExpScaleCtlChanged(int)
 {
   if( !updatingControls() ) {
-    updateCtrlRanges();
-    onupdatecontrols();
+
+    c_update_controls_lock lock(this);
+
+    long lValue = 0;
+    ASI_BOOL isAuto = ASI_TRUE;
+
+    if ( !getASIControlValue(&lValue, &isAuto) ) {
+      CF_ERROR("getASIControlValue() fails");
+      return;
+    }
+
+    const QASIExposureScaleParams p =
+        expscale_ctl->currentData().value<QASIExposureScaleParams>();
+
+    long newValue =
+        lValue / p.scale;
+
+    if( newValue < p.minValue ) {
+      newValue = p.minValue;
+    }
+
+    if( newValue > p.maxValue ) {
+      newValue = p.maxValue;
+    }
+
+    if( value_ctl ) {
+      if( value_ctl->maximum() != p.maxValue || value_ctl->minimum() != p.minValue ) {
+        value_ctl->setRange(p.minValue, p.maxValue);
+      }
+    }
+
+    if( slider_ctl  ) {
+      if( slider_ctl->maximum() != p.maxValue || slider_ctl->minimum() != p.minValue ) {
+        slider_ctl->setRange(p.minValue, p.maxValue);
+      }
+    }
+
+    if( (newValue *= p.scale) != lValue ) {
+
+      ASI_ERROR_CODE status =
+          ASISetControlValue(iCameraID,
+              controlCaps_.ControlType,
+              newValue,
+              isAuto);
+
+      if( status != ASI_SUCCESS ) {
+        CF_ERROR("ASISetControlValue(CameraID=%d, '%s' newValue=%ld isAuto=%d) fails: %d (%s)",
+            iCameraID,
+            controlCaps_.Name,
+            newValue,
+            isAuto,
+            status,
+            toString(status));
+      }
+
+      onupdatecontrols();
+    }
   }
 }
 
-void QASIControlWidget::updateCtrlRanges()
+void QASIControlWidget::updateCtrlRange()
 {
   c_update_controls_lock lock(this);
 
@@ -275,9 +358,6 @@ void QASIControlWidget::setASIControlValue(long lValue, ASI_BOOL isAuto)
     }
   }
 
-//  CF_DEBUG("ASISetControlValue('%s' %ld auto=%d)",
-//      controlCaps_.Name, lValue, isAuto);
-
   ASI_ERROR_CODE status =
       ASISetControlValue(iCameraID,
           controlCaps_.ControlType,
@@ -295,24 +375,6 @@ void QASIControlWidget::setASIControlValue(long lValue, ASI_BOOL isAuto)
 
     onupdatecontrols();
   }
-//  // test
-//  {
-//    CF_DEBUG("TEST:");
-//    status = ASISetControlValue(iCameraID, ASI_GAMMA, 100, ASI_FALSE);
-//
-//    CF_DEBUG("ASISetControlValue(ASI_GAMMA): status=%d", status);
-//
-//    long lValue = 0;
-//    ASI_BOOL bAuto = ASI_FALSE;
-//
-//    status = ASIGetControlValue(iCameraID,
-//        ASI_GAMMA,
-//        &lValue,
-//        &isAuto);
-//
-//    CF_DEBUG("ASIGetControlValue(ASI_GAMMA): status=%d lValue=%ld isAuto=%d", status, lValue, isAuto);
-//  }
-
 
 }
 
@@ -333,16 +395,6 @@ bool QASIControlWidget::getASIControlValue(long * lValue, ASI_BOOL * isAuto)
 
     setEnabled(false);
     return false;
-  }
-
-  if( expscale_ctl ) {
-
-    const QASIExposureScaleParams p =
-        expscale_ctl->currentData().value<QASIExposureScaleParams>();
-
-    if ( p.scale > 0 ) {
-      *lValue /= p.scale;
-    }
   }
 
   return true;
@@ -836,6 +888,9 @@ void QASICameraExtraContolsWidget::createControls()
 
   int numControls = 0;
 
+  bool gamma_ctrl_added = false;
+
+
   ASI_ERROR_CODE status =
       ASIGetNumOfControls(iCameraID,
           &numControls);
@@ -847,10 +902,6 @@ void QASICameraExtraContolsWidget::createControls()
         toString(status));
     return;
   }
-
-
-  CF_DEBUG("QASICameraExtraContolsWidget: numControls = %d", numControls);
-
 
   for ( int iControlIndex = 0; iControlIndex < numControls; ++iControlIndex ) {
 
@@ -870,11 +921,6 @@ void QASICameraExtraContolsWidget::createControls()
       continue;
     }
 
-    // case ASI_GAMMA
-    //    CF_DEBUG("'%s' (id=%s) Writable =%d", ControlCaps.Name,
-    //        toString(ControlCaps.ControlType),
-    //        ControlCaps.IsWritable);
-
     if ( !ControlCaps.IsWritable ) {
       continue;
     }
@@ -889,18 +935,23 @@ void QASICameraExtraContolsWidget::createControls()
 
     form->addRow(ControlCaps.Name, control);
     controls_.append(control);
+
+    if ( ControlCaps.ControlType == ASI_GAMMA ) {
+      gamma_ctrl_added  = true;
+    }
   }
 
-  {
+  if( !gamma_ctrl_added ) {
+
     ASI_CONTROL_CAPS ControlCaps = {
         .Name = "Gamma",    // [64]; //the name of the Control like Exposure, Gain etc..
         .Description = "Gamma", //[128]; //description of this control
-        .MaxValue = 200,
+        .MaxValue = 100,
         .MinValue = 0,
         .DefaultValue = 50,
         .IsAutoSupported = ASI_TRUE, //support auto set 1, don't support 0
         .IsWritable = ASI_TRUE, //some control like temperature can only be read by some cameras
-        .ControlType = ASI_GAMMA,//this is used to get value and set value of the control
+        .ControlType = ASI_GAMMA, //this is used to get value and set value of the control
         .Unused = "" // [32];
         };
 
@@ -918,6 +969,11 @@ void QASICameraExtraContolsWidget::onload(QSettings & settings)
 
 void QASICameraExtraContolsWidget::onupdatecontrols()
 {
+  if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    for( auto *c : controls_ ) {
+      c->updateControls();
+    }
+  }
 }
 
 
@@ -1081,6 +1137,12 @@ void QASICameraControls::onupdatecontrols()
   else {
     switch (camera_->state()) {
       case QImagingCamera::State_connected:
+        exposure_ctl->updateControls();
+        gain_ctl->updateControls();
+        extraSettings_ctl->updateControls();
+        setEnabled(true);
+
+        break;
       case QImagingCamera::State_started:
         setEnabled(true);
         break;

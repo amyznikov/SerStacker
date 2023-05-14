@@ -77,9 +77,11 @@ protected:
   QAction * showPipelineSelectorAction_ = nullptr;
 
   QToolButton * measureActionsToolButton_ = nullptr;
+
+
   QToolButton * show_log_ctl = nullptr;
-  QLabel * capture_status_ctl = nullptr;
   QLabel * mousepos_ctl = nullptr;
+  QLabel * capture_status_ctl = nullptr;
   QLabel * exposure_status_ctl = nullptr;
   QMenu displayOptionsMenu_;
 

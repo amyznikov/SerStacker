@@ -209,6 +209,12 @@ QString QASICamera::parameters() const
     long temperature = 0;
     ASI_BOOL auto_temperature = ASI_FALSE;
 
+    long asi_bandwidthoverload = -1;
+    ASI_BOOL auto_asi_bandwidthoverload = ASI_FALSE;
+
+    long asi_overclock = -1;
+    ASI_BOOL auto_asi_overclock = ASI_FALSE;
+
     ASIGetROIFormat(camInfo_.CameraID,
         &iWidth,
         &iHeight,
@@ -246,6 +252,16 @@ QString QASICamera::parameters() const
     ASIGetControlValue(camInfo_.CameraID, ASI_TEMPERATURE,
         &temperature,
         &auto_temperature);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_BANDWIDTHOVERLOAD,
+        &asi_bandwidthoverload,
+        &auto_asi_bandwidthoverload);
+
+    ASIGetControlValue(camInfo_.CameraID, ASI_OVERCLOCK,
+        &asi_overclock,
+        &auto_asi_overclock);
+
+
 
     std::string text =
         ssprintf(""
@@ -287,6 +303,11 @@ QString QASICamera::parameters() const
             "ElecPerADU         = %g\n"
             "BitDepth           = %d\n"
             "IsTriggerCam       = %d\n"
+            "\n"
+            "ASI_BANDWIDTHOVERLOAD      = %ld\n"
+            "ASI_BANDWIDTHOVERLOAD_AUTO = %d\n"
+            "ASI_OVERCLOCK              = %ld\n"
+            "ASI_OVERCLOCK_AUTO         = %d\n"
             "",
             camInfo_.Name,
             camInfo_.CameraID,
@@ -324,7 +345,13 @@ QString QASICamera::parameters() const
             camInfo_.IsUSB3Camera,
             camInfo_.ElecPerADU,
             camInfo_.BitDepth,
-            camInfo_.IsTriggerCam
+            camInfo_.IsTriggerCam,
+
+            asi_bandwidthoverload,
+            auto_asi_bandwidthoverload,
+
+            asi_overclock,
+            auto_asi_overclock
             );
 
     return QString(text.c_str());

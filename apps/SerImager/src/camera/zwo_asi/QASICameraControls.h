@@ -16,15 +16,29 @@
 
 namespace serimager {
 
-class QASIControlWidget :
+class QASIControlWidgetBase:
     public QWidget,
     public HasUpdateControls
+{
+public:
+  typedef QASIControlWidgetBase ThisClass;
+  typedef QWidget Base;
+
+protected:
+  QASIControlWidgetBase(QWidget * parent = nullptr) :
+      Base(parent)
+  {
+  }
+};
+
+class QASIControlWidget :
+    public QASIControlWidgetBase
 {
   Q_OBJECT;
 
 public:
   typedef QASIControlWidget ThisClass;
-  typedef QWidget Base;
+  typedef QASIControlWidgetBase Base;
 
   QASIControlWidget(int iCameraID, const ASI_CONTROL_CAPS & ControlCaps,
       QWidget * parent = nullptr );
@@ -33,7 +47,7 @@ protected:
   void onupdatecontrols() override;
   void setASIControlValue(long lValue, ASI_BOOL isAuto);
   bool getASIControlValue(long * lValue, ASI_BOOL * isAuto);
-  void updateCtrlRanges();
+  void updateCtrlRange();
 
 protected Q_SLOTS:
   void onValueCtlChanged(int);
@@ -54,14 +68,13 @@ protected:
 };
 
 class QASIROIControlWidget :
-  public QWidget,
-  public HasUpdateControls
+    public QASIControlWidgetBase
 {
   Q_OBJECT;
 
 public:
   typedef QASIROIControlWidget ThisClass;
-  typedef QWidget Base;
+  typedef QASIControlWidgetBase Base;
 
   QASIROIControlWidget(const QASICamera::sptr & camera,
       QWidget * parent = nullptr );
@@ -100,6 +113,7 @@ public:
 
   QASICameraExtraContolsWidget(const QASICamera::sptr & camera,
       QWidget * parent = nullptr);
+
   ~QASICameraExtraContolsWidget();
 
 protected:
@@ -112,7 +126,8 @@ protected Q_SLOTS:
 
 protected:
   QASICamera::sptr camera_;
-  QWidgetList controls_;
+  QList<QASIControlWidgetBase*> controls_;
+
 };
 
 class QASICameraControls:
@@ -123,7 +138,9 @@ public:
   typedef QASICameraControls ThisClass;
   typedef QCameraControlsWidget Base;
 
-  QASICameraControls(const QASICamera::sptr & camera, QWidget * parent = nullptr);
+  QASICameraControls(const QASICamera::sptr & camera,
+      QWidget * parent = nullptr);
+
   ~QASICameraControls();
 
 protected:
@@ -151,6 +168,7 @@ struct QASIExposureScaleParams
   QASIExposureScaleParams()
   {
   }
+
   QASIExposureScaleParams(long _min, long _max, long _scale) :
       minValue(_min), maxValue(_max), scale(_scale)
   {

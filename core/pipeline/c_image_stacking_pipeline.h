@@ -66,6 +66,8 @@ enum STACKING_STAGE {
 
 struct c_input_options
 {
+  DEBAYER_ALGORITHM debayer_method = DEBAYER_NN2;
+
   std::string darkbayer_filename;
   std::string missing_pixel_mask_filename;
   bool missing_pixels_marked_black = true;
@@ -291,7 +293,7 @@ protected:
 //      cv::OutputArray dstmask=cv::noArray()) const ;
 
   bool create_reference_frame(const c_input_sequence::sptr & input_sequence,
-      int master_frame_index, int max_frames_to_stack,
+      int master_frame_pos, int max_frames_to_stack,
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
 
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
@@ -300,7 +302,8 @@ protected:
   int select_master_frame(const c_input_sequence::sptr & input_sequence);
 
   bool read_input_frame(const c_input_sequence::sptr & input_sequence,
-      cv::Mat & output_image, cv::Mat & output_mask) const;
+      cv::Mat & output_image, cv::Mat & output_mask,
+      bool enable_dark_subtraction) const;
 
   static bool select_image_roi(const c_roi_selection::ptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
@@ -362,7 +365,7 @@ protected:
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
 
-  int master_frame_index_ = -1;
+  int master_frame_pos_ = -1;
   bool master_frame_generation_ = false;
   bool external_master_frame_ = false;
 

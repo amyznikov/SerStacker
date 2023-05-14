@@ -714,7 +714,9 @@ bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArr
     tmp = src.getMat();
   }
   else {
-    normalize_minmax(src, tmp, 0, 255, srcmsk);
+    // dark frame subtraction could produce negative pixel values, star extractor may be sensitive.
+    cv::max(src, 0, tmp);
+    normalize_minmax(tmp, tmp, 0, 255, srcmsk);
   }
 
   const bool fOk =

@@ -51,6 +51,8 @@ protected:
   QNumericBox * start_frame_index_ctl = Q_NULLPTR;
   QNumericBox * max_input_frames_ctl = Q_NULLPTR;
 
+  QEnumComboBox<DEBAYER_ALGORITHM> * debayer_method_ctl = nullptr;
+
 //  QToolButton * applyToAll_ctl = Q_NULLPTR;
 };
 

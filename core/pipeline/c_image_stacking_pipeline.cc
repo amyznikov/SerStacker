@@ -451,7 +451,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     missing_pixel_mask_.release();
 
     external_master_frame_ = false;
-    master_frame_index_ = -1;
+    master_frame_pos_ = -1;
     ecc_normalization_noise_ = 0;
 
     output_file_name_postfix_.clear();
@@ -755,9 +755,9 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
     set_pipeline_stage(stacking_stage_generate_reference_frame);
 
-    set_status_msg("CREATE REFERENCE FRAME ...");
+    set_status_msg("CREATE REFERENCE FRAME...");
 
-    if ( (master_frame_index /*= master_options.master_frame_index*/) < 0 ) {
+    if ( master_frame_index < 0 ) {
       master_frame_index = 0;
     }
     else if ( master_frame_index >= input_sequence->source(master_source_index)->size() ) {
@@ -766,17 +766,27 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    master_frame_index =
+    int master_frame_in_source_index =
+        master_frame_index;
+
+    master_frame_pos_ =
         input_sequence->global_pos(
             master_source_index,
             master_frame_index);
+
+    CF_DEBUG("master_source_index=%d master_frame_in_source_index=%d master_frame_pos_=%d",
+        master_source_index, master_frame_in_source_index, master_frame_pos_);
+
 
     if ( master_options.generate_master_frame ) {
       max_frames_to_stack =
           master_options.max_frames_to_generate_master_frame;
     }
 
-    if ( !create_reference_frame(input_sequence, master_frame_index, max_frames_to_stack,
+    CF_DEBUG("master_frame_pos_=%d max_frames_to_stack=%d",
+        master_frame_pos_, max_frames_to_stack);
+
+    if ( !create_reference_frame(input_sequence, master_frame_pos_, max_frames_to_stack,
         reference_frame, reference_mask) ) {
       CF_FATAL("ERROR: create_reference_frame() fails");
       return false;
@@ -1128,7 +1138,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 }
 
 bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::sptr & input_sequence,
-    int master_frame_index, int max_frames_to_stack,
+    int master_frame_pos, int max_frames_to_stack,
     cv::Mat & reference_frame,
     cv::Mat & reference_mask)
 {
@@ -1139,8 +1149,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 
   master_frame_generation_ = true;
 
-  if ( !input_sequence->seek(master_frame_index) ) {
-    CF_ERROR("ERROR: input_sequence->seek(master_frame_index=%d) fails", master_frame_index);
+  if ( !input_sequence->seek(master_frame_pos) ) {
+    CF_ERROR("ERROR: input_sequence->seek(master_frame_pos=%d) fails", master_frame_pos);
     return false;
   }
 
@@ -1148,9 +1158,15 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     return false;
   }
 
-  if ( !read_input_frame(input_sequence, reference_frame, reference_mask) ) {
-    CF_FATAL("read_input_frame(reference_frame) fails for master_frame_index=%d",
-        master_frame_index);
+
+  CF_DEBUG("XXX: external_master_frame_=%d master_frame_pos=%d input_sequence->current_pos=%d",
+      external_master_frame_,
+      master_frame_pos,
+      input_sequence->current_pos());
+
+  if ( !read_input_frame(input_sequence, reference_frame, reference_mask, !external_master_frame_) ) {
+    CF_FATAL("read_input_frame(reference_frame) fails for master_frame_pos=%d",
+        master_frame_pos);
     return false;
   }
 
@@ -1159,8 +1175,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   if ( reference_frame.empty() ) {
-    CF_ERROR("read_input_frame(reference_frame) returns empty frame for master_frame_index=%d",
-        master_frame_index);
+    CF_ERROR("read_input_frame(reference_frame) returns empty frame for master_frame_pos=%d",
+        master_frame_pos);
     return false;
   }
 
@@ -1203,7 +1219,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   // setup master index indicator
- this->master_frame_index_ = master_frame_index;
+ //this->master_frame_index_ = master_frame_index;
 
  if ( max_frames_to_stack < 2 || input_sequence->size() < 2 ) {
 
@@ -1284,7 +1300,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 
       startpos =
           std::max(start_frame_index,
-              master_frame_index - max_frames_to_stack / 2);
+              master_frame_pos - max_frames_to_stack / 2);
 
       if( (endpos = startpos + max_frames_to_stack) >= input_sequence->size() ) {
         startpos = std::max(start_frame_index, input_sequence->size() - max_frames_to_stack);
@@ -1298,12 +1314,13 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     }
 
     CF_DEBUG("input_options.start_frame_index=%d \n"
-        "master_frame_index=%d \n"
+        "master_frame_pos=%d \n"
         "max_frames_to_stack=%d \n"
         "input_sequence->size()=%d\n"
         "startpos=%d\n"
         "endpos=%d\n",
-        input_options_.start_frame_index, master_frame_index,
+        input_options_.start_frame_index,
+        master_frame_pos,
         max_frames_to_stack,
         input_sequence->size(),
         startpos,
@@ -1482,7 +1499,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       break;
     }
 
-    if ( !read_input_frame(input_sequence, current_frame, current_mask) ) {
+    if ( !read_input_frame(input_sequence, current_frame, current_mask, true) ) {
       set_status_msg("read_input_frame() fails");
       break;
     }
@@ -1605,7 +1622,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       const bool is_master_frame =
           !external_master_frame_ &&
-          input_sequence->current_pos() == master_frame_index_ + 1;
+          input_sequence->current_pos() == master_frame_pos_ + 1;
 
       const bool generated_master_frame =
           !master_frame_generation_ && master_options.generate_master_frame;
@@ -1952,7 +1969,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
 
 bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
-    cv::Mat & output_image, cv::Mat & output_mask) const
+    cv::Mat & output_image, cv::Mat & output_mask,
+    bool enable_dark_subtraction) const
 {
   INSTRUMENT_REGION("");
 
@@ -1969,7 +1987,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
 //      output_image.channels(),
 //      input_sequence->pixel_depth());
 
-  if( !darkbayer_.empty() ) {
+  if( enable_dark_subtraction && !darkbayer_.empty() ) {
 
     if( darkbayer_.size() != output_image.size() || darkbayer_.channels() != output_image.channels() ) {
       CF_FATAL("darkbayer (%dx%d*%d) and input frame (%dx%d*%d) not match",
@@ -2005,8 +2023,8 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
   }
   else {
 
-    DEBAYER_ALGORITHM algo =
-        default_debayer_algorithm();
+    const DEBAYER_ALGORITHM algo =
+        input_options_.debayer_method; // default_debayer_algorithm();
 
     switch (algo) {
 
@@ -2780,7 +2798,7 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
   switch (master_options.master_selection_method) {
 
     case master_frame_specific_index:
-      selected_master_frame_index = master_frame_index_;
+      selected_master_frame_index = base::master_frame_index_;
       break;
 
     case master_frame_middle_index:
@@ -2904,6 +2922,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = get_group(settings, save, "input_options")) ) {
 
+    SERIALIZE_OPTION(section, save, input_options_, debayer_method);
     SERIALIZE_OPTION(section, save, input_options_, darkbayer_filename);
     SERIALIZE_OPTION(section, save, input_options_, missing_pixel_mask_filename);
     SERIALIZE_OPTION(section, save, input_options_, missing_pixels_marked_black);

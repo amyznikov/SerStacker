@@ -34,6 +34,19 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
             }
           });
 
+
+  debayer_method_ctl =
+      add_enum_combobox<DEBAYER_ALGORITHM>("DEBAYER Method",
+          "Set debayer method for Bayer images.\n"
+          "Set it to 'DISABLE' for dark/flat frames generation",
+          [this](DEBAYER_ALGORITHM v) {
+            if ( options_ && options_->debayer_method != v ) {
+              options_->debayer_method = v;
+              Q_EMIT parameterChanged();
+            }
+          });
+
+
   enable_remove_bad_pixels_ctl =
       add_checkbox("Detect Bad Pixels",
           "",
@@ -174,6 +187,7 @@ void QImageStackingInputOptions::onupdatecontrols()
 
     start_frame_index_ctl->setValue(options_->start_frame_index);
     max_input_frames_ctl->setValue(options_->max_input_frames);
+    debayer_method_ctl->setValue(options_->debayer_method);
 
     setEnabled(true);
   }

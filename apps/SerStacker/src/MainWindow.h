@@ -142,7 +142,10 @@ private:
   QLabel * imageSizeLabel_ctl = nullptr;
   QScaleSelectionButton * scaleSelection_ctl = nullptr;
   QShapesButton * shapes_ctl = nullptr;
-  QToolButton * show_log_ctl = nullptr;
+
+  QLabel * mousePosLabel_ctl = nullptr;
+  QLabel * shapesLabel_ctl = nullptr;
+  QToolButton * showLog_ctl = nullptr;
 
 };
 

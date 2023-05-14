@@ -490,7 +490,7 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
       pos.y();
 
   n += snprintf(buf + n, sizeof(buf) - 1 - n,
-      "x=%g y=%g",
+      "| x=%g y=%g",
       pos.x(),
       pos.y());
 

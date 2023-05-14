@@ -313,9 +313,11 @@ void MainWindow::setupStatusbar()
 {
   QStatusBar *sb = statusBar();
 
-  //  sb->addWidget(mousepos_ctl = new QLabel(this));
-  sb->addPermanentWidget(show_log_ctl = new QToolButton());
-  show_log_ctl->setDefaultAction(showLogWidgetAction_);
+  sb->addWidget(shapesLabel_ctl = new QLabel(this));
+  sb->addWidget(mousePosLabel_ctl = new QLabel(this));
+
+  sb->addPermanentWidget(showLog_ctl = new QToolButton());
+  showLog_ctl->setDefaultAction(showLogWidgetAction_);
 }
 
 void MainWindow::onStackProgressViewTextChanged()
@@ -702,7 +704,7 @@ void MainWindow::setupImageEditor()
 
   connect(imageEditor, &QImageFileEditor::onMouseMove,
       [this](QMouseEvent * e) {
-        statusBar()->showMessage(imageEditor->statusStringForPixel(e->pos()));
+        mousePosLabel_ctl->setText(imageEditor->statusStringForPixel(e->pos()));
       });
 
   connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
@@ -720,7 +722,12 @@ void MainWindow::setupImageEditor()
           const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
           const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
 
-          statusBar()->showMessage(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+          if ( !shapesLabel_ctl->isVisible() ) {
+            shapesLabel_ctl->setVisible(true);
+          }
+
+          shapesLabel_ctl->setText(
+              qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
                   p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
 
           if ( is_visible(profileGraph_ctl_) ) {
@@ -738,13 +745,31 @@ void MainWindow::setupImageEditor()
           const double width = rc.width();
           const double height = rc.height();
 
-          statusBar()->showMessage(
+          if ( !shapesLabel_ctl->isVisible() ) {
+            shapesLabel_ctl->setVisible(true);
+          }
+
+          shapesLabel_ctl->setText(
               qsprintf("RECT: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
                   p1.x(), p1.y(),
                   p2.x(), p2.y(),
                   width, height,
                   center.x(), center.y()));
 
+        }
+      });
+
+  connect(imageEditor->scene(), &QImageScene::graphicsItemVisibleChanged,
+      [this]() {
+        if ( shapesLabel_ctl->isVisible() ) {
+          shapesLabel_ctl->setVisible(false);
+        }
+      });
+
+  connect(imageEditor->scene(), &QImageScene::graphicsItemDestroyed,
+      [this]() {
+        if ( shapesLabel_ctl->isVisible() ) {
+          shapesLabel_ctl->setVisible(false);
         }
       });
 
@@ -1059,7 +1084,11 @@ void MainWindow::setupRoiOptions()
         const double width = rc.width();
         const double height = rc.height();
 
-        statusBar()->showMessage(
+        if ( !shapesLabel_ctl->isVisible() ) {
+          shapesLabel_ctl->setVisible(true);
+        }
+
+        shapesLabel_ctl->setText(
             qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
                 p1.x(), p1.y(),
                 p2.x(), p2.y(),
@@ -1068,6 +1097,13 @@ void MainWindow::setupRoiOptions()
 
         //CF_DEBUG("C updateMeasurements()");
         updateMeasurements();
+      });
+
+  connect(imageEditor->roiRectShape(), &QGraphicsShape::visibleChanged,
+      [this]() {
+        if ( shapesLabel_ctl->isVisible() ) {
+          shapesLabel_ctl->setVisible(false);
+        }
       });
 
 

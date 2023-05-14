@@ -25,6 +25,29 @@ static QIcon rectangle_icon;
 static QIcon delete_icon;
 
 
+static void connectShapeEvents(QGraphicsShape *shape, QImageScene * scene)
+{
+  if ( shape && scene ) {
+
+    QObject::connect(shape, &QGraphicsShape::itemChanged,
+        scene, &QImageScene::graphicsItemChanged,
+        Qt::QueuedConnection);
+
+    QObject::connect(shape, &QGraphicsShape::visibleChanged,
+        [shape, scene] () {
+          Q_EMIT scene->graphicsItemVisibleChanged(shape);
+        });
+
+    QObject::connect(shape, &QObject::destroyed,
+        [shape, scene] () {
+          Q_EMIT scene->graphicsItemDestroyed(shape);
+        });
+
+  }
+
+}
+
+
 QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
     Base(parent)
 {
@@ -99,14 +122,25 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             scene->addItem(shape);
             shapes_.append(shape);
 
-            QImageScene * imageScene =
-                dynamic_cast<QImageScene * >(scene);
+            connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
-            if ( imageScene ) {
-              connect(shape, &QGraphicsShape::itemChanged,
-                  imageScene, &QImageScene::graphicsItemChanged,
-                  Qt::QueuedConnection);
-            }
+//            if ( imageScene ) {
+//
+//              connect(shape, &QGraphicsShape::itemChanged,
+//                  imageScene, &QImageScene::graphicsItemChanged,
+//                  Qt::QueuedConnection);
+//
+//              connect(shape, &QGraphicsShape::visibleChanged,
+//                  [imageScene, shape] () {
+//                    Q_EMIT imageScene->graphicsItemVisibleChanged(shape);
+//                  });
+//
+//              connect(shape, &QObject::destroyed,
+//                  [imageScene, shape] () {
+//                    Q_EMIT imageScene->graphicsItemDestroyed(shape);
+//                  });
+//
+//            }
 
             setChecked(true);
           }
@@ -154,14 +188,17 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             scene->addItem(shape);
             shapes_.append(shape);
 
-            QImageScene * imageScene =
-                dynamic_cast<QImageScene * >(scene);
+            connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
-            if ( imageScene ) {
-              connect(shape, &QGraphicsShape::itemChanged,
-                  imageScene, &QImageScene::graphicsItemChanged,
-                  Qt::QueuedConnection);
-            }
+
+//            QImageScene * imageScene =
+//                dynamic_cast<QImageScene * >(scene);
+
+//            if ( imageScene ) {
+//              connect(shape, &QGraphicsShape::itemChanged,
+//                  imageScene, &QImageScene::graphicsItemChanged,
+//                  Qt::QueuedConnection);
+//            }
 
             setChecked(true);
           }

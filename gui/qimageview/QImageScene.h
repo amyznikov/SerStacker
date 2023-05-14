@@ -28,6 +28,8 @@ public:
 
 Q_SIGNALS:
   void graphicsItemChanged(QGraphicsItem * item);
+  void graphicsItemVisibleChanged(QGraphicsItem * item);
+  void graphicsItemDestroyed(QGraphicsItem * item);
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *e) override;

@@ -255,7 +255,7 @@ void MainWindow::setupMainMenu()
           this, &ThisClass::onSaveCurrentDisplayImageAs);
 
   saveDisplayImageAsAction->setEnabled(is_visible(imageEditor) &&
-      !imageEditor->currentImage().empty());
+      !imageEditor->displayImage().empty());
 
   saveImageMaskAction =
       menuFile_->addAction("Save current image mask...",
@@ -557,6 +557,8 @@ void MainWindow::setupImageEditor()
   connect(imageEditor, &QImageEditor::currentImageChanged,
       this, &ThisClass::onImageEditorCurrentImageChanged);
 
+  connect(imageEditor, &QImageEditor::displayImageChanged,
+      this, &ThisClass::onImageEditorDisplayImageChanged);
 
 
   ///
@@ -846,39 +848,29 @@ void MainWindow::onImageEditorCurrentFileNameChanged()
   }
 }
 
-void MainWindow::onImageEditorCurrentImageChanged()
+void MainWindow::onImageEditorCheckIfBadFrameSelected()
 {
-  const bool isvisible =
-      imageEditor->isVisible();
+  bool isBadFrameSelected = false;
 
-  onImageEditorVisibilityChanged(isvisible);
+  if( imageEditor->isVisible() ) {
 
-  if ( isvisible ) {
+    const c_input_sequence::sptr &input_sequence =
+        imageEditor->input_sequence();
 
-    imageSizeLabel_ctl->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
+    if( input_sequence ) {
 
-    if( is_visible(profileGraph_ctl_) ) {
-      profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
-          imageEditor->currentImage());
+      c_input_source::sptr source =
+          input_sequence->current_source();
+
+      if( source ) {
+        isBadFrameSelected =
+            source->is_badframe(input_sequence->current_pos() - 1);
+      }
     }
-
-    // CF_DEBUG("C updateMeasurements()");
-    updateMeasurements();
   }
-}
 
-void MainWindow::onImageProcessorParameterChanged()
-{
-  Base::onImageProcessorParameterChanged();
-  imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
-}
-
-void MainWindow::onMtfControlVisibilityChanged(bool visible)
-{
-  Base::onMtfControlVisibilityChanged(visible);
-
-  if( visible && is_visible(imageEditor) ) {
-    mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+  if( badframeAction->isChecked() != isBadFrameSelected ) {
+    badframeAction->setChecked(isBadFrameSelected);
   }
 }
 
@@ -900,29 +892,68 @@ void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
   saveImageMaskAction->setEnabled(isvisible && hasmask);
   loadImageMaskAction->setEnabled(isvisible && hasimage);
 
-  bool check_badframe_action = false;
+  onImageEditorCheckIfBadFrameSelected();
+}
 
-  if( isvisible ) {
+void MainWindow::onImageEditorCurrentImageChanged()
+{
+  const bool isvisible =
+      imageEditor->isVisible();
 
-    const c_input_sequence::sptr &input_sequence =
-        imageEditor->input_sequence();
+  const bool hasimage =
+      !imageEditor->currentImage().empty();
 
-    if( input_sequence ) {
+  const bool hasmask =
+      !imageEditor->currentMask().empty();
 
-      c_input_source::sptr source =
-          input_sequence->current_source();
+  saveImageAsAction->setEnabled(isvisible && hasimage);
+  saveImageMaskAction->setEnabled(isvisible && hasmask);
+  loadImageMaskAction->setEnabled(isvisible && hasimage);
 
-      if( source ) {
-        check_badframe_action =
-            source->is_badframe(input_sequence->current_pos() - 1);
-      }
+  if ( isvisible ) {
+
+    imageSizeLabel_ctl->setText(qsprintf("%dx%d",
+        imageEditor->currentImage().cols,
+        imageEditor->currentImage().rows));
+
+    if( is_visible(profileGraph_ctl_) ) {
+      profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
+          imageEditor->currentImage());
     }
-  }
 
-  if( badframeAction->isChecked() != check_badframe_action ) {
-    badframeAction->setChecked(check_badframe_action);
+    updateMeasurements();
   }
 }
+
+void MainWindow::onImageEditorDisplayImageChanged()
+{
+  const bool isvisible =
+      imageEditor->isVisible();
+
+  const bool hasdisplayimage =
+      !imageEditor->displayImage().empty();
+
+  saveDisplayImageAsAction->setEnabled(isvisible && hasdisplayimage);
+  copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
+}
+
+
+void MainWindow::onImageProcessorParameterChanged()
+{
+  Base::onImageProcessorParameterChanged();
+  imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
+}
+
+void MainWindow::onMtfControlVisibilityChanged(bool visible)
+{
+  Base::onMtfControlVisibilityChanged(visible);
+
+  if( visible && is_visible(imageEditor) ) {
+    mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+  }
+}
+
+
 
 
 void MainWindow::stupCloudViewer()

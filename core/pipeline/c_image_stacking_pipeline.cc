@@ -474,7 +474,8 @@ bool c_image_stacking_pipeline::initialize_pipeline()
   }
 
   if ( !input_options().darkbayer_filename.empty() ) {
-    if ( !load_image(input_options().darkbayer_filename, darkbayer_) ) {
+    cv::Mat ignored_optional_mask;
+    if ( !load_image(input_options().darkbayer_filename, darkbayer_, ignored_optional_mask) ) {
       CF_ERROR("load_image('%s') fails.", input_options().darkbayer_filename.c_str());
       return false;
     }
@@ -1997,7 +1998,8 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
     }
 
     if( output_image.depth() != CV_32F ) {
-      output_image.convertTo(output_image, CV_32F);
+      output_image.convertTo(output_image, CV_32F,
+          1. / ((1 << input_sequence->bpp())));
     }
 
     cv::subtract(output_image, darkbayer_,
@@ -2017,8 +2019,10 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
       remove_bad_pixels(output_image, input_options_, false);
     }
 
-    output_image.convertTo(output_image, CV_32F,
-        1. / ((1 << input_sequence->bpp())));
+    if( output_image.depth() != CV_32F ) {
+      output_image.convertTo(output_image, CV_32F,
+          1. / ((1 << input_sequence->bpp())));
+    }
 
   }
   else {
@@ -2029,8 +2033,10 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
     switch (algo) {
 
       case DEBAYER_DISABLE:
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
+        if( output_image.depth() != CV_32F ) {
+          output_image.convertTo(output_image, CV_32F,
+              1. / ((1 << input_sequence->bpp())));
+        }
         break;
 
       case DEBAYER_NN:
@@ -2048,8 +2054,10 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
         if ( input_options_.filter_bad_pixels ) {
           remove_bad_pixels(output_image, input_options_, true);
         }
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
+        if( output_image.depth() != CV_32F ) {
+          output_image.convertTo(output_image, CV_32F,
+              1. / ((1 << input_sequence->bpp())));
+        }
         break;
 
       case DEBAYER_NN2:
@@ -2067,8 +2075,10 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
           remove_bad_pixels(output_image, input_options_, true);
         }
 
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
+        if( output_image.depth() != CV_32F ) {
+          output_image.convertTo(output_image, CV_32F,
+              1. / ((1 << input_sequence->bpp())));
+        }
 
         if ( !nninterpolation(output_image, output_image, input_sequence->colorid()) ) {
           CF_ERROR("nninterpolation() fails");

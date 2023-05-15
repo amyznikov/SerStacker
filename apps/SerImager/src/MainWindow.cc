@@ -74,16 +74,17 @@ MainWindow::MainWindow(QWidget * parent) :
   connect(centralDisplay_, &QImageViewer::currentImageChanged,
       this, &ThisClass::onCurrentImageChanged);
 
-  // XX1
   connect(centralDisplay_, &QLiveDisplay::onMouseMove,
       [this](QMouseEvent * e) {
-        mousepos_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
-        mousepos_ctl->show();
+        mouse_status_ctl->setText(centralDisplay_->statusStringForPixel(e->pos()));
+        mouse_status_ctl->show();
       });
 
   connect(centralDisplay_, &QLiveDisplay::onMouseLeaveEvent,
       [this](QEvent * e) {
-        mousepos_ctl->hide();
+        if ( mouse_status_ctl->isVisible() ) {
+          mouse_status_ctl->hide();
+        }
       });
 
 }
@@ -221,45 +222,14 @@ void MainWindow::setupShapeOptions()
         }
       });
 
-  // XX1
   connect(centralDisplay_->rectShape(), &QGraphicsShape::itemChanged,
-      [this]() {
+      this, &ThisClass::onCentralDisplayROIShapeChanged);
 
-        QGraphicsRectShape * shape =
-            centralDisplay_->rectShape();
-
-        const QRectF rc =
-            shape->sceneRect();
-
-        const QImagingCamera::sptr & currentCamera =
-            cameraControls_ctl->selectedCamera();
-
-        if ( currentCamera ) {
-          currentCamera->setRoi(QRect(rc.x(), rc.y(),
-                  rc.width(), rc.height()));
-        }
-
-        mousepos_ctl->setText(qsprintf("ROI: x= %g y= %g size= [%g x %g] center= (%g %g)",
-                rc.x(), rc.y(), rc.width(), rc.height(), rc.center().x(), rc.center().y() ));
-
-        updateMeasurements();
-      });
+  connect(centralDisplay_->rectShape(), &QGraphicsShape::visibleChanged,
+      this, &ThisClass::onCentralDisplayROIShapeChanged);
 
   connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
-      [this]() {
-
-        const QImagingCamera::sptr & currentCamera =
-            cameraControls_ctl->selectedCamera();
-
-        if ( currentCamera ) {
-
-          const QRectF rc =
-              centralDisplay_->rectShape()->sceneRect();
-
-          currentCamera->setRoi(QRect(rc.x(), rc.y(),
-                  rc.width(), rc.height()));
-        }
-      });
+      this, &ThisClass::onCentralDisplayROIShapeChanged);
 
 
   //
@@ -289,18 +259,12 @@ void MainWindow::setupShapeOptions()
       });
 
 
-  // XX1
   connect(centralDisplay_->targetShape(), &QGraphicsShape::itemChanged,
-      [this]() {
+      this, &ThisClass::onCentralDisplayTargetShapeChanged);
 
-        const QGraphicsTargetShape * shape =
-            centralDisplay_->targetShape();
+  connect(centralDisplay_->targetShape(), &QGraphicsShape::visibleChanged,
+      this, &ThisClass::onCentralDisplayTargetShapeChanged);
 
-        const QPointF cp =
-            shape->mapToScene(shape->center());
-
-        mousepos_ctl->setText(qsprintf("Center: (%g %g)", cp.x(), cp.y()));
-      });
 
   //
   // Line shape
@@ -339,17 +303,54 @@ void MainWindow::setupShapeOptions()
 
 }
 
+void MainWindow::onCentralDisplayROIShapeChanged()
+{
+  QGraphicsRectShape *shape =
+      centralDisplay_->rectShape();
+
+  if( shape ) {
+
+    if( !shape->isVisible() ) {
+      shape_status_ctl->hide();
+      showRectShapeAction_->setChecked(false);
+    }
+    else {
+
+      const QRectF rc =
+          shape->sceneRect();
+
+      const QImagingCamera::sptr &currentCamera =
+          cameraControls_ctl->selectedCamera();
+
+      if( currentCamera ) {
+        currentCamera->setRoi(QRect(rc.x(), rc.y(),
+            rc.width(), rc.height()));
+      }
+
+      shape_status_ctl->setText(qsprintf("ROI: x= %g y= %g size= [%g x %g] center= (%g %g)",
+          rc.x(), rc.y(), rc.width(), rc.height(), rc.center().x(), rc.center().y()));
+
+      shape_status_ctl->show();
+      showRectShapeAction_->setChecked(true);
+
+      updateMeasurements();
+    }
+  }
+
+}
+
 void MainWindow::onCentralDisplayLineShapeChanged()
 {
   QGraphicsLineShape *shape =
       centralDisplay_->lineShape();
 
-  // XX1
   if( shape ) {
 
-    showLineShapeAction_->setChecked(shape->isVisible());
-
-    if( shape->isVisible() ) {
+    if( !shape->isVisible() ) {
+      shape_status_ctl->hide();
+      showLineShapeAction_->setChecked(false);
+    }
+    else {
 
       const QLineF line =
           shape->sceneLine();
@@ -359,8 +360,12 @@ void MainWindow::onCentralDisplayLineShapeChanged()
       const double length = hypot(p2.x() - p1.x(), p2.y() - p1.y());
       const double angle = atan2(p2.y() - p1.y(), p2.x() - p1.x());
 
-      mousepos_ctl->setText(qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-          p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+      shape_status_ctl->setText(
+          qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+              p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+
+      shape_status_ctl->show();
+      showLineShapeAction_->setChecked(true);
 
       if( is_visible(profileGraph_ctl_) ) {
 
@@ -370,6 +375,21 @@ void MainWindow::onCentralDisplayLineShapeChanged()
             centralDisplay_->currentImage());
       }
     }
+  }
+}
+
+void MainWindow::onCentralDisplayTargetShapeChanged()
+{
+  const QGraphicsTargetShape *shape = centralDisplay_->targetShape();
+  if( !shape->isVisible() ) {
+    shape_status_ctl->hide();
+    showTargetShapeAction_->setChecked(false);
+  }
+  else {
+    const QPointF cp = shape->mapToScene(shape->center());
+    shape_status_ctl->setText(qsprintf("Center: (%g %g)", cp.x(), cp.y()));
+    shape_status_ctl->show();
+    showTargetShapeAction_->setChecked(true);
   }
 }
 
@@ -455,7 +475,8 @@ void MainWindow::setupStatusbar()
   QStatusBar *sb = statusBar();
 
   sb->addWidget(show_log_ctl = new QToolButton());
-  sb->addWidget(mousepos_ctl = new QLabel(this));
+  sb->addWidget(shape_status_ctl = new QLabel(this));
+  sb->addWidget(mouse_status_ctl = new QLabel(this));
   sb->addPermanentWidget(exposure_status_ctl = new QLabel(this));
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
 

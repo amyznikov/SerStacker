@@ -51,7 +51,10 @@ protected Q_SLOTS:
   void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void updateMeasurements();
+  void onCentralDisplayROIShapeChanged();
   void onCentralDisplayLineShapeChanged();
+  void onCentralDisplayTargetShapeChanged();
+
 
 protected:
   void onSaveState(QSettings & settings) override;
@@ -80,7 +83,8 @@ protected:
 
 
   QToolButton * show_log_ctl = nullptr;
-  QLabel * mousepos_ctl = nullptr;
+  QLabel * shape_status_ctl = nullptr;
+  QLabel * mouse_status_ctl = nullptr;
   QLabel * capture_status_ctl = nullptr;
   QLabel * exposure_status_ctl = nullptr;
   QMenu displayOptionsMenu_;

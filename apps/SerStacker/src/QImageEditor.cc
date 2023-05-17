@@ -25,7 +25,7 @@ QImageEditor::QImageEditor(QWidget * parent) :
 
   scene()->setBackgroundBrush(Qt::darkGray);
 
-  createRoiRectShape();
+  createRoiShape();
 }
 
 QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction()
@@ -38,14 +38,14 @@ const QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction() const
   return &mtfDisplayFunction_;
 }
 
-QGraphicsRectShape * QImageEditor::roiRectShape() const
+QGraphicsRectShape * QImageEditor::roiShape() const
 {
-  return roiRectShape_;
+  return roiShape_;
 }
 
-void QImageEditor::createRoiRectShape()
+void QImageEditor::createRoiShape()
 {
-  if( !roiRectShape_ ) {
+  if( !roiShape_ ) {
 
     QRectF rect;
 
@@ -67,20 +67,20 @@ void QImageEditor::createRoiRectShape()
       }
     }
 
-    roiRectShape_ = new QGraphicsRectShape(rect);
-    roiRectShape_->setResizable(true);
-    roiRectShape_->setSnapToPixelGrid(true);
-    roiRectShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
-    roiRectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-    roiRectShape_->setCosmeticPen(Qt::red);
-    roiRectShape_->setVisible(false);
-    roiRectShape_->setFixOnSceneCenter(true);
+    roiShape_ = new QGraphicsRectShape(rect);
+    roiShape_->setResizable(true);
+    roiShape_->setSnapToPixelGrid(true);
+    roiShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
+    roiShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    roiShape_->setCosmeticPen(Qt::red);
+    roiShape_->setVisible(false);
+    roiShape_->setFixOnSceneCenter(true);
 
-    roiRectShape_->setToolTip("ROI rectangle:\n"
+    roiShape_->setToolTip("ROI rectangle:\n"
         "Shift + LeftMouseButton for move\n"
         "Ctrl + LeftMouseButton for resize\n");
 
-    scene_->addItem(roiRectShape_);
+    scene_->addItem(roiShape_);
   }
 
 }

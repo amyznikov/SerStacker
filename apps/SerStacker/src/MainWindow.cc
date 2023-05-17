@@ -535,8 +535,8 @@ void MainWindow::setupImageEditor()
           "Copy display image to clipboard (Ctrl+c)",
           "Copy display image to clipboard (Ctrl+c)",
           [this]() {
-            if ( imageEditor->roiRectShape()->isVisible() ) {
-              imageEditor->copyDisplayImageROIToClipboard(imageEditor->roiRectShape()->iSceneRect());
+            if ( imageEditor->roiShape()->isVisible() ) {
+              imageEditor->copyDisplayImageROIToClipboard(imageEditor->roiShape()->iSceneRect());
             }
             else {
               imageEditor->copyDisplayImageToClipboard();
@@ -1051,7 +1051,7 @@ void MainWindow::stupCloudViewer()
 
 void MainWindow::updateMeasurements()
 {
-  if( !QMeasureProvider::requested_measures().empty() && imageEditor->roiRectShape()->isVisible() ) {
+  if( !QMeasureProvider::requested_measures().empty() && imageEditor->roiShape()->isVisible() ) {
 
     QImageViewer::current_image_lock lock(imageEditor);
 
@@ -1059,7 +1059,7 @@ void MainWindow::updateMeasurements()
 
       QMeasureProvider::compute(imageEditor->currentImage(),
           imageEditor->currentMask(),
-          imageEditor->roiRectShape()->iSceneRect());
+          imageEditor->roiShape()->iSceneRect());
 
     }
   }
@@ -1073,7 +1073,7 @@ void MainWindow::setupRoiOptions()
 
   roiOptionsDialogBox_ =
       new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
-          imageEditor->roiRectShape(),
+          imageEditor->roiShape(),
           this);
 
   roiOptionsDialogBox_->loadParameters();
@@ -1090,7 +1090,7 @@ void MainWindow::setupRoiOptions()
       [this, action](bool visible) {
         action->setChecked(visible);
         if ( visible ) {
-          imageEditor->roiRectShape()->setVisible(true);
+          imageEditor->roiShape()->setVisible(true);
         }
       });
 
@@ -1100,11 +1100,11 @@ void MainWindow::setupRoiOptions()
 
   ///
 
-  connect(imageEditor->roiRectShape(), &QGraphicsShape::itemChanged,
+  connect(imageEditor->roiShape(), &QGraphicsShape::itemChanged,
       [this]() {
 
         QGraphicsRectShape * shape =
-            imageEditor->roiRectShape();
+            imageEditor->roiShape();
 
         const QRectF rc =
             shape->sceneRect();
@@ -1130,7 +1130,7 @@ void MainWindow::setupRoiOptions()
         updateMeasurements();
       });
 
-  connect(imageEditor->roiRectShape(), &QGraphicsShape::visibleChanged,
+  connect(imageEditor->roiShape(), &QGraphicsShape::visibleChanged,
       [this]() {
         if ( shapesLabel_ctl->isVisible() ) {
           shapesLabel_ctl->setVisible(false);
@@ -1148,7 +1148,7 @@ void MainWindow::setupRoiOptions()
             "ROI Rectangle",
             "Show / Hide ROI rectangle",
             [this](bool checked) {
-              imageEditor->roiRectShape()->setVisible(checked);
+              imageEditor->roiShape()->setVisible(checked);
             });
 
     toolbar->insertWidget(closeImageViewAction_,
@@ -1156,12 +1156,12 @@ void MainWindow::setupRoiOptions()
             createToolButtonWithPopupMenu(showRoiAction_,
                 &roiActionsMenu_));
 
-    connect(imageEditor->roiRectShape(), &QGraphicsObject::visibleChanged,
+    connect(imageEditor->roiShape(), &QGraphicsObject::visibleChanged,
         [this]() {
-          showRoiAction_->setChecked(imageEditor->roiRectShape()->isVisible());
+          showRoiAction_->setChecked(imageEditor->roiShape()->isVisible());
         });
 
-    showRoiAction_->setChecked(imageEditor->roiRectShape()->isVisible());
+    showRoiAction_->setChecked(imageEditor->roiShape()->isVisible());
   }
 
 }

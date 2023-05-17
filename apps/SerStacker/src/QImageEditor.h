@@ -28,14 +28,14 @@ public:
   QImageViewMtfDisplayFunction * mtfDisplayFunction();
   const QImageViewMtfDisplayFunction * mtfDisplayFunction() const;
 
-  QGraphicsRectShape * roiRectShape() const;
+  QGraphicsRectShape * roiShape() const;
 
 protected:
-  void createRoiRectShape();
+  void createRoiShape();
 
 protected:
   QImageViewMtfDisplayFunction mtfDisplayFunction_;
-  QGraphicsRectShape * roiRectShape_ = nullptr;
+  QGraphicsRectShape * roiShape_ = nullptr;
 };
 
 } /* namespace serstacker */

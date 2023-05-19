@@ -468,6 +468,11 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         ssa_compare(descs[0], cv::Rect(overlay_offset_, 0, images[0].cols - overlay_offset_, images[0].rows),
             descs[1], cv::Rect(0, 0, images[1].cols - overlay_offset_, images[1].rows),
             dst_image(cv::Rect(0, 0, images[0].cols - overlay_offset_, images[0].rows)));
+
+        cv::Mat1b m;
+
+        ssa_mask(descs[1][0], m);
+        dst_image.setTo(0, ~m);
       }
 
       if( mask.needed() && !mask.empty() ) {

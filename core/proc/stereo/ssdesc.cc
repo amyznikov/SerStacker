@@ -42,22 +42,36 @@ const int tbb_grain_size = 128;
 /*
  * https://en.wikipedia.org/wiki/Finite_difference_coefficient
  * */
-void compute_gradients(const cv::Mat & src, cv::Mat & g1, float delta = 128, int ddepth = CV_8U)
+void filter_image(const cv::Mat & src, cv::Mat3b & gl, cv::Mat3b & gr, cv::Mat1b & gx, cv::Mat1b & gy)
 {
-  std::vector<cv::Mat> gg(4);
 
-  static float k12[] = { -1, -1, 0, +1, +1 };
-  static const cv::Matx<float, 1, 5> K12 = cv::Matx<float, 1, 5>(k12) / 4.0;
+  static float kl[5] = {
+     0.25, 0.5, 1, 1, 0
+  };
+  static const cv::Matx<float, 1, 5> KL = cv::Matx<float, 1, 5>(kl) / 2.75;
 
-  static float k22[] = { 1,  1, -4, 1, 1 };
-  static const cv::Matx<float, 1, 5> K22 = cv::Matx<float, 1, 5>(k22) / 8.0;
+  static float kr[5] = {
+     0, 1, 1, 0.5, 0.25
+  };
+  static const cv::Matx<float, 1, 5> KR = cv::Matx<float, 1, 5>(kr) / 2.75;
 
-  cv::filter2D(src, gg[0], ddepth, K12, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
-  cv::filter2D(src, gg[1], ddepth, K12.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
-  cv::filter2D(src, gg[2], ddepth, K22, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
-  cv::filter2D(src, gg[3], ddepth, K22.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gl, CV_8U, KL, cv::Point(4, 0), 0, cv::BORDER_REPLICATE);
+  cv::filter2D(src, gr, CV_8U, KR, cv::Point(0, 0), 0, cv::BORDER_REPLICATE);
 
-  cv::merge(gg, g1);
+  cv::Mat g;
+  if ( src.channels() == 1 ) {
+    g = src;
+  }
+  else {
+    cv::cvtColor(src, g, cv::COLOR_BGR2GRAY);
+  }
+
+  static float kg[] = { -1, -1, 0, +1, +1 };
+  static const cv::Matx<float, 1, 5> KGx = cv::Matx<float, 1, 5>(kg) / 4.0;
+  static const cv::Matx<float, 5, 1> KGy = cv::Matx<float, 5, 1>(kg) / 4.0;
+
+  cv::filter2D(g, gx, CV_8U, KGx, cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  cv::filter2D(g, gy, CV_8U, KGy, cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
 
   //cv::absdiff(g1, cv::Scalar::all(128), g1);
 }
@@ -67,7 +81,7 @@ void compute_gradients(const cv::Mat & src, cv::Mat & g1, float delta = 128, int
 //  return a > b ? a - b : b - a;
 //}
 
-static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b, bool scmp)
+static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b)
 {
 //    uint8_t s = absdiff(a.arr[0], b.arr[0]);
 //    for( int i = 1; i < 8; ++i ) {
@@ -80,30 +94,33 @@ static inline uint8_t absdiff(const ssdesc & a, const ssdesc & b, bool scmp)
 
   const union {
     __m64 m;
-    uint8_t a[8];
+    uint8_t g[8];
   } u = {
       .m = _mm_sub_pi8(_mm_max_pu8(ma, mb), _mm_min_pu8(ma, mb))
   };
 
-  uint8_t s = u.a[0];
-  for( int i = 1; i < 4; ++i ) {
-    s = std::max(s, u.a[i]);
-  }
+  const uint16_t sl = (uint16_t) (u.g[0]) + (uint16_t) (u.g[1]) + (uint16_t) (u.g[2]);
+  const uint16_t sr = (uint16_t) (u.g[3]) + (uint16_t) (u.g[4]) + (uint16_t) (u.g[5]);
 
-  if ( scmp ) {
-    s = std::max(s, std::min(u.a[4], u.a[5]));
-    s = std::max(s, std::min(u.a[6], u.a[7]));
-  }
+//  uint8_t s = u.a[0];
+//  for( int i = 1; i < 4; ++i ) {
+//    s = std::max(s, u.a[i]);
+//  }
+//
+//  if ( scmp ) {
+//    s = std::max(s, std::min(u.a[4], u.a[5]));
+//    s = std::max(s, std::min(u.a[6], u.a[7]));
+//  }
 
-  return s;
+  return (uint8_t) (std::min((uint16_t) UINT8_MAX, std::min(sl, sr)));
 }
 
 static inline uint8_t absdiff(const ssdesc *const* a[/*scales*/],
     const ssdesc *const* b[/*scales*/], int xa, int xb, int y, int scales, uint8_t worst)
 {
-  uint8_t d = absdiff(a[0][y][xa], b[0][y][xb], true);
+  uint8_t d = absdiff(a[0][y][xa], b[0][y][xb]);
   for( int s = 1; s < scales; ++s ) {
-    if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb], false))) > worst ) {
+    if( (d = std::max(d, absdiff(a[s][y][xa], b[s][y][xb]))) > worst ) {
       break;
     }
   }
@@ -122,52 +139,46 @@ void ssa_pyramid(const cv::Mat & image,
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat s, l;
-  cv::Mat4b g;
+  cv::Mat3b src;
+  cv::Mat3b gl, gr;
+  cv::Mat1b gx, gy;
+
   std::vector<cv::Size> sizes;
 
-  if( image.channels() == 1 ) {
-    s = image;
-
-    CF_ERROR("ERROR: Color image required");
+  if( image.channels() != 3 ) {
+    CF_ERROR("ERROR: 3 channel color image required");
     return;
-
   }
   else {
     //cv::cvtColor(image, s, cv::COLOR_BGR2GRAY);
     //cv::cvtColor(s, s, cv::COLOR_GRAY2BGR);
-
-    cv::cvtColor(image, s, cv::COLOR_BGR2YCrCb);
+    //cv::cvtColor(image, s, cv::COLOR_BGR2YCrCb);
     //cv::cvtColor(image, s, cv::COLOR_BGR2Lab);
   }
 
   pyramid.clear();
   pyramid.resize(maxlevel + 1);
 
-  for( int scale = 0; scale <= maxlevel; ++scale) {
+  for( int scale = 0; scale <= maxlevel; ++scale ) {
 
-    {
-      INSTRUMENT_REGION("pyrDown");
-      if( scale > 0 ) {
-        cv::pyrDown(s, s);
-      }
-    }
-
-    sizes.emplace_back(s.size());
-
-    if ( s.channels() == 1 ) {
-      l = s;
+    if( scale == 0 ) {
+      src = image;
     }
     else {
-      cv::extractChannel(s,  l,  0);
+      cv::pyrDown(src, src);
     }
 
-    compute_gradients(l, g);
+    sizes.emplace_back(src.size());
+
+    filter_image(src, gl, gr, gx, gy);
 
     {
       INSTRUMENT_REGION("pyrUp");
       for( int upscale = scale - 1; upscale >= 0; --upscale ) {
-        cv::pyrUp(g, g, sizes[upscale]);
+        cv::pyrUp(gl, gl, sizes[upscale]);
+        cv::pyrUp(gr, gr, sizes[upscale]);
+        cv::pyrUp(gx, gx, sizes[upscale]);
+        cv::pyrUp(gy, gy, sizes[upscale]);
       }
     }
 
@@ -177,111 +188,70 @@ void ssa_pyramid(const cv::Mat & image,
     {
       INSTRUMENT_REGION("parallel_for");
 
-      const cv::Mat3b lab = s;
+      tbb::parallel_for(tbb_range(0, image.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
 
-    tbb::parallel_for(tbb_range(0, image.rows, tbb_grain_size),
-        [&](const tbb_range & r) {
+            const int width = src.cols;
+            constexpr uint8_t u128 = (uint8_t)128;
 
-          const int width = image.cols;
-          constexpr uint8_t u128 = (uint8_t)128;
+            for( int y = r.begin(); y < r.end(); ++y ) {
 
-          for( int y = r.begin(); y < r.end(); ++y ) {
+              ssdesc *ssp = ssa[y];
 
-            ssdesc *ssp = ssa[y];
+              if( (flags & sscmp_all) == sscmp_all ) {
 
-            if( (flags & sscmp_all) == sscmp_all ) {
+                for( int x = 0; x < width; ++x ) {
 
-              for( int x = 0; x < 2; ++x ) {
-                ssdesc & ss = ssp[x];
-                for ( int i = 0; i < 4; ++i ) {
-                  ss.g[i] = g[y][x][i];
+                  ssdesc & ss = ssp[x];
+
+                  ss.g[0] = gl[y][x][0];
+                  ss.g[1] = gl[y][x][1];
+                  ss.g[2] = gl[y][x][2];
+                  ss.g[3] = gr[y][x][0];
+                  ss.g[4] = gr[y][x][1];
+                  ss.g[5] = gr[y][x][2];
+                  ss.g[6] = gx[y][x];
+                  ss.g[7] = gy[y][x];
                 }
-                for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = u128;
-                }
+
               }
+              else {
 
-              for( int x = 2; x < width - 2; ++x ) {
+                memset(ssp, u128, sizeof(*ssp) * width);
 
-                ssdesc & ss = ssp[x];
+                for( int x = 0; x < width; ++x ) {
 
-                for ( int i = 0; i < 4; ++i ) {
-                  ss.g[i] = g[y][x][i];
+                  ssdesc & ss = ssp[x];
+
+                  if ( (flags & (1 << 0)) ) {
+                    ss.g[0] = gl[y][x][0];
+                  }
+                  if ( (flags & (1 << 1)) ) {
+                    ss.g[1] = gl[y][x][1];
+                  }
+                  if ( (flags & (1 << 2)) ) {
+                    ss.g[2] = gl[y][x][2];
+                  }
+                  if ( (flags & (1 << 3)) ) {
+                    ss.g[3] = gr[y][x][0];
+                  }
+                  if ( (flags & (1 << 4)) ) {
+                    ss.g[4] = gr[y][x][1];
+                  }
+                  if ( (flags & (1 << 5)) ) {
+                    ss.g[5] = gr[y][x][2];
+                  }
+                  if ( (flags & (1 << 6)) ) {
+                    ss.g[6] = gx[y][x];
+                  }
+                  if ( (flags & (1 << 7)) ) {
+                    ss.g[7] = gy[y][x];
+                  }
                 }
 
-                ss.g[4] = ((lab[y][x-2][0]) + (lab[y][x-1][0]))>>1;
-                ss.g[5] = ((lab[y][x+2][0]) + (lab[y][x+1][0]))>>1;
-
-                ss.g[6] = ((lab[y][x-2][2]>>1) + (lab[y][x-1][2]>>1));
-                ss.g[7] = ((lab[y][x+2][2]>>1) + (lab[y][x+1][2]>>1));
-              }
-
-              for( int x = width - 2 ; x < width; ++x ) {
-                ssdesc & ss = ssp[x];
-                for ( int i = 0; i < 4; ++i ) {
-                  ss.g[i] = g[y][x][i];
-                }
-                for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = u128;
-                }
               }
             }
-            else {
-
-              memset(ssp, u128, sizeof(*ssp) * width);
-
-              for( int x = 0; x < 2; ++x ) {
-                ssdesc & ss = ssp[x];
-                for ( int i = 0; i < 4; ++i ) {
-                  if ( flags & (1<< i) ) {
-                    ss.g[i] = g[y][x][i];
-                  }
-                }
-                for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = u128;
-                }
-              }
-
-
-              for( int x = 2; x < width - 2; ++x ) {
-
-                ssdesc & ss = ssp[x];
-
-                for ( int i = 0; i < 4; ++i ) {
-                  if ( flags & (1<< i) ) {
-                    ss.g[i] = g[y][x][i];
-                  }
-                }
-
-                if ( flags & (1 << 4) ) {
-                  ss.g[4] = ((lab[y][x-2][0]) + (lab[y][x-1][0]))>>1;
-                }
-                if ( flags & (1 << 5) ) {
-                  ss.g[5] = ((lab[y][x+2][0]) + (lab[y][x+1][0]))>>1;
-                }
-                if ( flags & (1 << 6) ) {
-                  ss.g[6] = ((lab[y][x-2][2]) + (lab[y][x-1][2]))>>1;
-                }
-                if ( flags & (1 << 7) ) {
-                  ss.g[7] = ((lab[y][x+2][2]) + (lab[y][x+1][2]))>>1;
-                }
-              }
-
-              for( int x = width - 2 ; x < width; ++x ) {
-                ssdesc & ss = ssp[x];
-                for ( int i = 0; i < 4; ++i ) {
-                  if ( flags & (1 << i) ) {
-                    ss.g[i] = g[y][x][i];
-                  }
-                }
-                for ( int i = 4; i < 8; ++i ) {
-                  ss.g[i] = u128;
-                }
-              }
-
-            }
-          }
-        });
+          });
     }
   }
 
@@ -320,7 +290,7 @@ void ssa_pyramid(const cv::Mat & image,
     }
 
     sizes.emplace_back(s.size());
-    compute_gradients(s, gpyr[0][scale], gpyr[1][scale]);
+    filter_image(s, gpyr[0][scale], gpyr[1][scale]);
   }
 
   for( int scale = 0; scale <= maxlevel; ++scale) {
@@ -416,7 +386,7 @@ void ssa_pyramid(const cv::Mat & image,
   for( int scale = 0; scale <= maxlevel; ++scale, r <<= 1 ) {
 
     cv::stackBlur(s, sb, cv::Size(2 * r + 1, 2 * r + 1));
-    compute_gradients(sb, g[0], g[1], scale + 1);
+    filter_image(sb, g[0], g[1], scale + 1);
 
     c_ssarray &ssa = pyramid[scale];
     ssa.create(image.size());
@@ -511,41 +481,27 @@ void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags)
   }
 }
 
-//
-//void ssa_compare(const c_ssarray & ssa1, const cv::Rect & rc1,
-//    const c_ssarray & ssa2, const cv::Rect & rc2,
-//    cv::OutputArray dists)
-//{
-//  if ( rc1.width != rc2.width ) {
-//    CF_ERROR("ERROR: ROI WIDTH NOT MATCH");
-//    return;
-//  }
-//
-//  if ( rc1.height != rc2.height ) {
-//    CF_ERROR("ERROR: ROI HEIGHT NOT MATCH");
-//    return;
-//  }
-//
-//
-//  if( dists.empty() || dists.size() != rc1.size() || dists.type() != CV_32FC1 ) {
-//    dists.create(rc1.size(), CV_32FC1);
-//  }
-//
-//  cv::Mat1f distances =
-//      dists.getMatRef();
-//
-//  for( int y = 0; y < rc1.height; ++y ) {
-//
-//    const ssdesc *ssp1 = ssa1[y + rc1.y];
-//    const ssdesc *ssp2 = ssa2[y + rc2.y];
-//
-//    for( int x = 0; x < rc1.width; ++x ) {
-//      distances[y][x] =
-//          absdiff(ssp1[x + rc1.x], ssp2[x + rc2.x]);
-//    }
-//  }
-//}
+static inline uint8_t absv(uint8_t v)
+{
+  constexpr uint8_t u128 = (uint8_t) 128;
+  return v >= u128 ? v - u128 : 128 - v;
+}
 
+void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask)
+{
+  output_mask.create(ssa.size());
+
+  for( int y = 0; y < output_mask.rows; ++y ) {
+
+    const ssdesc *ssp = ssa[y];
+
+    for( int x = 0; x < output_mask.cols; ++x ) {
+
+      const ssdesc &ss = ssp[x];
+      output_mask[y][x] = absv(ss.g[6]) > 3 ? 255 : 0;
+    }
+  }
+}
 
 void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
     const std::vector<c_ssarray> & ssa2, const cv::Rect & rc2,
@@ -579,13 +535,12 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
 
       uint8_t d =
           absdiff(ssa1[0][y + rc1.y][x + rc1.x],
-              ssa2[0][y + rc2.y][x + rc2.x],
-              true);
+              ssa2[0][y + rc2.y][x + rc2.x]);
 
       for( int l = 1; l < lmax; ++l ) {
 
         d = std::max(d, absdiff(ssa1[l][(y + rc1.y) ][(x + rc1.x)],
-            ssa2[l][(y + rc2.y) ][(x + rc2.x)], false));
+            ssa2[l][(y + rc2.y) ][(x + rc2.x)]));
       }
 
       distances[y][x] = d;

@@ -419,13 +419,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
       for( int x = 0; x < texture_map.cols; ++x ) {
 
         const ssdesc &ss = ssp[x];
-
-        uint8_t maxv = absv(ss.g[0]);
-        for( int i = 1; i < 4; ++i ) {
-          maxv = std::max(maxv, absv(ss.g[i]));
-        }
-
-        texture_map[y][x] = maxv;
+        texture_map[y][x] = absv(ss.g[6]);// + absv(ss.g[7]);
       }
     }
 

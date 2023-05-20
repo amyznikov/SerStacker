@@ -103,6 +103,11 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
 bool is_corrupted_asi_frame(const cv::Mat & bayer_planes);
 
 
+/**
+ *
+ */
+bool bayer_denoise(cv::Mat & bayer_image,
+    double k);
 
 
 #endif /* __debayer_h__ */

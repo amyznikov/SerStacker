@@ -1625,3 +1625,244 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+void c_bayer_average::set_bayer_pattern(COLORID colorid)
+{
+  colorid_ = colorid;
+  if ( !accumulator_.size().empty() ) {
+    generate_bayer_pattern_mask();
+  }
+}
+
+COLORID c_bayer_average::bayer_pattern() const
+{
+  return colorid_;
+}
+
+void c_bayer_average::set_remap(const cv::Mat2f & rmap)
+{
+  rmap_ = rmap;
+}
+
+const cv::Mat2f & c_bayer_average::remap() const
+{
+  return rmap_ ;
+}
+
+bool c_bayer_average::initialze(const cv::Size & image_size, int /*acctype*/, int /*weightstype*/)
+{
+  accumulator_.create(image_size);
+  counter_.create(image_size);
+
+  accumulator_.setTo(0);
+  counter_.setTo(0);
+
+  accumulated_frames_ = 0;
+
+  generate_bayer_pattern_mask();
+
+  return true;
+}
+
+
+
+template<class B>
+static void bayer_accumulate(cv::InputArray bb, cv::Mat3f & a, cv::Mat3f & c,
+    const cv::Mat2f & rmap,
+    const cv::Mat1b & bm)
+{
+  typedef tbb::blocked_range<int> range;
+
+  const cv::Mat_<B> b = bb.getMat();
+
+  tbb::parallel_for(range(0, a.rows, 128),
+      [&](const range & r) {
+
+        const int nx = a.cols;
+        const int ny = a.rows;
+
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+
+          const cv::Vec2f *rmp = rmap[y];
+
+          for( int x = 0; x < nx; ++x ) {
+
+            const cv::Vec2f &p = rmp[x];
+
+            const int src_x = cvRound(p[0]);
+            const int src_y = cvRound(p[1]);
+            //const int src_x = p[0];
+            //const int src_y = p[1];
+
+            if( src_x >= 0 && src_x < b.cols && src_y >= 0 && src_y < b.rows ) {
+
+              // color channel
+              const int cc = bm[src_y][src_x];
+              a[y][x][cc] += b[src_y][src_x];
+              c[y][x][cc]++;
+            }
+          }
+        }
+  });
+
+}
+
+bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
+{
+  const cv::Mat src_bayer = src.getMat();
+
+  switch (src_bayer.type()) {
+    case CV_8UC1:
+      bayer_accumulate<uint8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    case CV_8SC1:
+      bayer_accumulate<int8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    case CV_16UC1:
+      bayer_accumulate<uint16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    case CV_16SC1:
+      bayer_accumulate<int16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    case CV_32SC1:
+      bayer_accumulate<int32_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    case CV_32FC1:
+      bayer_accumulate<float>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    case CV_64FC1:
+      bayer_accumulate<double>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      break;
+    default:
+      break;
+  }
+
+  ++accumulated_frames_;
+
+  return true;
+}
+
+bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+{
+  if( accumulated_frames_ < 1 ) {
+    return false;
+  }
+
+  cv::Mat3f img(accumulator_.size(), 0.f);
+
+  for( int y = 0; y < img.rows; ++y ) {
+
+    for( int x = 0; x < img.cols; ++x ) {
+
+      for( int c = 0; c < 3; ++c ) {
+
+        if( counter_[y][x][c] < 1 ) {
+          img[y][x][c] = 0;
+        }
+        else {
+          img[y][x][c] = accumulator_[y][x][c] / counter_[y][x][c];
+        }
+      }
+    }
+  }
+
+  avg.move(img);
+
+  return true;
+}
+
+void c_bayer_average::release()
+{
+  accumulator_.release();
+  counter_.release();
+  rmap_.release();
+  bayer_pattern_.release();
+}
+
+
+cv::Size c_bayer_average::accumulator_size() const
+{
+  return accumulator_.size();
+}
+
+const cv::Mat & c_bayer_average::accumulator() const
+{
+  return accumulator_;
+}
+
+const cv::Mat & c_bayer_average::counter() const
+{
+  return counter_;
+}
+
+void c_bayer_average::generate_bayer_pattern_mask()
+{
+  bayer_pattern_.create(accumulator_.size());
+
+  switch (colorid_) {
+    case COLORID_BAYER_RGGB:
+      /*
+       * R G
+       * G B
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_R;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_B;
+        }
+      }
+      break;
+
+
+    case COLORID_BAYER_GRBG:
+      /*
+       * G R
+       * B G
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_R;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_B;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_G;
+        }
+      }
+      break;
+    case COLORID_BAYER_GBRG:
+      /*
+       * G B
+       * R G
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_B;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_R;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_G;
+        }
+      }
+      break;
+    case COLORID_BAYER_BGGR:
+      /*
+       * B G
+       * G R
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_B;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_R;
+        }
+      }
+      break;
+    default:
+      break;
+  }
+
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

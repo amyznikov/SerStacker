@@ -41,22 +41,27 @@ const c_enum_member * members_of<roi_selection_method>()
 }
 
 template<>
-const c_enum_member * members_of<frame_accumulation_method>()
+const c_enum_member* members_of<frame_accumulation_method>()
 {
   static constexpr c_enum_member members[] = {
 
-      { frame_accumulation_weighted_average, "weighted_average",
-          "Simple weighted average with weights proportional to the smoothed sum of squared laplacian and gradient" },
+    { frame_accumulation_weighted_average, "weighted_average",
+        "Simple weighted average with weights proportional to the smoothed sum of squared laplacian and gradient" },
 
-      { frame_accumulation_focus_stack, "focus_stack",
-          "Focus stacking based on paper of Wang and Chang 2011"},
+    { frame_accumulation_bayer_average, "bayer_average",
+        "Experimental code for bayer pattern average" },
 
-      { frame_accumulation_fft, "fft",
-          "Stupid experiments with fft-based stacking "},
+    { frame_accumulation_focus_stack, "focus_stack",
+        "Focus stacking based on paper of Wang and Chang 2011" },
 
-      { frame_accumulation_none, "None", },
-      { frame_accumulation_none, nullptr, },
+    { frame_accumulation_fft, "fft",
+        "Stupid experiments with fft-based stacking " },
+
+    { frame_accumulation_none, "None", },
+
+    { frame_accumulation_none, nullptr, },
   };
+
   return members;
 }
 
@@ -405,6 +410,8 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation()
     return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(accumulation_options_.fs_));
   case frame_accumulation_fft :
     return c_frame_accumulation::ptr(new c_frame_accumulation_with_fft());
+  case frame_accumulation_bayer_average :
+    return c_frame_accumulation::ptr(new c_bayer_average());
   default :
     break;
   }
@@ -1854,8 +1861,25 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     if ( frame_accumulation_ ) {
 
-      if ( true ) {
+      if( c_bayer_average *bayer_average = dynamic_cast<c_bayer_average*>(frame_accumulation_.get()) ) {
+
         lock_guard lock(accumulator_lock_);
+
+        if( bayer_average->accumulated_frames() < 1 ) {
+          bayer_average->set_bayer_pattern(raw_bayer_colorid_);
+          bayer_average->initialze(raw_bayer_image_.size());
+        }
+
+        bayer_average->set_remap(frame_registration_->current_remap());
+        bayer_average->add(raw_bayer_image_, cv::noArray());
+
+      }
+      else {
+
+        lock_guard lock(accumulator_lock_);
+
+        //frame_accumulation_bayer_average
+
 
         if( frame_accumulation_->accumulated_frames() < 1 ) {
 
@@ -2028,7 +2052,29 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
   else {
 
     const DEBAYER_ALGORITHM algo =
-        input_options_.debayer_method; // default_debayer_algorithm();
+        input_options_.debayer_method;
+
+    if ( accumulation_options_.accumulation_method == frame_accumulation_bayer_average ) {
+
+      raw_bayer_colorid_ =
+          input_sequence->colorid();
+
+      if( output_image.depth() == CV_32F ) {
+        output_image.copyTo(raw_bayer_image_);
+      }
+      else {
+        output_image.convertTo(raw_bayer_image_, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+      }
+
+      if( input_options_.filter_bad_pixels && input_options_.hot_pixels_variation_threshold > 0 ) {
+        if( !bayer_denoise(raw_bayer_image_, input_options_.hot_pixels_variation_threshold) ) {
+          CF_ERROR("bayer_denoise() fails");
+          return false;
+        }
+      }
+    }
+
 
     switch (algo) {
 

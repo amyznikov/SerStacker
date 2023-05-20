@@ -33,6 +33,7 @@ enum frame_accumulation_method {
   frame_accumulation_weighted_average = 0,
   frame_accumulation_focus_stack,
   frame_accumulation_fft,
+  frame_accumulation_bayer_average,
 };
 
 enum frame_upscale_stage {
@@ -78,7 +79,7 @@ struct c_input_options
   bool enable_color_maxtrix = false;
 
   enum anscombe_method anscombe = anscombe_none;
-  double hot_pixels_variation_threshold = 6;
+  double hot_pixels_variation_threshold = 15;
 
   int start_frame_index = 0;
   int max_input_frames = 0;
@@ -378,6 +379,9 @@ protected:
   cv::Mat missing_pixel_mask_;
   cv::Mat selected_master_frame_;
   cv::Mat selected_master_frame_mask_;
+
+  mutable cv::Mat raw_bayer_image_;
+  mutable COLORID raw_bayer_colorid_ = COLORID_UNKNOWN;
 
   c_anscombe_transform anscombe_;
   c_roi_selection::ptr roi_selection_;

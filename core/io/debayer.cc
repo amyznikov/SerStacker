@@ -44,7 +44,6 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
       {DEBAYER_EA,    "EA",     "DEBAYER_EA: OpenCV EA (edge aware) interpolation with cv::demosaicing()"},
       {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
       {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer but create colored bayer matrix image"},
-      {DEBAYER_NN2,"NN2", "DEBAYER_NN2: test"},
 
       {DEBAYER_NN, nullptr, } // must  be last
   };
@@ -1952,3 +1951,87 @@ bool is_corrupted_asi_frame(const cv::Mat & image)
 
   return false;
 }
+
+template<class T>
+static bool bayer_denoise_(cv::Mat & bayer_image, double k)
+{
+  cv::Mat_<T> src_image = bayer_image;
+
+  cv::Mat_<cv::Vec<T, 4>> planes_image;
+  cv::Mat_<cv::Vec<T, 4>> median_image;
+  cv::Mat_<cv::Vec<T, 4>> variation_image;
+  cv::Mat_<cv::Vec<T, 4>> mean_variation_image;
+
+  static const cv::Matx33f SE(
+      1. / 8, 1. / 8, 1. / 8,
+      1. / 8, 0.0, 1. / 8,
+      1. / 8, 1. / 8, 1. / 8);
+
+  const double minimal_mean_variation_for_very_smooth_images =
+      src_image.depth() >= CV_32F ? 1e-3 : 1;
+
+  planes_image.create(src_image.rows / 2, src_image.cols / 2);
+
+  for( int y = 0; y < src_image.rows / 2; ++y ) {
+    for( int x = 0; x < src_image.cols / 2; ++x ) {
+      planes_image[y][x][0] = src_image[2 * y + 0][2 * x + 0];
+      planes_image[y][x][1] = src_image[2 * y + 0][2 * x + 1];
+      planes_image[y][x][2] = src_image[2 * y + 1][2 * x + 0];
+      planes_image[y][x][3] = src_image[2 * y + 1][2 * x + 1];
+    }
+  }
+
+  cv::medianBlur(planes_image, median_image, 3);
+
+  cv::absdiff(planes_image, median_image, variation_image);
+  cv::filter2D(variation_image, mean_variation_image, -1, SE * k, cv::Point(-1, -1),
+      minimal_mean_variation_for_very_smooth_images);
+
+  for( int y = 0; y < src_image.rows / 2; ++y ) {
+    for( int x = 0; x < src_image.cols / 2; ++x ) {
+
+      if( variation_image[y][x][0] > mean_variation_image[y][x][0] ) {
+        src_image[2 * y + 0][2 * x + 0] = median_image[y][x][0];
+      }
+      if( variation_image[y][x][1] > mean_variation_image[y][x][1] ) {
+        src_image[2 * y + 0][2 * x + 1] = median_image[y][x][1];
+      }
+      if( variation_image[y][x][2] > mean_variation_image[y][x][2] ) {
+        src_image[2 * y + 1][2 * x + 0] = median_image[y][x][2];
+      }
+      if( variation_image[y][x][3] > mean_variation_image[y][x][3] ) {
+        src_image[2 * y + 1][2 * x + 1] = median_image[y][x][3];
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ *
+ */
+bool bayer_denoise(cv::Mat & bayer_image, double k)
+{
+  switch (bayer_image.depth()) {
+    case CV_8U:
+      return bayer_denoise_<uint8_t>(bayer_image, k);
+    case CV_8S:
+      return bayer_denoise_<int8_t>(bayer_image, k);
+    case CV_16U:
+      return bayer_denoise_<uint16_t>(bayer_image, k);
+    case CV_16S:
+      return bayer_denoise_<int16_t>(bayer_image, k);
+    case CV_32S:
+      return bayer_denoise_<int32_t>(bayer_image, k);
+    case CV_32F:
+      return bayer_denoise_<float>(bayer_image, k);
+    case CV_64F:
+      return bayer_denoise_<double>(bayer_image, k);
+  }
+
+  CF_ERROR("APP BUG: Unexpected bayer_image.depth()=%d", bayer_image.depth());
+
+  return false;
+}
+

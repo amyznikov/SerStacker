@@ -985,8 +985,6 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 
   if ( weights.empty() || weights.type() == CV_8UC1 ) {
 
-    CF_DEBUG("weights.empty()=%d weights.type()=%d", weights.empty(), weights.type());
-
     cv::add(accumulator_, src, accumulator_, weights, accumulator_.type());
     cv::add(counter_, cv::Scalar::all(1), counter_, weights, counter_.type());
   }
@@ -1666,72 +1664,201 @@ bool c_bayer_average::initialze(const cv::Size & image_size, int /*acctype*/, in
 
 
 
-template<class B>
-static void bayer_accumulate(cv::InputArray bb, cv::Mat3f & a, cv::Mat3f & c,
+template<class BT>
+static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
-    const cv::Mat1b & bm)
+    const cv::Mat1b & bayer_pattern,
+    const cv::Mat & weigths)
 {
   typedef tbb::blocked_range<int> range;
+  constexpr int tbb_grain_size = 128;
 
-  const cv::Mat_<B> b = bb.getMat();
+  const cv::Mat_<BT> src = bayer_image.getMat();
 
-  tbb::parallel_for(range(0, a.rows, 128),
-      [&](const range & r) {
+  if( rmap.empty() ) {
 
-        const int nx = a.cols;
-        const int ny = a.rows;
+    if( weigths.empty() ) {
 
-        for ( int y = r.begin(); y < r.end(); ++y ) {
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
 
-          const cv::Vec2f *rmp = rmap[y];
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              for( int x = 0; x < acc.cols; ++x ) {
+                // color channel for update
+                const int cc = bayer_pattern[y][x];
+                acc[y][x][cc] += src[y][x];
+                cntr[y][x][cc] += 1;
+            }
+          }
+        });
 
-          for( int x = 0; x < nx; ++x ) {
+    }
+    else if( weigths.type() == CV_8UC1 ) {
 
-            const cv::Vec2f &p = rmp[x];
+      const cv::Mat1b &w = weigths;
 
-            const int src_x = cvRound(p[0]);
-            const int src_y = cvRound(p[1]);
-            //const int src_x = p[0];
-            //const int src_y = p[1];
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
 
-            if( src_x >= 0 && src_x < b.cols && src_y >= 0 && src_y < b.rows ) {
-
-              // color channel
-              const int cc = bm[src_y][src_x];
-              a[y][x][cc] += b[src_y][src_x];
-              c[y][x][cc]++;
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              for( int x = 0; x < acc.cols; ++x ) {
+                if ( w[y][x] ) {
+                  // color channel for update
+                const int cc = bayer_pattern[y][x];
+                acc[y][x][cc] += src[y][x];
+                cntr[y][x][cc] += 1;
             }
           }
         }
-  });
+      });
+
+    }
+    else if( weigths.type() == CV_32FC1 ) {
+
+      const cv::Mat1f &w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              for( int x = 0; x < acc.cols; ++x ) {
+                // color channel for update
+                const int cc = bayer_pattern[y][x];
+                acc[y][x][cc] += src[y][x] * w[y][x];
+                cntr[y][x][cc] += w[y][x];
+            }
+          }
+        });
+
+    }
+
+  }
+  else {
+
+    static const auto interpolate =
+        [](int x, int y, const cv::Vec2f & p, const cv::Mat_<BT> & src, cv::Mat3f & acc, cv::Mat3f & cntr,
+            const cv::Mat1b & bayer_pattern, float w) {
+
+              const int src_x = (int)(p[0]);
+              const int src_y = (int)(p[1]);
+
+              if( src_x >= 0 && src_x < src.cols - 1 && src_y >= 0 && src_y < src.rows - 1 ) {
+
+                // select color channels and pixel weights for update
+
+                const float ax = (src_x + 1 - p[0]);// occupied x side on [src_x] pixel
+                const float ay = (src_y + 1 - p[1]);// occupied y side on [src_y] pixel
+                const float bx = (p[0] - src_x);// occupied x side on [src_x+1] pixel
+                const float by = (p[1] - src_y);// occupied y side on [src_y+1] pixel
+
+
+                const float s00 = ax * ay * w;
+                const int c00 = bayer_pattern[src_y + 0][src_x + 0];
+                acc[y][x][c00] += src[src_y + 0][src_x + 0] * s00;
+                cntr[y][x][c00] += s00;
+
+
+                const float s01 = bx * ay * w;
+                const int c01 = bayer_pattern[src_y + 0][src_x + 1];
+                acc[y][x][c01] += src[src_y + 0][src_x + 1] * s01;
+                cntr[y][x][c01] += s01;
+
+
+                const float s10 = ax * by * w;
+                const int c10 = bayer_pattern[src_y + 1][src_x + 0];
+                acc[y][x][c10] += src[src_y + 1][src_x + 0] * s10;
+                cntr[y][x][c10] += s10;
+
+
+                const float s11 = bx * by * w;
+                const int c11 = bayer_pattern[src_y + 1][src_x + 1];
+                acc[y][x][c11] += src[src_y + 1][src_x + 1] * s11;
+                cntr[y][x][c11] += s11;
+              }
+        };
+
+    if( weigths.empty() ) {
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+
+              const cv::Vec2f *rmp = rmap[y];
+
+              for( int x = 0; x < acc.cols; ++x ) {
+                interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1);
+              }
+            }
+          });
+    }
+    else if( weigths.type() == CV_8UC1 ) {
+
+      const cv::Mat1b w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              const cv::Vec2f *rmp = rmap[y];
+              for( int x = 0; x < acc.cols; ++x ) {
+                if ( w[y][x] ) {
+                  interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1);
+                }
+              }
+            }
+          });
+
+    }
+    else if( weigths.type() == CV_32FC1 ) {
+
+      const cv::Mat1f w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              const cv::Vec2f *rmp = rmap[y];
+              for( int x = 0; x < acc.cols; ++x ) {
+                interpolate1f(x, y, rmp[x], src, acc, cntr, bayer_pattern, w[y][x]);
+              }
+            }
+          });
+
+    }
+
+
+  }
 
 }
 
 bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
 {
-  const cv::Mat src_bayer = src.getMat();
+  const cv::Mat src_bayer =
+      src.getMat();
+
+  const cv::Mat w =
+      weights.getMat();
 
   switch (src_bayer.type()) {
     case CV_8UC1:
-      bayer_accumulate<uint8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<uint8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     case CV_8SC1:
-      bayer_accumulate<int8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<int8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     case CV_16UC1:
-      bayer_accumulate<uint16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<uint16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     case CV_16SC1:
-      bayer_accumulate<int16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<int16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     case CV_32SC1:
-      bayer_accumulate<int32_t>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<int32_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     case CV_32FC1:
-      bayer_accumulate<float>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<float>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     case CV_64FC1:
-      bayer_accumulate<double>(src, accumulator_, counter_, rmap_, bayer_pattern_);
+      bayer_accumulate<double>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
       break;
     default:
       break;
@@ -1756,11 +1883,11 @@ bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double 
 
       for( int c = 0; c < 3; ++c ) {
 
-        if( counter_[y][x][c] < 1 ) {
-          img[y][x][c] = 0;
+        if( counter_[y][x][c] > 0 ) {
+          img[y][x][c] = accumulator_[y][x][c] / counter_[y][x][c];
         }
         else {
-          img[y][x][c] = accumulator_[y][x][c] / counter_[y][x][c];
+          img[y][x][c] = 0;
         }
       }
     }

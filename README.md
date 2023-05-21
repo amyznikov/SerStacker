@@ -13,29 +13,41 @@ Jovian rotation captured at 2022-10-21 19:30 UTC with Arsenal-GSO N305/1200 f/4,
 
 https://user-images.githubusercontent.com/1285263/197896096-c0db0918-69b4-436a-8746-0a7f94ff5705.mov
 
+======
+
 
 Montes Alpes and Mare Frigoris.
+
 ![MontesAlpes](./debug/MontesAlpes.2021-09-26-2327_8-CapObj-32F.jpg)
 
 
-Compare jovian images captured with two different tubes, processed and derotated with SerStacker.
+======
 
-![compare-scopes](./debug/jovian-derotation/compare-scopes.jpg)
+Bayer Average stacking example.
+
+![M51.01s.20230512_205951_GMT.Arsenal-GSO.png](./debug/bayer-average/M51.01s.20230512_205951_GMT.Arsenal-GSO.png)
+
+
+======
 
 Test for microphotography focus stacking using simple weighted average of input frames. The pixel weights were computed as `W(x,y) = (6 * laplacian(x,y) ^2 +  gradient(x,y)^2) ^ 2` and smoothed using gaussian blur to get rid of potential discontinuites. The left pane is raw input from microscope with manually driven focus, the right is incremental average with some contrast and sharpenning enhacement.
 
 https://user-images.githubusercontent.com/1285263/214982057-40cfd789-abfb-456f-b039-4115a8ff66d1.mov
 
+======
 
 
 SerImager Screen Shoot.
 
 ![SerImager](./debug/SerImager1.png)
 
+======
+
 SerStacker Screen Shoot.
 
 ![SerStacker](./debug/SerStacker1.png)
 
+======
 
 Examples of stacked images on my flickr account : 
   https://www.flickr.com/photos/116211323@N02/.

@@ -25,6 +25,8 @@ Montes Alpes and Mare Frigoris.
 
 Bayer Average stacking example.
 
+Average of 2000 aligned bayer patterns of 1 sec exposure each. 
+
 ![M51.01s.20230512_205951_GMT.Arsenal-GSO.png](./debug/bayer-average/M51.01s.20230512_205951_GMT.Arsenal-GSO.png)
 
 

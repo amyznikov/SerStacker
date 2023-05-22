@@ -1818,7 +1818,7 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
             for ( int y = r.begin(); y < r.end(); ++y ) {
               const cv::Vec2f *rmp = rmap[y];
               for( int x = 0; x < acc.cols; ++x ) {
-                interpolate1f(x, y, rmp[x], src, acc, cntr, bayer_pattern, w[y][x]);
+                interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, w[y][x]);
               }
             }
           });

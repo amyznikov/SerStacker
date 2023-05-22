@@ -9,6 +9,7 @@
 #define __c_frame_stacking_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/io/debayer.h>
 
 class c_frame_accumulation
 {
@@ -138,5 +139,48 @@ protected:
   int border_right_ = 0;
 };
 
+
+class c_bayer_average :
+    public c_frame_accumulation
+{
+public:
+  typedef c_bayer_average this_class;
+  typedef c_frame_accumulation base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  enum BAYER_COLOR_ID {
+    BAYER_B = 0,
+    BAYER_G = 1,
+    BAYER_R = 2,
+  };
+
+
+  void set_bayer_pattern(COLORID colorid);
+  COLORID bayer_pattern() const;
+
+  void set_remap(const cv::Mat2f & rmap);
+  const cv::Mat2f & remap() const;
+
+  bool initialze(const cv::Size & image_size, int acctype = -1, int weightstype = 1) override;
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
+  void release() override;
+  cv::Size accumulator_size() const override;
+
+  const cv::Mat & accumulator() const;
+  const cv::Mat & counter() const;
+
+protected:
+  void generate_bayer_pattern_mask();
+
+protected:
+  cv::Mat1b bayer_pattern_;
+  cv::Mat3f accumulator_;
+  cv::Mat3f counter_;
+  cv::Mat2f rmap_;
+  COLORID colorid_ = COLORID_UNKNOWN;
+
+
+};
 
 #endif /* __c_frame_stacking_h__ */

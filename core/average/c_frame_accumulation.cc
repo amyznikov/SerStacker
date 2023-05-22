@@ -985,8 +985,6 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 
   if ( weights.empty() || weights.type() == CV_8UC1 ) {
 
-    CF_DEBUG("weights.empty()=%d weights.type()=%d", weights.empty(), weights.type());
-
     cv::add(accumulator_, src, accumulator_, weights, accumulator_.type());
     cv::add(counter_, cv::Scalar::all(1), counter_, weights, counter_.type());
   }
@@ -1625,3 +1623,373 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+void c_bayer_average::set_bayer_pattern(COLORID colorid)
+{
+  colorid_ = colorid;
+  if ( !accumulator_.size().empty() ) {
+    generate_bayer_pattern_mask();
+  }
+}
+
+COLORID c_bayer_average::bayer_pattern() const
+{
+  return colorid_;
+}
+
+void c_bayer_average::set_remap(const cv::Mat2f & rmap)
+{
+  rmap_ = rmap;
+}
+
+const cv::Mat2f & c_bayer_average::remap() const
+{
+  return rmap_ ;
+}
+
+bool c_bayer_average::initialze(const cv::Size & image_size, int /*acctype*/, int /*weightstype*/)
+{
+  accumulator_.create(image_size);
+  counter_.create(image_size);
+
+  accumulator_.setTo(0);
+  counter_.setTo(0);
+
+  accumulated_frames_ = 0;
+
+  generate_bayer_pattern_mask();
+
+  return true;
+}
+
+
+
+template<class BT>
+static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+    const cv::Mat2f & rmap,
+    const cv::Mat1b & bayer_pattern,
+    const cv::Mat & weigths)
+{
+  typedef tbb::blocked_range<int> range;
+  constexpr int tbb_grain_size = 128;
+
+  const cv::Mat_<BT> src = bayer_image.getMat();
+
+  if( rmap.empty() ) {
+
+    if( weigths.empty() ) {
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              for( int x = 0; x < acc.cols; ++x ) {
+                // color channel for update
+                const int cc = bayer_pattern[y][x];
+                acc[y][x][cc] += src[y][x];
+                cntr[y][x][cc] += 1;
+            }
+          }
+        });
+
+    }
+    else if( weigths.type() == CV_8UC1 ) {
+
+      const cv::Mat1b &w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              for( int x = 0; x < acc.cols; ++x ) {
+                if ( w[y][x] ) {
+                  // color channel for update
+                const int cc = bayer_pattern[y][x];
+                acc[y][x][cc] += src[y][x];
+                cntr[y][x][cc] += 1;
+            }
+          }
+        }
+      });
+
+    }
+    else if( weigths.type() == CV_32FC1 ) {
+
+      const cv::Mat1f &w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              for( int x = 0; x < acc.cols; ++x ) {
+                // color channel for update
+                const int cc = bayer_pattern[y][x];
+                acc[y][x][cc] += src[y][x] * w[y][x];
+                cntr[y][x][cc] += w[y][x];
+            }
+          }
+        });
+
+    }
+
+  }
+  else {
+
+    static const auto interpolate =
+        [](int x, int y, const cv::Vec2f & p, const cv::Mat_<BT> & src, cv::Mat3f & acc, cv::Mat3f & cntr,
+            const cv::Mat1b & bayer_pattern, float w) {
+
+              const int src_x = (int)(p[0]);
+              const int src_y = (int)(p[1]);
+
+              if( src_x >= 0 && src_x < src.cols - 1 && src_y >= 0 && src_y < src.rows - 1 ) {
+
+                // select color channels and pixel weights for update
+
+                const float ax = (src_x + 1 - p[0]);// occupied x side on [src_x] pixel
+                const float ay = (src_y + 1 - p[1]);// occupied y side on [src_y] pixel
+                const float bx = (p[0] - src_x);// occupied x side on [src_x+1] pixel
+                const float by = (p[1] - src_y);// occupied y side on [src_y+1] pixel
+
+
+                const float s00 = ax * ay * w;
+                const int c00 = bayer_pattern[src_y + 0][src_x + 0];
+                acc[y][x][c00] += src[src_y + 0][src_x + 0] * s00;
+                cntr[y][x][c00] += s00;
+
+
+                const float s01 = bx * ay * w;
+                const int c01 = bayer_pattern[src_y + 0][src_x + 1];
+                acc[y][x][c01] += src[src_y + 0][src_x + 1] * s01;
+                cntr[y][x][c01] += s01;
+
+
+                const float s10 = ax * by * w;
+                const int c10 = bayer_pattern[src_y + 1][src_x + 0];
+                acc[y][x][c10] += src[src_y + 1][src_x + 0] * s10;
+                cntr[y][x][c10] += s10;
+
+
+                const float s11 = bx * by * w;
+                const int c11 = bayer_pattern[src_y + 1][src_x + 1];
+                acc[y][x][c11] += src[src_y + 1][src_x + 1] * s11;
+                cntr[y][x][c11] += s11;
+              }
+        };
+
+    if( weigths.empty() ) {
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+
+              const cv::Vec2f *rmp = rmap[y];
+
+              for( int x = 0; x < acc.cols; ++x ) {
+                interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1);
+              }
+            }
+          });
+    }
+    else if( weigths.type() == CV_8UC1 ) {
+
+      const cv::Mat1b w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              const cv::Vec2f *rmp = rmap[y];
+              for( int x = 0; x < acc.cols; ++x ) {
+                if ( w[y][x] ) {
+                  interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1);
+                }
+              }
+            }
+          });
+
+    }
+    else if( weigths.type() == CV_32FC1 ) {
+
+      const cv::Mat1f w = weigths;
+
+      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
+          [&](const range & r) {
+            for ( int y = r.begin(); y < r.end(); ++y ) {
+              const cv::Vec2f *rmp = rmap[y];
+              for( int x = 0; x < acc.cols; ++x ) {
+                interpolate1f(x, y, rmp[x], src, acc, cntr, bayer_pattern, w[y][x]);
+              }
+            }
+          });
+
+    }
+
+
+  }
+
+}
+
+bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
+{
+  const cv::Mat src_bayer =
+      src.getMat();
+
+  const cv::Mat w =
+      weights.getMat();
+
+  switch (src_bayer.type()) {
+    case CV_8UC1:
+      bayer_accumulate<uint8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    case CV_8SC1:
+      bayer_accumulate<int8_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    case CV_16UC1:
+      bayer_accumulate<uint16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    case CV_16SC1:
+      bayer_accumulate<int16_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    case CV_32SC1:
+      bayer_accumulate<int32_t>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    case CV_32FC1:
+      bayer_accumulate<float>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    case CV_64FC1:
+      bayer_accumulate<double>(src, accumulator_, counter_, rmap_, bayer_pattern_, w);
+      break;
+    default:
+      break;
+  }
+
+  ++accumulated_frames_;
+
+  return true;
+}
+
+bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+{
+  if( accumulated_frames_ < 1 ) {
+    return false;
+  }
+
+  cv::Mat3f img(accumulator_.size(), 0.f);
+
+  for( int y = 0; y < img.rows; ++y ) {
+
+    for( int x = 0; x < img.cols; ++x ) {
+
+      for( int c = 0; c < 3; ++c ) {
+
+        if( counter_[y][x][c] > 0 ) {
+          img[y][x][c] = accumulator_[y][x][c] / counter_[y][x][c];
+        }
+        else {
+          img[y][x][c] = 0;
+        }
+      }
+    }
+  }
+
+  avg.move(img);
+
+  return true;
+}
+
+void c_bayer_average::release()
+{
+  accumulator_.release();
+  counter_.release();
+  rmap_.release();
+  bayer_pattern_.release();
+}
+
+
+cv::Size c_bayer_average::accumulator_size() const
+{
+  return accumulator_.size();
+}
+
+const cv::Mat & c_bayer_average::accumulator() const
+{
+  return accumulator_;
+}
+
+const cv::Mat & c_bayer_average::counter() const
+{
+  return counter_;
+}
+
+void c_bayer_average::generate_bayer_pattern_mask()
+{
+  bayer_pattern_.create(accumulator_.size());
+
+  switch (colorid_) {
+    case COLORID_BAYER_RGGB:
+      /*
+       * R G
+       * G B
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_R;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_B;
+        }
+      }
+      break;
+
+
+    case COLORID_BAYER_GRBG:
+      /*
+       * G R
+       * B G
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_R;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_B;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_G;
+        }
+      }
+      break;
+    case COLORID_BAYER_GBRG:
+      /*
+       * G B
+       * R G
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_B;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_R;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_G;
+        }
+      }
+      break;
+    case COLORID_BAYER_BGGR:
+      /*
+       * B G
+       * G R
+       * */
+      for ( int y = 0; y < bayer_pattern_.rows/2; ++y ) {
+        for ( int x = 0; x < bayer_pattern_.cols/2; ++x ) {
+          bayer_pattern_[2 * y + 0][2 * x + 0] = BAYER_B;
+          bayer_pattern_[2 * y + 0][2 * x + 1] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 0] = BAYER_G;
+          bayer_pattern_[2 * y + 1][2 * x + 1] = BAYER_R;
+        }
+      }
+      break;
+    default:
+      break;
+  }
+
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

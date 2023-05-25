@@ -257,16 +257,6 @@ int c_sweepscan_stereo_matcher::max_disparity() const
   return max_disparity_;
 }
 
-void c_sweepscan_stereo_matcher::set_ssflags(int v)
-{
-  ss_flags_ = v;
-}
-
-int c_sweepscan_stereo_matcher::ssflags() const
-{
-  return ss_flags_;
-}
-
 void c_sweepscan_stereo_matcher::set_enable_reverse_checks(bool v)
 {
   enable_reverse_checks_ = v;
@@ -398,220 +388,51 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
 
   std::vector<c_ssarray> descs[2];
   cv::Mat1w disps, errs;
-  cv::Mat1b texture_map;
+  //cv::Mat1b texture_map;
   cv::Mat1b texture_mask;
 
   for( int i = 0; i < 2; ++i ) {
-    ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
+    ssa_pyramid(images[i], descs[i], ss_maxlvl_);
   }
-
 
   {
     INSTRUMENT_REGION("texture_map");
     const c_ssarray &rdesc = descs[1][0];
 
-    texture_map.create(rdesc.size());
-
-    for( int y = 0; y < texture_map.rows; ++y ) {
-
-      const ssdesc *ssp = rdesc[y];
-
-      for( int x = 0; x < texture_map.cols; ++x ) {
-
-        const ssdesc &ss = ssp[x];
-        texture_map[y][x] = absv(ss.g[6]);// + absv(ss.g[7]);
-      }
-    }
-
-    cv::compare(texture_map, 3, texture_mask, cv::CMP_GT);
-
-    if ( output_type_ == OutputTextureMap ) {
-      outputImage = texture_map;
-      if( outputMask ) {
-        *outputMask = texture_mask;
-      }
+    if( output_type_ == OutputTextureMap ) {
+      cv::Mat1b texture_map;
+      ssa_texture(rdesc, texture_map);
+      outputImage = std::move(texture_map);
       return true;
     }
 
-    if ( output_type_ == OutputTextureMask ) {
+    ssa_mask(rdesc, texture_mask);
+
+    if( output_type_ == OutputTextureMask ) {
       texture_mask.copyTo(outputImage);
       if( outputMask ) {
         *outputMask = texture_mask;
       }
       return true;
     }
-
   }
 
-  {
-    INSTRUMENT_REGION("ssa_match");
-    ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask, enable_reverse_checks_);
-  }
+  ssa_match(descs[0], descs[1], max_disparity_, disps, errs,
+      texture_mask,
+      enable_reverse_checks_);
 
   switch (output_type_) {
-    case OutputTextureMap:
-      outputImage.release();
-      if( outputMask ) {
-        outputMask->release();
-      }
-      break;
-
-    case OutputTextureMask:
-      outputImage.release();
-      if( outputMask ) {
-        outputMask->release();
-      }
-      break;
-
     case OutputDisparityMap:
-      outputImage = disps;
+      outputImage = std::move(disps);
       break;
 
     case OutputErrorMap:
-      outputImage = errs;
+      outputImage = std::move(errs);
       break;
   }
 
   return true;
 }
-
-//
-//bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArray currentMask,
-//    cv::InputArray referenceImage, cv::InputArray referenceMask,
-//    cv::Mat & outputImage, cv::Mat1b * outputMask)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  ////////////
-//
-//  if( currentImage.size() != referenceImage.size() ) {
-//    CF_ERROR("current (%dx%d) and reference (%dx%d) image sizes not match",
-//        currentImage.cols(), currentImage.rows(),
-//        referenceImage.cols(), referenceImage.rows());
-//    return false;
-//  }
-//
-//  if( currentImage.type() != referenceImage.type() ) {
-//    CF_ERROR("current (%d) and reference (%d) image types not match",
-//        currentImage.type(), referenceImage.type());
-//    return false;
-//  }
-//
-//  if( !debug_directory_.empty() && !create_path(debug_directory_) ) {
-//    CF_ERROR("create_path(debug_direcory_='%s') fails: %s",
-//        debug_directory_.c_str(), strerror(errno));
-//    return false;
-//  }
-//
-//
-//  const cv::Mat images[2] = {
-//      currentImage.getMat(),
-//      referenceImage.getMat()
-//  };
-//
-//  cv::Mat texture_map;
-//  cv::Mat1b texture_mask;
-//
-//  if( lpg_.k() >= 0 ) {
-//
-//    INSTRUMENT_REGION("LPG");
-//
-//    lpg_.create_map(images[1], texture_map);
-//    if( texture_map.channels() > 1 ) {
-//      reduce_color_channels(texture_map, texture_map, cv::REDUCE_MAX);
-//    }
-//
-//    cv::compare(texture_map, get_triangle_threshold(texture_map),
-//        texture_mask,
-//        cv::CMP_GT);
-//  }
-//
-//  if( output_type_ == OutputTextureMap ) {
-//
-//    if( !texture_map.empty() ) {
-//      outputImage = texture_map;
-//    }
-//    else {
-//      outputImage.create(images[1].size(), CV_32F);
-//      outputImage.setTo(0);
-//    }
-//
-//    if( outputMask ) {
-//      if( !texture_mask.empty() ) {
-//        *outputMask = texture_mask;
-//      }
-//      else {
-//        outputMask->release();
-//      }
-//    }
-//
-//    return true;
-//  }
-//
-//  if( output_type_ == OutputTextureMask ) {
-//
-//    if( !texture_mask.empty() ) {
-//      outputImage = texture_mask;
-//    }
-//    else {
-//      outputImage.create(images[1].size(), CV_8UC1);
-//      outputImage.setTo(255);
-//    }
-//
-//    if( outputMask ) {
-//      if( !texture_mask.empty() ) {
-//        *outputMask = texture_mask;
-//      }
-//      else {
-//        outputMask->release();
-//      }
-//    }
-//
-//    return true;
-//  }
-//
-//
-//  std::vector<c_ssarray> descs[2];
-//  cv::Mat1w disps, errs;
-//
-//  {
-//    INSTRUMENT_REGION("ssa_pyramid");
-//    for( int i = 0; i < 2; ++i ) {
-//      ssa_pyramid(images[i], descs[i], ss_maxlvl_, ss_flags_);
-//    }
-//  }
-//
-//  {
-//    INSTRUMENT_REGION("ssa_match");
-//    ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask);
-//  }
-//
-//  switch (output_type_) {
-//    case OutputTextureMap:
-//      outputImage.release();
-//      if( outputMask ) {
-//        outputMask->release();
-//      }
-//      break;
-//
-//    case OutputTextureMask:
-//      outputImage.release();
-//      if( outputMask ) {
-//        outputMask->release();
-//      }
-//      break;
-//
-//    case OutputDisparityMap:
-//      outputImage = disps;
-//      break;
-//
-//    case OutputErrorMap:
-//      outputImage = errs;
-//      break;
-//  }
-//
-//  return true;
-//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

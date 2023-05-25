@@ -37,9 +37,6 @@ public:
   void set_max_disparity(int v);
   int max_disparity() const;
 
-  void set_ssflags(int v);
-  int ssflags() const;
-
   void set_enable_reverse_checks(bool v);
   bool enable_reverse_checks() const;
 
@@ -79,7 +76,6 @@ protected:
   double ss_sigma_ = 2;
   int ss_radius_ = 0;
   int ss_maxlvl_ = 3;
-  int ss_flags_ = sscmp_all;
   bool enable_reverse_checks_ = false;
 
   int max_disparity_ = 128;

@@ -34,9 +34,6 @@ public:
   void set_ss_radius(int v);
   int ss_radius() const;
 
-  void set_ssflags(int v);
-  int ssflags() const;
-
   void set_max_scale(int v);
   int max_scale() const;
 

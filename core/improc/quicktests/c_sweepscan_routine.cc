@@ -34,16 +34,6 @@ void c_sweepscan_routine::set_max_scale(int v)
   return sm_.set_max_scale(v);
 }
 
-void c_sweepscan_routine::set_ssflags(int v)
-{
-  return sm_.set_ssflags(v);
-}
-
-int c_sweepscan_routine::ssflags() const
-{
-  return sm_.ssflags();
-}
-
 void c_sweepscan_routine::set_enable_reverse_checks(bool v)
 {
   return sm_.set_enable_reverse_checks(v);
@@ -136,7 +126,6 @@ void c_sweepscan_routine::get_parameters(std::vector<struct c_image_processor_ro
   ADD_IMAGE_PROCESSOR_CTRL(ctls, max_disparity, "max_disparity");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
-  ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, ssflags, "ssflags", sscmpflags, "ssflags");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_reverse_checks, "enable_reverse_check");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, max_scale, "max_scale");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, kernel_sigma, "kernel_sigma");
@@ -152,7 +141,6 @@ bool c_sweepscan_routine::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_PROPERTY(settings, save, *this, output_type);
     SERIALIZE_PROPERTY(settings, save, *this, max_disparity);
-    SERIALIZE_PROPERTY(settings, save, *this, ssflags);
     SERIALIZE_PROPERTY(settings, save, *this, enable_reverse_checks);
     SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
     SERIALIZE_PROPERTY(settings, save, *this, ss_radius);

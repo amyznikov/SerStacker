@@ -370,18 +370,18 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> pdescs[2];
       cv::Mat desc_images[2];
 
-      ssa_pyramid(left_image, pdescs[0], ss_maxlvl_, ss_flags_);
-      ssa_pyramid(right_image, pdescs[1], ss_maxlvl_, ss_flags_);
+      ssa_pyramid(left_image, pdescs[0], ss_maxlvl_);
+      ssa_pyramid(right_image, pdescs[1], ss_maxlvl_);
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
       cv::Mat &dst = image.getMatRef();
 
       for( int i = 0; i < 2; ++i ) {
         if( swap_frames_ == SwapFramesAfterRectification ) {
-          ssa_cvtfp32(pdescs[!i].back(), desc_images[i], ss_flags_);
+          ssa_cvtfp32(pdescs[!i].back(), desc_images[i]);
         }
         else {
-          ssa_cvtfp32(pdescs[i].back(), desc_images[i], ss_flags_);
+          ssa_cvtfp32(pdescs[i].back(), desc_images[i]);
         }
 
         //cv::resize(desc_images[i], dst(roi[i]), roi[i].size(), 0, 0, cv::INTER_AREA);
@@ -402,15 +402,15 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> descs[2];
       cv::Mat desc_images[2];
 
-      ssa_pyramid(left_image, descs[0], ss_maxlvl_, ss_flags_);
-      ssa_pyramid(right_image, descs[1], ss_maxlvl_, ss_flags_);
+      ssa_pyramid(left_image, descs[0], ss_maxlvl_);
+      ssa_pyramid(right_image, descs[1], ss_maxlvl_);
 
       for( int i = 0; i < 2; ++i ) {
         if( swap_frames_ == SwapFramesAfterRectification ) {
-          ssa_cvtfp32(descs[!i].back(), desc_images[i], ss_flags_);
+          ssa_cvtfp32(descs[!i].back(), desc_images[i]);
         }
         else {
-          ssa_cvtfp32(descs[i].back(), desc_images[i], ss_flags_);
+          ssa_cvtfp32(descs[i].back(), desc_images[i]);
         }
         // xx
         //cv::resize(desc_images[i], desc_images[i], roi[i].size(), 0, 0, cv::INTER_AREA);
@@ -442,7 +442,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         INSTRUMENT_REGION("ssa_pyramid");
 
         for ( int i = 0; i < 2; ++i ) {
-          ssa_pyramid(src_images[i], descs[i], ss_maxlvl_, ss_flags_);
+          ssa_pyramid(src_images[i], descs[i], ss_maxlvl_);
         }
       }
 
@@ -469,10 +469,9 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
             descs[1], cv::Rect(0, 0, images[1].cols - overlay_offset_, images[1].rows),
             dst_image(cv::Rect(0, 0, images[0].cols - overlay_offset_, images[0].rows)));
 
-        cv::Mat1b m;
-
-        ssa_mask(descs[1][0], m);
-        dst_image.setTo(0, ~m);
+        //cv::Mat1b m;
+        //ssa_mask(descs[1][0], m);
+        //dst_image.setTo(0, ~m);
       }
 
       if( mask.needed() && !mask.empty() ) {

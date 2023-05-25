@@ -30,7 +30,6 @@ endif ()
 
 message(STATUS "Detected architecture: ${APP_ARCH}")
 
-
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 

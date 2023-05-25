@@ -111,16 +111,6 @@ public:
     return overlay_offset_;
   }
 
-  void set_ss_flags(int v)
-  {
-    ss_flags_ = v;
-  }
-
-  int ss_flags() const
-  {
-    return ss_flags_;
-  }
-
   void set_ss_sigma(double v)
   {
     ss_sigma_ = v;
@@ -161,7 +151,6 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_maxlvl, "ss_maxlvl");
-    ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, ss_flags, "ssflags", sscmpflags, "ssflags");
     ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
   }
 
@@ -177,7 +166,6 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
-      SERIALIZE_PROPERTY(settings, save, *this, ss_flags);
       SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
       SERIALIZE_PROPERTY(settings, save, *this, ss_radius);
       SERIALIZE_PROPERTY(settings, save, *this, ss_maxlvl);
@@ -198,7 +186,6 @@ protected:
   OverlayMode overlay_mode_ = OverlayNone;
   SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
-  int ss_flags_ = sscmp_all;
   double ss_sigma_ = 2;
   int ss_radius_ = 0;
   int ss_maxlvl_ = 4;

@@ -12,27 +12,28 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/array2d.h>
 
-enum sscmpflags
-{
-  sscmp_g00  = 0x01,
-  sscmp_g01  = 0x02,
-  sscmp_g02  = 0x04,
-  sscmp_g03  = 0x08,
-  sscmp_g04  = 0x10,
-  sscmp_g05  = 0x20,
-  sscmp_g06  = 0x40,
-  sscmp_g07  = 0x80,
+//enum sscmpflags
+//{
+//  sscmp_g00  = 0x01,
+//  sscmp_g01  = 0x02,
+//  sscmp_g02  = 0x04,
+//  sscmp_g03  = 0x08,
+//  sscmp_g04  = 0x10,
+//  sscmp_g05  = 0x20,
+//  sscmp_g06  = 0x40,
+//  sscmp_g07  = 0x80,
+//
+//  sscmp_all = 0xFF
+//};
+//
 
-  sscmp_all = 0xFF
-};
-
-
-#pragma pack(push, 1)
+#pragma pack(push, 8)
 struct ssdesc
 {
+  // 512 bit (64 bytes) in total
   union {
-    uint64_t u64;
-    uint8_t  g[8];
+    uint8_t  g[64];
+    uint64_t u64[8];
   };
 };
 #pragma pack(pop)
@@ -66,12 +67,12 @@ public :
 
 void ssa_pyramid(const cv::Mat & image,
     std::vector<c_ssarray> & pyramid,
-    int maxlevel,
-    int flags = sscmp_all);
+    int maxlevel);
 
 
-void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output, int flags);
+void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output);
 
+void ssa_texture(const c_ssarray & ssa, cv::Mat1b & output_image);
 void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask);
 
 void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,

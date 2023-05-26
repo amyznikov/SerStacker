@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qdisplayvideowriter">
+	<file>icons/video-start.png</file>
+	<file>icons/video-stop1.png</file>
+	<file>icons/video-stop2.png</file>
+	<file>icons/dark/video-options.png</file>
+	<file>icons/light/video-options.png</file>
+</qresource>
+</RCC>

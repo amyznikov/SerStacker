@@ -1399,6 +1399,11 @@ bool c_ffmpeg_writer::write(const cv::Mat image, int64_t pts)
   return fOk;
 }
 
+const std::string & c_ffmpeg_writer::filename() const
+{
+  return output_filename_;
+}
+
 
 int c_ffmpeg_writer::encode_and_send_frame(AVFrame * picture)
 {

@@ -148,6 +148,8 @@ public:
   ///@brief write framw with pts in stream time_base units
   bool write(const cv::Mat frame, int64_t pts);
 
+  const std::string & filename() const;
+
   ///@brief access to stream time_base units to allow caller to precompute pts from it's real timestamp
   const AVStream * stream() const;
 

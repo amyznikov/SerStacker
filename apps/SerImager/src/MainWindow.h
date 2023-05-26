@@ -14,6 +14,7 @@
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShapeSettings.h>
 #include <gui/qgraphicsshape/QGraphicsLineShapeSettings.h>
+#include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include "camera/QImagingCameraControlsWidget.h"
 #include "QLivePipeline.h"
@@ -44,9 +45,11 @@ protected:
   void setupShapeOptions();
   void setupLivePipelineControls();
   void setupIndigoFocuser();
+  void setupDisplayImageVideoWriter();
 
 protected Q_SLOTS:
   void onCurrentImageChanged();
+  void onCurrentDisplayImageChanged();
   void onCameraWriterStatusUpdate();
   void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
@@ -124,6 +127,11 @@ protected:
   QIndigoFocuserWidget * indigoFocuser_ = nullptr;
   QCustomDockWidget * indigoFocuserDock_ = nullptr;
 #endif // HAVE_INDIGO
+
+
+  QDisplayVideoWriter diplayImageWriter_;
+  QToolButton* displayImageVideoWriterToolButton_ = nullptr;
+
 };
 
 } /* namespace serimager */

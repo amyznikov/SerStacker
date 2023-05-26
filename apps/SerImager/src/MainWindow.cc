@@ -68,11 +68,16 @@ MainWindow::MainWindow(QWidget * parent) :
   setupMainToolbar();
   setupStatusbar();
   setupProfileGraph();
+  setupDisplayImageVideoWriter();
 
   restoreState();
 
   connect(centralDisplay_, &QImageViewer::currentImageChanged,
       this, &ThisClass::onCurrentImageChanged);
+
+  connect(centralDisplay_, &QImageViewer::displayImageChanged,
+      this, &ThisClass::onCurrentDisplayImageChanged);
+
 
   connect(centralDisplay_, &QLiveDisplay::onMouseMove,
       [this](QMouseEvent * e) {
@@ -627,6 +632,7 @@ void MainWindow::onCurrentImageChanged()
   updateMeasurements();
 }
 
+
 void MainWindow::updateMeasurements()
 {
   if( is_visible(profileGraph_ctl_) ) {
@@ -644,6 +650,19 @@ void MainWindow::updateMeasurements()
     QMeasureProvider::compute(centralDisplay_->currentImage(),
         centralDisplay_->currentMask(),
         centralDisplay_->rectShape()->iSceneRect());
+  }
+}
+
+void MainWindow::onCurrentDisplayImageChanged()
+{
+  if ( diplayImageWriter_.started() ) {
+
+    if ( !centralDisplay_->isVisible() ) {
+      diplayImageWriter_.stop();
+    }
+    else if ( !centralDisplay_->displayImage().empty() ) {
+      diplayImageWriter_.write(centralDisplay_->displayImage());
+    }
   }
 }
 
@@ -690,6 +709,14 @@ void MainWindow::setupIndigoFocuser()
   }
 #endif // HAVE_INDIGO
 }
+
+void MainWindow::setupDisplayImageVideoWriter()
+{
+  diplayImageWriter_.loadParameters();
+  manToolbar_->addWidget(displayImageVideoWriterToolButton_ =
+      createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
+}
+
 
 void MainWindow::onShowLiveThreadSettingsActionTriggered(bool checked)
 {

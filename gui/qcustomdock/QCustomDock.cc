@@ -173,8 +173,8 @@ QToolButton* QCustomDockTitleBar::addButton(QToolButton * button)
   }
 
   button->setFocusPolicy(Qt::NoFocus);
-  layout_->insertWidget(1, button, 1, Qt::AlignRight);
-  //tb_->insertWidget(separator_, button);
+
+  layout_->insertWidget(layout_->indexOf(title_) + 1, button, 1, Qt::AlignRight);
 
   return button;
 }
@@ -194,7 +194,7 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
       button->setCheckable(action->isCheckable());
       button->setChecked(action->isChecked());
       button->setDefaultAction(action);
-      layout_->insertWidget(1, button, 1, Qt::AlignRight);
+      layout_->insertWidget(layout_->indexOf(title_) + 1, button, 1, Qt::AlignRight);
       //tb_->insertWidget(separator_, button);
     }
     else {
@@ -215,7 +215,7 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
       button->setEnabled(action->isEnabled());
       button->setIcon(action->icon());
 
-      layout_->insertWidget(1, button, 1, Qt::AlignRight);
+      layout_->insertWidget(layout_->indexOf(title_) + 1, button, 1, Qt::AlignRight);
       //tb_->insertWidget(separator_, button);
 
       connect(button, &QToolButton::triggered,
@@ -251,7 +251,7 @@ QToolButton * QCustomDockTitleBar::addButton(const QString & icon, const QString
 
 void QCustomDockTitleBar::addWidget(QWidget * w)
 {
-  layout_->insertWidget(1, w, 1, Qt::AlignRight);
+  layout_->insertWidget(layout_->indexOf(title_) + 1, w, 1, Qt::AlignRight);
 }
 
 QSize QCustomDockTitleBar::minimumSizeHint() const

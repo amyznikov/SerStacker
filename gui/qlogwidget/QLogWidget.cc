@@ -6,11 +6,18 @@
  */
 
 #include "QLogWidget.h"
+#include <gui/widgets/style.h>
 #include <core/debug.h>
+
+#define ICON_log          ":/qlog/icons/log.png"
+#define ICON_clear        ":/qlog/icons/clear.png"
+
 
 QLogWidget::QLogWidget(QWidget * parent) :
   Base(parent)
 {
+  Q_INIT_RESOURCE(qlog_resources);
+
   QVBoxLayout * vbox =
       new QVBoxLayout(this);
 
@@ -79,3 +86,29 @@ void QLogWidget::onAppendText(const QString & msg)
     }
   }
 }
+
+
+QLogWidgetDock::QLogWidgetDock(const QString & title, QWidget * parent, QLogWidget * log) :
+    Base(title, parent, log)
+{
+  Q_INIT_RESOURCE(qlog_resources);
+
+  QCustomDockTitleBar *bar = titleBar();
+
+  bar->setWindowIcon(getIcon(ICON_log));
+
+  toggleViewAction()->setIcon(getIcon(ICON_log));
+
+  if( log ) {
+
+    bar->addButton(buttonClear_ctl = new QToolButton(this));
+    buttonClear_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    buttonClear_ctl->setIcon(getIcon(ICON_clear));
+    buttonClear_ctl->setText("clear");
+    buttonClear_ctl->setToolTip("Clear log");
+    connect(buttonClear_ctl, &QToolButton::clicked,
+        log, &QLogWidget::clear);
+  }
+
+}
+

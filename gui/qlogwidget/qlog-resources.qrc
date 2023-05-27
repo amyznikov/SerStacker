@@ -2,5 +2,7 @@
 <qresource prefix="/qlog">
 	<file>icons/light/log.png</file>
 	<file>icons/dark/log.png</file>
+	<file>icons/light/clear.png</file>
+	<file>icons/dark/clear.png</file>
 </qresource>
 </RCC>

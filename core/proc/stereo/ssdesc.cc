@@ -426,17 +426,48 @@ void ssa_match(const std::vector<c_ssarray> & current_descs,
                 }
               }
 
+//              const int XXR = 350;
+//              const int YYR = 153;
+//
+//              if ( xr == XXR && y == YYR ) {
+//                CF_DEBUG("enable_checks=%d", enable_checks);
+//
+//              }
+
               if ( !enable_checks ) {
                 disp[y][xr] = best_xc - xr;
                 cost[y][xr] = best_score;
               }
-              else  if ( (imatch[best_xc].rx <= 0) ) {
+              else if ( (imatch[best_xc].rx < 0) ) {
+
+//                if ( xr == XXR && y == YYR ) {
+//                  CF_DEBUG("H: y=%d xr=%d best_xc=%d imatch[best_xc].rx=%d \n"
+//                      "best_score=%u, imatch[best_xc].score=%u\n"
+//                      "disp[y][imatch[best_xc].rx]=%u\n"
+//                      "cost[y][imatch[best_xc].rx]=%u\n",
+//                      y, xr, best_xc, imatch[best_xc].rx,
+//                      best_score, imatch[best_xc].score,
+//                      disp[y][imatch[best_xc].rx],
+//                      cost[y][imatch[best_xc].rx]);
+//                }
+
                 disp[y][xr] = best_xc - xr;
                 cost[y][xr] = best_score;
                 imatch[best_xc].score = best_score;
                 imatch[best_xc].rx = xr;
               }
               else if ((best_score < imatch[best_xc].score)) {
+
+//                if ( xr == XXR && y == YYR ) {
+//                  CF_DEBUG("H: y=%d xr=%d best_xc=%d imatch[best_xc].rx=%d \n"
+//                      "best_score=%u, imatch[best_xc].score=%u\n"
+//                      "disp[y][imatch[best_xc].rx]=%u\n"
+//                      "cost[y][imatch[best_xc].rx]=%u\n",
+//                      y, xr, best_xc, imatch[best_xc].rx,
+//                      best_score, imatch[best_xc].score,
+//                      disp[y][imatch[best_xc].rx],
+//                      cost[y][imatch[best_xc].rx]);
+//                }
 
                 disp[y][imatch[best_xc].rx] = 0;
                 cost[y][imatch[best_xc].rx] = 0;
@@ -445,6 +476,18 @@ void ssa_match(const std::vector<c_ssarray> & current_descs,
                 cost[y][xr] = best_score;
                 imatch[best_xc].score = best_score;
                 imatch[best_xc].rx = xr;
+              }
+              else {
+//                if ( xr == XXR && y == YYR ) {
+//                  CF_DEBUG("UNEXPECTED CASE: y=%d xr=%d best_xc=%d imatch[best_xc].rx=%d \n"
+//                      "best_score=%u, imatch[best_xc].score=%u\n"
+//                      "disp[y][imatch[best_xc].rx]=%u\n"
+//                      "cost[y][imatch[best_xc].rx]=%u\n",
+//                      y, xr, best_xc, imatch[best_xc].rx,
+//                      best_score, imatch[best_xc].score,
+//                      disp[y][imatch[best_xc].rx],
+//                      cost[y][imatch[best_xc].rx]);
+//                }
               }
             }
           }

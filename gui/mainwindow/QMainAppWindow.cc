@@ -7,7 +7,7 @@
 
 #include "QMainAppWindow.h"
 
-#define ICON_log                  ":/qlog/icons/log.png"
+//#define ICON_log                  ":/qlog/icons/log.png"
 #define ICON_histogram            ":/qmtf/icons/histogram_small.png"
 #define ICON_display              ":/qimproc/icons/display.png"
 #define ICON_process              ":/qimproc/icons/process.png"
@@ -115,17 +115,17 @@ void QMainAppWindow::setupStatusbar()
 void QMainAppWindow::setupLogWidget()
 {
   logWidgetDock_ =
-      addCustomDock(this,
+      addDock<QLogWidgetDock>(this,
           Qt::BottomDockWidgetArea,
           "logwidgetDock_",
           "Debug log",
           logWidget_ctl = new QLogWidget(this),
           menuView_);
 
-  logWidgetDock_->titleBar()->setWindowIcon(getIcon(ICON_log));
+  //logWidgetDock_->titleBar()->setWindowIcon(getIcon(ICON_log));
 
   showLogWidgetAction_ = logWidgetDock_->toggleViewAction();
-  showLogWidgetAction_->setIcon(getIcon(ICON_log));
+  //showLogWidgetAction_->setIcon(getIcon(ICON_log));
 
   connect(logWidgetDock_, &QDockWidget::visibilityChanged,
       this, &ThisClass::onLogWidgetVisibilityChanged);

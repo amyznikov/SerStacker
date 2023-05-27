@@ -10,6 +10,7 @@
 #define __QLogWidget_h__
 
 #include <QtWidgets/QtWidgets>
+#include <gui/qcustomdock/QCustomDock.h>
 
 class QLogWidget:
     public QWidget
@@ -38,6 +39,22 @@ protected:
 protected:
   QPlainTextEdit * textbox_ctl = nullptr;
   bool ppmark = false;
+};
+
+
+class QLogWidgetDock:
+    public QCustomDockWidget
+{
+  Q_OBJECT;
+public:
+  typedef QLogWidgetDock ThisClass;
+  typedef QCustomDockWidget Base;
+
+  QLogWidgetDock(const QString & title, QWidget * parent,
+      QLogWidget * log);
+
+protected:
+  QToolButton * buttonClear_ctl = nullptr;
 };
 
 #endif /* __QLogWidget_h__ */

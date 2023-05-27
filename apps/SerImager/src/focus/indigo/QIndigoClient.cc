@@ -440,7 +440,7 @@ void QIndigoClient::stop()
   if ( started_ ) {
     INDIGO_DEBUG("Shutting down client...\n");
     indigo_detach_client(&indigo_client_);
-    indigo_stop();
+    // indigo_stop();
     started_ = false;
   }
 }

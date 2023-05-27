@@ -156,7 +156,7 @@ protected:
   /// Log Widget
   QAction * showLogWidgetAction_ = nullptr;
   QLogWidget * logWidget_ctl = nullptr;
-  QCustomDockWidget * logWidgetDock_ = nullptr;
+  QLogWidgetDock * logWidgetDock_ = nullptr;
 
   /// Display Options /  MTF
   QMtfControlDialogBox * mtfControl_ = nullptr;

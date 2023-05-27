@@ -432,10 +432,17 @@ static void ensure_ffmpeg_initialized()
         }
       }
     }
+    // for unclear reason the 'ogv' suffix is missing in archlinux version of ffmpeg
+    g_supported_input_formats.emplace_back("ogv");
 #else
     opaque = nullptr;
     while ( (iformat = av_demuxer_iterate(&opaque)) ) {
       if ( iformat->name ) {
+
+        //        CF_DEBUG("iformat: '%s' mime_type='%s' extensions ='%s'", iformat->name,
+        //            iformat->mime_type ? iformat->mime_type : "(null)",
+        //            iformat->extensions ? iformat->extensions : "(null)");
+
         if ( !iformat->extensions ) {
           g_supported_input_formats.emplace_back(iformat->name);
         }
@@ -451,6 +458,10 @@ static void ensure_ffmpeg_initialized()
         }
       }
     }
+
+    // for unclear reason the 'ogv' suffix is missing in archlinux version of ffmpeg
+    g_supported_input_formats.emplace_back("ogv");
+
 #endif
 
 #if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(58, 0, 0)

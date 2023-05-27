@@ -370,8 +370,15 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> pdescs[2];
       cv::Mat desc_images[2];
 
-      ssa_pyramid(left_image, pdescs[0], ss_maxlvl_);
-      ssa_pyramid(right_image, pdescs[1], ss_maxlvl_);
+      if ( !ssa_pyramid(left_image, pdescs[0], ss_maxlvl_) ) {
+        CF_ERROR("ssa_pyramid() fails");
+        break;
+      }
+
+      if ( !ssa_pyramid(right_image, pdescs[1], ss_maxlvl_) ) {
+        CF_ERROR("ssa_pyramid() fails");
+        break;
+      }
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), CV_32F);
       cv::Mat &dst = image.getMatRef();
@@ -402,8 +409,15 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> descs[2];
       cv::Mat desc_images[2];
 
-      ssa_pyramid(left_image, descs[0], ss_maxlvl_);
-      ssa_pyramid(right_image, descs[1], ss_maxlvl_);
+      if ( !ssa_pyramid(left_image, descs[0], ss_maxlvl_) ) {
+        CF_ERROR("ssa_pyramid() fails");
+        break;
+      }
+
+      if( !ssa_pyramid(right_image, descs[1], ss_maxlvl_) ) {
+        CF_ERROR("ssa_pyramid() fails");
+        break;
+      }
 
       for( int i = 0; i < 2; ++i ) {
         if( swap_frames_ == SwapFramesAfterRectification ) {
@@ -442,7 +456,14 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         INSTRUMENT_REGION("ssa_pyramid");
 
         for ( int i = 0; i < 2; ++i ) {
-          ssa_pyramid(src_images[i], descs[i], ss_maxlvl_);
+          if ( !ssa_pyramid(src_images[i], descs[i], ss_maxlvl_) ) {
+            CF_ERROR("ssa_pyramid() fails");
+            break;
+          }
+        }
+
+        if ( descs[0].empty() || descs[1].empty() ) {
+          break;
         }
       }
 

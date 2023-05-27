@@ -211,6 +211,7 @@ bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::Inp
   c_pixinsight_mtf *mtf =
       &opts.mtf;
 
+
   c_mtf_adjustment a;
 
   adjustMtfRange(mtf, currentImage, currentMask, &a);

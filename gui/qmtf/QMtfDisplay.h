@@ -63,6 +63,9 @@ public:
   virtual void setInvertColormap(bool v);
   virtual bool invertColormap() const;
 
+  virtual void setAutoClip(bool v);
+  virtual bool autoClip() const;
+
   virtual DisplayParams & displayParams();
   virtual const DisplayParams & displayParams() const;
 
@@ -110,6 +113,7 @@ protected:
 protected:
   int displayType_ = -1;
   DisplayMap displayParams_;
+  bool autoClip_ = false;
   QString prefix_;
 };
 

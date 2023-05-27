@@ -394,19 +394,22 @@ void QMtfControl::onAutoMtfCtrlClicked()
 {
   if ( displaySettings_ ) {
 
-    if ( autoMtf_ctl->isChecked() ) {
+    displaySettings_->setAutoClip(autoMtf_ctl->isChecked() && selectedAutoMtfAction_ == AutoMtfAction_AutoClip );
 
-      switch ( selectedAutoMtfAction_ ) {
-      case AutoMtfAction_AutoMtf :
-        findAutoMidtonesBalance();
-        break;
 
-      case AutoMtfAction_AutoClip :
-        default :
-        findAutoHistogramClips();
-        break;
-      }
-    }
+    //    if ( autoMtf_ctl->isChecked() ) {
+    //
+    //      switch ( selectedAutoMtfAction_ ) {
+    //      case AutoMtfAction_AutoMtf :
+    //        findAutoMidtonesBalance();
+    //        break;
+    //
+    //      case AutoMtfAction_AutoClip :
+    //        default :
+    //        //findAutoHistogramClips();
+    //        break;
+    //      }
+    //    }
 
     updateControls();
   }

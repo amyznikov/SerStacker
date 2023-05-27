@@ -392,8 +392,16 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   cv::Mat1b texture_mask;
 
   for( int i = 0; i < 2; ++i ) {
-    ssa_pyramid(images[i], descs[i], ss_maxlvl_);
+    if ( !ssa_pyramid(images[i], descs[i], ss_maxlvl_) ) {
+      CF_ERROR("ssa_pyramid() fails");
+      break;
+    }
   }
+
+  if( descs[0].empty() || descs[1].empty() ) {
+    return false;
+  }
+
 
   {
     INSTRUMENT_REGION("texture_map");

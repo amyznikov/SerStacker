@@ -194,7 +194,9 @@ void QImageProcessorSelector::onProcessorSelectorCurrentIndexChanged(int)
 {
   if ( !updatingControls() ) {
     updatecurrentprocessor();
-    Q_EMIT parameterChanged();
+    if ( enable_ctl->isChecked() ) {
+      Q_EMIT parameterChanged();
+    }
   }
 }
 

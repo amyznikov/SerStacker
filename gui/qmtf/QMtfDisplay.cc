@@ -71,14 +71,16 @@ void QMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
 
     mtf->get_input_range(&a->imin, &a->imax);
 
-    if( a->imin >= a->imax ) {
+    if( autoClip_ || a->imin >= a->imax ) {
+
+      a->adjusted_inputs = true;
 
       double adjusted_min, adjusted_max;
 
       const int cdepth =
           currentImage.depth();
 
-      if( cdepth == CV_32F || cdepth == CV_64F ) {
+      if( autoClip_ || cdepth == CV_32F || cdepth == CV_64F ) {
         getminmax(currentImage, &adjusted_min, &adjusted_max, currentMask);
       }
       else {
@@ -301,6 +303,20 @@ bool QMtfDisplay::invertColormap() const
 
   return false;
 }
+
+void QMtfDisplay::setAutoClip(bool v)
+{
+  if ( autoClip_ != v ) {
+    autoClip_ = v;
+    Q_EMIT parameterChanged();
+  }
+}
+
+bool QMtfDisplay::autoClip() const
+{
+  return autoClip_;
+}
+
 QMtfDisplay::DisplayParams & QMtfDisplay::displayParams()
 {
   DisplayMap::iterator pos =

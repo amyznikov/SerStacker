@@ -144,7 +144,7 @@ static inline uint16_t absdiff(const ssdesc *const* a[/*scales*/],
 
 } // namespace
 
-void ssa_pyramid(const cv::Mat & image,
+bool ssa_pyramid(const cv::Mat & image,
     std::vector<c_ssarray> & pyramid,
     int maxlevel)
 {
@@ -156,7 +156,7 @@ void ssa_pyramid(const cv::Mat & image,
 
   if( image.channels() != 3 ) {
     CF_ERROR("ERROR: 3 channel color image required");
-    return;
+    return false;
   }
 
   pyramid.clear();
@@ -239,6 +239,7 @@ void ssa_pyramid(const cv::Mat & image,
   }
 
 //  CF_DEBUG("leave");
+  return true;
 }
 
 
@@ -336,21 +337,21 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
 
     for( int x = 0; x < rc1.width; ++x ) {
 
-//      distances[y][x] =
-//          absdiff(ssa1[s][(y + rc1.y) >> s][(x + rc1.x) >> s],
-//              ssa2[s][(y + rc2.y) >> s][(x + rc2.x) >> s]);
+      distances[y][x] =
+          absdiff(ssa1[s][(y + rc1.y) >> s][(x + rc1.x) >> s],
+              ssa2[s][(y + rc2.y) >> s][(x + rc2.x) >> s]);
 
-      uint16_t d =
-          absdiff(ssa1[0][y + rc1.y][x + rc1.x],
-              ssa2[0][y + rc2.y][x + rc2.x]);
-
-      for( int s = 1; s < scales; ++s ) {
-
-        d += absdiff(ssa1[s][(y + rc1.y) >> s][(x + rc1.x) >> s],
-            ssa2[s][(y + rc2.y) >> s][(x + rc2.x) >> s]);
-      }
-
-      distances[y][x] = d;
+//      uint16_t d =
+//          absdiff(ssa1[0][y + rc1.y][x + rc1.x],
+//              ssa2[0][y + rc2.y][x + rc2.x]);
+//
+//      for( int s = 1; s < scales; ++s ) {
+//
+//        d += absdiff(ssa1[s][(y + rc1.y) >> s][(x + rc1.x) >> s],
+//            ssa2[s][(y + rc2.y) >> s][(x + rc2.x) >> s]);
+//      }
+//
+//      distances[y][x] = d;
     }
   }
 
@@ -436,8 +437,10 @@ void ssa_match(const std::vector<c_ssarray> & current_descs,
                 imatch[best_xc].rx = xr;
               }
               else if ((best_score < imatch[best_xc].score)) {
+
                 disp[y][imatch[best_xc].rx] = 0;
                 cost[y][imatch[best_xc].rx] = 0;
+
                 disp[y][xr] = best_xc - xr;
                 cost[y][xr] = best_score;
                 imatch[best_xc].score = best_score;

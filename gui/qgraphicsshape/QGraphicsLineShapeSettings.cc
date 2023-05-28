@@ -170,6 +170,7 @@ QGraphicsLineShapeSettingsDialogBox::QGraphicsLineShapeSettingsDialogBox(const Q
 QGraphicsLineShapeSettingsDialogBox::QGraphicsLineShapeSettingsDialogBox(const QString & title, QGraphicsLineShape * shape, QWidget * parent) :
     Base(parent)
 {
+  setMinimumWidth(256);
   setWindowTitle(title);
 
   QVBoxLayout * vbox =

@@ -33,14 +33,14 @@ public:
       "stereo_rectification",
       "Apply stereo rectification to horizontal layout stereo frame.<br>");
 
-  enum OverlayMode {
-    OverlayNone,
-    OverlayBlend,
-    OverlayAbsdiff,
-    OverlayNCC,
-    OverlayDisplaySSA,
-    OverlayBlendSSA,
-    OverlaySSA,
+  enum DisplayMode {
+    DisplayHLayout,
+    DisplayVLayout,
+    DisplayBlend,
+    DisplayAbsdiff,
+    DisplaySSA,
+    DisplayBlendSSA,
+    DisplayDiffSSA,
   };
 
   enum SwapFramesMode {
@@ -91,14 +91,14 @@ public:
     return swap_frames_;
   }
 
-  void set_overlay_mode(OverlayMode v)
+  void set_display_mode(DisplayMode v)
   {
-    overlay_mode_ = v;
+    display_mode_ = v;
   }
 
-  OverlayMode overlay_mode() const
+  DisplayMode display_mode() const
   {
-    return overlay_mode_;
+    return display_mode_;
   }
 
   void set_overlay_offset(int v)
@@ -147,7 +147,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, swap_frames, "Swap Left and Right frames");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, overlay_mode, "Overlay two stereo frames into one frame");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_mode, "Overlay two stereo frames into one frame");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_maxlvl, "ss_maxlvl");
@@ -164,7 +164,7 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
       SERIALIZE_PROPERTY(settings, save, *this, extrinsics_filename);
       SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
-      SERIALIZE_PROPERTY(settings, save, *this, overlay_mode);
+      SERIALIZE_PROPERTY(settings, save, *this, display_mode);
       SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
       SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
       SERIALIZE_PROPERTY(settings, save, *this, ss_radius);
@@ -183,7 +183,7 @@ public:
 protected:
   std::string stereo_intrinsics_filename_;
   std::string stereo_extrinsics_filename_;
-  OverlayMode overlay_mode_ = OverlayNone;
+  DisplayMode display_mode_ = DisplayHLayout;
   SwapFramesMode swap_frames_ = SwapFramesNone;
   int overlay_offset_ = 0;
   double ss_sigma_ = 2;

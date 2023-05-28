@@ -6,6 +6,7 @@
  */
 
 #include "QGraphicsLineShape.h"
+#include "QGraphicsLineShapeSettings.h"
 #include <core/debug.h>
 
 static constexpr int hit_distance = 15;
@@ -396,6 +397,7 @@ bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
   }
 
   if ( !lockP2Action_ ) {
+
     lockP2Action_ = new QAction("Lock P2", this);
     lockP2Action_->setCheckable(true);
     lockP2Action_->setChecked(lockP2_);
@@ -404,12 +406,30 @@ bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
         this, &ThisClass::setLockP2);
   }
 
+  if ( !showSettingsAction_ ) {
+
+    showSettingsAction_ = new QAction("Options...", this);
+    connect(showSettingsAction_, &QAction::triggered,
+        this, &ThisClass::showShapeSettings);
+  }
+
+
   menu.addAction(lockP1Action_);
   menu.addAction(lockP2Action_);
+  menu.addSeparator();
+  menu.addAction(showSettingsAction_);
 
   menu.addSeparator();
   Base::popuateContextMenu(e, menu);
 
   return true;
 }
+
+void QGraphicsLineShape::showShapeSettings()
+{
+  QGraphicsLineShapeSettingsDialogBox dialogBox("Line Options",
+      this, QApplication::activeWindow());
+  dialogBox.exec();
+}
+
 

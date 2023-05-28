@@ -11,18 +11,17 @@
 
 
 template<>
-const c_enum_member* members_of<c_stereo_rectification_routine::OverlayMode>()
+const c_enum_member* members_of<c_stereo_rectification_routine::DisplayMode>()
 {
   static constexpr c_enum_member members[] = {
-      { c_stereo_rectification_routine::OverlayNone, "None", "No overlay" },
-      { c_stereo_rectification_routine::OverlayBlend, "Blend", "cv::addWeighted(left, right)" },
-      { c_stereo_rectification_routine::OverlayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
-      { c_stereo_rectification_routine::OverlayNCC, "NCC", "NCC" },
-      { c_stereo_rectification_routine::OverlayDisplaySSA, "DisplaySSA", "DisplaySSA" },
-      { c_stereo_rectification_routine::OverlayBlendSSA, "BlendSSA", "BlendSSA" },
-      { c_stereo_rectification_routine::OverlaySSA, "SSA", "SSA" },
-      // { c_stereo_rectification_routine::OverlayDAISY, "DAISY", "DAISY distance" },
-      { c_stereo_rectification_routine::OverlayNone },
+      { c_stereo_rectification_routine::DisplayHLayout, "HLayout", "Horizontal Layout" },
+      { c_stereo_rectification_routine::DisplayVLayout, "VLayout", "Vertical Layout" },
+      { c_stereo_rectification_routine::DisplayBlend, "Blend", "cv::addWeighted(left, right)" },
+      { c_stereo_rectification_routine::DisplayAbsdiff, "Absdiff", "cv::absdiff(left, right)" },
+      { c_stereo_rectification_routine::DisplaySSA, "DisplaySSA", "DisplaySSA" },
+      { c_stereo_rectification_routine::DisplayBlendSSA, "BlendSSA", "BlendSSA" },
+      { c_stereo_rectification_routine::DisplayDiffSSA, "SSA", "SSA" },
+      { c_stereo_rectification_routine::DisplayHLayout },
   };
 
   return members;
@@ -169,9 +168,9 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
     }
   }
 
-  switch (overlay_mode_) {
+  switch (display_mode_) {
 
-    case OverlayNone: {
+    case DisplayHLayout: {
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), images[0].type());
       cv::Mat &dst = image.getMatRef();
@@ -207,7 +206,39 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlayBlend: {
+    case DisplayVLayout: {
+
+      image.create(cv::Size(std::max(roi[0].width, roi[1].width), roi[0].height + roi[1].height), images[0].type());
+      cv::Mat &dst = image.getMatRef();
+
+      if( swap_frames_ == SwapFramesAfterRectification ) {
+        images[1].copyTo(dst(cv::Rect(0, 0, roi[1].width, roi[1].height)));
+        images[0].copyTo(dst(cv::Rect(0, roi[1].height, roi[0].width, roi[0].height)));
+      }
+      else {
+        images[0].copyTo(dst(cv::Rect(0, 0, roi[0].width, roi[0].height)));
+        images[1].copyTo(dst(cv::Rect(0, roi[0].height, roi[1].width, roi[1].height)));
+      }
+
+      if( mask.needed() && !mask.empty() ) {
+
+        mask.create(cv::Size(std::max(roi[0].width, roi[1].width), roi[0].height + roi[1].height), images[0].type());
+        cv::Mat &m = mask.getMatRef();
+
+        if( swap_frames_ == SwapFramesAfterRectification ) {
+          masks[1].copyTo(m(cv::Rect(0, 0, roi[1].width, roi[1].height)));
+          masks[0].copyTo(m(cv::Rect(0, roi[1].height, roi[0].width, roi[0].height)));
+        }
+        else {
+          masks[0].copyTo(m(cv::Rect(0, 0, roi[0].width, roi[0].height)));
+          masks[1].copyTo(m(cv::Rect(0, roi[0].height, roi[1].width, roi[1].height)));
+        }
+      }
+
+      break;
+    }
+
+    case DisplayBlend: {
 
       const cv::Mat &left_image =
           images[0];
@@ -261,7 +292,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlayAbsdiff: {
+    case DisplayAbsdiff: {
 
       const cv::Mat &left_image =
           images[0];
@@ -312,57 +343,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-
-    case OverlayNCC: {
-
-      static const thread_local cv::Mat1f G =
-          cv::getGaussianKernel(21, 5.0, CV_32F);
-
-      cv::Mat m[2];
-
-      {
-        INSTRUMENT_REGION("SUBTRACT_MEAN");
-
-        for( int i = 0; i < 2; ++i ) {
-          cv::sepFilter2D(images[i], m[i], CV_32F, G, G);
-          cv::subtract(images[i], m[i], m[i], cv::noArray(), CV_32F);
-        }
-      }
-
-      const cv::Mat &left_image =
-          m[0];
-
-      const cv::Mat &right_image =
-          m[1];
-
-      image.create(left_image.size(),
-                CV_MAKETYPE(CV_32F, left_image.channels()));
-
-      cv::Mat &dst_image =
-          image.getMatRef();
-
-      dst_image.setTo(0);
-
-      {
-        INSTRUMENT_REGION("ABSDIFF");
-
-//        cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-//            right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-//            dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
-        cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-            right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_image(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
-
-      }
-
-      if( mask.needed() && !mask.empty() ) {
-        mask.release();
-      }
-
-      break;
-    }
-
-    case OverlayDisplaySSA : {
+    case DisplaySSA : {
 
       const cv::Mat left_image = images[0];
       const cv::Mat right_image = images[1];
@@ -398,7 +379,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlayBlendSSA: {
+    case DisplayBlendSSA: {
 
       const cv::Mat left_image =
           images[0];
@@ -443,7 +424,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
 
-    case OverlaySSA: {
+    case DisplayDiffSSA: {
 
       const cv::Mat src_images[2] = {
           images[0],

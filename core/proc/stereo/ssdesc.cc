@@ -35,6 +35,7 @@
 #include <immintrin.h>
 #include <core/proc/gradient.h>
 #include <core/ssprintf.h>
+#include <core/io/save_image.h>
 
 #include <core/debug.h>
 
@@ -292,18 +293,24 @@ void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask, int texture_thresh
 {
   output_mask.create(ssa.size());
 
+  if ( texture_threshold < 0 ) {
+    output_mask.setTo(255);
+  }
+  else {
 
-  const uint8_t T =
-      std::max(0, texture_threshold);
+    const uint8_t T =
+        std::max(0, texture_threshold);
 
-  for( int y = 0; y < output_mask.rows; ++y ) {
 
-    const ssdesc *ssp = ssa[y];
+    for( int y = 0; y < output_mask.rows; ++y ) {
 
-    for( int x = 0; x < output_mask.cols; ++x ) {
+      const ssdesc *ssp = ssa[y];
 
-      const ssdesc &ss = ssp[x];
-      output_mask[y][x] = absv(ss.g[63]) > T ? 255 : 0;
+      for( int x = 0; x < output_mask.cols; ++x ) {
+
+        const ssdesc &ss = ssp[x];
+        output_mask[y][x] = absv(ss.g[63]) > T ? 255 : 0;
+      }
     }
   }
 }
@@ -389,11 +396,15 @@ void ssa_match(const std::vector<c_ssarray> & left_descs,
     lptrs[s] = left_descs[s].ptr();
   }
 
+  static constexpr int YY = 150;
+
   tbb::parallel_for(tbb_range(0, right_descs[0].rows(), 16),
       [&](const tbb_range & range) {
 
         const int rwidth = right_descs[0].cols();
         const int lwidth = left_descs[0].cols();
+
+        //cv::Mat1w dspace;
 
         for( int y = range.begin(), ymax = range.end(); y < ymax; ++y ) {
 
@@ -404,6 +415,12 @@ void ssa_match(const std::vector<c_ssarray> & left_descs,
             int16_t xl = -1;
             uint16_t cost = UINT16_MAX;
           } m[std::max(rwidth, lwidth)];
+
+          if ( y == YY ) {
+//            dspace.create(rwidth, lwidth);
+//            dspace.setTo(16320);
+          }
+
 
           for( int xr = 0; xr < rwidth; ++xr ) {
             if( mskp[xr] ) {
@@ -430,15 +447,29 @@ void ssa_match(const std::vector<c_ssarray> & left_descs,
                 }
               }
 
-              if ( m[best_xl].xr < 0 || xr <= m[best_xl].xr + disp12maxDif ) {
+              if ( m[best_xl].xr < 0 || best_cost < m[best_xl].cost ) {
                 m[xr].xr = xr;
                 m[xr].xl = best_xl;
                 m[xr].cost = best_cost;
+
+                if ( m[best_xl].xr >= 0 && xr > m[best_xl].xr + disp12maxDif ) {
+                  m[m[best_xl].xr].xl = -1;
+                }
+
                 m[best_xl].xr = xr;
                 m[best_xl].cost = best_cost;
               }
+
+              if ( y == YY ) {
+                // dspace[xr][best_xl] = best_cost;
+              }
             }
           }
+
+          if ( y == YY ) {
+            //save_image(dspace, dspace < 16320, ssprintf("/mnt/data/cam9/stereo_calibration2/dspace.%03d.tiff", y));
+          }
+
 
           for( int xr = 0; xr < rwidth; ++xr ) {
             if ( m[xr].xl >= 0 ) {

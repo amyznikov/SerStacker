@@ -6,6 +6,7 @@
  */
 
 #include "QGraphicsRectShape.h"
+#include "QGraphicsRectShapeSettings.h"
 #include <float.h>
 #include <limits.h>
 #include <core/ssprintf.h>
@@ -605,3 +606,33 @@ void QGraphicsRectShape::onSceneRectChanged(const QRectF &rect)
     setCenter(mapFromScene(rect.center()));
   }
 }
+
+bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
+{
+  if ( !showSettingsAction_ ) {
+
+    showSettingsAction_ = new QAction("Options...", this);
+
+    connect(showSettingsAction_, &QAction::triggered,
+        this, &ThisClass::showShapeSettings);
+  }
+
+
+  menu.addSeparator();
+  menu.addAction(showSettingsAction_);
+
+  menu.addSeparator();
+  Base::popuateContextMenu(e, menu);
+
+  return true;
+
+}
+
+void QGraphicsRectShape::showShapeSettings()
+{
+  QGraphicsRectShapeSettingsDialogBox dialogBox("Rectangle Options",
+      this, QApplication::activeWindow());
+
+  dialogBox.exec();
+}
+

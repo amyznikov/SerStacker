@@ -288,9 +288,13 @@ void ssa_texture(const c_ssarray & ssa, cv::Mat1b & output_image)
 
 }
 
-void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask)
+void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask, int texture_threshold)
 {
   output_mask.create(ssa.size());
+
+
+  const uint8_t T =
+      std::max(0, texture_threshold);
 
   for( int y = 0; y < output_mask.rows; ++y ) {
 
@@ -299,7 +303,7 @@ void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask)
     for( int x = 0; x < output_mask.cols; ++x ) {
 
       const ssdesc &ss = ssp[x];
-      output_mask[y][x] = absv(ss.g[63]) > 1 ? 255 : 0;
+      output_mask[y][x] = absv(ss.g[63]) > T ? 255 : 0;
     }
   }
 }
@@ -357,138 +361,89 @@ void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
 
 }
 
-void ssa_match(const std::vector<c_ssarray> & current_descs,
-    const std::vector<c_ssarray> & reference_descs, int max_disparity,
+void ssa_match(const std::vector<c_ssarray> & left_descs,
+    const std::vector<c_ssarray> & right_descs, int max_disparity,
     cv::OutputArray disps, cv::OutputArray costs,
     const cv::Mat1b & mask,
-    bool enable_checks)
+    int disp12maxDif)
 {
   INSTRUMENT_REGION("");
 
-  disps.create(reference_descs[0].size(), CV_16UC1);
+  disps.create(right_descs[0].size(), CV_16UC1);
   disps.setTo(0);
 
-  costs.create(reference_descs[0].size(), CV_16UC1);
+  costs.create(right_descs[0].size(), CV_16UC1);
   costs.setTo(0);
 
-  cv::Mat1w disp = disps.getMatRef();
-  cv::Mat1w cost = costs.getMatRef();
+  cv::Mat1w disps_image = disps.getMatRef();
+  cv::Mat1w costs_image = costs.getMatRef();
 
   const int scales =
-      reference_descs.size();
+      right_descs.size();
 
-  const ssdesc *const*rptrs[scales];
-  const ssdesc *const*cptrs[scales];
+  const ssdesc * const * rptrs[scales];
+  const ssdesc * const * lptrs[scales];
 
   for( int s = 0; s < scales; ++s ) {
-    rptrs[s] = reference_descs[s].ptr();
-    cptrs[s] = current_descs[s].ptr();
+    rptrs[s] = right_descs[s].ptr();
+    lptrs[s] = left_descs[s].ptr();
   }
 
-  tbb::parallel_for(tbb_range(0, reference_descs[0].rows(), 16),
-      [&](const tbb_range & r) {
+  tbb::parallel_for(tbb_range(0, right_descs[0].rows(), 16),
+      [&](const tbb_range & range) {
 
-        const int rwidth = reference_descs[0].cols();
-        const int cwidth = current_descs[0].cols();
+        const int rwidth = right_descs[0].cols();
+        const int lwidth = left_descs[0].cols();
 
-        for( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+        for( int y = range.begin(), ymax = range.end(); y < ymax; ++y ) {
 
           const uint8_t * mskp = mask[y];
 
-          struct rmatch {
-            int16_t rx = -1;
-            uint16_t score = UINT16_MAX;
-          } imatch[cwidth];
-
+          struct {
+            int16_t xr = -1;
+            int16_t xl = -1;
+            uint16_t cost = UINT16_MAX;
+          } m[std::max(rwidth, lwidth)];
 
           for( int xr = 0; xr < rwidth; ++xr ) {
             if( mskp[xr] ) {
 
-              uint16_t best_score =
-                  absdiff(rptrs, cptrs,
+              uint16_t best_cost =
+                  absdiff(rptrs, lptrs,
                       xr, xr, y, scales,
                       UINT16_MAX);
 
-              int best_xc = xr;
+              int best_xl = xr;
 
-              for( int xc = xr + 1, xcm = std::min(xr + max_disparity, cwidth); xc < xcm; ++xc ) {
+              for( int xl = xr + 1, xlmax = std::min(xr + max_disparity, lwidth); xl < xlmax; ++xl ) {
 
-                const uint16_t score =
-                    absdiff(rptrs, cptrs,
-                        xr, xc, y, scales,
-                        best_score);
+                const uint16_t cost =
+                    absdiff(rptrs, lptrs,
+                        xr, xl, y, scales,
+                        best_cost);
 
-                if( score < best_score ) {
-                  best_xc = xc;
-                  if ( !(best_score = score) ) {
+                if( cost < best_cost ) {
+                  best_xl = xl;
+                  if ( !(best_cost = cost) ) {
                     break;
                   }
                 }
               }
 
-//              const int XXR = 350;
-//              const int YYR = 153;
-//
-//              if ( xr == XXR && y == YYR ) {
-//                CF_DEBUG("enable_checks=%d", enable_checks);
-//
-//              }
-
-              if ( !enable_checks ) {
-                disp[y][xr] = best_xc - xr;
-                cost[y][xr] = best_score;
+              if ( m[best_xl].xr < 0 || xr <= m[best_xl].xr + disp12maxDif ) {
+                m[xr].xr = xr;
+                m[xr].xl = best_xl;
+                m[xr].cost = best_cost;
+                m[best_xl].xr = xr;
+                m[best_xl].cost = best_cost;
               }
-              else if ( (imatch[best_xc].rx < 0) ) {
+            }
+          }
 
-//                if ( xr == XXR && y == YYR ) {
-//                  CF_DEBUG("H: y=%d xr=%d best_xc=%d imatch[best_xc].rx=%d \n"
-//                      "best_score=%u, imatch[best_xc].score=%u\n"
-//                      "disp[y][imatch[best_xc].rx]=%u\n"
-//                      "cost[y][imatch[best_xc].rx]=%u\n",
-//                      y, xr, best_xc, imatch[best_xc].rx,
-//                      best_score, imatch[best_xc].score,
-//                      disp[y][imatch[best_xc].rx],
-//                      cost[y][imatch[best_xc].rx]);
-//                }
-
-                disp[y][xr] = best_xc - xr;
-                cost[y][xr] = best_score;
-                imatch[best_xc].score = best_score;
-                imatch[best_xc].rx = xr;
-              }
-              else if ((best_score < imatch[best_xc].score)) {
-
-//                if ( xr == XXR && y == YYR ) {
-//                  CF_DEBUG("H: y=%d xr=%d best_xc=%d imatch[best_xc].rx=%d \n"
-//                      "best_score=%u, imatch[best_xc].score=%u\n"
-//                      "disp[y][imatch[best_xc].rx]=%u\n"
-//                      "cost[y][imatch[best_xc].rx]=%u\n",
-//                      y, xr, best_xc, imatch[best_xc].rx,
-//                      best_score, imatch[best_xc].score,
-//                      disp[y][imatch[best_xc].rx],
-//                      cost[y][imatch[best_xc].rx]);
-//                }
-
-                disp[y][imatch[best_xc].rx] = 0;
-                cost[y][imatch[best_xc].rx] = 0;
-
-                disp[y][xr] = best_xc - xr;
-                cost[y][xr] = best_score;
-                imatch[best_xc].score = best_score;
-                imatch[best_xc].rx = xr;
-              }
-              else {
-//                if ( xr == XXR && y == YYR ) {
-//                  CF_DEBUG("UNEXPECTED CASE: y=%d xr=%d best_xc=%d imatch[best_xc].rx=%d \n"
-//                      "best_score=%u, imatch[best_xc].score=%u\n"
-//                      "disp[y][imatch[best_xc].rx]=%u\n"
-//                      "cost[y][imatch[best_xc].rx]=%u\n",
-//                      y, xr, best_xc, imatch[best_xc].rx,
-//                      best_score, imatch[best_xc].score,
-//                      disp[y][imatch[best_xc].rx],
-//                      cost[y][imatch[best_xc].rx]);
-//                }
-              }
+          for( int xr = 0; xr < rwidth; ++xr ) {
+            if ( m[xr].xl >= 0 ) {
+              disps_image[y][xr] = m[xr].xl - m[xr].xr;
+              costs_image[y][xr] = m[xr].cost;
             }
           }
         }

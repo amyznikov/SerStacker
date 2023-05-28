@@ -61,35 +61,35 @@ QScaleSweepStereoMatcherOptions::QScaleSweepStereoMatcherOptions(QWidget * paren
             return false;
           });
 
-  kernel_radius_ctl =
-      add_numeric_box<int>("kernel_radius:",
+  texture_threshold_ctl =
+      add_numeric_box<int>("text. thresh:",
           "",
           [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->stereo_matching_options().kernel_radius = value;
+              pipeline_->stereo_matching_options().texture_threshold = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->stereo_matching_options().kernel_radius;
+              * value = pipeline_->stereo_matching_options().texture_threshold;
               return true;
             }
             return false;
           });
 
-  kernel_sigma_ctl =
-      add_numeric_box<double>("kernel_sigma:",
+  disp12maxDiff_ctl =
+      add_numeric_box<int>("disp12maxDiff::",
           "",
-          [this](double value) {
+          [this](int value) {
             if ( pipeline_ ) {
-              pipeline_->stereo_matching_options().kernel_sigma = value;
+              pipeline_->stereo_matching_options().disp12maxDiff = value;
               Q_EMIT parameterChanged();
             }
           },
-          [this](double * value) {
+          [this](int * value) {
             if ( pipeline_ ) {
-              * value = pipeline_->stereo_matching_options().kernel_sigma;
+              * value = pipeline_->stereo_matching_options().disp12maxDiff;
               return true;
             }
             return false;

@@ -37,26 +37,14 @@ public:
   void set_max_disparity(int v);
   int max_disparity() const;
 
-  void set_enable_reverse_checks(bool v);
-  bool enable_reverse_checks() const;
+  void set_disp12maxDiff(int v);
+  int disp12maxDiff() const;
 
-  void set_ss_sigma(double v);
-  double ss_sigma() const;
-
-  void set_ss_radius(int v);
-  int ss_radius() const;
+  void set_texture_threshold(int v);
+  int texture_threshold() const;
 
   void set_max_scale(int v);
   int max_scale() const;
-
-  void set_kernel_sigma(double v);
-  double kernel_sigma() const;
-
-  void set_kernel_radius(int v);
-  int kernel_radius() const;
-
-  void set_normalization_scale(int v) ;
-  int normalization_scale() const;
 
   void set_debug_directory(const std::string & v);
   const std::string & debug_directory() const;
@@ -65,23 +53,12 @@ public:
   void set_debug_points(const std::vector<cv::Point> & v);
 
 protected:
-//  template<class MT>
-//  bool match_impl(cv::InputArray currentImage, cv::InputArray currentMask,
-//      cv::InputArray referenceImage, cv::InputArray referenceMask,
-//      cv::Mat & outputImage, cv::Mat1b * outputMask);
-
-protected:
   OutputType output_type_ = OutputTextureMask;
 
-  double ss_sigma_ = 2;
-  int ss_radius_ = 0;
-  int ss_maxlvl_ = 3;
-  bool enable_reverse_checks_ = false;
-
   int max_disparity_ = 128;
-  double kernel_sigma_ = 1;
-  int kernel_radius_ = 3;
-  int pscale_ = 0;
+  int max_scale_ = 0;
+  int disp12maxDiff_ = 2;
+  int texture_threshold_ = 1;
 
   std::string debug_directory_;
   std::vector<cv::Point> debug_points_;

@@ -34,8 +34,8 @@ protected:
   QCheckBox * enable_stereo_matching_ctl = nullptr;
   QNumericBox * max_disparity_ctl = nullptr;
   QNumericBox * max_scale_ctl = nullptr;
-  QNumericBox * kernel_radius_ctl = nullptr;
-  QNumericBox * kernel_sigma_ctl = nullptr;
+  QNumericBox * texture_threshold_ctl = nullptr;
+  QNumericBox * disp12maxDiff_ctl = nullptr;
   QCheckBox * save_debug_images_ctl = nullptr;
   QCheckBox * process_only_debug_frames_ctl = nullptr;
   QNumericBox * debug_frames_ctl = nullptr;

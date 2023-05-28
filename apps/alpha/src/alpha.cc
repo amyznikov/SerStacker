@@ -215,9 +215,9 @@ int main(int argc, char *argv[])
 
   m.set_max_disparity(128);
   m.set_max_scale(0);
-  m.set_kernel_sigma(1.5);
-  m.set_kernel_radius(7);
-  m.set_normalization_scale(0) ;
+//  m.set_kernel_sigma(1.5);
+//  m.set_kernel_radius(7);
+//  m.set_normalization_scale(0) ;
   m.set_debug_directory("./debug/sss");
 
   bool fOk =

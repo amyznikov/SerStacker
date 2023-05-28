@@ -28,26 +28,14 @@ public:
   void set_max_disparity(int v);
   int max_disparity() const;
 
-  void set_ss_sigma(double v);
-  double ss_sigma() const;
+  void set_disp12maxDiff(int v);
+  int disp12maxDiff() const;
 
-  void set_ss_radius(int v);
-  int ss_radius() const;
+  void set_texture_threshold(int v);
+  int texture_threshold() const;
 
   void set_max_scale(int v);
   int max_scale() const;
-
-  void set_enable_reverse_checks(bool v);
-  bool enable_reverse_checks() const;
-
-  void set_kernel_sigma(double v);
-  double kernel_sigma() const;
-
-  void set_kernel_radius(int v);
-  int kernel_radius() const;
-
-  void set_normalization_scale(int v) ;
-  int normalization_scale() const;
 
   void set_debug_directory(const std::string & v);
   const std::string & debug_directory() const;

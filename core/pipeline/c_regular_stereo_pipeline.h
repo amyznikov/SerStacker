@@ -62,9 +62,9 @@ struct c_regular_stereo_matching_options
   bool enable_stereo_matchning = true;
 
   int max_disparity = 128;
-  int max_scale = 2;
-  int kernel_radius = 3;
-  double kernel_sigma = 1;
+  int max_scale = 0;
+  int texture_threshold = 1;
+  int disp12maxDiff = 3;
 
   bool save_debug_images = false;
   bool process_only_debug_frames = false;

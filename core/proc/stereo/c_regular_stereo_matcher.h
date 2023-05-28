@@ -94,10 +94,9 @@ struct c_cvStereoSGBMOptions
 struct c_ScaleSweep_options
 {
   int max_disparity = 128;
-  int max_scale = 2;
-  double kernel_sigma = 1;
-  int kernel_radius = 3;
-  int normalization_scale = 0;
+  int max_scale = 0;
+  int texture_threshold = 1;
+  int disp12maxDiff = 3;
 
   std::string debug_directory;
   std::vector<cv::Point> debug_points;

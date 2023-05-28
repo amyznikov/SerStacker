@@ -29,75 +29,34 @@ int c_sweepscan_routine::max_disparity() const
   return sm_.max_disparity();
 }
 
+void c_sweepscan_routine::set_disp12maxDiff(int v)
+{
+  return sm_.set_disp12maxDiff(v);
+}
+
+int c_sweepscan_routine::disp12maxDiff() const
+{
+  return sm_.disp12maxDiff();
+}
+
+void c_sweepscan_routine::set_texture_threshold(int v)
+{
+  return sm_.set_texture_threshold(v);
+}
+
+int c_sweepscan_routine::texture_threshold() const
+{
+  return sm_.texture_threshold();
+}
+
 void c_sweepscan_routine::set_max_scale(int v)
 {
   return sm_.set_max_scale(v);
 }
 
-void c_sweepscan_routine::set_enable_reverse_checks(bool v)
-{
-  return sm_.set_enable_reverse_checks(v);
-}
-
-bool c_sweepscan_routine::enable_reverse_checks() const
-{
-  return sm_.enable_reverse_checks();
-}
-
-void c_sweepscan_routine::set_ss_sigma(double v)
-{
-  return sm_.set_ss_sigma(v);
-}
-
-double c_sweepscan_routine::ss_sigma() const
-{
-  return sm_.ss_sigma();
-}
-
-
-void c_sweepscan_routine::set_ss_radius(int v)
-{
-  return sm_.set_ss_radius(v);
-}
-
-int c_sweepscan_routine::ss_radius() const
-{
-  return sm_.ss_radius();
-}
-
 int c_sweepscan_routine::max_scale() const
 {
   return sm_.max_scale();
-}
-
-void c_sweepscan_routine::set_kernel_sigma(double v)
-{
-  return sm_.set_kernel_sigma(v);
-}
-
-double c_sweepscan_routine::kernel_sigma() const
-{
-  return sm_.kernel_sigma();
-}
-
-void c_sweepscan_routine::set_kernel_radius(int v)
-{
-  return sm_.set_kernel_radius(v);
-}
-
-int c_sweepscan_routine::kernel_radius() const
-{
-  return sm_.kernel_radius();
-}
-
-void c_sweepscan_routine::set_normalization_scale(int v)
-{
-  return sm_.set_normalization_scale(v);
-}
-
-int c_sweepscan_routine::normalization_scale() const
-{
-  return sm_.normalization_scale();
 }
 
 void c_sweepscan_routine::set_debug_directory(const std::string & v)
@@ -124,13 +83,9 @@ void c_sweepscan_routine::get_parameters(std::vector<struct c_image_processor_ro
 {
   ADD_IMAGE_PROCESSOR_CTRL(ctls, output_type, "output_type");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, max_disparity, "max_disparity");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_reverse_checks, "enable_reverse_check");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, texture_threshold, "texture_threshold");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, disp12maxDiff, "disp12maxDiff");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, max_scale, "max_scale");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, kernel_sigma, "kernel_sigma");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, kernel_radius, "kernel_radius");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_scale, "normalization_scale") ;
   ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_DIRECTORY(ctls, debug_directory, "debug_directory");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, debug_points, "debug_points");
 }
@@ -141,13 +96,9 @@ bool c_sweepscan_routine::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_PROPERTY(settings, save, *this, output_type);
     SERIALIZE_PROPERTY(settings, save, *this, max_disparity);
-    SERIALIZE_PROPERTY(settings, save, *this, enable_reverse_checks);
-    SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
-    SERIALIZE_PROPERTY(settings, save, *this, ss_radius);
+    SERIALIZE_PROPERTY(settings, save, *this, texture_threshold);
+    SERIALIZE_PROPERTY(settings, save, *this, disp12maxDiff);
     SERIALIZE_PROPERTY(settings, save, *this, max_scale);
-    SERIALIZE_PROPERTY(settings, save, *this, kernel_sigma);
-    SERIALIZE_PROPERTY(settings, save, *this, kernel_radius);
-    SERIALIZE_PROPERTY(settings, save, *this, normalization_scale) ;
     SERIALIZE_PROPERTY(settings, save, *this, debug_directory);
     SERIALIZE_PROPERTY(settings, save, *this, debug_points);
 

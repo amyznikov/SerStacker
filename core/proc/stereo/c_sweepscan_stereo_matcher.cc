@@ -257,74 +257,34 @@ int c_sweepscan_stereo_matcher::max_disparity() const
   return max_disparity_;
 }
 
-void c_sweepscan_stereo_matcher::set_enable_reverse_checks(bool v)
+void c_sweepscan_stereo_matcher::set_disp12maxDiff(int v)
 {
-  enable_reverse_checks_ = v;
+  disp12maxDiff_ = v;
 }
 
-bool c_sweepscan_stereo_matcher::enable_reverse_checks() const
+int c_sweepscan_stereo_matcher::disp12maxDiff() const
 {
-  return enable_reverse_checks_;
-}
-
-void c_sweepscan_stereo_matcher::set_ss_sigma(double v)
-{
-  ss_sigma_ = v;
-}
-
-double c_sweepscan_stereo_matcher::ss_sigma() const
-{
-  return ss_sigma_;
-}
-
-void c_sweepscan_stereo_matcher::set_ss_radius(int v)
-{
-  ss_radius_ = v;
-}
-
-int c_sweepscan_stereo_matcher::ss_radius() const
-{
-  return ss_radius_;
+  return disp12maxDiff_;
 }
 
 void c_sweepscan_stereo_matcher::set_max_scale(int v)
 {
-  ss_maxlvl_ = v;
+  max_scale_ = v;
 }
 
 int c_sweepscan_stereo_matcher::max_scale() const
 {
-  return ss_maxlvl_;
+  return max_scale_;
 }
 
-void c_sweepscan_stereo_matcher::set_kernel_sigma(double v)
+void c_sweepscan_stereo_matcher::set_texture_threshold(int v)
 {
-  kernel_sigma_ = v;
+  texture_threshold_ = v;
 }
 
-double c_sweepscan_stereo_matcher::kernel_sigma() const
+int c_sweepscan_stereo_matcher::texture_threshold() const
 {
-  return kernel_sigma_;
-}
-
-void c_sweepscan_stereo_matcher::set_kernel_radius(int v)
-{
-  kernel_radius_ = v;
-}
-
-int c_sweepscan_stereo_matcher::kernel_radius() const
-{
-  return kernel_radius_;
-}
-
-void c_sweepscan_stereo_matcher::set_normalization_scale(int v)
-{
-  pscale_ = v;
-}
-
-int c_sweepscan_stereo_matcher::normalization_scale() const
-{
-  return pscale_;
+  return texture_threshold_;
 }
 
 void c_sweepscan_stereo_matcher::set_debug_directory(const std::string & v)
@@ -392,7 +352,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
   cv::Mat1b texture_mask;
 
   for( int i = 0; i < 2; ++i ) {
-    if ( !ssa_pyramid(images[i], descs[i], ss_maxlvl_) ) {
+    if ( !ssa_pyramid(images[i], descs[i], max_scale_) ) {
       CF_ERROR("ssa_pyramid() fails");
       break;
     }
@@ -414,7 +374,7 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
       return true;
     }
 
-    ssa_mask(rdesc, texture_mask);
+    ssa_mask(rdesc, texture_mask, texture_threshold_);
 
     if( output_type_ == OutputTextureMask ) {
       texture_mask.copyTo(outputImage);
@@ -425,9 +385,8 @@ bool c_sweepscan_stereo_matcher::match(cv::InputArray currentImage, cv::InputArr
     }
   }
 
-  ssa_match(descs[0], descs[1], max_disparity_, disps, errs,
-      texture_mask,
-      enable_reverse_checks_);
+  ssa_match(descs[0], descs[1], max_disparity_, disps, errs, texture_mask,
+      disp12maxDiff_);
 
   switch (output_type_) {
     case OutputDisparityMap:

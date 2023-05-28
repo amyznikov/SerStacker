@@ -44,52 +44,35 @@ QScaleSweepOptions::QScaleSweepOptions(QWidget * parent) :
             return false;
           });
 
-  kernel_sigma_ctl =
-      add_numeric_box<double>("kernel_sigma",
-          "",
-          [this](double value) {
-            if ( options_ && options_->kernel_sigma != value) {
-              options_->kernel_sigma = value;
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](double * value) {
-            if ( options_ ) {
-              * value = options_->kernel_sigma;
-              return true;
-            }
-            return false;
-          });
-
-  kernel_radius_ctl =
-      add_numeric_box<int>("kernel_radius",
+  texture_threshold_ctl =
+      add_numeric_box<int>("text. thresh",
           "",
           [this](int value) {
-            if ( options_ && options_->kernel_radius != value) {
-              options_->kernel_radius = value;
+            if ( options_ && options_->texture_threshold != value) {
+              options_->texture_threshold = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( options_ ) {
-              * value = options_->kernel_radius;
+              * value = options_->texture_threshold;
               return true;
             }
             return false;
           });
 
-  normalization_scale_ctl =
-      add_numeric_box<int>("normalization",
+  disp12maxDiff_ctl =
+      add_numeric_box<int>("disp12maxDiff",
           "",
           [this](int value) {
-            if ( options_ && options_->normalization_scale != value) {
-              options_->normalization_scale = value;
+            if ( options_ && options_->disp12maxDiff != value) {
+              options_->disp12maxDiff = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( options_ ) {
-              * value = options_->normalization_scale;
+              * value = options_->disp12maxDiff;
               return true;
             }
             return false;

@@ -371,9 +371,8 @@ void c_regular_stereo_matcher::updateScaleSweepOptions()
 
       scaleSweep_->set_max_disparity(opts.max_disparity);
       scaleSweep_->set_max_scale(opts.max_scale);
-      scaleSweep_->set_kernel_sigma(opts.kernel_sigma);
-      scaleSweep_->set_kernel_radius(opts.kernel_radius);
-      scaleSweep_->set_normalization_scale(opts.normalization_scale);
+      scaleSweep_->set_texture_threshold(opts.texture_threshold);
+      scaleSweep_->set_disp12maxDiff(opts.disp12maxDiff);
       scaleSweep_->set_debug_directory(opts.debug_directory);
       scaleSweep_->set_debug_points(opts.debug_points);
     }
@@ -510,9 +509,8 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
 
           scaleSweep_->set_max_disparity(opts.max_disparity);
           scaleSweep_->set_max_scale(opts.max_scale);
-          scaleSweep_->set_kernel_sigma(opts.kernel_sigma);
-          scaleSweep_->set_kernel_radius(opts.kernel_radius);
-          scaleSweep_->set_normalization_scale(opts.normalization_scale);
+          scaleSweep_->set_texture_threshold(opts.texture_threshold);
+          scaleSweep_->set_disp12maxDiff(opts.disp12maxDiff);
           scaleSweep_->set_debug_directory(opts.debug_directory);
           scaleSweep_->set_debug_points(opts.debug_points);
         }
@@ -903,9 +901,8 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, opts, max_disparity);
     SERIALIZE_OPTION(section, save, opts, max_scale);
-    SERIALIZE_OPTION(section, save, opts, kernel_sigma);
-    SERIALIZE_OPTION(section, save, opts, kernel_radius);
-    SERIALIZE_OPTION(section, save, opts, normalization_scale);
+    SERIALIZE_OPTION(section, save, opts, texture_threshold);
+    SERIALIZE_OPTION(section, save, opts, disp12maxDiff);
     SERIALIZE_OPTION(section, save, opts, debug_directory);
     SERIALIZE_OPTION(section, save, opts, debug_points);
   }

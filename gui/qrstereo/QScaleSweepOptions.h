@@ -32,9 +32,8 @@ protected:
 
   QNumericBox * max_disparity_ctl = nullptr;
   QNumericBox * max_scale_ctl = nullptr;
-  QNumericBox * kernel_sigma_ctl = nullptr;
-  QNumericBox * kernel_radius_ctl = nullptr;
-  QNumericBox * normalization_scale_ctl = nullptr;
+  QNumericBox * texture_threshold_ctl = nullptr;
+  QNumericBox * disp12maxDiff_ctl = nullptr;
 
   QBrowsePathCombo * debug_directory_ctl = nullptr;
   QNumericBox * debug_points_ctl = nullptr; // std::vector<cv::Point>

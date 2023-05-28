@@ -58,7 +58,7 @@ bool ssa_pyramid(const cv::Mat & image,
 void ssa_cvtfp32(const c_ssarray & ssa, cv::OutputArray output);
 
 void ssa_texture(const c_ssarray & ssa, cv::Mat1b & output_image);
-void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask);
+void ssa_mask(const c_ssarray & ssa, cv::Mat1b & output_mask, int texture_threshold = 1);
 
 void ssa_compare(const std::vector<c_ssarray> & ssa1, const cv::Rect & rc1,
     const std::vector<c_ssarray> & ssa2, const cv::Rect & rc2,
@@ -68,7 +68,7 @@ void ssa_match(const std::vector<c_ssarray> & current_descs,
     const std::vector<c_ssarray> & reference_descs, int max_disparity,
     cv::OutputArray disp, cv::OutputArray costs,
     const cv::Mat1b & mask,
-    bool enable_checks);
+    int disp12maxDif);
 
 
 #endif /* __ssdesc_h__ */

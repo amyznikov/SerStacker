@@ -153,8 +153,8 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, stereo_matching_options_, enable_stereo_matchning);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, max_disparity);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, max_scale);
-    SERIALIZE_OPTION(section, save, stereo_matching_options_, kernel_radius);
-    SERIALIZE_OPTION(section, save, stereo_matching_options_, kernel_sigma);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, texture_threshold);
+    SERIALIZE_OPTION(section, save, stereo_matching_options_, disp12maxDiff);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, save_debug_images);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, process_only_debug_frames);
     SERIALIZE_OPTION(section, save, stereo_matching_options_, debug_frames);
@@ -1837,9 +1837,8 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
   matcher.set_max_disparity(stereo_matching_options_.max_disparity);
   matcher.set_max_scale(stereo_matching_options_.max_scale);
-  matcher.set_kernel_radius(stereo_matching_options_.kernel_radius);
-  matcher.set_kernel_sigma(stereo_matching_options_.kernel_sigma);
-  matcher.set_max_scale(stereo_matching_options_.max_scale);
+  matcher.set_texture_threshold(stereo_matching_options_.texture_threshold);
+  matcher.set_disp12maxDiff(stereo_matching_options_.disp12maxDiff);
   matcher.set_debug_points(stereo_matching_options_.debug_points);
 
 

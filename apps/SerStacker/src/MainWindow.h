@@ -20,6 +20,7 @@
 #include <gui/qimagesequencetreeview/QImageSequenceTreeDock.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipelineoptions/QPipelineOptionsView.h>
+#include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include "QImageEditor.h"
 #include "QAppSettings.h"
 #include "QPipelineProgressView.h"
@@ -52,6 +53,7 @@ private:
   void stupCloudViewer();
   void setupRoiOptions();
   void setupImageViewOptions();
+  void setupDisplayImageVideoWriter();
   void setupStatusbar();
 
 public Q_SLOTS:
@@ -149,6 +151,9 @@ private:
   QLabel * shapesLabel_ctl = nullptr;
   QToolButton * showLog_ctl = nullptr;
 
+  ///
+  QDisplayVideoWriter diplayImageWriter_;
+  QToolButton* displayImageVideoWriterToolButton_ = nullptr;
 };
 
 

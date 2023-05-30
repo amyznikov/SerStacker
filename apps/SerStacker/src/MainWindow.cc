@@ -105,6 +105,7 @@ MainWindow::MainWindow()
   stupCloudViewer();
   setupMeasures();
   setupRoiOptions();
+  setupDisplayImageVideoWriter();
   setupProfileGraph();
 
 
@@ -319,6 +320,20 @@ void MainWindow::setupStatusbar()
   sb->addPermanentWidget(showLog_ctl = new QToolButton());
   showLog_ctl->setDefaultAction(showLogWidgetAction_);
 }
+
+void MainWindow::setupDisplayImageVideoWriter()
+{
+  diplayImageWriter_.loadParameters();
+
+  QToolBar *toolbar = imageEditor->toolbar();
+  if( toolbar ) {
+
+    toolbar->insertWidget(closeImageViewAction_, displayImageVideoWriterToolButton_ =
+        createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
+  }
+
+}
+
 
 void MainWindow::onStackProgressViewTextChanged()
 {
@@ -693,6 +708,7 @@ void MainWindow::setupImageEditor()
         imageEditor->setViewScale(v);
       });
 
+
   toolbar->addAction(closeImageViewAction_ =
       createAction(getIcon(ICON_close),
           "Close",
@@ -935,6 +951,17 @@ void MainWindow::onImageEditorDisplayImageChanged()
 
   saveDisplayImageAsAction->setEnabled(isvisible && hasdisplayimage);
   copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
+
+  if ( diplayImageWriter_.started() ) {
+
+    if ( !imageEditor->isVisible() ) {
+      diplayImageWriter_.stop();
+    }
+    else if ( !imageEditor->displayImage().empty() ) {
+      diplayImageWriter_.write(imageEditor->displayImage());
+    }
+  }
+
 }
 
 

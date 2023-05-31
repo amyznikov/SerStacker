@@ -20,4 +20,21 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
     const std::vector<cv::Mat> & pyramid,
     cv::BorderTypes borderType = cv::BORDER_DEFAULT);
 
+
+/**
+ * Mikhail Sizintsev
+ *  Hierarchical stereo with thin structures and transparency
+ *    <https://www.researchgate.net/publication/4352693_Hierarchical_Stereo_with_Thin_Structures_and_Transparency>
+ */
+
+struct c_melp_pyramid
+{
+  std::vector<cv::Mat> l;
+  std::vector<c_melp_pyramid> p;
+};
+
+void build_melp_pyramid(cv::InputArray input_image,
+    c_melp_pyramid * p,
+    int min_image_size = 8);
+
 #endif /* __laplacian_pyramid_h__ */

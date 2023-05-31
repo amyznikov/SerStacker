@@ -285,6 +285,46 @@ bool fftSpectrumPower(cv::InputArray _src, cv::OutputArray _dst)
   return true;
 }
 
+bool fftSpectrumPhase(cv::InputArray _src, cv::OutputArray _dst )
+{
+  if ( _src.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 input image expected ");
+    return false;
+  }
+
+  if ( _dst.fixedType() && _dst.type() != CV_32FC1 ) {
+    CF_ERROR("Invalid output argument: CV_32FC1 output image expected ");
+    return false;
+  }
+
+  const cv::Mat2f src = _src.getMat();
+
+  cv::Mat1f tmp;
+  cv::Mat1f dst;
+  if ( src.data != _dst.getMatRef().data ) {
+    _dst.create(src.size(), CV_32F);
+    dst = _dst.getMatRef();
+  }
+  else {
+    tmp.create(src.size());
+    dst = tmp;
+  }
+
+  tbb::parallel_for(0, src.rows,
+      [&src, &dst](int y) {
+        for ( int x = 0; x < src.cols; ++x ) {
+          dst[y][x] = std::atan2(src[y][x][1], src[y][x][0]);
+        }
+      });
+
+  if ( !tmp.empty() ) {
+    _dst.move(tmp);
+  }
+
+  return true;
+}
+
+
 bool fftSpectrumModule(cv::InputArray _src, cv::OutputArray _dst)
 {
   if ( _src.type() != CV_32FC2 ) {

@@ -11,12 +11,12 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/c_gaussian_filter.h>
 
-class c_gaussian_filter_routine:
+class c_gaussian_blur_routine:
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_filter_routine,
-      "gaussian_filter", "gaussian_filter");
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_blur_routine,
+      "gaussian_blur", "Gaussian Blur");
 
   void set_sigmax(double v)
   {

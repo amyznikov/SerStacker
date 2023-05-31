@@ -5,5 +5,5 @@
  *      Author: amyznikov
  */
 
-#include "c_gaussian_filter_routine.h"
+#include "c_gaussian_blur_routine.h"
 

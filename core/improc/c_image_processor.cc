@@ -47,15 +47,15 @@
 #include "maps/c_threshold_routine.h"
 #include "maps/c_laplacian_routine.h"
 
+#include "fft/c_fft_routine.h"
+
 #include "c_align_color_channels_routine.h"
 #include "c_autoclip_routine.h"
 #include "c_unsharp_mask_routine.h"
 #include "c_type_convert_routine.h"
 #include "c_radial_polysharp_routine.h"
-#include "c_gaussian_filter_routine.h"
 #include "c_rotate_image_routine.h"
-#include "c_pyrdown_routine.h"
-#include "c_gaussian_pyramid_routine.h"
+#include "c_laplacian_pyramid_routine.h"
 #include "c_median_blur_routine.h"
 #include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
@@ -67,6 +67,10 @@
 #include "c_linear_interpolation_inpaint_routine.h"
 #include "c_bilateral_filter_routine.h"
 #include "c_pnormalize_routine.h"
+#include "c_gaussian_blur_routine.h"
+#include "c_gaussian_pyramid_routine.h"
+#include "c_melp_pyramid_routine.h"
+#include "c_scale_gaussian_pyramid_layers_routine.h"
 
 #include <core/readdir.h>
 #include <atomic>
@@ -137,12 +141,16 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());
     register_class_factory(c_radial_polysharp_routine::class_factory_instance());
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
-    register_class_factory(c_gaussian_filter_routine::class_factory_instance());
+    register_class_factory(c_gaussian_blur_routine::class_factory_instance());
     register_class_factory(c_rotate_image_routine::class_factory_instance());
     register_class_factory(c_affine_transform_routine::class_factory_instance());
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());
-    register_class_factory(c_pyrdown_routine::class_factory_instance());
     register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
+    register_class_factory(c_laplacian_routine::class_factory_instance());
+    register_class_factory(c_melp_pyramid_routine::class_factory_instance());
+    register_class_factory(c_scale_gaussian_pyramid_layers_routine::class_factory_instance());
+    register_class_factory(c_laplacian_pyramid_routine::class_factory_instance());
+
     register_class_factory(c_median_blur_routine::class_factory_instance());
     register_class_factory(c_wmf_routine::class_factory_instance());
     register_class_factory(c_remove_sharp_artifacts_routine::class_factory_instance());
@@ -167,8 +175,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_stereo_rectification_routine::class_factory_instance());
     register_class_factory(c_pnormalize_routine::class_factory_instance());
     register_class_factory(c_census_transfrom_routine::class_factory_instance());
-    //register_class_factory(c_pyramid_test_routine::class_factory_instance());
-    register_class_factory(c_laplacian_routine::class_factory_instance());
+    register_class_factory(c_fft_routine::class_factory_instance());
+
   }
 }
 

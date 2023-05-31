@@ -77,3 +77,44 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
         output_image.depth());
   }
 }
+
+namespace {
+
+static void compute_m(const cv::Mat & l, cv::Mat & m)
+{
+  const cv::Size src_size = l.size();
+
+  cv::pyrUp(l, m);
+  cv::absdiff(m, cv::Scalar::all(0), m);
+  cv::pyrDown(m, m, src_size);
+  cv::pyrDown(m, m);
+}
+
+static void build_melp_pyramid(const cv::Mat & G, c_melp_pyramid & p, int minimum_image_size)
+{
+  build_laplacian_pyramid(G, p.l, minimum_image_size);
+
+  if ( p.l.size() > 1 ) {
+
+    cv::Mat m;
+
+    for( int s = 0; s < (int) (p.l.size()) - 1; ++s ) {
+
+      compute_m(p.l[s], m);
+
+      p.p.emplace_back();
+
+      build_melp_pyramid(m, p.p.back(), minimum_image_size);
+    }
+  }
+}
+
+} // namespace
+
+void build_melp_pyramid(cv::InputArray input_image, c_melp_pyramid * p, int min_image_size)
+{
+  p->l.clear();
+  p->p.clear();
+
+  build_melp_pyramid(input_image.getMat(), *p, min_image_size);
+}

@@ -40,6 +40,9 @@ void fftSwapQuadrants(cv::InputOutputArray spec);
 bool fftSpectrumPower(cv::InputArray src,
     cv::OutputArray dst);
 
+bool fftSpectrumPhase(cv::InputArray src,
+    cv::OutputArray dst);
+
 bool fftSpectrumModule(cv::InputArray src,
     cv::OutputArray dst);
 

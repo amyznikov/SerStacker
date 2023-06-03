@@ -56,7 +56,8 @@ private:
   void setupDisplayImageVideoWriter();
   void setupStatusbar();
 
-public Q_SLOTS:
+private Q_SLOTS:
+  void updateWindowTittle();
   void onSaveCurrentImageAs();
   void onSaveCurrentDisplayImageAs();
   void onSaveCurrentImageMask();
@@ -64,9 +65,6 @@ public Q_SLOTS:
   void onLoadStackConfig();
   void onViewInputOptions();
   void onStackProgressViewTextChanged();
-
-private Q_SLOTS:
-  void updateWindowTittle();
   void openImage(const QString & abspath);
   void onImageEditorVisibilityChanged(bool visible);
   void onImageEditorCurrentFileNameChanged();

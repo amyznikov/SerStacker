@@ -938,6 +938,8 @@ void MainWindow::onImageEditorCurrentImageChanged()
     }
 
     updateMeasurements();
+
+    onImageEditorCheckIfBadFrameSelected();
   }
 }
 

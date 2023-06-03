@@ -7,8 +7,36 @@
 
 #include "laplacian_pyramid.h"
 
+void build_gaussian_pyramid(cv::InputArray input_image,
+    std::vector<cv::Mat> & pyramid,
+    int minimum_image_size,
+    cv::BorderTypes borderType)
+{
+  pyramid.emplace_back(input_image.getMat().clone());
 
-void build_laplacian_pyramid(cv::InputArray input_image, std::vector<cv::Mat> & pyramid, int minimum_image_size,
+  while (42) {
+
+    const cv::Size nextSize((pyramid.back().cols + 1) / 2,
+        (pyramid.back().rows + 1) / 2);
+
+    if( (std::min)(nextSize.width, nextSize.height) <= minimum_image_size ) {
+      break;
+    }
+
+    cv::Mat filtered_image;
+
+    cv::pyrDown(pyramid.back(), filtered_image,
+        nextSize,
+        borderType);
+
+    pyramid.emplace_back(filtered_image);
+  }
+}
+
+
+void build_laplacian_pyramid(cv::InputArray input_image,
+    std::vector<cv::Mat> & pyramid,
+    int minimum_image_size,
     cv::BorderTypes borderType)
 {
   pyramid.emplace_back();
@@ -80,27 +108,31 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
 
 namespace {
 
-static void compute_m(const cv::Mat & l, cv::Mat & m)
+static void compute_m(const cv::Mat & gp, const cv::Mat & gn, cv::Mat & m)
 {
-  const cv::Size src_size = l.size();
+  cv::Mat tmp;
+  cv::pyrUp(gp, tmp);
 
-  cv::pyrUp(l, m);
-  cv::absdiff(m, cv::Scalar::all(0), m);
-  cv::pyrDown(m, m, src_size);
-  cv::pyrDown(m, m);
+  cv::pyrUp(gn, m, gp.size());
+  cv::pyrUp(m, m, tmp.size());
+
+  cv::absdiff(m, tmp, m);
+
+  cv::pyrDown(m, m, gp.size());
+  cv::pyrDown(m, m, gn.size());
 }
 
 static void build_melp_pyramid(const cv::Mat & G, c_melp_pyramid & p, int minimum_image_size)
 {
-  build_laplacian_pyramid(G, p.l, minimum_image_size);
+  build_gaussian_pyramid(G, p.g, minimum_image_size);
 
-  if ( p.l.size() > 1 ) {
+  if ( p.g.size() > 1 ) {
 
     cv::Mat m;
 
-    for( int s = 0; s < (int) (p.l.size()) - 1; ++s ) {
+    for( int s = 0; s < (int) (p.g.size()) - 1; ++s ) {
 
-      compute_m(p.l[s], m);
+      compute_m(p.g[s], p.g[s + 1], m);
 
       p.p.emplace_back();
 
@@ -113,7 +145,7 @@ static void build_melp_pyramid(const cv::Mat & G, c_melp_pyramid & p, int minimu
 
 void build_melp_pyramid(cv::InputArray input_image, c_melp_pyramid * p, int min_image_size)
 {
-  p->l.clear();
+  p->g.clear();
   p->p.clear();
 
   build_melp_pyramid(input_image.getMat(), *p, min_image_size);

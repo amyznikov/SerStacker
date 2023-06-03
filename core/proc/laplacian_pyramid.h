@@ -11,6 +11,11 @@
 
 #include <opencv2/opencv.hpp>
 
+void build_gaussian_pyramid(cv::InputArray input_image,
+    std::vector<cv::Mat> & pyramid,
+    int minimum_image_size = 4,
+    cv::BorderTypes borderType = cv::BORDER_DEFAULT);
+
 void build_laplacian_pyramid(cv::InputArray input_image,
     std::vector<cv::Mat> & pyramid,
     int minimum_image_size = 4,
@@ -29,12 +34,13 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
 
 struct c_melp_pyramid
 {
-  std::vector<cv::Mat> l;
+  std::vector<cv::Mat> g;
   std::vector<c_melp_pyramid> p;
 };
 
 void build_melp_pyramid(cv::InputArray input_image,
     c_melp_pyramid * p,
     int min_image_size = 8);
+
 
 #endif /* __laplacian_pyramid_h__ */

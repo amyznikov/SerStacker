@@ -33,7 +33,7 @@ bool c_melp_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutput
       &pyramid_,
       std::max(1, minimum_image_size_));
 
-  if( pyramid_.l.size() < 1 ) {
+  if( pyramid_.g.size() < 1 ) {
     CF_ERROR("build_melp_pyramid() fails");
     return false;
   }
@@ -43,13 +43,13 @@ bool c_melp_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutput
     p = &p->p.front();
   }
 
-  CF_DEBUG("p->l.size=%zu", p->l.size());
+  CF_DEBUG("p->g.size=%zu", p->g.size());
 
   const int display_col =
       std::max(0, std::min(display_col_,
-          (int) p->l.size() - 1));
+          (int) p->g.size() - 1));
 
-  p->l[display_col].copyTo(image);
+  p->g[display_col].copyTo(image);
 
   if( mask.needed() && !mask.empty() ) {
     mask.release();

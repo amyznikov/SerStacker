@@ -116,7 +116,7 @@ static void compute_m(const cv::Mat & gp, const cv::Mat & gn, cv::Mat & m)
   cv::pyrUp(gn, m, gp.size());
   cv::pyrUp(m, m, tmp.size());
 
-  cv::absdiff(m, tmp, m);
+  cv::absdiff(m * 8, tmp * 8, m);
 
   cv::pyrDown(m, m, gp.size());
   cv::pyrDown(m, m, gn.size());

@@ -170,6 +170,21 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
               Q_EMIT parameterChanged();
             }
           });
+
+  enable_background_normalization_ctl =
+      add_checkbox("enable_bakground_normalization",
+          "enable background normalization",
+          [this](bool checked) {
+            if ( options_ && checked != options_->enable_bground_normalization ) {
+              options_->enable_bground_normalization = checked;
+              background_normalization_ctl->setEnabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  addRow(background_normalization_ctl = new QBackgroundNormalizationOptions(this));
+
+  updateControls();
 }
 
 void QImageStackingInputOptions::set_input_options(c_input_options * options)
@@ -187,6 +202,7 @@ void QImageStackingInputOptions::onupdatecontrols()
 {
   if ( !options_) {
     setEnabled(false);
+    background_normalization_ctl->set_options(nullptr);
   }
   else {
 
@@ -206,6 +222,10 @@ void QImageStackingInputOptions::onupdatecontrols()
     start_frame_index_ctl->setValue(options_->start_frame_index);
     max_input_frames_ctl->setValue(options_->max_input_frames);
     debayer_method_ctl->setValue(options_->debayer_method);
+
+    background_normalization_ctl->set_options(&options_->background_normalization_options);
+    background_normalization_ctl->setEnabled(options_->enable_bground_normalization);
+    enable_background_normalization_ctl->setChecked(options_->enable_bground_normalization);
 
     setEnabled(true);
   }

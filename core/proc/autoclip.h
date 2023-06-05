@@ -9,7 +9,6 @@
 #define __autoclip_h__
 
 #include <opencv2/opencv.hpp>
-#include <core/debug.h>
 
 
 
@@ -49,10 +48,5 @@ bool autoclip(cv::Mat & image,
     double * maxval = nullptr);
 
 
-bool histogram_white_balance(cv::InputArray image,
-    cv::InputArray mask,
-    cv::OutputArray dst,
-    double cl = 1,
-    double ch = 99);
 
 #endif /* __autoclip_h__ */

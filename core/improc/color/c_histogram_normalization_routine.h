@@ -10,6 +10,8 @@
 #define __c_histogram_normalization_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/white_balance/histogram_normalization.h>
+//#include <core/io/debayer.h>
 
 class c_histogram_normalization_routine:
     public c_image_processor_routine
@@ -17,12 +19,6 @@ class c_histogram_normalization_routine:
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_histogram_normalization_routine,
       "histogram_normalization", "histogram normalization");
-
-  enum histogram_normalization_type {
-    normalize_mean,
-    normalize_median,
-    normalize_mode
-  };
 
   void set_normalization_type(histogram_normalization_type v)
   {
@@ -32,6 +28,16 @@ public:
   histogram_normalization_type normalization_type() const
   {
     return normalization_type_;
+  }
+
+  void set_colorid(COLORID v)
+  {
+    colorid_ = v;
+  }
+
+  COLORID colorid() const
+  {
+    return colorid_;
   }
 
   void set_stretch(const cv::Scalar & v)
@@ -57,6 +63,7 @@ public:
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_type, "normalization_type");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, colorid, "colorid");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch, "stretch");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, offset, "offset");
   }
@@ -65,6 +72,7 @@ public:
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, normalization_type);
+      SERIALIZE_PROPERTY(settings, save, *this, colorid);
       SERIALIZE_PROPERTY(settings, save, *this, stretch);
       SERIALIZE_PROPERTY(settings, save, *this, offset);
       return true;
@@ -75,10 +83,10 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
-  histogram_normalization_type normalization_type_ = normalize_mean;
+  COLORID colorid_ = COLORID_UNKNOWN;
+  histogram_normalization_type normalization_type_ = histogram_normalize_mean;
   cv::Scalar offset_ = cv::Scalar::all(0);
   cv::Scalar stretch_ = cv::Scalar::all(1);
-
 };
 
 #endif /* __c_histogram_normalization_routine_h__ */

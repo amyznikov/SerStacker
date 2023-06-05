@@ -13,6 +13,7 @@
 #include <core/roi_selection/c_planetary_disk_selection.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
+#include <core/proc/white_balance/histogram_normalization.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/proc/focus.h>
 #include <core/io/c_output_frame_writer.h>
@@ -85,6 +86,9 @@ struct c_input_options
 
   int start_frame_index = 0;
   int max_input_frames = 0;
+
+  bool enable_bground_normalization  = false;
+  c_histogram_normalization_options background_normalization_options;
 };
 
 struct c_roi_selection_options
@@ -306,7 +310,7 @@ protected:
 
   bool read_input_frame(const c_input_sequence::sptr & input_sequence,
       cv::Mat & output_image, cv::Mat & output_mask,
-      bool enable_darkbayer) const;
+      bool is_external_master_frame) const;
 
   static bool select_image_roi(const c_roi_selection::ptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,

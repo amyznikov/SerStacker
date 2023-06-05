@@ -1186,7 +1186,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       master_frame_pos,
       input_sequence->current_pos());
 
-  if ( !read_input_frame(input_sequence, reference_frame, reference_mask, !external_master_frame_) ) {
+  if ( !read_input_frame(input_sequence, reference_frame, reference_mask, external_master_frame_) ) {
     CF_FATAL("read_input_frame(reference_frame) fails for master_frame_pos=%d",
         master_frame_pos);
     return false;
@@ -1521,7 +1521,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       break;
     }
 
-    if ( !read_input_frame(input_sequence, current_frame, current_mask, true) ) {
+    if ( !read_input_frame(input_sequence, current_frame, current_mask, false) ) {
       set_status_msg("read_input_frame() fails");
       break;
     }
@@ -2005,7 +2005,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
 bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     cv::Mat & output_image, cv::Mat & output_mask,
-    bool enable_darkbayer) const
+    bool is_external_master_frame) const
 {
   INSTRUMENT_REGION("");
 
@@ -2017,7 +2017,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
     return false;
   }
 
-  if( enable_darkbayer ) {
+  if( !is_external_master_frame ) {
 
     if( !darkbayer_.empty() ) {
 
@@ -2049,8 +2049,13 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
       cv::divide(output_image, flatbayer_,
           output_image, output_image.depth());
     }
-  }
 
+    if ( input_options_.enable_bground_normalization ) {
+      nomalize_image_histogramm(output_image, output_mask, output_image,
+          input_options_.background_normalization_options,
+          input_sequence->colorid());
+    }
+  }
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
@@ -3010,6 +3015,13 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, input_options_, anscombe);
     SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
     SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
+
+    SERIALIZE_OPTION(section, save, input_options_, enable_bground_normalization);
+    if( (subsection = get_group(section, save, "bground_normalization")) ) {
+      SERIALIZE_OPTION(subsection, save, input_options_.background_normalization_options, norm_type);
+      SERIALIZE_OPTION(subsection, save, input_options_.background_normalization_options, stretch);
+      SERIALIZE_OPTION(subsection, save, input_options_.background_normalization_options, offset);
+    }
   }
 
   if( (section = get_group(settings, save, "roi")) ) {

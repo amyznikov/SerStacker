@@ -10,8 +10,8 @@
 #define __QImageStackingInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QBrowsePathCombo.h>
 #include <core/pipeline/c_image_stacking_pipeline.h>
+#include "QBackgroundNormalizationOptions.h"
 
 class QImageStackingInputOptions :
     public QSettingsWidget
@@ -36,6 +36,9 @@ protected:
 protected:
   c_input_options * options_ = nullptr;
 
+  QNumericBox * start_frame_index_ctl = nullptr;
+  QNumericBox * max_input_frames_ctl = nullptr;
+
   QCheckBox * enable_remove_bad_pixels_ctl = nullptr;
   QNumericBox * bad_pixels_variation_threshold_ctl = nullptr;
   QCheckBox * drop_bad_asi_frames_ctl = nullptr;
@@ -49,12 +52,10 @@ protected:
   QCheckBox * missing_pixels_marked_black_ctl  = nullptr;
   QCheckBox * inpaint_missing_pixels_ctl = nullptr;
 
-  QNumericBox * start_frame_index_ctl = nullptr;
-  QNumericBox * max_input_frames_ctl = nullptr;
-
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_method_ctl = nullptr;
 
-//  QToolButton * applyToAll_ctl = nullptr;
+  QCheckBox * enable_background_normalization_ctl = nullptr;
+  QBackgroundNormalizationOptions * background_normalization_ctl = nullptr;
 };
 
 #endif /* __QImageStackingInputOptions_h__ */

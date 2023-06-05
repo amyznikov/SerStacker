@@ -6,7 +6,7 @@
  */
 
 #include "c_histogram_white_balance_routine.h"
-#include <core/proc/autoclip.h>
+#include <core/proc/white_balance/histogram_white_balance.h>
 #include <core/proc/reduce_channels.h>
 
 

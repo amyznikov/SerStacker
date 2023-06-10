@@ -6,20 +6,19 @@
  */
 
 #include "c_melp_pyramid_routine.h"
+#include <core/ssprintf.h>
 
 void c_melp_pyramid_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
 {
   ADD_IMAGE_PROCESSOR_CTRL(ctls, min_image_size, "Specify minimum image size");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, display_row, "Specify display pyramid layer row index");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, display_col, "Specify display pyramid layer col index");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, display_pos, "Specify display node position");
 }
 
 bool c_melp_pyramid_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, min_image_size);
-    SERIALIZE_PROPERTY(settings, save, *this, display_row);
-    SERIALIZE_PROPERTY(settings, save, *this, display_col);
+    SERIALIZE_PROPERTY(settings, save, *this, display_pos);
     return true;
   }
   return false;
@@ -29,27 +28,41 @@ bool c_melp_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutput
 {
   int minimum_image_size = 4;
 
-  build_melp_pyramid(image,
-      &pyramid_,
-      std::max(1, minimum_image_size_));
+  pyramid_ = build_melp_pyramid(image, std::max(4, minimum_image_size_));
 
-  if( pyramid_.g.size() < 1 ) {
-    CF_ERROR("build_melp_pyramid() fails");
-    return false;
+  static const auto recurse =
+      [](c_melp_pyramid::sptr p, int h, int v) -> c_melp_pyramid::sptr {
+
+        for ( int i = 0; i < h && p; ++i ) {
+          p = p->l;
+        }
+        for ( int i = 0; i < v && p; ++i ) {
+          p = p->m;
+        }
+
+        return p;
+      };
+
+  c_melp_pyramid::sptr p = pyramid_;
+
+  CF_DEBUG("display_pos_.size()=%zu", display_pos_.size());
+
+  for( int i = 0, n = display_pos_.size(); i < n && p; i += 2 ) {
+    const int h = display_pos_[i];
+    const int v = i < n - 1 ? display_pos_[i + 1] : 0;
+
+    CF_DEBUG("recurse to h=%d v=%d", h, v);
+
+    p = recurse(p, h, v);
   }
 
-  const c_melp_pyramid *p = &pyramid_;
-  for( int i = 0; i < display_row_ && !p->p.empty(); ++i ) {
-    p = &p->p.front();
+
+  if ( p ) {
+    p->image.copyTo(image);
   }
-
-  CF_DEBUG("p->g.size=%zu", p->g.size());
-
-  const int display_col =
-      std::max(0, std::min(display_col_,
-          (int) p->g.size() - 1));
-
-  p->g[display_col].copyTo(image);
+  else {
+    image.release();
+  }
 
   if( mask.needed() && !mask.empty() ) {
     mask.release();

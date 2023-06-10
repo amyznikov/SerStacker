@@ -729,7 +729,7 @@ typename std::enable_if<std::is_scalar_v<T>,
     bool>::type fromString(const std::string & s, std::vector<T> * v)
 {
   const std::vector<std::string> tokens =
-      strsplit(s, " \t\n;:");
+      strsplit(s, " \t\n;:,");
 
   v->clear(), v->reserve(tokens.size());
   for( int i = 0, n = tokens.size(); i < n; ++i ) {

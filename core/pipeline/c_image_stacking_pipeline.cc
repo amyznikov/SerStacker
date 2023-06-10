@@ -2046,6 +2046,11 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
         return false;
       }
 
+      if( output_image.depth() != CV_32F ) {
+        output_image.convertTo(output_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+      }
+
       cv::divide(output_image, flatbayer_,
           output_image, output_image.depth());
     }

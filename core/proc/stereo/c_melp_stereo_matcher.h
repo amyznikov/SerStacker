@@ -15,22 +15,12 @@ class c_melp_stereo_matcher
 {
 public:
 
-  // 3x3 BGR pixels, 32 bytes = 256 bits
-  struct descriptor
-  {
-    uint8_t a[32];
-  };
-
-
   c_melp_stereo_matcher();
 
   bool compute(cv::InputArray left, cv::InputArray right,
       cv::OutputArray disparity);
 
-  //static bool build_melp_pyramid()
-
 protected:
-  c_melp_pyramid lp, rp;
 };
 
 #endif /* __c_melp_stereo_matcher_h__ */

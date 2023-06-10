@@ -114,7 +114,7 @@ static inline uint16_t absdiff(const ssdesc & a, const ssdesc & b)
       __m64 m;
       uint16_t g[4];
     } u = {
-        .m = _mm_sad_pu8(_m_from_int64(a.u64[0]), _m_from_int64(b.u64[0]))
+        .m = _mm_sad_pu8(_m_from_int64(a.u64[i]), _m_from_int64(b.u64[i]))
     };
 
     s += u.g[0];

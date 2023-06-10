@@ -6,11 +6,13 @@
  */
 
 #include "laplacian_pyramid.h"
+#include <core/debug.h>
 
 void build_gaussian_pyramid(cv::InputArray input_image,
     std::vector<cv::Mat> & pyramid,
     int minimum_image_size,
-    cv::BorderTypes borderType)
+    cv::BorderTypes borderType,
+    double stretch_factor)
 {
   pyramid.emplace_back(input_image.getMat().clone());
 
@@ -29,7 +31,12 @@ void build_gaussian_pyramid(cv::InputArray input_image,
         nextSize,
         borderType);
 
-    pyramid.emplace_back(filtered_image);
+    if( stretch_factor != 0 && stretch_factor != 1 ) {
+      pyramid.emplace_back(filtered_image * stretch_factor);
+    }
+    else {
+      pyramid.emplace_back(filtered_image);
+    }
   }
 }
 
@@ -108,7 +115,7 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
 
 namespace {
 
-static void compute_m(const cv::Mat & gp, const cv::Mat & gn, cv::Mat & m)
+static void compute_m(const cv::Mat & gp, const cv::Mat & gn, cv::Mat & m, double scale)
 {
   cv::Mat tmp;
   cv::pyrUp(gp, tmp);
@@ -116,37 +123,33 @@ static void compute_m(const cv::Mat & gp, const cv::Mat & gn, cv::Mat & m)
   cv::pyrUp(gn, m, gp.size());
   cv::pyrUp(m, m, tmp.size());
 
-  cv::absdiff(m * 8, tmp * 8, m);
+  cv::absdiff(m, tmp, m);
 
   cv::pyrDown(m, m, gp.size());
   cv::pyrDown(m, m, gn.size());
 }
 
-static void build_melp_pyramid(const cv::Mat & G, c_melp_pyramid & p, int minimum_image_size)
-{
-  build_gaussian_pyramid(G, p.g, minimum_image_size);
-
-  if ( p.g.size() > 1 ) {
-
-    cv::Mat m;
-
-    for( int s = 0; s < (int) (p.g.size()) - 1; ++s ) {
-
-      compute_m(p.g[s], p.g[s + 1], m);
-
-      p.p.emplace_back();
-
-      build_melp_pyramid(m, p.p.back(), minimum_image_size);
-    }
-  }
-}
-
 } // namespace
 
-void build_melp_pyramid(cv::InputArray input_image, c_melp_pyramid * p, int min_image_size)
+c_melp_pyramid::sptr build_melp_pyramid(cv::InputArray input_image, int minimum_image_size)
 {
-  p->g.clear();
-  p->p.clear();
+  c_melp_pyramid::sptr p(new c_melp_pyramid());
 
-  build_melp_pyramid(input_image.getMat(), *p, min_image_size);
+  input_image.getMat().copyTo(p->image);
+
+  const cv::Size nextSize((p->image.cols + 1) / 2,
+      (p->image.rows + 1) / 2);
+
+  if( (std::min)(nextSize.width, nextSize.height) > minimum_image_size ) {
+
+    cv::Mat l, m;
+
+    cv::pyrDown(p->image, l, nextSize);
+    compute_m(p->image, l, m, 6);
+
+    p->l = build_melp_pyramid(l, minimum_image_size);
+    p->m = build_melp_pyramid(m * 6, minimum_image_size);
+  }
+
+  return p;
 }

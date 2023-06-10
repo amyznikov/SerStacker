@@ -29,24 +29,14 @@ public:
     return minimum_image_size_;
   }
 
-  void set_display_row(int v)
+  void set_display_pos(const std::vector<int> & v)
   {
-    display_row_ = v;
+    display_pos_ = v;
   }
 
-  int display_row() const
+  const std::vector<int> & display_pos() const
   {
-    return display_row_;
-  }
-
-  void set_display_col(int v)
-  {
-    display_col_ = v;
-  }
-
-  int display_col() const
-  {
-    return display_col_;
+    return display_pos_;
   }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override;
@@ -55,9 +45,8 @@ public:
 
 protected:
   int minimum_image_size_ = 4;
-  int display_row_ = 0;
-  int display_col_ = 0;
-  c_melp_pyramid pyramid_;
+  std::vector<int> display_pos_;
+  c_melp_pyramid::sptr pyramid_;
 };
 
 #endif /* __c_melp_pyramid_routine_h__ */

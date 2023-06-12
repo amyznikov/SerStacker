@@ -43,6 +43,7 @@ bool c_melp_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutput
         return p;
       };
 
+
   c_melp_pyramid::sptr p = pyramid_;
 
   CF_DEBUG("display_pos_.size()=%zu", display_pos_.size());

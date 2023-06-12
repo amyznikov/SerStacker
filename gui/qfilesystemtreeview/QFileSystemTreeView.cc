@@ -96,7 +96,7 @@ void QFileSystemTreeView::showColumn(int column)
 void QFileSystemTreeView::setFilter(QDir::Filters filters)
 {
   model->setFilter(filters);
-  emit filterChanged();
+  Q_EMIT filterChanged();
   //updateFilterIcon();
   refresh();
 }
@@ -151,7 +151,7 @@ bool QFileSystemTreeView::displayPath(const QString & path, bool showErrMsgIfNot
 void QFileSystemTreeView::onCurrentDirectoryChanged(const QModelIndex & current, const QModelIndex & /*previous*/)
 {
   if ( model->fileInfo(current).isDir() ) {
-    emit currentDirectoryChanged(model->fileInfo(current).absoluteFilePath());
+    Q_EMIT currentDirectoryChanged(model->fileInfo(current).absoluteFilePath());
   }
 }
 
@@ -159,7 +159,7 @@ void QFileSystemTreeView::onItemPressed(const QModelIndex &index)
 {
   QFileInfo fileInfo = model->fileInfo(index);
   if ( fileInfo.isDir() ) {
-    emit directoryItemPressed(fileInfo.absoluteFilePath());
+    Q_EMIT directoryItemPressed(fileInfo.absoluteFilePath());
   }
 }
 
@@ -186,7 +186,7 @@ void QFileSystemTreeView::onCustomContextMenu(const QPoint & pos)
     }
   } while ( 0 );
 
-  emit customContextMenuRequested(treeView->viewport()->mapToGlobal(pos), fileList);
+  Q_EMIT customContextMenuRequested(treeView->viewport()->mapToGlobal(pos), fileList);
 }
 
 void QFileSystemTreeView::fillContextMenu(QMenu & menu, const QFileInfoList & flist)

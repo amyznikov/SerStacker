@@ -11,8 +11,8 @@
 #include <gui/qcustomdock/QCustomDock.h>
 #include "QFileSystemTreeView.h"
 
-class QFileSystemTreeDock
-    : public QCustomDockWidget
+class QFileSystemTreeDock :
+    public QCustomDockWidget
 {
   Q_OBJECT;
 public:
@@ -38,14 +38,14 @@ public:
 
   void fillContextMenu(QMenu & menu, const QFileInfoList & flist);
 
-signals:
+Q_SIGNALS:
   void currentDirectoryChanged(const QString & absPath);
   void directoryItemPressed(const QString & absPath);
   void customContextMenuRequested(const QPoint & pos, const QFileInfoList & );
   void showPathInTreeRequested();
   void filterChanged();
 
-public slots:
+public Q_SLOTS:
   void refresh();
 
 

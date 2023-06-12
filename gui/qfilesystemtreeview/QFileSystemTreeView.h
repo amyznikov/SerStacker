@@ -47,17 +47,17 @@ public:
 
   void fillContextMenu(QMenu & menu, const QFileInfoList & flist);
 
-signals:
+Q_SIGNALS:
   void currentDirectoryChanged(const QString & absPath);
   void customContextMenuRequested(const QPoint & pos, const QFileInfoList & );
   void directoryItemPressed(const QString & absPath);
   void showPathInTreeRequested();
   void filterChanged();
 
-public slots:
+public Q_SLOTS:
   void refresh();
 
-private slots:
+private Q_SLOTS:
   void onCurrentDirectoryChanged(const QModelIndex & current,
       const QModelIndex & previous);
   void onCustomContextMenu(const QPoint & pos);

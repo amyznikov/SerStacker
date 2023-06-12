@@ -91,7 +91,7 @@ QFileSystemTreeDock::QFileSystemTreeDock(const QString & title, QWidget * parent
   connect(fileSystemTreeView_, &QFileSystemTreeView::currentDirectoryChanged,
       [this] (const QString & abspath) {
         updateHistory(abspath);
-        emit currentDirectoryChanged(abspath);
+        Q_EMIT currentDirectoryChanged(abspath);
       });
 
   connect(fileSystemTreeView_, &QFileSystemTreeView::filterChanged,
@@ -194,7 +194,7 @@ void QFileSystemTreeDock::onShowHistoryClicked()
     QMenu menu;
     QAction * action;
 
-    for ( int i = history.size() - 1; i >= 0; --i ) {
+    for( int i = 0; i < history.size(); ++i ) {
       menu.addAction(action = new QAction(history[i]));
     }
 
@@ -223,20 +223,16 @@ void QFileSystemTreeDock::updateHistory(const QString & abspath)
     const int index =
         history.indexOf(abspath);
 
-    if ( index < 0 || index >= history.size() - 1 ) {
-      return;
+    if ( index >= 0 && index < history.size() ) {
+      history.removeAt(index);
     }
 
-    history.removeAt(index);
-
-    while ( history.size() > 16 ) {
-      history.removeAt(0);
+    while ( history.size() > 32 ) {
+      history.pop_back();
     }
   }
 
-
-
-  history.append(abspath);
+  history.insert(0, abspath);
 
   setings.setValue(historyKeyName,
       history);

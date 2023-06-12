@@ -6,60 +6,16 @@
  */
 
 #include "c_melp_stereo_matcher.h"
-#include <core/proc/array2d.h>
 #include <core/debug.h>
 #include <tbb/tbb.h>
 #include <xmmintrin.h>
 #include <immintrin.h>
 
+using c_blockarray = c_melp_stereo_matcher::c_blockarray;
+using c_blockdesc = c_melp_stereo_matcher::c_blockdesc;
+using c_block_pyramid = c_melp_stereo_matcher::c_block_pyramid;
+
 namespace {
-
-#pragma pack(push, 8)
-struct c_blockdesc
-{
-  // 3x3 BGR pixels, 32 bytes = 256 bits
-  union {
-    uint8_t  g[32];
-    uint64_t u64[4];
-  };
-};
-#pragma pack(pop)
-
-class c_blockarray :
-    public c_array2d<c_blockdesc>
-{
-public :
-  typedef c_blockarray this_class;
-  typedef c_array2d<c_blockdesc> base;
-
-  c_blockarray()
-  {
-  }
-
-  c_blockarray(int rows, int cols)
-  {
-    create(rows, cols);
-  }
-
-  c_blockarray(const cv::Size & s)
-  {
-    create(s);
-  }
-
-  c_blockarray(const c_blockarray & rhs)
-  {
-    this_class :: operator = (rhs);
-  }
-};
-
-
-struct c_block_pyramid
-{
-  typedef c_block_pyramid this_class;
-  typedef std::shared_ptr<this_class> sptr;
-  c_blockarray image;
-  c_block_pyramid::sptr l, m;
-};
 
 void image_to_blockarray(const cv::Mat & image, c_blockarray & a)
 {
@@ -73,17 +29,20 @@ void image_to_blockarray(const cv::Mat & image, c_blockarray & a)
   for( int y = 0; y < size.height; ++y ) {
 
     c_blockdesc *descp = a[y];
-    const cv::Vec3f *imgp = img[y + 1];
+    //const cv::Vec3f *imgp = img[y + 1];
 
     for( int x = 0; x < size.width; ++x ) {
 
-      const cv::Vec3f &v = imgp[x + 1];
+      //const cv::Vec3f &v = imgp[x + 1];
       c_blockdesc &desc = descp[x];
 
       int k = 0;
 
       for( int yy = y - 1; yy <= y + 1; ++yy ) {
         for( int xx = x - 1; xx <= x + 1; ++xx ) {
+
+          const cv::Vec3f &v = img[yy + 1][xx + 1];
+
           desc.g[k++] = cv::saturate_cast<uint8_t>(v[0]);
           desc.g[k++] = cv::saturate_cast<uint8_t>(v[1]);
           desc.g[k++] = cv::saturate_cast<uint8_t>(v[2]);
@@ -104,7 +63,7 @@ inline uint16_t absdiff(const c_blockdesc & a, const c_blockdesc & b)
 {
   uint16_t s;
 
-#if  __AVX2__
+#if 0 //  __AVX2__
 
   union {
     __m256i m; // 256 bit = 32 bytes
@@ -117,7 +76,7 @@ inline uint16_t absdiff(const c_blockdesc & a, const c_blockdesc & b)
 
   s = u.g[0];
 
-#elif __SSE__
+#elif 0 // __SSE__
 
   s = 0;
   for( int i = 0; i < 4; ++i ) {
@@ -144,7 +103,7 @@ inline uint16_t absdiff(const c_blockdesc & a, const c_blockdesc & b)
   return s;
 }
 
-static void search_matches(const c_blockarray & left, const c_blockarray & right, cv::Mat1w & M)
+static void search_matches(const c_blockarray & right, const c_blockarray & left, cv::Mat1w & M)
 {
   typedef tbb::blocked_range<int> tbb_range;
   const int tbb_grain_size = 128;
@@ -165,7 +124,7 @@ static void search_matches(const c_blockarray & left, const c_blockarray & right
             uint16_t best_cost = UINT16_MAX;
             int best_xl = M[y][x];
 
-            for( int xl = x; xl <= std::min(lwidth-1, x + 1); ++xl ) {
+            for( int xl = x; xl < lwidth - 1; ++xl ) {
 
               const uint16_t cost = absdiff(rp[x], lp[xl]);
               if( cost < best_cost ) {
@@ -183,7 +142,7 @@ static void search_matches(const c_blockarray & left, const c_blockarray & right
 
 }
 
-static void search_matches(const c_blockarray & left, const c_blockarray & right, const cv::Mat1w H[2], cv::Mat1w & M )
+static void search_matches(const c_blockarray & right, const c_blockarray & left, const cv::Mat1w H[2], cv::Mat1w & M )
 {
   typedef tbb::blocked_range<int> tbb_range;
   const int tbb_grain_size = 128;
@@ -210,7 +169,7 @@ static void search_matches(const c_blockarray & left, const c_blockarray & right
 
               const int xguess = H[i][y][x];
 
-              for( int xl = std::max(x, xguess-1); xl <= std::min(lwidth - 1, xguess + 1); ++xl ) {
+              for( int xl = std::max(x, xguess - 1); xl <= std::min(lwidth - 1, xguess + 1); ++xl ) {
 
                 const uint16_t cost = absdiff(rp[x], lp[xl]);
                 if( cost < best_cost ) {
@@ -230,10 +189,10 @@ static void search_matches(const c_blockarray & left, const c_blockarray & right
 
 static void recurse(const c_block_pyramid::sptr & bp, const c_melp_pyramid::sptr & melp)
 {
-  image_to_blockarray(melp->image, bp->image);
+  image_to_blockarray(bp->image = melp->image, bp->a);
   if( melp->l ) {
-    bp->l.reset(new c_block_pyramid());
-    recurse(bp->l, melp->l);
+    bp->g.reset(new c_block_pyramid());
+    recurse(bp->g, melp->l);
   }
   if( melp->m ) {
     bp->m.reset(new c_block_pyramid());
@@ -250,94 +209,123 @@ c_block_pyramid::sptr melp_to_block_pyramid(const c_melp_pyramid::sptr & melp)
 
 
 
-
-c_block_pyramid::sptr build_block_pyramid(cv::InputArray image)
+void compute_matches(const c_block_pyramid::sptr & lp, const c_block_pyramid::sptr & rp)
 {
-  static constexpr int minimum_image_size = 4;
+  if( !rp->g ) {
 
-  if( image.type() != CV_8UC3 ) {
-    CF_ERROR("Invalid left image type %d, must be CV_8UC3", image.type());
-    return nullptr;
-  }
+    rp->M.create(rp->a.size());
 
-  cv::Mat3f img;
-  image.getMat().convertTo(img, CV_32F);
-
-  c_melp_pyramid::sptr melp =
-      build_melp_pyramid(img, minimum_image_size);
-
-  return melp_to_block_pyramid(melp);
-}
-
-
-
-void compute_matches(const c_block_pyramid::sptr & lp, const c_block_pyramid::sptr & rp, cv::Mat1w & M)
-{
-  if( !rp->l ) {
-
-    M.create(rp->image.size());
-
-    for( int y = 0; y < M.rows; ++y ) {
-      for( int x = 0; x < M.cols; ++x ) {
-        M[y][x] = x;
+    for( int y = 0; y < rp->M.rows; ++y ) {
+      for( int x = 0; x < rp->M.cols; ++x ) {
+        rp->M[y][x] = x;
       }
     }
 
-    // search_matches(lp->image, rp->image, M);
+    search_matches(rp->a, lp->a, rp->M);
+    lp->M = rp->M;
   }
   else {
 
-    cv::Mat1w MM[2];
+    compute_matches(lp->g, rp->g);
+    compute_matches(lp->m, rp->m);
 
-    compute_matches(lp->l, rp->l, MM[0]);
-    compute_matches(lp->m, rp->m, MM[1]);
-
+    cv::pyrUp(rp->g->M, rp->MM[0], rp->a.size());
+    cv::pyrUp(rp->m->M, rp->MM[1], rp->a.size());
 
     for( int i = 0; i < 2; ++i ) {
-      cv::pyrUp(MM[i], MM[i], lp->image.size());
-      cv::multiply(MM[i], 2, MM[i]);
+      cv::multiply(rp->MM[i], 2, rp->MM[i]);
+      lp->MM[i] = rp->MM[i];
     }
 
-    M.create(lp->image.size());
-    search_matches(lp->image, rp->image, MM, M);
+    rp->M.create(lp->a.size());
+    search_matches(lp->a, rp->a, rp->MM, rp->M);
+    lp->M = rp->M;
   }
-
 }
 
 } // namespace
 
-c_melp_stereo_matcher::c_melp_stereo_matcher()
-{
-}
-
 
 bool c_melp_stereo_matcher::compute(cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
 {
-  c_block_pyramid::sptr lp, rp;
+  cv::Mat3f left_img, right_img;
 
-  if( !(lp = build_block_pyramid(left)) ) {
-    CF_ERROR("build_block_pyramid(left) fails");
+  if( left.type() != CV_8UC3 ) {
+    CF_ERROR("Invalid left image type %d, must be CV_8UC3", left.type());
     return false;
   }
 
-  if( !(rp = build_block_pyramid(right)) ) {
-    CF_ERROR("build_block_pyramid(right) fails");
+
+  left.getMat().convertTo(left_img, CV_32F);
+  if ( !(lmelp_ = build_melp_pyramid(left_img, minimum_image_size_))) {
+    CF_ERROR("build_melp_pyramid(left_img) fails");
     return false;
   }
 
-  cv::Mat1w M;
+  right.getMat().convertTo(right_img, CV_32F);
+  if ( !(rmelp_ = build_melp_pyramid(right_img, minimum_image_size_))) {
+    CF_ERROR("build_melp_pyramid(right_img) fails");
+    return false;
+  }
 
-  compute_matches(lp, rp, M);
+  if( !(lp_ = melp_to_block_pyramid(lmelp_)) ) {
+    CF_ERROR("melp_to_block_pyramid(lmelp_) fails");
+    return false;
+  }
 
-  disparity.create(M.size(), CV_32FC1);
+  if( !(rp_ = melp_to_block_pyramid(rmelp_)) ) {
+    CF_ERROR("melp_to_block_pyramid(rmelp_) fails");
+    return false;
+  }
 
-  cv::Mat1f D = disparity.getMatRef();
+  compute_matches(lp_, rp_);
 
-  for( int y = 0; y < M.rows; ++y ) {
-    for( int x = 0; x < M.cols; ++x ) {
-      D[y][x] = M[y][x] - x;
+  if ( disparity.needed() ) {
+    disparity.create(rp_->M.size(), CV_32FC1);
+
+    cv::Mat1f D = disparity.getMatRef();
+
+    for( int y = 0; y < rp_->M.rows; ++y ) {
+      for( int x = 0; x < rp_->M.cols; ++x ) {
+        D[y][x] = rp_->M[y][x] - x;
+      }
     }
   }
 
   return true;
 }
+
+void c_melp_stereo_matcher::sad(int disp,
+    const c_block_pyramid::sptr & lp,
+    const c_block_pyramid::sptr & rp,
+    cv::Mat1f & dists)
+{
+  const c_blockarray &la =
+      lp->a;
+
+  const c_blockarray &ra =
+      rp->a;
+
+  const int rows =
+      rp->a.rows();
+
+  const int cols =
+      rp->a.cols();
+
+  if ( dists.size() != rp->a.size() ) {
+    dists.create(rp->a.size());
+  }
+
+  dists.setTo(0);
+
+  for( int y = 0; y < rows; ++y ) {
+
+    for( int x = 0; x < cols - disp; ++x ) {
+
+      dists[y][x] =
+          absdiff(ra[y][x],
+              la[y][x + disp]);
+    }
+  }
+}
+

@@ -26,6 +26,10 @@ public:
     DisplayAbsdiff,
     DisplaySAD,
     DisplayDisparity,
+    DisplayMM0,
+    DisplayMM1,
+//    DisplayMM2,
+//    DisplayMM3,
   };
 
   void set_displayType(DisplayType v)

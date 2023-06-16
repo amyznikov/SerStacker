@@ -707,6 +707,36 @@ inline const c_enum_member * members_of<cv::BorderTypes>()
   return members;
 }
 
+template<>
+inline const c_enum_member * members_of<cv::MorphTypes>()
+{
+  static constexpr c_enum_member members[] = {
+      {cv::MORPH_ERODE, "ERODE", ""},
+      {cv::MORPH_DILATE, "DILATE", ""},
+      {cv::MORPH_OPEN, "OPEN", "opening operation"},
+      {cv::MORPH_CLOSE, "CLOSE", "closing operation"},
+      {cv::MORPH_GRADIENT, "GRADIENT", "morphological gradient"},
+      {cv::MORPH_TOPHAT, "TOPHAT", "top hat"},
+      {cv::MORPH_BLACKHAT, "BLACKHAT", "black hat"},
+      {cv::MORPH_HITMISS, "HITMISS", "hit or miss,\n Only supported for CV_8UC1 binary images"},
+      {cv::MORPH_ERODE},
+  };
+
+  return members;
+}
+
+template<>
+inline const c_enum_member * members_of<cv::MorphShapes>()
+{
+  static constexpr c_enum_member members[] = {
+      {cv::MORPH_RECT, "RECT", "a rectangular structuring element"},
+      {cv::MORPH_CROSS, "CROSS", "a cross-shaped structuring element"},
+      {cv::MORPH_ELLIPSE, "ELLIPSE", "an elliptic structuring element"},
+      {cv::MORPH_RECT},
+  };
+
+  return members;
+}
 
 #endif // CV_VERSION
 

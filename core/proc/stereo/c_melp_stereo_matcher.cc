@@ -49,6 +49,11 @@ void image_to_blockarray(const cv::Mat & image, c_blockarray & a)
         }
       }
 
+      if ( k != 27 ) {
+        CF_ERROR("k=%d", k);
+        exit(1);
+      }
+
       while (k < sizeof(desc.g)) {
         desc.g[k++] = 0;
       }
@@ -63,7 +68,7 @@ inline uint16_t absdiff(const c_blockdesc & a, const c_blockdesc & b)
 {
   uint16_t s;
 
-#if 0 //  __AVX2__
+#if 0  // __AVX2__ // bugged, fix required
 
   union {
     __m256i m; // 256 bit = 32 bytes
@@ -71,12 +76,12 @@ inline uint16_t absdiff(const c_blockdesc & a, const c_blockdesc & b)
   } u = {
       .m =
           _mm256_sad_epu8(_mm256_lddqu_si256((__m256i const*) a.g),
-              _mm256_lddqu_si256((__m256i const*) &b.g))
+              _mm256_lddqu_si256((__m256i const*) b.g))
   };
 
   s = u.g[0];
 
-#elif 0 // __SSE__
+#elif __SSE__
 
   s = 0;
   for( int i = 0; i < 4; ++i ) {
@@ -122,9 +127,9 @@ static void search_matches(const c_blockarray & right, const c_blockarray & left
           for( int x = 0; x < rwidth; ++x ) {
 
             uint16_t best_cost = UINT16_MAX;
-            int best_xl = M[y][x];
+            int best_xl = x + M[y][x];
 
-            for( int xl = x; xl < lwidth - 1; ++xl ) {
+            for( int xl = x; xl <= std::min(lwidth - 1, x + 1); ++xl ) {
 
               const uint16_t cost = absdiff(rp[x], lp[xl]);
               if( cost < best_cost ) {
@@ -135,14 +140,14 @@ static void search_matches(const c_blockarray & right, const c_blockarray & left
               }
             }
 
-            M[y][x] = best_xl;
+            M[y][x] = best_xl - x;
           }
         }
       });
 
 }
 
-static void search_matches(const c_blockarray & right, const c_blockarray & left, const cv::Mat1w H[2], cv::Mat1w & M )
+static void search_matches(const c_blockarray & right, const c_blockarray & left, const cv::Mat1w MM[2], cv::Mat1w & M)
 {
   typedef tbb::blocked_range<int> tbb_range;
   const int tbb_grain_size = 128;
@@ -160,29 +165,33 @@ static void search_matches(const c_blockarray & right, const c_blockarray & left
 
           for( int x = 0; x < rwidth; ++x ) {
 
+            const int search_range_min =
+                std::max(x, x + MM[0][y][x] - 1);
+
+            const int search_range_max =
+                std::min(lwidth-1, x + MM[1][y][x] + 1);
+
+            if ( search_range_max < search_range_min ) {
+              CF_ERROR("APP BUG: search_range_max=%d search_range_min=%d x=%d y=%d w=%d", search_range_max, search_range_min, x, y, rwidth);
+              exit (1);
+            }
+
             uint16_t best_cost = UINT16_MAX;
-            int best_xl = H[0][y][x];
+            int best_xl = x;
+            for( int xl = search_range_min; xl <= search_range_max; ++xl ) {
 
-            const int imax = H[0][y][x] == H[1][y][x] ? 1 : 2;
-
-            for ( int i = 0; i < imax; ++i ) {
-
-              const int xguess = H[i][y][x];
-
-              for( int xl = std::max(x, xguess - 1); xl <= std::min(lwidth - 1, xguess + 1); ++xl ) {
-
-                const uint16_t cost = absdiff(rp[x], lp[xl]);
-                if( cost < best_cost ) {
-                  best_xl = xl;
-                  if ( !(best_cost = cost) ) {
-                    break;
-                  }
+              const uint16_t cost = absdiff(rp[x], lp[xl]);
+              if( cost < best_cost ) {
+                best_xl = xl;
+                if ( !(best_cost = cost) ) {
+                  break;
                 }
               }
             }
 
-            M[y][x] = best_xl;
+            M[y][x] = best_xl - x;
           }
+
         }
       });
 }
@@ -214,31 +223,51 @@ void compute_matches(const c_block_pyramid::sptr & lp, const c_block_pyramid::sp
   if( !rp->g ) {
 
     rp->M.create(rp->a.size());
-
-    for( int y = 0; y < rp->M.rows; ++y ) {
-      for( int x = 0; x < rp->M.cols; ++x ) {
-        rp->M[y][x] = x;
-      }
-    }
+    rp->M.setTo(0);
 
     search_matches(rp->a, lp->a, rp->M);
     lp->M = rp->M;
   }
   else {
 
+    static const auto upscale_disparity =
+        [](const cv::Mat1w & src, cv::Mat1w & dst, const cv::Size & dst_size) {
+
+          dst.create(dst_size);
+
+          for ( int y = 0; y < dst_size.height; ++y ) {
+            for ( int x = 0; x < dst_size.width; ++x ) {
+              dst[y][x] = 2 * src[y/2][x/2];
+            }
+          }
+        };
+
+
     compute_matches(lp->g, rp->g);
     compute_matches(lp->m, rp->m);
 
-    cv::pyrUp(rp->g->M, rp->MM[0], rp->a.size());
-    cv::pyrUp(rp->m->M, rp->MM[1], rp->a.size());
+    static const cv::Mat1b SE(3, 3, 255);
 
-    for( int i = 0; i < 2; ++i ) {
-      cv::multiply(rp->MM[i], 2, rp->MM[i]);
+    cv::Mat1w tmp[2];
+
+    cv::erode(rp->g->M, tmp[0], SE, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+    cv::erode(rp->m->M, tmp[1], SE, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+    //    cv::min((const cv::Mat &)tmp[0], (const cv::Mat &)tmp[1], (cv::Mat &) tmp[0]);
+    cv::min(cv::InputArray(tmp[0]), cv::InputArray(tmp[1]), cv::OutputArray(tmp[0]));
+    upscale_disparity(tmp[0], rp->MM[0], rp->a.size());
+
+    cv::dilate(rp->g->M, tmp[0], SE, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+    cv::dilate(rp->m->M, tmp[1], SE, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+    //cv::max((const cv::Mat &)tmp[0], (const cv::Mat &)tmp[1], (cv::Mat &) tmp[0]);
+    cv::max(cv::InputArray(tmp[0]), cv::InputArray(tmp[1]), cv::OutputArray(tmp[0]));
+    upscale_disparity(tmp[0], rp->MM[1], rp->a.size());
+
+    for( int i = 0; i < 4; ++i ) {
       lp->MM[i] = rp->MM[i];
     }
 
     rp->M.create(lp->a.size());
-    search_matches(lp->a, rp->a, rp->MM, rp->M);
+    search_matches(rp->a, lp->a, rp->MM, rp->M);
     lp->M = rp->M;
   }
 }
@@ -281,15 +310,7 @@ bool c_melp_stereo_matcher::compute(cv::InputArray left, cv::InputArray right, c
   compute_matches(lp_, rp_);
 
   if ( disparity.needed() ) {
-    disparity.create(rp_->M.size(), CV_32FC1);
-
-    cv::Mat1f D = disparity.getMatRef();
-
-    for( int y = 0; y < rp_->M.rows; ++y ) {
-      for( int x = 0; x < rp_->M.cols; ++x ) {
-        D[y][x] = rp_->M[y][x] - x;
-      }
-    }
+    rp_->M.convertTo(disparity, CV_32F);
   }
 
   return true;

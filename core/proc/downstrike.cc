@@ -521,6 +521,10 @@ void upject_uneven(cv::InputArray _src, Mat & dst, Size dstSize, Mat * _zmask, i
 {
   const Mat src = _src.getMat();
 
+  if ( dstSize.empty() ) {
+    dstSize = src.size() * 2;
+  }
+
   if ( src.channels() > 1 ) {
     upject_uneven_mc(src, dst, dstSize, _zmask, zmdepth);
   }

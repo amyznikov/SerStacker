@@ -15,10 +15,15 @@ const c_enum_member* members_of<c_melp_stereo_matcher_routine::DisplayType>()
       { c_melp_stereo_matcher_routine::DisplayDisparity, "Disparity", "" },
       { c_melp_stereo_matcher_routine::DisplayHlayout, "Hlayout", "" },
       { c_melp_stereo_matcher_routine::DisplayVlayout, "Vlayout", "" },
+      { c_melp_stereo_matcher_routine::DisplayMM0, "MM0", ""  },
+      { c_melp_stereo_matcher_routine::DisplayMM1, "MM1", ""  },
+//      { c_melp_stereo_matcher_routine::DisplayMM2, "MM2", ""  },
+//      { c_melp_stereo_matcher_routine::DisplayMM3, "MM3", ""  },
       { c_melp_stereo_matcher_routine::DisplayBlend, "Blend", "" },
       { c_melp_stereo_matcher_routine::DisplayAbsdiff, "Absdiff", "" },
       { c_melp_stereo_matcher_routine::DisplaySAD, "SAD", "" },
       { c_melp_stereo_matcher_routine::DisplayDisparity },
+
   };
 
   return members;
@@ -105,27 +110,62 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     return false;
   }
 
-  if ( mask.needed() ) {
-    mask.release();
-  }
-
   switch (displayType_) {
     case DisplayDisparity: {
       c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
       if( p ) {
-
-        image.create(p->M.size(), CV_32FC1);
-
-        cv::Mat1f dst = image.getMatRef();
-
-        for( int y = 0; y < dst.rows; ++y ) {
-          for( int x = 0; x < dst.cols; ++x ) {
-            dst[y][x] = p->M[y][x] - x;
-          }
-        }
+        p->M.convertTo(image, CV_32F);
+      }
+      if ( mask.needed() ) {
+        mask.release();
       }
       break;
     }
+
+    case DisplayMM0:{
+      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+      if( p ) {
+        p->MM[0].convertTo(image, CV_32F);
+      }
+      if ( mask.needed() ) {
+        mask.release();
+      }
+      break;
+    }
+
+    case DisplayMM1:{
+      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+      if( p ) {
+        p->MM[1].convertTo(image, CV_32F);
+      }
+      if ( mask.needed() ) {
+        mask.release();
+      }
+      break;
+    }
+
+//    case DisplayMM2:{
+//      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+//      if( p ) {
+//        p->MM[2].convertTo(image, CV_32F);
+//      }
+//      if ( mask.needed() ) {
+//        mask.release();
+//      }
+//      break;
+//    }
+//
+//    case DisplayMM3:{
+//      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+//      if( p ) {
+//        p->MM[3].convertTo(image, CV_32F);
+//      }
+//      if ( mask.needed() ) {
+//        mask.release();
+//      }
+//      break;
+//    }
+
     case DisplayHlayout: {
       c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
       c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
@@ -139,8 +179,14 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
         rp->image.copyTo(dst(cv::Rect(0, 0, rp->image.cols, rp->image.rows)));
         lp->image.copyTo(dst(cv::Rect(rp->image.cols, 0, lp->image.cols, lp->image.rows)));
       }
+
+      if ( mask.needed() ) {
+        mask.release();
+      }
+
       break;
     }
+
     case DisplayVlayout:{
       c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
       c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
@@ -154,8 +200,14 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
         rp->image.copyTo(dst(cv::Rect(0, 0, rp->image.cols, rp->image.rows)));
         lp->image.copyTo(dst(cv::Rect(0, rp->image.rows, lp->image.cols, lp->image.rows)));
       }
+
+      if ( mask.needed() ) {
+        mask.release();
+      }
+
       break;
     }
+
     case DisplayBlend: {
       c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
       c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
@@ -210,7 +262,6 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
         }
 
       }
-
 
       break;
     }

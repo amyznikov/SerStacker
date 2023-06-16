@@ -58,6 +58,7 @@
 #include "c_rotate_image_routine.h"
 #include "c_laplacian_pyramid_routine.h"
 #include "c_median_blur_routine.h"
+#include "c_median_hat_routine.h"
 #include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
 #include "c_affine_transform_routine.h"
@@ -72,6 +73,9 @@
 #include "c_gaussian_pyramid_routine.h"
 #include "c_melp_pyramid_routine.h"
 #include "c_scale_gaussian_pyramid_layers_routine.h"
+#include "c_downstrike_routine.h"
+#include "c_upject_routine.h"
+#include "c_morphology_routine.h"
 
 #include <core/readdir.h>
 #include <atomic>
@@ -151,9 +155,14 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_melp_pyramid_routine::class_factory_instance());
     register_class_factory(c_scale_gaussian_pyramid_layers_routine::class_factory_instance());
     register_class_factory(c_laplacian_pyramid_routine::class_factory_instance());
+    register_class_factory(c_downstrike_routine::class_factory_instance());
+    register_class_factory(c_upject_routine::class_factory_instance());
+    register_class_factory(c_morphology_routine::class_factory_instance());
 
     register_class_factory(c_median_blur_routine::class_factory_instance());
+    register_class_factory(c_median_hat_routine::class_factory_instance());
     register_class_factory(c_wmf_routine::class_factory_instance());
+
     register_class_factory(c_remove_sharp_artifacts_routine::class_factory_instance());
     register_class_factory(c_mean_curvature_blur_routine::class_factory_instance());
     register_class_factory(c_fit_jovian_ellipse_routine::class_factory_instance());

@@ -17,11 +17,11 @@ const c_enum_member* members_of<c_melp_stereo_matcher_routine::DisplayType>()
       { c_melp_stereo_matcher_routine::DisplayVlayout, "Vlayout", "" },
       { c_melp_stereo_matcher_routine::DisplayMM0, "MM0", ""  },
       { c_melp_stereo_matcher_routine::DisplayMM1, "MM1", ""  },
-//      { c_melp_stereo_matcher_routine::DisplayMM2, "MM2", ""  },
-//      { c_melp_stereo_matcher_routine::DisplayMM3, "MM3", ""  },
       { c_melp_stereo_matcher_routine::DisplayBlend, "Blend", "" },
       { c_melp_stereo_matcher_routine::DisplayAbsdiff, "Absdiff", "" },
       { c_melp_stereo_matcher_routine::DisplaySAD, "SAD", "" },
+      { c_melp_stereo_matcher_routine::DisplayTextureMap,"TextureMap", ""  },
+      { c_melp_stereo_matcher_routine::DisplayTextureMask,"TextureMask", ""  },
       { c_melp_stereo_matcher_routine::DisplayDisparity },
 
   };
@@ -33,6 +33,7 @@ void c_melp_stereo_matcher_routine::get_parameters(std::vector<struct c_image_pr
 {
   ADD_IMAGE_PROCESSOR_CTRL(ctls, displayType, "displayType");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, minimum_image_size, "minimum_image_size");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, texture_threshold, "texture_threshold");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, displaypos, "displaypos");
   ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
 }
@@ -42,6 +43,7 @@ bool c_melp_stereo_matcher_routine::serialize(c_config_setting settings, bool sa
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, displayType);
     SERIALIZE_PROPERTY(settings, save, *this, minimum_image_size);
+    SERIALIZE_PROPERTY(settings, save, *this, texture_threshold);
     SERIALIZE_PROPERTY(settings, save, *this, displaypos);
     SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
     return true;
@@ -111,13 +113,35 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
   }
 
   switch (displayType_) {
+
+    case DisplayTextureMap: {
+      m.texture_map().copyTo(image);
+      if( mask.needed() ) {
+        m.texture_mask().copyTo(mask);
+      }
+      break;
+    }
+
+    case DisplayTextureMask: {
+      m.texture_mask().copyTo(image);
+      if( mask.needed() ) {
+        mask.release();
+      }
+      break;
+    }
+
     case DisplayDisparity: {
       c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
       if( p ) {
         p->M.convertTo(image, CV_32F);
       }
       if ( mask.needed() ) {
-        mask.release();
+        if ( p->M.size() == m.texture_mask().size() ) {
+          m.texture_mask().copyTo(mask);
+        }
+        else {
+          mask.release();
+        }
       }
       break;
     }
@@ -174,10 +198,15 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
         image.create(cv::Size(lp->image.cols + rp->image.cols,
             std::max(lp->image.rows, rp->image.rows)), rp->image.type());
 
+        //image.create(cv::Size(m.lmelp()->image.cols + m.rmelp()->image.cols,
+        //    std::max(m.lmelp()->image.rows, m.rmelp()->image.rows)), m.rmelp()->image.type());
+
         cv::Mat &dst = image.getMatRef();
 
         rp->image.copyTo(dst(cv::Rect(0, 0, rp->image.cols, rp->image.rows)));
         lp->image.copyTo(dst(cv::Rect(rp->image.cols, 0, lp->image.cols, lp->image.rows)));
+        //m.rmelp()->image.copyTo(dst(cv::Rect(0, 0, m.rmelp()->image.cols, m.rmelp()->image.rows)));
+        //m.lmelp()->image.copyTo(dst(cv::Rect(m.rmelp()->image.cols, 0, m.lmelp()->image.cols, m.lmelp()->image.rows)));
       }
 
       if ( mask.needed() ) {

@@ -140,7 +140,7 @@ c_melp_pyramid::sptr build_melp_pyramid(cv::InputArray input_image, int minimum_
   const cv::Size nextSize((p->image.cols + 1) / 2,
       (p->image.rows + 1) / 2);
 
-  if( (std::min)(nextSize.width, nextSize.height) > minimum_image_size ) {
+  if( (std::min)(nextSize.width, nextSize.height) >= minimum_image_size ) {
 
     cv::Mat l, m;
 

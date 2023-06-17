@@ -262,7 +262,7 @@ void compute_matches(const c_block_pyramid::sptr & lp, const c_block_pyramid::sp
     cv::max(cv::InputArray(tmp[0]), cv::InputArray(tmp[1]), cv::OutputArray(tmp[0]));
     upscale_disparity(tmp[0], rp->MM[1], rp->a.size());
 
-    for( int i = 0; i < 4; ++i ) {
+    for( int i = 0; i < 2; ++i ) {
       lp->MM[i] = rp->MM[i];
     }
 
@@ -272,27 +272,94 @@ void compute_matches(const c_block_pyramid::sptr & lp, const c_block_pyramid::sp
   }
 }
 
+
+void create_texture_mask(cv::InputArray img, cv::Mat1b & texture_map, cv::Mat1b & texture_mask,
+    double texture_threshold)
+{
+#if 0
+  cv::Mat gray;
+  std::vector<cv::Mat> gg(4);
+
+  cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+  cv::pyrDown(gray, gray);
+
+  static float k12[] = { -1, -1, 0, +1, +1 };
+  static float k22[] = { 1, 1, -4, 1, 1 };
+
+  static const cv::Matx<float, 1, 5> K12 = cv::Matx<float, 1, 5>(k12) * 1.5 / 4.0;
+  static const cv::Matx<float, 1, 5> K22 = cv::Matx<float, 1, 5>(k22) * 1.5 / 8.0;
+
+  cv::filter2D(gray, gg[0], -1, K12, cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  cv::filter2D(gray, gg[1], -1, K12.t(), cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  cv::filter2D(gray, gg[2], -1, K22, cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  cv::filter2D(gray, gg[3], -1, K22.t(), cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+
+  for( int i = 0; i < 4; ++i ) {
+
+    if( i == 0 ) {
+      cv::absdiff(gg[i], cv::Scalar::all(128), texture_map);
+    }
+    else {
+      cv::absdiff(gg[i], cv::Scalar::all(128), gg[i]);
+      cv::add(gg[i], texture_map, texture_map);
+    }
+  }
+
+#else
+  cv::Mat gray;
+  std::vector<cv::Mat> gg(2);
+
+  cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+  cv::pyrDown(gray, gray);
+
+  static float k12[] = { -1, -1, 0, +1, +1 };
+  static float k22[] = { 1, 1, -4, 1, 1 };
+
+  static const cv::Matx<float, 1, 5> K12 = cv::Matx<float, 1, 5>(k12) * 1.5 / 4.0;
+  static const cv::Matx<float, 1, 5> K22 = cv::Matx<float, 1, 5>(k22) * 1.5 / 8.0;
+
+  cv::filter2D(gray, gg[0], -1, K12, cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+  cv::filter2D(gray, gg[1], -1, K22, cv::Point(-1, -1), 128, cv::BORDER_REPLICATE);
+
+  cv::absdiff(gg[0], cv::Scalar::all(128), texture_map);
+  cv::absdiff(gg[1], cv::Scalar::all(128), gg[1]);
+  cv::add(gg[1], texture_map, texture_map);
+
+#endif
+
+  cv::pyrUp(texture_map, texture_map, img.size());
+  cv::compare(texture_map, texture_threshold, texture_mask, cv::CMP_GE);
+
+}
+
 } // namespace
 
 
 bool c_melp_stereo_matcher::compute(cv::InputArray left, cv::InputArray right, cv::OutputArray disparity)
 {
-  cv::Mat3f left_img, right_img;
+  cv::Mat3f img;
 
   if( left.type() != CV_8UC3 ) {
     CF_ERROR("Invalid left image type %d, must be CV_8UC3", left.type());
     return false;
   }
 
+  if( right.type() != CV_8UC3 ) {
+    CF_ERROR("Invalid right image type %d, must be CV_8UC3", right.type());
+    return false;
+  }
 
-  left.getMat().convertTo(left_img, CV_32F);
-  if ( !(lmelp_ = build_melp_pyramid(left_img, minimum_image_size_))) {
+  create_texture_mask(right, texture_map_, texture_mask_,
+      texture_threshold_);
+
+  left.getMat().convertTo(img, CV_32F);
+  if ( !(lmelp_ = build_melp_pyramid(img, minimum_image_size_))) {
     CF_ERROR("build_melp_pyramid(left_img) fails");
     return false;
   }
 
-  right.getMat().convertTo(right_img, CV_32F);
-  if ( !(rmelp_ = build_melp_pyramid(right_img, minimum_image_size_))) {
+  right.getMat().convertTo(img, CV_32F);
+  if ( !(rmelp_ = build_melp_pyramid(img, minimum_image_size_))) {
     CF_ERROR("build_melp_pyramid(right_img) fails");
     return false;
   }

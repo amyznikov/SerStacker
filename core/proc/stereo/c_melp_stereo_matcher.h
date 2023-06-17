@@ -78,6 +78,16 @@ public:
     return minimum_image_size_;
   }
 
+  void set_texture_threshold(double v)
+  {
+    texture_threshold_ = v;
+  }
+
+  double texture_threshold() const
+  {
+    return texture_threshold_;
+  }
+
   const c_melp_pyramid::sptr & lmelp() const
   {
     return lmelp_;
@@ -98,6 +108,16 @@ public:
     return rp_;
   }
 
+  const cv::Mat1b & texture_mask() const
+  {
+    return texture_mask_;
+  }
+
+  const cv::Mat1b & texture_map() const
+  {
+    return texture_map_;
+  }
+
   bool compute(cv::InputArray left, cv::InputArray right,
       cv::OutputArray disparity);
 
@@ -109,6 +129,9 @@ public:
 protected:
   c_block_pyramid::sptr lp_, rp_;
   c_melp_pyramid::sptr lmelp_, rmelp_;
+  cv::Mat1b texture_mask_;
+  cv::Mat1b texture_map_;
+  double texture_threshold_ = 2;
   int minimum_image_size_ = 4;
 };
 

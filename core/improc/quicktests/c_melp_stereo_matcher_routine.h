@@ -28,8 +28,8 @@ public:
     DisplayDisparity,
     DisplayMM0,
     DisplayMM1,
-//    DisplayMM2,
-//    DisplayMM3,
+    DisplayTextureMap,
+    DisplayTextureMask,
   };
 
   void set_displayType(DisplayType v)
@@ -70,6 +70,16 @@ public:
   int minimum_image_size() const
   {
     return m.minimum_image_size();
+  }
+
+  void set_texture_threshold(double v)
+  {
+    m.set_texture_threshold(v);
+  }
+
+  double texture_threshold() const
+  {
+    return m.texture_threshold();
   }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override;

@@ -182,6 +182,11 @@ void QImageFileEditor::loadNextFrame()
 
       input_sequence_->read(inputImage_, &inputMask_);
 
+//      CF_DEBUG("inputImage_: %dx%d channels=%d depth=%d inputMask_: %dx%d channels=%d depth=%d",
+//          inputImage_.cols, inputImage_.rows, inputImage_.channels(), inputImage_.depth(),
+//          inputMask_.cols, inputMask_.rows, inputMask_.channels(), inputMask_.depth());
+
+
       Q_EMIT onInputImageLoad(inputImage_, inputMask_,
           input_sequence_->colorid(),
           input_sequence_->bpp());

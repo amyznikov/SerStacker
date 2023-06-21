@@ -579,6 +579,9 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
       return false;
     }
 
+    // CF_DEBUG("output_frame.channels()=%d", output_frame.channels());
+
+
     if ( output_colorid ) {
       *output_colorid = suggest_colorid(
           output_frame.channels());

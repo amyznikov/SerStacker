@@ -1895,6 +1895,12 @@ bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double 
 
   avg.move(img);
 
+  if( mask.needed() ) {
+    cv::Mat msk;
+    cv::compare(counter_, 0, msk, cv::CMP_GT);
+    reduce_color_channels(msk, mask, cv::REDUCE_MAX);
+  }
+
   return true;
 }
 

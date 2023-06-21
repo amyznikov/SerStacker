@@ -25,14 +25,14 @@ static bool detect_stars(cv::InputArray _src, cv::InputArray aperture_mask, std:
 
   src = _src.getMat();
 
-  cv::medianBlur(src, filtered, 3);
-  cv::GaussianBlur(filtered, filtered, cv::Size(0, 0), 2);
-  //cv::GaussianBlur(src, filtered, cv::Size(0, 0), 1.5);
+  //cv::medianBlur(src, filtered, 3);
+  //cv::GaussianBlur(filtered, filtered, cv::Size(0, 0), 2);
+  cv::GaussianBlur(src, filtered, cv::Size(0, 0), 1);
   if ( !dbgpath.empty() ) {
     save_image(filtered, ssprintf("%s/star_detector_filtered.tiff", dbgpath.c_str()));
   }
 
-  cv::GaussianBlur(filtered, mean, cv::Size(0,0), 25);
+  cv::GaussianBlur(filtered, mean, cv::Size(0,0), 15);
   cv::scaleAdd(mean, -2, filtered, sharpen);
   cv::max(sharpen, 0, sharpen);
   cv::compare(sharpen, 0, mask, cv::CMP_GT);

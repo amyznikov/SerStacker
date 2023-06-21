@@ -2550,6 +2550,10 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
     return false;
   }
 
+  CF_DEBUG("image_to_write: %dx%d channels=%d depth=%d output_mask: %dx%d channels=%d depth=%d",
+      image_to_write.cols, image_to_write.rows, image_to_write.channels(), image_to_write.depth(),
+      output_mask.cols, output_mask.rows, output_mask.channels(), output_mask.depth());
+
   return save_image(image_to_write, output_file_name);
 }
 

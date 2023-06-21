@@ -232,6 +232,8 @@ static bool load_tiff_image (cv::Mat & image, const std::string & filename)
   }
 
   /* test if the extrasample represents an associated alpha channel... */
+ // CF_DEBUG("EXTRA=%u", EXTRA);
+
   if ( EXTRA > 0 && (EXTRA_TYPES[0] == EXTRASAMPLE_ASSOCALPHA) ) {
     alpha = true;
   }

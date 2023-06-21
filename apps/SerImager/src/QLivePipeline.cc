@@ -13,6 +13,7 @@
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/proc/histogram.h>
+#include <core/io/load_image.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -640,6 +641,7 @@ QLivePipelineThread::QLivePipelineThread(QObject * parent) :
       this, &ThisClass::onRestartAfterException,
       Qt::QueuedConnection);
 
+  load_settings();
 }
 
 QLivePipelineThread::~QLivePipelineThread()
@@ -712,6 +714,7 @@ QLivePipeline* QLivePipelineThread::currentPipeline() const
 void QLivePipelineThread::setDebayer(DEBAYER_ALGORITHM algo)
 {
   debayer_ = algo;
+  save_settings();
 }
 
 DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
@@ -719,6 +722,68 @@ DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
   return debayer_;
 }
 
+void QLivePipelineThread::setDarkFramePath(const QString & pathfilename)
+{
+  setDarkFrame(pathfilename);
+  save_settings();
+}
+
+const QString & QLivePipelineThread::darkFramePath() const
+{
+  return darkFramePath_;
+}
+
+void QLivePipelineThread::setDarkFrame(const QString & pathfilename)
+{
+  darkFrameLock_.lock();
+
+  darkFrame_.release();
+
+  if ( !(darkFramePath_ = pathfilename).isEmpty() ) {
+
+    cv::Mat ignoreMaskIfExists;
+    if ( !load_image(darkFramePath_.toStdString(), darkFrame_, ignoreMaskIfExists) ) {
+      CF_ERROR("load_image('%s') fails", darkFramePath_.constData());
+    }
+    else if ( darkFrameScale_ != 0 ) {
+      cv::multiply(darkFrame_, darkFrameScale_, darkFrame_);
+    }
+    //    else if (darkFrame_.depth() == CV_32F ) {
+    //    }
+  }
+
+  darkFrameLock_.unlock();
+}
+
+void QLivePipelineThread::setDarkFrameScale(double v)
+{
+  darkFrameScale_ = v;
+  if ( !darkFramePath_.isEmpty() ) {
+    setDarkFrame(darkFramePath_);
+  }
+  save_settings();
+}
+
+double QLivePipelineThread::darkFrameScale() const
+{
+  return darkFrameScale_;
+}
+
+void QLivePipelineThread::load_settings()
+{
+  QSettings settigs;
+  debayer_ = (DEBAYER_ALGORITHM) (settigs.value("QLivePipelineThread/debayer", (int) debayer_).toInt());
+  darkFramePath_ = settigs.value("QLivePipelineThread/darkFramePath", darkFramePath_).toString();
+  darkFrameScale_ = settigs.value("QLivePipelineThread/darkFrameScale", darkFrameScale_).toDouble();
+}
+
+void QLivePipelineThread::save_settings()
+{
+  QSettings settigs;
+  settigs.setValue("QLivePipelineThread/debayer", (int)debayer_);
+  settigs.setValue("QLivePipelineThread/darkFramePath", darkFramePath_);
+  settigs.setValue("QLivePipelineThread/darkFrameScale", darkFrameScale_);
+}
 
 bool QLivePipelineThread::startPipeline(QLivePipeline * pipeline)
 {
@@ -814,8 +879,29 @@ void QLivePipelineThread::run()
 
       if( haveInputImage ) {
 
+        darkFrameLock_.lock();
+        if( darkFrame_.size() == inputImage.size() && darkFrame_.channels() == inputImage.channels() ) {
+
+          inputImage.convertTo(inputImage, darkFrame_.depth());
+
+          if( darkFrameScale_ != 0 ) {
+            cv::subtract(inputImage, darkFrame_, inputImage);
+          }
+          else {
+
+          }
+
+        }
+        darkFrameLock_.unlock();
+
         if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
-          if( ::debayer(inputImage, inputImage, colorid, debayer_) ) {
+
+          const DEBAYER_ALGORITHM method =
+              inputImage.depth() == CV_32F ?
+                  DEBAYER_NN2 :
+                  (DEBAYER_ALGORITHM)debayer_;
+
+          if( ::debayer(inputImage, inputImage, colorid, method) ) {
             colorid = COLORID_BGR;
           }
         }
@@ -1695,6 +1781,40 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
           [this](DEBAYER_ALGORITHM * v) {
             if ( liveThread_ ) {
               *v = liveThread_->debayer();
+              return true;
+            }
+            return false;
+          });
+
+  darkframe_ctl =
+      add_browse_for_path("",
+          "Dark frame:",
+          QFileDialog::AcceptOpen,
+          QFileDialog::ExistingFile,
+          [this](const QString & v) {
+            if ( liveThread_ ) {
+              liveThread_->setDarkFramePath(v);
+            }
+          },
+          [this](QString * v) {
+            if ( liveThread_ ) {
+              *v = liveThread_->darkFramePath();
+              return true;
+            }
+            return false;
+          });
+
+  darkFrameScale_ctl =
+      add_numeric_box<double>("darkFrameScale",
+          "",
+          [this](double v) {
+            if ( liveThread_ ) {
+              liveThread_->setDarkFrameScale(v);
+            }
+          },
+          [this](double * v) {
+            if ( liveThread_ ) {
+              *v = liveThread_->darkFrameScale();
               return true;
             }
             return false;

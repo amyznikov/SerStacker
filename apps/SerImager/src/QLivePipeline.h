@@ -362,6 +362,12 @@ public:
   void setDebayer(DEBAYER_ALGORITHM algo);
   DEBAYER_ALGORITHM debayer() const;
 
+  void setDarkFramePath(const QString & pathfilename);
+  const QString & darkFramePath() const;
+
+  void setDarkFrameScale(double v);
+  double darkFrameScale() const;
+
 protected Q_SLOTS:
   void onRestartAfterException();
   void onCameraStateChanged(QImagingCamera::State oldState,
@@ -371,6 +377,9 @@ Q_SIGNALS:
   void restartAfterException(QPrivateSignal * );
 
 protected:
+  void setDarkFrame(const QString & pathfilename);
+  void load_settings();
+  void save_settings();
   void run() override;
 
 protected:
@@ -379,6 +388,11 @@ protected:
   QLivePipeline * pipeline_ = nullptr;
 
   std::atomic<DEBAYER_ALGORITHM> debayer_ = DEBAYER_NN;
+  QString darkFramePath_;
+  cv::Mat darkFrame_;
+  double darkFrameScale_ = 1; // auto
+  std::mutex darkFrameLock_;
+
   std::atomic_bool finish_ = false;
 };
 
@@ -456,6 +470,8 @@ protected:
 protected:
   QLivePipelineThread * liveThread_ = nullptr;
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
+  QBrowsePathCombo * darkframe_ctl = nullptr;
+  QNumericBox * darkFrameScale_ctl  = nullptr;
 };
 
 class QLiveThreadSettingsDialogBox :
@@ -482,6 +498,7 @@ protected:
 protected:
   QVBoxLayout * layout_ = nullptr;
   QLiveThreadSettingsWidget * setiingsWidget_ = nullptr;
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////

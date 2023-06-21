@@ -468,7 +468,6 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     return false;
   }
 
-
   if ( is_bayer_pattern(last_colorid_) ) {
     if ( output_mask ) { // not clear the meaning of alpha mask with bayer pattern
       output_mask->release();

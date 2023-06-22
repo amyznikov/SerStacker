@@ -20,6 +20,7 @@
 #include <core/pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline.h>
 #include <core/pipeline/c_regular_stereo_pipeline.h>
+#include <core/pipeline/c_stereo_matcher_pipeline.h>
 #include <core/debug.h>
 
 namespace serstacker {
@@ -189,6 +190,14 @@ void MainWindow::setupPipelineTypes()
       [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
         return c_image_processing_pipeline::sptr(new c_regular_stereo_pipeline(name, input_sequence));
       });
+
+  c_image_processing_pipeline::register_class(
+      c_stereo_matcher_pipeline::class_name(),
+      "c_stereo_matcher_pipeline",
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new c_stereo_matcher_pipeline(name, input_sequence));
+      });
+
 
 }
 
@@ -1092,6 +1101,11 @@ void MainWindow::updateMeasurements()
 
     }
   }
+}
+
+void MainWindow::onMeasureRightNowRequested()
+{
+  updateMeasurements();
 }
 
 void MainWindow::setupRoiOptions()

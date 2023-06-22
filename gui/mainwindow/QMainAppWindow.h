@@ -65,6 +65,7 @@ protected:
   virtual void onShowMeasureDisplayActionTriggered(bool checked);
   virtual void onMeasuresDisplayVisibilityChanged(bool visible);
   virtual void onMeasuresGraphVisibilityChanged(bool visible);
+  virtual void onMeasureRightNowRequested();
 
   virtual void onShowProfileGraphActionTriggered(bool checked);
   virtual void onPlotProfileDialogBoxVisibilityChanged(bool visible);

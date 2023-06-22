@@ -90,6 +90,7 @@ private :
   void onRestoreState(QSettings & settings) override;
   void onMtfControlVisibilityChanged(bool visible) override;
   void onImageProcessorParameterChanged() override;
+  void onMeasureRightNowRequested() override;
 
 private:
   c_image_sequence_collection::sptr image_sequences_ =

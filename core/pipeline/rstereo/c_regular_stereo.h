@@ -21,12 +21,28 @@ struct c_regular_stereo_image_processing_options
   c_image_processor::sptr output_image_processor;
 };
 
+struct c_stereo_output_options
+{
+  std::string output_directory;
+  std::string progress_video_filename;
+  std::string depthmap_filename;
+  std::string cloud3d_image_filename;
+  std::string cloud3d_ply_filename;
+
+  bool save_progress_video = false;
+  bool save_depthmaps = true;
+  bool save_cloud3d_image = true;
+  bool save_cloud3d_ply = true;
+};
 
 class c_regular_stereo
 {
 public:
   c_regular_stereo() = default;
   virtual ~c_regular_stereo() = default;
+
+  void set_enable_stereo_rectification(bool v);
+  bool enable_stereo_rectification() const;
 
   void set_camera_intrinsics_yml(const std::string & v);
   const std::string& camera_intrinsics_yml() const;
@@ -39,6 +55,9 @@ public:
 
   c_regular_stereo_image_processing_options & image_processing_options() ;
   const c_regular_stereo_image_processing_options & image_processing_options() const;
+
+  c_stereo_output_options & output_options();
+  const c_stereo_output_options & output_options() const;
 
 protected:
   bool initialize();
@@ -56,7 +75,9 @@ protected:
 
   c_regular_stereo_matcher stereo_matcher_;
   c_regular_stereo_image_processing_options image_processing_options_;
+  c_stereo_output_options output_options_;
 
+  bool enable_stereo_rectification_ = true;
   c_stereo_camera_intrinsics stereo_intrinsics_;
   c_stereo_camera_extrinsics stereo_extrinsics_;
   c_stereo_camera_intrinsics new_intrinsics_;

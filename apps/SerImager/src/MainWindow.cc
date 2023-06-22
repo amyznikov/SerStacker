@@ -653,6 +653,11 @@ void MainWindow::updateMeasurements()
   }
 }
 
+void MainWindow::onMeasureRightNowRequested()
+{
+  updateMeasurements();
+}
+
 void MainWindow::onCurrentDisplayImageChanged()
 {
   if ( diplayImageWriter_.started() ) {

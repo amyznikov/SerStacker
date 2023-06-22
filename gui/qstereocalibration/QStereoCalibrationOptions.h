@@ -11,8 +11,8 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qchessboardcorners/QChessboardCornersDetectionOptions.h>
+#include <gui/qstereoinput/QStereoInputOptions.h>
 #include <core/pipeline/c_stereo_calibration_pipeline.h>
-#include "QStereoCalibrationInputOptions.h"
 #include "QStereoCalibrateOptions.h"
 #include "QStereoCalibrationOutputOptions.h"
 

@@ -39,6 +39,20 @@ QMeasureDisplay::QMeasureDisplay(QWidget * parent) :
   setupTableView();
 }
 
+void QMeasureDisplay::onEnableMeasurementsClicked(bool checked)
+{
+  updateEnableMeasurements();
+
+  const bool enabled =
+      enableMeasureAction_->isChecked() &&
+          !cm_.empty() &&
+          this->isVisible();
+
+  if ( enabled ) {
+    Q_EMIT measureRightNowRequested();
+  }
+}
+
 void QMeasureDisplay::updateEnableMeasurements()
 {
   const bool enable =
@@ -152,7 +166,7 @@ void QMeasureDisplay::setupToolbar()
       this, &ThisClass::onSelectMeasuresClicked);
 
   connect(enableMeasureAction_, &QAction::triggered,
-      this, &ThisClass::updateEnableMeasurements);
+      this, &ThisClass::onEnableMeasurementsClicked);
 
   connect(clearTableAction_, &QAction::triggered,
       this, &ThisClass::clearMeasurements);
@@ -291,7 +305,7 @@ void QMeasureDisplay::updateMeasurements()
                   qsprintf("%+g", v->value(0));
 
               for( int c = 1; c < v->cn; ++c ) {
-                text += qsprintf("; +%g", v->value(c));
+                text += qsprintf("; %+g", v->value(c));
               }
 
               if( incremental_mode ) {
@@ -434,6 +448,9 @@ QMeasureDisplayDialogBox::QMeasureDisplayDialogBox(const QString & title, QWidge
 
   lv->addWidget(measureDisplay_ =
       new QMeasureDisplay(this));
+
+  connect(measureDisplay_, &QMeasureDisplay::measureRightNowRequested,
+      this, &ThisClass::measureRightNowRequested);
 }
 
 void QMeasureDisplayDialogBox::showEvent(QShowEvent * e)

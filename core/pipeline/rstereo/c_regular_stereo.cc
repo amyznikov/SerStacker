@@ -8,8 +8,17 @@
 #include "c_regular_stereo.h"
 #include <core/proc/camera_calibration/stereo_calibrate.h>
 #include <core/proc/colormap.h>
-
 #include <core/debug.h>
+
+void c_regular_stereo::set_enable_stereo_rectification(bool v)
+{
+  enable_stereo_rectification_ = v;
+}
+
+bool c_regular_stereo::enable_stereo_rectification() const
+{
+  return enable_stereo_rectification_;
+}
 
 void c_regular_stereo::set_camera_intrinsics_yml(const std::string & v)
 {
@@ -51,6 +60,16 @@ const c_regular_stereo_image_processing_options & c_regular_stereo::image_proces
   return image_processing_options_;
 }
 
+c_stereo_output_options & c_regular_stereo::output_options()
+{
+  return output_options_;
+}
+
+const c_stereo_output_options & c_regular_stereo::output_options() const
+{
+  return output_options_;
+}
+
 bool c_regular_stereo::canceled() const
 {
   return false;
@@ -60,6 +79,7 @@ bool c_regular_stereo::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
 
+  SERIALIZE_PROPERTY(settings, save, *this, enable_stereo_rectification );
   SERIALIZE_PROPERTY(settings, save, *this, camera_intrinsics_yml );
   SERIALIZE_PROPERTY(settings, save, *this, camera_extrinsics_yml );
 
@@ -73,6 +93,20 @@ bool c_regular_stereo::serialize(c_config_setting settings, bool save)
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, output_image_processor);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
+    SERIALIZE_OPTION(section, save, output_options_, output_directory);
+
+    SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
+    SERIALIZE_OPTION(section, save, output_options_, depthmap_filename);
+    SERIALIZE_OPTION(section, save, output_options_, cloud3d_image_filename);
+    SERIALIZE_OPTION(section, save, output_options_, cloud3d_ply_filename);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+    SERIALIZE_OPTION(section, save, output_options_, save_depthmaps);
+    SERIALIZE_OPTION(section, save, output_options_, save_cloud3d_image);
+    SERIALIZE_OPTION(section, save, output_options_, save_cloud3d_ply);
+  }
+
   return true;
 }
 
@@ -82,43 +116,45 @@ bool c_regular_stereo::initialize()
   rmaps_[0].release();
   rmaps_[1].release();
 
-  if ( camera_intrinsics_yml_.empty() ) {
-    CF_ERROR("camera_intrinsics_yml not set");
-    return false;
-  }
+  if( enable_stereo_rectification_ ) {
 
-  if ( camera_extrinsics_yml_.empty() ) {
-    CF_ERROR("camera_extrinsics_yml not set");
-    return false;
-  }
+    if( !camera_intrinsics_yml_.empty() ) {
+      CF_ERROR("camera_intrinsics_yml not set");
+      return false;
+    }
 
-  if ( !read_stereo_camera_intrinsics_yml(&stereo_intrinsics_, camera_intrinsics_yml_) ) {
-    CF_ERROR("read_stereo_camera_intrinsics_yml('%s') fails", camera_intrinsics_yml_.c_str());
-    return false;
-  }
+    if( camera_extrinsics_yml_.empty() ) {
+      CF_ERROR("camera_extrinsics_yml not set");
+      return false;
+    }
 
-  if ( !read_stereo_camera_extrinsics_yml(&stereo_extrinsics_, camera_extrinsics_yml_) ) {
-    CF_ERROR("read_stereo_camera_extrinsics_yml('%s') fails", camera_extrinsics_yml_.c_str());
-    return false;
-  }
+    if( !read_stereo_camera_intrinsics_yml(&stereo_intrinsics_, camera_intrinsics_yml_) ) {
+      CF_ERROR("read_stereo_camera_intrinsics_yml('%s') fails", camera_intrinsics_yml_.c_str());
+      return false;
+    }
 
+    if( !read_stereo_camera_extrinsics_yml(&stereo_extrinsics_, camera_extrinsics_yml_) ) {
+      CF_ERROR("read_stereo_camera_extrinsics_yml('%s') fails", camera_extrinsics_yml_.c_str());
+      return false;
+    }
 
-  bool fOK =
-      create_stereo_rectification(stereo_intrinsics_.camera[0].image_size,
-          stereo_intrinsics_,
-          stereo_extrinsics_,
-          -1,
-          rmaps_,
-          &new_intrinsics_,
-          &new_extrinsics_,
-          R_,
-          P_,
-          &Q_,
-          validRoi_);
+    bool fOK =
+        create_stereo_rectification(stereo_intrinsics_.camera[0].image_size,
+            stereo_intrinsics_,
+            stereo_extrinsics_,
+            -1,
+            rmaps_,
+            &new_intrinsics_,
+            &new_extrinsics_,
+            R_,
+            P_,
+            &Q_,
+            validRoi_);
 
-  if ( !fOK ) {
-    CF_ERROR("create_stereo_rectification() fails");
-    return false;
+    if( !fOK ) {
+      CF_ERROR("create_stereo_rectification() fails");
+      return false;
+    }
   }
 
   return true;

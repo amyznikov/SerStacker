@@ -107,6 +107,13 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
   connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+
+  stereoMatcherOptions_ctl = new QStereoMatcherPipelineOptions(this);
+  stereoCalibrationOptions_ctl->setVisible(false);
+  connect(stereoMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+
   rstereoCalibrationOptions_ctl = new QRStereoOptions(this);
   rstereoCalibrationOptions_ctl->setVisible(false);
   connect(rstereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
@@ -191,6 +198,14 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
       currentWidget = stereoCalibrationOptions_ctl;
       stereoCalibrationOptions_ctl->set_current_pipeline(stereo_calibration);
     }
+
+    else if( c_stereo_matcher_pipeline::sptr stereo_matcher =
+        std::dynamic_pointer_cast<c_stereo_matcher_pipeline>(pipeline) ) {
+
+      currentWidget = stereoMatcherOptions_ctl;
+      stereoMatcherOptions_ctl->set_current_pipeline(stereo_matcher);
+    }
+
 
     else if( c_regular_stereo_pipeline::sptr rstereo_calibration =
         std::dynamic_pointer_cast<c_regular_stereo_pipeline>(pipeline) ) {

@@ -332,6 +332,11 @@ bool c_ser_input_source::read(cv::Mat & output_frame,
   return false;
 }
 
+bool c_ser_input_source::is_open() const
+{
+  return ser_.is_open();
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if HAVE_CFITSIO
@@ -408,6 +413,12 @@ bool c_fits_input_source::read(cv::Mat & output_frame,
 
   return true;
 }
+
+bool c_fits_input_source::is_open() const
+{
+  return curpos_ >= 0;
+}
+
 #endif // HAVE_CFITSIO
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -481,6 +492,11 @@ bool c_movie_input_source::read(cv::Mat & output_frame,
     return true;
   }
   return false;
+}
+
+bool c_movie_input_source::is_open() const
+{
+  return ffmpeg_.is_open();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -599,6 +615,12 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
   return true;
 }
 
+bool c_regular_image_input_source::is_open() const
+{
+  return curpos_ >= 0;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if HAVE_LIBRAW
@@ -665,6 +687,11 @@ bool c_raw_image_input_source::read(cv::Mat & output_frame,
   }
 
   return true;
+}
+
+bool c_raw_image_input_source::is_open() const
+{
+  return curpos_ >= 0;
 }
 
 #endif // HAVE_LIBRAW

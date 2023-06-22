@@ -10,19 +10,20 @@
 #define __QStereoCalibrationInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/pipeline/c_stereo_calibration_pipeline.h>
+#include <core/pipeline/stereo/c_stereo_input.h>
+//#include <core/pipeline/c_stereo_calibration_pipeline.h>
 
-class QStereoCalibrationInputOptions :
+class QStereoInputOptions :
     public QSettingsWidget
 {
 public:
-  typedef QStereoCalibrationInputOptions ThisClass;
+  typedef QStereoInputOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QStereoCalibrationInputOptions(QWidget * parent = nullptr);
+  QStereoInputOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline);
-  const c_stereo_calibration_pipeline::sptr & current_pipeline() const;
+  void set_input_options(c_stereo_input_options * options);
+  c_stereo_input_options * input_options() const;
 
 protected:
   void onupdatecontrols() override;
@@ -30,9 +31,9 @@ protected:
   void updatesourcecontrols();
 
 protected:
-  c_stereo_calibration_pipeline::sptr pipeline_;
+  c_stereo_input_options * options_ = nullptr;
 
-  QEnumComboBox<stereo_calibration_input_frame_layout_type> * layout_type_ctl = nullptr;
+  QEnumComboBox<stereo_input_frame_layout_type> * layout_type_ctl = nullptr;
   QCheckBox * swap_cameras_ctl = nullptr;
 
   QComboBox * left_source_ctl = nullptr;

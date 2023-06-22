@@ -23,10 +23,14 @@ public:
 
   QMeasureDisplay(QWidget * parent = nullptr);
 
+Q_SIGNALS:
+  void measureRightNowRequested();
+
 protected:
   void setupToolbar();
   void setupTableView();
   void onSelectMeasuresClicked(bool checked);
+  void onEnableMeasurementsClicked(bool checked);
 
 protected:
   void updateVisibleColumns();
@@ -71,6 +75,7 @@ public:
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);
+  void measureRightNowRequested();
 
 protected:
   void showEvent(QShowEvent * e) override;

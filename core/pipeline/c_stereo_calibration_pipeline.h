@@ -10,31 +10,9 @@
 #define __c_stereo_calibration_pipeline_h__
 
 #include "c_image_processing_pipeline.h"
+#include "stereo/c_stereo_input.h"
 #include "stereo_calibration/c_stereo_calibration.h"
 #include <core/proc/stereo/stereo_stream.h>
-
-enum stereo_calibration_input_frame_layout_type {
-  stereo_calibration_frame_layout_horizontal,
-  stereo_calibration_frame_layout_vertical,
-  stereo_calibration_frame_layout_separate_sources,
-};
-
-struct c_stereo_calibration_input_options
-{
-  stereo_calibration_input_frame_layout_type layout_type =
-      stereo_calibration_frame_layout_horizontal;
-
-  bool swap_cameras = false;
-
-  std::string left_stereo_source;
-  std::string right_stereo_source;
-
-  int start_frame_index = 0;
-  int max_input_frames = -1;
-
-  bool inpaint_missing_pixels = true;
-  bool enable_color_maxtrix = true;
-};
 
 
 class c_stereo_calibration_pipeline:
@@ -72,8 +50,8 @@ public:
     return tooltip_;
   }
 
-  c_stereo_calibration_input_options & input_options();
-  const c_stereo_calibration_input_options & input_options() const;
+  c_stereo_input_options & input_options();
+  const c_stereo_input_options & input_options() const;
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
@@ -92,8 +70,8 @@ protected:
   bool write_output_videos();
 
 protected:
-  c_stereo_calibration_input_options input_options_;
-  c_input_source::sptr input_sources_[2];
+  c_stereo_input_options input_options_;
+  c_stereo_input_source input_;
   cv::Mat missing_pixel_mask_;
   mutable std::mutex display_lock_;
 };

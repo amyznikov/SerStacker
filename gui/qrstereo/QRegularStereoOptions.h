@@ -33,6 +33,7 @@ protected:
 
 protected:
   c_regular_stereo * rstereo_ = nullptr;
+  QCheckBox * enable_stereo_rectification_ctl = nullptr;
   QBrowsePathCombo * camera_intrinsics_yml_ctl = nullptr;
   QBrowsePathCombo * camera_extrinsics_yml_ctl = nullptr;
   QStereoMatcherOptions * stereoMatcherOptions_ctl = nullptr;

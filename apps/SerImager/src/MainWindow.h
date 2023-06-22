@@ -53,10 +53,10 @@ protected Q_SLOTS:
   void onCameraWriterStatusUpdate();
   void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
-  void updateMeasurements();
   void onCentralDisplayROIShapeChanged();
   void onCentralDisplayLineShapeChanged();
   void onCentralDisplayTargetShapeChanged();
+  void updateMeasurements();
 
 
 protected:
@@ -65,6 +65,7 @@ protected:
   void onMtfControlVisibilityChanged(bool visible) override;
   void onPlotProfileDialogBoxVisibilityChanged(bool visible) override;
   void onImageProcessorParameterChanged() override;
+  void onMeasureRightNowRequested() override;
 
 protected:
   QLivePipelineThread * liveView_ = nullptr;

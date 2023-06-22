@@ -16,6 +16,23 @@ QRegularStereoOptions::QRegularStereoOptions(c_regular_stereo * rstereo, QWidget
     Base("", parent),
     rstereo_(nullptr)
 {
+  enable_stereo_rectification_ctl =
+      add_checkbox("enable_stereo_rectification",
+          "enable_stereo_rectification",
+          [this](bool checked) {
+            if ( rstereo_ ) {
+              rstereo_->set_enable_stereo_rectification(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( rstereo_ ) {
+              *checked = rstereo_->enable_stereo_rectification();
+              return true;
+            }
+            return false;
+          });
+
   camera_intrinsics_yml_ctl =
       add_browse_for_path("", "Camera intrinsics YML:",
           QFileDialog::AcceptOpen,
@@ -23,6 +40,7 @@ QRegularStereoOptions::QRegularStereoOptions(c_regular_stereo * rstereo, QWidget
           [this](const QString & path) {
             if ( rstereo_ ) {
               rstereo_->set_camera_intrinsics_yml(path.toStdString());
+              Q_EMIT parameterChanged();
             }
           },
           [this](QString * path) {
@@ -41,6 +59,7 @@ QRegularStereoOptions::QRegularStereoOptions(c_regular_stereo * rstereo, QWidget
           [this](const QString & path) {
             if ( rstereo_ ) {
               rstereo_->set_camera_extrinsics_yml(path.toStdString());
+              Q_EMIT parameterChanged();
             }
           },
           [this](QString * path) {
@@ -61,11 +80,6 @@ QRegularStereoOptions::QRegularStereoOptions(c_regular_stereo * rstereo, QWidget
       imageProcessingOptions_ctl = new QRStereoImageProcessingOptions());
   connect(imageProcessingOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
-
-  //  addRow(stereoMatcherOptions_ctl = new QStereoMatcherOptions());
-  //  stereoMatcherOptions_ctl->layout()->setContentsMargins(0, 0, 0, 0);
-  //  connect(stereoMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
-  //      this, &ThisClass::parameterChanged);
 
   set_rstereo(rstereo);
 }

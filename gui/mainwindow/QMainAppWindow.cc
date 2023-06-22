@@ -278,6 +278,9 @@ void QMainAppWindow::onShowMeasureDisplayActionTriggered(bool checked)
 
       connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
           this, &ThisClass::onMeasuresDisplayVisibilityChanged);
+
+      connect(measureDisplay_, &QMeasureDisplayDialogBox::measureRightNowRequested,
+          this, &ThisClass::onMeasureRightNowRequested);
     }
 
     measureDisplay_->show();
@@ -305,6 +308,10 @@ void QMainAppWindow::onMeasuresGraphVisibilityChanged(bool visible)
   if( measuresGraphDock_ ) {
     measuresGraphDock_->toggleViewAction()->setChecked(visible);
   }
+}
+
+void QMainAppWindow::onMeasureRightNowRequested()
+{
 }
 
 

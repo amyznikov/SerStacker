@@ -65,7 +65,6 @@ public:
     return size_ < 1;
   }
 
-
   void set_global_pos(int pos)
   {
     global_pos_ = pos;
@@ -103,6 +102,8 @@ public:
   virtual void close() = 0;
 
   virtual bool seek(int pos) = 0;
+
+  virtual bool is_open() const = 0;
 
   virtual bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
@@ -156,6 +157,8 @@ public:
       enum COLORID * output_colorid,
       int * output_bpc) override;
 
+  bool is_open() const override;
+
 protected:
   c_ser_reader ser_;
 };
@@ -184,6 +187,8 @@ public:
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
       int * output_bpc) override;
+
+  bool is_open() const override;
 
 protected:
   c_fits_reader fits_;
@@ -216,6 +221,8 @@ public:
       enum COLORID * output_colorid,
       int * output_bpc) override;
 
+  bool is_open() const override;
+
 protected:
   c_ffmpeg_reader ffmpeg_;
 };
@@ -245,6 +252,8 @@ public:
       enum COLORID * output_colorid,
       int * output_bpc) override;
 
+  bool is_open() const override;
+
 protected:
   int curpos_ = -1;
 };
@@ -273,6 +282,8 @@ public:
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
       int * output_bpc) override;
+
+  bool is_open() const override;
 
 protected:
   c_raw_file_reader raw_;

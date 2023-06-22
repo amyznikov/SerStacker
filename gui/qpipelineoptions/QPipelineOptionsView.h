@@ -13,6 +13,7 @@
 #include <gui/qimagestacking/QImageStackingOptions.h>
 #include <gui/qcameracalibration/QCameraCalibrationPipelineOptions.h>
 #include <gui/qstereocalibration/QStereoCalibrationPipelineOptions.h>
+#include <gui/qstereomatcher/QStereoMatcherPipelineOptions.h>
 #include <gui/qrstereo/QRStereoOptions.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 
@@ -63,6 +64,7 @@ protected:
   QImageStackingOptions * imageStackingOptions_ctl = nullptr;
   QCameraCalibrationPipelineOptions * cameraCalibrationOptions_ctl = nullptr;
   QStereoCalibrationPipelineOptions * stereoCalibrationOptions_ctl = nullptr;
+  QStereoMatcherPipelineOptions * stereoMatcherOptions_ctl = nullptr;
   QRStereoOptions * rstereoCalibrationOptions_ctl = nullptr;
 
   QMenu menu_;

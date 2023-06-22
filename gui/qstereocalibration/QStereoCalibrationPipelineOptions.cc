@@ -13,7 +13,7 @@ QStereoCalibrationPipelineOptions::QStereoCalibrationPipelineOptions(QWidget * p
   ///
 
   add_expandable_groupbox("Input options",
-      inputOptions_ctl = new QStereoCalibrationInputOptions(this));
+      inputOptions_ctl = new QStereoInputOptions(this));
   connect(inputOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
@@ -47,12 +47,12 @@ void QStereoCalibrationPipelineOptions::onupdatecontrols()
 
     setEnabled(false);
 
-    inputOptions_ctl->set_current_pipeline(nullptr);
+    inputOptions_ctl->set_input_options(nullptr);
     stereoCalibrationOptions_ctl->set_stereo_calibration(nullptr);
   }
   else {
 
-    inputOptions_ctl->set_current_pipeline(pipeline_);
+    inputOptions_ctl->set_input_options(&pipeline_->input_options());
     stereoCalibrationOptions_ctl->set_stereo_calibration(&*pipeline_);
 
     Base::onupdatecontrols();

@@ -31,7 +31,7 @@ protected:
 
 protected:
   c_stereo_calibration_pipeline::sptr pipeline_;
-  QStereoCalibrationInputOptions * inputOptions_ctl = nullptr;
+  QStereoInputOptions * inputOptions_ctl = nullptr;
   QStereoCalibrationOptions * stereoCalibrationOptions_ctl = nullptr;
 };
 

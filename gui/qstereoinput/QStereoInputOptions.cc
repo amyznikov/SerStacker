@@ -5,25 +5,25 @@
  *      Author: amyznikov
  */
 
-#include "QStereoCalibrationInputOptions.h"
+#include "QStereoInputOptions.h"
 
-QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent) :
+QStereoInputOptions::QStereoInputOptions(QWidget * parent) :
     Base("QStereoCalibrationInputOptions", parent)
 {
 
   layout_type_ctl =
-      add_enum_combobox<stereo_calibration_input_frame_layout_type>("Stereo frame layout:",
+      add_enum_combobox<stereo_input_frame_layout_type>("Stereo frame layout:",
           "",
-          [this](stereo_calibration_input_frame_layout_type value) {
-            if ( pipeline_ && pipeline_->input_options().layout_type != value ) {
-              pipeline_->input_options().layout_type = value;
+          [this](stereo_input_frame_layout_type value) {
+            if ( options_ && options_->layout_type != value ) {
+              options_->layout_type = value;
               updatesourcecontrols();
               Q_EMIT parameterChanged();
             }
           },
-          [this](stereo_calibration_input_frame_layout_type * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->input_options().layout_type;
+          [this](stereo_input_frame_layout_type * value) {
+            if ( options_ ) {
+              * value = options_->layout_type;
               return true;
             }
             return false;
@@ -34,14 +34,14 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_checkbox("Swap cameras:",
           "",
           [this](bool checked) {
-            if ( pipeline_ && pipeline_->input_options().swap_cameras != checked ) {
-              pipeline_->input_options().swap_cameras = checked;
+            if ( options_ && options_->swap_cameras != checked ) {
+              options_->swap_cameras = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( pipeline_ ) {
-              * checked = pipeline_->input_options().swap_cameras;
+            if ( options_ ) {
+              * checked = options_->swap_cameras;
               return true;
             }
             return false;
@@ -52,8 +52,8 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_combobox<QComboBox>("Left camera source:",
           "",
           [this](int index, QComboBox * combo) {
-            if ( pipeline_ ) {
-              pipeline_->input_options().left_stereo_source =
+            if ( options_ ) {
+              options_->left_stereo_source =
                   combo->itemData(index).toString().toStdString();
               Q_EMIT parameterChanged();
             }
@@ -63,18 +63,15 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
             * index = -1;
 
-            if ( pipeline_ && pipeline_->input_sequence() ) {
+            if ( options_ && options_->input_sequence ) {
 
-              const c_stereo_calibration_input_options & opts =
-                  pipeline_->input_options();
-
-              if( !opts.left_stereo_source.empty() ) {
+              if( !options_->left_stereo_source.empty() ) {
 
                 const std::vector<c_input_source::sptr> &sources =
-                    pipeline_->input_sequence()->sources();
+                    options_->input_sequence->sources();
 
                 for( int i = 0, n = sources.size(); i < n; ++i ) {
-                  if( opts.left_stereo_source == sources[i]->filename() ) {
+                  if( options_->left_stereo_source == sources[i]->filename() ) {
                     *index = i;
                     return true;
                   }
@@ -93,8 +90,8 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_combobox<QComboBox>("Right camera source:",
           "",
           [this](int index, QComboBox * combo) {
-            if ( pipeline_ ) {
-              pipeline_->input_options().right_stereo_source =
+            if ( options_ ) {
+              options_->right_stereo_source =
                   combo->itemData(index).toString().toStdString();
               Q_EMIT parameterChanged();
             }
@@ -104,18 +101,15 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
 
             * index = -1;
 
-            if ( pipeline_ && pipeline_->input_sequence() ) {
+            if ( options_ && options_->input_sequence ) {
 
-              const c_stereo_calibration_input_options & opts =
-                  pipeline_->input_options();
-
-              if( !opts.right_stereo_source.empty() ) {
+              if( !options_->right_stereo_source.empty() ) {
 
                 const std::vector<c_input_source::sptr> &sources =
-                    pipeline_->input_sequence()->sources();
+                    options_->input_sequence->sources();
 
                 for( int i = 0, n = sources.size(); i < n; ++i ) {
-                  if( opts.right_stereo_source == sources[i]->filename() ) {
+                  if( options_->right_stereo_source == sources[i]->filename() ) {
                     *index = i;
                     return true;
                   }
@@ -133,14 +127,14 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_numeric_box<int>("start_frame_index:",
           "",
           [this](int value) {
-            if ( pipeline_ ) {
-              pipeline_->input_options().start_frame_index = value;
+            if ( options_ ) {
+              options_->start_frame_index = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->input_options().start_frame_index;
+            if ( options_ ) {
+              * value = options_->start_frame_index;
               return true;
             }
             return false;
@@ -150,14 +144,14 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_numeric_box<int>("max_input_frames:",
           "",
           [this](int value) {
-            if ( pipeline_ ) {
-              pipeline_->input_options().max_input_frames = value;
+            if ( options_ ) {
+              options_->max_input_frames = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->input_options().max_input_frames;
+            if ( options_ ) {
+              * value = options_->max_input_frames;
               return true;
             }
             return false;
@@ -167,14 +161,14 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_checkbox("inpaint_missing_pixels",
           "",
           [this](bool value) {
-            if ( pipeline_ ) {
-              pipeline_->input_options().inpaint_missing_pixels = value;
+            if ( options_ ) {
+              options_->inpaint_missing_pixels = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->input_options().inpaint_missing_pixels;
+            if ( options_ ) {
+              * value = options_->inpaint_missing_pixels;
               return true;
             }
             return false;
@@ -184,14 +178,14 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
       add_checkbox("enable_color_maxtrix",
           "",
           [this](bool value) {
-            if ( pipeline_ ) {
-              pipeline_->input_options().enable_color_maxtrix = value;
+            if ( options_ ) {
+              options_->enable_color_maxtrix = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * value) {
-            if ( pipeline_ ) {
-              * value = pipeline_->input_options().enable_color_maxtrix;
+            if ( options_ ) {
+              * value = options_->enable_color_maxtrix;
               return true;
             }
             return false;
@@ -200,32 +194,32 @@ QStereoCalibrationInputOptions::QStereoCalibrationInputOptions(QWidget * parent)
   updateControls();
 }
 
-void QStereoCalibrationInputOptions::set_current_pipeline(const c_stereo_calibration_pipeline::sptr & pipeline)
+void QStereoInputOptions::set_input_options(c_stereo_input_options * options)
 {
-  pipeline_ = pipeline;
+  options_ = options;
   updateControls();
 }
 
-const c_stereo_calibration_pipeline::sptr& QStereoCalibrationInputOptions::current_pipeline() const
+c_stereo_input_options * QStereoInputOptions::input_options() const
 {
-  return pipeline_;
+  return options_;
 }
 
-void QStereoCalibrationInputOptions::populatesources()
+void QStereoInputOptions::populatesources()
 {
   c_update_controls_lock lock(this);
 
   left_source_ctl->clear();
   right_source_ctl->clear();
 
-  if ( !pipeline_ || !pipeline_->input_sequence() ) {
+  if ( !options_ || !options_->input_sequence ) {
     left_source_ctl->setEnabled(false);
     right_source_ctl->setEnabled(false);
   }
   else {
 
     const c_input_sequence::sptr &input_sequence =
-        pipeline_->input_sequence();
+        options_->input_sequence;
 
     const std::vector<c_input_source::sptr> &sources =
         input_sequence->sources();
@@ -243,9 +237,9 @@ void QStereoCalibrationInputOptions::populatesources()
   }
 }
 
-void QStereoCalibrationInputOptions::updatesourcecontrols()
+void QStereoInputOptions::updatesourcecontrols()
 {
-  if( pipeline_->input_options().layout_type == stereo_calibration_frame_layout_separate_sources ) {
+  if( options_->layout_type == stereo_frame_layout_separate_sources ) {
     left_source_ctl->setEnabled(true);
     right_source_ctl->setEnabled(true);
     swap_cameras_ctl->setEnabled(false);
@@ -258,11 +252,11 @@ void QStereoCalibrationInputOptions::updatesourcecontrols()
 
 }
 
-void QStereoCalibrationInputOptions::onupdatecontrols()
+void QStereoInputOptions::onupdatecontrols()
 {
   populatesources();
 
-  if( !pipeline_ || !pipeline_->input_sequence() ) {
+  if( !options_ || !options_->input_sequence ) {
     setEnabled(false);
   }
   else {

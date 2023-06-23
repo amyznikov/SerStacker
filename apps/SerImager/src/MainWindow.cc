@@ -123,15 +123,6 @@ void MainWindow::setupMainMenu()
 
   ///////////////////////////////////////////////////////////////////
 
-//  menuEdit_->addAction(copyDisplayImageAction =
-//      createAction(getIcon(ICON_copy),
-//          "Copy display image to clipboard (Ctrl+c)",
-//          "Copy display image to clipboard (Ctrl+c)",
-//          centralDisplay_, &QImageViewer::copyDisplayImageToClipboard,
-//          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
-//              centralDisplay_, nullptr, nullptr,
-//              Qt::WindowShortcut)));
-
   menuEdit_->addAction(copyDisplayImageAction =
       createAction(getIcon(ICON_copy),
           "Copy display image to clipboard (Ctrl+c)",
@@ -145,6 +136,23 @@ void MainWindow::setupMainMenu()
             }
           },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+              centralDisplay_, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+
+  menuEdit_->addAction(copyDisplayViewportAction =
+      createAction(QIcon(),
+          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+          [this]() {
+            if ( centralDisplay_->isVisible() ) {
+              QPixmap pxmap = centralDisplay_->sceneView()->grab();
+              if ( !pxmap.isNull() ) {
+                QApplication::clipboard()->setPixmap(pxmap);
+              }
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
               centralDisplay_, nullptr, nullptr,
               Qt::WindowShortcut)));
 

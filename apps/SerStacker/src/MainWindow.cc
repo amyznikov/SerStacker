@@ -572,6 +572,26 @@ void MainWindow::setupImageEditor()
 
   menuEdit_->addAction(copyDisplayImageAction);
 
+
+  imageEditor->addAction(copyDisplayViewportAction =
+      createAction(QIcon(),
+          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+          [this]() {
+            if ( imageEditor->isVisible() ) {
+              QPixmap pxmap = imageEditor->sceneView()->grab();
+              if ( !pxmap.isNull() ) {
+                QApplication::clipboard()->setPixmap(pxmap);
+              }
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
+              imageEditor, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  menuEdit_->addAction(copyDisplayViewportAction);
+
+
   connect(imageEditor, &QImageViewer::visibilityChanged,
       this, &ThisClass::onImageEditorVisibilityChanged);
 

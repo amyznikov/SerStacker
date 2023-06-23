@@ -47,7 +47,6 @@ private:
   void setupThumbnailsView();
   void setupStackTreeView();
   void setupStackOptionsView();
-  //void setupImageProcessorSelector();
   void setupImageEditor();
   void setupTextViewer();
   void stupCloudViewer();
@@ -129,6 +128,7 @@ private:
   QAction * loadStackAction = nullptr;
   QAction * setReferenceFrameAction = nullptr;
   QAction * copyDisplayImageAction = nullptr;
+  QAction * copyDisplayViewportAction = nullptr;
   //QAction * displaySettingsMenuAction = nullptr;
   QAction * editMaskAction = nullptr;
   QAction * loadImageMaskAction = nullptr;

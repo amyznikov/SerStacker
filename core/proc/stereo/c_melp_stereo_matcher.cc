@@ -309,8 +309,13 @@ void create_texture_mask(cv::InputArray img, cv::Mat1b & texture_map, cv::Mat1b 
   cv::Mat gray;
   std::vector<cv::Mat> gg(2);
 
-  cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
-  cv::pyrDown(gray, gray);
+  if( img.channels() == 1 ) {
+    cv::pyrDown(img, gray);
+  }
+  else {
+    cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+    cv::pyrDown(gray, gray);
+  }
 
   static float k12[] = { -1, -1, 0, +1, +1 };
   static float k22[] = { 1, 1, -4, 1, 1 };
@@ -339,13 +344,13 @@ bool c_melp_stereo_matcher::compute(cv::InputArray left, cv::InputArray right, c
 {
   cv::Mat3f img;
 
-  if( left.type() != CV_8UC3 ) {
-    CF_ERROR("Invalid left image type %d, must be CV_8UC3", left.type());
+  if( left.depth() != CV_8U ) {
+    CF_ERROR("Invalid left image depth %d, must be CV_8U", left.depth());
     return false;
   }
 
-  if( right.type() != CV_8UC3 ) {
-    CF_ERROR("Invalid right image type %d, must be CV_8UC3", right.type());
+  if( right.depth() != CV_8U ) {
+    CF_ERROR("Invalid right image depth %d, must be CV_8U", right.depth());
     return false;
   }
 
@@ -353,12 +358,18 @@ bool c_melp_stereo_matcher::compute(cv::InputArray left, cv::InputArray right, c
       texture_threshold_);
 
   left.getMat().convertTo(img, CV_32F);
+  if ( img.channels() == 1 ) {
+    cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+  }
   if ( !(lmelp_ = build_melp_pyramid(img, minimum_image_size_))) {
     CF_ERROR("build_melp_pyramid(left_img) fails");
     return false;
   }
 
   right.getMat().convertTo(img, CV_32F);
+  if ( img.channels() == 1 ) {
+    cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+  }
   if ( !(rmelp_ = build_melp_pyramid(img, minimum_image_size_))) {
     CF_ERROR("build_melp_pyramid(right_img) fails");
     return false;

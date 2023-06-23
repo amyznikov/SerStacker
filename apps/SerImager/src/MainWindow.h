@@ -121,6 +121,7 @@ protected:
   QScaleSelectionButton * displayScaleControl_ = nullptr;
 
   QAction * copyDisplayImageAction = nullptr;
+  QAction * copyDisplayViewportAction = nullptr;
 
 
 #if HAVE_INDIGO

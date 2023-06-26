@@ -44,7 +44,7 @@ bool QLiveStereoCalibrationPipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   const std::string dateTimeString =
-      QDateTime::currentDateTime().toString("yyyy.MM.dd-hh-mm-ss").toStdString();
+      QDateTime::currentDateTime().toString("yyyy-MM-dd-hh-mm-ss").toStdString();
 
   c_stereo_calibration::set_output_intrinsics_filename(
       ssprintf("%s/stereo_intrinsics.%s.%s.yml",

@@ -118,7 +118,7 @@ bool c_regular_stereo::initialize()
 
   if( enable_stereo_rectification_ ) {
 
-    if( !camera_intrinsics_yml_.empty() ) {
+    if( camera_intrinsics_yml_.empty() ) {
       CF_ERROR("camera_intrinsics_yml not set");
       return false;
     }

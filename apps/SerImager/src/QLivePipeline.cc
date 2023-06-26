@@ -573,7 +573,7 @@ std::string QLivePipeline::generate_output_file_name(const std::string & output_
       ufilename;
 
   const std::string dateTimeString =
-      QDateTime::currentDateTime().toString("yyyy.MM.dd-hh-mm-ss").toStdString();
+      QDateTime::currentDateTime().toString("yyyy-MM-dd-hh-mm-ss").toStdString();
 
   if( output_file_name.empty() ) {
 

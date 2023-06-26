@@ -43,7 +43,7 @@ bool QLiveCameraCalibrationPipeline::initialize_pipeline()
       create_output_path(output_options().output_directory);
 
   const std::string dateTimeString =
-      QDateTime::currentDateTime().toString("yyyy.MM.dd-hh-mm-ss").toStdString();
+      QDateTime::currentDateTime().toString("yyyy-MM-dd-hh-mm-ss").toStdString();
 
 
   c_camera_calibration::set_output_intrinsics_filename(

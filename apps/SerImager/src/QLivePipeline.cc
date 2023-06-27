@@ -743,7 +743,7 @@ void QLivePipelineThread::setDarkFrame(const QString & pathfilename)
 
     cv::Mat ignoreMaskIfExists;
     if ( !load_image(darkFramePath_.toStdString(), darkFrame_, ignoreMaskIfExists) ) {
-      CF_ERROR("load_image('%s') fails", darkFramePath_.constData());
+      CF_ERROR("load_image('%s') fails", darkFramePath_.toUtf8().constData());
     }
     else if ( darkFrameScale_ != 0 ) {
       cv::multiply(darkFrame_, darkFrameScale_, darkFrame_);

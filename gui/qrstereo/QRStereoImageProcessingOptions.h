@@ -11,7 +11,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
-#include <core/pipeline/rstereo/c_regular_stereo.h>
+#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo_pipeline.h>
 
 class QRStereoImageProcessingOptions :
     public QSettingsWidget

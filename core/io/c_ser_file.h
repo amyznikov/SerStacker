@@ -168,8 +168,8 @@ protected:
 /// No automatic bayer/debayer/rgb swap is made,
 /// the input image format must match to color_id, dimensions and format
 //  specified for c_ser_writer::create()
-class c_ser_writer
-    : public c_ser_file
+class c_ser_writer :
+    public c_ser_file
 {
 public:
   ~c_ser_writer();

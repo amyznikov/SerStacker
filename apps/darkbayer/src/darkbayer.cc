@@ -126,8 +126,8 @@ static void average_frames(const std::string & input_file_name, const std::strin
     return;
   }
 
-  input_sequence->set_auto_debayer(
-      DEBAYER_DISABLE);
+//  input_sequence->set_auto_debayer(
+//      DEBAYER_DISABLE);
 
   if ( !input_sequence->open() ) {
     CF_ERROR("input_sequence->open(%s) fails",

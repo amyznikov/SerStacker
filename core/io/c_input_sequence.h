@@ -19,7 +19,6 @@ public:
   typedef std::shared_ptr<this_class> sptr;
 
 public:
-
   static sptr create();
   static sptr create(const std::string & sourcefilename);
   static sptr create(const std::vector<std::string> & sourcefilename);
@@ -29,8 +28,8 @@ public:
   const std::string & name() const;
   const char * cname() const;
 
-  void set_auto_debayer(enum DEBAYER_ALGORITHM algo);
-  enum DEBAYER_ALGORITHM auto_debayer() const;
+  //  void set_auto_debayer(enum DEBAYER_ALGORITHM algo);
+  //  enum DEBAYER_ALGORITHM auto_debayer() const;
 
   void set_auto_apply_color_matrix(bool v);
   bool auto_apply_color_matrix() const;
@@ -54,15 +53,15 @@ public:
   static int indexof(const c_input_source::sptr & source,
       const std::vector<c_input_source::sptr> & list);
 
-  void clear();
-  bool empty() const;
+  virtual void clear();
+  virtual bool empty() const;
 
-  bool open();
-  bool is_open() const;
-  void close(bool clear = false);
-  int size();
-  bool seek(int pos);
-  bool read(cv::Mat & output_frame,
+  virtual bool open();
+  virtual bool is_open() const;
+  virtual void close(bool clear = false);
+  virtual int size();
+  virtual bool seek(int pos);
+  virtual bool read(cv::Mat & output_frame,
       cv::Mat * output_mask = nullptr);
 
   c_input_source::sptr current_source() const;
@@ -74,8 +73,9 @@ public:
   const cv::Matx33f & color_matrix() const;
   bool has_color_matrix() const;
 
-  bool serialize(c_config_setting settings) const;
-  bool deserialize(c_config_setting settings);
+  virtual bool serialize(c_config_setting settings, bool save);
+  virtual bool is_live() const;
+
 
 protected:
   bool open_source(int source_index);
@@ -89,7 +89,7 @@ protected:
   std::vector<c_input_source::sptr> all_sources_;
   std::vector<c_input_source::sptr> enabled_sources_;
 
-  enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_DEFAULT; // DEBAYER_GBNR;
+  //enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_DEFAULT; // DEBAYER_GBNR;
   bool auto_apply_color_matrix_ = true;
 
   int total_frames_ = -1;  // in enabled_sources_
@@ -102,19 +102,5 @@ protected:
   cv::Matx33f last_color_matrix_ = cv::Matx33f::eye() ;
   bool has_last_color_matrix_ = false;
 };
-
-//class c_auto_close_input_sequence {
-//  const c_input_sequence::ptr & input_sequence_;
-//public:
-//  c_auto_close_input_sequence(const c_input_sequence::ptr & input_sequence)
-//    : input_sequence_(input_sequence) {
-//  }
-//  ~c_auto_close_input_sequence() {
-//    if ( input_sequence_ ) {
-//      input_sequence_->close();
-//    }
-//  }
-//};
-//
 
 #endif /* __c_input_sequence_h__ */

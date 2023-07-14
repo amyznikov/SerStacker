@@ -65,88 +65,92 @@ const char* c_input_sequence::cname() const
   return name_.c_str();
 }
 
-bool c_input_sequence::serialize(c_config_setting settings) const
+bool c_input_sequence::is_live() const
 {
-  SAVE_PROPERTY(settings, *this, name);
-  SAVE_PROPERTY(settings, *this, auto_debayer);
-  SAVE_PROPERTY(settings, *this, auto_apply_color_matrix);
-
-  c_config_setting sources_list =
-      settings.add_list("sources");
-
-  for ( const c_input_source::sptr & source : all_sources_ ) {
-    if ( source )  {
-
-      c_config_setting group =
-          sources_list.add_group();
-
-      group.set("enabled", source->enabled());
-      group.set("file", source->filename());
-    }
-  }
-
-  return true;
+  return false;
 }
 
-bool c_input_sequence::deserialize(c_config_setting settings)
+bool c_input_sequence::serialize(c_config_setting settings, bool save)
 {
-  all_sources_.clear();
-  enabled_sources_.clear();
+  SERIALIZE_PROPERTY(settings, save, *this, name);
+  // SERIALIZE_PROPERTY(settings, save, *this, auto_debayer);
+  SERIALIZE_PROPERTY(settings, save, *this, auto_apply_color_matrix);
 
-  LOAD_PROPERTY(settings, *this, name);
-  LOAD_PROPERTY(settings, *this, auto_debayer);
-  LOAD_PROPERTY(settings, *this, auto_apply_color_matrix);
+  if( save ) {
 
-  c_config_setting sources_list =
-      settings["sources"];
+    c_config_setting sources_list =
+        settings.add_list("sources");
 
-  if ( sources_list.isList() ) {
+    for ( const c_input_source::sptr & source : all_sources_ ) {
+      if ( source )  {
 
-    const int n = sources_list.length();
-    all_sources_.reserve(n);
+        c_config_setting group =
+            sources_list.add_group();
 
-    for ( int i = 0; i < n; ++i ) {
-
-      std::string filename;
-      bool enabled = true;
-
-      c_config_setting e =
-          sources_list.get_element(i);
-
-      if ( !e.isGroup() ) {
-        e.get(&filename);
+        group.set("enabled", source->enabled());
+        group.set("file", source->filename());
       }
-      else {
-        e.get("enabled", &enabled);
-        e.get("file", &filename);
-      }
+    }
 
-      if ( !filename.empty() ) {
-        c_input_source::sptr source = c_input_source::create(filename);
-        if ( !source ) {
-          CF_ERROR("c_input_source::create(filename='%s') fails", filename.c_str());
+  }
+  else {
+
+    c_config_setting sources_list =
+        settings["sources"];
+
+    if ( sources_list.isList() ) {
+
+      const int n = sources_list.length();
+      all_sources_.reserve(n);
+
+      for ( int i = 0; i < n; ++i ) {
+
+        std::string filename;
+        bool enabled = true;
+
+        c_config_setting e =
+            sources_list.get_element(i);
+
+        if ( !e.isGroup() ) {
+          e.get(&filename);
+          CF_DEBUG("1 enabled=%d", enabled);
+          CF_DEBUG("1 filename=%s", filename.c_str());
         }
         else {
-          source->set_enabled(enabled);
-          all_sources_.emplace_back(source);
+          e.get("enabled", &enabled);
+          e.get("file", &filename);
+          CF_DEBUG("2 enabled=%d", enabled);
+          CF_DEBUG("2 filename=%s", filename.c_str());
+        }
+
+
+        if ( !filename.empty() ) {
+          c_input_source::sptr source = c_input_source::create(filename);
+          if ( !source ) {
+            CF_ERROR("c_input_source::create(filename='%s') fails", filename.c_str());
+          }
+          else {
+            source->set_enabled(enabled);
+            all_sources_.emplace_back(source);
+            CF_DEBUG("3 source->enabled = %d", source->enabled());
+          }
         }
       }
     }
   }
 
-
   return true;
 }
-
-void c_input_sequence::set_auto_debayer(enum DEBAYER_ALGORITHM algo)
-{
-  auto_debayer_ = algo;
-}
-
-enum DEBAYER_ALGORITHM c_input_sequence::auto_debayer() const
-{
-  return auto_debayer_;
-}
+//
+//void c_input_sequence::set_auto_debayer(enum DEBAYER_ALGORITHM algo)
+//{
+//  auto_debayer_ = algo;
+//}
+//
+//enum DEBAYER_ALGORITHM c_input_sequence::auto_debayer() const
+//{
+//  return auto_debayer_;
+//}
 
 void c_input_sequence::set_auto_apply_color_matrix(bool v)
 {
@@ -468,16 +472,17 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     return false;
   }
 
-  if ( is_bayer_pattern(last_colorid_) ) {
-    if ( output_mask ) { // not clear the meaning of alpha mask with bayer pattern
-      output_mask->release();
-    }
-
-    if ( auto_debayer_ != DEBAYER_DISABLE && debayer(output_frame, output_frame, last_colorid_, auto_debayer_) ) {
-      last_colorid_ = COLORID_BGR;
-    }
-  }
-  else if ( output_mask  ) {
+//  if ( is_bayer_pattern(last_colorid_) ) {
+//    if ( output_mask ) { // not clear the meaning of alpha mask with bayer pattern
+//      output_mask->release();
+//    }
+//
+//    if ( auto_debayer_ != DEBAYER_DISABLE && debayer(output_frame, output_frame, last_colorid_, auto_debayer_) ) {
+//      last_colorid_ = COLORID_BGR;
+//    }
+//  }
+//  else
+  if ( output_mask  ) {
 
     if ( last_colorid_ == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
       output_mask->release();
@@ -500,6 +505,7 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
 bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
 {
   if ( current_source_ < 0 || current_source_ >= (int) enabled_sources_.size() ) {
+    CF_DEBUG("return false: current_source_=%d", current_source_);
     return false;
   }
 
@@ -515,6 +521,7 @@ bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
     }
   }
 
+  CF_DEBUG("return false: current_source_=%d", current_source_);
   return false;
 }
 

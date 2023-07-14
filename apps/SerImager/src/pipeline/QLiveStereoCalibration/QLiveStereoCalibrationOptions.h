@@ -10,6 +10,8 @@
 #define __QLiveStereoCalibrationOptions_h__
 
 #include "QLiveStereoCalibrationPipeline.h"
+#if 0
+
 #include <gui/qstereocalibration/QStereoCalibrationOptions.h>
 
 namespace serimager {
@@ -32,5 +34,7 @@ protected:
 };
 
 } /* namespace serimager */
+
+#endif // 0
 
 #endif /* __QLiveStereoCalibrationOptions_h__ */

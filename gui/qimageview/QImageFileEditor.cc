@@ -14,7 +14,7 @@ QImageFileEditor::QImageFileEditor(QImageScene * scene, QWidget * parent) :
   Base(scene, parent)
 {
   input_sequence_ = c_input_sequence::create();
-  input_sequence_->set_auto_debayer(DEBAYER_DISABLE);
+  //input_sequence_->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence_->set_auto_apply_color_matrix(true);
 
   Base::layout_->addWidget(playControls =

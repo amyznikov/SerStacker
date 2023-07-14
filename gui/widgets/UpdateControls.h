@@ -14,17 +14,6 @@ class HasUpdateControls
 public:
   typedef HasUpdateControls ThisClass;
 
-  struct c_update_controls_lock {
-    ThisClass * _this;
-    c_update_controls_lock(ThisClass * obj) : _this(obj) {
-      _this->setUpdatingControls(true);
-    }
-    ~c_update_controls_lock() {
-      _this->setUpdatingControls(false);
-    }
-  };
-
-
   void setUpdatingControls(bool v)
   {
     if( v ) {
@@ -42,8 +31,9 @@ public:
 
   void updateControls()
   {
-    c_update_controls_lock lock(this);
+    setUpdatingControls(true);
     onupdatecontrols();
+    setUpdatingControls(false);
   }
 
 
@@ -55,6 +45,22 @@ protected:
 protected:
   int updatingControls_ = 0;
 };
+
+struct c_update_controls_lock
+{
+  HasUpdateControls * _this;
+  c_update_controls_lock(HasUpdateControls * obj) : _this(obj) {
+    if ( _this ) {
+      _this->setUpdatingControls(true);
+    }
+  }
+  ~c_update_controls_lock() {
+    if ( _this ) {
+      _this->setUpdatingControls(false);
+    }
+  }
+};
+
 
 
 

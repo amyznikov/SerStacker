@@ -7,6 +7,8 @@
 
 #include "QLiveStereoCalibrationOptions.h"
 
+#if 0
+
 namespace serimager {
 
 QLiveStereoCalibrationOptions::QLiveStereoCalibrationOptions(QWidget * parent) :
@@ -35,3 +37,5 @@ void QLiveStereoCalibrationOptions::update_pipeline_controls()
 }
 
 } /* namespace serimager */
+
+#endif //0

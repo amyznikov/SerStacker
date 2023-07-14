@@ -10,6 +10,7 @@
 #define __QLiveRegularStereoOptions_h__
 
 #include "QLiveRegularStereoPipeline.h"
+#if 0
 #include <gui/qrstereo/QRegularStereoOptions.h>
 
 
@@ -38,4 +39,5 @@ protected:
 
 } /* namespace serimager */
 
+#endif
 #endif /* __QLiveRegularStereoOptions_h__ */

@@ -30,6 +30,7 @@ public:
 #if HAVE_LIBRAW
     RAW_IMAGE = 5,
 #endif
+    CAMERA = 6,
   };
 
   static sptr create(const std::string & filename);

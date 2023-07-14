@@ -10,7 +10,7 @@
 #define __QRStereoInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/pipeline/c_regular_stereo_pipeline.h>
+#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo_pipeline.h>
 
 class QRStereoInputOptions :
     public QSettingsWidget

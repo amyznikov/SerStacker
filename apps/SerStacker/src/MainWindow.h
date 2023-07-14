@@ -17,9 +17,9 @@
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
-#include <gui/qimagesequencetreeview/QImageSequenceTreeDock.h>
+#include <gui/qimagesequencetreeview/QImageSequencesTreeView.h>
 #include <gui/widgets/QScaleSelectionButton.h>
-#include <gui/qpipelineoptions/QPipelineOptionsView.h>
+#include <gui/qpipeline/QPipelineOptionsView.h>
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include "QImageEditor.h"
 #include "QAppSettings.h"
@@ -41,7 +41,7 @@ public:
   ~MainWindow();
 
 private:
-  void setupPipelineTypes();
+  void setupPipelines();
   void setupMainMenu();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
@@ -79,8 +79,8 @@ private Q_SLOTS:
   //  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);
   //  void onCurrentInputSourceChanged(const c_input_source::ptr & input_source);
   void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
-  void onStackingThreadStarted();
-  void onStackingThreadFinished();
+  void onPipelineThreadStarted();
+  void onPipelineThreadFinished();
 
   void saveCurrentWork();
 
@@ -92,8 +92,8 @@ private :
   void onMeasureRightNowRequested() override;
 
 private:
-  c_image_sequence_collection::sptr image_sequences_ =
-      c_image_sequence_collection::sptr(new c_image_sequence_collection());
+  //  c_image_sequence_collection::sptr image_sequences_ =
+  //      c_image_sequence_collection::sptr(new c_image_sequence_collection());
 
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
@@ -110,7 +110,7 @@ private:
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
 
-  QImageSequenceTree * sequencesTreeView = nullptr;
+  QImageSequencesTree * sequencesTreeView = nullptr;
   QImageSequenceTreeDock * sequencesTreeDock = nullptr;
 
 

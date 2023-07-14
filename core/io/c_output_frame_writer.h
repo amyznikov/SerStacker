@@ -20,6 +20,7 @@ public:
   c_output_frame_writer();
   ~c_output_frame_writer();
 
+  const std::string & filename() const;
   bool is_open() const;
   bool open(const std::string & filename, const cv::Size & frameSize, bool color, bool write_frame_mapping = false);
   bool write(cv::InputArray currenFrame, cv::InputArray currentMask, bool with_alpha_mask = false, int seqindex = -1);

@@ -9,6 +9,8 @@
 #include <core/io/save_image.h>
 #include <core/readdir.h>
 #include <core/debug.h>
+#include <chrono>
+#include <thread>
 
 std::vector<c_image_processing_pipeline::factory_item> c_image_processing_pipeline::registered_classes_;
 
@@ -80,6 +82,12 @@ c_image_processing_pipeline::~c_image_processing_pipeline()
 }
 
 
+std::mutex & c_image_processing_pipeline::mutex()
+{
+  return lock_;
+}
+
+
 bool c_image_processing_pipeline::copyParameters(const sptr & dst)
 {
   if ( !dst ) {
@@ -106,16 +114,6 @@ const char* c_image_processing_pipeline::cname() const
   return name_.c_str();
 }
 
-//void c_image_processing_pipeline::set_sequence_name(const std::string & v)
-//{
-//  sequence_name_ = v;
-//}
-//
-//const std::string& c_image_processing_pipeline::sequence_name() const
-//{
-//  return sequence_name_;
-//}
-
 const char * c_image_processing_pipeline::csequence_name() const
 {
   return input_sequence_ ? input_sequence_->cname() : "";
@@ -124,6 +122,33 @@ const char * c_image_processing_pipeline::csequence_name() const
 void c_image_processing_pipeline::set_master_source(const std::string & master_source_path)
 {
   master_source_ = master_source_path;
+}
+
+bool c_image_processing_pipeline::is_running() const
+{
+  return is_running_;
+}
+
+void c_image_processing_pipeline::set_running(bool v)
+{
+  if ( v != is_running_ ) {
+    is_running_ = v;
+    on_state_changed();
+  }
+}
+
+void c_image_processing_pipeline::on_frame_processed()
+{
+  // give chance to GUI thread to call get_display_image()
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}
+
+void c_image_processing_pipeline::on_state_changed()
+{
+}
+
+void c_image_processing_pipeline::on_status_update()
+{
 }
 
 const std::string& c_image_processing_pipeline::master_source() const
@@ -141,7 +166,7 @@ int c_image_processing_pipeline::master_frame_index() const
   return master_frame_index_;
 }
 
-const c_input_sequence::sptr& c_image_processing_pipeline::input_sequence() const
+const c_input_sequence::sptr & c_image_processing_pipeline::input_sequence() const
 {
   return input_sequence_;
 }
@@ -150,7 +175,6 @@ void c_image_processing_pipeline::cancel(bool v)
 {
   canceled_ = v;
 }
-
 
 std::string c_image_processing_pipeline::generate_output_file_name(const std::string & ufilename,
     const std::string & postfix,
@@ -236,7 +260,7 @@ int c_image_processing_pipeline::pipeline_stage() const
   return pipeline_stage_;
 }
 
-void c_image_processing_pipeline::set_status_msg(const std::string & msg) const
+void c_image_processing_pipeline::set_status_msg(const std::string & msg)
 {
   if( true ) {
     lock_guard lock(status_lock_);
@@ -245,7 +269,6 @@ void c_image_processing_pipeline::set_status_msg(const std::string & msg) const
 
   CF_DEBUG("STATUS: %s", msg.c_str());
   on_status_update();
-  //on_status_msg_changed(statusmsg_);
 }
 
 std::string c_image_processing_pipeline::status_message() const
@@ -423,11 +446,30 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
   }
 
   SERIALIZE_PROPERTY(setting, save, *this, name);
-  //SERIALIZE_PROPERTY(setting, save, *this, sequence_name);
   SERIALIZE_PROPERTY(setting, save, *this, master_source);
   SERIALIZE_PROPERTY(setting, save, *this, master_frame_index);
 
   return true;
+}
+
+void c_image_processing_pipeline::set_display_type(int v)
+{
+  display_type_ = v;
+}
+
+int c_image_processing_pipeline::display_type() const
+{
+  return display_type_;
+}
+
+const c_enum_member* c_image_processing_pipeline::get_display_types() const
+{
+  static constexpr c_enum_member members[] = {
+      { 0, "DEFAULT", "Default display type" },
+      { 0 },
+  };
+
+  return members;
 }
 
 bool c_image_processing_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
@@ -435,8 +477,18 @@ bool c_image_processing_pipeline::get_display_image(cv::OutputArray frame, cv::O
   return false;
 }
 
-bool c_image_processing_pipeline::run()
+bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_sequence)
 {
+  CF_DEBUG("enter");
+  cancel(false);
+  set_running(true);
+
+  const c_input_sequence::sptr backup_input_sequence =
+      this->input_sequence_;
+
+  if ( input_sequence ) {
+    this->input_sequence_ = input_sequence;
+  }
 
   bool fOk = false;
 
@@ -474,7 +526,6 @@ bool c_image_processing_pipeline::run()
     CF_ERROR("Unknown exception catched in c_image_processing_pipeline::run()\n");
   }
 
-
   try {
     cleanup_pipeline();
   }
@@ -501,6 +552,12 @@ bool c_image_processing_pipeline::run()
     CF_ERROR("Unknown exception catched in c_image_processing_pipeline::cleanup()\n");
   }
 
+  if ( input_sequence ) {
+    this->input_sequence_ = backup_input_sequence;
+  }
+
+  set_running(false);
+  CF_DEBUG("leave");
   return fOk;
 }
 
@@ -547,52 +604,21 @@ bool c_image_processing_pipeline::run_pipeline()
 
 c_image_sequence::c_image_sequence(const std::string & name)
 {
-  if ( input_sequence_ ) {
-    input_sequence_->set_name(name);
-  }
-}
-
-void c_image_sequence::set_name(const std::string & name)
-{
-  if ( input_sequence_ ) {
-    input_sequence_->set_name(name);
-  }
-
-//  for( const auto &pipeline : pipelines_ ) {
-//    if( pipeline ) {
-//      pipeline->set_sequence_name(name);
-//    }
-//  }
-}
-
-std::string c_image_sequence::name() const
-{
-  return input_sequence_ ? input_sequence_->name() : "";
-}
-
-const char* c_image_sequence::cname() const
-{
-  return input_sequence_ ? input_sequence_->cname() : "";
+  base::set_name(name);
 }
 
 std::string c_image_sequence::get_display_path() const
 {
   std::string path;
 
-  if( input_sequence_ && input_sequence_->sources().size() > 0 ) {
-    path = get_parent_directory(input_sequence_->source(0)->filename());
+  if( sources().size() > 0 ) {
+    path = get_parent_directory(source(0)->filename());
   }
-//  else if( current_pipeline_ ) {
-//    path = current_pipeline_->output_directory();
-//  }
+  //  else if( current_pipeline_ ) {
+  //    path = current_pipeline_->output_directory();
+  //  }
 
   return path;
-
-}
-
-const c_input_sequence::sptr& c_image_sequence::input_sequence() const
-{
-  return input_sequence_;
 }
 
 void c_image_sequence::set_current_pipeline(const std::string & name)
@@ -696,320 +722,319 @@ bool c_image_sequence::pipeline_exists(const std::string & name) const
 
   return pos != pipelines_.end();
 }
+//
+//bool c_image_sequence::serialize(c_config_setting settings, bool save)
+//{
+//  static const auto get_group =
+//      [](c_config_setting setting, bool save, const std::string & name) {
+//        return save ? setting.add_group(name) : setting[name];
+//      };
+//
+//  c_config_setting section;
+//
+//  if( (section = get_group(settings, save, "input_sequence")) ) {
+//    if( !base::serialize(section, save) ) {
+//      return false;
+//    }
+//  }
+//
+//  if( save ) {
+//
+//    if( current_pipeline_ ) {
+//      save_settings(settings, "current_pipeline",
+//          current_pipeline_->name());
+//    }
+//
+//    if( !pipelines_.empty() ) {
+//
+//      section = settings.add_list("pipelines");
+//      for( const c_image_processing_pipeline::sptr &pipeline : pipelines_ ) {
+//        if( pipeline ) {
+//          pipeline->serialize(section.add_group(), save);
+//        }
+//      }
+//    }
+//
+//  }
+//
+//  else {
+//
+//    std::string class_name, object_name;
+//
+//    pipelines_.clear();
+//    current_pipeline_.reset();
+//
+//    if( (section = settings["pipelines"]) && section.isList() ) {
+//
+//      const int n =
+//          section.length();
+//
+//      for( int i = 0; i < n; ++i ) {
+//
+//        c_config_setting item =
+//            section[i];
+//
+//        if( !item.isGroup() ) {
+//          CF_ERROR("pipeline item %d is not a libconfig group", i);
+//          continue;
+//        }
+//
+//        if( !load_settings(item, "class_name", &class_name) || class_name.empty() ) {
+//          CF_ERROR("can not extract pipeline class name for libconfig item %d", i);
+//          continue;
+//        }
+//
+//        if( !load_settings(item, "name", &object_name) || object_name.empty() ) {
+//          CF_ERROR("can not extract pipeline object name for libconfig item %d of class '%s'", i,
+//              class_name.c_str());
+//          continue;
+//        }
+//
+//        c_image_processing_pipeline::sptr pipeline =
+//            c_image_processing_pipeline::create_instance(class_name, object_name, this);
+//
+//        if( !pipeline ) {
+//          CF_ERROR("c_image_processing_pipeline::create_instance(class_name='%s' object_name=%s) fails",
+//              class_name.c_str(), object_name.c_str());
+//          continue;
+//        }
+//
+//        if( !pipeline->serialize(item, save) ) {
+//          CF_ERROR("pipeline->serialize(class='%s', name='%s', save=false) fails for item %d",
+//              class_name.c_str(), object_name.c_str(), i);
+//          continue;
+//        }
+//
+//        pipelines_.emplace_back(pipeline);
+//      }
+//    }
+//
+//    if( load_settings(settings, "current_pipeline", &object_name) && !object_name.empty() ) {
+//      set_current_pipeline(object_name);
+//    }
+//
+//  }
+//
+//  return true;
+//}
 
-bool c_image_sequence::serialize(c_config_setting settings, bool save)
-{
-  c_config_setting section;
-
-  //SERIALIZE_PROPERTY(settings, save, *this, name);
-
-  if( save ) {
-
-    if( input_sequence_ ) {
-      input_sequence_->serialize(section =
-          settings.add_group("input_sequence"));
-    }
-
-    if( current_pipeline_ ) {
-      save_settings(settings, "current_pipeline",
-          current_pipeline_->name());
-    }
-
-    if( !pipelines_.empty() ) {
-
-      section = settings.add_list("pipelines");
-      for( const c_image_processing_pipeline::sptr &pipeline : pipelines_ ) {
-        if( pipeline ) {
-          pipeline->serialize(section.add_group(), save);
-        }
-      }
-    }
-
-  }
-
-  else {
-
-    std::string class_name, object_name;
-
-    pipelines_.clear();
-    current_pipeline_.reset();
-
-    if( (section = settings["input_sequence"]) ) {
-      input_sequence_ = c_input_sequence::create();
-      input_sequence_->deserialize(section);
-    }
-
-    if( (section = settings["pipelines"]) && section.isList() ) {
-
-      const int n =
-          section.length();
-
-      for( int i = 0; i < n; ++i ) {
-
-        c_config_setting item =
-            section[i];
-
-        if( !item.isGroup() ) {
-          CF_ERROR("pipeline item %d is not a libconfig group", i);
-          continue;
-        }
-
-        if( !load_settings(item, "class_name", &class_name) || class_name.empty() ) {
-          CF_ERROR("can not extract pipeline class name for libconfig item %d", i);
-          continue;
-        }
-
-        if( !load_settings(item, "name", &object_name) || object_name.empty() ) {
-          CF_ERROR("can not extract pipeline object name for libconfig item %d of class '%s'", i,
-              class_name.c_str());
-          continue;
-        }
-
-        c_image_processing_pipeline::sptr pipeline =
-            c_image_processing_pipeline::create_instance(class_name, object_name, input_sequence_);
-
-        if( !pipeline ) {
-          CF_ERROR("c_image_processing_pipeline::create_instance(class_name='%s' object_name=%s) fails",
-              class_name.c_str(), object_name.c_str());
-          continue;
-        }
-
-        if( !pipeline->serialize(item, save) ) {
-          CF_ERROR("pipeline->serialize(class='%s', name='%s', save=false) fails for item %d",
-              class_name.c_str(), object_name.c_str(), i);
-          continue;
-        }
-
-        pipelines_.emplace_back(pipeline);
-      }
-    }
-
-    if( load_settings(settings, "current_pipeline", &object_name) && !object_name.empty() ) {
-      set_current_pipeline(object_name);
-    }
-
-  }
-
-  return true;
-}
-
-c_image_sequence::sptr c_image_sequence::load(const std::string & filename)
-{
-  CF_ERROR("FIXME: not implemented");
-  return nullptr;
-}
+//c_image_sequence::sptr c_image_sequence::load(const std::string & filename)
+//{
+//  CF_ERROR("FIXME: not implemented");
+//  return nullptr;
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::string c_image_sequence_collection::default_config_filename_ =
-    "~/.config/SerStacker/corrent_work.cfg";
-
-c_image_sequence_collection::c_image_sequence_collection()
-{
-}
-
-size_t c_image_sequence_collection::size() const
-{
-  return this->items_.size();
-}
-
-const std::vector<c_image_sequence::sptr>& c_image_sequence_collection::items() const
-{
-  return this->items_;
-}
-
-c_image_sequence::sptr c_image_sequence_collection::item(size_t index) const
-{
-  return index < items_.size() ? items_[index] : nullptr;
-}
-
-c_image_sequence::sptr c_image_sequence_collection::item(const std::string & name) const
-{
-  ssize_t index = indexof(name);
-  return index >= 0 ? items_[index] : nullptr;
-}
-
-void c_image_sequence_collection::add(const c_image_sequence::sptr & sequence)
-{
-  items_.emplace_back(sequence);
-}
-
-bool c_image_sequence_collection::remove(const c_image_sequence::sptr & sequence)
-{
-  const size_t original_size = items_.size();
-  if( original_size > 0 ) {
-    items_.erase(std::remove(items_.begin(), items_.end(), sequence), items_.end());
-  }
-  return items_.size() < original_size;
-}
-
-void c_image_sequence_collection::set(int pos, const c_image_sequence::sptr & sequence)
-{
-  if( pos < 0 || pos >= (int) (items_.size()) ) {
-    items_.emplace_back(sequence);
-  }
-  else {
-    items_[pos] = sequence;
-  }
-}
-
-ssize_t c_image_sequence_collection::indexof(const c_image_sequence::sptr & sequence) const
-{
-  std::vector<c_image_sequence::sptr>::const_iterator ii =
-      std::find(items_.begin(), items_.end(), sequence);
-  return ii == items_.end() ? -1 : ii - items_.begin();
-}
-
-ssize_t c_image_sequence_collection::indexof(const std::string & name) const
-{
-  std::vector<c_image_sequence::sptr>::const_iterator ii =
-      std::find_if(items_.begin(), items_.end(),
-          [&name](const c_image_sequence::sptr & pipeline) -> bool {
-            return pipeline && strcasecmp(pipeline->name().c_str(), name.c_str()) == 0;
-          });
-  return ii == items_.end() ? -1 : ii - items_.begin();
-}
-
-const std::string& c_image_sequence_collection::default_config_filename()
-{
-  return default_config_filename_;
-}
-
-void c_image_sequence_collection::set_default_config_filename(const std::string & v)
-{
-  default_config_filename_ = v;
-}
-
-bool c_image_sequence_collection::save(const std::string & cfgfilename) const
-{
-  std::string filename;
-
-  if( !cfgfilename.empty() ) {
-    filename = cfgfilename;
-  }
-  else if( !config_filename_.empty() ) {
-    filename = config_filename_;
-  }
-  else {
-    filename = default_config_filename_;
-  }
-
-  if( (filename = expand_path(filename)).empty() ) {
-    CF_ERROR("No output config file name specified for c_image_processing_pipeline_collection::save()");
-    return false;
-  }
-
-  CF_DEBUG("Saving '%s' ...", filename.c_str());
-
-  c_config cfg(filename);
-
-  time_t t = time(0);
-
-  if( !save_settings(cfg.root(), "object_class", std::string("c_image_processing_pipeline_collection")) ) {
-    CF_FATAL("save_settings() fails");
-    return false;
-  }
-
-  if( !save_settings(cfg.root(), "created", asctime(localtime(&t))) ) {
-    CF_FATAL("save_settings() fails");
-    return false;
-  }
-
-  c_config_setting section =
-      cfg.root().add_list("items");
-
-  for( const c_image_sequence::sptr &sequence : items_ ) {
-    if( sequence && !sequence->serialize(section.add_group(), true) ) {
-      CF_ERROR("sequence->serialize() fails for sequence '%s'", sequence->cname());
-    }
-  }
-
-  if( !cfg.write() ) {
-    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
-    return false;
-  }
-
-  config_filename_ = filename;
-
-  return true;
-}
-
-bool c_image_sequence_collection::load(const std::string & cfgfilename)
-{
-  std::string filename;
-
-  if( !cfgfilename.empty() ) {
-    filename = cfgfilename;
-  }
-  else if( !config_filename_.empty() ) {
-    filename = config_filename_;
-  }
-  else {
-    filename = default_config_filename_;
-  }
-
-  if( (filename = expand_path(filename)).empty() ) {
-    CF_ERROR("No output config file name specified for c_image_processing_pipeline_collection::load()");
-    return false;
-  }
-
-  // CF_DEBUG("Loading '%s' ...", filename.c_str());
-
-  c_config cfg(filename);
-
-  if( !cfg.read() ) {
-    CF_FATAL("cfg.read('%s') fails", filename.c_str());
-    return false;
-  }
-
-  std::string object_class;
-  if( !::load_settings(cfg.root(), "object_class", &object_class) ) {
-    CF_FATAL("[%s] load_settings(object_class) fails", filename.c_str());
-    return false;
-  }
-
-  if( object_class != "c_image_processing_pipeline_collection" ) {
-    CF_FATAL("Incorrect object_class='%s' from file '%s'",
-        object_class.c_str(), filename.c_str());
-    return false;
-  }
-
-  c_config_setting section =
-      cfg.root().get("items");
-
-  if( !section || !section.isList() ) {
-    CF_FATAL("section 'items' is not found in file '%s''",
-        filename.c_str());
-    return false;
-  }
-
-  const int n =
-      section.length();
-
-  items_.clear();
-  items_.reserve(n);
-
-  for( int i = 0; i < n; ++i ) {
-
-    c_config_setting item =
-        section.get_element(i);
-
-    if( item && item.isGroup() ) {
-
-      c_image_sequence::sptr sequence(new c_image_sequence());
-      if( !sequence->serialize(item, false) ) {
-        CF_ERROR("sequence->serialize() fails for item index %d", i);
-      }
-      else {
-        items_.emplace_back(sequence);
-      }
-    }
-  }
-
-  config_filename_ = filename;
-
-  return true;
-}
+//
+//std::string c_image_sequence_collection::default_config_filename_ =
+//    "~/.config/SerStacker/corrent_work.cfg";
+//
+//c_image_sequence_collection::c_image_sequence_collection()
+//{
+//}
+//
+//size_t c_image_sequence_collection::size() const
+//{
+//  return this->items_.size();
+//}
+//
+//const std::vector<c_image_sequence::sptr>& c_image_sequence_collection::items() const
+//{
+//  return this->items_;
+//}
+//
+//c_image_sequence::sptr c_image_sequence_collection::item(size_t index) const
+//{
+//  return index < items_.size() ? items_[index] : nullptr;
+//}
+//
+//c_image_sequence::sptr c_image_sequence_collection::item(const std::string & name) const
+//{
+//  ssize_t index = indexof(name);
+//  return index >= 0 ? items_[index] : nullptr;
+//}
+//
+//void c_image_sequence_collection::add(const c_image_sequence::sptr & sequence)
+//{
+//  items_.emplace_back(sequence);
+//}
+//
+//bool c_image_sequence_collection::remove(const c_image_sequence::sptr & sequence)
+//{
+//  const size_t original_size = items_.size();
+//  if( original_size > 0 ) {
+//    items_.erase(std::remove(items_.begin(), items_.end(), sequence), items_.end());
+//  }
+//  return items_.size() < original_size;
+//}
+//
+//void c_image_sequence_collection::set(int pos, const c_image_sequence::sptr & sequence)
+//{
+//  if( pos < 0 || pos >= (int) (items_.size()) ) {
+//    items_.emplace_back(sequence);
+//  }
+//  else {
+//    items_[pos] = sequence;
+//  }
+//}
+//
+//ssize_t c_image_sequence_collection::indexof(const c_image_sequence::sptr & sequence) const
+//{
+//  std::vector<c_image_sequence::sptr>::const_iterator ii =
+//      std::find(items_.begin(), items_.end(), sequence);
+//  return ii == items_.end() ? -1 : ii - items_.begin();
+//}
+//
+//ssize_t c_image_sequence_collection::indexof(const std::string & name) const
+//{
+//  std::vector<c_image_sequence::sptr>::const_iterator ii =
+//      std::find_if(items_.begin(), items_.end(),
+//          [&name](const c_image_sequence::sptr & pipeline) -> bool {
+//            return pipeline && strcasecmp(pipeline->name().c_str(), name.c_str()) == 0;
+//          });
+//  return ii == items_.end() ? -1 : ii - items_.begin();
+//}
+//
+//const std::string& c_image_sequence_collection::default_config_filename()
+//{
+//  return default_config_filename_;
+//}
+//
+//void c_image_sequence_collection::set_default_config_filename(const std::string & v)
+//{
+//  default_config_filename_ = v;
+//}
+//
+//bool c_image_sequence_collection::save(const std::string & cfgfilename) const
+//{
+//  std::string filename;
+//
+//  if( !cfgfilename.empty() ) {
+//    filename = cfgfilename;
+//  }
+//  else if( !config_filename_.empty() ) {
+//    filename = config_filename_;
+//  }
+//  else {
+//    filename = default_config_filename_;
+//  }
+//
+//  if( (filename = expand_path(filename)).empty() ) {
+//    CF_ERROR("No output config file name specified for c_image_processing_pipeline_collection::save()");
+//    return false;
+//  }
+//
+//  CF_DEBUG("Saving '%s' ...", filename.c_str());
+//
+//  c_config cfg(filename);
+//
+//  time_t t = time(0);
+//
+//  if( !save_settings(cfg.root(), "object_class", std::string("c_image_processing_pipeline_collection")) ) {
+//    CF_FATAL("save_settings() fails");
+//    return false;
+//  }
+//
+//  if( !save_settings(cfg.root(), "created", asctime(localtime(&t))) ) {
+//    CF_FATAL("save_settings() fails");
+//    return false;
+//  }
+//
+//  c_config_setting section =
+//      cfg.root().add_list("items");
+//
+//  for( const c_image_sequence::sptr &sequence : items_ ) {
+//    if( sequence && !sequence->serialize(section.add_group(), true) ) {
+//      CF_ERROR("sequence->serialize() fails for sequence '%s'", sequence->cname());
+//    }
+//  }
+//
+//  if( !cfg.write() ) {
+//    CF_FATAL("cfg.write('%s') fails", cfg.filename().c_str());
+//    return false;
+//  }
+//
+//  config_filename_ = filename;
+//
+//  return true;
+//}
+//
+//bool c_image_sequence_collection::load(const std::string & cfgfilename)
+//{
+//  std::string filename;
+//
+//  if( !cfgfilename.empty() ) {
+//    filename = cfgfilename;
+//  }
+//  else if( !config_filename_.empty() ) {
+//    filename = config_filename_;
+//  }
+//  else {
+//    filename = default_config_filename_;
+//  }
+//
+//  if( (filename = expand_path(filename)).empty() ) {
+//    CF_ERROR("No output config file name specified for c_image_processing_pipeline_collection::load()");
+//    return false;
+//  }
+//
+//  // CF_DEBUG("Loading '%s' ...", filename.c_str());
+//
+//  c_config cfg(filename);
+//
+//  if( !cfg.read() ) {
+//    CF_FATAL("cfg.read('%s') fails", filename.c_str());
+//    return false;
+//  }
+//
+//  std::string object_class;
+//  if( !::load_settings(cfg.root(), "object_class", &object_class) ) {
+//    CF_FATAL("[%s] load_settings(object_class) fails", filename.c_str());
+//    return false;
+//  }
+//
+//  if( object_class != "c_image_processing_pipeline_collection" ) {
+//    CF_FATAL("Incorrect object_class='%s' from file '%s'",
+//        object_class.c_str(), filename.c_str());
+//    return false;
+//  }
+//
+//  c_config_setting section =
+//      cfg.root().get("items");
+//
+//  if( !section || !section.isList() ) {
+//    CF_FATAL("section 'items' is not found in file '%s''",
+//        filename.c_str());
+//    return false;
+//  }
+//
+//  const int n =
+//      section.length();
+//
+//  items_.clear();
+//  items_.reserve(n);
+//
+//  for( int i = 0; i < n; ++i ) {
+//
+//    c_config_setting item =
+//        section.get_element(i);
+//
+//    if( item && item.isGroup() ) {
+//
+//      c_image_sequence::sptr sequence(new c_image_sequence());
+//      if( !sequence->serialize(item, false) ) {
+//        CF_ERROR("sequence->serialize() fails for item index %d", i);
+//      }
+//      else {
+//        items_.emplace_back(sequence);
+//      }
+//    }
+//  }
+//
+//  config_filename_ = filename;
+//
+//  return true;
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //

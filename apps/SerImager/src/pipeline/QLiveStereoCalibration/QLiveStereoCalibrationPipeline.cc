@@ -7,6 +7,8 @@
 
 #include "QLiveStereoCalibrationPipeline.h"
 
+#if 0
+
 namespace serimager {
 
 QLiveStereoCalibrationPipeline::QLiveStereoCalibrationPipeline(const QString & name, QObject * parent) :
@@ -126,3 +128,5 @@ bool QLiveStereoCalibrationPipeline::get_display_image(cv::Mat * displayImage, C
 }
 
 } /* namespace serimager */
+
+#endif // 0

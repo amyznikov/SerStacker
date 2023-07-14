@@ -7,6 +7,8 @@
 
 #include "QLiveRegularStereoPipeline.h"
 
+#if 0
+
 namespace serimager {
 
 QLiveRegularStereoPipeline::QLiveRegularStereoPipeline(const QString & name, QObject * parent) :
@@ -95,3 +97,5 @@ bool QLiveRegularStereoPipeline::serialize(c_config_setting settings, bool save)
 
 
 } /* namespace serimager */
+
+#endif

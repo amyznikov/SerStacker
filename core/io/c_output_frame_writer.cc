@@ -88,6 +88,11 @@ c_output_frame_writer::~c_output_frame_writer()
   close();
 }
 
+const std::string & c_output_frame_writer::filename() const
+{
+  return output_file_name;
+}
+
 bool c_output_frame_writer::is_open() const
 {
   switch (output_type) {
@@ -158,7 +163,7 @@ bool c_output_frame_writer::open(const std::string & filename, const cv::Size & 
     }
 
     default: {
-      CF_ERROR("NOOT SUPPORTED output format requested for file '%s'", filename.c_str());
+      CF_ERROR("NOT SUPPORTED output format requested for file '%s'", filename.c_str());
       return false;
     }
   }

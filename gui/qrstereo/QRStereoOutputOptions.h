@@ -12,7 +12,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QBrowsePathCombo.h>
-#include <core/pipeline/c_regular_stereo_pipeline.h>
+#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo_pipeline.h>
 
 class QRStereoOutputOptions :
     public QSettingsWidget

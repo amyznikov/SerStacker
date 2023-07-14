@@ -14,13 +14,9 @@
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
-#include <gui/qpipelinethread/QImageProcessingPipeline.h>
+#include <gui/qpipeline/QImageProcessingPipeline.h>
+#include <gui/qpipeline/QPipelineThread.h>
 #include <core/io/load_image.h>
-#include <core/pipeline/c_image_stacking_pipeline.h>
-#include <core/pipeline/c_camera_calibration_pipeline.h>
-#include <core/pipeline/c_stereo_calibration_pipeline.h>
-#include <core/pipeline/c_regular_stereo_pipeline.h>
-#include <core/pipeline/c_stereo_matcher_pipeline.h>
 #include <core/debug.h>
 
 namespace serstacker {
@@ -90,7 +86,7 @@ MainWindow::MainWindow()
   setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
 
 
-  setupPipelineTypes();
+  setupPipelines();
   setupMainMenu();
   setupLogWidget();
   setupStatusbar();
@@ -116,18 +112,21 @@ MainWindow::MainWindow()
   tabifyDockWidget(sequencesTreeDock, imageProcessorDock_);
 
 
-  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::started,
-      this, &ThisClass::onStackingThreadStarted);
+  connect(QPipelineThread::instance(), &QPipelineThread::started,
+      this, &ThisClass::onPipelineThreadStarted);
 
-  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::finished,
-      this, &ThisClass::onStackingThreadFinished);
+  connect(QPipelineThread::instance(), &QPipelineThread::finished,
+      this, &ThisClass::onPipelineThreadFinished);
 
 
   restoreState();
 
   imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
-  image_sequences_->load();
-  sequencesTreeView->set_image_sequence_collection(image_sequences_);
+
+//  CF_DEBUG("sequencesTreeView->loadSequences()");
+//  sequencesTreeView->loadSequences();
+  //image_sequences_->load();
+  //sequencesTreeView->set_image_sequence_collection(image_sequences_);
 }
 
 MainWindow::~MainWindow()
@@ -161,44 +160,9 @@ void MainWindow::onRestoreState(QSettings & settings)
 }
 
 
-void MainWindow::setupPipelineTypes()
+void MainWindow::setupPipelines()
 {
-  c_image_processing_pipeline::register_class(
-      c_image_stacking_pipeline::class_name(),
-      c_image_stacking_pipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new c_image_stacking_pipeline(name, input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      c_camera_calibration_pipeline::class_name(),
-      c_camera_calibration_pipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new c_camera_calibration_pipeline(name, input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      c_stereo_calibration_pipeline::class_name(),
-      c_stereo_calibration_pipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new c_stereo_calibration_pipeline(name, input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      c_regular_stereo_pipeline::class_name(),
-      "c_regular_stereo_pipeline",
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new c_regular_stereo_pipeline(name, input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      c_stereo_matcher_pipeline::class_name(),
-      "c_stereo_matcher_pipeline",
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new c_stereo_matcher_pipeline(name, input_sequence));
-      });
-
-
+  registerPipelineClasses();
 }
 
 void MainWindow::setupMainMenu()
@@ -488,19 +452,22 @@ void MainWindow::setupStackTreeView()
   sequencesTreeView =
       sequencesTreeDock->treeView();
 
-  connect(sequencesTreeView, &QImageSequenceTree::currentItemChanged,
+  CF_DEBUG("sequencesTreeView->loadSequences()");
+  sequencesTreeView->loadSequences();
+
+  connect(sequencesTreeView, &QImageSequencesTree::currentItemChanged,
       this, &ThisClass::onStackTreeCurrentItemChanged);
 
-  connect(sequencesTreeView, &QImageSequenceTree::itemDoubleClicked,
+  connect(sequencesTreeView, &QImageSequencesTree::itemDoubleClicked,
       this, &ThisClass::onStackTreeItemDoubleClicked);
 
-  connect(sequencesTreeView, &QImageSequenceTree::showImageSequenceOptionsClicked,
+  connect(sequencesTreeView, &QImageSequencesTree::showImageSequenceOptionsClicked,
       this, &ThisClass::onShowImageSequenceOptions);
 
-  connect(sequencesTreeView, &QImageSequenceTree::imageSequenceCollectionChanged,
+  connect(sequencesTreeView, &QImageSequencesTree::imageSequenceCollectionChanged,
         this, &ThisClass::saveCurrentWork );
 
-  connect(sequencesTreeView, &QImageSequenceTree::imageSequenceSourcesChanged,
+  connect(sequencesTreeView, &QImageSequencesTree::imageSequenceSourcesChanged,
       [this](const c_image_sequence::sptr & sequence) {
         if ( pipelineOptionsView->isVisible() && pipelineOptionsView->current_sequence() == sequence ) {
           // fixme: temporary hack to force update options views
@@ -509,7 +476,7 @@ void MainWindow::setupStackTreeView()
         saveCurrentWork();
   });
 
-  connect(sequencesTreeView, &QImageSequenceTree::imageSequenceNameChanged,
+  connect(sequencesTreeView, &QImageSequencesTree::imageSequenceNameChanged,
       this, &ThisClass::saveCurrentWork);
 
 }
@@ -518,7 +485,7 @@ void MainWindow::setupStackOptionsView()
 {
   connect(pipelineOptionsView, &QPipelineOptionsView::closeWindowRequested,
       [this]() {
-        if ( !QImageProcessingPipeline::isRunning() ) {
+        if ( !QPipelineThread::isRunning() ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
         }
         else {
@@ -1353,7 +1320,7 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & se
 
 void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
-  if ( QImageProcessingPipeline::isRunning() ) {
+  if ( QPipelineThread::isRunning() ) {
 
     if ( source ) {
       pipelineProgressView->setImageViewer(nullptr);
@@ -1365,7 +1332,10 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
       QWidget * currentCentralWidget =
           centralStackedWidget->currentWidget();
 
-      if ( sequence == QImageProcessingPipeline::current_sequence() ) {
+      const c_image_processing_pipeline::sptr & pipeline =
+          QPipelineThread::currentPipeline();
+
+      if ( pipeline && sequence == pipeline->input_sequence() ) {
 
         if ( currentCentralWidget == imageEditor ) {
 
@@ -1447,7 +1417,7 @@ void MainWindow::onShowImageSequenceOptions(const c_image_sequence::sptr & seque
 
 }
 
-void MainWindow::onStackingThreadStarted()
+void MainWindow::onPipelineThreadStarted()
 {
   if ( centralStackedWidget->currentWidget() != imageEditor ) {
     centralStackedWidget->setCurrentWidget(imageEditor);
@@ -1461,7 +1431,7 @@ void MainWindow::onStackingThreadStarted()
   }
 }
 
-void MainWindow::onStackingThreadFinished()
+void MainWindow::onPipelineThreadFinished()
 {
   if ( pipelineProgressView ) {
 
@@ -1470,7 +1440,7 @@ void MainWindow::onStackingThreadFinished()
     QTimer::singleShot(1000,
         [this]() {
 
-          if ( !QImageProcessingPipeline::isRunning() ) {
+          if ( !QPipelineThread::isRunning() ) {
             if ( pipelineProgressView->isVisible() ) {
               pipelineProgressView->hide();
             }
@@ -1579,15 +1549,18 @@ void MainWindow::saveCurrentWork()
 {
   QWaitCursor wait (this);
 
-  if( image_sequences_->indexof(pipelineOptionsView->current_sequence()) < 0 ) {
+  if( !pipelineOptionsView->current_sequence() ) {
     pipelineOptionsView->set_current_sequence(nullptr);
   }
 
-  image_sequences_->save();
+  sequencesTreeView->saveSequences();
+  // image_sequences_->save();
 }
 
 void MainWindow::onLoadStackConfig()
 {
+
+#if 0
   static const QString loadStackConfigSavedPathKeyName =
       "loadStackConfigSavedPath";
 
@@ -1670,6 +1643,7 @@ void MainWindow::onLoadStackConfig()
   if ( hasChanges ) {
     sequencesTreeView->refresh();
   }
+#endif
 }
 
 void MainWindow::onViewInputOptions()

@@ -10,6 +10,8 @@
 #define __QLiveImageProcessingOptions_h__
 
 #include "QLiveImageProcessingPipeline.h"
+#if 0
+
 #include <gui/qgenericpipeline/QGenericImageProcessorOptions.h>
 
 namespace serimager {
@@ -33,5 +35,7 @@ protected:
 };
 
 } // namespace serimager
+
+#endif // 0
 
 #endif /* __QLiveImageProcessingOptions_h__ */

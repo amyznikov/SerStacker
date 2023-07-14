@@ -39,9 +39,10 @@ protected:
   void updateAccumulatedImageDisplay(bool force = false);
 
 protected Q_SLOTS:
-  void onStackingThreadStarted();
-  void onStackingThreadFinishing();
-  void onStackingThreadFinished();
+  void onPipelineThreadStarted();
+  void onPipelineThreadFinishing();
+  void onPipelineThreadFinished();
+  void onMenuButtonClicked();
 //  void onStatusChanged();
 //  void onAccumulatorChanged();
 //  void onSelectedMasterFrameChanged();
@@ -55,7 +56,7 @@ protected:
   int timerId = 0;
   std::atomic<bool> hasStatusUpdates_ = false;
   std::atomic<bool> updatingDisplay_ = false;
-  c_slotptr on_status_update;
+  // c_slotptr on_status_update;
 };
 
 

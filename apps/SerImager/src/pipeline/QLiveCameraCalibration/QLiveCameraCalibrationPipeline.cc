@@ -6,6 +6,8 @@
  */
 
 #include "QLiveCameraCalibrationPipeline.h"
+#if 0
+
 #include <core/settings/opencv_settings.h>
 
 namespace serimager {
@@ -115,3 +117,5 @@ bool QLiveCameraCalibrationPipeline::get_display_image(cv::Mat * displayImage, C
 }
 
 } /* namespace serimager */
+
+#endif // 0

@@ -7,6 +7,8 @@
 
 #include "QLiveImageProcessingOptions.h"
 
+#if 0
+
 namespace serimager {
 
 QLiveImageProcessingOptions::QLiveImageProcessingOptions(QWidget * parent) :
@@ -32,3 +34,5 @@ void QLiveImageProcessingOptions::update_pipeline_controls()
 }
 
 } // namespace serimager
+
+#endif // 0

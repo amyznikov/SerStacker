@@ -7,6 +7,8 @@
 
 #include "QLiveImageProcessingPipeline.h"
 
+#if 0
+
 namespace serimager {
 
 QLiveImageProcessingPipeline::QLiveImageProcessingPipeline(const QString & name, QObject * parent) :
@@ -24,13 +26,13 @@ bool QLiveImageProcessingPipeline::initialize_pipeline()
   const std::string output_path =
       create_output_path(output_options().output_directory);
 
-  c_generic_image_processor::set_output_file_name(
+  c_generic_image_processor_pipeline::set_output_file_name(
       generate_output_file_name(output_path,
           output_options_.processed_frames_filename,
           "live",
           ".avi"));
 
-  if ( !c_generic_image_processor::initialize() ) {
+  if ( !c_generic_image_processor_pipeline::initialize() ) {
     CF_ERROR("c_generic_image_processor::initialize() fails");
     return false;
   }
@@ -40,7 +42,7 @@ bool QLiveImageProcessingPipeline::initialize_pipeline()
 
 void QLiveImageProcessingPipeline::cleanup_pipeline()
 {
-  c_generic_image_processor::cleanup();
+  c_generic_image_processor_pipeline::cleanup();
   Base::cleanup_pipeline();
 }
 
@@ -55,7 +57,7 @@ bool QLiveImageProcessingPipeline::process_frame(const cv::Mat & image, COLORID 
     return false;
   }
 
-  if( !c_generic_image_processor::process_frame(current_image_, current_mask_) ) {
+  if( !c_generic_image_processor_pipeline::process_frame(current_image_, current_mask_) ) {
     CF_ERROR("process_current_frame() fails");
     return false;
   }
@@ -68,7 +70,7 @@ bool QLiveImageProcessingPipeline::get_display_image(cv::Mat * displayImage, COL
   *colorid = displayColorid_;
   *bpp = 8;
 
-   if( !c_generic_image_processor::get_display_image(*displayImage, cv::noArray()) ) {
+   if( !c_generic_image_processor_pipeline::get_display_image(*displayImage, cv::noArray()) ) {
     CF_ERROR("c_camera_calibration::get_display_image() fails");
     return false;
   }
@@ -83,7 +85,7 @@ bool QLiveImageProcessingPipeline::serialize(c_config_setting settings, bool sav
     return false;
   }
 
-  if( !c_generic_image_processor::serialize(settings, save) ) {
+  if( !c_generic_image_processor_pipeline::serialize(settings, save) ) {
     CF_ERROR("c_generic_image_processor::serialize() fails");
     return false;
   }
@@ -92,3 +94,5 @@ bool QLiveImageProcessingPipeline::serialize(c_config_setting settings, bool sav
 }
 
 } // namespace serimager
+
+#endif // 0

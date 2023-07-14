@@ -38,12 +38,12 @@ public:
   ~MainWindow();
 
 protected:
+  void setupPipelines();
   void setupMainMenu();
   void setupMainToolbar();
   void setupStatusbar();
   void setupCameraControls();
   void setupShapeOptions();
-  void setupLivePipelineControls();
   void setupIndigoFocuser();
   void setupDisplayImageVideoWriter();
 
@@ -71,7 +71,6 @@ protected:
   QLivePipelineThread * liveView_ = nullptr;
   QLiveDisplay * centralDisplay_ = nullptr;
   QCameraWriter cameraWriter_;
-  QLivePipelineCollection pipelineCollection_;
 
 
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;

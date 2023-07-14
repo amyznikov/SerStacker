@@ -11,7 +11,24 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/io/c_input_sequence.h>
-#include <core/notification.h>
+#include <core/ssprintf.h>
+#include <atomic>
+
+
+struct c_image_processing_pipeline_input_options
+{
+  int start_frame_index = 0;
+  int max_input_frames = -1;
+
+  bool inpaint_missing_pixels = true;
+  bool enable_color_maxtrix = true;
+};
+
+struct c_image_processing_pipeline_output_options
+{
+  std::string output_directory;
+  int default_display_type = -1;
+};
 
 class c_image_processing_pipeline
 {
@@ -20,10 +37,79 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   using lock_guard = std::lock_guard<std::mutex>;
 
-  typedef std::function<c_image_processing_pipeline::sptr(const std::string & name,
-      const c_input_sequence::sptr & input_sequence)> instance_creator;
+public: // pipeline methods
+  c_image_processing_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
+  virtual ~c_image_processing_pipeline();
+
+  void set_name(const std::string & name);
+  const std::string & name() const;
+  const char * cname() const;
+
+  virtual const std::string & get_class_name() const = 0;
+  virtual bool copyParameters(const sptr & dst);
+
+
+  virtual bool run(const c_input_sequence::sptr & input_sequence = nullptr);
+  virtual void cancel(bool v = true);
+  virtual bool canceled() const;
+  virtual bool serialize(c_config_setting settings, bool save);
+
+  std::mutex & mutex();
+
+  const c_input_sequence::sptr & input_sequence() const;
+  const char * csequence_name() const;
+
+  void set_master_source(const std::string & master_source_path);
+  const std::string & master_source() const;
+
+  void set_master_frame_index(int v);
+  int master_frame_index() const;
+
+  virtual std::string generate_output_file_name(const std::string & ufilename,
+      const std::string & postfix,
+      const std::string & suffix) const;
+
+  int total_frames() const;
+  int processed_frames() const;
+  int accumulated_frames() const;
+  int pipeline_stage() const;
+  std::string status_message() const ;
+
+  bool is_running() const;
+
+  void set_display_type(int v);
+  int display_type() const;
+
+  virtual const c_enum_member * get_display_types() const;
+  virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
+
+
+
+
+protected:
+  virtual bool initialize_pipeline();
+  virtual void cleanup_pipeline();
+  virtual bool run_pipeline();
+
+protected:
+  virtual void on_frame_processed();
+  virtual void on_state_changed();
+  virtual void on_status_update();
+
+protected:
+  virtual void set_running(bool v);
+  void set_pipeline_stage(int stage);
+  void set_status_msg(const std::string & msg);
+  virtual std::string create_output_path(const std::string & output_directory) const;
+  virtual void gather_badframe_indexes();
+  virtual bool is_bad_frame_index(int global_pos) const;
+
+
 
 public: // factory methods
+
+  typedef std::function<c_image_processing_pipeline::sptr(const std::string & name,
+      const c_input_sequence::sptr & input_sequence)> instance_creator;
 
   struct factory_item
   {
@@ -42,68 +128,13 @@ public: // factory methods
   static const factory_item* find_class(const sptr & pipeline);
 
   static c_image_processing_pipeline::sptr create_instance(const std::string & class_name,
-      const std::string & name, const c_input_sequence::sptr & input_sequence);
-
-public: // pipeline methods
-
-  c_image_processing_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence);
-  virtual ~c_image_processing_pipeline();
-  virtual const std::string & get_class_name() const = 0;
-
-  virtual bool copyParameters(const sptr & dst);
-
-  void set_name(const std::string & name);
-  const std::string & name() const;
-  const char * cname() const;
-
-  //void set_sequence_name(const std::string & v);
-  //const std::string& sequence_name() const;
-  const char * csequence_name() const;
-
-  // void set_input_sequence(const c_input_sequence::sptr& input_sequence);
-  const c_input_sequence::sptr& input_sequence() const;
-
-  void set_master_source(const std::string & master_source_path);
-  const std::string & master_source() const;
-
-  void set_master_frame_index(int v);
-  int master_frame_index() const;
-
-  virtual std::string generate_output_file_name(const std::string & ufilename,
-      const std::string & postfix,
-      const std::string & suffix) const;
-
-  int total_frames() const;
-  int processed_frames() const;
-  int accumulated_frames() const;
-  int pipeline_stage() const;
-  std::string status_message() const ;
-
-  virtual bool canceled() const;
-  virtual void cancel(bool v = true);
-  virtual bool run();
-  virtual bool serialize(c_config_setting setting, bool save);
-  virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
-
-  c_notification<void()> on_status_update;
-
-protected:
-  void set_pipeline_stage(int stage);
-  void set_status_msg(const std::string & msg) const;
-  virtual std::string create_output_path(const std::string & output_directory) const;
-  virtual void gather_badframe_indexes();
-  virtual bool is_bad_frame_index(int global_pos) const;
-
-  virtual bool initialize_pipeline();
-  virtual void cleanup_pipeline();
-  virtual bool run_pipeline();
+      const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
 
 protected:
   static std::vector<factory_item> registered_classes_;
 
 protected:
   std::string name_;
-  // std::string sequence_name_;
   c_input_sequence::sptr input_sequence_;
   std::vector<uint> badframes_; // global indexes
   std::string output_path_;
@@ -111,36 +142,35 @@ protected:
   std::string master_source_;
   int master_frame_index_ = 0; // relative, in master source
 
+  int display_type_ = 0;
+
   int total_frames_ = 0;
   int processed_frames_ = 0;
   int accumulated_frames_ = 0;
 
-  mutable std::string statusmsg_;
+  mutable std::mutex lock_;
   mutable std::mutex status_lock_;
+  std::string statusmsg_;
 
   int pipeline_stage_ = 0;
 
-  volatile bool canceled_ = false;
+  volatile std::atomic_bool is_running_ = false;
+  volatile std::atomic_bool canceled_ = false;
 };
 
 
-
-class c_image_sequence
+class c_image_sequence :
+    public c_input_sequence
 {
 public:
   typedef c_image_sequence this_class;
+  typedef c_input_sequence base;
   typedef std::shared_ptr<this_class> sptr;
 
   c_image_sequence(const std::string & name = "" );
   virtual ~c_image_sequence() = default;
 
-  void set_name(const std::string & name);
-  std::string name() const;
-  const char* cname() const;
-
   std::string get_display_path() const;
-
-  const c_input_sequence::sptr& input_sequence() const;
 
   void set_current_pipeline(const std::string & name);
   void set_current_pipeline(const c_image_processing_pipeline::sptr& pipeline);
@@ -153,57 +183,12 @@ public:
   c_image_processing_pipeline::sptr find_pipeline(const std::string & name) const;
   bool pipeline_exists(const std::string & name) const;
 
-
-  virtual bool serialize(c_config_setting setting, bool save);
-
-  static sptr load(const std::string & filename);
+  // bool serialize(c_config_setting setting, bool save) override;
+  //static sptr load(const std::string & filename);
 
 protected:
-
-protected:
-  //std::string name_;
-  c_input_sequence::sptr input_sequence_ = c_input_sequence::create();
   std::vector<c_image_processing_pipeline::sptr> pipelines_;
   c_image_processing_pipeline::sptr current_pipeline_;
-
-};
-
-
-
-class c_image_sequence_collection
-{
-public:
-  typedef c_image_sequence_collection this_class;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_image_sequence_collection();
-
-  size_t size() const;
-
-  const std::vector<c_image_sequence::sptr> & items() const;
-  c_image_sequence::sptr item(size_t index) const;
-  c_image_sequence::sptr item(const std::string & name) const;
-
-  void add(const c_image_sequence::sptr & sequence);
-  bool remove(const c_image_sequence::sptr & sequence);
-  void set(int pos, const c_image_sequence::sptr & sequence);
-
-  ssize_t indexof(const c_image_sequence::sptr & sequence) const;
-  ssize_t indexof(const std::string & name) const;
-
-  bool save(const std::string & cfgfilename = "") const;
-  bool load(const std::string & cfgfilename = "");
-
-  static const std::string & default_config_filename();
-  static void set_default_config_filename(const std::string & v);
-
-
-protected:
-
-  std::vector<c_image_sequence::sptr> items_;
-
-  mutable std::string config_filename_;
-  static std::string default_config_filename_;
 };
 
 

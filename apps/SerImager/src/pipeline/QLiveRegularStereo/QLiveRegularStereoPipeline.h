@@ -10,6 +10,7 @@
 #define __QLiveRegularStereoPipeline_h__
 
 #include "QLivePipeline.h"
+#if 0
 #include <core/pipeline/rstereo/c_regular_stereo.h>
 
 namespace serimager {
@@ -48,4 +49,5 @@ protected:
 
 } /* namespace serimager */
 
+#endif
 #endif /* __QLiveRegularStereoPipeline_h__ */

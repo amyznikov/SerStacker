@@ -6,6 +6,8 @@
  */
 
 #include "QLiveRegularStereoOptions.h"
+#if 0
+
 #include <core/debug.h>
 
 namespace serimager {
@@ -40,3 +42,5 @@ void QLiveRegularStereoOptions::update_pipeline_controls()
 
 
 } /* namespace serimager */
+
+#endif // 0

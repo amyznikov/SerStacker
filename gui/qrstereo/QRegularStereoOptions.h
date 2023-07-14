@@ -9,9 +9,9 @@
 #ifndef __QRegularStereoOptions_h__
 #define __QRegularStereoOptions_h__
 
-#include "QStereoMatcherOptions.h"
+#include <gui/qpipeline/stereo/QStereoMatcherOptions.h>
 #include "QRStereoImageProcessingOptions.h"
-#include <core/pipeline/rstereo/c_regular_stereo.h>
+#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo_pipeline.h>
 
 class QRegularStereoOptions :
     public QSettingsWidget

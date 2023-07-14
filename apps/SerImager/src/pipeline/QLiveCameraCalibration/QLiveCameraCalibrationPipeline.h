@@ -10,6 +10,8 @@
 #define __QLiveCameraCalibrationPipeline_h__
 
 #include "QLivePipeline.h"
+#if 0
+
 #include <core/pipeline/camera_calibration/c_camera_calibration.h>
 #include <core/io/c_output_frame_writer.h>
 
@@ -49,5 +51,7 @@ protected:
 };
 
 } /* namespace serimager */
+
+#endif // 0
 
 #endif /* __QLiveCameraCalibrationPipeline_h__ */

@@ -6,14 +6,15 @@
  */
 
 #include "QPipelineProgressView.h"
-#include <gui/qpipelinethread/QImageProcessingPipeline.h>
+#include <gui/qpipeline/QImageProcessingPipeline.h>
+#include <gui/qpipeline/QPipelineThread.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/qsprintf.h>
-#include <core/pipeline/c_image_stacking_pipeline.h>
-#include <core/pipeline/c_camera_calibration_pipeline.h>
-#include <core/pipeline/c_stereo_calibration_pipeline.h>
-#include <core/pipeline/c_regular_stereo_pipeline.h>
+#include <core/pipeline/c_image_stacking_pipeline/c_image_stacking_pipeline.h>
+#include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
+#include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
+#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo_pipeline.h>
 
 namespace serstacker {
 
@@ -42,32 +43,31 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
 
 
   //
-  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::started,
-      this, &ThisClass::onStackingThreadStarted,
+  connect(QPipelineThread::instance(), &QPipelineThread::started,
+      this, &ThisClass::onPipelineThreadStarted,
       Qt::QueuedConnection);
 
-  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::finished,
-      this, &ThisClass::onStackingThreadFinished,
+  connect(QPipelineThread::instance(), &QPipelineThread::finished,
+      this, &ThisClass::onPipelineThreadFinished,
       Qt::QueuedConnection);
 
-  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::finishing,
-      this, &ThisClass::onStackingThreadFinishing,
+  connect(QPipelineThread::instance(), &QPipelineThread::finishing,
+      this, &ThisClass::onPipelineThreadFinishing,
       Qt::QueuedConnection);
 
-//  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::statusChanged,
-//      this, &ThisClass::onStatusChanged,
-//      Qt::QueuedConnection);
+  connect(menuButton_, &QToolButton::clicked,
+      this, &ThisClass::onMenuButtonClicked);
 //
-//  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::accumulatorChanged,
+//  connect(QPipelineThread::instance(), &QPipelineThread::accumulatorChanged,
 //      this, &ThisClass::onAccumulatorChanged,
 //      Qt::QueuedConnection);
 //
-//  connect(QImageProcessingPipeline::singleton(), &QImageProcessingPipeline::selectedMasterFrameChanged,
+//  connect(QPipelineThread::instance(), &QPipelineThread::selectedMasterFrameChanged,
 //      this, &ThisClass::onSelectedMasterFrameChanged,
 //      Qt::QueuedConnection);
 
-  if( QImageProcessingPipeline::isRunning() ) {
-    onStackingThreadStarted();
+  if( QPipelineThread::isRunning() ) {
+    onPipelineThreadStarted();
   }
 }
 
@@ -95,32 +95,41 @@ void QPipelineProgressView::timerEvent(QTimerEvent *event)
   }
 }
 
-void QPipelineProgressView::onStackingThreadStarted()
+void QPipelineProgressView::onPipelineThreadStarted()
 {
   c_image_processing_pipeline::sptr pipeline =
-      QImageProcessingPipeline::current_pipeline();
+      QPipelineThread::currentPipeline();
 
   if( pipeline ) {
 
-    on_status_update =
-        pipeline->on_status_update.add([this]() {
-          hasStatusUpdates_ = true;
-        });
+    QImageProcessingPipeline *p =
+        dynamic_cast<QImageProcessingPipeline*>(pipeline.get());
 
+    if( p ) {
+      connect(p, &QImageProcessingPipeline::frameProcessed,
+          [this]() {
+            hasStatusUpdates_ = true;
+          });
+    }
   }
 
   timerId = startTimer(1000, Qt::VeryCoarseTimer);
 }
 
-void QPipelineProgressView::onStackingThreadFinishing()
+void QPipelineProgressView::onPipelineThreadFinishing()
 {
   c_image_processing_pipeline::sptr pipeline =
-      QImageProcessingPipeline::current_pipeline();
+      QPipelineThread::currentPipeline();
 
-  if ( pipeline ) {
-    pipeline->on_status_update.remove(on_status_update);
+  if( pipeline ) {
+
+    QImageProcessingPipeline *p =
+        dynamic_cast<QImageProcessingPipeline*>(pipeline.get());
+
+    if( p ) {
+      p->disconnect(this);
+    }
   }
-
 
   killTimer(timerId);
   timerId = 0;
@@ -129,7 +138,7 @@ void QPipelineProgressView::onStackingThreadFinishing()
 }
 
 
-void QPipelineProgressView::onStackingThreadFinished()
+void QPipelineProgressView::onPipelineThreadFinished()
 {
   if ( timerId > 0 ) {
     killTimer(timerId);
@@ -141,11 +150,62 @@ void QPipelineProgressView::onStackingThreadFinished()
   QApplication::restoreOverrideCursor();
 }
 
+
+void QPipelineProgressView::onMenuButtonClicked()
+{
+  c_image_processing_pipeline::sptr pipeline =
+      QPipelineThread::currentPipeline();
+
+  if( pipeline ) {
+
+    QMenu menu;
+
+    const c_enum_member *display_types =
+        pipeline->get_display_types();
+
+    if( display_types ) {
+
+      const int display_type =
+          pipeline->display_type();
+
+      int items_count = 0;
+
+      for( ; display_types->name && *display_types->name; ++display_types ) {
+
+        QAction *action =
+            menu.addAction(display_types->name);
+
+        action->setData(QVariant::fromValue(display_types->value));
+        action->setCheckable(true);
+        action->setChecked(display_type == display_types->value);
+
+        ++items_count;
+      }
+
+      if( items_count > 1 ) {
+
+        QAction *action =
+            menu.exec(menuButton_->mapToGlobal(QPoint(menuButton_->width() / 2, menuButton_->height() / 2)));
+
+        if( action ) {
+
+          const int selected_display_type =
+              action->data().value<int>();
+
+          if( display_type != selected_display_type ) {
+            pipeline->set_display_type(selected_display_type);
+          }
+        }
+      }
+    }
+  }
+}
+
+
 void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 {
-
   const c_image_processing_pipeline::sptr & pipeline =
-      QImageProcessingPipeline::current_pipeline();
+      QPipelineThread::currentPipeline();
 
   if ( !pipeline ) {
     return;

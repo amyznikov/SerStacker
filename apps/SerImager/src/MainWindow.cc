@@ -7,10 +7,7 @@
 
 #include "MainWindow.h"
 #include "camera/ffmpeg/QFFStreams.h"
-#include "pipeline/QLiveCameraCalibration/QLiveCameraCalibrationOptions.h"
-#include "pipeline/QLiveStereoCalibration/QLiveStereoCalibrationOptions.h"
-#include "pipeline/QLiveRegularStereo/QLiveRegularStereoOptions.h"
-#include "pipeline/QLiveImageProcessingPipeline/QLiveImageProcessingOptions.h"
+#include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -63,7 +60,7 @@ MainWindow::MainWindow(QWidget * parent) :
   setupCameraControls();
   setupMeasures();
   setupImageProcessingControls();
-  setupLivePipelineControls();
+  setupPipelines();
   setupShapeOptions();
   setupMainToolbar();
   setupStatusbar();
@@ -535,51 +532,53 @@ void MainWindow::setupCameraControls()
 
 }
 
-void MainWindow::setupLivePipelineControls()
+void MainWindow::setupPipelines()
 {
-  pipelineCollection_.addPipelineClassFactory(
-      QLiveImageProcessingPipeline::className(),
-      "Generic image processing",
-      [](const QString & name) {
-        return new QLiveImageProcessingPipeline(name);
-      },
-      [](QWidget * parent) {
-        return new QLiveImageProcessingOptions(parent);
-      });
-
-
-  pipelineCollection_.addPipelineClassFactory(
-      QLiveCameraCalibrationPipeline::className(),
-      "Live Camera Calibration",
-      [](const QString & name) {
-        return new QLiveCameraCalibrationPipeline(name);
-  },
-  [](QWidget * parent) {
-    return new QLiveCameraCalibrationOptions(parent);
-  });
-
-
-  pipelineCollection_.addPipelineClassFactory(
-      QLiveStereoCalibrationPipeline::className(),
-      "Live Stereo Camera Calibration",
-      [](const QString & name) {
-        return new QLiveStereoCalibrationPipeline(name);
-  },
-  [](QWidget * parent) {
-    return new QLiveStereoCalibrationOptions(parent);
-  });
-
-
-  pipelineCollection_.addPipelineClassFactory(
-      QLiveRegularStereoPipeline::className(),
-      "Live Stereo Matching",
-      [](const QString & name) {
-        return new QLiveRegularStereoPipeline(name);
-  },
-  [](QWidget * parent) {
-    return new QLiveRegularStereoOptions(parent);
-  });
-
+  registerPipelineClasses();
+//
+//  pipelineCollection_.addPipelineClassFactory(
+//      QLiveImageProcessingPipeline::className(),
+//      "Generic image processing",
+//      [](const QString & name) {
+//        return new QLiveImageProcessingPipeline(name);
+//      },
+//      [](QWidget * parent) {
+//        return new QLiveImageProcessingOptions(parent);
+//      });
+//
+//
+//  pipelineCollection_.addPipelineClassFactory(
+//      QLiveCameraCalibrationPipeline::className(),
+//      "Live Camera Calibration",
+//      [](const QString & name) {
+//        return new QLiveCameraCalibrationPipeline(name);
+//  },
+//  [](QWidget * parent) {
+//    return new QLiveCameraCalibrationOptions(parent);
+//  });
+//
+//
+//  pipelineCollection_.addPipelineClassFactory(
+//      QLiveStereoCalibrationPipeline::className(),
+//      "Live Stereo Camera Calibration",
+//      [](const QString & name) {
+//        return new QLiveStereoCalibrationPipeline(name);
+//  },
+//  [](QWidget * parent) {
+//    return new QLiveStereoCalibrationOptions(parent);
+//  });
+//
+//
+//  pipelineCollection_.addPipelineClassFactory(
+//      QLiveRegularStereoPipeline::className(),
+//      "Live Stereo Matching",
+//      [](const QString & name) {
+//        return new QLiveRegularStereoPipeline(name);
+//  },
+//  [](QWidget * parent) {
+//    return new QLiveRegularStereoOptions(parent);
+//  });
+//
 
 
   pipelineSelectorDock_ =
@@ -599,8 +598,9 @@ void MainWindow::setupLivePipelineControls()
   showPipelineSelectorAction_->setIcon(getIcon(ICON_process));
   showPipelineSelectorAction_->setToolTip("Show / Hide live pipelines");
 
-  pipelineCollection_.load();
-  pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
+  //pipelineCollection_.load();
+  //pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
+  pipelineSelector_ctl->loadPipelines();
   pipelineSelector_ctl->setLiveThread(liveView_);
 }
 

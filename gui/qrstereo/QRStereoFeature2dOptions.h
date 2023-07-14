@@ -11,7 +11,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
-#include <core/pipeline/c_regular_stereo_pipeline.h>
+#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo_pipeline.h>
 
 
 class QRStereoFeature2dOptions :

@@ -10,6 +10,8 @@
 #define __QLiveCameraCalibrationOptions_h__
 
 #include "QLiveCameraCalibrationPipeline.h"
+#if 0
+
 #include <gui/qcameracalibration/QCameraCalibrationOptions.h>
 
 namespace serimager {
@@ -32,5 +34,7 @@ protected:
 };
 
 } /* namespace serimager */
+
+#endif // 0
 
 #endif /* __QLiveCameraCalibrationOptions_h__ */

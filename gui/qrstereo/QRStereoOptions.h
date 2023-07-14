@@ -14,7 +14,7 @@
 #include "QRStereoCalibrateOptions.h"
 #include "QRStereoImageProcessingOptions.h"
 #include "QRStereoOutputOptions.h"
-#include "QScaleSweepStereoMatcherOptions.h"
+#include <gui/qpipeline/stereo/QScaleSweepStereoMatcherOptions.h>
 
 
 class QRStereoOptions :

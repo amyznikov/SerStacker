@@ -9,14 +9,16 @@
 #ifndef __QLiveImageProcessingPipeline_h__
 #define __QLiveImageProcessingPipeline_h__
 
+#if 0
+
+#include "../../../../../core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h"
 #include "QLivePipeline.h"
-#include <core/pipeline/generic/c_generic_image_processor.h>
 
 namespace serimager {
 
 class QLiveImageProcessingPipeline :
     public QLivePipeline,
-    public c_generic_image_processor
+    public c_generic_image_processor_pipeline
 {
 public:
   typedef QLiveImageProcessingPipeline ThisClass;
@@ -48,5 +50,7 @@ protected:
 };
 
 } // namespace serimager
+
+#endif // 0
 
 #endif /* __QLiveImageProcessingPipeline_h__ */

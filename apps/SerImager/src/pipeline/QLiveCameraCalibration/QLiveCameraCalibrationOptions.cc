@@ -7,6 +7,8 @@
 
 #include "QLiveCameraCalibrationOptions.h"
 
+#if 0
+
 namespace serimager {
 
 QLiveCameraCalibrationOptions::QLiveCameraCalibrationOptions(QWidget * parent) :
@@ -35,3 +37,5 @@ void QLiveCameraCalibrationOptions::update_pipeline_controls()
 }
 
 } /* namespace serimager */
+
+#endif // 0

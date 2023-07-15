@@ -65,7 +65,7 @@ public: // pipeline methods
   void set_master_frame_index(int v);
   int master_frame_index() const;
 
-  virtual std::string generate_output_file_name(const std::string & ufilename,
+  virtual std::string generate_output_filename(const std::string & ufilename,
       const std::string & postfix,
       const std::string & suffix) const;
 

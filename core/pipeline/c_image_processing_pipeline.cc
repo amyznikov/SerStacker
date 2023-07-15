@@ -114,9 +114,12 @@ const char* c_image_processing_pipeline::cname() const
   return name_.c_str();
 }
 
-const char * c_image_processing_pipeline::csequence_name() const
+const char* c_image_processing_pipeline::csequence_name() const
 {
-  return input_sequence_ ? input_sequence_->cname() : "";
+  if( input_sequence_ && !input_sequence_->name().empty() ) {
+    return input_sequence_->cname();
+  }
+  return "live";
 }
 
 void c_image_processing_pipeline::set_master_source(const std::string & master_source_path)
@@ -176,22 +179,68 @@ void c_image_processing_pipeline::cancel(bool v)
   canceled_ = v;
 }
 
-std::string c_image_processing_pipeline::generate_output_file_name(const std::string & ufilename,
+std::string c_image_processing_pipeline::generate_output_filename(const std::string & ufilename,
     const std::string & postfix,
-    const std::string & suffix)  const
+    const std::string & suffix) const
 {
+
+  const bool live_stream =
+      !input_sequence_ ||
+          input_sequence_->is_live();
+
+  static const auto get_current_date_time_string =
+      []() -> std::string
+      {
+        struct timespec t;
+        struct tm *tm;
+
+        int year;
+        int month;
+        int day;
+        int hour;
+        int min;
+        int sec;
+
+        clock_gettime(CLOCK_REALTIME, &t);
+        tm = localtime(&t.tv_sec);
+
+        year = tm->tm_year + 1900;
+        month = tm->tm_mon + 1;
+        day = tm->tm_mday;
+        hour = tm->tm_hour;
+        min = tm->tm_min;
+        sec = tm->tm_sec;
+        // msec = t.tv_nsec / 1000000;
+
+      return ssprintf("%0.4d%0.2d%0.2d_%0.2d%0.2d%0.2d",
+          year, month, day, hour, min, sec);
+    };
+
+
   std::string output_file_name =
       ufilename;
 
   if( output_file_name.empty() ) {
 
-    output_file_name =
-        ssprintf("%s/%s.%s%s",
-            output_path_.c_str(),
-            csequence_name(),
-            postfix.c_str(),
-            suffix.empty() ? ".avi" :
-                suffix.c_str());
+    if ( live_stream ) {
+      output_file_name =
+          ssprintf("%s/%s.%s.%s%s",
+              output_path_.c_str(),
+              csequence_name(),
+              postfix.c_str(),
+              get_current_date_time_string().c_str(),
+              suffix.empty() ? ".avi" :
+                  suffix.c_str());
+    }
+    else {
+      output_file_name =
+          ssprintf("%s/%s.%s%s",
+              output_path_.c_str(),
+              csequence_name(),
+              postfix.c_str(),
+              suffix.empty() ? ".avi" :
+                  suffix.c_str());
+    }
   }
   else {
 
@@ -215,10 +264,21 @@ std::string c_image_processing_pipeline::generate_output_file_name(const std::st
     }
 
     if( file_name.empty() ) {
-      file_name =
-          ssprintf("%s.%s",
-              csequence_name(),
-              postfix.c_str());
+
+      if ( live_stream ) {
+
+        file_name =
+            ssprintf("%s.%s.%s",
+                csequence_name(),
+                postfix.c_str(),
+                get_current_date_time_string().c_str());
+      }
+      else {
+        file_name =
+            ssprintf("%s.%s",
+                csequence_name(),
+                postfix.c_str());
+      }
     }
 
     if( file_suffix.empty() ) {

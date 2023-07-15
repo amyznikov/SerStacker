@@ -329,7 +329,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
         if( !progress_writer.is_open() ) {
 
           std::string output_file_name =
-              generate_output_file_name(output_options_.progress_video_filename,
+              generate_output_filename(output_options_.progress_video_filename,
                   "stereo_matcher_progress",
                   ".avi");
 
@@ -362,7 +362,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
       if( !depthmaps_writer.is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.depthmap_filename,
+            generate_output_filename(output_options_.depthmap_filename,
                 "stereo_matcher_depthmaps",
                 ".ser");
 
@@ -414,7 +414,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
           if( !cloud3d_image_writer.is_open() ) {
 
             std::string output_file_name =
-                generate_output_file_name(output_options_.cloud3d_image_filename,
+                generate_output_filename(output_options_.cloud3d_image_filename,
                     "images/cloud3d",
                     ".tiff");
 

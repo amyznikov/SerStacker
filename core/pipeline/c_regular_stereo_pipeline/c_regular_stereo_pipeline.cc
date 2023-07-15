@@ -707,7 +707,7 @@ bool c_regular_stereo_pipeline::write_calibration_progress_video(c_output_frame_
     if( !progress_writer.is_open() ) {
 
       const std::string output_file_name =
-          generate_output_file_name(output_options_.progress_video_filename,
+          generate_output_filename(output_options_.progress_video_filename,
               "progress",
               ".avi");
 
@@ -919,7 +919,7 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   if ( calibration_options_.enable_calibration && output_options_.save_motion_poses ) {
 
     std::string outfilename =
-        generate_output_file_name(output_options_.motion_poses_filename,
+        generate_output_filename(output_options_.motion_poses_filename,
             "poses",
             ".txt");
 
@@ -1663,7 +1663,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
         if( !rectified_videos_output_filenames[i].empty() ) {
           rectified_videos_output_filenames[i] =
-              generate_output_file_name(rectified_videos_output_filenames[i],
+              generate_output_filename(rectified_videos_output_filenames[i],
                   postfix[i],
                   ".avi");
         }
@@ -1771,7 +1771,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
         if( !stereo_matches_video.is_open() ) {
 
           const std::string output_file_name =
-              generate_output_file_name(output_options_.stereo_matches_video_filename,
+              generate_output_filename(output_options_.stereo_matches_video_filename,
                   "stereo_matches",
                   ".avi");
 
@@ -1979,7 +1979,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
     if ( output_options_.save_stereo_match_progress_video ) {
 
       std::string output_file_name =
-          generate_output_file_name(output_options_.stereo_match_progress_video_filename,
+          generate_output_filename(output_options_.stereo_match_progress_video_filename,
               "match_progress",
               ".avi");
 

@@ -336,8 +336,6 @@ void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bp
   }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QLivePipelineThread::QLivePipelineThread(QObject * parent) :
@@ -645,6 +643,8 @@ void QLivePipelineThread::run()
       enabled_sources_.emplace_back(camera_source);
       current_source_ = 0;
       current_global_pos_ = 0;
+
+      set_name(get_file_name(camera->display_name().toStdString()));
     }
 
     bool is_live() const override

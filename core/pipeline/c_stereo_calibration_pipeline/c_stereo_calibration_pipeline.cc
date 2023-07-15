@@ -304,12 +304,12 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
       create_output_path(output_options_.output_directory);
 
   output_intrinsics_filename_ =
-      generate_output_file_name(output_options_.output_intrinsics_filename,
+      generate_output_filename(output_options_.output_intrinsics_filename,
           "stereo_intrinsics",
           ".yml");
 
   output_extrinsics_filename_ =
-      generate_output_file_name(output_options_.output_extrinsics_filename,
+      generate_output_filename(output_options_.output_extrinsics_filename,
           "stereo_extrinsics",
           ".yml");
 
@@ -437,7 +437,10 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
 
   close_input_source();
 
-  chessboard_video_writer_.close();
+  if( chessboard_video_writer_.is_open() ) {
+    CF_DEBUG("closing '%s'", chessboard_video_writer_.filename().c_str());
+    chessboard_video_writer_.close();
+  }
 
   object_points_.clear();
   current_object_points_.clear();
@@ -1343,7 +1346,7 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
   if( !chessboard_video_writer_.is_open() ) {
 
     chessboard_frames_filename_ =
-        generate_output_file_name(output_options_.chessboard_frames_filename,
+        generate_output_filename(output_options_.chessboard_frames_filename,
             "chessboard",
             ".avi");
     bool fOK =
@@ -1357,6 +1360,8 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
           chessboard_frames_filename_.c_str());
       return false;
     }
+
+    CF_DEBUG("created '%s'", chessboard_video_writer_.filename().c_str());
   }
 
   if ( !chessboard_video_writer_.write(frame, cv::noArray(), false, 0) ) {
@@ -1435,7 +1440,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         if( !video_writer[i].is_open() ) {
 
           std::string output_file_name =
-              generate_output_file_name(output_options_.rectified_frames_filename,
+              generate_output_filename(output_options_.rectified_frames_filename,
                   i == 0 ? "rect-left" : "rect-right",
                   ".avi");
 
@@ -1464,7 +1469,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       if( !stereo_writer.is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.stereo_rectified_frames_filename,
+            generate_output_filename(output_options_.stereo_rectified_frames_filename,
                 "stereo",
                 ".avi");
 
@@ -1502,7 +1507,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       if( !quad_writer.is_open() ) {
 
         std::string output_file_name =
-            generate_output_file_name(output_options_.quad_rectified_frames_filename,
+            generate_output_filename(output_options_.quad_rectified_frames_filename,
                 "quad",
                 ".avi");
 

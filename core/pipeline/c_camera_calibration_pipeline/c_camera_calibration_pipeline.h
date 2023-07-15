@@ -102,8 +102,8 @@ public:
 
 protected:
   bool initialize_pipeline()override;
-  void cleanup_pipeline() override;
   bool run_pipeline() override;
+  void cleanup_pipeline() override;
 
 protected:
   //bool run_chessboard_corners_collection();

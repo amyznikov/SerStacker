@@ -328,7 +328,7 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
       create_output_path(output_options_.output_directory);
 
   output_intrinsics_filename_ =
-      generate_output_file_name(output_options_.output_intrinsics_filename,
+      generate_output_filename(output_options_.output_intrinsics_filename,
           "camera_intrinsics",
           ".yml");
 
@@ -383,8 +383,11 @@ void c_camera_calibration_pipeline::cleanup_pipeline()
     input_sequence_->close();
   }
 
+  if( chessboard_video_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", chessboard_video_writer_.filename().c_str());
+    chessboard_video_writer_.close();
+  }
 
-  chessboard_video_writer_.close();
   current_image_points_.clear();
   current_object_points_.clear();
   stdDeviations_.release();
@@ -478,9 +481,9 @@ bool c_camera_calibration_pipeline::run_pipeline()
       break;
     }
 
-    if ( !process_current_frame(false) ) {
+    if ( !process_current_frame(enable_live_calibration) ) {
       CF_ERROR("process_current_frame() fails");
-      break;
+      return false;
     }
 
     accumulated_frames_ =
@@ -512,9 +515,6 @@ bool c_camera_calibration_pipeline::run_pipeline()
     }
   }
 
-
-  CF_DEBUG("leave");
-
   return  true;
 }
 
@@ -528,6 +528,8 @@ bool c_camera_calibration_pipeline::process_current_frame(bool enable_calibratio
     CF_ERROR("write_chessboard_video() fails");
     return false;
   }
+
+  lock_guard lock(mutex());
 
   image_points_.emplace_back(current_image_points_);
   object_points_.emplace_back(current_object_points_);
@@ -554,6 +556,7 @@ bool c_camera_calibration_pipeline::process_current_frame(bool enable_calibratio
 
 bool c_camera_calibration_pipeline::detect_chessboard(const cv::Mat & frame)
 {
+  lock_guard lock(mutex());
   is_chessboard_found_ =
       find_chessboard_corners(frame,
           chessboard_detection_options_.chessboard_size,
@@ -1054,7 +1057,7 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
   if( !chessboard_video_writer_.is_open() ) {
 
     const std::string chessboard_video_filename =
-        generate_output_file_name(output_options_.chessboard_frames_filename,
+        generate_output_filename(output_options_.chessboard_frames_filename,
             "chessboard",
             ".avi");
 
@@ -1069,6 +1072,8 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
           chessboard_video_filename.c_str());
       return false;
     }
+
+    CF_DEBUG("Created '%s'", chessboard_video_filename.c_str());
   }
 
   if( !chessboard_video_writer_.write(current_frame_, cv::noArray(), false, 0) ) {
@@ -1106,7 +1111,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
   cv::Mat display_frame, display_mask;
 
   std::string output_file_name =
-      generate_output_file_name(output_options_.rectified_frames_filename,
+      generate_output_filename(output_options_.rectified_frames_filename,
           "rectified",
           ".avi");
 

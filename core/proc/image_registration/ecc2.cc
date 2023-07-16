@@ -266,14 +266,14 @@ void ecc_project_error_image(const cv::Mat1f & jac, const cv::Mat & error_image,
 
 /////////////////////////////////////////
 
-c_ecc_align::c_ecc_align( c_ecc_motion_model * transfrom) :
-    model_(transfrom)
+c_ecc_align::c_ecc_align( c_ecc_motion_model * model) :
+    model_(model)
 {
 }
 
-void c_ecc_align::set_model(c_ecc_motion_model * transfrom)
+void c_ecc_align::set_model(c_ecc_motion_model * model)
 {
-  model_ = transfrom;
+  model_ = model;
 }
 
 c_ecc_motion_model * c_ecc_align::model() const

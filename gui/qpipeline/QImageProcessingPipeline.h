@@ -93,8 +93,6 @@ public:
 
   void setPipeline(PipelineType * pipeline)
   {
-    CF_DEBUG("pipeline=%p", pipeline);
-
     if( pipeline_ ) {
       pipeline_->disconnect(this);
     }

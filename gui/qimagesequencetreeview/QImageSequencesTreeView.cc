@@ -88,9 +88,7 @@ void QInputSourceTreeItem::set_input_source(const c_input_source::sptr & input_s
     setWhatsThis(0, input_source->filename().c_str());
     setToolTip(0, input_source->filename().c_str());
 
-    CF_DEBUG("1 input_source->enabled()=%d",input_source->enabled());
     setFlags((flags() | Qt::ItemIsUserCheckable) & ~Qt::ItemIsEditable);
-    CF_DEBUG("2 input_source->enabled()=%d",input_source->enabled());
     updateCheckState();
   }
 }
@@ -102,8 +100,6 @@ void QInputSourceTreeItem::setCkecked(bool v)
 
 void QInputSourceTreeItem::updateCheckState()
 {
-  CF_DEBUG("input_source_->enabled()=%s", input_source_ ? input_source_->enabled() ? "yes" : "no" : "nullptr");
-
   setCkecked(input_source_ && input_source_->enabled());
 }
 
@@ -1404,7 +1400,6 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
 
 void QImageSequencesTree::loadSequences(const std::string & cfgfilename)
 {
-  CF_DEBUG("treeView_->loadSequences(cfgfilename)");
   treeView_->loadSequences(cfgfilename);
 }
 

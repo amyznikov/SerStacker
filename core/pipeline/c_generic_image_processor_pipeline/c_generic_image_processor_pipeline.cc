@@ -98,7 +98,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       return false;
     }
 
-    if( input_sequence_->seek(start_pos) ) {
+    if( !input_sequence_->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
       return false;
     }

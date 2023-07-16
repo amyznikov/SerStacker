@@ -70,26 +70,7 @@ enum STACKING_STAGE {
 struct c_image_stacking_input_options :
     c_image_processing_pipeline_input_options
 {
-  DEBAYER_ALGORITHM debayer_method = DEBAYER_NN2;
-
-  std::string darkbayer_filename;
-  std::string flatbayer_filename;
-  std::string missing_pixel_mask_filename;
-  bool missing_pixels_marked_black = true;
-  //bool inpaint_missing_pixels = true;
-
-  bool filter_bad_pixels = true;
-  bool drop_bad_asi_frames = true;
-  //bool enable_color_maxtrix = false;
-
   enum anscombe_method anscombe = anscombe_none;
-  double hot_pixels_variation_threshold = 15;
-
-//  int start_frame_index = 0;
-//  int max_input_frames = 0;
-
-  bool enable_bground_normalization  = false;
-  c_histogram_normalization_options background_normalization_options;
 };
 
 struct c_roi_selection_options
@@ -375,14 +356,8 @@ protected:
   double ecc_normalization_noise_ = 0;
   double reference_sharpness_ = 0;
 
-  cv::Mat darkbayer_;
-  cv::Mat flatbayer_;
-  cv::Mat missing_pixel_mask_;
   cv::Mat selected_master_frame_;
   cv::Mat selected_master_frame_mask_;
-
-  mutable cv::Mat raw_bayer_image_;
-  mutable COLORID raw_bayer_colorid_ = COLORID_UNKNOWN;
 
   c_anscombe_transform anscombe_;
   c_roi_selection::ptr roi_selection_;

@@ -26,6 +26,13 @@ QLveStackingSettingsWidget::QLveStackingSettingsWidget(const QString & prefix, Q
       this, &ThisClass::parameterChanged);
 
   ///
+  add_expandable_groupbox("Image registration",
+      registration_ctl = new QLiveStackingRegistrationOptions());
+
+  connect(registration_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
+  ///
 
   add_expandable_groupbox("Accumulation options",
       accumulate_ctl = new QLiveStackingAccumulateOptions());
@@ -52,11 +59,13 @@ void QLveStackingSettingsWidget::update_pipeline_controls()
 
   if( !pipeline_ ) {
     inputOptions_ctl->set_pipeline(nullptr);
+    registration_ctl->set_options(nullptr);
     accumulate_ctl->set_options(nullptr);
     outputOptions_ctl->set_output_options(nullptr);
   }
   else {
     inputOptions_ctl->set_pipeline(pipeline_);
+    registration_ctl->set_options(&pipeline_->registration_options());
     accumulate_ctl->set_options(&pipeline_->accumulation_options());
     outputOptions_ctl->set_output_options(&pipeline_->output_options());
   }

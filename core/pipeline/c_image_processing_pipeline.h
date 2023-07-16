@@ -11,6 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/io/c_input_sequence.h>
+#include <core/proc/white_balance/histogram_normalization.h>
 #include <core/ssprintf.h>
 #include <atomic>
 
@@ -20,8 +21,22 @@ struct c_image_processing_pipeline_input_options
   int start_frame_index = 0;
   int max_input_frames = -1;
 
+
+  DEBAYER_ALGORITHM debayer_method = DEBAYER_NN2;
+
+  std::string darkbayer_filename;
+  std::string flatbayer_filename;
+  std::string missing_pixel_mask_filename;
+
+  bool missing_pixels_marked_black = true;
   bool inpaint_missing_pixels = true;
   bool enable_color_maxtrix = true;
+  bool filter_bad_pixels = true;
+  bool drop_bad_asi_frames = true;
+  bool enable_bground_normalization  = false;
+
+  double hot_pixels_variation_threshold = 15;
+  c_histogram_normalization_options background_normalization_options;
 };
 
 struct c_image_processing_pipeline_output_options
@@ -104,6 +119,13 @@ protected:
   virtual void gather_badframe_indexes();
   virtual bool is_bad_frame_index(int global_pos) const;
 
+protected:
+  bool read_input_frame(const c_input_sequence::sptr & input_sequence,
+      const c_image_processing_pipeline_input_options & input_options,
+      cv::Mat & output_image, cv::Mat & output_mask,
+      bool is_external_master_frame,
+      bool save_raw_bayer) const;
+
 
 
 public: // factory methods
@@ -139,6 +161,12 @@ protected:
   std::vector<uint> badframes_; // global indexes
   std::string output_path_;
 
+  cv::Mat darkbayer_;
+  cv::Mat flatbayer_;
+  cv::Mat missing_pixel_mask_;
+  mutable cv::Mat raw_bayer_image_;
+  mutable COLORID raw_bayer_colorid_ = COLORID_UNKNOWN;
+
   std::string master_source_;
   int master_frame_index_ = 0; // relative, in master source
 
@@ -149,7 +177,7 @@ protected:
   int accumulated_frames_ = 0;
 
   mutable std::mutex lock_;
-  mutable std::mutex status_lock_;
+  mutable std::mutex status_lock_; // FIXME: get rid of obsolete status_lock_
   std::string statusmsg_;
 
   int pipeline_stage_ = 0;

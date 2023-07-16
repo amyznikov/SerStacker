@@ -12,6 +12,7 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/improc/c_image_processor.h>
 #include <core/average/c_frame_accumulation.h>
+#include <core/proc/image_registration/c_frame_registration.h>
 #include <core/settings/opencv_settings.h>
 #include <core/io/c_output_frame_writer.h>
 
@@ -35,9 +36,18 @@ struct c_live_stacking_accumulation_options
   bool ignore_input_mask = true;
 };
 
-struct c_live_stacking_output_options :
+
+struct c_live_stacking_registration_options
+{
+  bool enabled = false;
+};
+
+
+struct c_live_stacking_output_options:
     c_image_processing_pipeline_output_options
 {
+  bool save_accumuated_file = true;
+  std::string output_accumuated_file_name;
 };
 
 
@@ -76,6 +86,9 @@ public:
   const c_live_stacking_input_options & input_options() const;
   c_live_stacking_input_options & input_options();
 
+  const c_live_stacking_registration_options & registration_options() const;
+  c_live_stacking_registration_options & registration_options() ;
+
   const c_live_stacking_accumulation_options & accumulation_options() const;
   c_live_stacking_accumulation_options & accumulation_options();
 
@@ -92,18 +105,31 @@ protected:
   bool process_current_frame();
 
 protected:
+  static c_image_transform::sptr create_image_transfrom(const c_live_stacking_registration_options & opts);
+
   static c_frame_accumulation::ptr create_frame_accumulation(const cv::Size & image_size, int cn,
       live_stacking_accumulation_type type);
 
 protected:
   c_live_stacking_input_options input_options_;
+  c_live_stacking_registration_options registration_options_;
   c_live_stacking_accumulation_options accumulation_options_;
   c_live_stacking_output_options output_options_;
+
+  //c_frame_registration::sptr frame_registration_;
+
+  c_ecch ecch_;
+  c_ecc_forward_additive ecc_;
+  c_eccflow eccflow_;
+  c_ecc_motion_model::sptr ecc_motion_model_;
+  c_image_transform::sptr image_transform_;
 
   c_frame_accumulation::ptr frame_accumulation_;
 
   cv::Mat current_image_;
   cv::Mat current_mask_;
+  cv::Mat reference_image_;
+  cv::Mat reference_mask_;
 };
 
 

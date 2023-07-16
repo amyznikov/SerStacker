@@ -12,6 +12,7 @@
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <core/pipeline/c_live_stacking_pipeline/c_live_stacking_pipeline.h>
 #include "options/QLveStackingInputOptions.h"
+#include "options/QLiveStackingRegistrationOptions.h"
 #include "options/QLiveStackingAccumulateOptions.h"
 #include "options/QLveStackingOutputOptions.h"
 
@@ -33,6 +34,7 @@ protected:
 
 protected:
   QLveStackingInputOptions * inputOptions_ctl = nullptr;
+  QLiveStackingRegistrationOptions * registration_ctl = nullptr;
   QLiveStackingAccumulateOptions * accumulate_ctl = nullptr;
   QLveStackingOutputOptions * outputOptions_ctl = nullptr;
 };

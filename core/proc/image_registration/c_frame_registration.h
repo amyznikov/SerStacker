@@ -66,7 +66,8 @@ struct c_jovian_derotation_options {
   bool rotate_jovian_disk_horizontally = false;
 };
 
-struct c_image_registration_options {
+struct c_image_registration_options
+{
 
   bool enable_frame_registration = true;
 
@@ -84,7 +85,8 @@ struct c_image_registration_options {
   struct c_jovian_derotation_options jovian_derotation;
 };
 
-struct c_image_registration_status {
+struct c_image_registration_status
+{
   struct {
     double extract_feature_image = 0;
     double estimate_feature_transform = 0;

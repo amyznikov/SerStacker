@@ -25,8 +25,8 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  //  QCheckBox * save_processed_frames_ctl = nullptr;
-  //  QLineEditBox * processed_frames_filename_ctl = nullptr;
+  QCheckBox * save_accumuated_file_ctl = nullptr;
+  QLineEditBox * output_accumuated_file_name_ctl = nullptr;
 };
 
 

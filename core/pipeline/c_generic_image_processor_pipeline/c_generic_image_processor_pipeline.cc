@@ -9,7 +9,6 @@
 #include <core/debug.h>
 #include <chrono>
 #include <thread>
-#include <core/debug.h>
 
 
 c_generic_image_processor_pipeline::c_generic_image_processor_pipeline(const std::string & name,
@@ -147,7 +146,10 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
 void c_generic_image_processor_pipeline::cleanup_pipeline()
 {
-  output_writer_.close();
+  if ( output_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", output_writer_.filename().c_str());
+    output_writer_.close();
+  }
 }
 
 bool c_generic_image_processor_pipeline::process_current_frame()

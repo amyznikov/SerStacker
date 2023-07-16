@@ -11,6 +11,7 @@
 #include "QCameraCalibrationPipeline/QCameraCalibrationPipeline.h"
 #include "QRegularStereoMatcherPipeline/QRegularStereoMatcherPipeline.h"
 #include "QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h"
+#include "QLveStackingPipeline/QLveStackingPipeline.h"
 // #include "QVirtualStereoMatcherPipeline/QVirtualStereoMatcherPipeline.h"
 
 #include <core/debug.h>
@@ -52,6 +53,12 @@ void registerPipelineClasses()
         return c_image_processing_pipeline::sptr(new QGenericImageProcessingPipeline(name.c_str(), input_sequence));
       });
 
+  c_image_processing_pipeline::register_class(
+      QLveStackingPipeline::class_name(),
+      QLveStackingPipeline::tooltip(),
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new QLveStackingPipeline(name.c_str(), input_sequence));
+      });
 
 }
 

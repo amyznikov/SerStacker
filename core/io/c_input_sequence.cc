@@ -521,7 +521,6 @@ bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
     }
   }
 
-  CF_DEBUG("return false: current_source_=%d", current_source_);
   return false;
 }
 

@@ -27,7 +27,6 @@ protected:
 protected:
   QCheckBox * save_processed_frames_ctl = nullptr;
   QLineEditBox * processed_frames_filename_ctl = nullptr;
-
 };
 
 #endif /* __QGenericImageProcessorOutputOptions_h__ */

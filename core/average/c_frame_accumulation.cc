@@ -946,7 +946,7 @@ bool c_frame_weigthed_average::initialze(const cv::Size & image_size, int acctyp
       (weightstype >> CV_CN_SHIFT) + 1;
 
   if( ccn != 1 && ccn != acn ) {
-    CF_ERROR("Invalid ombination of acc (%d) and weights (%d) channels", acn, ccn);
+    CF_ERROR("Invalid combination of acc (%d) and weights (%d) channels", acn, ccn);
     return false;
   }
 
@@ -1005,11 +1005,11 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
     return false;
   }
 
-  CF_DEBUG("accumulator_: %dx%d channels=%d depth=%d counter_: %dx%d channels=%d depth=%d",
-      accumulator_.cols, accumulator_.rows,
-      accumulator_.channels(), accumulator_.depth(),
-      counter_.cols, counter_.rows,
-      counter_.channels(), counter_.depth());
+//  CF_DEBUG("accumulator_: %dx%d channels=%d depth=%d counter_: %dx%d channels=%d depth=%d",
+//      accumulator_.cols, accumulator_.rows,
+//      accumulator_.channels(), accumulator_.depth(),
+//      counter_.cols, counter_.rows,
+//      counter_.channels(), counter_.depth());
 
 
   INSTRUMENT_REGION("");

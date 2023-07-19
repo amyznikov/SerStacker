@@ -329,6 +329,7 @@ bool c_live_stacking_pipeline::process_current_frame()
       ecc_.set_max_iterations(10);
       ecch_.set_method(&ecc_);
       ecch_.set_minimum_image_size(std::max(8, registration_options_.minimum_image_size));
+      ecch_.set_minimum_pyramid_level(1);
     }
 
     if ( reference_image_.empty() ) {

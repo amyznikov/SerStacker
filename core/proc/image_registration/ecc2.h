@@ -124,12 +124,15 @@ public:
   virtual bool align_to_reference(cv::InputArray inputImage,
       cv::InputArray inputMask = cv::noArray()) = 0;
 
+
   bool failed() const;
   double rho() const;
   double eps() const;
   int num_iterations() const;
 
   const cv::Mat2f & current_remap() const;
+
+  bool create_current_remap(const cv::Size & size);
 
 
 protected:
@@ -264,6 +267,9 @@ public:
   void set_minimum_image_size(int v);
   int minimum_image_size() const;
 
+  void set_minimum_pyramid_level(int v);
+  int minimum_pyramid_level() const;
+
   const std::vector<cv::Mat> & image_pyramid(int index) const;
   const std::vector<cv::Mat> & mask_pyramid(int index) const;
   const std::vector<cv::Mat1f> & transform_pyramid() const;
@@ -285,6 +291,7 @@ protected:
   std::vector<cv::Mat> mask_pyramids_[2];
   std::vector<cv::Mat1f> transform_pyramid_;
   int minimum_image_size_ = 12;
+  int minimum_pyramid_level_ = 0;
 };
 
 

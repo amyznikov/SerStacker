@@ -378,6 +378,21 @@ const cv::Mat2f & c_ecc_align::current_remap() const
   return current_remap_;
 }
 
+bool c_ecc_align::create_current_remap(const cv::Size & size)
+{
+  if ( !model_ ) {
+    CF_ERROR("ERROR: ECC motion model not set");
+    return false;
+  }
+
+  if( !model_->create_remap(current_remap_, size) ) {
+    CF_ERROR("model_->create_remap() fails");
+    return false;
+  }
+
+  return true;
+}
+
 
 // convert image to 32-bit float with optional gaussian smoothing
 void c_ecc_align::prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
@@ -589,9 +604,9 @@ bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage, cv::I
 
     INSTRUMENT_REGION("iterate");
 
-    // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
-    if( !model_->create_remap(current_remap_, f.size()) ) {
-      CF_ERROR("[i %d] model_->create_remap() fails", num_iterations_);
+  // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
+    if( !create_current_remap(f.size()) ) {
+      CF_ERROR("[i %d] create_current_remap() fails", num_iterations_);
       failed_ = true;
       break;
     }
@@ -750,8 +765,8 @@ bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, 
   prepare_input_image(inputImage, inputMask, input_smooth_sigma_, true, g, gmask);
 
   // Assume the initial warp matrix p is good enough to avoid the hessian matrix evaluation on each iteration
-  if ( !model_->create_remap(current_remap_, f.size()) ) {
-    CF_ERROR("c_ecc2_inverse_compositional: model_->create_remap() fails");
+  if ( !create_current_remap(f.size()) ) {
+    CF_ERROR("create_current_remap() fails");
     return false;
   }
 
@@ -798,8 +813,8 @@ bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, 
     }
     else {
 
-      if ( !model_->create_remap(current_remap_, f.size()) ) {
-        CF_ERROR("c_ecc2_inverse_compositional: model_->create_remap() fails");
+      if ( !create_current_remap(f.size()) ) {
+        CF_ERROR("create_current_remap() fails");
         failed_ = true;
         break;
       }
@@ -884,6 +899,16 @@ void c_ecch::set_minimum_image_size(int v)
 int c_ecch::minimum_image_size() const
 {
   return minimum_image_size_;
+}
+
+void c_ecch::set_minimum_pyramid_level(int v)
+{
+  minimum_pyramid_level_ = v;
+}
+
+int c_ecch::minimum_pyramid_level() const
+{
+  return minimum_pyramid_level_;
 }
 
 const std::vector<cv::Mat> & c_ecch::image_pyramid(int index) const
@@ -1050,6 +1075,9 @@ bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
   // Align pyramid images in coarse-to-fine direction
   bool eccOk = false;
 
+  const int min_level =
+      std::max(0, minimum_pyramid_level_);
+
   for( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
 
     if( !model->set_parameters(transform_pyramid_[i]) ) {
@@ -1057,25 +1085,34 @@ bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
       return false;
     }
 
-    bool fOk =
-        method_->align(image_pyramids_[C][i],
-            image_pyramids_[R][i],
-            mask_pyramids_[C][i],
-            mask_pyramids_[R][i]);
+    if( i >= min_level ) {
 
-    if( !fOk ) {
+      bool fOk =
+          method_->align(image_pyramids_[C][i],
+              image_pyramids_[R][i],
+              mask_pyramids_[C][i],
+              mask_pyramids_[R][i]);
 
-      CF_DEBUG("L[%2d/%zu] : align fails: size=%dx%d num_iterations=%d rho=%g eps=%g", i,
-          transform_pyramid_.size(),
-          image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
-          method_->num_iterations(), method_->rho(), method_->eps());
+      if( !fOk ) {
 
-      continue;
+        CF_DEBUG("L[%2d/%zu] : align fails: size=%dx%d num_iterations=%d rho=%g eps=%g", i,
+            transform_pyramid_.size(),
+            image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
+            method_->num_iterations(), method_->rho(), method_->eps());
+
+        continue;
+      }
     }
 
-
     if( i == 0 ) {
-      eccOk = true;
+
+      if( min_level > 0 && !method_->create_current_remap(image_pyramids_[R][i].size()) ) {
+        CF_ERROR("method_->create_current_remap() fails");
+      }
+      else {
+        eccOk = true;
+      }
+
       break;
     }
 

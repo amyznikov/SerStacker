@@ -24,6 +24,7 @@ struct c_live_stacking_input_options:
 
 enum live_stacking_accumulation_type
 {
+  live_stacking_accumulation_disable,
   live_stacking_accumulation_average,
   // live_stacking_accumulation_bayer_average,
 };
@@ -40,6 +41,8 @@ struct c_live_stacking_accumulation_options
 struct c_live_stacking_registration_options
 {
   bool enabled = false;
+  int minimum_image_size = 32;
+  double min_rho = 0.7;
 };
 
 

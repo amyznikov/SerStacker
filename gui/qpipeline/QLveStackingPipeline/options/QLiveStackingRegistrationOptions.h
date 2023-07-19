@@ -30,6 +30,8 @@ protected:
 protected:
   c_live_stacking_registration_options * options_ = nullptr;
   QCheckBox * enable_image_registration_ctl = nullptr;
+  QNumericBox * minumum_image_size_ctl = nullptr;
+  QNumericBox * min_rho_ctl = nullptr;
 };
 
 #endif /* __QLiveStackingRegistrationOptions_h__ */

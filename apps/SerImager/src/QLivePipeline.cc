@@ -809,7 +809,8 @@ void QLivePipelineThread::run()
             CF_ERROR("Unknown Exception in pipeline->run()");
           }
 
-          if( true ) {
+          if( camera->state() == QImagingCamera::State_started ) {
+            // most probably there was an error in pipeline->run()
             unique_lock lock(mutex_);
             this->pipeline_.reset();
           }

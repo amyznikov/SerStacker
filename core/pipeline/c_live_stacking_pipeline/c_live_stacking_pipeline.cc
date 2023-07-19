@@ -14,6 +14,9 @@ const c_enum_member* members_of<live_stacking_accumulation_type>()
 {
   static constexpr c_enum_member members[] = {
 
+      { live_stacking_accumulation_disable, "disable",
+          "Simple average" },
+
       { live_stacking_accumulation_average, "average",
           "Simple average" },
 
@@ -90,6 +93,8 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
     SERIALIZE_OPTION(section, save, registration_options_, enabled);
+    SERIALIZE_OPTION(section, save, registration_options_, minimum_image_size);
+    SERIALIZE_OPTION(section, save, registration_options_, min_rho);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "accumulation_options")) ) {
@@ -113,6 +118,12 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
 
   if( frame_accumulation_ ) {
     return frame_accumulation_->compute(display_frame, display_mask);
+  }
+
+  if( !current_image_.empty() ) {
+    current_image_.copyTo(display_frame);
+    current_mask_.copyTo(display_mask);
+    return true;
   }
 
   return false;
@@ -276,10 +287,10 @@ bool c_live_stacking_pipeline::process_current_frame()
 
       ecc_.set_model(ecc_motion_model_.get());
       ecc_.set_max_eps(0.2);
-      ecc_.set_min_rho(0.5);
+      ecc_.set_min_rho(registration_options_.min_rho);
       ecc_.set_max_iterations(10);
       ecch_.set_method(&ecc_);
-      ecch_.set_minimum_image_size(128);
+      ecch_.set_minimum_image_size(std::max(8, registration_options_.minimum_image_size));
     }
 
     if ( reference_image_.empty() ) {
@@ -305,6 +316,12 @@ bool c_live_stacking_pipeline::process_current_frame()
         ecch_.align(gray, current_mask_);
       }
 
+      if ( ecc_.rho() < registration_options_.min_rho ) {
+        CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
+      }
+
+      lock_guard lock(mutex());
+
       cv::remap(current_image_, current_image_, ecc_.current_remap(),
           cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
@@ -321,7 +338,7 @@ bool c_live_stacking_pipeline::process_current_frame()
     }
   }
 
-  if ( true ) {
+  if( accumulation_options_.accumulation_type != live_stacking_accumulation_disable ) {
 
     lock_guard lock(mutex());
 
@@ -339,20 +356,22 @@ bool c_live_stacking_pipeline::process_current_frame()
       }
     }
 
+    if( frame_accumulation_->accumulated_frames() < 1 || ecc_.rho() >= registration_options_.min_rho ) {
 
-    if ( accumulation_options_.ignore_input_mask && !registration_options_.enabled ) {
+      if ( accumulation_options_.ignore_input_mask && !registration_options_.enabled ) {
 
-      if ( !frame_accumulation_->add(current_image_, cv::noArray()) ) {
-        CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
-            current_image_.cols, current_image_.rows);
-        return false;
+        if ( !frame_accumulation_->add(current_image_, cv::noArray()) ) {
+          CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
+              current_image_.cols, current_image_.rows);
+          return false;
+        }
       }
-    }
-    else {
-      if ( !frame_accumulation_->add(current_image_, current_mask_) ) {
-        CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
-            current_image_.cols, current_image_.rows);
-        return false;
+      else {
+        if ( !frame_accumulation_->add(current_image_, current_mask_) ) {
+          CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
+              current_image_.cols, current_image_.rows);
+          return false;
+        }
       }
     }
   }

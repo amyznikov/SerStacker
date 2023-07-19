@@ -29,6 +29,40 @@ QLiveStackingRegistrationOptions::QLiveStackingRegistrationOptions(QWidget * par
             return false;
           });
 
+  minumum_image_size_ctl =
+      add_numeric_box<int>("minumum_image_size",
+          "minumum_image_size for ecch",
+          [this](int v) {
+            if ( options_ && options_->minimum_image_size != v ) {
+              options_->minimum_image_size = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              * v = options_->minimum_image_size;
+              return true;
+            }
+            return false;
+          });
+
+  min_rho_ctl =
+      add_numeric_box<double>("min rho",
+          "minumum acceptable correlation",
+          [this](double v) {
+            if ( options_ && options_->min_rho != v ) {
+              options_->min_rho = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              * v = options_->min_rho;
+              return true;
+            }
+            return false;
+          });
+
 
   updateControls();
 }

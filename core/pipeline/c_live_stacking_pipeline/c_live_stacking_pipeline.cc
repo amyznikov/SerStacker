@@ -115,11 +115,17 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
 bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
+  double display_scale =
+      output_options_.display_scale;
+
+  if( display_scale <= 0 && (display_scale = input_display_scale_) <= 0 ) {
+    display_scale = 1;
+  }
+
   lock_guard lock(mutex());
 
   if( frame_accumulation_ ) {
-    return frame_accumulation_->compute(display_frame, display_mask,
-        output_options_.display_scale);
+    return frame_accumulation_->compute(display_frame, display_mask, display_scale);
   }
 
 
@@ -135,13 +141,6 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
   }
 
   if( !image.empty() ) {
-
-    double display_scale =
-        output_options_.display_scale;
-
-    if( display_scale <= 0 && (display_scale = input_display_scale_) <= 0 ) {
-      display_scale = 1;
-    }
 
     if( display_scale == 1 ) {
       image.copyTo(display_frame);

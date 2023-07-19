@@ -341,23 +341,29 @@ void QLiveDisplay::setLivePipeline(const c_image_processing_pipeline::sptr & pip
 
   if( live_pipeline_ ) {
 
-    if( true ) {
-      c_unique_lock mtflock(mtfDisplayFunction_.mutex());
-      if( !mtfDisplayFunction_.isBusy() && live_pipeline_->get_display_image(inputImage_, inputMask_) ) {
-        updateCurrentImage();
-      }
-    }
-
-    if( update_display_timer_id_ ) {
-      Q_EMIT stopUpdateLiveDisplayTimer();
-    }
+//    if( true ) {
+//      c_unique_lock mtflock(mtfDisplayFunction_.mutex());
+//      if( !mtfDisplayFunction_.isBusy() && live_pipeline_->get_display_image(inputImage_, inputMask_) ) {
+//        updateCurrentImage();
+//      }
+//      else {
+//        inputImage_.release();
+//        inputMask_.release();
+//      }
+//    }
 
     QImageProcessingPipeline *pp =
         dynamic_cast<QImageProcessingPipeline*>(live_pipeline_.get());
     if( pp ) {
       pp->disconnect(this);
     }
+
+    if( update_display_timer_id_ ) {
+      Q_EMIT stopUpdateLiveDisplayTimer();
+    }
+
   }
+
 
   if( (live_pipeline_ = pipeline) ) {
 
@@ -822,6 +828,8 @@ void QLivePipelineThread::run()
           //cv::Mat image;
           COLORID colorid;
           int bpp;
+
+          display_->inputMask().release();
 
           while (input_sequence->camera_source->read(display_->inputImage(), &colorid, &bpp)) {
 

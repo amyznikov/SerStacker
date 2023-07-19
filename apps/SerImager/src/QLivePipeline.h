@@ -70,13 +70,11 @@ public:
   QLiveDisplay(QWidget * parent = nullptr);
   ~QLiveDisplay();
 
-  void showVideoFrame(const cv::Mat & image, COLORID colorid, int bpp);
-
-
   const QLiveDisplayMtfFunction * mtfDisplayFunction() const;
   QLiveDisplayMtfFunction * mtfDisplayFunction();
 
   void setFrameProcessor(const c_image_processor::sptr & processor);
+  void setLivePipeline(const c_image_processing_pipeline::sptr & pipeline);
 
   QGraphicsRectShape * rectShape() const;
   QGraphicsLineShape * lineShape() const;
@@ -84,16 +82,22 @@ public:
 
 Q_SIGNALS:
   void pixmapChanged(QPrivateSignal * p = nullptr);
+  void startUpdateLiveDisplayTimer(QPrivateSignal * p = nullptr);
+  void stopUpdateLiveDisplayTimer(QPrivateSignal * p = nullptr);
 
 protected Q_SLOTS:
   void onPixmapChanged();
+  void onStartUpdateLiveDisplayTimer();
+  void onStopUpdateLiveDisplayTimer();
 
 protected:
   void createShapes();
-
-protected:
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
+  void timerEvent(QTimerEvent *event) override;
+
+protected: friend class QLivePipelineThread;
+  void updateCurrentImage();
 
 protected:
   QLiveDisplayMtfFunction mtfDisplayFunction_;
@@ -103,6 +107,11 @@ protected:
   QGraphicsRectShape * rectShape_ = nullptr;
   QGraphicsLineShape * lineShape_ = nullptr;
   QGraphicsTargetShape * targetShape_ = nullptr;
+
+  std::atomic_int update_display_timer_id_ = 0;
+  std::atomic_bool update_display_required_ = false;
+  std::mutex live_pipeline_lock_;
+  c_image_processing_pipeline::sptr live_pipeline_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -117,8 +126,6 @@ public:
 
   QLivePipelineThread(QObject * parent = nullptr);
   ~QLivePipelineThread();
-
-//  void finish(bool wait = true);
 
   void setDisplay(QLiveDisplay * display);
   QLiveDisplay* display() const;
@@ -168,8 +175,6 @@ protected:
   cv::Mat darkFrame_;
   double darkFrameScale_ = 1; // auto
   std::mutex darkFrameLock_;
-
-  std::atomic_bool finish_ = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

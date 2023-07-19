@@ -171,6 +171,17 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
       &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
       Qt::QueuedConnection);
 
+
+  connect(this, &ThisClass::startUpdateLiveDisplayTimer,
+      this, &ThisClass::onStartUpdateLiveDisplayTimer,
+      Qt::QueuedConnection);
+
+  connect(this, &ThisClass::stopUpdateLiveDisplayTimer,
+      this, &ThisClass::onStopUpdateLiveDisplayTimer,
+      Qt::QueuedConnection);
+
+
+
   createShapes();
 }
 
@@ -282,6 +293,94 @@ void QLiveDisplay::hideEvent(QHideEvent *event)
   Base::hideEvent(event);
 }
 
+void QLiveDisplay::timerEvent(QTimerEvent * e)
+{
+  if( e->timerId() == update_display_timer_id_ ) {
+
+    if( update_display_required_ ) {
+
+      c_unique_lock mtflock(mtfDisplayFunction_.mutex());
+      if( !mtfDisplayFunction_.isBusy() ) {
+
+        update_display_required_ = false;
+
+        live_pipeline_lock_.lock();
+
+        if( live_pipeline_ && live_pipeline_->get_display_image(inputImage_, inputMask_) ) {
+          updateCurrentImage();
+        }
+
+        live_pipeline_lock_.unlock();
+      }
+    }
+
+    e->ignore();
+    return;
+  }
+
+  Base::timerEvent(e);
+}
+
+
+void QLiveDisplay::onStartUpdateLiveDisplayTimer()
+{
+  update_display_timer_id_ = startTimer(100);
+}
+
+void QLiveDisplay::onStopUpdateLiveDisplayTimer()
+{
+  if ( update_display_timer_id_ ) {
+    killTimer(update_display_timer_id_);
+    update_display_timer_id_ = 0;
+  }
+}
+
+void QLiveDisplay::setLivePipeline(const c_image_processing_pipeline::sptr & pipeline)
+{
+  live_pipeline_lock_.lock();
+
+  if( live_pipeline_ ) {
+
+    if( true ) {
+      c_unique_lock mtflock(mtfDisplayFunction_.mutex());
+      if( !mtfDisplayFunction_.isBusy() && live_pipeline_->get_display_image(inputImage_, inputMask_) ) {
+        updateCurrentImage();
+      }
+    }
+
+    if( update_display_timer_id_ ) {
+      Q_EMIT stopUpdateLiveDisplayTimer();
+    }
+
+    QImageProcessingPipeline *pp =
+        dynamic_cast<QImageProcessingPipeline*>(live_pipeline_.get());
+    if( pp ) {
+      pp->disconnect(this);
+    }
+  }
+
+  if( (live_pipeline_ = pipeline) ) {
+
+    QImageProcessingPipeline *pp =
+        dynamic_cast<QImageProcessingPipeline*>(live_pipeline_.get());
+
+    if( pp ) {
+      connect(pp, &QImageProcessingPipeline::frameProcessed,
+          [this]() {
+            // give chance to GUI thread to call get_display_image()
+            update_display_required_ = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          });
+    }
+
+    update_display_required_ = true;
+    Q_EMIT startUpdateLiveDisplayTimer();
+  }
+
+  live_pipeline_lock_.unlock();
+}
+
+
 void QLiveDisplay::onPixmapChanged()
 {
   c_unique_lock lock(mtfDisplayFunction_.mutex());
@@ -289,14 +388,8 @@ void QLiveDisplay::onPixmapChanged()
   Q_EMIT currentImageChanged();
 }
 
-void QLiveDisplay::showVideoFrame(const cv::Mat & image, COLORID colorid, int bpp)
+void QLiveDisplay::updateCurrentImage()
 {
-  c_unique_lock mtflock(mtfDisplayFunction_.mutex());
-
-  image.copyTo(inputImage_);
-  inputMask_.release();
-
-
   if( !current_processor_ || current_processor_->empty() ) {
     current_image_lock lock(this);
     inputImage_.copyTo(currentImage_);
@@ -622,7 +715,6 @@ void QLivePipelineThread::run()
         }
       }
 
-      CF_DEBUG("return false");
       return false;
     }
   };
@@ -687,7 +779,7 @@ void QLivePipelineThread::run()
 
     while (camera->state() == QImagingCamera::State_started) {
 
-      QImageProcessingPipeline *pp = nullptr;
+      QImageProcessingPipeline * pp = nullptr;
 
       try {
 
@@ -696,20 +788,11 @@ void QLivePipelineThread::run()
             this->pipeline_;
         mutex_.unlock();
 
+        display_->setLivePipeline(pipeline);
+
         Q_EMIT pipelineChanged();
 
         if( pipeline ) {
-
-          if( (pp = dynamic_cast<QImageProcessingPipeline*>(pipeline.get())) ) {
-
-            QObject::connect(pp, &QImageProcessingPipeline::frameProcessed,
-                [pp, this]() {
-                  cv::Mat image, mask;
-                  if ( pp->get_display_image(image, mask) ) {
-                    display_->showVideoFrame(image, COLORID_BGR, CV_8U);
-                  }
-                });
-          }
 
           try {
             if( pipeline->run(input_sequence) ) {
@@ -735,17 +818,24 @@ void QLivePipelineThread::run()
         }
         else {
 
-          cv::Mat image;
+          //cv::Mat image;
           COLORID colorid;
           int bpp;
 
-          while ( input_sequence->camera_source->read(image, &colorid, &bpp) ) {
+          while (input_sequence->camera_source->read(display_->inputImage(), &colorid, &bpp)) {
 
-            display_->showVideoFrame(image, colorid, bpp);
+            if( true ) {
+              c_unique_lock mtflock(display_->mtfDisplayFunction()->mutex());
+              if( !display_->mtfDisplayFunction()->isBusy() ) {
+                display_->updateCurrentImage();
+              }
+            }
 
-            unique_lock lock(mutex_);
-            if( pipeline_ ) {
-              break;
+            if( true ) {
+              unique_lock lock(mutex_);
+              if( pipeline_ != nullptr ) {
+                break;
+              }
             }
           }
         }
@@ -757,11 +847,11 @@ void QLivePipelineThread::run()
         CF_ERROR("Unknown Exception in live thread");
       }
 
-      if( pp ) {
-        pp->disconnect(this);
-      }
+      display_->setLivePipeline(nullptr);
     }
   }
+
+  QThread::msleep(100);
 
   CF_DEBUG("leave");
 }

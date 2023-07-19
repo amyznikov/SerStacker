@@ -23,7 +23,7 @@ c_stereo_calibration_pipeline::c_stereo_calibration_pipeline(const std::string &
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
-  input_options_.input_sequence = input_sequence;
+  // input_options_.input_sequence = input_sequence;
 }
 
 c_stereo_calibration_pipeline::~c_stereo_calibration_pipeline()
@@ -31,12 +31,12 @@ c_stereo_calibration_pipeline::~c_stereo_calibration_pipeline()
   cancel();
 }
 
-c_stereo_input_options & c_stereo_calibration_pipeline::input_options()
+c_stereo_calibration_input_options & c_stereo_calibration_pipeline::input_options()
 {
   return input_options_;
 }
 
-const c_stereo_input_options & c_stereo_calibration_pipeline::input_options() const
+const c_stereo_calibration_input_options & c_stereo_calibration_pipeline::input_options() const
 {
   return input_options_;
 }

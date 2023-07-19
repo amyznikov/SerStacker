@@ -10,11 +10,15 @@
 #define __c_stereo_calibration_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/proc/stereo/stereo_stream.h>
+#include <core/pipeline/stereo/c_stereo_input_options.h>
 #include <core/proc/chessboard/chessboard_detection.h>
 #include <core/proc/camera_calibration/stereo_calibrate.h>
-#include <core/io/c_stereo_input.h>
 #include <core/io/c_output_frame_writer.h>
+
+struct c_stereo_calibration_input_options :
+    c_stereo_input_options
+{
+};
 
 struct c_stereo_calibrate_options
 {
@@ -85,8 +89,8 @@ public:
     return tooltip_;
   }
 
-  c_stereo_input_options & input_options();
-  const c_stereo_input_options & input_options() const;
+  c_stereo_calibration_input_options & input_options();
+  const c_stereo_calibration_input_options & input_options() const;
 
   c_chessboard_corners_detection_options & chessboard_detection_options();
   const c_chessboard_corners_detection_options & chessboard_detection_options() const;
@@ -126,8 +130,8 @@ protected:
   bool write_chessboard_video();
 
 protected:
-  c_stereo_input_options input_options_;
   c_stereo_input_source input_;
+  c_stereo_calibration_input_options input_options_;
   c_chessboard_corners_detection_options chessboard_detection_options_;
   c_stereo_calibrate_options calibration_options_;
   c_stereo_calibration_output_options output_options_;

@@ -81,7 +81,7 @@ inline cv::Matx<T, 3, 3> build_rotation(const cv::Vec<T, 3> & A)
 }
 
 /** @brief build_pose()
- * Combine given 3x3 rotation matrix R and 3x1 translation vector T into 3x4 projection matrix [R|T]
+ * Compose given 3x3 rotation matrix R and 3x1 translation vector T into 3x4 projection matrix [R|T]
  * */
 template<class C>
 inline cv::Matx<C, 3, 4> build_pose(const cv::Matx<C, 3, 3> & R, const cv::Vec<C, 3> & T)
@@ -91,6 +91,71 @@ inline cv::Matx<C, 3, 4> build_pose(const cv::Matx<C, 3, 3> & R, const cv::Vec<C
       R(1, 0), R(1, 1), R(1, 2), T(1),
       R(2, 0), R(2, 1), R(2, 2), T(2));
 }
+
+/** @brief split_pose()
+ * Decompose given 3x4 R|T pose matrix into 3x3 rotation matrix R and 3x1 translation vector T
+ * */
+
+template<class T1, class T2, class T3>
+inline void split_pose(const cv::Matx<T3, 3, 4> & RT, /*out*/ cv::Matx<T1, 3, 3> & R, /*out*/ cv::Vec<T2, 3> & T)
+{
+  for ( int i = 0; i < 3; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      R(i, j) = RT(i, j);
+    }
+  }
+  for ( int i = 0; i < 3; ++i ) {
+    T(i) = RT(i, 3);
+  }
+}
+
+/** @brief split_pose()
+ * Decompose given 4x4 R|T pose matrix into 3x3 rotation matrix R and 3x1 translation vector T
+ * */
+template<class T1, class T2, class T3>
+inline void split_pose(const cv::Matx<T3, 4, 4> & RT, /*out*/ cv::Matx<T1, 3, 3> & R, /*out*/ cv::Vec<T2, 3> & T)
+{
+  for ( int i = 0; i < 3; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      R(i, j) = RT(i, j);
+    }
+  }
+  for ( int i = 0; i < 3; ++i ) {
+    T(i) = RT(i, 3);
+  }
+}
+
+/** @brief invert_pose()
+ * Invert 3x4 R|T pose matrix
+ * */
+template<class C>
+void invert_pose(const cv::Matx<C, 3, 4> & RT, /*out*/cv::Matx<C, 3, 4> * RTi)
+{
+  cv::Matx<C, 3, 3> R;
+  cv::Vec<C, 3> T;
+
+  split_pose(RT, R, T);
+
+  R = R.inv();
+  T = -R * T;
+
+  build_pose(R, T, *RTi);
+}
+
+/** @brief invert_pose()
+ * Invert given R|T pose
+ * */
+template<class C>
+void invert_pose(const cv::Matx<C, 3, 3> & R, const cv::Vec3d & T,
+    /*out*/cv::Matx<C, 3, 3> * Ri, /*out*/cv::Vec3d * Ti )
+{
+  *Ri = R.t();
+  *Ti = -(*Ri) * T;
+}
+
+
+
+//split_rt_matrix
 
 /** @brief euler_angles()
  * Simple utility function to compute euler angles in radians from given rotation matrix R

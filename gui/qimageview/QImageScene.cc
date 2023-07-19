@@ -60,20 +60,18 @@ QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
   const QSize oldPixmapSize =
       pixmapItem_->pixmap().size();
 
-//  CF_DEBUG("oldPixmapSize: %dx%d", oldPixmapSize.width(), oldPixmapSize.height());
-//  CF_DEBUG("pxmap.size(): %dx%d", pxmap.width(), pxmap.height());
-
   pixmapItem_->setPixmap(pxmap);
   pixmapItem_->setVisible(true);
 
   if ( !pxmap.isNull() && pxmap.size() != oldPixmapSize ) {
     setSceneRect(0, 0, pxmap.width(), pxmap.height());
-    //pixmapItem_->setPos(pixmapItem_->mapFromScene(0, 0));
     pixmapItem_->setPos(0, 0);
   }
 
-//  QRectF rc = sceneRect();
-//  CF_DEBUG("sceneRect: %g %g %gx%g", rc.x(), rc.y(), rc.width(), rc.height());
+  //  QRectF rc = sceneRect();
+  //  CF_DEBUG("oldPixmapSize: %dx%d", oldPixmapSize.width(), oldPixmapSize.height());
+  //  CF_DEBUG("pxmap.size(): %dx%d", pxmap.width(), pxmap.height());
+  //  CF_DEBUG("sceneRect: %g %g %gx%g", rc.x(), rc.y(), rc.width(), rc.height());
 
   return pixmapItem_;
 }
@@ -81,37 +79,6 @@ QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
 void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *e)
 {
   Base::contextMenuEvent(e);
-
-//  QGraphicsItem * item =
-//      itemAt(e->scenePos(),
-//          QTransform());
-//
-//  if ( !item || item == pixmapItem_ ) {
-//    Base::contextMenuEvent(e);
-//  }
-//  else { // show context menu
-//
-//    QMenu menu;
-//    QAction * action;
-//
-//    QGraphicsShape * shape =
-//        dynamic_cast<QGraphicsShape * >(item);
-//
-//    if ( shape ) {
-//      shape->populateContextMenu(menu, *e);
-//      menu.addSeparator();
-//    }
-//
-//    menu.addAction(action = new QAction("Delete this object"));
-//    connect(action, &QAction::triggered,
-//        [this, item]() {
-//      removeItem(item);
-//    });
-//
-//    menu.exec(e->screenPos());
-//
-//    e->accept();
-//  }
 }
 
 void QImageScene::mousePressEvent(QGraphicsSceneMouseEvent *e)

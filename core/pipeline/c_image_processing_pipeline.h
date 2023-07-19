@@ -31,11 +31,11 @@ struct c_image_processing_pipeline_input_options
   bool missing_pixels_marked_black = true;
   bool inpaint_missing_pixels = true;
   bool enable_color_maxtrix = true;
-  bool filter_bad_pixels = true;
-  bool drop_bad_asi_frames = true;
+  bool filter_bad_pixels = false;
+  bool detect_bad_asi_frames = false;
   bool enable_bground_normalization  = false;
 
-  double hot_pixels_variation_threshold = 15;
+  double bad_pixels_variation_threshold = 15;
   c_histogram_normalization_options background_normalization_options;
 };
 

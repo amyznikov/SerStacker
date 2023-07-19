@@ -62,6 +62,7 @@
 #include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
 #include "c_affine_transform_routine.h"
+#include "c_perspective_transform_routine.h"
 #include "c_mean_curvature_blur_routine.h"
 #include "c_fit_jovian_ellipse_routine.h"
 #include "c_equalize_hist_routine.h"
@@ -147,8 +148,11 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_radial_polysharp_routine::class_factory_instance());
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_blur_routine::class_factory_instance());
+
     register_class_factory(c_rotate_image_routine::class_factory_instance());
     register_class_factory(c_affine_transform_routine::class_factory_instance());
+    register_class_factory(c_perspective_transform_routine::class_factory_instance());
+
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());
     register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
     register_class_factory(c_laplacian_routine::class_factory_instance());

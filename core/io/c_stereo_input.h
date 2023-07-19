@@ -19,26 +19,6 @@ enum stereo_input_frame_layout_type {
   stereo_frame_layout_separate_sources,
 };
 
-struct c_stereo_input_options
-{
-  c_input_sequence::sptr input_sequence;
-
-  stereo_input_frame_layout_type layout_type =
-      stereo_frame_layout_horizontal;
-
-  bool swap_cameras = false;
-
-  std::string left_stereo_source;
-  std::string right_stereo_source;
-
-  int start_frame_index = 0;
-  int max_input_frames = -1;
-
-  bool inpaint_missing_pixels = true;
-  bool enable_color_maxtrix = true;
-};
-
-
 struct c_stereo_input_source
 {
   c_input_source::sptr inputs[2];

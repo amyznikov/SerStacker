@@ -1,5 +1,5 @@
 /*
- * c_image_transform_routine.h
+ * c_affine_transform_routine.h
  *
  *  Created on: Jun 12, 2022
  *      Author: amyznikov
@@ -56,7 +56,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, border_value, "border_value");
   }
 
-  bool serialize(c_config_setting setting, bool save) override;
+  bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
   static bool create_transformation_remap(cv::Mat2f & dst,

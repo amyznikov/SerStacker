@@ -2065,7 +2065,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
-    if( input_options_.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+    if( input_options_.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
       CF_ERROR("CORRUPTED ASI FRAME DETECTED");
       output_image.release();
       return true; // return true with empty output image
@@ -2099,8 +2099,8 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
             1. / ((1 << input_sequence->bpp())));
       }
 
-      if( input_options_.filter_bad_pixels && input_options_.hot_pixels_variation_threshold > 0 ) {
-        if( !bayer_denoise(raw_bayer_image_, input_options_.hot_pixels_variation_threshold) ) {
+      if( input_options_.filter_bad_pixels && input_options_.bad_pixels_variation_threshold > 0 ) {
+        if( !bayer_denoise(raw_bayer_image_, input_options_.bad_pixels_variation_threshold) ) {
           CF_ERROR("bayer_denoise() fails");
           return false;
         }
@@ -2124,7 +2124,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
           CF_ERROR("debayer() fails");
           return false;
         }
-        if( input_options_.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+        if( input_options_.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
           CF_ERROR("CORRUPTED ASI FRAME DETECTED");
           output_image.release();
           return true; // return true with empty output image
@@ -2144,7 +2144,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
           CF_ERROR("extract_bayer_planes() fails");
           return false;
         }
-        if( input_options_.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+        if( input_options_.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
           CF_ERROR("CORRUPTED ASI FRAME DETECTED");
           output_image.release();
           return true; // return true with empty output image
@@ -2286,7 +2286,7 @@ void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
   cv::filter2D(variationImage, meanVariationImage, -1, SE);
   cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
 
-  medianImage.copyTo(image, variationImage > input_optons.hot_pixels_variation_threshold * meanVariationImage);
+  medianImage.copyTo(image, variationImage > input_optons.bad_pixels_variation_threshold * meanVariationImage);
 }
 
 
@@ -3019,8 +3019,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, input_options_, missing_pixels_marked_black);
     SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
     SERIALIZE_OPTION(section, save, input_options_, filter_bad_pixels);
-    SERIALIZE_OPTION(section, save, input_options_, drop_bad_asi_frames);
-    SERIALIZE_OPTION(section, save, input_options_, hot_pixels_variation_threshold);
+    SERIALIZE_OPTION(section, save, input_options_, detect_bad_asi_frames);
+    SERIALIZE_OPTION(section, save, input_options_, bad_pixels_variation_threshold);
     SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
     SERIALIZE_OPTION(section, save, input_options_, anscombe);
     SERIALIZE_OPTION(section, save, input_options_, start_frame_index);

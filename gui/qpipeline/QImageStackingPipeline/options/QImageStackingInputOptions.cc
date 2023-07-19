@@ -58,8 +58,8 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
       add_numeric_box<double>("Bad Pixels Variation Threshold",
           "",
           [this](double v) {
-            if ( options_ && options_->hot_pixels_variation_threshold != v ) {
-              options_->hot_pixels_variation_threshold = v;
+            if ( options_ && options_->bad_pixels_variation_threshold != v ) {
+              options_->bad_pixels_variation_threshold = v;
               Q_EMIT parameterChanged();
             }
           });
@@ -68,8 +68,8 @@ QImageStackingInputOptions::QImageStackingInputOptions(QWidget * parent) :
       add_checkbox("Drop Corrupted ASI frames",
           "",
           [this](bool checked) {
-            if ( options_ && checked != options_->drop_bad_asi_frames ) {
-              options_->drop_bad_asi_frames = checked;
+            if ( options_ && checked != options_->detect_bad_asi_frames ) {
+              options_->detect_bad_asi_frames = checked;
               Q_EMIT parameterChanged();
             }
           });
@@ -204,8 +204,8 @@ void QImageStackingInputOptions::onupdatecontrols()
   else {
 
     enable_remove_bad_pixels_ctl->setChecked(options_->filter_bad_pixels);
-    bad_pixels_variation_threshold_ctl->setValue(options_->hot_pixels_variation_threshold);
-    drop_bad_asi_frames_ctl->setChecked(options_->drop_bad_asi_frames);
+    bad_pixels_variation_threshold_ctl->setValue(options_->bad_pixels_variation_threshold);
+    drop_bad_asi_frames_ctl->setChecked(options_->detect_bad_asi_frames);
 
     enable_color_maxtrix_ctl->setChecked(options_->enable_color_maxtrix);
     anscombe_ctl->setCurrentItem(options_->anscombe);

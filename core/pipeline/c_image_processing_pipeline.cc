@@ -757,14 +757,14 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {
 
-    if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+    if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
       CF_ERROR("CORRUPTED ASI FRAME DETECTED");
       output_image.release();
       return true; // return true with empty output image
     }
 
     if ( input_options.filter_bad_pixels ) {
-      remove_bad_pixels(output_image, input_options.hot_pixels_variation_threshold, false);
+      remove_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, false);
     }
 
     if( output_image.depth() != CV_32F ) {
@@ -791,8 +791,8 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
             1. / ((1 << input_sequence->bpp())));
       }
 
-      if( input_options.filter_bad_pixels && input_options.hot_pixels_variation_threshold > 0 ) {
-        if( !bayer_denoise(raw_bayer_image_, input_options.hot_pixels_variation_threshold) ) {
+      if( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
+        if( !bayer_denoise(raw_bayer_image_, input_options.bad_pixels_variation_threshold) ) {
           CF_ERROR("bayer_denoise() fails");
           return false;
         }
@@ -816,13 +816,13 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
           CF_ERROR("debayer() fails");
           return false;
         }
-        if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+        if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
           CF_ERROR("CORRUPTED ASI FRAME DETECTED");
           output_image.release();
           return true; // return true with empty output image
         }
         if ( input_options.filter_bad_pixels ) {
-          remove_bad_pixels(output_image, input_options.hot_pixels_variation_threshold, true);
+          remove_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, true);
         }
         if( output_image.depth() != CV_32F ) {
           output_image.convertTo(output_image, CV_32F,
@@ -836,13 +836,13 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
           CF_ERROR("extract_bayer_planes() fails");
           return false;
         }
-        if( input_options.drop_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+        if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
           CF_ERROR("CORRUPTED ASI FRAME DETECTED");
           output_image.release();
           return true; // return true with empty output image
         }
         if( input_options.filter_bad_pixels ) {
-          remove_bad_pixels(output_image, input_options.hot_pixels_variation_threshold, true);
+          remove_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, true);
         }
 
         if( output_image.depth() != CV_32F ) {

@@ -1,5 +1,5 @@
 /*
- * c_image_transform_routine.cc
+ * c_affine_transform_routine.cc
  *
  *  Created on: Jun 12, 2022
  *      Author: amyznikov

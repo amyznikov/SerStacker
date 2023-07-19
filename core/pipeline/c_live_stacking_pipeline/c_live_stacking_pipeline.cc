@@ -8,8 +8,6 @@
 #include "c_live_stacking_pipeline.h"
 #include <core/ssprintf.h>
 #include <core/debug.h>
-#include <chrono>
-#include <thread>
 
 template<>
 const c_enum_member* members_of<live_stacking_accumulation_type>()
@@ -233,42 +231,28 @@ bool c_live_stacking_pipeline::run_pipeline()
       break;
     }
 
-    if( true ) {
+    const bool fOk =
+        read_input_frame(input_sequence_,
+            input_options_,
+            current_image_, current_mask_,
+            false,
+            false);
 
-      lock_guard lock(mutex());
-
-      const bool fOk =
-          read_input_frame(input_sequence_,
-              input_options_,
-              current_image_, current_mask_,
-              false,
-              false);
-
-      if( !fOk ) {
-        CF_DEBUG("read_input_frame() fails");
-        break;
-      }
+    if( !fOk ) {
+      CF_DEBUG("read_input_frame() fails");
+      break;
     }
 
     if( canceled() ) {
       break;
     }
 
-    if( true ) {
-      lock_guard lock(mutex());
-      if( !process_current_frame() ) {
-        CF_ERROR("process_current_frame() fails");
-        return false;
-      }
-      accumulated_frames_ =
-          processed_frames_;
+    if( !process_current_frame() ) {
+      CF_ERROR("process_current_frame() fails");
+      return false;
     }
-
-    if( !is_live_sequence ) {
-      // give chance to GUI thread to call get_display_image()
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
+    accumulated_frames_ =
+        processed_frames_;
   }
 
   return true;
@@ -295,7 +279,7 @@ bool c_live_stacking_pipeline::process_current_frame()
       ecc_.set_min_rho(0.5);
       ecc_.set_max_iterations(10);
       ecch_.set_method(&ecc_);
-      ecch_.set_minimum_image_size(64);
+      ecch_.set_minimum_image_size(128);
     }
 
     if ( reference_image_.empty() ) {
@@ -337,34 +321,39 @@ bool c_live_stacking_pipeline::process_current_frame()
     }
   }
 
-  if( !frame_accumulation_ ) {
+  if ( true ) {
 
-    frame_accumulation_ =
-        create_frame_accumulation(current_image_.size(),
-            current_image_.channels(),
-            accumulation_options_.accumulation_type);
+    lock_guard lock(mutex());
 
     if( !frame_accumulation_ ) {
-      CF_ERROR("create_frame_accumulation(current_image_.size = %dx%d) fails",
-          current_image_.cols, current_image_.rows);
-      return false;
+
+      frame_accumulation_ =
+          create_frame_accumulation(current_image_.size(),
+              current_image_.channels(),
+              accumulation_options_.accumulation_type);
+
+      if( !frame_accumulation_ ) {
+        CF_ERROR("create_frame_accumulation(current_image_.size = %dx%d) fails",
+            current_image_.cols, current_image_.rows);
+        return false;
+      }
     }
-  }
 
 
-  if ( accumulation_options_.ignore_input_mask && !registration_options_.enabled ) {
+    if ( accumulation_options_.ignore_input_mask && !registration_options_.enabled ) {
 
-    if ( !frame_accumulation_->add(current_image_, cv::noArray()) ) {
-      CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
-          current_image_.cols, current_image_.rows);
-      return false;
+      if ( !frame_accumulation_->add(current_image_, cv::noArray()) ) {
+        CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
+            current_image_.cols, current_image_.rows);
+        return false;
+      }
     }
-  }
-  else {
-    if ( !frame_accumulation_->add(current_image_, current_mask_) ) {
-      CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
-          current_image_.cols, current_image_.rows);
-      return false;
+    else {
+      if ( !frame_accumulation_->add(current_image_, current_mask_) ) {
+        CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
+            current_image_.cols, current_image_.rows);
+        return false;
+      }
     }
   }
 

@@ -58,8 +58,25 @@ public:
               return false;
             });
 
+    debayer_method_ctl =
+        add_enum_combobox<DEBAYER_ALGORITHM>("DEBAYER:",
+            "",
+            [this](DEBAYER_ALGORITHM v) {
+              if ( pipeline_ && pipeline_->input_options().debayer_method != v ) {
+                pipeline_->input_options().debayer_method = v;
+                Q_EMIT parameterChanged();
+              }
+            },
+            [this](DEBAYER_ALGORITHM * v) {
+              if ( pipeline_ ) {
+                *v = pipeline_->input_options().debayer_method;
+                return true;
+              }
+              return false;
+            });
+
     enable_color_maxtrix_ctl =
-        add_checkbox("Enable color maxtrix:",
+        add_checkbox("Enable color matrix:",
             "",
             [this](bool checked) {
               if ( pipeline_ && pipeline_->input_options().enable_color_maxtrix != checked ) {
@@ -81,6 +98,7 @@ public:
             [this](bool checked) {
               if ( pipeline_ && pipeline_->input_options().inpaint_missing_pixels != checked ) {
                 pipeline_->input_options().inpaint_missing_pixels = checked;
+                missing_pixel_mask_filename_ctl->setEnabled(pipeline_->input_options().inpaint_missing_pixels);
                 Q_EMIT parameterChanged();
               }
             },
@@ -91,6 +109,119 @@ public:
               }
               return false;
             });
+
+    missing_pixels_marked_black_ctl =
+        add_checkbox("missing pixels marked black:",
+            "",
+            [this](bool checked) {
+              if ( pipeline_ && pipeline_->input_options().missing_pixels_marked_black != checked ) {
+                pipeline_->input_options().missing_pixels_marked_black = checked;
+                missing_pixels_marked_black_ctl->setEnabled(pipeline_->input_options().inpaint_missing_pixels);
+                Q_EMIT parameterChanged();
+              }
+            },
+            [this](bool * checked) {
+              if ( pipeline_ ) {
+                * checked = pipeline_->input_options().missing_pixels_marked_black;
+                return true;
+              }
+              return false;
+            });
+
+    missing_pixel_mask_filename_ctl =
+        add_browse_for_path("",
+            "Missing Pixels Mask",
+            QFileDialog::AcceptOpen,
+            QFileDialog::ExistingFile,
+            [this](const QString & v) {
+              if ( pipeline_ && pipeline_->input_options().missing_pixel_mask_filename != v.toStdString() ) {
+                pipeline_->input_options().missing_pixel_mask_filename = v.toStdString();
+                missing_pixel_mask_filename_ctl->setEnabled(pipeline_->input_options().inpaint_missing_pixels);
+                Q_EMIT parameterChanged();
+              }
+            },
+            [this](QString * v) {
+              if ( pipeline_ ) {
+                * v = pipeline_->input_options().missing_pixel_mask_filename.c_str();
+                return true;
+              }
+              return false;
+            });
+
+    darkbayer_filename_ctl =
+        add_browse_for_path("",
+            "Dark Frame",
+            QFileDialog::AcceptOpen,
+            QFileDialog::ExistingFile,
+            [this](const QString & v) {
+              if ( pipeline_ && pipeline_->input_options().darkbayer_filename != v.toStdString() ) {
+                pipeline_->input_options().darkbayer_filename = v.toStdString();
+                Q_EMIT parameterChanged();
+              }
+            },
+            [this](QString * v) {
+              if ( pipeline_ ) {
+                * v = pipeline_->input_options().darkbayer_filename.c_str();
+                return true;
+              }
+              return false;
+            });
+
+    flatbayer_filename_ctl =
+        add_browse_for_path("",
+            "Flat Frame",
+            QFileDialog::AcceptOpen,
+            QFileDialog::ExistingFile,
+            [this](const QString & v) {
+              if ( pipeline_ && pipeline_->input_options().flatbayer_filename != v.toStdString() ) {
+                pipeline_->input_options().flatbayer_filename = v.toStdString();
+                Q_EMIT parameterChanged();
+              }
+            },
+            [this](QString * v) {
+              if ( pipeline_ ) {
+                * v = pipeline_->input_options().flatbayer_filename.c_str();
+                return true;
+              }
+              return false;
+            });
+
+    filter_bad_pixels_ctl =
+        add_checkbox("Detect bad pixels:",
+        "",
+        [this](bool checked) {
+          if ( pipeline_ && pipeline_->input_options().filter_bad_pixels != checked ) {
+            pipeline_->input_options().filter_bad_pixels = checked;
+            bad_pixels_variation_threshold_ctl->setEnabled(pipeline_->input_options().filter_bad_pixels);
+            Q_EMIT parameterChanged();
+          }
+        },
+        [this](bool * checked) {
+          if ( pipeline_ ) {
+            * checked = pipeline_->input_options().filter_bad_pixels;
+            return true;
+          }
+          return false;
+        });
+
+    bad_pixels_variation_threshold_ctl =
+        add_numeric_box<double>("bad_pixels_variation:",
+            "",
+            [this](double v) {
+              if ( pipeline_ && pipeline_->input_options().bad_pixels_variation_threshold != v ) {
+                pipeline_->input_options().bad_pixels_variation_threshold = v;
+                bad_pixels_variation_threshold_ctl->setEnabled(pipeline_->input_options().filter_bad_pixels);
+                Q_EMIT parameterChanged();
+              }
+            },
+            [this](double * v) {
+              if ( pipeline_ ) {
+                *v = pipeline_->input_options().bad_pixels_variation_threshold;
+                return true;
+              }
+              return false;
+            });
+
   }
 
   void set_pipeline(pipeline_type * pipeline)
@@ -135,8 +266,25 @@ protected:
 
   QNumericBox * start_frame_index_ctl = nullptr;
   QNumericBox * max_input_frames_ctl = nullptr;
+  QEnumComboBox<DEBAYER_ALGORITHM> * debayer_method_ctl = nullptr;
   QCheckBox * enable_color_maxtrix_ctl = nullptr;
+
   QCheckBox * inpaint_missing_pixels_ctl = nullptr;
+  QCheckBox * missing_pixels_marked_black_ctl = nullptr;
+  QBrowsePathCombo * missing_pixel_mask_filename_ctl = nullptr;
+
+  QBrowsePathCombo * darkbayer_filename_ctl = nullptr;
+  QBrowsePathCombo * flatbayer_filename_ctl = nullptr;
+
+  QCheckBox * detect_bad_asi_frames_ctl = nullptr;
+
+  QCheckBox * filter_bad_pixels_ctl = nullptr;
+  QNumericBox * bad_pixels_variation_threshold_ctl = nullptr;
+
+  QCheckBox * enable_bground_normalization_ctl = nullptr;
+
+  // c_histogram_normalization_options background_normalization_options;
+
 };
 
 #endif /* __QPipelineInputOptions_h__ */

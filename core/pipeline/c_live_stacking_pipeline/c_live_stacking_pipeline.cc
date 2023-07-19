@@ -107,6 +107,7 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
     SERIALIZE_OPTION(section, save, output_options_, save_accumuated_file);
     SERIALIZE_OPTION(section, save, output_options_, output_accumuated_file_name);
+    SERIALIZE_OPTION(section, save, output_options_, display_scale);
   }
 
   return true;
@@ -117,12 +118,42 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
   lock_guard lock(mutex());
 
   if( frame_accumulation_ ) {
-    return frame_accumulation_->compute(display_frame, display_mask);
+    return frame_accumulation_->compute(display_frame, display_mask,
+        output_options_.display_scale);
   }
 
-  if( !current_image_.empty() ) {
-    current_image_.copyTo(display_frame);
-    current_mask_.copyTo(display_mask);
+
+  cv::Mat image, mask;
+
+  if( aligned_image_.empty() ) {
+    image = current_image_;
+    mask = current_mask_;
+  }
+  else {
+    image = aligned_image_;
+    mask = aligned_mask_;
+  }
+
+  if( !image.empty() ) {
+
+    double display_scale =
+        output_options_.display_scale;
+
+    if( display_scale <= 0 && (display_scale = input_display_scale_) <= 0 ) {
+      display_scale = 1;
+    }
+
+    if( display_scale == 1 ) {
+      image.copyTo(display_frame);
+    }
+    else {
+      image.convertTo(display_frame,
+          image.depth(),
+          display_scale);
+    }
+
+    mask.copyTo(display_mask);
+
     return true;
   }
 
@@ -145,6 +176,9 @@ bool c_live_stacking_pipeline::initialize_pipeline()
 
   current_image_.release();
   reference_image_.release();
+  aligned_image_.release();
+
+  input_display_scale_ = -1;
 
   return true;
 }
@@ -258,6 +292,10 @@ bool c_live_stacking_pipeline::run_pipeline()
       break;
     }
 
+    if( input_display_scale_ <= 0 ) {
+      input_display_scale_ = (1 << input_sequence_->bpp());
+    }
+
     if( !process_current_frame() ) {
       CF_ERROR("process_current_frame() fails");
       return false;
@@ -319,22 +357,24 @@ bool c_live_stacking_pipeline::process_current_frame()
       if ( ecc_.rho() < registration_options_.min_rho ) {
         CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
       }
-
-      lock_guard lock(mutex());
-
-      cv::remap(current_image_, current_image_, ecc_.current_remap(),
-          cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-      if ( current_mask_.empty() ) {
-        cv::remap(cv::Mat1b(current_image_.size(), 255), current_mask_, ecc_.current_remap(),
-            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-      }
       else {
-        cv::remap(current_mask_, current_mask_, ecc_.current_remap(),
-            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-      }
 
-      cv::compare(current_mask_, 254, current_mask_, cv::CMP_GE);
+        lock_guard lock(mutex());
+
+        cv::remap(current_image_, aligned_image_, ecc_.current_remap(),
+            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+
+        if ( current_mask_.empty() ) {
+          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecc_.current_remap(),
+              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        }
+        else {
+          cv::remap(current_mask_, aligned_mask_, ecc_.current_remap(),
+              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        }
+
+        cv::compare(aligned_mask_, 254, current_mask_, cv::CMP_GE);
+      }
     }
   }
 
@@ -356,22 +396,38 @@ bool c_live_stacking_pipeline::process_current_frame()
       }
     }
 
-    if( frame_accumulation_->accumulated_frames() < 1 || ecc_.rho() >= registration_options_.min_rho ) {
 
-      if ( accumulation_options_.ignore_input_mask && !registration_options_.enabled ) {
+    cv::Mat image, mask;
 
-        if ( !frame_accumulation_->add(current_image_, cv::noArray()) ) {
-          CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
-              current_image_.cols, current_image_.rows);
+    if( !registration_options_.enabled || frame_accumulation_->accumulated_frames() < 1 ) {
+      image = current_image_;
+      mask = current_mask_;
+    }
+    else if( registration_options_.enabled && ecc_.rho() >= registration_options_.min_rho ) {
+      image = aligned_image_;
+      mask = aligned_mask_;
+    }
+
+    if( !image.empty() ) {
+
+      if( accumulation_options_.ignore_input_mask ) {
+
+        if( !frame_accumulation_->add(image, cv::noArray()) ) {
+          CF_ERROR("frame_accumulation_->add(image.size = %dx%d) fails",
+              image.cols, image.rows);
           return false;
         }
+
       }
       else {
-        if ( !frame_accumulation_->add(current_image_, current_mask_) ) {
-          CF_ERROR("frame_accumulation_->add(current_image_.size = %dx%d) fails",
-              current_image_.cols, current_image_.rows);
+
+        if( !frame_accumulation_->add(image, mask) ) {
+          CF_ERROR("frame_accumulation_->add(image.size = %dx%d channels=%d mask.size=%dx%d channels=%d) fails",
+              image.cols, image.rows, image.channels(),
+              mask.cols, mask.rows, mask.channels());
           return false;
         }
+
       }
     }
   }

@@ -10,6 +10,25 @@
 QLveStackingOutputOptions::QLveStackingOutputOptions(QWidget * parent) :
     Base(parent)
 {
+
+  display_scale_ctl =
+      add_numeric_box<double>("display_scale",
+          "",
+          [this](double v) {
+            if ( options_ && options_->display_scale != v ) {
+              options_->display_scale = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->display_scale;
+              return true;
+            }
+            return false;
+          });
+
+
   save_accumuated_file_ctl =
       add_checkbox("Save processed frames:",
           "",

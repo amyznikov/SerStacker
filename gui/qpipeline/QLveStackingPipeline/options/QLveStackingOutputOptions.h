@@ -25,6 +25,7 @@ protected:
   void onupdatecontrols() override;
 
 protected:
+  QNumericBox * display_scale_ctl = nullptr;
   QCheckBox * save_accumuated_file_ctl = nullptr;
   QLineEditBox * output_accumuated_file_name_ctl = nullptr;
 };

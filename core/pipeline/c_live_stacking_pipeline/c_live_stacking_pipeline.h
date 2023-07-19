@@ -49,6 +49,8 @@ struct c_live_stacking_registration_options
 struct c_live_stacking_output_options:
     c_image_processing_pipeline_output_options
 {
+  double display_scale = -1;
+
   bool save_accumuated_file = true;
   std::string output_accumuated_file_name;
 };
@@ -119,8 +121,6 @@ protected:
   c_live_stacking_accumulation_options accumulation_options_;
   c_live_stacking_output_options output_options_;
 
-  //c_frame_registration::sptr frame_registration_;
-
   c_ecch ecch_;
   c_ecc_forward_additive ecc_;
   c_eccflow eccflow_;
@@ -129,10 +129,13 @@ protected:
 
   c_frame_accumulation::ptr frame_accumulation_;
 
-  cv::Mat current_image_;
-  cv::Mat current_mask_;
   cv::Mat reference_image_;
   cv::Mat reference_mask_;
+  cv::Mat current_image_;
+  cv::Mat current_mask_;
+  cv::Mat aligned_image_;
+  cv::Mat aligned_mask_;
+  double input_display_scale_ = -1;
 };
 
 

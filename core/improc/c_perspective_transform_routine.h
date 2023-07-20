@@ -17,7 +17,7 @@ class c_perspective_transform_routine :
 public:
 
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_perspective_transform_routine,
-      "perspective_transform_", "Apply  to image");
+      "perspective_transform", "Apply  to image");
 
 
   void set_src_point0(const cv::Point2f  & v)

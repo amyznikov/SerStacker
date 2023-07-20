@@ -56,7 +56,7 @@ bool c_perspective_transform_routine::process(cv::InputOutputArray image, cv::In
 
     if( H.empty() ) {
 
-      const cv::Mat H =
+      H =
           cv::getPerspectiveTransform(src_pts,
               dst_pts);
 
@@ -66,7 +66,7 @@ bool c_perspective_transform_routine::process(cv::InputOutputArray image, cv::In
     }
 
     const int remap_flags =
-        cv::INTER_LINEAR|cv::WARP_INVERSE_MAP;
+        cv::INTER_LINEAR;
 
     cv::warpPerspective(image, image, H,
         outImageSize,

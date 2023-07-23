@@ -471,6 +471,84 @@ public:
 
   /////////////////////////////////////////////////////////////////////
 
+  QEnumComboBoxBase * add_enum_combobox_base(QFormLayout * form, const QString & name, const QString & tooltip,
+      const c_enum_member * members, const std::function<void(int)> & setfn = std::function<void(int)>())
+  {
+    typedef QEnumComboBoxBase
+      CombomoxType;
+
+    CombomoxType * ctl =
+        new CombomoxType(members, this);
+
+    ctl->setFocusPolicy(Qt::StrongFocus);
+    ctl->setWhatsThis(tooltip);
+    ctl->setToolTip(tooltip);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QEnumComboBoxBase::currentItemChanged,
+              [this, ctl, setfn](int index) {
+                if ( index >= 0 && !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->itemData(index).toInt());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QEnumComboBoxBase * add_enum_combobox_base(QFormLayout * form, const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  {
+    QEnumComboBoxBase *ctl =
+        add_enum_combobox_base(form, name, tooltip, members, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                int v;
+                if ( getfn(&v) && (v = ctl->findData(v)) >= 0 ) {
+                  ctl->setCurrentIndex(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QEnumComboBoxBase * add_enum_combobox_base(const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
+  {
+    return add_enum_combobox_base(this->form, name, tooltip, members, setfn);
+  }
+
+  QEnumComboBoxBase* add_enum_combobox_base(const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  {
+    return add_enum_combobox_base(this->form, name, tooltip, members, setfn, getfn);
+  }
+
+  /////////////////////////////////////////////////////////////////////
+
   template<class EnumType>
   QFlagsEditBox<EnumType> * add_flags_editbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(int)> & setfn = std::function<void(int)>())
@@ -544,6 +622,81 @@ public:
     return add_flags_editbox<EnumType>(this->form, name, tooltip, setfn, getfn);
   }
 
+  /////////////////////////////////////////////////////////////////////
+
+
+  QFlagsEditBoxBase * add_flags_editbox_base(QFormLayout * form, const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
+  {
+    QFlagsEditBoxBase *ctl =
+        new QFlagsEditBoxBase(members, this);
+
+    ctl->setToolTip(tooltip);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QFlagsEditBoxBase::flagsChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->flags());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QFlagsEditBoxBase * add_flags_editbox_base(QFormLayout * form, const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  {
+    QFlagsEditBoxBase *ctl =
+        add_flags_editbox_base(form, name, tooltip, members, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                int v = 0;
+                if ( getfn(&v) ) {
+                  ctl->setFlags(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+
+  QFlagsEditBoxBase * add_flags_editbox_base(const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
+  {
+    return add_flags_editbox_base(this->form, name, tooltip, members, setfn);
+  }
+
+  QFlagsEditBoxBase * add_flags_editbox_base(const QString & name, const QString & tooltip,
+      const c_enum_member * members,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  {
+    return add_flags_editbox_base(this->form, name, tooltip, members, setfn, getfn);
+  }
 
   /////////////////////////////////////////////////////////////////////
 
@@ -624,12 +777,14 @@ public:
   }
 
   /////////////////////////////////////////////////////////////////////
-  QSpinBox* add_spinbox(QFormLayout * form, const QString & name, const std::function<void(int)> & setfn =
-      std::function<void(int)>())
+  QSpinBox* add_spinbox(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
   {
     QSpinBox *ctl = new QSpinBox();
+
     ctl->setKeyboardTracking(false);
     ctl->setFocusPolicy(Qt::StrongFocus);
+    ctl->setToolTip(tooltip);
 
     form->addRow(name, ctl);
 
@@ -654,11 +809,11 @@ public:
     return ctl;
   }
 
-  QSpinBox* add_spinbox(QFormLayout * form, const QString & name, const std::function<void(int)> & setfn,
-      const std::function<bool(int*)> & getfn)
+  QSpinBox* add_spinbox(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
   {
     QSpinBox *ctl =
-        add_spinbox(form, name, setfn);
+        add_spinbox(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -680,14 +835,16 @@ public:
     return ctl;
   }
 
-  QSpinBox* add_spinbox(const QString & name, const std::function<void(int)> & setfn = std::function<void(int)>())
+  QSpinBox* add_spinbox(const QString & name, const QString & tooltip,
+      const std::function<void(int)> & setfn = std::function<void(int)>())
   {
-    return add_spinbox(this->form, name, setfn);
+    return add_spinbox(this->form, name, tooltip, setfn);
   }
 
-  QSpinBox* add_spinbox(const QString & name, const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
+  QSpinBox* add_spinbox(const QString & name, const QString & tooltip,
+      const std::function<void(int)> & setfn, const std::function<bool(int*)> & getfn)
   {
-    return add_spinbox(this->form, name, setfn, getfn);
+    return add_spinbox(this->form, name, tooltip, setfn, getfn);
   }
 
 

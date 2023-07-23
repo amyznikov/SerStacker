@@ -10,7 +10,6 @@
 #define __QPipelineInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QBrowsePathCombo.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 
 template<class pipeline_type>

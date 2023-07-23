@@ -63,6 +63,7 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
 
   penWidth_ctl =
       add_spinbox("Pen Width:",
+          "",
           [this](int v) {
             if ( shape_ ) {
               shape_->setPenWidth(v);
@@ -79,6 +80,7 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
 
   arrowSize_ctl =
       add_spinbox("Arrow Size:",
+          "",
           [this](int v) {
             if ( shape_ ) {
               shape_->setArrowSize(v);

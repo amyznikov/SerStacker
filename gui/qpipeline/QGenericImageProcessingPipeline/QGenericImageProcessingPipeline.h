@@ -10,10 +10,11 @@
 #define __QGenericImageProcessingPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qimproc/QImageProcessorsCollection.h>
+#include <gui/qpipeline/QPipelineSettingsCtrl.h>
+//#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
-#include "options/QGenericImageProcessorInputOptions.h"
-#include "options/QGenericImageProcessorOutputOptions.h"
+//#include "options/QGenericImageProcessorInputOptions.h"
+//#include "options/QGenericImageProcessorOutputOptions.h"
 
 
 class QGenericImageProcessingPipeline;
@@ -33,9 +34,7 @@ protected:
   void update_pipeline_controls() override;
 
 protected:
-  QGenericImageProcessorInputOptions * inputOptions_ctl = nullptr;
-  QGenericImageProcessorOutputOptions * outputOptions_ctl = nullptr;
-  QImageProcessorSelectionCombo * frame_processor_ctl = nullptr;
+  QPipelineSettingsCtrl * settings_ctl = nullptr;
 };
 
 class QGenericImageProcessingPipeline :

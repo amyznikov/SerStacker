@@ -15,6 +15,8 @@
 #include <core/ssprintf.h>
 #include <atomic>
 
+#include "c_image_processing_pipeline_ctrl.h"
+
 
 struct c_image_processing_pipeline_input_options
 {
@@ -68,6 +70,7 @@ public: // pipeline methods
   virtual void cancel(bool v = true);
   virtual bool canceled() const;
   virtual bool serialize(c_config_setting settings, bool save);
+  // virtual bool get_controls(std::vector<c_image_processing_pipeline_ctrl> & ctrls);
 
   std::mutex & mutex();
 

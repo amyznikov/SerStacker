@@ -200,6 +200,7 @@ typename std::enable_if<std::is_enum<enum_type>::value,
   return "";
 }
 
+
 template<class enum_type>
 typename std::enable_if<std::is_enum<enum_type>::value,
   const char *>::type comment_for(const enum_type & v)
@@ -215,6 +216,35 @@ typename std::enable_if<std::is_enum<enum_type>::value,
     }
   }
   return "";
+}
+
+
+inline const c_enum_member* fromString(const std::string & s, const c_enum_member members[])
+{
+  if( members && !s.empty() ) {
+
+    const char *cs =
+        s.c_str();
+
+    int x;
+
+    if( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
+      for( int i = 0; members[i].name && *members[i].name; ++i ) {
+        if( members[i].value == x ) {
+          return &members[i];
+        }
+      }
+    }
+    else {  // then try string
+      for( int i = 0; members[i].name && *members[i].name; ++i ) {
+        if( strcasecmp(members[i].name, cs) == 0 ) {
+          return &members[i];
+        }
+      }
+    }
+  }
+
+  return nullptr;
 }
 
 template<class enum_type>

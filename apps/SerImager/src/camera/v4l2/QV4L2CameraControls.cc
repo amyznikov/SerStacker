@@ -163,6 +163,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
       QSpinBox *ctrl =
           add_spinbox(c.name,
+              "",
               [this, c](int value) {
                 if ( camera_ ) {
                   int status = camera_->s_ext_ctrl(c.id, value);
@@ -805,7 +806,7 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
       }
       else {
         frameWidth_ctl =
-            add_spinbox("Frame Width:");
+            add_spinbox("Frame Width:", "");
 
         connect(frameWidth_ctl, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             this, &ThisClass::onFrameWidthChanged);
@@ -817,7 +818,7 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
       }
       else {
         frameHeight_ctl =
-            add_spinbox("Frame Height:");
+            add_spinbox("Frame Height:", "");
 
         connect(frameHeight_ctl, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             this, &ThisClass::onFrameHeightChanged);

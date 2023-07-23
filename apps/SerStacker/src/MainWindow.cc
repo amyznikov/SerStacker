@@ -14,6 +14,7 @@
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <gui/qimagesave/QImageSaveOptions.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
+#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/qpipeline/QPipelineThread.h>
 #include <core/io/load_image.h>
@@ -57,6 +58,7 @@ MainWindow::MainWindow()
 
   setWindowIcon(QIcon(":/serstacker/icons/app-icon.png"));
   updateWindowTittle();
+  QImageProcessorsCollection::load();
 
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));

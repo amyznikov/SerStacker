@@ -6,6 +6,8 @@
  */
 
 #include "c_generic_image_processor_pipeline.h"
+#include <type_traits>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 #include <chrono>
 #include <thread>
@@ -199,6 +201,54 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
 
   return true;
 }
+
+const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_pipeline::get_controls()
+{
+  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+
+  if( ctrls.empty() ) {
+
+    ADD_PIPELINE_CTL_BEGIN_GROUP(ctrls, "Input options", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.start_frame_index, "start frame index", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.max_input_frames, "max input frames", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.debayer_method, "debayer method", "");
+
+      ADD_PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.darkbayer_filename, "Dark frame", "");
+      ADD_PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.flatbayer_filename, "Flat frame", "");
+
+      ADD_PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.missing_pixel_mask_filename, "missing pixel mask", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.missing_pixels_marked_black, "missing pixels are black", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.inpaint_missing_pixels, "inpaint missing pixels", "");
+
+      ADD_PIPELINE_CTL(ctrls, input_options_.enable_color_maxtrix, "enable color maxtrix", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.detect_bad_asi_frames, "detect bad asi frames", "");
+
+      ADD_PIPELINE_CTL(ctrls, input_options_.filter_bad_pixels, "filter bad pixels", "");
+      ADD_PIPELINE_CTL(ctrls, input_options_.bad_pixels_variation_threshold, "bad pixels variation", "");
+
+      ADD_PIPELINE_CTL(ctrls, input_options_.enable_bground_normalization, "bground normalization", "");
+      ADD_PIPELINE_CTL2(ctrls, input_options_.background_normalization_options.norm_type, "norm type", "norm type",
+          input_options_.enable_bground_normalization);
+      ADD_PIPELINE_CTL2(ctrls, input_options_.background_normalization_options.stretch, "stretch", "stretch",
+          input_options_.enable_bground_normalization);
+      ADD_PIPELINE_CTL2(ctrls, input_options_.background_normalization_options.offset, "offset", "offset",
+          input_options_.enable_bground_normalization);
+    ADD_PIPELINE_CTL_END_GROUP(ctrls);
+
+    ADD_PIPELINE_CTL_BEGIN_GROUP(ctrls, "Image processing", "");
+      ADD_PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, processing_options_.image_processor, "image_processor", "");
+    ADD_PIPELINE_CTL_END_GROUP(ctrls);
+
+    ADD_PIPELINE_CTL_BEGIN_GROUP(ctrls, "Output options", "");
+      ADD_PIPELINE_CTL(ctrls, output_options_.save_processed_frames, "save_processed_frames", "");
+      ADD_PIPELINE_CTL2(ctrls, output_options_.processed_frames_filename, "processed_frames_filename", "",
+          output_options_.save_processed_frames);
+    ADD_PIPELINE_CTL_END_GROUP(ctrls);
+  }
+
+  return ctrls;
+}
+
 
 bool c_generic_image_processor_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {

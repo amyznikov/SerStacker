@@ -8,6 +8,7 @@
 #include "MainWindow.h"
 #include "camera/ffmpeg/QFFStreams.h"
 #include <gui/qpipeline/QImageProcessingPipeline.h>
+#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -40,6 +41,8 @@ MainWindow::MainWindow(QWidget * parent) :
     Base(parent)
 {
   setWindowIcon(getIcon(":/serimager/icons/app-icon.png"));
+
+  QImageProcessorsCollection::load();
 
   setCentralWidget(centralDisplay_ = new QLiveDisplay(this));
 

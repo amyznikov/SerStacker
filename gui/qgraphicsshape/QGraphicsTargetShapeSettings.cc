@@ -102,6 +102,7 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 
   penWidth_ctl =
       add_spinbox( "Pen Width:",
+          "",
           [this](int v) {
             if ( shape_ ) {
               shape_->setPenWidth(v);

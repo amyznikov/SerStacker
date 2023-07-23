@@ -549,6 +549,12 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
   return true;
 }
 
+
+//bool c_image_processing_pipeline::get_controls(std::vector<c_image_processing_pipeline_ctrl> & ctrls)
+//{
+//  return true;
+//}
+
 void c_image_processing_pipeline::set_display_type(int v)
 {
   display_type_ = v;

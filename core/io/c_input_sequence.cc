@@ -113,14 +113,10 @@ bool c_input_sequence::serialize(c_config_setting settings, bool save)
 
         if ( !e.isGroup() ) {
           e.get(&filename);
-          CF_DEBUG("1 enabled=%d", enabled);
-          CF_DEBUG("1 filename=%s", filename.c_str());
         }
         else {
           e.get("enabled", &enabled);
           e.get("file", &filename);
-          CF_DEBUG("2 enabled=%d", enabled);
-          CF_DEBUG("2 filename=%s", filename.c_str());
         }
 
 
@@ -132,7 +128,6 @@ bool c_input_sequence::serialize(c_config_setting settings, bool save)
           else {
             source->set_enabled(enabled);
             all_sources_.emplace_back(source);
-            CF_DEBUG("3 source->enabled = %d", source->enabled());
           }
         }
       }

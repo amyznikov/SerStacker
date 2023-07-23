@@ -1032,7 +1032,7 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
       cv::merge(channels, cc);
     }
 
-    cv::divide(accumulator_, cc, avg);
+    cv::divide(accumulator_, cc, avg, dscale);
     avg.setTo(0, ~m);
   }
 
@@ -1040,11 +1040,6 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
     mask.move(m);
   }
 
-
-//  if ( !divide_accumulator(accumulator_, counter_, avg, mask, dscale, ddepth) ) {
-//    CF_ERROR("ERROR in weigthed_frame_average: divide_accumulator() fails");
-//    return false;
-//  }
 
   return true;
 }

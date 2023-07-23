@@ -67,8 +67,8 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
       });
 
   penWidth_ctl =
-      add_spinbox(""
-          "Pen Width:",
+      add_spinbox("Pen Width:",
+          "",
           [this](int v) {
             if ( shape_ ) {
               shape_->setPenWidth(v);

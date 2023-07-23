@@ -433,6 +433,7 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 
   num_rounds_ctl =
       add_spinbox("Rounds:",
+          "",
           [this](int value) {
             if ( writer_ ) {
               writer_->setNumRounds(value);
@@ -446,6 +447,7 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 
   interval_between_rounds_ctl =
       add_spinbox("Interval [sec]:",
+          "",
           [this](int value) {
             if ( writer_ ) {
               writer_->setIntervalBetweenRounds(value);

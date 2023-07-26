@@ -13,6 +13,26 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/pipeline/c_image_processing_pipeline_ctrl.h>
 
+class QInputSourceSelectionCombo :
+    public QComboBox
+{
+  Q_OBJECT;
+public:
+  typedef QInputSourceSelectionCombo ThisClass;
+  typedef QComboBox Base;
+
+  QInputSourceSelectionCombo(QWidget * parent = nullptr);
+
+  void setEnableExternalFile(bool v);
+  bool enableExternalFile() const;
+
+  void refreshInputSources(const c_image_processing_pipeline * pipeline);
+
+protected:
+  bool enableExternalFile_ = false;
+};
+
+
 class QPipelineSettingsCtrl :
     public QSettingsWidget
 {
@@ -29,6 +49,8 @@ public:
   void set_pipeline(c_image_processing_pipeline * pipeline);
   c_image_processing_pipeline * pipeline() const;
 
+  void update_pipeline_input_sources();
+
 protected:
   void onupdatecontrols() override;
   void update_control_states();
@@ -36,7 +58,7 @@ protected:
 protected:
   c_image_processing_pipeline * pipeline_ = nullptr;
   std::map<QWidget*, std::function<bool(const c_image_processing_pipeline*)>> state_ctls_;
-
+  QList<QInputSourceSelectionCombo*> inputSourceCombos_;
 };
 
 

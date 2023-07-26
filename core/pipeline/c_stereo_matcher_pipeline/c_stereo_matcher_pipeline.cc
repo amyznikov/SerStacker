@@ -82,12 +82,12 @@ const c_stereo_matcher_input_options & c_stereo_matcher_pipeline::input_options(
   return input_options_;
 }
 
-c_stereo_rectification_options & c_stereo_matcher_pipeline::stereo_rectification_options()
+c_stereo_matcher_stereo_rectification_options & c_stereo_matcher_pipeline::stereo_rectification_options()
 {
   return stereo_rectification_options_;
 }
 
-const c_stereo_rectification_options & c_stereo_matcher_pipeline::stereo_rectification_options() const
+const c_stereo_matcher_stereo_rectification_options & c_stereo_matcher_pipeline::stereo_rectification_options() const
 {
   return stereo_rectification_options_;
 }
@@ -152,7 +152,9 @@ bool c_stereo_matcher_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "stereo_rectification")) ) {
-    stereo_rectification_options_.serialize(settings, save);
+    SERIALIZE_OPTION(section, save, stereo_rectification_options_, enabled);
+    SERIALIZE_OPTION(section, save, stereo_rectification_options_, camera_intrinsics_yml);
+    SERIALIZE_OPTION(section, save, stereo_rectification_options_, camera_extrinsics_yml);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "processing_options")) ) {
@@ -175,6 +177,53 @@ bool c_stereo_matcher_pipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
+const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_matcher_pipeline::get_controls()
+{
+  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+
+  if( ctrls.empty() ) {
+
+    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+      POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls)
+      PIPELINE_CTL_GROUP(ctrls, "Input Sequence", "");
+        POPULATE_PIPELINE_INPUT_OPTIONS(ctrls);
+      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Stereo rectification", "");
+    PIPELINE_CTL(ctrls, stereo_rectification_options_.enabled, "enabled", "");
+    PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, stereo_rectification_options_.camera_intrinsics_yml, "camera_intrinsics_yml", "");
+    PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, stereo_rectification_options_.camera_extrinsics_yml, "camera_extrinsics_yml", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Processing options", "");
+    PIPELINE_CTL(ctrls, processing_options_.camera_focus, "camera_focus", "");
+    PIPELINE_CTL(ctrls, processing_options_.stereo_baseline, "stereo_baseline", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
+    PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.input_image_processor, "input_image_processor", "");
+    PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.remapped_image_processor, "remapped_image_processor", "");
+    PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.output_image_processor, "output_image_processor", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+
+    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+    PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
+    PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+    PIPELINE_CTL(ctrls, output_options_.save_depthmaps, "save_depthmaps", "");
+    PIPELINE_CTLC(ctrls, output_options_.depthmap_filename, "depthmap_filename", "", (_this->output_options_.save_depthmaps));
+    PIPELINE_CTL(ctrls, output_options_.save_cloud3d_image, "save_cloud3d_image", "");
+    PIPELINE_CTLC(ctrls, output_options_.cloud3d_image_filename, "cloud3d_image_filename", "", (_this->output_options_.save_cloud3d_image));
+    PIPELINE_CTL(ctrls, output_options_.save_cloud3d_ply, "save_cloud3d_ply", "");
+    PIPELINE_CTLC(ctrls, output_options_.cloud3d_ply_filename, "cloud3d_ply_filename", "", (_this->output_options_.save_cloud3d_ply));
+    PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+    PIPELINE_CTLC(ctrls, output_options_.progress_video_filename, "progress_video_filename", "", (_this->output_options_.save_progress_video));
+    PIPELINE_CTL_END_GROUP(ctrls);
+  }
+
+  return ctrls;
+}
 
 bool c_stereo_matcher_pipeline::initialize_pipeline()
 {
@@ -601,15 +650,15 @@ bool c_stereo_matcher_pipeline::update_stereo_rectification_remap()
 {
   lock_guard lock(mutex());
 
-  if( !stereo_rectification_options_.enabled() ) {
+  if( !stereo_rectification_options_.enabled ) {
     for( int i = 0; i < 2; ++i ) {
       rmaps_[i].release();
     }
   }
-  else if( rmaps_[0].empty() || rmaps_[1].empty() || stereo_rectification_options_.has_changes() ) {
+  else if( rmaps_[0].empty() || rmaps_[1].empty() ) {
 
     const std::string & camera_intrinsics_yml =
-        stereo_rectification_options_.camera_intrinsics_yml();
+        stereo_rectification_options_.camera_intrinsics_yml;
 
     if( camera_intrinsics_yml.empty() ) {
       CF_ERROR("camera_intrinsics_yml not specified");
@@ -617,7 +666,7 @@ bool c_stereo_matcher_pipeline::update_stereo_rectification_remap()
     }
 
     const std::string & camera_extrinsics_yml =
-        stereo_rectification_options_.camera_extrinsics_yml();
+        stereo_rectification_options_.camera_extrinsics_yml;
 
     if( camera_extrinsics_yml.empty() ) {
       CF_ERROR("camera_extrinsics_yml not specified");
@@ -651,8 +700,6 @@ bool c_stereo_matcher_pipeline::update_stereo_rectification_remap()
       CF_ERROR("create_stereo_rectification() fails");
       return false;
     }
-
-    stereo_rectification_options_.set_has_changes(false);
   }
 
   return true;

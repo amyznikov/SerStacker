@@ -26,4 +26,13 @@ struct c_stereo_input_options:
   bool swap_cameras = false;
 };
 
+#define POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls) \
+    PIPELINE_CTL(ctrls, input_options_.layout_type, "stereo frame layout", "");\
+    PIPELINE_CTL_INPUT_SOURCE_SELECTION(ctrls, input_options_.left_stereo_source, "left stereo source", "", \
+        (_this->input_sequence_ && _this->input_sequence_->sources().size() > 0)); \
+    PIPELINE_CTL_INPUT_SOURCE_SELECTION(ctrls, input_options_.right_stereo_source, "right stereo source", "",\
+        (_this->input_sequence_ && _this->input_sequence_->sources().size() > 1)); \
+    PIPELINE_CTL(ctrls, input_options_.swap_cameras, "swap cameras", ""); \
+
+
 #endif /* __c_stereo_input_options_h__ */

@@ -90,11 +90,8 @@ struct c_chessboard_corners_detection_options
     cv::Size zeroZone =
         cv::Size (-1, -1);
 
-    cv::TermCriteria termCriteria =
-        cv::TermCriteria(cv::TermCriteria::COUNT |
-            cv::TermCriteria::EPS,
-            30,
-            0.01);
+    int max_solver_iterations = 30;
+    double solver_eps = 1e-2;
 
   } cornerSubPix;
 
@@ -105,7 +102,7 @@ struct c_chessboard_corners_detection_options
     double sigmaSpace = 1;
   } bilateralFilter;
 
- };
+};
 
 
 /**

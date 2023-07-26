@@ -20,6 +20,8 @@ struct c_stereo_calibration_input_options :
 {
 };
 
+
+
 struct c_stereo_calibrate_options
 {
   int min_frames = 10;
@@ -29,12 +31,12 @@ struct c_stereo_calibrate_options
   bool auto_tune_calibration_flags = true;
   bool init_camera_matrix_2d = false;
 
-  cv::TermCriteria solverTerm =
-      cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-          50, 1e-7);
-
+  int max_iterations = 50;
+  double solver_eps = 1e-6;
   double filter_alpha = 0.5;
 };
+
+
 
 
 struct c_stereo_calibration_output_options :
@@ -103,6 +105,7 @@ public:
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
+  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
 protected:
   bool initialize_pipeline() override;

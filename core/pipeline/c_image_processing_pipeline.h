@@ -14,7 +14,6 @@
 #include <core/proc/white_balance/histogram_normalization.h>
 #include <core/ssprintf.h>
 #include <atomic>
-
 #include "c_image_processing_pipeline_ctrl.h"
 
 
@@ -40,6 +39,26 @@ struct c_image_processing_pipeline_input_options
   double bad_pixels_variation_threshold = 15;
   c_histogram_normalization_options background_normalization_options;
 };
+
+
+#define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
+  PIPELINE_CTLC(ctrls, input_options_.start_frame_index, "start frame index", "", _this->input_sequence_); \
+  PIPELINE_CTLC(ctrls, input_options_.max_input_frames, "max input frames", "", _this->input_sequence_);\
+  PIPELINE_CTL(ctrls, input_options_.debayer_method, "debayer method", "");\
+  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.darkbayer_filename, "Dark frame", "");\
+  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.flatbayer_filename, "Flat frame", "");\
+  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.missing_pixel_mask_filename, "missing pixel mask", "");\
+  PIPELINE_CTL(ctrls, input_options_.missing_pixels_marked_black, "missing pixels are black", "");\
+  PIPELINE_CTL(ctrls, input_options_.inpaint_missing_pixels, "inpaint missing pixels", "");\
+  PIPELINE_CTL(ctrls, input_options_.enable_color_maxtrix, "enable color maxtrix", "");\
+  PIPELINE_CTL(ctrls, input_options_.detect_bad_asi_frames, "detect bad asi frames", "");\
+  PIPELINE_CTL(ctrls, input_options_.filter_bad_pixels, "filter bad pixels", "");\
+  PIPELINE_CTL(ctrls, input_options_.bad_pixels_variation_threshold, "bad pixels variation", "");\
+  PIPELINE_CTL(ctrls, input_options_.enable_bground_normalization, "bground normalization", "");\
+  PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.norm_type, "norm type", "norm type", _this->input_options_.enable_bground_normalization);\
+  PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.stretch, "stretch", "stretch", _this->input_options_.enable_bground_normalization);\
+  PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.offset, "offset", "offset", _this->input_options_.enable_bground_normalization);\
+
 
 struct c_image_processing_pipeline_output_options
 {

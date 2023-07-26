@@ -10,11 +10,8 @@
 #define __QCameraCalibrationPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
+#include <gui/qpipeline/QPipelineSettingsCtrl.h>
 #include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
-#include <gui/qchessboardcorners/QChessboardCornersDetectionOptions.h>
-#include "options/QCalibrateCameraOptions.h"
-#include "options/QCameraCalibrationInputOptions.h"
-#include "options/QCameraCalibrationOutputOptions.h"
 
 class QCameraCalibrationPipeline;
 class QCameraCalibrationSettingsWidget;
@@ -33,10 +30,7 @@ protected:
   void update_pipeline_controls() override;
 
 protected:
-  QCameraCalibrationInputOptions * inputOptions_ctl = nullptr;
-  QChessboardCornersDetectionOptions * chessboardDetectionOptions_ctl = nullptr;
-  QCalibrateCameraOptions * calibrateCameraOptions_ctl = nullptr;
-  QCameraCalibrationOutputOptions * outputOptions_ctl = nullptr;
+  QPipelineSettingsCtrl * settings_ctl = nullptr;
 };
 
 class QCameraCalibrationPipeline :

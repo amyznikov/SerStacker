@@ -9,12 +9,9 @@
 #ifndef __QStereoCalibrationPipeline_h__
 #define __QStereoCalibrationPipeline_h__
 
-#include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qchessboardcorners/QChessboardCornersDetectionOptions.h>
-#include "options/QStereoCalibrationInputOptions.h"
-#include "options/QStereoCalibrateOptions.h"
-#include "options/QStereoCalibrationOutputOptions.h"
+#include <gui/qpipeline/QPipelineSettingsCtrl.h>
+#include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
 
 class QStereoCalibrationPipeline;
 class QStereoCalibrationSettingsWidget;
@@ -33,10 +30,7 @@ protected:
   void update_pipeline_controls() override;
 
 protected:
-  QStereoCalibrationInputOptions * inputOptions_ctl = nullptr;
-  QChessboardCornersDetectionOptions * chessboardCornersDetection_ctl = nullptr;
-  QStereoCalibrateOptions * stereoCalibrateOptions_ctl = nullptr;
-  QStereoCalibrationOutputOptions * outputOptions_ctl = nullptr;
+  QPipelineSettingsCtrl * settings_ctl = nullptr;
 };
 
 class QStereoCalibrationPipeline :

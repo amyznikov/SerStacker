@@ -156,7 +156,10 @@ bool find_chessboard_corners(cv::InputArray src_image, const cv::Size & boardSiz
         corners,
         options.cornerSubPix.winSize,
         options.cornerSubPix.zeroZone,
-        options.cornerSubPix.termCriteria);
+        cv::TermCriteria( cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+            options.cornerSubPix.max_solver_iterations,
+            options.cornerSubPix.solver_eps
+        ));
   }
 
   return found;
@@ -418,7 +421,8 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
 
     SAVE_OPTION(section, options.cornerSubPix, winSize);
     SAVE_OPTION(section, options.cornerSubPix, zeroZone);
-    SAVE_OPTION(section, options.cornerSubPix, termCriteria);
+    SAVE_OPTION(section, options.cornerSubPix, max_solver_iterations);
+    SAVE_OPTION(section, options.cornerSubPix, solver_eps);
   }
 
   if( (section = settings.add_group("bilateralFilter")) ) {
@@ -454,7 +458,8 @@ bool load_settings(c_config_setting settings, c_chessboard_corners_detection_opt
 
     LOAD_OPTION(settings, options->cornerSubPix, winSize);
     LOAD_OPTION(settings, options->cornerSubPix, zeroZone);
-    LOAD_OPTION(settings, options->cornerSubPix, termCriteria);
+    LOAD_OPTION(settings, options->cornerSubPix, max_solver_iterations);
+    LOAD_OPTION(settings, options->cornerSubPix, solver_eps);
   }
 
   if ( (section = settings["bilateralFilter"]).isGroup() ) {

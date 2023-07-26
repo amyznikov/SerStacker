@@ -101,11 +101,13 @@ struct c_frame_upscale_options
   enum frame_upscale_option upscale_option = frame_upscale_none;
   enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
 
-  bool need_upscale_before_align() const {
+  bool need_upscale_before_align() const
+  {
     return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_before_align;
   }
 
-  bool need_upscale_after_align() const {
+  bool need_upscale_after_align() const
+  {
     return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
   }
 
@@ -265,6 +267,7 @@ public:
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
+  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
   bool copyParameters(const c_image_processing_pipeline::sptr & dst) override;
 

@@ -113,6 +113,40 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
+const std::vector<c_image_processing_pipeline_ctrl>& c_live_stacking_pipeline::get_controls()
+{
+  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+
+  if( ctrls.empty() ) {
+
+    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+    POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
+    PIPELINE_CTL(ctrls, registration_options_.enabled, "enabled", "");
+    PIPELINE_CTL(ctrls, registration_options_.minimum_image_size, "minimum_image_size", "");
+    PIPELINE_CTL(ctrls, registration_options_.min_rho, "min_rho", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Accumulation options", "");
+    PIPELINE_CTL(ctrls, accumulation_options_.accumulation_type, "accumulation method", "");
+    PIPELINE_CTL(ctrls, accumulation_options_.ignore_input_mask, "ignore input mask", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+    PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
+    PIPELINE_CTL(ctrls, output_options_.display_scale, "display_scale", "");
+    PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+    PIPELINE_CTL(ctrls, output_options_.save_accumuated_file, "save_accumuated_file", "");
+    PIPELINE_CTLC(ctrls, output_options_.output_accumuated_file_name, "accumuated_file_name", "", _this->output_options_.save_accumuated_file);
+    PIPELINE_CTL_END_GROUP(ctrls);
+  }
+
+  return ctrls;
+}
+
+
 bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   double display_scale =

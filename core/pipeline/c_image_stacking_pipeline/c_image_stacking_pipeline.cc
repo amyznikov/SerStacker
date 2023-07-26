@@ -3255,6 +3255,149 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
+const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline::get_controls()
+{
+  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+
+  if( ctrls.empty() ) {
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+      PIPELINE_CTL(ctrls, input_options_.anscombe, "", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "ROI options", "");
+    PIPELINE_CTL(ctrls, roi_selection_options_.method, "", "");
+    PIPELINE_CTLC(ctrls, roi_selection_options_.planetary_disk_crop_size, "", "",
+        (_this->roi_selection_options_.method == roi_selection_planetary_disk));
+    PIPELINE_CTLC(ctrls, roi_selection_options_.planetary_disk_gbsigma, "", "",
+        (_this->roi_selection_options_.method == roi_selection_planetary_disk));
+    PIPELINE_CTLC(ctrls, roi_selection_options_.planetary_disk_stdev_factor, "", "",
+        (_this->roi_selection_options_.method == roi_selection_planetary_disk));
+    PIPELINE_CTLC(ctrls, roi_selection_options_.rectangle_roi_selection, "", "",
+        (_this->roi_selection_options_.method == roi_selection_rectange_crop));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "Upscale options", "");
+    PIPELINE_CTL(ctrls, upscale_options_.upscale_option, "", "");
+    PIPELINE_CTLC(ctrls, upscale_options_.upscale_stage, "", "",
+        (_this->upscale_options_.upscale_option != frame_upscale_none));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "Frame registration", "");
+      PIPELINE_CTL(ctrls, frame_registration_options_.image_registration_options.enable_frame_registration, "enable_registration", "");
+      PIPELINE_CTL_GROUP(ctrls, "Master frame options", "");
+
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.master_selection_method, "master_selection", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.apply_input_frame_processors, "apply input processor", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.generate_master_frame, "generate_master_frame", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.max_frames_to_generate_master_frame, "max_frames_to_generate_master_frame", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration &&
+                _this->frame_registration_options_.master_frame_options.generate_master_frame));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.eccflow_scale, "eccflow_scale", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration &&
+                _this->frame_registration_options_.master_frame_options.generate_master_frame));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.master_sharpen_factor, "master_sharpen_factor", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration &&
+                _this->frame_registration_options_.master_frame_options.generate_master_frame));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.accumulated_sharpen_factor, "accumulated_sharpen_factor", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration &&
+                _this->frame_registration_options_.master_frame_options.generate_master_frame));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.master_frame_options.save_master_frame, "save_master_frame", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration &&
+                _this->frame_registration_options_.master_frame_options.generate_master_frame));
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
+        PIPELINE_CTLC(ctrls, frame_registration_options_.image_registration_options.motion_type, "", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.image_registration_options.registration_channel, "", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.image_registration_options.interpolation, "", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.image_registration_options.border_mode, "", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.image_registration_options.border_value, "", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+        PIPELINE_CTLC(ctrls, frame_registration_options_.accumulate_and_compensate_turbulent_flow, "", "",
+            (_this->frame_registration_options_.image_registration_options.enable_frame_registration));
+      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
+    ////////
+
+    PIPELINE_CTL_GROUP(ctrls, "Frame accumulation", "");
+    // c_frame_accumulation_options accumulation_options_;
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
+      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_image_processor, "", "");
+      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.ecc_image_processor, "", "");
+      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.aligned_image_processor, "", "");
+      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.incremental_frame_processor, "", "");
+      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.accumulated_image_processor, "", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    ////////
+
+    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+    PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
+    PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+
+    PIPELINE_CTL(ctrls, output_options_.save_preprocessed_frames, "save_preprocessed_frames", "");
+    PIPELINE_CTL(ctrls, output_options_.save_preprocessed_frame_mapping, "save_preprocessed_frame_mapping", "");
+    PIPELINE_CTL(ctrls, output_options_.output_preprocessed_frames_filename, "preprocessed_frames_filename", "");
+
+    PIPELINE_CTL(ctrls, output_options_.save_aligned_frames, "save_aligned_frames", "");
+    PIPELINE_CTLC(ctrls, output_options_.save_aligned_frame_mapping, "save_aligned_frame_mapping", "",
+        (_this->output_options_.save_aligned_frames));
+    PIPELINE_CTLC(ctrls, output_options_.output_aligned_frames_filename, "aligned_frames_filename", "",
+        (_this->output_options_.save_aligned_frames));
+
+    PIPELINE_CTL(ctrls, output_options_.save_ecc_frames, "save_ecc_frames", "");
+    PIPELINE_CTLC(ctrls, output_options_.save_ecc_frame_mapping, "save_ecc_frame_mapping", "",
+        (_this->output_options_.save_ecc_frames));
+    PIPELINE_CTLC(ctrls, output_options_.output_ecc_frames_filename, "ecc_frames_filename", "",
+        (_this->output_options_.save_ecc_frames));
+
+    PIPELINE_CTL(ctrls, output_options_.save_processed_aligned_frames, "save_processed_aligned_frames", "");
+    PIPELINE_CTLC(ctrls, output_options_.save_processed_aligned_frame_mapping, "save_processed_aligned_frame_mapping", "",
+        (_this->output_options_.save_processed_aligned_frames));
+    PIPELINE_CTLC(ctrls, output_options_.output_postprocessed_frames_filename, "postprocessed_frames_filename", "",
+        (_this->output_options_.save_processed_aligned_frames));
+
+    PIPELINE_CTL(ctrls, output_options_.save_incremental_frames, "save_incremental_frames", "");
+    PIPELINE_CTLC(ctrls, output_options_.save_incremental_frame_mapping, "save_incremental_frame_mapping", "",
+        (_this->output_options_.save_incremental_frames));
+    PIPELINE_CTLC(ctrls, output_options_.output_incremental_frames_filename, "incremental_frames_filename", "",
+        (_this->output_options_.save_incremental_frames));
+
+    PIPELINE_CTL(ctrls, output_options_.save_accumulation_masks, "save_accumulation_masks", "");
+    PIPELINE_CTLC(ctrls, output_options_.save_accumulation_masks_frame_mapping, "save_accumulation_masks_frame_mapping", "",
+        (_this->output_options_.save_accumulation_masks));
+    PIPELINE_CTLC(ctrls, output_options_.output_accumulation_masks_filename, "accumulation_masks_filename", "",
+        (_this->output_options_.save_accumulation_masks));
+
+    PIPELINE_CTL(ctrls, output_options_.write_image_mask_as_alpha_channel, "write_image_mask_as_alpha_channel", "");
+
+    PIPELINE_CTL(ctrls, output_options_.dump_reference_data_for_debug, "dump_reference_data_for_debug", "");
+    PIPELINE_CTL(ctrls, output_options_.debug_frame_registration, "debug_frame_registration", "");
+    PIPELINE_CTLC(ctrls, output_options_.debug_frame_registration_frame_indexes, "debug_frame_registration_frame_indexes", "",
+        (_this->output_options_.debug_frame_registration));
+
+    PIPELINE_CTL_END_GROUP(ctrls);
+    ////////
+  }
+
+  return ctrls;
+}
 
 bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline::sptr & dst)
 {

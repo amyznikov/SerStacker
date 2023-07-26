@@ -11,10 +11,7 @@
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/qpipeline/QPipelineSettingsCtrl.h>
-//#include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
-//#include "options/QGenericImageProcessorInputOptions.h"
-//#include "options/QGenericImageProcessorOutputOptions.h"
 
 
 class QGenericImageProcessingPipeline;

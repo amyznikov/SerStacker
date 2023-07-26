@@ -133,32 +133,22 @@ public:
 
   void set_max_iterations(int v)
   {
-    if( (options_.cornerSubPix.termCriteria.maxCount = v) > 0 ) {
-      options_.cornerSubPix.termCriteria.type |= cv::TermCriteria::COUNT;
-    }
-    else {
-      options_.cornerSubPix.termCriteria.type &= ~cv::TermCriteria::COUNT;
-    }
+    options_.cornerSubPix.max_solver_iterations = v;
   }
 
   int max_iterations() const
   {
-    return options_.cornerSubPix.termCriteria.maxCount;
+    return options_.cornerSubPix.max_solver_iterations;
   }
 
   void set_eps(double v)
   {
-    if( (options_.cornerSubPix.termCriteria.epsilon = v) >= 0 ) {
-      options_.cornerSubPix.termCriteria.type |= cv::TermCriteria::EPS;
-    }
-    else {
-      options_.cornerSubPix.termCriteria.type &= ~cv::TermCriteria::EPS;
-    }
+    options_.cornerSubPix.solver_eps = v;
   }
 
   double eps() const
   {
-    return options_.cornerSubPix.termCriteria.epsilon;
+    return options_.cornerSubPix.solver_eps;
   }
 
   void set_bilateralFilter_d(int v)
@@ -263,7 +253,8 @@ public:
 
         SERIALIZE_OPTION(section, save, options_.cornerSubPix, winSize);
         SERIALIZE_OPTION(section, save, options_.cornerSubPix, zeroZone);
-        SERIALIZE_OPTION(section, save, options_.cornerSubPix, termCriteria);
+        SERIALIZE_OPTION(section, save, options_.cornerSubPix, max_solver_iterations);
+        SERIALIZE_OPTION(section, save, options_.cornerSubPix, solver_eps);
       }
 
       if ( (section = SERIALIZE_GROUP(settings, save, "bilateralFilter")) ) {

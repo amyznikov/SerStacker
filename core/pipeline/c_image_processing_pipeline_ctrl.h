@@ -11,6 +11,7 @@
 
 #include <core/settings/opencv_settings.h>
 #include <core/improc/c_image_processor.h>
+#include <core/ssprintf.h>
 
 class c_image_processing_pipeline;
 
@@ -19,13 +20,13 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_end_group,
   c_image_processor_pipeline_ctl_numeric_box,
   c_image_processor_pipeline_ctl_enum_combobox,
-  // c_image_processor_pipeline_ctl_enum_textbox,
   c_image_processor_pipeline_ctl_spinbox,
   c_image_processor_pipeline_ctl_check_box,
   c_image_processor_pipeline_ctl_flags_chkbox,
   c_image_processor_pipeline_ctl_browse_for_existing_file,
   c_image_processor_pipeline_ctl_browse_for_directory,
   c_image_processor_pipeline_ctl_image_processor_selection_combo,
+  c_image_processor_pipeline_ctl_input_source_selection_combo,
 };
 
 
@@ -46,7 +47,7 @@ struct c_image_processing_pipeline_ctrl
 };
 
 
-#define ADD_PIPELINE_CTL_BEGIN_GROUP(ctrls, _name, _tooltip ) \
+#define PIPELINE_CTL_GROUP(ctrls, _name, _tooltip ) \
   if ( true ) { \
     c_image_processing_pipeline_ctrl ctl; \
     ctl.type = c_image_processor_pipeline_ctl_begin_group; \
@@ -55,14 +56,14 @@ struct c_image_processing_pipeline_ctrl
     ctrls.emplace_back(ctl);\
   }
 
-#define ADD_PIPELINE_CTL_END_GROUP(ctrls) \
+#define PIPELINE_CTL_END_GROUP(ctrls) \
   if ( true ) { \
     c_image_processing_pipeline_ctrl ctl; \
     ctl.type = c_image_processor_pipeline_ctl_end_group; \
     ctrls.emplace_back(ctl);\
   }
 
-#define ADD_PIPELINE_CTL(ctrls, c, _name, _tooltip ) \
+#define PIPELINE_CTL(ctrls, c, _name, _tooltip ) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.name = _name; \
@@ -94,11 +95,7 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
-//else if
-////      ctl.type = ; \
-
-
-#define ADD_PIPELINE_CTL2(ctrls, c, _name, _tooltip, _is_enabed) \
+#define PIPELINE_CTLC(ctrls, c, _name, _tooltip, _cond) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.name = _name; \
@@ -130,12 +127,37 @@ struct c_image_processing_pipeline_ctrl
       ctl.is_enabled = \
           [](const c_image_processing_pipeline * p) -> bool { \
             const this_class * _this = dynamic_cast<const this_class * >(p); \
-            return _this ? _this->_is_enabed ? true : false : false; \
+            return (_this) && (_cond); \
           }; \
       ctrls.emplace_back(ctl); \
     }
 
-#define ADD_PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, c, _name, _tooltip ) \
+
+#define PIPELINE_CTL_BITFLAGS(ctrls, c, enum_type, _name, _tooltip ) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.name = _name; \
+      ctl.tooltip = _tooltip; \
+      ctl.type = c_image_processor_pipeline_ctl_flags_chkbox; \
+      ctl.get_enum_members = get_members_of<enum_type>(); \
+      ctl.set_value = \
+          [](c_image_processing_pipeline * p, const std::string & v) { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? _this->c = flagsFromString<enum_type>(v), true : false; \
+          }; \
+      ctl.get_value = \
+          [](const c_image_processing_pipeline * p, std::string * v) { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            if ( _this ) { \
+              *v = flagsToString<enum_type>(_this->c); \
+              return true; \
+            } \
+            return false; \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+#define PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, c, _name, _tooltip ) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.name = _name; \
@@ -158,7 +180,7 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
-#define ADD_PIPELINE_CTL_BROWSE_FOR_DIRECTORY(ctrls, c, _name, _tooltip ) \
+#define PIPELINE_CTL_BROWSE_FOR_DIRECTORY(ctrls, c, _name, _tooltip ) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.name = _name; \
@@ -181,7 +203,7 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
-#define ADD_PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, c, _name, _tooltip ) \
+#define PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, c, _name, _tooltip ) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.name = _name; \
@@ -191,7 +213,7 @@ struct c_image_processing_pipeline_ctrl
           [](const c_image_processing_pipeline * p) -> const c_image_processor::sptr & { \
             static const c_image_processor::sptr null_processor; \
             const this_class * _this = dynamic_cast<const this_class * >(p); \
-            return  ( _this ? _this->c :  null_processor); \
+            return  (_this ? _this->c :  null_processor); \
           }; \
       ctl.set_processor = \
           [](c_image_processing_pipeline * p, const c_image_processor::sptr & v) { \
@@ -200,6 +222,37 @@ struct c_image_processing_pipeline_ctrl
           }; \
       ctrls.emplace_back(ctl); \
     }
-//
+
+
+#define PIPELINE_CTL_INPUT_SOURCE_SELECTION(ctrls, c, _name, _tooltip, _cond ) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.name = _name; \
+      ctl.tooltip = _tooltip; \
+      ctl.type = c_image_processor_pipeline_ctl_input_source_selection_combo; \
+      ctl.get_value = \
+          [](const c_image_processing_pipeline * p, std::string * v) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            if ( _this ) { \
+              *v = _this->c; \
+              return true; \
+            } \
+            return false; \
+          }; \
+      ctl.set_value = \
+          [](c_image_processing_pipeline * p, const std::string & v) { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? _this->c = v, true : false; \
+          }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+
+
 
 #endif /* __c_image_processing_pipeline_ctrl_h__ */

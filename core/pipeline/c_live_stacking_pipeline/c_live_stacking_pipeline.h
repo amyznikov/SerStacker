@@ -22,6 +22,15 @@ struct c_live_stacking_input_options:
 };
 
 
+struct c_live_stacking_registration_options
+{
+  bool enabled = false;
+  int minimum_image_size = 32;
+  double min_rho = 0.7;
+};
+
+
+
 enum live_stacking_accumulation_type
 {
   live_stacking_accumulation_disable,
@@ -37,13 +46,6 @@ struct c_live_stacking_accumulation_options
   bool ignore_input_mask = true;
 };
 
-
-struct c_live_stacking_registration_options
-{
-  bool enabled = false;
-  int minimum_image_size = 32;
-  double min_rho = 0.7;
-};
 
 
 struct c_live_stacking_output_options:
@@ -102,6 +104,7 @@ public:
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
+  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
 protected:
   bool initialize_pipeline() override;

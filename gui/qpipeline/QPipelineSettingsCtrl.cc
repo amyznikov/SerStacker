@@ -9,6 +9,54 @@
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <core/ssprintf.h>
 
+///////////////////////////////////////////////////////////////////////////////
+
+
+QInputSourceSelectionCombo::QInputSourceSelectionCombo(QWidget * parent) :
+  Base(parent)
+{
+  setEditable(false);
+}
+
+void QInputSourceSelectionCombo::setEnableExternalFile(bool v)
+{
+  enableExternalFile_ = v;
+}
+
+bool QInputSourceSelectionCombo::enableExternalFile() const
+{
+  return enableExternalFile_;
+}
+
+void QInputSourceSelectionCombo::refreshInputSources(const c_image_processing_pipeline * pipeline)
+{
+  Base::clear();
+
+  if ( !pipeline ) {
+    setEnabled(false);
+    return;
+  }
+
+  const c_input_sequence::sptr & input_sequence =
+      pipeline->input_sequence();
+
+  if ( !input_sequence ) {
+    setEnabled(false);
+    return;
+  }
+
+  for ( const c_input_source::sptr & source : input_sequence->sources() ) {
+    Base::addItem(QFileInfo(source->cfilename()).fileName(), QString(source->cfilename()));
+  }
+
+  if ( enableExternalFile_ ) {
+    Base::addItem("Browse...");
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
 QPipelineSettingsCtrl::QPipelineSettingsCtrl(QWidget * parent) :
   Base("", parent)
 {
@@ -29,6 +77,7 @@ QPipelineSettingsCtrl::QPipelineSettingsCtrl(const std::vector<c_image_processin
 void QPipelineSettingsCtrl::set_pipeline(c_image_processing_pipeline * pipeline)
 {
   pipeline_ = pipeline;
+  update_pipeline_input_sources();
   updateControls();
 }
 
@@ -57,6 +106,14 @@ void QPipelineSettingsCtrl::update_control_states()
       const std::function<bool(const c_image_processing_pipeline*)> &is_enabled = p.second;
       w->setEnabled(is_enabled(pipeline_));
     }
+  }
+}
+
+
+void QPipelineSettingsCtrl::update_pipeline_input_sources()
+{
+  for ( QInputSourceSelectionCombo * combo : inputSourceCombos_ ) {
+    combo->refreshInputSources(pipeline_);
   }
 }
 
@@ -309,7 +366,7 @@ void QPipelineSettingsCtrl::setup_controls(const std::vector<c_image_processing_
       /////////////////////
       case c_image_processor_pipeline_ctl_image_processor_selection_combo: {
 
-        QWidget *w =
+        QImageProcessorSelectionCombo *w =
             currentsettings->add_combobox<QImageProcessorSelectionCombo>(ctrl.name.c_str(),
                 ctrl.tooltip.c_str(),
                 [this, ctrl](int index, QImageProcessorSelectionCombo * combo) {
@@ -325,6 +382,35 @@ void QPipelineSettingsCtrl::setup_controls(const std::vector<c_image_processing_
                   }
                   return false;
                 });
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+      /////////////////////
+
+      case c_image_processor_pipeline_ctl_input_source_selection_combo: {
+
+        QInputSourceSelectionCombo *w =
+            currentsettings->add_combobox<QInputSourceSelectionCombo>(ctrl.name.c_str(),
+                ctrl.tooltip.c_str(),
+                [this, ctrl](int index, QInputSourceSelectionCombo * combo) {
+                  if( ctrl.set_value && ctrl.set_value(pipeline_, combo->itemData(index).toString().toStdString()) ) {
+                    Q_EMIT parameterChanged();
+                  }
+                },
+                [this, ctrl](int * index, QInputSourceSelectionCombo * combo) -> bool {
+                  std::string s;
+                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s)) {
+                    combo->setCurrentIndex(combo->findData(QString(s.c_str())));
+                  }
+                  return false;
+                });
+
+        inputSourceCombos_.append(w);
 
         if( ctrl.is_enabled ) {
           state_ctls_.emplace(w, ctrl.is_enabled);

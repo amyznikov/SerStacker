@@ -10,20 +10,23 @@
 #define __c_stereo_matcher_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo.h>
-#include <core/pipeline/stereo/c_stereo_rectification_options.h>
+#include <core/pipeline/stereo/c_stereo_input_options.h>
+#include <core/proc/stereo/c_regular_stereo_matcher.h>
+#include <core/proc/camera_calibration/stereo_calibrate.h>
+//#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo.h>
+//#include <core/pipeline/stereo/c_stereo_rectification_options.h>
 #include <core/io/c_stereo_input.h>
 
 struct c_stereo_matcher_input_options:
-    c_image_processing_pipeline_input_options
+    c_stereo_input_options
 {
-  stereo_input_frame_layout_type layout_type =
-      stereo_frame_layout_horizontal;
+};
 
-  std::string left_stereo_source;
-  std::string right_stereo_source;
-
-  bool swap_cameras = false;
+struct c_stereo_matcher_stereo_rectification_options
+{
+  std::string camera_intrinsics_yml;
+  std::string camera_extrinsics_yml;
+  bool enabled = false;
 };
 
 struct c_stereo_matcher_processing_options
@@ -97,8 +100,8 @@ public:
   c_stereo_matcher_input_options & input_options();
   const c_stereo_matcher_input_options & input_options() const;
 
-  c_stereo_rectification_options & stereo_rectification_options();
-  const c_stereo_rectification_options & stereo_rectification_options() const;
+  c_stereo_matcher_stereo_rectification_options & stereo_rectification_options();
+  const c_stereo_matcher_stereo_rectification_options & stereo_rectification_options() const;
 
   c_stereo_matcher_processing_options & processing_options();
   const c_stereo_matcher_processing_options & processing_options() const ;
@@ -115,6 +118,7 @@ public:
   const c_enum_member * get_display_types() const override;
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting settings, bool save) override;
+  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
 
 protected:
@@ -133,7 +137,7 @@ protected:
 protected:
   c_stereo_input_source input_;
   c_stereo_matcher_input_options input_options_;
-  c_stereo_rectification_options stereo_rectification_options_;
+  c_stereo_matcher_stereo_rectification_options stereo_rectification_options_;
   c_stereo_matcher_processing_options processing_options_;
   c_stereo_matcher_image_processing_options image_processing_options_;
   c_stereo_matcher_output_options output_options_;

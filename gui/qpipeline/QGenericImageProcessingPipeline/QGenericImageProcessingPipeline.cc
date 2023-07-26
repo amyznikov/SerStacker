@@ -12,70 +12,21 @@
 QGenericImageProcessingSettingsWidget::QGenericImageProcessingSettingsWidget(QWidget * parent) :
   ThisClass("", parent)
 {
+  updateControls();
 }
 
 QGenericImageProcessingSettingsWidget::QGenericImageProcessingSettingsWidget(const QString & prefix, QWidget * parent) :
     Base(prefix, parent)
 {
-  ///
   addRow(settings_ctl = new QPipelineSettingsCtrl(c_generic_image_processor_pipeline::get_controls(), this));
   connect(settings_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
-
-//
-//  add_expandable_groupbox("Input options",
-//      inputOptions_ctl = new QGenericImageProcessorInputOptions());
-//
-//  connect(inputOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-//
-//  ///
-//
-//  add_expandable_groupbox("Output options",
-//      outputOptions_ctl = new QGenericImageProcessorOutputOptions());
-//
-//  connect(outputOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-
-  ///
-
-//  frame_processor_ctl =
-//      add_combobox<QImageProcessorSelectionCombo>("Image processor:",
-//          "",
-//          [this](int index, QImageProcessorSelectionCombo * combo) {
-//            if( pipeline_ ) {
-//              pipeline_->processing_options().image_processor =
-//                  combo->processor(index);
-//              Q_EMIT parameterChanged();
-//            }
-//          });
-
-  ///
 
   updateControls();
 }
 
 void QGenericImageProcessingSettingsWidget::update_pipeline_controls()
 {
-
+  settings_ctl->set_pipeline(pipeline_);
   Base::update_pipeline_controls();
-
-  if( !pipeline_ ) {
-    settings_ctl->set_pipeline(nullptr);
-//    inputOptions_ctl->set_pipeline(nullptr);
-//    outputOptions_ctl->set_output_options(nullptr);
-  }
-  else {
-    settings_ctl->set_pipeline(pipeline_);
-
-//    inputOptions_ctl->set_pipeline(pipeline_);
-//    outputOptions_ctl->set_output_options(&pipeline_->output_options());
-
-//    c_generic_image_processor_options &processing_options =
-//        pipeline_->processing_options();
-//
-//    if( !frame_processor_ctl->setCurrentProcessor(processing_options.image_processor) ) {
-//      processing_options.image_processor.reset();
-//    }
-  }
 }

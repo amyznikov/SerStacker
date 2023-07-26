@@ -190,7 +190,8 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_OPTION(section, save, calibration_options_, calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, auto_tune_calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, init_camera_matrix_2d);
-    SERIALIZE_OPTION(section, save, calibration_options_, solverTerm);
+    SERIALIZE_OPTION(section, save, calibration_options_, max_iterations);
+    SERIALIZE_OPTION(section, save, calibration_options_, solver_eps);
     SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
   }
 
@@ -209,6 +210,75 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
 
   return true;
 }
+
+const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipeline::get_controls()
+{
+  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+
+  if( ctrls.empty() ) {
+
+    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.method, "Method", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_size, "chessboard_size", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_cell_size, "chessboard_cell_size", "");
+
+      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_. findChessboardCorners.max_scales, "max_scales", "");
+      PIPELINE_CTL_BITFLAGS(ctrls, chessboard_detection_options_.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.findChessboardCornersSB.max_scales, "max_scales", "");
+      PIPELINE_CTL_BITFLAGS(ctrls, chessboard_detection_options_.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.winSize, "winSize", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.zeroZone, "zeroZone", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.solver_eps, "solver_eps", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.d, "d", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.sigmaColor, "sigmaColor", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.sigmaSpace, "sigmaSpace", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Calibration options", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.enable_calibration, "enable_calibration", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.min_frames, "min_frames", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.max_frames, "max_frames", "");
+    PIPELINE_CTL_BITFLAGS(ctrls, calibration_options_.calibration_flags, CAMERA_CALIBRATION_FLAGS,  "calibration flags", "" );
+    PIPELINE_CTL(ctrls,  calibration_options_.auto_tune_calibration_flags, "auto_tune_calibration_flags", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.init_camera_matrix_2d, "init_camera_matrix_2d", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.max_iterations, "max_iterations", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.solver_eps, "solver_eps", "");
+    PIPELINE_CTL(ctrls,  calibration_options_.filter_alpha, "filter_alpha", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+    PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
+    PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+    PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "intrinsics_filename", "");
+    PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
+    PIPELINE_CTLC(ctrls, output_options_.chessboard_frames_filename, "", "", _this->output_options_.save_chessboard_frames);
+    PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
+    PIPELINE_CTLC(ctrls, output_options_.rectified_frames_filename, "rectified_frames_filename", "", _this->output_options_.save_rectified_frames);
+    PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+    PIPELINE_CTLC(ctrls, output_options_.progress_video_filename, "", "", _this->output_options_.save_progress_video);
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+  }
+
+  return ctrls;
+}
+
 
 bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     cv::Mat & output_image, cv::Mat & output_mask)
@@ -795,7 +865,9 @@ bool c_camera_calibration_pipeline::update_calibration()
           image_points_,
           current_intrinsics_,
           current_calibration_flags_,
-          calibration_options_.solverTerm,
+          cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+              calibration_options_.max_iterations,
+              calibration_options_.solver_eps),
           nullptr,
           nullptr,
           &stdDeviations_,

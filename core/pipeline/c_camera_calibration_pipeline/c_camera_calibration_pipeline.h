@@ -31,9 +31,11 @@ struct c_calibrate_camera_options
   bool auto_tune_calibration_flags = true;
   bool init_camera_matrix_2d = true;
 
-  cv::TermCriteria solverTerm =
-      cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-          50, 1e-7);
+  int max_iterations = 30;
+  double solver_eps = 1e-6;
+//  cv::TermCriteria solverTerm =
+//      cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+//          50, 1e-7);
 
   double filter_alpha = 0.5;
 };
@@ -99,6 +101,7 @@ public:
 
   bool serialize(c_config_setting setting, bool save) override;
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
+  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
 protected:
   bool initialize_pipeline()override;

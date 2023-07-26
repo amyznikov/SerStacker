@@ -99,7 +99,8 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_OPTION(section, save, calibration_options_, calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, auto_tune_calibration_flags);
     SERIALIZE_OPTION(section, save, calibration_options_, init_camera_matrix_2d);
-    SERIALIZE_OPTION(section, save, calibration_options_, solverTerm);
+    SERIALIZE_OPTION(section, save, calibration_options_, max_iterations );
+    SERIALIZE_OPTION(section, save, calibration_options_, solver_eps );
     SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
   }
 
@@ -128,119 +129,84 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
   return true;
 }
 
-//bool c_stereo_calibration_pipeline::read_input_frame(const c_input_source::sptr & source, cv::Mat & output_image, cv::Mat & output_mask) const
-//{
-//  INSTRUMENT_REGION("");
-//
-//  enum COLORID colorid = COLORID_UNKNOWN;
-//  int bpp = 0;
-//
-//
-//  if ( !source->read(output_image, &colorid, &bpp) ) {
-//    CF_FATAL("source->read() fails\n");
-//    return false;
-//  }
-//
-//  if ( is_bayer_pattern(colorid) ) {
-//
-//    DEBAYER_ALGORITHM algo =
-//        default_debayer_algorithm();
-//
-//    switch (algo) {
-//
-//      case DEBAYER_DISABLE:
-//        if( output_image.depth() != CV_8U ) {
-//          output_image.convertTo(output_image, CV_8U,
-//              255. / ((1 << bpp)));
-//        }
-//        break;
-//
-//      case DEBAYER_NN:
-//        case DEBAYER_VNG:
-//        case DEBAYER_EA:
-//        if( !debayer(output_image, output_image, colorid, algo) ) {
-//          CF_ERROR("debayer() fails");
-//          return false;
-//        }
-//        if( output_image.depth() != CV_8U ) {
-//          output_image.convertTo(output_image, CV_8U,
-//              255. / ((1 << bpp)));
-//        }
-//        break;
-//
-//      case DEBAYER_NN2:
-//        case DEBAYER_NNR:
-//        if( !extract_bayer_planes(output_image, output_image, colorid) ) {
-//          CF_ERROR("extract_bayer_planes() fails");
-//          return false;
-//        }
-//
-//        output_image.convertTo(output_image, CV_32F,
-//            1. / ((1 << bpp)));
-//
-//        if ( !nninterpolation(output_image, output_image, colorid) ) {
-//          CF_ERROR("nninterpolation() fails");
-//          return false;
-//        }
-//
-//        if( output_image.depth() != CV_8U ) {
-//          output_image.convertTo(output_image, CV_8U,
-//              255. / ((1 << bpp)));
-//        }
-//        break;
-//
-//      default:
-//        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-//            algo, toString(algo));
-//        return false;
-//    }
-//  }
-//  else if ( colorid == COLORID_OPTFLOW || (output_image.channels() != 4 && output_image.channels() != 2) ) {
-//    output_mask.release();
-//  }
-//  else if( !splitbgra(output_image, output_image, &output_mask) ) {
-//    output_mask.release();
-//    return false;
-//  }
-//
-//  if( input_options_.enable_color_maxtrix && source->has_color_matrix() && output_image.channels() == 3 ) {
-//    cv::transform(output_image, output_image,
-//        source->color_matrix());
-//  }
-//
-////  if ( anscombe_.method() != anscombe_none ) {
-////    anscombe_.apply(output_image, output_image);
-////  }
-//
-//  if ( !missing_pixel_mask_.empty() ) {
-//
-//    if ( output_image.size() != missing_pixel_mask_.size() ) {
-//
-//      CF_ERROR("Invalid input: "
-//          "frame and bad pixel mask sizes not match:\n"
-//          "frame size: %dx%d\n"
-//          "mask size : %dx%d",
-//          output_image.cols, output_image.rows,
-//          missing_pixel_mask_.cols, missing_pixel_mask_.rows);
-//
-//      return false;
-//    }
-//
-//    if ( output_mask.empty() ) {
-//      missing_pixel_mask_.copyTo(output_mask);
-//    }
-//    else {
-//      cv::bitwise_and(output_mask, missing_pixel_mask_,
-//          output_mask);
-//    }
-//  }
-//
-//  if ( !output_mask.empty() && input_options_.inpaint_missing_pixels ) {
-//    linear_interpolation_inpaint(output_image, output_mask, output_image);
-//  }
-//
-//  return true;
-//}
+const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_calibration_pipeline::get_controls()
+{
+  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+
+  if( ctrls.empty() ) {
+
+    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+      POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls)
+      PIPELINE_CTL_GROUP(ctrls, "Input Sequence", "");
+        POPULATE_PIPELINE_INPUT_OPTIONS(ctrls);
+      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.method, "Method", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_size, "chessboard_size", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_cell_size, "chessboard_cell_size", "");
+
+      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_. findChessboardCorners.max_scales, "max_scales", "");
+      PIPELINE_CTL_BITFLAGS(ctrls, chessboard_detection_options_.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.findChessboardCornersSB.max_scales, "max_scales", "");
+      PIPELINE_CTL_BITFLAGS(ctrls, chessboard_detection_options_.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.winSize, "winSize", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.zeroZone, "zeroZone", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.solver_eps, "solver_eps", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.d, "d", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.sigmaColor, "sigmaColor", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.sigmaSpace, "sigmaSpace", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+
+    PIPELINE_CTL_GROUP(ctrls, "Stereo Calibration", "");
+      PIPELINE_CTL(ctrls, calibration_options_.enable_calibration, "enable calibration", ""); \
+      PIPELINE_CTL(ctrls, calibration_options_.min_frames, "min_frames", "");
+      PIPELINE_CTL(ctrls, calibration_options_.max_frames, "max_frames", "");
+      PIPELINE_CTL_BITFLAGS(ctrls, calibration_options_.calibration_flags, STEREO_CALIBRATION_FLAGS,  "calibration flags", "" );
+      PIPELINE_CTL(ctrls, calibration_options_.auto_tune_calibration_flags, "auto_tune_calibration_flags", "")
+      PIPELINE_CTL(ctrls, calibration_options_.init_camera_matrix_2d, "init_camera_matrix_2d", "")
+      PIPELINE_CTL(ctrls, calibration_options_.max_iterations, "max solver iterations", "")
+      PIPELINE_CTL(ctrls, calibration_options_.solver_eps, "solver_eps", "")
+      PIPELINE_CTL(ctrls, calibration_options_.filter_alpha, "corners filter alpha", "")
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+      PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "output_intrinsics_filename", "");
+      PIPELINE_CTL(ctrls, output_options_.output_extrinsics_filename, "output_extrinsics_filename", "");
+
+      PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
+      PIPELINE_CTL(ctrls, output_options_.chessboard_frames_filename, "chessboard_frames_filename", "");
+
+      PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
+      PIPELINE_CTL(ctrls, output_options_.rectified_frames_filename, "rectified_frames_filename", "");
+
+      PIPELINE_CTL(ctrls, output_options_.save_stereo_rectified_frames, "save_stereo_rectified_frames", "");
+      PIPELINE_CTL(ctrls, output_options_.stereo_rectified_frames_filename, "stereo_rectified_frames_filename", "");
+
+      PIPELINE_CTL(ctrls, output_options_.save_quad_rectified_frames, "save_quad_rectified_frames", "");
+      PIPELINE_CTL(ctrls, output_options_.quad_rectified_frames_filename, "quad_rectified_frames_filename", "");
+
+      PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+      PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+  }
+
+  return ctrls;
+}
 
 bool c_stereo_calibration_pipeline::read_stereo_frame()
 {
@@ -766,7 +732,9 @@ bool c_stereo_calibration_pipeline::update_calibration()
           current_intrinsics_,
           current_extrinsics_,
           current_calibration_flags_,
-          calibration_options_.solverTerm,
+          cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+              calibration_options_.max_iterations,
+              calibration_options_.solver_eps),
           &E_,
           &F_,
           // &rvecs_,

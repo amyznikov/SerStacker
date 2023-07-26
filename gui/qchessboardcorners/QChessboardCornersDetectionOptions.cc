@@ -180,18 +180,13 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
           "",
           [this](int value) {
             if ( options_ ) {
-              if ( ( options_->termCriteria.maxCount = value) > 0 ) {
-                options_->termCriteria.type |= cv::TermCriteria::COUNT;
-              }
-              else {
-                options_->termCriteria.type &= ~cv::TermCriteria::COUNT;
-              }
+              options_->max_solver_iterations = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
             if ( options_ ) {
-              * value = options_->termCriteria.maxCount;
+              * value = options_->max_solver_iterations;
               return true;
             }
             return false;
@@ -202,18 +197,13 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
           "",
          [this](double value) {
             if ( options_ ) {
-              if ( ( options_->termCriteria.epsilon = value) >= 0 ) {
-                options_->termCriteria.type |= cv::TermCriteria::EPS;
-              }
-              else {
-                options_->termCriteria.type &= ~cv::TermCriteria::EPS;
-              }
+              options_->solver_eps = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
             if ( options_ ) {
-              * value = options_->termCriteria.epsilon;
+              * value = options_->solver_eps;
               return true;
             }
             return false;

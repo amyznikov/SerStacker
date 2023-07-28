@@ -89,18 +89,17 @@ public: // pipeline methods
   virtual void cancel(bool v = true);
   virtual bool canceled() const;
   virtual bool serialize(c_config_setting settings, bool save);
-  // virtual bool get_controls(std::vector<c_image_processing_pipeline_ctrl> & ctrls);
 
   std::mutex & mutex();
 
   const c_input_sequence::sptr & input_sequence() const;
   const char * csequence_name() const;
 
-  void set_master_source(const std::string & master_source_path);
-  const std::string & master_source() const;
-
-  void set_master_frame_index(int v);
-  int master_frame_index() const;
+  virtual bool has_master_frame() const ;
+  virtual void set_master_source(const std::string & master_source_path);
+  virtual std::string master_source() const;
+  virtual void set_master_frame_index(int v);
+  virtual int master_frame_index() const;
 
   virtual std::string generate_output_filename(const std::string & ufilename,
       const std::string & postfix,
@@ -189,8 +188,8 @@ protected:
   mutable cv::Mat raw_bayer_image_;
   mutable COLORID raw_bayer_colorid_ = COLORID_UNKNOWN;
 
-  std::string master_source_;
-  int master_frame_index_ = 0; // relative, in master source
+  //  std::string master_source_;
+  //  int master_frame_index_ = 0; // relative, in master source
 
   int display_type_ = 0;
 

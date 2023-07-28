@@ -10,8 +10,9 @@
 
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qjovian/QJovianEllipseDetectorSettings.h>
-#include <core/pipeline/c_image_stacking_pipeline/c_image_stacking_pipeline.h>
-#include "QMasterFrameOptions.h"
+#include <gui/qpipeline/QInputSourceSelectionControl.h>
+#include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/proc/image_registration/c_frame_registration.h>
 
 
 class QFeatureBasedRegistrationOptions :
@@ -154,8 +155,69 @@ protected:
   QWidgetList controls;
 };
 
+
+class QMasterFrameOptions :
+    public QSettingsWidget,
+    public QInputSourceSelectionControl
+{
+  Q_OBJECT;
+public:
+  typedef QMasterFrameOptions ThisClass;
+  typedef QSettingsWidget Base;
+
+  QMasterFrameOptions(QWidget * parent = nullptr);
+
+//  void set_current_pipeline(c_image_stacking_pipeline * current_pipeline);
+//  c_image_stacking_pipeline * current_pipeline() const;
+
+  void set_master_frame_options(c_master_frame_options * options);
+  c_master_frame_options * master_frame_options() const;
+
+  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
+  void setEnableExternalFile(bool v) override;
+  bool enableExternalFile() const override;
+
+protected:
+  void onupdatecontrols() override;
+  //QString browseForMasterFrame();
+  //QString browseForMasterFFTSPath();
+  void updateMasterSourceBasingOnComboboxItemIndex(int comboboxItemIndex);
+  void updateMasterFrameIndex();
+
+protected Q_SLOTS:
+  //void onMasterSourceComboCurrentIndexChanged(int);
+  void updateMasterSourceControlStates();
+  //void onSpinBoxValueChanged(int value);
+  void updateGenerateMasterFrameControlStates();
+  //void onEccFlowScaleChanged();
+  //void onMasterSharpenFactorChanged();
+  //void onAccumulatedSharpenFactorChanged();
+  //void onSaveMasterFrameCheckboxStateChanged(int);
+  //void onApplyInputFramePprocessorCheckboxStateChanged(int);
+
+protected:
+  c_master_frame_options * options_ = nullptr;
+
+  QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = nullptr;
+  QInputSourceSelectionCombo * masterSource_ctl = nullptr;
+  QSpinBox * masterFrameIndex_ctl = nullptr;
+  QCheckBox * apply_input_frame_processors_ctl = nullptr;
+  QCheckBox * generateMasterFrame_ctl = nullptr;
+  QNumericBox * maxFramesForMasterFrameGeneration_ctl = nullptr;
+  QNumericBox * eccFlowScale_ctl = nullptr;
+  QNumericBox * master_sharpen_factor_ctl = nullptr;
+  QNumericBox * accumulated_sharpen_factor_ctl = nullptr;
+
+  //QCheckBox * compensateMasterFlow_ctl = nullptr;
+  QCheckBox * saveMasterFrame_ctl = nullptr;
+
+  //QToolButton * applyToAll_ctl = nullptr;
+  int previousComboboxItemIndex = -1;
+};
+
 class QImageRegistrationOptions :
-    public QSettingsWidget
+    public QSettingsWidget,
+    public QInputSourceSelectionControl
 {
   Q_OBJECT;
 public:
@@ -168,20 +230,28 @@ public:
 
   QImageRegistrationOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(c_image_stacking_pipeline * pipeline);
-  c_image_stacking_pipeline * current_pipeline() const;
+  void set_registration_options(c_image_registration_options * options);
+  c_image_registration_options* registration_options() const;
+
+  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
+  void setEnableExternalFile(bool v) override;
+  bool enableExternalFile() const override;
+
+//  void set_current_pipeline(c_image_stacking_pipeline * pipeline);
+//  c_image_stacking_pipeline * current_pipeline() const;
 
 protected:
   void onupdatecontrols() override;
 
 protected:
-  c_image_stacking_pipeline * current_pipeline_ = nullptr;
-  c_frame_registration_options * options_ = nullptr;
+  // c_image_stacking_pipeline * current_pipeline_ = nullptr;
+  c_image_registration_options * options_ = nullptr;
   QMotionTypeCombo * motion_type_ctl = nullptr;
   QRegistrationColorChannelCombo * registration_channel_ctl = nullptr;
   QEccInterpolatioMethodCombo * interpolation_method_ctl = nullptr;
   QEccBorderModeCombo * border_mode_ctl = nullptr;
   QNumericBox * border_value_ctl = nullptr;
+  QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = nullptr;
 
   QMasterFrameOptions * masterFrameOptions_ctl = nullptr;
   QFeatureBasedRegistrationOptions * featureRegistrationOptions_ctl = nullptr;
@@ -192,7 +262,8 @@ protected:
 
 
 class QFrameRegistrationOptions:
-    public QSettingsWidget
+    public QSettingsWidget,
+    public QInputSourceSelectionControl
 {
   Q_OBJECT;
 public:
@@ -201,19 +272,21 @@ public:
 
   QFrameRegistrationOptions(QWidget * parent = nullptr);
 
-  void set_current_pipeline(c_image_stacking_pipeline * pipeline);
-  c_image_stacking_pipeline * current_pipeline() const;
+  void set_registration_options(c_image_registration_options * options);
+  c_image_registration_options* registration_options() const;
+
+  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
+  void setEnableExternalFile(bool v) override;
+  bool enableExternalFile() const override;
 
 protected:
   void onupdatecontrols() override;
   void update_controls_visibility();
 
 protected:
-  c_image_stacking_pipeline * current_pipeline_ = nullptr;
-  c_frame_registration_options * options_ = nullptr;
+  c_image_registration_options * options_ = nullptr;
   QCheckBox * enable_frame_registration_ctl = nullptr;
   QImageRegistrationOptions * imageRegistrationOptions_ctl = nullptr;
-  QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = nullptr;
 };
 
 #endif /* __QFrameRegistrationSettings_h__ */

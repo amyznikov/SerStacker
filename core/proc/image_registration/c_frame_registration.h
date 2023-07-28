@@ -66,17 +66,43 @@ struct c_jovian_derotation_options {
   bool rotate_jovian_disk_horizontally = false;
 };
 
+enum master_frame_selection_method {
+  master_frame_specific_index,
+  master_frame_middle_index,
+  master_frame_best_of_100_in_middle,
+};
+
+
+struct c_master_frame_options
+{
+  master_frame_selection_method master_selection_method =
+      master_frame_specific_index;
+
+  std::string master_source_fiename;
+  int master_frame_index = 0;
+
+  bool apply_input_frame_processors = true;
+  bool generate_master_frame = true;
+  int max_frames_to_generate_master_frame = 3000;
+  int eccflow_scale = 0;
+  double master_sharpen_factor = 0.5;
+  double accumulated_sharpen_factor = 1;
+  bool save_master_frame = true;
+};
+
 struct c_image_registration_options
 {
   bool enable_frame_registration = true;
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
+  bool accumulate_and_compensate_turbulent_flow = true;
 
   color_channel_type registration_channel = color_channel_gray;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
+  c_master_frame_options master_frame_options;
   struct c_feature_based_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;

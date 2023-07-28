@@ -10,28 +10,7 @@
 #define __QLveStackingPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qpipeline/QPipelineSettingsCtrl.h>
 #include <core/pipeline/c_live_stacking_pipeline/c_live_stacking_pipeline.h>
-
-class QLveStackingPipeline;
-class QLveStackingSettingsWidget;
-
-class QLveStackingSettingsWidget :
-    public QPipelineSettingsWidgetBase<QLveStackingPipeline>
-{
-public:
-  typedef QLveStackingSettingsWidget ThisClass;
-  typedef QPipelineSettingsWidgetBase<QLveStackingPipeline> Base;
-
-  QLveStackingSettingsWidget(QWidget * parent = nullptr);
-  QLveStackingSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
-
-protected:
-  void update_pipeline_controls() override;
-
-protected:
-  QPipelineSettingsCtrl * settings_ctl = nullptr;
-};
 
 class QLveStackingPipeline :
     public QImageProcessingPipelineBase<c_live_stacking_pipeline>
@@ -52,7 +31,7 @@ public:
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
   {
-    return new QLveStackingSettingsWidget(parent);
+    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
   }
 };
 

@@ -138,12 +138,6 @@ bool c_align_color_channels::align(int reference_channel,
 
   const int cn = src.channels();
 
-  if ( reference_channel < 0 || reference_channel >= cn ) {
-    CF_ERROR("Invalid argument: reference_channel = %d is out if range 0..%d",
-        reference_channel, cn - 1);
-    return false;
-  }
-
   if ( cn < 2 ) {
 
     if ( dst.needed() ) {
@@ -161,6 +155,13 @@ bool c_align_color_channels::align(int reference_channel,
 
     return true;
   }
+
+  if ( reference_channel < 0 || reference_channel >= cn ) {
+    CF_ERROR("Invalid argument: reference_channel = %d is out if range 0..%d",
+        reference_channel, cn - 1);
+    return true;
+  }
+
 
 
 

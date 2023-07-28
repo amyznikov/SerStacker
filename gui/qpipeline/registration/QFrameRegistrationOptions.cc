@@ -641,6 +641,630 @@ void QJovianDerotationOptions::update_controls_state()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
+  Base("", parent)
+{
+  masterFrameSelectionMethod_ctl =
+      add_enum_combobox<master_frame_selection_method>("Mater frame selection:",
+          "",
+          [this](master_frame_selection_method v) {
+            if ( options_ && options_->master_selection_method != v ) {
+              options_->master_selection_method = v;
+              updateMasterSourceControlStates();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](master_frame_selection_method * v) {
+            if ( options_ ) {
+              *v = options_->master_selection_method;
+              return true;
+            }
+            return false;
+          });
+
+
+  masterSource_ctl =
+      add_combobox<QInputSourceSelectionCombo>("Master file:",
+          "Specify input source for master frame",
+          [this](int index, QInputSourceSelectionCombo * combo) {
+            if( options_ ) {
+              options_->master_source_fiename = combo->itemData(index).toString().toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * index, QInputSourceSelectionCombo * combo) -> bool {
+            if( options_ ) {
+              combo->setCurrentIndex(combo->findData(QString(options_->master_source_fiename.c_str())));
+            }
+            return false;
+          });
+
+
+  masterFrameIndex_ctl =
+      add_spinbox("Master frame Index:",
+          "",
+          [this](int v) {
+            if ( options_ && options_->master_frame_index != v ) {
+              options_->master_frame_index = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->master_frame_index;
+              return true;
+            }
+            return false;
+          });
+
+
+
+//  masterFrameIndex_ctl = new QSpinBox(this);
+//  masterFrameIndex_ctl->setKeyboardTracking(false);
+//  masterFrameIndex_ctl->setFocusPolicy(Qt::StrongFocus);
+//  connect(masterFrameIndex_ctl, SIGNAL(valueChanged(int)),
+//      this, SLOT(onSpinBoxValueChanged(int)));
+
+
+  apply_input_frame_processors_ctl =
+      add_checkbox("Apply input processors:",
+          "",
+          [this](bool checked) {
+            if ( options_ && options_->apply_input_frame_processors != checked ) {
+              options_->apply_input_frame_processors = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_  ) {
+              *checked = options_->apply_input_frame_processors;
+              return true;
+            }
+            return false;
+          });
+
+//  connect(apply_input_frame_processors_ctl, &QCheckBox::stateChanged,
+//      this, &ThisClass::onApplyInputFramePprocessorCheckboxStateChanged);
+//  apply_input_frame_processors_ctl = new QCheckBox(this);
+//  connect(apply_input_frame_processors_ctl, &QCheckBox::stateChanged,
+//      this, &ThisClass::onApplyInputFramePprocessorCheckboxStateChanged);
+
+
+  generateMasterFrame_ctl =
+      add_checkbox("Generate Master Frame:",
+          "",
+          [this](bool checked) {
+            if ( options_ && options_->generate_master_frame != checked ) {
+              options_->generate_master_frame = checked;
+              updateGenerateMasterFrameControlStates();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->generate_master_frame;
+              return true;
+            }
+            return false;
+          });
+
+//  generateMasterFrame_ctl = new QCheckBox(this);
+//  connect(generateMasterFrame_ctl, &QCheckBox::stateChanged,
+//      this, &ThisClass::onGenerateMasterFrameCheckboxStateChanged);
+
+  maxFramesForMasterFrameGeneration_ctl =
+      add_numeric_box<int>("Max frames:",
+          "Max frames for master frame generation",
+          [this](int v) {
+            if ( options_ && options_->max_frames_to_generate_master_frame != v ) {
+              options_->max_frames_to_generate_master_frame = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              * v = options_->max_frames_to_generate_master_frame;
+              return true;
+            }
+            return false;
+          });
+
+//  maxFramesForMasterFrameGeneration_ctl = new QNumericBox(this);
+//  connect(maxFramesForMasterFrameGeneration_ctl, &QNumericBox::textChanged,
+//      this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
+
+
+  eccFlowScale_ctl =
+      add_numeric_box<int>("ECC flow scale:",
+      "",
+      [this](int v) {
+        if ( options_ && options_->eccflow_scale != v ) {
+          options_->eccflow_scale = v;
+          Q_EMIT parameterChanged();
+        }
+      },
+      [this](int * v) {
+        if ( options_ ) {
+          *v = options_->eccflow_scale;
+          return true;
+        }
+        return false;
+      });
+//  eccFlowScale_ctl = new QNumericBox(this);
+//  connect(eccFlowScale_ctl, &QNumericBox::textChanged,
+//      this, &ThisClass::onEccFlowScaleChanged);
+
+
+  master_sharpen_factor_ctl =
+      add_numeric_box<double>("Master Sharpen Factor:",
+          "",
+          [this](double v) {
+            if ( options_ && options_->master_sharpen_factor != v ) {
+              options_->master_sharpen_factor = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->master_sharpen_factor;
+              return true;
+            }
+            return false;
+          });
+
+//  master_sharpen_factor_ctl = new QNumericBox(this);
+//  connect(master_sharpen_factor_ctl, &QNumericBox::textChanged,
+//      this, &ThisClass::onMasterSharpenFactorChanged);
+
+  accumulated_sharpen_factor_ctl =
+      add_numeric_box<double>("Acc. Sharpen Factor:",
+      "",
+      [this](double v) {
+        if ( options_ && options_->accumulated_sharpen_factor != v ) {
+          options_->accumulated_sharpen_factor = v;
+          Q_EMIT parameterChanged();
+        }
+      },
+      [this](double * v) {
+        if ( options_ ) {
+          * v = options_->accumulated_sharpen_factor;
+          return true;
+        }
+        return false;
+      });
+
+//  accumulated_sharpen_factor_ctl = new QNumericBox(this);
+//  connect(accumulated_sharpen_factor_ctl, &QNumericBox::textChanged,
+//      this, &ThisClass::onAccumulatedSharpenFactorChanged);
+
+  saveMasterFrame_ctl =
+      add_checkbox("Save Master Frame:",
+          "",
+          [this](bool checked) {
+            if ( options_ && options_->save_master_frame != checked ) {
+              options_->save_master_frame = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->save_master_frame;
+              return true;
+            }
+            return false;
+          });
+
+//  saveMasterFrame_ctl = new QCheckBox(this);
+//  connect(saveMasterFrame_ctl, &QCheckBox::stateChanged,
+//      this, &ThisClass::onSaveMasterFrameCheckboxStateChanged);
+
+
+//  form->addRow("Master file:", masterSource_ctl);
+//  form->addRow("Master frame Index:", masterFrameIndex_ctl);
+//  form->addRow("Apply input processors:", apply_input_frame_processors_ctl);
+//
+//  form->addRow("Generate master frame:", generateMasterFrame_ctl);
+//  form->addRow("Max frames:", maxFramesForMasterFrameGeneration_ctl);
+//  form->addRow("eccflow support scale:", eccFlowScale_ctl);
+//  form->addRow("Sharpen factor:", master_sharpen_factor_ctl);
+//  form->addRow("Acc. sharpen factor:", accumulated_sharpen_factor_ctl);
+//
+//  //form->addRow("Compensate master flow:", compensateMasterFlow_ctl);
+//  form->addRow("Save Master Frame", saveMasterFrame_ctl);
+
+  //form->addRow(applyToAll_ctl);
+
+  setEnabled(false);
+}
+
+//void QMasterFrameOptions::set_current_pipeline(c_image_stacking_pipeline * current_pipeline)
+//{
+//  if ( !(current_pipeline_ = current_pipeline) ) {
+//    options_ = nullptr;
+//  }
+//  else {
+//    options_ = &current_pipeline_->master_frame_options();
+//  }
+//
+//  updateControls();
+//}
+//
+//c_image_stacking_pipeline * QMasterFrameOptions::current_pipeline() const
+//{
+//  return current_pipeline_;
+//}
+
+void QMasterFrameOptions::set_master_frame_options(c_master_frame_options * options)
+{
+  options_ = options;
+  updateControls();
+}
+
+c_master_frame_options * QMasterFrameOptions::master_frame_options() const
+{
+  return options_;
+}
+
+void QMasterFrameOptions::refreshInputSources(const c_image_processing_pipeline * pipeline)
+{
+  c_update_controls_lock lock(this);
+  masterSource_ctl->refreshInputSources(pipeline);
+}
+
+void QMasterFrameOptions::setEnableExternalFile(bool v)
+{
+  masterSource_ctl->setEnableExternalFile(v);
+}
+
+bool QMasterFrameOptions::enableExternalFile() const
+{
+  return masterSource_ctl->enableExternalFile();
+}
+
+
+void QMasterFrameOptions::onupdatecontrols()
+{
+  if ( !options_ ) {
+    setEnabled(false);
+    masterSource_ctl->clear();
+  }
+  else {
+
+    Base::populatecontrols();
+
+    updateMasterSourceControlStates();
+    updateGenerateMasterFrameControlStates();
+
+//    generateMasterFrame_ctl->setChecked(options_->generate_master_frame);
+//    maxFramesForMasterFrameGeneration_ctl->setValue(options_->max_frames_to_generate_master_frame);
+//    apply_input_frame_processors_ctl->setChecked(options_->apply_input_frame_processors);
+//    eccFlowScale_ctl->setValue(options_->eccflow_scale);
+//    master_sharpen_factor_ctl->setValue(options_->master_sharpen_factor);
+//    accumulated_sharpen_factor_ctl->setValue(options_->accumulated_sharpen_factor);
+//
+//    //compensateMasterFlow_ctl->setChecked(options_->compensate_master_flow);
+//    saveMasterFrame_ctl->setChecked(options_->save_master_frame);
+//
+//
+//    maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
+//    eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
+//    master_sharpen_factor_ctl->setEnabled(options_->generate_master_frame);
+    //compensateMasterFlow_ctl->setEnabled(options_->generate_master_frame);
+
+    // Populate Master Source Combo
+//    masterSource_ctl->clear();
+//
+//    if( current_pipeline_ ) {
+//
+//      const c_input_sequence::sptr &input_sequence =
+//          current_pipeline_->input_sequence();
+//
+//      if( input_sequence ) {
+//
+//        for( int i = 0, n = input_sequence->sources().size(); i < n; ++i ) {
+//          QString source_file_name = input_sequence->source(i)->filename().c_str();
+//          masterSource_ctl->addItem(QFileInfo(source_file_name).fileName(), source_file_name);
+//        }
+//      }
+//
+//      const std::string &master_source =
+//          current_pipeline_->master_source();
+//
+//      if( !master_source.empty() ) {
+//        if( !input_sequence || input_sequence->indexof(master_source) < 0 ) {
+//          QString source_file_name = master_source.c_str();
+//          masterSource_ctl->addItem(QString("* %1").arg(QFileInfo(source_file_name).fileName()), source_file_name);
+//        }
+//      }
+//
+//      masterSource_ctl->addItem("Browse...");
+//
+//      // Select Current Index In Master Source Combo
+//      if ( !master_source.empty() ) {
+//        masterSource_ctl->setCurrentIndex(masterSource_ctl->findData(master_source.c_str()));
+//      }
+//      else {
+//        masterSource_ctl->setCurrentIndex(0);
+//        if ( masterSource_ctl->count() > 1 ) {
+//          current_pipeline_->set_master_source(masterSource_ctl->itemData(0).toString().toStdString());
+//        }
+//      }
+//    }
+
+    updateMasterFrameIndex();
+    previousComboboxItemIndex = masterSource_ctl->currentIndex();
+
+    //masterFrameSelectionMethod_ctl->setValue(options_->master_selection_method);
+    //masterFrameIndex_ctl->setEnabled(options_->master_selection_method == master_frame_specific_index);
+
+    setEnabled(true);
+  }
+}
+
+void QMasterFrameOptions::updateMasterFrameIndex()
+{
+//  if ( !current_pipeline_ ||  current_pipeline_->master_source().empty() ) {
+//    masterFrameIndex_ctl->setEnabled(false);
+//  }
+//  else {
+//
+//    const c_input_sequence::sptr & input_sequence =
+//        current_pipeline_->input_sequence();
+//
+//    c_input_source::sptr source;
+//
+//    if ( input_sequence && (source = input_sequence->source(current_pipeline_->master_source())) ) {
+//      if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {
+//        current_pipeline_->set_master_frame_index(0);
+//      }
+//      masterFrameIndex_ctl->setRange(0, source->size() - 1);
+//      masterFrameIndex_ctl->setValue(current_pipeline_->master_frame_index());
+//      masterFrameIndex_ctl->setEnabled(true);
+//    }
+//    else if ( !(source = c_input_source::create(current_pipeline_->master_source())) ) {
+//      CF_ERROR("c_input_source::create(pathfilename=%s) fails", current_pipeline_->master_source().c_str());
+//      masterFrameIndex_ctl->setEnabled(false);
+//    }
+//    else {
+//      if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {
+//        current_pipeline_->set_master_frame_index(0);
+//      }
+//      masterFrameIndex_ctl->setRange(0, source->size() - 1);
+//      masterFrameIndex_ctl->setValue(current_pipeline_->master_frame_index());
+//      masterFrameIndex_ctl->setEnabled(true);
+//    }
+//  }
+}
+
+//void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
+//{
+//  if ( current_pipeline_ && !updatingControls() && index >= 0 ) {
+//
+//    setUpdatingControls(true);
+//
+//    const int cn = masterSource_ctl->count();
+//    if ( index == cn - 1 ) { // "Browse..."
+//
+//      QString selectedFileName = browseForMasterFrame();
+//
+//      if ( selectedFileName.isEmpty() ) {
+//        masterSource_ctl->setCurrentIndex(previousComboboxItemIndex);
+//      }
+//      else {
+//        current_pipeline_->set_master_source(selectedFileName.toStdString());
+//        masterSource_ctl->insertItem(masterSource_ctl->count()-1, QString("* %1").arg(QFileInfo(selectedFileName).fileName()), selectedFileName);
+//        masterSource_ctl->setCurrentIndex(masterSource_ctl->count()-2);
+//      }
+//    }
+//    else {
+//      QString selectedFileName = masterSource_ctl->itemData(index).toString();
+//      if ( selectedFileName.isEmpty() ) {
+//        masterSource_ctl->setCurrentIndex(previousComboboxItemIndex);
+//      }
+//      else {
+//        current_pipeline_->set_master_source(selectedFileName.toStdString());
+//      }
+//    }
+//
+//    updateMasterFrameIndex();
+//
+//    previousComboboxItemIndex = masterSource_ctl->currentIndex();
+//    setUpdatingControls(false);
+//
+//    Q_EMIT parameterChanged();
+//  }
+//}
+
+void QMasterFrameOptions::updateMasterSourceControlStates()
+{
+  if ( options_) {
+
+    switch (options_->master_selection_method) {
+      case master_frame_specific_index:
+        masterFrameIndex_ctl->setEnabled(true);
+        break;
+      case master_frame_middle_index:
+        masterFrameIndex_ctl->setEnabled(false);
+        break;
+      case master_frame_best_of_100_in_middle:
+        masterFrameIndex_ctl->setEnabled(false);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+//void QMasterFrameOptions::onSpinBoxValueChanged(int value)
+//{
+//  if ( current_pipeline_ && !updatingControls() ) {
+//    int currentComboboxIndex = masterSource_ctl->currentIndex();
+//    if ( currentComboboxIndex >= 0 && currentComboboxIndex < masterSource_ctl->count() - 1 ) {
+//      current_pipeline_->set_master_frame_index(value);
+//      Q_EMIT parameterChanged();
+//    }
+//  }
+//}
+
+void QMasterFrameOptions::updateGenerateMasterFrameControlStates()
+{
+  if( options_ ) {
+    maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
+    eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
+    master_sharpen_factor_ctl->setEnabled(options_->generate_master_frame);
+  }
+}
+
+
+//void QMasterFrameOptions::onEccFlowScaleChanged()
+//{
+//  if ( current_pipeline_ && !updatingControls() ) {
+//    int v = 0;
+//    if ( fromString(eccFlowScale_ctl->text(), &v) &&
+//        v != options_->max_frames_to_generate_master_frame ) {
+//      options_->eccflow_scale = v;
+//      Q_EMIT parameterChanged();
+//    }
+//  }
+//}
+
+//void QMasterFrameOptions::onMasterSharpenFactorChanged()
+//{
+//  if ( options_ && !updatingControls() ) {
+//    double v = 0;
+//    if ( fromString(master_sharpen_factor_ctl->text(), &v) &&
+//        v != options_->master_sharpen_factor ) {
+//      options_->master_sharpen_factor = v;
+//      Q_EMIT parameterChanged();
+//    }
+//  }
+//}
+
+//void QMasterFrameOptions::onAccumulatedSharpenFactorChanged()
+//{
+//  if ( current_pipeline_ && !updatingControls() ) {
+//    double v = 0;
+//    if ( fromString(accumulated_sharpen_factor_ctl->text(), &v) &&
+//        v != options_->accumulated_sharpen_factor ) {
+//      options_->accumulated_sharpen_factor = v;
+//      Q_EMIT parameterChanged();
+//    }
+//  }
+//}
+
+//void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
+//{
+//  if ( options_ && !updatingControls() ) {
+//    //options_->compensate_master_flow = state == Qt::Checked;
+//    Q_EMIT parameterChanged();
+//  }
+//}
+
+//void QMasterFrameOptions::onSaveMasterFrameCheckboxStateChanged(int state)
+//{
+//  if ( current_pipeline_ && !updatingControls() ) {
+//    options_->save_master_frame = state == Qt::Checked;
+//    Q_EMIT parameterChanged();
+//  }
+//}
+
+//void QMasterFrameOptions::onApplyInputFramePprocessorCheckboxStateChanged(int state)
+//{
+//  if ( current_pipeline_ && !updatingControls() ) {
+//    options_->apply_input_frame_processors = state == Qt::Checked;
+//    Q_EMIT parameterChanged();
+//  }
+//}
+//
+
+//QString QMasterFrameOptions::browseForMasterFrame()
+//{
+//  static QString filter;
+//
+//  if ( filter.isEmpty() ) {
+//
+//    filter.append("Regular images (");
+//    for ( const std::string & s : c_regular_image_input_source::suffixes() ) {
+//      filter.append(QString("*%1 ").arg(QString(s.c_str())));
+//    }
+//    filter.append(");;");
+//
+//#if HAVE_LIBRAW
+//    filter.append("RAW/DSLR images (");
+//    for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
+//      filter.append(QString("*%1 ").arg(s.c_str()));
+//    }
+//    filter.append(");;");
+//#endif
+//
+//#if HAVE_CFITSIO
+//    filter.append("FITS files (");
+//    for ( const std::string & s : c_fits_input_source::suffixes() ) {
+//      filter.append(QString("*%1 ").arg(s.c_str()));
+//    }
+//    filter.append(");;");
+//#endif
+//
+//    filter.append("All Files (*.*);;");
+//  }
+//
+//  static const QString lastSourcesDirectoryKeyName =
+//      "lastSourcesDirectory";
+//
+//  static const QString lastMasterFrameSelectionFilter =
+//      "lastMasterFrameSelectionFilter";
+//
+//  QSettings settings;
+//
+//  QString selectedFilter =
+//      settings.value(lastMasterFrameSelectionFilter).toString();
+//
+//
+//  QString proposedMasterSourcePath;
+//  if ( current_pipeline_ ) {
+//    if ( !current_pipeline_->master_source().empty() ) {
+//      proposedMasterSourcePath  = current_pipeline_->master_source().c_str();
+//    }
+//    else {
+//      // FIXME: need access to stack output directory
+//    }
+//  }
+//
+//  if ( proposedMasterSourcePath.isEmpty() ) {
+//    proposedMasterSourcePath = settings.value(lastSourcesDirectoryKeyName).toString();
+//  }
+//
+//  QString selectedFile = QFileDialog::getOpenFileName(this,
+//      "Select master frame",
+//      proposedMasterSourcePath,
+//      filter,
+//      &selectedFilter);
+//
+//  if ( !selectedFile.isEmpty() ) {
+//
+//    settings.setValue(lastSourcesDirectoryKeyName,
+//        QFileInfo(selectedFile).absolutePath());
+//
+//    settings.setValue(lastMasterFrameSelectionFilter,
+//        selectedFilter);
+//  }
+//
+//  return selectedFile;
+//}
+//
+//QString QMasterFrameOptions::browseForMasterFFTSPath()
+//{
+//  if ( current_pipeline_ ) {
+//    return QFileDialog::getExistingDirectory(this, "Select directory",
+//        current_pipeline_->master_source().c_str(),
+//        QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
+//  }
+//
+//  return QString();
+//}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
     Base("QImageRegistrationOptions", parent)
 {
@@ -648,8 +1272,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
       add_enum_combobox<IMAGE_MOTION_TYPE>("Motion type:",
           "",
           [this](IMAGE_MOTION_TYPE value) {
-            if ( options_ && options_->image_registration_options.motion_type != value ) {
-              options_->image_registration_options.motion_type = value;
+            if ( options_ && options_->motion_type != value ) {
+              options_->motion_type = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -658,8 +1282,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
       add_enum_combobox<color_channel_type>("Registration channel:",
           "",
           [this](color_channel_type value) {
-            if ( options_ && options_->image_registration_options.registration_channel != value ) {
-              options_->image_registration_options.registration_channel = value;
+            if ( options_ && options_->registration_channel != value ) {
+              options_->registration_channel = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -668,8 +1292,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
       add_enum_combobox<ECC_INTERPOLATION_METHOD>("Interpolation method:",
           "",
           [this](ECC_INTERPOLATION_METHOD value) {
-            if ( options_ && options_->image_registration_options.interpolation != value) {
-              options_->image_registration_options.interpolation = value;
+            if ( options_ && options_->interpolation != value) {
+              options_->interpolation = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -678,8 +1302,8 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
       add_enum_combobox<ECC_BORDER_MODE>("Border mode:",
           "",
           [this](ECC_BORDER_MODE value) {
-            if ( options_ && options_->image_registration_options.border_mode != value ) {
-              options_->image_registration_options.border_mode = value;
+            if ( options_ && options_->border_mode != value ) {
+              options_->border_mode = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -688,12 +1312,21 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
       add_numeric_box<cv::Scalar>("Border Value",
           "",
           [this](const cv::Scalar & value) {
-            if ( options_ && options_->image_registration_options.border_value != value ) {
-              options_->image_registration_options.border_value = value;
+            if ( options_ && options_->border_value != value ) {
+              options_->border_value = value;
               Q_EMIT parameterChanged();
             }
           });
 
+  accumulateAndCompensateTurbulentFlow_ctl =
+      add_checkbox("accumulate and compensate turbulent flow",
+          "",
+          [this](bool checked) {
+            if ( options_ && options_->accumulate_and_compensate_turbulent_flow != checked ) {
+              options_->accumulate_and_compensate_turbulent_flow = checked;
+              Q_EMIT parameterChanged();
+            }
+          });
   ///
 
   add_expandable_groupbox("Master Frame Options",
@@ -723,36 +1356,71 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
       this, &ThisClass::parameterChanged);
 }
 
-void QImageRegistrationOptions::set_current_pipeline(c_image_stacking_pipeline * current_pipeline)
+void QImageRegistrationOptions::set_registration_options(c_image_registration_options * options)
 {
-  current_pipeline_ = current_pipeline;
-  options_ = current_pipeline_ ? &current_pipeline_->frame_registration_options() : nullptr;
+  options_ = options;
   updateControls();
 }
 
-c_image_stacking_pipeline * QImageRegistrationOptions::current_pipeline() const
+c_image_registration_options* QImageRegistrationOptions::registration_options() const
 {
-  return current_pipeline_;
+  return options_;
 }
+
+void QImageRegistrationOptions::refreshInputSources(const c_image_processing_pipeline * pipeline)
+{
+  return masterFrameOptions_ctl->refreshInputSources(pipeline);
+}
+
+void QImageRegistrationOptions::setEnableExternalFile(bool v)
+{
+  masterFrameOptions_ctl->setEnableExternalFile(v);
+}
+
+bool QImageRegistrationOptions::enableExternalFile() const
+{
+  return masterFrameOptions_ctl->enableExternalFile();
+}
+
+
+//void QImageRegistrationOptions::set_current_pipeline(c_image_stacking_pipeline * current_pipeline)
+//{
+//  current_pipeline_ = current_pipeline;
+//  options_ = current_pipeline_ ? &current_pipeline_->registration_options() : nullptr;
+//  updateControls();
+//}
+//
+//c_image_stacking_pipeline * QImageRegistrationOptions::current_pipeline() const
+//{
+//  return current_pipeline_;
+//}
 
 void QImageRegistrationOptions::onupdatecontrols()
 {
   if( !options_ ) {
     setEnabled(false);
+
+    masterFrameOptions_ctl->set_master_frame_options(nullptr);
+    featureRegistrationOptions_ctl->set_registration_options(nullptr);
+    eccOptions_ctl->set_registration_options(nullptr);
+    eccFlowOptions_ctl->set_registration_options(nullptr);
+    jovianDerotationOptions_ctl->set_derotation_options(nullptr);
+
   }
   else {
 
-    motion_type_ctl->setValue(options_->image_registration_options.motion_type);
-    registration_channel_ctl->setValue(options_->image_registration_options.registration_channel);
-    interpolation_method_ctl->setValue(options_->image_registration_options.interpolation);
-    border_mode_ctl->setValue(options_->image_registration_options.border_mode);
-    border_value_ctl->setValue(options_->image_registration_options.border_value);
+    motion_type_ctl->setValue(options_->motion_type);
+    registration_channel_ctl->setValue(options_->registration_channel);
+    interpolation_method_ctl->setValue(options_->interpolation);
+    border_mode_ctl->setValue(options_->border_mode);
+    border_value_ctl->setValue(options_->border_value);
+    accumulateAndCompensateTurbulentFlow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
 
-    masterFrameOptions_ctl->set_current_pipeline(current_pipeline_);
-    featureRegistrationOptions_ctl->set_registration_options(&options_->image_registration_options.feature_registration);
-    eccOptions_ctl->set_registration_options(&options_->image_registration_options.ecc);
-    eccFlowOptions_ctl->set_registration_options(&options_->image_registration_options.eccflow);
-    jovianDerotationOptions_ctl->set_derotation_options(&options_->image_registration_options.jovian_derotation);
+    masterFrameOptions_ctl->set_master_frame_options(&options_->master_frame_options);
+    featureRegistrationOptions_ctl->set_registration_options(&options_->feature_registration);
+    eccOptions_ctl->set_registration_options(&options_->ecc);
+    eccFlowOptions_ctl->set_registration_options(&options_->eccflow);
+    jovianDerotationOptions_ctl->set_derotation_options(&options_->jovian_derotation);
 
     setEnabled(true);
   }
@@ -769,8 +1437,8 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
       add_checkbox("Enable image registration",
           "",
           [this](bool checked) {
-            if ( options_ && options_->image_registration_options.enable_frame_registration != checked ) {
-              options_->image_registration_options.enable_frame_registration = checked;
+            if ( options_ && options_->enable_frame_registration != checked ) {
+              options_->enable_frame_registration = checked;
               update_controls_visibility();
               Q_EMIT parameterChanged();
             }
@@ -782,45 +1450,59 @@ QFrameRegistrationOptions::QFrameRegistrationOptions(QWidget * parent) :
   connect(imageRegistrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  accumulateAndCompensateTurbulentFlow_ctl =
-      add_checkbox("accumulate and compensate turbulent flow",
-          "",
-          [this](bool checked) {
-            if ( options_ && options_->accumulate_and_compensate_turbulent_flow != checked ) {
-              options_->accumulate_and_compensate_turbulent_flow = checked;
-              Q_EMIT parameterChanged();
-            }
-          });
 
   update_controls_visibility();
 }
 
-void QFrameRegistrationOptions::set_current_pipeline(c_image_stacking_pipeline * current_pipeline)
+//void QFrameRegistrationOptions::set_current_pipeline(c_image_stacking_pipeline * current_pipeline)
+//{
+//  current_pipeline_ = current_pipeline;
+//  options_ = current_pipeline_ ? &current_pipeline_->registration_options() : nullptr;
+//  updateControls();
+//}
+//
+//c_image_stacking_pipeline * QFrameRegistrationOptions::current_pipeline() const
+//{
+//  return current_pipeline_;
+//}
+
+void QFrameRegistrationOptions::set_registration_options(c_image_registration_options * options)
 {
-  current_pipeline_ = current_pipeline;
-  options_ = current_pipeline_ ? &current_pipeline_->frame_registration_options() : nullptr;
+  options_ = options;
   updateControls();
 }
 
-c_image_stacking_pipeline * QFrameRegistrationOptions::current_pipeline() const
+c_image_registration_options* QFrameRegistrationOptions::registration_options() const
 {
-  return current_pipeline_;
+  return options_;
 }
+
+void QFrameRegistrationOptions::refreshInputSources(const c_image_processing_pipeline * pipeline)
+{
+  imageRegistrationOptions_ctl->refreshInputSources(pipeline);
+}
+
+void QFrameRegistrationOptions::setEnableExternalFile(bool v)
+{
+  imageRegistrationOptions_ctl->setEnableExternalFile(v);
+}
+
+bool QFrameRegistrationOptions::enableExternalFile() const
+{
+  return imageRegistrationOptions_ctl->enableExternalFile();
+}
+
 
 void QFrameRegistrationOptions::onupdatecontrols()
 {
+  imageRegistrationOptions_ctl->set_registration_options(options_);
+
   if( !options_ ) {
     setEnabled(false);
   }
   else {
 
-    enable_frame_registration_ctl->setChecked(options_->image_registration_options.
-        enable_frame_registration);
-
-    imageRegistrationOptions_ctl->set_current_pipeline(current_pipeline_);
-
-    accumulateAndCompensateTurbulentFlow_ctl->setChecked(
-        options_->accumulate_and_compensate_turbulent_flow);
+    enable_frame_registration_ctl->setChecked(options_-> enable_frame_registration);
 
     update_controls_visibility();
 
@@ -832,11 +1514,11 @@ void QFrameRegistrationOptions::update_controls_visibility()
 {
   if( !options_ ) {
     imageRegistrationOptions_ctl->setVisible(false);
-    accumulateAndCompensateTurbulentFlow_ctl->setEnabled(false);
+    //accumulateAndCompensateTurbulentFlow_ctl->setEnabled(false);
   }
   else {
-    imageRegistrationOptions_ctl->setVisible(options_->image_registration_options.enable_frame_registration);
-    accumulateAndCompensateTurbulentFlow_ctl->setEnabled(options_->image_registration_options.enable_frame_registration);
+    imageRegistrationOptions_ctl->setVisible(options_->enable_frame_registration);
+    //accumulateAndCompensateTurbulentFlow_ctl->setEnabled(options_->enable_frame_registration);
   }
 }
 

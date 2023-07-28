@@ -8,9 +8,9 @@
 #ifndef __QImageProcessingPipeline_h__
 #define __QImageProcessingPipeline_h__
 
-#include <gui/widgets/QSettingsWidget.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/debug.h>
+#include <core/pipeline/c_image_processing_pipeline_ctrl.h>
+#include "QInputSourceSelectionControl.h"
 
 class QImageProcessingPipeline;
 class QPipelineSettingsWidget;
@@ -48,105 +48,97 @@ public:
   typedef QPipelineSettingsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QPipelineSettingsWidget(QWidget * parent = nullptr) :
-      Base("", parent)
-  {
-  }
-
-  QPipelineSettingsWidget(const QString & prefix, QWidget * parent = nullptr) :
-      Base(prefix, parent)
-  {
-  }
+  QPipelineSettingsWidget(QWidget * parent = nullptr);
 
   virtual QString pipelineClass() const = 0;
-
   virtual void setCurrentPipeline(QImageProcessingPipeline * pipeline) = 0;
   virtual QImageProcessingPipeline * currentPipeline() const = 0;
 
+protected:
+  void setup_controls(const std::vector<c_image_processing_pipeline_ctrl> & ctrls);
+  void update_pipeline_input_sources();
+  void update_control_states();
+
 protected Q_SLOTS:
   virtual void onPipelineStateChanged() {}
+
+protected:
+  c_image_processing_pipeline * pipeline_ = nullptr;
+  std::map<QWidget*, std::function<bool(const c_image_processing_pipeline*)>> state_ctls_;
+  QList<QInputSourceSelectionControl*> inputSourceCombos_;
 };
 
 
-template<class PipelineType>
-class QPipelineSettingsWidgetBase:
+template<class QPipelineType>
+class QPipelineSettingsWidgetTemplate:
     public QPipelineSettingsWidget
 {
 public:
-  typedef QPipelineSettingsWidgetBase ThisClass;
+  typedef QPipelineSettingsWidgetTemplate ThisClass;
   typedef QPipelineSettingsWidget Base;
 
-  QPipelineSettingsWidgetBase(QWidget * parent = nullptr) :
-      Base("", parent)
+  QPipelineSettingsWidgetTemplate(QWidget * parent = nullptr) :
+      Base(parent)
   {
-  }
-
-  QPipelineSettingsWidgetBase(const QString & prefix, QWidget * parent = nullptr) :
-      Base(prefix, parent)
-  {
+    setup_controls(QPipelineType::get_controls());
+    updateControls();
   }
 
   virtual QString pipelineClass() const override
   {
-    return PipelineType::class_name().c_str();
-  }
-
-  void setPipeline(PipelineType * pipeline)
-  {
-    if( pipeline_ ) {
-      pipeline_->disconnect(this);
-    }
-
-    if( (pipeline_ = pipeline) ) {
-      connect(pipeline_, &PipelineType::stateChanged,
-          this, &ThisClass::onPipelineStateChanged,
-          Qt::QueuedConnection);
-    }
-
-    updateControls();
-  }
-
-  PipelineType * pipeline() const
-  {
-    return pipeline_;
+    return QPipelineType::class_name().c_str();
   }
 
   void setCurrentPipeline(QImageProcessingPipeline * pipeline) override
   {
-    setPipeline(dynamic_cast<PipelineType*>(pipeline));
+    setPipeline(dynamic_cast<QPipelineType*>(pipeline));
   }
 
-  QImageProcessingPipeline * currentPipeline() const override
+  QImageProcessingPipeline* currentPipeline() const override
   {
-    return pipeline_;
+    return dynamic_cast<QImageProcessingPipeline*>(pipeline_);
+  }
+
+  void setPipeline(QPipelineType * pipeline)
+  {
+    if( QImageProcessingPipeline *pp = dynamic_cast<QImageProcessingPipeline*>(pipeline_) ) {
+      pp->disconnect(this);
+    }
+
+    CF_DEBUG("pipeline=%p", pipeline);
+
+    if( (pipeline_ = pipeline) ) {
+      connect(pipeline, &QPipelineType::stateChanged,
+          this, &ThisClass::onPipelineStateChanged,
+          Qt::QueuedConnection);
+    }
+
+    update_pipeline_input_sources();
+    updateControls();
+  }
+
+  QPipelineType * pipeline() const
+  {
+    return dynamic_cast<QPipelineType * >(pipeline_);
   }
 
 protected:
   // placeholder for overrides
-  virtual void update_pipeline_controls()
-  {
-    setEnabled(pipeline_ && !pipeline_->is_running());
-  }
-
   void onupdatecontrols() override
   {
-    if ( !pipeline_ ) {
+    if( !pipeline_ ) {
       setEnabled(false);
     }
     else {
-      Q_EMIT Base::populatecontrols();
-      update_pipeline_controls();
+      populatecontrols();
+      update_control_states();
     }
   }
 
   void onPipelineStateChanged() override
   {
-    update_pipeline_controls();
+    update_control_states();
   }
-
-
-protected:
-  PipelineType * pipeline_ = nullptr;
 };
 
 

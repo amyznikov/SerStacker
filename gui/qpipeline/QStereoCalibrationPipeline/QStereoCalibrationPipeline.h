@@ -10,28 +10,7 @@
 #define __QStereoCalibrationPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qpipeline/QPipelineSettingsCtrl.h>
 #include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
-
-class QStereoCalibrationPipeline;
-class QStereoCalibrationSettingsWidget;
-
-class QStereoCalibrationSettingsWidget :
-    public QPipelineSettingsWidgetBase<QStereoCalibrationPipeline>
-{
-public:
-  typedef QStereoCalibrationSettingsWidget ThisClass;
-  typedef QPipelineSettingsWidgetBase<QStereoCalibrationPipeline> Base;
-
-  QStereoCalibrationSettingsWidget(QWidget * parent = nullptr);
-  QStereoCalibrationSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
-
-protected:
-  void update_pipeline_controls() override;
-
-protected:
-  QPipelineSettingsCtrl * settings_ctl = nullptr;
-};
 
 class QStereoCalibrationPipeline :
     public QImageProcessingPipelineBase<c_stereo_calibration_pipeline>
@@ -52,9 +31,8 @@ public:
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
   {
-    return new QStereoCalibrationSettingsWidget(parent);
+    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
   }
-
 };
 
 #endif /* __QStereoCalibrationPipeline_h__ */

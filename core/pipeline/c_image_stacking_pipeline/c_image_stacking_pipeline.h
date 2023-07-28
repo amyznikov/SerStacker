@@ -51,12 +51,6 @@ enum frame_upscale_option {
   frame_upscale_x30 = 3,
 };
 
-enum master_frame_selection_method {
-  master_frame_specific_index,
-  master_frame_middle_index,
-  master_frame_best_of_100_in_middle,
-};
-
 
 enum STACKING_STAGE {
   stacking_stage_idle = 0,
@@ -82,19 +76,6 @@ struct c_roi_selection_options
   double planetary_disk_stdev_factor = 0.25;
 };
 
-struct c_master_frame_options
-{
-  master_frame_selection_method master_selection_method =
-      master_frame_specific_index;
-
-  bool apply_input_frame_processors = true;
-  bool generate_master_frame = true;
-  int max_frames_to_generate_master_frame = 3000;
-  int eccflow_scale = 0;
-  double master_sharpen_factor = 0.5;
-  double accumulated_sharpen_factor = 1;
-  bool save_master_frame = true;
-};
 
 struct c_frame_upscale_options
 {
@@ -103,12 +84,14 @@ struct c_frame_upscale_options
 
   bool need_upscale_before_align() const
   {
-    return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_before_align;
+    return  upscale_option != frame_upscale_none &&
+        upscale_stage == frame_upscale_before_align;
   }
 
   bool need_upscale_after_align() const
   {
-    return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
+    return upscale_option != frame_upscale_none &&
+        upscale_stage == frame_upscale_after_align;
   }
 
   double image_scale() const
@@ -132,23 +115,14 @@ struct c_frame_accumulation_options
   enum frame_accumulation_method accumulation_method  =
       frame_accumulation_average;
 
-  c_lpg_sharpness_measure m_;
-  c_laplacian_pyramid_focus_stacking::options fs_;
+  c_lpg_options lpg;
+  c_laplacian_pyramid_focus_stacking::options fs;
 
   c_frame_accumulation_options()
   {
-    m_.set_dscale(-1); // disable this feature by default
+    lpg.dscale = (-1); // disable this feature by default
   }
 };
-
-
-struct c_frame_registration_options
-{
-  c_master_frame_options master_frame_options;
-  c_image_registration_options image_registration_options;
-  bool accumulate_and_compensate_turbulent_flow = true;
-};
-
 
 struct c_image_processing_options
 {
@@ -248,8 +222,9 @@ public:
   c_master_frame_options& master_frame_options();
   const c_master_frame_options& master_frame_options() const;
 
-  c_frame_registration_options& frame_registration_options();
-  const c_frame_registration_options& frame_registration_options() const;
+  c_image_registration_options& registration_options();
+  const c_image_registration_options& registration_options() const;
+
   c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
   c_frame_registration::sptr create_frame_registration() const;
 
@@ -270,6 +245,11 @@ public:
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
   bool copyParameters(const c_image_processing_pipeline::sptr & dst) override;
+  bool has_master_frame() const  override;
+  void set_master_source(const std::string & master_source_path) override;
+  std::string master_source() const override;
+  void set_master_frame_index(int v) override;
+  int master_frame_index() const override;
 
 protected:
   bool initialize_pipeline() override;
@@ -345,7 +325,7 @@ protected:
   c_image_stacking_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
   c_frame_upscale_options upscale_options_;
-  c_frame_registration_options frame_registration_options_;
+  c_image_registration_options image_registration_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;

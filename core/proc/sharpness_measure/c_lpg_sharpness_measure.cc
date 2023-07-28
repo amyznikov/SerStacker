@@ -129,69 +129,100 @@
 //  return 1;
 //}
 
+c_lpg_sharpness_measure::c_lpg_sharpness_measure()
+{
+
+}
+
+c_lpg_sharpness_measure::c_lpg_sharpness_measure(const c_lpg_options & opts) :
+    options_(opts)
+{
+}
 
 void c_lpg_sharpness_measure::set_k(double v)
 {
-  k_ = v;
+  options_.k = v;
 }
 
 double c_lpg_sharpness_measure::k() const
 {
-  return k_;
+  return options_.k;
 }
-
 
 void c_lpg_sharpness_measure::set_dscale(int v)
 {
-  dscale_ = v;
+  options_.dscale = v;
 }
 
 int c_lpg_sharpness_measure::dscale() const
 {
-  return dscale_;
+  return options_.dscale;
 }
 
 void c_lpg_sharpness_measure::set_uscale(int v)
 {
-  uscale_ = v;
+  options_.uscale = v;
 }
-
 
 int c_lpg_sharpness_measure::uscale() const
 {
-  return uscale_;
+  return options_.uscale;
 }
 
 void c_lpg_sharpness_measure::set_squared(bool v)
 {
-  squared_ = v;
+  options_.squared = v;
 }
 
 bool c_lpg_sharpness_measure::squared() const
 {
-  return squared_;
+  return options_.squared;
 }
 
 void c_lpg_sharpness_measure::set_avgchannel(bool v)
 {
-  avgchannel_ = v;
+  options_.avgchannel = v;
 }
 
 bool c_lpg_sharpness_measure::avgchannel() const
 {
-  return avgchannel_;
+  return options_.avgchannel;
 }
 
 cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
 {
   cv::Scalar rv;
-  compute(image, cv::noArray(), k_, dscale_, uscale_, squared_, avgchannel_, &rv);
+  compute(image, cv::noArray(),
+      options_.k,
+      options_.dscale,
+      options_.uscale,
+      options_.squared,
+      options_.avgchannel,
+      &rv);
   return rv;
 }
 
 bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return compute(image, output_map, k_, dscale_, uscale_, squared_, avgchannel_, nullptr);
+  return compute(image, output_map,
+      options_.k,
+      options_.dscale,
+      options_.uscale,
+      options_.squared,
+      options_.avgchannel,
+      nullptr);
+}
+
+bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map,
+    const c_lpg_options & opts)
+{
+  return compute(image, output_map,
+      opts.k,
+      opts.dscale,
+      opts.uscale,
+      opts.squared,
+      opts.avgchannel,
+      nullptr);
 }
 
 bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
@@ -201,4 +232,13 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray outp
   return lpg(image, output_map,
     k, dscale, uscale, squared, avgchannel,
     output_sharpness_metric);
+}
+
+bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
+    const c_lpg_options & opts,
+    cv::Scalar * output_sharpness_metric)
+{
+  return lpg(image, output_map,
+      opts.k, opts.dscale, opts.uscale, opts.squared, opts.avgchannel,
+      output_sharpness_metric);
 }

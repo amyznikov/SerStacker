@@ -16,12 +16,25 @@
 
 #include "c_image_sharpness_measure.h"
 
+
+struct c_lpg_options
+{
+  double k = 2.5;
+  int dscale = 1;
+  int uscale = 3;
+  bool squared = true;
+  bool avgchannel = true;
+};
+
 class c_lpg_sharpness_measure:
     public c_image_sharpness_measure
 {
 public:
   typedef c_lpg_sharpness_measure this_class;
   typedef c_image_sharpness_measure base;
+
+  c_lpg_sharpness_measure();
+  c_lpg_sharpness_measure(const c_lpg_options & opts);
 
   void set_k(double v);
   double k() const;
@@ -39,19 +52,19 @@ public:
   bool avgchannel() const;
 
   cv::Scalar compute(cv::InputArray image) const override;
-  bool create_map(cv::InputArray image, cv::OutputArray output_map) const override;
-
   static bool compute(cv::InputArray image, cv::OutputArray output_map,
       double k, int dscale, int uscale, bool squared, bool avgchannel,
       cv::Scalar * output_sharpness_metric);
+  static bool compute(cv::InputArray image, cv::OutputArray output_map,
+      const c_lpg_options & opts,
+      cv::Scalar * output_sharpness_metric);
+
+  bool create_map(cv::InputArray image, cv::OutputArray output_map) const override;
+  static bool create_map(cv::InputArray image, cv::OutputArray output_map,
+      const c_lpg_options & opts);
 
 protected:
-  double k_ = 2.5;
-  int dscale_ = 1;
-  int uscale_ = 3;
-  bool squared_ = true;
-  bool avgchannel_ = true;
-
+  c_lpg_options options_;
 };
 
 #endif /* __c_lpg_sharpness_measure_h__ */

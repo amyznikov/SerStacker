@@ -10,29 +10,7 @@
 #define __QGenericImageProcessingPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qpipeline/QPipelineSettingsCtrl.h>
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
-
-
-class QGenericImageProcessingPipeline;
-class QGenericImageProcessingSettingsWidget;
-
-class QGenericImageProcessingSettingsWidget :
-    public QPipelineSettingsWidgetBase<QGenericImageProcessingPipeline>
-{
-public:
-  typedef QGenericImageProcessingSettingsWidget  ThisClass;
-  typedef QPipelineSettingsWidgetBase<QGenericImageProcessingPipeline> Base;
-
-  QGenericImageProcessingSettingsWidget(QWidget * parent = nullptr);
-  QGenericImageProcessingSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
-
-protected:
-  void update_pipeline_controls() override;
-
-protected:
-  QPipelineSettingsCtrl * settings_ctl = nullptr;
-};
 
 class QGenericImageProcessingPipeline :
     public QImageProcessingPipelineBase<c_generic_image_processor_pipeline>
@@ -53,7 +31,7 @@ public:
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
   {
-    return new QGenericImageProcessingSettingsWidget(parent);
+    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
   }
 };
 

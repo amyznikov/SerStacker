@@ -14,7 +14,7 @@ QMeasureLPG::QMeasureLPG() :
 int QMeasureLPG::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_lpg_sharpness_measure::compute(image);
-  return avgchannel_ ? 1 : image.channels();
+  return options_.avgchannel ? 1 : image.channels();
 }
 
 bool QMeasureLPG::hasOptions() const

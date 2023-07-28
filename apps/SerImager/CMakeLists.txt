@@ -38,7 +38,7 @@ include_directories(src/camera)
 add_subdirectory(src/camera)
 include_directories(src/focus)
 add_subdirectory(src/focus)
-add_subdirectory(src/pipeline)
+# add_subdirectory(src/pipeline)
 
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

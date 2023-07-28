@@ -1303,21 +1303,21 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
   showStackOptionsAction->setEnabled(false);
 
   //
-  toolbarActions_.append(startStackingMenuAction = new QAction("Start"));
-  startStackingMenuAction->setMenu(startStacking = new QMenu());
-  startStacking->addAction(startAction = new QAction(getIcon(ICON_start), "Start"));
-  startStacking->addAction(startAllAction = new QAction(getIcon(ICON_start_all), "Start all"));
-  startStacking->setDefaultAction(startAction);
-  startStacking->setIcon(getIcon(ICON_start));
+  toolbarActions_.append(startMenuAction = new QAction("Start"));
+  startMenuAction->setMenu(startMenu = new QMenu());
+  startMenu->addAction(startAction = new QAction(getIcon(ICON_start), "Start"));
+  startMenu->addAction(startAllAction = new QAction(getIcon(ICON_start_all), "Start all"));
+  startMenu->setDefaultAction(startAction);
+  startMenu->setIcon(getIcon(ICON_start));
   //startStackingMenu->setEnabled(false);
-  startStackingMenuAction->setEnabled(false);
+  startMenuAction->setEnabled(false);
 
   //
-  toolbarActions_.append(stopStacking =
+  toolbarActions_.append(stopAction =
       new QAction(getIcon(ICON_stop),
           "Stop"));
-  stopStacking->setToolTip("Cancel current pipeline");
-  stopStacking->setEnabled(false);
+  stopAction->setToolTip("Cancel current pipeline");
+  stopAction->setEnabled(false);
 
 //  toolbarActions_.append(startStopStackingAction =
 //      new QAction(getIcon(ICON_start),
@@ -1351,8 +1351,8 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
 //  connect(startStopStackingAction, &QAction::triggered,
 //      treeView_, &QStackListTreeView::onStartStopStackingActionClicked);
 
-  connect(stopStacking, &QAction::triggered,
-      this, &ThisClass::onStopStackingClicked);
+  connect(stopAction, &QAction::triggered,
+      this, &ThisClass::onStopPipelineClicked);
 
   connect(startAction, &QAction::triggered,
       this, &ThisClass::onStartPipelineClicked);
@@ -1407,17 +1407,6 @@ void QImageSequencesTree::saveSequences(const std::string & cfgfilename)
 {
   treeView_->saveSequences(cfgfilename);
 }
-
-//void QImageSequencesTree::set_image_sequence_collection(
-//    const c_image_sequence_collection::sptr & image_sequence_collection)
-//{
-//  treeView_->set_image_sequence_collection(image_sequence_collection);
-//}
-//
-//const c_image_sequence_collection::sptr& QImageSequencesTree::image_sequence_collection() const
-//{
-//  return treeView_->image_sequence_collection();
-//}
 
 const QList<QAction*>& QImageSequencesTree::toolbarActions() const
 {
@@ -1502,11 +1491,6 @@ void QImageSequencesTree::getSelectedSequences(std::vector<c_image_sequence::spt
   }
 }
 
-//void QImageSequencesTree::refresh()
-//{
-//  treeView_->refresh();
-//}
-
 void QImageSequencesTree::updateImageSequenceName(const c_image_sequence::sptr & image_sequece)
 {
   treeView_->updateImageSequenceName(image_sequece);
@@ -1569,8 +1553,8 @@ void QImageSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
 
   if( !current ) {
     deleteItemAction->setEnabled(false);
-    startStackingMenuAction->setEnabled(false);
-    stopStacking->setEnabled(false);
+    startMenuAction->setEnabled(false);
+    stopAction->setEnabled(false);
     showStackOptionsAction->setEnabled(false);
   }
   else {
@@ -1586,18 +1570,18 @@ void QImageSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
       case QImageSequenceTreeItemType:
         sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(current);
         addSourcesAction->setEnabled(true);
-        startStackingMenuAction->setEnabled(!QPipelineThread::isRunning());
+        startMenuAction->setEnabled(!QPipelineThread::isRunning());
         break;
 
       case QInputSourceTreeItemType:
         inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(current);
         sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(current->parent());
-        startStackingMenuAction->setEnabled(false);
+        startMenuAction->setEnabled(!QPipelineThread::isRunning());
         break;
 
       default:
         addSourcesAction->setEnabled(false);
-        startStackingMenuAction->setEnabled(!QPipelineThread::isRunning());
+        startMenuAction->setEnabled(!QPipelineThread::isRunning());
         break;
     }
 
@@ -1733,9 +1717,6 @@ void QImageSequencesTree::onShowPipelineOptionsClicked()
 
 void QImageSequencesTree::onStartPipelineClicked()
 {
-  //  QImageSequenceTreeItem *sequenceItem =
-  //      treeView_->getImageSequenceItem(treeView_->currentItem());
-
   if( !QPipelineThread::isRunning() ) {
 
     QImageSequenceTreeItem *sequenceItem =
@@ -1764,7 +1745,7 @@ void QImageSequencesTree::onStartAllPipelinesClicked()
   }
 }
 
-void QImageSequencesTree::onStopStackingClicked()
+void QImageSequencesTree::onStopPipelineClicked()
 {
   if( QPipelineThread::isRunning() ) {
     currentProcessingMode_ = ProcessIdle;
@@ -1801,8 +1782,8 @@ void QImageSequencesTree::onPipelineThreadStarting()
 
 void QImageSequencesTree::onPipelineThreadStarted()
 {
-  startStacking->setEnabled(false);
-  stopStacking->setEnabled(true);
+  startMenu->setEnabled(false);
+  stopAction->setEnabled(true);
 
   c_image_processing_pipeline::sptr currentPipeline =
       QPipelineThread::currentPipeline();
@@ -1825,15 +1806,13 @@ void QImageSequencesTree::onPipelineThreadStarted()
           sourceItem->setFlags(sourceItem->flags() & ~Qt::ItemIsEnabled);
         }
       }
-
     }
   }
-
 }
 
 void QImageSequencesTree::onPipelineThreadFinishing()
 {
-  stopStacking->setEnabled(false);
+  stopAction->setEnabled(false);
 }
 
 void QImageSequencesTree::onPipelineThreadFinished()
@@ -1868,8 +1847,8 @@ void QImageSequencesTree::onPipelineThreadFinished()
 
     if( currentProcessingMode_ != ProcessBatch || !startNextStacking() ) {
       currentProcessingMode_ = ProcessIdle;
-      startStacking->setEnabled(true);
-      stopStacking->setEnabled(true);
+      startMenu->setEnabled(true);
+      stopAction->setEnabled(true);
     }
   }
 }

@@ -10,28 +10,7 @@
 #define __QCameraCalibrationPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qpipeline/QPipelineSettingsCtrl.h>
 #include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
-
-class QCameraCalibrationPipeline;
-class QCameraCalibrationSettingsWidget;
-
-class QCameraCalibrationSettingsWidget :
-    public QPipelineSettingsWidgetBase<QCameraCalibrationPipeline>
-{
-public:
-  typedef QCameraCalibrationSettingsWidget  ThisClass;
-  typedef QPipelineSettingsWidgetBase<QCameraCalibrationPipeline> Base;
-
-  QCameraCalibrationSettingsWidget(QWidget * parent = nullptr);
-  QCameraCalibrationSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
-
-protected:
-  void update_pipeline_controls() override;
-
-protected:
-  QPipelineSettingsCtrl * settings_ctl = nullptr;
-};
 
 class QCameraCalibrationPipeline :
     public QImageProcessingPipelineBase<c_camera_calibration_pipeline>
@@ -52,7 +31,7 @@ public:
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
   {
-    return new QCameraCalibrationSettingsWidget(parent);
+    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
   }
 };
 

@@ -74,10 +74,6 @@ public:
 
   QImageSequencesTreeView(QWidget * parent = nullptr);
 
-  //  void set_image_sequence_collection(const c_image_sequence_collection::sptr & collection);
-  //  const c_image_sequence_collection::sptr & image_sequence_collection() const;
-  //  void refresh();
-
   QImageSequenceTreeItem * getImageSequenceItem(QTreeWidgetItem * item) const;
   QImageSequenceTreeItem * findImageSequenceItem(const QString & name) const;
   QImageSequenceTreeItem * findImageSequenceItem(const c_input_sequence::sptr & image_sequence) const;
@@ -130,16 +126,10 @@ public:
 
   QImageSequencesTree(QWidget * parent = nullptr);
 
-//  void set_image_sequence_collection(const c_image_sequence_collection::sptr & image_sequence_collection);
-//  const c_image_sequence_collection::sptr & image_sequence_collection() const;
-
   void loadSequences(const std::string & cfgfilename = "");
   void saveSequences(const std::string & cfgfilename = "");
 
   c_input_source::sptr getCurrentInputSource(c_image_sequence::sptr * parent_sequence = nullptr) const;
-
-
-  //void refresh();
 
   const QList<QAction * > & toolbarActions() const;
 
@@ -166,7 +156,7 @@ public Q_SLOTS:
   void onShowPipelineOptionsClicked();
   void onStartPipelineClicked();
   void onStartAllPipelinesClicked();
-  void onStopStackingClicked();
+  void onStopPipelineClicked();
   void onPipelineThreadStarting();
   void onPipelineThreadStarted();
   void onPipelineThreadFinishing();
@@ -186,11 +176,11 @@ protected:
   QAction * showStackOptionsAction = nullptr;
   //QAction * startStopStackingAction = nullptr;
 
-  QMenu *  startStacking = nullptr;
-  QAction * startStackingMenuAction = nullptr;
+  QMenu *  startMenu = nullptr;
+  QAction * startMenuAction = nullptr;
   QAction * startAction = nullptr;
   QAction * startAllAction = nullptr;
-  QAction * stopStacking = nullptr;
+  QAction * stopAction = nullptr;
 
   QList<QAction * > toolbarActions_;
 

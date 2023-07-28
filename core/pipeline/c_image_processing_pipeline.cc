@@ -159,10 +159,6 @@ const char* c_image_processing_pipeline::csequence_name() const
   return "live";
 }
 
-void c_image_processing_pipeline::set_master_source(const std::string & master_source_path)
-{
-  master_source_ = master_source_path;
-}
 
 bool c_image_processing_pipeline::is_running() const
 {
@@ -191,19 +187,28 @@ void c_image_processing_pipeline::on_status_update()
 {
 }
 
-const std::string& c_image_processing_pipeline::master_source() const
+
+bool c_image_processing_pipeline::has_master_frame() const
 {
-  return master_source_;
+  return false;
 }
 
-void c_image_processing_pipeline::set_master_frame_index(int v)
+void c_image_processing_pipeline::set_master_source(const std::string & /*master_source_path*/)
 {
-  master_frame_index_ = v;
+}
+
+std::string c_image_processing_pipeline::master_source() const
+{
+  return "";
+}
+
+void c_image_processing_pipeline::set_master_frame_index(int /*v*/)
+{
 }
 
 int c_image_processing_pipeline::master_frame_index() const
 {
-  return master_frame_index_;
+  return 0;
 }
 
 const c_input_sequence::sptr & c_image_processing_pipeline::input_sequence() const
@@ -543,8 +548,8 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
   }
 
   SERIALIZE_PROPERTY(setting, save, *this, name);
-  SERIALIZE_PROPERTY(setting, save, *this, master_source);
-  SERIALIZE_PROPERTY(setting, save, *this, master_frame_index);
+//  SERIALIZE_PROPERTY(setting, save, *this, master_source);
+//  SERIALIZE_PROPERTY(setting, save, *this, master_frame_index);
 
   return true;
 }

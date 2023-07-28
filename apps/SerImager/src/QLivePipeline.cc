@@ -1275,6 +1275,7 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
   }
 
   if( currentWidget ) {
+    CF_DEBUG("currentWidget->setCurrentPipeline(p=%p)", p);
     currentWidget->setCurrentPipeline(p);
   }
 

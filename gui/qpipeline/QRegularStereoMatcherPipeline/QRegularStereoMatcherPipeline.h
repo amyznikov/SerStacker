@@ -10,34 +10,7 @@
 #define __QRegularStereoMatcherPipeline_h__
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qpipeline/QPipelineSettingsCtrl.h>
 #include <core/pipeline/c_stereo_matcher_pipeline/c_stereo_matcher_pipeline.h>
-//#include <gui/qpipeline/stereo/QStereoRectificationOptions.h>
-//#include <gui/qpipeline/stereo/QStereoMatcherOptions.h>
-//#include "options/QStereoMatcherInputOptions.h"
-//#include "options/QStereoMatcherProcessingOptions.h"
-//#include "options/QStereoMatcherOutputOptions.h"
-
-class QRegularStereoMatcherPipeline;
-class QRegularStereoMatcherSettingsWidget;
-
-
-class QRegularStereoMatcherSettingsWidget :
-    public QPipelineSettingsWidgetBase<QRegularStereoMatcherPipeline>
-{
-public:
-  typedef QRegularStereoMatcherSettingsWidget  ThisClass;
-  typedef QPipelineSettingsWidgetBase<QRegularStereoMatcherPipeline> Base;
-
-  QRegularStereoMatcherSettingsWidget(QWidget * parent = nullptr);
-  QRegularStereoMatcherSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
-
-protected:
-  void update_pipeline_controls() override;
-
-protected:
-  QPipelineSettingsCtrl * settings_ctl = nullptr;
-};
 
 class QRegularStereoMatcherPipeline:
     public QImageProcessingPipelineBase<c_stereo_matcher_pipeline>
@@ -58,7 +31,7 @@ public:
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
   {
-    return new QRegularStereoMatcherSettingsWidget(parent);
+    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
   }
 
 };

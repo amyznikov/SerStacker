@@ -87,36 +87,6 @@ QPipelineOptionsView::QPipelineOptionsView(QWidget * parent) :
 
   layout_->addWidget(toolbar_, 1, Qt::AlignTop);
   layout_->addWidget(scrollArea_ctl, 1000);
-
-
-
-//  imageStackingOptions_ctl = new QImageStackingOptions(this);
-//  imageStackingOptions_ctl->setVisible(false);
-//  connect(imageStackingOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-//
-//
-//  cameraCalibrationOptions_ctl = new QCameraCalibrationPipelineOptions(this);
-//  cameraCalibrationOptions_ctl->setVisible(false);
-//  connect(cameraCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-//
-//  stereoCalibrationOptions_ctl = new QStereoCalibrationPipelineOptions(this);
-//  stereoCalibrationOptions_ctl->setVisible(false);
-//  connect(stereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-//
-//
-//  stereoMatcherOptions_ctl = new QStereoMatcherPipelineOptions(this);
-//  stereoCalibrationOptions_ctl->setVisible(false);
-//  connect(stereoMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
-//
-//
-//  rstereoCalibrationOptions_ctl = new QRStereoOptions(this);
-//  rstereoCalibrationOptions_ctl->setVisible(false);
-//  connect(rstereoCalibrationOptions_ctl, &QSettingsWidget::parameterChanged,
-//      this, &ThisClass::parameterChanged);
 }
 
 void QPipelineOptionsView::set_current_sequence(const c_image_sequence::sptr & image_sequence)

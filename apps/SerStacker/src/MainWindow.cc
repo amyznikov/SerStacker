@@ -646,9 +646,10 @@ void MainWindow::setupImageEditor()
                   const c_image_processing_pipeline::sptr pipeline =
                       selected_sequence->current_pipeline();
 
-                  if ( pipeline ) {
+                  if ( pipeline && pipeline->has_master_frame() ) {
                     pipeline->set_master_source(selected_source->filename());
                     pipeline->set_master_frame_index(currentSequence->current_pos() - 1);
+                    saveCurrentWork();
                   }
                   else {
 

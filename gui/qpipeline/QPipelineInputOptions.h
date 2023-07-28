@@ -281,9 +281,6 @@ protected:
   QNumericBox * bad_pixels_variation_threshold_ctl = nullptr;
 
   QCheckBox * enable_bground_normalization_ctl = nullptr;
-
-  // c_histogram_normalization_options background_normalization_options;
-
 };
 
 #endif /* __QPipelineInputOptions_h__ */

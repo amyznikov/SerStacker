@@ -11,39 +11,6 @@
 
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <core/pipeline/c_image_stacking_pipeline/c_image_stacking_pipeline.h>
-#include "options/QFrameAccumulationOptions.h"
-#include "options/QFrameRegistrationOptions.h"
-#include "options/QFrameUpscaleOptions.h"
-#include "options/QImageProcessingOptions.h"
-#include "options/QImageStackingInputOptions.h"
-#include "options/QROISelectionOptions.h"
-#include "options/QStackOutputOptions.h"
-
-class QImageStackingPipeline;
-class QImageStackingSettingsWidget;
-
-class QImageStackingSettingsWidget :
-    public QPipelineSettingsWidgetBase<QImageStackingPipeline>
-{
-public:
-  typedef QImageStackingSettingsWidget ThisClass;
-  typedef QPipelineSettingsWidgetBase<QImageStackingPipeline> Base;
-
-  QImageStackingSettingsWidget(QWidget * parent = nullptr);
-  QImageStackingSettingsWidget(const QString & prefix, QWidget * parent = nullptr);
-
-protected:
-  void update_pipeline_controls() override;
-
-protected:
-  QImageStackingInputOptions * inputOptions_ctl = nullptr;
-  QROISelectionOptions * roiSelection_ctl = nullptr;
-  QFrameUpscaleOptions * upscaleOptions_ctl = nullptr;
-  QFrameRegistrationOptions * frameRegistration_ctl = nullptr;
-  QFrameAccumulationOptions * frameAccumulation_ctl = nullptr;
-  QImageProcessingOptions * imageProcessingOptions_ctl = nullptr;
-  QStackOutputOptions * outputOptions_ctl = nullptr;
-};
 
 class QImageStackingPipeline:
     public QImageProcessingPipelineBase<c_image_stacking_pipeline>
@@ -64,7 +31,7 @@ public:
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
   {
-    return new QImageStackingSettingsWidget(parent);
+    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
   }
 };
 

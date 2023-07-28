@@ -13,19 +13,12 @@ std::mutex QPipelineThread::lock_;
 QPipelineThread::QPipelineThread(QObject * parent) :
     Base(parent)
 {
-//  connect(this, &Base::finished,
-//      [this]() {
-//        current_pipeline_.reset();
-//      });
 }
-
 
 QPipelineThread::~QPipelineThread()
 {
   cancel();
 }
-
-
 
 QPipelineThread* QPipelineThread::instance()
 {

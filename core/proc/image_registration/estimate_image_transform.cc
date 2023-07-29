@@ -444,6 +444,127 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
 }
 
 
+
+bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions_,
+    const std::vector<cv::Point2f> & matched_reference_positions_ )
+{
+  const int N =
+      matched_current_positions_.size();
+
+  if( N < 4 ) {
+    CF_ERROR("Not enough key points matches: %zu. Mininum 4 required",
+        matched_current_positions_.size());
+    return false;
+  }
+
+  /*
+   * [x' y'] = [x y 1 x*y x*x y*y ] [ a00 ] [ a10 ]
+   *                                [ a01 ] [ a11 ]
+   *                                [ a02 ] [ a12 ]
+   *                                [ a03 ] [ a13 ]
+   *
+   *
+   * S2 = S1 * X
+   * CurPos = RefPos * X
+   */
+
+  std::vector<uint8_t> inliers(N, true);
+
+  int n = N;
+
+  while (42) {
+
+    cv::Mat1f S1(n, 4);
+    cv::Mat1f S2(n, 2);
+
+    for( int i = 0, j = 0; i < N; ++i ) {
+      if( inliers[i] ) {
+
+        const float x1 =
+            matched_reference_positions_[i].x;
+
+        const float y1 =
+            matched_reference_positions_[i].y;
+
+        const float x2 =
+            matched_current_positions_[i].x;
+
+        const float y2 =
+            matched_current_positions_[i].y;
+
+
+        S1[j][0] = x1;
+        S1[j][1] = y1;
+        S1[j][2] = 1;
+        S1[j][3] = x1 * y1;
+
+        S2[j][0] = x2;
+        S2[j][1] = y2;
+
+        ++j;
+      }
+    }
+
+    try {
+
+      cv::Mat1f X;
+
+      if( !cv::solve(S1, S2, X, cv::DECOMP_NORMAL) ) {
+        CF_ERROR("cv::solve() fails");
+        return false;
+      }
+
+      transform->set_matrix(X.t());
+
+      if ( n > 4 ) {
+
+        const cv::Mat1f D =
+            S1 * X - S2;
+
+        int outliers = 0;
+
+        double s = 0;
+
+        for( int i = 0, j = 0; i < n; ++i ) {
+          if( inliers[i] ) {
+            s += D[j][0] * D[j][0] + D[j][1] * D[j][1];
+            ++j;
+          }
+        }
+
+        s = s / (2 * n);
+
+        for( int i = 0, j = 0; i < n; ++i ) {
+          if( inliers[i] ) {
+            const float d = D[j][0] * D[j][0] + D[j][1] * D[j][1];
+            if( d > 9 * s ) {
+              inliers[i] = false;
+              ++outliers;
+            }
+            ++j;
+          }
+        }
+
+        CF_DEBUG("outliers : %d / %d / %d sigma=%g", outliers, n, N, sqrt(s));
+
+        if( outliers && (n -= outliers) >= 6 ) {
+          continue;
+        }
+      }
+
+      return true;
+    }
+    catch( const cv::Exception &e ) {
+      CF_ERROR("Exception in cv::solve() : %s", e.msg.c_str());
+      return false;
+    }
+  }
+
+  return false;
+}
+
+
 bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions_ )
@@ -593,6 +714,10 @@ bool estimate_image_transform(c_image_transform * transform,
 
   if( c_homography_image_transform *t = dynamic_cast<c_homography_image_transform*>(transform) ) {
     return estimate_homography_transform(t, matched_current_positions_, matched_reference_positions_);
+  }
+
+  if( c_semi_quadratic_image_transform *t = dynamic_cast<c_semi_quadratic_image_transform*>(transform) ) {
+    return estimate_semi_quadratic_transform(t, matched_current_positions_, matched_reference_positions_);
   }
 
   if( c_quadratic_image_transform *t = dynamic_cast<c_quadratic_image_transform*>(transform) ) {

@@ -637,6 +637,176 @@ bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+c_semi_quadratic_image_transform::c_semi_quadratic_image_transform()
+{
+
+}
+
+c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(const float a[2][4])
+{
+  memcpy(this->a.val, a, sizeof(this->a.val));
+}
+
+c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(const cv::Matx24f & a)
+{
+  this->a = a;
+}
+
+
+c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(float a00, float a01, float a02, float a03,
+    float a10, float a11, float a12, float a13)
+{
+  a(0,0) = a00;
+  a(0,1) = a01;
+  a(0,2) = a02;
+  a(0,3) = a03;
+
+  a(1,0) = a10;
+  a(1,1) = a11;
+  a(1,2) = a12;
+  a(1,3) = a13;
+}
+
+
+void c_semi_quadratic_image_transform::set_translation(const cv::Vec2f & v)
+{
+  Tx_ = v[0];
+  Ty_ = v[1];
+}
+
+cv::Vec2f c_semi_quadratic_image_transform::translation() const
+{
+  return cv::Vec2f (Tx_, Ty_);
+}
+
+void c_semi_quadratic_image_transform::set_matrix(const cv::Matx24f & a)
+{
+  this->a = a;
+}
+
+void c_semi_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
+{
+  if( a.rows == 4 && a.cols == 2 ) {
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 4; ++j ) {
+        this->a(i, j) = a[j][i];
+      }
+    }
+  }
+  else if( a.rows == 2 && a.cols == 4 ) {
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 4; ++j ) {
+        this->a(i, j) = a[i][j];
+      }
+    }
+  }
+  else {
+    CF_ERROR("Invalid matrix size %dx%d. Must be 2x4", a.rows, a.cols);
+  }
+}
+
+const cv::Matx24f & c_semi_quadratic_image_transform::matrix() const
+{
+  return this->a;
+}
+
+void c_semi_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
+{
+  for ( int i = 0; i < 2; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      this->a(i, j) = a(i, j);
+    }
+  }
+}
+
+cv::Matx23f c_semi_quadratic_image_transform::affine_matrix() const
+{
+  return cv::Matx23f(
+      a(0, 0), a(0, 1), a(0, 2),
+      a(1, 0), a(1, 1), a(1, 2));
+}
+
+cv::Mat1f c_semi_quadratic_image_transform::parameters() const
+{
+  return cv::Mat1f(2, 4, (float*) a.val).clone();
+}
+
+bool c_semi_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  if( p.rows == 2 && p.cols == 4 ) {
+
+    for( int i = 0; i < 2; ++i ) {
+      for( int j = 0; j < 4; ++j ) {
+        a(i,j) = p[i][j];
+      }
+    }
+
+    return true;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x4", p.rows, p.cols);
+  return false;
+}
+
+cv::Mat1f c_semi_quadratic_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+{
+  if( p.rows == 2 && p.cols == 4 ) {
+
+    cv::Mat1f sp(2, 4);
+
+    sp(0, 0) = p(0, 0);
+    sp(0, 1) = p(0, 1);
+    sp(0, 2) = p(0, 2) * factor;
+    sp(0, 3) = p(0, 3) / factor;
+
+    sp(1, 0) = p(1, 0);
+    sp(1, 1) = p(1, 1);
+    sp(1, 2) = p(1, 2) * factor;
+    sp(1, 3) = p(1, 3) / factor;
+
+    return sp;
+  }
+
+  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x4", p.rows, p.cols);
+  return cv::Mat1f();
+}
+
+bool c_semi_quadratic_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+{
+  map.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
+      [this, &map](const tbb_range & r) {
+
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+
+          cv::Vec2f * m = map[y];
+
+          for ( int x = 0; x < map.cols; ++x ) {
+            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
+            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
+          }
+        }
+      });
+#else
+
+  for( int y = 0; y < map.rows; ++y ) {
+    cv::Vec2f * m = map[y];
+
+    for ( int x = 0; x < map.cols; ++x ) {
+      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
+      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
+    }
+  }
+
+#endif // TBB
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 c_quadratic_image_transform::c_quadratic_image_transform()
 {
 

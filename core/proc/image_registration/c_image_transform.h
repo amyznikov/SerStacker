@@ -26,6 +26,13 @@ typedef cv::Matx<float, 2, 6> Matx26f;
 }
 #endif
 
+#ifndef Matx24f_defined
+#define Matx24f_defined 1
+namespace cv {
+typedef cv::Matx<float, 2, 4> Matx24f;
+}
+#endif
+
 
 class c_image_transform
 {
@@ -235,6 +242,46 @@ protected:
 
 
 /*
+ * Semi-quadratic image transform, 2x4 = 8 parameters are estimated
+ *   x' =  a00 * x + a01 * y + a02 + a03 * x * y
+ *   y' =  a10 * x + a11 * y + a12 + a13 * x * y
+ */
+class c_semi_quadratic_image_transform :
+    public c_image_transform
+{
+public:
+  typedef c_semi_quadratic_image_transform this_class;
+  typedef c_image_transform base;
+  typedef std::shared_ptr<this_class> sptr;
+
+  c_semi_quadratic_image_transform();
+  c_semi_quadratic_image_transform(const float a[2][4]);
+  c_semi_quadratic_image_transform(const cv::Matx24f & a);
+  c_semi_quadratic_image_transform(float a00, float a01, float a02, float a03,
+      float a10, float a11, float a12, float a13);
+
+  void set_matrix(const cv::Matx24f & a);
+  void set_matrix(const cv::Mat1f & a);
+  const cv::Matx24f & matrix() const;
+
+  void set_affine_matrix(const cv::Matx23f & a);
+  cv::Matx23f affine_matrix() const;
+
+  void set_translation(const cv::Vec2f & v) override;
+  cv::Vec2f translation() const override;
+
+  cv::Mat1f parameters() const override;
+  bool set_parameters(const cv::Mat1f & p) override;
+  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
+  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+
+protected:
+  cv::Matx24f a = cv::Matx24f::eye();
+  float &Tx_ = a(0, 2);
+  float &Ty_ = a(1, 2);
+};
+
+/*
  * Image quadratic transform, 12 parameters are estimated
  *   x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
  *   y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
@@ -273,6 +320,5 @@ protected:
   float &Tx_ = a(0, 2);
   float &Ty_ = a(1, 2);
 };
-
 
 #endif /* __c_image_transform_h__ */

@@ -1,35 +1,35 @@
 /*
- * c_quadratic_ecc_motion_model.h
+ * c_semi_quadratic_ecc_motion_model.h
  *
- *  Created on: Feb 12, 2023
+ *  Created on: Jul 29, 2023
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_quadratic_ecc_motion_model_h__
-#define __c_quadratic_ecc_motion_model_h__
+#ifndef __c_semi_quadratic_ecc_motion_model_h__
+#define __c_semi_quadratic_ecc_motion_model_h__
 
 #include "c_image_transform.h"
 #include "ecc2.h"
 
-class c_quadratic_ecc_motion_model :
+class c_semi_quadratic_ecc_motion_model :
     public c_ecc_motion_model
 {
 public:
-  typedef c_quadratic_ecc_motion_model this_class;
+  typedef c_semi_quadratic_ecc_motion_model this_class;
   typedef c_ecc_motion_model base;
 
-  c_quadratic_ecc_motion_model(c_quadratic_image_transform * transform = nullptr) :
+  c_semi_quadratic_ecc_motion_model(c_semi_quadratic_image_transform * transform = nullptr) :
     transform_(transform)
   {
   }
 
-  void set_transform(c_quadratic_image_transform * transform)
+  void set_transform(c_semi_quadratic_image_transform * transform)
   {
     transform_ = transform;
   }
 
-  c_quadratic_image_transform * transform() const
+  c_semi_quadratic_image_transform * transform() const
   {
     return transform_;
   }
@@ -61,7 +61,7 @@ public: // c_ecc_motion_model
   bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) override;
 
 protected:
-  c_quadratic_image_transform * transform_ = nullptr;
+  c_semi_quadratic_image_transform * transform_ = nullptr;
 };
 
-#endif /* __c_quadratic_ecc_motion_model_h__ */
+#endif /* __c_semi_quadratic_ecc_motion_model_h__ */

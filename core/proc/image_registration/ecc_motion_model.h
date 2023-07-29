@@ -13,6 +13,7 @@
 #include "c_euclidean_ecc_motion_model.h"
 #include "c_affine_ecc_motion_model.h"
 #include "c_homography_ecc_motion_model.h"
+#include "c_semi_quadratic_ecc_motion_model.h"
 #include "c_quadratic_ecc_motion_model.h"
 
 c_ecc_motion_model::sptr create_ecc_motion_model(c_image_transform * transform);
@@ -44,6 +45,11 @@ struct c_ecc_motion<c_affine_image_transform> {
 template<>
 struct c_ecc_motion<c_homography_image_transform> {
   typedef c_homography_ecc_motion_model motion_model;
+};
+
+template<>
+struct c_ecc_motion<c_semi_quadratic_image_transform> {
+  typedef c_semi_quadratic_ecc_motion_model motion_model;
 };
 
 template<>

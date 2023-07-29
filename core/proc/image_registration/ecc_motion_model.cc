@@ -32,6 +32,10 @@ c_ecc_motion_model::sptr create_ecc_motion_model(c_image_transform * transform)
       return c_ecc_motion_model::sptr(new c_homography_ecc_motion_model(t));
     }
 
+    if( c_semi_quadratic_image_transform *t = dynamic_cast<c_semi_quadratic_image_transform*>(transform) ) {
+      return c_ecc_motion_model::sptr(new c_semi_quadratic_ecc_motion_model(t));
+    }
+
     if( c_quadratic_image_transform *t = dynamic_cast<c_quadratic_image_transform*>(transform) ) {
       return c_ecc_motion_model::sptr(new c_quadratic_ecc_motion_model(t));
     }

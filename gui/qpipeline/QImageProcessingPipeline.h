@@ -143,21 +143,21 @@ protected:
 
 
 template<class c_pipeline>
-class QImageProcessingPipelineBase :
+class QImageProcessingPipelineTemplate :
     public QImageProcessingPipeline,
     public c_pipeline
 {
 public:
 
-  typedef QImageProcessingPipelineBase ThisClass;
+  typedef QImageProcessingPipelineTemplate ThisClass;
   typedef QImageProcessingPipeline Base;
 
-  QImageProcessingPipelineBase(const QString & name, QObject * parent = nullptr) :
+  QImageProcessingPipelineTemplate(const QString & name, QObject * parent = nullptr) :
     ThisClass(name, nullptr, parent)
   {
   }
 
-  QImageProcessingPipelineBase(const QString & name, const c_input_sequence::sptr & input_sequence, QObject * parent = nullptr) :
+  QImageProcessingPipelineTemplate(const QString & name, const c_input_sequence::sptr & input_sequence, QObject * parent = nullptr) :
     Base(parent),
     c_pipeline(name.toStdString(), input_sequence)
   {

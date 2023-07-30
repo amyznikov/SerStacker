@@ -13,11 +13,11 @@
 #include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
 
 class QStereoCalibrationPipeline :
-    public QImageProcessingPipelineBase<c_stereo_calibration_pipeline>
+    public QImageProcessingPipelineTemplate<c_stereo_calibration_pipeline>
 {
 public:
   typedef QStereoCalibrationPipeline ThisClass;
-  typedef QImageProcessingPipelineBase<c_stereo_calibration_pipeline> Base;
+  typedef QImageProcessingPipelineTemplate<c_stereo_calibration_pipeline> Base;
 
   QStereoCalibrationPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)

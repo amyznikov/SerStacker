@@ -33,7 +33,6 @@ public:
   {
     center_ = v;
     rmap_.release();
-
   }
 
   const cv::Point2d & center() const
@@ -98,7 +97,6 @@ public:
             rmap_[y][x][1] = tan(ay) * focus_ + center_.y;
           }
         }
-
       }
 
       previous_image_size = image.size();

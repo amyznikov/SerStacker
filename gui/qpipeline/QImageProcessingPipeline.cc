@@ -12,10 +12,10 @@
 #include "QRegularStereoMatcherPipeline/QRegularStereoMatcherPipeline.h"
 #include "QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h"
 #include "QLveStackingPipeline/QLveStackingPipeline.h"
-
+#include "QVirtualStereoPipeline/QVirtualStereoPipeline.h"
+#include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/registration/QFrameRegistrationOptions.h>
-// #include <core/ssprintf.h>
 
 #include <core/debug.h>
 
@@ -61,6 +61,13 @@ void registerPipelineClasses()
       QLveStackingPipeline::tooltip(),
       [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
         return c_image_processing_pipeline::sptr(new QLveStackingPipeline(name.c_str(), input_sequence));
+      });
+
+  c_image_processing_pipeline::register_class(
+      QVirtualStereoPipeline::class_name(),
+      QVirtualStereoPipeline::tooltip(),
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new QVirtualStereoPipeline(name.c_str(), input_sequence));
       });
 
 }
@@ -425,6 +432,78 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
 
         currentsettings->addRow(w);
         inputSourceCombos_.append(w);
+
+        break;
+      }
+
+      case c_image_processor_pipeline_ctl_feature2d_detector_options: {
+
+        QSparseFeatureDetectorOptions *w =
+            new QSparseFeatureDetectorOptions(this);
+
+        if( ctrl.get_feature2d_detector_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_feature_detector_options(ctrl.get_feature2d_detector_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        break;
+      }
+
+      case c_image_processor_pipeline_ctl_feature2d_descriptor_options: {
+
+        QSparseFeatureDescriptorOptions *w =
+            new QSparseFeatureDescriptorOptions(this);
+
+        if( ctrl.get_feature2d_descriptor_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_feature_descriptor_options(ctrl.get_feature2d_descriptor_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        break;
+      }
+
+      case c_image_processor_pipeline_ctl_feature2d_matcher_options: {
+
+        QSparseFeatureMatcherOptions *w =
+            new QSparseFeatureMatcherOptions(this);
+
+        if( ctrl.get_feature2d_matcher_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_feature_matcher_options(ctrl.get_feature2d_matcher_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
 
         break;
       }

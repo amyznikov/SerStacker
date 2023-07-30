@@ -189,6 +189,10 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
     return false;
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
+    serialize_base_input_options(section, save, input_options_);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, processing_options_, image_processor);
   }

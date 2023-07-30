@@ -13,8 +13,6 @@
 #include <core/pipeline/stereo/c_stereo_input_options.h>
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 #include <core/proc/camera_calibration/stereo_calibrate.h>
-//#include <core/pipeline/c_regular_stereo_pipeline/c_regular_stereo.h>
-//#include <core/pipeline/stereo/c_stereo_rectification_options.h>
 #include <core/io/c_stereo_input.h>
 
 struct c_stereo_matcher_input_options:

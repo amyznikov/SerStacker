@@ -173,10 +173,7 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
-    SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
-    SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
-    SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
+    serialize_base_input_options(section, save, input_options_);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "chessboard_detection")) ) {
@@ -449,9 +446,7 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
 
 void c_camera_calibration_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
+  close_input_sequence();
 
   if( chessboard_video_writer_.is_open() ) {
     CF_DEBUG("Closing '%s'", chessboard_video_writer_.filename().c_str());
@@ -1103,7 +1098,9 @@ bool c_camera_calibration_pipeline::open_input_sequence()
 
 void c_camera_calibration_pipeline::close_input_sequence()
 {
-  input_sequence_->close();
+  if ( input_sequence_ ) {
+    input_sequence_->close();
+  }
 }
 
 bool c_camera_calibration_pipeline::seek_input_sequence(int pos)

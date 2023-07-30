@@ -450,21 +450,29 @@ c_feature2d::ptr create_sparse_feature_detector(const c_sparse_feature_detector_
   return nullptr;
 }
 
+
 c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_feature_extractor_options & options)
+{
+  return create_sparse_feature_extractor(options.detector, options.descriptor);
+}
+
+
+c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_feature_detector_options & detector_opts,
+    const c_sparse_feature_descriptor_options & descriptor_opts)
 {
   c_feature2d::ptr detector;
   c_feature2d::ptr descriptor;
 
-  if ( !(detector = create_sparse_feature_detector(options.detector)) ) {
+  if ( !(detector = create_sparse_feature_detector(detector_opts)) ) {
     CF_ERROR("create_sparse_feature_detector() fails");
     return nullptr;
   }
 
-  if( options.descriptor.use_detector_options || options.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+  if( descriptor_opts.use_detector_options || descriptor_opts.type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
 
     bool ignore_errors = false;
 
-    switch (options.detector.type) {
+    switch (detector_opts.type) {
     case SPARSE_FEATURE_DETECTOR_MSER:
     case SPARSE_FEATURE_DETECTOR_FAST:
     case SPARSE_FEATURE_DETECTOR_AGAST:
@@ -480,14 +488,14 @@ c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_f
     case SPARSE_FEATURE_DETECTOR_HL:
 #endif
 #if HAVE_FEATURE2D_SURF
-      descriptor = create_feature2d(options.descriptor.surf);
+      descriptor = create_feature2d(descriptor_opts.surf);
 #else
-      descriptor = create_feature2d(options.descriptor.orb);
+      descriptor = create_feature2d(descriptor_opts.orb);
 #endif
       break;
 #if HAVE_STAR_EXTRACTOR
     case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
-      descriptor = create_feature2d(options.descriptor.triangles);
+      descriptor = create_feature2d(descriptor_opts.triangles);
       break;
 #endif
     default:
@@ -502,15 +510,15 @@ c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_f
   }
 
   if ( !descriptor ) {
-    if ( !options.descriptor.use_detector_options && options.descriptor.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN) {
-      if ( !(descriptor = create_sparse_descriptor_extractor(options.descriptor)) ) {
+    if ( !descriptor_opts.use_detector_options && descriptor_opts.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN) {
+      if ( !(descriptor = create_sparse_descriptor_extractor(descriptor_opts)) ) {
         CF_ERROR("create_sparse_descriptor_extractor() fails");
         return nullptr;
       }
     }
   }
 
-  return c_sparse_feature_extractor::create(detector, descriptor, options.detector.max_keypoints);
+  return c_sparse_feature_extractor::create(detector, descriptor, detector_opts.max_keypoints);
 }
 
 

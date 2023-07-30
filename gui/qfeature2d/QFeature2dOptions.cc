@@ -34,6 +34,8 @@ QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
               Q_EMIT parameterChanged();
             }
           });
+
+  updateControls();
 }
 
 void QSparseFeatureDetectorOptions::set_feature_detector_options(c_sparse_feature_detector_options * options)
@@ -83,6 +85,7 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
         [this](decltype(options_->f.name) v){ \
           if ( options_ ) { \
             options_->f.name = v; \
+            Q_EMIT parameterChanged(); \
           }}, \
         [this](decltype(options_->f.name) * v) -> bool { \
           if ( options_ ) { \

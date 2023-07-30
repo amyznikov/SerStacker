@@ -3002,27 +3002,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   c_config_setting section, subsection, subsubsection;
 
   if( (section = get_group(settings, save, "input_options")) ) {
-
-    SERIALIZE_OPTION(section, save, input_options_, debayer_method);
-    SERIALIZE_OPTION(section, save, input_options_, darkbayer_filename);
-    SERIALIZE_OPTION(section, save, input_options_, flatbayer_filename);
-    SERIALIZE_OPTION(section, save, input_options_, missing_pixel_mask_filename);
-    SERIALIZE_OPTION(section, save, input_options_, missing_pixels_marked_black);
-    SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
-    SERIALIZE_OPTION(section, save, input_options_, filter_bad_pixels);
-    SERIALIZE_OPTION(section, save, input_options_, detect_bad_asi_frames);
-    SERIALIZE_OPTION(section, save, input_options_, bad_pixels_variation_threshold);
-    SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
+    serialize_base_input_options(section, save, input_options_);
     SERIALIZE_OPTION(section, save, input_options_, anscombe);
-    SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
-    SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
-
-    SERIALIZE_OPTION(section, save, input_options_, enable_bground_normalization);
-    if( (subsection = get_group(section, save, "bground_normalization")) ) {
-      SERIALIZE_OPTION(subsection, save, input_options_.background_normalization_options, norm_type);
-      SERIALIZE_OPTION(subsection, save, input_options_.background_normalization_options, stretch);
-      SERIALIZE_OPTION(subsection, save, input_options_.background_normalization_options, offset);
-    }
   }
 
   if( (section = get_group(settings, save, "roi")) ) {

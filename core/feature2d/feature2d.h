@@ -14,6 +14,15 @@
 #include "feature_extraction.h"  // Sparse feature extraction
 #include "feature_matching.h"   // Sparse feature matching
 
+
+//struct c_feature2d_options
+//{
+//  double scale = 0.5;
+//  c_sparse_feature_extractor_options sparse_feature_extractor;
+//  c_feature2d_matcher_options sparse_feature_matcher;
+//};
+
+
 /**
  * draw_matched_positions()
  *

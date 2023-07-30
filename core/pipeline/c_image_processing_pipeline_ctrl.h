@@ -29,6 +29,9 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_image_processor_selection_combo,
   c_image_processor_pipeline_ctl_input_source_selection_combo,
   c_image_processor_pipeline_ctl_image_registration_options,
+  c_image_processor_pipeline_ctl_feature2d_detector_options,
+  c_image_processor_pipeline_ctl_feature2d_descriptor_options,
+  c_image_processor_pipeline_ctl_feature2d_matcher_options
 };
 
 
@@ -46,6 +49,9 @@ struct c_image_processing_pipeline_ctrl
   std::function<const c_image_processor::sptr & (const c_image_processing_pipeline*)> get_processor;
   std::function< bool (c_image_processing_pipeline*, const c_image_processor::sptr & )> set_processor;
   std::function<c_image_registration_options* (c_image_processing_pipeline*)> get_image_registration_options;
+  std::function<c_sparse_feature_detector_options* (c_image_processing_pipeline*)> get_feature2d_detector_options;
+  std::function<c_sparse_feature_descriptor_options* (c_image_processing_pipeline*)> get_feature2d_descriptor_options;
+  std::function<c_feature2d_matcher_options* (c_image_processing_pipeline*)> get_feature2d_matcher_options;
   std::function<bool (const c_image_processing_pipeline*)> is_enabled;
 };
 
@@ -267,7 +273,44 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
+#define PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, c) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_feature2d_detector_options; \
+      ctl.get_feature2d_detector_options = \
+          [](c_image_processing_pipeline * p) -> c_sparse_feature_detector_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctrls.emplace_back(ctl); \
+    }
 
+#define PIPELINE_CTL_FEATURE2D_DESCRIPTOR_OPTIONS(ctrls, c) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_feature2d_descriptor_options; \
+      ctl.get_feature2d_descriptor_options = \
+          [](c_image_processing_pipeline * p) -> c_sparse_feature_descriptor_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+#define PIPELINE_CTL_FEATURE2D_MATCHER_OPTIONS(ctrls, c) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_feature2d_matcher_options; \
+      ctl.get_feature2d_matcher_options = \
+          [](c_image_processing_pipeline * p) -> c_feature2d_matcher_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+
+//
 
 
 

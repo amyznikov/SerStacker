@@ -12,7 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/io/c_input_sequence.h>
 #include <core/proc/white_balance/histogram_normalization.h>
-#include <core/ssprintf.h>
+#include <core/settings/opencv_settings.h>
 #include <atomic>
 #include "c_image_processing_pipeline_ctrl.h"
 
@@ -21,7 +21,6 @@ struct c_image_processing_pipeline_input_options
 {
   int start_frame_index = 0;
   int max_input_frames = -1;
-
 
   DEBAYER_ALGORITHM debayer_method = DEBAYER_NN2;
 
@@ -40,6 +39,7 @@ struct c_image_processing_pipeline_input_options
   c_histogram_normalization_options background_normalization_options;
 };
 
+bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts);
 
 #define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
   PIPELINE_CTLC(ctrls, input_options_.start_frame_index, "start frame index", "", _this->input_sequence_); \
@@ -58,6 +58,7 @@ struct c_image_processing_pipeline_input_options
   PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.norm_type, "norm type", "norm type", _this->input_options_.enable_bground_normalization);\
   PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.stretch, "stretch", "stretch", _this->input_options_.enable_bground_normalization);\
   PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.offset, "offset", "offset", _this->input_options_.enable_bground_normalization);\
+
 
 
 struct c_image_processing_pipeline_output_options

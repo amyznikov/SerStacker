@@ -13,11 +13,11 @@
 #include <core/pipeline/c_stereo_matcher_pipeline/c_stereo_matcher_pipeline.h>
 
 class QRegularStereoMatcherPipeline:
-    public QImageProcessingPipelineBase<c_stereo_matcher_pipeline>
+    public QImageProcessingPipelineTemplate<c_stereo_matcher_pipeline>
 {
 public:
   typedef QRegularStereoMatcherPipeline ThisClass;
-  typedef QImageProcessingPipelineBase<c_stereo_matcher_pipeline> Base;
+  typedef QImageProcessingPipelineTemplate<c_stereo_matcher_pipeline> Base;
 
   QRegularStereoMatcherPipeline(const QString & name, QObject * parent = nullptr) :
     ThisClass(name, nullptr, parent)

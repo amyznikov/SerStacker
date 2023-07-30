@@ -32,7 +32,7 @@ protected:
   void onupdatecontrols() override;
   void update_controls_state();
 
-protected slots:
+protected Q_SLOTS:
   void onDetectorTypeChanged();
 
 protected:

@@ -1728,5 +1728,10 @@ c_feature2d::ptr create_sparse_descriptor_extractor(
 c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
     const c_sparse_feature_extractor_options & options);
 
+c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
+    const c_sparse_feature_detector_options & detector,
+    const c_sparse_feature_descriptor_options & descriptor);
+
+
 
 #endif /* __feature_detection_h__ */

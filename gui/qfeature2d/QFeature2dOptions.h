@@ -186,6 +186,4 @@ protected:
 };
 
 
-
-
 #endif /* __QFeature2DOptions_h__ */

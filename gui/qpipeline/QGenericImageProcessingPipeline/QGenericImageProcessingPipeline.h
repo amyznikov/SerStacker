@@ -13,11 +13,11 @@
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
 
 class QGenericImageProcessingPipeline :
-    public QImageProcessingPipelineBase<c_generic_image_processor_pipeline>
+    public QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline>
 {
 public:
   typedef QGenericImageProcessingPipeline ThisClass;
-  typedef QImageProcessingPipelineBase<c_generic_image_processor_pipeline> Base;
+  typedef QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline> Base;
 
   QGenericImageProcessingPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)

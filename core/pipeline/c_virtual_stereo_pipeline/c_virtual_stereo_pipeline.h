@@ -9,10 +9,125 @@
 #ifndef __c_virtual_stereo_pipeline_h__
 #define __c_virtual_stereo_pipeline_h__
 
-class c_virtual_stereo_pipeline
+#include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/improc/c_image_processor.h>
+#include <core/settings/opencv_settings.h>
+#include <core/io/c_output_frame_writer.h>
+
+struct c_virtual_stereo_input_options :
+    c_image_processing_pipeline_input_options
+{
+};
+
+struct c_virtual_stereo_feature2d_options
+{
+  c_sparse_feature_detector_options detector;
+  c_sparse_feature_descriptor_options descriptor;
+  c_feature2d_matcher_options matcher;
+};
+
+
+struct c_virtual_stereo_output_options :
+    c_image_processing_pipeline_output_options
+{
+//  std::string progress_video_filename;
+//  std::string depthmap_filename;
+//  std::string cloud3d_image_filename;
+//  std::string cloud3d_ply_filename;
+//
+//  bool save_progress_video = false;
+//  bool save_depthmaps = true;
+//  bool save_cloud3d_image = true;
+//  bool save_cloud3d_ply = true;
+};
+
+
+struct c_virtual_stereo_image_processing_options
+{
+  c_image_processor::sptr input_processor;
+  c_image_processor::sptr feature2d_preprocessor;
+};
+
+
+class c_virtual_stereo_pipeline :
+    public c_image_processing_pipeline
 {
 public:
-  c_virtual_stereo_pipeline();
+  typedef c_virtual_stereo_pipeline this_class;
+  typedef c_image_processing_pipeline base;
+  typedef std::shared_ptr<this_class> sptr;
+
+  c_virtual_stereo_pipeline(const std::string & name,
+      const c_input_sequence::sptr & input_sequence);
+
+  const std::string & get_class_name() const override
+  {
+    return class_name();
+  }
+
+  static const std::string & class_name()
+  {
+    static const std::string classname_ =
+        "virtual_stereo";
+    return classname_;
+  }
+
+  static const std::string & tooltip()
+  {
+    static const std::string tooltip_ =
+        "<strong>c_virtual_stereo_pipeline.</strong><br>"
+        "The pipeline for virtual stereo experimentation<br>";
+    return tooltip_;
+  }
+
+  c_virtual_stereo_input_options & input_options();
+  const c_virtual_stereo_input_options & input_options() const;
+
+  c_virtual_stereo_image_processing_options & image_processing_options();
+  const c_virtual_stereo_image_processing_options & image_processing_options() const ;
+
+  c_virtual_stereo_feature2d_options & feature2d_options();
+  const c_virtual_stereo_feature2d_options & feature2d_options() const;
+
+  c_virtual_stereo_output_options & output_options();
+  const c_virtual_stereo_output_options & output_options() const;
+
+  bool serialize(c_config_setting settings, bool save) override;
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
+  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+
+protected:
+  bool initialize_pipeline() override;
+  bool run_pipeline() override;
+  void cleanup_pipeline() override;
+  bool open_input_sequence();
+  void close_input_sequence();
+  bool seek_input_sequence(int pos);
+  bool read_input_frame(cv::Mat & output_image, cv::Mat & output_mask);
+
+  c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
+  bool process_current_frame();
+
+protected:
+  c_virtual_stereo_input_options input_options_;
+  c_virtual_stereo_image_processing_options image_processing_options_;
+  c_virtual_stereo_feature2d_options feature2d_options_;
+  c_virtual_stereo_output_options output_options_;
+
+  c_sparse_feature_extractor::ptr keypoints_extractor_;
+  c_feature2d_matcher::ptr keypoints_matcher_;
+
+  cv::Mat current_image_;
+  cv::Mat reference_image_;
+
+  cv::Mat current_mask_;
+  cv::Mat reference_mask_;
+
+  std::vector<cv::KeyPoint> current_keypoints_;
+  std::vector<cv::KeyPoint> reference_keypoints_;
+
+  cv::Mat current_descriptors_;
+  cv::Mat reference_descriptors_;
 };
 
 #endif /* __c_virtual_stereo_pipeline_h__ */

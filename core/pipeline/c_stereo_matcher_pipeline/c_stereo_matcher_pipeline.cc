@@ -140,15 +140,9 @@ bool c_stereo_matcher_pipeline::serialize(c_config_setting settings, bool save)
     return false;
   }
 
+
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    SERIALIZE_OPTION(section, save, input_options_, layout_type);
-    SERIALIZE_OPTION(section, save, input_options_, swap_cameras);
-    SERIALIZE_OPTION(section, save, input_options_, left_stereo_source);
-    SERIALIZE_OPTION(section, save, input_options_, right_stereo_source);
-    SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
-    SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
-    SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
-    SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
+    serialize_base_stereo_input_options(section, save, input_options_);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "stereo_rectification")) ) {

@@ -13,11 +13,11 @@
 #include <core/pipeline/c_live_stacking_pipeline/c_live_stacking_pipeline.h>
 
 class QLveStackingPipeline :
-    public QImageProcessingPipelineBase<c_live_stacking_pipeline>
+    public QImageProcessingPipelineTemplate<c_live_stacking_pipeline>
 {
 public:
   typedef QLveStackingPipeline ThisClass;
-  typedef QImageProcessingPipelineBase<c_live_stacking_pipeline> Base;
+  typedef QImageProcessingPipelineTemplate<c_live_stacking_pipeline> Base;
 
   QLveStackingPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)

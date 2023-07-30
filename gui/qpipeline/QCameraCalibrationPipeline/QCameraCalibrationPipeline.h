@@ -13,11 +13,11 @@
 #include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
 
 class QCameraCalibrationPipeline :
-    public QImageProcessingPipelineBase<c_camera_calibration_pipeline>
+    public QImageProcessingPipelineTemplate<c_camera_calibration_pipeline>
 {
 public:
   typedef QCameraCalibrationPipeline ThisClass;
-  typedef QImageProcessingPipelineBase<c_camera_calibration_pipeline> Base;
+  typedef QImageProcessingPipelineTemplate<c_camera_calibration_pipeline> Base;
 
   QCameraCalibrationPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)

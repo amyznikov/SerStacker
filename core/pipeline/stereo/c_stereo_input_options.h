@@ -26,6 +26,9 @@ struct c_stereo_input_options:
   bool swap_cameras = false;
 };
 
+bool serialize_base_stereo_input_options(c_config_setting section, bool save, c_stereo_input_options & opts);
+
+
 #define POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls) \
     PIPELINE_CTL(ctrls, input_options_.layout_type, "stereo frame layout", "");\
     PIPELINE_CTL_INPUT_SOURCE_SELECTION(ctrls, input_options_.left_stereo_source, "left stereo source", "", \

@@ -3301,8 +3301,10 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
     PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
 
     PIPELINE_CTL(ctrls, output_options_.save_preprocessed_frames, "save_preprocessed_frames", "");
-    PIPELINE_CTL(ctrls, output_options_.save_preprocessed_frame_mapping, "save_preprocessed_frame_mapping", "");
-    PIPELINE_CTL(ctrls, output_options_.output_preprocessed_frames_filename, "preprocessed_frames_filename", "");
+    PIPELINE_CTLC(ctrls, output_options_.save_preprocessed_frame_mapping, "save_preprocessed_frame_mapping", "",
+        (_this->output_options_.save_preprocessed_frames));
+    PIPELINE_CTLC(ctrls, output_options_.output_preprocessed_frames_filename, "preprocessed_frames_filename", "",
+        (_this->output_options_.save_preprocessed_frames));
 
     PIPELINE_CTL(ctrls, output_options_.save_aligned_frames, "save_aligned_frames", "");
     PIPELINE_CTLC(ctrls, output_options_.save_aligned_frame_mapping, "save_aligned_frame_mapping", "",

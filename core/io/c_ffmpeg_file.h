@@ -55,8 +55,8 @@ public:
   ///@brief return true if video file is open
   bool is_open() const;
 
-  // the output pts is returned in stream time_base units
-  bool read(cv::Mat & outframe, int64_t * outpts = nullptr);
+  // the output pts measure is returned in seconds
+  bool read(cv::Mat & outframe, double * outpts = nullptr);
 
   ///@brief estimate video duration in seconds
   double duration() const;
@@ -119,6 +119,7 @@ protected:
   };
   std::vector<cvframe> received_frames;
   int64_t last_ts = 0;
+  double timescale_ = 0;
 };
 
 /**
@@ -145,10 +146,12 @@ public:
   ///@brief close current output file
   void close();
 
-  ///@brief write framw with pts in stream time_base units
+  ///@brief write framw with pts stream time base units
   bool write(const cv::Mat frame, int64_t pts);
 
   const std::string & filename() const;
+
+  const std::string & opts() const;
 
   ///@brief access to stream time_base units to allow caller to precompute pts from it's real timestamp
   const AVStream * stream() const;
@@ -165,6 +168,7 @@ protected:
 
 protected:
   std::string output_filename_;
+  std::string opts_;
   AVFormatContext * octx = nullptr;
   AVStream * ostream = nullptr;
   AVCodecContext * codec_ctx = nullptr;
@@ -177,6 +181,7 @@ protected:
   int frames_written_ = 0;
   bool header_written_ = false;
   int64_t start_pts_ = 0;
+  int64_t ppts_ = 0;
 
   AVPacket * encoded_pkt = nullptr;
   SwsContext * sws_ctx = nullptr;

@@ -11,6 +11,9 @@
 #include <time.h>
 
 
+// REALTIME sec
+double get_realtime_sec(void);
+
 // REALTIME ms
 double get_realtime_ms(void);
 

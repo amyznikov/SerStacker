@@ -121,7 +121,7 @@ protected:
   QString filename_suffix_;
 
   FORMAT output_format_ = FORMAT::SER;
-  QString ffmpeg_options_ = "-c ffv1 -f avi";
+  QString ffmpeg_options_ = "-c huffyuv -r 100 -f avi";
 
   bool enable_split_stereo_stream_ = false;
   c_stereo_stream_options stereo_stream_options_;

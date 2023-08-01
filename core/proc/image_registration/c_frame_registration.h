@@ -95,7 +95,7 @@ struct c_image_registration_options
   bool enable_frame_registration = true;
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
-  bool accumulate_and_compensate_turbulent_flow = true;
+  bool accumulate_and_compensate_turbulent_flow = false;
 
   color_channel_type registration_channel = color_channel_gray;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;

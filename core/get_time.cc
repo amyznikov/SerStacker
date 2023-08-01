@@ -7,6 +7,14 @@
 
 #include "get_time.h"
 
+// REALTIME sec
+double get_realtime_sec(void)
+{
+  struct timespec t;
+  clock_gettime(CLOCK_REALTIME, &t);
+  return (double) (t.tv_sec + t.tv_nsec / 1e9);
+}
+
 // REALTIME ms
 double get_realtime_ms(void)
 {

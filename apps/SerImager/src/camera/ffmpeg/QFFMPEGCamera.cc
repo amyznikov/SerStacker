@@ -127,7 +127,7 @@ bool QFFMPEGCamera::device_start()
   }
 
   cv::Mat frame;
-  int64_t pts;
+  double pts;
 
   if( !ffmpeg_.read(frame, &pts) ) {
     CF_ERROR("ffmpeg_.read() fails");
@@ -174,7 +174,7 @@ QCameraFrame::sptr QFFMPEGCamera::device_recv_frame()
 
   if( frm ) {
 
-    int64_t pts;
+    double pts;
 
     if( !ffmpeg_.read(frm->image(), &pts) ) {
       CF_ERROR("ffmpeg_.read() fails");

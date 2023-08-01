@@ -365,10 +365,6 @@ bool c_virtual_stereo_pipeline::process_current_frame()
       CF_ERROR("ERROR: input_processor->process() fails");
       return false;
     }
-
-    //    CF_DEBUG("current_image_.size=%dx%d current_mask.size=%dx%d",
-    //        current_image_.cols, current_image_.rows,
-    //        current_mask_.cols, current_mask_.rows);
   }
 
   //  if ( image_processing_options_.feature2d_preprocessor ) {

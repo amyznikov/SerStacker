@@ -102,7 +102,7 @@ protected:
   cv::Mat image_;
   void * data_ = nullptr;
   int size_ = 0;
-  double ts_ = 0;
+  double ts_ = 0; // in (real-time?) seconds
   int index_ = 0;
   enum COLORID colorid_ = COLORID_UNKNOWN;
   int bpp_ = 0;

@@ -307,7 +307,7 @@ bool QImagingCamera::start()
       }
 
       frame->set_index(index++);
-      frame->set_ts(get_realtime_ms());
+      frame->set_ts(get_realtime_sec());
 
       deque_.emplace_back(frame);
 

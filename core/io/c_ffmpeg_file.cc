@@ -747,6 +747,10 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
         istream->time_base.num, istream->time_base.den,
         cctx->time_base.num, cctx->time_base.den);
 
+  timescale_ = istream->time_base.num > 0 ?
+      (double) istream->time_base.den / istream->time_base.num :
+      1;
+
 end:
 
   if ( codec_opts ) {
@@ -821,14 +825,14 @@ int64_t c_ffmpeg_reader::curpos() const
 
 
 
-bool c_ffmpeg_reader::read(cv::Mat & outframe, int64_t * outpts)
+bool c_ffmpeg_reader::read(cv::Mat & outframe, double * outpts)
 {
   int status;
 
-  if ( !received_frames.empty() ) {
+  if( !received_frames.empty() ) {
     outframe = std::move(received_frames.front().image);
-    if ( outpts ) {
-      *outpts = received_frames.front().pts;
+    if( outpts ) {
+      *outpts = timescale_ * received_frames.front().pts;
     }
     received_frames.erase(received_frames.begin());
     return true;
@@ -952,7 +956,7 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, int64_t * outpts)
   if ( !received_frames.empty() ) {
     outframe = std::move(received_frames.front().image);
     if ( outpts ) {
-      *outpts = received_frames.front().pts;
+      *outpts = timescale_ * received_frames.front().pts;
     }
     received_frames.erase(received_frames.begin());
     return true;
@@ -1021,6 +1025,7 @@ bool c_ffmpeg_writer::open(const std::string & output_filename,
   /*
    * Get output file name
    *  */
+  opts_ = ffmpeg_opts;
   if ( (output_filename_ = output_filename).empty() ) {
     CF_ERROR("No output file name spcified, can not create output file");
     return false;
@@ -1390,9 +1395,16 @@ bool c_ffmpeg_writer::write(const cv::Mat image, int64_t pts)
     return false;
   }
 
-  if ( !frames_written_ ) {
+  if( !frames_written_ ) {
     start_pts_ = pts;
+    ppts_ = start_pts_ - 1;
   }
+
+  if( (pts -= start_pts_) <= ppts_ ) {
+    pts = ppts_ + 1;
+  }
+
+  ppts_ = pts;
 
   bool fOk =
       write_frame(image.ptr(),
@@ -1401,7 +1413,7 @@ bool c_ffmpeg_writer::write(const cv::Mat image, int64_t pts)
           image.rows,
           image.channels(),
           0,
-          pts - start_pts_);
+          pts);
 
   if ( !fOk ) {
     CF_ERROR("c_ffmpeg_writer: write_frame() fails");
@@ -1415,10 +1427,14 @@ const std::string & c_ffmpeg_writer::filename() const
   return output_filename_;
 }
 
+const std::string & c_ffmpeg_writer::opts() const
+{
+  return opts_;
+}
 
 int c_ffmpeg_writer::encode_and_send_frame(AVFrame * picture)
 {
-  if ( picture ) {
+  if ( picture )  {
 
     picture->pts =
         av_rescale_q(picture->pts,
@@ -1441,9 +1457,8 @@ int c_ffmpeg_writer::encode_and_send_frame(AVFrame * picture)
     if ( (status = avcodec_receive_packet(codec_ctx, encoded_pkt)) >= 0 ) {
 
       av_packet_rescale_ts(encoded_pkt, codec_ctx->time_base, ostream->time_base);
-
       encoded_pkt->stream_index = ostream->index;
-      encoded_pkt->dts = frames_written_;
+      // CF_DEBUG("encoded_pkt: pts=%lld dts=%lld", encoded_pkt->pts, encoded_pkt->dts);
 
       if ( (status = av_write_frame(octx, encoded_pkt)) >= 0 ) {
         ++frames_written_;

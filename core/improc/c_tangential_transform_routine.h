@@ -67,8 +67,8 @@ public:
       if ( rmap_.empty() || previous_image_size != image_size ) {
 
         if ( center_.x == -1 && center_.y == -1 ) {
-          center_.x = image_size.width;
-          center_.y = image_size.height;
+          center_.x = image_size.width / 2;
+          center_.y = image_size.height / 2;
         }
 
         double al = atan2(0 - center_.x, focus_);
@@ -76,10 +76,10 @@ public:
         double ar = atan2(image_size.width - center_.x, focus_);
         double ab = atan2(image_size.height - center_.y, focus_);
 
-        int l = al * focus_;
-        int t = at * focus_;
-        int r = ar * focus_;
-        int b = ab * focus_;
+        int l = cvRound(al * focus_);
+        int t = cvRound(at * focus_);
+        int r = cvRound(ar * focus_);
+        int b = cvRound(ab * focus_);
 
         const cv::Size remap_size(r - l, b - t);
 

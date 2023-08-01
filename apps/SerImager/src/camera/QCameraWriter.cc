@@ -97,17 +97,28 @@ struct c_avi_file_writer:
     c_video_frame_writer
 {
   c_ffmpeg_writer ffmpeg;
+  double tscale_ = 1;
 
+  // "-c huffyuv -r 100 -f avi"
   bool create(const QString & filename, const QString & ffopts, const cv::Size & frame_size,
       enum COLORID color_id, int /*bits_per_plane*/)
   {
     const bool is_color =
         color_id == COLORID_RGB || color_id == COLORID_BGR;
 
-    return ffmpeg.open(filename.toStdString(),
-        frame_size,
-        is_color,
-        ffopts.toStdString());  // "-c huffyuv -f avi"
+    if ( !ffmpeg.open(filename.toStdString(), frame_size, is_color, ffopts.toStdString())) {
+      CF_ERROR("ffmpeg.open('%s', opts='%s') fails", ffmpeg.filename().c_str(), ffmpeg.opts().c_str());
+      return false;
+    }
+
+    const AVStream * stream =
+        ffmpeg.stream();
+
+    tscale_ =
+        (double) stream->time_base.den /
+            stream->time_base.num;
+
+    return true;
   }
 
   bool is_open() const override
@@ -117,7 +128,7 @@ struct c_avi_file_writer:
 
   bool write(const QCameraFrame::sptr & frame) override
   {
-    return ffmpeg.write(frame->image(), frame->ts());
+    return ffmpeg.write(frame->image(), (int64_t)(tscale_ * frame->ts()));
   }
 
   virtual void close() override
@@ -138,6 +149,7 @@ struct c_avi_stereo_writer:
   cv::Rect src_panes[2];
   cv::Size output_size;
   stereo_stream_layout_type frame_layout = stereo_stream_layout_horizontal_split;
+  double tscale_ = 1;
   bool downscale_panes = false;
 
   bool create(const QString & filename, const QString & ffopts,
@@ -218,7 +230,7 @@ struct c_avi_stereo_writer:
           ffmpegs[i].open(filenames[i],
               output_size,
               is_color,
-              ffopts.toStdString()); // "-c huffyuv -f avi"
+              ffopts.toStdString()); // "-c huffyuv -r 10 -f avi"
 
       if ( !fok ) {
         CF_ERROR("ffmpegs[i=%d].open('%s') fails", i, filenames[i].c_str());
@@ -226,6 +238,13 @@ struct c_avi_stereo_writer:
         return false;
       }
     }
+
+    const AVStream * stream =
+        ffmpegs[0].stream();
+
+    tscale_ =
+        (double) stream->time_base.den /
+            stream->time_base.num;
 
     return true;
   }
@@ -253,7 +272,7 @@ struct c_avi_stereo_writer:
     }
 
     for ( int i = 0; i < 2; ++i ) {
-      if ( !ffmpegs[i].write(images[i], frame->ts()) ) {
+      if ( !ffmpegs[i].write(images[i], tscale_ * frame->ts()) ) {
         CF_ERROR("ffmpegs[i=%d].write() fails", i);
         return false;
       }

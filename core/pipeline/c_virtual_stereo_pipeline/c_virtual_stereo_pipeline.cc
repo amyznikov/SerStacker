@@ -7,6 +7,8 @@
 
 #include "c_virtual_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
+#include <chrono>
+#include <thread>
 
 
 c_virtual_stereo_pipeline::c_virtual_stereo_pipeline(const std::string & name,
@@ -73,9 +75,16 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, feature2d_options_, matcher);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
+    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, output_options_, default_display_type);
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
+    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+    SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
   }
 
   return true;
@@ -115,6 +124,8 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
       PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
       PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+      PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+      PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -134,6 +145,7 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   output_path_ =
       create_output_path(output_options().output_directory);
+
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -158,16 +170,21 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   current_image_.release();
-  reference_image_.release();
+  previous_image_.release();
 
   current_mask_.release();
-  reference_mask_.release();
+  previous_mask_.release();
 
   current_keypoints_.clear();
-  reference_keypoints_.clear();
+  previous_keypoints_.clear();
 
   current_descriptors_.release();
-  reference_descriptors_.release();
+  previous_descriptors_.release();
+
+  /////////////////////////////////////////////////////////////////////////////
+
+  matched_current_positions_.clear();
+  matched_previous_positions_.clear();
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -177,6 +194,11 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 void c_virtual_stereo_pipeline::cleanup_pipeline()
 {
   close_input_sequence();
+
+  if ( progress_video_writer_.is_open() ) {
+    progress_video_writer_.close();
+    CF_DEBUG("SAVED '%s'", progress_video_writer_.filename().c_str());
+  }
 }
 
 bool c_virtual_stereo_pipeline::open_input_sequence()
@@ -309,9 +331,24 @@ bool c_virtual_stereo_pipeline::run_pipeline()
       return false;
     }
 
-    accumulated_frames_ =
-        processed_frames_;
+    if ( !write_progress_video() ) {
+      CF_DEBUG("write_progress_video() fails");
+      return false;
+    }
 
+    // give chance to GUI thread to call get_display_image()
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    if ( true ) {
+      lock_guard lock(mutex());
+
+      accumulated_frames_ = processed_frames_;
+
+      std::swap(current_image_, previous_image_);
+      std::swap(current_mask_, previous_mask_);
+      std::swap(current_keypoints_, previous_keypoints_);
+      std::swap(current_descriptors_, previous_descriptors_);
+    }
   }
 
 
@@ -328,12 +365,57 @@ bool c_virtual_stereo_pipeline::process_current_frame()
       CF_ERROR("ERROR: input_processor->process() fails");
       return false;
     }
+
+    //    CF_DEBUG("current_image_.size=%dx%d current_mask.size=%dx%d",
+    //        current_image_.cols, current_image_.rows,
+    //        current_mask_.cols, current_mask_.rows);
   }
+
+  //  if ( image_processing_options_.feature2d_preprocessor ) {
+  //  }
 
   keypoints_extractor_->detectAndCompute(current_image_, current_mask_,
       current_keypoints_, current_descriptors_);
 
-  if ( image_processing_options_.feature2d_preprocessor ) {
+  if ( !previous_keypoints_.empty() ) {
+
+    //current_matches_.clear();
+    matched_current_positions_.clear();
+    matched_previous_positions_.clear();
+    current_inliers_.release();
+
+    std::vector<cv::Point2f> cps, pps;
+
+    const size_t num_matches  =
+        match_keypoints(keypoints_matcher_,
+            current_keypoints_,
+            current_descriptors_,
+            previous_keypoints_,
+            previous_descriptors_,
+            nullptr,
+            &cps,
+            &pps);
+
+     // CF_DEBUG("num_matches=%zu cps=%zu",
+     //    num_matches, cps.size());
+
+    if ( !num_matches ) {
+      CF_ERROR("match_keypoints() fails");
+    }
+    else {
+
+      for ( int i = 0; i < num_matches; ++i ) {
+
+        const cv::Point2f & cp = cps[i];
+        const cv::Point2f & pp = pps[i];
+        const float d2 = (cp.x - pp.x) * (cp.x - pp.x) + (cp.y - pp.y) * (cp.y - pp.y);
+        if ( d2 > 9 ) {
+          matched_current_positions_.emplace_back(cp);
+          matched_previous_positions_.emplace_back(pp);
+        }
+      }
+
+    }
   }
 
   return true;
@@ -356,13 +438,75 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
     cv::cvtColor(current_image_, cimg, cv::COLOR_GRAY2BGR);
   }
 
-  display_frame.create(current_image_.size(), CV_8UC3);
 
-  cv::drawKeypoints(cimg, current_keypoints_, display_frame.getMatRef(), cv::Scalar::all(-1),
-      cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+  if ( !matched_previous_positions_.empty() ) {
+
+    const int N = matched_current_positions_.size();
+    //CF_DEBUG("N=%d", N);
+
+    for ( int i = 0; i < N; ++i ) {
+
+      const cv::Point2f & cp =
+          matched_current_positions_[i];
+
+      const cv::Point2f & pp =
+          matched_previous_positions_[i];
+
+      cv::Scalar color(rand() % 255 + 32, rand() % 255 + 32, rand() % 255 + 32);
+
+      cv::line(cimg, pp, cp, color, 1, cv::LINE_4);
+      cv::rectangle(cimg, cv::Point(cp.x-1, cp.y-1), cv::Point(cp.x+1, cp.y+1), color, 1, cv::LINE_4);
+    }
+
+  }
+
+  display_frame.move(cimg);
 
   if ( display_mask.needed() ) {
     current_mask_.copyTo(display_mask);
+  }
+
+  return true;
+}
+
+bool c_virtual_stereo_pipeline::write_progress_video()
+{
+  if ( !output_options_.save_progress_video ) {
+    return true;
+  }
+
+  cv::Mat display;
+
+  if ( !get_display_image(display, cv::noArray()) ) {
+    return true; // ignore
+  }
+
+  if ( !progress_video_writer_.is_open() ) {
+
+    const std::string output_video_filename =
+        generate_output_filename(output_options_.progress_video_filename,
+            "progress",
+            ".avi");
+
+    bool fOK =
+        progress_video_writer_.open(output_video_filename,
+            display.size(),
+            display.channels() > 1,
+            false);
+
+    if( !fOK ) {
+      CF_ERROR("progress_video_writer_.open('%s') fails",
+          output_video_filename.c_str());
+      return false;
+    }
+
+    CF_DEBUG("Created '%s'", output_video_filename.c_str());
+  }
+
+  if( !progress_video_writer_.write(display, cv::noArray(), false, 0) ) {
+    CF_ERROR("progress_video_writer_.write() fails: %s",
+        progress_video_writer_.filename().c_str());
+    return false;
   }
 
   return true;

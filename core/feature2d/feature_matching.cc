@@ -166,29 +166,30 @@ size_t match_keypoints(const cv::Ptr<c_feature2d_matcher> & keypoints_matcher,
 
   // Send outputs to caller
 
-  if ( output_matched_current_positions ) {
+  if( output_matched_current_positions ) {
 
     output_matched_current_positions->reserve(
         output_matched_current_positions->size() +
             matches.size());
 
-    for ( const cv::DMatch & m : matches ) {
+    for( const cv::DMatch &m : matches ) {
       output_matched_current_positions->
           emplace_back(current_keypoints[m.queryIdx].pt);
     }
   }
 
-  if ( output_matched_reference_positions ) {
+  if( output_matched_reference_positions ) {
 
     output_matched_reference_positions->reserve(
         output_matched_reference_positions->size() +
             matches.size());
 
-    for ( const cv::DMatch & m : matches ) {
+    for( const cv::DMatch &m : matches ) {
       output_matched_reference_positions->
           emplace_back(reference_keypoints[m.trainIdx].pt);
     }
   }
+
 
   if ( output_matches ) {
 

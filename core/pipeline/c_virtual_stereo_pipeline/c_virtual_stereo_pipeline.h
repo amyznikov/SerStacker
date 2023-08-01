@@ -30,12 +30,12 @@ struct c_virtual_stereo_feature2d_options
 struct c_virtual_stereo_output_options :
     c_image_processing_pipeline_output_options
 {
-//  std::string progress_video_filename;
+    std::string progress_video_filename;
 //  std::string depthmap_filename;
 //  std::string cloud3d_image_filename;
 //  std::string cloud3d_ply_filename;
 //
-//  bool save_progress_video = false;
+    bool save_progress_video = false;
 //  bool save_depthmaps = true;
 //  bool save_cloud3d_image = true;
 //  bool save_cloud3d_ply = true;
@@ -104,7 +104,7 @@ protected:
   void close_input_sequence();
   bool seek_input_sequence(int pos);
   bool read_input_frame(cv::Mat & output_image, cv::Mat & output_mask);
-
+  bool write_progress_video();
   c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
   bool process_current_frame();
 
@@ -118,16 +118,26 @@ protected:
   c_feature2d_matcher::ptr keypoints_matcher_;
 
   cv::Mat current_image_;
-  cv::Mat reference_image_;
+  cv::Mat previous_image_;
 
   cv::Mat current_mask_;
-  cv::Mat reference_mask_;
+  cv::Mat previous_mask_;
 
   std::vector<cv::KeyPoint> current_keypoints_;
-  std::vector<cv::KeyPoint> reference_keypoints_;
+  std::vector<cv::KeyPoint> previous_keypoints_;
 
   cv::Mat current_descriptors_;
-  cv::Mat reference_descriptors_;
+  cv::Mat previous_descriptors_;
+
+  std::vector<cv::Point2f> matched_current_positions_;
+  std::vector<cv::Point2f> matched_previous_positions_;
+
+  cv::Mat1b current_inliers_;    // current inliers mask
+  cv::Mat1b previous_inliers_;    // previous inliers mask
+
+  c_output_frame_writer progress_video_writer_;
+
 };
+
 
 #endif /* __c_virtual_stereo_pipeline_h__ */

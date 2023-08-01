@@ -245,7 +245,7 @@ bool c_flann_based_feature2d_matcher::match(cv::InputArray query_descriptors, /*
 
     const int knn = lowe_ratio_ > 0 ? 2 : 1;
 
-    CF_DEBUG("lowe_ratio_=%g knn=%d", lowe_ratio_, knn);
+    // CF_DEBUG("lowe_ratio_=%g knn=%d", lowe_ratio_, knn);
 
     matches.clear();
     matches.reserve( lowe_ratio_ > 0 ? query_descriptors.rows() : knn * query_descriptors.rows());
@@ -257,9 +257,9 @@ bool c_flann_based_feature2d_matcher::match(cv::InputArray query_descriptors, /*
             true));
     }
 
-    CF_DEBUG("query_descriptors.size=%dx%d depth=%d channels=%d",
-        query_descriptors.rows(), query_descriptors.cols(),
-        query_descriptors.depth(), query_descriptors.channels());
+//    CF_DEBUG("query_descriptors.size=%dx%d depth=%d channels=%d",
+//        query_descriptors.rows(), query_descriptors.cols(),
+//        query_descriptors.depth(), query_descriptors.channels());
 
     index_.knnSearch(query_descriptors,
         indices_,
@@ -267,13 +267,13 @@ bool c_flann_based_feature2d_matcher::match(cv::InputArray query_descriptors, /*
         knn,
         *search_params_);
 
-    CF_DEBUG("indices_.size=%dx%d depth=%d channels=%d",
-        indices_.rows, indices_.cols,
-        indices_.depth(), indices_.channels());
+//    CF_DEBUG("indices_.size=%dx%d depth=%d channels=%d",
+//        indices_.rows, indices_.cols,
+//        indices_.depth(), indices_.channels());
 
-    //    CF_DEBUG("dists_.size=%dx%d depth=%d channels=%d",
-    //        dists_.rows, dists_.cols,
-    //        dists_.depth(), dists_.channels());
+//    CF_DEBUG("dists_.size=%dx%d depth=%d channels=%d",
+//        dists_.rows, dists_.cols,
+//        dists_.depth(), dists_.channels());
 
     static const auto dist =
         [](const cv::Mat & m, int r, int c) -> float {

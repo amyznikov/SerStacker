@@ -61,13 +61,45 @@ const std::string & c_generic_image_processor_pipeline::output_file_name() const
 
 bool c_generic_image_processor_pipeline::initialize_pipeline()
 {
+  if ( !base::initialize_pipeline() ) {
+   CF_ERROR("c_camera_calibration_pipeline: base::initialize() fails");
+   return false;
+ }
+
+  output_path_ =
+      create_output_path(output_options_.output_directory);
+
+  if ( output_options_.save_processed_frames ) {
+    output_file_name_ =
+        generate_output_filename(output_options_.processed_frames_filename,
+            "processed",
+            ".avi");
+  }
+
   return true;
+}
+
+void c_generic_image_processor_pipeline::cleanup_pipeline()
+{
+  if ( input_sequence_ ) {
+    input_sequence_->close();
+  }
+
+  if ( output_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", output_writer_.filename().c_str());
+    output_writer_.close();
+  }
 }
 
 bool c_generic_image_processor_pipeline::run_pipeline()
 {
   if( !input_sequence_ ) {
     CF_ERROR("No input_sequence provided, can not run");
+    return false;
+  }
+
+  if ( !input_sequence_->open() ) {
+    CF_ERROR("input_sequence_->open() fails");
     return false;
   }
 
@@ -95,8 +127,14 @@ bool c_generic_image_processor_pipeline::run_pipeline()
     accumulated_frames_ = 0;
 
     if( total_frames_ < 1 ) {
-      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-          total_frames_);
+      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1\n"
+          "start_pos=%d end_pos=%d input_sequence_->size()=%d max_input_frames=%d is_live_sequence=%d",
+          total_frames_,
+          start_pos,
+          end_pos,
+          input_sequence_->size(),
+          input_options_.max_input_frames,
+          is_live_sequence);
       return false;
     }
 
@@ -144,14 +182,6 @@ bool c_generic_image_processor_pipeline::run_pipeline()
   }
 
   return true;
-}
-
-void c_generic_image_processor_pipeline::cleanup_pipeline()
-{
-  if ( output_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", output_writer_.filename().c_str());
-    output_writer_.close();
-  }
 }
 
 bool c_generic_image_processor_pipeline::process_current_frame()

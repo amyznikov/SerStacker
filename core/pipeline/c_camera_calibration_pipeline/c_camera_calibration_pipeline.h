@@ -151,7 +151,6 @@ protected:
   int best_calibration_flags_ = 0;
   double best_subset_quality_ = HUGE_VAL;
 
-
   std::vector<std::vector<cv::Point2f> > image_points_;
   std::vector<std::vector<cv::Point3f> > object_points_;
 

@@ -59,10 +59,10 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
   {
-    if( !image.empty() ) {
+    if( !image.empty() || !mask.empty() ) {
 
       const cv::Size image_size =
-          image.size();
+          image.empty() ? mask.size() : image.size();
 
       if ( rmap_.empty() || previous_image_size != image_size ) {
 
@@ -81,8 +81,6 @@ public:
         int r = ar * focus_;
         int b = ab * focus_;
 
-        CF_DEBUG("l=%d t=%d r=%d b=%d", l, t, r, b);
-
         const cv::Size remap_size(r - l, b - t);
 
         rmap_.create(remap_size);
@@ -99,9 +97,17 @@ public:
         }
       }
 
-      previous_image_size = image.size();
+      if( !image.empty() ) {
+        cv::remap(image, image, rmap_, cv::noArray(), cv::INTER_LINEAR);
+      }
 
-      cv::remap(image, image, rmap_, cv::noArray(), cv::INTER_LINEAR);
+      if( !mask.empty() ) {
+        cv::remap(mask, mask, rmap_, cv::noArray(), cv::INTER_LINEAR);
+        cv::compare(mask, 245, mask, cv::CMP_GE);
+      }
+
+      previous_image_size = image_size;
+
     }
 
     return true;

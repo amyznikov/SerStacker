@@ -689,7 +689,7 @@ bool fromString(const std::string & s, cv::Matx<T, m, n> * mat)
       if ( !fromString(tokens[i * n + j], &v) ) {
         return false;
       }
-      mat(i, j) = v;
+      (*mat)(i, j) = v;
     }
   }
 

@@ -1117,4 +1117,57 @@ private:
   int updatingControls_ = 0;
 };
 
+
+template<class OptionsType>
+class QSettingsWidgetTemplate :
+    public QSettingsWidget
+{
+public:
+  typedef QSettingsWidgetTemplate ThisClass;
+  typedef QSettingsWidget Base;
+  typedef OptionsType c_options_type;
+
+
+  QSettingsWidgetTemplate(QWidget * parent = nullptr) :
+    ThisClass("", parent)
+  {
+  }
+
+  QSettingsWidgetTemplate(const QString & prefix, QWidget * parent = nullptr) :
+    Base(prefix, parent)
+  {
+  }
+
+  void set_options(c_options_type * options)
+  {
+    this->options_ = options;
+    updateControls();
+  }
+
+  c_options_type * options() const
+  {
+    return options_;
+  }
+
+protected:
+  virtual void update_control_states()
+  {
+  }
+
+  void onupdatecontrols() override
+  {
+    if ( !options_ ) {
+      setEnabled(false);
+    }
+    else {
+      Base::populatecontrols();
+      update_control_states();
+      setEnabled(true);
+    }
+  }
+
+protected:
+  c_options_type * options_ = nullptr;
+};
+
 #endif /* __QSettingsWidget_h__ */

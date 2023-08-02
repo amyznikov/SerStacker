@@ -12,12 +12,27 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/improc/c_image_processor.h>
 #include <core/settings/opencv_settings.h>
+#include <core/settings/camera_settings.h>
 #include <core/io/c_output_frame_writer.h>
 
 struct c_virtual_stereo_input_options :
     c_image_processing_pipeline_input_options
 {
 };
+
+struct c_virtual_stereo_camera_options
+{
+  c_camera_intrinsics camera_intrinsics = {
+      // kitti defaults
+      .image_size = cv::Size(1242, 375),
+      .camera_matrix =
+          cv::Matx33d(
+              7.215377e+02, 0.000000e+00, 6.095593e+02,
+              0.000000e+00, 7.215377e+02, 1.728540e+02,
+              0.000000e+00, 0.000000e+00, 1.000000e+00)
+  };
+};
+
 
 struct c_virtual_stereo_feature2d_options
 {
@@ -83,6 +98,9 @@ public:
   c_virtual_stereo_input_options & input_options();
   const c_virtual_stereo_input_options & input_options() const;
 
+  c_virtual_stereo_camera_options & camera_options();
+  const c_virtual_stereo_camera_options & camera_options() const;
+
   c_virtual_stereo_image_processing_options & image_processing_options();
   const c_virtual_stereo_image_processing_options & image_processing_options() const ;
 
@@ -107,9 +125,11 @@ protected:
   bool write_progress_video();
   c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
   bool process_current_frame();
+  bool estmate_camera_pose();
 
 protected:
   c_virtual_stereo_input_options input_options_;
+  c_virtual_stereo_camera_options camera_options_;
   c_virtual_stereo_image_processing_options image_processing_options_;
   c_virtual_stereo_feature2d_options feature2d_options_;
   c_virtual_stereo_output_options output_options_;
@@ -134,6 +154,8 @@ protected:
 
   cv::Mat1b current_inliers_;    // current inliers mask
   cv::Mat1b previous_inliers_;    // previous inliers mask
+
+  cv::Matx33d camera_matrix_;
 
   c_output_frame_writer progress_video_writer_;
 

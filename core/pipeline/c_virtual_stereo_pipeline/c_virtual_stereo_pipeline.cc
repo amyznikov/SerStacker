@@ -27,6 +27,16 @@ const c_virtual_stereo_input_options & c_virtual_stereo_pipeline::input_options(
   return input_options_;
 }
 
+c_virtual_stereo_camera_options & c_virtual_stereo_pipeline::camera_options()
+{
+  return camera_options_;
+}
+
+const c_virtual_stereo_camera_options & c_virtual_stereo_pipeline::camera_options() const
+{
+  return camera_options_;
+}
+
 c_virtual_stereo_image_processing_options & c_virtual_stereo_pipeline::image_processing_options()
 {
   return image_processing_options_;
@@ -69,6 +79,10 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     serialize_base_input_options(section, save, input_options_);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "camera_options")) ) {
+    SERIALIZE_OPTION(section, save, camera_options_, camera_intrinsics);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
     SERIALIZE_OPTION(section, save, feature2d_options_, detector);
     SERIALIZE_OPTION(section, save, feature2d_options_, descriptor);
@@ -94,11 +108,20 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 {
   static std::vector<c_image_processing_pipeline_ctrl> ctrls;
 
+
   if( ctrls.empty() ) {
 
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Input options", "");
       POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+      ////////
+    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
+    PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, camera_options_.camera_intrinsics);
+//      PIPELINE_CTL(ctrls, camera_options_.camera_intrinsics.image_size, "image_size", "image_size");
+//      PIPELINE_CTL_CV_MATX(ctrls, camera_options_.camera_intrinsics.camera_matrix, "camera_matrix", "camera_matrix");
+//      PIPELINE_CTL(ctrls, camera_options_.camera_intrinsics.dist_coeffs, "dist_coeffs", "dist_coeffs");
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -355,13 +378,12 @@ bool c_virtual_stereo_pipeline::run_pipeline()
   return true;
 }
 
-
 bool c_virtual_stereo_pipeline::process_current_frame()
 {
   lock_guard lock(mutex());
 
-  if ( image_processing_options_.input_processor ) {
-    if ( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
+  if( image_processing_options_.input_processor ) {
+    if( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
       CF_ERROR("ERROR: input_processor->process() fails");
       return false;
     }
@@ -373,7 +395,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
   keypoints_extractor_->detectAndCompute(current_image_, current_mask_,
       current_keypoints_, current_descriptors_);
 
-  if ( !previous_keypoints_.empty() ) {
+  if( !previous_keypoints_.empty() ) {
 
     //current_matches_.clear();
     matched_current_positions_.clear();
@@ -382,7 +404,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
 
     std::vector<cv::Point2f> cps, pps;
 
-    const size_t num_matches  =
+    const size_t num_matches =
         match_keypoints(keypoints_matcher_,
             current_keypoints_,
             current_descriptors_,
@@ -392,20 +414,20 @@ bool c_virtual_stereo_pipeline::process_current_frame()
             &cps,
             &pps);
 
-     // CF_DEBUG("num_matches=%zu cps=%zu",
-     //    num_matches, cps.size());
+    // CF_DEBUG("num_matches=%zu cps=%zu",
+    //    num_matches, cps.size());
 
-    if ( !num_matches ) {
+    if( !num_matches ) {
       CF_ERROR("match_keypoints() fails");
     }
     else {
 
-      for ( int i = 0; i < num_matches; ++i ) {
+      for( int i = 0; i < num_matches; ++i ) {
 
-        const cv::Point2f & cp = cps[i];
-        const cv::Point2f & pp = pps[i];
+        const cv::Point2f &cp = cps[i];
+        const cv::Point2f &pp = pps[i];
         const float d2 = (cp.x - pp.x) * (cp.x - pp.x) + (cp.y - pp.y) * (cp.y - pp.y);
-        if ( d2 > 9 ) {
+        if( d2 > 9 ) {
           matched_current_positions_.emplace_back(cp);
           matched_previous_positions_.emplace_back(pp);
         }
@@ -414,8 +436,29 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     }
   }
 
+  if( !estmate_camera_pose() ) {
+    CF_ERROR("estmate_camera_pose() fails");
+  }
+
   return true;
 }
+
+bool c_virtual_stereo_pipeline::estmate_camera_pose()
+{
+  if (matched_previous_positions_.size() < 4 ) {
+    return true; // ignore
+  }
+
+
+
+
+
+  //matched_current_positions_.emplace_back(cp);
+  //matched_previous_positions_.emplace_back(pp);
+
+  return true;
+}
+
 
 bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {

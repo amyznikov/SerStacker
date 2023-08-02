@@ -13,6 +13,9 @@
 #include "QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h"
 #include "QLveStackingPipeline/QLveStackingPipeline.h"
 #include "QVirtualStereoPipeline/QVirtualStereoPipeline.h"
+
+#include <gui/widgets/QMatrixEdit.h>
+#include <gui/widgets/QCameraIntrinsicsEditBox.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/registration/QFrameRegistrationOptions.h>
@@ -493,6 +496,47 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
                 w->set_feature_matcher_options(ctrl.get_feature2d_matcher_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        break;
+      }
+
+
+      /////////////////////
+//      case c_image_processor_pipeline_ctl_cv_matx: {
+//
+//        QMatrixEdit * w =
+//            new QMatrixEdit(this);
+//
+////
+////        currentsettings->addRow(ctrl.name.c_str(), w);
+//
+//        //w->setLineW
+//
+//        //cv::Matx
+//
+//        break;
+//      }
+
+      case c_image_processor_pipeline_ctl_camera_intrinsicts : {
+
+        QCameraIntrinsicsEditBox * w =
+            new QCameraIntrinsicsEditBox(this);
+
+        if( ctrl.get_camera_intrinsicts ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_camera_intrinsicts(pipeline_));
               });
         }
 

@@ -12,6 +12,7 @@
 #include <core/settings/opencv_settings.h>
 #include <core/improc/c_image_processor.h>
 #include <core/proc/image_registration/c_frame_registration.h>
+#include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/ssprintf.h>
 
 class c_image_processing_pipeline;
@@ -28,6 +29,8 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_browse_for_directory,
   c_image_processor_pipeline_ctl_image_processor_selection_combo,
   c_image_processor_pipeline_ctl_input_source_selection_combo,
+  c_image_processor_pipeline_ctl_cv_matx,
+  c_image_processor_pipeline_ctl_camera_intrinsicts,
   c_image_processor_pipeline_ctl_image_registration_options,
   c_image_processor_pipeline_ctl_feature2d_detector_options,
   c_image_processor_pipeline_ctl_feature2d_descriptor_options,
@@ -44,6 +47,9 @@ struct c_image_processing_pipeline_ctrl
   struct {
     double min = 0, max = 100, step = 1;
   } range;
+  struct {
+    int rows = 0, cols = 0;
+  } matx;
   std::function<bool (const c_image_processing_pipeline*, std::string *)> get_value;
   std::function<bool(c_image_processing_pipeline * p, const std::string&)> set_value;
   std::function<const c_image_processor::sptr & (const c_image_processing_pipeline*)> get_processor;
@@ -52,6 +58,8 @@ struct c_image_processing_pipeline_ctrl
   std::function<c_sparse_feature_detector_options* (c_image_processing_pipeline*)> get_feature2d_detector_options;
   std::function<c_sparse_feature_descriptor_options* (c_image_processing_pipeline*)> get_feature2d_descriptor_options;
   std::function<c_feature2d_matcher_options* (c_image_processing_pipeline*)> get_feature2d_matcher_options;
+  std::function<c_camera_intrinsics *(c_image_processing_pipeline *)> get_camera_intrinsicts;
+
   std::function<bool (const c_image_processing_pipeline*)> is_enabled;
 };
 
@@ -260,6 +268,75 @@ struct c_image_processing_pipeline_ctrl
           }; \
       ctrls.emplace_back(ctl); \
     }
+
+#define PIPELINE_CTL_CV_MATX(ctrls, c, _name, _tooltip ) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.name = _name; \
+      ctl.tooltip = _tooltip; \
+      ctl.type = c_image_processor_pipeline_ctl_cv_matx; \
+      ctl.matx.rows = decltype(this_class::c)::rows; \
+      ctl.matx.cols = decltype(this_class::c)::cols; \
+      ctl.get_value = \
+          [](const c_image_processing_pipeline * p, std::string * v) { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            if ( _this ) { \
+              *v = toString(_this->c); \
+              return true; \
+            } \
+            return false; \
+          }; \
+      ctl.set_value = \
+          [](c_image_processing_pipeline * p, const std::string & v) { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? fromString(v, &_this->c) : false; \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+#define PIPELINE_CTL_CV_MATXC(ctrls, c, _name, _tooltip, _cond ) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.name = _name; \
+      ctl.tooltip = _tooltip; \
+      ctl.type = c_image_processor_pipeline_ctl_cv_matx; \
+      ctl.matx.rows = decltype(this_class::c)::rows; \
+      ctl.matx.cols = decltype(this_class::c)::cols; \
+      ctl.get_value = \
+          [](const c_image_processing_pipeline * p, std::string * v) { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            if ( _this ) { \
+              *v = toString(_this->c); \
+              return true; \
+            } \
+            return false; \
+          }; \
+      ctl.set_value = \
+          [](c_image_processing_pipeline * p, const std::string & v) { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? fromString(v, &_this->c) : false; \
+          }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+
+#define PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, c) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_camera_intrinsicts; \
+      ctl.get_camera_intrinsicts = \
+          [](c_image_processing_pipeline * p) -> c_camera_intrinsics * { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? &(_this->c) : nullptr; \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
 
 #define PIPELINE_CTL_IMAGE_REGISTRATION_OPTIONS(ctrls, c) \
     if ( true ) { \

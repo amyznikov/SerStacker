@@ -7,9 +7,39 @@
 
 #include "c_virtual_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
+#include <core/proc/camera_calibration/camera_pose.h>
 #include <chrono>
 #include <thread>
 
+template<class T>
+static double distance_between_points(const cv::Point_<T> & p1, const cv::Point_<T> & p2 )
+{
+  return sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
+}
+
+template<class T>
+static double distance_between_points(const cv::Vec<T, 2> & p1, const cv::Vec<T, 2> & p2 )
+{
+  return sqrt( (p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
+}
+
+template<class T>
+static inline bool IS_INSIDE_IMAGE(T x, T y, const cv::Size & image_size)
+{
+  return (x >= 0) && (y >= 0) && (x < image_size.width) && (y < image_size.height);
+}
+
+template<class T>
+static inline bool IS_INSIDE_IMAGE(const cv::Point_<T> & point, const cv::Size & image_size)
+{
+  return IS_INSIDE_IMAGE(point.x, point.y, image_size);
+}
+
+template<class T>
+static inline bool IS_INSIDE_IMAGE(const cv::Point_<T> & point, const cv::Mat & image)
+{
+  return IS_INSIDE_IMAGE(point.x, point.y, image.size());
+}
 
 c_virtual_stereo_pipeline::c_virtual_stereo_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
@@ -400,7 +430,6 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     //current_matches_.clear();
     matched_current_positions_.clear();
     matched_previous_positions_.clear();
-    current_inliers_.release();
 
     std::vector<cv::Point2f> cps, pps;
 
@@ -427,7 +456,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
         const cv::Point2f &cp = cps[i];
         const cv::Point2f &pp = pps[i];
         const float d2 = (cp.x - pp.x) * (cp.x - pp.x) + (cp.y - pp.y) * (cp.y - pp.y);
-        if( d2 > 9 ) {
+        if( d2 > 0 ) {
           matched_current_positions_.emplace_back(cp);
           matched_previous_positions_.emplace_back(pp);
         }
@@ -449,12 +478,41 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
     return true; // ignore
   }
 
+  currentInliers_.release();
+
+  bool fOk =
+      estimate_camera_pose_and_derotation_homography(
+          camera_options_.camera_intrinsics.camera_matrix,
+          matched_current_positions_,
+          matched_previous_positions_,
+          EMM_LMEDS,
+          &currentEulerAnges_,
+          &currentTranslationVector_,
+          &currentRotationMatrix_,
+          &currentEssentialMatrix_,
+          &currentFundamentalMatrix_,
+          &currentDerotationHomography_,
+          currentInliers_);
 
 
+  compute_epipoles(currentFundamentalMatrix_,
+      currentEpipoles_);
 
+  currentEpipole_ =
+      0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
 
-  //matched_current_positions_.emplace_back(cp);
-  //matched_previous_positions_.emplace_back(pp);
+  CF_DEBUG("A: (%g %g %g)", currentEulerAnges_(0) * 180 / CV_PI, currentEulerAnges_(1) * 180 / CV_PI, currentEulerAnges_(2) * 180 / CV_PI);
+  CF_DEBUG("T: (%g %g %g)", currentTranslationVector_(0), currentTranslationVector_(1), currentTranslationVector_(2));
+  CF_DEBUG("E: (%g %g)", currentEpipole_.x, currentEpipole_.y);
+
+  if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
+    CF_WARNING("\nWARNING!\n"
+        "Something looks POOR: Computed epipoles differ after derotation:\n"
+        "E0 = {%g %g}\n"
+        "E1 = {%g %g}\n",
+        currentEpipoles_[0].x, currentEpipoles_[0].y,
+        currentEpipoles_[1].x, currentEpipoles_[1].y);
+  }
 
   return true;
 }
@@ -464,19 +522,29 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 {
   lock_guard lock(mutex());
 
-  if( current_image_.empty() ) {
+  if( previous_image_.empty() ) {
     return false;
   }
 
-  cv::Mat cimg;
+  const cv::Size size(std::max(current_image_.cols, previous_image_.cols),
+      current_image_.rows + 2 * previous_image_.rows);
+
+  const cv::Rect cRoi(0, 0, current_image_.cols, current_image_.rows);
+  const cv::Rect wRoi(0, current_image_.rows, previous_image_.cols, previous_image_.rows);
+  const cv::Rect pRoi(0, current_image_.rows + previous_image_.rows, previous_image_.cols, previous_image_.rows);
+
+  cv::Mat3b cimg(size);
+
+  //CF_DEBUG("H");
 
   if ( current_image_.channels() == 3 ) {
-    cimg = current_image_;
+    current_image_.copyTo(cimg(cRoi));
   }
   else {
-    cv::cvtColor(current_image_, cimg, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(current_image_, cimg(cRoi), cv::COLOR_GRAY2BGR);
   }
 
+  //CF_DEBUG("H");
 
   if ( !matched_previous_positions_.empty() ) {
 
@@ -493,13 +561,51 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
       cv::Scalar color(rand() % 255 + 32, rand() % 255 + 32, rand() % 255 + 32);
 
-      cv::line(cimg, pp, cp, color, 1, cv::LINE_4);
-      cv::rectangle(cimg, cv::Point(cp.x-1, cp.y-1), cv::Point(cp.x+1, cp.y+1), color, 1, cv::LINE_4);
+      cv::line(cimg(cRoi), pp, cp, color, 1, cv::LINE_4);
+      cv::rectangle(cimg(cRoi), cv::Point(cp.x-1, cp.y-1), cv::Point(cp.x+1, cp.y+1), color, 1, cv::LINE_4);
     }
 
+    if( IS_INSIDE_IMAGE(currentEpipole_, cimg(cRoi).size()) ) {
+
+      const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
+
+      cv::ellipse(cimg(cRoi), E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
+      cv::line(cimg(cRoi), cv::Point2f(E.x - 9, E.y), cv::Point2f(E.x + 9, E.y), CV_RGB(200, 200, 30), 1, cv::LINE_4);
+      cv::line(cimg(cRoi), cv::Point2f(E.x, E.y - 9), cv::Point2f(E.x, E.y + 9), CV_RGB(200, 200, 30), 1, cv::LINE_4);
+    }
   }
 
+  //CF_DEBUG("H");
+
+  cv::Mat tmp1, tmp2;
+
+  cv::warpPerspective(current_image_, tmp1,
+      currentDerotationHomography_,
+      pRoi.size(),
+      cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
+      cv::BORDER_CONSTANT);
+
+  if ( tmp1.channels() == 1 ) {
+    cv::cvtColor(tmp1, tmp1, cv::COLOR_GRAY2BGR);
+  }
+
+  if ( previous_image_.channels() == 3 ) {
+    tmp2 = previous_image_;
+  }
+  else {
+    cv::cvtColor(previous_image_, tmp2, cv::COLOR_GRAY2BGR);
+  }
+
+  tmp1.copyTo(cimg(wRoi));
+  tmp2.copyTo(cimg(pRoi));
+
+  //cv::addWeighted(tmp1, 0.5, tmp2, 0.5, 0, cimg(pRoi));
+
+
+  //CF_DEBUG("H");
   display_frame.move(cimg);
+
+  //CF_DEBUG("H");
 
   if ( display_mask.needed() ) {
     current_mask_.copyTo(display_mask);

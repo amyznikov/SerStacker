@@ -23,7 +23,7 @@ struct c_virtual_stereo_input_options :
 struct c_virtual_stereo_camera_options
 {
   c_camera_intrinsics camera_intrinsics = {
-      // kitti defaults
+      // fallback to kitti
       .image_size = cv::Size(1242, 375),
       .camera_matrix =
           cv::Matx33d(
@@ -152,10 +152,20 @@ protected:
   std::vector<cv::Point2f> matched_current_positions_;
   std::vector<cv::Point2f> matched_previous_positions_;
 
-  cv::Mat1b current_inliers_;    // current inliers mask
-  cv::Mat1b previous_inliers_;    // previous inliers mask
+  //  cv::Mat1b current_inliers_;    // current inliers mask
+  //  cv::Mat1b previous_inliers_;    // previous inliers mask
 
-  cv::Matx33d camera_matrix_;
+  cv::Vec3d currentEulerAnges_;
+  cv::Vec3d currentTranslationVector_;
+  cv::Matx33d currentRotationMatrix_;
+  cv::Matx33d currentEssentialMatrix_;
+  cv::Matx33d currentFundamentalMatrix_;
+  cv::Matx33d currentDerotationHomography_;
+  cv::Point2d currentEpipoles_[2];
+  cv::Point2d currentEpipole_;
+  cv::Mat currentInliers_;
+
+  //cv::Matx33d camera_matrix_;
 
   c_output_frame_writer progress_video_writer_;
 

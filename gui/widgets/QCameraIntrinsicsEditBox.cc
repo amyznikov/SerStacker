@@ -6,6 +6,7 @@
  */
 
 #include "QCameraIntrinsicsEditBox.h"
+#include <gui/widgets/QWaitCursor.h>
 #include <core/settings/camera_settings.h>
 #include <core/readdir.h>
 
@@ -119,13 +120,15 @@ public:
     Base(parent),
     selectedIndex_(-1)
   {
+
     QVBoxLayout * listBox = new QVBoxLayout();
+
     listBox->addWidget(filter_ctl = new QLineEdit(this));
     listBox->addWidget(list_ctl = new QListWidget(this));
 
     QHBoxLayout * buttonHBox = new QHBoxLayout();
-    buttonHBox->addWidget(btnOK = new QPushButton("OK"));
-    buttonHBox->addWidget(btnCancel = new QPushButton("Cancel"));
+    buttonHBox->addWidget(btnOK = new QPushButton("Select"));
+    buttonHBox->addWidget(btnCancel = new QPushButton("Close"));
     btnOK->setDefault(true);
 
 
@@ -136,6 +139,7 @@ public:
     list_ctl->setViewMode(QListView::ViewMode::ListMode);
     list_ctl->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
     list_ctl->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+    list_ctl->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
 
     for( const c_named_camera &c : known_cameras ) {
       list_ctl->addItem(c.name.c_str());
@@ -186,6 +190,46 @@ public:
           if ( selectedIndex_ >= 0 && !(list_ctl->item(selectedIndex_)->isHidden())) {
             accept();
           }
+        });
+
+    connect(list_ctl, &QListWidget::customContextMenuRequested,
+        [this](const QPoint & pos) {
+
+          const int selectedIndex = list_ctl->indexAt(pos).row();
+          if ( selectedIndex < 0 ) {
+            return;
+          }
+
+          QListWidgetItem * item = list_ctl->item(selectedIndex);
+          if ( !item ) {
+            return;
+          }
+
+
+          QMenu menu;
+
+          const std::string cname =
+              item->text().toStdString();
+
+          menu.addAction(qsprintf("Delete %s", cname.c_str()),
+                [this, selectedIndex]() {
+
+                  const int resp = QMessageBox::question(this, "Confirmation required",
+                      qsprintf("Delete camera parameters for '%s' ?", known_cameras[selectedIndex].name.c_str()),
+                      QMessageBox::StandardButtons(QMessageBox::Yes | QMessageBox::No));
+
+                  if ( resp != QMessageBox::Yes ) {
+                    return;
+                  }
+
+                  known_cameras.erase(known_cameras.begin() + selectedIndex);
+                  save_known_cameras();
+
+                  delete list_ctl->takeItem(selectedIndex);
+                });
+
+            menu.exec(list_ctl->mapToGlobal(pos));
+
         });
 
   }
@@ -304,76 +348,117 @@ void QCameraIntrinsicsEditBox::showOptionsMenu()
     }
   }
 
+  if( !options_ ) {
+    return;
+  }
+
   QMenu menu;
 
-  if ( options_ ) {
+  if( !known_cameras.empty() ) {
 
-    if( !known_cameras.empty() ) {
-
-      menu.addAction("Saved Cameras..",
-          [this]() {
-
-            QCameraSelectionDialog dialog(this);
-
-            if ( dialog.exec() == QDialog::Accepted ) {
-
-              int seletedIndex =
-                  dialog.selectedIndex();
-
-              CF_DEBUG("seletedIndex=%d", seletedIndex);
-
-              if ( seletedIndex >= 0 ) {
-                *options_ = known_cameras[seletedIndex].intrinsics;
-                updateControls();
-                Q_EMIT parameterChanged();
-              }
-            }
-
-          });
-    }
-
-
-    menu.addAction("Save Camera...",
+    menu.addAction("Saved Cameras..",
         [this]() {
 
-            while ( 42 ) {
+          QCameraSelectionDialog dialog(this);
 
-              QString cameraName =
-                    QInputDialog::getText(this, "Camera name required",
-                        "Enter Camera Name:");
+          if ( dialog.exec() == QDialog::Accepted ) {
 
-              if ( !cameraName.isEmpty() ) {
+            int seletedIndex =
+            dialog.selectedIndex();
 
-                const std::string cname =
-                    cameraName.toStdString();
+            CF_DEBUG("seletedIndex=%d", seletedIndex);
 
-                const auto pos =
-                  std::find_if(known_cameras.begin(), known_cameras.end(),
-                      [cname](const c_named_camera & c) -> bool {
-                        return c.name == cname;
-                      });
-
-                if ( pos != known_cameras.end() ) {
-                  QMessageBox::warning(this, "ERROR",
-                      qsprintf("Camera named '%s' already exits",
-                          cname.c_str()));
-                  continue;
-                }
-
-
-                c_named_camera camera;
-                camera.name = cname;
-                camera.intrinsics = *options_;
-
-                known_cameras.emplace_back(camera);
-                save_known_cameras();
-              }
-
-              break;
+            if ( seletedIndex >= 0 ) {
+              *options_ = known_cameras[seletedIndex].intrinsics;
+              updateControls();
+              Q_EMIT parameterChanged();
             }
+          }
 
         });
   }
+
+  menu.addAction("Save Camera...",
+      [this]() {
+
+        while ( 42 ) {
+
+          QString cameraName =
+          QInputDialog::getText(this, "Camera name required",
+              "Enter Camera Name:");
+
+          if ( !cameraName.isEmpty() ) {
+
+            const std::string cname =
+            cameraName.toStdString();
+
+            const auto pos =
+            std::find_if(known_cameras.begin(), known_cameras.end(),
+                [cname](const c_named_camera & c) -> bool {
+                  return c.name == cname;
+                });
+
+            if ( pos != known_cameras.end() ) {
+              QMessageBox::warning(this, "ERROR",
+                  qsprintf("Camera named '%s' already exits",
+                      cname.c_str()));
+              continue;
+            }
+
+            c_named_camera camera;
+            camera.name = cname;
+            camera.intrinsics = *options_;
+
+            known_cameras.emplace_back(camera);
+            save_known_cameras();
+          }
+
+          break;
+        }
+
+      });
+
+  menu.addAction("Load From YML...",
+      [this]() {
+
+        QSettings settings;
+
+        static const QString keyName =
+            "previousPathToCameraIntrinsicsYML";
+
+        QString filter =
+          "YML files *.yml *.YML(*.yml *.YML);;\n"
+          "All files (*);;";
+
+        QString previousPath =
+            settings.value(keyName).toString();
+
+        QString selectedFileName =
+          QFileDialog::getOpenFileName(this,
+              "Select calibration YML file...",
+              previousPath,
+              filter);
+
+        if ( !selectedFileName.isEmpty() ) {
+
+          QWaitCursor wait(this);
+
+          settings.setValue(keyName, selectedFileName);
+          c_camera_intrinsics intrinsics;
+
+          if ( !read_camera_intrinsics_yml(&intrinsics, selectedFileName.toStdString()) ) {
+            QMessageBox::critical(this, "ERROR",
+                "read_camera_intrinsics_yml() fails.\n"
+                "Make sure the specified YML file has correct format");
+          }
+          else {
+            *options_ = intrinsics;
+            updateControls();
+            Q_EMIT parameterChanged();
+          }
+        }
+      });
+
 
   if( !menu.isEmpty() ) {
 
@@ -381,7 +466,6 @@ void QCameraIntrinsicsEditBox::showOptionsMenu()
         options_ctl->width() / 2,
         options_ctl->height() / 2)));
   }
-
 
 }
 

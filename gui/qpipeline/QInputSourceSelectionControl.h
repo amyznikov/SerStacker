@@ -21,26 +21,39 @@ public:
 
   virtual void setEnableExternalFile(bool v) = 0;
   virtual bool enableExternalFile() const = 0;
-  virtual void refreshInputSources(const c_image_processing_pipeline * pipeline) = 0;
+  virtual void refreshInputSources(c_image_processing_pipeline * pipeline) = 0;
 };
 
 class QInputSourceSelectionCombo :
     public QComboBox,
     public QInputSourceSelectionControl
 {
-  Q_OBJECT;
+  // Q_OBJECT;
 public:
   typedef QInputSourceSelectionCombo ThisClass;
   typedef QComboBox Base;
 
   QInputSourceSelectionCombo(QWidget * parent = nullptr);
 
-  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
   void setEnableExternalFile(bool v) override;
   bool enableExternalFile() const override;
 
+  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
+
+  std::string sourcePathFilename(int index) const;
+  int sourceSize(int index) const;
+  int sourceIndex(const std::string & pathfilename);
+
 protected:
   bool enableExternalFile_ = false;
+
+  struct input_source_data {
+    std::string pathfilename;
+    int size = 0;
+  };
+
+  std::vector<input_source_data> input_sources_;
+
 };
 
 

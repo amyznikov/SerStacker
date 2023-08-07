@@ -639,6 +639,207 @@ void QJovianDerotationOptions::update_controls_state()
   }
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QMasterSourceSelectionCombo::QMasterSourceSelectionCombo(QWidget * parent) :
+    Base(parent)
+{
+  QHBoxLayout * layout = new QHBoxLayout(this);
+  layout->setContentsMargins(0,0,0,0);
+
+
+  combo_ = new QComboBox(this);
+  combo_->setEditable(false);
+  combo_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  combo_->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
+  combo_->setDuplicatesEnabled(true);
+  layout->addWidget(combo_);
+
+  browse_ctl = new QToolButton(this);
+  browse_ctl->setText("Browse...");
+  layout->addWidget(browse_ctl);
+
+
+  QObject::connect(combo_, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+      this, &ThisClass::onComboboxCurrentIndexChanged);
+
+  QObject::connect(browse_ctl, &QToolButton::clicked,
+      this, &ThisClass::onBrowseButtonClicked);
+}
+
+void QMasterSourceSelectionCombo::setEnableExternalFile(bool v)
+{
+  browse_ctl->setEnabled(v);
+}
+
+bool QMasterSourceSelectionCombo::enableExternalFile() const
+{
+  return browse_ctl->isEnabled();
+}
+
+void QMasterSourceSelectionCombo::refreshInputSources(c_image_processing_pipeline * pipeline)
+{
+  c_update_controls_lock lock(this);
+
+  combo_->clear();
+
+  if ( !pipeline ) {
+    setEnabled(false);
+    return;
+  }
+
+  const c_input_sequence::sptr & input_sequence =
+      pipeline->input_sequence();
+
+  if ( input_sequence ) {
+
+    setEnabled(false);
+
+    for ( const c_input_source::sptr & source : input_sequence->sources() ) {
+
+      InputSourceData data = {
+        .source_pathfilename = source->cfilename(),
+        .source_size = source->size()
+      };
+
+      combo_->addItem(QFileInfo(source->cfilename()).fileName(),
+          QVariant::fromValue(data));
+    }
+  }
+
+  setEnabled(true);
+}
+
+void QMasterSourceSelectionCombo::onComboboxCurrentIndexChanged(int index)
+{
+  if ( !updatingControls() ) {
+    Q_EMIT currentSourceChanged();
+  }
+}
+
+void QMasterSourceSelectionCombo::onBrowseButtonClicked()
+{
+  static QString filter;
+
+  if( filter.isEmpty() ) {
+
+    filter.append("Regular images (");
+    for( const std::string &s : c_regular_image_input_source::suffixes() ) {
+      filter.append(QString("*%1 ").arg(QString(s.c_str())));
+    }
+    filter.append(");;");
+
+#if HAVE_LIBRAW
+      filter.append("RAW/DSLR images (");
+      for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+  #endif
+
+#if HAVE_CFITSIO
+      filter.append("FITS files (");
+      for ( const std::string & s : c_fits_input_source::suffixes() ) {
+        filter.append(QString("*%1 ").arg(s.c_str()));
+      }
+      filter.append(");;");
+  #endif
+
+    filter.append("All Files (*.*);;");
+  }
+
+  static const QString lastSourcesDirectoryKeyName =
+      "lastSourcesDirectory";
+
+  static const QString lastMasterFrameSelectionFilter =
+      "lastMasterFrameSelectionFilter";
+
+  QSettings settings;
+
+  QString selectedFilter =
+      settings.value(lastMasterFrameSelectionFilter).toString();
+
+  QString proposedMasterSourcePath =
+      settings.value(lastSourcesDirectoryKeyName).toString();
+
+  QString selectedFile =
+      QFileDialog::getOpenFileName(this,
+          "Select master frame",
+          proposedMasterSourcePath,
+          filter,
+          &selectedFilter);
+
+  if( selectedFile.isEmpty() ) {
+    return;
+  }
+
+  settings.setValue(lastSourcesDirectoryKeyName,
+      QFileInfo(selectedFile).absolutePath());
+
+  settings.setValue(lastMasterFrameSelectionFilter,
+      selectedFilter);
+
+  c_input_source::sptr source =
+      c_input_source::create(selectedFile.toStdString());
+
+  if( !source ) {
+    QMessageBox::critical(this, "ERROR",
+        qsprintf("Can not opent input source '%s'\n"
+            "Check debug log for details",
+            selectedFile.toUtf8().constData()));
+    return;
+  }
+
+  InputSourceData data = {
+      .source_pathfilename = source->cfilename(),
+      .source_size = source->size()
+  };
+
+  combo_->addItem(QFileInfo(source->cfilename()).fileName(),
+      QVariant::fromValue(data));
+
+  combo_->setCurrentIndex(combo_->count() - 1);
+}
+
+void QMasterSourceSelectionCombo::setCurrentInputSource(const std::string & pathfilename)
+{
+  for( int i = 0, n = combo_->count(); i < n; ++i ) {
+
+    const InputSourceData data =
+        combo_->itemData(i).value<InputSourceData>();
+
+    if( data.source_pathfilename == pathfilename ) {
+      combo_->setCurrentIndex(i);
+      return;
+    }
+  }
+
+  c_input_source::sptr source =
+      c_input_source::create(pathfilename);
+
+  if( !source ) {
+    CF_ERROR("c_input_source::create(pathfilename='%s') fails",
+        pathfilename.c_str());
+    return;
+  }
+
+  InputSourceData data = {
+      .source_pathfilename = source->cfilename(),
+      .source_size = source->size()
+  };
+
+  combo_->addItem(QFileInfo(source->cfilename()).fileName(),
+      QVariant::fromValue(data));
+
+  combo_->setCurrentIndex(combo_->count() - 1);
+}
+
+QMasterSourceSelectionCombo::InputSourceData QMasterSourceSelectionCombo::currentInputSource() const
+{
+  return combo_->itemData(combo_->currentIndex()).value<InputSourceData>();
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
@@ -662,22 +863,80 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
             return false;
           });
 
+//
+//  masterSource_ctl =
+//      add_combobox<QInputSourceSelectionCombo>("Master file:",
+//          "Specify input source for master frame",
+//          [this](int index, QInputSourceSelectionCombo * combo) {
+//            if( options_ ) {
+//
+//              options_->master_source_fiename =
+//                  combo->sourcePathFilename(index);
+//
+//              if ( true ) {
+//                c_update_controls_lock lock(this);
+//                masterFrameIndex_ctl->setRange(0, combo->sourceSize(index) - 1);
+//                options_->master_frame_index = masterFrameIndex_ctl->value();
+//              }
+//
+//              Q_EMIT parameterChanged();
+//            }
+//          },
+//          [this](int * index, QInputSourceSelectionCombo * combo) -> bool {
+//            if( options_ ) {
+//
+//              * index = combo->sourceIndex(options_->master_source_fiename);
+//
+//              if ( true ) {
+//                c_update_controls_lock lock(this);
+//                masterFrameIndex_ctl->setRange(0, combo->sourceSize(*index) - 1);
+//                masterFrameIndex_ctl->setValue(options_->master_frame_index);
+//                options_->master_frame_index = masterFrameIndex_ctl->value();
+//              }
+//
+//              return true;
+//            }
+//
+//            return false;
+//          });
+//
 
-  masterSource_ctl =
-      add_combobox<QInputSourceSelectionCombo>("Master file:",
-          "Specify input source for master frame",
-          [this](int index, QInputSourceSelectionCombo * combo) {
-            if( options_ ) {
-              options_->master_source_fiename = combo->itemData(index).toString().toStdString();
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](int * index, QInputSourceSelectionCombo * combo) -> bool {
-            if( options_ ) {
-              combo->setCurrentIndex(combo->findData(QString(options_->master_source_fiename.c_str())));
-            }
-            return false;
-          });
+  masterSource_ctl = add_widget<QMasterSourceSelectionCombo>("Master file:");
+  masterSource_ctl->setToolTip("Specify input source for master frame");
+  connect(masterSource_ctl, &QMasterSourceSelectionCombo::currentSourceChanged,
+      [this]() {
+        if( options_ ) {
+
+          const QMasterSourceSelectionCombo::InputSourceData data =
+              masterSource_ctl->currentInputSource();
+
+          options_->master_source_fiename =
+              data.source_pathfilename;
+
+          if ( true ) {
+            c_update_controls_lock lock(this);
+            masterFrameIndex_ctl->setRange(0, data.source_size-1);
+            options_->master_frame_index = masterFrameIndex_ctl->value();
+          }
+
+          Q_EMIT parameterChanged();
+        }
+      });
+
+  connect(this, &ThisClass::populatecontrols,
+      [this](){
+        if( options_ ) {
+
+          masterSource_ctl->setCurrentInputSource(options_->master_source_fiename);
+
+          if ( true ) {
+            c_update_controls_lock lock(this);
+            masterFrameIndex_ctl->setRange(0, masterSource_ctl->currentInputSource().source_size - 1);
+            masterFrameIndex_ctl->setValue(options_->master_frame_index);
+            options_->master_frame_index = masterFrameIndex_ctl->value();
+          }
+        }
+      });
 
 
   masterFrameIndex_ctl =
@@ -905,7 +1164,7 @@ c_master_frame_options * QMasterFrameOptions::master_frame_options() const
   return options_;
 }
 
-void QMasterFrameOptions::refreshInputSources(const c_image_processing_pipeline * pipeline)
+void QMasterFrameOptions::refreshInputSources(c_image_processing_pipeline * pipeline)
 {
   c_update_controls_lock lock(this);
   masterSource_ctl->refreshInputSources(pipeline);
@@ -926,7 +1185,7 @@ void QMasterFrameOptions::onupdatecontrols()
 {
   if ( !options_ ) {
     setEnabled(false);
-    masterSource_ctl->clear();
+    //masterSource_ctl->clear();
   }
   else {
 
@@ -991,8 +1250,8 @@ void QMasterFrameOptions::onupdatecontrols()
 //      }
 //    }
 
-    updateMasterFrameIndex();
-    previousComboboxItemIndex = masterSource_ctl->currentIndex();
+    // updateMasterFrameIndex();
+    //previousComboboxItemIndex = masterSource_ctl->currentIndex();
 
     //masterFrameSelectionMethod_ctl->setValue(options_->master_selection_method);
     //masterFrameIndex_ctl->setEnabled(options_->master_selection_method == master_frame_specific_index);
@@ -1001,40 +1260,40 @@ void QMasterFrameOptions::onupdatecontrols()
   }
 }
 
-void QMasterFrameOptions::updateMasterFrameIndex()
-{
-//  if ( !current_pipeline_ ||  current_pipeline_->master_source().empty() ) {
-//    masterFrameIndex_ctl->setEnabled(false);
-//  }
-//  else {
-//
-//    const c_input_sequence::sptr & input_sequence =
-//        current_pipeline_->input_sequence();
-//
-//    c_input_source::sptr source;
-//
-//    if ( input_sequence && (source = input_sequence->source(current_pipeline_->master_source())) ) {
-//      if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {
-//        current_pipeline_->set_master_frame_index(0);
-//      }
-//      masterFrameIndex_ctl->setRange(0, source->size() - 1);
-//      masterFrameIndex_ctl->setValue(current_pipeline_->master_frame_index());
-//      masterFrameIndex_ctl->setEnabled(true);
-//    }
-//    else if ( !(source = c_input_source::create(current_pipeline_->master_source())) ) {
-//      CF_ERROR("c_input_source::create(pathfilename=%s) fails", current_pipeline_->master_source().c_str());
-//      masterFrameIndex_ctl->setEnabled(false);
-//    }
-//    else {
-//      if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {
-//        current_pipeline_->set_master_frame_index(0);
-//      }
-//      masterFrameIndex_ctl->setRange(0, source->size() - 1);
-//      masterFrameIndex_ctl->setValue(current_pipeline_->master_frame_index());
-//      masterFrameIndex_ctl->setEnabled(true);
-//    }
-//  }
-}
+//void QMasterFrameOptions::updateMasterFrameIndex()
+//{
+////  if ( !current_pipeline_ ||  current_pipeline_->master_source().empty() ) {
+////    masterFrameIndex_ctl->setEnabled(false);
+////  }
+////  else {
+////
+////    const c_input_sequence::sptr & input_sequence =
+////        current_pipeline_->input_sequence();
+////
+////    c_input_source::sptr source;
+////
+////    if ( input_sequence && (source = input_sequence->source(current_pipeline_->master_source())) ) {
+////      if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {
+////        current_pipeline_->set_master_frame_index(0);
+////      }
+////      masterFrameIndex_ctl->setRange(0, source->size() - 1);
+////      masterFrameIndex_ctl->setValue(current_pipeline_->master_frame_index());
+////      masterFrameIndex_ctl->setEnabled(true);
+////    }
+////    else if ( !(source = c_input_source::create(current_pipeline_->master_source())) ) {
+////      CF_ERROR("c_input_source::create(pathfilename=%s) fails", current_pipeline_->master_source().c_str());
+////      masterFrameIndex_ctl->setEnabled(false);
+////    }
+////    else {
+////      if ( current_pipeline_->master_frame_index() < 0 || current_pipeline_->master_frame_index() >= source->size() ) {
+////        current_pipeline_->set_master_frame_index(0);
+////      }
+////      masterFrameIndex_ctl->setRange(0, source->size() - 1);
+////      masterFrameIndex_ctl->setValue(current_pipeline_->master_frame_index());
+////      masterFrameIndex_ctl->setEnabled(true);
+////    }
+////  }
+//}
 
 //void QMasterFrameOptions::onMasterSourceComboCurrentIndexChanged(int index)
 //{
@@ -1367,7 +1626,7 @@ c_image_registration_options* QImageRegistrationOptions::registration_options() 
   return options_;
 }
 
-void QImageRegistrationOptions::refreshInputSources(const c_image_processing_pipeline * pipeline)
+void QImageRegistrationOptions::refreshInputSources(c_image_processing_pipeline * pipeline)
 {
   return masterFrameOptions_ctl->refreshInputSources(pipeline);
 }
@@ -1477,7 +1736,7 @@ c_image_registration_options* QFrameRegistrationOptions::registration_options() 
   return options_;
 }
 
-void QFrameRegistrationOptions::refreshInputSources(const c_image_processing_pipeline * pipeline)
+void QFrameRegistrationOptions::refreshInputSources(c_image_processing_pipeline * pipeline)
 {
   imageRegistrationOptions_ctl->refreshInputSources(pipeline);
 }

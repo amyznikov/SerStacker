@@ -481,11 +481,22 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
   currentInliers_.release();
 
   bool fOk =
-      estimate_camera_pose_and_derotation_homography(
+//      estimate_camera_pose_and_derotation_homography(
+//          camera_options_.camera_intrinsics.camera_matrix,
+//          matched_current_positions_,
+//          matched_previous_positions_,
+//          EMM_LMEDS,
+//          &currentEulerAnges_,
+//          &currentTranslationVector_,
+//          &currentRotationMatrix_,
+//          &currentEssentialMatrix_,
+//          &currentFundamentalMatrix_,
+//          &currentDerotationHomography_,
+//          currentInliers_);
+      lm_camera_pose_and_derotation_homography(
           camera_options_.camera_intrinsics.camera_matrix,
           matched_current_positions_,
           matched_previous_positions_,
-          EMM_LMEDS,
           &currentEulerAnges_,
           &currentTranslationVector_,
           &currentRotationMatrix_,
@@ -493,6 +504,11 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
           &currentFundamentalMatrix_,
           &currentDerotationHomography_,
           currentInliers_);
+
+
+  if ( !fOk ) {
+    CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
+  }
 
 
   compute_epipoles(currentFundamentalMatrix_,

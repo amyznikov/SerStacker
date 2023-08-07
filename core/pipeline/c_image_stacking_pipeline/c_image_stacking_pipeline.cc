@@ -1204,7 +1204,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     return false;
   }
 
-  if( master_options.apply_input_frame_processors  ) {
+  if( master_options.apply_input_frame_processors && external_master_frame_ ) {
     if ( image_processing_options_.input_image_processor ) {
       if( !image_processing_options_.input_image_processor->process(reference_frame, reference_mask) ) {
         CF_ERROR("input_image_processor->process(reference_frame) fails");
@@ -3396,13 +3396,23 @@ bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline
   p->input_options_ = this->input_options_;
   p->roi_selection_options_ = this->roi_selection_options_;
   p->upscale_options_ = this->upscale_options_;
-  p->image_registration_options_ = this->image_registration_options_;
   p->accumulation_options_ = this->accumulation_options_;
   p->output_options_ = this->output_options_;
   p->image_processing_options_ = this->image_processing_options_;
 
+  const std::string backup_master_source_fiename =
+      this->image_registration_options_.master_frame_options.master_source_fiename;
 
-  CF_DEBUG("Name='%s' csequence_name='%s'", name_.c_str(), csequence_name());
+  const int backup_master_frame_index =
+      this->image_registration_options_.master_frame_options.master_frame_index;
+
+  p->image_registration_options_ = this->image_registration_options_;
+
+  this->image_registration_options_.master_frame_options.master_source_fiename =
+      backup_master_source_fiename;
+
+  this->image_registration_options_.master_frame_options.master_frame_index =
+      backup_master_frame_index;
 
   return true;
 }

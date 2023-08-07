@@ -6,6 +6,7 @@
  */
 
 #include "c_set_luminance_channel_routine.h"
+#include <core/proc/unsharp_mask.h>
 #include <core/ssprintf.h>
 
 
@@ -34,6 +35,21 @@ void c_set_luminance_channel_routine::get_parameters(std::vector<struct c_image_
       "Operation colorspace\n"
       "For non-linear color spaces like Lab/Luv the input image must be normalized to standard range");
 
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_sigma,
+      "Unsharp mask sigma\n"
+      "");
+
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_alpha,
+      "Unsharp mask alpha\n"
+      "");
+
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_outmin,
+      "Unsharp mask outmin\n"
+      "");
+
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_outmax,
+      "Unsharp mask outmax\n"
+      "");
 }
 
 bool c_set_luminance_channel_routine::serialize(c_config_setting settings, bool save)
@@ -41,6 +57,10 @@ bool c_set_luminance_channel_routine::serialize(c_config_setting settings, bool 
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, luminance_channel);
     SERIALIZE_PROPERTY(settings, save, *this, colorspace);
+    SERIALIZE_PROPERTY(settings, save, *this, usharp_sigma);
+    SERIALIZE_PROPERTY(settings, save, *this, usharp_alpha);
+    SERIALIZE_PROPERTY(settings, save, *this, usharp_outmin);
+    SERIALIZE_PROPERTY(settings, save, *this, usharp_outmax);
     return true;
   }
   return false;
@@ -57,6 +77,11 @@ bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::In
   if( !extract_channel(image, luminance, cv::noArray(), cv::noArray(), luminance_channel_) ) {
     CF_ERROR("extract_channel('%s') fails", toString(luminance_channel_));
     return false;
+  }
+
+  if( usharp_sigma_ > 0 && usharp_alpha_ > 0 ) {
+    unsharp_mask(luminance, mask, luminance, usharp_sigma_, usharp_alpha_,
+        usharp_outmin_, usharp_outmax_);
   }
 
   switch (colorspace_) {

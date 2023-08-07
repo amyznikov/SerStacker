@@ -6,6 +6,7 @@
  */
 
 #include "c_unsharp_mask_routine.h"
+#include <core/proc/unsharp_mask.h>
 #include <core/ssprintf.h>
 
 template<>

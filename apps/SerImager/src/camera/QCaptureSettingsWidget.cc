@@ -151,7 +151,15 @@ void QCaptureLimitsControl::populateCaptureLimitsCombobox()
       },
       {
           .type = c_capture_limits::ByNumberOfFrames,
+          .value = 600
+      },
+      {
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 1000
+      },
+      {
+          .type = c_capture_limits::ByNumberOfFrames,
+          .value = 1200
       },
       {
           .type = c_capture_limits::ByNumberOfFrames,
@@ -167,13 +175,16 @@ void QCaptureLimitsControl::populateCaptureLimitsCombobox()
       },
       {
           .type = c_capture_limits::ByNumberOfFrames,
+          .value = 3600
+      },
+      {
+          .type = c_capture_limits::ByNumberOfFrames,
           .value = 5000
       },
       {
           .type = c_capture_limits::ByNumberOfFrames,
           .value = 10000
       },
-
 
   };
 

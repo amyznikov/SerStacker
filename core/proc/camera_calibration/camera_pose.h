@@ -424,4 +424,19 @@ bool estimate_camera_pose_and_derotation_homography(
     /* out, opt */ cv::Matx33d * outputDerotationHomography,
     /* in, out, opt */ cv::InputOutputArray M);
 
+
+/** Experimental pure levar
+ *  */
+bool lm_camera_pose_and_derotation_homography(
+    /* in */ const cv::Matx33d & camera_matrix,
+    /* in */ const std::vector<cv::Point2f> & current_keypoints,
+    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
+    /* out, opt */ cv::Vec3d * outputEulerAnges,
+    /* out, opt */ cv::Vec3d * outputTranslationVector,
+    /* out, opt */ cv::Matx33d * outputRotationMatrix,
+    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
+    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
+    /* out, opt */ cv::Matx33d * outputDerotationHomography,
+    /* in, out, opt */ cv::InputOutputArray M);
+
 #endif /* __camera_pose_h__ */

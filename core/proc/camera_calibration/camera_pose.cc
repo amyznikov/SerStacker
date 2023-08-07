@@ -618,6 +618,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     int numInliers;
     const double Tfix;
     const int iTfix;
+    mutable double rmse_ = 0;
 
   public:
     c_levmar_solver_callback(const cv::Matx33d & _camera_matrix,
@@ -674,25 +675,36 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
               T / cv::norm(T));
 
       rhs.resize(numInliers);
+      rmse_ = 0;
 
       if( inliers.empty() ) { // case when no inliers mask
 
         for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
           rhs[i] = distance_from_point_to_corresponding_epipolar_line(F,
               current_keypoints[i], reference_keypoints[i]);
+          rmse_ += rhs[i] * rhs[i];
         }
       }
       else { // case when inliers mask is provided
 
         for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
           if( inliers[i][0] ) {
-            rhs[j++] = distance_from_point_to_corresponding_epipolar_line(F,
+            rhs[j] = distance_from_point_to_corresponding_epipolar_line(F,
                 current_keypoints[i], reference_keypoints[i]);
+            rmse_ += rhs[j] * rhs[j];
+            ++j;
           }
         }
       }
 
+      rmse_ = sqrt(rmse_ / numInliers);
+
       return true;
+    }
+
+    double rmse() const
+    {
+      return rmse_;
     }
 
   };
@@ -726,18 +738,18 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
   c_levmar_solver lm(100, 1e-7);
 
-  int iterations =
-      lm.run(c_levmar_solver_callback(
-          camera_matrix,
-          current_keypoints,
-          reference_keypoints,
-          inliers,
-          Tfix,
-          iTfix),
-          p);
+  c_levmar_solver_callback lmcb(camera_matrix,
+      current_keypoints,
+      reference_keypoints,
+      inliers,
+      Tfix,
+      iTfix);
 
-  CF_DEBUG("lm.run(): %d iterations",
-      iterations);
+  int iterations =
+      lm.run(lmcb, p);
+
+  CF_DEBUG("lm.run(): %d iterations rmse=%g",
+      iterations, lmcb.rmse());
 
   /*
    * Unpack parameters from cv::Mat1d
@@ -990,6 +1002,139 @@ bool estimate_camera_pose_and_derotation_homography(
     * outputFundamentalMatrix =
         compose_fundamental_matrix(E, camera_matrix) * H.inv() ;
   }
+
+  return true;
+}
+
+/** Experimental pure levar
+ *  */
+bool lm_camera_pose_and_derotation_homography(
+    /* in */ const cv::Matx33d & camera_matrix,
+    /* in */ const std::vector<cv::Point2f> & current_keypoints,
+    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
+    /* out, opt */ cv::Vec3d * outputEulerAnges,
+    /* out, opt */ cv::Vec3d * outputTranslationVector,
+    /* out, opt */ cv::Matx33d * outputRotationMatrix,
+    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
+    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
+    /* out, opt */ cv::Matx33d * outputDerotationHomography,
+    /* in, out, opt */ cv::InputOutputArray M)
+{
+  INSTRUMENT_REGION("");
+
+  // Check input arguments
+  const int min_matched_points_required = 5;
+
+  if ( (int)reference_keypoints.size() < min_matched_points_required ) {
+
+    CF_ERROR("Invalid args: reference_keypoints.size()=%zu must be >= %d",
+        reference_keypoints.size(),
+        min_matched_points_required);
+
+    return false;
+  }
+
+  if ( current_keypoints.size() != reference_keypoints.size() ) {
+
+    CF_ERROR("Invalid args: current_keypoints.size()=%zu not equal to reference_keypoints.size()=%zu ",
+        current_keypoints.size(), reference_keypoints.size());
+
+    return false;
+  }
+
+  if ( M.needed() ) {
+
+    if ( M.fixedType() && M.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1", M.type());
+      return false;
+    }
+
+    if ( !M.empty() && M.rows() != (int) current_keypoints.size() ) {
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d is invalid. Must be %zu", M.rows(), current_keypoints.size());
+      return false;
+    }
+  }
+
+  //
+  // Go on
+  //
+
+  cv::Matx33d R, E, H;
+  cv::Vec3d A(0, 0, 0), T(0, 0, 1);
+  cv::Mat1b mask;
+  bool fOk;
+
+  if ( !M.empty() ) {
+    mask = M.getMatRef();
+
+    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
+        cv::countNonZero(mask),
+        mask.rows);
+
+  }
+
+
+  //
+  // Extimate camera pose using levmar
+  //
+  fOk =
+      lm_refine_camera_pose(A, T,
+          camera_matrix,
+          current_keypoints,
+          reference_keypoints,
+          mask);
+
+  if ( !fOk ) {
+    CF_ERROR("lm_refine_camera_pose() fails");
+  }
+
+
+  //
+  // Return to caller everything requested
+  //
+  if ( M.needed() && M.empty() ) {
+    if ( M.kind() == cv::_InputArray::KindFlag::MAT ) {
+      M.move(mask);
+    }
+    else {
+      mask.copyTo(M);
+    }
+  }
+
+  if ( outputEulerAnges ) {
+    *outputEulerAnges = A;
+  }
+
+  if ( outputTranslationVector ) {
+    * outputTranslationVector = T;
+  }
+
+  if ( outputRotationMatrix || outputEssentialMatrix || outputDerotationHomography || outputFundamentalMatrix ) {
+    R = build_rotation(A);
+    if ( outputRotationMatrix ) {
+      * outputRotationMatrix = R;
+    }
+  }
+
+  if ( outputDerotationHomography || outputFundamentalMatrix  ) {
+    H = camera_matrix * R * camera_matrix.inv();
+    if ( outputDerotationHomography ) {
+      * outputDerotationHomography = H;
+    }
+  }
+
+  if ( outputEssentialMatrix || outputFundamentalMatrix ) {
+    E = compose_essential_matrix(R, T);
+    if ( outputEssentialMatrix ) {
+      * outputEssentialMatrix = E;
+    }
+  }
+
+  if ( outputFundamentalMatrix ) {
+    * outputFundamentalMatrix =
+        compose_fundamental_matrix(E, camera_matrix) * H.inv() ;
+  }
+
   return true;
 }
 

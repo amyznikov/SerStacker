@@ -8,6 +8,7 @@
 #ifndef __QFrameRegistrationSettings_h__
 #define __QFrameRegistrationSettings_h__
 
+#include <gui/widgets/UpdateControls.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qjovian/QJovianEllipseDetectorSettings.h>
 #include <gui/qpipeline/QInputSourceSelectionControl.h>
@@ -156,6 +157,45 @@ protected:
 };
 
 
+class QMasterSourceSelectionCombo :
+    public QWidget,
+    public HasUpdateControls
+{
+  Q_OBJECT;
+public:
+  typedef QMasterSourceSelectionCombo ThisClass;
+  typedef QWidget Base;
+
+  struct InputSourceData {
+    std::string source_pathfilename;
+    int source_size = 0;
+  };
+
+  QMasterSourceSelectionCombo(QWidget * parent = nullptr);
+
+  void refreshInputSources(c_image_processing_pipeline * pipeline);
+  void setEnableExternalFile(bool v);
+  bool enableExternalFile() const;
+
+  void setCurrentInputSource(const std::string & pathfilename);
+  InputSourceData currentInputSource() const;
+
+Q_SIGNALS:
+  void currentSourceChanged();
+
+protected Q_SLOTS:
+  void onBrowseButtonClicked();
+  void onComboboxCurrentIndexChanged(int index);
+
+protected:
+  QComboBox * combo_ = nullptr;
+  QToolButton * browse_ctl = nullptr;
+};
+
+// must be declared outside of any namespace
+Q_DECLARE_METATYPE(QMasterSourceSelectionCombo::InputSourceData);
+
+
 class QMasterFrameOptions :
     public QSettingsWidget,
     public QInputSourceSelectionControl
@@ -173,7 +213,7 @@ public:
   void set_master_frame_options(c_master_frame_options * options);
   c_master_frame_options * master_frame_options() const;
 
-  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
+  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
   void setEnableExternalFile(bool v) override;
   bool enableExternalFile() const override;
 
@@ -181,8 +221,8 @@ protected:
   void onupdatecontrols() override;
   //QString browseForMasterFrame();
   //QString browseForMasterFFTSPath();
-  void updateMasterSourceBasingOnComboboxItemIndex(int comboboxItemIndex);
-  void updateMasterFrameIndex();
+  //void updateMasterSourceBasingOnComboboxItemIndex(int comboboxItemIndex);
+  //void updateMasterFrameIndex();
 
 protected Q_SLOTS:
   //void onMasterSourceComboCurrentIndexChanged(int);
@@ -199,7 +239,8 @@ protected:
   c_master_frame_options * options_ = nullptr;
 
   QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = nullptr;
-  QInputSourceSelectionCombo * masterSource_ctl = nullptr;
+  // QInputSourceSelectionCombo * masterSource_ctl = nullptr;
+  QMasterSourceSelectionCombo * masterSource_ctl = nullptr;
   QSpinBox * masterFrameIndex_ctl = nullptr;
   QCheckBox * apply_input_frame_processors_ctl = nullptr;
   QCheckBox * generateMasterFrame_ctl = nullptr;
@@ -212,7 +253,7 @@ protected:
   QCheckBox * saveMasterFrame_ctl = nullptr;
 
   //QToolButton * applyToAll_ctl = nullptr;
-  int previousComboboxItemIndex = -1;
+  //int previousComboboxItemIndex = -1;
 };
 
 class QImageRegistrationOptions :
@@ -233,7 +274,7 @@ public:
   void set_registration_options(c_image_registration_options * options);
   c_image_registration_options* registration_options() const;
 
-  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
+  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
   void setEnableExternalFile(bool v) override;
   bool enableExternalFile() const override;
 
@@ -275,7 +316,7 @@ public:
   void set_registration_options(c_image_registration_options * options);
   c_image_registration_options* registration_options() const;
 
-  void refreshInputSources(const c_image_processing_pipeline * pipeline) override;
+  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
   void setEnableExternalFile(bool v) override;
   bool enableExternalFile() const override;
 

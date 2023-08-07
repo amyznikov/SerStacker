@@ -10,7 +10,6 @@
 #define __c_unsharp_mask_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/unsharp_mask.h>
 
 class c_unsharp_mask_routine :
     public c_image_processor_routine

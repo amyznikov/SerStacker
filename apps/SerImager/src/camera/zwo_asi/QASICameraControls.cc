@@ -679,10 +679,12 @@ void QASIROIControlWidget::populate_available_frame_sizes(int iBin)
     const QSize predefined_sizes[] = {
         QSize(c.MaxWidth, c.MaxHeight),
         QSize(3840, 2160),
+        QSize(2560, 2560),
         QSize(2560, 1140),
         QSize(2048, 2048),
         QSize(2048, 1536),
         QSize(1920, 1080),
+        QSize(1600, 1600),
         QSize(1600, 900),
         QSize(1360, 768),
         QSize(1280, 720),

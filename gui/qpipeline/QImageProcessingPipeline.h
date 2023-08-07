@@ -105,8 +105,6 @@ public:
       pp->disconnect(this);
     }
 
-    CF_DEBUG("pipeline=%p", pipeline);
-
     if( (pipeline_ = pipeline) ) {
       connect(pipeline, &QPipelineType::stateChanged,
           this, &ThisClass::onPipelineStateChanged,

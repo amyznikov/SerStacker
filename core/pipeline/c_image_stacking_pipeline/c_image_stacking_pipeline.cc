@@ -3358,7 +3358,6 @@ bool c_image_stacking_pipeline::has_master_frame() const
 void c_image_stacking_pipeline::set_master_source(const std::string & master_source_path)
 {
   image_registration_options_.master_frame_options.master_source_fiename = master_source_path;
-  CF_DEBUG("master_source_path='%s'", master_source_path.c_str());
 }
 
 std::string c_image_stacking_pipeline::master_source() const
@@ -3369,7 +3368,6 @@ std::string c_image_stacking_pipeline::master_source() const
 void c_image_stacking_pipeline::set_master_frame_index(int v)
 {
   image_registration_options_.master_frame_options.master_frame_index = v;
-  CF_DEBUG("master_frame_index='%d'", v);
 }
 
 int c_image_stacking_pipeline::master_frame_index() const
@@ -3377,7 +3375,7 @@ int c_image_stacking_pipeline::master_frame_index() const
   return image_registration_options_.master_frame_options.master_frame_index;
 }
 
-bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline::sptr & dst)
+bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline::sptr & dst) const
 {
   if ( !base::copyParameters(dst) ) {
     CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
@@ -3401,17 +3399,17 @@ bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline
   p->image_processing_options_ = this->image_processing_options_;
 
   const std::string backup_master_source_fiename =
-      this->image_registration_options_.master_frame_options.master_source_fiename;
+      p->image_registration_options_.master_frame_options.master_source_fiename;
 
   const int backup_master_frame_index =
-      this->image_registration_options_.master_frame_options.master_frame_index;
+      p->image_registration_options_.master_frame_options.master_frame_index;
 
   p->image_registration_options_ = this->image_registration_options_;
 
-  this->image_registration_options_.master_frame_options.master_source_fiename =
+  p->image_registration_options_.master_frame_options.master_source_fiename =
       backup_master_source_fiename;
 
-  this->image_registration_options_.master_frame_options.master_frame_index =
+  p->image_registration_options_.master_frame_options.master_frame_index =
       backup_master_frame_index;
 
   return true;

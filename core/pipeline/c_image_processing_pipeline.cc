@@ -125,7 +125,7 @@ std::mutex & c_image_processing_pipeline::mutex()
 }
 
 
-bool c_image_processing_pipeline::copyParameters(const sptr & dst)
+bool c_image_processing_pipeline::copyParameters(const sptr & dst) const
 {
   if ( !dst ) {
     return false;

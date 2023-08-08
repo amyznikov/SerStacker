@@ -631,7 +631,7 @@ void MainWindow::onCameraWriterStatusUpdate()
 
   capture_status_ctl->setText(QString("|R: %1 |T: %2 s |F: %3 |D: %4:%5")
       .arg(cameraWriter_.round())
-      .arg(cvRound(cameraWriter_.capture_duration() / 1000))
+      .arg(cvRound(cameraWriter_.capture_duration()))
       .arg(cameraWriter_.num_saved_frames())
       .arg(write_drops)
       .arg(capture_drops));

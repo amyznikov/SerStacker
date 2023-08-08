@@ -83,7 +83,7 @@ public: // pipeline methods
   const char * cname() const;
 
   virtual const std::string & get_class_name() const = 0;
-  virtual bool copyParameters(const sptr & dst);
+  virtual bool copyParameters(const sptr & dst) const ;
 
 
   virtual bool run(const c_input_sequence::sptr & input_sequence = nullptr);

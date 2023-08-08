@@ -68,11 +68,19 @@ bool c_set_luminance_channel_routine::serialize(c_config_setting settings, bool 
 
 bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  cv::Mat luminance;
+  if( image.channels() == 1 ) {
+    if( usharp_sigma_ > 0 && usharp_alpha_ > 0 ) {
+      unsharp_mask(image, mask, image, usharp_sigma_, usharp_alpha_,
+          usharp_outmin_, usharp_outmax_);
+    }
+    return true;
+  }
 
-  if ( image.channels() != 3 ) {
+  if( image.channels() != 3 ) {
     return true; // silently ignore
   }
+
+  cv::Mat luminance;
 
   if( !extract_channel(image, luminance, cv::noArray(), cv::noArray(), luminance_channel_) ) {
     CF_ERROR("extract_channel('%s') fails", toString(luminance_channel_));

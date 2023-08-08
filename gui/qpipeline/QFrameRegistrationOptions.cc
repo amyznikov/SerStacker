@@ -804,6 +804,8 @@ void QMasterSourceSelectionCombo::onBrowseButtonClicked()
 
 void QMasterSourceSelectionCombo::setCurrentInputSource(const std::string & pathfilename)
 {
+  c_update_controls_lock lock(this);
+
   for( int i = 0, n = combo_->count(); i < n; ++i ) {
 
     const InputSourceData data =
@@ -905,7 +907,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
   masterSource_ctl->setToolTip("Specify input source for master frame");
   connect(masterSource_ctl, &QMasterSourceSelectionCombo::currentSourceChanged,
       [this]() {
-        if( options_ ) {
+        if( options_ && !updatingControls() ) {
 
           const QMasterSourceSelectionCombo::InputSourceData data =
               masterSource_ctl->currentInputSource();

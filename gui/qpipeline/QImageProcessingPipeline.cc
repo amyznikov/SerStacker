@@ -422,7 +422,6 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_image_registration_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                CF_DEBUG("w->set_registration_options()");
                 w->set_registration_options(ctrl.get_image_registration_options(pipeline_));
               });
         }
@@ -430,7 +429,6 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         connect(w, &QSettingsWidget::parameterChanged,
             [this]() {
               if ( !updatingControls() ) {
-                CF_DEBUG("Q_EMIT parameterChanged()");
                 Q_EMIT parameterChanged();
               }
             });

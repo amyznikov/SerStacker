@@ -163,7 +163,7 @@ protected:
   cv::Matx33d currentDerotationHomography_;
   cv::Point2d currentEpipoles_[2];
   cv::Point2d currentEpipole_;
-  cv::Mat currentInliers_;
+  cv::Mat1b currentInliers_;
 
   //cv::Matx33d camera_matrix_;
 

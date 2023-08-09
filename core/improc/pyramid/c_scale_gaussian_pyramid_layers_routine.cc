@@ -6,7 +6,6 @@
  */
 
 #include "c_scale_gaussian_pyramid_layers_routine.h"
-
 #include <numeric>
 
 bool c_scale_gaussian_pyramid_layers_routine::process(cv::InputOutputArray _image, cv::InputOutputArray mask)

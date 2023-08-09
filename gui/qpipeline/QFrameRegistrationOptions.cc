@@ -1030,13 +1030,42 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
             return false;
           });
 
-//  maxFramesForMasterFrameGeneration_ctl = new QNumericBox(this);
-//  connect(maxFramesForMasterFrameGeneration_ctl, &QNumericBox::textChanged,
-//      this, &ThisClass::onMaxFramesForMasterFrameGenerationChanged);
-
+//  featureScale_ctl =
+//      add_numeric_box<double>("feature scale:",
+//      "",
+//      [this](double v) {
+//        if ( options_ && options_->feature_scale != v ) {
+//          options_->feature_scale = v;
+//          Q_EMIT parameterChanged();
+//        }
+//      },
+//      [this](double * v) {
+//        if ( options_ ) {
+//          *v = options_->feature_scale;
+//          return true;
+//        }
+//        return false;
+//      });
+//
+//  eccScale_ctl =
+//      add_numeric_box<double>("ECC scale:",
+//      "",
+//      [this](double v) {
+//        if ( options_ && options_->ecc_scale != v ) {
+//          options_->ecc_scale = v;
+//          Q_EMIT parameterChanged();
+//        }
+//      },
+//      [this](double * v) {
+//        if ( options_ ) {
+//          *v = options_->ecc_scale;
+//          return true;
+//        }
+//        return false;
+//      });
 
   eccFlowScale_ctl =
-      add_numeric_box<int>("ECC flow scale:",
+      add_numeric_box<int>("ECC flow log scale:",
       "",
       [this](int v) {
         if ( options_ && options_->eccflow_scale != v ) {
@@ -1051,9 +1080,6 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
         }
         return false;
       });
-//  eccFlowScale_ctl = new QNumericBox(this);
-//  connect(eccFlowScale_ctl, &QNumericBox::textChanged,
-//      this, &ThisClass::onEccFlowScaleChanged);
 
 
   master_sharpen_factor_ctl =
@@ -1371,158 +1397,12 @@ void QMasterFrameOptions::updateGenerateMasterFrameControlStates()
 {
   if( options_ ) {
     maxFramesForMasterFrameGeneration_ctl->setEnabled(options_->generate_master_frame);
+//    featureScale_ctl->setEnabled(options_->generate_master_frame);
+//    eccScale_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
     master_sharpen_factor_ctl->setEnabled(options_->generate_master_frame);
   }
 }
-
-
-//void QMasterFrameOptions::onEccFlowScaleChanged()
-//{
-//  if ( current_pipeline_ && !updatingControls() ) {
-//    int v = 0;
-//    if ( fromString(eccFlowScale_ctl->text(), &v) &&
-//        v != options_->max_frames_to_generate_master_frame ) {
-//      options_->eccflow_scale = v;
-//      Q_EMIT parameterChanged();
-//    }
-//  }
-//}
-
-//void QMasterFrameOptions::onMasterSharpenFactorChanged()
-//{
-//  if ( options_ && !updatingControls() ) {
-//    double v = 0;
-//    if ( fromString(master_sharpen_factor_ctl->text(), &v) &&
-//        v != options_->master_sharpen_factor ) {
-//      options_->master_sharpen_factor = v;
-//      Q_EMIT parameterChanged();
-//    }
-//  }
-//}
-
-//void QMasterFrameOptions::onAccumulatedSharpenFactorChanged()
-//{
-//  if ( current_pipeline_ && !updatingControls() ) {
-//    double v = 0;
-//    if ( fromString(accumulated_sharpen_factor_ctl->text(), &v) &&
-//        v != options_->accumulated_sharpen_factor ) {
-//      options_->accumulated_sharpen_factor = v;
-//      Q_EMIT parameterChanged();
-//    }
-//  }
-//}
-
-//void QMasterFrameOptions::onAccumulateMasterFlowCheckboxStateChanged(int state)
-//{
-//  if ( options_ && !updatingControls() ) {
-//    //options_->compensate_master_flow = state == Qt::Checked;
-//    Q_EMIT parameterChanged();
-//  }
-//}
-
-//void QMasterFrameOptions::onSaveMasterFrameCheckboxStateChanged(int state)
-//{
-//  if ( current_pipeline_ && !updatingControls() ) {
-//    options_->save_master_frame = state == Qt::Checked;
-//    Q_EMIT parameterChanged();
-//  }
-//}
-
-//void QMasterFrameOptions::onApplyInputFramePprocessorCheckboxStateChanged(int state)
-//{
-//  if ( current_pipeline_ && !updatingControls() ) {
-//    options_->apply_input_frame_processors = state == Qt::Checked;
-//    Q_EMIT parameterChanged();
-//  }
-//}
-//
-
-//QString QMasterFrameOptions::browseForMasterFrame()
-//{
-//  static QString filter;
-//
-//  if ( filter.isEmpty() ) {
-//
-//    filter.append("Regular images (");
-//    for ( const std::string & s : c_regular_image_input_source::suffixes() ) {
-//      filter.append(QString("*%1 ").arg(QString(s.c_str())));
-//    }
-//    filter.append(");;");
-//
-//#if HAVE_LIBRAW
-//    filter.append("RAW/DSLR images (");
-//    for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
-//      filter.append(QString("*%1 ").arg(s.c_str()));
-//    }
-//    filter.append(");;");
-//#endif
-//
-//#if HAVE_CFITSIO
-//    filter.append("FITS files (");
-//    for ( const std::string & s : c_fits_input_source::suffixes() ) {
-//      filter.append(QString("*%1 ").arg(s.c_str()));
-//    }
-//    filter.append(");;");
-//#endif
-//
-//    filter.append("All Files (*.*);;");
-//  }
-//
-//  static const QString lastSourcesDirectoryKeyName =
-//      "lastSourcesDirectory";
-//
-//  static const QString lastMasterFrameSelectionFilter =
-//      "lastMasterFrameSelectionFilter";
-//
-//  QSettings settings;
-//
-//  QString selectedFilter =
-//      settings.value(lastMasterFrameSelectionFilter).toString();
-//
-//
-//  QString proposedMasterSourcePath;
-//  if ( current_pipeline_ ) {
-//    if ( !current_pipeline_->master_source().empty() ) {
-//      proposedMasterSourcePath  = current_pipeline_->master_source().c_str();
-//    }
-//    else {
-//      // FIXME: need access to stack output directory
-//    }
-//  }
-//
-//  if ( proposedMasterSourcePath.isEmpty() ) {
-//    proposedMasterSourcePath = settings.value(lastSourcesDirectoryKeyName).toString();
-//  }
-//
-//  QString selectedFile = QFileDialog::getOpenFileName(this,
-//      "Select master frame",
-//      proposedMasterSourcePath,
-//      filter,
-//      &selectedFilter);
-//
-//  if ( !selectedFile.isEmpty() ) {
-//
-//    settings.setValue(lastSourcesDirectoryKeyName,
-//        QFileInfo(selectedFile).absolutePath());
-//
-//    settings.setValue(lastMasterFrameSelectionFilter,
-//        selectedFilter);
-//  }
-//
-//  return selectedFile;
-//}
-//
-//QString QMasterFrameOptions::browseForMasterFFTSPath()
-//{
-//  if ( current_pipeline_ ) {
-//    return QFileDialog::getExistingDirectory(this, "Select directory",
-//        current_pipeline_->master_source().c_str(),
-//        QFileDialog::DontUseNativeDialog | QFileDialog::ShowDirsOnly);
-//  }
-//
-//  return QString();
-//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

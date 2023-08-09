@@ -10,6 +10,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/settings/opencv_settings.h>
+#include <core/feature2d/feature2d.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +26,7 @@ enum c_image_processor_ctl_type {
   c_image_processor_ctl_begin_group,
   c_image_processor_ctl_end_group,
   c_image_processor_ctl_spinbox,
+  c_image_processor_ctl_sparse_feature_detector
 };
 
 struct c_image_processor_routine_ctrl {
@@ -35,6 +37,7 @@ struct c_image_processor_routine_ctrl {
   const c_enum_member * (*get_enum_members)() = nullptr;
   std::function<std::string(void)> get_value;
   std::function<void (const std::string &)> set_value;
+  std::function<c_sparse_feature_detector_options *()> sparse_feature_detector;
 };
 
 #define ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, cname, desc) \
@@ -145,9 +148,29 @@ struct c_image_processor_routine_ctrl {
   }
 
 
+//
+
+#define ADD_IMAGE_PROCESSOR_CTRL_SPARSE_FEATURE_DETECTOR(ctls, _param, _name, _desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+      .name = _name, \
+      .tooltip = _desc, \
+      .ctl_type = c_image_processor_ctl_sparse_feature_detector, \
+    }; \
+    tmp.sparse_feature_detector = [this]() -> c_sparse_feature_detector_options * { \
+        return _param; \
+    }; \
+   (ctls)->emplace_back(tmp); \
+  }
+
 
 #define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
     ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, param, desc)
+
+
+
+
+
 
 #define ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, cname, desc) \
   if ( true ) { \
@@ -225,6 +248,7 @@ public:
 
   virtual bool serialize(c_config_setting settings, bool save);
 
+  virtual void parameter_changed();
 
   const std::string & class_name() const
   {

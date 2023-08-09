@@ -19,15 +19,30 @@ static bool detect_stars(cv::InputArray _src, cv::InputArray aperture_mask, std:
     const std::string & dbgpath = "")
 {
   cv::Mat1f src, filtered, mean, sharpen;
+  cv::Mat s;
   cv::Mat mask;
   cv::Mat1i labels;
   int N;
 
-  src = _src.getMat();
+  if( _src.channels() == 3 ) {
+    cv::cvtColor(_src, s, cv::COLOR_BGR2GRAY);
+  }
+  else {
+    s = _src.getMat();
+  }
+
+  if ( s.depth() == src.depth() ) {
+    src = s;
+  }
+  else {
+    s.convertTo(src, src.depth());
+  }
 
   //cv::medianBlur(src, filtered, 3);
   //cv::GaussianBlur(filtered, filtered, cv::Size(0, 0), 2);
   cv::GaussianBlur(src, filtered, cv::Size(0, 0), 1);
+
+
   if ( !dbgpath.empty() ) {
     save_image(filtered, ssprintf("%s/star_detector_filtered.tiff", dbgpath.c_str()));
   }
@@ -42,11 +57,9 @@ static bool detect_stars(cv::InputArray _src, cv::InputArray aperture_mask, std:
     save_image(mask, ssprintf("%s/star_detector_mask.tiff", dbgpath.c_str()));
   }
 
-
   if ( aperture_mask.size() == mask.size() ) {
     cv::bitwise_and(mask, aperture_mask, mask);
   }
-
 
   keypoints.clear();
 
@@ -54,7 +67,6 @@ static bool detect_stars(cv::InputArray _src, cv::InputArray aperture_mask, std:
     CF_FATAL("connectedComponents() can not find connected components, N=%d", N);
     return false;
   }
-
 
   keypoints.resize(N - 1);
 
@@ -72,6 +84,7 @@ static bool detect_stars(cv::InputArray _src, cv::InputArray aperture_mask, std:
       }
     }
   }
+
 
   for ( cv::KeyPoint & kp : keypoints) {
     kp.pt.x /= kp.response;
@@ -100,6 +113,7 @@ static bool detect_stars(cv::InputArray _src, cv::InputArray aperture_mask, std:
       }
     }
   }
+
 
   std::sort(keypoints.begin(), keypoints.end(),
       [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {

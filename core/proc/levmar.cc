@@ -10,7 +10,6 @@
 
 c_levmar_solver::c_levmar_solver()
 {
-
 }
 
 c_levmar_solver::c_levmar_solver(int max_itertions, double eps) :
@@ -20,12 +19,19 @@ c_levmar_solver::c_levmar_solver(int max_itertions, double eps) :
 {
 }
 
-
-
-
-int c_levmar_solver::run(const callback & cb, std::vector<double> & params) const
+double c_levmar_solver::rmse() const
 {
-  std::vector<double> xd, r, rd, D;
+  return rmse_;
+}
+
+const std::vector<double> & c_levmar_solver::rhs() const
+{
+  return rhs_;
+}
+
+int c_levmar_solver::run(const callback & cb, std::vector<double> & params)
+{
+  std::vector<double> xd, rd, D;
 
   cv::Mat1d J, A, Ap;
   cv::Mat v, temp_d, d;
@@ -36,18 +42,18 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params) cons
   const int lx =
       x.size();
 
-  if( !compute(cb, x, r, &J) ) {
+  if( !compute(cb, x, rhs_, &J) ) {
     return -1;
   }
 
-  double S =
-      cv::norm(r, cv::NORM_L2SQR);
+  rmse_ =
+      cv::norm(rhs_, cv::NORM_L2SQR);
 
   int nfJ = 2;
 
   cv::mulTransposed(J, A, true);
 
-  cv::gemm(J, cv::Mat1d(r), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
+  cv::gemm(J, cv::Mat1d(rhs_), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
 
   A.diag().copyTo(D);
 
@@ -86,7 +92,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params) cons
         d.dot(temp_d);
 
     double R =
-        (S - Sd) / (std::abs(dS) > DBL_EPSILON ? dS : 1);
+        (rmse_ - Sd) / (std::abs(dS) > DBL_EPSILON ? dS : 1);
 
     if( R > Rhi ) {
       lambda *= 0.5;
@@ -101,7 +107,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params) cons
           d.dot(v);
 
       double nu =
-          (Sd - S) / (std::abs(t) > DBL_EPSILON ? t : 1) + 2;
+          (Sd - rmse_) / (std::abs(t) > DBL_EPSILON ? t : 1) + 2;
 
       nu = (std::min)((std::max)(nu, 2.), 10.);
 
@@ -123,18 +129,18 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params) cons
       lambda *= nu;
     }
 
-    if( Sd < S ) {
+    if( Sd < rmse_ ) {
 
       nfJ++;
-      S = Sd;
+      rmse_ = Sd;
       std::swap(x, xd);
 
-      if( !compute(cb, x, r, &J) ) {
+      if( !compute(cb, x, rhs_, &J) ) {
         return -1;
       }
 
       cv::mulTransposed(J, A, true);
-      cv::gemm(J, cv::Mat1d(r), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
+      cv::gemm(J, cv::Mat1d(rhs_), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
     }
 
 
@@ -143,7 +149,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params) cons
     const bool proceed =
         iteration < max_iterations_ &&
             cv::norm(d, cv::NORM_INF) >= epsx_ &&
-            cv::norm(r, cv::NORM_INF) >= epsf_;
+            cv::norm(rhs_, cv::NORM_INF) >= epsf_;
 
     if( !proceed ) {
       break;
@@ -151,6 +157,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params) cons
   }
 
   params = x;
+  rmse_ = sqrt(rmse_ / rhs_.size());
 
   return iteration;
 }

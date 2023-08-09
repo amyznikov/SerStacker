@@ -27,6 +27,13 @@ void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
     const std::vector<cv::Mat> & pyramid,
     cv::BorderTypes borderType = cv::BORDER_DEFAULT);
 
+/**
+ * Pure laplacian magnitude pyramid
+ */
+bool build_mpyramid(cv::InputArray input_image,
+    std::vector<cv::Mat> & output_layers,
+    int min_image_size = 8);
+
 
 /**
  * Mikhail Sizintsev
@@ -45,6 +52,8 @@ struct c_melp_pyramid
 
 c_melp_pyramid::sptr build_melp_pyramid(cv::InputArray input_image,
     int min_image_size = 8);
+
+
 
 
 #endif /* __laplacian_pyramid_h__ */

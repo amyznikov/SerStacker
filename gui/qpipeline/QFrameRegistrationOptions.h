@@ -245,7 +245,11 @@ protected:
   QCheckBox * apply_input_frame_processors_ctl = nullptr;
   QCheckBox * generateMasterFrame_ctl = nullptr;
   QNumericBox * maxFramesForMasterFrameGeneration_ctl = nullptr;
+
+//  QNumericBox * featureScale_ctl = nullptr;
+//  QNumericBox * eccScale_ctl = nullptr;
   QNumericBox * eccFlowScale_ctl = nullptr;
+
   QNumericBox * master_sharpen_factor_ctl = nullptr;
   QNumericBox * accumulated_sharpen_factor_ctl = nullptr;
 

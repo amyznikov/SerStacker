@@ -131,6 +131,46 @@ static void compute_m(const cv::Mat & gp, const cv::Mat & gn, cv::Mat & m, doubl
 
 } // namespace
 
+
+/**
+ * Pure laplacian magnitude pyramid
+ */
+bool build_mpyramid(cv::InputArray input_image,
+    std::vector<cv::Mat> & output_layers,
+    int minimum_image_size)
+{
+
+  output_layers.clear();
+
+  output_layers.emplace_back(input_image.getMat().clone());
+
+  while ( 42 ) {
+
+    const cv::Size current_size =
+        output_layers.back().size();
+
+    const cv::Size next_size((current_size.width + 1) / 2,
+        (current_size.height + 1) / 2);
+
+//    CF_DEBUG("scale: %dx%d -> %dx%d",
+//        current_size.width, current_size.height,
+//        next_size.width, next_size.height);
+
+    if( (std::min)(next_size.width, next_size.height) < minimum_image_size ) {
+      break;
+    }
+
+    cv::Mat l, m;
+
+    cv::pyrDown(output_layers.back(), l, next_size);
+    compute_m(output_layers.back(), l, m, 6);
+    output_layers.emplace_back(m);
+  }
+
+  return true;
+}
+
+
 c_melp_pyramid::sptr build_melp_pyramid(cv::InputArray input_image, int minimum_image_size)
 {
   c_melp_pyramid::sptr p(new c_melp_pyramid());

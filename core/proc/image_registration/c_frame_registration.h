@@ -84,10 +84,12 @@ struct c_master_frame_options
   bool apply_input_frame_processors = true;
   bool generate_master_frame = true;
   int max_frames_to_generate_master_frame = 3000;
-  int eccflow_scale = 0;
   double master_sharpen_factor = 0.5;
   double accumulated_sharpen_factor = 1;
   bool save_master_frame = true;
+  double feature_scale = 0.5;
+  double ecc_scale = 0.5;
+  int eccflow_scale = 0;
 };
 
 struct c_image_registration_options

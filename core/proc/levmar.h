@@ -45,13 +45,19 @@ public:
   c_levmar_solver(int max_itertions, double eps = 1e-6);
   virtual ~c_levmar_solver() = default;
 
-  virtual int run(const callback & cb, std::vector<double> & params) const;
+  virtual int run(const callback & cb, std::vector<double> & params);
+
+  double rmse() const;
+  const std::vector<double> & rhs() const;
+
 
 protected:
   bool compute(const callback & cb, const std::vector<double> & params,
-      std::vector<double> & err, cv::Mat1d * J) const;
+      std::vector<double> & rhs, cv::Mat1d * J) const;
 
 protected:
+  std::vector<double> rhs_;
+  double rmse_ = -1;
   int max_iterations_ = 1000;
   double epsf_ = 1e-6;
   double epsx_ = 1e-6;

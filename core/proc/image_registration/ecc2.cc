@@ -1464,6 +1464,8 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
           3 * (1 << (support_scale_)));
 
+  CF_DEBUG("min_image_size=%d", min_image_size);
+
   pyramid_.emplace_back();
   pyramid_.back().reference_mask = M;
 
@@ -2072,11 +2074,11 @@ bool c_ecc_stereo_flow::set_reference_image(cv::InputArray referenceImage,
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
           3 * (1 << (support_scale_)));
 
+  CF_DEBUG("min_image_size=%d", min_image_size);
+
   pyramid_.emplace_back();
 
   pyramid_.back().reference_mask = M;
-
-  CF_DEBUG("min_image_size=%d", min_image_size);
 
   for ( int current_level = 0; ; ++current_level ) {
 

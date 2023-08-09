@@ -1252,7 +1252,25 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     c_image_registration_options master_registration_options =
         image_registration_options_;
 
-    if ( master_options.eccflow_scale > 1 ) {
+//    if ( master_options.feature_scale > 0 ) {
+//      master_registration_options.feature_registration.enabled = true;
+//      master_registration_options.feature_registration.scale = master_options.feature_scale;
+//    }
+//    else {
+//      master_registration_options.feature_registration.enabled = false;
+//      master_registration_options.feature_registration.scale = 0;
+//    }
+//
+//    if( master_options.ecc_scale > 0 ) {
+//      master_registration_options.ecc.enabled = true;
+//      master_registration_options.ecc.scale = master_options.feature_scale;
+//    }
+//    else {
+//      master_registration_options.ecc.enabled = false;
+//      master_registration_options.ecc.scale = 0;
+//    }
+
+    if( master_options.eccflow_scale > 1 ) {
       master_registration_options.eccflow.enabled = true;
       master_registration_options.eccflow.support_scale = master_options.eccflow_scale;
     }
@@ -1260,6 +1278,11 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       master_registration_options.eccflow.enabled = false;
       master_registration_options.eccflow.support_scale = 0;
     }
+
+    CF_DEBUG("eccflow.enabled=%d ecc.enabled=%d feature_registration.enabled=%d",
+        master_registration_options.eccflow.enabled,
+        master_registration_options.ecc.enabled,
+        master_registration_options.feature_registration.enabled);
 
     if ( !(frame_registration_ = create_frame_registration(master_registration_options)) ) {
       CF_FATAL("create_frame_registration(master_registration_options) fails");
@@ -3032,6 +3055,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, apply_input_frame_processors);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, generate_master_frame);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, max_frames_to_generate_master_frame);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, feature_scale);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, ecc_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, accumulated_sharpen_factor);

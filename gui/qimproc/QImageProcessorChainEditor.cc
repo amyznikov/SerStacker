@@ -10,6 +10,7 @@
 #include "QRadialPolySharpSettings.h"
 #include "QJovianEllipseSettings.h"
 #include "QMtfSettings.h"
+#include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
@@ -843,6 +844,39 @@ void QImageProcessorSettingsControl::setupControls()
                 }
               });
         }
+
+        break;
+      }
+
+      case c_image_processor_ctl_sparse_feature_detector : {
+
+        QSparseFeatureDetectorOptions * ctl =
+            new QSparseFeatureDetectorOptions(this);
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.sparse_feature_detector ) {
+
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                ctl->set_feature_detector_options(p.sparse_feature_detector());
+              });
+        }
+
+        QObject::connect(ctl, &QSparseFeatureDetectorOptions::parameterChanged,
+            [this]() {
+              if ( processor_ && !updatingControls() ) {
+                processor_->parameter_changed();
+                Q_EMIT parameterChanged();
+              }
+            });
 
         break;
       }

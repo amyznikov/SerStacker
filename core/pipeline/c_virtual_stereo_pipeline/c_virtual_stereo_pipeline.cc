@@ -189,6 +189,11 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
 bool c_virtual_stereo_pipeline::initialize_pipeline()
 {
+  CF_DEBUG("Enter");
+
+  lock_guard lock(mutex());
+
+
   if ( !base::initialize_pipeline() ) {
     CF_ERROR("Base::initialize_pipeline() fails");
     return false;
@@ -241,11 +246,15 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
+  CF_DEBUG("Leave");
+
   return true;
 }
 
 void c_virtual_stereo_pipeline::cleanup_pipeline()
 {
+  lock_guard lock(mutex());
+
   close_input_sequence();
 
   if ( progress_video_writer_.is_open() ) {
@@ -456,7 +465,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
         const cv::Point2f &cp = cps[i];
         const cv::Point2f &pp = pps[i];
         const float d2 = (cp.x - pp.x) * (cp.x - pp.x) + (cp.y - pp.y) * (cp.y - pp.y);
-        if( d2 > 0 ) {
+        if( d2 > 5 ) {
           matched_current_positions_.emplace_back(cp);
           matched_previous_positions_.emplace_back(pp);
         }
@@ -510,6 +519,10 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
   }
 
+  CF_DEBUG("currentInliers_.size=%dx%d nz=%d",
+      currentInliers_.rows, currentInliers_.cols,
+      cv::countNonZero(currentInliers_));
+
 
   compute_epipoles(currentFundamentalMatrix_,
       currentEpipoles_);
@@ -538,7 +551,7 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 {
   lock_guard lock(mutex());
 
-  if( previous_image_.empty() ) {
+  if( current_image_.empty() || previous_image_.empty() ) {
     return false;
   }
 
@@ -567,18 +580,25 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
     const int N = matched_current_positions_.size();
     //CF_DEBUG("N=%d", N);
 
-    for ( int i = 0; i < N; ++i ) {
 
-      const cv::Point2f & cp =
+    const cv::Scalar inlierColor = CV_RGB(220, 220, 0);
+    const cv::Scalar outlierColor = CV_RGB(220, 0, 0);
+
+    for( int i = 0; i < N; ++i ) {
+
+      const cv::Point2f &cp =
           matched_current_positions_[i];
 
-      const cv::Point2f & pp =
+      const cv::Point2f &pp =
           matched_previous_positions_[i];
 
-      cv::Scalar color(rand() % 255 + 32, rand() % 255 + 32, rand() % 255 + 32);
+      const cv::Scalar color =
+          currentInliers_.empty() || currentInliers_[i][0] ?
+              inlierColor :
+              outlierColor;
 
       cv::line(cimg(cRoi), pp, cp, color, 1, cv::LINE_4);
-      cv::rectangle(cimg(cRoi), cv::Point(cp.x-1, cp.y-1), cv::Point(cp.x+1, cp.y+1), color, 1, cv::LINE_4);
+      cv::rectangle(cimg(cRoi), cv::Point(cp.x - 1, cp.y - 1), cv::Point(cp.x + 1, cp.y + 1), color, 1, cv::LINE_4);
     }
 
     if( IS_INSIDE_IMAGE(currentEpipole_, cimg(cRoi).size()) ) {

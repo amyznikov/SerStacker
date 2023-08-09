@@ -48,7 +48,17 @@
 #include "maps/c_threshold_routine.h"
 #include "maps/c_laplacian_routine.h"
 
+#include "pyramid/c_laplacian_pyramid_routine.h"
+#include "pyramid/c_average_pyramid_inpaint_routine.h"
+#include "pyramid/c_gaussian_pyramid_routine.h"
+#include "pyramid/c_melp_pyramid_routine.h"
+#include "pyramid/c_scale_gaussian_pyramid_layers_routine.h"
+#include "pyramid/c_mpyramid_routine.h"
+
 #include "fft/c_fft_routine.h"
+
+#include "feature2d/c_keypoins_detector_routine.h"
+
 
 #include "c_align_color_channels_routine.h"
 #include "c_autoclip_routine.h"
@@ -56,7 +66,8 @@
 #include "c_type_convert_routine.h"
 #include "c_radial_polysharp_routine.h"
 #include "c_rotate_image_routine.h"
-#include "c_laplacian_pyramid_routine.h"
+
+
 #include "c_median_blur_routine.h"
 #include "c_median_hat_routine.h"
 #include "c_wmf_routine.h"
@@ -70,14 +81,10 @@
 #include "c_mean_curvature_blur_routine.h"
 #include "c_fit_jovian_ellipse_routine.h"
 #include "c_equalize_hist_routine.h"
-#include "c_average_pyramid_inpaint_routine.h"
 #include "c_linear_interpolation_inpaint_routine.h"
 #include "c_bilateral_filter_routine.h"
 #include "c_pnormalize_routine.h"
 #include "c_gaussian_blur_routine.h"
-#include "c_gaussian_pyramid_routine.h"
-#include "c_melp_pyramid_routine.h"
-#include "c_scale_gaussian_pyramid_layers_routine.h"
 #include "c_downstrike_routine.h"
 #include "c_upject_routine.h"
 #include "c_morphology_routine.h"
@@ -161,11 +168,15 @@ void c_image_processor_routine::register_all()
 
 
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());
-    register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
     register_class_factory(c_laplacian_routine::class_factory_instance());
-    register_class_factory(c_melp_pyramid_routine::class_factory_instance());
+
+    register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
     register_class_factory(c_scale_gaussian_pyramid_layers_routine::class_factory_instance());
+    register_class_factory(c_melp_pyramid_routine::class_factory_instance());
     register_class_factory(c_laplacian_pyramid_routine::class_factory_instance());
+    register_class_factory(c_mpyramid_routine::class_factory_instance());
+
+
     register_class_factory(c_downstrike_routine::class_factory_instance());
     register_class_factory(c_upject_routine::class_factory_instance());
     register_class_factory(c_morphology_routine::class_factory_instance());
@@ -198,7 +209,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pnormalize_routine::class_factory_instance());
     register_class_factory(c_census_transfrom_routine::class_factory_instance());
     register_class_factory(c_fft_routine::class_factory_instance());
-
+    register_class_factory(c_keypoins_detector_routine::class_factory_instance());
   }
 }
 
@@ -523,6 +534,10 @@ c_image_processor_routine::ptr c_image_processor_routine::create(const std::stri
 //
 //  return true;
 //}
+
+void c_image_processor_routine::parameter_changed()
+{
+}
 
 bool c_image_processor_routine::serialize(c_config_setting settings, bool save)
 {

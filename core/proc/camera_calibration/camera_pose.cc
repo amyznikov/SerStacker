@@ -37,6 +37,13 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
 }
 
 
+template<class T>
+static inline T sqr(T x)
+{
+  return x * x;
+}
+
+
 
 /**
  * Compute two (left and right) epipoles from given fundamental matrix F.
@@ -576,7 +583,7 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     const cv::Matx33d & camera_matrix,
     const std::vector<cv::Point2f> & current_keypoints,
     const std::vector<cv::Point2f> & reference_keypoints,
-    const cv::Mat1b & inliers)
+    cv::Mat1b & inliers)
 {
 
   if ( current_keypoints.size() != reference_keypoints.size() ) {
@@ -606,6 +613,45 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     }
   }
 
+  static const auto compute_epipole =
+      [](const cv::Matx33d & F) -> cv::Point2d {
+        cv::Point2d E[2];
+        compute_epipoles(F, E);
+        return cv::Point2d(0.5 * (E[0].x + E[1].x), 0.5 * (E[0].y + E[1].y) );
+      };
+
+
+  static const auto compute_fundamental_matrix =
+      [](const std::vector<double> & p, const cv::Matx33d & camera_matrix_inv,
+          const cv::Matx33d & camera_matrix_t_inv,
+          double Tfix, int iTfix) -> cv::Matx33d  {
+
+            const cv::Vec3d A(p[0], p[1], p[2]);
+
+            cv::Vec3d T;
+
+            switch (iTfix) {
+              case 0:
+                T = cv::Vec3d(Tfix, p[3], p[4]);
+                break;
+              case 1:
+                T = cv::Vec3d(p[3], Tfix, p[4]);
+                break;
+              case 2:
+                T = cv::Vec3d(p[3], p[4], Tfix);
+                break;
+              default:
+                CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
+                break;
+            }
+
+            return compose_fundamental_matrix(camera_matrix_t_inv,
+                camera_matrix_inv,
+                build_rotation(A),
+                T / cv::norm(T));
+          };
+
+
   class c_levmar_solver_callback:
       public c_levmar_solver::callback
   {
@@ -618,7 +664,6 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     int numInliers;
     const double Tfix;
     const int iTfix;
-    mutable double rmse_ = 0;
 
   public:
     c_levmar_solver_callback(const cv::Matx33d & _camera_matrix,
@@ -649,75 +694,47 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(const std::vector<double> & p, std::vector<double> & rhs, cv::Mat1d * , bool * ) const override
     {
-      const cv::Vec3d A(p[0], p[1], p[2]);
-
-      cv::Vec3d T;
-
-      switch (iTfix) {
-        case 0:
-          T = cv::Vec3d(Tfix, p[3], p[4]);
-          break;
-        case 1:
-          T = cv::Vec3d(p[3], Tfix, p[4]);
-          break;
-        case 2:
-          T = cv::Vec3d(p[3], p[4], Tfix);
-          break;
-        default:
-          CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
-          return false;
-      }
-
       const cv::Matx33d F =
-          compose_fundamental_matrix(camera_matrix_t_inv,
+          compute_fundamental_matrix(p,
               camera_matrix_inv,
-              build_rotation(A),
-              T / cv::norm(T));
+              camera_matrix_t_inv,
+              Tfix, iTfix);
 
       rhs.resize(numInliers);
-      rmse_ = 0;
 
       if( inliers.empty() ) { // case when no inliers mask
 
         for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
           rhs[i] = distance_from_point_to_corresponding_epipolar_line(F,
               current_keypoints[i], reference_keypoints[i]);
-          rmse_ += rhs[i] * rhs[i];
         }
       }
       else { // case when inliers mask is provided
 
         for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
           if( inliers[i][0] ) {
-            rhs[j] = distance_from_point_to_corresponding_epipolar_line(F,
+            rhs[j++] = distance_from_point_to_corresponding_epipolar_line(F,
                 current_keypoints[i], reference_keypoints[i]);
-            rmse_ += rhs[j] * rhs[j];
-            ++j;
           }
         }
       }
 
-      rmse_ = sqrt(rmse_ / numInliers);
-
       return true;
-    }
-
-    double rmse() const
-    {
-      return rmse_;
     }
 
   };
 
 
+  c_levmar_solver lm(100, 1e-7);
+
   /*
    * Find the translation component of maximal magnitude and fix it
    * iTmax = argmax(i, abs( T[i] ) )
-  */
+   */
   double Tfix = T(0);
   int iTfix = 0;
-  for ( int i = 1; i < 3; ++i ) {
-    if ( fabs(T[i]) > fabs(Tfix) ) {
+  for( int i = 1; i < 3; ++i ) {
+    if( fabs(T[i]) > fabs(Tfix) ) {
       Tfix = T[iTfix = i];
     }
   }
@@ -727,29 +744,88 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
    * */
   std::vector<double> p(5);
 
-  p[0] = A(0);
-  p[1] = A(1);
-  p[2] = A(2);
-  for ( int i = 0, j = 3; i < 3; ++i ) {
-    if ( i != iTfix ) {
-      p[j++] = T[i];
+  for ( int ii = 0; ii < 10; ++ii ) {
+
+    p[0] = A(0);
+    p[1] = A(1);
+    p[2] = A(2);
+    for( int i = 0, j = 3; i < 3; ++i ) {
+      if( i != iTfix ) {
+        p[j++] = T[i];
+      }
+    }
+
+    c_levmar_solver_callback lmcb(camera_matrix,
+        current_keypoints,
+        reference_keypoints,
+        inliers,
+        Tfix,
+        iTfix);
+
+    int iterations =
+        lm.run(lmcb, p);
+
+    if ( iterations < 0 ) {
+      CF_ERROR("lm.run() fails");
+      return false;
+    }
+
+
+    /*
+     * Check for outliers
+     * */
+
+    const std::vector<double> & rhs =
+        lm.rhs();
+
+    int num_outliers = 0;
+
+    if ( rhs.size() > 5 ) {
+
+      if( inliers.empty() ) {
+        inliers.create(current_keypoints.size(), 1);
+        inliers.setTo(255);
+      }
+
+      const double rmse2 =
+          8 * lm.rmse() * lm.rmse();
+
+      const cv::Matx33d F =
+          compute_fundamental_matrix(p,
+              camera_matrix.inv(),
+              camera_matrix.t().inv(),
+              Tfix, iTfix);
+
+      const cv::Point2d E =
+          compute_epipole(F);
+
+
+      for( int i = 0, j = 0, n = inliers.rows; i < n; ++i ) {
+        if( inliers[i][0] ) {
+          const double d = sqr(rhs[j++]);
+          if( d > rmse2 ) {
+            inliers[i][0] = 0;
+            ++num_outliers;
+          }
+          else {
+            const cv::Vec2d CP(current_keypoints[i].x - E.x, current_keypoints[i].y - E.y);
+            const cv::Vec2d RP(reference_keypoints[i].x - E.x, reference_keypoints[i].y - E.y);
+            if ( CP.dot(RP) <= 0 ) {
+              inliers[i][0] = 0;
+              ++num_outliers;
+            }
+          }
+        }
+      }
+    }
+
+    CF_DEBUG("lm.run(pass %d): %d iterations rmse=%g num_outliers=%d", ii,
+        iterations, lm.rmse(), num_outliers);
+
+    if ( num_outliers < 1 ) {
+      break;
     }
   }
-
-  c_levmar_solver lm(100, 1e-7);
-
-  c_levmar_solver_callback lmcb(camera_matrix,
-      current_keypoints,
-      reference_keypoints,
-      inliers,
-      Tfix,
-      iTfix);
-
-  int iterations =
-      lm.run(lmcb, p);
-
-  CF_DEBUG("lm.run(): %d iterations rmse=%g",
-      iterations, lmcb.rmse());
 
   /*
    * Unpack parameters from cv::Mat1d
@@ -775,6 +851,8 @@ static bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   }
 
   T /= cv::norm(T);
+
+
 
   return true;
 }

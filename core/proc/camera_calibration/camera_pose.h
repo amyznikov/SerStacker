@@ -426,6 +426,8 @@ bool estimate_camera_pose_and_derotation_homography(
 
 
 /** Experimental pure levar
+ *    - Returned Fundamental Matrix F of CURRENT camera relative to REFERENCE camera
+ *        AFTER derotation with homography H;
  *  */
 bool lm_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,

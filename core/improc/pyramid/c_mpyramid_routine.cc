@@ -37,7 +37,7 @@ bool c_mpyramid_routine::process(cv::InputOutputArray image, cv::InputOutputArra
   const int display_layer =
       std::max(0, std::min(display_pos_, (int) (layers.size()) - 1));
 
-  CF_DEBUG("H display_layer=%d layers.size=%zu", display_layer, layers.size());
+  // CF_DEBUG("display_layer=%d layers.size=%zu", display_layer, layers.size());
   layers[display_layer].copyTo(image);
 
   if ( mask.needed() ) {

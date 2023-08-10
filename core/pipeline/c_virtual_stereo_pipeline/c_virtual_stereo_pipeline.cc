@@ -532,7 +532,8 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 
   CF_DEBUG("A: (%g %g %g)", currentEulerAnges_(0) * 180 / CV_PI, currentEulerAnges_(1) * 180 / CV_PI, currentEulerAnges_(2) * 180 / CV_PI);
   CF_DEBUG("T: (%g %g %g)", currentTranslationVector_(0), currentTranslationVector_(1), currentTranslationVector_(2));
-  CF_DEBUG("E: (%g %g)", currentEpipole_.x, currentEpipole_.y);
+  CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
+      currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
 
   if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
     CF_WARNING("\nWARNING!\n"
@@ -549,6 +550,44 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 
 bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
+  //////////////////
+  static const auto draw_matched_positions =
+      [](cv::Mat & image,
+          const std::vector<cv::Point2f> & current_positions,
+          const std::vector<cv::Point2f> & previous_positions,
+          const cv::Mat1b & inliers) {
+
+    const int N = current_positions.size();
+    const cv::Scalar inlierColor = CV_RGB(220, 220, 0);
+    const cv::Scalar outlierColor = CV_RGB(220, 0, 0);
+
+    for( int i = 0; i < N; ++i ) {
+
+      const cv::Point2f &cp =
+          current_positions[i];
+
+      const cv::Point2f &pp =
+          previous_positions[i];
+
+      const cv::Scalar color =
+          inliers.empty() || inliers[i][0] ?
+              inlierColor :
+              outlierColor;
+
+      cv::line(image, pp, cp, color, 1, cv::LINE_4);
+      cv::rectangle(image, cv::Point(cp.x - 1, cp.y - 1), cv::Point(cp.x + 1, cp.y + 1), color, 1, cv::LINE_4);
+    }
+  };
+
+
+  //////////////////
+
+
+
+
+
+
+
   lock_guard lock(mutex());
 
   if( current_image_.empty() || previous_image_.empty() ) {
@@ -577,43 +616,22 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   if ( !matched_previous_positions_.empty() ) {
 
-    const int N = matched_current_positions_.size();
-    //CF_DEBUG("N=%d", N);
-
-
-    const cv::Scalar inlierColor = CV_RGB(220, 220, 0);
-    const cv::Scalar outlierColor = CV_RGB(220, 0, 0);
-
-    for( int i = 0; i < N; ++i ) {
-
-      const cv::Point2f &cp =
-          matched_current_positions_[i];
-
-      const cv::Point2f &pp =
-          matched_previous_positions_[i];
-
-      const cv::Scalar color =
-          currentInliers_.empty() || currentInliers_[i][0] ?
-              inlierColor :
-              outlierColor;
-
-      cv::line(cimg(cRoi), pp, cp, color, 1, cv::LINE_4);
-      cv::rectangle(cimg(cRoi), cv::Point(cp.x - 1, cp.y - 1), cv::Point(cp.x + 1, cp.y + 1), color, 1, cv::LINE_4);
-    }
-
-    if( IS_INSIDE_IMAGE(currentEpipole_, cimg(cRoi).size()) ) {
-
-      const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
-
-      cv::ellipse(cimg(cRoi), E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
-      cv::line(cimg(cRoi), cv::Point2f(E.x - 9, E.y), cv::Point2f(E.x + 9, E.y), CV_RGB(200, 200, 30), 1, cv::LINE_4);
-      cv::line(cimg(cRoi), cv::Point2f(E.x, E.y - 9), cv::Point2f(E.x, E.y + 9), CV_RGB(200, 200, 30), 1, cv::LINE_4);
-    }
+    cv::Mat img = cimg(cRoi);
+    draw_matched_positions(img,
+        matched_current_positions_,
+        matched_previous_positions_,
+        currentInliers_);
   }
 
   //CF_DEBUG("H");
 
   cv::Mat tmp1, tmp2;
+  std::vector<cv::Point2f> warped_current_positions_;
+
+  /////////////////
+
+  cv::perspectiveTransform(matched_current_positions_, warped_current_positions_,
+      currentDerotationHomography_);
 
   cv::warpPerspective(current_image_, tmp1,
       currentDerotationHomography_,
@@ -625,20 +643,56 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
     cv::cvtColor(tmp1, tmp1, cv::COLOR_GRAY2BGR);
   }
 
+
+  /////////////////
+
   if ( previous_image_.channels() == 3 ) {
-    tmp2 = previous_image_;
+    previous_image_.copyTo(tmp2);
   }
   else {
     cv::cvtColor(previous_image_, tmp2, cv::COLOR_GRAY2BGR);
   }
 
+  cv::addWeighted(tmp1, 0.5, tmp2, 0.5, 0, tmp2);
+
+
+  /////////////////
+
+
+  if( !matched_previous_positions_.empty() ) {
+
+    draw_matched_positions(tmp1,
+        warped_current_positions_,
+        matched_previous_positions_,
+        currentInliers_);
+  }
+
+  if( IS_INSIDE_IMAGE(currentEpipole_, tmp1.size()) ) {
+
+    const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
+
+    cv::ellipse(tmp1, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
+    cv::line(tmp1, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
+    cv::line(tmp1, cv::Point2f(E.x + 9, E.y - 9), cv::Point2f(E.x - 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
+  }
+
+  if( IS_INSIDE_IMAGE(currentEpipole_, tmp2.size()) ) {
+
+    const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
+
+    cv::ellipse(tmp2, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
+    cv::line(tmp2, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
+    cv::line(tmp2, cv::Point2f(E.x + 9, E.y - 9), cv::Point2f(E.x - 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
+  }
+
+  /////////////////
+
   tmp1.copyTo(cimg(wRoi));
   tmp2.copyTo(cimg(pRoi));
 
-  //cv::addWeighted(tmp1, 0.5, tmp2, 0.5, 0, cimg(pRoi));
 
+  /////////////////
 
-  //CF_DEBUG("H");
   display_frame.move(cimg);
 
   //CF_DEBUG("H");

@@ -1213,23 +1213,23 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       static const auto compute_rhs =
           [](const cv::Point2f & wcp, const cv::Point2f & rp, const cv::Point2f & E) -> double {
 
-            const cv::Point2f ecp(wcp.x - E.x, wcp.y - E.y);
-            const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
-            const double RP = sqrt(erp.x * erp.x + erp.y * erp.y);
+              const cv::Point2f ecp(wcp.x - E.x, wcp.y - E.y);
+              const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
+              const double L = sqrt(erp.x * erp.x + erp.y * erp.y);
 
-            //  cos  sin
-            // -sin  cos
-            const cv::Point2f p(
-                erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y),
-               -erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y));
+              //  cos  sin
+              // -sin  cos
+              const cv::Point2f p(
+                  erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y),
+                  -erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y));
 
-            double r = fabs(p.y );
-            if ( p.x < 0 ) {
-              r += fabs(p.x);
-            }
+              double r = std::abs(p.y);
+              if ( p.x < 0 ) {
+                r -= p.x;
+              }
 
-            return ( r / RP );
-          };
+              return std::min(r/L, 5.);
+            };
 
       const cv::Vec3d A = unpack_A(p);
       const cv::Vec3d T = unpack_T(p, Tfix, iTfix);
@@ -1288,7 +1288,7 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
    * */
   std::vector<double> p(5);
 
-  for ( int ii = 0; ii < 3; ++ii ) {
+  for ( int ii = 0; ii < 5; ++ii ) {
 
     p[0] = A(0);
     p[1] = A(1);
@@ -1356,7 +1356,7 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 
       for( int i = 0, j = 0, n = inliers.rows; i < n; ++i ) {
         if( inliers[i][0] ) {
-          if( rhs[j++] > 3 * rmse ) {
+          if( rhs[j++] > 5 * rmse ) {
             inliers[i][0] = 0;
             ++num_outliers;
           }

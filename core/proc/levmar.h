@@ -46,6 +46,7 @@ public:
   virtual ~c_levmar_solver() = default;
 
   virtual int run(const callback & cb, std::vector<double> & params);
+  //virtual int runm(const callback & cb, std::vector<double> & params);
 
   double rmse() const;
   const std::vector<double> & rhs() const;

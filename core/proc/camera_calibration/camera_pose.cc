@@ -1208,21 +1208,24 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(const std::vector<double> & p, std::vector<double> & rhs, cv::Mat1d * , bool * ) const override
     {
-
+      // project difference vector between warped cp and rp onto rp
+      // compute rhs error based on components of projected vector
       static const auto compute_rhs =
-          [](const cv::Point2f & wcp, const cv::Point2f & rp, const cv::Point2f & E) {
+          [](const cv::Point2f & wcp, const cv::Point2f & rp, const cv::Point2f & E) -> double {
 
-            const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
             const cv::Point2f ecp(wcp.x - E.x, wcp.y - E.y);
+            const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
             const double RP = sqrt(erp.x * erp.x + erp.y * erp.y);
 
+            //  cos  sin
+            // -sin  cos
             const cv::Point2f p(
                 erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y),
-                -erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y));
+               -erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y));
 
             double r = fabs(p.y );
             if ( p.x < 0 ) {
-              r -= p.x;
+              r += fabs(p.x);
             }
 
             return ( r / RP );
@@ -1249,13 +1252,12 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 
 
       if( inliers.empty() ) {
-
         for( int i = 0, n = warped_current_keypoints.size(); i < n; ++i ) {
           rhs[i] = compute_rhs(warped_current_keypoints[i], reference_keypoints[i], E);
         }
       }
       else {
-        for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
+        for( int i = 0, j = 0, n = warped_current_keypoints.size(); i < n; ++i ) {
           if( inliers[i][0] ) {
             rhs[j++] = compute_rhs(warped_current_keypoints[i], reference_keypoints[i], E);
           }
@@ -1286,7 +1288,7 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
    * */
   std::vector<double> p(5);
 
-  for ( int ii = 0; ii < 1; ++ii ) {
+  for ( int ii = 0; ii < 3; ++ii ) {
 
     p[0] = A(0);
     p[1] = A(1);
@@ -1322,7 +1324,7 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 
     int num_outliers = 0;
 
-    if ( rhs.size() > 5 ) {
+    if ( rhs.size() > 10 ) {
 
       if( inliers.empty() ) {
         inliers.create(current_keypoints.size(), 1);
@@ -1332,8 +1334,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       const double rmse =
           lm.rmse();
 
-      const double rmse2 =
-          10 * rmse * rmse;
+      //      const double rmse2 =
+      //          50 * rmse * rmse;
 
       const cv::Vec3d AA = unpack_A(p);
       const cv::Vec3d TT = unpack_T(p, Tfix, iTfix);
@@ -1354,21 +1356,27 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 
       for( int i = 0, j = 0, n = inliers.rows; i < n; ++i ) {
         if( inliers[i][0] ) {
-          const double d = sqr(rhs[j++]);
-          if( d > rmse2 ) {
+          if( rhs[j++] > 3 * rmse ) {
             inliers[i][0] = 0;
             ++num_outliers;
           }
-          else {
-            const cv::Point2f e = compute_error(warped_current_keypoints[i], reference_keypoints[i], E);
-            if( e.x < -3 ) {
-              inliers[i][0] = 0;
-              ++num_outliers;
-            }
-          }
+
+//          const double d = sqr(rhs[j++]);
+//          if( d > rmse2 ) {
+//            inliers[i][0] = 0;
+//            ++num_outliers;
+//          }
+//          else {
+//            const cv::Point2f e = compute_error(warped_current_keypoints[i], reference_keypoints[i], E);
+//            if( e.x < -3 ) {
+//              inliers[i][0] = 0;
+//              ++num_outliers;
+//            }
+//          }
         }
       }
     }
+
 
     CF_DEBUG("lm.run(pass %d): %d iterations rmse=%g num_outliers=%d / %zu", ii,
         iterations, lm.rmse(), num_outliers, current_keypoints.size());

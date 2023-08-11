@@ -465,7 +465,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
         const cv::Point2f &cp = cps[i];
         const cv::Point2f &pp = pps[i];
         const float d2 = (cp.x - pp.x) * (cp.x - pp.x) + (cp.y - pp.y) * (cp.y - pp.y);
-        if( d2 > 5 ) {
+        if( d2 > 0 ) {
           matched_current_positions_.emplace_back(cp);
           matched_previous_positions_.emplace_back(pp);
         }

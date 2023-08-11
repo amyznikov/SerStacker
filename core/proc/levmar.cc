@@ -6,6 +6,7 @@
  */
 
 #include "levmar.h"
+#include <core/proc/median.h>
 #include <core/debug.h>
 
 c_levmar_solver::c_levmar_solver()
@@ -161,6 +162,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params)
 
   return iteration;
 }
+
 
 bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & params,
     std::vector<double> & rhs, cv::Mat1d * jac) const

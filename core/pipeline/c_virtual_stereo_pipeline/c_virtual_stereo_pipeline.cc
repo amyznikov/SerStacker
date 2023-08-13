@@ -187,6 +187,32 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
   return ctrls;
 }
 
+bool c_virtual_stereo_pipeline::copyParameters(const base::sptr & dst) const
+{
+  if ( !base::copyParameters(dst) ) {
+    CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
+    return false;
+  }
+
+  this_class::sptr p =
+      std::dynamic_pointer_cast<this_class>(dst);
+
+  if( !p ) {
+    CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
+        get_class_name().c_str());
+    return false;
+  }
+
+  p->input_options_ = this->input_options_;
+  p->camera_options_ = this->camera_options_;
+  p->image_processing_options_ = this->image_processing_options_;
+  p->feature2d_options_ = this->feature2d_options_;
+  p->output_options_ = this->output_options_;
+
+  return true;
+}
+
+
 bool c_virtual_stereo_pipeline::initialize_pipeline()
 {
   CF_DEBUG("Enter");
@@ -470,7 +496,6 @@ bool c_virtual_stereo_pipeline::process_current_frame()
           matched_previous_positions_.emplace_back(pp);
         }
       }
-
     }
   }
 
@@ -483,7 +508,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
 
 bool c_virtual_stereo_pipeline::estmate_camera_pose()
 {
-  if (matched_previous_positions_.size() < 4 ) {
+  if( matched_current_positions_.size() < 6 || matched_previous_positions_.size() < 6 ) {
     return true; // ignore
   }
 
@@ -582,17 +607,12 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   //////////////////
 
-
-
-
-
-
-
   lock_guard lock(mutex());
 
   if( current_image_.empty() || previous_image_.empty() ) {
     return false;
   }
+
 
   const cv::Size size(std::max(current_image_.cols, previous_image_.cols),
       current_image_.rows + 2 * previous_image_.rows);
@@ -623,15 +643,14 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
         currentInliers_);
   }
 
-  //CF_DEBUG("H");
-
   cv::Mat tmp1, tmp2;
   std::vector<cv::Point2f> warped_current_positions_;
 
   /////////////////
-
-  cv::perspectiveTransform(matched_current_positions_, warped_current_positions_,
-      currentDerotationHomography_);
+  if( !matched_current_positions_.empty() ) {
+    cv::perspectiveTransform(matched_current_positions_, warped_current_positions_,
+        currentDerotationHomography_);
+  }
 
   cv::warpPerspective(current_image_, tmp1,
       currentDerotationHomography_,
@@ -659,7 +678,7 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
   /////////////////
 
 
-  if( !matched_previous_positions_.empty() ) {
+  if( !warped_current_positions_.empty() && !matched_previous_positions_.empty() ) {
 
     draw_matched_positions(tmp1,
         warped_current_positions_,

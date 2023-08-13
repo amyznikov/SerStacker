@@ -3400,14 +3400,14 @@ int c_image_stacking_pipeline::master_frame_index() const
   return image_registration_options_.master_frame_options.master_frame_index;
 }
 
-bool c_image_stacking_pipeline::copyParameters(const c_image_processing_pipeline::sptr & dst) const
+bool c_image_stacking_pipeline::copyParameters(const base::sptr & dst) const
 {
   if ( !base::copyParameters(dst) ) {
     CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
     return false;
   }
 
-  c_image_stacking_pipeline::sptr p =
+  this_class::sptr p =
       std::dynamic_pointer_cast<this_class>(dst);
 
   if( !p ) {

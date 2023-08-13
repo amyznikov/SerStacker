@@ -321,6 +321,7 @@ bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & p
       false;
 
   if( !cb.compute(params, rhs, jac, &have_jac) ) {
+    CF_ERROR("cb.compute() fails");
     return false;
   }
 
@@ -354,6 +355,7 @@ bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & p
 
       P[j] = v + delta;
       if( !cb.compute(P, rhs1, nullptr, nullptr) ) {
+        CF_ERROR("cb.compute() fails");
         return false;
       }
 
@@ -367,6 +369,7 @@ bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & p
 
       P[j] = v - delta;
       if( !cb.compute(P, rhs2, nullptr, nullptr) ) {
+        CF_ERROR("cb.compute() fails");
         return false;
       }
 

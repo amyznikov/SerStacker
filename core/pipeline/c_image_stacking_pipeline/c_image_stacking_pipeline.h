@@ -244,7 +244,7 @@ public:
   bool serialize(c_config_setting setting, bool save) override;
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
-  bool copyParameters(const c_image_processing_pipeline::sptr & dst) const override;
+  bool copyParameters(const base::sptr & dst) const override;
   bool has_master_frame() const  override;
   void set_master_source(const std::string & master_source_path) override;
   std::string master_source() const override;

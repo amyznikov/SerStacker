@@ -618,6 +618,17 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     const cv::Mat & reference_normalized_image =
         reference_pyramid.front();
 
+    CF_DEBUG("current_normalized_image: %dx%d\n"
+        "reference_normalized_image: %dx%d\n"
+        "current_remap_: %dx%d\n"
+        "current_ellipse_mask_: %dx%d\n"
+        "reference_ellipse_mask_: %dx%d\n",
+        current_normalized_image.cols, current_normalized_image.rows,
+        reference_normalized_image.cols, reference_normalized_image.rows,
+        current_remap_.cols, current_remap_.rows,
+        current_ellipse_mask_.cols, current_ellipse_mask_.rows,
+        reference_ellipse_mask_.cols, reference_ellipse_mask_.rows);
+
     bool fOk =
         eccflow_.compute(current_normalized_image,
             reference_normalized_image,

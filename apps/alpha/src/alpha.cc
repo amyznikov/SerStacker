@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
 
   };
 
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
+
   /* Initialize the variables. */
   constexpr int N = 100;
 
@@ -85,17 +88,20 @@ int main(int argc, char *argv[])
 
   for( int i = 0; i < N; i += 2 ) {
     p[i] = -1.2;
-    p[i + 1] = 1.5;
+    p[i+1] = 1.5;
   }
 
   c_bfgs bfgs(1000);
   c_bfgs_callback cb;
 
-  int status = bfgs.run(cb, p);
+  c_bfgs::STATUS status =
+      bfgs.run(cb, p);
 
   cb.compute(p, &fx, nullptr, nullptr);
 
-  printf("L-BFGS optimization terminated: status=%d\n", status);
+  printf("L-BFGS optimization terminated: %d iterations status=%d %s (%s)\n", bfgs.num_iterations(),
+      (int) status, toString(status), comment_for(status));
+
   printf("  fx = %f, x[0] = %f, x[1] = %f\n", fx, p[0], p[1]);
 
   return 0;

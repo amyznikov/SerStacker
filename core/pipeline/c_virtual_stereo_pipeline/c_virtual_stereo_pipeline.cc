@@ -527,18 +527,30 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 //          &currentFundamentalMatrix_,
 //          &currentDerotationHomography_,
 //          currentInliers_);
+
       lm_camera_pose_and_derotation_homography(
           camera_options_.camera_intrinsics.camera_matrix,
           matched_current_positions_,
           matched_previous_positions_,
-          &currentEulerAnges_,
-          &currentTranslationVector_,
+          currentEulerAnges_,
+          currentTranslationVector_,
           &currentRotationMatrix_,
           &currentEssentialMatrix_,
           &currentFundamentalMatrix_,
           &currentDerotationHomography_,
           currentInliers_);
 
+//  bfgs_camera_pose_and_derotation_homography(
+//      camera_options_.camera_intrinsics.camera_matrix,
+//      matched_current_positions_,
+//      matched_previous_positions_,
+//      &currentEulerAnges_,
+//      &currentTranslationVector_,
+//      &currentRotationMatrix_,
+//      &currentEssentialMatrix_,
+//      &currentFundamentalMatrix_,
+//      &currentDerotationHomography_,
+//      currentInliers_);
 
   if ( !fOk ) {
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");

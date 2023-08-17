@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
   cb.compute(p, &fx, nullptr, nullptr);
 
-  printf("L-BFGS optimization terminated: %d iterations status=%d %s (%s)\n", bfgs.num_iterations(),
+  printf("L-BFGS optimization terminated: %d iterations status=%d %s (%s)\n", bfgs.iterations(),
       (int) status, toString(status), comment_for(status));
 
   printf("  fx = %f, x[0] = %f, x[1] = %f\n", fx, p[0], p[1]);

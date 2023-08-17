@@ -6,6 +6,8 @@
  *
  * Adapted from "Limited memory BFGS (L-BFGS)"
  *  <https://github.com/chokkan/liblbfgs.git>
+ *
+ * @sa <https://habr.com/ru/articles/333356>
  */
 #include "bfgs.h"
 #include <core/ssprintf.h>
@@ -387,7 +389,7 @@ c_bfgs::STATUS c_bfgs::status() const
   return status_;
 }
 
-int c_bfgs::num_iterations() const
+int c_bfgs::iterations() const
 {
   return num_iterations_;
 }
@@ -489,7 +491,7 @@ c_bfgs::STATUS c_bfgs::run(const callback & cb, std::vector<double> & x)
 
   /* Check the input parameters for errors. */
   if( n <= 0 ) {
-    CF_ERROR("Invalid number of adjustable parameteres: n=%d", n);
+    CF_ERROR("Invalid number of adjustable parameters: n=%d", n);
     return (status_ = LBFGSERR_INVALID_N);
   }
   if( epsilon_ < 0. ) {

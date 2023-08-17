@@ -828,7 +828,7 @@ void QCameraWriter::writerThreadProc()
 
     const double max_capture_duration =
         capture_limits_.type == c_capture_limits::ByTime ?
-            capture_limits_.value * 1000 :
+            capture_limits_.value :
             -1;
 
     const std::string camera_name =

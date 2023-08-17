@@ -425,11 +425,37 @@ bool estimate_camera_pose_and_derotation_homography(
     /* in, out, opt */ cv::InputOutputArray M);
 
 
-/** Experimental pure levar
+/**
+ *  Use of c_levmar_solver to refine camera pose guess
  *    - Returned Fundamental Matrix F of CURRENT camera relative to REFERENCE camera
  *        AFTER derotation with homography H;
  *  */
 bool lm_camera_pose_and_derotation_homography(
+    /* in */ const cv::Matx33d & camera_matrix,
+    /* in */ const std::vector<cv::Point2f> & current_keypoints,
+    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
+    /* in, out */ cv::Vec3d & eulerAnges,
+    /* in, out */ cv::Vec3d & translationVector,
+    /* out, opt */ cv::Matx33d * outputRotationMatrix,
+    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
+    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
+    /* out, opt */ cv::Matx33d * outputDerotationHomography,
+    /* in, out, opt */ cv::InputOutputArray M);
+
+
+/** Experimental pure bfgs
+ * Bad results - very sensitive to outliers,
+ * ineffective solution for outliers detection,
+ * robust function in lm_camera_pose_and_derotation_homography() works much better.
+ *
+ * Ji Zhao, "An Efficient Solution to Non-Minimal Case Essential Matrix Estimation", 2020
+ *
+ *  <An Efficient Solution to Non-Minimal Case Essential Matrix Estimation.pdf>
+ *
+ *    - Returned Fundamental Matrix F of CURRENT camera relative to REFERENCE camera
+ *        AFTER derotation with homography H;
+ *  */
+bool bfgs_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,
     /* in */ const std::vector<cv::Point2f> & current_keypoints,
     /* in */ const std::vector<cv::Point2f> & reference_keypoints,

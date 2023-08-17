@@ -8,6 +8,8 @@
  *
  * Adapted from "Limited memory BFGS (L-BFGS)"
  *  <https://github.com/chokkan/liblbfgs.git>
+ *
+ * @sa <https://habr.com/ru/articles/333356>
  */
 
 #pragma once
@@ -22,6 +24,7 @@
  * Adapted from "Limited memory BFGS (L-BFGS)"
  *  <https://github.com/chokkan/liblbfgs.git>
  *
+ * @sa <https://habr.com/ru/articles/333356>
  */
 class c_bfgs
 {
@@ -177,7 +180,7 @@ public:
 
   STATUS status() const;
 
-  int num_iterations() const;
+  int iterations() const;
 
   int m() const;
   void set_m(int v);

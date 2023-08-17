@@ -10,6 +10,7 @@
 
 #include "camera_pose.h"
 #include <core/proc/levmar.h>
+#include <core/proc/bfgs.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -1069,10 +1070,11 @@ bool estimate_camera_pose_and_derotation_homography(
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /**
- * Use cv::LMSolver to refine camera pose estimated from essential matrix
+ * Use of c_levmar_solver to refine camera pose estimated from essential matrix
  */
 static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     const cv::Matx33d & camera_matrix,
@@ -1208,8 +1210,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(const std::vector<double> & p, std::vector<double> & rhs, cv::Mat1d * , bool * ) const override
     {
-      // project difference vector between warped cp and rp onto rp
-      // compute rhs error based on components of projected vector
+      // project vector of difference between warped cp and rp onto rp
+      // compute rhs error based on components of projected vector and robust function
       static const auto compute_rhs =
           [](const cv::Point2f & wcp, const cv::Point2f & rp, const cv::Point2f & E) -> double {
 
@@ -1228,7 +1230,7 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
                 r -= p.x;
               }
 
-              return std::min(r/L, 5.);
+              return std::min(r / L, 5.);
             };
 
       const cv::Vec3d A = unpack_A(p);
@@ -1422,6 +1424,426 @@ bool lm_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,
     /* in */ const std::vector<cv::Point2f> & current_keypoints,
     /* in */ const std::vector<cv::Point2f> & reference_keypoints,
+    /* in, out */ cv::Vec3d & eulerAnges,
+    /* in, out */ cv::Vec3d & translationVector,
+    /* out, opt */ cv::Matx33d * outputRotationMatrix,
+    /* out, opt */ cv::Matx33d * outputEssentialMatrix,
+    /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
+    /* out, opt */ cv::Matx33d * outputDerotationHomography,
+    /* in, out, opt */ cv::InputOutputArray M)
+{
+  INSTRUMENT_REGION("");
+
+  // Check input arguments
+  const int min_matched_points_required = 5;
+
+  if ( (int)reference_keypoints.size() < min_matched_points_required ) {
+
+    CF_ERROR("Invalid args: reference_keypoints.size()=%zu must be >= %d",
+        reference_keypoints.size(),
+        min_matched_points_required);
+
+    return false;
+  }
+
+  if ( current_keypoints.size() != reference_keypoints.size() ) {
+
+    CF_ERROR("Invalid args: current_keypoints.size()=%zu not equal to reference_keypoints.size()=%zu ",
+        current_keypoints.size(), reference_keypoints.size());
+
+    return false;
+  }
+
+  if ( M.needed() ) {
+
+    if ( M.fixedType() && M.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1", M.type());
+      return false;
+    }
+
+    if ( !M.empty() && M.rows() != (int) current_keypoints.size() ) {
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d is invalid. Must be %zu", M.rows(), current_keypoints.size());
+      return false;
+    }
+  }
+
+  //
+  // Go on
+  //
+
+  cv::Vec3d & A = eulerAnges;
+  cv::Vec3d & T = translationVector;
+
+  cv::Matx33d R, E, H;
+  cv::Mat1b mask;
+  bool fOk;
+
+  if ( !M.empty() ) {
+    mask = M.getMatRef();
+
+    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
+        cv::countNonZero(mask),
+        mask.rows);
+
+  }
+
+
+  //
+  // Extimate camera pose using levmar
+  //
+  fOk =
+      lm_refine_camera_pose2(A, T,
+          camera_matrix,
+          current_keypoints,
+          reference_keypoints,
+          mask);
+
+  if ( !fOk ) {
+    CF_ERROR("lm_refine_camera_pose() fails");
+  }
+
+
+  //
+  // Return to caller everything requested
+  //
+  if ( M.needed() && M.empty() ) {
+    if ( M.kind() == cv::_InputArray::KindFlag::MAT ) {
+      M.move(mask);
+    }
+    else {
+      mask.copyTo(M);
+    }
+  }
+
+  if ( outputRotationMatrix || outputEssentialMatrix || outputDerotationHomography || outputFundamentalMatrix ) {
+    R = build_rotation(A);
+    if ( outputRotationMatrix ) {
+      * outputRotationMatrix = R;
+    }
+  }
+
+  if ( outputDerotationHomography || outputFundamentalMatrix  ) {
+    H = camera_matrix * R * camera_matrix.inv();
+    if ( outputDerotationHomography ) {
+      * outputDerotationHomography = H;
+    }
+  }
+
+  if ( outputEssentialMatrix || outputFundamentalMatrix ) {
+    E = compose_essential_matrix(R, T);
+    if ( outputEssentialMatrix ) {
+      * outputEssentialMatrix = E;
+    }
+  }
+
+  if ( outputFundamentalMatrix ) {
+    * outputFundamentalMatrix =
+        compose_fundamental_matrix(E, camera_matrix) * H.inv() ;
+  }
+
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace cv {
+  typedef Vec<float, 9> Vec9f;
+  typedef Vec<double, 9> Vec9d;
+}
+
+/**
+ * Use cv::LMSolver to refine camera pose estimated from essential matrix
+ */
+static bool bfgs_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
+    const cv::Matx33d & camera_matrix,
+    const std::vector<cv::Point2f> & current_keypoints,
+    const std::vector<cv::Point2f> & reference_keypoints,
+    cv::Mat1b & inliers)
+{
+
+  if ( current_keypoints.size() != reference_keypoints.size() ) {
+
+    CF_ERROR("Invalid args: reference_positions.size()=%zu not equal to current_positions.size()=%zu",
+        reference_keypoints.size(), current_keypoints.size());
+
+    return false;
+  }
+
+  if ( !inliers.empty() ) {
+
+    if ( inliers.type() != CV_8UC1 ) {
+
+      CF_ERROR("Invalid args: inliers_mask.type()=%d is invalid. Must be CV_8UC1",
+          inliers.type());
+
+      return false;
+    }
+
+    if ( inliers.rows != (int)reference_keypoints.size() ) {
+
+      CF_ERROR("Invalid args: inliers_mask.rows()=%d not equal to matched_reference_keypoints.size()=%zu",
+          inliers.rows, reference_keypoints.size());
+
+      return false;
+    }
+  }
+
+
+  static const auto kronecker_product =
+      [](const cv::Vec3d & v1, const cv::Vec3d & v2) -> cv::Vec9d {
+
+        cv::Vec9d v;
+
+        for (int i = 0; i < 3; ++i) {
+          for (int j = 0; j < 3; ++j ) {
+            v[i*3 + j] = v1[i] * v2[j];
+          }
+        }
+        return v;
+      };
+
+
+  static const auto compute_epipole =
+      [](const cv::Matx33d & F) -> cv::Point2d {
+        cv::Point2d E[2];
+        compute_epipoles(F, E);
+        return cv::Point2d(0.5 * (E[0].x + E[1].x), 0.5 * (E[0].y + E[1].y) );
+      };
+
+
+  static const auto unpack_A =
+      [](const std::vector<double> & p) -> cv::Vec3d {
+        return cv::Vec3d(p[0], p[1], p[2]);
+      };
+
+  static const auto unpack_T =
+      [](const std::vector<double> & p, double Tfix, int iTfix) -> cv::Vec3d {
+
+        cv::Vec3d T;
+
+        switch (iTfix) {
+          case 0:
+          T = cv::Vec3d(Tfix, p[3], p[4]);
+          break;
+          case 1:
+          T = cv::Vec3d(p[3], Tfix, p[4]);
+          break;
+          case 2:
+          T = cv::Vec3d(p[3], p[4], Tfix);
+          break;
+          default:
+          CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
+          break;
+        }
+        return T / cv::norm(T);
+      };
+
+  static const auto compute_fundamental_matrix =
+      [](const std::vector<double> & p, const cv::Matx33d & camera_matrix_inv,
+          const cv::Matx33d & camera_matrix_t_inv,
+          double Tfix, int iTfix) -> cv::Matx33d {
+
+            return compose_fundamental_matrix(camera_matrix_t_inv,
+                camera_matrix_inv,
+                build_rotation(unpack_A(p)),
+                unpack_T(p, Tfix, iTfix));
+          };
+
+
+  static const auto compute_error =
+      [](const cv::Point2f & wcp, const cv::Point2f & rp, const cv::Point2f & E) -> cv::Point2f {
+
+        const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
+        const cv::Point2f ecp(wcp.x - E.x, wcp.y - E.y);
+        const double RP = sqrt(erp.x * erp.x + erp.y * erp.y);
+        return cv::Point2f(
+            (erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y)) / RP,
+            (-erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y)) / RP);
+      };
+
+  class c_bfgs_callback:
+      public c_bfgs::callback
+  {
+    cv::Matx33d camera_matrix;
+    cv::Matx33d camera_matrix_inv;
+    cv::Matx33d camera_matrix_t_inv;
+    //const std::vector<cv::Point2f> & current_keypoints;
+    //const std::vector<cv::Point2f> & reference_keypoints;
+
+    // const cv::Mat1f & weights;
+    const double Tfix;
+    const int iTfix;
+
+    cv::Matx<double, 9, 9> C;
+
+  public:
+    c_bfgs_callback(const cv::Matx33d & _camera_matrix,
+        const cv::Matx33d & _camera_matrix_inv, const cv::Matx33d & _camera_matrix_t_inv,
+        const std::vector<cv::Point2f> & _current_keypoints,
+        const std::vector<cv::Point2f> & _reference_keypoints,
+        //const cv::Mat1f & _weights,
+        double _Tfix,
+        int _iTfix) :
+          camera_matrix(_camera_matrix),
+          camera_matrix_inv(_camera_matrix_inv),
+          camera_matrix_t_inv(_camera_matrix_t_inv),
+          //weights(_weights),
+          Tfix(_Tfix),
+          iTfix(_iTfix)
+    {
+      copute_C(_current_keypoints, _reference_keypoints);
+    }
+
+
+    void copute_C(const std::vector<cv::Point2f> & _current_keypoints,
+        const std::vector<cv::Point2f> & _reference_keypoints)
+    {
+
+      static const auto homogenize =
+          [](const cv::Vec3f & v) -> cv::Vec3f {
+            return v[2] == 1 ? v : cv::Vec3f (v[0]/v[2], v[1]/v[2], 1);
+          };
+
+      C = cv::Matx<double, 9, 9>::zeros();
+
+      for( int i = 0, n = _current_keypoints.size(); i < n; ++i ) {
+        const cv::Point2f & cp = _current_keypoints[i];
+        const cv::Point2f & rp = _reference_keypoints[i];
+
+        const cv::Vec3d cf = homogenize(camera_matrix_inv * cv::Vec3d(cp.x, cp.y, 1));
+        const cv::Vec3d rf = homogenize(camera_matrix_inv * cv::Vec3d(rp.x, rp.y, 1));
+        const cv::Vec9d kp = kronecker_product(cf, rf);
+
+        C += kp * kp.t();
+      }
+
+    }
+
+    /**
+     * compute rhs errors for specified vector of parameters
+     */
+    bool compute(const std::vector<double> & p, double * f,
+        std::vector<double> * g, bool * have_g) const override
+    {
+
+      const cv::Vec3d A = unpack_A(p);
+      const cv::Vec3d T = unpack_T(p, Tfix, iTfix);
+      const cv::Matx33d R = build_rotation(A);
+      const cv::Matx33d E = compose_essential_matrix(R, T);
+      const cv::Vec9d e(E.val);
+
+      *f = (e.t() * C * e)[0];
+      // CF_DEBUG("f=%g", *f);
+
+      return true;
+    }
+  };
+
+
+  c_bfgs bfgs(100);
+
+  /*
+   * Find the translation component of maximal magnitude and fix it
+   * iTmax = argmax(i, abs( T[i] ) )
+   */
+  double Tfix = T(0);
+  int iTfix = 0;
+  for( int i = 1; i < 3; ++i ) {
+    if( fabs(T[i]) > fabs(Tfix) ) {
+      Tfix = T[iTfix = i];
+    }
+  }
+
+  const cv::Matx33d camera_matrix_inv =
+      camera_matrix.inv();
+
+  const cv::Matx33d camera_matrix_t_inv =
+      camera_matrix.t().inv();
+
+  std::vector<double> p(5);
+
+  bfgs.set_linesearch(c_bfgs::LINESEARCH::LBFGS_LINESEARCH_BACKTRACKING);
+  bfgs.set_max_linesearch(100);
+
+  for ( int ii = 0; ii < 1; ++ii ) {
+
+    /*
+     * Pack parameters into cv::Mat1d for levmar
+     * */
+    p[0] = A(0);
+    p[1] = A(1);
+    p[2] = A(2);
+    for( int i = 0, j = 3; i < 3; ++i ) {
+      if( i != iTfix ) {
+        p[j++] = T[i];
+      }
+    }
+
+    c_bfgs_callback cb(camera_matrix,
+        camera_matrix_inv,
+        camera_matrix_t_inv,
+        current_keypoints,
+        reference_keypoints,
+        Tfix,
+        iTfix);
+
+    c_bfgs::STATUS status =
+        bfgs.run(cb, p);
+
+    CF_DEBUG("bfgs: status='%s' %d iterations", toString(status) , bfgs.iterations() );
+
+    //    if ( status < 0 ) {
+    //      CF_ERROR("bfgs.run() fails");
+    //      return false;
+    //    }
+
+  }
+
+  /*
+   * Unpack parameters from cv::Mat1d
+   * */
+
+  A(0) = p[0];
+  A(1) = p[1];
+  A(2) = p[2];
+
+  switch (iTfix) {
+    case 0:
+      T = cv::Vec3d(Tfix, p[3], p[4]);
+      break;
+    case 1:
+      T = cv::Vec3d(p[3], Tfix, p[4]);
+      break;
+    case 2:
+      T = cv::Vec3d(p[3], p[4], Tfix);
+      break;
+    default:
+      CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
+      return false;
+  }
+
+  T /= cv::norm(T);
+
+
+
+  return true;
+}
+
+/** Experimental pure bfgs
+ * Bad results - very sensitive to outliers
+ *
+ * Ji Zhao, "An Efficient Solution to Non-Minimal Case Essential Matrix Estimation", 2020
+ *
+ *  <An Efficient Solution to Non-Minimal Case Essential Matrix Estimation.pdf>
+ *
+ *    - Returned Fundamental Matrix F of CURRENT camera relative to REFERENCE camera
+ *        AFTER derotation with homography H;
+ *  */
+bool bfgs_camera_pose_and_derotation_homography(
+    /* in */ const cv::Matx33d & camera_matrix,
+    /* in */ const std::vector<cv::Point2f> & current_keypoints,
+    /* in */ const std::vector<cv::Point2f> & reference_keypoints,
     /* out, opt */ cv::Vec3d * outputEulerAnges,
     /* out, opt */ cv::Vec3d * outputTranslationVector,
     /* out, opt */ cv::Matx33d * outputRotationMatrix,
@@ -1488,14 +1910,14 @@ bool lm_camera_pose_and_derotation_homography(
   // Extimate camera pose using levmar
   //
   fOk =
-      lm_refine_camera_pose2(A, T,
+      bfgs_refine_camera_pose2(A, T,
           camera_matrix,
           current_keypoints,
           reference_keypoints,
           mask);
 
   if ( !fOk ) {
-    CF_ERROR("lm_refine_camera_pose() fails");
+    CF_ERROR("bfgs_refine_camera_pose2() fails");
   }
 
 
@@ -1546,5 +1968,7 @@ bool lm_camera_pose_and_derotation_homography(
   }
 
   return true;
+
 }
+
 

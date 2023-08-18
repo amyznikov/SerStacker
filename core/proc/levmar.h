@@ -45,8 +45,16 @@ public:
   c_levmar_solver(int max_itertions, double eps = 1e-6);
   virtual ~c_levmar_solver() = default;
 
+  void set_max_iterations(int v);
+  int max_iterations() const;
+
+  void set_epsx(double v);
+  double epsx() const;
+
+  void set_epsf(double v);
+  double epsf() const;
+
   virtual int run(const callback & cb, std::vector<double> & params);
-  //virtual int runm(const callback & cb, std::vector<double> & params);
 
   double rmse() const;
   const std::vector<double> & rhs() const;
@@ -59,7 +67,7 @@ protected:
 protected:
   std::vector<double> rhs_;
   double rmse_ = -1;
-  int max_iterations_ = 1000;
+  int max_iterations_ = 100;
   double epsf_ = 1e-6;
   double epsx_ = 1e-6;
 };

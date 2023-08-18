@@ -13,6 +13,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/settings/opencv_settings.h>
 #include <core/settings/camera_settings.h>
+#include <core/proc/camera_calibration/camera_pose.h>
 #include <core/io/c_output_frame_writer.h>
 
 struct c_virtual_stereo_input_options :
@@ -108,6 +109,9 @@ public:
   c_virtual_stereo_feature2d_options & feature2d_options();
   const c_virtual_stereo_feature2d_options & feature2d_options() const;
 
+  c_lm_camera_pose_options & camera_pose_options();
+  const c_lm_camera_pose_options & camera_pose_options() const;
+
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
 
@@ -135,6 +139,7 @@ protected:
   c_virtual_stereo_camera_options camera_options_;
   c_virtual_stereo_image_processing_options image_processing_options_;
   c_virtual_stereo_feature2d_options feature2d_options_;
+  c_lm_camera_pose_options camera_pose_options_;
   c_virtual_stereo_output_options output_options_;
 
   c_sparse_feature_extractor::ptr keypoints_extractor_;

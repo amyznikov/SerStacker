@@ -7,7 +7,6 @@
 
 #include "c_virtual_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
-#include <core/proc/camera_calibration/camera_pose.h>
 #include <chrono>
 #include <thread>
 
@@ -87,6 +86,16 @@ const c_virtual_stereo_feature2d_options & c_virtual_stereo_pipeline::feature2d_
   return feature2d_options_;
 }
 
+c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options()
+{
+  return camera_pose_options_;
+}
+
+const c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options() const
+{
+  return camera_pose_options_;
+}
+
 c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options()
 {
   return output_options_;
@@ -119,6 +128,14 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, feature2d_options_, matcher);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "camera_pose")) ) {
+    SERIALIZE_OPTION(section, save, camera_pose_options_, max_iterations);
+    SERIALIZE_OPTION(section, save, camera_pose_options_, robust_threshold);
+    SERIALIZE_OPTION(section, save, camera_pose_options_, max_levmar_iterations);
+    SERIALIZE_OPTION(section, save, camera_pose_options_, epsx);
+    SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
@@ -148,10 +165,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
       ////////
     PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
-    PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, camera_options_.camera_intrinsics);
-//      PIPELINE_CTL(ctrls, camera_options_.camera_intrinsics.image_size, "image_size", "image_size");
-//      PIPELINE_CTL_CV_MATX(ctrls, camera_options_.camera_intrinsics.camera_matrix, "camera_matrix", "camera_matrix");
-//      PIPELINE_CTL(ctrls, camera_options_.camera_intrinsics.dist_coeffs, "dist_coeffs", "dist_coeffs");
+      PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, camera_options_.camera_intrinsics);
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -166,6 +180,16 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL_FEATURE2D_MATCHER_OPTIONS(ctrls, feature2d_options_.matcher);
       PIPELINE_CTL_END_GROUP(ctrls);
     PIPELINE_CTL_END_GROUP(ctrls);
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+      PIPELINE_CTL(ctrls, camera_pose_options_.max_iterations, "max iterations", "Number of iterations for outliers removal");
+      PIPELINE_CTL(ctrls, camera_pose_options_.robust_threshold, "robust threshold", "Parameter for robust function in pixels");
+      PIPELINE_CTL(ctrls, camera_pose_options_.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");
+      PIPELINE_CTL(ctrls, camera_pose_options_.epsx, "levmar epsx", "levmar epsx parameter");
+      PIPELINE_CTL(ctrls, camera_pose_options_.epsf, "levmar epsf", "levmar epsf parameter");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
 
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
@@ -514,20 +538,10 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 
   currentInliers_.release();
 
-  bool fOk =
-//      estimate_camera_pose_and_derotation_homography(
-//          camera_options_.camera_intrinsics.camera_matrix,
-//          matched_current_positions_,
-//          matched_previous_positions_,
-//          EMM_LMEDS,
-//          &currentEulerAnges_,
-//          &currentTranslationVector_,
-//          &currentRotationMatrix_,
-//          &currentEssentialMatrix_,
-//          &currentFundamentalMatrix_,
-//          &currentDerotationHomography_,
-//          currentInliers_);
+  currentEulerAnges_ = cv::Vec3d(0, 0, 0);
+  currentTranslationVector_ = cv::Vec3d(0, 0, 1);
 
+  bool fOk =
       lm_camera_pose_and_derotation_homography(
           camera_options_.camera_intrinsics.camera_matrix,
           matched_current_positions_,
@@ -538,19 +552,8 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
           &currentEssentialMatrix_,
           &currentFundamentalMatrix_,
           &currentDerotationHomography_,
-          currentInliers_);
-
-//  bfgs_camera_pose_and_derotation_homography(
-//      camera_options_.camera_intrinsics.camera_matrix,
-//      matched_current_positions_,
-//      matched_previous_positions_,
-//      &currentEulerAnges_,
-//      &currentTranslationVector_,
-//      &currentRotationMatrix_,
-//      &currentEssentialMatrix_,
-//      &currentFundamentalMatrix_,
-//      &currentDerotationHomography_,
-//      currentInliers_);
+          currentInliers_,
+          &camera_pose_options_);
 
   if ( !fOk ) {
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");

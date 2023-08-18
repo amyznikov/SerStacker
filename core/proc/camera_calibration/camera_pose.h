@@ -425,11 +425,23 @@ bool estimate_camera_pose_and_derotation_homography(
     /* in, out, opt */ cv::InputOutputArray M);
 
 
+
+
 /**
  *  Use of c_levmar_solver to refine camera pose guess
  *    - Returned Fundamental Matrix F of CURRENT camera relative to REFERENCE camera
  *        AFTER derotation with homography H;
  *  */
+
+struct c_lm_camera_pose_options
+{
+  int max_iterations = 3;
+  int max_levmar_iterations = 100;
+  double robust_threshold = 5.0;
+  double epsf = 1e-5;
+  double epsx = 1e-5;
+};
+
 bool lm_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,
     /* in */ const std::vector<cv::Point2f> & current_keypoints,
@@ -440,7 +452,8 @@ bool lm_camera_pose_and_derotation_homography(
     /* out, opt */ cv::Matx33d * outputEssentialMatrix,
     /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
     /* out, opt */ cv::Matx33d * outputDerotationHomography,
-    /* in, out, opt */ cv::InputOutputArray M);
+    /* in, out, opt */ cv::InputOutputArray M,
+    /* in, opt */ const c_lm_camera_pose_options * opts = nullptr);
 
 
 /** Experimental pure bfgs

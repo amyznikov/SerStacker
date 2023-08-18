@@ -38,6 +38,13 @@ public:
      */
     virtual bool compute(const std::vector<double> & params, std::vector<double> & rhs,
         cv::Mat1d * jac, bool * have_analytical_jac) const = 0;
+
+    /* Return true if compute() can be called in parallel.
+     * Can be useful to speedup numerical differentiation with central differences. */
+    virtual bool thread_safe_compute() const
+    {
+      return false;
+    }
   };
 
 

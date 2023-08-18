@@ -9,6 +9,11 @@
 #include <core/proc/median.h>
 #include <core/debug.h>
 
+#if HAVE_TBB
+# include <tbb/tbb.h>
+#endif
+
+
 c_levmar_solver::c_levmar_solver()
 {
 }
@@ -74,6 +79,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params)
       x.size();
 
   if( !compute(cb, x, rhs_, &J) ) {
+    CF_ERROR("compute() fails");
     return -1;
   }
 
@@ -109,6 +115,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params)
     cv::subtract(cv::Mat1d(x), d, xd);
 
     if( !compute(cb, xd, rd, nullptr) ) {
+      CF_ERROR("compute() fails");
       return -1;
     }
 
@@ -167,6 +174,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params)
       std::swap(x, xd);
 
       if( !compute(cb, x, rhs_, &J) ) {
+        CF_ERROR("compute() fails");
         return -1;
       }
 
@@ -196,6 +204,7 @@ int c_levmar_solver::run(const callback & cb, std::vector<double> & params)
 bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & params,
     std::vector<double> & rhs, cv::Mat1d * jac) const
 {
+
   bool have_jac =
       false;
 
@@ -218,54 +227,122 @@ bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & p
 
     // Compute numerical approximation of partial derivatives
 
+#if HAVE_TBB
+    const bool use_tbb = cb.thread_safe_compute();
+#else
+    const bool use_tbb = false;
+#endif
 
-    std::vector<double> P = params;
-    std::vector<double> rhs1, rhs2;
+    jac->create((int)rhs.size(), (int)params.size());
 
-    jac->create((int)rhs.size(), (int)P.size());
+    if ( !use_tbb ) {
 
-    for( int j = 0, n = P.size(); j < n; ++j ) {
+      std::vector<double> P = params;
+      std::vector<double> rhs1, rhs2;
 
-      const double v =
-          P[j];
+      for( int j = 0, n = P.size(); j < n; ++j ) {
 
-      const double delta =
-          (std::max)(1e-6, 1e-4 * std::abs(v));
+        const double v =
+            P[j];
 
-      P[j] = v + delta;
-      if( !cb.compute(P, rhs1, nullptr, nullptr) ) {
-        CF_ERROR("cb.compute() fails");
-        return false;
+        const double delta =
+            (std::max)(1e-6, 1e-4 * std::abs(v));
+
+        P[j] = v + delta;
+        if( !cb.compute(P, rhs1, nullptr, nullptr) ) {
+          CF_ERROR("cb.compute() fails");
+          return false;
+        }
+
+        if( rhs1.size() != rhs.size() ) {
+          CF_ERROR("APP BUG in caller-specified callback: rhs1.size=%zu and rhs.size=%zu not equal",
+              rhs.size(), rhs1.size());
+          return false;
+        }
+
+        P[j] = v - delta;
+        if( !cb.compute(P, rhs2, nullptr, nullptr) ) {
+          CF_ERROR("cb.compute() fails");
+          return false;
+        }
+
+        if( rhs2.size() != rhs.size() ) {
+          CF_ERROR("APP BUG in caller-specified callback: rhs2.size=%zu and rhs.size=%zu not equal",
+              rhs.size(), rhs1.size());
+          return false;
+        }
+
+
+        const double den = 0.5 / delta;
+        for( uint k = 0, nk = rhs.size(); k < nk; ++k ) {
+          (*jac)[k][j] = den * (rhs1[k] - rhs2[k]);
+        }
+
+        P[j] = v;
       }
-
-      if( rhs1.size() != rhs.size() ) {
-        CF_ERROR("APP BUG in caller-specified callback: rhs1.size=%zu and rhs.size=%zu not equal",
-            rhs.size(), rhs1.size());
-        return false;
-      }
-
-
-
-      P[j] = v - delta;
-      if( !cb.compute(P, rhs2, nullptr, nullptr) ) {
-        CF_ERROR("cb.compute() fails");
-        return false;
-      }
-
-      if( rhs2.size() != rhs.size() ) {
-        CF_ERROR("APP BUG in caller-specified callback: rhs2.size=%zu and rhs.size=%zu not equal",
-            rhs.size(), rhs1.size());
-        return false;
-      }
-
-
-      const double den = 0.5 / delta;
-      for( uint k = 0, nk = rhs.size(); k < nk; ++k ) {
-        (*jac)[k][j] = den * (rhs1[k] - rhs2[k]);
-      }
-
-      P[j] = v;
     }
+#if HAVE_TBB
+    else {
+
+      const int rhs_size = rhs.size();
+
+      bool fail[params.size()] = { false };
+
+
+      tbb::parallel_for(0, (int) params.size(), 1,
+          [&params, &jac, &cb, rhs_size, &fail](int j) {
+
+            std::vector<double> P = params;
+            std::vector<double> rhs1, rhs2;
+
+            const double v = P[j];
+
+            const double delta = (std::max)(1e-6, 1e-4 * std::abs(v));
+
+            P[j] = v + delta;
+            if( !cb.compute(P, rhs1, nullptr, nullptr) ) {
+              fail[j] = true;
+              CF_ERROR("cb.compute() fails");
+              return;// false;
+            }
+
+            if( rhs1.size() != rhs_size ) {
+              fail[j] = true;
+              CF_ERROR("APP BUG in caller-specified callback: rhs1.size=%zu and rhs.size=%zu not equal",
+                  rhs_size, rhs1.size());
+              return;// false;
+            }
+
+            P[j] = v - delta;
+            if( !cb.compute(P, rhs2, nullptr, nullptr) ) {
+              fail[j] = true;
+              CF_ERROR("cb.compute() fails");
+              return;// false;
+            }
+
+            if( rhs2.size() != rhs_size ) {
+              fail[j] = true;
+              CF_ERROR("APP BUG in caller-specified callback: rhs2.size=%zu and rhs.size=%zu not equal",
+                  rhs_size, rhs1.size());
+              return;// false;
+            }
+
+            const double den = 0.5 / delta;
+            for( uint k = 0, nk = rhs_size; k < nk; ++k ) {
+              (*jac)[k][j] = den * (rhs1[k] - rhs2[k]);
+            }
+
+            P[j] = v;
+          });
+
+      for ( int j = 0, n = params.size(); j < n; ++j ) {
+        if ( fail[j] ) {
+          CF_ERROR("Compute Jac fails");
+          return false;
+        }
+      }
+    }
+#endif // HAVE_TBB
   }
 
   return true;

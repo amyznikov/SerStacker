@@ -1392,8 +1392,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       }
     }
 
-    CF_DEBUG("lm.run(pass %d): %d iterations rmse=%g num_outliers=%d / %zu", ii,
-        iterations, lm.rmse(), num_outliers, current_keypoints.size());
+    //    CF_DEBUG("lm.run(pass %d): %d iterations rmse=%g num_outliers=%d / %zu", ii,
+    //        iterations, lm.rmse(), num_outliers, current_keypoints.size());
 
     if ( num_outliers < 1 ) {
       break;

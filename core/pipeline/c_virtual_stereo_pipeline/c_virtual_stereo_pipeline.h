@@ -43,6 +43,14 @@ struct c_virtual_stereo_feature2d_options
 };
 
 
+struct c_virtual_stereo_polar_warp_options
+{
+  double maxRadius = 100;
+  int interpolation_flags = cv::INTER_LINEAR;
+  int polar_flags =  cv::WARP_POLAR_LINEAR;
+  bool enabled = false;
+};
+
 struct c_virtual_stereo_output_options :
     c_image_processing_pipeline_output_options
 {
@@ -112,6 +120,9 @@ public:
   c_lm_camera_pose_options & camera_pose_options();
   const c_lm_camera_pose_options & camera_pose_options() const;
 
+  c_virtual_stereo_polar_warp_options & polar_warp_options();
+  const c_virtual_stereo_polar_warp_options & polar_warp_options() const;
+
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
 
@@ -140,6 +151,7 @@ protected:
   c_virtual_stereo_image_processing_options image_processing_options_;
   c_virtual_stereo_feature2d_options feature2d_options_;
   c_lm_camera_pose_options camera_pose_options_;
+  c_virtual_stereo_polar_warp_options polar_warp_options_;
   c_virtual_stereo_output_options output_options_;
 
   c_sparse_feature_extractor::ptr keypoints_extractor_;

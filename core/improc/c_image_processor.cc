@@ -65,7 +65,6 @@
 #include "c_unsharp_mask_routine.h"
 #include "c_type_convert_routine.h"
 #include "c_radial_polysharp_routine.h"
-#include "c_rotate_image_routine.h"
 
 
 #include "c_median_blur_routine.h"
@@ -73,10 +72,12 @@
 #include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
 
-#include "c_affine_transform_routine.h"
-#include "c_perspective_transform_routine.h"
-#include "c_birdview_transform_routine.h"
-#include "c_tangential_transform_routine.h"
+#include "geometry/c_affine_transform_routine.h"
+#include "geometry/c_perspective_transform_routine.h"
+#include "geometry/c_birdview_transform_routine.h"
+#include "geometry/c_tangential_transform_routine.h"
+#include "geometry/c_polar_warp_routine.h"
+#include "geometry/c_rotate_image_routine.h"
 
 #include "c_mean_curvature_blur_routine.h"
 #include "c_fit_jovian_ellipse_routine.h"
@@ -165,6 +166,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_perspective_transform_routine::class_factory_instance());
     register_class_factory(c_birdview_transform_routine::class_factory_instance());
     register_class_factory(c_tangential_transform_routine::class_factory_instance());
+    register_class_factory(c_polar_warp_routine::class_factory_instance());
 
 
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());

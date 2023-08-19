@@ -96,6 +96,16 @@ const c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options(
   return camera_pose_options_;
 }
 
+c_virtual_stereo_polar_warp_options & c_virtual_stereo_pipeline::polar_warp_options()
+{
+  return polar_warp_options_;
+}
+
+const c_virtual_stereo_polar_warp_options & c_virtual_stereo_pipeline::polar_warp_options() const
+{
+  return polar_warp_options_;
+}
+
 c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options()
 {
   return output_options_;
@@ -135,6 +145,14 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, camera_pose_options_, epsx);
     SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
   }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "polar_warp")) ) {
+    SERIALIZE_OPTION(section, save, polar_warp_options_, enabled);
+    SERIALIZE_OPTION(section, save, polar_warp_options_, maxRadius);
+    SERIALIZE_OPTION(section, save, polar_warp_options_, interpolation_flags);
+    SERIALIZE_OPTION(section, save, polar_warp_options_, polar_flags);
+  }
+
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
@@ -190,6 +208,11 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL(ctrls, camera_pose_options_.epsf, "levmar epsf", "levmar epsf parameter");
     PIPELINE_CTL_END_GROUP(ctrls);
 
+
+    ////////
+    PIPELINE_CTL_GROUP(ctrls, "Polar warp", "Parameters for optional Polar Warp");
+      PIPELINE_CTL(ctrls, polar_warp_options_.enabled, "Enable polar warp", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
@@ -471,6 +494,8 @@ bool c_virtual_stereo_pipeline::process_current_frame()
 {
   lock_guard lock(mutex());
 
+  INSTRUMENT_REGION("");
+
   if( image_processing_options_.input_processor ) {
     if( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
       CF_ERROR("ERROR: input_processor->process() fails");
@@ -559,10 +584,9 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
   }
 
-  CF_DEBUG("currentInliers_.size=%dx%d nz=%d",
-      currentInliers_.rows, currentInliers_.cols,
-      cv::countNonZero(currentInliers_));
-
+//  CF_DEBUG("currentInliers_.size=%dx%d nz=%d",
+//      currentInliers_.rows, currentInliers_.cols,
+//      cv::countNonZero(currentInliers_));
 
   compute_epipoles(currentFundamentalMatrix_,
       currentEpipoles_);
@@ -570,10 +594,10 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
   currentEpipole_ =
       0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
 
-  CF_DEBUG("A: (%g %g %g)", currentEulerAnges_(0) * 180 / CV_PI, currentEulerAnges_(1) * 180 / CV_PI, currentEulerAnges_(2) * 180 / CV_PI);
-  CF_DEBUG("T: (%g %g %g)", currentTranslationVector_(0), currentTranslationVector_(1), currentTranslationVector_(2));
-  CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
-      currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
+  //  CF_DEBUG("A: (%g %g %g)", currentEulerAnges_(0) * 180 / CV_PI, currentEulerAnges_(1) * 180 / CV_PI, currentEulerAnges_(2) * 180 / CV_PI);
+  //  CF_DEBUG("T: (%g %g %g)", currentTranslationVector_(0), currentTranslationVector_(1), currentTranslationVector_(2));
+  //  CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
+  //      currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
 
   if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
     CF_WARNING("\nWARNING!\n"

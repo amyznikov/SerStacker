@@ -46,6 +46,7 @@ public:
   void set_center(const cv::Point2f & v)
   {
     center_ = v;
+    rmap_.release();
   }
 
   const cv::Size & dsize() const
@@ -56,6 +57,7 @@ public:
   void set_dsize(const cv::Size & v)
   {
     dsize_ = v;
+    rmap_.release();
   }
 
 
@@ -67,6 +69,7 @@ public:
   void set_maxRadius(double v)
   {
     maxRadius_ = v;
+    rmap_.release();
   }
 
   INTERPOLATION_MODE interpolation_mode() const
@@ -77,6 +80,7 @@ public:
   void set_interpolation_mode(INTERPOLATION_MODE v)
   {
     interpolation_mode_ = v;
+    rmap_.release();
   }
 
   WARP_MODE warp_mode() const
@@ -87,6 +91,7 @@ public:
   void set_warp_mode(WARP_MODE v)
   {
     warp_mode_ = v;
+    rmap_.release();
   }
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
@@ -111,52 +116,11 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    if( !image.empty() || !mask.empty()) {
-
-      const cv::Size src_size =
-          mask.empty() ? image.size() :
-              mask.size();
-
-      cv::Mat1b msk;
-      cv::warpPolar(cv::Mat1b(src_size, (uint8_t)255), msk,
-          dsize_,
-          center_,
-          maxRadius_,
-          cv::INTER_LINEAR | warp_mode_);
-      cv::compare(msk, 254, msk, cv::CMP_LT);
-
-
-      if( !image.empty() ) {
-        cv::warpPolar(image.getMat(), image,
-            dsize_,
-            center_,
-            maxRadius_,
-            interpolation_mode_ | warp_mode_);
-        image.setTo(0, msk);
-      }
-
-      if ( mask.needed() ) {
-        if( mask.empty() ) {
-          cv::bitwise_not(msk, mask);
-        }
-        else {
-          cv::warpPolar(mask.getMat(), mask,
-              dsize_,
-              center_,
-              maxRadius_,
-              cv::INTER_LINEAR | warp_mode_);
-          cv::compare(mask, 254, mask, cv::CMP_GE);
-          mask.setTo(0, msk);
-        }
-      }
-    }
-
-    return true;
-  }
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
+  cv::Mat2f rmap_;
+  cv::Size old_src_size_;
   cv::Point2f center_;
   cv::Size dsize_ = cv::Size(100, 100);
   double maxRadius_ = 100;

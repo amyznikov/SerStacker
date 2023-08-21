@@ -42,24 +42,17 @@ struct c_virtual_stereo_feature2d_options
   c_feature2d_matcher_options matcher;
 };
 
-
-struct c_virtual_stereo_polar_warp_options
-{
-  double maxRadius = 100;
-  int interpolation_flags = cv::INTER_LINEAR;
-  int polar_flags =  cv::WARP_POLAR_LINEAR;
-  bool enabled = false;
-};
-
 struct c_virtual_stereo_output_options :
     c_image_processing_pipeline_output_options
 {
     std::string progress_video_filename;
+    std::string polar_frames_filename;
 //  std::string depthmap_filename;
 //  std::string cloud3d_image_filename;
 //  std::string cloud3d_ply_filename;
 //
     bool save_progress_video = false;
+    bool save_polar_frames = false;
 //  bool save_depthmaps = true;
 //  bool save_cloud3d_image = true;
 //  bool save_cloud3d_ply = true;
@@ -120,9 +113,6 @@ public:
   c_lm_camera_pose_options & camera_pose_options();
   const c_lm_camera_pose_options & camera_pose_options() const;
 
-  c_virtual_stereo_polar_warp_options & polar_warp_options();
-  const c_virtual_stereo_polar_warp_options & polar_warp_options() const;
-
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
 
@@ -141,9 +131,11 @@ protected:
   bool seek_input_sequence(int pos);
   bool read_input_frame(cv::Mat & output_image, cv::Mat & output_mask);
   bool write_progress_video();
+  bool write_polar_frames();
   c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
   bool process_current_frame();
   bool estmate_camera_pose();
+  bool create_polar_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
 
 protected:
   c_virtual_stereo_input_options input_options_;
@@ -151,7 +143,6 @@ protected:
   c_virtual_stereo_image_processing_options image_processing_options_;
   c_virtual_stereo_feature2d_options feature2d_options_;
   c_lm_camera_pose_options camera_pose_options_;
-  c_virtual_stereo_polar_warp_options polar_warp_options_;
   c_virtual_stereo_output_options output_options_;
 
   c_sparse_feature_extractor::ptr keypoints_extractor_;
@@ -188,6 +179,7 @@ protected:
   //cv::Matx33d camera_matrix_;
 
   c_output_frame_writer progress_video_writer_;
+  c_output_frame_writer polar_frames_writer_;
 
 };
 

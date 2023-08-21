@@ -7,6 +7,7 @@
 
 #include "c_virtual_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
+#include <core/proc/polar_trasform.h>
 #include <chrono>
 #include <thread>
 
@@ -96,16 +97,6 @@ const c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options(
   return camera_pose_options_;
 }
 
-c_virtual_stereo_polar_warp_options & c_virtual_stereo_pipeline::polar_warp_options()
-{
-  return polar_warp_options_;
-}
-
-const c_virtual_stereo_polar_warp_options & c_virtual_stereo_pipeline::polar_warp_options() const
-{
-  return polar_warp_options_;
-}
-
 c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options()
 {
   return output_options_;
@@ -146,14 +137,6 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
   }
 
-  if( (section = SERIALIZE_GROUP(settings, save, "polar_warp")) ) {
-    SERIALIZE_OPTION(section, save, polar_warp_options_, enabled);
-    SERIALIZE_OPTION(section, save, polar_warp_options_, maxRadius);
-    SERIALIZE_OPTION(section, save, polar_warp_options_, interpolation_flags);
-    SERIALIZE_OPTION(section, save, polar_warp_options_, polar_flags);
-  }
-
-
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
@@ -164,6 +147,8 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
     SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
     SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
+    SERIALIZE_OPTION(section, save, output_options_, save_polar_frames);
+    SERIALIZE_OPTION(section, save, output_options_, polar_frames_filename);
   }
 
   return true;
@@ -210,11 +195,6 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
 
     ////////
-    PIPELINE_CTL_GROUP(ctrls, "Polar warp", "Parameters for optional Polar Warp");
-      PIPELINE_CTL(ctrls, polar_warp_options_.enabled, "Enable polar warp", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    ////////
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_processor, "Input image preprocessor", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.feature2d_preprocessor, "Feature2D image preprocessor", "");
@@ -226,6 +206,8 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
       PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
       PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
+      PIPELINE_CTL(ctrls, output_options_.save_polar_frames, "save_polar_frames", "");
+      PIPELINE_CTL(ctrls, output_options_.polar_frames_filename, "polar_frames_filename", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -471,6 +453,11 @@ bool c_virtual_stereo_pipeline::run_pipeline()
       return false;
     }
 
+    if ( !write_polar_frames() ) {
+      CF_DEBUG("write_polar_frames() fails");
+      return false;
+    }
+
     // give chance to GUI thread to call get_display_image()
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
@@ -611,6 +598,80 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
   return true;
 }
 
+bool c_virtual_stereo_pipeline::create_polar_display(cv::OutputArray display_frame, cv::OutputArray display_mask)
+{
+  lock_guard lock(mutex());
+
+  if( current_image_.empty() || previous_image_.empty() ) {
+    return false;
+  }
+
+  cv::Mat2f rmaps[2];
+
+  const cv::Size src_size =
+      current_image_.size();
+
+  create_epipolar_remaps(src_size,
+      currentEpipole_,
+      currentDerotationHomography_.inv(),
+      rmaps[0],
+      rmaps[1]);
+
+  const cv::Size dst_size(rmaps[0].cols * 2,
+      rmaps[0].rows);
+
+  const cv::Rect dst_roi[2] = {
+      cv::Rect (0, 0, rmaps[0].cols, rmaps[0].rows),
+      cv::Rect (rmaps[0].cols, 0, rmaps[0].cols, rmaps[0].rows),
+  };
+
+  display_frame.create(dst_size,
+      current_image_.type());
+
+  cv::Mat & dst_image =
+      display_frame.getMatRef();
+
+  cv::remap(current_image_, dst_image(dst_roi[0]),
+      rmaps[0], cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT);
+
+  cv::remap(previous_image_, dst_image(dst_roi[1]),
+      rmaps[1], cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT);
+
+
+  if ( display_mask.needed() ) {
+
+    display_mask.create(dst_size, CV_8U);
+
+    cv::Mat & dst_mask =
+        display_mask.getMatRef();
+
+    cv::Mat current_mask =
+        current_mask_.empty() ?
+            cv::Mat1b(current_image_.size(), 255) :
+            current_mask_;
+
+    cv::Mat previous_mask =
+        previous_mask_.empty() ?
+            cv::Mat1b(previous_image_.size(), 255) :
+            previous_mask_;
+
+      cv::remap(current_mask, dst_mask(dst_roi[0]),
+          rmaps[0], cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+
+      cv::remap(previous_mask, dst_mask(dst_roi[1]),
+          rmaps[1], cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+  }
+
+  return true;
+}
 
 bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
@@ -793,11 +854,54 @@ bool c_virtual_stereo_pipeline::write_progress_video()
       return false;
     }
 
-    CF_DEBUG("Created '%s'", output_video_filename.c_str());
+    CF_DEBUG("Created '%s' display.size()=%dx%d", output_video_filename.c_str(), display.cols, display.rows);
   }
 
   if( !progress_video_writer_.write(display, cv::noArray(), false, 0) ) {
     CF_ERROR("progress_video_writer_.write() fails: %s",
+        progress_video_writer_.filename().c_str());
+    return false;
+  }
+
+  return true;
+}
+
+bool c_virtual_stereo_pipeline::write_polar_frames()
+{
+  if ( !output_options_.save_polar_frames ) {
+    return true;
+  }
+
+  cv::Mat display;
+
+  if ( !create_polar_display(display, cv::noArray()) ) {
+    return true; // ignore
+  }
+
+  if ( !polar_frames_writer_.is_open() ) {
+
+    const std::string output_video_filename =
+        generate_output_filename(output_options_.polar_frames_filename,
+            "polar",
+            ".tiff");
+
+    bool fOK =
+        polar_frames_writer_.open(output_video_filename,
+            display.size(),
+            display.channels() > 1,
+            false);
+
+    if( !fOK ) {
+      CF_ERROR("polar_frames_writer_.open('%s') fails",
+          output_video_filename.c_str());
+      return false;
+    }
+
+    CF_DEBUG("Created '%s' display.size()=%dx%d", output_video_filename.c_str(), display.cols, display.rows);
+  }
+
+  if( !polar_frames_writer_.write(display, cv::noArray(), false, 0) ) {
+    CF_ERROR("polar_frames_writer_.write() fails: %s",
         progress_video_writer_.filename().c_str());
     return false;
   }

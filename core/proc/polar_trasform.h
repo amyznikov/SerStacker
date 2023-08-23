@@ -17,8 +17,10 @@ void create_epipolar_remap(const cv::Size src_size, const cv::Point2f & center,
 
 void create_epipolar_remaps(const cv::Size reference_image_size, const cv::Point2f & epipole,
     const cv::Matx33d & current_derotation_homography,
-    cv::Mat2f & output_current_rmap,
-    cv::Mat2f & output_reference_rmap);
+    cv::Mat2f & output_current_remap,
+    cv::Mat2f & output_reference_remap,
+    cv::Mat2f * output_current_inverse_remap = nullptr,
+    cv::Mat2f * output_reference_inverse_remap = nullptr);
 
 
 #endif /* __polar_trasform_h__ */

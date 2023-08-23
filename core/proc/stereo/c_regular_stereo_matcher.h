@@ -228,7 +228,7 @@ protected:
   void reset_all_matchers();
 
 protected:
-  stereo_matcher_type matcher_type_ = stereo_matcher_cvStereoBM;
+  stereo_matcher_type matcher_type_ = stereo_matcher_StereoBinarySGBM;
 
   cv::Ptr<cv::StereoBM> stereoBM_;
   c_cvStereoBMOptions stereoBM_options_;

@@ -13,6 +13,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
+#include <core/proc/stereo/c_regular_stereo_matcher.h>
 #include <core/ssprintf.h>
 
 class c_image_processing_pipeline;
@@ -34,7 +35,8 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_image_registration_options,
   c_image_processor_pipeline_ctl_feature2d_detector_options,
   c_image_processor_pipeline_ctl_feature2d_descriptor_options,
-  c_image_processor_pipeline_ctl_feature2d_matcher_options
+  c_image_processor_pipeline_ctl_feature2d_matcher_options,
+  c_image_processor_pipeline_ctl_stereo_matcher_options,
 };
 
 
@@ -59,7 +61,7 @@ struct c_image_processing_pipeline_ctrl
   std::function<c_sparse_feature_descriptor_options* (c_image_processing_pipeline*)> get_feature2d_descriptor_options;
   std::function<c_feature2d_matcher_options* (c_image_processing_pipeline*)> get_feature2d_matcher_options;
   std::function<c_camera_intrinsics *(c_image_processing_pipeline *)> get_camera_intrinsicts;
-
+  std::function<c_regular_stereo_matcher *(c_image_processing_pipeline *)> get_stereo_matcher;
   std::function<bool (const c_image_processing_pipeline*)> is_enabled;
 };
 
@@ -385,6 +387,20 @@ struct c_image_processing_pipeline_ctrl
       }; \
       ctrls.emplace_back(ctl); \
     }
+
+
+#define PIPELINE_CTL_STEREO_MATCHER_OPTIONS(ctrls, c) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_stereo_matcher_options; \
+      ctl.get_stereo_matcher = \
+          [](c_image_processing_pipeline * p) ->  c_regular_stereo_matcher * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctrls.emplace_back(ctl); \
+    }
+
 
 
 //

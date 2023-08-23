@@ -12,6 +12,12 @@
 # include <tbb/tbb.h>
 #endif
 
+
+static inline double hyp(double x, double y)
+{
+  return sqrt(x * x + y * y);
+}
+
 template<class T>
 static double distance(const cv::Point_<T> & a, const cv::Point_<T> & b)
 {
@@ -90,7 +96,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
       *rho_max = max_corner_distance(center, corners);
       *theta_min = atan2(corners[1].y - center.y, corners[1].x - center.x);
       *theta_max = atan2(corners[3].y - center.y, corners[3].x - center.x);
-      CF_DEBUG("C1 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+      // CF_DEBUG("C1 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
     }
     else if( y0 >= h ) {
       // Case C3
@@ -98,7 +104,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
       *rho_max = max_corner_distance(center, corners);
       *theta_min = atan2(corners[0].y - center.y, corners[0].x - center.x);
       *theta_max = atan2(corners[2].y - center.y, corners[2].x - center.x);
-      CF_DEBUG("C3 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+      // CF_DEBUG("C3 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
     }
     else {
       // Case C2
@@ -106,7 +112,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
       *rho_max = max_corner_distance(center, corners);
       *theta_min = atan2(corners[0].y - center.y, corners[0].x - center.x);
       *theta_max = atan2(corners[3].y - center.y, corners[3].x - center.x);
-      CF_DEBUG("C2 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+      // CF_DEBUG("C2 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
     }
   }
   else if( x0 >= w ) {
@@ -117,7 +123,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
       *rho_max = max_corner_distance(center, corners);
       *theta_min = atan2(corners[2].y - center.y, corners[2].x - center.x);
       *theta_max = atan2(corners[0].y - center.y, corners[0].x - center.x);
-      CF_DEBUG("C7 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+      // CF_DEBUG("C7 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
     }
     else if( y0 >= h ) {
       // Case C5
@@ -125,7 +131,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
       *rho_max = max_corner_distance(center, corners);
       *theta_min = atan2(corners[3].y - center.y, corners[3].x - center.x);
       *theta_max = atan2(corners[2].y - center.y, corners[2].x - center.x);
-      CF_DEBUG("C5 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+      // CF_DEBUG("C5 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
     }
     else {
       // Case C6
@@ -133,7 +139,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
       *rho_max = max_corner_distance(center, corners);
       *theta_min = atan2(corners[2].y - center.y, corners[2].x - center.x);
       *theta_max = atan2(corners[1].y - center.y, corners[1].x - center.x) + 2 * CV_PI;
-      CF_DEBUG("C6 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+      // CF_DEBUG("C6 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
     }
 
   }
@@ -143,7 +149,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
     *rho_max = max_corner_distance(center, corners);
     *theta_min = atan2(corners[1].y - center.y, corners[1].x - center.x);
     *theta_max = atan2(corners[0].y - center.y, corners[0].x - center.x);
-    CF_DEBUG("C8 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+    // CF_DEBUG("C8 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
   }
   else if ( y0 >= h ) {
     // case C4
@@ -151,7 +157,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
     *rho_max = max_corner_distance(center, corners);
     *theta_min = atan2(corners[3].y - center.y, corners[3].x - center.x);
     *theta_max = atan2(corners[2].y - center.y, corners[2].x - center.x);
-    CF_DEBUG("C4 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+    // CF_DEBUG("C4 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
   }
   else {
     // Case C0
@@ -159,7 +165,7 @@ static void compute_polar_range(const cv::Size src_size, const cv::Point2f & cen
     *rho_max = max_corner_distance(center, corners);
     *theta_min = 0;
     *theta_max = 2 * CV_PI;
-    CF_DEBUG("C0 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
+    // CF_DEBUG("C0 rho_min=%g rho_max=%g theta_min=%g theta_max=%g", *rho_min, *rho_max, *theta_min, *theta_max);
   }
 
   if ( *theta_max < *theta_min ) {
@@ -179,7 +185,7 @@ void create_epipolar_remap(const cv::Size src_size, const cv::Point2f & center, 
   const cv::Size dst_size((int) (rho_max - rho_min) + 1, ntheta);
   const double theta_step = (theta_max - theta_min ) / ntheta;
 
-  CF_DEBUG("dst_size= %dx%d theta_min=%g theta_max=%g theta_step=%g", dst_size.width, dst_size.height, theta_min, theta_max, theta_step);
+  // CF_DEBUG("dst_size= %dx%d theta_min=%g theta_max=%g theta_step=%g", dst_size.width, dst_size.height, theta_min, theta_max, theta_step);
 
   output_rmap.create(dst_size);
   output_rmap.setTo(-1);
@@ -223,9 +229,13 @@ void create_epipolar_remap(const cv::Size src_size, const cv::Point2f & center, 
 
 void create_epipolar_remaps(const cv::Size src_size, const cv::Point2f & center,
     const cv::Matx33d & H,
-    cv::Mat2f & output_current_rmap,
-    cv::Mat2f & output_reference_rmap)
+    cv::Mat2f & output_current_remap,
+    cv::Mat2f & output_reference_remap,
+    cv::Mat2f * output_current_inverse_remap,
+    cv::Mat2f * output_reference_inverse_remap)
 {
+
+  INSTRUMENT_REGION("");
 
   double rho_min, rho_max, theta_min, theta_max;
 
@@ -237,18 +247,18 @@ void create_epipolar_remaps(const cv::Size src_size, const cv::Point2f & center,
   const cv::Size dst_size((int) (rho_max - rho_min) + 1, ntheta);
   const double theta_step = (theta_max - theta_min ) / ntheta;
 
-  CF_DEBUG("dst_size= %dx%d theta_min=%g theta_max=%g theta_step=%g", dst_size.width, dst_size.height, theta_min, theta_max, theta_step);
+  // CF_DEBUG("dst_size= %dx%d theta_min=%g theta_max=%g theta_step=%g", dst_size.width, dst_size.height, theta_min, theta_max, theta_step);
 
-  output_reference_rmap.create(dst_size);
-  output_reference_rmap.setTo(-1);
+  output_reference_remap.create(dst_size);
+  output_reference_remap.setTo(-1);
 
-  output_current_rmap.create(dst_size);
-  output_current_rmap.setTo(-1);
+  output_current_remap.create(dst_size);
+  output_current_remap.setTo(-1);
 
 
 #if HAVE_TBB
   tbb::parallel_for(0, dst_size.height, 1,
-      [&output_current_rmap, &output_reference_rmap, H,
+      [&output_current_remap, &output_reference_remap, H,
        src_size, dst_size, center,
        rho_min, theta_min, theta_max, theta_step](int t) {
 #else
@@ -270,16 +280,16 @@ void create_epipolar_remaps(const cv::Size src_size, const cv::Point2f & center,
       const double ry = rho * st + center.y;
 
       if ( rx >= 0 && rx < w && ry >= 0 && ry < h ) {
-        output_reference_rmap[t][r][0] = rx;
-        output_reference_rmap[t][r][1] = ry;
+        output_reference_remap[t][r][0] = rx;
+        output_reference_remap[t][r][1] = ry;
       }
 
       const double cw = (H(2,0) * rx + H(2,1) * ry + H(2,2));
       const double cx = (H(0,0) * rx + H(0,1) * ry + H(0,2)) / cw;
       const double cy = (H(1,0) * rx + H(1,1) * ry + H(1,2)) / cw;
       if ( cx >= 0 && cx < w && cy >= 0 && cy < h ) {
-        output_current_rmap[t][r][0] = cx;
-        output_current_rmap[t][r][1] = cy;
+        output_current_remap[t][r][0] = cx;
+        output_current_remap[t][r][1] = cy;
       }
     }
 #if HAVE_TBB
@@ -287,6 +297,51 @@ void create_epipolar_remaps(const cv::Size src_size, const cv::Point2f & center,
 #else
   }
 #endif
+
+  if ( output_current_inverse_remap || output_reference_inverse_remap ) {
+
+    if ( output_current_inverse_remap ) {
+      output_current_inverse_remap->create(src_size);
+      output_current_inverse_remap->setTo(-1);
+    }
+
+    if ( output_reference_inverse_remap ) {
+      output_reference_inverse_remap->create(src_size);
+      output_reference_inverse_remap->setTo(-1);
+    }
+
+#if HAVE_TBB
+    tbb::parallel_for(0, src_size.height, 1,
+        [output_current_inverse_remap, output_reference_inverse_remap, H,
+        src_size, dst_size,  center,
+        rho_min, theta_min, theta_max, theta_step](int y) {
+#else
+      for ( int y = 0; y < src_size.height; ++y ) {
+#endif
+
+        for ( int x = 0; x < src_size.width; ++x ) {
+
+          const double rr = hyp(x-center.x, y - center.y) - rho_min;
+          double rt = ( atan2(y-center.y, x-center.x) - theta_min ) / theta_step;
+          if ( rt < 0 ) {
+            rt += dst_size.height;
+          }
+
+          if ( output_reference_inverse_remap ) {
+            (*output_reference_inverse_remap)[y][x][0] = rr;
+            (*output_reference_inverse_remap)[y][x][1] = rt;
+          }
+
+        }
+
+
+#if HAVE_TBB
+      });
+#else
+      }
+#endif
+  }
+
 
 }
 

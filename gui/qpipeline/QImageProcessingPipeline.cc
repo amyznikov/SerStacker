@@ -19,6 +19,7 @@
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/QFrameRegistrationOptions.h>
+#include <gui/qpipeline/stereo/QStereoMatcherOptions.h>
 
 #include <core/debug.h>
 
@@ -511,23 +512,6 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         break;
       }
 
-
-      /////////////////////
-//      case c_image_processor_pipeline_ctl_cv_matx: {
-//
-//        QMatrixEdit * w =
-//            new QMatrixEdit(this);
-//
-////
-////        currentsettings->addRow(ctrl.name.c_str(), w);
-//
-//        //w->setLineW
-//
-//        //cv::Matx
-//
-//        break;
-//      }
-
       case c_image_processor_pipeline_ctl_camera_intrinsicts : {
 
         QCameraIntrinsicsEditBox * w =
@@ -552,6 +536,30 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         break;
       }
 
+
+      case c_image_processor_pipeline_ctl_stereo_matcher_options: {
+
+        QStereoMatcherOptions * w =
+            new QStereoMatcherOptions(this);
+
+        if( ctrl.get_stereo_matcher ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_stereo_matcher(ctrl.get_stereo_matcher(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        break;
+      }
         /////////////////////
       default:
         break;

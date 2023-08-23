@@ -1316,19 +1316,19 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
   const cv::Matx33d camera_matrix_t_inv =
       camera_matrix.t().inv();
 
-  for ( int ii = 0; ii < max_iterations; ++ii ) {
-
-    /*
-     * Pack euler angles and translation vector into levmar parameters array
-     * */
-    p[0] = A(0);
-    p[1] = A(1);
-    p[2] = A(2);
-    for( int i = 0, j = 3; i < 3; ++i ) {
-      if( i != iTfix ) {
-        p[j++] = T[i];
-      }
+  /*
+   * Pack euler angles and translation vector into levmar parameters array
+   * */
+  p[0] = A(0);
+  p[1] = A(1);
+  p[2] = A(2);
+  for( int i = 0, j = 3; i < 3; ++i ) {
+    if( i != iTfix ) {
+      p[j++] = T[i];
     }
+  }
+
+  for ( int ii = 0; ii < max_iterations; ++ii ) {
 
     /*
      * Setup c_levmar_solver callback instance
@@ -1355,13 +1355,18 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       return false;
     }
 
+    if( num_inliers < 8 ) {
+      break;
+    }
+
+
     /*
      * Check for outliers
      * */
 
     int num_outliers = 0;
 
-    if ( num_inliers > 8 ) {
+    if( ii + 1 < max_iterations ) {
 
       if( inliers.empty() ) {
         inliers.create(current_keypoints.size(), 1);

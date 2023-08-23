@@ -8,6 +8,8 @@
 #include "c_virtual_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/polar_trasform.h>
+#include <core/proc/image_registration/ecc2.h>
+#include <core/proc/colormap.h>
 #include <chrono>
 #include <thread>
 
@@ -137,6 +139,11 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "stereo_matcher")) ) {
+    SERIALIZE_OPTION(section, save, stereo_matcher_options_, enable_stereo_matcher);
+    stereo_matcher_.serialize(section, save);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
@@ -149,6 +156,10 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
     SERIALIZE_OPTION(section, save, output_options_, save_polar_frames);
     SERIALIZE_OPTION(section, save, output_options_, polar_frames_filename);
+    SERIALIZE_OPTION(section, save, output_options_, save_disparity_frames);
+    SERIALIZE_OPTION(section, save, output_options_, disparity_frames_filename);
+    SERIALIZE_OPTION(section, save, output_options_, save_homography_video);
+    SERIALIZE_OPTION(section, save, output_options_, homography_video_filename);
   }
 
   return true;
@@ -193,6 +204,13 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL(ctrls, camera_pose_options_.epsf, "levmar epsf", "levmar epsf parameter");
     PIPELINE_CTL_END_GROUP(ctrls);
 
+    ////////
+//    PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher", "");
+//      PIPELINE_CTL(ctrls, stereo_matcher_options_.enable_stereo_matcher, "enable_stereo_matcher", "");
+      PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher Options", "");
+        PIPELINE_CTL_STEREO_MATCHER_OPTIONS(ctrls, stereo_matcher_);
+      PIPELINE_CTL_END_GROUP(ctrls);
+//    PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
@@ -208,6 +226,10 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
       PIPELINE_CTL(ctrls, output_options_.save_polar_frames, "save_polar_frames", "");
       PIPELINE_CTL(ctrls, output_options_.polar_frames_filename, "polar_frames_filename", "");
+      PIPELINE_CTL(ctrls, output_options_.save_disparity_frames, "save_disparity_frames", "");
+      PIPELINE_CTL(ctrls, output_options_.disparity_frames_filename, "disparity_frames_filename", "");
+      PIPELINE_CTL(ctrls, output_options_.save_homography_video, "save_homography_video", "");
+      PIPELINE_CTL(ctrls, output_options_.homography_video_filename, "homography_video_filename", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -282,6 +304,8 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
+  current_disparity_.release();
+
   current_image_.release();
   previous_image_.release();
 
@@ -316,6 +340,22 @@ void c_virtual_stereo_pipeline::cleanup_pipeline()
     progress_video_writer_.close();
     CF_DEBUG("SAVED '%s'", progress_video_writer_.filename().c_str());
   }
+
+  if ( polar_frames_writer_.is_open() ) {
+    polar_frames_writer_.close();
+    CF_DEBUG("SAVED '%s'", polar_frames_writer_.filename().c_str());
+  }
+
+  if ( disparity_frames_writer_.is_open() ) {
+    disparity_frames_writer_.close();
+    CF_DEBUG("SAVED '%s'", disparity_frames_writer_.filename().c_str());
+  }
+
+  if ( homography_video_writer_.is_open() ) {
+    homography_video_writer_.close();
+    CF_DEBUG("SAVED '%s'", homography_video_writer_.filename().c_str());
+  }
+
 }
 
 bool c_virtual_stereo_pipeline::open_input_sequence()
@@ -453,8 +493,8 @@ bool c_virtual_stereo_pipeline::run_pipeline()
       return false;
     }
 
-    if ( !write_polar_frames() ) {
-      CF_DEBUG("write_polar_frames() fails");
+    if ( !write_homography_video() ) {
+      CF_DEBUG("write_homography_video() fails");
       return false;
     }
 
@@ -482,6 +522,8 @@ bool c_virtual_stereo_pipeline::process_current_frame()
   lock_guard lock(mutex());
 
   INSTRUMENT_REGION("");
+
+  // current_disparity_.release();
 
   if( image_processing_options_.input_processor ) {
     if( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
@@ -537,6 +579,10 @@ bool c_virtual_stereo_pipeline::process_current_frame()
 
   if( !estmate_camera_pose() ) {
     CF_ERROR("estmate_camera_pose() fails");
+  }
+
+  if ( !run_polar_stereo() ) {
+    CF_ERROR("run_stereo_matcher() fails");
   }
 
   return true;
@@ -598,13 +644,124 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
   return true;
 }
 
-bool c_virtual_stereo_pipeline::create_polar_display(cv::OutputArray display_frame, cv::OutputArray display_mask)
+bool c_virtual_stereo_pipeline::run_polar_stereo()
 {
-  lock_guard lock(mutex());
+  //  if( !output_options_.save_polar_frames && !output_options_.save_disparity_frames ) {
+  //    return true; // ignore
+  //  }
 
+  cv::Mat frames[2];
+  cv::Mat masks[2];
+  cv::Mat2f inverse_remap;
+
+  if( !create_stereo_frames(frames, masks, &inverse_remap) ) {
+    return true; // ignore
+  }
+
+  if( output_options_.save_polar_frames ) {
+
+    cv::Mat display;
+
+    const cv::Size dst_size(frames[0].cols + frames[1].cols,
+        std::max(frames[0].rows, frames[1].rows));
+
+    const cv::Rect dst_roi[2] = {
+        cv::Rect(0, 0, frames[0].cols, frames[0].rows),
+        cv::Rect(frames[0].cols, 0, frames[1].cols, frames[1].rows),
+    };
+
+    display.create(dst_size, frames[0].type());
+    frames[0].copyTo(display(dst_roi[0]));
+    frames[1].copyTo(display(dst_roi[1]));
+
+    if( !polar_frames_writer_.is_open() ) {
+
+      const std::string output_video_filename =
+          generate_output_filename(output_options_.polar_frames_filename,
+              "polar",
+              ".png");
+
+      bool fOK =
+          polar_frames_writer_.open(output_video_filename,
+              display.size(),
+              display.channels() > 1,
+              false);
+
+      if( !fOK ) {
+        CF_ERROR("polar_frames_writer_.open('%s') fails",
+            output_video_filename.c_str());
+        return false;
+      }
+
+      CF_DEBUG("Created '%s' display.size()=%dx%d",
+          output_video_filename.c_str(),
+          display.cols,
+          display.rows);
+    }
+
+    if( !polar_frames_writer_.write(display, cv::noArray(), false, 0) ) {
+      CF_ERROR("polar_frames_writer_.write() fails: %s",
+          progress_video_writer_.filename().c_str());
+      return false;
+    }
+  }
+
+  if( !stereo_matcher_.compute(frames[0], frames[1], current_disparity_) ) {
+    CF_ERROR("stereo_matcher_.compute() fails");
+  }
+  else {
+    cv::remap(current_disparity_, current_disparity_,
+        inverse_remap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT,
+        cv::Scalar::all(-1));
+  }
+
+  if( output_options_.save_disparity_frames && !current_disparity_.empty() ) {
+
+    if( !disparity_frames_writer_.is_open() ) {
+
+      const std::string output_video_filename =
+          generate_output_filename(output_options_.disparity_frames_filename,
+              "disparity",
+              ".tiff");
+
+      bool fOK =
+          disparity_frames_writer_.open(output_video_filename,
+              current_disparity_.size(),
+              current_disparity_.channels() > 1,
+              false);
+
+      if( !fOK ) {
+        CF_ERROR("disparity_frames_writer_.open('%s') fails",
+            output_video_filename.c_str());
+        return false;
+      }
+
+      CF_DEBUG("Created '%s' display.size()=%dx%d",
+          output_video_filename.c_str(),
+          current_disparity_.cols,
+          current_disparity_.rows);
+    }
+
+    if( !disparity_frames_writer_.write(current_disparity_, cv::noArray(), false, 0) ) {
+      CF_ERROR("disparity_frames_writer_.write() fails: %s",
+          disparity_frames_writer_.filename().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
+bool c_virtual_stereo_pipeline::create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap)
+{
   if( current_image_.empty() || previous_image_.empty() ) {
     return false;
   }
+
+  INSTRUMENT_REGION("");
 
   cv::Mat2f rmaps[2];
 
@@ -615,63 +772,102 @@ bool c_virtual_stereo_pipeline::create_polar_display(cv::OutputArray display_fra
       currentEpipole_,
       currentDerotationHomography_.inv(),
       rmaps[0],
-      rmaps[1]);
+      rmaps[1],
+      nullptr,
+      inverse_remap);
 
   const cv::Size dst_size(rmaps[0].cols * 2,
       rmaps[0].rows);
 
-  const cv::Rect dst_roi[2] = {
-      cv::Rect (0, 0, rmaps[0].cols, rmaps[0].rows),
-      cv::Rect (rmaps[0].cols, 0, rmaps[0].cols, rmaps[0].rows),
-  };
-
-  display_frame.create(dst_size,
-      current_image_.type());
-
-  cv::Mat & dst_image =
-      display_frame.getMatRef();
-
-  cv::remap(current_image_, dst_image(dst_roi[0]),
+  cv::remap(current_image_, frames[0],
       rmaps[0], cv::noArray(),
       cv::INTER_LINEAR,
       cv::BORDER_CONSTANT);
 
-  cv::remap(previous_image_, dst_image(dst_roi[1]),
+  cv::remap(previous_image_, frames[1],
       rmaps[1], cv::noArray(),
       cv::INTER_LINEAR,
       cv::BORDER_CONSTANT);
 
+  const cv::Mat current_mask =
+      current_mask_.empty() ?
+          cv::Mat1b(current_image_.size(), 255) :
+          current_mask_;
 
-  if ( display_mask.needed() ) {
+  const cv::Mat previous_mask =
+      previous_mask_.empty() ?
+          cv::Mat1b(previous_image_.size(), 255) :
+          previous_mask_;
 
-    display_mask.create(dst_size, CV_8U);
+  cv::remap(current_mask, masks[0],
+      rmaps[0], cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT);
 
-    cv::Mat & dst_mask =
-        display_mask.getMatRef();
-
-    cv::Mat current_mask =
-        current_mask_.empty() ?
-            cv::Mat1b(current_image_.size(), 255) :
-            current_mask_;
-
-    cv::Mat previous_mask =
-        previous_mask_.empty() ?
-            cv::Mat1b(previous_image_.size(), 255) :
-            previous_mask_;
-
-      cv::remap(current_mask, dst_mask(dst_roi[0]),
-          rmaps[0], cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT);
-
-      cv::remap(previous_mask, dst_mask(dst_roi[1]),
-          rmaps[1], cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT);
-  }
+  cv::remap(previous_mask, masks[1],
+      rmaps[1], cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT);
 
   return true;
 }
+
+
+bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask)
+{
+  lock_guard lock(mutex());
+
+  if( current_image_.empty() || previous_image_.empty() ) {
+    return false;
+  }
+
+  c_homography_image_transform homography;
+  c_homography_ecc_motion_model model(&homography);
+  c_ecc_forward_additive ecc(&model);
+  c_ecch ecch(&ecc);
+
+  cv::Mat cimg, pimg;
+
+  if ( current_image_.channels() == 1 ) {
+    cimg = current_image_;
+  }
+  else {
+    cv::cvtColor(current_image_, cimg, cv::COLOR_BGR2GRAY);
+  }
+
+  if ( previous_image_.channels() == 1 ) {
+    pimg = previous_image_;
+  }
+  else {
+    cv::cvtColor(previous_image_, pimg, cv::COLOR_BGR2GRAY);
+  }
+
+  ecch.set_minimum_image_size(64);
+
+  if ( !estimate_image_transform(&homography, matched_current_positions_, matched_previous_positions_) ) {
+    CF_ERROR("estimate_image_transform() fails");
+  }
+
+  if ( !ecch.set_reference_image(pimg, previous_mask_) ) {
+    CF_ERROR("ecch.align() fails");
+    return false;
+  }
+
+  if ( !ecch.align(cimg, current_mask_) ) {
+    CF_ERROR("ecch.align() fails");
+    return false;
+  }
+
+  display_frame.create(previous_image_.size(), previous_image_.type());
+
+  cv::Mat & dst_image = display_frame.getMatRef();
+  cv::remap(current_image_, dst_image, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  cv::addWeighted(dst_image, 0.5, previous_image_, 0.5, 0, dst_image);
+
+  return true;
+}
+
+
 
 bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
@@ -709,17 +905,18 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   lock_guard lock(mutex());
 
-  if( current_image_.empty() || previous_image_.empty() ) {
+  if( current_image_.empty() || previous_image_.empty() || current_disparity_.empty() ) {
     return false;
   }
 
 
   const cv::Size size(std::max(current_image_.cols, previous_image_.cols),
-      current_image_.rows + 2 * previous_image_.rows);
+      current_image_.rows + 2 * previous_image_.rows + current_disparity_.rows);
 
   const cv::Rect cRoi(0, 0, current_image_.cols, current_image_.rows);
   const cv::Rect wRoi(0, current_image_.rows, previous_image_.cols, previous_image_.rows);
   const cv::Rect pRoi(0, current_image_.rows + previous_image_.rows, previous_image_.cols, previous_image_.rows);
+  const cv::Rect dRoi(0, current_image_.rows + 2 * previous_image_.rows, current_disparity_.cols, current_disparity_.rows);
 
   cv::Mat3b cimg(size);
 
@@ -806,8 +1003,12 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   /////////////////
 
+
   tmp1.copyTo(cimg(wRoi));
   tmp2.copyTo(cimg(pRoi));
+
+  current_disparity_.convertTo(tmp1, CV_8U, 255. / stereo_matcher_.currentMaxDisparity());
+  apply_colormap(tmp1, cimg(dRoi), COLORMAP_TURBO);
 
 
   /////////////////
@@ -854,7 +1055,10 @@ bool c_virtual_stereo_pipeline::write_progress_video()
       return false;
     }
 
-    CF_DEBUG("Created '%s' display.size()=%dx%d", output_video_filename.c_str(), display.cols, display.rows);
+    CF_DEBUG("Created '%s' display.size()=%dx%d",
+        output_video_filename.c_str(),
+        display.cols,
+        display.rows);
   }
 
   if( !progress_video_writer_.write(display, cv::noArray(), false, 0) ) {
@@ -866,46 +1070,51 @@ bool c_virtual_stereo_pipeline::write_progress_video()
   return true;
 }
 
-bool c_virtual_stereo_pipeline::write_polar_frames()
+
+bool c_virtual_stereo_pipeline::write_homography_video()
 {
-  if ( !output_options_.save_polar_frames ) {
+  if ( !output_options_.save_homography_video ) {
     return true;
   }
 
   cv::Mat display;
 
-  if ( !create_polar_display(display, cv::noArray()) ) {
+  if ( !create_homography_display(display, cv::noArray()) ) {
     return true; // ignore
   }
 
-  if ( !polar_frames_writer_.is_open() ) {
+  if ( !homography_video_writer_.is_open() ) {
 
     const std::string output_video_filename =
-        generate_output_filename(output_options_.polar_frames_filename,
-            "polar",
-            ".tiff");
+        generate_output_filename(output_options_.homography_video_filename,
+            "homography",
+            ".avi");
 
     bool fOK =
-        polar_frames_writer_.open(output_video_filename,
+        homography_video_writer_.open(output_video_filename,
             display.size(),
             display.channels() > 1,
             false);
 
     if( !fOK ) {
-      CF_ERROR("polar_frames_writer_.open('%s') fails",
+      CF_ERROR("homography_video_writer_.open('%s') fails",
           output_video_filename.c_str());
       return false;
     }
 
-    CF_DEBUG("Created '%s' display.size()=%dx%d", output_video_filename.c_str(), display.cols, display.rows);
+    CF_DEBUG("Created '%s' display.size()=%dx%d",
+        output_video_filename.c_str(),
+        display.cols,
+        display.rows);
   }
 
-  if( !polar_frames_writer_.write(display, cv::noArray(), false, 0) ) {
-    CF_ERROR("polar_frames_writer_.write() fails: %s",
-        progress_video_writer_.filename().c_str());
+  if( !homography_video_writer_.write(display, cv::noArray(), false, 0) ) {
+    CF_ERROR("homography_video_writer_.write() fails: %s",
+        homography_video_writer_.filename().c_str());
     return false;
   }
 
   return true;
 }
+
 

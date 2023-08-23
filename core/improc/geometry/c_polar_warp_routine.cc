@@ -27,18 +27,18 @@ const c_enum_member* members_of<c_polar_warp_routine::INTERPOLATION_MODE>()
 
   return members;
 }
-
-template<>
-const c_enum_member* members_of<c_polar_warp_routine::WARP_MODE>()
-{
-  static constexpr c_enum_member members[] = {
-      { c_polar_warp_routine::WARP_POLAR_LINEAR, "LINEAR", "cv::WARP_POLAR_LINEAR" },
-      { c_polar_warp_routine::WARP_POLAR_LOG, "LOG", "cv::WARP_POLAR_LOG " },
-      { c_polar_warp_routine::WARP_POLAR_LINEAR },
-  };
-
-  return members;
-}
+//
+//template<>
+//const c_enum_member* members_of<c_polar_warp_routine::WARP_MODE>()
+//{
+//  static constexpr c_enum_member members[] = {
+//      { c_polar_warp_routine::WARP_POLAR_LINEAR, "LINEAR", "cv::WARP_POLAR_LINEAR" },
+//      { c_polar_warp_routine::WARP_POLAR_LOG, "LOG", "cv::WARP_POLAR_LOG " },
+//      { c_polar_warp_routine::WARP_POLAR_LINEAR },
+//  };
+//
+//  return members;
+//}
 
 #if 1
 bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

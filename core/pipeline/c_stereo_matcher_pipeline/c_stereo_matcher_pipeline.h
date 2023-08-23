@@ -144,6 +144,7 @@ protected:
   c_stereo_camera_extrinsics stereo_extrinsics_;
   c_stereo_camera_intrinsics new_intrinsics_;
   c_stereo_camera_extrinsics new_extrinsics_;
+
   c_regular_stereo_matcher stereo_matcher_;
 
   cv::Mat2f rmaps_[2];

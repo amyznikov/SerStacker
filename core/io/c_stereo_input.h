@@ -42,6 +42,12 @@ bool read_stereo_source(c_stereo_input_source & source,
     cv::Mat output_frames[2],
     cv::Mat output_masks[2]);
 
+bool read_stereo_frame(const c_input_sequence::sptr & sequence,
+    stereo_input_frame_layout_type layout_type,
+    bool swap_cameras,
+    bool enable_color_maxtrix,
+    cv::Mat output_frames[2],
+    cv::Mat output_masks[2]);
 
 
 

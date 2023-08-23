@@ -284,3 +284,111 @@ bool read_stereo_source(c_stereo_input_source & source,
 
   return true;
 }
+
+bool read_stereo_frame(const c_input_sequence::sptr & sequence,
+    stereo_input_frame_layout_type layout_type,
+    bool swap_cameras,
+    bool enable_color_maxtrix,
+    cv::Mat output_frames[2],
+    cv::Mat output_masks[2])
+{
+  if (layout_type == stereo_frame_layout_separate_sources ) {
+    CF_ERROR("Invalid call : read_stereo_source() for separate stereo sources ");
+    return false;
+  }
+
+  cv::Mat image, mask;
+
+  if ( !sequence->read(image, &mask) ) {
+    CF_ERROR("sequence->read() fails");
+    return false;
+  }
+
+  switch (layout_type) {
+
+    case stereo_frame_layout_horizontal: {
+
+      const cv::Rect roi[2] = {
+          cv::Rect(0, 0, image.cols / 2, image.rows),
+          cv::Rect(image.cols / 2, 0, image.cols / 2, image.rows)
+      };
+
+      if( !swap_cameras ) {
+
+        output_frames[0] = image(roi[0]);
+        output_frames[1] = image(roi[1]);
+
+        if( !mask.empty() ) {
+          output_masks[0] = mask(roi[0]);
+          output_masks[0] = mask(roi[1]);
+        }
+      }
+      else {
+        output_frames[0] = image(roi[1]);
+        output_frames[1] = image(roi[0]);
+
+        if( !mask.empty() ) {
+          output_masks[0] = mask(roi[1]);
+          output_masks[1] = mask(roi[0]);
+        }
+      }
+
+      break;
+    }
+
+    case stereo_frame_layout_vertical: {
+
+      const cv::Rect roi[2] = {
+          cv::Rect(0, 0, image.cols, image.rows / 2),
+          cv::Rect(0, image.rows / 2, image.cols, image.rows / 2)
+      };
+
+      if( !swap_cameras ) {
+
+        output_frames[0] = image(roi[0]);
+        output_frames[1] = image(roi[1]);
+
+        if( !mask.empty() ) {
+          output_masks[0] = mask(roi[0]);
+          output_masks[1] = mask(roi[1]);
+        }
+      }
+      else {
+        output_frames[0] = image(roi[1]);
+        output_frames[1] = image(roi[0]);
+
+        if( !mask.empty() ) {
+          output_masks[0] = mask(roi[1]);
+          output_masks[1] = mask(roi[0]);
+        }
+      }
+
+      break;
+    }
+  }
+
+  const cv::Mat & left_frame =
+      output_frames[0];
+
+  const cv::Mat & right_frame =
+      output_frames[1];
+
+  if( left_frame.size() != right_frame.size() ) {
+    CF_ERROR("INPUT ERROR: Left (%dx%d) and right (%dx%d) image sizes not equal.\n"
+        "Different image sizes are not yet supported",
+        left_frame.cols, left_frame.rows,
+        right_frame.cols, right_frame.rows);
+    return false;
+  }
+
+  if( left_frame.channels() != right_frame.channels() ) {
+    CF_ERROR("INPUT ERROR: Left (%d) and right (%d) number of image channels not equal.\n"
+        "Different image types are not yet supported",
+        left_frame.channels(),
+        right_frame.channels());
+    return false;
+  }
+
+  return true;
+}
+

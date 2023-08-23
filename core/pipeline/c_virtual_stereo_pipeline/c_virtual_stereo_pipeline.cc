@@ -910,15 +910,23 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
   }
 
 
-  const cv::Size size(std::max(current_image_.cols, previous_image_.cols),
-      current_image_.rows + 2 * previous_image_.rows + current_disparity_.rows);
+//  const cv::Size size(std::max(current_image_.cols, previous_image_.cols),
+//      current_image_.rows + 2 * previous_image_.rows + current_disparity_.rows);
+//
+//  const cv::Rect cRoi(0, 0, current_image_.cols, current_image_.rows);
+//  const cv::Rect wRoi(0, current_image_.rows, previous_image_.cols, previous_image_.rows);
+//  const cv::Rect pRoi(0, current_image_.rows + previous_image_.rows, previous_image_.cols, previous_image_.rows);
+//  const cv::Rect dRoi(0, current_image_.rows + 2 * previous_image_.rows, current_disparity_.cols, current_disparity_.rows);
 
-  const cv::Rect cRoi(0, 0, current_image_.cols, current_image_.rows);
-  const cv::Rect wRoi(0, current_image_.rows, previous_image_.cols, previous_image_.rows);
-  const cv::Rect pRoi(0, current_image_.rows + previous_image_.rows, previous_image_.cols, previous_image_.rows);
-  const cv::Rect dRoi(0, current_image_.rows + 2 * previous_image_.rows, current_disparity_.cols, current_disparity_.rows);
+  const cv::Size size = current_image_.size();
+  const cv::Size dst_size(2 * size.width, 2 * size.height);
 
-  cv::Mat3b cimg(size);
+  const cv::Rect cRoi(0, 0, size.width, size.height);
+  const cv::Rect wRoi(0, size.height, size.width, size.height);
+  const cv::Rect pRoi(size.width, 0, size.width, size.height);
+  const cv::Rect dRoi(size.width, size.height, size.width, size.height);
+
+  cv::Mat3b cimg(dst_size);
 
   //CF_DEBUG("H");
 

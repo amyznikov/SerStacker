@@ -3141,7 +3141,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames_max_context_size);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, rotate_jovian_disk_horizontally);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, stdev_factor);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
+        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, pca_blur);
+        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
       }
     }
   }

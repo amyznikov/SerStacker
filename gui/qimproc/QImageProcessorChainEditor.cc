@@ -8,7 +8,6 @@
 #include "QImageProcessorChainEditor.h"
 #include "QAddRoutineDialog.h"
 #include "QRadialPolySharpSettings.h"
-#include "QJovianEllipseSettings.h"
 #include "QMtfSettings.h"
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QBrowsePathCombo.h>
@@ -487,9 +486,9 @@ QImageProcessorSettingsControl * QImageProcessorSettingsControl::create(const c_
   if( processor->classfactory() == c_radial_polysharp_routine::class_factory_instance() ) {
     widget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor), parent);
   }
-  else if( processor->classfactory() == c_fit_jovian_ellipse_routine::class_factory_instance() ) {
-    widget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor), parent);
-  }
+//  else if( processor->classfactory() == c_fit_jovian_ellipse_routine::class_factory_instance() ) {
+//    widget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor), parent);
+//  }
   else if( processor->classfactory() == c_mtf_routine::class_factory_instance() ) {
     widget = new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(processor), parent);
   }

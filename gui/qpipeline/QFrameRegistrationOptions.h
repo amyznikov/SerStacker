@@ -10,7 +10,6 @@
 
 #include <gui/widgets/UpdateControls.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
-#include <gui/qjovian/QJovianEllipseDetectorSettings.h>
 #include <gui/qpipeline/QInputSourceSelectionControl.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/image_registration/c_frame_registration.h>
@@ -135,6 +134,10 @@ protected:
 protected:
   c_jovian_derotation_options *options_ = nullptr;
   QCheckBox * enableJovianDerotation_ctl = nullptr;
+
+  QNumericBox * jovian_detector_stdev_factor_ctl = nullptr;
+  QNumericBox * jovian_detector_pca_blur_ctl = nullptr;
+
   QNumericBox * min_rotation_ctl = nullptr;
   QNumericBox * max_rotation_ctl = nullptr;
   QNumericBox * max_pyramid_level_ctl = nullptr;
@@ -150,8 +153,6 @@ protected:
   QCheckBox * derotate_all_frames_ctl = nullptr;
   QNumericBox * derotate_all_frames_max_context_size_ctl = nullptr;
   QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
-
-  QJovianEllipseDetectorSettings * detector_setting_ctl = nullptr;
 
   QWidgetList controls;
 };

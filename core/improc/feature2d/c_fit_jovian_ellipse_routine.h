@@ -20,18 +20,20 @@ public:
        "fit_jovian_ellipse", "detect planetary disk and fit jovian ellipse");
 
   enum display_type {
+    display_gray_image,
+
     display_detected_planetary_disk_mask,
     display_detected_planetary_disk_edge,
-    display_planetary_disk_ellipse_edge,
+
     display_detected_ellipseAMS,
-    display_initial_artifial_ellipse_edge,
-    display_remapped_artifial_ellipse_edge,
-    display_aligned_artifial_ellipse_edge,
-    display_aligned_artifial_ellipse_mask,
-    display_planetary_disk_ellipseAMS2,
-    display_gray_image,
+
+    display_pca_gx,
+    display_pca_gy,
+
+    display_final_planetary_disk_ellipse,
+    display_final_planetary_disk_mask,
+
     display_final_ellipse_fit,
-    display_gradient_test_image,
   };
 
   void set_display(display_type v);
@@ -40,12 +42,16 @@ public:
   void set_stdev_factor(double v);
   double stdev_factor() const;
 
+  void set_pca_blur(double v);
+  double pca_blur() const;
+
   c_jovian_ellipse_detector * detector();
   const c_jovian_ellipse_detector * detector() const;
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "stdev_factor");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, pca_blur, "pca_blur");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
   }
 

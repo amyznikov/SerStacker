@@ -268,17 +268,6 @@ int c_jovian_derotation::max_eccflow_pyramid_level(int v)
   return eccflow_max_pyramid_level_;
 }
 
-
-void c_jovian_derotation::set_force_reference_ellipse(bool v)
-{
-  force_reference_ellipse_ = v;
-}
-
-bool c_jovian_derotation::force_reference_ellipse() const
-{
-  return force_reference_ellipse_;
-}
-
 const cv::RotatedRect& c_jovian_derotation::reference_ellipse() const
 {
   return reference_ellipse_;
@@ -373,9 +362,9 @@ bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, 
     return false;
   }
 
-  reference_ellipse_ = planetary_detector_.planetary_disk_ellipse();
   planetary_detector_.gray_image().copyTo(reference_gray_image_);
-  planetary_detector_.aligned_artifial_ellipse_mask().copyTo(reference_ellipse_mask_);
+  planetary_detector_.final_planetary_disk_mask().copyTo(reference_ellipse_mask_);
+  reference_ellipse_ = planetary_detector_.final_planetary_disk_ellipse();
 
   CF_DEBUG("debug_path_='%s'", debug_path_.c_str());
 
@@ -410,9 +399,9 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     return false;
   }
 
-  current_ellipse_ = planetary_detector_.planetary_disk_ellipse();
   current_gray_image_ = planetary_detector_.gray_image();
-  current_ellipse_mask_ = planetary_detector_.aligned_artifial_ellipse_mask();
+  current_ellipse_mask_ = planetary_detector_.final_planetary_disk_mask();
+  current_ellipse_ = planetary_detector_.final_planetary_disk_ellipse();
 
 
   if ( !debug_path_.empty() ) {

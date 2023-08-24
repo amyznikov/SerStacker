@@ -467,12 +467,25 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
             }
           });
 
-  add_expandable_groupbox("Jovian detector options",
-      detector_setting_ctl = new QJovianEllipseDetectorSettings(this));
-  controls.append(detector_setting_ctl);
+  controls.append(jovian_detector_stdev_factor_ctl =
+      add_numeric_box<double>("stdev_factor:",
+          "",
+          [this](double value) {
+            if ( options_ && options_->ellipse.stdev_factor != value ) {
+              options_->ellipse.stdev_factor = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
 
-  connect(detector_setting_ctl, &QJovianEllipseDetectorSettings::parameterChanged,
-      this, &ThisClass::parameterChanged);
+  controls.append(jovian_detector_pca_blur_ctl =
+      add_numeric_box<double>("pca_blur:",
+          "",
+          [this](double value) {
+            if ( options_ && options_->ellipse.pca_blur != value ) {
+              options_->ellipse.pca_blur = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
 
   controls.append(max_pyramid_level_ctl =
       add_numeric_box<int>("max pyramid level:",
@@ -609,6 +622,8 @@ void QJovianDerotationOptions::onupdatecontrols()
   }
   else {
     enableJovianDerotation_ctl->setChecked(options_->enabled);
+    jovian_detector_stdev_factor_ctl->setValue(options_->ellipse.stdev_factor);
+    jovian_detector_pca_blur_ctl->setValue(options_->ellipse.pca_blur);
     max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
@@ -620,7 +635,6 @@ void QJovianDerotationOptions::onupdatecontrols()
     derotate_all_frames_ctl->setChecked(options_->derotate_all_frames);
     derotate_all_frames_max_context_size_ctl->setValue(options_->derotate_all_frames_max_context_size);
     align_jovian_disk_horizontally_ctl->setChecked(options_->rotate_jovian_disk_horizontally);
-    detector_setting_ctl->set_jovian_ellipse_detector_options(&options_->ellipse);
     update_controls_state();
 
     derotate_all_frames_max_context_size_ctl->setEnabled(options_->derotate_all_frames);

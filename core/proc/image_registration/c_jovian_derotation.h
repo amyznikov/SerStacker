@@ -52,9 +52,6 @@ public:
   void set_eccflow_max_pyramid_level(int v);
   int max_eccflow_pyramid_level(int v);
 
-  void set_force_reference_ellipse(bool v);
-  bool force_reference_ellipse() const;
-
   const cv::RotatedRect & reference_ellipse() const;
   const cv::RotatedRect & current_ellipse() const;
 
@@ -100,7 +97,6 @@ protected:
   int eccflow_support_scale_ = 4;
   int eccflow_normalization_scale_ = 0;
   int eccflow_max_pyramid_level_ = 0;
-  bool force_reference_ellipse_ = false;
 
   std::string debug_path_;
 };

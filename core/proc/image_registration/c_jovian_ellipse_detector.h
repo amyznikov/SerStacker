@@ -45,12 +45,20 @@ public:
   const cv::RotatedRect & ellipseAMS2() const;
   const cv::RotatedRect & planetary_disk_ellipse() const;
 
+  const cv::Mat & gradient_test_image() const
+  {
+    return gradient_test_image_;
+  }
+
 
 protected:
   c_jovian_ellipse_detector_options options_;
   bool enable_debug_images_ = false;
 
   cv::Mat gray_image_;
+
+  cv::Mat gradient_test_image_;
+
 
   cv::RotatedRect ellipse_;
   cv::Mat detected_planetary_disk_mask_;

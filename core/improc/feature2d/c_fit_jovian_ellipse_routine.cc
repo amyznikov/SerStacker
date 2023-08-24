@@ -25,6 +25,10 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_planetary_disk_ellipseAMS2, "planetary_disk_ellipseAMS2", },
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
+
+      { c_fit_jovian_ellipse_routine::display_gradient_test_image, "gradient_test", },
+
+
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, nullptr, },
   };
 
@@ -159,6 +163,10 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
   case display_planetary_disk_ellipseAMS2:
     rotatedRectange(image, detector_.ellipseAMS2(), CV_RGB(0, 1, 0), 1);
     cv::ellipse(image, detector_.ellipseAMS2(), CV_RGB(0, 0, 1), 1);
+    break;
+
+  case display_gradient_test_image:
+    detector_.gradient_test_image().copyTo(image);
     break;
   }
 

@@ -14,6 +14,9 @@
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/pyrscale.h>
+#include <core/proc/unsharp_mask.h>
+#include <core/proc/gradient.h>
+
 #include <core/debug.h>
 
 
@@ -141,7 +144,8 @@ bool get_maximal_connected_component(const cv::Mat1b & src,
 bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask,
     double gbsigma,
     double stdev_factor,
-    cv::Mat * output_component_mask)
+    cv::Mat * output_component_mask,
+    cv::Rect * output_component_rect = nullptr)
 {
   cv::Mat src, gray;
   cv::Mat1b comp;
@@ -207,6 +211,10 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
   if ( !get_maximal_connected_component(comp, &rc, output_component_mask) ) {
     CF_DEBUG("get_maximal_connected_component() fails");
     return false;
+  }
+
+  if( output_component_rect ) {
+    *output_component_rect = rc;
   }
 
   return true;
@@ -343,6 +351,7 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
   cv::Mat gray_image;
   std::vector<cv::Point2f> component_edge_points;
   cv::Scalar m, s;
+  cv::Rect detected_component_rect;
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Convert input image to gray scale
@@ -362,7 +371,8 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
       detect_planetary_disk(gray_image, _mask,
           1,
           options_.stdev_factor,
-          &detected_planetary_disk_mask_);
+          &detected_planetary_disk_mask_,
+          &detected_component_rect);
 
   if( !fOk ) {
     CF_ERROR("detect_planetary_disk() fails");
@@ -384,6 +394,74 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
     std::swap(ellipse_.size.width, ellipse_.size.height);
     ellipse_.angle -= 90;
   }
+
+  if ( false ) {
+
+    cv::Mat1f gx, gy;
+
+    gray_image(detected_component_rect).copyTo(gradient_test_image_);
+
+    if( !compute_gradient(gradient_test_image_, gx, 1, 0, 3, CV_32F) ) {
+      CF_ERROR("compute_gradient(gx) fails");
+    }
+    if( !compute_gradient(gradient_test_image_, gy, 0, 1, 3, CV_32F) ) {
+      CF_ERROR("compute_gradient(gx) fails");
+    }
+    //cv::absdiff(gx, 0, gx);
+    //cv::absdiff(gy, 0, gy);
+    //cv::phase(gx, gy, gradient_test_image_, true);
+
+
+    const cv::Size size = gx.size();
+
+    CF_DEBUG("gx.size=%dx%d", gx.cols, gx.rows);
+    CF_DEBUG("gy.size=%dx%d", gy.cols, gy.rows);
+
+    cv::Mat1f data_pts((3 * size.height / 4 - size.height / 4) * (3 * size.width / 4 - size.width / 4), 2);
+    cv::Mat1f g = gradient_test_image_;
+
+
+    CF_DEBUG("data_pts.rows=%d", data_pts.rows);
+
+    int ii = 0;
+    for( int y = size.height / 4; y < 3 * size.height / 4; ++y ) {
+      for( int x = size.width / 4; x < 3 * size.width / 4; ++x ) {
+        data_pts[ii][0] = gx[y][x];
+        data_pts[ii][1] = gy[y][x];
+        g[y][x] += 0.5;
+        ++ii;
+      }
+    }
+
+    CF_DEBUG("ii=%d data_pts.rows=%d", ii, data_pts.rows);
+
+    cv::PCA pca(data_pts, cv::Mat(), cv::PCA::DATA_AS_ROW);
+
+    //Store the center of the object
+    cv::Point2f cntr = cv::Point2f(pca.mean.at<float>(0, 0), pca.mean.at<float>(0, 1));
+
+    //Store the eigenvalues and eigenvectors
+    std::vector<cv::Point2f> eigen_vecs(2);
+    std::vector<float> eigen_val(2);
+    for( int i = 0; i < 2; i++ ) {
+      eigen_vecs[i] = cv::Point2f(pca.eigenvectors.at<float>(i, 0), pca.eigenvectors.at<float>(i, 1));
+      eigen_val[i] = pca.eigenvalues.at<float>(i);
+    }
+
+    // orientation
+    double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x) * 180 / CV_PI;
+
+    CF_DEBUG("eigen_vecs: { %g (%g %g)  %g (%g %g) } \n"
+        "angle=%g deg ",
+        eigen_val[0], eigen_vecs[0].x, eigen_vecs[0].y,
+        eigen_val[1], eigen_vecs[1].x, eigen_vecs[1].y,
+        angle);
+
+
+  }
+
+
+
 
   ellipseAMS_ = ellipse_;
   CF_DEBUG("INITIAL ELLIPSE: width=%g height=%g angle=%g",

@@ -1400,7 +1400,7 @@ static bool geo_reconstruction_erode_(const cv::Mat_<T> & marker, const cv::Mat_
 
 
 bool geo_reconstruction_dilate(cv::InputArray _marker_image, cv::InputArray _reference_image,
-    cv::Mat & reconstructed_image, int connectivity)
+    cv::OutputArray _reconstructed_image, int connectivity)
 {
   const cv::Mat marker_image = _marker_image.getMat();
   const cv::Mat reference_image = _reference_image.getMat();
@@ -1416,6 +1416,12 @@ bool geo_reconstruction_dilate(cv::InputArray _marker_image, cv::InputArray _ref
     CF_FATAL("Invalid argument: Connectivity must be either 1, 2, 4 or 8, not %d", connectivity);
     return false;
   }
+
+  _reconstructed_image.create(marker_image.size(),
+      marker_image.type());
+
+  cv::Mat & reconstructed_image =
+      _reconstructed_image.getMatRef();
 
   switch ( marker_image.depth() ) {
   case CV_8U :
@@ -1573,7 +1579,7 @@ bool geo_close(cv::InputArray src,  cv::Mat & dst, cv::InputArray SE, int connec
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Geodesic Hole Filling by Reconstruction
 
-bool geo_fill_holes(cv::InputArray src, cv::Mat & dst, int connectivity)
+bool geo_fill_holes(cv::InputArray src, cv::OutputArray dst, int connectivity)
 {
   cv::Mat marker_image, inverted_source_image;
   double maxval;

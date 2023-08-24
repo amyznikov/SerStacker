@@ -12,7 +12,7 @@
 //#include "QImageProcessorRoutineSettings.h"
 #include "QImageProcessorChainEditor.h"
 #include <gui/qjovian/QJovianEllipseDetectorSettings.h>
-#include <core/improc/c_fit_jovian_ellipse_routine.h>
+#include <core/improc/feature2d/c_fit_jovian_ellipse_routine.h>
 
 class QJovianEllipseSettings :
     public QImageProcessorSettingsControl

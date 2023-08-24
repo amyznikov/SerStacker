@@ -22,6 +22,9 @@ public:
   enum OutputType {
     OutputGradient,
     OutputGradientMagnitude,
+    OutputGradientPhase,
+    OutputGradientPhase90,
+    OutputGradientPhase90W,
     OutputTextureFromGradients,
   };
 

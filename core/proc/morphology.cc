@@ -7,14 +7,14 @@
 
 #include "morphology.h"
 
-void morphological_smooth_close(cv::InputArray src, cv::Mat & dst, cv::InputArray SE,
+void morphological_smooth_close(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
     int borderType, const cv::Scalar & borderValue)
 {
   cv::morphologyEx(src, dst, cv::MORPH_CLOSE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
   cv::morphologyEx(dst, dst, cv::MORPH_OPEN, SE, cv::Point(-1, -1), 1, borderType, borderValue);
 }
 
-void morphological_smooth_open(cv::InputArray src, cv::Mat & dst, cv::InputArray SE,
+void morphological_smooth_open(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
     int borderType, const cv::Scalar & borderValue)
 {
   cv::morphologyEx(src, dst, cv::MORPH_OPEN, SE, cv::Point(-1, -1), 1, borderType, borderValue);

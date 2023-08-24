@@ -106,7 +106,7 @@ int geo_erode(cv::InputArray marker_image, cv::InputArray mask_image, cv::Mat & 
 ///  https://github.com/ijpb/MorphoLibJ/blob/master/src/main/java/inra/ijpb/morphology/geodrec/GeodesicReconstructionHybrid.java
 bool geo_reconstruction_dilate(cv::InputArray marker_image,
     cv::InputArray mask_image,
-    /* out */ cv::Mat & reconstructed_image,
+    /* out */ cv::OutputArray reconstructed_image,
     int connectivity);
 
 
@@ -195,7 +195,7 @@ bool geo_close(cv::InputArray src,  cv::Mat & dst, cv::InputArray SE, int connec
 /// "Digital image processing using matlab" by Rafael C. Gonzales.
 ///  10.5.2  Filling Holes
 ///
-bool geo_fill_holes(cv::InputArray src, cv::Mat & dst, int connectivity = 8);
+bool geo_fill_holes(cv::InputArray src, cv::OutputArray dst, int connectivity = 8);
 
 
 

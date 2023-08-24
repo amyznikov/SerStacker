@@ -80,7 +80,7 @@
 #include "geometry/c_rotate_image_routine.h"
 
 #include "c_mean_curvature_blur_routine.h"
-#include "c_fit_jovian_ellipse_routine.h"
+#include "feature2d/c_fit_jovian_ellipse_routine.h"
 #include "c_equalize_hist_routine.h"
 #include "c_linear_interpolation_inpaint_routine.h"
 #include "c_bilateral_filter_routine.h"

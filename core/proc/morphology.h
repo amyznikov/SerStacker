@@ -14,7 +14,7 @@
 
  @see <http://www.mif.vu.lt/atpazinimas/dip/FIP/fip-Morpholo.html>
  * */
-void morphological_smooth_close(cv::InputArray src, cv::Mat & dst,
+void morphological_smooth_close(cv::InputArray src, cv::OutputArray dst,
     cv::InputArray SE = cv::Mat1b(3, 3, 255),
     int borderType = cv::BORDER_REPLICATE,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
@@ -22,7 +22,7 @@ void morphological_smooth_close(cv::InputArray src, cv::Mat & dst,
 /** @brief Morphological smoothing
  @see <http://www.mif.vu.lt/atpazinimas/dip/FIP/fip-Morpholo.html>
  * */
-void morphological_smooth_open(cv::InputArray src, cv::Mat & dst,
+void morphological_smooth_open(cv::InputArray src, cv::OutputArray dst,
     cv::InputArray SE = cv::Mat1b(3, 3, 255),
     int borderType = cv::BORDER_REPLICATE,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());

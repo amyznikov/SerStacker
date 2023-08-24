@@ -31,6 +31,7 @@ public:
     display_planetary_disk_ellipseAMS2,
     display_gray_image,
     display_final_ellipse_fit,
+    display_gradient_test_image,
   };
 
   void set_display(display_type v);

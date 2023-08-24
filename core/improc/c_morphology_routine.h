@@ -11,6 +11,8 @@
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/morphology.h>
+#include <core/proc/geo-reconstruction.h>
+
 
 class c_morphology_routine :
     public c_image_processor_routine
@@ -19,6 +21,27 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_morphology_routine,
       "morphology",
       "Apply morphological operation on image");
+
+  enum OPERATION {
+      MORPH_ERODE    = cv::MORPH_ERODE, //!< see #erode
+      MORPH_DILATE   = cv::MORPH_DILATE, //!< see #dilate
+      MORPH_OPEN     = cv::MORPH_OPEN, //!< an opening operation
+      MORPH_CLOSE    = cv::MORPH_CLOSE, //!< a closing operation
+      MORPH_GRADIENT = cv::MORPH_GRADIENT, //!< a morphological gradient
+      MORPH_TOPHAT   = cv::MORPH_TOPHAT, //!< "top hat"
+      MORPH_BLACKHAT = cv::MORPH_BLACKHAT, //!< "black hat"
+      MORPH_HITMISS  = cv::MORPH_HITMISS,  //!< "hit or miss"
+      MORPH_SMOOTH_OPEN, //!< morphological_smooth_open
+      MORPH_SMOOTH_CLOSE, //!< morphological_smooth_close
+      MORPH_INTERNAL_GRADIENT, //!< morphological_internal_gradient
+      MORPH_EXTERNAL_GRADIENT, //!< morphological_external_gradient
+      MORPH_LAPLACIAN, //!< morphological_laplacian
+      MORPH_RAMPLEE, //!< rampLee
+      MORPH_TEXLEE, //!< texLee
+      MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
+      MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
+  };
+
 
   void set_se_shape(cv::MorphShapes v)
   {
@@ -50,12 +73,12 @@ public:
     return anchor_;
   }
 
-  void set_operation(cv::MorphTypes v)
+  void set_operation(OPERATION v)
   {
     operation_ = v;
   }
 
-  cv::MorphTypes operation() const
+  OPERATION operation() const
   {
     return operation_;
   }
@@ -118,13 +141,75 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
   {
-    cv::morphologyEx(image.getMat(), image,
-        operation_,
-        cv::getStructuringElement(se_shape_, se_size_, anchor_),
-        anchor_,
-        iterations_,
-        borderType_,
-        borderValue_);
+    switch (operation_) {
+
+      case MORPH_SMOOTH_OPEN:
+        morphological_smooth_open(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_SMOOTH_CLOSE:
+        morphological_smooth_close(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_INTERNAL_GRADIENT:
+        morphological_internal_gradient(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_EXTERNAL_GRADIENT:
+        morphological_external_gradient(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_LAPLACIAN:
+        morphological_laplacian(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_RAMPLEE:
+        rampLee(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_TEXLEE:
+        texLee(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_GEO_FILL_HOLES4:
+        geo_fill_holes(image.getMat(), image, 4);
+        break;
+
+      case MORPH_GEO_FILL_HOLES8:
+        geo_fill_holes(image.getMat(), image, 8);
+        break;
+
+      default:
+        cv::morphologyEx(image.getMat(), image,
+            operation_,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            anchor_,
+            iterations_,
+            borderType_,
+            borderValue_);
+        break;
+    }
 
     return true;
   }
@@ -133,7 +218,7 @@ protected:
   cv::MorphShapes se_shape_ = cv::MORPH_RECT;
   cv::Size se_size_ = cv::Size(3, 3);
   cv::Point anchor_ = cv::Point(-1,-1);
-  cv::MorphTypes operation_ = cv::MORPH_ERODE;
+  OPERATION operation_ = MORPH_ERODE;
   int iterations_ = 1;
   cv::BorderTypes borderType_ = cv::BORDER_CONSTANT;
   cv::Scalar borderValue_ = cv::Scalar::all(0);

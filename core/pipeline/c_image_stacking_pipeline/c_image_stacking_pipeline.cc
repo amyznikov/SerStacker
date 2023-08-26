@@ -802,6 +802,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
     }
 
     CF_DEBUG("cpos=%d startpos=%d endpos=%d", cpos, startpos, endpos);
+
     if ( !process_input_sequence(input_sequence_, startpos, endpos, false) ) {
       CF_ERROR("process_input_sequence() fails");
       return false;

@@ -1905,6 +1905,7 @@ void c_bayer_average::clear()
   counter_.release();
   rmap_.release();
   bayer_pattern_.release();
+  accumulated_frames_ = 0;
 }
 
 

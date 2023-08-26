@@ -588,11 +588,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
         ecc_.set_model(ecc_motion_model_.get());
         image_transform_->set_translation(transform.translation());
+
+        cv::Vec2f T = image_transform_->translation();
+        CF_DEBUG("ECCH translation first = (%+g %+g)", T[0], T[1]);
       }
-
-      cv::Vec2f T = image_transform_->translation();
-      CF_DEBUG("ECCH translation = (%+g %+g)", T[0], T[1]);
-
 
       if( !ecch_.align(current_ecc_image, current_ecc_mask) ) {
 
@@ -604,6 +603,11 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
         return false;
       }
+    }
+
+    if ( true ) {
+      cv::Vec2f T = image_transform_->translation();
+      CF_DEBUG("ECCH translation after ecch_.align = (%+g %+g)", T[0], T[1]);
     }
 
     if( ecc_.rho() < ecc_.min_rho() ) {
@@ -669,7 +673,26 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation", debug_path_.c_str()));
 
-    if ( !jovian_derotation_.compute(current_image, current_mask) ) {
+    cv::Mat tmp_image, tmp_mask;
+
+    cv::remap(current_image,
+        tmp_image,
+        current_remap_,
+        cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_REFLECT101);
+
+    cv::remap(current_mask.empty() ? cv::Mat1b(current_image.size(), 255) : current_mask,
+        tmp_mask,
+        current_remap_,
+        cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_REFLECT101);
+
+    cv::compare(tmp_mask, 250, tmp_mask,
+        cv::CMP_GE);
+
+    if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
       CF_ERROR("jovian_derotation_.compute() fails");
       return false;
     }
@@ -1293,14 +1316,24 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     cv::Mat2f current_total_remap =
         rmap.clone();
 
-    // size must be reference_image.size()
-    const cv::Mat1b &reference_ellipse_mask =
-        jovian_derotation_.jovian_ellipse_mask();
+    const cv::Mat2f & derotation_remap =
+        jovian_derotation_.current_derotation_remap();
 
-    // current_derotation_remap size must be reference_image.size()
-    jovian_derotation_.current_derotation_remap().copyTo(
-        current_total_remap,
-        reference_ellipse_mask);
+    const cv::Mat1f & current_wmask =
+        jovian_derotation_.current_wmask();
+
+    for( int y = 0; y < current_total_remap.rows; ++y ) {
+      for( int x = 0; x < current_total_remap.cols; ++x ) {
+        if( current_wmask[y][x] > 0 ) {
+          current_total_remap[y][x][0] += derotation_remap[y][x][0] - x;
+          current_total_remap[y][x][1] += derotation_remap[y][x][1] - y;
+        }
+      }
+    }
+
+    if ( !debug_path_.empty() ) {
+      save_image(current_total_remap, ssprintf("%s/remap_debug/current_total_remap.flo", debug_path_.c_str()));
+    }
 
     bool fOk =
         base_remap(current_total_remap,
@@ -1339,9 +1372,23 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     current_wmask.copyTo(new_mask,
         jovian_derotation_.jovian_ellipse_mask());
 
+    static int iitest = 0;
+
+    if ( !debug_path_.empty() ) {
+      save_image(orig_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", debug_path_.c_str(), iitest));
+      save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", debug_path_.c_str(), iitest));
+    }
+
     cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
     new_mask.setTo(0, ~orig_mask);
+    if ( !debug_path_.empty() ) {
+      save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", debug_path_.c_str(), iitest));
+    }
+
     dst_mask.move(new_mask);
+
+
+    ++iitest;
   }
 
   return true;

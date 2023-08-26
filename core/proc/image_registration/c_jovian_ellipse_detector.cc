@@ -488,7 +488,7 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
   final_planetary_disk_mask_.create(_image.size());
   final_planetary_disk_mask_.setTo(0);
   cv::ellipse(final_planetary_disk_mask_, final_planetary_disk_ellipse_, 255, -1, cv::LINE_8);
-  cv::dilate(final_planetary_disk_mask_, final_planetary_disk_mask_, cv::Mat1b(5, 5, 255));
+  cv::erode(final_planetary_disk_mask_, final_planetary_disk_mask_, cv::Mat1b(3, 3, 255));
 
   return true;
 }

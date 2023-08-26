@@ -74,6 +74,7 @@ public:
   c_translation_image_transform(float Tx = 0, float Ty = 0);
   c_translation_image_transform(const cv::Vec2f & T);
 
+  void set_translation(float x, float y);
   void set_translation(const cv::Vec2f & v) override;
   cv::Vec2f translation() const override;
 
@@ -81,6 +82,7 @@ public:
   bool set_parameters(const cv::Mat1f & p) override;
   cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
   bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+
 
 protected:
   float a[2] = { 0, 0 };

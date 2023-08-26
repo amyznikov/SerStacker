@@ -20,6 +20,9 @@
 class c_jovian_derotation
 {
 public:
+  bool setup_jovian_ellipse(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
   bool setup_reference_image(cv::InputArray reference_image,
       cv::InputArray reference_mask = cv::noArray());
 
@@ -52,11 +55,8 @@ public:
   void set_eccflow_max_pyramid_level(int v);
   int max_eccflow_pyramid_level(int v);
 
-  const cv::RotatedRect & reference_ellipse() const;
-  const cv::RotatedRect & current_ellipse() const;
-
-  const cv::Mat1b & reference_ellipse_mask() const ;
-  const cv::Mat1b & current_ellipse_mask() const ;
+  const cv::RotatedRect & jovian_ellipse() const;
+  const cv::Mat1b & jovian_ellipse_mask() const ;
 
   const cv::Mat2f & current_derotation_remap() const;
   const cv::Mat1f & current_wmask() const;
@@ -75,20 +75,21 @@ protected:
 
 protected:
 
-  cv::RotatedRect reference_ellipse_;
-  cv::Mat1f reference_gray_image_;
-  cv::Mat1b reference_ellipse_mask_;
+  cv::RotatedRect jovian_ellipse_;
+  cv::Rect jovian_crop_;
+  cv::Mat1b jovian_ellipse_mask_;
 
-  cv::RotatedRect current_ellipse_;
-  cv::Mat1f current_gray_image_;
-  cv::Mat1b current_ellipse_mask_;
+  cv::Mat1f current_image_;
+  cv::Mat1f reference_image_;
+  cv::Mat1b current_mask_;
+  cv::Mat1b reference_mask_;
 
 
   cv::Mat1f current_wmask_;
   cv::Mat2f current_remap_;
 
   c_eccflow eccflow_;
-  c_jovian_ellipse_detector planetary_detector_;
+  c_jovian_ellipse_detector jovian_detector_;
 
   double min_rotation_ = -30 * CV_PI / 180;
   double max_rotation_ = +30 * CV_PI / 180;

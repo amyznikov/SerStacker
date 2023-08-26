@@ -576,7 +576,7 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](bool checked) {
             if ( options_ && options_->derotate_all_frames != checked ) {
               options_->derotate_all_frames = checked;
-              derotate_all_frames_max_context_size_ctl->setEnabled(checked);
+              //derotate_all_frames_max_context_size_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           }));
@@ -637,7 +637,7 @@ void QJovianDerotationOptions::onupdatecontrols()
     align_jovian_disk_horizontally_ctl->setChecked(options_->rotate_jovian_disk_horizontally);
     update_controls_state();
 
-    derotate_all_frames_max_context_size_ctl->setEnabled(options_->derotate_all_frames);
+    //derotate_all_frames_max_context_size_ctl->setEnabled(options_->derotate_all_frames);
 
     setEnabled(true);
   }
@@ -926,7 +926,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
           const QMasterSourceSelectionCombo::InputSourceData data =
               masterSource_ctl->currentInputSource();
 
-          options_->master_source_fiename =
+          options_->master_fiename =
               data.source_pathfilename;
 
           if ( true ) {
@@ -943,7 +943,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
       [this](){
         if( options_ ) {
 
-          masterSource_ctl->setCurrentInputSource(options_->master_source_fiename);
+          masterSource_ctl->setCurrentInputSource(options_->master_fiename);
 
           if ( true ) {
             c_update_controls_lock lock(this);

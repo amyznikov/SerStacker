@@ -188,12 +188,12 @@ static void drawRotatedRectange(cv::InputOutputArray image, const cv::RotatedRec
 
 void c_jovian_derotation::set_jovian_detector_options(const c_jovian_ellipse_detector_options & v)
 {
-  planetary_detector_.set_options(v);
+  jovian_detector_.set_options(v);
 }
 
 const c_jovian_ellipse_detector_options & c_jovian_derotation::jovian_detector_options() const
 {
-  return planetary_detector_.options();
+  return jovian_detector_.options();
 }
 
 void c_jovian_derotation::set_max_pyramid_level(int v)
@@ -268,24 +268,14 @@ int c_jovian_derotation::max_eccflow_pyramid_level(int v)
   return eccflow_max_pyramid_level_;
 }
 
-const cv::RotatedRect& c_jovian_derotation::reference_ellipse() const
+const cv::RotatedRect& c_jovian_derotation::jovian_ellipse() const
 {
-  return reference_ellipse_;
+  return jovian_ellipse_;
 }
 
-const cv::RotatedRect& c_jovian_derotation::current_ellipse() const
+const cv::Mat1b & c_jovian_derotation::jovian_ellipse_mask() const
 {
-  return current_ellipse_;
-}
-
-const cv::Mat1b & c_jovian_derotation::reference_ellipse_mask() const
-{
-  return reference_ellipse_mask_;
-}
-
-const cv::Mat1b & c_jovian_derotation::current_ellipse_mask() const
-{
-  return current_ellipse_mask_;
+  return jovian_ellipse_mask_;
 }
 
 const cv::Mat2f& c_jovian_derotation::current_derotation_remap() const
@@ -353,37 +343,95 @@ int c_jovian_derotation::estimate_max_pyramid_level(const cv::RotatedRect & elli
   return l;
 }
 
-bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+
+bool c_jovian_derotation::setup_jovian_ellipse(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
 
-  if( !planetary_detector_.detect_jovian_disk(reference_image, reference_mask) ) {
+
+  if( !jovian_detector_.detect_jovian_disk(reference_image, reference_mask) ) {
     CF_ERROR("ellipse_detector_.detect_jovian_ellipse(reference_image) fails");
     return false;
   }
 
-  planetary_detector_.gray_image().copyTo(reference_gray_image_);
-  planetary_detector_.final_planetary_disk_mask().copyTo(reference_ellipse_mask_);
-  reference_ellipse_ = planetary_detector_.final_planetary_disk_ellipse();
+  jovian_ellipse_mask_ = jovian_detector_.final_planetary_disk_mask();
+  jovian_ellipse_ = jovian_detector_.final_planetary_disk_ellipse();
+  jovian_crop_ = compute_ellipse_crop_box(jovian_ellipse_, reference_image.size());
 
-  CF_DEBUG("debug_path_='%s'", debug_path_.c_str());
+//  CF_DEBUG("jovian_crop_: x=%d y=%d w=%d h=%d",
+//      jovian_crop_.x, jovian_crop_.y,
+//      jovian_crop_.width, jovian_crop_.height);
+//
+//  return false;
+//
+
+  CF_DEBUG("debug_path_: %s", debug_path_.c_str());
 
   if ( !debug_path_.empty() ) {
 
+    std::string fname;
     cv::Mat tmp;
-    std::string filename;
 
-    reference_gray_image_.copyTo(tmp);
+    cv::cvtColor(jovian_detector_.gray_image(), tmp, cv::COLOR_GRAY2BGR);
+    drawRotatedRectange(tmp, jovian_ellipse_, CV_RGB(0, 1, 0));
 
-    drawRotatedRectange(tmp, reference_ellipse_, cv::Scalar::all(1), 1, cv::LINE_8);
+    if( !save_image(tmp, reference_mask_,
+        fname = ssprintf("%s/reference_ellipse.tiff", debug_path_.c_str())) ) {
+      CF_ERROR("save_image('%s') fails", fname.c_str());
+      return false;
+    }
 
-    if( !save_image(tmp, reference_ellipse_mask_,
-        filename = ssprintf("%s/reference_gray_image_.tiff", debug_path_.c_str())) ) {
-      CF_ERROR("save_image('%s') fails", filename.c_str());
+    CF_DEBUG("debug images saved to '%s'", fname.c_str());
+  }
+
+  return true;
+}
+
+
+bool c_jovian_derotation::setup_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+{
+  INSTRUMENT_REGION("");
+
+  CF_DEBUG("enter c_jovian_derotation::setup_reference_image()");
+
+  if ( reference_image.channels() == 1 ) {
+    reference_image.getMat().copyTo(reference_image_);
+  }
+  else {
+    cv::cvtColor(reference_image, reference_image_, cv::COLOR_BGR2GRAY);
+  }
+
+  if ( reference_mask.empty() ) {
+    reference_mask_.release();
+  }
+  else {
+    reference_mask.getMat().copyTo(reference_mask_);
+  }
+
+  if ( !debug_path_.empty() ) {
+
+    std::string fname;
+    cv::Mat tmp;
+
+    if ( !save_image(reference_image_, reference_mask_,
+        fname = ssprintf("%s/reference_image.tiff", debug_path_.c_str())) ) {
+      CF_ERROR("save_image('%s') fails", fname.c_str());
+      return false;
+    }
+
+
+    cv::cvtColor(reference_image_, tmp, cv::COLOR_GRAY2BGR);
+    drawRotatedRectange(tmp, jovian_ellipse_, CV_RGB(0, 1, 0));
+
+    if( !save_image(tmp, reference_mask_,
+        fname = ssprintf("%s/reference_ellipse.tiff", debug_path_.c_str())) ) {
+      CF_ERROR("save_image('%s') fails", fname.c_str());
       return false;
     }
 
   }
+
+  CF_DEBUG("leave c_jovian_derotation::setup_reference_image()");
 
   return true;
 }
@@ -394,32 +442,42 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 
   INSTRUMENT_REGION("");
 
-  if ( !planetary_detector_.detect_jovian_disk(current_image, current_mask) ) {
-    CF_ERROR("ellipse_detector_.detect_jovian_ellipse(current_image) fails");
-    return false;
+  CF_DEBUG("enter c_jovian_derotation::compute()");
+
+  if ( current_image.channels() == 1 ) {
+    current_image.getMat().copyTo(current_image_);
+  }
+  else {
+    cv::cvtColor(current_image, current_image_, cv::COLOR_BGR2GRAY);
   }
 
-  current_gray_image_ = planetary_detector_.gray_image();
-  current_ellipse_mask_ = planetary_detector_.final_planetary_disk_mask();
-  current_ellipse_ = planetary_detector_.final_planetary_disk_ellipse();
-
+  if ( current_mask.empty() ) {
+    current_mask_.release();
+  }
+  else {
+    current_mask.getMat().copyTo(current_mask_);
+  }
 
   if ( !debug_path_.empty() ) {
-    save_image(current_gray_image_, ssprintf("%s/current_gray_image_.tiff", debug_path_.c_str()));
-    save_image(current_ellipse_mask_, ssprintf("%s/current_ellipse_mask_.tiff", debug_path_.c_str()));
 
-    save_image(reference_gray_image_, ssprintf("%s/reference_gray_image_.tiff", debug_path_.c_str()));
-    save_image(reference_ellipse_mask_, ssprintf("%s/reference_ellipse_mask_.tiff", debug_path_.c_str()));
-
-
+    std::string fname;
     cv::Mat tmp;
-    current_gray_image_.copyTo(tmp);
-    cv::ellipse(tmp, current_ellipse_, cv::Scalar::all(1));
-    save_image(tmp, ssprintf("%s/current_gray_image_edge.tiff", debug_path_.c_str()));
 
-    reference_gray_image_.copyTo(tmp);
-    cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
-    save_image(tmp, ssprintf("%s/reference_gray_image_edge.tiff", debug_path_.c_str()));
+    if ( !save_image(current_image_, current_mask_,
+        fname = ssprintf("%s/current_image.tiff", debug_path_.c_str())) ) {
+      CF_ERROR("save_image('%s') fails", fname.c_str());
+      return false;
+    }
+
+
+    cv::cvtColor(current_image_, tmp, cv::COLOR_GRAY2BGR);
+    drawRotatedRectange(tmp, jovian_ellipse_, CV_RGB(0, 1, 0));
+
+    if( !save_image(tmp, current_mask_,
+        fname = ssprintf("%s/current_ellipse.tiff", debug_path_.c_str())) ) {
+      CF_ERROR("save_image('%s') fails", fname.c_str());
+      return false;
+    }
   }
 
 
@@ -428,42 +486,48 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   std::vector<cv::Mat> reference_pyramid;
   std::vector<cv::Mat> current_pyramid;
 
-  const cv::Rect reference_crop_rect =
-      compute_ellipse_crop_box(reference_ellipse_, reference_gray_image_.size());
-
-  const cv::Rect current_crop_rect =
-      compute_ellipse_crop_box(current_ellipse_, current_gray_image_.size());
-
   const int num_orientations =
       std::max(1, std::min(15, num_orientations_));
 
   const float orientation_step = // radian
-      0.25f * num_orientations / reference_ellipse_.size.width;
+      0.25f * num_orientations / jovian_ellipse_.size.width;
 
   const int maxlevel =
-      (std::min)(estimate_max_pyramid_level(reference_ellipse_, max_pyramid_level_),
-          estimate_max_pyramid_level(current_ellipse_, max_pyramid_level_));
+      (std::min)(estimate_max_pyramid_level(jovian_ellipse_, max_pyramid_level_),
+          estimate_max_pyramid_level(jovian_ellipse_, max_pyramid_level_));
+
+  CF_DEBUG("maxlevel=%d", maxlevel);
+
+  CF_DEBUG("jovian_crop_: x=%d y=%d w=%d h=%d r=%d b=%d",
+      jovian_crop_.x, jovian_crop_.y,
+      jovian_crop_.width, jovian_crop_.height,
+      jovian_crop_.x + jovian_crop_.width, jovian_crop_.y +jovian_crop_.height);
+
+  CF_DEBUG("reference_image_: %dx%d",
+      reference_image_.cols, reference_image_.rows);
+  CF_DEBUG("current_image_: %dx%d",
+      current_image_.cols, current_image_.rows);
 
   if ( maxlevel < 1 ) {
 
     reference_pyramid.emplace_back();
-    normalize_jovian_image(reference_gray_image_(reference_crop_rect),
+    normalize_jovian_image(reference_image_(jovian_crop_),
         reference_pyramid.back(),
-        reference_ellipse_.size.width);
+        jovian_ellipse_.size.width);
 
     current_pyramid.emplace_back();
-    normalize_jovian_image(current_gray_image_(current_crop_rect),
+    normalize_jovian_image(current_image_(jovian_crop_),
         current_pyramid.back(),
-        current_ellipse_.size.width);
+        jovian_ellipse_.size.width);
 
   }
   else {
 
-    cv::buildPyramid(reference_gray_image_(reference_crop_rect).clone(),
+    cv::buildPyramid(reference_image_(jovian_crop_).clone(),
         reference_pyramid,
         maxlevel);
 
-    cv::buildPyramid(current_gray_image_(current_crop_rect).clone(),
+    cv::buildPyramid(current_image_(jovian_crop_).clone(),
         current_pyramid,
         maxlevel);
 
@@ -474,17 +538,17 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
 
       normalize_jovian_image(reference_pyramid[i],
           reference_pyramid[i],
-          reference_ellipse_.size.width * scale_factor);
+          jovian_ellipse_.size.width * scale_factor);
 
       normalize_jovian_image(current_pyramid[i],
           current_pyramid[i],
-          current_ellipse_.size.width * scale_factor);
+          jovian_ellipse_.size.width * scale_factor);
     }
   }
 
 
-  const double initial_orientation =
-      (reference_ellipse_.angle - current_ellipse_.angle) * CV_PI / 180;
+  const double initial_orientation = 0;
+      //(reference_ellipse_.angle - current_ellipse_.angle) * CV_PI / 180;
 
   double best_orientation =
       initial_orientation;
@@ -511,17 +575,11 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     CF_DEBUG("reference_scaled_image.size=%dx%d", reference_scaled_image.cols, reference_scaled_image.rows);
     CF_DEBUG("current_scaled_image.size=%dx%d", current_scaled_image.cols, current_scaled_image.rows);
 
-    cv::RotatedRect scaled_reference_ellipse(
-        cv::Point2f(reference_ellipse_.center.x - reference_crop_rect.x,
-            reference_ellipse_.center.y - reference_crop_rect.y)  * scale_ratio,
-        reference_ellipse_.size * scale_ratio,
-        reference_ellipse_.angle);
-
-    cv::RotatedRect scaled_current_ellipse(
-        cv::Point2f(current_ellipse_.center.x - current_crop_rect.x,
-            current_ellipse_.center.y - current_crop_rect.y)  * scale_ratio,
-        current_ellipse_.size * scale_ratio,
-        current_ellipse_.angle);
+    cv::RotatedRect scaled_ellipse(
+        cv::Point2f(jovian_ellipse_.center.x - jovian_crop_.x,
+            jovian_ellipse_.center.y - jovian_crop_.y)  * scale_ratio,
+            jovian_ellipse_.size * scale_ratio,
+            jovian_ellipse_.angle);
 
     //
     // Loop over the sequence of rotation angles and compute derotation cost for each rotation angle
@@ -529,7 +587,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
     //
 
     const int num_rotations =
-        std::max(5, (int) (scaled_reference_ellipse.size.width *
+        std::max(5, (int) (scaled_ellipse.size.width *
             (max_rotation - min_rotation) / CV_PI));
 
     const float rotation_step =
@@ -548,13 +606,13 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
             best_orientation + (j - num_orientations / 2) * orientation_step;
 
         const cv::Matx23f Tj =
-            create_euclidean_transform(cv::Vec2f(scaled_reference_ellipse.center.x, scaled_reference_ellipse.center.y),
-                cv::Vec2f(scaled_current_ellipse.center.x, scaled_current_ellipse.center.y),
+            create_euclidean_transform(cv::Vec2f(scaled_ellipse.center.x, scaled_ellipse.center.y),
+                cv::Vec2f(scaled_ellipse.center.x, scaled_ellipse.center.y),
                 -current_orientation,
-                scaled_current_ellipse.size.width / scaled_reference_ellipse.size.width);
+                1);
 
         create_jovian_rotation_remap(l,
-            scaled_current_ellipse,
+            scaled_ellipse,
             Tj,
             reference_scaled_image.size(),
             current_remap_,
@@ -603,30 +661,29 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
       best_rotation * 180 / CV_PI,
       best_orientation * 180 / CV_PI);
 
-
   cv::Matx23f T =
       create_euclidean_transform(
-          cv::Vec2f(reference_ellipse_.center.x, reference_ellipse_.center.y),
-          cv::Vec2f(current_ellipse_.center.x, current_ellipse_.center.y),
+          cv::Vec2f(jovian_ellipse_.center.x, jovian_ellipse_.center.y),
+          cv::Vec2f(jovian_ellipse_.center.x, jovian_ellipse_.center.y),
           -best_orientation,
-          current_ellipse_.size.width / reference_ellipse_.size.width);
+          1);
 
   create_jovian_rotation_remap(best_rotation,
-      current_ellipse_,
+      jovian_ellipse_,
       T,
-      reference_gray_image_.size(),
+      reference_image_.size(),
       current_remap_,
       current_wmask_);
 
   if( !debug_path_.empty() ) {
 
     cv::Mat tmp;
-    cv::remap(current_gray_image_, tmp, current_remap_, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
+    cv::remap(current_image_, tmp, current_remap_, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    cv::ellipse(tmp, jovian_ellipse_, cv::Scalar::all(1));
     save_image(tmp, ssprintf("%s/current_best_rotated_gray_image.tiff", debug_path_.c_str()));
 
-    reference_gray_image_.copyTo(tmp);
-    cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
+    reference_image_.copyTo(tmp);
+    cv::ellipse(tmp, jovian_ellipse_, cv::Scalar::all(1));
     save_image(tmp, ssprintf("%s/reference_best_rotated_gray_image.tiff", debug_path_.c_str()));
 
     save_image(current_wmask_, ssprintf("%s/current_wmask_.tiff", debug_path_.c_str()));
@@ -636,50 +693,52 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   // Use ecc optical flow to perfectly align rotated current component image
   //
 
-  if( eccflow_support_scale_ > 1 ) {
+//  if( eccflow_support_scale_ > 1 ) {
+//
+//    INSTRUMENT_REGION("eccflow_.compute()");
+//
+//    eccflow_.set_max_pyramid_level(eccflow_max_pyramid_level_);
+//    eccflow_.set_support_scale(eccflow_support_scale_);
+//    eccflow_.set_normalization_scale(eccflow_normalization_scale_);
+//
+//    const cv::Mat & current_normalized_image =
+//        current_pyramid.front();
+//
+//    const cv::Mat & reference_normalized_image =
+//        reference_pyramid.front();
+//
+//    CF_DEBUG("current_normalized_image: %dx%d\n"
+//        "reference_normalized_image: %dx%d\n"
+//        "current_remap_: %dx%d\n"
+//        "current_ellipse_mask_: %dx%d\n"
+//        "reference_ellipse_mask_: %dx%d\n",
+//        current_normalized_image.cols, current_normalized_image.rows,
+//        reference_normalized_image.cols, reference_normalized_image.rows,
+//        current_remap_.cols, current_remap_.rows,
+//        current_ellipse_mask_.cols, current_ellipse_mask_.rows,
+//        reference_ellipse_mask_.cols, reference_ellipse_mask_.rows);
+//
+//    bool fOk =
+//        eccflow_.compute(current_normalized_image,
+//            reference_normalized_image,
+//            current_remap_,
+//            current_ellipse_mask_,
+//            reference_ellipse_mask_);
+//
+//    if( !fOk ) {
+//      CF_ERROR("eccflow_.compute() fails");
+//      return false;
+//    }
+//
+//    if( !debug_path_.empty() ) {
+//      cv::Mat tmp;
+//      cv::remap(current_image_, tmp, current_remap_, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+//      cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
+//      save_image(tmp, ssprintf("%s/current_eccflow_image.tiff", debug_path_.c_str()));
+//    }
+//  }
 
-    INSTRUMENT_REGION("eccflow_.compute()");
-
-    eccflow_.set_max_pyramid_level(eccflow_max_pyramid_level_);
-    eccflow_.set_support_scale(eccflow_support_scale_);
-    eccflow_.set_normalization_scale(eccflow_normalization_scale_);
-
-    const cv::Mat & current_normalized_image =
-        current_pyramid.front();
-
-    const cv::Mat & reference_normalized_image =
-        reference_pyramid.front();
-
-    CF_DEBUG("current_normalized_image: %dx%d\n"
-        "reference_normalized_image: %dx%d\n"
-        "current_remap_: %dx%d\n"
-        "current_ellipse_mask_: %dx%d\n"
-        "reference_ellipse_mask_: %dx%d\n",
-        current_normalized_image.cols, current_normalized_image.rows,
-        reference_normalized_image.cols, reference_normalized_image.rows,
-        current_remap_.cols, current_remap_.rows,
-        current_ellipse_mask_.cols, current_ellipse_mask_.rows,
-        reference_ellipse_mask_.cols, reference_ellipse_mask_.rows);
-
-    bool fOk =
-        eccflow_.compute(current_normalized_image,
-            reference_normalized_image,
-            current_remap_,
-            current_ellipse_mask_,
-            reference_ellipse_mask_);
-
-    if( !fOk ) {
-      CF_ERROR("eccflow_.compute() fails");
-      return false;
-    }
-
-    if( !debug_path_.empty() ) {
-      cv::Mat tmp;
-      cv::remap(current_gray_image_, tmp, current_remap_, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-      cv::ellipse(tmp, reference_ellipse_, cv::Scalar::all(1));
-      save_image(tmp, ssprintf("%s/current_eccflow_image.tiff", debug_path_.c_str()));
-    }
-  }
+  CF_DEBUG("leave c_jovian_derotation::compute()");
 
   return true;
 }

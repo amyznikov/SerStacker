@@ -62,7 +62,7 @@ struct c_jovian_derotation_options {
   int eccflow_max_pyramid_level = 0;
   //bool align_planetary_disk_masks = true;
   bool derotate_all_frames = false;
-  int  derotate_all_frames_max_context_size = -1;
+  int  derotate_all_frames_max_context_size = 3;
   bool rotate_jovian_disk_horizontally = false;
 };
 
@@ -78,7 +78,7 @@ struct c_master_frame_options
   master_frame_selection_method master_selection_method =
       master_frame_specific_index;
 
-  std::string master_source_fiename;
+  std::string master_fiename;
   int master_frame_index = 0;
 
   bool apply_input_frame_processors = true;
@@ -164,6 +164,7 @@ public:
   const c_ecch & ecch() const;
   const c_eccflow & eccflow() const;
   const c_jovian_derotation & jovian_derotation() const;
+  c_jovian_derotation & jovian_derotation();
 
   void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
   const ecc_image_preprocessor_function & ecc_image_preprocessor() const;

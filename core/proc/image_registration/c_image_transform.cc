@@ -37,7 +37,12 @@ void c_translation_image_transform::set_translation(const cv::Vec2f & T)
 {
   Tx_ = T[0];
   Ty_ = T[1];
+}
 
+void c_translation_image_transform::set_translation(float x, float y)
+{
+  Tx_ = x;
+  Ty_ = y;
 }
 
 cv::Vec2f c_translation_image_transform::translation() const

@@ -22,7 +22,7 @@ public:
   virtual bool initialze(const cv::Size & image_size, int acctype, int weightstype) = 0;
   virtual bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) = 0;
   virtual bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const = 0;
-  virtual void release() = 0;
+  virtual void clear() = 0;
   virtual cv::Size accumulator_size() const = 0;
 
   int accumulated_frames() const
@@ -50,7 +50,7 @@ public:
   bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void release() override;
+  void clear() override;
   cv::Size accumulator_size() const override;
 
   const cv::Mat & accumulator() const;
@@ -88,7 +88,7 @@ public:
   bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void release() override;
+  void clear() override;
   cv::Size accumulator_size() const override;
 
 protected:
@@ -116,7 +116,7 @@ public:
   bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void release() override;
+  void clear() override;
   cv::Size accumulator_size() const override;
 
   const std::vector<cv::Mat> & accumulators() const;
@@ -164,7 +164,7 @@ public:
   bool initialze(const cv::Size & image_size, int acctype = -1, int weightstype = 1) override;
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void release() override;
+  void clear() override;
   cv::Size accumulator_size() const override;
 
   const cv::Mat & accumulator() const;

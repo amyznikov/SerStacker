@@ -1044,7 +1044,7 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
   return true;
 }
 
-void c_frame_weigthed_average::release()
+void c_frame_weigthed_average::clear()
 {
   accumulator_.release();
   counter_.release();
@@ -1306,7 +1306,7 @@ bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::Output
   return true;
 }
 
-void c_laplacian_pyramid_focus_stacking::release()
+void c_laplacian_pyramid_focus_stacking::clear()
 {
   acc.clear();
   G.release();
@@ -1513,7 +1513,7 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
   return true;
 }
 
-void c_frame_accumulation_with_fft::release()
+void c_frame_accumulation_with_fft::clear()
 {
   accumulated_frames_ = 0;
   accumulators_.clear();
@@ -1899,7 +1899,7 @@ bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double 
   return true;
 }
 
-void c_bayer_average::release()
+void c_bayer_average::clear()
 {
   accumulator_.release();
   counter_.release();

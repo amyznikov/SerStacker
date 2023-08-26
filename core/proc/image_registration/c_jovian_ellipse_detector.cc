@@ -53,10 +53,14 @@ cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & ellipse, const cv::Siz
   cv::Rect rc =
       compute_ellipse_bounding_box(ellipse);
 
+
   if( margin < 0 ) {
     margin =
         std::max(16, (int) (ellipse.size.width / 5));
   }
+
+//  CF_DEBUG("ellipse_bounding_box: x=%d y=%d w=%d h=%d margin=%d image_size=%dx%d",
+//      rc.x, rc.y, rc.width, rc.height, margin, image_size.width, image_size.height);
 
   rc.x -= margin;
   rc.y -= margin;
@@ -75,6 +79,9 @@ cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & ellipse, const cv::Siz
   if( rc.y + rc.height >= image_size.height ) {
     rc.height = image_size.height - rc.y;
   }
+
+//  CF_DEBUG("final rc: x=%d y=%d w=%d h=%d margin=%d image_size=%dx%d",
+//      rc.x, rc.y, rc.width, rc.height, margin, image_size.width, image_size.height);
 
   return rc;
 }

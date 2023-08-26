@@ -257,6 +257,12 @@ const c_jovian_derotation & c_frame_registration::jovian_derotation() const
   return this->jovian_derotation_;
 }
 
+c_jovian_derotation & c_frame_registration::jovian_derotation()
+{
+  return this->jovian_derotation_;
+}
+
+
 void c_frame_registration::set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func)
 {
   ecc_image_preprocessor_ = func;
@@ -1289,7 +1295,7 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
 
     // size must be reference_image.size()
     const cv::Mat1b &reference_ellipse_mask =
-        jovian_derotation_.reference_ellipse_mask();
+        jovian_derotation_.jovian_ellipse_mask();
 
     // current_derotation_remap size must be reference_image.size()
     jovian_derotation_.current_derotation_remap().copyTo(
@@ -1331,7 +1337,7 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
         jovian_derotation_.current_wmask();
 
     current_wmask.copyTo(new_mask,
-        jovian_derotation_.reference_ellipse_mask());
+        jovian_derotation_.jovian_ellipse_mask());
 
     cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
     new_mask.setTo(0, ~orig_mask);

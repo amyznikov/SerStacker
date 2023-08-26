@@ -255,14 +255,27 @@ protected:
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+
   bool run_image_stacking();
 
-  bool create_reference_frame(const c_input_sequence::sptr & input_sequence,
+  bool run_jovian_derotation();
+
+  bool create_reference_frame(const c_image_registration_options & image_registration_options,
+      cv::Mat & reference_frame, cv::Mat & reference_mask);
+
+  bool create_reference_frame(const c_image_registration_options & registration_options,
+      const c_input_sequence::sptr & input_sequence, bool is_external_file,
       int master_frame_pos, int max_frames_to_stack,
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
 
+  bool setup_frame_registration(const c_frame_registration::sptr & frame_registration,
+      cv::Mat & reference_frame, cv::Mat & reference_mask);
+
+  bool setup_frame_accumulation();
+
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
-      int startpos, int endpos);
+      int startpos, int endpos,
+      bool generating_master_frame);
 
   int select_master_frame(const c_input_sequence::sptr & input_sequence);
 
@@ -318,7 +331,7 @@ protected:
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
-  bool upscale_required(frame_upscale_stage current_stage) const;
+  bool upscale_required(frame_upscale_stage current_stage, bool generating_master_frame) const;
 
 protected:
 
@@ -329,10 +342,6 @@ protected:
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
-
-  int master_frame_pos_ = -1;
-  bool master_frame_generation_ = false;
-  bool external_master_frame_ = false;
 
   std::string output_file_name_;
 

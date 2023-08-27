@@ -57,13 +57,8 @@ struct c_jovian_derotation_options {
   double max_rotation = +40 * CV_PI / 180;
   int max_pyramid_level = -1;
   int num_orientations = 1;
-  int eccflow_support_scale = 4;
-  int eccflow_normalization_scale = 0;
-  int eccflow_max_pyramid_level = 0;
-  //bool align_planetary_disk_masks = true;
+  int max_context_size = 5;
   bool derotate_all_frames = false;
-  int  derotate_all_frames_max_context_size = 3;
-  bool rotate_jovian_disk_horizontally = false;
 };
 
 enum master_frame_selection_method {

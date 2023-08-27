@@ -46,15 +46,6 @@ public:
   void set_num_orientations(int v);
   int num_orientations() const;
 
-  void set_eccflow_support_scale(int v);
-  int eccflow_support_scale() const;
-
-  void set_eccflow_normalization_scale(int v);
-  int eccflow_normalization_scale() const;
-
-  void set_eccflow_max_pyramid_level(int v);
-  int max_eccflow_pyramid_level(int v);
-
   const cv::RotatedRect & jovian_ellipse() const;
   const cv::Mat1b & jovian_ellipse_mask() const ;
 
@@ -95,9 +86,6 @@ protected:
   double max_rotation_ = +30 * CV_PI / 180;
   int max_pyramid_level_ = -1;
   int num_orientations_ = 3;
-  int eccflow_support_scale_ = 4;
-  int eccflow_normalization_scale_ = 0;
-  int eccflow_max_pyramid_level_ = 0;
 
   std::string debug_path_;
 };

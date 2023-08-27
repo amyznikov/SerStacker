@@ -143,15 +143,8 @@ protected:
   QNumericBox * max_pyramid_level_ctl = nullptr;
   QNumericBox * num_orientations_ctl = nullptr;
 
-//  QNumberEditBox * normalization_scale_ctl = nullptr;
-//  QNumberEditBox * normalization_blur_ctl = nullptr;
-  QNumericBox * eccflow_support_scale_ctl = nullptr;
-  QNumericBox * eccflow_normalization_scale_ctl = nullptr;
-  QNumericBox * eccflow_max_pyramid_level_ctl = nullptr;
-  //QNumberEditBox * hlines_ctl = nullptr;
-  //QCheckBox * align_planetary_disk_masks_ctl = nullptr;
   QCheckBox * derotate_all_frames_ctl = nullptr;
-  QNumericBox * derotate_all_frames_max_context_size_ctl = nullptr;
+  QNumericBox * max_context_size_ctl = nullptr;
   QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
 
   QWidgetList controls;
@@ -283,14 +276,10 @@ public:
   void setEnableExternalFile(bool v) override;
   bool enableExternalFile() const override;
 
-//  void set_current_pipeline(c_image_stacking_pipeline * pipeline);
-//  c_image_stacking_pipeline * current_pipeline() const;
-
 protected:
   void onupdatecontrols() override;
 
 protected:
-  // c_image_stacking_pipeline * current_pipeline_ = nullptr;
   c_image_registration_options * options_ = nullptr;
   QMotionTypeCombo * motion_type_ctl = nullptr;
   QRegistrationColorChannelCombo * registration_channel_ctl = nullptr;
@@ -302,8 +291,8 @@ protected:
   QMasterFrameOptions * masterFrameOptions_ctl = nullptr;
   QFeatureBasedRegistrationOptions * featureRegistrationOptions_ctl = nullptr;
   QEccRegistrationOptions * eccOptions_ctl = nullptr;
-  QEccFlowRegistrationOptions * eccFlowOptions_ctl = nullptr;
   QJovianDerotationOptions * jovianDerotationOptions_ctl = nullptr;
+  QEccFlowRegistrationOptions * eccFlowOptions_ctl = nullptr;
 };
 
 

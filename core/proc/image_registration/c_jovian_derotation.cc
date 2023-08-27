@@ -238,36 +238,6 @@ int c_jovian_derotation::num_orientations() const
   return num_orientations_;
 }
 
-void c_jovian_derotation::set_eccflow_support_scale(int v)
-{
-  eccflow_support_scale_ = v;
-}
-
-int c_jovian_derotation::eccflow_support_scale() const
-{
-  return eccflow_support_scale_;
-}
-
-void c_jovian_derotation::set_eccflow_normalization_scale(int v)
-{
-  eccflow_normalization_scale_ = v;
-}
-
-int c_jovian_derotation::eccflow_normalization_scale() const
-{
-  return eccflow_normalization_scale_;
-}
-
-void c_jovian_derotation::set_eccflow_max_pyramid_level(int v)
-{
-  eccflow_max_pyramid_level_ = v;
-}
-
-int c_jovian_derotation::max_eccflow_pyramid_level(int v)
-{
-  return eccflow_max_pyramid_level_;
-}
-
 const cv::RotatedRect& c_jovian_derotation::jovian_ellipse() const
 {
   return jovian_ellipse_;

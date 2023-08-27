@@ -530,45 +530,16 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           }));
 
 
-
-//  controls.append(align_planetary_disk_masks_ctl =
-//      add_checkbox("align planetary disk masks",
-//          [this](bool checked) {
-//            if ( options_ && options_->align_planetary_disk_masks != checked ) {
-//              options_->align_planetary_disk_masks = checked;
-//              Q_EMIT parameterChanged();
-//            }
-//          }));
-
-  controls.append(eccflow_support_scale_ctl =
-      add_numeric_box<int>("eccflow_support_scale:",
+  controls.append(max_context_size_ctl =
+      add_numeric_box<int>("max_context_size:",
           "",
           [this](double value) {
-            if ( options_ && options_->eccflow_support_scale != value ) {
-              options_->eccflow_support_scale = value;
+            if ( options_ && options_->max_context_size != value ) {
+              options_->max_context_size = value;
               Q_EMIT parameterChanged();
             }
           }));
 
-  controls.append(eccflow_normalization_scale_ctl =
-      add_numeric_box<int>("eccflow_normalization_scale:",
-          "",
-          [this](double value) {
-            if ( options_ && options_->eccflow_normalization_scale != value ) {
-              options_->eccflow_normalization_scale = value;
-              Q_EMIT parameterChanged();
-            }
-          }));
-
-  controls.append(eccflow_max_pyramid_level_ctl =
-      add_numeric_box<int>("eccflow_max_pyramid_level:",
-          "",
-          [this](double value) {
-            if ( options_ && options_->eccflow_max_pyramid_level != value ) {
-              options_->eccflow_max_pyramid_level = value;
-              Q_EMIT parameterChanged();
-            }
-          }));
 
   controls.append(derotate_all_frames_ctl =
       add_checkbox("process all frames",
@@ -576,30 +547,10 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
           [this](bool checked) {
             if ( options_ && options_->derotate_all_frames != checked ) {
               options_->derotate_all_frames = checked;
-              //derotate_all_frames_max_context_size_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
           }));
 
-  controls.append(derotate_all_frames_max_context_size_ctl =
-      add_numeric_box<int>("max_context_size:",
-          "",
-          [this](double value) {
-            if ( options_ && options_->derotate_all_frames_max_context_size != value ) {
-              options_->derotate_all_frames_max_context_size = value;
-              Q_EMIT parameterChanged();
-            }
-          }));
-
-  controls.append(align_jovian_disk_horizontally_ctl =
-      add_checkbox("align_jovian_disk_horizontally",
-          "",
-          [this](bool checked) {
-            if ( options_ && options_->rotate_jovian_disk_horizontally != checked ) {
-              options_->rotate_jovian_disk_horizontally = checked;
-              Q_EMIT parameterChanged();
-            }
-          }));
 
   updateControls();
 }
@@ -628,16 +579,9 @@ void QJovianDerotationOptions::onupdatecontrols()
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
     num_orientations_ctl->setValue(options_->num_orientations);
-    //align_planetary_disk_masks_ctl->setChecked(options_->align_planetary_disk_masks);
-    eccflow_support_scale_ctl->setValue(options_->eccflow_support_scale);
-    eccflow_normalization_scale_ctl->setValue(options_->eccflow_normalization_scale);
-    eccflow_max_pyramid_level_ctl->setValue(options_->eccflow_max_pyramid_level);
+    max_context_size_ctl->setValue(options_->max_context_size);
     derotate_all_frames_ctl->setChecked(options_->derotate_all_frames);
-    derotate_all_frames_max_context_size_ctl->setValue(options_->derotate_all_frames_max_context_size);
-    align_jovian_disk_horizontally_ctl->setChecked(options_->rotate_jovian_disk_horizontally);
     update_controls_state();
-
-    //derotate_all_frames_max_context_size_ctl->setEnabled(options_->derotate_all_frames);
 
     setEnabled(true);
   }
@@ -1500,15 +1444,17 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
   connect(eccOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+  add_expandable_groupbox("Jovian Derotation Options",
+      jovianDerotationOptions_ctl = new QJovianDerotationOptions(this));
+  connect(jovianDerotationOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
   add_expandable_groupbox("ECC Flow Registration Options",
       eccFlowOptions_ctl = new QEccFlowRegistrationOptions(this));
   connect(eccFlowOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  add_expandable_groupbox("Jovian Derotation Options",
-      jovianDerotationOptions_ctl = new QJovianDerotationOptions(this));
-  connect(jovianDerotationOptions_ctl, &QSettingsWidget::parameterChanged,
-      this, &ThisClass::parameterChanged);
+  updateControls();
 }
 
 void QImageRegistrationOptions::set_registration_options(c_image_registration_options * options)
@@ -1536,19 +1482,6 @@ bool QImageRegistrationOptions::enableExternalFile() const
 {
   return masterFrameOptions_ctl->enableExternalFile();
 }
-
-
-//void QImageRegistrationOptions::set_current_pipeline(c_image_stacking_pipeline * current_pipeline)
-//{
-//  current_pipeline_ = current_pipeline;
-//  options_ = current_pipeline_ ? &current_pipeline_->registration_options() : nullptr;
-//  updateControls();
-//}
-//
-//c_image_stacking_pipeline * QImageRegistrationOptions::current_pipeline() const
-//{
-//  return current_pipeline_;
-//}
 
 void QImageRegistrationOptions::onupdatecontrols()
 {

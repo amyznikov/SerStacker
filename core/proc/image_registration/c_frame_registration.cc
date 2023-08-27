@@ -403,9 +403,6 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
     jovian_derotation_.set_max_pyramid_level(options_.jovian_derotation.max_pyramid_level);
     jovian_derotation_.set_num_orientations(options_.jovian_derotation.num_orientations);
-    jovian_derotation_.set_eccflow_support_scale(options_.jovian_derotation.eccflow_support_scale);
-    jovian_derotation_.set_eccflow_normalization_scale(options_.jovian_derotation.eccflow_normalization_scale);
-    jovian_derotation_.set_eccflow_max_pyramid_level(options_.jovian_derotation.eccflow_max_pyramid_level);
 
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
@@ -647,28 +644,9 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   current_status_.timings.create_remap =
       get_realtime_ms() - t0;
 
-  if( options_.eccflow.enabled ) {
-
-    t0 = get_realtime_ms();
-
-    current_status_.timings.extract_smflow_image =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
-
-    if ( eccflow_mask.empty() ) {
-      eccflow_mask = ecc_mask;
-    }
-
-    if( !eccflow_.compute(ecc_image, current_remap_, eccflow_mask) ) {
-      CF_ERROR("smflow_.compute() fails");
-      return false;
-    }
-
-    current_status_.timings.smflow_align =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
-  }
+  ///////////////
 
   if( options_.jovian_derotation.enabled ) {
-
 
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation", debug_path_.c_str()));
@@ -697,7 +675,55 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
+    // xxxxxxxxx
+
+    const cv::Mat2f & derotation_remap =
+        jovian_derotation_.current_derotation_remap();
+
+    const cv::Mat1f & current_wmask =
+        jovian_derotation_.current_wmask();
+
+    for( int y = 0; y < current_remap_.rows; ++y ) {
+      for( int x = 0; x < current_remap_.cols; ++x ) {
+        if( current_wmask[y][x] > 0 ) {
+          current_remap_[y][x][0] += derotation_remap[y][x][0] - x;
+          current_remap_[y][x][1] += derotation_remap[y][x][1] - y;
+        }
+      }
+    }
+
+    if ( !debug_path_.empty() ) {
+      save_image(current_remap_,
+          ssprintf("%s/remap_debug/current_remap_after_derotation.flo",
+              debug_path_.c_str()));
+    }
+
+    // xxxxxxxxx
   }
+  ///////////////
+
+  if( options_.eccflow.enabled ) {
+
+    t0 = get_realtime_ms();
+
+    current_status_.timings.extract_smflow_image =
+        (t1 = get_realtime_ms()) - t0, t0 = t1;
+
+    if ( eccflow_mask.empty() ) {
+      eccflow_mask = ecc_mask;
+    }
+
+    if( !eccflow_.compute(ecc_image, current_remap_, eccflow_mask) ) {
+      CF_ERROR("smflow_.compute() fails");
+      return false;
+    }
+
+    current_status_.timings.smflow_align =
+        (t1 = get_realtime_ms()) - t0, t0 = t1;
+  }
+
+  ///////////////
+
 
   if( dst.needed() || dstmask.needed() ) {
 
@@ -1262,6 +1288,45 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
       cv::erode(out_mask, out_mask, cv::Mat1b(5, 5, 255), cv::Point(-1, -1), 1,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
+
+    if ( options_.jovian_derotation.enabled ) {
+
+      // size must be referece_image.size()
+      // const cv::Mat orig_mask =
+      //    dst_mask.getMat();
+
+      cv::Mat new_mask;
+
+      if ( out_mask.depth() == CV_32F ) {
+        out_mask.copyTo(new_mask);
+      }
+      else {
+        out_mask.convertTo(new_mask, CV_32F, 1./255);
+      }
+
+      const cv::Mat1f & current_wmask =
+          jovian_derotation_.current_wmask();
+
+      current_wmask.copyTo(new_mask,
+          jovian_derotation_.jovian_ellipse_mask());
+
+      static int iitest = 0;
+
+      if ( !debug_path_.empty() ) {
+        save_image(out_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", debug_path_.c_str(), iitest));
+        save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", debug_path_.c_str(), iitest));
+      }
+
+      cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
+      new_mask.setTo(0, ~out_mask);
+      if ( !debug_path_.empty() ) {
+        save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", debug_path_.c_str(), iitest));
+      }
+
+      dst_mask.move(new_mask);
+
+      ++iitest;
+    }
   }
 
   return true;
@@ -1274,124 +1339,131 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
     enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
-  INSTRUMENT_REGION("");
+  return base_remap(rmap,
+      _src, dst,
+      _src_mask, dst_mask,
+      interpolation_flags,
+      border_mode,
+      border_value);
 
-  bool enable_jovian_derotation =
-      options_.jovian_derotation.enabled;
+//  INSTRUMENT_REGION("");
+//
+//  bool enable_jovian_derotation =
+//      options_.jovian_derotation.enabled;
+//
+//  if( enable_jovian_derotation && rmap.size() != current_remap_.size() ) {
+//    CF_ERROR("ERROR: Sorry, scaled remaps are not supported for jovian derotations yet.");
+//    enable_jovian_derotation = false;
+//  }
+//
+//  if( !enable_jovian_derotation ) {
+//
+//    return base_remap(rmap,
+//        _src, dst,
+//        _src_mask, dst_mask,
+//        interpolation_flags,
+//        border_mode,
+//        border_value);
+//  }
+//
+//  if( dst_mask.needed() ) {
+//
+//    bool fOk =
+//        base_remap(rmap,
+//            cv::noArray(), cv::noArray(),
+//            _src_mask, dst_mask,
+//            interpolation_flags,
+//            border_mode,
+//            border_value);
+//
+//    if( !fOk ) {
+//      CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails");
+//      return false;
+//    }
+//  }
 
-  if( enable_jovian_derotation && rmap.size() != current_remap_.size() ) {
-    CF_ERROR("ERROR: Sorry, scaled remaps are not supported for jovian derotations yet.");
-    enable_jovian_derotation = false;
-  }
-
-  if( !enable_jovian_derotation ) {
-
-    return base_remap(rmap,
-        _src, dst,
-        _src_mask, dst_mask,
-        interpolation_flags,
-        border_mode,
-        border_value);
-  }
-
-  if( dst_mask.needed() ) {
-
-    bool fOk =
-        base_remap(rmap,
-            cv::noArray(), cv::noArray(),
-            _src_mask, dst_mask,
-            interpolation_flags,
-            border_mode,
-            border_value);
-
-    if( !fOk ) {
-      CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails");
-      return false;
-    }
-  }
-
-  if( dst.needed() ) {
-
-    // size must be reference_image.size()
-    cv::Mat2f current_total_remap =
-        rmap.clone();
-
-    const cv::Mat2f & derotation_remap =
-        jovian_derotation_.current_derotation_remap();
-
-    const cv::Mat1f & current_wmask =
-        jovian_derotation_.current_wmask();
-
-    for( int y = 0; y < current_total_remap.rows; ++y ) {
-      for( int x = 0; x < current_total_remap.cols; ++x ) {
-        if( current_wmask[y][x] > 0 ) {
-          current_total_remap[y][x][0] += derotation_remap[y][x][0] - x;
-          current_total_remap[y][x][1] += derotation_remap[y][x][1] - y;
-        }
-      }
-    }
-
-    if ( !debug_path_.empty() ) {
-      save_image(current_total_remap, ssprintf("%s/remap_debug/current_total_remap.flo", debug_path_.c_str()));
-    }
-
-    bool fOk =
-        base_remap(current_total_remap,
-            _src, dst,
-            cv::noArray(), cv::noArray(),
-            interpolation_flags,
-            border_mode,
-            border_value);
-
-    if( !fOk ) {
-      CF_ERROR(" c_jovian_rotation_registration:  "
-          "base::custom_remap() fails fails");
-      return false;
-    }
-  }
-
-
-  if( dst_mask.needed() ) {
-
-    // size must be referece_image.size()
-    const cv::Mat orig_mask =
-        dst_mask.getMat();
-
-    cv::Mat new_mask;
-
-    if ( orig_mask.depth() == CV_32F ) {
-      orig_mask.copyTo(new_mask);
-    }
-    else {
-      orig_mask.convertTo(new_mask, CV_32F, 1./255);
-    }
-
-    const cv::Mat1f & current_wmask =
-        jovian_derotation_.current_wmask();
-
-    current_wmask.copyTo(new_mask,
-        jovian_derotation_.jovian_ellipse_mask());
-
-    static int iitest = 0;
-
-    if ( !debug_path_.empty() ) {
-      save_image(orig_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", debug_path_.c_str(), iitest));
-      save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", debug_path_.c_str(), iitest));
-    }
-
-    cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
-    new_mask.setTo(0, ~orig_mask);
-    if ( !debug_path_.empty() ) {
-      save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", debug_path_.c_str(), iitest));
-    }
-
-    dst_mask.move(new_mask);
+//  if( dst.needed() ) {
+//
+//    // size must be reference_image.size()
+//    cv::Mat2f current_total_remap =
+//        rmap.clone();
+//
+//    const cv::Mat2f & derotation_remap =
+//        jovian_derotation_.current_derotation_remap();
+//
+//    const cv::Mat1f & current_wmask =
+//        jovian_derotation_.current_wmask();
+//
+//    for( int y = 0; y < current_total_remap.rows; ++y ) {
+//      for( int x = 0; x < current_total_remap.cols; ++x ) {
+//        if( current_wmask[y][x] > 0 ) {
+//          current_total_remap[y][x][0] += derotation_remap[y][x][0] - x;
+//          current_total_remap[y][x][1] += derotation_remap[y][x][1] - y;
+//        }
+//      }
+//    }
+//
+//    if ( !debug_path_.empty() ) {
+//      save_image(current_total_remap, ssprintf("%s/remap_debug/current_total_remap.flo", debug_path_.c_str()));
+//    }
+//
+//    bool fOk =
+//        base_remap(current_total_remap,
+//            _src, dst,
+//            cv::noArray(), cv::noArray(),
+//            interpolation_flags,
+//            border_mode,
+//            border_value);
+//
+//    if( !fOk ) {
+//      CF_ERROR(" c_jovian_rotation_registration:  "
+//          "base::custom_remap() fails fails");
+//      return false;
+//    }
+//  }
 
 
-    ++iitest;
-  }
+//  if( dst_mask.needed() ) {
+//
+//    // size must be referece_image.size()
+//    const cv::Mat orig_mask =
+//        dst_mask.getMat();
+//
+//    cv::Mat new_mask;
+//
+//    if ( orig_mask.depth() == CV_32F ) {
+//      orig_mask.copyTo(new_mask);
+//    }
+//    else {
+//      orig_mask.convertTo(new_mask, CV_32F, 1./255);
+//    }
+//
+//    const cv::Mat1f & current_wmask =
+//        jovian_derotation_.current_wmask();
+//
+//    current_wmask.copyTo(new_mask,
+//        jovian_derotation_.jovian_ellipse_mask());
+//
+//    static int iitest = 0;
+//
+//    if ( !debug_path_.empty() ) {
+//      save_image(orig_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", debug_path_.c_str(), iitest));
+//      save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", debug_path_.c_str(), iitest));
+//    }
+//
+//    cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
+//    new_mask.setTo(0, ~orig_mask);
+//    if ( !debug_path_.empty() ) {
+//      save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", debug_path_.c_str(), iitest));
+//    }
+//
+//    dst_mask.move(new_mask);
+//
+//
+//    ++iitest;
+//  }
 
-  return true;
+//  return true;
 }
 
 

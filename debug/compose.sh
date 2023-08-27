@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LeftInput=20230126_233134_GMT.in.t.avi
-RightInput=20230126_233134_GMT.acc.t.avi
+#LeftInput=20230126_233134_GMT.in.t.avi
+#RightInput=20230126_233134_GMT.acc.t.avi
 
 
 #ffmpeg -i ${LeftInput} -vf \
@@ -36,4 +36,6 @@ RightInput=20230126_233134_GMT.acc.t.avi
 #ffmpeg -i compose1.mov -r 10 -filter_complex "[0]reverse[r];[0][r]concat,loop=4:16,setpts=N/10/TB" -c:v libx264 -crf 10 -pix_fmt yuv420p FF-TEST.mov
 
 
-ffmpeg -i compose1.mov -r 30 -filter_complex "setpts=N/60/TB,tpad=stop_mode=clone:stop_duration=5" -c:v libx264 -crf 21 -pix_fmt yuv420p focus_stack.mov
+# ffmpeg -i compose1.mov -r 30 -filter_complex "setpts=N/60/TB,tpad=stop_mode=clone:stop_duration=5" -c:v libx264 -crf 21 -pix_fmt yuv420p focus_stack.mov
+
+ffmpeg -i JUPITER1.20230825.avi -r 15 -filter_complex "[0]reverse[r];[0][r]concat,loop=4:116,setpts=N/15/TB" -c:v libx264 -crf 10 -pix_fmt yuv420p JUPITER1.20230825.x264.Arsenal-GSO.mp4

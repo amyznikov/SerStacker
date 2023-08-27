@@ -626,7 +626,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
   }
 
   registration_options.jovian_derotation.enabled = true;
-  registration_options.eccflow.enabled = false;
+  registration_options.eccflow.enabled = image_registration_options_.eccflow.enabled;
 
   if ( !(frame_registration_ = create_frame_registration(registration_options)) ) {
     CF_FATAL("create_frame_registration() fails");
@@ -700,7 +700,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 
   const int context_size =
       std::min(input_sequence_->size(),
-          std::max(registration_options.jovian_derotation.derotate_all_frames_max_context_size, 1));
+          std::max(registration_options.jovian_derotation.max_context_size, 1));
 
   for( int i = 0, n = reference_frames.size(); i < n; ++i ) {
 
@@ -712,11 +712,26 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
     const int cpos =
         input_sequence_->current_pos();
 
-    // CF_DEBUG("input_sequence_->seek(pos=%d) OK", cpos);
+    if ( canceled() ) {
+      return false;
+    }
 
     if( !read_input_frame(input_sequence_, reference_frame, reference_mask, false) ) {
       CF_ERROR("read_input_frame(pos=%d) fails", cpos);
       continue;
+    }
+
+    if ( canceled() ) {
+      return false;
+    }
+
+    if ( !select_image_roi(roi_selection_, reference_frame, reference_mask, reference_frame, reference_mask) ) {
+      CF_FATAL("select_image_roi(reference_frame) fails");
+      return false;
+    }
+
+    if ( canceled() ) {
+      return false;
     }
 
     if( image_processing_options_.input_image_processor ) {
@@ -726,11 +741,19 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       }
     }
 
+    if ( canceled() ) {
+      return false;
+    }
+
     if( reference_frame.channels() != 1 ) {
       if( !extract_channel(reference_frame, reference_frame, reference_mask, reference_mask, master_channel) ) {
         CF_ERROR("extract_channel(pos=%d, master_channel='%s') fails", cpos, toString(master_channel));
         return false;
       }
+    }
+
+    if ( canceled() ) {
+      return false;
     }
 
     image_transform.set_translation(0, 0);
@@ -776,7 +799,11 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       }
     }
 
-    CF_DEBUG("setup_frame_registration()");
+    if ( canceled() ) {
+      return false;
+    }
+
+    // CF_DEBUG("setup_frame_registration()");
     if ( !setup_frame_registration(frame_registration_, reference_frame, reference_mask) ) {
       CF_ERROR("setup_frame_registration(pos=%d) fails", cpos);
       return false;
@@ -802,6 +829,10 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
     }
 
     CF_DEBUG("cpos=%d startpos=%d endpos=%d", cpos, startpos, endpos);
+
+    if ( canceled() ) {
+      return false;
+    }
 
     if ( !process_input_sequence(input_sequence_, startpos, endpos, false) ) {
       CF_ERROR("process_input_sequence() fails");
@@ -846,6 +877,9 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       }
     }
 
+    if ( canceled() ) {
+      return false;
+    }
   }
 
 
@@ -3279,12 +3313,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_rotation);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_pyramid_level);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, num_orientations);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, eccflow_support_scale);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, eccflow_normalization_scale);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, eccflow_max_pyramid_level);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames_max_context_size);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, rotate_jovian_disk_horizontally);
+        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_context_size);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, stdev_factor);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, pca_blur);
         //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);

@@ -609,6 +609,9 @@ void QGraphicsRectShape::onSceneRectChanged(const QRectF &rect)
 
 bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
 {
+  QMenu * subMenu;
+  QString copyText;
+
   if ( !showSettingsAction_ ) {
 
     showSettingsAction_ = new QAction("Options...", this);
@@ -620,6 +623,35 @@ bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
 
   menu.addSeparator();
   menu.addAction(showSettingsAction_);
+
+  menu.addSeparator();
+
+  subMenu =
+      menu.addMenu("Copy");
+
+  copyText = qsprintf("%gx%g", rect_.width(), rect_.height());
+  subMenu->addAction(copyText,
+      [copyText]() {
+        QApplication::clipboard()->setText(copyText);
+      });
+
+  copyText = qsprintf("%d;%d;%dx%d", (int) rect_.x(), (int) rect_.y(), (int) rect_.width(), (int) rect_.height());
+  subMenu->addAction(copyText,
+      [copyText]() {
+        QApplication::clipboard()->setText(copyText);
+      });
+
+  copyText = qsprintf("%g;%g;%gx%g", rect_.x(), rect_.y(), rect_.width(), rect_.height());
+  subMenu->addAction(copyText,
+      [copyText]() {
+        QApplication::clipboard()->setText(copyText);
+      });
+
+  copyText = qsprintf("%g;%g;%g;%g", rect_.left(), rect_.top(), rect_.right(), rect_.bottom());
+  subMenu->addAction(copyText,
+      [copyText]() {
+        QApplication::clipboard()->setText(copyText);
+      });
 
   menu.addSeparator();
   Base::popuateContextMenu(e, menu);

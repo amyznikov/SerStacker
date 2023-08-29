@@ -250,18 +250,39 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       const std::string suffix =
           get_file_suffix(fname);
 
+      static const char *cs[] = {
+          ".tiff",
+          ".exr",
+      };
+
+      bool conversion_required = true;
+
+      for( uint i = 0; i < sizeof(cs) / sizeof(cs[0]); ++i ) {
+        if( strcasecmp(suffix.c_str(), cs[i]) == 0 ) {
+          tmp = currenFrame.getMat();
+          conversion_required = false;
+          break;
+        }
+      }
+
+      if( conversion_required ) {
+        convert(currenFrame, tmp, CV_8U);
+      }
+
+
       set_file_suffix(fname, ssprintf("-%06d%s",
           current_frame_index,
           suffix.c_str()));
 
+
       if( with_alpha_mask ) {
-        if( !save_image(currenFrame, currentMask, fname) ) {
+        if( !save_image(tmp, currentMask, fname) ) {
           CF_ERROR("save_image('%s) fails", fname.c_str());
           return false;
         }
       }
       else {
-        if( !save_image(currenFrame, fname) ) {
+        if( !save_image(tmp, fname) ) {
           CF_ERROR("save_image('%s) fails", fname.c_str());
           return false;
         }

@@ -157,6 +157,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
           currentsettings = (QSettingsWidget*) currentgroup->view();
           groups.pop_back();
         }
+
         break;
       }
 
@@ -437,6 +438,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
         inputSourceCombos_.append(w);
 
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
         break;
       }
 
@@ -460,6 +465,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             });
 
         currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
 
         break;
       }
@@ -485,6 +494,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
 
         currentsettings->addRow(w);
 
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
         break;
       }
 
@@ -508,6 +521,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             });
 
         currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
 
         break;
       }
@@ -533,6 +550,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
 
         currentsettings->addRow(w);
 
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
         break;
       }
 
@@ -557,6 +578,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             });
 
         currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
 
         break;
       }

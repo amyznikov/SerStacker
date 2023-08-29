@@ -12,6 +12,10 @@
 # include <tbb/tbb.h>
 #endif
 
+static inline float pow3(float x)
+{
+  return x * x * x;
+}
 
 static void mean_curvature_flow(const cv::Mat & src_image, cv::Mat & dst_image)
 {
@@ -24,55 +28,57 @@ static void mean_curvature_flow(const cv::Mat & src_image, cv::Mat & dst_image)
 #define TOPRIGHT(p)  p[((y)-1) * stride + ((x)+1) * cn + (c)]
 #define BOTTOMLEFT(p)  p[((y)+1) * stride + ((x)-1) * cn + (c)]
 #define BOTTOMRIGHT(p)  p[((y)+1) * stride + ((x)+1) * cn + (c)]
-#define POW2(a) ((a)*(a))
+//#define POW2(a) ((a)*(a))
 
   const int cn = src_image.channels();
   const int stride = src_image.cols * cn;
   const int rows = src_image.rows;
   const int cols = src_image.cols;
-  const float * src = (const float*) src_image.data;
-  float * dst = (float*) dst_image.data;
+  const float *src = (const float*) src_image.data;
+  float *dst = (float*) dst_image.data;
 
 #if HAVE_TBB
   typedef tbb::blocked_range<int> tbb_range;
   tbb::parallel_for(tbb_range(1, rows - 1, 256),
       [=](const tbb_range & range) {
-    for( int y = range.begin(); y < range.end(); ++y ) {
+        for( int y = range.begin(); y < range.end(); ++y ) {
 #else
-    for( int y = 1; y < rows - 1; ++y ) {
+          for( int y = 1; y < rows - 1; ++y ) {
 #endif
 
-      for( int x = 1; x < cols - 1; ++x ) {
+          for( int x = 1; x < cols - 1; ++x ) {
 
-        for( int c = 0; c < cn; c++ ) {
+            for( int c = 0; c < cn; ++c ) {
 
-          CENTER(dst) = CENTER(src);
+              CENTER(dst) = CENTER(src);
 
-          const float dx = RIGHT(src) - LEFT(src);
-          const float dy = BOTTOM(src) - TOP(src);
-          const float magnitude = std::sqrt(POW2(dx) + POW2(dy));
+              const float dx = RIGHT(src) - LEFT(src);
+              const float dy = BOTTOM(src) - TOP(src);
+              const float magnitude = std::sqrt(dx * dx + dy * dy);
 
-          if( magnitude ) {
+              if( magnitude > 0 ) {
 
-            const float dx2 = POW2(dx);
-            const float dy2 = POW2(dy);
+                const float dx2 = dx * dx;
+                const float dy2 = dy * dy;
+                const float d = std::sqrt(pow3(dx2 + dy2)) ;
 
-            const float dxx = RIGHT(src) + LEFT(src) - 2 * CENTER(src);
-            const float dyy = BOTTOM(src) + TOP(src) - 2 * CENTER(src);
-            const float dxy = (BOTTOMRIGHT(src) - TOPRIGHT(src) - BOTTOMLEFT(src) + TOPLEFT(src)) / 4;
+                if ( d > 0 ) {
 
-            const float n = dx2 * dyy + dy2 * dxx - 2. * dx * dy * dxy;
-            const float d = std::sqrt(std::pow(dx2 + dy2, 3));
-            if ( d ) {
-              const float mean_curvature = n / d;
-              CENTER(dst) += magnitude * mean_curvature / 4;
+                  const float dxx = RIGHT(src) + LEFT(src) - 2 * CENTER(src);
+                  const float dyy = BOTTOM(src) + TOP(src) - 2 * CENTER(src);
+                  const float dxy = (BOTTOMRIGHT(src) - TOPRIGHT(src) - BOTTOMLEFT(src) + TOPLEFT(src)) / 4;
+
+                  const float n = dx2 * dyy + dy2 * dxx - 2. * dx * dy * dxy;
+                  const float mean_curvature = n / d;
+
+                  CENTER(dst) += magnitude * mean_curvature / 4;
+                }
+              }
             }
           }
         }
-      }
-    }
 #if HAVE_TBB
-  });
+        });
 #endif
 
 #undef CENTER
@@ -84,7 +90,6 @@ static void mean_curvature_flow(const cv::Mat & src_image, cv::Mat & dst_image)
 #undef TOPRIGHT
 #undef BOTTOMLEFT
 #undef BOTTOMRIGHT
-#undef POW2
 }
 
 void mean_curvature_blur(cv::InputArray src, cv::OutputArray dst, int iterations)
@@ -95,7 +100,7 @@ void mean_curvature_blur(cv::InputArray src, cv::OutputArray dst, int iterations
   const int src_cols = src.cols();
   const int cn = src.channels();
 
-  if ( src.depth() == CV_32F ) {
+  if( src.depth() == CV_32F ) {
     cv::copyMakeBorder(src, src_buf, 1, 1, 1, 1, cv::BORDER_REFLECT101);
   }
   else {
@@ -110,5 +115,5 @@ void mean_curvature_blur(cv::InputArray src, cv::OutputArray dst, int iterations
     cv::swap(src_buf, dst_buf);
   }
 
-  src_buf(cv::Rect(1,1, src_cols, src_rows)).convertTo(dst, src.depth());
+  src_buf(cv::Rect(1, 1, src_cols, src_rows)).convertTo(dst, src.depth());
 }

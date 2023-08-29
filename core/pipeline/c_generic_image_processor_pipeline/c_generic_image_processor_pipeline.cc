@@ -263,6 +263,8 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_p
 
 bool c_generic_image_processor_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
+  lock_guard lock(mutex());
+
   if( display_frame.needed() ) {
     current_image_.copyTo(display_frame);
   }

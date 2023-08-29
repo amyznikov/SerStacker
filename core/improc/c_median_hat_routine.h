@@ -19,6 +19,11 @@ public:
       "median_hat",
       "Difference between input image and it's median blur");
 
+  enum DisplayType {
+    DisplayMedianBlur ,
+    DisplayMedianHat ,
+  };
+
   void set_radius(int v)
   {
     radius_ = v;
@@ -27,6 +32,16 @@ public:
   int radius() const
   {
     return radius_;
+  }
+
+  void set_display_type(DisplayType v)
+  {
+    display_type_ = v;
+  }
+
+  DisplayType display_type() const
+  {
+    return display_type_;
   }
 
   void set_absdiff(bool v)
@@ -42,6 +57,7 @@ public:
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, radius, "Filter radius [px]");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_type, "Output image");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, absdiff, "Use cv::absdiff() instead of cv::subtract()");
 
   }
@@ -50,6 +66,7 @@ public:
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, radius);
+      SERIALIZE_PROPERTY(settings, save, *this, display_type);
       SERIALIZE_PROPERTY(settings, save, *this, absdiff);
       return true;
     }
@@ -64,18 +81,36 @@ public:
     cv::Mat m;
 
     cv::medianBlur(image, m, ksize);
-    if ( absdiff_ ) {
-      cv::absdiff(image, m, image);
+    if ( display_type_ == DisplayMedianBlur ) {
+      image.move(m);
+    }
+    else if ( absdiff_ ) {
+      cv::absdiff(image.getMat(), m, image);
     }
     else {
-      cv::subtract(image, m, image);
+
+      int ddepth = image.depth();
+
+      switch (ddepth) {
+        case CV_8U:
+          ddepth = CV_8S;
+          break;
+        case CV_16U:
+          ddepth = CV_16S;
+          break;
+      }
+
+      cv::subtract(image.getMat(), m, image,
+          cv::noArray(),
+          ddepth);
     }
 
     return true;
   }
 
 protected:
-  int radius_ = 1;
+  int radius_ = 2;
+  DisplayType display_type_ = DisplayMedianHat;
   bool absdiff_ = false;
 };
 

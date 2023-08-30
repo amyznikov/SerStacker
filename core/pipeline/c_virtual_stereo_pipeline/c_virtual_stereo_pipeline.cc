@@ -590,6 +590,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
 
   if ( !run_polar_stereo() ) {
     CF_ERROR("run_stereo_matcher() fails");
+    return false;
   }
 
   return true;
@@ -717,14 +718,14 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
 
     if( !stereo_matcher_.compute(frames[0], frames[1], current_disparity_) ) {
       CF_ERROR("stereo_matcher_.compute() fails");
+      return false;
     }
-    else {
-      cv::remap(current_disparity_, current_disparity_,
-          inverse_remap, cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_CONSTANT,
-          cv::Scalar::all(-1));
-    }
+
+    cv::remap(current_disparity_, current_disparity_,
+        inverse_remap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT,
+        cv::Scalar::all(-1));
 
     if( output_options_.save_disparity_frames && !current_disparity_.empty() ) {
 

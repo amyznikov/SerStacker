@@ -14,6 +14,10 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+#if HAVE_TBB
+# include <tbb/tbb.h>
+#endif
+
 
 template<>
 const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
@@ -1083,7 +1087,6 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     cv::Mat1b & inliers,
     const c_lm_camera_pose_options * opts = nullptr)
 {
-
   /* Unpack euler angles from levmar parameters array */
   static const auto unpack_A =
       [](const std::vector<double> & p) -> cv::Vec3d {
@@ -1156,42 +1159,51 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
         return rhs / sqrt(erp.x * erp.x + erp.y * erp.y);
     };
 
+
   class c_levmar_solver_callback:
       public c_levmar_solver::callback
   {
     cv::Matx33d camera_matrix;
-    cv::Matx33d camera_matrix_t_inv;
     cv::Matx33d camera_matrix_inv;
-    const std::vector<cv::Point2f> & current_keypoints;
-    const std::vector<cv::Point2f> & reference_keypoints;
-    const cv::Mat1b & inliers;
-    int numInliers;
+    cv::Matx33d camera_matrix_t_inv;
+    std::vector<cv::Point2f> current_keypoints;
+    std::vector<cv::Point2f> reference_keypoints;
     const double Tfix;
     const int iTfix;
     double robust_threshold = 5.;
 
   public:
-    c_levmar_solver_callback(const cv::Matx33d & _camera_matrix,
-        const std::vector<cv::Point2f> & _current_keypoints,
+    c_levmar_solver_callback(const std::vector<cv::Point2f> & _current_keypoints,
         const std::vector<cv::Point2f> & _reference_keypoints,
         const cv::Mat1b & _inliers,
+        const cv::Matx33d & _camera_matrix,
+        const cv::Matx33d & _camera_matrix_inv,
+        const cv::Matx33d & _camera_matrix_t_inv,
         double _Tfix,
         int _iTfix ) :
 
         camera_matrix(_camera_matrix),
-        current_keypoints(_current_keypoints),
-        reference_keypoints(_reference_keypoints),
-        inliers(_inliers),
+        camera_matrix_inv(_camera_matrix_inv),
+        camera_matrix_t_inv(_camera_matrix_t_inv),
         Tfix(_Tfix),
-        iTfix(_iTfix),
-        numInliers(_inliers.empty() ? _current_keypoints.size() :
-            cv::countNonZero(_inliers))
+        iTfix(_iTfix)
     {
-      camera_matrix_t_inv =
-          camera_matrix.t().inv();
+      if ( _inliers.empty() ) {
+        current_keypoints = _current_keypoints;
+        reference_keypoints = _reference_keypoints;
+      }
+      else {
 
-      camera_matrix_inv =
-          camera_matrix.inv();
+        current_keypoints.reserve(_current_keypoints.size());
+        reference_keypoints.reserve(_current_keypoints.size());
+
+        for ( int i = 0, n = _current_keypoints.size(); i < n; ++i ) {
+          if ( _inliers[i][0] ) {
+            current_keypoints.emplace_back(_current_keypoints[i]);
+            reference_keypoints.emplace_back(_reference_keypoints[i]);
+          }
+        }
+      }
     }
 
     void set_robust_threshold(double v )
@@ -1213,25 +1225,27 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       const cv::Matx33d H = camera_matrix * R * camera_matrix_inv;
       const cv::Point2d E = compute_epipole(camera_matrix, unpack_T(p, Tfix, iTfix));
 
-      rhs.resize(numInliers);
+      rhs.resize(current_keypoints.size());
+
 
       // compute projection error and apply robust function
-      if( inliers.empty() ) {
-        for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
-          rhs[i] = std::min(robust_threshold,
-              compute_projection_error(current_keypoints[i],
-                  reference_keypoints[i], H, E));
-        }
-      }
-      else {
-        for( int i = 0, j = 0, n = current_keypoints.size(); i < n; ++i ) {
-          if( inliers[i][0] ) {
-            rhs[j++] = std::min(robust_threshold,
-                compute_projection_error(current_keypoints[i],
-                    reference_keypoints[i], H, E));
-          }
-        }
-      }
+
+#if HAVE_TBB
+      typedef tbb::blocked_range<int> tbb_range;
+      constexpr int tbb_grain_size = 128;
+      tbb::parallel_for(tbb_range(0, (int) current_keypoints.size(), tbb_grain_size),
+          [this, &rhs, H, E](const tbb_range & range) {
+            for( int i = range.begin(), n = range.end(); i < n; ++i ) {
+#else
+            for( int i = 0, n = current_keypoints.size(); i < n; ++i ) {
+#endif
+              rhs[i] = std::min(robust_threshold,
+                  compute_projection_error(current_keypoints[i],
+                      reference_keypoints[i], H, E));
+            }
+#if HAVE_TBB
+      });
+#endif
 
       return true;
     }
@@ -1333,10 +1347,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     /*
      * Setup c_levmar_solver callback instance
      * */
-    c_levmar_solver_callback callback(camera_matrix,
-        current_keypoints,
-        reference_keypoints,
-        inliers,
+    c_levmar_solver_callback callback(current_keypoints, reference_keypoints, inliers,
+        camera_matrix, camera_matrix_inv, camera_matrix_t_inv,
         Tfix,
         iTfix);
 

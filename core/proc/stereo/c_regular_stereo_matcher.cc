@@ -184,12 +184,12 @@ void c_regular_stereo_matcher::updateStereoBMOptions()
       const c_cvStereoBMOptions &opts =
           stereoBM_options_;
 
+      stereoBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoBM_->setNumDisparities(opts.numDisparities);
       stereoBM_->setMinDisparity(opts.minDisparity);
       stereoBM_->setBlockSize(opts.blockSize);
       stereoBM_->setSpeckleWindowSize(opts.speckleWindowSize);
       stereoBM_->setSpeckleRange(opts.speckleRange);
-      stereoBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoBM_->setPreFilterType(opts.preFilterType);
       stereoBM_->setPreFilterSize(opts.preFilterSize);
       stereoBM_->setPreFilterCap(opts.preFilterCap);
@@ -225,13 +225,13 @@ void c_regular_stereo_matcher::updateStereoSGBMOptions()
       const c_cvStereoSGBMOptions &opts =
           stereoSGBM_options_;
 
+      stereoSGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoSGBM_->setMode(opts.mode);
       stereoSGBM_->setMinDisparity(opts.minDisparity);
       stereoSGBM_->setNumDisparities(opts.numDisparities);
       stereoSGBM_->setBlockSize(opts.blockSize);
       stereoSGBM_->setSpeckleWindowSize(opts.speckleWindowSize);
       stereoSGBM_->setSpeckleRange(opts.speckleRange);
-      stereoSGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoSGBM_->setPreFilterCap(opts.preFilterCap);
       stereoSGBM_->setUniquenessRatio(opts.uniquenessRatio);
       stereoSGBM_->setP1(opts.P1);
@@ -289,12 +289,12 @@ void c_regular_stereo_matcher::updateStereoBinaryBMOptions()
       const c_cvStereoBinaryBMOptions &opts =
           stereoBinaryBM_options_;
 
+      stereoBinaryBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoBinaryBM_->setMinDisparity(opts.minDisparity);
       stereoBinaryBM_->setNumDisparities(opts.numDisparities);
       stereoBinaryBM_->setBlockSize(opts.blockSize);
       stereoBinaryBM_->setSpeckleWindowSize(opts.speckleWindowSize);
       stereoBinaryBM_->setSpeckleRange(opts.speckleRange);
-      stereoBinaryBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoBinaryBM_->setPreFilterType(opts.preFilterType);
       stereoBinaryBM_->setPreFilterSize(opts.preFilterSize);
       stereoBinaryBM_->setPreFilterCap(opts.preFilterCap);
@@ -334,12 +334,12 @@ void c_regular_stereo_matcher::updateStereoBinarySGBMOptions()
       const c_cvStereoBinarySGBMOptions &opts =
           stereoBinarySGBM_options_;
 
+      stereoBinarySGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoBinarySGBM_->setMinDisparity(opts.minDisparity);
       stereoBinarySGBM_->setNumDisparities(opts.numDisparities);
       stereoBinarySGBM_->setBlockSize(opts.blockSize);
       stereoBinarySGBM_->setSpeckleWindowSize(opts.speckleWindowSize);
       stereoBinarySGBM_->setSpeckleRange(opts.speckleRange);
-      stereoBinarySGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
       stereoBinarySGBM_->setPreFilterCap(opts.preFilterCap);
       stereoBinarySGBM_->setUniquenessRatio(opts.uniquenessRatio);
       stereoBinarySGBM_->setP1(opts.P1);
@@ -467,10 +467,10 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
               cv::StereoBM::create(opts.numDisparities,
                   opts.blockSize);
 
+          stereoBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
           stereoBM_->setMinDisparity(opts.minDisparity);
           stereoBM_->setSpeckleWindowSize(opts.speckleWindowSize);
           stereoBM_->setSpeckleRange(opts.speckleRange);
-          stereoBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
           stereoBM_->setPreFilterType(opts.preFilterType);
           stereoBM_->setPreFilterSize(opts.preFilterSize);
           stereoBM_->setPreFilterCap(opts.preFilterCap);
@@ -554,12 +554,12 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
               cv::stereo::StereoBinaryBM::create(opts.numDisparities,
                   opts.blockSize);
 
+          stereoBinaryBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
           stereoBinaryBM_->setMinDisparity(opts.minDisparity);
           stereoBinaryBM_->setNumDisparities(opts.numDisparities);
           stereoBinaryBM_->setBlockSize(opts.blockSize);
           stereoBinaryBM_->setSpeckleWindowSize(opts.speckleWindowSize);
           stereoBinaryBM_->setSpeckleRange(opts.speckleRange);
-          stereoBinaryBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
           stereoBinaryBM_->setPreFilterType(opts.preFilterType);
           stereoBinaryBM_->setPreFilterSize(opts.preFilterSize);
           stereoBinaryBM_->setPreFilterCap(opts.preFilterCap);
@@ -601,7 +601,6 @@ bool c_regular_stereo_matcher::create_stereo_matcher(const cv::Size & image_size
           stereoBinarySGBM_->setBlockSize(opts.blockSize);
           stereoBinarySGBM_->setSpeckleWindowSize(opts.speckleWindowSize);
           stereoBinarySGBM_->setSpeckleRange(opts.speckleRange);
-          stereoBinarySGBM_->setDisp12MaxDiff(opts.disp12MaxDiff);
           stereoBinarySGBM_->setPreFilterCap(opts.preFilterCap);
           stereoBinarySGBM_->setUniquenessRatio(opts.uniquenessRatio);
           stereoBinarySGBM_->setP1(opts.P1);

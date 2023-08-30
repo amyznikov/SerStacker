@@ -78,6 +78,7 @@
 #include "geometry/c_tangential_transform_routine.h"
 #include "geometry/c_polar_warp_routine.h"
 #include "geometry/c_rotate_image_routine.h"
+#include "geometry/c_unkanala_remap_routine.h"
 
 #include "c_mean_curvature_blur_routine.h"
 #include "feature2d/c_fit_jovian_ellipse_routine.h"
@@ -167,6 +168,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_birdview_transform_routine::class_factory_instance());
     register_class_factory(c_tangential_transform_routine::class_factory_instance());
     register_class_factory(c_polar_warp_routine::class_factory_instance());
+    register_class_factory(c_unkanala_remap_routine::class_factory_instance());
 
 
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());

@@ -14,6 +14,7 @@
 #include <core/settings/opencv_settings.h>
 #include <core/settings/camera_settings.h>
 #include <core/proc/camera_calibration/camera_pose.h>
+#include <core/proc/stereo/c_epipolar_matcher.h>
 #include <core/io/c_output_frame_writer.h>
 
 struct c_virtual_stereo_input_options :
@@ -45,6 +46,12 @@ struct c_virtual_stereo_feature2d_options
 struct c_virtual_stereo_matcher_options
 {
   bool enable_stereo_matcher = true;
+};
+
+
+struct c_epipolar_matcher_options
+{
+  bool enable_epipolar_matcher = true;
 };
 
 struct c_virtual_stereo_output_options :
@@ -152,10 +159,12 @@ protected:
   c_lm_camera_pose_options camera_pose_options_;
   c_virtual_stereo_matcher_options stereo_matcher_options_;
   c_virtual_stereo_output_options output_options_;
+  c_epipolar_matcher_options epipolar_matcher_options_;
 
   c_sparse_feature_extractor::ptr keypoints_extractor_;
   c_feature2d_matcher::ptr keypoints_matcher_;
   c_regular_stereo_matcher stereo_matcher_;
+  c_epipolar_matcher epipolar_matcher_;
 
   cv::Mat current_image_;
   cv::Mat previous_image_;

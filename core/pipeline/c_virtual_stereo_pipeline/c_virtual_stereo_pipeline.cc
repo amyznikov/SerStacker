@@ -144,6 +144,11 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     stereo_matcher_.serialize(section, save);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "epipolar_matcher")) ) {
+    SERIALIZE_OPTION(section, save, epipolar_matcher_options_, enable_epipolar_matcher);
+    epipolar_matcher_.serialize(section, save);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
@@ -205,14 +210,16 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
-//    PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher", "");
-//      PIPELINE_CTL(ctrls, stereo_matcher_options_.enable_stereo_matcher, "enable_stereo_matcher", "");
-      PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher Options", "");
-        PIPELINE_CTL_STEREO_MATCHER_OPTIONS(ctrls, stereo_matcher_);
-      PIPELINE_CTL_END_GROUP(ctrls);
-//    PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher Options", "");
+      PIPELINE_CTL_STEREO_MATCHER_OPTIONS(ctrls, stereo_matcher_);
+    PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
+    PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher Options", "");
+      PIPELINE_CTL(ctrls, epipolar_matcher_options_.enable_epipolar_matcher, "enable epipolar matcher", "");
+    PIPELINE_CTL_END_GROUP(ctrls);
+    ////////
+
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_processor, "Input image preprocessor", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.feature2d_preprocessor, "Feature2D image preprocessor", "");

@@ -7,7 +7,7 @@
 
 
 #include "unkanala.h"
-
+#include <core/debug.h>
 
 static const double hyp(double x, double y)
 {
@@ -16,11 +16,31 @@ static const double hyp(double x, double y)
 
 bool create_unkanala_remap(const c_kanala_intrinsics & intrinsics, cv::Mat2f & output_remap)
 {
+  const int w = intrinsics.image_size.width;
+  const int h = intrinsics.image_size.height;
+
+  if(  w < 1 || h < 1 ) {
+    CF_ERROR("invalid image size not specified w=%d h=%d", w, h);
+    return false;
+  }
 
   const double fx = intrinsics.focal_length_x;
   const double fy = intrinsics.focal_length_y;
-  const double cx = intrinsics.principal_point_x >= 0 ? intrinsics.principal_point_x : intrinsics.image_size.width / 2;
-  const double cy = intrinsics.principal_point_y >= 0 ? intrinsics.principal_point_y : intrinsics.image_size.height / 2;
+  if( fx <= 0 || fy <= 0 ) {
+    CF_ERROR("invalid focal length specified: fx=%g fy=%g", fx, fy);
+    return false;
+  }
+
+
+  const double cx =
+      intrinsics.principal_point_x >= 0 ?
+          intrinsics.principal_point_x :
+          w / 2;
+
+  const double cy =
+      intrinsics.principal_point_y >= 0 ?
+          intrinsics.principal_point_y :
+          h / 2;
 
   output_remap.create(intrinsics.image_size);
 
@@ -28,7 +48,7 @@ bool create_unkanala_remap(const c_kanala_intrinsics & intrinsics, cv::Mat2f & o
     for ( uint xp = 0; xp < intrinsics.image_size.width; ++xp ) {
 
 
-      double td = atan2(hyp((xp - cx), (yp - cy) * fx / fy), fx);
+      double td = atan(hyp((xp - cx), (yp - cy) * fx / fy) / fx);
 
       if ( intrinsics.distortion_coefficients.size() == 4 ) {
 

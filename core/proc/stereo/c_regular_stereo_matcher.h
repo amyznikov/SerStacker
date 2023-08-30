@@ -184,6 +184,9 @@ class c_regular_stereo_matcher
 public:
   c_regular_stereo_matcher();
 
+  void set_enabled(bool v);
+  bool enabled() const;
+
   void set_matcher_type(stereo_matcher_type v);
   stereo_matcher_type matcher_type() const;
 
@@ -228,6 +231,8 @@ protected:
   void reset_all_matchers();
 
 protected:
+  bool enabled_ = true;
+
   stereo_matcher_type matcher_type_ = stereo_matcher_StereoBinarySGBM;
 
   cv::Ptr<cv::StereoBM> stereoBM_;

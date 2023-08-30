@@ -10,6 +10,24 @@
 QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
     Base("", parent)
 {
+  enabled_ctl =
+      add_checkbox("Enable stereo matcher",
+          "",
+          [this](bool checked) {
+            if ( stereo_matcher_ && stereo_matcher_->enabled() != checked ) {
+              stereo_matcher_->set_enabled(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( stereo_matcher_ ) {
+              * checked = stereo_matcher_->enabled();
+              return true;
+            }
+            return false;
+          });
+
+
   matcher_type_ctl =
       add_enum_combobox<stereo_matcher_type>("Stereo Matcher:",
           "Current stereo matcher",

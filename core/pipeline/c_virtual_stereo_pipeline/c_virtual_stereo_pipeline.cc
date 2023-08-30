@@ -653,9 +653,9 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 
 bool c_virtual_stereo_pipeline::run_polar_stereo()
 {
-  //  if( !output_options_.save_polar_frames && !output_options_.save_disparity_frames ) {
-  //    return true; // ignore
-  //  }
+  if( !output_options_.save_polar_frames && !stereo_matcher_.enabled() ) {
+    return true; // ignore
+  }
 
   cv::Mat frames[2];
   cv::Mat masks[2];
@@ -713,48 +713,51 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
     }
   }
 
-  if( !stereo_matcher_.compute(frames[0], frames[1], current_disparity_) ) {
-    CF_ERROR("stereo_matcher_.compute() fails");
-  }
-  else {
-    cv::remap(current_disparity_, current_disparity_,
-        inverse_remap, cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_CONSTANT,
-        cv::Scalar::all(-1));
-  }
+  if( stereo_matcher_.enabled() ) {
 
-  if( output_options_.save_disparity_frames && !current_disparity_.empty() ) {
-
-    if( !disparity_frames_writer_.is_open() ) {
-
-      const std::string output_video_filename =
-          generate_output_filename(output_options_.disparity_frames_filename,
-              "disparity",
-              ".tiff");
-
-      bool fOK =
-          disparity_frames_writer_.open(output_video_filename,
-              current_disparity_.size(),
-              current_disparity_.channels() > 1,
-              false);
-
-      if( !fOK ) {
-        CF_ERROR("disparity_frames_writer_.open('%s') fails",
-            output_video_filename.c_str());
-        return false;
-      }
-
-      CF_DEBUG("Created '%s' display.size()=%dx%d",
-          output_video_filename.c_str(),
-          current_disparity_.cols,
-          current_disparity_.rows);
+    if( !stereo_matcher_.compute(frames[0], frames[1], current_disparity_) ) {
+      CF_ERROR("stereo_matcher_.compute() fails");
+    }
+    else {
+      cv::remap(current_disparity_, current_disparity_,
+          inverse_remap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT,
+          cv::Scalar::all(-1));
     }
 
-    if( !disparity_frames_writer_.write(current_disparity_, cv::noArray(), false, 0) ) {
-      CF_ERROR("disparity_frames_writer_.write() fails: %s",
-          disparity_frames_writer_.filename().c_str());
-      return false;
+    if( output_options_.save_disparity_frames && !current_disparity_.empty() ) {
+
+      if( !disparity_frames_writer_.is_open() ) {
+
+        const std::string output_video_filename =
+            generate_output_filename(output_options_.disparity_frames_filename,
+                "disparity",
+                ".tiff");
+
+        bool fOK =
+            disparity_frames_writer_.open(output_video_filename,
+                current_disparity_.size(),
+                current_disparity_.channels() > 1,
+                false);
+
+        if( !fOK ) {
+          CF_ERROR("disparity_frames_writer_.open('%s') fails",
+              output_video_filename.c_str());
+          return false;
+        }
+
+        CF_DEBUG("Created '%s' display.size()=%dx%d",
+            output_video_filename.c_str(),
+            current_disparity_.cols,
+            current_disparity_.rows);
+      }
+
+      if( !disparity_frames_writer_.write(current_disparity_, cv::noArray(), false, 0) ) {
+        CF_ERROR("disparity_frames_writer_.write() fails: %s",
+            disparity_frames_writer_.filename().c_str());
+        return false;
+      }
     }
   }
 
@@ -875,55 +878,45 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
 }
 
 
+void c_virtual_stereo_pipeline::draw_matched_positions(cv::Mat & image,
+    const std::vector<cv::Point2f> & current_positions,
+    const std::vector<cv::Point2f> & previous_positions,
+    const cv::Mat1b & inliers)
+{
+
+  const int N = current_positions.size();
+  const cv::Scalar inlierColor = CV_RGB(220, 220, 0);
+  const cv::Scalar outlierColor = CV_RGB(220, 0, 0);
+
+  for( int i = 0; i < N; ++i ) {
+
+    const cv::Point2f &cp =
+        current_positions[i];
+
+    const cv::Point2f &pp =
+        previous_positions[i];
+
+    const cv::Scalar color =
+        inliers.empty() || inliers[i][0] ?
+            inlierColor :
+            outlierColor;
+
+    cv::line(image, pp, cp, color, 1, cv::LINE_4);
+    cv::rectangle(image, cv::Point(cp.x - 1, cp.y - 1), cv::Point(cp.x + 1, cp.y + 1), color, 1, cv::LINE_4);
+  }
+}
+;
+
 
 bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   //////////////////
-  static const auto draw_matched_positions =
-      [](cv::Mat & image,
-          const std::vector<cv::Point2f> & current_positions,
-          const std::vector<cv::Point2f> & previous_positions,
-          const cv::Mat1b & inliers) {
-
-    const int N = current_positions.size();
-    const cv::Scalar inlierColor = CV_RGB(220, 220, 0);
-    const cv::Scalar outlierColor = CV_RGB(220, 0, 0);
-
-    for( int i = 0; i < N; ++i ) {
-
-      const cv::Point2f &cp =
-          current_positions[i];
-
-      const cv::Point2f &pp =
-          previous_positions[i];
-
-      const cv::Scalar color =
-          inliers.empty() || inliers[i][0] ?
-              inlierColor :
-              outlierColor;
-
-      cv::line(image, pp, cp, color, 1, cv::LINE_4);
-      cv::rectangle(image, cv::Point(cp.x - 1, cp.y - 1), cv::Point(cp.x + 1, cp.y + 1), color, 1, cv::LINE_4);
-    }
-  };
-
-
-  //////////////////
 
   lock_guard lock(mutex());
 
-  if( current_image_.empty() || previous_image_.empty() || current_disparity_.empty() ) {
+  if( current_image_.empty() || previous_image_.empty() ) {
     return false;
   }
-
-
-//  const cv::Size size(std::max(current_image_.cols, previous_image_.cols),
-//      current_image_.rows + 2 * previous_image_.rows + current_disparity_.rows);
-//
-//  const cv::Rect cRoi(0, 0, current_image_.cols, current_image_.rows);
-//  const cv::Rect wRoi(0, current_image_.rows, previous_image_.cols, previous_image_.rows);
-//  const cv::Rect pRoi(0, current_image_.rows + previous_image_.rows, previous_image_.cols, previous_image_.rows);
-//  const cv::Rect dRoi(0, current_image_.rows + 2 * previous_image_.rows, current_disparity_.cols, current_disparity_.rows);
 
   const cv::Size size = current_image_.size();
   const cv::Size dst_size(2 * size.width, 2 * size.height);
@@ -1022,8 +1015,13 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
   tmp1.copyTo(cimg(wRoi));
   tmp2.copyTo(cimg(pRoi));
 
-  current_disparity_.convertTo(tmp1, CV_8U, 255. / stereo_matcher_.currentMaxDisparity());
-  apply_colormap(tmp1, cimg(dRoi), COLORMAP_TURBO);
+  if ( current_disparity_.empty() ) {
+    cimg(dRoi).setTo(0);
+  }
+  else {
+    current_disparity_.convertTo(tmp1, CV_8U, 255. / stereo_matcher_.currentMaxDisparity());
+    apply_colormap(tmp1, cimg(dRoi), COLORMAP_TURBO);
+  }
 
 
   /////////////////

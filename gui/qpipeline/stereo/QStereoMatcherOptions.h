@@ -42,6 +42,7 @@ protected:
 protected:
   c_regular_stereo_matcher * stereo_matcher_ = nullptr;
 
+  QCheckBox * enabled_ctl = nullptr;
   QEnumComboBox<stereo_matcher_type> * matcher_type_ctl = nullptr;
 
   QStereoBMOptions * stereoBMOptions_ctl = nullptr;

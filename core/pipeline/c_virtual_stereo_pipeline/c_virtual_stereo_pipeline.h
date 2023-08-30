@@ -151,6 +151,12 @@ protected:
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
 
+  static void draw_matched_positions(cv::Mat & image,
+      const std::vector<cv::Point2f> & current_positions,
+      const std::vector<cv::Point2f> & previous_positions,
+      const cv::Mat1b & inliers);
+
+
 protected:
   c_virtual_stereo_input_options input_options_;
   c_virtual_stereo_camera_options camera_options_;

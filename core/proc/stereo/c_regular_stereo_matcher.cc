@@ -146,6 +146,16 @@ c_regular_stereo_matcher::c_regular_stereo_matcher()
 #endif
 }
 
+void c_regular_stereo_matcher::set_enabled(bool v)
+{
+  enabled_ = v;
+}
+
+bool c_regular_stereo_matcher::enabled() const
+{
+  return enabled_;
+}
+
 void c_regular_stereo_matcher::set_matcher_type(stereo_matcher_type v)
 {
   matcher_type_ = v;
@@ -781,6 +791,7 @@ bool c_regular_stereo_matcher::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section;
 
+  SERIALIZE_PROPERTY(settings, save, *this, enabled);
   SERIALIZE_PROPERTY(settings, save, *this, matcher_type);
 
   if( (section = SERIALIZE_GROUP(settings, save, "StereoBM")) ) {

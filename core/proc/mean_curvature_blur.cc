@@ -56,13 +56,13 @@ static void mean_curvature_flow(const cv::Mat & src_image, cv::Mat & dst_image)
               const float dy = BOTTOM(src) - TOP(src);
               const float magnitude = std::sqrt(dx * dx + dy * dy);
 
-              if( magnitude > 0 ) {
+              if( magnitude > 10 * FLT_EPSILON ) {
 
                 const float dx2 = dx * dx;
                 const float dy2 = dy * dy;
                 const float d = std::sqrt(pow3(dx2 + dy2)) ;
 
-                if ( d > 0 ) {
+                if ( d > 10 * FLT_EPSILON ) {
 
                   const float dxx = RIGHT(src) + LEFT(src) - 2 * CENTER(src);
                   const float dyy = BOTTOM(src) + TOP(src) - 2 * CENTER(src);
@@ -101,11 +101,11 @@ void mean_curvature_blur(cv::InputArray src, cv::OutputArray dst, int iterations
   const int cn = src.channels();
 
   if( src.depth() == CV_32F ) {
-    cv::copyMakeBorder(src, src_buf, 1, 1, 1, 1, cv::BORDER_REFLECT101);
+    cv::copyMakeBorder(src, src_buf, 1, 1, 1, 1, cv::BORDER_REPLICATE);
   }
   else {
     src.getMat().convertTo(src_buf, CV_32F);
-    cv::copyMakeBorder(src_buf, src_buf, 1, 1, 1, 1, cv::BORDER_REFLECT101);
+    cv::copyMakeBorder(src_buf, src_buf, 1, 1, 1, 1, cv::BORDER_REPLICATE);
   }
 
   dst_buf.create(src_buf.size(), src_buf.type());

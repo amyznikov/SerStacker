@@ -310,13 +310,22 @@ static void upject_even_mc(const Mat & src, Mat & _dst, Size dstSize, Mat * _zma
   dst.setTo(0);
 
   if ( _zmask ) {
-    zmask = Mat::zeros(dstSize, CV_8U);
+    zmask =
+        Mat::zeros(dstSize, CV_8U);
   }
 
-  const size_t elem_size = src.elemSize();
+  const size_t elem_size =
+      src.elemSize();
 
-  const int ymax = 2 * (src.rows - 1) + 1 < dst.rows ? src.rows : src.rows - 1;
-  const int xmax = 2 * (src.cols - 1) + 1 < dst.cols ? src.cols : src.cols - 1;
+  const int ymax =
+      2 * (src.rows - 1) + 1 < dst.rows ?
+          src.rows :
+          src.rows - 1;
+
+  const int xmax =
+      2 * (src.cols - 1) + 1 < dst.cols ?
+          src.cols :
+          src.cols - 1;
 
   if ( !_zmask ) {
     for ( int y = 0; y < ymax; ++y ) {
@@ -489,6 +498,10 @@ void upject_even(cv::InputArray _src, Mat & dst, Size dstSize, Mat * _zmask, int
   INSTRUMENT_REGION("");
 
   const Mat src = _src.getMat();
+
+  if ( dstSize.empty() ) {
+    dstSize = src.size() * 2;
+  }
 
   if ( src.channels() > 1 ) {
     upject_even_mc(src, dst, dstSize, _zmask, zmdepth);

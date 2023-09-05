@@ -280,6 +280,16 @@ public:
     return enabled_;
   }
 
+  void set_ignore_mask(bool v)
+  {
+    ignore_mask_ = v;
+  }
+
+  bool ignore_mask() const
+  {
+    return ignore_mask_;
+  }
+
   void set_preprocess_notify_callback(const notify_callback & preprocess_notify)
   {
     preprocess_notify_ = preprocess_notify;
@@ -316,18 +326,16 @@ public:
       cv::InputOutputArray mask = cv::noArray()) = 0;
 
 
-  virtual void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * params)
+  virtual void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
   {
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "ignore_mask");
   }
 
 protected:
-  c_image_processor_routine(const class_factory * _class_factory, bool enabled = true)
-    : class_factory_(_class_factory), enabled_(enabled)
+  c_image_processor_routine(const class_factory * _class_factory, bool enabled = true) :
+    class_factory_(_class_factory), enabled_(enabled)
   {
   }
-
-protected:
-
 
 protected:
   const class_factory * const class_factory_;
@@ -335,6 +343,7 @@ protected:
   notify_callback postprocess_notify_;
   std::mutex mtx_;
   bool enabled_;
+  bool ignore_mask_ = false;
 };
 
 #define DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip ) \

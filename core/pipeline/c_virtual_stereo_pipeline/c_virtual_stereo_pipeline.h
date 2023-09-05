@@ -49,11 +49,6 @@ struct c_virtual_stereo_matcher_options
 };
 
 
-struct c_epipolar_matcher_options
-{
-  bool enable_epipolar_matcher = true;
-};
-
 struct c_virtual_stereo_output_options :
     c_image_processing_pipeline_output_options
 {
@@ -61,11 +56,13 @@ struct c_virtual_stereo_output_options :
     std::string polar_frames_filename;
     std::string disparity_frames_filename;
     std::string homography_video_filename;
+    std::string median_hat_video_filename;
 
     bool save_progress_video = false;
     bool save_polar_frames = false;
     bool save_disparity_frames = false;
     bool save_homography_video = false;
+    bool save_median_hat_video = false;
 
 };
 
@@ -144,9 +141,11 @@ protected:
   bool write_progress_video();
   c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
   bool process_current_frame();
+  bool extract_keypoints();
   bool estmate_camera_pose();
   bool create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap);
   bool run_polar_stereo();
+  bool run_epipolar_matcher();
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
@@ -165,7 +164,6 @@ protected:
   c_lm_camera_pose_options camera_pose_options_;
   c_virtual_stereo_matcher_options stereo_matcher_options_;
   c_virtual_stereo_output_options output_options_;
-  c_epipolar_matcher_options epipolar_matcher_options_;
 
   c_sparse_feature_extractor::ptr keypoints_extractor_;
   c_feature2d_matcher::ptr keypoints_matcher_;
@@ -187,8 +185,18 @@ protected:
   std::vector<cv::Point2f> matched_current_positions_;
   std::vector<cv::Point2f> matched_previous_positions_;
 
-  //  cv::Mat1b current_inliers_;    // current inliers mask
-  //  cv::Mat1b previous_inliers_;    // previous inliers mask
+
+  c_epipolar_matcher::c_block_array block_arrays_[2];
+  cv::Mat median_hats_[2];
+  cv::Mat1b median_hat_masks_[2];
+
+  c_epipolar_matcher::c_block_array * current_block_array_ = &block_arrays_[0];
+  c_epipolar_matcher::c_block_array * previous_block_array_ = &block_arrays_[1];
+  cv::Mat * current_median_hat_ = &median_hats_[0];
+  cv::Mat * previous_median_hat_ = &median_hats_[1];
+  cv::Mat1b *current_median_hat_mask_ = &median_hat_masks_[0];
+  cv::Mat1b *previous_median_hat_mask_ = &median_hat_masks_[1];
+
 
   cv::Vec3d currentEulerAnges_;
   cv::Vec3d currentTranslationVector_;
@@ -207,6 +215,7 @@ protected:
   c_output_frame_writer polar_frames_writer_;
   c_output_frame_writer disparity_frames_writer_;
   c_output_frame_writer homography_video_writer_;
+  c_output_frame_writer median_hat_video_writer_;
 
 };
 

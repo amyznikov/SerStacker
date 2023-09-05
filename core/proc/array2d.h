@@ -57,14 +57,17 @@ public:
 
   void create(const cv::Size & s)
   {
-    release();
+    if( !p_ || size_ != s ) {
 
-    size_ = s;
-    p_ = new elem_type[s.height * s.width];
-    pp_ = new elem_type * [s.height];
+      release();
 
-    for ( int r = 0; r < s.height; ++r ) {
-      pp_[r] = p_ + r * s.width;
+      size_ = s;
+      p_ = new elem_type[s.height * s.width];
+      pp_ = new elem_type*[s.height];
+
+      for( int r = 0; r < s.height; ++r ) {
+        pp_[r] = p_ + r * s.width;
+      }
     }
   }
 
@@ -95,6 +98,16 @@ public:
   }
 
   elem_type * operator [](int row)
+  {
+    return pp_[row];
+  }
+
+  elem_type * row(int row)
+  {
+    return pp_[row];
+  }
+
+  const elem_type * row(int row) const
   {
     return pp_[row];
   }
@@ -130,7 +143,7 @@ public:
   }
 
 protected:
-  cv::Size size_;
+  cv::Size size_ = cv::Size(0, 0);
   elem_type * p_ = nullptr; // pointer to whole continuous array
   elem_type ** pp_ = nullptr; // pointers to individual rows
 };

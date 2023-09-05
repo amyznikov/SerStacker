@@ -14,6 +14,16 @@
 #include <core/settings/opencv_settings.h>
 
 
+
+struct c_epipolar_matcher_options
+{
+  int median_hat_radius = 15;
+  int median_hat_threshold = 10;
+  int median_hat_close_radius = 2;
+  int max_disparity = 160;
+  bool enabled = false;
+};
+
 class c_epipolar_matcher
 {
 public:
@@ -58,13 +68,54 @@ public:
 
 
   c_epipolar_matcher();
+  c_epipolar_matcher(const c_epipolar_matcher_options & opts);
+
+  void set_options(const c_epipolar_matcher_options & opts);
+  const c_epipolar_matcher_options & options() const;
+  c_epipolar_matcher_options & options();
+
+  bool enabled() const;
+  void set_enabled(bool v);
 
   bool compute_block_array(cv::InputArray image, cv::InputArray mask,
-      c_block_array * output_block_array) const;
+      c_block_array * output_block_array,
+      cv::Mat * output_median_hat = nullptr,
+      cv::Mat1b * output_median_hat_mask = nullptr ) const;
+
+  bool compute_matches(const c_block_array & current_image, const c_block_array & previous_image,
+      const cv::Mat1b & mask,
+      const cv::Point2d & epipole_location);
+
+  const cv::Mat & current_median_hat() const ;
+  const cv::Mat & previous_median_hat() const ;
+  const cv::Mat1b & current_median_hat_mask() const ;
+  const cv::Mat1b & previous_median_hat_mask() const ;
+  const cv::Mat2f & matches() const;
+  const cv::Mat2i & back_matches() const;
+  const cv::Mat1w & costs() const;
 
 
   bool serialize(c_config_setting settings, bool save);
 
+protected:
+  static void compute_search_range(const cv::Size & image_size, const cv::Point2d & E, int rx, int ry,
+      int max_disparity, int * incx, int * incy, int * cxmax, int * cymax,  double * k);
+
+protected:
+  c_epipolar_matcher_options options_;
+  cv::Mat current_median_hat_;
+  cv::Mat previous_median_hat_;
+  cv::Mat1b current_median_hat_mask_;
+  cv::Mat1b previous_median_hat_mask_;
+  cv::Mat2f matches_;
+  cv::Mat2i back_matches_;
+  cv::Mat1w costs_;
 };
+
+
+cv::Mat1f matchesToEpipolarDisparity(const cv::Mat2f & matches,
+    const cv::Point2d & epipole_position);
+
+
 
 #endif /* __c_epipolar_matcher_h__ */

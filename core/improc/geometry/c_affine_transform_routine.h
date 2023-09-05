@@ -77,6 +77,8 @@ protected:
   cv::InterpolationFlags interpolation_ = cv::INTER_LINEAR;
   cv::BorderTypes border_type_ = cv::BORDER_CONSTANT;
   cv::Scalar border_value_;
+  cv::Mat2f remap_;
+  cv::Size previous_image_size_;
 };
 
 template<> const c_enum_member *

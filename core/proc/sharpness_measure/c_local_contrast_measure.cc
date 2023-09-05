@@ -124,11 +124,16 @@ bool c_local_contrast_measure::compute(cv::InputArray image, cv::OutputArray out
   const cv::Mat src =
       image.getMat();
 
+  const cv::Size src_size =
+      src.size();
+
+  static const cv::Mat1b SE(5, 5, 255);
+
   cv::Mat s1, s2, e, d, mg, gg, map;
 
   src.convertTo(s1, CV_32F, 1. / maxval(src.depth()));
 
-  if( avgchannel && s1.channels() > 1 ) {
+  if( /*avgchannel && */s1.channels() > 1 ) {
     reduce_color_channels(s1, s1, cv::REDUCE_AVG);
   }
 
@@ -136,28 +141,55 @@ bool c_local_contrast_measure::compute(cv::InputArray image, cv::OutputArray out
     downscale(s1, s1, dscale);
   }
 
-  static const cv::Mat1b SE(3, 3, 255);
-
   cv::morphologyEx(s1, mg, cv::MORPH_GRADIENT, SE);
 
-  downscale(s1, s2, 2);
-  upscale(s2, s1.size());
-  compute_gradient(s2, gg);
+  downscale(s1, s1, 2);
+  upscale(s1, mg.size());
 
-  cv::divide(mg, s2 + cv::Scalar::all(eps), map);
+  cv::multiply(mg, s1, mg, 1.0 / cv::sum(s1)[0]);
 
   if( output_sharpness_measure ) {
-    * output_sharpness_measure =
-        weighted_mean(map, gg);
+    *output_sharpness_measure =
+        cv::sum(mg);
   }
 
   if( output_contrast_map.needed() ) {
 
-    cv::multiply(map, gg, output_contrast_map);
+    output_contrast_map.move(mg);
+    if( dscale > 0 ) {
+      upscale(output_contrast_map.getMatRef(), src_size);
+    }
 
-    cv::divide(output_contrast_map, cv::sum(gg),
-        output_contrast_map);
   }
+
+
+
+//  if( output_contrast_map.needed() ) {
+//    output_contrast_map.move(mg);
+//    if( dscale > 0 ) {
+//      upscale(output_contrast_map.getMatRef(), src_size);
+//    }
+//  }
+
+
+//  downscale(s1, s2, 2);
+//  upscale(s2, s1.size());
+//  compute_gradient(s2, gg);
+//
+//  cv::divide(mg, s2 + cv::Scalar::all(eps), map);
+//
+//  if( output_sharpness_measure ) {
+//    * output_sharpness_measure =
+//        weighted_mean(map, gg);
+//  }
+//
+//  if( output_contrast_map.needed() ) {
+//
+//    cv::multiply(map, gg, output_contrast_map);
+//
+//    cv::divide(output_contrast_map, cv::sum(gg),
+//        output_contrast_map);
+//  }
 
   return true;
 }

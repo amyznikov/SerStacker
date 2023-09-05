@@ -23,6 +23,7 @@ const c_enum_member * members_of<c_affine_transform_routine::image_resize_mode>(
 void c_affine_transform_routine::set_resize_mode(image_resize_mode v)
 {
   resize_mode_ = v;
+  remap_.release();
 }
 
 c_affine_transform_routine::image_resize_mode c_affine_transform_routine::resize_mode() const
@@ -33,6 +34,7 @@ c_affine_transform_routine::image_resize_mode c_affine_transform_routine::resize
 void c_affine_transform_routine::set_interpolation(cv::InterpolationFlags v)
 {
   interpolation_ = v;
+  remap_.release();
 }
 
 cv::InterpolationFlags c_affine_transform_routine::interpolation() const
@@ -43,6 +45,7 @@ cv::InterpolationFlags c_affine_transform_routine::interpolation() const
 void c_affine_transform_routine::set_border_type(cv::BorderTypes v)
 {
   border_type_ = v;
+  remap_.release();
 }
 
 cv::BorderTypes c_affine_transform_routine::border_type() const
@@ -53,6 +56,7 @@ cv::BorderTypes c_affine_transform_routine::border_type() const
 void c_affine_transform_routine::set_border_value(const cv::Scalar & v)
 {
   border_value_ = v;
+  remap_.release();
 }
 
 const cv::Scalar & c_affine_transform_routine::border_value() const
@@ -63,6 +67,7 @@ const cv::Scalar & c_affine_transform_routine::border_value() const
 void c_affine_transform_routine::set_rotation(double v)
 {
   rotation_ = v;
+  remap_.release();
 }
 
 double c_affine_transform_routine::rotation() const
@@ -73,6 +78,7 @@ double c_affine_transform_routine::rotation() const
 void c_affine_transform_routine::set_translation(const cv::Point2f & v)
 {
   translation_ = v;
+  remap_.release();
 }
 
 const cv::Point2f & c_affine_transform_routine::translation() const
@@ -83,6 +89,7 @@ const cv::Point2f & c_affine_transform_routine::translation() const
 void c_affine_transform_routine::set_scale(const cv::Size2f & v)
 {
   scale_ = v;
+  remap_.release();
 }
 
 const cv::Size2f c_affine_transform_routine::scale() const
@@ -107,23 +114,37 @@ bool c_affine_transform_routine::serialize(c_config_setting settings, bool save)
 
 bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( !image.empty() ) {
+  if( !image.empty() || !mask.empty() ) {
+
     if( rotation_ || translation_.x || translation_.y || scale_.width != 1 || scale_.height != 1 ) {
 
-      cv::Mat2f M;
+      if( remap_.empty() || previous_image_size_ != image.size() ) {
 
-      if ( !create_transformation_remap(M, image.size(),rotation_, translation_, scale_, resize_mode_) ) {
-        CF_ERROR("c_image_transform_routine: create_transformation_remap() fails");
-        return false;
+        previous_image_size_ = image.size();
+
+        if ( !create_transformation_remap(remap_, image.size(), rotation_, translation_, scale_, resize_mode_) ) {
+          CF_ERROR("c_image_transform_routine: create_transformation_remap() fails");
+          return false;
+        }
       }
 
+
       if ( !image.empty() ) {
-        cv::remap(image.getMat(), image, M, cv::noArray(), interpolation_, border_type_, border_value_);
+        cv::remap(image.getMat(), image,
+            remap_, cv::noArray(),
+            interpolation_,
+            border_type_,
+            border_value_);
       }
 
       if ( !mask.empty() ) {
-        cv::remap(mask.getMat(), mask, M, cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT);
-        cv::compare(mask, 255, mask, cv::CMP_EQ);
+        cv::remap(mask.getMat(), mask,
+            remap_, cv::noArray(),
+            cv::INTER_AREA,
+            cv::BORDER_CONSTANT);
+
+        cv::compare(mask, 255, mask,
+            cv::CMP_EQ);
       }
     }
   }

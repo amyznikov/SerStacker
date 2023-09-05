@@ -10,6 +10,7 @@
 #include <core/proc/polar_trasform.h>
 #include <core/proc/image_registration/ecc2.h>
 #include <core/proc/colormap.h>
+#include <core/readdir.h>
 #include <chrono>
 #include <thread>
 
@@ -145,7 +146,6 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "epipolar_matcher")) ) {
-    SERIALIZE_OPTION(section, save, epipolar_matcher_options_, enable_epipolar_matcher);
     epipolar_matcher_.serialize(section, save);
   }
 
@@ -165,6 +165,8 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, disparity_frames_filename);
     SERIALIZE_OPTION(section, save, output_options_, save_homography_video);
     SERIALIZE_OPTION(section, save, output_options_, homography_video_filename);
+    SERIALIZE_OPTION(section, save, output_options_, save_median_hat_video);
+    SERIALIZE_OPTION(section, save, output_options_, median_hat_video_filename);
   }
 
   return true;
@@ -215,8 +217,14 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
-    PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher Options", "");
-      PIPELINE_CTL(ctrls, epipolar_matcher_options_.enable_epipolar_matcher, "enable epipolar matcher", "");
+    PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher", "");
+      PIPELINE_CTL(ctrls, epipolar_matcher_.options().enabled, "enable epipolar matcher", "");
+      PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher Options", "");
+        PIPELINE_CTL(ctrls, epipolar_matcher_.options().median_hat_radius, "median_hat_radius", "");
+        PIPELINE_CTL(ctrls, epipolar_matcher_.options().median_hat_threshold, "median_hat_threshold", "");
+        PIPELINE_CTL(ctrls, epipolar_matcher_.options().median_hat_close_radius, "median_hat_close_radius", "");
+        PIPELINE_CTL(ctrls, epipolar_matcher_.options().max_disparity, "max_disparity", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////
 
@@ -237,6 +245,9 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL(ctrls, output_options_.disparity_frames_filename, "disparity_frames_filename", "");
       PIPELINE_CTL(ctrls, output_options_.save_homography_video, "save_homography_video", "");
       PIPELINE_CTL(ctrls, output_options_.homography_video_filename, "homography_video_filename", "");
+      PIPELINE_CTL(ctrls, output_options_.save_median_hat_video, "save_median_hat_video", "");
+      PIPELINE_CTL(ctrls, output_options_.median_hat_video_filename, "median_hat_video_filename", "");
+
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -332,6 +343,15 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
+  current_block_array_->release();
+  previous_block_array_->release();
+  current_median_hat_->release();
+  previous_median_hat_->release();
+  current_median_hat_mask_->release();
+  previous_median_hat_mask_->release();
+
+  /////////////////////////////////////////////////////////////////////////////
+
   CF_DEBUG("Leave");
 
   return true;
@@ -361,6 +381,11 @@ void c_virtual_stereo_pipeline::cleanup_pipeline()
   if ( homography_video_writer_.is_open() ) {
     homography_video_writer_.close();
     CF_DEBUG("SAVED '%s'", homography_video_writer_.filename().c_str());
+  }
+
+  if ( median_hat_video_writer_.is_open() ) {
+    median_hat_video_writer_.close();
+    CF_DEBUG("SAVED '%s'", median_hat_video_writer_.filename().c_str());
   }
 
 }
@@ -399,7 +424,7 @@ bool c_virtual_stereo_pipeline::seek_input_sequence(int pos)
 
 bool c_virtual_stereo_pipeline::read_input_frame(cv::Mat & output_image, cv::Mat & output_mask)
 {
-  lock_guard lock(mutex());
+  // lock_guard lock(mutex());
 
   if( !base::read_input_frame(input_sequence_, input_options_, output_image, output_mask, false, false) ) {
     CF_DEBUG("base::read_input_frame() fails");
@@ -481,14 +506,29 @@ bool c_virtual_stereo_pipeline::run_pipeline()
       break;
     }
 
-    if( !read_input_frame(current_image_, current_mask_) ) {
-      CF_DEBUG("read_input_frame() fails");
-      break;
+    if ( true ) {
+
+      lock_guard lock(mutex());
+
+      if( !read_input_frame(current_image_, current_mask_) ) {
+        CF_DEBUG("read_input_frame() fails");
+        break;
+      }
+
+      if( image_processing_options_.input_processor ) {
+        if( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
+          CF_ERROR("ERROR: input_processor->process() fails");
+          return false;
+        }
+      }
+
+      if( canceled() ) {
+        break;
+      }
     }
 
-    if( canceled() ) {
-      break;
-    }
+    // give chance to GUI thread to call get_display_image()
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     if( !process_current_frame() ) {
       CF_ERROR("process_current_frame() fails");
@@ -517,6 +557,10 @@ bool c_virtual_stereo_pipeline::run_pipeline()
       std::swap(current_mask_, previous_mask_);
       std::swap(current_keypoints_, previous_keypoints_);
       std::swap(current_descriptors_, previous_descriptors_);
+      std::swap(current_block_array_, previous_block_array_);
+      std::swap(current_median_hat_, previous_median_hat_);
+      std::swap(current_median_hat_mask_, previous_median_hat_mask_);
+
     }
   }
 
@@ -526,24 +570,42 @@ bool c_virtual_stereo_pipeline::run_pipeline()
 
 bool c_virtual_stereo_pipeline::process_current_frame()
 {
-  lock_guard lock(mutex());
-
   INSTRUMENT_REGION("");
 
-  // current_disparity_.release();
-
-  if( image_processing_options_.input_processor ) {
-    if( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
-      CF_ERROR("ERROR: input_processor->process() fails");
-      return false;
-    }
+  if ( !extract_keypoints() ) {
+    CF_ERROR("extract_keypoints() fails");
+    return false;
   }
 
-  //  if ( image_processing_options_.feature2d_preprocessor ) {
-  //  }
+  if( !estmate_camera_pose() ) {
+    CF_ERROR("estmate_camera_pose() fails");
+  }
 
-  keypoints_extractor_->detectAndCompute(current_image_, current_mask_,
-      current_keypoints_, current_descriptors_);
+  if ( !run_polar_stereo() ) {
+    CF_ERROR("run_stereo_matcher() fails");
+    return false;
+  }
+
+  if ( !run_epipolar_matcher() ) {
+    CF_ERROR("run_epipolar_matcher() fails");
+    return false;
+  }
+
+  return true;
+}
+
+bool c_virtual_stereo_pipeline::extract_keypoints()
+{
+  lock_guard lock(mutex());
+
+  bool fOK =
+      keypoints_extractor_->detectAndCompute(current_image_, current_mask_,
+          current_keypoints_, current_descriptors_);
+
+  if ( !fOK ) {
+    CF_ERROR("keypoints_extractor_->detectAndCompute() fails");
+    return false;
+  }
 
   if( !previous_keypoints_.empty() ) {
 
@@ -584,15 +646,6 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     }
   }
 
-  if( !estmate_camera_pose() ) {
-    CF_ERROR("estmate_camera_pose() fails");
-  }
-
-  if ( !run_polar_stereo() ) {
-    CF_ERROR("run_stereo_matcher() fails");
-    return false;
-  }
-
   return true;
 }
 
@@ -601,6 +654,8 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
   if( matched_current_positions_.size() < 6 || matched_previous_positions_.size() < 6 ) {
     return true; // ignore
   }
+
+  lock_guard lock(mutex());
 
   currentInliers_.release();
 
@@ -761,6 +816,217 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
       }
     }
   }
+
+  return true;
+}
+
+bool c_virtual_stereo_pipeline::run_epipolar_matcher()
+{
+  if ( current_image_.empty() || !epipolar_matcher_.enabled()  ) {
+    return true; // ignore
+  }
+
+  bool fOK =
+      epipolar_matcher_.compute_block_array(current_image_, current_mask_,
+          current_block_array_,
+          current_median_hat_,
+          current_median_hat_mask_);
+
+  if ( !fOK ) {
+    CF_ERROR("epipolar_matcher_.compute_block_array(current_image_) fails");
+    return false;
+  }
+
+  if ( output_options_.save_median_hat_video ) {
+
+    cv::Mat display;
+
+    current_median_hat_->copyTo(display,
+        *current_median_hat_mask_);
+
+    if ( !median_hat_video_writer_.is_open() ) {
+
+      const std::string output_video_filename =
+          generate_output_filename(output_options_.median_hat_video_filename,
+              "median_hat",
+              ".avi");
+
+      bool fOK =
+          median_hat_video_writer_.open(output_video_filename,
+              display.size(),
+              display.channels() > 1,
+              false);
+
+      if( !fOK ) {
+        CF_ERROR("median_hat_video_writer_.open('%s') fails",
+            output_video_filename.c_str());
+        return false;
+      }
+
+      CF_DEBUG("Created '%s' display.size()=%dx%d",
+          output_video_filename.c_str(),
+          display.cols,
+          display.rows);
+    }
+
+    if( !median_hat_video_writer_.write(display, cv::noArray(), false, 0) ) {
+      CF_ERROR("median_hat_video_writer_.write() fails: %s",
+          median_hat_video_writer_.filename().c_str());
+      return false;
+    }
+  }
+
+  if( !previous_block_array_->empty() ) {
+
+    c_epipolar_matcher::c_block_array warped_current_block_array;
+    cv::Mat warped_current_image, warped_current_mask;
+    cv::Mat warped_current_median_hat;
+    cv::Mat1b warped_current_median_hat_mask;
+    cv::Mat compute_mask;
+    cv::Mat tmp;
+
+    cv::warpPerspective(current_image_,
+        warped_current_image,
+        currentDerotationHomography_,
+        previous_image_.size(),
+        cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
+        cv::BORDER_CONSTANT);
+
+
+    cv::warpPerspective(current_mask_.empty() ? cv::Mat1b(current_image_.size(), 255) : current_mask_,
+        warped_current_mask,
+        currentDerotationHomography_,
+        previous_image_.size(),
+        cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
+        cv::BORDER_CONSTANT);
+
+    cv::compare(warped_current_mask, 254, warped_current_mask,
+        cv::CMP_GE);
+
+    fOK =
+        epipolar_matcher_.compute_block_array(warped_current_image, warped_current_mask,
+            &warped_current_block_array,
+            &warped_current_median_hat,
+            &warped_current_median_hat_mask);
+
+    if( !fOK ) {
+      CF_ERROR("epipolar_matcher_.compute_block_array() fails");
+      return false;
+    }
+
+
+    ////////////
+
+    cv::absdiff(previous_image_, warped_current_image, tmp);
+    if ( tmp.channels() > 1 ) {
+      cv::cvtColor(tmp,  tmp, cv::COLOR_BGR2GRAY);
+    }
+    cv::compare(tmp, epipolar_matcher_.options().median_hat_threshold, compute_mask, cv::CMP_GE);
+    cv::bitwise_and(compute_mask, warped_current_mask, compute_mask);
+    if ( !previous_mask_.empty() ) {
+      cv::bitwise_and(compute_mask, previous_mask_, compute_mask);
+    }
+    cv::morphologyEx(compute_mask, compute_mask, cv::MORPH_CLOSE, cv::Mat1b(3,3, 255));
+
+    save_image(tmp, ssprintf("%s/diffimages/diffimage.%3d.png",
+        output_path_.c_str(),
+        input_sequence_->current_pos() - 1));
+
+    save_image(compute_mask, ssprintf("%s/compute_mask/compute_mask.%3d.png",
+        output_path_.c_str(),
+        input_sequence_->current_pos() - 1));
+
+    ////////////
+
+    if ( true ) {
+
+      std::string output_filename;
+
+      output_filename =
+          ssprintf("%s/warped_current_image/warped_current_image.%05d.tiff", output_path_.c_str(),
+              input_sequence_->current_pos() - 1);
+
+      if( !save_image(warped_current_image, warped_current_mask, output_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_filename.c_str());
+        return false;
+      }
+
+      output_filename =
+          ssprintf("%s/previous_image/previous_image.%05d.tiff", output_path_.c_str(),
+              input_sequence_->current_pos() - 1);
+
+      if( !save_image(previous_image_, output_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_filename.c_str());
+        return false;
+      }
+    }
+
+
+    if( false ) {
+
+      std::string output_filename;
+      cv::Mat2f back_matches;
+
+      fOK =
+          epipolar_matcher_.compute_matches(warped_current_block_array, *previous_block_array_,
+              compute_mask,
+              currentEpipole_);
+
+      if( !fOK ) {
+        CF_ERROR("epipolar_matcher_.compute_matches() fails");
+        return false;
+      }
+
+      const cv::Mat2f matches =
+          epipolar_matcher_.matches();
+
+      epipolar_matcher_.back_matches().convertTo(back_matches, CV_32F);
+
+      const cv::Mat1w &costs =
+          epipolar_matcher_.costs();
+
+      const cv::Mat1f diaparity =
+          matchesToEpipolarDisparity(matches, currentEpipole_);
+
+      output_filename =
+          ssprintf("%s/disparity/disparity.%05d.tiff", output_path_.c_str(),
+              input_sequence_->current_pos() - 1);
+
+      if( !save_image(diaparity, *previous_median_hat_mask_, output_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_filename.c_str());
+        return false;
+      }
+
+      output_filename =
+          ssprintf("%s/costs/costs.%05d.tiff", output_path_.c_str(),
+              input_sequence_->current_pos() - 1);
+
+      if( !save_image(costs, *previous_median_hat_mask_, output_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_filename.c_str());
+        return false;
+      }
+
+      output_filename =
+          ssprintf("%s/matches/matches.%05d.flo", output_path_.c_str(),
+              input_sequence_->current_pos() - 1);
+
+      if( !save_image(matches, output_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_filename.c_str());
+        return false;
+      }
+
+      output_filename =
+          ssprintf("%s/back_matches/back_matches.%05d.flo", output_path_.c_str(),
+              input_sequence_->current_pos() - 1);
+
+      if( !save_image(back_matches, output_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_filename.c_str());
+        return false;
+      }
+
+    }
+  }
+
 
   return true;
 }

@@ -48,12 +48,15 @@
 #include "maps/c_threshold_routine.h"
 #include "maps/c_laplacian_routine.h"
 
+#include "pyramid/c_downstrike_routine.h"
+#include "pyramid/c_upject_routine.h"
 #include "pyramid/c_laplacian_pyramid_routine.h"
 #include "pyramid/c_average_pyramid_inpaint_routine.h"
 #include "pyramid/c_gaussian_pyramid_routine.h"
 #include "pyramid/c_melp_pyramid_routine.h"
 #include "pyramid/c_scale_gaussian_pyramid_layers_routine.h"
 #include "pyramid/c_mpyramid_routine.h"
+#include "pyramid/c_morph_gradient_pyramid_routine.h"
 
 #include "fft/c_fft_routine.h"
 
@@ -87,8 +90,6 @@
 #include "c_bilateral_filter_routine.h"
 #include "c_pnormalize_routine.h"
 #include "c_gaussian_blur_routine.h"
-#include "c_downstrike_routine.h"
-#include "c_upject_routine.h"
 #include "c_morphology_routine.h"
 
 #include <core/readdir.h>
@@ -179,7 +180,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_melp_pyramid_routine::class_factory_instance());
     register_class_factory(c_laplacian_pyramid_routine::class_factory_instance());
     register_class_factory(c_mpyramid_routine::class_factory_instance());
-
+    register_class_factory(c_morph_gradient_pyramid_routine::class_factory_instance());
 
     register_class_factory(c_downstrike_routine::class_factory_instance());
     register_class_factory(c_upject_routine::class_factory_instance());
@@ -555,9 +556,11 @@ bool c_image_processor_routine::serialize(c_config_setting settings, bool save)
     settings.set("display_name", display_name());
     settings.set("tooltip", tooltip());
     settings.set("enabled", enabled());
+    settings.set("ignore_mask", ignore_mask());
   }
   else {
     settings.get("enabled", &enabled_);
+    settings.get("ignore_mask", &ignore_mask_);
   }
 
   return true;

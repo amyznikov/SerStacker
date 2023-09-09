@@ -308,6 +308,7 @@ public:
     cv::Mat2f rmap;
     cv::Mat1f Ix, Iy;//, It;
     cv::Mat4f D;
+    int lvl = 0;
   };
 
   void set_support_scale(int v);
@@ -332,6 +333,12 @@ public:
 
   void set_max_pyramid_level(int v);
   int max_pyramid_level() const;
+
+  void set_noise_level(double v);
+  double noise_level() const;
+
+  void set_debug_path(const std::string & v);
+  const std::string & debug_path() const;
 
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray());
@@ -364,8 +371,8 @@ protected:
 
   double input_smooth_sigma_ = 0;
   double reference_smooth_sigma_ = 0;
-
   double update_multiplier_ = 1.5;
+  double noise_level_ = -1;
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;
@@ -373,96 +380,12 @@ protected:
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f cuv;
+
+  std::string debug_path_;
 };
 
+void ecc_remap_to_flow(const cv::Mat2f & rmap, cv::Mat2f & flow);
+void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
 
-// experiment with horizontal eccflow
-class c_ecc_stereo_flow
-{
-public:
-  typedef c_ecc_stereo_flow this_class;
-
-  // made public for debug purposes
-  struct pyramid_entry {
-    cv::Mat1f current_image, reference_image;
-    cv::Mat1b current_mask, reference_mask;
-    cv::Mat2f rmap;
-    cv::Mat1f Ix, Iy;//, It;
-    cv::Mat4f D;
-  };
-
-  void set_support_scale(int v);
-  int support_scale() const;
-
-  void set_max_iterations(int v);
-  int max_iterations() const;
-
-  void set_update_multiplier(double v);
-  double update_multiplier() const;
-
-  // Use for images which violate brightness constancy assumption,
-  // for example on strong vignetting or planetary disk derotation
-  void set_normalization_scale(int v);
-  int normalization_scale() const;
-
-  void set_input_smooth_sigma(double v);
-  double input_smooth_sigma() const;
-
-  void set_reference_smooth_sigma(double v);
-  double reference_smooth_sigma() const;
-
-  void set_max_pyramid_level(int v);
-  int max_pyramid_level() const;
-
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray());
-
-  bool compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
-      cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());
-
-  bool compute(cv::InputArray inputImage, cv::Mat2f & rmap,
-      cv::InputArray inputMask = cv::noArray());
-
-public: // public access mainly for debug and visualization purposes
-
-  const cv::Mat1f & reference_image() const;
-  const cv::Mat1b & reference_mask() const;
-  const cv::Mat2f & current_uv() const;
-  const std::vector<pyramid_entry> & current_pyramid() const;
-
-protected:
-  static void pyrdown(cv::InputArray src, cv::OutputArray dst,
-      const cv::Size & dstsize = cv::Size(),
-      int borderType = cv::BORDER_DEFAULT);
-
-  static void pyrup(cv::InputArray src, cv::OutputArray dst,
-      const cv::Size & dstsize = cv::Size(),
-      int borderType = cv::BORDER_DEFAULT);
-
-  bool convert_input_images(cv::InputArray src, cv::InputArray srcmask,
-      cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
-
-  bool compute_uv(pyramid_entry & e,
-      cv::Mat2f & outuv) const;
-
-  bool pscale(cv::InputArray src, cv::Mat & dst,
-      bool ismask = false) const;
-  bool pupscale(cv::Mat & image,
-      cv::Size dstSize) const;
-
-  void pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const;
-
-  double input_smooth_sigma_ = 0;
-  double reference_smooth_sigma_ = 0;
-
-  double update_multiplier_ = 1.5;
-  int max_iterations_ = 1; // not used at this time
-  int support_scale_ = 5;
-  int normalization_scale_ = -1;
-  int max_pyramid_level_ = -1; // to allow force limit max pyramid size
-
-  std::vector<pyramid_entry> pyramid_;
-  cv::Mat2f cuv;
-};
 
 #endif /* __ecc2_h__ */

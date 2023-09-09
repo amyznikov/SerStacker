@@ -286,6 +286,12 @@ const c_frame_registration::ecc_image_preprocessor_function & c_frame_registrati
 void c_frame_registration::set_debug_path(const std::string & v)
 {
   debug_path_ = v;
+  if ( !debug_path_.empty() && options_.eccflow.enable_debug ) {
+    eccflow_.set_debug_path(ssprintf("%s/eccflow", debug_path_.c_str()));
+  }
+  else {
+    eccflow_.set_debug_path("");
+  }
 }
 
 const std::string& c_frame_registration::debug_path() const
@@ -381,6 +387,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       eccflow_.set_normalization_scale(options_.eccflow.normalization_scale);
       eccflow_.set_input_smooth_sigma(options_.eccflow.input_smooth_sigma);
       eccflow_.set_reference_smooth_sigma(options_.eccflow.reference_smooth_sigma);
+      eccflow_.set_noise_level(options_.eccflow.noise_level);
 
       if (eccflow_mask.empty() ) {
         eccflow_mask = ecc_mask;
@@ -626,7 +633,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   /////////////////////////////////////////////////////////////////////////////
 
+  CF_DEBUG("current_remap_: %dx%d", current_remap_.cols, current_remap_.rows);
+
   t0 = get_realtime_ms();
+
 
   if( !image_transform_->create_remap(current_remap_, reference_frame_size_) ) {
     CF_ERROR("image_transform_->create_remap(size=%dx%d) fails",

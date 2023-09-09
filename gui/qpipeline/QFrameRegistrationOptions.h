@@ -110,6 +110,9 @@ protected:
   QNumericBox * max_iterations_ctl = nullptr;
   QNumericBox * support_scale_ctl = nullptr;
   QNumericBox * normalization_scale_ctl = nullptr;
+  QNumericBox * noise_level_ctl = nullptr;
+  QCheckBox * enable_debug_ctl = nullptr;
+
   QWidgetList controls;
 };
 

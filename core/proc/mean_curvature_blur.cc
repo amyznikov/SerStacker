@@ -108,7 +108,8 @@ void mean_curvature_blur(cv::InputArray src, cv::OutputArray dst, int iterations
     cv::copyMakeBorder(src_buf, src_buf, 1, 1, 1, 1, cv::BORDER_REPLICATE);
   }
 
-  dst_buf.create(src_buf.size(), src_buf.type());
+  //dst_buf.create(src_buf.size(), src_buf.type());
+  src_buf.copyTo(dst_buf);
 
   for( int iteration = 0; iteration < iterations; ++iteration ) {
     mean_curvature_flow(src_buf, dst_buf);

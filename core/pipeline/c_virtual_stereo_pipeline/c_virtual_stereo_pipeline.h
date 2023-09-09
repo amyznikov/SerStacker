@@ -56,14 +56,11 @@ struct c_virtual_stereo_output_options :
     std::string polar_frames_filename;
     std::string disparity_frames_filename;
     std::string homography_video_filename;
-    std::string median_hat_video_filename;
 
     bool save_progress_video = false;
     bool save_polar_frames = false;
     bool save_disparity_frames = false;
     bool save_homography_video = false;
-    bool save_median_hat_video = false;
-
 };
 
 
@@ -145,7 +142,7 @@ protected:
   bool estmate_camera_pose();
   bool create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap);
   bool run_polar_stereo();
-  bool run_epipolar_matcher();
+  bool run_epipolar_stereo();
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
@@ -185,18 +182,8 @@ protected:
   std::vector<cv::Point2f> matched_current_positions_;
   std::vector<cv::Point2f> matched_previous_positions_;
 
-
-  c_epipolar_matcher::c_block_array block_arrays_[2];
-  cv::Mat median_hats_[2];
-  cv::Mat1b median_hat_masks_[2];
-
-  c_epipolar_matcher::c_block_array * current_block_array_ = &block_arrays_[0];
-  c_epipolar_matcher::c_block_array * previous_block_array_ = &block_arrays_[1];
-  cv::Mat * current_median_hat_ = &median_hats_[0];
-  cv::Mat * previous_median_hat_ = &median_hats_[1];
-  cv::Mat1b *current_median_hat_mask_ = &median_hat_masks_[0];
-  cv::Mat1b *previous_median_hat_mask_ = &median_hat_masks_[1];
-
+//  c_epipolar_matcher::c_block_array current_block_array_;
+//  c_epipolar_matcher::c_block_array previous_block_array_;
 
   cv::Vec3d currentEulerAnges_;
   cv::Vec3d currentTranslationVector_;
@@ -215,7 +202,7 @@ protected:
   c_output_frame_writer polar_frames_writer_;
   c_output_frame_writer disparity_frames_writer_;
   c_output_frame_writer homography_video_writer_;
-  c_output_frame_writer median_hat_video_writer_;
+  //c_output_frame_writer median_hat_video_writer_;
 
 };
 

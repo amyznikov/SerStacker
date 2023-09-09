@@ -45,9 +45,11 @@ struct c_eccflow_registration_options {
   double update_multiplier = 1.5;
   double input_smooth_sigma = 0;
   double reference_smooth_sigma = 0;
+  double noise_level = -1;
   int max_iterations = 1;
   int support_scale = 4;
   int normalization_scale = -1;
+  bool enable_debug = false;
 };
 
 struct c_jovian_derotation_options {

@@ -409,6 +409,32 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
               Q_EMIT parameterChanged();
             }
           }));
+
+  controls.append(noise_level_ctl =
+      add_numeric_box<double>("noise_level",
+          "Set > 0 to manually force noise level",
+          [this](double value) {
+            if ( options_ && options_->noise_level != value ) {
+              options_->noise_level = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
+
+
+  enable_debug_ctl =
+      add_checkbox("enable debug",
+          "",
+          [this](bool checked) {
+            if ( options_ && options_->enable_debug != checked ) {
+              options_->enable_debug = checked;
+              update_controls_state();
+              Q_EMIT parameterChanged();
+            }
+          });
+
+
+  updateControls();
+
 }
 
 void QEccFlowRegistrationOptions::set_registration_options(c_eccflow_registration_options * options)
@@ -435,6 +461,8 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     max_iterations_ctl->setValue(options_->max_iterations);
     support_scale_ctl->setValue(options_->support_scale);
     normalization_scale_ctl->setValue(options_->normalization_scale);
+    noise_level_ctl->setValue(options_->noise_level);
+    enable_debug_ctl->setChecked(options_->enable_debug);
     update_controls_state();
     setEnabled(true);
   }

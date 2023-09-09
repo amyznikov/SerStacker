@@ -553,7 +553,6 @@ bool c_image_stacking_pipeline::run_pipeline()
   //      output_path_.c_str(),
   //      cname()));
 
-
   const bool do_jovian_derotation =
       image_registration_options_.enable_frame_registration &&
       image_registration_options_.jovian_derotation.enabled;
@@ -652,12 +651,26 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
     return false;
   }
 
+  if( !input_sequence_->is_open() && !input_sequence_->open() ) {
+    CF_ERROR("input_sequence_->open() fails");
+    return false;
+  }
+
+
   std::vector<int> reference_frames;
 
   if ( !registration_options.jovian_derotation.derotate_all_frames ) {
     reference_frames.emplace_back(registration_options.master_frame_options.master_frame_index);
   }
   else {
+
+    const int start_pos =
+        std::max(0, input_options_.start_frame_index);
+
+    const int end_pos =
+        input_options_.max_input_frames > 0 ?
+            start_pos + input_options_.max_input_frames :
+            INT_MAX;
 
     for( int i = 0, n = input_sequence_->sources().size(); i < n; ++i ) {
 
@@ -671,7 +684,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
           const int global_pos =
               input_sequence_->global_pos(i, j);
 
-          if( !is_bad_frame_index(global_pos) ) {
+          if( global_pos >= start_pos && global_pos < end_pos && !is_bad_frame_index(global_pos) ) {
             reference_frames.emplace_back(global_pos);
           }
         }
@@ -3300,6 +3313,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
+        SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
+        SERIALIZE_OPTION(subsubsection, save, eccflow, enable_debug);
       }
 
 

@@ -28,6 +28,9 @@ public:
   void set_edge_blur_radius(double v);
   double edge_blur_radius() const;
 
+  void set_fill_holes(bool v);
+  bool fill_holes() const;
+
   void set_noise_scale(double v);
   double noise_scale() const;
 
@@ -43,6 +46,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, erode_radius, "SE radius for erode");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, mask_blur_radius, "GaussianBlur sigma");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, edge_blur_radius, "GaussianBlur sigma");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, fill_holes, "Fill holes inide mask (jovian satellite shadows etc)");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, noise_scale, "noise scale");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, show_mask, "show objects mask instead of processing");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, show_blured_image, "show blured image instead of processing");
@@ -54,6 +58,7 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, erode_radius);
       SERIALIZE_PROPERTY(settings, save, *this, mask_blur_radius);
       SERIALIZE_PROPERTY(settings, save, *this, edge_blur_radius);
+      SERIALIZE_PROPERTY(settings, save, *this, fill_holes);
       SERIALIZE_PROPERTY(settings, save, *this, noise_scale);
       SERIALIZE_PROPERTY(settings, save, *this, show_mask);
       SERIALIZE_PROPERTY(settings, save, *this, show_blured_image);
@@ -69,6 +74,7 @@ protected:
   double noise_scale_ = 10;
   double mask_blur_radius_ = 3;
   double edge_blur_radius_ = 1.5;
+  bool fill_holes_ = true;
   bool show_mask_ = false;
   bool show_blured_image_ = false;
 };

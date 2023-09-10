@@ -1397,11 +1397,11 @@ bool c_eccflow::compute_uv(pyramid_entry & e,
 
   tbb::parallel_invoke(
     [&e, &worker_image]() {
-      // e.reference_image.copyTo(worker_image);
+      //e.reference_image.copyTo(worker_image);
       cv::remap(e.current_image, worker_image,
           e.rmap, cv::noArray(),
           cv::INTER_AREA,
-          cv::BORDER_REPLICATE/* cv::BORDER_TRANSPARENT*/);
+          cv::BORDER_REPLICATE); // cv::BORDER_TRANSPARENT
     },
 
     [&e, &M]() {
@@ -1596,7 +1596,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
 
   const int min_image_size =
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
-          3 * (1 << (support_scale_)));
+          4 * (1 << (support_scale_)));
 
   CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
 
@@ -1854,18 +1854,10 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
 
 #if RRTEST
           cv::pyrDown(prev_scale.rmap, next_scale.rmap, next_rmap_size, cv::BORDER_REPLICATE);
+          cv::multiply(next_scale.rmap, size_ratio, next_scale.rmap);
 #else
           ecc_downscale_remap(prev_scale.rmap, next_scale.rmap, next_rmap_size);
 #endif
-
-          if( !debug_path_.empty() ) {
-            std::string debug_filename;
-            if( !save_image(next_scale.rmap,
-                debug_filename = ssprintf("%s/compute/initial_uv.%03d.flo", debug_path_.c_str(), next_scale.lvl)) ) {
-              CF_ERROR("save_image('%s') fails", debug_filename.c_str());
-            }
-          }
-
         }
     );
 
@@ -1873,6 +1865,13 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
 
 #if RRTEST
   for ( int i = 0, n = pyramid_.size(); i < n; ++i ) {
+    if( !debug_path_.empty() ) {
+      std::string debug_filename;
+      if( !save_image(pyramid_[i].rmap,
+          debug_filename = ssprintf("%s/compute/initial_uv.%03d.flo", debug_path_.c_str(), pyramid_[i].lvl)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+      }
+    }
     ecc_flow_to_remap(pyramid_[i].rmap, pyramid_[i].rmap);
   }
 #endif
@@ -1898,7 +1897,8 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
       const cv::Scalar size_ratio((double) current_image_size.width / (double) prev_image_size.width,
           (double) current_image_size.height / (double) prev_image_size.height);
 
-      cv::multiply(cuv, cv::Scalar::all(2), cuv);
+      cv::multiply(cuv, size_ratio, cuv);
+      //cv::multiply(cuv, cv::Scalar::all(2), cuv);
       cv::pyrUp(cuv, cuv, current_rmap_size);
       cv::add(current_scale.rmap, cuv, current_scale.rmap);
 

@@ -31,6 +31,11 @@ int main(int argc, char * argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
+  // speed-up using multithreads
+  cv::setUseOptimized(true);
+  cv::setNumThreads(4);
+
+
   bool useDarkStyle = true;
   if ( !useDarkStyle ) {
     setIconStyleSelector("dark");

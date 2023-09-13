@@ -617,43 +617,65 @@ inline std::string toString(const cv::Point3_<T> & v) {
 }
 
 // cv::Rect
+
 template<class T>
-inline bool fromString(const std::string & s, const char fmt[], cv::Rect_<T> * v) {
-  return sscanf(s.c_str(),  fmt, &v->x, &v->y, &v->width, &v->height) == 4;
+inline bool fromString(const std::string & s, cv::Rect_<T> * v)
+{
+  double x, y, w, h;
+
+  if ( sscanf(s.c_str(), "%lf %*[,;] %lf %*[,; \t\r\n] %lf %*[xX] %lf", &x, &y, &w, &h) == 4 ) {
+    v->x = (T)x;
+    v->y = (T)y;
+    v->width = (T)w;
+    v->height = (T)h;
+    return true;
+  }
+
+  if ( sscanf(s.c_str(), "%lf %*[,;] %lf %*[,;] %lf %*[,;] %lf", &x, &y, &w, &h) == 4 ) {
+    v->x = (T)x;
+    v->y = (T)y;
+    v->width = (T)(w - x);
+    v->height = (T)(h - y);
+    return true;
+  }
+
+  return false;
 }
-inline bool fromString(const std::string & s, cv::Rect_<int8_t> * v) {
-  return fromString(s, "%" SCNd8 " %*[;:] " "%" SCNd8 " %*[;:] ""%" SCNd8 " %*[;:] " "%" SCNd8, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<uint8_t> * v) {
-  return fromString(s, "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<int16_t> * v) {
-  return fromString(s, "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<uint16_t> * v) {
-  return fromString(s, "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<int32_t> * v) {
-  return fromString(s, "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<uint32_t> * v) {
-  return fromString(s, "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<int64_t> * v) {
-  return fromString(s, "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<uint64_t> * v) {
-  return fromString(s, "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64, v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<float> * v) {
-  return fromString(s, "%f" " %*[;:] " "%f" " %*[;:] " "%f" " %*[;:] " "%f", v);
-}
-inline bool fromString(const std::string & s, cv::Rect_<double> * v) {
-  return fromString(s, "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf", v);
-}
+
+//inline bool fromString(const std::string & s, cv::Rect_<int8_t> * v)
+//{
+//  return fromString(s, "%" SCNd8 " %*[;:] " "%" SCNd8 " %*[;:] ""%" SCNd8 " %*[;:] " "%" SCNd8, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<uint8_t> * v) {
+//  return fromString(s, "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<int16_t> * v) {
+//  return fromString(s, "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<uint16_t> * v) {
+//  return fromString(s, "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<int32_t> * v) {
+//  return fromString(s, "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<uint32_t> * v) {
+//  return fromString(s, "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<int64_t> * v) {
+//  return fromString(s, "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<uint64_t> * v) {
+//  return fromString(s, "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64, v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<float> * v) {
+//  return fromString(s, "%f" " %*[;:] " "%f" " %*[;:] " "%f" " %*[;:] " "%f", v);
+//}
+//inline bool fromString(const std::string & s, cv::Rect_<double> * v) {
+//  return fromString(s, "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf", v);
+//}
 template<class T>
 inline std::string toString(const cv::Rect_<T> & v) {
-  return ssprintf("%g;%g;%g;%g", (double)v.x, (double)v.y, (double)v.width, (double)v.height);
+  return ssprintf("%g;%g; %gx%g", (double)v.x, (double)v.y, (double)v.width, (double)v.height);
 }
 
 template<class T, int m, int n>
@@ -763,6 +785,18 @@ inline const c_enum_member * members_of<cv::MorphShapes>()
       {cv::MORPH_CROSS, "CROSS", "a cross-shaped structuring element"},
       {cv::MORPH_ELLIPSE, "ELLIPSE", "an elliptic structuring element"},
       {cv::MORPH_RECT},
+  };
+
+  return members;
+}
+
+template<>
+inline const c_enum_member * members_of<cv::TermCriteria::Type>()
+{
+  static constexpr c_enum_member members[] = {
+      {cv::TermCriteria::COUNT, "COUNT", "the maximum number of iterations or elements to compute"},
+      {cv::TermCriteria::EPS, "EPS", "the desired accuracy or change in parameters at which the iterative algorithm stops"},
+      {cv::TermCriteria::COUNT},
   };
 
   return members;

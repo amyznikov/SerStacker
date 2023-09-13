@@ -28,9 +28,9 @@
 #include "color/c_set_luminance_channel_routine.h"
 
 
+
 #include "quicktests/c_census_transfrom_routine.h"
 #include "quicktests/c_homography_test_routine.h"
-#include "quicktests/c_edgebox_routine.h"
 #include "quicktests/c_sweepscan_routine.h"
 #include "quicktests/c_melp_stereo_matcher_routine.h"
 //#include "quicktests/c_pyramid_test_routine.h"
@@ -39,14 +39,16 @@
 #include "camera_calibration/c_image_rectification_routine.h"
 #include "camera_calibration/c_stereo_rectification_routine.h"
 
-#include "maps/c_gradient_routine.h"
+#include "gradient/c_gradient_routine.h"
+#include "gradient/c_laplacian_routine.h"
+#include "gradient/c_radial_gradient_routine.h"
+
 #include "maps/c_noisemap_routine.h"
 #include "maps/c_auto_correlation_routine.h"
 #include "maps/c_local_contrast_map_routine.h"
 #include "maps/c_lpg_map_routine.h"
 #include "maps/c_harris_map_routine.h"
 #include "maps/c_threshold_routine.h"
-#include "maps/c_laplacian_routine.h"
 
 #include "pyramid/c_downstrike_routine.h"
 #include "pyramid/c_upject_routine.h"
@@ -57,11 +59,14 @@
 #include "pyramid/c_scale_gaussian_pyramid_layers_routine.h"
 #include "pyramid/c_mpyramid_routine.h"
 #include "pyramid/c_morph_gradient_pyramid_routine.h"
+#include "pyramid/c_median_pyramid_routine.h"
+#include "pyramid/c_radial_scale_routine.h"
 
 #include "fft/c_fft_routine.h"
 
 #include "feature2d/c_keypoins_detector_routine.h"
-
+#include "feature2d/c_edgebox_routine.h"
+#include "feature2d/c_selective_search_segmentation_routine.h"
 
 #include "c_align_color_channels_routine.h"
 #include "c_autoclip_routine.h"
@@ -140,6 +145,10 @@ void c_image_processor_routine::register_all()
 
     registered = true;
 
+    register_class_factory(c_laplacian_routine::class_factory_instance());
+    register_class_factory(c_gradient_routine::class_factory_instance());
+    register_class_factory(c_radial_gradient_routine::class_factory_instance());
+
     register_class_factory(c_align_color_channels_routine::class_factory_instance());
     register_class_factory(c_anscombe_routine::class_factory_instance());
     register_class_factory(c_autoclip_routine::class_factory_instance());
@@ -151,7 +160,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pixel_func_routine::class_factory_instance());
     register_class_factory(c_image_calc_routine::class_factory_instance());
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
-    register_class_factory(c_gradient_routine::class_factory_instance());
+
     register_class_factory(c_scale_channels_routine::class_factory_instance());
     register_class_factory(c_color_diff_routine::class_factory_instance());
     register_class_factory(c_set_luminance_channel_routine::class_factory_instance());
@@ -173,7 +182,6 @@ void c_image_processor_routine::register_all()
 
 
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());
-    register_class_factory(c_laplacian_routine::class_factory_instance());
 
     register_class_factory(c_gaussian_pyramid_routine::class_factory_instance());
     register_class_factory(c_scale_gaussian_pyramid_layers_routine::class_factory_instance());
@@ -181,6 +189,9 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_laplacian_pyramid_routine::class_factory_instance());
     register_class_factory(c_mpyramid_routine::class_factory_instance());
     register_class_factory(c_morph_gradient_pyramid_routine::class_factory_instance());
+    register_class_factory(c_median_pyramid_routine::class_factory_instance());
+    register_class_factory(c_radial_scale_routine::class_factory_instance());
+
 
     register_class_factory(c_downstrike_routine::class_factory_instance());
     register_class_factory(c_upject_routine::class_factory_instance());
@@ -206,7 +217,6 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_bilateral_filter_routine::class_factory_instance());
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_homography_test_routine::class_factory_instance());
-    register_class_factory(c_edgebox_routine::class_factory_instance());
     register_class_factory(c_sweepscan_routine::class_factory_instance());
     register_class_factory(c_melp_stereo_matcher_routine::class_factory_instance());
     register_class_factory(c_image_rectification_routine::class_factory_instance());
@@ -214,7 +224,10 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pnormalize_routine::class_factory_instance());
     register_class_factory(c_census_transfrom_routine::class_factory_instance());
     register_class_factory(c_fft_routine::class_factory_instance());
+
     register_class_factory(c_keypoins_detector_routine::class_factory_instance());
+    register_class_factory(c_edgebox_routine::class_factory_instance());
+    register_class_factory(c_selective_search_segmentation_routine::class_factory_instance());
   }
 }
 

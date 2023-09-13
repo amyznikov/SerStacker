@@ -27,7 +27,7 @@ const c_enum_member* members_of<c_gradient_routine::OutputType>()
 
 bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( output_ == OutputGradient ) {
+  if ( output_type_ == OutputGradient ) {
 
     if ( !compute_gradient(image.getMat(), image, order_x_, order_y_, kradius_, ddepth_, delta_, scale_) ) {
       CF_ERROR("compute_gradient() fails");
@@ -38,7 +38,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       cv::multiply(image.getMat(), image.getMat(), image);
     }
   }
-  else if( output_ == OutputTextureFromGradients ) {
+  else if( output_type_ == OutputTextureFromGradients ) {
 
     cv::Mat gx, gy, g;
     cv::Mat gxx, gyy, gg;
@@ -68,7 +68,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
     }
   }
 
-  else if( output_ == OutputGradientMagnitude ) {
+  else if( output_type_ == OutputGradientMagnitude ) {
 
     cv::Mat gx, gy;
 
@@ -96,7 +96,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
     }
   }
 
-  else if( output_ == OutputGradientPhase || output_ == OutputGradientPhase90 || output_ == OutputGradientPhase90W ) {
+  else if( output_type_ == OutputGradientPhase || output_type_ == OutputGradientPhase90 || output_type_ == OutputGradientPhase90W ) {
 
     cv::Mat gx, gy;
 
@@ -113,7 +113,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       return false;
     }
 
-    switch (output_) {
+    switch (output_type_) {
       case OutputGradientPhase90:
         case OutputGradientPhase90W:
         cv::absdiff(gx, 0, gx);
@@ -123,7 +123,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
     cv::phase(gx, gy, image, true);
 
-    if (  output_ == OutputGradientPhase90W  ) {
+    if (  output_type_ == OutputGradientPhase90W  ) {
       cv::Mat g;
       cv::magnitude(gx, gy,g);
       if ( squared_ ) {

@@ -33,6 +33,12 @@ c_translation_image_transform::c_translation_image_transform(const cv::Vec2f & T
   Ty_ = T[1];
 }
 
+void c_translation_image_transform::reset()
+{
+  a[0] = 0;
+  a[1] = 0;
+}
+
 void c_translation_image_transform::set_translation(const cv::Vec2f & T)
 {
   Tx_ = T[0];
@@ -166,6 +172,16 @@ c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & C, co
   scale_ = scale;
   Cx_ = C[0];
   Cy_ = C[1];
+}
+
+void c_euclidean_image_transform::reset()
+{
+  a[0] = 0;
+  a[1] = 0;
+  a[2] = 0;
+  a[3] = 1;
+  a[4] = 0;
+  a[5] = 0;
 }
 
 void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)

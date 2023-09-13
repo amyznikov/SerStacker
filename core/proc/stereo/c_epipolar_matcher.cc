@@ -232,10 +232,9 @@ bool c_epipolar_matcher::match(cv::InputArray _current_image, cv::InputArray _cu
   }
 
 
-  _previous_image.getMat().copyTo(previous_image,
-      compute_mask);
+  _previous_image.getMat().copyTo(previous_image/*,compute_mask*/);
 
-  current_image.setTo(0, ~compute_mask);
+  //current_image.setTo(0, ~compute_mask);
 
   /////////////////////////////////////////////////////
 
@@ -250,7 +249,7 @@ bool c_epipolar_matcher::match(cv::InputArray _current_image, cv::InputArray _cu
         current_image.copyTo(remapped_current_image);
       }
       else {
-        create_scale_compression_remap(disparity, size, epipole_location, cmap, compute_mask);
+        create_scale_compression_remap(disparity, size, epipole_location, cmap/*, compute_mask*/);
         cv::remap(current_image, remapped_current_image, cmap, cv::noArray(), cv::INTER_LINEAR);
       }
 

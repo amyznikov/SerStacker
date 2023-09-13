@@ -28,14 +28,14 @@ public:
     OutputTextureFromGradients,
   };
 
-  void set_output(OutputType v)
+  void set_output_type(OutputType v)
   {
-    output_ = v;
+    output_type_ = v;
   }
 
-  OutputType output() const
+  OutputType output_type() const
   {
-    return output_;
+    return output_type_;
   }
 
   void set_order_x(int  v)
@@ -121,7 +121,7 @@ public:
 
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output, "Output type");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_type, "Output type");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, order_x, "Order of x derivative");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, order_y, "Order of y derivative");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, kradius, "kernel radius in pixels");
@@ -135,7 +135,7 @@ public:
   bool serialize(c_config_setting settings, bool save) override
   {
     if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, output);
+      SERIALIZE_PROPERTY(settings, save, *this, output_type);
       SERIALIZE_PROPERTY(settings, save, *this, order_x);
       SERIALIZE_PROPERTY(settings, save, *this, order_y);
       SERIALIZE_PROPERTY(settings, save, *this, kradius);
@@ -152,7 +152,7 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
-  OutputType output_ = OutputGradientMagnitude;
+  OutputType output_type_ = OutputGradientMagnitude;
   PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_NO_CHANGE;
   int order_x_ = 1;
   int order_y_ = 0;

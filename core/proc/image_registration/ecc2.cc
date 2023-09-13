@@ -1401,7 +1401,7 @@ bool c_eccflow::compute_uv(pyramid_entry & e,
       cv::remap(e.current_image, worker_image,
           e.rmap, cv::noArray(),
           cv::INTER_AREA,
-          cv::BORDER_REPLICATE); // cv::BORDER_TRANSPARENT
+          cv::BORDER_REPLICATE/*cv::BORDER_TRANSPARENT*/);
     },
 
     [&e, &M]() {
@@ -1587,7 +1587,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
           referenceMask);
 
   pyramid_.clear();
-  pyramid_.reserve(20);
+  pyramid_.reserve(16);
 
   if ( !convert_input_images(referenceImage, referenceMask, I, M) ) {
     CF_ERROR("convert_input_images() fails");
@@ -1596,7 +1596,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
 
   const int min_image_size =
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
-          4 * (1 << (support_scale_)));
+          3 * (1 << (support_scale_)));
 
   CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
 

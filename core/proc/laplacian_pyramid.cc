@@ -42,19 +42,27 @@ void build_gaussian_pyramid(cv::InputArray input_image,
 
 
 void build_laplacian_pyramid(cv::InputArray input_image,
-    std::vector<cv::Mat> & pyramid,
+    std::vector<cv::Mat> & lp,
     int minimum_image_size,
-    cv::BorderTypes borderType)
+    cv::BorderTypes borderType,
+    std::vector<cv::Mat> * gp)
 {
-  pyramid.emplace_back();
+  lp.clear();
+  lp.reserve(12);
+  lp.emplace_back();
 
-  input_image.getMat().convertTo(pyramid.back(),
+  if ( gp ) {
+    gp->clear();
+    gp->reserve(12);
+  }
+
+  input_image.getMat().convertTo(lp.back(),
       CV_32F);
 
   while (42) {
 
-    const cv::Size nextSize((pyramid.back().cols + 1) / 2,
-        (pyramid.back().rows + 1) / 2);
+    const cv::Size nextSize((lp.back().cols + 1) / 2,
+        (lp.back().rows + 1) / 2);
 
     if( (std::min)(nextSize.width, nextSize.height) <= minimum_image_size ) {
       break;
@@ -63,18 +71,23 @@ void build_laplacian_pyramid(cv::InputArray input_image,
     cv::Mat filtered_image;
     cv::Mat upscaled_image;
 
-    cv::pyrDown(pyramid.back(), filtered_image,
+    cv::pyrDown(lp.back(), filtered_image,
         nextSize,
         borderType);
 
     cv::pyrUp(filtered_image, upscaled_image,
-        pyramid.back().size(),
+        lp.back().size(),
         borderType);
 
-    cv::subtract(pyramid.back(), upscaled_image,
-        pyramid.back());
+    cv::subtract(lp.back(), upscaled_image,
+        lp.back());
 
-    pyramid.emplace_back(filtered_image);
+    lp.emplace_back(filtered_image);
+
+    if ( gp ) {
+      gp->emplace_back(upscaled_image);
+    }
+
   }
 }
 

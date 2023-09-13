@@ -23,6 +23,7 @@ public:
     Function_None,
     Function_add,
     Function_subtract,
+    Function_absdiff,
     Function_multiply,
     Function_divide,
     Function_max,
@@ -42,6 +43,7 @@ public:
   void set_filename(const std::string & v)
   {
     filename_ = v;
+    second_image_.release();
   }
 
   const std::string & filename() const

@@ -74,6 +74,8 @@ public:
   c_translation_image_transform(float Tx = 0, float Ty = 0);
   c_translation_image_transform(const cv::Vec2f & T);
 
+  void reset();
+
   void set_translation(float x, float y);
   void set_translation(const cv::Vec2f & v) override;
   cv::Vec2f translation() const override;
@@ -111,6 +113,8 @@ public:
   c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1);
   c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1);
   c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle = 0, float scale = 1);
+
+  void reset();
 
   void set_translation(const cv::Vec2f & v) override;
   cv::Vec2f translation() const  override;

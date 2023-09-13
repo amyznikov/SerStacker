@@ -19,9 +19,10 @@ void build_gaussian_pyramid(cv::InputArray input_image,
     double stretch_factor = 1.0);
 
 void build_laplacian_pyramid(cv::InputArray input_image,
-    std::vector<cv::Mat> & pyramid,
+    std::vector<cv::Mat> & lp,
     int minimum_image_size = 4,
-    cv::BorderTypes borderType = cv::BORDER_DEFAULT);
+    cv::BorderTypes borderType = cv::BORDER_DEFAULT,
+    std::vector<cv::Mat> * gp = nullptr);
 
 void reconstruct_laplacian_pyramid(cv::OutputArray output_image,
     const std::vector<cv::Mat> & pyramid,

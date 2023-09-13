@@ -17,6 +17,7 @@ const c_enum_member * members_of<c_image_calc_routine::Function>()
       { c_image_calc_routine::Function_None, "None", " No function, return just current image"},
       { c_image_calc_routine::Function_add, "add", "cv::add(Ic, Ia)"},
       { c_image_calc_routine::Function_subtract, "subtract", "cv::subtract(Ic, Ia"},
+      { c_image_calc_routine::Function_absdiff, "absdiff", "cv::absdiff(Ic, Ia"},
       { c_image_calc_routine::Function_multiply, "multiply", "cv::multiply(Ic, Ia"},
       { c_image_calc_routine::Function_divide, "divide", "cv::divide(Ic, Ia)"},
       { c_image_calc_routine::Function_max, "max", "cv::max(Ic, Ia)"},
@@ -87,6 +88,21 @@ bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     case Function_subtract:
       cv::subtract(image.getMat(), second_image_, image, cv::noArray(),
           std::max(image.depth(), second_image_.depth()));
+      break;
+    case Function_absdiff:
+      if ( image.depth() == second_image_.depth() ) {
+        cv::absdiff(image.getMat(), second_image_, image);
+      }
+      else if (image.depth() > second_image_.depth()) {
+        cv::Mat tmp;
+        image.getMat().convertTo(tmp, second_image_.depth());
+        cv::absdiff(tmp, second_image_, image);
+      }
+      else {
+        cv::Mat tmp;
+        second_image_.convertTo(tmp, image.depth());
+        cv::absdiff(image.getMat(), tmp, image);
+      }
       break;
     case Function_multiply:
       cv::multiply(image.getMat(), second_image_, image, 1,

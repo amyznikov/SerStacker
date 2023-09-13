@@ -9,6 +9,7 @@
 #include <core/settings/opencv_settings.h>
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/image_registration/c_translation_ecc_motion_model.h>
+#include <core/proc/image_registration/c_euclidean_ecc_motion_model.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/extract_channel.h>
 #include <core/proc/unsharp_mask.h>
@@ -694,6 +695,10 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 
   c_translation_image_transform image_transform;
   c_translation_ecc_motion_model model(&image_transform);
+
+//  c_euclidean_image_transform image_transform;
+//  c_euclidean_ecc_motion_model model(&image_transform);
+
   c_ecc_forward_additive ecc(&model);
   c_ecch ecch(&ecc);
 
@@ -769,7 +774,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       return false;
     }
 
-    image_transform.set_translation(0, 0);
+    image_transform.reset();
 
     if ( !ecch.align(reference_frame, reference_mask) ) {
       CF_ERROR("ecch.align(pos=%d) fails", cpos);
@@ -865,7 +870,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
           return false;
         }
 
-  #if 1
+  #if 0
         linear_interpolation_inpaint(accumulated_image,
             accumulated_mask,
             accumulated_image);

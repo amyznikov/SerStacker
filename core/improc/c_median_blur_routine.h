@@ -30,15 +30,28 @@ public:
     return radius_;
   }
 
+  void set_iterations(int v)
+  {
+    iterations_ = v;
+  }
+
+  int iterations() const
+  {
+    return iterations_;
+  }
+
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, radius, "Filter radius [px]");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, iterations, "Number of iterations");
   }
 
   bool serialize(c_config_setting settings, bool save) override
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, radius);
+      SERIALIZE_PROPERTY(settings, save, *this, iterations);
       return true;
     }
     return false;
@@ -49,12 +62,16 @@ public:
     const int r = image.depth() < CV_32F ? radius_ : 2;
     const int ksize = 2 * radius_ + 1;
 
-    cv::medianBlur(image, image, ksize);
+    for( int i = 0; i < iterations_; ++i ) {
+      cv::medianBlur(image, image, ksize);
+    }
+
     return true;
   }
 
 protected:
   int radius_ = 1;
+  int iterations_ = 1;
 };
 
 #endif /* __c_median_blur_routine_h__ */

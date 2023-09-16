@@ -15,14 +15,17 @@
 #include "ecc_motion_model.h"
 
 
-struct c_feature_based_registration_options {
+struct c_feature_based_registration_options
+{
   bool enabled = false;
   double scale = 0.5;
   c_sparse_feature_extractor_options sparse_feature_extractor;
   c_feature2d_matcher_options sparse_feature_matcher;
+  c_estimate_image_transform_options estimate_options;
 };
 
-struct c_ecc_registration_options {
+struct c_ecc_registration_options
+{
   bool enabled = true;
   double scale = 0.5;
   double eps = 0.2;
@@ -40,7 +43,8 @@ struct c_ecc_registration_options {
   double planetary_disk_mask_stdev_factor = 0.5;
 };
 
-struct c_eccflow_registration_options {
+struct c_eccflow_registration_options
+{
   bool enabled = false;
   double update_multiplier = 1.5;
   double input_smooth_sigma = 0;
@@ -52,7 +56,8 @@ struct c_eccflow_registration_options {
   bool enable_debug = false;
 };
 
-struct c_jovian_derotation_options {
+struct c_jovian_derotation_options
+{
   bool enabled = false;
   c_jovian_ellipse_detector_options ellipse;
   double min_rotation = -40 * CV_PI / 180;
@@ -63,7 +68,8 @@ struct c_jovian_derotation_options {
   bool derotate_all_frames = false;
 };
 
-enum master_frame_selection_method {
+enum master_frame_selection_method
+{
   master_frame_specific_index,
   master_frame_middle_index,
   master_frame_best_of_100_in_middle,
@@ -106,6 +112,13 @@ struct c_image_registration_options
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
   struct c_jovian_derotation_options jovian_derotation;
+
+//  // Dummy stub from KITTI
+//  cv::Matx33d camera_matrix =
+//      cv::Matx33d(
+//          7.215377e+02, 0.000000e+00, 6.095593e+02,
+//          0.000000e+00, 7.215377e+02, 1.728540e+02,
+//          0.000000e+00, 0.000000e+00, 1.000000e+00);
 };
 
 struct c_image_registration_status

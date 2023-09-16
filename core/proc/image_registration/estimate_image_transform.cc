@@ -6,7 +6,32 @@
  */
 
 #include "estimate_image_transform.h"
+#include <core/ssprintf.h>
 #include <core/debug.h>
+
+
+template<>
+const c_enum_member * members_of<ROBUST_METHOD>()
+{
+  static const c_enum_member members[] = {
+      { ROBUST_METHOD_LMEDS, "LMEDS", "least-median of squares algorithm" },
+      { ROBUST_METHOD_RANSAC, "RANSAC", "RANSAC algorithm" },
+      { ROBUST_METHOD_RHO, "RHO", "RHO algorithm" },
+//#if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 5, 0)
+//      { ROBUST_METHOD_USAC_DEFAULT, "USAC_DEFAULT", "USAC algorithm, default settings" },
+//      { ROBUST_METHOD_USAC_PARALLEL, "USAC_PARALLEL", "USAC, parallel version" },
+//      { ROBUST_METHOD_USAC_FM_8PTS, "USAC_FM_8PTS", "USAC, fundamental matrix 8 points" },
+//      { ROBUST_METHOD_USAC_FAST, "USAC_FAST", "USAC, fast settings" },
+//      { ROBUST_METHOD_USAC_ACCURATE, "USAC_ACCURATE", "USAC, accurate settings" },
+//      { ROBUST_METHOD_USAC_PROSAC, "USAC_PROSAC", "USAC, sorted points, runs PROSAC" },
+//      { ROBUST_METHOD_USAC_MAGSAC, "USAC_MAGSAC", "USAC, runs MAGSAC++" },
+//#endif
+      { EMM_LMEDS, nullptr, "" },
+  };
+
+  return members;
+
+}
 
 
 namespace {
@@ -688,12 +713,55 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
   return false;
 }
 
+bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions_,
+    const std::vector<cv::Point2f> & matched_reference_positions_,
+    const c_estimate_image_transform_options * options)
+{
+
+  if ( !options ) {
+    CF_ERROR("No camera matrix specified, the estimation of epipolar derotation requires known camera matrix");
+    return false;
+  }
+
+
+  cv::Vec3d A(0, 0, 0);
+  cv::Vec3d T(0,0, 1);
+  cv::Mat1b inliers;
+
+  const cv::Matx33d & camera_matrix =
+      options->epipolar_derotation.camera_matrix;
+
+  bool fOk =
+      lm_refine_camera_pose2(A, T,
+          camera_matrix,
+          matched_current_positions_,
+          matched_reference_positions_,
+          inliers,
+          &options->epipolar_derotation.camera_pose);
+
+  if ( !fOk ) {
+    CF_ERROR("lm_refine_camera_pose2() fails");
+    return false;
+  }
+
+
+  const cv::Matx33d homography =
+      camera_matrix * build_rotation(-A) * camera_matrix.inv();
+
+  transform->set_homography_matrix(cv::Matx33f(homography));
+
+
+  return true;
+}
+
 } // namespace
 
 
 bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
-    const std::vector<cv::Point2f> & matched_reference_positions_)
+    const std::vector<cv::Point2f> & matched_reference_positions_,
+    const c_estimate_image_transform_options * options)
 {
   if ( !transform ) {
     CF_ERROR("No image transform specified");
@@ -710,6 +778,10 @@ bool estimate_image_transform(c_image_transform * transform,
 
   if( c_affine_image_transform *t = dynamic_cast<c_affine_image_transform*>(transform) ) {
     return estimate_affine_transform(t, matched_current_positions_, matched_reference_positions_);
+  }
+
+  if( c_epipolar_derotation_image_transform *t = dynamic_cast<c_epipolar_derotation_image_transform*>(transform) ) {
+    return estimate_epipolar_derotation(t, matched_current_positions_, matched_reference_positions_, options);
   }
 
   if( c_homography_image_transform *t = dynamic_cast<c_homography_image_transform*>(transform) ) {
@@ -729,3 +801,120 @@ bool estimate_image_transform(c_image_transform * transform,
 
   return false;
 }
+
+bool save_settings(c_config_setting settings, const c_estimate_image_transform_options& opts)
+{
+  c_config_setting subsection;
+
+  if( (subsection = settings.add_group("translation")) ) {
+    SAVE_OPTION(subsection, opts.translation, rmse_factor);
+    SAVE_OPTION(subsection, opts.translation, max_iterations);
+  }
+
+  if( (subsection = settings.add_group("euclidean")) ) {
+    SAVE_OPTION(subsection, opts.euclidean, rmse_threshold);
+    SAVE_OPTION(subsection, opts.euclidean, max_iterations);
+  }
+
+  if( (subsection = settings.add_group("scaled_euclidean")) ) {
+    SAVE_OPTION(subsection, opts.scaled_euclidean, ransacReprojThreshold);
+    SAVE_OPTION(subsection, opts.scaled_euclidean, confidence);
+    SAVE_OPTION(subsection, opts.scaled_euclidean, method);
+    SAVE_OPTION(subsection, opts.scaled_euclidean, maxIters);
+    SAVE_OPTION(subsection, opts.scaled_euclidean, refineIters);
+  }
+
+  if( (subsection = settings.add_group("affine")) ) {
+    SAVE_OPTION(subsection, opts.affine, method);
+    SAVE_OPTION(subsection, opts.affine, ransacReprojThreshold);
+    SAVE_OPTION(subsection, opts.affine, maxIters);
+    SAVE_OPTION(subsection, opts.affine, confidence);
+    SAVE_OPTION(subsection, opts.affine, refineIters);
+  }
+
+  if( (subsection = settings.add_group("homography")) ) {
+    SAVE_OPTION(subsection, opts.homography, method);
+    SAVE_OPTION(subsection, opts.homography, ransacReprojThreshold);
+    SAVE_OPTION(subsection, opts.homography, maxIters);
+    SAVE_OPTION(subsection, opts.homography, confidence);
+  }
+
+  if( (subsection = settings.add_group("semi_quadratic")) ) {
+    SAVE_OPTION(subsection, opts.semi_quadratic, rmse_factor);
+  }
+
+  if( (subsection = settings.add_group("quadratic")) ) {
+    SAVE_OPTION(subsection, opts.quadratic, rmse_factor);
+  }
+
+  if( (subsection = settings.add_group("epipolar_derotation")) ) {
+    SAVE_OPTION(subsection, opts.epipolar_derotation, camera_matrix);
+    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, robust_threshold);
+    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, epsf);
+    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, epsx);
+    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, max_iterations);
+    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, max_levmar_iterations);
+    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, direction);
+  }
+
+  return true;
+}
+
+bool load_settings(c_config_setting settings, c_estimate_image_transform_options * opts)
+{
+  c_config_setting subsection;
+
+  if( (subsection = settings["translation"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->translation, rmse_factor);
+    LOAD_OPTION(subsection, opts->translation, max_iterations);
+  }
+
+  if( (subsection = settings["euclidean"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->euclidean, rmse_threshold);
+    LOAD_OPTION(subsection, opts->euclidean, max_iterations);
+  }
+
+  if( (subsection = settings["scaled_euclidean"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->scaled_euclidean, ransacReprojThreshold);
+    LOAD_OPTION(subsection, opts->scaled_euclidean, confidence);
+    LOAD_OPTION(subsection, opts->scaled_euclidean, method);
+    LOAD_OPTION(subsection, opts->scaled_euclidean, maxIters);
+    LOAD_OPTION(subsection, opts->scaled_euclidean, refineIters);
+  }
+
+  if( (subsection = settings["affine"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->affine, method);
+    LOAD_OPTION(subsection, opts->affine, ransacReprojThreshold);
+    LOAD_OPTION(subsection, opts->affine, maxIters);
+    LOAD_OPTION(subsection, opts->affine, confidence);
+    LOAD_OPTION(subsection, opts->affine, refineIters);
+  }
+
+  if( (subsection = settings["homography"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->homography, method);
+    LOAD_OPTION(subsection, opts->homography, ransacReprojThreshold);
+    LOAD_OPTION(subsection, opts->homography, maxIters);
+    LOAD_OPTION(subsection, opts->homography, confidence);
+  }
+
+  if( (subsection = settings["semi_quadratic"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->semi_quadratic, rmse_factor);
+  }
+
+  if( (subsection = settings["quadratic"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->quadratic, rmse_factor);
+  }
+
+  if( (subsection = settings["epipolar_derotation"]).isGroup() ) {
+    LOAD_OPTION(subsection, opts->epipolar_derotation, camera_matrix);
+    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, robust_threshold);
+    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, epsf);
+    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, epsx);
+    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, max_iterations);
+    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, max_levmar_iterations);
+    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, direction);
+  }
+
+  return true;
+}
+

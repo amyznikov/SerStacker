@@ -642,37 +642,6 @@ inline bool fromString(const std::string & s, cv::Rect_<T> * v)
   return false;
 }
 
-//inline bool fromString(const std::string & s, cv::Rect_<int8_t> * v)
-//{
-//  return fromString(s, "%" SCNd8 " %*[;:] " "%" SCNd8 " %*[;:] ""%" SCNd8 " %*[;:] " "%" SCNd8, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<uint8_t> * v) {
-//  return fromString(s, "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<int16_t> * v) {
-//  return fromString(s, "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<uint16_t> * v) {
-//  return fromString(s, "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<int32_t> * v) {
-//  return fromString(s, "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<uint32_t> * v) {
-//  return fromString(s, "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<int64_t> * v) {
-//  return fromString(s, "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<uint64_t> * v) {
-//  return fromString(s, "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64, v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<float> * v) {
-//  return fromString(s, "%f" " %*[;:] " "%f" " %*[;:] " "%f" " %*[;:] " "%f", v);
-//}
-//inline bool fromString(const std::string & s, cv::Rect_<double> * v) {
-//  return fromString(s, "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf", v);
-//}
 template<class T>
 inline std::string toString(const cv::Rect_<T> & v) {
   return ssprintf("%g;%g; %gx%g", (double)v.x, (double)v.y, (double)v.width, (double)v.height);
@@ -718,6 +687,38 @@ bool fromString(const std::string & s, cv::Matx<T, m, n> * mat)
   return true;
 }
 
+template<>
+inline const c_enum_member* members_of<cv::NormTypes>()
+{
+  static constexpr c_enum_member members[] = {
+      { cv::NORM_L1, "NORM_L1", "cv::NORM_L1" },
+      { cv::NORM_L2, "NORM_L2", "cv::NORM_L2" },
+      { cv::NORM_L2SQR, "NORM_L2SQR", "cv::NORM_L2SQR" },
+      { cv::NORM_INF, "NORM_INF", "cv::NORM_INF" },
+      { cv::NORM_HAMMING, "HAMMING", "cv::NORM_HAMMING" },
+      { cv::NORM_HAMMING2, "HAMMING2", "cv::NORM_HAMMING2" },
+      { cv::NORM_L1 }
+  };
+
+  return members;
+}
+
+
+template<>
+inline const c_enum_member* members_of<cv::CmpTypes>()
+{
+  static constexpr c_enum_member members[] = {
+      { cv::CMP_EQ, "EQ", "src is equal to value" },
+      { cv::CMP_GT, "GT", "src is greater than value" },
+      { cv::CMP_GE, "GE", "src is greater than or equal to  value" },
+      { cv::CMP_LT, "LT", "src is less than  value" },
+      { cv::CMP_LE, "LE", "src is less than or equal to  value" },
+      { cv::CMP_NE, "NE", "src is not equal to  value" },
+      { cv::CMP_GT },
+  };
+
+  return members;
+}
 
 template<>
 inline const c_enum_member * members_of<cv::InterpolationFlags>()

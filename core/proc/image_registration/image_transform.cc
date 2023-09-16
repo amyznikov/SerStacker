@@ -20,6 +20,7 @@ const c_enum_member * members_of<IMAGE_MOTION_TYPE>()
       { IMAGE_MOTION_HOMOGRAPHY, "HOMOGRAPHY", "HOMOGRAPHY" },
       { IMAGE_MOTION_SEMI_QUADRATIC, "SEMI_QUADRATIC", "SEMI_QUADRATIC" },
       { IMAGE_MOTION_QUADRATIC, "QUADRATIC", "QUADRATIC" },
+      { IMAGE_MOTION_EPIPOLAR_DEROTATION, "EPIPOLAR_DEROTATION", "EPIPOLAR_DEROTATION" },
       { IMAGE_MOTION_UNKNOWN},
   };
 
@@ -29,8 +30,6 @@ const c_enum_member * members_of<IMAGE_MOTION_TYPE>()
 c_image_transform::sptr create_image_transform(IMAGE_MOTION_TYPE type)
 {
   switch (type) {
-    case IMAGE_MOTION_TRANSLATION:
-      return c_image_transform::sptr(new c_translation_image_transform());
     case IMAGE_MOTION_EUCLIDEAN: {
       c_euclidean_image_transform::sptr t(new c_euclidean_image_transform());
       t->set_fix_scale(true);
@@ -38,6 +37,8 @@ c_image_transform::sptr create_image_transform(IMAGE_MOTION_TYPE type)
     }
     case IMAGE_MOTION_SCALED_EUCLIDEAN:
       return c_image_transform::sptr(new c_euclidean_image_transform());
+    case IMAGE_MOTION_TRANSLATION:
+      return c_image_transform::sptr(new c_translation_image_transform());
     case IMAGE_MOTION_AFFINE:
       return c_image_transform::sptr(new c_affine_image_transform());
     case IMAGE_MOTION_HOMOGRAPHY:
@@ -46,6 +47,8 @@ c_image_transform::sptr create_image_transform(IMAGE_MOTION_TYPE type)
       return c_image_transform::sptr(new c_semi_quadratic_image_transform());
     case IMAGE_MOTION_QUADRATIC:
       return c_image_transform::sptr(new c_quadratic_image_transform());
+    case IMAGE_MOTION_EPIPOLAR_DEROTATION:
+      return c_image_transform::sptr(new c_epipolar_derotation_image_transform());
     default:
       CF_ERROR("Unknown image transform type specified: %d", type);
       break;

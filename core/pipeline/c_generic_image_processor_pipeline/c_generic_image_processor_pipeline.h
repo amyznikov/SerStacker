@@ -13,6 +13,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/settings/opencv_settings.h>
 #include <core/io/c_output_frame_writer.h>
+#include <core/proc/focus.h>
 
 struct c_generic_image_processor_input_options :
     c_image_processing_pipeline_input_options
@@ -22,6 +23,9 @@ struct c_generic_image_processor_input_options :
 struct c_generic_image_processor_options
 {
   c_image_processor::sptr image_processor;
+//
+//  bool adjust_sharpness = false;
+//  double unsharp_sigma = 1;
 };
 
 struct c_generic_image_processor_output_options :
@@ -83,6 +87,7 @@ protected:
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool process_current_frame();
+  //bool compute_averaged_sharpeness(int start_pos, int end_pos);
 
 protected:
   c_generic_image_processor_input_options input_options_;
@@ -92,6 +97,9 @@ protected:
 
   cv::Mat current_image_;
   cv::Mat current_mask_;
+
+//  c_sharpness_norm_measure::ptr sharpness_norm_measure_;
+//  double averaged_sharpeness_ = 0;
 
   c_output_frame_writer output_writer_;
 };

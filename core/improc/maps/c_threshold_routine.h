@@ -12,7 +12,6 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/threshold.h>
 
-
 class c_threshold_routine:
     public c_image_processor_routine
 {
@@ -21,6 +20,21 @@ public:
       "threshold",
       "Uses <strong>cv::compare()</strong> to threshold image. "
       "Each color channel is processed independently");
+
+  enum THRESHOLD_TYPE {
+    THRESHOLD_VALUE = THRESHOLD_TYPE_VALUE,
+    THRESHOLD_OTSU  = THRESHOLD_TYPE_OTSU,
+    THRESHOLD_TRIANGLE = THRESHOLD_TYPE_TRIANGLE,
+    THRESHOLD_MOMENTS = THRESHOLD_TYPE_MOMENTS,
+    THRESHOLD_ISODATA = THRESHOLD_TYPE_ISODATA,
+    THRESHOLD_HUANG = THRESHOLD_TYPE_HUANG,
+    THRESHOLD_YEN = THRESHOLD_TYPE_YEN,
+    THRESHOLD_MEAN = THRESHOLD_TYPE_MEAN,
+    THRESHOLD_MINIMUM = THRESHOLD_TYPE_MINIMUM,
+    THRESHOLD_NOISE = THRESHOLD_TYPE_NOISE,
+    THRESHOLD_PLANETARY_DISK,
+    THRESHOLD_CLEAR
+  };
 
   void set_compare(cv::CmpTypes v)
   {
@@ -52,6 +66,36 @@ public:
     return threshold_value_;
   }
 
+  void set_threshold_scale(double v)
+  {
+    threshold_scale_ = v;
+  }
+
+  double threshold_scale() const
+  {
+    return threshold_scale_;
+  }
+
+  void set_fill_holes(bool v)
+  {
+    fill_holes_ = v;
+  }
+
+  bool fill_holes() const
+  {
+    return fill_holes_;
+  }
+
+  void set_invert(bool v)
+  {
+    invert_ = v;
+  }
+
+  bool invert() const
+  {
+    return invert_;
+  }
+
   void set_modify_mask(bool v)
   {
     modify_mask_ = v;
@@ -67,6 +111,9 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, compare, "Compare operation");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_type, "Threshold type");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Threshold value");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_scale, "Threshold scale");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, fill_holes, "fill_holes");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, invert, "invert");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, modify_mask, "Modify mask instead of image");
   }
 
@@ -76,6 +123,9 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, compare);
       SERIALIZE_PROPERTY(settings, save, *this, threshold_type);
       SERIALIZE_PROPERTY(settings, save, *this, threshold_value);
+      SERIALIZE_PROPERTY(settings, save, *this, threshold_scale);
+      SERIALIZE_PROPERTY(settings, save, *this, fill_holes);
+      SERIALIZE_PROPERTY(settings, save, *this, invert);
       SERIALIZE_PROPERTY(settings, save, *this, modify_mask);
       return true;
     }
@@ -86,8 +136,11 @@ public:
 
 protected:
   cv::CmpTypes compare_ = cv::CMP_GT;
-  THRESHOLD_TYPE threshold_type_ = THRESHOLD_TYPE_VALUE;
+  THRESHOLD_TYPE threshold_type_ = THRESHOLD_VALUE;
   double threshold_value_ = 0;
+  double threshold_scale_ = 1.0;
+  bool fill_holes_ = false;
+  bool invert_ = false;
   bool modify_mask_ = true;
 };
 

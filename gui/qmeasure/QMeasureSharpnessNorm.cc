@@ -32,15 +32,15 @@ QSharpnessNormMeasureSettingsWidget::QSharpnessNormMeasureSettingsWidget(QWidget
     Base(parent)
 {
   norm_type_ctl =
-      add_enum_combobox<NormType>("Norm type:",
+      add_enum_combobox<cv::NormTypes>("Norm type:",
           "",
-          [this](NormType v) {
+          [this](cv::NormTypes v) {
             if ( measure_ && measure_->norm_type() != v ) {
               measure_->set_norm_type(v);
               Q_EMIT parameterChanged();
             }
           },
-          [this](NormType * v) {
+          [this](cv::NormTypes * v) {
             if ( measure_ ) {
               *v = measure_->norm_type();
               return true;

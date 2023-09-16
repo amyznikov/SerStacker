@@ -6,9 +6,10 @@
  */
 
 #include "c_generic_image_processor_pipeline.h"
-#include <type_traits>
+#include <core/proc/unsharp_mask.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
+#include <type_traits>
 #include <chrono>
 #include <thread>
 
@@ -76,6 +77,8 @@ bool c_generic_image_processor_pipeline::initialize_pipeline()
             ".avi");
   }
 
+  // averaged_sharpeness_ = 0;
+
   return true;
 }
 
@@ -89,6 +92,8 @@ void c_generic_image_processor_pipeline::cleanup_pipeline()
     CF_DEBUG("Closing '%s'", output_writer_.filename().c_str());
     output_writer_.close();
   }
+
+  // sharpness_norm_measure_.reset();
 }
 
 bool c_generic_image_processor_pipeline::run_pipeline()
@@ -108,8 +113,6 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
   if( is_live_sequence ) {
     total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
   }
   else {
 
@@ -123,8 +126,6 @@ bool c_generic_image_processor_pipeline::run_pipeline()
                 input_options_.start_frame_index + input_options_.max_input_frames);
 
     total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
 
     if( total_frames_ < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1\n"
@@ -138,6 +139,11 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       return false;
     }
 
+//    if( processing_options_.adjust_sharpness && !compute_averaged_sharpeness(start_pos, end_pos) ) {
+//      CF_ERROR("ERROR: compute_average_sharpness() fails");
+//      return false;
+//    }
+
     if( !input_sequence_->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
       return false;
@@ -146,6 +152,8 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
+  processed_frames_ = 0;
+  accumulated_frames_ = 0;
   for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
 
     if( canceled() ) {
@@ -154,10 +162,19 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
+      current_image_.release();
+      current_mask_.release();
       if( !input_sequence_->read(current_image_, &current_mask_) ) {
         CF_DEBUG("input_sequence_->read() fails");
         break;
       }
+
+      if ( true ) {
+        double amin, amax;
+        cv::minMaxLoc(current_image_, &amin, &amax);
+        CF_DEBUG("READ2: amin=%g amax=%g", amin, amax);
+      }
+
     }
 
     if( canceled() ) {
@@ -186,11 +203,48 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
 bool c_generic_image_processor_pipeline::process_current_frame()
 {
+//  if ( sharpness_norm_measure_  ) {
+
+//    const double sharpen_factor = 2;
+//
+//    const double current_sharpeness = 0;
+//      sharpness_norm_measure_->measure(current_image_, current_mask_);
+//
+//    const double alpha = 0.99;
+//        // sharpen_factor * (1 - current_sharpeness / averaged_sharpeness_);
+//
+//    CF_DEBUG("current_sharpeness: %g averaged_sharpeness_: %g alpha=%g", current_sharpeness, averaged_sharpeness_, alpha);
+//
+//    if ( alpha > 0 && alpha < 1 ) {
+//
+//      double amin, amax, bmin, bmax;
+//
+//      cv::minMaxLoc(current_image_, &bmin, &bmax);
+//
+//      unsharp_mask(current_image_, current_image_,
+//          sharpness_norm_measure_->sigma(),
+//          alpha, -1, -1);
+//
+//      cv::minMaxLoc(current_image_, &amin, &amax);
+//
+//      CF_DEBUG("bmin=%g bmax=%g amin=%g amax=%g", bmin, bmax, amin, amax);
+//
+//    }
+//  }
+
+
   if ( processing_options_.image_processor && !processing_options_.image_processor->empty() ) {
     if ( !processing_options_.image_processor->process(current_image_, current_mask_) ) {
       CF_ERROR("image_processor->process() fails");
       return false;
     }
+
+    if ( true ) {
+      double amin, amax;
+      cv::minMaxLoc(current_image_, &amin, &amax);
+      CF_DEBUG("PROC: amin=%g amax=%g", amin, amax);
+    }
+
   }
 
   if( output_options_.save_processed_frames && !output_file_name_.empty() ) {
@@ -202,6 +256,12 @@ bool c_generic_image_processor_pipeline::process_current_frame()
       }
     }
 
+    if ( true ) {
+      double amin, amax;
+      cv::minMaxLoc(current_image_, &amin, &amax);
+      CF_DEBUG("WRITE: amin=%g amax=%g", amin, amax);
+    }
+
     if( !output_writer_.write(current_image_, current_mask_) ) {
       CF_ERROR("output_writer_.write(%s) fails", output_file_name_.c_str());
       return false;
@@ -210,6 +270,76 @@ bool c_generic_image_processor_pipeline::process_current_frame()
 
   return true;
 }
+
+//
+//bool c_generic_image_processor_pipeline::compute_averaged_sharpeness(int start_pos, int end_pos)
+//{
+//  if( !input_sequence_->seek(start_pos) ) {
+//    CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
+//    return false;
+//  }
+//
+//  set_status_msg("RUNNING SHARPENESS MEASURE ...");
+//
+//  sharpness_norm_measure_.reset(new c_sharpness_norm_measure());
+//  if( processing_options_.unsharp_sigma > 0 ) {
+//    sharpness_norm_measure_->set_sigma(processing_options_.unsharp_sigma);
+//  }
+//
+//
+//  averaged_sharpeness_ = 0;
+//  processed_frames_ = 0;
+//  accumulated_frames_ = 0;
+//
+//  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+//
+//    if( canceled() ) {
+//      break;
+//    }
+//
+//    if( true ) {
+//      lock_guard lock(mutex());
+//      if( !input_sequence_->read(current_image_, &current_mask_) ) {
+//        CF_DEBUG("input_sequence_->read() fails");
+//        break;
+//      }
+//    }
+//
+//    if ( true ) {
+//      double amin, amax;
+//      cv::minMaxLoc(current_image_, &amin, &amax);
+//      CF_DEBUG("READ:amin=%g amax=%g", amin, amax);
+//    }
+//
+//
+//    if( canceled() ) {
+//      break;
+//    }
+//
+//    sharpness_norm_measure_->add(current_image_, current_mask_);
+//    accumulated_frames_ = processed_frames_;
+//
+//    if ( true ) {
+//      double amin, amax;
+//      cv::minMaxLoc(current_image_, &amin, &amax);
+//      CF_DEBUG("sharpness_norm: amin=%g amax=%g", amin, amax);
+//    }
+//
+//
+//
+//    // give chance to GUI thread to call get_display_image()
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+//  }
+//
+//  averaged_sharpeness_ =
+//      sharpness_norm_measure_->average();
+//
+//  CF_DEBUG("LEAVE: averaged_sharpness_ = %g\n",
+//      averaged_sharpeness_);
+//
+//  return true;
+//}
+//
 
 bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bool save)
 {
@@ -225,6 +355,8 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, processing_options_, image_processor);
+//    SERIALIZE_OPTION(section, save, processing_options_, adjust_sharpness);
+//    SERIALIZE_OPTION(section, save, processing_options_, unsharp_sigma);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -247,6 +379,8 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_p
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
+//      PIPELINE_CTL(ctrls, processing_options_.adjust_sharpness, "adjust_sharpness", "");
+//      PIPELINE_CTLC(ctrls, processing_options_.unsharp_sigma, "unsharp sigma", "", _this-> processing_options_.adjust_sharpness);
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, processing_options_.image_processor, "image_processor", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 

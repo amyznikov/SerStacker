@@ -327,4 +327,55 @@ protected:
   float &Ty_ = a(1, 2);
 };
 
+
+
+/**
+ * Epipolar derotation image transform.
+ *
+ * Actually this is just a homography,
+ * but specific method is required for estimation.
+ *
+ * w  =  (x * a20 + y * a21 + a22)
+ * x' =  (x * a00 + y * a01 + a02) / w
+ * y' =  (x * a10 + y * a11 + a12) / w
+ */
+class c_epipolar_derotation_image_transform:
+    public c_homography_image_transform
+{
+public:
+  typedef c_epipolar_derotation_image_transform this_class;
+  typedef c_homography_image_transform base;
+  typedef std::shared_ptr<this_class> sptr;
+
+  c_epipolar_derotation_image_transform()
+  {
+  }
+
+  c_epipolar_derotation_image_transform(const float a[3][3]) :
+      base(a)
+  {
+  }
+
+  c_epipolar_derotation_image_transform(const cv::Matx33f & a) :
+      base(a)
+  {
+  }
+
+  c_epipolar_derotation_image_transform(const cv::Mat1f & a) :
+      base(a)
+  {
+  }
+
+  c_epipolar_derotation_image_transform(float a00, float a01, float a02,
+      float a10, float a11, float a12,
+      float a20, float a21, float a22) :
+      base(a00, a01, a02,
+          a10, a11, a12,
+          a20, a21, a22)
+  {
+  }
+
+};
+
+
 #endif /* __c_image_transform_h__ */

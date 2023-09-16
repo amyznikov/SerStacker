@@ -452,7 +452,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
 
   if (true ) {
 
-    lock_guard lock(accumulator_lock_);
+    lock_guard lock(mutex());
 
     missing_pixel_mask_.release();
 
@@ -526,13 +526,12 @@ void c_image_stacking_pipeline::cleanup_pipeline()
   roi_selection_.reset();
 
   if ( true ) {
-    lock_guard lock(registration_lock_);
     frame_registration_.reset();
     flow_accumulation_.reset();
   }
 
   if ( true ) {
-    lock_guard lock(accumulator_lock_);
+    lock_guard lock(mutex());
     frame_accumulation_.reset();
     sharpness_norm_accumulation_.reset();
   }
@@ -661,7 +660,18 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
   std::vector<int> reference_frames;
 
   if ( !registration_options.jovian_derotation.derotate_all_frames ) {
-    reference_frames.emplace_back(registration_options.master_frame_options.master_frame_index);
+
+    const int master_source_index =
+        input_sequence_->indexof(registration_options.master_frame_options.master_fiename);
+
+    if( master_source_index < 0 ) {
+      CF_ERROR("ERROR: Master source '%s' is outside of input sequence",
+          registration_options.master_frame_options.master_fiename.c_str());
+      return false;
+    }
+
+    reference_frames.emplace_back(input_sequence_->global_pos(master_source_index,
+        registration_options.master_frame_options.master_frame_index));
   }
   else {
 
@@ -863,7 +873,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       cv::Mat1b accumulated_mask;
 
       if ( true ) {
-        lock_guard lock(accumulator_lock_);
+        lock_guard lock(mutex());
 
         if ( !frame_accumulation_->compute(accumulated_image, accumulated_mask) ) {
           CF_ERROR("ERROR: frame_accumulation_->compute() fails");
@@ -993,7 +1003,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
     cv::Mat1b accumulated_mask;
 
     if ( true ) {
-      lock_guard lock(accumulator_lock_);
+      lock_guard lock(mutex());
 
       if ( !frame_accumulation_->compute(accumulated_image, accumulated_mask) ) {
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
@@ -1223,7 +1233,7 @@ bool c_image_stacking_pipeline::setup_frame_accumulation()
 {
   if ( accumulation_options_.accumulation_method != frame_accumulation_none ) {
 
-    lock_guard lock(accumulator_lock_);
+    lock_guard lock(mutex());
 
     if ( !(frame_accumulation_ = create_frame_accumulation()) ) {
       CF_ERROR("ERROR: create_frame_accumulation() fails");
@@ -1540,7 +1550,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
 //    }
 
     if ( true ) {
-      lock_guard lock(accumulator_lock_);
+      lock_guard lock(mutex());
 
       frame_accumulation_.reset(new c_frame_weigthed_average());
 
@@ -1605,7 +1615,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
 
     // Read accumulators back
     if ( true ) {
-      lock_guard lock(accumulator_lock_);
+      lock_guard lock(mutex());
 
       if ( frame_accumulation_->accumulated_frames() < 1 ) {
         CF_ERROR("ERROR: No frames accumulated for reference frame");
@@ -1652,7 +1662,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
                   csequence_name()));
         }
 
-        if ( alpha < 1 ) {
+        if ( alpha > 0 && alpha < 1 ) {
 
           unsharp_mask(reference_frame, reference_frame,
               sharpness_norm_accumulation_->sigma(),
@@ -1687,7 +1697,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
 
 
   if ( true ) {
-    lock_guard lock(accumulator_lock_);
+    lock_guard lock(mutex());
     sharpness_norm_accumulation_.reset();
     flow_accumulation_.reset();
     frame_accumulation_.reset();
@@ -2088,7 +2098,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       if( c_bayer_average *bayer_average = dynamic_cast<c_bayer_average*>(frame_accumulation_.get()) ) {
 
-        lock_guard lock(accumulator_lock_);
+        lock_guard lock(mutex());
 
         if( bayer_average->accumulated_frames() < 1 ) {
           bayer_average->set_bayer_pattern(raw_bayer_colorid_);
@@ -2103,7 +2113,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
       else {
 
-        lock_guard lock(accumulator_lock_);
+        lock_guard lock(mutex());
 
         if( frame_accumulation_->accumulated_frames() < 1 ) {
 
@@ -2139,7 +2149,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         cv::Mat accumulated_frame, accumulated_mask;
 
         if( true ) {
-          lock_guard lock(accumulator_lock_);
+          lock_guard lock(mutex());
           if( !frame_accumulation_->compute(accumulated_frame, accumulated_mask) ) {
             CF_ERROR("ERROR: frame_accumulation->compute() fails");
           }
@@ -2691,7 +2701,7 @@ double c_image_stacking_pipeline::compute_image_noise(const cv::Mat & image, con
 
 bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::OutputArray dst_mask)
 {
-  lock_guard lock(accumulator_lock_);
+  lock_guard lock(mutex());
 
   switch (pipeline_stage_) {
     case stacking_stage_idle:
@@ -3116,7 +3126,7 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
       measure.set_avgchannel(true);
       measure.set_squared(false);
 
-      constexpr int max_frames_to_scan = 200;
+      constexpr int max_frames_to_scan = 1000;
 
       CF_DEBUG("Scan %d frames around of middle %d",
           max_frames_to_scan, input_sequence->size() / 2);
@@ -3181,10 +3191,11 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
               }
             }
 
-            accumulator_lock_.lock();
-            image.copyTo(selected_master_frame_);
-            mask.copyTo(selected_master_frame_mask_);
-            accumulator_lock_.unlock();
+            if ( true ) {
+              lock_guard lock(mutex());
+              image.copyTo(selected_master_frame_);
+              mask.copyTo(selected_master_frame_mask_);
+            }
 
             set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
                 "BEST: INDEX=%d METRIC: %g",
@@ -3282,6 +3293,11 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
         SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_matcher"),
             save, feature_registration, sparse_feature_matcher);
+
+
+        SERIALIZE_OPTION(get_group(subsubsection, save, "estimate_options"),
+            save, feature_registration, estimate_options);
+
       }
 
       if( (subsubsection = get_group(subsection, save, "ecc")) ) {
@@ -3588,6 +3604,7 @@ std::string c_image_stacking_pipeline::master_source() const
 
 void c_image_stacking_pipeline::set_master_frame_index(int v)
 {
+  image_registration_options_.master_frame_options.master_selection_method = master_frame_specific_index;
   image_registration_options_.master_frame_options.master_frame_index = v;
 }
 

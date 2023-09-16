@@ -505,12 +505,34 @@ double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,
       cv::norm(src, lpass, normType,
           mask);
 
-  if( mask.size() == src.size() ) {
-    v /= cv::countNonZero(mask);
+  switch (normType) {
+    case cv::NORM_L1:
+    case cv::NORM_L2SQR:
+      if( mask.size() == src.size() ) {
+        v /= cv::countNonZero(mask);
+      }
+      else {
+        v /= src.size().area();
+      }
+      break;
+    case cv::NORM_L2:
+      if( mask.size() == src.size() ) {
+        v /= sqrt(cv::countNonZero(mask));
+      }
+      else {
+        v /= sqrt(src.size().area());
+      }
+      break;
+    default:
+      break;
   }
-  else {
-    v /= src.size().area();
-  }
+
+//  if( mask.size() == src.size() ) {
+//    v /= cv::countNonZero(mask);
+//  }
+//  else {
+//    v /= src.size().area();
+//  }
 
   return v;
 }

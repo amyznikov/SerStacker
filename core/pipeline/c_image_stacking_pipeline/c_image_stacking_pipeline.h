@@ -355,11 +355,11 @@ protected:
   c_roi_selection::ptr roi_selection_;
   c_frame_registration::sptr frame_registration_;
   c_frame_weigthed_average::ptr flow_accumulation_;
-  mutable std::mutex registration_lock_;
+  // mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
   c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
-  mutable std::mutex accumulator_lock_;
+  // mutable std::mutex accumulator_lock_;
 
   mutable std::string output_file_name_postfix_;
 };

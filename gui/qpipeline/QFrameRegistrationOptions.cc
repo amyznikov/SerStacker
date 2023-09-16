@@ -9,6 +9,517 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+QEstimateTranslationImageTransformOptions::QEstimateTranslationImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  max_iterations_ctl =
+      add_numeric_box<int>("max_iterations",
+          "max number of iterations for outliers removal",
+          [this](int v) {
+            if ( options_ && options_->translation.max_iterations != v ) {
+              options_->translation.max_iterations = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->translation.max_iterations;
+              return true;
+            }
+            return false;
+          });
+
+  rmse_factor_ctl =
+      add_numeric_box<double>("rmse_factor",
+          "rmse factor for outliers removal",
+          [this](double v) {
+            if ( options_ && options_->translation.rmse_factor != v ) {
+              options_->translation.rmse_factor = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->translation.rmse_factor;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+
+QEstimateEuclideanImageTransformOptions::QEstimateEuclideanImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  max_iterations_ctl =
+      add_numeric_box<int>("max_iterations",
+          "max number of iterations for outliers removal",
+          [this](int v) {
+            if ( options_ && options_->euclidean.max_iterations != v ) {
+              options_->euclidean.max_iterations = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->euclidean.max_iterations;
+              return true;
+            }
+            return false;
+          });
+
+  rmse_threshold_ctl =
+      add_numeric_box<double>("rmse_threshold",
+          "",
+          [this](double v) {
+            if ( options_ && options_->euclidean.rmse_threshold != v ) {
+              options_->euclidean.rmse_threshold = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->euclidean.rmse_threshold;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+QEstimateScaledEuclideanImageTransformOptions::QEstimateScaledEuclideanImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  method_ctl =
+      add_enum_combobox<ROBUST_METHOD>("ROBUST METHOD",
+          "",
+          [this](ROBUST_METHOD v) {
+            if ( options_ && options_->scaled_euclidean.method != v ) {
+              options_->scaled_euclidean.method = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](ROBUST_METHOD * v) {
+            if ( options_ ) {
+              *v = options_->scaled_euclidean.method;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  ransacReprojThreshold_ctl =
+      add_numeric_box<double>("ransacReprojThreshold",
+          "",
+          [this](double v) {
+            if ( options_ && options_->scaled_euclidean.ransacReprojThreshold != v ) {
+              options_->scaled_euclidean.ransacReprojThreshold = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->scaled_euclidean.ransacReprojThreshold;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  confidence_ctl =
+      add_numeric_box<double>("confidence",
+          "",
+          [this](double v) {
+            if ( options_ && options_->scaled_euclidean.confidence != v ) {
+              options_->scaled_euclidean.confidence = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->scaled_euclidean.confidence;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  maxIters_ctl =
+      add_numeric_box<int>("maxIters",
+          "",
+          [this](int v) {
+            if ( options_ && options_->scaled_euclidean.maxIters != v ) {
+              options_->scaled_euclidean.maxIters = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->scaled_euclidean.maxIters;
+              return true;
+            }
+            return false;
+          });
+
+
+  refineIters_ctl =
+      add_numeric_box<int>("refineIters",
+          "",
+          [this](int v) {
+            if ( options_ && options_->scaled_euclidean.refineIters != v ) {
+              options_->scaled_euclidean.refineIters = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->scaled_euclidean.refineIters;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+
+QEstimateAffineImageTransformOptions:: QEstimateAffineImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  method_ctl =
+      add_enum_combobox<ROBUST_METHOD>("ROBUST METHOD",
+          "",
+          [this](ROBUST_METHOD v) {
+            if ( options_ && options_->affine.method != v ) {
+              options_->affine.method = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](ROBUST_METHOD * v) {
+            if ( options_ ) {
+              *v = options_->affine.method;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  ransacReprojThreshold_ctl =
+      add_numeric_box<double>("ransacReprojThreshold",
+          "",
+          [this](double v) {
+            if ( options_ && options_->affine.ransacReprojThreshold != v ) {
+              options_->affine.ransacReprojThreshold = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->affine.ransacReprojThreshold;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  confidence_ctl =
+      add_numeric_box<double>("confidence",
+          "",
+          [this](double v) {
+            if ( options_ && options_->affine.confidence != v ) {
+              options_->affine.confidence = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->affine.confidence;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  maxIters_ctl =
+      add_numeric_box<int>("maxIters",
+          "",
+          [this](int v) {
+            if ( options_ && options_->affine.maxIters != v ) {
+              options_->affine.maxIters = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->affine.maxIters;
+              return true;
+            }
+            return false;
+          });
+
+
+  refineIters_ctl =
+      add_numeric_box<int>("refineIters",
+          "",
+          [this](int v) {
+            if ( options_ && options_->affine.refineIters != v ) {
+              options_->affine.refineIters = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->affine.refineIters;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+QEstimateHomographyImageTransformOptions::QEstimateHomographyImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  method_ctl =
+      add_enum_combobox<ROBUST_METHOD>("ROBUST METHOD",
+          "",
+          [this](ROBUST_METHOD v) {
+            if ( options_ && options_->homography.method != v ) {
+              options_->homography.method = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](ROBUST_METHOD * v) {
+            if ( options_ ) {
+              *v = options_->homography.method;
+              return true;
+            }
+            return false;
+          });
+
+  ransacReprojThreshold_ctl =
+      add_numeric_box<double>("ransacReprojThreshold",
+          "",
+          [this](double v) {
+            if ( options_ && options_->homography.ransacReprojThreshold != v ) {
+              options_->homography.ransacReprojThreshold = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->homography.ransacReprojThreshold;
+              return true;
+            }
+            return false;
+          });
+
+  confidence_ctl =
+      add_numeric_box<double>("confidence",
+          "",
+          [this](double v) {
+            if ( options_ && options_->homography.confidence != v ) {
+              options_->homography.confidence = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->homography.confidence;
+              return true;
+            }
+            return false;
+          });
+
+  maxIters_ctl =
+      add_numeric_box<int>("maxIters",
+          "",
+          [this](int v) {
+            if ( options_ && options_->homography.maxIters != v ) {
+              options_->homography.maxIters = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->homography.maxIters;
+              return true;
+            }
+            return false;
+          });
+
+
+  updateControls();
+}
+
+QEstimateSemiQuadraticImageTransformOptions::QEstimateSemiQuadraticImageTransformOptions(QWidget * parent) :
+  Base(parent)
+{
+  rmse_factor_ctl =
+      add_numeric_box<double>("rmse_factor",
+          "",
+          [this](double v) {
+            if ( options_ && options_->semi_quadratic.rmse_factor != v ) {
+              options_->semi_quadratic.rmse_factor = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->semi_quadratic.rmse_factor;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+QEstimateQuadraticImageTransformOptions::QEstimateQuadraticImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  rmse_factor_ctl =
+      add_numeric_box<double>("rmse_factor",
+          "",
+          [this](double v) {
+            if ( options_ && options_->quadratic.rmse_factor != v ) {
+              options_->quadratic.rmse_factor = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->quadratic.rmse_factor;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationImageTransformOptions(QWidget * parent) :
+    Base(parent)
+{
+  direction_ctl =
+      add_enum_combobox<EPIPOLAR_MOTION_DIRECTION>("Motion direction",
+          "Optimize assuming a priori known motion direction",
+          [this](EPIPOLAR_MOTION_DIRECTION v) {
+            if ( options_ && options_->epipolar_derotation.camera_pose.direction != v ) {
+              options_->epipolar_derotation.camera_pose.direction = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](EPIPOLAR_MOTION_DIRECTION * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.camera_pose.direction;
+              return true;
+            }
+            return false;
+          });
+
+
+  max_iterations_ctl =
+      add_numeric_box<int>("max_iterations",
+          "",
+          [this](int v) {
+            if ( options_ && options_->epipolar_derotation.camera_pose.max_iterations != v ) {
+              options_->epipolar_derotation.camera_pose.max_iterations = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.camera_pose.max_iterations;
+              return true;
+            }
+            return false;
+          });
+
+  max_levmar_iterations_ctl =
+      add_numeric_box<int>("max_levmar_iterations",
+          "",
+          [this](int v) {
+            if ( options_ && options_->epipolar_derotation.camera_pose.max_levmar_iterations != v ) {
+              options_->epipolar_derotation.camera_pose.max_levmar_iterations = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.camera_pose.max_levmar_iterations;
+              return true;
+            }
+            return false;
+          });
+
+  robust_threshold_ctl =
+      add_numeric_box<double>("robust_threshold",
+          "",
+          [this](double v) {
+            if ( options_ && options_->epipolar_derotation.camera_pose.robust_threshold != v ) {
+              options_->epipolar_derotation.camera_pose.robust_threshold = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.camera_pose.robust_threshold;
+              return true;
+            }
+            return false;
+          });
+
+  epsf_ctl =
+      add_numeric_box<double>("epsf",
+          "",
+          [this](double v) {
+            if ( options_ && options_->epipolar_derotation.camera_pose.epsf != v ) {
+              options_->epipolar_derotation.camera_pose.epsf = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.camera_pose.epsf;
+              return true;
+            }
+            return false;
+          });
+
+  epsx_ctl =
+      add_numeric_box<double>("epsx",
+          "",
+          [this](double v) {
+            if ( options_ && options_->epipolar_derotation.camera_pose.epsx != v ) {
+              options_->epipolar_derotation.camera_pose.epsx = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.camera_pose.epsx;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * parent) :
     Base("QFeatureBasedRegistrationOptions", parent)
 {
@@ -35,28 +546,86 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
 
   add_expandable_groupbox("Sparse Feature Detector Options",
       sparseFeatureDetectorOptions_ctl = new QSparseFeatureDetectorOptions());
-  controls.append(sparseFeatureDetectorOptions_ctl);
-
   connect(sparseFeatureDetectorOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
+  connect(sparseFeatureDetectorOptions_ctl, &QSparseFeatureDetectorOptions::detectorTypeChanged,
+      this, &ThisClass::onDetectorTypeChanged);
+  controls.append(sparseFeatureDetectorOptions_ctl);
+
 
   add_expandable_groupbox("Sparse Feature Descriptor Options",
       sparseFeatureDescriptorOptions_ctl = new QSparseFeatureDescriptorOptions());
-  controls.append(sparseFeatureDescriptorOptions_ctl);
-
   connect(sparseFeatureDescriptorOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
+  controls.append(sparseFeatureDescriptorOptions_ctl);
 
   add_expandable_groupbox("Sparse Feature Matcher Options",
       sparseFeatureMatcherOptions_ctl = new QSparseFeatureMatcherOptions());
-  controls.append(sparseFeatureMatcherOptions_ctl);
-
   connect(sparseFeatureMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
+  controls.append(sparseFeatureMatcherOptions_ctl);
 
-  connect(sparseFeatureDetectorOptions_ctl, &QSparseFeatureDetectorOptions::detectorTypeChanged,
-      this, &ThisClass::onDetectorTypeChanged);
 
+
+  ///
+  add_expandable_groupbox("EstimateTranslation Options",
+      estimateTranslation_ctl = new QEstimateTranslationImageTransformOptions());
+  connect(estimateTranslation_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateTranslation_ctl);
+
+
+  add_expandable_groupbox("EstimateEuclidean Options",
+      estimateEuclidean_ctl = new QEstimateEuclideanImageTransformOptions());
+  connect(estimateEuclidean_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateEuclidean_ctl);
+
+
+  add_expandable_groupbox("EstimateScaledEuclidean Options",
+      estimateScaledEuclidean_ctl = new QEstimateScaledEuclideanImageTransformOptions());
+  connect(estimateScaledEuclidean_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateScaledEuclidean_ctl);
+
+
+  add_expandable_groupbox("EstimateAffine Options",
+      estimateAffine_ctl = new QEstimateAffineImageTransformOptions());
+  connect(estimateAffine_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateAffine_ctl);
+
+
+  add_expandable_groupbox("EstimateHomography Options",
+      estimateHomography_ctl = new QEstimateHomographyImageTransformOptions());
+  connect(estimateHomography_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateHomography_ctl);
+
+
+  add_expandable_groupbox("EstimateSemiQuadratic Options",
+      estimateSemiQuadratic_ctl = new QEstimateSemiQuadraticImageTransformOptions());
+  connect(estimateSemiQuadratic_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateSemiQuadratic_ctl);
+
+
+  add_expandable_groupbox("EstimateQuadratic Options",
+      estimateQuadratic_ctl = new QEstimateQuadraticImageTransformOptions());
+  connect(estimateQuadratic_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateQuadratic_ctl);
+
+
+  add_expandable_groupbox("EstimateEpipolarDerotation Options",
+      estimateEpipolarDerotation_ctl = new QEstimateEpipolarDerotationImageTransformOptions());
+  connect(estimateEpipolarDerotation_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+  controls.append(estimateEpipolarDerotation_ctl);
+
+  ///
+
+  updateControls();
 }
 
 void QFeatureBasedRegistrationOptions::set_registration_options(c_feature_based_registration_options * options)
@@ -81,6 +650,16 @@ void QFeatureBasedRegistrationOptions::onupdatecontrols()
     sparseFeatureDetectorOptions_ctl->set_feature_detector_options(&options_->sparse_feature_extractor.detector);
     sparseFeatureDescriptorOptions_ctl->set_feature_descriptor_options(&options_->sparse_feature_extractor.descriptor);
     sparseFeatureMatcherOptions_ctl->set_feature_matcher_options(&options_->sparse_feature_matcher);
+
+    estimateTranslation_ctl->set_options(&options_->estimate_options);
+    estimateEuclidean_ctl->set_options(&options_->estimate_options);
+    estimateScaledEuclidean_ctl->set_options(&options_->estimate_options);
+    estimateAffine_ctl->set_options(&options_->estimate_options);
+    estimateHomography_ctl->set_options(&options_->estimate_options);
+    estimateSemiQuadratic_ctl->set_options(&options_->estimate_options);
+    estimateQuadratic_ctl->set_options(&options_->estimate_options);
+    estimateEpipolarDerotation_ctl->set_options(&options_->estimate_options);
+
     update_controls_state();
     onDetectorTypeChanged();
     setEnabled(true);
@@ -1401,6 +1980,7 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
           [this](IMAGE_MOTION_TYPE value) {
             if ( options_ && options_->motion_type != value ) {
               options_->motion_type = value;
+              camera_matrix_groupbox_ctl->setVisible(options_->motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION);
               Q_EMIT parameterChanged();
             }
           });
@@ -1454,8 +2034,23 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
               Q_EMIT parameterChanged();
             }
           });
+
   ///
 
+
+  camera_matrix_groupbox_ctl =
+      add_expandable_groupbox("Camera Matrix",
+          camera_matrix_ctl = new QMatrixEdit(3, 3, this));
+  connect(camera_matrix_ctl, &QMatrixEdit::matrixChanged,
+      [this]() {
+        if ( options_ && !updatingControls() ) {
+          if ( camera_matrix_ctl->getMatrix(&options_->feature_registration.estimate_options.epipolar_derotation.camera_matrix) ) {
+            Q_EMIT parameterChanged();
+          }
+        }
+      });
+
+  camera_matrix_groupbox_ctl->setVisible(false);
   add_expandable_groupbox("Master Frame Options",
       masterFrameOptions_ctl = new QMasterFrameOptions(this));
 
@@ -1521,7 +2116,7 @@ void QImageRegistrationOptions::onupdatecontrols()
     eccOptions_ctl->set_registration_options(nullptr);
     eccFlowOptions_ctl->set_registration_options(nullptr);
     jovianDerotationOptions_ctl->set_derotation_options(nullptr);
-
+    camera_matrix_groupbox_ctl->setVisible(false);
   }
   else {
 
@@ -1530,6 +2125,8 @@ void QImageRegistrationOptions::onupdatecontrols()
     interpolation_method_ctl->setValue(options_->interpolation);
     border_mode_ctl->setValue(options_->border_mode);
     border_value_ctl->setValue(options_->border_value);
+    camera_matrix_ctl->setMatrix(cv::Mat(options_->feature_registration.estimate_options.epipolar_derotation.camera_matrix));
+    camera_matrix_groupbox_ctl->setVisible(options_->motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION);
     accumulateAndCompensateTurbulentFlow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
 
     masterFrameOptions_ctl->set_master_frame_options(&options_->master_frame_options);

@@ -11,8 +11,153 @@
 #include <gui/widgets/UpdateControls.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qpipeline/QInputSourceSelectionControl.h>
+#include <gui/widgets/QMatrixEdit.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/image_registration/c_frame_registration.h>
+
+class QEstimateImageTransformOptionsBase :
+    public QSettingsWidgetTemplate<c_estimate_image_transform_options>
+{
+public:
+  typedef QEstimateImageTransformOptionsBase ThisClass;
+  typedef QSettingsWidgetTemplate<c_estimate_image_transform_options> Base;
+
+  QEstimateImageTransformOptionsBase(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+  }
+};
+
+class QEstimateTranslationImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateTranslationImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateTranslationImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QNumericBox * rmse_factor_ctl = nullptr;
+  QNumericBox * max_iterations_ctl = nullptr;
+};
+
+class QEstimateEuclideanImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateEuclideanImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateEuclideanImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QNumericBox * rmse_threshold_ctl = nullptr;
+  QNumericBox * max_iterations_ctl = nullptr;
+};
+
+class QEstimateScaledEuclideanImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateScaledEuclideanImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateScaledEuclideanImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QEnumComboBox<ROBUST_METHOD> * method_ctl = nullptr;
+  QNumericBox * ransacReprojThreshold_ctl = nullptr;
+  QNumericBox * confidence_ctl = nullptr;
+  QNumericBox * maxIters_ctl = nullptr;
+  QNumericBox * refineIters_ctl = nullptr;
+};
+
+class QEstimateAffineImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateAffineImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateAffineImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QEnumComboBox<ROBUST_METHOD> * method_ctl = nullptr;
+  QNumericBox * ransacReprojThreshold_ctl = nullptr;
+  QNumericBox * maxIters_ctl = nullptr;
+  QNumericBox * confidence_ctl = nullptr;
+  QNumericBox * refineIters_ctl = nullptr;
+};
+
+class QEstimateHomographyImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateHomographyImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateHomographyImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QEnumComboBox<ROBUST_METHOD> * method_ctl = nullptr;
+  QNumericBox * ransacReprojThreshold_ctl = nullptr;
+  QNumericBox * maxIters_ctl = nullptr;
+  QNumericBox * confidence_ctl = nullptr;
+};
+
+class QEstimateSemiQuadraticImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateSemiQuadraticImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateSemiQuadraticImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QNumericBox * rmse_factor_ctl = nullptr;
+};
+
+class QEstimateQuadraticImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateQuadraticImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateQuadraticImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QNumericBox * rmse_factor_ctl = nullptr;
+};
+
+class QEstimateEpipolarDerotationImageTransformOptions :
+    public QEstimateImageTransformOptionsBase
+{
+  Q_OBJECT;
+public:
+  typedef QEstimateEpipolarDerotationImageTransformOptions ThisClass;
+  typedef QEstimateImageTransformOptionsBase Base;
+
+  QEstimateEpipolarDerotationImageTransformOptions(QWidget * parent = nullptr);
+
+protected:
+  QEnumComboBox<EPIPOLAR_MOTION_DIRECTION> * direction_ctl = nullptr;
+  QNumericBox * max_iterations_ctl = nullptr;
+  QNumericBox * max_levmar_iterations_ctl = nullptr;
+  QNumericBox * robust_threshold_ctl = nullptr;
+  QNumericBox * epsf_ctl = nullptr;
+  QNumericBox * epsx_ctl = nullptr;
+};
+
 
 
 class QFeatureBasedRegistrationOptions :
@@ -38,10 +183,21 @@ protected Q_SLOTS:
 protected:
   c_feature_based_registration_options * options_ = nullptr;
   QCheckBox * enableFeatureBasedRegistration_ctl = nullptr;
+
   QNumericBox * scale_ctl = nullptr;
   QSparseFeatureDetectorOptions * sparseFeatureDetectorOptions_ctl = nullptr;
   QSparseFeatureDescriptorOptions * sparseFeatureDescriptorOptions_ctl = nullptr;
   QSparseFeatureMatcherOptions * sparseFeatureMatcherOptions_ctl = nullptr;
+
+  QEstimateTranslationImageTransformOptions *estimateTranslation_ctl = nullptr;
+  QEstimateEuclideanImageTransformOptions *estimateEuclidean_ctl = nullptr;
+  QEstimateScaledEuclideanImageTransformOptions *estimateScaledEuclidean_ctl = nullptr;
+  QEstimateAffineImageTransformOptions *estimateAffine_ctl = nullptr;
+  QEstimateHomographyImageTransformOptions *estimateHomography_ctl = nullptr;
+  QEstimateSemiQuadraticImageTransformOptions *estimateSemiQuadratic_ctl = nullptr;
+  QEstimateQuadraticImageTransformOptions *estimateQuadratic_ctl = nullptr;
+  QEstimateEpipolarDerotationImageTransformOptions *estimateEpipolarDerotation_ctl = nullptr;
+
   QWidgetList controls;
 };
 
@@ -290,6 +446,8 @@ protected:
   QEccBorderModeCombo * border_mode_ctl = nullptr;
   QNumericBox * border_value_ctl = nullptr;
   QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = nullptr;
+  QMatrixEdit * camera_matrix_ctl = nullptr;
+  QExpandableGroupBox * camera_matrix_groupbox_ctl = nullptr;
 
   QMasterFrameOptions * masterFrameOptions_ctl = nullptr;
   QFeatureBasedRegistrationOptions * featureRegistrationOptions_ctl = nullptr;

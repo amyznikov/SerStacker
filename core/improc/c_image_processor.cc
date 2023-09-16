@@ -71,6 +71,7 @@
 #include "c_align_color_channels_routine.h"
 #include "c_autoclip_routine.h"
 #include "c_unsharp_mask_routine.h"
+#include "c_auto_unsharp_mask_routine.h"
 #include "c_type_convert_routine.h"
 #include "c_radial_polysharp_routine.h"
 
@@ -160,6 +161,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pixel_func_routine::class_factory_instance());
     register_class_factory(c_image_calc_routine::class_factory_instance());
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
+    register_class_factory(c_auto_unsharp_mask_routine::class_factory_instance());
 
     register_class_factory(c_scale_channels_routine::class_factory_instance());
     register_class_factory(c_color_diff_routine::class_factory_instance());

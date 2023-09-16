@@ -9,26 +9,26 @@
 #include <core/proc/unsharp_mask.h>
 #include <core/ssprintf.h>
 
-template<>
-const c_enum_member* members_of<c_sharpness_norm_measure::NormType>()
-{
-  static constexpr c_enum_member members[] = {
-      { c_sharpness_norm_measure::NORM_L1, "NORM_L1", "cv::NORM_L1" },
-      { c_sharpness_norm_measure::NORM_L2, "NORM_L2", "cv::NORM_L2" },
-      { c_sharpness_norm_measure::NORM_L2SQR, "NORM_L2SQR", "cv::NORM_L2SQR" },
-      { c_sharpness_norm_measure::NORM_INF, "NORM_INF", "cv::NORM_INF" },
-      { c_sharpness_norm_measure::NORM_L1 }
-  };
+//template<>
+//const c_enum_member* members_of<c_sharpness_norm_measure::cv::NormTypes>()
+//{
+//  static constexpr c_enum_member members[] = {
+//      { c_sharpness_norm_measure::NORM_L1, "NORM_L1", "cv::NORM_L1" },
+//      { c_sharpness_norm_measure::NORM_L2, "NORM_L2", "cv::NORM_L2" },
+//      { c_sharpness_norm_measure::NORM_L2SQR, "NORM_L2SQR", "cv::NORM_L2SQR" },
+//      { c_sharpness_norm_measure::NORM_INF, "NORM_INF", "cv::NORM_INF" },
+//      { c_sharpness_norm_measure::NORM_L1 }
+//  };
+//
+//  return members;
+//}
 
-  return members;
-}
-
-void c_sharpness_norm_measure::set_norm_type(NormType v)
+void c_sharpness_norm_measure::set_norm_type(cv::NormTypes v)
 {
   norm_type_ = v;
 }
 
-c_sharpness_norm_measure::NormType c_sharpness_norm_measure::norm_type() const
+cv::NormTypes c_sharpness_norm_measure::norm_type() const
 {
   return norm_type_;
 }
@@ -44,9 +44,9 @@ void c_sharpness_norm_measure::set_sigma(double v)
 }
 
 double c_sharpness_norm_measure::measure(cv::InputArray src, cv::InputArray mask,
-    double sigma, NormType norm_type)
+    double sigma, cv::NormTypes norm_type)
 {
-  return hpass_norm(src, sigma, mask, (cv::NormTypes)norm_type);
+  return hpass_norm(src, sigma, mask, norm_type);
 }
 
 double c_sharpness_norm_measure::measure(cv::InputArray src, cv::InputArray mask) const

@@ -133,6 +133,7 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "camera_pose")) ) {
+    SERIALIZE_OPTION(section, save, camera_pose_options_, direction);
     SERIALIZE_OPTION(section, save, camera_pose_options_, max_iterations);
     SERIALIZE_OPTION(section, save, camera_pose_options_, robust_threshold);
     SERIALIZE_OPTION(section, save, camera_pose_options_, max_levmar_iterations);
@@ -204,6 +205,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+      PIPELINE_CTL(ctrls, camera_pose_options_.direction, "Motion direction", "Optimize assuming a priori known motion direction");
       PIPELINE_CTL(ctrls, camera_pose_options_.max_iterations, "max iterations", "Number of iterations for outliers removal");
       PIPELINE_CTL(ctrls, camera_pose_options_.robust_threshold, "robust threshold", "Parameter for robust function in pixels");
       PIPELINE_CTL(ctrls, camera_pose_options_.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");

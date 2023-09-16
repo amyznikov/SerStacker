@@ -38,8 +38,7 @@ public:
   QSharpnessNormMeasureSettingsWidget(QWidget * parent = nullptr);
 
 protected:
-  using NormType = c_sharpness_norm_measure::NormType;
-  QEnumComboBox<NormType> * norm_type_ctl = nullptr;
+  QEnumComboBox<cv::NormTypes> * norm_type_ctl = nullptr;
   QNumericBox * sigma_ctl = nullptr;
 };
 

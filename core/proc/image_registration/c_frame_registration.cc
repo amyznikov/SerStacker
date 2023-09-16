@@ -1141,16 +1141,22 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
             matched_current_positions_, matched_reference_positions_,
             &current_keypoints_, &current_descriptors_,
             &current_matches_, &current_matches12_);
-
     if( !fOk ) {
       CF_ERROR("detect_and_match_keypoints() fails");
       return false;
     }
 
-    if( !estimate_image_transform(current_transform, matched_current_positions_, matched_reference_positions_) ) {
+
+    fOk =
+        estimate_image_transform(current_transform,
+            matched_current_positions_,
+            matched_reference_positions_,
+            &options_.feature_registration.estimate_options);
+    if( !fOk ) {
       CF_ERROR("estimate_image_transform() fails");
       return false;
     }
+
 
     if( options_.feature_registration.scale != 1 ) {
 

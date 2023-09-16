@@ -8,6 +8,7 @@
 
 #include <core/proc/threshold.h>
 //#include <core/proc/normalize.h>
+#include <core/proc/estimate_noise.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -25,6 +26,8 @@ const c_enum_member* members_of<THRESHOLD_TYPE>()
       { THRESHOLD_TYPE_YEN, "YEN", "Use YEN algorithm to choose the optimal threshold value" },
       { THRESHOLD_TYPE_MEAN, "MEAN", "Select pixels with values above mean value" },
       { THRESHOLD_TYPE_MINIMUM, "MINIMUM", "Use MINIMUM algorithm to choose the optimal threshold value" },
+      { THRESHOLD_TYPE_NOISE, "NOISE", "Estimate noise on the image" },
+
       { THRESHOLD_TYPE_OTSU }
   };
 
@@ -60,6 +63,23 @@ double get_threshold_value(cv::InputArray image, cv::InputArray mask, THRESHOLD_
     case THRESHOLD_TYPE_MINIMUM:
       threshold_value = get_minimum_threshold(image, mask);
       break;
+
+    case THRESHOLD_TYPE_NOISE: {
+
+      const int cn =
+          image.channels();
+
+      const cv::Scalar s =
+          estimate_noise(image, cv::noArray(), mask);
+
+      threshold_value = s[0];
+      for( int i = 1; i < cn; ++i ) {
+        threshold_value += s[i];
+      }
+      threshold_value /= cn;
+
+      break;
+    }
   }
 
   return threshold_value;

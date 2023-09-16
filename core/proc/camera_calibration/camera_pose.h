@@ -433,14 +433,31 @@ bool estimate_camera_pose_and_derotation_homography(
  *        AFTER derotation with homography H;
  *  */
 
+enum EPIPOLAR_MOTION_DIRECTION {
+  EPIPOLAR_MOTION_FORWARD,
+  EPIPOLAR_MOTION_BACKWARD,
+  EPIPOLAR_MOTION_BOTH
+};
+
 struct c_lm_camera_pose_options
 {
-  int max_iterations = 3;
-  int max_levmar_iterations = 100;
   double robust_threshold = 5.0;
   double epsf = 1e-5;
   double epsx = 1e-5;
+  int max_iterations = 3;
+  int max_levmar_iterations = 100;
+  EPIPOLAR_MOTION_DIRECTION direction = EPIPOLAR_MOTION_FORWARD;
 };
+
+/**
+ * Use of c_levmar_solver to refine camera pose estimated from essential matrix
+ */
+bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
+    const cv::Matx33d & camera_matrix,
+    const std::vector<cv::Point2f> & current_keypoints,
+    const std::vector<cv::Point2f> & reference_keypoints,
+    cv::Mat1b & inliers,
+    const c_lm_camera_pose_options * opts = nullptr);
 
 bool lm_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,

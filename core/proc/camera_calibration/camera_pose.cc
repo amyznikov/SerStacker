@@ -1076,16 +1076,28 @@ bool estimate_camera_pose_and_derotation_homography(
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+template<>
+const c_enum_member * members_of<EPIPOLAR_MOTION_DIRECTION>()
+{
+  static constexpr c_enum_member members[] = {
+      {EPIPOLAR_MOTION_FORWARD, "FORWARD", "Assume forward camera motion"},
+      {EPIPOLAR_MOTION_BACKWARD, "BACKWARD", "Assume backward camera motion"},
+      {EPIPOLAR_MOTION_BOTH, "BOTH", "Don't use motion direction assumptions"},
+      {EPIPOLAR_MOTION_BOTH},
+  };
+
+  return members;
+}
 
 /**
  * Use of c_levmar_solver to refine camera pose estimated from essential matrix
  */
-static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
+bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     const cv::Matx33d & camera_matrix,
     const std::vector<cv::Point2f> & current_keypoints,
     const std::vector<cv::Point2f> & reference_keypoints,
     cv::Mat1b & inliers,
-    const c_lm_camera_pose_options * opts = nullptr)
+    const c_lm_camera_pose_options * opts)
 {
   /* Unpack euler angles from levmar parameters array */
   static const auto unpack_A =
@@ -1127,37 +1139,48 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
   // vector originating from epipole towards to reference point.
   // Compute rhs error based on components of projected vector.
   static const auto compute_projection_error =
-      [](const cv::Point2f & cp, const cv::Point2f & rp, const cv::Matx33d & H, const cv::Point2d & E) -> double {
+      [](const cv::Point2f & cp, const cv::Point2f & rp, const cv::Matx33d & H, const cv::Point2d & E,
+          EPIPOLAR_MOTION_DIRECTION direction) -> double {
 
-        // apply derotation homography to current (second) camera point and translate to make the reference epipole as origin.
-        static const auto homography_transfrom =
-            [](const cv::Point2f & p, const cv::Matx33d & H, const cv::Point2d & E) -> cv::Point2d {
+            // apply derotation homography to current (second) camera point and translate to make the reference epipole as origin.
+          static const auto homography_transfrom =
+          [](const cv::Point2f & p, const cv::Matx33d & H, const cv::Point2d & E) -> cv::Point2d {
 
-          cv::Vec3d v = H * cv::Vec3d (p.x, p.y, 1);
-          if ( v[2] != 1 ) {
-            v[0] /= v[2];
-            v[1] /= v[2];
+            cv::Vec3d v = H * cv::Vec3d (p.x, p.y, 1);
+            if ( v[2] != 1 ) {
+              v[0] /= v[2];
+              v[1] /= v[2];
+            }
+
+            return cv::Point2d(v[0] - E.x, v[1] - E.y);
+          };
+
+          const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
+          const cv::Point2d ecp = homography_transfrom(cp, H, E);
+
+          //  cos  sin
+          // -sin  cos
+          const cv::Point2d err(
+              (+erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y)),
+              (-erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y)));
+
+          double rhs = std::abs(err.y);
+
+          switch(direction) {
+            case EPIPOLAR_MOTION_FORWARD:
+            if ( err.x < 0 ) {
+              rhs -= err.x;
+            }
+            break;
+            case EPIPOLAR_MOTION_BACKWARD:
+            if ( err.x > 0 ) {
+              rhs += err.x;
+            }
+            break;
           }
 
-          return cv::Point2d(v[0] - E.x, v[1] - E.y);
+          return rhs / sqrt(erp.x * erp.x + erp.y * erp.y);
         };
-
-        const cv::Point2f erp(rp.x - E.x, rp.y - E.y);
-        const cv::Point2d ecp = homography_transfrom(cp, H, E);
-
-        //  cos  sin
-        // -sin  cos
-        const cv::Point2d err(
-            (+erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y)),
-            (-erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y)));
-
-        double rhs = std::abs(err.y);
-        if ( err.x < 0 ) {
-          rhs -= err.x;
-        }
-
-        return rhs / sqrt(erp.x * erp.x + erp.y * erp.y);
-    };
 
 
   class c_levmar_solver_callback:
@@ -1168,8 +1191,9 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     cv::Matx33d camera_matrix_t_inv;
     std::vector<cv::Point2f> current_keypoints;
     std::vector<cv::Point2f> reference_keypoints;
-    const double Tfix;
+    EPIPOLAR_MOTION_DIRECTION direction;
     const int iTfix;
+    const double Tfix;
     double robust_threshold = 5.;
 
   public:
@@ -1180,13 +1204,15 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
         const cv::Matx33d & _camera_matrix_inv,
         const cv::Matx33d & _camera_matrix_t_inv,
         double _Tfix,
-        int _iTfix ) :
+        int _iTfix,
+        EPIPOLAR_MOTION_DIRECTION _direction) :
 
         camera_matrix(_camera_matrix),
         camera_matrix_inv(_camera_matrix_inv),
         camera_matrix_t_inv(_camera_matrix_t_inv),
-        Tfix(_Tfix),
-        iTfix(_iTfix)
+        direction(_direction),
+        iTfix(_iTfix),
+        Tfix(_Tfix)
     {
       if ( _inliers.empty() ) {
         current_keypoints = _current_keypoints;
@@ -1241,7 +1267,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 #endif
               rhs[i] = std::min(robust_threshold,
                   compute_projection_error(current_keypoints[i],
-                      reference_keypoints[i], H, E));
+                      reference_keypoints[i], H, E,
+                      direction));
             }
 #if HAVE_TBB
       });
@@ -1298,6 +1325,10 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     }
   }
 
+  const EPIPOLAR_MOTION_DIRECTION direction =
+      opts ? opts->direction :
+          EPIPOLAR_MOTION_BOTH;
+
   /*
    * The translation vector between frames is defined up to scale.
    * Find the translation component of maximal magnitude and fix it
@@ -1350,7 +1381,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     c_levmar_solver_callback callback(current_keypoints, reference_keypoints, inliers,
         camera_matrix, camera_matrix_inv, camera_matrix_t_inv,
         Tfix,
-        iTfix);
+        iTfix,
+        direction);
 
     if ( opts && opts->robust_threshold > 0 ) {
       callback.set_robust_threshold(opts->robust_threshold);
@@ -1399,7 +1431,8 @@ static bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
               compute_projection_error(current_keypoints[i],
                   reference_keypoints[i],
                   HH,
-                  EE);
+                  EE,
+                  direction);
 
           if( rhs > 5 * rmse ) {
             inliers[i][0] = 0;

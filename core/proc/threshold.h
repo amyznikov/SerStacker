@@ -49,7 +49,8 @@ enum THRESHOLD_TYPE {
   THRESHOLD_TYPE_HUANG,
   THRESHOLD_TYPE_YEN,
   THRESHOLD_TYPE_MEAN,
-  THRESHOLD_TYPE_MINIMUM
+  THRESHOLD_TYPE_MINIMUM,
+  THRESHOLD_TYPE_NOISE
 };
 
 double get_threshold_value(cv::InputArray image, cv::InputArray mask,

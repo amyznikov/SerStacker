@@ -26,6 +26,7 @@
 #include "color/c_scale_channels_routine.h"
 #include "color/c_color_diff_routine.h"
 #include "color/c_set_luminance_channel_routine.h"
+#include "color/c_color_balance_routine.h"
 
 
 
@@ -167,6 +168,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_scale_channels_routine::class_factory_instance());
     register_class_factory(c_color_diff_routine::class_factory_instance());
     register_class_factory(c_set_luminance_channel_routine::class_factory_instance());
+    register_class_factory(c_color_balance_routine::class_factory_instance());
+
     register_class_factory(c_type_convert_routine::class_factory_instance());
     register_class_factory(c_color_saturation_routine::class_factory_instance());
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());

@@ -2037,7 +2037,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
 
 
-      if( !image_processing_options_.aligned_image_processor ) {
+      if( image_processing_options_.aligned_image_processor ) {
 
         image_processing_options_.aligned_image_processor->process(current_frame, current_mask);
         if ( canceled() ) {

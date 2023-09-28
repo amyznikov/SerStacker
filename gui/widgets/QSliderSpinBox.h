@@ -90,18 +90,6 @@ public:
     slider_ctl->setTickPosition(position);
   }
 
-  T value() const
-  {
-    return spinBox_ctl->value();
-  }
-
-  void setValue(T val)
-  {
-    c_updating_controls_lock lock(this);
-    spinBox_ctl->setValue(val);
-    slider_ctl->setValue(val);
-  }
-
   T minimum() const
   {
     return spinBox_ctl->minimum();
@@ -126,21 +114,14 @@ public:
     slider_ctl->setMaximum(max);
   }
 
-  void setRange(T min, T max)
-  {
-    c_updating_controls_lock lock(this);
-    spinBox_ctl->setRange(min, max);
-    slider_ctl->setRange(min, max);
-  }
-
   T tickInterval() const
   {
     return slider_ctl->tickInterval();
   }
 
-  void setTickInterval(T ti)
+  void setTickInterval(T val)
   {
-    slider_ctl->setTickInterval(ti);
+    slider_ctl->setTickInterval(val);
   }
 
 protected:
@@ -180,6 +161,26 @@ public:
         });
   }
 
+  void setRange(int min, int max)
+  {
+    c_updating_controls_lock lock(this);
+    spinBox_ctl->setRange(min, max);
+    slider_ctl->setRange(min, max);
+  }
+
+  int value() const
+  {
+    return spinBox_ctl->value();
+  }
+
+  void setValue(int val)
+  {
+    c_updating_controls_lock lock(this);
+    spinBox_ctl->setValue(val);
+    slider_ctl->setValue(val);
+  }
+
+
 Q_SIGNALS:
   void valueChanged(int);
 };
@@ -193,13 +194,22 @@ public:
   typedef QDoubleSliderSpinBox ThisClass;
   typedef QSliderSpinBox<double> Base;
 
+  static inline constexpr double slider_eps()
+  {
+    return 1e-3;
+  }
+
   QDoubleSliderSpinBox(QWidget * parent = nullptr) : Base(parent)
   {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    spinBox_ctl->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
+#endif
+
     connect(spinBox_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
         [this](double value) {
           if ( !updatingControls_ ) {
             c_updating_controls_lock lock(this);
-            slider_ctl->setValue(value);
+            slider_ctl->setValue((value - spinBox_ctl->minimum())/slider_eps());
             Q_EMIT valueChanged(value);
           }
         });
@@ -208,11 +218,42 @@ public:
         [this](int value) {
           if ( !updatingControls_ ) {
             c_updating_controls_lock lock(this);
-            spinBox_ctl->setValue(value);
-            Q_EMIT valueChanged(value);
+            spinBox_ctl->setValue(spinBox_ctl->minimum() + value * slider_eps());
+            Q_EMIT valueChanged(spinBox_ctl->value());
           }
         });
   }
+
+  void setRange(int min, int max)
+  {
+    c_updating_controls_lock lock(this);
+    spinBox_ctl->setRange(min, max);
+    slider_ctl->setRange(0, (max - min)/slider_eps());
+    slider_ctl->setSingleStep(1);
+  }
+
+  void setSingleStep(double val)
+  {
+    spinBox_ctl->setSingleStep(val);
+  }
+
+  double singleStep() const
+  {
+    return spinBox_ctl->singleStep();
+  }
+
+  double value() const
+  {
+    return spinBox_ctl->value();
+  }
+
+  void setValue(double value)
+  {
+    c_updating_controls_lock lock(this);
+    spinBox_ctl->setValue(value);
+    slider_ctl->setValue((spinBox_ctl->value() - spinBox_ctl->minimum())/slider_eps());
+  }
+
 
 Q_SIGNALS:
   void valueChanged(double value);

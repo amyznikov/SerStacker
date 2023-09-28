@@ -26,7 +26,8 @@ enum c_image_processor_ctl_type {
   c_image_processor_ctl_begin_group,
   c_image_processor_ctl_end_group,
   c_image_processor_ctl_spinbox,
-  c_image_processor_ctl_sparse_feature_detector
+  c_image_processor_ctl_sparse_feature_detector,
+  c_image_processor_ctl_double_slider,
 };
 
 struct c_image_processor_routine_ctrl {
@@ -112,6 +113,31 @@ struct c_image_processor_routine_ctrl {
     }; \
     (ctls)->emplace_back(tmp); \
   }
+
+#define ADD_IMAGE_PROCESSOR_DOUBLE_SLIDER_CTRL(ctls, param, minvalue, maxvalue, stepvalue, desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+        .name = #param, \
+        .tooltip = desc, \
+        .ctl_type = c_image_processor_ctl_double_slider, \
+        .min = minvalue, \
+        .max = maxvalue, \
+        .step = stepvalue, \
+    }; \
+    tmp.get_value = [this](void) { \
+        return toString(param()); \
+      }; \
+    tmp.set_value = [this](const std::string & s) { \
+      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      if( fromString(s, &v) ) { \
+        std::lock_guard<std::mutex> lock(this->mutex()); \
+        set_##param(v); \
+      } \
+    }; \
+    (ctls)->emplace_back(tmp); \
+  }
+
+
 
 #define ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, param, desc) \
   if ( true ) { \

@@ -11,6 +11,7 @@
 #include "QMtfSettings.h"
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QBrowsePathCombo.h>
+#include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
 
@@ -846,6 +847,54 @@ void QImageProcessorSettingsControl::setupControls()
 
         break;
       }
+
+      case c_image_processor_ctl_double_slider : {
+
+        QDoubleSliderSpinBox * ctl =
+            new QDoubleSliderSpinBox(this);
+
+        ctl->setToolTip(p.tooltip.c_str());
+        //ctl->setKeyboardTracking(false);
+        //ctl->setFocusPolicy(Qt::StrongFocus);
+        //ctl->setAccelerated(true);
+        //ctl->setButtonSymbols(QSpinBox::ButtonSymbols::UpDownArrows);
+        //ctl->setStepType(QSpinBox::DefaultStepType);
+        ctl->setRange(p.min, p.max);
+        ctl->setSingleStep(p.step);
+
+        CF_DEBUG("p: min=%g max=%g step=%g", p.min, p.max, p.step);
+        CF_DEBUG("ctl: min=%g max=%g", ctl->minimum(), ctl->maximum());
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.set_value ) {
+          QObject::connect(ctl, &QDoubleSliderSpinBox::valueChanged,
+              [this, p](double value) {
+                if ( !updatingControls() ) {
+                  p.set_value(toString(value));
+                  Q_EMIT parameterChanged();
+                }
+              });
+        }
+
+        if( p.get_value ) {
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                double value;
+                if ( fromString(p.get_value(), &value) ) {
+                  ctl->setValue(value);
+                }
+              });
+        }
+
+        break;
+      }
+
 
       case c_image_processor_ctl_sparse_feature_detector : {
 

@@ -7,8 +7,486 @@
 
 #include "feature2d.h"
 #include <core/readdir.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
+/////////////////////
 
+const c_sparse_feature_extractor_and_matcher_options & c_sparse_feature_extractor_and_matcher::options() const
+{
+  return options_;
+}
+
+const c_feature2d::sptr & c_sparse_feature_extractor_and_matcher::detector() const
+{
+  return detector_;
+}
+
+const c_feature2d::sptr & c_sparse_feature_extractor_and_matcher::descriptor() const
+{
+  return descriptor_;
+}
+
+const c_feature2d_matcher::sptr & c_sparse_feature_extractor_and_matcher::matcher() const
+{
+  return matcher_;
+}
+
+SPARSE_FEATURE_DETECTOR_TYPE c_sparse_feature_extractor_and_matcher::detector_type() const
+{
+  return options_.detector.type;
+}
+
+SPARSE_FEATURE_DESCRIPTOR_TYPE c_sparse_feature_extractor_and_matcher::descriptor_type() const
+{
+  return options_.descriptor.type;
+}
+
+FEATURE2D_MATCHER_TYPE c_sparse_feature_extractor_and_matcher::matcher_type() const
+{
+  return options_.matcher.type;
+}
+
+const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_image() const
+{
+  return reference_image_;
+}
+
+const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_mask() const
+{
+  return reference_mask_;
+}
+
+const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_descriptors() const
+{
+  return reference_descriptors_;
+}
+
+const std::vector<cv::KeyPoint> & c_sparse_feature_extractor_and_matcher::referece_keypoints() const
+{
+  return reference_keypoints_;
+}
+
+const std::vector<cv::Point2f> & c_sparse_feature_extractor_and_matcher::matched_reference_positions() const
+{
+  return matched_reference_positions_;
+}
+
+const cv::Mat & c_sparse_feature_extractor_and_matcher::current_image() const
+{
+  return current_image_;
+}
+
+const cv::Mat & c_sparse_feature_extractor_and_matcher::current_mask() const
+{
+  return current_mask_;
+}
+
+const cv::Mat & c_sparse_feature_extractor_and_matcher::current_descriptors() const
+{
+  return current_descriptors_;
+}
+
+const std::vector<cv::KeyPoint> & c_sparse_feature_extractor_and_matcher::current_keypoints() const
+{
+  return current_keypoints_;
+}
+
+const std::vector<cv::Point2f> & c_sparse_feature_extractor_and_matcher::matched_current_positions() const
+{
+  return matched_current_positions_;
+}
+
+
+c_sparse_feature_extractor_and_matcher::c_sparse_feature_extractor_and_matcher()
+{
+}
+
+c_sparse_feature_extractor_and_matcher::c_sparse_feature_extractor_and_matcher(const c_sparse_feature_extractor_and_matcher_options & opts) :
+    options_(opts)
+{
+}
+
+
+c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matcher::create(const c_sparse_feature_extractor_and_matcher_options & options)
+{
+  if( options.detector.type == SPARSE_FEATURE_DETECTOR_UNKNOWN ) {
+    CF_ERROR("c_sparse_feature_extractor_and_matcher::create(): no sparse feature dtector type specified");
+    return nullptr;
+  }
+
+  this_class::sptr obj(new this_class(options));
+
+  //////////////
+
+  if( !(obj->detector_ = create_sparse_feature_detector(obj->options_.detector)) ) {
+    CF_ERROR("create_sparse_feature_detector(type=%s) fails", toString(obj->options_.detector.type));
+    return nullptr;
+  }
+
+  //////////////
+  if( obj->options_.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
+
+    switch (obj->options_.matcher.type) {
+      case FEATURE2D_MATCHER_OptFlowPyrLK:
+        break;
+      case FEATURE2D_MATCHER_AUTO_SELECT:
+        if ( !can_compute_decriptors(obj->detector_->type()) ) {
+          obj->options_.matcher.type = FEATURE2D_MATCHER_OptFlowPyrLK;
+        }
+        else {
+          obj->options_.descriptor.type =
+              (SPARSE_FEATURE_DESCRIPTOR_TYPE) obj->detector_->type();
+        }
+        break;
+    }
+  }
+
+  if( obj->options_.descriptor.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+    if( (int)obj->options_.descriptor.type != (int)obj->detector_->type() ) {
+
+      if( !(obj->descriptor_ = create_sparse_descriptor_extractor(obj->options_.descriptor)) ) {
+        CF_ERROR("create_sparse_descriptor_extractor(type=%s) fails", toString(obj->options_.descriptor.type));
+        return nullptr;
+      }
+
+      obj->options_.descriptor.type =
+          (SPARSE_FEATURE_DESCRIPTOR_TYPE) obj->detector_->type();
+    }
+  }
+  //////////////
+
+  if( obj->options_.matcher.type == FEATURE2D_MATCHER_AUTO_SELECT ) {
+
+    switch (obj->options_.descriptor.type) {
+
+      case SPARSE_FEATURE_DESCRIPTOR_UNKNOWN:
+        obj->options_.matcher.type = FEATURE2D_MATCHER_OptFlowPyrLK;
+        break;
+
+      case SPARSE_FEATURE_DESCRIPTOR_ORB: {
+
+        const c_feature2d_orb::options &opts =
+            obj->descriptor_ ? obj->options_.descriptor.orb :
+                obj->options_.detector.orb;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        obj->options_.matcher.flann.index.type = FlannIndex_lsh;
+        // FIXME: opts.WTA_K > 2  with flann ?
+        obj->options_.matcher.flann.distance_type = cvflann::FLANN_DIST_DNAMMING;
+
+        break;
+      }
+
+      case SPARSE_FEATURE_DESCRIPTOR_BRISK: {
+
+        const c_feature2d_brisk::options &opts =
+            obj->descriptor_ ? obj->options_.descriptor.brisk :
+                obj->options_.detector.brisk;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+       }
+
+      case SPARSE_FEATURE_DESCRIPTOR_KAZE:{
+
+        const c_feature2d_kaze::options &opts =
+            obj->descriptor_ ? obj->options_.descriptor.kaze :
+                obj->options_.detector.kaze;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+       }
+
+      case SPARSE_FEATURE_DESCRIPTOR_AKAZE:{
+
+        const c_feature2d_akaze::options &opts =
+            obj->descriptor_ ? obj->options_.descriptor.akaze :
+                obj->options_.detector.akaze;
+
+        switch (opts.descriptor_type) {
+          case cv::AKAZE::DESCRIPTOR_MLDB:
+          case cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT:
+            obj->options_.matcher.type = FEATURE2D_MATCHER_HAMMING;
+            break;
+          default:
+            obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+            obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+            break;
+        }
+        break;
+       }
+
+      #if HAVE_FEATURE2D_SIFT
+      case SPARSE_FEATURE_DESCRIPTOR_SIFT: {
+
+       const c_feature2d_sift::options &opts =
+           obj->descriptor_ ? obj->options_.descriptor.sift :
+               obj->options_.detector.sift;
+
+       obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+       obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+       break;
+      }
+      #endif
+
+      #if HAVE_FEATURE2D_SURF
+      case SPARSE_FEATURE_DESCRIPTOR_SURF:{
+
+        const c_feature2d_surf::options &opts =
+            obj->descriptor_ ? obj->options_.descriptor.surf :
+                obj->options_.detector.surf;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+      #endif
+
+      #if HAVE_FEATURE2D_FREAK
+      case SPARSE_FEATURE_DESCRIPTOR_FREAK:{
+
+        const c_feature2d_freak::options &opts =
+            obj->options_.descriptor.freak;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+
+      #endif
+
+      #if HAVE_FEATURE2D_BRIEF
+      case SPARSE_FEATURE_DESCRIPTOR_BRIEF:{
+
+        const c_feature2d_brief::options &opts =
+            obj->options_.descriptor.brief;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+
+      #endif
+      #if HAVE_FEATURE2D_LUCID
+      case SPARSE_FEATURE_DESCRIPTOR_LUCID:{
+
+        const c_feature2d_lucid::options &opts =
+            obj->options_.descriptor.lucid;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+
+      #endif
+      #if HAVE_FEATURE2D_LATCH
+      case SPARSE_FEATURE_DESCRIPTOR_LATCH:{
+
+        const c_feature2d_latch::options &opts =
+            obj->options_.descriptor.latch;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+      #endif
+      #if HAVE_FEATURE2D_DAISY
+      case SPARSE_FEATURE_DESCRIPTOR_DAISY:{
+
+        const c_feature2d_daisy::options &opts =
+            obj->options_.descriptor.daisy;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+
+      #endif
+      #if HAVE_FEATURE2D_VGG
+      case SPARSE_FEATURE_DESCRIPTOR_VGG:{
+
+        const c_feature2d_vgg::options &opts =
+            obj->options_.descriptor.vgg;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+      #endif
+      #if HAVE_FEATURE2D_BOOST
+      case SPARSE_FEATURE_DESCRIPTOR_BOOST:{
+
+        const c_feature2d_boost::options &opts =
+            obj->options_.descriptor.boost;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_FLANN;
+        //obj->options_.matcher.flann.index.type = FlannIndex_kdtree;
+        break;
+      }
+      #endif
+      #if HAVE_TRIANGLE_EXTRACTOR
+      case SPARSE_FEATURE_DESCRIPTOR_TRIANGLE:{
+
+        const c_feature2d_triangle_extractor::options &opts =
+            obj->options_.descriptor.triangles;
+
+        obj->options_.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
+        break;
+      }
+
+      #endif
+      default:
+        break;
+    }
+  }
+
+  switch ( obj->options_.matcher.type ) {
+    case FEATURE2D_MATCHER_OptFlowPyrLK:
+      break;
+    default:
+      if( !(obj->matcher_ = create_sparse_feature_matcher(obj->options_.matcher)) ) {
+        CF_ERROR("create_sparse_feature_matcher(type='%s') fails", toString(obj->options_.matcher.type));
+        return nullptr;
+      }
+      break;
+  }
+
+  CF_DEBUG("c_sparse_feature_extractor_and_matcher: \n"
+      "detector='%s' descriptor='%s' matcher='%s'",
+      toString(obj->detector_->type()),
+      obj->descriptor_ ? toString(obj->descriptor_->type()) : "null",
+      obj->matcher_ ? toString(obj->options_.matcher.type) : "null");
+
+  return obj;
+}
+
+void c_sparse_feature_extractor_and_matcher::extract_positions(const std::vector<cv::KeyPoint> & keypoints,
+    std::vector<cv::Point2f> & positions) const
+{
+  positions.clear();
+  positions.reserve(keypoints.size());
+
+  for( const cv::KeyPoint &p : keypoints ) {
+    positions.emplace_back(p.pt);
+  }
+}
+
+
+bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArray image, cv::InputArray mask)
+{
+  if( !matcher_ ) {
+    reference_descriptors_.release();
+    image.copyTo(reference_image_);
+    mask.copyTo(reference_mask_);
+    detector_->detect(image, reference_keypoints_, mask);
+    extract_positions(reference_keypoints_, reference_positions_);
+  }
+  else {
+    if( !descriptor_ ) {
+      detector_->detectAndCompute(image, mask, reference_keypoints_, reference_descriptors_);
+    }
+    else {
+      detector_->detect(image, reference_keypoints_, mask);
+      descriptor_->compute(image, reference_keypoints_, reference_descriptors_);
+    }
+    matcher_->train(&reference_keypoints_, reference_descriptors_);
+    reference_positions_.clear();
+  }
+
+  return true;
+}
+
+
+bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray current_image, cv::InputArray current_mask)
+{
+  if( matcher_  ) {
+
+    current_matches_.clear();
+    matched_reference_positions_.clear();
+    matched_current_positions_.clear();
+
+    if( !descriptor_ ) {
+      detector_->detectAndCompute(current_image, current_mask, current_keypoints_, current_descriptors_);
+    }
+    else {
+      detector_->detect(current_image, current_keypoints_, current_mask);
+      descriptor_->compute(current_image, current_keypoints_, current_descriptors_);
+    }
+
+    if ( !matcher_->match(&current_keypoints_, current_descriptors_, current_matches_) ) {
+      CF_ERROR("matcher_->match() fails");
+      return false;
+    }
+
+    for ( const cv::DMatch & m : current_matches_ ) {
+      matched_reference_positions_.emplace_back(reference_keypoints_[m.trainIdx].pt);
+      matched_current_positions_.emplace_back(current_keypoints_[m.queryIdx].pt);
+    }
+
+  }
+  else {
+
+    std::vector<uint8_t> status;
+    std::vector<float> err;
+
+    current_positions_.clear();
+    matched_reference_positions_.clear();
+    matched_current_positions_.clear();
+
+    const c_optflowpyrlk_feature2d_matcher_options & opts =
+        options_.matcher.optflowpyrlk;
+
+    cv::calcOpticalFlowPyrLK(reference_image_, current_image,
+        reference_positions_, current_positions_,
+        status, err,
+        opts.winSize,
+        opts.maxLevel,
+        cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS,
+            opts.maxIterations,
+            opts.eps),
+            opts.flags,
+            opts.minEigThreshold);
+
+
+    for( int i = 0, n = reference_positions_.size(); i < n; ++i ) {
+      if( status[i] && (opts.maxErr <= 0 || err[i] < opts.maxErr) ) {
+
+        matched_reference_positions_.emplace_back(reference_positions_[i]);
+        matched_current_positions_.emplace_back(current_positions_[i]);
+      }
+    }
+  }
+
+  CF_DEBUG("matched keypoints: %zu", matched_reference_positions_.size());
+
+  return true;
+}
+
+void c_sparse_feature_extractor_and_matcher::detect(cv::InputArray image,
+    CV_OUT std::vector<cv::KeyPoint> & keypoints,
+    cv::InputArray mask) const
+{
+  detector_->detect(image, keypoints, mask);
+}
+
+void c_sparse_feature_extractor_and_matcher::detectAndCompute(cv::InputArray image, cv::InputArray mask,
+    CV_OUT std::vector<cv::KeyPoint>& keypoints,
+    cv::OutputArray descriptors,
+    bool useProvidedKeypoints)
+{
+  if ( !descriptor_ )  {
+    detector_->detectAndCompute(image, mask, keypoints, descriptors, useProvidedKeypoints);
+  }
+  else {
+    detector_->detect(image, keypoints, mask);
+    descriptor_->compute(image, keypoints, descriptors);
+  }
+}
+
+
+/////////////////
 
 
 

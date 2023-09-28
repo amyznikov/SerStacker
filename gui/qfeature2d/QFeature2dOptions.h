@@ -62,7 +62,7 @@ protected:
 protected:
   c_sparse_feature_descriptor_options *options_ = nullptr;
   QSparseFeatureDecriptorTypeCombo * descriptorType_ctl = nullptr;
-  QCheckBox * useDetectorSettings_ctl = nullptr;
+  // QCheckBox * useDetectorSettings_ctl = nullptr;
   QWidgetList controls;
 };
 
@@ -112,6 +112,33 @@ protected:
   QFlannDistanceTypeCombo * flannDistanceType_ctl = nullptr;
   QNumericBox * lowe_ratio_ctl = nullptr;
   QWidgetList controls;
+};
+
+class QOptFlowPyrLKMatcherOptions  :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QOptFlowPyrLKMatcherOptions ThisClass;
+  typedef QSettingsWidget Base;
+
+  QOptFlowPyrLKMatcherOptions(QWidget * parent = nullptr);
+
+  void set_feature_matcher_options(c_optflowpyrlk_feature2d_matcher_options * options);
+  c_optflowpyrlk_feature2d_matcher_options * feature_matcher_options() const;
+
+protected:
+  void onupdatecontrols() override;
+
+protected:
+  c_optflowpyrlk_feature2d_matcher_options * options_ = nullptr;
+  QNumericBox * maxLevel_ctl = nullptr;
+  QNumericBox * winSize_ctl = nullptr;
+  QNumericBox * maxIterations_ctl = nullptr;
+  QNumericBox * eps_ctl = nullptr;
+  QNumericBox * flags_ctl = nullptr;
+  QNumericBox * minEigThreshold_ctl = nullptr;
+  QNumericBox * maxErr_ctl = nullptr;
 };
 
 class QTriangleMatcherOptions :
@@ -181,7 +208,9 @@ protected:
   QSparseFeatureMatcherTypeCombo * sparseFeatureMatcherType_ctl = nullptr;
   QHammingDistanceFeature2dMatcherOptions * hammingDistanceFeature2dMatcherOptions_ctl = nullptr;
   QFlannBasedFeature2dMatcherOptions * flannBasedFeature2dMatcherOptions_ctl = nullptr;
+  QOptFlowPyrLKMatcherOptions * optFlowPyrLKMatcherOptions_ctl = nullptr;
   QTriangleMatcherOptions * triangleMatcherOptions_ctl = nullptr;
+
   QSnormBasedFeature2dMatcherOptions * snormBasedFeature2dMatcherOptions_ctl = nullptr;
 };
 

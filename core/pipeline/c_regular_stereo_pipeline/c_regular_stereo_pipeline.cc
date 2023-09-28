@@ -44,9 +44,9 @@ c_regular_stereo_pipeline::c_regular_stereo_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
-  feature2d_options_.sparse_feature_extractor.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
-  feature2d_options_.sparse_feature_extractor.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_AKAZE;
-  feature2d_options_.sparse_feature_matcher.type = FEATURE2D_MATCHER_AUTO_SELECT;
+  feature2d_options_.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
+  feature2d_options_.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_AKAZE;
+  feature2d_options_.matcher.type = FEATURE2D_MATCHER_AUTO_SELECT;
 }
 
 c_regular_stereo_pipeline::~c_regular_stereo_pipeline()
@@ -136,8 +136,9 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
     SERIALIZE_OPTION(section, save, feature2d_options_, scale);
-    SERIALIZE_OPTION(section, save, feature2d_options_, sparse_feature_extractor);
-    SERIALIZE_OPTION(section, save, feature2d_options_, sparse_feature_matcher);
+    SERIALIZE_OPTION(section, save, feature2d_options_, detector);
+    SERIALIZE_OPTION(section, save, feature2d_options_, descriptor);
+    SERIALIZE_OPTION(section, save, feature2d_options_, matcher);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "calibration_options")) ) {
@@ -371,16 +372,10 @@ bool c_regular_stereo_pipeline::detect_keypoints()
       return false;
     }
 
-    bool fOK =
-        keypoints_extractor_->detectAndCompute(current_frame_->images[i],
+    keypoints_extractor_->detectAndCompute(current_frame_->images[i],
             current_frame_->masks[i],
             current_frame_->keypoints[i],
             current_frame_->descriptors[i]);
-
-    if( !fOK ) {
-      CF_ERROR("keypoints_extractor_->detectAndCompute() fails");
-      return false;
-    }
 
     CF_DEBUG("[camera=%d] detectAndCompute: %zu keypoints descriptor: %dx%d type=%d", i,
         current_frame_->keypoints[i].size(),
@@ -886,17 +881,12 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   }
 
   /////////////////////////////////////////////////////////////////////////////
-  if( calibration_options_.enable_calibration ) {
-
-    if( !(keypoints_extractor_ = create_sparse_feature_extractor(feature2d_options_.sparse_feature_extractor)) ) {
-      CF_ERROR("ERROR: create_sparse_feature_extractor() fails");
-      return false;
-    }
-
-    if( !(keypoints_matcher_ = create_sparse_feature_matcher(feature2d_options_.sparse_feature_matcher)) ) {
-      CF_ERROR("ERROR: create_sparse_feature_matcher() fails");
-      return false;
-    }
+  if( !calibration_options_.enable_calibration ) {
+    keypoints_extractor_.reset();
+  }
+  else if( !(keypoints_extractor_ = c_sparse_feature_extractor_and_matcher::create(feature2d_options_)) ) {
+    CF_ERROR("ERROR: c_sparse_feature_extractor_and_matcher::create() fails");
+    return false;
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1016,7 +1006,6 @@ void c_regular_stereo_pipeline::cleanup_pipeline()
   }
 
   keypoints_extractor_.reset();
-  keypoints_matcher_.reset();
 
   base::cleanup_pipeline();
 }
@@ -1110,24 +1099,45 @@ bool c_regular_stereo_pipeline::compute_motion_pose(int camera_index, c_motion_p
       previous_frame_->descriptors[camera_index].type());
 
 
+  if( !keypoints_extractor_->matcher() ) {
+
+    const bool fOK =
+        match_optflowpyrlk(previous_frame_->images[camera_index], current_frame_->images[camera_index],
+            previous_frame_->keypoints[camera_index],
+            feature2d_options_.matcher.optflowpyrlk,
+            previous_positions,
+            current_positions);
+
+    if( !fOK ) {
+      CF_ERROR("match_optflowpyrlk() fails");
+      return false;
+    }
+
+  }
+  else {
+
+        match_keypoints(keypoints_extractor_->matcher(),
+
+            current_frame_->keypoints[camera_index],
+            current_frame_->descriptors[camera_index],
+
+            previous_frame_->keypoints[camera_index],
+            previous_frame_->descriptors[camera_index],
+
+            &matches,
+            &current_positions,
+            &previous_positions);
+  }
+
   const size_t num_matches =
-      match_keypoints(keypoints_matcher_,
+      current_positions.size();
 
-          current_frame_->keypoints[camera_index],
-          current_frame_->descriptors[camera_index],
-
-          previous_frame_->keypoints[camera_index],
-          previous_frame_->descriptors[camera_index],
-
-          &matches,
-          &current_positions,
-          &previous_positions);
-
-  if ( num_matches < 8 ) {
+  if( num_matches < 8 ) {
     CF_DEBUG("[camera_index=%d] match_keypoints(): not enough (%zu < 8) matches found",
         camera_index, num_matches);
     return false;
   }
+
 
   bool fOK =
       estimate_camera_pose_and_derotation_homography(
@@ -1213,23 +1223,42 @@ bool c_regular_stereo_pipeline::detect_current_stereo_matches(c_motion_pose * po
   std::vector<cv::Point2f> &current_positions =
       pose->matched_positions[1];
 
+
+  if( !keypoints_extractor_->matcher() ) {
+
+    const bool fOK =
+        match_optflowpyrlk(current_frame_->images[0], current_frame_->images[1],
+            reference_keypoints,
+            feature2d_options_.matcher.optflowpyrlk,
+            reference_positions,
+            current_positions);
+
+    if( !fOK ) {
+      CF_ERROR("match_optflowpyrlk() fails");
+      return false;
+    }
+
+  }
+  else {
+
+    match_keypoints(keypoints_extractor_->matcher(),
+        current_keypoints,
+        current_descriptors,
+        reference_keypoints,
+        reference_descriptors,
+        nullptr,
+        &current_positions,
+        &reference_positions);
+  }
+
   const size_t num_matches =
-      match_keypoints(keypoints_matcher_,
+      current_positions.size();
 
-          current_keypoints,
-          current_descriptors,
-          reference_keypoints,
-          reference_descriptors,
-
-          nullptr,
-          &current_positions,
-          &reference_positions);
-
-
-  if ( num_matches < 8 ) {
+  if( num_matches < 8 ) {
     CF_DEBUG("stereo match: enough (%zu < 8) matches found", num_matches);
     return false;
   }
+
 
 
   return true;

@@ -25,7 +25,7 @@ public:
   void parameter_changed() override;
 
 protected:
-  c_feature2d::ptr keypoints_detector_;
+  c_feature2d::sptr keypoints_detector_;
   c_sparse_feature_detector_options options_;
   std::vector<cv::KeyPoint> keypoints_;
   cv::Mat display_;

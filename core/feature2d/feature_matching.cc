@@ -15,15 +15,16 @@ const c_enum_member * members_of<FEATURE2D_MATCHER_TYPE>()
       { FEATURE2D_MATCHER_AUTO_SELECT, "Auto", "Auto select depending on feature descriptor type" },
       { FEATURE2D_MATCHER_HAMMING, "hamming", "" },
       { FEATURE2D_MATCHER_FLANN, "flann", "" },
+      { FEATURE2D_MATCHER_OptFlowPyrLK, "OptFlowPyrLK", "Use cv::calcOpticalFlowPyrLK() for matching proposals"},
       { FEATURE2D_MATCHER_TRIANGLES, "triangle_matcher", "" },
       { FEATURE2D_MATCHER_SNORM, "snorm", "" },
-      { FEATURE2D_MATCHER_UNKNOWN, nullptr, "" },
+      { FEATURE2D_MATCHER_UNKNOWN},
   };
 
   return members;
 }
 
-c_feature2d_matcher::ptr create_sparse_feature_matcher(
+c_feature2d_matcher::sptr create_sparse_feature_matcher(
     const c_feature2d_matcher_options & options)
 {
   switch ( options.type ) {
@@ -35,6 +36,10 @@ c_feature2d_matcher::ptr create_sparse_feature_matcher(
     return create_sparse_feature_matcher(options.snorm);
   case FEATURE2D_MATCHER_TRIANGLES :
     return create_sparse_feature_matcher(options.triangles);
+  case FEATURE2D_MATCHER_OptFlowPyrLK :
+    //return create_sparse_feature_matcher(options.optflowpyrlk);
+    CF_ERROR("ERROR: OptFlowPyrLK requires specialized matcher not supported by generic interface");
+    return nullptr;
   case FEATURE2D_MATCHER_UNKNOWN :
     CF_ERROR("ERROR: c_feature2d_matcher type not specified");
     return nullptr;
@@ -145,7 +150,7 @@ size_t match_keypoints(const cv::Ptr<c_feature2d_matcher> & keypoints_matcher,
   cv::theRNG().state = 1234567890;
 
   // Train the matcher on reference descriptors
-  if ( !keypoints_matcher->train(reference_descriptors) ) {
+  if ( !keypoints_matcher->train(&reference_keypoints, reference_descriptors) ) {
     CF_ERROR("keypoints_matcher->train() fails");
     return 0;
   }
@@ -154,7 +159,7 @@ size_t match_keypoints(const cv::Ptr<c_feature2d_matcher> & keypoints_matcher,
   // Match the descriptors
   std::vector<cv::DMatch> matches;
 
-  if ( !keypoints_matcher->match(current_descriptors, matches) ) {
+  if ( !keypoints_matcher->match(&current_keypoints, current_descriptors, matches) ) {
     CF_ERROR("keypoints_matcher->match() fails");
     return 0;
   }

@@ -265,6 +265,7 @@ protected:
   QNumericBox * reference_smooth_sigma_ctl = nullptr;
   QNumericBox * max_iterations_ctl = nullptr;
   QNumericBox * support_scale_ctl = nullptr;
+  QNumericBox * max_pyramid_level_ctl = nullptr;
   QNumericBox * normalization_scale_ctl = nullptr;
   QNumericBox * noise_level_ctl = nullptr;
   QCheckBox * enable_debug_ctl = nullptr;
@@ -296,6 +297,7 @@ protected:
 
   QNumericBox * jovian_detector_stdev_factor_ctl = nullptr;
   QNumericBox * jovian_detector_pca_blur_ctl = nullptr;
+  QNumericBox * jovian_detector_ellipse_offset_ctl = nullptr;
 
   QNumericBox * min_rotation_ctl = nullptr;
   QNumericBox * max_rotation_ctl = nullptr;
@@ -402,6 +404,7 @@ protected:
 //  QNumericBox * featureScale_ctl = nullptr;
 //  QNumericBox * eccScale_ctl = nullptr;
   QNumericBox * eccFlowScale_ctl = nullptr;
+  QNumericBox * eccflowMaxPyramidLevel_ctl = nullptr;
 
   QNumericBox * master_sharpen_factor_ctl = nullptr;
   QNumericBox * accumulated_sharpen_factor_ctl = nullptr;

@@ -647,9 +647,9 @@ void QFeatureBasedRegistrationOptions::onupdatecontrols()
   else {
     enableFeatureBasedRegistration_ctl->setChecked(options_->enabled);
     scale_ctl->setValue(options_->scale);
-    sparseFeatureDetectorOptions_ctl->set_feature_detector_options(&options_->sparse_feature_extractor.detector);
-    sparseFeatureDescriptorOptions_ctl->set_feature_descriptor_options(&options_->sparse_feature_extractor.descriptor);
-    sparseFeatureMatcherOptions_ctl->set_feature_matcher_options(&options_->sparse_feature_matcher);
+    sparseFeatureDetectorOptions_ctl->set_feature_detector_options(&options_->sparse_feature_extractor_and_matcher.detector);
+    sparseFeatureDescriptorOptions_ctl->set_feature_descriptor_options(&options_->sparse_feature_extractor_and_matcher.descriptor);
+    sparseFeatureMatcherOptions_ctl->set_feature_matcher_options(&options_->sparse_feature_extractor_and_matcher.matcher);
 
     estimateTranslation_ctl->set_options(&options_->estimate_options);
     estimateEuclidean_ctl->set_options(&options_->estimate_options);
@@ -680,7 +680,7 @@ void QFeatureBasedRegistrationOptions::onDetectorTypeChanged()
 {
   if ( options_ ) {
 
-    if ( options_->sparse_feature_extractor.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
+    if ( options_->sparse_feature_extractor_and_matcher.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
       sparseFeatureDescriptorOptions_ctl->setEnabled(false);
       sparseFeatureMatcherOptions_ctl->setEnabled(false);
     }
@@ -939,6 +939,17 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(max_pyramid_level_ctl =
+      add_numeric_box<int>("max_pyramid_level",
+          "",
+          [this](int value) {
+            if ( options_ && options_->max_pyramid_level != value ) {
+              options_->max_pyramid_level = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
+
+
   controls.append(input_smooth_sigma_ctl =
       add_numeric_box<double>("input_smooth_sigma",
           "",
@@ -1039,6 +1050,7 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
     max_iterations_ctl->setValue(options_->max_iterations);
     support_scale_ctl->setValue(options_->support_scale);
+    max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     noise_level_ctl->setValue(options_->noise_level);
     enable_debug_ctl->setChecked(options_->enable_debug);
@@ -1093,6 +1105,18 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
               Q_EMIT parameterChanged();
             }
           }));
+
+  controls.append(jovian_detector_ellipse_offset_ctl =
+      add_numeric_box<cv::Point2f>("ellipse offset:",
+          "",
+          [this](const cv::Point2f & value) {
+            if ( options_ && options_->ellipse.offset != value ) {
+              options_->ellipse.offset = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
+
+
 
   controls.append(max_pyramid_level_ctl =
       add_numeric_box<int>("max pyramid level:",
@@ -1182,6 +1206,7 @@ void QJovianDerotationOptions::onupdatecontrols()
     enableJovianDerotation_ctl->setChecked(options_->enabled);
     jovian_detector_stdev_factor_ctl->setValue(options_->ellipse.stdev_factor);
     jovian_detector_pca_blur_ctl->setValue(options_->ellipse.pca_blur);
+    jovian_detector_ellipse_offset_ctl->setValue(options_->ellipse.offset);
     max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
@@ -1631,20 +1656,38 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
 
   eccFlowScale_ctl =
       add_numeric_box<int>("ECC flow log scale:",
-      "",
-      [this](int v) {
-        if ( options_ && options_->eccflow_scale != v ) {
-          options_->eccflow_scale = v;
-          Q_EMIT parameterChanged();
-        }
-      },
-      [this](int * v) {
-        if ( options_ ) {
-          *v = options_->eccflow_scale;
-          return true;
-        }
-        return false;
-      });
+          "",
+          [this](int v) {
+            if ( options_ && options_->eccflow_scale != v ) {
+              options_->eccflow_scale = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->eccflow_scale;
+              return true;
+            }
+            return false;
+          });
+
+
+  eccflowMaxPyramidLevel_ctl =
+      add_numeric_box<int>("ECC MaxPyramidLevel:",
+          "",
+          [this](int v) {
+            if ( options_ && options_->eccflow_max_pyramid_level != v ) {
+              options_->eccflow_max_pyramid_level = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->eccflow_max_pyramid_level;
+              return true;
+            }
+            return false;
+          });
 
 
   master_sharpen_factor_ctl =

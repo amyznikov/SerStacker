@@ -36,11 +36,12 @@ struct c_regular_stereo_input_options
 };
 
 
-struct c_regular_stereo_feature2d_options
+struct c_regular_stereo_feature2d_options :
+    public c_sparse_feature_extractor_and_matcher_options
 {
   double scale = 0.5;
-  c_sparse_feature_extractor_options sparse_feature_extractor;
-  c_feature2d_matcher_options sparse_feature_matcher;
+//  c_sparse_feature_extractor_options sparse_feature_extractor;
+//  c_feature2d_matcher_options sparse_feature_matcher;
 };
 
 
@@ -226,8 +227,10 @@ protected:
   c_input_source::sptr input_sources_[2];
   c_stereo_frame input_frames_[2];
 
-  c_sparse_feature_extractor::ptr keypoints_extractor_;
-  c_feature2d_matcher::ptr keypoints_matcher_;
+  c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;
+
+//  c_sparse_feature_extractor::sptr keypoints_extractor_;
+//  c_feature2d_matcher::sptr keypoints_matcher_;
 
   c_stereo_frame * current_frame_ = nullptr;
   c_stereo_frame * previous_frame_ = nullptr;

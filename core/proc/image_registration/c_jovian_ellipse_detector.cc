@@ -16,6 +16,7 @@
 #include <core/proc/pyrscale.h>
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/gradient.h>
+#include <core/proc/fitEllipseLM.h>
 
 #include <core/debug.h>
 
@@ -281,6 +282,16 @@ double c_jovian_ellipse_detector::pca_blur() const
   return options_.pca_blur;
 }
 
+void c_jovian_ellipse_detector::set_offset(const cv::Point2f & v)
+{
+  options_.offset = v;
+}
+
+const cv::Point2f & c_jovian_ellipse_detector::offset() const
+{
+  return options_.offset;
+}
+
 void c_jovian_ellipse_detector::set_enable_debug_images(bool v)
 {
   enable_debug_images_ = v;
@@ -321,10 +332,10 @@ const cv::Mat1b & c_jovian_ellipse_detector::detected_planetary_disk_edge() cons
   return detected_planetary_disk_edge_;
 }
 
-const cv::RotatedRect& c_jovian_ellipse_detector::ellipseAMS() const
-{
-  return ellipseAMS_;
-}
+//const cv::RotatedRect& c_jovian_ellipse_detector::ellipseAMS() const
+//{
+//  return ellipseAMS_;
+//}
 
 const cv::RotatedRect& c_jovian_ellipse_detector::final_planetary_disk_ellipse() const
 {
@@ -449,15 +460,15 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
   cv::findNonZero(detected_planetary_disk_edge_,
       component_edge_points);
 
-  ellipse =
-      cv::fitEllipseAMS(component_edge_points);
-
-  if( ellipse.size.width < ellipse.size.height ) {
-    std::swap(ellipse.size.width, ellipse.size.height);
-    ellipse.angle -= 90;
-  }
-
-  ellipseAMS_ = ellipse;
+//  ellipse =
+//      cv::fitEllipseAMS(component_edge_points);
+//
+//  if( ellipse.size.width < ellipse.size.height ) {
+//    std::swap(ellipse.size.width, ellipse.size.height);
+//    ellipse.angle -= 90;
+//  }
+//
+//  ellipseAMS_ = ellipse;
 
   // Use PCA on image gradients to compute jovian disk orientation
   ellipse.angle =
@@ -472,14 +483,21 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
     ellipse.angle += 180;
   }
 
-  final_planetary_disk_ellipse_ = ellipse;
+  static constexpr double jovian_axis_ratio =
+      0.93512560845968779724;
+
+  fitEllipseLM1(component_edge_points,
+      jovian_axis_ratio, // b / a
+      ellipse.angle * CV_PI / 180, // radians
+      &final_planetary_disk_ellipse_);
+
+  final_planetary_disk_ellipse_.center +=
+      options_.offset;
+
+  //final_planetary_disk_ellipse_ = ellipse;
 
   CF_DEBUG("\n"
-      "ellipseAMS_ : width=%g height=%g angle=%g\n"
-      "ellipseAMS2_: width=%g height=%g angle=%g",
-      ellipseAMS_.size.width,
-      ellipseAMS_.size.height,
-      ellipseAMS_.angle,
+      "fitEllipseLM1: width=%g height=%g angle=%g",
       final_planetary_disk_ellipse_.size.width,
       final_planetary_disk_ellipse_.size.height,
       final_planetary_disk_ellipse_.angle);

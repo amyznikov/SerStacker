@@ -34,8 +34,9 @@ public:
   void set_max_acceptable_distance(int v);
   int max_acceptable_distance() const;
 
-  bool train( cv::InputArray train_descriptors) override;
-  bool match(cv::InputArray query_descriptors, /* out */ std::vector<cv::DMatch> & matches) override;
+  bool train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors) override;
+  bool match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+      /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
   struct index_entry {

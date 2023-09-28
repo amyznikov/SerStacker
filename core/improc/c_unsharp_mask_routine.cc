@@ -32,7 +32,7 @@ const c_enum_member* members_of<c_unsharp_mask_routine::COLOR_CHANNEL>()
 bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( channel_ == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
-    return unsharp_mask(image, mask, image, sigma_, alpha_, outmin_, outmax_);
+    return unsharp_mask(image, ignore_mask_ ? cv::noArray() : mask, image, sigma_, alpha_, outmin_, outmax_);
   }
 
   cv::Mat tmp;
@@ -131,7 +131,7 @@ bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutput
   cv::extractChannel(image, tmp, cc);
 
   if( sigma_ > 0 && alpha_ > 0 && alpha_ < 1 ) {
-    unsharp_mask(tmp, mask, tmp, sigma_, alpha_);
+    unsharp_mask(tmp, ignore_mask_ ? cv::noArray() : mask, tmp, sigma_, alpha_);
   }
 
   if( blur_color_channels_ > 0 ) {

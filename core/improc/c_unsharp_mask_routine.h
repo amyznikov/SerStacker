@@ -100,6 +100,7 @@ public:
     ADD_IMAGE_PROCESSOR_CTRL(ctls, blur_color_channels, "Gaussian blur sigma for color channels");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, outmin, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, outmax, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

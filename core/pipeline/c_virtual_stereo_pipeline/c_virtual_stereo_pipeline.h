@@ -22,6 +22,14 @@ struct c_virtual_stereo_input_options :
 {
 };
 
+struct c_virtual_stereo_image_processing_options
+{
+  c_image_processor::sptr input_processor;
+  c_image_processor::sptr feature2d_preprocessor;
+};
+
+
+
 struct c_virtual_stereo_camera_options
 {
   c_camera_intrinsics camera_intrinsics = {
@@ -36,11 +44,13 @@ struct c_virtual_stereo_camera_options
 };
 
 
-struct c_virtual_stereo_feature2d_options
+
+struct c_virtual_stereo_feature2d_options :
+    public c_sparse_feature_extractor_and_matcher_options
 {
-  c_sparse_feature_detector_options detector;
-  c_sparse_feature_descriptor_options descriptor;
-  c_feature2d_matcher_options matcher;
+//  c_sparse_feature_detector_options detector;
+//  c_sparse_feature_descriptor_options descriptor;
+//  c_feature2d_matcher_options matcher;
 };
 
 struct c_virtual_stereo_matcher_options
@@ -49,6 +59,29 @@ struct c_virtual_stereo_matcher_options
 };
 
 
+struct c_virtual_stereo_epipolar_flow_options
+{
+  int support_scale = 3;
+  int max_iterations = 1;
+  int normalization_scale = -1;
+  int max_pyramid_level = -1;
+  double noise_level = -1;
+  double update_multiplier = 1.5;
+  double input_smooth_sigma = 0;
+  double reference_smooth_sigma = 0;
+
+  bool enabled = false;
+  bool enable_debug = false;
+};
+
+//struct c_virtual_stereo_pyrflowlk_options
+//{
+//  bool enabled = false;
+//  bool enable_debug = false;
+//  c_sparse_feature_detector_options detector;
+//  int max_pyramid_level = 4;
+//};
+
 struct c_virtual_stereo_output_options :
     c_image_processing_pipeline_output_options
 {
@@ -56,19 +89,17 @@ struct c_virtual_stereo_output_options :
     std::string polar_frames_filename;
     std::string disparity_frames_filename;
     std::string homography_video_filename;
+    //std::string pyrflowlk_frames_filename;
 
     bool save_progress_video = false;
     bool save_polar_frames = false;
     bool save_disparity_frames = false;
     bool save_homography_video = false;
+    //bool save_pyrflowlk_frames = false;
+
+    bool save_epipolar_flow_debug_images = false;
 };
 
-
-struct c_virtual_stereo_image_processing_options
-{
-  c_image_processor::sptr input_processor;
-  c_image_processor::sptr feature2d_preprocessor;
-};
 
 
 class c_virtual_stereo_pipeline :
@@ -118,6 +149,12 @@ public:
   c_lm_camera_pose_options & camera_pose_options();
   const c_lm_camera_pose_options & camera_pose_options() const;
 
+  c_virtual_stereo_epipolar_flow_options & epipolar_flow_options();
+  const c_virtual_stereo_epipolar_flow_options & epipolar_flow_options() const;
+
+//  c_virtual_stereo_pyrflowlk_options & pyrflowlk_options();
+//  const c_virtual_stereo_pyrflowlk_options & pyrflowlk_options() const;
+
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
 
@@ -136,13 +173,16 @@ protected:
   bool seek_input_sequence(int pos);
   bool read_input_frame(cv::Mat & output_image, cv::Mat & output_mask);
   bool write_progress_video();
-  c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
+  c_sparse_feature_extractor_and_matcher::sptr create_keypoints_extractor() const;
   bool process_current_frame();
   bool extract_keypoints();
+  bool match_keypoints();
   bool estmate_camera_pose();
   bool create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap);
   bool run_polar_stereo();
   bool run_epipolar_stereo();
+  bool run_epipolar_flow();
+  //bool run_pyrflowlk();
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
@@ -160,12 +200,17 @@ protected:
   c_virtual_stereo_feature2d_options feature2d_options_;
   c_lm_camera_pose_options camera_pose_options_;
   c_virtual_stereo_matcher_options stereo_matcher_options_;
+  c_virtual_stereo_epipolar_flow_options epipolar_flow_options_;
+  // c_virtual_stereo_pyrflowlk_options pyrflowlk_options_;
   c_virtual_stereo_output_options output_options_;
 
-  c_sparse_feature_extractor::ptr keypoints_extractor_;
-  c_feature2d_matcher::ptr keypoints_matcher_;
+  //c_sparse_feature_extractor::sptr keypoints_extractor_;
+  //c_feature2d_matcher::sptr keypoints_matcher_;
+  c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;
   c_regular_stereo_matcher stereo_matcher_;
   c_epipolar_matcher epipolar_matcher_;
+  c_epipolar_flow epipolar_flow_;
+  // c_feature2d::sptr pyrflowlk_keypoints_detector_;
 
   cv::Mat current_image_;
   cv::Mat previous_image_;

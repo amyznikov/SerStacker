@@ -40,6 +40,7 @@ public:
       MORPH_TEXLEE, //!< texLee
       MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
       MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
+      MORPH_LAPLACIAN_ABS, //!< morphological_laplacian
   };
 
 
@@ -173,6 +174,13 @@ public:
 
       case MORPH_LAPLACIAN:
         morphological_laplacian(image.getMat(), image,
+            cv::getStructuringElement(se_shape_, se_size_, anchor_),
+            borderType_,
+            borderValue_);
+        break;
+
+      case MORPH_LAPLACIAN_ABS:
+        morphological_laplacian_abs(image.getMat(), image,
             cv::getStructuringElement(se_shape_, se_size_, anchor_),
             borderType_,
             borderValue_);

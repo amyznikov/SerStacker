@@ -19,8 +19,7 @@ struct c_feature_based_registration_options
 {
   bool enabled = false;
   double scale = 0.5;
-  c_sparse_feature_extractor_options sparse_feature_extractor;
-  c_feature2d_matcher_options sparse_feature_matcher;
+  c_sparse_feature_extractor_and_matcher_options sparse_feature_extractor_and_matcher;
   c_estimate_image_transform_options estimate_options;
 };
 
@@ -52,6 +51,7 @@ struct c_eccflow_registration_options
   double noise_level = -1;
   int max_iterations = 1;
   int support_scale = 4;
+  int max_pyramid_level = -1;
   int normalization_scale = -1;
   bool enable_debug = false;
 };
@@ -93,6 +93,7 @@ struct c_master_frame_options
   double feature_scale = 0.5;
   double ecc_scale = 0.5;
   int eccflow_scale = 0;
+  int eccflow_max_pyramid_level = -1;
 };
 
 struct c_image_registration_options
@@ -166,9 +167,7 @@ public:
   void set_image_transform(const c_image_transform::sptr & transform);
   const c_image_transform::sptr & image_transform() const;
 
-  virtual c_sparse_feature_extractor::ptr create_keypoints_extractor() const;
-  const c_sparse_feature_extractor::ptr & set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor);
-  const c_sparse_feature_extractor::ptr & keypoints_extractor() const;
+  const c_sparse_feature_extractor_and_matcher::sptr & create_sparse_feature_extractor_and_matcher();
 
   const c_ecc_forward_additive & ecc() const;
   const c_ecch & ecch() const;
@@ -249,15 +248,6 @@ protected:
       cv::InputArray current_feature_mask,
       c_image_transform * current_transform);
 
-  virtual bool detect_and_match_keypoints(cv::InputArray current_feature_image,
-      cv::InputArray current_feature_mask,
-      std::vector<cv::Point2f> & output_matched_current_positions,
-      std::vector<cv::Point2f> & output_matched_reference_positions,
-      std::vector<cv::KeyPoint> * _current_keypoints,
-      cv::Mat * _current_descriptors,
-      std::vector<cv::DMatch> * _current_matches,
-      std::vector<std::vector<cv::DMatch> > * _current_matches12) const;
-
   virtual bool base_remap(const cv::Mat2f & rmap,
       cv::InputArray src, cv::OutputArray dst,
       cv::InputArray src_mask = cv::noArray(),
@@ -278,12 +268,7 @@ protected:
   cv::Mat reference_feature_mask_;
   cv::Mat current_feature_mask_;
 
-  c_sparse_feature_extractor::ptr keypoints_extractor_;
-  c_feature2d_matcher::ptr keypoints_matcher_;
-  std::vector<cv::KeyPoint> reference_keypoints_;
-  cv::Mat reference_descriptors_;
-  std::vector<cv::KeyPoint> current_keypoints_;
-  cv::Mat current_descriptors_;
+  c_sparse_feature_extractor_and_matcher::sptr sparse_feature_extractor_and_matcher_;
 
   cv::Point2f planetary_disk_reference_centroid_;
   cv::Point2f planetary_disk_current_centroid_;
@@ -291,11 +276,6 @@ protected:
   cv::Rect planetary_disk_current_component_rect_;
   cv::Mat planetary_disk_reference_component_mask_;
   cv::Mat planetary_disk_current_component_mask_;
-
-  std::vector<cv::DMatch> current_matches_;
-  std::vector<std::vector<cv::DMatch> > current_matches12_;
-  std::vector<cv::Point2f> matched_current_positions_;
-  std::vector<cv::Point2f> matched_reference_positions_;
 
   c_image_transform::sptr image_transform_;
   cv::Mat1f image_transform_defaut_parameters_;

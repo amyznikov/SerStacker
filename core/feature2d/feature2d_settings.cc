@@ -396,6 +396,26 @@ bool save_settings(c_config_setting settings, const c_feature2d_hl::options & ar
 }
 #endif
 
+#if HAVE_MORPH_EXTRACTOR
+bool load_settings(c_config_setting settings, c_feature2d_morph_extractor::options * args)
+{
+  BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *args, morph_type);
+  LOAD_OPTIONS(settings, *args, threshold);
+  LOAD_OPTIONS(settings, *args, se_radius);
+  END_LOAD_OPTIONS(settings)
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_feature2d_morph_extractor::options & args)
+{
+  SAVE_SETINGS(morph_type);
+  SAVE_SETINGS(threshold);
+  SAVE_SETINGS(se_radius);
+  return true;
+}
+#endif
+
 #if HAVE_FEATURE2D_FREAK
 bool load_settings(c_config_setting settings, c_feature2d_freak::options * args)
 {
@@ -602,6 +622,33 @@ bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_op
   return true;
 }
 
+bool save_settings(c_config_setting settings, const c_optflowpyrlk_feature2d_matcher_options & args)
+{
+  SAVE_SETINGS(maxLevel);
+  SAVE_SETINGS(winSize);
+  SAVE_SETINGS(maxIterations);
+  SAVE_SETINGS(flags);
+  SAVE_SETINGS(eps);
+  SAVE_SETINGS(minEigThreshold);
+  SAVE_SETINGS(maxErr);
+
+  return true;
+}
+
+bool load_settings(c_config_setting settings, c_optflowpyrlk_feature2d_matcher_options * options)
+{
+  BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *options, maxLevel);
+  LOAD_OPTIONS(settings, *options, winSize);
+  LOAD_OPTIONS(settings, *options, maxIterations);
+  LOAD_OPTIONS(settings, *options, flags);
+  LOAD_OPTIONS(settings, *options, eps);
+  LOAD_OPTIONS(settings, *options, minEigThreshold);
+  LOAD_OPTIONS(settings, *options, maxErr);
+  END_LOAD_OPTIONS(settings)
+  return true;
+}
+
 bool save_settings(c_config_setting settings, const c_snorm_based_feature2d_matcher_options & args)
 {
   SAVE_SETINGS(max_acceptable_distance);
@@ -760,7 +807,7 @@ bool load_settings(c_config_setting settings, c_flann_autotuned_index_options  *
   return true;
 }
 
-bool save_settings(c_config_setting section, const c_feature2d::ptr & obj)
+bool save_settings(c_config_setting section, const c_feature2d::sptr & obj)
 {
   const c_feature2d * p =
       obj.get();
@@ -863,6 +910,12 @@ bool save_settings(c_config_setting section, const c_feature2d::ptr & obj)
     return save_settings(section,
         *static_cast<const c_feature2d_star_extractor::options*>(p->opts()));
 #endif
+#if HAVE_MORPH_EXTRACTOR
+  case FEATURE2D_MORPH :
+    return save_settings(section,
+        *static_cast<const c_feature2d_morph_extractor::options*>(p->opts()));
+#endif
+
   default :
     CF_ERROR("Unknown or not supported feature2d object type=%d (%s)",
         (int )(p->type()), toString(p->type()));
@@ -884,19 +937,19 @@ bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options
 
   return true;
 }
-
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(c_config_setting settings)
-{
-  INSTRUMENT_REGION("");
-
-  c_sparse_feature_extractor_options options;
-  if ( !load_settings(settings, &options) ) {
-    CF_ERROR("load_settings(c_sparse_feature_extractor_options) fails");
-    return nullptr;
-  }
-
-  return create_sparse_feature_extractor(options);
-}
+//
+//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(c_config_setting settings)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  c_sparse_feature_extractor_options options;
+//  if ( !load_settings(settings, &options) ) {
+//    CF_ERROR("load_settings(c_sparse_feature_extractor_options) fails");
+//    return nullptr;
+//  }
+//
+//  return create_sparse_feature_extractor(options);
+//}
 
 bool save_settings(c_config_setting settings, const c_flann_index_options & args)
 {
@@ -984,6 +1037,7 @@ bool save_settings(c_config_setting settings, const c_feature2d_matcher_options 
   save_settings(settings, "type", options.type);
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_FLANN)), options.flann);
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_HAMMING)), options.hamming);
+  save_settings(settings.add_group(toString(FEATURE2D_MATCHER_OptFlowPyrLK)), options.optflowpyrlk);
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_SNORM)), options.snorm);
   save_settings(settings.add_group(toString(FEATURE2D_MATCHER_TRIANGLES)), options.triangles);
 
@@ -1019,6 +1073,9 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
   if( (subsection = settings[toString(FEATURE2D_MATCHER_HAMMING)]).isGroup() ) {
     load_settings(subsection, &options->hamming);
   }
+  if( (subsection = settings[toString(FEATURE2D_MATCHER_OptFlowPyrLK)]).isGroup() ) {
+    load_settings(subsection, &options->optflowpyrlk);
+  }
   if( (subsection = settings[toString(FEATURE2D_MATCHER_SNORM)]).isGroup() ) {
     load_settings(subsection, &options->snorm);
   }
@@ -1029,562 +1086,562 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
   return true;
 }
 
-
-c_feature2d_matcher::ptr create_sparse_feature_matcher(const c_sparse_feature_extractor::ptr & extractor, c_config_setting settings)
-{
-  INSTRUMENT_REGION("");
-
-  c_feature2d_matcher_options options;
-
-  if ( extractor ) {
-
-    switch ( extractor->descriptor()->defaultNorm() ) {
-    case cv::NORM_HAMMING :
-      options.type = FEATURE2D_MATCHER_HAMMING;
-      break;
-
-    default :
-      switch ( CV_MAT_DEPTH(extractor->descriptor()->descriptorType()) ) {
-      case CV_8U :
-        case CV_8S :
-        options.type = FEATURE2D_MATCHER_FLANN;
-        options.flann.index.type = FlannIndex_lsh;
-        break;
-      default :
-        options.type = FEATURE2D_MATCHER_FLANN;
-        options.flann.index.type = FlannIndex_kdtree;
-        break;
-      }
-      break;
-    }
-  }
-
-  if ( !load_settings(settings, &options) ) {
-    CF_ERROR("load_settings(c_feature2d_matcher_options) fails");
-    return nullptr;
-  }
-
-  return create_sparse_feature_matcher(options);
-}
-
-c_feature2d_matcher::ptr create_sparse_feature_matcher(c_config_setting settings)
-{
-  INSTRUMENT_REGION("");
-
-
-  c_feature2d_matcher_options options;
-
-  if ( !load_settings(settings, &options) ) {
-    CF_ERROR("load_settings(c_feature2d_matcher_options) fails");
-    return nullptr;
-  }
-
-  return create_sparse_feature_matcher(options);
-}
-
-
-
-
-c_feature2d_matcher::ptr create_sparse_feature_matcher(const c_sparse_feature_extractor::ptr & feature_extractor,
-    const std::string & matcher_spec)
-{
-  INSTRUMENT_REGION("");
-
-//  if ( feature_extractor ) {
 //
-//    CF_DEBUG("descriptor: \n"
-//        "defaultNorm=%d\n"
-//        "descriptorType=%d\n"
-//        "descriptorSize=%d\n",
-//        (int )(feature_extractor->descriptor()->defaultNorm()),
-//        (int )(feature_extractor->descriptor()->descriptorType()),
-//        (int )(feature_extractor->descriptor()->descriptorSize()));
+//c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_sparse_feature_extractor::sptr & extractor, c_config_setting settings)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  c_feature2d_matcher_options options;
+//
+//  if ( extractor ) {
+//
+//    switch ( extractor->descriptor()->defaultNorm() ) {
+//    case cv::NORM_HAMMING :
+//      options.type = FEATURE2D_MATCHER_HAMMING;
+//      break;
+//
+//    default :
+//      switch ( CV_MAT_DEPTH(extractor->descriptor()->descriptorType()) ) {
+//      case CV_8U :
+//        case CV_8S :
+//        options.type = FEATURE2D_MATCHER_FLANN;
+//        options.flann.index.type = FlannIndex_lsh;
+//        break;
+//      default :
+//        options.type = FEATURE2D_MATCHER_FLANN;
+//        options.flann.index.type = FlannIndex_kdtree;
+//        break;
+//      }
+//      break;
+//    }
 //  }
-
-
-  //
-  // Parse matcher type and params if provided
-  //
-
-  enum FEATURE2D_MATCHER_TYPE matcher_type =
-      FEATURE2D_MATCHER_UNKNOWN;
-
-  enum FlannIndexType index_type =
-      FlannIndex_unknown;
-
-  typedef std::pair<std::string, std::string> matcher_arg;
-  std::vector<matcher_arg> matcher_args;
-
-  if ( !matcher_spec.empty() ) {
-
-    std::string matcher_type_name;
-
-    if ( !parse_object_type_and_args(matcher_spec, matcher_type_name, matcher_args) ) {
-      CF_ERROR("parse_object_type_and_args() fails");
-      return nullptr;
-    }
-
-    if ( !fromString(matcher_type_name, &matcher_type) ) {
-      CF_ERROR("Unknown or not supported feature2d matcher requested: %s",
-          matcher_type_name.c_str());
-      return nullptr;
-    }
-
-
-    std::vector<matcher_arg>::iterator pos =
-        std::find_if(matcher_args.begin(), matcher_args.end(),
-            [](const matcher_arg & arg) {
-              return arg.first == "index";
-            });
-
-    if ( pos != matcher_args.end() ) {
-
-      if ( !fromString(pos->second, &index_type) ) {
-        CF_ERROR("Invalid or not supported index type '%s' requested",
-            pos->second.c_str());
-        return nullptr;
-      }
-    }
-  }
-
-  if ( matcher_type == FEATURE2D_MATCHER_UNKNOWN ) {
-
-    if ( !feature_extractor ) {
-      CF_ERROR("Can not deduce appropriate feature2d matcher type");
-      return nullptr;
-    }
-
-    switch ( feature_extractor->descriptor()->defaultNorm() ) {
-    case cv::NORM_HAMMING :
-      matcher_type = FEATURE2D_MATCHER_HAMMING;
-      break;
-
-    default :
-      switch ( CV_MAT_DEPTH(feature_extractor->descriptor()->descriptorType()) ) {
-      case CV_8U :
-        case CV_8S :
-        matcher_type = FEATURE2D_MATCHER_FLANN;
-        index_type = FlannIndex_lsh;
-        break;
-      default :
-        matcher_type = FEATURE2D_MATCHER_FLANN;
-        index_type = FlannIndex_kdtree;
-        break;
-      }
-      break;
-    }
-  }
-
-  if ( matcher_type == FEATURE2D_MATCHER_FLANN && index_type == FlannIndex_unknown ) {
-
-    if ( !feature_extractor ) {
-      CF_ERROR("Can not deduce appropriate feature2d flann index type");
-      return nullptr;
-    }
-
-    switch ( CV_MAT_DEPTH(feature_extractor->descriptor()->descriptorType()) ) {
-    case CV_8U :
-      case CV_8S :
-      index_type = FlannIndex_lsh;
-      break;
-    default :
-      index_type = FlannIndex_kdtree;
-      break;
-    }
-  }
-
-  CF_DEBUG("matcher_type=%s index_type=%s",
-      toString(matcher_type),
-      toString(index_type));
-
-#define PARSE_PARAM(p)  \
-    if ( strcasecmp(name, #p) == 0 ) { \
-      if ( *value && fromString(value, &p) != 1 ) { \
-        CF_ERROR("Syntax error: can not parse value '%s' for parameter %s", value, name); \
-        return nullptr; \
-      } \
-      continue; \
-    }
-
-  switch ( matcher_type ) {
-  case FEATURE2D_MATCHER_HAMMING : {
-
-    double max_acceptable_distance = -1;
-
-    for ( const matcher_arg & arg : matcher_args ) {
-      const char * name = arg.first.c_str();
-      const char * value = arg.second.c_str();
-
-      PARSE_PARAM(max_acceptable_distance);
-
-      CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-          name, value, toString(matcher_type));
-
-      return nullptr;
-    }
-
-    c_hamming_distance_feature2d_matcher::ptr matcher(
-        new c_hamming_distance_feature2d_matcher());
-
-    if ( max_acceptable_distance >= 0 ) {
-      matcher->set_max_acceptable_distance(
-          max_acceptable_distance);
-    }
-
-    return matcher;
-  }
-
-  case FEATURE2D_MATCHER_SNORM : {
-
-    double max_acceptable_distance = -1;
-    double lowe_ratio = -1;
-
-    for ( const matcher_arg & arg : matcher_args ) {
-      const char * name = arg.first.c_str();
-      const char * value = arg.second.c_str();
-
-      PARSE_PARAM(max_acceptable_distance);
-      PARSE_PARAM(lowe_ratio);
-
-      CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-          name, value, toString(matcher_type));
-
-      return nullptr;
-    }
-
-    c_snorm_based_feature2d_matcher::ptr matcher(
-        new c_snorm_based_feature2d_matcher());
-
-    if ( max_acceptable_distance >= 0 ) {
-      matcher->set_max_acceptable_distance(
-          max_acceptable_distance);
-    }
-
-    if ( lowe_ratio >= 0 ) {
-      matcher->set_lowe_ratio(
-          lowe_ratio);
-    }
-
-    return matcher;
-  }
-
-  case FEATURE2D_MATCHER_FLANN :
-
-    switch ( index_type ) {
-    case FlannIndex_linear : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::LinearIndexParams()));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    case FlannIndex_kdtree : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-      int trees = 1;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-        PARSE_PARAM(trees);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::KDTreeIndexParams(
-                  trees)));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    case FlannIndex_kmeans : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-      int branching = 32;
-      int iterations = 11;
-      cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
-      float cb_index = 0.2f;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-        PARSE_PARAM(branching);
-        PARSE_PARAM(iterations);
-        PARSE_PARAM(centers_init);
-        PARSE_PARAM(cb_index);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::KMeansIndexParams(
-                  branching,
-                  iterations,
-                  centers_init,
-                  cb_index)));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    case FlannIndex_composite : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-      int trees = 1;
-      int branching = 32;
-      int iterations = 11;
-      cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
-      float cb_index = 0.2f;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-        PARSE_PARAM(trees);
-        PARSE_PARAM(branching);
-        PARSE_PARAM(iterations);
-        PARSE_PARAM(centers_init);
-        PARSE_PARAM(cb_index);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::CompositeIndexParams(
-                  trees,
-                  branching,
-                  iterations,
-                  centers_init,
-                  cb_index)));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    case FlannIndex_hierarchical : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-      int branching = 32;
-      cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
-      int trees = 4;
-      int leaf_size = 100;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-        PARSE_PARAM(branching);
-        PARSE_PARAM(centers_init);
-        PARSE_PARAM(trees);
-        PARSE_PARAM(leaf_size);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::HierarchicalClusteringIndexParams(
-                  branching,
-                  centers_init,
-                  trees,
-                  leaf_size)));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    case FlannIndex_lsh : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-      int table_number = 8;
-      int key_size = 12;
-      int multi_probe_level = 1;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-        PARSE_PARAM(table_number);
-        PARSE_PARAM(key_size);
-        PARSE_PARAM(multi_probe_level);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::LshIndexParams(
-                  table_number,
-                  key_size,
-                  multi_probe_level)));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    case FlannIndex_autotuned : {
-
-      double lowe_ratio = -1;
-      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
-      float target_precision = 0.8f;
-      float build_weight = 0.01f;
-      float memory_weight = 0;
-      float sample_fraction = 0.1f;
-
-      for ( const matcher_arg & arg : matcher_args ) {
-        const char * name = arg.first.c_str();
-        const char * value = arg.second.c_str();
-
-        PARSE_PARAM(lowe_ratio);
-        PARSE_PARAM(distance_type);
-        PARSE_PARAM(target_precision);
-        PARSE_PARAM(build_weight);
-        PARSE_PARAM(memory_weight);
-        PARSE_PARAM(sample_fraction);
-
-        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
-            name, value, toString(matcher_type));
-
-        return nullptr;
-      }
-
-      c_flann_based_feature2d_matcher::ptr matcher(
-          new c_flann_based_feature2d_matcher(
-              new cv::flann::AutotunedIndexParams(
-                  target_precision,
-                  build_weight,
-                  memory_weight,
-                  sample_fraction)));
-
-      matcher->set_distance_type(
-          distance_type);
-
-      if ( lowe_ratio >= 0 ) {
-        matcher->set_lowe_ratio(
-            lowe_ratio);
-      }
-
-      return matcher;
-    }
-
-    default :
-      break;
-    }
-
-    break;
-  default :
-    break;
-  }
-
-
-
-#undef PARSE_PARAM
-
-
-  CF_ERROR("Invalid or not supported matcher_type=%d index_type=%d requested",
-      matcher_type, index_type);
-
-  return nullptr;
-}
-
+//
+//  if ( !load_settings(settings, &options) ) {
+//    CF_ERROR("load_settings(c_feature2d_matcher_options) fails");
+//    return nullptr;
+//  }
+//
+//  return create_sparse_feature_matcher(options);
+//}
+//
+//c_feature2d_matcher::sptr create_sparse_feature_matcher(c_config_setting settings)
+//{
+//  INSTRUMENT_REGION("");
+//
+//
+//  c_feature2d_matcher_options options;
+//
+//  if ( !load_settings(settings, &options) ) {
+//    CF_ERROR("load_settings(c_feature2d_matcher_options) fails");
+//    return nullptr;
+//  }
+//
+//  return create_sparse_feature_matcher(options);
+//}
+//
+
+
+
+//c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_sparse_feature_extractor::sptr & feature_extractor,
+//    const std::string & matcher_spec)
+//{
+//  INSTRUMENT_REGION("");
+//
+////  if ( feature_extractor ) {
+////
+////    CF_DEBUG("descriptor: \n"
+////        "defaultNorm=%d\n"
+////        "descriptorType=%d\n"
+////        "descriptorSize=%d\n",
+////        (int )(feature_extractor->descriptor()->defaultNorm()),
+////        (int )(feature_extractor->descriptor()->descriptorType()),
+////        (int )(feature_extractor->descriptor()->descriptorSize()));
+////  }
+//
+//
+//  //
+//  // Parse matcher type and params if provided
+//  //
+//
+//  enum FEATURE2D_MATCHER_TYPE matcher_type =
+//      FEATURE2D_MATCHER_UNKNOWN;
+//
+//  enum FlannIndexType index_type =
+//      FlannIndex_unknown;
+//
+//  typedef std::pair<std::string, std::string> matcher_arg;
+//  std::vector<matcher_arg> matcher_args;
+//
+//  if ( !matcher_spec.empty() ) {
+//
+//    std::string matcher_type_name;
+//
+//    if ( !parse_object_type_and_args(matcher_spec, matcher_type_name, matcher_args) ) {
+//      CF_ERROR("parse_object_type_and_args() fails");
+//      return nullptr;
+//    }
+//
+//    if ( !fromString(matcher_type_name, &matcher_type) ) {
+//      CF_ERROR("Unknown or not supported feature2d matcher requested: %s",
+//          matcher_type_name.c_str());
+//      return nullptr;
+//    }
+//
+//
+//    std::vector<matcher_arg>::iterator pos =
+//        std::find_if(matcher_args.begin(), matcher_args.end(),
+//            [](const matcher_arg & arg) {
+//              return arg.first == "index";
+//            });
+//
+//    if ( pos != matcher_args.end() ) {
+//
+//      if ( !fromString(pos->second, &index_type) ) {
+//        CF_ERROR("Invalid or not supported index type '%s' requested",
+//            pos->second.c_str());
+//        return nullptr;
+//      }
+//    }
+//  }
+//
+//  if ( matcher_type == FEATURE2D_MATCHER_UNKNOWN ) {
+//
+//    if ( !feature_extractor ) {
+//      CF_ERROR("Can not deduce appropriate feature2d matcher type");
+//      return nullptr;
+//    }
+//
+//    switch ( feature_extractor->descriptor()->defaultNorm() ) {
+//    case cv::NORM_HAMMING :
+//      matcher_type = FEATURE2D_MATCHER_HAMMING;
+//      break;
+//
+//    default :
+//      switch ( CV_MAT_DEPTH(feature_extractor->descriptor()->descriptorType()) ) {
+//      case CV_8U :
+//        case CV_8S :
+//        matcher_type = FEATURE2D_MATCHER_FLANN;
+//        index_type = FlannIndex_lsh;
+//        break;
+//      default :
+//        matcher_type = FEATURE2D_MATCHER_FLANN;
+//        index_type = FlannIndex_kdtree;
+//        break;
+//      }
+//      break;
+//    }
+//  }
+//
+//  if ( matcher_type == FEATURE2D_MATCHER_FLANN && index_type == FlannIndex_unknown ) {
+//
+//    if ( !feature_extractor ) {
+//      CF_ERROR("Can not deduce appropriate feature2d flann index type");
+//      return nullptr;
+//    }
+//
+//    switch ( CV_MAT_DEPTH(feature_extractor->descriptor()->descriptorType()) ) {
+//    case CV_8U :
+//      case CV_8S :
+//      index_type = FlannIndex_lsh;
+//      break;
+//    default :
+//      index_type = FlannIndex_kdtree;
+//      break;
+//    }
+//  }
+//
+//  CF_DEBUG("matcher_type=%s index_type=%s",
+//      toString(matcher_type),
+//      toString(index_type));
+//
+//#define PARSE_PARAM(p)  \
+//    if ( strcasecmp(name, #p) == 0 ) { \
+//      if ( *value && fromString(value, &p) != 1 ) { \
+//        CF_ERROR("Syntax error: can not parse value '%s' for parameter %s", value, name); \
+//        return nullptr; \
+//      } \
+//      continue; \
+//    }
+//
+//  switch ( matcher_type ) {
+//  case FEATURE2D_MATCHER_HAMMING : {
+//
+//    double max_acceptable_distance = -1;
+//
+//    for ( const matcher_arg & arg : matcher_args ) {
+//      const char * name = arg.first.c_str();
+//      const char * value = arg.second.c_str();
+//
+//      PARSE_PARAM(max_acceptable_distance);
+//
+//      CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//          name, value, toString(matcher_type));
+//
+//      return nullptr;
+//    }
+//
+//    c_hamming_distance_feature2d_matcher::ptr matcher(
+//        new c_hamming_distance_feature2d_matcher());
+//
+//    if ( max_acceptable_distance >= 0 ) {
+//      matcher->set_max_acceptable_distance(
+//          max_acceptable_distance);
+//    }
+//
+//    return matcher;
+//  }
+//
+//  case FEATURE2D_MATCHER_SNORM : {
+//
+//    double max_acceptable_distance = -1;
+//    double lowe_ratio = -1;
+//
+//    for ( const matcher_arg & arg : matcher_args ) {
+//      const char * name = arg.first.c_str();
+//      const char * value = arg.second.c_str();
+//
+//      PARSE_PARAM(max_acceptable_distance);
+//      PARSE_PARAM(lowe_ratio);
+//
+//      CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//          name, value, toString(matcher_type));
+//
+//      return nullptr;
+//    }
+//
+//    c_snorm_based_feature2d_matcher::ptr matcher(
+//        new c_snorm_based_feature2d_matcher());
+//
+//    if ( max_acceptable_distance >= 0 ) {
+//      matcher->set_max_acceptable_distance(
+//          max_acceptable_distance);
+//    }
+//
+//    if ( lowe_ratio >= 0 ) {
+//      matcher->set_lowe_ratio(
+//          lowe_ratio);
+//    }
+//
+//    return matcher;
+//  }
+//
+//  case FEATURE2D_MATCHER_FLANN :
+//
+//    switch ( index_type ) {
+//    case FlannIndex_linear : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::LinearIndexParams()));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    case FlannIndex_kdtree : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//      int trees = 1;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//        PARSE_PARAM(trees);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::KDTreeIndexParams(
+//                  trees)));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    case FlannIndex_kmeans : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//      int branching = 32;
+//      int iterations = 11;
+//      cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
+//      float cb_index = 0.2f;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//        PARSE_PARAM(branching);
+//        PARSE_PARAM(iterations);
+//        PARSE_PARAM(centers_init);
+//        PARSE_PARAM(cb_index);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::KMeansIndexParams(
+//                  branching,
+//                  iterations,
+//                  centers_init,
+//                  cb_index)));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    case FlannIndex_composite : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//      int trees = 1;
+//      int branching = 32;
+//      int iterations = 11;
+//      cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
+//      float cb_index = 0.2f;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//        PARSE_PARAM(trees);
+//        PARSE_PARAM(branching);
+//        PARSE_PARAM(iterations);
+//        PARSE_PARAM(centers_init);
+//        PARSE_PARAM(cb_index);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::CompositeIndexParams(
+//                  trees,
+//                  branching,
+//                  iterations,
+//                  centers_init,
+//                  cb_index)));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    case FlannIndex_hierarchical : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//      int branching = 32;
+//      cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
+//      int trees = 4;
+//      int leaf_size = 100;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//        PARSE_PARAM(branching);
+//        PARSE_PARAM(centers_init);
+//        PARSE_PARAM(trees);
+//        PARSE_PARAM(leaf_size);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::HierarchicalClusteringIndexParams(
+//                  branching,
+//                  centers_init,
+//                  trees,
+//                  leaf_size)));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    case FlannIndex_lsh : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//      int table_number = 8;
+//      int key_size = 12;
+//      int multi_probe_level = 1;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//        PARSE_PARAM(table_number);
+//        PARSE_PARAM(key_size);
+//        PARSE_PARAM(multi_probe_level);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::LshIndexParams(
+//                  table_number,
+//                  key_size,
+//                  multi_probe_level)));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    case FlannIndex_autotuned : {
+//
+//      double lowe_ratio = -1;
+//      cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
+//      float target_precision = 0.8f;
+//      float build_weight = 0.01f;
+//      float memory_weight = 0;
+//      float sample_fraction = 0.1f;
+//
+//      for ( const matcher_arg & arg : matcher_args ) {
+//        const char * name = arg.first.c_str();
+//        const char * value = arg.second.c_str();
+//
+//        PARSE_PARAM(lowe_ratio);
+//        PARSE_PARAM(distance_type);
+//        PARSE_PARAM(target_precision);
+//        PARSE_PARAM(build_weight);
+//        PARSE_PARAM(memory_weight);
+//        PARSE_PARAM(sample_fraction);
+//
+//        CF_ERROR("WARNING: Unknown parameter '%s = %s' specified for feature2d matcher %s. Ignored",
+//            name, value, toString(matcher_type));
+//
+//        return nullptr;
+//      }
+//
+//      c_flann_based_feature2d_matcher::ptr matcher(
+//          new c_flann_based_feature2d_matcher(
+//              new cv::flann::AutotunedIndexParams(
+//                  target_precision,
+//                  build_weight,
+//                  memory_weight,
+//                  sample_fraction)));
+//
+//      matcher->set_distance_type(
+//          distance_type);
+//
+//      if ( lowe_ratio >= 0 ) {
+//        matcher->set_lowe_ratio(
+//            lowe_ratio);
+//      }
+//
+//      return matcher;
+//    }
+//
+//    default :
+//      break;
+//    }
+//
+//    break;
+//  default :
+//    break;
+//  }
+//
+//
+//
+//#undef PARSE_PARAM
+//
+//
+//  CF_ERROR("Invalid or not supported matcher_type=%d index_type=%d requested",
+//      matcher_type, index_type);
+//
+//  return nullptr;
+//}
+//
 
 
 bool load_settings(c_config_setting settings, c_sparse_feature_detector_options * options)
@@ -1632,6 +1689,9 @@ bool load_settings(c_config_setting settings, c_sparse_feature_detector_options 
   LOAD_GROUP(blob);
 #if HAVE_FEATURE2D_STAR
   LOAD_GROUP(star);
+#endif
+#if HAVE_MORPH_EXTRACTOR
+  LOAD_GROUP(morph);
 #endif
 #if HAVE_FEATURE2D_MSD
   LOAD_GROUP(msd);
@@ -1701,14 +1761,14 @@ bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_option
   std::string descriptor_type;
 
   if ( load_settings(settings, "type", &descriptor_type) && !descriptor_type.empty() ) {
-    if ( !fromString(descriptor_type, &options->type) || options->type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+    if ( !fromString(descriptor_type, &options->type) || options->type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
       CF_ERROR("Invalid or not supported feature descriptor type specified : %s",
           descriptor_type.c_str());
     }
   }
 
-  load_settings(settings, "use_detector_options",
-      &options->use_detector_options);
+//  load_settings(settings, "use_detector_options",
+//      &options->use_detector_options);
 
   c_config_setting group;
 #define LOAD_GROUP(name) \
@@ -1761,8 +1821,8 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_
   save_settings(settings, "type",
       toString(options.type));
 
-  save_settings(settings, "use_detector_options",
-      options.use_detector_options);
+//  save_settings(settings, "use_detector_options",
+//      options.use_detector_options);
 
 #define SAVE_GROUP(name) \
     save_settings(settings.add_group(#name), \

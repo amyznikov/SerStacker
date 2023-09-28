@@ -210,8 +210,8 @@ public:
   c_frame_upscale_options& upscale_options();
   const c_frame_upscale_options& upscale_options() const;
 
-  c_sparse_feature_extractor_options& sparse_feature_extractor_options();
-  const c_sparse_feature_extractor_options& sparse_feature_extractor_options() const;
+//  c_sparse_feature_extractor_options& sparse_feature_extractor_options();
+//  const c_sparse_feature_extractor_options& sparse_feature_extractor_options() const;
 
   c_sparse_feature_detector_options& sparse_feature_detector_options();
   const c_sparse_feature_detector_options& sparse_feature_detector_options() const;

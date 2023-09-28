@@ -11,23 +11,24 @@
 
 #include <core/feature2d/feature_matching/c_flann_based_feature2d_matcher.h>
 #include <core/feature2d/feature_matching/c_hamming_distance_feature2d_matcher.h>
-#include <core/feature2d/feature_matching/c_snorm_based_feature2d_matcher.h>
+#include <core/feature2d/feature_matching/c_optflowpyrlk_feature2d_matcher.h>
 #include <core/feature2d/feature_matching/c_triangle_matcher.h>
+#include <core/feature2d/feature_matching/c_snorm_based_feature2d_matcher.h>
 
 #include <core/ssprintf.h>
 
 enum FEATURE2D_MATCHER_TYPE {
   FEATURE2D_MATCHER_UNKNOWN = -1,
+  FEATURE2D_MATCHER_AUTO_SELECT = FEATURE2D_MATCHER_UNKNOWN,
   FEATURE2D_MATCHER_HAMMING,
   FEATURE2D_MATCHER_FLANN,
   FEATURE2D_MATCHER_SNORM,
   FEATURE2D_MATCHER_TRIANGLES,
-  FEATURE2D_MATCHER_AUTO_SELECT = 1000
+  FEATURE2D_MATCHER_OptFlowPyrLK,
 };
 
 template<> const c_enum_member *
   members_of<FEATURE2D_MATCHER_TYPE>();
-
 
 
 struct c_feature2d_matcher_options {
@@ -37,11 +38,12 @@ struct c_feature2d_matcher_options {
   c_hamming_distance_feature2d_matcher_options hamming;
   c_flann_based_feature2d_matcher_options flann;
   c_triangle_matcher_options triangles;
+  c_optflowpyrlk_feature2d_matcher_options optflowpyrlk;
   c_snorm_based_feature2d_matcher_options snorm;
 
 };
 
-c_feature2d_matcher::ptr create_sparse_feature_matcher(
+c_feature2d_matcher::sptr create_sparse_feature_matcher(
     const c_feature2d_matcher_options & options);
 
 

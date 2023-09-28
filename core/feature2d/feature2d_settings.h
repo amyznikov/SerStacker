@@ -147,6 +147,13 @@ bool save_settings(c_config_setting settings,
     const c_feature2d_star_extractor::options & );
 #endif
 
+#if HAVE_MORPH_EXTRACTOR
+bool load_settings(c_config_setting settings,
+    c_feature2d_morph_extractor::options * args);
+bool save_settings(c_config_setting settings,
+    const c_feature2d_morph_extractor::options & );
+#endif
+
 #if HAVE_TRIANGLE_EXTRACTOR
 bool load_settings(c_config_setting settings,
     c_feature2d_triangle_extractor::options * args);
@@ -155,7 +162,7 @@ bool save_settings(c_config_setting settings,
 #endif
 
 bool save_settings(c_config_setting settings,
-    const c_feature2d::ptr & obj);
+    const c_feature2d::sptr & obj);
 
 
 bool load_settings(c_config_setting settings,
@@ -239,6 +246,12 @@ bool load_settings(c_config_setting settings,
     c_flann_based_feature2d_matcher_options * options);
 
 bool save_settings(c_config_setting settings,
+    const c_optflowpyrlk_feature2d_matcher_options & options);
+
+bool load_settings(c_config_setting settings,
+    c_optflowpyrlk_feature2d_matcher_options * options);
+
+bool save_settings(c_config_setting settings,
     const c_snorm_based_feature2d_matcher_options & options);
 
 bool load_settings(c_config_setting settings,
@@ -259,23 +272,23 @@ bool load_settings(c_config_setting settings,
 
 
 bool save_settings(c_config_setting settings,
-    const c_feature2d_matcher::ptr & obj);
+    const c_feature2d_matcher::sptr & obj);
 
 
 ///////////////////////////////////////////////////////////////////////
 
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
-    c_config_setting settings);
+//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(
+//    c_config_setting settings);
 
-c_feature2d_matcher::ptr create_sparse_feature_matcher(
-    c_config_setting settings);
+//c_feature2d_matcher::sptr create_sparse_feature_matcher(
+//    c_config_setting settings);
 
-c_feature2d_matcher::ptr create_sparse_feature_matcher(
-    const c_sparse_feature_extractor::ptr & extractor,
-    c_config_setting settings);
+//c_feature2d_matcher::sptr create_sparse_feature_matcher(
+//    const c_sparse_feature_extractor::sptr & extractor,
+//    c_config_setting settings);
 
-c_feature2d_matcher::ptr create_sparse_feature_matcher(
-    const c_sparse_feature_extractor::ptr & extractor,
+c_feature2d_matcher::sptr create_sparse_feature_matcher(
+    const c_sparse_feature_extractor::sptr & extractor,
     const std::string & matcher_spec);
 
 #endif /* __feature2d_settings_h__ */

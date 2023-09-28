@@ -208,7 +208,7 @@ double c_flann_based_feature2d_matcher::lowe_ratio() const
 }
 
 
-bool c_flann_based_feature2d_matcher::train(cv::InputArray train_descriptors)
+bool c_flann_based_feature2d_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors)
 {
   INSTRUMENT_REGION("");
 
@@ -236,7 +236,8 @@ bool c_flann_based_feature2d_matcher::train(cv::InputArray train_descriptors)
   return false;
 }
 
-bool c_flann_based_feature2d_matcher::match(cv::InputArray query_descriptors, /* out */ std::vector<cv::DMatch> & matches)
+bool c_flann_based_feature2d_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+    /* out */ std::vector<cv::DMatch> & matches)
 {
   INSTRUMENT_REGION("");
 

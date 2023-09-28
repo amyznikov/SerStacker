@@ -22,6 +22,10 @@
 #include "c_star_extractor.h"
 #define HAVE_STAR_EXTRACTOR 1
 
+#include "c_morph_features_extractor.h"
+#define HAVE_MORPH_EXTRACTOR 1
+
+
 #include "feature_matching/c_triangle_matcher.h"
 #define HAVE_TRIANGLE_EXTRACTOR 1
 
@@ -136,6 +140,9 @@ enum FEATURE2D_TYPE {
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
   FEATURE2D_PLANETARY_DISK,
 #endif
+#if HAVE_MORPH_EXTRACTOR
+  FEATURE2D_MORPH,
+#endif
 
 };
 
@@ -173,12 +180,16 @@ enum SPARSE_FEATURE_DETECTOR_TYPE
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
   SPARSE_FEATURE_DETECTOR_PLANETARY_DISK = FEATURE2D_PLANETARY_DISK,
 #endif
+#if HAVE_MORPH_EXTRACTOR
+  SPARSE_FEATURE_DETECTOR_MORPH = FEATURE2D_MORPH,
+#endif
 
 };
 
 enum SPARSE_FEATURE_DESCRIPTOR_TYPE
 {
   SPARSE_FEATURE_DESCRIPTOR_UNKNOWN = -1,
+  SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT = SPARSE_FEATURE_DESCRIPTOR_UNKNOWN,
   SPARSE_FEATURE_DESCRIPTOR_ORB = FEATURE2D_ORB,
   SPARSE_FEATURE_DESCRIPTOR_BRISK = FEATURE2D_BRISK,
   SPARSE_FEATURE_DESCRIPTOR_KAZE = FEATURE2D_KAZE,
@@ -358,6 +369,11 @@ template<> struct feature2d_traits<c_simple_planetary_disk_detector> {
   static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;
 };
 #endif
+#if HAVE_MORPH_EXTRACTOR
+template<> struct feature2d_traits<c_morph_features_extractor> {
+  static constexpr FEATURE2D_TYPE type = FEATURE2D_MORPH;
+};
+#endif
 
 
 
@@ -365,7 +381,7 @@ class c_feature2d
 {
 public:
   typedef c_feature2d this_class;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   struct options
   {
@@ -482,9 +498,9 @@ public:
     int fastThreshold = 20;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -567,9 +583,9 @@ public:
     int edge_blur_size = 5;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -610,9 +626,9 @@ public:
         cv::FastFeatureDetector::TYPE_9_16;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -726,9 +742,9 @@ public:
     using feature2d_class = this_class;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -764,9 +780,9 @@ public:
         cv::KAZE::DIFF_PM_G2;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -809,9 +825,9 @@ public:
         cv::KAZE::DIFF_PM_G2;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -853,9 +869,9 @@ public:
     double sigma = 1.6;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -895,9 +911,9 @@ public:
     bool upright = false;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -937,9 +953,9 @@ public:
     const std::vector<int> * selectedPairs = NULL;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -981,9 +997,9 @@ public:
     int suppressNonmaxSize = 5;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1020,9 +1036,9 @@ public:
     bool use_orientation = false;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1056,9 +1072,9 @@ public:
     int blur_kernel = 2;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1094,9 +1110,9 @@ public:
     double sigma = 2.0;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1138,9 +1154,9 @@ public:
     bool use_orientation = false;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1187,9 +1203,9 @@ public:
     bool m_compute_orientation = false;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1235,9 +1251,9 @@ public:
     bool dsc_normalize = false;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1277,9 +1293,9 @@ public:
     float scale_factor = 6.25f;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1318,9 +1334,9 @@ public:
     int num_layers = 4;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1356,9 +1372,9 @@ public:
     int numOctaves = 4;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1375,6 +1391,43 @@ protected:
   const options opts_;
 };
 #endif
+
+#if HAVE_MORPH_EXTRACTOR
+class c_feature2d_morph_extractor :
+    public c_feature2d_base<c_morph_features_extractor>
+{
+public:
+  typedef c_feature2d_morph_extractor this_class;
+  typedef c_feature2d_base base;
+
+  struct options :
+      public base::options,
+      public c_morph_features_extractor::Options
+  {
+    using feature2d_class = this_class;
+  };
+
+  static sptr create(const options * opts = nullptr)
+  {
+    return sptr(new this_class(opts));
+  }
+
+protected:
+  c_feature2d_morph_extractor(const options * opts) :
+      base(&this->opts_),
+          opts_(opts ? *opts : options())
+  {
+    feature2d_ =
+        c_morph_features_extractor::create(
+            opts_);
+  }
+
+protected:
+  const options opts_;
+};
+
+#endif
+
 
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
 class c_feature2d_planetary_disk_detector :
@@ -1393,9 +1446,9 @@ public:
     bool align_planetary_disk_masks = false;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1432,9 +1485,9 @@ public:
     int min_side_size = 10;
   };
 
-  static ptr create(const options * opts = nullptr)
+  static sptr create(const options * opts = nullptr)
   {
-    return ptr(new this_class(opts));
+    return sptr(new this_class(opts));
   }
 
 protected:
@@ -1453,7 +1506,7 @@ protected:
 
 
 template<class feature2d_options>
-c_feature2d::ptr create_feature2d(const feature2d_options & options)
+c_feature2d::sptr create_feature2d(const feature2d_options & options)
 {
   return feature2d_options::feature2d_class::create(&options);
 }
@@ -1487,6 +1540,9 @@ inline constexpr bool can_detect_features(enum FEATURE2D_TYPE type)
 #endif
 #if HAVE_STAR_EXTRACTOR
     case FEATURE2D_STAR_EXTRACTOR:
+#endif
+#if HAVE_MORPH_EXTRACTOR
+    case FEATURE2D_MORPH:
 #endif
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
     case FEATURE2D_PLANETARY_DISK:
@@ -1541,6 +1597,11 @@ inline constexpr bool can_compute_decriptors(enum FEATURE2D_TYPE type)
   return false;
 }
 
+inline constexpr bool can_compute_decriptors(enum SPARSE_FEATURE_DETECTOR_TYPE type)
+{
+  return can_compute_decriptors(FEATURE2D_TYPE(type));
+}
+
 inline constexpr bool can_detect_features_and_compute_descriptors(enum FEATURE2D_TYPE type)
 {
   return can_detect_features(type) && can_compute_decriptors(type);
@@ -1551,11 +1612,7 @@ inline constexpr bool can_detect_features_and_compute_descriptors(enum FEATURE2D
 struct c_sparse_feature_detector_options
 {
   SPARSE_FEATURE_DETECTOR_TYPE type =
-#if HAVE_FEATURE2D_SURF
-      SPARSE_FEATURE_DETECTOR_SURF;
-#else
       SPARSE_FEATURE_DETECTOR_AKAZE;
-#endif
 
   int max_keypoints = 1000;
 
@@ -1577,6 +1634,9 @@ struct c_sparse_feature_detector_options
 #if HAVE_FEATURE2D_STAR
   c_feature2d_star::options star;
 #endif
+#if HAVE_MORPH_EXTRACTOR
+  c_feature2d_morph_extractor::options morph;
+#endif
 #if HAVE_FEATURE2D_MSD
   c_feature2d_msd::options msd;
 #endif
@@ -1595,13 +1655,9 @@ struct c_sparse_feature_detector_options
 struct c_sparse_feature_descriptor_options
 {
   SPARSE_FEATURE_DESCRIPTOR_TYPE type =
-#if HAVE_FEATURE2D_SURF
-      SPARSE_FEATURE_DESCRIPTOR_SURF;
-#else
-      SPARSE_FEATURE_DESCRIPTOR_AKAZE;
-#endif
+      SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
 
-  bool use_detector_options = true;
+//  bool use_detector_options = true;
 
   c_feature2d_orb::options orb;
   c_feature2d_brisk::options brisk;
@@ -1654,13 +1710,13 @@ class c_sparse_feature_extractor
 {
 public:
   typedef c_sparse_feature_extractor this_class;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
-  static ptr create(const c_feature2d::ptr & feature_detector,
-      const c_feature2d::ptr & descriptor_extrator = nullptr,
+  static sptr create(const c_feature2d::sptr & feature_detector,
+      const c_feature2d::sptr & descriptor_extrator = nullptr,
       int max_keypoints = -1)
   {
-    return ptr(new this_class(feature_detector, descriptor_extrator, max_keypoints));
+    return sptr(new this_class(feature_detector, descriptor_extrator, max_keypoints));
   }
 
 
@@ -1671,7 +1727,7 @@ public:
 
   enum SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type() const
   {
-    return descriptor_ ? (SPARSE_FEATURE_DESCRIPTOR_TYPE)descriptor_->type() : SPARSE_FEATURE_DESCRIPTOR_UNKNOWN;
+    return descriptor_ ? (SPARSE_FEATURE_DESCRIPTOR_TYPE)descriptor_->type() : SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
   }
 
   void set_max_keypoints(int v)
@@ -1684,12 +1740,12 @@ public:
     return max_keypoints_;
   }
 
-  const c_feature2d::ptr & detector() const
+  const c_feature2d::sptr & detector() const
   {
     return detector_;
   }
 
-  const c_feature2d::ptr & descriptor() const
+  const c_feature2d::sptr & descriptor() const
   {
     return descriptor_ ? descriptor_ : detector_;
   }
@@ -1708,30 +1764,29 @@ public:
       bool useProvidedKeypoints = false);
 
 protected:
-  c_sparse_feature_extractor(const c_feature2d::ptr & detector,
-      const c_feature2d::ptr & descriptor = nullptr,
+  c_sparse_feature_extractor(const c_feature2d::sptr & detector,
+      const c_feature2d::sptr & descriptor = nullptr,
       int max_keypoints = -1);
 
 protected:
-  c_feature2d::ptr detector_;
-  c_feature2d::ptr descriptor_;
+  c_feature2d::sptr detector_;
+  c_feature2d::sptr descriptor_;
   int max_keypoints_;
 };
 
 
-c_feature2d::ptr create_sparse_feature_detector(
+c_feature2d::sptr create_sparse_feature_detector(
     const c_sparse_feature_detector_options & options);
 
-c_feature2d::ptr create_sparse_descriptor_extractor(
+c_feature2d::sptr create_sparse_descriptor_extractor(
     const c_sparse_feature_descriptor_options & options);
 
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
-    const c_sparse_feature_extractor_options & options);
+//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(
+//    const c_sparse_feature_extractor_options & options);
 
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(
-    const c_sparse_feature_detector_options & detector,
-    const c_sparse_feature_descriptor_options & descriptor);
-
+//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(
+//    const c_sparse_feature_detector_options & detector,
+//    const c_sparse_feature_descriptor_options & descriptor);
 
 
 #endif /* __feature_detection_h__ */

@@ -220,6 +220,14 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
       break;
 #endif
 
+#if HAVE_MORPH_EXTRACTOR
+    case SPARSE_FEATURE_DETECTOR_MORPH:
+      ADD_CTL(morph, morph_type);
+      ADD_CTL(morph, threshold);
+      ADD_CTL(morph, se_radius);
+      break;
+#endif
+
 #if HAVE_FEATURE2D_MSD
     case SPARSE_FEATURE_DETECTOR_MSD:
       ADD_CTL(msd, m_patch_radius);
@@ -262,16 +270,16 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
 QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * parent) :
     Base("QSparseFeatureDescriptorOptions", parent)
 {
-  useDetectorSettings_ctl =
-      add_checkbox("Use detector settings",
-          "",
-          [this](bool checked) {
-            if ( options_ && options_->use_detector_options != checked ) {
-              options_->use_detector_options = checked;
-              update_descriptor_specific_controls();
-              Q_EMIT parameterChanged();
-            }
-          });
+//  useDetectorSettings_ctl =
+//      add_checkbox("Use detector settings",
+//          "",
+//          [this](bool checked) {
+//            if ( options_ && options_->use_detector_options != checked ) {
+//              options_->use_detector_options = checked;
+//              update_descriptor_specific_controls();
+//              Q_EMIT parameterChanged();
+//            }
+//          });
 
   descriptorType_ctl =
       add_enum_combobox<SPARSE_FEATURE_DESCRIPTOR_TYPE>(
@@ -303,7 +311,7 @@ void QSparseFeatureDescriptorOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    useDetectorSettings_ctl->setChecked(options_->use_detector_options);
+    // useDetectorSettings_ctl->setChecked(options_->use_detector_options);
     descriptorType_ctl->setValue(options_->type);
     update_descriptor_specific_controls();
     setEnabled(true);
@@ -317,7 +325,7 @@ void QSparseFeatureDescriptorOptions::update_descriptor_specific_controls()
   }
   controls.clear();
 
-  if ( !options_ || options_->use_detector_options ) {
+  if ( !options_ /*|| options_->use_detector_options*/ ) {
     descriptorType_ctl->setEnabled(false);
   }
   else {
@@ -654,6 +662,156 @@ void QFlannBasedFeature2dMatcherOptions::update_matcher_specific_controls()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+QOptFlowPyrLKMatcherOptions::QOptFlowPyrLKMatcherOptions(QWidget * parent) :
+    Base("QOptFlowPyrLKMatcherOptions", parent)
+{
+  maxLevel_ctl =
+      add_numeric_box<int>("maxLevel",
+          "max pyramid level",
+          [this](int v) {
+            if ( options_ && options_->maxLevel != v ) {
+              options_->maxLevel = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->maxLevel;
+              return true;
+            }
+            return false;
+          });
+
+  winSize_ctl =
+      add_numeric_box<cv::Size>("winSize",
+          "winSize",
+          [this](const cv::Size & v) {
+            if ( options_ && options_->winSize != v ) {
+              options_->winSize = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Size * v) {
+            if ( options_ ) {
+              *v = options_->winSize;
+              return true;
+            }
+            return false;
+          });
+
+  maxIterations_ctl =
+      add_numeric_box<int>("maxIterations",
+          "maxIterations",
+          [this](int v) {
+            if ( options_ && options_->maxIterations != v ) {
+              options_->maxIterations = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->maxIterations;
+              return true;
+            }
+            return false;
+          });
+
+  eps_ctl =
+      add_numeric_box<double>("eps",
+          "eps",
+          [this](double v) {
+            if ( options_ && options_->eps != v ) {
+              options_->eps = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->eps;
+              return true;
+            }
+            return false;
+          });
+
+  flags_ctl =
+      add_numeric_box<int>("flags",
+          "flags",
+          [this](int v) {
+            if ( options_ && options_->flags != v ) {
+              options_->flags = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->flags;
+              return true;
+            }
+            return false;
+          });
+
+  minEigThreshold_ctl =
+      add_numeric_box<double>("minEigThreshold",
+          "minEigThreshold",
+          [this](double v) {
+            if ( options_ && options_->minEigThreshold != v ) {
+              options_->minEigThreshold = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->minEigThreshold;
+              return true;
+            }
+            return false;
+          });
+
+  maxErr_ctl =
+      add_numeric_box<double>("maxErr",
+          "maxErr",
+          [this](double v) {
+            if ( options_ && options_->maxErr != v ) {
+              options_->maxErr = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->maxErr;
+              return true;
+            }
+            return false;
+          });
+
+  updateControls();
+}
+
+void QOptFlowPyrLKMatcherOptions::set_feature_matcher_options(c_optflowpyrlk_feature2d_matcher_options * options)
+{
+  options_ = options;
+  updateControls();
+}
+
+c_optflowpyrlk_feature2d_matcher_options * QOptFlowPyrLKMatcherOptions::feature_matcher_options() const
+{
+  return options_;
+}
+
+void QOptFlowPyrLKMatcherOptions::onupdatecontrols()
+{
+  if ( !options_ ) {
+    setEnabled(false);
+  }
+  else {
+    Base::populatecontrols();
+    setEnabled(true);
+  }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 QTriangleMatcherOptions::QTriangleMatcherOptions(QWidget * parent) :
     Base("QTriangleMatcherOptions", parent)
 {
@@ -769,11 +927,20 @@ QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
   connect(hammingDistanceFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
+
   flannBasedFeature2dMatcherOptions_ctl =
       add_widget<QFlannBasedFeature2dMatcherOptions>();
 
   connect(flannBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
+
+
+  optFlowPyrLKMatcherOptions_ctl =
+      add_widget<QOptFlowPyrLKMatcherOptions>();
+
+  connect(optFlowPyrLKMatcherOptions_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
+
 
   triangleMatcherOptions_ctl =
       add_widget<QTriangleMatcherOptions>();
@@ -809,6 +976,7 @@ void QSparseFeatureMatcherOptions::onupdatecontrols()
     setEnabled(false);
     hammingDistanceFeature2dMatcherOptions_ctl->set_feature_matcher_options(nullptr);
     flannBasedFeature2dMatcherOptions_ctl->set_feature_matcher_options(nullptr);
+    optFlowPyrLKMatcherOptions_ctl->set_feature_matcher_options(nullptr);
     triangleMatcherOptions_ctl->set_feature_matcher_options(nullptr);
     snormBasedFeature2dMatcherOptions_ctl->set_feature_matcher_options(nullptr);
   }
@@ -817,6 +985,7 @@ void QSparseFeatureMatcherOptions::onupdatecontrols()
     sparseFeatureMatcherType_ctl->setValue(options_->type);
     hammingDistanceFeature2dMatcherOptions_ctl->set_feature_matcher_options(&options_->hamming);
     flannBasedFeature2dMatcherOptions_ctl->set_feature_matcher_options(&options_->flann);
+    optFlowPyrLKMatcherOptions_ctl->set_feature_matcher_options(&options_->optflowpyrlk);
     triangleMatcherOptions_ctl->set_feature_matcher_options(&options_->triangles);
     snormBasedFeature2dMatcherOptions_ctl->set_feature_matcher_options(&options_->snorm);
 
@@ -831,6 +1000,7 @@ void QSparseFeatureMatcherOptions::show_current_matcher_controls()
   if ( !options_ ) {
     hammingDistanceFeature2dMatcherOptions_ctl->setVisible(false);
     flannBasedFeature2dMatcherOptions_ctl->setVisible(false);
+    optFlowPyrLKMatcherOptions_ctl->setVisible(false);
     triangleMatcherOptions_ctl->setVisible(false);
     snormBasedFeature2dMatcherOptions_ctl->setVisible(false);
   }
@@ -839,30 +1009,42 @@ void QSparseFeatureMatcherOptions::show_current_matcher_controls()
       case FEATURE2D_MATCHER_HAMMING:
         hammingDistanceFeature2dMatcherOptions_ctl->setVisible(true);
         flannBasedFeature2dMatcherOptions_ctl->setVisible(false);
+        optFlowPyrLKMatcherOptions_ctl->setVisible(false);
         triangleMatcherOptions_ctl->setVisible(false);
         snormBasedFeature2dMatcherOptions_ctl->setVisible(false);
         break;
       case FEATURE2D_MATCHER_FLANN:
         hammingDistanceFeature2dMatcherOptions_ctl->setVisible(false);
         flannBasedFeature2dMatcherOptions_ctl->setVisible(true);
+        optFlowPyrLKMatcherOptions_ctl->setVisible(false);
+        triangleMatcherOptions_ctl->setVisible(false);
+        snormBasedFeature2dMatcherOptions_ctl->setVisible(false);
+        break;
+      case FEATURE2D_MATCHER_OptFlowPyrLK:
+        hammingDistanceFeature2dMatcherOptions_ctl->setVisible(false);
+        flannBasedFeature2dMatcherOptions_ctl->setVisible(false);
+        optFlowPyrLKMatcherOptions_ctl->setVisible(true);
         triangleMatcherOptions_ctl->setVisible(false);
         snormBasedFeature2dMatcherOptions_ctl->setVisible(false);
         break;
       case FEATURE2D_MATCHER_TRIANGLES:
         hammingDistanceFeature2dMatcherOptions_ctl->setVisible(false);
         flannBasedFeature2dMatcherOptions_ctl->setVisible(false);
+        optFlowPyrLKMatcherOptions_ctl->setVisible(false);
         triangleMatcherOptions_ctl->setVisible(true);
         snormBasedFeature2dMatcherOptions_ctl->setVisible(false);
         break;
       case FEATURE2D_MATCHER_SNORM:
         hammingDistanceFeature2dMatcherOptions_ctl->setVisible(false);
         flannBasedFeature2dMatcherOptions_ctl->setVisible(false);
+        optFlowPyrLKMatcherOptions_ctl->setVisible(false);
         triangleMatcherOptions_ctl->setVisible(false);
         snormBasedFeature2dMatcherOptions_ctl->setVisible(true);
         break;
       default:
         hammingDistanceFeature2dMatcherOptions_ctl->setVisible(false);
         flannBasedFeature2dMatcherOptions_ctl->setVisible(false);
+        optFlowPyrLKMatcherOptions_ctl->setVisible(false);
         triangleMatcherOptions_ctl->setVisible(false);
         snormBasedFeature2dMatcherOptions_ctl->setVisible(false);
         break;

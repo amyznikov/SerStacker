@@ -115,7 +115,7 @@ static double maxval(int ddepth)
   return 1;
 }
 
-bool c_local_contrast_measure::compute(cv::InputArray image, cv::OutputArray output_contrast_map,
+bool c_local_contrast_measure::compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_contrast_map,
     double eps, int dscale, bool avgchannel,
     cv::Scalar * output_sharpness_measure)
 {
@@ -224,12 +224,15 @@ bool c_local_contrast_measure::avgchannel() const
   return avgchannel_;
 }
 
-cv::Scalar c_local_contrast_measure::compute(cv::InputArray image) const
+cv::Scalar c_local_contrast_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
   cv::Scalar rv;
 
-  compute(image, cv::noArray(),
-      eps_, dscale_, avgchannel_,
+  compute(image, mask,
+      cv::noArray(),
+      eps_,
+      dscale_,
+      avgchannel_,
       &rv);
 
   return rv;
@@ -237,6 +240,6 @@ cv::Scalar c_local_contrast_measure::compute(cv::InputArray image) const
 
 bool c_local_contrast_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return compute(image, output_map,
+  return compute(image, cv::noArray(), output_map,
       eps_, dscale_, avgchannel_);
 }

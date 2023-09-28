@@ -66,6 +66,11 @@ void morphological_laplacian(cv::InputArray src, cv::OutputArray dst,
     int borderType = cv::BORDER_REPLICATE,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
 
+void morphological_laplacian_abs(cv::InputArray src, cv::OutputArray dst,
+    cv::InputArray SE = cv::Mat1b(3, 3, 255),
+    int borderType = cv::BORDER_REPLICATE,
+    const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
+
 /** @brief Morphological Edge Detection : Ramp Lee
 
 RAL(src) = min( dilate(src) − close(src), open(src) − erode(src) )

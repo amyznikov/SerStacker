@@ -14,6 +14,8 @@
 #include "QMeasureNormalizedVariance.h"
 #include "QMeasureSharpnessNorm.h"
 #include "QMeasureNoise.h"
+#include "QMeasureLAP.h"
+
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +51,7 @@ const std::vector<QMeasure*>& QMeasureProvider::measures()
     measures_.emplace_back(new QMeasureStdevValue());
     measures_.emplace_back(new QMeasureLPG());
     measures_.emplace_back(new QMeasureLC());
+    measures_.emplace_back(new QMeasureLAP());
     measures_.emplace_back(new QMeasureHarrisCornerResponse());
     measures_.emplace_back(new QMeasureNormalizedVariance());
     measures_.emplace_back(new QMeasureSharpnessNorm());

@@ -25,6 +25,7 @@ const c_enum_member * members_of<c_morphology_routine::OPERATION>()
       {c_morphology_routine::MORPH_INTERNAL_GRADIENT, "INTERNAL_GRADIENT", "morphological_internal_gradient"},
       {c_morphology_routine::MORPH_EXTERNAL_GRADIENT, "EXTERNAL_GRADIENT", "morphological_external_gradient"},
       {c_morphology_routine::MORPH_LAPLACIAN, "LAPLACIAN", "morphological_laplacian"},
+      {c_morphology_routine::MORPH_LAPLACIAN_ABS, "LAPLACIAN_ABS", "morphological laplacian absolute value"},
       {c_morphology_routine::MORPH_RAMPLEE, "RAMPLEE", "rampLee - \n"
           "Elementary grayscale morphological techniques can be used to distinguish smooth “ramp” edges from ripple “texture” edges."},
       {c_morphology_routine::MORPH_TEXLEE, "TEXLEE", "texLee - \n"

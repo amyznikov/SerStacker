@@ -19,11 +19,11 @@ bool c_normalized_variance_measure::avgchannel() const
   return avgchannel_;
 }
 
-cv::Scalar c_normalized_variance_measure::compute(cv::InputArray image) const
+cv::Scalar c_normalized_variance_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
   cv::Scalar v;
 
-  if ( !compute(image, cv::noArray(), avgchannel_, &v) ) {
+  if ( !compute(image, mask, cv::noArray(), avgchannel_, &v) ) {
     CF_ERROR("c_normalized_variance_measure::compute() fails");
   }
 
@@ -32,14 +32,14 @@ cv::Scalar c_normalized_variance_measure::compute(cv::InputArray image) const
 
 bool c_normalized_variance_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  if ( !compute(image, output_map, avgchannel_, nullptr) ) {
+  if ( !compute(image, cv::noArray(), output_map, avgchannel_, nullptr) ) {
     CF_ERROR("c_normalized_variance_measure::compute() fails");
     return false;
   }
   return true;
 }
 
-bool c_normalized_variance_measure::compute(cv::InputArray _image, cv::OutputArray output_map, bool avgchannel,
+bool c_normalized_variance_measure::compute(cv::InputArray _image, cv::InputArray mask, cv::OutputArray output_map, bool avgchannel,
     cv::Scalar * output_sharpness_metric)
 {
   cv::Mat image;
@@ -57,7 +57,7 @@ bool c_normalized_variance_measure::compute(cv::InputArray _image, cv::OutputArr
   if ( output_sharpness_metric ) {
 
     cv::Scalar m, s;
-    cv::meanStdDev(image, m, s);
+    cv::meanStdDev(image, m, s, mask);
 
     for ( int i = 0, cn = image.channels(); i < cn; ++i )  {
       if ( m[i] == 0 ) {

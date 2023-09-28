@@ -146,7 +146,7 @@ static double maxval(int ddepth)
  * single channel before processing.
  *
  */
-bool lpg(cv::InputArray image, cv::OutputArray optional_output_map,
+bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_output_map,
     double k, int dscale, int uscale, bool squared, bool average_color_channels,
     cv::Scalar * optional_output_sharpness_metric)
 {
@@ -192,8 +192,15 @@ bool lpg(cv::InputArray image, cv::OutputArray optional_output_map,
 
   if( optional_output_sharpness_metric ) {
 
-    *optional_output_sharpness_metric =
-        cv::mean(m);
+    if( mask.empty() ) {
+      *optional_output_sharpness_metric = cv::mean(m);
+    }
+    else {
+      cv::Mat1b msk;
+      cv::resize(mask, msk, m.size(), 0, 0, cv::INTER_NEAREST);
+      *optional_output_sharpness_metric = cv::mean(m, msk);
+    }
+
   }
 
   if( optional_output_map.needed() ) {

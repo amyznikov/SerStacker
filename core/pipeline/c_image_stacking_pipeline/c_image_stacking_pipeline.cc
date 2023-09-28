@@ -10,6 +10,8 @@
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/image_registration/c_translation_ecc_motion_model.h>
 #include <core/proc/image_registration/c_euclidean_ecc_motion_model.h>
+#include <core/proc/image_registration/c_affine_ecc_motion_model.h>
+#include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/extract_channel.h>
 #include <core/proc/unsharp_mask.h>
@@ -300,34 +302,34 @@ const c_frame_upscale_options & c_image_stacking_pipeline::upscale_options() con
   return upscale_options_;
 }
 
-c_sparse_feature_extractor_options & c_image_stacking_pipeline::sparse_feature_extractor_options()
-{
-  return image_registration_options_.feature_registration.sparse_feature_extractor;
-}
-
-const c_sparse_feature_extractor_options & c_image_stacking_pipeline::sparse_feature_extractor_options() const
-{
-  return image_registration_options_.feature_registration.sparse_feature_extractor;
-}
+//c_sparse_feature_extractor_options & c_image_stacking_pipeline::sparse_feature_extractor_options()
+//{
+//  return image_registration_options_.feature_registration.sparse_feature_extractor;
+//}
+//
+//const c_sparse_feature_extractor_options & c_image_stacking_pipeline::sparse_feature_extractor_options() const
+//{
+//  return image_registration_options_.feature_registration.sparse_feature_extractor;
+//}
 
 c_sparse_feature_detector_options & c_image_stacking_pipeline::sparse_feature_detector_options()
 {
-  return sparse_feature_extractor_options().detector;
+  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.detector;
 }
 
 const c_sparse_feature_detector_options & c_image_stacking_pipeline::sparse_feature_detector_options() const
 {
-  return sparse_feature_extractor_options().detector;
+  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.detector;
 }
 
 c_sparse_feature_descriptor_options & c_image_stacking_pipeline::sparse_feature_descriptor_options()
 {
-  return sparse_feature_extractor_options().descriptor;
+  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.descriptor;
 }
 
 const c_sparse_feature_descriptor_options & c_image_stacking_pipeline::sparse_feature_descriptor_options() const
 {
-  return sparse_feature_extractor_options().descriptor;
+  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.descriptor;
 }
 
 c_master_frame_options & c_image_stacking_pipeline::master_frame_options()
@@ -708,6 +710,9 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 
 //  c_euclidean_image_transform image_transform;
 //  c_euclidean_ecc_motion_model model(&image_transform);
+
+//  c_affine_image_transform image_transform;
+//  c_affine_ecc_motion_model model(&image_transform);
 
   c_ecc_forward_additive ecc(&model);
   c_ecch ecch(&ecc);
@@ -1512,6 +1517,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     if( master_options.eccflow_scale > 1 ) {
       master_registration_options.eccflow.enabled = true;
       master_registration_options.eccflow.support_scale = master_options.eccflow_scale;
+      master_registration_options.eccflow.max_pyramid_level = master_options.eccflow_max_pyramid_level;
     }
     else {
       master_registration_options.eccflow.enabled = false;
@@ -2030,7 +2036,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         }
       }
 
-      if( image_processing_options_.aligned_image_processor ) {
+
+      if( !image_processing_options_.aligned_image_processor ) {
 
         image_processing_options_.aligned_image_processor->process(current_frame, current_mask);
         if ( canceled() ) {
@@ -3118,26 +3125,30 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
 
     case master_frame_best_of_100_in_middle: {
 
-      c_lpg_sharpness_measure measure;
+//      c_lpg_sharpness_measure measure;
+//
+//      measure.set_k(6);
+//      measure.set_dscale(1);
+//      measure.set_uscale(6);
+//      measure.set_avgchannel(true);
+//      measure.set_squared(false);
 
-      measure.set_k(6);
-      measure.set_dscale(1);
-      measure.set_uscale(6);
-      measure.set_avgchannel(true);
-      measure.set_squared(false);
+      c_laplacian_sharpness_measure measure(2, cv::Size(5, 5));
 
       constexpr int max_frames_to_scan = 1000;
 
       CF_DEBUG("Scan %d frames around of middle %d",
           max_frames_to_scan, input_sequence->size() / 2);
 
-      int start_pos, backup_current_pos;
+      int start_pos, end_pos, backup_current_pos;
 
       if( input_sequence->size() <= max_frames_to_scan ) {
         start_pos = 0;
+        end_pos = input_sequence->size();
       }
       else {
         start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
+        end_pos = std::min(input_sequence->size(), start_pos + max_frames_to_scan / 2);
       }
 
       //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
@@ -3150,61 +3161,98 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
       int current_index, best_index = 0;
       double current_metric, best_metric = 0;
 
-      total_frames_ = max_frames_to_scan;
+      total_frames_ = end_pos - start_pos;
       processed_frames_ = 0;
       accumulated_frames_ = 0;
-      on_status_update();
+
+      on_frame_processed();
 
       for( current_index = 0; processed_frames_ < total_frames_;
           processed_frames_ = ++current_index, on_frame_processed() ) {
 
-        if ( !input_sequence->read(image, &mask) ) {
-          CF_FATAL("input_sequence->read() fails\n");
+        if( is_bad_frame_index(input_sequence->current_pos()) ) {
+          CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
+          input_sequence->seek(input_sequence->current_pos() + 1);
+          continue;
+        }
+
+        if( !read_input_frame(input_sequence, image, mask, false) ) {
+          CF_ERROR("read_input_frame() fails");
           return false;
         }
 
-        if( canceled() ) {
-          break;
-        }
+        current_metric =
+            measure.compute(image,
+                mask)[0];
 
-        if( !image.empty() ) {
+        if( current_metric > best_metric ) {
 
-          if( is_bayer_pattern(input_sequence->colorid()) ) {
-            if( !extract_bayer_planes(image, image, input_sequence->colorid()) ) {
-              CF_ERROR("extract_bayer_planes() fails");
-              return false;
-            }
+          best_metric = current_metric;
+          best_index = current_index;
+
+          if( true ) {
+            lock_guard lock(mutex());
+            image.copyTo(selected_master_frame_);
+            mask.copyTo(selected_master_frame_mask_);
           }
 
-          current_metric =
-              measure.compute(image)[0];
+          set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
+              "BEST: INDEX=%d METRIC: %g",
+              best_index + start_pos,
+              best_metric));
 
-          if( current_metric > best_metric ) {
-
-            best_metric = current_metric;
-            best_index = current_index;
-
-            if( is_bayer_pattern(input_sequence->colorid()) ) {
-              if( !nninterpolation(image, image, input_sequence->colorid()) ) {
-                CF_ERROR("nninterpolation() fails");
-                return false;
-              }
-            }
-
-            if ( true ) {
-              lock_guard lock(mutex());
-              image.copyTo(selected_master_frame_);
-              mask.copyTo(selected_master_frame_mask_);
-            }
-
-            set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
-                "BEST: INDEX=%d METRIC: %g",
-                best_index + start_pos,
-                best_metric));
-
-            // on_selected_master_frame_changed();
-          }
+          //  on_selected_master_frame_changed();
         }
+
+//////
+
+//        if ( !input_sequence->read(image, &mask) ) {
+//          CF_FATAL("input_sequence->read() fails\n");
+//          return false;
+//        }
+//
+//        if( canceled() ) {
+//          break;
+//        }
+
+//        if( !image.empty() ) {
+//
+//          if( is_bayer_pattern(input_sequence->colorid()) ) {
+//            if( !extract_bayer_planes(image, image, input_sequence->colorid()) ) {
+//              CF_ERROR("extract_bayer_planes() fails");
+//              return false;
+//            }
+//          }
+//
+//          current_metric =
+//              measure.compute(image)[0];
+//
+//          if( current_metric > best_metric ) {
+//
+//            best_metric = current_metric;
+//            best_index = current_index;
+//
+//            if( is_bayer_pattern(input_sequence->colorid()) ) {
+//              if( !nninterpolation(image, image, input_sequence->colorid()) ) {
+//                CF_ERROR("nninterpolation() fails");
+//                return false;
+//              }
+//            }
+//
+//            if ( true ) {
+//              lock_guard lock(mutex());
+//              image.copyTo(selected_master_frame_);
+//              mask.copyTo(selected_master_frame_mask_);
+//            }
+//
+//            set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
+//                "BEST: INDEX=%d METRIC: %g",
+//                best_index + start_pos,
+//                best_metric));
+//
+//            // on_selected_master_frame_changed();
+//          }
+//        }
       }
 
       selected_master_frame_index = best_index + start_pos;
@@ -3266,6 +3314,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, feature_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, ecc_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_scale);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_max_pyramid_level);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, accumulated_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, save_master_frame);
@@ -3288,12 +3337,14 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
         SERIALIZE_OPTION(subsubsection, save, feature_registration, scale);
 
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_extractor"),
-            save, feature_registration, sparse_feature_extractor);
+        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_detector"),
+            save, feature_registration.sparse_feature_extractor_and_matcher, detector);
+
+        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_detector"),
+            save, feature_registration.sparse_feature_extractor_and_matcher, descriptor);
 
         SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_matcher"),
-            save, feature_registration, sparse_feature_matcher);
-
+            save, feature_registration.sparse_feature_extractor_and_matcher, matcher);
 
         SERIALIZE_OPTION(get_group(subsubsection, save, "estimate_options"),
             save, feature_registration, estimate_options);
@@ -3333,6 +3384,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, reference_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, eccflow, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
+        SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, enable_debug);

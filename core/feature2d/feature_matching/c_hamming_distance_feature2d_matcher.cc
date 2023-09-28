@@ -72,7 +72,7 @@ int c_hamming_distance_feature2d_matcher::max_acceptable_distance() const
   return max_acceptable_distance_;
 }
 
-bool c_hamming_distance_feature2d_matcher::train(cv::InputArray train_descriptors)
+bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors)
 {
   INSTRUMENT_REGION("");
 
@@ -148,7 +148,8 @@ bool c_hamming_distance_feature2d_matcher::train(cv::InputArray train_descriptor
   return true;
 }
 
-bool c_hamming_distance_feature2d_matcher::match(cv::InputArray _query_descriptors, std::vector<cv::DMatch> & matches)
+bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint> * _query_keypoints, cv::InputArray _query_descriptors,
+    std::vector<cv::DMatch> & matches)
 {
   INSTRUMENT_REGION("");
 

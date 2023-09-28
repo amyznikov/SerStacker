@@ -72,6 +72,9 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
 #if HAVE_FEATURE2D_HL
       { FEATURE2D_HL, "HL", "" },
 #endif
+#if HAVE_MORPH_EXTRACTOR
+      { FEATURE2D_MORPH, "MORPH", "" },
+#endif
       { FEATURE2D_UNKNOWN, nullptr, "" },
   };
 
@@ -106,6 +109,9 @@ members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 #if HAVE_FEATURE2D_STAR
       { SPARSE_FEATURE_DETECTOR_STAR, "STAR" },
 #endif
+#if HAVE_MORPH_EXTRACTOR
+      { SPARSE_FEATURE_DETECTOR_MORPH, "MORPH", "" },
+#endif
 #if HAVE_FEATURE2D_MSD
       { SPARSE_FEATURE_DETECTOR_MSD, "MSD" },
 #endif
@@ -122,6 +128,8 @@ template<> const c_enum_member *
 members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 {
   static constexpr c_enum_member members[] = {
+      {SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT, "AUTO_SELECT", "Auto selection based on detector type"},
+
 #if HAVE_FEATURE2D_SURF
       {SPARSE_FEATURE_DESCRIPTOR_SURF, "SURF"},
 #endif
@@ -156,7 +164,7 @@ members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 #if HAVE_FEATURE2D_BOOST
       {SPARSE_FEATURE_DESCRIPTOR_BOOST, "BOOST"},
 #endif
-      {SPARSE_FEATURE_DESCRIPTOR_UNKNOWN, nullptr}
+      {SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT}
   };
 
   return members;
@@ -268,8 +276,8 @@ const c_enum_member * members_of<BoostDesc_Type>()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_sparse_feature_extractor::c_sparse_feature_extractor(const c_feature2d::ptr & detector,
-    const c_feature2d::ptr & descriptor, int max_keypoints) :
+c_sparse_feature_extractor::c_sparse_feature_extractor(const c_feature2d::sptr & detector,
+    const c_feature2d::sptr & descriptor, int max_keypoints) :
     detector_(detector),
     descriptor_(descriptor),
     max_keypoints_(max_keypoints)
@@ -285,6 +293,7 @@ bool c_sparse_feature_extractor::detect(cv::InputArray image,
   detector_->detect(image, keypoints, mask);
 
   if ( max_keypoints_ > 0 && keypoints.size() > max_keypoints_ ) {
+
     std::sort(keypoints.begin(), keypoints.end(),
         [](const cv::KeyPoint & prev, const cv::KeyPoint & next )-> bool {
           return prev.response > next.response;
@@ -326,38 +335,55 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
 {
   INSTRUMENT_REGION("");
 
-  if ( !descriptor_ && !can_compute_decriptors(detector_->type()) ) {
-    // simple planetary disk detector not required to compute descriptors
-    if ( detector_->type() != FEATURE2D_PLANETARY_DISK ) {
-      CF_ERROR("specified keypoints detector %s can not compute feature descriptors",
-        toString(detector_->type()));
-      return false;
+//  CF_DEBUG("detector: %s descriptor: %s",
+//      detector_ ? toString(detector_->type())  : "null",
+//      descriptor_ ? toString(descriptor_->type())  : "null");
+
+  keypoints.clear();
+
+  ////////////////
+
+  if( !descriptor_ && !can_compute_decriptors(detector_->type()) ) {
+    switch (detector_->type()) {
+      case FEATURE2D_PLANETARY_DISK: // simple planetary disk detector not required to compute descriptors
+        break;
+      case FEATURE2D_GFTT: // special case of GFTT below
+        break;
+      default:
+        CF_ERROR("specified keypoints detector %s can not compute feature descriptors",
+            toString(detector_->type()));
+        return false;
     }
   }
 
   //
   // Detect sparse 2D features (keypoints) and compute descriptors
   //
+  keypoints.reserve(std::max(max_keypoints_, 4000));
 
-  keypoints.clear();
-  keypoints.reserve(std::max(max_keypoints_, 1000));
 
   // Prefer detectAndCompute() if possible because it can be faster for some detectors
-  if ( !descriptor_ || descriptor_.get() == detector_.get() ) {
+  if( !descriptor_ || descriptor_.get() == detector_.get() ) {
 
-    if( detector_->type() == FEATURE2D_PLANETARY_DISK ) {
-      // simple planetary disk detector not required to compute descriptors
-      detector_->detect(image, keypoints, mask);
-      descriptors.release();
+    switch (detector_->type()) {
+      case FEATURE2D_PLANETARY_DISK:
+        // simple planetary disk detector not required to compute descriptors
+        detector_->detect(image, keypoints, mask);
+        descriptors.release();
+        break;
+
+      case FEATURE2D_GFTT: // special case of GFTT
+        detector_->detect(image, keypoints, mask);
+        image.copyTo(descriptors);
+        break;
+
+      default:
+        detector_->detectAndCompute(image, mask,
+            keypoints, descriptors,
+            useProvidedKeypoints);
+        break;
     }
-    else {
-      detector_->detectAndCompute(
-              image,
-              mask,
-              keypoints,
-              descriptors,
-              useProvidedKeypoints);
-    }
+
   }
   else {
 
@@ -387,7 +413,7 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-c_feature2d::ptr create_sparse_feature_detector(const c_sparse_feature_detector_options & options)
+c_feature2d::sptr create_sparse_feature_detector(const c_sparse_feature_detector_options & options)
 {
   switch ( options.type ) {
   case FEATURE2D_UNKNOWN :
@@ -435,6 +461,10 @@ c_feature2d::ptr create_sparse_feature_detector(const c_sparse_feature_detector_
   case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
     return create_feature2d(options.star_extractor);
 #endif
+#if HAVE_MORPH_EXTRACTOR
+  case SPARSE_FEATURE_DETECTOR_MORPH:
+    return create_feature2d(options.morph);
+#endif
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
   case SPARSE_FEATURE_DETECTOR_PLANETARY_DISK:
     return create_feature2d(options.planetary_disk_detector);
@@ -451,78 +481,78 @@ c_feature2d::ptr create_sparse_feature_detector(const c_sparse_feature_detector_
 }
 
 
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_feature_extractor_options & options)
-{
-  return create_sparse_feature_extractor(options.detector, options.descriptor);
-}
+//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(const c_sparse_feature_extractor_options & options)
+//{
+//  return create_sparse_feature_extractor(options.detector, options.descriptor);
+//}
 
 
-c_sparse_feature_extractor::ptr create_sparse_feature_extractor(const c_sparse_feature_detector_options & detector_opts,
-    const c_sparse_feature_descriptor_options & descriptor_opts)
-{
-  c_feature2d::ptr detector;
-  c_feature2d::ptr descriptor;
-
-  if ( !(detector = create_sparse_feature_detector(detector_opts)) ) {
-    CF_ERROR("create_sparse_feature_detector() fails");
-    return nullptr;
-  }
-
-  if( descriptor_opts.use_detector_options || descriptor_opts.type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
-
-    bool ignore_errors = false;
-
-    switch (detector_opts.type) {
-    case SPARSE_FEATURE_DETECTOR_MSER:
-    case SPARSE_FEATURE_DETECTOR_FAST:
-    case SPARSE_FEATURE_DETECTOR_AGAST:
-    case SPARSE_FEATURE_DETECTOR_GFTT:
-    case SPARSE_FEATURE_DETECTOR_BLOB:
-#if HAVE_FEATURE2D_MSD
-    case SPARSE_FEATURE_DETECTOR_MSD:
-#endif
-#if HAVE_FEATURE2D_STAR
-    case SPARSE_FEATURE_DETECTOR_STAR:
-#endif
-#if HAVE_FEATURE2D_HL
-    case SPARSE_FEATURE_DETECTOR_HL:
-#endif
-#if HAVE_FEATURE2D_SURF
-      descriptor = create_feature2d(descriptor_opts.surf);
-#else
-      descriptor = create_feature2d(descriptor_opts.orb);
-#endif
-      break;
-#if HAVE_STAR_EXTRACTOR
-    case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
-      descriptor = create_feature2d(descriptor_opts.triangles);
-      break;
-#endif
-    default:
-      ignore_errors = true;
-      break;
-    }
-
-    if ( !ignore_errors && !descriptor ) {
-      CF_ERROR("create_sparse_descriptor_extractor() fails");
-      return nullptr;
-    }
-  }
-
-  if ( !descriptor ) {
-    if ( !descriptor_opts.use_detector_options && descriptor_opts.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN) {
-      if ( !(descriptor = create_sparse_descriptor_extractor(descriptor_opts)) ) {
-        CF_ERROR("create_sparse_descriptor_extractor() fails");
-        return nullptr;
-      }
-    }
-  }
-
-  return c_sparse_feature_extractor::create(detector, descriptor, detector_opts.max_keypoints);
-}
-
-
-c_feature2d::ptr create_sparse_descriptor_extractor(const c_sparse_feature_descriptor_options & options)
+//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(const c_sparse_feature_detector_options & detector_opts,
+//    const c_sparse_feature_descriptor_options & descriptor_opts)
+//{
+//  c_feature2d::sptr detector;
+//  c_feature2d::sptr descriptor;
+//
+//  if ( !(detector = create_sparse_feature_detector(detector_opts)) ) {
+//    CF_ERROR("create_sparse_feature_detector() fails");
+//    return nullptr;
+//  }
+//
+////  if( descriptor_opts.use_detector_options || descriptor_opts.type == SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+////
+////    bool ignore_errors = false;
+////
+////    switch (detector_opts.type) {
+////    case SPARSE_FEATURE_DETECTOR_MSER:
+////    case SPARSE_FEATURE_DETECTOR_FAST:
+////    case SPARSE_FEATURE_DETECTOR_AGAST:
+////    case SPARSE_FEATURE_DETECTOR_GFTT:
+////    case SPARSE_FEATURE_DETECTOR_BLOB:
+////#if HAVE_FEATURE2D_MSD
+////    case SPARSE_FEATURE_DETECTOR_MSD:
+////#endif
+////#if HAVE_FEATURE2D_STAR
+////    case SPARSE_FEATURE_DETECTOR_STAR:
+////#endif
+////#if HAVE_FEATURE2D_HL
+////    case SPARSE_FEATURE_DETECTOR_HL:
+////#endif
+////#if HAVE_FEATURE2D_SURF
+////      descriptor = create_feature2d(descriptor_opts.surf);
+////#else
+////      descriptor = create_feature2d(descriptor_opts.orb);
+////#endif
+////      break;
+////#if HAVE_STAR_EXTRACTOR
+////    case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
+////      descriptor = create_feature2d(descriptor_opts.triangles);
+////      break;
+////#endif
+////    default:
+////      ignore_errors = true;
+////      break;
+////    }
+////
+////    if ( !ignore_errors && !descriptor ) {
+////      CF_ERROR("create_sparse_descriptor_extractor() fails");
+////      return nullptr;
+////    }
+////  }
+//
+//  if ( !descriptor ) {
+//    if ( !descriptor_opts.use_detector_options && descriptor_opts.type != SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT) {
+//      if ( !(descriptor = create_sparse_descriptor_extractor(descriptor_opts)) ) {
+//        CF_ERROR("create_sparse_descriptor_extractor() fails");
+//        return nullptr;
+//      }
+//    }
+//  }
+//
+//  return c_sparse_feature_extractor::create(detector, descriptor, detector_opts.max_keypoints);
+//}
+//
+//
+c_feature2d::sptr create_sparse_descriptor_extractor(const c_sparse_feature_descriptor_options & options)
 {
   switch ( options.type ) {
   case FEATURE2D_UNKNOWN :

@@ -51,11 +51,11 @@ public:
   void set_avgchannel(bool v);
   bool avgchannel() const;
 
-  cv::Scalar compute(cv::InputArray image) const override;
-  static bool compute(cv::InputArray image, cv::OutputArray output_map,
+  cv::Scalar compute(cv::InputArray image, cv::InputArray mask = cv::noArray()) const override;
+  static bool compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
       double k, int dscale, int uscale, bool squared, bool avgchannel,
       cv::Scalar * output_sharpness_metric);
-  static bool compute(cv::InputArray image, cv::OutputArray output_map,
+  static bool compute(cv::InputArray image, cv::InputArray mask , cv::OutputArray output_map,
       const c_lpg_options & opts,
       cv::Scalar * output_sharpness_metric);
 

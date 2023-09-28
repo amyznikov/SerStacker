@@ -398,6 +398,12 @@ cv::Vec2f c_affine_image_transform::translation() const
 }
 
 
+void c_affine_image_transform::reset()
+{
+  a = cv::Matx23f::eye();
+}
+
+
 void c_affine_image_transform::set_affine_matrix(const cv::Matx23f & a)
 {
   this->a = a;

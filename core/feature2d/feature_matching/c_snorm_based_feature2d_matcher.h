@@ -45,8 +45,9 @@ public:
   void set_lowe_ratio(double v);
   double lowe_ratio() const;
 
-  bool train( cv::InputArray train_descriptors) override;
-  bool match(cv::InputArray query_descriptors, /* out */ std::vector<cv::DMatch> & matches) override;
+  bool train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors) override;
+  bool match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+      /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
   struct index_entry {

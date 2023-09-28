@@ -18,12 +18,12 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_mask, "detected_planetary_disk_mask", },
       { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_edge, "detected_planetary_disk_edge", },
 
-      { c_fit_jovian_ellipse_routine::display_detected_ellipseAMS, "detected_ellipseAMS", },
+//      { c_fit_jovian_ellipse_routine::display_detected_ellipseAMS, "detected_ellipseAMS", },
 
       { c_fit_jovian_ellipse_routine::display_pca_gx, "pca_gx", },
       { c_fit_jovian_ellipse_routine::display_pca_gy, "pca_gy", },
 
-      { c_fit_jovian_ellipse_routine::display_final_planetary_disk_ellipse, "final_planetary_disk_ellipse", },
+      // { c_fit_jovian_ellipse_routine::display_final_planetary_disk_ellipse, "final_planetary_disk_ellipse", },
       { c_fit_jovian_ellipse_routine::display_final_planetary_disk_mask, "final_planetary_disk_mask", },
 
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
@@ -64,6 +64,15 @@ double c_fit_jovian_ellipse_routine::pca_blur() const
   return detector_.pca_blur();
 }
 
+void c_fit_jovian_ellipse_routine::set_offset(const cv::Point2f & v)
+{
+  detector_.set_offset(v);
+}
+
+const cv::Point2f & c_fit_jovian_ellipse_routine::offset() const
+{
+  return detector_.offset();
+}
 
 c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector()
 {
@@ -75,14 +84,22 @@ const c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector() const
   return &detector_;
 }
 
+void c_fit_jovian_ellipse_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+{
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "stdev_factor");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, pca_blur, "pca_blur");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, offset, "offset");
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
+}
+
 bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
 
     SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
     SERIALIZE_PROPERTY(settings, save, *this, pca_blur);
+    SERIALIZE_PROPERTY(settings, save, *this, offset);
     SERIALIZE_PROPERTY(settings, save, *this, display);
-
 
     return true;
   }
@@ -126,14 +143,18 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       image.setTo(cv::Scalar::all(1), detector_.detected_planetary_disk_mask());
       break;
 
+    case display_final_planetary_disk_mask:
+      image.setTo(cv::Scalar::all(1), detector_.final_planetary_disk_mask());
+      break;
+
     case display_detected_planetary_disk_edge:
       image.setTo(cv::Scalar::all(1), detector_.detected_planetary_disk_edge());
       break;
 
-    case display_detected_ellipseAMS:
-      rotatedRectange(image, detector_.ellipseAMS(), CV_RGB(0, 1, 0), 1);
-      cv::ellipse(image, detector_.ellipseAMS(), CV_RGB(0, 0, 1), 1);
-      break;
+//    case display_detected_ellipseAMS:
+//      rotatedRectange(image, detector_.ellipseAMS(), CV_RGB(0, 1, 0), 1);
+//      cv::ellipse(image, detector_.ellipseAMS(), CV_RGB(0, 0, 1), 1);
+//      break;
 
     case display_pca_gx:
       detector_.pca_gx().copyTo(image);
@@ -143,20 +164,22 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       detector_.pca_gy().copyTo(image);
       break;
 
-    case display_final_planetary_disk_ellipse:
-      rotatedRectange(image, detector_.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
-      cv::ellipse(image, detector_.final_planetary_disk_ellipse(), CV_RGB(0, 0, 1), 1);
-      break;
+//    case display_final_planetary_disk_ellipse:
+//      if( image.channels() == 1 ) {
+//        cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
+//      }
+//      image.setTo(cv::Scalar::all(1), detector_.final_planetary_disk_mask());
+//      rotatedRectange(image, detector_.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
+//      cv::ellipse(image, detector_.final_planetary_disk_ellipse(), CV_RGB(0, 0, 1), 1);
+//      break;
 
-    case display_final_planetary_disk_mask:
-      image.setTo(cv::Scalar::all(1), detector_.final_planetary_disk_mask());
-      break;
 
     case display_final_ellipse_fit:
       if( image.channels() == 1 ) {
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
       rotatedRectange(image, detector_.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
+      image.setTo(cv::Scalar::all(1), detector_.detected_planetary_disk_edge());
       cv::ellipse(image, detector_.final_planetary_disk_ellipse(), CV_RGB(0, 0, 1), 1);
       break;
   }

@@ -57,6 +57,20 @@ void morphological_laplacian(cv::InputArray src, cv::OutputArray dst, cv::InputA
   // cv::multiply(dst, 0.5, dst);
 }
 
+void morphological_laplacian_abs(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
+    int borderType, const cv::Scalar& borderValue)
+{
+  cv::Mat m1, m2;
+  cv::morphologyEx(src, m1, cv::MORPH_DILATE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::subtract(m1, src, m1);
+
+  cv::morphologyEx(src, m2, cv::MORPH_ERODE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::subtract(src, m2, m2);
+
+  cv::absdiff(m1, m2, dst);
+  // cv::multiply(dst, 0.5, dst);
+}
+
 void rampLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
     int borderType, const cv::Scalar& borderValue)
 {

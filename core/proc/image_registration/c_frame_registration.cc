@@ -222,20 +222,35 @@ const cv::Mat2f & c_frame_registration::current_remap() const
   return current_remap_;
 }
 
-c_sparse_feature_extractor::ptr c_frame_registration::create_keypoints_extractor() const
+const c_sparse_feature_extractor_and_matcher::sptr & c_frame_registration::create_sparse_feature_extractor_and_matcher()
 {
-  return create_sparse_feature_extractor(options_.feature_registration.sparse_feature_extractor);
+  if ( options_.feature_registration.enabled && !sparse_feature_extractor_and_matcher_ ) {
+
+    sparse_feature_extractor_and_matcher_ =
+        c_sparse_feature_extractor_and_matcher::create(options_.feature_registration.sparse_feature_extractor_and_matcher);
+
+    if ( !sparse_feature_extractor_and_matcher_ ) {
+      CF_FATAL("c_sparse_feature_extractor_and_matcher::create() fails");
+    }
+  }
+
+  return sparse_feature_extractor_and_matcher_;
 }
 
-const c_sparse_feature_extractor::ptr & c_frame_registration::set_keypoints_extractor(const c_sparse_feature_extractor::ptr & extractor)
-{
-  return this->keypoints_extractor_ = extractor;
-}
-
-const c_sparse_feature_extractor::ptr & c_frame_registration::keypoints_extractor() const
-{
-  return this->keypoints_extractor_;
-}
+//c_sparse_feature_extractor::sptr c_frame_registration::create_keypoints_extractor() const
+//{
+//  return create_sparse_feature_extractor(options_.feature_registration.sparse_feature_extractor);
+//}
+//
+//const c_sparse_feature_extractor::sptr & c_frame_registration::set_keypoints_extractor(const c_sparse_feature_extractor::sptr & extractor)
+//{
+//  return this->keypoints_extractor_ = extractor;
+//}
+//
+//const c_sparse_feature_extractor::sptr & c_frame_registration::keypoints_extractor() const
+//{
+//  return this->keypoints_extractor_;
+//}
 
 const c_ecc_forward_additive & c_frame_registration::ecc() const
 {
@@ -384,6 +399,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       eccflow_.set_update_multiplier(options_.eccflow.update_multiplier);
       eccflow_.set_max_iterations(options_.eccflow.max_iterations);
       eccflow_.set_support_scale(options_.eccflow.support_scale);
+      eccflow_.set_max_pyramid_level(options_.eccflow.max_pyramid_level);
       eccflow_.set_normalization_scale(options_.eccflow.normalization_scale);
       eccflow_.set_input_smooth_sigma(options_.eccflow.input_smooth_sigma);
       eccflow_.set_reference_smooth_sigma(options_.eccflow.reference_smooth_sigma);
@@ -931,14 +947,15 @@ bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_i
   return true;
 }
 
+
 bool c_frame_registration::extract_reference_features(cv::InputArray reference_feature_image, cv::InputArray reference_feature_mask)
 {
-  if( options_.feature_registration.sparse_feature_extractor.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
+  if( options_.feature_registration.sparse_feature_extractor_and_matcher.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
 
     // single planetary disk detection
 
     const c_feature2d_planetary_disk_detector::options &detector_opts =
-        options_.feature_registration.sparse_feature_extractor.detector.planetary_disk_detector;
+        options_.feature_registration.sparse_feature_extractor_and_matcher.detector.planetary_disk_detector;
 
     if( !detector_opts.align_planetary_disk_masks ) {
 
@@ -985,9 +1002,8 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
   else {
 
     // generic feature detection
-
-    if( !keypoints_extractor_ && !set_keypoints_extractor(create_keypoints_extractor()) ) {
-      CF_FATAL("c_feature_based_image_registration:: set_keypoints_extractor() fails");
+    if( !create_sparse_feature_extractor_and_matcher() ) {
+      CF_ERROR("create_sparse_feature_extractor_and_matcher() fails");
       return false;
     }
 
@@ -1001,76 +1017,18 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
         reference_feature_mask.channels(),
         reference_feature_mask.depth());
 
-    reference_keypoints_.clear();
-    reference_descriptors_.release();
-
-    keypoints_extractor_->detectAndCompute(reference_feature_image, reference_feature_mask,
-        reference_keypoints_,
-        reference_descriptors_);
-
-    CF_DEBUG("reference_keypoints_.size()=%zu",
-        reference_keypoints_.size());
-
-    if( reference_keypoints_.size() < 1 ) {
-      CF_ERROR("No reference key points detected : %zu",
-          reference_keypoints_.size());
+    if( !sparse_feature_extractor_and_matcher_->setup_reference_frame(reference_feature_image, reference_feature_mask) ) {
+      CF_ERROR("sparse_feature_extractor_and_matcher_->setup_reference_frame() fails");
       return false;
     }
 
+    CF_DEBUG("reference_keypoints: %zu", sparse_feature_extractor_and_matcher_->referece_keypoints().size());
 
-    if ( options_.feature_registration.sparse_feature_matcher.type != FEATURE2D_MATCHER_AUTO_SELECT ) {
-      keypoints_matcher_ =
-          create_sparse_feature_matcher(options_.feature_registration.sparse_feature_matcher);
-    }
-    else {
-
-      c_feature2d_matcher_options auto_selected_matcher_options =
-          options_.feature_registration.sparse_feature_matcher;
-
-      const SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type =
-          keypoints_extractor_->descriptor_type();
-
-#if HAVE_STAR_EXTRACTOR
-      if( descriptor_type == SPARSE_FEATURE_DESCRIPTOR_TRIANGLE ) {
-        auto_selected_matcher_options.type = FEATURE2D_MATCHER_TRIANGLES;
-      }
-#endif
-      if( auto_selected_matcher_options.type == FEATURE2D_MATCHER_AUTO_SELECT ) {
-
-        switch (keypoints_extractor_->descriptor()->defaultNorm()) {
-        case cv::NORM_HAMMING:
-          case cv::NORM_HAMMING2:
-          auto_selected_matcher_options.type = FEATURE2D_MATCHER_HAMMING;
-          break;
-        default:
-          auto_selected_matcher_options.type = FEATURE2D_MATCHER_FLANN;
-          switch (CV_MAT_DEPTH(keypoints_extractor_->descriptor()->type())) {
-          case CV_8U:
-            case CV_8S:
-            auto_selected_matcher_options.flann.distance_type = cvflann::FLANN_DIST_HAMMING;
-            auto_selected_matcher_options.flann.index.type = FlannIndex_lsh;
-            break;
-          default:
-            auto_selected_matcher_options.flann.distance_type = cvflann::FLANN_DIST_L2;
-            auto_selected_matcher_options.flann.index.type = FlannIndex_kdtree;
-            break;
-          }
-          break;
-        }
-      }
-
-      keypoints_matcher_ =
-          create_sparse_feature_matcher(auto_selected_matcher_options);
-    }
-
-    if( !keypoints_matcher_ ) {
-      CF_ERROR("create_sparse_feature_matcher() fails");
+    if ( sparse_feature_extractor_and_matcher_->referece_keypoints().empty() ) {
+      CF_ERROR("No parse keypoints extracted");
       return false;
     }
-
-    keypoints_matcher_->train(reference_descriptors_);
   }
-
 
   return true;
 }
@@ -1078,12 +1036,12 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
 bool c_frame_registration::estimate_feature_transform(cv::InputArray current_feature_image, cv::InputArray current_feature_mask,
     c_image_transform * current_transform)
 {
-  if( options_.feature_registration.sparse_feature_extractor.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
+  if( options_.feature_registration.sparse_feature_extractor_and_matcher.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
 
     // single planetary disk registration
 
     const c_feature2d_planetary_disk_detector::options &detector_opts =
-        options_.feature_registration.sparse_feature_extractor.detector.planetary_disk_detector;
+        options_.feature_registration.sparse_feature_extractor_and_matcher.detector.planetary_disk_detector;
 
     if( !detector_opts.align_planetary_disk_masks ) {
 
@@ -1137,20 +1095,26 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
 
     // generic
     bool fOk =
-        detect_and_match_keypoints(current_feature_image, current_feature_mask,
-            matched_current_positions_, matched_reference_positions_,
-            &current_keypoints_, &current_descriptors_,
-            &current_matches_, &current_matches12_);
+        sparse_feature_extractor_and_matcher_->match_current_frame(current_feature_image,
+            current_feature_mask);
+
     if( !fOk ) {
-      CF_ERROR("detect_and_match_keypoints() fails");
+      CF_ERROR("sparse_feature_extractor_and_matcher_->match_current_frame() fails");
       return false;
     }
+
+//
+//        detect_and_match_keypoints(current_feature_image, current_feature_mask,
+//            matched_current_positions_, matched_reference_positions_,
+//            &current_keypoints_, &current_descriptors_,
+//            &current_matches_/*, &current_matches12_*/);
+
 
 
     fOk =
         estimate_image_transform(current_transform,
-            matched_current_positions_,
-            matched_reference_positions_,
+            sparse_feature_extractor_and_matcher_->matched_current_positions(),
+            sparse_feature_extractor_and_matcher_->matched_reference_positions(),
             &options_.feature_registration.estimate_options);
     if( !fOk ) {
       CF_ERROR("estimate_image_transform() fails");
@@ -1170,68 +1134,95 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
   return true;
 }
 
-bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_feature_image,
-    cv::InputArray current_feature_mask,
-    std::vector<cv::Point2f> & output_matched_current_positions,
-    std::vector<cv::Point2f> & output_matched_reference_positions,
-    std::vector<cv::KeyPoint> * _current_keypoints,
-    cv::Mat * _current_descriptors,
-    std::vector<cv::DMatch> * _current_matches,
-    std::vector<std::vector<cv::DMatch> > * _current_matches12) const
-{
-
-  std::vector<cv::KeyPoint> local_current_keypoints;
-  cv::Mat local_current_descriptors;
-  std::vector<cv::DMatch> local_current_matches;
-  std::vector<std::vector<cv::DMatch> > local_current_matches12;
-
-  std::vector<cv::KeyPoint> & current_keypoints =
-      _current_keypoints ?
-          *_current_keypoints :
-          local_current_keypoints;
-
-  cv::Mat & current_descriptors =
-      _current_descriptors ?
-          *_current_descriptors :
-          local_current_descriptors;
-
-  std::vector<cv::DMatch> & current_matches =
-      _current_matches ?
-          *_current_matches :
-          local_current_matches;
-
-  std::vector<std::vector<cv::DMatch> > & current_matches12 =
-      _current_matches12 ?
-          *_current_matches12 :
-          local_current_matches12;
-
-  keypoints_extractor_->detectAndCompute(current_feature_image, current_feature_mask,
-      current_keypoints, current_descriptors);
-
-  CF_DEBUG("current_keypoints.size()=%zu",
-      current_keypoints.size());
-
-  if ( current_keypoints.size() < 1 ) {
-    CF_ERROR("No key points detected : %zu", current_keypoints.size());
-    return false;
-  }
-
-  keypoints_matcher_->match(current_descriptors,
-      current_matches);
-
-  CF_DEBUG("current_matches.size()=%zu",
-      current_matches.size());
-
-  extract_matched_positions(current_keypoints, reference_keypoints_, current_matches,
-      &output_matched_current_positions, &output_matched_reference_positions);
-
-  if ( current_matches.size() < 1 ) {
-    CF_ERROR("No key points matches found");
-    return false;
-  }
-
-  return true;
-}
+//bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_feature_image,
+//    cv::InputArray current_feature_mask,
+//    std::vector<cv::Point2f> & output_matched_current_positions,
+//    std::vector<cv::Point2f> & output_matched_reference_positions,
+//    std::vector<cv::KeyPoint> * _current_keypoints,
+//    cv::Mat * _current_descriptors,
+//    std::vector<cv::DMatch> * _current_matches/*,
+//    std::vector<std::vector<cv::DMatch> > * _current_matches12*/) const
+//{
+//
+//  std::vector<cv::KeyPoint> local_current_keypoints;
+//  cv::Mat local_current_descriptors;
+//
+//  std::vector<cv::KeyPoint> & current_keypoints =
+//      _current_keypoints ?
+//          *_current_keypoints :
+//          local_current_keypoints;
+//
+//  if( !keypoints_matcher_ ) { // Use OptFlowPyrLK for match
+//
+//    keypoints_extractor_->detect(current_feature_image,
+//        current_keypoints,
+//        current_feature_mask);
+//
+//    CF_DEBUG("current_keypoints.size()=%zu",
+//        current_keypoints.size());
+//
+//    if ( current_keypoints.size() < 1 ) {
+//      CF_ERROR("No key points detected : %zu", current_keypoints.size());
+//      return false;
+//    }
+//
+//    match_optflowpyrlk(reference_feature_image_, current_feature_image, reference_keypoints_,
+//        options_.feature_registration.sparse_feature_matcher.optflowpyrlk,
+//        output_matched_reference_positions, output_matched_current_positions);
+//
+//  }
+//  else {
+//
+//    std::vector<cv::DMatch> local_current_matches;
+//    std::vector<std::vector<cv::DMatch> > local_current_matches12;
+//
+//    cv::Mat & current_descriptors =
+//        _current_descriptors ?
+//            *_current_descriptors :
+//            local_current_descriptors;
+//
+//    std::vector<cv::DMatch> & current_matches =
+//        _current_matches ?
+//            *_current_matches :
+//            local_current_matches;
+//
+//    //    std::vector<std::vector<cv::DMatch> > & current_matches12 =
+//    //        _current_matches12 ?
+//    //            *_current_matches12 :
+//    //            local_current_matches12;
+//
+//    keypoints_extractor_->detectAndCompute(current_feature_image,
+//        current_feature_mask,
+//        current_keypoints,
+//        current_descriptors);
+//
+//    CF_DEBUG("current_keypoints.size()=%zu",
+//        current_keypoints.size());
+//
+//    if ( current_keypoints.size() < 1 ) {
+//      CF_ERROR("No key points detected : %zu", current_keypoints.size());
+//      return false;
+//    }
+//
+//    keypoints_matcher_->match(&current_keypoints, current_descriptors,
+//        current_matches);
+//
+//    extract_matched_positions(current_keypoints, reference_keypoints_, current_matches,
+//        &output_matched_current_positions, &output_matched_reference_positions);
+//
+//  }
+//
+//
+//  CF_DEBUG("matched_current_positions.size()=%zu",
+//      output_matched_current_positions.size());
+//
+//  if ( output_matched_current_positions.size() < 1 ) {
+//    CF_ERROR("No key point matches found");
+//    return false;
+//  }
+//
+//  return true;
+//}
 
 bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,

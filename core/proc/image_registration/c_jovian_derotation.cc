@@ -6,6 +6,7 @@
  */
 
 #include "c_jovian_derotation.h"
+#include <core/proc/unsharp_mask.h>
 #include <core/io/save_image.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -149,17 +150,19 @@ void get_jovian_ellipse_bounding_box(const cv::Size & image_size, const cv::Rota
 
 static void normalize_jovian_image(const cv::Mat & src, cv::Mat & dst, const int ellipse_width)
 {
-  cv::Mat tmp;
-  cv::Scalar m, s;
+  unsharp_mask(src, cv::noArray(), dst, 5, 0.95, -1, -1);
 
-  const double sigma = ellipse_width / 10.;
-  const int ksize = 2 * (int) ((std::max)(1., 4 * sigma)) + 1;
-
-  cv::GaussianBlur(src, tmp, cv::Size(), sigma, sigma);
-  cv::subtract(src, tmp, tmp);
-
-  cv::meanStdDev(tmp, m, s);
-  cv::multiply(tmp, 1. / s[0], dst);
+//  cv::Mat tmp;
+//  cv::Scalar m, s;
+//
+//  const double sigma = ellipse_width / 10.;
+//  const int ksize = 2 * (int) ((std::max)(1., 4 * sigma)) + 1;
+//
+//  cv::GaussianBlur(src, tmp, cv::Size(), sigma, sigma);
+//  cv::subtract(src, tmp, tmp);
+//
+//  cv::meanStdDev(tmp, m, s);
+//  cv::multiply(tmp, 1. / s[0], dst);
 }
 
 static void drawRotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & rc,
@@ -627,7 +630,7 @@ bool c_jovian_derotation::compute(cv::InputArray current_image, cv::InputArray c
   }
 
 
-  CF_DEBUG("BEST rotation=%g deg orientation=%g deg",
+  CF_DEBUG("\n\n XXXX: FINAL BEST rotation=%g deg orientation=%g deg",
       best_rotation * 180 / CV_PI,
       best_orientation * 180 / CV_PI);
 

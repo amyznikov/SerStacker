@@ -189,10 +189,11 @@ bool c_lpg_sharpness_measure::avgchannel() const
   return options_.avgchannel;
 }
 
-cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
+cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
   cv::Scalar rv;
-  compute(image, cv::noArray(),
+  compute(image, mask,
+      cv::noArray(),
       options_.k,
       options_.dscale,
       options_.uscale,
@@ -204,7 +205,8 @@ cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image) const
 
 bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return compute(image, output_map,
+  return compute(image, cv::noArray(),
+      output_map,
       options_.k,
       options_.dscale,
       options_.uscale,
@@ -216,7 +218,8 @@ bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray o
 bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map,
     const c_lpg_options & opts)
 {
-  return compute(image, output_map,
+  return compute(image, cv::noArray(),
+      output_map,
       opts.k,
       opts.dscale,
       opts.uscale,
@@ -225,20 +228,20 @@ bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray o
       nullptr);
 }
 
-bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
+bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
     double k, int dscale, int uscale, bool squared, bool avgchannel,
     cv::Scalar * output_sharpness_metric)
 {
-  return lpg(image, output_map,
+  return lpg(image, mask, output_map,
     k, dscale, uscale, squared, avgchannel,
     output_sharpness_metric);
 }
 
-bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::OutputArray output_map,
+bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
     const c_lpg_options & opts,
     cv::Scalar * output_sharpness_metric)
 {
-  return lpg(image, output_map,
+  return lpg(image, mask, output_map,
       opts.k, opts.dscale, opts.uscale, opts.squared, opts.avgchannel,
       output_sharpness_metric);
 }

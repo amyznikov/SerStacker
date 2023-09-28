@@ -187,6 +187,7 @@ public:
   c_affine_image_transform(const cv::Matx23f & a);
   c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12);
 
+  void reset();
 
   void set_affine_matrix(const cv::Matx23f & a);
   const cv::Matx23f& affine_matrix() const;

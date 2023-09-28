@@ -104,7 +104,8 @@ struct c_flann_index_options
 /**
  * Options for c_flann_based_feature2d_matcher
  * */
-struct c_flann_based_feature2d_matcher_options : c_feature2d_matcher_base_options
+struct c_flann_based_feature2d_matcher_options :
+    c_feature2d_matcher_base_options
 {
   cvflann::flann_distance_t distance_type =
       cvflann::FLANN_DIST_L2;
@@ -135,8 +136,9 @@ public:
 
   const cv::Ptr<cv::flann::IndexParams> & index_params() const;
 
-  bool train( cv::InputArray train_descriptors) override;
-  bool match(cv::InputArray query_descriptors, /* out */ std::vector<cv::DMatch> & matches) override;
+  bool train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors) override;
+  bool match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+      /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
   double lowe_ratio_ = 0.75;

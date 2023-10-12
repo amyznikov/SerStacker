@@ -103,6 +103,7 @@ bool pyrflowlk2(cv::InputArray previous_image, cv::InputArray next_image,
 
   // cv::calcOpticalFlowPyrLK(prevImg, nextImg, prevPts, nextPts, status, err, winSize, maxLevel, criteria, flags, minEigThreshold)
 
+  return false;
 }
 
 

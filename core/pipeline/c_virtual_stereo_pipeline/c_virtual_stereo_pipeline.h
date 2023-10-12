@@ -55,7 +55,13 @@ struct c_virtual_stereo_feature2d_options :
 
 struct c_virtual_stereo_matcher_options
 {
-  bool enable_stereo_matcher = true;
+  bool enable_stereo_matcher = false;
+};
+
+struct c_virtual_stereo_triangulation_options
+{
+  bool enable_triangulation = false;
+  double baseline = 1000;
 };
 
 
@@ -183,6 +189,9 @@ protected:
   bool estmate_camera_pose();
   bool create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap);
   bool run_polar_stereo();
+  bool run_triangulation();
+
+  // bugged experimental stuff, don't call it !
   bool run_epipolar_stereo();
   bool run_epipolar_flow();
   bool run_pyrflowlk();
@@ -203,12 +212,11 @@ protected:
   c_virtual_stereo_feature2d_options feature2d_options_;
   c_lm_camera_pose_options camera_pose_options_;
   c_virtual_stereo_matcher_options stereo_matcher_options_;
+  c_virtual_stereo_triangulation_options triangulation_options_;
   c_virtual_stereo_epipolar_flow_options epipolar_flow_options_;
   c_virtual_stereo_pyrflowlk_options pyrflowlk_options_;
   c_virtual_stereo_output_options output_options_;
 
-  //c_sparse_feature_extractor::sptr keypoints_extractor_;
-  //c_feature2d_matcher::sptr keypoints_matcher_;
   c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;
   c_regular_stereo_matcher stereo_matcher_;
   c_epipolar_matcher epipolar_matcher_;

@@ -8,9 +8,11 @@
 #include "c_virtual_stereo_pipeline.h"
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/polar_trasform.h>
+#include <core/proc/stereo/triangulate.h>
 #include <core/proc/image_registration/ecc2.h>
 #include <core/proc/colormap.h>
 #include <core/readdir.h>
+#include <core/io/save_ply.h>
 #include <chrono>
 #include <thread>
 
@@ -171,6 +173,11 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     stereo_matcher_.serialize(section, save);
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "triangulation")) ) {
+    SERIALIZE_OPTION(section, save, triangulation_options_, enable_triangulation);
+    SERIALIZE_OPTION(section, save, triangulation_options_, baseline);
+  }
+
   if( (section = SERIALIZE_GROUP(settings, save, "epipolar_matcher")) ) {
     epipolar_matcher_.serialize(section, save);
   }
@@ -266,6 +273,14 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
+    PIPELINE_CTL_GROUP(ctrls, "Triangulation", "");
+      PIPELINE_CTL(ctrls, triangulation_options_.enable_triangulation, "enable triangulation", "Set checked to enable triangulation");
+      PIPELINE_CTL(ctrls, triangulation_options_.baseline, "baseline", "Set baseline for triangulation");
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+
+
+    ////////
     PIPELINE_CTL_GROUP(ctrls, "Epipolar Flow", "");
       PIPELINE_CTL(ctrls, epipolar_flow_options_.enabled, "Enable epipolar_flow", "Check to enable c_epipolar_flow testing");
       PIPELINE_CTL(ctrls, epipolar_flow_options_.enable_debug, "Enable Debug images", "Check to enable c_epipolar_flow to save debg images");
@@ -281,7 +296,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
 
     ////////
-    PIPELINE_CTL_GROUP(ctrls, "pyrflowlk", "");
+    PIPELINE_CTL_GROUP(ctrls, "pyrflowlk (morph_gradient_flow)", "");
       PIPELINE_CTL(ctrls, pyrflowlk_options_.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
       PIPELINE_CTL(ctrls, pyrflowlk_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
       PIPELINE_CTL(ctrls, pyrflowlk_options_.block_radius, "block_radius", "block_radius");
@@ -651,10 +666,6 @@ bool c_virtual_stereo_pipeline::run_pipeline()
       std::swap(current_mask_, previous_mask_);
       std::swap(current_keypoints_, previous_keypoints_);
       std::swap(current_descriptors_, previous_descriptors_);
-//      std::swap(current_block_array_, previous_block_array_);
-//      std::swap(current_median_hat_, previous_median_hat_);
-//      std::swap(current_median_hat_mask_, previous_median_hat_mask_);
-
     }
   }
 
@@ -684,6 +695,12 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     CF_ERROR("run_stereo_matcher() fails");
     return false;
   }
+
+  if ( !run_triangulation() ) {
+    CF_ERROR("run_triangulation() fails");
+    return false;
+  }
+
 
   if ( !run_epipolar_stereo() ) {
     CF_ERROR("run_epipolar_matcher() fails");
@@ -858,6 +875,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
     return true; // ignore
   }
 
+  // Optionally save polar frames if requested by user
   if( output_options_.save_polar_frames ) {
 
     cv::Mat display;
@@ -906,6 +924,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
     }
   }
 
+  // compute stereo disparity if requested by user
   if( stereo_matcher_.enabled() ) {
 
     if( !stereo_matcher_.compute(frames[0], frames[1], current_disparity_) ) {
@@ -956,6 +975,101 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
 
   return true;
 }
+
+bool c_virtual_stereo_pipeline::run_triangulation()
+{
+  if ( !triangulation_options_.enable_triangulation ) {
+    return true; // disabled, silently ignore
+  }
+
+  if ( current_disparity_.empty() ) {
+    // probably disabled by stereo matcher options, silently ignore
+    return true;
+  }
+
+//  CF_DEBUG("current_disparity_: %dx%d depth=%d",
+//      current_disparity_.cols,
+//      current_disparity_.rows,
+//      current_disparity_.depth());
+
+  const cv::Matx33d inverted_camera_matrix =
+      camera_options_.camera_intrinsics.camera_matrix.inv();
+
+  // current epipole location in pixel coordinates on reference frame
+  const cv::Point2d & E =
+      currentEpipole_;
+
+  // Unit vector to epipole direction in camera coordinates
+  const cv::Vec3d epipole_direction_in_camera_coordinates =
+      pix2cam(E.x, E.y,
+          inverted_camera_matrix,
+          true);
+
+  const cv::Mat1f disparity =
+      current_disparity_;
+
+  double depth;
+  cv::Vec3d pos3d;
+  std::vector<cv::Vec3d> cloud3d;
+  std::vector<cv::Vec3b> colors3d;
+  cv::Mat3b refimg;
+
+
+  if ( previous_image_.type() == CV_8UC3 ) {
+    refimg = previous_image_;
+  }
+  else if ( previous_image_.type() == CV_8UC1 ) {
+    cv::cvtColor(previous_image_, refimg, cv::COLOR_BGR2GRAY);
+  }
+  else {
+    previous_image_.convertTo(refimg, refimg.depth());
+    cv::cvtColor(refimg, refimg, cv::COLOR_BGR2GRAY);
+  }
+
+  cloud3d.reserve(current_disparity_.size().area());
+
+  for ( int y = 0; y < current_disparity_.rows; ++y ) {
+    for ( int x = 0; x < current_disparity_.cols; ++x ) {
+      if ( disparity[y][x] > 0 ) {
+
+        const double epipolar_distance = hypot(x - E.x, y - E.y);
+        const double sina = (y - E.y ) / epipolar_distance;
+        const double cosa = (x - E.x ) / epipolar_distance;
+        const double current_x = (epipolar_distance + disparity[y][x]) * cosa + E.x;
+        const double current_y = (epipolar_distance + disparity[y][x]) * sina + E.y;
+
+        bool fOk =
+            triangulate_point(x, y,
+                current_x, current_y,
+                inverted_camera_matrix,
+                epipole_direction_in_camera_coordinates,
+                triangulation_options_.baseline,
+                &depth,
+                &pos3d);
+
+        if ( fOk ) {
+          cloud3d.emplace_back(pos3d);
+          colors3d.emplace_back(refimg[y][x]);
+        }
+      }
+    }
+  }
+
+  CF_DEBUG("cloud3d.size=%zu", cloud3d.size());
+
+  const std::string output_filename =
+      ssprintf("%s/cloud3d/cloud3d.%05d.ply",
+          output_path_.c_str(),
+          input_sequence_->current_pos()-1);
+
+  if( !save_ply(cloud3d, colors3d, output_filename) ) {
+    CF_ERROR("save_ply('%s') fails", output_filename.c_str());
+    return false;
+  }
+
+  return true;
+}
+
 
 bool c_virtual_stereo_pipeline::run_epipolar_stereo()
 {

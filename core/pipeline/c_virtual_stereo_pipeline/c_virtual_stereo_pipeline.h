@@ -15,6 +15,9 @@
 #include <core/settings/camera_settings.h>
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/proc/stereo/c_epipolar_matcher.h>
+#include <core/proc/image_registration/pyrflowlk2.h>
+#include <core/proc/image_registration/morph_gradient_flow.h>
+
 #include <core/io/c_output_frame_writer.h>
 
 struct c_virtual_stereo_input_options :
@@ -48,9 +51,6 @@ struct c_virtual_stereo_camera_options
 struct c_virtual_stereo_feature2d_options :
     public c_sparse_feature_extractor_and_matcher_options
 {
-//  c_sparse_feature_detector_options detector;
-//  c_sparse_feature_descriptor_options descriptor;
-//  c_feature2d_matcher_options matcher;
 };
 
 struct c_virtual_stereo_matcher_options
@@ -74,13 +74,16 @@ struct c_virtual_stereo_epipolar_flow_options
   bool enable_debug = false;
 };
 
-//struct c_virtual_stereo_pyrflowlk_options
-//{
-//  bool enabled = false;
-//  bool enable_debug = false;
-//  c_sparse_feature_detector_options detector;
-//  int max_pyramid_level = 4;
-//};
+struct c_virtual_stereo_pyrflowlk_options
+{
+  c_sparse_feature_detector_options detector;
+  c_pyrflowlk2_options pyrflowlk;
+  bool enabled = false;
+  bool enable_debug = false;
+  int max_pyramid_level = 3;
+  int block_radius = 2;
+  int search_radius = 7;
+};
 
 struct c_virtual_stereo_output_options :
     c_image_processing_pipeline_output_options
@@ -152,8 +155,8 @@ public:
   c_virtual_stereo_epipolar_flow_options & epipolar_flow_options();
   const c_virtual_stereo_epipolar_flow_options & epipolar_flow_options() const;
 
-//  c_virtual_stereo_pyrflowlk_options & pyrflowlk_options();
-//  const c_virtual_stereo_pyrflowlk_options & pyrflowlk_options() const;
+  c_virtual_stereo_pyrflowlk_options & pyrflowlk_options();
+  const c_virtual_stereo_pyrflowlk_options & pyrflowlk_options() const;
 
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
@@ -182,7 +185,7 @@ protected:
   bool run_polar_stereo();
   bool run_epipolar_stereo();
   bool run_epipolar_flow();
-  //bool run_pyrflowlk();
+  bool run_pyrflowlk();
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
@@ -201,7 +204,7 @@ protected:
   c_lm_camera_pose_options camera_pose_options_;
   c_virtual_stereo_matcher_options stereo_matcher_options_;
   c_virtual_stereo_epipolar_flow_options epipolar_flow_options_;
-  // c_virtual_stereo_pyrflowlk_options pyrflowlk_options_;
+  c_virtual_stereo_pyrflowlk_options pyrflowlk_options_;
   c_virtual_stereo_output_options output_options_;
 
   //c_sparse_feature_extractor::sptr keypoints_extractor_;
@@ -210,7 +213,7 @@ protected:
   c_regular_stereo_matcher stereo_matcher_;
   c_epipolar_matcher epipolar_matcher_;
   c_epipolar_flow epipolar_flow_;
-  // c_feature2d::sptr pyrflowlk_keypoints_detector_;
+  c_feature2d::sptr pyrflowlk_keypoints_detector_;
 
   cv::Mat current_image_;
   cv::Mat previous_image_;

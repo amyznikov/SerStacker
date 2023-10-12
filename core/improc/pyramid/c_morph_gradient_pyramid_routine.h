@@ -18,14 +18,14 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_morph_gradient_pyramid_routine,
       "morph_gradient_pyramid", "Display morphological gradient Pyramid layers");
 
-  void set_min_image_size(int v)
+  void set_max_level(int v)
   {
-    minimum_image_size_ = v;
+    max_level_ = v;
   }
 
-  int min_image_size() const
+  int max_level() const
   {
-    return minimum_image_size_;
+    return max_level_;
   }
 
   void set_display_pos(int v)
@@ -45,7 +45,7 @@ public:
 protected:
   std::vector<cv::Mat> pyramid_;
   int display_pos_ = 0;
-  int minimum_image_size_ = 16;
+  int max_level_ = 3;
 };
 
 #endif /* __c_morph_gradient_pyramid_routine_h__ */

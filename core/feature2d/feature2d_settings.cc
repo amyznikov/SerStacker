@@ -1761,7 +1761,7 @@ bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_option
   std::string descriptor_type;
 
   if ( load_settings(settings, "type", &descriptor_type) && !descriptor_type.empty() ) {
-    if ( !fromString(descriptor_type, &options->type) || options->type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
+    if ( !fromString(descriptor_type, &options->type) ) {
       CF_ERROR("Invalid or not supported feature descriptor type specified : %s",
           descriptor_type.c_str());
     }

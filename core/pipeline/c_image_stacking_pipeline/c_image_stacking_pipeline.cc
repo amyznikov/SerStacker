@@ -1335,6 +1335,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     return false;
   }
 
+  if ( master_frame_index <  0 ) {
+    CF_ERROR("select_master_frame() fails");
+    return false;
+  }
+
+
   set_pipeline_stage(stacking_stage_generate_reference_frame);
 
   set_status_msg("CREATE REFERENCE FRAME...");
@@ -3169,6 +3175,11 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
 
       for( current_index = 0; processed_frames_ < total_frames_;
           processed_frames_ = ++current_index, on_frame_processed() ) {
+
+        if ( canceled() ) {
+          CF_DEBUG("cancel requested");
+          return -1;
+        }
 
         if( is_bad_frame_index(input_sequence->current_pos()) ) {
           CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());

@@ -14,6 +14,10 @@
 #include "gradient.h"
 #include <core/debug.h>
 
+/**
+ * @see <https://en.wikipedia.org/wiki/Finite_difference_coefficient>
+ */
+
 static cv::Mat select_kernel(int order, int kradius)
 {
   static float k11[] = { -0.5, +0., 0.5 };

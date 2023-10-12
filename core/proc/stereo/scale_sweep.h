@@ -21,7 +21,8 @@ void create_scale_compression_remap(int iteration,
     const cv::Size & image_size,
     const cv::Point2d & epipole_location,
     cv::Mat2f & cmap,
-    cv::InputArray mask = cv::noArray());
+    cv::InputArray src_mask = cv::noArray(),
+    cv::OutputArray dst_mask = cv::noArray());
 
 
 

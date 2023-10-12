@@ -83,13 +83,15 @@
 #include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
 
+#include "geometry/c_crop_image_routine.h"
+#include "geometry/c_rotate_image_routine.h"
 #include "geometry/c_affine_transform_routine.h"
 #include "geometry/c_perspective_transform_routine.h"
 #include "geometry/c_birdview_transform_routine.h"
 #include "geometry/c_tangential_transform_routine.h"
 #include "geometry/c_polar_warp_routine.h"
-#include "geometry/c_rotate_image_routine.h"
 #include "geometry/c_unkanala_remap_routine.h"
+
 
 #include "c_mean_curvature_blur_routine.h"
 #include "feature2d/c_fit_jovian_ellipse_routine.h"
@@ -178,6 +180,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_blur_routine::class_factory_instance());
 
+
+    register_class_factory(c_crop_image_routine::class_factory_instance());
     register_class_factory(c_rotate_image_routine::class_factory_instance());
     register_class_factory(c_affine_transform_routine::class_factory_instance());
     register_class_factory(c_perspective_transform_routine::class_factory_instance());

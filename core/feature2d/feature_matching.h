@@ -33,7 +33,7 @@ template<> const c_enum_member *
 
 struct c_feature2d_matcher_options {
 
-  FEATURE2D_MATCHER_TYPE type = FEATURE2D_MATCHER_FLANN;
+  FEATURE2D_MATCHER_TYPE type = FEATURE2D_MATCHER_AUTO_SELECT;
 
   c_hamming_distance_feature2d_matcher_options hamming;
   c_flann_based_feature2d_matcher_options flann;

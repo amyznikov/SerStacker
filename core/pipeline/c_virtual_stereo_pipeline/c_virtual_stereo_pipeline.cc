@@ -115,15 +115,15 @@ const c_virtual_stereo_epipolar_flow_options & c_virtual_stereo_pipeline::epipol
   return epipolar_flow_options_;
 }
 
-//c_virtual_stereo_pyrflowlk_options & c_virtual_stereo_pipeline::pyrflowlk_options()
-//{
-//  return pyrflowlk_options_;
-//}
-//
-//const c_virtual_stereo_pyrflowlk_options & c_virtual_stereo_pipeline::pyrflowlk_options() const
-//{
-//  return pyrflowlk_options_;
-//}
+c_virtual_stereo_pyrflowlk_options & c_virtual_stereo_pipeline::pyrflowlk_options()
+{
+  return pyrflowlk_options_;
+}
+
+const c_virtual_stereo_pyrflowlk_options & c_virtual_stereo_pipeline::pyrflowlk_options() const
+{
+  return pyrflowlk_options_;
+}
 
 c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options()
 {
@@ -188,12 +188,15 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, epipolar_flow_options_, reference_smooth_sigma);
   }
 
-//  if( (section = SERIALIZE_GROUP(settings, save, "pyrflowlk")) ) {
-//    SERIALIZE_OPTION(section, save, pyrflowlk_options_, enabled);
-//    SERIALIZE_OPTION(section, save, pyrflowlk_options_, max_pyramid_level);
-//    SERIALIZE_OPTION(section, save, pyrflowlk_options_, enable_debug);
-//    SERIALIZE_OPTION(section, save, pyrflowlk_options_, detector);
-//  }
+  if( (section = SERIALIZE_GROUP(settings, save, "pyrflowlk")) ) {
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, enabled);
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, max_pyramid_level);
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, block_radius);
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, search_radius);
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, enable_debug);
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, detector);
+    SERIALIZE_OPTION(section, save, pyrflowlk_options_, pyrflowlk);
+  }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
@@ -278,14 +281,24 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
 
     ////////
-//    PIPELINE_CTL_GROUP(ctrls, "pyrflowlk", "");
-//      PIPELINE_CTL(ctrls, pyrflowlk_options_.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
-//      PIPELINE_CTL(ctrls, pyrflowlk_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
-//      PIPELINE_CTL(ctrls, pyrflowlk_options_.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
-//      PIPELINE_CTL_GROUP(ctrls, "Keypoints Detector Options", "");
-//        PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, pyrflowlk_options_.detector);
-//      PIPELINE_CTL_END_GROUP(ctrls);
-//    PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_GROUP(ctrls, "pyrflowlk", "");
+      PIPELINE_CTL(ctrls, pyrflowlk_options_.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
+      PIPELINE_CTL(ctrls, pyrflowlk_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
+      PIPELINE_CTL(ctrls, pyrflowlk_options_.block_radius, "block_radius", "block_radius");
+      PIPELINE_CTL(ctrls, pyrflowlk_options_.search_radius, "search_radius", "search_radius");
+
+      PIPELINE_CTL(ctrls, pyrflowlk_options_.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
+      PIPELINE_CTL_GROUP(ctrls, "Keypoints Detector Options", "");
+        PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, pyrflowlk_options_.detector);
+      PIPELINE_CTL_END_GROUP(ctrls);
+      PIPELINE_CTL_GROUP(ctrls, "Pyrflowlk2 Options", "");
+        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.maxLevel, "maxLevel" , "");
+        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.winSize, "winSize" , "");
+        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.maxIterations, "maxIterations" , "");
+        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.eps, "eps" , "");
+        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.flags, "flags" , "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
     ////////
 
     PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher", "");
@@ -682,10 +695,10 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     return false;
   }
 
-//  if ( !run_pyrflowlk() ) {
-//    CF_ERROR("run_pyrflowlk() fails");
-//    return false;
-//  }
+  if ( !run_pyrflowlk() ) {
+    CF_ERROR("run_pyrflowlk2() fails");
+    return false;
+  }
 
   return true;
 }
@@ -1063,12 +1076,106 @@ bool c_virtual_stereo_pipeline::run_epipolar_flow()
   return true;
 }
 
-//bool c_virtual_stereo_pipeline::run_pyrflowlk()
-//{
-//  if ( !pyrflowlk_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
-//    return true; // ignore
+bool c_virtual_stereo_pipeline::run_pyrflowlk()
+{
+  if ( !pyrflowlk_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
+    return true; // ignore
+  }
+
+  cv::Mat current_image, current_mask;
+  cv::Mat previous_image, previous_mask;
+  cv::Mat derotated_current_image, derotated_current_mask;
+  cv::Mat1f disp;
+  cv::Mat1f cost;
+
+  const std::string debug_path =
+      pyrflowlk_options_.enable_debug ?
+          ssprintf("%s/morph_gradient_flow/%03d",
+              output_path_.c_str(), input_sequence_->current_pos() - 1) :
+          "";
+
+
+  current_image = current_image_;
+  current_mask = current_mask_;
+  previous_image = previous_image_;
+  previous_mask = previous_mask_;
+
+  cv::warpPerspective(current_image, derotated_current_image,
+      currentDerotationHomography_,
+      current_image.size(),
+      cv::INTER_LINEAR,
+      cv::BORDER_REPLICATE);
+
+  if ( !current_mask.empty() ) {
+
+    cv::warpPerspective(current_mask, derotated_current_mask,
+        currentDerotationHomography_,
+        current_image.size(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT);
+
+    cv::compare(derotated_current_mask, 255,
+        derotated_current_mask,
+        cv::CMP_GE);
+  }
+
+  bool fOK =
+      morph_gradient_flow(derotated_current_image, derotated_current_mask,
+          previous_image, previous_mask,
+          pyrflowlk_options_.max_pyramid_level,
+          pyrflowlk_options_.block_radius,
+          pyrflowlk_options_.search_radius,
+          currentEpipole_,
+          disp,
+          cost,
+          debug_path);
+
+  if( !fOK ) {
+    CF_ERROR("morph_gradient_flow() fails");
+    return false;
+  }
+
+
+//
+//  if( !pyrflowlk_keypoints_detector_ ) {
+//    pyrflowlk_keypoints_detector_ =
+//        create_sparse_feature_detector(pyrflowlk_options_.detector);
+//    if( !pyrflowlk_keypoints_detector_ ) {
+//      CF_ERROR("create_sparse_feature_detector(pyrflowlk_options_.detector) fails");
+//      return false;
+//    }
 //  }
 //
+//
+//  std::vector<cv::KeyPoint> previous_keypoints;
+//  std::vector<cv::KeyPoint> predicted_keypoints;
+//  std::vector<uint8_t> status;
+//  std::vector<float> errors;
+//
+//  pyrflowlk_keypoints_detector_->detect(previous_image_,
+//      previous_keypoints,
+//      previous_mask_);
+//
+//  if ( previous_keypoints.empty() ) {
+//    CF_ERROR("No keypoints detected");
+//    return true; // ignore frame
+//  }
+//
+//
+//  bool fOk =
+//      pyrflowlk2(previous_image_, current_image_,
+//          previous_keypoints, predicted_keypoints,
+//          status,
+//          errors,
+//          pyrflowlk_options_.pyrflowlk);
+//
+//  if ( !fOk ) {
+//    CF_ERROR("pyrflowlk2() fails");
+//    return false;
+//  }
+//
+
+
 //  cv::Mat current_image, current_mask;
 //  cv::Mat previous_image, previous_mask;
 //  cv::Mat derotated_current_image, derotated_current_mask;
@@ -1198,9 +1305,9 @@ bool c_virtual_stereo_pipeline::run_epipolar_flow()
 //  }
 //
 //
-//  return true;
-//}
-//
+  return true;
+}
+
 
 bool c_virtual_stereo_pipeline::create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap)
 {

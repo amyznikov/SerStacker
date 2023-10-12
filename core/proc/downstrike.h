@@ -14,12 +14,14 @@
  * 2x downsampling step by rejecting each EVEN row and column,
  *    keep only uneven
  * */
-void downstrike_even(cv::InputArray src, cv::Mat & dst);
+void downstrike_even(cv::InputArray src, cv::Mat & dst,
+    const cv::Size & size = cv::Size());
 
 /*
  * 2x upsampling step by injecting EVEN ZERO rows and columns ...
  * */
-void upject_even(cv::InputArray _src, cv::Mat & dst, cv::Size dstSize,
+void upject_even(cv::InputArray _src, cv::Mat & dst,
+    cv::Size dstSize,
     cv::Mat * _zmask = NULL, int zmdepth = -1);
 
 
@@ -27,7 +29,8 @@ void upject_even(cv::InputArray _src, cv::Mat & dst, cv::Size dstSize,
  * 2x downsampling step by rejecting each UNEVEN (ODD) row and column,
  *    keep only even
  * */
-void downstrike_uneven(cv::InputArray _src, cv::Mat & dst);
+void downstrike_uneven(cv::InputArray _src, cv::Mat & dst,
+    const cv::Size & size = cv::Size());
 
 
 /*

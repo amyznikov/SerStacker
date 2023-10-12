@@ -118,4 +118,14 @@ void apply_morphological_filter_bank(const std::vector<cv::Mat> & K,
     int borderType = cv::BORDER_REPLICATE,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
 
+/***/
+void build_morph_gradient_pyramid(cv::InputArray image, cv::InputArray mask,
+    std::vector<cv::Mat> & layers,
+    int max_level);
+
+/***/
+void build_morph_laplacian_pyramid(cv::InputArray image, cv::InputArray mask,
+    std::vector<cv::Mat> & layers,
+    int max_level);
+
 #endif /* __morphology_h__ */

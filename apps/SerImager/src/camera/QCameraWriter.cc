@@ -98,6 +98,7 @@ struct c_avi_file_writer:
 {
   c_ffmpeg_writer ffmpeg;
   double tscale_ = 1;
+  double start_ts = 0;
 
   // "-c huffyuv -r 100 -f avi"
   bool create(const QString & filename, const QString & ffopts, const cv::Size & frame_size,
@@ -128,7 +129,10 @@ struct c_avi_file_writer:
 
   bool write(const QCameraFrame::sptr & frame) override
   {
-    return ffmpeg.write(frame->image(), (int64_t)(tscale_ * frame->ts()));
+    if( ffmpeg.frames_written() < 1 ) {
+      start_ts = frame->ts();
+    }
+    return ffmpeg.write(frame->image(), (int64_t) (tscale_ * (frame->ts() - start_ts)));
   }
 
   virtual void close() override
@@ -150,6 +154,7 @@ struct c_avi_stereo_writer:
   cv::Size output_size;
   stereo_stream_layout_type frame_layout = stereo_stream_layout_horizontal_split;
   double tscale_ = 1;
+  double start_ts = 0;
   bool downscale_panes = false;
 
   bool create(const QString & filename, const QString & ffopts,
@@ -271,8 +276,13 @@ struct c_avi_stereo_writer:
       }
     }
 
-    for ( int i = 0; i < 2; ++i ) {
-      if ( !ffmpegs[i].write(images[i], tscale_ * frame->ts()) ) {
+    if( ffmpegs[0].frames_written() < 1 ) {
+      start_ts = frame->ts();
+    }
+
+
+    for( int i = 0; i < 2; ++i ) {
+      if( !ffmpegs[i].write(images[i], tscale_ * (frame->ts() - start_ts)) ) {
         CF_ERROR("ffmpegs[i=%d].write() fails", i);
         return false;
       }
@@ -956,6 +966,7 @@ void QCameraWriter::writerThreadProc()
 
         if( capture_limits_.type == c_capture_limits::ByTime ) {
           if( capture_duration_ >= max_capture_duration ) {
+            CF_DEBUG("capture_duration_=%g / %g", capture_duration_, max_capture_duration);
             break;
           }
         }

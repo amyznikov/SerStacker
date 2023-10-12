@@ -161,6 +161,11 @@ public:
   static const std::vector<std::string> & supported_encoders();
   static const AVPixelFormat * supported_codec_pix_formats(AVCodecID codec_id);
 
+  int frames_written() const
+  {
+    return frames_written_;
+  }
+
 protected:
   /// write a frame with given pts in stream time_base units
   bool write_frame(const uint8_t * data, int step, int width, int height, int cn, int origin, int64_t pts);

@@ -6,9 +6,10 @@
  */
 
 #include "QMatrixEdit.h"
-#include <core/ssprintf.h>
 #include <gui/widgets/qsprintf.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
+#include "QCameraMatrixDialogBox.h"
 
 
 QMatrixEdit::QMatrixEdit(QWidget * parent) :
@@ -114,6 +115,22 @@ void QMatrixEdit::onTableViewContextMenuRequested(const QPoint &pos)
           setMatrixText(text, true);
         });
   }
+
+  if ( !menu.isEmpty() ) {
+    menu.addSeparator();
+  }
+
+
+//  menu.addAction("Saved Cameras...",
+//      [this]() {
+//
+//        // QCameraMatrixDialogBox dlgbox(this);
+//        // if ( dlgbox.exec() == QDialog::Accepted ) {
+//        //  }
+//
+//      });
+//
+
 
   if ( !menu.isEmpty() ) {
     menu.exec(viewport()->mapToGlobal(pos));

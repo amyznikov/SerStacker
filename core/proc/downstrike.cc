@@ -34,13 +34,19 @@ using namespace cv;
  *    keep only uneven
  * */
 template<class T>
-static void downstrike_even_1c(const cv::Mat & src, cv::Mat & _dst)
+static void downstrike_even_1c(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
 {
   cv::Mat tmp;
 
-  const cv::Size dst_size = src.size() / 2;
+  if( dst_size.empty() ) {
+    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  }
 
-  cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
+
+  cv::Mat &dst =
+      src.data == _dst.data ? tmp :
+          _dst;
+
   dst.create(dst_size, src.type());
   dst.setTo(0);
 
@@ -71,11 +77,13 @@ static void downstrike_even_1c(const cv::Mat & src, cv::Mat & _dst)
  *    keep only even
  * */
 template<class T>
-static void downstrike_uneven_1c(const cv::Mat & src, cv::Mat & _dst)
+static void downstrike_uneven_1c(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
 {
   cv::Mat tmp;
 
-  const cv::Size dst_size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  if( dst_size.empty() ) {
+    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  }
 
   cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
   dst.create(dst_size, src.type());
@@ -109,9 +117,11 @@ static void downstrike_uneven_1c(const cv::Mat & src, cv::Mat & _dst)
  *  REMOVE each EVEN row and column,
  *    keep only uneven
  * */
-static void downstrike_even_mc(const cv::Mat & src, cv::Mat & _dst)
+static void downstrike_even_mc(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
 {
-  const cv::Size dst_size = src.size() / 2;
+  if( dst_size.empty() ) {
+    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  }
 
   cv::Mat tmp;
   cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
@@ -143,13 +153,17 @@ static void downstrike_even_mc(const cv::Mat & src, cv::Mat & _dst)
  *  REMOVE each UNEVEN (ODD) row and column,
  *    keep only even
  * */
-static void downstrike_uneven_mc(const cv::Mat & src, cv::Mat & _dst)
+static void downstrike_uneven_mc(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
 {
   cv::Mat tmp;
 
-  const cv::Size dst_size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  if( dst_size.empty() ) {
+    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  }
 
-  cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
+  cv::Mat & dst =
+      src.data == _dst.data ? tmp :
+          _dst;
 
   dst.create(dst_size, src.type());
   dst.setTo(0);
@@ -179,31 +193,32 @@ static void downstrike_uneven_mc(const cv::Mat & src, cv::Mat & _dst)
  * 2x downsampling step by rejecting each EVEN row and column,
  *    keep only uneven
  * */
-void downstrike_even(cv::InputArray _src, cv::Mat & dst)
+void downstrike_even(cv::InputArray _src, cv::Mat & dst, const cv::Size & size)
 {
   INSTRUMENT_REGION("");
 
- const Mat src = _src.getMat();
+ const Mat src =
+     _src.getMat();
 
   if ( src.channels() > 1 ) {
-    downstrike_even_mc(src, dst);
+    downstrike_even_mc(src, dst, size);
   }
   else {
     switch ( src.type() ) {
     case CV_8U:
-      return downstrike_even_1c<uint8_t>(src, dst);
+      return downstrike_even_1c<uint8_t>(src, dst, size);
     case CV_8S:
-      return downstrike_even_1c<int8_t>(src, dst);
+      return downstrike_even_1c<int8_t>(src, dst, size);
     case CV_16U:
-      return downstrike_even_1c<uint16_t>(src, dst);
+      return downstrike_even_1c<uint16_t>(src, dst, size);
     case CV_16S:
-      return downstrike_even_1c<int16_t>(src, dst);
+      return downstrike_even_1c<int16_t>(src, dst, size);
     case CV_32F:
-      return downstrike_even_1c<float>(src, dst);
+      return downstrike_even_1c<float>(src, dst, size);
     case CV_64F:
-      return downstrike_even_1c<double>(src, dst);
+      return downstrike_even_1c<double>(src, dst, size);
     default:
-      return downstrike_even_mc(src, dst);
+      return downstrike_even_mc(src, dst, size);
     }
   }
 }
@@ -213,29 +228,29 @@ void downstrike_even(cv::InputArray _src, cv::Mat & dst)
  * 2x downsampling step by rejecting each UNEVEN (ODD) row and column,
  *    keep only even
  * */
-void downstrike_uneven(cv::InputArray _src, cv::Mat & dst)
+void downstrike_uneven(cv::InputArray _src, cv::Mat & dst, const cv::Size & size)
 {
   const Mat src = _src.getMat();
 
   if ( src.channels() > 1 ) {
-    downstrike_uneven_mc(src, dst);
+    downstrike_uneven_mc(src, dst, size);
   }
   else {
     switch ( src.type() ) {
     case CV_8U:
-      return downstrike_uneven_1c<uint8_t>(src, dst);
+      return downstrike_uneven_1c<uint8_t>(src, dst, size);
     case CV_8S:
-      return downstrike_uneven_1c<int8_t>(src, dst);
+      return downstrike_uneven_1c<int8_t>(src, dst, size);
     case CV_16U:
-      return downstrike_uneven_1c<uint16_t>(src, dst);
+      return downstrike_uneven_1c<uint16_t>(src, dst, size);
     case CV_16S:
-      return downstrike_uneven_1c<int16_t>(src, dst);
+      return downstrike_uneven_1c<int16_t>(src, dst, size);
     case CV_32F:
-      return downstrike_uneven_1c<float>(src, dst);
+      return downstrike_uneven_1c<float>(src, dst, size);
     case CV_64F:
-      return downstrike_uneven_1c<double>(src, dst);
+      return downstrike_uneven_1c<double>(src, dst, size);
     default:
-      return downstrike_uneven_mc(src, dst);
+      return downstrike_uneven_mc(src, dst, size);
     }
   }
 }
@@ -509,11 +524,12 @@ static void upject_uneven_mc(const Mat & src, Mat & _dst, Size dstSize, Mat * _z
 /*
  * 2x upsampling step by injecting EVEN ZERO rows and columns ...
  * */
-void upject_even(cv::InputArray _src, Mat & dst, Size dstSize, Mat * _zmask, int zmdepth)
+void upject_even(cv::InputArray _src, Mat & dst, cv::Size dstSize, Mat * _zmask, int zmdepth)
 {
   INSTRUMENT_REGION("");
 
-  const Mat src = _src.getMat();
+  const Mat src =
+      _src.getMat();
 
   if ( dstSize.empty() ) {
     dstSize = src.size() * 2;

@@ -332,6 +332,7 @@ bool c_epipolar_matcher::match(cv::InputArray _current_image, cv::InputArray _cu
 //        continue;
 //      }
 //
+
 //      int best_cx = rx;
 //      int best_cy = ry;
 //
@@ -433,6 +434,7 @@ bool c_epipolar_matcher::match(cv::InputArray _current_image, cv::InputArray _cu
 //        }
 //      }
 //
+
 //      //if ( back_matches_[best_cy][best_cx][0] < 0 )
 //      if ( best_cx != rx || best_cy != ry )
 //      {

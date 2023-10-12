@@ -33,6 +33,12 @@ bool c_crop_image_routine::serialize(c_config_setting settings, bool save)
 
 bool c_crop_image_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  cv::Size size = image.size();
 
-  return false;
+  cv::Mat1b m(size, 255);
+  cv::rectangle(m, cv::Rect(4, 2, size.width-8, size.height-4), 0, -1);
+
+  image.setTo(0, m);
+
+  return true;
 }

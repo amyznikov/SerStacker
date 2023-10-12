@@ -6,6 +6,7 @@
  */
 
 #include "morphology.h"
+#include <core/proc/downstrike.h>
 
 void morphological_smooth_close(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
     int borderType, const cv::Scalar & borderValue)
@@ -159,5 +160,110 @@ void apply_morphological_filter_bank(const std::vector<cv::Mat> & K,
   }
 
   cv::subtract(Max, Min, dst);
+}
+
+
+/***/
+void build_morph_gradient_pyramid(cv::InputArray image, cv::InputArray mask,
+    std::vector<cv::Mat> & layers,
+    int max_level)
+{
+  static const cv::Mat1b GSE(3, 3, 255);
+
+  std::vector<cv::Mat> pyramid;
+  cv::Mat tmp;
+
+  cv::buildPyramid(image, pyramid, max_level,
+      cv::BORDER_REPLICATE);
+
+  layers.resize(pyramid.size());
+
+  for( int l = 0, n = pyramid.size(); l < n; ++l ) {
+
+    cv::morphologyEx(pyramid[l], layers[l],
+        cv::MORPH_GRADIENT,
+        GSE,
+        cv::Point(-1, -1),
+        1,
+        cv::BORDER_REPLICATE);
+
+    if ( l > 0 ) {
+
+      cv::morphologyEx(layers[l-1], tmp,
+          cv::MORPH_DILATE,
+          GSE,
+          cv::Point(1,1),
+          1,
+          cv::BORDER_REPLICATE);
+
+       cv::pyrDown(tmp, tmp, pyramid[l].size(),
+           cv::BORDER_REPLICATE);
+
+      cv::max(layers[l], tmp,
+          layers[l]);
+    }
+  }
+}
+
+/***/
+void build_morph_laplacian_pyramid(cv::InputArray image, cv::InputArray mask,
+    std::vector<cv::Mat> & layers,
+    int max_level)
+{
+//
+//  static constexpr float g[5] = {
+//      1./16, 1./4, 3./8, 1./4, 1./16
+//  };
+//
+//  static const cv::Mat1f Gx(1, 5, (float*)g);
+//  static const cv::Mat1f Gy(5, 1, (float*)g);
+//  static const cv::Mat1b GSE(3, 3, 255);
+//
+//  layers.clear();
+//  layers.reserve(10);
+//
+//  cv::Mat tmp1;
+//
+//  while ( 42 ) {
+//
+//    cv::Mat tmp2;
+//
+//    if ( tmp1.empty() ) {
+//      cv::sepFilter2D(image, tmp1, image.depth(), Gx, Gy, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//    }
+//    else {
+//      cv::sepFilter2D(tmp1, tmp1, tmp1.depth(), Gx, Gy, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//    }
+//
+//    cv::absdiff(tmp1, tmp2, tmp2);
+//    layers.emplace_back(tmp2);
+//
+//    if ( layers.size() > 1 ) {
+//      cv::Mat tmp3;
+//      cv::dilate(layers[layers.size()-2], tmp3, GSE, cv::Point(-1,01), 1, cv::BORDER_REPLICATE);
+//      cv::pyrDown(tmp3, tmp3, tmp1.size());
+//      cv::max(layers.back(), tmp3, layers.back());
+//    }
+//
+//
+//    if( max_level > 0 && layers.size() >= max_level ) {
+//      break;
+//    }
+//
+//    const cv::Size current_size =
+//        tmp1.size();
+//
+//    const cv::Size next_size =
+//        cv::Size((current_size.width + 1) / 2, (current_size.height + 1) / 2);
+//
+//    if ( std::min( next_size.width, next_size.height) < 4 ) {
+//      break;
+//    }
+//
+//    downstrike_even(tmp1, tmp1, next_size);
+//  }
+//
+
+
 }
 

@@ -19,7 +19,7 @@
 #include <zlib.h>
 #include <vector>
 
-bool compress(const void * data, uint size,
+bool compress(const void * data, uint32_t size,
     std::vector<uint8_t> * output);
 
 #endif /* __compress_h__ */

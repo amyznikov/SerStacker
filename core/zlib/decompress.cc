@@ -9,12 +9,12 @@
 #include "decompress.h"
 #include <core/debug.h>
 
-bool decompress(const void * data, uint size, std::vector<uint8_t> * output)
+bool decompress(const void * data, uint32_t size, std::vector<uint8_t> * output)
 {
   z_stream inflate_s = { 0 };
   size_t size_decompressed = 0;
 
-  constexpr uint max_bytes = 2000000000;
+  constexpr uint32_t max_bytes = 2000000000;
 
   // The windowBits parameter is the base two logarithm of the window size (the size of the history buffer).
   // It should be in the range 8..15 for this version of the library.
@@ -32,7 +32,7 @@ bool decompress(const void * data, uint size, std::vector<uint8_t> * output)
   }
 
   inflate_s.next_in = (z_const Bytef*)(data);
-  inflate_s.avail_in = static_cast<uint>(size);
+  inflate_s.avail_in = static_cast<uint32_t>(size);
 
 
   do {
@@ -44,7 +44,7 @@ bool decompress(const void * data, uint size, std::vector<uint8_t> * output)
     }
 
     output->resize(resize_to);
-    inflate_s.avail_out = static_cast<uint>(2 * size);
+    inflate_s.avail_out = static_cast<uint32_t>(2 * size);
     inflate_s.next_out = reinterpret_cast<Bytef*>(&output[0] + size_decompressed);
 
     int ret = inflate(&inflate_s, Z_FINISH);

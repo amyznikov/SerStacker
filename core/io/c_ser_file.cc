@@ -6,8 +6,11 @@
  */
 
 #include "c_ser_file.h"
-#include <byteswap.h>
-#include <endian.h>
+// #include <endian.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <core/proc/bswap.h>
 #include <tbb/tbb.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -496,7 +499,11 @@ bool c_ser_writer::close()
 bool c_ser_writer::flush()
 {
   if ( fd >= 0 ) {
+#if _WIN32 || _WIN64
+    _commit(fd);
+#else
     fdatasync(fd);
+#endif
     return true;
   }
   return false;

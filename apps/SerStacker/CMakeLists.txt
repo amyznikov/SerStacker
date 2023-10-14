@@ -28,6 +28,12 @@ endforeach()
 
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
+if (WIN32)
+set(OpenGL_LIBS GLU32 opengl32)
+else()
+set(OpenGL_LIBS GLU GL)
+endif()
+
 set(LIBRARIES  
   gui
   Qt${QT_VERSION}::Core
@@ -37,8 +43,9 @@ set(LIBRARIES
   Qt${QT_VERSION}::MultimediaWidgets 
   Qt${QT_VERSION}::Xml
   Qt${QT_VERSION}::PrintSupport
-  GLU
-  GL)
+  ${OpenGL_LIBS}
+  )
+  
 
 if ( "${QT_VERSION}" STREQUAL "6" )
 set(LIBRARIES
@@ -50,6 +57,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${LIBRARIES}
   ${CORE_LIBRARIES})
 
+message(STATUS "CORE_LIBRARIES= ${CORE_LIBRARIES}")
 
 # Install
 

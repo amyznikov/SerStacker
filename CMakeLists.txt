@@ -414,18 +414,21 @@ foreach( module ${Qt_REQUIRED_COMPONENTS} )
 	include_directories(${QtModuleIncludePath})
 endforeach()
 
+#if (WIN32)
+set(Shlwapi_LIB Shlwapi)
+#endif()
+
 set(CORE_LIBRARIES
 	core
 	${LIBCONFIG_LIBRARIES}
 	${OpenCV_LIBS}
-#	lapack
-#	blas
 	${FFMPEG_LIBRARIES}
 	${TIFF_LIBRARIES}
 	${LIBRAW_LIBRARY}
 	${CFITSIO_LIBRARY}
 	${OPENRAW_LIBS}
     ${TBB_LIBRARIES}
+    ${Shlwapi_LIB}
 	pthread)
 
 

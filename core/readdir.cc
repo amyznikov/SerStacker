@@ -28,6 +28,7 @@
 # include <pwd.h>
 # include <ftw.h>
 # include <fnmatch.h>
+
 #else
 
 // https://stackoverflow.com/questions/11238918/s-isreg-macro-undefined/22404853
@@ -36,26 +37,34 @@
 // in order for Microsoft's stat.h to define names like S_IFMT, S_IFREG, and S_IFDIR,
 // rather than just defining  _S_IFMT, _S_IFREG, and _S_IFDIR as it normally does.
 # define _CRT_INTERNAL_NONSTDC_NAMES 1
-# include <sys/stat.h>
-# include <windows.h>
-# include "Shlwapi.h"
-# include <io.h>
-# if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
-#   define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-# endif
-# if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
-#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
-# endif
 
+#if __MINGW32__ || __MINGW64__
+# include <unistd.h>
+# include <sys/types.h>
+# include <ftw.h>
+//# include <pwd.h>
+#endif
+
+# include <windows.h>
+# include <sys/stat.h>
+# include <Shlwapi.h>
 # include <io.h>
-# include "Shlwapi.h"
-# include <io.h>
+
 # if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
 #   define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 # endif
 # if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
 #   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 # endif
+#ifndef S_ISLNK
+#ifdef __S_IFLNK
+#define S_ISLNK(mode)	__S_ISTYPE((mode), __S_IFLNK)
+#else
+#define S_ISLNK(mode)	0
+#endif
+#endif
+
+
 
 
 // flags for access() https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/access-waccess?view=msvc-160
@@ -523,6 +532,11 @@ std::string get_home_directory()
     return home;
   }
 
+#if __WIN32 || __WIN64
+  if ( !home ) {
+    errno = ENOENT;
+  }
+#else
 
   struct passwd pwd;
   struct passwd * result;
@@ -541,7 +555,7 @@ std::string get_home_directory()
   else {
     errno = status;
   }
-
+#endif
   return "";
 }
 

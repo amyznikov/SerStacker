@@ -199,6 +199,7 @@ std::string toString(int64_t v)
   return s;
 }
 
+#ifndef _WIN32
 // long long
 std::string toString(long long v)
 {
@@ -214,6 +215,7 @@ std::string toString(unsigned long long v)
   snprintf(s, sizeof(s) - 1, "%llu", v);
   return s;
 }
+#endif
 
 bool fromString(const std::string & s, int64_t * v)
 {

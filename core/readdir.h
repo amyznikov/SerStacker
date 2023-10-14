@@ -49,7 +49,7 @@ enum {
 #endif
 
 #ifdef _WIN32
-  typedef int mode_t;
+  // typedef int mode_t;
 # define DEFAULT_MKDIR_MODE 0
 # else
 # define DEFAULT_MKDIR_MODE \

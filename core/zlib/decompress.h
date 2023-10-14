@@ -19,7 +19,7 @@
 #include <zlib.h>
 #include <vector>
 
-bool decompress(const void * data, uint size,
+bool decompress(const void * data, uint32_t size,
     std::vector<uint8_t> * output);
 
 #endif /* __decompress_h__ */

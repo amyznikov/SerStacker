@@ -85,7 +85,7 @@ public:
   Format format() const;
   void set_format(Format format);
 
-  uint source_line() const;
+  uint32_t source_line() const;
   const char * source_file() const;
 
 
@@ -138,7 +138,7 @@ public:
     return get_member(setting_, name);
   }
 
-  c_config_setting get_element(uint index) const {
+  c_config_setting get_element(uint32_t index) const {
     return get_element(setting_ , index);
   }
 
@@ -146,7 +146,7 @@ public:
     return get_element(setting_, index);
   }
 
-  bool remove_element(uint index) {
+  bool remove_element(uint32_t index) {
     return remove_element(setting_, index);
   }
 
@@ -159,7 +159,7 @@ public:
     return get_value(get_member(setting_, name.c_str()), value);
   }
   template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
-  inline get(uint index, T * value) const {
+  inline get(uint32_t index, T * value) const {
     return get_value(get_element(setting_, index), value);
   }
   template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
@@ -178,7 +178,7 @@ public:
     return set_value(add_member(setting_, name.c_str(), c_config_type_traits<T>::type), value);
   }
   template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
-  inline set(uint index, const T & value) {
+  inline set(uint32_t index, const T & value) {
     return set_value(get_element(setting_, index), value);
   }
   template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
@@ -195,9 +195,9 @@ protected:
   static config_setting_t * get_member(const config_setting_t *setting, const char * name);
   static config_setting_t * add_member(config_setting_t *setting, const char * name, int type);
 
-  static config_setting_t * get_element(const config_setting_t *setting, uint index);
+  static config_setting_t * get_element(const config_setting_t *setting, uint32_t index);
   static config_setting_t * add_element(config_setting_t *setting, int type);
-  static bool remove_element(config_setting_t *setting, uint index);
+  static bool remove_element(config_setting_t *setting, uint32_t index);
 
   static bool get_value(const config_setting_t *setting, bool * value);
   static bool get_value(const config_setting_t *setting, int8_t * value);
@@ -272,11 +272,11 @@ public:
   void set_default_format(c_config_setting::Format format);
   c_config_setting::Format default_format() const;
 
-  void set_tab_width(ushort width);
-  ushort tab_width() const;
+  void set_tab_width(uint16_t width);
+  uint16_t tab_width() const;
 
-  void set_float_precision(ushort digits);
-  ushort float_precision() const;
+  void set_float_precision(uint16_t digits);
+  uint16_t float_precision() const;
 
   void set_include_dir(const char *includeDir);
   const char * include_dir() const;
@@ -466,7 +466,7 @@ struct c_libconfig_flag_desc {
 
 bool libconfig_parse_flags(c_config_setting settings,
     const c_libconfig_flag_desc fdescs[/*ndescs*/],
-    uint ndescs, int * flags);
+    uint32_t ndescs, int * flags);
 
 #define BEGIN_LOAD_OPTIONS(cfg) \
   if ( !(cfg) ) { \
@@ -492,7 +492,7 @@ bool libconfig_parse_flags(c_config_setting settings,
 #define LOAD_FLAGS(cfg, opts, param, fdesc) \
   if ( strcmp(current_option_name, #param) == 0 ) { \
     int flags = 0; \
-    const uint nflags = sizeof(fdesc) / sizeof(fdesc[0]); \
+    const uint32_t nflags = sizeof(fdesc) / sizeof(fdesc[0]); \
     if ( !::libconfig_parse_flags(current_option, fdesc, nflags, &flags) ) { \
       CF_ERROR("libconfig_parse_flags(%s.%s) fails", (cfg).name(), current_option_name); \
       return false; \

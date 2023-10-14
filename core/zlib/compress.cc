@@ -10,7 +10,7 @@
 #include <core/debug.h>
 
 
-bool compress(const void * data, uint size, std::vector<uint8_t> * output)
+bool compress(const void * data, uint32_t size, std::vector<uint8_t> * output)
 {
   z_stream deflate_s = {0};
   std::size_t size_compressed = 0;
@@ -49,7 +49,7 @@ bool compress(const void * data, uint size, std::vector<uint8_t> * output)
     }
     // There is no way we see that "increase" would not fit in an unsigned int,
     // hence we use static cast here to avoid -Wshorten-64-to-32 error
-    deflate_s.avail_out = (uint)increase;
+    deflate_s.avail_out = (uint32_t)increase;
     deflate_s.next_out = (Bytef*)((output->data() + size_compressed));
     deflate(&deflate_s, Z_FINISH);
 

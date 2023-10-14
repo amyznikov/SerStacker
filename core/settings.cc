@@ -93,22 +93,22 @@ c_config_setting::Format c_config::default_format() const
   return defaultFormat_;
 }
 
-void c_config::set_tab_width(ushort width)
+void c_config::set_tab_width(uint16_t width)
 {
   config_set_tab_width(&config_, width);
 }
 
-ushort c_config::tab_width() const
+uint16_t c_config::tab_width() const
 {
   return(config_get_tab_width(&config_));
 }
 
-void c_config::set_float_precision(ushort digits)
+void c_config::set_float_precision(uint16_t digits)
 {
   return (config_set_float_precision(&config_,digits));
 }
 
-ushort c_config::float_precision() const
+uint16_t c_config::float_precision() const
 {
   return (config_get_float_precision(&config_));
 }
@@ -334,7 +334,7 @@ void c_config_setting::set_format(c_config_setting::Format format)
   }
 }
 
-uint c_config_setting::source_line() const
+uint32_t c_config_setting::source_line() const
 {
   return setting_ ? (config_setting_source_line(setting_)) : 0;
 }
@@ -380,7 +380,7 @@ config_setting_t * c_config_setting::add_member(config_setting_t *setting, const
 }
 
 
-config_setting_t * c_config_setting::get_element(const config_setting_t *setting, uint index)
+config_setting_t * c_config_setting::get_element(const config_setting_t *setting, uint32_t index)
 {
   return setting ? config_setting_get_elem(setting, index) : nullptr;
 }
@@ -392,7 +392,7 @@ config_setting_t * c_config_setting::add_element(config_setting_t *setting, int 
 }
 
 
-bool c_config_setting::remove_element(config_setting_t *setting, uint index)
+bool c_config_setting::remove_element(config_setting_t *setting, uint32_t index)
 {
   return setting ? config_setting_remove_elem(setting, index) : false;
 }
@@ -550,7 +550,7 @@ bool c_config_setting::set_value(config_setting_t *setting, const std::string & 
 }
 
 
-bool libconfig_parse_flags(c_config_setting settings, const c_libconfig_flag_desc fdescs[/*ndescs*/], uint ndescs, int * flags)
+bool libconfig_parse_flags(c_config_setting settings, const c_libconfig_flag_desc fdescs[/*ndescs*/], uint32_t ndescs, int * flags)
 {
   if ( !settings ) {
     CF_ERROR("libconfig settings is null in %s",
@@ -565,7 +565,7 @@ bool libconfig_parse_flags(c_config_setting settings, const c_libconfig_flag_des
     const std::vector<std::string> tokens =
         strsplit(sflags, " \t\n|+;");
 
-    uint i;
+    uint32_t i;
 
     for ( const std::string & sflag : tokens ) {
       const char * cflag = sflag.c_str();

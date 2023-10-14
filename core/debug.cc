@@ -10,13 +10,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef __APPLE__
+#if __APPLE__
 # include <stdlib.h>
 # include <thread>
 #else
 # include <malloc.h>
 #endif
 
+#include <inttypes.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
@@ -24,9 +25,14 @@
 #include <mutex>
 //#include <string>
 
-#include <sys/syscall.h>
-#include <ucontext.h>
-#include <execinfo.h>
+#if __linux
+# include <sys/syscall.h>
+# include <ucontext.h>
+# include <execinfo.h>
+#elif defined(_WIN32) || defined(_WIN64)
+# include <windows.h>       // Or something like it.
+#endif
+
 
 // current log time stamp
 namespace {
@@ -223,7 +229,7 @@ void cf_set_loglevel_str(const char * ll)
         {"DEBUG", CF_LOG_DEBUG },   /* debug-level messages */
     };
 
-    for ( uint i = 0; i < sizeof(llevels) / sizeof(llevels[0]); ++i ) {
+    for ( uint32_t i = 0; i < sizeof(llevels) / sizeof(llevels[0]); ++i ) {
       if ( strcasecmp(llevels[i].name, ll) == 0 ) {
         cf_set_loglevel(llevels[i].value);
         break;
@@ -557,6 +563,10 @@ void c_callgraph_dump::dump_node(FILE * fp, const c_graph_node * node, int level
 
 #endif // ENABLE_TIME_INSTRUMENTATION
 
+
+
+#if __UNIX
+
 /**
  * Custom signal handler
  */
@@ -609,6 +619,7 @@ static void my_signal_handler(int signum, siginfo_t *si, void * context)
     exit(status);
   }
 }
+#endif  // __UNIX
 
 
 /**
@@ -617,6 +628,7 @@ static void my_signal_handler(int signum, siginfo_t *si, void * context)
  */
 bool cf_setup_signal_handler(void)
 {
+#if __UNIX
   struct sigaction sa;
   int sig;
 
@@ -632,7 +644,7 @@ bool cf_setup_signal_handler(void)
       return false;
     }
   }
-
+#endif
   return true;
 }
 

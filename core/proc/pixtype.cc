@@ -6,8 +6,30 @@
  */
 
 #include "pixtype.h"
+#include <stdint.h>
 #include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
+
+// MINGW hack
+#ifndef UINT8_WIDTH
+# define UINT8_WIDTH 8
+#endif
+#ifndef INT8_WIDTH
+# define INT8_WIDTH 8
+#endif
+#ifndef UINT16_WIDTH
+# define UINT16_WIDTH 16
+#endif
+#ifndef INT16_WIDTH
+# define INT16_WIDTH 16
+#endif
+#ifndef UINT32_WIDTH
+# define UINT32_WIDTH 32
+#endif
+#ifndef INT32_WIDTH
+# define INT32_WIDTH 32
+#endif
+
 
 template<>
 const c_enum_member * members_of<PIXEL_DEPTH>()

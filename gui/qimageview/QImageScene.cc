@@ -13,6 +13,7 @@ QImageScene::QImageScene(QObject * parent)
   : Base(parent)
 {
   pixmapItem_ = addPixmap(QPixmap());
+  pixmapItem_->setZValue(-1000);
   pixmapItem_->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
   pixmapItem_->setFlags(pixmapItem_->flags() &
       ~(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable));
@@ -78,6 +79,31 @@ QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
 
 void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *e)
 {
+  CF_DEBUG("QImageScene::contextMenuEvent");
+
+  //  menu.addAction("Send to back",
+  //      [this]() {
+  //
+  //      //this->stackBefore();
+  //
+  //        CF_DEBUG("zValue=%g", this->zValue());
+  //
+  //        QGraphicsScene * scene =
+  //            this->scene();
+  //        if ( scene ) {
+  //          QList<QGraphicsItem *> collidingItems = scene->collidingItems(this, Qt::IntersectsItemShape);
+  //          CF_DEBUG("collidingItems.size=%d", collidingItems.size());
+  //          if ( collidingItems.size() > 1 ) {
+  //            //scene->
+  //
+  //          }
+  //
+  //        }
+  //
+  //  });
+  //
+  //  menu.addSeparator();
+
   Base::contextMenuEvent(e);
 }
 

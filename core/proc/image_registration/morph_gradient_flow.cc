@@ -238,6 +238,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
   cv::Mat absdiff_image;
   cv::Mat1f best_iteration;
   cv::Mat best_cost;
+  cv::Mat1b excounter;
 
   if( current_image.size() != reference_image.size() ) {
     CF_ERROR("INPUT ERROR: current and reference image sizes not equal:\n"
@@ -322,6 +323,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
     best_iteration = cv::Mat1f(reference_image_size, 0);
     best_cost = cv::Mat(reference_image_size, reference_image.depth(), cv::Scalar::all(255));
+    excounter = cv::Mat1b(reference_image_size, 0);
 
     cv::Mat selection_mask;
 
@@ -371,9 +373,11 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         }
       }
 
+
       cv::compare(absdiff_image, best_cost, selection_mask, cv::CMP_LT);
       absdiff_image.copyTo(best_cost, selection_mask);
       best_iteration.setTo(iteration, selection_mask);
+      cv::add(excounter, 1, excounter, selection_mask);
     }
 
 
@@ -395,6 +399,15 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
               debug_path.c_str(), l);
 
       if( !save_image(best_iteration, best_cost < FLT_MAX, filename) ) {
+        CF_ERROR("save_image('%s') fails", filename.c_str());
+        return false;
+      }
+
+      filename =
+          ssprintf("%s/best/excounter.%03d.tiff",
+              debug_path.c_str(), l);
+
+      if( !save_image(excounter, filename) ) {
         CF_ERROR("save_image('%s') fails", filename.c_str());
         return false;
       }

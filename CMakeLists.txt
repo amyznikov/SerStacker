@@ -414,9 +414,9 @@ foreach( module ${Qt_REQUIRED_COMPONENTS} )
 	include_directories(${QtModuleIncludePath})
 endforeach()
 
-#if (WIN32)
+if (WIN32)
 set(Shlwapi_LIB Shlwapi)
-#endif()
+endif()
 
 set(CORE_LIBRARIES
 	core

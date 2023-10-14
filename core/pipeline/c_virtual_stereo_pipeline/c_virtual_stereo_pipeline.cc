@@ -107,26 +107,6 @@ const c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options(
   return camera_pose_options_;
 }
 
-c_virtual_stereo_epipolar_flow_options & c_virtual_stereo_pipeline::epipolar_flow_options()
-{
-  return epipolar_flow_options_;
-}
-
-const c_virtual_stereo_epipolar_flow_options & c_virtual_stereo_pipeline::epipolar_flow_options() const
-{
-  return epipolar_flow_options_;
-}
-
-c_virtual_stereo_pyrflowlk_options & c_virtual_stereo_pipeline::pyrflowlk_options()
-{
-  return pyrflowlk_options_;
-}
-
-const c_virtual_stereo_pyrflowlk_options & c_virtual_stereo_pipeline::pyrflowlk_options() const
-{
-  return pyrflowlk_options_;
-}
-
 c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options()
 {
   return output_options_;
@@ -195,14 +175,14 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, epipolar_flow_options_, reference_smooth_sigma);
   }
 
-  if( (section = SERIALIZE_GROUP(settings, save, "pyrflowlk")) ) {
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, enabled);
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, max_pyramid_level);
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, block_radius);
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, search_radius);
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, enable_debug);
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, detector);
-    SERIALIZE_OPTION(section, save, pyrflowlk_options_, pyrflowlk);
+  if( (section = SERIALIZE_GROUP(settings, save, "morph_gradient_flow")) ) {
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, enabled);
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, max_pyramid_level);
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, block_radius);
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, search_radius);
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, enable_debug);
+    //SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, detector);
+    //SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, pyrflowlk);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
@@ -296,23 +276,12 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
 
     ////////
-    PIPELINE_CTL_GROUP(ctrls, "pyrflowlk (morph_gradient_flow)", "");
-      PIPELINE_CTL(ctrls, pyrflowlk_options_.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
-      PIPELINE_CTL(ctrls, pyrflowlk_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
-      PIPELINE_CTL(ctrls, pyrflowlk_options_.block_radius, "block_radius", "block_radius");
-      PIPELINE_CTL(ctrls, pyrflowlk_options_.search_radius, "search_radius", "search_radius");
-
-      PIPELINE_CTL(ctrls, pyrflowlk_options_.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
-      PIPELINE_CTL_GROUP(ctrls, "Keypoints Detector Options", "");
-        PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, pyrflowlk_options_.detector);
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_GROUP(ctrls, "Pyrflowlk2 Options", "");
-        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.maxLevel, "maxLevel" , "");
-        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.winSize, "winSize" , "");
-        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.maxIterations, "maxIterations" , "");
-        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.eps, "eps" , "");
-        PIPELINE_CTL(ctrls, pyrflowlk_options_.pyrflowlk.flags, "flags" , "");
-      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_GROUP(ctrls, "morph_gradient_flow", "");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.block_radius, "block_radius", "block_radius");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.search_radius, "search_radius", "search_radius");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////
 
@@ -712,7 +681,7 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     return false;
   }
 
-  if ( !run_pyrflowlk() ) {
+  if ( !run_morph_gradient_flow() ) {
     CF_ERROR("run_pyrflowlk2() fails");
     return false;
   }
@@ -1190,9 +1159,9 @@ bool c_virtual_stereo_pipeline::run_epipolar_flow()
   return true;
 }
 
-bool c_virtual_stereo_pipeline::run_pyrflowlk()
+bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
 {
-  if ( !pyrflowlk_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
+  if ( !morph_gradient_flow_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
     return true; // ignore
   }
 
@@ -1203,7 +1172,7 @@ bool c_virtual_stereo_pipeline::run_pyrflowlk()
   cv::Mat1f cost;
 
   const std::string debug_path =
-      pyrflowlk_options_.enable_debug ?
+      morph_gradient_flow_options_.enable_debug ?
           ssprintf("%s/morph_gradient_flow/%03d",
               output_path_.c_str(), input_sequence_->current_pos() - 1) :
           "";
@@ -1236,9 +1205,9 @@ bool c_virtual_stereo_pipeline::run_pyrflowlk()
   bool fOK =
       morph_gradient_flow(derotated_current_image, derotated_current_mask,
           previous_image, previous_mask,
-          pyrflowlk_options_.max_pyramid_level,
-          pyrflowlk_options_.block_radius,
-          pyrflowlk_options_.search_radius,
+          morph_gradient_flow_options_.max_pyramid_level,
+          morph_gradient_flow_options_.block_radius,
+          morph_gradient_flow_options_.search_radius,
           currentEpipole_,
           disp,
           cost,
@@ -1249,176 +1218,6 @@ bool c_virtual_stereo_pipeline::run_pyrflowlk()
     return false;
   }
 
-
-//
-//  if( !pyrflowlk_keypoints_detector_ ) {
-//    pyrflowlk_keypoints_detector_ =
-//        create_sparse_feature_detector(pyrflowlk_options_.detector);
-//    if( !pyrflowlk_keypoints_detector_ ) {
-//      CF_ERROR("create_sparse_feature_detector(pyrflowlk_options_.detector) fails");
-//      return false;
-//    }
-//  }
-//
-//
-//  std::vector<cv::KeyPoint> previous_keypoints;
-//  std::vector<cv::KeyPoint> predicted_keypoints;
-//  std::vector<uint8_t> status;
-//  std::vector<float> errors;
-//
-//  pyrflowlk_keypoints_detector_->detect(previous_image_,
-//      previous_keypoints,
-//      previous_mask_);
-//
-//  if ( previous_keypoints.empty() ) {
-//    CF_ERROR("No keypoints detected");
-//    return true; // ignore frame
-//  }
-//
-//
-//  bool fOk =
-//      pyrflowlk2(previous_image_, current_image_,
-//          previous_keypoints, predicted_keypoints,
-//          status,
-//          errors,
-//          pyrflowlk_options_.pyrflowlk);
-//
-//  if ( !fOk ) {
-//    CF_ERROR("pyrflowlk2() fails");
-//    return false;
-//  }
-//
-
-
-//  cv::Mat current_image, current_mask;
-//  cv::Mat previous_image, previous_mask;
-//  cv::Mat derotated_current_image, derotated_current_mask;
-//  cv::Mat display;
-//  cv::Mat2f derotation_rmap;
-//  std::vector<cv::KeyPoint> previous_keypoints;
-//  std::vector<cv::Point2f> previous_positions, predicted_previous_positions;
-//  std::vector<uint8_t> status;
-//  std::vector<float> err;
-//
-//  c_homography_image_transform image_transform;
-//
-//
-//  previous_mask = previous_mask_;
-//  if ( previous_image_.channels() == 1 ) {
-//    previous_image = previous_image_;
-//  }
-//  else {
-//    cv::cvtColor(previous_image_, previous_image, cv::COLOR_BGR2GRAY);
-//  }
-//
-//  if ( current_image_.channels() == 1 ) {
-//    current_image = current_image_;
-//  }
-//  else {
-//    cv::cvtColor(current_image_, current_image, cv::COLOR_BGR2GRAY);
-//  }
-//
-//
-//  if( !pyrflowlk_keypoints_detector_ ) {
-//    pyrflowlk_keypoints_detector_ =
-//        create_sparse_feature_detector(pyrflowlk_options_.detector);
-//    if( !pyrflowlk_keypoints_detector_ ) {
-//      CF_ERROR("create_sparse_feature_detector() fails");
-//      return false;
-//    }
-//  }
-//
-//  if( true ) {
-//    INSTRUMENT_REGION("pyrflowlk_keypoints_detector_");
-//    pyrflowlk_keypoints_detector_->detect(previous_image, previous_keypoints, previous_mask);
-//  }
-//
-//  CF_DEBUG("previous_keypoints.size=%zu", previous_keypoints.size());
-//
-//  previous_positions.reserve(previous_keypoints.size());
-//  for( const cv::KeyPoint &p : previous_keypoints_ ) {
-//    previous_positions.emplace_back(p.pt);
-//  }
-//
-//  image_transform.set_homography_matrix(currentDerotationHomography_.inv());
-//  image_transform.create_remap(derotation_rmap, previous_image.size());
-//  //cv::remap(current_image, derotated_current_image, derotation_rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_DEFAULT);
-//  derotated_current_image = current_image;
-//
-//
-//  if ( true ) {
-//    INSTRUMENT_REGION("calcOpticalFlowPyrLK");
-//
-//    cv::calcOpticalFlowPyrLK(previous_image, derotated_current_image,
-//        previous_positions, predicted_previous_positions,
-//        status, err,
-//        cv::Size(15, 15),
-//        pyrflowlk_options_.max_pyramid_level,
-//        cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 10, 0.03),
-//        0,
-//        0);
-//  }
-//
-//  if( pyrflowlk_options_.enable_debug ) {
-//
-//    const std::string outputpath =
-//        ssprintf("%s/pyrflowlk/PyrLK%03d",
-//            output_path_.c_str(),
-//            input_sequence_->current_pos() - 1);
-//
-//    std::string filename;
-//
-//    if( !save_image(previous_image, filename = ssprintf("%s/previous_image.png", outputpath.c_str())) ) {
-//      CF_ERROR("save_image('%s') fails", filename.c_str());
-//      return false;
-//    }
-//
-//    if( !save_image(current_image, filename = ssprintf("%s/current_image.png", outputpath.c_str())) ) {
-//      CF_ERROR("save_image('%s') fails", filename.c_str());
-//      return false;
-//    }
-//
-//    if( !save_image(derotated_current_image,
-//        filename = ssprintf("%s/derotated_current_image.png", outputpath.c_str())) ) {
-//      CF_ERROR("save_image('%s') fails", filename.c_str());
-//      return false;
-//    }
-//
-//    ///////////
-//
-//    if ( previous_image.channels() == 3 ) {
-//      previous_image.copyTo(display);
-//    }
-//    else {
-//      cv::cvtColor(previous_image, display, cv::COLOR_GRAY2BGR);
-//    }
-//
-//    int numMatches = 0;
-//    for ( int i = 0, n = previous_keypoints.size(); i < n; ++i ) {
-//      if ( status[i] ) {
-//
-//        cv::Scalar color = CV_RGB(255, 255 - 10 * err[i], 0);
-//
-//        const cv::Point2f & ppt = previous_positions[i];
-//        const cv::Point2f & cpt = predicted_previous_positions[i];
-//
-//        cv::line(display, ppt, cpt, color, 1, cv::LINE_8);
-//        cv::rectangle(display, cv::Rect(ppt.x-1, ppt.y-1, 3,3), color, 1);
-//        ++numMatches;
-//      }
-//    }
-//
-//    CF_DEBUG("numMatches: %d", numMatches);
-//
-//    if( !save_image(display,
-//        filename = ssprintf("%s/predicted_previous_positions.png", outputpath.c_str())) ) {
-//      CF_ERROR("save_image('%s') fails", filename.c_str());
-//      return false;
-//    }
-//
-//  }
-//
-//
   return true;
 }
 

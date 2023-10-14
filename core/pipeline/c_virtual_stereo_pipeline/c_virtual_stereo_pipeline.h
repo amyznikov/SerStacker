@@ -80,10 +80,10 @@ struct c_virtual_stereo_epipolar_flow_options
   bool enable_debug = false;
 };
 
-struct c_virtual_stereo_pyrflowlk_options
+struct c_virtual_stereo_morph_gradient_flow_options
 {
-  c_sparse_feature_detector_options detector;
-  c_pyrflowlk2_options pyrflowlk;
+  //c_sparse_feature_detector_options detector;
+  //c_pyrflowlk2_options pyrflowlk;
   bool enabled = false;
   bool enable_debug = false;
   int max_pyramid_level = 3;
@@ -158,12 +158,6 @@ public:
   c_lm_camera_pose_options & camera_pose_options();
   const c_lm_camera_pose_options & camera_pose_options() const;
 
-  c_virtual_stereo_epipolar_flow_options & epipolar_flow_options();
-  const c_virtual_stereo_epipolar_flow_options & epipolar_flow_options() const;
-
-  c_virtual_stereo_pyrflowlk_options & pyrflowlk_options();
-  const c_virtual_stereo_pyrflowlk_options & pyrflowlk_options() const;
-
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
 
@@ -194,7 +188,7 @@ protected:
   // bugged experimental stuff, don't call it !
   bool run_epipolar_stereo();
   bool run_epipolar_flow();
-  bool run_pyrflowlk();
+  bool run_morph_gradient_flow();
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
@@ -214,7 +208,7 @@ protected:
   c_virtual_stereo_matcher_options stereo_matcher_options_;
   c_virtual_stereo_triangulation_options triangulation_options_;
   c_virtual_stereo_epipolar_flow_options epipolar_flow_options_;
-  c_virtual_stereo_pyrflowlk_options pyrflowlk_options_;
+  c_virtual_stereo_morph_gradient_flow_options morph_gradient_flow_options_;
   c_virtual_stereo_output_options output_options_;
 
   c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;

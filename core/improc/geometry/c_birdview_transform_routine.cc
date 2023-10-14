@@ -84,11 +84,20 @@ bool c_birdview_transform_routine::process(cv::InputOutputArray image, cv::Input
         dst_size,
         remap_flags);
 
-    if( mask.needed() && !mask.empty() ) {
+    if( mask.needed() ) {
 
-      cv::warpPerspective(mask, mask, H,
-          dst_size,
-          remap_flags);
+      if ( !mask.empty() ) {
+        cv::warpPerspective(mask, mask, H,
+            dst_size,
+            remap_flags,
+            cv::BORDER_CONSTANT);
+      }
+      else {
+        cv::warpPerspective(cv::Mat1b(src_size, 255), mask, H,
+            dst_size,
+            remap_flags,
+            cv::BORDER_CONSTANT);
+      }
 
       cv::compare(mask, 254, mask,
           cv::CMP_GE);

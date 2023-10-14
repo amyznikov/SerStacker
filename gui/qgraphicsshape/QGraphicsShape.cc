@@ -138,6 +138,40 @@ bool QGraphicsShape::inUpdatingPos() const
 
 bool QGraphicsShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
+  QGraphicsScene * scene =
+      this->scene();
+
+  if( scene ) {
+
+    QList<QGraphicsItem*> collidingItems =
+        scene->collidingItems(this,
+            Qt::IntersectsItemShape);
+
+    if( collidingItems.size() > 0 ) {
+
+      const qreal zvalue = this->zValue();
+      QGraphicsItem *firstItem = nullptr;
+
+      for( int i = collidingItems.size() - 1; i >= 0; --i ) {
+        if( collidingItems[i]->zValue() >= zvalue ) {
+          firstItem = collidingItems[i];
+          break;
+        }
+      }
+
+      if( firstItem ) {
+
+        menu.addAction("Send to back",
+            [this, firstItem]() {
+              this->stackBefore(firstItem);
+              this->update();
+            });
+
+        menu.addSeparator();
+      }
+    }
+  }
+
   const int n =
       menu.actions().count();
 

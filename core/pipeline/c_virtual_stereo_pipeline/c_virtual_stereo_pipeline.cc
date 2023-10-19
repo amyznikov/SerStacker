@@ -180,9 +180,9 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, max_pyramid_level);
     SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, block_radius);
     SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, search_radius);
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, alpha);
+    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, beta);
     SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, enable_debug);
-    //SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, detector);
-    //SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, pyrflowlk);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
@@ -281,6 +281,8 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
       PIPELINE_CTL(ctrls, morph_gradient_flow_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
       PIPELINE_CTL(ctrls, morph_gradient_flow_options_.block_radius, "block_radius", "block_radius");
       PIPELINE_CTL(ctrls, morph_gradient_flow_options_.search_radius, "search_radius", "search_radius");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.alpha, "alpha", "alpha");
+      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.beta, "beta", "beta");
       PIPELINE_CTL(ctrls, morph_gradient_flow_options_.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////
@@ -1208,6 +1210,8 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
           morph_gradient_flow_options_.max_pyramid_level,
           morph_gradient_flow_options_.block_radius,
           morph_gradient_flow_options_.search_radius,
+          morph_gradient_flow_options_.alpha,
+          morph_gradient_flow_options_.beta,
           currentEpipole_,
           disp,
           cost,

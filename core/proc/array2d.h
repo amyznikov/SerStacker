@@ -142,6 +142,21 @@ public:
     return pp_[r][c];
   }
 
+  elem_type * data ()
+  {
+    return p_;
+  }
+
+  const elem_type * data () const
+  {
+    return p_;
+  }
+
+  int data_size() const
+  {
+    return size_.height * size_.width;
+  }
+
 protected:
   cv::Size size_ = cv::Size(0, 0);
   elem_type * p_ = nullptr; // pointer to whole continuous array

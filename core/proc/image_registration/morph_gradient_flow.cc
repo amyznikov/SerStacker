@@ -9,9 +9,59 @@
 #include <core/io/save_image.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/stereo/scale_sweep.h>
-
+#include <deque>
+#include <core/proc/array2d.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
+
+namespace  {
+
+class cvmat_deque:
+    public std::deque<cv::Mat>
+{
+public:
+  typedef cvmat_deque this_class;
+  typedef std::deque<cv::Mat> base;
+
+  void push(const cv::Mat & v)
+  {
+    base::emplace_back(v);
+  }
+
+  bool pop(cv::Mat * v)
+  {
+    if( !empty() ) {
+      *v = base::front();
+      base::pop_front();
+      return true;
+    }
+
+    return false;
+  }
+};
+
+static constexpr int MAX_BEST_EXTREMUMS = 10;
+
+struct c_best_extremum
+{
+  int num_best_extremums = 0;
+  float previous_cost = FLT_MAX;
+  float pre_previous_cost = FLT_MAX;
+  float eI[MAX_BEST_EXTREMUMS] = {0};
+  float eC[MAX_BEST_EXTREMUMS] = {0};
+  int plato_start = -1;
+};
+
+class c_best_grid :
+    public c_array2d<c_best_extremum>
+{
+public:
+  typedef c_best_grid this_class;
+  typedef c_array2d<c_best_extremum> base;
+
+};
+
+} // namespace
 
 template<class T>
 static void compute_descriptors_(const cv::Mat & _image, cv::Mat & _descs, const int block_radius)
@@ -224,6 +274,8 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     int max_pyramid_level,
     int block_radius,
     int search_radius,
+    double alpha,
+    double beta,
     const cv::Point2f & E,
     cv::Mat1f & disp,
     cv::Mat1f & cost,
@@ -235,10 +287,9 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
   cv::Mat2f cmap;
   cv::Mat remapped_current_image;
   cv::Mat remapped_current_mask;
-  cv::Mat absdiff_image;
-  cv::Mat1f best_iteration;
-  cv::Mat best_cost;
-  cv::Mat1b excounter;
+
+  cvmat_deque cost_images;
+  c_best_grid best_grid;
 
   if( current_image.size() != reference_image.size() ) {
     CF_ERROR("INPUT ERROR: current and reference image sizes not equal:\n"
@@ -275,7 +326,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
   disp.create(reference_layers.back().size());
   disp.setTo(0);
 
-  CF_DEBUG("E: x=%g y=%g", E.x, E.y);
+  CF_DEBUG("E: x=%g y=%g alpha=%g beta=%g", E.x, E.y, alpha, beta);
 
   if( search_radius < 0 ) {
     const cv::Size size = reference_layers.back().size();
@@ -321,23 +372,41 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
     }
 
-    best_iteration = cv::Mat1f(reference_image_size, 0);
-    best_cost = cv::Mat(reference_image_size, reference_image.depth(), cv::Scalar::all(255));
-    excounter = cv::Mat1b(reference_image_size, 0);
+    best_grid.create(reference_image_size);
 
-    cv::Mat selection_mask;
+    ////////////////
 
     for( int iteration = 0; iteration < search_radius; ++iteration ) {
 
-      create_scale_compression_remap(iteration, reference_image_size, epipole_location, cmap, cv::noArray(), remapped_current_mask);
+      create_scale_compression_remap(iteration,
+          reference_image_size,
+          epipole_location,
+          cmap,
+          cv::noArray(),
+          remapped_current_mask);
 
-      cv::remap(current_layers[l], remapped_current_image, cmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
+      cv::remap(current_layers[l], remapped_current_image,
+          cmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_REPLICATE);
 
-      cv::absdiff(reference_image, remapped_current_image, absdiff_image);
+      ////////
+      cv::Mat current_cost_image;
+      if( cost_images.size() > 2 ) {
+        cost_images.pop(&current_cost_image);
+      }
+      cv::absdiff(reference_image, remapped_current_image,
+          current_cost_image);
+      cost_images.push(current_cost_image);
+      ////////
 
       if ( block_radius > 0 ) {
+
         const int ksize  = 2 * block_radius + 1;
-        cv::GaussianBlur(absdiff_image, absdiff_image, cv::Size(ksize, ksize ), 0, 0, cv::BORDER_REPLICATE);
+
+        cv::GaussianBlur(current_cost_image, current_cost_image,
+            cv::Size(ksize, ksize ), 0, 0,
+            cv::BORDER_REPLICATE);
       }
 
       if( !debug_path.empty() ) {
@@ -345,18 +414,18 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         std::string filename;
 
         filename =
-            ssprintf("%s/absdiff/absdiff_image.%03d.%03d.tiff",
+            ssprintf("%s/costs/current_cost_image.%03d.%03d.tiff",
                 debug_path.c_str(), l, iteration);
 
-        if( !save_image(absdiff_image, filename) ) {
+        if( !save_image(current_cost_image, filename) ) {
           CF_ERROR("save_image('%s') fails", filename.c_str());
           return false;
         }
       }
 
-      if( absdiff_image.channels() > 1 ) {
+      if( current_cost_image.channels() > 1 ) {
 
-        reduce_color_channels(absdiff_image, absdiff_image, cv::REDUCE_MIN);
+        reduce_color_channels(current_cost_image, current_cost_image, cv::REDUCE_MIN);
 
         if( !debug_path.empty() ) {
 
@@ -366,307 +435,232 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
               ssprintf("%s/min_absdiff/min_absdiff_image.%03d.%03d.tiff",
                   debug_path.c_str(), l, iteration);
 
-          if( !save_image(absdiff_image, filename) ) {
+          if( !save_image(current_cost_image, filename) ) {
             CF_ERROR("save_image('%s') fails", filename.c_str());
             return false;
           }
         }
       }
 
+      //////////////
+      switch (cost_images.size()) {
+        case 1: {
 
-      cv::compare(absdiff_image, best_cost, selection_mask, cv::CMP_LT);
-      absdiff_image.copyTo(best_cost, selection_mask);
-      best_iteration.setTo(iteration, selection_mask);
-      cv::add(excounter, 1, excounter, selection_mask);
+          const cv::Mat1f current_costs =
+              current_cost_image;
+
+          for( int y = 0; y < current_costs.rows; ++y ) {
+            for( int x = 0; x < current_costs.cols; ++x ) {
+              best_grid[y][x].previous_cost = current_costs[y][x];
+            }
+          }
+
+          break;
+        }
+        case 2: {
+
+          const cv::Mat1f current_costs =
+              current_cost_image;
+
+          for( int y = 0; y < current_costs.rows; ++y ) {
+            for( int x = 0; x < current_costs.cols; ++x ) {
+
+              c_best_extremum & pix =
+                  best_grid[y][x];
+
+              const float current_cost =
+                  current_costs[y][x];
+
+              if( current_cost < pix.previous_cost ) {
+                // do nothing
+              }
+              else if( current_cost == pix.previous_cost ) {
+                pix.plato_start = iteration - 1;
+              }
+              else { // current_cost > pix.previous_cost
+                // do nothing
+                const float current_plato_center = 0;
+
+                const float current_plato_cost =
+                    alpha * current_plato_center + beta * pix.previous_cost;
+
+                pix.eC[pix.num_best_extremums] = current_plato_cost;
+                pix.eI[pix.num_best_extremums] = current_plato_center;
+                ++pix.num_best_extremums;
+              }
+
+              pix.pre_previous_cost = pix.previous_cost;
+              pix.previous_cost = current_cost;
+            }
+          }
+
+          break;
+        }
+
+        default: {
+          const cv::Mat1f current_costs =
+              current_cost_image;
+
+          for( int y = 0; y < current_costs.rows; ++y ) {
+            for( int x = 0; x < current_costs.cols; ++x ) {
+
+              c_best_extremum & pix =
+                  best_grid[y][x];
+
+              const float current_cost =
+                  current_costs[y][x];
+
+              if( current_cost < pix.previous_cost ) {
+                pix.plato_start = -1; // reset a plato if any
+              }
+              else if( current_cost == pix.previous_cost ) {
+                if( pix.plato_start < 0 && pix.previous_cost < pix.pre_previous_cost ) {
+                  pix.plato_start = iteration - 1;
+                }
+              }
+              else { // current_cost > pix.previous_cost
+
+                if( pix.plato_start < 0 && pix.previous_cost < pix.pre_previous_cost ) {
+                  pix.plato_start = iteration - 1;
+                }
+
+
+                if ( pix.plato_start >= 0 ) {
+                  // exit from a plato
+
+                  const float current_plato_center =
+                      pix.plato_start > 0 ?
+                          (pix.plato_start + iteration - 1) / 2 :
+                          0;
+
+                  const float current_plato_cost =
+                      alpha * current_plato_center + beta * pix.previous_cost;
+
+                  pix.plato_start = -1;
+
+                  if ( pix.num_best_extremums < MAX_BEST_EXTREMUMS ) {
+                    pix.eC[pix.num_best_extremums] = current_plato_cost;
+                    pix.eI[pix.num_best_extremums] = current_plato_center;
+                    ++pix.num_best_extremums;
+                  }
+                  else {
+
+                    int worst_index = 0;
+                    float worst_cost = pix.eC[0];
+
+                    for( int i = 1; i < MAX_BEST_EXTREMUMS; ++i ) {
+                      if( pix.eC[i] > worst_cost ) {
+                        worst_cost = pix.eC[i];
+                        worst_index = i;
+                      }
+                    }
+
+                    if( current_plato_cost < worst_cost ) {
+                      pix.eC[worst_index] = current_plato_cost;
+                      pix.eI[worst_index] = current_plato_center;
+                    }
+                  }
+                }
+              }
+
+              pix.pre_previous_cost = pix.previous_cost;
+              pix.previous_cost = current_cost;
+            }
+          }
+
+          break;
+        }
+      }
+
+      //////////////
     }
+
+    ////////////////
 
 
     if( !debug_path.empty() ) {
 
+      cv::Mat1f debug_image;
       std::string filename;
 
-      filename =
-          ssprintf("%s/best/best_cost.%03d.tiff",
-              debug_path.c_str(), l);
-
-      if( !save_image(best_cost, best_cost < FLT_MAX, filename) ) {
-        CF_ERROR("save_image('%s') fails", filename.c_str());
-        return false;
-      }
-
-      filename =
-          ssprintf("%s/best/best_iteration.%03d.tiff",
-              debug_path.c_str(), l);
-
-      if( !save_image(best_iteration, best_cost < FLT_MAX, filename) ) {
-        CF_ERROR("save_image('%s') fails", filename.c_str());
-        return false;
-      }
-
-      filename =
-          ssprintf("%s/best/excounter.%03d.tiff",
-              debug_path.c_str(), l);
-
-      if( !save_image(excounter, filename) ) {
-        CF_ERROR("save_image('%s') fails", filename.c_str());
-        return false;
-      }
-
-      const double max_epipole_distance =
-          std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
-              abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
-
-
-      cmap.create(reference_image_size);
-      cmap.setTo(-1);
-
-      for ( int y = 0; y < best_iteration.rows; ++y ) {
-        for ( int x = 0; x < best_iteration.cols; ++x ) {
-
-          const double K =
-              max_epipole_distance / (max_epipole_distance - best_iteration[y][x]);
-
-          cmap[y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
-          cmap[y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
+      debug_image.create(best_grid.size());
+      for ( int y = 0; y < debug_image.rows; ++y ) {
+        for ( int x = 0; x < debug_image.cols; ++x ) {
+          debug_image[y][x] = best_grid[y][x].num_best_extremums;
         }
       }
 
-      cv::remap(current_image, remapped_current_image, cmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
       filename =
-          ssprintf("%s/remapped_current_image/remapped_current_image.%03d.tiff",
+          ssprintf("%s/num_best_extremums/num_best_extremums.%03d.tiff",
               debug_path.c_str(), l);
 
-      if( !save_image(remapped_current_image, filename) ) {
+      if( !save_image(debug_image, filename) ) {
         CF_ERROR("save_image('%s') fails", filename.c_str());
         return false;
       }
 
+      for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
-//      filename =
-//          ssprintf("%s/best/best_disp.%03d.tiff",
-//              debug_path.c_str(), l);
-//
-//      if( !save_image(best_iteration, best_cost < FLT_MAX, filename) ) {
-//        CF_ERROR("save_image('%s') fails", filename.c_str());
-//        return false;
-//      }
-//      if ( l > 0 ) {
-//        cv::resize(best_iteration, best_iteration, reference_layers[l-1].size(), 0,0, cv::INTER_NEAREST);
-//        cv::multiply(best_iteration, 2, best_iteration);
-//
-//        filename =
-//            ssprintf("%s/best/best_disp_up.%03d.tiff",
-//                debug_path.c_str(), l);
-//
-//        if( !save_image(best_iteration, filename) ) {
-//          CF_ERROR("save_image('%s') fails", filename.c_str());
-//          return false;
-//        }
-//      }
+        debug_image.create(best_grid.size());
+        debug_image.setTo(-1);
 
+        for ( int y = 0; y < debug_image.rows; ++y ) {
+          for ( int x = 0; x < debug_image.cols; ++x ) {
 
+            const c_best_extremum & pix =
+                best_grid[y][x];
 
+            if ( i < pix.num_best_extremums ) {
+              debug_image[y][x] = pix.eC[i];
+            }
+          }
+        }
+
+        filename =
+            ssprintf("%s/eC/eC.%03d.%02d.tiff",
+                debug_path.c_str(), l, i);
+
+        if( !save_image(debug_image, filename) ) {
+          CF_ERROR("save_image('%s') fails", filename.c_str());
+          return false;
+        }
+      }
     }
 
+
+#if 0
+    const double max_epipole_distance =
+           std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
+               abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
+
+
+       cmap.create(reference_image_size);
+       cmap.setTo(-1);
+
+       for ( int y = 0; y < best_iteration.rows; ++y ) {
+         for ( int x = 0; x < best_iteration.cols; ++x ) {
+
+           const double K =
+               max_epipole_distance / (max_epipole_distance - best_iteration[y][x]);
+
+           cmap[y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
+           cmap[y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
+         }
+       }
+
+       cv::remap(current_image, remapped_current_image, cmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+       filename =
+           ssprintf("%s/remapped_current_image/remapped_current_image.%03d.tiff",
+               debug_path.c_str(), l);
+
+       if( !save_image(remapped_current_image, filename) ) {
+         CF_ERROR("save_image('%s') fails", filename.c_str());
+         return false;
+       }
+#endif
   }
+
+
 
   return true;
 }
-
-//
-//bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_mask,
-//    cv::InputArray reference_image, cv::InputArray reference_mask,
-//    int max_pyramid_level,
-//    int block_radius,
-//    int search_radius,
-//    const cv::Point2f & E,
-//    cv::Mat1f & disp,
-//    cv::Mat1f & cost,
-//    const std::string & debug_path)
-//{
-//
-//  std::vector<cv::Mat> current_layers;
-//  std::vector<cv::Mat> reference_layers;
-//
-//  if( current_image.size() != reference_image.size() ) {
-//    CF_ERROR("INPUT ERROR: current and reference image sizes not equal:\n"
-//        "current_image.size() = %dx%d reference_image.size() = %dx%d",
-//        current_image.cols(), current_image.rows(),
-//        reference_image.cols(), reference_image.rows());
-//    return false;
-//  }
-//
-//#if 0
-//  cv::buildPyramid(current_image, current_layers, max_pyramid_level);
-//  cv::buildPyramid(reference_image, reference_layers, max_pyramid_level);
-//#else
-//  build_morph_gradient_pyramid(current_image, current_mask,
-//      current_layers,
-//      max_pyramid_level);
-//  build_morph_gradient_pyramid(reference_image, reference_mask,
-//      reference_layers,
-//      max_pyramid_level);
-//#endif
-//
-//  const int nlayers =
-//      current_layers.size();
-//
-//  if( nlayers != (int) reference_layers.size() ) {
-//    CF_ERROR("APP BUG: Number of pyramid layers not match:\n"
-//        "current_layers.size() = %zu reference_layers.size() = %zu",
-//        current_layers.size(),
-//        reference_layers.size());
-//    return false;
-//  }
-//
-//
-//  disp.create(reference_layers.back().size());
-//  disp.setTo(0);
-//
-//  CF_DEBUG("E: x=%g y=%g", E.x, E.y);
-//
-//  if( block_radius < 1 ) {
-//    block_radius = 1;
-//  }
-//
-//  if( search_radius < 1 ) {
-//    search_radius = 7;
-//  }
-//
-//  for( int l = nlayers - 1; l >= 0; --l ) {
-//
-////    const int block_radius =
-////      l == nlayers - 1 ? 1 :
-////          3;
-//
-////    const int search_radius = 5;
-//////        l == nlayers - 1 ? 7 :
-//////            5;
-//
-//    int search_forward, search_backward;
-//
-//    if ( l == nlayers - 1 ) {
-//      search_forward = search_radius;
-//      search_backward = 0;
-//    }
-//    else {
-//      search_forward = 2;
-//      search_backward = 2;
-//    }
-//
-//
-//    cv::Mat rdescs, cdescs;
-//
-//    compute_descriptors(reference_layers[l], rdescs,
-//        block_radius);
-//
-//    compute_descriptors(current_layers[l], cdescs,
-//        block_radius);
-//
-//    const int nx =
-//        reference_layers[l].cols;
-//
-//    const int ny =
-//        reference_layers[l].rows;
-//
-//    const cv::Point2f El(E.x / (1 << l), E.y / (1 << l));
-//
-//    CF_DEBUG("[%d] layer size: %dx%d El: x=%g y=%g", l, nx, ny, El.x, El.y);
-//
-//    match_descriptors(cdescs, rdescs,
-//        disp,
-//        cost,
-//        El,
-//        search_forward,
-//        search_backward,
-//        l);
-//
-//
-//    if( !debug_path.empty() ) {
-//
-//      std::string filename;
-//
-//      filename =
-//          ssprintf("%s/current_layers/current_layer.%03d.tiff",
-//              debug_path.c_str(), l);
-//      if( !save_image(current_layers[l], filename) ) {
-//        CF_ERROR("save_image('%s') fails", filename.c_str());
-//        return false;
-//      }
-//
-//      filename =
-//          ssprintf("%s/reference_layers/reference_layer.%03d.tiff",
-//              debug_path.c_str(), l);
-//
-//      if( !save_image(reference_layers[l], filename) ) {
-//        CF_ERROR("save_image('%s') fails", filename.c_str());
-//        return false;
-//      }
-//
-//      filename =
-//          ssprintf("%s/disp/disp.%03d.tiff",
-//              debug_path.c_str(), l);
-//
-//      if( !save_image(disp, filename) ) {
-//        CF_ERROR("save_image('%s') fails", filename.c_str());
-//        return false;
-//      }
-//
-//      filename =
-//          ssprintf("%s/cost/cost.%03d.tiff",
-//              debug_path.c_str(), l);
-//
-//      if( !save_image(cost, filename) ) {
-//        CF_ERROR("save_image('%s') fails", filename.c_str());
-//        return false;
-//      }
-//
-//    }
-//
-//    if ( l > 0 ) {
-//      cv::resize(disp, disp, reference_layers[l-1].size(), 0,0, cv::INTER_NEAREST);
-//      //cv::pyrUp(disp, disp, reference_layers[l-1].size());
-//      cv::multiply(disp, cv::Scalar::all(2), disp);
-//
-//      if( !debug_path.empty() ) {
-//
-//        std::string filename;
-//
-//        filename =
-//            ssprintf("%s/disp/disp-upscaled.%03d.tiff",
-//                debug_path.c_str(), l);
-//        if( !save_image(disp, filename) ) {
-//          CF_ERROR("save_image('%s') fails", filename.c_str());
-//          return false;
-//        }
-//      }
-//
-//    }
-//  }
-//
-//  cv::Mat m;
-//  cv::compare(reference_layers[0], 15, m, cv::CMP_GT);
-//  if ( m.channels() > 1 ) {
-//    reduce_color_channels(m, m, cv::REDUCE_MAX);
-//  }
-//
-//  disp.setTo(0, ~m);
-//  disp.setTo(0, disp < 0);
-//
-//  if( !debug_path.empty() ) {
-//
-//    std::string filename;
-//
-//    filename =
-//        ssprintf("%s/disp.tiff",
-//            debug_path.c_str());
-//
-//    if( !save_image(disp, filename) ) {
-//      CF_ERROR("save_image('%s') fails", filename.c_str());
-//      return false;
-//    }
-//
-//  }
-//
-//  return true;
-//}

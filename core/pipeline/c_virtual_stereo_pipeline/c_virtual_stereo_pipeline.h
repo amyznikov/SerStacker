@@ -82,13 +82,13 @@ struct c_virtual_stereo_epipolar_flow_options
 
 struct c_virtual_stereo_morph_gradient_flow_options
 {
-  //c_sparse_feature_detector_options detector;
-  //c_pyrflowlk2_options pyrflowlk;
   bool enabled = false;
   bool enable_debug = false;
   int max_pyramid_level = 3;
   int block_radius = 2;
   int search_radius = 7;
+  double alpha = 0.25;
+  double beta = 1;
 };
 
 struct c_virtual_stereo_output_options :
@@ -98,14 +98,11 @@ struct c_virtual_stereo_output_options :
     std::string polar_frames_filename;
     std::string disparity_frames_filename;
     std::string homography_video_filename;
-    //std::string pyrflowlk_frames_filename;
 
     bool save_progress_video = false;
     bool save_polar_frames = false;
     bool save_disparity_frames = false;
     bool save_homography_video = false;
-    //bool save_pyrflowlk_frames = false;
-
     bool save_epipolar_flow_debug_images = false;
 };
 

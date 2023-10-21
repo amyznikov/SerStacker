@@ -85,11 +85,6 @@ protected:
   void populate_available_frame_sizes(int iBin = 0);
   void onupdatecontrols() override;
 
-  //void update_image_format_ctl(ASI_IMG_TYPE iFormat);
-  //void add_available_frame_size(const QRect & rc);
-
-  //void setBinningCtl(int iBin);
-
 protected Q_SLOTS:
   void onUpdateControls();
   void onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);

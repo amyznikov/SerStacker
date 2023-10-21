@@ -65,6 +65,8 @@ public:
   void setPenColor(const QColor & color);
   QColor penColor() const;
 
+  void showShapeSettings();
+
 protected:
   void updateGeometry();
   QRectF boundingRect() const override;
@@ -77,7 +79,6 @@ protected:
   void onSceneHasChanged() override;
   void onSceneRectChanged(const QRectF &rect);
   bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
-  void showShapeSettings();
 
 protected:
 
@@ -92,7 +93,7 @@ protected:
   QPointF mdelta_;
   bool itemIsResizable_ = true;
   bool fixOnSceneCenter_ = false;
-  QAction * showSettingsAction_ = nullptr;
+  //QAction * showSettingsAction_ = nullptr;
 
 
 };

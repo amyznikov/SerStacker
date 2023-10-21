@@ -121,8 +121,8 @@ protected:
 /// SER file reader into OpenCV cv::Mat image.
 /// No debayer/rgb swap is made, to get bayer pattern use c_ser_file::is_bayer_pattern() and c_ser_file::color_id(),
 /// and use OpenCV or external routine calls for debayer
-class c_ser_reader
-    : public c_ser_file
+class c_ser_reader :
+    public c_ser_file
 {
 public:
   c_ser_reader() = default;

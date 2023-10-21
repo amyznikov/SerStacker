@@ -32,9 +32,10 @@ protected:
 
 protected:
   QGraphicsTargetShape * shape_ = nullptr;
+  QCheckBox * lockPosition_ctl = nullptr;
   QCheckBox * fixOnSceneCenter_ctl = nullptr;
-  QNumericBox * numRings_ctl = nullptr;
-  QNumericBox * baseRadius_ctl = nullptr;
+  QSpinBox * numRings_ctl = nullptr;
+  QIntegerSliderSpinBox * baseRadius_ctl = nullptr;
   QCheckBox * showDiagonalRays_ctl = nullptr;
   QColorPickerButton * penColor_ctl = nullptr;
   QSpinBox * penWidth_ctl = nullptr;

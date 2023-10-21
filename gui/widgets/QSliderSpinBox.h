@@ -70,6 +70,16 @@ public:
     slider_ctl->setFocusPolicy(Qt::StrongFocus);
   }
 
+  void setTooltip(const QString & tooltip )
+  {
+    spinBox_ctl->setTooltip(tooltip);
+  }
+
+  QString tooltip() const
+  {
+    return spinBox_ctl->tooltip();
+  }
+
   QAbstractSpinBox::StepType stepType() const
   {
     return spinBox_ctl->stepType();

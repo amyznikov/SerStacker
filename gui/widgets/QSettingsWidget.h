@@ -850,10 +850,13 @@ public:
 
   /////////////////////////////////////////////////////////////////////
   template<class T>
-  typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name,
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn = std::function<void(T)>())
   {
-    typename QSliderSpinBox<T>::Type *ctl = new typename QSliderSpinBox<T>::Type();
+    typename QSliderSpinBox<T>::Type *ctl =
+        new typename QSliderSpinBox<T>::Type();
+
+    ctl->setToolTip(tooltip);
 
     form->addRow(name, ctl);
 
@@ -879,11 +882,11 @@ public:
   }
 
   template<class T>
-  typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name,
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
   {
     typename QSliderSpinBox<T>::Type *ctl =
-        add_sliderspinbox<T>(form, name, setfn);
+        add_sliderspinbox<T>(form, name, tooltip, setfn);
 
     if( getfn ) {
 
@@ -907,17 +910,17 @@ public:
 
 
   template<class T>
-  typename QSliderSpinBox<T>::Type * add_sliderspinbox(const QString & name,
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn = std::function<void(T)>())
   {
-    return add_sliderspinbox<T>(this->form, name, setfn);
+    return add_sliderspinbox<T>(this->form, name, tooltip, setfn);
   }
 
   template<class T>
-  typename QSliderSpinBox<T>::Type * add_sliderspinbox(const QString & name,
+  typename QSliderSpinBox<T>::Type * add_sliderspinbox(const QString & name, const QString & tooltip,
       const std::function<void(T)> & setfn, const std::function<bool(T*)> & getfn)
   {
-    return add_sliderspinbox<T>(this->form, name, setfn, getfn);
+    return add_sliderspinbox<T>(this->form, name, tooltip, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////

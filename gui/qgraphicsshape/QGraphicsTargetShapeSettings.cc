@@ -15,6 +15,25 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(QWidget * parent) :
 QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix, QWidget * parent) :
   Base(prefix, parent)
 {
+
+  lockPosition_ctl =
+      add_checkbox("Lock position",
+          "Lock object position on this scene ",
+          [this](bool checked) {
+            if ( shape_ ) {
+              shape_->setLockPosition(checked);
+            }
+            save_parameter(PREFIX, "fixOnSceneCenter", shape_->fixOnSceneCenter());
+          },
+          [this](bool * checked) {
+            if ( shape_ ) {
+              * checked = shape_->lockPosition();
+              return true;
+
+            }
+            return false;
+          });
+
   fixOnSceneCenter_ctl =
       add_checkbox("Fix on scene center",
           "Uncheck this button and use "
@@ -35,16 +54,33 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
           });
 
 
+//  baseRadius_ctl =
+//      add_numeric_box<double>("Base radius:",
+//          "",
+//          [this](double v) {
+//            if ( shape_ ) {
+//              shape_->setBaseRadius(v);
+//              save_parameter(PREFIX, "baseRadius", shape_->baseRadius());
+//            }
+//          },
+//          [this](double * v) {
+//            if ( shape_ ) {
+//              *v = shape_->baseRadius();
+//              return true;
+//            }
+//            return false;
+//          });
+
   baseRadius_ctl =
-      add_numeric_box<double>("Base radius:",
-          "",
-          [this](double v) {
+      add_sliderspinbox<int>("Base radius:",
+          "Radius of first (internal) circle",
+          [this](int v) {
             if ( shape_ ) {
               shape_->setBaseRadius(v);
               save_parameter(PREFIX, "baseRadius", shape_->baseRadius());
             }
           },
-          [this](double * v) {
+          [this](int * v) {
             if ( shape_ ) {
               *v = shape_->baseRadius();
               return true;
@@ -52,9 +88,11 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
             return false;
           });
 
+  baseRadius_ctl->setRange(0, 1000);
+
 
   numRings_ctl =
-      add_numeric_box<int>("Num rings:",
+      add_spinbox("Num rings:",
           "",
           [this](int v) {
             if ( shape_ ) {
@@ -69,6 +107,7 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
             }
             return false;
           });
+  numRings_ctl->setMinimum(1);
 
 
   showDiagonalRays_ctl =
@@ -151,6 +190,11 @@ void QGraphicsTargetShapeSettings::onload(QSettings & settings)
   Base::onload(settings);
 
   if ( shape_ ) {
+
+    bool lockPosition = shape_->lockPosition();
+    if( load_parameter(settings, PREFIX, "fixOnSceneCenter", &lockPosition) ) {
+      shape_->setLockPosition(lockPosition);
+    }
 
     bool fixOnSceneCenter = shape_->fixOnSceneCenter();
     if( load_parameter(settings, PREFIX, "fixOnSceneCenter", &fixOnSceneCenter) ) {

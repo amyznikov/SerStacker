@@ -609,20 +609,43 @@ void QGraphicsRectShape::onSceneRectChanged(const QRectF &rect)
 
 bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
 {
+  QAction * action;
   QMenu * subMenu;
   QString copyText;
 
-  if ( !showSettingsAction_ ) {
 
-    showSettingsAction_ = new QAction("Options...", this);
-
-    connect(showSettingsAction_, &QAction::triggered,
-        this, &ThisClass::showShapeSettings);
-  }
+//  if ( !showSettingsAction_ ) {
+//
+//    showSettingsAction_ = new QAction("Options...", this);
+//
+//    connect(showSettingsAction_, &QAction::triggered,
+//        this, &ThisClass::showShapeSettings);
+//  }
 
 
   menu.addSeparator();
-  menu.addAction(showSettingsAction_);
+
+  menu.addAction(action = new QAction("Options..."));
+  connect(action, &QAction::triggered,
+      this, &ThisClass::showShapeSettings);
+
+  menu.addSeparator();
+
+  menu.addAction(action = new QAction("Center on scene"));
+  action->setCheckable(true);
+  action->setChecked(fixOnSceneCenter_);
+  connect(action, &QAction::triggered,
+      [this](bool checked) {
+        setFixOnSceneCenter(checked);
+      });
+
+  menu.addAction(action = new QAction("Fix Size"));
+  action->setCheckable(true);
+  action->setChecked(!resizable());
+  connect(action, &QAction::triggered,
+      [this](bool checked) {
+        setResizable(!checked);
+      });
 
   menu.addSeparator();
 

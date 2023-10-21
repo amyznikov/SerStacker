@@ -6,6 +6,7 @@
  */
 
 #include "QGraphicsTargetShape.h"
+#include "QGraphicsTargetShapeSettings.h"
 #include <core/debug.h>
 
 QGraphicsTargetShape::QGraphicsTargetShape(QGraphicsItem * parent) :
@@ -219,7 +220,7 @@ void QGraphicsTargetShape::paint(QPainter * painter, const QStyleOptionGraphicsI
 void QGraphicsTargetShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->button() & Qt::LeftButton ) {
-    if( fixOnSceneCenter_ ) {
+    if( fixOnSceneCenter_ || lockPosition_ ) {
       e->ignore();
       return;
     }
@@ -230,7 +231,7 @@ void QGraphicsTargetShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 void QGraphicsTargetShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->button() & Qt::LeftButton ) {
-    if( fixOnSceneCenter_ ) {
+    if( fixOnSceneCenter_ || lockPosition_ ) {
       e->ignore();
       return;
     }
@@ -241,7 +242,7 @@ void QGraphicsTargetShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 void QGraphicsTargetShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->button() & Qt::LeftButton ) {
-    if( fixOnSceneCenter_ ) {
+    if( fixOnSceneCenter_ || lockPosition_ ) {
       e->ignore();
       return;
     }
@@ -280,6 +281,18 @@ void QGraphicsTargetShape::setFixOnSceneCenter(bool v)
   }
 }
 
+bool QGraphicsTargetShape::lockPosition() const
+{
+  return lockPosition_;
+}
+
+void QGraphicsTargetShape::setLockPosition(bool v)
+{
+  if ( (lockPosition_ = v) ) {
+  }
+
+}
+
 void QGraphicsTargetShape::onSceneChange()
 {
   QGraphicsScene * scene =
@@ -311,4 +324,46 @@ void QGraphicsTargetShape::onSceneRectChanged(const QRectF &rect)
   }
 }
 
+bool QGraphicsTargetShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+{
+  QAction * action;
+
+  menu.addSeparator();
+
+  menu.addAction(action = new QAction("Options..."));
+  connect(action, &QAction::triggered,
+      this, &ThisClass::showShapeSettings);
+
+  menu.addSeparator();
+
+  menu.addAction(action = new QAction("Lock position"));
+  action->setCheckable(true);
+  action->setChecked(lockPosition_);
+  connect(action, &QAction::triggered,
+      [this](bool checked) {
+        setLockPosition(checked);
+      });
+
+  menu.addAction(action = new QAction("Center on scene"));
+  action->setCheckable(true);
+  action->setChecked(fixOnSceneCenter_);
+  connect(action, &QAction::triggered,
+      [this](bool checked) {
+        setFixOnSceneCenter(checked);
+      });
+
+
+  Base::popuateContextMenu(event, menu);
+
+  return true;
+}
+
+void QGraphicsTargetShape::showShapeSettings()
+{
+  QGraphicsTargetShapeSettingsDialogBox dialogBox("Shape Options",
+      this, QApplication::activeWindow());
+
+  dialogBox.exec();
+
+}
 

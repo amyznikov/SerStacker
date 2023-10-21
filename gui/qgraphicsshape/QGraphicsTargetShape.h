@@ -27,6 +27,9 @@ public:
   void setFixOnSceneCenter(bool v);
   bool fixOnSceneCenter() const;
 
+  void setLockPosition(bool v);
+  bool lockPosition() const;
+
   void setBaseRadius(double v);
   double baseRadius() const;
 
@@ -46,11 +49,14 @@ public:
   void setPenColor(const QColor & color);
   QColor penColor() const;
 
+  void showShapeSettings();
+
 protected:
   void updateGeometry();
   QRectF boundingRect() const override;
   QPainterPath shape() const override;
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
+  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
   void mousePressEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseMoveEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
@@ -66,6 +72,7 @@ protected:
   int numRings_ = 4;
   bool showDiagonals_ = false;
   bool fixOnSceneCenter_ = true;
+  bool lockPosition_ = false;
 
   QRectF boundingRect_;
   QPainterPath shape_;

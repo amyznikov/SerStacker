@@ -23,6 +23,9 @@
 # include <libraw/libraw.h>
 #endif
 
+#include <core/io/c_vlo_file.h>
+
+
 #include <core/debug.h>
 
 #if HAVE_LIBRAW
@@ -114,6 +117,16 @@ const char ** thumbnail_plyfile_suffixes()
   return suffixes;
 }
 
+const char ** thumbnail_vlofile_suffixes()
+{
+  static const char * suffixes[] = {
+      "vsb", nullptr
+  };
+  return suffixes;
+}
+
+
+
 QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
 {
   if ( !srcSize.isEmpty() ) {
@@ -174,6 +187,14 @@ QStringList getSupportedThumbnailsExtensions()
   while ( *plyfiles ) {
     suffixes.append(*plyfiles++);
   }
+
+#if HAVE_VLO_FILE
+  const char ** vlofiles =
+      thumbnail_vlofile_suffixes();
+  while ( *vlofiles ) {
+    suffixes.append(*vlofiles++);
+  }
+#endif
 
 #if HAVE_CFITSIO
   suffixes.append("fits");
@@ -499,6 +520,44 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       return qimage;
     }
   }
+
+#if HAVE_VLO_FILE
+  if ( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {
+
+    c_vlo_reader vlo(pathFileName.toStdString());
+    c_vlo_scan scan;
+    if ( !vlo.read(&scan) ) {
+      CF_ERROR("vlo.read() fails: %s", strerror(errno));
+    }
+    else {
+      CF_DEBUG("vlo.read() OK: iface version= %d num frames=%d", vlo.version(), vlo.num_frames());
+    }
+
+//    if ( ser.read(cvimage) ) {
+//
+//      //      if ( is_bayer_pattern(ser.color_id()) ) {
+//      //        debayer(cvimage, cvimage,
+//      //            ser.color_id(),
+//      //            DEBAYER_NN);
+//      //      }
+//
+//      const QSize thumbSize =
+//          compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
+//              thumb_size);
+//
+//      if ( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+//
+//        cv::resize(cvimage, cvimage,
+//            cv::Size(thumbSize.width(), thumbSize.height()),
+//            0, 0,
+//            cv::INTER_AREA);
+//      }
+//
+//      cv2qimage(cvimage, &qimage, true);
+//      return qimage;
+//    }
+  }
+#endif
 
 #if HAVE_CFITSIO
   if ( suffix.compare("fits", Qt::CaseInsensitive) == 0 || suffix.compare("fit", Qt::CaseInsensitive) == 0  ) {

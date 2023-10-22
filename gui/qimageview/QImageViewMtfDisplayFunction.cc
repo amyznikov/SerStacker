@@ -99,35 +99,6 @@ void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double 
 
 void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
-//  if( !imageViewer_ ) {
-//    H.release();
-//  }
-//  else {
-//
-//    const cv::Mat &image =
-//        imageViewer_->currentImage();
-//
-//    const cv::Mat &mask =
-//        imageViewer_->currentMask();
-//
-//    if( image.empty() ) {
-//      H.release();
-//    }
-//    else {
-//
-//      DisplayParams & opts =
-//          displayParams();
-//
-//      create_output_histogram(&opts.mtf,
-//          image, mask,
-//          H,
-//          hmin, hmax,
-//          256,
-//          false,
-//          false);
-//    }
-//  }
-
   if ( imageViewer_ ) {
 
     cv::Mat image, mask;
@@ -135,22 +106,30 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
     double scale = 1.0;
     double offset = 0.0;
 
-//    mutex_.lock();
-//    isBusy_ = true;
-
     const cv::Mat & currentImage =
         imageViewer_->mtfImage();
+
+    imageViewer_->currentMask().copyTo(mask);
 
     if ( currentImage.depth() == CV_8U ) {
       currentImage.copyTo(image);
     }
+    else if ( currentImage.depth() == CV_32F || currentImage.depth() == CV_64F ) {
+
+      const double dstmin = 0, dstmax = 255;
+      double srcmin = 0, srcmax = 1;
+
+      cv::minMaxLoc(currentImage, &srcmin, &srcmax, nullptr, nullptr, mask);
+
+      scale = (dstmax - dstmin) / (srcmax - srcmin);
+      offset = dstmin - scale * srcmin;
+
+      currentImage.convertTo(image, CV_8U, scale, offset);
+    }
     else {
       get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
-      currentImage.convertTo(image, scale, offset);
+      currentImage.convertTo(image, CV_8U, scale, offset);
     }
-
-    imageViewer_->currentMask().copyTo(mask);
-//    mutex_.unlock();
 
     create_histogram(image, mask,
         H,
@@ -161,11 +140,6 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
 
     (*hmin -= offset) /= scale;
     (*hmax -= offset) /= scale;
-
-//    mutex_.lock();
-//    isBusy_ = false;
-//    mutex_.unlock();
-
   }
 
 }

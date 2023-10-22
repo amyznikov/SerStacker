@@ -89,6 +89,7 @@ struct c_virtual_stereo_morph_gradient_flow_options
   int search_radius = 7;
   double alpha = 0.25;
   double beta = 1;
+  double gradient_threshold = 30;
 };
 
 struct c_virtual_stereo_output_options :

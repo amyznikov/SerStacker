@@ -78,7 +78,7 @@ void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * out
     }
     else {
       get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
-      currentImage.convertTo(image, scale, offset);
+      currentImage.convertTo(image, CV_8U, scale, offset);
     }
 
     imageViewer_->currentMask().copyTo(mask);
@@ -123,7 +123,7 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     }
     else {
       get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
-      currentImage.convertTo(image, scale, offset);
+      currentImage.convertTo(image, CV_8U, scale, offset);
     }
 
     imageViewer_->currentMask().copyTo(mask);
@@ -414,12 +414,14 @@ void QLiveDisplay::updateCurrentImage()
     currentMask_ = tmp_mask;
   }
 
+  CF_DEBUG("mtfImage_.depth=%d", mtfImage_.depth());
   mtfDisplayFunction_.createDisplayImage(
       currentImage_,
       currentMask_,
       mtfImage_,
       displayImage_,
       CV_8U);
+  CF_DEBUG("mtfImage_.depth=%d", mtfImage_.depth());
 
   pixmap_ =
       createPixmap(displayImage_, true,

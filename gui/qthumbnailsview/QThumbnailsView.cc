@@ -266,7 +266,7 @@ void QThumbnailsListWidget::updateItemsLayout()
 
 void QThumbnailsListWidget::onZoomChanged(void)
 {
-  emit zoomChanged(zoom());
+  Q_EMIT zoomChanged(zoom());
 }
 
 void QThumbnailsListWidget::mouseMoveEvent(QMouseEvent *e)
@@ -371,7 +371,7 @@ void QThumbnailsListWidget::keyPressEvent(QKeyEvent *e)
     break;
 
   case Qt::Key_Return :
-    emit enterPressed(Base::currentItem());
+    Q_EMIT enterPressed(Base::currentItem());
     break;
 
   case Qt::Key_Delete : {
@@ -393,7 +393,7 @@ void QThumbnailsListWidget::keyPressEvent(QKeyEvent *e)
   }
 
   Base::keyPressEvent(e);
-  //emit keyPressed(e);
+  //Q_EMIT keyPressed(e);
 }
 
 
@@ -496,7 +496,7 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
   showInDirTreeAction_ = toolbar_->addAction(getIcon(ICON_dirtree),
       "Show current path in directory tree browser",
       [this] () {
-        emit showInDirTreeRequested(currentPath());
+        Q_EMIT showInDirTreeRequested(currentPath());
       });
 
   toolbar_->addSeparator();
@@ -764,21 +764,21 @@ void QThumbnailsView::refreshWhiteListTextMessage()
 void QThumbnailsView::onCurrentItemChanged(QListWidgetItem * current, QListWidgetItem */*previous*/)
 {
   if ( current ) {
-    emit currentIconChanged(current->whatsThis());
+    Q_EMIT currentIconChanged(current->whatsThis());
   }
 }
 
 void QThumbnailsView::onItemDoubleClicked(QListWidgetItem *item)
 {
   if ( item ) {
-    emit iconDoubleClicked(item->whatsThis());
+    Q_EMIT iconDoubleClicked(item->whatsThis());
   }
 }
 
 void QThumbnailsView::onItemEnterPressed(QListWidgetItem *item)
 {
   if ( item ) {
-    emit iconEnterPressed(item->whatsThis());
+    Q_EMIT iconEnterPressed(item->whatsThis());
   }
 }
 

@@ -45,7 +45,7 @@ public:
   void scheduleUpdateItemsLayout();
   void updateItemsLayout();
 
-signals:
+Q_SIGNALS:
   //void keyPressed(QKeyEvent * e);
   void enterPressed(QListWidgetItem * current_item);
   void zoomChanged(int z);
@@ -90,14 +90,14 @@ public:
   bool moveToBads(const QString & pathfilename );
 
 
-public slots:
+public Q_SLOTS:
   void displayPath(const QString & path);
   void reload();
   void cancelPendingUpdates();
   void selectNextIcon();
   void selectPrevIcon();
 
-signals:
+Q_SIGNALS:
   void iconDoubleClicked(const QString & fullPathName);
   void iconEnterPressed(const QString & fullPathName);
   void currentIconChanged(const QString & fullPathName);
@@ -114,7 +114,7 @@ private:
   void startUpdate();
   void refreshWhiteListTextMessage();
 
-private slots:
+private Q_SLOTS:
   void onSearchImageFilesStarted();
   void onSearchImageFilesFinished();
   void onImageFileFound(int rid, const QString fullPathName);

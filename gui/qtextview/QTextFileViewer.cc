@@ -8,8 +8,8 @@
 #include "QTextFileViewer.h"
 #include <core/debug.h>
 
-QTextFileViewer::QTextFileViewer(QWidget * parent)
-  : Base(parent)
+QTextFileViewer::QTextFileViewer(QWidget * parent) :
+  Base(parent)
 {
   layout_ = new QVBoxLayout(this);
   layout_->setContentsMargins(0, 0, 0, 0);
@@ -46,7 +46,7 @@ void QTextFileViewer::clear()
 {
   textBrowser_->clear();
   currentFileName_.clear();
-  emit currentFileNameChanged();
+  Q_EMIT currentFileNameChanged();
 }
 
 void QTextFileViewer::showTextFile(const std::string & pathfilename)
@@ -71,5 +71,5 @@ void QTextFileViewer::showTextFile(const QString & pathfilename)
 
   }
 
-  emit currentFileNameChanged();
+  Q_EMIT currentFileNameChanged();
 }

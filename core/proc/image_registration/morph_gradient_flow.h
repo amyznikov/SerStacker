@@ -19,6 +19,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     int search_radius,
     double alpha,
     double beta,
+    double gradient_threshold,
     const cv::Point2f & epipole,
     cv::Mat1f & output_epipolar_disparity,
     cv::Mat1f & output_cost,

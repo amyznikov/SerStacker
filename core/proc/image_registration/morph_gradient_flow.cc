@@ -168,14 +168,16 @@ static void match_descriptors_(int x, int y, int nx, int ny,
     int * output_best_match_y,
     float * output_best_match_cost )
 {
+  const int search_radius = 2;
+
   const cv::Mat_<T> cdescs = _cdescs;
   const cv::Mat_<T> rdescs = _rdescs;
   const int desc_size = rdescs.cols;
+  const int block_radius = (sqrt(desc_size) - 1) / 2;
 
   const int coarse_x = x / 2;
   const int coarse_y = y / 2;
 
-  const int search_radius = 2;
 
   int best_total_match_x = -1;
   int best_total_match_y = -1;
@@ -213,10 +215,10 @@ static void match_descriptors_(int x, int y, int nx, int ny,
         continue;
       }
 
-      const int search_xmin = std::max(0, 2 * hypx - search_radius);
-      const int search_xmax = std::min(x - 1, 2 * hypx + search_radius);
-      const int search_ymin = std::max(0, 2 * hypy - search_radius);
-      const int search_ymax = std::min(y - 1, 2 * hypy + search_radius);
+      const int search_xmin = std::max(block_radius, 2 * hypx - search_radius);
+      const int search_xmax = std::min(nx - block_radius - 1, 2 * hypx + search_radius);
+      const int search_ymin = std::max(block_radius, 2 * hypy - search_radius);
+      const int search_ymax = std::min(ny - block_radius - 1, 2 * hypy + search_radius);
 
       float best_cost = FLT_MAX;
       float best_match_x = -1;
@@ -289,6 +291,26 @@ static void match_descriptors(int x, int y, int nx, int ny,
 }
 
 
+static cv::Mat2f matches_to_optflow(const cv::Mat2f & matches)
+{
+  cv::Mat2f optflow(matches.size());
+
+  for ( int y = 0; y < optflow.rows; ++y ) {
+    for ( int x = 0; x < optflow.cols; ++x ) {
+      if ( matches[y][x][0] >= 0 ) {
+        optflow[y][x][0] = matches[y][x][0] - x;
+        optflow[y][x][1] = matches[y][x][1] - y;
+      }
+      else {
+        optflow[y][x][0] = -1;
+        optflow[y][x][1] = -1;
+      }
+    }
+  }
+  return optflow;
+}
+
+
 bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_mask,
     cv::InputArray reference_image, cv::InputArray reference_mask,
     int max_pyramid_level,
@@ -296,6 +318,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     int search_radius,
     double alpha,
     double beta,
+    double gradient_threshold,
     const cv::Point2f & E,
     cv::Mat1f & disp,
     cv::Mat1f & cost,
@@ -605,10 +628,26 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
       //////////////
     }
 
+    for( int y = 0; y < reference_image_size.height; ++y ) {
+      for( int x = 0; x < reference_image_size.width; ++x ) {
+
+        c_best_extremum &pix =
+            best_grid[y][x];
+
+        if( pix.num_best_extremums > 1 ) {
+          std::sort(pix.e, pix.e + pix.num_best_extremums,
+              [](const auto & prev, const auto & next) {
+                return prev.C < next.C;
+              });
+        }
+      }
+    }
+
+
     previous_matches.resize(MAX_BEST_EXTREMUMS);
     for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
       previous_matches[i].create(reference_image_size);
-      previous_matches[i].setTo(-1);
+      previous_matches[i].setTo(cv::Scalar::all(-1));
     }
 
     const double max_epipole_distance =
@@ -656,25 +695,10 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         return false;
       }
 
-      for( int y = 0; y < reference_image_size.height; ++y ) {
-        for( int x = 0; x < reference_image_size.width; ++x ) {
-
-          c_best_extremum &pix =
-              best_grid[y][x];
-
-          if( pix.num_best_extremums > 1 ) {
-            std::sort(pix.e, pix.e + pix.num_best_extremums,
-                [](const auto & prev, const auto & next) {
-                  return prev.C < next.C;
-                });
-          }
-        }
-      }
-
       for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
         debug_image.create(best_grid.size());
-        debug_image.setTo(-1);
+        debug_image.setTo(cv::Scalar::all(-1));
 
         for ( int y = 0; y < debug_image.rows; ++y ) {
           for ( int x = 0; x < debug_image.cols; ++x ) {
@@ -701,7 +725,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
       for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
         debug_image.create(best_grid.size());
-        debug_image.setTo(-1);
+        debug_image.setTo(cv::Scalar::all(-1));
 
         for ( int y = 0; y < debug_image.rows; ++y ) {
           for ( int x = 0; x < debug_image.cols; ++x ) {
@@ -729,6 +753,11 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
   ///////////////////
 
   for( int l = nlayers - 2; l >= 0; --l ) {
+
+    if ( l < nlayers - 2 ) {
+      break;
+    }
+
 
     const cv::Mat & current_image =
         current_layers[l];
@@ -759,6 +788,22 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         CF_ERROR("save_image('%s') fails", filename.c_str());
         return false;
       }
+
+      for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+
+
+        const cv::Mat2f optflow =
+            matches_to_optflow(previous_matches[i]);
+
+        filename =
+            ssprintf("%s/previous_matches/previous_matches.%03d.%03d.flo",
+                debug_path.c_str(), l, i);
+
+        if( !save_image(optflow, filename) ) {
+          CF_ERROR("save_image('%s') fails", filename.c_str());
+          return false;
+        }
+      }
     }
 
     compute_descriptors(current_image,
@@ -773,9 +818,9 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     new_best_costs.resize(MAX_BEST_EXTREMUMS);
     for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
       new_matches[i].create(reference_image.size());
-      new_matches[i].setTo(-1);
+      new_matches[i].setTo(cv::Scalar::all(-1));
       new_best_costs[i].create(reference_image.size());
-      new_best_costs[i].setTo(-1);
+      new_best_costs[i].setTo(cv::Scalar::all(-1));
     }
 
     for( int y = 0; y < reference_image.rows; ++y ) {
@@ -825,26 +870,36 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         }
 
 
-        optflow_image.create(new_matches[i].size());
-        optflow_image.setTo(cv::Scalar::all(-1));
-
-        for( int y = 0; y < reference_image.rows; ++y ) {
-          for( int x = 0; x < reference_image.cols; ++x ) {
-            if ( new_matches[i][y][x][0] >= 0 ) {
-              optflow_image[y][x][0] = new_matches[i][y][x][0] - x;
-              optflow_image[y][x][1] = new_matches[i][y][x][1] - y;
-            }
-          }
-        }
+        optflow_image =
+            matches_to_optflow(new_matches[i]);
 
         filename =
-            ssprintf("%s/optflow/optflow.%03d.%02d.flo",
+            ssprintf("%s/new_matches/new_matches.%03d.%03d.flo",
                 debug_path.c_str(), l, i);
 
         if( !save_image(optflow_image, filename) ) {
           CF_ERROR("save_image('%s') fails", filename.c_str());
           return false;
         }
+
+        cv::Mat mask;
+        cv::compare(reference_image, cv::Scalar::all(gradient_threshold), mask, cv::CMP_LT);
+        if ( mask.channels() > 1 ) {
+          reduce_color_channels(mask, mask, cv::REDUCE_MAX);
+        }
+
+        optflow_image.setTo(cv::Scalar::all(0), mask);
+
+        filename =
+            ssprintf("%s/new_matches/new_matches_gt.%03d.%03d.flo",
+                debug_path.c_str(), l, i);
+
+        if( !save_image(optflow_image, filename) ) {
+          CF_ERROR("save_image('%s') fails", filename.c_str());
+          return false;
+        }
+
+
       }
 
     }

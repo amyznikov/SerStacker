@@ -311,6 +311,8 @@ void QImageViewer::createDisplayImage()
         }
         else if( currentImage_.channels() == 2 ) { // assume this is optical flow image
           //displayImage_.release();
+          CF_DEBUG("HERE");
+
           displayFunction_->createDisplayImage(currentImage_,
               transparentMask_ ? cv::noArray() : currentMask_,
               mtfImage_,
@@ -319,6 +321,7 @@ void QImageViewer::createDisplayImage()
         }
         else {
           // displayImage_.release();
+
           displayFunction_->createDisplayImage(currentImage_,
               transparentMask_ ? cv::noArray() : currentMask_,
               mtfImage_,

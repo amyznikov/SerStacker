@@ -11,8 +11,8 @@
 
 #include <QtWidgets/QtWidgets>
 
-class QTextFileViewer
-    : public QWidget
+class QTextFileViewer :
+    public QWidget
 {
   Q_OBJECT;
 public:
@@ -20,7 +20,7 @@ public:
   typedef QTextFileViewer ThisClass;
   typedef QWidget Base;
 
-  QTextFileViewer(QWidget * parent = Q_NULLPTR);
+  QTextFileViewer(QWidget * parent = nullptr);
 
   QToolBar * toolbar() const;
 
@@ -31,15 +31,15 @@ public:
 
   QString currentFileName() const;
 
-signals:
+Q_SIGNALS:
   void currentFileNameChanged();
 
 protected:
   QString currentFileName_;
-  QVBoxLayout * layout_ = Q_NULLPTR;
-  QToolBar * toolbar_ = Q_NULLPTR;
-  //QTextEdit * textBrowser_ = Q_NULLPTR;
-  QPlainTextEdit * textBrowser_ = Q_NULLPTR;
+  QVBoxLayout * layout_ = nullptr;
+  QToolBar * toolbar_ = nullptr;
+  //QTextEdit * textBrowser_ = nullptr;
+  QPlainTextEdit * textBrowser_ = nullptr;
 };
 
 #endif /* __QTextFileViewer_h__ */

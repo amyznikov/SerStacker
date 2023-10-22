@@ -83,12 +83,20 @@ static int fnmatch (const char *__pattern, const char *__name, int __flags) {
   return PathMatchSpec(__name,__pattern) ? 0 : -1;
 }
 
+
+#ifndef
 #define PATH_MAX MAX_PATH
+#endif
+
+#ifndef
 #define FNM_CASEFOLD 0
+#endif
 
 #define access _access
 
 #endif
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////

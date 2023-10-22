@@ -547,7 +547,8 @@ ssize_t c_vlo_reader::num_frames() const
 bool c_vlo_reader::seek(int32_t frame_index)
 {
   if( fd_ >= 0 ) {
-    return ::lseek64(fd_, frame_index * frame_size(), SEEK_CUR) >= 0;
+    const ssize_t seekpos = frame_index * frame_size();
+    return ::lseek64(fd_, seekpos, SEEK_SET) == seekpos;
   }
 
   errno = EBADF;
@@ -560,7 +561,7 @@ int32_t c_vlo_reader::curpos() const
     return whence(fd_) / frame_size();
   }
   errno = EBADF;
-  return false;
+  return -1;
 }
 
 bool c_vlo_reader::read(c_vlo_scan * scan)

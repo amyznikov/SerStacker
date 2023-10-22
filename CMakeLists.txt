@@ -29,7 +29,7 @@ else()
 endif ()
 
 if(WIN32)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" -Wl,--stack,16000000)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,16000000")
 endif()
 
 message(STATUS "Detected architecture: ${APP_ARCH}")

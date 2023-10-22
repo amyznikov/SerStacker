@@ -84,11 +84,11 @@ static int fnmatch (const char *__pattern, const char *__name, int __flags) {
 }
 
 
-#ifndef
+#ifndef PATH_MAX
 #define PATH_MAX MAX_PATH
 #endif
 
-#ifndef
+#ifndef FNM_CASEFOLD
 #define FNM_CASEFOLD 0
 #endif
 

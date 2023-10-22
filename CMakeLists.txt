@@ -28,6 +28,10 @@ else()
   set(APP_ARCH i686)
 endif ()
 
+if(WIN32)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" -Wl,--stack,16000000)
+endif()
+
 message(STATUS "Detected architecture: ${APP_ARCH}")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

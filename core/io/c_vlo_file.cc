@@ -14,12 +14,12 @@
 //@brief get current file position
 static inline ssize_t whence(int fd)
 {
-  return ::lseek(fd, 0, SEEK_CUR);
+  return ::lseek64(fd, 0, SEEK_CUR);
 }
 
 static inline bool readfrom(int fd, ssize_t offset, uint16_t * data)
 {
-  if( ::lseek(fd, offset, SEEK_SET) != offset ) {
+  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
     return false;
   }
 
@@ -384,7 +384,13 @@ bool c_vlo_reader::open(const std::string & filename)
   bool fOk = false;
   uint16_t format_version = 0;
 
-  if( (fd_ = ::open(fname, O_RDONLY | O_NOATIME)) < 0 ) {
+#if _WIN32 || _WIN64
+  constexpr int openflags = O_RDONLY | O_BINARY;
+#else
+  constexpr int openflags = O_RDONLY | O_NOATIME;
+#endif
+
+  if( (fd_ = ::open(fname, openflags)) < 0 ) {
     CF_ERROR("open('%s') fails: %s", fname, strerror(errno));
     goto end;
   }
@@ -453,7 +459,8 @@ bool c_vlo_reader::open(const std::string & filename)
         frame_size_ = sizeof(c_vlo_scan3);
       }
       else {
-        CF_ERROR("Can not determine exact format version for buggy vlo file '%s' : '%u' ", fname, format_version);
+        CF_ERROR("Can not determine exact format version for buggy vlo file '%s' : '%u' ",
+            fname, format_version);
         errno = ENOMSG;
         goto end;
       }
@@ -470,19 +477,19 @@ bool c_vlo_reader::open(const std::string & filename)
       goto end;
   }
 
-  if( ::lseek(fd_, 0, SEEK_SET) != 0 ) {
+  if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
     CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
         strerror(errno));
     goto end;
   }
 
-  if( (file_size_ = ::lseek(fd_, 0, SEEK_END)) < 0 ) {
+  if( (file_size_ = ::lseek64(fd_, 0, SEEK_END)) < 0 ) {
     CF_ERROR("lseek('%s', offset=0, SEEK_END) fails: %s", fname,
         strerror(errno));
     goto end;
   }
 
-  if( ::lseek(fd_, 0, SEEK_SET) != 0 ) {
+  if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
     CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
         strerror(errno));
     goto end;
@@ -540,7 +547,7 @@ ssize_t c_vlo_reader::num_frames() const
 bool c_vlo_reader::seek(int32_t frame_index)
 {
   if( fd_ >= 0 ) {
-    return ::lseek(fd_, frame_index * frame_size(), SEEK_CUR) >= 0;
+    return ::lseek64(fd_, frame_index * frame_size(), SEEK_CUR) >= 0;
   }
 
   errno = EBADF;
@@ -638,7 +645,8 @@ bool c_vlo_reader::read_ambient(cv::Mat * image)
   return false;
 }
 
-cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan1 & scan)
+template<class ScanType>
+static cv::Mat get_ambient_image(const ScanType & scan)
 {
   cv::Mat1w image(scan.NUM_LAYERS, scan.NUM_SLOTS);
 
@@ -649,32 +657,21 @@ cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan1 & scan)
   }
 
   return image;
+}
+
+cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan1 & scan)
+{
+  return ::get_ambient_image(scan);
 }
 
 cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan3 & scan)
 {
-  cv::Mat1w image(scan.NUM_LAYERS, scan.NUM_SLOTS);
-
-  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      image[l][s] = scan.slot[s].ambient[l];
-    }
-  }
-
-  return image;
+  return ::get_ambient_image(scan);
 }
 
 cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan & scan)
 {
-  cv::Mat1w image(scan.NUM_LAYERS, scan.NUM_SLOTS);
-
-  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      image[l][s] = scan.slot[s].ambient[l];
-    }
-  }
-
-  return image;
+  return ::get_ambient_image(scan);
 }
 
 cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
@@ -685,29 +682,38 @@ cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
   if ( vlo.is_open() ) {
 
     switch (vlo.version()) {
-      case VLO_VERSION_1:
-        break;
-      case VLO_VERSION_3: {
-
-        c_vlo_scan3 scan;
-
+      case VLO_VERSION_1:{
+        c_vlo_scan1 scan;
         if( vlo.read(&scan) ) {
-
-          autoclip(image = get_ambient_image(scan),
-              cv::noArray(),
-              0.5, 99.5,
-              0, 255);
-
-          image.convertTo(image, CV_8U);
+          image = get_ambient_image(scan);
         }
-
         break;
       }
-      case VLO_VERSION_5:
+
+      case VLO_VERSION_3: {
+        c_vlo_scan3 scan;
+        if( vlo.read(&scan) ) {
+          image = get_ambient_image(scan);
+        }
         break;
-      case VLO_VERSION_18:
+      }
+
+      case VLO_VERSION_5:{
+        c_vlo_scan scan;
+        if( vlo.read(&scan) ) {
+          image = get_ambient_image(scan);
+        }
         break;
+      }
     }
+  }
+
+  if( !image.empty() ) {
+    autoclip(image, cv::noArray(),
+        0.5, 99.5,
+        0, 255);
+    image.convertTo(image,
+        CV_8U);
   }
 
   return image;

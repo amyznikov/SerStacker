@@ -765,6 +765,8 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
       *output_bpc = suggest_bbp(
           output_frame.depth());
     }
+
+    return true;
   }
 
   return false;

@@ -10,5 +10,6 @@
 	<file>icons/badimage.png</file>
 	<file>icons/textfile.png</file>
 	<file>icons/plyfile.png</file>
+	<file>icons/lidar1.png</file>
 </qresource>
 </RCC>

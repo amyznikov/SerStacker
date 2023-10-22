@@ -74,6 +74,12 @@ c_input_source::sptr c_input_source::create(source_type type, const std::string 
       obj = c_raw_image_input_source::create(filename);
       break;
 #endif // HAVE_LIBRAW
+#if HAVE_VLO_FILE
+    case c_input_source::VLO :
+      obj = c_vlo_input_source::create(filename);
+      break;
+#endif // HAVE_LIBRAW
+
     default :
       CF_ERROR("c_input_source: invalid source type = %d requested", type);
       break;
@@ -106,6 +112,11 @@ enum c_input_source::source_type c_input_source::suggest_source_type(
     if ( contains(c_ser_input_source::suffixes(), suffix) ) {
       type = c_input_source::SER;
     }
+#if HAVE_VLO_FILE
+    else if ( contains(c_vlo_input_source::suffixes(), suffix) ) {
+      type = c_input_source::VLO;
+    }
+#endif // HAVE_LIBRAW
 #if HAVE_CFITSIO
     else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
       type = c_input_source::FITS;
@@ -272,14 +283,14 @@ void c_input_source::save_badframes(const std::string & fname) const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_ser_input_source::c_ser_input_source(const std::string & filename)
-  : base(c_input_source::SER, filename)
+c_ser_input_source::c_ser_input_source(const std::string & filename) :
+    base(c_input_source::SER, filename)
 {
 }
 
 c_ser_input_source::ptr c_ser_input_source::create(const std::string & filename)
 {
-  c_ser_input_source::ptr obj(new c_ser_input_source(filename));
+  this_class::ptr obj(new this_class(filename));
   if ( obj->ser_.open(filename) ) {
     obj->size_ = obj->ser_.num_frames();
     obj->ser_.close();
@@ -695,5 +706,75 @@ bool c_raw_image_input_source::is_open() const
 }
 
 #endif // HAVE_LIBRAW
+
+
+#if HAVE_VLO_FILE
+
+c_vlo_input_source::c_vlo_input_source(const std::string & filename) :
+    base(c_input_source::VLO, filename)
+{
+}
+
+c_vlo_input_source::ptr c_vlo_input_source::create(const std::string & filename)
+{
+  this_class::ptr obj(new this_class(filename));
+  if( obj->vlo_.open(filename) ) {
+    obj->size_ = obj->vlo_.num_frames();
+    obj->vlo_.close();
+    return obj;
+  }
+  return nullptr;
+}
+
+const std::vector<std::string> & c_vlo_input_source::suffixes()
+{
+  static const std::vector<std::string> suffixes_ = {
+      ".vsb",
+      ".dat"
+  };
+  return suffixes_;
+}
+
+bool c_vlo_input_source::open()
+{
+  return vlo_.open(filename_);
+}
+
+void c_vlo_input_source::close()
+{
+  return vlo_.close();
+}
+
+
+bool c_vlo_input_source::seek(int pos)
+{
+  return vlo_.seek(pos);
+}
+
+bool c_vlo_input_source::read(cv::Mat & output_frame,
+    enum COLORID * output_colorid,
+    int * output_bpc)
+{
+  if ( vlo_.read_ambient(&output_frame) ) {
+
+    if ( output_colorid ) {
+      *output_colorid = COLORID_MONO;
+    }
+
+    if ( output_bpc ) {
+      *output_bpc = suggest_bbp(
+          output_frame.depth());
+    }
+  }
+
+  return false;
+}
+
+bool c_vlo_input_source::is_open() const
+{
+  return vlo_.is_open();
+}
+
+#endif // HAVE_VLO_FILE
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -5,10 +5,9 @@
  *      Author: amyznikov
  */
 
+#include "QThumbnails.h"
 #include <opencv2/opencv.hpp>
 #include <core/io/load_image.h>
-#include "QThumbnails.h"
-
 #include <core/io/c_ser_file.h>
 #include <core/io/c_fits_file.h>
 
@@ -522,40 +521,26 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
   }
 
 #if HAVE_VLO_FILE
-  if ( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {
+  if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {
 
-    c_vlo_reader vlo(pathFileName.toStdString());
-    c_vlo_scan scan;
-    if ( !vlo.read(&scan) ) {
-      CF_ERROR("vlo.read() fails: %s", strerror(errno));
-    }
-    else {
-      CF_DEBUG("vlo.read() OK: iface version= %d num frames=%d", vlo.version(), vlo.num_frames());
+    if( (cvimage = c_vlo_reader::get_thumbnail_image(pathFileName.toStdString())).empty() ) {
+      return QImage(":/qthumbnailsview/icons/lidar1.png");
     }
 
-//    if ( ser.read(cvimage) ) {
-//
-//      //      if ( is_bayer_pattern(ser.color_id()) ) {
-//      //        debayer(cvimage, cvimage,
-//      //            ser.color_id(),
-//      //            DEBAYER_NN);
-//      //      }
-//
-//      const QSize thumbSize =
-//          compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
-//              thumb_size);
-//
-//      if ( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
-//
-//        cv::resize(cvimage, cvimage,
-//            cv::Size(thumbSize.width(), thumbSize.height()),
-//            0, 0,
-//            cv::INTER_AREA);
-//      }
-//
-//      cv2qimage(cvimage, &qimage, true);
-//      return qimage;
-//    }
+    const QSize thumbSize =
+        compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
+            thumb_size);
+
+    if( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+
+      cv::resize(cvimage, cvimage,
+          cv::Size(thumbSize.width(), thumbSize.height()),
+          0, 0,
+          cv::INTER_AREA);
+    }
+
+    cv2qimage(cvimage, &qimage, true);
+    return qimage;
   }
 #endif
 

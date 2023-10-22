@@ -40,16 +40,19 @@ public:
   }
 };
 
-static constexpr int MAX_BEST_EXTREMUMS = 10;
+static constexpr int MAX_BEST_EXTREMUMS = 3;
 
 struct c_best_extremum
 {
   int num_best_extremums = 0;
   float previous_cost = FLT_MAX;
   float pre_previous_cost = FLT_MAX;
-  float eI[MAX_BEST_EXTREMUMS] = {0};
-  float eC[MAX_BEST_EXTREMUMS] = {0};
   int plato_start = -1;
+
+  struct E {
+    float I = 0;
+    float C = 0;
+  } e[MAX_BEST_EXTREMUMS];
 };
 
 class c_best_grid :
@@ -157,116 +160,133 @@ static inline float compute_cost(const T cdesc[], const T rdesc[], int desc_size
   return s;
 }
 
-
 template<class T>
-static void match_descriptors_(const cv::Mat & _cdescs, const cv::Mat & _rdescs,
-    cv::Mat1f & disp, cv::Mat1f & cost, const cv::Point2f & E,
-    const int search_forward, const int search_backward,
-    int lvl )
+static void match_descriptors_(int x, int y, int nx, int ny,
+    const cv::Mat & _cdescs, const cv::Mat & _rdescs,
+    const cv::Mat2f & coarse_matches,
+    int * output_best_match_x,
+    int * output_best_match_y,
+    float * output_best_match_cost )
 {
-  const int nx =
-      disp.cols;
+  const cv::Mat_<T> cdescs = _cdescs;
+  const cv::Mat_<T> rdescs = _rdescs;
+  const int desc_size = rdescs.cols;
 
-  const int ny =
-      disp.rows;
+  const int coarse_x = x / 2;
+  const int coarse_y = y / 2;
 
-  const cv::Mat_<T> cdescs =
-      _cdescs;
+  const int search_radius = 2;
 
-  const cv::Mat_<T> rdescs =
-      _rdescs;
+  int best_total_match_x = -1;
+  int best_total_match_y = -1;
+  float best_total_cost = FLT_MAX;
 
-  const int block_size =
-      rdescs.cols;
+  int coarse_xx_min, coarse_xx_max;
+  int coarse_yy_min, coarse_yy_max;
 
-  const int block_radius =
-      (sqrt(block_size) - 1) / 2;
+  if( y & 1 == 0 ) { // top
+    coarse_yy_min = std::max(0, coarse_y - 1);
+    coarse_yy_max = coarse_y;
+  }
+  else { // bottom
+    coarse_yy_min = coarse_y;
+    coarse_yy_max = std::min(ny - 1, coarse_y + 1);
+  }
 
-  cost.create(disp.size());
-  cost.setTo(0);
-
-  constexpr int RX0 = 30;
-  constexpr int RY0 = 25;
-
-
-  for( int ry = block_radius; ry < ny - block_radius; ++ry ) {
-    for( int rx = block_radius; rx < nx - block_radius; ++rx ) {
-
-      const float rex = rx - E.x;
-      const float rey = ry - E.y;
-      const float rr = std::sqrt(rex * rex + rey * rey);
-      const float sin = rey / rr;
-      const float cos = rex / rr;
-      const T * rdesc = rdescs[ry * nx + rx];
+  if( x & 1 == 0 ) { // left
+    coarse_xx_min = std::max(0, coarse_x - 1);
+    coarse_xx_max = coarse_x;
+  }
+  else { // right
+    coarse_xx_min = coarse_x;
+    coarse_xx_max = std::min(nx - 1, coarse_x + 1);
+  }
 
 
-      const float cermin = std::max(0.f, rr + disp[ry][rx] - search_backward);
-      const float cermax = std::max(0.f, rr + disp[ry][rx] + search_forward);
+  for( int coarse_yy = coarse_yy_min; coarse_yy <= coarse_yy_max; ++coarse_yy ) {
+    for( int coarse_xx = coarse_xx_min; coarse_xx <= coarse_xx_max; ++coarse_xx ) {
+
+      const int hypx = coarse_matches[coarse_yy][coarse_xx][0];
+      const int hypy = coarse_matches[coarse_yy][coarse_xx][1];
+
+      if ( hypx < 0 || hypy < 0 ) {
+        continue;
+      }
+
+      const int search_xmin = std::max(0, 2 * hypx - search_radius);
+      const int search_xmax = std::min(x - 1, 2 * hypx + search_radius);
+      const int search_ymin = std::max(0, 2 * hypy - search_radius);
+      const int search_ymax = std::min(y - 1, 2 * hypy + search_radius);
+
       float best_cost = FLT_MAX;
+      float best_match_x = -1;
+      float best_match_y = -1;
 
-      for( float cr = cermin; cr <= cermax; cr += 1 ) {
+      for( int search_y = search_ymin; search_y <= search_ymax; ++search_y ) {
+        for( int search_x = search_xmin; search_x <= search_xmax; ++search_x ) {
 
-        const int cx = (int) cvRound( (E.x + cr * cos) );
-        const int cy = (int) cvRound( (E.y + cr * sin) );
+          const float current_cost =
+              compute_cost(cdescs[search_y * nx + search_x],
+                  rdescs[y * nx + x],
+                  desc_size);
 
-        if( cx <= 0 || cx >= nx || cy <= 0 || cy >= ny ) {
-          break;
-        }
-
-        const float ccost =
-            compute_cost(cdescs[cy * nx + cx],
-                rdesc,
-                block_size);
-
-        if ( lvl == 3 && rx == RX0 && ry == RY0 ) {
-          CF_DEBUG("rx=%d ry=%d rr=%g cr=%g d=%g cx=%d cy=%d ccost=%g best=%g",
-              rx, ry, rr, cr, cr - rr, cx, cy, ccost,best_cost);
-        }
-
-        if ( ccost < best_cost ) {
-          disp[ry][rx] = cr - rr;
-          cost[ry][rx] = ccost;
-          if ( (best_cost = ccost) <= 0 ) {
-            break;
+          if ( current_cost < best_cost ) {
+            best_match_x = search_x;
+            best_match_y = search_y;
+            if ( (best_cost = current_cost) <= 0 ) {
+              break;
+            }
           }
         }
       }
 
+      if ( best_cost < best_total_cost ) {
+        best_total_match_x = best_match_x;
+        best_total_match_y = best_match_y;
+        if ( (best_total_cost = best_cost) <= 0 ) {
+          break;
+        }
+      }
     }
   }
+
+
+  * output_best_match_x = best_total_match_x;
+  * output_best_match_y = best_total_match_y;
+  * output_best_match_cost =  best_total_cost;
 }
 
-
-static void match_descriptors(const cv::Mat & cdescs, const cv::Mat & rdescs,
-    cv::Mat1f & disp, cv::Mat1f & cost, const cv::Point2f & E,
-    const int search_forward, const int search_backward,
-    int lvl )
+static void match_descriptors(int x, int y, int nx, int ny,
+    const cv::Mat & cdescs, const cv::Mat & rdescs,
+    const cv::Mat2f & coarse_matches,
+    int * best_match_x,
+    int * best_match_y,
+    float * best_cost)
 {
   switch (cdescs.depth()) {
     case CV_8U:
-      match_descriptors_<uint8_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<uint8_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
     case CV_8S:
-      match_descriptors_<int8_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<int8_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
     case CV_16U:
-      match_descriptors_<uint16_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<uint16_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
     case CV_16S:
-      match_descriptors_<int16_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<int16_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
     case CV_32S:
-      match_descriptors_<int32_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<int32_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
     case CV_32F:
-      match_descriptors_<float>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<float>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
     case CV_64F:
-      match_descriptors_<double>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+      match_descriptors_<double>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
       break;
   }
 }
-
 
 
 bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_mask,
@@ -282,11 +302,17 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     const std::string & debug_path)
 {
 
+  INSTRUMENT_REGION("");
+
   std::vector<cv::Mat> current_layers;
   std::vector<cv::Mat> reference_layers;
+  std::vector<cv::Mat2f> previous_matches, new_matches;
+  std::vector<cv::Mat1f> new_best_costs;
   cv::Mat2f cmap;
   cv::Mat remapped_current_image;
   cv::Mat remapped_current_mask;
+  cv::Mat current_descriptors;
+  cv::Mat reference_descriptors;
 
   cvmat_deque cost_images;
   c_best_grid best_grid;
@@ -333,9 +359,13 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     search_radius = std::max(size.width, size.height) / 3;
   }
 
-
-
   for( int l = nlayers - 1; l >= 0; --l ) {
+
+    if ( l < nlayers - 1 ) {
+      break;
+    }
+
+    INSTRUMENT_REGION("BODY");
 
     const cv::Mat & current_image =
         current_layers[l];
@@ -484,8 +514,8 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
                 const float current_plato_cost =
                     alpha * current_plato_center + beta * pix.previous_cost;
 
-                pix.eC[pix.num_best_extremums] = current_plato_cost;
-                pix.eI[pix.num_best_extremums] = current_plato_center;
+                pix.e[pix.num_best_extremums].C = current_plato_cost;
+                pix.e[pix.num_best_extremums].I = current_plato_center;
                 ++pix.num_best_extremums;
               }
 
@@ -539,25 +569,25 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
                   pix.plato_start = -1;
 
                   if ( pix.num_best_extremums < MAX_BEST_EXTREMUMS ) {
-                    pix.eC[pix.num_best_extremums] = current_plato_cost;
-                    pix.eI[pix.num_best_extremums] = current_plato_center;
+                    pix.e[pix.num_best_extremums].C = current_plato_cost;
+                    pix.e[pix.num_best_extremums].I = current_plato_center;
                     ++pix.num_best_extremums;
                   }
                   else {
 
                     int worst_index = 0;
-                    float worst_cost = pix.eC[0];
+                    float worst_cost = pix.e[0].C;
 
                     for( int i = 1; i < MAX_BEST_EXTREMUMS; ++i ) {
-                      if( pix.eC[i] > worst_cost ) {
-                        worst_cost = pix.eC[i];
+                      if( pix.e[i].C > worst_cost ) {
+                        worst_cost = pix.e[i].C;
                         worst_index = i;
                       }
                     }
 
                     if( current_plato_cost < worst_cost ) {
-                      pix.eC[worst_index] = current_plato_cost;
-                      pix.eI[worst_index] = current_plato_center;
+                      pix.e[worst_index].C = current_plato_cost;
+                      pix.e[worst_index].I = current_plato_center;
                     }
                   }
                 }
@@ -573,6 +603,33 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
       }
 
       //////////////
+    }
+
+    previous_matches.resize(MAX_BEST_EXTREMUMS);
+    for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+      previous_matches[i].create(reference_image_size);
+      previous_matches[i].setTo(-1);
+    }
+
+    const double max_epipole_distance =
+        std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
+            abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
+
+    for( int y = 0; y < reference_image_size.height; ++y ) {
+      for( int x = 0; x < reference_image_size.width; ++x ) {
+
+        c_best_extremum &pix =
+            best_grid[y][x];
+
+        for( int i = 0; i < pix.num_best_extremums; ++i ) {
+
+          const double K =
+              max_epipole_distance / (max_epipole_distance - pix.e[i].I);
+
+          previous_matches[i][y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
+          previous_matches[i][y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
+        }
+      }
     }
 
     ////////////////
@@ -599,6 +656,21 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         return false;
       }
 
+      for( int y = 0; y < reference_image_size.height; ++y ) {
+        for( int x = 0; x < reference_image_size.width; ++x ) {
+
+          c_best_extremum &pix =
+              best_grid[y][x];
+
+          if( pix.num_best_extremums > 1 ) {
+            std::sort(pix.e, pix.e + pix.num_best_extremums,
+                [](const auto & prev, const auto & next) {
+                  return prev.C < next.C;
+                });
+          }
+        }
+      }
+
       for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
         debug_image.create(best_grid.size());
@@ -611,7 +683,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
                 best_grid[y][x];
 
             if ( i < pix.num_best_extremums ) {
-              debug_image[y][x] = pix.eC[i];
+              debug_image[y][x] = pix.e[i].C;
             }
           }
         }
@@ -625,42 +697,299 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
           return false;
         }
       }
+
+      for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+
+        debug_image.create(best_grid.size());
+        debug_image.setTo(-1);
+
+        for ( int y = 0; y < debug_image.rows; ++y ) {
+          for ( int x = 0; x < debug_image.cols; ++x ) {
+
+            const c_best_extremum & pix =
+                best_grid[y][x];
+
+            if ( i < pix.num_best_extremums ) {
+              debug_image[y][x] = pix.e[i].I;
+            }
+          }
+        }
+
+        filename =
+            ssprintf("%s/eI/eI.%03d.%02d.tiff",
+                debug_path.c_str(), l, i);
+
+        if( !save_image(debug_image, filename) ) {
+          CF_ERROR("save_image('%s') fails", filename.c_str());
+          return false;
+        }
+      }
+    }
+  }
+  ///////////////////
+
+  for( int l = nlayers - 2; l >= 0; --l ) {
+
+    const cv::Mat & current_image =
+        current_layers[l];
+
+    const cv::Mat & reference_image =
+        reference_layers[l];
+
+    const cv::Size reference_image_size =
+        reference_image.size();
+
+    if( !debug_path.empty() ) {
+
+      std::string filename;
+
+      filename =
+          ssprintf("%s/current_layers/current_layer.%03d.tiff",
+              debug_path.c_str(), l);
+      if( !save_image(current_image, filename) ) {
+        CF_ERROR("save_image('%s') fails", filename.c_str());
+        return false;
+      }
+
+      filename =
+          ssprintf("%s/reference_layers/reference_layer.%03d.tiff",
+              debug_path.c_str(), l);
+
+      if( !save_image(reference_image, filename) ) {
+        CF_ERROR("save_image('%s') fails", filename.c_str());
+        return false;
+      }
     }
 
+    compute_descriptors(current_image,
+        current_descriptors,
+        block_radius);
 
-#if 0
-    const double max_epipole_distance =
-           std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
-               abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
+    compute_descriptors(reference_image,
+        reference_descriptors,
+        block_radius);
+
+    new_matches.resize(MAX_BEST_EXTREMUMS);
+    new_best_costs.resize(MAX_BEST_EXTREMUMS);
+    for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+      new_matches[i].create(reference_image.size());
+      new_matches[i].setTo(-1);
+      new_best_costs[i].create(reference_image.size());
+      new_best_costs[i].setTo(-1);
+    }
+
+    for( int y = 0; y < reference_image.rows; ++y ) {
+      for( int x = 0; x < reference_image.cols; ++x ) {
+        for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+
+          const cv::Mat2f &coarse_matches =
+              previous_matches[i];
+
+          int best_match_x = -1;
+          int best_match_y = -1;
+          float best_cost = FLT_MAX;
+
+          match_descriptors(x, y, reference_image.cols, reference_image.rows,
+              current_descriptors,
+              reference_descriptors,
+              coarse_matches,
+              &best_match_x,
+              &best_match_y,
+              &best_cost);
 
 
-       cmap.create(reference_image_size);
-       cmap.setTo(-1);
+          if ( best_match_x >= 0 ) {
 
-       for ( int y = 0; y < best_iteration.rows; ++y ) {
-         for ( int x = 0; x < best_iteration.cols; ++x ) {
+            new_matches[i][y][x][0] = best_match_x;
+            new_matches[i][y][x][1] = best_match_y;
+            new_best_costs[i][y][x] = best_cost < FLT_MAX ? best_cost : -1;
+          }
+        }
+      }
+    }
 
-           const double K =
-               max_epipole_distance / (max_epipole_distance - best_iteration[y][x]);
+    if( !debug_path.empty() ) {
 
-           cmap[y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
-           cmap[y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
-         }
-       }
+      for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
-       cv::remap(current_image, remapped_current_image, cmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-       filename =
-           ssprintf("%s/remapped_current_image/remapped_current_image.%03d.tiff",
-               debug_path.c_str(), l);
+        cv::Mat2f optflow_image;
+        std::string filename;
 
-       if( !save_image(remapped_current_image, filename) ) {
-         CF_ERROR("save_image('%s') fails", filename.c_str());
-         return false;
-       }
-#endif
+        filename =
+            ssprintf("%s/best_costs/best_costs.%03d.%02d.tiff",
+                debug_path.c_str(), l, i);
+
+        if( !save_image(new_best_costs[i], filename) ) {
+          CF_ERROR("save_image('%s') fails", filename.c_str());
+          return false;
+        }
+
+
+        optflow_image.create(new_matches[i].size());
+        optflow_image.setTo(cv::Scalar::all(-1));
+
+        for( int y = 0; y < reference_image.rows; ++y ) {
+          for( int x = 0; x < reference_image.cols; ++x ) {
+            if ( new_matches[i][y][x][0] >= 0 ) {
+              optflow_image[y][x][0] = new_matches[i][y][x][0] - x;
+              optflow_image[y][x][1] = new_matches[i][y][x][1] - y;
+            }
+          }
+        }
+
+        filename =
+            ssprintf("%s/optflow/optflow.%03d.%02d.flo",
+                debug_path.c_str(), l, i);
+
+        if( !save_image(optflow_image, filename) ) {
+          CF_ERROR("save_image('%s') fails", filename.c_str());
+          return false;
+        }
+      }
+
+    }
+
+    std::swap(new_matches, previous_matches);
   }
-
 
 
   return true;
 }
+
+#if 0
+#if 1
+    const double max_epipole_distance =
+           std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
+               abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
+
+    for( int y = 0; y < reference_image_size.height; ++y ) {
+      for( int x = 0; x < reference_image_size.width; ++x ) {
+
+        c_best_extremum &pix =
+            best_grid[y][x];
+
+        for( int i = 0; i < pix.num_best_extremums; ++i ) {
+
+          const double K =
+              max_epipole_distance / (max_epipole_distance - pix.e[i].I);
+
+          // cmap[y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
+          // cmap[y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
+        }
+      }
+    }
+#endif
+
+
+
+    template<class T>
+    static void match_descriptors_(const cv::Mat & _cdescs, const cv::Mat & _rdescs,
+        cv::Mat1f & disp, cv::Mat1f & cost, const cv::Point2f & E,
+        const int search_forward, const int search_backward,
+        int lvl )
+    {
+      const int nx =
+          disp.cols;
+
+      const int ny =
+          disp.rows;
+
+      const cv::Mat_<T> cdescs =
+          _cdescs;
+
+      const cv::Mat_<T> rdescs =
+          _rdescs;
+
+      const int block_size =
+          rdescs.cols;
+
+      const int block_radius =
+          (sqrt(block_size) - 1) / 2;
+
+      cost.create(disp.size());
+      cost.setTo(0);
+
+      constexpr int RX0 = 30;
+      constexpr int RY0 = 25;
+
+
+      for( int ry = block_radius; ry < ny - block_radius; ++ry ) {
+        for( int rx = block_radius; rx < nx - block_radius; ++rx ) {
+
+          const float rex = rx - E.x;
+          const float rey = ry - E.y;
+          const float rr = std::sqrt(rex * rex + rey * rey);
+          const float sin = rey / rr;
+          const float cos = rex / rr;
+          const T * rdesc = rdescs[ry * nx + rx];
+
+
+          const float cermin = std::max(0.f, rr + disp[ry][rx] - search_backward);
+          const float cermax = std::max(0.f, rr + disp[ry][rx] + search_forward);
+          float best_cost = FLT_MAX;
+
+          for( float cr = cermin; cr <= cermax; cr += 1 ) {
+
+            const int cx = (int) cvRound( (E.x + cr * cos) );
+            const int cy = (int) cvRound( (E.y + cr * sin) );
+
+            if( cx <= 0 || cx >= nx || cy <= 0 || cy >= ny ) {
+              break;
+            }
+
+            const float ccost =
+                compute_cost(cdescs[cy * nx + cx],
+                    rdesc,
+                    block_size);
+
+            if ( lvl == 3 && rx == RX0 && ry == RY0 ) {
+              CF_DEBUG("rx=%d ry=%d rr=%g cr=%g d=%g cx=%d cy=%d ccost=%g best=%g",
+                  rx, ry, rr, cr, cr - rr, cx, cy, ccost,best_cost);
+            }
+
+            if ( ccost < best_cost ) {
+              disp[ry][rx] = cr - rr;
+              cost[ry][rx] = ccost;
+              if ( (best_cost = ccost) <= 0 ) {
+                break;
+              }
+            }
+          }
+
+        }
+      }
+    }
+
+
+    static void match_descriptors(const cv::Mat & cdescs, const cv::Mat & rdescs,
+        cv::Mat1f & disp, cv::Mat1f & cost, const cv::Point2f & E,
+        const int search_forward, const int search_backward,
+        int lvl )
+    {
+      switch (cdescs.depth()) {
+        case CV_8U:
+          match_descriptors_<uint8_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+        case CV_8S:
+          match_descriptors_<int8_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+        case CV_16U:
+          match_descriptors_<uint16_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+        case CV_16S:
+          match_descriptors_<int16_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+        case CV_32S:
+          match_descriptors_<int32_t>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+        case CV_32F:
+          match_descriptors_<float>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+        case CV_64F:
+          match_descriptors_<double>(cdescs, rdescs, disp, cost, E, search_forward, search_backward, lvl);
+          break;
+      }
+    }
+
+
+#endif

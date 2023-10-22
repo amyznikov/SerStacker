@@ -12,6 +12,7 @@
 #include "c_fits_file.h"
 #include "c_ffmpeg_file.h"
 #include "c_raw_file.h"
+#include "c_vlo_file.h"
 
 class c_input_source
 {
@@ -19,7 +20,8 @@ public:
   typedef c_input_source this_class;
   typedef std::shared_ptr<this_class> sptr;
 
-  enum source_type {
+  enum source_type
+  {
     UNKNOWN = 0,
     SER = 1,
 #if HAVE_CFITSIO
@@ -31,6 +33,9 @@ public:
     RAW_IMAGE = 5,
 #endif
     CAMERA = 6,
+#if HAVE_VLO_FILE
+    VLO = 7,
+#endif
   };
 
   static sptr create(const std::string & filename);
@@ -134,8 +139,8 @@ protected:
   std::vector<uint> badframes_;
 };
 
-class c_ser_input_source
-  : public c_input_source
+class c_ser_input_source :
+    public c_input_source
 {
 public:
   typedef c_ser_input_source this_class;
@@ -165,8 +170,8 @@ protected:
 };
 
 #if HAVE_CFITSIO
-class c_fits_input_source
-  : public c_input_source
+class c_fits_input_source :
+    public c_input_source
 {
 public:
   typedef c_fits_input_source this_class;
@@ -198,8 +203,8 @@ protected:
 #endif // HAVE_CFITSIO
 
 
-class c_movie_input_source
-  : public c_input_source
+class c_movie_input_source :
+    public c_input_source
 {
 public:
   typedef c_movie_input_source this_class;
@@ -229,8 +234,8 @@ protected:
 };
 
 
-class c_regular_image_input_source
-  : public c_input_source
+class c_regular_image_input_source :
+    public c_input_source
 {
 public:
   typedef c_regular_image_input_source this_class;
@@ -260,8 +265,8 @@ protected:
 };
 
 #if HAVE_LIBRAW
-class c_raw_image_input_source
-  : public c_input_source
+class c_raw_image_input_source :
+    public c_input_source
 {
 public:
   typedef c_raw_image_input_source this_class;
@@ -291,5 +296,40 @@ protected:
   int curpos_ = -1;
 };
 #endif // HAVE_LIBRAW
+
+#if HAVE_VLO_FILE
+
+class c_vlo_input_source :
+    public c_input_source
+{
+public:
+  typedef c_vlo_input_source this_class;
+  typedef c_input_source base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_vlo_input_source(const std::string & filename);
+
+  static ptr create(const std::string & filename);
+
+  static const std::vector<std::string> & suffixes();
+
+  bool open() override;
+
+  void close() override;
+
+  bool seek(int pos) override;
+
+  bool read(cv::Mat & output_frame,
+      enum COLORID * output_colorid,
+      int * output_bpc) override;
+
+  bool is_open() const override;
+
+protected:
+  c_vlo_reader vlo_;
+};
+
+#endif // HAVE_VLO_FILE
+
 
 #endif /* __c_input_source_h__ */

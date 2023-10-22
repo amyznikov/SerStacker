@@ -8,7 +8,6 @@
 #include "c_vlo_file.h"
 #include <fcntl.h>
 #include <string.h>
-// #include <core/proc/bswap.h>
 #include <core/proc/autoclip.h>
 #include <core/debug.h>
 
@@ -42,7 +41,7 @@ static inline void swap( T & a, T & b)
 
 static void init(c_vlo_scan & scan)
 {
-  scan.interfaceVersion = c_vlo_scan::INTERFACE_VERSION;
+  scan.interfaceVersion = c_vlo_scan::VERSION;
   scan.scanNumber = 0U;
   scan.timeStamp.nanoseconds = UINT32_MAX;
   scan.timeStamp.seconds = UINT32_MAX;
@@ -196,16 +195,15 @@ static bool convert(const c_vlo_scan1 & scan1, c_vlo_scan & scan)
           const auto &echoIN = slotIN.echo[layerIdx][echoIdx];
           auto &echoOUT = slotOUT.echo[layerIdx][echoIdx];
 
-          if( echoIN.area == 0 ) { // Invalid data
-            // Do nothing, keep defaults
+          if( echoIN.area == 0 ) {
           }
-          else if( echoIN.area == 65534U ) { // No laser shot
+          else if( echoIN.area == 65534U ) {
             echoOUT.distCm = 65534U;
             echoOUT.area = 65534U;
             echoOUT.peak = 254U;
             echoOUT.width = 254U;
           }
-          else if( echoIN.area == 65535U ) { // No echo
+          else if( echoIN.area == 65535U ) {
             echoOUT.distCm = 65535U;
             echoOUT.area = 65535U;
             echoOUT.peak = 255U;
@@ -245,7 +243,7 @@ static bool convert(const c_vlo_scan1 & scan1, c_vlo_scan & scan)
 
 static bool convert(const c_vlo_scan3 & scan3, c_vlo_scan & scan)
 {
-  if( (scan3.interfaceVersion == scan3.INTERFACE_VERSION) || (scan3.interfaceVersion == 18U) ) {
+  if( (scan3.interfaceVersion == scan3.VERSION) || (scan3.interfaceVersion == 18U) ) {
 
     init(scan);
 
@@ -253,7 +251,7 @@ static bool convert(const c_vlo_scan3 & scan3, c_vlo_scan & scan)
     scan.timeStamp.secondsHi = scan3.timeStampSecondsHi;
     scan.timeStamp.seconds = scan3.timeStampSeconds;
     scan.timeStamp.nanoseconds = scan3.timeStampNanoSeconds;
-    scan.scanDuration_ns = 33333333U; // estimated 120deg/180deg * 50ms
+    scan.scanDuration_ns = 33333333U;
     scan.mirrorSide = scan3.mirrorSide;
     scan.paddingBytes = scan3.paddingBytes;
     scan.startSlotIdxLowRes = scan3.startSlotIdxLowRes;
@@ -311,16 +309,15 @@ static bool convert(const c_vlo_scan3 & scan3, c_vlo_scan & scan)
           const auto & echoIN = slotIN.echo[layerIdx][echoIdx];
           auto & echoOUT = slotOUT.echo[layerIdx][echoIdx];
 
-          if( echoIN.area == 0 ) { // Invalid data
-            // Do nothing, keep defaults
+          if( echoIN.area == 0 ) {
           }
-          else if( echoIN.area == 65534U ) { // No laser shot
+          else if( echoIN.area == 65534U ) {
             echoOUT.distCm = 65534U;
             echoOUT.area = 65534U;
             echoOUT.peak = 254U;
             echoOUT.width = 254U;
           }
-          else if( echoIN.area == 65535U ) { // No echo
+          else if( echoIN.area == 65535U ) {
             echoOUT.distCm = 65535U;
             echoOUT.area = 65535U;
             echoOUT.peak = 255U;

@@ -43,7 +43,7 @@ struct c_vlo_scan1
   static constexpr uint16_t NUM_ECHOS = 3U;
   static constexpr uint32_t NUM_POINTS = (NUM_SLOTS * NUM_LAYERS) * NUM_ECHOS;
 
-  struct c_vlo_scan_config
+  struct config
   {
     uint16_t numSlots;
     uint16_t numLayersPerSlot;
@@ -68,7 +68,7 @@ struct c_vlo_scan1
     uint16_t shotTiming_sh;
   };
 
-  struct c_vlo_echo
+  struct echo
   {
     uint16_t distCm;
     uint16_t width;
@@ -76,12 +76,12 @@ struct c_vlo_scan1
     uint16_t peak;
   };
 
-  struct c_vlo_slot
+  struct slot
   {
     uint16_t slotIdx;
     uint16_t paddingBytes;
     int32_t angleTicks;
-    c_vlo_echo echo[NUM_LAYERS][NUM_ECHOS];
+    struct echo echo[NUM_LAYERS][NUM_ECHOS];
     uint16_t ambient[NUM_LAYERS];
   };
 
@@ -96,10 +96,10 @@ struct c_vlo_scan1
   uint16_t endSlotIdxLowRes;
   uint16_t startSlotIdxHighRes;
   uint16_t endSlotIdxHighRes;
-  c_vlo_scan_config config;
+  struct config config;
   int32_t verticalAngles[NUM_LAYERS];
   uint8_t reserveBeforeSlotData[112];
-  c_vlo_slot slot[NUM_SLOTS];
+  struct slot slot[NUM_SLOTS];
   uint16_t errorState;
   uint16_t laserVoltageActualMin;
   uint16_t laserVoltageActualMax;
@@ -116,13 +116,13 @@ struct c_vlo_scan1
 #pragma pack(push, 1)
 struct c_vlo_scan3
 {
-  static constexpr uint16_t INTERFACE_VERSION = 3U;
+  static constexpr uint16_t VERSION = 3U;
   static constexpr uint16_t NUM_SLOTS = 600U;
   static constexpr uint16_t NUM_LAYERS = 360U;
   static constexpr uint16_t NUM_ECHOS = 3U;
   static constexpr uint32_t NUM_POINTS = (NUM_SLOTS * NUM_LAYERS) * NUM_ECHOS;
 
-  struct c_vlo_scan_config
+  struct config
   {
     uint16_t numSlots;
     uint16_t numLayersPerSlot;
@@ -147,7 +147,7 @@ struct c_vlo_scan3
     uint16_t shotTiming_sh;
   };
 
-  struct c_vlo_echo
+  struct echo
   {
     uint16_t distCm;
     uint16_t width;
@@ -155,12 +155,12 @@ struct c_vlo_scan3
     uint16_t peak;
   };
 
-  struct c_vlo_slot
+  struct slot
   {
     uint16_t slotIdx;
     uint16_t paddingBytes;
     int32_t angleTicks;
-    c_vlo_echo echo[NUM_LAYERS][NUM_ECHOS];
+    struct echo echo[NUM_LAYERS][NUM_ECHOS];
     uint16_t ambient[NUM_LAYERS];
   };
 
@@ -175,10 +175,10 @@ struct c_vlo_scan3
   uint16_t endSlotIdxLowRes;
   uint16_t startSlotIdxHighRes;
   uint16_t endSlotIdxHighRes;
-  c_vlo_scan_config config;
+  struct config config;
   int32_t verticalAngles[NUM_LAYERS];
   uint8_t reserveBeforeSlotData[112];
-  c_vlo_slot slot[NUM_SLOTS];
+  struct slot slot[NUM_SLOTS];
   uint16_t errorState;
   uint16_t laserVoltageActualMin;
   uint16_t laserVoltageActualMax;
@@ -195,21 +195,21 @@ struct c_vlo_scan3
 #pragma pack(push, 1)
 struct c_vlo_scan
 {
-  static constexpr int INTERFACE_VERSION = 5;
+  static constexpr int VERSION = 5;
   static constexpr int NUM_LAYERS = 360;
   static constexpr int NUM_SLOTS = 100 * 120 / 20;
   static constexpr int NUM_ECHOS = 3;
   static constexpr int NUM_POINTS = NUM_SLOTS * NUM_LAYERS * NUM_ECHOS;
   static constexpr int NUM_REFERENCE_SHOTS = 2;
 
-  struct c_vlo_timestamp
+  struct timestamp
   {
     uint32_t nanoseconds;
     uint32_t seconds;
     uint32_t secondsHi;
   };
 
-  struct c_vlo_echo
+  struct echo
   {
     uint16_t distCm;
     uint16_t area;
@@ -217,17 +217,17 @@ struct c_vlo_scan
     uint8_t width;
   };
 
-  struct c_vlo_slot
+  struct slot
   {
     uint16_t slotIdx;
     uint16_t padding[3];
     int32_t angleTicks;
-    c_vlo_echo echo[NUM_LAYERS][NUM_ECHOS];
+    struct echo echo[NUM_LAYERS][NUM_ECHOS];
     uint16_t ambient[NUM_LAYERS];
     uint8_t numTotalEchoes[NUM_LAYERS];
   };
 
-  struct c_vlo_scan_config
+  struct config
   {
     uint16_t numSlots;
     uint16_t numLayersPerSlot;
@@ -264,7 +264,7 @@ struct c_vlo_scan
 
   uint16_t interfaceVersion;
   uint16_t scanNumber;
-  c_vlo_timestamp timeStamp;
+  struct timestamp timeStamp;
   uint32_t scanDuration_ns;
   uint16_t mirrorSide;
   uint16_t paddingBytes;
@@ -272,11 +272,11 @@ struct c_vlo_scan
   uint16_t endSlotIdxLowRes;
   uint16_t startSlotIdxHighRes;
   uint16_t endSlotIdxHighRes;
-  c_vlo_scan_config config;
+  struct config config;
   uint8_t reserveBeforeSlotData[20];
   int32_t verticalAngles[NUM_LAYERS];
-  c_vlo_slot slot[NUM_SLOTS];
-  c_vlo_slot referenceShot[NUM_REFERENCE_SHOTS];
+  struct slot slot[NUM_SLOTS];
+  struct slot referenceShot[NUM_REFERENCE_SHOTS];
   uint16_t errorState;
   uint16_t laserVoltageActualMin;
   uint16_t laserVoltageActualMax;

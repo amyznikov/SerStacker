@@ -45,7 +45,7 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
     Base("QGeneralAppSettingsWidget", parent)
 {
   debayer_ctl =
-      add_enum_combobox<DEBAYER_ALGORITHM>("Stacker debayer algoritm:",
+      add_enum_combobox<DEBAYER_ALGORITHM>("Stacker debayer algorithm:",
           "",
           [this](DEBAYER_ALGORITHM v) {
               if ( v != default_debayer_algorithm() ) {
@@ -54,7 +54,7 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
           });
 
   editorDebayer_ctl =
-      add_enum_combobox<DEBAYER_ALGORITHM>("Editor debayer algoritm:",
+      add_enum_combobox<DEBAYER_ALGORITHM>("Editor debayer algorithm:",
           "",
           [this](DEBAYER_ALGORITHM v) {
             if ( imageEditor_ ) {
@@ -83,6 +83,19 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
             }
           });
 
+#if HAVE_VLO_FILE
+  vloDataChannel_ctl_ =
+      add_enum_combobox<c_vlo_file::DATA_CHANNEL>("VLO DATA CHANNEL:",
+          "",
+          [this](c_vlo_file::DATA_CHANNEL v) {
+            if ( imageEditor_ ) {
+              c_vlo_file::DATA_CHANNEL channel = imageEditor_->vloDataChannel();
+              if ( channel != v ) {
+                imageEditor_->setVloDataChannel(v);
+              }
+            }
+          });
+#endif
 
   updateControls();
 }
@@ -112,6 +125,15 @@ void QGeneralAppSettingsWidget::setImageEditor(QImageEditor * imageEditor)
           c_update_controls_lock lock(this);
           badPixelsVariationThreshold_ctl->setValue(imageEditor_->badPixelsVariationThreshold());
         });
+
+#if HAVE_VLO_FILE
+    connect(imageEditor_, &QImageEditor::vloDataChannelChanged,
+        [this]() {
+          c_update_controls_lock lock(this);
+          vloDataChannel_ctl_->setValue(imageEditor_->vloDataChannel());
+        });
+#endif
+
   }
 
   updateControls();
@@ -130,6 +152,9 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
     editorDebayer_ctl->setEnabled(false);
     dropBadPixels_ctl->setEnabled(false);
     badPixelsVariationThreshold_ctl->setEnabled(false);
+#if HAVE_VLO_FILE
+    vloDataChannel_ctl_->setEnabled(false);
+#endif
   }
   else {
     editorDebayer_ctl->setValue(imageEditor_->debayerAlgorithm());
@@ -139,6 +164,12 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
     editorDebayer_ctl->setEnabled(true);
     dropBadPixels_ctl->setEnabled(true);
     badPixelsVariationThreshold_ctl->setEnabled(true);
+
+#if HAVE_VLO_FILE
+    vloDataChannel_ctl_->setValue(imageEditor_->vloDataChannel());
+    vloDataChannel_ctl_->setEnabled(true);
+#endif
+
   }
 }
 

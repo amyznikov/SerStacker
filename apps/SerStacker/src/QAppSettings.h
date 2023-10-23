@@ -38,6 +38,10 @@ protected:
   QEnumComboBox<DEBAYER_ALGORITHM> * editorDebayer_ctl = nullptr;
   QCheckBox * dropBadPixels_ctl = nullptr;
   QNumericBox * badPixelsVariationThreshold_ctl = nullptr;
+
+#if HAVE_VLO_FILE
+  QEnumComboBox<c_vlo_file::DATA_CHANNEL> * vloDataChannel_ctl_ = nullptr;
+#endif
 };
 
 

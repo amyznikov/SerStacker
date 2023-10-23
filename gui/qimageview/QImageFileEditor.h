@@ -43,11 +43,19 @@ public:
   void setBadPixelsVariationThreshold(double v);
   double badPixelsVariationThreshold() const;
 
+#if HAVE_VLO_FILE
+  void setVloDataChannel(c_vlo_file::DATA_CHANNEL channel);
+  c_vlo_file::DATA_CHANNEL vloDataChannel() const;
+#endif
+
 Q_SIGNALS:
   void onInputImageLoad(const cv::Mat & image, const cv::Mat & mask, COLORID colorid, int bpp);
   void debayerAlgorithmChanged();
   void dropBadPixelsChanged();
   void badPixelsVariationThresholdChanged();
+#if HAVE_VLO_FILE
+  void vloDataChannelChanged();
+#endif
 
 protected Q_SLOTS:
   void startDisplay();
@@ -64,6 +72,12 @@ protected:
   DEBAYER_ALGORITHM debayerAlgorithm_ = DEBAYER_DEFAULT;
   bool filterBadPixels_ = false;
   double badPixelsVariationThreshold_ = 5;
+
+#if HAVE_VLO_FILE
+  c_vlo_file::DATA_CHANNEL vlo_data_channel_ =
+      c_vlo_file::DATA_CHANNEL_AMBIENT;
+#endif
+
 };
 
 #endif /* __QImageFileEditor_h__ */

@@ -325,8 +325,14 @@ public:
 
   bool is_open() const override;
 
+  void set_read_channel(c_vlo_file::DATA_CHANNEL v);
+  c_vlo_file::DATA_CHANNEL read_channel() const;
+
 protected:
   c_vlo_reader vlo_;
+
+  c_vlo_file::DATA_CHANNEL read_channel_ =
+      c_vlo_file::DATA_CHANNEL_AMBIENT;
 };
 
 #endif // HAVE_VLO_FILE

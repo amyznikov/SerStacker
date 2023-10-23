@@ -755,9 +755,7 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( vlo_.read_echo(&output_frame, c_vlo_file::ECHO_DIST) ) {
-
-  //if ( vlo_.read_ambient(&output_frame) ) {
+  if ( vlo_.read_image(&output_frame, read_channel_) ) {
 
     if ( output_colorid ) {
       *output_colorid =
@@ -778,6 +776,16 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
 bool c_vlo_input_source::is_open() const
 {
   return vlo_.is_open();
+}
+
+void c_vlo_input_source::set_read_channel(c_vlo_file::DATA_CHANNEL v)
+{
+  read_channel_ = v;
+}
+
+c_vlo_file::DATA_CHANNEL c_vlo_input_source::read_channel() const
+{
+  return read_channel_;
 }
 
 #endif // HAVE_VLO_FILE

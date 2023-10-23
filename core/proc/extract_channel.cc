@@ -25,8 +25,9 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_green, "green", "cv::extractChannel(1)" },
       { color_channel_blue, "blue", "cv::extractChannel(0)"},
       { color_channel_min_inensity, "min", "cv::reduce(cv::REDUCE_MIN)"},
-      { color_channel_max_inensity, "max", "cv::reduce(cv::REDUCE_MAX)"},
-      { color_channel_avg_inensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
+      { color_channel_max_intensity, "max", "cv::reduce(cv::REDUCE_MAX)"},
+      { color_channel_avg_intensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
+      { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
       { color_channel_max_color, "max_color", "max - min"},
 
       { color_channel_unknown, nullptr, }
@@ -149,7 +150,7 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
       break;
     }
 
-    case color_channel_max_inensity : {
+    case color_channel_max_intensity : {
       if ( scaled_src.isContinuous() ) {
         const int src_rows = scaled_src.rows;
         cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_MAX);
@@ -164,7 +165,7 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
       break;
     }
 
-    case color_channel_avg_inensity : {
+    case color_channel_avg_intensity : {
       if ( scaled_src.isContinuous() ) {
         const int src_rows = scaled_src.rows;
         cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_AVG);
@@ -174,6 +175,21 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         cv::Mat tmp = scaled_src.clone();
         const int src_rows = tmp.rows;
         cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_AVG);
+        converted_src = converted_src.reshape(0, src_rows);
+      }
+      break;
+    }
+
+    case color_channel_sum_intensity : {
+      if ( scaled_src.isContinuous() ) {
+        const int src_rows = scaled_src.rows;
+        cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_SUM);
+        converted_src = converted_src.reshape(0, src_rows);
+      }
+      else {
+        cv::Mat tmp = scaled_src.clone();
+        const int src_rows = tmp.rows;
+        cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_SUM);
         converted_src = converted_src.reshape(0, src_rows);
       }
       break;

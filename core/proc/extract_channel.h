@@ -27,9 +27,10 @@ enum color_channel_type {
   color_channel_green = color_channel_featured_begin + 3, // cv::extractChannel(1)
   color_channel_blue = color_channel_featured_begin + 4, // cv::extractChannel(0)
   color_channel_min_inensity = color_channel_featured_begin + 5, // cv::reduce(min)
-  color_channel_max_inensity = color_channel_featured_begin + 6, // cv::reduce(max)
-  color_channel_avg_inensity = color_channel_featured_begin + 7, // cv::reduce(avg)
+  color_channel_max_intensity = color_channel_featured_begin + 6, // cv::reduce(max)
+  color_channel_avg_intensity = color_channel_featured_begin + 7, // cv::reduce(avg)
   color_channel_max_color = color_channel_featured_begin + 8, // cv::reduce(max) - cv::reduce(min)
+  color_channel_sum_intensity = color_channel_featured_begin + 9, // cv::reduce(sum)
 };
 
 

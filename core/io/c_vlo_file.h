@@ -298,6 +298,13 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
+  enum ECHO_CHANNEL {
+    ECHO_DIST,
+    ECHO_AREA,
+    ECHO_PEAK,
+    ECHO_WIDTH,
+  };
+
   c_vlo_file()
   {
   }
@@ -343,6 +350,7 @@ public:
   bool read(c_vlo_scan1 * scan);
   bool read(c_vlo_scan3 * scan);
   bool read_ambient(cv::Mat * image);
+  bool read_echo(cv::Mat * image, c_vlo_file::ECHO_CHANNEL channel);
 
   /// @brief get total file size in bytes
   ssize_t file_size() const;
@@ -357,6 +365,10 @@ public:
   static cv::Mat1w get_ambient_image(const c_vlo_scan1 & scan);
   static cv::Mat1w get_ambient_image(const c_vlo_scan3 & scan);
   static cv::Mat1w get_ambient_image(const c_vlo_scan & scan);
+
+  static cv::Mat get_echo_image(const c_vlo_scan1 & scan, ECHO_CHANNEL channel);
+  static cv::Mat get_echo_image(const c_vlo_scan3 & scan, ECHO_CHANNEL channel);
+  static cv::Mat get_echo_image(const c_vlo_scan & scan, ECHO_CHANNEL channel);
 
   static cv::Mat get_thumbnail_image(const std::string & filename);
 

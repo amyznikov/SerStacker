@@ -8,6 +8,7 @@
 #include "c_vlo_file.h"
 #include <fcntl.h>
 #include <string.h>
+#include <limits>
 #include <core/proc/autoclip.h>
 #include <core/debug.h>
 
@@ -646,6 +647,39 @@ bool c_vlo_reader::read_ambient(cv::Mat * image)
   return false;
 }
 
+bool c_vlo_reader::read_echo(cv::Mat * image, c_vlo_file::ECHO_CHANNEL channel)
+{
+  switch (version()) {
+    case VLO_VERSION_1: {
+      c_vlo_scan1 scan;
+      if( read(&scan) ) {
+        *image = get_echo_image(scan, channel);
+        return true;
+      }
+      break;
+    }
+    case VLO_VERSION_3: {
+      c_vlo_scan3 scan;
+      if( read(&scan) ) {
+        *image = get_echo_image(scan, channel);
+        return true;
+      }
+      break;
+    }
+    case VLO_VERSION_5: {
+      c_vlo_scan scan;
+      if( read(&scan) ) {
+        *image = get_echo_image(scan, channel);
+        return true;
+      }
+      break;
+    }
+  }
+
+  return false;
+}
+
+
 template<class ScanType>
 static cv::Mat get_ambient_image(const ScanType & scan)
 {
@@ -658,6 +692,92 @@ static cv::Mat get_ambient_image(const ScanType & scan)
   }
 
   return image;
+}
+
+
+
+
+
+template<class ScanType>
+static cv::Mat get_echo_image(const ScanType & scan, c_vlo_file::ECHO_CHANNEL channel)
+{
+  switch (channel) {
+
+    case c_vlo_file::ECHO_DIST: {
+
+      typedef decltype(ScanType::echo::distCm) value_type;
+      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+            const auto & value = scan.slot[s].echo[l][c].distCm;
+            image[l][s][c] = value <= max_valalue ? value : 0;
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::ECHO_AREA: {
+      typedef decltype(ScanType::echo::area) value_type;
+      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+            const auto & value = scan.slot[s].echo[l][c].area;
+            image[l][s][c] = value <= max_valalue ? value : 0;
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::ECHO_PEAK: {
+      typedef decltype(ScanType::echo::peak) value_type;
+      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+            const auto & value = scan.slot[s].echo[l][c].peak;
+            image[l][s][c] = value <= max_valalue ? value : 0;
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::ECHO_WIDTH: {
+      typedef decltype(ScanType::echo::width) value_type;
+      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+            const auto & value = scan.slot[s].echo[l][c].width;
+            image[l][s][c] = value <= max_valalue ? value : 0;
+          }
+        }
+      }
+
+      return image;
+    }
+  }
+
+  return cv::Mat();
 }
 
 cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan1 & scan)
@@ -674,6 +794,22 @@ cv::Mat1w c_vlo_reader::get_ambient_image(const c_vlo_scan & scan)
 {
   return ::get_ambient_image(scan);
 }
+
+cv::Mat c_vlo_reader::get_echo_image(const c_vlo_scan1 & scan, ECHO_CHANNEL channel)
+{
+  return ::get_echo_image(scan, channel);
+}
+
+cv::Mat c_vlo_reader::get_echo_image(const c_vlo_scan3 & scan, ECHO_CHANNEL channel)
+{
+  return ::get_echo_image(scan, channel);
+}
+
+cv::Mat c_vlo_reader::get_echo_image(const c_vlo_scan & scan, ECHO_CHANNEL channel)
+{
+  return ::get_echo_image(scan, channel);
+}
+
 
 cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
 {
@@ -719,3 +855,4 @@ cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
 
   return image;
 }
+

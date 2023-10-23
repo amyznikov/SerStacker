@@ -755,10 +755,13 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( vlo_.read_ambient(&output_frame) ) {
+  if ( vlo_.read_echo(&output_frame, c_vlo_file::ECHO_DIST) ) {
+
+  //if ( vlo_.read_ambient(&output_frame) ) {
 
     if ( output_colorid ) {
-      *output_colorid = COLORID_MONO;
+      *output_colorid =
+          suggest_colorid(output_frame.channels());
     }
 
     if ( output_bpc ) {

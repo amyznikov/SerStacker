@@ -22,6 +22,13 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA, "ECHO_AREA", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK, "ECHO_PEAK", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_WIDTH, "ECHO_WIDTH", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_WIDTH, "AREA_DIV_WIDTH", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_WIDTH, "PEAK_DIV_WIDTH", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_DIST, "AREA_DIV_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_DIST, "PEAK_DIV_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_DIST2, "AREA_DIV_DIST2", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_DIST2, "PEAK_DIV_DIST2", "" },
+
       { c_vlo_file::DATA_CHANNEL_AMBIENT },
   };
 
@@ -380,14 +387,14 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_AMBIENT: {
       typedef typename std::remove_reference_t<decltype(ScanType::slot::ambient[0])> value_type;
-      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<value_type> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
 
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           const auto & value = scan.slot[s].ambient[l];
-          image[l][s] = value <= max_valalue ? value : 0;
+          image[l][s] = value <= max_value ? value : 0;
         }
       }
 
@@ -397,7 +404,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     case c_vlo_file::DATA_CHANNEL_ECHO_DIST: {
 
       typedef decltype(ScanType::echo::distCm) value_type;
-      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
 
@@ -405,7 +412,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int c = 0; c < 3; ++c ) {
             const auto & value = scan.slot[s].echo[l][c].distCm;
-            image[l][s][c] = value <= max_valalue ? value : 0;
+            image[l][s][c] = value <= max_value ? value : 0;
           }
         }
       }
@@ -415,7 +422,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
       typedef decltype(ScanType::echo::area) value_type;
-      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
 
@@ -423,7 +430,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int c = 0; c < 3; ++c ) {
             const auto & value = scan.slot[s].echo[l][c].area;
-            image[l][s][c] = value <= max_valalue ? value : 0;
+            image[l][s][c] = value <= max_value ? value : 0;
           }
         }
       }
@@ -433,7 +440,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK: {
       typedef decltype(ScanType::echo::peak) value_type;
-      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
 
@@ -441,7 +448,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int c = 0; c < 3; ++c ) {
             const auto & value = scan.slot[s].echo[l][c].peak;
-            image[l][s][c] = value <= max_valalue ? value : 0;
+            image[l][s][c] = value <= max_value ? value : 0;
           }
         }
       }
@@ -451,7 +458,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_WIDTH: {
       typedef decltype(ScanType::echo::width) value_type;
-      constexpr auto max_valalue = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
 
@@ -459,13 +466,180 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int c = 0; c < 3; ++c ) {
             const auto & value = scan.slot[s].echo[l][c].width;
-            image[l][s][c] = value <= max_valalue ? value : 0;
+            image[l][s][c] = value <= max_value ? value : 0;
           }
         }
       }
 
       return image;
     }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_WIDTH : {
+      typedef decltype(ScanType::echo::area) value_type;
+      typedef decltype(ScanType::echo::width) width_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_width = std::numeric_limits<width_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].area;
+            const auto & width = scan.slot[s].echo[l][c].width;
+
+            if ( value > 0 && value < max_value && width > 0 && width < max_width ) {
+              image[l][s][c] = ((double) value ) / ((double) width);
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_WIDTH : {
+      typedef decltype(ScanType::echo::peak) value_type;
+      typedef decltype(ScanType::echo::width) width_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_width = std::numeric_limits<width_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].peak;
+            const auto & width = scan.slot[s].echo[l][c].width;
+
+            if ( value > 0 && value < max_value && width > 0 && width < max_width ) {
+              image[l][s][c] = ((double) value ) / ((double) width);
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_DIST : {
+      typedef decltype(ScanType::echo::area) value_type;
+      typedef decltype(ScanType::echo::distCm) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].area;
+            const auto & distance = scan.slot[s].echo[l][c].distCm;
+
+            if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
+              image[l][s][c] = ((double) value ) / ((double) distance);
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_DIST : {
+      typedef decltype(ScanType::echo::peak) value_type;
+      typedef decltype(ScanType::echo::distCm) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].peak;
+            const auto & distance = scan.slot[s].echo[l][c].distCm;
+
+            if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
+              image[l][s][c] = ((double) value ) / ((double) distance);
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_DIST2 : {
+      typedef decltype(ScanType::echo::area) value_type;
+      typedef decltype(ScanType::echo::distCm) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].area;
+            const auto & distance = scan.slot[s].echo[l][c].distCm;
+
+            if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
+              image[l][s][c] = ((double) value ) / (((double) distance) * (double) distance) ;
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_DIST2 : {
+      typedef decltype(ScanType::echo::peak) value_type;
+      typedef decltype(ScanType::echo::distCm) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].peak;
+            const auto & distance = scan.slot[s].echo[l][c].distCm;
+
+            if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
+              image[l][s][c] = ((double) value ) / (((double) distance) * (double) distance) ;
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
   }
 
   return cv::Mat();

@@ -44,7 +44,7 @@ bool triangulate_point(double xpix0, double ypix0,
   if ( sin_gamma > 2e-3 ) {
 
       const double distance0 =
-          Baseline * sin(alpha1) / sin_gamma;
+          Baseline /** sin(alpha1) */ / sin_gamma;
 
       const double depth =
           u0.dot(cv::Vec3d(0, 0, 1)) * distance0 / normu0;

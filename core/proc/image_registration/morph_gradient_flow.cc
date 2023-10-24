@@ -153,6 +153,7 @@ static void compute_descriptors(const cv::Mat & image, cv::Mat & descs, const in
 template<class T>
 static inline float compute_cost(const T cdesc[], const T rdesc[], int desc_size)
 {
+  INSTRUMENT_REGION("");
   float s = 0;
   for( int i = 0; i < desc_size; ++i ) {
     s += std::abs(cdesc[i] - rdesc[i]);
@@ -162,152 +163,239 @@ static inline float compute_cost(const T cdesc[], const T rdesc[], int desc_size
 
 template<class T>
 static void match_descriptors_(int x, int y, int nx, int ny,
-    const cv::Mat & _cdescs, const cv::Mat & _rdescs,
-    const cv::Mat2f & coarse_matches,
-    int * output_best_match_x,
-    int * output_best_match_y,
-    float * output_best_match_cost )
+    const cv::Point2d & E,
+    const cv::Mat_<T> & cdescs,
+    const cv::Mat_<T> & rdescs,
+    const cv::Mat1f & coarse_disparity,
+    double * output_best_match_disparity,
+    double * output_best_match_cost)
 {
+
+  INSTRUMENT_REGION("");
+
   const int search_radius = 2;
 
-  const cv::Mat_<T> cdescs = _cdescs;
-  const cv::Mat_<T> rdescs = _rdescs;
+//  const cv::Mat_<T> cdescs = _cdescs;
+//  const cv::Mat_<T> rdescs = _rdescs;
   const int desc_size = rdescs.cols;
   const int block_radius = (sqrt(desc_size) - 1) / 2;
 
   const int coarse_x = x / 2;
   const int coarse_y = y / 2;
 
+  const double epipole_distance =
+      hypot(x - E.x, y - E.y);
 
-  int best_total_match_x = -1;
-  int best_total_match_y = -1;
+  const double ce =
+      (x - E.x) / epipole_distance;
+
+  const double se =
+      (y - E.y) / epipole_distance;
+
+  int best_total_x = -1;
+  int best_total_y = -1;
   float best_total_cost = FLT_MAX;
 
-  int coarse_xx_min, coarse_xx_max;
-  int coarse_yy_min, coarse_yy_max;
+  const int coarse_xx_min =
+      std::max(0, coarse_x - 1);
 
-  if( y & 1 == 0 ) { // top
-    coarse_yy_min = std::max(0, coarse_y - 1);
-    coarse_yy_max = coarse_y;
-  }
-  else { // bottom
-    coarse_yy_min = coarse_y;
-    coarse_yy_max = std::min(ny - 1, coarse_y + 1);
-  }
+  const int coarse_xx_max =
+      std::min(coarse_disparity.cols - 1, coarse_x + 1);
 
-  if( x & 1 == 0 ) { // left
-    coarse_xx_min = std::max(0, coarse_x - 1);
-    coarse_xx_max = coarse_x;
-  }
-  else { // right
-    coarse_xx_min = coarse_x;
-    coarse_xx_max = std::min(nx - 1, coarse_x + 1);
-  }
+  const int coarse_yy_min =
+      std::max(0, coarse_y - 1);
 
+  const int coarse_yy_max =
+      std::min(coarse_disparity.rows - 1, coarse_y + 1);
 
   for( int coarse_yy = coarse_yy_min; coarse_yy <= coarse_yy_max; ++coarse_yy ) {
     for( int coarse_xx = coarse_xx_min; coarse_xx <= coarse_xx_max; ++coarse_xx ) {
 
-      const int hypx = coarse_matches[coarse_yy][coarse_xx][0];
-      const int hypy = coarse_matches[coarse_yy][coarse_xx][1];
-
-      if ( hypx < 0 || hypy < 0 ) {
+      if( coarse_disparity[coarse_yy][coarse_xx] < 0 ) {
         continue;
       }
 
-      const int search_xmin = std::max(block_radius, 2 * hypx - search_radius);
-      const int search_xmax = std::min(nx - block_radius - 1, 2 * hypx + search_radius);
-      const int search_ymin = std::max(block_radius, 2 * hypy - search_radius);
-      const int search_ymax = std::min(ny - block_radius - 1, 2 * hypy + search_radius);
+      const int search_disparity_min =
+          std::max(0, (int) (2 * coarse_disparity[coarse_yy][coarse_xx] - 2));
+
+      const int search_disparity_max =
+          (int) (2 * coarse_disparity[coarse_yy][coarse_xx] + 2);
 
       float best_cost = FLT_MAX;
-      float best_match_x = -1;
-      float best_match_y = -1;
+      int best_current_x = -1;
+      int best_current_y = -1;
 
-      for( int search_y = search_ymin; search_y <= search_ymax; ++search_y ) {
-        for( int search_x = search_xmin; search_x <= search_xmax; ++search_x ) {
+      for( double current_disparity = search_disparity_min;
+          current_disparity <= search_disparity_max;
+          current_disparity += 1.5 ) {
 
-          const float current_cost =
-              compute_cost(cdescs[search_y * nx + search_x],
-                  rdescs[y * nx + x],
-                  desc_size);
+        const int current_x =
+            (int) ((epipole_distance + current_disparity) * ce + E.x);
 
-          if ( current_cost < best_cost ) {
-            best_match_x = search_x;
-            best_match_y = search_y;
-            if ( (best_cost = current_cost) <= 0 ) {
-              break;
-            }
+        const int current_y =
+            (int) ((epipole_distance + current_disparity) * se + E.y);
+
+        if( current_x < 0 || current_x >= nx || current_y < 0 || current_y >= ny ) {
+          break;
+        }
+
+        const float current_cost =
+            compute_cost(cdescs[current_y * nx + current_x],
+                rdescs[y * nx + x],
+                desc_size);
+
+        if( current_cost < best_cost ) {
+          best_current_x = current_x;
+          best_current_y = current_y;
+          if( (best_cost = current_cost) <= 0 ) {
+            break;
           }
         }
       }
 
-      if ( best_cost < best_total_cost ) {
-        best_total_match_x = best_match_x;
-        best_total_match_y = best_match_y;
-        if ( (best_total_cost = best_cost) <= 0 ) {
+      if( best_cost < best_total_cost ) {
+        best_total_x = best_current_x;
+        best_total_y = best_current_y;
+        if( (best_total_cost = best_cost) <= 0 ) {
           break;
         }
       }
     }
   }
 
-
-  * output_best_match_x = best_total_match_x;
-  * output_best_match_y = best_total_match_y;
-  * output_best_match_cost =  best_total_cost;
-}
-
-static void match_descriptors(int x, int y, int nx, int ny,
-    const cv::Mat & cdescs, const cv::Mat & rdescs,
-    const cv::Mat2f & coarse_matches,
-    int * best_match_x,
-    int * best_match_y,
-    float * best_cost)
-{
-  switch (cdescs.depth()) {
-    case CV_8U:
-      match_descriptors_<uint8_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
-    case CV_8S:
-      match_descriptors_<int8_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
-    case CV_16U:
-      match_descriptors_<uint16_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
-    case CV_16S:
-      match_descriptors_<int16_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
-    case CV_32S:
-      match_descriptors_<int32_t>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
-    case CV_32F:
-      match_descriptors_<float>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
-    case CV_64F:
-      match_descriptors_<double>(x, y, nx, ny, cdescs, rdescs, coarse_matches, best_match_x, best_match_y, best_cost);
-      break;
+  if ( best_total_x >= 0 ) {
+    *output_best_match_disparity = hypot(best_total_x - E.x, best_total_y - E.y) - epipole_distance;
+    *output_best_match_cost = best_total_cost;
+  }
+  else {
+    *output_best_match_disparity = -1;
+    *output_best_match_cost = FLT_MAX;
   }
 }
+//
+//static void match_descriptors(int x, int y, int nx, int ny,
+//    const cv::Point2d & E,
+//    const cv::Mat & cdescs, const cv::Mat & rdescs,
+//    const cv::Mat1f & coarse_disparity,
+//    double * best_match_disparity,
+//    double * best_match_cost)
+//{
+//  switch (cdescs.depth()) {
+//    case CV_8U:
+//      match_descriptors_<uint8_t>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//    case CV_8S:
+//      match_descriptors_<int8_t>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//    case CV_16U:
+//      match_descriptors_<uint16_t>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//    case CV_16S:
+//      match_descriptors_<int16_t>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//    case CV_32S:
+//      match_descriptors_<int32_t>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//    case CV_32F:
+//      match_descriptors_<float>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//    case CV_64F:
+//      match_descriptors_<double>(x, y, nx, ny, E, cdescs, rdescs, coarse_disparity, best_match_disparity, best_match_cost);
+//      break;
+//  }
+//}
 
+//
+//static cv::Mat2f matches_to_optflow(const cv::Mat2f & matches)
+//{
+//  cv::Mat2f optflow(matches.size());
+//
+//  for ( int y = 0; y < optflow.rows; ++y ) {
+//    for ( int x = 0; x < optflow.cols; ++x ) {
+//      if ( matches[y][x][0] >= 0 ) {
+//        optflow[y][x][0] = matches[y][x][0] - x;
+//        optflow[y][x][1] = matches[y][x][1] - y;
+//      }
+//      else {
+//        optflow[y][x][0] = -1;
+//        optflow[y][x][1] = -1;
+//      }
+//    }
+//  }
+//  return optflow;
+//}
 
-static cv::Mat2f matches_to_optflow(const cv::Mat2f & matches)
+template<class T>
+static void update_fine_level_(const std::vector<cv::Mat1f> & coarse_disparities, int nx, int ny,
+    const cv::Mat & _cdescs, const cv::Mat & _rdescs,
+    const cv::Point2d & epipole_location,
+    std::vector<cv::Mat1f> & fine_disparities,
+    std::vector<cv::Mat1f> & fine_costs)
 {
-  cv::Mat2f optflow(matches.size());
+  const cv::Mat_<T> cdescs = _cdescs;
+  const cv::Mat_<T> rdescs = _rdescs;
 
-  for ( int y = 0; y < optflow.rows; ++y ) {
-    for ( int x = 0; x < optflow.cols; ++x ) {
-      if ( matches[y][x][0] >= 0 ) {
-        optflow[y][x][0] = matches[y][x][0] - x;
-        optflow[y][x][1] = matches[y][x][1] - y;
-      }
-      else {
-        optflow[y][x][0] = -1;
-        optflow[y][x][1] = -1;
+  CF_DEBUG("nx=%d ny=%d", nx, ny);
+
+  for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+    for( int y = 0; y < ny; ++y ) {
+      for( int x = 0; x < nx; ++x ) {
+
+        const cv::Mat1f &coarse_disparity =
+            coarse_disparities[i];
+
+        double best_match_disparity = -1;
+        double best_match_cost = FLT_MAX;
+
+        match_descriptors_<T>(x, y, nx, ny,
+            epipole_location,
+            cdescs,
+            rdescs,
+            coarse_disparity,
+            &best_match_disparity,
+            &best_match_cost);
+
+        if( best_match_disparity >= 0 ) {
+          fine_disparities[i][y][x] = best_match_disparity;
+          fine_costs[i][y][x] = best_match_cost < FLT_MAX ? best_match_cost : -1;
+        }
       }
     }
   }
-  return optflow;
+}
+
+static void update_fine_level(const std::vector<cv::Mat1f> & coarse_disparities,
+    int nx, int ny,
+    const cv::Mat & cdescs, const cv::Mat & rdescs,
+    const cv::Point2d & epipole_location,
+    std::vector<cv::Mat1f> & fine_disparities,
+    std::vector<cv::Mat1f> & fine_costs)
+{
+
+  switch (cdescs.depth()) {
+    case CV_8U:
+      update_fine_level_<uint8_t>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+    case CV_8S:
+      update_fine_level_<int8_t>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+    case CV_16U:
+      update_fine_level_<uint16_t>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+    case CV_16S:
+      update_fine_level_<int16_t>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+    case CV_32S:
+      update_fine_level_<int32_t>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+    case CV_32F:
+      update_fine_level_<float>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+    case CV_64F:
+      update_fine_level_<double>(coarse_disparities, nx, ny, cdescs, rdescs, epipole_location, fine_disparities, fine_costs);
+      break;
+  }
+
 }
 
 
@@ -329,8 +417,12 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
   std::vector<cv::Mat> current_layers;
   std::vector<cv::Mat> reference_layers;
-  std::vector<cv::Mat2f> previous_matches, new_matches;
+  std::vector<cv::Mat1f> disparity_map, new_disparity_map;
   std::vector<cv::Mat1f> new_best_costs;
+
+  cv::Mat1f final_disparity_map;
+  cv::Mat1f final_best_costs;
+
   cv::Mat2f cmap;
   cv::Mat remapped_current_image;
   cv::Mat remapped_current_mask;
@@ -371,9 +463,6 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     return false;
   }
 
-
-  disp.create(reference_layers.back().size());
-  disp.setTo(0);
 
   CF_DEBUG("E: x=%g y=%g alpha=%g beta=%g", E.x, E.y, alpha, beta);
 
@@ -644,10 +733,10 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
     }
 
 
-    previous_matches.resize(MAX_BEST_EXTREMUMS);
+    disparity_map.resize(MAX_BEST_EXTREMUMS);
     for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
-      previous_matches[i].create(reference_image_size);
-      previous_matches[i].setTo(cv::Scalar::all(-1));
+      disparity_map[i].create(reference_image_size);
+      disparity_map[i].setTo(cv::Scalar::all(-1));
     }
 
     const double max_epipole_distance =
@@ -665,8 +754,11 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
           const double K =
               max_epipole_distance / (max_epipole_distance - pix.e[i].I);
 
-          previous_matches[i][y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
-          previous_matches[i][y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
+          const double r = hypot(x - epipole_location.x, y - epipole_location.y);
+
+          disparity_map[i][y][x] = r * (K - 1);
+          //previous_matches[i][y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
+          //previous_matches[i][y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
         }
       }
     }
@@ -754,10 +846,9 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
   for( int l = nlayers - 2; l >= 0; --l ) {
 
-    if ( l < nlayers - 2 ) {
-      break;
-    }
-
+//    if ( l < nlayers - 2 ) {
+//      break;
+//    }
 
     const cv::Mat & current_image =
         current_layers[l];
@@ -767,6 +858,9 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
     const cv::Size reference_image_size =
         reference_image.size();
+
+    const cv::Point2d epipole_location(E.x / (1 << l), E.y / (1 << l));
+
 
     if( !debug_path.empty() ) {
 
@@ -792,14 +886,11 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
       for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
 
-        const cv::Mat2f optflow =
-            matches_to_optflow(previous_matches[i]);
-
         filename =
-            ssprintf("%s/previous_matches/previous_matches.%03d.%03d.flo",
+            ssprintf("%s/previous_disparity/previous_disparity.%03d.%03d.tiff",
                 debug_path.c_str(), l, i);
 
-        if( !save_image(optflow, filename) ) {
+        if( !save_image(disparity_map[i], filename) ) {
           CF_ERROR("save_image('%s') fails", filename.c_str());
           return false;
         }
@@ -814,50 +905,58 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
         reference_descriptors,
         block_radius);
 
-    new_matches.resize(MAX_BEST_EXTREMUMS);
+    new_disparity_map.resize(MAX_BEST_EXTREMUMS);
     new_best_costs.resize(MAX_BEST_EXTREMUMS);
+
     for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
-      new_matches[i].create(reference_image.size());
-      new_matches[i].setTo(cv::Scalar::all(-1));
+      new_disparity_map[i].create(reference_image.size());
+      new_disparity_map[i].setTo(cv::Scalar::all(-1));
       new_best_costs[i].create(reference_image.size());
       new_best_costs[i].setTo(cv::Scalar::all(-1));
     }
 
-    for( int y = 0; y < reference_image.rows; ++y ) {
-      for( int x = 0; x < reference_image.cols; ++x ) {
-        for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
-
-          const cv::Mat2f &coarse_matches =
-              previous_matches[i];
-
-          int best_match_x = -1;
-          int best_match_y = -1;
-          float best_cost = FLT_MAX;
-
-          match_descriptors(x, y, reference_image.cols, reference_image.rows,
-              current_descriptors,
-              reference_descriptors,
-              coarse_matches,
-              &best_match_x,
-              &best_match_y,
-              &best_cost);
+    update_fine_level(disparity_map,
+        reference_image.cols,
+        reference_image.rows,
+        current_descriptors,
+        reference_descriptors,
+        epipole_location,
+        new_disparity_map,
+        new_best_costs);
 
 
-          if ( best_match_x >= 0 ) {
-
-            new_matches[i][y][x][0] = best_match_x;
-            new_matches[i][y][x][1] = best_match_y;
-            new_best_costs[i][y][x] = best_cost < FLT_MAX ? best_cost : -1;
-          }
-        }
-      }
-    }
+//    for( int y = 0; y < reference_image.rows; ++y ) {
+//      for( int x = 0; x < reference_image.cols; ++x ) {
+//        for( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+//
+//          const cv::Mat1f &coarse_disparity =
+//              disparity_map[i];
+//
+//          double best_match_disparity = -1;
+//          double best_match_cost = FLT_MAX;
+//
+//          match_descriptors(x, y, reference_image.cols, reference_image.rows,
+//              epipole_location,
+//              current_descriptors,
+//              reference_descriptors,
+//              coarse_disparity,
+//              &best_match_disparity,
+//              &best_match_cost);
+//
+//
+//          if ( best_match_disparity >= 0 ) {
+//            new_disparity_map[i][y][x] = best_match_disparity;
+//            new_best_costs[i][y][x] = best_match_cost < FLT_MAX ? best_match_cost : -1;
+//          }
+//        }
+//      }
+//    }
 
     if( !debug_path.empty() ) {
 
       for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
 
-        cv::Mat2f optflow_image;
+        cv::Mat1f disparity_image;
         std::string filename;
 
         filename =
@@ -869,15 +968,15 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
           return false;
         }
 
+        new_disparity_map[i].copyTo(disparity_image);
 
-        optflow_image =
-            matches_to_optflow(new_matches[i]);
 
         filename =
-            ssprintf("%s/new_matches/new_matches.%03d.%03d.flo",
+            ssprintf("%s/new_disparity/new_disparity.%03d.%03d.tiff",
                 debug_path.c_str(), l, i);
 
-        if( !save_image(optflow_image, filename) ) {
+
+        if( !save_image(disparity_image, filename) ) {
           CF_ERROR("save_image('%s') fails", filename.c_str());
           return false;
         }
@@ -888,25 +987,103 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
           reduce_color_channels(mask, mask, cv::REDUCE_MAX);
         }
 
-        optflow_image.setTo(cv::Scalar::all(0), mask);
+        disparity_image.setTo(cv::Scalar::all(-1), mask);
 
         filename =
-            ssprintf("%s/new_matches/new_matches_gt.%03d.%03d.flo",
+            ssprintf("%s/new_disparity/new_disparity_gt.%03d.%03d.tiff",
                 debug_path.c_str(), l, i);
 
-        if( !save_image(optflow_image, filename) ) {
+        if( !save_image(disparity_image, filename) ) {
           CF_ERROR("save_image('%s') fails", filename.c_str());
           return false;
         }
-
-
       }
-
     }
 
-    std::swap(new_matches, previous_matches);
+    std::swap(new_disparity_map, disparity_map);
   }
 
+  const cv::Mat & reference_layer =
+      reference_layers.front();
+
+  final_disparity_map.create(reference_layer.size());
+  final_best_costs.create(reference_layer.size());
+
+  for ( int y = 0; y < final_disparity_map.rows; ++y ) {
+    for ( int x = 0; x < final_disparity_map.cols; ++x ) {
+
+      float disparity_array[MAX_BEST_EXTREMUMS];
+      float costs_array[MAX_BEST_EXTREMUMS];
+      int num_hypothesis_computed = 0;
+
+      for ( int i = 0; i < MAX_BEST_EXTREMUMS; ++i ) {
+        if ( disparity_map[i][y][x] >= 0 ) {
+          disparity_array[num_hypothesis_computed] = disparity_map[i][y][x];
+          costs_array[num_hypothesis_computed] = new_best_costs[i][y][x];
+          num_hypothesis_computed += 1;
+        }
+      }
+
+      if ( num_hypothesis_computed < 1 ) {
+        final_disparity_map[y][x] = -1;
+        final_best_costs[y][x] = -1;
+      }
+      else if ( num_hypothesis_computed == 1 ) {
+        final_disparity_map[y][x] = disparity_array[0];
+        final_best_costs[y][x] = costs_array[0];
+      }
+      else {
+
+        int best_cost_index = 0;
+
+        for ( int i = 1; i < num_hypothesis_computed; ++i ) {
+          if ( costs_array[i] < costs_array[best_cost_index] ) {
+            best_cost_index = i;
+          }
+        }
+
+        final_disparity_map[y][x] = disparity_array[best_cost_index];
+        final_best_costs[y][x] = costs_array[best_cost_index];
+      }
+    }
+  }
+
+  if ( gradient_threshold > 0 ) {
+    cv::Mat mask;
+    cv::compare(reference_layer, cv::Scalar::all(gradient_threshold), mask, cv::CMP_LT);
+    if ( mask.channels() > 1 ) {
+      reduce_color_channels(mask, mask, cv::REDUCE_MAX);
+    }
+    final_disparity_map.setTo(cv::Scalar::all(-1), mask);
+    final_best_costs.setTo(cv::Scalar::all(-1), mask);
+  }
+
+  if( !debug_path.empty() ) {
+
+    std::string filename;
+
+    filename =
+        ssprintf("%s/final/final_disparity_map.tiff",
+            debug_path.c_str());
+
+    if( !save_image(final_disparity_map, filename) ) {
+      CF_ERROR("save_image('%s') fails", filename.c_str());
+      return false;
+    }
+
+    filename =
+        ssprintf("%s/final/final_best_costs.tiff",
+            debug_path.c_str());
+
+    if( !save_image(final_best_costs, filename) ) {
+      CF_ERROR("save_image('%s') fails", filename.c_str());
+      return false;
+    }
+
+  }
+
+  disp = final_disparity_map;
+  cost = final_best_costs;
 
   return true;
 }

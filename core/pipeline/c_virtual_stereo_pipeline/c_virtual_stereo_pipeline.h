@@ -181,7 +181,6 @@ protected:
   bool estmate_camera_pose();
   bool create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap);
   bool run_polar_stereo();
-  bool run_triangulation();
 
   // bugged experimental stuff, don't call it !
   bool run_epipolar_stereo();
@@ -190,6 +189,8 @@ protected:
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
   bool write_homography_video();
+
+  bool run_triangulation(const std::string & output_directory);
 
   static void draw_matched_positions(cv::Mat & image,
       const std::vector<cv::Point2f> & current_positions,

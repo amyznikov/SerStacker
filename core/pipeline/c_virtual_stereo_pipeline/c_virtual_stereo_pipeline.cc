@@ -669,12 +669,6 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     return false;
   }
 
-  if ( !run_triangulation() ) {
-    CF_ERROR("run_triangulation() fails");
-    return false;
-  }
-
-
   if ( !run_epipolar_stereo() ) {
     CF_ERROR("run_epipolar_matcher() fails");
     return false;
@@ -944,12 +938,18 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
         return false;
       }
     }
+
+    if( !run_triangulation(ssprintf("%s/polar_stereo", output_path_.c_str())) ) {
+      CF_ERROR("run_triangulation() fails");
+      return false;
+    }
+
   }
 
   return true;
 }
 
-bool c_virtual_stereo_pipeline::run_triangulation()
+bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_directory)
 {
   if ( !triangulation_options_.enable_triangulation ) {
     return true; // disabled, silently ignore
@@ -1032,7 +1032,7 @@ bool c_virtual_stereo_pipeline::run_triangulation()
 
   const std::string output_filename =
       ssprintf("%s/cloud3d/cloud3d.%05d.ply",
-          output_path_.c_str(),
+          output_directory.c_str(),
           input_sequence_->current_pos()-1);
 
   if( !save_ply(cloud3d, colors3d, output_filename) ) {
@@ -1222,6 +1222,13 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
 
   if( !fOK ) {
     CF_ERROR("morph_gradient_flow() fails");
+    return false;
+  }
+
+  current_disparity_ = disp;
+
+  if( !run_triangulation(ssprintf("%s/morph_gradient_flow", output_path_.c_str())) ) {
+    CF_ERROR("run_triangulation() fails");
     return false;
   }
 

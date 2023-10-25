@@ -29,6 +29,7 @@ else()
 endif ()
 
 if(WIN32)
+  message(STATUS "WIN32 Detected")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,16000000")
 endif()
 

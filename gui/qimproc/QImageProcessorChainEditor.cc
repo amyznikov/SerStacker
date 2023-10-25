@@ -9,6 +9,7 @@
 #include "QAddRoutineDialog.h"
 #include "QRadialPolySharpSettings.h"
 #include "QMtfSettings.h"
+#include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QSliderSpinBox.h>
@@ -925,6 +926,42 @@ void QImageProcessorSettingsControl::setupControls()
                 Q_EMIT parameterChanged();
               }
             });
+
+        break;
+      }
+
+      case c_image_processor_ctl_math_expression : {
+
+        QInputMathExpressionWidget * ctl =
+            new QInputMathExpressionWidget(this);
+
+        ctl->setToolTip(p.tooltip.c_str());
+
+        if( groupSettings ) {
+          groupSettings->addRow(p.name.c_str(), ctl);
+        }
+        else {
+          this->addRow(p.name.c_str(), ctl);
+        }
+
+        if( p.get_value ) {
+
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                ctl->setText(p.get_value().c_str());
+              });
+        }
+
+        if( p.set_value ) {
+
+          QObject::connect(ctl, &QInputMathExpressionWidget::apply,
+              [this, ctl, p]() {
+                if ( !updatingControls() ) {
+                  p.set_value(ctl->text().toStdString());
+                  Q_EMIT parameterChanged();
+                }
+              });
+        }
 
         break;
       }

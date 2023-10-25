@@ -105,7 +105,7 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     std::vector<cv::Mat> channels;
 
     if( cn == 1 ) {
-      channels.emplace_back(image.getMat());
+      channels.emplace_back(image.getMat().clone());
     }
     else {
       cv::split(image, channels);

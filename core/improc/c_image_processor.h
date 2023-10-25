@@ -28,6 +28,7 @@ enum c_image_processor_ctl_type {
   c_image_processor_ctl_spinbox,
   c_image_processor_ctl_sparse_feature_detector,
   c_image_processor_ctl_double_slider,
+  c_image_processor_ctl_math_expression,
 };
 
 struct c_image_processor_routine_ctrl {
@@ -54,7 +55,7 @@ struct c_image_processor_routine_ctrl {
       ctype = c_image_processor_ctl_numeric_box; \
     } \
     c_image_processor_routine_ctrl tmp; \
-      tmp.name = #cname; \
+      tmp.name = cname; \
       tmp.tooltip = desc; \
       tmp.ctl_type = ctype; \
       tmp.get_enum_members = get_members_of<decltype(param())>(); \
@@ -191,9 +192,25 @@ struct c_image_processor_routine_ctrl {
 
 
 #define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
-    ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, param, desc)
+    ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, #param, desc)
 
 
+#define ADD_IMAGE_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, param, _name, _desc) \
+  if ( true ) { \
+    c_image_processor_routine_ctrl tmp = { \
+      .name = _name, \
+      .tooltip = _desc, \
+      .ctl_type = c_image_processor_ctl_math_expression, \
+    }; \
+    tmp.get_value = [this](void) { \
+        return param(); \
+    }; \
+    tmp.set_value = [this](const std::string & s) { \
+      std::lock_guard<std::mutex> lock(this->mutex()); \
+      set_##param(s); \
+    }; \
+   (ctls)->emplace_back(tmp); \
+  }
 
 
 

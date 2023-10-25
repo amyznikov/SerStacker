@@ -195,19 +195,19 @@ public:
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, stereo, "Set to true for horizontal layout stereo frame");
 
-    ADD_IMAGE_PROCESSOR_CTRL2(ctls, display_type, Display, "");
+    ADD_IMAGE_PROCESSOR_CTRL2(ctls, display_type, "Display", "");
 
     ADD_IMAGE_PROCESSOR_CTRL(ctls, boardSize, "Set chessboard size width x height");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, method, "Set chessboard corners detection method");
 
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCorners", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_max_scales, max_scales, "");
+      ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_max_scales, "max_scales", "");
       //ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_flags, flags, "");
       ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCorners_flags, "flags", FindChessboardCornersFlags, "")
     END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
 
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCornersSB", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_max_scales, max_scales, "");
+      ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_max_scales, "max_scales", "");
       //ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_flags, flags, "");
       ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCornersSB_flags, "flags", FindChessboardCornersSBFlags, "")
     END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
@@ -220,9 +220,9 @@ public:
     END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
 
     ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "bilateralFilter", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_d, d, "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_sigmaColor, sigmaColor, "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_sigmaSpace, sigmaSpace, "");
+      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_d, "d", "");
+      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_sigmaColor, "sigmaColor", "");
+      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_sigmaSpace, "sigmaSpace", "");
     END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
 
   }

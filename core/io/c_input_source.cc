@@ -755,7 +755,7 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( vlo_.read_image(&output_frame, read_channel_) ) {
+  if ( vlo_.read(&output_frame, read_channel_) ) {
 
     if ( output_colorid ) {
       *output_colorid =

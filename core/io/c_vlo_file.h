@@ -193,7 +193,7 @@ struct c_vlo_scan3
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct c_vlo_scan
+struct c_vlo_scan5
 {
   static constexpr int VERSION = 5;
   static constexpr int NUM_LAYERS = 360;
@@ -286,7 +286,7 @@ struct c_vlo_scan
 };
 #pragma pack(pop)
 
-static_assert(sizeof(c_vlo_scan) == (36480640 / 8));
+static_assert(sizeof(c_vlo_scan5) == (36480640 / 8));
 
 ////////////
 
@@ -306,10 +306,18 @@ public:
     DATA_CHANNEL_ECHO_WIDTH,
     DATA_CHANNEL_ECHO_AREA_DIV_WIDTH,
     DATA_CHANNEL_ECHO_PEAK_DIV_WIDTH,
+
     DATA_CHANNEL_ECHO_AREA_DIV_DIST,
     DATA_CHANNEL_ECHO_PEAK_DIV_DIST,
+
     DATA_CHANNEL_ECHO_AREA_DIV_DIST2,
     DATA_CHANNEL_ECHO_PEAK_DIV_DIST2,
+
+    DATA_CHANNEL_ECHO_AREA_MUL_DIST,
+    DATA_CHANNEL_ECHO_PEAK_MUL_DIST,
+
+    DATA_CHANNEL_ECHO_AREA_MUL_DIST2,
+    DATA_CHANNEL_ECHO_PEAK_MUL_DIST2,
   };
 
   c_vlo_file()
@@ -347,16 +355,17 @@ public:
 
   c_vlo_reader();
   c_vlo_reader(const std::string & filename);
+  ~c_vlo_reader();
 
   bool open(const std::string & filename = "");
   void close();
   bool is_open() const;
   bool seek(int32_t frame_index);
   int32_t curpos() const;
-  bool read(c_vlo_scan * scan);
   bool read(c_vlo_scan1 * scan);
   bool read(c_vlo_scan3 * scan);
-  bool read_image(cv::Mat * image,c_vlo_file::DATA_CHANNEL channel);
+  bool read(c_vlo_scan5 * scan);
+  bool read(cv::Mat * image,c_vlo_file::DATA_CHANNEL channel);
 
   /// @brief get total file size in bytes
   ssize_t file_size() const;
@@ -369,7 +378,7 @@ public:
 
   static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel);
   static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel);
-  static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel);
+  static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel);
   static cv::Mat get_thumbnail_image(const std::string & filename);
 
 protected:

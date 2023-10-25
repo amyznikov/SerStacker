@@ -70,7 +70,7 @@ struct c_vlo_scan1
 
   struct echo
   {
-    uint16_t distCm;
+    uint16_t dist;
     uint16_t width;
     uint16_t area;
     uint16_t peak;
@@ -149,7 +149,7 @@ struct c_vlo_scan3
 
   struct echo
   {
-    uint16_t distCm;
+    uint16_t dist;
     uint16_t width;
     uint16_t area;
     uint16_t peak;
@@ -211,7 +211,7 @@ struct c_vlo_scan5
 
   struct echo
   {
-    uint16_t distCm;
+    uint16_t dist;
     uint16_t area;
     uint8_t peak;
     uint8_t width;
@@ -318,6 +318,8 @@ public:
 
     DATA_CHANNEL_ECHO_AREA_MUL_DIST2,
     DATA_CHANNEL_ECHO_PEAK_MUL_DIST2,
+
+    DATA_CHANNEL_DOUBLED_ECHO_PEAKS,
   };
 
   c_vlo_file()
@@ -373,7 +375,7 @@ public:
   /// @brief get frame size in bytes
   ssize_t frame_size() const;
 
-  /// @brief get number of framesin this file
+  /// @brief get number of frames in this file
   ssize_t num_frames() const;
 
   static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel);

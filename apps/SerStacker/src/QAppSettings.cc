@@ -13,6 +13,8 @@ namespace serstacker {
 QGeneralAppSettingsDialogBox::QGeneralAppSettingsDialogBox(QWidget * parent) :
   Base(parent)
 {
+
+  setWindowTitle("Generic Input Options");
   QVBoxLayout * vbox = new QVBoxLayout(this);
   vbox->addWidget(appSettingsWidget_ = new QGeneralAppSettingsWidget(this));
 }

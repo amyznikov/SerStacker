@@ -24,6 +24,19 @@ const c_enum_member* members_of<c_math_expression_routine::CHANNEL>()
   return members;
 }
 
+static constexpr struct {
+  const char * name;
+  const char * tooldip;
+} processor_args[] = {
+    {"y", "y coordinate of a pixel"},
+    {"x", "x coordinate of a pixel"},
+    {"v0", "pixel value from channel 0"},
+    {"v1", "pixel value from channel 1"},
+    {"v2", "pixel value from channel 2"},
+    {"v3", "pixel value from channel 3"},
+    {"cn", "current destination channel"},
+    {"v",  "pixel value from cn source channel"},
+};
 
 template<class T1, class T2 >
 static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser * p)
@@ -49,31 +62,27 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
   const cv::Mat_<T1> src = _src;
   cv::Mat_<T2> dst = _dst;
 
+  double args[sizeof(processor_args) / sizeof(processor_args[0])] = { 0 };
 
+  for( int y = 0; y < src_rows; ++y ) {
 
-  double args[8] = {0};
+    const T1 *srcp = src[y];
+    T2 *dstp = dst[y];
 
-  for ( int y = 0; y < src_rows; ++y ) {
+    args[0] = y;
 
-    const T1 * srcp = src[y];
-    T2 * dstp = dst[y];
+    for( int x = 0; x < src_cols; ++x ) {
 
-    args[1] = y;
+      args[1] = x;
 
-    for ( int x = 0; x < src_cols; ++x ) {
-
-      args[0] = x;
-      args[2] = srcp[x];
-
-      for ( int c = 0; c < src_channels; ++c ) {
-        args[3 + c] = srcp[x * src_channels + c];
+      for( int c = 0; c < src_channels; ++c ) {
+        args[2 + c] = srcp[x * src_channels + c];
       }
 
-      const double rv =
-          c_math_parser_eval(p, args);
-
-      for ( int c = 0; c < dst_channels; ++c ) {
-        dstp[x*dst_channels + c] = rv;
+      for( int c = 0; c < dst_channels; ++c ) {
+        args[6] = c;
+        args[7] = srcp[x * src_channels + c];
+        dstp[x * dst_channels + c] = c_math_parser_eval(p, args);
       }
     }
   }
@@ -237,8 +246,6 @@ bool c_math_expression_routine::serialize(c_config_setting settings, bool save)
 
 bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  CF_DEBUG("expression: %s", expression_.c_str());
-
   if( expression_.empty() ) {
     expression_changed_ = false;
     return true;
@@ -251,39 +258,11 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       return false;
     }
 
-    if( c_math_parser_add_argument(math_parser_, 0, "x", "x coordiante of a pixel") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(x) fails");
-      return false;
-    }
-
-    if( c_math_parser_add_argument(math_parser_, 1, "y", "y coordiante of a pixel") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(y) fails");
-      return false;
-    }
-
-    if( c_math_parser_add_argument(math_parser_, 2, "v", "pixel value") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(v) fails");
-      return false;
-    }
-
-    if( c_math_parser_add_argument(math_parser_, 3, "v0", "pixel value from channel 0") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(v0) fails");
-      return false;
-    }
-
-    if( c_math_parser_add_argument(math_parser_, 4, "v1", "pixel value from channel 1") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(v1) fails");
-      return false;
-    }
-
-    if( c_math_parser_add_argument(math_parser_, 5, "v2", "pixel value from channel 2") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(v0) fails");
-      return false;
-    }
-
-    if( c_math_parser_add_argument(math_parser_, 6, "v3", "pixel value from channel 3") < 0 ) {
-      CF_ERROR("c_math_parser_add_argument(v0) fails");
-      return false;
+    for ( int i = 0; i < (int)(sizeof(processor_args)/sizeof(processor_args[0])); ++i ) {
+      if( c_math_parser_add_argument(math_parser_, i, processor_args[i].name, processor_args[i].tooldip) < 0 ) {
+        CF_ERROR("c_math_parser_add_argument('%s') fails", processor_args[i].name);
+        return false;
+      }
     }
 
     expression_changed_ = true;
@@ -306,26 +285,37 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
   switch (input_channel_) {
     case IMAGE:
       switch (output_channel_) {
-        case IMAGE: {
+
+        case IMAGE:
           process_image(image.getMatRef(), image.getMatRef(), math_parser_);
           break;
-        }
-        case MASK: {
+
+        case MASK:
           if( mask.size() != image.size() ) {
             mask.create(image.size(), CV_8U);
             mask.setTo(0);
           }
           process_image(image.getMatRef(), mask.getMatRef(), math_parser_);
           break;
-        }
       }
       break;
+
     case MASK:
       switch (output_channel_) {
-        case IMAGE:
-          break;
+
         case MASK:
+          process_image(mask.getMatRef(), mask.getMatRef(), math_parser_);
           break;
+
+        case IMAGE:
+          if( !mask.empty() ) {
+            if( image.size() != mask.size() || image.channels() != mask.channels() ) {
+              image.create(mask.size(), CV_MAKETYPE(std::max(image.depth(), mask.depth()), mask.channels()));
+            }
+            process_image(mask.getMatRef(), image.getMatRef(), math_parser_);
+          }
+          break;
+
       }
       break;
   }

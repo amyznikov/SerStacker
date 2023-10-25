@@ -87,7 +87,7 @@ typedef struct fn##NUM_ARGS##_node { \
   cmpxf##NUM_ARGS##_t fn; \
 } fn##NUM_ARGS##_node; \
 \
-static double fn##NUM_ARGS##_node_eval( c_abstract_node * _this, const double args[] ); \
+static double fn##NUM_ARGS##_node_eval(c_abstract_node * _this, const double args[] ); \
 static c_abstract_node * fn##NUM_ARGS##_node_create( cmpxf##NUM_ARGS##_t fn, c_abstract_node * args[]) \
 { \
   fn##NUM_ARGS##_node * p = (fn##NUM_ARGS##_node * )functional_node_create(args, \
@@ -224,7 +224,7 @@ static double cmathexpression_eval( void * param, const double args[], int numar
  * Value Node
  */
 
-static double value_node_eval( c_abstract_node * _this, const double args[] )
+static double value_node_eval(c_abstract_node * _this, const double args[] )
 {
   return ( (c_value_node*) _this )->value;
 }
@@ -248,7 +248,7 @@ static c_abstract_node * value_node_create( double value )
  * Arg Node
  */
 
-static double arg_node_eval( c_abstract_node * _this, const double args[] )
+static double arg_node_eval(c_abstract_node * _this, const double args[] )
 {
   return args[( (c_arg_node*) _this )->argindex];
 }
@@ -273,7 +273,7 @@ static c_abstract_node * arg_node_create( int argindex )
  * Bound Parameter Node
  */
 
-static double bound_parameter_node_eval( c_abstract_node * _this, const double args[] )
+static double bound_parameter_node_eval(c_abstract_node * _this, const double args[] )
 {
   return *( (c_bound_parameter_node*) _this )->value;
 }
@@ -296,7 +296,7 @@ static c_abstract_node* bound_parameter_node_create(double * value)
  * Functional Node
  */
 
-static void functional_node_destructor( c_abstract_node * _this )
+static void functional_node_destructor(c_abstract_node * _this )
 {
   int i = 0;
 
@@ -327,13 +327,13 @@ static c_abstract_node* functional_node_create(c_abstract_node * args[], int num
  */
 
 DECLARE_FN_NODE(0)
-static double fn0_node_eval( c_abstract_node * _this, const double args[] )
+static double fn0_node_eval(c_abstract_node * _this, const double args[] )
 {
   return ( (fn0_node*) _this )->fn();
 }
 
 DECLARE_FN_NODE(1)
-static double fn1_node_eval( c_abstract_node * _this, const double args[] )
+static double fn1_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn1_node * p = (fn1_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -341,7 +341,7 @@ static double fn1_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(2)
-static double fn2_node_eval( c_abstract_node * _this, const double args[] )
+static double fn2_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn2_node * p = (fn2_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -350,7 +350,7 @@ static double fn2_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(3)
-static double fn3_node_eval( c_abstract_node * _this, const double args[] )
+static double fn3_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn3_node * p = (fn3_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -360,7 +360,7 @@ static double fn3_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(4)
-static double fn4_node_eval( c_abstract_node * _this, const double args[] )
+static double fn4_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn4_node * p = (fn4_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -371,7 +371,7 @@ static double fn4_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(5)
-static double fn5_node_eval( c_abstract_node * _this, const double args[] )
+static double fn5_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn5_node * p = (fn5_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -384,7 +384,7 @@ static double fn5_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(6)
-static double fn6_node_eval( c_abstract_node * _this, const double args[] )
+static double fn6_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn6_node * p = (fn6_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -398,7 +398,7 @@ static double fn6_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(7)
-static double fn7_node_eval( c_abstract_node * _this, const double args[] )
+static double fn7_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn7_node * p = (fn7_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -413,7 +413,7 @@ static double fn7_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(8)
-static double fn8_node_eval( c_abstract_node * _this, const double args[] )
+static double fn8_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn8_node * p = (fn8_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -429,7 +429,7 @@ static double fn8_node_eval( c_abstract_node * _this, const double args[] )
 }
 
 DECLARE_FN_NODE(9)
-static double fn9_node_eval( c_abstract_node * _this, const double args[] )
+static double fn9_node_eval(c_abstract_node * _this, const double args[] )
 {
   fn9_node * p = (fn9_node*) _this;
   c_abstract_node * arg0 = p->base.node_args[0];
@@ -451,15 +451,14 @@ static double fn9_node_eval( c_abstract_node * _this, const double args[] )
  * FF Node
  */
 
-static double ff_node_eval( c_abstract_node * _this, const double args[] )
+static double ff_node_eval(c_abstract_node * _this, const double args[] )
 {
   c_ff_node * p = (c_ff_node *) _this;
   const int numargs = p->base.num_node_args;
   double ff_args[numargs];
   int i;
 
-  for ( i = 0; i < numargs; ++i )
-  {
+  for ( i = 0; i < numargs; ++i ) {
     c_abstract_node * a = p->base.node_args[i];
     ff_args[i] = a->eval(a, args);
   }
@@ -467,18 +466,21 @@ static double ff_node_eval( c_abstract_node * _this, const double args[] )
   return p->fn(p->param, ff_args, numargs);
 }
 
-c_abstract_node * ff_node_create( cmpxff_t fn, int numargs, void * param, c_abstract_node * args[] )
+c_abstract_node* ff_node_create(cmpxff_t fn, int numargs, void * param, c_abstract_node * args[])
 {
-  c_ff_node * p = (c_ff_node *) functional_node_create(args, numargs, sizeof(c_ff_node), ff_node_eval,
-    functional_node_destructor);
+  c_ff_node *p =
+      (c_ff_node*) functional_node_create(args,
+          numargs,
+          sizeof(c_ff_node),
+          ff_node_eval,
+          functional_node_destructor);
 
-  if ( p )
-  {
+  if( p ) {
     p->fn = fn;
     p->param = param;
   }
 
-  return (c_abstract_node *) p;
+  return (c_abstract_node*) p;
 }
 
 
@@ -502,8 +504,7 @@ static int binary_operation_compare_by_name_len( const void * p1, const void * p
 
 static void set_error_msg( c_math_parser * ctx, const char * format, ... )
 {
-  if ( !*ctx->error_msg )
-  {
+  if ( !*ctx->error_msg ) {
     va_list arglist;
     va_start(arglist,format);
     vsnprintf(ctx->error_msg, MAX_ERR_MSG - 1, format, arglist);
@@ -513,18 +514,16 @@ static void set_error_msg( c_math_parser * ctx, const char * format, ... )
 
 static const char * skip_white_spaces( const char ** curpos )
 {
-  while ( isspace(**curpos) )
+  while ( isspace(**curpos) ) {
     ++*curpos;
+  }
   return *curpos;
 }
 
 static unary_operation * lookup_unary_operator( c_math_parser * ctx, const char *curpos )
 {
-  int i;
-  for ( i = 0; i < ctx->unops_count; ++i )
-  {
-    if ( strncmp(ctx->unops[i].name, curpos, strlen(ctx->unops[i].name)) == 0 )
-    {
+  for ( int i = 0; i < ctx->unops_count; ++i ) {
+    if ( strncmp(ctx->unops[i].name, curpos, strlen(ctx->unops[i].name)) == 0 ) {
       return &ctx->unops[i];
     }
   }
@@ -533,54 +532,46 @@ static unary_operation * lookup_unary_operator( c_math_parser * ctx, const char 
 
 static binary_operation * lookup_binary_operator( c_math_parser * ctx, int priority_level, const char * curpos )
 {
-  if ( priority_level >= 0 && priority_level < ctx->num_priority_numlevels )
-  {
-    int i;
-    for ( i = 0; i < ctx->binops[priority_level].count; ++i )
-    {
-      binary_operation * desc = &ctx->binops[priority_level].desc[i];
-      if ( strncmp(desc->name, curpos, strlen(desc->name)) == 0 )
-      {
+  if ( priority_level >= 0 && priority_level < ctx->num_priority_numlevels ) {
+
+    for ( int i = 0; i < ctx->binops[priority_level].count; ++i ) {
+
+      binary_operation * desc =
+          &ctx->binops[priority_level].desc[i];
+
+      if ( strncmp(desc->name, curpos, strlen(desc->name)) == 0 ) {
         return &ctx->binops[priority_level].desc[i];
       }
     }
   }
+
   return nullptr;
 }
 
-static arg_desc * lookup_argument( c_math_parser * ctx, const char * name )
+static arg_desc* lookup_argument(c_math_parser * ctx, const char * name)
 {
-  int i;
-  for ( i = 0; i < ctx->args_count; ++i )
-  {
-    if ( strcmp(ctx->args[i].name, name) == 0 )
-    {
+  for( int i = 0; i < ctx->args_count; ++i ) {
+    if( strcmp(ctx->args[i].name, name) == 0 ) {
       return &ctx->args[i];
     }
   }
   return nullptr;
 }
 
-static binding_desc * lookup_bindings(c_math_parser * ctx, const char * name)
+static binding_desc* lookup_bindings(c_math_parser * ctx, const char * name)
 {
-  int i;
-  for ( i = 0; i < ctx->bindings_count; ++i )
-  {
-    if ( strcmp(ctx->bindings[i].name, name) == 0 )
-    {
+  for( int i = 0; i < ctx->bindings_count; ++i ) {
+    if( strcmp(ctx->bindings[i].name, name) == 0 ) {
       return &ctx->bindings[i];
     }
   }
   return nullptr;
 }
 
-static const_desc * lookup_constant( c_math_parser * ctx, const char * name )
+static const_desc* lookup_constant(c_math_parser * ctx, const char * name)
 {
-  int i;
-  for ( i = 0; i < ctx->const_count; ++i )
-  {
-    if ( strcmp(ctx->constants[i].name, name) == 0 )
-    {
+  for( int i = 0; i < ctx->const_count; ++i ) {
+    if( strcmp(ctx->constants[i].name, name) == 0 ) {
       return &ctx->constants[i];
     }
   }
@@ -590,12 +581,9 @@ static const_desc * lookup_constant( c_math_parser * ctx, const char * name )
 static function_desc * lookup_function( c_math_parser * ctx, const char * name )
 {
   const int functions_count = ctx->functions_count;
-  int i;
 
-  for ( i = 0; i < functions_count; ++i )
-  {
-    if ( strcmp(ctx->functions[i].name, name) == 0 )
-    {
+  for ( int i = 0; i < functions_count; ++i ) {
+    if ( strcmp(ctx->functions[i].name, name) == 0 ) {
       return &ctx->functions[i];
     }
   }
@@ -637,21 +625,20 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
   *ppnode = 0;
 
   /* Check if we have an unary operation */
-  if ( ( unop = lookup_unary_operator(ctx, skip_white_spaces(curpos)) ) != 0 )
-  {
+  if ( ( unop = lookup_unary_operator(ctx, skip_white_spaces(curpos)) ) != 0 ) {
+
     *curpos += strlen(unop->name);
 
-    if ( parse_terminal_token(ctx, curpos, ppnode) )
-    {
+    if ( parse_terminal_token(ctx, curpos, ppnode) ) {
+
       arg_is_const = ( *ppnode )->eval == value_node_eval;
 
       *ppnode = fn1_node_create(unop->fn, ppnode);
 
-      if ( arg_is_const )
-      {
+      if ( arg_is_const ) {
         double value = ( *ppnode )->eval(( *ppnode ), nullptr);
         destroy_node(*ppnode);
-//        ( *ppnode )->destructor(*ppnode), free(*ppnode);
+        //        ( *ppnode )->destructor(*ppnode), free(*ppnode);
         *ppnode = value_node_create(value);
       }
     }
@@ -659,17 +646,15 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
   }
 
   /* Check if we have an subexpression in braces */
-  if ( **curpos == ctx->OBRACE )
-  {
+  if ( **curpos == ctx->OBRACE ) {
+
     ++*curpos;
 
-    if ( !parse_expression(ctx, 0, curpos, ppnode) )
-    {
+    if ( !parse_expression(ctx, 0, curpos, ppnode) ) {
       return 0;
     }
 
-    if ( *skip_white_spaces(curpos) != ctx->CBRACE )
-    {
+    if ( *skip_white_spaces(curpos) != ctx->CBRACE ) {
       set_error_msg(ctx, "expected '%c' ", ctx->CBRACE);
       //( *ppnode )->destructor(*ppnode), free(*ppnode), *ppnode = 0;
       destroy_node(*ppnode), *ppnode = 0;
@@ -680,12 +665,10 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
   }
 
   /* Check if we have an numerical value */
-  if ( 1 )
-  {
+  if ( 1 ) {
     double value;
     char * endptr;
-    if ( parse_number(&value, *curpos, &endptr) )
-    {
+    if ( parse_number(&value, *curpos, &endptr) ) {
       *curpos = endptr;
       *ppnode = value_node_create(value);
       skip_white_spaces(curpos);
@@ -699,32 +682,27 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
    */
   tmp2 = name;
   tmp1 = skip_white_spaces(curpos);
-  while ( can_be_part_of_identifier(*tmp1) )
-  {
+  while ( can_be_part_of_identifier(*tmp1) ) {
     *tmp2++ = *tmp1++;
   }
   *tmp2 = 0;
 
-  if ( ( af = lookup_argument(ctx, name) ) )
-  {
+  if ( ( af = lookup_argument(ctx, name) ) ) {
     *curpos = tmp1;
     skip_white_spaces(curpos);
     *ppnode = arg_node_create(af->index);
   }
-  else if ( ( pf = lookup_bindings(ctx, name) ) )
-  {
+  else if ( ( pf = lookup_bindings(ctx, name) ) ) {
     *curpos = tmp1;
     skip_white_spaces(curpos);
     *ppnode = bound_parameter_node_create(pf->value);
   }
-  else if ( ( cf = lookup_constant(ctx, name) ) )
-  {
+  else if ( ( cf = lookup_constant(ctx, name) ) ) {
     *curpos = tmp1;
     skip_white_spaces(curpos);
     *ppnode = value_node_create(cf->value);
   }
-  else if( (ff = lookup_function(ctx, name)) )
-  {
+  else if( (ff = lookup_function(ctx, name)) ) {
     c_abstract_node * args[MAX_NODE_ARGS] = {0};
     int numargs = 0;
     c_abstract_node * arg = 0;
@@ -732,8 +710,7 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
     int all_args_are_contants = 1;
 
     *curpos = tmp1;
-    if ( *skip_white_spaces(curpos) != ctx->OBRACE )
-    {
+    if ( *skip_white_spaces(curpos) != ctx->OBRACE ) {
       set_error_msg(ctx, "missing '%c' in function call '%s'", ctx->OBRACE, ff->name);
       return 0;
     }
@@ -743,60 +720,53 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
     //
     ++*curpos;
 
-    while( numargs < ff->numargs )
-    {
-      if ( *skip_white_spaces(curpos) == ctx->CBRACE )
-      {
+    while( numargs < ff->numargs ) {
+      if ( *skip_white_spaces(curpos) == ctx->CBRACE ) {
         success = 0, set_error_msg(ctx, "%s expects %d arguments", name, ff->numargs);
         break;
       }
 
-      if ( !( success = parse_expression(ctx, 0, curpos, &arg) ) )
-      {
+      if ( !( success = parse_expression(ctx, 0, curpos, &arg) ) ) {
         break;
       }
 
       args[numargs++] = arg;
 
-      if ( arg->eval != value_node_eval )
-      {
+      if ( arg->eval != value_node_eval ) {
         all_args_are_contants = 0;
       }
 
-      if ( *skip_white_spaces(curpos) == ctx->ARGLIST_DELIMITER && numargs < ff->numargs )
-      {
+      if ( *skip_white_spaces(curpos) == ctx->ARGLIST_DELIMITER && numargs < ff->numargs ) {
         ++*curpos;
       }
     }
 
-    if ( numargs != ff->numargs )
-    {
+    if ( numargs != ff->numargs ) {
       success = 0;
       set_error_msg(ctx, "%s expects %d arguments", name, ff->numargs);
     }
-    else if ( **curpos != ctx->CBRACE )
-    {
+    else if ( **curpos != ctx->CBRACE ) {
       success = 0;
       set_error_msg(ctx, "expected '%c'", ctx->CBRACE);
     }
 
-    if ( !success )
-    {
-      while ( numargs-- )
-      {
+    if ( !success ) {
+      while ( numargs-- ) {
         destroy_node(args[numargs]);
       }
       return 0;
     }
 
-    if ( ff->param )
-    {
-      *ppnode = ff_node_create((cmpxff_t) ff->fn, ff->numargs, ff->param, args);
+    if ( ff->param ) {
+      *ppnode =
+          ff_node_create((cmpxff_t) ff->fn,
+              ff->numargs,
+              ff->param,
+              args);
     }
-    else
-    {
-      switch ( ff->numargs )
-      {
+    else {
+
+      switch ( ff->numargs ) {
       case 0: *ppnode = fn0_node_create((cmpxf0_t)ff->fn,args); break;
       case 1: *ppnode = fn1_node_create((cmpxf1_t)ff->fn,args); break;
       case 2: *ppnode = fn2_node_create((cmpxf2_t)ff->fn,args); break;
@@ -812,27 +782,29 @@ static int parse_terminal_token(c_math_parser * ctx, const char ** curpos, c_abs
   #endif
       default:
         set_error_msg(ctx, "BUG IN MATH PARSER SOURCE AT %s:%d",__FILE__, __LINE__);
-        while ( numargs-- )
+        while ( numargs-- ) {
           destroy_node(args[numargs]);
+        }
         return 0;
       }
     }
 
-    if ( all_args_are_contants && !ff->is_volatile )
-    {
-      double value = ( *ppnode )->eval(*ppnode, nullptr);
+    if ( all_args_are_contants && !ff->is_volatile ) {
+      double value =
+          (*ppnode )->eval(*ppnode, nullptr);
+
       destroy_node(*ppnode);
-      *ppnode = value_node_create(value);
+
+      *ppnode =
+          value_node_create(value);
     }
 
     ++*curpos;
   }
-  else if ( *name )
-  {
+  else if ( *name ) {
     set_error_msg(ctx, "unknown identifier '%s'", name);
   }
-  else if ( **curpos )
-  {
+  else if ( **curpos ) {
     set_error_msg(ctx, "unexpected symbol '%c' in expression", **curpos);
   }
 
@@ -856,22 +828,18 @@ static int parse_expression( c_math_parser * ctx, size_t priority_level, const c
 
   *ppnode = 0;
 
-  if ( priority_level >= ctx->num_priority_numlevels )
-  {
+  if ( priority_level >= ctx->num_priority_numlevels ) {
     return parse_terminal_token(ctx, curpos, ppnode);
   }
 
-  if ( !parse_expression(ctx, priority_level + 1, curpos, &args[0]) )
-  {
+  if ( !parse_expression(ctx, priority_level + 1, curpos, &args[0]) ) {
     return 0;
   }
 
-  while ( ( binop = lookup_binary_operator(ctx, priority_level, skip_white_spaces(curpos)) ) )
-  {
+  while ( ( binop = lookup_binary_operator(ctx, priority_level, skip_white_spaces(curpos)) ) ) {
     *curpos += strlen(binop->name);
 
-    if ( !parse_expression(ctx, priority_level + 1, curpos, &args[1]) )
-    {
+    if ( !parse_expression(ctx, priority_level + 1, curpos, &args[1]) ) {
       destroy_node(args[0]);
       return 0;
     }
@@ -880,8 +848,7 @@ static int parse_expression( c_math_parser * ctx, size_t priority_level, const c
 
     args[0] = fn2_node_create(binop->fn, args);
 
-    if ( args_are_constants )
-    {
+    if ( args_are_constants ) {
       double value = args[0]->eval(args[0], nullptr);
       destroy_node(args[0]);
       args[0] = value_node_create(value);
@@ -903,8 +870,7 @@ static int parse_expression( c_math_parser * ctx, size_t priority_level, const c
 c_math_parser * c_math_parser_create(void)
 {
   c_math_parser * ctx = (c_math_parser *) calloc(1, sizeof(c_math_parser));
-  if ( ctx )
-  {
+  if ( ctx ) {
     ctx->OBRACE = '(';
     ctx->CBRACE = ')';
     ctx->ARGLIST_DELIMITER = ',';
@@ -963,12 +929,10 @@ const char * c_math_parser_parse( c_math_parser * ctx, const char * string )
   *ctx->error_msg = 0;
   ctx->pointer_to_syntax_error = nullptr;
 
-  if ( !parse_expression(ctx, 0, &string, &ctx->root) )
-  {
+  if ( !parse_expression(ctx, 0, &string, &ctx->root) ) {
     ctx->pointer_to_syntax_error = string;
   }
-  else if ( *string != 0 )
-  {
+  else if ( *string != 0 ) {
     c_math_parser_cleanup(ctx);
     set_error_msg(ctx, "Unexpected text after end of expression: '%s'", string);
     ctx->pointer_to_syntax_error = string;
@@ -986,13 +950,11 @@ int c_math_parser_add_constant( c_math_parser * ctx, const double value, const c
   int count;
   const_desc * desc;
 
-  if ( ( count = ctx->const_count ) >= MAX_CONSTANTS )
-  {
+  if ( ( count = ctx->const_count ) >= MAX_CONSTANTS ) {
     return -1;
   }
 
-  if ( ( desc = lookup_constant(ctx, name) ) != nullptr )
-  {
+  if ( ( desc = lookup_constant(ctx, name) ) != nullptr ) {
     return -1;
   }
 
@@ -1000,6 +962,7 @@ int c_math_parser_add_constant( c_math_parser * ctx, const double value, const c
   desc->value = value;
   strncpy(desc->name, name, MAX_NAME)[MAX_NAME - 1] = 0;
   ++ctx->const_count;
+
   return 0;
 }
 
@@ -1029,13 +992,11 @@ int c_math_parser_bind( c_math_parser * ctx, double * value, const char * name, 
   int count;
   binding_desc * desc;
 
-  if ( ( count = ctx->bindings_count ) >= MAX_CONSTANTS )
-  {
+  if ( ( count = ctx->bindings_count ) >= MAX_CONSTANTS ) {
     return -1;
   }
 
-  if ( ( desc = lookup_bindings(ctx, name) ) != nullptr )
-  {
+  if ( ( desc = lookup_bindings(ctx, name) ) != nullptr ) {
     return -1;
   }
 
@@ -1072,15 +1033,15 @@ int c_math_parser_add_binary_operation( c_math_parser * ctx, int priority, cmpxf
   int count;
   binary_operation * desc;
 
-  if ( priority < 0 || priority >= ctx->num_priority_numlevels ) {
+  if( priority < 0 || priority >= ctx->num_priority_numlevels ) {
     return -1;
   }
 
-  if ( ( count = ctx->binops[priority].count ) >= MAX_OPERATORS ) {
+  if( (count = ctx->binops[priority].count) >= MAX_OPERATORS ) {
     return -1;
   }
 
-  if ( ( desc = lookup_binary_operator(ctx, priority, name) ) && strcmp(desc->name, name) == 0 ) {
+  if( (desc = lookup_binary_operator(ctx, priority, name)) && strcmp(desc->name, name) == 0 ) {
     return -1;
   }
 
@@ -1290,6 +1251,11 @@ static inline double lwrap( double l )
   return l > M_PI ? l - 2 * M_PI : l;
 }
 
+static double if_func(double cond, double expr_if_true, double expr_if_false )
+{
+  return cond ? expr_if_true : expr_if_false;
+}
+
 /**
  * Get hammer-aitoff coordinates for given l,b;
  * l in range [-pi,pi], b in range [-pi/2,pi/2]
@@ -1359,6 +1325,16 @@ static double ymd( double year, double month, double d )
   }
 
   return ( y + d / dy );
+}
+
+static double max_func(double a, double b)
+{
+  return a >= b ? a : b;
+}
+
+static double min_func(double a, double b)
+{
+  return a <= b ? a : b;
 }
 
 c_math_parser * c_math_parser_create_stdc(void)
@@ -1439,13 +1415,11 @@ c_math_parser * c_math_parser_create_stdc(void)
     c_math_parser_add_function1(ctx, exp2, "exp2", "exp2(x) returns the value of 2 raised to the power of x");
     c_math_parser_add_function1(ctx, log2, "log2", "log2(x) returns the base 2 logarithm of x");
     c_math_parser_add_function1(ctx, round, "round", "round(x) round x to the nearest integer");
-    c_math_parser_add_function1(ctx, trunc, "trunc",
-      "trunc(x) round x to the nearest integer not larger in absolute value");
+    c_math_parser_add_function1(ctx, trunc, "trunc", "trunc(x) round x to the nearest integer not larger in absolute value");
     c_math_parser_add_function1(ctx, log1p, "log1p", "log1p(x) returns the log (1 + x)");
     c_math_parser_add_function1(ctx,logb, "logb", "logb(x) extract the exponent from the internal "
       "floating-point representation of x and return it as a floating-point value");
-    c_math_parser_add_function2(ctx, fdim, "fdim", "fdim(x,y) return the positive difference,"
-      "max(x-y,0), between x and y");
+    c_math_parser_add_function2(ctx, fdim, "fdim", "fdim(x,y) return the positive difference, max(x-y,0), between x and y");
     c_math_parser_add_function2(ctx, fmax, "fmax", "fmax(x,y) return greater value of x and y");
     c_math_parser_add_function2(ctx, fmin, "fmin", "fmin(x,y) return lesser value of x and y");
     c_math_parser_add_function3(ctx, fma, "fma", "fma(x,y,z) computes x * y + z");
@@ -1453,19 +1427,27 @@ c_math_parser * c_math_parser_create_stdc(void)
     c_math_parser_add_function2(ctx, nextafter, "nextafter",
       "nextafter(x,y) return the next representable floating-point value following x in the direction of y.");
     c_math_parser_add_function2(ctx, remainder, "remainder", "remainder(x,y) computes the remainder of dividing x by y.");
-    c_math_parser_add_function2(ctx, drem, "drem", "drem(x,y) Obsolete synonym of remainder(x,y).");
+    // c_math_parser_add_function2(ctx, drem, "drem", "drem(x,y) Obsolete synonym of remainder(x,y).");
+
+#ifndef _WIN32
+    c_math_parser_add_function1(ctx, significand, "significand",
+      "significand(x) returns the mantissa of x scaled to the range [1,2)");
+#endif
+
     c_math_parser_add_function1(ctx, nearbyint, "nearbyint",
       "nearbyint(x) round  their argument to an integer value in floating-point format,"
       "using the current rounding direction");
     c_math_parser_add_function1(ctx, rint, "rint", "rint(x) like nearbyint(x) but can raise the inexact exception");
-    c_math_parser_add_function1(ctx, significand, "significand",
-      "significand(x) returns the mantissa of x scaled to the range [1,2)");
 
     c_math_parser_add_function2(ctx, aitofx, "aitofx", "aitofx(l,b) return hammer-aitoff X coordinate for given l,b");
     c_math_parser_add_function2(ctx, aitofy, "aitofy", "aitofy(l,b) return hammer-aitoff Y coordinate for given l,b");
     c_math_parser_add_function1(ctx, lwrap, "lwrap", "lwrap(l) wraps l from range 0..2*pi into range -pi..pi");
 
     c_math_parser_add_function3(ctx, ymd, "ymd", "ymd(year,month,day) computes full year as double");
+
+    c_math_parser_add_function3(ctx, if_func, "if", "if(condition, expr_if_true, expr_if_false)");
+    c_math_parser_add_function2(ctx, min_func, "min", "min(v1, v2)");
+    c_math_parser_add_function2(ctx, max_func, "max", "max(v1, v2)");
   }
 
   return ctx;

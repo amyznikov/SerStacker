@@ -32,6 +32,7 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST, "PEAK_MUL_DIST", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST2, "AREA_MUL_DIST2", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST2, "PEAK_MUL_DIST2", "" },
+      { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS, "DOUBLED_ECHO_PEAKS", "" },
       { c_vlo_file::DATA_CHANNEL_AMBIENT },
   };
 
@@ -80,7 +81,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_DIST: {
 
-      typedef decltype(ScanType::echo::distCm) value_type;
+      typedef decltype(ScanType::echo::dist) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -88,7 +89,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int c = 0; c < 3; ++c ) {
-            const auto & value = scan.slot[s].echo[l][c].distCm;
+            const auto & value = scan.slot[s].echo[l][c].dist;
             image[l][s][c] = value <= max_value ? value : 0;
           }
         }
@@ -207,7 +208,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_DIST : {
       typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -218,7 +219,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto & value = scan.slot[s].echo[l][c].area;
-            const auto & distance = scan.slot[s].echo[l][c].distCm;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
 
             if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value ) / ((double) distance);
@@ -235,7 +236,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_DIST : {
       typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -246,7 +247,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto & value = scan.slot[s].echo[l][c].peak;
-            const auto & distance = scan.slot[s].echo[l][c].distCm;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
 
             if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value ) / ((double) distance);
@@ -263,7 +264,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_DIST2 : {
       typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -274,7 +275,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto & value = scan.slot[s].echo[l][c].area;
-            const auto & distance = scan.slot[s].echo[l][c].distCm;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
 
             if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value ) / (((double) distance) * (double) distance) ;
@@ -291,7 +292,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_DIST2 : {
       typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -302,7 +303,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto & value = scan.slot[s].echo[l][c].peak;
-            const auto & distance = scan.slot[s].echo[l][c].distCm;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
 
             if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value ) / (((double) distance) * (double) distance) ;
@@ -320,7 +321,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
 
       typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -331,7 +332,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto & value = scan.slot[s].echo[l][c].area;
-            const auto & distance = scan.slot[s].echo[l][c].distCm;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
 
             if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value ) * ((double) distance);
@@ -349,7 +350,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST: {
 
       typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -360,7 +361,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto &value = scan.slot[s].echo[l][c].peak;
-            const auto &distance = scan.slot[s].echo[l][c].distCm;
+            const auto &distance = scan.slot[s].echo[l][c].dist;
 
             if( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value) * ((double) distance);
@@ -379,7 +380,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST2: {
 
       typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -390,7 +391,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto & value = scan.slot[s].echo[l][c].area;
-            const auto & distance = scan.slot[s].echo[l][c].distCm;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
 
             if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value ) * ((double) distance) * ((double) distance);
@@ -409,7 +410,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST2: {
 
       typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::distCm) distance_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -420,7 +421,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
           for( int c = 0; c < 3; ++c ) {
 
             const auto &value = scan.slot[s].echo[l][c].peak;
-            const auto &distance = scan.slot[s].echo[l][c].distCm;
+            const auto &distance = scan.slot[s].echo[l][c].dist;
 
             if( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
               image[l][s][c] = ((double) value) * ((double) distance) * ((double) distance);
@@ -435,6 +436,38 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
 
+    case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
+
+      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      double min_intens[3] = {255, 255, 255};
+      double max_intens[3] = {0, 0, 0};
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+          const auto &dist0 = scan.slot[s].echo[l][0].dist;
+          const auto &dist1 = scan.slot[s].echo[l][1].dist;
+
+          if( dist0 > 0 && dist0 < 65534 && dist1 > 0 && dist1 < 65534 ) {
+            if( std::abs((double) dist1 / (double) dist0 - 2.) < 0.04 ) {
+              for( int e = 0; e < 3; ++e ) {
+
+                const uint8_t &peak =
+                    scan.slot[s].echo[l][e].peak;
+
+                if( peak < 254 ) {
+                  image[l][s][e] = peak;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return image;
+    }
   }
 
   return cv::Mat();
@@ -479,7 +512,7 @@ bool c_vlo_reader::open(const std::string & filename)
 #if _WIN32 || _WIN64
   constexpr int openflags = O_RDONLY | O_BINARY;
 #else
-  constexpr int openflags = O_RDONLY;// | O_NOATIME;
+  constexpr int openflags = O_RDONLY | O_NOATIME;
 #endif
 
   if( (fd_ = ::open(fname, openflags)) < 0 ) {

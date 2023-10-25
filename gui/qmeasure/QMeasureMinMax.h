@@ -37,6 +37,18 @@ protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
+class QMeasureMinNonZeroValue :
+    public QMeasure
+{
+public:
+  typedef QMeasureMinValue ThisClass;
+  typedef QMeasure Base;
+
+  QMeasureMinNonZeroValue();
+
+protected:
+  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+};
 
 
 #endif /* __QMeasureMinMax_h__ */

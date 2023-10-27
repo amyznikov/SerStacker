@@ -46,13 +46,6 @@ public:
   typedef c_image_processing_pipeline base;
   typedef std::shared_ptr<this_class> sptr;
 
-  struct c_vlo_scan {
-    VLO_VERSION version;
-    c_vlo_scan1 scan1;
-    c_vlo_scan3 scan3;
-    c_vlo_scan5 scan5;
-  };
-
   c_vlo_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
 
@@ -94,7 +87,6 @@ protected:
   c_vlo_pipeline_output_options output_options_;
   c_vlo_scan current_scan_;
   cv::Mat1b current_reflection_mask_;
-
 
   c_output_frame_writer progress_writer_;
   c_output_frame_writer reflectors_writer_;

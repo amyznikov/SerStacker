@@ -332,6 +332,7 @@ public:
   bool read(c_vlo_scan1 * scan);
   bool read(c_vlo_scan3 * scan);
   bool read(c_vlo_scan5 * scan);
+  bool read(c_vlo_scan * scan);
 
 
 protected:

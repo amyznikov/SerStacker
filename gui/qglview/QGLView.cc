@@ -702,34 +702,51 @@ void QGLView::wheelEvent(QWheelEvent * e)
         update();
       }
 
-
-//      const double p =
-//          QVector3D::dotProduct(newforward,
-//              forward);
-//
-//      CF_DEBUG("forward=%g newforward=%g p=%g", forward.length(), newforward.length(), p);
-//
-//      if( p > 0 ) {
-//        // just move target
-//        viewTarget_ = newtarget;
-//        dirty_ = true;
-//
-//        Q_EMIT viewPointChanged();
-//        update();
-//      }
-//      else if( p < 0 ) {
-//        // don't allow camera to jump target
-//
-//        viewPoint_ += newtarget - viewTarget_;
-//        viewTarget_ = newtarget;
-//        dirty_ = true;
-//
-//        Q_EMIT viewPointChanged();
-//        update();
-//      }
     }
   }
 
   e->ignore();
 }
 #endif
+
+
+void QGLView::showKeyBindings()
+{
+  static QDialog * helpWidget;
+
+  if( !helpWidget ) {
+
+    static const QString text =
+        " <p><strong>LeftButton</strong> : Rotate camera around of the Up / Right axes </p>"
+        " <p><strong>Shift + LeftButton</strong> : Rotate camera around of the Forward Looking axis </p>"
+        ""
+        " <p><strong>RightButton</strong> : Translate (shift) camera Up / Right  </p>"
+        ""
+        " <p><strong>Wheel</strong> : Move both camera and View Target Point forward / backward  </p>"
+        " <p><strong>Ctrl + Wheel</strong> : Move View Target Point only (the effect is mouse sensitivity adjustment)  </p>"
+        ;
+
+    helpWidget =
+        new QDialog(qApp->activeWindow());
+
+    helpWidget->setWindowTitle("QGLView Key Bindings");
+
+    QVBoxLayout * layout = new QVBoxLayout(helpWidget);
+    QLabel * label = new QLabel(helpWidget);
+
+    label->setTextFormat(Qt::RichText);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    label->setText(text);
+    layout->addWidget(label);
+
+  }
+
+  if ( helpWidget->isVisible() ) {
+    helpWidget->raise();
+  }
+  else {
+    helpWidget->setParent(qApp->activeWindow());
+    helpWidget->show();
+  }
+
+}

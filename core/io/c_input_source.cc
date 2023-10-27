@@ -808,6 +808,11 @@ bool c_vlo_input_source::read(c_vlo_scan5 * scan)
   return vlo_.read(scan);
 }
 
+bool c_vlo_input_source::read(c_vlo_scan * scan)
+{
+  return vlo_.read(scan);
+}
+
 #endif // HAVE_VLO_FILE
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

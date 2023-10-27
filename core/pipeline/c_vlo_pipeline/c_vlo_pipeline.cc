@@ -16,8 +16,6 @@
 #include <thread>
 #include <core/debug.h>
 
-using c_vlo_scan = c_vlo_pipeline::c_vlo_scan;
-
 //////////////////////////////
 
 
@@ -27,28 +25,18 @@ static bool get_cloud3d(const ScanType & scan,
     std::vector<cv::Vec3b> & output_colors)
 {
 
-  static cv::Mat3b lut;
-  if ( lut.empty() ) {
+  cv::Mat ambientImage =
+      c_vlo_file::get_image(scan,
+          c_vlo_reader::DATA_CHANNEL_AMBIENT);
 
-    cv::Mat1b gray(1, 256);
-    for ( int i = 0; i < 256; ++i ) {
-      gray[0][i] = i;
+  if( !ambientImage.empty() ) {
+    autoclip(ambientImage, cv::noArray(),
+        0.5, 99.5,
+        0, 255);
+    if( ambientImage.depth() != CV_8U ) {
+      ambientImage.convertTo(ambientImage, CV_8U);
     }
-
-    apply_colormap(gray,
-        lut,
-        COLORMAP_TURBO);
   }
-
-//  for ( const cv::Point3f & p : cloud3d ) {
-//
-//    const int dist =
-//        //std::min(255, (int) (cvRound(sqrt(p.x * p.x + p.y * p.y + p.z * p.z))));
-//        std::min(255, std::max(0, (int) ((p.z + 3) * 255 / 20)));
-//
-//    colors.emplace_back(lut[0][dist]);
-//  }
-
 
   output_points.clear();
   output_colors.clear();
@@ -62,6 +50,9 @@ static bool get_cloud3d(const ScanType & scan,
       (float) (0.00000008381903173490870551553291862726);
 
   const float yawCorrection = 0;
+
+  const cv::Mat1b ambient =
+      ambientImage;
 
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
 
@@ -81,6 +72,9 @@ static bool get_cloud3d(const ScanType & scan,
       const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
       const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
 
+      const uint8_t color =
+          std::max((uint8_t) 32, ambient[l][s]);
+
       for( int e = 0; e < 2/*scan.NUM_ECHOS*/; ++e ) {
 
         const auto &echo =
@@ -96,85 +90,46 @@ static bool get_cloud3d(const ScanType & scan,
           const float y = scale * distance * sin_hor_cos_vert;
           const float z = scale * distance * sin_vert;
           output_points.emplace_back(x, y, z);
-
-          uint8_t ambient = (uint8_t) (std::max(32., std::min(255., 0.02 * slot.ambient[l])));
-
-          output_colors.emplace_back(cv::Vec3b(ambient, ambient, ambient));
+          output_colors.emplace_back(cv::Vec3b(color, color, color));
         }
       }
+    }
+  }
+
+  if( false ) {
+
+    static cv::Mat3b lut;
+    if( lut.empty() ) {
+
+      cv::Mat1b gray(1, 256);
+      for( int i = 0; i < 256; ++i ) {
+        gray[0][i] = i;
+      }
+
+      apply_colormap(gray,
+          lut,
+          COLORMAP_TURBO);
     }
   }
 
   return true;
 }
 
-static cv::Mat get_vlo_image(const c_vlo_scan & scan, c_vlo_reader::DATA_CHANNEL channel)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return c_vlo_reader::get_image(scan.scan1, channel);
-    case VLO_VERSION_3:
-      return c_vlo_reader::get_image(scan.scan3, channel);
-    case VLO_VERSION_5:
-      return c_vlo_reader::get_image(scan.scan5, channel);
-  }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
-  return cv::Mat();
-}
 
 
-
-
-template<class ScanType>
-static bool sort_echos_by_distance_(ScanType & scan)
-{
-  typedef typename ScanType::echo echo_type;
-  typedef decltype(ScanType::echo::dist) dist_type;
-  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
-
-  echo_type echos[scan.NUM_ECHOS];
-  int cnz = 0;
-
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    auto &slot = scan.slot[s];
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-      cnz = 0;
-      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-        if( slot.echo[l][e].dist > 0 && slot.echo[l][e].dist < max_dist_value ) {
-          echos[cnz++] = slot.echo[l][e];
-        }
-      }
-
-      if( cnz > 1 ) {
-        std::sort(echos, echos + cnz,
-            [](const auto & prev, const auto & next) {
-              return prev.dist < next.dist;
-            });
-
-        memcpy(slot.echo[l], echos, sizeof(echos));
-      }
-    }
-  }
-
-  return true;
-}
-
-static bool sort_echos_by_distance(c_vlo_scan & scan)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return sort_echos_by_distance_(scan.scan1);
-    case VLO_VERSION_3:
-      return sort_echos_by_distance_(scan.scan3);
-    case VLO_VERSION_5:
-      return sort_echos_by_distance_(scan.scan5);
-  }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
-  return false;
-}
+//static bool sort_echos_by_distance(c_vlo_scan & scan)
+//{
+//  switch (scan.version) {
+//    case VLO_VERSION_1:
+//      return c_vlo_reader::sort_echos_by_distance(scan.scan1);
+//    case VLO_VERSION_3:
+//      return c_vlo_reader::sort_echos_by_distance(scan.scan3);
+//    case VLO_VERSION_5:
+//      return c_vlo_reader::sort_echos_by_distance(scan.scan5);
+//  }
+//  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+//  return false;
+//}
 
 
 
@@ -360,15 +315,16 @@ bool c_vlo_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
   lock_guard lock(mutex());
 
   cv::Mat image =
-      get_vlo_image(current_scan_,
+      c_vlo_file::get_image(current_scan_,
           c_vlo_reader::DATA_CHANNEL_AMBIENT);
 
   if( !image.empty() ) {
     autoclip(image, cv::noArray(),
         0.5, 99.5,
         0, 255);
-    image.convertTo(image,
-        CV_8U);
+    if( image.depth() != CV_8U ) {
+      image.convertTo(image, CV_8U);
+    }
   }
 
   display_frame.move(image);
@@ -503,31 +459,9 @@ bool c_vlo_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-
-      switch ((current_scan_.version = vlo->version())) {
-        case VLO_VERSION_1:
-          if( !vlo->read(&current_scan_.scan1) ) {
-            CF_ERROR("vlo->read(scan1) fails: %s", strerror(errno));
-            return false;
-          }
-          break;
-        case VLO_VERSION_3:
-          if( !vlo->read(&current_scan_.scan3) ) {
-            CF_ERROR("vlo->read(scan3) fails: %s", strerror(errno));
-            return false;
-          }
-          break;
-        case VLO_VERSION_5:
-          if( !vlo->read(&current_scan_.scan5) ) {
-            CF_ERROR("vlo->read(scan5) fails: %s", strerror(errno));
-            return false;
-          }
-          break;
-
-        default:
-          CF_ERROR("Unsupported vlo version detected: %d",
-              current_scan_.version);
-          return false;
+      if( !vlo->read(&current_scan_) ) {
+        CF_ERROR("vlo->read(scan) fails: %s", strerror(errno));
+        return false;
       }
     }
 
@@ -555,11 +489,9 @@ bool c_vlo_pipeline::run_pipeline()
 
 bool c_vlo_pipeline::process_current_frame()
 {
-  if( input_options_.sort_echos_by_distance ) {
-    if( !sort_echos_by_distance(current_scan_) ) {
-      CF_ERROR("sort_echos_by_distance() fails");
-      return false;
-    }
+  if( input_options_.sort_echos_by_distance && !c_vlo_file::sort_echos_by_distance(current_scan_) ) {
+    CF_ERROR("c_vlo_file::sort_echos_by_distance() fails");
+    return false;
   }
 
   if ( !run_reflectors_detection() ) {
@@ -602,9 +534,8 @@ bool c_vlo_pipeline::run_reflectors_detection()
     return false;
   }
 
-
   cv::Mat image =
-      get_vlo_image(current_scan_,
+      c_vlo_file::get_image(current_scan_,
           c_vlo_reader::DATA_CHANNEL_DISTANCES);
 
   if( !image.empty() ) {

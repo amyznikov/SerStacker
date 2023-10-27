@@ -87,6 +87,8 @@ public:
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
   void drawMainAxes();
 
+  void showKeyBindings();
+
 Q_SIGNALS:
   void viewPointChanged();
 
@@ -117,7 +119,7 @@ protected:
   QColor foregroundColor_ = Qt::white;
   double fov_ = M_PI / 2;
   double nearPlane_ = 1.0;
-  double farPlane_ = 100.0;
+  double farPlane_ = 1000.0;
 
   QVector3D viewPoint_ = QVector3D(40, 30, 30);
   QVector3D viewTarget_ = QVector3D(0, 0, 0);

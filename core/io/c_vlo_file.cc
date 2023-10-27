@@ -67,6 +67,49 @@ static inline bool readfrom(int fd, ssize_t offset, uint16_t * data)
   return true;
 }
 
+
+
+
+template<class ScanType>
+static void sort_echos_by_distance(ScanType & scan)
+{
+  if ( scan.config.echoOrdering != 2 ) {
+
+    typedef typename ScanType::echo echo_type;
+    typedef decltype(ScanType::echo::dist) dist_type;
+    constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
+
+    echo_type echos[scan.NUM_ECHOS];
+    int cnz = 0;
+
+    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+      auto &slot = scan.slot[s];
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+
+        cnz = 0;
+        for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+          if( slot.echo[l][e].dist > 0 && slot.echo[l][e].dist < max_dist_value ) {
+            echos[cnz++] = slot.echo[l][e];
+          }
+        }
+
+        if( cnz > 1 ) {
+          std::sort(echos, echos + cnz,
+              [](const auto & prev, const auto & next) {
+                return prev.dist < next.dist;
+              });
+
+          memcpy(slot.echo[l], echos, sizeof(echos));
+        }
+      }
+    }
+
+    scan.config.echoOrdering = 2;
+  }
+}
+
 template<class ScanType>
 static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel)
 {
@@ -581,6 +624,90 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
   return cv::Mat();
 }
 
+//////////////////////////////////////////
+
+c_vlo_file::c_vlo_file()
+{
+}
+
+c_vlo_file::c_vlo_file(const std::string & filename) :
+  filename_(filename)
+{
+}
+
+const std::string & c_vlo_file::filename() const
+{
+  return filename_;
+}
+
+VLO_VERSION c_vlo_file::version() const
+{
+  return version_;
+}
+
+
+void c_vlo_file::sort_echos_by_distance(c_vlo_scan1 & scan)
+{
+  ::sort_echos_by_distance(scan);
+}
+
+void c_vlo_file::sort_echos_by_distance(c_vlo_scan3 & scan)
+{
+  ::sort_echos_by_distance(scan);
+}
+
+void c_vlo_file::sort_echos_by_distance(c_vlo_scan5 & scan)
+{
+  ::sort_echos_by_distance(scan);
+}
+
+bool c_vlo_file::sort_echos_by_distance(c_vlo_scan & scan)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      ::sort_echos_by_distance(scan.scan1);
+      return true;
+    case VLO_VERSION_3:
+      ::sort_echos_by_distance(scan.scan3);
+      return true;
+    case VLO_VERSION_5:
+      ::sort_echos_by_distance(scan.scan5);
+      return true;
+  }
+  return false;
+}
+
+cv::Mat c_vlo_file::get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel)
+{
+  return ::get_image(scan, channel);
+}
+
+cv::Mat c_vlo_file::get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel)
+{
+  return ::get_image(scan, channel);
+}
+
+cv::Mat c_vlo_file::get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel)
+{
+  return ::get_image(scan, channel);
+}
+
+cv::Mat c_vlo_file::get_image(const c_vlo_scan & scan, DATA_CHANNEL channel)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return ::get_image(scan.scan1, channel);
+    case VLO_VERSION_3:
+      return ::get_image(scan.scan3, channel);
+    case VLO_VERSION_5:
+      return ::get_image(scan.scan5, channel);
+  }
+  return cv::Mat();
+}
+
+
+
+//////////////////////////////////////////
 
 c_vlo_reader::c_vlo_reader()
 {
@@ -873,11 +1000,19 @@ bool c_vlo_reader::read(c_vlo_scan1 * scan)
   }
 
   if( fd_ >= 0 ) {
-    return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
+    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
+      ::sort_echos_by_distance(*scan);
+      return true;
+    }
+    return false;
   }
 
   if( ifhd_.is_open() ) {
-    return ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan);
+    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
+      ::sort_echos_by_distance(*scan);
+      return true;
+    }
+    return false;
   }
 
   errno = EBADF;
@@ -892,11 +1027,19 @@ bool c_vlo_reader::read(c_vlo_scan3 * scan)
   }
 
   if( fd_ >= 0 ) {
-    return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
+    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
+      ::sort_echos_by_distance(*scan);
+      return true;
+    }
+    return false;
   }
 
   if( ifhd_.is_open() ) {
-    return ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan);
+    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
+      ::sort_echos_by_distance(*scan);
+      return true;
+    }
+    return false;
   }
 
   errno = EBADF;
@@ -910,13 +1053,35 @@ bool c_vlo_reader::read(c_vlo_scan5 * scan)
     return false;
   }
 
-
   if( fd_ >= 0 ) {
-    return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
+    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
+      ::sort_echos_by_distance(*scan);
+      return true;
+    }
+    return false;
   }
 
   if( ifhd_.is_open() ) {
-    return ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan);
+    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
+      ::sort_echos_by_distance(*scan);
+      return true;
+    }
+    return false;
+  }
+
+  errno = EBADF;
+  return false;
+}
+
+bool c_vlo_reader::read(c_vlo_scan * scan)
+{
+  switch (scan->version = this->version_) {
+    case VLO_VERSION_1:
+      return read(&scan->scan1);
+    case VLO_VERSION_3:
+      return read(&scan->scan3);
+    case VLO_VERSION_5:
+      return read(&scan->scan5);
   }
 
   errno = EBADF;
@@ -951,22 +1116,8 @@ bool c_vlo_reader::read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel)
     }
   }
 
+  errno = EBADF;
   return false;
-}
-
-cv::Mat c_vlo_reader::get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel)
-{
-  return ::get_image(scan, channel);
-}
-
-cv::Mat c_vlo_reader::get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel)
-{
-  return ::get_image(scan, channel);
-}
-
-cv::Mat c_vlo_reader::get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel)
-{
-  return ::get_image(scan, channel);
 }
 
 cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
@@ -1012,6 +1163,5 @@ cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
   }
 
   return image;
-//  return cv::Mat();
 }
 

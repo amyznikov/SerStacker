@@ -36,6 +36,7 @@ public:
   const QPointCloud::ptr & cloud(int index) const;
   void clear();
   bool openPlyFile(const QString & pathFileName);
+  void rotateToShowCloud();
 
 protected:
   void glInit() override;
@@ -85,6 +86,10 @@ public:
   const QString & currentFileName() const;
 
   void clear();
+
+  void rotateToShowCloud();
+
+  void showKeyBindings();
 
   std::vector<QPointCloud::ptr> & clouds()
   {

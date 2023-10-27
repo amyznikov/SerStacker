@@ -73,11 +73,24 @@ void QGLCloudViewer::clear()
   update();
 }
 
-//void QGLCloudViewer::setSceneRadius(qreal radius)
-//{
-//  Base::setSceneRadius(radius);
-//  update();
-//}
+void QGLCloudViewer::rotateToShowCloud()
+{
+  double mx = 0, my = 0, mz = 0;
+  int mn = 0;
+
+  for (const QPointCloud::ptr & cloud : clouds_ ) {
+    for (const QPoint3D & p : cloud->points ) {
+      mx += p.x;
+      my += p.y;
+      mz += p.z;
+      mn += 1;
+    }
+  }
+
+  if ( mn > 0 ) {
+    setViewTargetPoint(QVector3D(mx / mn, my / mn, mz / mn));
+  }
+}
 
 void QGLCloudViewer::setSceneOrigin(const QVector3D & v)
 {
@@ -211,6 +224,8 @@ bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
   return true;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 QCloudViewer::QCloudViewer(QWidget* parent) :
@@ -257,7 +272,7 @@ bool QCloudViewer::openPlyFile(const QString & pathFileName)
   currentFileName_ =
         pathFileName;
 
-  emit currentFileNameChanged();
+  Q_EMIT currentFileNameChanged();
 
   return fOk;
 }
@@ -266,10 +281,21 @@ bool QCloudViewer::openPlyFile(const QString & pathFileName)
 void QCloudViewer::setCurrentFileName(const QString & v)
 {
   currentFileName_ = v;
-  emit currentFileNameChanged();
+  Q_EMIT currentFileNameChanged();
 }
 
 const QString & QCloudViewer::currentFileName() const
 {
   return currentFileName_;
 }
+
+void QCloudViewer::rotateToShowCloud()
+{
+  glViewer_->rotateToShowCloud();
+}
+
+void QCloudViewer::showKeyBindings()
+{
+  glViewer_->showKeyBindings();
+}
+

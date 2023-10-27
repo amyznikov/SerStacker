@@ -203,21 +203,103 @@ void QCloudViewSettings::refreshCloudList()
 
 
 ///////////////////////////////////////////////////////////////////////////////
-QCloudViewSettingsDialogBox::QCloudViewSettingsDialogBox(QWidget * parent)
-  : Base(parent)
+
+template<class Fn>
+static QToolButton * createToolButton(QWidget * parent,
+    const QString & text, const QIcon & icon, const QString & tooltip,
+    Fn && clickFunc)
+{
+
+  QToolButton * tb = new QToolButton(parent);
+  tb->setIconSize(QSize(16, 16));
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      clickFunc);
+
+  return tb;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+QCloudViewSettingsWidget::QCloudViewSettingsWidget(QWidget * parent) :
+    Base(parent)
+{
+  QHBoxLayout * layout =
+      new QHBoxLayout(this);
+
+  QVBoxLayout * buttonBox =
+      new QVBoxLayout();
+
+  buttonBox->setAlignment(Qt::AlignTop);
+
+  buttonBox->addWidget(rotateCameraToShowCloud_ctl =
+      createToolButton(this, "Auto rotate",
+          QIcon(),
+          "Rotate camera to show point cloud",
+          [this]() {
+            if ( cloudViewer_ ) {
+              cloudViewer_->rotateToShowCloud();
+            }
+          }));
+
+//  buttonBox->addWidget(moveCameraToShowCloud_ctl=
+//      createToolButton(this, "Show entire cloud",
+//          QIcon(),
+//          "Rotate and Move camera to show entire point cloud",
+//          [this]() {
+//            if ( cloudViewer_ ) {
+//            }
+//
+//          }));
+
+  buttonBox->addWidget(showKeyBindings_ctl=
+      createToolButton(this, "Help for keys...",
+          QIcon(),
+          "Show Mouse and keyboard bindings...",
+          [this]() {
+            if ( cloudViewer_ ) {
+              cloudViewer_->showKeyBindings();
+            }
+
+          }));
+
+  layout->addWidget(settings_ctl = new QCloudViewSettings(this) );
+  layout->addLayout(buttonBox);
+
+}
+
+void QCloudViewSettingsWidget::setCloudViewer(QCloudViewer * v)
+{
+  settings_ctl->setCloudViewer(cloudViewer_ = v);
+  setEnabled(cloudViewer_ != nullptr);
+}
+
+QCloudViewer * QCloudViewSettingsWidget::cloudViewer() const
+{
+  return cloudViewer_;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+QCloudViewSettingsDialogBox::QCloudViewSettingsDialogBox(QWidget * parent) :
+    Base(parent)
 {
   vbox_ = new QVBoxLayout(this);
-  vbox_->addWidget(cloudViewSettings_ = new QCloudViewSettings(this));
+  vbox_->addWidget(cloudViewSettingsWidget_ = new QCloudViewSettingsWidget(this));
 }
 
 void QCloudViewSettingsDialogBox::setCloudViewer(QCloudViewer * v)
 {
-  cloudViewSettings_->setCloudViewer(v);
+  cloudViewSettingsWidget_->setCloudViewer(v);
 }
 
 QCloudViewer * QCloudViewSettingsDialogBox::cloudViewer() const
 {
-  return cloudViewSettings_->cloudViewer();
+  return cloudViewSettingsWidget_->cloudViewer();
 }
 
 void QCloudViewSettingsDialogBox::showEvent(QShowEvent *e)

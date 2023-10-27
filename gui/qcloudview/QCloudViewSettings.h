@@ -10,7 +10,6 @@
 #define __QCloudViewSettings_h__
 
 #include "QCloudViewer.h"
-//#include "QPointCloudsSettingsControl.h"
 #include <gui/widgets/QSettingsWidget.h>
 
 
@@ -43,9 +42,27 @@ protected:
   QNumericBox * sceneOrigin_ctl = nullptr;
   QNumericBox * pointSize_ctl = nullptr;
   QNumericBox * pointBrightness_ctl = nullptr;
+};
 
-  //QPointCloudsSettingsControl * cloudsSettings_ctl = nullptr;
+class QCloudViewSettingsWidget :
+    public QWidget
+{
+  Q_OBJECT;
+public:
+  typedef QCloudViewSettingsWidget ThisClass;
+  typedef QWidget Base;
 
+  QCloudViewSettingsWidget(QWidget * parent = nullptr);
+
+  void setCloudViewer(QCloudViewer * v);
+  QCloudViewer * cloudViewer() const;
+
+protected:
+  QCloudViewer * cloudViewer_ = nullptr;
+  QCloudViewSettings * settings_ctl = nullptr;
+  QToolButton * rotateCameraToShowCloud_ctl = nullptr;
+  QToolButton * moveCameraToShowCloud_ctl = nullptr;
+  QToolButton * showKeyBindings_ctl = nullptr;
 };
 
 class QCloudViewSettingsDialogBox :
@@ -61,7 +78,7 @@ public:
   void setCloudViewer(QCloudViewer * v);
   QCloudViewer * cloudViewer() const;
 
-signals:
+Q_SIGNALS:
   void visibilityChanged(bool visible);
 
 protected:
@@ -69,7 +86,7 @@ protected:
   void hideEvent(QHideEvent *event) override;
 protected:
   QVBoxLayout * vbox_ = nullptr;
-  QCloudViewSettings * cloudViewSettings_ = nullptr;
+  QCloudViewSettingsWidget * cloudViewSettingsWidget_ = nullptr;
   QSize lastWidnowSize_;
   QPoint lastWidnowPos_;
 

@@ -288,6 +288,18 @@ static_assert(sizeof(c_vlo_scan5) == (36480640 / 8));
 
 ////////////
 
+struct c_vlo_scan
+{
+  VLO_VERSION version;
+  union
+  {
+    c_vlo_scan1 scan1;
+    c_vlo_scan3 scan3;
+    c_vlo_scan5 scan5;
+  };
+};
+
+
 
 class c_vlo_file
 {
@@ -326,24 +338,21 @@ public:
 
   };
 
-  c_vlo_file()
-  {
-  }
+  c_vlo_file();
+  c_vlo_file(const std::string & filename);
 
-  c_vlo_file(const std::string & filename) :
-    filename_(filename)
-  {
-  }
+  const std::string & filename() const;
+  VLO_VERSION version() const;
 
-  const std::string & filename() const
-  {
-    return filename_;
-  }
+  static void sort_echos_by_distance(c_vlo_scan1 & scan);
+  static void sort_echos_by_distance(c_vlo_scan3 & scan);
+  static void sort_echos_by_distance(c_vlo_scan5 & scan);
+  static bool sort_echos_by_distance(c_vlo_scan & scan);
 
-  VLO_VERSION version() const
-  {
-    return version_;
-  }
+  static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel);
+  static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel);
+  static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel);
+  static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel);
 
 protected:
   std::string filename_;
@@ -368,10 +377,13 @@ public:
   bool is_open() const;
   bool seek(int32_t frame_index);
   int32_t curpos() const;
+
   bool read(c_vlo_scan1 * scan);
   bool read(c_vlo_scan3 * scan);
   bool read(c_vlo_scan5 * scan);
-  bool read(cv::Mat * image,c_vlo_file::DATA_CHANNEL channel);
+  bool read(c_vlo_scan * scan);
+
+  bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);
 
   /// @brief get frame size in bytes
   ssize_t frame_size() const;
@@ -379,19 +391,13 @@ public:
   /// @brief get number of frames in this file
   ssize_t num_frames() const;
 
-  static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel);
-  static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel);
-  static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel);
   static cv::Mat get_thumbnail_image(const std::string & filename);
 
 protected:
   c_ifhd_reader ifhd_;
-  // ssize_t file_size_ = -1;
   ssize_t num_frames_ = -1;
   ssize_t frame_size_ = -1;
   int fd_ = -1;
-
-
 };
 
 

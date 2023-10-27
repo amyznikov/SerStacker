@@ -209,7 +209,7 @@ void MainWindow::setupMainMenu()
   menuFile_->addAction(selectNextFileAction_ =
       createAction(getIcon(ICON_next),
           "Next (Ctrl+PgDown)",
-          "Select next file (Ctrl+PgUp)",
+          "Select next file (Ctrl+PgDown)",
           [this]() {
             thumbnailsView->selectNextIcon();
           },
@@ -996,7 +996,7 @@ void MainWindow::stupCloudViewer()
 
   toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
   action->setToolTip("Load previous image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
+  //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
   connect(action, &QAction::triggered, [this]() {
     thumbnailsView->selectPrevIcon();
   });
@@ -1004,7 +1004,7 @@ void MainWindow::stupCloudViewer()
 
   toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
   action->setToolTip("Load next image from list");
-  action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
+  //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
   connect(action, &QAction::triggered, [this]() {
     thumbnailsView->selectNextIcon();
   });

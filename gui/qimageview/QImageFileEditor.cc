@@ -65,15 +65,14 @@ double QImageFileEditor::badPixelsVariationThreshold() const
 #if HAVE_VLO_FILE
 void QImageFileEditor::setVloDataChannel(c_vlo_file::DATA_CHANNEL channel)
 {
-  CF_DEBUG("channel=%s", toString(channel));
-
   vlo_data_channel_ = channel;
 
   if( input_sequence_ && input_sequence_->is_open() ) {
+
     if( input_sequence_->current_pos() > 0 ) {
       input_sequence_->seek(input_sequence_->current_pos() - 1);
     }
-    CF_DEBUG("loadNextFrame()");
+
     loadNextFrame();
   }
 

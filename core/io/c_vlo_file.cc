@@ -36,6 +36,8 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST, "PEAK_MUL_DIST", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST2, "AREA_MUL_DIST2", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST2, "PEAK_MUL_DIST2", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST, "AREA_MUL_SQRT_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST, "PEAK_MUL_SQRT_DIST", "" },
       { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS, "DOUBLED_ECHO_PEAKS", "" },
       { c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK, "DIST_TO_MAX_PEAK", "" },
       { c_vlo_file::DATA_CHANNEL_AMBIENT },
@@ -442,6 +444,68 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
       return image;
     }
+
+    //
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
+
+      typedef decltype(ScanType::echo::area) value_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.slot[s].echo[l][c].area;
+            const auto & distance = scan.slot[s].echo[l][c].dist;
+
+            if ( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
+              image[l][s][c] = ((double) value ) * sqrt((double) distance);
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST: {
+
+      typedef decltype(ScanType::echo::peak) value_type;
+      typedef decltype(ScanType::echo::dist) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+      constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto &value = scan.slot[s].echo[l][c].peak;
+            const auto &distance = scan.slot[s].echo[l][c].dist;
+
+            if( value > 0 && value < max_value && distance > 0 && distance < max_distance ) {
+              image[l][s][c] = ((double) value) * sqrt((double) distance);
+            }
+            else {
+              image[l][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+//
 
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
 

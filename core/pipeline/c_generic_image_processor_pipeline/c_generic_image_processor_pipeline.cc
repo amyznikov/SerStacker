@@ -385,6 +385,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_p
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+      PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
       PIPELINE_CTL(ctrls, output_options_.save_processed_frames, "save_processed_frames", "");
       PIPELINE_CTLC(ctrls, output_options_.processed_frames_filename, "processed_frames_filename", "",
           _this->output_options_.save_processed_frames);

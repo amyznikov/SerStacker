@@ -14,6 +14,9 @@
 bool save_ply(const std::vector<cv::Vec3d> & points, const std::vector<cv::Vec3b> & colors,
     const std::string & fname);
 
+bool save_ply(const std::vector<cv::Point3f> & points, const std::vector<cv::Vec3b> & colors,
+    const std::string & fname);
+
 bool save_ply(const cv::Mat3f & points, const cv::Mat3b & colors, const cv::Mat1b & mask,
     const std::string & fname);
 

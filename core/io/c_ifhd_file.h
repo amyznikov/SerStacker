@@ -13,9 +13,11 @@
 #ifndef __c_ifhd_file_h__
 #define __c_ifhd_file_h__
 
+#include <unistd.h>
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <inttypes.h>
 
 namespace ifhd {
 
@@ -94,7 +96,7 @@ struct FileHeader
 struct FileExtension
 {
   /// Identifier
-  int8_t identifier[MAX_FILEEXTENSIONIDENTIFIER_LENGTH];
+  char identifier[MAX_FILEEXTENSIONIDENTIFIER_LENGTH];
   /// related Stream identifier. 0 for every stream 1> id >= Max streams)
   uint16_t stream_id;
   /// reserved. currently not in use
@@ -202,7 +204,7 @@ struct StreamInfoHeader
   /// Info data size
   uint32_t info_data_size;
   /// Stream name
-  int8_t stream_name[MAX_STREAMNAME_LENGTH]; //use Ascii 7
+  char stream_name[MAX_STREAMNAME_LENGTH]; //use Ascii 7
 };
 // size is 256 Byte
 
@@ -227,6 +229,10 @@ class c_ifhd_file
 {
 public:
   typedef c_ifhd_file this_class;
+  using FileHeader = ifhd::FileHeader;
+  using FileExtension = ifhd::FileExtension;
+  using StreamInfoHeader = ifhd::StreamInfoHeader;
+  using ChunkHeader = ifhd::ChunkHeader;
 
   c_ifhd_file();
   c_ifhd_file(const std::string & filename);
@@ -242,9 +248,20 @@ class c_ifhd_reader :
 public:
   typedef c_ifhd_reader this_class;
   typedef c_ifhd_file base;
-  using FileHeader = ifhd::FileHeader;
-  using FileExtension = ifhd::FileExtension;
-  using StreamInfoHeader = ifhd::StreamInfoHeader;
+
+  struct ChunkHeader : public base::ChunkHeader {
+    // size of actual payload data in file
+    ssize_t payload_size;
+    // offset of actual payload data in file
+    ssize_t payload_offset;
+  };
+
+  struct IfhdStream {
+    FileExtension extension;
+    StreamInfoHeader header;
+    std::vector<ChunkHeader> chunks;
+  };
+
 
   c_ifhd_reader();
   c_ifhd_reader(const std::string & filename);
@@ -254,22 +271,27 @@ public:
   bool is_open() const;
   void close();
 
-  bool set_stream(const std::string& stream_name);
-  bool seek(int32_t frame_index);
-  int32_t curpos() const;
-  ssize_t current_chunk_size();
-  bool read_current_chunk(void * data);
+  const std::vector<IfhdStream> & streams() const;
 
-  /// @brief get number of frames in this stream
+  bool select_stream(int index);
+  bool select_stream(const std::string& stream_name);
+  int current_stream() const;
+
+  /// @brief get number of frames in current stream
   ssize_t num_frames() const;
+
+  bool seek(int32_t frame_index_in_current_stream);
+  int32_t curpos() const;
+  ssize_t current_payload_size() const;
+  size_t read_payload(void * data, size_t max_size);
+
 
 protected:
   int fd_ = -1;
   FileHeader file_header_;
-  std::vector<FileExtension> file_exstensions_;
-  int32_t current_stream_id_ = -1;
-  int64_t current_chunk_offset_ = 1;
-  int32_t curpos_ = -1;
+  std::vector<IfhdStream> file_streams_;
+  ssize_t current_stream_index_ = -1;
+  ssize_t current_frame_index_in_current_stream_ = -1;
 };
 
 #endif /* __c_ifhd_file_h__ */

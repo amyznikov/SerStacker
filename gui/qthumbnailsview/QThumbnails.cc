@@ -119,7 +119,7 @@ const char ** thumbnail_plyfile_suffixes()
 const char ** thumbnail_vlofile_suffixes()
 {
   static const char * suffixes[] = {
-      "vsb", nullptr
+      "vsb", "dat", nullptr
   };
   return suffixes;
 }
@@ -521,26 +521,29 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
   }
 
 #if HAVE_VLO_FILE
-  if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {
+  if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 || suffix.compare("dat", Qt::CaseInsensitive) == 0 ) {
 
-    if( (cvimage = c_vlo_reader::get_thumbnail_image(pathFileName.toStdString())).empty() ) {
+    if( !(cvimage = c_vlo_reader::get_thumbnail_image(pathFileName.toStdString())).empty() ) {
+
+      const QSize thumbSize =
+          compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
+              thumb_size);
+
+      if( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+
+        cv::resize(cvimage, cvimage,
+            cv::Size(thumbSize.width(), thumbSize.height()),
+            0, 0,
+            cv::INTER_AREA);
+      }
+
+      cv2qimage(cvimage, &qimage, true);
+      return qimage;
+    }
+
+    if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {
       return QImage(":/qthumbnailsview/icons/lidar1.png");
     }
-
-    const QSize thumbSize =
-        compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
-            thumb_size);
-
-    if( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
-
-      cv::resize(cvimage, cvimage,
-          cv::Size(thumbSize.width(), thumbSize.height()),
-          0, 0,
-          cv::INTER_AREA);
-    }
-
-    cv2qimage(cvimage, &qimage, true);
-    return qimage;
   }
 #endif
 

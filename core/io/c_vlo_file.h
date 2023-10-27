@@ -9,10 +9,8 @@
 #ifndef __c_vlo_file_h__
 #define __c_vlo_file_h__
 
+#include "c_ifhd_file.h"
 #include <opencv2/opencv.hpp>
-#include <unistd.h>
-#include <inttypes.h>
-#include <string>
 #include <memory>
 
 #define HAVE_VLO_FILE 1
@@ -320,6 +318,9 @@ public:
     DATA_CHANNEL_ECHO_PEAK_MUL_DIST2,
 
     DATA_CHANNEL_DOUBLED_ECHO_PEAKS,
+
+    DATA_CHANNEL_DIST_TO_MAX_PEAK,
+
   };
 
   c_vlo_file()
@@ -369,9 +370,6 @@ public:
   bool read(c_vlo_scan5 * scan);
   bool read(cv::Mat * image,c_vlo_file::DATA_CHANNEL channel);
 
-  /// @brief get total file size in bytes
-  ssize_t file_size() const;
-
   /// @brief get frame size in bytes
   ssize_t frame_size() const;
 
@@ -384,10 +382,13 @@ public:
   static cv::Mat get_thumbnail_image(const std::string & filename);
 
 protected:
-  ssize_t file_size_ = -1;
+  c_ifhd_reader ifhd_;
+  // ssize_t file_size_ = -1;
   ssize_t num_frames_ = -1;
   ssize_t frame_size_ = -1;
   int fd_ = -1;
+
+
 };
 
 

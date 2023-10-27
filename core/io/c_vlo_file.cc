@@ -12,6 +12,10 @@
 #include <core/proc/autoclip.h>
 #include <core/debug.h>
 
+//static constexpr uint32_t sizeScanV1 = sizeof(c_vlo_scan1); // 3561744;
+//static constexpr uint32_t sizeScanV3 = sizeof(c_vlo_scan3);// 5622704;
+//static constexpr uint32_t sizeScanV5 = sizeof(c_vlo_scan5);// 4560080;
+
 
 template<>
 const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
@@ -33,11 +37,14 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST2, "AREA_MUL_DIST2", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST2, "PEAK_MUL_DIST2", "" },
       { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS, "DOUBLED_ECHO_PEAKS", "" },
+      { c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK, "DIST_TO_MAX_PEAK", "" },
       { c_vlo_file::DATA_CHANNEL_AMBIENT },
   };
 
   return members;
 }
+
+
 
 //@brief get current file position
 static inline ssize_t whence(int fd)
@@ -468,7 +475,44 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
       return image;
     }
+
+    case c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK: {
+
+      cv::Mat1w image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+          int max_echo_index = -1;
+          uint8_t max_peak = 0;
+
+          for ( int e = 0; e < 3; ++e ) {
+
+            const auto &dist = scan.slot[s].echo[l][e].dist;
+
+            if ( dist > 0 && dist < 65534 ) {
+              if ( scan.slot[s].echo[l][e].peak > max_peak ) {
+                max_peak = scan.slot[s].echo[l][e].peak;
+                max_echo_index = e;
+              }
+            }
+          }
+
+          if ( max_echo_index >= 0 ) {
+            image[l][s] = scan.slot[s].echo[l][max_echo_index].dist;
+          }
+        }
+
+      }
+
+      return image;
+    }
   }
+
+
+
+
 
   return cv::Mat();
 }
@@ -505,141 +549,201 @@ bool c_vlo_reader::open(const std::string & filename)
     return false;
   }
 
-  const char *fname = filename_.c_str();
   bool fOk = false;
   uint16_t format_version = 0;
+
+  frame_size_ = -1;
+  version_ = VLO_VERSION_UNKNOWN;
+
+  ////////////
+
+  if( ifhd_.open(filename) ) {
+    if ( ifhd_.select_stream("ScaLa 3-PointCloud")  ) {
+
+      const size_t payload_size =
+          ifhd_.current_payload_size();
+
+      if( ifhd_.read_payload(&format_version, sizeof(format_version)) == sizeof(format_version) ) {
+
+        static constexpr uint32_t scanV1Offset = 336;
+        static constexpr uint32_t scanV3Offset = 1328;
+        static constexpr uint32_t scanV5Offset = 1120;
+
+        if( payload_size == sizeof(c_vlo_scan1) + scanV1Offset && format_version == 18 ) {
+          version_ = VLO_VERSION_1;
+          frame_size_ = sizeof(c_vlo_scan1);
+        }
+        else if( payload_size == sizeof(c_vlo_scan3) + scanV3Offset && format_version == 18 ) {
+          version_ = VLO_VERSION_3;
+          frame_size_ = sizeof(c_vlo_scan3);
+        }
+        else if( payload_size == sizeof(c_vlo_scan5) + scanV5Offset && format_version == 5 ) {
+          version_ = VLO_VERSION_5;
+          frame_size_ = sizeof(c_vlo_scan5);
+        }
+        else if( payload_size == sizeof(c_vlo_scan5) && format_version == 5 ) {
+          version_ = VLO_VERSION_5;
+          frame_size_ = sizeof(c_vlo_scan5);
+        }
+
+        CF_DEBUG("format_version: %d->%d frame_size_=%zd",
+            format_version, version_, frame_size_);
+
+        if( frame_size_ > 0 ) {
+          ifhd_.seek(0);
+          num_frames_ = ifhd_.num_frames();
+          fOk = true;
+        }
+      }
+    }
+  }
+
+  if ( !fOk ) {
+    ifhd_.close();
+  }
+
+
+  ////////////
+
+  if ( !ifhd_.is_open() ) {
 
 #if _WIN32 || _WIN64
   constexpr int openflags = O_RDONLY | O_BINARY;
 #else
-  constexpr int openflags = O_RDONLY | O_NOATIME;
+    constexpr int openflags = O_RDONLY | O_NOATIME;
 #endif
+    ssize_t file_size = 0;
 
-  if( (fd_ = ::open(fname, openflags)) < 0 ) {
-    CF_ERROR("open('%s') fails: %s", fname, strerror(errno));
-    goto end;
-  }
+    const char *fname = filename_.c_str();
 
-  if( ::read(fd_, &format_version, sizeof(format_version)) != sizeof(format_version) ) {
-    CF_ERROR("read('%s', format_version) fails: %s", fname,
-        strerror(errno));
-    goto end;
-  }
+    if( (fd_ = ::open(fname, openflags)) < 0 ) {
+      CF_ERROR("open('%s') fails: %s", fname, strerror(errno));
+      goto end;
+    }
 
-  CF_DEBUG("vlo struct sizes: scan1=%zu scan3=%zu scan=%zu",
-      sizeof(c_vlo_scan1),
-      sizeof(c_vlo_scan3),
-      sizeof(c_vlo_scan5));
+    if( ::read(fd_, &format_version, sizeof(format_version)) != sizeof(format_version) ) {
+      CF_ERROR("read('%s', format_version) fails: %s", fname,
+          strerror(errno));
+      goto end;
+    }
 
-  CF_DEBUG("vlo format version %u in '%s'",
-      format_version, fname);
+    CF_DEBUG("vlo struct sizes: scan1=%zu scan3=%zu scan=%zu",
+        sizeof(c_vlo_scan1),
+        sizeof(c_vlo_scan3),
+        sizeof(c_vlo_scan5));
 
-  switch ((version_ = (VLO_VERSION)(format_version))) {
-    case VLO_VERSION_1:
-      frame_size_ = sizeof(c_vlo_scan1);
-      break;
-    case VLO_VERSION_3:
-      frame_size_ = sizeof(c_vlo_scan3);
-      break;
-    case VLO_VERSION_5:
-      frame_size_ = sizeof(c_vlo_scan5);
-      break;
-    case VLO_VERSION_18: {
+    CF_DEBUG("vlo format version %u in '%s'",
+        format_version, fname);
 
-      uint16_t data11, data12, data31, data32;
-      bool isv1, isv3;
-      long offset;
-
-      if ( !readfrom(fd_, offset = 1 * sizeof(c_vlo_scan1), &data11) ) {
-        CF_ERROR("readfrom('%s', offset=%ld, data11) fails: %s", fname, offset,
-            strerror(errno));
-        goto end;
-      }
-      if ( !readfrom(fd_, offset = 2 * sizeof(c_vlo_scan1), &data12) ) {
-        CF_ERROR("readfrom('%s', offset=%ld, data12) fails: %s", fname, offset,
-            strerror(errno));
-        goto end;
-      }
-
-      if ( !readfrom(fd_, offset = 1 * sizeof(c_vlo_scan3), &data31) ) {
-        CF_ERROR("readfrom('%s', offset=%ld, data31) fails: %s", fname, offset,
-            strerror(errno));
-        goto end;
-      }
-      if ( !readfrom(fd_, offset = 2 * sizeof(c_vlo_scan3), &data32) ) {
-        CF_ERROR("readfrom('%s', offset=%ld, data32) fails: %s", fname, offset,
-            strerror(errno));
-        goto end;
-      }
-
-      isv1 = data11 == 18 && data12 == 18;
-      isv3 = data31 == 18 && data32 == 18;
-
-      if ( isv1 && !isv3 ) {
-        version_ = VLO_VERSION_1;
+    switch ((version_ = (VLO_VERSION) (format_version))) {
+      case VLO_VERSION_1:
         frame_size_ = sizeof(c_vlo_scan1);
-      }
-      else if ( isv3 && !isv1 ) {
-        version_ = VLO_VERSION_3;
+        break;
+      case VLO_VERSION_3:
         frame_size_ = sizeof(c_vlo_scan3);
+        break;
+      case VLO_VERSION_5:
+        frame_size_ = sizeof(c_vlo_scan5);
+        break;
+      case VLO_VERSION_18: {
+
+        uint16_t data11, data12, data31, data32;
+        bool isv1, isv3;
+        long offset;
+
+        if( !readfrom(fd_, offset = 1 * sizeof(c_vlo_scan1), &data11) ) {
+          CF_ERROR("readfrom('%s', offset=%ld, data11) fails: %s", fname, offset,
+              strerror(errno));
+          goto end;
+        }
+        if( !readfrom(fd_, offset = 2 * sizeof(c_vlo_scan1), &data12) ) {
+          CF_ERROR("readfrom('%s', offset=%ld, data12) fails: %s", fname, offset,
+              strerror(errno));
+          goto end;
+        }
+
+        if( !readfrom(fd_, offset = 1 * sizeof(c_vlo_scan3), &data31) ) {
+          CF_ERROR("readfrom('%s', offset=%ld, data31) fails: %s", fname, offset,
+              strerror(errno));
+          goto end;
+        }
+        if( !readfrom(fd_, offset = 2 * sizeof(c_vlo_scan3), &data32) ) {
+          CF_ERROR("readfrom('%s', offset=%ld, data32) fails: %s", fname, offset,
+              strerror(errno));
+          goto end;
+        }
+
+        isv1 = data11 == 18 && data12 == 18;
+        isv3 = data31 == 18 && data32 == 18;
+
+        if( isv1 && !isv3 ) {
+          version_ = VLO_VERSION_1;
+          frame_size_ = sizeof(c_vlo_scan1);
+        }
+        else if( isv3 && !isv1 ) {
+          version_ = VLO_VERSION_3;
+          frame_size_ = sizeof(c_vlo_scan3);
+        }
+        else {
+          CF_ERROR("Can not determine exact format version for buggy vlo file '%s' : '%u' ",
+              fname, format_version);
+          errno = ENOMSG;
+          goto end;
+        }
+
+        CF_DEBUG("vlo version %u selected for '%s'",
+            version_, fname);
+
+        break;
       }
-      else {
-        CF_ERROR("Can not determine exact format version for buggy vlo file '%s' : '%u' ",
-            fname, format_version);
+      default:
+        CF_ERROR("Not supported format version in vlo file '%s' : '%u' ", fname,
+            format_version);
         errno = ENOMSG;
         goto end;
-      }
-
-      CF_DEBUG("vlo version %u selected for '%s'",
-          version_, fname);
-
-      break;
     }
-    default:
-      CF_ERROR("Not supported format version in vlo file '%s' : '%u' ", fname,
-          format_version);
-      errno = ENOMSG;
+
+    if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
+      CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
+          strerror(errno));
       goto end;
+    }
+
+    if( (file_size = ::lseek64(fd_, 0, SEEK_END)) < 0 ) {
+      CF_ERROR("lseek('%s', offset=0, SEEK_END) fails: %s", fname,
+          strerror(errno));
+      goto end;
+    }
+
+    if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
+      CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
+          strerror(errno));
+      goto end;
+    }
+
+    num_frames_ = file_size / frame_size();
+
+    if( num_frames_ * frame_size() != file_size ) { // temporary ignore this error
+      CF_ERROR("vlo file '%s': file size = %zd bytes not match to expected number of frames %zd in", fname,
+          file_size, num_frames_);
+    }
+
+    fOk = true;
   }
-
-  if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
-    CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
-        strerror(errno));
-    goto end;
-  }
-
-  if( (file_size_ = ::lseek64(fd_, 0, SEEK_END)) < 0 ) {
-    CF_ERROR("lseek('%s', offset=0, SEEK_END) fails: %s", fname,
-        strerror(errno));
-    goto end;
-  }
-
-  if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
-    CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
-        strerror(errno));
-    goto end;
-  }
-
-  num_frames_ = file_size_ / frame_size();
-
-  if ( num_frames_ * frame_size() != file_size_ ) { // temporary ignore this error
-    CF_ERROR("vlo file '%s': file size = %zd bytes not match to expected number of frames %zd in", fname,
-        file_size_, num_frames_);
-  }
-
-  fOk = true;
 
 end:
-  if( !fOk && fd_ >= 0 ) {
-    ::close(fd_);
-    fd_ = -1;
+  if( !fOk ) {
+    close();
   }
+
+  ////////////
 
   return fOk;
 }
 
 void c_vlo_reader::close()
 {
+  ifhd_.close();
   if( fd_ >= 0 ) {
     ::close(fd_);
     fd_ = -1;
@@ -648,13 +752,7 @@ void c_vlo_reader::close()
 
 bool c_vlo_reader::is_open() const
 {
-  return fd_ >= 0;
-}
-
-/// @brief get total file size in bytes
-ssize_t c_vlo_reader::file_size() const
-{
-  return file_size_;
+  return fd_ >= 0 || ifhd_.is_open();
 }
 
 /// @brief get frame size in bytes
@@ -663,16 +761,25 @@ ssize_t c_vlo_reader::frame_size() const
   return frame_size_;
 }
 
-/// @brief get number of framesin this file
+/// @brief get number of frames in this file
 ssize_t c_vlo_reader::num_frames() const
 {
-  return num_frames_;
+  return ifhd_.is_open() ?
+      ifhd_.num_frames() :
+      num_frames_;
 }
 
 bool c_vlo_reader::seek(int32_t frame_index)
 {
+  if( ifhd_.is_open() ) {
+    return ifhd_.seek(frame_index);
+  }
+
   if( fd_ >= 0 ) {
-    const ssize_t seekpos = frame_index * frame_size();
+
+    const ssize_t seekpos =
+        frame_index * frame_size();
+
     return ::lseek64(fd_, seekpos, SEEK_SET) == seekpos;
   }
 
@@ -682,47 +789,73 @@ bool c_vlo_reader::seek(int32_t frame_index)
 
 int32_t c_vlo_reader::curpos() const
 {
+  if( ifhd_.is_open() ) {
+    return ifhd_.curpos();
+  }
+
   if( fd_ >= 0 ) {
     return whence(fd_) / frame_size();
   }
+
   errno = EBADF;
   return -1;
 }
 
 bool c_vlo_reader::read(c_vlo_scan1 * scan)
 {
-  switch (version_) {
-    case VLO_VERSION_1:
-      return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
-    default:
-      errno = ENOMSG;
-      break;
+  if( version_ != VLO_VERSION_1 ) {
+    errno = EINVAL;
+    return false;
   }
+
+  if( fd_ >= 0 ) {
+    return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
+  }
+
+  if( ifhd_.is_open() ) {
+    return ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan);
+  }
+
+  errno = EBADF;
   return false;
 }
 
 bool c_vlo_reader::read(c_vlo_scan3 * scan)
 {
-  switch (version_) {
-    case VLO_VERSION_3:
-      return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
-    default:
-      errno = ENOMSG;
-      break;
+  if( version_ != VLO_VERSION_3 ) {
+    errno = EINVAL;
+    return false;
   }
+
+  if( fd_ >= 0 ) {
+    return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
+  }
+
+  if( ifhd_.is_open() ) {
+    return ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan);
+  }
+
+  errno = EBADF;
   return false;
 }
 
 bool c_vlo_reader::read(c_vlo_scan5 * scan)
 {
-  switch (version_) {
-    case VLO_VERSION_5: {
-      return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ;
-    }
-    default:
-      errno = ENOMSG;
-      break;
+  if( version_ != VLO_VERSION_5 ) {
+    errno = EINVAL;
+    return false;
   }
+
+
+  if( fd_ >= 0 ) {
+    return ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan);
+  }
+
+  if( ifhd_.is_open() ) {
+    return ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan);
+  }
+
+  errno = EBADF;
   return false;
 }
 

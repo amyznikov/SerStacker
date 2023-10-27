@@ -14,6 +14,7 @@
 #include "QLveStackingPipeline/QLveStackingPipeline.h"
 #include "QVirtualStereoPipeline/QVirtualStereoPipeline.h"
 #include "QRoiTrackerPipeline/QRoiTrackerPipeline.h"
+#include "QVLOPipeline/QVLOPipeline.h"
 
 #include <gui/widgets/QMatrixEdit.h>
 #include <gui/widgets/QCameraIntrinsicsEditBox.h>
@@ -80,6 +81,13 @@ void registerPipelineClasses()
       QRoiTrackerPipeline::tooltip(),
       [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
         return c_image_processing_pipeline::sptr(new QRoiTrackerPipeline(name.c_str(), input_sequence));
+      });
+
+  c_image_processing_pipeline::register_class(
+      QVLOPipeline::class_name(),
+      QVLOPipeline::tooltip(),
+      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
+        return c_image_processing_pipeline::sptr(new QVLOPipeline(name.c_str(), input_sequence));
       });
 
 }

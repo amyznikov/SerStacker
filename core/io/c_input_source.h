@@ -328,6 +328,12 @@ public:
   void set_read_channel(c_vlo_file::DATA_CHANNEL v);
   c_vlo_file::DATA_CHANNEL read_channel() const;
 
+  VLO_VERSION version() const;
+  bool read(c_vlo_scan1 * scan);
+  bool read(c_vlo_scan3 * scan);
+  bool read(c_vlo_scan5 * scan);
+
+
 protected:
   c_vlo_reader vlo_;
 

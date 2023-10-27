@@ -13,7 +13,8 @@ bool save_ply(const std::vector<cv::Vec3d> & points,
     const std::vector<cv::Vec3b> & colors,
     const std::string & fname)
 {
-  const std::string parent_directory = get_parent_directory(fname);
+  const std::string parent_directory =
+      get_parent_directory(fname);
 
   if ( !parent_directory.empty() && !create_path(parent_directory) ) {
     CF_ERROR("Can not create output directory for '%s': %s",
@@ -62,6 +63,83 @@ bool save_ply(const std::vector<cv::Vec3d> & points,
   return true;
 }
 
+
+bool save_ply(const std::vector<cv::Point3f> & points, const std::vector<cv::Vec3b> & colors, const std::string & fname)
+{
+  const std::string parent_directory =
+      get_parent_directory(fname);
+
+  if ( !parent_directory.empty() && !create_path(parent_directory) ) {
+    CF_ERROR("Can not create output directory for '%s': %s",
+        fname.c_str(), strerror(errno));
+    return false;
+  }
+
+
+  CF_DEBUG("SAVING 3D CLOUD TO %s", fname.c_str());
+
+
+  FILE * fp = fopen(fname.c_str(), "w");
+  if ( !fp ) {
+    CF_FATAL("Can not write '%s' : %s", fname.c_str(), strerror(errno));
+    return false;
+  }
+
+  const int n = points.size();
+
+  if ( colors.empty() ) {
+
+    fprintf(fp, "ply\n"
+        "format ascii 1.0\n"
+        "element vertex %d\n"
+        "property double x\n"
+        "property double y\n"
+        "property double z\n"
+        "end_header\n",
+        n);
+
+    for ( int i = 0; i < n; ++i ) {
+
+      const cv::Point3f & v =
+          points[i];
+
+      fprintf(fp,
+          "%+.15f %+.15f %+.15f\n",
+          v.x, v.y, v.z);
+    }
+  }
+  else {
+
+    fprintf(fp, "ply\n"
+        "format ascii 1.0\n"
+        "element vertex %d\n"
+        "property double x\n"
+        "property double y\n"
+        "property double z\n"
+        "property uchar red\n"
+        "property uchar green\n"
+        "property uchar blue\n"
+        "end_header\n",
+        n
+        );
+
+    for ( int i = 0; i < n; ++i ) {
+
+      const cv::Point3f & v = points[i];
+      const cv::Vec3b & c = colors[i];
+
+      fprintf(fp,
+          "%+.15f %+.15f %+.15f "
+           "%u %u %u\n",
+          v.x, v.y, v.z,
+          c(2), c(1), c(0));
+    }
+  }
+
+  fclose(fp);
+  return true;
+
+}
 
 
 bool save_ply(const cv::Mat3f & points, const cv::Mat3b & colors, const cv::Mat1b & mask, const std::string & fname)

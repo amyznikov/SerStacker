@@ -17,6 +17,15 @@
 struct c_vlo_pipeline_input_options :
     c_image_processing_pipeline_input_options
 {
+  bool sort_echos_by_distance = false;
+};
+
+
+struct c_vlo_pipeline_processing_options
+{
+   bool enable_reflectors_detection = false;
+   bool enable_yen_threshold = true;
+   bool enable_double_echo_detection = true;
 };
 
 struct c_vlo_pipeline_output_options :
@@ -36,6 +45,13 @@ public:
   typedef c_vlo_pipeline this_class;
   typedef c_image_processing_pipeline base;
   typedef std::shared_ptr<this_class> sptr;
+
+  struct c_vlo_scan {
+    VLO_VERSION version;
+    c_vlo_scan1 scan1;
+    c_vlo_scan3 scan3;
+    c_vlo_scan5 scan5;
+  };
 
   c_vlo_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
@@ -68,22 +84,20 @@ protected:
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   bool process_current_frame();
+  bool run_reflectors_detection();
   bool save_progress_video();
   bool save_cloud3d_ply();
 
 protected:
   c_vlo_pipeline_input_options input_options_;
+  c_vlo_pipeline_processing_options processing_options_;
   c_vlo_pipeline_output_options output_options_;
-
-  struct {
-    VLO_VERSION version;
-    c_vlo_scan1 scan1;
-    c_vlo_scan3 scan3;
-    c_vlo_scan5 scan5;
-  } current_scan_;
+  c_vlo_scan current_scan_;
+  cv::Mat1b current_reflection_mask_;
 
 
   c_output_frame_writer progress_writer_;
+  c_output_frame_writer reflectors_writer_;
 
 };
 

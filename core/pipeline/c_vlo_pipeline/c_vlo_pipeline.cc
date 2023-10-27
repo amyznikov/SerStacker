@@ -9,14 +9,17 @@
 #include <core/ssprintf.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/colormap.h>
+#include <core/proc/threshold.h>
 #include <core/io/save_ply.h>
 #include <type_traits>
 #include <chrono>
 #include <thread>
 #include <core/debug.h>
 
+using c_vlo_scan = c_vlo_pipeline::c_vlo_scan;
 
 //////////////////////////////
+
 
 template<class ScanType>
 static bool get_cloud3d(const ScanType & scan,
@@ -105,7 +108,179 @@ static bool get_cloud3d(const ScanType & scan,
   return true;
 }
 
+static cv::Mat get_vlo_image(const c_vlo_scan & scan, c_vlo_reader::DATA_CHANNEL channel)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return c_vlo_reader::get_image(scan.scan1, channel);
+    case VLO_VERSION_3:
+      return c_vlo_reader::get_image(scan.scan3, channel);
+    case VLO_VERSION_5:
+      return c_vlo_reader::get_image(scan.scan5, channel);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return cv::Mat();
+}
 
+
+
+
+template<class ScanType>
+static bool sort_echos_by_distance_(ScanType & scan)
+{
+  typedef typename ScanType::echo echo_type;
+  typedef decltype(ScanType::echo::dist) dist_type;
+  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
+
+  echo_type echos[scan.NUM_ECHOS];
+  int cnz = 0;
+
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+    auto &slot = scan.slot[s];
+
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+
+      cnz = 0;
+      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+        if( slot.echo[l][e].dist > 0 && slot.echo[l][e].dist < max_dist_value ) {
+          echos[cnz++] = slot.echo[l][e];
+        }
+      }
+
+      if( cnz > 1 ) {
+        std::sort(echos, echos + cnz,
+            [](const auto & prev, const auto & next) {
+              return prev.dist < next.dist;
+            });
+
+        memcpy(slot.echo[l], echos, sizeof(echos));
+      }
+    }
+  }
+
+  return true;
+}
+
+static bool sort_echos_by_distance(c_vlo_scan & scan)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return sort_echos_by_distance_(scan.scan1);
+    case VLO_VERSION_3:
+      return sort_echos_by_distance_(scan.scan3);
+    case VLO_VERSION_5:
+      return sort_echos_by_distance_(scan.scan5);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return false;
+}
+
+
+
+template<class ScanType>
+static bool run_reflectors_detection_(const ScanType & scan, bool enable_yen, bool enable_doubled_echo, cv::Mat1b * output_mask)
+{
+  typedef decltype(ScanType::echo::area) area_type;
+  constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
+
+  typedef decltype(ScanType::echo::peak) peak_type;
+  constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
+
+  typedef decltype(ScanType::echo::dist) dist_type;
+  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
+
+  cv::Mat1b intensity_mask;
+  cv::Mat1b doubled_echo_mask;
+
+  if( enable_yen ) {
+
+    cv::Mat_<area_type> intensity_image(scan.NUM_LAYERS, scan.NUM_SLOTS, (area_type) 0);
+
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+        const auto &distance =
+            scan.slot[s].echo[l][0].dist;
+
+        if( distance > 0 && distance < max_dist_value ) {
+
+          const auto & peak =
+              scan.slot[s].echo[l][0].peak;
+
+          if( peak > 0 && peak < max_area_value ) {
+            intensity_image[l][s] = peak;
+          }
+        }
+      }
+    }
+
+//    cv::compare(intensity_image,
+//        get_triangle_threshold(intensity_image, intensity_image > 0),
+//        intensity_mask,
+//        cv::CMP_GT);
+
+    cv::compare(intensity_image,
+        get_yen_threshold(intensity_image, intensity_image > 0),
+        intensity_mask,
+        cv::CMP_GE);
+  }
+
+
+  if ( enable_doubled_echo ) {
+
+    doubled_echo_mask.create(scan.NUM_LAYERS, scan.NUM_SLOTS);
+    doubled_echo_mask.setTo(0);
+
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+        const auto & dist0 =
+            scan.slot[s].echo[l][0].dist;
+
+        if ( dist0 > 0 && dist0 < max_dist_value ) {
+
+          const auto & dist1 =
+              scan.slot[s].echo[l][1].dist;
+
+          if ( dist1 > 0 && dist1 < max_dist_value ) {
+
+            if ( std::abs((double)dist1/(double)dist0 - 2) < 0.035 ) {
+              doubled_echo_mask[l][s] = 255;
+            }
+          }
+
+        }
+      }
+    }
+  }
+
+  if ( enable_yen && enable_doubled_echo ) {
+    cv::bitwise_and(intensity_mask, doubled_echo_mask, *output_mask);
+  }
+  else if ( enable_yen ) {
+    *output_mask = std::move(intensity_mask);
+  }
+  else if ( enable_doubled_echo ) {
+    *output_mask = std::move(doubled_echo_mask);
+  }
+
+  return true;
+}
+
+static bool run_reflectors_detection(const c_vlo_scan & scan, bool enable_yen, bool enable_doubled_echo, cv::Mat1b * output_mask)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return run_reflectors_detection_(scan.scan1, enable_yen, enable_doubled_echo, output_mask);
+    case VLO_VERSION_3:
+      return run_reflectors_detection_(scan.scan3, enable_yen, enable_doubled_echo, output_mask);
+    case VLO_VERSION_5:
+      return run_reflectors_detection_(scan.scan5, enable_yen, enable_doubled_echo, output_mask);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return false;
+}
 
 //////////////////////////////
 
@@ -125,6 +300,13 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
     serialize_base_input_options(section, save, input_options_);
+    SERIALIZE_OPTION(section, save, input_options_, sort_echos_by_distance);
+  }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "processing_options")) ) {
+    SERIALIZE_OPTION(section, save, processing_options_, enable_reflectors_detection);
+    SERIALIZE_OPTION(section, save, processing_options_, enable_yen_threshold);
+    SERIALIZE_OPTION(section, save, processing_options_, enable_double_echo_detection);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -147,9 +329,15 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
 
     PIPELINE_CTL_GROUP(ctrls, "Input options", "");
       POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+      PIPELINE_CTL(ctrls, input_options_.sort_echos_by_distance, "sort_echos_by_distance", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
-    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
+    PIPELINE_CTL_GROUP(ctrls, "Processing options", "");
+    PIPELINE_CTL(ctrls, processing_options_.enable_reflectors_detection, "enable_reflectors_detection", "");
+    PIPELINE_CTLC(ctrls, processing_options_.enable_yen_threshold, "enable_yen_threshold", "",
+        _this->processing_options_.enable_reflectors_detection);
+    PIPELINE_CTLC(ctrls, processing_options_.enable_double_echo_detection, "enable_double_echo_detection", "",
+        _this->processing_options_.enable_reflectors_detection);
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
@@ -171,22 +359,9 @@ bool c_vlo_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
 {
   lock_guard lock(mutex());
 
-  cv::Mat image;
-  constexpr c_vlo_reader::DATA_CHANNEL display_channel =
-      c_vlo_reader::DATA_CHANNEL_AMBIENT;
-
-  switch (current_scan_.version) {
-    case VLO_VERSION_1:
-      image = c_vlo_reader::get_image(current_scan_.scan1, display_channel);
-      break;
-    case VLO_VERSION_3:
-      image = c_vlo_reader::get_image(current_scan_.scan3, display_channel);
-      break;
-    case VLO_VERSION_5:
-      image = c_vlo_reader::get_image(current_scan_.scan5, display_channel);
-      break;
-  }
-
+  cv::Mat image =
+      get_vlo_image(current_scan_,
+          c_vlo_reader::DATA_CHANNEL_AMBIENT);
 
   if( !image.empty() ) {
     autoclip(image, cv::noArray(),
@@ -249,6 +424,12 @@ void c_vlo_pipeline::cleanup_pipeline()
     CF_DEBUG("Closing '%s'", progress_writer_.filename().c_str());
     progress_writer_.close();
   }
+
+  if ( reflectors_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", reflectors_writer_.filename().c_str());
+    reflectors_writer_.close();
+  }
+
 }
 
 bool c_vlo_pipeline::run_pipeline()
@@ -374,6 +555,18 @@ bool c_vlo_pipeline::run_pipeline()
 
 bool c_vlo_pipeline::process_current_frame()
 {
+  if( input_options_.sort_echos_by_distance ) {
+    if( !sort_echos_by_distance(current_scan_) ) {
+      CF_ERROR("sort_echos_by_distance() fails");
+      return false;
+    }
+  }
+
+  if ( !run_reflectors_detection() ) {
+    CF_ERROR("run_reflectors_detection() fails");
+    return false;
+  }
+
   if( !save_progress_video() ) {
     CF_ERROR("save_progress_video() fails");
     return false;
@@ -381,6 +574,76 @@ bool c_vlo_pipeline::process_current_frame()
 
   if( !save_cloud3d_ply() ) {
     CF_ERROR("save_cloud3d_ply() fails");
+    return false;
+  }
+
+  return true;
+}
+
+bool c_vlo_pipeline::run_reflectors_detection()
+{
+  if( !processing_options_.enable_reflectors_detection ) {
+    return true; // silently ignore
+  }
+
+  if( !processing_options_.enable_yen_threshold && !processing_options_.enable_double_echo_detection ) {
+    CF_DEBUG("Reflector detection requires at least one of yen_threshold or double_echo to be set");
+    return false;
+  }
+
+  bool fOk =
+      ::run_reflectors_detection(current_scan_,
+          processing_options_.enable_yen_threshold,
+          processing_options_.enable_double_echo_detection,
+          &current_reflection_mask_);
+
+  if ( !fOk ) {
+    CF_DEBUG("::run_reflectors_detection() fails");
+    return false;
+  }
+
+
+  cv::Mat image =
+      get_vlo_image(current_scan_,
+          c_vlo_reader::DATA_CHANNEL_DISTANCES);
+
+  if( !image.empty() ) {
+    autoclip(image, cv::noArray(),
+        0.5, 99.5,
+        0, 255);
+
+    if( image.depth() != CV_8U ) {
+      image.convertTo(image,
+      CV_8U);
+    }
+  }
+
+
+  cv::Mat mask;
+  cv::cvtColor(current_reflection_mask_, mask, cv::COLOR_GRAY2BGR);
+  cv::addWeighted(image, 0.3, mask, 0.7, 0, image);
+
+
+  if( !reflectors_writer_.is_open() ) {
+
+    std::string output_filename =
+        generate_output_filename("",
+            "_reflectors",
+            ".avi");
+
+    bool fOk =
+        reflectors_writer_.open(output_filename,
+            image.size(),
+            image.channels() > 1);
+
+    if( !fOk ) {
+      CF_ERROR("reflectors_writer_.open(%s) fails", output_filename.c_str());
+      return false;
+    }
+  }
+
+  if( !reflectors_writer_.write(image, cv::noArray()) ) {
+    CF_ERROR("reflectors_writer_.write(%s) fails", reflectors_writer_.filename().c_str());
     return false;
   }
 

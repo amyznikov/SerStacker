@@ -22,7 +22,7 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
 {
   static constexpr c_enum_member members[] = {
       { c_vlo_file::DATA_CHANNEL_AMBIENT, "AMBIENT", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_DIST, "DISTANCES", "" },
+      { c_vlo_file::DATA_CHANNEL_DISTANCES, "DISTANCES", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA, "ECHO_AREA", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK, "ECHO_PEAK", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_WIDTH, "ECHO_WIDTH", "" },
@@ -86,7 +86,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_DIST: {
+    case c_vlo_file::DATA_CHANNEL_DISTANCES: {
 
       typedef decltype(ScanType::echo::dist) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;

@@ -1,5 +1,12 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
+
+if( WIN32 ) 
+  message(WARNING "Skip SerImager as not supported on Windows")
+  return()
+endif()
+
 project(SerImager CXX)
+
 
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 17)

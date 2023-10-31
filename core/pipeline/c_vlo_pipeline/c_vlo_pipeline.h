@@ -10,6 +10,7 @@
 #define __c_vlo_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/proc/threshold.h>
 #include <core/io/c_vlo_file.h>
 #include <core/io/c_output_frame_writer.h>
 
@@ -24,8 +25,13 @@ struct c_vlo_pipeline_input_options :
 struct c_vlo_pipeline_processing_options
 {
    bool enable_reflectors_detection = false;
-   bool enable_yen_threshold = true;
    bool enable_double_echo_detection = true;
+   bool enable_auto_threshold = true;
+
+   THRESHOLD_TYPE auto_threshold_type = THRESHOLD_TYPE_YEN;
+   double auto_threshold_value = 0;
+   double auto_clip_min = 0.1; // percentage of 'black' pixels
+   double auto_clip_max = 99.9; // 100-percentage of 'white' pixels
 };
 
 struct c_vlo_pipeline_output_options :

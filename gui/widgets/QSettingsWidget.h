@@ -17,6 +17,7 @@
 #include <gui/widgets/QExpandableGroupBox.h>
 #include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QBrowsePathCombo.h>
+#include <gui/widgets/qsprintf.h>
 #include <type_traits>
 #include <functional>
 #include <mutex>

@@ -664,11 +664,15 @@ bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
         QApplication::clipboard()->setText(copyText);
       });
 
-  copyText = qsprintf("%g;%g;%gx%g", rect_.x(), rect_.y(), rect_.width(), rect_.height());
-  subMenu->addAction(copyText,
-      [copyText]() {
-        QApplication::clipboard()->setText(copyText);
-      });
+  if( rect_.width() != (int) rect_.width() || rect_.height() != (int) rect_.height() ||
+      rect_.x() != (int) rect_.x() || rect_.y() != (int) rect_.y() ) {
+
+    copyText = qsprintf("%g;%g;%gx%g", rect_.x(), rect_.y(), rect_.width(), rect_.height());
+    subMenu->addAction(copyText,
+        [copyText]() {
+          QApplication::clipboard()->setText(copyText);
+        });
+  }
 
   copyText = qsprintf("%g;%g;%g;%g", rect_.left(), rect_.top(), rect_.right(), rect_.bottom());
   subMenu->addAction(copyText,

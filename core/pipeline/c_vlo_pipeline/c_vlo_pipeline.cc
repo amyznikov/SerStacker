@@ -9,7 +9,6 @@
 #include <core/ssprintf.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/colormap.h>
-#include <core/proc/threshold.h>
 #include <core/io/save_ply.h>
 #include <type_traits>
 #include <chrono>
@@ -134,7 +133,13 @@ static bool get_cloud3d(const ScanType & scan,
 
 
 template<class ScanType>
-static bool run_reflectors_detection_(const ScanType & scan, bool enable_yen, bool enable_doubled_echo, cv::Mat1b * output_mask)
+static bool run_reflectors_detection_(const ScanType & scan, bool enable_doubled_echo,
+    bool enable_auto_threshold,
+    THRESHOLD_TYPE auto_threshold_type,
+    double auto_threshold_value,
+    double auto_clip_min,
+    double auto_clip_max,
+    cv::Mat1b * output_mask)
 {
   typedef decltype(ScanType::echo::area) area_type;
   constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
@@ -148,7 +153,7 @@ static bool run_reflectors_detection_(const ScanType & scan, bool enable_yen, bo
   cv::Mat1b intensity_mask;
   cv::Mat1b doubled_echo_mask;
 
-  if( enable_yen ) {
+  if( enable_auto_threshold ) {
 
     cv::Mat_<area_type> intensity_image(scan.NUM_LAYERS, scan.NUM_SLOTS, (area_type) 0);
 
@@ -170,13 +175,13 @@ static bool run_reflectors_detection_(const ScanType & scan, bool enable_yen, bo
       }
     }
 
-//    cv::compare(intensity_image,
-//        get_triangle_threshold(intensity_image, intensity_image > 0),
-//        intensity_mask,
-//        cv::CMP_GT);
+    if ( auto_clip_max > auto_clip_min ) {
+      autoclip(intensity_image, cv::noArray(),auto_clip_min, auto_clip_max, -1, -1);
+    }
 
     cv::compare(intensity_image,
-        get_yen_threshold(intensity_image, intensity_image > 0),
+        get_threshold_value(intensity_image, cv::noArray(),
+            auto_threshold_type, auto_threshold_value),
         intensity_mask,
         cv::CMP_GE);
   }
@@ -210,10 +215,10 @@ static bool run_reflectors_detection_(const ScanType & scan, bool enable_yen, bo
     }
   }
 
-  if ( enable_yen && enable_doubled_echo ) {
+  if ( !intensity_mask.empty() && enable_doubled_echo ) {
     cv::bitwise_and(intensity_mask, doubled_echo_mask, *output_mask);
   }
-  else if ( enable_yen ) {
+  else if ( !intensity_mask.empty() ) {
     *output_mask = std::move(intensity_mask);
   }
   else if ( enable_doubled_echo ) {
@@ -223,15 +228,21 @@ static bool run_reflectors_detection_(const ScanType & scan, bool enable_yen, bo
   return true;
 }
 
-static bool run_reflectors_detection(const c_vlo_scan & scan, bool enable_yen, bool enable_doubled_echo, cv::Mat1b * output_mask)
+static bool run_reflectors_detection(const c_vlo_scan & scan, bool enable_doubled_echo,
+    bool enable_auto_threshold,
+    THRESHOLD_TYPE auto_threshold_type,
+    double auto_threshold_value,
+    double auto_clip_min,
+    double auto_clip_max,
+    cv::Mat1b * output_mask)
 {
   switch (scan.version) {
     case VLO_VERSION_1:
-      return run_reflectors_detection_(scan.scan1, enable_yen, enable_doubled_echo, output_mask);
+      return run_reflectors_detection_(scan.scan1, enable_doubled_echo, enable_auto_threshold, auto_threshold_type, auto_threshold_value, auto_clip_min, auto_clip_max, output_mask);
     case VLO_VERSION_3:
-      return run_reflectors_detection_(scan.scan3, enable_yen, enable_doubled_echo, output_mask);
+      return run_reflectors_detection_(scan.scan3, enable_doubled_echo, enable_auto_threshold, auto_threshold_type, auto_threshold_value, auto_clip_min, auto_clip_max, output_mask);
     case VLO_VERSION_5:
-      return run_reflectors_detection_(scan.scan5, enable_yen, enable_doubled_echo, output_mask);
+      return run_reflectors_detection_(scan.scan5, enable_doubled_echo, enable_auto_threshold, auto_threshold_type, auto_threshold_value, auto_clip_min, auto_clip_max, output_mask);
   }
   CF_DEBUG("Unsupported scan version %d specified", scan.version);
   return false;
@@ -260,8 +271,12 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "processing_options")) ) {
     SERIALIZE_OPTION(section, save, processing_options_, enable_reflectors_detection);
-    SERIALIZE_OPTION(section, save, processing_options_, enable_yen_threshold);
     SERIALIZE_OPTION(section, save, processing_options_, enable_double_echo_detection);
+    SERIALIZE_OPTION(section, save, processing_options_, enable_auto_threshold);
+    SERIALIZE_OPTION(section, save, processing_options_, auto_threshold_type);
+    SERIALIZE_OPTION(section, save, processing_options_, auto_threshold_type);
+    SERIALIZE_OPTION(section, save, processing_options_, auto_clip_min);
+    SERIALIZE_OPTION(section, save, processing_options_, auto_clip_max);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -289,10 +304,27 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
 
     PIPELINE_CTL_GROUP(ctrls, "Processing options", "");
     PIPELINE_CTL(ctrls, processing_options_.enable_reflectors_detection, "enable_reflectors_detection", "");
-    PIPELINE_CTLC(ctrls, processing_options_.enable_yen_threshold, "enable_yen_threshold", "",
-        _this->processing_options_.enable_reflectors_detection);
     PIPELINE_CTLC(ctrls, processing_options_.enable_double_echo_detection, "enable_double_echo_detection", "",
         _this->processing_options_.enable_reflectors_detection);
+
+    PIPELINE_CTLC(ctrls, processing_options_.enable_auto_threshold, "enable_auto_threshold", "",
+        _this->processing_options_.enable_reflectors_detection);
+    PIPELINE_CTLC(ctrls, processing_options_.auto_threshold_type, "threshold_type", "",
+        _this->processing_options_.enable_reflectors_detection && _this->processing_options_.enable_auto_threshold);
+
+    PIPELINE_CTLC(ctrls, processing_options_.auto_threshold_value, "threshold_value", "",
+        _this->processing_options_.enable_reflectors_detection &&
+        _this->processing_options_.enable_auto_threshold &&
+        _this->processing_options_.auto_threshold_type == THRESHOLD_TYPE_VALUE);
+
+    PIPELINE_CTLC(ctrls, processing_options_.auto_clip_min, "auto_clip_min", "",
+        _this->processing_options_.enable_reflectors_detection &&
+        _this->processing_options_.enable_auto_threshold);
+
+    PIPELINE_CTLC(ctrls, processing_options_.auto_clip_max, "auto_clip_max", "",
+        _this->processing_options_.enable_reflectors_detection &&
+        _this->processing_options_.enable_auto_threshold);
+
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
@@ -518,15 +550,19 @@ bool c_vlo_pipeline::run_reflectors_detection()
     return true; // silently ignore
   }
 
-  if( !processing_options_.enable_yen_threshold && !processing_options_.enable_double_echo_detection ) {
+  if( !processing_options_.enable_auto_threshold && !processing_options_.enable_double_echo_detection ) {
     CF_DEBUG("Reflector detection requires at least one of yen_threshold or double_echo to be set");
     return false;
   }
 
   bool fOk =
       ::run_reflectors_detection(current_scan_,
-          processing_options_.enable_yen_threshold,
           processing_options_.enable_double_echo_detection,
+          processing_options_.enable_auto_threshold,
+          processing_options_.auto_threshold_type,
+          processing_options_.auto_threshold_value,
+          processing_options_.auto_clip_min,
+          processing_options_.auto_clip_max,
           &current_reflection_mask_);
 
   if ( !fOk ) {
@@ -539,6 +575,7 @@ bool c_vlo_pipeline::run_reflectors_detection()
           c_vlo_reader::DATA_CHANNEL_DISTANCES);
 
   if( !image.empty() ) {
+
     autoclip(image, cv::noArray(),
         0.5, 99.5,
         0, 255);

@@ -414,14 +414,12 @@ void QLiveDisplay::updateCurrentImage()
     currentMask_ = tmp_mask;
   }
 
-  CF_DEBUG("mtfImage_.depth=%d", mtfImage_.depth());
   mtfDisplayFunction_.createDisplayImage(
       currentImage_,
       currentMask_,
       mtfImage_,
       displayImage_,
       CV_8U);
-  CF_DEBUG("mtfImage_.depth=%d", mtfImage_.depth());
 
   pixmap_ =
       createPixmap(displayImage_, true,

@@ -25,6 +25,7 @@ public:
   typedef std::shared_ptr<ThisClass> sptr;
   typedef std::unique_lock<std::shared_mutex> unique_lock;
   typedef std::shared_lock<std::shared_mutex> shared_lock;
+  typedef std::function<bool ()> PreStartProc;
 
   enum State {
     State_disconnected,
@@ -64,6 +65,9 @@ public:
   bool start();
   void stop();
 
+  void addprestartproc(const PreStartProc * proc);
+  void removeprestartproc(const PreStartProc * proc);
+
   std::shared_mutex & mutex();
   std::condition_variable_any & condvar();
   const std::deque<QCameraFrame::sptr> & deque() const;
@@ -93,6 +97,7 @@ protected:
   std::shared_mutex mtx_;
   std::condition_variable_any condvar_;
   std::deque<QCameraFrame::sptr> deque_;
+  std::vector<const PreStartProc*> prestartproc_;
 
   State current_state_ = State_disconnected;
   QString stateChangeReason_;

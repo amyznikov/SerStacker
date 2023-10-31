@@ -543,6 +543,43 @@ inline QString toQString(const QVector3D & v)
 }
 
 
+inline bool fromString(const QString & text, QRect * v)
+{
+  int x, y, w, h;
+
+  const QByteArray sa = text.toUtf8();
+  const char * s = sa.constData();
+
+  if ( sscanf(s, "%d %*[,;] %d %*[,; \t\r\n] %d %*[xX] %d", &x, &y, &w, &h) == 4 ) {
+    v->setX(x);
+    v->setY(y);
+    v->setWidth(w);
+    v->setHeight(h);
+    return true;
+  }
+
+  if ( sscanf(s, "%d %*[,;] %d %*[,;] %d %*[,;] %d", &x, &y, &w, &h) == 4 ) {
+    v->setX(x);
+    v->setY(y);
+    v->setWidth(w - x);
+    v->setHeight(h - y);
+    return true;
+  }
+
+  return false;
+}
+
+inline QString toQString(const QRect & v)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+  return QString::asprintf("%d;%d; %dx%d", v.x(), v.y(), v.width(), v.height());
+#else
+  QString s;
+  s.sprintf("%d;%d; %dx%d", v.x(), v.y(), v.width(), v.height());
+#endif
+}
+
+
 template<class T>
 inline void save_parameter(const QString & prefix, const char * name, const T & value )
 {

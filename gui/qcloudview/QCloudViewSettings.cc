@@ -7,10 +7,30 @@
 
 #include "QCloudViewSettings.h"
 #include <gui/widgets/settings.h>
-//#include "widgets/addctrl.h"
 #include <core/debug.h>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
+template<class Fn>
+static QToolButton * createToolButton(QWidget * parent,
+    const QIcon & icon, const QString & text, const QString & tooltip,
+    Fn && clickFunc)
+{
+
+  QToolButton * tb = new QToolButton(parent);
+  tb->setIconSize(QSize(16, 16));
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      clickFunc);
+
+  return tb;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
   Base("QCloudViewSettings", parent)
@@ -204,26 +224,6 @@ void QCloudViewSettings::refreshCloudList()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-template<class Fn>
-static QToolButton * createToolButton(QWidget * parent,
-    const QString & text, const QIcon & icon, const QString & tooltip,
-    Fn && clickFunc)
-{
-
-  QToolButton * tb = new QToolButton(parent);
-  tb->setIconSize(QSize(16, 16));
-  tb->setIcon(icon);
-  tb->setText(text);
-  tb->setToolTip(tooltip);
-
-  QObject::connect(tb, &QToolButton::clicked,
-      clickFunc);
-
-  return tb;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 
 QCloudViewSettingsWidget::QCloudViewSettingsWidget(QWidget * parent) :
     Base(parent)
@@ -237,8 +237,8 @@ QCloudViewSettingsWidget::QCloudViewSettingsWidget(QWidget * parent) :
   buttonBox->setAlignment(Qt::AlignTop);
 
   buttonBox->addWidget(rotateCameraToShowCloud_ctl =
-      createToolButton(this, "Auto rotate",
-          QIcon(),
+      createToolButton(this, QIcon(),
+          "Auto rotate",
           "Rotate camera to show point cloud",
           [this]() {
             if ( cloudViewer_ ) {
@@ -247,8 +247,8 @@ QCloudViewSettingsWidget::QCloudViewSettingsWidget(QWidget * parent) :
           }));
 
 //  buttonBox->addWidget(moveCameraToShowCloud_ctl=
-//      createToolButton(this, "Show entire cloud",
-//          QIcon(),
+//      createToolButton(this, QIcon(),
+//          "Show entire cloud",
 //          "Rotate and Move camera to show entire point cloud",
 //          [this]() {
 //            if ( cloudViewer_ ) {
@@ -257,8 +257,8 @@ QCloudViewSettingsWidget::QCloudViewSettingsWidget(QWidget * parent) :
 //          }));
 
   buttonBox->addWidget(showKeyBindings_ctl=
-      createToolButton(this, "Help for keys...",
-          QIcon(),
+      createToolButton(this, QIcon(),
+          "Help for keys...",
           "Show Mouse and keyboard bindings...",
           [this]() {
             if ( cloudViewer_ ) {

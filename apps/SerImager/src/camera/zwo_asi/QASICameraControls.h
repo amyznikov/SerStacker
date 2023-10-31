@@ -12,6 +12,7 @@
 #include <gui/widgets/UpdateControls.h>
 #include "QCameraControlsWidget.h"
 #include "QASICamera.h"
+#include "QCameraROISelectionDialog.h"
 
 
 namespace serimager {
@@ -79,16 +80,22 @@ public:
   QASIROIControlWidget(const QASICamera::sptr & camera,
       QWidget * parent = nullptr );
 
+  ~QASIROIControlWidget();
+
 protected:
-  void populate_supported_image_formats();
-  void populate_supported_bins();
-  void populate_available_frame_sizes(int iBin = 0);
   void onupdatecontrols() override;
+  void populate_supported_frame_formats();
+  void update_supported_frame_sizes_combobox();
+  bool set_capture_format(int iX, int iY, int iWidth, int iHeight,  int iBin, ASI_IMG_TYPE iFormat);
+  bool get_capture_format(int * iX, int * iY, int * iWidth, int * iHeight, int * iBin, ASI_IMG_TYPE * iFormat);
+  bool setup_camera_capture_format();
 
 protected Q_SLOTS:
   void onUpdateControls();
   void onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);
-  void setCameraROI();
+  void onFrameSizeCtlCurrentIndexChanged();
+//  void onImageFormatCtlCurrentIndexChanged();
+//  void onBinningCtlCurrentIndexChanged();
 
 protected:
   QASICamera::sptr camera_;
@@ -96,6 +103,11 @@ protected:
   QComboBox * frameSize_ctl = nullptr;
   QComboBox * imageFormat_ctl = nullptr;
   QComboBox * binning_ctl = nullptr;
+
+  QList<QCameraROI> predefinedROIs_;
+  QList<QCameraROI> userDefinedROIs_;
+
+  QImagingCamera::PreStartProc prestartproc_;
 };
 
 class QASICameraExtraContolsWidget :
@@ -169,7 +181,6 @@ struct QASIExposureScaleParams
   {
   }
 };
-
 
 } /* namespace serimager */
 

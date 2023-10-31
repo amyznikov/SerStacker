@@ -226,6 +226,20 @@ bool QImagingCamera::start()
 
   setState(State_starting);
 
+  bool start_fails = false;
+  for ( const auto & onstarting : prestartproc_ ) {
+    if ( onstarting && !(*onstarting)() ) {
+      start_fails = true;
+      break;
+    }
+  }
+
+  if( start_fails ) {
+    CF_ERROR("Start interrupted by prestartproc");
+    setState(device_is_connected() ? State_connected : State_disconnected);
+    return false;
+  }
+
   std::thread([this]() {
 
     const auto finish_thread = [this]() {
@@ -408,6 +422,26 @@ void QImagingCamera::disconnect()
   // CF_DEBUG("leave: state=%s device_is_connected()=%d", toString(current_state_), device_is_connected());
 }
 
+void QImagingCamera::addprestartproc(const PreStartProc * proc)
+{
+  for ( auto & p : prestartproc_ ) {
+    if ( p == proc ) {
+      return;
+    }
+  }
+
+  prestartproc_.emplace_back(proc);
+}
+
+void QImagingCamera::removeprestartproc(const PreStartProc * proc)
+{
+  for ( auto ii = prestartproc_.begin(); ii != prestartproc_.end(); ++ii ) {
+    if ( *ii == proc ) {
+      prestartproc_.erase(ii);
+      return;
+    }
+  }
+}
 
 
 

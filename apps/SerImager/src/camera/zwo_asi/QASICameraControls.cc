@@ -403,6 +403,28 @@ bool QASIControlWidget::getASIControlValue(long * lValue, ASI_BOOL * isAuto)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+static QList<QCameraROI> loadUserDefinedCameraROIs()
+{
+  static const QString keyName =
+      "CameraROIs";
+
+  return QSettings().value(keyName,
+      QVariant::fromValue(QList<QCameraROI>()))
+      .value<QList<QCameraROI>>();
+}
+
+static void saveUserDefinedCameraROIs(const QList<QCameraROI> & list)
+{
+  static const QString keyName =
+      "CameraROIs";
+
+  QSettings settings;
+
+  settings.setValue(keyName,
+      QVariant::fromValue(list));
+}
+
+
 QASIROIControlWidget::QASIROIControlWidget(const QASICamera::sptr & camera, QWidget * parent) :
   Base(parent),
   camera_(camera)
@@ -429,46 +451,106 @@ QASIROIControlWidget::QASIROIControlWidget(const QASICamera::sptr & camera, QWid
   binning_ctl->setEditable(false);
   binning_ctl->setToolTip("Binning method");
 
-  connect(imageFormat_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-      this, &ThisClass::setCameraROI);
-
-  connect(binning_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-      [this](int cursel) {
-        if ( !updatingControls() ) {
-          populate_available_frame_sizes(binning_ctl->itemData(cursel).value<int>());
-          frameSize_ctl->setCurrentIndex(0);
-          setCameraROI();
-        }
-      });
-
   connect(frameSize_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-      this, &ThisClass::setCameraROI);
+      this, &ThisClass::onFrameSizeCtlCurrentIndexChanged);
 
+  prestartproc_ =
+      [this]() {
+        return setup_camera_capture_format();
+      };
 
   if( camera_ ) {
 
-    connect(camera_.get(), &QImagingCamera::stateChanged,
-        this, &ThisClass::onCameraStateChanged,
-        Qt::QueuedConnection);
+    camera_->addprestartproc(&prestartproc_);
 
-    if ( camera_->state() >=  QImagingCamera::State_connected ) {
-      populate_supported_image_formats();
-      populate_supported_bins();
-      populate_available_frame_sizes();
+    connect(camera_.get(), &QImagingCamera::stateChanged,
+        this, &ThisClass::onCameraStateChanged/*,
+        Qt::QueuedConnection*/);
+
+    if ( camera_->state() >= QImagingCamera::State_connected ) {
+      populate_supported_frame_formats();
     }
   }
 
   updateControls();
+}
+
+QASIROIControlWidget::~QASIROIControlWidget()
+{
+  if ( camera_ ) {
+    camera_->removeprestartproc(&prestartproc_);
+  }
+}
+
+bool QASIROIControlWidget::setup_camera_capture_format()
+{
+  if( camera_ ) {
+
+    switch (camera_->state()) {
+      case QImagingCamera::State_connected:
+        case QImagingCamera::State_starting: {
+
+        const int currentFrameSizeIndex =
+            frameSize_ctl->currentIndex();
+        if( currentFrameSizeIndex < 0 ) {
+          CF_ERROR("No current item selected in frameSize_ctl");
+          return false;
+        }
+
+        const int currentRoiIndex =
+            frameSize_ctl->itemData(currentFrameSizeIndex).value<int>();
+        if( currentRoiIndex < 0 ) {
+          CF_ERROR("Invalid currentRoiIndex selected");
+          return false;
+        }
+
+        const QCameraROI &roi =
+            currentRoiIndex < predefinedROIs_.size() ?
+                predefinedROIs_[currentRoiIndex] :
+                userDefinedROIs_[currentRoiIndex - predefinedROIs_.size()];
+
+        ASI_IMG_TYPE iFormat =
+            (ASI_IMG_TYPE) imageFormat_ctl->currentData().value<int>();
+
+        int iBin =
+            binning_ctl->currentData().value<int>();
+
+        int iX = roi.rect.x();
+        int iY = roi.rect.y();
+        int iWidth = roi.rect.width();
+        int iHeight = roi.rect.height();
+
+        if( !set_capture_format(iX, iY, iWidth, iHeight, iBin, iFormat) ) {
+
+          CF_ERROR("set_capture_format(iX=%d, iY=%d, iWidth=%d, iHeight=%d, iBin=%d, iFormat=%d) fails",
+              iX, iY, iWidth, iHeight, iBin, iFormat);
+
+          return false;
+        }
+
+        get_capture_format(&iX, &iY, &iWidth, &iHeight, &iBin, &iFormat);
+
+        CF_DEBUG("Capture Format: iX=%d iY=%d iWidth=%d iHeight=%d, iBin=%d iFormat=%d",
+            iX, iY, iWidth, iHeight, iBin, iFormat);
+
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
+  return true;
 }
 
 
 void QASIROIControlWidget::onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
 {
   if( camera_ ) {
+    CF_DEBUG("%s -> %s", toString(oldState), toString(newState));
     if( oldState < QImagingCamera::State_connected && newState == QImagingCamera::State_connected ) {
-      populate_supported_image_formats();
-      populate_supported_bins();
-      populate_available_frame_sizes();
+      populate_supported_frame_formats();
     }
   }
 
@@ -476,156 +558,37 @@ void QASIROIControlWidget::onCameraStateChanged(QImagingCamera::State oldState, 
 }
 
 
-void QASIROIControlWidget::onUpdateControls()
-{
-  updateControls();
-}
 
-void QASIROIControlWidget::onupdatecontrols()
-{
-  if( !camera_ || camera_->state() != QImagingCamera::State_connected ) {
-    setEnabled(false);
-  }
-  else {
-
-    const ASI_CAMERA_INFO & c =
-        camera_->cameraInfo();
-
-    int iX = -1;
-    int iY = -1;
-    int iWidth = 0;
-    int iHeight = 0;
-    int iBin = 1;
-    ASI_IMG_TYPE iFormat = ASI_IMG_END;
-    ASI_ERROR_CODE status;
-
-    if( (status = ASIGetROIFormat(c.CameraID, &iWidth, &iHeight, &iBin, &iFormat)) != ASI_SUCCESS ) {
-
-      CF_ERROR("ASIGetROIFormat(CameraID=%d) fails: %d (%s)",
-          c.CameraID,
-          status,
-          toString(status));
-
-      setEnabled(false);
-      return;
-    }
-
-
-    if( (status = ASIGetStartPos(c.CameraID, &iX, &iY)) ) {
-      CF_ERROR("ASIGetStartPos(CameraID=%d) fails: %d (%s)",
-          c.CameraID,
-          status,
-          toString(status));
-
-      setEnabled(false);
-      return;
-    }
-
-    ///////////////////////////////////////
-
-    int iFormatItemIndex =
-        imageFormat_ctl->findData(QVariant::fromValue(
-            (int) iFormat));
-
-    if( iFormatItemIndex < 0 ) {
-      imageFormat_ctl->addItem(toString(iFormat), QVariant::fromValue((int) iFormat));
-      iFormatItemIndex = imageFormat_ctl->count() - 1;
-    }
-
-    if( imageFormat_ctl->currentIndex() != iFormatItemIndex ) {
-      imageFormat_ctl->setCurrentIndex(iFormatItemIndex);
-    }
-
-    ///////////////////////////////////////
-
-
-    int iBinItemIndex =
-        binning_ctl->findData(QVariant::fromValue(iBin));
-
-    if( iBinItemIndex < 0 ) {
-      binning_ctl->addItem(QString("Bin %1").arg(iBin), QVariant::fromValue(iBin));
-      iBinItemIndex = binning_ctl->count() - 1;
-    }
-
-    if( binning_ctl->currentIndex() != iBinItemIndex ) {
-      binning_ctl->setCurrentIndex(iBinItemIndex);
-      populate_available_frame_sizes();
-    }
-
-    ///////////////////////////////////////
-
-    const QRect rc(iX, iY, iWidth, iHeight);
-
-    int iFrameSizeItemIndex =
-        frameSize_ctl->findData(QVariant::fromValue(rc));
-
-    if ( iFrameSizeItemIndex < 0 ) {
-
-      QString itemText;
-
-      if( rc.x() < 0 || rc.y() < 0 ) {
-        itemText = QString::asprintf("%d x %d",
-            rc.width(), rc.height());
-      }
-      else {
-        itemText = QString::asprintf("%d x %d  (%d %d)",
-            rc.width(), rc.height(),
-            rc.x(), rc.y());
-      }
-
-      frameSize_ctl->addItem(itemText,
-          QVariant::fromValue(rc));
-
-      iFrameSizeItemIndex =
-          frameSize_ctl->count() - 1;
-    }
-
-    if ( frameSize_ctl->currentIndex() != iFrameSizeItemIndex ) {
-      frameSize_ctl->setCurrentIndex(iFrameSizeItemIndex);
-    }
-
-    setEnabled(true);
-  }
-}
-
-
-void QASIROIControlWidget::populate_supported_image_formats()
+void QASIROIControlWidget::populate_supported_frame_formats()
 {
   c_update_controls_lock lock(this);
 
   imageFormat_ctl->clear();
-
-  if( camera_ ) {
-
-    const ASI_CAMERA_INFO &c =
-        camera_->cameraInfo();
-
-    for( int i = 0; i < sizeof(c.SupportedVideoFormat) / sizeof(c.SupportedVideoFormat[0]); ++i ) {
-
-      const ASI_IMG_TYPE format =
-          c.SupportedVideoFormat[i];
-
-      if( format == ASI_IMG_END ) {
-        break;
-      }
-
-      imageFormat_ctl->addItem(toString(format),
-          QVariant::fromValue((int) format));
-    }
-  }
-}
-
-void QASIROIControlWidget::populate_supported_bins()
-{
-  c_update_controls_lock lock(this);
-
   binning_ctl->clear();
+  frameSize_ctl->clear();
 
   if ( camera_ ) {
 
     const ASI_CAMERA_INFO &c =
         camera_->cameraInfo();
 
+    // iFormat
+
+    for( int i = 0; i < sizeof(c.SupportedVideoFormat) / sizeof(c.SupportedVideoFormat[0]); ++i ) {
+
+      const ASI_IMG_TYPE iFormat =
+          c.SupportedVideoFormat[i];
+
+      if( iFormat == ASI_IMG_END ) {
+        break;
+      }
+
+      imageFormat_ctl->addItem(toString(iFormat),
+          QVariant::fromValue((int) iFormat));
+    }
+
+
+    // iBin
     for( int i = 0; i < sizeof(c.SupportedBins) / sizeof(c.SupportedBins[0]); ++i ) {
 
       const int iBin =
@@ -638,45 +601,9 @@ void QASIROIControlWidget::populate_supported_bins()
       binning_ctl->addItem(QString("Bin %1").arg(iBin),
           QVariant::fromValue(iBin));
     }
-  }
-}
 
-void QASIROIControlWidget::populate_available_frame_sizes(int iBin)
-{
-  c_update_controls_lock lock(this);
-
-  frameSize_ctl->clear();
-
-  if( camera_ ) {
-
-    const ASI_CAMERA_INFO &c =
-        camera_->cameraInfo();
-
-    if( iBin < 1 ) {
-
-      int iWidth = 0, iHeight = 0;
-      ASI_IMG_TYPE iFormat = ASI_IMG_END;
-
-      ASI_ERROR_CODE status =
-          ASIGetROIFormat(c.CameraID,
-              &iWidth,
-              &iHeight,
-              &iBin,
-              &iFormat);
-
-      if( status ) {
-        CF_ERROR("ASIGetROIFormat(CameraID=%d) fails: %d (%s)",
-            c.CameraID,
-            status,
-            toString(status));
-      }
-
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Populate frameSize_ctl with pre-defined frame sizes
-
-    const QSize predefined_sizes[] = {
+    // Frame Sizes
+    const QSize predefinedFrameSizes[] = {
         QSize(c.MaxWidth, c.MaxHeight),
         QSize(3840, 2160),
         QSize(2560, 2560),
@@ -701,134 +628,186 @@ void QASIROIControlWidget::populate_available_frame_sizes(int iBin)
         QSize(160, 120),
     };
 
-    if( iBin < 1 ) {
-      iBin = 1;
-    }
-
     // Make sure Width % 8 == 0, Height % 2 == 0
 
     const QSize maxSize =
-        QSize((c.MaxWidth / iBin) & ~0x7, (c.MaxHeight / iBin) & ~0x1);
+        QSize((c.MaxWidth) & ~0x7, (c.MaxHeight) & ~0x1);
 
-    for( uint i = 0; i < sizeof(predefined_sizes) / sizeof(predefined_sizes[0]); ++i ) {
+    predefinedROIs_.clear();
+    for( uint i = 0; i < sizeof(predefinedFrameSizes) / sizeof(predefinedFrameSizes[0]); ++i ) {
 
-      const QSize s((predefined_sizes[i].width() / iBin) & ~0x7,
-          (predefined_sizes[i].height() / iBin) & ~0x1);
+      const QSize &size = predefinedFrameSizes[i];
+      const QSize s(size.width() & ~0x7, size.height() & ~0x1);
 
       if( s.width() <= maxSize.width() && s.height() <= maxSize.height() ) {
-
-        frameSize_ctl->addItem(QString::asprintf("%d x %d",
-            s.width(), s.height()),
-            QVariant::fromValue(QRect(-1, -1, s.width(), s.height())));
-
+        predefinedROIs_.append(QCameraROI("", QRect(-1, -1, s.width(), s.height())));
       }
     }
+
+    const QList<QCameraROI> userDefinedCameraROIs =
+        loadUserDefinedCameraROIs();
+
+    userDefinedROIs_.clear();
+    for( int i = 0, n = userDefinedCameraROIs.size(); i < n; ++i ) {
+      userDefinedROIs_.append(userDefinedCameraROIs[i]);
+    }
+
+
+    update_supported_frame_sizes_combobox();
   }
 
 }
 
 
-
-
-void QASIROIControlWidget::setCameraROI()
+void QASIROIControlWidget::update_supported_frame_sizes_combobox()
 {
-  if( !updatingControls() && camera_ && camera_->state() == QImagingCamera::State_connected ) {
+  c_update_controls_lock lock(this);
+  frameSize_ctl->clear();
 
-    const ASI_CAMERA_INFO &c =
-        camera_->cameraInfo();
+  for( int i = 0, n = predefinedROIs_.size(); i < n; ++i ) {
+    frameSize_ctl->addItem(predefinedROIs_[i].toQString(),
+          QVariant::fromValue(i));
+  }
 
-    const QRect rc =
-        frameSize_ctl->currentData().value<QRect>();
+  for( int i = 0, n = userDefinedROIs_.size(); i < n; ++i ) {
+    frameSize_ctl->addItem(userDefinedROIs_[i].toQString(),
+        QVariant::fromValue(i + predefinedROIs_.size()));
+  }
 
-    const ASI_IMG_TYPE iFormat =
-        (ASI_IMG_TYPE) imageFormat_ctl->currentData().value<int>();
+  frameSize_ctl->addItem("Custom ROIs...",
+      QVariant::fromValue(-1));
+}
 
-    int iBin =
-        binning_ctl->currentData().value<int>();
+bool QASIROIControlWidget::set_capture_format(int iX, int iY, int iWidth, int iHeight, int iBin, ASI_IMG_TYPE iFormat)
+{
+  if( !camera_ ) {
+    CF_ERROR("Camera is null");
+    return false;
+  }
 
-    ASI_ERROR_CODE status;
+  const ASI_CAMERA_INFO &c =
+      camera_->cameraInfo();
 
-    if( (status = ASISetROIFormat(c.CameraID, rc.width(), rc.height(), iBin, iFormat)) != ASI_SUCCESS ) {
-      CF_ERROR("ASISetROIFormat(CameraID=%d) fails: %d (%s)",
+  ASI_ERROR_CODE status =
+      ASISetROIFormat(c.CameraID, iWidth, iHeight, iBin, iFormat);
+
+  if( status != ASI_SUCCESS ) {
+    CF_ERROR("ASISetROIFormat(CameraID=%d) fails: %d (%s)",
+        c.CameraID,
+        status,
+        toString(status));
+    return false;
+  }
+
+  if( iX >= 0 && iY >= 0 ) {
+    if( (status = ASISetStartPos(c.CameraID, iX, iY)) != ASI_SUCCESS ) {
+      CF_ERROR("ASISetStartPos(CameraID=%d) fails: %d (%s)",
           c.CameraID,
           status,
           toString(status));
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool QASIROIControlWidget::get_capture_format(int * iX, int * iY, int * iWidth, int * iHeight, int * iBin, ASI_IMG_TYPE * iFormat)
+{
+  if( !camera_ ) {
+    CF_ERROR("Camera is null");
+    return false;
+  }
+
+  const ASI_CAMERA_INFO &c =
+      camera_->cameraInfo();
+
+  ASI_ERROR_CODE status =
+      ASIGetROIFormat(c.CameraID, iWidth, iHeight, iBin, iFormat);
+
+  if( (status) != ASI_SUCCESS ) {
+    CF_ERROR("ASIGetROIFormat(CameraID=%d) fails: %d (%s)",
+        c.CameraID,
+        status,
+        toString(status));
+    return false;
+  }
+
+  if( (status = ASIGetStartPos(c.CameraID, iX, iY)) ) {
+    CF_ERROR("ASIGetStartPos(CameraID=%d) fails: %d (%s)",
+        c.CameraID,
+        status,
+        toString(status));
+    return false;
+  }
+
+  return true;
+}
+
+
+
+void QASIROIControlWidget::onFrameSizeCtlCurrentIndexChanged()
+{
+  if( !updatingControls() ) {
+
+    int currentIndex =
+        frameSize_ctl->currentIndex();
+
+    if( currentIndex < 0 ) {
+      return;
     }
 
-    if ( rc.x() >= 0 && rc.y() >= 0 ) {
-      if( (status = ASISetStartPos(c.CameraID, rc.x(), rc.y())) != ASI_SUCCESS ) {
-        CF_ERROR("ASISetStartPos(CameraID=%d) fails: %d (%s)",
-            c.CameraID,
-            status,
-            toString(status));
+    const int currentRoiIndex =
+        frameSize_ctl->itemData(currentIndex).value<int>();
+
+    if( currentRoiIndex < 0 ) { // Show ROI Edit dialog box;
+
+      c_update_controls_lock lock(this);
+
+      QCameraROISelectionDialog dialogBox(this);
+
+      dialogBox.setROIList(userDefinedROIs_);
+
+      dialogBox.setValidator([](QRect & rc) {
+
+        if ( rc.width() < 1 || rc.height() < 1 ) {
+          return false;
+        }
+
+        rc.setWidth(rc.width() & ~0x7);
+        rc.setHeight(rc.height() & ~0x1);
+
+        return rc.width() > 0 && rc.height() > 0;
+      });
+
+      dialogBox.exec();
+
+      if( dialogBox.hasChanges() ) {
+        userDefinedROIs_ = dialogBox.roiList();
+        saveUserDefinedCameraROIs(userDefinedROIs_);
+        update_supported_frame_sizes_combobox();
       }
     }
-
-    updateControls();
   }
 }
 
-//void QASIROIControlWidget::add_available_frame_size(const QRect & rc)
-//{
-//  const QVariant v =
-//      QVariant::fromValue(rc);
-//
-//  int itemIndex =
-//      frameSize_ctl->findData(v);
-//
-//  if( itemIndex < 0 ) {
-//
-//    QString itemText;
-//
-//    if( rc.x() < 0 || rc.y() < 0 ) {
-//      itemText = QString::asprintf("%d x %d",
-//          rc.width(), rc.height());
-//    }
-//    else {
-//      itemText = QString::asprintf("%d x %d  (%d %d)",
-//          rc.width(), rc.height(),
-//          rc.x(), rc.y());
-//    }
-//
-//    frameSize_ctl->addItem(itemText, v);
-//    itemIndex = frameSize_ctl->count() - 1;
-//  }
-//
-//  frameSize_ctl->setCurrentIndex(itemIndex);
-//}
 
-//
-//void QASIROIControlWidget::update_image_format_ctl(ASI_IMG_TYPE iFormat)
-//{
-//  const QVariant v =
-//      QVariant::fromValue((int) (iFormat));
-//
-//  int itemIndex =
-//      imageFormat_ctl->findData(v);
-//
-//  if( itemIndex < 0 ) {
-//    imageFormat_ctl->addItem(toString(iFormat), v);
-//    itemIndex = imageFormat_ctl->count() - 1;
-//  }
-//
-//  imageFormat_ctl->setCurrentIndex(itemIndex);
-//}
-//
-//void QASIROIControlWidget::setBinningCtl(int iBin)
-//{
-//  const QVariant v =
-//      QVariant::fromValue(iBin);
-//
-//  int itemIndex =
-//      binning_ctl->findData(v);
-//
-//  if( itemIndex < 0 ) {
-//    binning_ctl->addItem(QString("%1").arg(iBin), v);
-//    itemIndex = binning_ctl->count() - 1;
-//  }
-//
-//  binning_ctl->setCurrentIndex(itemIndex);
-//}
+
+void QASIROIControlWidget::onUpdateControls()
+{
+  Base::updateControls();
+}
+
+void QASIROIControlWidget::onupdatecontrols()
+{
+  if( !camera_ || camera_->state() != QImagingCamera::State_connected ) {
+    setEnabled(false);
+  }
+  else {
+    setEnabled(true);
+  }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

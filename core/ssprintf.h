@@ -634,8 +634,8 @@ inline bool fromString(const std::string & s, cv::Rect_<T> * v)
   if ( sscanf(s.c_str(), "%lf %*[,;] %lf %*[,;] %lf %*[,;] %lf", &x, &y, &w, &h) == 4 ) {
     v->x = (T)x;
     v->y = (T)y;
-    v->width = (T)(w - x);
-    v->height = (T)(h - y);
+    v->width = (T)(w - x + 1);
+    v->height = (T)(h - y + 1);
     return true;
   }
 

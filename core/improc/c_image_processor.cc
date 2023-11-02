@@ -93,7 +93,6 @@
 #include "geometry/c_polar_warp_routine.h"
 #include "geometry/c_unkanala_remap_routine.h"
 
-
 #include "c_mean_curvature_blur_routine.h"
 #include "feature2d/c_fit_jovian_ellipse_routine.h"
 #include "c_equalize_hist_routine.h"

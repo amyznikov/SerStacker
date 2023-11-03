@@ -7,51 +7,60 @@
 
 #include "c_image_processor.h"
 
-#include "pixel/c_absdiff_routine.h"
-#include "pixel/c_anscombe_routine.h"
-#include "pixel/c_mtf_routine.h"
-#include "pixel/c_range_normalize_routine.h"
-#include "pixel/c_rangeclip_routine.h"
-#include "pixel/c_pixel_func_routine.h"
-#include "pixel/c_image_calc_routine.h"
-#include "pixel/c_math_expression_routine.h"
+#include "c_gradient_routine.h"
+#include "c_laplacian_routine.h"
+#include "c_radial_gradient_routine.h"
+#include "c_noisemap_routine.h"
+#include "c_auto_correlation_routine.h"
+#include "c_local_contrast_map_routine.h"
+#include "c_lpg_map_routine.h"
+#include "c_laplacian_map_routine.h"
+#include "c_harris_map_routine.h"
+#include "c_absdiff_routine.h"
+#include "c_anscombe_routine.h"
+#include "c_mtf_routine.h"
+#include "c_range_normalize_routine.h"
+#include "c_rangeclip_routine.h"
+#include "c_pixel_func_routine.h"
+#include "c_image_calc_routine.h"
+#include "c_math_expression_routine.h"
+#include "c_threshold_routine.h"
 
 
-#include "color/c_histogram_white_balance_routine.h"
-#include "color/c_color_saturation_routine.h"
-#include "color/c_color_transform_routine.h"
-#include "color/c_cvtcolor_routine.h"
-#include "color/c_desaturate_edges_routine.h"
-#include "color/c_extract_channel_routine.h"
-#include "color/c_histogram_normalization_routine.h"
-#include "color/c_scale_channels_routine.h"
-#include "color/c_color_diff_routine.h"
-#include "color/c_set_luminance_channel_routine.h"
-#include "color/c_color_balance_routine.h"
-
-
-
-#include "quicktests/c_census_transfrom_routine.h"
-#include "quicktests/c_homography_test_routine.h"
-#include "quicktests/c_sweepscan_routine.h"
-#include "quicktests/c_melp_stereo_matcher_routine.h"
-//#include "quicktests/c_pyramid_test_routine.h"
+#include "c_histogram_white_balance_routine.h"
+#include "c_color_saturation_routine.h"
+#include "c_color_transform_routine.h"
+#include "c_cvtcolor_routine.h"
+#include "c_desaturate_edges_routine.h"
+#include "c_extract_channel_routine.h"
+#include "c_histogram_normalization_routine.h"
+#include "c_scale_channels_routine.h"
+#include "c_color_diff_routine.h"
+#include "c_set_luminance_channel_routine.h"
+#include "c_color_balance_routine.h"
+#include "c_align_color_channels_routine.h"
+#include "c_autoclip_routine.h"
+#include "c_unsharp_mask_routine.h"
+#include "c_auto_unsharp_mask_routine.h"
+#include "c_type_convert_routine.h"
+#include "c_radial_polysharp_routine.h"
+#include "c_median_blur_routine.h"
+#include "c_median_hat_routine.h"
+#include "c_wmf_routine.h"
+#include "c_remove_sharp_artifacts_routine.h"
+#include "c_mean_curvature_blur_routine.h"
+#include "feature2d/c_fit_jovian_ellipse_routine.h"
+#include "c_equalize_hist_routine.h"
+#include "c_linear_interpolation_inpaint_routine.h"
+#include "c_bilateral_filter_routine.h"
+#include "c_pnormalize_routine.h"
+#include "c_gaussian_blur_routine.h"
+#include "c_morphology_routine.h"
+#include "c_fft_routine.h"
 
 #include "camera_calibration/c_find_chessboard_corners_routine.h"
 #include "camera_calibration/c_image_rectification_routine.h"
 #include "camera_calibration/c_stereo_rectification_routine.h"
-
-#include "gradient/c_gradient_routine.h"
-#include "gradient/c_laplacian_routine.h"
-#include "gradient/c_radial_gradient_routine.h"
-
-#include "maps/c_noisemap_routine.h"
-#include "maps/c_auto_correlation_routine.h"
-#include "maps/c_local_contrast_map_routine.h"
-#include "maps/c_lpg_map_routine.h"
-#include "maps/c_laplacian_map_routine.h"
-#include "maps/c_harris_map_routine.h"
-#include "maps/c_threshold_routine.h"
 
 #include "pyramid/c_downstrike_routine.h"
 #include "pyramid/c_upject_routine.h"
@@ -65,24 +74,10 @@
 #include "pyramid/c_median_pyramid_routine.h"
 #include "pyramid/c_radial_scale_routine.h"
 
-#include "fft/c_fft_routine.h"
-
 #include "feature2d/c_keypoins_detector_routine.h"
 #include "feature2d/c_edgebox_routine.h"
 #include "feature2d/c_selective_search_segmentation_routine.h"
 
-#include "c_align_color_channels_routine.h"
-#include "c_autoclip_routine.h"
-#include "c_unsharp_mask_routine.h"
-#include "c_auto_unsharp_mask_routine.h"
-#include "c_type_convert_routine.h"
-#include "c_radial_polysharp_routine.h"
-
-
-#include "c_median_blur_routine.h"
-#include "c_median_hat_routine.h"
-#include "c_wmf_routine.h"
-#include "c_remove_sharp_artifacts_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -93,14 +88,11 @@
 #include "geometry/c_polar_warp_routine.h"
 #include "geometry/c_unkanala_remap_routine.h"
 
-#include "c_mean_curvature_blur_routine.h"
-#include "feature2d/c_fit_jovian_ellipse_routine.h"
-#include "c_equalize_hist_routine.h"
-#include "c_linear_interpolation_inpaint_routine.h"
-#include "c_bilateral_filter_routine.h"
-#include "c_pnormalize_routine.h"
-#include "c_gaussian_blur_routine.h"
-#include "c_morphology_routine.h"
+#include "quicktests/c_census_transfrom_routine.h"
+#include "quicktests/c_homography_test_routine.h"
+#include "quicktests/c_sweepscan_routine.h"
+#include "quicktests/c_melp_stereo_matcher_routine.h"
+
 
 #include <core/readdir.h>
 #include <atomic>
@@ -165,6 +157,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pixel_func_routine::class_factory_instance());
     register_class_factory(c_image_calc_routine::class_factory_instance());
     register_class_factory(c_math_expression_routine::class_factory_instance());
+    register_class_factory(c_threshold_routine::class_factory_instance());
 
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
     register_class_factory(c_auto_unsharp_mask_routine::class_factory_instance());
@@ -216,7 +209,6 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_remove_sharp_artifacts_routine::class_factory_instance());
     register_class_factory(c_mean_curvature_blur_routine::class_factory_instance());
     register_class_factory(c_fit_jovian_ellipse_routine::class_factory_instance());
-    register_class_factory(c_threshold_routine::class_factory_instance());
     register_class_factory(c_desaturate_edges_routine::class_factory_instance());
     register_class_factory(c_local_contrast_map_routine::class_factory_instance());
     register_class_factory(c_lpg_map_routine::class_factory_instance());

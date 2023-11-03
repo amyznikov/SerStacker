@@ -8,7 +8,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/improc/c_unsharp_mask_routine.h>
 #include <core/improc/c_align_color_channels_routine.h>
-#include <core/improc/pixel/c_rangeclip_routine.h>
+#include <core/improc/c_rangeclip_routine.h>
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
 #include <core/proc/estimate_noise.h>

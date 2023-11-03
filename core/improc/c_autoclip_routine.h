@@ -44,6 +44,7 @@ public:
   {
     ADD_IMAGE_PROCESSOR_CTRL(ctls, lclip, "");
     ADD_IMAGE_PROCESSOR_CTRL(ctls, hclip, "");
+    ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override
@@ -79,7 +80,10 @@ public:
       break;
     }
 
-    return autoclip(image.getMatRef(), mask, plo_, phi_, omin, omax);
+    return autoclip(image.getMatRef(),
+        ignore_mask_ ? cv::noArray() : mask,
+        plo_, phi_,
+        omin, omax);
   }
 
 

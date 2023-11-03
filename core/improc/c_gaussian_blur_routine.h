@@ -84,16 +84,6 @@ public:
     return border_value_;
   }
 
-  void set_ignore_mask(bool v)
-  {
-    ignore_mask_ = v;
-  }
-
-  bool ignore_mask() const
-  {
-    return ignore_mask_;
-  }
-
   StereoMode stereo_mode() const
   {
     return stereo_mode_;
@@ -123,7 +113,6 @@ public:
       SERIALIZE_PROPERTY(settings, save, *this, sigmay);
       SERIALIZE_PROPERTY(settings, save, *this, ksizex);
       SERIALIZE_PROPERTY(settings, save, *this, ksizey);
-      SERIALIZE_PROPERTY(settings, save, *this, ignore_mask);
       SERIALIZE_PROPERTY(settings, save, *this, border_type);
 //      SERIALIZE_PROPERTY(settings, save, *this, border_value);
       SERIALIZE_PROPERTY(settings, save, *this, stereo_mode);
@@ -236,7 +225,6 @@ protected:
   StereoMode stereo_mode_ = StereoNone;
   cv::BorderTypes border_type_ = cv::BORDER_REFLECT101;
   cv::Scalar border_value_ = cv::Scalar::all(0);
-  bool ignore_mask_ = true;
 };
 
 #endif /* __c_gaussian_filter_routine_h__ */

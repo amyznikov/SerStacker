@@ -9,7 +9,7 @@
 #ifndef __QMtfSettings_h__
 #define __QMtfSettings_h__
 
-#include <core/improc/pixel/c_mtf_routine.h>
+#include <core/improc/c_mtf_routine.h>
 #include <gui/qmtf/QMtfControl.h>
 #include <gui/qimageview/QImageViewMtfDisplayFunction.h>
 #include "QImageProcessorChainEditor.h"

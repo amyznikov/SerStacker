@@ -13,6 +13,7 @@
 
 #include <memory>
 
+// TODO: make c_math_parser thread-safe ?
 struct c_math_parser;
 
 //typedef std::shared_ptr<c_math_parser>

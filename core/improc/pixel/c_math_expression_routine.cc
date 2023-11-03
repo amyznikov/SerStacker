@@ -8,8 +8,10 @@
 #include "c_math_expression_routine.h"
 #include <core/ssprintf.h>
 
+// TODO: is c_math_parser thread-safe ?
 #if HAVE_TBB
-# include <tbb/tbb.h>
+ #include <tbb/tbb.h>
+ typedef tbb::blocked_range<int> tbb_range;
 #endif
 
 template<>
@@ -24,7 +26,8 @@ const c_enum_member* members_of<c_math_expression_routine::CHANNEL>()
   return members;
 }
 
-static constexpr struct {
+static constexpr struct
+{
   const char * name;
   const char * tooldip;
 } processor_args[] = {
@@ -38,7 +41,7 @@ static constexpr struct {
     {"v",  "pixel value from cn source channel"},
 };
 
-template<class T1, class T2 >
+template<class T1, class T2>
 static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser * p, cv::InputArray _mask)
 {
   const int src_rows =
@@ -60,22 +63,31 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
       _dst.channels();
 
   const cv::Mat_<T1> src = _src;
-  const cv::Mat1b mask = _mask.empty() ? cv::Mat1b(src_rows, src_cols, (uint8_t)255) : _mask.getMat();
+  const cv::Mat1b mask = _mask.empty() ? cv::Mat1b() : _mask.getMat();
   cv::Mat_<T2> dst = _dst;
 
 
+  if ( mask.empty() ) {
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, src_rows),
+        [&src, &dst, p, src_rows, src_cols, src_channels, dst_channels] (const tbb_range & range) {
 
-  double args[sizeof(processor_args) / sizeof(processor_args[0])] = { 0 };
+      double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
 
-  for( int y = 0; y < src_rows; ++y ) {
+      for( int y = range.begin(); y < range.end(); ++y ) {
 
-    const T1 *srcp = src[y];
-    T2 *dstp = dst[y];
+#else
+      double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
 
-    args[0] = y;
+      for( int y = 0; y < src_rows; ++y ) {
+#endif
 
-    for( int x = 0; x < src_cols; ++x ) {
-      if ( mask[y][x] ) {
+      const T1 *srcp = src[y];
+      T2 *dstp = dst[y];
+
+      args[0] = y;
+
+      for( int x = 0; x < src_cols; ++x ) {
 
         args[1] = x;
 
@@ -89,7 +101,55 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
           dstp[x * dst_channels + c] = c_math_parser_eval(p, args);
         }
       }
+#if HAVE_TBB
+      }});
+#else
     }
+#endif
+  }
+
+  else {
+
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, src_rows),
+        [&src, &dst, &mask, p, src_rows, src_cols, src_channels, dst_channels](const tbb_range & range) {
+
+          double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
+
+          for( int y = range.begin(); y < range.end(); ++y ) {
+
+#else
+          double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
+
+          for( int y = 0; y < src_rows; ++y ) {
+#endif
+
+            const T1 *srcp = src[y];
+            T2 *dstp = dst[y];
+
+            args[0] = y;
+
+            for( int x = 0; x < src_cols; ++x ) {
+              if( mask[y][x] ) {
+
+                args[1] = x;
+
+                for( int c = 0; c < src_channels; ++c ) {
+                  args[2 + c] = srcp[x * src_channels + c];
+                }
+
+                for( int c = 0; c < dst_channels; ++c ) {
+                  args[6] = c;
+                  args[7] = srcp[x * src_channels + c];
+                  dstp[x * dst_channels + c] = c_math_parser_eval(p, args);
+                }
+              }
+            }
+#if HAVE_TBB
+          }});
+#else
+         }
+#endif
   }
 }
 
@@ -235,6 +295,7 @@ void c_math_expression_routine::get_parameters(std::vector<struct c_image_proces
 {
   ADD_IMAGE_PROCESSOR_CTRL2(ctls, input_channel, "input from:", "");
   ADD_IMAGE_PROCESSOR_CTRL2(ctls, output_channel, "output to:", "");
+  ADD_IMAGE_PROCESSOR_CTRL2(ctls, ignore_mask, "ignore mask:", "");
   ADD_IMAGE_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, expression, "", "formula for math expression");
 }
 
@@ -258,12 +319,12 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
 
   if( !math_parser_ ) {
 
-    if ( !(math_parser_ = c_math_parser_create_stdc())  ) {
+    if( !(math_parser_ = c_math_parser_create_stdc()) ) {
       CF_ERROR("c_math_parser_create_stdc() fails");
       return false;
     }
 
-    for ( int i = 0; i < (int)(sizeof(processor_args)/sizeof(processor_args[0])); ++i ) {
+    for( int i = 0; i < (int) (sizeof(processor_args) / sizeof(processor_args[0])); ++i ) {
       if( c_math_parser_add_argument(math_parser_, i, processor_args[i].name, processor_args[i].tooldip) < 0 ) {
         CF_ERROR("c_math_parser_add_argument('%s') fails", processor_args[i].name);
         return false;
@@ -275,11 +336,11 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
 
   if( expression_changed_ ) {
 
-    const char * errmsg =
+    const char *errmsg =
         c_math_parser_parse(math_parser_,
             expression_.c_str());
 
-    if ( errmsg ) {
+    if( errmsg ) {
       CF_ERROR("c_math_parser_parse(): fails: %s", errmsg);
       return false;
     }
@@ -292,16 +353,28 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       switch (output_channel_) {
 
         case IMAGE:
-          process_image(image.getMatRef(), image.getMatRef(), math_parser_, mask);
+          process_image(image.getMatRef(), image.getMatRef(), math_parser_,
+              ignore_mask_ ? cv::noArray() :
+                  mask);
           break;
 
-        case MASK:
-          if( mask.size() != image.size() ) {
-            mask.create(image.size(), CV_8U);
+        case MASK: {
+          cv::Mat1b input_mask;
+          if( !mask.empty() ) {
+            if( !ignore_mask_ ) {
+              mask.getMat().copyTo(input_mask);
+            }
+          }
+          else {
+            if( mask.size() != image.size() ) {
+              mask.create(image.size(), CV_8U);
+            }
             mask.setTo(0);
           }
-          process_image(image.getMatRef(), mask.getMatRef(), math_parser_, mask);
+          process_image(image.getMatRef(), mask.getMatRef(), math_parser_,
+              input_mask);
           break;
+        }
       }
       break;
 
@@ -309,22 +382,23 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       switch (output_channel_) {
 
         case MASK:
-          process_image(mask.getMatRef(), mask.getMatRef(), math_parser_, cv::noArray());
+          process_image(mask.getMatRef(), mask.getMatRef(), math_parser_,
+              ignore_mask_ ? cv::noArray() : mask.getMat());
           break;
 
         case IMAGE:
           if( !mask.empty() ) {
+
             if( image.size() != mask.size() || image.channels() != mask.channels() ) {
               image.create(mask.size(), CV_MAKETYPE(std::max(image.depth(), mask.depth()), mask.channels()));
             }
-            process_image(mask.getMatRef(), image.getMatRef(), math_parser_, cv::noArray());
+            process_image(mask.getMatRef(), image.getMatRef(), math_parser_,
+                ignore_mask_ ? cv::noArray() : mask.getMat());
           }
           break;
-
       }
       break;
   }
-
 
   return true;
 }

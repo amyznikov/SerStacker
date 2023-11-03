@@ -89,6 +89,8 @@ static void sort_echos_by_distance(ScanType & scan)
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
 
         cnz = 0;
+        memset(echos, 0, sizeof(echos));
+
         for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
           if( slot.echo[l][e].dist > 0 && slot.echo[l][e].dist < max_dist_value ) {
             echos[cnz++] = slot.echo[l][e];
@@ -96,13 +98,14 @@ static void sort_echos_by_distance(ScanType & scan)
         }
 
         if( cnz > 1 ) {
+
           std::sort(echos, echos + cnz,
               [](const auto & prev, const auto & next) {
                 return prev.dist < next.dist;
               });
-
-          memcpy(slot.echo[l], echos, sizeof(echos));
         }
+
+        memcpy(slot.echo[l], echos, sizeof(echos));
       }
     }
 

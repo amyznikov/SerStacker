@@ -15,6 +15,7 @@
 #include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 #include <core/ssprintf.h>
+#include "c_output_frame_writer.h"
 
 class c_image_processing_pipeline;
 
@@ -37,6 +38,7 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_feature2d_descriptor_options,
   c_image_processor_pipeline_ctl_feature2d_matcher_options,
   c_image_processor_pipeline_ctl_stereo_matcher_options,
+  c_image_processor_pipeline_ctl_output_writer,
 };
 
 
@@ -62,6 +64,7 @@ struct c_image_processing_pipeline_ctrl
   std::function<c_feature2d_matcher_options* (c_image_processing_pipeline*)> get_feature2d_matcher_options;
   std::function<c_camera_intrinsics *(c_image_processing_pipeline *)> get_camera_intrinsicts;
   std::function<c_regular_stereo_matcher *(c_image_processing_pipeline *)> get_stereo_matcher;
+  std::function<c_output_frame_writer_options *(c_image_processing_pipeline *)> get_output_writer_options;
   std::function<bool (const c_image_processing_pipeline*)> is_enabled;
 };
 
@@ -401,10 +404,24 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
-
+#define PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_output_writer; \
+      ctl.get_output_writer_options = \
+          [](c_image_processing_pipeline * p) -> c_output_frame_writer_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
 
 //
-
 
 
 #endif /* __c_image_processing_pipeline_ctrl_h__ */

@@ -236,18 +236,18 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
       return false;
     }
   }
-//
-////  if( image_processing_options_.input_image_processor ) {
-////    for( int i = 0; i < 2; ++i ) {
-////      cv::Mat &image = current_frames_[i];
-////      cv::Mat &mask = current_frame_->masks[i];
-////
-////      if( !image_processing_options_.input_image_processor->process(image, mask) ) {
-////        CF_ERROR("ERROR: input_image_processor->process() fails for stereo frame %d", i);
-////        return false;
-////      }
-////    }
-////  }
+
+  if( input_options_.input_image_processor ) {
+    for( int i = 0; i < 2; ++i ) {
+      cv::Mat &image = current_frames_[i];
+      cv::Mat &mask = current_masks_[i];
+
+      if( !input_options_.input_image_processor->process(image, mask) ) {
+        CF_ERROR("ERROR: input_image_processor->process() fails for stereo frame %d", i);
+        return false;
+      }
+    }
+  }
 
   return true;
 }
@@ -1313,10 +1313,7 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
             "chessboard",
             ".avi");
     bool fOK =
-        chessboard_video_writer_.open(chessboard_frames_filename_,
-            frame.size(),
-            frame.channels() > 1,
-            false);
+        chessboard_video_writer_.open(chessboard_frames_filename_);
 
     if( !fOK ) {
       CF_ERROR("chessboard_video_writer_.open('%s') fails",
@@ -1408,10 +1405,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
                   ".avi");
 
           fOK =
-              video_writer[i].open(output_file_name,
-                  remapped_frames[i].size(),
-                  remapped_frames[i].channels() > 1,
-                  false);
+              video_writer[i].open(output_file_name);
 
           if( !fOK ) {
             CF_ERROR("video_writer[%d].open('%s') fails", i,
@@ -1440,10 +1434,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         stereo_size.height = std::max(sizes[0].height, sizes[1].height);
 
         fOK =
-            stereo_writer.open(output_file_name,
-                stereo_size,
-                remapped_frames[0].channels() > 1,
-                false);
+            stereo_writer.open(output_file_name);
 
         if( !fOK ) {
           CF_ERROR("double_writer.open('%s') fails",
@@ -1478,10 +1469,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         quad_size.height = sizes[0].height + sizes[1].height;
 
         fOK =
-            quad_writer.open(output_file_name,
-                quad_size,
-                remapped_frames[0].channels() > 1,
-                false);
+            quad_writer.open(output_file_name);
 
         if( !fOK ) {
           CF_ERROR("quad_writer.open('%s') fails",

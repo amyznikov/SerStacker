@@ -323,15 +323,24 @@ bool c_live_stacking_pipeline::run_pipeline()
     }
 
     if( input_display_scale_ <= 0 ) {
-      input_display_scale_ = (1 << input_sequence_->bpp());
+      input_display_scale_ =
+          (1 << input_sequence_->bpp());
+    }
+
+    if( input_options_.input_image_processor ) {
+      lock_guard lock(mutex());
+      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+        CF_ERROR("input_image_processor->process() fails");
+        return false;
+      }
     }
 
     if( !process_current_frame() ) {
       CF_ERROR("process_current_frame() fails");
       return false;
     }
-    accumulated_frames_ =
-        processed_frames_;
+
+    ++accumulated_frames_;
   }
 
   return true;

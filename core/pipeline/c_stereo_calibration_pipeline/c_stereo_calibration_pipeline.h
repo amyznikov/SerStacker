@@ -13,7 +13,6 @@
 #include <core/pipeline/stereo/c_stereo_input_options.h>
 #include <core/proc/chessboard/chessboard_detection.h>
 #include <core/proc/camera_calibration/stereo_calibrate.h>
-#include <core/io/c_output_frame_writer.h>
 
 struct c_stereo_calibration_input_options :
     c_stereo_input_options

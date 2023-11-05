@@ -525,7 +525,7 @@ bool libconfig_parse_flags(c_config_setting settings,
   ::save_settings(cfg, #prop, (obj).prop())
 
 #define SAVE_OPTION(cfg, obj, prop) \
-  ::save_settings(cfg, #prop, obj.prop)
+  ::save_settings(cfg, #prop, (obj).prop)
 
 #define LOAD_OPTION(cfg, obj, prop) \
   ::load_settings(cfg, #prop, &(obj).prop)

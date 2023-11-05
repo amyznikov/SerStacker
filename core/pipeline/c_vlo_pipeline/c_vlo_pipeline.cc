@@ -600,9 +600,7 @@ bool c_vlo_pipeline::run_reflectors_detection()
             ".avi");
 
     bool fOk =
-        reflectors_writer_.open(output_filename,
-            image.size(),
-            image.channels() > 1);
+        reflectors_writer_.open(output_filename);
 
     if( !fOk ) {
       CF_ERROR("reflectors_writer_.open(%s) fails", output_filename.c_str());
@@ -641,9 +639,7 @@ bool c_vlo_pipeline::save_progress_video()
             ".avi");
 
     bool fOk =
-        progress_writer_.open(output_filename,
-            display_image.size(),
-            display_image.channels() > 1);
+        progress_writer_.open(output_filename);
 
     if( !fOk ) {
       CF_ERROR("progress_writer_.open(%s) fails", output_filename.c_str());

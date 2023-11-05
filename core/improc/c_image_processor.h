@@ -138,8 +138,6 @@ struct c_image_processor_routine_ctrl {
     (ctls)->emplace_back(tmp); \
   }
 
-
-
 #define ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, param, desc) \
   if ( true ) { \
     c_image_processor_routine_ctrl tmp = { \
@@ -174,9 +172,6 @@ struct c_image_processor_routine_ctrl {
    (ctls)->emplace_back(tmp); \
   }
 
-
-//
-
 #define ADD_IMAGE_PROCESSOR_CTRL_SPARSE_FEATURE_DETECTOR(ctls, _param, _name, _desc) \
   if ( true ) { \
     c_image_processor_routine_ctrl tmp = { \
@@ -190,10 +185,8 @@ struct c_image_processor_routine_ctrl {
    (ctls)->emplace_back(tmp); \
   }
 
-
 #define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
     ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, #param, desc)
-
 
 #define ADD_IMAGE_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, param, _name, _desc) \
   if ( true ) { \
@@ -211,9 +204,6 @@ struct c_image_processor_routine_ctrl {
     }; \
    (ctls)->emplace_back(tmp); \
   }
-
-
-
 
 #define ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, cname, desc) \
   if ( true ) { \
@@ -423,6 +413,7 @@ public:
   {
     typedef edit_lock this_class;
     typedef std::unique_lock<std::mutex> base;
+
     edit_lock(const sptr & ) : base(emutex())
     {
     }
@@ -541,6 +532,24 @@ protected:
 };
 
 
+inline bool save_settings(c_config_setting settings, const std::string & name,
+    const c_image_processor::sptr & processor)
+{
+  if( processor ) {
+    save_settings(settings, name, processor->name());
+  }
+  return true;
+}
+
+inline bool load_settings(c_config_setting settings, const std::string & name,
+    c_image_processor::sptr * processor)
+{
+  std::string s;
+  if( load_settings(settings, name, &s) && !s.empty() ) {
+    *processor = c_image_processor_collection::default_instance()->get(s);
+  }
+  return true;
+}
 
 #define SERIALIZE_IMAGE_PROCESSOR(settings, save, obj, proc) \
   if( (save) ) { \
@@ -555,7 +564,11 @@ protected:
     } \
   }
 
+#define LOAD_IMAGE_PROCESSOR(settings, obj, proc) \
+    load_settings(settings, #proc, &(obj).proc)
 
+#define SAVE_IMAGE_PROCESSOR(settings, obj, proc) \
+    save_settings(settings, #proc, (obj).proc)
 
 #endif /* __c_image_processor_h__ */
 

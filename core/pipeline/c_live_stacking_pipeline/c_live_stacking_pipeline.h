@@ -14,7 +14,6 @@
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/settings/opencv_settings.h>
-#include <core/io/c_output_frame_writer.h>
 
 struct c_live_stacking_input_options:
     c_image_processing_pipeline_input_options

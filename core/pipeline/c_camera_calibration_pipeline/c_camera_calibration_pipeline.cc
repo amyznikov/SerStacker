@@ -10,7 +10,6 @@
 #include "c_camera_calibration_pipeline.h"
 #include <core/settings/opencv_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
-#include <core/io/c_output_frame_writer.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <chrono>
@@ -546,6 +545,18 @@ bool c_camera_calibration_pipeline::run_pipeline()
       break;
     }
 
+    if( input_options_.input_image_processor ) {
+      lock_guard lock(mutex());
+      if( !input_options_.input_image_processor->process(current_frame_, current_mask_) ) {
+        CF_ERROR("ERROR: input_image_processor->process(current_frame_) fails");
+        return false;
+      }
+      if ( canceled() ) {
+        break;
+      }
+    }
+
+
     if ( !process_current_frame(enable_live_calibration) ) {
       CF_ERROR("process_current_frame() fails");
       return false;
@@ -555,7 +566,7 @@ bool c_camera_calibration_pipeline::run_pipeline()
           object_points_.size();
 
 
-    // give chance to GUI thread to call get_display_image()
+    // give chance GUI thread to call get_display_image()
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     if ( canceled() ) {
@@ -1131,10 +1142,7 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
             ".avi");
 
     bool fOK =
-        chessboard_video_writer_.open(chessboard_video_filename,
-            current_frame_.size(),
-            current_frame_.channels() > 1,
-            false);
+        chessboard_video_writer_.open(chessboard_video_filename);
 
     if( !fOK ) {
       CF_ERROR("chessboard_video_writer_.open('%s') fails",
@@ -1187,7 +1195,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
 
   CF_DEBUG("Saving %s...", output_file_name.c_str());
 
-  if( !writer.open(output_file_name, current_frame_.size(), current_frame_.channels() > 1, false) ) {
+  if( !writer.open(output_file_name) ) {
     CF_ERROR("ERROR: c_video_writer::open('%s') fails", output_file_name.c_str());
   }
   else {

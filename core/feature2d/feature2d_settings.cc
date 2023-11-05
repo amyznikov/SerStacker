@@ -1053,17 +1053,21 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
   }
 
   std::string objtype;
-  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
-    if ( options->type == FEATURE2D_MATCHER_UNKNOWN ) {
-      CF_ERROR("No sparse feature2d matcher type specified");
-      return false;
-    }
+  if( load_settings(settings, "type", &objtype) && !objtype.empty() ) {
+    fromString(objtype, &options->type);
   }
-  else if ( !fromString(objtype, &options->type) || options->type == FEATURE2D_MATCHER_UNKNOWN ) {
-    CF_ERROR("Unknown or not supported No sparse feature2d matcher type specified: '%s'",
-        objtype.c_str());
-    return false;
-  }
+
+//  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
+//    if ( options->type == FEATURE2D_MATCHER_UNKNOWN ) {
+//      CF_ERROR("No sparse feature2d matcher type specified");
+//      return false;
+//    }
+//  }
+//  else if ( !fromString(objtype, &options->type) || options->type == FEATURE2D_MATCHER_UNKNOWN ) {
+//    CF_ERROR("Unknown or not supported No sparse feature2d matcher type specified: '%s'",
+//        objtype.c_str());
+//    return false;
+//  }
 
   c_config_setting subsection;
 

@@ -100,9 +100,98 @@ int c_ser_file::bits_per_plane() const
   return header_.bits_per_plane;
 }
 
+int c_ser_file::bits_per_plane(int cvdepth)
+{
+  switch (cvdepth) {
+    case CV_8U:
+      return 8;
+    case CV_8S:
+      return 8;
+    case CV_16U:
+      return 16;
+    case CV_16S:
+      return 16;
+    case CV_32S:
+      return 32;
+    case CV_32F:
+      return -32;
+    case CV_64F:
+      return -64;
+  }
+
+  return -1;
+}
+
+
+int c_ser_file::bytes_per_plane(int bits_per_plane)
+{
+  if( bits_per_plane > 0 && bits_per_plane <= 8 ) {
+    return 1; // CV_8U
+  }
+
+  if( bits_per_plane > 8 && bits_per_plane <= 16 ) {
+    return 2; // CV_16U
+  }
+
+  if( bits_per_plane > 16 && bits_per_plane <= 32 ) {
+    return 4; // CV_3S
+  }
+
+  if( bits_per_plane == -32 ) {
+    return 4; // CV_32F
+  }
+
+  if( bits_per_plane == -64 ) {
+    return 8; // CV_64F
+  }
+
+  return -1; // not supported
+}
+
 int c_ser_file::bytes_per_plane() const
 {
-  return bits_per_plane() <= 8 ? 1 : 2;
+  return bytes_per_plane(header_.bits_per_plane);
+}
+
+int c_ser_file::bytes_per_pixel() const
+{
+  return channels() * bytes_per_plane();
+}
+
+int c_ser_file::cvdepth(int bits_per_plane)
+{
+  if( bits_per_plane > 0 && bits_per_plane <= 8 ) {
+    return CV_8U;
+  }
+
+  if( bits_per_plane > 8 && bits_per_plane <= 16 ) {
+    return CV_16U;
+  }
+
+  if( bits_per_plane > 16 && bits_per_plane <= 32 ) {
+    return CV_32S;
+  }
+
+  if( bits_per_plane == -32 ) {
+    return CV_32F;
+  }
+
+  if( bits_per_plane == -64 ) {
+    return CV_64F;
+  }
+
+  return -1;
+}
+
+int c_ser_file::cvdepth() const
+{
+  return cvdepth(header_.bits_per_plane);
+}
+
+int c_ser_file::cvtype() const
+{
+  const int depth = cvdepth();
+  return depth < 0 ? -1 : CV_MAKETYPE(depth, channels());
 }
 
 enum COLORID c_ser_file::color_id() const
@@ -115,20 +204,6 @@ int c_ser_file::channels() const
   return (header_.color_id == COLORID_RGB || header_.color_id == COLORID_BGR) ? 3 : 1;
 }
 
-int c_ser_file::bytes_per_pixel() const
-{
-  return channels() * bytes_per_plane();
-}
-
-int c_ser_file::cvdepth() const
-{
-  return (header_.bits_per_plane <= 8 ? CV_8U : CV_16U);
-}
-
-int c_ser_file::cvtype() const
-{
-  return CV_MAKETYPE(cvdepth(), channels());
-}
 
 const char * c_ser_file::observer() const
 {
@@ -241,14 +316,22 @@ bool c_ser_reader::open(const std::string & filename)
     swap_endianess(&header_.date_time_utc, 1);
   }
 
-  if ( header_.image_width < 1 || header_.image_height < 1 || header_.bits_per_plane < 1
-      || header_.bits_per_plane > 16 ) {
+  if ( header_.image_width < 1 || header_.image_height < 1 ) {
     CF_ERROR("Unsupported image size in %s : ImageWidth=%d ImageHeight=%d PixelDepthPerPlane=%d",
         filename.c_str(), header_.image_width, header_.image_height, header_.bits_per_plane);
     close();
     errno = ENODATA;
     return false;
   }
+
+  if ( cvdepth(header_.bits_per_plane) < 0 ) {
+    CF_ERROR("Unsupported pixel format in %s : ImageWidth=%d ImageHeight=%d PixelDepthPerPlane=%d",
+        filename.c_str(), header_.image_width, header_.image_height, header_.bits_per_plane);
+    close();
+    errno = ENODATA;
+    return false;
+  }
+
 
   switch ( header_.color_id ) {
   case COLORID_MONO :
@@ -353,7 +436,7 @@ bool c_ser_reader::seek(int frame_index)
   return true;
 }
 
-bool c_ser_reader::read(cv::Mat & image)
+bool c_ser_reader::read(cv::OutputArray output_image)
 {
   if ( !is_open() ) {
     CF_ERROR("File is not opened");
@@ -368,11 +451,37 @@ bool c_ser_reader::read(cv::Mat & image)
 
   errno = 0;
 
-  if ( !image.empty() && !image.isContinuous() ) {
-    image.release();
+  const int required_image_type =
+      this->cvtype();
+
+
+  if( output_image.fixedType() && output_image.type() != required_image_type ) {
+    CF_ERROR("Requested output image fixed type (depth=%d channels=%d) not match to \n"
+        "image type in SER file (depth=%d channels=%d)",
+        output_image.depth(), output_image.channels(),
+        CV_MAT_DEPTH(required_image_type), this->channels());
+    return false;
   }
 
-  image.create(header_.image_height, header_.image_width, cvtype());
+  const cv::Size required_image_size(header_.image_width, header_.image_height);
+
+  if( output_image.fixedSize() && output_image.size() != required_image_size ) {
+    CF_ERROR("Requested output image fixed size %dx%d not match to \n"
+        "image size in SER file %dx%d",
+        output_image.cols(), output_image.rows(),
+        required_image_size.width, required_image_size.height);
+    return false;
+  }
+
+  if ( !output_image.empty() && !output_image.isContinuous() ) {
+    output_image.release();
+  }
+
+  output_image.create(required_image_size, required_image_type);
+
+  cv::Mat & image =
+      output_image.getMatRef();
+
 
   const ssize_t savedpos =
       lseek64(fd, 0, SEEK_CUR);
@@ -396,11 +505,16 @@ bool c_ser_reader::read(cv::Mat & image)
     return false;
   }
 
-  if ( bytes_per_pixel() == 2 && header_.is_little_endian != is_current_machine_little_endian() ) {
+  if( header_.is_little_endian != is_current_machine_little_endian() ) {
 
-    swap_endianess(reinterpret_cast<uint16_t*>(image.data),
-        image.total());
-
+    switch (bytes_per_pixel()) {
+      case 2:
+        swap_endianess(reinterpret_cast<uint16_t*>(image.data), image.total());
+        break;
+      case 4:
+        swap_endianess(reinterpret_cast<uint32_t*>(image.data), image.total());
+        break;
+    }
   }
 
   ++curpos_;
@@ -423,7 +537,7 @@ bool c_ser_writer::create(const std::string & filename, int image_width, int ima
 {
   close();
 
-  if ( image_width < 1 || image_height < 1 || bits_per_plane < 1 || bits_per_plane > 16 ) {
+  if ( image_width < 1 || image_height < 1 || cvdepth(bits_per_plane) < 0 ) {
 
     CF_FATAL("Unsupported image size specified: "
         "width=%d height=%d PixelDepthPerPlane=%d",
@@ -448,8 +562,7 @@ bool c_ser_writer::create(const std::string & filename, int image_width, int ima
     case COLORID_BGR :
     break;
   default :
-    CF_FATAL("Invalid ColorId specified: %d",
-        color_id);
+    CF_FATAL("Invalid ColorId specified: %d", color_id);
     errno = EINVAL;
     return false;
   }
@@ -517,10 +630,11 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
     return false;
   }
 
-  const cv::Mat image = _image.getMat();
+  const cv::Mat image =
+      _image.getMat();
 
   if ( image.cols != header_.image_width || image.rows != header_.image_height ) {
-    CF_ERROR("invalid image specified: %dx%dx%d depth:%d expected: %dx%d%d depth:%d",
+    CF_ERROR("invalid image specified: %dx%dx%d depth:%d expected: %dx%dx%d depth:%d",
         image.cols, image.rows, image.channels(), image.depth(),
         header_.image_width, header_.image_height, channels(), cvdepth());
     errno = EINVAL;

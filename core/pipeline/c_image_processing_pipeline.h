@@ -37,13 +37,15 @@ struct c_image_processing_pipeline_input_options
 
   double bad_pixels_variation_threshold = 15;
   c_histogram_normalization_options background_normalization_options;
+
+  c_image_processor::sptr input_image_processor;
 };
 
 bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts);
 
 #define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
-  PIPELINE_CTLC(ctrls, input_options_.start_frame_index, "start frame index", "", _this->input_sequence_); \
-  PIPELINE_CTLC(ctrls, input_options_.max_input_frames, "max input frames", "", _this->input_sequence_);\
+  PIPELINE_CTLC(ctrls, input_options_.start_frame_index, "start frame index", "", _this->input_sequence_ != nullptr); \
+  PIPELINE_CTL(ctrls, input_options_.max_input_frames, "max input frames", "");\
   PIPELINE_CTL(ctrls, input_options_.debayer_method, "debayer method", "");\
   PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.darkbayer_filename, "Dark frame", "");\
   PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.flatbayer_filename, "Flat frame", "");\
@@ -58,6 +60,7 @@ bool serialize_base_input_options(c_config_setting section, bool save, c_image_p
   PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.norm_type, "norm type", "norm type", _this->input_options_.enable_bground_normalization);\
   PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.stretch, "stretch", "stretch", _this->input_options_.enable_bground_normalization);\
   PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.offset, "offset", "offset", _this->input_options_.enable_bground_normalization);\
+  PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, input_options_.input_image_processor, "input_image_processor", "");
 
 
 

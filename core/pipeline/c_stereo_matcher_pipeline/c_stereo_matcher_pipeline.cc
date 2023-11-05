@@ -6,7 +6,6 @@
  */
 
 #include "c_stereo_matcher_pipeline.h"
-#include <core/io/c_output_frame_writer.h>
 #include <core/io/save_ply.h>
 #include <core/proc/colormap.h>
 #include <chrono>
@@ -204,7 +203,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_matcher_pipeline::
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-    PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.input_image_processor, "input_image_processor", "");
+    // PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.input_image_processor, "input_image_processor", "");
     PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.remapped_image_processor, "remapped_image_processor", "");
     PIPELINE_CTL_PROCESSOR_SELECTION(ctrls,  image_processing_options_.output_image_processor, "output_image_processor", "");
     PIPELINE_CTL_END_GROUP(ctrls);
@@ -391,10 +390,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
                   ".avi");
 
           fOK =
-              progress_writer.open(output_file_name,
-                  image.size(),
-                  image.channels() > 1,
-                  false);
+              progress_writer.open(output_file_name);
 
           if( !fOK ) {
             CF_ERROR("progress_writer.open('%s') fails",
@@ -424,10 +420,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
                 ".ser");
 
         fOK =
-            depthmaps_writer.open(output_file_name,
-                current_disparity_.size(),
-                false,
-                false);
+            depthmaps_writer.open(output_file_name);
 
         if( !fOK ) {
           CF_ERROR("depthmaps_writer.open('%s') fails",
@@ -476,10 +469,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
                     ".tiff");
 
             fOK =
-                cloud3d_image_writer.open(output_file_name,
-                    cloud3d.size(),
-                    true,
-                    false);
+                cloud3d_image_writer.open(output_file_name);
 
             if( !fOK ) {
               CF_ERROR("cloud3d_image_writer.open('%s') fails",
@@ -624,14 +614,14 @@ bool c_stereo_matcher_pipeline::process_current_frames()
 
     if ( rmaps_[i].empty() ) {
 
-      if( image_processing_options_.input_image_processor ) {
-        if( !image_processing_options_.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
-          CF_ERROR("input_image_processor->process(frame_index=%d) fails", i);
+      if( input_options_.input_image_processor ) {
+        if( !input_options_.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
+          CF_ERROR("input_options_->process(frame_index=%d) fails", i);
           return false;
         }
       }
     }
-    else if( !image_processing_options_.input_image_processor ) {
+    else if( !input_options_.input_image_processor ) {
 
       cv::remap(current_frames_[i], current_frames_[i],
           rmaps_[i], cv::noArray(),
@@ -651,8 +641,8 @@ bool c_stereo_matcher_pipeline::process_current_frames()
     }
     else {
 
-      if( !image_processing_options_.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
-        CF_ERROR("input_image_processor->process(frame_index=%d) fails", i);
+      if( !input_options_.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
+        CF_ERROR("input_options_->process(frame_index=%d) fails", i);
         return false;
       }
 

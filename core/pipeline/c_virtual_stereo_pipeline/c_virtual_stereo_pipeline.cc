@@ -187,7 +187,7 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
-    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
+    // SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
     SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
   }
 
@@ -301,7 +301,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
     ////////
 
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_processor, "Input image preprocessor", "");
+      // PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_processor, "Input image preprocessor", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.feature2d_preprocessor, "Feature2D image preprocessor", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
@@ -597,8 +597,8 @@ bool c_virtual_stereo_pipeline::run_pipeline()
         break;
       }
 
-      if( image_processing_options_.input_processor ) {
-        if( !image_processing_options_.input_processor->process(current_image_, current_mask_) ) {
+      if( input_options_.input_image_processor ) {
+        if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
           CF_ERROR("ERROR: input_processor->process() fails");
           return false;
         }
@@ -867,10 +867,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
               ".png");
 
       bool fOK =
-          polar_frames_writer_.open(output_video_filename,
-              display.size(),
-              display.channels() > 1,
-              false);
+          polar_frames_writer_.open(output_video_filename);
 
       if( !fOK ) {
         CF_ERROR("polar_frames_writer_.open('%s') fails",
@@ -915,10 +912,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
                 ".tiff");
 
         bool fOK =
-            disparity_frames_writer_.open(output_video_filename,
-                current_disparity_.size(),
-                current_disparity_.channels() > 1,
-                false);
+            disparity_frames_writer_.open(output_video_filename);
 
         if( !fOK ) {
           CF_ERROR("disparity_frames_writer_.open('%s') fails",
@@ -1522,10 +1516,7 @@ bool c_virtual_stereo_pipeline::write_progress_video()
             ".avi");
 
     bool fOK =
-        progress_video_writer_.open(output_video_filename,
-            display.size(),
-            display.channels() > 1,
-            false);
+        progress_video_writer_.open(output_video_filename);
 
     if( !fOK ) {
       CF_ERROR("progress_video_writer_.open('%s') fails",
@@ -1569,10 +1560,7 @@ bool c_virtual_stereo_pipeline::write_homography_video()
             ".avi");
 
     bool fOK =
-        homography_video_writer_.open(output_video_filename,
-            display.size(),
-            display.channels() > 1,
-            false);
+        homography_video_writer_.open(output_video_filename);
 
     if( !fOK ) {
       CF_ERROR("homography_video_writer_.open('%s') fails",

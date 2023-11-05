@@ -13,7 +13,6 @@
 #include <core/proc/tracking/c_roi_tracker.h>
 #include <core/improc/c_image_processor.h>
 #include <core/settings/opencv_settings.h>
-#include <core/io/c_output_frame_writer.h>
 
 struct c_roi_tracker_input_options :
     c_image_processing_pipeline_input_options

@@ -12,9 +12,7 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/feature2d/feature2d.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
-#include <core/io/c_output_frame_writer.h>
 #include <core/proc/stereo/c_sweepscan_stereo_matcher.h>
-#include "c_regular_stereo.h"
 
 struct c_regular_stereo_input_options
 {
@@ -36,12 +34,18 @@ struct c_regular_stereo_input_options
 };
 
 
+struct c_regular_stereo_image_processing_options
+{
+  c_image_processor::sptr input_image_processor;
+  c_image_processor::sptr remapped_image_processor;
+  c_image_processor::sptr output_image_processor;
+};
+
+
 struct c_regular_stereo_feature2d_options :
     public c_sparse_feature_extractor_and_matcher_options
 {
   double scale = 0.5;
-//  c_sparse_feature_extractor_options sparse_feature_extractor;
-//  c_feature2d_matcher_options sparse_feature_matcher;
 };
 
 

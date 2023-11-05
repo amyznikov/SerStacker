@@ -1502,7 +1502,8 @@ bool c_ffmpeg_writer::write_frame(const uint8_t * data, int step, int width, int
   }
 
   if ( (width & -2) != frame_size.width || (height & -2) != frame_size.height || !data ) {
-    CF_ERROR("Invalid input frame size: %dx%d", width, height);
+    CF_ERROR("Invalid input frame size: %dx%d. Expected %dx%d", width, height,
+        frame_size.width, frame_size.height);
     return false;
   }
 

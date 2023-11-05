@@ -84,7 +84,7 @@ struct c_master_frame_options
   std::string master_fiename;
   int master_frame_index = 0;
 
-  bool apply_input_frame_processors = true;
+  bool apply_input_image_processor = true;
   bool generate_master_frame = true;
   int max_frames_to_generate_master_frame = 3000;
   double master_sharpen_factor = 0.5;

@@ -16,7 +16,6 @@
 #include <core/proc/white_balance/histogram_normalization.h>
 #include <core/proc/c_anscombe_transform.h>
 #include <core/proc/focus.h>
-#include <core/io/c_output_frame_writer.h>
 #include <core/improc/c_image_processor.h>
 #include <core/feature2d/feature2d.h>
 #include <core/settings.h>
@@ -126,7 +125,6 @@ struct c_frame_accumulation_options
 
 struct c_image_processing_options
 {
-  c_image_processor::sptr input_image_processor;
   c_image_processor::sptr ecc_image_processor;
   c_image_processor::sptr aligned_image_processor;
   c_image_processor::sptr incremental_frame_processor;
@@ -139,30 +137,24 @@ struct c_image_processing_options
 struct c_image_stacking_output_options  :
     c_image_processing_pipeline_output_options
 {
-  std::string output_preprocessed_frames_filename;
-  std::string output_aligned_frames_filename;
-  std::string output_ecc_frames_filename;
-  std::string output_postprocessed_frames_filename;
-  std::string output_incremental_frames_filename;
-  std::string output_accumulation_masks_filename;
-
-  bool save_preprocessed_frames = false;
-  bool save_preprocessed_frame_mapping = false;
-  bool save_aligned_frames = false;
-  bool save_aligned_frame_mapping = false;
-  bool save_ecc_frames = false;
-  bool save_ecc_frame_mapping = false;
-  bool save_processed_aligned_frames = false;
-  bool save_processed_aligned_frame_mapping = false;
-  bool save_accumulation_masks = false;
-  bool save_accumulation_masks_frame_mapping = false;
-  bool save_incremental_frames = false;
-  bool save_incremental_frame_mapping = false;
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 
   bool debug_frame_registration = false;
   std::vector<int> debug_frame_registration_frame_indexes;
+
+  bool save_preprocessed_frames = false;
+  bool save_aligned_frames = false;
+  bool save_ecc_frames = false;
+  bool save_accumulation_masks = false;
+  bool save_incremental_frames = false;
+
+  c_output_frame_writer_options output_preprocessed_video_options;
+  c_output_frame_writer_options output_aligned_video_options;
+  c_output_frame_writer_options output_ecc_video_options;
+  c_output_frame_writer_options output_acc_masks_video_options;
+  c_output_frame_writer_options output_incremental_video_options;
+
 };
 
 
@@ -300,9 +292,6 @@ protected:
 
   bool save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex ) const;
-
-  bool save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex) const;
 
   bool save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;

@@ -10,6 +10,16 @@
  *   "SER format description version 3",
  *     by Heiko Wilkens and Grischa Hahn,
  *      2014 Feb 06
+ *
+ *
+ * My custom updates to support more OpenCV types in SER file:
+ *
+ *  bits_per_plane == -64          : CV_64F, 8 bytes
+ *  bits_per_plane == -32          : CV_32F, 4 bytes
+ *  0  < bits_per_plane  <= 8      : CV_8U,  1 byte
+ *  8  < bits_per_plane <= 16      : CV_16U, 2 bytes
+ *  16 < bits_per_plane <= 32      : CV_32S, 4 bytes
+ *
  */
 
 #ifndef __c_ser_file_h__
@@ -56,10 +66,12 @@ public:
 
   /// @brief Read-Only access to file header.bits_per_plane field
   int bits_per_plane() const;
+  static int bits_per_plane(int cvdepth);
 
   /// @brief Get number of bytes required to store single pixel plane
   /// Returns 1 for bits_per_plane <= 8, else 2
   int bytes_per_plane() const;
+  static int bytes_per_plane(int bits_per_plane);
 
   /// @brief Read-Only access to file header.color_id field
   enum COLORID color_id() const;
@@ -75,6 +87,7 @@ public:
   /// @brief Return CV_DEPTH (CV_8U or CV_16U)
   /// appropriate for given bytes_per_plane
   int cvdepth() const;
+  static int cvdepth(int bits_per_plane);
 
   /// @brief Return CV_MAKETYPE(cvdepth(), channels())
   //  appropriate for given bytes_per_plane() and channels()
@@ -141,7 +154,7 @@ public:
   /// @brief read()
   /// Read next frame from current read position,
   /// advance current position to next frame
-  bool read(cv::Mat & image);
+  bool read(cv::OutputArray image);
 
   /// @brief curpos()
   //  Return current frame read position

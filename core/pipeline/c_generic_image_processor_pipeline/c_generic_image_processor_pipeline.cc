@@ -50,15 +50,15 @@ c_generic_image_processor_output_options & c_generic_image_processor_pipeline::o
   return output_options_;
 }
 
-void c_generic_image_processor_pipeline::set_output_file_name(const std::string & v)
-{
-  output_file_name_ = v;
-}
-
-const std::string & c_generic_image_processor_pipeline::output_file_name() const
-{
-  return output_file_name_;
-}
+//void c_generic_image_processor_pipeline::set_output_file_name(const std::string & v)
+//{
+//  output_file_name_ = v;
+//}
+//
+//const std::string & c_generic_image_processor_pipeline::output_file_name() const
+//{
+//  return output_file_name_;
+//}
 
 bool c_generic_image_processor_pipeline::initialize_pipeline()
 {
@@ -70,14 +70,12 @@ bool c_generic_image_processor_pipeline::initialize_pipeline()
   output_path_ =
       create_output_path(output_options_.output_directory);
 
-  if ( output_options_.save_processed_frames ) {
-    output_file_name_ =
-        generate_output_filename(output_options_.processed_frames_filename,
-            "processed",
-            ".avi");
-  }
-
-  // averaged_sharpeness_ = 0;
+//  if( output_options_.save_processed_frames ) {
+//    output_file_name_ =
+//        generate_output_filename(output_options_.processed_file_options.output_filename,
+//            "processed",
+//            ".avi");
+//  }
 
   return true;
 }
@@ -88,9 +86,9 @@ void c_generic_image_processor_pipeline::cleanup_pipeline()
     input_sequence_->close();
   }
 
-  if ( output_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", output_writer_.filename().c_str());
-    output_writer_.close();
+  if ( processed_file_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", processed_file_writer_.filename().c_str());
+    processed_file_writer_.close();
   }
 
   // sharpness_norm_measure_.reset();
@@ -154,7 +152,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
   processed_frames_ = 0;
   accumulated_frames_ = 0;
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; processed_frames_ < total_frames_;  ++processed_frames_, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
@@ -162,33 +160,39 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      current_image_.release();
-      current_mask_.release();
       if( !input_sequence_->read(current_image_, &current_mask_) ) {
         CF_DEBUG("input_sequence_->read() fails");
-        break;
+        return false;
       }
-
-      if ( true ) {
-        double amin, amax;
-        cv::minMaxLoc(current_image_, &amin, &amax);
-        CF_DEBUG("READ2: amin=%g amax=%g", amin, amax);
-      }
-
     }
 
     if( canceled() ) {
       break;
     }
 
+    if( input_options_.input_image_processor ) {
+
+      lock_guard lock(mutex());
+
+      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+        CF_ERROR("input_image_processor->process() fails");
+        return false;
+      }
+
+      if( canceled() ) {
+        break;
+      }
+    }
+
     if( true ) {
+
       lock_guard lock(mutex());
       if( !process_current_frame() ) {
         CF_ERROR("process_current_frame() fails");
         return false;
       }
-      accumulated_frames_ =
-          processed_frames_;
+
+      ++accumulated_frames_;
     }
 
     if( !is_live_sequence ) {
@@ -203,67 +207,38 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
 bool c_generic_image_processor_pipeline::process_current_frame()
 {
-//  if ( sharpness_norm_measure_  ) {
-
-//    const double sharpen_factor = 2;
-//
-//    const double current_sharpeness = 0;
-//      sharpness_norm_measure_->measure(current_image_, current_mask_);
-//
-//    const double alpha = 0.99;
-//        // sharpen_factor * (1 - current_sharpeness / averaged_sharpeness_);
-//
-//    CF_DEBUG("current_sharpeness: %g averaged_sharpeness_: %g alpha=%g", current_sharpeness, averaged_sharpeness_, alpha);
-//
-//    if ( alpha > 0 && alpha < 1 ) {
-//
-//      double amin, amax, bmin, bmax;
-//
-//      cv::minMaxLoc(current_image_, &bmin, &bmax);
-//
-//      unsharp_mask(current_image_, current_image_,
-//          sharpness_norm_measure_->sigma(),
-//          alpha, -1, -1);
-//
-//      cv::minMaxLoc(current_image_, &amin, &amax);
-//
-//      CF_DEBUG("bmin=%g bmax=%g amin=%g amax=%g", bmin, bmax, amin, amax);
-//
-//    }
-//  }
-
-
-  if ( processing_options_.image_processor && !processing_options_.image_processor->empty() ) {
-    if ( !processing_options_.image_processor->process(current_image_, current_mask_) ) {
+  if( processing_options_.image_processor && !processing_options_.image_processor->empty() ) {
+    if( !processing_options_.image_processor->process(current_image_, current_mask_) ) {
       CF_ERROR("image_processor->process() fails");
       return false;
     }
-
-    if ( true ) {
-      double amin, amax;
-      cv::minMaxLoc(current_image_, &amin, &amax);
-      CF_DEBUG("PROC: amin=%g amax=%g", amin, amax);
-    }
-
   }
 
-  if( output_options_.save_processed_frames && !output_file_name_.empty() ) {
+  if( output_options_.save_processed_frames ) {
 
-    if( !output_writer_.is_open() ) {
-      if( !output_writer_.open(output_file_name_, current_image_.size(), current_image_.channels() > 1) ) {
-        CF_ERROR("output_writer_.open(%s) fails", output_file_name_.c_str());
+    if( !processed_file_writer_.is_open() ) {
+
+      const std::string output_filename =
+          generate_output_filename(output_options_.processed_file_options.output_filename,
+              "processed",
+              ".avi");
+
+      const bool fOk =
+          processed_file_writer_.open(output_filename,
+              output_options_.processed_file_options.output_image_processor,
+              output_options_.processed_file_options.output_pixel_depth,
+              output_options_.processed_file_options.save_frame_mapping);
+
+      if( !fOk ) {
+        CF_ERROR("output_writer_.open(%s) fails",
+            output_filename.c_str());
         return false;
       }
     }
 
-    if ( true ) {
-      double amin, amax;
-      cv::minMaxLoc(current_image_, &amin, &amax);
-      CF_DEBUG("WRITE: amin=%g amax=%g", amin, amax);
-    }
-
-    if( !output_writer_.write(current_image_, current_mask_) ) {
-      CF_ERROR("output_writer_.write(%s) fails", output_file_name_.c_str());
+    if( !processed_file_writer_.write(current_image_, current_mask_, false, input_sequence_->current_pos() - 1) ) {
+      CF_ERROR("output_writer_.write(%s) fails",
+          processed_file_writer_.filename().c_str());
       return false;
     }
   }
@@ -271,79 +246,9 @@ bool c_generic_image_processor_pipeline::process_current_frame()
   return true;
 }
 
-//
-//bool c_generic_image_processor_pipeline::compute_averaged_sharpeness(int start_pos, int end_pos)
-//{
-//  if( !input_sequence_->seek(start_pos) ) {
-//    CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
-//    return false;
-//  }
-//
-//  set_status_msg("RUNNING SHARPENESS MEASURE ...");
-//
-//  sharpness_norm_measure_.reset(new c_sharpness_norm_measure());
-//  if( processing_options_.unsharp_sigma > 0 ) {
-//    sharpness_norm_measure_->set_sigma(processing_options_.unsharp_sigma);
-//  }
-//
-//
-//  averaged_sharpeness_ = 0;
-//  processed_frames_ = 0;
-//  accumulated_frames_ = 0;
-//
-//  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
-//
-//    if( canceled() ) {
-//      break;
-//    }
-//
-//    if( true ) {
-//      lock_guard lock(mutex());
-//      if( !input_sequence_->read(current_image_, &current_mask_) ) {
-//        CF_DEBUG("input_sequence_->read() fails");
-//        break;
-//      }
-//    }
-//
-//    if ( true ) {
-//      double amin, amax;
-//      cv::minMaxLoc(current_image_, &amin, &amax);
-//      CF_DEBUG("READ:amin=%g amax=%g", amin, amax);
-//    }
-//
-//
-//    if( canceled() ) {
-//      break;
-//    }
-//
-//    sharpness_norm_measure_->add(current_image_, current_mask_);
-//    accumulated_frames_ = processed_frames_;
-//
-//    if ( true ) {
-//      double amin, amax;
-//      cv::minMaxLoc(current_image_, &amin, &amax);
-//      CF_DEBUG("sharpness_norm: amin=%g amax=%g", amin, amax);
-//    }
-//
-//
-//
-//    // give chance to GUI thread to call get_display_image()
-//    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-//  }
-//
-//  averaged_sharpeness_ =
-//      sharpness_norm_measure_->average();
-//
-//  CF_DEBUG("LEAVE: averaged_sharpness_ = %g\n",
-//      averaged_sharpeness_);
-//
-//  return true;
-//}
-//
-
 bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bool save)
 {
-  c_config_setting section;
+  c_config_setting section, subsection;
 
   if ( !base::serialize(settings, save)) {
     return false;
@@ -355,14 +260,15 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     SERIALIZE_IMAGE_PROCESSOR(section, save, processing_options_, image_processor);
-//    SERIALIZE_OPTION(section, save, processing_options_, adjust_sharpness);
-//    SERIALIZE_OPTION(section, save, processing_options_, unsharp_sigma);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
+
     SERIALIZE_OPTION(section, save, output_options_, save_processed_frames);
-    SERIALIZE_OPTION(section, save, output_options_, processed_frames_filename);
+    if( (subsection = SERIALIZE_GROUP(section, save, "processed_file_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, processed_file_options);
+    }
   }
 
   return true;
@@ -379,22 +285,46 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_p
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-//      PIPELINE_CTL(ctrls, processing_options_.adjust_sharpness, "adjust_sharpness", "");
-//      PIPELINE_CTLC(ctrls, processing_options_.unsharp_sigma, "unsharp sigma", "", _this-> processing_options_.adjust_sharpness);
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, processing_options_.image_processor, "image_processor", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
       PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
-      PIPELINE_CTL(ctrls, output_options_.save_processed_frames, "save_processed_frames", "");
-      PIPELINE_CTLC(ctrls, output_options_.processed_frames_filename, "processed_frames_filename", "",
-          _this->output_options_.save_processed_frames);
+
+      PIPELINE_CTL_GROUP(ctrls, "Save Processed Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_processed_frames, "save_processed_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.processed_file_options,
+            _this->output_options_.save_processed_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
     PIPELINE_CTL_END_GROUP(ctrls);
   }
 
   return ctrls;
 }
 
+bool c_generic_image_processor_pipeline::copyParameters(const base::sptr & dst) const
+{
+  if ( !base::copyParameters(dst) ) {
+    CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
+    return false;
+  }
+
+  this_class::sptr p =
+      std::dynamic_pointer_cast<this_class>(dst);
+
+  if( !p ) {
+    CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
+        get_class_name().c_str());
+    return false;
+  }
+
+  p->input_options_ = this->input_options_;
+  p->processing_options_ = this->processing_options_;
+  p->output_options_ = this->output_options_;
+
+  return true;
+}
 
 bool c_generic_image_processor_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {

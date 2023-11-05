@@ -18,8 +18,6 @@
 #include <core/proc/image_registration/pyrflowlk2.h>
 #include <core/proc/image_registration/morph_gradient_flow.h>
 
-#include <core/io/c_output_frame_writer.h>
-
 struct c_virtual_stereo_input_options :
     c_image_processing_pipeline_input_options
 {
@@ -27,7 +25,7 @@ struct c_virtual_stereo_input_options :
 
 struct c_virtual_stereo_image_processing_options
 {
-  c_image_processor::sptr input_processor;
+  // c_image_processor::sptr input_processor;
   c_image_processor::sptr feature2d_preprocessor;
 };
 

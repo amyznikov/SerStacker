@@ -1063,6 +1063,21 @@ bool serialize_base_input_options(c_config_setting section, bool save, c_image_p
     SERIALIZE_OPTION(subsection, save, opts.background_normalization_options, offset);
   }
 
+  if( save ) {
+    if( opts.input_image_processor ) {
+      save_settings(section, "input_image_processor",
+          opts.input_image_processor->name());
+    }
+  }
+  else {
+    std::string s;
+
+    if( load_settings(section, "input_image_processor", &s) && !s.empty() ) {
+      opts.input_image_processor =
+          c_image_processor_collection::default_instance()->get(s);
+    }
+  }
+
   return true;
 }
 

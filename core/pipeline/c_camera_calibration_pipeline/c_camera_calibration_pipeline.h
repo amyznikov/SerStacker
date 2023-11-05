@@ -14,7 +14,6 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/chessboard/chessboard_detection.h>
 #include <core/proc/camera_calibration/calibrate_camera.h>
-#include <core/io/c_output_frame_writer.h>
 
 
 struct c_camera_calibration_input_options :

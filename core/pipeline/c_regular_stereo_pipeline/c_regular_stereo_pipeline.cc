@@ -707,10 +707,7 @@ bool c_regular_stereo_pipeline::write_calibration_progress_video(c_output_frame_
               ".avi");
 
       bool fOK =
-          progress_writer.open(output_file_name,
-              display_frame_.size(),
-              display_frame_.channels() > 1,
-              false);
+          progress_writer.open(output_file_name);
 
       if( !fOK ) {
         CF_ERROR("progress_writer.open('%s') fails", output_file_name.c_str());
@@ -1771,7 +1768,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
             bool is_color =
                 tmp.channels() > 1;
 
-            if( !rectified_videos[i].open(rectified_videos_output_filenames[i], size, is_color) ) {
+            if( !rectified_videos[i].open(rectified_videos_output_filenames[i]) ) {
               CF_ERROR("recified_video_writer.open('%s') fails", rectified_videos_output_filenames[i].c_str());
               return false;
             }
@@ -1804,7 +1801,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
                   "stereo_matches",
                   ".avi");
 
-          if( !stereo_matches_video.open(output_file_name, display_frame_.size(), display_frame_.channels() > 1) ) {
+          if( !stereo_matches_video.open(output_file_name) ) {
             CF_ERROR("stereo_matches_video_writer.open('%s') fails", output_file_name.c_str());
             return false;
           }
@@ -2013,7 +2010,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
               ".avi");
 
       if ( !progress_video.is_open() ) {
-        if( !progress_video.open(output_file_name, display_frame_.size(), display_frame_.channels() > 1) ) {
+        if( !progress_video.open(output_file_name) ) {
           CF_ERROR("progress_video.open('%s') fails", output_file_name.c_str());
           return false;
         }

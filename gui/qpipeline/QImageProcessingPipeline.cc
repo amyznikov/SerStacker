@@ -6,6 +6,7 @@
  */
 
 #include "QImageProcessingPipeline.h"
+#include "QOutputFrameWriterOptions.h"
 #include "QImageStackingPipeline/QImageStackingPipeline.h"
 #include "QStereoCalibrationPipeline/QStereoCalibrationPipeline.h"
 #include "QCameraCalibrationPipeline/QCameraCalibrationPipeline.h"
@@ -27,69 +28,24 @@
 
 void registerPipelineClasses()
 {
-  c_image_processing_pipeline::register_class(
-      QImageStackingPipeline::class_name(),
-      QImageStackingPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QImageStackingPipeline(name.c_str(), input_sequence));
-      });
+#define REGISTER_PIPELINE_CLASS(C) \
+    c_image_processing_pipeline::register_class(C::class_name(), C::tooltip(), \
+        [](const std::string & name, const c_input_sequence::sptr & input_sequence) { \
+          return c_image_processing_pipeline::sptr(new C(name.c_str(), input_sequence)); \
+        });
 
-  c_image_processing_pipeline::register_class(
-      QCameraCalibrationPipeline::class_name(),
-      QCameraCalibrationPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QCameraCalibrationPipeline(name.c_str(), input_sequence));
-      });
 
-  c_image_processing_pipeline::register_class(
-      QStereoCalibrationPipeline::class_name(),
-      QStereoCalibrationPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QStereoCalibrationPipeline(name.c_str(), input_sequence));
-      });
+  REGISTER_PIPELINE_CLASS(QImageStackingPipeline);
+  REGISTER_PIPELINE_CLASS(QCameraCalibrationPipeline);
+  REGISTER_PIPELINE_CLASS(QStereoCalibrationPipeline);
+  REGISTER_PIPELINE_CLASS(QRegularStereoMatcherPipeline);
+  REGISTER_PIPELINE_CLASS(QGenericImageProcessingPipeline);
+  REGISTER_PIPELINE_CLASS(QLveStackingPipeline);
+  REGISTER_PIPELINE_CLASS(QVirtualStereoPipeline);
+  REGISTER_PIPELINE_CLASS(QRoiTrackerPipeline);
+  REGISTER_PIPELINE_CLASS(QVLOPipeline);
 
-  c_image_processing_pipeline::register_class(
-      QRegularStereoMatcherPipeline::class_name(),
-      QRegularStereoMatcherPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QRegularStereoMatcherPipeline(name.c_str(), input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      QGenericImageProcessingPipeline::class_name(),
-      QGenericImageProcessingPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QGenericImageProcessingPipeline(name.c_str(), input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      QLveStackingPipeline::class_name(),
-      QLveStackingPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QLveStackingPipeline(name.c_str(), input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      QVirtualStereoPipeline::class_name(),
-      QVirtualStereoPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QVirtualStereoPipeline(name.c_str(), input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      QRoiTrackerPipeline::class_name(),
-      QRoiTrackerPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QRoiTrackerPipeline(name.c_str(), input_sequence));
-      });
-
-  c_image_processing_pipeline::register_class(
-      QVLOPipeline::class_name(),
-      QVLOPipeline::tooltip(),
-      [](const std::string & name, const c_input_sequence::sptr & input_sequence) {
-        return c_image_processing_pipeline::sptr(new QVLOPipeline(name.c_str(), input_sequence));
-      });
-
+#undef REGISTER_PIPELINE_CLASS
 }
 
 
@@ -602,6 +558,36 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         break;
       }
         /////////////////////
+
+      case c_image_processor_pipeline_ctl_output_writer: {
+
+        QOutputFrameWriterOptions * w =
+            new QOutputFrameWriterOptions(this);
+
+        if( ctrl.get_output_writer_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_output_writer_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+      /////////////////////
       default:
         break;
     }

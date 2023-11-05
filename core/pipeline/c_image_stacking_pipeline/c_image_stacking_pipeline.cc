@@ -767,10 +767,11 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       return false;
     }
 
-    if( image_processing_options_.input_image_processor ) {
-      if( !image_processing_options_.input_image_processor->process(reference_frame, reference_mask) ) {
-        CF_ERROR("input_image_processor->process(pos=%d) fails", cpos);
-        continue;
+    if( input_options_.input_image_processor ) {
+      // lock_guard lock(mutex());
+      if( !input_options_.input_image_processor->process(reference_frame, reference_mask) ) {
+        CF_ERROR("input_image_processor->process(reference_frame) fails");
+        return false;
       }
     }
 
@@ -1190,7 +1191,7 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
         output_path_.c_str()));
   }
 
-  if( image_processing_options_.ecc_image_processor && master_options.apply_input_frame_processors  ) {
+  if( image_processing_options_.ecc_image_processor && master_options.apply_input_image_processor  ) {
     frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options_));
   }
 
@@ -1199,7 +1200,7 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
     return false;
   }
 
-  if( image_processing_options_.ecc_image_processor && !master_options.apply_input_frame_processors ) {
+  if( image_processing_options_.ecc_image_processor && !master_options.apply_input_image_processor ) {
     frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options_));
   }
 
@@ -1454,12 +1455,19 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     return false;
   }
 
-  if( image_processing_options_.input_image_processor ) {
-    if( master_options.apply_input_frame_processors ) { // !is_external_master_file ||
-      if( !image_processing_options_.input_image_processor->process(reference_frame, reference_mask) ) {
-        CF_ERROR("input_image_processor->process(reference_frame) fails");
-        return false;
-      }
+//  if( image_processing_options_.input_image_processor ) {
+//    if( master_options.apply_input_frame_processors ) { // !is_external_master_file ||
+//      if( !image_processing_options_.input_image_processor->process(reference_frame, reference_mask) ) {
+//        CF_ERROR("input_image_processor->process(reference_frame) fails");
+//        return false;
+//      }
+//    }
+//  }
+  if( input_options_.input_image_processor && master_options.apply_input_image_processor ) {
+    // lock_guard lock(mutex());
+    if( !input_options_.input_image_processor->process(reference_frame, reference_mask) ) {
+      CF_ERROR("input_image_processor->process(reference_frame) fails");
+      return false;
     }
   }
 
@@ -1543,7 +1551,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     // disable jovian derotation for master frame generator
     frame_registration_->options().jovian_derotation.enabled = false;
 
-    if( image_processing_options_.ecc_image_processor && master_options.apply_input_frame_processors  ) {
+    if( image_processing_options_.ecc_image_processor && master_options.apply_input_image_processor  ) {
       frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options_));
     }
 
@@ -1552,7 +1560,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
       return false;
     }
 
-    if( image_processing_options_.ecc_image_processor && !master_options.apply_input_frame_processors  ) {
+    if( image_processing_options_.ecc_image_processor && !master_options.apply_input_image_processor  ) {
       frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options_));
     }
 
@@ -1808,11 +1816,21 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       break;
     }
 
-    if( image_processing_options_.input_image_processor ) {
-      if( !generating_master_frame || image_registration_options_.master_frame_options.apply_input_frame_processors ) {
-        if( !image_processing_options_.input_image_processor->process(current_frame, current_mask) ) {
+//    if( image_processing_options_.input_image_processor ) {
+//      if( !generating_master_frame || image_registration_options_.master_frame_options.apply_input_image_processor ) {
+//        if( !image_processing_options_.input_image_processor->process(current_frame, current_mask) ) {
+//          CF_ERROR("input_image_processor->process(current_frame) fails");
+//          continue;
+//        }
+//      }
+//    }
+
+    if( input_options_.input_image_processor ) {
+      if( !generating_master_frame || image_registration_options_.master_frame_options.apply_input_image_processor ) {
+        // lock_guard lock(mutex());
+        if( !input_options_.input_image_processor->process(current_frame, current_mask) ) {
           CF_ERROR("input_image_processor->process(current_frame) fails");
-          continue;
+          return false;
         }
       }
     }
@@ -2044,29 +2062,14 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
 
       if( image_processing_options_.aligned_image_processor ) {
-
-        image_processing_options_.aligned_image_processor->process(current_frame, current_mask);
-        if ( canceled() ) {
+        if( !image_processing_options_.aligned_image_processor->process(current_frame, current_mask) ) {
+          CF_ERROR("aligned_image_processor->process() fails");
+          return false;
+        }
+        if( canceled() ) {
           set_status_msg("canceled");
           break;
         }
-
-        if( output_options_.save_processed_aligned_frames ) {
-
-          if( !save_postprocessed_frame(current_frame, current_mask,
-              output_postprocessed_frames_writer,
-              input_sequence->current_pos() - 1) ) {
-
-            CF_ERROR("save_postprocessed_frame() fails");
-            return false;
-          }
-
-          if ( canceled() ) {
-            set_status_msg("canceled");
-            break;
-          }
-        }
-
       }
     }
 
@@ -2802,33 +2805,22 @@ bool c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
     return true;
   }
 
-  if ( !output_writer.is_open() ) {
+  if( !output_writer.is_open() ) {
 
-    std::string pathfilename =
-        output_options_.output_preprocessed_frames_filename;
+    const c_output_frame_writer_options &opts =
+        output_options_.output_preprocessed_video_options;
 
-    if( pathfilename.empty() ) {
-      pathfilename =
-          ssprintf("%s-preproc.avi",
-              csequence_name());
-    }
-
-    if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
-          pathfilename.c_str());
-    }
-
-    if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return false;
-    }
+    const std::string pathfilename =
+        generate_output_filename(opts.output_filename,
+            "-preproc",
+            ".avi");
 
     output_writer.open(pathfilename,
-        current_frame.size(),
-        current_frame.channels() > 1,
-        output_options_.save_preprocessed_frame_mapping);
+        opts.output_image_processor,
+        opts.output_pixel_depth,
+        opts.save_frame_mapping);
 
-    if ( !output_writer.is_open() ) {
+    if( !output_writer.is_open() ) {
 
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
@@ -2844,41 +2836,28 @@ bool c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
 
 bool c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
     c_output_frame_writer & output_writer,
-    int seqindex ) const
+    int seqindex) const
 {
-  if ( !output_options_.save_aligned_frames ) {
+  if( !output_options_.save_aligned_frames ) {
     return true;
   }
 
-  if ( !output_writer.is_open() ) {
+  if( !output_writer.is_open() ) {
 
-    std::string pathfilename =
-        output_options_.output_aligned_frames_filename;
+    const c_output_frame_writer_options &opts =
+        output_options_.output_aligned_video_options;
 
-    if( pathfilename.empty() ) {
-      pathfilename =
-          ssprintf("%s-aligned.avi",
-              csequence_name());
-    }
-
-    if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
-          pathfilename.c_str());
-    }
-
-    if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",
-          pathfilename.c_str(),
-          strerror(errno));
-      return false;
-    }
+    const std::string pathfilename =
+        generate_output_filename(opts.output_filename,
+            "-aligned",
+            ".avi");
 
     output_writer.open(pathfilename,
-        current_frame.size(),
-        current_frame.channels() > 1,
-        output_options_.save_aligned_frame_mapping);
+        opts.output_image_processor,
+        opts.output_pixel_depth,
+        opts.save_frame_mapping);
 
-    if ( !output_writer.is_open() ) {
+    if( !output_writer.is_open() ) {
 
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
@@ -2890,7 +2869,6 @@ bool c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
   return output_writer.write(current_frame, current_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
-
 }
 
 bool c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
@@ -2902,33 +2880,22 @@ bool c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
     return true;
   }
 
-  if ( !output_writer.is_open() ) {
+  if( !output_writer.is_open() ) {
 
-    std::string pathfilename =
-        output_options_.output_ecc_frames_filename;
+    const c_output_frame_writer_options &opts =
+        output_options_.output_ecc_video_options;
 
-    if( pathfilename.empty() ) {
-      pathfilename =
-          ssprintf("%s-ecc.avi",
-              csequence_name());
-    }
-
-    if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
-          pathfilename.c_str());
-    }
-
-    if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return false;
-    }
+    const std::string pathfilename =
+        generate_output_filename(opts.output_filename,
+            "-ecc",
+            ".ser");
 
     output_writer.open(pathfilename,
-        current_frame.size(),
-        current_frame.channels() > 1,
-        output_options_.save_ecc_frame_mapping);
+        opts.output_image_processor,
+        opts.output_pixel_depth,
+        opts.save_frame_mapping);
 
-    if ( !output_writer.is_open() ) {
+    if( !output_writer.is_open() ) {
 
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
@@ -2937,60 +2904,7 @@ bool c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
     }
   }
 
-  return output_writer.write(current_frame, cv::noArray()/*current_mask*/,
-      output_options_.write_image_mask_as_alpha_channel,
-      seqindex);
-
-}
-
-
-bool c_image_stacking_pipeline::save_postprocessed_frame(const cv::Mat & current_frame, const cv::Mat & current_mask,
-    c_output_frame_writer & output_writer,
-    int seqindex) const
-{
-//  const c_image_stacking_output_options & output_options =
-//      output_options();
-
-  if ( !output_options_.save_processed_aligned_frames ) {
-    return true;
-  }
-
-  if ( !output_writer.is_open() ) {
-
-    std::string pathfilename =
-        output_options_.output_postprocessed_frames_filename;
-
-    if( pathfilename.empty() ) {
-      pathfilename =
-          ssprintf("%s-postproc.avi",
-              csequence_name());
-    }
-
-    if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
-          pathfilename.c_str());
-    }
-
-    if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return false;
-    }
-
-    output_writer.open(pathfilename,
-        current_frame.size(),
-        current_frame.channels() > 1,
-        output_options_.save_processed_aligned_frame_mapping);
-
-    if ( !output_writer.is_open() ) {
-
-      CF_ERROR("Can not open output writer '%s'",
-          pathfilename.c_str());
-
-      return false;
-    }
-  }
-
-  return output_writer.write(current_frame, current_mask,
+  return output_writer.write(current_frame, cv::noArray(),
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
 }
@@ -2999,42 +2913,26 @@ bool c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
     c_output_frame_writer & output_writer,
     int seqindex) const
 {
-//  const c_image_stacking_output_options & output_options =
-//      output_options();
-
   if ( !output_options_.save_incremental_frames ) {
     return true;
   }
 
-  if ( !output_writer.is_open() ) {
+  if( !output_writer.is_open() ) {
 
-    std::string pathfilename =
-        output_options_.output_incremental_frames_filename;
+    const c_output_frame_writer_options &opts =
+        output_options_.output_incremental_video_options;
 
-    if( pathfilename.empty() ) {
-      pathfilename =
-          ssprintf("%s.acc.avi",
-              csequence_name());
-    }
-
-    if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
-          pathfilename.c_str());
-    }
-
-    if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return false;
-    }
-
-
+    const std::string pathfilename =
+        generate_output_filename(opts.output_filename,
+            "-incremental",
+            ".avi");
 
     output_writer.open(pathfilename,
-        accumulated_frame.size(),
-        accumulated_frame.channels() > 1,
-        output_options_.save_incremental_frame_mapping);
+        opts.output_image_processor,
+        opts.output_pixel_depth,
+        opts.save_frame_mapping);
 
-    if ( !output_writer.is_open() ) {
+    if( !output_writer.is_open() ) {
 
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
@@ -3046,7 +2944,6 @@ bool c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
   return output_writer.write(accumulated_frame, accumulated_mask,
       output_options_.write_image_mask_as_alpha_channel,
       seqindex);
-
 }
 
 bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & current_mask,
@@ -3059,31 +2956,20 @@ bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
   if ( !output_writer.is_open() ) {
 
-    std::string pathfilename =
-        output_options_.output_accumulation_masks_filename;
+    const c_output_frame_writer_options &opts =
+        output_options_.output_acc_masks_video_options;
 
-    if( pathfilename.empty() ) {
-      pathfilename =
-          ssprintf("%s-masks.avi",
-              csequence_name());
-    }
-
-    if ( !is_absolute_path(pathfilename)  ) {
-      pathfilename = ssprintf("%s/%s", output_path_.c_str(),
-          pathfilename.c_str());
-    }
-
-    if ( !create_path(get_parent_directory(pathfilename)) ) {
-      CF_ERROR("ERROR: create_path() fails for '%s' : %s",  pathfilename.c_str(), strerror(errno));
-      return false;
-    }
+    const std::string pathfilename =
+        generate_output_filename(opts.output_filename,
+            "-masks",
+            ".avi");
 
     output_writer.open(pathfilename,
-        current_frame.size(),
-        false,
-        output_options_.save_accumulation_masks_frame_mapping);
+        opts.output_image_processor,
+        opts.output_pixel_depth,
+        opts.save_frame_mapping);
 
-    if ( !output_writer.is_open() ) {
+    if( !output_writer.is_open() ) {
 
       CF_ERROR("Can not open output writer '%s'",
           pathfilename.c_str());
@@ -3104,6 +2990,7 @@ bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
       return false;
     }
   }
+
   return true;
 }
 
@@ -3319,7 +3206,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_selection_method);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_fiename);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_frame_index);
-      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, apply_input_frame_processors);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, apply_input_image_processor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, generate_master_frame);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, max_frames_to_generate_master_frame);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, feature_scale);
@@ -3455,18 +3342,31 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = get_group(settings, save, "output")) ) {
 
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
-    SERIALIZE_OPTION(section, save, output_options_, output_preprocessed_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, output_aligned_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, output_ecc_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, output_postprocessed_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, output_accumulation_masks_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_preprocessed_frames);
+    if( (subsection = get_group(section, save, "output_preprocessed_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_preprocessed_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, output_options_, save_aligned_frames);
+    if( (subsection = get_group(section, save, "output_aligned_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_aligned_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, output_options_, save_ecc_frames);
-    SERIALIZE_OPTION(section, save, output_options_, save_processed_aligned_frames);
-    SERIALIZE_OPTION(section, save, output_options_, save_incremental_frames);
+    if( (subsection = get_group(section, save, "output_ecc_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_ecc_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, output_options_, save_accumulation_masks);
+    if( (subsection = get_group(section, save, "output_acc_masks_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_acc_masks_video_options);
+    }
+
+    SERIALIZE_OPTION(section, save, output_options_, save_incremental_frames);
+    if( (subsection = get_group(section, save, "output_incremental_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_incremental_video_options);
+    }
 
     SERIALIZE_OPTION(section, save, output_options_, dump_reference_data_for_debug);
     SERIALIZE_OPTION(section, save, output_options_, write_image_mask_as_alpha_channel);
@@ -3475,10 +3375,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = get_group(settings, save, "image_processing")) ) {
     if( save ) {
 
-      if( image_processing_options_.input_image_processor ) {
-        save_settings(settings, "input_image_processor",
-            image_processing_options_.input_image_processor->name());
-      }
       if( image_processing_options_.ecc_image_processor ) {
         save_settings(settings, "ecc_image_processor",
             image_processing_options_.ecc_image_processor->name());
@@ -3500,10 +3396,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
       std::string s;
 
-      if( load_settings(settings, "input_image_processor", &s) && !s.empty() ) {
-        image_processing_options_.input_image_processor =
-            c_image_processor_collection::default_instance()->get(s);
-      }
       if( load_settings(settings, "ecc_image_processor", &s) && !s.empty() ) {
         image_processing_options_.ecc_image_processor =
             c_image_processor_collection::default_instance()->get(s);
@@ -3535,7 +3427,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Input options", "");
       POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-      PIPELINE_CTL(ctrls, input_options_.anscombe, "", "");
+      PIPELINE_CTL(ctrls, input_options_.anscombe, "anscombe", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////
@@ -3587,7 +3479,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
 
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_image_processor, "input_image_processor", "");
+      // PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_image_processor, "input_image_processor", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.ecc_image_processor, "ecc_image_processor", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.aligned_image_processor, "aligned_image_processor", "");
       PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.incremental_frame_processor, "incremental_frame_processor", "");
@@ -3600,48 +3492,41 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
     PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
     PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
 
-    PIPELINE_CTL(ctrls, output_options_.save_preprocessed_frames, "save_preprocessed_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.save_preprocessed_frame_mapping, "save_preprocessed_frame_mapping", "",
-        (_this->output_options_.save_preprocessed_frames));
-    PIPELINE_CTLC(ctrls, output_options_.output_preprocessed_frames_filename, "preprocessed_frames_filename", "",
-        (_this->output_options_.save_preprocessed_frames));
-
-    PIPELINE_CTL(ctrls, output_options_.save_aligned_frames, "save_aligned_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.save_aligned_frame_mapping, "save_aligned_frame_mapping", "",
-        (_this->output_options_.save_aligned_frames));
-    PIPELINE_CTLC(ctrls, output_options_.output_aligned_frames_filename, "aligned_frames_filename", "",
-        (_this->output_options_.save_aligned_frames));
-
-    PIPELINE_CTL(ctrls, output_options_.save_ecc_frames, "save_ecc_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.save_ecc_frame_mapping, "save_ecc_frame_mapping", "",
-        (_this->output_options_.save_ecc_frames));
-    PIPELINE_CTLC(ctrls, output_options_.output_ecc_frames_filename, "ecc_frames_filename", "",
-        (_this->output_options_.save_ecc_frames));
-
-    PIPELINE_CTL(ctrls, output_options_.save_processed_aligned_frames, "save_processed_aligned_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.save_processed_aligned_frame_mapping, "save_processed_aligned_frame_mapping", "",
-        (_this->output_options_.save_processed_aligned_frames));
-    PIPELINE_CTLC(ctrls, output_options_.output_postprocessed_frames_filename, "postprocessed_frames_filename", "",
-        (_this->output_options_.save_processed_aligned_frames));
-
-    PIPELINE_CTL(ctrls, output_options_.save_incremental_frames, "save_incremental_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.save_incremental_frame_mapping, "save_incremental_frame_mapping", "",
-        (_this->output_options_.save_incremental_frames));
-    PIPELINE_CTLC(ctrls, output_options_.output_incremental_frames_filename, "incremental_frames_filename", "",
-        (_this->output_options_.save_incremental_frames));
-
-    PIPELINE_CTL(ctrls, output_options_.save_accumulation_masks, "save_accumulation_masks", "");
-    PIPELINE_CTLC(ctrls, output_options_.save_accumulation_masks_frame_mapping, "save_accumulation_masks_frame_mapping", "",
-        (_this->output_options_.save_accumulation_masks));
-    PIPELINE_CTLC(ctrls, output_options_.output_accumulation_masks_filename, "accumulation_masks_filename", "",
-        (_this->output_options_.save_accumulation_masks));
-
     PIPELINE_CTL(ctrls, output_options_.write_image_mask_as_alpha_channel, "write_image_mask_as_alpha_channel", "");
-
     PIPELINE_CTL(ctrls, output_options_.dump_reference_data_for_debug, "dump_reference_data_for_debug", "");
     PIPELINE_CTL(ctrls, output_options_.debug_frame_registration, "debug_frame_registration", "");
     PIPELINE_CTLC(ctrls, output_options_.debug_frame_registration_frame_indexes, "debug_frame_registration_frame_indexes", "",
         (_this->output_options_.debug_frame_registration));
+
+    PIPELINE_CTL_GROUP(ctrls, "Save Preprocessed Frames", "");
+    PIPELINE_CTL(ctrls, output_options_.save_preprocessed_frames, "save_preprocessed_frames", "");
+    PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_preprocessed_video_options,
+        (_this->output_options_.save_preprocessed_frames));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Save Aligned Frames", "");
+    PIPELINE_CTL(ctrls, output_options_.save_aligned_frames, "save_aligned_frames", "");
+    PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_aligned_video_options,
+        (_this->output_options_.save_aligned_frames));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Save ECC Frames", "");
+      PIPELINE_CTL(ctrls, output_options_.save_ecc_frames, "save_ecc_frames", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_ecc_video_options,
+          (_this->output_options_.save_ecc_frames));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Save ACC Masks", "");
+      PIPELINE_CTL(ctrls, output_options_.save_accumulation_masks, "save_accumulation_masks", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_acc_masks_video_options,
+          (_this->output_options_.save_accumulation_masks));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Save Incremental Frames", "");
+      PIPELINE_CTL(ctrls, output_options_.save_incremental_frames, "save_incremental_frames", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_incremental_video_options,
+          (_this->output_options_.save_incremental_frames));
+    PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////

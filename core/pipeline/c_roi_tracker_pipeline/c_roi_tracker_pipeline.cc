@@ -307,13 +307,20 @@ bool c_roi_tracker_pipeline::run_pipeline()
       break;
     }
 
+    if( input_options_.input_image_processor ) {
+      lock_guard lock(mutex());
+      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+        CF_ERROR("input_image_processor->process() fails");
+        return false;
+      }
+    }
+
     if( !process_current_frame() ) {
       CF_ERROR("process_current_frame() fails");
       return false;
     }
 
-    accumulated_frames_ =
-        processed_frames_;
+    ++accumulated_frames_;
 
     if( !is_live_sequence ) {
       // give chance to GUI thread to call get_display_image()
@@ -396,10 +403,7 @@ bool c_roi_tracker_pipeline::write_progress_video()
             ".avi");
 
     bool fOK =
-        progress_writer_.open(output_video_filename,
-            display.size(),
-            display.channels() > 1,
-            false);
+        progress_writer_.open(output_video_filename);
 
     if( !fOK ) {
       CF_ERROR("progress_writer_.open('%s') fails",

@@ -89,8 +89,13 @@ bool matchQuickFilter(const QString & text,
    }
    else {
 
-     const uint matchType = flags & 0x0F;
-     const Qt::CaseSensitivity cs = (flags & Qt::MatchCaseSensitive) ? Qt::CaseSensitive : Qt::CaseInsensitive;
+     const uint matchType =
+         flags & 0x0F;
+
+     const Qt::CaseSensitivity cs =
+         (flags & Qt::MatchCaseSensitive) ?
+             Qt::CaseSensitive :
+             Qt::CaseInsensitive;
 
      switch ( matchType ) {
 
@@ -229,7 +234,7 @@ void QThumbnailsQuickFilterOptions::saveFilters()
   QSettings settings;
 
   QStringList savedFilters;
-  for( int i = 0, n = std::max(20, searchText_ctl->count()); i < n; ++i ) {
+  for( int i = 0, n = std::max(32, searchText_ctl->count()); i < n; ++i ) {
     savedFilters.append(searchText_ctl->itemText(i));
   }
 
@@ -245,7 +250,7 @@ void QThumbnailsQuickFilterOptions::saveFilters()
 
 void QThumbnailsQuickFilterOptions::onSearchTextCurrentIndexChanged(int index)
 {
-  if( index > 0 && !updatingControls() ) {
+  if( index >= 0 && !updatingControls() ) {
 
     c_update_controls_lock lock(this);
 

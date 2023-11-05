@@ -1561,14 +1561,14 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
       add_checkbox("Apply input processors:",
           "",
           [this](bool checked) {
-            if ( options_ && options_->apply_input_frame_processors != checked ) {
-              options_->apply_input_frame_processors = checked;
+            if ( options_ && options_->apply_input_image_processor != checked ) {
+              options_->apply_input_image_processor = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
             if ( options_  ) {
-              *checked = options_->apply_input_frame_processors;
+              *checked = options_->apply_input_image_processor;
               return true;
             }
             return false;

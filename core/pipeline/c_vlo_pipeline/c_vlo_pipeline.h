@@ -12,7 +12,6 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/threshold.h>
 #include <core/io/c_vlo_file.h>
-#include <core/io/c_output_frame_writer.h>
 
 
 struct c_vlo_pipeline_input_options :

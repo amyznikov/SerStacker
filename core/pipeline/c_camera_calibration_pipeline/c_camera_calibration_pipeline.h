@@ -42,14 +42,15 @@ struct c_calibrate_camera_options
 struct c_camera_calibration_output_options :
     c_image_processing_pipeline_output_options
 {
-  std::string output_intrinsics_filename;
-  std::string chessboard_frames_filename;
-  std::string rectified_frames_filename;
-  std::string progress_video_filename;
-
   bool save_chessboard_frames = false;
   bool save_rectified_frames = false;
-  bool save_progress_video = false;
+  // bool save_progress_video = false;
+
+  std::string output_intrinsics_filename;
+
+  c_output_frame_writer_options output_chessboard_video_options;
+  c_output_frame_writer_options output_rectified_video_options;
+  // c_output_frame_writer_options output_progress_video_options;
 };
 
 

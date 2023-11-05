@@ -2807,24 +2807,15 @@ bool c_image_stacking_pipeline::save_preprocessed_frame(const cv::Mat & current_
 
   if( !output_writer.is_open() ) {
 
-    const c_output_frame_writer_options &opts =
-        output_options_.output_preprocessed_video_options;
-
-    const std::string pathfilename =
-        generate_output_filename(opts.output_filename,
-            "-preproc",
+    bool fOK =
+        open_output_writer(output_writer,
+            output_options_.output_preprocessed_video_options,
+            "preproc",
             ".avi");
 
-    output_writer.open(pathfilename,
-        opts.output_image_processor,
-        opts.output_pixel_depth,
-        opts.save_frame_mapping);
-
-    if( !output_writer.is_open() ) {
-
+    if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
-          pathfilename.c_str());
-
+          output_writer.filename().c_str());
       return false;
     }
   }
@@ -2844,24 +2835,15 @@ bool c_image_stacking_pipeline::save_aligned_frame(const cv::Mat & current_frame
 
   if( !output_writer.is_open() ) {
 
-    const c_output_frame_writer_options &opts =
-        output_options_.output_aligned_video_options;
-
-    const std::string pathfilename =
-        generate_output_filename(opts.output_filename,
-            "-aligned",
+    const bool fOK =
+        open_output_writer(output_writer,
+            output_options_.output_aligned_video_options,
+            "algned",
             ".avi");
 
-    output_writer.open(pathfilename,
-        opts.output_image_processor,
-        opts.output_pixel_depth,
-        opts.save_frame_mapping);
-
-    if( !output_writer.is_open() ) {
-
+    if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
-          pathfilename.c_str());
-
+          output_writer.filename().c_str());
       return false;
     }
   }
@@ -2882,24 +2864,15 @@ bool c_image_stacking_pipeline::save_ecc_frame(const cv::Mat & current_frame, co
 
   if( !output_writer.is_open() ) {
 
-    const c_output_frame_writer_options &opts =
-        output_options_.output_ecc_video_options;
+    const bool fOK =
+        open_output_writer(output_writer,
+            output_options_.output_ecc_video_options,
+            "ecc",
+            ".avi");
 
-    const std::string pathfilename =
-        generate_output_filename(opts.output_filename,
-            "-ecc",
-            ".ser");
-
-    output_writer.open(pathfilename,
-        opts.output_image_processor,
-        opts.output_pixel_depth,
-        opts.save_frame_mapping);
-
-    if( !output_writer.is_open() ) {
-
+    if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
-          pathfilename.c_str());
-
+          output_writer.filename().c_str());
       return false;
     }
   }
@@ -2919,24 +2892,15 @@ bool c_image_stacking_pipeline::save_incremental_frame(const cv::Mat & accumulat
 
   if( !output_writer.is_open() ) {
 
-    const c_output_frame_writer_options &opts =
-        output_options_.output_incremental_video_options;
-
-    const std::string pathfilename =
-        generate_output_filename(opts.output_filename,
-            "-incremental",
+    const bool fOK =
+        open_output_writer(output_writer,
+            output_options_.output_incremental_video_options,
+            "incremental",
             ".avi");
 
-    output_writer.open(pathfilename,
-        opts.output_image_processor,
-        opts.output_pixel_depth,
-        opts.save_frame_mapping);
-
-    if( !output_writer.is_open() ) {
-
+    if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
-          pathfilename.c_str());
-
+          output_writer.filename().c_str());
       return false;
     }
   }
@@ -2956,24 +2920,15 @@ bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
   if ( !output_writer.is_open() ) {
 
-    const c_output_frame_writer_options &opts =
-        output_options_.output_acc_masks_video_options;
-
-    const std::string pathfilename =
-        generate_output_filename(opts.output_filename,
-            "-masks",
+    const bool fOK =
+        open_output_writer(output_writer,
+            output_options_.output_acc_masks_video_options,
+            "acc_masks",
             ".avi");
 
-    output_writer.open(pathfilename,
-        opts.output_image_processor,
-        opts.output_pixel_depth,
-        opts.save_frame_mapping);
-
-    if( !output_writer.is_open() ) {
-
+    if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
-          pathfilename.c_str());
-
+          output_writer.filename().c_str());
       return false;
     }
   }

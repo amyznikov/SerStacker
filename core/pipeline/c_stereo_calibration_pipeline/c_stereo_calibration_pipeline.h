@@ -41,19 +41,21 @@ struct c_stereo_calibrate_options
 struct c_stereo_calibration_output_options :
     c_image_processing_pipeline_output_options
 {
+
   std::string output_intrinsics_filename;
   std::string output_extrinsics_filename;
-  std::string chessboard_frames_filename;
-  std::string rectified_frames_filename;
-  std::string stereo_rectified_frames_filename;
-  std::string quad_rectified_frames_filename;
-  std::string progress_video_filename;
 
   bool save_chessboard_frames = false;
   bool save_rectified_frames = false;
   bool save_stereo_rectified_frames = false;
   bool save_quad_rectified_frames = false;
   bool save_progress_video = false;
+
+  c_output_frame_writer_options chessboard_frames_output_options;
+  c_output_frame_writer_options rectified_frames_output_options;
+  c_output_frame_writer_options stereo_rectified_output_options;
+  c_output_frame_writer_options quad_rectified_output_options;
+  c_output_frame_writer_options progress_video_output_options;
 };
 
 class c_stereo_calibration_pipeline:
@@ -171,11 +173,11 @@ protected:
 
   std::string output_intrinsics_filename_;
   std::string output_extrinsics_filename_;
-  std::string chessboard_frames_filename_;
-  std::string rectified_frames_filename_;
-  std::string stereo_rectified_frames_filename_;
-  std::string quad_rectified_frames_filename_;
-  std::string progress_video_filename_;
+//  std::string chessboard_frames_filename_;
+//  std::string rectified_frames_filename_;
+//  std::string stereo_rectified_frames_filename_;
+//  std::string quad_rectified_frames_filename_;
+//  std::string progress_video_filename_;
 
   c_output_frame_writer chessboard_video_writer_;
 };

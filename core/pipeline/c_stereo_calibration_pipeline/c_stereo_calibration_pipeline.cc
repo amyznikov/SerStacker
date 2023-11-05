@@ -23,7 +23,6 @@ c_stereo_calibration_pipeline::c_stereo_calibration_pipeline(const std::string &
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
-  // input_options_.input_sequence = input_sequence;
 }
 
 c_stereo_calibration_pipeline::~c_stereo_calibration_pipeline()
@@ -73,7 +72,7 @@ const c_stereo_calibration_output_options & c_stereo_calibration_pipeline::outpu
 
 bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool save)
 {
-  c_config_setting section;
+  c_config_setting section, subsection;
 
   if ( !base::serialize(settings, save)) {
     return false;
@@ -106,19 +105,29 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_OPTION(section, save, output_options_, output_extrinsics_filename);
 
     SERIALIZE_OPTION(section, save, output_options_, save_chessboard_frames);
-    SERIALIZE_OPTION(section, save, output_options_, chessboard_frames_filename);
+    if( (subsection = SERIALIZE_GROUP(section, save, "chessboard_frames_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, chessboard_frames_output_options);
+    }
 
     SERIALIZE_OPTION(section, save, output_options_, save_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, rectified_frames_filename);
+    if( (subsection = SERIALIZE_GROUP(section, save, "rectified_frames_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, rectified_frames_output_options);
+    }
 
     SERIALIZE_OPTION(section, save, output_options_, save_stereo_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, stereo_rectified_frames_filename);
+    if( (subsection = SERIALIZE_GROUP(section, save, "stereo_rectified_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, stereo_rectified_output_options);
+    }
 
     SERIALIZE_OPTION(section, save, output_options_, save_quad_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, quad_rectified_frames_filename);
+    if( (subsection = SERIALIZE_GROUP(section, save, "quad_rectified_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, quad_rectified_output_options);
+    }
 
     SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
-    SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
+    if( (subsection = SERIALIZE_GROUP(section, save, "progress_video_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, progress_video_output_options);
+    }
   }
 
   return true;
@@ -183,20 +192,36 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_calibration_pipeli
       PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "output_intrinsics_filename", "");
       PIPELINE_CTL(ctrls, output_options_.output_extrinsics_filename, "output_extrinsics_filename", "");
 
-      PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
-      PIPELINE_CTL(ctrls, output_options_.chessboard_frames_filename, "chessboard_frames_filename", "");
+      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.chessboard_frames_output_options,
+            _this->output_options_.save_chessboard_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
-      PIPELINE_CTL(ctrls, output_options_.rectified_frames_filename, "rectified_frames_filename", "");
+      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.rectified_frames_output_options,
+            _this->output_options_.save_rectified_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL(ctrls, output_options_.save_stereo_rectified_frames, "save_stereo_rectified_frames", "");
-      PIPELINE_CTL(ctrls, output_options_.stereo_rectified_frames_filename, "stereo_rectified_frames_filename", "");
+      PIPELINE_CTL_GROUP(ctrls, "Save Stereo Rectified Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_stereo_rectified_frames, "save_stereo_rectified_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.stereo_rectified_output_options,
+            _this->output_options_.save_stereo_rectified_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL(ctrls, output_options_.save_quad_rectified_frames, "save_quad_rectified_frames", "");
-      PIPELINE_CTL(ctrls, output_options_.quad_rectified_frames_filename, "quad_rectified_frames_filename", "");
+      PIPELINE_CTL_GROUP(ctrls, "Save Quad Rectified Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_quad_rectified_frames, "save_quad_rectified_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.quad_rectified_output_options,
+            _this->output_options_.save_quad_rectified_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-      PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
+      PIPELINE_CTL_GROUP(ctrls, "Save Progress Video", "");
+        PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_video_output_options,
+            _this->output_options_.save_progress_video);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
     PIPELINE_CTL_END_GROUP(ctrls);
   }
 
@@ -1308,27 +1333,25 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
 
   if( !chessboard_video_writer_.is_open() ) {
 
-    chessboard_frames_filename_ =
-        generate_output_filename(output_options_.chessboard_frames_filename,
+    bool fOK =
+        open_output_writer(chessboard_video_writer_,
+            output_options_.chessboard_frames_output_options,
             "chessboard",
             ".avi");
-    bool fOK =
-        chessboard_video_writer_.open(chessboard_frames_filename_);
 
     if( !fOK ) {
       CF_ERROR("chessboard_video_writer_.open('%s') fails",
-          chessboard_frames_filename_.c_str());
+          chessboard_video_writer_.filename().c_str());
       return false;
     }
 
-    CF_DEBUG("created '%s'", chessboard_video_writer_.filename().c_str());
+    CF_DEBUG("Created '%s'", chessboard_video_writer_.filename().c_str());
   }
 
-  if ( !chessboard_video_writer_.write(frame, cv::noArray(), false, 0) ) {
+  if( !chessboard_video_writer_.write(frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
-
 
   return true;
 }
@@ -1399,17 +1422,14 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
         if( !video_writer[i].is_open() ) {
 
-          std::string output_file_name =
-              generate_output_filename(output_options_.rectified_frames_filename,
+          fOK =
+              open_output_writer(video_writer[i],
+                  output_options_.rectified_frames_output_options,
                   i == 0 ? "rect-left" : "rect-right",
                   ".avi");
 
-          fOK =
-              video_writer[i].open(output_file_name);
-
           if( !fOK ) {
-            CF_ERROR("video_writer[%d].open('%s') fails", i,
-                output_file_name.c_str());
+            CF_ERROR("video_writer[%d].open() fails", i);
             return false;
           }
         }
@@ -1425,20 +1445,17 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
       if( !stereo_writer.is_open() ) {
 
-        std::string output_file_name =
-            generate_output_filename(output_options_.stereo_rectified_frames_filename,
-                "stereo",
-                ".avi");
-
         stereo_size.width = sizes[0].width + sizes[1].width;
         stereo_size.height = std::max(sizes[0].height, sizes[1].height);
 
         fOK =
-            stereo_writer.open(output_file_name);
+            open_output_writer(stereo_writer,
+                output_options_.stereo_rectified_output_options,
+                "stereo",
+                ".avi");
 
         if( !fOK ) {
-          CF_ERROR("double_writer.open('%s') fails",
-              output_file_name.c_str());
+          CF_ERROR("stereo_writer.open() fails");
           return false;
         }
       }
@@ -1460,20 +1477,17 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
       if( !quad_writer.is_open() ) {
 
-        std::string output_file_name =
-            generate_output_filename(output_options_.quad_rectified_frames_filename,
-                "quad",
-                ".avi");
-
         quad_size.width = sizes[0].width + sizes[1].width;
         quad_size.height = sizes[0].height + sizes[1].height;
 
         fOK =
-            quad_writer.open(output_file_name);
+            open_output_writer(quad_writer,
+                output_options_.quad_rectified_output_options,
+                "quad",
+                ".avi");
 
         if( !fOK ) {
-          CF_ERROR("quad_writer.open('%s') fails",
-              output_file_name.c_str());
+          CF_ERROR("quad_writer.open() fails");
           return false;
         }
       }

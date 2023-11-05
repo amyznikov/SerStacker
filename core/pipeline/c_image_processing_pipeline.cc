@@ -540,6 +540,30 @@ bool c_image_processing_pipeline::is_bad_frame_index(int global_pos) const
   return false;
 }
 
+bool c_image_processing_pipeline::open_output_writer(c_output_frame_writer & writer, const c_output_frame_writer_options & opts,
+    const std::string & postfix, const std::string & suffix) const
+{
+  if ( !writer.is_open() ) {
+
+    const std::string filename =
+        generate_output_filename(opts.output_filename,
+            postfix,
+            suffix);
+
+    const bool fOK =
+        writer.open(filename,
+            opts.output_image_processor,
+            opts.output_pixel_depth,
+            opts.save_frame_mapping);
+
+    if( !fOK ) {
+      CF_ERROR("writer.open('%s') fails",  filename.c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
 
 bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
 {

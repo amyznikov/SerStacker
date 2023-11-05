@@ -165,7 +165,7 @@ bool c_camera_calibration_pipeline::get_display_image(cv::OutputArray display_fr
 
 bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool save)
 {
-  c_config_setting section;
+  c_config_setting section, subsection;
 
   if ( !base::serialize(settings, save)) {
     return false;
@@ -195,13 +195,20 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
 
     SERIALIZE_OPTION(section, save, output_options_, save_chessboard_frames);
-    SERIALIZE_OPTION(section, save, output_options_, chessboard_frames_filename);
+    if ( (subsection = SERIALIZE_GROUP(section, save, "output_chessboard_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_chessboard_video_options);
+    }
 
     SERIALIZE_OPTION(section, save, output_options_, save_rectified_frames);
-    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+    if ( (subsection = SERIALIZE_GROUP(section, save, "output_rectified_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_rectified_video_options);
+    }
 
-    SERIALIZE_OPTION(section, save, output_options_, rectified_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
+//    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+//    if ( (subsection = SERIALIZE_GROUP(section, save, "output_chessboard_video_options")) ) {
+//      SERIALIZE_OPTION(subsection, save, output_options_, output_progress_video_options);
+//    }
+
   }
 
   return true;
@@ -259,17 +266,28 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipel
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-    PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
-    PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
-    PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "intrinsics_filename", "");
-    PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.chessboard_frames_filename, "", "", _this->output_options_.save_chessboard_frames);
-    PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
-    PIPELINE_CTLC(ctrls, output_options_.rectified_frames_filename, "rectified_frames_filename", "", _this->output_options_.save_rectified_frames);
-    PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-    PIPELINE_CTLC(ctrls, output_options_.progress_video_filename, "", "", _this->output_options_.save_progress_video);
-    PIPELINE_CTL_END_GROUP(ctrls);
+      PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+      PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
+      PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "intrinsics_filename", "");
 
+      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_chessboard_video_options,
+            _this->output_options_.save_chessboard_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_rectified_frames", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_rectified_video_options,
+            _this->output_options_.save_rectified_frames);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+//      PIPELINE_CTL_GROUP(ctrls, "Save Progress Frames", "");
+//        PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+//        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_progress_video_options,
+//            _this->output_options_.save_progress_video);
+//      PIPELINE_CTL_END_GROUP(ctrls);
+    PIPELINE_CTL_END_GROUP(ctrls);
   }
 
   return ctrls;
@@ -1136,24 +1154,30 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
 
   if( !chessboard_video_writer_.is_open() ) {
 
-    const std::string chessboard_video_filename =
-        generate_output_filename(output_options_.chessboard_frames_filename,
+    const c_output_frame_writer_options & opts =
+        output_options_.output_chessboard_video_options;
+
+    const std::string filename =
+        generate_output_filename(opts.output_filename,
             "chessboard",
             ".avi");
 
     bool fOK =
-        chessboard_video_writer_.open(chessboard_video_filename);
+        chessboard_video_writer_.open(filename,
+            opts.output_image_processor,
+            opts.output_pixel_depth,
+            opts.save_frame_mapping);
 
     if( !fOK ) {
       CF_ERROR("chessboard_video_writer_.open('%s') fails",
-          chessboard_video_filename.c_str());
+          filename.c_str());
       return false;
     }
 
-    CF_DEBUG("Created '%s'", chessboard_video_filename.c_str());
+    CF_DEBUG("Created '%s'", filename.c_str());
   }
 
-  if( !chessboard_video_writer_.write(current_frame_, cv::noArray(), false, 0) ) {
+  if( !chessboard_video_writer_.write(current_frame_, current_mask_, false, input_sequence_->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
@@ -1187,16 +1211,26 @@ bool c_camera_calibration_pipeline::write_output_videos()
   c_output_frame_writer writer;
   cv::Mat display_frame, display_mask;
 
-  std::string output_file_name =
-      generate_output_filename(output_options_.rectified_frames_filename,
+  const c_output_frame_writer_options & opts =
+      output_options_.output_rectified_video_options;
+
+  std::string output_filename =
+      generate_output_filename(opts.output_filename,
           "rectified",
           ".avi");
 
 
-  CF_DEBUG("Saving %s...", output_file_name.c_str());
+  CF_DEBUG("Saving %s...", output_filename.c_str());
 
-  if( !writer.open(output_file_name) ) {
-    CF_ERROR("ERROR: c_video_writer::open('%s') fails", output_file_name.c_str());
+
+  bool fOK =
+      writer.open(output_filename,
+          opts.output_image_processor,
+          opts.output_pixel_depth,
+          opts.save_frame_mapping);
+
+  if( !fOK ) {
+    CF_ERROR("ERROR: c_video_writer::open('%s') fails", output_filename.c_str());
   }
   else {
 

@@ -144,6 +144,11 @@ protected:
   virtual void gather_badframe_indexes();
   virtual bool is_bad_frame_index(int global_pos) const;
 
+  virtual bool open_output_writer(c_output_frame_writer & writer,
+      const c_output_frame_writer_options & opts,
+      const std::string & postfix,
+      const std::string & suffix) const;
+
 protected:
   bool read_input_frame(const c_input_sequence::sptr & input_sequence,
       const c_image_processing_pipeline_input_options & input_options,

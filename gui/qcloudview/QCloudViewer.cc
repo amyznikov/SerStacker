@@ -192,12 +192,13 @@ void QGLCloudViewer::glDraw()
 
         if ( haveColors ) {
           const QColor & c = colors[j];
-          glColor3ub(std::min(255, c.red() + (int) pointBrightness_),
-              std::min(255, c.green() + (int) pointBrightness_),
-              std::min(255, c.blue() + (int) pointBrightness_));
+          glColor3ub(std::max(0, std::min(255, (int) (c.red() + pointBrightness_))),
+              std::max(0, std::min(255, (int) (c.green() + pointBrightness_))),
+              std::max(0, std::min(255, (int) (c.blue() + pointBrightness_))));
         }
 
-        const QPoint3D & p = points[j];
+        const QPoint3D & p =
+            points[j];
 
         glVertex3d(p.x *  Sx - Tx - sceneOrigin_.x(),
             p.y * Sy - Ty - sceneOrigin_.y(),

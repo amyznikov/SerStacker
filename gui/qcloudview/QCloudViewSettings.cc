@@ -111,7 +111,7 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
       add_numeric_box<double>("pointBrightness",
           "",
           [this](double v) -> bool {
-            if ( cloudViewer_ && v > 0 && v != cloudViewer_->cloudView()->pointBrightness() ) {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->pointBrightness() ) {
               cloudViewer_->cloudView()->setPointBrightness(v);
               save_parameter(PREFIX, "pointBrightness", cloudViewer_->cloudView()->pointBrightness());
               return true;

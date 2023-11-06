@@ -53,6 +53,23 @@ static bool get_cloud3d(const ScanType & scan,
   const cv::Mat1b ambient =
       ambientImage;
 
+  if( false ) {
+
+    static cv::Mat3b lut;
+    if( lut.empty() ) {
+
+      cv::Mat1b gray(1, 256);
+      for( int i = 0; i < 256; ++i ) {
+        gray[0][i] = i;
+      }
+
+      apply_colormap(gray,
+          lut,
+          COLORMAP_TURBO);
+    }
+  }
+
+
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
 
     const auto &slot =
@@ -71,9 +88,6 @@ static bool get_cloud3d(const ScanType & scan,
       const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
       const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
 
-      const uint8_t color =
-          std::max((uint8_t) 32, ambient[l][s]);
-
       for( int e = 0; e < 2/*scan.NUM_ECHOS*/; ++e ) {
 
         const auto &echo =
@@ -89,27 +103,16 @@ static bool get_cloud3d(const ScanType & scan,
           const float y = scale * distance * sin_hor_cos_vert;
           const float z = scale * distance * sin_vert;
           output_points.emplace_back(x, y, z);
+
+          const uint8_t color =
+              ambient[l][s];
+
           output_colors.emplace_back(cv::Vec3b(color, color, color));
         }
       }
     }
   }
 
-  if( false ) {
-
-    static cv::Mat3b lut;
-    if( lut.empty() ) {
-
-      cv::Mat1b gray(1, 256);
-      for( int i = 0; i < 256; ++i ) {
-        gray[0][i] = i;
-      }
-
-      apply_colormap(gray,
-          lut,
-          COLORMAP_TURBO);
-    }
-  }
 
   return true;
 }
@@ -476,9 +479,12 @@ bool c_vlo_pipeline::run_pipeline()
       break;
     }
 
-    if( !input_sequence_->seek(processed_frames_) ) {
-      CF_ERROR("input_sequence_->seek(pos=%d) fails: %s",
-          processed_frames_, strerror(errno));
+    const int read_pos =
+        input_sequence_->current_pos() + 1;
+
+    if( !input_sequence_->seek(read_pos) ) {
+      CF_ERROR("input_sequence_->seek(read_pos=%d) fails: %s",
+          read_pos, strerror(errno));
       return false;
     }
 
@@ -506,8 +512,7 @@ bool c_vlo_pipeline::run_pipeline()
       return false;
     }
 
-    accumulated_frames_ =
-        processed_frames_ + 1;
+    ++accumulated_frames_;
 
     if( !is_live_sequence ) {
       // give chance to GUI thread to call get_display_image()

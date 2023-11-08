@@ -14,6 +14,26 @@
 #include <core/io/c_vlo_file.h>
 
 
+enum VLO_INTENSITY_CHANNEL
+{
+  VLO_INTENSITY_PEAK,
+  VLO_INTENSITY_AREA,
+};
+
+struct c_vlo_lookup_table_item
+{
+  double distance = 0;
+  double peak = 0;
+  double peak2 = 0;
+  double area = 0;
+  double area2 = 0;
+  double num_measurements = 0;
+};
+
+typedef std::vector<c_vlo_lookup_table_item>
+  c_vlo_lookup_table_statistics;
+
+
 struct c_vlo_pipeline_input_options :
     c_image_processing_pipeline_input_options
 {
@@ -24,13 +44,25 @@ struct c_vlo_pipeline_input_options :
 struct c_vlo_pipeline_processing_options
 {
    bool enable_reflectors_detection = false;
+   bool enable_reflectors_detection2 = false;
    bool enable_double_echo_detection = true;
    bool enable_auto_threshold = true;
+   bool enable_gather_lookup_table_statistics = false;
+
 
    THRESHOLD_TYPE auto_threshold_type = THRESHOLD_TYPE_YEN;
    double auto_threshold_value = 0;
    double auto_clip_min = 0.1; // percentage of 'black' pixels
    double auto_clip_max = 99.9; // 100-percentage of 'white' pixels
+
+   std::string vlo_lookup_table_statistics_filename;
+
+   double peak_line_a = 429.16;
+   double peak_line_b = -10.887;
+   double peak_line_bias = 0.0;
+   double peak_line_scale = 1.0;
+
+   VLO_INTENSITY_CHANNEL vlo_intensity_channel = VLO_INTENSITY_PEAK;
 };
 
 struct c_vlo_pipeline_output_options :
@@ -83,8 +115,11 @@ protected:
   bool run_pipeline() override;
   bool process_current_frame();
   bool run_reflectors_detection();
+  bool run_reflectors_detection2();
+  bool update_vlo_lookup_table_statistics();
   bool save_progress_video();
   bool save_cloud3d_ply();
+
 
 protected:
   c_vlo_pipeline_input_options input_options_;
@@ -92,9 +127,14 @@ protected:
   c_vlo_pipeline_output_options output_options_;
   c_vlo_scan current_scan_;
   cv::Mat1b current_reflection_mask_;
+  cv::Mat1b current_reflection2_mask_;
 
   c_output_frame_writer progress_writer_;
   c_output_frame_writer reflectors_writer_;
+  c_output_frame_writer reflectors2_writer_;
+
+
+  c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;
 
 };
 

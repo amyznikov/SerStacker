@@ -98,7 +98,6 @@ MainWindow::MainWindow()
   setupStackTreeView();
   setupStackOptionsView();
   setupImageProcessingControls();
-  //setupImageProcessorSelector();
   setupImageEditor();
   setupTextViewer();
   stupCloudViewer();
@@ -124,11 +123,6 @@ MainWindow::MainWindow()
   restoreState();
 
   imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
-
-//  CF_DEBUG("sequencesTreeView->loadSequences()");
-//  sequencesTreeView->loadSequences();
-  //image_sequences_->load();
-  //sequencesTreeView->set_image_sequence_collection(image_sequences_);
 }
 
 MainWindow::~MainWindow()
@@ -1095,6 +1089,7 @@ void MainWindow::updateMeasurements()
 
 void MainWindow::onMeasureRightNowRequested()
 {
+  CF_DEBUG("MainWindow::MeasureRequested");
   updateMeasurements();
 }
 

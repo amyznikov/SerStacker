@@ -48,7 +48,11 @@ void QMeasureDisplay::onEnableMeasurementsClicked(bool checked)
           !cm_.empty() &&
           this->isVisible();
 
+//  CF_DEBUG("MeasureRequested: cm_.empty()=%d enabled=%d", cm_.empty(), enabled);
+
+
   if ( enabled ) {
+    CF_DEBUG("Q_EMIT measureRightNowRequested");
     Q_EMIT measureRightNowRequested();
   }
 }

@@ -1,5 +1,27 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
+return()
+
+find_path(LASLIB_INCLUDES include/laslib)
+find_library(LASLIB_LIBRARY laslib)
+
+message(STATUS "")
+
+if( LASLIB_INCLUDES AND LASLIB_LIBRARY ) 
+	set( LASLIB_INCLUDES "${LASLIB_INCLUDES}/include")
+    message(STATUS "laslib FOUND: LASLIB_INCLUDES=${LASLIB_INCLUDES} LASLIB_LIBRARY=${LASLIB_LIBRARY}")
+    add_definitions(-DHAVE_LASLIB=1)
+else()
+
+    message(WARNING "Can not locate laslib library under search parth.
+      Install please lastools package: https://github.com/LAStools/LAStools.git")
+      
+    message(WARNING "LASLIB_INCLUDES=${LASLIB_INCLUDES} LASLIB_LIBRARY=${LASLIB_LIBRARY}")
+    
+    return()
+endif()
+
+
 project(alpha CXX)
 
 if( NOT CMAKE_CXX_STANDARD )
@@ -27,10 +49,12 @@ file(GLOB_RECURSE HEADER_FILES
 
 set(APP_INCLUDES
 	${SRC}
-    ${CORE_INCLUDES})
+    ${CORE_INCLUDES}
+    ${LASLIB_INCLUDES})
 
 set(APP_LIBRARIES 
-    ${CORE_LIBRARIES})
+    ${CORE_LIBRARIES}
+	${LASLIB_LIBRARY}) 
 
 add_executable(${PROJECT_NAME}
 	${SOURCE_FILES}

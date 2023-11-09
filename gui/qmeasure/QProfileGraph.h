@@ -57,6 +57,7 @@ Q_SIGNALS:
 
 protected Q_SLOTS:
   void onShowSettingsActionTriggered(bool checked);
+  void onCopyToClipboardActionTriggered();
 
 protected:
   void showEvent(QShowEvent * event) override;
@@ -65,6 +66,7 @@ protected:
 protected:
   QVBoxLayout * vl_ = nullptr;
   QToolBar * toolbar_ = nullptr;
+  QAction * copyToClipboardAction_ = nullptr;
   QAction * showSettingsAction_ = nullptr;
   QProfileGraphSettingsDialogBox * plotSettings_ctl = nullptr;
 
@@ -72,6 +74,8 @@ protected:
   QCustomPlot *plot_ = nullptr;
   QCPGraph *graphs_[4] = { nullptr };
 
+  QVector<double> current_keys_;
+  QVector<double> current_values_[4];
 
   QLine currentLine_;
   bool fixXRange_ = false;

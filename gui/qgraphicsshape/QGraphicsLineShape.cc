@@ -133,6 +133,22 @@ bool QGraphicsLineShape::lockP2() const
   return lockP2_;
 }
 
+void QGraphicsLineShape::setSnapToGrid(bool v)
+{
+  if ( snapToGrid_ != v ) {
+    if ( (snapToGrid_ = v) ) {
+      prepareGeometryChange();
+      updateGeometry();
+      update();
+    }
+  }
+}
+
+bool QGraphicsLineShape::snapToGrid() const
+{
+  return snapToGrid_;
+}
+
 void QGraphicsLineShape::setArrowSize(double v)
 {
   arrowSize_ = v;
@@ -287,7 +303,15 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
         if( !lockP1_ ) {
 
           prepareGeometryChange();
-          line_.setP1(e->pos());
+
+          if ( !snapToGrid_ ) {
+            line_.setP1(e->pos());
+          }
+          else {
+            const QPointF pos = e->pos();
+            line_.setP1(QPointF((int)pos.x(), (int)pos.y()));
+          }
+
           updateGeometry();
           update();
 
@@ -303,7 +327,15 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
         if( !lockP2_ ) {
 
           prepareGeometryChange();
-          line_.setP2(e->pos());
+
+          if ( !snapToGrid_ ) {
+            line_.setP2(e->pos());
+          }
+          else {
+            const QPointF pos = e->pos();
+            line_.setP2(QPointF((int)pos.x(), (int)pos.y()));
+          }
+
           updateGeometry();
           update();
 
@@ -328,7 +360,13 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           const QPointF p2(p1.x() + cos(angle) * line_.length(),
               p1.y() + sin(angle) * line_.length());
 
-          line_.setP2(p2);
+
+          if ( !snapToGrid_ ) {
+            line_.setP2(p2);
+          }
+          else {
+            line_.setP2(QPointF((int)p2.x(), (int)p2.y()));
+          }
 
           updateGeometry();
           update();
@@ -354,7 +392,12 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           const QPointF p1(p2.x() + cos(angle) * line_.length(),
               p2.y() + sin(angle) * line_.length());
 
-          line_.setP1(p1);
+          if ( !snapToGrid_ ) {
+            line_.setP1(p1);
+          }
+          else {
+            line_.setP1(QPointF((int)p1.x(), (int)p1.y()));
+          }
 
           updateGeometry();
           update();

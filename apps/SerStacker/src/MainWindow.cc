@@ -661,12 +661,12 @@ void MainWindow::setupImageEditor()
   toolbar->addSeparator();
 
   toolbar->addWidget(imageNameLabel_ctl = new QLabel(""));
-  imageNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  imageNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
 
   toolbar->addSeparator();
 
   toolbar->addWidget(imageSizeLabel_ctl = new QLabel(""));
-  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
 
   toolbar->addSeparator();
   toolbar->addWidget(new QToolbarSpacer());

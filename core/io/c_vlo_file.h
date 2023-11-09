@@ -317,12 +317,6 @@ public:
     DATA_CHANNEL_ECHO_AREA_DIV_WIDTH,
     DATA_CHANNEL_ECHO_PEAK_DIV_WIDTH,
 
-    DATA_CHANNEL_ECHO_AREA_DIV_DIST,
-    DATA_CHANNEL_ECHO_PEAK_DIV_DIST,
-
-    DATA_CHANNEL_ECHO_AREA_DIV_DIST2,
-    DATA_CHANNEL_ECHO_PEAK_DIV_DIST2,
-
     DATA_CHANNEL_ECHO_AREA_MUL_DIST,
     DATA_CHANNEL_ECHO_PEAK_MUL_DIST,
 
@@ -349,10 +343,10 @@ public:
   static void sort_echos_by_distance(c_vlo_scan5 & scan);
   static bool sort_echos_by_distance(c_vlo_scan & scan);
 
-  static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel);
-  static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel);
-  static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel);
-  static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel);
+  static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
+  static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
+  static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
+  static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
 
 protected:
   std::string filename_;

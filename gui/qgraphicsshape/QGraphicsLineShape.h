@@ -48,8 +48,12 @@ public:
   void setLockP2( bool v);
   bool lockP2() const;
 
+  void setSnapToGrid(bool v);
+  bool snapToGrid() const;
+
   void setArrowSize(double v);
   double arrowSize() const;
+
 
 protected:
   void updateGeometry();
@@ -81,6 +85,7 @@ protected:
 
   bool lockP1_ = false;
   bool lockP2_ = false;
+  bool snapToGrid_ = true;
 };
 
 #endif /* __QGraphicsLineShape_h__ */

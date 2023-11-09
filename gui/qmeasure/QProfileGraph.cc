@@ -10,8 +10,9 @@
 #include <gui/widgets/style.h>
 
 
-#define ICON_plot      ":/qmeasure/icons/plot.png"
-#define ICON_settings  ":/qmeasure/icons/settings.png"
+#define ICON_plot       ":/qmeasure/icons/plot.png"
+#define ICON_settings   ":/qmeasure/icons/settings.png"
+#define ICON_copy       ":/qmeasure/icons/copy.png"
 
 namespace {
 
@@ -109,6 +110,15 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
   toolbar_->addWidget(new QToolBarStretch(toolbar_));
 
 
+  toolbar_->addAction(copyToClipboardAction_ =
+      new QAction(getIcon(ICON_copy),
+          "Copy To Clipboard..."));
+
+  connect(copyToClipboardAction_, &QAction::triggered,
+      this, &ThisClass::onCopyToClipboardActionTriggered);
+
+  toolbar_->addSeparator();
+
   //addStretch(toolbar_);
 
   toolbar_->addAction(showSettingsAction_ =
@@ -119,6 +129,8 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
 
   connect(showSettingsAction_, &QAction::triggered,
       this, &ThisClass::onShowSettingsActionTriggered);
+
+
 
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,6 +282,11 @@ void QProfileGraph::showProfilePlot(const QLineF & line, const cv::Mat & image)
 
 void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
 {
+  current_keys_.clear();
+  for ( int i = 0; i < 4; ++i ) {
+    current_values_[i].clear();
+  }
+
   if ( &line != &currentLine_ ) {
     currentLine_ = line;
   }
@@ -325,18 +342,16 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
     }
   }
 
-  QVector<double> keys;
-  QVector<double> values[4];
 
   const int cn =
       image.channels();
 
-  get_pixels(image, pts, keys, values);
+  get_pixels(image, pts, current_keys_, current_values_);
 
   for( int c = 0; c < 4; ++c ) {
 
     if ( c < cn ) {
-      graphs_[c]->setData(keys, values[c]);
+      graphs_[c]->setData(current_keys_, current_values_[c]);
     }
     else {
 
@@ -383,6 +398,57 @@ void QProfileGraph::onShowSettingsActionTriggered(bool checked)
     plotSettings_ctl->setFocus();
   }
 }
+
+void QProfileGraph::onCopyToClipboardActionTriggered()
+{
+  if ( current_keys_.empty() ) {
+    CF_DEBUG("No Data available");
+    return;
+  }
+
+  int num_columns = 0;
+
+  for ( int j = 0; j < 4; ++j ) {
+    if ( !current_values_[j].isEmpty() ) {
+      ++num_columns;
+    }
+  }
+
+  if ( num_columns < 1 ) {
+    CF_DEBUG("No Data available");
+    return;
+  }
+
+  QClipboard * clipboard = QApplication::clipboard();
+  if ( !clipboard ) {
+    CF_DEBUG("No clipboard available");
+    return;
+  }
+
+  QString text = "X";
+
+  for( int j = 0; j < num_columns; ++j ) {
+    text.append(qsprintf("\tY%d", j));
+  }
+
+  text.append("\n");
+
+  for ( int i = 0, n = current_keys_.size(); i < n; ++i ) {
+
+    text.append(qsprintf("%g", current_keys_[i]));
+
+    for( int j = 0; j < num_columns; ++j ) {
+      text.append(qsprintf("\t%g", current_values_[j][i]));
+    }
+
+    text.append("\n");
+  }
+
+  clipboard->setText(text);
+
+  CF_DEBUG("Data copied");
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

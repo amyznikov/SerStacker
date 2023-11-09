@@ -45,6 +45,7 @@ struct c_vlo_pipeline_processing_options
 {
    bool enable_reflectors_detection = false;
    bool enable_reflectors_detection2 = false;
+   bool enable_blom_detection = false;
    bool enable_double_echo_detection = true;
    bool enable_auto_threshold = true;
    bool enable_gather_lookup_table_statistics = false;
@@ -63,6 +64,14 @@ struct c_vlo_pipeline_processing_options
    double peak_line_scale = 1.0;
 
    VLO_INTENSITY_CHANNEL vlo_intensity_channel = VLO_INTENSITY_PEAK;
+
+
+   double high_intensity_threshold = 118;
+   double blom_slope_min = 0.25;
+   double blom_slope_max = 1.50;
+   double walk_error = 150;
+   double double_echo_distance = 2500;
+
 };
 
 struct c_vlo_pipeline_output_options :
@@ -116,6 +125,7 @@ protected:
   bool process_current_frame();
   bool run_reflectors_detection();
   bool run_reflectors_detection2();
+  bool run_blom_detection();
   bool update_vlo_lookup_table_statistics();
   bool save_progress_video();
   bool save_cloud3d_ply();
@@ -132,6 +142,13 @@ protected:
   c_output_frame_writer progress_writer_;
   c_output_frame_writer reflectors_writer_;
   c_output_frame_writer reflectors2_writer_;
+  c_output_frame_writer blom_writer_;
+  c_output_frame_writer blom_reflectors_writer_;
+  c_output_frame_writer blom_distances_writer_;
+  c_output_frame_writer blom_slopes_writer_;
+  c_output_frame_writer blom_intensity_writer_;
+  c_output_frame_writer blom_display_writer_;
+  c_output_frame_writer blom_mask_writer_;
 
 
   c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;

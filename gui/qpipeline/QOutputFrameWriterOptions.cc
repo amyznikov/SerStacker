@@ -11,7 +11,7 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
     Base(parent)
 {
   output_filename_ctl =
-      add_textbox("Filename",
+      add_textbox("Filename:",
           "Optional output file name pattern",
           [this](const QString & v) {
             if ( options_ ) {
@@ -26,6 +26,23 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
             }
             return false;
           });
+
+  output_ffmpeg_opts_ctl =
+      add_textbox("ffmpeg opts:",
+      "Optional ffmpeg options for ffmpeg writers",
+      [this](const QString & v) {
+        if ( options_ ) {
+          options_->ffmpeg_opts = v.toStdString();
+          Q_EMIT parameterChanged();
+        }
+      },
+      [this](QString * v) {
+        if ( options_ ) {
+          *v = options_->ffmpeg_opts.c_str();
+          return true;
+        }
+        return false;
+      });
 
   output_image_processor_ctl =
       add_combobox<QImageProcessorSelectionCombo>("Image processor:",

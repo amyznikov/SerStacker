@@ -1164,6 +1164,7 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
 
     bool fOK =
         chessboard_video_writer_.open(filename,
+            opts.ffmpeg_opts,
             opts.output_image_processor,
             opts.output_pixel_depth,
             opts.save_frame_mapping);
@@ -1225,6 +1226,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
 
   bool fOK =
       writer.open(output_filename,
+          opts.ffmpeg_opts,
           opts.output_image_processor,
           opts.output_pixel_depth,
           opts.save_frame_mapping);

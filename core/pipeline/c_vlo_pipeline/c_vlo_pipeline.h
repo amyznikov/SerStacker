@@ -24,8 +24,8 @@ struct c_vlo_lookup_table_item
 {
   double distance = 0;
   double peak = 0;
-  double peak2 = 0;
   double area = 0;
+  double peak2 = 0;
   double area2 = 0;
   double num_measurements = 0;
 };
@@ -44,11 +44,9 @@ struct c_vlo_pipeline_input_options :
 struct c_vlo_pipeline_processing_options
 {
    bool enable_reflectors_detection = false;
-   bool enable_reflectors_detection2 = false;
    bool enable_blom_detection = false;
    bool enable_double_echo_detection = true;
    bool enable_auto_threshold = true;
-   bool enable_gather_lookup_table_statistics = false;
 
 
    THRESHOLD_TYPE auto_threshold_type = THRESHOLD_TYPE_YEN;
@@ -56,13 +54,8 @@ struct c_vlo_pipeline_processing_options
    double auto_clip_min = 0.1; // percentage of 'black' pixels
    double auto_clip_max = 99.9; // 100-percentage of 'white' pixels
 
+   bool enable_gather_lookup_table_statistics = false;
    std::string vlo_lookup_table_statistics_filename;
-
-   double peak_line_a = 429.16;
-   double peak_line_b = -10.887;
-   double peak_line_bias = 0.0;
-   double peak_line_scale = 1.0;
-
    VLO_INTENSITY_CHANNEL vlo_intensity_channel = VLO_INTENSITY_PEAK;
 
 
@@ -78,10 +71,13 @@ struct c_vlo_pipeline_output_options :
     c_image_processing_pipeline_output_options
 {
   bool save_progress_video = false;
-  bool save_cloud3d_ply = false;
 
   std::string progress_video_filename;
   std::string cloud3d_filename;
+
+  bool save_cloud3d_ply = false;
+  c_vlo_reader::DATA_CHANNEL cloud3d_intensity_channel =
+      c_vlo_reader::DATA_CHANNEL_ECHO_PEAK;
 };
 
 class c_vlo_pipeline :
@@ -124,7 +120,6 @@ protected:
   bool run_pipeline() override;
   bool process_current_frame();
   bool run_reflectors_detection();
-  bool run_reflectors_detection2();
   bool run_blom_detection();
   bool update_vlo_lookup_table_statistics();
   bool save_progress_video();
@@ -141,8 +136,7 @@ protected:
 
   c_output_frame_writer progress_writer_;
   c_output_frame_writer reflectors_writer_;
-  c_output_frame_writer reflectors2_writer_;
-  c_output_frame_writer blom_writer_;
+  c_output_frame_writer blom_reflectors_mask_writer_;
   c_output_frame_writer blom_reflectors_writer_;
   c_output_frame_writer blom_distances_writer_;
   c_output_frame_writer blom_slopes_writer_;

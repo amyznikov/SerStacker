@@ -1584,7 +1584,7 @@ bool c_ffmpeg_writer::write_frame(const uint8_t * data, int step, int width, int
           codec_ctx->width,
           codec_ctx->height,
           codec_ctx->pix_fmt,
-          SWS_BICUBIC,
+          SWS_AREA,
           NULL, NULL, NULL);
       if ( !sws_ctx ) {
         CF_ERROR("sws_getContext() fails");

@@ -225,6 +225,7 @@ bool c_generic_image_processor_pipeline::process_current_frame()
 
       const bool fOk =
           processed_file_writer_.open(output_filename,
+              output_options_.processed_file_options.ffmpeg_opts,
               output_options_.processed_file_options.output_image_processor,
               output_options_.processed_file_options.output_pixel_depth,
               output_options_.processed_file_options.save_frame_mapping);

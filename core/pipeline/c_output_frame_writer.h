@@ -18,9 +18,12 @@
 struct c_output_frame_writer_options
 {
   std::string output_filename;
+  std::string ffmpeg_opts = "-r 10 -c rawvideo -pix_fmt rgb24"; // // "-r 10 -c huffyuv"
   c_image_processor::sptr output_image_processor;
   PIXEL_DEPTH output_pixel_depth = PIXEL_DEPTH_NO_CHANGE;
   bool save_frame_mapping = false;
+
+  c_output_frame_writer_options();
 };
 
 class c_output_frame_writer
@@ -29,12 +32,18 @@ public:
   c_output_frame_writer();
   ~c_output_frame_writer();
 
+  static void set_default_ffmpeg_opts(const std::string & opts = "-r 10 -c huffyuv");
+  static const std::string & default_ffmpeg_opts();
+
   const std::string & filename() const;
+  const std::string & ffmpeg_opts() const;
 
   bool open(const std::string & filename,
+      const std::string & ffmpeg_opts = "",
       bool write_frame_mapping = false);
 
   bool open(const std::string & filename,
+      const std::string & ffmpeg_opts,
       const c_image_processor::sptr & output_image_processor,
       PIXEL_DEPTH output_depth,
       bool write_frame_mapping = false);
@@ -74,6 +83,10 @@ protected:
 
   c_image_processor::sptr output_image_processor_;
   PIXEL_DEPTH output_pixel_depth_ = PIXEL_DEPTH_NO_CHANGE;
+
+  std::string ffmpeg_opts_;
+
+  static std::string default_ffmpeg_opts_;
 };
 
 

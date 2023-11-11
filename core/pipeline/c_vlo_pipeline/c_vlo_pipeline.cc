@@ -32,71 +32,50 @@ const c_enum_member* members_of<VLO_INTENSITY_CHANNEL>()
 
 //////////////////////////////
 
-
 template<class ScanType>
-static double echox_(const ScanType & scan, int layerId, int slotId, float dist)
-{
-  // vertices[currentVertex].azimuth = ((slotsPointer->angleTicks) * 0.000000083819031734908705515532918627265) * 0.0174533;
-  // vertices[currentVertex].inclination = ((25.0 / layers * vertices[currentVertex].layer - 25.0 / 2.0) + 90) * 0.0174533;
-
-// #define CV_PI   3.1415926535897932384626433832795
-// azimuth = (slot.angleTicks * 0.000000083819031734908705515532918627265) * 0.0174533; // horizontal angle
-// inclination = ((25.0 / scan.NUM_LAYERS * layerId - 25.0 / 2.0) + 90) * 0.0174533; // vertical angle
-
-  const float firstVertAngle = 0.5 * 0.05 * scan.NUM_LAYERS;
-  const float tick2deg = (float) (0.00000008381903173490870551553291862726);
-  const auto &slot = scan.slot[slotId];
-
-  const float horizontalAngle = slot.angleTicks * tick2deg * CV_PI / 180;
-  const float verticalAngle = firstVertAngle * CV_PI / 180 - 0.05 * layerId * CV_PI / 180;
-
-  const float cos_vert = cos(verticalAngle);
-  const float sin_vert = sin(verticalAngle);
-  const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
-  const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
-
-  return (dist > 0 && dist < 65534 ) ? dist * cos_hor_cos_vert : 0;
-}
-
-static double echox(const c_vlo_scan & scan, int layerId, int slotId, float dist)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return echox_(scan.scan1, layerId, slotId, dist);
-
-    case VLO_VERSION_3:
-      return echox_(scan.scan3, layerId, slotId, dist);
-
-    case VLO_VERSION_5:
-      return echox_(scan.scan5, layerId, slotId, dist);
-  }
-  return 0;
-}
-
-
-template<class ScanType>
-static bool get_cloud3d(const ScanType & scan,
+static bool get_cloud3d_(const ScanType & scan,
     std::vector<cv::Point3f> & output_points,
-    std::vector<cv::Vec3b> & output_colors)
+    std::vector<cv::Vec3b> & output_colors,
+    c_vlo_reader::DATA_CHANNEL intensity_channel)
 {
-
-  cv::Mat ambientImage =
+  cv::Mat intensityImage =
       c_vlo_file::get_image(scan,
-          c_vlo_reader::DATA_CHANNEL_AMBIENT);
+          intensity_channel);
 
-  if( !ambientImage.empty() ) {
-    autoclip(ambientImage, cv::noArray(),
-        0.5, 99.5,
+  if( !intensityImage.empty() ) {
+
+    autoclip(intensityImage, cv::noArray(),
+        0.01, 99.99,
         0, 255);
-    if( ambientImage.depth() != CV_8U ) {
-      ambientImage.convertTo(ambientImage, CV_8U);
+
+    if( intensityImage.depth() != CV_8U ) {
+      intensityImage.convertTo(intensityImage, CV_8U);
+    }
+
+    if( false ) {
+
+      static cv::Mat3b lut;
+      if( lut.empty() ) {
+
+        cv::Mat1b gray(1, 256);
+        for( int i = 0; i < 256; ++i ) {
+          gray[0][i] = i;
+        }
+
+        apply_colormap(gray,
+            lut,
+            COLORMAP_TURBO);
+      }
+    }
+
+    if ( intensityImage.channels() == 1 ) {
+      cv::cvtColor(intensityImage, intensityImage,
+          cv::COLOR_GRAY2BGR);
     }
   }
 
-  output_points.clear();
-  output_colors.clear();
-  output_points.reserve(scan.NUM_POINTS);
-  output_colors.reserve(scan.NUM_POINTS);
+  const cv::Mat3b intensity =
+      intensityImage;
 
   const float firstVertAngle =
       0.5 * 0.05 * scan.NUM_LAYERS;
@@ -106,25 +85,11 @@ static bool get_cloud3d(const ScanType & scan,
 
   const float yawCorrection = 0;
 
-  const cv::Mat1b ambient =
-      ambientImage;
 
-  if( false ) {
-
-    static cv::Mat3b lut;
-    if( lut.empty() ) {
-
-      cv::Mat1b gray(1, 256);
-      for( int i = 0; i < 256; ++i ) {
-        gray[0][i] = i;
-      }
-
-      apply_colormap(gray,
-          lut,
-          COLORMAP_TURBO);
-    }
-  }
-
+  output_points.clear();
+  output_colors.clear();
+  output_points.reserve(scan.NUM_POINTS);
+  output_colors.reserve(scan.NUM_POINTS);
 
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
 
@@ -161,9 +126,9 @@ static bool get_cloud3d(const ScanType & scan,
           output_points.emplace_back(x, y, z);
 
           const uint8_t color =
-              ambient[l][s];
+              intensity[l][s][e];
 
-          output_colors.emplace_back(cv::Vec3b(color, color, color));
+          output_colors.emplace_back(color, color, color);
         }
       }
     }
@@ -172,6 +137,24 @@ static bool get_cloud3d(const ScanType & scan,
 
   return true;
 }
+
+static bool get_cloud3d(const c_vlo_scan & scan,
+    std::vector<cv::Point3f> & output_points,
+    std::vector<cv::Vec3b> & output_colors,
+    c_vlo_reader::DATA_CHANNEL intensity_channel)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return get_cloud3d_(scan.scan1, output_points, output_colors, intensity_channel);
+    case VLO_VERSION_3:
+      return get_cloud3d_(scan.scan3, output_points, output_colors, intensity_channel);
+    case VLO_VERSION_5:
+      return get_cloud3d_(scan.scan5, output_points, output_colors, intensity_channel);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return false;
+}
+
 
 template<class ScanType>
 static bool run_reflectors_detection_(const ScanType & scan,
@@ -336,400 +319,6 @@ static bool run_reflectors_detection(const c_vlo_scan & scan,
   CF_DEBUG("Unsupported scan version %d specified", scan.version);
   return false;
 }
-
-
-template<class ScanType>
-static bool run_reflectors_detection2_(const ScanType & scan,
-    double peak_line_a,
-    double peak_line_b,
-    double peak_line_bias,
-    double peak_line_scale,
-    cv::Mat1b * output_mask)
-{
-
-  static const int lookup_table[] = {
-      143 ,
-      143 ,
-      143 ,
-      143 ,
-      143 ,
-      143 ,
-      140 ,
-      137 ,
-      137 ,
-      136 ,
-      136 ,
-      135 ,
-      133 ,
-      133 ,
-      136 ,
-      137 ,
-      137 ,
-      137 ,
-      136 ,
-      134 ,
-      132 ,
-      130 ,
-      128 ,
-      126 ,
-      125 ,
-      123 ,
-      120 ,
-      119 ,
-      116 ,
-      114 ,
-      112 ,
-      110 ,
-      109 ,
-      107 ,
-      103 ,
-      103 ,
-      102 ,
-      101 ,
-      100 ,
-      100 ,
-      99  ,
-      97  ,
-      96  ,
-      95  ,
-      94  ,
-      93  ,
-      91  ,
-      90  ,
-      89  ,
-      89  ,
-      87  ,
-      85  ,
-      84  ,
-      83  ,
-      82  ,
-      81  ,
-      80  ,
-      79  ,
-      78  ,
-      77  ,
-      76  ,
-      76  ,
-      74  ,
-      74  ,
-      73  ,
-      72  ,
-      71  ,
-      70  ,
-      70  ,
-      69  ,
-      68  ,
-      68  ,
-      68  ,
-      66  ,
-      66  ,
-      65  ,
-      65  ,
-      64  ,
-      63  ,
-      59  ,
-      58  ,
-      58  ,
-      58  ,
-      59  ,
-      60  ,
-      62  ,
-      62  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      63  ,
-      62  ,
-      62  ,
-      61  ,
-      61  ,
-      61  ,
-      60  ,
-      60  ,
-      59  ,
-      59  ,
-      59  ,
-      58  ,
-      58  ,
-      58  ,
-      58  ,
-      58  ,
-      58  ,
-      57  ,
-      57  ,
-      57  ,
-      56  ,
-      56  ,
-      55  ,
-      55  ,
-      55  ,
-      55  ,
-      55  ,
-      55  ,
-      54  ,
-      54  ,
-      54  ,
-      54  ,
-      54  ,
-      54  ,
-      54  ,
-      54  ,
-      53  ,
-      53  ,
-      53  ,
-      53  ,
-      52  ,
-      52  ,
-      52  ,
-      52  ,
-      52  ,
-      52  ,
-      52  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      51  ,
-      50  ,
-      50  ,
-      49  ,
-      49  ,
-      49  ,
-      50  ,
-      50  ,
-      50  ,
-      49  ,
-      49  ,
-      49  ,
-      49  ,
-      49  ,
-      49  ,
-      49  ,
-      49  ,
-      49  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      48  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      47  ,
-      46  ,
-      46  ,
-      46  ,
-      46  ,
-      46  ,
-      45  ,
-      45  ,
-      44  ,
-      44  ,
-      42  ,
-      42  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      39  ,
-      39  ,
-      39  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      37  ,
-      37  ,
-      37  ,
-      36  ,
-      36  ,
-      36  ,
-      36  ,
-      36  ,
-      36  ,
-      36  ,
-      36  ,
-      36  ,
-      37  ,
-      37  ,
-      36  ,
-      37  ,
-      36  ,
-      36  ,
-      36  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      37  ,
-      38  ,
-      38  ,
-      39  ,
-      39  ,
-      39  ,
-      39  ,
-      39  ,
-      39  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      38  ,
-      39  ,
-      39  ,
-      39  ,
-      39  ,
-      39  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      40  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-      41  ,
-  };
-
-
-  typedef typename ScanType::echo echo_type;
-
-  typedef decltype(ScanType::echo::area) area_type;
-  constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
-
-  typedef decltype(ScanType::echo::peak) peak_type;
-  constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
-
-  typedef decltype(ScanType::echo::dist) dist_type;
-  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
-
-  output_mask->create(scan.NUM_LAYERS, scan.NUM_SLOTS);
-  output_mask->setTo(0);
-
-  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int e = 0; e < 1/*scan.NUM_ECHOS*/; ++e ) {
-
-        const auto & echo =
-            scan.slot[s].echo[l][e];
-
-        if( echo.dist <= 0 || echo.dist > max_dist_value ) {
-          continue;
-        }
-
-        if( echo.peak <= 0 || echo.peak > max_peak_value ) {
-          continue;
-        }
-
-        // all data are valid
-        const int num_bins = sizeof(lookup_table)/sizeof(lookup_table[0]);
-        const double distance = echo.dist * 0.01;
-        const int peak = echo.peak;
-
-        const int threshold =
-            (int) (lookup_table[std::min(num_bins - 1, (int) distance)] * peak_line_scale + peak_line_bias);
-
-        //const double L = (peak_line_a / sqrt(distance) + peak_line_b) * peak_line_scale + peak_line_bias;
-        //const bool is_reflector = peak > L;
-
-        const bool is_reflector = peak > threshold;
-
-        if ( is_reflector ) {
-          (*output_mask)[l][s] = 255;
-        }
-      }
-    }
-  }
-
-  return true;
-}
-
-
-
-static bool run_reflectors_detection2(const c_vlo_scan & scan,
-    double peak_line_a,
-    double peak_line_b,
-    double peak_line_bias,
-    double peak_line_scale,
-    cv::Mat1b * output_mask)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return run_reflectors_detection2_(scan.scan1, peak_line_a, peak_line_b, peak_line_bias, peak_line_scale, output_mask);
-    case VLO_VERSION_3:
-      return run_reflectors_detection2_(scan.scan3, peak_line_a, peak_line_b, peak_line_bias, peak_line_scale, output_mask);
-    case VLO_VERSION_5:
-      return run_reflectors_detection2_(scan.scan5, peak_line_a, peak_line_b, peak_line_bias, peak_line_scale, output_mask);
-  }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
-  return false;
-}
-
 
 
 template<class ScanType>
@@ -1367,12 +956,6 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_, auto_clip_min);
     SERIALIZE_OPTION(section, save, processing_options_, auto_clip_max);
 
-    SERIALIZE_OPTION(section, save, processing_options_, enable_reflectors_detection2);
-    SERIALIZE_OPTION(section, save, processing_options_, peak_line_a);
-    SERIALIZE_OPTION(section, save, processing_options_, peak_line_b);
-    SERIALIZE_OPTION(section, save, processing_options_, peak_line_bias);
-    SERIALIZE_OPTION(section, save, processing_options_, peak_line_scale);
-
     SERIALIZE_OPTION(section, save, processing_options_, enable_blom_detection);
     SERIALIZE_OPTION(section, save, processing_options_, high_intensity_threshold);
     SERIALIZE_OPTION(section, save, processing_options_, blom_slope_min);
@@ -1384,7 +967,6 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_, vlo_lookup_table_statistics_filename);
 
     SERIALIZE_OPTION(section, save, processing_options_, vlo_intensity_channel);
-
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -1393,6 +975,7 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
     SERIALIZE_OPTION(section, save, output_options_, save_cloud3d_ply);
     SERIALIZE_OPTION(section, save, output_options_, cloud3d_filename);
+    SERIALIZE_OPTION(section, save, output_options_, cloud3d_intensity_channel);
   }
 
   return true;
@@ -1410,68 +993,60 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL(ctrls, input_options_.sort_echos_by_distance, "sort_echos_by_distance", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
+
     PIPELINE_CTL_GROUP(ctrls, "Processing options", "");
 
-
-    PIPELINE_CTL_GROUP(ctrls, "Reflectors Detection", "");
-      PIPELINE_CTL(ctrls, processing_options_.enable_reflectors_detection, "enable_reflectors_detection", "");
-      PIPELINE_CTLC(ctrls, processing_options_.enable_double_echo_detection, "enable_double_echo_detection", "",
-          _this->processing_options_.enable_reflectors_detection);
-
-      PIPELINE_CTLC(ctrls, processing_options_.enable_auto_threshold, "enable_auto_threshold", "",
-          _this->processing_options_.enable_reflectors_detection);
-      PIPELINE_CTLC(ctrls, processing_options_.auto_threshold_type, "threshold_type", "",
-          _this->processing_options_.enable_reflectors_detection && _this->processing_options_.enable_auto_threshold);
-
-      PIPELINE_CTLC(ctrls, processing_options_.auto_threshold_value, "threshold_value", "",
-          _this->processing_options_.enable_reflectors_detection &&
-          _this->processing_options_.enable_auto_threshold &&
-          _this->processing_options_.auto_threshold_type == THRESHOLD_TYPE_VALUE);
-
-      PIPELINE_CTLC(ctrls, processing_options_.auto_clip_min, "auto_clip_min", "",
-          _this->processing_options_.enable_reflectors_detection &&
-          _this->processing_options_.enable_auto_threshold);
-
-      PIPELINE_CTLC(ctrls, processing_options_.auto_clip_max, "auto_clip_max", "",
-          _this->processing_options_.enable_reflectors_detection &&
-          _this->processing_options_.enable_auto_threshold);
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Reflectors Detection2", "");
-      PIPELINE_CTL(ctrls, processing_options_.enable_reflectors_detection2, "enable_reflectors_detection2", "");
-      PIPELINE_CTLC(ctrls, processing_options_.peak_line_a, "peak_line_a", "",
-          _this->processing_options_.enable_reflectors_detection2);
-      PIPELINE_CTLC(ctrls, processing_options_.peak_line_b, "peak_line_b", "",
-          _this->processing_options_.enable_reflectors_detection2);
-      PIPELINE_CTLC(ctrls, processing_options_.peak_line_bias, "peak_line_bias", "",
-          _this->processing_options_.enable_reflectors_detection2);
-      PIPELINE_CTLC(ctrls, processing_options_.peak_line_scale, "peak_line_scale", "",
-          _this->processing_options_.enable_reflectors_detection2);
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-
-    PIPELINE_CTL_GROUP(ctrls, "Bloom Detection", "");
-      PIPELINE_CTL(ctrls, processing_options_.enable_blom_detection, "enable_bloom_detection", "");
-      PIPELINE_CTLC(ctrls, processing_options_.high_intensity_threshold, "high_intensity_threshold", "",
-          _this->processing_options_.enable_blom_detection);
-      PIPELINE_CTLC(ctrls, processing_options_.blom_slope_min, "blom_slope_min", "",
-          _this->processing_options_.enable_blom_detection);
-      PIPELINE_CTLC(ctrls, processing_options_.blom_slope_max, "blom_slope_max", "",
-          _this->processing_options_.enable_blom_detection);
-      PIPELINE_CTLC(ctrls, processing_options_.walk_error, "walk_error", "",
-          _this->processing_options_.enable_blom_detection);
-      PIPELINE_CTLC(ctrls, processing_options_.double_echo_distance, "double_echo_distance", "",
-          _this->processing_options_.enable_blom_detection);
-
-    PIPELINE_CTL_END_GROUP(ctrls);
+      PIPELINE_CTL_GROUP(ctrls, "VLO lookup table statistics", "");
+        PIPELINE_CTL(ctrls, processing_options_.enable_gather_lookup_table_statistics,
+            "enable_gather_lookup_table_statistics", "");
+        PIPELINE_CTLC(ctrls, processing_options_.vlo_intensity_channel, "vlo_intensity_channel", "",
+            _this->processing_options_.enable_gather_lookup_table_statistics);
+        PIPELINE_CTLC(ctrls, processing_options_.vlo_lookup_table_statistics_filename, "vlo_statistics_filename", "",
+            _this->processing_options_.enable_gather_lookup_table_statistics);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
 
 
-    PIPELINE_CTL(ctrls, processing_options_.vlo_intensity_channel, "vlo_intensity_channel", "");
 
-    PIPELINE_CTL(ctrls, processing_options_.enable_gather_lookup_table_statistics, "enable_gather_lookup_table_statistics", "");
-    PIPELINE_CTLC(ctrls, processing_options_.vlo_lookup_table_statistics_filename, "vlo_statistics_filename", "",
-        _this->processing_options_.enable_gather_lookup_table_statistics);
+      PIPELINE_CTL_GROUP(ctrls, "Reflectors Detection", "");
+        PIPELINE_CTL(ctrls, processing_options_.enable_reflectors_detection, "enable_reflectors_detection", "");
+        PIPELINE_CTLC(ctrls, processing_options_.enable_double_echo_detection, "enable_double_echo_detection", "",
+            _this->processing_options_.enable_reflectors_detection);
+
+        PIPELINE_CTLC(ctrls, processing_options_.enable_auto_threshold, "enable_auto_threshold", "",
+            _this->processing_options_.enable_reflectors_detection);
+        PIPELINE_CTLC(ctrls, processing_options_.auto_threshold_type, "threshold_type", "",
+            _this->processing_options_.enable_reflectors_detection && _this->processing_options_.enable_auto_threshold);
+
+        PIPELINE_CTLC(ctrls, processing_options_.auto_threshold_value, "threshold_value", "",
+            _this->processing_options_.enable_reflectors_detection &&
+            _this->processing_options_.enable_auto_threshold &&
+            _this->processing_options_.auto_threshold_type == THRESHOLD_TYPE_VALUE);
+
+        PIPELINE_CTLC(ctrls, processing_options_.auto_clip_min, "auto_clip_min", "",
+            _this->processing_options_.enable_reflectors_detection &&
+            _this->processing_options_.enable_auto_threshold);
+
+        PIPELINE_CTLC(ctrls, processing_options_.auto_clip_max, "auto_clip_max", "",
+            _this->processing_options_.enable_reflectors_detection &&
+            _this->processing_options_.enable_auto_threshold);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+
+      PIPELINE_CTL_GROUP(ctrls, "Blom Detection", "");
+        PIPELINE_CTL(ctrls, processing_options_.enable_blom_detection, "enable_bloom_detection", "");
+        PIPELINE_CTLC(ctrls, processing_options_.high_intensity_threshold, "high_intensity_threshold", "",
+            _this->processing_options_.enable_blom_detection);
+        PIPELINE_CTLC(ctrls, processing_options_.blom_slope_min, "blom_slope_min", "",
+            _this->processing_options_.enable_blom_detection);
+        PIPELINE_CTLC(ctrls, processing_options_.blom_slope_max, "blom_slope_max", "",
+            _this->processing_options_.enable_blom_detection);
+        PIPELINE_CTLC(ctrls, processing_options_.walk_error, "walk_error", "",
+            _this->processing_options_.enable_blom_detection);
+        PIPELINE_CTLC(ctrls, processing_options_.double_echo_distance, "double_echo_distance", "",
+            _this->processing_options_.enable_blom_detection);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
 
     PIPELINE_CTL_END_GROUP(ctrls);
 
@@ -1482,7 +1057,9 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
 
       PIPELINE_CTL(ctrls, output_options_.save_cloud3d_ply, "save cloud3d ply", "");
-      PIPELINE_CTL(ctrls, output_options_.cloud3d_filename, "cloud3d_filename", "");
+      PIPELINE_CTLC(ctrls, output_options_.cloud3d_filename, "cloud3d_filename", "", _this->output_options_.save_cloud3d_ply);
+      PIPELINE_CTLC(ctrls, output_options_.cloud3d_intensity_channel, "cloud3d_intensity_channel", "", _this->output_options_.save_cloud3d_ply);
+
 
     PIPELINE_CTL_END_GROUP(ctrls);
   }
@@ -1523,13 +1100,6 @@ bool c_vlo_pipeline::initialize_pipeline()
   output_path_ =
       create_output_path(output_options_.output_directory);
 
-//  if ( output_options_.save_processed_frames ) {
-//    output_file_name_ =
-//        generate_output_filename(output_options_.processed_frames_filename,
-//            "processed",
-//            ".avi");
-//  }
-
   const int num_sources =
       input_sequence_->sources().size();
 
@@ -1569,14 +1139,9 @@ void c_vlo_pipeline::cleanup_pipeline()
     reflectors_writer_.close();
   }
 
-  if ( reflectors2_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", reflectors2_writer_.filename().c_str());
-    reflectors2_writer_.close();
-  }
-
-  if ( blom_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", blom_writer_.filename().c_str());
-    blom_writer_.close();
+  if ( blom_reflectors_mask_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", blom_reflectors_mask_writer_.filename().c_str());
+    blom_reflectors_mask_writer_.close();
   }
 
   if ( blom_reflectors_writer_.is_open() ) {
@@ -1741,11 +1306,6 @@ bool c_vlo_pipeline::process_current_frame()
     return false;
   }
 
-  if ( !run_reflectors_detection2() ) {
-    CF_ERROR("run_reflectors_detection2() fails");
-    return false;
-  }
-
   if ( !run_blom_detection() ) {
     CF_ERROR("run_bloom_detection() fails");
     return false;
@@ -1825,10 +1385,7 @@ bool c_vlo_pipeline::run_reflectors_detection()
             "_reflectors",
             ".avi");
 
-    bool fOk =
-        reflectors_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !reflectors_writer_.open(output_filename) ) {
       CF_ERROR("reflectors_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -1843,77 +1400,15 @@ bool c_vlo_pipeline::run_reflectors_detection()
   return true;
 }
 
-bool c_vlo_pipeline::run_reflectors_detection2()
-{
-  if( !processing_options_.enable_reflectors_detection2 ) {
-    return true; // silently ignore
-  }
-
-  bool fOk =
-      ::run_reflectors_detection2(current_scan_,
-          processing_options_.peak_line_a,
-          processing_options_.peak_line_b,
-          processing_options_.peak_line_bias,
-          processing_options_.peak_line_scale,
-          &current_reflection2_mask_);
-
-  if ( !fOk ) {
-    CF_DEBUG("::run_reflectors_detection2() fails");
-    return false;
-  }
-
-  cv::Mat image =
-      c_vlo_file::get_image(current_scan_,
-          c_vlo_reader::DATA_CHANNEL_DISTANCES);
-
-  if( !image.empty() ) {
-
-    autoclip(image, cv::noArray(),
-        0.5, 99.5,
-        0, 255);
-
-    if( image.depth() != CV_8U ) {
-      image.convertTo(image,
-      CV_8U);
-    }
-  }
-
-
-  cv::Mat mask;
-  cv::cvtColor(current_reflection2_mask_, mask, cv::COLOR_GRAY2BGR);
-  cv::addWeighted(image, 0.3, mask, 0.7, 0, image);
-
-
-  if( !reflectors2_writer_.is_open() ) {
-
-    std::string output_filename =
-        generate_output_filename("masks2/masks2.avi",
-            "_reflectors2",
-            ".masks2.avi");
-
-    bool fOk =
-        reflectors2_writer_.open(output_filename);
-
-    if( !fOk ) {
-      CF_ERROR("reflectors2_writer_.open(%s) fails", output_filename.c_str());
-      return false;
-    }
-  }
-
-  if( !reflectors2_writer_.write(image, cv::noArray()) ) {
-    CF_ERROR("reflectors2_writer_.write(%s) fails", reflectors2_writer_.filename().c_str());
-    return false;
-  }
-
-  return true;
-}
-
-
 bool c_vlo_pipeline::run_blom_detection()
 {
+
   if( !processing_options_.enable_blom_detection ) {
     return true; // silently ignore
   }
+
+  static const std::string ffmpeg_options =
+      "-r 10 -c rawvideo -pix_fmt bgr24 -f avi";
 
   cv::Mat3b reflectors_mask;
   cv::Mat1f reflectors_image;
@@ -1944,24 +1439,21 @@ bool c_vlo_pipeline::run_blom_detection()
 
   /////////////////////////////
 
-  if( !blom_writer_.is_open() ) {
+  if( !blom_reflectors_mask_writer_.is_open() ) {
 
     std::string output_filename =
-        generate_output_filename("blom_reflecors/.ser",
+        generate_output_filename("blom_reflecors/.avi",
             "reflectors_mask",
-            ".ser");
+            ".avi");
 
-    bool fOk =
-        blom_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_reflectors_mask_writer_.open(output_filename, ffmpeg_options) ) {
       CF_ERROR("blom_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
   }
 
-  if( !blom_writer_.write(reflectors_mask, cv::noArray()) ) {
-    CF_ERROR("blom_writer_.write(%s) fails", blom_writer_.filename().c_str());
+  if( !blom_reflectors_mask_writer_.write(reflectors_mask, cv::noArray()) ) {
+    CF_ERROR("blom_writer_.write(%s) fails", blom_reflectors_mask_writer_.filename().c_str());
     return false;
   }
 
@@ -1974,10 +1466,7 @@ bool c_vlo_pipeline::run_blom_detection()
             "blom_reflectors",
             ".ser");
 
-    bool fOk =
-        blom_reflectors_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_reflectors_writer_.open(output_filename) ) {
       CF_ERROR("blom_reflectors_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -1997,10 +1486,7 @@ bool c_vlo_pipeline::run_blom_detection()
             "blom_distances",
             ".ser");
 
-    bool fOk =
-        blom_distances_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_distances_writer_.open(output_filename) ) {
       CF_ERROR("blom_distances_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -2021,10 +1507,7 @@ bool c_vlo_pipeline::run_blom_detection()
             "blom_slopes",
             ".ser");
 
-    bool fOk =
-        blom_slopes_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_slopes_writer_.open(output_filename) ) {
       CF_ERROR("blom_slopes_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -2045,10 +1528,7 @@ bool c_vlo_pipeline::run_blom_detection()
             "blom_intensity",
             ".ser");
 
-    bool fOk =
-        blom_intensity_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_intensity_writer_.open(output_filename) ) {
       CF_ERROR("blom_intensity_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -2065,14 +1545,11 @@ bool c_vlo_pipeline::run_blom_detection()
   if( !blom_mask_writer_.is_open() ) {
 
     std::string output_filename =
-        generate_output_filename("blom_reflecors/.ser",
+        generate_output_filename("blom_reflecors/.avi",
             "blom_mask",
-            ".ser");
+            ".avi");
 
-    bool fOk =
-        blom_mask_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_mask_writer_.open(output_filename, ffmpeg_options) ) {
       CF_ERROR("blom_mask_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -2165,19 +1642,23 @@ bool c_vlo_pipeline::run_blom_detection()
     cv::cvtColor(display_image, display_image,
         cv::COLOR_GRAY2BGR);
 
+
+    //
+    cv::split(blom_mask, channels);
+    for ( int i = 0; i < 3;++i ) {
+
+      display_image(roi[i]).setTo(CV_RGB(255, 255, 0),
+          channels[i]);
+    }
+
+    //
     cv::split(reflectors_mask, channels);
     for( int i = 0; i < 3; ++i ) {
       display_image(roi[i]).setTo(CV_RGB(245, 64, 41),
           channels[i]);
     }
 
-
-    cv::split(blom_mask, channels);
     for ( int i = 0; i < 3;++i ) {
-
-      display_image(roi[i]).setTo(CV_RGB(255, 255, 0),
-          channels[i]);
-
       cv::putText(display_image(roi[i]),
           ssprintf("Echo%d", i),
           cv::Point(16, 32),
@@ -2189,34 +1670,32 @@ bool c_vlo_pipeline::run_blom_detection()
           false);
     }
 
-    for ( int i = 1; i < 3;++i ) {
 
+    //
+    for ( int i = 1; i < 3;++i ) {
       cv::line(display_image,
           cv::Point(0, i * size.height),
           cv::Point(display_image.cols, i * size.height),
           cv::Scalar::all(255),
           1);
     }
-
     cv::line(display_image,
         cv::Point(size.width, 0),
         cv::Point(size.width, display_image.rows),
         cv::Scalar::all(255),
         1);
+    //
   }
 
 
   if( !blom_display_writer_.is_open() ) {
 
     std::string output_filename =
-        generate_output_filename("blom_reflecors/.ser",
+        generate_output_filename("blom_reflecors/.avi",
             "blom_display",
-            ".ser");
+            ".avi");
 
-    bool fOk =
-        blom_display_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !blom_display_writer_.open(output_filename, ffmpeg_options) ) {
       CF_ERROR("blom_display_writer_.open(%s) fails",
           output_filename.c_str());
       return false;
@@ -2230,6 +1709,24 @@ bool c_vlo_pipeline::run_blom_detection()
   }
 
 
+  return true;
+}
+
+
+
+bool c_vlo_pipeline::update_vlo_lookup_table_statistics()
+{
+  if ( !processing_options_.enable_gather_lookup_table_statistics ) {
+    return true; // silently ignore
+  }
+
+  // update here
+  if ( !::update_vlo_lookup_table_statistics(current_scan_, vlo_lookup_table_statistics_) ) {
+    CF_ERROR("update_vlo_lookup_table_statistics() fails");
+    return false;
+  }
+
+  // success
   return true;
 }
 
@@ -2255,10 +1752,7 @@ bool c_vlo_pipeline::save_progress_video()
             "_progress",
             ".avi");
 
-    bool fOk =
-        progress_writer_.open(output_filename);
-
-    if( !fOk ) {
+    if( !progress_writer_.open(output_filename) ) {
       CF_ERROR("progress_writer_.open(%s) fails", output_filename.c_str());
       return false;
     }
@@ -2281,22 +1775,9 @@ bool c_vlo_pipeline::save_cloud3d_ply()
   std::vector<cv::Point3f> cloud3d;
   std::vector<cv::Vec3b> colors;
 
-  switch (current_scan_.version) {
-    case VLO_VERSION_1:
-      if( !get_cloud3d(current_scan_.scan1, cloud3d, colors) ) {
-        CF_ERROR("get_cloud3d(scan1) fails");
-      }
-      break;
-    case VLO_VERSION_3:
-      if( !get_cloud3d(current_scan_.scan3, cloud3d, colors) ) {
-        CF_ERROR("get_cloud3d(scan1) fails");
-      }
-      break;
-    case VLO_VERSION_5:
-      if( !get_cloud3d(current_scan_.scan5, cloud3d, colors) ) {
-        CF_ERROR("get_cloud3d(scan1) fails");
-      }
-      break;
+  if( !get_cloud3d(current_scan_, cloud3d, colors, output_options_.cloud3d_intensity_channel) ) {
+    CF_ERROR("get_cloud3d() fails");
+    return false;
   }
 
   const std::string filename =
@@ -2313,61 +1794,3 @@ bool c_vlo_pipeline::save_cloud3d_ply()
   return true;
 }
 
-
-bool c_vlo_pipeline::update_vlo_lookup_table_statistics()
-{
-  if ( !processing_options_.enable_gather_lookup_table_statistics ) {
-    return true; // silently ignore
-  }
-
-  // update here
-  if ( !::update_vlo_lookup_table_statistics(current_scan_, vlo_lookup_table_statistics_) ) {
-    CF_ERROR("update_vlo_lookup_table_statistics() fails");
-    return false;
-  }
-
-  // success
-  return true;
-}
-
-
-#if 0
-
-
-  static std::vector<float> psf_table;
-  static cv::Mat1f psf_kernel;
-
-  const int N = 2 * scan.NUM_LAYERS + 1;
-
-  if( psf_table.size() != N ) {
-
-    // Update or Generate new PSF
-
-    const double sigma = 9;
-
-    psf_table.resize(N);
-
-    for ( int i = 0; i < N; ++i ) {
-
-      const double x = std::abs(i - N / 2);
-
-      psf_table[i] = exp(-0.5 * x / sigma);  // * (1.0 + 0.005 * x);
-    }
-
-    psf_kernel =
-        cv::Mat1f(psf_table.size(), 1,
-            psf_table.data());
-
-   // psf_kernel /= cv::sum(psf_kernel)[0];
-  }
-
-
-  cv::filter2D(reflectors_image, reflectors_image,
-      -1, psf_kernel, cv::Point(0, N / 2), 0,
-      cv::BORDER_CONSTANT);
-
-//  cv::sepFilter2D(reflectors_image, reflectors_image, -1,
-//      cv::Mat1f(1, 1, 1.f), psf_kernel,
-//      cv::Point(0, N / 2), 0,
-//      cv::BORDER_CONSTANT);
-#endif

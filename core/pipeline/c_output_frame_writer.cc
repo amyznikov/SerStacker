@@ -12,6 +12,18 @@
 #include <core/debug.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+c_output_frame_writer_options::c_output_frame_writer_options() :
+    ffmpeg_opts(c_output_frame_writer::default_ffmpeg_opts()),
+    output_pixel_depth(PIXEL_DEPTH_NO_CHANGE),
+    save_frame_mapping(false)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::string c_output_frame_writer::default_ffmpeg_opts_ =
+    "-r 10 -c rawvideo -pix_fmt rgb24";
+    // "-r 10 -c huffyuv";
 
 c_output_frame_writer::c_output_frame_writer()
 {
@@ -22,6 +34,7 @@ c_output_frame_writer::~c_output_frame_writer()
 {
   close();
 }
+
 
 bool c_output_frame_writer::create_output_frame(const cv::Mat & src, const cv::Mat & src_mask,
     cv::Mat & dst, cv::Mat & dst_mask,
@@ -82,6 +95,21 @@ const std::string & c_output_frame_writer::filename() const
   return output_file_name;
 }
 
+const std::string & c_output_frame_writer::ffmpeg_opts() const
+{
+  return ffmpeg_opts_;
+}
+
+void c_output_frame_writer::set_default_ffmpeg_opts(const std::string & opts)
+{
+  default_ffmpeg_opts_ = opts;
+}
+
+const std::string & c_output_frame_writer::default_ffmpeg_opts()
+{
+  return default_ffmpeg_opts_;
+}
+
 bool c_output_frame_writer::is_open() const
 {
   switch (output_type) {
@@ -93,21 +121,22 @@ bool c_output_frame_writer::is_open() const
   return false;
 }
 
-bool c_output_frame_writer::open(const std::string & filename,
-    bool write_frame_mapping)
+bool c_output_frame_writer::open(const std::string & filename, const std::string & ffmpeg_opts, bool write_frame_mapping)
 {
-  return open(filename,
+  return open(filename, ffmpeg_opts,
       c_image_processor::sptr(),
       PIXEL_DEPTH_NO_CHANGE,
       write_frame_mapping);
 }
 
 bool c_output_frame_writer::open(const std::string & filename,
+    const std::string & ffmpeg_opts,
     const c_image_processor::sptr & output_image_processor,
     PIXEL_DEPTH output_pixel_depth,
     bool write_frame_mapping)
 {
   output_file_name = filename;
+  ffmpeg_opts_ = ffmpeg_opts;
   output_type = output_type_unknown;
   output_image_processor_ = output_image_processor;
   output_pixel_depth_ = output_pixel_depth;
@@ -177,7 +206,7 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
   switch (output_type) {
     case output_type_video: {
 
-      bool fOk =
+      bool fOk = true;
           create_output_frame(currenFrame.getMat(), currentMask.getMat(),
               output_frame, output_mask,
               output_image_processor_,
@@ -189,16 +218,21 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
         return false;
       }
 
+
       if( !output_mask.empty() ) {
         output_frame.setTo(0, ~output_mask);
       }
 
       if( !ffmpeg.is_open() ) {
 
+        const std::string opts =
+            ffmpeg_opts_.empty() ? default_ffmpeg_opts_ :
+                ffmpeg_opts_;
+
         fOk =
             ffmpeg.open(filename(), output_frame.size(),
                 output_frame.channels() > 1,
-                "-c huffyuv -r 10");
+                opts);
 
         if( !fOk ) {
           CF_ERROR("Can not write video file '%s'",

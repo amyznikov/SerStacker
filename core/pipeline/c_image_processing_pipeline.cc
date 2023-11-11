@@ -552,6 +552,7 @@ bool c_image_processing_pipeline::open_output_writer(c_output_frame_writer & wri
 
     const bool fOK =
         writer.open(filename,
+            opts.ffmpeg_opts,
             opts.output_image_processor,
             opts.output_pixel_depth,
             opts.save_frame_mapping);

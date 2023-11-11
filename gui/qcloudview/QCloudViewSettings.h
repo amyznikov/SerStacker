@@ -40,6 +40,7 @@ protected:
   QNumericBox * sceneTarget_ctl = nullptr;
   QNumericBox * upDirection_ctl = nullptr;
   QNumericBox * sceneOrigin_ctl = nullptr;
+  QCheckBox   * autoShowViewTarget_ctl = nullptr;
   QNumericBox * pointSize_ctl = nullptr;
   QNumericBox * pointBrightness_ctl = nullptr;
 };

@@ -147,10 +147,10 @@ void QGLCloudViewer::glPreDraw()
 
 void QGLCloudViewer::glPostDraw()
 {
-  Base::glPostDraw();
-
   glColor3ub(200, 200, 200);
   drawMainAxes();
+
+  Base::glPostDraw();
 }
 
 void QGLCloudViewer::glDraw()
@@ -208,6 +208,7 @@ void QGLCloudViewer::glDraw()
       glEnd(/*GL_POINTS*/);
     }
   }
+
 }
 
 

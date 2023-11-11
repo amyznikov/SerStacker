@@ -61,6 +61,9 @@ public:
   void setUpDirection(const QVector3D & v);
   const QVector3D & upDirection() const;
 
+  void setAutoShowViewTarget(bool v);
+  bool autoShowViewTarget() const;
+
   void setPerspecitive(double fov_radians, double nearPlane, double farPlane);
 
   void cameraTo(const QVector3D & viewPoint, const QVector3D & viewTargetPoint, const QVector3D & viewUpDirection);
@@ -100,6 +103,8 @@ protected:
   virtual void glCleanup();
 
 protected:
+  void showViewTarget(bool v);
+  void timerEvent(QTimerEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
@@ -113,6 +118,8 @@ protected:
   void resizeGL(int w, int h) override;
   void paintGL() override;
   virtual void cleanupGL();
+
+protected:
 
 protected:
   QColor backgroundColor_ = Qt::black;
@@ -139,6 +146,8 @@ protected:
 
   QPointF prev_mouse_pos_;
   bool dirty_ = true;
+  bool autoShowViewTarget_ = false;
+  int hideViewTargetTimerId_ = 0;
 
 };
 

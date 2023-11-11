@@ -336,6 +336,32 @@ void QGLView::glDraw()
 
 void QGLView::glPostDraw()
 {
+  const bool showViewTarget =
+      hideViewTargetTimerId_ > 0;
+
+  if ( showViewTarget ) {
+
+    const qreal length = viewPoint_.length() / 8;
+
+    const QVector3D arrow_start[3] = {
+        QVector3D(viewTarget_.x() - length, viewTarget_.y(), viewTarget_.z()),
+        QVector3D(viewTarget_.x(), viewTarget_.y() - length, viewTarget_.z()),
+        QVector3D(viewTarget_.x(), viewTarget_.y(), viewTarget_.z() - length),
+    };
+
+    const QVector3D arrow_end[3] = {
+        QVector3D(viewTarget_.x() + 2 * length, viewTarget_.y(), viewTarget_.z()),
+        QVector3D(viewTarget_.x(), viewTarget_.y() + 2 * length, viewTarget_.z()),
+        QVector3D(viewTarget_.x(), viewTarget_.y(), viewTarget_.z() + 2 * length),
+    };
+
+    glColor3ub(255, 255, 64);
+
+    for ( int i = 0; i < 3; ++i ) {
+      drawArrow(arrow_start[i], arrow_end[i], length / 32, 4);
+    }
+  }
+
   glFlush();
 }
 
@@ -497,7 +523,7 @@ void QGLView::drawMainAxes()
   static const QFont font("Monospace", 12,
       QFont::Weight::DemiBold);
 
-  qreal length = viewPoint_.length() / 3;
+  const qreal length = viewPoint_.length() / 3;
 
   drawArrow(QVector3D(0, 0, 0), QVector3D(length, 0, 0), length / 100, 8);
   drawArrow(QVector3D(0, 0, 0), QVector3D(0, length, 0), length / 100, 8);
@@ -582,8 +608,9 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
         dirty_ = true;
 
-        Q_EMIT viewPointChanged();
+        showViewTarget(true);
         update();
+        Q_EMIT viewPointChanged();
       }
 
       prev_mouse_pos_ = newpos;
@@ -617,8 +644,9 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
           dirty_ = true;
 
-          Q_EMIT viewPointChanged();
+          showViewTarget(true);
           update();
+          Q_EMIT viewPointChanged();
         }
 
         else { // Rotate camera around of the Up / Right axes
@@ -641,8 +669,9 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
           viewUpDirection_ = Up;
           dirty_ = true;
 
-          Q_EMIT viewPointChanged();
+          showViewTarget(true);
           update();
+          Q_EMIT viewPointChanged();
         }
       }
 
@@ -674,8 +703,9 @@ void QGLView::wheelEvent(QWheelEvent * e)
       viewPoint_ = neweye;
       dirty_ = true;
 
-      Q_EMIT viewPointChanged();
+      showViewTarget(true);
       update();
+      Q_EMIT viewPointChanged();
 
     }
     else if( e->modifiers() == Qt::ControlModifier ) {
@@ -698,8 +728,9 @@ void QGLView::wheelEvent(QWheelEvent * e)
       if ( p > 0 &&  newforward.length() > nearPlane_ ) {
         viewTarget_ = newtarget;
         dirty_ = true;
-        Q_EMIT viewPointChanged();
+        showViewTarget(true);
         update();
+        Q_EMIT viewPointChanged();
       }
 
     }
@@ -709,6 +740,41 @@ void QGLView::wheelEvent(QWheelEvent * e)
 }
 #endif
 
+
+void QGLView::setAutoShowViewTarget(bool v)
+{
+  autoShowViewTarget_ = v;
+}
+
+bool QGLView::autoShowViewTarget() const
+{
+  return autoShowViewTarget_;
+}
+
+void QGLView::showViewTarget(bool show)
+{
+  if ( hideViewTargetTimerId_ > 0 ) {
+    Base::killTimer(hideViewTargetTimerId_);
+    hideViewTargetTimerId_ = 0;
+  }
+
+  if( show && autoShowViewTarget_ ) {
+    hideViewTargetTimerId_ =
+        Base::startTimer(500, Qt::CoarseTimer);
+  }
+}
+
+void QGLView::timerEvent(QTimerEvent * e)
+{
+  if ( e->timerId() == hideViewTargetTimerId_)  {
+    showViewTarget(false);
+    e->ignore();
+    update();
+    return;
+  }
+
+  Base::timerEvent(e);
+}
 
 void QGLView::showKeyBindings()
 {

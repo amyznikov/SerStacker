@@ -101,6 +101,7 @@ struct c_avi_file_writer:
   double start_ts = 0;
 
   // "-c huffyuv -r 100 -f avi"
+  // "-r 10 -c rawvideo -pix_fmt rgb24";
   bool create(const QString & filename, const QString & ffopts, const cv::Size & frame_size,
       enum COLORID color_id, int /*bits_per_plane*/)
   {

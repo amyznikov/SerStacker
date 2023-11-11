@@ -48,15 +48,10 @@ public:
   void setLockP2( bool v);
   bool lockP2() const;
 
-  void setSnapToGrid(bool v);
-  bool snapToGrid() const;
-
   void setArrowSize(double v);
   double arrowSize() const;
 
-
 protected:
-  void updateGeometry();
   QRectF boundingRect() const override;
   QPainterPath shape() const override;
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
@@ -64,6 +59,7 @@ protected:
   void mouseMoveEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
   bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
+  void updateGeometry() override;
   void showShapeSettings();
 
 protected:
@@ -72,9 +68,9 @@ protected:
   QRectF boundingRect_;
   QPainterPath shape_;
   QPen pen_;
-  QAction * lockP1Action_ = nullptr;
-  QAction * lockP2Action_ = nullptr;
-  QAction * showSettingsAction_ = nullptr;
+//  QAction * lockP1Action_ = nullptr;
+//  QAction * lockP2Action_ = nullptr;
+//  QAction * showSettingsAction_ = nullptr;
 
   enum MouseAction {
     MouseAction_None = 0,
@@ -85,7 +81,6 @@ protected:
 
   bool lockP1_ = false;
   bool lockP2_ = false;
-  bool snapToGrid_ = true;
 };
 
 #endif /* __QGraphicsLineShape_h__ */

@@ -49,6 +49,24 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
             return false;
           });
 
+
+  snapToPixelGrid_ctl =
+      add_checkbox("Snap To Pixels",
+          "",
+          [this](bool checked) {
+            if ( shape_ ) {
+              shape_->setSnapToPixelGrid(checked);
+            }
+            save_parameter(PREFIX, "snapToPixelGrid", shape_->snapToPixelGrid());
+          },
+          [this](bool * checked) {
+            if ( shape_ ) {
+              * checked = shape_->snapToPixelGrid();
+              return true;
+            }
+            return false;
+          });
+
   penColor_ctl =
       add_widget<QColorPickerButton>(
           "Pen Color");

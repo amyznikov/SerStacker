@@ -113,7 +113,11 @@ QPainter::RenderHints QGraphicsShape::renderHintsOff() const
 
 void QGraphicsShape::setSnapToPixelGrid(bool v)
 {
-  snapToPixelGrid_ = v;
+  if( (snapToPixelGrid_ != v) && (snapToPixelGrid_ = v) ) {
+    prepareGeometryChange();
+    updateGeometry();
+    update();
+  }
 }
 
 bool QGraphicsShape::snapToPixelGrid() const
@@ -186,6 +190,11 @@ void QGraphicsShape::onSceneChange()
 
 void QGraphicsShape::onSceneHasChanged()
 {
+}
+
+void QGraphicsShape::updateGeometry()
+{
+
 }
 
 QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & value)

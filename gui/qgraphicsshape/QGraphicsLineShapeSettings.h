@@ -34,6 +34,7 @@ protected:
   QGraphicsLineShape *shape_ = nullptr;
   QCheckBox * lockP1_ctl = nullptr;
   QCheckBox * lockP2_ctl = nullptr;
+  QCheckBox * snapToPixelGrid_ctl = nullptr;
   QColorPickerButton *penColor_ctl = nullptr;
   QSpinBox *penWidth_ctl = nullptr;
   QSpinBox *arrowSize_ctl = nullptr;

@@ -79,8 +79,6 @@ QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
 
 void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *e)
 {
-  CF_DEBUG("QImageScene::contextMenuEvent");
-
   //  menu.addAction("Send to back",
   //      [this]() {
   //

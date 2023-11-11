@@ -133,22 +133,6 @@ bool QGraphicsLineShape::lockP2() const
   return lockP2_;
 }
 
-void QGraphicsLineShape::setSnapToGrid(bool v)
-{
-  if ( snapToGrid_ != v ) {
-    if ( (snapToGrid_ = v) ) {
-      prepareGeometryChange();
-      updateGeometry();
-      update();
-    }
-  }
-}
-
-bool QGraphicsLineShape::snapToGrid() const
-{
-  return snapToGrid_;
-}
-
 void QGraphicsLineShape::setArrowSize(double v)
 {
   arrowSize_ = v;
@@ -253,8 +237,7 @@ void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
           view->mapFromScene(e->scenePos());
 
       const QPoint p1 =
-          view->mapFromScene(mapToScene(
-              line_.p1()));
+          view->mapFromScene(mapToScene(line_.p1()));
 
       const double p1_distance =
           distance(epos, p1);
@@ -266,8 +249,7 @@ void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
       }
 
       const QPoint p2 =
-          view->mapFromScene(mapToScene(
-              line_.p2()));
+          view->mapFromScene(mapToScene(line_.p2()));
 
       const double p2_distance =
           distance(epos, p2);
@@ -304,7 +286,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
           prepareGeometryChange();
 
-          if ( !snapToGrid_ ) {
+          if ( !snapToPixelGrid_ ) {
             line_.setP1(e->pos());
           }
           else {
@@ -328,7 +310,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
           prepareGeometryChange();
 
-          if ( !snapToGrid_ ) {
+          if ( !snapToPixelGrid_ ) {
             line_.setP2(e->pos());
           }
           else {
@@ -361,7 +343,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
               p1.y() + sin(angle) * line_.length());
 
 
-          if ( !snapToGrid_ ) {
+          if ( !snapToPixelGrid_ ) {
             line_.setP2(p2);
           }
           else {
@@ -392,7 +374,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           const QPointF p1(p2.x() + cos(angle) * line_.length(),
               p2.y() + sin(angle) * line_.length());
 
-          if ( !snapToGrid_ ) {
+          if ( !snapToPixelGrid_ ) {
             line_.setP1(p1);
           }
           else {
@@ -427,40 +409,39 @@ void QGraphicsLineShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
   Base::mouseReleaseEvent(e);
 }
 
+template<class Fn>
+static QAction * createCheckableAction(const QString & text, bool checked, Fn && fn)
+{
+  QAction * action = new QAction(text);
+  action->setCheckable(true);
+  action->setChecked(checked);
+  QObject::connect(action, &QAction::triggered,  fn);
+  return action;
+}
+
 bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
 {
-  if ( !lockP1Action_ ) {
+  menu.addAction(createCheckableAction("Lock P1", lockP1_,
+      [this](bool checked) {
+        setLockP1(checked);
+      }));
 
-    lockP1Action_ = new QAction("Lock P1", this);
-    lockP1Action_->setCheckable(true);
-    lockP1Action_->setChecked(lockP1_);
+  menu.addAction(createCheckableAction("Lock P2", lockP2_,
+      [this](bool checked) {
+        setLockP2(checked);
+      }));
 
-    connect(lockP1Action_, &QAction::triggered,
-        this, &ThisClass::setLockP1);
-  }
+  menu.addAction(createCheckableAction("Snap to pixels", snapToPixelGrid_,
+      [this](bool checked) {
+        setSnapToPixelGrid(checked);
+      }));
 
-  if ( !lockP2Action_ ) {
-
-    lockP2Action_ = new QAction("Lock P2", this);
-    lockP2Action_->setCheckable(true);
-    lockP2Action_->setChecked(lockP2_);
-
-    connect(lockP2Action_, &QAction::triggered,
-        this, &ThisClass::setLockP2);
-  }
-
-  if ( !showSettingsAction_ ) {
-
-    showSettingsAction_ = new QAction("Options...", this);
-    connect(showSettingsAction_, &QAction::triggered,
-        this, &ThisClass::showShapeSettings);
-  }
-
-
-  menu.addAction(lockP1Action_);
-  menu.addAction(lockP2Action_);
   menu.addSeparator();
-  menu.addAction(showSettingsAction_);
+
+  menu.addAction(createCheckableAction("Options...", false,
+      [this](bool checked) {
+        showShapeSettings();
+      }));
 
   menu.addSeparator();
   Base::popuateContextMenu(e, menu);

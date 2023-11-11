@@ -52,7 +52,6 @@ public:
   void showShapeSettings();
 
 protected:
-  void updateGeometry();
   QRectF boundingRect() const override;
   QPainterPath shape() const override;
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
@@ -63,6 +62,7 @@ protected:
   void onSceneChange() override;
   void onSceneHasChanged() override;
   void onSceneRectChanged(const QRectF &rect);
+  void updateGeometry() override;
 
 
 

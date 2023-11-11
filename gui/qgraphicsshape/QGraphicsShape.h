@@ -41,10 +41,8 @@ public:
   static QGraphicsView* getActiveView(const QGraphicsSceneEvent * event);
   static QPainterPath shapeFromPath(const QPainterPath &path, const QPen & pen);
 
-
   void setUpdatingPos(bool v);
   bool inUpdatingPos() const;
-
 
 Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);
@@ -65,6 +63,7 @@ protected:
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
   void contextMenuEvent(QGraphicsSceneContextMenuEvent * event) override;
   virtual bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu);
+  virtual void updateGeometry();
   virtual void onSceneChange();
   virtual void onSceneHasChanged();
 

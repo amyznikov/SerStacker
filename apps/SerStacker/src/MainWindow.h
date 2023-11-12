@@ -82,6 +82,8 @@ private Q_SLOTS:
   void onPipelineThreadStarted();
   void onPipelineThreadFinished();
 
+  void onShowCloudViewSettingsDialogBoxActionClicked(bool checked);
+
   void saveCurrentWork();
 
 private :
@@ -134,12 +136,13 @@ private:
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;
   QAction * viewInputOptionsAction = nullptr;
-  QAction * closeImageViewAction_ = nullptr;
+  QAction * closeImageViewAction = nullptr;
 
   QAction * selectPreviousFileAction_ = nullptr;
-  QAction * selectNextFileAction_ = nullptr;
-  QAction * reloadCurrentFileAction_ = nullptr;
-  QAction * showImageProcessorSettingsAction_ = nullptr;
+  QAction * selectNextFileAction = nullptr;
+  QAction * reloadCurrentFileAction = nullptr;
+  QAction * showImageProcessorSettingsAction = nullptr;
+  QAction * showCloudViewSettingsDialogBoxAction = nullptr;
 
   QLabel * imageNameLabel_ctl = nullptr;
   QLabel * imageSizeLabel_ctl = nullptr;

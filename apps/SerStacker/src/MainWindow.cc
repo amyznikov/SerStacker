@@ -7,6 +7,7 @@
 
 #include "MainWindow.h"
 #include <gui/widgets/QToolbarSpacer.h>
+#include <gui/widgets/QMenuWidgetAction.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
@@ -42,16 +43,6 @@ namespace serstacker {
 #define ICON_delete       ":/gui/icons/delete"
 
 #define ICON_roi          ":/serstacker/icons/roi.png"
-
-namespace  {
-
-inline bool is_visible(QWidget * w)
-{
-  return w && w->isVisible();
-}
-
-}  // namespace
-
 
 MainWindow::MainWindow()
 {
@@ -175,7 +166,7 @@ void MainWindow::setupMainMenu()
   // File
   //
 
-  menuFile_->addAction(reloadCurrentFileAction_ =
+  menuFile_->addAction(reloadCurrentFileAction =
       createAction(getIcon(ICON_reload),
           "Reload",
           "Reload current file from disk (Ctrl+R)",
@@ -206,7 +197,7 @@ void MainWindow::setupMainMenu()
               this, nullptr, nullptr,
               Qt::WindowShortcut)));
 
-  menuFile_->addAction(selectNextFileAction_ =
+  menuFile_->addAction(selectNextFileAction =
       createAction(getIcon(ICON_next),
           "Next (Ctrl+PgDown)",
           "Select next file (Ctrl+PgDown)",
@@ -272,7 +263,9 @@ void MainWindow::setupMainMenu()
       createCheckableAction(QIcon(),
           "Input Options...",
           "Configure general input options",
-          this, &ThisClass::onViewInputOptions));
+          is_visible(inputOptionsDlgBox),
+          this,
+          &ThisClass::onViewInputOptions));
 
 
   pipelineProgressView = new QPipelineProgressView(this);
@@ -303,7 +296,7 @@ void MainWindow::setupDisplayImageVideoWriter()
   QToolBar *toolbar = imageEditor->toolbar();
   if( toolbar ) {
 
-    toolbar->insertWidget(closeImageViewAction_, displayImageVideoWriterToolButton_ =
+    toolbar->insertWidget(closeImageViewAction, displayImageVideoWriterToolButton_ =
         createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
   }
 
@@ -567,8 +560,8 @@ void MainWindow::setupImageEditor()
   }
 
   toolbar->addAction(selectPreviousFileAction_);
-  toolbar->addAction(selectNextFileAction_);
-  toolbar->addAction(reloadCurrentFileAction_);
+  toolbar->addAction(selectNextFileAction);
+  toolbar->addAction(reloadCurrentFileAction);
 
   toolbar->addSeparator();
 
@@ -586,6 +579,7 @@ void MainWindow::setupImageEditor()
       createCheckableAction(badframeIcon,
           "Bad Frame",
           "Mark / Unmark current frame as bad (Ctrl+A)",
+          false,
           [this](bool checked) {
             if ( imageEditor->isVisible() ) {
 
@@ -663,6 +657,7 @@ void MainWindow::setupImageEditor()
       createCheckableAction(getIcon(ICON_mask),
           "Mask",
           "View / Edit image mask",
+          false,
           [this](bool checked) {
             if ( imageEditor->isVisible() ) {
 
@@ -690,7 +685,7 @@ void MainWindow::setupImageEditor()
       });
 
 
-  toolbar->addAction(closeImageViewAction_ =
+  toolbar->addAction(closeImageViewAction =
       createAction(getIcon(ICON_close),
           "Close",
           "Close window",
@@ -784,8 +779,8 @@ void MainWindow::setupTextViewer()
   toolbar = textViewer->toolbar();
 
   toolbar->addAction(selectPreviousFileAction_);
-  toolbar->addAction(selectNextFileAction_);
-  toolbar->addAction(reloadCurrentFileAction_);
+  toolbar->addAction(selectNextFileAction);
+  toolbar->addAction(reloadCurrentFileAction);
 
   toolbar->addSeparator();
 
@@ -994,11 +989,10 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 }
 
 
-
-
 void MainWindow::stupCloudViewer()
 {
   QToolBar * toolbar;
+  //QToolButton * toolbutton;
   QAction * action;
   QLabel * imageNameLabel_ctl;
   QLabel * imageSizeLabel_ctl;
@@ -1038,38 +1032,79 @@ void MainWindow::stupCloudViewer()
 
   toolbar->addSeparator();
 
-  // toolbar->addSeparator();
-
   toolbar->addWidget(new QToolbarSpacer());
 
   toolbar->addAction(showMtfControlAction_);
 
+  toolbar->addWidget(createToolButton(getIcon(ICON_options),
+      "Options",
+      "Cloud View Options...",
+      [this](QToolButton * tb) {
 
-  toolbar->addAction(action = new QAction(getIcon(ICON_options), "Options"));
-  action->setToolTip("Configure cloud view options");
-  action->setCheckable(true);
-  action->setChecked(false);
-  connect(action, &QAction::triggered,
-      [this, action](bool checked) {
+        QMenu menu;
 
-        if ( checked && !cloudViewSettingsDialogBox ) {
+        menu.addAction(createMenuWidgetAction<QSpinBox>("Point size: ",
+                nullptr,
+                [this](const auto * action) {
+                  QSpinBox * spinBox = action->control();
+                  spinBox->setKeyboardTracking(false);
+                  spinBox->setRange(1, 32);
+                  spinBox->setValue((int)cloudViewer->pointSize());
+                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                      [this](int value) {
+                        cloudViewer->setPointSize(value);
+                      });
+                }));
 
-          cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
-          cloudViewSettingsDialogBox->setCloudViewer(cloudViewer);
-          connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
-              action, &QAction::setChecked);
+        menu.addAction(createMenuWidgetAction<QSpinBox>("Point brightness: ",
+                nullptr,
+                [this](const auto * action) {
+                  QSpinBox * spinBox = action->control();
+                  spinBox->setKeyboardTracking(false);
+                  spinBox->setRange(-128, 128);
+                  spinBox->setValue((int)cloudViewer->pointBrightness());
+                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                      [this](int value) {
+                        cloudViewer->setPointBrightness(value);
+                      });
+                }));
+
+        menu.addAction(createAction(QIcon(),
+                "Show cloud center",
+                "Rotate camera to show point cloud center",
+                [this]() {
+                  if ( cloudViewer ) {
+                    cloudViewer->rotateToShowCloud();
+                  }
+                }));
+
+        menu.addAction(createCheckableAction(QIcon(),
+                "Auto Show Target point",
+                "",
+                cloudViewer->autoShowViewTarget(),
+                [this](bool checked) {
+                  if ( cloudViewer ) {
+                    cloudViewer->setAutoShowViewTarget(checked);
+                  }
+                }));
+
+        menu.addSeparator();
+
+        if ( !showCloudViewSettingsDialogBoxAction ) {
+
+          showCloudViewSettingsDialogBoxAction =
+          createCheckableAction(getIcon(ICON_options),
+              "Advanced ...",
+              "Show advanced options",
+              is_visible(cloudViewSettingsDialogBox),
+              this,
+              &ThisClass::onShowCloudViewSettingsDialogBoxActionClicked);
         }
 
-        if ( cloudViewSettingsDialogBox ) {
-          if ( !checked ) {
-            cloudViewSettingsDialogBox->hide();
-          }
-          else {
-            cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
-            cloudViewSettingsDialogBox->showNormal();
-          }
-        }
-      });
+        menu.addAction(showCloudViewSettingsDialogBoxAction);
+
+        menu.exec(tb->mapToGlobal(QPoint(tb->width() - 4,tb->height() - 4)));
+      }));
 
 
   toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
@@ -1094,6 +1129,28 @@ void MainWindow::stupCloudViewer()
           cloudViewer->clear();
         }
       });
+
+}
+
+void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
+{
+  if ( checked && !cloudViewSettingsDialogBox ) {
+
+    cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
+    cloudViewSettingsDialogBox->setCloudViewer(cloudViewer);
+    connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
+        showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
+  }
+
+  if ( cloudViewSettingsDialogBox ) {
+    if ( !checked ) {
+      cloudViewSettingsDialogBox->hide();
+    }
+    else {
+      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
+      cloudViewSettingsDialogBox->showNormal();
+    }
+  }
 
 }
 
@@ -1136,6 +1193,7 @@ void MainWindow::setupRoiOptions()
       createCheckableAction(QIcon(),
           "ROI Options..",
           "Configure ROI rectangle options",
+          is_visible(roiOptionsDialogBox_),
           [this](bool checked) {
             roiOptionsDialogBox_->setVisible(checked);
           }));
@@ -1201,11 +1259,12 @@ void MainWindow::setupRoiOptions()
         createCheckableAction(getIcon(ICON_roi),
             "ROI Rectangle",
             "Show / Hide ROI rectangle",
+            is_visible(imageEditor) && imageEditor->roiShape()->isVisible(),
             [this](bool checked) {
               imageEditor->roiShape()->setVisible(checked);
             });
 
-    toolbar->insertWidget(closeImageViewAction_,
+    toolbar->insertWidget(closeImageViewAction,
         roiActionsButton_ =
             createToolButtonWithPopupMenu(showRoiAction_,
                 &roiActionsMenu_));

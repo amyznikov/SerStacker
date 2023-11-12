@@ -64,13 +64,13 @@ public:
   void setSceneOrigin(const QVector3D & v);
   QVector3D sceneOrigin() const;
 
+  void rotateToShowCloud();
 
   std::vector<QPointCloud::ptr> & clouds();
   const std::vector<QPointCloud::ptr> & clouds() const;
   const QPointCloud::ptr & cloud(int index) const;
   void clear();
   bool openPlyFile(const QString & pathFileName);
-  void rotateToShowCloud();
 
 protected:
   void glInit() override;
@@ -103,10 +103,23 @@ public:
   QCloudViewMtfDisplay & mtfDisplay();
   const QCloudViewMtfDisplay & mtfDisplay() const;
 
-  bool openPlyFile(const QString & pathFileName);
+  void setAutoShowViewTarget(bool v);
+  bool autoShowViewTarget() const;
+
+  void setPointSize(double v);
+  double pointSize() const;
+
+  void setPointBrightness(double v);
+  double pointBrightness() const;
+
+  void setSceneOrigin(const QVector3D & v);
+  QVector3D sceneOrigin() const;
 
   void setCurrentFileName(const QString & v);
   const QString & currentFileName() const;
+
+
+  bool openPlyFile(const QString & pathFileName);
 
   void clear();
 

@@ -204,6 +204,7 @@ void QMainAppWindow::setupMeasures()
       createCheckableAction(getIcon(ICON_measure_options),
           "Measure Options",
           "Show / Hide measure options",
+          is_visible(measureSettingsDisplay_),
           this,
           &ThisClass::onShowMeasureSettingsActionTriggered);
 
@@ -211,6 +212,7 @@ void QMainAppWindow::setupMeasures()
       createCheckableAction(getIcon(ICON_measures_table),
           "Measures",
           "Show / Hide measures display",
+          is_visible(measureDisplay_),
           this,
           &ThisClass::onShowMeasureDisplayActionTriggered);
 
@@ -327,6 +329,7 @@ void QMainAppWindow::setupMtfControls()
         createCheckableAction(getIcon(ICON_histogram),
             "Display Options...",
             "Show / Hide Display Options",
+            is_visible(mtfControl_),
             this,
             &ThisClass::onShowMtfControlActionTriggered);
 
@@ -376,6 +379,7 @@ void QMainAppWindow::setupProfileGraph()
         createCheckableAction(getIcon(ICON_plot),
             "Plot Profile ...",
             "Show / Hide plot profile widget",
+            is_visible(plotProfileDialogBox_),
             this,
             &ThisClass::onShowProfileGraphActionTriggered);
 

@@ -475,6 +475,46 @@ QGLCloudViewer * QCloudViewer::cloudView() const
   return glViewer_;
 }
 
+void QCloudViewer::setAutoShowViewTarget(bool v)
+{
+  glViewer_->setAutoShowViewTarget(v);
+}
+
+bool QCloudViewer::autoShowViewTarget() const
+{
+  return glViewer_->autoShowViewTarget();
+}
+
+void QCloudViewer::setPointSize(double v)
+{
+  glViewer_->setPointSize(v);
+}
+
+double QCloudViewer::pointSize() const
+{
+  return glViewer_->pointSize();
+}
+
+void QCloudViewer::setPointBrightness(double v)
+{
+  glViewer_->setPointBrightness(v);
+}
+
+double QCloudViewer::pointBrightness() const
+{
+  return glViewer_->pointBrightness();
+}
+
+void QCloudViewer::setSceneOrigin(const QVector3D & v)
+{
+  glViewer_->setSceneOrigin(v);
+}
+
+QVector3D QCloudViewer::sceneOrigin() const
+{
+  return glViewer_->sceneOrigin();
+}
+
 void QCloudViewer::clear()
 {
   glViewer_->clear();

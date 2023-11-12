@@ -76,6 +76,11 @@ protected:
   static QWidget* addStretch(QToolBar * toolbar);
   static QWidget* createStretch();
 
+  static inline bool is_visible(QWidget * w)
+  {
+    return w && w->isVisible();
+  }
+
 
   template<class Obj, typename Fn>
   static QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip,
@@ -113,12 +118,14 @@ protected:
 
   template<class Obj, typename Fn>
   static QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
+      bool checked,
       Obj * receiver, Fn fn,
       QShortcut * shortcut = nullptr)
   {
     QAction *action = new QAction(icon, text);
     action->setToolTip(tooltip);
     action->setCheckable(true);
+    action->setChecked(checked);
 
     QObject::connect(action, &QAction::triggered, receiver, fn);
 
@@ -131,12 +138,15 @@ protected:
   }
 
   template<typename Slot>
-  static QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot,
+  static QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
+      bool checked,
+      Slot && slot,
       QShortcut * shortcut = nullptr)
   {
     QAction *action = new QAction(icon, text);
     action->setToolTip(tooltip);
     action->setCheckable(true);
+    action->setChecked(checked);
 
     QObject::connect(action, &QAction::triggered, slot);
 
@@ -146,6 +156,23 @@ protected:
     }
 
     return action;
+  }
+
+  template<class Fn>
+  static QToolButton* createToolButton(const QIcon & icon, const QString & text, const QString & tooltip, Fn && onclicked)
+  {
+    QToolButton *tb = new QToolButton();
+    tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    tb->setIcon(icon);
+    tb->setText(text);
+    tb->setToolTip(tooltip);
+
+    QObject::connect(tb, &QToolButton::clicked,
+        [tb, onclicked]() {
+          onclicked(tb);
+        });
+
+    return tb;
   }
 
 protected:

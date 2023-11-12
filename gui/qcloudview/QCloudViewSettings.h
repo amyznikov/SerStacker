@@ -93,4 +93,26 @@ protected:
 
 };
 
+//class QCloudViewQuickSettingsDialogBox :
+//    public QDialog
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QCloudViewQuickSettingsDialogBox ThisClass;
+//  typedef QDialog Base;
+//
+//  QCloudViewQuickSettingsDialogBox(QCloudViewer * cloudViewer,
+//      QWidget * parent = nullptr);
+//
+//Q_SIGNALS:
+//  void visibilityChanged(bool visible);
+//
+//protected:
+//  void showEvent(QShowEvent *event) override;
+//  void hideEvent(QHideEvent *event) override;
+//protected:
+//  QVBoxLayout * vbox_ = nullptr;
+//  QCheckBox * autoShowViewTarget_ctl = nullptr;
+//};
+
 #endif /* __QCloudViewSettings_h__ */

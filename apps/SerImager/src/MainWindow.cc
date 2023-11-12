@@ -166,6 +166,7 @@ void MainWindow::setupMainMenu()
       createCheckableAction(getIcon(ICON_roi),
           "ROI Rectangle",
           "Show / Hide ROI rectangle",
+          is_visible(centralDisplay_) && centralDisplay_->rectShape()->isVisible(),
           [this](bool checked) {
             centralDisplay_->rectShape()->setVisible(checked);
           }));
@@ -175,6 +176,7 @@ void MainWindow::setupMainMenu()
       createCheckableAction(getIcon(ICON_line),
           "Line Shape",
           "Show / Hide Line Shape",
+          is_visible(centralDisplay_) && centralDisplay_->lineShape()->isVisible(),
           [this](bool checked) {
             centralDisplay_->lineShape()->setVisible(checked);
           }));
@@ -184,14 +186,15 @@ void MainWindow::setupMainMenu()
       createCheckableAction(getIcon(ICON_target),
           "Target Shape",
           "Show / Hide Target Shape",
+          is_visible(centralDisplay_) && centralDisplay_->targetShape()->isVisible(),
           [this](bool checked) {
             centralDisplay_->targetShape()->setVisible(checked);
           }));
 
 
-  showRectShapeAction_->setChecked(centralDisplay_->rectShape()->isVisible());
-  showLineShapeAction_->setChecked(centralDisplay_->lineShape()->isVisible());
-  showTargetShapeAction_->setChecked(centralDisplay_->targetShape()->isVisible());
+//  showRectShapeAction_->setChecked(centralDisplay_->rectShape()->isVisible());
+//  showLineShapeAction_->setChecked(centralDisplay_->lineShape()->isVisible());
+//  showTargetShapeAction_->setChecked(centralDisplay_->targetShape()->isVisible());
 
 
   /////////////////////////////////////
@@ -200,6 +203,7 @@ void MainWindow::setupMainMenu()
       createCheckableAction(getIcon(ICON_histogram),
           "Display Options...",
           "Show / Hide Display Options",
+          is_visible(mtfControl_),
           this,
           &ThisClass::onShowMtfControlActionTriggered));
 
@@ -222,6 +226,7 @@ void MainWindow::setupShapeOptions()
       action = createCheckableAction(QIcon(),
           "Options..",
           "Configure ROI rectangle options",
+          is_visible(rectShapeOptionsDialogBox_) && rectShapeOptionsDialogBox_->isVisible(),
           [this](bool checked) {
             rectShapeOptionsDialogBox_->setVisible(checked);
           }));
@@ -258,6 +263,7 @@ void MainWindow::setupShapeOptions()
       action = createCheckableAction(QIcon(),
           "Options..",
           "Configure target shape options",
+          is_visible(targetShapeOptionsDialogBox_),
           [this](bool checked) {
             targetShapeOptionsDialogBox_->setVisible(checked);
           }));
@@ -291,6 +297,7 @@ void MainWindow::setupShapeOptions()
       action = createCheckableAction(QIcon(),
           "Options..",
           "Configure line shape options",
+          is_visible(lineShapeOptionsDialogBox_),
           [this](bool checked) {
             lineShapeOptionsDialogBox_->setVisible(checked);
           }));
@@ -467,8 +474,12 @@ void MainWindow::setupMainToolbar()
   ///////////////////////////////////////////////////////////////////
 
   manToolbar_->addAction(showLiveThreadSettingsAction_ =
-      createCheckableAction(getIcon(ICON_bayer), "Bayer", "Configure debayer options",
-          this, &ThisClass::onShowLiveThreadSettingsActionTriggered));
+      createCheckableAction(getIcon(ICON_bayer),
+          "Bayer",
+          "Configure debayer options",
+          is_visible(liveThreadSettingsDialogBox_),
+          this,
+          &ThisClass::onShowLiveThreadSettingsActionTriggered));
 
   ///////////////////////////////////////////////////////////////////
 

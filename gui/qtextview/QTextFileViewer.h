@@ -32,7 +32,12 @@ public:
   QString currentFileName() const;
 
 Q_SIGNALS:
+  void visibilityChanged(bool visible);
   void currentFileNameChanged();
+
+protected:
+  void showEvent(QShowEvent *) override;
+  void hideEvent(QHideEvent *) override;
 
 protected:
   QString currentFileName_;

@@ -272,10 +272,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
 void QMtfControl::setDisplaySettings(QMtfDisplay * displaySettings)
 {
-  const bool wasInUpdatingControls =
-      updatingControls();
-
-  setUpdatingControls(true);
+  c_update_controls_lock lock(this);
 
   if( displaySettings_ ) {
     displaySettings_->disconnect(this);
@@ -299,9 +296,9 @@ void QMtfControl::setDisplaySettings(QMtfDisplay * displaySettings)
     connect(displaySettings_, &QMtfDisplay::displayImageChanged,
         this, &ThisClass::updateHistogramLevels,
         Qt::QueuedConnection);
-  }
 
-  setUpdatingControls(wasInUpdatingControls);
+    updateHistogramLevels();
+  }
 
   updateControls();
 }

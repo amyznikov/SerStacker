@@ -32,6 +32,18 @@ QTextFileViewer::QTextFileViewer(QWidget * parent) :
 
 }
 
+void QTextFileViewer::showEvent(QShowEvent * e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QTextFileViewer::hideEvent(QHideEvent * e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
 QToolBar * QTextFileViewer::toolbar() const
 {
   return toolbar_;

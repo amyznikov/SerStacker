@@ -12,16 +12,24 @@
 #include <QtGui/QtGui>
 #include <memory>
 
-class QPoint3D {
-public:
-  QPoint3D() : x(0), y(0), z(0) {}
-  QPoint3D(double _x, double _y, double _z) : x(_x), y(_y), z(_z) {}
-
-public:
+struct QPoint3D
+{
   double x, y, z;
+
+  QPoint3D() :
+    x(0), y(0), z(0)
+  {
+  }
+
+  QPoint3D(double _x, double _y, double _z) :
+    x(_x), y(_y), z(_z)
+  {
+  }
+
 };
 
-class QPointCloud {
+class QPointCloud
+{
 public:
 
   typedef std::shared_ptr<QPointCloud> ptr;
@@ -42,6 +50,7 @@ public:
   QString filename;
   std::vector<QPoint3D> points;
   std::vector<QColor> colors;
+  std::vector<QColor> display_colors;
   QPoint3D Rotation; // angles [Rx;Ry;Rz]
   QPoint3D Translation;
   QPoint3D Scale = QPoint3D (1.0,1.0,1.0);

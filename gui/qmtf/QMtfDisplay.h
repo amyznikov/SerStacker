@@ -88,7 +88,7 @@ Q_SIGNALS:
 //  void updateDisplay();
 
 protected:
-  void addDisplay(int type, double rmin, double rmax);
+  void addDisplay(int type, double input_min, double input_max);
   static void createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap);
 
   struct c_mtf_adjustment {

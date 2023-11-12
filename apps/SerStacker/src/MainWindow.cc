@@ -69,11 +69,17 @@ MainWindow::MainWindow()
 
   connect(centralStackedWidget, &QStackedWidget::currentChanged,
       [this]() {
-        if ( cloudViewSettingsDialogBox && cloudViewSettingsDialogBox->isVisible() ) {
+
+        if ( is_visible(cloudViewSettingsDialogBox) ) {
           if ( !cloudViewer->isVisible() ) {
             cloudViewSettingsDialogBox->hide();
           }
         }
+
+        if ( is_visible(mtfControl_) ) { // force update MTF histogram
+          onMtfControlVisibilityChanged(true);
+        }
+
       });
 
 
@@ -402,25 +408,7 @@ void MainWindow::setupThumbnailsView()
 
   connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
       [this](const QString & abspath) {
-        if ( pipelineProgressView ) {
-          pipelineProgressView->setImageViewer(nullptr);
-        }
-        if ( imageEditor ) {
-          imageEditor->clear();
-        }
-        if ( textViewer ) {
-          textViewer->clear();
-        }
-        if (cloudViewer) {
-          cloudViewer->clear();
-        }
-        if ( imageEditor && imageEditor->isVisible() ) {
-          openImage(abspath);
-        }
-        else if ( textViewer && textViewer->isVisible() ) {
-          openImage(abspath);
-        }
-        else if ( cloudViewer && cloudViewer->isVisible() ) {
+        if ( !is_visible(thumbnailsView) ) {
           openImage(abspath);
         }
       });
@@ -806,32 +794,31 @@ void MainWindow::setupTextViewer()
 
   toolbar->addSeparator();
 
-  const auto onTextViewerCurrentSourceChanged =
-      [this, imageNameLabel]() {
-
-        const QString abspath = textViewer->currentFileName();
-        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-
-      };
-
-  connect(textViewer, &QTextFileViewer::currentFileNameChanged,
-      onTextViewerCurrentSourceChanged);
-
-  toolbar->addSeparator();
-
   toolbar->addWidget(new QToolbarSpacer());
 
   toolbar->addAction(createAction(getIcon(ICON_close),
       "Close",
       "Close window",
       [this]() {
-        textViewer->clear();
         centralStackedWidget->setCurrentWidget(thumbnailsView);
       },
       new QShortcut(QKeySequence::Cancel,
           textViewer, nullptr, nullptr,
           Qt::WindowShortcut)));
 
+
+  connect(textViewer, &QTextFileViewer::currentFileNameChanged,
+      [this, imageNameLabel]() {
+        const QString abspath = textViewer->currentFileName();
+        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+      });
+
+  connect(textViewer, &QTextFileViewer::visibilityChanged,
+      [this](bool visible) {
+        if ( !visible ) {
+          textViewer->clear();
+        }
+      });
 }
 
 void MainWindow::onImageEditorCurrentFileNameChanged()
@@ -844,9 +831,9 @@ void MainWindow::onImageEditorCurrentFileNameChanged()
 
   if ( is_visible(mtfControl_) ) {
 
-    if( mtfControl_->mtfDisplaySettings() != imageEditor->mtfDisplayFunction() ) {
-      mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
-    }
+//    if( mtfControl_->mtfDisplaySettings() != imageEditor->mtfDisplayFunction() ) {
+//      mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+//    }
 
     if ( imageEditor->currentFileName().isEmpty() ) {
       mtfControl_->setWindowTitle("Adjust Display Levels ...");
@@ -934,6 +921,11 @@ void MainWindow::onImageEditorCurrentImageChanged()
 
     onImageEditorCheckIfBadFrameSelected();
   }
+
+  if ( is_visible(mtfControl_) ) {
+    onMtfControlVisibilityChanged(true);
+  }
+
 }
 
 void MainWindow::onImageEditorDisplayImageChanged()
@@ -970,9 +962,35 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 {
   Base::onMtfControlVisibilityChanged(visible);
 
-  if( visible && is_visible(imageEditor) ) {
-    mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+  if( !visible ) {
+    mtfControl_->setMtfDisplaySettings(nullptr);
   }
+  else if( is_visible(imageEditor) ) {
+
+    mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
+
+    if ( imageEditor->currentFileName().isEmpty() ) {
+      mtfControl_->setWindowTitle("Adjust Display Levels ...");
+    }
+    else {
+      mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
+    }
+  }
+  else if( is_visible(cloudViewer) ) {
+
+    mtfControl_->setMtfDisplaySettings(&cloudViewer->mtfDisplay());
+
+    if ( cloudViewer->currentFileName().isEmpty() ) {
+      mtfControl_->setWindowTitle("Adjust Display Levels ...");
+    }
+    else {
+      mtfControl_->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
+    }
+  }
+  else {
+    mtfControl_->setMtfDisplaySettings(nullptr);
+  }
+
 }
 
 
@@ -1020,19 +1038,11 @@ void MainWindow::stupCloudViewer()
 
   toolbar->addSeparator();
 
-  const auto onCloudViewerCurrentSourceChanged =
-      [this, imageNameLabel_ctl] () {
-        const QString abspath = cloudViewer->currentFileName();
-        imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-      };
-
-  connect(cloudViewer, &QCloudViewer::currentFileNameChanged,
-      onCloudViewerCurrentSourceChanged);
-
-  toolbar->addSeparator();
+  // toolbar->addSeparator();
 
   toolbar->addWidget(new QToolbarSpacer());
 
+  toolbar->addAction(showMtfControlAction_);
 
 
   toolbar->addAction(action = new QAction(getIcon(ICON_options), "Options"));
@@ -1066,9 +1076,25 @@ void MainWindow::stupCloudViewer()
   action->setShortcut(QKeySequence::Cancel);
   action->setToolTip("Close window");
   connect(action, &QAction::triggered, [this]() {
-    cloudViewer->clear();
     centralStackedWidget->setCurrentWidget(thumbnailsView);
   });
+
+  connect(cloudViewer, &QCloudViewer::currentFileNameChanged,
+      [this, imageNameLabel_ctl]() {
+        const QString abspath = cloudViewer->currentFileName();
+        imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+        if ( is_visible(mtfControl_) ) {
+          onMtfControlVisibilityChanged(true);
+        }
+      });
+
+  connect(cloudViewer, &QCloudViewer::visibilityChanged,
+      [this](bool visible) {
+        if ( !visible ) {
+          cloudViewer->clear();
+        }
+      });
+
 }
 
 void MainWindow::updateMeasurements()
@@ -1227,10 +1253,6 @@ void MainWindow::openImage(const QString & abspath)
     pipelineProgressView->setImageViewer(nullptr);
   }
 
-  imageEditor->clear();
-  textViewer->clear();
-  cloudViewer->clear();
-
   const QString suffix =
       QFileInfo(abspath).suffix();
 
@@ -1239,7 +1261,6 @@ void MainWindow::openImage(const QString & abspath)
     textViewer->showTextFile(abspath);
   }
   else if ( isPlyFileSuffix(suffix) ) {
-#if 1
     if ( cloudViewer->openPlyFile(abspath) ) {
       centralStackedWidget->setCurrentWidget(cloudViewer);
     }
@@ -1247,15 +1268,12 @@ void MainWindow::openImage(const QString & abspath)
       centralStackedWidget->setCurrentWidget(textViewer);
       textViewer->showTextFile(abspath);
     }
-#else
-    centralStackedWidget->setCurrentWidget(textViewer);
-    textViewer->showTextFile(abspath);
-#endif
   }
   else {
     centralStackedWidget->setCurrentWidget(imageEditor);
     imageEditor->openImage(abspath);
   }
+
 }
 
 

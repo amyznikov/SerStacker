@@ -10,7 +10,37 @@
 #define __QCloudViewer_h__
 
 #include <gui/qglview/QGLView.h>
+#include <gui/qmtf/QMtfDisplay.h>
+#include <core/proc/histogram.h>
 #include "QPointCloud.h"
+
+class QGLCloudViewer;
+
+class QCloudViewMtfDisplay :
+    public QMtfDisplay
+{
+  Q_OBJECT;
+public:
+  typedef QCloudViewMtfDisplay ThisClass;
+  typedef QMtfDisplay Base;
+
+  QCloudViewMtfDisplay(QGLCloudViewer * cloudView);
+
+  QGLCloudViewer * cloudView() const;
+
+  const c_enum_member * displayTypes() const override;
+  void getInputDataRange(double * minval, double * maxval) const override;
+  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+
+  void computeDisplayColors(const std::vector<QPoint3D> & points,
+      const std::vector<QColor> & src_colors,
+      std::vector<QColor> & display_colors);
+
+protected:
+  QGLCloudViewer * cloudView_ = nullptr;
+};
+
 
 class QGLCloudViewer :
     public QGLView
@@ -22,6 +52,9 @@ public:
 
   QGLCloudViewer(QWidget* parent = nullptr);
 
+  QCloudViewMtfDisplay & mtfDisplay();
+  const QCloudViewMtfDisplay & mtfDisplay() const;
+
   void setPointSize(double v);
   double pointSize() const;
 
@@ -30,6 +63,7 @@ public:
 
   void setSceneOrigin(const QVector3D & v);
   QVector3D sceneOrigin() const;
+
 
   std::vector<QPointCloud::ptr> & clouds();
   const std::vector<QPointCloud::ptr> & clouds() const;
@@ -43,9 +77,11 @@ protected:
   void glPreDraw() override;
   void glDraw() override;
   void glPostDraw() override;
+  void updateDisplayColors();
 
 protected:
   std::vector<QPointCloud::ptr> clouds_;
+  QCloudViewMtfDisplay mtfDisplay_;
   QVector3D sceneOrigin_;
   double pointSize_ = 2;
   double pointBrightness_ = 0;
@@ -64,21 +100,8 @@ public:
   QToolBar * toolbar() const;
   QGLCloudViewer * cloudView() const;
 
-
-//  void setSceneRadius(qreal radius);
-//  qreal sceneRadius() const;
-
-//  void setSceneCenter(const QVector3D &center);
-//  QVector3D sceneCenter() const;
-//
-//  void setPointSize(double v);
-//  double pointSize() const;
-//
-//  void setPointBrightness(double v);
-//  double pointBrightness() const;
-//
-//  void setSceneOrigin(const QVector3D & v);
-//  QVector3D sceneOrigin() const;
+  QCloudViewMtfDisplay & mtfDisplay();
+  const QCloudViewMtfDisplay & mtfDisplay() const;
 
   bool openPlyFile(const QString & pathFileName);
 
@@ -107,7 +130,12 @@ public:
   }
 
 Q_SIGNALS:
+  void visibilityChanged(bool visible);
   void currentFileNameChanged();
+
+protected:
+  void showEvent(QShowEvent *) override;
+  void hideEvent(QHideEvent *) override;
 
 protected:
   QVBoxLayout * layout_ = nullptr;

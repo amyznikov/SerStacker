@@ -6,7 +6,6 @@
  */
 
 #include "QCloudViewer.h"
-#include "QPointCloud.h"
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,12 +44,191 @@ void save_parameter(const QString & prefix, const char * name, const QVector3D &
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
-QGLCloudViewer::QGLCloudViewer(QWidget* parent) :
-  Base(parent)
-{
+namespace {
+  enum DISPLAY_TYPE {
+    DISPLAY_PIXEL_VALUE,
+  };
 }
 
+template<>
+const c_enum_member* members_of<DISPLAY_TYPE>()
+{
+  static constexpr c_enum_member members[] = {
+      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
+      { DISPLAY_PIXEL_VALUE }
+  };
+
+  return members;
+}
+
+
+
+QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
+    Base("", cloudView),
+    cloudView_(cloudView)
+{
+  Base::displayType_ = DISPLAY_PIXEL_VALUE;
+
+  addDisplay(DISPLAY_PIXEL_VALUE, 0, 255);
+}
+
+QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
+{
+  return cloudView_;
+}
+
+const c_enum_member * QCloudViewMtfDisplay::displayTypes() const
+{
+  return members_of<DISPLAY_TYPE>();
+}
+
+void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) const
+{
+  *minval = HUGE_VAL;
+  *maxval = 0;
+
+  if( cloudView_ ) {
+
+    int v;
+
+    for( const QPointCloud::ptr &cloud : cloudView_->clouds() ) {
+      for( const QColor &color : cloud->colors ) {
+
+        if( (v = color.red()) < *minval ) {
+          *minval = v;
+        }
+        if( v > *maxval ) {
+          *maxval = v;
+        }
+
+        if( (v = color.green()) < *minval ) {
+          *minval = v;
+        }
+        if( v > *maxval ) {
+          *maxval = v;
+        }
+
+        if( (v = color.blue()) < *minval ) {
+          *minval = v;
+        }
+        if( v > *maxval ) {
+          *maxval = v;
+        }
+      }
+    }
+  }
+}
+
+
+void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+{
+  H.release();
+
+  if( !cloudView_ ) {
+    *hmin = *hmax = 0;
+    return;
+  }
+
+  const std::vector<QPointCloud::ptr> &clouds =
+      cloudView_->clouds();
+
+  if( clouds.empty() ) {
+    *hmin = *hmax = 0;
+    return;
+  }
+
+  getInputDataRange(hmin, hmax);
+
+  c_histogram_builder builder;
+
+  builder.set_input_range(*hmin, *hmax);
+  builder.set_channels(3);
+  builder.set_bins(256);
+
+  for( const QPointCloud::ptr &cloud : clouds ) {
+    for( const QColor &color : cloud->colors ) {
+      builder.add_pixel(cv::Scalar(color.blue(), color.green(), color.red()));
+    }
+  }
+
+  builder.compute(H);
+}
+
+void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+{
+  H.release();
+  * hmin = 0;
+  * hmax = 255;
+
+  if( !cloudView_ || cloudView_->clouds().empty() ) {
+    return;
+  }
+
+  std::vector<QColor> display_colors;
+  c_histogram_builder builder;
+
+  builder.set_input_range(0, 255);
+  builder.set_channels(3);
+  builder.set_bins(256);
+
+  for( const QPointCloud::ptr &cloud : cloudView_->clouds() ) {
+
+    const std::vector<QColor> &display_colors =
+        cloud->display_colors.empty() ? cloud->colors :
+            cloud->display_colors;
+
+    for( const QColor &color : display_colors ) {
+      builder.add_pixel(cv::Scalar(color.blue(), color.green(), color.red()));
+    }
+  }
+
+  builder.compute(H);
+}
+
+
+
+void QCloudViewMtfDisplay::computeDisplayColors(const std::vector<QPoint3D> & points,
+    const std::vector<QColor> & src_colors,
+    std::vector<QColor> & display_colors)
+{
+  const DisplayParams &opts =
+      displayParams();
+
+  const c_pixinsight_mtf &mtf =
+      opts.mtf;
+
+  display_colors.clear();
+
+  for( const QColor &color : src_colors ) {
+
+    const int red = mtf.apply(color.red());
+    const int green = mtf.apply(color.green());
+    const int blue = mtf.apply(color.blue());
+
+    display_colors.emplace_back(QColor(red, green, blue));
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+QGLCloudViewer::QGLCloudViewer(QWidget* parent) :
+  Base(parent),
+  mtfDisplay_(this)
+{
+  connect(&mtfDisplay_, &QCloudViewMtfDisplay::parameterChanged,
+      this, &ThisClass::updateDisplayColors);
+}
+
+QCloudViewMtfDisplay & QGLCloudViewer::mtfDisplay()
+{
+  return mtfDisplay_;
+}
+
+const QCloudViewMtfDisplay & QGLCloudViewer::mtfDisplay() const
+{
+  return mtfDisplay_;
+}
 
 std::vector<QPointCloud::ptr> & QGLCloudViewer::clouds()
 {
@@ -161,12 +339,18 @@ void QGLCloudViewer::glDraw()
 
   for ( int i = 0, n = clouds_.size(); i < n; ++i ) {
 
-    const QPointCloud::ptr & cloud = clouds_[i];
+    const QPointCloud::ptr & cloud =
+        clouds_[i];
 
     if ( cloud->visible ) {
 
-      const std::vector<QPoint3D> & points = cloud->points;
-      const std::vector<QColor> & colors = cloud->colors;
+      const std::vector<QPoint3D> & points =
+          cloud->points;
+
+      const std::vector<QColor> &colors =
+          cloud->display_colors.empty() ? cloud->colors :
+              cloud->display_colors;
+
       const bool haveColors = colors.size() == points.size();
 
       const double Sx = cloud->Scale.x;
@@ -227,6 +411,18 @@ bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
 }
 
 
+void QGLCloudViewer::updateDisplayColors()
+{
+  if( !clouds_.empty() ) {
+    for( const QPointCloud::ptr &cloud : clouds_ ) {
+      mtfDisplay_.computeDisplayColors(cloud->points, cloud->colors, cloud->display_colors);
+    }
+    update();
+    Q_EMIT mtfDisplay_.displayImageChanged();
+  }
+
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -245,6 +441,28 @@ QCloudViewer::QCloudViewer(QWidget* parent) :
 
   layout_->addWidget(toolbar_, 1);
   layout_->addWidget(glViewer_, 100);
+}
+
+void QCloudViewer::showEvent(QShowEvent * e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QCloudViewer::hideEvent(QHideEvent * e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+QCloudViewMtfDisplay & QCloudViewer::mtfDisplay()
+{
+  return glViewer_->mtfDisplay();
+}
+
+const QCloudViewMtfDisplay & QCloudViewer::mtfDisplay() const
+{
+  return glViewer_->mtfDisplay();
 }
 
 QToolBar * QCloudViewer::toolbar() const
@@ -278,7 +496,6 @@ bool QCloudViewer::openPlyFile(const QString & pathFileName)
 
   return fOk;
 }
-
 
 void QCloudViewer::setCurrentFileName(const QString & v)
 {

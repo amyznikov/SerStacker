@@ -15,10 +15,10 @@ QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
 {
 }
 
-void QMtfDisplay::addDisplay(int type, double rmin, double rmax)
+void QMtfDisplay::addDisplay(int type, double input_min, double input_max)
 {
   DisplayParams p;
-  p.mtf.set_input_range(rmin, rmax);
+  p.mtf.set_input_range(input_min, input_max);
   p.mtf.set_output_range(0, 255);
   if ( p.colormap != COLORMAP_NONE ) {
     createLut(p.colormap, p.lut,

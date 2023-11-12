@@ -9,7 +9,7 @@
 #define __QImageFileEditor_h__
 
 #include "QImageEditor.h"
-#include "QPlaySequenceControl.h"
+#include <gui/qplaysequencecontrol/QPlaySequenceControl.h>
 #include <core/io/c_input_sequence.h>
 
 class QImageFileEditor :

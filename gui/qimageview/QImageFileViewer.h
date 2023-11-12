@@ -9,7 +9,7 @@
 #define __QImageFileViewer_h__
 
 #include "QImageViewer.h"
-#include "QPlaySequenceControl.h"
+#include <gui/qplaysequencecontrol/QPlaySequenceControl.h>
 #include <core/io/c_input_sequence.h>
 
 class QImageFileViewer :

@@ -25,24 +25,28 @@ namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-#define ICON_reload       ":/gui/icons/reload"
-#define ICON_prev         ":/gui/icons/prev"
-#define ICON_next         ":/gui/icons/next"
-#define ICON_like         ":/gui/icons/like"
-#define ICON_dislike      ":/gui/icons/dislike"
-#define ICON_close        ":/gui/icons/close"
-#define ICON_histogram    ":/gui/icons/histogram"
-#define ICON_marker_blue  ":/gui/icons/marker-blue"
-#define ICON_reference    ":/gui/icons/reference"
-#define ICON_options      ":/gui/icons/options"
-#define ICON_mask         ":/gui/icons/mask"
-#define ICON_frame        ":/gui/icons/frame"
-#define ICON_badframe     ":/gui/icons/badframe"
+#define ICON_reload             ":/gui/icons/reload"
+#define ICON_prev               ":/gui/icons/prev"
+#define ICON_next               ":/gui/icons/next"
+#define ICON_like               ":/gui/icons/like"
+#define ICON_dislike            ":/gui/icons/dislike"
+#define ICON_close              ":/gui/icons/close"
+#define ICON_histogram          ":/gui/icons/histogram"
+#define ICON_marker_blue        ":/gui/icons/marker-blue"
+#define ICON_reference          ":/gui/icons/reference"
+#define ICON_options            ":/gui/icons/options"
+#define ICON_mask               ":/gui/icons/mask"
+#define ICON_frame              ":/gui/icons/frame"
+#define ICON_badframe           ":/gui/icons/badframe"
 
-#define ICON_copy         ":/gui/icons/copy"
-#define ICON_delete       ":/gui/icons/delete"
+#define ICON_copy               ":/gui/icons/copy"
+#define ICON_delete             ":/gui/icons/delete"
 
-#define ICON_roi          ":/serstacker/icons/roi.png"
+#define ICON_roi                ":/serstacker/icons/roi.png"
+#define ICON_point_size         ":/serstacker/icons/degree.png"
+#define ICON_brightness         ":/serstacker/icons/brightness.png"
+#define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
+#define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
 
 MainWindow::MainWindow()
 {
@@ -822,14 +826,8 @@ void MainWindow::onImageEditorCurrentFileNameChanged()
       imageEditor->currentFileName();
 
   imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-  //imageSizeLabel_ctl->setText(QString("%1x%2").arg(imageEditor->currentImage().cols).arg(imageEditor->currentImage().rows));
 
   if ( is_visible(mtfControl_) ) {
-
-//    if( mtfControl_->mtfDisplaySettings() != imageEditor->mtfDisplayFunction() ) {
-//      mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
-//    }
-
     if ( imageEditor->currentFileName().isEmpty() ) {
       mtfControl_->setWindowTitle("Adjust Display Levels ...");
     }
@@ -1046,6 +1044,7 @@ void MainWindow::stupCloudViewer()
         menu.addAction(createMenuWidgetAction<QSpinBox>("Point size: ",
                 nullptr,
                 [this](const auto * action) {
+                  action->icon()->setPixmap(getPixmap(ICON_point_size)); // .scaled(QSize(16,16))
                   QSpinBox * spinBox = action->control();
                   spinBox->setKeyboardTracking(false);
                   spinBox->setRange(1, 32);
@@ -1059,6 +1058,7 @@ void MainWindow::stupCloudViewer()
         menu.addAction(createMenuWidgetAction<QSpinBox>("Point brightness: ",
                 nullptr,
                 [this](const auto * action) {
+                  action->icon()->setPixmap(getPixmap(ICON_brightness)); // .scaled(QSize(16,16))
                   QSpinBox * spinBox = action->control();
                   spinBox->setKeyboardTracking(false);
                   spinBox->setRange(-128, 128);
@@ -1069,7 +1069,7 @@ void MainWindow::stupCloudViewer()
                       });
                 }));
 
-        menu.addAction(createAction(QIcon(),
+        menu.addAction(createAction(getIcon(ICON_cloud_rotate),
                 "Show cloud center",
                 "Rotate camera to show point cloud center",
                 [this]() {
@@ -1078,7 +1078,7 @@ void MainWindow::stupCloudViewer()
                   }
                 }));
 
-        menu.addAction(createCheckableAction(QIcon(),
+        menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_target),
                 "Auto Show Target point",
                 "",
                 cloudViewer->autoShowViewTarget(),
@@ -1093,12 +1093,12 @@ void MainWindow::stupCloudViewer()
         if ( !showCloudViewSettingsDialogBoxAction ) {
 
           showCloudViewSettingsDialogBoxAction =
-          createCheckableAction(getIcon(ICON_options),
-              "Advanced ...",
-              "Show advanced options",
-              is_visible(cloudViewSettingsDialogBox),
-              this,
-              &ThisClass::onShowCloudViewSettingsDialogBoxActionClicked);
+            createCheckableAction(getIcon(ICON_options),
+                "Advanced ...",
+                "Show advanced options",
+                is_visible(cloudViewSettingsDialogBox),
+                this,
+                &ThisClass::onShowCloudViewSettingsDialogBoxActionClicked);
         }
 
         menu.addAction(showCloudViewSettingsDialogBoxAction);

@@ -76,8 +76,6 @@ private Q_SLOTS:
   void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void updateMeasurements();
 
-  //  void onInputSourceDoubleClicked(const c_input_source::ptr & input_source);
-  //  void onCurrentInputSourceChanged(const c_input_source::ptr & input_source);
   void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
   void onPipelineThreadStarted();
   void onPipelineThreadFinished();
@@ -94,9 +92,6 @@ private :
   void onMeasureRightNowRequested() override;
 
 private:
-  //  c_image_sequence_collection::sptr image_sequences_ =
-  //      c_image_sequence_collection::sptr(new c_image_sequence_collection());
-
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
   QImageEditor * imageEditor = nullptr;
@@ -131,7 +126,6 @@ private:
   QAction * setReferenceFrameAction = nullptr;
   QAction * copyDisplayImageAction = nullptr;
   QAction * copyDisplayViewportAction = nullptr;
-  //QAction * displaySettingsMenuAction = nullptr;
   QAction * editMaskAction = nullptr;
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;

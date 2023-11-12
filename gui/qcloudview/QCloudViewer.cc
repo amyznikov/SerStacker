@@ -119,33 +119,24 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
   }
 }
 
-
-void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * imin, double * imax)
 {
   H.release();
 
-  if( !cloudView_ ) {
-    *hmin = *hmax = 0;
+  if( !cloudView_ || cloudView_->clouds().empty() ) {
+    *imin = *imax = 0;
     return;
   }
 
-  const std::vector<QPointCloud::ptr> &clouds =
-      cloudView_->clouds();
-
-  if( clouds.empty() ) {
-    *hmin = *hmax = 0;
-    return;
-  }
-
-  getInputDataRange(hmin, hmax);
+  getInputDataRange(imin, imax);
 
   c_histogram_builder builder;
 
-  builder.set_input_range(*hmin, *hmax);
+  builder.set_input_range(*imin, *imax);
   builder.set_channels(3);
   builder.set_bins(256);
 
-  for( const QPointCloud::ptr &cloud : clouds ) {
+  for( const QPointCloud::ptr &cloud : cloudView_->clouds() ) {
     for( const QColor &color : cloud->colors ) {
       builder.add_pixel(cv::Scalar(color.blue(), color.green(), color.red()));
     }
@@ -154,17 +145,15 @@ void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * hmin, 
   builder.compute(H);
 }
 
-void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
 {
+  displayParams().mtf.get_output_range(omin, omax);
   H.release();
-  * hmin = 0;
-  * hmax = 255;
 
   if( !cloudView_ || cloudView_->clouds().empty() ) {
     return;
   }
 
-  std::vector<QColor> display_colors;
   c_histogram_builder builder;
 
   builder.set_input_range(0, 255);
@@ -191,11 +180,19 @@ void QCloudViewMtfDisplay::computeDisplayColors(const std::vector<QPoint3D> & po
     const std::vector<QColor> & src_colors,
     std::vector<QColor> & display_colors)
 {
-  const DisplayParams &opts =
+  DisplayParams &opts =
       displayParams();
 
-  const c_pixinsight_mtf &mtf =
+  c_pixinsight_mtf &mtf =
       opts.mtf;
+
+  double imin, imax;
+
+  mtf.get_input_range(&imin, &imax);
+
+  if ( imin >= imax  ) {
+    mtf.set_input_range(0, 255);
+  }
 
   display_colors.clear();
 
@@ -206,6 +203,10 @@ void QCloudViewMtfDisplay::computeDisplayColors(const std::vector<QPoint3D> & po
     const int blue = mtf.apply(color.blue());
 
     display_colors.emplace_back(QColor(red, green, blue));
+  }
+
+  if ( imin >= imax  ) {
+    mtf.set_input_range(imin, imax);
   }
 }
 

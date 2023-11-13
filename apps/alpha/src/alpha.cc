@@ -40,55 +40,55 @@
 
 int main(int argc, char *argv[])
 {
-  std::string filename;
-
-  for( int i = 1; i < argc; ++i ) {
-
-    if( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
-      fprintf(stdout, "Usage:\n"
-          " alpha <input-file-name>\n"
-          "\n"
-          "\n");
-
-      return 0;
-    }
-
-    if( filename.empty() ) {
-      filename = argv[i];
-      continue;
-    }
-
-    fprintf(stderr, "Invalid argument %s\n",
-        argv[i]);
-
-    return 1;
-  }
-
-
-
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
-
-  c_las_reader las_;
-
-  if ( !las_.open(filename) ) {
-    CF_ERROR("las_.open('%s') fails", filename.c_str());
-    return 1;
-  }
-
-  const LASheader  * lh =
-      las_.header();
-
-  const LASpoint * p;
-
-  while ((p = las_.read_point())) {
-
-    const F64 x = p->get_x();
-    const F64 y = p->get_y();
-    const F64 z = p->get_z();
-
-    fprintf(stdout, "%g %g %g\n", x, y, z);
-  }
+//  std::string filename;
+//
+//  for( int i = 1; i < argc; ++i ) {
+//
+//    if( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
+//      fprintf(stdout, "Usage:\n"
+//          " alpha <input-file-name>\n"
+//          "\n"
+//          "\n");
+//
+//      return 0;
+//    }
+//
+//    if( filename.empty() ) {
+//      filename = argv[i];
+//      continue;
+//    }
+//
+//    fprintf(stderr, "Invalid argument %s\n",
+//        argv[i]);
+//
+//    return 1;
+//  }
+//
+//
+//
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//  c_las_reader las_;
+//
+//  if ( !las_.open(filename) ) {
+//    CF_ERROR("las_.open('%s') fails", filename.c_str());
+//    return 1;
+//  }
+//
+//  const LASheader  * lh =
+//      las_.header();
+//
+//  const LASpoint * p;
+//
+//  while ((p = las_.read_point())) {
+//
+//    const F64 x = p->get_x();
+//    const F64 y = p->get_y();
+//    const F64 z = p->get_z();
+//
+//    fprintf(stdout, "%g %g %g\n", x, y, z);
+//  }
 
 
   return 0;

@@ -31,13 +31,11 @@ static inline ssize_t readfrom(int fd, ssize_t offset, void * data, size_t size)
 }
 
 
+// check if it is a IFHD file
 static bool check_file_header(const ifhd::FileHeader & file_header)
 {
-//  // check if it is a dat file
-//  char id[4];
-//  memcpy(id, &file_header.file_id, 4);
-
-  const char * id = (const char * )&file_header.file_id;
+  const char * id =
+      (const char * )&file_header.file_id;
 
   if( id[0] != 'I' || id[1] != 'F' || id[2] != 'H' || id[3] != 'D' ) {
     return false;
@@ -134,7 +132,7 @@ bool c_ifhd_reader::open(const std::string & filename)
   }
 
   if ( !check_file_header(file_header_) ) {
-    CF_ERROR("check_file_header('%s') fails", fname);
+    // CF_ERROR("check_file_header('%s') fails", fname);
     errno = ENODATA;
     goto end;
   }
@@ -166,6 +164,9 @@ bool c_ifhd_reader::open(const std::string & filename)
     }
 
     file_streams_.emplace_back(stream);
+
+    //CF_DEBUG("stream: name='%s'", stream.header.stream_name);
+
   }
 
   if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
@@ -216,10 +217,10 @@ bool c_ifhd_reader::select_stream(int index)
 
   stream.chunks.reserve(stream.header.stream_index_count);
 
-//  CF_DEBUG("file_header_: data_size=%zu chunk_count=%zu stream.header.stream_index_count=%zu",
-//      (size_t ) file_header_.data_size,
-//      (size_t ) file_header_.chunk_count,
-//      (size_t ) stream.header.stream_index_count);
+  //  CF_DEBUG("file_header_: data_size=%zu chunk_count=%zu stream.header.stream_index_count=%zu",
+  //      (size_t ) file_header_.data_size,
+  //      (size_t ) file_header_.chunk_count,
+  //      (size_t ) stream.header.stream_index_count);
 
   for( ; current_chunk_offset < file_header_.data_size;  current_chunk_offset += 16 * ((chunk_header.size + 15) / 16) ) {
 
@@ -238,10 +239,10 @@ bool c_ifhd_reader::select_stream(int index)
       chunk_header.payload_offset = file_header_.data_offset + current_chunk_offset + sizeof(ifhd::ChunkHeader) + 17;
       stream.chunks.emplace_back(chunk_header);
 
-//      CF_DEBUG("chunk_header.size=%u payload_size=%zd payload_offset=%zd",
-//          chunk_header.size,
-//          chunk_header.payload_size,
-//          chunk_header.payload_offset);
+      //      CF_DEBUG("chunk_header.size=%u payload_size=%zd payload_offset=%zd",
+      //          chunk_header.size,
+      //          chunk_header.payload_size,
+      //          chunk_header.payload_offset);
     }
 
   }

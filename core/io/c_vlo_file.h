@@ -22,15 +22,28 @@ enum VLO_VERSION
   VLO_VERSION_3 = 3,
   VLO_VERSION_5 = 5,
   VLO_VERSION_18 = 18,
+  VLO_VERSION_6 = 6,
 };
 
 enum VLO_IMAGER_TYPE
 {
   VLO_IMAGER_IMX449 = 0,
   VLO_IMAGER_IMX479 = 1,
-  VLO_IMAGER_SNA = 255
+  VLO_IMAGER_SNA = 255,
+  VLO_IMAGER_SMART = VLO_IMAGER_IMX449,
+  VLO_IMAGER_SATELLITE = VLO_IMAGER_IMX479,
 };
 
+enum VLO_ECHO_ORDER
+{
+  VLO_ECHO_ORDER_UNKNOWN = 0,
+  VLO_ECHO_ORDER_INTENSITY_HIGH_TO_LOW = 1,
+  VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR = 2,
+  VLO_ECHO_ORDER_DISTANCE_FAR_TO_NEAR_IGNORE_CLOSEST = 3,
+  VLO_ECHO_ORDER_DISTANCE_FAR_TO_NEAR_IGNORE_2ND_CLOSEST = 4,
+  VLO_ECHO_ORDER_DISTANCE_FAR_TO_NEAR_IGNORE_3RD_CLOSEST = 5,
+  VLO_ECHO_ORDER_DISTANCE_FAR_TO_NEAR_IGNORE_FARTHEST = 6
+};
 
 #pragma pack(push, 1)
 struct c_vlo_scan1
@@ -260,6 +273,7 @@ struct c_vlo_scan5
     uint8_t imagerType;
   };
 
+
   uint16_t interfaceVersion;
   uint16_t scanNumber;
   struct timestamp timeStamp;
@@ -288,6 +302,223 @@ static_assert(sizeof(c_vlo_scan5) == (36480640 / 8));
 
 ////////////
 
+#pragma pack(push, 1)
+struct c_vlo_metadata_imx449
+{
+  uint16_t laserVoltageActualMin;
+  uint16_t laserVoltageActualMax;
+  uint16_t laserVoltageActualAvg;
+  uint8_t reserveAfterVoltage[20];
+  int8_t temperatureReceiverChip;
+  int8_t temperatureLaser;
+  uint8_t reserveAfterTemperature[12];
+  uint16_t LUT_FS_X[16];
+  uint16_t LUT_FS_Y[16];
+  uint8_t LUT_ACCU_X[32];
+  uint8_t LUT_ACCU_Y[32];
+  uint16_t Rx_G_THACCU_0[8];
+  uint16_t laserVoltageSetValue;
+  uint16_t shotTiming_x;
+  uint16_t shotTiming_y;
+  uint16_t shotTiming_z;
+  uint32_t shotTiming_frequency;
+  uint16_t shotTiming_sh;
+  uint8_t shotTiming_numLoadingPulses;
+  uint8_t shotTiming_dutyCycles;
+  uint8_t R_DISTANCE_SWITCH;
+  uint8_t R_FAR_REGION_RULE;
+  uint8_t R_PRIO_N;
+  uint8_t R_BIN_R;
+  uint16_t Rx_BIN_A_0[8];
+  uint16_t Rx_BIN_B_0[8];
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct c_vlo_metadata_imx479
+{
+  uint8_t SM_ESTS_7_0;
+  uint8_t SM_ESTS_15_8;
+  uint8_t SM_ESTS_23_16;
+  uint8_t SM_ESTS_31_24;
+  uint8_t SM_ESTS_39_32;
+  uint16_t input_slot_number;
+  uint16_t processed_slot_number;
+  uint8_t context_cat1;
+  uint8_t context_cat2;
+  uint8_t context_cat3;
+  uint8_t context_cat4;
+  uint8_t context_cat5;
+  uint8_t context_cat6;
+  uint8_t reserved_1[16];
+  uint16_t num_out_lines;
+  uint16_t num_out_data;
+  uint8_t reserved_2[5];
+  uint16_t crc_slotdata;
+  uint32_t chip_id_0;
+  uint32_t chip_id_1;
+  uint32_t chip_id_2;
+  uint8_t frame_number;
+  uint8_t reserved_3;
+  uint16_t num_ebd_output_lines;
+  uint16_t num_ebd_output_data;
+  uint16_t num_amb_output_lines;
+  uint16_t num_amb_output_data;
+  uint16_t num_stats_output_lines;
+  uint16_t num_stats_output_data;
+  uint16_t num_raw_output_lines;
+  uint16_t num_raw_output_data;
+  uint16_t num_misalign_output_lines;
+  uint16_t num_misalign_output_data;
+  uint16_t imx_temp_N;
+  uint16_t imx_temp_S;
+  uint16_t imx_VT0_N;
+  uint16_t imx_VT0_S;
+  uint16_t imx_VT1_N;
+  uint16_t imx_VT1_S;
+  uint16_t imx_VT2_N;
+  uint16_t imx_VT2_S;
+  uint16_t imx_VT3_N;
+  uint16_t imx_VT3_S;
+  uint16_t imx_VT4_N;
+  uint16_t imx_VT4_S;
+  uint16_t imx_VT5_N;
+  uint16_t imx_VT5_S;
+  uint16_t imx_VT6_N;
+  uint16_t imx_VT6_S;
+  uint16_t imx_VT7_N;
+  uint16_t imx_VT7_S;
+  uint8_t reserved_4;
+  uint8_t fov_offset_in_degrees;
+  uint8_t IMX_pins;
+  uint8_t FPGA_mipi_control_reg;
+  uint8_t resolution_reduction;
+  uint8_t sensor_head_firmware_HB;
+  uint8_t sensor_head_firmware_LB;
+  uint8_t reserved_5[2];
+  uint8_t last_mirror_side;
+  uint8_t temperature_FPGA_HB;
+  uint8_t temperature_FPGA_LB;
+  uint8_t temperature_Laser_zone_HB;
+  uint8_t temperature_Laser_zone_LB;
+  uint8_t temperature_IMU_zone_HB;
+  uint8_t temperature_IMU_zone_LB;
+  uint8_t temperature_HUM_module_HB;
+  uint8_t temperature_HUM_module_LB;
+  uint8_t reserved_6[14];
+  uint8_t out_data_mode;
+  uint16_t FS_AST_width;
+  uint8_t PTRG_mode;
+  uint16_t crc_framedata;
+
+  //
+  uint8_t _padding1[2];
+  uint8_t statsMetaData[153];
+  uint8_t _padding2[3];
+  uint8_t reservedMetaData[12];
+  uint8_t misalignmentMetaData[351];
+  uint8_t _padding3[1];
+  uint8_t ambientLightMetaData[1560];
+};
+#pragma pack(pop)
+
+
+
+
+#pragma pack(push, 1)
+struct c_vlo_scan6_base
+{
+  //! Interface version of the calibrated raw point cloud interface
+  static constexpr  uint16_t VERSION = 6U;
+  static constexpr  uint16_t NUM_SLOTS = 600;
+  static constexpr  uint16_t NUM_LAYERS = 360;
+  static constexpr  uint16_t NUM_ECHOS = 3;
+  static constexpr  uint32_t NUM_POINTS = NUM_SLOTS * NUM_LAYERS * NUM_ECHOS;
+  static constexpr  uint16_t NUM_REFERENCE_SHOTS = 2;
+  static constexpr  uint16_t NUM_ZONES = 3;
+
+  struct timestamp
+  {
+    uint32_t nanoseconds;
+    uint32_t seconds;
+    uint32_t secondsHi;
+  };
+
+  struct config
+  {
+    uint32_t numPoints_max;
+    uint16_t numEchos_max;
+    uint16_t numLayers_max;
+    uint16_t numSlots_max;
+    uint8_t echoOrdering;
+    uint8_t imagerType;
+    uint8_t numHorizontalZones;
+    uint8_t numEchos[NUM_ZONES];
+    uint16_t numSlots[NUM_ZONES];
+    uint16_t numLayers;
+    uint8_t _reserved1[16];
+    float horzAngleIncrement[NUM_ZONES];
+    float verticalAngleIncrement;
+    uint8_t _reserved2[32];
+    uint8_t echoStructSize[NUM_ZONES];
+    uint8_t sensorType;
+    uint8_t numberOfMirrors;
+    uint8_t binWidthInCm;
+    uint16_t macroPixelWidth;
+    uint16_t macroPixelHeight;
+    uint8_t numLasershotsPerSlot;
+    uint8_t _padding;
+  };
+
+  struct echo
+  {
+    uint16_t dist;
+    uint16_t area;
+    uint8_t peak;
+    uint8_t width;
+  };
+
+
+  uint16_t interfaceVersion;
+  uint16_t scanNumber;
+  struct timestamp timeStamp;
+  uint16_t mirrorSide;
+  uint16_t _padding1;
+  uint32_t scanDuration_ns;
+  struct config config;
+  uint8_t reserveBeforeSlotData[20];
+  struct echo echo[NUM_SLOTS][NUM_LAYERS][NUM_ECHOS];
+  struct echo referenceEcho[NUM_REFERENCE_SHOTS][NUM_LAYERS][NUM_ECHOS];
+  uint16_t ambient[NUM_SLOTS][NUM_LAYERS];
+  uint16_t referenceAmbiLight[NUM_REFERENCE_SHOTS][NUM_LAYERS];
+  uint8_t numTotalEchoes[NUM_SLOTS][NUM_LAYERS];
+  float horizontalAngles[NUM_SLOTS];
+  float verticalAngles[NUM_LAYERS];
+  uint16_t errorState;
+  uint16_t _padding2;
+};
+
+struct c_vlo_scan6_imx449:
+    c_vlo_scan6_base
+{
+  c_vlo_metadata_imx449 metaData;
+  uint32_t crc;
+};
+
+struct c_vlo_scan6_imx479:
+    c_vlo_scan6_base
+{
+  c_vlo_metadata_imx479 metaData;
+  uint32_t crc;
+};
+
+#pragma pack(pop)
+
+static_assert(sizeof(c_vlo_scan6_imx449) == (4554628));
+static_assert(sizeof(c_vlo_scan6_imx479) == (4556624));
+
+////////////
+
 struct c_vlo_scan
 {
   VLO_VERSION version;
@@ -296,6 +527,8 @@ struct c_vlo_scan
     c_vlo_scan1 scan1;
     c_vlo_scan3 scan3;
     c_vlo_scan5 scan5;
+    c_vlo_scan6_imx449 scan6_imx449;
+    c_vlo_scan6_imx479 scan6_imx479;
   };
 };
 
@@ -341,11 +574,15 @@ public:
   static void sort_echos_by_distance(c_vlo_scan1 & scan);
   static void sort_echos_by_distance(c_vlo_scan3 & scan);
   static void sort_echos_by_distance(c_vlo_scan5 & scan);
+  static void sort_echos_by_distance(c_vlo_scan6_imx449 & scan);
+  static void sort_echos_by_distance(c_vlo_scan6_imx479 & scan);
   static bool sort_echos_by_distance(c_vlo_scan & scan);
 
   static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
   static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
   static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
+  static cv::Mat get_image(const c_vlo_scan6_imx449 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
+  static cv::Mat get_image(const c_vlo_scan6_imx479 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
   static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
 
 protected:
@@ -375,6 +612,8 @@ public:
   bool read(c_vlo_scan1 * scan);
   bool read(c_vlo_scan3 * scan);
   bool read(c_vlo_scan5 * scan);
+  bool read(c_vlo_scan6_imx449 * scan);
+  bool read(c_vlo_scan6_imx479 * scan);
   bool read(c_vlo_scan * scan);
 
   bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);

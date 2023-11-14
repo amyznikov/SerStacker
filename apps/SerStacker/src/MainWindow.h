@@ -21,9 +21,10 @@
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipeline/QPipelineOptionsView.h>
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
-#include "QImageEditor.h"
+#include <gui/qinputsequenceview/QInputSequenceView.h>
 #include "QAppSettings.h"
 #include "QPipelineProgressView.h"
+#include "QSerStackerImageEditor.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -47,13 +48,10 @@ private:
   void setupThumbnailsView();
   void setupStackTreeView();
   void setupStackOptionsView();
-  void setupImageEditor();
-  void setupTextViewer();
-  void stupCloudViewer();
-  void setupRoiOptions();
-  void setupImageViewOptions();
+  void setupInputSequenceView();
   void setupDisplayImageVideoWriter();
   void setupStatusbar();
+  void showImageViewOptions(bool show);
 
 private Q_SLOTS:
   void updateWindowTittle();
@@ -65,11 +63,13 @@ private Q_SLOTS:
   void onViewInputOptions();
   void onStackProgressViewTextChanged();
   void openImage(const QString & abspath);
-  void onImageEditorVisibilityChanged(bool visible);
-  void onImageEditorCurrentFileNameChanged();
-  void onImageEditorCurrentImageChanged();
-  void onImageEditorDisplayImageChanged();
-  void onImageEditorCheckIfBadFrameSelected();
+  void checkIfBadFrameSelected();
+
+  void onCurrentViewVisibilityChanged();
+  void onCurrentViewDisplayImageChanged();
+
+  void onImageViewCurrentImageChanged();
+
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
   void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
@@ -94,27 +94,26 @@ private :
 private:
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
-  QImageEditor * imageEditor = nullptr;
-  QTextFileViewer * textViewer = nullptr;
-  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
+  QInputSequenceView * inputSequenceView = nullptr;
+  QSerStackerImageEditor * imageView = nullptr;
+  QCloudViewer * cloudView = nullptr;
+  QTextFileViewer * textView = nullptr;
+  QPipelineProgressView * pipelineProgressView = nullptr;
+
   QGeneralAppSettingsDialogBox * inputOptionsDlgBox = nullptr;
 
-  QCloudViewer * cloudViewer = nullptr;
+  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
   QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
-
-  QPipelineProgressView * pipelineProgressView = nullptr;
   QPipelineOptionsView * pipelineOptionsView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
-
   QImageSequencesTree * sequencesTreeView = nullptr;
-  QImageSequenceTreeDock * sequencesTreeDock = nullptr;
+  QImageSequenceTreeDock * sequencesTreeViewDock = nullptr;
 
 
-
-  QAction * showRoiAction_ = nullptr;
-  QToolButton * roiActionsButton_ = nullptr;
   QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
+  QAction * showRoiOptionsAction = nullptr;
+  QAction * showRoiRectangleAction = nullptr;
   QMenu roiActionsMenu_;
 
 
@@ -130,7 +129,8 @@ private:
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;
   QAction * viewInputOptionsAction = nullptr;
-  QAction * closeImageViewAction = nullptr;
+
+
 
   QAction * selectPreviousFileAction_ = nullptr;
   QAction * selectNextFileAction = nullptr;
@@ -138,14 +138,14 @@ private:
   QAction * showImageProcessorSettingsAction = nullptr;
   QAction * showCloudViewSettingsDialogBoxAction = nullptr;
 
-  QLabel * imageNameLabel_ctl = nullptr;
+  QLabel * currentFileNameLabel_ctl = nullptr;
   QLabel * imageSizeLabel_ctl = nullptr;
   QScaleSelectionButton * scaleSelection_ctl = nullptr;
   QShapesButton * shapes_ctl = nullptr;
 
-  QLabel * mousePosLabel_ctl = nullptr;
-  QLabel * shapesLabel_ctl = nullptr;
-  QToolButton * showLog_ctl = nullptr;
+  QLabel * statusbarMousePosLabel_ctl = nullptr;
+  QLabel * statusbarShapesLabel_ctl = nullptr;
+  QToolButton * statusbarShowLog_ctl = nullptr;
 
   ///
   QDisplayVideoWriter diplayImageWriter_;

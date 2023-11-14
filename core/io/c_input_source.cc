@@ -7,9 +7,23 @@
 
 #include "c_input_source.h"
 #include "load_image.h"
+#include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <mutex>
 #include <core/debug.h>
+
+
+template<>
+const c_enum_member* members_of<c_input_source::OUTPUT_TYPE>()
+{
+  static constexpr c_enum_member members[] = {
+      { c_input_source::OUTPUT_TYPE_IMAGE, "IMAGE", "" },
+      { c_input_source::OUTPUT_TYPE_CLOUD3D, "Cloud3D", "" },
+      { c_input_source::OUTPUT_TYPE_IMAGE },
+  };
+
+  return members;
+}
 
 static inline enum COLORID suggest_colorid(int cn)
 {
@@ -773,6 +787,12 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
   return false;
 }
 
+bool c_vlo_input_source::read_cloud3d(cv::OutputArray points, cv::OutputArray colors)
+{
+  return vlo_.read_cloud3d(points, colors, read_channel_);
+}
+
+
 bool c_vlo_input_source::is_open() const
 {
   return vlo_.is_open();
@@ -791,21 +811,6 @@ c_vlo_file::DATA_CHANNEL c_vlo_input_source::read_channel() const
 VLO_VERSION c_vlo_input_source::version() const
 {
   return vlo_.version();
-}
-
-bool c_vlo_input_source::read(c_vlo_scan1 * scan)
-{
-  return vlo_.read(scan);
-}
-
-bool c_vlo_input_source::read(c_vlo_scan3 * scan)
-{
-  return vlo_.read(scan);
-}
-
-bool c_vlo_input_source::read(c_vlo_scan5 * scan)
-{
-  return vlo_.read(scan);
 }
 
 bool c_vlo_input_source::read(c_vlo_scan * scan)

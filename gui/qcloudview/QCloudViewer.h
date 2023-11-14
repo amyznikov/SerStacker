@@ -97,7 +97,7 @@ public:
 
   QCloudViewer(QWidget* parent = nullptr);
 
-  QToolBar * toolbar() const;
+  QToolBar * toolbar();
   QGLCloudViewer * cloudView() const;
 
   QCloudViewMtfDisplay & mtfDisplay();
@@ -123,9 +123,15 @@ public:
 
   void clear();
 
+  void redraw();
+
   void rotateToShowCloud();
 
   void showKeyBindings();
+
+  bool copyViewportToClipboard();
+
+  QPixmap grabViewportPixmap();
 
   std::vector<QPointCloud::ptr> & clouds()
   {
@@ -145,6 +151,7 @@ public:
 Q_SIGNALS:
   void visibilityChanged(bool visible);
   void currentFileNameChanged();
+  void displayImageChanged();
 
 protected:
   void showEvent(QShowEvent *) override;
@@ -152,7 +159,7 @@ protected:
 
 protected:
   QVBoxLayout * layout_ = nullptr;
-  QToolBar * toolbar_ = nullptr;
+  mutable QToolBar * toolbar_ = nullptr;
   QGLCloudViewer * glViewer_ = nullptr;
   QString currentFileName_;
 };

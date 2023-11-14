@@ -1,16 +1,16 @@
 /*
- * QImageEditor.cc
+ * QSerStackerImageEditor.cc
  *
  *  Created on: May 2, 2022
  *      Author: amyznikov
  */
 
-#include "QImageEditor.h"
+#include "QSerStackerImageEditor.h"
 
 namespace serstacker {
 
 
-QImageEditor::QImageEditor(QWidget * parent) :
+QSerStackerImageEditor::QSerStackerImageEditor(QWidget * parent) :
   Base(parent),
   mtfDisplayFunction_(this, "QImageEditor")
 {
@@ -28,22 +28,22 @@ QImageEditor::QImageEditor(QWidget * parent) :
   createRoiShape();
 }
 
-QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction()
+QImageViewMtfDisplayFunction * QSerStackerImageEditor::mtfDisplayFunction()
 {
   return &mtfDisplayFunction_;
 }
 
-const QImageViewMtfDisplayFunction * QImageEditor::mtfDisplayFunction() const
+const QImageViewMtfDisplayFunction * QSerStackerImageEditor::mtfDisplayFunction() const
 {
   return &mtfDisplayFunction_;
 }
 
-QGraphicsRectShape * QImageEditor::roiShape() const
+QGraphicsRectShape * QSerStackerImageEditor::roiShape() const
 {
   return roiShape_;
 }
 
-void QImageEditor::createRoiShape()
+void QSerStackerImageEditor::createRoiShape()
 {
   if( !roiShape_ ) {
 

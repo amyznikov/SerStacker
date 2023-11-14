@@ -348,9 +348,13 @@ void QGLCloudViewer::glDraw()
       const std::vector<QPoint3D> & points =
           cloud->points;
 
+      if( cloud->display_colors.size() != cloud->colors.size() ) {
+        mtfDisplay_.computeDisplayColors(points, cloud->colors,
+            cloud->display_colors);
+      }
+
       const std::vector<QColor> &colors =
-          cloud->display_colors.empty() ? cloud->colors :
-              cloud->display_colors;
+          cloud->display_colors;
 
       const bool haveColors = colors.size() == points.size();
 
@@ -433,15 +437,12 @@ QCloudViewer::QCloudViewer(QWidget* parent) :
   layout_ = new QVBoxLayout(this);
   layout_->setContentsMargins(0, 0, 0, 0);
 
-  toolbar_ = new QToolBar(this);
-  toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  toolbar_->setOrientation(Qt::Horizontal);
-  toolbar_->setIconSize(QSize(16,16));
-
   glViewer_ = new QGLCloudViewer(this);
 
-  layout_->addWidget(toolbar_, 1);
   layout_->addWidget(glViewer_, 100);
+
+  connect(glViewer_, &QGLCloudViewer::displayImageChanged,
+      this, &ThisClass::displayImageChanged);
 }
 
 void QCloudViewer::showEvent(QShowEvent * e)
@@ -466,8 +467,16 @@ const QCloudViewMtfDisplay & QCloudViewer::mtfDisplay() const
   return glViewer_->mtfDisplay();
 }
 
-QToolBar * QCloudViewer::toolbar() const
+QToolBar* QCloudViewer::toolbar()
 {
+  if( !toolbar_ ) {
+    toolbar_ = new QToolBar(this);
+    toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    toolbar_->setOrientation(Qt::Horizontal);
+    toolbar_->setIconSize(QSize(16, 16));
+    layout_->insertWidget(0, toolbar_, 1, Qt::AlignTop);
+  }
+
   return toolbar_;
 }
 
@@ -522,6 +531,12 @@ void QCloudViewer::clear()
   Q_EMIT currentFileNameChanged();
 }
 
+void QCloudViewer::redraw()
+{
+  glViewer_->update();
+}
+
+
 bool QCloudViewer::openPlyFile(const QString & pathFileName)
 {
   glViewer_->clear();
@@ -557,5 +572,15 @@ void QCloudViewer::rotateToShowCloud()
 void QCloudViewer::showKeyBindings()
 {
   glViewer_->showKeyBindings();
+}
+
+bool QCloudViewer::copyViewportToClipboard()
+{
+  return glViewer_->copyViewportToClipboard();
+}
+
+QPixmap QCloudViewer::grabViewportPixmap()
+{
+  return glViewer_->grab();
 }
 

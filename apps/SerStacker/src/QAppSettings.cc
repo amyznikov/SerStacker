@@ -19,14 +19,14 @@ QGeneralAppSettingsDialogBox::QGeneralAppSettingsDialogBox(QWidget * parent) :
   vbox->addWidget(appSettingsWidget_ = new QGeneralAppSettingsWidget(this));
 }
 
-void QGeneralAppSettingsDialogBox::setImageEditor(QImageEditor * imageEditor)
+void QGeneralAppSettingsDialogBox::setInputSequenceView(QInputSequenceView * sequenceView)
 {
-  appSettingsWidget_->setImageEditor(imageEditor);
+  appSettingsWidget_->setInputSequenceView(sequenceView);
 }
 
-QImageEditor * QGeneralAppSettingsDialogBox::imageEditor() const
+QInputSequenceView * QGeneralAppSettingsDialogBox::inputSequenceView() const
 {
-  return appSettingsWidget_->imageEditor();
+  return appSettingsWidget_->inputSequenceView();
 }
 
 void QGeneralAppSettingsDialogBox::showEvent(QShowEvent * e)
@@ -59,10 +59,10 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
       add_enum_combobox<DEBAYER_ALGORITHM>("Editor debayer algorithm:",
           "",
           [this](DEBAYER_ALGORITHM v) {
-            if ( imageEditor_ ) {
-              DEBAYER_ALGORITHM algo = imageEditor_->debayerAlgorithm();
+            if ( sequenceView_ ) {
+              DEBAYER_ALGORITHM algo = sequenceView_->debayerAlgorithm();
               if ( algo != v ) {
-                imageEditor_->setDebayerAlgorithm(v);
+                sequenceView_->setDebayerAlgorithm(v);
               }
             }
           });
@@ -71,8 +71,8 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
       add_checkbox("Drop Bad pixels",
           "Set TRUE for bad pixel detection and filtering ",
           [this](bool checked) {
-            if ( imageEditor_ && imageEditor_->dropBadPixels() != checked) {
-              imageEditor_->setDropBadPixels(checked);
+            if ( sequenceView_ && sequenceView_->dropBadPixels() != checked) {
+              sequenceView_->setDropBadPixels(checked);
             }
           });
 
@@ -80,20 +80,32 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
       add_numeric_box<double>("Bad pixels variation threshold",
           "",
           [this](double v) {
-            if ( imageEditor_ && imageEditor_->badPixelsVariationThreshold() != v) {
-              imageEditor_->setBadPixelsVariationThreshold(v);
+            if ( sequenceView_ && sequenceView_->badPixelsVariationThreshold() != v) {
+              sequenceView_->setBadPixelsVariationThreshold(v);
             }
           });
+
+  sourceOutputType_ctl_ =
+      add_enum_combobox<c_input_source::OUTPUT_TYPE>("VLO OUTPUT TYPE:",
+          "",
+          [this](c_input_source::OUTPUT_TYPE v) {
+            if ( sequenceView_ ) {
+              if ( v != sequenceView_->sourceOutputType()) {
+                sequenceView_->setSourceOutputType(v);
+              }
+            }
+          });
+
 
 #if HAVE_VLO_FILE
   vloDataChannel_ctl_ =
       add_enum_combobox<c_vlo_file::DATA_CHANNEL>("VLO DATA CHANNEL:",
           "",
           [this](c_vlo_file::DATA_CHANNEL v) {
-            if ( imageEditor_ ) {
-              c_vlo_file::DATA_CHANNEL channel = imageEditor_->vloDataChannel();
+            if ( sequenceView_ ) {
+              c_vlo_file::DATA_CHANNEL channel = sequenceView_->vloDataChannel();
               if ( channel != v ) {
-                imageEditor_->setVloDataChannel(v);
+                sequenceView_->setVloDataChannel(v);
               }
             }
           });
@@ -102,37 +114,43 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
   updateControls();
 }
 
-void QGeneralAppSettingsWidget::setImageEditor(QImageEditor * imageEditor)
+void QGeneralAppSettingsWidget::setInputSequenceView(QInputSequenceView * sequenceView)
 {
-  if( imageEditor_ ) {
-    imageEditor_->disconnect(this);
+  if( sequenceView_ ) {
+    sequenceView_->disconnect(this);
   }
 
-  if( (imageEditor_ = imageEditor) ) {
+  if( (sequenceView_ = sequenceView) ) {
 
-    connect(imageEditor_, &QImageEditor::debayerAlgorithmChanged,
+    connect(sequenceView_, &QInputSequenceView::debayerAlgorithmChanged,
         [this]() {
           c_update_controls_lock lock(this);
-          editorDebayer_ctl->setValue(imageEditor_->debayerAlgorithm());
+          editorDebayer_ctl->setValue(sequenceView_->debayerAlgorithm());
         });
 
-    connect(imageEditor_, &QImageEditor::dropBadPixelsChanged,
+    connect(sequenceView_, &QInputSequenceView::dropBadPixelsChanged,
         [this]() {
           c_update_controls_lock lock(this);
-          dropBadPixels_ctl->setChecked(imageEditor_->dropBadPixels());
+          dropBadPixels_ctl->setChecked(sequenceView_->dropBadPixels());
         });
 
-    connect(imageEditor_, &QImageEditor::badPixelsVariationThresholdChanged,
+    connect(sequenceView_, &QInputSequenceView::badPixelsVariationThresholdChanged,
         [this]() {
           c_update_controls_lock lock(this);
-          badPixelsVariationThreshold_ctl->setValue(imageEditor_->badPixelsVariationThreshold());
+          badPixelsVariationThreshold_ctl->setValue(sequenceView_->badPixelsVariationThreshold());
+        });
+
+    connect(sequenceView_, &QInputSequenceView::sourceOutputTypeChanged,
+        [this]() {
+          c_update_controls_lock lock(this);
+          sourceOutputType_ctl_->setValue(sequenceView_->sourceOutputType());
         });
 
 #if HAVE_VLO_FILE
-    connect(imageEditor_, &QImageEditor::vloDataChannelChanged,
+    connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
         [this]() {
           c_update_controls_lock lock(this);
-          vloDataChannel_ctl_->setValue(imageEditor_->vloDataChannel());
+          vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
         });
 #endif
 
@@ -141,16 +159,16 @@ void QGeneralAppSettingsWidget::setImageEditor(QImageEditor * imageEditor)
   updateControls();
 }
 
-QImageEditor * QGeneralAppSettingsWidget::imageEditor() const
+QInputSequenceView * QGeneralAppSettingsWidget::inputSequenceView() const
 {
-  return imageEditor_;
+  return sequenceView_;
 }
 
 void QGeneralAppSettingsWidget::onupdatecontrols()
 {
   debayer_ctl->setValue(default_debayer_algorithm());
 
-  if ( !imageEditor_ ) {
+  if ( !sequenceView_ ) {
     editorDebayer_ctl->setEnabled(false);
     dropBadPixels_ctl->setEnabled(false);
     badPixelsVariationThreshold_ctl->setEnabled(false);
@@ -159,16 +177,16 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
 #endif
   }
   else {
-    editorDebayer_ctl->setValue(imageEditor_->debayerAlgorithm());
-    dropBadPixels_ctl->setChecked(imageEditor_->dropBadPixels());
-    badPixelsVariationThreshold_ctl->setValue(imageEditor_->badPixelsVariationThreshold());
+    editorDebayer_ctl->setValue(sequenceView_->debayerAlgorithm());
+    dropBadPixels_ctl->setChecked(sequenceView_->dropBadPixels());
+    badPixelsVariationThreshold_ctl->setValue(sequenceView_->badPixelsVariationThreshold());
 
     editorDebayer_ctl->setEnabled(true);
     dropBadPixels_ctl->setEnabled(true);
     badPixelsVariationThreshold_ctl->setEnabled(true);
 
 #if HAVE_VLO_FILE
-    vloDataChannel_ctl_->setValue(imageEditor_->vloDataChannel());
+    vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
     vloDataChannel_ctl_->setEnabled(true);
 #endif
 

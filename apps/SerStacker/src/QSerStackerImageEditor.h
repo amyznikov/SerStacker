@@ -1,5 +1,5 @@
 /*
- * QImageEditor.h
+ * QSerStackerImageEditor.h
  *
  *  Created on: May 2, 2022
  *      Author: amyznikov
@@ -15,15 +15,15 @@
 
 namespace serstacker {
 
-class QImageEditor:
-    public QImageFileEditor
+class QSerStackerImageEditor:
+    public QImageEditor
 {
   Q_OBJECT;
 public:
-  typedef QImageEditor ThisClass;
-  typedef QImageFileEditor Base;
+  typedef QSerStackerImageEditor ThisClass;
+  typedef QImageEditor Base;
 
-  QImageEditor(QWidget * parent = nullptr);
+  QSerStackerImageEditor(QWidget * parent = nullptr);
 
   QImageViewMtfDisplayFunction * mtfDisplayFunction();
   const QImageViewMtfDisplayFunction * mtfDisplayFunction() const;

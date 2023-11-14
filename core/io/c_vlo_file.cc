@@ -9,13 +9,9 @@
 #include <fcntl.h>
 #include <limits>
 #include <core/ssprintf.h>
+#include <core/proc/bswap.h>
 #include <core/proc/autoclip.h>
 #include <core/debug.h>
-
-//static constexpr uint32_t sizeScanV1 = sizeof(c_vlo_scan1); // 3561744;
-//static constexpr uint32_t sizeScanV3 = sizeof(c_vlo_scan3);// 5622704;
-//static constexpr uint32_t sizeScanV5 = sizeof(c_vlo_scan5);// 4560080;
-
 
 template<>
 const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
@@ -42,7 +38,7 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
   return members;
 }
 
-
+namespace {
 
 //@brief get current file position
 static inline ssize_t whence(int fd)
@@ -64,13 +60,13 @@ static inline bool readfrom(int fd, ssize_t offset, uint16_t * data)
 }
 
 
-namespace {
-
-void sort_echos_by_distance(c_vlo_scan1 & scan)
+static void sort_echos_by_distance(c_vlo_scan1 & scan)
 {
+  typedef c_vlo_scan1 ScanType;
+
   if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
 
-    typedef struct c_vlo_scan1::echo echo_type;
+    typedef struct ScanType::Echo echo_type;
     typedef decltype(echo_type::dist) dist_type;
     constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
@@ -108,11 +104,13 @@ void sort_echos_by_distance(c_vlo_scan1 & scan)
   }
 }
 
-void sort_echos_by_distance(c_vlo_scan3 & scan)
+static void sort_echos_by_distance(c_vlo_scan3 & scan)
 {
+  typedef c_vlo_scan3 ScanType;
+
   if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
 
-    typedef struct c_vlo_scan3::echo echo_type;
+    typedef struct ScanType::Echo echo_type;
     typedef decltype(echo_type::dist) dist_type;
     constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
@@ -151,11 +149,13 @@ void sort_echos_by_distance(c_vlo_scan3 & scan)
 }
 
 
-void sort_echos_by_distance(c_vlo_scan5 & scan)
+static void sort_echos_by_distance(c_vlo_scan5 & scan)
 {
+  typedef c_vlo_scan5 ScanType;
+
   if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
 
-    typedef struct c_vlo_scan5::echo echo_type;
+    typedef struct ScanType::Echo echo_type;
     typedef decltype(echo_type::dist) dist_type;
     constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
@@ -193,12 +193,14 @@ void sort_echos_by_distance(c_vlo_scan5 & scan)
   }
 }
 
-void sort_echos_by_distance(c_vlo_scan6_base & scan)
+static void sort_echos_by_distance(c_vlo_scan6_base & scan)
 {
+  typedef c_vlo_scan6_base ScanType;
+
   if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
 
-    typedef struct c_vlo_scan6_base::echo echo_type;
-    typedef decltype(c_vlo_scan6_base::echo::dist) dist_type;
+    typedef struct ScanType::Echo echo_type;
+    typedef decltype(ScanType::Echo::dist) dist_type;
     constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
     echo_type echos[scan.NUM_ECHOS];
@@ -233,11 +235,59 @@ void sort_echos_by_distance(c_vlo_scan6_base & scan)
   }
 }
 
-} // namespace
+static void sort_echos_by_distance(c_vlo_scan6_slm & scan)
+{
+  //  CF_DEBUG("SLM: NumEchos=%u NumLayers=%u NumSlots=%u echoOrdering=%u",
+  //      scan.config.maxNumEchos,
+  //      scan.config.maxNumLayers,
+  //      scan.config.maxNumSlots,
+  //      scan.config.echoOrdering);
 
+
+  if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
+
+    typedef c_vlo_scan6_slm ScanType;
+    typedef struct ScanType::Echo echo_type;
+    typedef decltype(ScanType::Echo::dist) dist_type;
+    constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
+
+    echo_type echos[scan.NUM_ECHOS];
+    int cnz = 0;
+
+    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+
+        cnz = 0;
+        memset(echos, 0, sizeof(echos));
+
+        for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+          if( scan.echo[s][l][e].dist > 0 && scan.echo[s][l][e].dist < max_dist_value ) {
+            echos[cnz++] = scan.echo[s][l][e];
+          }
+        }
+
+        if( cnz > 1 ) {
+
+          std::sort(echos, echos + cnz,
+              [](const auto & prev, const auto & next) {
+                return prev.dist < next.dist;
+              });
+        }
+
+        memcpy(scan.echo[s][l], echos, sizeof(echos));
+      }
+    }
+
+    scan.config.echoOrdering = VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR;
+  }
+}
 
 template<class ScanType>
-static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask)
+std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
+cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask)
 {
   cv::Mat3b emask;
 
@@ -252,7 +302,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
   switch (channel) {
 
     case c_vlo_file::DATA_CHANNEL_AMBIENT: {
-      typedef typename std::remove_reference_t<decltype(ScanType::slot::ambient[0])> value_type;
+      typedef typename std::remove_reference_t<decltype(ScanType::Slot::ambient[0])> value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<value_type> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -270,7 +320,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_DISTANCES: {
 
-      typedef decltype(ScanType::echo::dist) value_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -296,7 +346,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
-      typedef decltype(ScanType::echo::area) value_type;
+      typedef decltype(ScanType::Echo::area) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -319,7 +369,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK: {
-      typedef decltype(ScanType::echo::peak) value_type;
+      typedef decltype(ScanType::Echo::peak) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -342,7 +392,7 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_WIDTH: {
-      typedef decltype(ScanType::echo::width) value_type;
+      typedef decltype(ScanType::Echo::width) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -365,8 +415,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_DIV_WIDTH : {
-      typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::width) width_type;
+      typedef decltype(ScanType::Echo::area) value_type;
+      typedef decltype(ScanType::Echo::width) width_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_width = std::numeric_limits<width_type>::max() - 2;
 
@@ -393,8 +443,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_DIV_WIDTH : {
-      typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::width) width_type;
+      typedef decltype(ScanType::Echo::peak) value_type;
+      typedef decltype(ScanType::Echo::width) width_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_width = std::numeric_limits<width_type>::max() - 2;
 
@@ -421,8 +471,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
 
-      typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::dist) distance_type;
+      typedef decltype(ScanType::Echo::area) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -451,8 +501,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST: {
 
-      typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::dist) distance_type;
+      typedef decltype(ScanType::Echo::peak) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -482,8 +532,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST2: {
 
-      typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::dist) distance_type;
+      typedef decltype(ScanType::Echo::area) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -513,8 +563,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST2: {
 
-      typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::dist) distance_type;
+      typedef decltype(ScanType::Echo::peak) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -543,8 +593,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
     //
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
 
-      typedef decltype(ScanType::echo::area) value_type;
-      typedef decltype(ScanType::echo::dist) distance_type;
+      typedef decltype(ScanType::Echo::area) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -574,8 +624,8 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST: {
 
-      typedef decltype(ScanType::echo::peak) value_type;
-      typedef decltype(ScanType::echo::dist) distance_type;
+      typedef decltype(ScanType::Echo::peak) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
       constexpr auto max_distance = std::numeric_limits<distance_type>::max() - 2;
 
@@ -675,11 +725,394 @@ static cv::Mat get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel
   }
 
 
+  return cv::Mat();
+}
 
+cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask)
+{
+  typedef c_vlo_scan6_slm ScanType;
+
+  cv::Mat3b emask;
+
+  if( !exclude_mask.empty() ) {
+    if( exclude_mask.type() == CV_8UC3 ) {
+      if( exclude_mask.rows() == scan.NUM_LAYERS && exclude_mask.cols() == scan.NUM_SLOTS ) {
+        emask = exclude_mask.getMat();
+      }
+    }
+  }
+
+  switch (channel) {
+
+    case c_vlo_file::DATA_CHANNEL_AMBIENT:
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK:
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
+      typedef decltype(ScanType::Echo::area) value_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+        for( int l = 0; l < std::min(scan.BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
+          for( int e = 0; e < 3; ++e ) {
+            const auto &value = scan.echo[s][l][e].area;
+            if( value > 0 && value < max_value ) {
+              if( emask.empty() || !emask[l][s][e] ) {
+                image[scan.NUM_LAYERS - l - 1][s][e] = value; //
+              }
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_DISTANCES: {
+
+      typedef decltype(ScanType::Echo::dist) value_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int e = 0; e < 3; ++e ) {
+
+            const auto & distance = scan.echo[s][l][e].dist;
+
+            if ( distance > 0 ) {
+              if ( emask.empty() || !emask[l][s][e] ) {
+                image[scan.NUM_LAYERS - l - 1][s][e] = distance;
+              }
+            }
+
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST:
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
+
+      typedef decltype(ScanType::Echo::area) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int e = 0; e < 3; ++e ) {
+
+            const auto & value = scan.echo[s][l][e].area;
+            const auto & distance = scan.echo[s][l][e].dist;
+
+            if ( value > 0 && value < max_value && distance > 0 ) {
+              if ( emask.empty() || !emask[l][s][e] ) {
+                image[scan.NUM_LAYERS - l - 1][s][e] = ((double) value ) * ((double) distance);
+              }
+            }
+
+          }
+        }
+      }
+
+      return image;
+    }
+
+    //
+    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST:
+    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
+
+      typedef decltype(ScanType::Echo::area) value_type;
+      typedef decltype(ScanType::Echo::dist) distance_type;
+      constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+          for( int c = 0; c < 3; ++c ) {
+
+            const auto & value = scan.echo[s][l][c].area;
+            const auto & distance = scan.echo[s][l][c].dist;
+
+            if ( value > 0 && value < max_value && distance > 0 ) {
+              image[scan.NUM_LAYERS - l - 1][s][c] = ((double) value ) * sqrt(0.01 * distance );
+            }
+            else {
+              image[scan.NUM_LAYERS - l - 1][s][c] = 0;
+            }
+          }
+        }
+      }
+
+      return image;
+
+    }
+
+    case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
+
+      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      double min_intens[3] = {255, 255, 255};
+      double max_intens[3] = {0, 0, 0};
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+          const auto &dist0 = scan.echo[s][l][0].dist;
+          const auto &dist1 = scan.echo[s][l][1].dist;
+
+          if( dist0 > 0 && dist1 > 0 ) {
+            if( std::abs((double) dist1 / (double) dist0 - 2.) < 0.04 ) {
+              for( int e = 0; e < 3; ++e ) {
+
+                const uint8_t &area =
+                    scan.echo[s][l][e].area;
+
+                //if( area < 254 )
+                {
+                  image[scan.NUM_LAYERS - l - 1][s][e] = area;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK: {
+
+      cv::Mat1w image(scan.NUM_LAYERS, scan.NUM_SLOTS);
+      image.setTo(0);
+
+      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+          int max_echo_index = -1;
+          uint8_t max_peak = 0;
+
+          for ( int e = 0; e < 3; ++e ) {
+
+            const auto &dist = scan.echo[s][l][e].dist;
+
+            if ( dist > 0 && dist < 65534 ) {
+              if ( scan.echo[s][l][e].area > max_peak ) {
+                max_peak = scan.echo[s][l][e].area;
+                max_echo_index = e;
+              }
+            }
+          }
+
+          if ( max_echo_index >= 0 ) {
+            image[scan.NUM_LAYERS - l - 1][s] =
+                scan.echo[s][l][max_echo_index].dist;
+          }
+        }
+
+      }
+
+      return image;
+    }
+  }
 
 
   return cv::Mat();
 }
+
+
+
+template<class ScanType>
+std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
+bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
+    cv::OutputArray points, cv::OutputArray colors)
+{
+  cv::Mat intensityImage =
+      get_image(scan, intensity_channel,
+          cv::noArray());
+
+  if( !intensityImage.empty() ) {
+
+    autoclip(intensityImage, cv::noArray(),
+        0.01, 99.99,
+        0, 255);
+
+    if( intensityImage.depth() != CV_8U ) {
+      intensityImage.convertTo(intensityImage, CV_8U);
+    }
+
+    if ( intensityImage.channels() == 1 ) {
+      cv::cvtColor(intensityImage, intensityImage,
+          cv::COLOR_GRAY2BGR);
+    }
+  }
+
+  const cv::Mat3b intensity =
+      intensityImage;
+
+  const float firstVertAngle =
+      0.5 * 0.05 * scan.NUM_LAYERS;
+
+  const float tick2deg =
+      (float) (0.00000008381903173490870551553291862726);
+
+  const float yawCorrection = 0;
+
+  std::vector<cv::Vec3f> output_points;
+  std::vector<cv::Vec3b> output_colors;
+
+  output_points.reserve(scan.NUM_POINTS);
+  output_colors.reserve(scan.NUM_POINTS);
+
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+    const auto &slot =
+        scan.slot[s];
+
+    const float horizontalAngle =
+        slot.angleTicks * tick2deg * CV_PI / 180 + yawCorrection;
+
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+
+      const float verticalAngle =
+          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
+
+      const float cos_vert = cos(verticalAngle);
+      const float sin_vert = sin(verticalAngle);
+      const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
+      const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
+
+      for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
+
+        const auto &echo =
+            slot.echo[l][e];
+
+        const uint16_t distance =
+            echo.dist;
+
+        if( distance > 0 && distance < 65534 ) {
+
+          const float scale = 0.01;
+          const float x = scale * distance * cos_hor_cos_vert;
+          const float y = scale * distance * sin_hor_cos_vert;
+          const float z = scale * distance * sin_vert;
+          output_points.emplace_back(x, y, z);
+
+          const uint8_t color =
+              intensity[l][s][e];
+
+          output_colors.emplace_back(color, color, color);
+        }
+      }
+    }
+  }
+
+  cv::Mat(output_points).copyTo(points);
+  cv::Mat(output_colors).copyTo(colors);
+
+
+  return true;
+}
+
+
+bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
+    cv::OutputArray points, cv::OutputArray colors)
+{
+  cv::Mat intensityImage =
+      get_image(scan, intensity_channel,
+          cv::noArray());
+
+  if( !intensityImage.empty() ) {
+
+    autoclip(intensityImage, cv::noArray(),
+        0.01, 99.99,
+        0, 255);
+
+    if( intensityImage.depth() != CV_8U ) {
+      intensityImage.convertTo(intensityImage, CV_8U);
+    }
+
+    if ( intensityImage.channels() == 1 ) {
+      cv::cvtColor(intensityImage, intensityImage,
+          cv::COLOR_GRAY2BGR);
+    }
+  }
+
+  const cv::Mat3b intensity =
+      intensityImage;
+
+  std::vector<cv::Vec3f> output_points;
+  std::vector<cv::Vec3b> output_colors;
+
+  output_points.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
+  output_colors.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
+
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+    const float sin_azimuth =
+        std::sin(scan.horizontalAngles[s]);
+
+    const float cos_azimuth =
+        std::cos(scan.horizontalAngles[s]);
+
+    for( int l = 0; l < std::min(scan.BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
+
+      const float inclination =
+          CV_PI / 2 - scan.verticalAngles[l];
+
+      const float sin_inclination =
+          std::sin(inclination);
+
+      const float cos_inclination =
+          std::cos(inclination);
+
+      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+
+        const uint16_t & dist = scan.echo[s][l][e].dist;
+        if ( dist < 200 || dist >= 30000 ) {
+          continue;
+        }
+
+        const uint16_t area = scan.echo[s][l][e].area;
+
+        const float distance = 0.01 * dist;
+
+        // mirrorSide = scan.mirrorSide;
+        const float x = distance * sin_inclination * cos_azimuth;
+        const float y = -distance * sin_inclination * sin_azimuth;
+        const float z = -distance * cos_inclination;
+
+        const uint8_t gray =
+            intensity[scan.NUM_LAYERS - l - 1][s][e];
+
+        output_points.emplace_back(x, y, z);
+        output_colors.emplace_back(gray, gray, gray);
+      }
+    }
+  }
+
+  cv::Mat(output_points).copyTo(points);
+  cv::Mat(output_colors).copyTo(colors);
+
+
+  return true;
+}
+
+} // namespace
+
 
 //////////////////////////////////////////
 
@@ -702,32 +1135,6 @@ VLO_VERSION c_vlo_file::version() const
   return version_;
 }
 
-
-void c_vlo_file::sort_echos_by_distance(c_vlo_scan1 & scan)
-{
-  ::sort_echos_by_distance(scan);
-}
-
-void c_vlo_file::sort_echos_by_distance(c_vlo_scan3 & scan)
-{
-  ::sort_echos_by_distance(scan);
-}
-
-void c_vlo_file::sort_echos_by_distance(c_vlo_scan5 & scan)
-{
-  ::sort_echos_by_distance(scan);
-}
-
-void c_vlo_file::sort_echos_by_distance(c_vlo_scan6_imx449 & scan)
-{
-  ::sort_echos_by_distance(scan);
-}
-
-void c_vlo_file::sort_echos_by_distance(c_vlo_scan6_imx479 & scan)
-{
-  ::sort_echos_by_distance(scan);
-}
-
 bool c_vlo_file::sort_echos_by_distance(c_vlo_scan & scan)
 {
   switch (scan.version) {
@@ -740,33 +1147,12 @@ bool c_vlo_file::sort_echos_by_distance(c_vlo_scan & scan)
     case VLO_VERSION_5:
       ::sort_echos_by_distance(scan.scan5);
       return true;
-//    case VLO_VERSION_6:
-//      ::sort_echos_by_distance(scan.scan6);
+    case VLO_VERSION_6_SLM:
+      ::sort_echos_by_distance(scan.scan6_slm);
       return true;
   }
   return false;
 }
-
-cv::Mat c_vlo_file::get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask)
-{
-  return ::get_image(scan, channel, exclude_mask);
-}
-
-cv::Mat c_vlo_file::get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask)
-{
-  return ::get_image(scan, channel, exclude_mask);
-}
-
-cv::Mat c_vlo_file::get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask)
-{
-  return ::get_image(scan, channel, exclude_mask);
-}
-
-//cv::Mat c_vlo_file::get_image(const c_vlo_scan6 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask)
-//{
-//  return ::get_image(scan, channel, exclude_mask);
-//}
-
 
 cv::Mat c_vlo_file::get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask)
 {
@@ -777,10 +1163,27 @@ cv::Mat c_vlo_file::get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv:
       return ::get_image(scan.scan3, channel, exclude_mask);
     case VLO_VERSION_5:
       return ::get_image(scan.scan5, channel, exclude_mask);
-//    case VLO_VERSION_6:
-//      return ::get_image(scan.scan6, channel, exclude_mask);
+    case VLO_VERSION_6_SLM:
+      return ::get_image(scan.scan6_slm, channel, exclude_mask);
   }
   return cv::Mat();
+}
+
+bool c_vlo_file::get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
+    cv::OutputArray points, cv::OutputArray colors)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return ::get_cloud3d(scan.scan1, intensity_channel, points, colors);
+    case VLO_VERSION_3:
+      return ::get_cloud3d(scan.scan3, intensity_channel, points, colors);
+    case VLO_VERSION_5:
+      return ::get_cloud3d(scan.scan5, intensity_channel, points, colors);
+    case VLO_VERSION_6_SLM:
+      return ::get_cloud3d(scan.scan6_slm, intensity_channel, points, colors);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return false;
 }
 
 
@@ -837,12 +1240,15 @@ bool c_vlo_reader::open(const std::string & filename)
       }
       else {
 
-        static constexpr uint32_t scanV1Offset = 336;
-        static constexpr uint32_t scanV3Offset = 1328;
-        static constexpr uint32_t scanV5Offset = 1120;
+        static constexpr uint32_t scanV1Extra = 336;
+        static constexpr uint32_t scanV3Extra = 1328;
+        static constexpr uint32_t scanV5Extra = 1120;
+        static constexpr uint32_t scanV6SLMExtra = 1;
 
 //        CF_DEBUG("\n"
+//            "format_version = %u\n"
 //            "payload_size=%zu \n"
+//            "sizeof(c_vlo_scan6_slm)=%zu\n"
 //            "sizeof(c_vlo_scan6_imx449)=%zu\n"
 //            "sizeof(c_vlo_scan6_imx479)=%zu\n"
 //            "sizeof(c_vlo_scan6_base)=%zu\n"
@@ -850,7 +1256,10 @@ bool c_vlo_reader::open(const std::string & filename)
 //            "sizeof(c_vlo_scan3)=%zu\n"
 //            "sizeof(c_vlo_scan1)=%zu\n"
 //            "\n",
+//            format_version,
 //            payload_size,
+//            sizeof(c_vlo_scan6_slm),
+//            sizeof(c_vlo_scan6_imx449),
 //            sizeof(c_vlo_scan6_imx449),
 //            sizeof(c_vlo_scan6_imx479),
 //            sizeof(c_vlo_scan6_base),
@@ -859,32 +1268,28 @@ bool c_vlo_reader::open(const std::string & filename)
 //            sizeof(c_vlo_scan1));
 
 
-        if( payload_size == sizeof(c_vlo_scan1) + scanV1Offset && format_version == 18 ) {
+        if( format_version == 18  && payload_size == sizeof(c_vlo_scan1) + scanV1Extra ) {
           version_ = VLO_VERSION_1;
           frame_size_ = sizeof(c_vlo_scan1);
         }
-        else if( payload_size == sizeof(c_vlo_scan3) + scanV3Offset && format_version == 18 ) {
+        else if( format_version == 18  && payload_size == sizeof(c_vlo_scan3) + scanV3Extra ) {
           version_ = VLO_VERSION_3;
           frame_size_ = sizeof(c_vlo_scan3);
         }
-        else if( payload_size == sizeof(c_vlo_scan5) + scanV5Offset && format_version == 5 ) {
+        else if( format_version == 5 && payload_size == sizeof(c_vlo_scan5) + scanV5Extra ) {
           version_ = VLO_VERSION_5;
           frame_size_ = sizeof(c_vlo_scan5);
         }
-        else if( payload_size == sizeof(c_vlo_scan5) && format_version == 5 ) {
+        else if( format_version == 5  && payload_size == sizeof(c_vlo_scan5) ) {
           version_ = VLO_VERSION_5;
           frame_size_ = sizeof(c_vlo_scan5);
         }
-//        else if( payload_size >= sizeof(c_vlo_scan6_imx479) && format_version == 6 ) {
-//          version_ = VLO_VERSION_6;
-//          frame_size_ = sizeof(c_vlo_scan6_imx479);
-//        }
-//        else if( payload_size >= sizeof(c_vlo_scan6_imx449) && format_version == 6 ) {
-//          version_ = VLO_VERSION_6;
-//          frame_size_ = sizeof(c_vlo_scan6_imx449);
-//        }
+        else if( format_version == 6  && payload_size == sizeof(c_vlo_scan6_slm) + scanV6SLMExtra ) {
+          version_ = VLO_VERSION_6_SLM;
+          frame_size_ = sizeof(c_vlo_scan6_slm);
+        }
 
-        CF_DEBUG("format_version: %d->%d frame_size_=%zd",
+        CF_DEBUG("SET: format_version: %d -> %d frame_size_=%zd",
             format_version, version_, frame_size_);
 
         if( frame_size_ > 0 ) {
@@ -933,20 +1338,20 @@ bool c_vlo_reader::open(const std::string & filename)
     CF_DEBUG("vlo format version %u in '%s'",
         format_version, fname);
 
-    switch ((version_ = (VLO_VERSION) (format_version))) {
-      case VLO_VERSION_1:
+    switch (format_version) {
+      case 1:
+        version_ = VLO_VERSION_1;
         frame_size_ = sizeof(c_vlo_scan1);
         break;
-      case VLO_VERSION_3:
+      case 3:
+        version_ = VLO_VERSION_3;
         frame_size_ = sizeof(c_vlo_scan3);
         break;
-      case VLO_VERSION_5:
+      case 5:
+        version_ = VLO_VERSION_5;
         frame_size_ = sizeof(c_vlo_scan5);
         break;
-//      case VLO_VERSION_6:
-//        frame_size_ = sizeof(c_vlo_scan6);
-//        break;
-      case VLO_VERSION_18: {
+      case 18: {
 
         uint16_t data11, data12, data31, data32;
         bool isv1, isv3;
@@ -1102,9 +1507,10 @@ int32_t c_vlo_reader::curpos() const
   return -1;
 }
 
-bool c_vlo_reader::read(c_vlo_scan1 * scan)
+template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION > 0),
+    bool> c_vlo_reader::read(ScanType * scan)
 {
-  if( version_ != VLO_VERSION_1 ) {
+  if( this->version_ != c_vlo_scan_type_traits<ScanType>::VERSION ) {
     errno = EINVAL;
     return false;
   }
@@ -1127,120 +1533,6 @@ bool c_vlo_reader::read(c_vlo_scan1 * scan)
 
   errno = EBADF;
   return false;
-}
-
-bool c_vlo_reader::read(c_vlo_scan3 * scan)
-{
-  if( version_ != VLO_VERSION_3 ) {
-    errno = EINVAL;
-    return false;
-  }
-
-  if( fd_ >= 0 ) {
-    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
-      ::sort_echos_by_distance(*scan);
-      return true;
-    }
-    return false;
-  }
-
-  if( ifhd_.is_open() ) {
-    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
-      ::sort_echos_by_distance(*scan);
-      return true;
-    }
-    return false;
-  }
-
-  errno = EBADF;
-  return false;
-}
-
-bool c_vlo_reader::read(c_vlo_scan5 * scan)
-{
-  if( version_ != VLO_VERSION_5 ) {
-    errno = EINVAL;
-    return false;
-  }
-
-  if( fd_ >= 0 ) {
-    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
-      ::sort_echos_by_distance(*scan);
-      return true;
-    }
-    return false;
-  }
-
-  if( ifhd_.is_open() ) {
-    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
-      ::sort_echos_by_distance(*scan);
-      return true;
-    }
-    return false;
-  }
-
-  errno = EBADF;
-  return false;
-}
-
-bool c_vlo_reader::read(c_vlo_scan6_imx449 * scan)
-{
-  errno = EINVAL;
-  return false;
-
-//  if( version_ != VLO_VERSION_6 ) {
-//    errno = EINVAL;
-//    return false;
-//  }
-//
-//  if( fd_ >= 0 ) {
-//    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
-//      ::sort_echos_by_distance(*scan);
-//      return true;
-//    }
-//    return false;
-//  }
-//
-//  if( ifhd_.is_open() ) {
-//    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
-//      ::sort_echos_by_distance(*scan);
-//      return true;
-//    }
-//    return false;
-//  }
-//
-//  errno = EBADF;
-//  return false;
-}
-
-bool c_vlo_reader::read(c_vlo_scan6_imx479 * scan)
-{
-  errno = EINVAL;
-  return false;
-
-//  if( version_ != VLO_VERSION_6 ) {
-//    errno = EINVAL;
-//    return false;
-//  }
-//
-//  if( fd_ >= 0 ) {
-//    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
-//      ::sort_echos_by_distance(*scan);
-//      return true;
-//    }
-//    return false;
-//  }
-//
-//  if( ifhd_.is_open() ) {
-//    if( ifhd_.read_payload(scan, sizeof(*scan)) == sizeof(*scan) ) {
-//      ::sort_echos_by_distance(*scan);
-//      return true;
-//    }
-//    return false;
-//  }
-//
-//  errno = EBADF;
-//  return false;
 }
 
 
@@ -1253,53 +1545,36 @@ bool c_vlo_reader::read(c_vlo_scan * scan)
       return read(&scan->scan3);
     case VLO_VERSION_5:
       return read(&scan->scan5);
-//    case VLO_VERSION_6:
-//      return read(&scan->scan6);
+    case VLO_VERSION_6_IMX449:
+      return read(&scan->scan6_imx449);
+    case VLO_VERSION_6_IMX479:
+      return read(&scan->scan6_imx479);
+    case VLO_VERSION_6_SLM:
+      return read(&scan->scan6_slm);
   }
-
   errno = EBADF;
   return false;
 }
 
 bool c_vlo_reader::read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel)
 {
-  switch (version()) {
-    case VLO_VERSION_1: {
-      std::unique_ptr<c_vlo_scan1> scan(new c_vlo_scan1());
-      if( read(scan.get()) ) {
-        return !(*image = ::get_image(*scan, channel, cv::noArray())).empty();
-      }
-      break;
-    }
-
-    case VLO_VERSION_3: {
-      std::unique_ptr<c_vlo_scan3> scan(new c_vlo_scan3());
-      if( read(scan.get()) ) {
-        return !(*image = ::get_image(*scan, channel, cv::noArray())).empty();
-      }
-      break;
-    }
-
-    case VLO_VERSION_5: {
-      std::unique_ptr<c_vlo_scan5> scan(new c_vlo_scan5());
-      if( read(scan.get()) ) {
-        return !(*image = ::get_image(*scan, channel, cv::noArray())).empty();
-      }
-      break;
-    }
-
-//    case VLO_VERSION_6: {
-//      std::unique_ptr<c_vlo_scan6> scan(new c_vlo_scan6());
-//      if( read(scan.get()) ) {
-//        return !(*image = ::get_image(*scan, channel, cv::noArray())).empty();
-//      }
-//      break;
-//    }
+  std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
+  if( read(scan.get()) ) {
+    return !(*image = get_image(*scan, channel, cv::noArray())).empty();
   }
-
-  errno = EBADF;
   return false;
 }
+
+bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, c_vlo_file::DATA_CHANNEL colors_channel)
+{
+  std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
+  if ( read(scan.get()) ) {
+    return get_cloud3d(*scan, colors_channel, points, colors);
+  }
+
+  return false;
+}
+
 
 cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
 {
@@ -1307,39 +1582,9 @@ cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
   c_vlo_reader vlo;
 
   if( vlo.open(filename) ) {
-
-    switch (vlo.version()) {
-      case VLO_VERSION_1: {
-        std::unique_ptr<c_vlo_scan1> scan(new c_vlo_scan1());
-        if( vlo.read(scan.get()) ) {
-          image = get_image(*scan, DATA_CHANNEL_AMBIENT);
-        }
-        break;
-      }
-
-      case VLO_VERSION_3: {
-        std::unique_ptr<c_vlo_scan3> scan(new c_vlo_scan3());
-        if( vlo.read(scan.get()) ) {
-          image = get_image(*scan, DATA_CHANNEL_AMBIENT);
-        }
-        break;
-      }
-
-      case VLO_VERSION_5: {
-        std::unique_ptr<c_vlo_scan5> scan(new c_vlo_scan5());
-        if( vlo.read(scan.get()) ) {
-          image = get_image(*scan, DATA_CHANNEL_AMBIENT);
-        }
-        break;
-      }
-
-//      case VLO_VERSION_6: {
-//        std::unique_ptr<c_vlo_scan6> scan(new c_vlo_scan6());
-//        if( vlo.read(scan.get()) ) {
-//          image = get_image(*scan, DATA_CHANNEL_AMBIENT);
-//        }
-//        break;
-//      }
+    std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
+    if( vlo.read(scan.get()) ) {
+      image = get_image(*scan, DATA_CHANNEL_AMBIENT);
     }
   }
 
@@ -1353,4 +1598,3 @@ cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
 
   return image;
 }
-

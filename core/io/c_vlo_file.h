@@ -11,6 +11,7 @@
 
 #include "c_ifhd_file.h"
 #include <opencv2/opencv.hpp>
+#include <type_traits>
 #include <memory>
 
 #define HAVE_VLO_FILE 1
@@ -21,8 +22,10 @@ enum VLO_VERSION
   VLO_VERSION_1 = 1,
   VLO_VERSION_3 = 3,
   VLO_VERSION_5 = 5,
-  VLO_VERSION_18 = 18,
-  VLO_VERSION_6 = 6,
+
+  VLO_VERSION_6_IMX449 = 600,
+  VLO_VERSION_6_IMX479 = 601,
+  VLO_VERSION_6_SLM = 602,
 };
 
 enum VLO_IMAGER_TYPE
@@ -54,7 +57,7 @@ struct c_vlo_scan1
   static constexpr uint16_t NUM_ECHOS = 3U;
   static constexpr uint32_t NUM_POINTS = (NUM_SLOTS * NUM_LAYERS) * NUM_ECHOS;
 
-  struct config
+  struct Config
   {
     uint16_t numSlots;
     uint16_t numLayersPerSlot;
@@ -79,7 +82,7 @@ struct c_vlo_scan1
     uint16_t shotTiming_sh;
   };
 
-  struct echo
+  struct Echo
   {
     uint16_t dist;
     uint16_t width;
@@ -87,12 +90,12 @@ struct c_vlo_scan1
     uint16_t peak;
   };
 
-  struct slot
+  struct Slot
   {
     uint16_t slotIdx;
     uint16_t paddingBytes;
     int32_t angleTicks;
-    struct echo echo[NUM_LAYERS][NUM_ECHOS];
+    struct Echo echo[NUM_LAYERS][NUM_ECHOS];
     uint16_t ambient[NUM_LAYERS];
   };
 
@@ -107,10 +110,10 @@ struct c_vlo_scan1
   uint16_t endSlotIdxLowRes;
   uint16_t startSlotIdxHighRes;
   uint16_t endSlotIdxHighRes;
-  struct config config;
+  struct Config config;
   int32_t verticalAngles[NUM_LAYERS];
   uint8_t reserveBeforeSlotData[112];
-  struct slot slot[NUM_SLOTS];
+  struct Slot slot[NUM_SLOTS];
   uint16_t errorState;
   uint16_t laserVoltageActualMin;
   uint16_t laserVoltageActualMax;
@@ -133,7 +136,7 @@ struct c_vlo_scan3
   static constexpr uint16_t NUM_ECHOS = 3U;
   static constexpr uint32_t NUM_POINTS = (NUM_SLOTS * NUM_LAYERS) * NUM_ECHOS;
 
-  struct config
+  struct Config
   {
     uint16_t numSlots;
     uint16_t numLayersPerSlot;
@@ -158,7 +161,7 @@ struct c_vlo_scan3
     uint16_t shotTiming_sh;
   };
 
-  struct echo
+  struct Echo
   {
     uint16_t dist;
     uint16_t width;
@@ -166,12 +169,12 @@ struct c_vlo_scan3
     uint16_t peak;
   };
 
-  struct slot
+  struct Slot
   {
     uint16_t slotIdx;
     uint16_t paddingBytes;
     int32_t angleTicks;
-    struct echo echo[NUM_LAYERS][NUM_ECHOS];
+    struct Echo echo[NUM_LAYERS][NUM_ECHOS];
     uint16_t ambient[NUM_LAYERS];
   };
 
@@ -186,10 +189,10 @@ struct c_vlo_scan3
   uint16_t endSlotIdxLowRes;
   uint16_t startSlotIdxHighRes;
   uint16_t endSlotIdxHighRes;
-  struct config config;
+  struct Config config;
   int32_t verticalAngles[NUM_LAYERS];
   uint8_t reserveBeforeSlotData[112];
-  struct slot slot[NUM_SLOTS];
+  struct Slot slot[NUM_SLOTS];
   uint16_t errorState;
   uint16_t laserVoltageActualMin;
   uint16_t laserVoltageActualMax;
@@ -220,25 +223,7 @@ struct c_vlo_scan5
     uint32_t secondsHi;
   };
 
-  struct echo
-  {
-    uint16_t dist;
-    uint16_t area;
-    uint8_t peak;
-    uint8_t width;
-  };
-
-  struct slot
-  {
-    uint16_t slotIdx;
-    uint16_t padding[3];
-    int32_t angleTicks;
-    struct echo echo[NUM_LAYERS][NUM_ECHOS];
-    uint16_t ambient[NUM_LAYERS];
-    uint8_t numTotalEchoes[NUM_LAYERS];
-  };
-
-  struct config
+  struct Config
   {
     uint16_t numSlots;
     uint16_t numLayersPerSlot;
@@ -273,6 +258,23 @@ struct c_vlo_scan5
     uint8_t imagerType;
   };
 
+  struct Echo
+  {
+    uint16_t dist;
+    uint16_t area;
+    uint8_t peak;
+    uint8_t width;
+  };
+
+  struct Slot
+  {
+    uint16_t slotIdx;
+    uint16_t padding[3];
+    int32_t angleTicks;
+    struct Echo echo[NUM_LAYERS][NUM_ECHOS];
+    uint16_t ambient[NUM_LAYERS];
+    uint8_t numTotalEchoes[NUM_LAYERS];
+  };
 
   uint16_t interfaceVersion;
   uint16_t scanNumber;
@@ -284,11 +286,11 @@ struct c_vlo_scan5
   uint16_t endSlotIdxLowRes;
   uint16_t startSlotIdxHighRes;
   uint16_t endSlotIdxHighRes;
-  struct config config;
+  struct Config config;
   uint8_t reserveBeforeSlotData[20];
   int32_t verticalAngles[NUM_LAYERS];
-  struct slot slot[NUM_SLOTS];
-  struct slot referenceShot[NUM_REFERENCE_SHOTS];
+  struct Slot slot[NUM_SLOTS];
+  struct Slot referenceShot[NUM_REFERENCE_SHOTS];
   uint16_t errorState;
   uint16_t laserVoltageActualMin;
   uint16_t laserVoltageActualMax;
@@ -444,7 +446,7 @@ struct c_vlo_scan6_base
     uint32_t secondsHi;
   };
 
-  struct config
+  struct Config
   {
     uint32_t numPoints_max;
     uint16_t numEchos_max;
@@ -470,7 +472,7 @@ struct c_vlo_scan6_base
     uint8_t _padding;
   };
 
-  struct echo
+  struct Echo
   {
     uint16_t dist;
     uint16_t area;
@@ -485,10 +487,10 @@ struct c_vlo_scan6_base
   uint16_t mirrorSide;
   uint16_t _padding1;
   uint32_t scanDuration_ns;
-  struct config config;
+  struct Config config;
   uint8_t reserveBeforeSlotData[20];
-  struct echo echo[NUM_SLOTS][NUM_LAYERS][NUM_ECHOS];
-  struct echo referenceEcho[NUM_REFERENCE_SHOTS][NUM_LAYERS][NUM_ECHOS];
+  struct Echo echo[NUM_SLOTS][NUM_LAYERS][NUM_ECHOS];
+  struct Echo referenceEcho[NUM_REFERENCE_SHOTS][NUM_LAYERS][NUM_ECHOS];
   uint16_t ambient[NUM_SLOTS][NUM_LAYERS];
   uint16_t referenceAmbiLight[NUM_REFERENCE_SHOTS][NUM_LAYERS];
   uint8_t numTotalEchoes[NUM_SLOTS][NUM_LAYERS];
@@ -517,6 +519,157 @@ struct c_vlo_scan6_imx479:
 static_assert(sizeof(c_vlo_scan6_imx449) == (4554628));
 static_assert(sizeof(c_vlo_scan6_imx479) == (4556624));
 
+
+#pragma pack(push, 1)
+struct c_vlo_scan6_slm
+{
+  static constexpr  uint16_t VERSION = 6U;
+  static constexpr  uint32_t NUM_SLOTS = 641;
+  static constexpr  uint32_t NUM_LAYERS = 460;
+  static constexpr  uint32_t NUM_ECHOS = 3;
+  static constexpr  uint8_t NUM_ZONES = 3;
+  static constexpr  uint32_t BAD_LAYERS = 292;
+
+  struct Echo
+  {
+    uint16_t dist;
+    uint16_t area;
+  };
+
+  struct Config
+  {
+    uint32_t numTotalPoints;
+    uint16_t maxNumEchos;
+    uint16_t maxNumLayers;
+    uint16_t maxNumSlots;
+    uint8_t echoOrdering;
+    uint8_t imagerType;
+    uint8_t numHorizontalZones;
+    uint8_t numEchos[NUM_ZONES];
+    uint16_t numSlots[NUM_ZONES];
+    uint16_t numLayers[NUM_ZONES];
+    uint16_t reserved[6];
+    uint32_t horizontalAngleIncrement [NUM_ZONES];
+    uint32_t verticalAngleIncrementHighResolution;
+    uint32_t verticalAngleIncrementLowResolution;
+    uint16_t reserved2[14];
+    uint16_t reserved3;
+    uint8_t interfaceStuct;
+    uint8_t sensorType;
+    uint8_t numberOfMirrors;
+    uint8_t binWidthInCm;
+    uint16_t macroPixelWidth;
+    uint16_t macroPixelHeight;
+    uint8_t numLasershotsPerSlot;
+    uint8_t padding;
+  };
+
+  struct Meta
+  {
+    uint8_t SMESTS7_0;
+    uint8_t SMESTS15_8;
+    uint8_t SMESTS23_16;
+    uint8_t SMESTS31_24;
+    uint8_t SMESTS39_32;
+    uint16_t numberOfInputSlots;
+    uint16_t numberOfProcessedSlots;
+    uint8_t contextSwStatusC1;
+    uint8_t contextSwStatusC2;
+    uint8_t contextSwStatusC3;
+    uint8_t contextSwStatusC4;
+    uint8_t contextSwStatusC5;
+    uint8_t contextSwStatusC6;
+    uint16_t reserved[8];
+    uint16_t activeAreaMacroPixelData;
+    uint16_t numberOfActiveAreaOutputData;
+    uint8_t reserved2[5];
+
+    uint16_t CheckSumOfSlotUpdateData;
+    uint32_t chipId0;
+    uint32_t chipId1;
+    uint32_t chipId2;
+    uint8_t frameNumber;
+    uint8_t reserved3;
+
+    uint16_t numberOfEmbeddedDataOutputLines;
+    uint16_t numberOfEmbeddedDataOutputData;
+    uint16_t ambientDataOutputLines;
+    uint16_t ambientDataOutputDataCount;
+    uint16_t statisticsDataOutputLine;
+    uint16_t statisticsDataOutputData;
+    uint16_t numberOfRawOutputLines;
+    uint16_t numberOfRawOutputData;
+    uint16_t numberOfMisalignmentOutputLines;
+    uint16_t numberOfMisalignmentRawOutputSata;
+    int16_t imxMeasuredTemperatureN;
+    int16_t imxMeasuredTemperatureS;
+
+    uint16_t imxVT0VBGRMeasuredVoltageN;
+    uint16_t imxVT0VBGRMeasuredVoltageS;
+    uint16_t imxVT1VDDLSCMeasuredVoltageN;
+    uint16_t imxVT1VDDLSCMeasuredVoltageS;
+
+    uint16_t imxVT2VDDMIOMeasuredVoltageN;
+    uint16_t imxVT2VDDMIOMeasuredVoltageS;
+
+    uint16_t imxVT3IBIAS2MeasuredVoltageN;
+    uint16_t imxVT3IBIAS2MeasuredVoltageS;
+
+    uint16_t imxVT4VRLDMeasuredVoltageN;
+    uint16_t imxVT4VRLDMeasuredVoltageS;
+
+    uint16_t imxVT5VDDHPFMeasuredVoltageN;
+    uint16_t imxVT5VDDHPFMeasuredVoltageS;
+
+    uint16_t imxVT6VDDHPFMeasuredVoltageN;
+    uint16_t imxVT6VDDHPFMeasuredVoltageS;
+
+    uint16_t imxVT7VDDHANMeasuredVoltageN;
+    uint16_t imxVT7VDDHANMeasuredVoltageS;
+
+    uint8_t reserved4;
+    uint8_t FoVOffsetdegrees;
+    uint8_t imxPins;
+    uint8_t fpgaMipiControlRegister;
+    uint8_t resolutionReduction;
+    uint8_t sensorHeadFirmwareHB;
+    uint8_t sensorHeadFirmwareLB;
+    uint8_t reserved5 [2];
+
+    uint8_t lastMirrorSide;
+    int16_t temperatureFPGA;
+    int16_t temperatureLaser;
+    int16_t temperatureIMU;
+    uint16_t temperatureHUMModule;
+    uint8_t reserved6 [14];
+
+    uint8_t dataOutputMode;
+    uint16_t fSyncSetActivePeriodSlotUnits;
+    uint8_t lightEmissionSettingOfPstTrg;
+    uint16_t checkSumOfFrameUpdateData;
+    uint16_t reserved7;
+  };
+
+  uint16_t interfaceVersion;
+  uint16_t scanNumber;
+  uint32_t nanoseconds;
+  uint32_t seconds ;
+  uint32_t secondsHi;
+
+  uint16_t mirrorSide;
+  uint16_t paddingBytes;
+  uint32_t scanDuration_ns;
+  struct Config config;
+  uint8_t reserveBeforeSlotData[20];
+  Echo echo[NUM_SLOTS][NUM_LAYERS][NUM_ECHOS];
+  float horizontalAngles[NUM_SLOTS];
+  float verticalAngles[NUM_LAYERS];
+  uint16_t reserve[2];
+  Meta metaData;
+  uint32_t crc;
+};
+#pragma pack(pop)
+
 ////////////
 
 struct c_vlo_scan
@@ -529,7 +682,30 @@ struct c_vlo_scan
     c_vlo_scan5 scan5;
     c_vlo_scan6_imx449 scan6_imx449;
     c_vlo_scan6_imx479 scan6_imx479;
+    c_vlo_scan6_slm scan6_slm;
   };
+};
+
+template<class ScanType>
+struct c_vlo_scan_type_traits;
+
+template<> struct c_vlo_scan_type_traits<c_vlo_scan1> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_1;
+};
+template<> struct c_vlo_scan_type_traits<c_vlo_scan3> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_3;
+};
+template<> struct c_vlo_scan_type_traits<c_vlo_scan5> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_5;
+};
+template<> struct c_vlo_scan_type_traits<c_vlo_scan6_slm> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_6_SLM;
+};
+template<> struct c_vlo_scan_type_traits<c_vlo_scan6_imx449> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_6_IMX449;
+};
+template<> struct c_vlo_scan_type_traits<c_vlo_scan6_imx479> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_6_IMX479;
 };
 
 
@@ -571,19 +747,13 @@ public:
   const std::string & filename() const;
   VLO_VERSION version() const;
 
-  static void sort_echos_by_distance(c_vlo_scan1 & scan);
-  static void sort_echos_by_distance(c_vlo_scan3 & scan);
-  static void sort_echos_by_distance(c_vlo_scan5 & scan);
-  static void sort_echos_by_distance(c_vlo_scan6_imx449 & scan);
-  static void sort_echos_by_distance(c_vlo_scan6_imx479 & scan);
   static bool sort_echos_by_distance(c_vlo_scan & scan);
 
-  static cv::Mat get_image(const c_vlo_scan1 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
-  static cv::Mat get_image(const c_vlo_scan3 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
-  static cv::Mat get_image(const c_vlo_scan5 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
-  static cv::Mat get_image(const c_vlo_scan6_imx449 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
-  static cv::Mat get_image(const c_vlo_scan6_imx479 & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
-  static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask = cv::noArray());
+  static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel,
+      cv::InputArray exclude_mask = cv::noArray());
+
+  static bool get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
+      cv::OutputArray points, cv::OutputArray colors);
 
 protected:
   std::string filename_;
@@ -609,22 +779,21 @@ public:
   bool seek(int32_t frame_index);
   int32_t curpos() const;
 
-  bool read(c_vlo_scan1 * scan);
-  bool read(c_vlo_scan3 * scan);
-  bool read(c_vlo_scan5 * scan);
-  bool read(c_vlo_scan6_imx449 * scan);
-  bool read(c_vlo_scan6_imx479 * scan);
-  bool read(c_vlo_scan * scan);
-
-  bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);
-
   /// @brief get frame size in bytes
   ssize_t frame_size() const;
 
   /// @brief get number of frames in this file
   ssize_t num_frames() const;
 
+  bool read(c_vlo_scan * scan);
+  bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);
+  bool read_cloud3d(cv::OutputArray points, cv::OutputArray colors, c_vlo_file::DATA_CHANNEL colors_channel);
+
   static cv::Mat get_thumbnail_image(const std::string & filename);
+
+protected:
+  template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION > 0),
+    bool> read(ScanType * scan);
 
 protected:
   c_ifhd_reader ifhd_;

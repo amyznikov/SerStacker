@@ -71,13 +71,13 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
   }
 }
 
-void QPipelineProgressView::setImageViewer(QImageEditor * imageViewer)
+void QPipelineProgressView::setImageViewer(QSerStackerImageEditor * imageViewer)
 {
   this->imageViewer_ = imageViewer;
   updateAccumulatedImageDisplay(true);
 }
 
-QImageEditor * QPipelineProgressView::imageViewer() const
+QSerStackerImageEditor * QPipelineProgressView::imageViewer() const
 {
   return imageViewer_;
 }
@@ -243,7 +243,7 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
         CF_DEBUG("output_file_name: %s", output_file_name.c_str());
 
         if( !output_file_name.empty() ) {
-          imageViewer_->openImage(output_file_name);
+          // imageViewer_->openImage(output_file_name);
         }
 
       }

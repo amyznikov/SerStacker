@@ -21,10 +21,6 @@
 #include <core/io/load_image.h>
 #include <core/debug.h>
 
-namespace serstacker {
-///////////////////////////////////////////////////////////////////////////////
-
-
 #define ICON_reload             ":/gui/icons/reload"
 #define ICON_prev               ":/gui/icons/prev"
 #define ICON_next               ":/gui/icons/next"
@@ -48,6 +44,10 @@ namespace serstacker {
 #define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
 #define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
 
+
+namespace serstacker {
+///////////////////////////////////////////////////////////////////////////////
+
 MainWindow::MainWindow()
 {
 
@@ -57,26 +57,41 @@ MainWindow::MainWindow()
 
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
-  centralStackedWidget->addWidget(imageEditor = new QImageEditor(this));
-  centralStackedWidget->addWidget(textViewer = new QTextFileViewer(this));
   centralStackedWidget->addWidget(pipelineOptionsView = new QPipelineOptionsView(this));
-  centralStackedWidget->addWidget(cloudViewer = new QCloudViewer(this));
+
+  centralStackedWidget->addWidget(inputSequenceView =
+      new QInputSequenceView(this,
+          imageView = new QSerStackerImageEditor(this),
+          cloudView = new QCloudViewer(this),
+          textView = new QTextFileViewer(this)));
 
   connect(centralStackedWidget, &QStackedWidget::currentChanged,
       [this]() {
 
         if ( is_visible(cloudViewSettingsDialogBox) ) {
-          if ( !cloudViewer->isVisible() ) {
+          if ( ! cloudView->isVisible() ) {
             cloudViewSettingsDialogBox->hide();
           }
         }
 
-        if ( is_visible(mtfControl_) ) { // force update MTF histogram
+        if ( is_visible(mtfControl_) ) {
+          // force update MTF histogram
           onMtfControlVisibilityChanged(true);
         }
 
-      });
+    });
 
+  connect(inputSequenceView, &QInputSequenceView::currentViewChanged,
+      this, & ThisClass::onCurrentViewVisibilityChanged);
+
+  connect(imageView, &QImageEditor::displayImageChanged,
+      this, &ThisClass::onCurrentViewDisplayImageChanged);
+
+  connect(cloudView, &QCloudViewer::displayImageChanged,
+      this, &ThisClass::onCurrentViewDisplayImageChanged);
+
+  connect(imageView, &QImageEditor::currentImageChanged,
+      this, &ThisClass::onImageViewCurrentImageChanged);
 
 
   ///////////////////////////////////
@@ -99,19 +114,15 @@ MainWindow::MainWindow()
   setupStackTreeView();
   setupStackOptionsView();
   setupImageProcessingControls();
-  setupImageEditor();
-  setupTextViewer();
-  stupCloudViewer();
   setupMeasures();
-  setupRoiOptions();
-  setupDisplayImageVideoWriter();
   setupProfileGraph();
+  setupInputSequenceView();
 
 
 
-  tabifyDockWidget(fileSystemTreeDock, sequencesTreeDock);
+  tabifyDockWidget(fileSystemTreeDock, sequencesTreeViewDock);
   //tabifyDockWidget(sequencesTreeDock, imageProcessorSelectorDock);
-  tabifyDockWidget(sequencesTreeDock, imageProcessorDock_);
+  tabifyDockWidget(sequencesTreeViewDock, imageProcessorDock_);
 
 
   connect(QPipelineThread::instance(), &QPipelineThread::started,
@@ -123,7 +134,7 @@ MainWindow::MainWindow()
 
   restoreState();
 
-  imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
+  imageView->set_current_processor(imageProcessor_ctl->current_processor());
 }
 
 MainWindow::~MainWindow()
@@ -176,11 +187,11 @@ void MainWindow::setupMainMenu()
           "Reload current file from disk (Ctrl+R)",
           [this]() {
             QWidget * w = centralStackedWidget->currentWidget();
-            if ( w == imageEditor ) {
-              imageEditor->openImage(imageEditor->currentFileName());
+            if ( w == imageView ) {
+              // imageView->openImage(imageView->currentFileName());
             }
-            else if ( w == textViewer ) {
-              textViewer->showTextFile(textViewer->currentFileName());
+            else if ( w == textView ) {
+              textView->showTextFile(textView->currentFileName());
             }
             else if ( w == thumbnailsView ) {
               thumbnailsView->reload();
@@ -218,29 +229,29 @@ void MainWindow::setupMainMenu()
       menuFile_->addAction("Save current image as...",
           this, &ThisClass::onSaveCurrentImageAs);
 
-  saveImageAsAction->setEnabled(is_visible(imageEditor) &&
-      !imageEditor->currentImage().empty());
+  saveImageAsAction->setEnabled(is_visible(imageView) &&
+      !imageView->currentImage().empty());
 
   saveDisplayImageAsAction =
       menuFile_->addAction("Save current display image as...",
           this, &ThisClass::onSaveCurrentDisplayImageAs);
 
-  saveDisplayImageAsAction->setEnabled(is_visible(imageEditor) &&
-      !imageEditor->displayImage().empty());
+  saveDisplayImageAsAction->setEnabled(is_visible(imageView) &&
+      !imageView->displayImage().empty());
 
   saveImageMaskAction =
       menuFile_->addAction("Save current image mask...",
           this, &ThisClass::onSaveCurrentImageMask);
 
-  saveImageMaskAction->setEnabled(is_visible(imageEditor) &&
-      !imageEditor->currentMask().empty());
+  saveImageMaskAction->setEnabled(is_visible(imageView) &&
+      !imageView->currentMask().empty());
 
   loadImageMaskAction =
       menuFile_->addAction("Set current image mask from file...",
           this, &ThisClass::onLoadCurrentImageMask);
 
-  loadImageMaskAction->setEnabled(is_visible(imageEditor) &&
-      !imageEditor->currentImage().empty());
+  loadImageMaskAction->setEnabled(is_visible(imageView) &&
+      !imageView->currentImage().empty());
 
   menuFile_->addSeparator();
 
@@ -259,6 +270,48 @@ void MainWindow::setupMainMenu()
   //
   // Edit
   //
+
+  menuEdit_->addAction(copyDisplayImageAction =
+      createAction(QIcon(),
+          "Copy display image to clipboard (Ctrl+c)",
+          "Copy display image to clipboard (Ctrl+c)",
+          [this]() {
+
+            if ( is_visible(cloudView) ) {
+              cloudView->copyViewportToClipboard();
+            }
+            else if ( is_visible(imageView) ) {
+              if ( imageView->roiShape()->isVisible() ) {
+                imageView->copyDisplayImageROIToClipboard(imageView->roiShape()->iSceneRect());
+              }
+              else {
+                imageView->copyDisplayImageToClipboard();
+              }
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+              this, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+  menuEdit_->addAction(copyDisplayViewportAction =
+      createAction(QIcon(),
+          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+          [this]() {
+            if ( is_visible(cloudView) ) {
+              cloudView->copyViewportToClipboard();
+            }
+            else if ( is_visible(imageView) ) {
+              QPixmap pxmap = imageView->sceneView()->grab();
+              if ( !pxmap.isNull() ) {
+                QApplication::clipboard()->setPixmap(pxmap);
+              }
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
+              this, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
 
   //
   // View
@@ -286,24 +339,10 @@ void MainWindow::setupStatusbar()
 {
   QStatusBar *sb = statusBar();
 
-  sb->addWidget(shapesLabel_ctl = new QLabel(this));
-  sb->addWidget(mousePosLabel_ctl = new QLabel(this));
-
-  sb->addPermanentWidget(showLog_ctl = new QToolButton());
-  showLog_ctl->setDefaultAction(showLogWidgetAction_);
-}
-
-void MainWindow::setupDisplayImageVideoWriter()
-{
-  diplayImageWriter_.loadParameters();
-
-  QToolBar *toolbar = imageEditor->toolbar();
-  if( toolbar ) {
-
-    toolbar->insertWidget(closeImageViewAction, displayImageVideoWriterToolButton_ =
-        createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
-  }
-
+  sb->addWidget(statusbarShapesLabel_ctl = new QLabel(this));
+  sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
+  sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
+  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction_);
 }
 
 
@@ -314,7 +353,6 @@ void MainWindow::onStackProgressViewTextChanged()
   const QSize hint = pipelineProgressView->sizeHint();
   const QSize size = pipelineProgressView->size();
 
-  // CF_DEBUG("sizeHint: %dx%d size=%dx%d", hint.width(), hint.height(), size.width(), size.height());
   if( size != hint ) {
     menuBar()->adjustSize();
   }
@@ -336,15 +374,6 @@ void MainWindow::setupFileSystemTreeView()
         if ( pipelineProgressView ) {
           pipelineProgressView->setImageViewer(nullptr);
         }
-        if ( imageEditor ) {
-          imageEditor->clear();
-        }
-        if ( textViewer ) {
-          textViewer->clear();
-        }
-        if ( cloudViewer ) {
-          cloudViewer->clear();
-        }
 
         centralStackedWidget->setCurrentWidget(thumbnailsView);
         thumbnailsView->displayPath(abspath);
@@ -355,15 +384,6 @@ void MainWindow::setupFileSystemTreeView()
 
         if ( pipelineProgressView ) {
           pipelineProgressView->setImageViewer(nullptr);
-        }
-        if ( imageEditor ) {
-          imageEditor->clear();
-        }
-        if ( textViewer ) {
-          textViewer->clear();
-        }
-        if ( cloudViewer ) {
-          cloudViewer->clear();
         }
 
         if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
@@ -384,18 +404,11 @@ void MainWindow::setupThumbnailsView()
 
   connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested,
       [this](const QString & abspath) {
+
         if ( pipelineProgressView ) {
           pipelineProgressView->setImageViewer(nullptr);
         }
-        if ( imageEditor ) {
-          imageEditor->clear();
-        }
-        if ( textViewer ) {
-          textViewer->clear();
-        }
-        if (cloudViewer) {
-          cloudViewer->clear();
-        }
+
         if ( fileSystemTreeDock ) {
           fileSystemTreeDock->show(),
           fileSystemTreeDock->raise(),
@@ -423,7 +436,7 @@ void MainWindow::setupThumbnailsView()
 
 void MainWindow::setupStackTreeView()
 {
-  sequencesTreeDock =
+  sequencesTreeViewDock =
       addImageSequenceTreeDock(this,
           Qt::LeftDockWidgetArea,
           "sequencesTreeDock",
@@ -431,9 +444,8 @@ void MainWindow::setupStackTreeView()
           menuView_);
 
   sequencesTreeView =
-      sequencesTreeDock->treeView();
+      sequencesTreeViewDock->treeView();
 
-  CF_DEBUG("sequencesTreeView->loadSequences()");
   sequencesTreeView->loadSequences();
 
   connect(sequencesTreeView, &QImageSequencesTree::currentItemChanged,
@@ -470,8 +482,8 @@ void MainWindow::setupStackOptionsView()
           centralStackedWidget->setCurrentWidget(thumbnailsView);
         }
         else {
-          centralStackedWidget->setCurrentWidget(imageEditor);
-          pipelineProgressView->setImageViewer(imageEditor);
+          centralStackedWidget->setCurrentWidget(imageView);
+          pipelineProgressView->setImageViewer(imageView);
         }
       });
 
@@ -483,12 +495,12 @@ void MainWindow::setupStackOptionsView()
 
         QWaitCursor wait (this);
 
-        std::vector<c_image_sequence::sptr> selected_sequences;
+        std::vector<c_image_sequence::sptr> selectedSequences;
 
-        sequencesTreeView->getSelectedSequences(&selected_sequences);
+        sequencesTreeView->getSelectedSequences(&selectedSequences);
 
-        if ( !selected_sequences.empty() ) {
-          if ( pipelineOptionsView->cloneCurrentPipeline(selected_sequences) ) {
+        if ( !selectedSequences.empty() ) {
+          if ( pipelineOptionsView->cloneCurrentPipeline(selectedSequences) ) {
             saveCurrentWork();
           }
         }
@@ -496,364 +508,23 @@ void MainWindow::setupStackOptionsView()
 
 }
 
-void MainWindow::setupImageEditor()
-{
-  QToolBar *toolbar;
-
-  toolbar = imageEditor->embedToolbar();
-
-  imageEditor->addAction(copyDisplayImageAction =
-      createAction(QIcon(),
-          "Copy display image to clipboard (Ctrl+c)",
-          "Copy display image to clipboard (Ctrl+c)",
-          [this]() {
-            if ( imageEditor->roiShape()->isVisible() ) {
-              imageEditor->copyDisplayImageROIToClipboard(imageEditor->roiShape()->iSceneRect());
-            }
-            else {
-              imageEditor->copyDisplayImageToClipboard();
-            }
-          },
-          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
-              imageEditor, nullptr, nullptr,
-              Qt::WindowShortcut)));
-
-  menuEdit_->addAction(copyDisplayImageAction);
-
-
-  imageEditor->addAction(copyDisplayViewportAction =
-      createAction(QIcon(),
-          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
-          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
-          [this]() {
-            if ( imageEditor->isVisible() ) {
-              QPixmap pxmap = imageEditor->sceneView()->grab();
-              if ( !pxmap.isNull() ) {
-                QApplication::clipboard()->setPixmap(pxmap);
-              }
-            }
-          },
-          new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
-              imageEditor, nullptr, nullptr,
-              Qt::WindowShortcut)));
-
-  menuEdit_->addAction(copyDisplayViewportAction);
-
-
-  connect(imageEditor, &QImageViewer::visibilityChanged,
-      this, &ThisClass::onImageEditorVisibilityChanged);
-
-  connect(imageEditor, &QImageViewer::currentFileNameChanged,
-      this, &ThisClass::onImageEditorCurrentFileNameChanged);
-
-  connect(imageEditor, &QImageEditor::currentImageChanged,
-      this, &ThisClass::onImageEditorCurrentImageChanged);
-
-  connect(imageEditor, &QImageEditor::displayImageChanged,
-      this, &ThisClass::onImageEditorDisplayImageChanged);
-
-
-  ///
-  /// Configure image editor toolbar
-  ///
-
-  static QIcon badframeIcon;
-  if( badframeIcon.isNull() ) {
-    badframeIcon.addPixmap(getPixmap(ICON_frame), QIcon::Normal, QIcon::Off);
-    badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
-  }
-
-  toolbar->addAction(selectPreviousFileAction_);
-  toolbar->addAction(selectNextFileAction);
-  toolbar->addAction(reloadCurrentFileAction);
-
-  toolbar->addSeparator();
-
-  toolbar->addAction(createAction(getIcon(ICON_dislike),
-      "Bad",
-      "Move current image to the .bads subfolder (Ctrl+DEL)",
-      [this]() {
-        thumbnailsView->moveToBads(imageEditor->currentFileName());
-      },
-      new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Delete),
-          imageEditor, nullptr, nullptr,
-          Qt::WindowShortcut)));
-
-  toolbar->addAction(badframeAction =
-      createCheckableAction(badframeIcon,
-          "Bad Frame",
-          "Mark / Unmark current frame as bad (Ctrl+A)",
-          false,
-          [this](bool checked) {
-            if ( imageEditor->isVisible() ) {
-
-              const c_input_sequence::sptr & input_sequence = imageEditor->input_sequence();
-              if ( input_sequence ) {
-
-                c_input_source::sptr source = input_sequence->current_source();
-                if ( source ) {
-                  source->set_badframe(input_sequence->current_pos() - 1, checked);
-                  source->save_badframes();
-                }
-              }
-            }
-          },
-          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_A),
-              imageEditor, nullptr, nullptr,
-              Qt::WindowShortcut)));
-
-  toolbar->addAction(setReferenceFrameAction =
-      createAction(getIcon(ICON_reference),
-          "Make reference",
-          "Make this frame reference",
-          [this]() {
-            if ( imageEditor->isVisible() && sequencesTreeView->isVisible() ) {
-
-              c_input_source::sptr selected_source;
-              c_image_sequence::sptr selected_sequence;
-
-              selected_source =
-                  sequencesTreeView->getCurrentInputSource(
-                      &selected_sequence);
-
-              if ( selected_source && selected_sequence ) {
-
-                const c_input_sequence::sptr & currentSequence =
-                    imageEditor->input_sequence();
-
-                if ( currentSequence && currentSequence->current_source()->filename() == selected_source->filename() ) {
-
-                  const c_image_processing_pipeline::sptr pipeline =
-                      selected_sequence->current_pipeline();
-
-                  if ( pipeline && pipeline->has_master_frame() ) {
-                    pipeline->set_master_source(selected_source->filename());
-                    pipeline->set_master_frame_index(currentSequence->current_pos() - 1);
-                    saveCurrentWork();
-                  }
-                  else {
-
-                    QMessageBox::warning(this, "warning",
-                        qsprintf("No current pipeline is selected,\n"
-                            "master frame is not assigned\n"
-                            " %s: %d",
-                            __FILE__, __LINE__) );
-                  }
-                }
-              }
-            }
-          }));
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(imageNameLabel_ctl = new QLabel(""));
-  imageNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(imageSizeLabel_ctl = new QLabel(""));
-  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
-
-  toolbar->addSeparator();
-  toolbar->addWidget(new QToolbarSpacer());
-
-  toolbar->addAction(editMaskAction =
-      createCheckableAction(getIcon(ICON_mask),
-          "Mask",
-          "View / Edit image mask",
-          false,
-          [this](bool checked) {
-            if ( imageEditor->isVisible() ) {
-
-              if ( checked ) {
-                setupImageViewOptions();
-              }
-              else if ( imageViewOptionsDlgBox ) {
-                delete imageViewOptionsDlgBox;
-                imageViewOptionsDlgBox = nullptr;
-              }
-            }
-          }));
-
-  toolbar->addWidget(shapes_ctl =
-      new QShapesButton(imageEditor->sceneView(),
-          this));
-
-  toolbar->addAction(showMtfControlAction_);
-
-  toolbar->addWidget(scaleSelection_ctl = new QScaleSelectionButton(this));
-  scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
-  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged,
-      [this](int v) {
-        imageEditor->setViewScale(v);
-      });
-
-
-  toolbar->addAction(closeImageViewAction =
-      createAction(getIcon(ICON_close),
-          "Close",
-          "Close window",
-          [this]() {
-            centralStackedWidget->setCurrentWidget(thumbnailsView);
-          },
-          new QShortcut(QKeySequence::Cancel,
-              imageEditor, nullptr, nullptr,
-              Qt::WindowShortcut)));
-
-  connect(imageEditor, &QImageFileEditor::onMouseMove,
-      [this](QMouseEvent * e) {
-        mousePosLabel_ctl->setText(imageEditor->statusStringForPixel(e->pos()));
-      });
-
-  connect(imageEditor->scene(), &QImageScene::graphicsItemChanged,
-      [this](QGraphicsItem * item) {
-
-        QGraphicsLineShape * lineShape = nullptr;
-        QGraphicsRectShape * rectShape = nullptr;
-
-        if ( (lineShape = dynamic_cast<QGraphicsLineShape * >(item)) ) {
-
-          const QLineF line = lineShape->sceneLine();
-
-          const QPointF p1 = line.p1();
-          const QPointF p2 = line.p2();
-          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
-          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
-
-          if ( !shapesLabel_ctl->isVisible() ) {
-            shapesLabel_ctl->setVisible(true);
-          }
-
-          shapesLabel_ctl->setText(
-              qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
-                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
-
-          if ( is_visible(profileGraph_ctl_) ) {
-            profileGraph_ctl_->showProfilePlot(line, imageEditor->currentImage());
-          }
-
-        }
-        else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
-
-          const QRectF rc = rectShape->mapToScene(rectShape->rect()).boundingRect();
-
-          const QPointF p1 = rc.topLeft();
-          const QPointF p2 = rc.bottomRight();
-          const QPointF center = rc.center();
-          const double width = rc.width();
-          const double height = rc.height();
-
-          if ( !shapesLabel_ctl->isVisible() ) {
-            shapesLabel_ctl->setVisible(true);
-          }
-
-          shapesLabel_ctl->setText(
-              qsprintf("RECT: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
-                  p1.x(), p1.y(),
-                  p2.x(), p2.y(),
-                  width, height,
-                  center.x(), center.y()));
-
-        }
-      });
-
-  connect(imageEditor->scene(), &QImageScene::graphicsItemVisibleChanged,
-      [this]() {
-        if ( shapesLabel_ctl->isVisible() ) {
-          shapesLabel_ctl->setVisible(false);
-        }
-      });
-
-  connect(imageEditor->scene(), &QImageScene::graphicsItemDestroyed,
-      [this]() {
-        if ( shapesLabel_ctl->isVisible() ) {
-          shapesLabel_ctl->setVisible(false);
-        }
-      });
-
-}
-
-
-void MainWindow::setupTextViewer()
-{
-  QToolBar *toolbar;
-  QLabel *imageNameLabel;
-  QLabel *imageSizeLabel;
-
-  toolbar = textViewer->toolbar();
-
-  toolbar->addAction(selectPreviousFileAction_);
-  toolbar->addAction(selectNextFileAction);
-  toolbar->addAction(reloadCurrentFileAction);
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(imageNameLabel = new QLabel(""));
-  imageNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(new QToolbarSpacer());
-
-  toolbar->addAction(createAction(getIcon(ICON_close),
-      "Close",
-      "Close window",
-      [this]() {
-        centralStackedWidget->setCurrentWidget(thumbnailsView);
-      },
-      new QShortcut(QKeySequence::Cancel,
-          textViewer, nullptr, nullptr,
-          Qt::WindowShortcut)));
-
-
-  connect(textViewer, &QTextFileViewer::currentFileNameChanged,
-      [this, imageNameLabel]() {
-        const QString abspath = textViewer->currentFileName();
-        imageNameLabel->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-      });
-
-  connect(textViewer, &QTextFileViewer::visibilityChanged,
-      [this](bool visible) {
-        if ( !visible ) {
-          textViewer->clear();
-        }
-      });
-}
-
-void MainWindow::onImageEditorCurrentFileNameChanged()
-{
-  const QString abspath =
-      imageEditor->currentFileName();
-
-  imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-
-  if ( is_visible(mtfControl_) ) {
-    if ( imageEditor->currentFileName().isEmpty() ) {
-      mtfControl_->setWindowTitle("Adjust Display Levels ...");
-    }
-    else {
-      mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-    }
-  }
-}
-
-void MainWindow::onImageEditorCheckIfBadFrameSelected()
+void MainWindow::checkIfBadFrameSelected()
 {
   bool isBadFrameSelected = false;
 
-  if( imageEditor->isVisible() ) {
+  if( is_visible(inputSequenceView) ) {
 
-    const c_input_sequence::sptr &input_sequence =
-        imageEditor->input_sequence();
+    const c_input_sequence::sptr &currentSequence =
+        inputSequenceView->currentSequence();
 
-    if( input_sequence ) {
+    if( currentSequence ) {
 
-      c_input_source::sptr source =
-          input_sequence->current_source();
+      c_input_source::sptr currentSource =
+          currentSequence->current_source();
 
-      if( source ) {
+      if( currentSource ) {
         isBadFrameSelected =
-            source->is_badframe(input_sequence->current_pos() - 1);
+            currentSource->is_badframe(currentSequence->current_pos() - 1);
       }
     }
   }
@@ -864,36 +535,152 @@ void MainWindow::onImageEditorCheckIfBadFrameSelected()
 }
 
 
-void MainWindow::onImageEditorVisibilityChanged(bool isvisible)
+void MainWindow::onCurrentViewVisibilityChanged()
 {
-  const bool hasimage =
-      !imageEditor->currentImage().empty();
+  if( is_visible(cloudViewSettingsDialogBox) && !is_visible(cloudView) ) {
+    cloudViewSettingsDialogBox->hide();
+  }
 
-  const bool hasmask =
-      !imageEditor->currentMask().empty();
+  if( is_visible(mtfControl_) ) { // force update MTF histogram
+    onMtfControlVisibilityChanged(true);
+  }
 
-  const bool hasdisplayimage =
-      !imageEditor->displayImage().empty();
+  checkIfBadFrameSelected();
 
-  saveImageAsAction->setEnabled(isvisible && hasimage);
-  saveDisplayImageAsAction->setEnabled(isvisible && hasdisplayimage);
-  copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
-  saveImageMaskAction->setEnabled(isvisible && hasmask);
-  loadImageMaskAction->setEnabled(isvisible && hasimage);
 
-  onImageEditorCheckIfBadFrameSelected();
+  QWidget * currentView =
+      inputSequenceView->currentView();
+
+  if ( currentView == imageView ) {
+    if ( !imageView->isVisible() ) {
+      saveImageAsAction->setEnabled(false);
+      saveDisplayImageAsAction->setEnabled(false);
+      copyDisplayImageAction->setEnabled(false);
+      copyDisplayViewportAction->setEnabled(false);
+      saveImageMaskAction->setEnabled(false);
+      loadImageMaskAction->setEnabled(false);
+    }
+    else {
+      const bool hasimage =
+          !imageView->currentImage().empty();
+
+      const bool hasmask =
+          !imageView->currentMask().empty();
+
+      const bool hasdisplayimage =
+          !imageView->displayImage().empty();
+
+      saveImageAsAction->setEnabled(hasimage);
+      saveDisplayImageAsAction->setEnabled(hasdisplayimage);
+      copyDisplayImageAction->setEnabled(hasdisplayimage);
+      copyDisplayViewportAction->setEnabled(true);
+      saveImageMaskAction->setEnabled(hasmask);
+      loadImageMaskAction->setEnabled(hasimage);
+    }
+
+  }
+  else  if ( currentView == cloudView ) {
+    saveImageAsAction->setEnabled(false);
+    saveImageMaskAction->setEnabled(false);
+    loadImageMaskAction->setEnabled(false);
+
+    if ( !cloudView->isVisible() ) {
+      saveDisplayImageAsAction->setEnabled(false);
+      copyDisplayImageAction->setEnabled(false);
+      copyDisplayViewportAction->setEnabled(false);
+    }
+    else {
+      saveDisplayImageAsAction->setEnabled(true);
+      copyDisplayImageAction->setEnabled(true);
+      copyDisplayViewportAction->setEnabled(true);
+    }
+  }
+  else {
+    saveImageAsAction->setEnabled(false);
+    saveDisplayImageAsAction->setEnabled(false);
+    copyDisplayImageAction->setEnabled(false);
+    copyDisplayViewportAction->setEnabled(false);
+    saveImageMaskAction->setEnabled(false);
+    loadImageMaskAction->setEnabled(false);
+  }
+
 }
 
-void MainWindow::onImageEditorCurrentImageChanged()
+
+void MainWindow::onCurrentViewDisplayImageChanged()
+{
+  QWidget * currentView =
+      inputSequenceView->currentView();
+
+  if ( currentView == imageView ) {
+
+    const bool isvisible =
+        imageView->isVisible();
+
+    const bool hasdisplayimage =
+        !imageView->displayImage().empty();
+
+    saveDisplayImageAsAction->setEnabled(isvisible && hasdisplayimage);
+    copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
+    copyDisplayViewportAction->setEnabled(isvisible);
+
+    if ( diplayImageWriter_.started() ) {
+
+      if ( !isvisible ) {
+        diplayImageWriter_.stop();
+      }
+      else if ( !imageView->displayImage().empty() ) {
+        diplayImageWriter_.write(imageView->displayImage());
+      }
+    }
+  }
+  else if ( currentView == cloudView ) {
+
+    const bool isvisible =
+        cloudView->isVisible();
+
+    saveDisplayImageAsAction->setEnabled(isvisible);
+    copyDisplayImageAction->setEnabled(isvisible);
+    copyDisplayViewportAction->setEnabled(isvisible);
+
+    if( diplayImageWriter_.started() ) {
+
+      if( !isvisible ) {
+        diplayImageWriter_.stop();
+      }
+      else {
+
+        QImage image =
+            cloudView->grabViewportPixmap().toImage().convertToFormat(
+                QImage::Format_BGR888);
+
+        if( !image.isNull() ) {
+
+          diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
+              (void*) image.constBits(),
+              image.bytesPerLine()));
+        }
+      }
+    }
+  }
+  else {
+    saveDisplayImageAsAction->setEnabled(false);
+    copyDisplayImageAction->setEnabled(false);
+    copyDisplayViewportAction->setEnabled(false);
+  }
+
+}
+
+void MainWindow::onImageViewCurrentImageChanged()
 {
   const bool isvisible =
-      imageEditor->isVisible();
+      imageView->isVisible();
 
   const bool hasimage =
-      !imageEditor->currentImage().empty();
+      !imageView->currentImage().empty();
 
   const bool hasmask =
-      !imageEditor->currentMask().empty();
+      !imageView->currentMask().empty();
 
   saveImageAsAction->setEnabled(isvisible && hasimage);
   saveImageMaskAction->setEnabled(isvisible && hasmask);
@@ -902,17 +689,17 @@ void MainWindow::onImageEditorCurrentImageChanged()
   if ( isvisible ) {
 
     imageSizeLabel_ctl->setText(qsprintf("%dx%d",
-        imageEditor->currentImage().cols,
-        imageEditor->currentImage().rows));
+        imageView->currentImage().cols,
+        imageView->currentImage().rows));
 
     if( is_visible(profileGraph_ctl_) ) {
       profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
-          imageEditor->currentImage());
+          imageView->currentImage());
     }
 
     updateMeasurements();
 
-    onImageEditorCheckIfBadFrameSelected();
+   // checkIfBadFrameSelected();
   }
 
   if ( is_visible(mtfControl_) ) {
@@ -921,34 +708,11 @@ void MainWindow::onImageEditorCurrentImageChanged()
 
 }
 
-void MainWindow::onImageEditorDisplayImageChanged()
-{
-  const bool isvisible =
-      imageEditor->isVisible();
-
-  const bool hasdisplayimage =
-      !imageEditor->displayImage().empty();
-
-  saveDisplayImageAsAction->setEnabled(isvisible && hasdisplayimage);
-  copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
-
-  if ( diplayImageWriter_.started() ) {
-
-    if ( !imageEditor->isVisible() ) {
-      diplayImageWriter_.stop();
-    }
-    else if ( !imageEditor->displayImage().empty() ) {
-      diplayImageWriter_.write(imageEditor->displayImage());
-    }
-  }
-
-}
-
 
 void MainWindow::onImageProcessorParameterChanged()
 {
   Base::onImageProcessorParameterChanged();
-  imageEditor->set_current_processor(imageProcessor_ctl->current_processor());
+  imageView->set_current_processor(imageProcessor_ctl->current_processor());
 }
 
 void MainWindow::onMtfControlVisibilityChanged(bool visible)
@@ -958,178 +722,31 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
   if( !visible ) {
     mtfControl_->setMtfDisplaySettings(nullptr);
   }
-  else if( is_visible(imageEditor) ) {
-
-    mtfControl_->setMtfDisplaySettings(imageEditor->mtfDisplayFunction());
-
-    if ( imageEditor->currentFileName().isEmpty() ) {
-      mtfControl_->setWindowTitle("Adjust Display Levels ...");
-    }
-    else {
-      mtfControl_->setWindowTitle(QFileInfo(imageEditor->currentFileName()).fileName());
-    }
-  }
-  else if( is_visible(cloudViewer) ) {
-
-    mtfControl_->setMtfDisplaySettings(&cloudViewer->mtfDisplay());
-
-    if ( cloudViewer->currentFileName().isEmpty() ) {
-      mtfControl_->setWindowTitle("Adjust Display Levels ...");
-    }
-    else {
-      mtfControl_->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
-    }
-  }
   else {
-    mtfControl_->setMtfDisplaySettings(nullptr);
+
+    if( is_visible(imageView) ) {
+      mtfControl_->setMtfDisplaySettings(imageView->mtfDisplayFunction());
+    }
+    else if( is_visible(cloudView) ) {
+      mtfControl_->setMtfDisplaySettings(&cloudView->mtfDisplay());
+    }
+    else {
+      mtfControl_->setMtfDisplaySettings(nullptr);
+    }
+
+    const QString currentFileName =
+        mtfControl_->mtfDisplaySettings() ?
+            QFileInfo(inputSequenceView->currentFileName()).fileName() :
+            "";
+
+    if( currentFileName.isEmpty() ) {
+      mtfControl_->setWindowTitle("Adjust Display Levels ...");
+    }
+    else {
+      mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
+          currentFileName.toUtf8().constData()));
+    }
   }
-
-}
-
-
-void MainWindow::stupCloudViewer()
-{
-  QToolBar * toolbar;
-  //QToolButton * toolbutton;
-  QAction * action;
-  QLabel * imageNameLabel_ctl;
-  QLabel * imageSizeLabel_ctl;
-  QShortcut * shortcut;
-
-  toolbar = cloudViewer->toolbar();
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_prev), "Previous"));
-  action->setToolTip("Load previous image from list");
-  //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
-  connect(action, &QAction::triggered, [this]() {
-    thumbnailsView->selectPrevIcon();
-  });
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_next), "Next"));
-  action->setToolTip("Load next image from list");
-  //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
-  connect(action, &QAction::triggered, [this]() {
-    thumbnailsView->selectNextIcon();
-  });
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_reload), "Reload"));
-  action->setToolTip("Reaload current image from disk");
-  connect(action, &QAction::triggered, [this]() {
-    QWaitCursor wait(this);
-    cloudViewer->openPlyFile(cloudViewer->currentFileName());
-  });
-
-
-  toolbar->addSeparator();
-
-
-  toolbar->addWidget(imageNameLabel_ctl = new QLabel(""));
-  imageNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-  toolbar->addSeparator();
-
-  toolbar->addWidget(new QToolbarSpacer());
-
-  toolbar->addAction(showMtfControlAction_);
-
-  toolbar->addWidget(createToolButton(getIcon(ICON_options),
-      "Options",
-      "Cloud View Options...",
-      [this](QToolButton * tb) {
-
-        QMenu menu;
-
-        menu.addAction(createMenuWidgetAction<QSpinBox>("Point size: ",
-                nullptr,
-                [this](const auto * action) {
-                  action->icon()->setPixmap(getPixmap(ICON_point_size)); // .scaled(QSize(16,16))
-                  QSpinBox * spinBox = action->control();
-                  spinBox->setKeyboardTracking(false);
-                  spinBox->setRange(1, 32);
-                  spinBox->setValue((int)cloudViewer->pointSize());
-                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-                      [this](int value) {
-                        cloudViewer->setPointSize(value);
-                      });
-                }));
-
-        menu.addAction(createMenuWidgetAction<QSpinBox>("Point brightness: ",
-                nullptr,
-                [this](const auto * action) {
-                  action->icon()->setPixmap(getPixmap(ICON_brightness)); // .scaled(QSize(16,16))
-                  QSpinBox * spinBox = action->control();
-                  spinBox->setKeyboardTracking(false);
-                  spinBox->setRange(-128, 128);
-                  spinBox->setValue((int)cloudViewer->pointBrightness());
-                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-                      [this](int value) {
-                        cloudViewer->setPointBrightness(value);
-                      });
-                }));
-
-        menu.addAction(createAction(getIcon(ICON_cloud_rotate),
-                "Show cloud center",
-                "Rotate camera to show point cloud center",
-                [this]() {
-                  if ( cloudViewer ) {
-                    cloudViewer->rotateToShowCloud();
-                  }
-                }));
-
-        menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_target),
-                "Auto Show Target point",
-                "",
-                cloudViewer->autoShowViewTarget(),
-                [this](bool checked) {
-                  if ( cloudViewer ) {
-                    cloudViewer->setAutoShowViewTarget(checked);
-                  }
-                }));
-
-        menu.addSeparator();
-
-        if ( !showCloudViewSettingsDialogBoxAction ) {
-
-          showCloudViewSettingsDialogBoxAction =
-            createCheckableAction(getIcon(ICON_options),
-                "Advanced ...",
-                "Show advanced options",
-                is_visible(cloudViewSettingsDialogBox),
-                this,
-                &ThisClass::onShowCloudViewSettingsDialogBoxActionClicked);
-        }
-
-        menu.addAction(showCloudViewSettingsDialogBoxAction);
-
-        menu.exec(tb->mapToGlobal(QPoint(tb->width() - 4,tb->height() - 4)));
-      }));
-
-
-  toolbar->addAction(action = new QAction(getIcon(ICON_close), "Close"));
-  action->setShortcut(QKeySequence::Cancel);
-  action->setToolTip("Close window");
-  connect(action, &QAction::triggered, [this]() {
-    centralStackedWidget->setCurrentWidget(thumbnailsView);
-  });
-
-  connect(cloudViewer, &QCloudViewer::currentFileNameChanged,
-      [this, imageNameLabel_ctl]() {
-        const QString abspath = cloudViewer->currentFileName();
-        imageNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
-        if ( is_visible(mtfControl_) ) {
-          onMtfControlVisibilityChanged(true);
-        }
-      });
-
-  connect(cloudViewer, &QCloudViewer::visibilityChanged,
-      [this](bool visible) {
-        if ( !visible ) {
-          cloudViewer->clear();
-        }
-      });
-
 }
 
 void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
@@ -1137,7 +754,7 @@ void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
   if ( checked && !cloudViewSettingsDialogBox ) {
 
     cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
-    cloudViewSettingsDialogBox->setCloudViewer(cloudViewer);
+    cloudViewSettingsDialogBox->setCloudViewer(cloudView);
     connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
         showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
   }
@@ -1147,25 +764,23 @@ void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
       cloudViewSettingsDialogBox->hide();
     }
     else {
-      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudViewer->currentFileName()).fileName());
+      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudView->currentFileName()).fileName());
       cloudViewSettingsDialogBox->showNormal();
     }
   }
-
 }
 
 void MainWindow::updateMeasurements()
 {
-  if( !QMeasureProvider::requested_measures().empty() && imageEditor->roiShape()->isVisible() ) {
+  if( !QMeasureProvider::requested_measures().empty() && imageView->roiShape()->isVisible() ) {
 
-    QImageViewer::current_image_lock lock(imageEditor);
+    QImageViewer::current_image_lock lock(imageView);
 
-    if ( !imageEditor->currentImage().empty() ) {
+    if ( !imageView->currentImage().empty() ) {
 
-      QMeasureProvider::compute(imageEditor->currentImage(),
-          imageEditor->currentMask(),
-          imageEditor->roiShape()->iSceneRect());
-
+      QMeasureProvider::compute(imageView->currentImage(),
+          imageView->currentMask(),
+          imageView->roiShape()->iSceneRect());
     }
   }
 }
@@ -1176,129 +791,32 @@ void MainWindow::onMeasureRightNowRequested()
   updateMeasurements();
 }
 
-void MainWindow::setupRoiOptions()
+void MainWindow::showImageViewOptions(bool show)
 {
-  QAction * action;
-
-  ///
-
-  roiOptionsDialogBox_ =
-      new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
-          imageEditor->roiShape(),
-          this);
-
-  roiOptionsDialogBox_->loadParameters();
-
-  roiActionsMenu_.addAction(action =
-      createCheckableAction(QIcon(),
-          "ROI Options..",
-          "Configure ROI rectangle options",
-          is_visible(roiOptionsDialogBox_),
-          [this](bool checked) {
-            roiOptionsDialogBox_->setVisible(checked);
-          }));
-
-  connect(roiOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
-      [this, action](bool visible) {
-        action->setChecked(visible);
-        if ( visible ) {
-          imageEditor->roiShape()->setVisible(true);
-        }
-      });
-
-  roiActionsMenu_.addAction(showMeasuresSettingsAction_);
-  roiActionsMenu_.addAction(showMeasuresDisplayAction_);
-  roiActionsMenu_.addAction(showMeasuresGraphAction_);
-
-  ///
-
-  connect(imageEditor->roiShape(), &QGraphicsShape::itemChanged,
-      [this]() {
-
-        QGraphicsRectShape * shape =
-            imageEditor->roiShape();
-
-        const QRectF rc =
-            shape->sceneRect();
-
-        const QPointF p1 = rc.topLeft();
-        const QPointF p2 = rc.bottomRight();
-        const QPointF center = rc.center();
-        const double width = rc.width();
-        const double height = rc.height();
-
-        if ( !shapesLabel_ctl->isVisible() ) {
-          shapesLabel_ctl->setVisible(true);
-        }
-
-        shapesLabel_ctl->setText(
-            qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
-                p1.x(), p1.y(),
-                p2.x(), p2.y(),
-                width, height,
-                center.x(), center.y()));
-
-        //CF_DEBUG("C updateMeasurements()");
-        updateMeasurements();
-      });
-
-  connect(imageEditor->roiShape(), &QGraphicsShape::visibleChanged,
-      [this]() {
-        if ( shapesLabel_ctl->isVisible() ) {
-          shapesLabel_ctl->setVisible(false);
-        }
-      });
-
-
-  ///
-
-  QToolBar * toolbar = imageEditor->toolbar();
-  if ( toolbar ) {
-
-    showRoiAction_ =
-        createCheckableAction(getIcon(ICON_roi),
-            "ROI Rectangle",
-            "Show / Hide ROI rectangle",
-            is_visible(imageEditor) && imageEditor->roiShape()->isVisible(),
-            [this](bool checked) {
-              imageEditor->roiShape()->setVisible(checked);
-            });
-
-    toolbar->insertWidget(closeImageViewAction,
-        roiActionsButton_ =
-            createToolButtonWithPopupMenu(showRoiAction_,
-                &roiActionsMenu_));
-
-    connect(imageEditor->roiShape(), &QGraphicsObject::visibleChanged,
-        [this]() {
-          showRoiAction_->setChecked(imageEditor->roiShape()->isVisible());
-        });
-
-    showRoiAction_->setChecked(imageEditor->roiShape()->isVisible());
+  if( !show ) {
+    if( imageViewOptionsDlgBox ) {
+      delete imageViewOptionsDlgBox;
+      imageViewOptionsDlgBox = nullptr;
+    }
   }
+  else {
+    if( !imageViewOptionsDlgBox ) {
+      imageViewOptionsDlgBox = new QImageViewOptionsDlgBox(this);
+      imageViewOptionsDlgBox->setImageViewer(imageView);
 
-}
+      connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged,
+          [this](bool visible) {
+            if ( editMaskAction->isChecked() != visible ) {
+              editMaskAction->setChecked(visible);
+            }
+          });
 
-void MainWindow::setupImageViewOptions()
-{
-  if( !imageViewOptionsDlgBox ) {
-
-    imageViewOptionsDlgBox = new QImageViewOptionsDlgBox(this);
-    imageViewOptionsDlgBox->setImageViewer(imageEditor);
-
-    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged,
-        [this](bool visible) {
-          if ( editMaskAction->isChecked() != visible ) {
-            editMaskAction->setChecked(visible);
-          }
-        });
-
-    connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
-        [this](int) {
-          delete imageViewOptionsDlgBox;
-          imageViewOptionsDlgBox = nullptr;
-        });
-
+      connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
+          [this](int) {
+            delete imageViewOptionsDlgBox;
+            imageViewOptionsDlgBox = nullptr;
+          });
+    }
     imageViewOptionsDlgBox->show();
   }
 }
@@ -1312,27 +830,8 @@ void MainWindow::openImage(const QString & abspath)
     pipelineProgressView->setImageViewer(nullptr);
   }
 
-  const QString suffix =
-      QFileInfo(abspath).suffix();
-
-  if ( isTextFileSuffix(suffix) ) {
-    centralStackedWidget->setCurrentWidget(textViewer);
-    textViewer->showTextFile(abspath);
-  }
-  else if ( isPlyFileSuffix(suffix) ) {
-    if ( cloudViewer->openPlyFile(abspath) ) {
-      centralStackedWidget->setCurrentWidget(cloudViewer);
-    }
-    else {
-      centralStackedWidget->setCurrentWidget(textViewer);
-      textViewer->showTextFile(abspath);
-    }
-  }
-  else {
-    centralStackedWidget->setCurrentWidget(imageEditor);
-    imageEditor->openImage(abspath);
-  }
-
+  centralStackedWidget->setCurrentWidget(inputSequenceView);
+  inputSequenceView->openFile(abspath);
 }
 
 
@@ -1341,23 +840,10 @@ void MainWindow::onFileSystemTreeCustomContextMenuRequested(const QPoint & pos,
     const QFileInfoList & selectedItems )
 {
   QMenu menu;
-  QAction * act;
-  QString path, name;
-
 
   if ( fileSystemTreeDock ) {
     fileSystemTreeDock->fillContextMenu(menu, selectedItems);
   }
-
-  menu.addSeparator();
-
-//  QFileInfo curretPath(path = fileSystemTreeDock->currentAbsoluteFilePath());
-//  if ( curretPath.isDir() && !wkspace->batches((name = curretPath.fileName()).toStdString()) ) {
-//    menu.addAction(act = new QAction("Create batch here..."));
-//    connect(act, &QAction::triggered, [this, path, name]() {
-//      this->addBatch(path, name);
-//    });
-//  }
 
   if ( !menu.isEmpty() ) {
     menu.exec(pos);
@@ -1378,8 +864,8 @@ void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
 void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
   if ( source ) {
-    centralStackedWidget->setCurrentWidget(imageEditor);
-    imageEditor->openImage(source->filename());
+    centralStackedWidget->setCurrentWidget(inputSequenceView);
+    inputSequenceView->openFile(source->filename());
   }
   else if ( sequence ) {
     if ( centralStackedWidget->currentWidget() == thumbnailsView ) {
@@ -1399,8 +885,8 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
     if ( source ) {
       pipelineProgressView->setImageViewer(nullptr);
-      centralStackedWidget->setCurrentWidget(imageEditor);
-      imageEditor->openImage(source->filename());
+      centralStackedWidget->setCurrentWidget(inputSequenceView);
+      inputSequenceView->openFile(source->filename());
     }
     else if ( sequence ) {
 
@@ -1412,10 +898,10 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
       if ( pipeline && sequence == pipeline->input_sequence() ) {
 
-        if ( currentCentralWidget == imageEditor ) {
+        if ( currentCentralWidget == imageView ) {
 
           if ( !pipelineProgressView->imageViewer() ) {
-            pipelineProgressView->setImageViewer(imageEditor);
+            pipelineProgressView->setImageViewer(imageView);
           }
           else {
             pipelineProgressView->setImageViewer(nullptr);
@@ -1429,13 +915,13 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
             centralStackedWidget->setCurrentWidget(thumbnailsView);
           }
           else {
-            centralStackedWidget->setCurrentWidget(imageEditor);
-            pipelineProgressView->setImageViewer(imageEditor);
+            centralStackedWidget->setCurrentWidget(inputSequenceView);
+            pipelineProgressView->setImageViewer(imageView);
           }
         }
         else {
-          centralStackedWidget->setCurrentWidget(imageEditor);
-          pipelineProgressView->setImageViewer(imageEditor);
+          centralStackedWidget->setCurrentWidget(inputSequenceView);
+          pipelineProgressView->setImageViewer(imageView);
         }
       }
       else {
@@ -1454,13 +940,13 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
   }
   else if ( source ) {
-    if ( centralStackedWidget->currentWidget() == imageEditor ) {
+    if ( centralStackedWidget->currentWidget() == inputSequenceView ) {
       centralStackedWidget->setCurrentWidget(thumbnailsView);
       thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false);
     }
     else {
-      centralStackedWidget->setCurrentWidget(imageEditor);
-      imageEditor->openImage(source->filename());
+      centralStackedWidget->setCurrentWidget(inputSequenceView);
+      inputSequenceView->openFile(source->filename());
     }
   }
   else if ( sequence ) {
@@ -1489,17 +975,17 @@ void MainWindow::onShowImageSequenceOptions(const c_image_sequence::sptr & seque
     pipelineOptionsView->set_current_sequence(sequence);
     centralStackedWidget->setCurrentWidget(pipelineOptionsView);
   }
-
 }
 
 void MainWindow::onPipelineThreadStarted()
 {
-  if ( centralStackedWidget->currentWidget() != imageEditor ) {
-    centralStackedWidget->setCurrentWidget(imageEditor);
+  if ( centralStackedWidget->currentWidget() != inputSequenceView ) {
+    centralStackedWidget->setCurrentWidget(inputSequenceView);
   }
 
-  imageEditor->clear();
-  pipelineProgressView->setImageViewer(imageEditor);
+  imageView->clear();
+  pipelineProgressView->setImageViewer(imageView);
+  inputSequenceView->showImageView();
 
   if ( !pipelineProgressView->isVisible() ) {
     pipelineProgressView->show();
@@ -1508,7 +994,7 @@ void MainWindow::onPipelineThreadStarted()
 
 void MainWindow::onPipelineThreadFinished()
 {
-  if ( pipelineProgressView ) {
+  if( pipelineProgressView ) {
 
     // it may be that there is next task in queue,
     // don't blink with this dialog box
@@ -1529,93 +1015,145 @@ void MainWindow::onPipelineThreadFinished()
 
 void MainWindow::onSaveCurrentImageAs()
 {
-  if ( !imageEditor->isVisible() || imageEditor->currentImage().empty() ) {
-    return;
+  if( is_visible(imageView) ) {
+    if( !imageView->currentImage().empty() ) {
+
+      const QString savedFileName =
+          saveImageFileAs(this,
+              imageView->currentImage(),
+              imageView->currentMask(),
+              imageView->current_processor(),
+              imageView->currentFileName());
+
+      if( !savedFileName.isEmpty() ) {
+        imageView->setCurrentFileName(savedFileName);
+      }
+    }
+  }
+  else if( is_visible(cloudView) ) {
+
+    QImage image =
+        cloudView->grabViewportPixmap().toImage().convertToFormat(
+            QImage::Format_BGR888);
+
+    if( !image.isNull() ) {
+
+      const cv::Mat M(image.height(), image.width(), CV_8UC3,
+          (void*) image.constBits(),
+          image.bytesPerLine());
+
+      saveImageFileAs(this, M, cv::Mat());
+    }
   }
 
-  QString savedFileName = saveImageFileAs(this,
-      imageEditor->currentImage(),
-      imageEditor->currentMask(),
-      imageEditor->current_processor(),
-      imageEditor->currentFileName());
-
-  if ( !savedFileName.isEmpty() ) {
-    imageEditor->setCurrentFileName(savedFileName);
-  }
 }
 
 void MainWindow::onSaveCurrentDisplayImageAs()
 {
-  if( imageEditor->isVisible() && !imageEditor->displayImage().empty() ) {
+  if( is_visible(imageView) ) {
 
-    saveImageFileAs(this,
-        imageEditor->displayImage(),
-        cv::Mat(),
-        nullptr,
-        imageEditor->currentFileName());
+    const cv::Mat &displayImage =
+        imageView->displayImage();
+
+    if( !displayImage.empty() ) {
+
+      saveImageFileAs(this,
+          displayImage,
+          cv::Mat(),
+          nullptr,
+          imageView->currentFileName());
+    }
+  }
+  else if( is_visible(cloudView) ) {
+
+    QImage image =
+        cloudView->grabViewportPixmap().toImage().convertToFormat(
+            QImage::Format_BGR888);
+
+    if( !image.isNull() ) {
+
+      const cv::Mat displayImage(image.height(), image.width(), CV_8UC3,
+          (void*) image.constBits(),
+          image.bytesPerLine());
+
+      saveImageFileAs(this,
+          displayImage,
+          cv::Mat());
+    }
   }
 }
 
 void MainWindow::onSaveCurrentImageMask()
 {
-  if( imageEditor->isVisible() && !imageEditor->currentMask().empty() ) {
+  if( is_visible(imageView) ) {
 
-    saveImageFileAs(this,
-        imageEditor->currentMask(),
-        cv::Mat(),
-        nullptr,
-        QString("%1.mask.png").arg(imageEditor->currentFileName()));
+    const cv::Mat &currentMask =
+        imageView->currentMask();
+
+    if( !currentMask.empty() ) {
+      saveImageFileAs(this,
+          imageView->currentMask(),
+          cv::Mat(),
+          nullptr,
+          QString("%1.mask.png").arg(imageView->currentFileName()));
+    }
   }
 }
 
 void MainWindow::onLoadCurrentImageMask()
 {
-  if( imageEditor->isVisible() && !imageEditor->currentImage().empty() ) {
+  if( is_visible(imageView) ) {
 
-    static const QString keyName = "lastImageMask";
+    const cv::Mat &currentImage =
+        imageView->currentImage();
 
-    QSettings settings;
+    if( !currentImage.empty() ) {
 
-    static const QString filter =
-        "Image files *.tiff *.tif *.png *.jpg (*.tiff *.tif *.png *.jpg);;\n"
-        "All files (*);;";
+      static const QString keyName =
+          "lastImageMask";
 
-    QString fileName =
-        QFileDialog::getOpenFileName(this,
-            "Select binary image", settings.value(keyName).toString(),
-            filter,
-            nullptr);
+      QSettings settings;
 
-    if ( fileName.isEmpty() ) {
-      return;
+      static const QString filter =
+          "Image files *.tiff *.tif *.png *.jpg (*.tiff *.tif *.png *.jpg);;\n"
+          "All files (*);;";
+
+      QString fileName =
+          QFileDialog::getOpenFileName(this,
+              "Select binary image", settings.value(keyName).toString(),
+              filter,
+              nullptr);
+
+      if( fileName.isEmpty() ) {
+        return;
+      }
+
+      settings.setValue(keyName, fileName);
+
+      cv::Mat image;
+
+      if( !load_image(fileName.toStdString(), image) ) {
+        QMessageBox::critical(this, "Error",
+            "load_image() fails.\n"
+                "Can not load image from specified file");
+        return;
+      }
+
+      if( image.type() != CV_8UC1 || image.size() != currentImage.size() ) {
+        QMessageBox::critical(this, "Error",
+            QString("Not appropriate mask image: %1x%2 depth=%3 channels=%4.\n"
+                "Must be CV_8UC1 of the same size as current image (%5x%6)")
+                .arg(image.cols)
+                .arg(image.rows)
+                .arg(image.depth())
+                .arg(image.channels())
+                .arg(currentImage.cols)
+                .arg(currentImage.rows));
+        return;
+      }
+
+      imageView->setMask(image, false);
     }
-
-    settings.setValue(keyName, fileName);
-
-    cv::Mat image;
-
-    if ( !load_image(fileName.toStdString(), image) ) {
-      QMessageBox::critical(this, "Error",
-          "load_image() fails.\n"
-          "Can not load image from specified file");
-      return;
-    }
-
-    if( image.type() != CV_8UC1 || image.size() != imageEditor->currentImage().size() ) {
-      QMessageBox::critical(this, "Error",
-          QString("Not appropriate mask image: %1x%2 depth=%3 channels=%4.\n"
-              "Must be CV_8UC1 of the same size as current image (%5x%6)")
-              .arg(image.cols)
-              .arg(image.rows)
-              .arg(image.depth())
-              .arg(image.channels())
-              .arg(imageEditor->currentImage().cols)
-              .arg(imageEditor->currentImage().rows));
-      return;
-    }
-
-    imageEditor->setMask(image, false);
-
   }
 }
 
@@ -1725,7 +1263,7 @@ void MainWindow::onViewInputOptions()
 {
   if( !inputOptionsDlgBox ) {
     inputOptionsDlgBox = new QGeneralAppSettingsDialogBox(this);
-    inputOptionsDlgBox->setImageEditor(imageEditor);
+    inputOptionsDlgBox->setInputSequenceView(inputSequenceView);
     connect(inputOptionsDlgBox, &QGeneralAppSettingsDialogBox::visibilityChanged,
         viewInputOptionsAction, &QAction::setChecked);
   }
@@ -1739,5 +1277,441 @@ void MainWindow::onViewInputOptions()
 }
 
 
+void MainWindow::setupInputSequenceView()
+{
+  QToolBar * toolbar;
+
+  ///////////////////////////////////////////////////////////////////////
+
+  toolbar = inputSequenceView->toolbar();
+
+  static QIcon badframeIcon;
+  if( badframeIcon.isNull() ) {
+    badframeIcon.addPixmap(getPixmap(ICON_frame), QIcon::Normal, QIcon::Off);
+    badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
+  }
+
+  toolbar->addAction(selectPreviousFileAction_);
+  toolbar->addAction(selectNextFileAction);
+  toolbar->addAction(reloadCurrentFileAction);
+
+  toolbar->addSeparator();
+
+  toolbar->addAction(createAction(getIcon(ICON_dislike),
+      "Bad",
+      "Move current image to the .bads subfolder (Ctrl+DEL)",
+      [this]() {
+        thumbnailsView->moveToBads(imageView->currentFileName());
+      },
+      new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Delete),
+          imageView, nullptr, nullptr,
+          Qt::WindowShortcut)));
+
+  toolbar->addAction(badframeAction =
+      createCheckableAction(badframeIcon,
+          "Bad Frame",
+          "Mark / Unmark current frame as bad (Ctrl+A)",
+          false,
+          [this](bool checked) {
+            if ( is_visible(inputSequenceView) ) {
+
+              const c_input_sequence::sptr & currentSequence =
+                  inputSequenceView->currentSequence();
+
+              if ( currentSequence ) {
+
+                c_input_source::sptr currentSource =
+                    currentSequence->current_source();
+
+                if ( currentSource ) {
+                  currentSource->set_badframe(currentSequence->current_pos() - 1, checked);
+                  currentSource->save_badframes();
+                }
+              }
+            }
+          },
+          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_A),
+              imageView, nullptr, nullptr,
+              Qt::WindowShortcut)));
+
+
+  toolbar->addAction(setReferenceFrameAction =
+      createAction(getIcon(ICON_reference),
+          "Make reference",
+          "Make this frame reference",
+          [this]() {
+            if ( is_visible(inputSequenceView) && is_visible(sequencesTreeView) ) {
+
+              c_input_source::sptr selectedSource;
+              c_image_sequence::sptr selectedSequence;
+
+              selectedSource =
+                  sequencesTreeView->getCurrentInputSource(&selectedSequence);
+
+              if ( selectedSource && selectedSequence ) {
+
+                const c_input_sequence::sptr & currentSequence =
+                    inputSequenceView->currentSequence();
+
+                if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
+
+                  const c_image_processing_pipeline::sptr currentPipeline =
+                      selectedSequence->current_pipeline();
+
+                  if ( currentPipeline && currentPipeline->has_master_frame() ) {
+                    currentPipeline->set_master_source(selectedSource->filename());
+                    currentPipeline->set_master_frame_index(currentSequence->current_pos() - 1);
+                    saveCurrentWork();
+                  }
+                  else {
+
+                    QMessageBox::warning(this, "warning",
+                        qsprintf("No current pipeline is selected,\n"
+                            "master frame is not assigned\n"
+                            " %s: %d",
+                            __FILE__, __LINE__) );
+                  }
+                }
+              }
+            }
+          }));
+
+  toolbar->addSeparator();
+
+  toolbar->addWidget(currentFileNameLabel_ctl = new QLabel(""));
+  currentFileNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
+  connect(inputSequenceView, &QInputSequenceView::currentFileNameChanged,
+      [this]() {
+        const QString abspath = inputSequenceView->currentFileName();
+        currentFileNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+        if ( is_visible(mtfControl_) ) {
+          onMtfControlVisibilityChanged(true);
+        }
+      });
+
+
+  toolbar->addSeparator();
+
+  ///////////////////////////////////////////////////////////////////////
+
+
+  toolbar = inputSequenceView->imageViewToolbar();
+
+
+  toolbar->addWidget(imageSizeLabel_ctl = new QLabel(""));
+  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
+
+
+  toolbar->addSeparator();
+  toolbar->addWidget(new QToolbarSpacer());
+
+
+  toolbar->addAction(editMaskAction =
+      createCheckableAction(getIcon(ICON_mask),
+          "Mask",
+          "View / Edit image mask",
+          false,
+          [this](bool checked) {
+            showImageViewOptions(is_visible(imageView) && checked);
+          }));
+
+
+  toolbar->addWidget(shapes_ctl =
+      new QShapesButton(imageView->sceneView(),
+          this));
+
+  toolbar->addAction(showMtfControlAction_);
+
+
+  ///
+
+  roiActionsMenu_.addAction(showRoiOptionsAction =
+      createCheckableAction(QIcon(),
+          "ROI Options..",
+          "Configure ROI rectangle options",
+          is_visible(roiOptionsDialogBox_),
+          [this](bool checked) {
+
+            if ( !checked ) {
+              if ( roiOptionsDialogBox_ ) {
+                roiOptionsDialogBox_->setVisible(false);
+              }
+            }
+            else {
+
+              if ( !roiOptionsDialogBox_ ) {
+
+                roiOptionsDialogBox_ = new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
+                    imageView->roiShape(),
+                    this);
+
+                roiOptionsDialogBox_->loadParameters();
+
+                connect(roiOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+                    [this](bool visible) {
+                      showRoiOptionsAction->setChecked(visible);
+                      if ( visible ) {
+                        imageView->roiShape()->setVisible(true);
+                      }
+                    });
+
+              }
+
+              roiOptionsDialogBox_->setVisible(checked);
+            }
+          }));
+
+
+  roiActionsMenu_.addAction(showMeasuresSettingsAction_);
+  roiActionsMenu_.addAction(showMeasuresDisplayAction_);
+  roiActionsMenu_.addAction(showMeasuresGraphAction_);
+
+
+  toolbar->addWidget(createToolButtonWithPopupMenu(showRoiRectangleAction =
+      createCheckableAction(getIcon(ICON_roi),
+          "ROI Rectangle",
+          "Show / Hide ROI rectangle",
+          imageView->roiShape()->isVisible(),
+          [this](bool checked) {
+            imageView->roiShape()->setVisible(checked);
+          }),
+      &roiActionsMenu_));
+
+
+  connect(imageView->roiShape(), &QGraphicsObject::visibleChanged,
+      [this]() {
+        showRoiRectangleAction->setChecked(imageView->roiShape()->isVisible());
+      });
+
+  connect(imageView->roiShape(), &QGraphicsShape::itemChanged,
+      [this]() {
+
+        QGraphicsRectShape * shape =
+            imageView->roiShape();
+
+        const QRectF rc =
+            shape->sceneRect();
+
+        const QPointF p1 = rc.topLeft();
+        const QPointF p2 = rc.bottomRight();
+        const QPointF center = rc.center();
+        const double width = rc.width();
+        const double height = rc.height();
+
+        if ( !statusbarShapesLabel_ctl->isVisible() ) {
+          statusbarShapesLabel_ctl->setVisible(true);
+        }
+
+        statusbarShapesLabel_ctl->setText(
+            qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
+                p1.x(), p1.y(),
+                p2.x(), p2.y(),
+                width, height,
+                center.x(), center.y()));
+
+        updateMeasurements();
+      });
+
+  connect(imageView->roiShape(), &QGraphicsShape::visibleChanged,
+      [this]() {
+        if ( statusbarShapesLabel_ctl ) {
+          statusbarShapesLabel_ctl->setVisible(false);
+        }
+      });
+
+  ///
+
+  toolbar->addWidget(scaleSelection_ctl = new QScaleSelectionButton(this));
+  scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
+  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged,
+      [this](int v) {
+        imageView->setViewScale(v);
+      });
+
+  connect(imageView, &QImageFileEditor::onMouseMove,
+      [this](QMouseEvent * e) {
+        statusbarMousePosLabel_ctl->setText(imageView->statusStringForPixel(e->pos()));
+      });
+
+  connect(imageView->scene(), &QImageScene::graphicsItemChanged,
+      [this](QGraphicsItem * item) {
+
+        QGraphicsLineShape * lineShape = nullptr;
+        QGraphicsRectShape * rectShape = nullptr;
+
+        if ( (lineShape = dynamic_cast<QGraphicsLineShape * >(item)) ) {
+
+          const QLineF line = lineShape->sceneLine();
+
+          const QPointF p1 = line.p1();
+          const QPointF p2 = line.p2();
+          const double length = hypot(p2.x()-p1.x(), p2.y()-p1.y());
+          const double angle = atan2(p2.y()-p1.y(), p2.x()-p1.x());
+
+          if ( !statusbarShapesLabel_ctl->isVisible() ) {
+            statusbarShapesLabel_ctl->setVisible(true);
+          }
+
+          statusbarShapesLabel_ctl->setText(
+              qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
+                  p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
+
+          if ( is_visible(profileGraph_ctl_) ) {
+            profileGraph_ctl_->showProfilePlot(line, imageView->currentImage());
+          }
+
+        }
+        else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {
+
+          const QRectF rc = rectShape->mapToScene(rectShape->rect()).boundingRect();
+
+          const QPointF p1 = rc.topLeft();
+          const QPointF p2 = rc.bottomRight();
+          const QPointF center = rc.center();
+          const double width = rc.width();
+          const double height = rc.height();
+
+          if ( !statusbarShapesLabel_ctl->isVisible() ) {
+            statusbarShapesLabel_ctl->setVisible(true);
+          }
+
+          statusbarShapesLabel_ctl->setText(
+              qsprintf("RECT: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
+                  p1.x(), p1.y(),
+                  p2.x(), p2.y(),
+                  width, height,
+                  center.x(), center.y()));
+
+        }
+      });
+
+  connect(imageView->scene(), &QImageScene::graphicsItemVisibleChanged,
+      [this]() {
+        if ( statusbarShapesLabel_ctl->isVisible() ) {
+          statusbarShapesLabel_ctl->setVisible(false);
+        }
+      });
+
+  connect(imageView->scene(), &QImageScene::graphicsItemDestroyed,
+      [this]() {
+        if ( statusbarShapesLabel_ctl->isVisible() ) {
+          statusbarShapesLabel_ctl->setVisible(false);
+        }
+      });
+
+
+
+  ///////////////////////////////////////////////////////////////////////
+
+
+  toolbar = inputSequenceView->cloudViewToolbar();
+
+  toolbar->addAction(showMtfControlAction_);
+
+  toolbar->addWidget(createToolButton(getIcon(ICON_options),
+      "Options",
+      "Cloud View Options...",
+      [this](QToolButton * tb) {
+
+        QMenu menu;
+
+        menu.addAction(createMenuWidgetAction<QSpinBox>("Point size: ",
+                nullptr,
+                [this](const auto * action) {
+                  action->icon()->setPixmap(getPixmap(ICON_point_size)); // .scaled(QSize(16,16))
+                  QSpinBox * spinBox = action->control();
+                  spinBox->setKeyboardTracking(false);
+                  spinBox->setRange(1, 32);
+                  spinBox->setValue((int)cloudView->pointSize());
+                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                      [this](int value) {
+                    cloudView->setPointSize(value);
+                      });
+                }));
+
+        menu.addAction(createMenuWidgetAction<QSpinBox>("Point brightness: ",
+                nullptr,
+                [this](const auto * action) {
+                  action->icon()->setPixmap(getPixmap(ICON_brightness)); // .scaled(QSize(16,16))
+                  QSpinBox * spinBox = action->control();
+                  spinBox->setKeyboardTracking(false);
+                  spinBox->setRange(-128, 128);
+                  spinBox->setValue((int)cloudView->pointBrightness());
+                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                      [this](int value) {
+                        if ( is_visible(cloudView) ) {
+                          cloudView->setPointBrightness(value);
+                        }
+                      });
+                }));
+
+        menu.addAction(createAction(getIcon(ICON_cloud_rotate),
+                "Show cloud center",
+                "Rotate camera to show point cloud center",
+                [this]() {
+                  if ( is_visible(cloudView) ) {
+                    cloudView->rotateToShowCloud();
+                  }
+                }));
+
+        menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_target),
+                "Auto Show Target point",
+                "",
+                cloudView->autoShowViewTarget(),
+                [this](bool checked) {
+                  if ( is_visible(cloudView) ) {
+                    cloudView->setAutoShowViewTarget(checked);
+                  }
+                }));
+
+        menu.addSeparator();
+
+        if ( !showCloudViewSettingsDialogBoxAction ) {
+
+          showCloudViewSettingsDialogBoxAction =
+            createCheckableAction(getIcon(ICON_options),
+                "Advanced ...",
+                "Show advanced options",
+                is_visible(cloudViewSettingsDialogBox),
+                this,
+                &ThisClass::onShowCloudViewSettingsDialogBoxActionClicked);
+        }
+
+        menu.addAction(showCloudViewSettingsDialogBoxAction);
+
+        menu.exec(tb->mapToGlobal(QPoint(tb->width() - 4,tb->height() - 4)));
+      }));
+
+
+  ///////////////////////////////////////////////////////////////////////
+
+
+  toolbar = inputSequenceView->textViewToolbar();
+
+
+  ///////////////////////////////////////////////////////////////////////
+
+  toolbar = inputSequenceView->rightToolbar();
+
+  diplayImageWriter_.loadParameters();
+  toolbar->addWidget(displayImageVideoWriterToolButton_ =
+      createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
+
+  toolbar->addAction(createAction(getIcon(ICON_close),
+      "Close",
+      "Close window",
+      [this]() {
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      },
+      new QShortcut(QKeySequence::Cancel,
+          inputSequenceView, nullptr, nullptr,
+          Qt::WindowShortcut)));
+
+
+
+  ///////////////////////////////////////////////////////////////////////
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
-}  // namespace qskystacker
+}  // namespace serstacker

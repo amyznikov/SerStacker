@@ -22,7 +22,7 @@ public:
 
   QTextFileViewer(QWidget * parent = nullptr);
 
-  QToolBar * toolbar() const;
+  QToolBar * toolbar();
 
   void showTextFile(const std::string & source);
   void showTextFile(const QString & source);

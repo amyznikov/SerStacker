@@ -363,6 +363,8 @@ void QGLView::glPostDraw()
   }
 
   glFlush();
+
+  Q_EMIT displayImageChanged();
 }
 
 // still non clear how to manage GL cleanup from destructor
@@ -815,4 +817,18 @@ void QGLView::showKeyBindings()
     helpWidget->show();
   }
 
+}
+
+bool QGLView::copyViewportToClipboard()
+{
+  QClipboard * clipboard =
+      QApplication::clipboard();
+
+  if ( !clipboard ) {
+    return false;
+  }
+
+  clipboard->setPixmap(Base::grab());
+
+  return true;
 }

@@ -10,6 +10,7 @@
 #define __QPointCloud_h__
 
 #include <QtGui/QtGui>
+#include <opencv2/opencv.hpp>
 #include <memory>
 
 struct QPoint3D
@@ -39,6 +40,20 @@ public:
     return ptr(new QPointCloud());
   }
 
+  static ptr create(const std::vector<cv::Vec3f> & points, const std::vector<cv::Vec3b> & colors)
+  {
+    ptr obj(new QPointCloud());
+
+    obj->points.reserve(points.size());
+    obj->colors.reserve(colors.size());
+
+    for ( int i = 0, n = points.size(); i < n; ++i ) {
+      obj->points.emplace_back(points[i][0], points[i][1], points[i][2]);
+      obj->colors.emplace_back(colors[i][0], colors[i][1], colors[i][2]);
+    }
+
+    return obj;
+  }
 
   void clear()
   {

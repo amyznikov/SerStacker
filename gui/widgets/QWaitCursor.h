@@ -13,7 +13,7 @@
 class QWaitCursor {
   bool show_;
 public:
-  QWaitCursor(QWidget * w = Q_NULLPTR, bool show = true) : show_(show) {
+  QWaitCursor(QWidget * w = nullptr, bool show = true) : show_(show) {
     if ( show_ ) {
       QApplication::setOverrideCursor(Qt::WaitCursor);
     }

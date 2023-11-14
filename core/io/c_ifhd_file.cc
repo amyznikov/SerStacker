@@ -11,7 +11,6 @@
 #include <fcntl.h>
 #include <limits>
 #include <cmath>
-#include <core/ssprintf.h>
 #include <core/debug.h>
 
 
@@ -165,7 +164,7 @@ bool c_ifhd_reader::open(const std::string & filename)
 
     file_streams_.emplace_back(stream);
 
-    //CF_DEBUG("stream: name='%s'", stream.header.stream_name);
+   // CF_DEBUG("stream[%zd]: name='%s' stream_index_count=%llu", i, stream.header.stream_name, (unsigned long long) stream.header.stream_index_count);
 
   }
 

@@ -90,10 +90,12 @@ public:
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
   void drawMainAxes();
 
+  bool copyViewportToClipboard();
   void showKeyBindings();
 
 Q_SIGNALS:
   void viewPointChanged();
+  void displayImageChanged();
 
 protected:
   virtual void glInit();

@@ -14,12 +14,11 @@ QTextFileViewer::QTextFileViewer(QWidget * parent) :
   layout_ = new QVBoxLayout(this);
   layout_->setContentsMargins(0, 0, 0, 0);
 
-  toolbar_ = new QToolBar(this);
-  toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  toolbar_->setOrientation(Qt::Horizontal);
-  toolbar_->setIconSize(QSize(16,16));
+//  toolbar_ = new QToolBar(this);
+//  toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+//  toolbar_->setOrientation(Qt::Horizontal);
+//  toolbar_->setIconSize(QSize(16,16));
 
-  //textBrowser_ = new QTextEdit(this);
   textBrowser_ = new QPlainTextEdit(this);
   textBrowser_->setReadOnly(true);
   textBrowser_->setLineWrapMode(QPlainTextEdit::NoWrap);
@@ -27,7 +26,7 @@ QTextFileViewer::QTextFileViewer(QWidget * parent) :
   textBrowser_->setFont(QFont("monospace"));
   //textBrowser_->setAutoFormatting(QTextBrowser::AutoNone);
 
-  layout_->addWidget(toolbar_, 1);
+  //layout_->addWidget(toolbar_, 1);
   layout_->addWidget(textBrowser_, 100);
 
 }
@@ -44,8 +43,15 @@ void QTextFileViewer::hideEvent(QHideEvent * e)
   Q_EMIT visibilityChanged(isVisible());
 }
 
-QToolBar * QTextFileViewer::toolbar() const
+QToolBar * QTextFileViewer::toolbar()
 {
+  if ( !toolbar_ ) {
+    toolbar_ = new QToolBar(this);
+    toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    toolbar_->setOrientation(Qt::Horizontal);
+    toolbar_->setIconSize(QSize(16,16));
+    layout_->insertWidget(0, toolbar_, 1);
+  }
   return toolbar_;
 }
 

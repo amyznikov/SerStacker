@@ -18,6 +18,7 @@
 #include <gui/qmeasure/QMeasureDisplay.h>
 #include <gui/qmeasure/QMeasureSelection.h>
 #include <gui/qmeasure/QProfileGraph.h>
+#include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
 
 class QMainAppWindow:
@@ -81,82 +82,6 @@ protected:
     return w && w->isVisible();
   }
 
-
-  template<class Obj, typename Fn>
-  static QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip,
-      Obj * receiver, Fn fn,
-      QShortcut * shortcut = nullptr)
-  {
-    QAction *action = new QAction(icon, text);
-    action->setToolTip(tooltip);
-
-    QObject::connect(action, &QAction::triggered, receiver, fn);
-
-    if( shortcut ) {
-      QObject::connect(shortcut, &QShortcut::activated,
-          action, &QAction::trigger);
-    }
-
-    return action;
-  }
-
-  template<typename Slot>
-  static QAction* createAction(const QIcon & icon, const QString & text, const QString & tooltip, Slot && slot, QShortcut * shortcut = nullptr)
-  {
-    QAction *action = new QAction(icon, text);
-    action->setToolTip(tooltip);
-
-    QObject::connect(action, &QAction::triggered, slot);
-
-    if( shortcut ) {
-      QObject::connect(shortcut, &QShortcut::activated,
-          action, &QAction::trigger);
-    }
-
-    return action;
-  }
-
-  template<class Obj, typename Fn>
-  static QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
-      bool checked,
-      Obj * receiver, Fn fn,
-      QShortcut * shortcut = nullptr)
-  {
-    QAction *action = new QAction(icon, text);
-    action->setToolTip(tooltip);
-    action->setCheckable(true);
-    action->setChecked(checked);
-
-    QObject::connect(action, &QAction::triggered, receiver, fn);
-
-    if( shortcut ) {
-      QObject::connect(shortcut, &QShortcut::activated,
-          action, &QAction::trigger);
-    }
-
-    return action;
-  }
-
-  template<typename Slot>
-  static QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
-      bool checked,
-      Slot && slot,
-      QShortcut * shortcut = nullptr)
-  {
-    QAction *action = new QAction(icon, text);
-    action->setToolTip(tooltip);
-    action->setCheckable(true);
-    action->setChecked(checked);
-
-    QObject::connect(action, &QAction::triggered, slot);
-
-    if( shortcut ) {
-      QObject::connect(shortcut, &QShortcut::activated,
-          action, &QAction::trigger);
-    }
-
-    return action;
-  }
 
   template<class Fn>
   static QToolButton* createToolButton(const QIcon & icon, const QString & text, const QString & tooltip, Fn && onclicked)

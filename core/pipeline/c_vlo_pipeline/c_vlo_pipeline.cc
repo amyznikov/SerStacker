@@ -31,130 +31,130 @@ const c_enum_member* members_of<VLO_INTENSITY_CHANNEL>()
 }
 
 //////////////////////////////
-
-template<class ScanType>
-static bool get_cloud3d_(const ScanType & scan,
-    std::vector<cv::Point3f> & output_points,
-    std::vector<cv::Vec3b> & output_colors,
-    c_vlo_reader::DATA_CHANNEL intensity_channel)
-{
-  cv::Mat intensityImage =
-      c_vlo_file::get_image(scan,
-          intensity_channel);
-
-  if( !intensityImage.empty() ) {
-
-    autoclip(intensityImage, cv::noArray(),
-        0.01, 99.99,
-        0, 255);
-
-    if( intensityImage.depth() != CV_8U ) {
-      intensityImage.convertTo(intensityImage, CV_8U);
-    }
-
-    if( false ) {
-
-      static cv::Mat3b lut;
-      if( lut.empty() ) {
-
-        cv::Mat1b gray(1, 256);
-        for( int i = 0; i < 256; ++i ) {
-          gray[0][i] = i;
-        }
-
-        apply_colormap(gray,
-            lut,
-            COLORMAP_TURBO);
-      }
-    }
-
-    if ( intensityImage.channels() == 1 ) {
-      cv::cvtColor(intensityImage, intensityImage,
-          cv::COLOR_GRAY2BGR);
-    }
-  }
-
-  const cv::Mat3b intensity =
-      intensityImage;
-
-  const float firstVertAngle =
-      0.5 * 0.05 * scan.NUM_LAYERS;
-
-  const float tick2deg =
-      (float) (0.00000008381903173490870551553291862726);
-
-  const float yawCorrection = 0;
-
-
-  output_points.clear();
-  output_colors.clear();
-  output_points.reserve(scan.NUM_POINTS);
-  output_colors.reserve(scan.NUM_POINTS);
-
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    const auto &slot =
-        scan.slot[s];
-
-    const float horizontalAngle =
-        slot.angleTicks * tick2deg * CV_PI / 180 + yawCorrection;
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-      const float verticalAngle =
-          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
-
-      const float cos_vert = cos(verticalAngle);
-      const float sin_vert = sin(verticalAngle);
-      const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
-      const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
-
-      for( int e = 0; e < 2/*scan.NUM_ECHOS*/; ++e ) {
-
-        const auto &echo =
-            slot.echo[l][e];
-
-        const uint16_t distance =
-            echo.dist;
-
-        if( distance > 0 && distance < 65534 ) {
-
-          const float scale = 0.01;
-          const float x = scale * distance * cos_hor_cos_vert;
-          const float y = scale * distance * sin_hor_cos_vert;
-          const float z = scale * distance * sin_vert;
-          output_points.emplace_back(x, y, z);
-
-          const uint8_t color =
-              intensity[l][s][e];
-
-          output_colors.emplace_back(color, color, color);
-        }
-      }
-    }
-  }
-
-
-  return true;
-}
-
-static bool get_cloud3d(const c_vlo_scan & scan,
-    std::vector<cv::Point3f> & output_points,
-    std::vector<cv::Vec3b> & output_colors,
-    c_vlo_reader::DATA_CHANNEL intensity_channel)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return get_cloud3d_(scan.scan1, output_points, output_colors, intensity_channel);
-    case VLO_VERSION_3:
-      return get_cloud3d_(scan.scan3, output_points, output_colors, intensity_channel);
-    case VLO_VERSION_5:
-      return get_cloud3d_(scan.scan5, output_points, output_colors, intensity_channel);
-  }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
-  return false;
-}
-
+//
+//template<class ScanType>
+//static bool get_cloud3d_(const ScanType & scan,
+//    std::vector<cv::Point3f> & output_points,
+//    std::vector<cv::Vec3b> & output_colors,
+//    c_vlo_reader::DATA_CHANNEL intensity_channel)
+//{
+//  cv::Mat intensityImage =
+//      c_vlo_file::get_image(scan,
+//          intensity_channel);
+//
+//  if( !intensityImage.empty() ) {
+//
+//    autoclip(intensityImage, cv::noArray(),
+//        0.01, 99.99,
+//        0, 255);
+//
+//    if( intensityImage.depth() != CV_8U ) {
+//      intensityImage.convertTo(intensityImage, CV_8U);
+//    }
+//
+//    if( false ) {
+//
+//      static cv::Mat3b lut;
+//      if( lut.empty() ) {
+//
+//        cv::Mat1b gray(1, 256);
+//        for( int i = 0; i < 256; ++i ) {
+//          gray[0][i] = i;
+//        }
+//
+//        apply_colormap(gray,
+//            lut,
+//            COLORMAP_TURBO);
+//      }
+//    }
+//
+//    if ( intensityImage.channels() == 1 ) {
+//      cv::cvtColor(intensityImage, intensityImage,
+//          cv::COLOR_GRAY2BGR);
+//    }
+//  }
+//
+//  const cv::Mat3b intensity =
+//      intensityImage;
+//
+//  const float firstVertAngle =
+//      0.5 * 0.05 * scan.NUM_LAYERS;
+//
+//  const float tick2deg =
+//      (float) (0.00000008381903173490870551553291862726);
+//
+//  const float yawCorrection = 0;
+//
+//
+//  output_points.clear();
+//  output_colors.clear();
+//  output_points.reserve(scan.NUM_POINTS);
+//  output_colors.reserve(scan.NUM_POINTS);
+//
+//  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+//
+//    const auto &slot =
+//        scan.slot[s];
+//
+//    const float horizontalAngle =
+//        slot.angleTicks * tick2deg * CV_PI / 180 + yawCorrection;
+//
+//    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+//
+//      const float verticalAngle =
+//          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
+//
+//      const float cos_vert = cos(verticalAngle);
+//      const float sin_vert = sin(verticalAngle);
+//      const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
+//      const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
+//
+//      for( int e = 0; e < 2/*scan.NUM_ECHOS*/; ++e ) {
+//
+//        const auto &echo =
+//            slot.echo[l][e];
+//
+//        const uint16_t distance =
+//            echo.dist;
+//
+//        if( distance > 0 && distance < 65534 ) {
+//
+//          const float scale = 0.01;
+//          const float x = scale * distance * cos_hor_cos_vert;
+//          const float y = scale * distance * sin_hor_cos_vert;
+//          const float z = scale * distance * sin_vert;
+//          output_points.emplace_back(x, y, z);
+//
+//          const uint8_t color =
+//              intensity[l][s][e];
+//
+//          output_colors.emplace_back(color, color, color);
+//        }
+//      }
+//    }
+//  }
+//
+//
+//  return true;
+//}
+//
+//static bool get_cloud3d(const c_vlo_scan & scan,
+//    std::vector<cv::Point3f> & output_points,
+//    std::vector<cv::Vec3b> & output_colors,
+//    c_vlo_reader::DATA_CHANNEL intensity_channel)
+//{
+//  switch (scan.version) {
+//    case VLO_VERSION_1:
+//      return get_cloud3d_(scan.scan1, output_points, output_colors, intensity_channel);
+//    case VLO_VERSION_3:
+//      return get_cloud3d_(scan.scan3, output_points, output_colors, intensity_channel);
+//    case VLO_VERSION_5:
+//      return get_cloud3d_(scan.scan5, output_points, output_colors, intensity_channel);
+//  }
+//  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+//  return false;
+//}
+//
 
 template<class ScanType>
 static bool run_reflectors_detection_(const ScanType & scan,
@@ -167,13 +167,13 @@ static bool run_reflectors_detection_(const ScanType & scan,
     double auto_clip_max,
     cv::Mat1b * output_mask)
 {
-  typedef decltype(ScanType::echo::area) area_type;
+  typedef decltype(ScanType::Echo::area) area_type;
   constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::peak) peak_type;
+  typedef decltype(ScanType::Echo::peak) peak_type;
   constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::dist) dist_type;
+  typedef decltype(ScanType::Echo::dist) dist_type;
   constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
   cv::Mat1b intensity_mask;
@@ -325,13 +325,13 @@ template<class ScanType>
 static int run_double_echo_detection_(const ScanType & scan,
     cv::Mat3b & output_mask)
 {
-  typedef decltype(ScanType::echo::area) area_type;
+  typedef decltype(ScanType::Echo::area) area_type;
   constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::peak) peak_type;
+  typedef decltype(ScanType::Echo::peak) peak_type;
   constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::dist) distance_type;
+  typedef decltype(ScanType::Echo::dist) distance_type;
   constexpr auto max_distance_value = std::numeric_limits<distance_type>::max() - 2;
 
   static constexpr distance_type wall_distance = 30000;
@@ -385,13 +385,13 @@ static int run_high_intensity_detection_(const ScanType & scan,
     double high_intensity_threshold,
     cv::Mat3b & output_mask)
 {
-  typedef decltype(ScanType::echo::area) area_type;
+  typedef decltype(ScanType::Echo::area) area_type;
   constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::peak) peak_type;
+  typedef decltype(ScanType::Echo::peak) peak_type;
   constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::dist) distance_type;
+  typedef decltype(ScanType::Echo::dist) distance_type;
   constexpr auto max_distance_value = std::numeric_limits<distance_type>::max() - 2;
 
   output_mask.create(scan.NUM_LAYERS, scan.NUM_SLOTS);
@@ -756,15 +756,15 @@ static bool update_vlo_lookup_table_statistics_(const ScanType & scan,
     c_vlo_lookup_table_statistics & statistics)
 {
 
-  typedef typename ScanType::echo echo_type;
+  typedef typename ScanType::Echo echo_type;
 
-  typedef decltype(ScanType::echo::area) area_type;
+  typedef decltype(ScanType::Echo::area) area_type;
   constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::peak) peak_type;
+  typedef decltype(ScanType::Echo::peak) peak_type;
   constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
 
-  typedef decltype(ScanType::echo::dist) dist_type;
+  typedef decltype(ScanType::Echo::dist) dist_type;
   constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
   constexpr double max_distance_meters  = 500;
@@ -1772,10 +1772,16 @@ bool c_vlo_pipeline::save_cloud3d_ply()
     return true; // silently ignore
   }
 
-  std::vector<cv::Point3f> cloud3d;
+  std::vector<cv::Point3f> points;
   std::vector<cv::Vec3b> colors;
 
-  if( !get_cloud3d(current_scan_, cloud3d, colors, output_options_.cloud3d_intensity_channel) ) {
+  bool fOk =
+      c_vlo_file::get_cloud3d(current_scan_,
+          output_options_.cloud3d_intensity_channel,
+          points,
+          colors);
+
+  if( !fOk ) {
     CF_ERROR("get_cloud3d() fails");
     return false;
   }
@@ -1786,7 +1792,7 @@ bool c_vlo_pipeline::save_cloud3d_ply()
           input_sequence_->name().c_str(),
           input_sequence_->current_pos() - 1);
 
-  if ( !save_ply(cloud3d, colors, filename) ) {
+  if ( !save_ply(points, colors, filename) ) {
     CF_ERROR("save_ply('%s') fails", filename.c_str());
     return false;
   }

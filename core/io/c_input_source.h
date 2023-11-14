@@ -38,6 +38,11 @@ public:
 #endif
   };
 
+  enum OUTPUT_TYPE {
+    OUTPUT_TYPE_IMAGE,
+    OUTPUT_TYPE_CLOUD3D
+  };
+
   static sptr create(const std::string & filename);
 
   static sptr create(source_type type,
@@ -323,17 +328,17 @@ public:
       enum COLORID * output_colorid,
       int * output_bpc) override;
 
+  bool read_cloud3d(cv::OutputArray points,
+      cv::OutputArray colors);
+
   bool is_open() const override;
 
   void set_read_channel(c_vlo_file::DATA_CHANNEL v);
   c_vlo_file::DATA_CHANNEL read_channel() const;
 
   VLO_VERSION version() const;
-  bool read(c_vlo_scan1 * scan);
-  bool read(c_vlo_scan3 * scan);
-  bool read(c_vlo_scan5 * scan);
-  bool read(c_vlo_scan * scan);
 
+  bool read(c_vlo_scan * scan);
 
 protected:
   c_vlo_reader vlo_;

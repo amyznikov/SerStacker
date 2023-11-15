@@ -7,6 +7,7 @@
 
 #include "QThumbnails.h"
 #include <opencv2/opencv.hpp>
+#include <core/proc/autoclip.h>
 #include <core/io/load_image.h>
 #include <core/io/c_ser_file.h>
 #include <core/io/c_fits_file.h>
@@ -523,22 +524,37 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 #if HAVE_VLO_FILE
   if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 || suffix.compare("dat", Qt::CaseInsensitive) == 0 ) {
 
-    if( !(cvimage = c_vlo_reader::get_thumbnail_image(pathFileName.toStdString())).empty() ) {
+    c_vlo_reader vlo;
 
-      const QSize thumbSize =
-          compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
-              thumb_size);
+    if( vlo.open(pathFileName.toStdString()) ) {
 
-      if( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+      std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
 
-        cv::resize(cvimage, cvimage,
-            cv::Size(thumbSize.width(), thumbSize.height()),
-            0, 0,
-            cv::INTER_AREA);
+      if( vlo.read(scan.get()) ) {
+        if( !(cvimage = c_vlo_file::get_image(*scan, c_vlo_file::DATA_CHANNEL_AMBIENT)).empty() ) {
+
+          const QSize thumbSize =
+              compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
+                  thumb_size);
+
+          if( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+
+            cv::resize(cvimage, cvimage,
+                cv::Size(thumbSize.width(), thumbSize.height()),
+                0, 0,
+                cv::INTER_AREA);
+          }
+
+          autoclip(cvimage, cv::noArray(),
+              0.5, 99.5,
+              0, 255);
+          cvimage.convertTo(cvimage,
+              CV_8U);
+
+          cv2qimage(cvimage, &qimage, true);
+          return qimage;
+        }
       }
-
-      cv2qimage(cvimage, &qimage, true);
-      return qimage;
     }
 
     if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {

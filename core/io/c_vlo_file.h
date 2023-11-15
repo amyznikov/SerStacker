@@ -789,7 +789,7 @@ public:
   bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);
   bool read_cloud3d(cv::OutputArray points, cv::OutputArray colors, c_vlo_file::DATA_CHANNEL colors_channel);
 
-  static cv::Mat get_thumbnail_image(const std::string & filename);
+  //static cv::Mat get_thumbnail_image(const std::string & filename);
 
 protected:
   template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION > 0),

@@ -9,11 +9,8 @@
 #include <gui/widgets/createAction.h>
 #include <gui/qthumbnailsview/QThumbnails.h>
 #include <gui/widgets/QWaitCursor.h>
-#include <gui/widgets/style.h>
 #include <core/proc/bad_pixels.h>
 #include <core/debug.h>
-
-#define ICON_close              ":/gui/icons/close"
 
 
 static QToolBar * createToolbar(QWidget * parent = nullptr)
@@ -52,7 +49,7 @@ QInputSequenceView::QInputSequenceView(QWidget * parent, QImageEditor * imageVie
   toolbarLayout_->addWidget(imageViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
   toolbarLayout_->addWidget(cloudViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
   toolbarLayout_->addWidget(textViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
-  toolbarLayout_->addWidget(rightToolbar_ = createToolbar(this), 1, Qt::AlignRight);
+  toolbarLayout_->addWidget(rightToolbar_ = createToolbar(this), 0, Qt::AlignRight);
 
 
   mainLayout_->addWidget(stackWidget_ = new QStackedWidget(this), 10000);

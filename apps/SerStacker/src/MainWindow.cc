@@ -559,6 +559,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
       copyDisplayViewportAction->setEnabled(false);
       saveImageMaskAction->setEnabled(false);
       loadImageMaskAction->setEnabled(false);
+      displayImageVideoWriterToolButton_->setEnabled(false);
     }
     else {
       const bool hasimage =
@@ -576,6 +577,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
       copyDisplayViewportAction->setEnabled(true);
       saveImageMaskAction->setEnabled(hasmask);
       loadImageMaskAction->setEnabled(hasimage);
+      displayImageVideoWriterToolButton_->setEnabled(true);
     }
 
   }
@@ -588,11 +590,13 @@ void MainWindow::onCurrentViewVisibilityChanged()
       saveDisplayImageAsAction->setEnabled(false);
       copyDisplayImageAction->setEnabled(false);
       copyDisplayViewportAction->setEnabled(false);
+      displayImageVideoWriterToolButton_->setEnabled(false);
     }
     else {
       saveDisplayImageAsAction->setEnabled(true);
       copyDisplayImageAction->setEnabled(true);
       copyDisplayViewportAction->setEnabled(true);
+      displayImageVideoWriterToolButton_->setEnabled(true);
     }
   }
   else {
@@ -602,6 +606,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
     copyDisplayViewportAction->setEnabled(false);
     saveImageMaskAction->setEnabled(false);
     loadImageMaskAction->setEnabled(false);
+    displayImageVideoWriterToolButton_->setEnabled(false);
   }
 
 }
@@ -1390,7 +1395,7 @@ void MainWindow::setupInputSequenceView()
       });
 
 
-  toolbar->addSeparator();
+  // toolbar->addSeparator();
 
   ///////////////////////////////////////////////////////////////////////
 
@@ -1692,6 +1697,7 @@ void MainWindow::setupInputSequenceView()
   ///////////////////////////////////////////////////////////////////////
 
   toolbar = inputSequenceView->rightToolbar();
+  // toolbar->addSeparator();
 
   diplayImageWriter_.loadParameters();
   toolbar->addWidget(displayImageVideoWriterToolButton_ =

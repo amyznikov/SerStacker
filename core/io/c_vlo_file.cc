@@ -1575,26 +1575,3 @@ bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, 
   return false;
 }
 
-//
-//cv::Mat c_vlo_reader::get_thumbnail_image(const std::string & filename)
-//{
-//  cv::Mat image;
-//  c_vlo_reader vlo;
-//
-//  if( vlo.open(filename) ) {
-//    std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
-//    if( vlo.read(scan.get()) ) {
-//      image = get_image(*scan, DATA_CHANNEL_AMBIENT);
-//    }
-//  }
-//
-//  if( !image.empty() ) {
-//    autoclip(image, cv::noArray(),
-//        0.5, 99.5,
-//        0, 255);
-//    image.convertTo(image,
-//        CV_8U);
-//  }
-//
-//  return image;
-//}

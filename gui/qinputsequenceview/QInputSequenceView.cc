@@ -16,7 +16,7 @@
 static QToolBar * createToolbar(QWidget * parent = nullptr)
 {
   QToolBar * toolbar = new QToolBar(parent);
-  toolbar->setContentsMargins(0,0,0,0);
+  // toolbar->setContentsMargins(0,0,0,0);
   toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
   toolbar->setIconSize(QSize(16, 16));
   return toolbar;

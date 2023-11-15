@@ -8,9 +8,8 @@
 #include "c_vlo_file.h"
 #include <fcntl.h>
 #include <limits>
-#include <core/ssprintf.h>
-//#include <core/proc/bswap.h>
 #include <core/proc/autoclip.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 template<>
@@ -59,14 +58,18 @@ static inline bool readfrom(int fd, ssize_t offset, uint16_t * data)
   return true;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void sort_echos_by_distance(c_vlo_scan1 & scan)
+
+template<class ScanType>
+std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
+void>  sort_echos_by_distance(ScanType & scan)
 {
-  typedef c_vlo_scan1 ScanType;
-
   if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
 
-    typedef struct ScanType::Echo echo_type;
+    typedef typename ScanType::Echo echo_type;
     typedef decltype(echo_type::dist) dist_type;
     constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
 
@@ -104,96 +107,7 @@ static void sort_echos_by_distance(c_vlo_scan1 & scan)
   }
 }
 
-static void sort_echos_by_distance(c_vlo_scan3 & scan)
-{
-  typedef c_vlo_scan3 ScanType;
-
-  if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
-
-    typedef struct ScanType::Echo echo_type;
-    typedef decltype(echo_type::dist) dist_type;
-    constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
-
-    echo_type echos[scan.NUM_ECHOS];
-    int cnz = 0;
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-      auto &slot = scan.slot[s];
-
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-        cnz = 0;
-        memset(echos, 0, sizeof(echos));
-
-        for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-          if( slot.echo[l][e].dist > 0 && slot.echo[l][e].dist < max_dist_value ) {
-            echos[cnz++] = slot.echo[l][e];
-          }
-        }
-
-        if( cnz > 1 ) {
-
-          std::sort(echos, echos + cnz,
-              [](const auto & prev, const auto & next) {
-                return prev.dist < next.dist;
-              });
-        }
-
-        memcpy(slot.echo[l], echos, sizeof(echos));
-      }
-    }
-
-    scan.config.echoOrdering = VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR;
-  }
-}
-
-
-static void sort_echos_by_distance(c_vlo_scan5 & scan)
-{
-  typedef c_vlo_scan5 ScanType;
-
-  if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
-
-    typedef struct ScanType::Echo echo_type;
-    typedef decltype(echo_type::dist) dist_type;
-    constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
-
-    echo_type echos[scan.NUM_ECHOS];
-    int cnz = 0;
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-      auto &slot = scan.slot[s];
-
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-        cnz = 0;
-        memset(echos, 0, sizeof(echos));
-
-        for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-          if( slot.echo[l][e].dist > 0 && slot.echo[l][e].dist < max_dist_value ) {
-            echos[cnz++] = slot.echo[l][e];
-          }
-        }
-
-        if( cnz > 1 ) {
-
-          std::sort(echos, echos + cnz,
-              [](const auto & prev, const auto & next) {
-                return prev.dist < next.dist;
-              });
-        }
-
-        memcpy(slot.echo[l], echos, sizeof(echos));
-      }
-    }
-
-    scan.config.echoOrdering = VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR;
-  }
-}
-
-static void sort_echos_by_distance(c_vlo_scan6_base & scan)
+void sort_echos_by_distance(c_vlo_scan6_base & scan)
 {
   typedef c_vlo_scan6_base ScanType;
 
@@ -235,15 +149,8 @@ static void sort_echos_by_distance(c_vlo_scan6_base & scan)
   }
 }
 
-static void sort_echos_by_distance(c_vlo_scan6_slm & scan)
+void sort_echos_by_distance(c_vlo_scan6_slm & scan)
 {
-  //  CF_DEBUG("SLM: NumEchos=%u NumLayers=%u NumSlots=%u echoOrdering=%u",
-  //      scan.config.maxNumEchos,
-  //      scan.config.maxNumLayers,
-  //      scan.config.maxNumSlots,
-  //      scan.config.echoOrdering);
-
-
   if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR ) {
 
     typedef c_vlo_scan6_slm ScanType;
@@ -282,6 +189,8 @@ static void sort_echos_by_distance(c_vlo_scan6_slm & scan)
     scan.config.echoOrdering = VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR;
   }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<class ScanType>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
@@ -931,6 +840,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
   return cv::Mat();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 template<class ScanType>
@@ -1111,6 +1021,7 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
   return true;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 } // namespace
 
 
@@ -1229,21 +1140,20 @@ bool c_vlo_reader::open(const std::string & filename)
 
   ////////////
 
-  if( ifhd_.open(filename) ) {
-    if ( ifhd_.select_stream("ScaLa 3-PointCloud")  ) {
+  if( ifhd_.open(filename) && ifhd_.select_stream("ScaLa 3-PointCloud") ) {
 
-      const size_t payload_size =
-          ifhd_.current_payload_size();
+    const size_t payload_size =
+        ifhd_.current_payload_size();
 
-      if( !ifhd_.read_payload(&format_version, sizeof(format_version)) == sizeof(format_version) ) {
-        CF_ERROR("ifhd_.read_payload(format_version) fails. payload_size=%zu", payload_size);
-      }
-      else {
+    if( !ifhd_.read_payload(&format_version, sizeof(format_version)) == sizeof(format_version) ) {
+      CF_ERROR("ifhd_.read_payload(format_version) fails. payload_size=%zu", payload_size);
+    }
+    else {
 
-        static constexpr uint32_t scanV1Extra = 336;
-        static constexpr uint32_t scanV3Extra = 1328;
-        static constexpr uint32_t scanV5Extra = 1120;
-        static constexpr uint32_t scanV6SLMExtra = 1;
+      static constexpr uint32_t scanV1Extra = 336;
+      static constexpr uint32_t scanV3Extra = 1328;
+      static constexpr uint32_t scanV5Extra = 1120;
+      static constexpr uint32_t scanV6SLMExtra = 1;
 
 //        CF_DEBUG("\n"
 //            "format_version = %u\n"
@@ -1267,36 +1177,34 @@ bool c_vlo_reader::open(const std::string & filename)
 //            sizeof(c_vlo_scan3),
 //            sizeof(c_vlo_scan1));
 
+      if( format_version == 18 && payload_size == sizeof(c_vlo_scan1) + scanV1Extra ) {
+        version_ = VLO_VERSION_1;
+        frame_size_ = sizeof(c_vlo_scan1);
+      }
+      else if( format_version == 18 && payload_size == sizeof(c_vlo_scan3) + scanV3Extra ) {
+        version_ = VLO_VERSION_3;
+        frame_size_ = sizeof(c_vlo_scan3);
+      }
+      else if( format_version == 5 && payload_size == sizeof(c_vlo_scan5) + scanV5Extra ) {
+        version_ = VLO_VERSION_5;
+        frame_size_ = sizeof(c_vlo_scan5);
+      }
+      else if( format_version == 5 && payload_size == sizeof(c_vlo_scan5) ) {
+        version_ = VLO_VERSION_5;
+        frame_size_ = sizeof(c_vlo_scan5);
+      }
+      else if( format_version == 6 && payload_size == sizeof(c_vlo_scan6_slm) + scanV6SLMExtra ) {
+        version_ = VLO_VERSION_6_SLM;
+        frame_size_ = sizeof(c_vlo_scan6_slm);
+      }
 
-        if( format_version == 18  && payload_size == sizeof(c_vlo_scan1) + scanV1Extra ) {
-          version_ = VLO_VERSION_1;
-          frame_size_ = sizeof(c_vlo_scan1);
-        }
-        else if( format_version == 18  && payload_size == sizeof(c_vlo_scan3) + scanV3Extra ) {
-          version_ = VLO_VERSION_3;
-          frame_size_ = sizeof(c_vlo_scan3);
-        }
-        else if( format_version == 5 && payload_size == sizeof(c_vlo_scan5) + scanV5Extra ) {
-          version_ = VLO_VERSION_5;
-          frame_size_ = sizeof(c_vlo_scan5);
-        }
-        else if( format_version == 5  && payload_size == sizeof(c_vlo_scan5) ) {
-          version_ = VLO_VERSION_5;
-          frame_size_ = sizeof(c_vlo_scan5);
-        }
-        else if( format_version == 6  && payload_size == sizeof(c_vlo_scan6_slm) + scanV6SLMExtra ) {
-          version_ = VLO_VERSION_6_SLM;
-          frame_size_ = sizeof(c_vlo_scan6_slm);
-        }
+      CF_DEBUG("format_version: %d -> %d frame_size_ = %zd",
+          format_version, version_, frame_size_);
 
-        CF_DEBUG("SET: format_version: %d -> %d frame_size_=%zd",
-            format_version, version_, frame_size_);
-
-        if( frame_size_ > 0 ) {
-          ifhd_.seek(0);
-          num_frames_ = ifhd_.num_frames();
-          fOk = true;
-        }
+      if( frame_size_ > 0 ) {
+        ifhd_.seek(0);
+        num_frames_ = ifhd_.num_frames();
+        fOk = true;
       }
     }
   }

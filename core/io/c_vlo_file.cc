@@ -156,7 +156,7 @@ void sort_echos_by_distance(c_vlo_scan6_slm & scan)
     typedef c_vlo_scan6_slm ScanType;
     typedef struct ScanType::Echo echo_type;
     typedef decltype(ScanType::Echo::dist) dist_type;
-    constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
+    constexpr auto max_dist_value = 0x7FFF; //std::numeric_limits<dist_type>::max() - 2;
 
     echo_type echos[scan.NUM_ECHOS];
     int cnz = 0;
@@ -651,11 +651,14 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
     }
   }
 
+  static constexpr  uint16_t min_distance = scan.MIN_DISTANCE;
+  static constexpr  uint16_t max_distance = scan.MAX_DISTANCE;
+
   switch (channel) {
 
     case c_vlo_file::DATA_CHANNEL_AMBIENT:
-    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK:
-    case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
+      case c_vlo_file::DATA_CHANNEL_ECHO_PEAK:
+      case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
       typedef decltype(ScanType::Echo::area) value_type;
       constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
@@ -665,10 +668,13 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
         for( int l = 0; l < std::min(scan.BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
           for( int e = 0; e < 3; ++e ) {
-            const auto &value = scan.echo[s][l][e].area;
-            if( value > 0 && value < max_value ) {
-              if( emask.empty() || !emask[l][s][e] ) {
-                image[scan.NUM_LAYERS - l - 1][s][e] = value; //
+            if( scan.echo[s][l][e].dist >= min_distance && scan.echo[s][l][e].dist <= max_distance ) {
+
+              const auto &value = scan.echo[s][l][e].area;
+              if( value > 0 && value < max_value ) {
+                if( emask.empty() || !emask[l][s][e] ) {
+                  image[scan.NUM_LAYERS - l - 1][s][e] = value; //
+                }
               }
             }
           }
@@ -689,15 +695,12 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int e = 0; e < 3; ++e ) {
-
-            const auto & distance = scan.echo[s][l][e].dist;
-
-            if ( distance > 0 ) {
-              if ( emask.empty() || !emask[l][s][e] ) {
+            if( scan.echo[s][l][e].dist >= min_distance && scan.echo[s][l][e].dist <= max_distance ) {
+              const auto &distance = scan.echo[s][l][e].dist;
+              if( emask.empty() || !emask[l][s][e] ) {
                 image[scan.NUM_LAYERS - l - 1][s][e] = distance;
               }
             }
-
           }
         }
       }
@@ -706,7 +709,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST:
-    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
+      case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
 
       typedef decltype(ScanType::Echo::area) value_type;
       typedef decltype(ScanType::Echo::dist) distance_type;
@@ -718,16 +721,17 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
           for( int e = 0; e < 3; ++e ) {
+            if( scan.echo[s][l][e].dist >= min_distance && scan.echo[s][l][e].dist <= max_distance ) {
 
-            const auto & value = scan.echo[s][l][e].area;
-            const auto & distance = scan.echo[s][l][e].dist;
+              const auto &value = scan.echo[s][l][e].area;
+              const auto &distance = scan.echo[s][l][e].dist;
 
-            if ( value > 0 && value < max_value && distance > 0 ) {
-              if ( emask.empty() || !emask[l][s][e] ) {
-                image[scan.NUM_LAYERS - l - 1][s][e] = ((double) value ) * ((double) distance);
+              if( value > 0 && value < max_value ) {
+                if( emask.empty() || !emask[l][s][e] ) {
+                  image[scan.NUM_LAYERS - l - 1][s][e] = ((double) value) * ((double) distance);
+                }
               }
             }
-
           }
         }
       }
@@ -735,9 +739,9 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
 
-    //
+      //
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST:
-    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
+      case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
 
       typedef decltype(ScanType::Echo::area) value_type;
       typedef decltype(ScanType::Echo::dist) distance_type;
@@ -748,23 +752,24 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
 
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int c = 0; c < 3; ++c ) {
+          for( int e = 0; e < 3; ++e ) {
+            if( scan.echo[s][l][e].dist >= min_distance && scan.echo[s][l][e].dist <= max_distance ) {
 
-            const auto & value = scan.echo[s][l][c].area;
-            const auto & distance = scan.echo[s][l][c].dist;
+              const auto &value = scan.echo[s][l][e].area;
+              const auto &distance = scan.echo[s][l][e].dist;
 
-            if ( value > 0 && value < max_value && distance > 0 ) {
-              image[scan.NUM_LAYERS - l - 1][s][c] = ((double) value ) * sqrt(0.01 * distance );
-            }
-            else {
-              image[scan.NUM_LAYERS - l - 1][s][c] = 0;
+              if( value > 0 && value < max_value ) {
+                image[scan.NUM_LAYERS - l - 1][s][e] = ((double) value) * sqrt(0.01 * distance);
+              }
+              else {
+                image[scan.NUM_LAYERS - l - 1][s][e] = 0;
+              }
             }
           }
         }
       }
 
       return image;
-
     }
 
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
@@ -772,8 +777,8 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS);
       image.setTo(0);
 
-      double min_intens[3] = {255, 255, 255};
-      double max_intens[3] = {0, 0, 0};
+      double min_intens[3] = { 255, 255, 255 };
+      double max_intens[3] = { 0, 0, 0 };
 
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
@@ -788,10 +793,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
                 const uint8_t &area =
                     scan.echo[s][l][e].area;
 
-                //if( area < 254 )
-                {
-                  image[scan.NUM_LAYERS - l - 1][s][e] = area;
-                }
+                image[scan.NUM_LAYERS - l - 1][s][e] = area;
               }
             }
           }
@@ -802,7 +804,6 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
     case c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK: {
-
       cv::Mat1w image(scan.NUM_LAYERS, scan.NUM_SLOTS);
       image.setTo(0);
 
@@ -812,19 +813,19 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
           int max_echo_index = -1;
           uint8_t max_peak = 0;
 
-          for ( int e = 0; e < 3; ++e ) {
+          for( int e = 0; e < 3; ++e ) {
+            if( scan.echo[s][l][e].dist >= min_distance && scan.echo[s][l][e].dist <= max_distance ) {
 
-            const auto &dist = scan.echo[s][l][e].dist;
+              const auto &dist = scan.echo[s][l][e].dist;
 
-            if ( dist > 0 && dist < 65534 ) {
-              if ( scan.echo[s][l][e].area > max_peak ) {
+              if( scan.echo[s][l][e].area > max_peak ) {
                 max_peak = scan.echo[s][l][e].area;
                 max_echo_index = e;
               }
             }
           }
 
-          if ( max_echo_index >= 0 ) {
+          if( max_echo_index >= 0 ) {
             image[scan.NUM_LAYERS - l - 1][s] =
                 scan.echo[s][l][max_echo_index].dist;
           }
@@ -835,7 +836,6 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
   }
-
 
   return cv::Mat();
 }
@@ -991,16 +991,15 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
 
       for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
 
-        const uint16_t & dist = scan.echo[s][l][e].dist;
-        if ( dist < 200 || dist >= 30000 ) {
+        const uint16_t dist = scan.echo[s][l][e].dist;
+        if ( dist <= scan.MIN_DISTANCE || dist >= scan.MAX_DISTANCE ) {
           continue;
         }
 
         const uint16_t area = scan.echo[s][l][e].area;
 
-        const float distance = 0.01 * dist;
-
         // mirrorSide = scan.mirrorSide;
+        const float distance = 0.01 * dist;
         const float x = distance * sin_inclination * cos_azimuth;
         const float y = -distance * sin_inclination * sin_azimuth;
         const float z = -distance * cos_inclination;

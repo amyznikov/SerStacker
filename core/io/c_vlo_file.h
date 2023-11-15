@@ -528,7 +528,10 @@ struct c_vlo_scan6_slm
   static constexpr  uint32_t NUM_LAYERS = 460;
   static constexpr  uint32_t NUM_ECHOS = 3;
   static constexpr  uint8_t NUM_ZONES = 3;
+
   static constexpr  uint32_t BAD_LAYERS = 292;
+  static constexpr  uint16_t MIN_DISTANCE = 100;
+  static constexpr  uint16_t MAX_DISTANCE = 30000;
 
   struct Echo
   {

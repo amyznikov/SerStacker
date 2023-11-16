@@ -410,6 +410,12 @@ void QMainAppWindow::onShowProfileGraphActionTriggered(bool checked)
 
       connect(plotProfileDialogBox_, &QProfileGraphDialogBox::visibilityChanged,
           this, &ThisClass::onPlotProfileDialogBoxVisibilityChanged);
+
+      connect(profileGraph_ctl_, &QProfileGraph::skipZeroPixlelsChanged,
+          [this]() {
+            updateProfileGraph();
+          });
+
     }
 
     plotProfileDialogBox_->show();
@@ -423,6 +429,14 @@ void QMainAppWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
   if( showProfileGraphAction_ ) {
     showProfileGraphAction_->setChecked(visible);
   }
+
+  if ( visible ) {
+    updateProfileGraph();
+  }
+}
+
+void QMainAppWindow::updateProfileGraph(QGraphicsItem * /*lineItem*/)
+{
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

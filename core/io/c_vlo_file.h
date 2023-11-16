@@ -56,6 +56,8 @@ struct c_vlo_scan1
   static constexpr uint16_t NUM_LAYERS = 360U;
   static constexpr uint16_t NUM_ECHOS = 3U;
   static constexpr uint32_t NUM_POINTS = (NUM_SLOTS * NUM_LAYERS) * NUM_ECHOS;
+  static constexpr uint16_t MIN_DISTANCE = 100;
+  static constexpr uint16_t MAX_DISTANCE = 30000;
 
   struct Config
   {
@@ -135,6 +137,8 @@ struct c_vlo_scan3
   static constexpr uint16_t NUM_LAYERS = 360U;
   static constexpr uint16_t NUM_ECHOS = 3U;
   static constexpr uint32_t NUM_POINTS = (NUM_SLOTS * NUM_LAYERS) * NUM_ECHOS;
+  static constexpr uint16_t MIN_DISTANCE = 100;
+  static constexpr uint16_t MAX_DISTANCE = 30000;
 
   struct Config
   {
@@ -215,6 +219,8 @@ struct c_vlo_scan5
   static constexpr int NUM_ECHOS = 3;
   static constexpr int NUM_POINTS = NUM_SLOTS * NUM_LAYERS * NUM_ECHOS;
   static constexpr int NUM_REFERENCE_SHOTS = 2;
+  static constexpr uint16_t MIN_DISTANCE = 100;
+  static constexpr uint16_t MAX_DISTANCE = 30000;
 
   struct timestamp
   {
@@ -438,6 +444,8 @@ struct c_vlo_scan6_base
   static constexpr  uint32_t NUM_POINTS = NUM_SLOTS * NUM_LAYERS * NUM_ECHOS;
   static constexpr  uint16_t NUM_REFERENCE_SHOTS = 2;
   static constexpr  uint16_t NUM_ZONES = 3;
+  static constexpr uint16_t MIN_DISTANCE = 100;
+  static constexpr uint16_t MAX_DISTANCE = 30000;
 
   struct timestamp
   {
@@ -529,9 +537,11 @@ struct c_vlo_scan6_slm
   static constexpr  uint32_t NUM_ECHOS = 3;
   static constexpr  uint8_t NUM_ZONES = 3;
 
-  static constexpr  uint32_t BAD_LAYERS = 292;
+  static constexpr  uint32_t START_BAD_LAYERS = NUM_LAYERS; // 292;
   static constexpr  uint16_t MIN_DISTANCE = 100;
   static constexpr  uint16_t MAX_DISTANCE = 30000;
+  static constexpr  uint16_t MIN_AREA = 1;
+  static constexpr  uint16_t MAX_AREA = 65000;
 
   struct Echo
   {
@@ -726,20 +736,14 @@ public:
     DATA_CHANNEL_ECHO_AREA,
     DATA_CHANNEL_ECHO_PEAK,
     DATA_CHANNEL_ECHO_WIDTH,
-    DATA_CHANNEL_ECHO_AREA_DIV_WIDTH,
-    DATA_CHANNEL_ECHO_PEAK_DIV_WIDTH,
 
     DATA_CHANNEL_ECHO_AREA_MUL_DIST,
     DATA_CHANNEL_ECHO_PEAK_MUL_DIST,
-
-    DATA_CHANNEL_ECHO_AREA_MUL_DIST2,
-    DATA_CHANNEL_ECHO_PEAK_MUL_DIST2,
 
     DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST,
     DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST,
 
     DATA_CHANNEL_DOUBLED_ECHO_PEAKS,
-
     DATA_CHANNEL_DIST_TO_MAX_PEAK,
 
   };

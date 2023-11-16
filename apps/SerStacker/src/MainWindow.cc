@@ -691,23 +691,20 @@ void MainWindow::onImageViewCurrentImageChanged()
   saveImageMaskAction->setEnabled(isvisible && hasmask);
   loadImageMaskAction->setEnabled(isvisible && hasimage);
 
-  if ( isvisible ) {
+  if( isvisible ) {
 
     imageSizeLabel_ctl->setText(qsprintf("%dx%d",
         imageView->currentImage().cols,
         imageView->currentImage().rows));
 
-    if( is_visible(profileGraph_ctl_) ) {
-      profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
-          imageView->currentImage());
-    }
+    updateProfileGraph();
 
     updateMeasurements();
 
-   // checkIfBadFrameSelected();
+    // checkIfBadFrameSelected();
   }
 
-  if ( is_visible(mtfControl_) ) {
+  if( is_visible(mtfControl_) ) {
     onMtfControlVisibilityChanged(true);
   }
 
@@ -789,6 +786,26 @@ void MainWindow::updateMeasurements()
     }
   }
 }
+
+void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
+{
+  if( is_visible(profileGraph_ctl_) && is_visible(imageView) ) {
+
+    if( QGraphicsLineShape *lineShape = dynamic_cast<QGraphicsLineShape*>(lineItem) ) {
+
+      profileGraph_ctl_->showProfilePlot(lineShape->sceneLine(),
+          imageView->currentImage());
+
+    }
+    else {
+
+      profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
+          imageView->currentImage());
+
+    }
+  }
+}
+
 
 void MainWindow::onMeasureRightNowRequested()
 {
@@ -1561,9 +1578,7 @@ void MainWindow::setupInputSequenceView()
               qsprintf("p1: (%g %g)  p2: (%g %g)  length: %g  angle: %g deg",
                   p1.x(), p1.y(), p2.x(), p2.y(), length, angle * 180 / M_PI));
 
-          if ( is_visible(profileGraph_ctl_) ) {
-            profileGraph_ctl_->showProfilePlot(line, imageView->currentImage());
-          }
+          updateProfileGraph(item);
 
         }
         else if ( (rectShape = dynamic_cast<QGraphicsRectShape* >(item))) {

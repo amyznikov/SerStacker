@@ -70,6 +70,7 @@ protected:
 
   virtual void onShowProfileGraphActionTriggered(bool checked);
   virtual void onPlotProfileDialogBoxVisibilityChanged(bool visible);
+  virtual void updateProfileGraph(QGraphicsItem * lineItem = nullptr);
 
 protected:
   static QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu);

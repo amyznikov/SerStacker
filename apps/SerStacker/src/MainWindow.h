@@ -67,14 +67,15 @@ private Q_SLOTS:
 
   void onCurrentViewVisibilityChanged();
   void onCurrentViewDisplayImageChanged();
-
   void onImageViewCurrentImageChanged();
 
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
   void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
+
   void updateMeasurements();
+  void updateProfileGraph(QGraphicsItem * lineItem = nullptr) override;
 
   void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
   void onPipelineThreadStarted();

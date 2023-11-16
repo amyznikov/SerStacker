@@ -8,16 +8,50 @@
 #include "QProfileGraph.h"
 #include <gui/widgets/QToolBarStretch.h>
 #include <gui/widgets/style.h>
+#include <core/ssprintf.h>
 
 
 #define ICON_plot       ":/qmeasure/icons/plot.png"
 #define ICON_settings   ":/qmeasure/icons/settings.png"
 #define ICON_copy       ":/qmeasure/icons/copy.png"
 
+
+template<>
+const c_enum_member* members_of<QCPGraph::LineStyle>()
+{
+  static constexpr c_enum_member members[] = {
+    { QCPGraph::LineStyle::lsNone, "None",
+        "data points are not connected with any lines (e.g. data only represented "
+        "with symbols according to the scatter style" },
+
+    { QCPGraph::LineStyle::lsLine, "Line",
+        "data points are connected by a straight line" },
+
+    { QCPGraph::LineStyle::lsStepLeft, "StepLeft",
+        "line is drawn as steps where the step height is the value of the left data point" },
+
+    { QCPGraph::LineStyle::lsStepRight, "StepRight",
+        "line is drawn as steps where the step height is the value of the right data point" },
+
+    { QCPGraph::LineStyle::lsStepCenter, "StepCenter",
+        "line is drawn as steps where the step is in between two data points" },
+
+    { QCPGraph::LineStyle::lsImpulse, "Impulse",
+        "each data point is represented by a line parallel to the value axis, "
+        "which reaches from the data point to the zero-value-line" },
+
+    { QCPGraph::LineStyle::lsLine }
+  };
+
+  return members;
+}
+
 namespace {
 
 template<class T>
-void get_pixels_(const cv::Mat & image, const QVector<cv::Point> & pts, QVector<double> & keys, QVector<double> values[4])
+void get_pixels_(const cv::Mat & image, const QVector<cv::Point> & pts, bool skip_zeros,
+    QVector<double> keys[4],
+    QVector<double> values[4])
 {
   const cv::Mat_<T> src =
       image;
@@ -25,55 +59,86 @@ void get_pixels_(const cv::Mat & image, const QVector<cv::Point> & pts, QVector<
   const int cn =
       image.channels();
 
-  keys.clear();
-
-  for ( int i = 0; i < 4; ++i ) {
-    values[i].clear();
+  for( int c = 0; c < 4; ++c ) {
+    values[c].clear();
+    keys[c].clear();
   }
 
-  for( int i = 0, n = pts.size(); i < n; ++i ) {
+  if( skip_zeros ) {
 
-    const cv::Point & p =
-        pts[i];
+    for( int i = 0, n = pts.size(); i < n; ++i ) {
 
-    if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
+      const cv::Point &p =
+          pts[i];
 
-      keys.append(i);
+      if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
 
-      const T *srcp = src[p.y];
+        const T *srcp = src[p.y];
 
-      for( int c = 0; c < cn; ++c ) {
-        values[c].append(srcp[p.x * cn + c]);
+        for( int c = 0; c < cn; ++c ) {
+
+          const T &value =
+              srcp[p.x * cn + c];
+
+          if( value != 0 ) {
+            keys[c].append(i);
+            values[c].append(value);
+          }
+        }
+
       }
+    }
 
+  }
+  else {
+
+    for( int i = 0, n = pts.size(); i < n; ++i ) {
+
+      const cv::Point &p =
+          pts[i];
+
+      if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
+
+        const T *srcp = src[p.y];
+
+        keys[0].append(i);
+
+        for( int c = 0; c < cn; ++c ) {
+
+          const T &value =
+              srcp[p.x * cn + c];
+
+          values[c].append(value);
+        }
+      }
     }
   }
-
 }
 
-void get_pixels(const cv::Mat & image, const QVector<cv::Point> & pts, QVector<double> & keys, QVector<double> values[4])
+void get_pixels(const cv::Mat & image, const QVector<cv::Point> & pts, bool skip_zeros,
+    QVector<double> keys[4], QVector<double> values[4])
 {
   switch (image.depth()) {
     case CV_8U:
-      get_pixels_<uint8_t>(image, pts, keys, values);
+      get_pixels_<uint8_t>(image, pts, skip_zeros, keys, values);
       break;
     case CV_8S:
-      get_pixels_<int8_t>(image, pts, keys, values);
+      get_pixels_<int8_t>(image, pts, skip_zeros, keys, values);
       break;
     case CV_16U:
-      get_pixels_<uint16_t>(image, pts, keys, values);
+      get_pixels_<uint16_t>(image, pts, skip_zeros, keys, values);
       break;
     case CV_16S:
-      get_pixels_<int16_t>(image, pts, keys, values);
+      get_pixels_<int16_t>(image, pts, skip_zeros, keys, values);
       break;
     case CV_32S:
-      get_pixels_<int32_t>(image, pts, keys, values);
+      get_pixels_<int32_t>(image, pts, skip_zeros, keys, values);
       break;
     case CV_32F:
-      get_pixels_<float>(image, pts, keys, values);
+      get_pixels_<float>(image, pts, skip_zeros, keys, values);
       break;
     case CV_64F:
-      get_pixels_<double>(image, pts, keys, values);
+      get_pixels_<double>(image, pts, skip_zeros, keys, values);
       break;
   }
 }
@@ -152,7 +217,20 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
 
     graphs_[i] = plot_->addGraph();
     graphs_[i]->setPen(pen);
+    graphs_[i]->setLineStyle(lineStyle_);
+
+    QCPScatterStyle scatterStyle =
+        graphs_[i]->scatterStyle();
+
+    scatterStyle.setSize(3);
+    scatterStyle.setShape(lineStyle_ == QCPGraph::lsNone ?
+        QCPScatterStyle::ScatterShape::ssSquare :
+        QCPScatterStyle::ScatterShape::ssNone);
+
+    graphs_[i]->setScatterStyle(scatterStyle);
+
   }
+
 
   QPen axis_pen(QColor(150, 150, 150));
   plot_->xAxis->setBasePen(axis_pen);
@@ -215,6 +293,36 @@ void QProfileGraph::replot()
   plot_->replot();
 }
 
+void QProfileGraph::setLineStyle(QCPGraph::LineStyle v)
+{
+  if ( lineStyle_ != v ) {
+
+    lineStyle_  = v;
+
+    for( int i = 0; i < 4; ++i ) {
+
+      graphs_[i]->setLineStyle(lineStyle_);
+
+      QCPScatterStyle scatterStyle =
+          graphs_[i]->scatterStyle();
+
+      scatterStyle.setShape(lineStyle_ == QCPGraph::lsNone ?
+          QCPScatterStyle::ScatterShape::ssSquare :
+          QCPScatterStyle::ScatterShape::ssNone);
+
+      graphs_[i]->setScatterStyle(scatterStyle);
+
+    }
+
+    plot_->replot();
+  }
+}
+
+QCPGraph::LineStyle QProfileGraph::lineStyle() const
+{
+  return lineStyle_;
+}
+
 void QProfileGraph::setFixXRange(bool v)
 {
   fixXRange_ = v;
@@ -233,6 +341,17 @@ void QProfileGraph::setFixYRange(bool v)
 bool QProfileGraph::fixYRange() const
 {
   return fixYRange_;
+}
+
+void QProfileGraph::setSkipZeroPixels(bool v)
+{
+  skipZeroPixels_ = v;
+  Q_EMIT skipZeroPixlelsChanged();
+}
+
+bool QProfileGraph::skipZeroPixels() const
+{
+  return skipZeroPixels_;
 }
 
 void QProfileGraph::setXRangeMin(double v)
@@ -282,76 +401,82 @@ void QProfileGraph::showProfilePlot(const QLineF & line, const cv::Mat & image)
 
 void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
 {
-  current_keys_.clear();
-  for ( int i = 0; i < 4; ++i ) {
-    current_values_[i].clear();
+  QVector<cv::Point> pts;
+
+  for( int c = 0; c < 4; ++c ) {
+    current_keys_[c].clear();
+    current_values_[c].clear();
   }
 
-  if ( &line != &currentLine_ ) {
+  if( &line != &currentLine_ ) {
     currentLine_ = line;
   }
 
-  QVector<cv::Point> pts;
+  if( !currentLine_.isNull() ) {
 
-  if( line.dx() != 0 || line.dy() != 0 ) {
+    if( line.dx() != 0 || line.dy() != 0 ) {
 
-    const QPoint p1 = line.p1();
-    const QPoint p2 = line.p2();
+      const QPoint p1 = line.p1();
+      const QPoint p2 = line.p2();
 
-    const int x1 = p1.x();
-    const int x2 = p2.x();
-    const int y1 = p1.y();
-    const int y2 = p2.y();
+      const int x1 = p1.x();
+      const int x2 = p2.x();
+      const int y1 = p1.y();
+      const int y2 = p2.y();
 
-    if( std::abs(x2 - x1) >= std::abs(y2 - y1) ) {
+      if( std::abs(x2 - x1) >= std::abs(y2 - y1) ) {
 
-      const double s =
-          (double) (y2 - y1) / (double) (x2 - x1);
+        const double s =
+            (double) (y2 - y1) / (double) (x2 - x1);
 
-      if ( x2 >= x1 ) {
+        if( x2 >= x1 ) {
 
-        for( int x = x1; x <= x2; ++x ) {
-          pts.append(cv::Point(x, qRound(y1 + (x - x1) * s)));
+          for( int x = x1; x <= x2; ++x ) {
+            pts.append(cv::Point(x, qRound(y1 + (x - x1) * s)));
+          }
         }
+        else {
+
+          for( int x = x1; x >= x2; --x ) {
+            pts.append(cv::Point(x, qRound(y1 + (x - x1) * s)));
+          }
+        }
+
       }
       else {
 
-        for( int x = x1; x >= x2; --x ) {
-          pts.append(cv::Point(x, qRound(y1 + (x - x1) * s)));
+        const double s =
+            (double) (x2 - x1) / (double) (y2 - y1);
+
+        if( y2 >= y1 ) {
+
+          for( int y = y1; y <= y2; ++y ) {
+            pts.append(cv::Point(qRound(x1 + (y - y1) * s), y));
+          }
         }
-      }
+        else {
 
-    }
-    else {
-
-      const double s =
-          (double) (x2 - x1) / (double) (y2 - y1);
-
-      if ( y2 >= y1  ) {
-
-        for( int y = y1; y <= y2; ++y ) {
-          pts.append(cv::Point(qRound(x1 + (y - y1) * s), y));
-        }
-      }
-      else {
-
-        for( int y = y1; y >= y2; --y ) {
-          pts.append(cv::Point(qRound(x1 + (y - y1) * s), y));
+          for( int y = y1; y >= y2; --y ) {
+            pts.append(cv::Point(qRound(x1 + (y - y1) * s), y));
+          }
         }
       }
     }
+
+
+    get_pixels(image, pts, skipZeroPixels_,
+        current_keys_, current_values_);
   }
-
 
   const int cn =
       image.channels();
 
-  get_pixels(image, pts, current_keys_, current_values_);
-
   for( int c = 0; c < 4; ++c ) {
 
-    if ( c < cn ) {
-      graphs_[c]->setData(current_keys_, current_values_[c]);
+    if( c < cn ) {
+      graphs_[c]->setData(skipZeroPixels_ ?
+          current_keys_[c] : current_keys_[0],
+          current_values_[c]);
     }
     else {
 
@@ -361,6 +486,7 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
       graphs_[c]->setData(empty_keys, empty_values);
     }
   }
+
   if( !fixXRange_ ) {
     plot_->xAxis->setRange(0, pts.size());
     Q_EMIT xRangeRescaled();
@@ -401,15 +527,10 @@ void QProfileGraph::onShowSettingsActionTriggered(bool checked)
 
 void QProfileGraph::onCopyToClipboardActionTriggered()
 {
-  if ( current_keys_.empty() ) {
-    CF_DEBUG("No Data available");
-    return;
-  }
-
   int num_columns = 0;
 
-  for ( int j = 0; j < 4; ++j ) {
-    if ( !current_values_[j].isEmpty() ) {
+  for ( int c = 0; c < 4; ++c ) {
+    if ( !current_keys_[c].empty() && !current_values_[c].isEmpty() ) {
       ++num_columns;
     }
   }
@@ -425,27 +546,66 @@ void QProfileGraph::onCopyToClipboardActionTriggered()
     return;
   }
 
-  QString text = "X";
 
-  for( int j = 0; j < num_columns; ++j ) {
-    text.append(qsprintf("\tY%d", j));
-  }
+  QString text;
 
-  text.append("\n");
+  if ( skipZeroPixels_ ) {
 
-  for ( int i = 0, n = current_keys_.size(); i < n; ++i ) {
+    text = "X0\tY0";
 
-    text.append(qsprintf("%g", current_keys_[i]));
-
-    for( int j = 0; j < num_columns; ++j ) {
-      text.append(qsprintf("\t%g", current_values_[j][i]));
+    for( int c = 1; c < num_columns; ++c ) {
+      text.append(qsprintf("\tY%d", c));
     }
 
     text.append("\n");
+
+    int max_points = current_keys_[0].size();
+    for( int c = 1; c < num_columns; ++c ) {
+      if( current_keys_[c].size() > max_points ) {
+        max_points = current_keys_[c].size();
+      }
+    }
+
+    for( int i = 0; i < max_points; ++i ) {
+      for( int c = 0; c < num_columns; ++c ) {
+
+        if( i >= current_keys_[c].size() ) {
+          text.append(qsprintf(" \t "));
+        }
+        else {
+          text.append(qsprintf("\t%g\t%g", current_keys_[c][i],
+              current_values_[c][i]));
+        }
+      }
+
+      text.append("\n");
+    }
+
+  }
+  else {
+
+    text = "X";
+
+    for( int c = 0; c < num_columns; ++c ) {
+      text.append(qsprintf("\tY%d", c));
+    }
+
+    text.append("\n");
+
+    for ( int i = 0, n = current_keys_[0].size(); i < n; ++i ) {
+
+      text.append(qsprintf("%g", current_keys_[0][i]));
+
+      for( int c = 0; c < num_columns; ++c ) {
+        text.append(qsprintf("\t%g", current_values_[c][i]));
+      }
+
+      text.append("\n");
+    }
   }
 
-  clipboard->setText(text);
 
+  clipboard->setText(text);
   CF_DEBUG("Data copied");
 }
 
@@ -455,14 +615,28 @@ void QProfileGraph::onCopyToClipboardActionTriggered()
 QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
     Base("QProfileGraphSettings", parent)
 {
+  lineStyle_ctl =
+      add_enum_combobox<QCPGraph::LineStyle>("Line Style:",
+          "Set line style",
+          [this](QCPGraph::LineStyle v) {
+            if ( profileGraph_ ) {
+              profileGraph_->setLineStyle(v);
+            }
+          },
+          [this](QCPGraph::LineStyle * v) {
+            if ( profileGraph_ ) {
+              *v = profileGraph_->lineStyle();
+              return true;
+            }
+            return false;
+          });
+
   fixXRange_ctl =
       add_checkbox("Fix X range:",
           "Set checked to fix X range of the plot",
           [this](bool checked) {
             if ( profileGraph_ ) {
               profileGraph_->setFixXRange(checked);
-//              xRangeMin_ctl->setEnabled(!checked);
-//              xRangeMax_ctl->setEnabled(!checked);
             }
           },
           [this](bool * checked) {
@@ -517,8 +691,6 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
           [this](bool checked) {
             if ( profileGraph_ ) {
               profileGraph_->setFixYRange(checked);
-//              yRangeMin_ctl->setEnabled(!checked);
-//              yRangeMax_ctl->setEnabled(!checked);
             }
           },
           [this](bool * checked) {
@@ -567,6 +739,24 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
 
   ///
 
+  skipZeros_ctl =
+      add_checkbox("Skip Zero values:",
+          "Set checked to skip zero valued values",
+          [this](bool checked) {
+            if ( profileGraph_ ) {
+              profileGraph_->setSkipZeroPixels(checked);
+            }
+          },
+          [this](bool * checked) {
+            if ( profileGraph_ ) {
+              *checked = profileGraph_->skipZeroPixels();
+              return true;
+            }
+            return false;
+          });
+
+  ///
+
   updateControls();
 }
 
@@ -592,6 +782,9 @@ void QProfileGraphSettings::setProfileGraph(QProfileGraph * profileGraph)
           yRangeMax_ctl->setValue(profileGraph_->yRangeMax());
         });
 
+    connect(profileGraph_, &QProfileGraph::skipZeroPixlelsChanged,
+        this, &ThisClass::parameterChanged);
+
   }
 
   updateControls();
@@ -608,15 +801,7 @@ void QProfileGraphSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
-
-//    xRangeMin_ctl->setEnabled(!profileGraph_->fixXRange());
-//    xRangeMax_ctl->setEnabled(!profileGraph_->fixXRange());
-//
-//    yRangeMin_ctl->setEnabled(!profileGraph_->fixYRange());
-//    yRangeMax_ctl->setEnabled(!profileGraph_->fixYRange());
-
     Base::onupdatecontrols();
-
     setEnabled(true);
   }
 }

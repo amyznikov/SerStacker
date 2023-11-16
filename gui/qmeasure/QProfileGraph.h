@@ -30,11 +30,17 @@ public:
 
   const QLine & currentLine() const;
 
+  void setLineStyle(QCPGraph::LineStyle v);
+  QCPGraph::LineStyle lineStyle() const;
+
   void setFixXRange(bool v);
   bool fixXRange() const;
 
   void setFixYRange(bool v);
   bool fixYRange() const;
+
+  void setSkipZeroPixels(bool v);
+  bool skipZeroPixels() const;
 
   void setXRangeMin(double v);
   double xRangeMin() const;
@@ -48,12 +54,14 @@ public:
   void setYRangeMax(double v);
   double yRangeMax() const;
 
+
   void replot();
 
 Q_SIGNALS:
   void visibilityChanged(bool visble);
   void xRangeRescaled();
   void yRangeRescaled();
+  void skipZeroPixlelsChanged();
 
 protected Q_SLOTS:
   void onShowSettingsActionTriggered(bool checked);
@@ -70,22 +78,25 @@ protected:
   QAction * showSettingsAction_ = nullptr;
   QProfileGraphSettingsDialogBox * plotSettings_ctl = nullptr;
 
-
   QCustomPlot *plot_ = nullptr;
   QCPGraph *graphs_[4] = { nullptr };
+  QCPGraph::LineStyle lineStyle_ = QCPGraph::lsLine;
 
-  QVector<double> current_keys_;
+  QVector<double> current_keys_[4];
   QVector<double> current_values_[4];
 
   QLine currentLine_;
   bool fixXRange_ = false;
   bool fixYRange_ = false;
+
+  bool skipZeroPixels_ = false;
 };
 
 
 class QProfileGraphSettings :
     public QSettingsWidget
 {
+  Q_OBJECT;
 public:
   typedef QProfileGraphSettings ThisClass;
   typedef QSettingsWidget Base;
@@ -102,6 +113,8 @@ protected:
 protected:
   QProfileGraph * profileGraph_ = nullptr;
 
+  QEnumComboBox<QCPGraph::LineStyle> * lineStyle_ctl = nullptr;
+
   QCheckBox * fixXRange_ctl = nullptr;
   QNumericBox * xRangeMin_ctl = nullptr;
   QNumericBox * xRangeMax_ctl = nullptr;
@@ -110,6 +123,7 @@ protected:
   QNumericBox * yRangeMin_ctl = nullptr;
   QNumericBox * yRangeMax_ctl = nullptr;
 
+  QCheckBox * skipZeros_ctl = nullptr;
 };
 
 

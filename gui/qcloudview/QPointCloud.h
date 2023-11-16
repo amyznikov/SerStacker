@@ -71,9 +71,6 @@ public:
 
   cv::Mat3f points;
   cv::Mat colors;
-  //cv::Mat3f display_points;
-  //cv::Mat3b display_colors;
-
   cv::Mat1b display_mask;
 
   QVector3D Rotation; // angles [Rx;Ry;Rz]

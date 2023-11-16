@@ -127,7 +127,7 @@ protected:
   QColor backgroundColor_ = Qt::black;
   QColor foregroundColor_ = Qt::white;
   double fov_ = M_PI / 2;
-  double nearPlane_ = 1.0;
+  double nearPlane_ = 0.2;
   double farPlane_ = 1000.0;
 
   QVector3D viewPoint_ = QVector3D(40, 30, 30);

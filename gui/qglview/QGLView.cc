@@ -543,6 +543,12 @@ void QGLView::mousePressEvent(QMouseEvent *e)
 #else
   prev_mouse_pos_ = e->localPos();
 #endif
+
+  if( (e->buttons() == Qt::LeftButton) && (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) ) {
+    setAutoShowViewTarget(!autoShowViewTarget());
+    update();
+  }
+
   e->ignore();
 }
 
@@ -787,6 +793,7 @@ void QGLView::showKeyBindings()
     static const QString text =
         " <p><strong>LeftButton</strong> : Rotate camera around of the Up / Right axes </p>"
         " <p><strong>Shift + LeftButton</strong> : Rotate camera around of the Forward Looking axis </p>"
+        " <p><strong>Ctrl + Shift + LeftButton</strong> : Toggle auto show target point </p>"
         ""
         " <p><strong>RightButton</strong> : Translate (shift) camera Up / Right  </p>"
         ""

@@ -43,11 +43,16 @@ public:
   void set_parameters(double shadows, double highlights, double midtones);
   void get_parameters(double * shadows, double * highlights, double * midtones) const;
 
+  double apply(double pix) const override;
+
+  cv::Scalar apply(const cv::Scalar & s,
+      int channels = 0) const;
+
   bool apply(cv::InputArray src_image,
       cv::OutputArray dst_image,
       int ddepth = -1) const override;
 
-  double apply(double pix) const override;
+
 
   bool find_midtones_balance(cv::InputArray input_image_histogram);
 

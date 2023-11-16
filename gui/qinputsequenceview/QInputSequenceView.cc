@@ -396,23 +396,23 @@ void QInputSequenceView::loadNextFrame()
 
         if ( sourceOutputType_ == c_input_source::OUTPUT_TYPE_CLOUD3D  ) {
 
-          cloudView_->clouds().clear();
+          cv::Mat3f points;
+          cv::Mat colors;
 
-          if( currentView() != cloudView_ ) {
-            setCurrentView(cloudView_);
-          }
-
-          std::vector<cv::Vec3f> points;
-          std::vector<cv::Vec3b> colors;
+          cloudView_->clear();
 
           if ( !vlo->read_cloud3d(points, colors) ) {
             CF_ERROR("vlo->read_cloud3d() fails");
           }
           else {
-            cloudView_->clouds().emplace_back(QPointCloud::create(points, colors));
-            //cloudView_->update();
-            cloudView_->redraw();
+            cloudView_->add(QPointCloud::create(points, colors, false));
           }
+
+          if( currentView() != cloudView_ ) {
+            setCurrentView(cloudView_);
+          }
+
+          cloudView_->redraw();
 
           return;
         }

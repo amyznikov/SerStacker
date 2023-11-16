@@ -856,21 +856,17 @@ bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_ch
 
   if( !intensityImage.empty() ) {
 
-    autoclip(intensityImage, cv::noArray(),
-        0.01, 99.99,
-        0, 255);
-
-    if( intensityImage.depth() != CV_8U ) {
-      intensityImage.convertTo(intensityImage, CV_8U);
-    }
-
     if ( intensityImage.channels() == 1 ) {
       cv::cvtColor(intensityImage, intensityImage,
           cv::COLOR_GRAY2BGR);
     }
+
+    if( intensityImage.depth() != CV_32F ) {
+      intensityImage.convertTo(intensityImage, CV_32F);
+    }
   }
 
-  const cv::Mat3b intensity =
+  const cv::Mat3f intensity =
       intensityImage;
 
   const float firstVertAngle =
@@ -882,7 +878,7 @@ bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_ch
   const float yawCorrection = 0;
 
   std::vector<cv::Vec3f> output_points;
-  std::vector<cv::Vec3b> output_colors;
+  std::vector<cv::Vec3f> output_colors;
 
   output_points.reserve(scan.NUM_POINTS);
   output_colors.reserve(scan.NUM_POINTS);
@@ -921,10 +917,10 @@ bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_ch
           const float z = scale * distance * sin_vert;
           output_points.emplace_back(x, y, z);
 
-          const uint8_t color =
+          const float gray_level =
               intensity[l][s][e];
 
-          output_colors.emplace_back(color, color, color);
+          output_colors.emplace_back(gray_level, gray_level, gray_level);
         }
       }
     }
@@ -947,25 +943,21 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
 
   if( !intensityImage.empty() ) {
 
-    autoclip(intensityImage, cv::noArray(),
-        0.01, 99.99,
-        0, 255);
-
-    if( intensityImage.depth() != CV_8U ) {
-      intensityImage.convertTo(intensityImage, CV_8U);
-    }
-
     if ( intensityImage.channels() == 1 ) {
       cv::cvtColor(intensityImage, intensityImage,
           cv::COLOR_GRAY2BGR);
     }
+
+    if( intensityImage.depth() != CV_32F ) {
+      intensityImage.convertTo(intensityImage, CV_32F);
+    }
   }
 
-  const cv::Mat3b intensity =
+  const cv::Mat3f intensity =
       intensityImage;
 
   std::vector<cv::Vec3f> output_points;
-  std::vector<cv::Vec3b> output_colors;
+  std::vector<cv::Vec3f> output_colors;
 
   output_points.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
   output_colors.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
@@ -1004,11 +996,11 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
         const float y = -distance * sin_inclination * sin_azimuth;
         const float z = -distance * cos_inclination;
 
-        const uint8_t gray =
+        const float gray_level =
             intensity[scan.NUM_LAYERS - l - 1][s][e];
 
         output_points.emplace_back(x, y, z);
-        output_colors.emplace_back(gray, gray, gray);
+        output_colors.emplace_back(gray_level, gray_level, gray_level);
       }
     }
   }

@@ -45,10 +45,222 @@ void save_parameter(const QString & prefix, const char * name, const QVector3D &
 ///////////////////////////////////////////////////////////////////////////////
 
 namespace {
-  enum DISPLAY_TYPE {
-    DISPLAY_PIXEL_VALUE,
-  };
+
+enum DISPLAY_TYPE {
+  DISPLAY_PIXEL_VALUE,
+};
+
+template<class T>
+static bool compute_colors_(const c_pixinsight_mtf &mtf,
+    const cv::Mat3f & points, const cv::Mat & src_colors,
+    cv::Mat3b & display_colors)
+{
+  const int src_rows =
+      src_colors.rows;
+
+  const int src_cols  =
+      src_colors.cols;
+
+  const int src_channels =
+      src_colors.channels();
+
+  if ( src_channels == 1 ) {
+
+    display_colors.create(src_rows, 1);
+
+    const cv::Mat_<T> src =
+        src_colors;
+
+    for( int i = 0; i < src_rows; ++i ) {
+
+      const int gray =
+          mtf.apply(src[i][0]);
+
+      display_colors[i][0][0] = gray;
+      display_colors[i][0][1] = gray;
+      display_colors[i][0][2] = gray;
+    }
+
+  }
+  else if ( src_channels == 3 ) {
+
+    display_colors.create(src_rows, 1);
+
+    const cv::Mat_<cv::Vec<T, 3>> src =
+        src_colors;
+
+    for( int i = 0; i < src_rows; ++i ) {
+
+      display_colors[i][0][0] = mtf.apply(src[i][0][0]);
+      display_colors[i][0][1] = mtf.apply(src[i][0][1]);
+      display_colors[i][0][2] = mtf.apply(src[i][0][2]);
+    }
+
+  }
+  else {
+    CF_ERROR("Unsupported number of src_channels=%d",
+        src_channels);
+    return false;
+  }
+
+  return true;
 }
+
+static bool compute_colors(const c_pixinsight_mtf &mtf,
+    const cv::Mat3f & points, const cv::Mat & src_colors,
+    cv::Mat3b & display_colors)
+{
+  switch (src_colors.depth()) {
+    case CV_8U:
+      return compute_colors_<uint8_t>(mtf, points, src_colors, display_colors);
+    case CV_8S:
+      return compute_colors_<int8_t>(mtf, points, src_colors, display_colors);
+    case CV_16U:
+      return compute_colors_<uint16_t>(mtf, points, src_colors, display_colors);
+    case CV_16S:
+      return compute_colors_<int16_t>(mtf, points, src_colors, display_colors);
+    case CV_32S:
+      return compute_colors_<int32_t>(mtf, points, src_colors, display_colors);
+    case CV_32F:
+      return compute_colors_<float>(mtf, points, src_colors, display_colors);
+    case CV_64F:
+      return compute_colors_<double>(mtf, points, src_colors, display_colors);
+  }
+
+  display_colors.release();
+  return false;
+}
+
+
+cv::Scalar get_point_color(const cv::Mat & src, int r)
+{
+  cv::Scalar s;
+
+  const int channels =
+      src.channels();
+
+  switch (src.depth()) {
+    case CV_8U: {
+      const uint8_t *p = src.ptr<const uint8_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    case CV_8S: {
+      const int8_t *p = src.ptr<const int8_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    case CV_16U: {
+      const uint16_t *p = src.ptr<const uint16_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    case CV_16S: {
+      const int16_t *p = src.ptr<const int16_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    case CV_32S: {
+      const int32_t *p = src.ptr<const int32_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    case CV_32F: {
+      const float *p = src.ptr<const float>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    case CV_64F: {
+      const double *p = src.ptr<const double>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = p[c];
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return s;
+}
+
+cv::Scalar compute_point_color(const cv::Mat & src, int r, const c_pixinsight_mtf & mtf)
+{
+  cv::Scalar s;
+
+  const int channels =
+      src.channels();
+
+  switch (src.depth()) {
+    case CV_8U: {
+      const uint8_t *p = src.ptr<const uint8_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    case CV_8S: {
+      const int8_t *p = src.ptr<const int8_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    case CV_16U: {
+      const uint16_t *p = src.ptr<const uint16_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    case CV_16S: {
+      const int16_t *p = src.ptr<const int16_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    case CV_32S: {
+      const int32_t *p = src.ptr<const int32_t>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    case CV_32F: {
+      const float *p = src.ptr<const float>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    case CV_64F: {
+      const double *p = src.ptr<const double>(r);
+      for( int c = 0; c < channels; ++c ) {
+        s[c] = mtf.apply(p[c]);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return s;
+}
+
+} // namespace
 
 template<>
 const c_enum_member* members_of<DISPLAY_TYPE>()
@@ -89,30 +301,18 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
 
   if( cloudView_ ) {
 
-    int v;
+    double minv, maxv;
 
-    for( const QPointCloud::ptr &cloud : cloudView_->clouds() ) {
-      for( const QColor &color : cloud->colors ) {
+    for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
+      if( cloud->visible && cloud->colors.rows > 0 ) {
 
-        if( (v = color.red()) < *minval ) {
-          *minval = v;
-        }
-        if( v > *maxval ) {
-          *maxval = v;
-        }
+        cv::minMaxLoc(cloud->colors, &minv, &maxv);
 
-        if( (v = color.green()) < *minval ) {
-          *minval = v;
+        if( minv < *minval ) {
+          *minval = minv;
         }
-        if( v > *maxval ) {
-          *maxval = v;
-        }
-
-        if( (v = color.blue()) < *minval ) {
-          *minval = v;
-        }
-        if( v > *maxval ) {
-          *maxval = v;
+        if( maxv > *maxval ) {
+          *maxval = maxv;
         }
       }
     }
@@ -128,21 +328,42 @@ void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * imin, 
     return;
   }
 
-  getInputDataRange(imin, imax);
+  int max_channels = 0;
 
-  c_histogram_builder builder;
+  for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
+    if( cloud->visible && cloud->colors.rows > 0 ) {
 
-  builder.set_input_range(*imin, *imax);
-  builder.set_channels(3);
-  builder.set_bins(256);
+      const int channels =
+          cloud->colors.channels();
 
-  for( const QPointCloud::ptr &cloud : cloudView_->clouds() ) {
-    for( const QColor &color : cloud->colors ) {
-      builder.add_pixel(cv::Scalar(color.blue(), color.green(), color.red()));
+      if( channels > max_channels ) {
+        max_channels = channels;
+      }
     }
   }
 
-  builder.compute(H);
+  if( max_channels > 0 ) {
+
+    c_histogram_builder builder;
+
+    getInputDataRange(imin, imax);
+
+    builder.set_input_range(*imin, *imax);
+    builder.set_channels(max_channels);
+    builder.set_bins(256);
+
+    for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
+      if( cloud->visible && cloud->colors.rows > 0 ) {
+
+        for( int i = 0; i < cloud->colors.rows; ++i ) {
+          builder.add_pixel(get_point_color(cloud->colors, i));
+        }
+
+      }
+    }
+
+    builder.compute(H);
+  }
 }
 
 void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
@@ -150,7 +371,7 @@ void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin,
   displayParams().mtf.get_output_range(omin, omax);
   H.release();
 
-  if( !cloudView_ || cloudView_->clouds().empty() ) {
+  if( !cloudView_ || cloudView_->display_colors_.empty() ) {
     return;
   }
 
@@ -160,55 +381,13 @@ void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin,
   builder.set_channels(3);
   builder.set_bins(256);
 
-  for( const QPointCloud::ptr &cloud : cloudView_->clouds() ) {
-
-    const std::vector<QColor> &display_colors =
-        cloud->display_colors.empty() ? cloud->colors :
-            cloud->display_colors;
-
-    for( const QColor &color : display_colors ) {
-      builder.add_pixel(cv::Scalar(color.blue(), color.green(), color.red()));
-    }
+  for ( const cv::Vec3b & color : cloudView_->display_colors_ ) {
+    builder.add_pixel(color);
   }
 
   builder.compute(H);
 }
 
-
-
-void QCloudViewMtfDisplay::computeDisplayColors(const std::vector<QPoint3D> & points,
-    const std::vector<QColor> & src_colors,
-    std::vector<QColor> & display_colors)
-{
-  DisplayParams &opts =
-      displayParams();
-
-  c_pixinsight_mtf &mtf =
-      opts.mtf;
-
-  double imin, imax;
-
-  mtf.get_input_range(&imin, &imax);
-
-  if ( imin >= imax  ) {
-    mtf.set_input_range(0, 255);
-  }
-
-  display_colors.clear();
-
-  for( const QColor &color : src_colors ) {
-
-    const int red = mtf.apply(color.red());
-    const int green = mtf.apply(color.green());
-    const int blue = mtf.apply(color.blue());
-
-    display_colors.emplace_back(QColor(red, green, blue));
-  }
-
-  if ( imin >= imax  ) {
-    mtf.set_input_range(imin, imax);
-  }
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -231,50 +410,54 @@ const QCloudViewMtfDisplay & QGLCloudViewer::mtfDisplay() const
   return mtfDisplay_;
 }
 
-std::vector<QPointCloud::ptr> & QGLCloudViewer::clouds()
+const std::vector<QPointCloud::sptr> & QGLCloudViewer::clouds() const
 {
   return clouds_;
 }
 
-const std::vector<QPointCloud::ptr> & QGLCloudViewer::clouds() const
-{
-  return clouds_;
-}
-
-const QPointCloud::ptr & QGLCloudViewer::cloud(int index) const
+const QPointCloud::sptr & QGLCloudViewer::cloud(int index) const
 {
   return clouds_[index];
 }
 
+void QGLCloudViewer::add(const QPointCloud::sptr & cloud)
+{
+  clouds_.emplace_back(cloud);
+  updateDisplayPoints();
+}
+
+
 void QGLCloudViewer::clear()
 {
   clouds_.clear();
-  update();
+  updateDisplayPoints();
 }
 
 void QGLCloudViewer::rotateToShowCloud()
 {
-  double mx = 0, my = 0, mz = 0;
+  cv::Vec3f mv;
   int mn = 0;
 
-  for (const QPointCloud::ptr & cloud : clouds_ ) {
-    for (const QPoint3D & p : cloud->points ) {
-      mx += p.x;
-      my += p.y;
-      mz += p.z;
+  for( const QPointCloud::sptr &cloud : clouds_ ) {
+
+    const cv::Mat3f &points =
+        cloud->points;
+
+    for( int i = 0; i < points.rows; ++i ) {
+      mv += points[i][0];
       mn += 1;
     }
   }
 
-  if ( mn > 0 ) {
-    setViewTargetPoint(QVector3D(mx / mn, my / mn, mz / mn));
+  if( mn > 0 ) {
+    setViewTargetPoint(QVector3D(mv[0] / mn, mv[1] / mn, mv[2] / mn));
   }
 }
 
 void QGLCloudViewer::setSceneOrigin(const QVector3D & v)
 {
   sceneOrigin_ = v;
-  update();
+  updateDisplayPoints();
 }
 
 QVector3D QGLCloudViewer::sceneOrigin() const
@@ -296,7 +479,7 @@ double QGLCloudViewer::pointSize() const
 void QGLCloudViewer::setPointBrightness(double v)
 {
   pointBrightness_ = v;
-  update();
+  updateDisplayColors();
 }
 
 double QGLCloudViewer::pointBrightness() const
@@ -334,76 +517,188 @@ void QGLCloudViewer::glPostDraw()
 
 void QGLCloudViewer::glDraw()
 {
-  // CF_DEBUG("glIsEnabled(GL_DEPTH_TEST)=%d", glIsEnabled(GL_DEPTH_TEST));
+  computeDisplayPoints();
 
-  glPointSize(pointSize_);
+  if ( !display_points_.empty() ) {
 
-  for ( int i = 0, n = clouds_.size(); i < n; ++i ) {
+    glPointSize(pointSize_);
+    glColor3ub(255, 255, 255);
 
-    const QPointCloud::ptr & cloud =
-        clouds_[i];
+    // activate vertex arrays before array drawing
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 0, display_points_.data());
 
-    if ( cloud->visible ) {
-
-      const std::vector<QPoint3D> & points =
-          cloud->points;
-
-      if( cloud->display_colors.size() != cloud->colors.size() ) {
-        mtfDisplay_.computeDisplayColors(points, cloud->colors,
-            cloud->display_colors);
-      }
-
-      const std::vector<QColor> &colors =
-          cloud->display_colors;
-
-      const bool haveColors = colors.size() == points.size();
-
-      const double Sx = cloud->Scale.x;
-      const double Sy = cloud->Scale.y;
-      const double Sz = cloud->Scale.z;
-
-      const double Tx = cloud->Translation.x;
-      const double Ty = cloud->Translation.y;
-      const double Tz = cloud->Translation.z;
-
-      const double Rx = cloud->Rotation.x;
-      const double Ry = cloud->Rotation.y;
-      const double Rz = cloud->Rotation.z;
-
-
-      if ( !haveColors ) {
-        glColor3ub(255, 255, 255);
-      }
-
-      glBegin(GL_POINTS);
-
-      for ( int j = 0, m = points.size(); j < m; ++j ) {
-
-        if ( haveColors ) {
-          const QColor & c = colors[j];
-          glColor3ub(std::max(0, std::min(255, (int) (c.red() + pointBrightness_))),
-              std::max(0, std::min(255, (int) (c.green() + pointBrightness_))),
-              std::max(0, std::min(255, (int) (c.blue() + pointBrightness_))));
-        }
-
-        const QPoint3D & p =
-            points[j];
-
-        glVertex3d(p.x *  Sx - Tx - sceneOrigin_.x(),
-            p.y * Sy - Ty - sceneOrigin_.y(),
-            p.z * Sz - Tz - sceneOrigin_.z());
-      }
-
-      glEnd(/*GL_POINTS*/);
+    if ( !display_colors_.empty() ) {
+      glEnableClientState(GL_COLOR_ARRAY);
+      glColorPointer(3, GL_UNSIGNED_BYTE, 3, display_colors_.data());
     }
+
+    glDrawArrays(GL_POINTS, 0, display_points_.size());
+
+    if ( !display_colors_.empty() ) {
+      glDisableClientState(GL_COLOR_ARRAY);
+    }
+    glDisableClientState(GL_VERTEX_ARRAY);
   }
 
 }
 
+void QGLCloudViewer::updateDisplayPoints()
+{
+  update_display_points_ = true;
+  update();
+}
+
+void QGLCloudViewer::updateDisplayColors()
+{
+  update_display_colors_ = true;
+  update();
+}
+
+void QGLCloudViewer::computeDisplayPoints()
+{
+  if( update_display_points_ || display_points_.empty() ) {
+
+    int total_points_to_display = 0;
+
+    for( const auto &cloud : clouds_ ) {
+      if( cloud->visible ) {
+        total_points_to_display +=
+            cloud->points.rows;
+      }
+    }
+
+    display_points_.clear();
+
+    if( total_points_to_display > 0 ) {
+
+      display_points_.reserve(total_points_to_display);
+
+      for( const auto &cloud : clouds_ ) {
+        if( cloud->visible && cloud->points.rows > 0 ) {
+
+          const cv::Mat3f &points =
+              cloud->points;
+
+          const double Sx = cloud->Scale.x();
+          const double Sy = cloud->Scale.y();
+          const double Sz = cloud->Scale.z();
+
+          const double Tx = cloud->Translation.x();
+          const double Ty = cloud->Translation.y();
+          const double Tz = cloud->Translation.z();
+
+          const double Rx = cloud->Rotation.x();
+          const double Ry = cloud->Rotation.y();
+          const double Rz = cloud->Rotation.z();
+
+          for( int i = 0; i < points.rows; ++i ) {
+
+            const cv::Vec3f & srcp =
+                points[i][0];
+
+            display_points_.emplace_back(srcp[0] * Sx - Tx - sceneOrigin_.x(),
+                srcp[1] * Sy - Ty - sceneOrigin_.y(),
+                srcp[2] * Sz - Tz - sceneOrigin_.z());
+
+          }
+        }
+      }
+    }
+
+    update_display_colors_ = true;
+  }
+
+  if( update_display_colors_ || display_colors_.size() != display_points_.size() ) {
+
+    display_colors_.clear();
+
+    QMtfDisplay::DisplayParams & opts =
+        mtfDisplay_.displayParams();
+
+    c_pixinsight_mtf &mtf =
+        opts.mtf;
+
+    double imin, imax;
+
+    mtf.get_input_range(&imin, &imax);
+
+    if( imin >= imax ) {
+      mtf.set_input_range(0, 255);
+    }
+
+    for( const auto &cloud : clouds_ ) {
+      if( cloud->visible && cloud->points.rows > 0 ) {
+
+        if ( cloud->colors.rows != cloud->points.rows ) {
+
+          int gray = mtf.apply(255);
+
+          for( int i = 0, n = cloud->points.rows; i < n; ++i ) {
+            display_colors_.emplace_back(gray, gray, gray);
+          }
+
+        }
+        else {
+
+          const cv::Mat & colors =
+              cloud->colors;
+
+          const int channels =
+              colors.channels();
+
+
+          for( int i = 0; i < colors.rows; ++i ) {
+
+            const cv::Scalar color =
+                compute_point_color(colors, i, mtf);
+
+            if ( channels == 1) {
+
+              const int gray =
+                  std::max(0, std::min(255,
+                      (int) (color[0] + pointBrightness_)));
+
+              display_colors_.emplace_back(gray, gray, gray);
+            }
+            else {
+
+              const int red =
+                  std::max(0, std::min(255,
+                      (int) (color[2] + pointBrightness_)));
+
+              const int green =
+                  std::max(0, std::min(255,
+                      (int) (color[1] + pointBrightness_)));
+
+              const int blue =
+                  std::max(0, std::min(255,
+                      (int) (color[0] + pointBrightness_)));
+
+              display_colors_.emplace_back(red, green, blue);
+            }
+          }
+        }
+      }
+    }
+
+    if( imin >= imax ) {
+      mtf.set_input_range(imin, imax);
+    }
+  }
+
+  if ( update_display_colors_ ) {
+    Q_EMIT mtfDisplay_.displayImageChanged();
+  }
+
+  update_display_points_ = false;
+  update_display_colors_ = false;
+}
 
 bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
 {
-  QPointCloud::ptr cloud = QPointCloud::create();
+  QPointCloud::sptr cloud =
+      QPointCloud::create();
 
   if ( !loadPlyFile(pathFileName, cloud.get()) ) {
     CF_ERROR("loadPlyFile('%s') fails",
@@ -411,22 +706,12 @@ bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
     return false;
   }
 
-  clouds_.emplace_back(cloud);
+  add(cloud);
+
   return true;
 }
 
 
-void QGLCloudViewer::updateDisplayColors()
-{
-  if( !clouds_.empty() ) {
-    for( const QPointCloud::ptr &cloud : clouds_ ) {
-      mtfDisplay_.computeDisplayColors(cloud->points, cloud->colors, cloud->display_colors);
-    }
-    update();
-    Q_EMIT mtfDisplay_.displayImageChanged();
-  }
-
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -525,17 +810,31 @@ QVector3D QCloudViewer::sceneOrigin() const
   return glViewer_->sceneOrigin();
 }
 
+void QCloudViewer::add(const QPointCloud::sptr & cloud)
+{
+  glViewer_->add(cloud);
+}
+
 void QCloudViewer::clear()
 {
   glViewer_->clear();
   Q_EMIT currentFileNameChanged();
 }
 
+void QCloudViewer::updateDisplayPoints()
+{
+  glViewer_->updateDisplayPoints();
+}
+
+void QCloudViewer::updateDisplayColors()
+{
+  glViewer_->updateDisplayColors();
+}
+
 void QCloudViewer::redraw()
 {
   glViewer_->update();
 }
-
 
 bool QCloudViewer::openPlyFile(const QString & pathFileName)
 {

@@ -62,8 +62,33 @@ double c_pixinsight_mtf::apply(double pix) const
   const double so = (dstmax - dstmin);
 
   return dstmin + so * mtf_pixinsight((pix - imin) * si, midtones_);
-
 }
+
+cv::Scalar c_pixinsight_mtf::apply(const cv::Scalar & s, int channels) const
+{
+  if ( channels < 1 ) {
+    channels = 4;
+  }
+
+  const double & srcmin = input_range_[0];
+  const double & srcmax = input_range_[1];
+  const double & dstmin = output_range_[0];
+  const double & dstmax = output_range_[1];
+
+  const double imin = srcmin + shadows_ * (srcmax - srcmin);
+  const double imax = srcmin + highlights_ * (srcmax - srcmin);
+  const double si = 1. / (imax - imin);
+  const double so = (dstmax - dstmin);
+
+  cv::Scalar ss;
+
+  for( int c = 0; c < channels; ++c ) {
+    ss[c] = dstmin + so * mtf_pixinsight((s[c] - imin) * si, midtones_);
+  }
+
+  return ss;
+}
+
 
 bool c_pixinsight_mtf::apply(cv::InputArray src_image,
     cv::OutputArray dst_image,

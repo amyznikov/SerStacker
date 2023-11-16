@@ -24,14 +24,22 @@ bool loadPlyFile(const QString & filename, QPointCloud * cloud)
   };
 
 
-  const std::string stdfilename = filename.toStdString();
-  const char * cfilename = stdfilename.c_str();
+  const std::string stdfilename =
+      filename.toStdString();
 
-  FILE * fp = NULL;
+  const char * cfilename =
+      stdfilename.c_str();
+
+  std::vector<cv::Vec3f> points;
+  std::vector<cv::Vec3b> colors;
+
+  FILE * fp = nullptr;
 
   double xmin = 1e38, xmax = -1e38, ymin = 1e38, ymax = -1e38, zmin = 1e38, zmax = -1e38;
 
   char line[1024] = "";
+
+  bool fOk = false;
 
 
 
@@ -60,34 +68,44 @@ bool loadPlyFile(const QString & filename, QPointCloud * cloud)
 
 
   while ( fgets(line, sizeof(line), fp) ) {
-    double x, y, z, r, g, b;
-    if ( sscanf(line, "%lf %lf %lf %lf %lf %lf", &x, &y, &z, &r, &g, &b) == 6 ) {
-      cloud->points.emplace_back(QPoint3D(x, y, z));
-      cloud->colors.emplace_back(QColor(r, g, b));
 
-      if ( x < xmin ) {
+    double x, y, z, r, g, b;
+
+    if( sscanf(line, "%lf %lf %lf %lf %lf %lf", &x, &y, &z, &r, &g, &b) == 6 ) {
+
+      points.emplace_back(x, y, z);
+      colors.emplace_back(r, g, b);
+
+      if( x < xmin ) {
         xmin = x;
       }
-      if ( x > xmax ) {
+
+      if( x > xmax ) {
         xmax = x;
       }
 
-      if ( y < ymin ) {
+      if( y < ymin ) {
         ymin = y;
       }
-      if ( y > ymax ) {
+
+      if( y > ymax ) {
         ymax = y;
       }
 
-      if ( z < zmin ) {
+      if( z < zmin ) {
         zmin = z;
       }
-      if ( z > zmax ) {
+
+      if( z > zmax ) {
         zmax = z;
       }
-
     }
   }
+
+  cv::Mat(points).copyTo(cloud->points);
+  cv::Mat(colors).copyTo(cloud->colors);
+
+  fOk = true;
 
 //  CF_DEBUG("%s: %zu points: xmin=%g xmax=%g ymin=%g ymax=%g zmin=%g zmax=%g",
 //      cfilename,
@@ -100,6 +118,5 @@ __end :
     fclose(fp);
   }
 
-  return cloud;
-
+  return fOk;
 }

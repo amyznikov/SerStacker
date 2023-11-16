@@ -33,10 +33,6 @@ public:
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
-  void computeDisplayColors(const std::vector<QPoint3D> & points,
-      const std::vector<QColor> & src_colors,
-      std::vector<QColor> & display_colors);
-
 protected:
   QGLCloudViewer * cloudView_ = nullptr;
 };
@@ -49,6 +45,7 @@ class QGLCloudViewer :
 public:
   typedef QGLCloudViewer ThisClass;
   typedef QGLView Base;
+  friend class QCloudViewMtfDisplay;
 
   QGLCloudViewer(QWidget* parent = nullptr);
 
@@ -66,25 +63,36 @@ public:
 
   void rotateToShowCloud();
 
-  std::vector<QPointCloud::ptr> & clouds();
-  const std::vector<QPointCloud::ptr> & clouds() const;
-  const QPointCloud::ptr & cloud(int index) const;
-  void clear();
+  const std::vector<QPointCloud::sptr> & clouds() const;
+  const QPointCloud::sptr & cloud(int index) const;
+
   bool openPlyFile(const QString & pathFileName);
+  void add(const QPointCloud::sptr & cloud);
+  void clear();
+
+  void updateDisplayPoints();
+  void updateDisplayColors();
 
 protected:
   void glInit() override;
   void glPreDraw() override;
   void glDraw() override;
   void glPostDraw() override;
-  void updateDisplayColors();
+  void computeDisplayPoints();
 
 protected:
-  std::vector<QPointCloud::ptr> clouds_;
+  std::vector<QPointCloud::sptr> clouds_;
   QCloudViewMtfDisplay mtfDisplay_;
+  std::vector<cv::Vec3f> display_points_;
+  std::vector<cv::Vec3b> display_colors_;
+
   QVector3D sceneOrigin_;
   double pointSize_ = 2;
   double pointBrightness_ = 0;
+
+  bool update_display_points_ = false;
+  bool update_display_colors_ = false;
+  int display_color_channels_ = 0;
 };
 
 class QCloudViewer :
@@ -121,7 +129,11 @@ public:
 
   bool openPlyFile(const QString & pathFileName);
 
+  void add(const QPointCloud::sptr & cloud);
   void clear();
+
+  void updateDisplayPoints();
+  void updateDisplayColors();
 
   void redraw();
 
@@ -133,17 +145,12 @@ public:
 
   QPixmap grabViewportPixmap();
 
-  std::vector<QPointCloud::ptr> & clouds()
+  const std::vector<QPointCloud::sptr> & clouds() const
   {
     return glViewer_->clouds();
   }
 
-  const std::vector<QPointCloud::ptr> & clouds() const
-  {
-    return glViewer_->clouds();
-  }
-
-  const QPointCloud::ptr & cloud(int index) const
+  const QPointCloud::sptr & cloud(int index) const
   {
     return glViewer_->cloud(index);
   }

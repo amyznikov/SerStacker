@@ -93,6 +93,8 @@
 #include "quicktests/c_sweepscan_routine.h"
 #include "quicktests/c_melp_stereo_matcher_routine.h"
 
+#include "vlo/c_vlo_depth_segmentation_routine.h"
+
 
 #include <core/readdir.h>
 #include <atomic>
@@ -234,6 +236,10 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_keypoins_detector_routine::class_factory_instance());
     register_class_factory(c_edgebox_routine::class_factory_instance());
     register_class_factory(c_selective_search_segmentation_routine::class_factory_instance());
+
+
+    register_class_factory(c_vlo_depth_segmentation_routine::class_factory_instance());
+
   }
 }
 

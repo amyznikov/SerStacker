@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 #include "vlo.h"
+#include <core/proc/c_line_estimate.h>
 #include <core/debug.h>
 
 template<class T>
@@ -24,12 +25,9 @@ bool vlo_depth_segmentation_(cv::InputArray _distances, cv::OutputArray output_s
   const cv::Mat_<T> distances =
       _distances.getMat();
 
-  const double walk_error =
-      opts.vlo_walk_error > 0 ?
-          opts.vlo_walk_error : 150; // [cm]
-
   const double distance_step =
-      walk_error / 3; // [cm]
+      opts.vlo_walk_error > 0 ?
+          opts.vlo_walk_error : 100; // [cm]
 
   const int num_bins =
       (int) ((opts.max_distance - opts.min_distance) / distance_step) + 1;
@@ -37,127 +35,142 @@ bool vlo_depth_segmentation_(cv::InputArray _distances, cv::OutputArray output_s
   cv::Mat3w segment_ids(src_rows, src_cols,
       cv::Vec3w::all(0));
 
-  std::vector<float> bin_distances(num_bins);
-  std::vector<int> bin_counts(num_bins);
+  std::vector<float> bin_distances[2] = {
+      std::vector<float> (num_bins),
+      std::vector<float> (num_bins),
+  };
+
+  std::vector<int> bin_counts[2] = {
+      std::vector<int> (num_bins),
+      std::vector<int> (num_bins),
+  };
 
   int segment_id = 0;
 
   for( int x = 0; x < src_cols; ++x ) {
 
-    memset(bin_distances.data(), 0,
-        num_bins * sizeof(bin_distances[0]));
 
-    memset(bin_counts.data(), 0,
-        num_bins * sizeof(bin_counts[0]));
+    // Reset histograms
+    for( int j = 0; j < 2; ++j ) {
+
+      memset(bin_distances[j].data(), 0,
+          num_bins * sizeof(bin_distances[j][0]));
+
+      memset(bin_counts[j].data(), 0,
+          num_bins * sizeof(bin_counts[j][0]));
+    }
+
+
+    // Build histograms
 
     for( int y = 0; y < src_rows; ++y ) {
 
       for( int e = 0; e < src_channels; ++e ) {
 
-        const T & distance =
+        const T &distance =
             distances[y][x * src_channels + e];
 
-        if ( distance ) {
+        if( distance ) {
 
-          const int bin_index =
+          const int bin0 =
               (int) ((distance - opts.min_distance) / distance_step);
 
-          if ( bin_index >= 0 && bin_index < num_bins ) {
-            bin_counts[bin_index] ++;
-            bin_distances[bin_index] += distance;
+          if( bin0 >= 0 && bin0 < num_bins ) {
+
+            const int bin1 =
+                (int) ((distance - opts.min_distance - 0.5 * distance_step) / distance_step);
+
+            if( bin1 >= 0 && bin1 < num_bins ) {
+
+              bin_counts[0][bin0]++;
+              bin_counts[1][bin1]++;
+
+              bin_distances[0][bin0] += distance;
+              bin_distances[1][bin1] += distance;
+            }
           }
         }
       }
     }
 
+    // search for histogram peaks and mark segments
 
+    for( int i = 1; i < num_bins - 1; ++i ) {
 
-    for ( int i = 0; i < num_bins;  ) {
+      const std::vector<int> * counts = nullptr;
+      const std::vector<float> * dists = nullptr;
 
-      if ( bin_counts[i] < opts.min_pts ) {
-        ++i;
+      // check if this bin contains appropriate histogram peak
+      for( int j = 0; j < 2; ++j ) {
+
+        const int count =
+            bin_counts[j][i];
+
+        if( count > opts.min_pts ) {
+          if( bin_counts[j][i - 1] < 3 * count / 4 && bin_counts[j][i + 1] < 3 * count / 4 ) {
+            counts = &bin_counts[j];
+            dists = &bin_distances[j];
+            break;
+          }
+        }
+      }
+
+      if ( !counts ) {
         continue;
       }
 
-      int range_start = i, range_end = i;
-      double mean_distance = bin_distances[range_end];
-      int total_points = bin_counts[range_end];
+      //////////////////////////////////////////////////////////////
+      // estimate slope
 
-      while (range_end < num_bins && bin_counts[range_end + 1] > opts.min_pts / 2) {
-        ++range_end;
-        mean_distance += bin_distances[range_end];
-        total_points += bin_counts[range_end];
+      c_line_estimate line;
+
+      const double mean_distance =
+          (*dists)[i] / (*counts)[i];
+
+      const double min_distance =
+          mean_distance - 1.41 * distance_step;
+
+      const double max_distance =
+          mean_distance + 1.41 * distance_step;
+
+      for( int y = 0; y < src_rows; ++y ) {
+        for( int e = 0; e < src_channels; ++e ) {
+
+          const T &distance =
+              distances[y][x * src_channels + e];
+
+          if( distance > min_distance && distance < max_distance ) {
+            line.update(y, distance);
+          }
+        }
       }
 
-
       //////////////////////////////////////////////////////////////
-      // gather segment
+      // label segment if vertical enough
 
-      if ( total_points >= opts.min_pts ) {
+      const double slope =
+          line.slope();
 
-        mean_distance /= total_points;
+      if ( slope >= opts.min_slope && slope <= opts.max_slope ) {
 
-        const double min_distance =
-            mean_distance - distance_step;
-
-        const double max_distance =
-            mean_distance + distance_step;
-
-        //////////////////////////////////////////////////////////////
-        // estimate slope
-
-        struct {
-          double x = 0, y = 0, xy = 0, x2 = 0;
-          int n = 0;
-        } se;
-
+        ++segment_id;
 
         for( int y = 0; y < src_rows; ++y ) {
+
           for( int e = 0; e < src_channels; ++e ) {
 
             const T &distance =
                 distances[y][x * src_channels + e];
 
             if( distance > min_distance && distance < max_distance ) {
-              se.x += y;
-              se.y += distance;
-              se.xy += y * distance;
-              se.x2 += y * y;
-              se.n += 1;
+              segment_ids[y][x][e] = segment_id;
             }
           }
         }
-
-        //////////////////////////////////////////////////////////////
-        // label segment if vertical enough
-
-        const double slope =
-            (se.n * se.xy - se.x * se.y) / (se.n * se.x2 - se.x * se.x);
-
-        if ( slope >= opts.min_slope && slope <= opts.max_slope ) {
-
-          ++segment_id;
-
-          for( int y = 0; y < src_rows; ++y ) {
-
-            for( int e = 0; e < src_channels; ++e ) {
-
-              const T &distance =
-                  distances[y][x * src_channels + e];
-
-              if( distance > min_distance && distance < max_distance ) {
-                segment_ids[y][x][e] = segment_id;
-              }
-            }
-          }
-        }
-
-        //////////////////////////////////////////////////////////////
       }
 
-      i = range_end + 1;
+      //////////////////////////////////////////////////////////////
     }
-
   }
 
   output_segments.move(segment_ids);
@@ -189,3 +202,5 @@ bool vlo_depth_segmentation(cv::InputArray distances, cv::OutputArray segments,
   CF_ERROR("Unsupported image depth %d", distances.depth());
   return false;
 }
+
+

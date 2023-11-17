@@ -144,6 +144,45 @@ double QGraphicsLineShape::arrowSize() const
   return arrowSize_;
 }
 
+void QGraphicsLineShape::alignVertically()
+{
+  prepareGeometryChange();
+
+  const QPointF p1 =
+      line_.p1();
+
+  if( !snapToPixelGrid_ ) {
+    line_.setP2(QPointF(p1.x(), line_.p2().y()));
+  }
+  else {
+    line_.setP1(QPointF((int) p1.x(), (int) p1.y()));
+    line_.setP2(QPointF((int) p1.x(), (int) line_.p2().y()));
+  }
+
+  updateGeometry();
+  update();
+}
+
+void QGraphicsLineShape::alignHorizontally()
+{
+  prepareGeometryChange();
+
+  const QPointF p1 =
+      line_.p1();
+
+  if( !snapToPixelGrid_ ) {
+    line_.setP2(QPointF(line_.p2().x(), p1.y()));
+  }
+  else {
+    line_.setP1(QPointF((int) p1.x(), (int) p1.y()));
+    line_.setP2(QPointF((int) line_.p2().x(), (int) p1.y()));
+  }
+
+  updateGeometry();
+  update();
+}
+
+
 QRectF QGraphicsLineShape::boundingRect() const
 {
   return boundingRect_;
@@ -419,6 +458,14 @@ static QAction * createCheckableAction(const QString & text, bool checked, Fn &&
   return action;
 }
 
+template<class Fn>
+static QAction * createAction(const QString & text, Fn && fn)
+{
+  QAction * action = new QAction(text);
+  QObject::connect(action, &QAction::triggered,  fn);
+  return action;
+}
+
 bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
 {
   menu.addAction(createCheckableAction("Lock P1", lockP1_,
@@ -434,6 +481,16 @@ bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
   menu.addAction(createCheckableAction("Snap to pixels", snapToPixelGrid_,
       [this](bool checked) {
         setSnapToPixelGrid(checked);
+      }));
+
+  menu.addAction(createAction("Align Vertically",
+      [this]() {
+        alignVertically();
+      }));
+
+  menu.addAction(createAction("Align Horizontally",
+      [this]() {
+        alignHorizontally();
       }));
 
   menu.addSeparator();

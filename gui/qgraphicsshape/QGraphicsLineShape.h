@@ -51,6 +51,9 @@ public:
   void setArrowSize(double v);
   double arrowSize() const;
 
+  void alignVertically();
+  void alignHorizontally();
+
 protected:
   QRectF boundingRect() const override;
   QPainterPath shape() const override;

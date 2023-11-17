@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=@APP_VERSION@
+Name=@PROJECT_NAME@
+GenericName=@PROJECT_NAME@
+Comment=@MY_DESKTOP_ENTRY_COMMENT@
+Exec=@CMAKE_INSTALL_PREFIX@/@MY_RUNTIME_PATH@/@PROJECT_NAME@
+TryExec=@CMAKE_INSTALL_PREFIX@/@MY_RUNTIME_PATH@/@PROJECT_NAME@
+Icon=@MY_APP_ICONS_PATH@/@PROJECT_NAME@.png
+Terminal=false
+Type=Application
+Categories=Development;Graphics;Science & Math;2DGraphics;RasterGraphics;Qt;
+MimeType=
+Keywords=

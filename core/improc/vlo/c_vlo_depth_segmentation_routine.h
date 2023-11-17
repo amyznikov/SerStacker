@@ -41,14 +41,14 @@ public:
     return opts_.max_distance;
   }
 
-  void set_distance_step(double v)
+  void set_vlo_walk_error(double v)
   {
-    opts_.distance_step = v;
+    opts_.vlo_walk_error = v;
   }
 
-  double distance_step() const
+  double vlo_walk_error() const
   {
-    return opts_.distance_step;
+    return opts_.vlo_walk_error;
   }
 
   void set_max_slope(double v)

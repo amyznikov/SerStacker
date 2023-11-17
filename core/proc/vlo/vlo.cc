@@ -24,21 +24,31 @@ bool vlo_depth_segmentation_(cv::InputArray _distances, cv::OutputArray output_s
   const cv::Mat_<T> distances =
       _distances.getMat();
 
+  const double walk_error =
+      opts.vlo_walk_error > 0 ?
+          opts.vlo_walk_error : 150; // [cm]
+
+  const double distance_step =
+      walk_error / 3; // [cm]
+
   const int num_bins =
-      (int) ((opts.max_distance - opts.min_distance) / opts.distance_step) + 1;
+      (int) ((opts.max_distance - opts.min_distance) / distance_step) + 1;
 
   cv::Mat3w segment_ids(src_rows, src_cols,
       cv::Vec3w::all(0));
 
-  std::vector<int> bin_counts(num_bins);
   std::vector<float> bin_distances(num_bins);
+  std::vector<int> bin_counts(num_bins);
 
   int segment_id = 0;
 
   for( int x = 0; x < src_cols; ++x ) {
 
-    memset(bin_counts.data(), 0, num_bins * sizeof(bin_counts[0]));
-    memset(bin_distances.data(), 0, num_bins * sizeof(bin_distances[0]));
+    memset(bin_distances.data(), 0,
+        num_bins * sizeof(bin_distances[0]));
+
+    memset(bin_counts.data(), 0,
+        num_bins * sizeof(bin_counts[0]));
 
     for( int y = 0; y < src_rows; ++y ) {
 
@@ -50,7 +60,7 @@ bool vlo_depth_segmentation_(cv::InputArray _distances, cv::OutputArray output_s
         if ( distance ) {
 
           const int bin_index =
-              (int) ((distance - opts.min_distance) / opts.distance_step);
+              (int) ((distance - opts.min_distance) / distance_step);
 
           if ( bin_index >= 0 && bin_index < num_bins ) {
             bin_counts[bin_index] ++;
@@ -88,10 +98,10 @@ bool vlo_depth_segmentation_(cv::InputArray _distances, cv::OutputArray output_s
         mean_distance /= total_points;
 
         const double min_distance =
-            mean_distance - 0.7 * opts.distance_step;
+            mean_distance - distance_step;
 
         const double max_distance =
-            mean_distance + 0.7 * opts.distance_step;
+            mean_distance + distance_step;
 
         //////////////////////////////////////////////////////////////
         // estimate slope

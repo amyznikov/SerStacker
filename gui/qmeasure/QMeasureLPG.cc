@@ -11,42 +11,32 @@ QMeasureLPG::QMeasureLPG() :
 {
 }
 
+QMeasureSettingsWidget* QMeasureLPG::createSettingsWidget(QWidget * parent) const
+{
+  return new QLPGMeasureSettingsWidget(parent);
+}
+
+void QMeasureLPG::setAverageColorChannels(bool v)
+{
+  options_.avgchannel = v;
+  average_color_channels_ = options_.avgchannel;
+}
+
+bool QMeasureLPG::averageColorChannels() const
+{
+  return options_.avgchannel;
+}
+
 int QMeasureLPG::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_lpg_sharpness_measure::compute(image, mask);
   return options_.avgchannel ? 1 : image.channels();
 }
 
-bool QMeasureLPG::hasOptions() const
-{
-  return true;
-}
-
-QMeasureSettingsWidget* QMeasureLPG::createSettingsWidget(QWidget * parent) const
-{
-  return new QLPGMeasureSettingsWidget(parent);
-}
 
 QLPGMeasureSettingsWidget::QLPGMeasureSettingsWidget(QWidget * parent) :
     Base(parent)
 {
-  avgc_ctl =
-      add_checkbox("Average color channels:",
-          "",
-          [this](bool checked) {
-            if ( measure_ && measure_->avgchannel() != checked ) {
-              measure_->set_avgchannel(checked);
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](bool * checked) {
-            if ( measure_ ) {
-              * checked = measure_->avgchannel();
-              return true;
-            }
-            return false;
-          });
-
   k_ctl =
       add_numeric_box<double>("k:",
           "",

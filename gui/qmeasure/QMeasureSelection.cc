@@ -236,24 +236,21 @@ void QMeasureSettingsDialogBox::onCurrentMeasureChanged()
 
     tooltip_ctl->setText(m->tooltip());
 
-    if( m->hasOptions() ) {
+    const auto pos =
+        std::find_if(widgets_.begin(), widgets_.end(),
+            [m](const QMeasureSettingsWidget * obj) {
+              return m == obj->currentMeasure();
+            });
 
-      const auto pos =
-          std::find_if(widgets_.begin(), widgets_.end(),
-              [m](const QMeasureSettingsWidget * obj) {
-                return m == obj->currentMeasure();
-              });
-
-      if( pos != widgets_.end() ) {
-        currentWidget = *pos;
-      }
-      else if( !(currentWidget = m->createSettingsWidget(this)) ) {
-        CF_ERROR("m->createSettingsWidget() fails ");
-      }
-      else {
-        widgets_.append(currentWidget);
-        currentWidget->setCurrentMeasure(m);
-      }
+    if( pos != widgets_.end() ) {
+      currentWidget = *pos;
+    }
+    else if( !(currentWidget = m->createSettingsWidget(this)) ) {
+      CF_ERROR("m->createSettingsWidget() fails ");
+    }
+    else {
+      widgets_.append(currentWidget);
+      currentWidget->setCurrentMeasure(m);
     }
   }
 
@@ -277,7 +274,7 @@ void QMeasureSettingsDialogBox::onCurrentMeasureChanged()
 QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QWidget * parent) :
     Base(parent)
 {
-  setMinimumSize(600, 400);
+  setMinimumSize(400, 200);
 
   vbox_ = new QVBoxLayout(this);
   vbox_->setContentsMargins(0, 0,0,0);
@@ -383,7 +380,7 @@ void QMultiMeasureSelectionWidget::onListViewCurrentItemChanged(QListWidgetItem 
 
     m = current->data(Qt::UserRole).value<QMeasure*>();
 
-    if( m && m->hasOptions() ) {
+    if( m ) {
 
       const auto pos =
           std::find_if(settingsWidgets_.begin(), settingsWidgets_.end(),

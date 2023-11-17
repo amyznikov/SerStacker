@@ -21,24 +21,27 @@ public :
   typedef QMeasure Base;
 
   QMeasureHarrisCornerResponse();
-  bool hasOptions() const override;
+
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+
+  void setAverageColorChannels(bool v) override;
+  bool averageColorChannels() const override;
+
 
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 class QHarrisCornerResponseSettingsWidget :
-    public QMeasureSettingsWidgetImpl<QMeasureHarrisCornerResponse>
+    public QMeasureSettingsWidgetTemplate<QMeasureHarrisCornerResponse>
 {
 public:
   typedef QHarrisCornerResponseSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetImpl<QMeasureHarrisCornerResponse> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureHarrisCornerResponse> Base;
 
   QHarrisCornerResponseSettingsWidget(QWidget * parent = nullptr);
 
 protected:
-  QCheckBox * avgc_ctl = nullptr;
   QNumericBox * k_ctl = nullptr;
   QNumericBox * dscale_ctl = nullptr;
   QNumericBox * uscale_ctl = nullptr;

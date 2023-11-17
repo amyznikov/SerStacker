@@ -20,8 +20,25 @@ public:
 
   QMeasureMeanValue();
 
+  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const override;
+
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+};
+
+class QMeanValueMeasureSettingsWidget :
+    public QMeasureSettingsWidgetTemplate<QMeasureMeanValue>
+{
+public:
+  typedef QMeanValueMeasureSettingsWidget ThisClass;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureMeanValue> Base;
+
+  QMeanValueMeasureSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+    averageColorChannels_ctl->setEnabled(false);
+    updateControls();
+  }
 };
 
 class QMeasureStdevValue:
@@ -33,8 +50,25 @@ public:
 
   QMeasureStdevValue();
 
+  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const override;
+
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
+
+class QStdevValueMeasureSettingsWidget :
+    public QMeasureSettingsWidgetTemplate<QMeasureStdevValue>
+{
+public:
+  typedef QStdevValueMeasureSettingsWidget ThisClass;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureStdevValue> Base;
+
+  QStdevValueMeasureSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+    averageColorChannels_ctl->setEnabled(false);
+    updateControls();
+  }
+};
 #endif /* __QMeasureMeanStdev_h__ */

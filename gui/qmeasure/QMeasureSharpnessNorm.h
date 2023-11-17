@@ -21,7 +21,6 @@ public :
   typedef QMeasure Base;
 
   QMeasureSharpnessNorm();
-  bool hasOptions() const override;
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
 
 protected:
@@ -29,11 +28,11 @@ protected:
 };
 
 class QSharpnessNormMeasureSettingsWidget :
-    public QMeasureSettingsWidgetImpl<QMeasureSharpnessNorm>
+    public QMeasureSettingsWidgetTemplate<QMeasureSharpnessNorm>
 {
 public:
   typedef QSharpnessNormMeasureSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetImpl<QMeasureSharpnessNorm> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureSharpnessNorm> Base;
 
   QSharpnessNormMeasureSettingsWidget(QWidget * parent = nullptr);
 

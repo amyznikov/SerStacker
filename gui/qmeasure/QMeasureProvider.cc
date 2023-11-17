@@ -46,7 +46,6 @@ const std::vector<QMeasure*>& QMeasureProvider::measures()
   if( measures_.empty() ) {
     measures_.emplace_back(new QMeasureCentralPixelValue());
     measures_.emplace_back(new QMeasureMinValue());
-    measures_.emplace_back(new QMeasureMinNonZeroValue());
     measures_.emplace_back(new QMeasureMaxValue());
     measures_.emplace_back(new QMeasureMeanValue());
     measures_.emplace_back(new QMeasureStdevValue());

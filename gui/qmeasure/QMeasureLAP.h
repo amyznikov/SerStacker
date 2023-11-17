@@ -20,7 +20,6 @@ public:
 
   QMeasureLAP();
 
-  bool hasOptions() const override;
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
 
   void set_dscale(int v);
@@ -38,11 +37,11 @@ protected:
 };
 
 class QMeasureLAPSettingsWidget :
-    public QMeasureSettingsWidgetImpl<QMeasureLAP>
+    public QMeasureSettingsWidgetTemplate<QMeasureLAP>
 {
 public:
   typedef QMeasureLAPSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetImpl<QMeasureLAP> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureLAP> Base;
 
   QMeasureLAPSettingsWidget(QWidget * parent = nullptr);
 

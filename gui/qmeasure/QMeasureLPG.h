@@ -21,24 +21,26 @@ public :
   typedef QMeasure Base;
 
   QMeasureLPG();
-  bool hasOptions() const override;
+
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+
+  void setAverageColorChannels(bool v) override;
+  bool averageColorChannels() const override;
 
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
 class QLPGMeasureSettingsWidget :
-    public QMeasureSettingsWidgetImpl<QMeasureLPG>
+    public QMeasureSettingsWidgetTemplate<QMeasureLPG>
 {
 public:
   typedef QLPGMeasureSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetImpl<QMeasureLPG> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureLPG> Base;
 
   QLPGMeasureSettingsWidget(QWidget * parent = nullptr);
 
 protected:
-  QCheckBox * avgc_ctl = nullptr;
   QNumericBox * lw_ctl = nullptr;
   QNumericBox * k_ctl = nullptr;
   QNumericBox * dscale_ctl = nullptr;

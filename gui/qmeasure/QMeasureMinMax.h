@@ -20,9 +20,26 @@ public:
 
   QMeasureMinValue();
 
+  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
+
+class QMinValueMeasureSettingsWidget :
+    public QMeasureSettingsWidgetTemplate<QMeasureMinValue>
+{
+public:
+  typedef QMinValueMeasureSettingsWidget ThisClass;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureMinValue> Base;
+
+  QMinValueMeasureSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+    updateControls();
+  }
+};
+
 
 class QMeasureMaxValue :
     public QMeasure
@@ -33,22 +50,26 @@ public:
 
   QMeasureMaxValue();
 
+  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
 };
 
-class QMeasureMinNonZeroValue :
-    public QMeasure
+class QMaxValueMeasureSettingsWidget :
+    public QMeasureSettingsWidgetTemplate<QMeasureMaxValue>
 {
 public:
-  typedef QMeasureMinValue ThisClass;
-  typedef QMeasure Base;
+  typedef QMaxValueMeasureSettingsWidget ThisClass;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureMaxValue> Base;
 
-  QMeasureMinNonZeroValue();
-
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  QMaxValueMeasureSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+    updateControls();
+  }
 };
+
 
 
 #endif /* __QMeasureMinMax_h__ */

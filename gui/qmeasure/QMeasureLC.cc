@@ -12,42 +12,30 @@ QMeasureLC::QMeasureLC() :
 {
 }
 
+QMeasureSettingsWidget* QMeasureLC::createSettingsWidget(QWidget * parent) const
+{
+  return new QLCMeasureSettingsWidget(parent);
+}
+
+void QMeasureLC::setAverageColorChannels(bool v)
+{
+  c_local_contrast_measure::set_avgchannel(average_color_channels_ = v);
+}
+
+bool QMeasureLC::averageColorChannels() const
+{
+  return c_local_contrast_measure::avgchannel();
+}
+
 int QMeasureLC::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_local_contrast_measure::compute(image);
   return avgchannel_ ? 1 : image.channels();
 }
 
-bool QMeasureLC::hasOptions() const
-{
-  return true;
-}
-
-QMeasureSettingsWidget* QMeasureLC::createSettingsWidget(QWidget * parent) const
-{
-  return new QLCMeasureSettingsWidget(parent);
-}
-
 QLCMeasureSettingsWidget::QLCMeasureSettingsWidget(QWidget * parent) :
     Base(parent)
 {
-  avgc_ctl =
-      add_checkbox("Average color channels:",
-          "",
-          [this](bool checked) {
-            if ( measure_ && measure_->avgchannel() != checked ) {
-              measure_->set_avgchannel(checked);
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](bool * checked) {
-            if ( measure_ ) {
-              * checked = measure_->avgchannel();
-              return true;
-            }
-            return false;
-          });
-
   dscale_ctl =
       add_numeric_box<int>("dscale:",
           "",

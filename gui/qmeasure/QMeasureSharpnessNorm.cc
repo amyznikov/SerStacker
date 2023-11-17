@@ -18,11 +18,6 @@ int QMeasureSharpnessNorm::compute_measure(const cv::Mat & image, const cv::Mat 
   return 1;
 }
 
-bool QMeasureSharpnessNorm::hasOptions() const
-{
-  return true;
-}
-
 QMeasureSettingsWidget* QMeasureSharpnessNorm::createSettingsWidget(QWidget * parent) const
 {
   return new QSharpnessNormMeasureSettingsWidget(parent);

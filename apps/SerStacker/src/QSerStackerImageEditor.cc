@@ -74,7 +74,7 @@ void QSerStackerImageEditor::createRoiShape()
     roiShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     roiShape_->setCosmeticPen(Qt::red);
     roiShape_->setVisible(false);
-    roiShape_->setFixOnSceneCenter(true);
+    // roiShape_->setFixOnSceneCenter(true);
 
     roiShape_->setToolTip("ROI rectangle:\n"
         "Shift + LeftMouseButton for move\n"

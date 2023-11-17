@@ -13,6 +13,11 @@ QMeasureLAP::QMeasureLAP() :
 {
 }
 
+QMeasureSettingsWidget* QMeasureLAP::createSettingsWidget(QWidget * parent) const
+{
+  return new QMeasureLAPSettingsWidget(parent);
+}
+
 void QMeasureLAP::set_dscale(int v)
 {
   dscale_ = v;
@@ -39,15 +44,6 @@ int QMeasureLAP::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv
   return 1;
 }
 
-bool QMeasureLAP::hasOptions() const
-{
-  return true;
-}
-
-QMeasureSettingsWidget* QMeasureLAP::createSettingsWidget(QWidget * parent) const
-{
-  return new QMeasureLAPSettingsWidget(parent);
-}
 
 QMeasureLAPSettingsWidget::QMeasureLAPSettingsWidget(QWidget * parent) :
     Base(parent)

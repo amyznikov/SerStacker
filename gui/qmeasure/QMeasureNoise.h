@@ -20,8 +20,24 @@ public:
 
   QMeasureNoise();
 
+  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+
 protected:
   int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+};
+
+class QNoiseMeasureSettingsWidget :
+    public QMeasureSettingsWidgetTemplate<QMeasureNoise>
+{
+public:
+  typedef QNoiseMeasureSettingsWidget ThisClass;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureNoise> Base;
+
+  QNoiseMeasureSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+  }
+
 };
 
 #endif /* __QMeasureNoise_h__ */

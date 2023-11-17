@@ -21,7 +21,10 @@ public:
   typedef QMeasure Base;
 
   QMeasureNormalizedVariance();
-  bool hasOptions() const override;
+
+  void setAverageColorChannels(bool v) override;
+  bool averageColorChannels() const override;
+
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
 
 protected:
@@ -29,16 +32,15 @@ protected:
 };
 
 class QNormalizedVarianceSettingsWidget :
-    public QMeasureSettingsWidgetImpl<QMeasureNormalizedVariance>
+    public QMeasureSettingsWidgetTemplate<QMeasureNormalizedVariance>
 {
 public:
   typedef QNormalizedVarianceSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetImpl<QMeasureNormalizedVariance> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureNormalizedVariance> Base;
 
   QNormalizedVarianceSettingsWidget(QWidget * parent = nullptr);
 
 protected:
-  QCheckBox * avgc_ctl = nullptr;
 };
 
 #endif /* __QMeasureNormalizedVariance_h__ */

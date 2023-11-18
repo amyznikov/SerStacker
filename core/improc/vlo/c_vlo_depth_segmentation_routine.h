@@ -81,6 +81,16 @@ public:
     return opts_.min_pts;
   }
 
+  void set_output_type(vlo_depth_segmentation_output_type v)
+  {
+    opts_.output_type = v;
+  }
+
+  vlo_depth_segmentation_output_type output_type() const
+  {
+    return opts_.output_type;
+  }
+
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save);
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override;

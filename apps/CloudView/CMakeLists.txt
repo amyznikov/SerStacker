@@ -1,6 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
-return()
+# return()
 
 project(CloudView CXX)
 

@@ -9,8 +9,8 @@
 #define __qcloudview_main_window_h__
 
 #include <gui/mainwindow/QMainAppWindow.h>
-//#include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
-//#include <gui/qthumbnailsview/QThumbnailsView.h>
+#include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
+#include <gui/qthumbnailsview/QThumbnailsView.h>
 //#include <gui/qtextview/QTextFileViewer.h>
 //#include <gui/qcloudview/QCloudViewer.h>
 //#include <gui/qcloudview/QCloudViewSettings.h>
@@ -42,11 +42,27 @@ public:
   ~MainWindow();
 
 private:
-
-private Q_SLOTS:
-  void updateWindowTittle();
+  void setupMainMenu();
+  void setupFileSystemTreeView();
 
 private:
+  void updateWindowTittle();
+
+  void onSaveState(QSettings & settings) override;
+  void onRestoreState(QSettings & settings) override;
+
+  void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
+  void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
+
+
+private:
+  QStackedWidget * centralStackedWidget = nullptr;
+  QThumbnailsView * thumbnailsView = nullptr;
+
+  QFileSystemTreeDock * fileSystemTreeDock = nullptr;
+
+
+  QAction * quitAppAction = nullptr;
 };
 
 

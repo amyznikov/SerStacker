@@ -55,6 +55,9 @@ MainWindow::MainWindow()
   updateWindowTittle();
   QImageProcessorsCollection::load();
 
+  setCentralWidget(centralStackedWidget = new QStackedWidget(this));
+  centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
+
 
   ///////////////////////////////////
   // Setup docking views
@@ -65,6 +68,9 @@ MainWindow::MainWindow()
   setCorner( Qt::BottomLeftCorner, Qt::LeftDockWidgetArea );
   setCorner( Qt::BottomRightCorner, Qt::BottomDockWidgetArea );
 
+
+  setupMainMenu();
+  setupFileSystemTreeView();
 
   restoreState();
 }
@@ -78,6 +84,249 @@ void MainWindow::updateWindowTittle()
 {
   setWindowTitle("CloudView");
 }
+
+void MainWindow::onSaveState(QSettings & settings)
+{
+  Base::onSaveState(settings);
+
+  if( fileSystemTreeDock ) {
+    settings.setValue("fileSystemTree/absoluteFilePath",
+        fileSystemTreeDock->currentAbsoluteFilePath());
+  }
+}
+
+void MainWindow::onRestoreState(QSettings & settings)
+{
+  Base::onRestoreState(settings);
+
+  if ( fileSystemTreeDock ) {
+    fileSystemTreeDock->displayPath(settings.value(
+        "fileSystemTree/absoluteFilePath").toString());
+  }
+}
+
+
+void MainWindow::setupMainMenu()
+{
+  Base::setupMainMenu();
+
+//  //
+//  // File
+//  //
+//
+//  menuFile_->addAction(reloadCurrentFileAction =
+//      createAction(getIcon(ICON_reload),
+//          "Reload",
+//          "Reload current file from disk (Ctrl+R)",
+//          [this]() {
+//            QWidget * w = centralStackedWidget->currentWidget();
+//            if ( w == imageView ) {
+//              // imageView->openImage(imageView->currentFileName());
+//            }
+//            else if ( w == textView ) {
+//              textView->showTextFile(textView->currentFileName());
+//            }
+//            else if ( w == thumbnailsView ) {
+//              thumbnailsView->reload();
+//            }
+//          },
+//          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_R),
+//              this, nullptr, nullptr,
+//              Qt::WindowShortcut)));
+//
+//  menuFile_->addAction(selectPreviousFileAction_ =
+//      createAction(getIcon(ICON_prev),
+//          "Previous (Ctrl+PgUp)",
+//          "Select previous file (Ctrl+PgUp)",
+//          [this]() {
+//            thumbnailsView->selectPrevIcon();
+//          },
+//          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp),
+//              this, nullptr, nullptr,
+//              Qt::WindowShortcut)));
+//
+//  menuFile_->addAction(selectNextFileAction =
+//      createAction(getIcon(ICON_next),
+//          "Next (Ctrl+PgDown)",
+//          "Select next file (Ctrl+PgDown)",
+//          [this]() {
+//            thumbnailsView->selectNextIcon();
+//          },
+//          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown),
+//              this, nullptr, nullptr,
+//              Qt::WindowShortcut)));
+//
+//  menuFile_->addSeparator();
+//
+//  saveImageAsAction =
+//      menuFile_->addAction("Save current image as...",
+//          this, &ThisClass::onSaveCurrentImageAs);
+//
+//  saveImageAsAction->setEnabled(is_visible(imageView) &&
+//      !imageView->currentImage().empty());
+//
+//  saveDisplayImageAsAction =
+//      menuFile_->addAction("Save current display image as...",
+//          this, &ThisClass::onSaveCurrentDisplayImageAs);
+//
+//  saveDisplayImageAsAction->setEnabled(is_visible(imageView) &&
+//      !imageView->displayImage().empty());
+//
+//  saveImageMaskAction =
+//      menuFile_->addAction("Save current image mask...",
+//          this, &ThisClass::onSaveCurrentImageMask);
+//
+//  saveImageMaskAction->setEnabled(is_visible(imageView) &&
+//      !imageView->currentMask().empty());
+//
+//  loadImageMaskAction =
+//      menuFile_->addAction("Set current image mask from file...",
+//          this, &ThisClass::onLoadCurrentImageMask);
+//
+//  loadImageMaskAction->setEnabled(is_visible(imageView) &&
+//      !imageView->currentImage().empty());
+//
+  menuFile_->addSeparator();
+
+//  loadStackAction =
+//      menuFile_->addAction("Load stack config...",
+//          this, &ThisClass::onLoadStackConfig);
+//
+
+  menuFile_->addSeparator();
+
+  quitAppAction =
+      menuFile_->addAction("Quit",
+          this, &ThisClass::close);
+
+
+  //
+  // Edit
+  //
+
+//  menuEdit_->addAction(copyDisplayImageAction =
+//      createAction(QIcon(),
+//          "Copy display image to clipboard (Ctrl+c)",
+//          "Copy display image to clipboard (Ctrl+c)",
+//          [this]() {
+//
+//            if ( is_visible(cloudView) ) {
+//              cloudView->copyViewportToClipboard();
+//            }
+//            else if ( is_visible(imageView) ) {
+//              if ( imageView->roiShape()->isVisible() ) {
+//                imageView->copyDisplayImageROIToClipboard(imageView->roiShape()->iSceneRect());
+//              }
+//              else {
+//                imageView->copyDisplayImageToClipboard();
+//              }
+//            }
+//          },
+//          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+//              this, nullptr, nullptr,
+//              Qt::WindowShortcut)));
+
+//  menuEdit_->addAction(copyDisplayViewportAction =
+//      createAction(QIcon(),
+//          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+//          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+//          [this]() {
+//            if ( is_visible(cloudView) ) {
+//              cloudView->copyViewportToClipboard();
+//            }
+//            else if ( is_visible(imageView) ) {
+//              QPixmap pxmap = imageView->sceneView()->grab();
+//              if ( !pxmap.isNull() ) {
+//                QApplication::clipboard()->setPixmap(pxmap);
+//              }
+//            }
+//          },
+//          new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
+//              this, nullptr, nullptr,
+//              Qt::WindowShortcut)));
+
+
+  //
+  // View
+  //
+//  menuView_->addAction(viewInputOptionsAction =
+//      createCheckableAction(QIcon(),
+//          "Input Options...",
+//          "Configure general input options",
+//          is_visible(inputOptionsDlgBox),
+//          this,
+//          &ThisClass::onViewInputOptions));
+//
+//
+//  pipelineProgressView = new QPipelineProgressView(this);
+//  menuBar()->setCornerWidget(pipelineProgressView, Qt::TopRightCorner );
+//  pipelineProgressView->hide();
+//
+//  connect(pipelineProgressView, &QPipelineProgressView::progressTextChanged,
+//      this, &ThisClass::onStackProgressViewTextChanged,
+//      Qt::QueuedConnection);
+
+}
+
+
+void MainWindow::setupFileSystemTreeView()
+{
+  fileSystemTreeDock =
+      addFileSystemTreeDock(this, Qt::LeftDockWidgetArea,
+          "fileSystemTreeDock",
+          "Directory Tree",
+          menuView_);
+
+  fileSystemTreeDock->raise();
+
+  connect(fileSystemTreeDock, &QFileSystemTreeDock::currentDirectoryChanged,
+      [this](const QString & abspath) {
+
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+        thumbnailsView->displayPath(abspath);
+      });
+
+  connect(fileSystemTreeDock, &QFileSystemTreeDock::directoryItemPressed,
+      [this](const QString & abspath) {
+
+        if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
+          centralStackedWidget->setCurrentWidget(thumbnailsView);
+          if ( thumbnailsView->currentPath() != abspath ) {
+            thumbnailsView->displayPath(abspath);
+          }
+        }
+      });
+
+  connect(fileSystemTreeDock, &QFileSystemTreeDock::customContextMenuRequested,
+      this, &ThisClass::onFileSystemTreeCustomContextMenuRequested);
+
+}
+
+void MainWindow::onFileSystemTreeCustomContextMenuRequested(const QPoint & pos,
+    const QFileInfoList & selectedItems )
+{
+  QMenu menu;
+
+  if ( fileSystemTreeDock ) {
+    fileSystemTreeDock->fillContextMenu(menu, selectedItems);
+  }
+
+  if ( !menu.isEmpty() ) {
+    menu.exec(pos);
+  }
+}
+
+
+
+void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
+{
+  QMenu poupupMenu;
+  thumbnailsView->populateContextMenu(&poupupMenu, pos);
+  if( !poupupMenu.isEmpty() ) {
+    poupupMenu.exec(thumbnailsView->contextMenuPosToGlobal(pos));
+  }
+}
+
 
 
 

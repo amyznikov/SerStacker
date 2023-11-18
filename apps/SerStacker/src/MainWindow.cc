@@ -799,7 +799,23 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
     }
     else {
 
-      profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
+      QLine line =
+          profileGraph_ctl_->currentLine();
+
+      if ( line.isNull() && is_visible(imageView) ) {
+
+        const QList<QGraphicsItem *> items =
+            imageView->scene()->items();
+
+        for ( const QGraphicsItem * item : items ) {
+          if( const QGraphicsLineShape *lineShape = dynamic_cast<const QGraphicsLineShape*>(item) ) {
+            line = lineShape->sceneLine().toLine();
+            break;
+          }
+        }
+      }
+
+      profileGraph_ctl_->showProfilePlot(line,
           imageView->currentImage());
 
     }
@@ -809,7 +825,6 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
 
 void MainWindow::onMeasureRightNowRequested()
 {
-  CF_DEBUG("MainWindow::MeasureRequested");
   updateMeasurements();
 }
 

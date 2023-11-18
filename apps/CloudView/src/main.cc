@@ -1,7 +1,7 @@
 /*
  * main.cc
  *
- *  Created on September 5, 2019
+ *  Created at Sat, November 18, 2023
  *      Author: amyznikov
  */
 #include <opencv2/core/ocl.hpp>

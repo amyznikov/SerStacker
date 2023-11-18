@@ -1,7 +1,7 @@
 /*
  * MainWindow.h
  *
- *  Created on: Tuesday, December 1, 2020
+ *  Created at Sat, November 18, 2023
  *      Author: amyznikov
  */
 #pragma once

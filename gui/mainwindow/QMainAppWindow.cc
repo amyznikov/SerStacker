@@ -281,8 +281,6 @@ void QMainAppWindow::onShowMeasureDisplayActionTriggered(bool checked)
       connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
           this, &ThisClass::onMeasuresDisplayVisibilityChanged);
 
-      CF_DEBUG("connect onMeasureRightNowRequested");
-
       connect(measureDisplay_, &QMeasureDisplayDialogBox::measureRightNowRequested,
           this, &ThisClass::onMeasureRightNowRequested);
     }

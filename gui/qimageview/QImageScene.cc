@@ -6,8 +6,6 @@
  */
 
 #include "QImageScene.h"
-//#include "QGraphicsShape.h"
-#include <core/debug.h>
 
 QImageScene::QImageScene(QObject * parent)
   : Base(parent)
@@ -69,57 +67,23 @@ QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
     pixmapItem_->setPos(0, 0);
   }
 
-  //  QRectF rc = sceneRect();
-  //  CF_DEBUG("oldPixmapSize: %dx%d", oldPixmapSize.width(), oldPixmapSize.height());
-  //  CF_DEBUG("pxmap.size(): %dx%d", pxmap.width(), pxmap.height());
-  //  CF_DEBUG("sceneRect: %g %g %gx%g", rc.x(), rc.y(), rc.width(), rc.height());
-
   return pixmapItem_;
 }
 
 void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *e)
 {
-  //  menu.addAction("Send to back",
-  //      [this]() {
-  //
-  //      //this->stackBefore();
-  //
-  //        CF_DEBUG("zValue=%g", this->zValue());
-  //
-  //        QGraphicsScene * scene =
-  //            this->scene();
-  //        if ( scene ) {
-  //          QList<QGraphicsItem *> collidingItems = scene->collidingItems(this, Qt::IntersectsItemShape);
-  //          CF_DEBUG("collidingItems.size=%d", collidingItems.size());
-  //          if ( collidingItems.size() > 1 ) {
-  //            //scene->
-  //
-  //          }
-  //
-  //        }
-  //
-  //  });
-  //
-  //  menu.addSeparator();
-
   Base::contextMenuEvent(e);
 }
 
 void QImageScene::mousePressEvent(QGraphicsSceneMouseEvent *e)
 {
-//  CF_DEBUG("QImageScene: ENTER e->isAccepted()=%d", e->isAccepted());
-  //e->ignore();
   Base::mousePressEvent(e);
-//  CF_DEBUG("QImageScene: LEAVE e->isAccepted()=%d", e->isAccepted());
-
 }
 
 void QImageScene::mouseMoveEvent(QGraphicsSceneMouseEvent *e)
 {
   if( e->buttons() != Qt::NoButton ) {
-    //e->ignore();
     Base::mouseMoveEvent(e);
-    //CF_DEBUG("QImageScene: e->isAccepted()=%d", e->isAccepted());
   }
 }
 

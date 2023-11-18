@@ -257,6 +257,30 @@ add_definitions(-DHAVE_TBB=1 -DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
 message (STATUS "TBB: ${TBB_INCLUDES} ${TBB_LIBRARIES}")
 
 
+# ----------------------------------------------------------------------------
+# pcap
+#
+
+if ( TRUE )
+	unset(PCAP_INCLUDE_DIR)
+	unset(PCAP_LIBRARY)
+	find_path(PCAP_INCLUDE_DIR pcap/pcap.h)
+	find_library(PCAP_LIBRARY pcap)
+		    
+	if( PCAP_INCLUDE_DIR AND PCAP_LIBRARY ) 
+		message(STATUS "pcap: ${PCAP_INCLUDE_DIR} ${PCAP_LIBRARY}")
+        include_directories(${PCAP_INCLUDE_DIR})
+		add_definitions(-DHAVE_PCAP=1)
+	else()
+		set(PCAP_INCLUDE_DIR "")
+		set(PCAP_LIBRARY "")
+		        
+		message(WARNING "Can not locate pcap library under search path. 
+			pcap file reading functionalitymay not work.
+		    Install please pcap package if you need pcap read functionality")
+		            
+	endif()
+endif() # pcap
 
 
 # ----------------------------------------------------------------------------
@@ -300,93 +324,6 @@ endif()
 include_directories(${LIBCONFIG_INCLUDE_DIRS})
 message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LIBCONFIG_LIBRARIES}")
 
-#
-## ----------------------------------------------------------------------------
-## QGLViewer (optional, for glddm team)
-##
-#set(HAVE_QGLViewer FALSE)  
-#unset (QGLViewer_FOUND)
-#
-#if ( FALSE )
-#	find_package(QGLViewer QUIET)
-#	if ( NOT QGLViewer_FOUND )
-#	
-#		set(QGLVIEWER_INCLUDE_DIRS "")
-#		set(QGLVIEWER_LIBRARY "")
-#	
-#	    message(WARNING "If you are glddm team members then you pobably need 3D clouds browsing.\n \
-#	    	QGLViewer >= 2.7 is required for glddm 3D clouds browsing. \n \
-#	        To support this functionality install pleaae fresh version of QGLViewer from AUR or from sources: \n \
-#	        \n \
-#	         wget http://www.libqglviewer.com/src/libQGLViewer-2.7.1.tar.gz && \\ \n \
-#	         tar -xzvf libQGLViewer-2.7.1.tar.gz && \\ \n \
-#	         cd libQGLViewer-2.7.1/QGLViewer && \\ \n \
-#	         qmake && \\ \n \
-#	         make && \\ \n \
-#	         sudo make install && \\ \n \
-#	         make clean\ \n \
-#	     ")
-#	
-#	else()
-#		set(QT_VERSION 5)
-#	
-#		# OpenGL is required for QGLViewer
-#		# This option should affect only OpenGL-dependent targets
-#		# In case of multiple choices prefer vendor OPENGL_gl_LIBRARY by default
-#		# (usually libOpenGL.so and libGLX.so).
-#		if( ${CMAKE_VERSION} VERSION_GREATER "3.10" AND NOT OpenGL_GL_PREFERENCE )
-#		    set(OpenGL_GL_PREFERENCE GLVND)
-#		endif()
-#		
-#		find_package(OpenGL QUIET)
-#		if ( NOT OpenGL_FOUND )
-#	        message(WARNING "OpenGL package is not found, disabling QGLViewer")
-#	        set(QGLVIEWER_INCLUDE_DIRS)
-#	        set(QGLVIEWER_LIBRARY)
-#	        set(OPENGL_INCLUDE_DIR)
-#	        set(OPENGL_LIBRARY_DIR)
-#	        set(OPENGL_LIBRARIES)
-#	        set(QGLViewer_FOUND FALSE)
-#	    else ()
-#	        find_file(freeglut_h_found GL/freeglut.h  /usr/local/include /usr/include)
-#	        if ( NOT freeglut_h_found ) 
-#	            message(WARNING "OpenGL package is not found, disabling QGLViewer")
-#	            set(QGLVIEWER_INCLUDE_DIRS)
-#	            set(QGLVIEWER_LIBRARY)
-#	            set(OPENGL_INCLUDE_DIR)
-#	            set(OPENGL_LIBRARY_DIR)
-#	            set(OPENGL_LIBRARIES)
-#	            set(QGLViewer_FOUND FALSE)
-#	        else()
-#	            set(HAVE_QGLViewer TRUE)
-#	            add_definitions(-DHAVE_QGLViewer=1)
-#	
-#	            # Fixing GLEW PATH on OSX
-#	            if (APPLE)
-#	                find_path( GLEW_INCLUDE_DIR GL/glew.h
-#	                    /usr/local/include
-#	                    /usr/local/Cellar/glew/2.1.0/include
-#	                    /System/Library/Frameworks/GLEW.framework/Versions/A/Headers
-#	                    ${OPENGL_LIBRARY_DIR}
-#	                )
-#	                find_library( GLEW_GLEW_LIBRARY GLEW
-#	                    /usr/local/lib
-#	                    /usr/openwin/lib
-#	                    /usr/X11R6/lib
-#	                    /usr/local/Cellar/glew/2.1.0/lib
-#	                )
-#	                set( GLEW_FOUND TRUE )
-#	                if(NOT GLEW_GLEW_LIBRARY)
-#	                    set(GLEW_GLEW_LIBRARY "-framework GLEW" CACHE STRING "GLEW library for OSX")
-#	                    set(GLEW_cocoa_LIBRARY "-framework Cocoa" CACHE STRING "Cocoa framework for OSX")
-#	                    set(GLEW_FOUND FALSE )
-#	                endif()
-#	            endif (APPLE)
-#	        endif()
-#	    endif()	    
-#	endif()
-#endif()
-#
 
 # ----------------------------------------------------------------------------
 # Qt
@@ -432,6 +369,7 @@ set(CORE_LIBRARIES
 	${LIBRAW_LIBRARY}
 	${CFITSIO_LIBRARY}
 	${OPENRAW_LIBS}
+	${PCAP_LIBRARY}
     ${TBB_LIBRARIES}
     ${Shlwapi_LIB}
 	pthread)

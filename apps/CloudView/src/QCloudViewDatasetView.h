@@ -23,35 +23,19 @@ enum {
 };
 
 
-class QCloudViewDatasetTreeItem :
-  public QTreeWidgetItem
-{
-public:
-  typedef QCloudViewDatasetTreeItem ThisClass;
-  typedef QTreeWidgetItem Base;
 
-  QCloudViewDatasetTreeItem(QTreeWidget * treeview, int type);
-
-};
-
-
-
-
-
-
-
-
-
-class QCloudViewDatasetTreeDatasetItem :
-  public QCloudViewDatasetTreeItem
+class QCloudViewDatasetTreeDatasetItem:
+    public QTreeWidgetItem
 {
 public:
   typedef QCloudViewDatasetTreeDatasetItem ThisClass;
-  typedef QCloudViewDatasetTreeItem Base;
+  typedef QTreeWidgetItem Base;
 
   QCloudViewDatasetTreeDatasetItem(QTreeWidget * treeview, const c_cloudview_dataset::sptr & dataset);
 
-  const c_cloudview_dataset::sptr & dataset() const;
+  const c_cloudview_dataset::sptr& dataset() const;
+
+  void refreshInputSources();
 
 protected:
   c_cloudview_dataset::sptr dataset_;
@@ -59,20 +43,15 @@ protected:
 
 
 
-
-
-
-
-
-class QCloudViewDatasetTreeInputSourceItem :
-  public QCloudViewDatasetTreeItem
+class QCloudViewDatasetTreeInputSourceItem:
+    public QTreeWidgetItem
 {
 public:
   typedef QCloudViewDatasetTreeInputSourceItem ThisClass;
-  typedef QCloudViewDatasetTreeItem Base;
+  typedef QTreeWidgetItem Base;
 
-  QCloudViewDatasetTreeInputSourceItem(QTreeWidget * treeview, c_cloudview_input_source::sptr & input_source);
-  const c_cloudview_input_source::sptr & input_source() const;
+  QCloudViewDatasetTreeInputSourceItem(QTreeWidgetItem * parent, const c_cloudview_input_source::sptr & input_source);
+  const c_cloudview_input_source::sptr& input_source() const;
 
 protected:
   c_cloudview_input_source::sptr input_source_;

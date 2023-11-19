@@ -30,6 +30,7 @@ c_cloudview_dataset::c_cloudview_dataset(const type * dataset_type, const std::s
     dataset_type_(dataset_type),
     dataset_name_(dataset_name)
 {
+  input_sequence_.reset(new c_cloudview_input_sequence());
 }
 
 c_cloudview_dataset::~c_cloudview_dataset()
@@ -81,6 +82,11 @@ const c_cloudview_input_sequence::sptr & c_cloudview_dataset::input_sequence() c
   return input_sequence_;
 }
 
+const std::vector<c_cloudview_input_source::sptr> & c_cloudview_dataset::input_sources() const
+{
+  return input_sequence_->sources();
+}
+
 const std::vector<c_cloudview_dataset::type> & c_cloudview_dataset::supported_types()
 {
   static std::mutex mtx;
@@ -119,11 +125,19 @@ c_cloudview_dataset::sptr c_cloudview_dataset::create(const std::string & datase
   return nullptr;
 }
 
-
-c_cloudview_dataset::sptr c_cloudview_dataset::open(const std::string & abspath, const std::string & dataset_type)
+c_cloudview_input_source::sptr c_cloudview_dataset::add_input_source(const std::string & filename)
 {
-  CF_ERROR("c_cloudview_dataset::open() function not implemented");
-  return nullptr;
+  c_cloudview_input_source::sptr source =
+      create_input_source(filename);
+
+  if ( !source ) {
+    CF_ERROR("create_input_source('%s') fails", filename.c_str());
+  }
+  else {
+    input_sequence_->add_source(source);
+  }
+
+  return source;
 }
 
 

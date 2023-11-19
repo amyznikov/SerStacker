@@ -20,18 +20,14 @@ public:
   typedef c_cloudview_input_sequence this_class;
   typedef std::shared_ptr<this_class> sptr;
 
-  void set_name(const std::string & v);
-  const std::string & name() const;
+  c_cloudview_input_sequence();
 
   const std::vector<c_cloudview_input_source::sptr> & sources();
 
-protected:
-  c_cloudview_input_sequence(const std::string & sequence_name);
+  bool add_source(const c_cloudview_input_source::sptr & source);
 
 protected:
-  std::string sequence_name_;
   std::vector<c_cloudview_input_source::sptr> sources_;
-
 };
 
 } /* namespace cloudview */

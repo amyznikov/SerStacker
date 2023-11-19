@@ -40,7 +40,8 @@ public:
   virtual ssize_t curpos() = 0;
 
 protected:
-  c_cloudview_input_source()
+  c_cloudview_input_source(const std::string & filename = "") :
+      filename_(filename)
   {
   }
 

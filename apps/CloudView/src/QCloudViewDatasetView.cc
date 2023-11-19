@@ -28,12 +28,6 @@ static QToolBar * createToolbar(QWidget * parent = nullptr)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-QCloudViewDatasetTreeItem::QCloudViewDatasetTreeItem(QTreeWidget * treeview, int type) :
-    Base(treeview, type)
-{
-}
-
 QCloudViewDatasetTreeDatasetItem::QCloudViewDatasetTreeDatasetItem(QTreeWidget * treeview,
     const c_cloudview_dataset::sptr & dataset) :
     Base(treeview, (int) (QCloudViewDatasetTreeIemTypeDataset)),
@@ -43,7 +37,7 @@ QCloudViewDatasetTreeDatasetItem::QCloudViewDatasetTreeDatasetItem(QTreeWidget *
   setText(0, dataset->name().c_str());
 
   setCheckState(0, Qt::Checked);
-  // refreshInputSources();
+  refreshInputSources();
 }
 
 const c_cloudview_dataset::sptr& QCloudViewDatasetTreeDatasetItem::dataset() const
@@ -51,11 +45,32 @@ const c_cloudview_dataset::sptr& QCloudViewDatasetTreeDatasetItem::dataset() con
   return dataset_;
 }
 
-QCloudViewDatasetTreeInputSourceItem::QCloudViewDatasetTreeInputSourceItem(QTreeWidget * treeview,
-    c_cloudview_input_source::sptr & input_source) :
-    Base(treeview, (int) (QCloudViewDatasetTreeIemTypeInputSource)),
+void QCloudViewDatasetTreeDatasetItem::refreshInputSources()
+{
+  QTreeWidgetItem *childItem;
+
+  while ((childItem = takeChild(0))) {
+    delete childItem;
+  }
+
+  if( dataset_ ) {
+    for( const c_cloudview_input_source::sptr & input_source : dataset_->input_sources() ) {
+      new QCloudViewDatasetTreeInputSourceItem(this, input_source);
+    }
+  }
+}
+
+
+QCloudViewDatasetTreeInputSourceItem::QCloudViewDatasetTreeInputSourceItem(QTreeWidgetItem * parent,
+    const c_cloudview_input_source::sptr & input_source) :
+    Base(parent, (int) (QCloudViewDatasetTreeIemTypeInputSource)),
     input_source_(input_source)
 {
+
+  setFlags(flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable);
+  setText(0, input_source_->filename().c_str());
+
+  setCheckState(0, Qt::Checked);
 }
 
 const c_cloudview_input_source::sptr& QCloudViewDatasetTreeInputSourceItem::input_source() const
@@ -114,18 +129,18 @@ bool QCloudViewDatasetTreeView::eventFilter(QObject * watched, QEvent * event)
       QTreeWidgetItem *item = currentItem();
       if( item ) {
 
-        QCloudViewDatasetTreeDatasetItem *sequenceItem = nullptr;
+        QCloudViewDatasetTreeDatasetItem *datasetItem = nullptr;
         QCloudViewDatasetTreeInputSourceItem *inputSourceItem = nullptr;
 
         switch (item->type()) {
 
           case QCloudViewDatasetTreeIemTypeDataset:
-            sequenceItem = dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item);
+            datasetItem = dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item);
             break;
 
           case QCloudViewDatasetTreeIemTypeInputSource:
             inputSourceItem = dynamic_cast<QCloudViewDatasetTreeInputSourceItem*>(item);
-            sequenceItem = dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item->parent());
+            datasetItem = dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item->parent());
             break;
         }
 
@@ -397,60 +412,37 @@ void QCloudViewDatasetView::onAddSources(QCloudViewDatasetTreeDatasetItem * data
   settings.setValue(savedPathKeyName,
       selectedFileNames[0]);
 
-//  bool hasChanges = false;
-//
-//  for ( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
-//
-//    c_image_sequence::sptr sequence =
-//        c_image_sequence::load(selectedFileNames[i].toStdString());
-//
-//    if ( !sequence ) {
-//
-//      if ( i == n - 1 ) {
-//        QMessageBox::critical(this,
-//            "ERROR",
-//            QString("Can not load %1.\nSee error log for details.").arg(selectedFileNames[i]));
-//        break;
-//      }
-//
-//      const int responce =
-//          QMessageBox::critical(this, "ERROR",
-//              QString("Can not load %1.\n"
-//                  "See error log for details.\n"
-//                  "Continue loading ?").arg(selectedFileNames[i]),
-//              QMessageBox::Yes | QMessageBox::No);
-//
-//      if ( responce != QMessageBox::Yes ) {
-//        break;
-//      }
-//
-//      continue;
-//    }
-//
-//
-//    int pos = image_sequences_->indexof(sequence->name());
-//    if ( pos < 0 ) {
-//      image_sequences_->add(sequence);
-//      hasChanges = true;
-//    }
-//    else {
-//
-//      const int responce =
-//          QMessageBox::critical(this, "ERROR",
-//              QString("Stack with name '%1' already exists.\n"
-//                  "Replace existing ?").arg(QString(sequence->cname())),
-//              QMessageBox::Yes | QMessageBox::No);
-//
-//      if ( responce == QMessageBox::Yes  ) {
-//        image_sequences_->set(pos, sequence);
-//        hasChanges = true;
-//      }
-//    }
-//  }
-//
-//  if ( hasChanges ) {
-//    sequencesTreeView->refresh();
-//  }
+  bool hasChanges = false;
+
+  for( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
+
+    if( dataset->add_input_source(selectedFileNames[i].toStdString()) ) {
+      hasChanges = true;
+    }
+    else {
+
+      if( i == n - 1 ) {
+        QMessageBox::critical(this, "ERROR", QString("Can not load %1.\n"
+            "See error log for details.").arg(selectedFileNames[i]));
+        break;
+      }
+
+      const int responce =
+          QMessageBox::critical(this, "ERROR", QString("Can not load %1.\n"
+              "See error log for details.\n"
+              "Continue loading ?").arg(selectedFileNames[i]),
+              QMessageBox::Yes | QMessageBox::No);
+
+      if( responce != QMessageBox::Yes ) {
+        break;
+      }
+    }
+  }
+
+  if ( hasChanges ) {
+    datasetItem->refreshInputSources();
+    treeView_->expandItem(datasetItem);
+  }
 
 }
 

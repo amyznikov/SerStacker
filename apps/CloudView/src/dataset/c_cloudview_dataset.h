@@ -84,14 +84,17 @@ public:
   const std::string & path() const;
   const char *cpath() const;
 
-  const c_cloudview_input_sequence::sptr & input_sequence() const;
-
-
-  static sptr create(const std::string & dataset_type, const std::string & dataset_name = "");
-  static sptr open(const std::string & abspath, const std::string & dataset_type = "");
   static const std::vector<type> & supported_types();
 
+  static sptr create(const std::string & dataset_type, const std::string & dataset_name = "");
 
+  const c_cloudview_input_sequence::sptr & input_sequence() const;
+
+  const std::vector<c_cloudview_input_source::sptr> & input_sources() const;
+
+  c_cloudview_input_source::sptr add_input_source(const std::string & filename);
+
+  virtual c_cloudview_input_source::sptr create_input_source(const std::string & filename) const = 0;
 
 protected:
   c_cloudview_dataset(const type * dataset_type,

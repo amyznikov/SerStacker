@@ -21,47 +21,85 @@ public:
   typedef c_cloudview_dataset this_class;
   typedef std::shared_ptr<this_class> sptr;
 
-  struct type
+  class type
   {
-    std::string name;
-    std::string tooltip;
-    std::vector<std::string> supported_suffixes;
-    std::function<sptr ()> create_instance;
-
-
-
+  public:
     template<class Fn>
     type(const std::string & _name, const std::string & _tooltip,
         const std::vector<std::string> & _supported_suffixes,
+        const std::string & _filter,
         const Fn & obj_creator) :
-        name(_name),
-        tooltip(_tooltip),
-        supported_suffixes(_supported_suffixes),
-        create_instance(obj_creator)
+        name_(_name),
+        tooltip_(_tooltip),
+        supported_suffixes_(_supported_suffixes),
+        filter_(_filter),
+        create_instance_(obj_creator)
     {
     }
+
+    const std::string & name() const
+    {
+      return name_;
+    }
+
+    const std::string & tooltip() const
+    {
+      return tooltip_;
+    }
+
+    const std::vector<std::string> & supported_suffixes() const
+    {
+      return supported_suffixes_;
+    }
+
+    const std::string & file_filter() const
+    {
+      return filter_;
+    }
+
+    sptr create_instance(const std::string & dataset_name) const
+    {
+      return create_instance_(this, dataset_name);
+    }
+
+  protected:
+    std::string name_;
+    std::string tooltip_;
+    std::vector<std::string> supported_suffixes_;
+    std::string filter_;
+    std::function<sptr (const type *, const std::string &)> create_instance_;
   };
 
 
   virtual ~c_cloudview_dataset();
 
-  static const std::vector<type> & supported_types();
-  static sptr create(const std::string & dataset_type);
+  const type * dataset_type() const;
+  const std::string & file_filter() const;
 
-  static sptr open(const std::string & abspath);
+  void set_name(const std::string & v);
+  const std::string & name() const;
+  const char * cname() const;
 
+  void set_path(const std::string & v);
+  const std::string & path() const;
+  const char *cpath() const;
 
-
-
-  const std::string & dataset_path() const;
   const c_cloudview_input_sequence::sptr & input_sequence() const;
 
 
+  static sptr create(const std::string & dataset_type, const std::string & dataset_name = "");
+  static sptr open(const std::string & abspath, const std::string & dataset_type = "");
+  static const std::vector<type> & supported_types();
+
+
 
 protected:
-  c_cloudview_dataset(const std::string & dataset_path);
+  c_cloudview_dataset(const type * dataset_type,
+      const std::string & dataset_name);
 
 protected:
+  const type * dataset_type_ = nullptr;
+  std::string dataset_name_;
   std::string dataset_path_;
   c_cloudview_input_sequence::sptr input_sequence_;
 };

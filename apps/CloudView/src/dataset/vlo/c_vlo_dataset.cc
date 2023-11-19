@@ -9,13 +9,9 @@
 
 namespace cloudview {
 
-c_vlo_dataset::c_vlo_dataset() :
-    base("")
-{
-}
-
-c_vlo_dataset::c_vlo_dataset(const std::string & dataset_path) :
-    base(dataset_path)
+c_vlo_dataset::c_vlo_dataset(const type * _type,
+    const std::string & dataset_name) :
+    base(_type, dataset_name)
 {
 }
 

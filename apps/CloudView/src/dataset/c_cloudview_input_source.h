@@ -27,6 +27,11 @@ public:
     return filename_;
   }
 
+  const char * cfilename() const
+  {
+    return filename_.c_str();
+  }
+
   virtual bool open(const std::string & filename) = 0;
   virtual void close() = 0;
   virtual bool is_open() = 0;

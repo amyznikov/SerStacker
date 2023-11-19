@@ -30,11 +30,16 @@ public:
   typedef QCloudViewDatasetTreeItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QCloudViewDatasetTreeItem(QTreeWidget * treeview, int type) :
-    Base(treeview, type)
-  {
-  }
+  QCloudViewDatasetTreeItem(QTreeWidget * treeview, int type);
+
 };
+
+
+
+
+
+
+
 
 
 class QCloudViewDatasetTreeDatasetItem :
@@ -44,20 +49,20 @@ public:
   typedef QCloudViewDatasetTreeDatasetItem ThisClass;
   typedef QCloudViewDatasetTreeItem Base;
 
-  QCloudViewDatasetTreeDatasetItem(QTreeWidget * treeview, const c_cloudview_dataset::sptr & dataset) :
-    Base(treeview, (int)(QCloudViewDatasetTreeIemTypeDataset)),
-    dataset_(dataset)
-  {
-  }
+  QCloudViewDatasetTreeDatasetItem(QTreeWidget * treeview, const c_cloudview_dataset::sptr & dataset);
 
-  const c_cloudview_dataset::sptr & dataset() const
-  {
-    return dataset_;
-  }
+  const c_cloudview_dataset::sptr & dataset() const;
 
 protected:
   c_cloudview_dataset::sptr dataset_;
 };
+
+
+
+
+
+
+
 
 class QCloudViewDatasetTreeInputSourceItem :
   public QCloudViewDatasetTreeItem
@@ -66,20 +71,18 @@ public:
   typedef QCloudViewDatasetTreeInputSourceItem ThisClass;
   typedef QCloudViewDatasetTreeItem Base;
 
-  QCloudViewDatasetTreeInputSourceItem(QTreeWidget * treeview, c_cloudview_input_source::sptr & input_source) :
-    Base(treeview, (int)(QCloudViewDatasetTreeIemTypeInputSource)),
-    input_source_(input_source)
-  {
-  }
-
-  const c_cloudview_input_source::sptr & input_source() const
-  {
-    return input_source_;
-  }
+  QCloudViewDatasetTreeInputSourceItem(QTreeWidget * treeview, c_cloudview_input_source::sptr & input_source);
+  const c_cloudview_input_source::sptr & input_source() const;
 
 protected:
   c_cloudview_input_source::sptr input_source_;
 };
+
+
+
+
+
+
 
 
 class QCloudViewDatasetTreeView :
@@ -93,11 +96,24 @@ public:
 
   QCloudViewDatasetTreeView(QWidget * parent = nullptr);
 
+  QCloudViewDatasetTreeDatasetItem * findDatasetItem(const QString & name) const;
+
+  QList<QTreeWidgetItem*> getContextItems(const QPoint & pos) const;
+
 protected:
+  bool eventFilter(QObject *watched, QEvent *event) override;
   void onItemChanged(QTreeWidgetItem *item, int column);
 
 protected:
 };
+
+
+
+
+
+
+
+
 
 
 class QCloudViewDatasetView :
@@ -111,11 +127,23 @@ public:
   QCloudViewDatasetView(QWidget * parent = nullptr);
 
   void onAddDataset();
+  void onAddSources(QCloudViewDatasetTreeDatasetItem * datasetItem);
+
+protected:
+  void onCustomContextMenuRequested(const QPoint & pos);
 
 protected:
   QToolBar * toolbar_ = nullptr;
   QCloudViewDatasetTreeView * treeView_ = nullptr;
 };
+
+
+
+
+
+
+
+
 
 class QCloudViewDatasetViewDock :
     public QCustomDockWidget
@@ -141,6 +169,19 @@ QCloudViewDatasetViewDock * addCloudViewDatasetViewDock(QMainWindow * parent,
     QMenu * viewMenu);
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 class QAddCloudViewDatasetDialogBox :
     public QDialog
 {
@@ -149,6 +190,9 @@ public:
   typedef QDialog Base;
 
   QAddCloudViewDatasetDialogBox(QWidget * parent);
+
+  QString selectedDatasetType() const;
+  QString selectedDatasetName() const;
 
 protected:
   void populateDatasetTypesCombo();
@@ -163,6 +207,8 @@ protected:
   QPushButton * addButton_ctl = nullptr;
   QPushButton * cancelButton_ctl = nullptr;
 };
+
+
 
 } /* namespace cloudview */
 

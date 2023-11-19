@@ -21,10 +21,11 @@ public:
   typedef c_cloudview_dataset base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_vlo_dataset();
-  c_vlo_dataset(const std::string & dataset_path);
 
 protected:
+  friend class c_cloudview_dataset;
+  c_vlo_dataset(const type * _type,
+      const std::string & dataset_name);
 };
 
 } // namespace cloudview

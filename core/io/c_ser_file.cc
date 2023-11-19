@@ -59,22 +59,22 @@ static inline void swap_endianess(T data[], size_t count)
   }
 }
 
-static ssize_t file_size(int fd)
-{
-  ssize_t old_position, end_position;
-
-  if ( (old_position = lseek64(fd, 0, SEEK_CUR)) < 0 ) {
-    return -1;
-  }
-
-  if ( (end_position = lseek64(fd, 0, SEEK_END)) < 0 ) {
-    return -1;
-  }
-
-  lseek64(fd, old_position, SEEK_SET);
-
-  return end_position;
-}
+//static ssize_t file_size(int fd)
+//{
+//  ssize_t old_position, end_position;
+//
+//  if ( (old_position = lseek64(fd, 0, SEEK_CUR)) < 0 ) {
+//    return -1;
+//  }
+//
+//  if ( (end_position = lseek64(fd, 0, SEEK_END)) < 0 ) {
+//    return -1;
+//  }
+//
+//  lseek64(fd, old_position, SEEK_SET);
+//
+//  return end_position;
+//}
 
 c_ser_file::c_ser_file()
 {
@@ -257,19 +257,15 @@ int32_t c_ser_reader::curpos() const
   return curpos_;
 }
 
-bool c_ser_reader::close()
+void c_ser_reader::close()
 {
-  if ( fd >= 0 ) {
-    ::close(fd), fd = -1;
-  }
-
+  fd_.close();
   curpos_ = -1;
-  return true;
 }
 
 bool c_ser_reader::is_open() const
 {
-  return fd >= 0;
+  return fd_.is_open();
 }
 
 
@@ -277,12 +273,13 @@ bool c_ser_reader::open(const std::string & filename)
 {
   close();
 
-  if ( (fd = ::open(filename.c_str(), O_RDONLY)) < 0 ) {
-    CF_ERROR("fopen('%s') fails: %s", filename.c_str(), strerror(errno));
+  if ( !fd_.open(filename.c_str(), O_RDONLY) ) {
+    CF_ERROR("fd_.open('%s') fails: %s", filename.c_str(),
+        strerror(errno));
     return false;
   }
 
-  const ssize_t current_file_size = file_size(fd);
+  const ssize_t current_file_size = fd_.size();
   if ( current_file_size < sizeof(file_header) ) {
     CF_ERROR("Too small file size: %zd < sizeof(HEADER)", current_file_size);
     close();
@@ -290,8 +287,8 @@ bool c_ser_reader::open(const std::string & filename)
     return false;
   }
 
-  if ( ::read(fd, &header_, sizeof(header_)) != sizeof(header_) ) {
-    CF_ERROR("fread(SER header) fails: %s", strerror(errno));
+  if ( fd_.read(&header_, sizeof(header_)) != sizeof(header_) ) {
+    CF_ERROR("read(SER header) fails: %s", strerror(errno));
     close();
     return false;
   }
@@ -366,21 +363,21 @@ bool c_ser_reader::open(const std::string & filename)
   if ( current_file_size >= timestamps_array_offset + timestamps_array_size_required ) {
 
     const ssize_t backup_pos =
-        lseek64(fd, 0, SEEK_CUR);
+        fd_.whence();
 
-    if ( lseek64(fd, timestamps_array_offset, SEEK_SET) == timestamps_array_offset ) {
+    if ( fd_.seek(timestamps_array_offset, SEEK_SET) == timestamps_array_offset ) {
 
       timestamps_.resize(header_.frames_count, 0);
 
       const ssize_t bytest_to_read =
           sizeof(timestamps_[0]) * timestamps_.size();
 
-      if ( ::read(fd, timestamps_.data(), bytest_to_read) != bytest_to_read ) {
+      if ( fd_.read(timestamps_.data(), bytest_to_read) != bytest_to_read ) {
         CF_ERROR("::read() fails : %s", strerror(errno));
         return false;
       }
 
-      lseek64(fd, backup_pos, SEEK_SET);
+      fd_.seek(backup_pos, SEEK_SET);
 
       if ( header_.is_little_endian != is_current_machine_little_endian() ) {
 
@@ -420,7 +417,7 @@ bool c_ser_reader::seek(int frame_index)
     const ssize_t seekpos =
         sizeof(header_) + (ssize_t) frame_index * frame_size();
 
-    if ( lseek64(fd, seekpos, SEEK_SET) != seekpos ) {
+    if ( fd_.seek(seekpos, SEEK_SET) != seekpos ) {
 
       CF_ERROR("lseek64(seekpos=%zd, num_frames=%d) fails: %s",
           seekpos,
@@ -484,23 +481,23 @@ bool c_ser_reader::read(cv::OutputArray output_image)
 
 
   const ssize_t savedpos =
-      lseek64(fd, 0, SEEK_CUR);
+      fd_.whence();
 
   const ssize_t bytes_to_read =
       image.total() * image.elemSize();
 
   const ssize_t bytes_read =
-      ::read(fd, image.data, bytes_to_read);
+      fd_.read(image.data, bytes_to_read);
 
   if ( bytes_read != bytes_to_read ) {
 
-    CF_ERROR("fread() fails: %s. bytes_to_read=%zd bytes_read=%zd curpos=%zd",
+    CF_ERROR("read() fails: %s. bytes_to_read=%zd bytes_read=%zd curpos=%zd",
         strerror(errno),
         bytes_to_read,
         bytes_read,
         savedpos);
 
-    lseek64(fd, savedpos, SEEK_SET);
+    fd_.seek(savedpos, SEEK_SET);
 
     return false;
   }

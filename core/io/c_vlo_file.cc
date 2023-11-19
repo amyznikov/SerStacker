@@ -8,7 +8,6 @@
 #include "c_vlo_file.h"
 #include <fcntl.h>
 #include <limits>
-//#include <core/proc/autoclip.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -36,23 +35,23 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
 namespace {
 
 //@brief get current file position
-static inline ssize_t whence(int fd)
-{
-  return ::lseek64(fd, 0, SEEK_CUR);
-}
-
-static inline bool readfrom(int fd, ssize_t offset, uint16_t * data)
-{
-  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
-    return false;
-  }
-
-  if( ::read(fd, data, sizeof(*data)) != sizeof(*data) ) {
-    return false;
-  }
-
-  return true;
-}
+//static inline ssize_t whence(file_t fd)
+//{
+//  return ::lseek64(fd, 0, SEEK_CUR);
+//}
+//
+//static inline bool readfrom(file_t fd, ssize_t offset, uint16_t * data)
+//{
+//  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
+//    return false;
+//  }
+//
+//  if( ::read(fd, data, sizeof(*data)) != sizeof(*data) ) {
+//    return false;
+//  }
+//
+//  return true;
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1272,12 +1271,12 @@ bool c_vlo_reader::open(const std::string & filename)
 
     const char *fname = filename_.c_str();
 
-    if( (fd_ = ::open(fname, openflags)) < 0 ) {
-      CF_ERROR("open('%s') fails: %s", fname, strerror(errno));
+    if( !fd_.open(fname, openflags)) {
+      CF_ERROR("fd_.open('%s') fails: %s", fname, strerror(errno));
       goto end;
     }
 
-    if( ::read(fd_, &format_version, sizeof(format_version)) != sizeof(format_version) ) {
+    if( fd_.read(&format_version, sizeof(format_version)) != sizeof(format_version) ) {
       CF_ERROR("read('%s', format_version) fails: %s", fname,
           strerror(errno));
       goto end;
@@ -1310,23 +1309,22 @@ bool c_vlo_reader::open(const std::string & filename)
         bool isv1, isv3;
         long offset;
 
-        if( !readfrom(fd_, offset = 1 * sizeof(c_vlo_scan1), &data11) ) {
+        if( fd_.readfrom(offset = 1 * sizeof(c_vlo_scan1), &data11, sizeof(data11)) != sizeof(data11) ) {
           CF_ERROR("readfrom('%s', offset=%ld, data11) fails: %s", fname, offset,
               strerror(errno));
           goto end;
         }
-        if( !readfrom(fd_, offset = 2 * sizeof(c_vlo_scan1), &data12) ) {
+        if( fd_.readfrom(offset = 2 * sizeof(c_vlo_scan1), &data12, sizeof(data12)) != sizeof(data12) ) {
           CF_ERROR("readfrom('%s', offset=%ld, data12) fails: %s", fname, offset,
               strerror(errno));
           goto end;
         }
-
-        if( !readfrom(fd_, offset = 1 * sizeof(c_vlo_scan3), &data31) ) {
+        if( fd_.readfrom(offset = 1 * sizeof(c_vlo_scan3), &data31, sizeof(data31)) != sizeof(data31) ) {
           CF_ERROR("readfrom('%s', offset=%ld, data31) fails: %s", fname, offset,
               strerror(errno));
           goto end;
         }
-        if( !readfrom(fd_, offset = 2 * sizeof(c_vlo_scan3), &data32) ) {
+        if( fd_.readfrom(offset = 2 * sizeof(c_vlo_scan3), &data32, sizeof(data32)) != sizeof(data32) ) {
           CF_ERROR("readfrom('%s', offset=%ld, data32) fails: %s", fname, offset,
               strerror(errno));
           goto end;
@@ -1362,20 +1360,9 @@ bool c_vlo_reader::open(const std::string & filename)
         goto end;
     }
 
-    if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
-      CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
-          strerror(errno));
-      goto end;
-    }
 
-    if( (file_size = ::lseek64(fd_, 0, SEEK_END)) < 0 ) {
-      CF_ERROR("lseek('%s', offset=0, SEEK_END) fails: %s", fname,
-          strerror(errno));
-      goto end;
-    }
-
-    if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
-      CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
+    if( (file_size = fd_.size()) < 0 ) {
+      CF_ERROR("fd_.size('%s') fails: %s", fname,
           strerror(errno));
       goto end;
     }
@@ -1403,15 +1390,12 @@ end:
 void c_vlo_reader::close()
 {
   ifhd_.close();
-  if( fd_ >= 0 ) {
-    ::close(fd_);
-    fd_ = -1;
-  }
+  fd_.close();
 }
 
 bool c_vlo_reader::is_open() const
 {
-  return fd_ >= 0 || ifhd_.is_open();
+  return fd_.is_open() || ifhd_.is_open();
 }
 
 /// @brief get frame size in bytes
@@ -1434,26 +1418,26 @@ bool c_vlo_reader::seek(int32_t frame_index)
     return ifhd_.seek(frame_index);
   }
 
-  if( fd_ >= 0 ) {
+  if( fd_.is_open() ) {
 
     const ssize_t seekpos =
         frame_index * frame_size();
 
-    return ::lseek64(fd_, seekpos, SEEK_SET) == seekpos;
+    return fd_.seek(seekpos, SEEK_SET) == seekpos;
   }
 
   errno = EBADF;
   return false;
 }
 
-int32_t c_vlo_reader::curpos() const
+int32_t c_vlo_reader::curpos()
 {
   if( ifhd_.is_open() ) {
     return ifhd_.curpos();
   }
 
-  if( fd_ >= 0 ) {
-    return whence(fd_) / frame_size();
+  if( fd_.is_open() ) {
+    return fd_.whence() / frame_size();
   }
 
   errno = EBADF;
@@ -1468,8 +1452,8 @@ template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VER
     return false;
   }
 
-  if( fd_ >= 0 ) {
-    if( ::read(fd_, scan, sizeof(*scan)) == sizeof(*scan) ) {
+  if( fd_.is_open() ) {
+    if( fd_.read(scan, sizeof(*scan)) == sizeof(*scan) ) {
       ::sort_echos_by_distance(*scan);
       return true;
     }
@@ -1525,15 +1509,6 @@ bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, 
     return get_cloud3d(*scan, colors_channel, points, colors);
   }
 
-  return false;
-}
-
-bool c_vlo_reader::read_clouds3d(cv::Mat3f clouds[3])
-{
-  std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
-  if ( read(scan.get()) ) {
-    return get_clouds3d(*scan, clouds);
-  }
   return false;
 }
 

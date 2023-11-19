@@ -26,6 +26,7 @@
 #define __c_ser_file_h__
 
 #include "debayer.h" // for COLORID
+#include "c_file_handle.h"
 
 /// @brief c_ser_file
 /// Base class for SER reader and writer
@@ -167,10 +168,10 @@ public:
   /// @brief close()
   /// Close SER reader,
   /// release resources
-  bool close();
+  void close();
 
 protected:
-  int fd = -1;  // file descriptopr
+  c_file_handle fd_;  // file descriptopr
   int32_t curpos_ = -1; // current frame read position counter
 };
 

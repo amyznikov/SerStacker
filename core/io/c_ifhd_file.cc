@@ -7,7 +7,6 @@
 
 #include "c_ifhd_file.h"
 #include <string.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <limits>
 #include <cmath>
@@ -15,19 +14,19 @@
 
 
 //@brief get current file position
-static inline ssize_t whence(int fd)
-{
-  return ::lseek64(fd, 0, SEEK_CUR);
-}
+//static inline ssize_t whence(int fd)
+//{
+//  return ::lseek64(fd, 0, SEEK_CUR);
+//}
 
-static inline ssize_t readfrom(int fd, ssize_t offset, void * data, size_t size)
-{
-  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
-    return -1;
-  }
-
-  return ::read(fd, data, size);
-}
+//static inline ssize_t readfrom(file_t fd, ssize_t offset, void * data, size_t size)
+//{
+//  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
+//    return -1;
+//  }
+//
+//  return ::read(fd, data, size);
+//}
 
 
 // check if it is a IFHD file
@@ -82,14 +81,13 @@ const std::vector<c_ifhd_reader::IfhdStream> & c_ifhd_reader::streams() const
 
 bool c_ifhd_reader::is_open() const
 {
-  return fd_ >= 0;
+  return fd_.is_open();
 }
 
 void c_ifhd_reader::close()
 {
-  if ( fd_ >= 0 ) {
-    ::close(fd_);
-    fd_ = -1;
+  if ( fd_.is_open() ) {
+    fd_.close();
     current_stream_index_ = -1;
     current_frame_index_in_current_stream_ = -1;
   }
@@ -118,27 +116,22 @@ bool c_ifhd_reader::open(const std::string & filename)
   constexpr int openflags = O_RDONLY | O_NOATIME;
 #endif
 
-  if( (fd_ = ::open(fname, openflags)) < 0 ) {
-    CF_ERROR("open('%s') fails: %s", fname, strerror(errno));
+  if( !fd_.open(fname, openflags) ) {
+    CF_ERROR("fd_.open('%s') fails: %s", fname, strerror(errno));
     goto end;
   }
 
 
-  if( ::read(fd_, &file_header_, sizeof(file_header_)) != sizeof(file_header_) ) {
+  if( fd_.read(&file_header_, sizeof(file_header_)) != sizeof(file_header_) ) {
     CF_ERROR("read('%s', file_header_) fails: %s", fname,
         strerror(errno));
     goto end;
   }
 
   if ( !check_file_header(file_header_) ) {
-    // CF_ERROR("check_file_header('%s') fails", fname);
     errno = ENODATA;
     goto end;
   }
-
-//  CF_DEBUG("file_header_: extension_count=%u",
-//      file_header_.extension_count);
-
 
   file_streams_.clear();
   file_streams_.reserve(file_header_.extension_count);
@@ -150,13 +143,13 @@ bool c_ifhd_reader::open(const std::string & filename)
     const ssize_t offset =
         file_header_.extension_offset + i * sizeof(FileExtension);
 
-    if( readfrom(fd_, offset, &stream.extension, sizeof(stream.extension)) != sizeof(stream.extension) ) {
+    if( fd_.readfrom(offset, &stream.extension, sizeof(stream.extension)) != sizeof(stream.extension) ) {
       CF_ERROR("readfrom('%s',offset=%zd, size=%zu) fails: %s", fname, offset, sizeof(stream.extension),
           strerror(errno));
       goto end;
     }
 
-    if( readfrom(fd_, stream.extension.data_pos, &stream.header, sizeof(stream.header)) != sizeof(stream.header) ) {
+    if( fd_.readfrom(stream.extension.data_pos, &stream.header, sizeof(stream.header)) != sizeof(stream.header) ) {
       CF_ERROR("readfrom('%s',offset=%zd, size=%zu) fails: %s", fname, stream.extension.data_pos, sizeof(stream.header),
           strerror(errno));
       goto end;
@@ -168,8 +161,8 @@ bool c_ifhd_reader::open(const std::string & filename)
 
   }
 
-  if( ::lseek64(fd_, 0, SEEK_SET) != 0 ) {
-    CF_ERROR("lseek('%s', offset=0, SEEK_SET) fails: %s", fname,
+  if( fd_.seek(0, SEEK_SET) != 0 ) {
+    CF_ERROR("fd_.seek('%s', offset=0, SEEK_SET) fails: %s", fname,
         strerror(errno));
     goto end;
   }
@@ -226,7 +219,7 @@ bool c_ifhd_reader::select_stream(int index)
     const ssize_t offset =
         file_header_.data_offset + current_chunk_offset;
 
-    if( readfrom(fd_, offset, &chunk_header, sizeof(ifhd::ChunkHeader)) != sizeof(ifhd::ChunkHeader) ) {
+    if( fd_.readfrom(offset, &chunk_header, sizeof(ifhd::ChunkHeader)) != sizeof(ifhd::ChunkHeader) ) {
       CF_ERROR("readfrom(fd=%d, offset=%zd, size=%zu) fails: %s", fd_, offset, sizeof(ifhd::ChunkHeader),
           strerror(errno));
       break;
@@ -359,7 +352,7 @@ size_t c_ifhd_reader::read_payload(void * data, size_t max_size)
   }
 
   const ssize_t bytes_read =
-      readfrom(fd_, chunk.payload_offset, data,
+      fd_.readfrom(chunk.payload_offset, data,
             max_size);
 
   if( bytes_read >= 0 ) {

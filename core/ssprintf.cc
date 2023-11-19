@@ -12,19 +12,39 @@
 #include "ssprintf.h"
 #include <core/debug.h>
 
+#ifdef _MSC_VER
+# pragma warning (disable:4996)
+#endif
+
 /**
  * C-style string formating
  */
 std::string vssprintf(const char * format, va_list arglist)
 {
-  char * s = NULL;
   std::string ss;
+
+#if _MSC_VER
+
+  constexpr int buffer_size = 8 * 1024;
+
+  std::vector<char> very_large_buffer(buffer_size, (char)0);
+  char * s = very_large_buffer.data();
+
+  if ( vsnprintf(s, buffer_size - 1, format, arglist) > 0 ) {
+    ss = s;
+  }
+
+#else
+
+  char * s = nullptr;
 
   if ( vasprintf(&s, format, arglist) > 0 ) {
     ss = s;
   }
 
   free(s);
+#endif
+
   return ss;
 }
 
@@ -36,11 +56,10 @@ std::string ssprintf(const char * format, ...)
   std::string ss;
 
 #ifdef _MSC_VER
-# pragma warning (disable:4996)
 
   constexpr int buffer_size = 8 * 1024;
 
-  std::vector<char> very_large_buffer(buffer_size);
+  std::vector<char> very_large_buffer(buffer_size, (char)0);
 
   char * s = very_large_buffer.data();
 
@@ -53,7 +72,8 @@ std::string ssprintf(const char * format, ...)
   va_end(arglist);
 
   if ( n >= buffer_size - 1 ) {
-    fprintf(stderr, "String buffer overflow in %s: %d\n", __FILE__, __LINE__);
+    fprintf(stderr, "String buffer overflow in %s: %d\n",
+        __FILE__, __LINE__);
   }
 
   ss = s;
@@ -83,7 +103,15 @@ std::string ssprintf(const char * format, ...)
  * */
 size_t strsplit(const std::string & s, std::vector<std::string> & tokens, const std::string & _delims)
 {
+#if _MSC_VER
+  std::vector<char> very_large_buffer(s.size() + 1);
+  char * buf = very_large_buffer.data();
+
+#else
+
   char buf[s.size() + 1];
+
+#endif
 
   const char * delims =
       _delims.c_str();
@@ -96,7 +124,7 @@ size_t strsplit(const std::string & s, std::vector<std::string> & tokens, const 
 
   for ( ; tok; ++n ) {
     tokens.emplace_back(tok);
-    tok = strtok(NULL, delims);
+    tok = strtok(nullptr, delims);
   }
 
   return n;

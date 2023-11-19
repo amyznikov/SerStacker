@@ -17,9 +17,14 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 #include <string>
 #include <vector>
+
+#if _MSC_VER
+typedef int pid_t;
+#else
+# include <unistd.h>
+#endif
 
 /** logging verbosity levels */
 enum {
@@ -67,7 +72,11 @@ pid_t get_tid();
 
 void cf_plogv(int pri, const char * file, const char * func, int line, const char * format, va_list arglist);
 void cf_plog(int pri, const char * file, const char * func, int line, const char * format, ...)
+#if !_MSC_VER
   __attribute__ ((__format__ (printf, 5, 6)));
+#else
+;
+#endif
 
 void cf_log_put(const char * msg);
 

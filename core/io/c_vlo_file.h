@@ -788,7 +788,7 @@ public:
   void close();
   bool is_open() const;
   bool seek(int32_t frame_index);
-  int32_t curpos() const;
+  int32_t curpos();
 
   /// @brief get frame size in bytes
   ssize_t frame_size() const;
@@ -799,17 +799,16 @@ public:
   bool read(c_vlo_scan * scan);
   bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);
   bool read_cloud3d(cv::OutputArray points, cv::OutputArray colors, c_vlo_file::DATA_CHANNEL colors_channel);
-  bool read_clouds3d(cv::Mat3f clouds[3]);
 
 protected:
   template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION > 0),
     bool> read(ScanType * scan);
 
 protected:
+  c_file_handle fd_;
   c_ifhd_reader ifhd_;
   ssize_t num_frames_ = -1;
   ssize_t frame_size_ = -1;
-  int fd_ = -1;
 };
 
 

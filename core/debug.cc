@@ -23,7 +23,6 @@
 #include <errno.h>
 #include <signal.h>
 #include <mutex>
-//#include <string>
 
 #if __linux
 # include <sys/syscall.h>
@@ -33,6 +32,9 @@
 # include <windows.h>       // Or something like it.
 #endif
 
+#ifdef _MSC_VER
+# pragma warning (disable:4996)
+#endif
 
 // current log time stamp
 namespace {
@@ -49,8 +51,23 @@ namespace {
 
   static void get_current_time(struct c_current_time * ct)
   {
+  #if _MSC_VER
+
+      SYSTEMTIME st;
+
+      GetSystemTime(&st);
+
+      ct->year = st.wYear;
+      ct->month = st.wMonth;
+      ct->day = st.wDay;
+      ct->hour = st.wHour;
+      ct->min = st.wMinute;
+      ct->sec = st.wSecond;
+      ct->msec = st.wMilliseconds;
+  #else
+
     struct timespec t;
-    struct tm * tm;
+    struct tm *tm;
 
     clock_gettime(CLOCK_REALTIME, &t);
     tm = gmtime(&t.tv_sec);
@@ -62,6 +79,7 @@ namespace {
     ct->min = tm->tm_min;
     ct->sec = tm->tm_sec;
     ct->msec = t.tv_nsec / 1000000;
+  #endif
   }
 
   static const char * get_current_time_string(char buf[32])
@@ -76,9 +94,9 @@ namespace {
 }
 
 static std::mutex mtx;
-static void (*logfunc)(void * context, const char * msg) = NULL;
-static void * logcontext = NULL;
-static FILE * fplog = NULL;
+static void (*logfunc)(void * context, const char * msg) = nullptr;
+static void * logcontext = nullptr;
+static FILE * fplog = nullptr;
 static std::string logfilename;
 static uint32_t logmask = CF_LOG_DEBUG;
 
@@ -129,7 +147,8 @@ std::string cf_get_last_error_msg()
 }
 
 
-pid_t get_tid() {
+pid_t get_tid()
+{
 #ifdef _WIN32
   return 0; // fixme: return process id under win32
 #elif __APPLE__
@@ -152,7 +171,7 @@ void cf_set_logfile(FILE * fp)
   mtx.lock();
 
   if ( fplog && fplog != stderr && fplog != stdout ) {
-    fclose(fplog), fplog = NULL;
+    fclose(fplog), fplog = nullptr;
   }
   fplog = fp;
 
@@ -174,7 +193,7 @@ bool cf_set_logfilename(const std::string fname, const std::string & mode)
   logfilename.clear();
 
   if ( fplog && fplog != stderr && fplog != stdout ) {
-    fclose(fplog), fplog = NULL;
+    fclose(fplog), fplog = nullptr;
   }
 
   if ( fname.empty() ) {
@@ -307,7 +326,7 @@ static inline constexpr auto * file_name(const char * const path)
 
 static void do_plogv(int pri, const char * file, const char * func, int line, const char * format, va_list arglist)
 {
-  char ctime_string[32];
+  char ctime_string[32] = "";
   char msgbuf[4096] = "";
 
   if ( logfunc || fplog || (enable_error_log_ && pri <= CF_LOG_ERROR) ) {
@@ -337,12 +356,21 @@ static void do_plogv(int pri, const char * file, const char * func, int line, co
       g_error_log.erase(g_error_log.begin());
     }
 
+#if _MSC_VER
+    cf_error_log_entry e;
+    e.time = ctime_string;
+    e.file = file + std::string(" : ") + std::to_string(line);
+    e.func = func;
+    e.msg = msgbuf;
+#else
+
     cf_error_log_entry e = {
         .time = ctime_string,
         .file = file + std::string(" : ") + std::to_string(line),
         .func = func,
         .msg = msgbuf
     };
+#endif
 
     g_error_log.emplace_back(e);
   }
@@ -367,7 +395,9 @@ void cf_plog(int pri, const char * file, const char * func, int line, const char
       if ( ftell(fplog) > 10 * 1024 * 1024 ) {
         fclose(fplog);
         if ( !(fplog = fopen(logfilename.c_str(), "w")) ) {
-          fprintf(stderr, "FATAL ERROR in cf_plog(): fopen(logfilename=%s, 'w') fails: %s\n", logfilename, strerror(errno));
+          fprintf(stderr, "FATAL ERROR in cf_plog(): fopen(logfilename=%s, 'w') fails: %s\n",
+              logfilename,
+              strerror(errno));
           fplog = stderr;
         }
         else {
@@ -640,7 +670,7 @@ bool cf_setup_signal_handler(void)
 
   for ( sig = 1; sig < SIGRTMIN; ++sig ) { // SIGUNUSED
     /* skip unblockable signals */
-    if ( sig != SIGKILL && sig != SIGSTOP && sig != SIGCONT && sigaction(sig, &sa, NULL) != 0 ) {
+    if ( sig != SIGKILL && sig != SIGSTOP && sig != SIGCONT && sigaction(sig, &sa, nullptr) != 0 ) {
       return false;
     }
   }

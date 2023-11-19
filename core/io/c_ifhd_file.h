@@ -13,11 +13,11 @@
 #ifndef __c_ifhd_file_h__
 #define __c_ifhd_file_h__
 
-#include <unistd.h>
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <inttypes.h>
+#include "c_file_handle.h"
 
 namespace ifhd {
 
@@ -287,7 +287,7 @@ public:
 
 
 protected:
-  int fd_ = -1;
+  c_file_handle fd_;
   FileHeader file_header_;
   std::vector<IfhdStream> file_streams_;
   ssize_t current_stream_index_ = -1;

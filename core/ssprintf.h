@@ -31,6 +31,12 @@
 #endif
 
 
+#if _MSC_VER
+#ifndef strcasecmp
+# define strcasecmp stricmp
+#endif
+#endif
+
 /**
  * ssprintf()
  *  C-style std::string formating

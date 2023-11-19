@@ -11,6 +11,8 @@
 #include <gui/mainwindow/QMainAppWindow.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
+#include "QCloudViewDatasetView.h"
+
 //#include <gui/qtextview/QTextFileViewer.h>
 //#include <gui/qcloudview/QCloudViewer.h>
 //#include <gui/qcloudview/QCloudViewSettings.h>
@@ -44,6 +46,8 @@ public:
 private:
   void setupMainMenu();
   void setupFileSystemTreeView();
+  void setupThumbnailsView();
+  void setupDatasetView();
 
 private:
   void updateWindowTittle();
@@ -60,6 +64,9 @@ private:
   QThumbnailsView * thumbnailsView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
+
+  QCloudViewDatasetView * datasetView = nullptr;
+  QCloudViewDatasetViewDock * datasetViewDock = nullptr;
 
 
   QAction * quitAppAction = nullptr;

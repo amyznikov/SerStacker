@@ -762,6 +762,10 @@ public:
   static bool get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
       cv::OutputArray points, cv::OutputArray colors);
 
+  static bool get_clouds3d(const c_vlo_scan & scan,
+      cv::Mat3f clouds[3]);
+
+
 protected:
   std::string filename_;
   VLO_VERSION version_ = VLO_VERSION_UNKNOWN;
@@ -795,6 +799,7 @@ public:
   bool read(c_vlo_scan * scan);
   bool read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel);
   bool read_cloud3d(cv::OutputArray points, cv::OutputArray colors, c_vlo_file::DATA_CHANNEL colors_channel);
+  bool read_clouds3d(cv::Mat3f clouds[3]);
 
 protected:
   template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION > 0),

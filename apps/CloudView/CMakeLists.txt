@@ -29,6 +29,9 @@ foreach(QRC_FILE ${QRC_FILES})
 	endif()
 endforeach()
 
+
+include_directories(src/dataset)
+
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
 if (WIN32)

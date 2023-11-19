@@ -11,7 +11,7 @@
 
 
 #define MY_COMPANY  "amyznikov"
-#define MY_APP      "SerStacker"
+#define MY_APP      "CloudView"
 
 using namespace cloudview;
 
@@ -32,7 +32,38 @@ int main(int argc, char *argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  setIconStyleSelector("dark");
+  bool useDarkStyle = false;
+  if ( !useDarkStyle ) {
+    setIconStyleSelector("dark");
+  }
+  else {
+
+    Q_INIT_RESOURCE(qdarkstyle);
+
+    setIconStyleSelector("light");
+
+    //  QFont font("SansSerif", 16, QFont::Medium);
+    //  font.setStyleHint(QFont::SansSerif);
+    //  QFont font("System", 16, QFont::Medium);
+    //  font.setStyleHint(QFont::System);
+    //  app.setFont(font);
+
+    QVersionNumber running_version =
+        QVersionNumber::fromString(QString(qVersion()));
+
+    QVersionNumber threshod_version(5, 13, 0);
+    QString qss_resource(":/gui/qdarkstyle/style.qss");
+
+    if( running_version >= threshod_version ) {
+      qss_resource = ":/gui/qdarkstyle/style-5.13.qss";
+    }
+
+    QFile f(qss_resource);
+    f.open(QFile::ReadOnly | QFile::Text);
+    QTextStream ts(&f);
+    app.setStyleSheet(ts.readAll());
+    f.close();
+  }
 
 
   MainWindow mainWindow;

@@ -88,4 +88,44 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
   return action;
 }
 
+
+template<class Obj, typename Fn>
+QToolButton* createToolButton(const QIcon & icon, const QString & text, const QString & tooltip,
+    Obj * receiver, Fn onclick,
+    QShortcut * shortcut = nullptr)
+{
+  QToolButton * tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      receiver, onclick);
+
+  if( shortcut ) {
+    QObject::connect(shortcut, &QShortcut::activated,
+        tb, &QToolButton::click);
+  }
+
+  return tb;
+}
+
+template<class Fn>
+QToolButton* createToolButton(const QIcon & icon, const QString & text, const QString & tooltip, Fn && onclicked)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      [tb, onclicked]() {
+        onclicked(tb);
+      });
+
+  return tb;
+}
+
 #endif /* __createAction_h__ */

@@ -71,6 +71,11 @@ MainWindow::MainWindow()
 
   setupMainMenu();
   setupFileSystemTreeView();
+  setupThumbnailsView();
+  setupDatasetView();
+
+  tabifyDockWidget(fileSystemTreeDock,
+      datasetViewDock);
 
   restoreState();
 }
@@ -316,8 +321,6 @@ void MainWindow::onFileSystemTreeCustomContextMenuRequested(const QPoint & pos,
   }
 }
 
-
-
 void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
 {
   QMenu poupupMenu;
@@ -327,6 +330,50 @@ void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
   }
 }
 
+
+
+void MainWindow::setupThumbnailsView()
+{
+  connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested,
+      [this](const QString & abspath) {
+
+        if ( fileSystemTreeDock ) {
+          fileSystemTreeDock->show(),
+          fileSystemTreeDock->raise(),
+          fileSystemTreeDock->displayPath(abspath);
+        }
+      });
+
+  connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
+      [this](const QString & abspath) {
+        if ( !is_visible(thumbnailsView) ) {
+          // openImage(abspath);
+        }
+      });
+
+    //  connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
+    //      this, &ThisClass::openImage);
+    //
+    //  connect(thumbnailsView, &QThumbnailsView::iconEnterPressed,
+    //      this, &ThisClass::openImage);
+
+  connect(thumbnailsView, &QThumbnailsView::customContextMenuRequested,
+      this, &ThisClass::onThumbnailsViewCustomContextMenuRequested);
+
+}
+
+
+void MainWindow::setupDatasetView()
+{
+  datasetViewDock =
+      addCloudViewDatasetViewDock(this, Qt::LeftDockWidgetArea,
+          "datasetViewDock",
+          "Datasets",
+          menuView_);
+
+
+  datasetView = datasetViewDock->datasetView();
+}
 
 
 

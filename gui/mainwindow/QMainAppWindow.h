@@ -83,24 +83,6 @@ protected:
     return w && w->isVisible();
   }
 
-
-  template<class Fn>
-  static QToolButton* createToolButton(const QIcon & icon, const QString & text, const QString & tooltip, Fn && onclicked)
-  {
-    QToolButton *tb = new QToolButton();
-    tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    tb->setIcon(icon);
-    tb->setText(text);
-    tb->setToolTip(tooltip);
-
-    QObject::connect(tb, &QToolButton::clicked,
-        [tb, onclicked]() {
-          onclicked(tb);
-        });
-
-    return tb;
-  }
-
 protected:
   /// Main menu
   QMenu * menuFile_ = nullptr;

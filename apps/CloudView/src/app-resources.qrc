@@ -2,5 +2,7 @@
 <qresource prefix="/cloudview">
 	<file>icons/app-icon.png</file>
 	
+	<file>icons/add-dataset.png</file>
+	
 </qresource>
 </RCC>

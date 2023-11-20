@@ -283,7 +283,7 @@ public:
   bool seek(int32_t frame_index_in_current_stream);
   int32_t curpos() const;
   ssize_t current_payload_size() const;
-  size_t read_payload(void * data, size_t max_size);
+  ssize_t read_payload(void * data, size_t max_size);
 
 
 protected:

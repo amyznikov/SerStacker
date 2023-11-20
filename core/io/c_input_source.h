@@ -114,6 +114,8 @@ public:
 
   virtual bool seek(int pos) = 0;
 
+  virtual int curpos() = 0;
+
   virtual bool is_open() const = 0;
 
   virtual bool read(cv::Mat & output_frame,
@@ -164,6 +166,8 @@ public:
 
   bool seek(int pos) override;
 
+  int curpos() override;
+
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
       int * output_bpc) override;
@@ -194,6 +198,8 @@ public:
   void close() override;
 
   bool seek(int pos) override;
+
+  int curpos() override;
 
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
@@ -228,6 +234,8 @@ public:
 
   bool seek(int pos) override;
 
+  int curpos() override;
+
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
       int * output_bpc) override;
@@ -259,6 +267,8 @@ public:
 
   bool seek(int pos) override;
 
+  int curpos() override;
+
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
       int * output_bpc) override;
@@ -289,6 +299,8 @@ public:
   void close() override;
 
   bool seek(int pos) override;
+
+  int curpos() override;
 
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
@@ -323,6 +335,8 @@ public:
   void close() override;
 
   bool seek(int pos) override;
+
+  int curpos() override;
 
   bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,

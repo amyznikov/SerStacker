@@ -408,6 +408,8 @@ void QInputSequenceView::loadNextFrame()
             cloudView_->add(QPointCloud::create(points, colors, false));
           }
 
+          currentSequence_->update_current_pos();
+
           if( currentView() != cloudView_ ) {
             setCurrentView(cloudView_);
           }

@@ -67,6 +67,7 @@ public:
   c_input_source::sptr current_source() const;
   int current_pos() const;
   int global_pos(int source_index, int source_frame_index) const;
+  void update_current_pos();
 
   int bpp() const;
   enum COLORID colorid() const;

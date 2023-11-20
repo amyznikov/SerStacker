@@ -766,6 +766,11 @@ public:
   static bool get_clouds3d(const c_vlo_scan & scan,
       cv::Mat3f clouds[3]);
 
+  static bool get_ray_inclinations_table(const c_vlo_scan & scan,
+      cv::Mat1f & table);
+
+  static bool get_ray_azimuths_table(const c_vlo_scan & scan,
+      cv::Mat1f & table);
 
 protected:
   std::string filename_;

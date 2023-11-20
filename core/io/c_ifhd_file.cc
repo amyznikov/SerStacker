@@ -323,7 +323,7 @@ ssize_t c_ifhd_reader::current_payload_size() const
   return stream.chunks[current_frame_index_in_current_stream_].payload_size;
 }
 
-size_t c_ifhd_reader::read_payload(void * data, size_t max_size)
+ssize_t c_ifhd_reader::read_payload(void * data, size_t max_size)
 {
   if( current_stream_index_ < 0 || current_stream_index_ >= (ssize_t) file_streams_.size() ) {
     CF_ERROR("ERROR current stream was not selected");

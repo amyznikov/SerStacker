@@ -189,6 +189,159 @@ void sort_echos_by_distance(c_vlo_scan6_slm & scan)
   }
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<class ScanType, class Fn>
+std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
+bool> compute_points3d(const ScanType & scan, const Fn & fn)
+{
+  const double firstVertAngle =
+      0.5 * 0.05 * scan.NUM_LAYERS;
+
+  const double tick2radian =
+      0.00000008381903173490870551553291862726 * CV_PI / 180;
+
+  const double yawCorrection = 0;
+
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+    const auto &slot =
+        scan.slot[s];
+
+    const double horizontalAngle =
+        slot.angleTicks * tick2radian + yawCorrection;
+
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+
+      const double verticalAngle =
+          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
+
+      const double cos_vert = std::cos(verticalAngle);
+      const double sin_vert = std::sin(verticalAngle);
+      const double cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
+      const double sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
+
+      for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
+
+        const auto &echo =
+            slot.echo[l][e];
+
+        const auto & distance =
+            echo.dist;
+
+        if( distance ) {
+
+          const double scale = 0.01;
+          const double x = scale * distance * cos_hor_cos_vert;
+          const double y = scale * distance * sin_hor_cos_vert;
+          const double z = scale * distance * sin_vert;
+
+          fn(s, l, e, x, y, z);
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+template<class Fn>
+bool compute_points3d(const c_vlo_scan6_slm & scan, const Fn & fn)
+{
+  typedef c_vlo_scan6_slm ScanType;
+  typedef decltype(ScanType::Echo::dist) distance_type;
+  typedef decltype(ScanType::Echo::area) area_type;
+
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+    const double sin_azimuth =
+        std::sin(scan.horizontalAngles[s]);
+
+    const double cos_azimuth =
+        std::cos(scan.horizontalAngles[s]);
+
+    for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
+
+      const double inclination =
+          CV_PI / 2 - scan.verticalAngles[l];
+
+      const double sin_inclination =
+          std::sin(inclination);
+
+      const double cos_inclination =
+          std::cos(inclination);
+
+      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+
+        const auto & dist =
+            scan.echo[s][l][e].dist;
+
+        if( !dist ) {
+          continue;
+        }
+
+        const auto & area =
+            scan.echo[s][l][e].area;
+
+        if( !area ) {
+          continue;
+        }
+
+        // mirrorSide = scan.mirrorSide;
+        const double distance = 0.01 * dist;
+        const double x = distance * sin_inclination * cos_azimuth;
+        const double y = -distance * sin_inclination * sin_azimuth;
+        const double z = -distance * cos_inclination;
+
+        fn(s, scan.NUM_LAYERS - l - 1, e, x, y, z);
+
+      }
+    }
+  }
+
+
+  return true;
+}
+
+
+
+template<class ScanType, class Fn>
+std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
+bool> compute_points2d(const ScanType & scan, const cv::Mat3b & emask, const Fn & fn)
+{
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+      for( int e = 0; e < 3; ++e ) {
+        if( scan.slot[s].echo[l][e].dist && (emask.empty() || !emask[l][s][e]) ) {
+          fn(s, l, e, scan.slot[s].echo[l][e]);
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+template<class Fn>
+bool compute_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const Fn & fn)
+{
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+    for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
+      for( int e = 0; e < 3; ++e ) {
+        if( scan.echo[s][l][e].dist && scan.echo[s][l][e].area && (emask.empty() || !emask[l][s][e]) ) {
+          fn(s, scan.NUM_LAYERS - l - 1, e, scan.echo[s][l][e]);
+        }
+      }
+    }
+  }
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<class ScanType>
@@ -208,8 +361,6 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
   }
 
   typedef decltype(ScanType::Echo::dist) distance_type;
-  constexpr auto min_distance = scan.MIN_DISTANCE;
-  constexpr auto max_distance = scan.MAX_DISTANCE;
 
   switch (channel) {
 
@@ -241,21 +392,10 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<distance_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<distance_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance =
-                  scan.slot[s].echo[l][e].dist;
-
-              if( distance ) {
-                image[l][s][e] = distance;
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = echo.dist;
+          });
 
       return image;
     }
@@ -265,49 +405,10 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      const float yawCorrection = 0;
-
-      const double tick2radian =
-          0.00000008381903173490870551553291862726 * CV_PI / 180;
-
-      const double firstVertAngle =
-          0.5 * 0.05 * scan.NUM_LAYERS;
-
-      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-        const auto &slot =
-            scan.slot[s];
-
-        const double  horizontalAngle =
-            slot.angleTicks * tick2radian  + yawCorrection;
-
-        for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-          const double verticalAngle =
-              firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
-
-          const double  cos_vert = std::cos(verticalAngle);
-          const double  sin_vert = std::sin(verticalAngle);
-          const double  cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
-          const double  sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
-
-          for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
-
-            const auto &echo =
-                slot.echo[l][e];
-
-            const uint16_t distance =
-                echo.dist;
-
-            if( distance ) {
-              const double  x = distance * cos_hor_cos_vert;
-              //  const double  y = distance * sin_hor_cos_vert;
-              //  const double  z = distance * sin_vert;
-              image[l][s][e] = (float)x;
-            }
-          }
-        }
-      }
+      compute_points3d(scan,
+          [&](int s, int l, int e, double x, double y, double z) {
+            image[l][s][e] = (float)( 100 * x);
+          });
 
       return image;
     }
@@ -322,24 +423,10 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance =
-                  scan.slot[s].echo[l][e].dist;
-
-              const auto & value =
-                  scan.slot[s].echo[l][e].area;
-
-              if( distance && value < max_value ) {
-                image[l][s][e] = value;
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = echo.area;
+          });
 
       return image;
     }
@@ -352,24 +439,10 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance =
-                  scan.slot[s].echo[l][e].dist;
-
-              const auto & value =
-                  scan.slot[s].echo[l][e].peak;
-
-              if( distance && value < max_value ) {
-                image[l][s][e] = value;
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = echo.peak;
+          });
 
       return image;
     }
@@ -381,75 +454,36 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance =
-                  scan.slot[s].echo[l][e].dist;
-
-              const auto & value =
-                  scan.slot[s].echo[l][e].width;
-
-              if( distance && value < max_value ) {
-                image[l][s][e] = value;
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = echo.width;
+          });
 
       return image;
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
 
-      typedef decltype(ScanType::Echo::area) value_type;
-
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if ( emask.empty() || !emask[l][s][e] ) {
-
-              const auto & distance = scan.slot[s].echo[l][e].dist;
-              if ( distance ) {
-                const auto & value = scan.slot[s].echo[l][e].area;
-                image[l][s][e] = ((double) value ) * ((double) distance);
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = (double)echo.area * ((double) echo.dist);
+          });
 
       return image;
     }
 
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST: {
 
-      typedef decltype(ScanType::Echo::peak) value_type;
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3f::all(0));
 
-      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS);
-      image.setTo(0);
-
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if ( emask.empty() || !emask[l][s][e] ) {
-
-              const auto & distance = scan.slot[s].echo[l][e].dist;
-              if ( distance ) {
-                const auto & value = scan.slot[s].echo[l][e].peak;
-                image[l][s][e] = ((double) value ) * ((double) distance);
-              }
-            }
-
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = (double)echo.peak * ((double) echo.dist);
+          });
 
       return image;
     }
@@ -457,27 +491,14 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
     //
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
 
-      typedef decltype(ScanType::Echo::area) value_type;
-
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = (double)echo.area * sqrt(0.01 * echo.dist);
+          });
 
-              const auto &distance = scan.slot[s].echo[l][e].dist;
-
-              if( distance ) {
-                const auto &value = scan.slot[s].echo[l][e].area;
-                image[l][s][e] = ((double) value) * sqrt(0.01 * distance);
-
-              }
-            }
-          }
-        }
-      }
       return image;
     }
 
@@ -488,33 +509,18 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance = scan.slot[s].echo[l][e].dist;
-
-              if( distance ) {
-                const auto &value = scan.slot[s].echo[l][e].peak;
-                image[l][s][e] = ((double) value) * sqrt(0.01 * distance);
-
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = (double)echo.peak * sqrt(0.01 * echo.dist);
+          });
 
       return image;
     }
-
-//
 
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
 
       cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3b::all(0));
-
 
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
@@ -606,25 +612,10 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-        for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance =
-                  scan.echo[s][l][e].dist;
-
-              const auto &value =
-                  scan.echo[s][l][e].area;
-
-              if( distance && value ) {
-                image[scan.NUM_LAYERS - l - 1][s][e] =
-                    value;
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = echo.area;
+          });
 
       return image;
     }
@@ -634,21 +625,10 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat_<cv::Vec<distance_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<distance_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance =
-                  scan.echo[s][l][e].dist;
-
-              if( distance ) {
-                image[scan.NUM_LAYERS - l - 1][s][e] = distance;
-              }
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = echo.dist;
+          });
 
       return image;
     }
@@ -658,51 +638,10 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-        const double sin_azimuth =
-            std::sin(scan.horizontalAngles[s]);
-
-        const double cos_azimuth =
-            std::cos(scan.horizontalAngles[s]);
-
-        for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
-
-          const double inclination =
-              CV_PI / 2 - scan.verticalAngles[l];
-
-          const double sin_inclination =
-              std::sin(inclination);
-
-          const double cos_inclination =
-              std::cos(inclination);
-
-          for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-
-            const distance_type dist =
-                scan.echo[s][l][e].dist;
-
-            if( !dist ) {
-              continue;
-            }
-
-            const auto & area =
-                scan.echo[s][l][e].area;
-
-            if( !area ) {
-              continue;
-            }
-
-            // mirrorSide = scan.mirrorSide;
-            const float distance =  dist;
-            const float x = distance * sin_inclination * cos_azimuth;
-            //const float y = -distance * sin_inclination * sin_azimuth;
-            //const float z = -distance * cos_inclination;
-
-            image[scan.NUM_LAYERS - l - 1][s][e] = x;
-          }
-        }
-      }
+      compute_points3d(scan,
+          [&](int s, int l, int e, double x, double y, double z) {
+            image[l][s][e] = (float)(100 * x);
+          });
 
       return image;
     }
@@ -716,22 +655,11 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = ((double) echo.area) * ((double) echo.dist);
+          });
 
-              const auto &distance = scan.echo[s][l][e].dist;
-              const auto &value = scan.echo[s][l][e].area;
-
-              if( distance && value ) {
-                image[scan.NUM_LAYERS - l - 1][s][e] =
-                    ((double) value) * ((double) distance);
-              }
-            }
-          }
-        }
-      }
       return image;
     }
 
@@ -743,22 +671,10 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( emask.empty() || !emask[l][s][e] ) {
-
-              const auto &distance = scan.echo[s][l][e].dist;
-              const auto &value = scan.echo[s][l][e].area;
-
-              if( distance && value ) {
-                image[scan.NUM_LAYERS - l - 1][s][e] = ((double) value) * sqrt(0.01 * distance);
-              }
-
-            }
-          }
-        }
-      }
+      compute_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = ((double) echo.area) * sqrt(0.01 * echo.dist);
+          });
 
       return image;
     }
@@ -833,93 +749,23 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 template<class ScanType>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
-    cv::OutputArray points, cv::OutputArray colors)
+bool> get_ray_inclinations_table(const ScanType & scan, cv::Mat1f & table)
 {
-  cv::Mat intensityImage =
-      get_image(scan, intensity_channel,
-          cv::noArray());
-
-  if( !intensityImage.empty() ) {
-
-    if ( intensityImage.channels() == 1 ) {
-      cv::cvtColor(intensityImage, intensityImage,
-          cv::COLOR_GRAY2BGR);
-    }
-
-    if( intensityImage.depth() != CV_32F ) {
-      intensityImage.convertTo(intensityImage, CV_32F);
-    }
-  }
-
-  const cv::Mat3f intensity =
-      intensityImage;
-
-  const double firstVertAngle =
-      0.5 * 0.05 * scan.NUM_LAYERS;
-
-  const double tick2radian =
+  constexpr double tick2radian =
       0.00000008381903173490870551553291862726 * CV_PI / 180;
 
-  const double yawCorrection = 0;
+  constexpr double yawCorrection = 0;
 
-  std::vector<cv::Vec3f> output_points;
-  std::vector<cv::Vec3f> output_colors;
-
-  output_points.reserve(scan.NUM_POINTS);
-  output_colors.reserve(scan.NUM_POINTS);
+  table.create(scan.NUM_SLOTS, 1);
 
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
 
-    const auto &slot =
-        scan.slot[s];
-
-    const double horizontalAngle =
-        slot.angleTicks * tick2radian + yawCorrection;
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-      const double verticalAngle =
-          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
-
-      const double cos_vert = std::cos(verticalAngle);
-      const double sin_vert = std::sin(verticalAngle);
-      const double cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
-      const double sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
-
-      for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
-
-        const auto &echo =
-            slot.echo[l][e];
-
-        const auto & distance =
-            echo.dist;
-
-        if( distance ) {
-
-          const double scale = 0.01;
-          const double x = scale * distance * cos_hor_cos_vert;
-          const double y = scale * distance * sin_hor_cos_vert;
-          const double z = scale * distance * sin_vert;
-          output_points.emplace_back((float)x, (float)y, (float)z);
-
-          const float gray_level =
-              intensity[l][s][e];
-
-          output_colors.emplace_back(gray_level, gray_level, gray_level);
-        }
-      }
-    }
+    table[s][0] = (float) (scan.slot[s].angleTicks * tick2radian + yawCorrection);
   }
-
-  cv::Mat(output_points).copyTo(points);
-  cv::Mat(output_colors).copyTo(colors);
-
 
   return true;
 }
@@ -928,86 +774,66 @@ template<class ScanType>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
+bool> get_ray_azimuths_table(const ScanType & scan, cv::Mat1f & table)
 {
   const double firstVertAngle =
       0.5 * 0.05 * scan.NUM_LAYERS;
 
-  const double tick2radian =
-      0.00000008381903173490870551553291862726 * CV_PI / 180;
+  table.create(scan.NUM_LAYERS, 1);
 
-  const double yawCorrection = 0;
+  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
 
-  for( int i = 0; i < 3; ++i ) {
-    clouds[i] = cv::Mat3f(scan.NUM_LAYERS, scan.NUM_SLOTS,
-        cv::Vec3f::all(0));
-  }
-
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    const auto &slot =
-        scan.slot[s];
-
-    const double horizontalAngle =
-        slot.angleTicks * tick2radian  + yawCorrection;
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-      const double verticalAngle =
-          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
-
-      const double cos_vert = std::cos(verticalAngle);
-      const double sin_vert = std::sin(verticalAngle);
-      const double cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
-      const double sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
-
-      for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
-
-        const auto &echo =
-            slot.echo[l][e];
-
-        const auto & distance =
-            echo.dist;
-
-        if( distance ) {
-
-          const double scale = 0.01;
-          const double x = scale * distance * cos_hor_cos_vert;
-          const double y = scale * distance * sin_hor_cos_vert;
-          const double z = scale * distance * sin_vert;
-
-          clouds[e][l][s][0] = (float)x;
-          clouds[e][l][s][1] = (float)y;
-          clouds[e][l][s][2] = (float)z;
-        }
-      }
-    }
+    table[l][0] = (float)(firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180);
   }
 
   return true;
 }
 
-bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
+bool get_ray_inclinations_table(const c_vlo_scan6_slm & scan, cv::Mat1f & table)
+{
+  table.create(scan.NUM_SLOTS, 1);
+
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+    table[s][0] = scan.horizontalAngles[s];
+  }
+
+  return true;
+}
+
+bool get_ray_azimuths_table(const c_vlo_scan6_slm & scan, cv::Mat1f & table)
+{
+  table.create(scan.NUM_LAYERS, 1);
+
+  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+    table[scan.NUM_LAYERS - l - 1][0] = (float) (CV_PI / 2 - scan.verticalAngles[l]);
+  }
+
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+template<class ScanType>
+bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
     cv::OutputArray points, cv::OutputArray colors)
 {
-  typedef c_vlo_scan6_slm ScanType;
-  typedef decltype(ScanType::Echo::dist) distance_type;
-  typedef decltype(ScanType::Echo::area) area_type;
-
   cv::Mat intensityImage =
       get_image(scan, intensity_channel,
           cv::noArray());
 
-  if( !intensityImage.empty() ) {
+  if( intensityImage.empty() ) {
+    CF_ERROR("get_image(intensity_channel) fails");
+    return false;
+  }
 
-    if ( intensityImage.channels() == 1 ) {
-      cv::cvtColor(intensityImage, intensityImage,
-          cv::COLOR_GRAY2BGR);
-    }
+  if( intensityImage.channels() == 1 ) {
+    cv::cvtColor(intensityImage, intensityImage,
+        cv::COLOR_GRAY2BGR);
+  }
 
-    if( intensityImage.depth() != CV_32F ) {
-      intensityImage.convertTo(intensityImage, CV_32F);
-    }
+  if( intensityImage.depth() != CV_32F ) {
+    intensityImage.convertTo(intensityImage, CV_32F);
   }
 
   const cv::Mat3f intensity =
@@ -1019,125 +845,41 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
   output_points.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
   output_colors.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
 
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    const double sin_azimuth =
-        std::sin(scan.horizontalAngles[s]);
-
-    const double cos_azimuth =
-        std::cos(scan.horizontalAngles[s]);
-
-    for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
-
-      const double inclination =
-          CV_PI / 2 - scan.verticalAngles[l];
-
-      const double sin_inclination =
-          std::sin(inclination);
-
-      const double cos_inclination =
-          std::cos(inclination);
-
-      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-
-        const auto & dist =
-            scan.echo[s][l][e].dist;
-
-        if( !dist ) {
-          continue;
-        }
-
-        const auto & area =
-            scan.echo[s][l][e].area;
-
-        if( !area ) {
-          continue;
-        }
-
-        // mirrorSide = scan.mirrorSide;
-        const double distance = 0.01 * dist;
-        const double x = distance * sin_inclination * cos_azimuth;
-        const double y = -distance * sin_inclination * sin_azimuth;
-        const double z = -distance * cos_inclination;
+  compute_points3d(scan,
+      [&](int s, int l, int e, double x, double y, double z) {
 
         const float gray_level =
-            intensity[scan.NUM_LAYERS - l - 1][s][e];
+            intensity[l][s][e];
 
         output_points.emplace_back((float)x, (float)y, (float)z);
         output_colors.emplace_back(gray_level, gray_level, gray_level);
-      }
-    }
-  }
+      });
+
 
   cv::Mat(output_points).copyTo(points);
   cv::Mat(output_colors).copyTo(colors);
 
-
   return true;
 }
 
-
-bool get_clouds3d(const c_vlo_scan6_slm & scan, cv::Mat3f clouds[3])
+template<class ScanType>
+bool get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
 {
-  typedef c_vlo_scan6_slm ScanType;
-  typedef decltype(ScanType::Echo::dist) distance_type;
-  typedef decltype(ScanType::Echo::area) area_type;
-
   for( int i = 0; i < 3; ++i ) {
     clouds[i] = cv::Mat3f(scan.NUM_LAYERS, scan.NUM_SLOTS,
         cv::Vec3f::all(0));
   }
 
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    const double sin_azimuth =
-        std::sin(scan.horizontalAngles[s]);
-
-    const double cos_azimuth =
-        std::cos(scan.horizontalAngles[s]);
-
-    for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
-
-      const double inclination =
-          CV_PI / 2 - scan.verticalAngles[l];
-
-      const double sin_inclination =
-          std::sin(inclination);
-
-      const double cos_inclination =
-          std::cos(inclination);
-
-      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-
-        const auto & dist =
-            scan.echo[s][l][e].dist;
-
-        if( !dist ) {
-          continue;
-        }
-
-        const area_type area =
-            scan.echo[s][l][e].area;
-
-        if( !area ) {
-          continue;
-        }
-
-        // mirrorSide = scan.mirrorSide;
-        const double distance = 0.01 * dist;
-        const double x = distance * sin_inclination * cos_azimuth;
-        const double y = -distance * sin_inclination * sin_azimuth;
-        const double z = -distance * cos_inclination;
-
-        clouds[e][scan.NUM_LAYERS - l - 1][s][0] = (float) x;
-        clouds[e][scan.NUM_LAYERS - l - 1][s][1] = (float)y;
-        clouds[e][scan.NUM_LAYERS - l - 1][s][2] = (float)z;
-      }
-    }
-  }
+  compute_points3d(scan,
+      [&](int s, int l, int e, double x, double y, double z) {
+        clouds[e][l][s][0] = (float) x;
+        clouds[e][l][s][1] = (float) y;
+        clouds[e][l][s][2] = (float) z;
+      });
 
   return true;
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 } // namespace
@@ -1232,6 +974,39 @@ bool c_vlo_file::get_clouds3d(const c_vlo_scan & scan, cv::Mat3f clouds[3])
 }
 
 
+bool c_vlo_file::get_ray_inclinations_table(const c_vlo_scan & scan, cv::Mat1f & table)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return ::get_ray_inclinations_table(scan.scan1, table);
+    case VLO_VERSION_3:
+      return ::get_ray_inclinations_table(scan.scan3, table);
+    case VLO_VERSION_5:
+      return ::get_ray_inclinations_table(scan.scan5, table);
+    case VLO_VERSION_6_SLM:
+      return ::get_ray_inclinations_table(scan.scan6_slm, table);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return false;
+
+}
+
+bool c_vlo_file::get_ray_azimuths_table(const c_vlo_scan & scan, cv::Mat1f & table)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return ::get_ray_azimuths_table(scan.scan1, table);
+    case VLO_VERSION_3:
+      return ::get_ray_azimuths_table(scan.scan3, table);
+    case VLO_VERSION_5:
+      return ::get_ray_azimuths_table(scan.scan5, table);
+    case VLO_VERSION_6_SLM:
+      return ::get_ray_azimuths_table(scan.scan6_slm, table);
+  }
+  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  return false;
+
+}
 
 //////////////////////////////////////////
 
@@ -1450,6 +1225,7 @@ bool c_vlo_reader::open(const std::string & filename)
         goto end;
     }
 
+    fd_.seek(0, SEEK_SET);
 
     if( (file_size = fd_.size()) < 0 ) {
       CF_ERROR("fd_.size('%s') fails: %s", fname,
@@ -1463,6 +1239,7 @@ bool c_vlo_reader::open(const std::string & filename)
       CF_ERROR("vlo file '%s': file size = %zd bytes not match to expected number of frames %zd in", fname,
           file_size, num_frames_);
     }
+
 
     fOk = true;
   }
@@ -1513,7 +1290,10 @@ bool c_vlo_reader::seek(int32_t frame_index)
     const ssize_t seekpos =
         frame_index * frame_size();
 
-    return fd_.seek(seekpos, SEEK_SET) == seekpos;
+    const ssize_t pos =
+        fd_.seek(seekpos, SEEK_SET);
+
+    return pos ==  seekpos;
   }
 
   errno = EBADF;

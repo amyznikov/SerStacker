@@ -337,6 +337,11 @@ bool c_ser_input_source::seek(int pos)
   return ser_.seek(pos);
 }
 
+int c_ser_input_source::curpos()
+{
+  return ser_.curpos();
+}
+
 bool c_ser_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
@@ -414,6 +419,11 @@ bool c_fits_input_source::seek(int pos)
   }
   curpos_ = pos;
   return true;
+}
+
+int c_fits_input_source::curpos()
+{
+  return curpos_;
 }
 
 bool c_fits_input_source::read(cv::Mat & output_frame,
@@ -496,6 +506,11 @@ void c_movie_input_source::close()
 bool c_movie_input_source::seek(int pos)
 {
   return ffmpeg_.seek_frame(pos);
+}
+
+int c_movie_input_source::curpos()
+{
+  return ffmpeg_.curpos();
 }
 
 bool c_movie_input_source::read(cv::Mat & output_frame,
@@ -586,6 +601,10 @@ bool c_regular_image_input_source::seek(int pos)
   return true;
 }
 
+int c_regular_image_input_source::curpos()
+{
+  return curpos_;
+}
 
 bool c_regular_image_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
@@ -697,6 +716,11 @@ bool c_raw_image_input_source::seek(int pos)
   return true;
 }
 
+int c_raw_image_input_source::curpos()
+{
+  return curpos_;
+}
+
 bool c_raw_image_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
@@ -764,6 +788,12 @@ bool c_vlo_input_source::seek(int pos)
 {
   return vlo_.seek(pos);
 }
+
+int c_vlo_input_source::curpos()
+{
+  return vlo_.curpos();
+}
+
 
 bool c_vlo_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,

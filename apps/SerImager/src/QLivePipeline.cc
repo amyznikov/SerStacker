@@ -645,6 +645,11 @@ void QLivePipelineThread::run()
       return true;
     }
 
+    int curpos() override
+    {
+      return 0;
+    }
+
     bool is_open() const override
     {
       return camera_->state() == QImagingCamera::State_started;

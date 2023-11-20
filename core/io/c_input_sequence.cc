@@ -356,6 +356,7 @@ void c_input_sequence::close_source(int source_index)
 bool c_input_sequence::seek_current_source(int source_pos)
 {
   if ( current_source_ < 0 || current_source_ >= (int) enabled_sources_.size() ) {
+    CF_DEBUG("c_input_sequence:seek_current_source(source_pos=%d) FAILS", source_pos);
     return false;
   }
   return enabled_sources_[current_source_]->seek(source_pos);
@@ -402,6 +403,7 @@ bool c_input_sequence::seek(int global_pos)
     return false;
   }
 
+
   current_global_pos_ = global_pos;
 
   return true;
@@ -410,6 +412,19 @@ bool c_input_sequence::seek(int global_pos)
 int c_input_sequence::current_pos() const
 {
   return current_global_pos_;
+}
+
+void c_input_sequence::update_current_pos()
+{
+  if ( current_source_ >= 0 && current_source_ < (int)enabled_sources_.size() ) {
+
+    const c_input_source::sptr & s =
+        enabled_sources_[current_source_];
+
+    current_global_pos_ =
+        s->global_pos() + s->curpos();
+  }
+
 }
 
 c_input_source::sptr c_input_sequence::current_source() const
@@ -506,7 +521,17 @@ bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
 
   while ( current_source_ < (int) enabled_sources_.size() ) {
     if ( read_current_source(output_frame, output_mask) ) {
-      ++current_global_pos_;
+      // ++current_global_pos_;
+
+      update_current_pos();
+
+      //
+      //      const c_input_source::sptr & current_source =
+      //          enabled_sources_[current_source_];
+      //
+      //      current_global_pos_ =
+      //          current_source->global_pos() + current_source->curpos();
+
       return true;
     }
 

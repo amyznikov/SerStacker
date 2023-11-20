@@ -5,11 +5,11 @@
  *      Author: amyznikov
  */
 
-#include "c_cloudview_input_frame.h"
+#include "c_cloudview_data_frame.h"
 
 namespace cloudview {
 
-c_cloudview_input_frame::c_cloudview_input_frame()
+c_cloudview_data_frame::c_cloudview_data_frame()
 {
   // TODO Auto-generated constructor stub
 

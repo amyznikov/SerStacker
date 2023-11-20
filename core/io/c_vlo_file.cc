@@ -17,6 +17,7 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
   static constexpr c_enum_member members[] = {
       { c_vlo_file::DATA_CHANNEL_AMBIENT, "AMBIENT", "" },
       { c_vlo_file::DATA_CHANNEL_DISTANCES, "DISTANCES", "" },
+      { c_vlo_file::DATA_CHANNEL_DEPTH, "DEPTH", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA, "ECHO_AREA", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK, "ECHO_PEAK", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_WIDTH, "ECHO_WIDTH", "" },
@@ -33,26 +34,6 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
 }
 
 namespace {
-
-//@brief get current file position
-//static inline ssize_t whence(file_t fd)
-//{
-//  return ::lseek64(fd, 0, SEEK_CUR);
-//}
-//
-//static inline bool readfrom(file_t fd, ssize_t offset, uint16_t * data)
-//{
-//  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
-//    return false;
-//  }
-//
-//  if( ::read(fd, data, sizeof(*data)) != sizeof(*data) ) {
-//    return false;
-//  }
-//
-//  return true;
-//}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -278,6 +259,60 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
 
       return image;
     }
+
+    case c_vlo_file::DATA_CHANNEL_DEPTH: {
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3f::all(0));
+
+      const float yawCorrection = 0;
+
+      const double tick2radian =
+          0.00000008381903173490870551553291862726 * CV_PI / 180;
+
+      const double firstVertAngle =
+          0.5 * 0.05 * scan.NUM_LAYERS;
+
+      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+        const auto &slot =
+            scan.slot[s];
+
+        const double  horizontalAngle =
+            slot.angleTicks * tick2radian  + yawCorrection;
+
+        for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+
+          const double verticalAngle =
+              firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
+
+          const double  cos_vert = std::cos(verticalAngle);
+          const double  sin_vert = std::sin(verticalAngle);
+          const double  cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
+          const double  sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
+
+          for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
+
+            const auto &echo =
+                slot.echo[l][e];
+
+            const uint16_t distance =
+                echo.dist;
+
+            if( distance ) {
+              const double  x = distance * cos_hor_cos_vert;
+              //  const double  y = distance * sin_hor_cos_vert;
+              //  const double  z = distance * sin_vert;
+              image[l][s][e] = (float)x;
+            }
+          }
+        }
+      }
+
+      return image;
+    }
+
+
 
     case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
 
@@ -618,6 +653,61 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
 
+    case c_vlo_file::DATA_CHANNEL_DEPTH: {
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3f::all(0));
+
+      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+
+        const double sin_azimuth =
+            std::sin(scan.horizontalAngles[s]);
+
+        const double cos_azimuth =
+            std::cos(scan.horizontalAngles[s]);
+
+        for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
+
+          const double inclination =
+              CV_PI / 2 - scan.verticalAngles[l];
+
+          const double sin_inclination =
+              std::sin(inclination);
+
+          const double cos_inclination =
+              std::cos(inclination);
+
+          for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+
+            const distance_type dist =
+                scan.echo[s][l][e].dist;
+
+            if( !dist ) {
+              continue;
+            }
+
+            const auto & area =
+                scan.echo[s][l][e].area;
+
+            if( !area ) {
+              continue;
+            }
+
+            // mirrorSide = scan.mirrorSide;
+            const float distance =  dist;
+            const float x = distance * sin_inclination * cos_azimuth;
+            //const float y = -distance * sin_inclination * sin_azimuth;
+            //const float z = -distance * cos_inclination;
+
+            image[scan.NUM_LAYERS - l - 1][s][e] = x;
+          }
+        }
+      }
+
+      return image;
+    }
+
+
     case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST:
       case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
 
@@ -770,13 +860,13 @@ bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_ch
   const cv::Mat3f intensity =
       intensityImage;
 
-  const float firstVertAngle =
+  const double firstVertAngle =
       0.5 * 0.05 * scan.NUM_LAYERS;
 
-  const float tick2deg =
-      (float) (0.00000008381903173490870551553291862726);
+  const double tick2radian =
+      0.00000008381903173490870551553291862726 * CV_PI / 180;
 
-  const float yawCorrection = 0;
+  const double yawCorrection = 0;
 
   std::vector<cv::Vec3f> output_points;
   std::vector<cv::Vec3f> output_colors;
@@ -789,34 +879,34 @@ bool> get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_ch
     const auto &slot =
         scan.slot[s];
 
-    const float horizontalAngle =
-        slot.angleTicks * tick2deg * CV_PI / 180 + yawCorrection;
+    const double horizontalAngle =
+        slot.angleTicks * tick2radian + yawCorrection;
 
     for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
 
-      const float verticalAngle =
+      const double verticalAngle =
           firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
 
-      const float cos_vert = cos(verticalAngle);
-      const float sin_vert = sin(verticalAngle);
-      const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
-      const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
+      const double cos_vert = std::cos(verticalAngle);
+      const double sin_vert = std::sin(verticalAngle);
+      const double cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
+      const double sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
 
       for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
 
         const auto &echo =
             slot.echo[l][e];
 
-        const uint16_t distance =
+        const auto & distance =
             echo.dist;
 
-        if( distance > 0 && distance < 65534 ) {
+        if( distance ) {
 
-          const float scale = 0.01;
-          const float x = scale * distance * cos_hor_cos_vert;
-          const float y = scale * distance * sin_hor_cos_vert;
-          const float z = scale * distance * sin_vert;
-          output_points.emplace_back(x, y, z);
+          const double scale = 0.01;
+          const double x = scale * distance * cos_hor_cos_vert;
+          const double y = scale * distance * sin_hor_cos_vert;
+          const double z = scale * distance * sin_vert;
+          output_points.emplace_back((float)x, (float)y, (float)z);
 
           const float gray_level =
               intensity[l][s][e];
@@ -840,13 +930,13 @@ std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
 bool> get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
 {
-  const float firstVertAngle =
+  const double firstVertAngle =
       0.5 * 0.05 * scan.NUM_LAYERS;
 
-  const float tick2deg =
-      (float) (0.00000008381903173490870551553291862726);
+  const double tick2radian =
+      0.00000008381903173490870551553291862726 * CV_PI / 180;
 
-  const float yawCorrection = 0;
+  const double yawCorrection = 0;
 
   for( int i = 0; i < 3; ++i ) {
     clouds[i] = cv::Mat3f(scan.NUM_LAYERS, scan.NUM_SLOTS,
@@ -858,37 +948,37 @@ bool> get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
     const auto &slot =
         scan.slot[s];
 
-    const float horizontalAngle =
-        slot.angleTicks * tick2deg * CV_PI / 180 + yawCorrection;
+    const double horizontalAngle =
+        slot.angleTicks * tick2radian  + yawCorrection;
 
     for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
 
-      const float verticalAngle =
+      const double verticalAngle =
           firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
 
-      const float cos_vert = cos(verticalAngle);
-      const float sin_vert = sin(verticalAngle);
-      const float cos_hor_cos_vert = cos(horizontalAngle) * cos_vert;
-      const float sin_hor_cos_vert = sin(horizontalAngle) * cos_vert;
+      const double cos_vert = std::cos(verticalAngle);
+      const double sin_vert = std::sin(verticalAngle);
+      const double cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
+      const double sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
 
       for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
 
         const auto &echo =
             slot.echo[l][e];
 
-        const uint16_t distance =
+        const auto & distance =
             echo.dist;
 
-        if( distance > 0 && distance < 65534 ) {
+        if( distance ) {
 
-          const float scale = 0.01;
-          const float x = scale * distance * cos_hor_cos_vert;
-          const float y = scale * distance * sin_hor_cos_vert;
-          const float z = scale * distance * sin_vert;
+          const double scale = 0.01;
+          const double x = scale * distance * cos_hor_cos_vert;
+          const double y = scale * distance * sin_hor_cos_vert;
+          const double z = scale * distance * sin_vert;
 
-          clouds[e][l][s][0] = x;
-          clouds[e][l][s][1] = y;
-          clouds[e][l][s][2] = z;
+          clouds[e][l][s][0] = (float)x;
+          clouds[e][l][s][1] = (float)y;
+          clouds[e][l][s][2] = (float)z;
         }
       }
     }
@@ -931,33 +1021,33 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
 
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
 
-    const float sin_azimuth =
+    const double sin_azimuth =
         std::sin(scan.horizontalAngles[s]);
 
-    const float cos_azimuth =
+    const double cos_azimuth =
         std::cos(scan.horizontalAngles[s]);
 
     for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
 
-      const float inclination =
+      const double inclination =
           CV_PI / 2 - scan.verticalAngles[l];
 
-      const float sin_inclination =
+      const double sin_inclination =
           std::sin(inclination);
 
-      const float cos_inclination =
+      const double cos_inclination =
           std::cos(inclination);
 
       for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
 
-        const distance_type dist =
+        const auto & dist =
             scan.echo[s][l][e].dist;
 
         if( !dist ) {
           continue;
         }
 
-        const area_type area =
+        const auto & area =
             scan.echo[s][l][e].area;
 
         if( !area ) {
@@ -965,15 +1055,15 @@ bool get_cloud3d(const c_vlo_scan6_slm & scan, c_vlo_reader::DATA_CHANNEL intens
         }
 
         // mirrorSide = scan.mirrorSide;
-        const float distance = 0.01 * dist;
-        const float x = distance * sin_inclination * cos_azimuth;
-        const float y = -distance * sin_inclination * sin_azimuth;
-        const float z = -distance * cos_inclination;
+        const double distance = 0.01 * dist;
+        const double x = distance * sin_inclination * cos_azimuth;
+        const double y = -distance * sin_inclination * sin_azimuth;
+        const double z = -distance * cos_inclination;
 
         const float gray_level =
             intensity[scan.NUM_LAYERS - l - 1][s][e];
 
-        output_points.emplace_back(x, y, z);
+        output_points.emplace_back((float)x, (float)y, (float)z);
         output_colors.emplace_back(gray_level, gray_level, gray_level);
       }
     }
@@ -1000,26 +1090,26 @@ bool get_clouds3d(const c_vlo_scan6_slm & scan, cv::Mat3f clouds[3])
 
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
 
-    const float sin_azimuth =
+    const double sin_azimuth =
         std::sin(scan.horizontalAngles[s]);
 
-    const float cos_azimuth =
+    const double cos_azimuth =
         std::cos(scan.horizontalAngles[s]);
 
     for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
 
-      const float inclination =
+      const double inclination =
           CV_PI / 2 - scan.verticalAngles[l];
 
-      const float sin_inclination =
+      const double sin_inclination =
           std::sin(inclination);
 
-      const float cos_inclination =
+      const double cos_inclination =
           std::cos(inclination);
 
       for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
 
-        const distance_type dist =
+        const auto & dist =
             scan.echo[s][l][e].dist;
 
         if( !dist ) {
@@ -1034,14 +1124,14 @@ bool get_clouds3d(const c_vlo_scan6_slm & scan, cv::Mat3f clouds[3])
         }
 
         // mirrorSide = scan.mirrorSide;
-        const float distance = 0.01 * dist;
-        const float x = distance * sin_inclination * cos_azimuth;
-        const float y = -distance * sin_inclination * sin_azimuth;
-        const float z = -distance * cos_inclination;
+        const double distance = 0.01 * dist;
+        const double x = distance * sin_inclination * cos_azimuth;
+        const double y = -distance * sin_inclination * sin_azimuth;
+        const double z = -distance * cos_inclination;
 
-        clouds[e][scan.NUM_LAYERS - l - 1][s][0] = x;
-        clouds[e][scan.NUM_LAYERS - l - 1][s][1] = y;
-        clouds[e][scan.NUM_LAYERS - l - 1][s][2] = z;
+        clouds[e][scan.NUM_LAYERS - l - 1][s][0] = (float) x;
+        clouds[e][scan.NUM_LAYERS - l - 1][s][1] = (float)y;
+        clouds[e][scan.NUM_LAYERS - l - 1][s][2] = (float)z;
       }
     }
   }

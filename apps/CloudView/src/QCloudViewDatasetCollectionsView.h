@@ -24,14 +24,14 @@ enum {
 
 
 
-class QCloudViewDatasetTreeDatasetItem:
+class QCloudViewDatasetItem:
     public QTreeWidgetItem
 {
 public:
-  typedef QCloudViewDatasetTreeDatasetItem ThisClass;
+  typedef QCloudViewDatasetItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QCloudViewDatasetTreeDatasetItem(QTreeWidget * treeview, const c_cloudview_dataset::sptr & dataset);
+  QCloudViewDatasetItem(QTreeWidget * treeview, const c_cloudview_dataset::sptr & dataset);
 
   const c_cloudview_dataset::sptr& dataset() const;
 
@@ -43,14 +43,14 @@ protected:
 
 
 
-class QCloudViewDatasetTreeInputSourceItem:
+class QCloudViewInputSourceItem:
     public QTreeWidgetItem
 {
 public:
-  typedef QCloudViewDatasetTreeInputSourceItem ThisClass;
+  typedef QCloudViewInputSourceItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QCloudViewDatasetTreeInputSourceItem(QTreeWidgetItem * parent, const c_cloudview_input_source::sptr & input_source);
+  QCloudViewInputSourceItem(QTreeWidgetItem * parent, const c_cloudview_input_source::sptr & input_source);
   const c_cloudview_input_source::sptr& input_source() const;
 
 protected:
@@ -64,24 +64,25 @@ protected:
 
 
 
-class QCloudViewDatasetTreeView :
+class QCloudViewDatasetCollectionsTree :
     public QTreeWidget,
     public HasUpdateControls
 {
   Q_OBJECT;
 public:
-  typedef QCloudViewDatasetTreeView ThisClass;
+  typedef QCloudViewDatasetCollectionsTree ThisClass;
   typedef QTreeWidget Base;
 
-  QCloudViewDatasetTreeView(QWidget * parent = nullptr);
+  QCloudViewDatasetCollectionsTree(QWidget * parent = nullptr);
 
-  QCloudViewDatasetTreeDatasetItem * findDatasetItem(const QString & name) const;
+  QCloudViewDatasetItem * findDatasetItem(const QString & name) const;
 
   QList<QTreeWidgetItem*> getContextItems(const QPoint & pos) const;
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
   void onItemChanged(QTreeWidgetItem *item, int column);
+  void onItemDoubleClicked(QTreeWidgetItem *item, int column);
 
 protected:
 };
@@ -95,25 +96,25 @@ protected:
 
 
 
-class QCloudViewDatasetView :
+class QCloudViewDatasetCollectionsView :
     public QWidget
 {
   Q_OBJECT;
 public:
-  typedef QCloudViewDatasetView ThisClass;
+  typedef QCloudViewDatasetCollectionsView ThisClass;
   typedef QWidget Base;
 
-  QCloudViewDatasetView(QWidget * parent = nullptr);
+  QCloudViewDatasetCollectionsView(QWidget * parent = nullptr);
 
   void onAddDataset();
-  void onAddSources(QCloudViewDatasetTreeDatasetItem * datasetItem);
+  void onAddSources(QCloudViewDatasetItem * datasetItem);
 
 protected:
   void onCustomContextMenuRequested(const QPoint & pos);
 
 protected:
   QToolBar * toolbar_ = nullptr;
-  QCloudViewDatasetTreeView * treeView_ = nullptr;
+  QCloudViewDatasetCollectionsTree * treeView_ = nullptr;
 };
 
 
@@ -124,24 +125,24 @@ protected:
 
 
 
-class QCloudViewDatasetViewDock :
+class QCloudViewDatasetCollectionsDock :
     public QCustomDockWidget
 {
   Q_OBJECT;
 public:
-  typedef QCloudViewDatasetViewDock ThisClass;
+  typedef QCloudViewDatasetCollectionsDock ThisClass;
   typedef QCustomDockWidget Base;
 
-  QCloudViewDatasetViewDock(const QString &title, QWidget * parent = nullptr);
+  QCloudViewDatasetCollectionsDock(const QString &title, QWidget * parent = nullptr);
 
-  QCloudViewDatasetView * datasetView() const;
+  QCloudViewDatasetCollectionsView * datasetView() const;
 
 protected:
-  QCloudViewDatasetView * datasetView_ = nullptr;
+  QCloudViewDatasetCollectionsView * datasetView_ = nullptr;
 };
 
 
-QCloudViewDatasetViewDock * addCloudViewDatasetViewDock(QMainWindow * parent,
+QCloudViewDatasetCollectionsDock * addCloudViewDatasetCollectionsDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,

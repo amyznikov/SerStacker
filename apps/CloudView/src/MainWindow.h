@@ -11,7 +11,9 @@
 #include <gui/mainwindow/QMainAppWindow.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
-#include "QCloudViewDatasetView.h"
+#include "QCloudViewDatasetCollectionsView.h"
+#include "QCloudSequenceView.h"
+
 
 //#include <gui/qtextview/QTextFileViewer.h>
 //#include <gui/qcloudview/QCloudViewer.h>
@@ -45,9 +47,11 @@ public:
 
 private:
   void setupMainMenu();
+  void setupStatusbar();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
   void setupDatasetView();
+  void setupCloudSequenceView();
 
 private:
   void updateWindowTittle();
@@ -62,14 +66,23 @@ private:
 private:
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
+  QCloudSequenceView * cloudSequenceView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
 
-  QCloudViewDatasetView * datasetView = nullptr;
-  QCloudViewDatasetViewDock * datasetViewDock = nullptr;
+  QCloudViewDatasetCollectionsView * datasetView = nullptr;
+  QCloudViewDatasetCollectionsDock * datasetViewDock = nullptr;
 
 
   QAction * quitAppAction = nullptr;
+
+
+
+  // status bar
+  QLabel * statusbarMousePosLabel_ctl = nullptr;
+  QLabel * statusbarShapesLabel_ctl = nullptr;
+  QToolButton * statusbarShowLog_ctl = nullptr;
+
 };
 
 

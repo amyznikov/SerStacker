@@ -57,6 +57,8 @@ MainWindow::MainWindow()
 
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
+  centralStackedWidget->addWidget(cloudSequenceView = new QCloudSequenceView(this));
+
 
 
   ///////////////////////////////////
@@ -70,9 +72,12 @@ MainWindow::MainWindow()
 
 
   setupMainMenu();
+  setupLogWidget();
   setupFileSystemTreeView();
   setupThumbnailsView();
   setupDatasetView();
+  setupStatusbar();
+  setupCloudSequenceView();
 
   tabifyDockWidget(fileSystemTreeDock,
       datasetViewDock);
@@ -273,6 +278,16 @@ void MainWindow::setupMainMenu()
 
 }
 
+void MainWindow::setupStatusbar()
+{
+  QStatusBar *sb = statusBar();
+
+  sb->addWidget(statusbarShapesLabel_ctl = new QLabel(this));
+  sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
+  sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
+  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction_);
+}
+
 
 void MainWindow::setupFileSystemTreeView()
 {
@@ -366,13 +381,18 @@ void MainWindow::setupThumbnailsView()
 void MainWindow::setupDatasetView()
 {
   datasetViewDock =
-      addCloudViewDatasetViewDock(this, Qt::LeftDockWidgetArea,
+      addCloudViewDatasetCollectionsDock(this, Qt::LeftDockWidgetArea,
           "datasetViewDock",
           "Datasets",
           menuView_);
 
 
   datasetView = datasetViewDock->datasetView();
+}
+
+void MainWindow::setupCloudSequenceView()
+{
+
 }
 
 

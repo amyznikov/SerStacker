@@ -5,7 +5,8 @@
  *      Author: amyznikov
  */
 
-#include "QCloudViewDatasetView.h"
+#include "QCloudViewDatasetCollectionsView.h"
+
 #include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
 
@@ -28,7 +29,7 @@ static QToolBar * createToolbar(QWidget * parent = nullptr)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QCloudViewDatasetTreeDatasetItem::QCloudViewDatasetTreeDatasetItem(QTreeWidget * treeview,
+QCloudViewDatasetItem::QCloudViewDatasetItem(QTreeWidget * treeview,
     const c_cloudview_dataset::sptr & dataset) :
     Base(treeview, (int) (QCloudViewDatasetTreeIemTypeDataset)),
     dataset_(dataset)
@@ -40,12 +41,12 @@ QCloudViewDatasetTreeDatasetItem::QCloudViewDatasetTreeDatasetItem(QTreeWidget *
   refreshInputSources();
 }
 
-const c_cloudview_dataset::sptr& QCloudViewDatasetTreeDatasetItem::dataset() const
+const c_cloudview_dataset::sptr& QCloudViewDatasetItem::dataset() const
 {
   return dataset_;
 }
 
-void QCloudViewDatasetTreeDatasetItem::refreshInputSources()
+void QCloudViewDatasetItem::refreshInputSources()
 {
   QTreeWidgetItem *childItem;
 
@@ -55,13 +56,13 @@ void QCloudViewDatasetTreeDatasetItem::refreshInputSources()
 
   if( dataset_ ) {
     for( const c_cloudview_input_source::sptr & input_source : dataset_->input_sources() ) {
-      new QCloudViewDatasetTreeInputSourceItem(this, input_source);
+      new QCloudViewInputSourceItem(this, input_source);
     }
   }
 }
 
 
-QCloudViewDatasetTreeInputSourceItem::QCloudViewDatasetTreeInputSourceItem(QTreeWidgetItem * parent,
+QCloudViewInputSourceItem::QCloudViewInputSourceItem(QTreeWidgetItem * parent,
     const c_cloudview_input_source::sptr & input_source) :
     Base(parent, (int) (QCloudViewDatasetTreeIemTypeInputSource)),
     input_source_(input_source)
@@ -73,7 +74,7 @@ QCloudViewDatasetTreeInputSourceItem::QCloudViewDatasetTreeInputSourceItem(QTree
   setCheckState(0, Qt::Checked);
 }
 
-const c_cloudview_input_source::sptr& QCloudViewDatasetTreeInputSourceItem::input_source() const
+const c_cloudview_input_source::sptr& QCloudViewInputSourceItem::input_source() const
 {
   return input_source_;
 }
@@ -81,7 +82,7 @@ const c_cloudview_input_source::sptr& QCloudViewDatasetTreeInputSourceItem::inpu
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QCloudViewDatasetTreeView::QCloudViewDatasetTreeView(QWidget * parent) :
+QCloudViewDatasetCollectionsTree::QCloudViewDatasetCollectionsTree(QWidget * parent) :
     Base(parent)
 {
   setHeaderHidden(true);
@@ -111,13 +112,13 @@ QCloudViewDatasetTreeView::QCloudViewDatasetTreeView(QWidget * parent) :
   //  connect(this, &QTreeWidget::currentItemChanged,
   //      this, &ThisClass::onCurrentItemChanged);
   //
-  //  connect(this, &QTreeWidget::itemDoubleClicked,
-  //      this, &ThisClass::onItemDoubleClicked);
+    connect(this, &QTreeWidget::itemDoubleClicked,
+        this, &ThisClass::onItemDoubleClicked);
 }
 
 
 
-bool QCloudViewDatasetTreeView::eventFilter(QObject * watched, QEvent * event)
+bool QCloudViewDatasetCollectionsTree::eventFilter(QObject * watched, QEvent * event)
 {
   if( watched == this && event->type() == QEvent::KeyPress ) {
 
@@ -126,30 +127,13 @@ bool QCloudViewDatasetTreeView::eventFilter(QObject * watched, QEvent * event)
 
     if( e->key() == Qt::Key_Return && state() != QAbstractItemView::EditingState ) {
 
-      QTreeWidgetItem *item = currentItem();
+      QTreeWidgetItem *item =
+          currentItem();
+
       if( item ) {
-
-        QCloudViewDatasetTreeDatasetItem *datasetItem = nullptr;
-        QCloudViewDatasetTreeInputSourceItem *inputSourceItem = nullptr;
-
-        switch (item->type()) {
-
-          case QCloudViewDatasetTreeIemTypeDataset:
-            datasetItem = dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item);
-            break;
-
-          case QCloudViewDatasetTreeIemTypeInputSource:
-            inputSourceItem = dynamic_cast<QCloudViewDatasetTreeInputSourceItem*>(item);
-            datasetItem = dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item->parent());
-            break;
-        }
-
-//        Q_EMIT itemDoubleClicked(sequenceItem ? sequenceItem->input_sequence() : nullptr,
-//            inputSourceItem ? inputSourceItem->input_source() : nullptr);
-
+        Q_EMIT itemDoubleClicked(item, 0);
         return true;
       }
-
     }
   }
 
@@ -158,14 +142,14 @@ bool QCloudViewDatasetTreeView::eventFilter(QObject * watched, QEvent * event)
 
 
 
-void QCloudViewDatasetTreeView::onItemChanged(QTreeWidgetItem *item, int column)
+void QCloudViewDatasetCollectionsTree::onItemChanged(QTreeWidgetItem *item, int column)
 {
   if ( !item || updatingControls() ) {
     return;
   }
 
-  if( QCloudViewDatasetTreeDatasetItem *datasetItem =
-      dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item) ) {
+  if( QCloudViewDatasetItem *datasetItem =
+      dynamic_cast<QCloudViewDatasetItem*>(item) ) {
 
     if ( column == 0 ) {
 
@@ -189,14 +173,23 @@ void QCloudViewDatasetTreeView::onItemChanged(QTreeWidgetItem *item, int column)
       }
     }
   }
-  else if( QCloudViewDatasetTreeInputSourceItem *sourceItem =
-      dynamic_cast<QCloudViewDatasetTreeInputSourceItem *>(item) ) {
+  else if( QCloudViewInputSourceItem *sourceItem =
+      dynamic_cast<QCloudViewInputSourceItem *>(item) ) {
+
+  }
+}
+
+void QCloudViewDatasetCollectionsTree::onItemDoubleClicked(QTreeWidgetItem *item, int column)
+{
+  if( QCloudViewInputSourceItem *sourceItem =
+      dynamic_cast<QCloudViewInputSourceItem*>(item) ) {
 
   }
 
 }
 
-QCloudViewDatasetTreeDatasetItem  * QCloudViewDatasetTreeView::findDatasetItem(const QString & name) const
+
+QCloudViewDatasetItem  * QCloudViewDatasetCollectionsTree::findDatasetItem(const QString & name) const
 {
   if( !name.isEmpty() ) {
 
@@ -205,8 +198,8 @@ QCloudViewDatasetTreeDatasetItem  * QCloudViewDatasetTreeView::findDatasetItem(c
 
     for( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
 
-      QCloudViewDatasetTreeDatasetItem *item =
-          dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(topLevelItem(i));
+      QCloudViewDatasetItem *item =
+          dynamic_cast<QCloudViewDatasetItem*>(topLevelItem(i));
 
       if( item && item->dataset()->name() == cname ) {
         return item;
@@ -217,7 +210,7 @@ QCloudViewDatasetTreeDatasetItem  * QCloudViewDatasetTreeView::findDatasetItem(c
   return nullptr;
 }
 
-QList<QTreeWidgetItem*> QCloudViewDatasetTreeView::getContextItems(const QPoint & pos) const
+QList<QTreeWidgetItem*> QCloudViewDatasetCollectionsTree::getContextItems(const QPoint & pos) const
 {
   QList<QTreeWidgetItem*> contextItems;
 
@@ -243,7 +236,7 @@ QList<QTreeWidgetItem*> QCloudViewDatasetTreeView::getContextItems(const QPoint 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QCloudViewDatasetView::QCloudViewDatasetView(QWidget * parent) :
+QCloudViewDatasetCollectionsView::QCloudViewDatasetCollectionsView(QWidget * parent) :
     Base(parent)
 {
 
@@ -255,7 +248,7 @@ QCloudViewDatasetView::QCloudViewDatasetView(QWidget * parent) :
       Qt::AlignTop);
 
   layout->addWidget(treeView_ =
-      new QCloudViewDatasetTreeView(this));
+      new QCloudViewDatasetCollectionsTree(this));
 
 
   toolbar_->addWidget(createToolButton(getIcon(ICON_add_dataset),
@@ -268,7 +261,7 @@ QCloudViewDatasetView::QCloudViewDatasetView(QWidget * parent) :
 }
 
 
-void QCloudViewDatasetView::onCustomContextMenuRequested(const QPoint & pos)
+void QCloudViewDatasetCollectionsView::onCustomContextMenuRequested(const QPoint & pos)
 {
   QMenu menu;
   QAction *action;
@@ -286,8 +279,8 @@ void QCloudViewDatasetView::onCustomContextMenuRequested(const QPoint & pos)
           QApplication::clipboard()->setText(item->text(0));
         });
 
-    if( QCloudViewDatasetTreeDatasetItem *datasetItem =
-        dynamic_cast<QCloudViewDatasetTreeDatasetItem*>(item) ) {
+    if( QCloudViewDatasetItem *datasetItem =
+        dynamic_cast<QCloudViewDatasetItem*>(item) ) {
 
       menu.addAction("Rename...",
           [this, datasetItem]() {
@@ -300,8 +293,8 @@ void QCloudViewDatasetView::onCustomContextMenuRequested(const QPoint & pos)
           });
     }
 
-    else if( QCloudViewDatasetTreeInputSourceItem *sourceItem =
-        dynamic_cast<QCloudViewDatasetTreeInputSourceItem *>(item) ) {
+    else if( QCloudViewInputSourceItem *sourceItem =
+        dynamic_cast<QCloudViewInputSourceItem *>(item) ) {
 
       menu.addAction("Copy full path name",
           [this, sourceItem]() {
@@ -320,7 +313,7 @@ void QCloudViewDatasetView::onCustomContextMenuRequested(const QPoint & pos)
 
 }
 
-void QCloudViewDatasetView::onAddDataset()
+void QCloudViewDatasetCollectionsView::onAddDataset()
 {
   QAddCloudViewDatasetDialogBox dialogBox(this);
 
@@ -362,15 +355,15 @@ void QCloudViewDatasetView::onAddDataset()
     return;
   }
 
-  QCloudViewDatasetTreeDatasetItem * datasetItem =
-      new QCloudViewDatasetTreeDatasetItem(treeView_,
+  QCloudViewDatasetItem * datasetItem =
+      new QCloudViewDatasetItem(treeView_,
           dataset);
 
   treeView_->addTopLevelItem(datasetItem);
 
 }
 
-void QCloudViewDatasetView::onAddSources(QCloudViewDatasetTreeDatasetItem * datasetItem)
+void QCloudViewDatasetCollectionsView::onAddSources(QCloudViewDatasetItem * datasetItem)
 {
   if ( !datasetItem ) {
     return;
@@ -450,10 +443,10 @@ void QCloudViewDatasetView::onAddSources(QCloudViewDatasetTreeDatasetItem * data
 
 
 
-QCloudViewDatasetViewDock::QCloudViewDatasetViewDock(const QString & title, QWidget * parent) :
+QCloudViewDatasetCollectionsDock::QCloudViewDatasetCollectionsDock(const QString & title, QWidget * parent) :
     Base(title, parent)
 {
-  Base::setWidget(datasetView_ = new QCloudViewDatasetView(this));
+  Base::setWidget(datasetView_ = new QCloudViewDatasetCollectionsView(this));
 
 //  const QList<QAction*> actions = datasetView_->toolbarActions();
 //  for( int i = 0, n = actions.size(); i < n; ++i ) {
@@ -462,19 +455,19 @@ QCloudViewDatasetViewDock::QCloudViewDatasetViewDock(const QString & title, QWid
 
 }
 
-QCloudViewDatasetView* QCloudViewDatasetViewDock::datasetView() const
+QCloudViewDatasetCollectionsView* QCloudViewDatasetCollectionsDock::datasetView() const
 {
   return datasetView_;
 }
 
-QCloudViewDatasetViewDock* addCloudViewDatasetViewDock(QMainWindow * parent,
+QCloudViewDatasetCollectionsDock* addCloudViewDatasetCollectionsDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,
     QMenu * viewMenu)
 {
-  QCloudViewDatasetViewDock *dock =
-      new QCloudViewDatasetViewDock(title, parent);
+  QCloudViewDatasetCollectionsDock *dock =
+      new QCloudViewDatasetCollectionsDock(title, parent);
 
   dock->setObjectName(dockName);
   parent->addDockWidget(area, dock);

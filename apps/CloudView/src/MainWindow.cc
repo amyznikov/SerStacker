@@ -362,15 +362,15 @@ void MainWindow::setupThumbnailsView()
   connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
       [this](const QString & abspath) {
         if ( !is_visible(thumbnailsView) ) {
-          // openImage(abspath);
+          openImage(abspath);
         }
       });
 
-    //  connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
-    //      this, &ThisClass::openImage);
-    //
-    //  connect(thumbnailsView, &QThumbnailsView::iconEnterPressed,
-    //      this, &ThisClass::openImage);
+  connect(thumbnailsView, &QThumbnailsView::iconDoubleClicked,
+      this, &ThisClass::openImage);
+
+  connect(thumbnailsView, &QThumbnailsView::iconEnterPressed,
+      this, &ThisClass::openImage);
 
   connect(thumbnailsView, &QThumbnailsView::customContextMenuRequested,
       this, &ThisClass::onThumbnailsViewCustomContextMenuRequested);
@@ -393,6 +393,15 @@ void MainWindow::setupDatasetView()
 void MainWindow::setupCloudSequenceView()
 {
 
+}
+
+
+void MainWindow::openImage(const QString & abspath)
+{
+  QWaitCursor wait(this);
+
+  centralStackedWidget->setCurrentWidget(cloudSequenceView);
+  cloudSequenceView->openFile(abspath);
 }
 
 

@@ -8,6 +8,22 @@
 #include "c_file_handle.h"
 #include <core/debug.h>
 
+#ifdef _MSC_VER
+# pragma warning (disable:4996)
+#endif
+
+#if ! __DEBUG_H_INCLUDED__
+#include <stdio.h>
+
+#define CF_ERROR(...) \
+    fprintf(stderr, "%s(): %d ", __func__, __LINE__), \
+    fprintf(stderr, __VA_ARGS__), \
+    fprintf(stderr, "\n"), \
+    fflush(stderr)
+
+#endif
+
+
 c_file_handle::~c_file_handle()
 {
   close();
@@ -18,6 +34,7 @@ bool c_file_handle::open(const std::string & filename, int openflags)
   close();
 
   if( filename.empty() ) {
+    errno = EINVAL;
     CF_ERROR("c_file_handle: No file name specified");
     return false;
   }

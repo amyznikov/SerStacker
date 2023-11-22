@@ -11,6 +11,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/settings/opencv_settings.h>
 #include <core/feature2d/feature2d.h>
+#include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 

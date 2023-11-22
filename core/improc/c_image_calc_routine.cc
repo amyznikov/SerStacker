@@ -10,6 +10,7 @@
 #include <core/ssprintf.h>
 
 
+
 template<>
 const c_enum_member * members_of<c_image_calc_routine::Function>()
 {

@@ -16,6 +16,21 @@
 # pragma warning (disable:4996)
 #endif
 
+
+#if ! __DEBUG_H_INCLUDED__
+#include <stdio.h>
+
+#define CF_ERROR(...) \
+    fprintf(stderr, "%s(): %d ", __func__, __LINE__), \
+    fprintf(stderr, __VA_ARGS__), \
+    fprintf(stderr, "\n"), \
+    fflush(stderr)
+
+#endif
+
+
+
+
 /**
  * C-style string formating
  */

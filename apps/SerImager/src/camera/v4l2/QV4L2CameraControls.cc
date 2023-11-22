@@ -9,6 +9,7 @@
 #include <linux/version.h>
 #include <gui/widgets/style.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 #define ICON_enterbutt        ":/serimager/icons/enterbutt.png"
 

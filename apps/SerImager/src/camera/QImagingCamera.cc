@@ -8,6 +8,7 @@
 #include "QImagingCamera.h"
 #include <core/ssprintf.h>
 #include <core/get_time.h>
+#include <core/debug.h>
 
 template<>
 const c_enum_member* members_of<serimager::QImagingCamera::State>()

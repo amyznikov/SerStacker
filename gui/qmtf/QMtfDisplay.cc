@@ -7,6 +7,7 @@
 
 #include "QMtfDisplay.h"
 #include <core/proc/minmax.h>
+#include <core/debug.h>
 
 
 QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :

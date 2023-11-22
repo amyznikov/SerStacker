@@ -6,6 +6,8 @@
  */
 
 #include "QMainAppWindow.h"
+#include <core/debug.h>
+
 
 //#define ICON_log                  ":/qlog/icons/log.png"
 #define ICON_histogram            ":/qmtf/icons/histogram_small.png"

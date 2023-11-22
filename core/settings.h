@@ -18,6 +18,7 @@
 #include <type_traits>
 #include <libconfig.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 
 template<class T> struct c_config_type_traits { static constexpr int type = CONFIG_TYPE_GROUP;};

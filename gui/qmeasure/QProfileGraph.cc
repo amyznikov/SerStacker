@@ -9,6 +9,7 @@
 #include <gui/widgets/QToolBarStretch.h>
 #include <gui/widgets/style.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 
 #define ICON_plot       ":/qmeasure/icons/plot.png"

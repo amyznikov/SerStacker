@@ -19,7 +19,6 @@
 #include <vector>
 #include <string.h>
 #include <type_traits>
-#include <core/debug.h>
 
 
 // OpenCV version macro

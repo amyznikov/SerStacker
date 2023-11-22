@@ -8,6 +8,7 @@
 #include "c_auto_unsharp_mask_routine.h"
 #include <core/proc/unsharp_mask.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 template<>
 const c_enum_member* members_of<c_auto_unsharp_mask_routine::COLOR_CHANNEL>()

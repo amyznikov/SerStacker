@@ -55,12 +55,14 @@ private:
 
 private:
   void updateWindowTittle();
+  void openImage(const QString & abspath);
 
   void onSaveState(QSettings & settings) override;
   void onRestoreState(QSettings & settings) override;
 
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
+
 
 
 private:

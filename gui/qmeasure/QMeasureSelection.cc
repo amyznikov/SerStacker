@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 #include "QMeasureSelection.h"
+#include <core/debug.h>
 
 QMeasureSelectionCombo::QMeasureSelectionCombo(QWidget * parent) :
     Base(parent)

@@ -11,6 +11,25 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+
+#ifdef _MSC_VER
+# pragma warning (disable:4996)
+#endif
+
+#if ! __DEBUG_H_INCLUDED__
+#include <stdio.h>
+
+#define CF_DEBUG(...) \
+    fprintf(stderr, "%s(): %d ", __func__, __LINE__), \
+    fprintf(stderr, __VA_ARGS__), \
+    fprintf(stderr, "\n"), \
+    fflush(stderr)
+
+#define CF_ERROR CF_DEBUG
+#endif
+
+#ifdef __ssprintf_h__
+
 template<>
 const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
 {
@@ -32,6 +51,8 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
 
   return members;
 }
+
+#endif // __ssprintf_h__
 
 namespace {
 ///////////////////////////////////////////////////////////////////////////////////////////////////

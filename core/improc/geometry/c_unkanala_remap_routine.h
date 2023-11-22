@@ -12,6 +12,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/unkanala.h>
 
+
 class c_unkanala_remap_routine :
     public c_image_processor_routine
 {

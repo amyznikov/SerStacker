@@ -15,6 +15,7 @@
 #include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/style.h>
+#include <core/debug.h>
 
 #define ICON_double_arrow_down    ":/qimproc/icons/double-arrow-down"
 #define ICON_double_arrow_right   ":/qimproc/icons/double-arrow-right"

@@ -1709,6 +1709,80 @@ bool c_vlo_pipeline::run_blom_detection()
   }
 
 
+  /////////////
+  // Save clouds
+  if ( false ) {
+
+    cv::Mat3f clouds[3];
+
+    std::vector<cv::Vec3d> original_points;
+    std::vector<cv::Vec3b>  original_colors;
+
+    std::vector<cv::Vec3d> filtered_points;
+    std::vector<cv::Vec3b>  filtered_colors;
+
+    std::string filename;
+
+    c_vlo_file::get_clouds3d(current_scan_, clouds);
+
+    const cv::Vec3b echo_colors[3] = {
+        cv::Vec3b(255, 0, 0),
+        cv::Vec3b(0, 255, 0),
+        cv::Vec3b(0, 0, 255),
+    };
+
+    for ( int e = 0; e < 3; ++e ) {
+
+      const cv::Mat3f & cloud =
+          clouds[e];
+
+      for ( int y = 0; y < cloud.rows; ++y ) {
+        for ( int x = 0; x < cloud.cols; ++x ) {
+
+          const cv::Vec3f & p =
+              cloud[y][x];
+
+          if( p[0] || p[1] || p[2] ) {
+
+            original_points.emplace_back(p);
+            original_colors.emplace_back(echo_colors[e]);
+
+
+            if ( !blom_mask[y][x][e] ) {
+              filtered_points.emplace_back(p);
+              filtered_colors.emplace_back(echo_colors[e]);
+            }
+          }
+        }
+      }
+    }
+
+
+    filename =
+        ssprintf("%s/bloom-cloud3d/%s/cloud3d.%03d.original.ply",
+            output_path_.c_str(),
+            input_sequence_->name().c_str(),
+            input_sequence_->current_pos() - 1);
+
+    if( !save_ply(original_points, original_colors, filename) ) {
+      CF_ERROR("save_ply('%s' fails)", filename.c_str());
+      return false;
+    }
+
+    filename =
+        ssprintf("%s/bloom-cloud3d/%s/cloud3d.%03d.filtered.ply",
+            output_path_.c_str(),
+            input_sequence_->name().c_str(),
+            input_sequence_->current_pos() - 1);
+
+    if( !save_ply(filtered_points, filtered_colors, filename) ) {
+      CF_ERROR("save_ply('%s' fails)", filename.c_str());
+      return false;
+    }
+
+  }
+
+
   return true;
 }
 

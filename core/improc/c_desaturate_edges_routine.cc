@@ -9,6 +9,7 @@
 #include <core/proc/planetary-disk-detection.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
+#include <core/debug.h>
 
 void c_desaturate_edges_routine::set_alpha(double v)
 {

@@ -57,6 +57,7 @@
 #include "c_gaussian_blur_routine.h"
 #include "c_morphology_routine.h"
 #include "c_fft_routine.h"
+#include "c_locate_extremes_routine.h"
 
 #include "camera_calibration/c_find_chessboard_corners_routine.h"
 #include "camera_calibration/c_image_rectification_routine.h"
@@ -94,7 +95,6 @@
 #include "quicktests/c_melp_stereo_matcher_routine.h"
 
 #include "vlo/c_vlo_depth_segmentation_routine.h"
-
 
 #include <core/readdir.h>
 #include <atomic>
@@ -232,6 +232,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pnormalize_routine::class_factory_instance());
     register_class_factory(c_census_transfrom_routine::class_factory_instance());
     register_class_factory(c_fft_routine::class_factory_instance());
+    register_class_factory(c_locate_extremes_routine::class_factory_instance());
 
     register_class_factory(c_keypoins_detector_routine::class_factory_instance());
     register_class_factory(c_edgebox_routine::class_factory_instance());

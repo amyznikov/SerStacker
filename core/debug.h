@@ -26,6 +26,8 @@ typedef int pid_t;
 # include <unistd.h>
 #endif
 
+#define __DEBUG_H_INCLUDED__  1
+
 /** logging verbosity levels */
 enum {
   CF_LOG_FATAL   = 0,   /* system is unusable */

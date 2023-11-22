@@ -112,7 +112,6 @@ QTextFileViewer * QInputSequenceView::textView() const
   return textView_;
 }
 
-
 void QInputSequenceView::showEvent(QShowEvent *event)
 {
   Base::showEvent(event);

@@ -1,23 +1,23 @@
 /*
- * c_locate_extremes_routine.h
+ * c_local_minmax_routine.h
  *
  *  Created on: Nov 20, 2023
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_locate_extremes_routine_h__
-#define __c_locate_extremes_routine_h__
+#ifndef __c_local_minmax_routine_h__
+#define __c_local_minmax_routine_h__
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/locate_extremes.h>
 
 
-class c_locate_extremes_routine :
+class c_local_minmax_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_locate_extremes_routine,
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_local_minmax_routine,
       "locate_extremes", "c_locate_extremes_routine");
 
   enum OUTPUT_CHANNEL {
@@ -34,6 +34,16 @@ public:
     BORDER_REFLECT_101 = cv::BORDER_REFLECT_101,
     BORDER_TRANSPARENT = cv::BORDER_TRANSPARENT,
   };
+
+  void set_filter_type(c_locate_extremes_options::neighbor_filter_type v)
+  {
+    opts_.filter_type = v;
+  }
+
+  c_locate_extremes_options::neighbor_filter_type filter_type() const
+  {
+    return opts_.filter_type;
+  }
 
   void set_se_shape(cv::MorphShapes v)
   {
@@ -164,4 +174,4 @@ protected:
   OUTPUT_CHANNEL output_channel_ = OUTPUT_MASK;
 };
 
-#endif /* __c_locate_extremes_routine_h__ */
+#endif /* __c_local_minmax_routine_h__ */

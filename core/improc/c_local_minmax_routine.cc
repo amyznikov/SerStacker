@@ -5,39 +5,42 @@
  *      Author: amyznikov
  */
 
-#include "c_locate_extremes_routine.h"
+#include "c_local_minmax_routine.h"
+
 #include <core/proc/reduce_channels.h>
 
 template<>
-const c_enum_member* members_of<c_locate_extremes_routine::OUTPUT_CHANNEL>()
+const c_enum_member* members_of<c_local_minmax_routine::OUTPUT_CHANNEL>()
 {
   static constexpr c_enum_member members[] = {
-      { c_locate_extremes_routine::OUTPUT_IMAGE, "IMAGE", "" },
-      { c_locate_extremes_routine::OUTPUT_MASK, "MASK", "" },
-      { c_locate_extremes_routine::OUTPUT_MASK },
+      { c_local_minmax_routine::OUTPUT_IMAGE, "IMAGE", "" },
+      { c_local_minmax_routine::OUTPUT_MASK, "MASK", "" },
+      { c_local_minmax_routine::OUTPUT_MASK },
   };
 
   return members;
 }
 
 template<>
-const c_enum_member* members_of<c_locate_extremes_routine::BorderType>()
+const c_enum_member* members_of<c_local_minmax_routine::BorderType>()
 {
   static constexpr c_enum_member members[] = {
-      { c_locate_extremes_routine::BORDER_CONSTANT, "BORDER_CONSTANT", "Set to BorderValue"},
-      { c_locate_extremes_routine::BORDER_REPLICATE, "BORDER_REPLICATE", "aaaaaa|abcdefgh|hhhhhhh"},
-      { c_locate_extremes_routine::BORDER_REFLECT, "BORDER_REFLECT", "fedcba|abcdefgh|hgfedcb"},
-      { c_locate_extremes_routine::BORDER_REFLECT_101, "BORDER_REFLECT_101", "gfedcb|abcdefgh|gfedcba"},
-      { c_locate_extremes_routine::BORDER_TRANSPARENT, "BORDER_TRANSPARENT", "uvwxyz|abcdefgh|ijklmno"},
-      { c_locate_extremes_routine::BORDER_REPLICATE},
+      { c_local_minmax_routine::BORDER_CONSTANT, "BORDER_CONSTANT", "Set to BorderValue"},
+      { c_local_minmax_routine::BORDER_REPLICATE, "BORDER_REPLICATE", "aaaaaa|abcdefgh|hhhhhhh"},
+      { c_local_minmax_routine::BORDER_REFLECT, "BORDER_REFLECT", "fedcba|abcdefgh|hgfedcb"},
+      { c_local_minmax_routine::BORDER_REFLECT_101, "BORDER_REFLECT_101", "gfedcb|abcdefgh|gfedcba"},
+      { c_local_minmax_routine::BORDER_TRANSPARENT, "BORDER_TRANSPARENT", "uvwxyz|abcdefgh|ijklmno"},
+      { c_local_minmax_routine::BORDER_REPLICATE},
   };
 
   return members;
 }
 
 
-void c_locate_extremes_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_local_minmax_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
 {
+  ADD_IMAGE_PROCESSOR_CTRL(ctls, filter_type, "filter_type");
+
   ADD_IMAGE_PROCESSOR_CTRL(ctls, se_shape, "se_shape");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, se_size, "se_size");
   ADD_IMAGE_PROCESSOR_CTRL(ctls, anchor, "anchor");
@@ -57,9 +60,11 @@ void c_locate_extremes_routine::get_parameters(std::vector<struct c_image_proces
   ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "ignore_mask");
 }
 
-bool c_locate_extremes_routine::serialize(c_config_setting settings, bool save)
+bool c_local_minmax_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, filter_type);
+
     SERIALIZE_PROPERTY(settings, save, *this, se_shape);
 
     SERIALIZE_PROPERTY(settings, save, *this, se_size);
@@ -82,7 +87,7 @@ bool c_locate_extremes_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-bool c_locate_extremes_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+bool c_local_minmax_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   cv::Mat M;
 

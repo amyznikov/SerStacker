@@ -6,6 +6,7 @@
  */
 
 #include "QCloudSequenceView.h"
+#include <gui/widgets/QWaitCursor.h>
 
 
 static void init_resources()
@@ -23,6 +24,10 @@ static QToolBar * createToolbar(QWidget * parent = nullptr)
   return toolbar;
 }
 
+static inline bool isOpen(const c_cloudview_input_source::sptr & source)
+{
+  return source && source->is_open();
+}
 
 QCloudSequenceView::QCloudSequenceView(QWidget * parent) :
     ThisClass(parent, nullptr, nullptr, nullptr)
@@ -213,37 +218,89 @@ void QCloudSequenceView::setInputSource(const c_cloudview_input_source::sptr & c
 {
   closeCurrentSource();
 
-  current_source_ = current_source;
+  currentSource_ = current_source;
 
   startDisplay();
 }
 
 const c_cloudview_input_source::sptr & QCloudSequenceView::inputSource() const
 {
-  return current_source_;
+  return currentSource_;
 }
 
-
-void QCloudSequenceView::closeCurrentSource()
+void QCloudSequenceView::onSeek(int pos)
 {
-  if ( current_source_ ) {
-    current_source_->close();
+  if( isOpen(currentSource_) ) {
+    if( pos != currentSource_->curpos() ) {
+      currentSource_->seek(pos);
+    }
+    loadNextFrame();
   }
 }
 
 void QCloudSequenceView::startDisplay()
 {
+  QWaitCursor wait(this);
 
+  imageView_->setImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
+
+  playControls_->setState(QPlaySequenceControl::Stopped);
+  playControls_->hide();
+
+  if ( !currentSource_->is_open() /*&& !currentSource_->open() */ ) {
+    CF_ERROR("currentSource_ is not open");
+    return;
+  }
+
+  const int num_frames =
+      currentSource_->size();
+
+  if ( num_frames < 1 ) {
+    QMessageBox::critical(this, "ERROR",
+        "Can not determine number of frames and seek range for given source.\n"
+        "Image can not be displayed correctly, seems such input source is not supported");
+    return;
+  }
+
+  if( num_frames > 1 ) {
+    playControls_->show();
+    playControls_->setSeekRange(0, num_frames - 1);
+    playControls_->setCurpos(0);
+  }
+
+  loadNextFrame();
 }
 
 void QCloudSequenceView::loadNextFrame()
 {
+  if ( isOpen(currentSource_) ) {
+
+    QWaitCursor wait(this, currentSource_->size() == 1);
+
+    c_cloudview_data_frame::sptr frame =
+        currentSource_->read();
+
+    if ( !frame ) {
+      CF_ERROR("currentSource_->read() fails");
+      return;
+    }
+
+    if( currentProcessor_ && !currentProcessor_->process(frame) ) {
+      CF_ERROR("currentProcessor_->process(dataframe) fails");
+    }
+
+    // frame->dataBlocks();
+
+  }
 
 }
 
-void QCloudSequenceView::onSeek(int pos)
-{
 
+void QCloudSequenceView::closeCurrentSource()
+{
+  if ( currentSource_ ) {
+    currentSource_->close();
+  }
 }
 
 

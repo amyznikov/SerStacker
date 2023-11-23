@@ -10,8 +10,9 @@
 #define __c_vlo_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/proc/threshold.h>
 #include <core/io/c_vlo_file.h>
+#include <core/proc/vlo/vlo.h>
+#include <core/proc/threshold.h>
 
 
 enum VLO_INTENSITY_CHANNEL
@@ -65,6 +66,10 @@ struct c_vlo_pipeline_processing_options
    double walk_error = 150;
    double double_echo_distance = 2500;
 
+
+   bool enable_blom_detection2 = false;
+   c_vlo_depth_segmentation_options depth_segmentation_;
+
 };
 
 struct c_vlo_pipeline_output_options :
@@ -78,6 +83,9 @@ struct c_vlo_pipeline_output_options :
   bool save_cloud3d_ply = false;
   c_vlo_reader::DATA_CHANNEL cloud3d_intensity_channel =
       c_vlo_reader::DATA_CHANNEL_ECHO_PEAK;
+
+  bool save_bloom2_segments = false;
+  c_output_frame_writer_options bloom2_segments_file_options;
 };
 
 class c_vlo_pipeline :
@@ -113,6 +121,7 @@ public:
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  bool copyParameters(const base::sptr & dst) const override;
 
 protected:
   bool initialize_pipeline() override;
@@ -121,6 +130,7 @@ protected:
   bool process_current_frame();
   bool run_reflectors_detection();
   bool run_blom_detection();
+  bool run_blom_detection2();
   bool update_vlo_lookup_table_statistics();
   bool save_progress_video();
   bool save_cloud3d_ply();
@@ -144,6 +154,8 @@ protected:
   c_output_frame_writer blom_display_writer_;
   c_output_frame_writer blom_mask_writer_;
 
+  c_output_frame_writer blom2_display_writer_;
+  c_output_frame_writer bloom2_segments_writer_;
 
   c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;
 

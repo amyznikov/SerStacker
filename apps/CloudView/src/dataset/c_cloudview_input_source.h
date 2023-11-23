@@ -9,8 +9,8 @@
 #ifndef __c_cloudview_input_source_h__
 #define __c_cloudview_input_source_h__
 
+#include "c_cloudview_data_frame.h"
 #include <string>
-#include <memory>
 
 namespace cloudview {
 
@@ -38,6 +38,8 @@ public:
   virtual ssize_t size() = 0;
   virtual bool seek(ssize_t pos) = 0;
   virtual ssize_t curpos() = 0;
+  virtual c_cloudview_data_frame::sptr read() = 0;
+
 
 protected:
   c_cloudview_input_source(const std::string & filename = "") :

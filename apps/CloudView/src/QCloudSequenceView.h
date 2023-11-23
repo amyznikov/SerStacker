@@ -15,6 +15,7 @@
 #include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qplaysequencecontrol/QPlaySequenceControl.h>
 #include "dataset/c_cloudview_input_source.h"
+#include "dataset/c_cloudview_dataframe_processor.h"
 
 namespace cloudview {
 
@@ -70,7 +71,8 @@ protected:
   void hideEvent(QHideEvent *event) override;
 
 protected:
-  c_cloudview_input_source::sptr current_source_;
+  c_cloudview_input_source::sptr currentSource_;
+  c_cloudview_dataframe_processor::sptr currentProcessor_;
 
   QVBoxLayout * mainLayout_ = nullptr;
   QHBoxLayout * toolbarLayout_ = nullptr;
@@ -84,6 +86,7 @@ protected:
   QCloudViewer * cloudView_ = nullptr;
   QTextFileViewer * textView_ = nullptr;
   QPlaySequenceControl * playControls_ = nullptr;
+  QComboBox * viewSelector_ = nullptr;
 
 };
 

@@ -19,7 +19,8 @@ public:
   typedef c_cloudview_data_frame this_class;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_cloudview_data_frame();
+  c_cloudview_data_frame() = default;
+  virtual ~c_cloudview_data_frame() = default;
 };
 
 } /* namespace cloudview */

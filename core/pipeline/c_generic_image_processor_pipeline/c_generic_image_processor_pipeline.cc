@@ -307,7 +307,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_p
 bool c_generic_image_processor_pipeline::copyParameters(const base::sptr & dst) const
 {
   if ( !base::copyParameters(dst) ) {
-    CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
+    CF_ERROR("c_generic_image_processor_pipeline::base::copyParameters() fails");
     return false;
   }
 

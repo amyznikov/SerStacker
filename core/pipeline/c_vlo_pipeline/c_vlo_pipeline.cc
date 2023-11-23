@@ -963,6 +963,17 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_, walk_error);
     SERIALIZE_OPTION(section, save, processing_options_, double_echo_distance);
 
+    SERIALIZE_OPTION(section, save, processing_options_, enable_blom_detection2);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_distance);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, max_distance);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, vlo_walk_error);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_slope);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, max_slope);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, counts_threshold);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_segment_size);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_height);
+    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, segmentation_type);
+
     SERIALIZE_OPTION(section, save, processing_options_, enable_gather_lookup_table_statistics);
     SERIALIZE_OPTION(section, save, processing_options_, vlo_lookup_table_statistics_filename);
 
@@ -976,6 +987,8 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, save_cloud3d_ply);
     SERIALIZE_OPTION(section, save, output_options_, cloud3d_filename);
     SERIALIZE_OPTION(section, save, output_options_, cloud3d_intensity_channel);
+    SERIALIZE_OPTION(section, save, output_options_, save_bloom2_segments);
+    SERIALIZE_OPTION(section, save, output_options_, bloom2_segments_file_options);
   }
 
   return true;
@@ -1047,6 +1060,22 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
             _this->processing_options_.enable_blom_detection);
       PIPELINE_CTL_END_GROUP(ctrls);
 
+      PIPELINE_CTL_GROUP(ctrls, "Blom Detection2", "");
+        PIPELINE_CTL(ctrls, processing_options_.enable_blom_detection2, "enable_bloom_detection2", "");
+
+        PIPELINE_CTL_GROUP(ctrls, "Depth segmentation", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_distance, "min_distance", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.max_distance, "max_distance", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.vlo_walk_error, "walk_error", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.counts_threshold, "counts_threshold", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_segment_size, "min_segment_size", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_slope, "min_slope", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.max_slope, "max_slope", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_height, "min_height", "");
+          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.segmentation_type, "segmentation_type", "");
+
+          PIPELINE_CTL_END_GROUP(ctrls);
+        PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_END_GROUP(ctrls);
 
@@ -1060,11 +1089,37 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_filename, "cloud3d_filename", "", _this->output_options_.save_cloud3d_ply);
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_intensity_channel, "cloud3d_intensity_channel", "", _this->output_options_.save_cloud3d_ply);
 
+      PIPELINE_CTL(ctrls, output_options_.save_bloom2_segments, "save_bloom2_segments", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.bloom2_segments_file_options,
+          _this->output_options_.save_bloom2_segments);
 
     PIPELINE_CTL_END_GROUP(ctrls);
   }
 
   return ctrls;
+}
+
+bool c_vlo_pipeline::copyParameters(const base::sptr & dst) const
+{
+  if ( !base::copyParameters(dst) ) {
+    CF_ERROR("c_vlo_pipeline::base::copyParameters() fails");
+    return false;
+  }
+
+  this_class::sptr p =
+      std::dynamic_pointer_cast<this_class>(dst);
+
+  if( !p ) {
+    CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
+        get_class_name().c_str());
+    return false;
+  }
+
+  p->input_options_ = this->input_options_;
+  p->processing_options_ = this->processing_options_;
+  p->output_options_ = this->output_options_;
+
+  return true;
 }
 
 bool c_vlo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
@@ -1108,12 +1163,15 @@ bool c_vlo_pipeline::initialize_pipeline()
     const c_input_source::sptr &source =
         input_sequence_->source(i);
 
-    c_vlo_input_source *vlo =
-        dynamic_cast<c_vlo_input_source*>(source.get());
+    if (source->enabled() ) {
 
-    if( !vlo ) {
-      CF_ERROR("ERROR: input source %d is not a VLO source", i);
-      return false;
+      c_vlo_input_source *vlo =
+          dynamic_cast<c_vlo_input_source*>(source.get());
+
+      if( !vlo ) {
+        CF_ERROR("ERROR: input source %d is not a VLO source", i);
+        return false;
+      }
     }
   }
 
@@ -1175,7 +1233,15 @@ void c_vlo_pipeline::cleanup_pipeline()
     blom_display_writer_.close();
   }
 
+  if ( bloom2_segments_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", bloom2_segments_writer_.filename().c_str());
+    bloom2_segments_writer_.close();
+  }
 
+  if ( blom2_display_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", blom2_display_writer_.filename().c_str());
+    blom2_display_writer_.close();
+  }
 
   if ( !vlo_lookup_table_statistics_.empty() ) {
 
@@ -1308,6 +1374,11 @@ bool c_vlo_pipeline::process_current_frame()
 
   if ( !run_blom_detection() ) {
     CF_ERROR("run_bloom_detection() fails");
+    return false;
+  }
+
+  if ( !run_blom_detection2() ) {
+    CF_ERROR("run_bloom_detection2() fails");
     return false;
   }
 
@@ -1786,6 +1857,128 @@ bool c_vlo_pipeline::run_blom_detection()
   return true;
 }
 
+
+bool c_vlo_pipeline::run_blom_detection2()
+{
+  if( !processing_options_.enable_blom_detection2 ) {
+    return true; // silently ignore
+  }
+
+  cv::Mat3f clouds[3];
+  cv::Mat4f histogram;
+  cv::Mat3w segments;
+
+  bool fOk =
+      c_vlo_file::get_clouds3d(current_scan_,
+          clouds);
+
+  if ( !fOk ) {
+    CF_ERROR("c_vlo_file::get_clouds3d() fails");
+    return false;
+  }
+
+
+  fOk =
+      vlo_depth_segmentation(clouds,
+          histogram,
+          segments,
+          processing_options_.depth_segmentation_);
+
+  if( !fOk ) {
+    CF_ERROR("vlo_depth_segmentation() fails");
+    return false;
+  }
+
+  if ( output_options_.save_bloom2_segments ) {
+
+    if( !bloom2_segments_writer_.is_open() ) {
+
+      std::string filename =
+          generate_output_filename(output_options_.bloom2_segments_file_options.output_filename,
+              "segments",
+              ".ser");
+
+      const bool fOk =
+          bloom2_segments_writer_.open(filename,
+              output_options_.bloom2_segments_file_options.ffmpeg_opts,
+              output_options_.bloom2_segments_file_options.output_image_processor,
+              output_options_.bloom2_segments_file_options.output_pixel_depth,
+              output_options_.bloom2_segments_file_options.save_frame_mapping);
+
+      if( !fOk ) {
+        CF_ERROR("bloom2_segments_writer_.open(%s) fails",
+            bloom2_segments_writer_.filename().c_str());
+        return false;
+      }
+    }
+
+    if ( !bloom2_segments_writer_.write(segments, cv::noArray()) ) {
+      CF_ERROR("bloom2_segments_writer_.write(%s) fails",
+          bloom2_segments_writer_.filename().c_str());
+      return false;
+    }
+  }
+
+
+  if( true ) {
+    // segments & counts
+
+    std::vector<cv::Mat1f> histogram_channels;
+    cv::split(histogram, histogram_channels);
+
+
+    const cv::Size display_size =
+        cv::Size(std::max(std::max(clouds[0].cols, segments.cols), histogram_channels[0].cols),
+            clouds[0].rows + segments.rows + histogram_channels[0].rows);
+
+    const cv::Rect roi[3] = {
+        cv::Rect(0, 0, clouds[0].cols, clouds[0].rows), // depths
+        cv::Rect(0, clouds[0].rows, segments.cols, segments.rows), // segments
+        cv::Rect(0, clouds[0].rows + segments.rows, histogram_channels[0].cols, histogram_channels[0].rows), // counts
+    };
+
+    cv::Mat3f display_image(display_size,
+        cv::Vec3w::all(0));
+
+    c_vlo_file::get_image(current_scan_,
+        c_vlo_file::DATA_CHANNEL_DEPTH).convertTo(display_image(roi[0]),
+        display_image.depth());
+
+    segments.convertTo(display_image(roi[1]),
+        display_image.depth());
+
+    std::vector<cv::Mat1f> counts_channels( {
+        histogram_channels[0],
+        histogram_channels[2],
+        cv::Mat1f(histogram_channels[0].size(), 0.f)
+    });
+
+    cv::merge(counts_channels, display_image(roi[2]));
+
+
+    if( !blom2_display_writer_.is_open() ) {
+
+      std::string filename =
+          generate_output_filename("",
+              "blom2_display",
+              ".ser");
+
+      if( !blom2_display_writer_.open(filename) ) {
+        CF_ERROR("blom2_display_writer_.open(%s) fails",
+            filename.c_str());
+        return false;
+      }
+    }
+
+    if( !blom2_display_writer_.write(display_image, cv::noArray()) ) {
+      CF_ERROR("blom2_display_writer_.write('%s') fails",
+          blom2_display_writer_.filename().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
 
 
 bool c_vlo_pipeline::update_vlo_lookup_table_statistics()

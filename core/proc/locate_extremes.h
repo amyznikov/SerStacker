@@ -18,12 +18,22 @@
 
 struct c_locate_extremes_options
 {
+  enum neighbor_filter_type
+  {
+    filter_morph,
+    filter_mean,
+  };
+
+  neighbor_filter_type filter_type =
+      filter_morph;
+
   cv::MorphShapes se_shape = cv::MORPH_RECT;
   cv::BorderTypes border_type = cv::BORDER_REPLICATE;
   cv::Scalar border_value;
 
   cv::Size se_size = cv::Size(3, 3);
   cv::Point anchor = cv::Point(-1, -1);
+
 
   bool locate_maximums = true;
   double maximums_alpha = 1;

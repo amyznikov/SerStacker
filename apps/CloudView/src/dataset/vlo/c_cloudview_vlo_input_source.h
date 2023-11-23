@@ -30,6 +30,7 @@ public:
   ssize_t size()  override;
   bool seek(ssize_t pos)  override;
   ssize_t curpos()  override;
+  c_cloudview_data_frame::sptr read() override;
 
 protected:
 

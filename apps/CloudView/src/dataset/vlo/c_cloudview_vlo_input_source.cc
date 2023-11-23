@@ -44,4 +44,10 @@ ssize_t c_cloudview_vlo_input_source::curpos()
   return -1;
 }
 
+c_cloudview_data_frame::sptr c_cloudview_vlo_input_source::read()
+{
+  return nullptr;
+}
+
+
 } /* namespace cloudview */

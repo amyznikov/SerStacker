@@ -9,10 +9,5 @@
 
 namespace cloudview {
 
-c_cloudview_data_frame::c_cloudview_data_frame()
-{
-  // TODO Auto-generated constructor stub
-
-}
 
 } /* namespace cloudview */

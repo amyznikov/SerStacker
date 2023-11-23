@@ -11,30 +11,29 @@
 
 #include <core/io/c_vlo_file.h>
 
-
-enum vlo_depth_segmentation_output_type {
-  vlo_depth_segmentation_output_segments,
-  vlo_depth_segmentation_output_segment_distances,
-  vlo_depth_segmentation_output_counts0,
-  vlo_depth_segmentation_output_counts1,
-};
-
 struct c_vlo_depth_segmentation_options
 {
-  double min_distance = 100; // [cm]
-  double max_distance = 30000; // [cm]
-  double vlo_walk_error = 150; // [cm]
-  double min_slope = -0.3; // [tan = cm / pix]
-  double max_slope = +0.3; // [tan = cm / pix]
-  int min_pts = 15;
 
-  vlo_depth_segmentation_output_type output_type =
-      vlo_depth_segmentation_output_segments;
+  double min_distance = 100; // [m]
+  double max_distance = 300; // [m]
+  double vlo_walk_error = 1; // [m]
+  double min_slope = -0.3; // [tan = m / pix]
+  double max_slope = +0.3; // [tan = m / pix]
+  double min_height = 0.4; // [m]
+  int counts_threshold= 500;
+  int min_segment_size = 15;
+
+  enum segmentatin_types {
+    segmentation_local,
+    segmentation_global,
+  } segmentation_type = segmentation_local;
+
 };
 
 
-bool vlo_depth_segmentation(cv::InputArray distances, cv::OutputArray output_data,
-    const c_vlo_depth_segmentation_options & opts);
 
+bool vlo_depth_segmentation(const cv::Mat3f clouds[3],
+    cv::Mat4f & output_histogram, cv::Mat3w & output_segments,
+    const c_vlo_depth_segmentation_options & opts);
 
 #endif /* __vlo_h__ */

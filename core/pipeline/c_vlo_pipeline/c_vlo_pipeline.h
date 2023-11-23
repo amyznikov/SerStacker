@@ -44,28 +44,9 @@ struct c_vlo_pipeline_input_options :
 
 struct c_vlo_pipeline_processing_options
 {
-   bool enable_reflectors_detection = false;
-   bool enable_blom_detection = false;
-   bool enable_double_echo_detection = true;
-   bool enable_auto_threshold = true;
-
-
-   THRESHOLD_TYPE auto_threshold_type = THRESHOLD_TYPE_YEN;
-   double auto_threshold_value = 0;
-   double auto_clip_min = 0.1; // percentage of 'black' pixels
-   double auto_clip_max = 99.9; // 100-percentage of 'white' pixels
-
    bool enable_gather_lookup_table_statistics = false;
    std::string vlo_lookup_table_statistics_filename;
    VLO_INTENSITY_CHANNEL vlo_intensity_channel = VLO_INTENSITY_PEAK;
-
-
-   double high_intensity_threshold = 118;
-   double blom_slope_min = 0.25;
-   double blom_slope_max = 1.50;
-   double walk_error = 150;
-   double double_echo_distance = 2500;
-
 
    bool enable_blom_detection2 = false;
    c_vlo_depth_segmentation_options depth_segmentation_;
@@ -132,8 +113,6 @@ protected:
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   bool process_current_frame();
-  bool run_reflectors_detection();
-  bool run_blom_detection();
   bool run_blom_detection2();
   bool update_vlo_lookup_table_statistics();
   bool save_progress_video();
@@ -149,14 +128,6 @@ protected:
   cv::Mat1b current_reflection2_mask_;
 
   c_output_frame_writer progress_writer_;
-  c_output_frame_writer reflectors_writer_;
-  c_output_frame_writer blom_reflectors_mask_writer_;
-  c_output_frame_writer blom_reflectors_writer_;
-  c_output_frame_writer blom_distances_writer_;
-  c_output_frame_writer blom_slopes_writer_;
-  c_output_frame_writer blom_intensity_writer_;
-  c_output_frame_writer blom_display_writer_;
-  c_output_frame_writer blom_mask_writer_;
 
   c_output_frame_writer blom2_display_writer_;
   c_output_frame_writer bloom2_segments_writer_;

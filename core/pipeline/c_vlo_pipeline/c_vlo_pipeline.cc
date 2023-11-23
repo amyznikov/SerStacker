@@ -989,6 +989,9 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, cloud3d_intensity_channel);
     SERIALIZE_OPTION(section, save, output_options_, save_bloom2_segments);
     SERIALIZE_OPTION(section, save, output_options_, bloom2_segments_file_options);
+    SERIALIZE_OPTION(section, save, output_options_, save_bloom2_intensity_profiles);
+    SERIALIZE_OPTION(section, save, output_options_, bloom2_intensity_profiles_options);
+
   }
 
   return true;
@@ -1092,6 +1095,11 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL(ctrls, output_options_.save_bloom2_segments, "save_bloom2_segments", "");
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.bloom2_segments_file_options,
           _this->output_options_.save_bloom2_segments);
+
+
+      PIPELINE_CTL(ctrls, output_options_.save_bloom2_intensity_profiles, "save_bloom2_intensity_profiles", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.bloom2_intensity_profiles_options,
+          _this->output_options_.save_bloom2_intensity_profiles);
 
     PIPELINE_CTL_END_GROUP(ctrls);
   }
@@ -1227,7 +1235,6 @@ void c_vlo_pipeline::cleanup_pipeline()
     blom_mask_writer_.close();
   }
 
-
   if ( blom_display_writer_.is_open() ) {
     CF_DEBUG("Closing '%s'", blom_display_writer_.filename().c_str());
     blom_display_writer_.close();
@@ -1236,6 +1243,11 @@ void c_vlo_pipeline::cleanup_pipeline()
   if ( bloom2_segments_writer_.is_open() ) {
     CF_DEBUG("Closing '%s'", bloom2_segments_writer_.filename().c_str());
     bloom2_segments_writer_.close();
+  }
+
+  if ( bloom2_intensity_writer_.is_open() ) {
+    CF_DEBUG("Closing '%s'", bloom2_intensity_writer_.filename().c_str());
+    bloom2_intensity_writer_.close();
   }
 
   if ( blom2_display_writer_.is_open() ) {
@@ -1914,6 +1926,61 @@ bool c_vlo_pipeline::run_blom_detection2()
 
     if ( !bloom2_segments_writer_.write(segments, cv::noArray()) ) {
       CF_ERROR("bloom2_segments_writer_.write(%s) fails",
+          bloom2_segments_writer_.filename().c_str());
+      return false;
+    }
+  }
+
+  if ( output_options_.save_bloom2_intensity_profiles ) {
+
+    cv::Mat3f intensity_image;
+
+    c_vlo_file::get_image(current_scan_,
+        c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensity_image,
+            CV_32F);
+
+    cv::Mat1f intensity(clouds[0].size(), 0.f);
+
+    const int segment_id = 1;
+
+    for( int y = 0; y < segments.rows; ++y ) {
+      for( int x = 0; x < segments.cols; ++x ) {
+        for( int e = 0; e < 3; ++e ) {
+
+          if( segments[y][x][e] == segment_id ) {
+
+            intensity[y][x] = intensity_image[y][x][e];
+
+          }
+        }
+
+      }
+    }
+
+
+    if( !bloom2_intensity_writer_.is_open() ) {
+
+      std::string filename =
+          generate_output_filename(output_options_.bloom2_intensity_profiles_options.output_filename,
+              "sintensity",
+              ".ser");
+
+      const bool fOk =
+          bloom2_intensity_writer_.open(filename,
+              output_options_.bloom2_intensity_profiles_options.ffmpeg_opts,
+              output_options_.bloom2_intensity_profiles_options.output_image_processor,
+              output_options_.bloom2_intensity_profiles_options.output_pixel_depth,
+              output_options_.bloom2_intensity_profiles_options.save_frame_mapping);
+
+      if( !fOk ) {
+        CF_ERROR("bloom2_intensity_writer_.open(%s) fails",
+            bloom2_intensity_writer_.filename().c_str());
+        return false;
+      }
+    }
+
+    if ( !bloom2_intensity_writer_.write(intensity, cv::noArray()) ) {
+      CF_ERROR("bloom2_intensity_writer_.write(%s) fails",
           bloom2_segments_writer_.filename().c_str());
       return false;
     }

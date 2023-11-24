@@ -56,20 +56,23 @@ struct c_vlo_pipeline_processing_options
 struct c_vlo_pipeline_output_options :
     c_image_processing_pipeline_output_options
 {
-  bool save_progress_video = false;
-
-  std::string progress_video_filename;
   std::string cloud3d_filename;
 
   bool save_cloud3d_ply = false;
   c_vlo_reader::DATA_CHANNEL cloud3d_intensity_channel =
       c_vlo_reader::DATA_CHANNEL_ECHO_PEAK;
 
+  bool save_progress_video = false;
+  c_output_frame_writer_options progress_writer_options;
+
+  bool save_bloom2_display = false;
+  c_output_frame_writer_options display_writer_options;
+
   bool save_bloom2_segments = false;
-  c_output_frame_writer_options bloom2_segments_file_options;
+  c_output_frame_writer_options segments_writer_options;
 
   bool save_bloom2_intensity_profiles = false;
-  c_output_frame_writer_options bloom2_intensity_profiles_options;
+  c_output_frame_writer_options intensity_writer_options;
 
 };
 

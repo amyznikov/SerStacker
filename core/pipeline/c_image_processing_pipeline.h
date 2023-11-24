@@ -149,6 +149,11 @@ protected:
       const std::string & postfix,
       const std::string & suffix) const;
 
+  virtual bool add_output_writer(c_output_frame_writer & writer,
+      const c_output_frame_writer_options & opts,
+      const std::string & postfix,
+      const std::string & suffix);
+
 protected:
   bool read_input_frame(const c_input_sequence::sptr & input_sequence,
       const c_image_processing_pipeline_input_options & input_options,
@@ -190,6 +195,7 @@ protected:
   c_input_sequence::sptr input_sequence_;
   std::vector<uint> badframes_; // global indexes
   std::string output_path_;
+  std::vector<c_output_frame_writer*> opened_writers_;
 
   cv::Mat darkbayer_;
   cv::Mat flatbayer_;

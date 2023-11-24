@@ -49,7 +49,7 @@ public:
       bool write_frame_mapping = false);
 
   bool write(cv::InputArray currenFrame,
-      cv::InputArray currentMask,
+      cv::InputArray currentMask = cv::noArray(),
       bool with_alpha_mask = false,
       int seqindex = -1);
 

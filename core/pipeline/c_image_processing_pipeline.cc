@@ -566,6 +566,37 @@ bool c_image_processing_pipeline::open_output_writer(c_output_frame_writer & wri
   return true;
 }
 
+bool c_image_processing_pipeline::add_output_writer(c_output_frame_writer & writer,
+    const c_output_frame_writer_options & opts,
+    const std::string & postfix,
+    const std::string & suffix)
+{
+  if ( !writer.is_open() ) {
+
+    const std::string filename =
+        generate_output_filename(opts.output_filename,
+            postfix,
+            suffix);
+
+    const bool fOK =
+        writer.open(filename,
+            opts.ffmpeg_opts,
+            opts.output_image_processor,
+            opts.output_pixel_depth,
+            opts.save_frame_mapping);
+
+    if( !fOK ) {
+      CF_ERROR("writer.open('%s') fails",  filename.c_str());
+      return false;
+    }
+
+    opened_writers_.emplace_back(&writer);
+  }
+
+  return true;
+}
+
+
 bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
 {
   if( save ) {
@@ -718,6 +749,15 @@ void c_image_processing_pipeline::cleanup_pipeline()
   if ( input_sequence_ ) {
     input_sequence_->close();
   }
+
+  for ( c_output_frame_writer * w :  opened_writers_ ) {
+    if ( w->is_open() ) {
+      CF_DEBUG("Closing '%s'", w->filename().c_str());
+      w->close();
+    }
+  }
+
+  opened_writers_.clear();
 }
 
 bool c_image_processing_pipeline::run_pipeline()

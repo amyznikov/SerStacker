@@ -411,15 +411,19 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     // SERIALIZE_OPTION(section, save, output_options_, output_directory);
-    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
-    SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
+
     SERIALIZE_OPTION(section, save, output_options_, save_cloud3d_ply);
     SERIALIZE_OPTION(section, save, output_options_, cloud3d_filename);
     SERIALIZE_OPTION(section, save, output_options_, cloud3d_intensity_channel);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+    SERIALIZE_OPTION(section, save, output_options_, progress_writer_options);
+
     SERIALIZE_OPTION(section, save, output_options_, save_bloom2_segments);
-    SERIALIZE_OPTION(section, save, output_options_, bloom2_segments_file_options);
+    SERIALIZE_OPTION(section, save, output_options_, segments_writer_options);
+
     SERIALIZE_OPTION(section, save, output_options_, save_bloom2_intensity_profiles);
-    SERIALIZE_OPTION(section, save, output_options_, bloom2_intensity_profiles_options);
+    SERIALIZE_OPTION(section, save, output_options_, intensity_writer_options);
 
   }
 
@@ -473,21 +477,32 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
       // PIPELINE_CTL_BROWSE_FOR_DIRECTORY(ctrls, output_options_.output_directory, "output_directory", "");
 
-      PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-      PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
-
       PIPELINE_CTL(ctrls, output_options_.save_cloud3d_ply, "save cloud3d ply", "");
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_filename, "cloud3d_filename", "", _this->output_options_.save_cloud3d_ply);
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_intensity_channel, "cloud3d_intensity_channel", "", _this->output_options_.save_cloud3d_ply);
 
+
+      PIPELINE_CTL_GROUP(ctrls, "save_progress_video", "");
+      PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_writer_options, _this->output_options_.save_progress_video);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+
+      PIPELINE_CTL_GROUP(ctrls, "save_bloom2_segments", "");
       PIPELINE_CTL(ctrls, output_options_.save_bloom2_segments, "save_bloom2_segments", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.bloom2_segments_file_options,
-          _this->output_options_.save_bloom2_segments);
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.segments_writer_options, _this->output_options_.save_bloom2_segments);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
+      PIPELINE_CTL_GROUP(ctrls, "save_intensity_profiles", "");
+      PIPELINE_CTL(ctrls, output_options_.save_bloom2_intensity_profiles, "save_intensity_profiles", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.intensity_writer_options, _this->output_options_.save_bloom2_intensity_profiles);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL(ctrls, output_options_.save_bloom2_intensity_profiles, "save_bloom2_intensity_profiles", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.bloom2_intensity_profiles_options,
-          _this->output_options_.save_bloom2_intensity_profiles);
+      PIPELINE_CTL_GROUP(ctrls, "save_bloom2_display", "");
+      PIPELINE_CTL(ctrls, output_options_.save_bloom2_display, "save_bloom2_display", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.display_writer_options, _this->output_options_.save_bloom2_display);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
 
     PIPELINE_CTL_END_GROUP(ctrls);
   }
@@ -579,29 +594,27 @@ bool c_vlo_pipeline::initialize_pipeline()
 
 void c_vlo_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
+  base::cleanup_pipeline();
 
-  if ( progress_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", progress_writer_.filename().c_str());
-    progress_writer_.close();
-  }
+//  if ( progress_writer_.is_open() ) {
+//    CF_DEBUG("Closing '%s'", progress_writer_.filename().c_str());
+//    progress_writer_.close();
+//  }
 
-   if ( bloom2_segments_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", bloom2_segments_writer_.filename().c_str());
-    bloom2_segments_writer_.close();
-  }
+//   if ( bloom2_segments_writer_.is_open() ) {
+//    CF_DEBUG("Closing '%s'", bloom2_segments_writer_.filename().c_str());
+//    bloom2_segments_writer_.close();
+//  }
 
-  if ( bloom2_intensity_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", bloom2_intensity_writer_.filename().c_str());
-    bloom2_intensity_writer_.close();
-  }
+//  if ( bloom2_intensity_writer_.is_open() ) {
+//    CF_DEBUG("Closing '%s'", bloom2_intensity_writer_.filename().c_str());
+//    bloom2_intensity_writer_.close();
+//  }
 
-  if ( blom2_display_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", blom2_display_writer_.filename().c_str());
-    blom2_display_writer_.close();
-  }
+//  if ( blom2_display_writer_.is_open() ) {
+//    CF_DEBUG("Closing '%s'", blom2_display_writer_.filename().c_str());
+//    blom2_display_writer_.close();
+//  }
 
   if ( !vlo_lookup_table_statistics_.empty() ) {
 
@@ -781,30 +794,16 @@ bool c_vlo_pipeline::run_blom_detection2()
     return false;
   }
 
-  if ( output_options_.save_bloom2_segments ) {
+  if( output_options_.save_bloom2_segments ) {
 
-    if( !bloom2_segments_writer_.is_open() ) {
-
-      std::string filename =
-          generate_output_filename(output_options_.bloom2_segments_file_options.output_filename,
-              "segments",
-              ".ser");
-
-      const bool fOk =
-          bloom2_segments_writer_.open(filename,
-              output_options_.bloom2_segments_file_options.ffmpeg_opts,
-              output_options_.bloom2_segments_file_options.output_image_processor,
-              output_options_.bloom2_segments_file_options.output_pixel_depth,
-              output_options_.bloom2_segments_file_options.save_frame_mapping);
-
-      if( !fOk ) {
-        CF_ERROR("bloom2_segments_writer_.open(%s) fails",
-            bloom2_segments_writer_.filename().c_str());
-        return false;
-      }
+    if( !add_output_writer(bloom2_segments_writer_, output_options_.segments_writer_options, "segments", ".ser") ) {
+      CF_ERROR("bloom2_segments_writer_.open(%s) fails",
+          bloom2_segments_writer_.filename().c_str());
+      return false;
     }
 
-    if ( !bloom2_segments_writer_.write(segments, cv::noArray()) ) {
+
+    if( !bloom2_segments_writer_.write(segments) ) {
       CF_ERROR("bloom2_segments_writer_.write(%s) fails",
           bloom2_segments_writer_.filename().c_str());
       return false;
@@ -837,29 +836,13 @@ bool c_vlo_pipeline::run_blom_detection2()
       }
     }
 
-
-    if( !bloom2_intensity_writer_.is_open() ) {
-
-      std::string filename =
-          generate_output_filename(output_options_.bloom2_intensity_profiles_options.output_filename,
-              "sintensity",
-              ".ser");
-
-      const bool fOk =
-          bloom2_intensity_writer_.open(filename,
-              output_options_.bloom2_intensity_profiles_options.ffmpeg_opts,
-              output_options_.bloom2_intensity_profiles_options.output_image_processor,
-              output_options_.bloom2_intensity_profiles_options.output_pixel_depth,
-              output_options_.bloom2_intensity_profiles_options.save_frame_mapping);
-
-      if( !fOk ) {
-        CF_ERROR("bloom2_intensity_writer_.open(%s) fails",
-            bloom2_intensity_writer_.filename().c_str());
-        return false;
-      }
+    if( !add_output_writer(bloom2_intensity_writer_, output_options_.intensity_writer_options, "intensity", ".ser") ) {
+      CF_ERROR("bloom2_intensity_writer_.open(%s) fails",
+          bloom2_intensity_writer_.filename().c_str());
+      return false;
     }
 
-    if ( !bloom2_intensity_writer_.write(intensity, cv::noArray()) ) {
+    if ( !bloom2_intensity_writer_.write(intensity) ) {
       CF_ERROR("bloom2_intensity_writer_.write(%s) fails",
           bloom2_segments_writer_.filename().c_str());
       return false;
@@ -867,7 +850,7 @@ bool c_vlo_pipeline::run_blom_detection2()
   }
 
 
-  if( true ) {
+  if( output_options_.save_bloom2_display ) {
     // segments & counts
 
     std::vector<cv::Mat1f> histogram_channels;
@@ -903,21 +886,13 @@ bool c_vlo_pipeline::run_blom_detection2()
     cv::merge(counts_channels, display_image(roi[2]));
 
 
-    if( !blom2_display_writer_.is_open() ) {
-
-      std::string filename =
-          generate_output_filename("",
-              "blom2_display",
-              ".ser");
-
-      if( !blom2_display_writer_.open(filename) ) {
-        CF_ERROR("blom2_display_writer_.open(%s) fails",
-            filename.c_str());
-        return false;
-      }
+    if( !add_output_writer(blom2_display_writer_, output_options_.display_writer_options, "display", ".ser") ) {
+      CF_ERROR("blom2_display_writer_.open(%s) fails",
+          blom2_display_writer_.filename().c_str());
+      return false;
     }
 
-    if( !blom2_display_writer_.write(display_image, cv::noArray()) ) {
+    if( !blom2_display_writer_.write(display_image) ) {
       CF_ERROR("blom2_display_writer_.write('%s') fails",
           blom2_display_writer_.filename().c_str());
       return false;
@@ -959,18 +934,23 @@ bool c_vlo_pipeline::save_progress_video()
     return false;
   }
 
-  if( !progress_writer_.is_open() ) {
-
-    std::string output_filename =
-        generate_output_filename(output_options_.progress_video_filename,
-            "_progress",
-            ".avi");
-
-    if( !progress_writer_.open(output_filename) ) {
-      CF_ERROR("progress_writer_.open(%s) fails", output_filename.c_str());
-      return false;
-    }
+  if( !add_output_writer(progress_writer_, output_options_.progress_writer_options, "progress", ".avi") ) {
+    CF_ERROR("progress_writer_.open(%s) fails", progress_writer_.filename().c_str());
+    return false;
   }
+
+//  if( !progress_writer_.is_open() ) {
+//
+//    std::string output_filename =
+//        generate_output_filename(output_options_.progress_video_filename,
+//            "_progress",
+//            ".avi");
+//
+//    if( !progress_writer_.open(output_filename) ) {
+//      CF_ERROR("progress_writer_.open(%s) fails", output_filename.c_str());
+//      return false;
+//    }
+//  }
 
   if( !progress_writer_.write(display_image, display_mask) ) {
     CF_ERROR("progress_writer_.write(%s) fails", progress_writer_.filename().c_str());

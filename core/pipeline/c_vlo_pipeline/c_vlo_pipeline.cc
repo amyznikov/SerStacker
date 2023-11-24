@@ -425,6 +425,12 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, save_bloom2_intensity_profiles);
     SERIALIZE_OPTION(section, save, output_options_, intensity_writer_options);
 
+    SERIALIZE_OPTION(section, save, output_options_, save_bloom2_display);
+    SERIALIZE_OPTION(section, save, output_options_, display_writer_options);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_walls);
+    SERIALIZE_OPTION(section, save, output_options_, walls_writer_options);
+
   }
 
   return true;
@@ -487,6 +493,10 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_writer_options, _this->output_options_.save_progress_video);
       PIPELINE_CTL_END_GROUP(ctrls);
 
+      PIPELINE_CTL_GROUP(ctrls, "save_bloom2_display", "");
+      PIPELINE_CTL(ctrls, output_options_.save_bloom2_display, "save_bloom2_display", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.display_writer_options, _this->output_options_.save_bloom2_display);
+      PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "save_bloom2_segments", "");
       PIPELINE_CTL(ctrls, output_options_.save_bloom2_segments, "save_bloom2_segments", "");
@@ -498,11 +508,10 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.intensity_writer_options, _this->output_options_.save_bloom2_intensity_profiles);
       PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL_GROUP(ctrls, "save_bloom2_display", "");
-      PIPELINE_CTL(ctrls, output_options_.save_bloom2_display, "save_bloom2_display", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.display_writer_options, _this->output_options_.save_bloom2_display);
+      PIPELINE_CTL_GROUP(ctrls, "save_walls", "");
+      PIPELINE_CTL(ctrls, output_options_.save_walls, "save_walls", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.walls_writer_options, _this->output_options_.save_walls);
       PIPELINE_CTL_END_GROUP(ctrls);
-
 
     PIPELINE_CTL_END_GROUP(ctrls);
   }
@@ -595,26 +604,6 @@ bool c_vlo_pipeline::initialize_pipeline()
 void c_vlo_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
-
-//  if ( progress_writer_.is_open() ) {
-//    CF_DEBUG("Closing '%s'", progress_writer_.filename().c_str());
-//    progress_writer_.close();
-//  }
-
-//   if ( bloom2_segments_writer_.is_open() ) {
-//    CF_DEBUG("Closing '%s'", bloom2_segments_writer_.filename().c_str());
-//    bloom2_segments_writer_.close();
-//  }
-
-//  if ( bloom2_intensity_writer_.is_open() ) {
-//    CF_DEBUG("Closing '%s'", bloom2_intensity_writer_.filename().c_str());
-//    bloom2_intensity_writer_.close();
-//  }
-
-//  if ( blom2_display_writer_.is_open() ) {
-//    CF_DEBUG("Closing '%s'", blom2_display_writer_.filename().c_str());
-//    blom2_display_writer_.close();
-//  }
 
   if ( !vlo_lookup_table_statistics_.empty() ) {
 
@@ -849,6 +838,105 @@ bool c_vlo_pipeline::run_blom_detection2()
     }
   }
 
+  if ( output_options_.save_walls ) {
+
+    CF_DEBUG("F %d", input_sequence_->current_pos() - 1);
+
+    static const auto label_wall =
+        [](const cv::Mat3f & intensity_image, const cv::Mat3f & depth_image, double mean_depth,
+            cv::Mat1f & wall_image, cv::Mat3b & mask)
+            {
+              for (int y = 0; y < intensity_image.rows; ++y ) {
+                for (int x = 0; x < intensity_image.cols; ++x ) {
+                  for (int e = 0; e < 3; ++e ) {
+                    if ( std::abs(depth_image[y][x][e] - mean_depth) < 100 ) {
+                      wall_image[y][x] = intensity_image[y][x][e];
+                      mask[y][x][e] = 255;
+                    }
+                  }
+                }
+              }
+            };
+
+
+
+    cv::Mat3f intensity_image;
+    cv::Mat3f depth_image;
+
+    c_vlo_file::get_image(current_scan_,
+        c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensity_image,
+            CV_32F);
+
+    c_vlo_file::get_image(current_scan_,
+        c_vlo_file::DATA_CHANNEL_DEPTH).convertTo(depth_image,
+            CV_32F);
+
+
+
+    cv::Mat1f wall_image(segments.size());
+    cv::Mat3b mask(segments.size(), cv::Vec3b::all(0));
+
+    int wall_id = 0;
+
+    for( int x = 0; x < segments.cols; ++x ) {
+
+      for( int y = 0; y < segments.rows; ++y ) {
+
+        for( int e = 0; e < 3; ++e ) {
+
+          if( segments[y][x][e] && !mask[y][x][e] ) {
+
+            double mean_segment_depth = 0;
+            int n = 0;
+
+            const int segment_id =
+                segments[y][x][e];
+
+            for( int yy = y; yy < segments.rows; ++yy ) {
+              for( int ee = 0; ee < 3; ++ee ) {
+                if ( segments[yy][x][ee] == segment_id ) {
+                  mean_segment_depth += depth_image[yy][x][ee];
+                  ++n;
+                }
+              }
+            }
+
+            if( n > 30 ) {
+
+              mean_segment_depth /= n;
+              ++wall_id;
+
+              wall_image.setTo(cv::Scalar::all(0));
+
+              label_wall(intensity_image, depth_image,
+                  mean_segment_depth,
+                  wall_image,
+                  mask);
+
+
+              if( !add_output_writer(bloom2_walls_writer_, output_options_.walls_writer_options, "walls", ".ser") ) {
+                CF_ERROR("bloom2_walls_writer_.open(%s) fails",
+                    bloom2_walls_writer_.filename().c_str());
+                return false;
+              }
+
+              if( !bloom2_walls_writer_.write(wall_image) ) {
+                CF_ERROR("bloom2_walls_writer_.write('%s') fails",
+                    bloom2_walls_writer_.filename().c_str());
+                return false;
+              }
+
+            }
+          }
+        }
+      }
+
+    }
+
+
+  }
+
+
 
   if( output_options_.save_bloom2_display ) {
     // segments & counts
@@ -885,7 +973,6 @@ bool c_vlo_pipeline::run_blom_detection2()
 
     cv::merge(counts_channels, display_image(roi[2]));
 
-
     if( !add_output_writer(blom2_display_writer_, output_options_.display_writer_options, "display", ".ser") ) {
       CF_ERROR("blom2_display_writer_.open(%s) fails",
           blom2_display_writer_.filename().c_str());
@@ -901,7 +988,6 @@ bool c_vlo_pipeline::run_blom_detection2()
 
   return true;
 }
-
 
 bool c_vlo_pipeline::update_vlo_lookup_table_statistics()
 {
@@ -926,7 +1012,6 @@ bool c_vlo_pipeline::save_progress_video()
     return true; // silently ignore
   }
 
-
   cv::Mat display_image, display_mask;
 
   if ( !get_display_image(display_image, display_mask) ) {
@@ -935,25 +1020,14 @@ bool c_vlo_pipeline::save_progress_video()
   }
 
   if( !add_output_writer(progress_writer_, output_options_.progress_writer_options, "progress", ".avi") ) {
-    CF_ERROR("progress_writer_.open(%s) fails", progress_writer_.filename().c_str());
+    CF_ERROR("progress_writer_.open(%s) fails",
+        progress_writer_.filename().c_str());
     return false;
   }
 
-//  if( !progress_writer_.is_open() ) {
-//
-//    std::string output_filename =
-//        generate_output_filename(output_options_.progress_video_filename,
-//            "_progress",
-//            ".avi");
-//
-//    if( !progress_writer_.open(output_filename) ) {
-//      CF_ERROR("progress_writer_.open(%s) fails", output_filename.c_str());
-//      return false;
-//    }
-//  }
-
   if( !progress_writer_.write(display_image, display_mask) ) {
-    CF_ERROR("progress_writer_.write(%s) fails", progress_writer_.filename().c_str());
+    CF_ERROR("progress_writer_.write(%s) fails",
+        progress_writer_.filename().c_str());
     return false;
   }
 

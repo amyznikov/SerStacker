@@ -60,7 +60,7 @@ bool c_output_frame_writer::create_output_frame(const cv::Mat & src, const cv::M
 
   if( ddepth != PIXEL_DEPTH_NO_CHANGE && ddepth != tmp.depth() ) {
 
-    CF_DEBUG("CONVERSION HERE");
+    // CF_DEBUG("CONVERSION HERE");
 
     double scale = 1;
     double offset = 0;

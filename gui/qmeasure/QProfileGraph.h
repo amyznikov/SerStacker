@@ -82,7 +82,7 @@ protected:
   QCPGraph *graphs_[4] = { nullptr };
   QCPGraph::LineStyle lineStyle_ = QCPGraph::lsLine;
 
-  QVector<double> current_keys_[4];
+  QVector<double> current_keys_;
   QVector<double> current_values_[4];
 
   QLine currentLine_;

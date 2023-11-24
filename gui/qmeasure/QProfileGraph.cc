@@ -50,8 +50,8 @@ const c_enum_member* members_of<QCPGraph::LineStyle>()
 namespace {
 
 template<class T>
-void get_pixels_(const cv::Mat & image, const QVector<cv::Point> & pts, bool skip_zeros,
-    QVector<double> keys[4],
+void get_pixels_(const cv::Mat & image, const QVector<cv::Point> & pts,
+    QVector<double> & keys,
     QVector<double> values[4])
 {
   const cv::Mat_<T> src =
@@ -60,99 +60,61 @@ void get_pixels_(const cv::Mat & image, const QVector<cv::Point> & pts, bool ski
   const int cn =
       image.channels();
 
+  keys.clear();
+
   for( int c = 0; c < 4; ++c ) {
     values[c].clear();
-    keys[c].clear();
   }
 
-  if( skip_zeros ) {
+  for( int i = 0, n = pts.size(); i < n; ++i ) {
 
-    for( int i = 0, n = pts.size(); i < n; ++i ) {
+    const cv::Point & p =
+        pts[i];
 
-      const cv::Point &p =
-          pts[i];
+    if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
 
-      if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
+      const T * srcp = src[p.y];
 
-        const T *srcp = src[p.y];
+      keys.append(i);
 
-        for( int c = 0; c < cn; ++c ) {
+      for( int c = 0; c < cn; ++c ) {
 
-          const T &value =
-              srcp[p.x * cn + c];
+        const T & value =
+            srcp[p.x * cn + c];
 
-          if( value != 0 ) {
-            keys[c].append(i);
-            values[c].append(value);
-          }
-        }
-
-      }
-    }
-
-  }
-  else {
-
-    for( int i = 0, n = pts.size(); i < n; ++i ) {
-
-      const cv::Point &p =
-          pts[i];
-
-      if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
-
-        const T *srcp = src[p.y];
-
-        keys[0].append(i);
-
-        for( int c = 0; c < cn; ++c ) {
-
-          const T &value =
-              srcp[p.x * cn + c];
-
-          values[c].append(value);
-        }
+        values[c].append(value);
       }
     }
   }
 }
 
-void get_pixels(const cv::Mat & image, const QVector<cv::Point> & pts, bool skip_zeros,
-    QVector<double> keys[4], QVector<double> values[4])
+void get_pixels(const cv::Mat & image, const QVector<cv::Point> & pts,
+    QVector<double> & keys, QVector<double> values[4])
 {
   switch (image.depth()) {
     case CV_8U:
-      get_pixels_<uint8_t>(image, pts, skip_zeros, keys, values);
+      get_pixels_<uint8_t>(image, pts, keys, values);
       break;
     case CV_8S:
-      get_pixels_<int8_t>(image, pts, skip_zeros, keys, values);
+      get_pixels_<int8_t>(image, pts, keys, values);
       break;
     case CV_16U:
-      get_pixels_<uint16_t>(image, pts, skip_zeros, keys, values);
+      get_pixels_<uint16_t>(image, pts, keys, values);
       break;
     case CV_16S:
-      get_pixels_<int16_t>(image, pts, skip_zeros, keys, values);
+      get_pixels_<int16_t>(image, pts, keys, values);
       break;
     case CV_32S:
-      get_pixels_<int32_t>(image, pts, skip_zeros, keys, values);
+      get_pixels_<int32_t>(image, pts, keys, values);
       break;
     case CV_32F:
-      get_pixels_<float>(image, pts, skip_zeros, keys, values);
+      get_pixels_<float>(image, pts, keys, values);
       break;
     case CV_64F:
-      get_pixels_<double>(image, pts, skip_zeros, keys, values);
+      get_pixels_<double>(image, pts, keys, values);
       break;
   }
 }
-
-
-//QWidget* addStretch(QToolBar * toolbar)
-//{
-//  QWidget *stretch = new QWidget(toolbar);
-//  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-//  stretch->setBackgroundRole(QPalette::NoRole);
-//  toolbar->addWidget(stretch);
-//  return stretch;
-//}
 
 } // namespace
 
@@ -404,8 +366,8 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
 {
   QVector<cv::Point> pts;
 
+  current_keys_.clear();
   for( int c = 0; c < 4; ++c ) {
-    current_keys_[c].clear();
     current_values_[c].clear();
   }
 
@@ -464,9 +426,7 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
       }
     }
 
-
-    get_pixels(image, pts, skipZeroPixels_,
-        current_keys_, current_values_);
+    get_pixels(image, pts, current_keys_, current_values_);
   }
 
   const int cn =
@@ -474,19 +434,34 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image)
 
   for( int c = 0; c < 4; ++c ) {
 
-    if( c < cn ) {
-      graphs_[c]->setData(skipZeroPixels_ ?
-          current_keys_[c] : current_keys_[0],
+    if( c >= cn ) {
+      graphs_[c]->setData(QVector<double>(),
+          QVector<double>());
+    }
+    else if( !skipZeroPixels_ ) {
+
+      graphs_[c]->setData(current_keys_,
           current_values_[c]);
+
     }
     else {
 
-      static const QVector<double> empty_keys;
-      static const QVector<double> empty_values;
+      QVector<double> keys;
+      QVector<double> values;
 
-      graphs_[c]->setData(empty_keys, empty_values);
+      for( int i = 0; i < current_values_[c].size(); ++i ) {
+        if( current_values_[c][i] ) {
+          keys.append(current_keys_[i]);
+          values.append(current_values_[c][i]);
+        }
+      }
+
+      graphs_[c]->setData(keys,
+          values);
     }
   }
+
+
 
   if( !fixXRange_ ) {
     plot_->xAxis->setRange(0, pts.size());
@@ -531,17 +506,20 @@ void QProfileGraph::onCopyToClipboardActionTriggered()
   int num_columns = 0;
 
   for ( int c = 0; c < 4; ++c ) {
-    if ( !current_keys_[c].empty() && !current_values_[c].isEmpty() ) {
+    if ( !current_values_[c].isEmpty() ) {
       ++num_columns;
     }
   }
+
+  CF_DEBUG("num_columns=%d", num_columns);
 
   if ( num_columns < 1 ) {
     CF_DEBUG("No Data available");
     return;
   }
 
-  QClipboard * clipboard = QApplication::clipboard();
+  QClipboard * clipboard =
+      QApplication::clipboard();
   if ( !clipboard ) {
     CF_DEBUG("No clipboard available");
     return;
@@ -550,64 +528,113 @@ void QProfileGraph::onCopyToClipboardActionTriggered()
 
   QString text;
 
-  if ( skipZeroPixels_ ) {
-
-    text = "X0\tY0";
-
-    for( int c = 1; c < num_columns; ++c ) {
+  text.append("X");
+  for( int c = 0; c < 4; ++c ) {
+    if( !current_values_[c].empty() ) {
       text.append(qsprintf("\tY%d", c));
     }
+  }
+  text.append("\n");
 
-    text.append("\n");
 
-    int max_points = current_keys_[0].size();
-    for( int c = 1; c < num_columns; ++c ) {
-      if( current_keys_[c].size() > max_points ) {
-        max_points = current_keys_[c].size();
-      }
-    }
+  for( int i = 0, n = current_keys_.size(); i < n; ++i ) {
 
-    for( int i = 0; i < max_points; ++i ) {
-      for( int c = 0; c < num_columns; ++c ) {
+    if ( !skipZeroPixels_ ) {
 
-        if( i >= current_keys_[c].size() ) {
-          text.append(qsprintf(" \t "));
-        }
-        else {
-          text.append(qsprintf("\t%g\t%g", current_keys_[c][i],
-              current_values_[c][i]));
+      text.append(qsprintf("%g", current_keys_[i]));
+
+      for( int c = 0; c < 4; ++c ) {
+        if( i < current_values_[c].size() ) {
+          text.append(qsprintf("\t%g", current_values_[c][i]));
         }
       }
 
       text.append("\n");
     }
+    else {
 
-  }
-  else {
+      bool key_added = false;
 
-    text = "X";
+      for( int c = 0; c < 4; ++c ) {
 
-    for( int c = 0; c < num_columns; ++c ) {
-      text.append(qsprintf("\tY%d", c));
-    }
+        if( i < current_values_[c].size() && current_values_[c][i] ) {
 
-    text.append("\n");
+          if( !key_added ) {
+            text.append(qsprintf("%g", current_keys_[i]));
+            key_added = true;
+          }
 
-    for ( int i = 0, n = current_keys_[0].size(); i < n; ++i ) {
-
-      text.append(qsprintf("%g", current_keys_[0][i]));
-
-      for( int c = 0; c < num_columns; ++c ) {
-        text.append(qsprintf("\t%g", current_values_[c][i]));
+          text.append(qsprintf("\t%g", current_values_[c][i]));
+        }
       }
 
-      text.append("\n");
+      if ( key_added ) {
+        text.append("\n");
+      }
+
     }
   }
+
+//  if ( skipZeroPixels_ ) {
+//
+//    text = "X0\tY0";
+//
+//    for( int c = 1; c < num_columns; ++c ) {
+//      text.append(qsprintf("\tY%d", c));
+//    }
+//
+//    text.append("\n");
+//
+//    int max_points = current_keys_[0].size();
+//    for( int c = 1; c < num_columns; ++c ) {
+//      if( current_keys_[c].size() > max_points ) {
+//        max_points = current_keys_[c].size();
+//      }
+//    }
+//
+//    for( int i = 0; i < max_points; ++i ) {
+//      for( int c = 0; c < num_columns; ++c ) {
+//
+//        if( i >= current_keys_[c].size() ) {
+//          text.append(qsprintf(" \t "));
+//        }
+//        else {
+//          text.append(qsprintf("%g\t%g", current_keys_[c][i],
+//              current_values_[c][i]));
+//        }
+//        if ( c < num_columns - 1 ) {
+//          text.append("\t");
+//        }
+//      }
+//
+//      text.append("\n");
+//    }
+//
+//  }
+//  else {
+//
+//    text = "X";
+//
+//    for( int c = 0; c < num_columns; ++c ) {
+//      text.append(qsprintf("\tY%d", c));
+//    }
+//
+//    text.append("\n");
+//
+//    for ( int i = 0, n = current_keys_[0].size(); i < n; ++i ) {
+//
+//      text.append(qsprintf("%g", current_keys_[0][i]));
+//
+//      for( int c = 0; c < num_columns; ++c ) {
+//        text.append(qsprintf("\t%g", current_values_[c][i]));
+//      }
+//
+//      text.append("\n");
+//    }
+//  }
 
 
   clipboard->setText(text);
-  CF_DEBUG("Data copied");
 }
 
 

@@ -74,6 +74,8 @@ struct c_vlo_pipeline_output_options :
   bool save_bloom2_intensity_profiles = false;
   c_output_frame_writer_options intensity_writer_options;
 
+  bool save_walls = false;
+  c_output_frame_writer_options walls_writer_options;
 };
 
 class c_vlo_pipeline :
@@ -135,6 +137,7 @@ protected:
   c_output_frame_writer blom2_display_writer_;
   c_output_frame_writer bloom2_segments_writer_;
   c_output_frame_writer bloom2_intensity_writer_;
+  c_output_frame_writer bloom2_walls_writer_;
 
   c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;
 

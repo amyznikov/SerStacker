@@ -289,7 +289,22 @@ void QCloudSequenceView::loadNextFrame()
       CF_ERROR("currentProcessor_->process(dataframe) fails");
     }
 
-    // frame->dataBlocks();
+    const c_cloudview_data_item * displayItem =
+        frame->item("");
+
+    if ( !displayItem ) {
+    }
+    else {
+
+      switch (displayItem->type()) {
+        case c_cloudview_data_item::image:
+          break;
+        case c_cloudview_data_item::structured_cloud3d:
+          break;
+        case c_cloudview_data_item::unstructured_cloud3d:
+          break;
+      }
+    }
 
   }
 

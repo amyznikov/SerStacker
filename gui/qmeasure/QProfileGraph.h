@@ -25,8 +25,8 @@ public:
 
   QProfileGraph(QWidget * parent = nullptr);
 
-  void showProfilePlot(const QLineF & line, const cv::Mat & image);
-  void showProfilePlot(const QLine & line, const cv::Mat & image);
+  void showProfilePlot(const QLineF & line, const cv::Mat & image, const cv::Mat & mask);
+  void showProfilePlot(const QLine & line, const cv::Mat & image, const cv::Mat & mask);
 
   const QLine & currentLine() const;
 
@@ -42,6 +42,9 @@ public:
   void setSkipZeroPixels(bool v);
   bool skipZeroPixels() const;
 
+  void setSkipMaskedPixels(bool v);
+  bool skipMaskedPixels() const;
+
   void setXRangeMin(double v);
   double xRangeMin() const;
 
@@ -54,14 +57,11 @@ public:
   void setYRangeMax(double v);
   double yRangeMax() const;
 
-
-  void replot();
-
 Q_SIGNALS:
   void visibilityChanged(bool visble);
   void xRangeRescaled();
   void yRangeRescaled();
-  void skipZeroPixlelsChanged();
+  // void parameterChanged();
 
 protected Q_SLOTS:
   void onShowSettingsActionTriggered(bool checked);
@@ -70,6 +70,7 @@ protected Q_SLOTS:
 protected:
   void showEvent(QShowEvent * event) override;
   void hideEvent(QHideEvent * event) override;
+  void replot();
 
 protected:
   QVBoxLayout * vl_ = nullptr;
@@ -84,22 +85,24 @@ protected:
 
   QVector<double> current_keys_;
   QVector<double> current_values_[4];
+  QVector<uint8_t> current_ptmasks_;
 
   QLine currentLine_;
   bool fixXRange_ = false;
   bool fixYRange_ = false;
 
   bool skipZeroPixels_ = false;
+  bool skipMaskedPixels_ = false;
 };
 
 
 class QProfileGraphSettings :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QProfileGraph>
 {
   Q_OBJECT;
 public:
   typedef QProfileGraphSettings ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QProfileGraph> Base;
 
   QProfileGraphSettings(QWidget * parent = nullptr);
 
@@ -107,12 +110,11 @@ public:
   QProfileGraph * profileGraph() const;
 
 protected:
-  void onupdatecontrols() override;
-  void onload(QSettings & settings) override;
+  void set_options(QProfileGraph * profileGraph) override;
+  // void onupdatecontrols() override;
+  // void onload(QSettings & settings) override;
 
 protected:
-  QProfileGraph * profileGraph_ = nullptr;
-
   QEnumComboBox<QCPGraph::LineStyle> * lineStyle_ctl = nullptr;
 
   QCheckBox * fixXRange_ctl = nullptr;
@@ -123,7 +125,8 @@ protected:
   QNumericBox * yRangeMin_ctl = nullptr;
   QNumericBox * yRangeMax_ctl = nullptr;
 
-  QCheckBox * skipZeros_ctl = nullptr;
+  QCheckBox * skipZeroPixels_ctl = nullptr;
+  QCheckBox * skipMaskedPixels_ctl = nullptr;
 };
 
 

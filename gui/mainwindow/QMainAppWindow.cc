@@ -411,10 +411,10 @@ void QMainAppWindow::onShowProfileGraphActionTriggered(bool checked)
       connect(plotProfileDialogBox_, &QProfileGraphDialogBox::visibilityChanged,
           this, &ThisClass::onPlotProfileDialogBoxVisibilityChanged);
 
-      connect(profileGraph_ctl_, &QProfileGraph::skipZeroPixlelsChanged,
-          [this]() {
-            updateProfileGraph();
-          });
+//      connect(profileGraph_ctl_, &QProfileGraph::skipZeroPixlelsChanged,
+//          [this]() {
+//            updateProfileGraph();
+//          });
 
     }
 

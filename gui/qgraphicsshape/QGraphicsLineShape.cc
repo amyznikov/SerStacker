@@ -257,10 +257,13 @@ void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->buttons() == Qt::LeftButton && (flags() & ItemIsMovable) ) {
 
+    lastPos_ = e->pos();
+
     if( lockP1_ && lockP2_ ) {
       e->accept();
       return;
     }
+
 
     if( e->modifiers() != Qt::ControlModifier ) {
       e->accept();
@@ -364,6 +367,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
             Q_EMIT itemChanged(this);
           }
         }
+
         e->ignore();
         return;
 
@@ -396,11 +400,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
             Q_EMIT itemChanged(this);
           }
 
-          e->ignore();
-          return;
         }
-
-        if( lockP2_ ) {
+        else if( lockP2_ ) {
 
           prepareGeometryChange();
 
@@ -427,14 +428,61 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
             Q_EMIT itemChanged(this);
           }
 
-          e->ignore();
-          return;
+        }
+        else {
+          currentMouseAction_ =
+              MouseAction_MoveWholeLine;
+
+          /////////////////////
+
+          const QPointF delta =
+              e->pos() - (snapToPixelGrid_ ? lastPos_ : e->lastPos());
+
+          if ( delta.x() || delta.y() ) {
+
+            if( !snapToPixelGrid_ ) {
+
+              prepareGeometryChange();
+
+              line_.setP1(line_.p1() + delta);
+              line_.setP2(line_.p2() + delta);
+
+              updateGeometry();
+              update();
+
+              if( flags() & ItemSendsGeometryChanges ) {
+                Q_EMIT itemChanged(this);
+              }
+
+            }
+            else {
+
+              const QPointF p1 = line_.p1();
+              const QPointF p2 = line_.p2();
+
+              const QPointF p3(qRound(p1.x() + delta.x()), qRound(p1.y() + delta.y()));
+              const QPointF p4(qRound(p2.x() + delta.x()), qRound(p2.y() + delta.y()));
+
+              if( p3.x() != p1.x() || p3.y() != p1.y() || p4.x() != p2.x() || p4.y() != p2.y() ) {
+
+                prepareGeometryChange();
+
+                line_.setP1(p3);
+                line_.setP2(p4);
+                lastPos_ = e->pos();
+
+                updateGeometry();
+                update();
+
+                if( flags() & ItemSendsGeometryChanges ) {
+                  Q_EMIT itemChanged(this);
+                }
+              }
+            }
+          }
         }
 
-        currentMouseAction_ =
-            MouseAction_MoveWholeLine;
-
-        Base::mouseMoveEvent(e);
+        e->ignore();
         return;
     }
   }

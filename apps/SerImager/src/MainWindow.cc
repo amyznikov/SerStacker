@@ -392,7 +392,8 @@ void MainWindow::onCentralDisplayLineShapeChanged()
         QImageViewer::current_image_lock lock(centralDisplay_);
 
         profileGraph_ctl_->showProfilePlot(line,
-            centralDisplay_->currentImage());
+            centralDisplay_->currentImage(),
+            centralDisplay_->currentMask());
       }
     }
   }
@@ -662,7 +663,8 @@ void MainWindow::updateMeasurements()
     QImageViewer::current_image_lock lock(centralDisplay_);
 
     profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
-        centralDisplay_->currentImage());
+        centralDisplay_->currentImage(),
+        centralDisplay_->currentMask());
   }
 
   if( !QMeasureProvider::requested_measures().empty() && centralDisplay_->rectShape()->isVisible() ) {

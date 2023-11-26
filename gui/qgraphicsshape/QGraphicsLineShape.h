@@ -71,9 +71,6 @@ protected:
   QRectF boundingRect_;
   QPainterPath shape_;
   QPen pen_;
-//  QAction * lockP1Action_ = nullptr;
-//  QAction * lockP2Action_ = nullptr;
-//  QAction * showSettingsAction_ = nullptr;
 
   enum MouseAction {
     MouseAction_None = 0,
@@ -84,6 +81,9 @@ protected:
 
   bool lockP1_ = false;
   bool lockP2_ = false;
+
+  QPointF lastPos_;
+
 };
 
 #endif /* __QGraphicsLineShape_h__ */

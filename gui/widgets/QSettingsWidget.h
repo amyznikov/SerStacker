@@ -1142,7 +1142,7 @@ public:
   {
   }
 
-  void set_options(c_options_type * options)
+  virtual void set_options(c_options_type * options)
   {
     this->options_ = options;
     updateControls();
@@ -1154,6 +1154,7 @@ public:
   }
 
 protected:
+
   virtual void update_control_states()
   {
   }

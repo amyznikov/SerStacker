@@ -807,6 +807,7 @@ bool c_vlo_pipeline::run_blom_detection2()
         c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensity_image,
             CV_32F);
 
+
     cv::Mat1f intensity(clouds[0].size(), 0.f);
 
     const int segment_id = 1;
@@ -850,6 +851,7 @@ bool c_vlo_pipeline::run_blom_detection2()
                 for (int x = 0; x < intensity_image.cols; ++x ) {
                   for (int e = 0; e < 3; ++e ) {
                     if ( std::abs(depth_image[y][x][e] - mean_depth) < 100 ) {
+
                       wall_image[y][x] = intensity_image[y][x][e];
                       mask[y][x][e] = 255;
                     }

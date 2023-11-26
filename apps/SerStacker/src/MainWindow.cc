@@ -794,7 +794,8 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
     if( QGraphicsLineShape *lineShape = dynamic_cast<QGraphicsLineShape*>(lineItem) ) {
 
       profileGraph_ctl_->showProfilePlot(lineShape->sceneLine(),
-          imageView->currentImage());
+          imageView->currentImage(),
+          imageView->currentMask());
 
     }
     else {
@@ -816,7 +817,8 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
       }
 
       profileGraph_ctl_->showProfilePlot(line,
-          imageView->currentImage());
+          imageView->currentImage(),
+          imageView->currentMask());
 
     }
   }

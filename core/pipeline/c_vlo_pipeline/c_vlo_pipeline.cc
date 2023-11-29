@@ -632,7 +632,7 @@ bool c_vlo_pipeline::run_blom_detection2()
 
   if ( processing_options_.enable_filter_segments ) {
 
-     cv::Mat3f intensities;
+    cv::Mat3f intensities;
 
     c_vlo_file::get_image(current_scan_,
         c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensities,
@@ -655,6 +655,8 @@ bool c_vlo_pipeline::run_blom_detection2()
 
     wall_segments.reserve(32);
     chunks.reserve(32);
+
+    CF_DEBUG("processing_options_.saturation_level=%g", processing_options_.saturation_level);
 
     for( int x = 0; x < segments.cols; ++x ) {
 
@@ -698,51 +700,50 @@ bool c_vlo_pipeline::run_blom_detection2()
         c_segment & seg =
             wall_segments[seg_id - 1];
 
-          if ( seg.points.empty() ) {
-            continue;
-          }
+        if( seg.points.empty() ) {
+          continue;
+        }
 
-          chunks.clear();
+        chunks.clear();
 
-          for( int p = 0; p < seg.points.size(); ++p ) {
+        for( int p = 0; p < seg.points.size(); ++p ) {
 
-            // collect saturated chunk if exists
-            if ( seg.points[p].intens >= processing_options_.saturation_level ) {
+          // collect saturated chunk if exists
+          if( seg.points[p].intens >= processing_options_.saturation_level ) {
 
-              chunks.emplace_back();
-              c_segment & chunk = chunks.back();
+            chunks.emplace_back();
+            c_segment & chunk = chunks.back();
 
-              chunk.saturated = true;
+            chunk.saturated = true;
 
-              while (p < seg.points.size() && seg.points[p].intens >= processing_options_.saturation_level) {
+            while (p < seg.points.size() && seg.points[p].intens >= processing_options_.saturation_level) {
 
-                const c_segment_point & sp =
-                    seg.points[p];
+              const c_segment_point & sp =
+                  seg.points[p];
 
-                chunk.points.emplace_back(sp);
+              chunk.points.emplace_back(sp);
 
-                for( int e = 0; e < 3; ++e ) {
-                  if ( segments[sp.y][x][e] == seg_id) {
-                    segments[sp.y][x][e] = 0;
-                  }
+              for( int e = 0; e < 3; ++e ) {
+                if( segments[sp.y][x][e] == seg_id ) {
+                  segments[sp.y][x][e] = 0;
                 }
-
-                ++p;
               }
-            }
 
-            // collect unsaturated chunk if exists
-            if( p < seg.points.size() ) {
-
-              chunks.emplace_back();
-              c_segment & chunk = chunks.back();
-
-              while (p < seg.points.size() && seg.points[p].intens < processing_options_.saturation_level) {
-                chunk.points.emplace_back(seg.points[p++]);
-              }
+              ++p;
             }
           }
 
+          // collect unsaturated chunk if exists
+          if( p + 1 < seg.points.size() ) {
+
+            chunks.emplace_back();
+            c_segment & chunk = chunks.back();
+
+            while (p < seg.points.size() && seg.points[p].intens < processing_options_.saturation_level) {
+              chunk.points.emplace_back(seg.points[p++]);
+            }
+          }
+        }
 
       }
 

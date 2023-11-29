@@ -153,7 +153,7 @@ public:
   bool is_open() const;
 
   /// @brief read()
-  /// Read next frame from current read position,
+  /// Read next image from current read position,
   /// advance current position to next frame
   bool read(cv::OutputArray image);
 
@@ -171,7 +171,7 @@ public:
   void close();
 
 protected:
-  c_file_handle fd_;  // file descriptopr
+  c_file_handle fd_;  // file descriptor
   int32_t curpos_ = -1; // current frame read position counter
 };
 
@@ -198,12 +198,12 @@ public:
   bool is_open() const;
 
   /// @brief write()
-  /// Write OpenCV frame into SER file.
+  /// Write OpenCV image into SER file.
   /// Only basic checks are make: image dimension and byte size.
   bool write(cv::InputArray image, uint64_t ts = UINT64_MAX);
 
   /// @brief flush()
-  /// Flush IO buffers immediatelly
+  /// Flush IO buffers immediately
   bool flush();
 
   /// @brief close()
@@ -211,7 +211,7 @@ public:
   bool close();
 
 protected:
-  int fd = -1;  // file descriptopr
+  c_file_handle fd_;  // file descriptor
 };
 
 #endif /* __c_ser_file_h__ */

@@ -428,7 +428,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
 
       get_points3d(scan,
           [&](int s, int l, int e, double x, double y, double z) {
-            image[l][s][e] = (float)( 100 * x);
+            image[l][s][e] = (float)(100 * x);
           });
 
       return image;

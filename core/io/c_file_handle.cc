@@ -71,7 +71,10 @@ bool c_file_handle::open(const std::string & filename, int openflags)
 
 #else
 
-  if( (fd_ = ::open(filename.c_str(), openflags)) == INVALID_FILE_DESCRIPTOR ) {
+  const int mode =
+      S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH;
+
+  if( (fd_ = ::open(filename.c_str(), openflags, mode)) == INVALID_FILE_DESCRIPTOR ) {
     CF_ERROR("open('%s') fails", filename.c_str());
     return false;
   }
@@ -133,6 +136,28 @@ ssize_t c_file_handle::readfrom(ssize_t offset, void * data, size_t size)
   return read(data, size);
 }
 
+
+ssize_t c_file_handle::write(const void * buf, size_t nbytes)
+{
+  if ( !is_open() ) {
+    errno = EBADF;
+    return -1;
+  }
+
+#if _MSC_VER
+
+  DWORD numberOfBytesWritten = 0;
+
+  WriteFile(fd, buf, (DWORD) nbytes, &numberOfBytesWritten, nullptr);
+
+  return (ssize_t)(numberOfBytesWritten);
+#else
+
+  return ::write(fd_, buf, nbytes);
+
+#endif
+}
+
 ssize_t c_file_handle::size()
 {
   if ( !is_open() ) {
@@ -190,3 +215,21 @@ ssize_t c_file_handle::whence()
 {
   return seek(0, SEEK_CUR);
 }
+
+bool c_file_handle::flush()
+{
+  if( fd_ != INVALID_FILE_DESCRIPTOR ) {
+#if _MSC_VER
+  return FlushFileBuffers(fd_);
+#else
+#if _WIN32 || _WIN64
+    _commit(fd_);
+#else
+    fdatasync(fd_);
+#endif
+    return true;
+  }
+#endif
+  return false;
+}
+

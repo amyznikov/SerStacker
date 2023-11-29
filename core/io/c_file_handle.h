@@ -44,9 +44,11 @@ public:
   bool is_open() const;
   ssize_t read(void * buf, size_t nbytes);
   ssize_t readfrom(ssize_t offset, void * data, size_t size);
+  ssize_t write(const void * buf, size_t nbytes);
   ssize_t size();
-  ssize_t seek(ssize_t, int whence);
+  ssize_t seek(ssize_t, int whence = SEEK_SET);
   ssize_t whence();
+  bool flush();
 
 protected:
   FILE_DESCRIPTOR fd_ = INVALID_FILE_DESCRIPTOR;

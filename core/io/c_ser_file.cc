@@ -526,7 +526,7 @@ c_ser_writer::~c_ser_writer()
 
 bool c_ser_writer::is_open() const
 {
-  return fd >= 0;
+  return fd_.is_open();
 }
 
 bool c_ser_writer::create(const std::string & filename, int image_width, int image_height,
@@ -573,15 +573,17 @@ bool c_ser_writer::create(const std::string & filename, int image_width, int ima
   header_.date_time = 0;
   header_.date_time_utc = 0;
 
-  if ( (fd = ::open(filename.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH)) == -1 ) {
+  const int openflags =
+      O_CREAT | O_TRUNC | O_WRONLY;
+
+  if ( !fd_.open(filename, openflags) ) {
     CF_FATAL("open('%s') fails: %s", filename.c_str(), strerror(errno));
     return false;
   }
 
-  if ( ::write(fd, &header_, sizeof(header_)) != sizeof(header_) ) {
+  if ( fd_.write(&header_, sizeof(header_)) != sizeof(header_) ) {
     CF_FATAL("write(SER HEADER) fails: %s", strerror(errno));
-    ::close(fd);
-    fd = -1;
+    fd_.close();
     return false;
   }
 
@@ -594,29 +596,20 @@ bool c_ser_writer::close()
 {
   bool fok = true;
 
-  if ( fd >= 0 ) {
-    lseek64(fd, 0, SEEK_SET);
-    if ( ::write(fd, &header_, sizeof(header_)) != sizeof(header_) ) {
+  if( fd_.is_open() >= 0 ) {
+    fd_.seek(0);
+    if( fd_.write(&header_, sizeof(header_)) != sizeof(header_) ) {
       CF_FATAL("write(SER HEADER) fails: %s", strerror(errno));
       fok = false;
     }
-    ::close(fd);
-    fd = -1;
+    fd_.close();
   }
   return fok;
 }
 
 bool c_ser_writer::flush()
 {
-  if ( fd >= 0 ) {
-#if _WIN32 || _WIN64
-    _commit(fd);
-#else
-    fdatasync(fd);
-#endif
-    return true;
-  }
-  return false;
+  return fd_.flush();
 }
 
 bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
@@ -655,13 +648,13 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
   errno = 0;
 
   const int64_t savedpos =
-      lseek64(fd, 0, SEEK_CUR);
+      fd_.whence();
 
   const size_t bytes_to_write =
       image.total() * image.elemSize();
 
   const size_t bytes_written =
-      ::write(fd, image.data, bytes_to_write);
+      fd_.write(image.data, bytes_to_write);
 
 
   if ( bytes_written != bytes_to_write ) {
@@ -670,7 +663,7 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
         "bytes_to_write=%zu bytes_written=%zu",
         strerror(errno), bytes_to_write, bytes_written);
 
-    lseek64(fd, savedpos, SEEK_SET);
+    fd_.seek(savedpos);
 
     return false;
   }

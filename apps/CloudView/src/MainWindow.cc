@@ -38,11 +38,11 @@
 #define ICON_copy               ":/gui/icons/copy"
 #define ICON_delete             ":/gui/icons/delete"
 
-#define ICON_roi                ":/serstacker/icons/roi.png"
-#define ICON_point_size         ":/serstacker/icons/degree.png"
-#define ICON_brightness         ":/serstacker/icons/brightness.png"
-#define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
-#define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
+//#define ICON_roi                ":/serstacker/icons/roi.png"
+//#define ICON_point_size         ":/serstacker/icons/degree.png"
+//#define ICON_brightness         ":/serstacker/icons/brightness.png"
+//#define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
+//#define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
 
 
 namespace cloudview {

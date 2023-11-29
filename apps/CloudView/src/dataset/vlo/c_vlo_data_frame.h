@@ -10,6 +10,7 @@
 #define __c_vlo_data_frame_h__
 
 #include "c_cloudview_data_frame.h"
+#include <core/io/c_vlo_file.h>
 
 namespace cloudview {
 
@@ -21,7 +22,8 @@ public:
   typedef c_cloudview_data_frame base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_vlo_data_frame();
+public:
+  c_vlo_scan current_scan_;
 };
 
 } /* namespace cloudview */

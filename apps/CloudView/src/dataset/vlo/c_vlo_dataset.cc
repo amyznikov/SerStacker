@@ -18,7 +18,7 @@ c_vlo_dataset::c_vlo_dataset(const type * _type,
 
 c_cloudview_input_source::sptr c_vlo_dataset::create_input_source(const std::string & filename) const
 {
-  return c_cloudview_input_source::sptr(new c_cloudview_vlo_input_source(filename));
+  return nullptr;//  c_cloudview_input_source::sptr(new c_cloudview_vlo_input_source(filename));
 }
 
 } // namespace cloudview

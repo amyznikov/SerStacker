@@ -8,6 +8,7 @@
 #include "c_vlo_pipeline.h"
 #include <core/readdir.h>
 #include <core/ssprintf.h>
+#include <core/proc/c_line_estimate.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/colormap.h>
 #include <core/mtf/pixinsight-mtf.h>
@@ -28,170 +29,6 @@ const c_enum_member* members_of<VLO_INTENSITY_CHANNEL>()
   };
 
   return members;
-}
-
-template<class ScanType>
-static bool run_reflectors_detection_(const ScanType & scan,
-    VLO_INTENSITY_CHANNEL intensity_channel,
-    bool enable_doubled_echo,
-    bool enable_auto_threshold,
-    THRESHOLD_TYPE auto_threshold_type,
-    double auto_threshold_value,
-    double auto_clip_min,
-    double auto_clip_max,
-    cv::Mat1b * output_mask)
-{
-  typedef decltype(ScanType::Echo::area) area_type;
-  constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
-
-  typedef decltype(ScanType::Echo::peak) peak_type;
-  constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
-
-  typedef decltype(ScanType::Echo::dist) dist_type;
-  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
-
-  cv::Mat1b intensity_mask;
-  cv::Mat1b doubled_echo_mask;
-
-  if( enable_auto_threshold ) {
-
-    const int max_intensity_value =
-        intensity_channel == VLO_INTENSITY_AREA ?
-            max_area_value :
-            max_peak_value;
-
-    cv::Mat1w intensity_image(scan.NUM_LAYERS, scan.NUM_SLOTS, (uint16_t) 0);
-
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-        for ( int e = 0; e < 2; ++e ) {
-
-          const auto &distance =
-              scan.slot[s].echo[l][e].dist;
-
-          if( distance < 600 ) {
-            continue;
-          }
-
-          if( distance < max_dist_value ) {
-
-            const int intensity =
-                intensity_channel == VLO_INTENSITY_AREA ?
-                    scan.slot[s].echo[l][e].area :
-                    scan.slot[s].echo[l][e].peak;
-
-            if( intensity > 0 && intensity < max_intensity_value ) {
-              intensity_image[l][s] = intensity;
-            }
-          }
-
-          break;
-        }
-      }
-    }
-
-    if ( auto_clip_max > auto_clip_min ) {
-      autoclip(intensity_image, cv::noArray(), auto_clip_min, auto_clip_max, -1, -1);
-    }
-
-    cv::compare(intensity_image,
-        get_threshold_value(intensity_image, cv::noArray(),
-            auto_threshold_type, auto_threshold_value),
-        intensity_mask,
-        cv::CMP_GE);
-  }
-
-
-  if( enable_doubled_echo ) {
-
-    doubled_echo_mask.create(scan.NUM_LAYERS, scan.NUM_SLOTS);
-    doubled_echo_mask.setTo(0);
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-        for( int e = 0; e < 2; ++e ) {
-
-          const auto &dist0 =
-              scan.slot[s].echo[l][e].dist;
-
-          if( dist0 < 600 ) {
-            continue;
-          }
-
-          if( dist0 > 0 && dist0 < max_dist_value ) {
-
-            const auto &dist1 =
-                scan.slot[s].echo[l][e + 1].dist;
-
-            if( dist1 > 0 && dist1 < max_dist_value ) {
-
-              static constexpr dist_type wall_distance = 30000;
-
-              if ( dist1 >= wall_distance ) {
-                doubled_echo_mask[l][s] =  dist0 > 0.45 * wall_distance ? 255 : 0;
-              }
-              else if( std::abs((double) dist1 / (double) dist0 - 2) < 0.04 ) {
-                doubled_echo_mask[l][s] = 255;
-              }
-            }
-
-          }
-        }
-      }
-    }
-  }
-
-  if ( !intensity_mask.empty() && enable_doubled_echo ) {
-    cv::bitwise_and(intensity_mask, doubled_echo_mask, *output_mask);
-  }
-  else if ( !intensity_mask.empty() ) {
-    *output_mask = std::move(intensity_mask);
-  }
-  else if ( enable_doubled_echo ) {
-    *output_mask = std::move(doubled_echo_mask);
-  }
-
-  return true;
-}
-
-static bool run_reflectors_detection(const c_vlo_scan & scan,
-    VLO_INTENSITY_CHANNEL intensity_channel,
-    bool enable_doubled_echo,
-    bool enable_auto_threshold,
-    THRESHOLD_TYPE auto_threshold_type,
-    double auto_threshold_value,
-    double auto_clip_min,
-    double auto_clip_max,
-    cv::Mat1b * output_mask)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-
-      return run_reflectors_detection_(scan.scan1, intensity_channel,
-          enable_doubled_echo,
-          enable_auto_threshold, auto_threshold_type, auto_threshold_value,
-          auto_clip_min, auto_clip_max,
-          output_mask);
-
-    case VLO_VERSION_3:
-      return run_reflectors_detection_(scan.scan3, intensity_channel,
-          enable_doubled_echo,
-          enable_auto_threshold, auto_threshold_type, auto_threshold_value,
-          auto_clip_min, auto_clip_max,
-          output_mask);
-
-    case VLO_VERSION_5:
-      return run_reflectors_detection_(scan.scan5, intensity_channel,
-          enable_doubled_echo,
-          enable_auto_threshold, auto_threshold_type, auto_threshold_value,
-          auto_clip_min, auto_clip_max,
-          output_mask);
-  }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
-  return false;
 }
 
 template<class ScanType>
@@ -401,7 +238,9 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, counts_threshold);
     SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_segment_size);
     SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_height);
-    SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, segmentation_type);
+
+    SERIALIZE_OPTION(section, save, processing_options_, saturation_level);
+    SERIALIZE_OPTION(section, save, processing_options_, enable_filter_segments);
 
     SERIALIZE_OPTION(section, save, processing_options_, enable_gather_lookup_table_statistics);
     SERIALIZE_OPTION(section, save, processing_options_, vlo_lookup_table_statistics_filename);
@@ -431,13 +270,16 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, save_walls);
     SERIALIZE_OPTION(section, save, output_options_, walls_writer_options);
 
+//    SERIALIZE_OPTION(section, save, output_options_, save_filtered_profiles);
+//    SERIALIZE_OPTION(section, save, output_options_, filtered_writer_options);
+
   }
 
   return true;
 }
 
 
-const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_controls()
+const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_controls()
 {
   static std::vector<c_image_processing_pipeline_ctrl> ctrls;
 
@@ -464,6 +306,9 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL_GROUP(ctrls, "Blom Detection2", "");
         PIPELINE_CTL(ctrls, processing_options_.enable_blom_detection2, "enable_bloom_detection2", "");
 
+        PIPELINE_CTL(ctrls, processing_options_.saturation_level, "saturation_level", "");
+        PIPELINE_CTL(ctrls, processing_options_.enable_filter_segments, "filter segments", "");
+
         PIPELINE_CTL_GROUP(ctrls, "Depth segmentation", "");
           PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_distance, "min_distance", "");
           PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.max_distance, "max_distance", "");
@@ -473,11 +318,9 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
           PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_slope, "min_slope", "");
           PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.max_slope, "max_slope", "");
           PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_height, "min_height", "");
-          PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.segmentation_type, "segmentation_type", "");
-
-          PIPELINE_CTL_END_GROUP(ctrls);
         PIPELINE_CTL_END_GROUP(ctrls);
 
+      PIPELINE_CTL_END_GROUP(ctrls);
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
@@ -512,6 +355,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_vlo_pipeline::get_contro
       PIPELINE_CTL(ctrls, output_options_.save_walls, "save_walls", "");
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.walls_writer_options, _this->output_options_.save_walls);
       PIPELINE_CTL_END_GROUP(ctrls);
+
 
     PIPELINE_CTL_END_GROUP(ctrls);
   }
@@ -783,6 +627,132 @@ bool c_vlo_pipeline::run_blom_detection2()
     return false;
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // Filter segments using intensity profiles
+
+  if ( processing_options_.enable_filter_segments ) {
+
+     cv::Mat3f intensities;
+
+    c_vlo_file::get_image(current_scan_,
+        c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensities,
+            CV_32F);
+
+    struct c_segment_point
+    {
+      int y;
+      float intens;
+    };
+
+    struct c_segment
+    {
+      std::vector<c_segment_point> points;
+      bool saturated = false;
+    };
+
+    std::vector<c_segment> wall_segments;
+    std::vector<c_segment> chunks;
+
+    wall_segments.reserve(32);
+    chunks.reserve(32);
+
+    for( int x = 0; x < segments.cols; ++x ) {
+
+      ///////
+
+      wall_segments.clear();
+
+      for( int y = 0; y < segments.rows; ++y ) {
+
+        for( int e = 0; e < 3; ++e ) {
+
+          const uint16_t seg_id =
+              segments[y][x][e];
+
+          if( seg_id ) {
+
+            if( wall_segments.size() < seg_id ) {
+              wall_segments.resize(seg_id);
+            }
+
+            c_segment & s =
+                wall_segments[seg_id - 1];
+
+            const float & intens =
+                intensities[y][x][e];
+
+            if( s.points.empty() || s.points.back().y != y ) {
+              s.points.emplace_back(c_segment_point { y, intens });
+            }
+            else if( intens > s.points.back().intens ) {
+              s.points.back().intens = intens;
+            }
+          }
+        }
+      }
+
+      ///////
+
+      for( uint16_t seg_id = 1; seg_id <= wall_segments.size(); ++seg_id ) {
+
+        c_segment & seg =
+            wall_segments[seg_id - 1];
+
+          if ( seg.points.empty() ) {
+            continue;
+          }
+
+          chunks.clear();
+
+          for( int p = 0; p < seg.points.size(); ++p ) {
+
+            // collect saturated chunk if exists
+            if ( seg.points[p].intens >= processing_options_.saturation_level ) {
+
+              chunks.emplace_back();
+              c_segment & chunk = chunks.back();
+
+              chunk.saturated = true;
+
+              while (p < seg.points.size() && seg.points[p].intens >= processing_options_.saturation_level) {
+
+                const c_segment_point & sp =
+                    seg.points[p];
+
+                chunk.points.emplace_back(sp);
+
+                for( int e = 0; e < 3; ++e ) {
+                  if ( segments[sp.y][x][e] == seg_id) {
+                    segments[sp.y][x][e] = 0;
+                  }
+                }
+
+                ++p;
+              }
+            }
+
+            // collect unsaturated chunk if exists
+            if( p < seg.points.size() ) {
+
+              chunks.emplace_back();
+              c_segment & chunk = chunks.back();
+
+              while (p < seg.points.size() && seg.points[p].intens < processing_options_.saturation_level) {
+                chunk.points.emplace_back(seg.points[p++]);
+              }
+            }
+          }
+
+
+      }
+
+    }
+  }
+
+  // END OF Filter segments using intensity profiles
+  ///////////////////////////////////////////////////////////////////////////
+
+
   if( output_options_.save_bloom2_segments ) {
 
     if( !add_output_writer(bloom2_segments_writer_, output_options_.segments_writer_options, "segments", ".ser") ) {
@@ -799,6 +769,9 @@ bool c_vlo_pipeline::run_blom_detection2()
     }
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // Save intensity profiles for individual segments
+
   if ( output_options_.save_bloom2_intensity_profiles ) {
 
     cv::Mat3f intensity_image;
@@ -808,50 +781,79 @@ bool c_vlo_pipeline::run_blom_detection2()
             CV_32F);
 
 
-    cv::Mat1f intensity(clouds[0].size(), 0.f);
+    cv::Mat1f intensity(clouds[0].size());
 
-    const int segment_id = 1;
+    for( int segment_id = 1;; ++segment_id ) {
 
-    for( int y = 0; y < segments.rows; ++y ) {
-      for( int x = 0; x < segments.cols; ++x ) {
-        for( int e = 0; e < 3; ++e ) {
+      intensity.setTo(0);
 
-          if( segments[y][x][e] == segment_id ) {
+      int num_pixels_labeled = 0;
 
-            intensity[y][x] = intensity_image[y][x][e];
+      for( int y = 0; y < segments.rows; ++y ) {
+        for( int x = 0; x < segments.cols; ++x ) {
 
+          int ne = 0;
+
+          for( int e = 0; e < 3; ++e ) {
+
+            if( segments[y][x][e] == segment_id ) {
+
+              intensity[y][x] += intensity_image[y][x][e];
+              ++ne;
+              ++num_pixels_labeled;
+
+            }
+          }
+
+          if( ne > 1 ) {
+            intensity[y][x] /= ne;
           }
         }
-
       }
-    }
 
-    if( !add_output_writer(bloom2_intensity_writer_, output_options_.intensity_writer_options, "intensity", ".ser") ) {
-      CF_ERROR("bloom2_intensity_writer_.open(%s) fails",
-          bloom2_intensity_writer_.filename().c_str());
-      return false;
-    }
+      if( !num_pixels_labeled ) {
+        break;
+      }
 
-    if ( !bloom2_intensity_writer_.write(intensity) ) {
-      CF_ERROR("bloom2_intensity_writer_.write(%s) fails",
-          bloom2_segments_writer_.filename().c_str());
-      return false;
+      cv::putText(intensity, ssprintf("F %d L %d", input_sequence_->current_pos(), segment_id),
+          cv::Point(16, 32),
+          cv::FONT_HERSHEY_COMPLEX,
+          0.75,
+          cv::Scalar::all(140),
+          1, cv::LINE_AA,
+          false);
+
+      if( !add_output_writer(bloom2_intensity_writer_, output_options_.intensity_writer_options, "intensity", ".ser") ) {
+        CF_ERROR("bloom2_intensity_writer_.open(%s) fails",
+            bloom2_intensity_writer_.filename().c_str());
+        return false;
+      }
+
+      if( !bloom2_intensity_writer_.write(intensity) ) {
+        CF_ERROR("bloom2_intensity_writer_.write(%s) fails",
+            bloom2_segments_writer_.filename().c_str());
+        return false;
+      }
     }
   }
 
+  // END OF Save intensity profiles for individual segments
+  ///////////////////////////////////////////////////////////////////////////
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Label light walls
+
   if ( output_options_.save_walls ) {
 
-    CF_DEBUG("F %d", input_sequence_->current_pos() - 1);
-
     static const auto label_wall =
-        [](const cv::Mat3f & intensity_image, const cv::Mat3f & depth_image, double mean_depth,
+        [](const cv::Mat3f & intensity_image, const cv::Mat3f & depth_image, const cv::Mat3w & segments_image,
+            double mean_depth,
             cv::Mat1f & wall_image, cv::Mat3b & mask)
             {
               for (int y = 0; y < intensity_image.rows; ++y ) {
                 for (int x = 0; x < intensity_image.cols; ++x ) {
                   for (int e = 0; e < 3; ++e ) {
-                    if ( std::abs(depth_image[y][x][e] - mean_depth) < 100 ) {
-
+                    if ( segments_image[y][x][e] && std::abs(depth_image[y][x][e] - mean_depth) < 100 ) {
                       wall_image[y][x] = intensity_image[y][x][e];
                       mask[y][x][e] = 255;
                     }
@@ -910,11 +912,18 @@ bool c_vlo_pipeline::run_blom_detection2()
 
               wall_image.setTo(cv::Scalar::all(0));
 
-              label_wall(intensity_image, depth_image,
+              label_wall(intensity_image, depth_image, segments,
                   mean_segment_depth,
                   wall_image,
                   mask);
 
+              cv::putText(wall_image, ssprintf("F %d L %d", input_sequence_->current_pos(), segment_id),
+                  cv::Point(16, 32),
+                  cv::FONT_HERSHEY_COMPLEX,
+                  0.75,
+                  cv::Scalar::all(140),
+                  1, cv::LINE_AA,
+                  false);
 
               if( !add_output_writer(bloom2_walls_writer_, output_options_.walls_writer_options, "walls", ".ser") ) {
                 CF_ERROR("bloom2_walls_writer_.open(%s) fails",
@@ -938,7 +947,12 @@ bool c_vlo_pipeline::run_blom_detection2()
 
   }
 
+  // END OF Label light walls
+  ///////////////////////////////////////////////////////////////////////////
 
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Save BLOM2 Output Display
 
   if( output_options_.save_bloom2_display ) {
     // segments & counts
@@ -987,6 +1001,9 @@ bool c_vlo_pipeline::run_blom_detection2()
       return false;
     }
   }
+
+  // END OF Save BLOM2 Output Display
+  ///////////////////////////////////////////////////////////////////////////
 
   return true;
 }

@@ -51,6 +51,8 @@ struct c_vlo_pipeline_processing_options
    bool enable_blom_detection2 = false;
    c_vlo_depth_segmentation_options depth_segmentation_;
 
+   double saturation_level = 110;
+   bool enable_filter_segments = false;
 };
 
 struct c_vlo_pipeline_output_options :
@@ -76,6 +78,10 @@ struct c_vlo_pipeline_output_options :
 
   bool save_walls = false;
   c_output_frame_writer_options walls_writer_options;
+
+  //  bool save_filtered_profiles = false;
+  //  c_output_frame_writer_options filtered_writer_options;
+
 };
 
 class c_vlo_pipeline :

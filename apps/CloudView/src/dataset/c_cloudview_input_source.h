@@ -22,15 +22,8 @@ public:
 
   virtual ~c_cloudview_input_source() = default;
 
-  const std::string & filename() const
-  {
-    return filename_;
-  }
-
-  const char * cfilename() const
-  {
-    return filename_.c_str();
-  }
+  const std::string & filename() const;
+  const char * cfilename() const;
 
   virtual bool open(const std::string & filename) = 0;
   virtual void close() = 0;
@@ -40,12 +33,7 @@ public:
   virtual ssize_t curpos() = 0;
   virtual c_cloudview_data_frame::sptr read() = 0;
 
-
-protected:
-  c_cloudview_input_source(const std::string & filename = "") :
-      filename_(filename)
-  {
-  }
+  static sptr load(const std::string & filename);
 
 protected:
   std::string filename_;

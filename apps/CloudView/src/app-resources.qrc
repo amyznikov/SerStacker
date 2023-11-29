@@ -3,6 +3,8 @@
 	<file>icons/app-icon.png</file>
 	
 	<file>icons/add-dataset.png</file>
+	<file>icons/eye.png</file>
+	
 	
 </qresource>
 </RCC>

@@ -60,6 +60,7 @@ Q_SIGNALS:
   void currentViewChanged();
 
 protected:
+  void setupMainToolbar();
   void closeCurrentSource();
   void startDisplay();
   void loadNextFrame();
@@ -86,7 +87,14 @@ protected:
   QCloudViewer * cloudView_ = nullptr;
   QTextFileViewer * textView_ = nullptr;
   QPlaySequenceControl * playControls_ = nullptr;
-  QComboBox * viewSelector_ = nullptr;
+
+  QToolButton * dataSelectionToolbutton_ctl = nullptr;
+
+  std::vector<c_enum_member> availableDataIDs_;
+  int selectedDataId_ = 1;
+
+
+  //QComboBox * viewSelector_ = nullptr;
 
 };
 

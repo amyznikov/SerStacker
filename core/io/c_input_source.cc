@@ -302,9 +302,9 @@ c_ser_input_source::c_ser_input_source(const std::string & filename) :
 {
 }
 
-c_ser_input_source::ptr c_ser_input_source::create(const std::string & filename)
+c_ser_input_source::sptr c_ser_input_source::create(const std::string & filename)
 {
-  this_class::ptr obj(new this_class(filename));
+  sptr obj(new this_class(filename));
   if ( obj->ser_.open(filename) ) {
     obj->size_ = obj->ser_.num_frames();
     obj->ser_.close();
@@ -458,14 +458,14 @@ bool c_fits_input_source::is_open() const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_movie_input_source::c_movie_input_source(const std::string & filename)
-  : base(c_input_source::MOVIE, filename)
+c_movie_input_source::c_movie_input_source(const std::string & filename) :
+    base(c_input_source::MOVIE, filename)
 {
 }
 
-c_movie_input_source::ptr c_movie_input_source::create(const std::string & filename)
+c_movie_input_source::sptr c_movie_input_source::create(const std::string & filename)
 {
-  c_movie_input_source::ptr obj(new c_movie_input_source(filename));
+  sptr obj(new this_class(filename));
   if ( obj->ffmpeg_.open(filename) ) {
     obj->size_ = obj->ffmpeg_.num_frames();
     obj->ffmpeg_.close();
@@ -541,15 +541,15 @@ bool c_movie_input_source::is_open() const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_regular_image_input_source::c_regular_image_input_source(const std::string & filename)
-  : base(c_input_source::REGULAR_IMAGE, filename)
+c_regular_image_input_source::c_regular_image_input_source(const std::string & filename) :
+    base(c_input_source::REGULAR_IMAGE, filename)
 {
 }
 
-c_regular_image_input_source::ptr c_regular_image_input_source::create(const std::string & filename)
+c_regular_image_input_source::sptr c_regular_image_input_source::create(const std::string & filename)
 {
   if ( file_exists(filename) && !is_directory(filename) ) {
-    c_regular_image_input_source::ptr obj(new c_regular_image_input_source(filename));
+    sptr obj(new this_class(filename));
     obj->size_ = 1;
     return obj;
   }
@@ -753,9 +753,9 @@ c_vlo_input_source::c_vlo_input_source(const std::string & filename) :
 {
 }
 
-c_vlo_input_source::ptr c_vlo_input_source::create(const std::string & filename)
+c_vlo_input_source::sptr c_vlo_input_source::create(const std::string & filename)
 {
-  this_class::ptr obj(new this_class(filename));
+  this_class::sptr obj(new this_class(filename));
   if( obj->vlo_.open(filename) ) {
     obj->size_ = obj->vlo_.num_frames();
     obj->vlo_.close();

@@ -161,6 +161,10 @@ void QGraphicsLineShape::alignVertically()
 
   updateGeometry();
   update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 void QGraphicsLineShape::alignHorizontally()
@@ -180,6 +184,10 @@ void QGraphicsLineShape::alignHorizontally()
 
   updateGeometry();
   update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 

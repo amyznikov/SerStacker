@@ -652,6 +652,8 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
     return false;
   }
 
+  errno = 0;
+
   const int64_t savedpos =
       lseek64(fd, 0, SEEK_CUR);
 

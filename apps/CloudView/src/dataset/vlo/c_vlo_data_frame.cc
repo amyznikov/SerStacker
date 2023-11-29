@@ -6,13 +6,9 @@
  */
 
 #include "c_vlo_data_frame.h"
+#include <core/ssprintf.h>
+#include <core/debug.h>
 
 namespace cloudview {
-
-c_vlo_data_frame::c_vlo_data_frame()
-{
-  // TODO Auto-generated constructor stub
-
-}
 
 } /* namespace cloudview */

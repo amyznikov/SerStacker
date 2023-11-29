@@ -7,6 +7,10 @@
 
 #include "QCloudSequenceView.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/createAction.h>
+#include <gui/widgets/style.h>
+
+#define ICON_eye  ":/cloudview/icons/eye"
 
 
 static void init_resources()
@@ -68,15 +72,13 @@ QCloudSequenceView::QCloudSequenceView(QWidget * parent,
 
   mainLayout_->addWidget(playControls_ = new QPlaySequenceControl(this), 0, Qt::AlignBottom);
 
-//  currentSequence_ = c_input_sequence::create();
-//  currentSequence_->set_auto_apply_color_matrix(true);
-
   connect(playControls_, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
 
   connect(stackWidget_, &QStackedWidget::currentChanged,
       this, &ThisClass::onStackedWidgetCurrentIndexChanged);
 
+  setupMainToolbar();
   setCurrentView(imageView_);
   setCurrentToolbar(imageViewToolbar_);
 }
@@ -149,6 +151,40 @@ void QCloudSequenceView::setCurrentView(QWidget * w)
 QWidget * QCloudSequenceView::currentView() const
 {
   return stackWidget_->currentWidget();
+}
+
+void QCloudSequenceView::setupMainToolbar()
+{
+  mainToolbar_->addWidget(dataSelectionToolbutton_ctl =
+      createToolButton(getIcon(ICON_eye), "",
+          "Select View",
+          [this](QToolButton * tb) {
+
+            if ( !availableDataIDs_.empty() ) {
+
+              QMenu menu;
+
+              for ( const c_enum_member & member : availableDataIDs_ ) {
+
+                int dataID =
+                    member.value;
+
+                menu.addAction(createCheckableAction(QIcon(),
+                        member.name,
+                        member.comment,
+                        dataID == selectedDataId_,
+                        [this, dataID]() {
+
+                          //setCurrentView(w);
+                          selectedDataId_ = dataID;
+
+                        }));
+
+              }
+            }
+
+          }));
+
 }
 
 void QCloudSequenceView::onStackedWidgetCurrentIndexChanged()
@@ -240,14 +276,12 @@ void QCloudSequenceView::onSeek(int pos)
 
 void QCloudSequenceView::startDisplay()
 {
-  QWaitCursor wait(this);
-
   imageView_->setImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
 
   playControls_->setState(QPlaySequenceControl::Stopped);
   playControls_->hide();
 
-  if ( !currentSource_->is_open() /*&& !currentSource_->open() */ ) {
+  if ( !isOpen(currentSource_) ) {
     CF_ERROR("currentSource_ is not open");
     return;
   }
@@ -273,14 +307,14 @@ void QCloudSequenceView::startDisplay()
 
 void QCloudSequenceView::loadNextFrame()
 {
-  if ( isOpen(currentSource_) ) {
+  if( isOpen(currentSource_) ) {
 
     QWaitCursor wait(this, currentSource_->size() == 1);
 
     c_cloudview_data_frame::sptr frame =
         currentSource_->read();
 
-    if ( !frame ) {
+    if( !frame ) {
       CF_ERROR("currentSource_->read() fails");
       return;
     }
@@ -289,15 +323,19 @@ void QCloudSequenceView::loadNextFrame()
       CF_ERROR("currentProcessor_->process(dataframe) fails");
     }
 
+
     const c_cloudview_data_item * displayItem =
         frame->item("");
 
-    if ( !displayItem ) {
+    CF_DEBUG("displayItem=%p", displayItem);
+
+    if( !displayItem ) {
     }
     else {
 
       switch (displayItem->type()) {
         case c_cloudview_data_item::image:
+          //frame->get_image(name, image, mask);
           break;
         case c_cloudview_data_item::structured_cloud3d:
           break;
@@ -321,12 +359,22 @@ void QCloudSequenceView::closeCurrentSource()
 
 bool QCloudSequenceView::openFile(const QString & abspath)
 {
-//  closeCurrentSource();
-//
-//  c_cloudview_input_source::sptr source =
-//      c_cloudview_input_source::load(abspath.toStdString());
-//
-  return false;
+  closeCurrentSource();
+
+  if ( !abspath.isEmpty() ) {
+
+    const std::string filename =
+        abspath.toStdString();
+
+    if( !(currentSource_ = c_cloudview_input_source::load(filename)) ) {
+      CF_ERROR("c_cloudview_input_source::load('%s') fails", filename.c_str());
+      return false;
+    }
+
+    startDisplay();
+  }
+
+  return true;
 }
 
 

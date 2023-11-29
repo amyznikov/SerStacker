@@ -13,7 +13,6 @@
 
 struct c_vlo_depth_segmentation_options
 {
-
   double min_distance = 100; // [m]
   double max_distance = 300; // [m]
   double vlo_walk_error = 1; // [m]
@@ -22,12 +21,6 @@ struct c_vlo_depth_segmentation_options
   double min_height = 0.4; // [m]
   int counts_threshold= 500;
   int min_segment_size = 15;
-
-  enum segmentatin_types {
-    segmentation_local,
-    segmentation_global,
-  } segmentation_type = segmentation_local;
-
 };
 
 

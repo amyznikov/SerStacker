@@ -364,15 +364,19 @@ void c_output_frame_writer::close()
 bool load_settings(c_config_setting settings, c_output_frame_writer_options * opts)
 {
   LOAD_OPTION(settings, *opts, output_filename);
+  LOAD_OPTION(settings, *opts, ffmpeg_opts);
   LOAD_IMAGE_PROCESSOR(settings, *opts, output_image_processor);
   LOAD_OPTION(settings, *opts, output_pixel_depth);
+  LOAD_OPTION(settings, *opts, save_frame_mapping);
   return true;
 }
 
 bool save_settings(c_config_setting settings, const c_output_frame_writer_options & opts)
 {
   SAVE_OPTION(settings, opts, output_filename);
+  SAVE_OPTION(settings, opts, ffmpeg_opts);
   SAVE_IMAGE_PROCESSOR(settings, opts, output_image_processor);
   SAVE_OPTION(settings, opts, output_pixel_depth);
+  SAVE_OPTION(settings, opts, save_frame_mapping);
   return true;
 }

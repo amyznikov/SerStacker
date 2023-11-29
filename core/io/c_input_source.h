@@ -152,11 +152,11 @@ class c_ser_input_source :
 public:
   typedef c_ser_input_source this_class;
   typedef c_input_source base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_ser_input_source(const std::string & filename);
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
   static const std::vector<std::string> & suffixes();
 
@@ -220,11 +220,11 @@ class c_movie_input_source :
 public:
   typedef c_movie_input_source this_class;
   typedef c_input_source base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_movie_input_source(const std::string & filename);
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
   static const std::vector<std::string> & suffixes();
 
@@ -253,11 +253,11 @@ class c_regular_image_input_source :
 public:
   typedef c_regular_image_input_source this_class;
   typedef c_input_source base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_regular_image_input_source(const std::string & filename);
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
   static const std::vector<std::string> & suffixes();
 
@@ -322,11 +322,11 @@ class c_vlo_input_source :
 public:
   typedef c_vlo_input_source this_class;
   typedef c_input_source base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_vlo_input_source(const std::string & filename);
 
-  static ptr create(const std::string & filename);
+  static sptr create(const std::string & filename);
 
   static const std::vector<std::string> & suffixes();
 

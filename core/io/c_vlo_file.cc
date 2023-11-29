@@ -540,8 +540,10 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
 
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
 
-      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec3b::all(0));
+      typedef decltype(ScanType::Echo::peak) value_type;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec<value_type, 3>::all(0));
 
       for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
         for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
@@ -702,7 +704,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
 
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
 
-      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+      cv::Mat3w image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3b::all(0));
 
 

@@ -217,7 +217,7 @@ template<class ScanType, class Fn>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> compute_points3d(const ScanType & scan, const Fn & fn)
+bool> get_points3d(const ScanType & scan, const Fn & fn)
 {
   const double firstVertAngle =
       0.5 * 0.05 * scan.NUM_LAYERS;
@@ -270,7 +270,7 @@ bool> compute_points3d(const ScanType & scan, const Fn & fn)
 }
 
 template<class Fn>
-bool compute_points3d(const c_vlo_scan6_slm & scan, const Fn & fn)
+bool get_points3d(const c_vlo_scan6_slm & scan, const Fn & fn)
 {
   typedef c_vlo_scan6_slm ScanType;
   typedef decltype(ScanType::Echo::dist) distance_type;
@@ -333,7 +333,7 @@ template<class ScanType, class Fn>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> compute_points2d(const ScanType & scan, const cv::Mat3b & emask, const Fn & fn)
+bool> get_points2d(const ScanType & scan, const cv::Mat3b & emask, const Fn & fn)
 {
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
     for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
@@ -349,7 +349,7 @@ bool> compute_points2d(const ScanType & scan, const cv::Mat3b & emask, const Fn 
 }
 
 template<class Fn>
-bool compute_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const Fn & fn)
+bool get_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const Fn & fn)
 {
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
     for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
@@ -413,7 +413,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<distance_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<distance_type, 3>::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = echo.dist;
           });
@@ -426,7 +426,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points3d(scan,
+      get_points3d(scan,
           [&](int s, int l, int e, double x, double y, double z) {
             image[l][s][e] = (float)( 100 * x);
           });
@@ -444,7 +444,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = echo.area;
           });
@@ -460,7 +460,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = echo.peak;
           });
@@ -475,7 +475,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = echo.width;
           });
@@ -488,7 +488,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = (double)echo.area * ((double) echo.dist);
           });
@@ -501,7 +501,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = (double)echo.peak * ((double) echo.dist);
           });
@@ -515,7 +515,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = (double)echo.area * sqrt(0.01 * echo.dist);
           });
@@ -530,7 +530,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = (double)echo.peak * sqrt(0.01 * echo.dist);
           });
@@ -635,7 +635,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = echo.area;
           });
@@ -648,7 +648,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat_<cv::Vec<distance_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<distance_type, 3>::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = echo.dist;
           });
@@ -661,7 +661,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points3d(scan,
+      get_points3d(scan,
           [&](int s, int l, int e, double x, double y, double z) {
             image[l][s][e] = (float)(100 * x);
           });
@@ -678,7 +678,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = ((double) echo.area) * ((double) echo.dist);
           });
@@ -694,7 +694,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
 
-      compute_points2d(scan, emask,
+      get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
             image[l][s][e] = ((double) echo.area) * sqrt(0.01 * echo.dist);
           });
@@ -869,7 +869,7 @@ bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_cha
   output_points.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
   output_colors.reserve(scan.NUM_SLOTS * scan.NUM_LAYERS);
 
-  compute_points3d(scan,
+  get_points3d(scan,
       [&](int s, int l, int e, double x, double y, double z) {
 
         const float gray_level =
@@ -894,7 +894,7 @@ bool get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
         cv::Vec3f::all(0));
   }
 
-  compute_points3d(scan,
+  get_points3d(scan,
       [&](int s, int l, int e, double x, double y, double z) {
         clouds[e][l][s][0] = (float) x;
         clouds[e][l][s][1] = (float) y;

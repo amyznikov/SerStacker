@@ -326,7 +326,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
       // PIPELINE_CTL_BROWSE_FOR_DIRECTORY(ctrls, output_options_.output_directory, "output_directory", "");
 
-      PIPELINE_CTL(ctrls, output_options_.save_cloud3d_ply, "save cloud3d ply", "");
+      PIPELINE_CTL(ctrls, output_options_.save_cloud3d_ply, "save cloud3d ply", "Set checked if you want to save 3D clouds in PLY format");
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_filename, "cloud3d_filename", "", _this->output_options_.save_cloud3d_ply);
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_intensity_channel, "cloud3d_intensity_channel", "", _this->output_options_.save_cloud3d_ply);
 

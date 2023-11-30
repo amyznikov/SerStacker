@@ -71,8 +71,12 @@ bool c_file_handle::open(const std::string & filename, int openflags)
 
 #else
 
+#if _WIN32 || _WIN64
+  const int mode = 0;
+#else
   const int mode =
       S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH;
+#endif
 
   if( (fd_ = ::open(filename.c_str(), openflags, mode)) == INVALID_FILE_DESCRIPTOR ) {
     CF_ERROR("open('%s') fails", filename.c_str());

@@ -98,6 +98,7 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
 
 
 #if HAVE_VLO_FILE
+
   vloDataChannel_ctl_ =
       add_enum_combobox<c_vlo_file::DATA_CHANNEL>("VLO DATA CHANNEL:",
           "",
@@ -109,6 +110,16 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
               }
             }
           });
+
+  applyGhostFilter_ctl =
+      add_checkbox("Apply Ghost Filter",
+          "Set TRUE to apply Ghost Filter based on doubled echos",
+          [this](bool checked) {
+            if ( sequenceView_ && sequenceView_->applyGhostFilter() != checked) {
+              sequenceView_->setApplyGhostFilter(checked);
+            }
+          });
+
 #endif
 
   updateControls();
@@ -151,6 +162,7 @@ void QGeneralAppSettingsWidget::setInputSequenceView(QInputSequenceView * sequen
         [this]() {
           c_update_controls_lock lock(this);
           vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
+          applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
         });
 #endif
 
@@ -188,6 +200,9 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
 #if HAVE_VLO_FILE
     vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
     vloDataChannel_ctl_->setEnabled(true);
+
+    applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
+    applyGhostFilter_ctl->setEnabled(true);
 #endif
 
   }

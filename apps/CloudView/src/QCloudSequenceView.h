@@ -90,8 +90,8 @@ protected:
 
   QToolButton * dataSelectionToolbutton_ctl = nullptr;
 
-  std::vector<c_enum_member> availableDataIDs_;
-  int selectedDataId_ = 1;
+  std::vector<c_cloudview_data_item> dataItems_;
+  int selectedDataId_ = 0;
 
 
   //QComboBox * viewSelector_ = nullptr;

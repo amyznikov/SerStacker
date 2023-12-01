@@ -247,6 +247,8 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_, vlo_lookup_table_statistics_filename);
 
     SERIALIZE_OPTION(section, save, processing_options_, vlo_intensity_channel);
+
+    SERIALIZE_OPTION(section, save, processing_options_, enable_double_echo_statistics);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -323,6 +325,13 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
         PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_END_GROUP(ctrls);
+
+
+      PIPELINE_CTL_GROUP(ctrls, "Double Echo Statistics", "");
+        PIPELINE_CTL(ctrls, processing_options_.enable_double_echo_statistics, "enable_double_echo_statistics", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
@@ -476,6 +485,12 @@ void c_vlo_pipeline::cleanup_pipeline()
     }
   }
 
+
+  if ( doubled_echo_statistics_fp ) {
+    fclose(doubled_echo_statistics_fp);
+    doubled_echo_statistics_fp = nullptr;
+  }
+
 }
 
 bool c_vlo_pipeline::run_pipeline()
@@ -588,6 +603,11 @@ bool c_vlo_pipeline::process_current_frame()
 
   if ( !run_blom_detection2() ) {
     CF_ERROR("run_bloom_detection2() fails");
+    return false;
+  }
+
+  if ( !update_double_echo_statistics() ) {
+    CF_ERROR("update_double_echo_statistics() fails");
     return false;
   }
 
@@ -1037,5 +1057,112 @@ bool c_vlo_pipeline::save_cloud3d_ply()
   }
 
   return true;
+}
+
+
+bool c_vlo_pipeline::update_double_echo_statistics()
+{
+
+  if ( !processing_options_.enable_double_echo_statistics ) {
+    return  true; // silently do nothing
+  }
+
+  cv::Mat3f double_echo_distances;
+  cv::Mat3f double_echo_peaks;
+  cv::Mat3f double_echo_area;
+
+  c_vlo_file::get_image(current_scan_, c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES).
+      convertTo(double_echo_distances, double_echo_distances.depth());
+
+  c_vlo_file::get_image(current_scan_, c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS).
+      convertTo(double_echo_peaks, double_echo_peaks.depth());
+
+  c_vlo_file::get_image(current_scan_, c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_AREAS).
+      convertTo(double_echo_area, double_echo_area.depth());
+
+  if( !doubled_echo_statistics_fp ) {
+
+    const std::string filename =
+        generate_output_filename("",
+            "doubled_echo_stats",
+            ".txt");
+
+    if( !(doubled_echo_statistics_fp = fopen(filename.c_str(), "w")) ) {
+      CF_ERROR("Can not create file '%s' : %s", filename.c_str(), strerror(errno));
+      return false;
+    }
+
+
+    fprintf(doubled_echo_statistics_fp,
+        "FRM\tE1\tE2\tD1\tD2\tPEAK1\tPEAK2\tAREA1\tAREA2\tDR\tDD\n");
+
+  }
+
+  static const auto print_echo_stats =
+      [](FILE * fp, const c_input_sequence::sptr & input_sequence,
+          int e0, int e1, double d0, double d1, double p0, double p1, double a0, double a1) {
+
+        fprintf(fp, "%6d" // frame
+          "\t%d\t%d"// echos
+          "\t%g\t%g"// distances
+          "\t%g\t%g"// peaks
+          "\t%g\t%g"// areas
+          "\t%g\t%g"// distance ratio and difference
+          "\n",
+          input_sequence->current_pos(),
+          e0, e1,
+          d0, d1,
+          p0, p1,
+          a0, a1,
+          d1/d0,
+          d1-2*d0);
+
+    };
+
+  for ( int y = 0; y < double_echo_distances.rows; ++y  ) {
+    for ( int x = 0; x < double_echo_distances.cols; ++x  ) {
+
+      const cv::Vec3f & D =  double_echo_distances[y][x];
+      const cv::Vec3f & P =  double_echo_peaks[y][x];
+      const cv::Vec3f & A =  double_echo_area[y][x];
+
+      constexpr double Dmin = 2000;
+
+      //  FIR
+      //      constexpr double absolute_threshold = 50;
+      //      constexpr double absolute_offset = 40;
+      // constexpr double area_threshold = 0.7;
+
+      // makrolon
+      constexpr double absolute_threshold = 80;
+      constexpr double absolute_offset = -10;
+      constexpr double area_threshold = 0.8;
+
+      if( D[0] > Dmin && D[1] && std::abs(D[1] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
+
+        if ( A[1] < A[0] * area_threshold ) {
+          print_echo_stats(doubled_echo_statistics_fp, input_sequence_,
+              0, 1, D[0], D[1], P[0], P[1], A[0], A[1]);
+        }
+      }
+      if( D[0] > Dmin && D[2] && std::abs(D[2] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
+
+        if ( A[2] < A[0] * area_threshold ) {
+          print_echo_stats(doubled_echo_statistics_fp, input_sequence_,
+              0, 2, D[0], D[2], P[0], P[2], A[0], A[2]);
+        }
+      }
+      if( D[1] > Dmin && D[2] && std::abs(D[2] - 2.0 * D[1] + absolute_offset) < absolute_threshold ) {
+
+        if ( A[2] < A[1] * area_threshold ) {
+          print_echo_stats(doubled_echo_statistics_fp, input_sequence_,
+              1, 2, D[1], D[2], P[1], P[2], A[1], A[2]);
+        }
+      }
+    }
+  }
+
+  return true;
+
 }
 

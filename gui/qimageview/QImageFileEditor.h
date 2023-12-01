@@ -44,8 +44,13 @@ public:
   double badPixelsVariationThreshold() const;
 
 #if HAVE_VLO_FILE
+
   void setVloDataChannel(c_vlo_file::DATA_CHANNEL channel);
   c_vlo_file::DATA_CHANNEL vloDataChannel() const;
+
+  void setApplyGhostFilter(bool v);
+  bool applyGhostFilter() const;
+
 #endif
 
 Q_SIGNALS:
@@ -76,6 +81,9 @@ protected:
 #if HAVE_VLO_FILE
   c_vlo_file::DATA_CHANNEL vlo_data_channel_ =
       c_vlo_file::DATA_CHANNEL_AMBIENT;
+
+  bool apply_ghost_filter_ = false;
+
 #endif
 
 };

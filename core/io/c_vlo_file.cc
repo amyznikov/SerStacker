@@ -44,8 +44,12 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST, "PEAK_MUL_DIST", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST, "AREA_MUL_SQRT_DIST", "" },
       { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST, "PEAK_MUL_SQRT_DIST", "" },
-      { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS, "DOUBLED_ECHO_PEAKS", "" },
+      { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS, "DOUBLED_ECHO_PEAKS", "Peak values for double echos" },
+      { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_AREAS, "DOUBLED_ECHO_AREAS", "Area values for double echos"},
+      { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES, "DOUBLED_ECHO_DISTANCES", "Distance values for double echos"},
       { c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK, "DIST_TO_MAX_PEAK", "" },
+      { c_vlo_file::DATA_CHANNEL_GHOSTS_MASK, "GHOSTS_MASK", "" },
+
       { c_vlo_file::DATA_CHANNEL_AMBIENT },
   };
 
@@ -363,6 +367,80 @@ bool get_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const F
   return true;
 }
 
+
+template<class ScanType, class Fn>
+std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
+    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
+bool> get_echos(const ScanType & scan, const Fn & fn)
+{
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+      fn(s, l, scan.slot[s].echo[l]);
+    }
+  }
+
+  return true;
+}
+
+template<class Fn>
+bool get_echos(const c_vlo_scan6_slm & scan, const Fn & fn)
+{
+  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+    for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
+      fn(s, scan.NUM_LAYERS - l - 1, scan.echo[s][l]);
+    }
+  }
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+template<class EchoType, class Fn>
+void get_doubled_echos(const EchoType echos[3], const Fn & fn)
+{
+  const auto &D0 = echos[0].dist;
+  const auto &D1 = echos[1].dist;
+  const auto &D2 = echos[2].dist;
+
+  const auto &A0 = echos[0].area;
+  const auto &A1 = echos[1].area;
+  const auto &A2 = echos[2].area;
+
+  static constexpr double Dmin = 600;
+
+  // FIR
+  constexpr double absolute_threshold = 80;
+  constexpr double absolute_offset = 40;
+  constexpr double area_threshold = 0.7;
+
+//  // makrolon
+//  constexpr double absolute_threshold = 80;
+//  constexpr double absolute_offset = -10;
+//  constexpr double area_threshold = 0.8;
+
+
+  if( D0 > Dmin && D1 && std::abs(D1 - 2.0 * D0 + absolute_offset) < absolute_threshold ) {
+     if ( A1 < A0 * area_threshold ) {
+      fn(0, 1);
+    }
+  }
+  if( D0 > Dmin && D2 && std::abs(D2 - 2.0 * D0 + absolute_offset) < absolute_threshold ) {
+    if ( A2 < A0 * area_threshold ) {
+      fn(0, 2);
+    }
+  }
+  if( D1 > Dmin && D2 && std::abs(D2 - 2.0 * D1 + absolute_offset) < absolute_threshold ) {
+    if ( A2 < A1 * area_threshold ) {
+      fn(1, 2);
+    }
+  }
+
+
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<class ScanType>
@@ -538,34 +616,82 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
+
+
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
 
+      typedef typename ScanType::Echo echo_type;
       typedef decltype(ScanType::Echo::peak) value_type;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
 
-          const auto &dist0 = scan.slot[s].echo[l][0].dist;
-          const auto &dist1 = scan.slot[s].echo[l][1].dist;
-          const auto &dist2 = scan.slot[s].echo[l][2].dist;
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e0] = echos[e0].peak;
+                  image[l][s][e1] = echos[e1].peak;
+                });
+          });
 
-          if( dist0 && dist1 && std::abs((double) dist1 / (double) dist0 - 2.) < 0.04 ) {
-            image[l][s][0] = scan.slot[s].echo[l][0].peak;
-            image[l][s][1] = scan.slot[s].echo[l][1].peak;
-          }
-          if( dist0 && dist2 && std::abs((double) dist2 / (double) dist0 - 2.) < 0.04 ) {
-            image[l][s][0] = scan.slot[s].echo[l][0].peak;
-            image[l][s][2] = scan.slot[s].echo[l][2].peak;
-          }
-          if( dist1 && dist2 && std::abs((double) dist2 / (double) dist1 - 2.) < 0.04 ) {
-            image[l][s][1] = scan.slot[s].echo[l][1].peak;
-            image[l][s][2] = scan.slot[s].echo[l][2].peak;
-          }
-        }
-      }
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_AREAS: {
+
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::area) value_type;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec<value_type, 3>::all(0));
+
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
+
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e0] = echos[e0].area;
+                  image[l][s][e1] = echos[e1].area;
+                });
+          });
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES: {
+
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec<value_type, 3>::all(0));
+
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
+
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e0] = echos[e0].dist;
+                  image[l][s][e1] = echos[e1].dist;
+                });
+          });
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_GHOSTS_MASK: {
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
+
+      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3b::all(0));
+
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
+
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e1] = 255;
+                });
+          });
 
       return image;
     }
@@ -702,34 +828,61 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
 
+    case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_AREAS:
     case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS: {
 
+      typedef typename ScanType::Echo echo_type;
       typedef decltype(ScanType::Echo::area) value_type;
 
       cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec<value_type, 3>::all(0));
 
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
 
-          const auto &dist0 = scan.echo[s][l][0].dist;
-          const auto &dist1 = scan.echo[s][l][1].dist;
-          const auto &dist2 = scan.echo[s][l][2].dist;
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e0] = echos[e0].area;
+                  image[l][s][e1] = echos[e1].area;
+                });
+          });
 
-          if( dist0 && dist1 && std::abs((double) dist1 / (double) dist0 - 2.) < 0.04 ) {
-            image[scan.NUM_LAYERS - l - 1][s][0] = scan.echo[s][l][0].area;
-            image[scan.NUM_LAYERS - l - 1][s][1] = scan.echo[s][l][1].area;
-          }
-          if( dist0 && dist2 && std::abs((double) dist2 / (double) dist0 - 2.) < 0.04 ) {
-            image[scan.NUM_LAYERS - l - 1][s][0] = scan.echo[s][l][0].area;
-            image[scan.NUM_LAYERS - l - 1][s][2] = scan.echo[s][l][2].area;
-          }
-          if( dist1 && dist2 && std::abs((double) dist2 / (double) dist1 - 2.) < 0.04 ) {
-            image[scan.NUM_LAYERS - l - 1][s][1] = scan.echo[s][l][1].area;
-            image[scan.NUM_LAYERS - l - 1][s][2] = scan.echo[s][l][2].area;
-          }
-        }
-      }
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES: {
+
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
+
+      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec<value_type, 3>::all(0));
+
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
+
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e0] = echos[e0].dist;
+                  image[l][s][e1] = echos[e1].dist;
+                });
+          });
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_GHOSTS_MASK: {
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
+
+      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3b::all(0));
+
+      get_echos(scan,
+          [&](int s, int l, const echo_type echos[3]) {
+
+            get_doubled_echos(echos, [&](int e0, int e1) {
+                  image[l][s][e1] = 255;
+                });
+          });
 
       return image;
     }
@@ -840,8 +993,20 @@ bool get_ray_azimuths_table(const c_vlo_scan6_slm & scan, cv::Mat1f & table)
 
 template<class ScanType>
 bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
-    cv::OutputArray points, cv::OutputArray colors)
+    cv::OutputArray points, cv::OutputArray colors,
+    cv::InputArray exclude_mask)
 {
+
+  cv::Mat3b emask;
+
+  if( !exclude_mask.empty() ) {
+    if( exclude_mask.type() == CV_8UC3 ) {
+      if( exclude_mask.rows() == scan.NUM_LAYERS && exclude_mask.cols() == scan.NUM_SLOTS ) {
+        emask = exclude_mask.getMat();
+      }
+    }
+  }
+
   cv::Mat intensityImage =
       get_image(scan, intensity_channel,
           cv::noArray());
@@ -872,11 +1037,14 @@ bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_cha
   get_points3d(scan,
       [&](int s, int l, int e, double x, double y, double z) {
 
-        const float gray_level =
-            intensity[l][s][e];
+        if ( emask.empty() || !emask[l][s][e]) {
 
-        output_points.emplace_back((float)x, (float)y, (float)z);
-        output_colors.emplace_back(gray_level, gray_level, gray_level);
+          const float gray_level =
+              intensity[l][s][e];
+
+          output_points.emplace_back((float)x, (float)y, (float)z);
+          output_colors.emplace_back(gray_level, gray_level, gray_level);
+        }
       });
 
 
@@ -965,17 +1133,18 @@ cv::Mat c_vlo_file::get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv:
 }
 
 bool c_vlo_file::get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
-    cv::OutputArray points, cv::OutputArray colors)
+    cv::OutputArray points, cv::OutputArray colors,
+    cv::InputArray exclude_mask)
 {
   switch (scan.version) {
     case VLO_VERSION_1:
-      return ::get_cloud3d(scan.scan1, intensity_channel, points, colors);
+      return ::get_cloud3d(scan.scan1, intensity_channel, points, colors, exclude_mask);
     case VLO_VERSION_3:
-      return ::get_cloud3d(scan.scan3, intensity_channel, points, colors);
+      return ::get_cloud3d(scan.scan3, intensity_channel, points, colors, exclude_mask);
     case VLO_VERSION_5:
-      return ::get_cloud3d(scan.scan5, intensity_channel, points, colors);
+      return ::get_cloud3d(scan.scan5, intensity_channel, points, colors, exclude_mask);
     case VLO_VERSION_6_SLM:
-      return ::get_cloud3d(scan.scan6_slm, intensity_channel, points, colors);
+      return ::get_cloud3d(scan.scan6_slm, intensity_channel, points, colors, exclude_mask);
   }
   CF_DEBUG("Unsupported scan version %d specified", scan.version);
   return false;
@@ -1050,6 +1219,16 @@ c_vlo_reader::c_vlo_reader(const std::string & filename) :
 c_vlo_reader::~c_vlo_reader()
 {
   close();
+}
+
+void c_vlo_reader::set_apply_ghost_filter(bool v)
+{
+  apply_ghost_filter_ = v;
+}
+
+bool c_vlo_reader::apply_ghost_filter() const
+{
+  return apply_ghost_filter_;
 }
 
 bool c_vlo_reader::open(const std::string & filename)
@@ -1391,7 +1570,13 @@ bool c_vlo_reader::read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel)
 {
   std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
   if( read(scan.get()) ) {
-    return !(*image = get_image(*scan, channel, cv::noArray())).empty();
+
+    const cv::Mat3b exclude_mask =
+        apply_ghost_filter_ ?
+            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK) :
+            cv::Mat3b();
+
+    return !(*image = get_image(*scan, channel, exclude_mask)).empty();
   }
   return false;
 }
@@ -1400,7 +1585,13 @@ bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, 
 {
   std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
   if ( read(scan.get()) ) {
-    return get_cloud3d(*scan, colors_channel, points, colors);
+
+    const cv::Mat3b exclude_mask =
+        apply_ghost_filter_ ?
+            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK) :
+            cv::Mat3b();
+
+    return get_cloud3d(*scan, colors_channel, points, colors, exclude_mask);
   }
 
   return false;

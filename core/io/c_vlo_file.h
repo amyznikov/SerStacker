@@ -745,7 +745,11 @@ public:
     DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST,
 
     DATA_CHANNEL_DOUBLED_ECHO_PEAKS,
+    DATA_CHANNEL_DOUBLED_ECHO_AREAS,
+    DATA_CHANNEL_DOUBLED_ECHO_DISTANCES,
     DATA_CHANNEL_DIST_TO_MAX_PEAK,
+
+    DATA_CHANNEL_GHOSTS_MASK,
 
   };
 
@@ -761,7 +765,8 @@ public:
       cv::InputArray exclude_mask = cv::noArray());
 
   static bool get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
-      cv::OutputArray points, cv::OutputArray colors);
+      cv::OutputArray points, cv::OutputArray colors,
+      cv::InputArray exclude_mask = cv::noArray());
 
   static bool get_clouds3d(const c_vlo_scan & scan,
       cv::Mat3f clouds[3]);
@@ -790,6 +795,9 @@ public:
   c_vlo_reader(const std::string & filename);
   ~c_vlo_reader();
 
+  void set_apply_ghost_filter(bool v);
+  bool apply_ghost_filter() const;
+
   bool open(const std::string & filename = "");
   void close();
   bool is_open() const;
@@ -815,6 +823,7 @@ protected:
   c_ifhd_reader ifhd_;
   ssize_t num_frames_ = -1;
   ssize_t frame_size_ = -1;
+  bool apply_ghost_filter_  = false;
 };
 
 

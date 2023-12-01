@@ -799,6 +799,9 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
+
+  vlo_.set_apply_ghost_filter(apply_ghost_filter_);
+
   if ( vlo_.read(&output_frame, read_channel_) ) {
 
     if ( output_colorid ) {
@@ -819,6 +822,7 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
 
 bool c_vlo_input_source::read_cloud3d(cv::OutputArray points, cv::OutputArray colors)
 {
+  vlo_.set_apply_ghost_filter(apply_ghost_filter_);
   return vlo_.read_cloud3d(points, colors, read_channel_);
 }
 
@@ -836,6 +840,17 @@ void c_vlo_input_source::set_read_channel(c_vlo_file::DATA_CHANNEL v)
 c_vlo_file::DATA_CHANNEL c_vlo_input_source::read_channel() const
 {
   return read_channel_;
+}
+
+
+void c_vlo_input_source::set_apply_ghost_filter(bool v)
+{
+  apply_ghost_filter_ = v;
+}
+
+bool c_vlo_input_source::apply_ghost_filter() const
+{
+  return apply_ghost_filter_;
 }
 
 VLO_VERSION c_vlo_input_source::version() const

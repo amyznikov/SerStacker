@@ -160,30 +160,29 @@ void QCloudSequenceView::setupMainToolbar()
           "Select View",
           [this](QToolButton * tb) {
 
-            if ( !availableDataIDs_.empty() ) {
+            if ( !dataItems_.empty() ) {
 
               QMenu menu;
 
-              for ( const c_enum_member & member : availableDataIDs_ ) {
+              for ( const auto & item : dataItems_ ) {
 
-                int dataID =
-                    member.value;
+                int itemId =
+                item.dataid();
 
                 menu.addAction(createCheckableAction(QIcon(),
-                        member.name,
-                        member.comment,
-                        dataID == selectedDataId_,
-                        [this, dataID]() {
+                        item.cname(),
+                        item.ctooltip(),
+                        itemId == selectedDataId_,
+                        [this, itemId]() {
 
-                          //setCurrentView(w);
-                          selectedDataId_ = dataID;
+                          // setCurrentView(w);
+              selectedDataId_ = itemId;
+            }));
 
-                        }));
+  }
+}
 
-              }
-            }
-
-          }));
+}));
 
 }
 
@@ -323,9 +322,11 @@ void QCloudSequenceView::loadNextFrame()
       CF_ERROR("currentProcessor_->process(dataframe) fails");
     }
 
+    dataItems_ =
+        frame->items();
 
     const c_cloudview_data_item * displayItem =
-        frame->item("");
+        frame->item(selectedDataId_);
 
     CF_DEBUG("displayItem=%p", displayItem);
 

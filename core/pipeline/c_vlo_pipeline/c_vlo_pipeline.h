@@ -51,7 +51,12 @@ struct c_vlo_pipeline_processing_options
    bool enable_blom_detection2 = false;
    c_vlo_depth_segmentation_options depth_segmentation_;
 
+   bool enable_double_echo_statistics = false;
+
    double saturation_level = 110;
+
+
+
 };
 
 struct c_vlo_pipeline_output_options :
@@ -127,6 +132,7 @@ protected:
   bool run_pipeline() override;
   bool process_current_frame();
   bool run_blom_detection2();
+  bool update_double_echo_statistics();
   bool update_vlo_lookup_table_statistics();
   bool save_progress_video();
   bool save_cloud3d_ply();
@@ -149,6 +155,8 @@ protected:
   c_output_frame_writer bloom2_walls_writer_;
 
   c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;
+
+  FILE * doubled_echo_statistics_fp = nullptr;
 
 };
 

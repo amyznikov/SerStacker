@@ -25,23 +25,49 @@ public:
     unstructured_cloud3d,
   };
 
+  c_cloudview_data_item(const std::string & name, Type type, int dataid, const std::string & tooltip) :
+      name_(name),
+      tooltip_(tooltip),
+      type_(type),
+      dataid_(dataid)
+  {
+  }
+
   const std::string & name() const
   {
     return name_;
   }
 
-  Type type() const
+  const char * cname() const
   {
-    return image;
+    return name_.c_str();
   }
 
-  virtual ~c_cloudview_data_item()
+  const std::string & tooltip() const
   {
+    return tooltip_;
+  }
+
+  const char * ctooltip() const
+  {
+    return tooltip_.c_str();
+  }
+
+  Type type() const
+  {
+    return type_;
+  }
+
+  int dataid() const
+  {
+    return dataid_;
   }
 
 protected:
   std::string name_;
-//  Type type_
+  std::string tooltip_;
+  Type type_;
+  int dataid_;
 };
 
 class c_cloudview_data_frame
@@ -58,22 +84,40 @@ public:
     return items_;
   }
 
-  const c_cloudview_data_item * item(const std::string & name) const
+  const c_cloudview_data_item* item(const std::string & name) const
   {
-    return nullptr;
+    const auto pos =
+        std::find_if(items_.begin(), items_.end(),
+            [&name](const auto & item) {
+              return name == item.name();
+            });
+    return pos == items_.end() ? nullptr : &*pos;
   }
 
-  virtual bool get_image(const std::string & name, cv::OutputArray image, cv::OutputArray mask)
+  const c_cloudview_data_item* item(int id) const
+  {
+    const auto pos =
+        std::find_if(items_.begin(), items_.end(),
+            [id](const auto & item) {
+              return id == item.dataid();
+            });
+    return pos == items_.end() ? nullptr : &*pos;
+  }
+
+  virtual bool get_image(int id, cv::OutputArray image,
+      cv::OutputArray mask = cv::noArray())
   {
     return false;
   }
 
-  virtual bool get_structured_cloud3d(const std::string & name, cv::OutputArray points, cv::OutputArray colors)
+  virtual bool get_structured_cloud3d(int id, cv::OutputArray points,
+      cv::OutputArray colors)
   {
     return false;
   }
 
-  virtual bool get_unstructured_cloud3d(const std::string & name, cv::OutputArray points, cv::OutputArray colors)
+  virtual bool get_unstructured_cloud3d(int id, cv::OutputArray points,
+      cv::OutputArray colors)
   {
     return false;
   }

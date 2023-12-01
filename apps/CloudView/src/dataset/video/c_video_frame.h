@@ -22,7 +22,16 @@ public:
   typedef c_cloudview_data_frame base;
   typedef std::shared_ptr<this_class> sptr;
 
+  enum
+  {
+    IMAGE = 0,
+    MASK = 1
+  };
+
   c_video_frame();
+
+  bool get_image(int id, cv::OutputArray image,
+      cv::OutputArray mask = cv::noArray()) override;
 
 public:
   cv::Mat image;

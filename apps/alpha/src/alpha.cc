@@ -36,59 +36,38 @@
 #include <core/proc/bfgs.h>
 
 #include <core/io/c_las_file.h>
+#include <core/proc/c_minmaxacc.h>
 
 
 int main(int argc, char *argv[])
 {
-//  std::string filename;
-//
-//  for( int i = 1; i < argc; ++i ) {
-//
-//    if( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
-//      fprintf(stdout, "Usage:\n"
-//          " alpha <input-file-name>\n"
-//          "\n"
-//          "\n");
-//
-//      return 0;
-//    }
-//
-//    if( filename.empty() ) {
-//      filename = argv[i];
-//      continue;
-//    }
-//
-//    fprintf(stderr, "Invalid argument %s\n",
-//        argv[i]);
-//
-//    return 1;
-//  }
-//
-//
-//
-//  cf_set_logfile(stderr);
-//  cf_set_loglevel(CF_LOG_DEBUG);
-//
-//  c_las_reader las_;
-//
-//  if ( !las_.open(filename) ) {
-//    CF_ERROR("las_.open('%s') fails", filename.c_str());
-//    return 1;
-//  }
-//
-//  const LASheader  * lh =
-//      las_.header();
-//
-//  const LASpoint * p;
-//
-//  while ((p = las_.read_point())) {
-//
-//    const F64 x = p->get_x();
-//    const F64 y = p->get_y();
-//    const F64 z = p->get_z();
-//
-//    fprintf(stdout, "%g %g %g\n", x, y, z);
-//  }
+
+  c_minacc<float, int> maxacc(5);
+
+  float maxkey = 0;
+  int  maxval = 0;
+
+  for ( int i = 0; i < 100; ++i ) {
+
+    float key = rand() % 100;
+    float val = i;
+
+    maxacc.update(key, val);
+
+    if ( key >= maxkey ) {
+      maxkey = key;
+      maxval = val;
+    }
+  }
+
+  fprintf(stdout, "key\tvalue\n");
+
+  for ( const auto & item : maxacc.items() ) {
+
+    fprintf(stdout, "%g\t%d\n", (double) item.key, (int)item.value);
+
+  }
+
 
 
   return 0;

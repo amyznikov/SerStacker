@@ -9,6 +9,7 @@
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/proc/c_line_estimate.h>
+#include <core/proc/c_minmaxacc.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/colormap.h>
 #include <core/mtf/pixinsight-mtf.h>
@@ -240,7 +241,7 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_.depth_segmentation_, min_height);
 
     SERIALIZE_OPTION(section, save, processing_options_, saturation_level);
-    SERIALIZE_OPTION(section, save, processing_options_, enable_filter_segments);
+    // SERIALIZE_OPTION(section, save, processing_options_, enable_filter_segments);
 
     SERIALIZE_OPTION(section, save, processing_options_, enable_gather_lookup_table_statistics);
     SERIALIZE_OPTION(section, save, processing_options_, vlo_lookup_table_statistics_filename);
@@ -270,9 +271,10 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, output_options_, save_walls);
     SERIALIZE_OPTION(section, save, output_options_, walls_writer_options);
 
-//    SERIALIZE_OPTION(section, save, output_options_, save_filtered_profiles);
-//    SERIALIZE_OPTION(section, save, output_options_, filtered_writer_options);
+    SERIALIZE_OPTION(section, save, output_options_, save_blured_intensities);
+    SERIALIZE_OPTION(section, save, output_options_, blured_intensities_writer_options);
 
+    SERIALIZE_OPTION(section, save, output_options_, save_segment_statistics);
   }
 
   return true;
@@ -307,7 +309,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
         PIPELINE_CTL(ctrls, processing_options_.enable_blom_detection2, "enable_bloom_detection2", "");
 
         PIPELINE_CTL(ctrls, processing_options_.saturation_level, "saturation_level", "");
-        PIPELINE_CTL(ctrls, processing_options_.enable_filter_segments, "filter segments", "");
+        // PIPELINE_CTL(ctrls, processing_options_.enable_filter_segments, "filter segments", "");
 
         PIPELINE_CTL_GROUP(ctrls, "Depth segmentation", "");
           PIPELINE_CTL(ctrls, processing_options_.depth_segmentation_.min_distance, "min_distance", "");
@@ -330,6 +332,9 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_filename, "cloud3d_filename", "", _this->output_options_.save_cloud3d_ply);
       PIPELINE_CTLC(ctrls, output_options_.cloud3d_intensity_channel, "cloud3d_intensity_channel", "", _this->output_options_.save_cloud3d_ply);
 
+      PIPELINE_CTL(ctrls, output_options_.save_segment_statistics, "save_segment_statistics", "");
+
+
 
       PIPELINE_CTL_GROUP(ctrls, "save_progress_video", "");
       PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
@@ -351,10 +356,18 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.intensity_writer_options, _this->output_options_.save_bloom2_intensity_profiles);
       PIPELINE_CTL_END_GROUP(ctrls);
 
+      PIPELINE_CTL_GROUP(ctrls, "save_blured_intensities", "");
+      PIPELINE_CTL(ctrls, output_options_.save_blured_intensities, "save_blured_intensities", "");
+      PIPELINE_CTLC(ctrls, output_options_.blured_intensities_sigma, "sigma", "", _this->output_options_.save_blured_intensities);
+      PIPELINE_CTLC(ctrls, output_options_.blured_intensities_kradius, "kradius", "",_this->output_options_.save_blured_intensities);
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.blured_intensities_writer_options, _this->output_options_.save_blured_intensities);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
       PIPELINE_CTL_GROUP(ctrls, "save_walls", "");
       PIPELINE_CTL(ctrls, output_options_.save_walls, "save_walls", "");
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.walls_writer_options, _this->output_options_.save_walls);
       PIPELINE_CTL_END_GROUP(ctrls);
+
 
 
     PIPELINE_CTL_END_GROUP(ctrls);
@@ -630,124 +643,60 @@ bool c_vlo_pipeline::run_blom_detection2()
   ///////////////////////////////////////////////////////////////////////////
   // Filter segments using intensity profiles
 
-  if ( processing_options_.enable_filter_segments ) {
+  if( output_options_.save_blured_intensities ) {
 
+    std::vector<c_vlo_segment_point_sequence> sequences;
     cv::Mat3f intensities;
+    cv::Mat3f blured_intensities;
+
+    c_vlo_gaussian_blur gblur(output_options_.blured_intensities_sigma,
+        output_options_.blured_intensities_kradius);
 
     c_vlo_file::get_image(current_scan_,
         c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensities,
             CV_32F);
 
-    struct c_segment_point
-    {
-      int y;
-      float intens;
-    };
-
-    struct c_segment
-    {
-      std::vector<c_segment_point> points;
-      bool saturated = false;
-    };
-
-    std::vector<c_segment> wall_segments;
-    std::vector<c_segment> chunks;
-
-    wall_segments.reserve(32);
-    chunks.reserve(32);
-
-    CF_DEBUG("processing_options_.saturation_level=%g", processing_options_.saturation_level);
+    blured_intensities.create(intensities.size());
+    blured_intensities.setTo(cv::Scalar::all(0));
 
     for( int x = 0; x < segments.cols; ++x ) {
 
-      ///////
+      const int nseqs =
+          extract_vlo_point_sequences(x, segments, intensities,
+              sequences);
 
-      wall_segments.clear();
+      for ( int i = 0; i < nseqs; ++i ) {
 
-      for( int y = 0; y < segments.rows; ++y ) {
+        const uint16_t seg_id = i + 1;
 
-        for( int e = 0; e < 3; ++e ) {
+        gblur.apply(sequences[i].points);
 
-          const uint16_t seg_id =
-              segments[y][x][e];
+        for( int j = 0; j < sequences[i].points.size(); ++j ) {
 
-          if( seg_id ) {
+          const c_vlo_segment_point & sp =
+              sequences[i].points[j];
 
-            if( wall_segments.size() < seg_id ) {
-              wall_segments.resize(seg_id);
-            }
-
-            c_segment & s =
-                wall_segments[seg_id - 1];
-
-            const float & intens =
-                intensities[y][x][e];
-
-            if( s.points.empty() || s.points.back().y != y ) {
-              s.points.emplace_back(c_segment_point { y, intens });
-            }
-            else if( intens > s.points.back().intens ) {
-              s.points.back().intens = intens;
+          for ( int e = 0; e < 3; ++e ) {
+            if ( segments[sp.y][x][e] == seg_id ) {
+              blured_intensities[sp.y][x][e] = sp.intensity;
             }
           }
         }
       }
-
-      ///////
-
-      for( uint16_t seg_id = 1; seg_id <= wall_segments.size(); ++seg_id ) {
-
-        c_segment & seg =
-            wall_segments[seg_id - 1];
-
-        if( seg.points.empty() ) {
-          continue;
-        }
-
-        chunks.clear();
-
-        for( int p = 0; p < seg.points.size(); ++p ) {
-
-          // collect saturated chunk if exists
-          if( seg.points[p].intens >= processing_options_.saturation_level ) {
-
-            chunks.emplace_back();
-            c_segment & chunk = chunks.back();
-
-            chunk.saturated = true;
-
-            while (p < seg.points.size() && seg.points[p].intens >= processing_options_.saturation_level) {
-
-              const c_segment_point & sp =
-                  seg.points[p];
-
-              chunk.points.emplace_back(sp);
-
-              for( int e = 0; e < 3; ++e ) {
-                if( segments[sp.y][x][e] == seg_id ) {
-                  segments[sp.y][x][e] = 0;
-                }
-              }
-
-              ++p;
-            }
-          }
-
-          // collect unsaturated chunk if exists
-          if( p + 1 < seg.points.size() ) {
-
-            chunks.emplace_back();
-            c_segment & chunk = chunks.back();
-
-            while (p < seg.points.size() && seg.points[p].intens < processing_options_.saturation_level) {
-              chunk.points.emplace_back(seg.points[p++]);
-            }
-          }
-        }
-
-      }
-
     }
+
+    if( !add_output_writer(bloom2_blured_intensities_writer_, output_options_.blured_intensities_writer_options, "blured_intensities", ".ser") ) {
+      CF_ERROR("bloom2_blured_intensities_writer_.open(%s) fails",
+          bloom2_blured_intensities_writer_.filename().c_str());
+      return false;
+    }
+
+    if( bloom2_blured_intensities_writer_.is_open() && !bloom2_blured_intensities_writer_.write(blured_intensities) ) {
+      CF_ERROR("bloom2_blured_intensities_writer_.write('%s') fails",
+          bloom2_blured_intensities_writer_.filename().c_str());
+      return false;
+    }
+
   }
 
   // END OF Filter segments using intensity profiles
@@ -784,7 +733,7 @@ bool c_vlo_pipeline::run_blom_detection2()
 
     cv::Mat1f intensity(clouds[0].size());
 
-    for( int segment_id = 1;; ++segment_id ) {
+    for( uint16_t segment_id = 1;; ++segment_id ) {
 
       intensity.setTo(0);
 
@@ -793,22 +742,24 @@ bool c_vlo_pipeline::run_blom_detection2()
       for( int y = 0; y < segments.rows; ++y ) {
         for( int x = 0; x < segments.cols; ++x ) {
 
-          int ne = 0;
+          // int ne = 0;
 
           for( int e = 0; e < 3; ++e ) {
 
             if( segments[y][x][e] == segment_id ) {
 
-              intensity[y][x] += intensity_image[y][x][e];
-              ++ne;
+              intensity[y][x] = intensity_image[y][x][e];
+              //++ne;
               ++num_pixels_labeled;
 
             }
           }
 
-          if( ne > 1 ) {
-            intensity[y][x] /= ne;
-          }
+//          if( ne > 1 )
+//          {
+//            intensity[y][x] /= ne;
+//          }
+
         }
       }
 

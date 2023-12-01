@@ -596,7 +596,7 @@ bool c_ser_writer::close()
 {
   bool fok = true;
 
-  if( fd_.is_open() >= 0 ) {
+  if( fd_.is_open() ) {
     fd_.seek(0);
     if( fd_.write(&header_, sizeof(header_)) != sizeof(header_) ) {
       CF_FATAL("write(SER HEADER) fails: %s", strerror(errno));
@@ -604,6 +604,7 @@ bool c_ser_writer::close()
     }
     fd_.close();
   }
+
   return fok;
 }
 

@@ -52,7 +52,6 @@ struct c_vlo_pipeline_processing_options
    c_vlo_depth_segmentation_options depth_segmentation_;
 
    double saturation_level = 110;
-   bool enable_filter_segments = false;
 };
 
 struct c_vlo_pipeline_output_options :
@@ -79,9 +78,12 @@ struct c_vlo_pipeline_output_options :
   bool save_walls = false;
   c_output_frame_writer_options walls_writer_options;
 
-  //  bool save_filtered_profiles = false;
-  //  c_output_frame_writer_options filtered_writer_options;
+  bool save_segment_statistics = false;
 
+  bool save_blured_intensities = false;
+  double blured_intensities_sigma = 3;
+  int blured_intensities_kradius = 9;
+  c_output_frame_writer_options blured_intensities_writer_options;
 };
 
 class c_vlo_pipeline :
@@ -143,6 +145,7 @@ protected:
   c_output_frame_writer blom2_display_writer_;
   c_output_frame_writer bloom2_segments_writer_;
   c_output_frame_writer bloom2_intensity_writer_;
+  c_output_frame_writer bloom2_blured_intensities_writer_;
   c_output_frame_writer bloom2_walls_writer_;
 
   c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;

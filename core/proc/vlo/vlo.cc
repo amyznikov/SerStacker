@@ -263,3 +263,199 @@ bool vlo_depth_segmentation(const cv::Mat3f clouds[3],
 }
 
 
+int extract_vlo_point_sequences(int x, const cv::Mat3w & segments_image, const cv::Mat3f & intensity_image,
+    std::vector<c_vlo_segment_point_sequence> & sequences)
+{
+  sequences.clear();
+  sequences.reserve(16);
+
+  for( int y = 0; y < segments_image.rows; ++y ) {
+    for( int e = 0; e < 3; ++e ) {
+
+      const uint16_t seg_id =
+          segments_image[y][x][e];
+
+      if ( seg_id ) {
+
+        if ( sequences.size() < seg_id ) {
+          sequences.resize(seg_id);
+        }
+
+        c_vlo_segment_point_sequence & sequence =
+            sequences[seg_id - 1];
+
+        const float & point_intensity =
+            intensity_image[y][x][e];
+
+        if( sequence.points.empty() || sequence.points.back().y != y ) {
+          sequence.points.emplace_back(c_vlo_segment_point { y, point_intensity });
+        }
+        else if( point_intensity > sequence.points.back().intensity ) {
+          sequence.points.back().intensity = point_intensity;
+        }
+
+      }
+    }
+  }
+
+  return (int)(sequences.size());
+}
+
+
+int extract_vlo_segments(int x, const cv::Mat3w & segments_image, const cv::Mat3f & intensity_image,
+    std::vector<c_vlo_segment> & vlo_segments,
+    double intensity_saturation_level)
+{
+  // Group point sequences by their segment id's
+
+  std::vector<c_vlo_segment_point_sequence> point_sequences; // the size is number of unique segment id's over slot
+  point_sequences.reserve(16);
+
+  for( int y = 0; y < segments_image.rows; ++y ) {
+    for( int e = 0; e < 3; ++e ) {
+
+      const uint16_t seg_id =
+          segments_image[y][x][e];
+
+      if ( seg_id ) {
+
+        if ( point_sequences.size() < seg_id ) {
+          point_sequences.resize(seg_id);
+        }
+
+        c_vlo_segment_point_sequence & sequence =
+            point_sequences[seg_id - 1];
+
+        const float & point_intensity =
+            intensity_image[y][x][e];
+
+        if( sequence.points.empty() || sequence.points.back().y != y ) {
+          sequence.points.emplace_back(c_vlo_segment_point { y, point_intensity });
+        }
+        else if( point_intensity > sequence.points.back().intensity ) {
+          sequence.points.back().intensity = point_intensity;
+        }
+
+      }
+    }
+  }
+
+  // Split each point sequence into continuous chunks based on point intensities
+  vlo_segments.clear();
+  vlo_segments.resize(point_sequences.size());
+
+
+  for( uint16_t seg_id = 1; seg_id <= point_sequences.size(); ++seg_id ) {
+
+    const std::vector<c_vlo_segment_point>  & sequence =
+        point_sequences[seg_id - 1].points;
+
+    c_vlo_segment & segment =
+        vlo_segments[seg_id - 1];
+
+    segment.seg_id =
+        seg_id;
+
+    for( int p = 0; p < sequence.size(); ) {
+
+      // collect saturated chunk if exists
+      if( sequence[p].intensity >= intensity_saturation_level ) {
+
+        segment.chunks.emplace_back();
+
+        c_vlo_segment_chunk & chunk =
+            segment.chunks.back();
+
+        chunk.saturated = true;
+
+        while (p < sequence.size() && sequence[p].intensity >= intensity_saturation_level) {
+          chunk.points.emplace_back(sequence[p++]);
+        }
+      }
+
+      // collect unsaturated chunk if exists
+
+      if( p + 1 >= sequence.size() ) {
+        break;
+      }
+
+      segment.chunks.emplace_back();
+
+      c_vlo_segment_chunk & chunk =
+          segment.chunks.back();
+
+      while (p < sequence.size() && sequence[p].intensity < intensity_saturation_level) {
+        chunk.points.emplace_back(sequence[p++]);
+      }
+    }
+  }
+
+  return vlo_segments.size();
+}
+
+
+c_vlo_gaussian_blur::c_vlo_gaussian_blur(double sigma, int kradius)
+{
+  setup(sigma, kradius);
+}
+
+void c_vlo_gaussian_blur::setup(double sigma, int kradius)
+{
+  if( !(sigma > 0) && kradius < 1 ) {
+    kradius = std::max(1, ((int) (3 * (sigma = 3))));
+  }
+  else if( !(sigma > 0) ) {
+    sigma = (double) (kradius) / 3;
+  }
+  else if( kradius < 1 ) {
+    kradius = std::max(1, ((int) (3 * (sigma))));
+  }
+
+  gc_.resize(kradius);
+
+  for( int k = 0; k < kradius; ++k ) {
+    const double x = (k + 1) / sigma;
+    gc_[k] = std::exp(-0.5 * x * x);
+  }
+
+}
+
+void c_vlo_gaussian_blur::apply(std::vector<c_vlo_segment_point> & points)
+{
+  const int kradius = gc_.size() / 2;
+
+  std::vector<c_vlo_segment_point> filtered_points(points.size());
+
+  for( int i = 0, n = points.size(); i < n; ++i ) {
+
+    float s = points[i].intensity;
+    float w = 1;
+
+    for( int k = i - 1; k >= 0; --k ) {
+      const int dist = points[i].y - points[k].y;
+      if( dist >= kradius ) {
+        break;
+      }
+      s += points[k].intensity * gc_[dist];
+      w += gc_[dist];
+    }
+
+    for( int k = i + 1, nk = points.size(); k < nk; ++k ) {
+      const int dist = points[k].y - points[i].y;
+      if( dist >= kradius ) {
+        break;
+      }
+      s += points[k].intensity * gc_[dist];
+      w += gc_[dist];
+    }
+
+    filtered_points[i].y = points[i].y;
+    filtered_points[i].intensity = s / w;
+  }
+
+  std::copy(filtered_points.begin(), filtered_points.end(),
+      points.begin());
+
+}
+
+

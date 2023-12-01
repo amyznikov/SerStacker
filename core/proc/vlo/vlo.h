@@ -29,4 +29,69 @@ bool vlo_depth_segmentation(const cv::Mat3f clouds[3],
     cv::Mat4f & output_histogram, cv::Mat3w & output_segments,
     const c_vlo_depth_segmentation_options & opts);
 
+
+/**
+ * Single point along vertical VLO segment
+ **/
+struct c_vlo_segment_point
+{
+  int y; // image row (vlo slot) index
+  float intensity; // intensity of a point, max over all echos owned by given segment id
+};
+
+/**
+ * Sequence of VLO segment points
+ **/
+struct c_vlo_segment_point_sequence
+{
+  std::vector<c_vlo_segment_point> points;
+};
+
+int extract_vlo_point_sequences(int x, const cv::Mat3w & segments_image, const cv::Mat3f & intensity_image,
+    std::vector<c_vlo_segment_point_sequence> & sequences);
+
+
+/**
+ * Chunk (Sub-Sequence) of VLO segment points sequence
+ **/
+struct c_vlo_segment_chunk
+{
+  std::vector<c_vlo_segment_point> points;
+
+  double minintensity = 0;
+  double minpos = 0;
+
+  double maxintensity = 0;
+  double maxpos = 0;
+
+  bool saturated = false;
+
+};
+
+/**
+ * VLO segment point sequence splitted into classified chunks
+ */
+struct c_vlo_segment {
+  std::vector<c_vlo_segment_chunk> chunks;
+  uint16_t seg_id;
+};
+
+int extract_vlo_segments(int x, const cv::Mat3w & segments_image, const cv::Mat3f & intensity_image,
+    std::vector<c_vlo_segment> & vlo_segments,
+    double intensity_saturation_level);
+
+
+class c_vlo_gaussian_blur
+{
+public:
+  c_vlo_gaussian_blur(double sigma, int kradius = 0);
+
+  void setup(double sigma, int kradius = 0);
+
+  void apply(std::vector<c_vlo_segment_point> & points);
+
+protected:
+  std::vector<float> gc_;
+};
+
 #endif /* __vlo_h__ */

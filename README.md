@@ -68,7 +68,10 @@ I have no posibility to test the build frequently on older versions of dependenc
 like Ubuntu, Windows etch.  
 
 	```
-	$ mkdir build && cd build && cmake -DQT_VERSION=5 .. && make -j 4
+ 	Linux:
+        $ mkdir build && cd build && cmake -DQT_VERSION=5 .. && make -j 4
+	MSYS2:
+        $ mkdir build && cd build && cmake -DQT_VERSION=5 .. && cmake --build . -t SerStacker 
 	```
 
 

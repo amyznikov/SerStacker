@@ -1031,7 +1031,7 @@ bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_cha
   cv::Mat intensityImage =
       get_image(scan, intensity_channel,
           cv::noArray(),
-          nullptr);
+          opts);
 
   if( intensityImage.empty() ) {
     CF_ERROR("get_image(intensity_channel) fails");
@@ -1597,9 +1597,7 @@ bool c_vlo_reader::read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel)
             get_image(*scan, DATA_CHANNEL_GHOSTS_MASK, cv::noArray(), &processing_options_) :
             cv::Mat3b();
 
-    CF_DEBUG("processing_options_.enable_ghost_filter=%d", processing_options_.enable_ghost_filter);
-
-    return !(*image = get_image(*scan, channel, exclude_mask)).empty();
+    return !(*image = get_image(*scan, channel, exclude_mask, &processing_options_)).empty();
   }
   return false;
 }
@@ -1614,7 +1612,7 @@ bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, 
             get_image(*scan, DATA_CHANNEL_GHOSTS_MASK, cv::noArray(), &processing_options_) :
             cv::Mat3b();
 
-    return get_cloud3d(*scan, colors_channel, points, colors, exclude_mask);
+    return get_cloud3d(*scan, colors_channel, points, colors, exclude_mask, &processing_options_);
   }
 
   return false;

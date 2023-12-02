@@ -11,6 +11,7 @@
 
 #include "QCloudViewer.h"
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QColorPickerButton.h>
 
 
 class QCloudViewSettings :
@@ -43,6 +44,7 @@ protected:
   QCheckBox   * autoShowViewTarget_ctl = nullptr;
   QNumericBox * pointSize_ctl = nullptr;
   QNumericBox * pointBrightness_ctl = nullptr;
+  QColorPickerButton * bgColor_ctl = nullptr;
 };
 
 class QCloudViewSettingsWidget :

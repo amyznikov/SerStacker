@@ -41,6 +41,8 @@
 #define ICON_roi                ":/serstacker/icons/roi.png"
 #define ICON_point_size         ":/serstacker/icons/degree.png"
 #define ICON_brightness         ":/serstacker/icons/brightness.png"
+#define ICON_bgcolor            ":/serstacker/icons/fill-color.png"
+
 #define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
 #define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
 
@@ -1678,6 +1680,20 @@ void MainWindow::setupInputSequenceView()
                       [this](int value) {
                         if ( is_visible(cloudView) ) {
                           cloudView->setPointBrightness(value);
+                        }
+                      });
+                }));
+
+        menu.addAction(createMenuWidgetAction<QColorPickerButton>("Background color: ",
+                nullptr,
+                [this](const auto * action) {
+                  action->icon()->setPixmap(getPixmap(ICON_bgcolor)); // .scaled(QSize(16,16))
+                  QColorPickerButton * colorPicker = action->control();
+                  colorPicker->setColor(cloudView->backgroundColor());
+                  connect(colorPicker, &QColorPickerButton::colorSelected,
+                      [this, colorPicker]() {
+                        if ( cloudView ) {
+                          cloudView->setBackgroundColor(colorPicker->color());
                         }
                       });
                 }));

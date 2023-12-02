@@ -398,8 +398,23 @@ bool get_echos(const c_vlo_scan6_slm & scan, const Fn & fn)
 
 
 template<class EchoType, class Fn>
-void get_doubled_echos(const EchoType echos[3], const Fn & fn)
+void get_ghosts(const EchoType echos[3], const c_vlo_processing_options * opts, const Fn & fn)
 {
+  if( !opts ) {
+    return;
+  }
+
+  //  // FIR
+  //  constexpr double absolute_threshold = 100;
+  //  constexpr double absolute_offset = 40;
+  //  constexpr double area_threshold = 0.9;
+  //
+  ////  // makrolon
+  ////  constexpr double absolute_threshold = 80;
+  ////  constexpr double absolute_offset = -10;
+  ////  constexpr double area_threshold = 0.95;
+
+
   const auto &D0 = echos[0].dist;
   const auto &D1 = echos[1].dist;
   const auto &D2 = echos[2].dist;
@@ -408,35 +423,38 @@ void get_doubled_echos(const EchoType echos[3], const Fn & fn)
   const auto &A1 = echos[1].area;
   const auto &A2 = echos[2].area;
 
-  static constexpr double Dmin = 600;
+  static constexpr double Dmin = 200;
 
-  // FIR
-  constexpr double absolute_threshold = 80;
-  constexpr double absolute_offset = 40;
-  constexpr double area_threshold = 0.7;
+  const double & saturation_level =
+      opts->ghost_options.saturation_level;
 
-//  // makrolon
-//  constexpr double absolute_threshold = 80;
-//  constexpr double absolute_offset = -10;
-//  constexpr double area_threshold = 0.8;
+  const double & systematic_correction =
+      opts->ghost_options.doubled_distanse_systematic_correction;
 
+  const double & depth_tolerance =
+      opts->ghost_options.doubled_distanse_depth_tolerance;
 
-  if( D0 > Dmin && D1 && std::abs(D1 - 2.0 * D0 + absolute_offset) < absolute_threshold ) {
-     if ( A1 < A0 * area_threshold ) {
+ // const double intensity_ratio_slope = 0.7 / 6000;
+
+  const double KK = 3;
+
+  if( D0 > Dmin && D1 && A0 >= saturation_level && A1 <= A0 ) { // * (1. - intensity_ratio_slope * D0)
+    if( (D1 > KK * D0) || std::abs(D1 - 2.0 * D0 + systematic_correction) < depth_tolerance ) {
       fn(0, 1);
     }
   }
-  if( D0 > Dmin && D2 && std::abs(D2 - 2.0 * D0 + absolute_offset) < absolute_threshold ) {
-    if ( A2 < A0 * area_threshold ) {
+
+  if( D0 > Dmin && D2 && A0 >= saturation_level && A2 <= A0 ) { // * (1. - intensity_ratio_slope * D0)
+    if( (D2 > KK * D0) || std::abs(D2 - 2.0 * D0 + systematic_correction) < depth_tolerance ) {
       fn(0, 2);
     }
   }
-  if( D1 > Dmin && D2 && std::abs(D2 - 2.0 * D1 + absolute_offset) < absolute_threshold ) {
-    if ( A2 < A1 * area_threshold ) {
+
+  if( D1 > Dmin && D2 && A1 >= saturation_level && A2 <= A1  ) { // * (1. - intensity_ratio_slope * D1)
+    if( (D2 > KK * D1) || std::abs(D2 - 2.0 * D1 + systematic_correction) < depth_tolerance ) {
       fn(1, 2);
     }
   }
-
 
 }
 
@@ -447,7 +465,8 @@ template<class ScanType>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask)
+cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask,
+    const c_vlo_processing_options * opts)
 {
   cv::Mat3b emask;
 
@@ -629,7 +648,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].peak;
                   image[l][s][e1] = echos[e1].peak;
                 });
@@ -649,7 +668,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].area;
                   image[l][s][e1] = echos[e1].area;
                 });
@@ -669,7 +688,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].dist;
                   image[l][s][e1] = echos[e1].dist;
                 });
@@ -688,7 +707,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e1] = 255;
                 });
           });
@@ -734,7 +753,8 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
   return cv::Mat();
 }
 
-cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask)
+cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel, cv::InputArray exclude_mask,
+    const c_vlo_processing_options * opts)
 {
   typedef c_vlo_scan6_slm ScanType;
 
@@ -840,7 +860,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].area;
                   image[l][s][e1] = echos[e1].area;
                 });
@@ -860,7 +880,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].dist;
                   image[l][s][e1] = echos[e1].dist;
                 });
@@ -879,7 +899,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-            get_doubled_echos(echos, [&](int e0, int e1) {
+        get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e1] = 255;
                 });
           });
@@ -994,7 +1014,8 @@ bool get_ray_azimuths_table(const c_vlo_scan6_slm & scan, cv::Mat1f & table)
 template<class ScanType>
 bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_channel,
     cv::OutputArray points, cv::OutputArray colors,
-    cv::InputArray exclude_mask)
+    cv::InputArray exclude_mask,
+    const c_vlo_processing_options * opts)
 {
 
   cv::Mat3b emask;
@@ -1009,7 +1030,8 @@ bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_cha
 
   cv::Mat intensityImage =
       get_image(scan, intensity_channel,
-          cv::noArray());
+          cv::noArray(),
+          nullptr);
 
   if( intensityImage.empty() ) {
     CF_ERROR("get_image(intensity_channel) fails");
@@ -1055,7 +1077,8 @@ bool get_cloud3d(const ScanType & scan, c_vlo_reader::DATA_CHANNEL intensity_cha
 }
 
 template<class ScanType>
-bool get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
+bool get_clouds3d(const ScanType & scan, cv::Mat3f clouds[3],
+    const c_vlo_processing_options * opts)
 {
   for( int i = 0; i < 3; ++i ) {
     clouds[i] = cv::Mat3f(scan.NUM_LAYERS, scan.NUM_SLOTS,
@@ -1117,50 +1140,53 @@ bool c_vlo_file::sort_echos_by_distance(c_vlo_scan & scan)
   return false;
 }
 
-cv::Mat c_vlo_file::get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask)
+cv::Mat c_vlo_file::get_image(const c_vlo_scan & scan, DATA_CHANNEL channel, cv::InputArray exclude_mask,
+    const c_vlo_processing_options * opts)
 {
   switch (scan.version) {
     case VLO_VERSION_1:
-      return ::get_image(scan.scan1, channel, exclude_mask);
+      return ::get_image(scan.scan1, channel, exclude_mask, opts);
     case VLO_VERSION_3:
-      return ::get_image(scan.scan3, channel, exclude_mask);
+      return ::get_image(scan.scan3, channel, exclude_mask, opts);
     case VLO_VERSION_5:
-      return ::get_image(scan.scan5, channel, exclude_mask);
+      return ::get_image(scan.scan5, channel, exclude_mask, opts);
     case VLO_VERSION_6_SLM:
-      return ::get_image(scan.scan6_slm, channel, exclude_mask);
+      return ::get_image(scan.scan6_slm, channel, exclude_mask, opts);
   }
   return cv::Mat();
 }
 
 bool c_vlo_file::get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
     cv::OutputArray points, cv::OutputArray colors,
-    cv::InputArray exclude_mask)
+    cv::InputArray exclude_mask,
+    const c_vlo_processing_options * opts)
 {
   switch (scan.version) {
     case VLO_VERSION_1:
-      return ::get_cloud3d(scan.scan1, intensity_channel, points, colors, exclude_mask);
+      return ::get_cloud3d(scan.scan1, intensity_channel, points, colors, exclude_mask, opts);
     case VLO_VERSION_3:
-      return ::get_cloud3d(scan.scan3, intensity_channel, points, colors, exclude_mask);
+      return ::get_cloud3d(scan.scan3, intensity_channel, points, colors, exclude_mask, opts);
     case VLO_VERSION_5:
-      return ::get_cloud3d(scan.scan5, intensity_channel, points, colors, exclude_mask);
+      return ::get_cloud3d(scan.scan5, intensity_channel, points, colors, exclude_mask, opts);
     case VLO_VERSION_6_SLM:
-      return ::get_cloud3d(scan.scan6_slm, intensity_channel, points, colors, exclude_mask);
+      return ::get_cloud3d(scan.scan6_slm, intensity_channel, points, colors, exclude_mask, opts);
   }
   CF_DEBUG("Unsupported scan version %d specified", scan.version);
   return false;
 }
 
-bool c_vlo_file::get_clouds3d(const c_vlo_scan & scan, cv::Mat3f clouds[3])
+bool c_vlo_file::get_clouds3d(const c_vlo_scan & scan, cv::Mat3f clouds[3],
+    const c_vlo_processing_options * opts)
 {
   switch (scan.version) {
     case VLO_VERSION_1:
-      return ::get_clouds3d(scan.scan1, clouds);
+      return ::get_clouds3d(scan.scan1, clouds, opts);
     case VLO_VERSION_3:
-      return ::get_clouds3d(scan.scan3, clouds);
+      return ::get_clouds3d(scan.scan3, clouds, opts);
     case VLO_VERSION_5:
-      return ::get_clouds3d(scan.scan5, clouds);
+      return ::get_clouds3d(scan.scan5, clouds, opts);
     case VLO_VERSION_6_SLM:
-      return ::get_clouds3d(scan.scan6_slm, clouds);
+      return ::get_clouds3d(scan.scan6_slm, clouds, opts);
   }
   CF_DEBUG("Unsupported scan version %d specified", scan.version);
   return false;
@@ -1221,14 +1247,9 @@ c_vlo_reader::~c_vlo_reader()
   close();
 }
 
-void c_vlo_reader::set_apply_ghost_filter(bool v)
+c_vlo_processing_options * c_vlo_reader::processing_options()
 {
-  apply_ghost_filter_ = v;
-}
-
-bool c_vlo_reader::apply_ghost_filter() const
-{
-  return apply_ghost_filter_;
+  return &processing_options_;
 }
 
 bool c_vlo_reader::open(const std::string & filename)
@@ -1572,9 +1593,11 @@ bool c_vlo_reader::read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel)
   if( read(scan.get()) ) {
 
     const cv::Mat3b exclude_mask =
-        apply_ghost_filter_ ?
-            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK) :
+        processing_options_.enable_ghost_filter ?
+            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK, cv::noArray(), &processing_options_) :
             cv::Mat3b();
+
+    CF_DEBUG("processing_options_.enable_ghost_filter=%d", processing_options_.enable_ghost_filter);
 
     return !(*image = get_image(*scan, channel, exclude_mask)).empty();
   }
@@ -1587,8 +1610,8 @@ bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, 
   if ( read(scan.get()) ) {
 
     const cv::Mat3b exclude_mask =
-        apply_ghost_filter_ ?
-            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK) :
+        processing_options_.enable_ghost_filter ?
+            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK, cv::noArray(), &processing_options_) :
             cv::Mat3b();
 
     return get_cloud3d(*scan, colors_channel, points, colors, exclude_mask);

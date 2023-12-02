@@ -350,8 +350,10 @@ public:
   void set_read_channel(c_vlo_file::DATA_CHANNEL v);
   c_vlo_file::DATA_CHANNEL read_channel() const;
 
-  void set_apply_ghost_filter(bool v);
-  bool apply_ghost_filter() const;
+//  void set_apply_ghost_filter(bool v);
+//  bool apply_ghost_filter() const;
+
+  c_vlo_processing_options * processing_options();
 
   VLO_VERSION version() const;
 

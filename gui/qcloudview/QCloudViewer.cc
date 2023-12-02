@@ -800,6 +800,16 @@ double QCloudViewer::pointBrightness() const
   return glViewer_->pointBrightness();
 }
 
+void QCloudViewer::setBackgroundColor(const QColor &color)
+{
+  glViewer_->setBackgroundColor(color);
+}
+
+const QColor & QCloudViewer::backgroundColor() const
+{
+  return glViewer_->backgroundColor();
+}
+
 void QCloudViewer::setSceneOrigin(const QVector3D & v)
 {
   glViewer_->setSceneOrigin(v);

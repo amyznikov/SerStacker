@@ -41,10 +41,10 @@ void QGeneralAppSettingsDialogBox::hideEvent(QHideEvent * e)
   Q_EMIT visibilityChanged(isVisible());
 }
 
+///////////////////////////////////////////////////////////////////////
 
-
-QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
-    Base("QGeneralAppSettingsWidget", parent)
+QGeneralAppInputSettings::QGeneralAppInputSettings(QWidget * parent) :
+    Base("", parent)
 {
   debayer_ctl =
       add_enum_combobox<DEBAYER_ALGORITHM>("Stacker debayer algorithm:",
@@ -86,7 +86,7 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
           });
 
   sourceOutputType_ctl_ =
-      add_enum_combobox<c_input_source::OUTPUT_TYPE>("VLO OUTPUT TYPE:",
+      add_enum_combobox<c_input_source::OUTPUT_TYPE>("OUTPUT TYPE:",
           "",
           [this](c_input_source::OUTPUT_TYPE v) {
             if ( sequenceView_ ) {
@@ -96,36 +96,10 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
             }
           });
 
-
-#if HAVE_VLO_FILE
-
-  vloDataChannel_ctl_ =
-      add_enum_combobox<c_vlo_file::DATA_CHANNEL>("VLO DATA CHANNEL:",
-          "",
-          [this](c_vlo_file::DATA_CHANNEL v) {
-            if ( sequenceView_ ) {
-              c_vlo_file::DATA_CHANNEL channel = sequenceView_->vloDataChannel();
-              if ( channel != v ) {
-                sequenceView_->setVloDataChannel(v);
-              }
-            }
-          });
-
-  applyGhostFilter_ctl =
-      add_checkbox("Apply Ghost Filter",
-          "Set TRUE to apply Ghost Filter based on doubled echos",
-          [this](bool checked) {
-            if ( sequenceView_ && sequenceView_->applyGhostFilter() != checked) {
-              sequenceView_->setApplyGhostFilter(checked);
-            }
-          });
-
-#endif
-
   updateControls();
 }
 
-void QGeneralAppSettingsWidget::setInputSequenceView(QInputSequenceView * sequenceView)
+void QGeneralAppInputSettings::setInputSequenceView(QInputSequenceView * sequenceView)
 {
   if( sequenceView_ ) {
     sequenceView_->disconnect(this);
@@ -156,27 +130,24 @@ void QGeneralAppSettingsWidget::setInputSequenceView(QInputSequenceView * sequen
           c_update_controls_lock lock(this);
           sourceOutputType_ctl_->setValue(sequenceView_->sourceOutputType());
         });
-
-#if HAVE_VLO_FILE
-    connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
-        [this]() {
-          c_update_controls_lock lock(this);
-          vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
-          applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
-        });
-#endif
-
   }
 
   updateControls();
 }
 
-QInputSequenceView * QGeneralAppSettingsWidget::inputSequenceView() const
+QInputSequenceView * QGeneralAppInputSettings::inputSequenceView() const
 {
   return sequenceView_;
 }
 
-void QGeneralAppSettingsWidget::onupdatecontrols()
+
+void QGeneralAppInputSettings::onload(QSettings & settings)
+{
+  Base::onload(settings);
+
+}
+
+void QGeneralAppInputSettings::onupdatecontrols()
 {
   debayer_ctl->setValue(default_debayer_algorithm());
 
@@ -184,9 +155,6 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
     editorDebayer_ctl->setEnabled(false);
     dropBadPixels_ctl->setEnabled(false);
     badPixelsVariationThreshold_ctl->setEnabled(false);
-#if HAVE_VLO_FILE
-    vloDataChannel_ctl_->setEnabled(false);
-#endif
   }
   else {
     editorDebayer_ctl->setValue(sequenceView_->debayerAlgorithm());
@@ -196,21 +164,175 @@ void QGeneralAppSettingsWidget::onupdatecontrols()
     editorDebayer_ctl->setEnabled(true);
     dropBadPixels_ctl->setEnabled(true);
     badPixelsVariationThreshold_ctl->setEnabled(true);
+  }
+
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+QVLOInputSettings::QVLOInputSettings(QWidget * parent) :
+    Base("", parent)
+{
+#if HAVE_VLO_FILE
+
+  vloDataChannel_ctl_ =
+      add_enum_combobox<c_vlo_file::DATA_CHANNEL>("VLO DATA CHANNEL:",
+          "",
+          [this](c_vlo_file::DATA_CHANNEL v) {
+            if ( sequenceView_ ) {
+              c_vlo_file::DATA_CHANNEL channel = sequenceView_->vloDataChannel();
+              if ( channel != v ) {
+                sequenceView_->setVloDataChannel(v);
+              }
+            }
+          });
+
+
+  enableGhostFilter_ctl =
+      add_checkbox("Apply Ghost Filter",
+          "Set TRUE to apply Ghost Filter based on doubled echos",
+          [this](bool checked) {
+            if ( sequenceView_ && sequenceView_->vlo_processing_options()->enable_ghost_filter != checked) {
+              sequenceView_->vlo_processing_options()->enable_ghost_filter = checked;
+              sequenceView_->update_as_vlo_processing_options_chaned();
+            }
+          });
+
+  saturation_level_ctl  =
+      add_numeric_box<double>("Area saturation level:",
+          "",
+          [this](double v) {
+            if ( sequenceView_ ) {
+              if ( sequenceView_->vlo_processing_options()->ghost_options.saturation_level != v) {
+                sequenceView_->vlo_processing_options()->ghost_options.saturation_level = v;
+                sequenceView_->update_as_vlo_processing_options_chaned();
+              }
+            }
+          });
+
+
+  doubled_distanse_systematic_correction_ctl  =
+      add_numeric_box<double>("Systematic error correction:",
+          "",
+          [this](double v) {
+            if ( sequenceView_ ) {
+              if ( sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_systematic_correction != v) {
+                sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_systematic_correction = v;
+                sequenceView_->update_as_vlo_processing_options_chaned();
+              }
+            }
+          });
+
+    doubled_distanse_depth_tolerance_ctl  =
+        add_numeric_box<double>("Depth tolerance:",
+            "",
+            [this](double v) {
+              if ( sequenceView_ ) {
+                if ( sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_depth_tolerance != v) {
+                  sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_depth_tolerance = v;
+                  sequenceView_->update_as_vlo_processing_options_chaned();
+                }
+              }
+            });
+
+#endif
+
+  updateControls();
+}
+
+void QVLOInputSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+{
+  if( sequenceView_ ) {
+    sequenceView_->disconnect(this);
+  }
+
+  if( (sequenceView_ = sequenceView) ) {
 
 #if HAVE_VLO_FILE
-    vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
-    vloDataChannel_ctl_->setEnabled(true);
-
-    applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
-    applyGhostFilter_ctl->setEnabled(true);
+    connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
+        [this]() {
+          c_update_controls_lock lock(this);
+          vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
+          // applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
+        });
 #endif
 
   }
+
+  updateControls();
+
 }
 
-void QGeneralAppSettingsWidget::onload(QSettings & settings)
+QInputSequenceView * QVLOInputSettings::inputSequenceView() const
+{
+  return sequenceView_;
+}
+
+void QVLOInputSettings::onload(QSettings & settings)
 {
   Base::onload(settings);
+
+}
+
+void QVLOInputSettings::onupdatecontrols()
+{
+#if HAVE_VLO_FILE
+
+
+  if ( !sequenceView_ ) {
+    vloDataChannel_ctl_->setEnabled(false);
+    enableGhostFilter_ctl->setEnabled(false);
+    saturation_level_ctl ->setEnabled(false);
+    doubled_distanse_systematic_correction_ctl ->setEnabled(false);
+    doubled_distanse_depth_tolerance_ctl ->setEnabled(false);
+  }
+  else {
+    vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
+    enableGhostFilter_ctl->setChecked(sequenceView_->vlo_processing_options()->enable_ghost_filter);
+    saturation_level_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_options.saturation_level);
+    doubled_distanse_systematic_correction_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_systematic_correction);
+    doubled_distanse_depth_tolerance_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_depth_tolerance);
+
+    vloDataChannel_ctl_->setEnabled(true);
+    enableGhostFilter_ctl->setEnabled(true);
+    saturation_level_ctl ->setEnabled(true);
+    doubled_distanse_systematic_correction_ctl ->setEnabled(true);
+    doubled_distanse_depth_tolerance_ctl ->setEnabled(true);
+  }
+#endif
+
+}
+
+
+///////////////////////////////////////////////////////////////////////
+
+QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
+    Base(parent)
+{
+
+  QVBoxLayout * layout_ = new QVBoxLayout(this);
+
+  layout_->addWidget(tab_ctl = new QTabWidget(this));
+
+  tab_ctl->addTab(genericInputSettings_ctl = new QGeneralAppInputSettings(this),
+      QIcon(), "Generic Input Settings");
+
+  tab_ctl->addTab(vloSettings_ctl = new QVLOInputSettings(this),
+      QIcon(), "VLO");
+
+}
+
+void QGeneralAppSettingsWidget::setInputSequenceView(QInputSequenceView * sequenceView)
+{
+  genericInputSettings_ctl->setInputSequenceView(sequenceView);
+  vloSettings_ctl->setInputSequenceView(sequenceView);
+
+}
+
+QInputSequenceView * QGeneralAppSettingsWidget::inputSequenceView() const
+{
+  return genericInputSettings_ctl->inputSequenceView();
 }
 
 

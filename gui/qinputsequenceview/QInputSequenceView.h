@@ -67,8 +67,14 @@ public:
   void setVloDataChannel(c_vlo_file::DATA_CHANNEL channel);
   c_vlo_file::DATA_CHANNEL vloDataChannel() const;
 
-  void setApplyGhostFilter(bool v);
-  bool applyGhostFilter() const;
+  c_vlo_processing_options * vlo_processing_options();
+
+  void update_as_vlo_processing_options_chaned();
+
+
+
+//  void setApplyGhostFilter(bool v);
+//  bool applyGhostFilter() const;
 
 #endif
 
@@ -117,7 +123,11 @@ protected:
 #if HAVE_VLO_FILE
   c_vlo_file::DATA_CHANNEL vlo_data_channel_ =
       c_vlo_file::DATA_CHANNEL_AMBIENT;
-  bool apply_ghost_filter_ = false;
+
+  c_vlo_processing_options vlo_processing_options_;
+  //apply_ghost_filter_
+
+  //bool apply_ghost_filter_ = false;
 #endif
 
   QVBoxLayout * mainLayout_ = nullptr;

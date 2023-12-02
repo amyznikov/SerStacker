@@ -722,6 +722,21 @@ template<> struct c_vlo_scan_type_traits<c_vlo_scan6_imx479> {
 };
 
 
+struct c_vlo_processing_options
+{
+  bool enable_ghost_filter = false;
+
+  struct {
+    double saturation_level = 2500;
+
+    // -10 cm for makrolon,
+    // +40 cm for FIR20
+    double doubled_distanse_systematic_correction = 0; // [cm]
+    double doubled_distanse_depth_tolerance = 100; // [cm]
+
+  } ghost_options;
+
+};
 
 class c_vlo_file
 {
@@ -762,14 +777,17 @@ public:
   static bool sort_echos_by_distance(c_vlo_scan & scan);
 
   static cv::Mat get_image(const c_vlo_scan & scan, DATA_CHANNEL channel,
-      cv::InputArray exclude_mask = cv::noArray());
+      cv::InputArray exclude_mask = cv::noArray(),
+      const c_vlo_processing_options * opts = nullptr);
 
   static bool get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_channel,
       cv::OutputArray points, cv::OutputArray colors,
-      cv::InputArray exclude_mask = cv::noArray());
+      cv::InputArray exclude_mask = cv::noArray(),
+      const c_vlo_processing_options * opts = nullptr);
 
   static bool get_clouds3d(const c_vlo_scan & scan,
-      cv::Mat3f clouds[3]);
+      cv::Mat3f clouds[3],
+      const c_vlo_processing_options * opts = nullptr);
 
   static bool get_ray_inclinations_table(const c_vlo_scan & scan,
       cv::Mat1f & table);
@@ -795,8 +813,11 @@ public:
   c_vlo_reader(const std::string & filename);
   ~c_vlo_reader();
 
-  void set_apply_ghost_filter(bool v);
-  bool apply_ghost_filter() const;
+  //void set_apply_ghost_filter(bool v);
+  //bool apply_ghost_filter() const;
+
+  c_vlo_processing_options * processing_options();
+
 
   bool open(const std::string & filename = "");
   void close();
@@ -823,7 +844,9 @@ protected:
   c_ifhd_reader ifhd_;
   ssize_t num_frames_ = -1;
   ssize_t frame_size_ = -1;
-  bool apply_ghost_filter_  = false;
+  c_vlo_processing_options processing_options_;
+
+  //bool apply_ghost_filter_  = false;
 };
 
 

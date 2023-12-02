@@ -174,6 +174,18 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
 
 
 
+  bgColor_ctl =
+      add_widget<QColorPickerButton>("Background Color");
+
+  connect(bgColor_ctl, &QColorPickerButton::colorSelected,
+      [this]() {
+        if ( cloudViewer_ && cloudViewer_->cloudView()->backgroundColor() != bgColor_ctl->color() ) {
+          cloudViewer_->cloudView()->setBackgroundColor(bgColor_ctl->color());
+          save_parameter(PREFIX, "BackgroundColor", cloudViewer_->cloudView()->backgroundColor());
+        }
+      });
+
+
 
 //  add_expandable_groupbox(form, "Clouds",
 //      cloudsSettings_ctl = new QPointCloudsSettingsControl(this));
@@ -250,9 +262,12 @@ void QCloudViewSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
-//
-//    QGLCloudViewer * cloudView =
-//        cloudViewer_->cloudView();
+
+    QGLCloudViewer * cloudView =
+        cloudViewer_->cloudView();
+
+    bgColor_ctl->setColor(cloudView->backgroundColor());
+
 //
 //
 //    farPlane_ctl->setValue(toQString(cloudView->farPlane()));

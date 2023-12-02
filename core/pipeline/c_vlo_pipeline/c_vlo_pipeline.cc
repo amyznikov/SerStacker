@@ -1126,7 +1126,7 @@ bool c_vlo_pipeline::update_double_echo_statistics()
       const cv::Vec3f & P =  double_echo_peaks[y][x];
       const cv::Vec3f & A =  double_echo_area[y][x];
 
-      constexpr double Dmin = 2000;
+      constexpr double Dmin = 200;
 
       //  FIR
       //      constexpr double absolute_threshold = 50;
@@ -1134,9 +1134,9 @@ bool c_vlo_pipeline::update_double_echo_statistics()
       // constexpr double area_threshold = 0.7;
 
       // makrolon
-      constexpr double absolute_threshold = 80;
-      constexpr double absolute_offset = -10;
-      constexpr double area_threshold = 0.8;
+      constexpr double absolute_threshold = 110;
+      constexpr double absolute_offset = 0; // -10;
+      constexpr double area_threshold = 1; // 0.8;
 
       if( D[0] > Dmin && D[1] && std::abs(D[1] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
 

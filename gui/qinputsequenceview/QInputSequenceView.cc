@@ -225,12 +225,15 @@ c_vlo_file::DATA_CHANNEL QInputSequenceView::vloDataChannel() const
   return vlo_data_channel_;
 }
 
-void QInputSequenceView::setApplyGhostFilter(bool v)
+c_vlo_processing_options * QInputSequenceView::vlo_processing_options()
 {
-  if ( apply_ghost_filter_ != v ) {
-    apply_ghost_filter_ = v;
+  return &vlo_processing_options_;
+}
 
-    if( currentSequence_ && currentSequence_->is_open() ) {
+void QInputSequenceView::update_as_vlo_processing_options_chaned()
+{
+  if( currentSequence_ && currentSequence_->is_open() ) {
+    if ( dynamic_cast<c_vlo_input_source*>(currentSequence_->current_source().get()) ) {
 
       if( currentSequence_->current_pos() > 0 ) {
         currentSequence_->seek(currentSequence_->current_pos() - 1);
@@ -239,14 +242,33 @@ void QInputSequenceView::setApplyGhostFilter(bool v)
       loadNextFrame();
     }
 
-    Q_EMIT vloDataChannelChanged();
+    // Q_EMIT vloDataChannelChanged();
   }
+
 }
 
-bool QInputSequenceView::applyGhostFilter() const
-{
-  return apply_ghost_filter_;
-}
+//void QInputSequenceView::setApplyGhostFilter(bool v)
+//{
+//  if ( apply_ghost_filter_ != v ) {
+//    apply_ghost_filter_ = v;
+//
+//    if( currentSequence_ && currentSequence_->is_open() ) {
+//
+//      if( currentSequence_->current_pos() > 0 ) {
+//        currentSequence_->seek(currentSequence_->current_pos() - 1);
+//      }
+//
+//      loadNextFrame();
+//    }
+//
+//    Q_EMIT vloDataChannelChanged();
+//  }
+//}
+//
+//bool QInputSequenceView::applyGhostFilter() const
+//{
+//  return apply_ghost_filter_;
+//}
 
 #endif
 
@@ -416,7 +438,8 @@ void QInputSequenceView::loadNextFrame()
       if( c_vlo_input_source *vlo = dynamic_cast<c_vlo_input_source*>(current_source.get()) ) {
 
         vlo->set_read_channel(vlo_data_channel_);
-        vlo->set_apply_ghost_filter(apply_ghost_filter_);
+        * vlo->processing_options()  = this->vlo_processing_options_;
+        // vlo->set_apply_ghost_filter(apply_ghost_filter_);
 
         if ( sourceOutputType_ == c_input_source::OUTPUT_TYPE_CLOUD3D  ) {
 

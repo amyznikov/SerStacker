@@ -120,6 +120,9 @@ public:
   void setPointBrightness(double v);
   double pointBrightness() const;
 
+  void setBackgroundColor(const QColor &color);
+  const QColor & backgroundColor() const;
+
   void setSceneOrigin(const QVector3D & v);
   QVector3D sceneOrigin() const;
 

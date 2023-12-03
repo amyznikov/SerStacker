@@ -404,17 +404,6 @@ void get_ghosts(const EchoType echos[3], const c_vlo_processing_options * opts, 
     return;
   }
 
-  //  // FIR
-  //  constexpr double absolute_threshold = 100;
-  //  constexpr double absolute_offset = 40;
-  //  constexpr double area_threshold = 0.9;
-  //
-  ////  // makrolon
-  ////  constexpr double absolute_threshold = 80;
-  ////  constexpr double absolute_offset = -10;
-  ////  constexpr double area_threshold = 0.95;
-
-
   const auto &D0 = echos[0].dist;
   const auto &D1 = echos[1].dist;
   const auto &D2 = echos[2].dist;

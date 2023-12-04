@@ -252,6 +252,12 @@ QToolBar* QCloudSequenceView::currentToolbar() const
 }
 
 
+QString QCloudSequenceView::currentFileName() const
+{
+  return currentSource_ ? currentSource_->filename().c_str() : QString();
+}
+
+
 void QCloudSequenceView::setInputSource(const c_cloudview_input_source::sptr & current_source)
 {
   closeCurrentSource();

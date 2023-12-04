@@ -31,13 +31,16 @@ public:
 
 
 protected:
-  void onload(QSettings & settings) override;
+  //void onload(QSettings & settings) override;
   void onupdatecontrols() override;
 
 protected:
   QCloudViewer * cloudViewer_ = nullptr;
+  QEnumComboBox<QGLView::Projection> * projection_ctl = nullptr;
+  QNumericBox * rect_ctl  = nullptr;
   QNumericBox * nearPlane_ctl = nullptr;
   QNumericBox * farPlane_ctl = nullptr;
+  QNumericBox * fov_ctl = nullptr;
   QNumericBox * sceneTarget_ctl = nullptr;
   QNumericBox * upDirection_ctl = nullptr;
   QNumericBox * sceneOrigin_ctl = nullptr;

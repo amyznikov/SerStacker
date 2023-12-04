@@ -35,13 +35,28 @@ static QToolButton * createToolButton(QWidget * parent,
 QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
   Base("QCloudViewSettings", parent)
 {
+  projection_ctl =
+      add_enum_combobox<QGLView::Projection>("Projection",
+          "Select projection type",
+          [this](QGLView::Projection v) {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->projection() ) {
+              cloudViewer_->cloudView()->setProjection(v);
+            }
+          },
+          [this](QGLView::Projection * v) {
+            if ( cloudViewer_ ) {
+              * v = cloudViewer_->cloudView()->projection();
+              return true;
+            }
+            return false;
+          });
+
   nearPlane_ctl =
       add_numeric_box<double>("NearPlane:",
           "",
           [this](double v) {
             if ( cloudViewer_ && v != cloudViewer_->cloudView()->nearPlane() ) {
               cloudViewer_->cloudView()->setNearPlane(v);
-              save_parameter(PREFIX, "nearPlane", cloudViewer_->cloudView()->nearPlane());
             }
           },
           [this](double * v) {
@@ -58,12 +73,43 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](double v) {
             if ( cloudViewer_ && v != cloudViewer_->cloudView()->farPlane() ) {
               cloudViewer_->cloudView()->setFarPlane(v);
-              save_parameter(PREFIX, "farPlane", v);
             }
           },
           [this](double * v) {
             if ( cloudViewer_ ) {
               * v = cloudViewer_->cloudView()->farPlane();
+              return true;
+            }
+            return false;
+          });
+
+  fov_ctl =
+      add_numeric_box<double>("FOV [deg]:",
+          "Field of View for Perspective in degrees",
+          [this](double v) {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->fov() ) {
+              cloudViewer_->cloudView()->setFOV(v);
+            }
+          },
+          [this](double * v) {
+            if ( cloudViewer_ ) {
+              * v = cloudViewer_->cloudView()->fov();
+              return true;
+            }
+            return false;
+          });
+
+  rect_ctl  =
+      add_numeric_box<QRectF>("Rect:",
+          "Rectangle for Orto and Frustrum views",
+          [this](const QRectF & v) {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->viewRect() ) {
+              cloudViewer_->cloudView()->setViewRect(v);
+            }
+          },
+          [this](QRectF * v) {
+            if ( cloudViewer_ ) {
+              * v = cloudViewer_->cloudView()->viewRect();
               return true;
             }
             return false;
@@ -75,7 +121,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](const QVector3D & v) {
             if ( cloudViewer_ ) {
               cloudViewer_->cloudView()->setViewTargetPoint(v);
-              save_parameter(PREFIX, "target", cloudViewer_->cloudView()->viewTargetPoint());
             }
           },
           [this](QVector3D * v) {
@@ -92,7 +137,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](const QVector3D & v) {
             if ( cloudViewer_ ) {
               cloudViewer_->cloudView()->setUpDirection(v);
-              save_parameter(PREFIX, "upDirection", cloudViewer_->cloudView()->upDirection());
             }
           },
           [this](QVector3D * v) {
@@ -109,7 +153,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](const QVector3D & v) {
             if ( cloudViewer_ ) {
               cloudViewer_->cloudView()->setSceneOrigin(v);
-              save_parameter(PREFIX, "SceneOrigin", cloudViewer_->cloudView()->sceneOrigin());
             }
           },
           [this](QVector3D * v) {
@@ -126,7 +169,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](bool checked) {
             if ( cloudViewer_ && cloudViewer_->cloudView()->autoShowViewTarget() != checked ) {
               cloudViewer_->cloudView()->setAutoShowViewTarget(checked);
-              save_parameter(PREFIX, "autoShowViewTarget", cloudViewer_->cloudView()->autoShowViewTarget());
             }
           },
           [this](bool * v) {
@@ -144,7 +186,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](double v) {
             if ( cloudViewer_ && v > 0 && v != cloudViewer_->cloudView()->pointSize() ) {
               cloudViewer_->cloudView()->setPointSize(v);
-              save_parameter(PREFIX, "pointSize", v);
             }
           },
           [this](double * v) {
@@ -161,7 +202,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           [this](double v) {
             if ( cloudViewer_ && v != cloudViewer_->cloudView()->pointBrightness() ) {
               cloudViewer_->cloudView()->setPointBrightness(v);
-              save_parameter(PREFIX, "pointBrightness", cloudViewer_->cloudView()->pointBrightness());
             }
           },
           [this](double * v) {
@@ -173,7 +213,6 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
           });
 
 
-
   bgColor_ctl =
       add_widget<QColorPickerButton>("Background Color");
 
@@ -181,14 +220,18 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
       [this]() {
         if ( cloudViewer_ && cloudViewer_->cloudView()->backgroundColor() != bgColor_ctl->color() ) {
           cloudViewer_->cloudView()->setBackgroundColor(bgColor_ctl->color());
-          save_parameter(PREFIX, "BackgroundColor", cloudViewer_->cloudView()->backgroundColor());
+        }
+      });
+
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( cloudViewer_ ) {
+          bgColor_ctl->setColor(cloudViewer_->cloudView()->backgroundColor());
         }
       });
 
 
-
-//  add_expandable_groupbox(form, "Clouds",
-//      cloudsSettings_ctl = new QPointCloudsSettingsControl(this));
+  updateControls();
 }
 
 void QCloudViewSettings::setCloudViewer(QCloudViewer * v)
@@ -202,87 +245,15 @@ QCloudViewer * QCloudViewSettings::cloudViewer() const
   return cloudViewer_;
 }
 
-void QCloudViewSettings::onload(QSettings & settings)
-{
-  if ( cloudViewer_ ) {
-
-//    double sceneRadius = cloudViewer_->sceneRadius();
-//    if ( load_parameter(settings, PREFIX, "sceneRadius", &sceneRadius) ) {
-//      cloudViewer_->setSceneRadius(sceneRadius);
-//    }
-
-    QGLCloudViewer * cloudView =
-        cloudViewer_->cloudView();
-
-
-    double nearPlane = cloudView->nearPlane();
-    if ( load_parameter(settings, PREFIX, "nearPlane", &nearPlane) ) {
-      cloudView->setNearPlane(nearPlane);
-    }
-
-    double farPlane = cloudView->farPlane();
-    if ( load_parameter(settings, PREFIX, "farPlane", &farPlane) ) {
-      cloudView->setFarPlane(farPlane);
-    }
-
-    QVector3D target = cloudView->viewTargetPoint();
-    if ( load_parameter(settings, PREFIX, "target", &target) ) {
-      cloudView->setViewTargetPoint(target);
-    }
-
-    QVector3D upDirection = cloudView->upDirection();
-    if ( load_parameter(settings, PREFIX, "upDirection", &upDirection) ) {
-      cloudView->setUpDirection(upDirection);
-    }
-
-    QVector3D sceneOrigin = cloudView->sceneOrigin();
-    if ( load_parameter(settings, PREFIX, "sceneOrigin", &sceneOrigin) ) {
-      cloudView->setSceneOrigin(sceneOrigin);
-    }
-
-    double pointSize = cloudView->pointSize();
-    if ( load_parameter(settings, PREFIX, "pointSize", &pointSize) ) {
-      cloudView->setPointSize(pointSize);
-    }
-
-    double pointBrightness = cloudView->pointBrightness();
-    if ( load_parameter(settings, PREFIX, "pointBrightness", &pointBrightness) ) {
-      cloudView->setPointBrightness(pointBrightness);
-    }
-
-  }
-
-}
 
 void QCloudViewSettings::onupdatecontrols()
 {
-  //cloudsSettings_ctl->setCloudViewer(cloudViewer_);
-
   if ( !cloudViewer_ ) {
     setEnabled(false);
   }
   else {
-
-    QGLCloudViewer * cloudView =
-        cloudViewer_->cloudView();
-
-    bgColor_ctl->setColor(cloudView->backgroundColor());
-
-//
-//
-//    farPlane_ctl->setValue(toQString(cloudView->farPlane()));
-//    nearPlane_ctl->setValue(toQString(cloudView->nearPlane()));
-//    sceneTarget_ctl->setValue(toQString(cloudView->viewTargetPoint()));
-//    upDirection_ctl->setValue(toQString(cloudView->upDirection()));
-//    sceneOrigin_ctl->setValue(toQString(cloudView->sceneOrigin()));
-//    pointSize_ctl->setValue(cloudView->pointSize());
-//    autoShowViewTarget_ctl->setChecked(cloudView->autoShowViewTarget());
-//    pointBrightness_ctl->setValue(cloudView->pointBrightness());
-
     Base::onupdatecontrols();
-
     refreshCloudList();
-
     setEnabled(true);
   }
 }

@@ -50,6 +50,8 @@ public:
   void setCurrentToolbar(QToolBar * toolbar);
   QToolBar * currentToolbar() const;
 
+  QString currentFileName() const;
+
   void setInputSource(const c_cloudview_input_source::sptr & current_source);
   const c_cloudview_input_source::sptr & inputSource() const;
 

@@ -11,7 +11,27 @@
  */
 
 #include "QGLView.h"
+#include <core/ssprintf.h>
 #include <core/debug.h>
+
+
+#ifdef __ssprintf_h__
+
+template<>
+const c_enum_member* members_of<QGLView::Projection>()
+{
+  static constexpr c_enum_member members[] = {
+      { QGLView::Perspective, "Perspective", "" },
+      { QGLView::Frustum, "Frustum", "" },
+      { QGLView::Ortho, "Ortho", "" },
+      { QGLView::Perspective },
+  };
+
+  return members;
+}
+
+#endif // __ssprintf_h__
+
 
 namespace {
 
@@ -100,6 +120,14 @@ QGLView::~QGLView()
   cleanupGL();
 }
 
+void QGLView::loadParameters()
+{
+}
+
+void QGLView::saveParameters()
+{
+}
+
 
 void QGLView::setBackgroundColor(const QColor &color)
 {
@@ -125,21 +153,38 @@ const QColor & QGLView::foregroundColor() const
   return foregroundColor_;
 }
 
-void QGLView::setFOV(double radians)
+const QGLView::ViewParams & QGLView::viewParams() const
 {
-  fov_ = radians;
+  return viewParams_;
+}
+
+QGLView::Projection QGLView::projection() const
+{
+  return viewParams_.projection;
+}
+
+void QGLView::setProjection(Projection v)
+{
+  viewParams_.projection = v;
+  dirty_ = true;
+  update();
+}
+
+void QGLView::setFOV(double degrees)
+{
+  viewParams_.fov = degrees;
   dirty_ = true;
   update();
 }
 
 double QGLView::fov() const
 {
-  return fov_;
+  return viewParams_.fov;
 }
 
 void QGLView::setNearPlane(double v)
 {
-  nearPlane_ = v;
+  viewParams_.nearPlane = v;
   dirty_ = true;
   update();
 
@@ -148,19 +193,33 @@ void QGLView::setNearPlane(double v)
 
 double QGLView::nearPlane() const
 {
-  return nearPlane_;
+  return viewParams_.nearPlane;
 }
 
 void QGLView::setFarPlane(double v)
 {
-  farPlane_ = v;
+  viewParams_.farPlane = v;
   dirty_ = true;
   update();
 }
 
 double QGLView::farPlane() const
 {
-  return farPlane_;
+  return viewParams_.farPlane;
+}
+
+void QGLView::setViewRect(const QRectF & rc)
+{
+  viewParams_.rect = rc;
+  if ( viewParams_.projection != Projection::Perspective ) {
+    dirty_ = true;
+    update();
+  }
+}
+
+const QRectF & QGLView::viewRect() const
+{
+  return viewParams_.rect;
 }
 
 void QGLView::setViewPoint(const QVector3D & eye)
@@ -202,9 +261,10 @@ const QVector3D & QGLView::upDirection() const
 
 void QGLView::setPerspecitive(double fov, double nearPlane, double farPlane)
 {
-  fov_ = fov;
-  nearPlane_ = nearPlane;
-  farPlane_ = farPlane;
+  viewParams_.projection = Perspective;
+  viewParams_.fov = fov;
+  viewParams_.nearPlane = nearPlane;
+  viewParams_.farPlane = farPlane;
   dirty_ = true;
   update();
 }
@@ -311,12 +371,49 @@ void QGLView::glPreDraw()
     mview_.lookAt(viewPoint_, viewTarget_,
         viewUpDirection_);
 
-    mperspective_.setToIdentity();
-    mperspective_.perspective(fov_ * 180 / M_PI,
-        GLfloat(viewport.w) / viewport.h,
-        nearPlane_, farPlane_);
+    mprojection_.setToIdentity();
 
-    mtotal_ = mperspective_ * mview_;
+    switch (viewParams_.projection) {
+
+      case Projection::Frustum: {
+
+        mprojection_.frustum(-viewParams_.nearPlane, viewParams_.nearPlane,
+            -viewParams_.nearPlane, +viewParams_.nearPlane,
+            viewParams_.nearPlane, viewParams_.farPlane);
+
+        mtotal_ = mprojection_ * mview_;
+
+        break;
+      }
+
+      case Projection::Ortho: {
+
+        // -200;100; 200;-100
+        float left = viewParams_.rect.left();
+        float right = viewParams_.rect.right();
+        float bottom = viewParams_.rect.bottom();
+        float top = viewParams_.rect.top();
+
+        mprojection_.ortho(left, right, bottom, top, viewParams_.nearPlane, viewParams_.farPlane);
+
+        mtotal_ = mprojection_ * mview_;
+        break;
+      }
+
+      case Projection::Perspective:
+      default: {
+
+        mprojection_.perspective(viewParams_.fov,
+            GLfloat(viewport.w) / viewport.h,
+            viewParams_.nearPlane,
+            viewParams_.farPlane);
+
+        mtotal_ = mprojection_ * mview_;
+
+        break;
+      }
+    }
+
 
     dirty_ = false;
   }
@@ -596,7 +693,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(0, delta.y() / viewport.h, forward.length()));
 
           const QVector3D Up =
-              (TU - T0) * std::max( (float)nearPlane_, forward.length());
+              (TU - T0) * std::max( (float)viewParams_.nearPlane, forward.length());
 
           viewTarget_ += Up;
           viewPoint_ += Up;
@@ -608,7 +705,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(-delta.x() / viewport.w, 0, forward.length()));
 
           const QVector3D Right =
-              (TR - T0) * std::max((float) nearPlane_, forward.length());
+              (TR - T0) * std::max((float)viewParams_.nearPlane, forward.length());
 
           viewTarget_ += Right;
           viewPoint_ += Right;
@@ -733,7 +830,7 @@ void QGLView::wheelEvent(QWheelEvent * e)
           QVector3D::dotProduct(newforward,
               forward);
 
-      if ( p > 0 &&  newforward.length() > nearPlane_ ) {
+      if ( p > 0 &&  newforward.length() > viewParams_.nearPlane ) {
         viewTarget_ = newtarget;
         dirty_ = true;
         showViewTarget(true);

@@ -314,22 +314,26 @@ inline QString toString(const cv::Scalar & v)
 #endif
 
 template<class T>
-inline QString toQString(const T & v) {
+inline QString toQString(const T & v)
+{
   return QString(std::string(toString(v)).c_str());
 }
 
 template<>
-inline QString toQString(const QString & v) {
+inline QString toQString(const QString & v)
+{
   return v;
 }
 
 template<class T>
-inline bool fromString(const QString & text, T * v) {
+inline bool fromString(const QString & text, T * v)
+{
   return fromString(text.toStdString(), v);
 }
 
 template<>
-inline bool fromString(const QString & text, QString * v) {
+inline bool fromString(const QString & text, QString * v)
+{
   *v = text;
   return true;
 }
@@ -579,6 +583,41 @@ inline QString toQString(const QRect & v)
 #endif
 }
 
+inline bool fromString(const QString & text, QRectF * v)
+{
+  double x, y, w, h;
+
+  const QByteArray sa = text.toUtf8();
+  const char * s = sa.constData();
+
+  if ( sscanf(s, "%lf %*[,;] %lf %*[,; \t\r\n] %lf %*[xX] %lf", &x, &y, &w, &h) == 4 ) {
+    v->setX(x);
+    v->setY(y);
+    v->setWidth(w);
+    v->setHeight(h);
+    return true;
+  }
+
+  if ( sscanf(s, "%lf %*[,;] %lf %*[,;] %lf %*[,;] %lf", &x, &y, &w, &h) == 4 ) {
+    v->setX(x);
+    v->setY(y);
+    v->setWidth(w - x);
+    v->setHeight(h - y);
+    return true;
+  }
+
+  return false;
+}
+
+inline QString toQString(const QRectF & v)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+  return QString::asprintf("%g;%g; %gx%g", v.x(), v.y(), v.width(), v.height());
+#else
+  QString s;
+  s.sprintf("%g;%g; %gx%g", v.x(), v.y(), v.width(), v.height());
+#endif
+}
 
 template<class T>
 inline void save_parameter(const QString & prefix, const char * name, const T & value )

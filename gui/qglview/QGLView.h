@@ -34,8 +34,27 @@ public:
   typedef QGLView ThisClass;
   typedef QOpenGLWidget Base;
 
+  enum Projection {
+    Perspective,
+    Frustum,
+    Ortho,
+  };
+
+  struct ViewParams
+  {
+    Projection projection = Projection::Perspective;
+
+    double fov = 90; // degrees
+    double nearPlane = 0.2;
+    double farPlane = 1000.;
+    QRectF rect = QRectF (-1000, -1000, 2000, 2000);
+  };
+
   explicit QGLView(QWidget * parent = nullptr);
   ~QGLView();
+
+  virtual void loadParameters();
+  virtual void saveParameters();
 
   void setBackgroundColor(const QColor &color);
   const QColor & backgroundColor() const;
@@ -43,7 +62,12 @@ public:
   void setForegroundColor(const QColor &color);
   const QColor & foregroundColor() const;
 
-  void setFOV(double radians);
+  const ViewParams & viewParams() const;
+
+  Projection projection() const;
+  void setProjection(Projection v);
+
+  void setFOV(double degrees);
   double fov() const;
 
   void setNearPlane(double v);
@@ -51,6 +75,9 @@ public:
 
   void setFarPlane(double v);
   double farPlane() const;
+
+  void setViewRect(const QRectF & rc);
+  const QRectF & viewRect() const;
 
   void setViewPoint(const QVector3D & eye);
   const QVector3D & viewPoint() const;
@@ -64,7 +91,7 @@ public:
   void setAutoShowViewTarget(bool v);
   bool autoShowViewTarget() const;
 
-  void setPerspecitive(double fov_radians, double nearPlane, double farPlane);
+  void setPerspecitive(double fov_degrees, double nearPlane, double farPlane);
 
   void cameraTo(const QVector3D & viewPoint, const QVector3D & viewTargetPoint, const QVector3D & viewUpDirection);
   void lookTo(const QVector3D &target);
@@ -126,16 +153,20 @@ protected:
 protected:
   QColor backgroundColor_ = Qt::black;
   QColor foregroundColor_ = Qt::white;
-  double fov_ = M_PI / 2;
-  double nearPlane_ = 0.2;
-  double farPlane_ = 1000.0;
+
+  ViewParams viewParams_;
+
+
+//  double fov_ = M_PI / 2;
+//  double nearPlane_ = 0.2;
+//  double farPlane_ = 1000.0;
 
   QVector3D viewPoint_ = QVector3D(40, 30, 30);
   QVector3D viewTarget_ = QVector3D(0, 0, 0);
   QVector3D viewUpDirection_ = QVector3D(0, 0, 1);
 
   QMatrix4x4 mview_;
-  QMatrix4x4 mperspective_;
+  QMatrix4x4 mprojection_;
   QMatrix4x4 mtotal_;
 
   // current view port, update in resizeGL()

@@ -94,7 +94,10 @@ void> sort_echos_by_distance(ScanType & scan)
           const auto & distance  =
               slot.echo[l][e].dist;
 
-          if ( distance >= min_distance && distance <= max_distance ) {
+          const auto & area =
+              slot.echo[l][e].area;
+
+          if ( distance >= min_distance && distance <= max_distance && area > 0 && area < 30000 ) {
             echos[cne++] = slot.echo[l][e];
           }
         }
@@ -137,7 +140,14 @@ void sort_echos_by_distance(c_vlo_scan6_base & scan)
         cne = 0;
 
         for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-          if( scan.echo[s][l][e].dist > 0 && scan.echo[s][l][e].dist < max_dist_value ) {
+
+          const auto & distance  =
+              scan.echo[s][l][e].dist;
+
+          const auto & area =
+              scan.echo[s][l][e].area;
+
+          if( distance > 0 && distance < max_dist_value && area > 0 && area < 30000 ) {
             echos[cne++] = scan.echo[s][l][e];
           }
         }
@@ -192,7 +202,7 @@ void sort_echos_by_distance(c_vlo_scan6_slm & scan)
             const auto & area =
                 scan.echo[s][l][e].area;
 
-            if ( area >= min_area && area <= max_area ) {
+            if ( area > 0 && area < 30000 ) { // area >= min_area && area <= max_area
               echos[cne++] = scan.echo[s][l][e];
             }
           }

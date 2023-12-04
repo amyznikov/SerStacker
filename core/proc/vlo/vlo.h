@@ -13,7 +13,7 @@
 
 struct c_vlo_depth_segmentation_options
 {
-  double min_distance = 100; // [m]
+  double min_distance = 1; // [m]
   double max_distance = 300; // [m]
   double vlo_walk_error = 1; // [m]
   double min_slope = -0.3; // [tan = m / pix]

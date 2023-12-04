@@ -13,6 +13,7 @@
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include "QCloudViewDatasetCollectionsView.h"
 #include "QCloudSequenceView.h"
+#include "QCloudViewImageEditor.h"
 
 
 //#include <gui/qtextview/QTextFileViewer.h>
@@ -59,6 +60,7 @@ private:
 
   void onSaveState(QSettings & settings) override;
   void onRestoreState(QSettings & settings) override;
+  void onMtfControlVisibilityChanged(bool visible) override;
 
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
@@ -69,6 +71,9 @@ private:
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
   QCloudSequenceView * cloudSequenceView = nullptr;
+  QCloudViewImageEditor * imageView = nullptr;
+  QCloudViewer * cloudView = nullptr;
+  QTextFileViewer * textView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
 

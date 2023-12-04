@@ -8,6 +8,7 @@
 #include "c_cloudview_input_source.h"
 #include "video/c_video_input_source.h"
 #include "vlo/c_cloudview_vlo_input_source.h"
+#include "text/c_text_input_source.h"
 #include <core/readdir.h>
 #include <core/debug.h>
 
@@ -26,6 +27,15 @@ const char * c_cloudview_input_source::cfilename() const
 c_cloudview_input_source::sptr c_cloudview_input_source::load(const std::string & filename)
 {
   sptr source;
+
+  if( c_text_input_source::is_supported_suffix(filename) ) {
+
+    if( (source = c_text_input_source::load(filename)) ) {
+      return source;
+    }
+
+  }
+
 
   if( c_cloudview_vlo_input_source::is_supported_suffix(filename) ) {
 

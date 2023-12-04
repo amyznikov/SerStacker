@@ -50,7 +50,6 @@ c_cloudview_vlo_input_source::sptr c_cloudview_vlo_input_source::load(const std:
   return obj;
 }
 
-
 bool c_cloudview_vlo_input_source::open(const std::string & filename)
 {
   close();
@@ -113,7 +112,6 @@ c_cloudview_data_frame::sptr c_cloudview_vlo_input_source::read()
 
 
   return f;
-
 }
 
 

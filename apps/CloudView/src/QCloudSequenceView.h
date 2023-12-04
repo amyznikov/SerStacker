@@ -66,6 +66,7 @@ protected:
   void loadNextFrame();
   void onSeek(int pos);
   void onStackedWidgetCurrentIndexChanged();
+  void showFrameData(int dataid );
 
 protected:
   void showEvent(QShowEvent *event) override;
@@ -73,6 +74,7 @@ protected:
 
 protected:
   c_cloudview_input_source::sptr currentSource_;
+  c_cloudview_data_frame::sptr currentFrame_;
   c_cloudview_dataframe_processor::sptr currentProcessor_;
 
   QVBoxLayout * mainLayout_ = nullptr;
@@ -91,7 +93,7 @@ protected:
   QToolButton * dataSelectionToolbutton_ctl = nullptr;
 
   std::vector<c_cloudview_data_item> dataItems_;
-  int selectedDataId_ = 0;
+  int curretDataItemId_ = 0;
 
 
   //QComboBox * viewSelector_ = nullptr;

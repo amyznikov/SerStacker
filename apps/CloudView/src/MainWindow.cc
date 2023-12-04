@@ -392,6 +392,33 @@ void MainWindow::setupDatasetView()
 
 void MainWindow::setupCloudSequenceView()
 {
+  QToolBar * toolbar;
+
+  ///////////////////////////////////////////////////////////////////////
+  toolbar = cloudSequenceView->toolbar();
+
+  ///////////////////////////////////////////////////////////////////////
+  toolbar = cloudSequenceView->imageViewToolbar();
+
+  ///////////////////////////////////////////////////////////////////////
+  toolbar = cloudSequenceView->cloudViewToolbar();
+
+  ///////////////////////////////////////////////////////////////////////
+  toolbar = cloudSequenceView->textViewToolbar();
+
+  ///////////////////////////////////////////////////////////////////////
+  toolbar = cloudSequenceView->rightToolbar();
+
+  toolbar->addAction(createAction(getIcon(ICON_close),
+      "Close",
+      "Close window",
+      [this]() {
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      },
+      new QShortcut(QKeySequence::Cancel,
+          cloudSequenceView, nullptr, nullptr,
+          Qt::WindowShortcut)));
+
 
 }
 

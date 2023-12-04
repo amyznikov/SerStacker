@@ -160,29 +160,32 @@ void QCloudSequenceView::setupMainToolbar()
           "Select View",
           [this](QToolButton * tb) {
 
-            if ( !dataItems_.empty() ) {
+          if ( dataItems_.empty() ) {
+            return;
+          }
 
-              QMenu menu;
+          QMenu menu;
 
-              for ( const auto & item : dataItems_ ) {
+          for ( const auto & item : dataItems_ ) {
 
-                int itemId =
+            const int itemId =
                 item.dataid();
 
-                menu.addAction(createCheckableAction(QIcon(),
-                        item.cname(),
-                        item.ctooltip(),
-                        itemId == selectedDataId_,
-                        [this, itemId]() {
+            menu.addAction(createCheckableAction(
+                QIcon(),
+                item.cname(),
+                item.ctooltip(),
+                itemId == curretDataItemId_,
+                [this, itemId]() {
+                  showFrameData(itemId);
+                }));
+          }
 
-                          // setCurrentView(w);
-              selectedDataId_ = itemId;
-            }));
+          if ( !menu.isEmpty() ) {
+            menu.exec(tb->mapToGlobal(QPoint(tb->width()-4, tb->height()-4)));
+          }
 
-  }
-}
-
-}));
+      }));
 
 }
 
@@ -263,6 +266,26 @@ const c_cloudview_input_source::sptr & QCloudSequenceView::inputSource() const
   return currentSource_;
 }
 
+bool QCloudSequenceView::openFile(const QString & abspath)
+{
+  closeCurrentSource();
+
+  if ( !abspath.isEmpty() ) {
+
+    const std::string filename =
+        abspath.toStdString();
+
+    if( !(currentSource_ = c_cloudview_input_source::load(filename)) ) {
+      CF_ERROR("c_cloudview_input_source::load('%s') fails", filename.c_str());
+      return false;
+    }
+
+    startDisplay();
+  }
+
+  return true;
+}
+
 void QCloudSequenceView::onSeek(int pos)
 {
   if( isOpen(currentSource_) ) {
@@ -310,41 +333,19 @@ void QCloudSequenceView::loadNextFrame()
 
     QWaitCursor wait(this, currentSource_->size() == 1);
 
-    c_cloudview_data_frame::sptr frame =
-        currentSource_->read();
-
-    if( !frame ) {
-      CF_ERROR("currentSource_->read() fails");
+    if( !(currentFrame_ = currentSource_->read()) ) {
+      CF_ERROR("currentSource_->read(currentFrame_) fails");
       return;
     }
 
-    if( currentProcessor_ && !currentProcessor_->process(frame) ) {
-      CF_ERROR("currentProcessor_->process(dataframe) fails");
+    if( currentProcessor_ && !currentProcessor_->process(currentFrame_) ) {
+      CF_ERROR("currentProcessor_->process(currentFrame_) fails");
     }
 
     dataItems_ =
-        frame->items();
+        currentFrame_->items();
 
-    const c_cloudview_data_item * displayItem =
-        frame->item(selectedDataId_);
-
-    CF_DEBUG("displayItem=%p", displayItem);
-
-    if( !displayItem ) {
-    }
-    else {
-
-      switch (displayItem->type()) {
-        case c_cloudview_data_item::image:
-          //frame->get_image(name, image, mask);
-          break;
-        case c_cloudview_data_item::structured_cloud3d:
-          break;
-        case c_cloudview_data_item::unstructured_cloud3d:
-          break;
-      }
-    }
-
+    showFrameData(curretDataItemId_);
   }
 
 }
@@ -352,30 +353,69 @@ void QCloudSequenceView::loadNextFrame()
 
 void QCloudSequenceView::closeCurrentSource()
 {
+  currentFrame_.reset();
+
   if ( currentSource_ ) {
     currentSource_->close();
   }
 }
 
 
-bool QCloudSequenceView::openFile(const QString & abspath)
+void QCloudSequenceView::showFrameData(int data_id)
 {
-  closeCurrentSource();
+  if( currentFrame_ ) {
 
-  if ( !abspath.isEmpty() ) {
+    const c_cloudview_data_item * displayItem =
+        currentFrame_->item(curretDataItemId_ = data_id);
 
-    const std::string filename =
-        abspath.toStdString();
-
-    if( !(currentSource_ = c_cloudview_input_source::load(filename)) ) {
-      CF_ERROR("c_cloudview_input_source::load('%s') fails", filename.c_str());
-      return false;
+    if( !displayItem && !(displayItem = currentFrame_->item(curretDataItemId_ = -1)) ) {
+      CF_ERROR("currentFrame_->item(curretDataItemId_=%d) returned NULL pointer",
+          curretDataItemId_);
     }
+    else {
 
-    startDisplay();
+      switch (displayItem->type()) {
+        case c_cloudview_data_item::image: {
+
+          setCurrentView(imageView_);
+
+          if( !currentFrame_->get_image(curretDataItemId_, imageView_->inputImage(), imageView_->inputMask()) ) {
+            imageView_->inputImage().release();
+            imageView_->inputMask().release();
+          }
+
+          imageView_->updateImage();
+
+          break;
+        }
+
+        case c_cloudview_data_item::text: {
+          setCurrentView(textView_);
+          textView_->showTextFile(currentFrame_->get_filename());
+          break;
+        }
+
+        case c_cloudview_data_item::point_cloud_3d: {
+
+          cv::Mat3f points;
+          cv::Mat colors;
+
+          setCurrentView(cloudView_);
+          cloudView_->clear();
+          currentFrame_->get_point_cloud(curretDataItemId_, points, colors);
+          cloudView_->add(QPointCloud::create(points, colors, false));
+
+          break;
+        }
+
+        case c_cloudview_data_item::structured_point_cloud_3d: {
+          CF_DEBUG("structured_cloud3d");
+          break;
+        }
+
+      }
+    }
   }
-
-  return true;
 }
 
 

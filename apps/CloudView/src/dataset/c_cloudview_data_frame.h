@@ -21,8 +21,10 @@ public:
   enum Type
   {
     image,
-    structured_cloud3d,
-    unstructured_cloud3d,
+    text,
+    filename,
+    point_cloud_3d,
+    structured_point_cloud_3d,
   };
 
   c_cloudview_data_item(const std::string & name, Type type, int dataid, const std::string & tooltip) :
@@ -62,6 +64,7 @@ public:
   {
     return dataid_;
   }
+
 
 protected:
   std::string name_;
@@ -104,23 +107,39 @@ public:
     return pos == items_.end() ? nullptr : &*pos;
   }
 
+  virtual std::string get_filename()
+  {
+    return "";
+  }
+
+  virtual bool get_text(int id, std::string & text)
+  {
+    return false;
+  }
+
   virtual bool get_image(int id, cv::OutputArray image,
       cv::OutputArray mask = cv::noArray())
   {
     return false;
   }
 
-  virtual bool get_structured_cloud3d(int id, cv::OutputArray points,
+  virtual bool get_point_cloud(int id, cv::OutputArray points,
       cv::OutputArray colors)
   {
     return false;
   }
 
-  virtual bool get_unstructured_cloud3d(int id, cv::OutputArray points,
+  virtual bool get_structured_point_cloud(int id, cv::OutputArray points,
       cv::OutputArray colors)
   {
     return false;
   }
+
+
+protected:
+  void add_data_item(const std::string & name, int id,
+      const c_cloudview_data_item::Type & type,
+      const std::string & tooltip);
 
 protected:
   std::vector<c_cloudview_data_item> items_;

@@ -66,7 +66,7 @@ struct c_vlo_pipeline_output_options :
 
   bool save_cloud3d_ply = false;
   c_vlo_reader::DATA_CHANNEL cloud3d_intensity_channel =
-      c_vlo_reader::DATA_CHANNEL_ECHO_PEAK;
+      c_vlo_reader::DATA_CHANNEL_PEAK;
 
   bool save_progress_video = false;
   c_output_frame_writer_options progress_writer_options;

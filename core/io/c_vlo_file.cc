@@ -37,13 +37,13 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_AMBIENT, "AMBIENT", "" },
       { c_vlo_file::DATA_CHANNEL_DISTANCES, "DISTANCES", "" },
       { c_vlo_file::DATA_CHANNEL_DEPTH, "DEPTH", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_AREA, "ECHO_AREA", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK, "ECHO_PEAK", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_WIDTH, "ECHO_WIDTH", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST, "AREA_MUL_DIST", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST, "PEAK_MUL_DIST", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST, "AREA_MUL_SQRT_DIST", "" },
-      { c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST, "PEAK_MUL_SQRT_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_AREA, "ECHO_AREA", "" },
+      { c_vlo_file::DATA_CHANNEL_PEAK, "ECHO_PEAK", "" },
+      { c_vlo_file::DATA_CHANNEL_WIDTH, "ECHO_WIDTH", "" },
+      { c_vlo_file::DATA_CHANNEL_AREA_MUL_DIST, "AREA_MUL_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_PEAK_MUL_DIST, "PEAK_MUL_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_AREA_MUL_SQRT_DIST, "AREA_MUL_SQRT_DIST", "" },
+      { c_vlo_file::DATA_CHANNEL_PEAK_MUL_SQRT_DIST, "PEAK_MUL_SQRT_DIST", "" },
       { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS, "DOUBLED_ECHO_PEAKS", "Peak values for double echos" },
       { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_AREAS, "DOUBLED_ECHO_AREAS", "Area values for double echos"},
       { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES, "DOUBLED_ECHO_DISTANCES", "Distance values for double echos"},
@@ -522,7 +522,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
 
 
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
+    case c_vlo_file::DATA_CHANNEL_AREA: {
 
       typedef decltype(ScanType::Echo::area) value_type;
       static constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
@@ -538,7 +538,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK: {
+    case c_vlo_file::DATA_CHANNEL_PEAK: {
 
       typedef decltype(ScanType::Echo::peak) value_type;
       static constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
@@ -554,7 +554,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_WIDTH: {
+    case c_vlo_file::DATA_CHANNEL_WIDTH: {
       typedef decltype(ScanType::Echo::width) value_type;
       static constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
 
@@ -569,7 +569,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
+    case c_vlo_file::DATA_CHANNEL_AREA_MUL_DIST: {
 
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
@@ -582,7 +582,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST: {
+    case c_vlo_file::DATA_CHANNEL_PEAK_MUL_DIST: {
 
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
@@ -596,7 +596,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
     }
 
     //
-    case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
+    case c_vlo_file::DATA_CHANNEL_AREA_MUL_SQRT_DIST: {
 
       cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3f::all(0));
@@ -609,7 +609,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST: {
+    case c_vlo_file::DATA_CHANNEL_PEAK_MUL_SQRT_DIST: {
 
       typedef decltype(ScanType::Echo::peak) value_type;
 
@@ -762,8 +762,8 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
   switch (channel) {
 
     case c_vlo_file::DATA_CHANNEL_AMBIENT:
-      case c_vlo_file::DATA_CHANNEL_ECHO_PEAK:
-      case c_vlo_file::DATA_CHANNEL_ECHO_AREA: {
+      case c_vlo_file::DATA_CHANNEL_PEAK:
+      case c_vlo_file::DATA_CHANNEL_AREA: {
 
       typedef decltype(ScanType::Echo::area) value_type;
 
@@ -805,8 +805,8 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
     }
 
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_DIST:
-      case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_DIST: {
+    case c_vlo_file::DATA_CHANNEL_PEAK_MUL_DIST:
+      case c_vlo_file::DATA_CHANNEL_AREA_MUL_DIST: {
 
       typedef decltype(ScanType::Echo::area) value_type;
 
@@ -821,8 +821,8 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       return image;
     }
 
-    case c_vlo_file::DATA_CHANNEL_ECHO_PEAK_MUL_SQRT_DIST:
-      case c_vlo_file::DATA_CHANNEL_ECHO_AREA_MUL_SQRT_DIST: {
+    case c_vlo_file::DATA_CHANNEL_PEAK_MUL_SQRT_DIST:
+      case c_vlo_file::DATA_CHANNEL_AREA_MUL_SQRT_DIST: {
 
       typedef decltype(ScanType::Echo::area) value_type;
 

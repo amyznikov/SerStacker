@@ -12,8 +12,13 @@ namespace cloudview {
 
 c_video_frame::c_video_frame()
 {
-  items_.emplace_back(c_cloudview_data_item("Image", c_cloudview_data_item::Type::image, IMAGE, "2Image"));
-  items_.emplace_back(c_cloudview_data_item("Mask", c_cloudview_data_item::Type::image, MASK, "Mask for image"));
+  add_data_item("Image", IMAGE,
+      c_cloudview_data_item::Type::image,
+      "Input image");
+
+  add_data_item("Mask", MASK,
+      c_cloudview_data_item::Type::image,
+      "Input mask");
 }
 
 bool c_video_frame::get_image(int id, cv::OutputArray output_image,

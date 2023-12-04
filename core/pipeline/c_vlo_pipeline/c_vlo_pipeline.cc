@@ -673,7 +673,7 @@ bool c_vlo_pipeline::run_blom_detection2()
         output_options_.blured_intensities_kradius);
 
     c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensities,
+        c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensities,
             CV_32F);
 
     blured_intensities.create(intensities.size());
@@ -747,7 +747,7 @@ bool c_vlo_pipeline::run_blom_detection2()
     cv::Mat3f intensity_image;
 
     c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensity_image,
+        c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensity_image,
             CV_32F);
 
 
@@ -840,7 +840,7 @@ bool c_vlo_pipeline::run_blom_detection2()
     cv::Mat3f depth_image;
 
     c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_ECHO_PEAK).convertTo(intensity_image,
+        c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensity_image,
             CV_32F);
 
     c_vlo_file::get_image(current_scan_,

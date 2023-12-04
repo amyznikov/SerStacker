@@ -157,6 +157,10 @@ void MainWindow::onSaveState(QSettings & settings)
     settings.setValue("fileSystemTree/absoluteFilePath",
         fileSystemTreeDock->currentAbsoluteFilePath());
   }
+
+  if ( cloudView ) {
+    cloudView->saveParameters();
+  }
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
@@ -166,6 +170,10 @@ void MainWindow::onRestoreState(QSettings & settings)
   if ( fileSystemTreeDock ) {
     fileSystemTreeDock->displayPath(settings.value(
         "fileSystemTree/absoluteFilePath").toString());
+  }
+
+  if ( cloudView ) {
+    cloudView->loadParameters();
   }
 }
 

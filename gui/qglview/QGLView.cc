@@ -122,10 +122,65 @@ QGLView::~QGLView()
 
 void QGLView::loadParameters()
 {
+  QSettings settings;
+  onLoadParameters(settings);
+}
+
+void QGLView::onLoadParameters(QSettings & settings)
+{
+  backgroundColor_ =
+      settings.value("QGLView/backgroundColor_",
+          backgroundColor_).value<QColor>();
+
+  foregroundColor_ =
+      settings.value("QGLView/foregroundColor_",
+          foregroundColor_).value<QColor>();
+
+  fromString(settings.value("QGLView/projection",
+      QString(toString(viewParams_.projection))).toString().toStdString(),
+      &viewParams_.projection);
+
+  viewParams_.fov = settings.value("QGLView/fov",
+      viewParams_.fov).value<decltype(viewParams_.fov)>();
+
+  viewParams_.nearPlane = settings.value("QGLView/nearPlane",
+      viewParams_.nearPlane).value<decltype(viewParams_.nearPlane)>();
+
+  viewParams_.farPlane = settings.value("QGLView/farPlane",
+      viewParams_.farPlane).value<decltype(viewParams_.farPlane)>();
+
+  viewParams_.rect = settings.value("QGLView/viewRect",
+      viewParams_.rect).value<decltype(viewParams_.rect)>();
 }
 
 void QGLView::saveParameters()
 {
+  QSettings settings;
+  onSaveParameters(settings);
+}
+
+void QGLView::onSaveParameters(QSettings & settings)
+{
+  settings.setValue("QGLView/backgroundColor_",
+      backgroundColor_);
+
+  settings.setValue("QGLView/foregroundColor_",
+      foregroundColor_);
+
+  settings.setValue("QGLView/projection",
+      QString(toString(viewParams_.projection)));
+
+  settings.setValue("QGLView/fov",
+      viewParams_.fov);
+
+  settings.setValue("QGLView/nearPlane",
+      viewParams_.nearPlane);
+
+  settings.setValue("QGLView/farPlane",
+      viewParams_.farPlane);
+
+  settings.setValue("QGLView/viewRect",
+      viewParams_.rect);
 }
 
 
@@ -356,8 +411,8 @@ void QGLView::cleanupGL()
 void QGLView::glInit()
 {
   // Default colors
-  setForegroundColor(QColor(200, 200, 200));
-  setBackgroundColor(QColor(32, 32, 32));
+  //setForegroundColor(QColor(200, 200, 200));
+  // setBackgroundColor(QColor(32, 32, 32));
 }
 
 void QGLView::glPreDraw()

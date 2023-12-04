@@ -491,8 +491,7 @@ double QGLCloudViewer::pointBrightness() const
 void QGLCloudViewer::glInit()
 {
   Base::glInit();
-
-  setBackgroundColor(QColor(32, 32, 32));
+  // setBackgroundColor(QColor(32, 32, 32));
 }
 
 void QGLCloudViewer::glPreDraw()
@@ -712,6 +711,32 @@ bool QGLCloudViewer::openPlyFile(const QString & pathFileName)
 }
 
 
+void QGLCloudViewer::onLoadParameters(QSettings & settings)
+{
+  Base::onLoadParameters(settings);
+
+  sceneOrigin_ =
+      settings.value("QGLCloudViewer/sceneOrigin_",
+          sceneOrigin_).value<decltype(sceneOrigin_)>();
+
+  pointSize_ =
+      settings.value("QGLCloudViewer/pointSize_",
+          pointSize_).value<decltype(pointSize_)>();
+
+  pointBrightness_ =
+      settings.value("QGLCloudViewer/pointBrightness_",
+          pointBrightness_).value<decltype(pointBrightness_)>();
+
+}
+
+void QGLCloudViewer::onSaveParameters(QSettings & settings)
+{
+  Base::onSaveParameters(settings);
+
+  settings.setValue("QGLCloudViewer/sceneOrigin_", sceneOrigin_);
+  settings.setValue("QGLCloudViewer/pointSize_", pointSize_);
+  settings.setValue("QGLCloudViewer/pointBrightness_", pointBrightness_);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -728,6 +753,16 @@ QCloudViewer::QCloudViewer(QWidget* parent) :
 
   connect(glViewer_, &QGLCloudViewer::displayImageChanged,
       this, &ThisClass::displayImageChanged);
+}
+
+void QCloudViewer::loadParameters()
+{
+  glViewer_->loadParameters();
+}
+
+void QCloudViewer::saveParameters()
+{
+  glViewer_->saveParameters();
 }
 
 void QCloudViewer::showEvent(QShowEvent * e)

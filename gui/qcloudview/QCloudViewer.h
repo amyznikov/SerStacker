@@ -79,6 +79,8 @@ protected:
   void glDraw() override;
   void glPostDraw() override;
   void computeDisplayPoints();
+  void onLoadParameters(QSettings & settings) override;
+  void onSaveParameters(QSettings & settings) override;
 
 protected:
   std::vector<QPointCloud::sptr> clouds_;
@@ -105,8 +107,12 @@ public:
 
   QCloudViewer(QWidget* parent = nullptr);
 
+  void loadParameters();
+  void saveParameters();
+
   QToolBar * toolbar();
   QGLCloudViewer * cloudView() const;
+
 
   QCloudViewMtfDisplay & mtfDisplay();
   const QCloudViewMtfDisplay & mtfDisplay() const;

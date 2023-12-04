@@ -53,8 +53,8 @@ public:
   explicit QGLView(QWidget * parent = nullptr);
   ~QGLView();
 
-  virtual void loadParameters();
-  virtual void saveParameters();
+  void loadParameters();
+  void saveParameters();
 
   void setBackgroundColor(const QColor &color);
   const QColor & backgroundColor() const;
@@ -130,6 +130,8 @@ protected:
   virtual void glDraw();
   virtual void glPostDraw();
   virtual void glCleanup();
+  virtual void onLoadParameters(QSettings & settings);
+  virtual void onSaveParameters(QSettings & settings);
 
 protected:
   void showViewTarget(bool v);
@@ -151,15 +153,10 @@ protected:
 protected:
 
 protected:
-  QColor backgroundColor_ = Qt::black;
-  QColor foregroundColor_ = Qt::white;
+  QColor backgroundColor_ = QColor(32, 32, 32);
+  QColor foregroundColor_ = QColor(232, 232, 232);
 
   ViewParams viewParams_;
-
-
-//  double fov_ = M_PI / 2;
-//  double nearPlane_ = 0.2;
-//  double farPlane_ = 1000.0;
 
   QVector3D viewPoint_ = QVector3D(40, 30, 30);
   QVector3D viewTarget_ = QVector3D(0, 0, 0);

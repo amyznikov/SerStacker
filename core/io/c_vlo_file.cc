@@ -61,6 +61,24 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
 namespace {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+ * This is simple compile-time check if struct EchoType has field named 'peak'
+ * */
+template <class EchoType>
+static inline constexpr auto has_peak_member(const EchoType & e) ->
+  decltype(EchoType::peak, bool())
+{
+  return true;
+}
+static inline constexpr bool has_peak_member(...)
+{
+  return false;
+}
+
+
+/**
+ * Sort echoes by distance appropriate for scans of type 1, 3, and 5
+ * */
 
 template<class ScanType>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
@@ -118,6 +136,10 @@ void> sort_echos_by_distance(ScanType & scan)
   }
 }
 
+/**
+ * Sort echoes by distance appropriate for scans of type 6
+ * */
+
 void sort_echos_by_distance(c_vlo_scan6_base & scan)
 {
   typedef c_vlo_scan6_base ScanType;
@@ -168,6 +190,9 @@ void sort_echos_by_distance(c_vlo_scan6_base & scan)
   }
 }
 
+/**
+ * Sort echoes by distance appropriate for scans of type SLIM
+ * */
 void sort_echos_by_distance(c_vlo_scan6_slm & scan)
 {
   // force if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR )
@@ -407,21 +432,11 @@ bool get_echos(const c_vlo_scan6_slm & scan, const Fn & fn)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-template<class EchoType, class Fn>
-void get_ghosts(const EchoType echos[3], const c_vlo_processing_options * opts, const Fn & fn)
+template<class DistanceType, class IntensityType>
+static inline bool is_ghost(const DistanceType & DR, const DistanceType & DG,
+    const IntensityType & IR, const IntensityType & IG,
+    const c_vlo_processing_options * opts)
 {
-  if( !opts ) {
-    return;
-  }
-
-  const auto &D0 = echos[0].dist;
-  const auto &D1 = echos[1].dist;
-  const auto &D2 = echos[2].dist;
-
-  const auto &A0 = echos[0].area;
-  const auto &A1 = echos[1].area;
-  const auto &A2 = echos[2].area;
-
   static constexpr double Dmin = 200;
 
   const double & saturation_level =
@@ -437,22 +452,79 @@ void get_ghosts(const EchoType echos[3], const c_vlo_processing_options * opts, 
 
   const double KK = 3;
 
-  if( D0 > Dmin && D1 && A0 >= saturation_level && A1 <= A0 ) { // * (1. - intensity_ratio_slope * D0)
-    if( (D1 > KK * D0) || std::abs(D1 - 2.0 * D0 + systematic_correction) < depth_tolerance ) {
-      fn(0, 1);
+  if( DG && DR > Dmin && IR >= saturation_level && IG <= IR  ) { // * (1. - intensity_ratio_slope * IR)
+    if( (DG > KK * DR) || std::abs(DG - 2.0 * DR + systematic_correction) < depth_tolerance ) {
+      return true;
     }
   }
 
-  if( D0 > Dmin && D2 && A0 >= saturation_level && A2 <= A0 ) { // * (1. - intensity_ratio_slope * D0)
-    if( (D2 > KK * D0) || std::abs(D2 - 2.0 * D0 + systematic_correction) < depth_tolerance ) {
-      fn(0, 2);
-    }
+  return false;
+}
+
+/**
+ * Prefer 'peak' intensity measure if available
+ *  */
+template<class EchoType, class _Cb> std::enable_if_t<has_peak_member(EchoType()),
+void> static inline get_ghosts(const EchoType echos[3],
+    const c_vlo_processing_options * opts,
+    const _Cb & callback)
+{
+//  if( !opts ) {
+//    return;
+//  }
+
+  const auto &D0 = echos[0].dist;
+  const auto &D1 = echos[1].dist;
+  const auto &D2 = echos[2].dist;
+
+  const auto &I0 = echos[0].peak;
+  const auto &I1 = echos[1].peak;
+  const auto &I2 = echos[2].peak;
+
+  if( is_ghost(D0, D1, I0, I1, opts) ) {
+    callback(0, 1);
   }
 
-  if( D1 > Dmin && D2 && A1 >= saturation_level && A2 <= A1  ) { // * (1. - intensity_ratio_slope * D1)
-    if( (D2 > KK * D1) || std::abs(D2 - 2.0 * D1 + systematic_correction) < depth_tolerance ) {
-      fn(1, 2);
-    }
+  if( is_ghost(D0, D2, I0, I2, opts) ) {
+    callback(0, 2);
+  }
+
+  if( is_ghost(D1, D2, I1, I2, opts) ) {
+    callback(1, 2);
+  }
+
+}
+
+/**
+ * Fallback to 'area' intensity measure if 'peak' is not available
+ *  */
+template<class EchoType, class _Cb> std::enable_if_t<!has_peak_member(EchoType()),
+void> static inline get_ghosts(const EchoType echos[3],
+    const c_vlo_processing_options * opts,
+    const _Cb & callback)
+{
+//  if( !opts ) {
+//    return;
+//  }
+
+  const auto &D0 = echos[0].dist;
+  const auto &D1 = echos[1].dist;
+  const auto &D2 = echos[2].dist;
+
+  const auto &I0 = echos[0].area;
+  const auto &I1 = echos[1].area;
+  const auto &I2 = echos[2].area;
+
+  if( is_ghost(D0, D1, I0, I1, opts) ) {
+    callback(0, 1);
+  }
+
+  if( is_ghost(D0, D2, I0, I2, opts) ) {
+    callback(0, 2);
+  }
+
+  if( is_ghost(D1, D2, I1, I2, opts) ) {
+    callback(1, 2);
   }
 
 }

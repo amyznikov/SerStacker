@@ -727,7 +727,7 @@ struct c_vlo_processing_options
   bool enable_ghost_filter = false;
 
   struct {
-    double saturation_level = 2500;
+    double saturation_level = 122; // for 'peak' intensity measure
 
     // -10 cm for makrolon,
     // +40 cm for FIR20

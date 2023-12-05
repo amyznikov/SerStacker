@@ -252,11 +252,11 @@ void sort_echos_by_distance(c_vlo_scan6_slm & scan)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<class ScanType, class Fn>
+template<class ScanType, class _Cb>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> get_points3d(const ScanType & scan, const Fn & fn)
+bool> get_points3d(const ScanType & scan, const _Cb & callback)
 {
   const double firstVertAngle =
       0.5 * 0.05 * scan.NUM_LAYERS;
@@ -299,7 +299,7 @@ bool> get_points3d(const ScanType & scan, const Fn & fn)
           const double y = scale * distance * sin_hor_cos_vert;
           const double z = scale * distance * sin_vert;
 
-          fn(s, l, e, x, y, z);
+          callback(s, l, e, x, y, z);
         }
       }
     }
@@ -308,8 +308,8 @@ bool> get_points3d(const ScanType & scan, const Fn & fn)
   return true;
 }
 
-template<class Fn>
-bool get_points3d(const c_vlo_scan6_slm & scan, const Fn & fn)
+template<class _Cb>
+bool get_points3d(const c_vlo_scan6_slm & scan, const _Cb & callback)
 {
   typedef c_vlo_scan6_slm ScanType;
   typedef decltype(ScanType::Echo::dist) distance_type;
@@ -356,7 +356,7 @@ bool get_points3d(const c_vlo_scan6_slm & scan, const Fn & fn)
         const double y = -distance * sin_inclination * sin_azimuth;
         const double z = -distance * cos_inclination;
 
-        fn(s, scan.NUM_LAYERS - l - 1, e, x, y, z);
+        callback(s, scan.NUM_LAYERS - l - 1, e, x, y, z);
 
       }
     }
@@ -368,17 +368,17 @@ bool get_points3d(const c_vlo_scan6_slm & scan, const Fn & fn)
 
 
 
-template<class ScanType, class Fn>
+template<class ScanType, class _Cb>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> get_points2d(const ScanType & scan, const cv::Mat3b & emask, const Fn & fn)
+bool> get_points2d(const ScanType & scan, const cv::Mat3b & emask, const _Cb & callback)
 {
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
     for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
       for( int e = 0; e < 3; ++e ) {
         if( scan.slot[s].echo[l][e].dist && (emask.empty() || !emask[l][s][e]) ) {
-          fn(s, l, e, scan.slot[s].echo[l][e]);
+          callback(s, l, e, scan.slot[s].echo[l][e]);
         }
       }
     }
@@ -387,14 +387,14 @@ bool> get_points2d(const ScanType & scan, const cv::Mat3b & emask, const Fn & fn
   return true;
 }
 
-template<class Fn>
-bool get_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const Fn & fn)
+template<class _Cb>
+bool get_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const _Cb & callback)
 {
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
     for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
       for( int e = 0; e < 3; ++e ) {
         if( scan.echo[s][l][e].dist && scan.echo[s][l][e].area && (emask.empty() || !emask[l][s][e]) ) {
-          fn(s, scan.NUM_LAYERS - l - 1, e, scan.echo[s][l][e]);
+          callback(s, scan.NUM_LAYERS - l - 1, e, scan.echo[s][l][e]);
         }
       }
     }
@@ -403,27 +403,27 @@ bool get_points2d(const c_vlo_scan6_slm & scan, const cv::Mat3b & emask, const F
 }
 
 
-template<class ScanType, class Fn>
+template<class ScanType, class _Cb>
 std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> get_echos(const ScanType & scan, const Fn & fn)
+bool> get_echos(const ScanType & scan, const _Cb & callback)
 {
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
     for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-      fn(s, l, scan.slot[s].echo[l]);
+      callback(s, l, scan.slot[s].echo[l]);
     }
   }
 
   return true;
 }
 
-template<class Fn>
-bool get_echos(const c_vlo_scan6_slm & scan, const Fn & fn)
+template<class _Cb>
+bool get_echos(const c_vlo_scan6_slm & scan, const _Cb & callback)
 {
   for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
     for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
-      fn(s, scan.NUM_LAYERS - l - 1, scan.echo[s][l]);
+      callback(s, scan.NUM_LAYERS - l - 1, scan.echo[s][l]);
     }
   }
   return true;
@@ -549,7 +549,8 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
     }
   }
 
-  typedef decltype(ScanType::Echo::dist) distance_type;
+  typedef decltype(ScanType::Echo::dist)
+      distance_type;
 
   switch (channel) {
 
@@ -719,7 +720,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-        get_ghosts(echos, opts, [&](int e0, int e1) {
+            get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].peak;
                   image[l][s][e1] = echos[e1].peak;
                 });
@@ -739,7 +740,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-        get_ghosts(echos, opts, [&](int e0, int e1) {
+            get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].area;
                   image[l][s][e1] = echos[e1].area;
                 });
@@ -759,7 +760,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-        get_ghosts(echos, opts, [&](int e0, int e1) {
+            get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].dist;
                   image[l][s][e1] = echos[e1].dist;
                 });
@@ -778,7 +779,7 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-        get_ghosts(echos, opts, [&](int e0, int e1) {
+          get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e1] = 255;
                 });
           });
@@ -951,7 +952,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-        get_ghosts(echos, opts, [&](int e0, int e1) {
+          get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e0] = echos[e0].dist;
                   image[l][s][e1] = echos[e1].dist;
                 });
@@ -970,7 +971,7 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       get_echos(scan,
           [&](int s, int l, const echo_type echos[3]) {
 
-        get_ghosts(echos, opts, [&](int e0, int e1) {
+          get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e1] = 255;
                 });
           });

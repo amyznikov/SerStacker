@@ -166,19 +166,46 @@ void QCloudSequenceView::setupMainToolbar()
 
           QMenu menu;
 
+          QMenu * images_menu = nullptr;
+          QMenu * clouds_menu = nullptr;
+          QMenu * submenu = nullptr;
+
           for ( const auto & item : dataItems_ ) {
 
             const int itemId =
                 item.dataid();
 
-            menu.addAction(createCheckableAction(
-                QIcon(),
-                item.cname(),
-                item.ctooltip(),
-                itemId == curretDataItemId_,
-                [this, itemId]() {
-                  showFrameData(itemId);
-                }));
+            switch (item.type()) {
+
+              case c_cloudview_data_item::Type::image:
+                if ( !images_menu ) {
+                  images_menu = menu.addMenu("Image");
+                }
+                submenu = images_menu;
+                break;
+              case c_cloudview_data_item::Type::point_cloud_3d:
+                if ( !clouds_menu ) {
+                  clouds_menu = menu.addMenu("Point cloud");
+                }
+                submenu = clouds_menu;
+                break;
+
+              default:
+                submenu = nullptr;
+                break;
+            }
+
+
+            if ( submenu ) {
+              submenu->addAction(createCheckableAction(
+                  QIcon(),
+                  item.cname(),
+                  item.ctooltip(),
+                  itemId == curretDataItemId_,
+                  [this, itemId]() {
+                    showFrameData(itemId);
+                  }));
+            }
           }
 
           if ( !menu.isEmpty() ) {

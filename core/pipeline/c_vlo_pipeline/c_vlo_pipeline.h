@@ -52,11 +52,9 @@ struct c_vlo_pipeline_processing_options
    c_vlo_depth_segmentation_options depth_segmentation_;
 
    bool enable_double_echo_statistics = false;
+   bool enable_bloom_slopes_statistics = false;
 
    double saturation_level = 110;
-
-
-
 };
 
 struct c_vlo_pipeline_output_options :
@@ -146,6 +144,8 @@ protected:
   cv::Mat1b current_reflection_mask_;
   cv::Mat1b current_reflection2_mask_;
 
+  c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;
+
   c_output_frame_writer progress_writer_;
 
   c_output_frame_writer blom2_display_writer_;
@@ -154,9 +154,8 @@ protected:
   c_output_frame_writer bloom2_blured_intensities_writer_;
   c_output_frame_writer bloom2_walls_writer_;
 
-  c_vlo_lookup_table_statistics vlo_lookup_table_statistics_;
-
-  FILE * doubled_echo_statistics_fp = nullptr;
+  c_output_text_writer doubled_echo_stats_writer_;
+  c_output_text_writer bloom_profile_slopes_writer_;
 
 };
 

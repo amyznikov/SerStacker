@@ -360,6 +360,90 @@ void c_output_frame_writer::close()
   output_type = output_type_unknown;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+c_output_text_writer::c_output_text_writer()
+{
+}
+
+c_output_text_writer::~c_output_text_writer()
+{
+  close();
+}
+
+const std::string & c_output_text_writer::filename() const
+{
+  return filename_;
+}
+
+bool c_output_text_writer::open(const std::string & filename)
+{
+  close();
+
+  this->filename_ =
+      filename;
+
+  if( !(fp_ = fopen(filename_.c_str(), "w")) ) {
+    CF_ERROR("fopen('%s') fails: %s", filename_.c_str(), strerror(errno));
+    return false;
+  }
+
+  return true;
+}
+
+bool c_output_text_writer::vprintf(const char * format, va_list arglist)
+{
+  if( !fp_ ) {
+    CF_ERROR("c_output_text_writer: file '%s' is not open",
+        filename_.c_str());
+    errno = EBADF;
+    return false;
+  }
+
+  if( vfprintf(fp_, format, arglist) < 0 ) {
+    CF_ERROR("c_output_text_writer: vfprintf into '%s' fails: %s",
+        filename_.c_str(), strerror(errno));
+    return false;
+  }
+
+  return true;
+}
+
+bool c_output_text_writer::printf(const char * format, ...)
+{
+  va_list arglist;
+  int n;
+
+  va_start(arglist, format);
+  n = vprintf(format, arglist);
+  va_end(arglist);
+
+  return n >= 0;
+}
+
+bool c_output_text_writer::is_open() const
+{
+  return fp_ != nullptr;
+}
+
+void c_output_text_writer::close()
+{
+  if ( fp_ ) {
+    fclose(fp_);
+    fp_ = nullptr;
+  }
+}
+
+void c_output_text_writer::flush()
+{
+  if ( fp_ ) {
+    fflush(fp_);
+  }
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 bool load_settings(c_config_setting settings, c_output_frame_writer_options * opts)
 {

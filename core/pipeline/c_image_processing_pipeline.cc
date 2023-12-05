@@ -589,12 +589,36 @@ bool c_image_processing_pipeline::add_output_writer(c_output_frame_writer & writ
       CF_ERROR("writer.open('%s') fails",  filename.c_str());
       return false;
     }
+  }
 
+  const auto pos =
+      std::find(opened_writers_.begin(), opened_writers_.end(),
+          &writer);
+  if( pos == opened_writers_.end() ) {
     opened_writers_.emplace_back(&writer);
   }
 
   return true;
 }
+
+bool c_image_processing_pipeline::add_output_writer(c_output_text_writer & writer,
+    const std::string & filename)
+{
+  if( !writer.is_open() && !writer.open(filename) ) {
+    CF_ERROR("writer.open('%s') fails", filename.c_str());
+    return false;
+  }
+
+  const auto pos =
+      std::find(opened_text_writers_.begin(), opened_text_writers_.end(),
+          &writer);
+  if( pos == opened_text_writers_.end() ) {
+    opened_text_writers_.emplace_back(&writer);
+  }
+
+  return true;
+}
+
 
 
 bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
@@ -757,7 +781,15 @@ void c_image_processing_pipeline::cleanup_pipeline()
     }
   }
 
+  for ( c_output_text_writer * w :  opened_text_writers_ ) {
+    if ( w->is_open() ) {
+      CF_DEBUG("Closing '%s'", w->filename().c_str());
+      w->close();
+    }
+  }
+
   opened_writers_.clear();
+  opened_text_writers_.clear();
 }
 
 bool c_image_processing_pipeline::run_pipeline()

@@ -90,6 +90,33 @@ protected:
 };
 
 
+class c_output_text_writer
+{
+public:
+  c_output_text_writer();
+  ~c_output_text_writer();
+
+  const std::string & filename() const;
+
+  bool open(const std::string & filename);
+
+  bool vprintf(const char * format, va_list arglist);
+
+#if _MSC_VER
+  bool printf(const char * format, ...);
+#else
+  bool printf(const char * format, ...) __attribute__ ((__format__ (printf, 2, 3)));
+#endif
+
+  bool is_open() const;
+  void close();
+  void flush();
+
+protected:
+  std::string filename_;
+  FILE * fp_ = nullptr;
+};
+
 bool load_settings(c_config_setting settings,
     c_output_frame_writer_options * opts);
 

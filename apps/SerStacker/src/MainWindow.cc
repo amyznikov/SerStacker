@@ -544,6 +544,52 @@ void MainWindow::checkIfBadFrameSelected()
   }
 }
 
+void MainWindow::onWriteDisplayVideo()
+{
+  if( !diplayImageWriter_.started() || diplayImageWriter_.paused() ) {
+    return;
+  }
+
+  QWidget * currentView =
+      inputSequenceView->currentView();
+
+  if( currentView == imageView ) {
+
+    if( !diplayImageWriter_.writeViewPort() ) {
+      if( !imageView->displayImage().empty() ) {
+        diplayImageWriter_.write(imageView->displayImage());
+      }
+    }
+    else {
+
+      QImage image =
+          imageView->grabViewportPixmap().toImage().convertToFormat(
+              QImage::Format_BGR888);
+
+      if( !image.isNull() ) {
+
+        diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
+            (void*) image.constBits(),
+            image.bytesPerLine()));
+      }
+
+    }
+  }
+
+  else if( currentView == cloudView ) {
+
+    QImage image =
+        cloudView->grabViewportPixmap().toImage().convertToFormat(
+            QImage::Format_BGR888);
+
+    if( !image.isNull() ) {
+
+      diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
+          (void*) image.constBits(),
+          image.bytesPerLine()));
+    }
+  }
+}
 
 void MainWindow::onCurrentViewVisibilityChanged()
 {
@@ -644,8 +690,8 @@ void MainWindow::onCurrentViewDisplayImageChanged()
       if ( !isvisible ) {
         diplayImageWriter_.stop();
       }
-      else if ( !imageView->displayImage().empty() ) {
-        diplayImageWriter_.write(imageView->displayImage());
+      else {
+        onWriteDisplayVideo();
       }
     }
   }
@@ -664,17 +710,7 @@ void MainWindow::onCurrentViewDisplayImageChanged()
         diplayImageWriter_.stop();
       }
       else {
-
-        QImage image =
-            cloudView->grabViewportPixmap().toImage().convertToFormat(
-                QImage::Format_BGR888);
-
-        if( !image.isNull() ) {
-
-          diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
-              (void*) image.constBits(),
-              image.bytesPerLine()));
-        }
+        onWriteDisplayVideo();
       }
     }
   }
@@ -1529,11 +1565,14 @@ void MainWindow::setupInputSequenceView()
 
   connect(imageView->roiShape(), &QGraphicsObject::visibleChanged,
       [this]() {
+        onWriteDisplayVideo();
         showRoiRectangleAction->setChecked(imageView->roiShape()->isVisible());
       });
 
   connect(imageView->roiShape(), &QGraphicsShape::itemChanged,
       [this]() {
+
+        onWriteDisplayVideo();
 
         QGraphicsRectShape * shape =
             imageView->roiShape();
@@ -1563,6 +1602,7 @@ void MainWindow::setupInputSequenceView()
 
   connect(imageView->roiShape(), &QGraphicsShape::visibleChanged,
       [this]() {
+        onWriteDisplayVideo();
         if ( statusbarShapesLabel_ctl ) {
           statusbarShapesLabel_ctl->setVisible(false);
         }
@@ -1577,6 +1617,13 @@ void MainWindow::setupInputSequenceView()
         imageView->setViewScale(v);
       });
 
+  connect(imageView, &QSerStackerImageEditor::onScaleChanged,
+      this, &ThisClass::onWriteDisplayVideo);
+
+  connect(imageView, &QSerStackerImageEditor::onViewScrolled,
+      this, &ThisClass::onWriteDisplayVideo);
+
+
   connect(imageView, &QImageFileEditor::onMouseMove,
       [this](QMouseEvent * e) {
         statusbarMousePosLabel_ctl->setText(imageView->statusStringForPixel(e->pos()));
@@ -1584,6 +1631,8 @@ void MainWindow::setupInputSequenceView()
 
   connect(imageView->scene(), &QImageScene::graphicsItemChanged,
       [this](QGraphicsItem * item) {
+
+        onWriteDisplayVideo();
 
         QGraphicsLineShape * lineShape = nullptr;
         QGraphicsRectShape * rectShape = nullptr;
@@ -1634,6 +1683,7 @@ void MainWindow::setupInputSequenceView()
 
   connect(imageView->scene(), &QImageScene::graphicsItemVisibleChanged,
       [this]() {
+        onWriteDisplayVideo();
         if ( statusbarShapesLabel_ctl->isVisible() ) {
           statusbarShapesLabel_ctl->setVisible(false);
         }
@@ -1641,6 +1691,7 @@ void MainWindow::setupInputSequenceView()
 
   connect(imageView->scene(), &QImageScene::graphicsItemDestroyed,
       [this]() {
+        onWriteDisplayVideo();
         if ( statusbarShapesLabel_ctl->isVisible() ) {
           statusbarShapesLabel_ctl->setVisible(false);
         }

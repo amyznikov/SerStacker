@@ -83,6 +83,7 @@ public:
   const cv::Mat& currentImageData() const;
   const cv::Mat& mtfImage() const;
   const cv::Mat& displayImage() const;
+  QPixmap grabViewportPixmap();
 
   QString currentFileName() const;
   void setCurrentFileName(const QString & newFileName);
@@ -110,6 +111,7 @@ Q_SIGNALS:
   void onMouseEnterEvent(QEvent * e);
   void onMouseLeaveEvent(QEvent * e);
   void onScaleChanged(int currentScale);
+  void onViewScrolled();
   void onFocusInEvent(QFocusEvent * e);
   void onFocusOutEvent(QFocusEvent * e);
   void visibilityChanged(bool visible);

@@ -57,6 +57,8 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
       this, &ThisClass::onMouseLeaveEvent);
   connect(view_, &QImageSceneView::scaleChanged,
       this, &ThisClass::onScaleChanged);
+  connect(view_, &QImageSceneView::viewScrolled,
+      this, &ThisClass::onViewScrolled);
 
   undoEditMaskActionShortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), this);
   connect(undoEditMaskActionShortcut_, &QShortcut::activated,
@@ -210,6 +212,12 @@ const cv::Mat & QImageViewer::displayImage() const
 {
   return displayImage_;
 }
+
+QPixmap QImageViewer::grabViewportPixmap()
+{
+  return view_->grab();
+}
+
 
 QString QImageViewer::currentFileName() const
 {

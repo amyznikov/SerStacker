@@ -34,6 +34,7 @@ protected:
   QLineEditBox * ffoptions_ctl = nullptr;
   QLineEditBox * outputFilenamePrefix_ctl = nullptr;
   QLineEditBox * outputFilenameSuffix_ctl = nullptr;
+  QCheckBox * writeViewPort_ctl = nullptr;
 };
 
 

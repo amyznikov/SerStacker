@@ -87,6 +87,17 @@ void QDisplayVideoWriter::setOutputFilenameSuffix(const QString & v)
   saveParameters();
 }
 
+void QDisplayVideoWriter::setWriteViewPort(bool v)
+{
+  writeViewPort_ = v;
+  saveParameters();
+}
+
+bool QDisplayVideoWriter::writeViewPort() const
+{
+  return writeViewPort_;
+}
+
 const QString & QDisplayVideoWriter::outputPathFileName() const
 {
   return outputPathFileName_;
@@ -94,14 +105,21 @@ const QString & QDisplayVideoWriter::outputPathFileName() const
 
 bool QDisplayVideoWriter::start()
 {
-  if( ffmpeg_.is_open() ) {
-    stop();
+  if ( paused_ ) {
+    paused_ = false;
   }
+  else {
 
-  started_ = true;
-  nbframes_ = 0;
-  frameSize_ = cv::Size(-1, -1);
-  channels_ = 0;
+    if( ffmpeg_.is_open() ) {
+      stop();
+    }
+
+    started_ = true;
+    paused_ = false;
+    nbframes_ = 0;
+    frameSize_ = cv::Size(-1, -1);
+    channels_ = 0;
+  }
 
   Q_EMIT stateChanged();
 
@@ -116,13 +134,29 @@ void QDisplayVideoWriter::stop()
   }
 
   started_ = false;
+  paused_ = false;
+
   Q_EMIT stateChanged();
+}
+
+void QDisplayVideoWriter::pause()
+{
+  if( started_ ) {
+    paused_ = true;
+    Q_EMIT stateChanged();
+  }
 }
 
 bool QDisplayVideoWriter::started() const
 {
   return started_;
 }
+
+bool QDisplayVideoWriter::paused() const
+{
+  return paused_;
+}
+
 
 int QDisplayVideoWriter::nbframes() const
 {
@@ -194,6 +228,7 @@ void QDisplayVideoWriter::loadParameters()
   ffoptions_ = settings.value("QDisplayVideoWriter/ffoptions", ffoptions_).toString();
   outputFilenamePrefix_ = settings.value("QDisplayVideoWriter/outputFilenamePrefix", outputFilenamePrefix_).toString();
   outputFilenameSuffix_ = settings.value("QDisplayVideoWriter/outputFilenameSuffix", outputFilenameSuffix_).toString();
+  writeViewPort_ = settings.value("QDisplayVideoWriter/writeViewPort", writeViewPort_).toBool();
 
 }
 
@@ -205,6 +240,7 @@ void QDisplayVideoWriter::saveParameters() const
   settings.setValue("QDisplayVideoWriter/ffoptions", ffoptions_);
   settings.setValue("QDisplayVideoWriter/outputFilenamePrefix", outputFilenamePrefix_);
   settings.setValue("QDisplayVideoWriter/outputFilenameSuffix", outputFilenameSuffix_);
+  settings.setValue("QDisplayVideoWriter/writeViewPort", writeViewPort_);
 }
 
 

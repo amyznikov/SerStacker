@@ -249,7 +249,12 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, processing_options_, vlo_intensity_channel);
 
     SERIALIZE_OPTION(section, save, processing_options_, enable_double_echo_statistics);
+
     SERIALIZE_OPTION(section, save, processing_options_, enable_bloom_slopes_statistics);
+    SERIALIZE_OPTION(section, save, processing_options_, bloom_slopes_intensity_channel);
+    SERIALIZE_OPTION(section, save, processing_options_, bloom_slopes_saturation_level);
+    SERIALIZE_OPTION(section, save, processing_options_, min_segment_length);
+
 
   }
 
@@ -274,9 +279,6 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, output_options_, save_walls);
     SERIALIZE_OPTION(section, save, output_options_, walls_writer_options);
-
-    SERIALIZE_OPTION(section, save, output_options_, save_blured_intensities);
-    SERIALIZE_OPTION(section, save, output_options_, blured_intensities_writer_options);
 
     SERIALIZE_OPTION(section, save, output_options_, save_segment_statistics);
   }
@@ -334,7 +336,18 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "Bloom Slopes Statistics", "");
+
         PIPELINE_CTL(ctrls, processing_options_.enable_bloom_slopes_statistics, "enable_bloom_slopes_statistics", "");
+
+        PIPELINE_CTLC(ctrls, processing_options_.bloom_slopes_intensity_channel, "intensity_channel", "",
+            _this->processing_options_.enable_bloom_slopes_statistics);
+
+        PIPELINE_CTLC(ctrls, processing_options_.bloom_slopes_saturation_level, "saturation_level", "",
+            _this->processing_options_.enable_bloom_slopes_statistics);
+
+        PIPELINE_CTLC(ctrls, processing_options_.min_segment_length, "min_segment_length", "",
+            _this->processing_options_.enable_bloom_slopes_statistics);
+
       PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_END_GROUP(ctrls);
@@ -368,13 +381,6 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
       PIPELINE_CTL_GROUP(ctrls, "save_intensity_profiles", "");
       PIPELINE_CTL(ctrls, output_options_.save_bloom2_intensity_profiles, "save_intensity_profiles", "");
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.intensity_writer_options, _this->output_options_.save_bloom2_intensity_profiles);
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTL_GROUP(ctrls, "save_blured_intensities", "");
-      PIPELINE_CTL(ctrls, output_options_.save_blured_intensities, "save_blured_intensities", "");
-      PIPELINE_CTLC(ctrls, output_options_.blured_intensities_sigma, "sigma", "", _this->output_options_.save_blured_intensities);
-      PIPELINE_CTLC(ctrls, output_options_.blured_intensities_kradius, "kradius", "",_this->output_options_.save_blured_intensities);
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.blured_intensities_writer_options, _this->output_options_.save_blured_intensities);
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "save_walls", "");
@@ -660,67 +666,161 @@ bool c_vlo_pipeline::run_blom_detection2()
   }
 
   ///////////////////////////////////////////////////////////////////////////
-  // Filter segments using intensity profiles
+  // Generate intensity profile statistics
+  if( processing_options_.enable_bloom_slopes_statistics ) {
 
-  if( output_options_.save_blured_intensities ) {
 
     std::vector<c_vlo_segment_point_sequence> sequences;
+    std::vector<c_vlo_refector> reflectors;
     cv::Mat3f intensities;
-    cv::Mat3f blured_intensities;
 
-    c_vlo_gaussian_blur gblur(output_options_.blured_intensities_sigma,
-        output_options_.blured_intensities_kradius);
+    const double saturation_level =
+        processing_options_.bloom_slopes_saturation_level;
 
-    c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensities,
-            CV_32F);
+    switch (processing_options_.bloom_slopes_intensity_channel) {
+      case VLO_INTENSITY_AREA:
+        c_vlo_file::get_image(current_scan_,
+            c_vlo_file::DATA_CHANNEL_AREA).convertTo(intensities,
+                intensities.depth());
+        break;
 
-    blured_intensities.create(intensities.size());
-    blured_intensities.setTo(cv::Scalar::all(0));
+      default:
+        case VLO_INTENSITY_PEAK:
+        c_vlo_file::get_image(current_scan_,
+            c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensities,
+                intensities.depth());
+        break;
+    }
+
+
 
     for( int x = 0; x < segments.cols; ++x ) {
 
-      const int nseqs =
+      const int num_sequences =
           extract_vlo_point_sequences(x, segments, intensities,
               sequences);
 
-      for ( int i = 0; i < nseqs; ++i ) {
+      for ( int i = 0; i < num_sequences; ++i ) {
 
-        const uint16_t seg_id = i + 1;
+        const uint16_t segment_id = i + 1;
 
-        gblur.apply(sequences[i].points);
+        /**
+         * Search and count saturated reflectors
+         * */
 
-        for( int j = 0; j < sequences[i].points.size(); ++j ) {
+        const std::vector<c_vlo_segment_point> & point_sequence  =
+            sequences[i].points;
 
-          const c_vlo_segment_point & sp =
-              sequences[i].points[j];
+        const int sequence_size =
+            point_sequence.size();
 
-          for ( int e = 0; e < 3; ++e ) {
-            if ( segments[sp.y][x][e] == seg_id ) {
-              blured_intensities[sp.y][x][e] = sp.intensity;
+        const int num_reflectors_found =
+            search_vlo_reflectors(point_sequence,
+                saturation_level, 5,
+                reflectors);
+
+        /**
+         * Process sequences with single reflector only
+         * */
+        if( num_reflectors_found != 1 ) {
+          continue;
+        }
+
+        // estimates slopes for both lines before and after reflector
+        c_line_estimate line_before, line_after;
+
+        const c_vlo_points_range & r =
+            reflectors.front();
+
+        for( int j = 0; j <= r.start; ++j ) {
+
+          line_before.update(point_sequence[j].y, point_sequence[j].intensity);
+        }
+
+        for( int j = r.end; j < sequence_size; ++j ) {
+
+          line_after.update(point_sequence[j].y, point_sequence[j].intensity);
+        }
+
+        const int min_pts =
+            processing_options_.min_segment_length;
+
+        if ( line_before.pts() >= min_pts || line_after.pts() >= min_pts ) {
+
+          /**
+           * Dump estimated slopes into text file
+           */
+          if( !bloom_slopes_writer_.is_open() ) {
+
+            const std::string filename =
+                generate_output_filename("", "profile_slopes",
+                    ".txt");
+
+            if( !add_output_writer(bloom_slopes_writer_, filename) ) {
+              CF_ERROR("add_output_writer('%s') fails", filename.c_str());
+              return false;
             }
+
+            bloom_slopes_writer_.printf("FRM\tX\tSEG\tNBEFORE\tSBEFORE\tNAFTER\tSAFTER\tSTDB\tSTDA\n");
           }
+
+          const double slope_before =
+              line_before.slope();
+
+          const double shift_before =
+              line_before.shift();
+
+          const double slope_after =
+              line_after.slope();
+
+          const double shift_after =
+              line_after.shift();
+
+          double std_before = 0;
+          double std_after = 0;
+
+          if ( line_before.pts() > min_pts ) {
+            for( int j = 0; j <= r.start; ++j ) {
+              const double I0 = point_sequence[j].intensity;
+              const double I1 = slope_before * point_sequence[j].y + shift_before;
+              std_before += (I0 - I1) * (I0 - I1);
+            }
+            std_before /= line_before.pts();
+          }
+
+          if ( line_after.pts() > min_pts ) {
+            for( int j = r.end; j < sequence_size; ++j ) {
+              const double I0 = point_sequence[j].intensity;
+              const double I1 = slope_after * point_sequence[j].y + shift_after;
+              std_after += (I0 - I1) * (I0 - I1);
+            }
+            std_after /= line_after.pts();
+          }
+
+
+          bloom_slopes_writer_.printf("%6d"
+              "\t%4d"
+              "\t%4u"
+              "\t%4d\t%g"
+              "\t%d\t%g"
+              "\t%g\t%g"
+              "\n",
+              input_sequence_->current_pos(),
+              x,
+              segment_id,
+              line_before.pts(), line_before.pts() >= min_pts ? line_before.slope() : 0.0,
+              line_after.pts(), line_after.pts() >= min_pts  ? line_after.slope() : 0.0,
+              std_before, std_after
+            );
+
         }
       }
-    }
 
-    if( !add_output_writer(bloom2_blured_intensities_writer_, output_options_.blured_intensities_writer_options, "blured_intensities", ".ser") ) {
-      CF_ERROR("bloom2_blured_intensities_writer_.open(%s) fails",
-          bloom2_blured_intensities_writer_.filename().c_str());
-      return false;
     }
-
-    if( bloom2_blured_intensities_writer_.is_open() && !bloom2_blured_intensities_writer_.write(blured_intensities) ) {
-      CF_ERROR("bloom2_blured_intensities_writer_.write('%s') fails",
-          bloom2_blured_intensities_writer_.filename().c_str());
-      return false;
-    }
-
   }
 
-  // END OF Filter segments using intensity profiles
+  // END OF Generate intensity profile statistics
   ///////////////////////////////////////////////////////////////////////////
-
 
   if( output_options_.save_bloom2_segments ) {
 
@@ -746,7 +846,7 @@ bool c_vlo_pipeline::run_blom_detection2()
     cv::Mat3f intensity_image;
 
     c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensity_image,
+        c_vlo_file::DATA_CHANNEL_AREA).convertTo(intensity_image,
             CV_32F);
 
 
@@ -790,7 +890,7 @@ bool c_vlo_pipeline::run_blom_detection2()
           cv::Point(16, 32),
           cv::FONT_HERSHEY_COMPLEX,
           0.75,
-          cv::Scalar::all(140),
+          cv::Scalar::all(3000),
           1, cv::LINE_AA,
           false);
 

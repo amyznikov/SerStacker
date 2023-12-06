@@ -87,6 +87,23 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
             return false;
           });
 
+  writeViewPort_ctl =
+      add_checkbox("Write Viewport",
+          "Set checked to write image viewer viewport instead of raw display image",
+          [this](bool checked) {
+            if ( videoWriter_ ) {
+              videoWriter_->setWriteViewPort(checked);
+              save_parameter(PREFIX, "writeViewPort", videoWriter_->writeViewPort());
+            }
+          },
+          [this](bool * checked) {
+            if ( videoWriter_ ) {
+              * checked = videoWriter_->writeViewPort();
+              return true;
+            }
+            return false;
+          });
+
   updateControls();
 }
 

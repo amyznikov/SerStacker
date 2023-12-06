@@ -34,11 +34,18 @@ public:
   void setOutputFilenameSuffix(const QString & );
   const QString & outputFilenameSuffix() const;
 
+  void setWriteViewPort(bool v);
+  bool writeViewPort() const;
+
   const QString & outputPathFileName() const;
 
+
   bool start();
-  bool started() const;
   void stop();
+  void pause();
+
+  bool started() const;
+  bool paused() const;
 
   bool write(const cv::Mat & frame);
   int nbframes() const;
@@ -57,6 +64,8 @@ protected:
   QString outputFilenameSuffix_;
   QString outputPathFileName_;
   bool started_ = false;
+  bool paused_ = false;
+  bool writeViewPort_ = false;
   int nbframes_ = 0;
   cv::Size frameSize_;
   int channels_ = 0;

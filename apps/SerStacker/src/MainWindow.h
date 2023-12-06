@@ -64,6 +64,7 @@ private Q_SLOTS:
   void onStackProgressViewTextChanged();
   void openImage(const QString & abspath);
   void checkIfBadFrameSelected();
+  void onWriteDisplayVideo();
 
   void onCurrentViewVisibilityChanged();
   void onCurrentViewDisplayImageChanged();

@@ -47,6 +47,7 @@ Q_SIGNALS:
   void onMouseEnterEvent(QEvent *e);
   void onMouseLeaveEvent(QEvent *e);
   void scaleChanged(int currentScale);
+  void viewScrolled();
 
 protected:
   void wheelEvent(QWheelEvent* e) override;

@@ -81,6 +81,22 @@ int extract_vlo_segments(int x, const cv::Mat3w & segments_image, const cv::Mat3
     double intensity_saturation_level);
 
 
+struct c_vlo_points_range
+{
+  int start, end;
+};
+
+struct c_vlo_refector :
+    c_vlo_points_range
+{
+  float mean_intensity;
+};
+
+int search_vlo_reflectors(const std::vector<c_vlo_segment_point> & point_sequence,
+    double min_saturation_level, int max_hole_size,
+    std::vector<c_vlo_refector> & reflectors);
+
+
 class c_vlo_gaussian_blur
 {
 public:

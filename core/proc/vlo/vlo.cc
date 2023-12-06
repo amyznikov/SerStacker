@@ -394,6 +394,82 @@ int extract_vlo_segments(int x, const cv::Mat3w & segments_image, const cv::Mat3
 }
 
 
+int search_vlo_reflectors(const std::vector<c_vlo_segment_point> & point_sequence,
+    double min_saturation_level, int max_hole_size,
+    std::vector<c_vlo_refector> & reflectors)
+{
+  reflectors.clear();
+
+  const int sequence_size =
+      point_sequence.size();
+
+  for( int j = 0; j < sequence_size; ++j ) {
+
+    // skip unsaturated
+    while (j + 1 < sequence_size && point_sequence[j + 1].intensity < min_saturation_level) {
+      ++j;
+    }
+
+    if( j >= sequence_size - 1 ) {
+      break;
+    }
+
+    //  track saturated
+
+    reflectors.emplace_back();
+    c_vlo_points_range & r =
+        reflectors.back();
+
+    r.start = j;
+    while (j + 1 < sequence_size && point_sequence[j + 1].intensity >= min_saturation_level) {
+      ++j;
+    }
+    r.end = j;
+
+    if( j >= sequence_size - 1 ) {
+      break;
+    }
+  }
+
+  if ( max_hole_size > 0 && reflectors.size() > 1 ) {
+    // join consecutive reflectors with small hole in between
+
+    for( size_t i = 0; i < reflectors.size() - 1; ) {
+
+      c_vlo_points_range & rc =
+          reflectors[i];
+
+      c_vlo_points_range & rn =
+          reflectors[i + 1];
+
+      if( point_sequence[rc.end].y + max_hole_size > point_sequence[rn.start].y ) {
+        ++i;
+      }
+      else {
+        rc.end = rn.end;
+        reflectors.erase(reflectors.begin() + i + 1);
+      }
+    }
+  }
+
+  if ( !reflectors.empty() ) {
+
+    for( c_vlo_refector & rc : reflectors ) {
+
+      rc.mean_intensity = 0;
+
+      for ( int i = rc.start; i <= rc.end; ++i ) {
+        rc.mean_intensity += point_sequence[i].intensity;
+      }
+
+      rc.mean_intensity /= (rc.end - rc.start + 1);
+    }
+  }
+
+  return reflectors.size();
+}
+
+
 c_vlo_gaussian_blur::c_vlo_gaussian_blur(double sigma, int kradius)
 {
   setup(sigma, kradius);

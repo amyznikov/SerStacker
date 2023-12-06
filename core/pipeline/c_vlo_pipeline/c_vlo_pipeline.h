@@ -52,9 +52,15 @@ struct c_vlo_pipeline_processing_options
    c_vlo_depth_segmentation_options depth_segmentation_;
 
    bool enable_double_echo_statistics = false;
-   bool enable_bloom_slopes_statistics = false;
 
    double saturation_level = 110;
+
+
+   bool enable_bloom_slopes_statistics = false;
+   VLO_INTENSITY_CHANNEL bloom_slopes_intensity_channel = VLO_INTENSITY_PEAK;
+   double bloom_slopes_saturation_level = 110;
+   int min_segment_length = 7;
+
 };
 
 struct c_vlo_pipeline_output_options :
@@ -82,11 +88,6 @@ struct c_vlo_pipeline_output_options :
   c_output_frame_writer_options walls_writer_options;
 
   bool save_segment_statistics = false;
-
-  bool save_blured_intensities = false;
-  double blured_intensities_sigma = 3;
-  int blured_intensities_kradius = 9;
-  c_output_frame_writer_options blured_intensities_writer_options;
 };
 
 class c_vlo_pipeline :
@@ -151,11 +152,10 @@ protected:
   c_output_frame_writer blom2_display_writer_;
   c_output_frame_writer bloom2_segments_writer_;
   c_output_frame_writer bloom2_intensity_writer_;
-  c_output_frame_writer bloom2_blured_intensities_writer_;
   c_output_frame_writer bloom2_walls_writer_;
 
   c_output_text_writer doubled_echo_stats_writer_;
-  c_output_text_writer bloom_profile_slopes_writer_;
+  c_output_text_writer bloom_slopes_writer_;
 
 };
 

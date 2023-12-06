@@ -158,6 +158,7 @@ void QImageSceneView::scrollView(int dx, int dy)
 {
   horizontalScrollBar()->setValue(horizontalScrollBar()->value() + dx);
   verticalScrollBar()->setValue(verticalScrollBar()->value() + dy);
+  Q_EMIT viewScrolled();
 }
 
 void QImageSceneView::wheelEvent(QWheelEvent* e)

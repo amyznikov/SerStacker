@@ -35,6 +35,7 @@ static QToolButton * createToolButton(QWidget * parent,
 QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
   Base("QCloudViewSettings", parent)
 {
+
   projection_ctl =
       add_enum_combobox<QGLView::Projection>("Projection",
           "Select projection type",
@@ -99,17 +100,17 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
             return false;
           });
 
-  rect_ctl  =
-      add_numeric_box<QRectF>("Rect:",
-          "Rectangle for Orto and Frustrum views",
-          [this](const QRectF & v) {
-            if ( cloudViewer_ && v != cloudViewer_->cloudView()->viewRect() ) {
-              cloudViewer_->cloudView()->setViewRect(v);
+  mainAxesLength_ctl =
+      add_numeric_box<double>("Main Axes size:",
+          "Set to 0 for auto, -1 for disable",
+          [this](double v) {
+            if ( cloudViewer_ && v != cloudViewer_->cloudView()->mainAxesLength() ) {
+              cloudViewer_->cloudView()->setMainAxesLength(v);
             }
           },
-          [this](QRectF * v) {
+          [this](double * v) {
             if ( cloudViewer_ ) {
-              * v = cloudViewer_->cloudView()->viewRect();
+              * v = cloudViewer_->cloudView()->mainAxesLength();
               return true;
             }
             return false;
@@ -330,6 +331,8 @@ QCloudViewer * QCloudViewSettingsWidget::cloudViewer() const
 QCloudViewSettingsDialogBox::QCloudViewSettingsDialogBox(QWidget * parent) :
     Base(parent)
 {
+  setWindowTitle("Cloud View Settings");
+
   vbox_ = new QVBoxLayout(this);
   vbox_->addWidget(cloudViewSettingsWidget_ = new QCloudViewSettingsWidget(this));
 }

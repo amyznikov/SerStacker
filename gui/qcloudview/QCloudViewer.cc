@@ -504,12 +504,15 @@ void QGLCloudViewer::glPreDraw()
   glEnable(GL_PROGRAM_POINT_SIZE);
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
+
 }
 
 void QGLCloudViewer::glPostDraw()
 {
-  glColor3ub(200, 200, 200);
-  drawMainAxes();
+  if ( mainAxesLength_ >= 0 ) {
+    glColor3ub(200, 200, 200);
+    drawMainAxes();
+  }
 
   Base::glPostDraw();
 }

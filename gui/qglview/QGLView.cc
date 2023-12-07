@@ -22,8 +22,7 @@ const c_enum_member* members_of<QGLView::Projection>()
 {
   static constexpr c_enum_member members[] = {
       { QGLView::Perspective, "Perspective", "" },
-      { QGLView::Frustum, "Frustum", "" },
-      { QGLView::Ortho, "Ortho", "" },
+      { QGLView::Orthographic, "Orthographic", "" },
       { QGLView::Perspective },
   };
 
@@ -148,9 +147,6 @@ void QGLView::onLoadParameters(QSettings & settings)
 
   viewParams_.farPlane = settings.value("QGLView/farPlane",
       viewParams_.farPlane).value<decltype(viewParams_.farPlane)>();
-
-  viewParams_.rect = settings.value("QGLView/viewRect",
-      viewParams_.rect).value<decltype(viewParams_.rect)>();
 }
 
 void QGLView::saveParameters()
@@ -178,9 +174,6 @@ void QGLView::onSaveParameters(QSettings & settings)
 
   settings.setValue("QGLView/farPlane",
       viewParams_.farPlane);
-
-  settings.setValue("QGLView/viewRect",
-      viewParams_.rect);
 }
 
 
@@ -263,19 +256,17 @@ double QGLView::farPlane() const
   return viewParams_.farPlane;
 }
 
-void QGLView::setViewRect(const QRectF & rc)
+void QGLView::setMainAxesLength(double v)
 {
-  viewParams_.rect = rc;
-  if ( viewParams_.projection != Projection::Perspective ) {
-    dirty_ = true;
-    update();
-  }
+  mainAxesLength_ = v;
+  update();
 }
 
-const QRectF & QGLView::viewRect() const
+double QGLView::mainAxesLength() const
 {
-  return viewParams_.rect;
+  return mainAxesLength_;
 }
+
 
 void QGLView::setViewPoint(const QVector3D & eye)
 {
@@ -430,28 +421,25 @@ void QGLView::glPreDraw()
 
     switch (viewParams_.projection) {
 
-      case Projection::Frustum: {
+      case Projection::Orthographic: {
+        ///////////////
 
-        mprojection_.frustum(-viewParams_.nearPlane, viewParams_.nearPlane,
-            -viewParams_.nearPlane, +viewParams_.nearPlane,
-            viewParams_.nearPlane, viewParams_.farPlane);
+        // const qreal dist = orthoCoef_ * fabs(cameraCoordinatesOf(pivotPoint()).z);
+        // halfWidth = dist * ((aspectRatio() < 1.0) ? 1.0 : aspectRatio());
+        // halfHeight = dist * ((aspectRatio() < 1.0) ? 1.0 / aspectRatio() : 1.0);
 
-        mtotal_ = mprojection_ * mview_;
+        // the camera coordinates of pivot point around which the camera rotates
+        const QVector3D pivotPoint = viewTarget_ - viewPoint_;
+        const double orthoCoef = tan(viewParams_.fov * M_PI / 360);
+        const double dist = orthoCoef * pivotPoint.length();
+        const double aspectRatio = viewport.w / (double) (viewport.h);
+        const double w = dist * ((aspectRatio < 1.0) ? 1.0 : aspectRatio);
+        const double h = dist * ((aspectRatio < 1.0) ? 1.0 / aspectRatio : 1.0);
 
-        break;
-      }
+        mprojection_.ortho(-w, w, -h, h,
+            viewParams_.nearPlane,
+            viewParams_.farPlane);
 
-      case Projection::Ortho: {
-
-        // -200;100; 200;-100
-        float left = viewParams_.rect.left();
-        float right = viewParams_.rect.right();
-        float bottom = viewParams_.rect.bottom();
-        float top = viewParams_.rect.top();
-
-        mprojection_.ortho(left, right, bottom, top, viewParams_.nearPlane, viewParams_.farPlane);
-
-        mtotal_ = mprojection_ * mview_;
         break;
       }
 
@@ -463,13 +451,11 @@ void QGLView::glPreDraw()
             viewParams_.nearPlane,
             viewParams_.farPlane);
 
-        mtotal_ = mprojection_ * mview_;
-
         break;
       }
     }
 
-
+    mtotal_ = mprojection_ * mview_;
     dirty_ = false;
   }
 
@@ -480,6 +466,7 @@ void QGLView::glPreDraw()
       backgroundColor_.greenF(),
       backgroundColor_.blueF(),
       backgroundColor_.alphaF());
+
 }
 
 void QGLView::glDraw()
@@ -493,7 +480,11 @@ void QGLView::glPostDraw()
 
   if ( showViewTarget ) {
 
-    const qreal length = viewPoint_.length() / 8;
+    //const qreal length = 0.1 * (viewTarget_ - viewPoint_).length();
+
+    const qreal length =
+        mainAxesLength_ > 0 ? mainAxesLength_ :
+            0.0025 * std::abs(viewParams_.farPlane - viewParams_.nearPlane);
 
     const QVector3D arrow_start[3] = {
         QVector3D(viewTarget_.x() - length, viewTarget_.y(), viewTarget_.z()),
@@ -510,7 +501,7 @@ void QGLView::glPostDraw()
     glColor3ub(255, 255, 64);
 
     for ( int i = 0; i < 3; ++i ) {
-      drawArrow(arrow_start[i], arrow_end[i], length / 32, 4);
+      drawArrow(arrow_start[i], arrow_end[i], length / 64, 4);
     }
   }
 
@@ -677,11 +668,13 @@ void QGLView::drawMainAxes()
   static const QFont font("Monospace", 12,
       QFont::Weight::DemiBold);
 
-  const qreal length = viewPoint_.length() / 3;
+  const qreal length =
+      mainAxesLength_ > 0 ? mainAxesLength_ :
+          0.005 * std::abs(viewParams_.farPlane - viewParams_.nearPlane);
 
-  drawArrow(QVector3D(0, 0, 0), QVector3D(length, 0, 0), length / 100, 8);
-  drawArrow(QVector3D(0, 0, 0), QVector3D(0, length, 0), length / 100, 8);
-  drawArrow(QVector3D(0, 0, 0), QVector3D(0, 0, length), length / 100, 8);
+  drawArrow(QVector3D(0, 0, 0), QVector3D(length, 0, 0), length / 100, 4);
+  drawArrow(QVector3D(0, 0, 0), QVector3D(0, length, 0), length / 100, 4);
+  drawArrow(QVector3D(0, 0, 0), QVector3D(0, 0, length), length / 100, 4);
 
   drawText(QVector3D(length, 0, 0), font, "X");
   drawText(QVector3D(0, length, 0), font, "Y");
@@ -859,7 +852,15 @@ void QGLView::wheelEvent(QWheelEvent * e)
       const QVector3D neweye =
           viewPoint_ + 1e-4 * forward * delta;  // / forward.length();
 
-      viewTarget_ += neweye - viewPoint_;
+      const QVector3D newforward =
+          viewTarget_ - neweye;
+
+      if( newforward.length() < 3 * viewParams_.nearPlane ||
+          QVector3D::dotProduct(forward, newforward)  < 0 )
+      {
+        viewTarget_ += neweye - viewPoint_;
+      }
+
       viewPoint_ = neweye;
       dirty_ = true;
 

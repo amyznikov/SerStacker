@@ -36,18 +36,15 @@ public:
 
   enum Projection {
     Perspective,
-    Frustum,
-    Ortho,
+    Orthographic,
   };
 
   struct ViewParams
   {
     Projection projection = Projection::Perspective;
-
     double fov = 90; // degrees
     double nearPlane = 0.2;
     double farPlane = 1000.;
-    QRectF rect = QRectF (-1000, -1000, 2000, 2000);
   };
 
   explicit QGLView(QWidget * parent = nullptr);
@@ -76,8 +73,8 @@ public:
   void setFarPlane(double v);
   double farPlane() const;
 
-  void setViewRect(const QRectF & rc);
-  const QRectF & viewRect() const;
+  void setMainAxesLength(double v);
+  double mainAxesLength() const;
 
   void setViewPoint(const QVector3D & eye);
   const QVector3D & viewPoint() const;
@@ -161,6 +158,7 @@ protected:
   QVector3D viewPoint_ = QVector3D(40, 30, 30);
   QVector3D viewTarget_ = QVector3D(0, 0, 0);
   QVector3D viewUpDirection_ = QVector3D(0, 0, 1);
+  double mainAxesLength_ = 0; // auto
 
   QMatrix4x4 mview_;
   QMatrix4x4 mprojection_;

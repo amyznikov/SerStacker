@@ -42,6 +42,63 @@ protected:
 
 };
 
+class QVLOGhostFilterSettings :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QVLOGhostFilterSettings ThisClass;
+  typedef QSettingsWidget Base;
+
+  QVLOGhostFilterSettings(QWidget * parent = nullptr);
+
+  void setInputSequenceView(QInputSequenceView * sequenceView);
+  QInputSequenceView * inputSequenceView() const;
+
+protected:
+  void onload(QSettings & settings) override;
+  void onupdatecontrols() override;
+
+protected:
+  QInputSequenceView *  sequenceView_ = nullptr;
+
+#if HAVE_VLO_FILE
+  QCheckBox * enableGhostFilter_ctl = nullptr;
+  QNumericBox * saturation_level_ctl  = nullptr;
+  QNumericBox * doubled_distanse_systematic_correction_ctl  = nullptr;
+  QNumericBox * doubled_distanse_depth_tolerance_ctl  = nullptr;
+#endif
+};
+
+class QVLOLowIntensityFilterSettings :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QVLOLowIntensityFilterSettings ThisClass;
+  typedef QSettingsWidget Base;
+
+  QVLOLowIntensityFilterSettings(QWidget * parent = nullptr);
+
+  void setInputSequenceView(QInputSequenceView * sequenceView);
+  QInputSequenceView * inputSequenceView() const;
+
+protected:
+  void onload(QSettings & settings) override;
+  void onupdatecontrols() override;
+
+protected:
+  QInputSequenceView *  sequenceView_ = nullptr;
+
+#if HAVE_VLO_FILE
+  QCheckBox * enabled_ctl = nullptr;
+  QNumericBox * low_intensity_level_ctl  = nullptr;
+  QNumericBox * u_ctl = nullptr;
+  QNumericBox * v_ctl = nullptr;
+#endif
+};
+
+
 class QVLOInputSettings :
     public QSettingsWidget
 {
@@ -60,17 +117,15 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  QInputSequenceView *  sequenceView_ = nullptr;
+  QInputSequenceView * sequenceView_ = nullptr;
 
 #if HAVE_VLO_FILE
   QEnumComboBox<c_vlo_file::DATA_CHANNEL> * vloDataChannel_ctl_ = nullptr;
-  QCheckBox * enableGhostFilter_ctl = nullptr;
-
-  QNumericBox * saturation_level_ctl  = nullptr;
-  QNumericBox * doubled_distanse_systematic_correction_ctl  = nullptr;
-  QNumericBox * doubled_distanse_depth_tolerance_ctl  = nullptr;
-
 #endif
+
+  QTabWidget * tab_ctl = nullptr;
+  QVLOGhostFilterSettings * ghostFilter_ctl = nullptr;
+  QVLOLowIntensityFilterSettings * lowIntensityFilter_ctl = nullptr;
 
 };
 

@@ -49,6 +49,8 @@ const c_enum_member* members_of<c_vlo_file::DATA_CHANNEL>()
       { c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES, "DOUBLED_ECHO_DISTANCES", "Distance values for double echos"},
       { c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK, "DIST_TO_MAX_PEAK", "" },
       { c_vlo_file::DATA_CHANNEL_GHOSTS_MASK, "GHOSTS_MASK", "" },
+      { c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_VALUE, "LOW_INTENSITY_VALUE", "" },
+      { c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_MASK, "LOW_INTENSITY_MASK", "" },
 
       { c_vlo_file::DATA_CHANNEL_AMBIENT },
   };
@@ -440,13 +442,13 @@ static inline bool is_ghost(const DistanceType & DR, const DistanceType & DG,
   static constexpr double Dmin = 200;
 
   const double & saturation_level =
-      opts->ghost_options.saturation_level;
+      opts->ghost_filter.saturation_level;
 
   const double & systematic_correction =
-      opts->ghost_options.doubled_distanse_systematic_correction;
+      opts->ghost_filter.doubled_distanse_systematic_correction;
 
   const double & depth_tolerance =
-      opts->ghost_options.doubled_distanse_depth_tolerance;
+      opts->ghost_filter.doubled_distanse_depth_tolerance;
 
  // const double intensity_ratio_slope = 0.7 / 6000;
 
@@ -529,6 +531,43 @@ void> static inline get_ghosts(const EchoType echos[3],
 
 }
 
+// DATA_CHANNEL_LOW_INTENSITY_VALUE
+template<class EchoType>
+static inline double low_intensity_value(const EchoType & echo, const c_vlo_processing_options * opts)
+{
+  const auto & distance = echo.dist;
+
+  const auto & area = echo.area;
+
+  if( area <= opts->low_intensity_filter.u ) {
+    return -1;
+  }
+
+  const double v =
+      log(area - opts->low_intensity_filter.u) +
+          opts->low_intensity_filter.v * distance;
+
+  return v;
+}
+
+
+
+template<class EchoType>
+static inline bool is_low_intensity(const EchoType & echo, const c_vlo_processing_options * opts)
+{
+  const auto & distance = echo.dist;
+
+  const auto & area = echo.area;
+
+  if( area <= opts->low_intensity_filter.u ) {
+    return true;
+  }
+
+  const double v =
+      low_intensity_value(echo, opts);
+
+  return v < opts->low_intensity_filter.low_intensity_level;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -789,6 +828,38 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       return image;
     }
 
+    case c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_VALUE: {
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3f::all(0));
+
+      get_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = low_intensity_value(echo, opts) ;
+          });
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_MASK : {
+
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
+
+      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3b::all(0));
+
+      get_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            if ( is_low_intensity(echo, opts) ) {
+              image[l][s][e] = 255;
+            }
+          });
+
+      return image;
+    }
+
+
     case c_vlo_file::DATA_CHANNEL_DIST_TO_MAX_PEAK: {
 
       typedef decltype(ScanType::Echo::peak) value_type;
@@ -978,6 +1049,37 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
           get_ghosts(echos, opts, [&](int e0, int e1) {
                   image[l][s][e1] = 255;
                 });
+          });
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_VALUE: {
+
+      cv::Mat3f image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3f::all(0));
+
+      get_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            image[l][s][e] = low_intensity_value(echo, opts) ;
+          });
+
+      return image;
+    }
+
+    case c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_MASK : {
+
+      typedef typename ScanType::Echo echo_type;
+      typedef decltype(ScanType::Echo::dist) value_type;
+
+      cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
+          cv::Vec3b::all(0));
+
+      get_points2d(scan, emask,
+          [&](int s, int l, int e, const auto & echo) {
+            if ( is_low_intensity(echo, opts) ) {
+              image[l][s][e] = 255;
+            }
           });
 
       return image;
@@ -1663,15 +1765,71 @@ bool c_vlo_reader::read(c_vlo_scan * scan)
   return false;
 }
 
+
+template<class ScanType>
+static void compute_exclude_mask_(const ScanType & scan, const c_vlo_processing_options * opts,
+    cv::Mat3b & output_mask)
+{
+  if( opts ) {
+
+    if( opts->ghost_filter.enabled ) {
+      output_mask =
+          get_image(scan,
+              c_vlo_file::DATA_CHANNEL_GHOSTS_MASK,
+              cv::noArray(),
+              opts);
+    }
+
+    if( opts->low_intensity_filter.enabled ) {
+
+      if( output_mask.empty() ) {
+
+        output_mask =
+            get_image(scan,
+                c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_MASK,
+                cv::noArray(),
+                opts);
+      }
+      else {
+        cv::bitwise_or(output_mask,
+            get_image(scan,
+                c_vlo_file::DATA_CHANNEL_LOW_INTENSITY_MASK,
+                cv::noArray(),
+                opts),
+            output_mask);
+      }
+    }
+  }
+}
+
+static void compute_exclude_mask(const c_vlo_scan & scan, const c_vlo_processing_options * opts,
+    cv::Mat3b & output_mask)
+{
+  switch (scan.version) {
+    case VLO_VERSION_1:
+      return compute_exclude_mask_(scan.scan1, opts, output_mask);
+    case VLO_VERSION_3:
+      return compute_exclude_mask_(scan.scan3, opts, output_mask);
+    case VLO_VERSION_5:
+      return compute_exclude_mask_(scan.scan5, opts, output_mask);
+//    case VLO_VERSION_6_IMX449:
+//      return compute_exclude_mask_(scan.scan6_imx449, opts, output_mask);
+//    case VLO_VERSION_6_IMX479:
+//      return compute_exclude_mask_(scan.scan6_imx479, opts, output_mask);
+    case VLO_VERSION_6_SLM:
+      return compute_exclude_mask_(scan.scan6_slm, opts, output_mask);
+  }
+}
+
 bool c_vlo_reader::read(cv::Mat * image, c_vlo_file::DATA_CHANNEL channel)
 {
   std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
   if( read(scan.get()) ) {
 
-    const cv::Mat3b exclude_mask =
-        processing_options_.enable_ghost_filter ?
-            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK, cv::noArray(), &processing_options_) :
-            cv::Mat3b();
+    cv::Mat3b exclude_mask;
+
+    compute_exclude_mask(*scan, &processing_options_,
+        exclude_mask);
 
     return !(*image = get_image(*scan, channel, exclude_mask, &processing_options_)).empty();
   }
@@ -1683,12 +1841,15 @@ bool c_vlo_reader::read_cloud3d(cv::OutputArray points, cv::OutputArray colors, 
   std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
   if ( read(scan.get()) ) {
 
-    const cv::Mat3b exclude_mask =
-        processing_options_.enable_ghost_filter ?
-            get_image(*scan, DATA_CHANNEL_GHOSTS_MASK, cv::noArray(), &processing_options_) :
-            cv::Mat3b();
+    cv::Mat3b exclude_mask;
 
-    return get_cloud3d(*scan, colors_channel, points, colors, exclude_mask, &processing_options_);
+    compute_exclude_mask(*scan, &processing_options_,
+        exclude_mask);
+
+    return get_cloud3d(*scan, colors_channel,
+        points, colors,
+        exclude_mask,
+        &processing_options_);
   }
 
   return false;

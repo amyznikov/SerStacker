@@ -170,7 +170,233 @@ void QGeneralAppInputSettings::onupdatecontrols()
 
 //////////////////////////////////////////////////////////////////////
 
+QVLOGhostFilterSettings::QVLOGhostFilterSettings(QWidget * parent) :
+    Base("", parent)
+{
 
+  enableGhostFilter_ctl =
+      add_checkbox("Apply Ghost Filter",
+          "Set TRUE to apply Ghost Filter based on doubled echos",
+          [this](bool checked) {
+            if ( sequenceView_ && sequenceView_->vlo_processing_options()->ghost_filter.enabled != checked) {
+              sequenceView_->vlo_processing_options()->ghost_filter.enabled = checked;
+              sequenceView_->update_as_vlo_processing_options_chaned();
+            }
+          });
+
+  saturation_level_ctl  =
+      add_numeric_box<double>("Area saturation level:",
+          "",
+          [this](double v) {
+            if ( sequenceView_ ) {
+              if ( sequenceView_->vlo_processing_options()->ghost_filter.saturation_level != v) {
+                sequenceView_->vlo_processing_options()->ghost_filter.saturation_level = v;
+                sequenceView_->update_as_vlo_processing_options_chaned();
+              }
+            }
+          });
+
+
+  doubled_distanse_systematic_correction_ctl  =
+      add_numeric_box<double>("Systematic error correction:",
+          "",
+          [this](double v) {
+            if ( sequenceView_ ) {
+              if ( sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction != v) {
+                sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction = v;
+                sequenceView_->update_as_vlo_processing_options_chaned();
+              }
+            }
+          });
+
+    doubled_distanse_depth_tolerance_ctl  =
+        add_numeric_box<double>("Depth tolerance:",
+            "",
+            [this](double v) {
+              if ( sequenceView_ ) {
+                if ( sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance != v) {
+                  sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance = v;
+                  sequenceView_->update_as_vlo_processing_options_chaned();
+                }
+              }
+            });
+
+    updateControls();
+}
+
+void QVLOGhostFilterSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+{
+  if( sequenceView_ ) {
+    sequenceView_->disconnect(this);
+  }
+
+  if( (sequenceView_ = sequenceView) ) {
+//
+//#if HAVE_VLO_FILE
+//    connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
+//        [this]() {
+//          c_update_controls_lock lock(this);
+//          vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
+//          // applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
+//        });
+//#endif
+//
+  }
+
+  updateControls();
+}
+
+QInputSequenceView * QVLOGhostFilterSettings::inputSequenceView() const
+{
+  return sequenceView_;
+}
+
+void QVLOGhostFilterSettings::onload(QSettings & settings)
+{
+
+}
+
+void QVLOGhostFilterSettings::onupdatecontrols()
+{
+  if ( !sequenceView_ ) {
+    setEnabled(false);
+  }
+  else {
+#if HAVE_VLO_FILE
+    enableGhostFilter_ctl->setChecked(sequenceView_->vlo_processing_options()->ghost_filter.enabled);
+    saturation_level_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.saturation_level);
+    doubled_distanse_systematic_correction_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction);
+    doubled_distanse_depth_tolerance_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance);
+#endif
+
+    setEnabled(true);
+  }
+
+}
+
+//////////////////////////////////////////////////////////////////////
+
+QVLOLowIntensityFilterSettings::QVLOLowIntensityFilterSettings(QWidget * parent) :
+    Base("", parent)
+{
+
+  enabled_ctl =
+      add_checkbox("Ebable Low intensity filter",
+          "",
+          [this](bool checked) {
+            if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.enabled != checked ) {
+              sequenceView_->vlo_processing_options()->low_intensity_filter.enabled = checked;
+              sequenceView_->update_as_vlo_processing_options_chaned();
+            }
+          },
+          [this](bool * checked) {
+            if ( sequenceView_ ) {
+              * checked = sequenceView_->vlo_processing_options()->low_intensity_filter.enabled;
+              return true;
+            }
+            return false;
+          });
+
+  low_intensity_level_ctl =
+      add_numeric_box<double>("low_intensity_threshold",
+          "",
+          [this](
+              double v) {
+                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level != v ) {
+                  sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level = v;
+                  sequenceView_->update_as_vlo_processing_options_chaned();
+                }
+
+              },
+          [this](double * v) {
+            if ( sequenceView_ ) {
+              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level;
+              return true;
+            }
+            return false;
+          });
+
+
+  u_ctl =
+      add_numeric_box<double>("U",
+          "",
+          [this](
+              double v) {
+                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.u != v ) {
+                  sequenceView_->vlo_processing_options()->low_intensity_filter.u = v;
+                  sequenceView_->update_as_vlo_processing_options_chaned();
+                }
+
+              },
+          [this](double * v) {
+            if ( sequenceView_ ) {
+              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.u;
+              return true;
+            }
+            return false;
+          });
+
+
+  v_ctl =
+      add_numeric_box<double>("V",
+          "",
+          [this](
+              double v) {
+                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.v != v ) {
+                  sequenceView_->vlo_processing_options()->low_intensity_filter.v = v;
+                  sequenceView_->update_as_vlo_processing_options_chaned();
+                }
+
+              },
+          [this](double * v) {
+            if ( sequenceView_ ) {
+              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.v;
+              return true;
+            }
+            return false;
+          });
+
+
+  updateControls();
+}
+
+void QVLOLowIntensityFilterSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+{
+  if( sequenceView_ ) {
+    sequenceView_->disconnect(this);
+  }
+
+  if( (sequenceView_ = sequenceView) ) {
+#if HAVE_VLO_FILE
+#endif
+  }
+
+  updateControls();
+}
+
+QInputSequenceView * QVLOLowIntensityFilterSettings::inputSequenceView() const
+{
+  return sequenceView_;
+}
+
+void QVLOLowIntensityFilterSettings::onload(QSettings & settings)
+{
+}
+
+void QVLOLowIntensityFilterSettings::onupdatecontrols()
+{
+  if ( !sequenceView_ ) {
+    setEnabled(false);
+  }
+  else {
+    Base::onupdatecontrols();
+    setEnabled(true);
+  }
+
+}
+
+
+//////////////////////////////////////////////////////////////////////
 QVLOInputSettings::QVLOInputSettings(QWidget * parent) :
     Base("", parent)
 {
@@ -186,57 +412,20 @@ QVLOInputSettings::QVLOInputSettings(QWidget * parent) :
                 sequenceView_->setVloDataChannel(v);
               }
             }
-          });
-
-
-  enableGhostFilter_ctl =
-      add_checkbox("Apply Ghost Filter",
-          "Set TRUE to apply Ghost Filter based on doubled echos",
-          [this](bool checked) {
-            if ( sequenceView_ && sequenceView_->vlo_processing_options()->enable_ghost_filter != checked) {
-              sequenceView_->vlo_processing_options()->enable_ghost_filter = checked;
-              sequenceView_->update_as_vlo_processing_options_chaned();
-            }
-          });
-
-  saturation_level_ctl  =
-      add_numeric_box<double>("Area saturation level:",
-          "",
-          [this](double v) {
+          },
+          [this](c_vlo_file::DATA_CHANNEL * v) {
             if ( sequenceView_ ) {
-              if ( sequenceView_->vlo_processing_options()->ghost_options.saturation_level != v) {
-                sequenceView_->vlo_processing_options()->ghost_options.saturation_level = v;
-                sequenceView_->update_as_vlo_processing_options_chaned();
-              }
+              *v = sequenceView_->vloDataChannel();
+              return true;
             }
-          });
-
-
-  doubled_distanse_systematic_correction_ctl  =
-      add_numeric_box<double>("Systematic error correction:",
-          "",
-          [this](double v) {
-            if ( sequenceView_ ) {
-              if ( sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_systematic_correction != v) {
-                sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_systematic_correction = v;
-                sequenceView_->update_as_vlo_processing_options_chaned();
-              }
-            }
-          });
-
-    doubled_distanse_depth_tolerance_ctl  =
-        add_numeric_box<double>("Depth tolerance:",
-            "",
-            [this](double v) {
-              if ( sequenceView_ ) {
-                if ( sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_depth_tolerance != v) {
-                  sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_depth_tolerance = v;
-                  sequenceView_->update_as_vlo_processing_options_chaned();
-                }
-              }
-            });
-
+            return false;
+          }
+          );
 #endif
+
+  addRow(tab_ctl = new QTabWidget(this));
+  tab_ctl->addTab(lowIntensityFilter_ctl = new QVLOLowIntensityFilterSettings(this), "Low Intensity Filter");
+  tab_ctl->addTab(ghostFilter_ctl = new QVLOGhostFilterSettings(this), "Ghost Filter");
 
   updateControls();
 }
@@ -249,15 +438,13 @@ void QVLOInputSettings::setInputSequenceView(QInputSequenceView * sequenceView)
 
   if( (sequenceView_ = sequenceView) ) {
 
+    ghostFilter_ctl->setInputSequenceView(sequenceView);
+    lowIntensityFilter_ctl->setInputSequenceView(sequenceView);
+
 #if HAVE_VLO_FILE
     connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
-        [this]() {
-          c_update_controls_lock lock(this);
-          vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
-          // applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
-        });
+        this, &ThisClass::updateControls);
 #endif
-
   }
 
   updateControls();
@@ -277,34 +464,17 @@ void QVLOInputSettings::onload(QSettings & settings)
 
 void QVLOInputSettings::onupdatecontrols()
 {
-#if HAVE_VLO_FILE
-
-
   if ( !sequenceView_ ) {
-    vloDataChannel_ctl_->setEnabled(false);
-    enableGhostFilter_ctl->setEnabled(false);
-    saturation_level_ctl ->setEnabled(false);
-    doubled_distanse_systematic_correction_ctl ->setEnabled(false);
-    doubled_distanse_depth_tolerance_ctl ->setEnabled(false);
+    setEnabled(false);
   }
   else {
-    vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
-    enableGhostFilter_ctl->setChecked(sequenceView_->vlo_processing_options()->enable_ghost_filter);
-    saturation_level_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_options.saturation_level);
-    doubled_distanse_systematic_correction_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_systematic_correction);
-    doubled_distanse_depth_tolerance_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_options.doubled_distanse_depth_tolerance);
-
-    vloDataChannel_ctl_->setEnabled(true);
-    enableGhostFilter_ctl->setEnabled(true);
-    saturation_level_ctl ->setEnabled(true);
-    doubled_distanse_systematic_correction_ctl ->setEnabled(true);
-    doubled_distanse_depth_tolerance_ctl ->setEnabled(true);
+    Base::onupdatecontrols();
+    setEnabled(true);
   }
-#endif
-
 }
 
 
+///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 
 QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :

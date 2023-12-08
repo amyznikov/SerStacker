@@ -724,9 +724,8 @@ template<> struct c_vlo_scan_type_traits<c_vlo_scan6_imx479> {
 
 struct c_vlo_processing_options
 {
-  bool enable_ghost_filter = false;
-
   struct {
+    bool enabled = false;
     double saturation_level = 122; // for 'peak' intensity measure
 
     // -10 cm for makrolon,
@@ -734,7 +733,14 @@ struct c_vlo_processing_options
     double doubled_distanse_systematic_correction = 0; // [cm]
     double doubled_distanse_depth_tolerance = 100; // [cm]
 
-  } ghost_options;
+  } ghost_filter;
+
+  struct {
+    bool enabled = false;
+    double low_intensity_level = 1800; // for 'area' intensity measure
+    double u = 100;
+    double v = 0.0074;
+  } low_intensity_filter;
 
 };
 
@@ -765,6 +771,9 @@ public:
     DATA_CHANNEL_DIST_TO_MAX_PEAK,
 
     DATA_CHANNEL_GHOSTS_MASK,
+
+    DATA_CHANNEL_LOW_INTENSITY_VALUE,
+    DATA_CHANNEL_LOW_INTENSITY_MASK,
 
   };
 

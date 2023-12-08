@@ -686,7 +686,9 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
 
       get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
-            image[l][s][e] = (double)echo.area * sqrt(0.01 * echo.dist);
+            //image[l][s][e] = (double)echo.area * sqrt(0.01 * echo.dist);
+            //image[l][s][e] = (double)echo.area * std::pow(echo.dist, 0.44);
+            image[l][s][e] = (double)echo.area * std::log(0.01 * echo.dist);
           });
 
       return image;
@@ -914,7 +916,9 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
 
       get_points2d(scan, emask,
           [&](int s, int l, int e, const auto & echo) {
-            image[l][s][e] = ((double) echo.area) * sqrt(0.01 * echo.dist);
+            // image[l][s][e] = ((double) echo.area) * sqrt(0.01 * echo.dist);
+            //image[l][s][e] = (double)echo.area * std::pow(echo.dist, 0.44);
+            image[l][s][e] = (double)echo.area * std::log(0.01 * echo.dist);
           });
 
       return image;

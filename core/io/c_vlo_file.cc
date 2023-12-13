@@ -817,13 +817,16 @@ cv::Mat> get_image(const ScanType & scan, c_vlo_file::DATA_CHANNEL channel, cv::
       cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3b::all(0));
 
-      get_echos(scan,
-          [&](int s, int l, const echo_type echos[3]) {
+      if ( opts ) {
 
-          get_ghosts(echos, opts, [&](int e0, int e1) {
-                  image[l][s][e1] = 255;
-                });
-          });
+        get_echos(scan,
+            [&](int s, int l, const echo_type echos[3]) {
+
+            get_ghosts(echos, opts, [&](int e0, int e1) {
+                    image[l][s][e1] = 255;
+                  });
+            });
+      }
 
       return image;
     }
@@ -1043,13 +1046,16 @@ cv::Mat get_image(const c_vlo_scan6_slm & scan, c_vlo_file::DATA_CHANNEL channel
       cv::Mat3b image(scan.NUM_LAYERS, scan.NUM_SLOTS,
           cv::Vec3b::all(0));
 
-      get_echos(scan,
-          [&](int s, int l, const echo_type echos[3]) {
+      if ( opts ) {
 
-          get_ghosts(echos, opts, [&](int e0, int e1) {
-                  image[l][s][e1] = 255;
-                });
-          });
+        get_echos(scan,
+            [&](int s, int l, const echo_type echos[3]) {
+
+            get_ghosts(echos, opts, [&](int e0, int e1) {
+                    image[l][s][e1] = 255;
+                  });
+            });
+      }
 
       return image;
     }
@@ -1349,7 +1355,7 @@ bool c_vlo_file::get_cloud3d(const c_vlo_scan & scan, DATA_CHANNEL intensity_cha
     case VLO_VERSION_6_SLM:
       return ::get_cloud3d(scan.scan6_slm, intensity_channel, points, colors, exclude_mask, opts);
   }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  CF_ERROR("Unsupported scan version %d specified", scan.version);
   return false;
 }
 
@@ -1366,7 +1372,7 @@ bool c_vlo_file::get_clouds3d(const c_vlo_scan & scan, cv::Mat3f clouds[3],
     case VLO_VERSION_6_SLM:
       return ::get_clouds3d(scan.scan6_slm, clouds, opts);
   }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  CF_ERROR("Unsupported scan version %d specified", scan.version);
   return false;
 }
 
@@ -1383,7 +1389,7 @@ bool c_vlo_file::get_ray_inclinations_table(const c_vlo_scan & scan, cv::Mat1f &
     case VLO_VERSION_6_SLM:
       return ::get_ray_inclinations_table(scan.scan6_slm, table);
   }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  CF_ERROR("Unsupported scan version %d specified", scan.version);
   return false;
 
 }
@@ -1400,7 +1406,7 @@ bool c_vlo_file::get_ray_azimuths_table(const c_vlo_scan & scan, cv::Mat1f & tab
     case VLO_VERSION_6_SLM:
       return ::get_ray_azimuths_table(scan.scan6_slm, table);
   }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+  CF_ERROR("Unsupported scan version %d specified", scan.version);
   return false;
 
 }

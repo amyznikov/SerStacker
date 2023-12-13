@@ -270,18 +270,18 @@ QMtfControl::QMtfControl(QWidget * parent) :
   updateControls();
 }
 
-void QMtfControl::setDisplaySettings(QMtfDisplay * displaySettings)
+void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 {
   c_update_controls_lock lock(this);
 
-  if( displaySettings_ ) {
-    displaySettings_->disconnect(this);
+  if( QObject * qobj = dynamic_cast<QObject*>(this->displaySettings_) ) {
+    qobj->disconnect(this);
   }
 
   displaySettings_ = displaySettings;
   displayType_ctl->clear();
 
-  if( displaySettings_ ) {
+  if( QObject * qobj = dynamic_cast<QObject*>(displaySettings_) ) {
 
     const c_enum_member * displayType =
         displaySettings_->displayTypes();
@@ -293,9 +293,13 @@ void QMtfControl::setDisplaySettings(QMtfDisplay * displaySettings)
 
     }
 
-    connect(displaySettings_, &QMtfDisplay::displayImageChanged,
-        this, &ThisClass::updateHistogramLevels,
+    connect(qobj, SIGNAL(displayImageChanged()),
+        this, SLOT(updateHistogramLevels()),
         Qt::QueuedConnection);
+
+    //    connect(displaySettings_, &QMtfDisplay::displayImageChanged,
+    //        this, &ThisClass::updateHistogramLevels,
+    //        Qt::QueuedConnection);
 
     updateHistogramLevels();
   }
@@ -303,7 +307,7 @@ void QMtfControl::setDisplaySettings(QMtfDisplay * displaySettings)
   updateControls();
 }
 
-QMtfDisplay * QMtfControl::displaySettings() const
+IMtfDisplay * QMtfControl::displaySettings() const
 {
   return displaySettings_;
 }
@@ -637,12 +641,13 @@ void QMtfControl::onupdatecontrols()
   }
   else {
 
-    double imin, imax, shadows, highlights, midtones;
+    double imin=-1, imax=-1, shadows, highlights, midtones;
 
     displayType_ctl->setCurrentIndex(displayType_ctl->findData(
         displaySettings_->displayType()));
 
     displaySettings_->getMtfInputRange(&imin, &imax);
+
     inputDataRange_ctl->setText(QString("%1;%2").arg(imin).arg(imax));
 
     displaySettings_->getMtf(&shadows, &highlights, &midtones);
@@ -697,12 +702,12 @@ QMtfControl * QMtfControlDialogBox::mtfControl() const
   return mtfControl_;
 }
 
-void QMtfControlDialogBox::setMtfDisplaySettings(QMtfDisplay * display)
+void QMtfControlDialogBox::setMtfDisplaySettings(IMtfDisplay * display)
 {
   mtfControl_->setDisplaySettings(display);
 }
 
-QMtfDisplay * QMtfControlDialogBox::mtfDisplaySettings() const
+IMtfDisplay * QMtfControlDialogBox::mtfDisplaySettings() const
 {
   return mtfControl_->displaySettings();
 }

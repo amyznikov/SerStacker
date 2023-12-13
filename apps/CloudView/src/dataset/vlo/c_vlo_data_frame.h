@@ -24,20 +24,13 @@ public:
 
   enum
   {
-    AMBIENT_IMAGE,
-    DISTANCES_IMAGE,
-    DEPTH_IMAGE,
-    ECHO_AREA_IMAGE,
-    ECHO_PEAK_IMAGE,
-    ECHO_WIDTH_IMAGE,
-
-    DOUBLED_ECHO_DISTANCES_IMAGE,
-    DOUBLED_ECHO_PEAKS_IMAGE,
-    DOUBLED_ECHO_AREAS_IMAGE,
-    GHOSTS_MASK_IMAGE,
-
-    CLOUD3D,
-    STRUCTURED_CLOUD3D,
+    AMBIENT = c_vlo_file::DATA_CHANNEL_AMBIENT,
+    DISTANCES = c_vlo_file::DATA_CHANNEL_DISTANCES,
+    DEPTH = c_vlo_file::DATA_CHANNEL_DEPTH,
+    AREA = c_vlo_file::DATA_CHANNEL_AREA,
+    PEAK = c_vlo_file::DATA_CHANNEL_PEAK,
+    WIDTH = c_vlo_file::DATA_CHANNEL_WIDTH,
+    GHOSTS = c_vlo_file::DATA_CHANNEL_GHOSTS_MASK,
   };
 
   c_vlo_data_frame();
@@ -47,6 +40,14 @@ public:
 
   bool get_point_cloud(int id, cv::OutputArray points,
       cv::OutputArray colors);
+
+  void getSupportedViewTypes(std::set<ViewType> * viewTypes) override;
+
+  bool getViewData(ViewType * selectedViewType, int selectedDisplayId,
+      cv::OutputArray image,
+      cv::OutputArray data,
+      cv::OutputArray mask) override;
+
 
 public:
   c_vlo_scan current_scan_;

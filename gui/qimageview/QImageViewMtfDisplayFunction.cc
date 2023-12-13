@@ -38,7 +38,7 @@ QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageV
   QMtfDisplay::displayType_ =
       DISPLAY_PIXEL_VALUE;
 
-  addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
+  QMtfDisplay::addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
 }
 
 QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
@@ -147,8 +147,6 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
 void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth)
 {
-  INSTRUMENT_REGION("");
-
   if ( !currentImage.empty() ) {
 
     const DisplayParams & opts =

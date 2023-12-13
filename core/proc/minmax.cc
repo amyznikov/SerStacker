@@ -8,16 +8,60 @@
 //#include <tbb/tbb.h>
 #include <core/debug.h>
 
+static inline void init_minmax(uint8_t * minv, uint8_t * maxv)
+{
+  *minv = UINT8_MAX;
+  *maxv = 0;
+}
+
+static inline void init_minmax(int8_t * minv, int8_t * maxv)
+{
+  *minv = INT8_MAX;
+  *maxv = INT8_MIN;
+}
+
+static inline void init_minmax(uint16_t * minv, uint16_t * maxv)
+{
+  *minv = UINT16_MAX;
+  *maxv = 8;
+}
+
+static inline void init_minmax(int16_t * minv, int16_t * maxv)
+{
+  *minv = INT16_MAX;
+  *maxv = INT16_MIN;
+}
+
+static inline void init_minmax(int32_t * minv, int32_t * maxv)
+{
+  *minv = INT32_MAX;
+  *maxv = INT32_MIN;
+}
+
+static inline void init_minmax(float * minv, float * maxv)
+{
+  *minv = DBL_MAX;
+  *maxv = -DBL_MAX;
+}
+
+static inline void init_minmax(double * minv, double * maxv)
+{
+  *minv = DBL_MAX;
+  *maxv = -DBL_MAX;
+}
+
+
 template<class T>
 static bool getminmax_(cv::InputArray _src, double * minval, double * maxval, cv::InputArray _mask)
 {
-  // FIXME: implement with tbb
+  // TODO: implement with tbb
 
   const cv::Mat src = _src.getMat();
   const int cn = src.channels();
 
-  T minv = static_cast<T>(DBL_MAX);
-  T maxv = static_cast<T>(-DBL_MAX);
+  T minv, maxv;
+
+  init_minmax(&minv, &maxv);
 
   if( _mask.empty() ) {
 

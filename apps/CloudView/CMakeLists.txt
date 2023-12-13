@@ -30,9 +30,11 @@ foreach(QRC_FILE ${QRC_FILES})
 endforeach()
 
 
-include_directories(src/dataset)
+include_directories(src/dataset 
+	src/dataset/vlo)
 
-add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
+add_executable(${PROJECT_NAME} 
+	${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
 if (WIN32)
 set(OpenGL_LIBS GLU32 opengl32)
@@ -63,7 +65,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${LIBRARIES}
   ${CORE_LIBRARIES})
 
-message(STATUS "CORE_LIBRARIES= ${CORE_LIBRARIES}")
+#message(STATUS "CORE_LIBRARIES= ${CORE_LIBRARIES}")
 
 # Install
 

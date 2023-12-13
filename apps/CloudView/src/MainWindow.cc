@@ -38,11 +38,13 @@
 #define ICON_copy               ":/gui/icons/copy"
 #define ICON_delete             ":/gui/icons/delete"
 
-//#define ICON_roi                ":/serstacker/icons/roi.png"
-//#define ICON_point_size         ":/serstacker/icons/degree.png"
-//#define ICON_brightness         ":/serstacker/icons/brightness.png"
-//#define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
-//#define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
+
+#define ICON_roi                ":/cloudview/icons/roi.png"
+#define ICON_point_size         ":/cloudview/icons/degree.png"
+#define ICON_brightness         ":/cloudview/icons/brightness.png"
+#define ICON_bgcolor            ":/cloudview/icons/fill-color.png"
+#define ICON_cloud_rotate       ":/cloudview/icons/cloud_rotate.png"
+#define ICON_cloud_view_target  ":/cloudview/icons/cloud_view_target.png"
 
 
 namespace cloudview {
@@ -55,17 +57,18 @@ MainWindow::MainWindow()
   updateWindowTittle();
   QImageProcessorsCollection::load();
 
-  setCentralWidget(centralStackedWidget = new QStackedWidget(this));
-  centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
+  setCentralWidget(centralStackedWidget =
+      new QStackedWidget(this));
 
-  centralStackedWidget->addWidget(cloudSequenceView =
-      new QCloudSequenceView(this,
-          imageView = new QCloudViewImageEditor(this),
-          nullptr,
-          nullptr));
+  centralStackedWidget->addWidget(thumbnailsView =
+      new QThumbnailsView(this));
 
-  cloudView = cloudSequenceView->cloudView();
-  textView = cloudSequenceView->textView();
+  centralStackedWidget->addWidget(inputSourceView =
+      new QInputSourceView(this));
+
+  imageView = inputSourceView->imageView();
+  cloudView = inputSourceView->cloudView();
+  textView = inputSourceView->textView();
 
 
 
@@ -84,12 +87,8 @@ MainWindow::MainWindow()
   setupFileSystemTreeView();
   setupThumbnailsView();
   setupMtfControls();
-  setupDatasetView();
   setupStatusbar();
-  setupCloudSequenceView();
-
-  tabifyDockWidget(fileSystemTreeDock,
-      datasetViewDock);
+  setupInputSourceView();
 
   restoreState();
 }
@@ -365,6 +364,27 @@ void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
 }
 
 
+void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
+{
+  if ( checked && !cloudViewSettingsDialogBox ) {
+
+    cloudViewSettingsDialogBox = new QPointCloudViewSettingsDialogBox(this);
+    cloudViewSettingsDialogBox->setCloudViewer(cloudView);
+    connect(cloudViewSettingsDialogBox, &QPointCloudViewSettingsDialogBox::visibilityChanged,
+        showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
+  }
+
+  if ( cloudViewSettingsDialogBox ) {
+    if ( !checked ) {
+      cloudViewSettingsDialogBox->hide();
+    }
+    else {
+      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(inputSourceView->currentFileName()).fileName());
+      cloudViewSettingsDialogBox->showNormal();
+    }
+  }
+}
+
 
 void MainWindow::setupThumbnailsView()
 {
@@ -396,41 +416,119 @@ void MainWindow::setupThumbnailsView()
 
 }
 
-
-void MainWindow::setupDatasetView()
-{
-  datasetViewDock =
-      addCloudViewDatasetCollectionsDock(this, Qt::LeftDockWidgetArea,
-          "datasetViewDock",
-          "Datasets",
-          menuView_);
-
-
-  datasetView = datasetViewDock->datasetView();
-}
-
-void MainWindow::setupCloudSequenceView()
+void MainWindow::setupInputSourceView()
 {
   QToolBar * toolbar;
 
   ///////////////////////////////////////////////////////////////////////
-  toolbar = cloudSequenceView->toolbar();
+  toolbar = inputSourceView->toolbar();
 
   ///////////////////////////////////////////////////////////////////////
-  toolbar = cloudSequenceView->imageViewToolbar();
+  toolbar = inputSourceView->imageViewToolbar();
 
   toolbar->addAction(showMtfControlAction_);
 
   ///////////////////////////////////////////////////////////////////////
-  toolbar = cloudSequenceView->cloudViewToolbar();
+  toolbar = inputSourceView->cloudViewToolbar();
 
   toolbar->addAction(showMtfControlAction_);
 
-  ///////////////////////////////////////////////////////////////////////
-  toolbar = cloudSequenceView->textViewToolbar();
+  toolbar->addWidget(createToolButton(getIcon(ICON_options),
+       "Options",
+       "Cloud View Options...",
+       [this](QToolButton * tb) {
+
+         QMenu menu;
+
+         menu.addAction(createMenuWidgetAction<QSpinBox>("Point size: ",
+                 nullptr,
+                 [this](const auto * action) {
+                   action->icon()->setPixmap(getPixmap(ICON_point_size)); // .scaled(QSize(16,16))
+                   QSpinBox * spinBox = action->control();
+                   spinBox->setKeyboardTracking(false);
+                   spinBox->setRange(1, 32);
+                   spinBox->setValue((int)cloudView->pointSize());
+                   connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                       [this](int value) {
+                     cloudView->setPointSize(value);
+                       });
+                 }));
+
+         menu.addAction(createMenuWidgetAction<QSpinBox>("Point brightness: ",
+                 nullptr,
+                 [this](const auto * action) {
+                   action->icon()->setPixmap(getPixmap(ICON_brightness)); // .scaled(QSize(16,16))
+                   QSpinBox * spinBox = action->control();
+                   spinBox->setKeyboardTracking(false);
+                   spinBox->setRange(-128, 128);
+                   spinBox->setValue((int)cloudView->pointBrightness());
+                   connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                       [this](int value) {
+                         if ( is_visible(cloudView) ) {
+                           cloudView->setPointBrightness(value);
+                         }
+                       });
+                 }));
+
+         menu.addAction(createMenuWidgetAction<QColorPickerButton>("Background color: ",
+                 nullptr,
+                 [this](const auto * action) {
+                   action->icon()->setPixmap(getPixmap(ICON_bgcolor)); // .scaled(QSize(16,16))
+                   QColorPickerButton * colorPicker = action->control();
+                   colorPicker->setColor(cloudView->backgroundColor());
+                   connect(colorPicker, &QColorPickerButton::colorSelected,
+                       [this, colorPicker]() {
+                         if ( cloudView ) {
+                           cloudView->setBackgroundColor(colorPicker->color());
+                         }
+                       });
+                 }));
+
+         menu.addAction(createAction(getIcon(ICON_cloud_rotate),
+                 "Show cloud center",
+                 "Rotate camera to show point cloud center",
+                 [this]() {
+                   if ( is_visible(cloudView) ) {
+                     cloudView->rotateToShowCloud();
+                   }
+                 }));
+
+         menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_target),
+                 "Auto Show Target point",
+                 "",
+                 cloudView->autoShowViewTarget(),
+                 [this](bool checked) {
+                   if ( is_visible(cloudView) ) {
+                     cloudView->setAutoShowViewTarget(checked);
+                   }
+                 }));
+
+         menu.addSeparator();
+
+         if ( !showCloudViewSettingsDialogBoxAction ) {
+
+           showCloudViewSettingsDialogBoxAction =
+             createCheckableAction(getIcon(ICON_options),
+                 "Advanced ...",
+                 "Show advanced options",
+                 is_visible(cloudViewSettingsDialogBox),
+                 this,
+                 &ThisClass::onShowCloudViewSettingsDialogBoxActionClicked);
+         }
+
+         menu.addAction(showCloudViewSettingsDialogBoxAction);
+
+         menu.exec(tb->mapToGlobal(QPoint(tb->width() - 4,tb->height() - 4)));
+       }));
+
+
+
 
   ///////////////////////////////////////////////////////////////////////
-  toolbar = cloudSequenceView->rightToolbar();
+  toolbar = inputSourceView->textViewToolbar();
+
+  ///////////////////////////////////////////////////////////////////////
+  toolbar = inputSourceView->rightToolbar();
 
   toolbar->addAction(createAction(getIcon(ICON_close),
       "Close",
@@ -439,7 +537,7 @@ void MainWindow::setupCloudSequenceView()
         centralStackedWidget->setCurrentWidget(thumbnailsView);
       },
       new QShortcut(QKeySequence::Cancel,
-          cloudSequenceView, nullptr, nullptr,
+          inputSourceView, nullptr, nullptr,
           Qt::WindowShortcut)));
 
 
@@ -450,8 +548,8 @@ void MainWindow::openImage(const QString & abspath)
 {
   QWaitCursor wait(this);
 
-  centralStackedWidget->setCurrentWidget(cloudSequenceView);
-  cloudSequenceView->openFile(abspath);
+  centralStackedWidget->setCurrentWidget(inputSourceView);
+  inputSourceView->openFile(abspath);
 }
 
 void MainWindow::onMtfControlVisibilityChanged(bool visible)
@@ -461,30 +559,24 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
   if( !visible ) {
     mtfControl_->setMtfDisplaySettings(nullptr);
   }
+  else if ( is_visible(inputSourceView) ) {
+    mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
+  }
   else {
+    mtfControl_->setMtfDisplaySettings(nullptr);
+  }
 
-    if( is_visible(imageView) ) {
-      mtfControl_->setMtfDisplaySettings(imageView->mtfDisplayFunction());
-    }
-    else if( is_visible(cloudView) ) {
-      mtfControl_->setMtfDisplaySettings(&cloudView->mtfDisplay());
-    }
-    else {
-      mtfControl_->setMtfDisplaySettings(nullptr);
-    }
+  const QString currentFileName =
+      mtfControl_->mtfDisplaySettings() ?
+          QFileInfo(inputSourceView->currentFileName()).fileName() :
+          "";
 
-    const QString currentFileName =
-        mtfControl_->mtfDisplaySettings() ?
-            QFileInfo(cloudSequenceView->currentFileName()).fileName() :
-            "";
-
-    if( currentFileName.isEmpty() ) {
-      mtfControl_->setWindowTitle("Adjust Display Levels ...");
-    }
-    else {
-      mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
-          currentFileName.toUtf8().constData()));
-    }
+  if( currentFileName.isEmpty() ) {
+    mtfControl_->setWindowTitle("Adjust Display Levels ...");
+  }
+  else {
+    mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
+        currentFileName.toUtf8().constData()));
   }
 }
 

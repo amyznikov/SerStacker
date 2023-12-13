@@ -11,9 +11,9 @@ namespace cloudview {
 
 c_text_frame::c_text_frame()
 {
-  add_data_item("Text", TEXT,
-      c_cloudview_data_item::Type::text,
-      "Input text");
+//  add_data_item("Text", TEXT,
+//      c_cloudview_data_item::Type::text,
+//      "Input text");
 }
 
 void c_text_frame::set_filename(const std::string & v)

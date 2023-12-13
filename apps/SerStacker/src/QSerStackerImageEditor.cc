@@ -16,6 +16,9 @@ QSerStackerImageEditor::QSerStackerImageEditor(QWidget * parent) :
 {
   Base::setDisplayFunction(&mtfDisplayFunction_);
 
+  connect(&mtfDisplayFunction_, &QMtfDisplay::displayTypeChanged,
+      &mtfDisplayFunction_, &QMtfDisplay::parameterChanged);
+
   connect(&mtfDisplayFunction_, &QImageViewMtfDisplayFunction::parameterChanged,
       this, &ThisClass::updateDisplay);
 

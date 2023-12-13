@@ -8,8 +8,8 @@
 #ifndef __QImageSceneView_h__
 #define __QImageSceneView_h__
 
-#include "QImageScene.h"
 #include "QImageDisplayFunction.h"
+#include "QImageScene.h"
 
 class QImageSceneView :
     public QGraphicsView

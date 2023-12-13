@@ -160,6 +160,9 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
       this, &ThisClass::onPixmapChanged,
       Qt::QueuedConnection);
 
+  connect(&mtfDisplayFunction_, &QMtfDisplay::displayTypeChanged,
+      &mtfDisplayFunction_, &QMtfDisplay::parameterChanged);
+
   connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
       [this]() {
         if ( !mtfDisplayFunction_.isBusy() ) {

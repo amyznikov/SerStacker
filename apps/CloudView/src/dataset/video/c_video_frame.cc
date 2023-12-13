@@ -12,34 +12,48 @@ namespace cloudview {
 
 c_video_frame::c_video_frame()
 {
-  add_data_item("Image", IMAGE,
-      c_cloudview_data_item::Type::image,
-      "Input image");
+  add_display_channel(PIXEL_VALUE, "PIXEL_VALUE",
+      "PIXEL_VALUE",
+      0, 255);
+}
 
-  add_data_item("Mask", MASK,
-      c_cloudview_data_item::Type::image,
-      "Input mask");
+void c_video_frame::getSupportedViewTypes(std::set<ViewType> * viewTypes)
+{
+  viewTypes->emplace(ViewType_Image);
+}
+
+bool c_video_frame::getViewData(ViewType * selectedViewType, int selectedDisplayId,
+    cv::OutputArray image,
+    cv::OutputArray data,
+    cv::OutputArray mask)
+{
+  * selectedViewType = ViewType_Image;
+
+  if ( image.needed() ) {
+    this->image.copyTo(image);
+  }
+
+  if ( mask.needed() ) {
+    this->mask.copyTo(mask);
+  }
+
+  if ( data.needed() ) {
+    data.release();
+  }
+
+  return true;
 }
 
 bool c_video_frame::get_image(int id, cv::OutputArray output_image,
     cv::OutputArray output_mask)
 {
-
   switch (id) {
-    case IMAGE:
+    case PIXEL_VALUE:
       if( output_image.needed() ) {
         this->image.copyTo(output_image);
       }
       if( output_mask.needed() ) {
         this->mask.copyTo(output_mask);
-      }
-      break;
-    case MASK:
-      if( output_image.needed() ) {
-        this->mask.copyTo(output_image);
-      }
-      if( output_mask.needed() ) {
-        output_mask.release();
       }
       break;
     default:

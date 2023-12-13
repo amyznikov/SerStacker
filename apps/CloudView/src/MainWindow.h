@@ -11,9 +11,8 @@
 #include <gui/mainwindow/QMainAppWindow.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
-#include "QCloudViewDatasetCollectionsView.h"
-#include "QCloudSequenceView.h"
-#include "QCloudViewImageEditor.h"
+#include "QImageSourceView.h"
+#include "QInputSourceView.h"
 
 
 //#include <gui/qtextview/QTextFileViewer.h>
@@ -51,8 +50,7 @@ private:
   void setupStatusbar();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
-  void setupDatasetView();
-  void setupCloudSequenceView();
+  void setupInputSourceView();
 
 private:
   void updateWindowTittle();
@@ -64,26 +62,22 @@ private:
 
   void onFileSystemTreeCustomContextMenuRequested(const QPoint & pos, const QFileInfoList &);
   void onThumbnailsViewCustomContextMenuRequested(const QPoint &pos);
-
+  void onShowCloudViewSettingsDialogBoxActionClicked(bool checked);
 
 
 private:
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
-  QCloudSequenceView * cloudSequenceView = nullptr;
-  QCloudViewImageEditor * imageView = nullptr;
-  QCloudViewer * cloudView = nullptr;
-  QTextFileViewer * textView = nullptr;
+  QInputSourceView * inputSourceView = nullptr;
+  QImageSourceView * imageView = nullptr;
+  QPointCloudSourceView * cloudView = nullptr;
+  QTextSourceView * textView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
-
-  QCloudViewDatasetCollectionsView * datasetView = nullptr;
-  QCloudViewDatasetCollectionsDock * datasetViewDock = nullptr;
-
+  QPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
 
   QAction * quitAppAction = nullptr;
-
-
+  QAction * showCloudViewSettingsDialogBoxAction = nullptr;
 
   // status bar
   QLabel * statusbarMousePosLabel_ctl = nullptr;

@@ -279,9 +279,8 @@ QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
     Base("", cloudView),
     cloudView_(cloudView)
 {
-  Base::displayType_ = DISPLAY_PIXEL_VALUE;
-
-  addDisplay(DISPLAY_PIXEL_VALUE, 0, 255);
+  QMtfDisplay::displayType_ = DISPLAY_PIXEL_VALUE;
+  QMtfDisplay::addDisplay(DISPLAY_PIXEL_VALUE, 0, 255);
 }
 
 QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
@@ -396,6 +395,9 @@ QGLCloudViewer::QGLCloudViewer(QWidget* parent) :
   Base(parent),
   mtfDisplay_(this)
 {
+  connect(&mtfDisplay_, &QMtfDisplay::displayTypeChanged,
+      &mtfDisplay_, &QMtfDisplay::parameterChanged);
+
   connect(&mtfDisplay_, &QCloudViewMtfDisplay::parameterChanged,
       this, &ThisClass::updateDisplayColors);
 }

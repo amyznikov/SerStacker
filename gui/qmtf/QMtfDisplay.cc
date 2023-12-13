@@ -9,14 +9,40 @@
 #include <core/proc/minmax.h>
 #include <core/debug.h>
 
-
-QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
-    Base(parent),
-    prefix_(prefix.isEmpty() ? "QMtfDisplay" : prefix)
+IMtfDisplay::IMtfDisplay(const QString & prefix) :
+  prefix_(prefix.isEmpty() ? "IMtfDisplay" : prefix)
 {
+
 }
 
-void QMtfDisplay::addDisplay(int type, double input_min, double input_max)
+
+
+////////
+
+
+IMtfDisplay::DisplayParams & IMtfDisplay::addDisplay(DisplayMap & map,
+    int type, double input_min, double input_max)
+{
+  auto pos = map.find(type);
+
+  if ( pos == map.end() ) {
+
+    DisplayParams p;
+
+    p.mtf.set_input_range(input_min, input_max);
+    p.mtf.set_output_range(0, 255);
+    if ( p.colormap != COLORMAP_NONE ) {
+      createLut(p.colormap, p.lut,
+          p.invert_colormap);
+    }
+
+    pos = map.emplace(type, p).first;
+  }
+
+  return pos->second;
+}
+
+void IMtfDisplay::addDisplay(int type, double input_min, double input_max)
 {
   DisplayParams p;
   p.mtf.set_input_range(input_min, input_max);
@@ -28,7 +54,7 @@ void QMtfDisplay::addDisplay(int type, double input_min, double input_max)
   displayParams_.emplace(type, p);
 }
 
-void QMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap)
+void IMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap)
 {
   if( colormap == COLORMAP_NONE ) {
     lut.release();
@@ -64,7 +90,7 @@ void QMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colo
   }
 }
 
-void QMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
+void IMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
     cv::InputArray currentImage, cv::InputArray currentMask,
     c_mtf_adjustment * a) const
 {
@@ -101,7 +127,7 @@ void QMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
   }
 }
 
-void QMtfDisplay::restoreMtfRange(c_midtones_transfer_function *mtf, const c_mtf_adjustment & a) const
+void IMtfDisplay::restoreMtfRange(c_midtones_transfer_function *mtf, const c_mtf_adjustment & a) const
 {
   if ( a.adjusted_inputs ) {
     mtf->set_input_range(a.imin, a.imax);
@@ -111,21 +137,22 @@ void QMtfDisplay::restoreMtfRange(c_midtones_transfer_function *mtf, const c_mtf
   }
 }
 
-void QMtfDisplay::setDisplayType(int v)
+void IMtfDisplay::setDisplayType(int v)
 {
   if ( displayParams_.find(v) != displayParams_.end() ) {
     displayType_ = v;
-    Q_EMIT parameterChanged();
+    Q_EMIT displayTypeChanged();
+    // Q_EMIT parameterChanged();
     //updateDisplay();
   }
 }
 
-int QMtfDisplay::displayType() const
+int IMtfDisplay::displayType() const
 {
   return displayType_;
 }
 
-void QMtfDisplay::setMtfInputRange(double min, double max)
+void IMtfDisplay::setMtfInputRange(double min, double max)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -136,7 +163,7 @@ void QMtfDisplay::setMtfInputRange(double min, double max)
   }
 }
 
-void QMtfDisplay::getMtfInputRange(double * min, double * max) const
+void IMtfDisplay::getMtfInputRange(double * min, double * max) const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -146,7 +173,7 @@ void QMtfDisplay::getMtfInputRange(double * min, double * max) const
   }
 }
 
-void QMtfDisplay::setMtf(double shadows, double highlights, double midtones)
+void IMtfDisplay::setMtf(double shadows, double highlights, double midtones)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -161,7 +188,7 @@ void QMtfDisplay::setMtf(double shadows, double highlights, double midtones)
   }
 }
 
-void QMtfDisplay::getMtf(double * shadows, double * highlights, double * midtones) const
+void IMtfDisplay::getMtf(double * shadows, double * highlights, double * midtones) const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -174,7 +201,7 @@ void QMtfDisplay::getMtf(double * shadows, double * highlights, double * midtone
   }
 }
 
-void QMtfDisplay::setShadows(double shadows)
+void IMtfDisplay::setShadows(double shadows)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -187,7 +214,7 @@ void QMtfDisplay::setShadows(double shadows)
   }
 }
 
-double QMtfDisplay::shadows() const
+double IMtfDisplay::shadows() const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -197,7 +224,7 @@ double QMtfDisplay::shadows() const
       0;
 }
 
-void QMtfDisplay::setHighlights(double highlights)
+void IMtfDisplay::setHighlights(double highlights)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -210,7 +237,7 @@ void QMtfDisplay::setHighlights(double highlights)
   }
 }
 
-double QMtfDisplay::highlights() const
+double IMtfDisplay::highlights() const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -220,7 +247,7 @@ double QMtfDisplay::highlights() const
       1;
 }
 
-void QMtfDisplay::setMidtones(double midtones)
+void IMtfDisplay::setMidtones(double midtones)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -233,7 +260,7 @@ void QMtfDisplay::setMidtones(double midtones)
   }
 }
 
-double QMtfDisplay::midtones() const
+double IMtfDisplay::midtones() const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -243,7 +270,7 @@ double QMtfDisplay::midtones() const
       0.5;
 }
 
-void QMtfDisplay::setColormap(COLORMAP v)
+void IMtfDisplay::setColormap(COLORMAP v)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -259,7 +286,7 @@ void QMtfDisplay::setColormap(COLORMAP v)
   }
 }
 
-COLORMAP QMtfDisplay::colormap() const
+COLORMAP IMtfDisplay::colormap() const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -272,7 +299,7 @@ COLORMAP QMtfDisplay::colormap() const
   return COLORMAP_NONE;
 }
 
-void QMtfDisplay::setInvertColormap(bool v)
+void IMtfDisplay::setInvertColormap(bool v)
 {
   const DisplayMap::iterator ii =
       displayParams_.find(displayType_);
@@ -292,7 +319,7 @@ void QMtfDisplay::setInvertColormap(bool v)
   }
 }
 
-bool QMtfDisplay::invertColormap() const
+bool IMtfDisplay::invertColormap() const
 {
   const DisplayMap::const_iterator ii =
       displayParams_.find(displayType_);
@@ -305,7 +332,7 @@ bool QMtfDisplay::invertColormap() const
   return false;
 }
 
-void QMtfDisplay::setAutoClip(bool v)
+void IMtfDisplay::setAutoClip(bool v)
 {
   if ( autoClip_ != v ) {
     autoClip_ = v;
@@ -313,12 +340,12 @@ void QMtfDisplay::setAutoClip(bool v)
   }
 }
 
-bool QMtfDisplay::autoClip() const
+bool IMtfDisplay::autoClip() const
 {
   return autoClip_;
 }
 
-QMtfDisplay::DisplayParams & QMtfDisplay::displayParams()
+IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 {
   DisplayMap::iterator pos =
       displayParams_.find(displayType_);
@@ -332,7 +359,7 @@ QMtfDisplay::DisplayParams & QMtfDisplay::displayParams()
   return pos->second;
 }
 
-const QMtfDisplay::DisplayParams & QMtfDisplay::displayParams() const
+const IMtfDisplay::DisplayParams & IMtfDisplay::displayParams() const
 {
   DisplayMap::const_iterator pos =
       displayParams_.find(displayType_);
@@ -345,30 +372,30 @@ const QMtfDisplay::DisplayParams & QMtfDisplay::displayParams() const
   return pos->second;
 }
 
-//c_pixinsight_mtf& QMtfDisplay::mtf()
+//c_pixinsight_mtf& IMtfDisplay::mtf()
 //{
 //  return displayParams_.find(displayType_)->second.mtf;
 //}
 //
-//const c_pixinsight_mtf& QMtfDisplay::mtf() const
+//const c_pixinsight_mtf& IMtfDisplay::mtf() const
 //{
 //  return displayParams_.find(displayType_)->second.mtf;
 //}
 
 
-void QMtfDisplay::loadParameters()
+void IMtfDisplay::loadParameters()
 {
   QSettings settings;
   loadParameters(settings, prefix_);
 }
 
-void QMtfDisplay::saveParameters() const
+void IMtfDisplay::saveParameters() const
 {
   QSettings settings;
   saveParameters(settings, prefix_);
 }
 
-void QMtfDisplay::loadParameters(const QSettings & settings, const QString & prefix)
+void IMtfDisplay::loadParameters(const QSettings & settings, const QString & prefix)
 {
   const int displayType =
       settings.value(QString("%1_DisplayType").arg(prefix),
@@ -400,7 +427,7 @@ void QMtfDisplay::loadParameters(const QSettings & settings, const QString & pre
   }
 }
 
-void QMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) const
+void IMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) const
 {
   settings.setValue(QString("%1_DisplayType").arg(prefix),
       displayType_);
@@ -427,6 +454,11 @@ void QMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) c
 }
 
 
+QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
+    Base(parent),
+    IMtfDisplay(prefix)
+{
+}
 
 
 

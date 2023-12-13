@@ -27,8 +27,8 @@ public:
 
   QMtfControl(QWidget * parent = nullptr);
 
-  void setDisplaySettings(QMtfDisplay* display);
-  QMtfDisplay * displaySettings() const;
+  void setDisplaySettings(IMtfDisplay* display);
+  IMtfDisplay * displaySettings() const;
 
   bool isAutoMtfActionEnabled() const;
 
@@ -59,7 +59,7 @@ protected:
   void updateColormapPixmap();
 
 protected:
-  QMtfDisplay * displaySettings_ = nullptr;
+  IMtfDisplay * displaySettings_ = nullptr;
 
   QVBoxLayout * vbox_ = nullptr;
   QToolBar * topToolbar_ctl = nullptr;
@@ -112,8 +112,8 @@ public:
 
   QMtfControl * mtfControl() const;
 
-  void setMtfDisplaySettings(QMtfDisplay * display);
-  QMtfDisplay * mtfDisplaySettings() const;
+  void setMtfDisplaySettings(IMtfDisplay * display);
+  IMtfDisplay * mtfDisplaySettings() const;
 
 signals:
   void visibilityChanged(bool visible);

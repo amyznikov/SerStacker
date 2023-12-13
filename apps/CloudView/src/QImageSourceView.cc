@@ -1,50 +1,49 @@
 /*
- * QCloudViewImageEditor.cc
+ * QInputImageSourceView.cc
  *
  *  Created on: Dec 4, 2023
  *      Author: amyznikov
  */
 
-#include "QCloudViewImageEditor.h"
+#include "QImageSourceView.h"
 
 namespace cloudview {
 
 
 
-QCloudViewImageEditor::QCloudViewImageEditor(QWidget * parent) :
-  Base(parent),
-  mtfDisplayFunction_(this, "QImageEditor")
+QImageSourceView::QImageSourceView(QWidget * parent) :
+  Base(parent)
 {
-  Base::setDisplayFunction(&mtfDisplayFunction_);
-
-  connect(&mtfDisplayFunction_, &QImageViewMtfDisplayFunction::parameterChanged,
-      this, &ThisClass::updateDisplay);
-
-  connect(this, &ThisClass::displayImageChanged,
-      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
-      Qt::QueuedConnection);
+//  Base::setDisplayFunction(&mtfDisplayFunction_);
+//
+//  connect(&mtfDisplayFunction_, &QImageViewMtfDisplayFunction::parameterChanged,
+//      this, &ThisClass::updateDisplay);
+//
+//  connect(this, &ThisClass::displayImageChanged,
+//      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
+//      Qt::QueuedConnection);
 
   scene()->setBackgroundBrush(Qt::darkGray);
 
   createRoiShape();
 }
+//
+//QCloudViewMtfDisplayFunction * QInputImageSourceView::mtfDisplayFunction()
+//{
+//  return &mtfDisplayFunction_;
+//}
+//
+//const QCloudViewMtfDisplayFunction * QInputImageSourceView::mtfDisplayFunction() const
+//{
+//  return &mtfDisplayFunction_;
+//}
 
-QImageViewMtfDisplayFunction * QCloudViewImageEditor::mtfDisplayFunction()
-{
-  return &mtfDisplayFunction_;
-}
-
-const QImageViewMtfDisplayFunction * QCloudViewImageEditor::mtfDisplayFunction() const
-{
-  return &mtfDisplayFunction_;
-}
-
-QGraphicsRectShape * QCloudViewImageEditor::roiShape() const
+QGraphicsRectShape * QImageSourceView::roiShape() const
 {
   return roiShape_;
 }
 
-void QCloudViewImageEditor::createRoiShape()
+void QImageSourceView::createRoiShape()
 {
   if( !roiShape_ ) {
 
@@ -85,4 +84,7 @@ void QCloudViewImageEditor::createRoiShape()
   }
 
 }
+
+
+
 } /* namespace cloudview */

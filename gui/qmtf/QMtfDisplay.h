@@ -14,15 +14,13 @@
 #include <core/proc/colormap.h>
 #include <core/ssprintf.h>
 
+
 /**
  * Base interface for mtf display options
  */
-class QMtfDisplay :
-    public QObject
+class IMtfDisplay
 {
-  Q_OBJECT;
 public:
-
   struct DisplayParams {
     COLORMAP colormap = COLORMAP_NONE;
     cv::Mat3b lut;
@@ -30,12 +28,12 @@ public:
     bool invert_colormap = false;
   };
 
-  typedef QMtfDisplay ThisClass;
-  typedef QObject Base;
   typedef std::map<int /*display_type*/, DisplayParams> DisplayMap;
 
+  IMtfDisplay(const QString & prefix);
 
-  QMtfDisplay(const QString & prefix, QObject * parent = nullptr);
+  virtual ~IMtfDisplay() = default;
+
 
   virtual const c_enum_member * displayTypes() const = 0;
 
@@ -79,13 +77,13 @@ public:
   virtual void getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
   virtual void getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
 
+  static DisplayParams & addDisplay(DisplayMap & map,
+      int type, double input_min, double input_max);
 
-Q_SIGNALS:
-  void parameterChanged();
-  void displayImageChanged();
-
-//  void inputDataChanged();
-//  void updateDisplay();
+public: // events
+  virtual void displayTypeChanged() = 0;
+  virtual void parameterChanged() = 0;
+  virtual void displayImageChanged() = 0;
 
 protected:
   void addDisplay(int type, double input_min, double input_max);
@@ -115,6 +113,27 @@ protected:
   DisplayMap displayParams_;
   bool autoClip_ = false;
   QString prefix_;
+};
+
+Q_DECLARE_INTERFACE(IMtfDisplay, "IMtfDisplay");
+
+
+class QMtfDisplay :
+    public QObject,
+    public IMtfDisplay
+{
+  Q_OBJECT;
+  Q_INTERFACES(IMtfDisplay)
+public:
+  typedef QMtfDisplay ThisClass;
+  typedef QObject Base;
+
+  QMtfDisplay(const QString & prefix, QObject * parent = nullptr);
+
+Q_SIGNALS:
+  void displayTypeChanged();
+  void parameterChanged();
+  void displayImageChanged();
 };
 
 #endif /* __QMtfDisplaySettings_h__ */

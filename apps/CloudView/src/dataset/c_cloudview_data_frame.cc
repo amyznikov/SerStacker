@@ -6,19 +6,39 @@
  */
 
 #include "c_cloudview_data_frame.h"
+#include <core/ssprintf.h>
+
+template<>
+const c_enum_member* members_of<cloudview::ViewType>()
+{
+  using namespace cloudview;
+
+  static constexpr c_enum_member members[] = {
+      { ViewType_Image, "Image", "Image" },
+      { ViewType_PointCloud, "PointCloud", "PointCloud" },
+      { ViewType_Image },
+  };
+
+  return members;
+}
 
 namespace cloudview {
 
-void c_cloudview_data_frame::add_data_item(const std::string & name, int id,
-    const c_cloudview_data_item::Type & type,
-    const std::string & tooltip)
-{
-  items_.emplace_back(c_cloudview_data_item(name,
-      type,
-      id,
-      tooltip));
-}
 
+void c_cloudview_data_frame::add_display_channel(int id, const std::string & name,
+    const std::string & tooltip,
+    double minval,
+    double maxval)
+{
+  const DisplayChannel c = {
+      .name = name,
+      .tooltip = tooltip,
+      .minval = minval,
+      .maxval = maxval
+  };
+
+  displayChanenls_.emplace(id, c);
+}
 
 
 } /* namespace cloudview */

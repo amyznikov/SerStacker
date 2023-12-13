@@ -188,6 +188,26 @@ inline const typename std::enable_if<!std::is_enum<T>::value,
   return nullptr;
 }
 
+inline const c_enum_member* enum_member(int v, const c_enum_member members[])
+{
+  if( members ) {
+    for( int i = 0; members[i].name && *members[i].name; ++i ) {
+      if( members[i].value == (int) (v) ) {
+        return &members[i];
+      }
+    }
+  }
+  return nullptr;
+}
+
+template<class enum_type>
+inline typename std::enable_if_t<std::is_enum_v<enum_type>,
+  const c_enum_member *> enum_member(enum_type v)
+{
+  return enum_member((int)v, members_of<enum_type>());
+}
+
+
 template<class enum_type>
 typename std::enable_if<std::is_enum<enum_type>::value,
   const char *>::type toString(const enum_type & v)

@@ -24,14 +24,21 @@ public:
 
   enum
   {
-    IMAGE = 0,
-    MASK = 1
+    PIXEL_VALUE = 0,
   };
 
   c_video_frame();
 
   bool get_image(int id, cv::OutputArray image,
       cv::OutputArray mask = cv::noArray()) override;
+
+  void getSupportedViewTypes(std::set<ViewType> * viewTypes) override;
+
+  bool getViewData(ViewType * selectedViewType, int selectedDisplayId,
+      cv::OutputArray image,
+      cv::OutputArray data,
+      cv::OutputArray mask) override;
+
 
 public:
   cv::Mat image;

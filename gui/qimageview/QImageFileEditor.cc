@@ -62,55 +62,6 @@ double QImageFileEditor::badPixelsVariationThreshold() const
   return badPixelsVariationThreshold_;
 }
 
-#if HAVE_VLO_FILE
-void QImageFileEditor::setVloDataChannel(c_vlo_file::DATA_CHANNEL channel)
-{
-  if ( vlo_data_channel_ != channel ) {
-    vlo_data_channel_ = channel;
-
-    if( input_sequence_ && input_sequence_->is_open() ) {
-
-      if( input_sequence_->current_pos() > 0 ) {
-        input_sequence_->seek(input_sequence_->current_pos() - 1);
-      }
-
-      loadNextFrame();
-    }
-
-    Q_EMIT vloDataChannelChanged();
-  }
-}
-
-c_vlo_file::DATA_CHANNEL QImageFileEditor::vloDataChannel() const
-{
-  return vlo_data_channel_;
-}
-
-
-void QImageFileEditor::setApplyGhostFilter(bool v)
-{
-  if ( apply_ghost_filter_ != v ) {
-    apply_ghost_filter_ = v;
-
-    if( input_sequence_ && input_sequence_->is_open() ) {
-
-      if( input_sequence_->current_pos() > 0 ) {
-        input_sequence_->seek(input_sequence_->current_pos() - 1);
-      }
-
-      loadNextFrame();
-    }
-
-    Q_EMIT vloDataChannelChanged();
-  }
-}
-
-bool QImageFileEditor::applyGhostFilter() const
-{
-  return apply_ghost_filter_;
-}
-
-#endif
 
 const c_input_sequence::sptr & QImageFileEditor::input_sequence() const
 {
@@ -229,12 +180,6 @@ void QImageFileEditor::loadNextFrame()
     if ( current_source ) {
 
       QWaitCursor wait(this, current_source->size() == 1);
-
-#if HAVE_VLO_FILE
-      if( c_vlo_input_source *vlo = dynamic_cast<c_vlo_input_source*>(current_source.get()) ) {
-        vlo->set_read_channel(vlo_data_channel_);
-      }
-#endif
 
       input_sequence_->read(inputImage_, &inputMask_);
 

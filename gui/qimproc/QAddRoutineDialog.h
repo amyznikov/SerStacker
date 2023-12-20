@@ -12,19 +12,19 @@
 #include <QtWidgets/QtWidgets>
 #include <core/improc/c_image_processor.h>
 
-class QAddRoutineDialog
-    : public QDialog
+class QAddRoutineDialog :
+    public QDialog
 {
   Q_OBJECT;
 public:
   typedef QAddRoutineDialog ThisClass;
   typedef QDialog Base;
 
-  QAddRoutineDialog(QWidget * parent = Q_NULLPTR);
+  QAddRoutineDialog(QWidget * parent = nullptr);
 
   const c_image_processor_routine::class_factory * selectedClassFactory() const;
 
-protected slots:
+protected Q_SLOTS:
   void populateClassList();
   void onFilterTextChanged(const QString &);
   void onClassListCurrentItemChanged(QListWidgetItem *, QListWidgetItem *);
@@ -32,12 +32,12 @@ protected slots:
 
 
 protected:
-  const c_image_processor_routine::class_factory * selectedClassFactory_ = Q_NULLPTR;
-  QComboBox * filter_ctl = Q_NULLPTR;
-  QListWidget * classlist_ctl = Q_NULLPTR;
-  QLabel * tooltip_ctl = Q_NULLPTR;
-  QPushButton * ok_ctl = Q_NULLPTR;
-  QPushButton * cancel_ctl = Q_NULLPTR;
+  const c_image_processor_routine::class_factory * selectedClassFactory_ = nullptr;
+  QComboBox * filter_ctl = nullptr;
+  QListWidget * classlist_ctl = nullptr;
+  QLabel * tooltip_ctl = nullptr;
+  QPushButton * ok_ctl = nullptr;
+  QPushButton * cancel_ctl = nullptr;
 };
 
 #endif /* __QAddRoutineDialog_h__ */

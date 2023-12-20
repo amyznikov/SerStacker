@@ -30,7 +30,7 @@ public:
 
   typedef std::map<int /*display_type*/, DisplayParams> DisplayMap;
 
-  IMtfDisplay(const QString & prefix);
+  IMtfDisplay(const QString & prefix = "");
 
   virtual ~IMtfDisplay() = default;
 

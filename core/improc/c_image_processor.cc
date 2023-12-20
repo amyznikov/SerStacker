@@ -7,6 +7,7 @@
 
 #include "c_image_processor.h"
 
+
 #include "c_gradient_routine.h"
 #include "c_laplacian_routine.h"
 #include "c_radial_gradient_routine.h"
@@ -98,8 +99,11 @@
 #include "quicktests/c_sweepscan_routine.h"
 #include "quicktests/c_melp_stereo_matcher_routine.h"
 
-#include <core/readdir.h>
 #include <atomic>
+
+#include <core/readdir.h>
+#include <core/debug.h>
+
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 

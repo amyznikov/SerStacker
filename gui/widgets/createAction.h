@@ -128,4 +128,24 @@ QToolButton* createToolButton(const QIcon & icon, const QString & text, const QS
   return tb;
 }
 
+inline QWidget* addStretch(QToolBar * toolbar)
+{
+  QWidget *stretch = new QWidget();
+  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  toolbar->addWidget(stretch);
+  return stretch;
+}
+
+
+inline QScrollArea* createScrollableWrap(QWidget * w, QWidget * parent = nullptr)
+{
+  QScrollArea *scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
+  scrollArea->setWidgetResizable(true);
+  scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+  scrollArea->setFrameShape(QFrame::NoFrame);
+  scrollArea->setWidget(w);
+  return scrollArea;
+}
+
+
 #endif /* __createAction_h__ */

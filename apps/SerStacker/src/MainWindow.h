@@ -22,9 +22,14 @@
 #include <gui/qpipeline/QPipelineOptionsView.h>
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include <gui/qinputsequenceview/QInputSequenceView.h>
-#include "QAppSettings.h"
+#include <gui/qinputoptions/QInputOptions.h>
+//#include "QAppSettings.h"
+
 #include "QPipelineProgressView.h"
-#include "QSerStackerImageEditor.h"
+#include "QInputSourceView.h"
+#include "QProgressImageViewer.h"
+
+//#include "QSerStackerImageEditor.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -49,6 +54,7 @@ private:
   void setupStackTreeView();
   void setupStackOptionsView();
   void setupInputSequenceView();
+  void setupPipelineProgressView();
   void setupDisplayImageVideoWriter();
   void setupStatusbar();
   void showImageViewOptions(bool show);
@@ -91,21 +97,25 @@ private :
   void onRestoreState(QSettings & settings) override;
   void onMtfControlVisibilityChanged(bool visible) override;
   void onImageProcessorParameterChanged() override;
+  void onDataframeProcessorParameterChanged() override;
   void onMeasureRightNowRequested() override;
 
 private:
   QStackedWidget * centralStackedWidget = nullptr;
   QThumbnailsView * thumbnailsView = nullptr;
-  QInputSequenceView * inputSequenceView = nullptr;
-  QSerStackerImageEditor * imageView = nullptr;
-  QCloudViewer * cloudView = nullptr;
-  QTextFileViewer * textView = nullptr;
-  QPipelineProgressView * pipelineProgressView = nullptr;
 
-  QGeneralAppSettingsDialogBox * inputOptionsDlgBox = nullptr;
+  QInputSourceView * inputSourceView = nullptr;
+  QImageSourceView * imageView = nullptr;
+  QPointCloudSourceView * cloudView = nullptr;
+  QTextSourceView * textView = nullptr;
+
+  QPipelineProgressView * pipelineProgressView = nullptr;
+  QProgressImageViewer * pipelineProgressImageView = nullptr;
+
+  QInputOptionsDialogBox * inputOptionsDlgBox = nullptr;
 
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
-  QCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
+  QPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
   QPipelineOptionsView * pipelineOptionsView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;

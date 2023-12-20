@@ -11,8 +11,8 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/widgets/QProgressStrip.h>
+#include <gui/qimageview/QImageEditor.h>
 #include <core/notification.h>
-#include "QSerStackerImageEditor.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,8 +27,8 @@ public:
 
   QPipelineProgressView(QWidget * parent = nullptr);
 
-  void setImageViewer(QSerStackerImageEditor * imageViewer);
-  QSerStackerImageEditor * imageViewer() const;
+  void setImageViewer(QImageEditor * imageViewer);
+  QImageEditor * imageViewer() const;
 
 Q_SIGNALS:
   void progressTextChanged();
@@ -51,7 +51,7 @@ protected:
   QHBoxLayout * layout_ = nullptr;
   QProgressStrip * progressStrip_ = nullptr;
   QToolButton * menuButton_ = nullptr;
-  QSerStackerImageEditor * imageViewer_ = nullptr;
+  QImageEditor * imageViewer_ = nullptr;
 
   int timerId = 0;
   std::atomic<bool> hasStatusUpdates_ = false;

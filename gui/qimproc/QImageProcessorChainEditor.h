@@ -23,7 +23,7 @@ public:
   typedef QImageProcessorChainEditor ThisClass;
   typedef QFrame Base;
 
-  QImageProcessorChainEditor(QWidget * parent = Q_NULLPTR);
+  QImageProcessorChainEditor(QWidget * parent = nullptr);
 
   void set_current_processor(const c_image_processor::sptr & p);
   const c_image_processor::sptr & current_processor() const;
@@ -45,6 +45,7 @@ protected:
 
 protected:
   c_image_processor::sptr current_processor_;
+
   QVBoxLayout * lv_ = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QTreeWidget * tree_ctl = nullptr;

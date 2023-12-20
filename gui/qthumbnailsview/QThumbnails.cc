@@ -188,13 +188,11 @@ QStringList getSupportedThumbnailsExtensions()
     suffixes.append(*plyfiles++);
   }
 
-#if HAVE_VLO_FILE
   const char ** vlofiles =
       thumbnail_vlofile_suffixes();
   while ( *vlofiles ) {
     suffixes.append(*vlofiles++);
   }
-#endif
 
 #if HAVE_CFITSIO
   suffixes.append("fits");
@@ -521,7 +519,6 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
     }
   }
 
-#if HAVE_VLO_FILE
   if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 || suffix.compare("dat", Qt::CaseInsensitive) == 0 ) {
 
     c_vlo_reader vlo;
@@ -531,7 +528,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
 
       if( vlo.read(scan.get()) ) {
-        if( !(cvimage = c_vlo_file::get_image(*scan, c_vlo_file::DATA_CHANNEL_AMBIENT)).empty() ) {
+        if( !(cvimage = c_vlo_file::get_thumbnail_image(*scan)).empty() ) {
 
           const QSize thumbSize =
               compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
@@ -561,7 +558,6 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       return QImage(":/qthumbnailsview/icons/lidar1.png");
     }
   }
-#endif
 
 #if HAVE_CFITSIO
   if ( suffix.compare("fits", Qt::CaseInsensitive) == 0 || suffix.compare("fit", Qt::CaseInsensitive) == 0  ) {

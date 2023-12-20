@@ -63,20 +63,6 @@ public:
   void setSourceOutputType(c_input_source::OUTPUT_TYPE v);
   c_input_source::OUTPUT_TYPE sourceOutputType() const;
 
-#if HAVE_VLO_FILE
-  void setVloDataChannel(c_vlo_file::DATA_CHANNEL channel);
-  c_vlo_file::DATA_CHANNEL vloDataChannel() const;
-
-  c_vlo_processing_options * vlo_processing_options();
-
-  void update_as_vlo_processing_options_chaned();
-
-
-
-//  void setApplyGhostFilter(bool v);
-//  bool applyGhostFilter() const;
-
-#endif
 
   // TODO: temporary hotfix for pipeline progressview
   void showImageView();
@@ -89,9 +75,7 @@ Q_SIGNALS:
   void badPixelsVariationThresholdChanged();
   void sourceOutputTypeChanged();
   void currentViewChanged();
-#if HAVE_VLO_FILE
-  void vloDataChannelChanged();
-#endif
+
 
 protected Q_SLOTS:
   void onStackedWidgetCurrentIndexChanged();
@@ -119,16 +103,6 @@ protected:
 
   c_input_source::OUTPUT_TYPE sourceOutputType_ =
       c_input_source::OUTPUT_TYPE_IMAGE;
-
-#if HAVE_VLO_FILE
-  c_vlo_file::DATA_CHANNEL vlo_data_channel_ =
-      c_vlo_file::DATA_CHANNEL_AMBIENT;
-
-  c_vlo_processing_options vlo_processing_options_;
-  //apply_ghost_filter_
-
-  //bool apply_ghost_filter_ = false;
-#endif
 
   QVBoxLayout * mainLayout_ = nullptr;
   QHBoxLayout * toolbarLayout_ = nullptr;

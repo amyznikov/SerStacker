@@ -550,51 +550,6 @@ void MainWindow::setupCameraControls()
 void MainWindow::setupPipelines()
 {
   registerPipelineClasses();
-//
-//  pipelineCollection_.addPipelineClassFactory(
-//      QLiveImageProcessingPipeline::className(),
-//      "Generic image processing",
-//      [](const QString & name) {
-//        return new QLiveImageProcessingPipeline(name);
-//      },
-//      [](QWidget * parent) {
-//        return new QLiveImageProcessingOptions(parent);
-//      });
-//
-//
-//  pipelineCollection_.addPipelineClassFactory(
-//      QLiveCameraCalibrationPipeline::className(),
-//      "Live Camera Calibration",
-//      [](const QString & name) {
-//        return new QLiveCameraCalibrationPipeline(name);
-//  },
-//  [](QWidget * parent) {
-//    return new QLiveCameraCalibrationOptions(parent);
-//  });
-//
-//
-//  pipelineCollection_.addPipelineClassFactory(
-//      QLiveStereoCalibrationPipeline::className(),
-//      "Live Stereo Camera Calibration",
-//      [](const QString & name) {
-//        return new QLiveStereoCalibrationPipeline(name);
-//  },
-//  [](QWidget * parent) {
-//    return new QLiveStereoCalibrationOptions(parent);
-//  });
-//
-//
-//  pipelineCollection_.addPipelineClassFactory(
-//      QLiveRegularStereoPipeline::className(),
-//      "Live Stereo Matching",
-//      [](const QString & name) {
-//        return new QLiveRegularStereoPipeline(name);
-//  },
-//  [](QWidget * parent) {
-//    return new QLiveRegularStereoOptions(parent);
-//  });
-//
-
 
   pipelineSelectorDock_ =
       addCustomDock(this,

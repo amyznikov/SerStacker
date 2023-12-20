@@ -34,6 +34,7 @@
 #define ICON_mask               ":/gui/icons/mask"
 #define ICON_frame              ":/gui/icons/frame"
 #define ICON_badframe           ":/gui/icons/badframe"
+#define ICON_bayer              ":/gui/icons/bayer.png"
 
 #define ICON_copy               ":/gui/icons/copy"
 #define ICON_delete             ":/gui/icons/delete"
@@ -59,13 +60,13 @@ MainWindow::MainWindow()
 
   setCentralWidget(centralStackedWidget = new QStackedWidget(this));
   centralStackedWidget->addWidget(thumbnailsView = new QThumbnailsView(this));
+  centralStackedWidget->addWidget(inputSourceView = new QInputSourceView(this));
   centralStackedWidget->addWidget(pipelineOptionsView = new QPipelineOptionsView(this));
+  centralStackedWidget->addWidget(pipelineProgressImageView = new QProgressImageViewer(this));
 
-  centralStackedWidget->addWidget(inputSequenceView =
-      new QInputSequenceView(this,
-          imageView = new QSerStackerImageEditor(this),
-          cloudView = new QCloudViewer(this),
-          textView = new QTextFileViewer(this)));
+  imageView = inputSourceView->imageView();
+  cloudView = inputSourceView->cloudView();
+  textView = inputSourceView->textView();
 
   connect(centralStackedWidget, &QStackedWidget::currentChanged,
       [this]() {
@@ -83,17 +84,22 @@ MainWindow::MainWindow()
 
     });
 
-  connect(inputSequenceView, &QInputSequenceView::currentViewChanged,
-      this, & ThisClass::onCurrentViewVisibilityChanged);
+
+  connect(inputSourceView, &QInputSourceView::currentViewChanged,
+      this, &ThisClass::onCurrentViewVisibilityChanged);
+
+  connect(inputSourceView, &QInputSourceView::currentFrameChanged,
+      this, &ThisClass::checkIfBadFrameSelected);
+
+  connect(imageView, &QImageEditor::currentImageChanged,
+      this, &ThisClass::onImageViewCurrentImageChanged);
 
   connect(imageView, &QImageEditor::displayImageChanged,
       this, &ThisClass::onCurrentViewDisplayImageChanged);
 
-  connect(cloudView, &QCloudViewer::displayImageChanged,
+  connect(cloudView, &QPointCloudSourceView::displayImageChanged,
       this, &ThisClass::onCurrentViewDisplayImageChanged);
 
-  connect(imageView, &QImageEditor::currentImageChanged,
-      this, &ThisClass::onImageViewCurrentImageChanged);
 
 
   ///////////////////////////////////
@@ -116,9 +122,11 @@ MainWindow::MainWindow()
   setupStackTreeView();
   setupStackOptionsView();
   setupImageProcessingControls();
+  setupDataProcessingControls();
   setupMeasures();
   setupProfileGraph();
   setupInputSequenceView();
+  setupPipelineProgressView();
 
 
 
@@ -327,9 +335,9 @@ void MainWindow::setupMainMenu()
   // View
   //
   menuView_->addAction(viewInputOptionsAction =
-      createCheckableAction(QIcon(),
+      createCheckableAction(QIcon(ICON_bayer),
           "Input Options...",
-          "Configure general input options",
+          "Configure input options",
           is_visible(inputOptionsDlgBox),
           this,
           &ThisClass::onViewInputOptions));
@@ -522,25 +530,20 @@ void MainWindow::checkIfBadFrameSelected()
 {
   bool isBadFrameSelected = false;
 
-  if( is_visible(inputSequenceView) ) {
+  if( is_visible(inputSourceView) ) {
 
-    const c_input_sequence::sptr &currentSequence =
-        inputSequenceView->currentSequence();
+    const c_input_source::sptr & currentSource =
+        inputSourceView->inputSource();
 
-    if( currentSequence ) {
-
-      c_input_source::sptr currentSource =
-          currentSequence->current_source();
-
-      if( currentSource ) {
-        isBadFrameSelected =
-            currentSource->is_badframe(currentSequence->current_pos() - 1);
-      }
+    if( currentSource ) {
+      isBadFrameSelected =
+          currentSource->is_badframe(std::max(0,
+              currentSource->curpos() - 1));
     }
-  }
 
-  if( badframeAction->isChecked() != isBadFrameSelected ) {
-    badframeAction->setChecked(isBadFrameSelected);
+    if( badframeAction->isChecked() != isBadFrameSelected ) {
+      badframeAction->setChecked(isBadFrameSelected);
+    }
   }
 }
 
@@ -551,7 +554,7 @@ void MainWindow::onWriteDisplayVideo()
   }
 
   QWidget * currentView =
-      inputSequenceView->currentView();
+      inputSourceView->currentView();
 
   if( currentView == imageView ) {
 
@@ -579,10 +582,13 @@ void MainWindow::onWriteDisplayVideo()
   else if( currentView == cloudView ) {
 
     QImage image =
-        cloudView->grabViewportPixmap().toImage().convertToFormat(
-            QImage::Format_BGR888);
+        cloudView->grabFramebuffer();
 
     if( !image.isNull() ) {
+
+      if ( image.format() != QImage::Format_BGR888 ) {
+        image.convertTo(QImage::Format_BGR888);
+      }
 
       diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
           (void*) image.constBits(),
@@ -605,7 +611,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
 
 
   QWidget * currentView =
-      inputSequenceView->currentView();
+      inputSourceView->currentView();
 
   if ( currentView == imageView ) {
     if ( !imageView->isVisible() ) {
@@ -671,7 +677,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
 void MainWindow::onCurrentViewDisplayImageChanged()
 {
   QWidget * currentView =
-      inputSequenceView->currentView();
+      inputSourceView->currentView();
 
   if ( currentView == imageView ) {
 
@@ -760,50 +766,94 @@ void MainWindow::onImageViewCurrentImageChanged()
 void MainWindow::onImageProcessorParameterChanged()
 {
   Base::onImageProcessorParameterChanged();
-  imageView->set_current_processor(imageProcessor_ctl->current_processor());
+
+  if( imageProcessor_ctl ) {
+    if( is_visible(imageView) ) {
+      imageView->set_current_processor(imageProcessor_ctl->current_processor());
+    }
+    else if( is_visible(pipelineProgressImageView) ) {
+      pipelineProgressImageView->set_current_processor(imageProcessor_ctl->current_processor());
+    }
+  }
 }
+
+void MainWindow::onDataframeProcessorParameterChanged()
+{
+  // Base::onDataframeProcessorParameterChanged();
+  if ( dataframeProcessor_ctl ) {
+    inputSourceView->setCurrentProcessor(dataframeProcessor_ctl->currentProcessor());
+  }
+}
+
 
 void MainWindow::onMtfControlVisibilityChanged(bool visible)
 {
   Base::onMtfControlVisibilityChanged(visible);
 
+//  if( !visible ) {
+//    mtfControl_->setMtfDisplaySettings(nullptr);
+//  }
+//  else {
+//
+//    if( is_visible(imageView) ) {
+//      mtfControl_->setMtfDisplaySettings(imageView->mtfDisplayFunction());
+//    }
+//    else if( is_visible(cloudView) ) {
+//      mtfControl_->setMtfDisplaySettings(&cloudView->mtfDisplay());
+//    }
+//    else {
+//      mtfControl_->setMtfDisplaySettings(nullptr);
+//    }
+//
+//    const QString currentFileName =
+//        mtfControl_->mtfDisplaySettings() ?
+//            QFileInfo(inputSourceView->currentFileName()).fileName() :
+//            "";
+//
+//    if( currentFileName.isEmpty() ) {
+//      mtfControl_->setWindowTitle("Adjust Display Levels ...");
+//    }
+//    else {
+//      mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
+//          currentFileName.toUtf8().constData()));
+//    }
+//  }
+
   if( !visible ) {
     mtfControl_->setMtfDisplaySettings(nullptr);
   }
-  else {
-
-    if( is_visible(imageView) ) {
-      mtfControl_->setMtfDisplaySettings(imageView->mtfDisplayFunction());
-    }
-    else if( is_visible(cloudView) ) {
-      mtfControl_->setMtfDisplaySettings(&cloudView->mtfDisplay());
-    }
-    else {
-      mtfControl_->setMtfDisplaySettings(nullptr);
-    }
-
-    const QString currentFileName =
-        mtfControl_->mtfDisplaySettings() ?
-            QFileInfo(inputSequenceView->currentFileName()).fileName() :
-            "";
-
-    if( currentFileName.isEmpty() ) {
-      mtfControl_->setWindowTitle("Adjust Display Levels ...");
-    }
-    else {
-      mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
-          currentFileName.toUtf8().constData()));
-    }
+  else if ( is_visible(inputSourceView) ) {
+    mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
   }
+  else if ( is_visible(pipelineProgressImageView) ) {
+    mtfControl_->setMtfDisplaySettings(pipelineProgressImageView->mtfDisplay());
+  }
+  else {
+    mtfControl_->setMtfDisplaySettings(nullptr);
+  }
+
+  const QString currentFileName =
+      mtfControl_->mtfDisplaySettings() ?
+          QFileInfo(inputSourceView->currentFileName()).fileName() :
+          "";
+
+  if( currentFileName.isEmpty() ) {
+    mtfControl_->setWindowTitle("Adjust Display Levels ...");
+  }
+  else {
+    mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
+        currentFileName.toUtf8().constData()));
+  }
+
 }
 
 void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
 {
   if ( checked && !cloudViewSettingsDialogBox ) {
 
-    cloudViewSettingsDialogBox = new QCloudViewSettingsDialogBox(this);
+    cloudViewSettingsDialogBox = new QPointCloudViewSettingsDialogBox(this);
     cloudViewSettingsDialogBox->setCloudViewer(cloudView);
-    connect(cloudViewSettingsDialogBox, &QCloudViewSettingsDialogBox::visibilityChanged,
+    connect(cloudViewSettingsDialogBox, &QPointCloudViewSettingsDialogBox::visibilityChanged,
         showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
   }
 
@@ -812,7 +862,7 @@ void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
       cloudViewSettingsDialogBox->hide();
     }
     else {
-      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(cloudView->currentFileName()).fileName());
+      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(inputSourceView->currentFileName()).fileName());
       cloudViewSettingsDialogBox->showNormal();
     }
   }
@@ -915,8 +965,8 @@ void MainWindow::openImage(const QString & abspath)
     pipelineProgressView->setImageViewer(nullptr);
   }
 
-  centralStackedWidget->setCurrentWidget(inputSequenceView);
-  inputSequenceView->openFile(abspath);
+  centralStackedWidget->setCurrentWidget(inputSourceView);
+  inputSourceView->openFile(abspath);
 }
 
 
@@ -949,8 +999,8 @@ void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
 void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
   if ( source ) {
-    centralStackedWidget->setCurrentWidget(inputSequenceView);
-    inputSequenceView->openFile(source->filename());
+    centralStackedWidget->setCurrentWidget(inputSourceView);
+    inputSourceView->openFile(source->cfilename());
   }
   else if ( sequence ) {
     if ( centralStackedWidget->currentWidget() == thumbnailsView ) {
@@ -966,83 +1016,69 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & se
 
 void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
-  if ( QPipelineThread::isRunning() ) {
+  QWidget * currentCentralWidget =
+      centralStackedWidget->currentWidget();
+
+  if ( !QPipelineThread::isRunning() ) {
 
     if ( source ) {
-      pipelineProgressView->setImageViewer(nullptr);
-      centralStackedWidget->setCurrentWidget(inputSequenceView);
-      inputSequenceView->openFile(source->filename());
-    }
-    else if ( sequence ) {
 
-      QWidget * currentCentralWidget =
-          centralStackedWidget->currentWidget();
-
-      const c_image_processing_pipeline::sptr & pipeline =
-          QPipelineThread::currentPipeline();
-
-      if ( pipeline && sequence == pipeline->input_sequence() ) {
-
-        if ( currentCentralWidget == imageView ) {
-
-          if ( !pipelineProgressView->imageViewer() ) {
-            pipelineProgressView->setImageViewer(imageView);
-          }
-          else {
-            pipelineProgressView->setImageViewer(nullptr);
-            pipelineOptionsView->set_current_sequence(sequence);
-            centralStackedWidget->setCurrentWidget(pipelineOptionsView);
-          }
-
-        }
-        else if ( currentCentralWidget == pipelineOptionsView ) {
-          if ( thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false) ) {
-            centralStackedWidget->setCurrentWidget(thumbnailsView);
-          }
-          else {
-            centralStackedWidget->setCurrentWidget(inputSequenceView);
-            pipelineProgressView->setImageViewer(imageView);
-          }
-        }
-        else {
-          centralStackedWidget->setCurrentWidget(inputSequenceView);
-          pipelineProgressView->setImageViewer(imageView);
-        }
-      }
-      else {
-
-        if ( currentCentralWidget == pipelineOptionsView ) {
-          if ( thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false) ) {
-            centralStackedWidget->setCurrentWidget(thumbnailsView);
-          }
-        }
-        else {
-          pipelineOptionsView->set_current_sequence(sequence);
-          centralStackedWidget->setCurrentWidget(pipelineOptionsView);
-        }
-      }
-    }
-
-  }
-  else if ( source ) {
-    if ( centralStackedWidget->currentWidget() == inputSequenceView ) {
-      centralStackedWidget->setCurrentWidget(thumbnailsView);
-      thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false);
-    }
-    else {
-      centralStackedWidget->setCurrentWidget(inputSequenceView);
-      inputSequenceView->openFile(source->filename());
-    }
-  }
-  else if ( sequence ) {
-    if ( centralStackedWidget->currentWidget() == pipelineOptionsView ) {
-      if( thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false) ) {
+      if( currentCentralWidget == inputSourceView ) {
+        thumbnailsView->setCurrentPath(QFileInfo(source->cfilename()).absolutePath(), false);
         centralStackedWidget->setCurrentWidget(thumbnailsView);
       }
+      else {
+        inputSourceView->openFile(source->cfilename());
+        centralStackedWidget->setCurrentWidget(inputSourceView);
+      }
     }
-    else {
-      pipelineOptionsView->set_current_sequence(sequence);
-      centralStackedWidget->setCurrentWidget(pipelineOptionsView);
+
+    else if ( sequence ) {
+
+      if( currentCentralWidget == pipelineOptionsView ) {
+        thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false);
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      }
+      else {
+        pipelineOptionsView->set_current_sequence(sequence);
+        centralStackedWidget->setCurrentWidget(pipelineOptionsView);
+      }
+    }
+
+  }
+  else  {
+
+    if ( source ) {
+
+      pipelineProgressView->setImageViewer(nullptr);
+
+      if ( currentCentralWidget == inputSourceView ) {
+        thumbnailsView->setCurrentPath(QFileInfo(source->cfilename()).absolutePath(), false);
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      }
+      else {
+        inputSourceView->openFile(source->cfilename());
+        centralStackedWidget->setCurrentWidget(inputSourceView);
+      }
+
+    }
+    else if( sequence ) {
+
+      if( currentCentralWidget == pipelineProgressImageView ) {
+        pipelineProgressView->setImageViewer(nullptr);
+        pipelineOptionsView->set_current_sequence(sequence);
+        centralStackedWidget->setCurrentWidget(pipelineOptionsView);
+      }
+
+      else if( currentCentralWidget == pipelineOptionsView ) {
+        thumbnailsView->setCurrentPath(sequence->get_display_path().c_str(), false);
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      }
+
+      else {
+        pipelineProgressView->setImageViewer(pipelineProgressImageView);
+        centralStackedWidget->setCurrentWidget(pipelineProgressImageView);
+      }
     }
   }
 
@@ -1064,13 +1100,12 @@ void MainWindow::onShowImageSequenceOptions(const c_image_sequence::sptr & seque
 
 void MainWindow::onPipelineThreadStarted()
 {
-  if ( centralStackedWidget->currentWidget() != inputSequenceView ) {
-    centralStackedWidget->setCurrentWidget(inputSequenceView);
+  if ( centralStackedWidget->currentWidget() != pipelineProgressImageView ) {
+    centralStackedWidget->setCurrentWidget(pipelineProgressImageView);
   }
 
-  imageView->clear();
-  pipelineProgressView->setImageViewer(imageView);
-  inputSequenceView->showImageView();
+  pipelineProgressImageView->set_current_processor(imageProcessor_ctl->current_processor());
+  pipelineProgressView->setImageViewer(pipelineProgressImageView);
 
   if ( !pipelineProgressView->isVisible() ) {
     pipelineProgressView->show();
@@ -1108,9 +1143,10 @@ void MainWindow::onSaveCurrentImageAs()
               imageView->currentImage(),
               imageView->currentMask(),
               imageView->current_processor(),
-              imageView->currentFileName());
+              inputSourceView->currentFileName());
 
       if( !savedFileName.isEmpty() ) {
+        CF_WARNING("FIXME: Set CurrentFileName correctly !");
         imageView->setCurrentFileName(savedFileName);
       }
     }
@@ -1118,7 +1154,7 @@ void MainWindow::onSaveCurrentImageAs()
   else if( is_visible(cloudView) ) {
 
     QImage image =
-        cloudView->grabViewportPixmap().toImage().convertToFormat(
+        cloudView->grab().toImage().convertToFormat(
             QImage::Format_BGR888);
 
     if( !image.isNull() ) {
@@ -1127,7 +1163,11 @@ void MainWindow::onSaveCurrentImageAs()
           (void*) image.constBits(),
           image.bytesPerLine());
 
-      saveImageFileAs(this, M, cv::Mat());
+      saveImageFileAs(this,
+          M,
+          cv::Mat(),
+          nullptr,
+          inputSourceView->currentFileName());
     }
   }
 
@@ -1146,13 +1186,13 @@ void MainWindow::onSaveCurrentDisplayImageAs()
           displayImage,
           cv::Mat(),
           nullptr,
-          imageView->currentFileName());
+          inputSourceView->currentFileName());
     }
   }
   else if( is_visible(cloudView) ) {
 
     QImage image =
-        cloudView->grabViewportPixmap().toImage().convertToFormat(
+        cloudView->grab().toImage().convertToFormat(
             QImage::Format_BGR888);
 
     if( !image.isNull() ) {
@@ -1163,7 +1203,9 @@ void MainWindow::onSaveCurrentDisplayImageAs()
 
       saveImageFileAs(this,
           displayImage,
-          cv::Mat());
+          cv::Mat(),
+          nullptr,
+          inputSourceView->currentFileName());
     }
   }
 }
@@ -1180,7 +1222,9 @@ void MainWindow::onSaveCurrentImageMask()
           imageView->currentMask(),
           cv::Mat(),
           nullptr,
-          QString("%1.mask.png").arg(imageView->currentFileName()));
+          qsprintf("%s.mask.%dx%d.png",
+              inputSourceView->currentFileName().toUtf8().constData(),
+              currentMask.cols, currentMask.rows));
     }
   }
 }
@@ -1252,7 +1296,6 @@ void MainWindow::saveCurrentWork()
   }
 
   sequencesTreeView->saveSequences();
-  // image_sequences_->save();
 }
 
 void MainWindow::onLoadStackConfig()
@@ -1347,10 +1390,16 @@ void MainWindow::onLoadStackConfig()
 void MainWindow::onViewInputOptions()
 {
   if( !inputOptionsDlgBox ) {
-    inputOptionsDlgBox = new QGeneralAppSettingsDialogBox(this);
-    inputOptionsDlgBox->setInputSequenceView(inputSequenceView);
-    connect(inputOptionsDlgBox, &QGeneralAppSettingsDialogBox::visibilityChanged,
+
+    inputOptionsDlgBox = new QInputOptionsDialogBox(this);
+    inputOptionsDlgBox->setInputOptions(inputSourceView->inputOptions());
+
+    connect(inputOptionsDlgBox, &QInputOptionsDialogBox::visibilityChanged,
         viewInputOptionsAction, &QAction::setChecked);
+
+    connect(inputOptionsDlgBox, &QInputOptionsDialogBox::parameterChanged,
+        inputSourceView, &QInputSourceView::reloadCurrentFrame);
+
   }
 
   if ( !inputOptionsDlgBox->isVisible() ){
@@ -1368,7 +1417,7 @@ void MainWindow::setupInputSequenceView()
 
   ///////////////////////////////////////////////////////////////////////
 
-  toolbar = inputSequenceView->toolbar();
+  toolbar = inputSourceView->toolbar();
 
   static QIcon badframeIcon;
   if( badframeIcon.isNull() ) {
@@ -1398,20 +1447,14 @@ void MainWindow::setupInputSequenceView()
           "Mark / Unmark current frame as bad (Ctrl+A)",
           false,
           [this](bool checked) {
-            if ( is_visible(inputSequenceView) ) {
+            if ( is_visible(inputSourceView) ) {
 
-              const c_input_sequence::sptr & currentSequence =
-                  inputSequenceView->currentSequence();
+              const c_input_source::sptr & currentSource =
+                  inputSourceView->inputSource();
 
-              if ( currentSequence ) {
-
-                c_input_source::sptr currentSource =
-                    currentSequence->current_source();
-
-                if ( currentSource ) {
-                  currentSource->set_badframe(currentSequence->current_pos() - 1, checked);
-                  currentSource->save_badframes();
-                }
+              if ( currentSource ) {
+                currentSource->set_badframe(std::max(0, currentSource->curpos() - 1), checked);
+                currentSource->save_badframes();
               }
             }
           },
@@ -1425,49 +1468,71 @@ void MainWindow::setupInputSequenceView()
           "Make reference",
           "Make this frame reference",
           [this]() {
-            if ( is_visible(inputSequenceView) && is_visible(sequencesTreeView) ) {
 
-              c_input_source::sptr selectedSource;
-              c_image_sequence::sptr selectedSequence;
-
-              selectedSource =
-                  sequencesTreeView->getCurrentInputSource(&selectedSequence);
-
-              if ( selectedSource && selectedSequence ) {
-
-                const c_input_sequence::sptr & currentSequence =
-                    inputSequenceView->currentSequence();
-
-                if ( currentSequence && currentSequence->current_source()->filename() == selectedSource->filename() ) {
-
-                  const c_image_processing_pipeline::sptr currentPipeline =
-                      selectedSequence->current_pipeline();
-
-                  if ( currentPipeline && currentPipeline->has_master_frame() ) {
-                    currentPipeline->set_master_source(selectedSource->filename());
-                    currentPipeline->set_master_frame_index(currentSequence->current_pos() - 1);
-                    saveCurrentWork();
-                  }
-                  else {
-
-                    QMessageBox::warning(this, "warning",
-                        qsprintf("No current pipeline is selected,\n"
-                            "master frame is not assigned\n"
-                            " %s: %d",
-                            __FILE__, __LINE__) );
-                  }
-                }
-              }
+            if ( !is_visible(inputSourceView) || !is_visible(sequencesTreeView) ) {
+              return;
             }
+
+            c_image_sequence::sptr selectedSequence;
+
+            const c_input_source::sptr selectedSource =
+                sequencesTreeView->getCurrentInputSource(&selectedSequence);
+
+            if ( !selectedSource || !selectedSequence ) {
+              return;
+            }
+
+            const c_image_processing_pipeline::sptr & currentPipeline =
+                selectedSequence->current_pipeline();
+
+            if ( !currentPipeline ) {
+
+              QMessageBox::warning(this, "warning",
+                  "No current pipeline is selected,\n "
+                  "Master frame is not assigned");
+
+              return;
+            }
+
+            if ( !currentPipeline->has_master_frame() ) {
+
+              QMessageBox::warning(this, "warning",
+                  "Current pipeline don not use of masster frames,\n"
+                  "master frame is not assigned");
+              return;
+            }
+
+
+            const c_input_source::sptr & currentSource =
+                inputSourceView->inputSource();
+
+            if ( !currentSource ) {
+              return;
+            }
+
+            const int source_index =
+                selectedSequence->indexof(currentSource->filename());
+
+            if ( source_index < 0 ) {
+              QMessageBox::warning(this, "warning",
+                  "Current source is not in selected sequence,\n"
+                  "master frame is not assigned");
+              return;
+            }
+
+            currentPipeline->set_master_source(selectedSource->filename());
+            currentPipeline->set_master_frame_index(std::max(0, currentSource->curpos()-1));
+            saveCurrentWork();
+
           }));
 
   toolbar->addSeparator();
 
   toolbar->addWidget(currentFileNameLabel_ctl = new QLabel(""));
   currentFileNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
-  connect(inputSequenceView, &QInputSequenceView::currentFileNameChanged,
+  connect(inputSourceView, &QInputSourceView::currentFileNameChanged,
       [this]() {
-        const QString abspath = inputSequenceView->currentFileName();
+        const QString abspath = inputSourceView->currentFileName();
         currentFileNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
         if ( is_visible(mtfControl_) ) {
           onMtfControlVisibilityChanged(true);
@@ -1480,7 +1545,7 @@ void MainWindow::setupInputSequenceView()
   ///////////////////////////////////////////////////////////////////////
 
 
-  toolbar = inputSequenceView->imageViewToolbar();
+  toolbar = inputSourceView->imageViewToolbar();
 
 
   toolbar->addWidget(imageSizeLabel_ctl = new QLabel(""));
@@ -1617,10 +1682,10 @@ void MainWindow::setupInputSequenceView()
         imageView->setViewScale(v);
       });
 
-  connect(imageView, &QSerStackerImageEditor::onScaleChanged,
+  connect(imageView, &QImageSourceView::onScaleChanged,
       this, &ThisClass::onWriteDisplayVideo);
 
-  connect(imageView, &QSerStackerImageEditor::onViewScrolled,
+  connect(imageView, &QImageSourceView::onViewScrolled,
       this, &ThisClass::onWriteDisplayVideo);
 
 
@@ -1702,7 +1767,7 @@ void MainWindow::setupInputSequenceView()
   ///////////////////////////////////////////////////////////////////////
 
 
-  toolbar = inputSequenceView->cloudViewToolbar();
+  toolbar = inputSourceView->cloudViewToolbar();
 
   toolbar->addAction(showMtfControlAction_);
 
@@ -1798,12 +1863,12 @@ void MainWindow::setupInputSequenceView()
   ///////////////////////////////////////////////////////////////////////
 
 
-  toolbar = inputSequenceView->textViewToolbar();
+  toolbar = inputSourceView->textViewToolbar();
 
 
   ///////////////////////////////////////////////////////////////////////
 
-  toolbar = inputSequenceView->rightToolbar();
+  toolbar = inputSourceView->rightToolbar();
   // toolbar->addSeparator();
 
   diplayImageWriter_.loadParameters();
@@ -1817,7 +1882,7 @@ void MainWindow::setupInputSequenceView()
         centralStackedWidget->setCurrentWidget(thumbnailsView);
       },
       new QShortcut(QKeySequence::Cancel,
-          inputSequenceView, nullptr, nullptr,
+          inputSourceView, nullptr, nullptr,
           Qt::WindowShortcut)));
 
 
@@ -1825,6 +1890,54 @@ void MainWindow::setupInputSequenceView()
   ///////////////////////////////////////////////////////////////////////
 }
 
+void MainWindow::setupPipelineProgressView()
+{
+  QToolBar * toolbar =
+      pipelineProgressImageView->embedToolbar();
+
+  addStretch(toolbar);
+
+  QLabel * imageSizeLabel_ctl = new QLabel("");
+  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
+  toolbar->addWidget(imageSizeLabel_ctl);
+  connect(pipelineProgressImageView, &QProgressImageViewer::currentImageChanged,
+      [this, imageSizeLabel_ctl]() {
+        imageSizeLabel_ctl->setText(toQString(pipelineProgressImageView->currentImage().size()));
+      });
+
+  toolbar->addSeparator();
+
+  QScaleSelectionButton * scaleSelection_ctl = new QScaleSelectionButton(this);
+  scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
+  toolbar->addWidget(scaleSelection_ctl);
+  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged,
+      [this](int v) {
+        pipelineProgressImageView->setViewScale(v);
+      });
+
+
+  toolbar->addAction(showMtfControlAction_);
+
+
+  toolbar->addSeparator();
+
+  toolbar->addAction(createAction(getIcon(ICON_close),
+      "Close",
+      "Close window",
+      [this]() {
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      },
+      new QShortcut(QKeySequence::Cancel,
+          pipelineProgressImageView, nullptr, nullptr,
+          Qt::WindowShortcut)));
+
+
+  connect(pipelineProgressImageView, &QImageFileEditor::onMouseMove,
+      [this](QMouseEvent * e) {
+        statusbarMousePosLabel_ctl->setText(pipelineProgressImageView->statusStringForPixel(e->pos()));
+      });
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 }  // namespace serstacker

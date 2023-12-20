@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if( !c_vlo_file::get_ray_inclinations_table(scan, table) ) {
+  if( !get_vlo_ray_inclinations_table(scan, table) ) {
     CF_ERROR("c_vlo_file::get_ray_inclinations_table() fails");
     return 1;
   }
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if( !c_vlo_file::get_ray_azimuths_table(scan, table) ) {
+  if( !get_vlo_ray_azimuths_table(scan, table) ) {
     CF_ERROR("c_vlo_file::get_ray_azimuths_table() fails");
     return 1;
   }

@@ -203,75 +203,6 @@ c_input_source::OUTPUT_TYPE QInputSequenceView::sourceOutputType() const
   return sourceOutputType_;
 }
 
-#if HAVE_VLO_FILE
-void QInputSequenceView::setVloDataChannel(c_vlo_file::DATA_CHANNEL channel)
-{
-  vlo_data_channel_ = channel;
-
-  if( currentSequence_ && currentSequence_->is_open() ) {
-
-    if( currentSequence_->current_pos() > 0 ) {
-      currentSequence_->seek(currentSequence_->current_pos() - 1);
-    }
-
-    loadNextFrame();
-  }
-
-  Q_EMIT vloDataChannelChanged();
-}
-
-c_vlo_file::DATA_CHANNEL QInputSequenceView::vloDataChannel() const
-{
-  return vlo_data_channel_;
-}
-
-c_vlo_processing_options * QInputSequenceView::vlo_processing_options()
-{
-  return &vlo_processing_options_;
-}
-
-void QInputSequenceView::update_as_vlo_processing_options_chaned()
-{
-  if( currentSequence_ && currentSequence_->is_open() ) {
-    if ( dynamic_cast<c_vlo_input_source*>(currentSequence_->current_source().get()) ) {
-
-      if( currentSequence_->current_pos() > 0 ) {
-        currentSequence_->seek(currentSequence_->current_pos() - 1);
-      }
-
-      loadNextFrame();
-    }
-
-    // Q_EMIT vloDataChannelChanged();
-  }
-
-}
-
-//void QInputSequenceView::setApplyGhostFilter(bool v)
-//{
-//  if ( apply_ghost_filter_ != v ) {
-//    apply_ghost_filter_ = v;
-//
-//    if( currentSequence_ && currentSequence_->is_open() ) {
-//
-//      if( currentSequence_->current_pos() > 0 ) {
-//        currentSequence_->seek(currentSequence_->current_pos() - 1);
-//      }
-//
-//      loadNextFrame();
-//    }
-//
-//    Q_EMIT vloDataChannelChanged();
-//  }
-//}
-//
-//bool QInputSequenceView::applyGhostFilter() const
-//{
-//  return apply_ghost_filter_;
-//}
-
-#endif
-
 
 
 void QInputSequenceView::setCurrentToolbar(QToolBar * toolbar)
@@ -433,41 +364,6 @@ void QInputSequenceView::loadNextFrame()
     if ( current_source ) {
 
       QWaitCursor wait(this, current_source->size() == 1);
-
-#if HAVE_VLO_FILE
-      if( c_vlo_input_source *vlo = dynamic_cast<c_vlo_input_source*>(current_source.get()) ) {
-
-        vlo->set_read_channel(vlo_data_channel_);
-        * vlo->processing_options()  = this->vlo_processing_options_;
-        // vlo->set_apply_ghost_filter(apply_ghost_filter_);
-
-        if ( sourceOutputType_ == c_input_source::OUTPUT_TYPE_CLOUD3D  ) {
-
-          cv::Mat3f points;
-          cv::Mat colors;
-
-          cloudView_->clear();
-
-          if ( !vlo->read_cloud3d(points, colors) ) {
-            CF_ERROR("vlo->read_cloud3d() fails");
-          }
-          else {
-            cloudView_->add(QPointCloud::create(points, colors, false));
-          }
-
-          currentSequence_->update_current_pos();
-
-          if( currentView() != cloudView_ ) {
-            setCurrentView(cloudView_);
-          }
-
-          cloudView_->redraw();
-
-          return;
-        }
-      }
-#endif
-
 
       if( currentView() != imageView_ ) {
         setCurrentView(imageView_);

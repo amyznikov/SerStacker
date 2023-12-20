@@ -71,13 +71,13 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
   }
 }
 
-void QPipelineProgressView::setImageViewer(QSerStackerImageEditor * imageViewer)
+void QPipelineProgressView::setImageViewer(QImageEditor * imageViewer)
 {
   this->imageViewer_ = imageViewer;
   updateAccumulatedImageDisplay(true);
 }
 
-QSerStackerImageEditor * QPipelineProgressView::imageViewer() const
+QImageEditor * QPipelineProgressView::imageViewer() const
 {
   return imageViewer_;
 }

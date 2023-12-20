@@ -39,8 +39,11 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
   }
 
   layout_ = new QVBoxLayout(this);
+  layout_->setAlignment(Qt::AlignTop);
   layout_->setContentsMargins(0,0,0,0);
-  layout_->addWidget(view_ = new QImageSceneView(this), 100);
+  layout_->setMargin(0);
+  layout_->setSpacing(0);
+  layout_->addWidget(view_ = new QImageSceneView(this), 1000);
   view_->setScene(scene_);
 
   connect(view_, &QImageSceneView::onMouseMove,
@@ -92,7 +95,7 @@ QToolBar * QImageViewer::embedToolbar(QToolBar * toolbar)
     this->toolbar_->setIconSize(QSize(16,16));
   }
 
-  layout_->insertWidget(0, this->toolbar_, 1);
+  layout_->insertWidget(0, this->toolbar_, 0);
 
   return this->toolbar_;
 }
@@ -104,14 +107,14 @@ QToolBar * QImageViewer::toolbar() const
 
 QStatusBar * QImageViewer::embedStatusbar(QStatusBar * statusBar)
 {
-  if ( this->statusbar_ != Q_NULLPTR ) {
-    if ( statusBar == Q_NULLPTR ) {
+  if ( this->statusbar_ ) {
+    if ( !statusBar ) {
       return this->statusbar_; // already embedded
     }
     layout_->removeWidget(this->statusbar_);
   }
 
-  if ( (this->statusbar_ = statusBar) == Q_NULLPTR ) {
+  if ( !(this->statusbar_ = statusBar) ) {
     this->statusbar_ = new QStatusBar(this);
   }
 
@@ -217,7 +220,6 @@ QPixmap QImageViewer::grabViewportPixmap()
 {
   return view_->grab();
 }
-
 
 QString QImageViewer::currentFileName() const
 {
@@ -362,6 +364,7 @@ void QImageViewer::createDisplayImage()
     }
 
   }
+
   Q_EMIT displayImageChanged();
 }
 

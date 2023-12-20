@@ -8,10 +8,8 @@
 #ifndef __c_input_source_h__
 #define __c_input_source_h__
 
-#include "c_ser_file.h"
-#include "c_fits_file.h"
-#include "c_ffmpeg_file.h"
-#include "c_raw_file.h"
+#include "debayer.h"
+#include "c_data_frame.h"
 #include "c_vlo_file.h"
 
 class c_input_source
@@ -33,9 +31,7 @@ public:
     RAW_IMAGE = 5,
 #endif
     CAMERA = 6,
-#if HAVE_VLO_FILE
     VLO = 7,
-#endif
   };
 
   enum OUTPUT_TYPE {
@@ -44,9 +40,8 @@ public:
   };
 
   static sptr create(const std::string & filename);
-
-  static sptr create(source_type type,
-      const std::string & filename);
+  static sptr create(source_type type, const std::string & filename);
+  static sptr open(const std::string & filename);
 
   static enum source_type suggest_source_type(
       const std::string & filename);
@@ -118,6 +113,8 @@ public:
 
   virtual bool is_open() const = 0;
 
+  virtual bool read(c_data_frame::sptr & output_frame) = 0;
+
   virtual bool read(cv::Mat & output_frame,
       enum COLORID * output_colorid,
       int * output_bpc) = 0;
@@ -129,6 +126,9 @@ public:
   const std::vector<uint> & load_badframes(const std::string & fname = "");
   void save_badframes(const std::string & fname = "") const;
 
+
+  static enum COLORID suggest_colorid(int cn);
+  static int suggest_bbp(int ddepth);
 
 
 protected:
@@ -146,229 +146,6 @@ protected:
   std::vector<uint> badframes_;
 };
 
-class c_ser_input_source :
-    public c_input_source
-{
-public:
-  typedef c_ser_input_source this_class;
-  typedef c_input_source base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_ser_input_source(const std::string & filename);
-
-  static sptr create(const std::string & filename);
-
-  static const std::vector<std::string> & suffixes();
-
-  bool open() override;
-
-  void close() override;
-
-  bool seek(int pos) override;
-
-  int curpos() override;
-
-  bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
-
-  bool is_open() const override;
-
-protected:
-  c_ser_reader ser_;
-};
-
-#if HAVE_CFITSIO
-class c_fits_input_source :
-    public c_input_source
-{
-public:
-  typedef c_fits_input_source this_class;
-  typedef c_input_source base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_fits_input_source(const std::string & filename);
-
-  static sptr create(const std::string & filename);
-
-  static const std::vector<std::string> & suffixes();
-
-  bool open() override;
-
-  void close() override;
-
-  bool seek(int pos) override;
-
-  int curpos() override;
-
-  bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
-
-  bool is_open() const override;
-
-protected:
-  c_fits_reader fits_;
-  int curpos_ = -1;
-};
-#endif // HAVE_CFITSIO
-
-
-class c_movie_input_source :
-    public c_input_source
-{
-public:
-  typedef c_movie_input_source this_class;
-  typedef c_input_source base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_movie_input_source(const std::string & filename);
-
-  static sptr create(const std::string & filename);
-
-  static const std::vector<std::string> & suffixes();
-
-  bool open() override;
-
-  void close() override;
-
-  bool seek(int pos) override;
-
-  int curpos() override;
-
-  bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
-
-  bool is_open() const override;
-
-protected:
-  c_ffmpeg_reader ffmpeg_;
-};
-
-
-class c_regular_image_input_source :
-    public c_input_source
-{
-public:
-  typedef c_regular_image_input_source this_class;
-  typedef c_input_source base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_regular_image_input_source(const std::string & filename);
-
-  static sptr create(const std::string & filename);
-
-  static const std::vector<std::string> & suffixes();
-
-  bool open() override;
-
-  void close() override;
-
-  bool seek(int pos) override;
-
-  int curpos() override;
-
-  bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
-
-  bool is_open() const override;
-
-protected:
-  int curpos_ = -1;
-};
-
-#if HAVE_LIBRAW
-class c_raw_image_input_source :
-    public c_input_source
-{
-public:
-  typedef c_raw_image_input_source this_class;
-  typedef c_input_source base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_raw_image_input_source(const std::string & filename);
-
-  static sptr create(const std::string & filename);
-
-  static const std::vector<std::string> & suffixes();
-
-  bool open() override;
-
-  void close() override;
-
-  bool seek(int pos) override;
-
-  int curpos() override;
-
-  bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
-
-  bool is_open() const override;
-
-protected:
-  c_raw_file_reader raw_;
-  int curpos_ = -1;
-};
-#endif // HAVE_LIBRAW
-
-#if HAVE_VLO_FILE
-
-class c_vlo_input_source :
-    public c_input_source
-{
-public:
-  typedef c_vlo_input_source this_class;
-  typedef c_input_source base;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_vlo_input_source(const std::string & filename);
-
-  static sptr create(const std::string & filename);
-
-  static const std::vector<std::string> & suffixes();
-
-  bool open() override;
-
-  void close() override;
-
-  bool seek(int pos) override;
-
-  int curpos() override;
-
-  bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
-
-  bool read_cloud3d(cv::OutputArray points,
-      cv::OutputArray colors);
-
-  bool is_open() const override;
-
-  void set_read_channel(c_vlo_file::DATA_CHANNEL v);
-  c_vlo_file::DATA_CHANNEL read_channel() const;
-
-//  void set_apply_ghost_filter(bool v);
-//  bool apply_ghost_filter() const;
-
-  c_vlo_processing_options * processing_options();
-
-  VLO_VERSION version() const;
-
-  bool read(c_vlo_scan * scan);
-
-protected:
-  c_vlo_reader vlo_;
-
-  c_vlo_file::DATA_CHANNEL read_channel_ =
-      c_vlo_file::DATA_CHANNEL_AMBIENT;
-
-  bool apply_ghost_filter_ = false;
-};
-
-#endif // HAVE_VLO_FILE
 
 
 #endif /* __c_input_source_h__ */

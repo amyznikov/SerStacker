@@ -13,6 +13,7 @@
 #include <core/proc/autoclip.h>
 #include <core/proc/colormap.h>
 #include <core/mtf/pixinsight-mtf.h>
+#include <core/io/vlo/c_vlo_input_source.h>
 #include <core/io/save_ply.h>
 #include <type_traits>
 #include <chrono>
@@ -424,8 +425,8 @@ bool c_vlo_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
   lock_guard lock(mutex());
 
   cv::Mat image =
-      c_vlo_file::get_image(current_scan_,
-          c_vlo_reader::DATA_CHANNEL_AMBIENT);
+      get_vlo_image(current_scan_,
+          VLO_DATA_CHANNEL_AMBIENT);
 
   if( !image.empty() ) {
     autoclip(image, cv::noArray(),
@@ -601,8 +602,8 @@ bool c_vlo_pipeline::run_pipeline()
 
 bool c_vlo_pipeline::process_current_frame()
 {
-  if( input_options_.sort_echos_by_distance && !c_vlo_file::sort_echos_by_distance(current_scan_) ) {
-    CF_ERROR("c_vlo_file::sort_echos_by_distance() fails");
+  if( input_options_.sort_echos_by_distance && !sort_vlo_echos_by_distance(current_scan_) ) {
+    CF_ERROR("vlo_sort_echos_by_distance() fails");
     return false;
   }
 
@@ -645,7 +646,7 @@ bool c_vlo_pipeline::run_blom_detection2()
   cv::Mat3w segments;
 
   bool fOk =
-      c_vlo_file::get_clouds3d(current_scan_,
+      get_vlo_clouds3d(current_scan_,
           clouds);
 
   if ( !fOk ) {
@@ -679,15 +680,15 @@ bool c_vlo_pipeline::run_blom_detection2()
 
     switch (processing_options_.bloom_slopes_intensity_channel) {
       case VLO_INTENSITY_AREA:
-        c_vlo_file::get_image(current_scan_,
-            c_vlo_file::DATA_CHANNEL_AREA).convertTo(intensities,
+        get_vlo_image(current_scan_,
+            VLO_DATA_CHANNEL_AREA).convertTo(intensities,
                 intensities.depth());
         break;
 
       default:
         case VLO_INTENSITY_PEAK:
-        c_vlo_file::get_image(current_scan_,
-            c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensities,
+          get_vlo_image(current_scan_,
+            VLO_DATA_CHANNEL_PEAK).convertTo(intensities,
                 intensities.depth());
         break;
     }
@@ -845,8 +846,8 @@ bool c_vlo_pipeline::run_blom_detection2()
 
     cv::Mat3f intensity_image;
 
-    c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_AREA).convertTo(intensity_image,
+    get_vlo_image(current_scan_,
+        VLO_DATA_CHANNEL_AREA).convertTo(intensity_image,
             CV_32F);
 
 
@@ -938,12 +939,12 @@ bool c_vlo_pipeline::run_blom_detection2()
     cv::Mat3f intensity_image;
     cv::Mat3f depth_image;
 
-    c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_PEAK).convertTo(intensity_image,
+    get_vlo_image(current_scan_,
+        VLO_DATA_CHANNEL_PEAK).convertTo(intensity_image,
             CV_32F);
 
-    c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_DEPTH).convertTo(depth_image,
+    get_vlo_image(current_scan_,
+        VLO_DATA_CHANNEL_DEPTH).convertTo(depth_image,
             CV_32F);
 
 
@@ -1045,8 +1046,8 @@ bool c_vlo_pipeline::run_blom_detection2()
     cv::Mat3f display_image(display_size,
         cv::Vec3w::all(0));
 
-    c_vlo_file::get_image(current_scan_,
-        c_vlo_file::DATA_CHANNEL_DEPTH).convertTo(display_image(roi[0]),
+    get_vlo_image(current_scan_,
+        VLO_DATA_CHANNEL_DEPTH).convertTo(display_image(roi[0]),
         display_image.depth());
 
     segments.convertTo(display_image(roi[1]),
@@ -1130,32 +1131,35 @@ bool c_vlo_pipeline::save_cloud3d_ply()
     return true; // silently ignore
   }
 
-  std::vector<cv::Point3f> points;
-  std::vector<cv::Vec3b> colors;
+  CF_ERROR("This function is now broken");
+  return false;
 
-  bool fOk =
-      c_vlo_file::get_cloud3d(current_scan_,
-          output_options_.cloud3d_intensity_channel,
-          points,
-          colors);
-
-  if( !fOk ) {
-    CF_ERROR("get_cloud3d() fails");
-    return false;
-  }
-
-  const std::string filename =
-      ssprintf("%s/cloud3d/%s/cloud3d.%03d.ply",
-          output_path_.c_str(),
-          input_sequence_->name().c_str(),
-          input_sequence_->current_pos() - 1);
-
-  if ( !save_ply(points, colors, filename) ) {
-    CF_ERROR("save_ply('%s') fails", filename.c_str());
-    return false;
-  }
-
-  return true;
+//  std::vector<cv::Point3f> points;
+//  std::vector<cv::Vec3b> colors;
+//
+//  bool fOk =
+//      c_vlo_file::get_cloud3d(current_scan_,
+//          output_options_.cloud3d_intensity_channel,
+//          points,
+//          colors);
+//
+//  if( !fOk ) {
+//    CF_ERROR("get_cloud3d() fails");
+//    return false;
+//  }
+//
+//  const std::string filename =
+//      ssprintf("%s/cloud3d/%s/cloud3d.%03d.ply",
+//          output_path_.c_str(),
+//          input_sequence_->name().c_str(),
+//          input_sequence_->current_pos() - 1);
+//
+//  if ( !save_ply(points, colors, filename) ) {
+//    CF_ERROR("save_ply('%s') fails", filename.c_str());
+//    return false;
+//  }
+//
+//  return true;
 }
 
 
@@ -1166,97 +1170,99 @@ bool c_vlo_pipeline::update_double_echo_statistics()
     return  true; // silently do nothing
   }
 
-  cv::Mat3f double_echo_distances;
-  cv::Mat3f double_echo_peaks;
-  cv::Mat3f double_echo_area;
+  CF_ERROR("This function is now broken");
+  return false;
 
-  c_vlo_file::get_image(current_scan_, c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_DISTANCES).
-      convertTo(double_echo_distances, double_echo_distances.depth());
-
-  c_vlo_file::get_image(current_scan_, c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_PEAKS).
-      convertTo(double_echo_peaks, double_echo_peaks.depth());
-
-  c_vlo_file::get_image(current_scan_, c_vlo_file::DATA_CHANNEL_DOUBLED_ECHO_AREAS).
-      convertTo(double_echo_area, double_echo_area.depth());
-
-  if( !doubled_echo_stats_writer_.is_open() ) {
-
-    const std::string filename =
-        generate_output_filename("",
-            "doubled_echo_stats",
-            ".txt");
-
-    if( !add_output_writer(doubled_echo_stats_writer_, filename) ) {
-      CF_ERROR("add_output_writer('%s') fails : %s", filename.c_str(),
-          strerror(errno));
-      return false;
-    }
-
-    doubled_echo_stats_writer_.printf(""
-        "FRM\tE1\tE2\tD1\tD2\tPEAK1\tPEAK2\tAREA1\tAREA2\tDR\tDD\n");
-  }
-
-  const auto print_echo_stats =
-      [this](int e0, int e1, double d0, double d1, double p0, double p1, double a0, double a1) {
-
-        doubled_echo_stats_writer_.printf("%6d" // frame
-            "\t%d\t%d"// echos
-            "\t%g\t%g"// distances
-            "\t%g\t%g"// peaks
-            "\t%g\t%g"// areas
-            "\t%g\t%g"// distance ratio and difference
-            "\n",
-            input_sequence_->current_pos(),
-            e0, e1,
-            d0, d1,
-            p0, p1,
-            a0, a1,
-            d1/d0,
-            d1-2*d0);
-
-    };
-
-  for ( int y = 0; y < double_echo_distances.rows; ++y  ) {
-    for ( int x = 0; x < double_echo_distances.cols; ++x  ) {
-
-      const cv::Vec3f & D =  double_echo_distances[y][x];
-      const cv::Vec3f & P =  double_echo_peaks[y][x];
-      const cv::Vec3f & A =  double_echo_area[y][x];
-
-      constexpr double Dmin = 200;
-
-      //  FIR
-      //      constexpr double absolute_threshold = 50;
-      //      constexpr double absolute_offset = 40;
-      // constexpr double area_threshold = 0.7;
-
-      // makrolon
-      constexpr double absolute_threshold = 110;
-      constexpr double absolute_offset = 0; // -10;
-      constexpr double area_threshold = 1; // 0.8;
-
-      if( D[0] > Dmin && D[1] && std::abs(D[1] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
-
-        if ( A[1] < A[0] * area_threshold ) {
-          print_echo_stats(0, 1, D[0], D[1], P[0], P[1], A[0], A[1]);
-        }
-      }
-      if( D[0] > Dmin && D[2] && std::abs(D[2] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
-
-        if ( A[2] < A[0] * area_threshold ) {
-          print_echo_stats(0, 2, D[0], D[2], P[0], P[2], A[0], A[2]);
-        }
-      }
-      if( D[1] > Dmin && D[2] && std::abs(D[2] - 2.0 * D[1] + absolute_offset) < absolute_threshold ) {
-
-        if ( A[2] < A[1] * area_threshold ) {
-          print_echo_stats(1, 2, D[1], D[2], P[1], P[2], A[1], A[2]);
-        }
-      }
-    }
-  }
-
-  return true;
-
+//  cv::Mat3f double_echo_distances;
+//  cv::Mat3f double_echo_peaks;
+//  cv::Mat3f double_echo_area;
+//
+//  c_vlo_file::get_image(current_scan_, VLO_DATA_CHANNEL_DOUBLED_ECHO_DISTANCES).
+//      convertTo(double_echo_distances, double_echo_distances.depth());
+//
+//  c_vlo_file::get_image(current_scan_, VLO_DATA_CHANNEL_DOUBLED_ECHO_PEAKS).
+//      convertTo(double_echo_peaks, double_echo_peaks.depth());
+//
+//  c_vlo_file::get_image(current_scan_, VLO_DATA_CHANNEL_DOUBLED_ECHO_AREAS).
+//      convertTo(double_echo_area, double_echo_area.depth());
+//
+//  if( !doubled_echo_stats_writer_.is_open() ) {
+//
+//    const std::string filename =
+//        generate_output_filename("",
+//            "doubled_echo_stats",
+//            ".txt");
+//
+//    if( !add_output_writer(doubled_echo_stats_writer_, filename) ) {
+//      CF_ERROR("add_output_writer('%s') fails : %s", filename.c_str(),
+//          strerror(errno));
+//      return false;
+//    }
+//
+//    doubled_echo_stats_writer_.printf(""
+//        "FRM\tE1\tE2\tD1\tD2\tPEAK1\tPEAK2\tAREA1\tAREA2\tDR\tDD\n");
+//  }
+//
+//  const auto print_echo_stats =
+//      [this](int e0, int e1, double d0, double d1, double p0, double p1, double a0, double a1) {
+//
+//        doubled_echo_stats_writer_.printf("%6d" // frame
+//            "\t%d\t%d"// echos
+//            "\t%g\t%g"// distances
+//            "\t%g\t%g"// peaks
+//            "\t%g\t%g"// areas
+//            "\t%g\t%g"// distance ratio and difference
+//            "\n",
+//            input_sequence_->current_pos(),
+//            e0, e1,
+//            d0, d1,
+//            p0, p1,
+//            a0, a1,
+//            d1/d0,
+//            d1-2*d0);
+//
+//    };
+//
+//  for ( int y = 0; y < double_echo_distances.rows; ++y  ) {
+//    for ( int x = 0; x < double_echo_distances.cols; ++x  ) {
+//
+//      const cv::Vec3f & D =  double_echo_distances[y][x];
+//      const cv::Vec3f & P =  double_echo_peaks[y][x];
+//      const cv::Vec3f & A =  double_echo_area[y][x];
+//
+//      constexpr double Dmin = 200;
+//
+//      //  FIR
+//      //      constexpr double absolute_threshold = 50;
+//      //      constexpr double absolute_offset = 40;
+//      // constexpr double area_threshold = 0.7;
+//
+//      // makrolon
+//      constexpr double absolute_threshold = 110;
+//      constexpr double absolute_offset = 0; // -10;
+//      constexpr double area_threshold = 1; // 0.8;
+//
+//      if( D[0] > Dmin && D[1] && std::abs(D[1] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
+//
+//        if ( A[1] < A[0] * area_threshold ) {
+//          print_echo_stats(0, 1, D[0], D[1], P[0], P[1], A[0], A[1]);
+//        }
+//      }
+//      if( D[0] > Dmin && D[2] && std::abs(D[2] - 2.0 * D[0] + absolute_offset) < absolute_threshold ) {
+//
+//        if ( A[2] < A[0] * area_threshold ) {
+//          print_echo_stats(0, 2, D[0], D[2], P[0], P[2], A[0], A[2]);
+//        }
+//      }
+//      if( D[1] > Dmin && D[2] && std::abs(D[2] - 2.0 * D[1] + absolute_offset) < absolute_threshold ) {
+//
+//        if ( A[2] < A[1] * area_threshold ) {
+//          print_echo_stats(1, 2, D[1], D[2], P[1], P[2], A[1], A[2]);
+//        }
+//      }
+//    }
+//  }
+//
+//  return true;
 }
 

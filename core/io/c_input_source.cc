@@ -6,7 +6,9 @@
  */
 
 #include "c_input_source.h"
-#include "load_image.h"
+//#include "load_image.h"
+#include "video/c_video_input_source.h"
+#include "vlo/c_vlo_input_source.h"
 #include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <mutex>
@@ -25,7 +27,17 @@ const c_enum_member* members_of<c_input_source::OUTPUT_TYPE>()
   return members;
 }
 
-static inline enum COLORID suggest_colorid(int cn)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+c_input_source::c_input_source(enum source_type type, const std::string & filename)
+  : type_(type), filename_(filename)
+{
+}
+
+
+enum COLORID c_input_source::suggest_colorid(int cn)
 {
   switch ( cn ) {
   case 1 :
@@ -38,7 +50,7 @@ static inline enum COLORID suggest_colorid(int cn)
   return COLORID_UNKNOWN;
 }
 
-static inline int suggest_bbp(int ddepth)
+int c_input_source::suggest_bbp(int ddepth)
 {
   switch ( ddepth ) {
   case CV_8U :
@@ -55,11 +67,51 @@ static inline int suggest_bbp(int ddepth)
   return 0;
 }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-c_input_source::c_input_source(enum source_type type, const std::string & filename)
-  : type_(type), filename_(filename)
+enum c_input_source::source_type c_input_source::suggest_source_type(
+    const std::string & filename)
 {
+  enum source_type type = c_input_source::UNKNOWN;
+
+  const std::string suffix = get_file_suffix(filename);
+  if ( !suffix.empty() ) {
+
+    static const auto contains =
+        [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {
+
+          const char * csuffix = suffix.c_str();
+          for ( const std::string & s : suffixes ) {
+            if ( strcasecmp(csuffix, s.c_str()) == 0 ) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+    if ( contains(c_ser_input_source::suffixes(), suffix) ) {
+      type = c_input_source::SER;
+    }
+    else if ( contains(c_vlo_input_source::suffixes(), suffix) ) {
+      type = c_input_source::VLO;
+    }
+#if HAVE_CFITSIO
+    else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
+      type = c_input_source::FITS;
+    }
+#endif // HAVE_CFITSIO
+    else if ( contains(c_movie_input_source::suffixes(), suffix) ) {
+      type = c_input_source::MOVIE;
+    }
+    else if ( contains(c_regular_image_input_source::suffixes(), suffix) ) {
+      type = c_input_source::REGULAR_IMAGE;
+    }
+#if HAVE_LIBRAW
+    else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
+      type = c_input_source::RAW_IMAGE;
+    }
+#endif // HAVE_LIBRAW
+  }
+
+  return type;
 }
 
 c_input_source::sptr c_input_source::create(source_type type, const std::string & filename)
@@ -88,11 +140,9 @@ c_input_source::sptr c_input_source::create(source_type type, const std::string 
       obj = c_raw_image_input_source::create(filename);
       break;
 #endif // HAVE_LIBRAW
-#if HAVE_VLO_FILE
     case c_input_source::VLO :
       obj = c_vlo_input_source::create(filename);
       break;
-#endif // HAVE_LIBRAW
 
     default :
       CF_ERROR("c_input_source: invalid source type = %d requested", type);
@@ -101,55 +151,6 @@ c_input_source::sptr c_input_source::create(source_type type, const std::string 
 
   }
   return obj;
-}
-
-enum c_input_source::source_type c_input_source::suggest_source_type(
-    const std::string & filename)
-{
-  enum source_type type = c_input_source::UNKNOWN;
-
-  const std::string suffix = get_file_suffix(filename);
-  if ( !suffix.empty() ) {
-
-    static const auto contains =
-        [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {
-
-          const char * csuffix = suffix.c_str();
-          for ( const std::string & s : suffixes ) {
-            if ( strcasecmp(csuffix, s.c_str()) == 0 ) {
-              return true;
-            }
-          }
-          return false;
-        };
-
-    if ( contains(c_ser_input_source::suffixes(), suffix) ) {
-      type = c_input_source::SER;
-    }
-#if HAVE_VLO_FILE
-    else if ( contains(c_vlo_input_source::suffixes(), suffix) ) {
-      type = c_input_source::VLO;
-    }
-#endif // HAVE_LIBRAW
-#if HAVE_CFITSIO
-    else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
-      type = c_input_source::FITS;
-    }
-#endif // HAVE_CFITSIO
-    else if ( contains(c_movie_input_source::suffixes(), suffix) ) {
-      type = c_input_source::MOVIE;
-    }
-    else if ( contains(c_regular_image_input_source::suffixes(), suffix) ) {
-      type = c_input_source::REGULAR_IMAGE;
-    }
-#if HAVE_LIBRAW
-    else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
-      type = c_input_source::RAW_IMAGE;
-    }
-#endif // HAVE_LIBRAW
-  }
-
-  return type;
 }
 
 c_input_source::sptr c_input_source::create(const std::string & filename)
@@ -171,6 +172,19 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
 
   return nullptr;
 }
+
+
+c_input_source::sptr c_input_source::open(const std::string & filename)
+{
+  c_input_source::sptr obj = this_class::create(filename);
+  if( obj && !obj->is_open() && !obj->open() ) {
+    CF_ERROR("obj->open(filename='%s') fails", filename.c_str());
+    obj.reset();
+  }
+
+  return obj;
+}
+
 
 const std::vector<uint> & c_input_source::badframes() const
 {
@@ -296,578 +310,5 @@ void c_input_source::save_badframes(const std::string & fname) const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-c_ser_input_source::c_ser_input_source(const std::string & filename) :
-    base(c_input_source::SER, filename)
-{
-}
-
-c_ser_input_source::sptr c_ser_input_source::create(const std::string & filename)
-{
-  sptr obj(new this_class(filename));
-  if ( obj->ser_.open(filename) ) {
-    obj->size_ = obj->ser_.num_frames();
-    obj->ser_.close();
-    return obj;
-  }
-  return nullptr;
-}
-
-const std::vector<std::string> & c_ser_input_source::suffixes()
-{
-  static const std::vector<std::string> suffixes_ = {
-      ".ser"
-  };
-
-  return suffixes_;
-}
-
-bool c_ser_input_source::open()
-{
-  return ser_.open(filename_);
-}
-
-void c_ser_input_source::close()
-{
-  ser_.close();
-}
-
-bool c_ser_input_source::seek(int pos)
-{
-  return ser_.seek(pos);
-}
-
-int c_ser_input_source::curpos()
-{
-  return ser_.curpos();
-}
-
-bool c_ser_input_source::read(cv::Mat & output_frame,
-    enum COLORID * output_colorid,
-    int * output_bpc)
-{
-  if ( ser_.read(output_frame) ) {
-
-    if ( output_colorid ) {
-      *output_colorid = ser_.color_id();
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = ser_.bits_per_plane();
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-bool c_ser_input_source::is_open() const
-{
-  return ser_.is_open();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if HAVE_CFITSIO
-
-c_fits_input_source::c_fits_input_source(const std::string & filename)
-  : base(c_input_source::FITS, filename)
-{
-}
-
-c_fits_input_source::sptr c_fits_input_source::create(const std::string & filename)
-{
-  if ( file_exists(filename) && !is_directory(filename) ) {
-    c_fits_input_source::sptr obj(new c_fits_input_source(filename));
-    obj->size_ = 1;
-    return obj;
-  }
-  return nullptr;
-}
-
-const std::vector<std::string> & c_fits_input_source::suffixes()
-{
-  static const std::vector<std::string> suffixes_ = {
-      ".fits",
-      ".fit",
-      ".fts"
-  };
-
-  return suffixes_;
-}
-
-bool c_fits_input_source::open()
-{
-  if ( !fits_.open(filename_) ) {
-    return false;
-  }
-  curpos_ = 0;
-  return true;
-}
-
-void c_fits_input_source::close()
-{
-  fits_.close();
-  curpos_ = -1;
-}
-
-bool c_fits_input_source::seek(int pos)
-{
-  if ( pos != 0 ) {
-    return false;
-  }
-  curpos_ = pos;
-  return true;
-}
-
-int c_fits_input_source::curpos()
-{
-  return curpos_;
-}
-
-bool c_fits_input_source::read(cv::Mat & output_frame,
-    enum COLORID * output_colorid,
-    int * output_bpc)
-{
-  if ( curpos_ != 0 || !fits_.read(output_frame) ) {
-    return false;
-  }
-
-  ++curpos_;
-
-  if ( output_colorid ) {
-    *output_colorid = suggest_colorid(
-        output_frame.channels());
-  }
-
-  if ( output_bpc ) {
-    *output_bpc = suggest_bbp(
-        output_frame.depth());
-  }
-
-  return true;
-}
-
-bool c_fits_input_source::is_open() const
-{
-  return curpos_ >= 0;
-}
-
-#endif // HAVE_CFITSIO
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-c_movie_input_source::c_movie_input_source(const std::string & filename) :
-    base(c_input_source::MOVIE, filename)
-{
-}
-
-c_movie_input_source::sptr c_movie_input_source::create(const std::string & filename)
-{
-  sptr obj(new this_class(filename));
-  if ( obj->ffmpeg_.open(filename) ) {
-    obj->size_ = obj->ffmpeg_.num_frames();
-    obj->ffmpeg_.close();
-    return obj;
-  }
-  return nullptr;
-}
-
-const std::vector<std::string> & c_movie_input_source::suffixes()
-{
-  static std::vector<std::string> suffixes_;
-
-  if ( suffixes_.empty() ) {
-
-    const std::vector<std::string> & ffmpeg_formats =
-        c_ffmpeg_reader::supported_input_formats();
-
-    suffixes_.reserve(ffmpeg_formats.size());
-    for (const std::string & fmt : ffmpeg_formats ) {
-      suffixes_.emplace_back("." + fmt);
-    }
-  }
-
-  return suffixes_;
-}
-
-
-bool c_movie_input_source::open()
-{
-  return ffmpeg_.open(filename_);
-}
-
-void c_movie_input_source::close()
-{
-  return ffmpeg_.close();
-}
-
-bool c_movie_input_source::seek(int pos)
-{
-  return ffmpeg_.seek_frame(pos);
-}
-
-int c_movie_input_source::curpos()
-{
-  return ffmpeg_.curpos();
-}
-
-bool c_movie_input_source::read(cv::Mat & output_frame,
-    enum COLORID * output_colorid,
-    int * output_bpc)
-{
-  if ( ffmpeg_.read(output_frame) ) {
-
-    if ( output_colorid ) {
-      *output_colorid = suggest_colorid(
-          output_frame.channels());
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
-          output_frame.depth());
-    }
-
-    return true;
-  }
-  return false;
-}
-
-bool c_movie_input_source::is_open() const
-{
-  return ffmpeg_.is_open();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-c_regular_image_input_source::c_regular_image_input_source(const std::string & filename) :
-    base(c_input_source::REGULAR_IMAGE, filename)
-{
-}
-
-c_regular_image_input_source::sptr c_regular_image_input_source::create(const std::string & filename)
-{
-  if ( file_exists(filename) && !is_directory(filename) ) {
-    sptr obj(new this_class(filename));
-    obj->size_ = 1;
-    return obj;
-  }
-  return nullptr;
-}
-
-const std::vector<std::string> & c_regular_image_input_source::suffixes()
-{
-  static const std::vector<std::string> suffixes_ = {
-      ".tif", ".tiff",
-      ".png",
-      ".exr",
-      ".hdr", ".pic",
-      ".jpg", ".jpeg", ".jp2",
-      ".bmp", ".dib",
-      ".ppm", ".pgm",
-      ".webp",
-      ".flo",
-      ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",  // Portable image format
-      ".sr", ".ras",      // Sun rasters
-      ".pfm",
-  };
-
-  return suffixes_;
-}
-
-bool c_regular_image_input_source::open()
-{
-  if ( file_readable(filename_) && !is_directory(filename_) ) {
-    curpos_ = 0;
-    return true;
-  }
-  return false;
-}
-
-
-void c_regular_image_input_source::close()
-{
-  curpos_ = -1;
-}
-
-
-bool c_regular_image_input_source::seek(int pos)
-{
-  if ( pos != 0 ) {
-    return false;
-  }
-  curpos_ = pos;
-  return true;
-}
-
-int c_regular_image_input_source::curpos()
-{
-  return curpos_;
-}
-
-bool c_regular_image_input_source::read(cv::Mat & output_frame,
-    enum COLORID * output_colorid,
-    int * output_bpc)
-{
-  if ( curpos_ != 0 ) {
-    return false;
-  }
-
-  const std::string suffix =
-      get_file_suffix(filename_);
-
-  if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
-
-    if ( !(output_frame = cv::readOpticalFlow(filename_)).data ) {
-      return false;
-    }
-
-    if ( output_colorid ) {
-      *output_colorid = COLORID_OPTFLOW;
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
-          output_frame.depth());
-    }
-
-  }
-  else {
-
-    if ( !load_image(filename_, output_frame) ) {
-      return false;
-    }
-
-    // CF_DEBUG("output_frame.channels()=%d", output_frame.channels());
-
-
-    if ( output_colorid ) {
-      *output_colorid = suggest_colorid(
-          output_frame.channels());
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
-          output_frame.depth());
-    }
-
-  }
-
-  ++curpos_;
-
-  return true;
-}
-
-bool c_regular_image_input_source::is_open() const
-{
-  return curpos_ >= 0;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if HAVE_LIBRAW
-c_raw_image_input_source::c_raw_image_input_source(const std::string & filename)
-  : base(c_input_source::RAW_IMAGE, filename)
-{
-}
-
-c_raw_image_input_source::sptr c_raw_image_input_source::create(const std::string & filename)
-{
-  if ( file_exists(filename) && !is_directory(filename) ) {
-    c_raw_image_input_source::sptr obj(new c_raw_image_input_source(filename));
-    obj->size_ = 1;
-    return obj;
-  }
-  return nullptr;
-}
-
-const std::vector<std::string> & c_raw_image_input_source::suffixes()
-{
-  static const std::vector<std::string> suffixes_ = {
-      ".nef",
-      ".cr2"
-  };
-
-  return suffixes_;
-}
-
-bool c_raw_image_input_source::open()
-{
-  if ( file_readable(filename_) && !is_directory(filename_) ) {
-    curpos_ = 0;
-    return true;
-  }
-  return false;
-}
-
-void c_raw_image_input_source::close()
-{
-  curpos_ = -1;
-}
-
-bool c_raw_image_input_source::seek(int pos)
-{
-  if ( pos != 0 ) {
-    return false;
-  }
-  curpos_ = pos;
-  return true;
-}
-
-int c_raw_image_input_source::curpos()
-{
-  return curpos_;
-}
-
-bool c_raw_image_input_source::read(cv::Mat & output_frame,
-    enum COLORID * output_colorid,
-    int * output_bpc)
-{
-  if ( curpos_ != 0 || !raw_.read(filename_, output_frame, output_colorid, output_bpc) ) {
-    return false;
-  }
-
-  ++curpos_;
-
-  if ( (this->has_color_matrix_ = raw_.has_color_matrix()) ) {
-    this->color_matrix_ = raw_.color_matrix();
-  }
-
-  return true;
-}
-
-bool c_raw_image_input_source::is_open() const
-{
-  return curpos_ >= 0;
-}
-
-#endif // HAVE_LIBRAW
-
-
-#if HAVE_VLO_FILE
-
-c_vlo_input_source::c_vlo_input_source(const std::string & filename) :
-    base(c_input_source::VLO, filename)
-{
-}
-
-c_vlo_input_source::sptr c_vlo_input_source::create(const std::string & filename)
-{
-  this_class::sptr obj(new this_class(filename));
-  if( obj->vlo_.open(filename) ) {
-    obj->size_ = obj->vlo_.num_frames();
-    obj->vlo_.close();
-    return obj;
-  }
-  return nullptr;
-}
-
-const std::vector<std::string> & c_vlo_input_source::suffixes()
-{
-  static const std::vector<std::string> suffixes_ = {
-      ".vsb",
-      ".dat"
-  };
-  return suffixes_;
-}
-
-bool c_vlo_input_source::open()
-{
-  return vlo_.open(filename_);
-}
-
-void c_vlo_input_source::close()
-{
-  return vlo_.close();
-}
-
-
-bool c_vlo_input_source::seek(int pos)
-{
-  return vlo_.seek(pos);
-}
-
-int c_vlo_input_source::curpos()
-{
-  return vlo_.curpos();
-}
-
-
-bool c_vlo_input_source::read(cv::Mat & output_frame,
-    enum COLORID * output_colorid,
-    int * output_bpc)
-{
-
-  //vlo_.set_apply_ghost_filter(apply_ghost_filter_);
-
-  if ( vlo_.read(&output_frame, read_channel_) ) {
-
-    if ( output_colorid ) {
-      *output_colorid =
-          suggest_colorid(output_frame.channels());
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
-          output_frame.depth());
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-bool c_vlo_input_source::read_cloud3d(cv::OutputArray points, cv::OutputArray colors)
-{
-  // vlo_.set_apply_ghost_filter(apply_ghost_filter_);
-  return vlo_.read_cloud3d(points, colors, read_channel_);
-}
-
-
-bool c_vlo_input_source::is_open() const
-{
-  return vlo_.is_open();
-}
-
-void c_vlo_input_source::set_read_channel(c_vlo_file::DATA_CHANNEL v)
-{
-  read_channel_ = v;
-}
-
-c_vlo_file::DATA_CHANNEL c_vlo_input_source::read_channel() const
-{
-  return read_channel_;
-}
-
-
-c_vlo_processing_options * c_vlo_input_source::processing_options()
-{
-  return vlo_.processing_options();
-}
-
-//void c_vlo_input_source::set_apply_ghost_filter(bool v)
-//{
-//  apply_ghost_filter_ = v;
-//}
-//
-//bool c_vlo_input_source::apply_ghost_filter() const
-//{
-//  return apply_ghost_filter_;
-//}
-
-VLO_VERSION c_vlo_input_source::version() const
-{
-  return vlo_.version();
-}
-
-bool c_vlo_input_source::read(c_vlo_scan * scan)
-{
-  return vlo_.read(scan);
-}
-
-#endif // HAVE_VLO_FILE
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

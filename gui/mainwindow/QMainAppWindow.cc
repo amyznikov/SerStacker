@@ -182,7 +182,51 @@ void QMainAppWindow::onImageProcessorControlVisibilityChanged(bool /*visible*/)
 
 void QMainAppWindow::onImageProcessorParameterChanged()
 {
-  //centralDisplay_->setFrameProcessor(frameProcessor_ctl->current_processor());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+void QMainAppWindow::setupDataProcessingControls()
+{
+
+  dataframeProcessorDock_ =
+      addCustomDock(this,
+          Qt::RightDockWidgetArea,
+          "dataframeProcessorDock_",
+          "Data Processing",
+          dataframeProcessor_ctl = new QDataFrameProcessorSelector(this),
+          menuView_);
+
+  dataframeProcessorDock_->titleBar()->setWindowIcon(getIcon(ICON_display));
+  showDataframeProcessorAction_ = dataframeProcessorDock_->toggleViewAction();
+  showDataframeProcessorAction_->setIcon(getIcon(ICON_display));
+  showDataframeProcessorAction_->setToolTip("Show / Hide data frame processing controls");
+
+  connect(showDataframeProcessorAction_, &QAction::triggered,
+      this, &ThisClass::onShowDataframeProcessorControlActionTriggered);
+
+  connect(dataframeProcessorDock_, &QDockWidget::visibilityChanged,
+      this, &ThisClass::onDataframeProcessorControlVisibilityChanged);
+
+  connect(dataframeProcessor_ctl, &QDataFrameProcessorSelector::parameterChanged,
+      this, &ThisClass::onDataframeProcessorParameterChanged);
+
+  dataframeProcessorDock_->hide();
+}
+
+void QMainAppWindow::onShowDataframeProcessorControlActionTriggered(bool checked)
+{
+
+}
+
+void QMainAppWindow::onDataframeProcessorControlVisibilityChanged(bool visible)
+{
+
+}
+
+void QMainAppWindow::onDataframeProcessorParameterChanged()
+{
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -473,6 +517,13 @@ QToolButton* QMainAppWindow::createToolButtonWithMenu(const QIcon & icon, const 
   return tb;
 }
 
+QWidget* QMainAppWindow::createStretch()
+{
+  QWidget *stretch = new QWidget();
+  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  return stretch;
+}
+
 QWidget* QMainAppWindow::addStretch(QToolBar * toolbar)
 {
   QWidget *stretch = new QWidget();
@@ -481,11 +532,5 @@ QWidget* QMainAppWindow::addStretch(QToolBar * toolbar)
   return stretch;
 }
 
-QWidget* QMainAppWindow::createStretch()
-{
-  QWidget *stretch = new QWidget();
-  stretch->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  return stretch;
-}
 
 

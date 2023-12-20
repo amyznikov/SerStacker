@@ -11,7 +11,7 @@
 
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/io/c_vlo_file.h>
-#include <core/proc/vlo/vlo.h>
+#include <core/proc/vlo/vlo_depth_segmentation.h>
 #include <core/proc/threshold.h>
 
 
@@ -69,8 +69,8 @@ struct c_vlo_pipeline_output_options :
   std::string cloud3d_filename;
 
   bool save_cloud3d_ply = false;
-  c_vlo_reader::DATA_CHANNEL cloud3d_intensity_channel =
-      c_vlo_reader::DATA_CHANNEL_PEAK;
+  VLO_DATA_CHANNEL cloud3d_intensity_channel =
+      VLO_DATA_CHANNEL_PEAK;
 
   bool save_progress_video = false;
   c_output_frame_writer_options progress_writer_options;

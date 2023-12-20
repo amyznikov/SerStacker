@@ -399,6 +399,13 @@ void QGLView::cleanupGL()
   Base::doneCurrent();
 }
 
+void QGLView::paintEvent(QPaintEvent *e)
+{
+  Base::paintEvent(e);
+
+  Q_EMIT displayImageChanged();
+}
+
 void QGLView::glInit()
 {
   // Default colors
@@ -507,7 +514,7 @@ void QGLView::glPostDraw()
 
   glFlush();
 
-  Q_EMIT displayImageChanged();
+//  Q_EMIT displayImageChanged();
 }
 
 // still non clear how to manage GL cleanup from destructor

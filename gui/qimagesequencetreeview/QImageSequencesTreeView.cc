@@ -8,6 +8,8 @@
 #include "QImageSequencesTreeView.h"
 #include <gui/qpipeline/QPipelineThread.h>
 #include <gui/widgets/style.h>
+#include <core/io/video/c_video_input_source.h>
+#include <core/io/vlo/c_vlo_input_source.h>
 #include <core/readdir.h>
 #include <core/debug.h>
 

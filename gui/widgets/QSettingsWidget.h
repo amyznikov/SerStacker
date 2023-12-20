@@ -17,6 +17,7 @@
 #include <gui/widgets/QExpandableGroupBox.h>
 #include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QBrowsePathCombo.h>
+#include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/widgets/qsprintf.h>
 #include <type_traits>
 #include <functional>
@@ -1009,6 +1010,79 @@ public:
   {
     return add_browse_for_path(form, name, label, acceptMode, fileMode, setfn, getfn);
   }
+
+  /////////////////////////////////////////////////////////////////////
+
+  QInputMathExpressionWidget* add_math_expression(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(const QString&)> & setfn = std::function<void(const QString&)>())
+  {
+    QInputMathExpressionWidget * ctl =
+        new QInputMathExpressionWidget(this);
+
+    ctl->setToolTip(tooltip);
+
+    if( name.isEmpty() ) {
+      form->addRow(ctl);
+    }
+    else {
+      form->addRow(name, ctl);
+    }
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl,
+              &QInputMathExpressionWidget::apply,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->text());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QInputMathExpressionWidget* add_math_expression(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(const QString &)> & setfn,
+      const std::function<bool(QString*)> & getfn)
+  {
+    QInputMathExpressionWidget *ctl =
+        add_math_expression(form, name, tooltip, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                QString v;
+                if ( getfn(&v) ) {
+                  ctl->setText(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QInputMathExpressionWidget * add_math_expression(const QString & name, const QString & tooltip,
+      const std::function<void(const QString &)> & setfn,
+      const std::function<bool(QString*)> & getfn)
+  {
+    return add_math_expression(form, name, tooltip, setfn, getfn);
+  }
+
 
   /////////////////////////////////////////////////////////////////////
 

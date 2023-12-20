@@ -13,6 +13,7 @@
 #include <gui/qlogwidget/QLogWidget.h>
 #include <gui/qcustomdock/QCustomDock.h>
 #include <gui/qmtf/QMtfControl.h>
+#include <gui/qdataproc/QDataFrameProcessorEditor.h>
 #include <gui/qimproc/QImageProcessorSelector.h>
 #include <gui/qmeasure/QMeasureGraph.h>
 #include <gui/qmeasure/QMeasureDisplay.h>
@@ -41,6 +42,7 @@ protected:
   void setupStatusbar();
   void setupLogWidget();
   void setupImageProcessingControls();
+  void setupDataProcessingControls();
   void setupMeasures();
   void setupMtfControls();
   void setupProfileGraph();
@@ -50,6 +52,10 @@ protected:
 
   virtual void onSaveState(QSettings & settings);
   virtual void onRestoreState(QSettings & settings);
+
+  virtual void onShowDataframeProcessorControlActionTriggered(bool checked);
+  virtual void onDataframeProcessorControlVisibilityChanged(bool visible);
+  virtual void onDataframeProcessorParameterChanged();
 
   virtual void onShowImageProcessorControlActionTriggered(bool checked);
   virtual void onImageProcessorControlVisibilityChanged(bool visible);
@@ -97,6 +103,11 @@ protected:
   /// Display Options /  MTF
   QMtfControlDialogBox * mtfControl_ = nullptr;
   QAction * showMtfControlAction_ = nullptr;
+
+  /// Current dataframe processor
+  QDataFrameProcessorSelector * dataframeProcessor_ctl = nullptr;
+  QCustomDockWidget * dataframeProcessorDock_ = nullptr;
+  QAction * showDataframeProcessorAction_ = nullptr;
 
   /// Current image processor
   QImageProcessorSelector * imageProcessor_ctl = nullptr;

@@ -11,6 +11,7 @@
 #include "debayer.h" // for COLORID
 
 #if HAVE_CFITSIO
+
 #include <fitsio2.h>
 
 /** @brief Base class for fits reader and writer */

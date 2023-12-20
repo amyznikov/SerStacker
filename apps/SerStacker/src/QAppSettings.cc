@@ -19,14 +19,14 @@ QGeneralAppSettingsDialogBox::QGeneralAppSettingsDialogBox(QWidget * parent) :
   vbox->addWidget(appSettingsWidget_ = new QGeneralAppSettingsWidget(this));
 }
 
-void QGeneralAppSettingsDialogBox::setInputSequenceView(QInputSequenceView * sequenceView)
+void QGeneralAppSettingsDialogBox::setInputSourceView(QInputSourceView * sequenceView)
 {
-  appSettingsWidget_->setInputSequenceView(sequenceView);
+  appSettingsWidget_->setInputSourceView(sequenceView);
 }
 
-QInputSequenceView * QGeneralAppSettingsDialogBox::inputSequenceView() const
+QInputSourceView * QGeneralAppSettingsDialogBox::inputSourceView() const
 {
-  return appSettingsWidget_->inputSequenceView();
+  return appSettingsWidget_->inputSourceView();
 }
 
 void QGeneralAppSettingsDialogBox::showEvent(QShowEvent * e)
@@ -85,21 +85,21 @@ QGeneralAppInputSettings::QGeneralAppInputSettings(QWidget * parent) :
             }
           });
 
-  sourceOutputType_ctl_ =
-      add_enum_combobox<c_input_source::OUTPUT_TYPE>("OUTPUT TYPE:",
-          "",
-          [this](c_input_source::OUTPUT_TYPE v) {
-            if ( sequenceView_ ) {
-              if ( v != sequenceView_->sourceOutputType()) {
-                sequenceView_->setSourceOutputType(v);
-              }
-            }
-          });
+//  sourceOutputType_ctl_ =
+//      add_enum_combobox<c_input_source::OUTPUT_TYPE>("OUTPUT TYPE:",
+//          "",
+//          [this](c_input_source::OUTPUT_TYPE v) {
+//            if ( sequenceView_ ) {
+//              if ( v != sequenceView_->sourceOutputType()) {
+//                sequenceView_->setSourceOutputType(v);
+//              }
+//            }
+//          });
 
   updateControls();
 }
 
-void QGeneralAppInputSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+void QGeneralAppInputSettings::setInputSourceView(QInputSourceView * sequenceView)
 {
   if( sequenceView_ ) {
     sequenceView_->disconnect(this);
@@ -107,35 +107,35 @@ void QGeneralAppInputSettings::setInputSequenceView(QInputSequenceView * sequenc
 
   if( (sequenceView_ = sequenceView) ) {
 
-    connect(sequenceView_, &QInputSequenceView::debayerAlgorithmChanged,
+    connect(sequenceView_, &QInputSourceView::debayerAlgorithmChanged,
         [this]() {
           c_update_controls_lock lock(this);
           editorDebayer_ctl->setValue(sequenceView_->debayerAlgorithm());
         });
 
-    connect(sequenceView_, &QInputSequenceView::dropBadPixelsChanged,
+    connect(sequenceView_, &QInputSourceView::dropBadPixelsChanged,
         [this]() {
           c_update_controls_lock lock(this);
           dropBadPixels_ctl->setChecked(sequenceView_->dropBadPixels());
         });
 
-    connect(sequenceView_, &QInputSequenceView::badPixelsVariationThresholdChanged,
+    connect(sequenceView_, &QInputSourceView::badPixelsVariationThresholdChanged,
         [this]() {
           c_update_controls_lock lock(this);
           badPixelsVariationThreshold_ctl->setValue(sequenceView_->badPixelsVariationThreshold());
         });
 
-    connect(sequenceView_, &QInputSequenceView::sourceOutputTypeChanged,
-        [this]() {
-          c_update_controls_lock lock(this);
-          sourceOutputType_ctl_->setValue(sequenceView_->sourceOutputType());
-        });
+//    connect(sequenceView_, &QInputSourceView::sourceOutputTypeChanged,
+//        [this]() {
+//          c_update_controls_lock lock(this);
+//          sourceOutputType_ctl_->setValue(sequenceView_->sourceOutputType());
+//        });
   }
 
   updateControls();
 }
 
-QInputSequenceView * QGeneralAppInputSettings::inputSequenceView() const
+QInputSourceView * QGeneralAppInputSettings::inputSourceView() const
 {
   return sequenceView_;
 }
@@ -224,29 +224,19 @@ QVLOGhostFilterSettings::QVLOGhostFilterSettings(QWidget * parent) :
     updateControls();
 }
 
-void QVLOGhostFilterSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+void QVLOGhostFilterSettings::setInputSourceView(QInputSourceView * sequenceView)
 {
   if( sequenceView_ ) {
     sequenceView_->disconnect(this);
   }
 
   if( (sequenceView_ = sequenceView) ) {
-//
-//#if HAVE_VLO_FILE
-//    connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
-//        [this]() {
-//          c_update_controls_lock lock(this);
-//          vloDataChannel_ctl_->setValue(sequenceView_->vloDataChannel());
-//          // applyGhostFilter_ctl->setChecked(sequenceView_->applyGhostFilter());
-//        });
-//#endif
-//
   }
 
   updateControls();
 }
 
-QInputSequenceView * QVLOGhostFilterSettings::inputSequenceView() const
+QInputSourceView * QVLOGhostFilterSettings::inputSourceView() const
 {
   return sequenceView_;
 }
@@ -262,12 +252,10 @@ void QVLOGhostFilterSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
-#if HAVE_VLO_FILE
     enableGhostFilter_ctl->setChecked(sequenceView_->vlo_processing_options()->ghost_filter.enabled);
     saturation_level_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.saturation_level);
     doubled_distanse_systematic_correction_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction);
     doubled_distanse_depth_tolerance_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance);
-#endif
 
     setEnabled(true);
   }
@@ -360,21 +348,19 @@ QVLOLowIntensityFilterSettings::QVLOLowIntensityFilterSettings(QWidget * parent)
   updateControls();
 }
 
-void QVLOLowIntensityFilterSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+void QVLOLowIntensityFilterSettings::setInputSourceView(QInputSourceView * sequenceView)
 {
   if( sequenceView_ ) {
     sequenceView_->disconnect(this);
   }
 
   if( (sequenceView_ = sequenceView) ) {
-#if HAVE_VLO_FILE
-#endif
   }
 
   updateControls();
 }
 
-QInputSequenceView * QVLOLowIntensityFilterSettings::inputSequenceView() const
+QInputSourceView * QVLOLowIntensityFilterSettings::inputSourceView() const
 {
   return sequenceView_;
 }
@@ -400,20 +386,18 @@ void QVLOLowIntensityFilterSettings::onupdatecontrols()
 QVLOInputSettings::QVLOInputSettings(QWidget * parent) :
     Base("", parent)
 {
-#if HAVE_VLO_FILE
-
   vloDataChannel_ctl_ =
-      add_enum_combobox<c_vlo_file::DATA_CHANNEL>("VLO DATA CHANNEL:",
+      add_enum_combobox<VLO_DATA_CHANNEL>("VLO DATA CHANNEL:",
           "",
-          [this](c_vlo_file::DATA_CHANNEL v) {
+          [this](VLO_DATA_CHANNEL v) {
             if ( sequenceView_ ) {
-              c_vlo_file::DATA_CHANNEL channel = sequenceView_->vloDataChannel();
+              VLO_DATA_CHANNEL channel = sequenceView_->vloDataChannel();
               if ( channel != v ) {
                 sequenceView_->setVloDataChannel(v);
               }
             }
           },
-          [this](c_vlo_file::DATA_CHANNEL * v) {
+          [this](VLO_DATA_CHANNEL * v) {
             if ( sequenceView_ ) {
               *v = sequenceView_->vloDataChannel();
               return true;
@@ -421,8 +405,6 @@ QVLOInputSettings::QVLOInputSettings(QWidget * parent) :
             return false;
           }
           );
-#endif
-
   addRow(tab_ctl = new QTabWidget(this));
   tab_ctl->addTab(lowIntensityFilter_ctl = new QVLOLowIntensityFilterSettings(this), "Low Intensity Filter");
   tab_ctl->addTab(ghostFilter_ctl = new QVLOGhostFilterSettings(this), "Ghost Filter");
@@ -430,7 +412,7 @@ QVLOInputSettings::QVLOInputSettings(QWidget * parent) :
   updateControls();
 }
 
-void QVLOInputSettings::setInputSequenceView(QInputSequenceView * sequenceView)
+void QVLOInputSettings::setInputSourceView(QInputSourceView * sequenceView)
 {
   if( sequenceView_ ) {
     sequenceView_->disconnect(this);
@@ -438,20 +420,18 @@ void QVLOInputSettings::setInputSequenceView(QInputSequenceView * sequenceView)
 
   if( (sequenceView_ = sequenceView) ) {
 
-    ghostFilter_ctl->setInputSequenceView(sequenceView);
-    lowIntensityFilter_ctl->setInputSequenceView(sequenceView);
+    ghostFilter_ctl->setInputSourceView(sequenceView);
+    lowIntensityFilter_ctl->setInputSourceView(sequenceView);
 
-#if HAVE_VLO_FILE
-    connect(sequenceView_, &QInputSequenceView::vloDataChannelChanged,
+    connect(sequenceView_, &QInputSourceView::vloDataChannelChanged,
         this, &ThisClass::updateControls);
-#endif
   }
 
   updateControls();
 
 }
 
-QInputSequenceView * QVLOInputSettings::inputSequenceView() const
+QInputSourceView * QVLOInputSettings::inputSourceView() const
 {
   return sequenceView_;
 }
@@ -493,16 +473,15 @@ QGeneralAppSettingsWidget::QGeneralAppSettingsWidget(QWidget * parent) :
 
 }
 
-void QGeneralAppSettingsWidget::setInputSequenceView(QInputSequenceView * sequenceView)
+void QGeneralAppSettingsWidget::setInputSourceView(QInputSourceView * sequenceView)
 {
-  genericInputSettings_ctl->setInputSequenceView(sequenceView);
-  vloSettings_ctl->setInputSequenceView(sequenceView);
-
+  genericInputSettings_ctl->setInputSourceView(sequenceView);
+  vloSettings_ctl->setInputSourceView(sequenceView);
 }
 
-QInputSequenceView * QGeneralAppSettingsWidget::inputSequenceView() const
+QInputSourceView * QGeneralAppSettingsWidget::inputSourceView() const
 {
-  return genericInputSettings_ctl->inputSequenceView();
+  return genericInputSettings_ctl->inputSourceView();
 }
 
 

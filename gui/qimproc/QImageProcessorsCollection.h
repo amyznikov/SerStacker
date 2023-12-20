@@ -55,7 +55,7 @@ public:
   typedef QImageProcessorSelectionCombo ThisClass;
   typedef QComboBox Base;
 
-  QImageProcessorSelectionCombo(QWidget * parent = Q_NULLPTR);
+  QImageProcessorSelectionCombo(QWidget * parent = nullptr);
 
   bool setCurrentProcessor(const c_image_processor::sptr & processor);
   c_image_processor::sptr currentProcessor() const;

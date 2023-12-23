@@ -790,35 +790,6 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 {
   Base::onMtfControlVisibilityChanged(visible);
 
-//  if( !visible ) {
-//    mtfControl_->setMtfDisplaySettings(nullptr);
-//  }
-//  else {
-//
-//    if( is_visible(imageView) ) {
-//      mtfControl_->setMtfDisplaySettings(imageView->mtfDisplayFunction());
-//    }
-//    else if( is_visible(cloudView) ) {
-//      mtfControl_->setMtfDisplaySettings(&cloudView->mtfDisplay());
-//    }
-//    else {
-//      mtfControl_->setMtfDisplaySettings(nullptr);
-//    }
-//
-//    const QString currentFileName =
-//        mtfControl_->mtfDisplaySettings() ?
-//            QFileInfo(inputSourceView->currentFileName()).fileName() :
-//            "";
-//
-//    if( currentFileName.isEmpty() ) {
-//      mtfControl_->setWindowTitle("Adjust Display Levels ...");
-//    }
-//    else {
-//      mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
-//          currentFileName.toUtf8().constData()));
-//    }
-//  }
-
   if( !visible ) {
     mtfControl_->setMtfDisplaySettings(nullptr);
   }

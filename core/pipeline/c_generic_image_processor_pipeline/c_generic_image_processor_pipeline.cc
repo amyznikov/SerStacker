@@ -82,9 +82,7 @@ bool c_generic_image_processor_pipeline::initialize_pipeline()
 
 void c_generic_image_processor_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
+  base::cleanup_pipeline();
 
   if ( processed_file_writer_.is_open() ) {
     CF_DEBUG("Closing '%s'", processed_file_writer_.filename().c_str());

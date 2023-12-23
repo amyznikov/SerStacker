@@ -349,7 +349,7 @@ bool QInputSourceView::openFile(const QString & abspath)
     const std::string filename =
         abspath.toStdString();
 
-    if( !(currentSource_ = c_input_source::open(filename)) ) {
+    if( !(currentSource_ = c_input_source::create(filename)) ) {
       CF_ERROR("c_input_source::open('%s') fails", filename.c_str());
       return false;
     }

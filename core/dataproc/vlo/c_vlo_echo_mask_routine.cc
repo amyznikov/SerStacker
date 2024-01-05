@@ -34,7 +34,7 @@ bool c_vlo_echo_mask_routine::process(c_vlo_frame * vlo)
   const uint8_t e1 = ((echo_mask_ & c_vlo_frame::ECHO1));
   const uint8_t e2 = ((echo_mask_ & c_vlo_frame::ECHO2));
 
-  const cv::Mat3b echo_mask(get_vlo_scan_size(vlo->current_scan_),
+  const cv::Mat3b echo_mask(vlo_scan_size(vlo->current_scan_),
       invert_selection_ ? cv::Vec3b(255 * (e0 == 0), 255 * (e1 == 0), 255 * (e2 == 0)) :
           cv::Vec3b(255 * (e0 != 0), 255 * (e1 != 0), 255 * (e2 != 0)));
 

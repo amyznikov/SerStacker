@@ -764,9 +764,14 @@ void QDataFrameRoutineOptionsControl::setupControls()
                   return false;
                 });
 
+        if ( p.helpstring ) {
+          ctl->setHelpString(p.helpstring().c_str());
+        }
+
         if( p.is_enabled ) {
           state_ctls_.emplace(ctl, p.is_enabled);
         }
+
 
         break;
       }

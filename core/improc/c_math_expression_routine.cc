@@ -42,7 +42,7 @@ static constexpr struct
 };
 
 template<class T1, class T2>
-static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser * p, cv::InputArray _mask)
+static void process_image_(const cv::Mat & _src, cv::Mat & _dst, const c_math_expression & math, cv::InputArray _mask)
 {
   const int src_rows =
       _src.rows;
@@ -70,7 +70,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
   if ( mask.empty() ) {
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, src_rows),
-        [&src, &dst, p, src_rows, src_cols, src_channels, dst_channels] (const tbb_range & range) {
+        [&src, &dst, &math, src_rows, src_cols, src_channels, dst_channels] (const tbb_range & range) {
 
       double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
 
@@ -98,7 +98,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
         for( int c = 0; c < dst_channels; ++c ) {
           args[6] = c;
           args[7] = srcp[x * src_channels + c];
-          dstp[x * dst_channels + c] = c_math_parser_eval(p, args);
+          dstp[x * dst_channels + c] = math.eval(args);
         }
       }
 #if HAVE_TBB
@@ -112,7 +112,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, src_rows),
-        [&src, &dst, &mask, p, src_rows, src_cols, src_channels, dst_channels](const tbb_range & range) {
+        [&src, &dst, &mask, &math, src_rows, src_cols, src_channels, dst_channels](const tbb_range & range) {
 
           double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
 
@@ -141,7 +141,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
                 for( int c = 0; c < dst_channels; ++c ) {
                   args[6] = c;
                   args[7] = srcp[x * src_channels + c];
-                  dstp[x * dst_channels + c] = c_math_parser_eval(p, args);
+                  dstp[x * dst_channels + c] = math.eval(args);
                 }
               }
             }
@@ -153,134 +153,134 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, c_math_parser *
   }
 }
 
-static void process_image(const cv::Mat & src, cv::Mat & dst, c_math_parser * p, cv::InputArray _mask)
+static void process_image(const cv::Mat & src, cv::Mat & dst, const c_math_expression & math, cv::InputArray _mask)
 {
   switch (src.depth()) {
     case CV_8U:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<uint8_t,uint8_t>(src, dst, p, _mask);
+          return process_image_<uint8_t,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<uint8_t,int8_t>(src, dst, p, _mask);
+          return process_image_<uint8_t,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<uint8_t,uint16_t>(src, dst, p, _mask);
+          return process_image_<uint8_t,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<uint8_t,int16_t>(src, dst, p, _mask);
+          return process_image_<uint8_t,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<uint8_t,int32_t>(src, dst, p, _mask);
+          return process_image_<uint8_t,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<uint8_t,float>(src, dst, p, _mask);
+          return process_image_<uint8_t,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<uint8_t,double>(src, dst, p, _mask);
+          return process_image_<uint8_t,double>(src, dst,math, _mask);
       }
       break;
 
     case CV_8S:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<int8_t,uint8_t>(src, dst, p, _mask);
+          return process_image_<int8_t,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<int8_t,int8_t>(src, dst, p, _mask);
+          return process_image_<int8_t,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<int8_t,uint16_t>(src, dst, p, _mask);
+          return process_image_<int8_t,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<int8_t,int16_t>(src, dst, p, _mask);
+          return process_image_<int8_t,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<int8_t,int32_t>(src, dst, p, _mask);
+          return process_image_<int8_t,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<int8_t,float>(src, dst, p, _mask);
+          return process_image_<int8_t,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<int8_t,double>(src, dst, p, _mask);
+          return process_image_<int8_t,double>(src, dst,math, _mask);
       }
       break;
     case CV_16U:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<uint16_t,uint8_t>(src, dst, p, _mask);
+          return process_image_<uint16_t,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<uint16_t,int8_t>(src, dst, p, _mask);
+          return process_image_<uint16_t,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<uint16_t,uint16_t>(src, dst, p, _mask);
+          return process_image_<uint16_t,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<uint16_t,int16_t>(src, dst, p, _mask);
+          return process_image_<uint16_t,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<uint16_t,int32_t>(src, dst, p, _mask);
+          return process_image_<uint16_t,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<uint16_t,float>(src, dst, p, _mask);
+          return process_image_<uint16_t,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<uint16_t,double>(src, dst, p, _mask);
+          return process_image_<uint16_t,double>(src, dst,math, _mask);
       }
       break;
     case CV_16S:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<int16_t,uint8_t>(src, dst, p, _mask);
+          return process_image_<int16_t,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<int16_t,int8_t>(src, dst, p, _mask);
+          return process_image_<int16_t,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<int16_t,uint16_t>(src, dst, p, _mask);
+          return process_image_<int16_t,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<int16_t,int16_t>(src, dst, p, _mask);
+          return process_image_<int16_t,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<int16_t,int32_t>(src, dst, p, _mask);
+          return process_image_<int16_t,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<int16_t,float>(src, dst, p, _mask);
+          return process_image_<int16_t,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<int16_t,double>(src, dst, p, _mask);
+          return process_image_<int16_t,double>(src, dst,math, _mask);
       }
       break;
     case CV_32S:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<int32_t,uint8_t>(src, dst, p, _mask);
+          return process_image_<int32_t,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<int32_t,int8_t>(src, dst, p, _mask);
+          return process_image_<int32_t,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<int32_t,uint16_t>(src, dst, p, _mask);
+          return process_image_<int32_t,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<int32_t,int16_t>(src, dst, p, _mask);
+          return process_image_<int32_t,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<int32_t,int32_t>(src, dst, p, _mask);
+          return process_image_<int32_t,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<int32_t,float>(src, dst, p, _mask);
+          return process_image_<int32_t,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<int32_t,double>(src, dst, p, _mask);
+          return process_image_<int32_t,double>(src, dst,math, _mask);
       }
       break;
     case CV_32F:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<float,uint8_t>(src, dst, p, _mask);
+          return process_image_<float,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<float,int8_t>(src, dst, p, _mask);
+          return process_image_<float,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<float,uint16_t>(src, dst, p, _mask);
+          return process_image_<float,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<float,int16_t>(src, dst, p, _mask);
+          return process_image_<float,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<float,int32_t>(src, dst, p, _mask);
+          return process_image_<float,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<float,float>(src, dst, p, _mask);
+          return process_image_<float,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<float,double>(src, dst, p, _mask);
+          return process_image_<float,double>(src, dst,math, _mask);
       }
       break;
     case CV_64F:
       switch (dst.depth()) {
         case CV_8U:
-          return process_image_<double,uint8_t>(src, dst, p, _mask);
+          return process_image_<double,uint8_t>(src, dst,math, _mask);
         case CV_8S:
-          return process_image_<double,int8_t>(src, dst, p, _mask);
+          return process_image_<double,int8_t>(src, dst,math, _mask);
         case CV_16U:
-          return process_image_<double,uint16_t>(src, dst, p, _mask);
+          return process_image_<double,uint16_t>(src, dst,math, _mask);
         case CV_16S:
-          return process_image_<double,int16_t>(src, dst, p, _mask);
+          return process_image_<double,int16_t>(src, dst,math, _mask);
         case CV_32S:
-          return process_image_<double,int32_t>(src, dst, p, _mask);
+          return process_image_<double,int32_t>(src, dst,math, _mask);
         case CV_32F:
-          return process_image_<double,float>(src, dst, p, _mask);
+          return process_image_<double,float>(src, dst,math, _mask);
         case CV_64F:
-          return process_image_<double,double>(src, dst, p, _mask);
+          return process_image_<double,double>(src, dst,math, _mask);
       }
       break;
   }
@@ -288,7 +288,6 @@ static void process_image(const cv::Mat & src, cv::Mat & dst, c_math_parser * p,
 
 c_math_expression_routine::~c_math_expression_routine()
 {
-  c_math_parser_destroy(math_parser_);
 }
 
 void c_math_expression_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
@@ -317,31 +316,25 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
     return true;
   }
 
-  if( !math_parser_ ) {
+  if( !initialized_ ) {
 
-    if( !(math_parser_ = c_math_parser_create_stdc()) ) {
-      CF_ERROR("c_math_parser_create_stdc() fails");
-      return false;
-    }
+    initialized_ = true;
 
     for( int i = 0; i < (int) (sizeof(processor_args) / sizeof(processor_args[0])); ++i ) {
-      if( c_math_parser_add_argument(math_parser_, i, processor_args[i].name, processor_args[i].tooldip) < 0 ) {
-        CF_ERROR("c_math_parser_add_argument('%s') fails", processor_args[i].name);
-        return false;
+      if( !math_.add_argument(i, processor_args[i].name, processor_args[i].tooldip) ) {
+        CF_ERROR("math_.add_argument('%s') fails", processor_args[i].name);
       }
     }
-
-    expression_changed_ = true;
   }
 
   if( expression_changed_ ) {
 
-    const char *errmsg =
-        c_math_parser_parse(math_parser_,
-            expression_.c_str());
+    if ( !math_.parse(expression_.c_str()) ) {
 
-    if( errmsg ) {
-      CF_ERROR("c_math_parser_parse(): fails: %s", errmsg);
+      CF_ERROR("math_.parse() fails: %s\n"
+          "error_pos=%s", math_.error_message().c_str(),
+          math_.pointer_to_syntax_error() ? math_.pointer_to_syntax_error() : "null");
+
       return false;
     }
 
@@ -353,7 +346,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       switch (output_channel_) {
 
         case IMAGE:
-          process_image(image.getMatRef(), image.getMatRef(), math_parser_,
+          process_image(image.getMatRef(), image.getMatRef(), math_,
               ignore_mask_ ? cv::noArray() :
                   mask);
           break;
@@ -371,7 +364,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
             }
             mask.setTo(0);
           }
-          process_image(image.getMatRef(), mask.getMatRef(), math_parser_,
+          process_image(image.getMatRef(), mask.getMatRef(), math_,
               input_mask);
           break;
         }
@@ -382,7 +375,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       switch (output_channel_) {
 
         case MASK:
-          process_image(mask.getMatRef(), mask.getMatRef(), math_parser_,
+          process_image(mask.getMatRef(), mask.getMatRef(), math_,
               ignore_mask_ ? cv::noArray() : mask.getMat());
           break;
 
@@ -392,7 +385,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
             if( image.size() != mask.size() || image.channels() != mask.channels() ) {
               image.create(mask.size(), CV_MAKETYPE(std::max(image.depth(), mask.depth()), mask.channels()));
             }
-            process_image(mask.getMatRef(), image.getMatRef(), math_parser_,
+            process_image(mask.getMatRef(), image.getMatRef(), math_,
                 ignore_mask_ ? cv::noArray() : mask.getMat());
           }
           break;

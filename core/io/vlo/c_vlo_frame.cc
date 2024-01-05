@@ -202,8 +202,8 @@ bool c_vlo_frame::get_display_data(DataViewType * viewType, int displayId,
               std::vector<cv::Vec3f> points;
               std::vector<cv::Vec3b> colors;
 
-              points.reserve(get_vlo_scan_size(current_scan_).area());
-              colors.reserve(get_vlo_scan_size(current_scan_).area());
+              points.reserve(vlo_scan_size(current_scan_).area());
+              colors.reserve(vlo_scan_size(current_scan_).area());
 
               get_vlo_points3d(current_scan_, selection_mask_,
                   [&points, &colors](int l, int s, int e, double x, double y, double z, const auto & echo) {

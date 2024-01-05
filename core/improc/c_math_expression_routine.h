@@ -10,7 +10,7 @@
 #define __c_math_expression_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/c_math_parser.h>
+#include <core/proc/c_math_expression.h>
 
 class c_math_expression_routine :
     public c_image_processor_routine
@@ -60,10 +60,12 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
   ~c_math_expression_routine() override;
 
+
 protected:
-  c_math_parser * math_parser_ = nullptr;
+  c_math_expression math_;
   std::string expression_;
   bool expression_changed_ = true;
+  bool initialized_ = false;
   CHANNEL input_channel_ = IMAGE;
   CHANNEL output_channel_ = IMAGE;
 };

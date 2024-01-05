@@ -22,11 +22,11 @@ enum c_data_processor_ctl_type {
   c_data_processor_ctl_flags_chkbox,
   c_data_processor_ctl_browse_for_existing_file,
   c_data_processor_ctl_browse_for_directory,
+  c_data_processor_ctl_math_expression,
   c_data_processor_ctl_begin_group,
   c_data_processor_ctl_end_group,
   c_data_processor_ctl_spinbox,
   c_data_processor_ctl_double_slider,
-  c_data_processor_ctl_math_expression,
 };
 
 struct c_data_processor_routine_ctrl
@@ -48,6 +48,7 @@ struct c_data_processor_routine_ctrl
   std::function<bool (std::string *)> get_value;
   std::function<bool(const std::string&)> set_value;
   std::function<bool ()> is_enabled;
+  std::function<std::string ()> helpstring;
 };
 
 
@@ -92,15 +93,18 @@ struct c_data_processor_routine_ctrl
     tmp.tooltip = desc; \
     tmp.ctl_type = c_data_processor_ctl_flags_chkbox, \
     tmp.get_enum_members = get_members_of<enumtype>(), \
-    tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
+    tmp.get_value = [this](std::string * v) -> bool { \
+      *v = toString(param()); \
+      return true; \
+    }; \
     tmp.set_value = [this](const std::string & s) { \
       std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
       if( fromString(s, &v) ) { \
         std::lock_guard<std::mutex> lock(this->mutex()); \
         set_##param(v); \
+        return true; \
       } \
+      return false; \
     }; \
     (ctls)->emplace_back(tmp); \
   }
@@ -115,15 +119,18 @@ struct c_data_processor_routine_ctrl
         .max = maxvalue, \
         .step = stepvalue, \
     }; \
-    tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
+    tmp.get_value = [this](std::string * v) -> bool { \
+      *v = toString(param()); \
+      return true; \
+    }; \
     tmp.set_value = [this](const std::string & s) { \
       std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
       if( fromString(s, &v) ) { \
         std::lock_guard<std::mutex> lock(this->mutex()); \
         set_##param(v); \
+        return true; \
       } \
+      return false; \
     }; \
     (ctls)->emplace_back(tmp); \
   }
@@ -138,15 +145,18 @@ struct c_data_processor_routine_ctrl
         .max = maxvalue, \
         .step = stepvalue, \
     }; \
-    tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
+    tmp.get_value = [this](std::string * v) -> bool { \
+      *v = toString(param()); \
+      return true; \
+    }; \
     tmp.set_value = [this](const std::string & s) { \
       std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
       if( fromString(s, &v) ) { \
         std::lock_guard<std::mutex> lock(this->mutex()); \
         set_##param(v); \
+        return true; \
       } \
+      return false; \
     }; \
     (ctls)->emplace_back(tmp); \
   }
@@ -158,12 +168,14 @@ struct c_data_processor_routine_ctrl
       .tooltip = desc, \
       .ctl_type = c_data_processor_ctl_browse_for_existing_file, \
     }; \
-    tmp.get_value = [this](void) { \
-        return param(); \
+    tmp.get_value = [this](std::string * v) -> bool { \
+      *v = toString(param()); \
+      return true; \
     }; \
     tmp.set_value = [this](const std::string & s) { \
       std::lock_guard<std::mutex> lock(this->mutex()); \
       set_##param(s); \
+      return true; \
     }; \
    (ctls)->emplace_back(tmp); \
   }
@@ -175,16 +187,40 @@ struct c_data_processor_routine_ctrl
       .tooltip = desc, \
       .ctl_type = c_data_processor_ctl_browse_for_directory, \
     }; \
-    tmp.get_value = [this](void) { \
-        return param(); \
+    tmp.get_value = [this](std::string * v) -> bool { \
+      *v = toString(param()); \
+      return true; \
     }; \
     tmp.set_value = [this](const std::string & s) { \
       std::lock_guard<std::mutex> lock(this->mutex()); \
       set_##param(s); \
+      return true; \
     }; \
    (ctls)->emplace_back(tmp); \
   }
 
+
+#define ADD_DATA_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, param, _name, _desc, _helpstring) \
+    if ( true ) { \
+      c_data_processor_routine_ctrl tmp = { \
+        .name = _name, \
+        .tooltip = _desc, \
+        .ctl_type = c_data_processor_ctl_math_expression, \
+      }; \
+      tmp.get_value = [this](std::string * v) -> bool { \
+        *v = toString(param()); \
+        return true; \
+      }; \
+      tmp.set_value = [this](const std::string & s) { \
+        std::lock_guard<std::mutex> lock(this->mutex()); \
+        set_##param(s); \
+        return true; \
+      }; \
+      tmp.helpstring = [this]() -> std::string { \
+        return _helpstring(); \
+      }; \
+     (ctls)->emplace_back(tmp); \
+    }
 
 
 #define DECLARE_DATA_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip ) \

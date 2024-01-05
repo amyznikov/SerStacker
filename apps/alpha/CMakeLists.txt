@@ -1,11 +1,11 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
-return()
+#return()
 
-find_path(LASLIB_INCLUDES include/laslib)
-find_library(LASLIB_LIBRARY laslib)
+#find_path(LASLIB_INCLUDES include/laslib)
+#find_library(LASLIB_LIBRARY laslib)
 
-message(STATUS "")
+#message(STATUS "")
 
 #if( LASLIB_INCLUDES AND LASLIB_LIBRARY ) 
 #	set( LASLIB_INCLUDES "${LASLIB_INCLUDES}/include")

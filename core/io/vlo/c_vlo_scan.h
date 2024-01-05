@@ -753,7 +753,7 @@ static inline constexpr bool vlo_scan_has_peak_member(...)
 }
 
 
-inline cv::Size get_vlo_scan_size(const c_vlo_scan & scan)
+inline cv::Size vlo_scan_size(const c_vlo_scan & scan)
 {
   switch (scan.version) {
     case VLO_VERSION_1:

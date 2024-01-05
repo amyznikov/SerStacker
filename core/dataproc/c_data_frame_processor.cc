@@ -8,6 +8,7 @@
 #include "c_data_frame_processor.h"
 #include "vlo/c_vlo_echo_mask_routine.h"
 #include "vlo/c_vlo_ghost_detection_routine.h"
+#include "vlo/c_vlo_pixel_selection_routine.h"
 
 #include <atomic>
 #include <core/ssprintf.h>
@@ -65,6 +66,7 @@ void c_data_frame_processor_routine::register_all()
 
     register_class_factory(c_vlo_echo_mask_routine::class_factory_instance());
     register_class_factory(c_vlo_ghost_detection_routine::class_factory_instance());
+    register_class_factory(c_vlo_pixel_selection_routine::class_factory_instance());
 
     registered = true;
   }

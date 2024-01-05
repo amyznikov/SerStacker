@@ -46,6 +46,11 @@ public:
   void setText(const QString & text);
   QString text() const;
 
+  void setHelpString(const QString & s);
+  const QString & helpString() const;
+
+  void showHelpString();
+
 Q_SIGNALS:
   void apply();
 
@@ -53,6 +58,7 @@ protected:
   QMathExpressionTextEdit * expressionTextBox_ctl = nullptr;
   QPushButton * apply_ctl = nullptr;
   QPushButton * showFunctions_ctl = nullptr;
+  QString helpString_;
 };
 
 class QInputMathExpressionDialogBox :

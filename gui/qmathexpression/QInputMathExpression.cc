@@ -6,6 +6,7 @@
  */
 
 #include "QInputMathExpression.h"
+#include <gui/widgets/createAction.h>
 #include <core/debug.h>
 
 QMathExpressionTextEdit::QMathExpressionTextEdit(QWidget * parent) :
@@ -52,6 +53,9 @@ QInputMathExpressionWidget::QInputMathExpressionWidget(QWidget * parent) :
   connect(expressionTextBox_ctl, &QMathExpressionTextEdit::editFinished,
       this, &ThisClass::apply);
 
+  connect(showFunctions_ctl, &QPushButton::clicked,
+      this, &ThisClass::showHelpString);
+
 }
 
 void QInputMathExpressionWidget::setText(const QString & text)
@@ -62,6 +66,42 @@ void QInputMathExpressionWidget::setText(const QString & text)
 QString QInputMathExpressionWidget::text() const
 {
   return expressionTextBox_ctl->toPlainText();
+}
+
+void QInputMathExpressionWidget::setHelpString(const QString & s)
+{
+  helpString_ = s;
+}
+
+const QString & QInputMathExpressionWidget::helpString() const
+{
+  return helpString_;
+}
+
+void QInputMathExpressionWidget::showHelpString()
+{
+  static QWidget * w = nullptr;
+  static QLabel * label = nullptr;
+
+  if ( !w ) {
+    w = new QWidget(QApplication::activeWindow(), Qt::Dialog);
+    w->setWindowTitle("Functions");
+
+    QVBoxLayout * layout = new QVBoxLayout(w);
+    layout->addWidget(createScrollableWrap(label = new QLabel(w), w));
+
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse |
+        Qt::TextSelectableByKeyboard |
+        Qt::LinksAccessibleByMouse |
+        Qt::LinksAccessibleByKeyboard);
+  }
+
+  label->setText(helpString_);
+
+  if ( !w->isVisible() ) {
+    w->show();
+    w->raise();
+  }
 }
 
 QInputMathExpressionDialogBox::QInputMathExpressionDialogBox(QWidget * parent) :

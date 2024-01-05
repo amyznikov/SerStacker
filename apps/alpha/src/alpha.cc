@@ -37,37 +37,58 @@
 
 #include <core/io/c_las_file.h>
 #include <core/proc/c_minmaxacc.h>
+#include <core/proc/c_math_expression.h>
 
 
 int main(int argc, char *argv[])
 {
+  std::string s;
 
-  c_minacc<float, int> maxacc(5);
+  for ( int i = 1; i < argc; ++i ) {
+    if ( strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0 ) {
+      fprintf(stdout, "Usage: alpha 'expression'\n");
+      return 0;
 
-  float maxkey = 0;
-  int  maxval = 0;
-
-  for ( int i = 0; i < 100; ++i ) {
-
-    float key = rand() % 100;
-    float val = i;
-
-    maxacc.update(key, val);
-
-    if ( key >= maxkey ) {
-      maxkey = key;
-      maxval = val;
     }
+
+    if ( s.empty() ) {
+      s = argv[i];
+      continue;
+    }
+
+    fprintf(stderr, "Invalid arg: '%s'\n", argv[i]);
+    return 1;
+
   }
 
-  fprintf(stdout, "key\tvalue\n");
 
-  for ( const auto & item : maxacc.items() ) {
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
 
-    fprintf(stdout, "%g\t%d\n", (double) item.key, (int)item.value);
+  c_math_expression m;
+
+  m.add_argument(0, "x", "x");
+
+  if( !m.parse(s) ) {
+
+    CF_ERROR("m.parse() fails: %s err=%s",
+        m.error_message().c_str(),
+        m.pointer_to_syntax_error());
+
+    return 1;
+  }
+
+  for ( double x = -10; x <= 10; x += 1 ) {
+
+    double args[] = {x};
+
+    double f = m.eval(args);
+
+    fprintf(stdout, "%g\t%g\n", x, f);
 
   }
 
+  CF_DEBUG("H");
 
 
   return 0;

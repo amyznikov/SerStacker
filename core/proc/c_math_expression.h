@@ -36,6 +36,7 @@ public:
   {
     virtual ~abstract_node() = default;
     virtual double eval(const double args[]) const = 0;
+    virtual bool is_const_expression() const = 0;
   };
 
   struct unary_operation
@@ -58,7 +59,7 @@ public:
     std::string desc;
     void * param = nullptr;   /*!< for functors only */
     int numargs = 0;
-    int is_volatile = false;
+    // int is_volatile = false;
 
     union {
       func00 f00;

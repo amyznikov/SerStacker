@@ -48,6 +48,180 @@ typedef c_math_expression::func10 func10;
 typedef c_math_expression::funcfn funcfn;
 
 
+
+
+static double max_func(double a, double b)
+{
+  return a >= b ? a : b;
+}
+
+static double min_func(double a, double b)
+{
+  return a <= b ? a : b;
+}
+
+static double operator_add(double x, double y)
+{
+  return x + y;
+}
+static double operator_sub(double x, double y)
+{
+  return x - y;
+}
+static double operator_mul(double x, double y)
+{
+  return x * y;
+}
+static double operator_div(double x, double y)
+{
+  return x / y;
+}
+static double operator_unary_minus(double x)
+{
+  return -x;
+}
+static double operator_unary_plus(double x)
+{
+  return x;
+}
+static double operator_logical_not(double x)
+{
+  return !x;
+}
+static double operator_logical_or(double x, double y)
+{
+  return x || y;
+}
+static double operator_logical_and(double x, double y)
+{
+  return x && y;
+}
+static double operator_eq(double x, double y)
+{
+  return x == y;
+}
+static double operator_not_eq(double x, double y)
+{
+  return x != y;
+}
+static double operator_lt(double x, double y)
+{
+  return x < y;
+}
+static double operator_le(double x, double y)
+{
+  return x <= y;
+}
+static double operator_gt(double x, double y)
+{
+  return x > y;
+}
+static double operator_ge(double x, double y)
+{
+  return x >= y;
+}
+static double sinc(double x)
+{
+  return x ? sin(x) / x : 1;
+}
+static double gexp(double x)
+{
+  return exp(-x * x / 2);
+}
+static double frand(double xmin, double xmax)
+{
+  return xmin + rand() * (xmax - xmin) / RAND_MAX;
+}
+
+/** wrap l from range 0..2*pi into range -pi..pi */
+static inline double lwrap(double l)
+{
+  return l > M_PI ? l - 2 * M_PI : l;
+}
+
+static double if_func(double cond, double expr_if_true, double expr_if_false)
+{
+  return cond ? expr_if_true : expr_if_false;
+}
+
+///**
+// * Get hammer-aitoff coordinates for given l,b;
+// * l in range [-pi,pi], b in range [-pi/2,pi/2]
+// */
+//static inline void haxy(double l, double b, double * x, double * y)
+//{
+//  const double z = sqrt(1 + cos(b) * cos(l / 2));
+//  *x = cos(b) * sin(l / 2) / z;
+//  *y = sin(b) / z;
+//}
+
+static double aitofx(double l, double b)
+{
+  double z;
+  l = lwrap(l), z = sqrt(1 + cos(b) * cos(l / 2));
+  return (cos(b) * sin(l / 2) / z);
+}
+
+static double aitofy(double l, double b)
+{
+  double z;
+  l = lwrap(l), z = sqrt(1 + cos(b) * cos(l / 2));
+  return (sin(b) / z);
+}
+
+
+static double ymd( double year, double month, double d )
+{
+  int i, y = (int) year, m = (int) month; /* TODO: dangerous cast */
+  double dy;
+
+  if ( y < 1 || m < 1 || 12 < m || d < 1 || 365 < d ) {
+    return 0.0;
+  }
+
+  i = m - 1;
+  --d;
+  while ( 0 < i ) {
+    d += "DADCDCDDCDCD"[ --i] - '%'; /* days in month    */
+  }
+
+  if ( ( y % 4 == 0 && y % 100 != 0 ) || y % 400 == 0 ) { /* leap year        */
+    if ( 2 < m ) {
+      ++d;
+    }
+    dy = 366.0;
+  }
+  else {
+    dy = 365.0;
+  }
+
+  return (y + d / dy);
+}
+
+/*!
+ * Gaussian noise with mean m and variance s,
+ * uses the Box-Muller transformation
+ */
+static double noise(double m, double s)
+{
+  const double r1 = ( (double) rand() ) / RAND_MAX;
+  const double r2 = ( (double) rand() ) / RAND_MAX;
+  const double val = sqrt(-2.0 * log(r1)) * cos(2.0 * M_PI * r2);
+  return s * val + m;
+}
+
+/**
+ * @brief Trey Wilson closed-form solution for shortest distance between two angles in given range (0..2pi).
+ *      Angles do NOT need to be normalized.
+ * @see <https://gist.github.com/shaunlebron/8832585>
+**/
+static double shortdist(double a1, double a2, double range /*= 2 * M_PI*/)
+{
+  const double da = fmod(a2 - a1, range);
+  return fmod(2 * da, range) - da;
+}
+
+
 class c_value_node :
     public c_abstract_node
 {
@@ -64,6 +238,12 @@ public:
     (void)(args);
     return value;
   }
+
+  bool is_const_expression() const override
+  {
+    return true;
+  }
+
 };
 
 class c_bound_parameter_node :
@@ -82,6 +262,12 @@ public:
     (void)(args);
     return *value;
   }
+
+  bool is_const_expression() const override
+  {
+    return false;
+  }
+
 };
 
 class c_arg_node :
@@ -99,6 +285,11 @@ public:
   double eval(const double args[]) const override
   {
     return args[argindex];
+  }
+
+  bool is_const_expression() const override
+  {
+    return false;
   }
 
 };
@@ -283,6 +474,21 @@ public:
     return 0;
   }
 
+  bool is_const_expression() const override
+  {
+    if( f02 == &noise ) {
+      return false;
+    }
+
+    for( const auto arg : args_ ) {
+      if( !arg->is_const_expression() ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
 protected:
   c_functional_node(const std::vector<c_abstract_node*> & args) :
       args_(args)
@@ -308,7 +514,7 @@ protected:
 
 };
 
-class c_ff_node :
+class c_ff_node:
     public c_functional_node
 {
   funcfn fn;
@@ -341,6 +547,11 @@ public:
     return fn(param, ff_args, numargs);
   }
 
+  bool is_const_expression() const override
+  {
+    return false;
+  }
+
 };
 
 static const char* skip_white_spaces(const char ** curpos)
@@ -360,170 +571,6 @@ static bool parse_number(double * value, const char * curpos, char ** endptr)
 static bool can_be_part_of_identifier(char ch)
 {
   return isalnum(ch) || ch == '_' || ch == '$';
-}
-
-static double max_func(double a, double b)
-{
-  return a >= b ? a : b;
-}
-
-static double min_func(double a, double b)
-{
-  return a <= b ? a : b;
-}
-
-static double operator_add(double x, double y)
-{
-  return x + y;
-}
-static double operator_sub(double x, double y)
-{
-  return x - y;
-}
-static double operator_mul(double x, double y)
-{
-  return x * y;
-}
-static double operator_div(double x, double y)
-{
-  return x / y;
-}
-static double operator_unary_minus(double x)
-{
-  return -x;
-}
-static double operator_unary_plus(double x)
-{
-  return x;
-}
-static double operator_logical_not(double x)
-{
-  return !x;
-}
-static double operator_logical_or(double x, double y)
-{
-  return x || y;
-}
-static double operator_logical_and(double x, double y)
-{
-  return x && y;
-}
-static double operator_eq(double x, double y)
-{
-  return x == y;
-}
-static double operator_not_eq(double x, double y)
-{
-  return x != y;
-}
-static double operator_lt(double x, double y)
-{
-  return x < y;
-}
-static double operator_le(double x, double y)
-{
-  return x <= y;
-}
-static double operator_gt(double x, double y)
-{
-  return x > y;
-}
-static double operator_ge(double x, double y)
-{
-  return x >= y;
-}
-static double sinc(double x)
-{
-  return x ? sin(x) / x : 1;
-}
-static double gexp(double x)
-{
-  return exp(-x * x / 2);
-}
-static double frand(double xmin, double xmax)
-{
-  return xmin + rand() * (xmax - xmin) / RAND_MAX;
-}
-
-/** wrap l from range 0..2*pi into range -pi..pi */
-static inline double lwrap(double l)
-{
-  return l > M_PI ? l - 2 * M_PI : l;
-}
-
-static double if_func(double cond, double expr_if_true, double expr_if_false)
-{
-  return cond ? expr_if_true : expr_if_false;
-}
-
-///**
-// * Get hammer-aitoff coordinates for given l,b;
-// * l in range [-pi,pi], b in range [-pi/2,pi/2]
-// */
-//static inline void haxy(double l, double b, double * x, double * y)
-//{
-//  const double z = sqrt(1 + cos(b) * cos(l / 2));
-//  *x = cos(b) * sin(l / 2) / z;
-//  *y = sin(b) / z;
-//}
-
-static double aitofx(double l, double b)
-{
-  double z;
-  l = lwrap(l), z = sqrt(1 + cos(b) * cos(l / 2));
-  return (cos(b) * sin(l / 2) / z);
-}
-
-static double aitofy(double l, double b)
-{
-  double z;
-  l = lwrap(l), z = sqrt(1 + cos(b) * cos(l / 2));
-  return (sin(b) / z);
-}
-
-
-static double ymd( double year, double month, double d )
-{
-  int i, y = (int) year, m = (int) month; /* TODO: dangerous cast */
-  double dy;
-
-  if ( y < 1 || m < 1 || 12 < m || d < 1 || 365 < d )
-  {
-    return 0.0;
-  }
-
-  i = m - 1;
-  --d;
-  while ( 0 < i )
-  {
-    d += "DADCDCDDCDCD"[ --i] - '%'; /* days in month    */
-  }
-  if ( ( y % 4 == 0 && y % 100 != 0 ) || y % 400 == 0 ) /* leap year        */
-  {
-    if ( 2 < m )
-    {
-      ++d;
-    }
-    dy = 366.0;
-  }
-  else
-  {
-    dy = 365.0;
-  }
-
-  return ( y + d / dy );
-}
-
-/*!
- * Gaussian noise with mean m and variance s,
- * uses the Box-Muller transformation
- */
-static double noise( double s, double m )
-{
-  const double r1 = ( (double) rand() ) / RAND_MAX;
-  const double r2 = ( (double) rand() ) / RAND_MAX;
-  const double val = sqrt(-2.0 * log(r1)) * cos(2.0 * M_PI * r2);
-  return s * val + m;
 }
 
 } // namespace
@@ -588,7 +635,7 @@ c_math_expression::c_math_expression()
   add_function(sinc, "sinc", "sinc(x)/x");
   add_function(gexp, "gexp", "exp(-x^2/2)");
   add_function(frand, "rand", "rand(min,max) - uniform random number in the range [min..max]");
-  add_function(noise, "noise","noise(s,m]) - gaussian noise with mean m and variance s.");
+  add_function(noise, "noise","noise(m, s) - random noise with mean m and variance s using rand() and Box-Muller transformation.");
 
   add_function(acosh, "acosh", "acosh(x) inverse hyperbolic cosine of x");
   add_function(asinh, "asinh", "asinh(x) inverse hyperbolic sine of x");
@@ -636,6 +683,9 @@ c_math_expression::c_math_expression()
   add_function(if_func, "if", "if(condition, expr_if_true, expr_if_false)");
   add_function(min_func, "min", "min(v1, v2)");
   add_function(max_func, "max", "max(v1, v2)");
+  add_function(shortdist, "shortdist", "shortdist(a, b, range=2*pi) is "
+      "Trey Wilson closed-form solution for shortest distance between two angles a and b in given range [0..2pi]");
+
 }
 
 
@@ -770,7 +820,6 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
    */
 
   const unary_operation * unop = 0;
-  int arg_is_const ;
 
   const arg_desc * af = 0;
   const binding_desc * pf = 0;
@@ -790,12 +839,9 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
 
     if ( parse_terminal_token(curpos, ppnode) ) {
 
-      arg_is_const =
-          dynamic_cast<c_value_node*>(*ppnode) != nullptr;//  (*ppnode)->eval == value_node_eval;
-
       *ppnode = new c_functional_node(unop->fn,  *ppnode);
 
-      if ( arg_is_const ) {
+      if ( (*ppnode)->is_const_expression() ) {
 
         const double value =
             (*ppnode)->eval(nullptr);
@@ -805,7 +851,9 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
         *ppnode =
             new c_value_node(value);
       }
+
     }
+
     return *ppnode != 0;
   }
 
@@ -870,12 +918,11 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
   else if( (ff = lookup_function(name.c_str())) ) {
     std::vector<c_abstract_node*> args;
     c_abstract_node * arg = 0;
-    bool all_args_are_contants = true;
     bool success = true;
 
     *curpos = tmp1;
     if ( *skip_white_spaces(curpos) != OBRACE ) {
-      set_errmsg("missing '%c' in function call '%s'", OBRACE, ff->name);
+      set_errmsg("missing '%c' in function call '%s'", OBRACE, ff->name.c_str());
       return 0;
     }
 
@@ -887,7 +934,7 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
     while( args.size() < ff->numargs ) {
 
       if ( *skip_white_spaces(curpos) == CBRACE ) {
-        set_errmsg("%s expects %d arguments", name, ff->numargs);
+        set_errmsg("%s expects %d arguments", name.c_str(), ff->numargs);
         success = false;
         break;
       }
@@ -897,10 +944,6 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
       }
 
       args.emplace_back(arg);
-
-      if( !dynamic_cast<c_value_node*>(arg) ) {
-        all_args_are_contants = false;
-      }
 
       if ( *skip_white_spaces(curpos) == ARGLIST_DELIMITER && args.size() < ff->numargs ) {
         ++*curpos;
@@ -999,7 +1042,7 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
         break;
 
       default:
-        set_errmsg("BUG IN MATH PARSER SOURCE AT %s:%d",__FILE__, __LINE__);
+        set_errmsg("BUG IN MATH PARSER SOURCE AT %s:%d", __FILE__, __LINE__);
         for( int ii = 0, nn = args.size(); ii < nn; ++ii ) {
           delete args[ii];
         }
@@ -1007,7 +1050,7 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
       }
     }
 
-    if( all_args_are_contants && !ff->is_volatile ) {
+    if( (*ppnode)->is_const_expression() ) {
 
       const double value =
           (*ppnode)->eval(nullptr);
@@ -1042,9 +1085,8 @@ bool c_math_expression::parse_expression(size_t priority_level, const char ** cu
    * to the highest priority at the end of table
    */
 
-  const binary_operation * binop = 0;
+  const binary_operation * binop = nullptr;
   std::vector<c_abstract_node*> args(2, nullptr);
-  int args_are_constants;
 
   *ppnode = nullptr;
 
@@ -1066,15 +1108,11 @@ bool c_math_expression::parse_expression(size_t priority_level, const char ** cu
       return false;
     }
 
-    args_are_constants =
-        dynamic_cast<c_value_node*>(args[0]) &&
-            dynamic_cast<c_value_node*>(args[1]);
-
     args[0] =
         new c_functional_node(binop->fn,
             args);
 
-    if( args_are_constants ) {
+    if( args[0]->is_const_expression() ) {
 
       const double value =
           args[0]->eval(nullptr);
@@ -1183,7 +1221,7 @@ bool c_math_expression::add_bind(double * value, const char * name, const char *
           });
 
   if ( ii != bindings_.end() ) {
-    set_errmsg("Binding '%s' already exists", name, ii->value);
+    set_errmsg("Binding '%s' already exists", name);
     return false;
   }
 

@@ -39,12 +39,6 @@ public:
     ECHO2 = 0x4,
   };
 
-  enum SELECTION_MASK_MODE {
-    SELECTION_MASK_REPLACE,
-    SELECTION_MASK_AND,
-    SELECTION_MASK_OR,
-    SELECTION_MASK_XOR,
-  };
 
   c_vlo_frame();
 

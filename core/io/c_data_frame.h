@@ -14,7 +14,8 @@
 #include <vector>
 #include <set>
 
-enum DataViewType {
+enum DataViewType
+{
   DataViewType_Image,
   DataViewType_PointCloud,
 };
@@ -31,6 +32,15 @@ class c_data_frame
 public:
   typedef c_data_frame this_class;
   typedef std::shared_ptr<this_class> sptr;
+
+  enum SELECTION_MASK_MODE
+  {
+    SELECTION_MASK_REPLACE,
+    SELECTION_MASK_AND,
+    SELECTION_MASK_OR,
+    SELECTION_MASK_XOR,
+  };
+
 
   c_data_frame() = default;
   virtual ~c_data_frame() = default;

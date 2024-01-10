@@ -35,9 +35,18 @@ public:
   bool get_image(int id, cv::OutputArray image,
       cv::OutputArray mask = cv::noArray()) override;
 
+  void update_selection(cv::InputArray seletion_mask,
+      SELECTION_MASK_MODE mode);
+
+  void cleanup() override;
+
+  void get_output_mask(cv::OutputArray output_mask);
+
 public:
   cv::Mat image;
   cv::Mat1b mask;
+  cv::Mat1b selection_mask;
+
   cv::Matx33f color_matrix = cv::Matx33f::eye();
   COLORID colorid = COLORID_UNKNOWN;
   int bpc = 0;

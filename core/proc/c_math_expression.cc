@@ -222,6 +222,11 @@ static double shortdist(double a1, double a2, double range /*= 2 * M_PI*/)
 }
 
 
+static double bgr2gray(double b, double g, double r)
+{
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 class c_value_node :
     public c_abstract_node
 {
@@ -686,6 +691,13 @@ c_math_expression::c_math_expression()
   add_function(shortdist, "shortdist", "shortdist(a, b, range=2*pi) is "
       "Trey Wilson closed-form solution for shortest distance between two angles a and b in given range [0..2pi]");
 
+  add_function(bgr2gray, "bgr2gray", "bgr2gray(b, g, r) : "
+      "Convert BGR color to gray value : 0.299 * r + 0.587 * g + 0.114 * b");
+
+  std::sort(functions_.begin(), functions_.end(),
+      [](const auto & prev, const auto & next) {
+        return prev.name < next.name;
+      });
 }
 
 

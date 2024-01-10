@@ -8,25 +8,7 @@
 #include "c_vlo_frame.h"
 #include <functional>
 #include <core/proc/reduce_channels.h>
-#include <core/ssprintf.h>
 #include <core/debug.h>
-
-
-template<>
-const c_enum_member* members_of<c_vlo_frame::SELECTION_MASK_MODE>()
-{
-  static constexpr c_enum_member members[] = {
-      { c_vlo_frame::SELECTION_MASK_REPLACE, "REPLACE", "REPLACE" },
-      { c_vlo_frame::SELECTION_MASK_AND, "AND", "AND" },
-      { c_vlo_frame::SELECTION_MASK_OR, "OR", "OR" },
-      { c_vlo_frame::SELECTION_MASK_XOR, "XOR", "XOR" },
-      { c_vlo_frame::SELECTION_MASK_REPLACE }
-  };
-
-  return members;
-}
-
-
 
 namespace {
 

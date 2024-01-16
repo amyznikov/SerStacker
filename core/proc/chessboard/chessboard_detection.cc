@@ -23,7 +23,7 @@
 template<>
 const c_enum_member * members_of<FindChessboardCornersMethod>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {cv_findChessboardCorners, "findChessboardCorners", "Calls cv::findChessboardCorners()"},
       {cv_findChessboardCornersSB, "findChessboardCornersSB", "Calls cv::findChessboardCornersSB()"},
       {cv_findChessboardCorners},
@@ -35,7 +35,7 @@ const c_enum_member * members_of<FindChessboardCornersMethod>()
 template<>
 const c_enum_member* members_of<FindChessboardCornersFlags>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { FindChessboardCorners_ADAPTIVE_THRESH, "ADAPTIVE_THRESH", "cv::CALIB_CB_ADAPTIVE_THRESH" },
       { FindChessboardCorners_NORMALIZE_IMAGE, "NORMALIZE_IMAGE", "cv::CALIB_CB_NORMALIZE_IMAGE" },
       { FindChessboardCorners_FILTER_QUADS, "FILTER_QUADS", "cv::CALIB_CB_FILTER_QUADS" },
@@ -55,7 +55,7 @@ const c_enum_member* members_of<FindChessboardCornersFlags>()
 template<>
 const c_enum_member* members_of<FindChessboardCornersSBFlags>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { FindChessboardCornersSB_EXHAUSTIVE, "EXHAUSTIVE", "cv::CALIB_CB_EXHAUSTIVE" },
       { FindChessboardCornersSB_NORMALIZE_IMAGE, "NORMALIZE_IMAGE", "cv::CALIB_CB_NORMALIZE_IMAGE" },
       { 0 }

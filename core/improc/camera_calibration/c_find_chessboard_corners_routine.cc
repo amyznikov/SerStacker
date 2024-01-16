@@ -11,7 +11,7 @@
 template<>
 const c_enum_member* members_of<c_find_chessboard_corners_routine::DisplayType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_find_chessboard_corners_routine::DisplayCorners, "Corners", "" },
       { c_find_chessboard_corners_routine::DisplayOtsuImage, "OtsuImage", "" },
       { c_find_chessboard_corners_routine::DisplayHarrisImage, "HarrisImage", "" },

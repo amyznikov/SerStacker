@@ -21,7 +21,7 @@ const c_enum_member* members_of<serimager::c_capture_limits::TYPE>()
 {
   using namespace serimager;
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_capture_limits::ByTime, "ByTime", "" },
       { c_capture_limits::ByNumberOfFrames, "ByNumberOfFrames", "" },
       { c_capture_limits::ByTime }
@@ -34,7 +34,7 @@ template<>
 const c_enum_member* members_of<serimager::QCameraWriter::FORMAT>()
 {
   using namespace serimager;
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QCameraWriter::SER, "SER", "" },
       { QCameraWriter::AVI, "AVI", "" },
       { QCameraWriter::IMAGES, "IMAGES", "" },

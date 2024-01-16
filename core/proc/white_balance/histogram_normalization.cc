@@ -14,11 +14,11 @@
 template<>
 const c_enum_member * members_of<histogram_normalization_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { histogram_normalize_mean, "mean" },
       { histogram_normalize_median, "median" },
       { histogram_normalize_mode, "mode" },
-      { histogram_normalize_mean, nullptr, }  // must  be last
+      { histogram_normalize_mean }  // must  be last
   };
 
   return members;

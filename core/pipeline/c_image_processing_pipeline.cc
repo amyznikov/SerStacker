@@ -646,7 +646,7 @@ int c_image_processing_pipeline::display_type() const
 
 const c_enum_member* c_image_processing_pipeline::get_display_types() const
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { 0, "DEFAULT", "Default display type" },
       { 0 },
   };

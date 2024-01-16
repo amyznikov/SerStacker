@@ -10,7 +10,7 @@
 template<>
 const c_enum_member * members_of<c_census_transfrom_routine::CensusType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
     {c_census_transfrom_routine::CV_DENSE_CENSUS, "DENSE_CENSUS", "cv::stereo::CV_DENSE_CENSUS"},
     {c_census_transfrom_routine::CV_SPARSE_CENSUS, "SPARSE_CENSUS", "cv::stereo::CV_SPARSE_CENSUS"},
     {c_census_transfrom_routine::CV_CS_CENSUS, "CS_CENSUS", "cv::stereo::CV_CS_CENSUS"},

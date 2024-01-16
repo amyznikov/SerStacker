@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<c_polar_warp_routine::INTERPOLATION_MODE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_polar_warp_routine::INTER_LINEAR, "LINEAR", "cv::INTER_LINEAR" },
       { c_polar_warp_routine::INTER_AREA, "AREA", "cv::INTER_AREA" },
       { c_polar_warp_routine::INTER_CUBIC, "CUBIC", "cv::INTER_CUBIC" },
@@ -31,7 +31,7 @@ const c_enum_member* members_of<c_polar_warp_routine::INTERPOLATION_MODE>()
 //template<>
 //const c_enum_member* members_of<c_polar_warp_routine::WARP_MODE>()
 //{
-//  static constexpr c_enum_member members[] = {
+//  static const c_enum_member members[] = {
 //      { c_polar_warp_routine::WARP_POLAR_LINEAR, "LINEAR", "cv::WARP_POLAR_LINEAR" },
 //      { c_polar_warp_routine::WARP_POLAR_LOG, "LOG", "cv::WARP_POLAR_LOG " },
 //      { c_polar_warp_routine::WARP_POLAR_LINEAR },

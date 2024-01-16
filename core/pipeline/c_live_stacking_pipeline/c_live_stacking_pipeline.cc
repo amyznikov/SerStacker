@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<live_stacking_accumulation_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
 
       { live_stacking_accumulation_disable, "disable",
           "Simple average" },

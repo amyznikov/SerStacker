@@ -16,7 +16,7 @@
 template<>
 const c_enum_member* members_of<QGraphicsRectShape::MouseAction>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QGraphicsRectShape::MouseAction_None, "None", "" },
       { QGraphicsRectShape::MouseAction_MoveRect, "MoveRect", "" },
       { QGraphicsRectShape::MouseAction_MoveTop, "MoveTop", "" },

@@ -11,7 +11,7 @@
 template<>
 const c_enum_member* members_of<c_melp_stereo_matcher_routine::DisplayType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_melp_stereo_matcher_routine::DisplayDisparity, "Disparity", "" },
       { c_melp_stereo_matcher_routine::DisplayHlayout, "Hlayout", "" },
       { c_melp_stereo_matcher_routine::DisplayVlayout, "Vlayout", "" },

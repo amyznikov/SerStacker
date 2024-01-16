@@ -13,7 +13,7 @@
 template<>
 const c_enum_member * members_of<c_set_luminance_channel_routine::Colorspace>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_set_luminance_channel_routine::Colorspace_Lab, "Lab", ""},
       { c_set_luminance_channel_routine::Colorspace_Luv, "Luv", ""},
       { c_set_luminance_channel_routine::Colorspace_HSV, "HSV", ""},

@@ -12,7 +12,7 @@
 template<>
 const c_enum_member * members_of<color_channel_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { color_channel_0, "0", "cv::extractChannel(0)" },
       { color_channel_1, "1", "cv::extractChannel(1)" },
       { color_channel_2, "2", "cv::extractChannel(2)" },
@@ -30,7 +30,7 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
       { color_channel_max_color, "max_color", "max - min"},
 
-      { color_channel_unknown, nullptr, }
+      { color_channel_unknown}
   };
   return members;
 }

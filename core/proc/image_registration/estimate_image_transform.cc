@@ -26,7 +26,7 @@ const c_enum_member * members_of<ROBUST_METHOD>()
 //      { ROBUST_METHOD_USAC_PROSAC, "USAC_PROSAC", "USAC, sorted points, runs PROSAC" },
 //      { ROBUST_METHOD_USAC_MAGSAC, "USAC_MAGSAC", "USAC, runs MAGSAC++" },
 //#endif
-      { EMM_LMEDS, nullptr, "" },
+      { EMM_LMEDS },
   };
 
   return members;

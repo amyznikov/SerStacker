@@ -11,7 +11,7 @@
 template<>
 const c_enum_member * members_of<c_pyramid_test_routine::Mode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
     {c_pyramid_test_routine::TestPyrDown, "PyrDown", ""},
     {c_pyramid_test_routine::TestPyrUp, "PyrUp", ""},
     {c_pyramid_test_routine::TestPyrDownUp, "PyrDownUp", ""},

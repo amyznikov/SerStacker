@@ -68,11 +68,6 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
 
   mainLayout_->addWidget(playControls_ = new QPlaySequenceControl(this), 0, Qt::AlignBottom);
 
-
-  displayTypes_.emplace_back(c_enum_member {
-      -1, nullptr, nullptr
-  });
-
   QObject::connect(playControls_, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
 
@@ -180,8 +175,8 @@ void QInputSourceView::setupMainToolbar()
                   if ( m ) {
 
                     menu.addAction(createCheckableAction(QIcon(),
-                            m->name,
-                            m->comment,
+                            m->name.c_str(),
+                            m->comment.c_str(),
                             viewType == selectedViewType_,
                             [this, viewType]() {
                               setViewType(viewType);
@@ -305,6 +300,7 @@ void QInputSourceView::setCurrentProcessor(const c_data_frame_processor::sptr & 
   currentProcessor_ = processor;
 
   if ( currentFrame_ ) {
+    currentFrame_->cleanup();
     processCurrentFrame();
     setViewType(selectedViewType_);
   }
@@ -353,6 +349,8 @@ bool QInputSourceView::openFile(const QString & abspath)
       CF_ERROR("c_input_source::open('%s') fails", filename.c_str());
       return false;
     }
+
+    currentSource_->set_input_options(&input_options_);
 
     startDisplay();
 
@@ -429,12 +427,6 @@ void QInputSourceView::loadNextFrame()
       return;
     }
 
-    if( currentFrame_ ) {
-
-      apply_input_options(currentFrame_,
-          input_options_);
-    }
-
     processCurrentFrame();
 
     setViewType(selectedViewType_);
@@ -451,8 +443,6 @@ void QInputSourceView::processCurrentFrame()
     viewSelectionToolbutton_ctl->setEnabled(false);
   }
   else {
-
-    currentFrame_->cleanup();
 
     if( currentProcessor_ && !currentProcessor_->process(currentFrame_) ) {
       CF_ERROR("currentProcessor_->process(currentFrame_) fails");
@@ -504,7 +494,7 @@ void QInputSourceView::setViewType(DataViewType viewType)
       }
     }
 
-    displayTypes_.clear();
+    displayChannels_.clear();
 
     for( auto ii = displayChannels.begin(); ii != displayChannels.end(); ++ii ) {
 
@@ -518,17 +508,12 @@ void QInputSourceView::setViewType(DataViewType viewType)
           c.minval,
           c.maxval);
 
-      displayTypes_.emplace_back(c_enum_member {
+      displayChannels_.add(
           displayId,
-          c.name.c_str(),
-          c.tooltip.c_str()
-      });
+          c.name,
+          c.tooltip);
 
     }
-
-    displayTypes_.emplace_back(c_enum_member {
-        -1, nullptr, nullptr
-    });
 
     displayCurrentFrame();
   }
@@ -539,14 +524,14 @@ void QInputSourceView::displayCurrentFrame()
 {
   cv::Mat image, data, mask;
 
-  if ( displayTypes_.size() > 1 && !enum_member(displayType_, displayTypes_.data())  ) {
-    displayType_ = displayTypes_[0].value;
+  if ( displayChannels_.size() > 1 && !enum_member(displayType_, displayChannels_.data())  ) {
+    displayType_ = displayChannels_[0].value;
   }
 
   if( currentFrame_ ) {
 
     currentFrame_->get_display_data(&selectedViewType_,
-        displayType(),
+        displayChannel(),
         image, data, mask);
   }
 
@@ -622,9 +607,9 @@ bool QInputSourceView::applyColorMap(cv::InputArray displayImage, cv::InputArray
   return true;
 }
 
-const c_enum_member * QInputSourceView::displayTypes() const
+const c_enum_member * QInputSourceView::displayChannels() const
 {
-  return displayTypes_.data();
+  return displayChannels_.data();
 }
 
 void QInputSourceView::getInputDataRange(double * minval, double * maxval) const

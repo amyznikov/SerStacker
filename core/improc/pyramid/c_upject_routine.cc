@@ -11,7 +11,7 @@
 template<>
 const c_enum_member * members_of<c_upject_routine::UpjectMode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {c_upject_routine::UpjectUneven, "Uneven"},
       {c_upject_routine::UpjectEven, "Even"},
       {c_upject_routine::UpjectUneven},
@@ -23,7 +23,7 @@ const c_enum_member * members_of<c_upject_routine::UpjectMode>()
 template<>
 const c_enum_member * members_of<c_upject_routine::FillMode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {c_upject_routine::FillZero, "Zeros"},
       {c_upject_routine::FillAvg, "Avg"},
       {c_upject_routine::FillZero},

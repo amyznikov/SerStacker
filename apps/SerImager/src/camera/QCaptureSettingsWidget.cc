@@ -7,6 +7,7 @@
 
 #include "QCaptureSettingsWidget.h"
 #include <gui/widgets/style.h>
+#include <gui/widgets/settings.h>
 #include <core/io/c_ffmpeg_file.h>
 
 #define ICON_start_capture        ":/serimager/icons/start-capture.png"
@@ -703,7 +704,7 @@ void QCaptureSettingsWidget::saveCaptureLimits()
         writer_->captureLimits();
 
     settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_type"),
-        toString(limits.type));
+        QString(toString(limits.type).c_str()));
 
     settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_value"),
         limits.value);

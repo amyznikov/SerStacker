@@ -69,10 +69,10 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
 void QEnumComboBoxBase::setupItems(const c_enum_member * membs)
 {
   if( membs ) {
-    while (membs->name && *membs->name) {
-      Base::addItem(membs->name, (int) (membs->value));
-      if( membs->comment ) {
-        Base::setItemData(count() - 1, QString(membs->comment), Qt::WhatsThisRole);
+    while (!membs->name.empty()) {
+      Base::addItem(membs->name.c_str(), (int) (membs->value));
+      if( !membs->comment.empty() ) {
+        Base::setItemData(count() - 1, QString(membs->comment.c_str()), Qt::WhatsThisRole);
       }
       ++membs;
     }

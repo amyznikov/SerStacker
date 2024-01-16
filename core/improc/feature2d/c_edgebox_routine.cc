@@ -15,7 +15,7 @@
 template<>
 const c_enum_member* members_of<c_edgebox_routine::DisplayType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
 
   { c_edgebox_routine::DisplayEdgeMap, "EdgeMap",
       "The output from cv::ximgproc::StructuredEdgeDetection::detectEdges()" },
@@ -38,7 +38,7 @@ const c_enum_member* members_of<c_edgebox_routine::DisplayType>()
 template<>
 const c_enum_member* members_of<c_edgebox_routine::GradientType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_edgebox_routine::GradientMagnitude, "GradientMagnitude", "" },
       { c_edgebox_routine::StructuredEdgeDetection, "StructuredEdgeDetection", ""  },
       { c_edgebox_routine::GradientMagnitude },

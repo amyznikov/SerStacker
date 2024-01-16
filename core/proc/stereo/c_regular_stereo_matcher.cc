@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<stereo_matcher_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { stereo_matcher_cvStereoBM, "StereoBM", "cv::StereoSGBM" },
       { stereo_matcher_cvStereoSGBM, "StereoSGBM", "cv::StereoSGBM" },
 #if HAVE_OpenCV_stereo
@@ -30,7 +30,7 @@ const c_enum_member* members_of<stereo_matcher_type>()
 template<>
 const c_enum_member* members_of<StereoBM_PreFilterType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { StereoBM_PREFILTER_NORMALIZED_RESPONSE, "NORMALIZED_RESPONSE", "cv::StereoBM::PREFILTER_NORMALIZED_RESPONSE" },
       { StereoBM_PREFILTER_XSOBEL, "XSOBEL", "cv::StereoBM::PREFILTER_XSOBEL" },
       { StereoBM_PREFILTER_NORMALIZED_RESPONSE }
@@ -43,7 +43,7 @@ const c_enum_member* members_of<StereoBM_PreFilterType>()
 template<>
 const c_enum_member* members_of<StereoSGBM_Mode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { StereoSGBM_SGBM, "SGBM", "cv::StereoSGBM::MODE_SGBM" },
       { StereoSGBM_HH, "HH", "cv::StereoSGBM::MODE_HH" },
       { StereoSGBM_SGBM_3WAY, "SGBM_3WAY", "cv::StereoSGBM::MODE_SGBM_3WAY" },
@@ -59,7 +59,7 @@ const c_enum_member* members_of<StereoSGBM_Mode>()
 template<>
 const c_enum_member* members_of<StereoBinaryKernelType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { CV_DENSE_CENSUS, "CV_DENSE_CENSUS", "cv::stereo::CV_DENSE_CENSUS" },
       { CV_SPARSE_CENSUS, "CV_SPARSE_CENSUS", "cv::stereo::CV_SPARSE_CENSUS" },
       { CV_CS_CENSUS, "CV_CS_CENSUS", "cv::stereo::CV_CS_CENSUS" },
@@ -76,7 +76,7 @@ const c_enum_member* members_of<StereoBinaryKernelType>()
 template<>
 const c_enum_member* members_of<StereoBinarySpeckleRemovalTechnique>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { CV_SPECKLE_REMOVAL, "CV_SPECKLE_REMOVAL_ALGORITHM", "cv::stereo::CV_SPECKLE_REMOVAL_ALGORITHM" },
       { CV_SPECKLE_REMOVAL_AVG, "CV_SPECKLE_REMOVAL_AVG_ALGORITHM", "cv::stereo::CV_SPECKLE_REMOVAL_AVG_ALGORITHM" },
       {CV_SPECKLE_REMOVAL}
@@ -88,7 +88,7 @@ const c_enum_member* members_of<StereoBinarySpeckleRemovalTechnique>()
 template<>
 const c_enum_member* members_of<StereoBinarySubpixelInterpolationMethod>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { CV_QUADRATIC_INTERPOLATION, "QUADRATIC", "cv::stereo::CV_QUADRATIC_INTERPOLATION" },
       { CV_SIMETRICV_INTERPOLATION, "SIMETRICV", "cv::stereo::CV_SIMETRICV_INTERPOLATION" },
       { CV_QUADRATIC_INTERPOLATION}
@@ -100,7 +100,7 @@ const c_enum_member* members_of<StereoBinarySubpixelInterpolationMethod>()
 template<>
 const c_enum_member* members_of<StereoBinaryBMPrefilterType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { StereoBinaryBM_PREFILTER_NORMALIZED_RESPONSE, "NORMALIZED_RESPONSE", "cv::stereo::StereoBinaryBM::PREFILTER_NORMALIZED_RESPONSE" },
       { StereoBinaryBM_PREFILTER_XSOBEL, "XSOBEL", "cv::stereo::StereoBinaryBM::PREFILTER_XSOBEL" },
       { StereoBinaryBM_PREFILTER_NORMALIZED_RESPONSE}
@@ -112,7 +112,7 @@ const c_enum_member* members_of<StereoBinaryBMPrefilterType>()
 template<>
 const c_enum_member* members_of<StereoBinarySGBMMode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { StereoBinarySGBM_SGBM, "SGBM", "cv::stereo::StereoBinarySGBM::MODE_SGBM" },
       { StereoBinarySGBM_HH, "HH", "cv::stereo::StereoBinarySGBM::MODE_HH" },
       { StereoBinarySGBM_SGBM}

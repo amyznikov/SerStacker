@@ -14,7 +14,7 @@
 template<>
 const c_enum_member* members_of<stereo_input_frame_layout_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { stereo_frame_layout_horizontal, "horizontal", "" },
       { stereo_frame_layout_vertical, "vertical", "" },
       { stereo_frame_layout_separate_sources, "separate_sources", "" },

@@ -1072,7 +1072,7 @@ const cv::Mat & c_frame_weigthed_average::counter() const
 template<>
 const c_enum_member* members_of<c_laplacian_pyramid_focus_stacking::fusing_policy>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
 
       { c_laplacian_pyramid_focus_stacking::select_max_energy, "select_max_energy",
           "select max laplacian energy" },

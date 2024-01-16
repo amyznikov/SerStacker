@@ -13,12 +13,12 @@
 template<>
 const c_enum_member * members_of<cvflann::flann_centers_init_t>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { cvflann::FLANN_CENTERS_RANDOM, "RANDOM", "" },
       { cvflann::FLANN_CENTERS_GONZALES, "GONZALES", "" },
       { cvflann::FLANN_CENTERS_KMEANSPP, "KMEANSPP", "" },
       { cvflann::FLANN_CENTERS_GROUPWISE, "GROUPWISE", "" },
-      { cvflann::FLANN_CENTERS_RANDOM, nullptr, "" },
+      { cvflann::FLANN_CENTERS_RANDOM, },
   };
 
   return members;
@@ -27,7 +27,7 @@ const c_enum_member * members_of<cvflann::flann_centers_init_t>()
 template<>
 const c_enum_member * members_of<cvflann::flann_distance_t>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { cvflann::FLANN_DIST_L1, "L1", "" },
       { cvflann::FLANN_DIST_L2, "L2", "" },
       { cvflann::FLANN_DIST_MINKOWSKI, "MINKOWSKI", "" },
@@ -40,7 +40,7 @@ const c_enum_member * members_of<cvflann::flann_distance_t>()
 #if ( CV_VERSION_CURRRENT >= CV_VERSION_INT(4,4,0) )
       { cvflann::FLANN_DIST_DNAMMING, "DNAMMING", "" },
 #endif
-      { cvflann::FLANN_DIST_L2, nullptr, "" },
+      { cvflann::FLANN_DIST_L2, },
   };
 
   return members;
@@ -50,7 +50,7 @@ const c_enum_member * members_of<cvflann::flann_distance_t>()
 template<>
 const c_enum_member * members_of<FlannIndexType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { FlannIndex_linear, "linear", "" },
       { FlannIndex_kdtree, "kdtree", "" },
       { FlannIndex_kmeans, "kmeans", "" },
@@ -58,7 +58,7 @@ const c_enum_member * members_of<FlannIndexType>()
       { FlannIndex_hierarchical, "hierarchical", "" },
       { FlannIndex_lsh, "lsh", "" },
       { FlannIndex_autotuned, "autotuned", "" },
-      { FlannIndex_unknown, nullptr, nullptr }
+      { FlannIndex_unknown}
   };
 
   return members;

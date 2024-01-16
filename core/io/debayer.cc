@@ -14,7 +14,7 @@
 template<>
 const c_enum_member* members_of<COLORID>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { COLORID_MONO, "MONO", "" },
       { COLORID_BAYER_RGGB, "BAYER_RGGB", "" },
       { COLORID_BAYER_GRBG, "BAYER_GRBG", "" },
@@ -36,7 +36,7 @@ const c_enum_member* members_of<COLORID>()
 template<>
 const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {DEBAYER_DISABLE, "DISABLE", "DEBAYER_DISABLE: Don't debayer"},
       {DEBAYER_NN,    "NN",     "DEBAYER_NN: OpenCV nearest-neighboor interpolation with cv::demosaicing()"},
       {DEBAYER_NN2,   "NN2",    "DEBAYER_NN2: SerStacker nearest-neighboor interpolation with nninterpolate()"},
@@ -45,7 +45,7 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
       {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
       {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer but create colored bayer matrix image"},
 
-      {DEBAYER_NN, nullptr, } // must  be last
+      {DEBAYER_NN, } // must  be last
   };
   return members;
 }

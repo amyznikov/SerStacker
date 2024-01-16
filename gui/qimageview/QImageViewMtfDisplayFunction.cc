@@ -22,7 +22,7 @@ namespace {
 template<>
 const c_enum_member* members_of<DISPLAY_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
       { DISPLAY_PIXEL_VALUE }
   };
@@ -46,7 +46,7 @@ QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
   return imageViewer_;
 }
 
-const c_enum_member * QImageViewMtfDisplayFunction::displayTypes() const
+const c_enum_member * QImageViewMtfDisplayFunction::displayChannels() const
 {
   return members_of<DISPLAY_TYPE>();
 }

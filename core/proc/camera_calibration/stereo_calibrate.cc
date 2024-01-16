@@ -36,7 +36,7 @@
 template<>
 const c_enum_member* members_of<STEREO_CALIBRATION_FLAGS>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {STEREO_CALIB_FIX_INTRINSIC, "FIX_INTRINSIC","Fix cameraMatrix? and distCoeffs? so that only R, T, E, and F matrices are estimated."},
       {STEREO_CALIB_USE_INTRINSIC_GUESS, "USE_INTRINSIC_GUESS"," Optimize some or all of the intrinsic parameters according to the specified flags. Initial values are provided by the user."},
       {STEREO_CALIB_USE_EXTRINSIC_GUESS, "USE_EXTRINSIC_GUESS"," R and T contain valid initial values that are optimized further. Otherwise R and T are initialized to the median value of the pattern views (each dimension separately)."},

@@ -12,6 +12,8 @@
 #include "c_data_frame.h"
 #include "c_vlo_file.h"
 
+struct c_input_options;
+
 class c_input_source
 {
 public:
@@ -101,6 +103,16 @@ public:
     return enabled_;
   }
 
+  void set_input_options(const c_input_options * options)
+  {
+    input_options_ = options;
+  }
+
+  const c_input_options * input_options() const
+  {
+    return input_options_;
+  }
+
   virtual ~c_input_source() = default;
 
   virtual bool open() = 0;
@@ -144,6 +156,9 @@ protected:
   cv::Matx33f color_matrix_ = cv::Matx33f::eye();
 
   std::vector<uint> badframes_;
+  const c_input_options * input_options_ = nullptr;
+
+
 };
 
 

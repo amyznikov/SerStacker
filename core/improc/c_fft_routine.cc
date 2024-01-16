@@ -12,7 +12,7 @@ template<>
 const c_enum_member * members_of<c_fft_routine::DisplayType>()
 {
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {c_fft_routine::DisplayPower, "Power", "Display power spectrum"},
       {c_fft_routine::DisplayPhase, "Phase", "Display phase spectrum"},
       {c_fft_routine::DisplayReal, "Real", "Display Real part of spectrum"},

@@ -18,7 +18,7 @@ const c_enum_member* members_of<enum v4l2_ctrl_type>()
 {
   int xx = LINUX_VERSION_CODE;
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { V4L2_CTRL_TYPE_INTEGER, "V4L2_CTRL_TYPE_INTEGER", "" },
       { V4L2_CTRL_TYPE_BOOLEAN, "V4L2_CTRL_TYPE_BOOLEAN", "" },
       { V4L2_CTRL_TYPE_MENU, "V4L2_CTRL_TYPE_MENU", "" },
@@ -62,7 +62,7 @@ const c_enum_member* members_of<enum v4l2_ctrl_type>()
 template<>
 const c_enum_member* members_of<enum v4l2_frmivaltypes>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { V4L2_FRMIVAL_TYPE_DISCRETE, "V4L2_FRMIVAL_TYPE_DISCRETE", "" },
       { V4L2_FRMIVAL_TYPE_CONTINUOUS, "V4L2_FRMIVAL_TYPE_CONTINUOUS", "" },
       { V4L2_FRMIVAL_TYPE_STEPWISE, "V4L2_FRMIVAL_TYPE_STEPWISE", "" },

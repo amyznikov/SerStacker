@@ -24,7 +24,7 @@
 template<>
 const c_enum_member* members_of<VLO_INTENSITY_CHANNEL>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { VLO_INTENSITY_PEAK, "PEAK", "PEAK" },
       { VLO_INTENSITY_AREA, "AREA", "AREA" },
       { VLO_INTENSITY_PEAK },

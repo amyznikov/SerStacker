@@ -27,6 +27,7 @@ enum c_data_processor_ctl_type {
   c_data_processor_ctl_end_group,
   c_data_processor_ctl_spinbox,
   c_data_processor_ctl_double_slider,
+  c_data_processor_ctl_string_combobox,
 };
 
 struct c_data_processor_routine_ctrl
@@ -47,6 +48,7 @@ struct c_data_processor_routine_ctrl
 
   std::function<bool (std::string *)> get_value;
   std::function<bool(const std::string&)> set_value;
+  std::function<bool(std::vector<std::string>*, bool*)> get_strings;
   std::function<bool ()> is_enabled;
   std::function<std::string ()> helpstring;
 };
@@ -222,6 +224,22 @@ struct c_data_processor_routine_ctrl
      (ctls)->emplace_back(tmp); \
     }
 
+#define ADD_DATA_PROCESSOR_CTRL_STRING_COMBO(ctls, getfn, _name, _desc, _helpstring) \
+    if ( true ) { \
+      c_data_processor_routine_ctrl tmp = { \
+        .name = _name, \
+        .tooltip = _desc, \
+        .ctl_type = c_data_processor_ctl_string_combobox, \
+      }; \
+      tmp.get_strings = [this](std::vector<std::string> * strings, bool * readonly) -> bool { \
+        return getfn(strings, readonly); \
+      }; \
+      tmp.helpstring = [this]() -> std::string { \
+        return _helpstring(); \
+      }; \
+     (ctls)->emplace_back(tmp); \
+    }
+
 
 #define DECLARE_DATA_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip ) \
     typedef class_name this_class; \
@@ -247,6 +265,7 @@ struct c_data_processor_routine_ctrl
     static sptr create(bool enabled = true) { \
         return sptr(new this_class(enabled)); \
     } \
+
 
 class c_data_frame_processor_routine
 {

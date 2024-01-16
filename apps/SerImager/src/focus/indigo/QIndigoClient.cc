@@ -30,7 +30,7 @@
 template<>
 const c_enum_member* members_of<indigo_property_state>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { INDIGO_IDLE_STATE, "INDIGO_IDLE_STATE", "property is passive (unused by INDIGO)" },
       { INDIGO_OK_STATE, "INDIGO_OK_STATE", "property is in correct state or if operation on property was successful" },
       { INDIGO_BUSY_STATE, "INDIGO_BUSY_STATE", "property is transient state or if operation on property is pending" },
@@ -44,7 +44,7 @@ const c_enum_member* members_of<indigo_property_state>()
 template<>
 const c_enum_member* members_of<INDIGO_CONNECTION_STATUS>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { INDIGO_CONNECTION_STATUS_UNKNOWN, "CONNECTION_STATUS_UNKNOWN", "" },
       { INDIGO_CONNECTION_STATUS_CONNECTED, "CONNECTION_STATUS_CONNECTED", "" },
       { INDIGO_CONNECTION_STATUS_DISCONNECTED, "CONNECTION_STATUS_DISCONNECTED", "" },
@@ -57,7 +57,7 @@ const c_enum_member* members_of<INDIGO_CONNECTION_STATUS>()
 template<>
 const c_enum_member* members_of<INDIGO_FOCUSER_MOVE_DIRECTION>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { INDIGO_FOCUSER_MOVE_DIRECTION_UNKNOWN, "FOCUSER_MOVE_DIRECTION_UNKNOWN", "" },
       { INDIGO_FOCUSER_MOVE_DIRECTION_INWARD, "FOCUSER_MOVE_DIRECTION_INWARD", "" },
       { INDIGO_FOCUSER_MOVE_DIRECTION_OUTWARD, "FOCUSER_MOVE_DIRECTION_OUTWARD", "" },

@@ -284,11 +284,11 @@ void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
   if( QObject * qobj = dynamic_cast<QObject*>(displaySettings_) ) {
 
     const c_enum_member * displayType =
-        displaySettings_->displayTypes();
+        displaySettings_->displayChannels();
 
-    for ( ; displayType->name && *displayType->name; ++ displayType ) {
+    for ( ; !displayType->name.empty(); ++ displayType ) {
 
-      displayType_ctl->addItem(displayType->name,
+      displayType_ctl->addItem(displayType->name.c_str(),
           displayType->value);
 
     }
@@ -432,9 +432,9 @@ void QMtfControl::onColormapCtlClicked()
     invertColormapAction->setChecked(displaySettings_->invertColormap());
     menu.addSeparator();
 
-    for( const c_enum_member *colormap = members_of<COLORMAP>(); colormap->name; ++colormap ) {
+    for( const c_enum_member *colormap = members_of<COLORMAP>(); !colormap->name.empty(); ++colormap ) {
 
-      QAction * action = new QAction(colormap->name);
+      QAction * action = new QAction(colormap->name.c_str());
       action->setData((int) (colormap->value));
 
       if( colormap->value == current_colormap ) {
@@ -469,7 +469,7 @@ void QMtfControl::onColormapCtlClicked()
 void QMtfControl::onDisplayTypeCurrentItemChanged()
 {
   if( displaySettings_ && !updatingControls() ) {
-    displaySettings_->setDisplayType(displayType_ctl->currentData().toInt());
+    displaySettings_->setDisplayChannel(displayType_ctl->currentData().toInt());
     displaySettings_->saveParameters();
     updateControls();
   }
@@ -644,7 +644,7 @@ void QMtfControl::onupdatecontrols()
     double imin=-1, imax=-1, shadows, highlights, midtones;
 
     displayType_ctl->setCurrentIndex(displayType_ctl->findData(
-        displaySettings_->displayType()));
+        displaySettings_->displayChannel()));
 
     displaySettings_->getMtfInputRange(&imin, &imax);
 

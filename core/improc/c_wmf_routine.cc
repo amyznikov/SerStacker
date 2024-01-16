@@ -13,7 +13,7 @@ const c_enum_member * members_of<cv::ximgproc::WMFWeightType>()
 {
   using namespace cv::ximgproc;
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {WMF_OFF, "OFF", "unweighted"},
       {WMF_EXP, "EXP", "exp(-|I1-I2|^2/(2*sigma^2))"},
       {WMF_IV1, "IV1", "(|I1-I2|+sigma)^-1"},

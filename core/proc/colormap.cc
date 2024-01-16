@@ -11,7 +11,7 @@
 template<>
 const c_enum_member * members_of<COLORMAP>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { COLORMAP_GRAYS, "GRAYS", "" },
       { COLORMAP_JET, "JET", "" },
       { COLORMAP_RAINBOW, "RAINBOW", "" },
@@ -38,7 +38,7 @@ const c_enum_member * members_of<COLORMAP>()
       { COLORMAP_DEEPGREEN, "DEEPGREEN", "" },
 #endif // HAVE_COLORMAP_DEEPGREEN
       { COLORMAP_NONE, "NONE", "" },
-      { COLORMAP_NONE, nullptr, nullptr },
+      { COLORMAP_NONE},
   };
 
   return members;

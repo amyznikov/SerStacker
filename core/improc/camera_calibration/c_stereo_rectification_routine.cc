@@ -13,7 +13,7 @@
 template<>
 const c_enum_member* members_of<c_stereo_rectification_routine::DisplayMode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_stereo_rectification_routine::DisplayHLayout, "HLayout", "Horizontal Layout" },
       { c_stereo_rectification_routine::DisplayVLayout, "VLayout", "Vertical Layout" },
       { c_stereo_rectification_routine::DisplayBlend, "Blend", "cv::addWeighted(left, right)" },
@@ -30,7 +30,7 @@ const c_enum_member* members_of<c_stereo_rectification_routine::DisplayMode>()
 template<>
 const c_enum_member* members_of<c_stereo_rectification_routine::SwapFramesMode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_stereo_rectification_routine::SwapFramesNone, "None", "Don't swap frames" },
       { c_stereo_rectification_routine::SwapFramesAfterRectification, "After",
           "Swap camera frames after rectification)" },

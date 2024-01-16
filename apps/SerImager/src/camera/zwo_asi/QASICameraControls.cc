@@ -6,6 +6,7 @@
  */
 
 #include "QASICameraControls.h"
+#include <gui/widgets/settings.h>
 #include <core/debug.h>
 
 namespace serimager {
@@ -583,7 +584,7 @@ void QASIROIControlWidget::populate_supported_frame_formats()
         break;
       }
 
-      imageFormat_ctl->addItem(toString(iFormat),
+      imageFormat_ctl->addItem(toQString(iFormat),
           QVariant::fromValue((int) iFormat));
     }
 

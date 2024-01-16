@@ -265,7 +265,7 @@ cv::Scalar compute_point_color(const cv::Mat & src, int r, const c_pixinsight_mt
 template<>
 const c_enum_member* members_of<DISPLAY_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
       { DISPLAY_PIXEL_VALUE }
   };
@@ -288,7 +288,7 @@ QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
   return cloudView_;
 }
 
-const c_enum_member * QCloudViewMtfDisplay::displayTypes() const
+const c_enum_member * QCloudViewMtfDisplay::displayChannels() const
 {
   return members_of<DISPLAY_TYPE>();
 }

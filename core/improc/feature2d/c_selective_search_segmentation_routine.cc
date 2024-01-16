@@ -10,7 +10,7 @@
 template<>
 const c_enum_member* members_of<c_selective_search_segmentation_routine::Strategy>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_selective_search_segmentation_routine::Fast, "Fast", "" },
       { c_selective_search_segmentation_routine::Quality, "Quality", "" },
       { c_selective_search_segmentation_routine::Single, "Single", "Single" },

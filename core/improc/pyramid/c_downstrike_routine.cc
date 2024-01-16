@@ -10,7 +10,7 @@
 template<>
 const c_enum_member * members_of<c_downstrike_routine::DownstrikeMode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {c_downstrike_routine::DownstrikeUneven, "Uneven"},
       {c_downstrike_routine::DownstrikeEven, "Even"},
       {c_downstrike_routine::DownstrikeUneven},

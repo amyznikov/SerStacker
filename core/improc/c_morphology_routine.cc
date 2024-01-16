@@ -11,7 +11,7 @@
 template<>
 const c_enum_member * members_of<c_morphology_routine::OPERATION>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {c_morphology_routine::MORPH_ERODE, "ERODE", "cv::erode()"},
       {c_morphology_routine::MORPH_DILATE, "DILATE", "cv::dilate"},
       {c_morphology_routine::MORPH_OPEN, "OPEN", "opening operation"},

@@ -14,7 +14,7 @@
 template<>
 const c_enum_member* members_of<DOWNSTRIKE_MODE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { DOWNSTRIKE_EVEN, "DOWNSTRIKE_EVEN", "Reject each EVEN row and column: 0,2,4,6..." },
       { DOWNSTRIKE_UNEVEN, "DOWNSTRIKE_UNEVEN", "Reject each UNEVEN row and column: 1,3,5,7 ..." },
       { DOWNSTRIKE_UNEVEN},

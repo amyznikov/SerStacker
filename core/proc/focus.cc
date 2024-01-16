@@ -13,7 +13,7 @@
 template<>
 const c_enum_member* members_of<SHARPNESS_MEASURE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { SHARPNESS_MEASURE_LCM, "LCM", "local contrast map from c_local_contrast_measure class" },
       { SHARPNESS_MEASURE_LPG, "LPG", "laplacian + gradient from c_lpg_sharpness_measure class" },
       { SHARPNESS_MEASURE_NORMALIZED_VARIANCE, "NORMALIZED_VARIANCE", "Normalized variance stdtev(image)/mean(image)" },

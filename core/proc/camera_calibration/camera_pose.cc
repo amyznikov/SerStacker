@@ -35,7 +35,7 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
       { EMM_USAC_PROSAC, "USAC_PROSAC", "USAC, sorted points, runs PROSAC" },
       { EMM_USAC_MAGSAC, "USAC_MAGSAC", "USAC, runs MAGSAC++" },
 #endif
-      { EMM_LMEDS, nullptr, "" },
+      { EMM_LMEDS},
   };
 
   return members;
@@ -1079,7 +1079,7 @@ bool estimate_camera_pose_and_derotation_homography(
 template<>
 const c_enum_member * members_of<EPIPOLAR_MOTION_DIRECTION>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {EPIPOLAR_MOTION_FORWARD, "FORWARD", "Assume forward camera motion"},
       {EPIPOLAR_MOTION_BACKWARD, "BACKWARD", "Assume backward camera motion"},
       {EPIPOLAR_MOTION_BOTH, "BOTH", "Don't use motion direction assumptions"},

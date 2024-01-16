@@ -19,7 +19,7 @@
 #include <vector>
 #include <string.h>
 #include <type_traits>
-
+#include <algorithm>
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT
@@ -159,31 +159,29 @@ bool fromString(const std::string & s, std::pair<T1, T2> * v)
 }
 
 
-// enums
-
 struct c_enum_member {
   int value;
-  const char * name;
-  const char * comment;
+  std::string name;
+  std::string comment;
 };
 
 typedef const c_enum_member * (*get_enum_members_proc)();
 
 template<class enum_type>
-typename std::enable_if<std::is_enum<enum_type>::value,
-  const c_enum_member *>::type members_of();
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  const c_enum_member *> members_of();
 
 
 template<class T>
-inline const typename std::enable_if<std::is_enum<T>::value,
-  get_enum_members_proc>::type get_members_of()
+inline const typename std::enable_if_t<std::is_enum_v<T>,
+  get_enum_members_proc> get_members_of()
 {
   return &members_of<T>;
 }
 
 template<class T>
-inline const typename std::enable_if<!std::is_enum<T>::value,
-  get_enum_members_proc>::type get_members_of()
+inline const typename std::enable_if_t<!std::is_enum_v<T>,
+  get_enum_members_proc> get_members_of()
 {
   return nullptr;
 }
@@ -191,7 +189,7 @@ inline const typename std::enable_if<!std::is_enum<T>::value,
 inline const c_enum_member* enum_member(int v, const c_enum_member members[])
 {
   if( members ) {
-    for( int i = 0; members[i].name && *members[i].name; ++i ) {
+    for( int i = 0; !members[i].name.empty(); ++i ) {
       if( members[i].value == (int) (v) ) {
         return &members[i];
       }
@@ -209,38 +207,42 @@ inline typename std::enable_if_t<std::is_enum_v<enum_type>,
 
 
 template<class enum_type>
-typename std::enable_if<std::is_enum<enum_type>::value,
-  const char *>::type toString(const enum_type & v)
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  const std::string &> toString(const enum_type & v)
 {
   const c_enum_member * members =
       members_of<enum_type>();
 
   if ( members ) {
-    for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+    for ( int i = 0; !members[i].name.empty(); ++i ) {
       if ( members[i].value == (int)(v) ) {
         return members[i].name;
       }
     }
   }
-  return "";
+
+  static const std::string empty_string;
+  return empty_string;
 }
 
 
 template<class enum_type>
-typename std::enable_if<std::is_enum<enum_type>::value,
-  const char *>::type comment_for(const enum_type & v)
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  const std::string &> comment_for(const enum_type & v)
 {
   const c_enum_member * members =
       members_of<enum_type>();
 
   if ( members ) {
-    for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+    for ( int i = 0; !members[i].name.empty(); ++i ) {
       if ( members[i].value == v ) {
-        return members[i].comment ? members[i].comment : "";
+        return members[i].comment;
       }
     }
   }
-  return "";
+
+  static const std::string empty_string;
+  return empty_string;
 }
 
 
@@ -254,15 +256,15 @@ inline const c_enum_member* fromString(const std::string & s, const c_enum_membe
     int x;
 
     if( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
-      for( int i = 0; members[i].name && *members[i].name; ++i ) {
+      for( int i = 0; !members[i].name.empty(); ++i ) {
         if( members[i].value == x ) {
           return &members[i];
         }
       }
     }
     else {  // then try string
-      for( int i = 0; members[i].name && *members[i].name; ++i ) {
-        if( strcasecmp(members[i].name, cs) == 0 ) {
+      for( int i = 0; !members[i].name.empty(); ++i ) {
+        if( strcasecmp(members[i].name.c_str(), cs) == 0 ) {
           return &members[i];
         }
       }
@@ -273,8 +275,8 @@ inline const c_enum_member* fromString(const std::string & s, const c_enum_membe
 }
 
 template<class enum_type>
-typename std::enable_if<std::is_enum<enum_type>::value,
-  bool>::type fromString(const std::string & s, enum_type * v)
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  bool> fromString(const std::string & s, enum_type * v)
 {
   if ( !s.empty()) {
 
@@ -289,7 +291,7 @@ typename std::enable_if<std::is_enum<enum_type>::value,
       int x;
 
       if ( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
-        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+        for ( int i = 0; !members[i].name.empty(); ++i ) {
           if ( members[i].value == x ) {
             *v = static_cast<enum_type>(members[i].value);
             return true;
@@ -297,8 +299,8 @@ typename std::enable_if<std::is_enum<enum_type>::value,
         }
       }
       else {  // then try string
-        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
-          if ( strcasecmp(members[i].name, cs) == 0 ) {
+        for ( int i = 0; !members[i].name.empty(); ++i ) {
+          if ( strcasecmp(members[i].name.c_str(), cs) == 0 ) {
             *v = static_cast<enum_type>(members[i].value);
             return true;
           }
@@ -312,8 +314,8 @@ typename std::enable_if<std::is_enum<enum_type>::value,
 
 
 template<class enum_type>
-typename std::enable_if<std::is_enum<enum_type>::value,
-  enum_type>::type fromString(const std::string & s, enum_type defval)
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  enum_type> fromString(const std::string & s, enum_type defval)
 {
   if ( !s.empty() ) {
 
@@ -327,15 +329,15 @@ typename std::enable_if<std::is_enum<enum_type>::value,
 
       int x;
       if ( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
-        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
+        for ( int i = 0; !members[i].name.empty(); ++i ) {
           if ( members[i].value == x ) {
             return static_cast<enum_type>(members[i].value);
           }
         }
       }
       else {  // then try string
-        for ( int i = 0; members[i].name && *members[i].name; ++i ) {
-          if ( strcasecmp(members[i].name, cs) == 0 ) {
+        for ( int i = 0; !members[i].name.empty(); ++i ) {
+          if ( strcasecmp(members[i].name.c_str(), cs) == 0 ) {
             return static_cast<enum_type>(members[i].value);
           }
         }
@@ -351,7 +353,7 @@ inline std::string flagsToString(int flags, const c_enum_member * membs)
   std::string s;
 
   if( membs ) {
-    for( ; membs->name && *membs->name; ++membs ) {
+    for( ; !membs->name.empty(); ++membs ) {
 
       if( flags & membs->value ) {
 
@@ -369,8 +371,8 @@ inline std::string flagsToString(int flags, const c_enum_member * membs)
 
 
 template<class enum_type>
-typename std::enable_if<std::is_enum_v<enum_type>,
-  std::string>::type flagsToString(int flags)
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  std::string> flagsToString(int flags)
 {
   return flagsToString(flags, members_of<enum_type>());
 }
@@ -391,8 +393,8 @@ inline int flagsFromString(const std::string & s, const c_enum_member *membs)
       const char * s =
           token.c_str();
 
-      for ( int i = 0; membs[i].name && *membs[i].name; ++i ) {
-        if ( strcasecmp(membs[i].name, s) == 0 ) {
+      for ( int i = 0; !membs[i].name.empty(); ++i ) {
+        if ( strcasecmp(membs[i].name.c_str(), s) == 0 ) {
           flags |= membs[i].value;
           break;
         }
@@ -404,8 +406,8 @@ inline int flagsFromString(const std::string & s, const c_enum_member *membs)
 }
 
 template<class enum_type>
-typename std::enable_if<std::is_enum_v<enum_type>,
-  int>::type flagsFromString(const std::string & s)
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  int> flagsFromString(const std::string & s)
 {
 
   int flags = 0;
@@ -423,8 +425,8 @@ typename std::enable_if<std::is_enum_v<enum_type>,
       const char * s =
           token.c_str();
 
-      for ( int i = 0; membs[i].name && *membs[i].name; ++i ) {
-        if ( strcasecmp(membs[i].name, s) == 0 ) {
+      for ( int i = 0; !membs[i].name.empty(); ++i ) {
+        if ( strcasecmp(membs[i].name.c_str(), s) == 0 ) {
           flags |= membs[i].value;
           break;
         }
@@ -435,6 +437,83 @@ typename std::enable_if<std::is_enum_v<enum_type>,
   return flags;
 }
 
+
+class c_enum_members
+{
+public:
+  typedef c_enum_members this_class;
+  typedef std::vector<c_enum_member>::iterator iterator;
+  typedef std::vector<c_enum_member>::const_iterator const_iterator;
+
+
+  c_enum_members()
+  {
+    members_.emplace_back(c_enum_member{-1});
+  }
+
+  const c_enum_member * data() const
+  {
+    return members_.data();
+  }
+
+  void clear()
+  {
+    members_.clear();
+    members_.emplace_back(c_enum_member{-1});
+  }
+
+  int size() const
+  {
+    return members_.size();
+  }
+
+  const c_enum_member& operator [](int index) const
+  {
+    return members_[index];
+  }
+
+  void add(int value, const std::string & name, const std::string & desc)
+  {
+    members_.insert(members_.begin() + members_.size() - 1,
+        c_enum_member { value, name, desc });
+  }
+
+
+  iterator find(int value)
+  {
+    return std::find_if(members_.begin(), members_.end(),
+        [value](const auto & m) {
+          return value == m.value;
+        });
+  }
+
+  const_iterator find(int value) const
+  {
+    return std::find_if(members_.begin(), members_.end(),
+        [value](const auto & m) {
+          return value == m.value;
+        });
+  }
+
+  iterator find(const std::string & name)
+  {
+    return std::find_if(members_.begin(), members_.end(),
+        [name](const auto & m) {
+          return name == m.name;
+        });
+  }
+
+  const_iterator find(const std::string & name) const
+  {
+    return std::find_if(members_.begin(), members_.end(),
+        [name](const auto & m) {
+          return name == m.name;
+        });
+  }
+
+protected:
+  std::vector<c_enum_member> members_;
+};
 
 // opencv types
 #ifdef CV_VERSION
@@ -715,7 +794,7 @@ bool fromString(const std::string & s, cv::Matx<T, m, n> * mat)
 template<>
 inline const c_enum_member* members_of<cv::NormTypes>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { cv::NORM_L1, "NORM_L1", "cv::NORM_L1" },
       { cv::NORM_L2, "NORM_L2", "cv::NORM_L2" },
       { cv::NORM_L2SQR, "NORM_L2SQR", "cv::NORM_L2SQR" },
@@ -732,7 +811,7 @@ inline const c_enum_member* members_of<cv::NormTypes>()
 template<>
 inline const c_enum_member* members_of<cv::CmpTypes>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { cv::CMP_EQ, "EQ", "src is equal to value" },
       { cv::CMP_GT, "GT", "src is greater than value" },
       { cv::CMP_GE, "GE", "src is greater than or equal to  value" },
@@ -748,7 +827,7 @@ inline const c_enum_member* members_of<cv::CmpTypes>()
 template<>
 inline const c_enum_member * members_of<cv::InterpolationFlags>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {cv::INTER_LINEAR, "LINEAR", "bilinear interpolation"},
       {cv::INTER_NEAREST, "NEAREST", "nearest neighbor interpolation"},
       {cv::INTER_CUBIC, "CUBIC", "bicubic interpolation"},
@@ -771,7 +850,7 @@ inline const c_enum_member * members_of<cv::InterpolationFlags>()
 template<>
 inline const c_enum_member * members_of<cv::BorderTypes>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
     {cv::BORDER_CONSTANT, "BORDER_CONSTANT", "iiiiii|abcdefgh|iiiiiii"},
     {cv::BORDER_REPLICATE, "BORDER_REPLICATE", "aaaaaa|abcdefgh|hhhhhhh"},
     {cv::BORDER_REFLECT, "BORDER_REFLECT", "fedcba|abcdefgh|hgfedcb"},
@@ -788,7 +867,7 @@ inline const c_enum_member * members_of<cv::BorderTypes>()
 template<>
 inline const c_enum_member * members_of<cv::MorphTypes>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {cv::MORPH_ERODE, "ERODE", ""},
       {cv::MORPH_DILATE, "DILATE", ""},
       {cv::MORPH_OPEN, "OPEN", "opening operation"},
@@ -806,7 +885,7 @@ inline const c_enum_member * members_of<cv::MorphTypes>()
 template<>
 inline const c_enum_member * members_of<cv::MorphShapes>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {cv::MORPH_RECT, "RECT", "a rectangular structuring element"},
       {cv::MORPH_CROSS, "CROSS", "a cross-shaped structuring element"},
       {cv::MORPH_ELLIPSE, "ELLIPSE", "an elliptic structuring element"},
@@ -819,7 +898,7 @@ inline const c_enum_member * members_of<cv::MorphShapes>()
 template<>
 inline const c_enum_member * members_of<cv::TermCriteria::Type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {cv::TermCriteria::COUNT, "COUNT", "the maximum number of iterations or elements to compute"},
       {cv::TermCriteria::EPS, "EPS", "the desired accuracy or change in parameters at which the iterative algorithm stops"},
       {cv::TermCriteria::COUNT},
@@ -845,8 +924,8 @@ inline std::string toString(const std::vector<T> & v) {
 }
 
 template<class T>
-typename std::enable_if<std::is_scalar_v<T>,
-    bool>::type fromString(const std::string & s, std::vector<T> * v)
+typename std::enable_if_t<std::is_scalar_v<T>,
+  bool> fromString(const std::string & s, std::vector<T> * v)
 {
   const std::vector<std::string> tokens =
       strsplit(s, " \t\n;:,");
@@ -864,8 +943,8 @@ typename std::enable_if<std::is_scalar_v<T>,
 }
 
 template<class T>
-typename std::enable_if<!std::is_scalar_v<T>,
-    bool>::type fromString(const std::string & s, std::vector<T> * v)
+typename std::enable_if_t<!std::is_scalar_v<T>,
+  bool> fromString(const std::string & s, std::vector<T> * v)
 {
   const std::vector<std::string> tokens =
       strsplit(s, "|");

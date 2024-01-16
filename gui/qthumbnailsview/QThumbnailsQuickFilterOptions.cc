@@ -21,14 +21,14 @@
 template<>
 const c_enum_member * members_of<Qt::MatchFlag>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {Qt::MatchWildcard, "Wildcard", },
       {Qt::MatchContains , "Contains", },
       {Qt::MatchStartsWith, "StartsWith", },
       {Qt::MatchEndsWith, "EndsWith", },
       {Qt::MatchExactly, "Exact", },
       {Qt::MatchRegularExpression, "RegExp", },
-      {(Qt::MatchFlag)(0), nullptr, }
+      {(Qt::MatchFlag)(0) }
   };
   return members;
 }
@@ -51,9 +51,9 @@ QString toQString(Qt::MatchFlags v)
       members_of<Qt::MatchFlag>();
 
   if ( QtMatchingFlags ) {
-    for ( uint i = 0; QtMatchingFlags[i].name; ++i ) {
+    for ( uint i = 0; !QtMatchingFlags[i].name.c_str(); ++i ) {
       if ( QtMatchingFlags[i].value == v ) {
-        return QtMatchingFlags[i].name;
+        return QtMatchingFlags[i].name.c_str();
       }
     }
   }
@@ -68,8 +68,8 @@ Qt::MatchFlags fromQString(const QString & s, Qt::MatchFlags defval)
   const c_enum_member * QtMatchingFlags =
       members_of<Qt::MatchFlag>();
   if ( QtMatchingFlags ) {
-    for ( uint i = 0; QtMatchingFlags[i].name; ++i ) {
-      if ( strcasecmp(QtMatchingFlags[i].name, cstr) == 0 ) {
+    for ( uint i = 0; !QtMatchingFlags[i].name.c_str(); ++i ) {
+      if ( strcasecmp(QtMatchingFlags[i].name.c_str(), cstr) == 0 ) {
         return (Qt::MatchFlags)QtMatchingFlags[i].value;
       }
     }

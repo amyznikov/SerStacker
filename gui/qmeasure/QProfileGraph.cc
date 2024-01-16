@@ -20,7 +20,7 @@
 template<>
 const c_enum_member* members_of<QCPGraph::LineStyle>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
     { QCPGraph::LineStyle::lsNone, "None",
         "data points are not connected with any lines (e.g. data only represented "
         "with symbols according to the scatter style" },

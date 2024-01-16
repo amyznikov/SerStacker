@@ -222,7 +222,7 @@ static void dump_debug_points(FILE * fp, int disparity, int scale, const cv::Mat
 template<>
 const c_enum_member* members_of<c_sweepscan_stereo_matcher::OutputType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_sweepscan_stereo_matcher::OutputTextureMap, "TextureMap", "TextureMap" },
       { c_sweepscan_stereo_matcher::OutputTextureMask, "TextureMask", "TextureMask" },
       { c_sweepscan_stereo_matcher::OutputDisparityMap, "DisparityMap", "DisparityMap" },

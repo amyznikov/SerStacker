@@ -7,6 +7,7 @@
 
 #include "c_video_frame.h"
 #include <core/proc/reduce_channels.h>
+//#include <core/ssprintf.h>
 #include <core/debug.h>
 
 c_video_frame::c_video_frame()
@@ -20,41 +21,34 @@ c_video_frame::c_video_frame()
 
 void c_video_frame::cleanup()
 {
-  selection_mask.release();
+  input_image_.copyTo(current_image_);
+  input_mask_.copyTo(current_mask_);
 }
 
 void c_video_frame::get_output_mask(cv::OutputArray output_mask)
 {
-  if ( output_mask.needed() ) {
-
-    if ( this->selection_mask.empty() ) {
-      this->mask.copyTo(mask);
-    }
-    else if ( this->mask.empty() ) {
-      this->selection_mask.copyTo(mask);
-    }
-    else {
-      cv::bitwise_and(this->mask, this->selection_mask, output_mask);
-    }
+  if( output_mask.needed() ) {
+    this->current_mask_.copyTo(output_mask);
   }
-
 }
 
 bool c_video_frame::get_display_data(DataViewType * selectedViewType, int selectedDisplayId,
-    cv::OutputArray image,
-    cv::OutputArray data,
-    cv::OutputArray mask)
+    cv::OutputArray output_image,
+    cv::OutputArray output_data,
+    cv::OutputArray output_mask)
 {
   * selectedViewType = DataViewType_Image;
 
-  if ( image.needed() ) {
-    this->image.copyTo(image);
+  if ( output_image.needed() ) {
+    this->current_image_.copyTo(output_image);
   }
 
-  get_output_mask(mask);
+  if( output_mask.needed() ) {
+    this->current_mask_.copyTo(output_mask);
+  }
 
-  if ( data.needed() ) {
-    data.release();
+  if ( output_data.needed() ) {
+    output_data.release();
   }
 
   return true;
@@ -67,12 +61,15 @@ bool c_video_frame::get_image(int id, cv::OutputArray output_image,
     case PIXEL_VALUE:
 
       if( output_image.needed() ) {
-        this->image.copyTo(output_image);
+        this->current_image_.copyTo(output_image);
       }
 
-      get_output_mask(output_mask);
+      if( output_mask.needed() ) {
+        this->current_mask_.copyTo(output_mask);
+      }
 
       break;
+
     default:
       CF_ERROR("Invalid data item id=%d requested", id);
       return false;
@@ -83,15 +80,15 @@ bool c_video_frame::get_image(int id, cv::OutputArray output_image,
 
 void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode)
 {
-  if( selection_mask.empty() || mode == SELECTION_MASK_REPLACE ) {
+  if( current_mask_.empty() || mode == SELECTION_MASK_REPLACE ) {
     if( sm.empty() ) {
-      selection_mask.release();
+      current_mask_.release();
     }
     else if( sm.channels() == 1 ) {
-      sm.getMat().copyTo(selection_mask);
+      sm.getMat().copyTo(current_mask_);
     }
     else {
-      reduce_color_channels(sm, selection_mask, cv::REDUCE_MAX);
+      reduce_color_channels(sm, current_mask_, cv::REDUCE_MAX);
     }
   }
   else if( !sm.empty() ) {
@@ -107,13 +104,13 @@ void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode
 
     switch (mode) {
       case SELECTION_MASK_AND:
-        cv::bitwise_and(cmask, selection_mask, selection_mask);
+        cv::bitwise_and(cmask, current_mask_, current_mask_);
         break;
       case SELECTION_MASK_OR:
-        cv::bitwise_or(cmask, selection_mask, selection_mask);
+        cv::bitwise_or(cmask, current_mask_, current_mask_);
         break;
       case SELECTION_MASK_XOR:
-        cv::bitwise_xor(cmask, selection_mask, selection_mask);
+        cv::bitwise_xor(cmask, current_mask_, current_mask_);
         break;
       default:
         CF_ERROR("Not implemented selection mode %d", mode);
@@ -123,4 +120,49 @@ void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode
 
 }
 
+bool c_video_frame::get_image(const std::string & name, cv::OutputArray output_image, cv::OutputArray output_mask)
+{
+  if( name.empty() ) {
+
+    if( output_image.needed() ) {
+      this->current_image_.copyTo(output_image);
+    }
+
+    if( output_mask.needed() ) {
+      this->current_mask_.copyTo(output_mask);
+    }
+
+    return true;
+  }
+
+  const auto pos =
+      computed_images_.find(name);
+
+  if( pos == computed_images_.end() ) {
+    CF_ERROR("computed_images_.find(name='%s') fails",
+        name.c_str());
+    return false;
+  }
+
+  if( output_image.needed() ) {
+    pos->second.copyTo(output_image);
+  }
+
+  if( output_mask.needed() ) {
+    this->current_mask_.copyTo(output_mask);
+  }
+
+  return true;
+}
+
+
+void c_video_frame::set_image(const std::string & name, cv::InputArray image, cv::InputArray mask)
+{
+  if( name.empty() ) {
+    image.copyTo(this->current_image_);
+  }
+  else {
+    image.copyTo(computed_images_[name]);
+  }
+}
 

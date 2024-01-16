@@ -34,7 +34,7 @@
 template<>
 const c_enum_member* members_of<CAMERA_CALIBRATION_FLAGS>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { CAMERA_CALIB_USE_INTRINSIC_GUESS, "USE_INTRINSIC_GUESS", "" },
       { CAMERA_CALIB_FIX_ASPECT_RATIO, "FIX_ASPECT_RATIO", "" },
       { CAMERA_CALIB_FIX_PRINCIPAL_POINT, "FIX_PRINCIPAL_POINT", "" },

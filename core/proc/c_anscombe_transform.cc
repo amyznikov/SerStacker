@@ -12,11 +12,11 @@
 template<>
 const c_enum_member * members_of<anscombe_method>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { anscombe_none, "none" },
       { anscombe_sqrt, "sqrt", },
       { anscombe_native, "native", },
-      { anscombe_none, nullptr, }  // must  be last
+      { anscombe_none }  // must  be last
   };
 
   return members;

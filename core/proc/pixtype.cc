@@ -34,7 +34,7 @@
 template<>
 const c_enum_member * members_of<PIXEL_DEPTH>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { PIXEL_DEPTH_NO_CHANGE, "NO_CHANGE",  },
       { PIXEL_DEPTH_8U, "CV_8U",  },
       { PIXEL_DEPTH_8S , "CV_8S", },
@@ -43,7 +43,7 @@ const c_enum_member * members_of<PIXEL_DEPTH>()
       { PIXEL_DEPTH_32S , "CV_32S", },
       { PIXEL_DEPTH_32F , "CV_32F", },
       { PIXEL_DEPTH_64F , "CV_64F", },
-      { PIXEL_DEPTH_NO_CHANGE , nullptr, },
+      { PIXEL_DEPTH_NO_CHANGE, },
   };
   return members;
 }

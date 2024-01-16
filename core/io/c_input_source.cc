@@ -18,7 +18,7 @@
 template<>
 const c_enum_member* members_of<c_input_source::OUTPUT_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_input_source::OUTPUT_TYPE_IMAGE, "IMAGE", "" },
       { c_input_source::OUTPUT_TYPE_CLOUD3D, "Cloud3D", "" },
       { c_input_source::OUTPUT_TYPE_IMAGE },

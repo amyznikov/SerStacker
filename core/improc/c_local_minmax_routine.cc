@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<c_local_minmax_routine::OUTPUT_CHANNEL>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_local_minmax_routine::OUTPUT_IMAGE, "IMAGE", "" },
       { c_local_minmax_routine::OUTPUT_MASK, "MASK", "" },
       { c_local_minmax_routine::OUTPUT_MASK },
@@ -24,7 +24,7 @@ const c_enum_member* members_of<c_local_minmax_routine::OUTPUT_CHANNEL>()
 template<>
 const c_enum_member* members_of<c_local_minmax_routine::BorderType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_local_minmax_routine::BORDER_CONSTANT, "BORDER_CONSTANT", "Set to BorderValue"},
       { c_local_minmax_routine::BORDER_REPLICATE, "BORDER_REPLICATE", "aaaaaa|abcdefgh|hhhhhhh"},
       { c_local_minmax_routine::BORDER_REFLECT, "BORDER_REFLECT", "fedcba|abcdefgh|hgfedcb"},

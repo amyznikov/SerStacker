@@ -15,7 +15,7 @@ const c_enum_member* members_of<serimager::QImagingCamera::State>()
 {
   using namespace serimager;
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QImagingCamera::State_disconnected, "disconnected", "" },
       { QImagingCamera::State_connecting, "connecting", "" },
       { QImagingCamera::State_connected, "connected", "" },
@@ -34,7 +34,7 @@ const c_enum_member* members_of<serimager::QImagingCamera::ExposureStatus>()
 {
   using namespace serimager;
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QImagingCamera::Exposure_idle, "idle", "idle state, can start exposure now" },
       { QImagingCamera::Exposure_working, "exposing", "exposing" },
       { QImagingCamera::Exposure_success, "success", "exposure finished and waiting for download" },

@@ -14,7 +14,7 @@
 template<>
 const c_enum_member* members_of<QImageViewer::DisplayType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QImageViewer::DisplayImage, "Image", ""},
       { QImageViewer::DisplayMask, "Mask", "" },
       { QImageViewer::DisplayBlend, "Blend", "" },

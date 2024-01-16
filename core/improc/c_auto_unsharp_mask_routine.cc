@@ -13,7 +13,7 @@
 template<>
 const c_enum_member* members_of<c_auto_unsharp_mask_routine::COLOR_CHANNEL>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_auto_unsharp_mask_routine::COLOR_CHANNEL_ALL, "ALL", "" },
       { c_auto_unsharp_mask_routine::COLOR_CHANNEL_0, "0", "" },
       { c_auto_unsharp_mask_routine::COLOR_CHANNEL_1, "1", "" },

@@ -35,10 +35,10 @@ public:
   virtual ~IMtfDisplay() = default;
 
 
-  virtual const c_enum_member * displayTypes() const = 0;
+  virtual const c_enum_member * displayChannels() const = 0;
 
-  virtual void setDisplayType(int v);
-  virtual int displayType() const;
+  virtual void setDisplayChannel(int v);
+  virtual int displayChannel() const;
 
   virtual void setMtfInputRange(double min, double max);
   virtual void getMtfInputRange(double * min, double * max) const;

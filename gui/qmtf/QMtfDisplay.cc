@@ -7,6 +7,7 @@
 
 #include "QMtfDisplay.h"
 #include <core/proc/minmax.h>
+#include <gui/widgets/settings.h>
 #include <core/debug.h>
 
 IMtfDisplay::IMtfDisplay(const QString & prefix) :
@@ -137,7 +138,7 @@ void IMtfDisplay::restoreMtfRange(c_midtones_transfer_function *mtf, const c_mtf
   }
 }
 
-void IMtfDisplay::setDisplayType(int v)
+void IMtfDisplay::setDisplayChannel(int v)
 {
   if ( displayParams_.find(v) != displayParams_.end() ) {
     displayType_ = v;
@@ -147,7 +148,7 @@ void IMtfDisplay::setDisplayType(int v)
   }
 }
 
-int IMtfDisplay::displayType() const
+int IMtfDisplay::displayChannel() const
 {
   return displayType_;
 }
@@ -448,7 +449,7 @@ void IMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) c
     p.mtf.get_input_range(&min, &max);
     settings.setValue(QString("%1/imin").arg(prefix2), min);
     settings.setValue(QString("%1/imax").arg(prefix2), max);
-    settings.setValue(QString("%1/cmap").arg(prefix2), toString(p.colormap));
+    settings.setValue(QString("%1/cmap").arg(prefix2), toQString(p.colormap));
     settings.setValue(QString("%1/invert_colormap").arg(prefix2), p.invert_colormap);
   }
 }

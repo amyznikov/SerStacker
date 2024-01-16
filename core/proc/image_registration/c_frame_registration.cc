@@ -19,11 +19,11 @@
 template<>
 const c_enum_member * members_of<master_frame_selection_method>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {master_frame_specific_index, "specific_index", },
       {master_frame_middle_index, "middle_index", },
       {master_frame_best_of_100_in_middle, "best_of_100_in_middle", },
-      {master_frame_specific_index, nullptr, },
+      {master_frame_specific_index },
   };
   return members;
 }

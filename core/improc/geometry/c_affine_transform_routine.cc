@@ -10,7 +10,7 @@
 template<>
 const c_enum_member * members_of<c_affine_transform_routine::image_resize_mode>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {c_affine_transform_routine::resize_keep, "KEEP", ""},
       {c_affine_transform_routine::resize_adjust, "ADJUST", ""},
       {c_affine_transform_routine::resize_scale, "SCALE", ""},

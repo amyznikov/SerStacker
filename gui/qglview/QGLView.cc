@@ -11,6 +11,7 @@
  */
 
 #include "QGLView.h"
+#include <gui/widgets/settings.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -20,7 +21,7 @@
 template<>
 const c_enum_member* members_of<QGLView::Projection>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QGLView::Perspective, "Perspective", "" },
       { QGLView::Orthographic, "Orthographic", "" },
       { QGLView::Perspective },
@@ -136,7 +137,7 @@ void QGLView::onLoadParameters(QSettings & settings)
           foregroundColor_).value<QColor>();
 
   fromString(settings.value("QGLView/projection",
-      QString(toString(viewParams_.projection))).toString().toStdString(),
+      toQString(viewParams_.projection)).toString().toStdString(),
       &viewParams_.projection);
 
   viewParams_.fov = settings.value("QGLView/fov",
@@ -164,7 +165,7 @@ void QGLView::onSaveParameters(QSettings & settings)
       foregroundColor_);
 
   settings.setValue("QGLView/projection",
-      QString(toString(viewParams_.projection)));
+      toQString(viewParams_.projection));
 
   settings.setValue("QGLView/fov",
       viewParams_.fov);

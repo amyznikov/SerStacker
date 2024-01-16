@@ -12,7 +12,7 @@
 template<>
 const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
 
       { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_mask, "detected_planetary_disk_mask", },
@@ -28,7 +28,7 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
 
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
 
-      { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, nullptr, },
+      { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, },
   };
 
   return members;

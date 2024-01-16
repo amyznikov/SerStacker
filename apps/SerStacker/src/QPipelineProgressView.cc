@@ -170,10 +170,10 @@ void QPipelineProgressView::onMenuButtonClicked()
 
       int items_count = 0;
 
-      for( ; display_types->name && *display_types->name; ++display_types ) {
+      for( ; !display_types->name.empty(); ++display_types ) {
 
         QAction *action =
-            menu.addAction(display_types->name);
+            menu.addAction(display_types->name.c_str());
 
         action->setData(QVariant::fromValue(display_types->value));
         action->setCheckable(true);

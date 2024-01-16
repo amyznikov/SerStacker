@@ -11,7 +11,7 @@
 template<>
 const c_enum_member * members_of<c_median_hat_routine::DisplayType>()
 {
-  static constexpr c_enum_member members[] =  {
+  static const c_enum_member members[] =  {
       {c_median_hat_routine::DisplayMedianBlur, "MedianBlur", "MedianBlur"} ,
       {c_median_hat_routine::DisplayMedianHat, "MedianHat", "Difference between source image and its median blur" },
       {c_median_hat_routine::DisplayMedianHat },

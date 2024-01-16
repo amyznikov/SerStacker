@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<c_edge_test_routine::DisplayID>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_edge_test_routine::DisplayCornerTL, "TL", "" },
       { c_edge_test_routine::DisplayCornerTR, "TR", "" },
       { c_edge_test_routine::DisplayCornerBL, "BL", "" },

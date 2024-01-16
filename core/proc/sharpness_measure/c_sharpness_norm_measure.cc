@@ -12,7 +12,7 @@
 //template<>
 //const c_enum_member* members_of<c_sharpness_norm_measure::cv::NormTypes>()
 //{
-//  static constexpr c_enum_member members[] = {
+//  static const c_enum_member members[] = {
 //      { c_sharpness_norm_measure::NORM_L1, "NORM_L1", "cv::NORM_L1" },
 //      { c_sharpness_norm_measure::NORM_L2, "NORM_L2", "cv::NORM_L2" },
 //      { c_sharpness_norm_measure::NORM_L2SQR, "NORM_L2SQR", "cv::NORM_L2SQR" },

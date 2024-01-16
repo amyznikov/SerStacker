@@ -11,7 +11,7 @@
 template<>
 const c_enum_member * members_of<FEATURE2D_MATCHER_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { FEATURE2D_MATCHER_AUTO_SELECT, "Auto", "Auto select depending on feature descriptor type" },
       { FEATURE2D_MATCHER_HAMMING, "hamming", "" },
       { FEATURE2D_MATCHER_FLANN, "flann", "" },

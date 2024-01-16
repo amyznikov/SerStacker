@@ -17,7 +17,7 @@
 template<>
 const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ECC_INTER_LINEAR, "LINEAR", "" },
       { ECC_INTER_LINEAR_EXACT, "LINEAR_EXACT", "" },
       { ECC_INTER_AREA, "AREA", "" },
@@ -27,7 +27,7 @@ const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
 #if CV_VERSION_CURRRENT >= CV_VERSION_INT(4,5,0)
       { ECC_INTER_NEAREST_EXACT, "NEAREST_EXACT", "" },
 #endif
-      { ECC_INTER_NEAREST, nullptr, nullptr }  // must be last
+      { ECC_INTER_NEAREST }  // must be last
   };
   return members;
 }
@@ -35,7 +35,7 @@ const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
 template<>
 const c_enum_member * members_of<ECC_BORDER_MODE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ECC_BORDER_REFLECT101, "BORDER_REFLECT101", },
       { ECC_BORDER_REFLECT, "BORDER_REFLECT", },
       { ECC_BORDER_REPLICATE, "BORDER_REPLICATE", },
@@ -43,7 +43,7 @@ const c_enum_member * members_of<ECC_BORDER_MODE>()
       { ECC_BORDER_CONSTANT, "BORDER_CONSTANT", },
       { ECC_BORDER_TRANSPARENT, "BORDER_TRANSPARENT", },
       { ECC_BORDER_ISOLATED, "BORDER_ISOLATED", },
-      { ECC_BORDER_DEFAULT, nullptr, }  // must be last
+      { ECC_BORDER_DEFAULT, }  // must be last
   };
   return members;
 }

@@ -11,7 +11,7 @@
 template<>
 const c_enum_member* members_of<c_median_pyramid_routine::DisplayType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_median_pyramid_routine::DisplayMedianBlur, "MedianBlur", "Display MedianBlur" },
       { c_median_pyramid_routine::DisplayMedianHat, "MedianHat", "Display MedianHat" },
       { c_median_pyramid_routine::DisplayMedianBlur },

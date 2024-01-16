@@ -145,7 +145,7 @@ protected: // QCloudViewDisplayFunction
       cv::OutputArray displayColors) override;
 
 protected: // MTF
-  const c_enum_member * displayTypes() const override;
+  const c_enum_member * displayChannels() const override;
   void getInputDataRange(double * minval, double * maxval) const override;
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
@@ -174,7 +174,8 @@ protected:
   QToolButton * viewSelectionToolbutton_ctl = nullptr;
 
   //std::set<DataViewType> supportedViewTypes_;
-  std::vector<c_enum_member> displayTypes_;
+  //std::vector<c_enum_member> displayTypes_;
+  c_enum_members displayChannels_;
   DataViewType selectedViewType_ = DataViewType_Image;
 
   //////////////////////////////////////////

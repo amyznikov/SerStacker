@@ -59,7 +59,8 @@ public:
 protected:
   std::string expression_;
   c_math_expression math_;
-  cv::Mat1b selection_mask;
+  cv::Mat current_image_;
+  cv::Mat1b current_mask_;
   c_data_frame::SELECTION_MASK_MODE mask_mode_ = c_data_frame::SELECTION_MASK_AND;
   int previous_vlo_scan_version_ = -1;
   bool invert_selection_ = false;

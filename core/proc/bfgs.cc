@@ -16,7 +16,7 @@
 template<>
 const c_enum_member* members_of<c_bfgs::STATUS>()
 {
-  static constexpr c_enum_member members[] =
+  static const c_enum_member members[] =
       {
           { c_bfgs::LBFGS_SUCCESS, "SUCCESS", "SUCCESS" },
           { c_bfgs::LBFGS_CONVERGENCE, "CONVERGENCE", "CONVERGENCE" },

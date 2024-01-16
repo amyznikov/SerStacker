@@ -101,13 +101,13 @@ void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
     action->setSeparator(true);
     actions_.append(action);
 
-    while (membs->name && *membs->name) {
+    while (!membs->name.empty()) {
 
       action =
-          new QAction(membs->name, this);
+          new QAction(membs->name.c_str(), this);
 
       action->setData(membs->value);
-      action->setToolTip(QString(membs->comment));
+      action->setToolTip(membs->comment.c_str());
       action->setCheckable(true);
       action->setChecked((flags_ & membs->value));
       actions_.append(action);

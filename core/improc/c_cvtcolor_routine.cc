@@ -22,7 +22,7 @@ const c_enum_member* members_of<cv::ColorConversionCodes>()
 {
   using namespace cv;
 
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { COLOR_COLORCVT_MAX, "NONE", "" },
 
       { COLOR_BGR2BGRA, "COLOR_BGR2BGRA", "" },

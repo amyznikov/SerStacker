@@ -754,7 +754,7 @@ bool c_stereo_matcher_pipeline::update_stereo_rectification_remap()
 
 const c_enum_member * c_stereo_matcher_pipeline::get_display_types() const
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { DISPLAY_DISPARITY, "DISPARITY", "Disparity frame display" },
       { DISPLAY_QUAD, "QUAD", "Quad frame display" },
       { 0 },

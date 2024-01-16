@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<QGraphicsItem::GraphicsItemChange>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QGraphicsItem::ItemPositionChange, "ItemPositionChange", "" },
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
       { QGraphicsItem::ItemMatrixChange, "ItemMatrixChange", "" },

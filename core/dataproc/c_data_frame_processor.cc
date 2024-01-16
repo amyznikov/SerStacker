@@ -10,6 +10,7 @@
 #include "vlo/c_vlo_ghost_detection_routine.h"
 #include "vlo/c_vlo_pixel_selection_routine.h"
 #include "image/c_image_pixels_selection_routine.h"
+#include "image/c_image_gradient_routine.h"
 #include <atomic>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
@@ -70,6 +71,7 @@ void c_data_frame_processor_routine::register_all()
 
 
     register_class_factory(c_image_pixels_selection_routine::class_factory_instance());
+    register_class_factory(c_image_gradient_routine::class_factory_instance());
 
     registered = true;
   }

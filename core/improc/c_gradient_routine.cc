@@ -12,7 +12,7 @@
 template<>
 const c_enum_member* members_of<c_gradient_routine::OutputType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_gradient_routine::OutputGradient, "Gradient", "Gradient" },
       { c_gradient_routine::OutputGradientMagnitude, "Magnitude", "Gradient Magnitude" },
       { c_gradient_routine::OutputGradientPhase, "Phase", "Gradient Phase in range 0..360" },

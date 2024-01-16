@@ -50,9 +50,9 @@ struct c_input_options
   c_video_input_options video;
 };
 
-
-bool apply_input_options(const c_data_frame::sptr & dataframe,
-    c_input_options & opts);
+//
+//bool apply_input_options(const c_data_frame::sptr & dataframe,
+//    c_input_options & opts);
 
 
 #endif /* __c_input_options_h__ */

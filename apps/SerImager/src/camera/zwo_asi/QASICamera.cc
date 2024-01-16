@@ -13,7 +13,7 @@
 template<>
 const c_enum_member* members_of<ASI_ERROR_CODE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ASI_SUCCESS, "ASI_SUCCESS", "ASI_SUCCESS" },
       { ASI_ERROR_INVALID_INDEX, "ASI_ERROR_INVALID_INDEX", "no camera connected or index value out of boundary" },
       { ASI_ERROR_INVALID_ID, "ASI_ERROR_INVALID_CONTROL_TYPE", "invalid ID" },
@@ -33,7 +33,7 @@ const c_enum_member* members_of<ASI_ERROR_CODE>()
       { ASI_ERROR_EXPOSURE_IN_PROGRESS, "ASI_ERROR_EXPOSURE_IN_PROGRESS", "" },
       { ASI_ERROR_GENERAL_ERROR, "ASI_ERROR_GENERAL_ERROR", "general error, eg: value is out of valid range" },
       { ASI_ERROR_INVALID_MODE, "ASI_ERROR_INVALID_MODE", "the current mode is wrong" },
-      { ASI_ERROR_END, nullptr },
+      { ASI_ERROR_END },
   };
 
   return members;
@@ -42,7 +42,7 @@ const c_enum_member* members_of<ASI_ERROR_CODE>()
 template<>
 const c_enum_member* members_of<ASI_BAYER_PATTERN>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ASI_BAYER_RG, "ASI_BAYER_RG" },
       { ASI_BAYER_BG, "ASI_BAYER_BG" },
       { ASI_BAYER_GR, "ASI_BAYER_GR" },
@@ -57,7 +57,7 @@ const c_enum_member* members_of<ASI_BAYER_PATTERN>()
 template<>
 const c_enum_member* members_of<ASI_IMG_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ASI_IMG_RAW8, "RAW8" },
       { ASI_IMG_RGB24, "RGB24" },
       { ASI_IMG_RAW16, "RAW16" },
@@ -71,7 +71,7 @@ const c_enum_member* members_of<ASI_IMG_TYPE>()
 template<>
 const c_enum_member* members_of<ASI_EXPOSURE_STATUS>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ASI_EXP_IDLE, "ASI_EXP_IDLE" },
       { ASI_EXP_WORKING, "ASI_EXP_WORKING" },
       { ASI_EXP_SUCCESS, "ASI_EXP_SUCCESS" },
@@ -85,7 +85,7 @@ const c_enum_member* members_of<ASI_EXPOSURE_STATUS>()
 template<>
 const c_enum_member* members_of<ASI_CAMERA_MODE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ASI_MODE_NORMAL, "ASI_MODE_NORMAL" },
       { ASI_MODE_TRIG_SOFT_EDGE, "ASI_MODE_TRIG_SOFT_EDGE" },
       { ASI_MODE_TRIG_RISE_EDGE, "ASI_MODE_TRIG_RISE_EDGE" },
@@ -103,7 +103,7 @@ const c_enum_member* members_of<ASI_CAMERA_MODE>()
 template<>
 const c_enum_member* members_of<ASI_CONTROL_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ASI_GAIN, "GAIN", "" },
       { ASI_EXPOSURE, "EXPOSURE", "" },
       { ASI_GAMMA, "GAMMA", "" },

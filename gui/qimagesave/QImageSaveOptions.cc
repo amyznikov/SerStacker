@@ -18,11 +18,11 @@
 template<>
 const c_enum_member * members_of<QImageSaveFormat>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QImageSaveTIFF, "TIFF", },
       { QImageSavePNG, "PNG", },
       { QImageSaveJPEG, "JPEG", },
-      { QImageSaveFormatUnknown, nullptr, }  // must  be last
+      { QImageSaveFormatUnknown }  // must  be last
   };
 
   return members;
@@ -74,8 +74,8 @@ QImageSavePNGOptions::QImageSavePNGOptions(QWidget * parent) :
       add_combobox("Pixel depth:",
           "");
 
-  pixtype_ctl->addItem(toString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
-  pixtype_ctl->addItem(toString(PIXEL_DEPTH_16U), QVariant::fromValue((int) (PIXEL_DEPTH_16U)));
+  pixtype_ctl->addItem(toQString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
+  pixtype_ctl->addItem(toQString(PIXEL_DEPTH_16U), QVariant::fromValue((int) (PIXEL_DEPTH_16U)));
   pixtype_ctl->setCurrentIndex(0);
 }
 

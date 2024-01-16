@@ -14,7 +14,7 @@
 template<>
 const c_enum_member* members_of<c_morph_features_extractor::MORPH_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_morph_features_extractor::MORPH_GRADIENT, "GRADIENT", "" },
       { c_morph_features_extractor::MORPH_LAPLACIAN, "LAPLACIAN", "" },
       { c_morph_features_extractor::MORPH_LAPLACIAN },

@@ -15,7 +15,7 @@
 template<>
 const c_enum_member* members_of<QGraphicsItem::GraphicsItemChange>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { QGraphicsItem::ItemPositionChange, "ItemPositionChange", "ItemPositionChange" },
       #if !QT_DEPRECATED_SINCE(5, 14)
         {QGraphicsItem::ItemMatrixChange, "ItemMatrixChange", "ItemMatrixChange" },

@@ -17,7 +17,7 @@
 template<>
 const c_enum_member* members_of<c_math_expression_routine::CHANNEL>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_math_expression_routine::IMAGE, "IMAGE", "" },
       { c_math_expression_routine::MASK, "MASK", "" },
       { c_math_expression_routine::IMAGE },

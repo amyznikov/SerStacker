@@ -17,7 +17,7 @@
 template<>
 const c_enum_member *members_of<FEATURE2D_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
 #if HAVE_FEATURE2D_SURF
       { FEATURE2D_SURF, "SURF", "" },
 #endif
@@ -75,7 +75,7 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
 #if HAVE_MORPH_EXTRACTOR
       { FEATURE2D_MORPH, "MORPH", "" },
 #endif
-      { FEATURE2D_UNKNOWN, nullptr, "" },
+      { FEATURE2D_UNKNOWN },
   };
 
   return members;
@@ -84,7 +84,7 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
 template<> const c_enum_member*
 members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
 #if HAVE_FEATURE2D_SURF
       { SPARSE_FEATURE_DETECTOR_SURF, "SURF" },
 #endif
@@ -118,7 +118,7 @@ members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 #if HAVE_FEATURE2D_HL
       { SPARSE_FEATURE_DETECTOR_HL, "HL" },
 #endif
-      { SPARSE_FEATURE_DETECTOR_UNKNOWN, nullptr },
+      { SPARSE_FEATURE_DETECTOR_UNKNOWN },
   };
 
   return members;
@@ -127,7 +127,7 @@ members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 template<> const c_enum_member *
 members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT, "AUTO_SELECT", "Auto selection based on detector type"},
 
 #if HAVE_FEATURE2D_SURF
@@ -177,7 +177,7 @@ const c_enum_member * members_of<cv::ORB::ScoreType>()
   static const c_enum_member members[] = {
       { cv::ORB::HARRIS_SCORE, "HARRIS_SCORE", "" },
       { cv::ORB::FAST_SCORE, "FAST_SCORE", "" },
-      { cv::ORB::HARRIS_SCORE, nullptr, "" },
+      { cv::ORB::HARRIS_SCORE },
   };
 
   return members;
@@ -191,7 +191,7 @@ const c_enum_member * members_of<cv::KAZE::DiffusivityType>()
       { cv::KAZE::DIFF_PM_G2, "DIFF_PM_G2", "" },
       { cv::KAZE::DIFF_WEICKERT, "DIFF_WEICKERT", "" },
       { cv::KAZE::DIFF_CHARBONNIER, "DIFF_CHARBONNIER", "" },
-      { cv::KAZE::DIFF_PM_G2, nullptr, "" },
+      { cv::KAZE::DIFF_PM_G2 },
   };
 
   return members;
@@ -205,7 +205,7 @@ const c_enum_member * members_of<cv::AKAZE::DescriptorType>()
       { cv::AKAZE::DESCRIPTOR_KAZE, "DESCRIPTOR_KAZE", "" },
       { cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT, "DESCRIPTOR_MLDB_UPRIGHT", "Upright descriptors, not invariant to rotation" },
       { cv::AKAZE::DESCRIPTOR_MLDB, "DESCRIPTOR_MLDB",  "" },
-      { cv::AKAZE::DESCRIPTOR_MLDB, nullptr, "" },
+      { cv::AKAZE::DESCRIPTOR_MLDB },
   };
 
   return members;
@@ -218,7 +218,7 @@ const c_enum_member * members_of<cv::FastFeatureDetector::DetectorType>()
       { cv::FastFeatureDetector::TYPE_5_8, "TYPE_5_8" "" },
       { cv::FastFeatureDetector::TYPE_7_12, "TYPE_7_12", "" },
       { cv::FastFeatureDetector::TYPE_9_16, "TYPE_9_16", "" },
-      { cv::FastFeatureDetector::TYPE_9_16, nullptr, "" },
+      { cv::FastFeatureDetector::TYPE_9_16},
   };
 
   return members;
@@ -232,7 +232,7 @@ const c_enum_member * members_of<cv::AgastFeatureDetector::DetectorType>()
       { cv::AgastFeatureDetector::AGAST_7_12d, "AGAST_7_12d", "" },
       { cv::AgastFeatureDetector::AGAST_7_12s, "AGAST_7_12s", "" },
       { cv::AgastFeatureDetector::OAST_9_16, "OAST_9_16", "" },
-      { cv::AgastFeatureDetector::OAST_9_16, nullptr, "" },
+      { cv::AgastFeatureDetector::OAST_9_16 },
   };
 
   return members;
@@ -247,7 +247,7 @@ const c_enum_member * members_of<cv::xfeatures2d::DAISY::NormalizationType>()
       { cv::xfeatures2d::DAISY::NRM_PARTIAL, "NRM_PARTIAL", "" },
       { cv::xfeatures2d::DAISY::NRM_FULL, "NRM_FULL", "" },
       { cv::xfeatures2d::DAISY::NRM_SIFT, "NRM_SIFT", "" },
-      { cv::xfeatures2d::DAISY::NRM_NONE, nullptr, "" },
+      { cv::xfeatures2d::DAISY::NRM_NONE },
   };
 
   return members;
@@ -266,7 +266,7 @@ const c_enum_member * members_of<BoostDesc_Type>()
       { cv::xfeatures2d::BoostDesc::BINBOOST_64, "BINBOOST_64", "" },
       { cv::xfeatures2d::BoostDesc::BINBOOST_128, "BINBOOST_128", "" },
       { cv::xfeatures2d::BoostDesc::BINBOOST_256, "BINBOOST_256", "" },
-      { cv::xfeatures2d::BoostDesc::BINBOOST_256, nullptr, "" },
+      { cv::xfeatures2d::BoostDesc::BINBOOST_256 },
   };
 
   return members;

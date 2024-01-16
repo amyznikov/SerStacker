@@ -25,7 +25,7 @@
 template<>
 const c_enum_member* members_of<VLO_DATA_CHANNEL>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { VLO_DATA_CHANNEL_AMBIENT, "AMBIENT", "" },
       { VLO_DATA_CHANNEL_DISTANCES, "DISTANCES", "" },
       { VLO_DATA_CHANNEL_DEPTH, "DEPTH", "" },

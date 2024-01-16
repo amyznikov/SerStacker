@@ -16,7 +16,7 @@
 template<>
 const c_enum_member* members_of<THRESHOLD_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { THRESHOLD_TYPE_VALUE, "VALUE", "Use user-specified value for compare operation"},
       { THRESHOLD_TYPE_OTSU, "OTSU", "Use Otsu algorithm to choose the optimal threshold value" },
       { THRESHOLD_TYPE_TRIANGLE, "TRIANGLE", "Use Triangle algorithm to choose the optimal threshold value" },

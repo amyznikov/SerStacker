@@ -14,7 +14,7 @@
 template<>
 const c_enum_member * members_of<c_image_calc_routine::Function>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_image_calc_routine::Function_None, "None", " No function, return just current image"},
       { c_image_calc_routine::Function_add, "add", "cv::add(Ic, Ia)"},
       { c_image_calc_routine::Function_subtract, "subtract", "cv::subtract(Ic, Ia"},

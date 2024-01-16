@@ -35,11 +35,11 @@
 template<>
 const c_enum_member * members_of<roi_selection_method>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { roi_selection_none, "none", },
       { roi_selection_planetary_disk, "planetary_disk", },
       { roi_selection_rectange_crop, "rectangle", },
-      { roi_selection_none, nullptr, },
+      { roi_selection_none, },
   };
   return members;
 }
@@ -47,7 +47,7 @@ const c_enum_member * members_of<roi_selection_method>()
 template<>
 const c_enum_member* members_of<frame_accumulation_method>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
 
       { frame_accumulation_average, "average",
           "Simple average" },
@@ -66,7 +66,7 @@ const c_enum_member* members_of<frame_accumulation_method>()
 
       { frame_accumulation_none, "None", },
 
-      { frame_accumulation_none, nullptr, },
+      { frame_accumulation_none, },
   };
 
   return members;
@@ -75,10 +75,10 @@ const c_enum_member* members_of<frame_accumulation_method>()
 template<>
 const c_enum_member * members_of<frame_upscale_stage>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { frame_upscale_after_align , "after_align", },
       { frame_upscale_before_align , "before_align", },
-      { frame_upscale_stage_unknown , nullptr, },
+      { frame_upscale_stage_unknown },
   };
   return members;
 }
@@ -86,12 +86,12 @@ const c_enum_member * members_of<frame_upscale_stage>()
 template<>
 const c_enum_member * members_of<frame_upscale_option>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {frame_upscale_none, "none", },
       {frame_upscale_pyrUp, "x2.0", },
       {frame_upscale_x15, "x1.5", },
       {frame_upscale_x30, "x3.0", },
-      {frame_upscale_none, nullptr, },
+      {frame_upscale_none},
   };
   return members;
 }
@@ -99,7 +99,7 @@ const c_enum_member * members_of<frame_upscale_option>()
 template<>
 const c_enum_member* members_of<STACKING_STAGE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { stacking_stage_idle, "idle", "idle" },
       { stacking_stage_initialize, "initialize", "initialize" },
       { stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },

@@ -18,7 +18,7 @@ namespace  {
 template<>
 const c_enum_member* members_of<DISPLAY_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
       { DISPLAY_PIXEL_VALUE }
   };
@@ -81,16 +81,16 @@ QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr 
   addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
 }
 
-const c_enum_member * QMtfRoutineDisplaySettings::displayTypes() const
+const c_enum_member * QMtfRoutineDisplaySettings::displayChannels() const
 {
   return members_of<DISPLAY_TYPE>();
 }
 
-void QMtfRoutineDisplaySettings::setDisplayType(int /*v*/)
+void QMtfRoutineDisplaySettings::setDisplayChannel(int /*v*/)
 {
 }
 
-int QMtfRoutineDisplaySettings::displayType() const
+int QMtfRoutineDisplaySettings::displayChannel() const
 {
   return DISPLAY_PIXEL_VALUE;
 }

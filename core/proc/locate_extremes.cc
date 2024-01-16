@@ -11,7 +11,7 @@
 template<>
 const c_enum_member* members_of<c_locate_extremes_options::neighbor_filter_type>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_locate_extremes_options::filter_morph, "MORPH", "" },
       { c_locate_extremes_options::filter_mean, "mean", "" },
       { c_locate_extremes_options::filter_morph },

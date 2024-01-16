@@ -316,7 +316,8 @@ inline QString toString(const cv::Scalar & v)
 template<class T>
 inline QString toQString(const T & v)
 {
-  return QString(std::string(toString(v)).c_str());
+//  return QString(std::string(toString(v)).c_str());
+  return QString(toString(v).c_str());
 }
 
 template<>

@@ -125,9 +125,9 @@ bool QProgressImageViewer::applyColorMap(cv::InputArray displayImage, cv::InputA
 }
 
 
-const c_enum_member * QProgressImageViewer::displayTypes() const
+const c_enum_member * QProgressImageViewer::displayChannels() const
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       {0, "VALUE", "PIXEL VALUE"},
       {0}
   };

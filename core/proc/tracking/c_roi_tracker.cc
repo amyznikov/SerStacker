@@ -11,7 +11,7 @@
 template<>
 const c_enum_member* members_of<ROI_TRACKER_TYPE>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { ROI_TRACKER_BOOSTING, "BOOSTING", "" },
       { ROI_TRACKER_MIL, "MIL", "" },
       { ROI_TRACKER_KCF, "KCF", "" },

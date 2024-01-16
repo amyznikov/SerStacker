@@ -13,7 +13,7 @@
 template<>
 const c_enum_member * members_of<c_pixel_func_routine::Function>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_pixel_func_routine::Function_None, "None", " No function, return just pixel value "},
       { c_pixel_func_routine::Function_sqrt, "sqrt", ""},
       { c_pixel_func_routine::Function_sqr, "sqr", ""},

@@ -194,13 +194,15 @@ bool c_image_pixels_selection_routine::process(c_video_frame * frame)
     expression_changed_ = false;
   }
 
-  process_image(frame->image, selection_mask, math_);
+
+  frame->get_image("", current_image_);
+  process_image(current_image_, current_mask_, math_);
 
   if ( invert_selection_ ) {
-    cv::bitwise_not(selection_mask, selection_mask);
+    cv::bitwise_not(current_mask_, current_mask_);
   }
 
-  frame->update_selection(selection_mask, mask_mode_);
+  frame->update_selection(current_mask_, mask_mode_);
 
   return true;
 }

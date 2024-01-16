@@ -10,7 +10,7 @@
 template<>
 const c_enum_member* members_of<c_radial_gradient_routine::OutputType>()
 {
-  static constexpr c_enum_member members[] = {
+  static const c_enum_member members[] = {
       { c_radial_gradient_routine::OutputRadialGradient, "RadialGradient", "Output Radial Gradient" },
       { c_radial_gradient_routine::OutputTangentialGradient, "TangentialGradient", "Output Tangential Gradient" },
       { c_radial_gradient_routine::OutputRadialGradient },

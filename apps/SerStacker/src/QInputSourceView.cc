@@ -524,8 +524,8 @@ void QInputSourceView::displayCurrentFrame()
 {
   cv::Mat image, data, mask;
 
-  if ( displayChannels_.size() > 1 && !enum_member(displayType_, displayChannels_.data())  ) {
-    displayType_ = displayChannels_[0].value;
+  if ( displayChannels_.size() > 1 && !enum_member(displayChannel_, displayChannels_.data())  ) {
+    displayChannel_ = displayChannels_[0].value;
   }
 
   if( currentFrame_ ) {

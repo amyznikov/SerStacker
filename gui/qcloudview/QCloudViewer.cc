@@ -279,7 +279,7 @@ QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
     Base("", cloudView),
     cloudView_(cloudView)
 {
-  QMtfDisplay::displayType_ = DISPLAY_PIXEL_VALUE;
+  QMtfDisplay::displayChannel_ = DISPLAY_PIXEL_VALUE;
   QMtfDisplay::addDisplay(DISPLAY_PIXEL_VALUE, 0, 255);
 }
 

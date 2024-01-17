@@ -109,7 +109,7 @@ protected:
 
 
 protected:
-  int displayType_ = -1;
+  int displayChannel_ = -1;
   DisplayMap displayParams_;
   bool autoClip_ = false;
   QString prefix_;

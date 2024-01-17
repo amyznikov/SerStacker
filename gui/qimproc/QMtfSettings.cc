@@ -75,7 +75,7 @@ QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr 
       });
 
 
-  QMtfDisplay::displayType_ =
+  QMtfDisplay::displayChannel_ =
       DISPLAY_PIXEL_VALUE;
 
   addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
